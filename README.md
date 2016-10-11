@@ -132,30 +132,51 @@ Finally, if you are using Mu Tests, you can run them locally to validate your ch
 
 All of this is running locally on your machine.  Of course, once we are ready to try it out in our production
 environment, we need a way of deploying the changes.  Mu handles this for us too.  Although the Mu Cloud mentioned
-earlier does everything in a turnkey style, we can break apart the steps and perform them by hand.
+earlier does everything in a turnkey style, we can break apart the steps and perform them by hand.  They are:
+
+1. `mu build`: Building a project first generates all the requisite Mu metadata.
+2. `mu package`: Packaging a project generates the target cloud environment's native formats.
+3. `mu deploy`: Deploying a project takes all of the above and applies it to the target environment.
+
+Let's walk these steps, in order.
 
 The first step is to build your package's metadata:
 
     $ mu build
 
-This step gathers up all of the metadata necessary to fully map out all of the routes, etc. defined in code.
+This command gathers up all of the metadata necessary to fully map out all of the routes, etc. defined in code.
 
-The next step is to perform a deployment.  The specific steps undertaken will differ based on the target.  For
-example, when deploying to AWS, the steps are governed by the AWS API Gateway and Lambda metadata formats.  This step
-is "intelligent" in that, by default, it only replaces and updates elements that have changed since last time.
+Next, we will prepare the data required to apply our deployment to the target environment.  The specific steps and
+formats here will differ based on the target.  For example, when deploying to AWS, the steps are governed by the AWS
+API Gateway and Lambda metadata formats.  The `--provider` flag selects the target; if omitted, the Mu Cloud is used:
 
-If we are deploying to AWS, for example, we would run the following command:
+    $ mu package                    # to the Mu Cloud
+    $ mu package --provider aws     # or, to the AWS Cloud
+    $ ...                           # or, ...
 
-    $ mu deploy --provider aws
+The final step is to perform a deployment.  This step is "intelligent" in that, by default, it does smart
+delta-patching, creating, updating, and/or deleting only those resources necessary to reach the desired target state:
 
-Assuming you have your [AWS credentials configured properly](
-http://docs.aws.amazon.com/cli/latest/topic/config-vars.html), this step will perform a deployment.  As it goes, it will
-print out the resources that are created or destroyed, in addition to any relevant endpoints.  If you wish to try out
-the command without actually modifying your environment, you can use `--dry-run`:
+    $ mu deploy                     # to the Mu Cloud
+    $ mu deploy --provider aws      # or, to the AWS Cloud
+    $ ...                           # or, ...
+
+// TODO(joe): do you need to specify the --provider for package *and* deploy?
+
+Note that the AWS provider requires that you've [configured your AWS credentials properly](
+http://docs.aws.amazon.com/cli/latest/topic/config-vars.html).  As the `deploy` command executes, it will print out
+the changes made to your environment, in addition to any relevant endpoints.  If you wish to try out the command without
+actually modifying your environment, you can add the `--dry-run` flag:
 
     $ mu deploy --provider aws --dry-run
 
 // TODO(joe): link to the more sophistciated deployment options, e.g. using Terraform.
+
+Note that you can skip manually running `build`, `package`, and `deploy` commands; if you run `package` without having
+run `build`, it will be run automatically; and if you run `deploy` without having run `package`, it too will be run
+automatically.  Therefore, if you want to skip the first two steps and simply perform a new deployment, just run:
+
+    $ mu deploy --...
 
 Mu also supports the notion of multiple environments (production, staging, test, etc).  If you are using the Mu
 Cloud-managed deployment option, you may attach to any number of branches, each of which will get its own isolated
