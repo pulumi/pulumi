@@ -34,38 +34,40 @@ A more comprehensive Mu program might look something like this:
 
     var mu = require("mu");
 
-    // Schedule jobs:
-    mu.daily(function(req, res) {...});
+    // 1. Functions
+    mu.func("hello", function(req, res) { res.write("Hello, Mu!"); });
 
-    // Setup HTTP routes:
+    // 2. Endpoints
+    //     - API routes
     mu.http.get("/", function(req, res) {...});
     mu.http.post("/login", function(req, res) {...});
 
-    // Serve static content:
-    mu.http.serve("/", "./static");
+    //     - Static content
+    mu.http.get("/static", mu.mw.static("./static"));
 
-    // Setup reactive Lambdas:
+    // 3. Schedules
+    mu.daily(function(req, res) {...});
+
+    // 4. Triggers
     mu.on(salesforce.customer.added, function(req, res) {...});
     mu.on(marketo.customer.deleted, function(req, res) {...});
 
-    // Standalone functions:
-    mu.func("hello", function(req, res) { res.write("Hello, Mu!"); });
 
 Now things have gotten interesting!  This example demonstrates a few ways to register a serverless function:
 
-1. **Scheduled**: `daily` runs the given function once/day.  The obvious relatives like `hourly` also exist, in
+1. **Functions**: The `func` routine registers a function with a name.  Although they aren't automatically hooked up to
+   anything, such functions can be invoked by handle or by name using the command line and web interfaces.
+
+2. **Endpoints**: `http` exposes a HTTP endpoint using a standard route syntax.  This can be used to create web
+   pages or REST APIs using your favorite frameworks, deployed atop an entirely serverless architecture.  The usual
+   HTTP verbs are available -- like `get` and `post` -- and the response may be a custom serverless function or
+   middleware.  `mu.static` is a middleware function to serve static content such as HTML, CSS, and JavaScript.
+
+3. **Schedules**: `daily` runs the given function once/day.  The obvious relatives like `hourly` also exist, in
    addition to the general-purpose `schedule` function which accepts a cron-like schedule.
 
-2. **API Endpoints**: `http` exposes an API endpoint using a standard route syntax.  This can be used to create web
-   pages or REST APIs using your favorite frameworks, deployed atop an entirely serverless architecture.
-
-3. **Static Content**: `serve` exposes static content -- HTML, CSS, JavaScript, etc. -- at a given endpoint prefix.
-
-3. **Triggers**: `on` subscribes to a named event -- there are many to choose from! -- and runs the function with the
-   event's payload anytime that event occurs.  Streams-based events that automatically batch are also supported.
-
-4. **Loose Functions**: Lastly, the `func` routine registers a function with a name.  Although it won't be hooked up
-   to anything, these functions can be invoked by handle or by name using the command line and web interfaces.
+4. **Triggers**: Lastly, `on` subscribes to a named event -- there are many to choose from! -- and runs the function
+   with its payload anytime that event occurs.  Streams-based events that automatically batch are also available.
 
 ## Installation
 
