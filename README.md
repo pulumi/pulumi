@@ -18,7 +18,7 @@ Mu unifies how you author the logic for these scenarios, in addition to how you 
 Mu is polyglot, and supports many languages out of the box: Node.js, Go, Python, Java, and others.  Mu is also cloud-
 neutral, supporting many execution environments: local/on-premise, AWS Lambda, Google Cloud Functions, and more.
 
-## Usage Examples
+## Examples
 
 Before diving into the details, let's see some Mu examples, written in Node.js.
 
@@ -37,11 +37,14 @@ A more comprehensive Mu program might look something like this:
     // Schedule jobs:
     mu.daily(function(req, res) {...});
 
-    // Setup my HTTP routes:
-    mu.http("/login", function(req, res) {...});
-    mu.http("/", function(req, res) {...});
+    // Setup HTTP routes:
+    mu.http.get("/", function(req, res) {...});
+    mu.http.post("/login", function(req, res) {...});
 
-    // Setup all reactive Lambdas:
+    // Serve static content:
+    mu.http.serve("/", "./static");
+
+    // Setup reactive Lambdas:
     mu.on(salesforce.customer.added, function(req, res) {...});
     mu.on(marketo.customer.deleted, function(req, res) {...});
 
@@ -50,17 +53,19 @@ A more comprehensive Mu program might look something like this:
 
 Now things have gotten interesting!  This example demonstrates a few ways to register a serverless function:
 
-1. **Scheduled**.  `daily` runs the given function once/day.  The obvious relatives like `hourly` also exist, in
+1. **Scheduled**: `daily` runs the given function once/day.  The obvious relatives like `hourly` also exist, in
    addition to the general-purpose `schedule` function which accepts a cron-like schedule.
 
-2. **API Endpoints**.  `http` exposes an API endpoint using a standard route syntax.  This can be used to create web
+2. **API Endpoints**: `http` exposes an API endpoint using a standard route syntax.  This can be used to create web
    pages or REST APIs using your favorite frameworks, deployed atop an entirely serverless architecture.
 
-3. **Triggers**.  `on` subscribes to a named event -- there are many to choose from! -- and runs the function with the
+3. **Static Content**: `serve` exposes static content -- HTML, CSS, JavaScript, etc. -- at a given endpoint prefix.
+
+3. **Triggers**: `on` subscribes to a named event -- there are many to choose from! -- and runs the function with the
    event's payload anytime that event occurs.  Streams-based events that automatically batch are also supported.
 
-4. **Loose Functions**.  Lastly, the `func` routine registers a function with a name.  Although it won't be hooked up to
-   anything, these functions can be invoked by handle or by name using the command line and web interfaces.
+4. **Loose Functions**: Lastly, the `func` routine registers a function with a name.  Although it won't be hooked up
+   to anything, these functions can be invoked by handle or by name using the command line and web interfaces.
 
 ## Installation
 
