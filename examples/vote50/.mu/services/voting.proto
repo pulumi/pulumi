@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+package vote50;
+
+service VotingService {
+    rpc Vote(VoteRequest) returns (VoteResponse) {}
+}
+
+message VoteRequest {
+    string color = 1;
+}
+
+message VoteResponse {
+}
+
