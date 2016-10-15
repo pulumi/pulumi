@@ -29,6 +29,33 @@ Here is a brief example of Stack that represents a voting service, authored in N
 
     var mu = require("mu");
     
+    var votes = new mu.Table();
+    var voteCounts = new mu.Table();
+
+    // Create a HTTP endpoint Service that receives votes from an API:
+    var voteAPI = new mu.HTTPGateway();
+    voteAPI.post("/vote", (req, res) => {
+        votes.push({ color: req.info.color, count: 1 });
+    });
+
+    // Keep our aggregated counts up-to-date:
+    votes.forEach(vote => {
+        voteCounts.updateIncrement(vote.color, vote.count);
+    });
+
+Imagining this were in a single file, `voting_stack.js`, the single command
+
+    $ mu up ./voting_stack.js
+
+would provision all of the requisite cloud resources and make the service come to life.
+
+Let's quickly look at two slight variants of this same code.
+
+First, we can use a custom service to encapsulate resources and logic.  The above example is comprised of nothing but
+Functions, which is great for simple scenarios.  Sometimes, however, the situation calls for more structure:
+
+    var mu = require("mu");
+    
     // Create a HTTP endpoint Service that receives votes from an API:
     var voteAPI = new mu.HTTPGateway();
     var votingService = new VotingService();
@@ -50,42 +77,9 @@ Here is a brief example of Stack that represents a voting service, authored in N
         }
     }
 
-Imagining this were in a single file, `voting_stack.js`, the single command
-
-    $ mu up ./voting_stack.js
-
-would provision all of the requisite cloud resources and make the service come to life.
-
-This simple example demonstrates many facets:
-
-1. Infrastructure as code and application logic living side-by-side.
-2. Provisioning cloud-native resources, like `HTTPGateway` and `Table`, as though they are ordinary services.
-3. Creating a custom stateless service, `VotingService`, that encapsulates cloud resources and exports a `vote` API.
-4. Registering a function that runs in response to database updates using "reactive" APIs.
-
-Let's quickly look at two slight variants of this same code.
-
-First, we could have written this without a `VotingService` whatsoever.  Although real code tends to be complex and
-encapsulation of resources and state encourages this sort of organization, we can simply do it entirely with Functions:
-
-    var mu = require("mu");
-    
-    var votes = new mu.Table();
-    var voteCounts = new mu.Table();
-
-    // Create a HTTP endpoint Service that receives votes from an API:
-    var voteAPI = new mu.HTTPGateway();
-    voteAPI.post("/vote", (req, res) => {
-        votes.push({ color: req.info.color, count: 1 });
-    });
-
-    // Keep our aggregated counts up-to-date:
-    votes.forEach(vote => {
-        voteCounts.updateIncrement(vote.color, vote.count);
-    });
-
-This makes for nice "minimal code" demos.  Defining a class helps to encapsulate resources and logic, but has another
-benfit.  This brings us to our second variant, which is to "multi-instance" our service.
+Instead of registering the API manually with `HTTPGateway`'s `get` function, we have registered all of `VotingService`'s
+methods using `register`.  The votes and voteCounts `Table`s are also entirely encapsulated inside of `VotingService`.
+In addition to the benefits of encapsulation, this brings us to our second variant of the code: multi-instancing.
 
 Imagine that we want to offer voting for each of the 50 states.  We can simply create many `VotingService`s:
 
@@ -106,6 +100,13 @@ Instead of a single `/vote` endpoint, there will now be endpoints for each of th
 change the definition of `VotingService` to do this.  Of course, we may want to, in order to perform state-specific
 logic, name its internal resources to have state prefixes in their names, and so on.  But this demonstrates the power
 of reusability when we define Services in the manner shown above.
+
+This simple example has demonstrated many facets:
+
+1. Infrastructure as code and application logic living side-by-side, using Stacks.
+2. Provisioning cloud-native resources, like `HTTPGateway` and `Table`, as ordinary Services.
+3. Creating entirely serverless cloud applications using Functions and Triggers.
+4. Creating custom Services, like `VotingService`, that encapsulate cloud resources and exports APIs.
 
 ## A Teardown
 
