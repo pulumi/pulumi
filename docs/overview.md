@@ -7,6 +7,8 @@ The core concepts in Mu are:
 3. **Function**: A single stateless function that is unbundled with a single "API": invoke.
 4. **Trigger**: A subscription that calls a Service or Function in response to an event.
 
+// TODO(joe): map to Kube concepts; do we need "more" (e.g., Controller)?
+
 Each Stack "instantiates" one or more Services, Functions, and Triggers to create cloud functionality.  This can include
 databases, queues, containers, pub/sub topics, and overall container-based microservices, to name a few examples.  These
 constructs compose nicely, such that a Service may create a Stack if it wishes to encapsulate its own resource needs.
@@ -61,6 +63,50 @@ This simple example demonstrates many facets:
 3. Creating a custom stateless service, `VotingService`, that encapsulates cloud resources and exports a `vote` API.
 4. Registering a function that runs in response to database updates using "reactive" APIs.
 
+Let's quickly look at two slight variants of this same code.
+
+First, we could have written this without a `VotingService` whatsoever.  Although real code tends to be complex and
+encapsulation of resources and state encourages this sort of organization, we can simply do it entirely with Functions:
+
+    var mu = require("mu");
+    
+    var votes = new mu.Table();
+    var voteCounts = new mu.Table();
+
+    // Create a HTTP endpoint Service that receives votes from an API:
+    var voteAPI = new mu.HTTPGateway();
+    voteAPI.post("/vote", (req, res) => {
+        votes.push({ color: req.info.color, count: 1 });
+    });
+
+    // Keep our aggregated counts up-to-date:
+    votes.forEach(vote => {
+        voteCounts.updateIncrement(vote.color, vote.count);
+    });
+
+This makes for nice "minimal code" demos.  Defining a class helps to encapsulate resources and logic, but has another
+benfit.  This brings us to our second variant, which is to "multi-instance" our service.
+
+Imagine that we want to offer voting for each of the 50 states.  We can simply create many `VotingService`s:
+
+    var mu = require("mu");
+
+    // Create a HTTP endpoint Service that receives votes from an API:
+    var voteAPI = new mu.HTTPGateway();
+
+    for (var state of [ "AL", "AK", ... "WI", "WY" ]) {
+        var votingService = new VotingService();
+        voteAPI.register(`/${state}`, votingService);
+    }
+
+    // VotingService is unchanged from above.
+
+Instead of a single `/vote` endpoint, there will now be endpoints for each of the 50 states -- `/vote/AL`, `/vote/AK`,
+..., `/vote/WI`, and `/vote/WY` -- each with its own votes and voteCounts tables.  Notice that we didn't even have to
+change the definition of `VotingService` to do this.  Of course, we may want to, in order to perform state-specific
+logic, name its internal resources to have state prefixes in their names, and so on.  But this demonstrates the power
+of reusability when we define Services in the manner shown above.
+
 ## A Teardown
 
 Although a developer wrote very simple code in the introductory example, there is a fair bit of machinery behind making
@@ -90,9 +136,9 @@ Next, the inner Stack allocated by `VotingService`:
 2. A native AWS Lambda, containing the callback wired up to the votes DynamoDB table.
 
 In this particular example, there is little advantage to having two Stacks, since we only ever create one
-`VotingService`.  It's important to remember, however, that Services can be multi-instanced, so they must remain
-distinct.  Of course, many AWS resources may be generated in like fashion: S3 buckets, Route53 DNS entries, and so on.
-Furthermore, stateful Services will end up requiring EC2 VMs and/or Docker containers.
+`VotingService`.  It's important to remember, however, that Services can be multi-instanced, as in our 50 states
+example, so they must remain distinct.  Of course, many AWS resources may be generated in like fashion: S3 buckets,
+Route53 DNS entries, and so on.  Furthermore, stateful Services will end up requiring EC2 VMs and/or Docker containers.
 
 In addition to generating the metadata, the code is prepared for deployment.  This includes some massaging of the code
 so that it is in the requisite form (e.g., Docker images, S3 tarballs for AWS Lambdas, and so on).
