@@ -1,2 +1,27 @@
 name: vote50
+type: Stack
+services:
+    voting: ./services/voting.yaml
+resources:
+    votingServiceAL: voting
+    votingServiceAK: voting
+    votingServiceWI: voting
+    votingServiceWY: voting
+    voteAPI: mu.services.HTTPGateway
+        - register:
+            - /AL/vote
+            - votingServiceAL
+        - register:
+            - /AK/vote
+            - votingServiceAK
+        - register:
+            - /WI/vote
+            - votingServiceWI
+        - register:
+            - /WY/vote
+            - votingServiceWY
+        stack:
+            votes: mu.services.Table
+            voteCounts: mu.services.Table
+            votesFunction: mu.Function
 
