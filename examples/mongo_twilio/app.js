@@ -8,7 +8,7 @@ var twilio = require("mu-twilio");
 var clients = mongo.connect("clients");
 clients.forEach(client =>
     twilio.sendSmsMessage({
-        to: cust.phone,
+        to: client.phone,
         body: `Hi ${client.name}! Your account balance is USD${client.accountBalance}`,
     });
 );
