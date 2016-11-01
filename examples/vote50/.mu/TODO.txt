@@ -1,3 +1,7 @@
+# TODO(joe): Docker Swarm vs. Kubernetes vs. ECS.
+# TODO(joe): Get conflicted on AWS Lambda passthrough vs. our own scheduler.
+# TODO(joe): Terraform vs. CloudFormation; applying diffs may be harder w/ CF.
+
 # TODO(joe): parameterize?  (e.g., environment "prod" vs "stage" vs ...)
 # TODO(joe): we are inferring "names" from variable assignments; should constructors require names?
 # TODO(joe): schema for RPCs is currently weakly typed (because this is a JS example).
@@ -7,4 +11,5 @@
 # TODO(joe): support more sophisticated settings for API gateway: private/auth, CORS, etc.
 # TODO(joe): how to export resources for consumption in app.template?
 # TODO(joe): should we use descriptions, etc.?
+
 

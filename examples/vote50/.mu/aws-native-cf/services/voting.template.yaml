@@ -67,7 +67,7 @@ Resources:
                     Ref: CodeBucket
                 S3Key:
                     Ref: CodeObjectKey
-            Runtime: nodejs
+            Runtime: nodejs4.3
             Handler: app.services.voting.trigger
             Role:
                 !GetAtt:
