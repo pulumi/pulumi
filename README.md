@@ -35,22 +35,24 @@ A more comprehensive Mu program might look something like this:
     var mu = require("mu");
 
     // 1. Functions
-    mu.func("hello", function(req, res) { res.write("Hello, Mu!"); });
+    var hello = new mu.Function("hello", function(req, res) { res.write("Hello, Mu!"); });
 
     // 2. Endpoints
+    var http = new mu.HTTPGateway();
+
     //     - API routes
-    mu.http.get("/", function(req, res) {...});
-    mu.http.post("/login", function(req, res) {...});
+    http.get("/").forEach(function(req, res) {...});
+    http.post("/login").forEach(function(req, res) {...});
 
     //     - Static content
-    mu.http.get("/static", mu.mw.static("./static"));
+    http.get("/static").forEach(mu.mw.static("./static"));
 
     // 3. Schedules
-    mu.daily(function(req, res) {...});
+    mu.Timer.daily.forEach(function(req, res) {...});
 
     // 4. Triggers
-    mu.on(salesforce.customer.added, function(req, res) {...});
-    mu.on(marketo.customer.deleted, function(req, res) {...});
+    salesforce.customers.forEach(function(req, res) {...});
+    marketo.customer.deleted.forEach(function(req, res) {...});
 
 Now things have gotten interesting!  This example demonstrates a few ways to register a serverless function:
 
@@ -150,8 +152,8 @@ Next, we will prepare the data required to apply our deployment to the target en
 formats here will differ based on the target.  For example, when deploying to AWS, the steps are governed by the AWS
 API Gateway and Lambda metadata formats.  The `--provider` flag selects the target; if omitted, the Mu Cloud is used:
 
-    $ mu package                    # to the Mu Cloud
-    $ mu package --provider aws     # or, to the AWS Cloud
+    $ mu package                    # for the Mu Cloud
+    $ mu package --provider aws     # or, for the AWS Cloud
     $ ...                           # or, ...
 
 The final step is to perform a deployment.  This step is "intelligent" in that, by default, it does smart
