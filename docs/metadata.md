@@ -103,49 +103,41 @@ TODO(joe): a more comprehensive example (like Vote50) that illustrates more of t
 This section contains a precise description of the mapping process from Mu metadata to various cloud targets.  Note
 that there are two dimensions to this process:
 
-* The first dimension is the system used for container orchestration, or what we will call, Containers-as-a-Service
-  (CaaS).  Examples of this include AWS ECS, Docker Swarm, Kubernetes, and even plain old VM-based scheduling.
-
-* The second dimension is the system used for hosting the VMs fueling the CaaS, which we will call
+* The first dimension is the system used for hosting the cluster environment, which we will call
   Infrastructure-as-a-Service (IaaS).  Examples of this include AWS, Google Cloud Platform (GCP), Azure, and even VM
   fabrics for on-premise installations, like VMWare VSphere.  Note that often IaaS goes beyond simply having VMs as
   resources and can include hosted offerings such as blob storage, load balancers, domain name configurations, etc.
 
-Not all combinations of CaaS and IaaS fall out naturally, although it is a goal of the system to target them
-orthogonally such that the incremental cost of creating new pairings is as low as possible (minimizing combinatorics).
-Some combinations are also clearly nonsense, such as using AWS ECS as the CaaS and GCP as the IaaS.
+* The second dimension is the system used for container orchestration, or what we will call, Containers-as-a-Service
+  (CaaS).  Examples of this include AWS ECS, Docker Swarm, and Kubernetes.  Note that the system can handle the
+  siituation where there is no container orchestration framework available, in which case raw VMs are utilized.
 
-For reference purposes, here is a compatibility matrix for what we envision supporting.  Each column with an `X` is
-described in this document already; each column with an `-` is planned, but not yet described; and `n/a` is nonsense:
+Not all combinations of IaaS and CaaS fall out naturally, although it is a goal of the system to target them
+orthogonally such that the incremental cost of creating new pairings is as low as possible (minimizing combinatorics).
+Some combinations are also clearly nonsense, such as AWS as your IaaS and GKE as your CaaS.
+
+For reference, here is a compatibility matrix.  Each column with an `X` is described in this document already; each
+column with an `-` is planned, but not yet described; and blank entries are unsupported nonsense combinations:
 
 |               | AWS       | GCP       | Azure     | VMWare    |
-+---------------+-----------+-----------+-----------+-----------|
-| VM            | X         | -         | -         | -         |
+| ------------- | --------- | --------- | --------- | --------- |
+| none (VMs)    | X         | -         | -         | -         |
 | Docker Swarm  | -         | -         | -         | -         |
 | Kubernetes    | -         | -         | -         | -         |
 | Mesos         | -         | -         | -         | -         |
-| ECS           | X         | n/a       | n/a       | n/a       |
-| GKE           | n/a       | -         | n/a       | n/a       |
-| ACS           | n/a       | n/a       | -         | n/a       |
+| ECS           | X         |           |           |           |
+| GKE           |           | -         |           |           |
+| ACS           |           |           | -         |           |
 
-In all cases, the native metadata formats for the CaaS and IaaS provider in question is supported; for example, ECS on
+In all cases, the native metadata formats for the IaaS and CaaS provider in question is supported; for example, ECS on
 AWS will leverage CloudFormation as the target metadata.  In certain cases, we also support Terraform outputs.
 
-### CaaS Targets
-
-#### VM
-
-#### Docker Swarm
-
-#### Kubernetes
-
-#### AWS EC2 Container Service (ECS)
-
-#### Google Container Engine (GKE)
-
-#### Azure Container Service (ACS)
-
 ### IaaS Targets
+
+This section describes the translation for various IaaS targets.  Recall that deploying to an IaaS *without* any CaaS is
+a supported scenario, so each of these descriptions is "self-contained."  In the case that a CaaS is utilized, that
+process -- described below -- can override certain decisions made in the IaaS translation process.  For instance, rather
+than leveraging a VM per Docker Container, the CaaS translation will choose to target an orchestration layer.
 
 #### Amazon Web Services (AWS)
 
@@ -155,7 +147,21 @@ AWS will leverage CloudFormation as the target metadata.  In certain cases, we a
 
 #### VMWare
 
-### Specific Combinations
+### CaaS Targets
+
+#### VM
+
+#### Docker Swarm
+
+#### Kubernetes
+
+#### Mesos
+
+#### AWS EC2 Container Service (ECS)
+
+#### Google Container Engine (GKE)
+
+#### Azure Container Service (ACS)
 
 ### Terraform
 
