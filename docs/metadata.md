@@ -32,6 +32,22 @@ with most package managers, most of these elements are optional:
 
 TODO(joe): finish this section.
 
+### Subclassing
+
+A Stack may subclass any other Stack, specializing aspects of it as appropriate.  This facilitates reuse.  For instance,
+perhaps my company wishes to enforce that certain best practices and standards are adhered to, for all Stacks.  Or
+imagine someone in the community has published a best-in-breed Node.js application blueprint, leveraging Express,
+MongoDB, and the ELK stack, and I merely want to plug in my own application logic and leverage the overall Stack.
+
+To do this, reference another Stack's fully qualified name in the `base` property:
+
+    base: some/other/stack
+
+From there, I can use all of the other metadata in this section, however we will have inherieted anything in the base.
+
+TODO(joe): what about mixins?
+TODO(joe): get more specific about what can be overridden.  Furthermore, what about "deletes"?
+
 ### APIs
 
 Every Stack may choose to export one or more APIs.  These APIs can be standard "unconstrained" network interfaces, such
