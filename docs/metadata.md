@@ -134,6 +134,16 @@ AWS will leverage CloudFormation as the target metadata.  In certain cases, we a
 
 Refer to [marapongo/mu#2](https://github.com/marapongo/mu/issues/2) for an up-to-date prioritization of platforms.
 
+## Clusters
+
+A Stack is deployed to a Cluster.  Any given Cluster is a fixed combination of IaaS and CaaS provider.  Developers may
+choose to manage Clusters and multiplex many Stacks onto any given Cluster, or they may choose to simply deploy a
+Cluster per Stack.  The latter is of course easier, but may potentially incur more waste than the former.  Furthermore,
+it will likely take more time to provision and modify entire Clusters than just the Stacks running within them.
+
+Because creating and managing Clusters is a discrete step, the translation process will articulate them independently.
+The tools make both the complex and simple workflows possible.
+
 ### IaaS Targets
 
 This section describes the translation for various IaaS targets.  Recall that deploying to an IaaS *without* any CaaS is

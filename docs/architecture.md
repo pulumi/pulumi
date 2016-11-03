@@ -11,9 +11,13 @@ The three top-level architectural abstractions in Mu are:
 
 * **Stack**: A static blueprint, or "type", that describes a topology of cloud resources.
 * **Service**: An instantiation of a Stack, grouping zero to many services, each with an optional API, together.
-* **Workspace**: A static collection of one or many Stacks managed together in a single source repository.
+* **Cluster**: A dynamic collection of zero to many Stacks deployed together into a shared hosting environment.
+* **Workspace**: A static collection of zero to many Stacks managed together in a single source repository.
 
 In an analogy with object-oriented systems, a Stack is akin to a class and Service is akin to an object.
+
+Although a Cluster and Workspace both can contain many Stacks (dynamically and statically, respectively), there isn't
+necessarily a one-to-one mapping between them.  Of course, management from the Marapongo console is easier if there is.
 
 Many concepts that are "distinct" in other systems, like the notion of Gateways, Controllers, Functions, Triggers, and
 so on, are expressed as Stacks and Services in the Mu system.  They are essentially "subclasses" -- or specializations
