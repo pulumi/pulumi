@@ -364,6 +364,7 @@ or on an individual Node basis (TODO(joe): how).
 TODO(joe): multi-region.
 TODO(joe): high availability.
 TODO(joe): see http://kubernetes.io/docs/getting-started-guides/aws/ for reasonable defaults.
+TODO(joe): see Empire for inspiration: https://s3.amazonaws.com/empirepaas/cloudformation.json, especially IAM, etc.
 
 Each Cluster gets a Virtual Private Cloud (VPC) for network isolation.  Along with this VPC comes the standard set of
 sub-resources: a Subnet, Internet Gateway, and Route Table.  By default, Ingress and Egress ports are left closed.  As
@@ -395,8 +396,13 @@ TODO(joe): describe whether this is done thanks to an AMI, post-install script, 
 
 TODO(joe): CloudWatch.
 TODO(joe): CloudTrail.
+TODO(joe): private container registries.
 
 ##### Stacks/Services
+
+##### AWS-Specific Stacks
+
+TODO(joe): describe all the AWS-specific Stacks, e.g. `aws/sqs/queue`, `aws/s3/bucket`, `aws/dynamodb/table`, etc.
 
 ##### AWS-Specific Metadata
 
