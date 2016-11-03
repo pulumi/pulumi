@@ -116,8 +116,8 @@ Not all combinations of IaaS and CaaS fall out naturally, although it is a goal 
 orthogonally such that the incremental cost of creating new pairings is as low as possible (minimizing combinatorics).
 Some combinations are also clearly nonsense, such as AWS as your IaaS and GKE as your CaaS.
 
-For reference, here is a compatibility matrix.  Each column with an `X` is described in this document already; each
-column with an `-` is planned, but not yet described; and blank entries are unsupported nonsense combinations:
+For reference, here is a compatibility matrix.  Each cell with an `X` is described in this document already; each cell
+with an `-` is planned, but not yet described; and blank entries are unsupported nonsense combinations:
 
 |               | AWS       | GCP       | Azure     | VMWare    |
 | ------------- | --------- | --------- | --------- | --------- |
@@ -131,6 +131,8 @@ column with an `-` is planned, but not yet described; and blank entries are unsu
 
 In all cases, the native metadata formats for the IaaS and CaaS provider in question is supported; for example, ECS on
 AWS will leverage CloudFormation as the target metadata.  In certain cases, we also support Terraform outputs.
+
+Refer to [marapongo/mu#2](https://github.com/marapongo/mu/issues/2) for an up-to-date prioritization of platforms.
 
 ### IaaS Targets
 
