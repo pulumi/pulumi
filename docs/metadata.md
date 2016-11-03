@@ -220,8 +220,6 @@ In this example, S3 buckets are volumes; we create a private one and mount it in
 
 #### Constructor Arguments
 
-
-
 ### Nested Stacks
 
 Another feature that comes in handy sometimes is the ability to create nested Stacks:
@@ -229,12 +227,43 @@ Another feature that comes in handy sometimes is the ability to create nested St
     stacks:
 
 Each nested Stack is very much like the Stack defined by any given Mufile, except that it is scoped, much like a
-nested/inner class in object-oriented languages.  There are two primary reasons you might do this:
+nested/inner class in object-oriented languages.  Doing this lets you subclass and/or multi-instance a single Stack as
+multiple Services inside of the same Mufile.  For example, consider a container that will be multi-instanced:
 
-1. Multi-instancing that Stack, to create multiple Services.
-2. Conveniently leveraging that Stack as the "type" for one or more other Services in the file.
+    stacks:
+        private:
+            - common:
+                type: mu/container
+                image: acmecorp/great
+                env:
+                    NAME: {{.meta.name}}-cluster
+                    DATA: false
+                    MASTER: false
+                    HTTP: false
 
-TODO(joe): examples of the above.
+Now that we've defined `common`, we can go ahead and create it, without needing to expose the Stack to clients:
+
+    services:
+        private:
+            - data:
+                type: common
+                env:
+                    DATA: true
+        public:
+            - master:
+                type: common
+                env:
+                    MASTER: true
+            - worker:
+                type: common
+                env:
+                    HTTP: true
+
+All of these three Services -- one private and two public -- leverage the same `acmecorp/great` container image,
+and each one defines the same four set of environment variables.  Each instance, however, overrides a different
+environment variable default value, to differentiate the roles as per the container's semantics.
+
+Different scenarios call for subclassing versus composition, and the Mu system supports both in a first class way.
 
 TODO(joe): we need to decide whether you can export public Stacks for public consumption.  At this point, my stance is
 that you must create an entirely different Stack to do that.  This keeps things simple for the time being.
