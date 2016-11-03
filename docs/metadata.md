@@ -15,6 +15,10 @@ TODO(joe): declarative specification format for Clusters.
 
 Although all examples are in YAML, it is perfectly valid to use JSON instead if that is more desirable.
 
+Mu preprocesses all metadata files to substitute context values not known until runtime, such as configuration,
+arguments, and so on.  The [Go template syntax](https://golang.org/pkg/text/template/) is used for this.  Please refer
+to the API documentation for the context object (TODO(joe): do this) for details on what information is available.
+
 ### Package Managament
 
 Each Mufile begins with some standard "package manager"-like metadata, like name, version, description, and so on.  As
@@ -38,6 +42,76 @@ generation.  This also adds a sort of "strong typing" to the connections between
 
 TODO(joe): articulate this section further; e.g., the metadata format, precise advantages, etc.
 
+### Parameters
+
+Each Stack can declare a set of parameters that callers must supply, in the `parameters` section:
+
+    parameters:
+
+Each parameter has the following properties:
+
+* `name`: A name unique amongst all parameters.
+* `type`: A parameter type, restricting the legal values.
+* `default`: A default value to be supplied if missing from the caller.
+* `optional`: If `true`, this parameter is optional.
+
+The set of types a parameter may take on are "JSON-like".  This includes simple primitives:
+
+    type: string
+    type: number
+    type: boolean
+    type: object
+
+As well as array shapes utilizing them:
+
+    type: [ string ]
+    type: [ number ]
+    type: [ boolean ]
+    type: [ object ]
+
+Complex structures can be described simply using objects with properties:
+
+    name: tag
+    type:
+        id: number
+        name: string
+        value: object
+
+The most interesting capability here is the ability to request a "capability", or reference to another Service.  This
+provides a strongly typed and more formal way of expressing Service dependencies, in a way that the system can
+understand and leverage in its management of the system (like ensuring Services are created in the right order).  It
+also eliminates some of the fragility of weakly typed and dynamic approaches, which can be prone to race conditions.
+
+The most basic form is to use the special type `service`:
+
+    type: service
+
+This is helpful, as it exposes a dependency to the system, but it isn't perfect.  The shape of the dependency is still
+opaque to the system.  A step further is to express that a specific port is utilized:
+
+    type: service:80
+
+This declaration says that we require a Service with an exposed port 80.  This strong typing flows through the system,
+permitting liveness detection, and even compile-time type checking that the supplied Service argument actually does
+expose something on port 80 -- in the event that this ever changes, we will find out upon recompilation.
+
+Even better still is to declare that we depend on a specific kind of Service, by specifying the fully qualified name of
+a Stack.  In such a case, the system ensures an instance of this Stack type, or subclass, is provided:
+
+    type: examples/keyValueStore
+
+This hypothetical Stack defines an API that can be used as a key-value store.  Presumably we would find subclasses of it
+for etcd, Consul, Zookeeper, and others, which a caller is free to choose from at instantiation time.
+
+Another example leverages the primitive `mu/volume` type to require a Service which can be mounted as a volume:
+
+    type: mu/volume
+
+Finally, note that anywhere inside of this Mufile, we may access the arguments supplied at Stack instantiation time
+using the Go template syntax mentioned earlier.  For example, `{{.args.tag.name}}`.
+
+### Configuration
+
 ### Services
 
 After that comes the section that describes what Services make up this Stack:
@@ -53,7 +127,7 @@ In this section is zero-to-many Services that are co-created with one another.  
 
 Although these Services are co-created, they may reference one another.  The references between each other forms a DAG
 and the system topologically sorts that DAG in order to determine the order in which to create and destroy Services.
-Notable there may be no cycles.  By default, the system understands liveness and health (TODO(joe): how); as a result,
+Notably there may be no cycles.  By default, the system understands liveness and health (TODO(joe): how); as a result,
 the developer need not explicitly worry about races, liveness, or retries during Service creation.
 
 #### Names
@@ -130,7 +204,7 @@ In this example, S3 buckets are volumes; we create a private one and mount it in
 
 #### Constructor Arguments
 
-TODO(joe): more examples.
+
 
 ### Nested Stacks
 
