@@ -137,6 +137,8 @@ TODO(joe): figure out how to handle persistence.
 
 TODO(joe): private container registries.
 
+TODO(joe): encrypted secret storage (a la Vault).
+
 #### Stacks/Services
 
 Each Mu Stack compiles into a [CloudFormation Stack](
