@@ -7,9 +7,9 @@ This document describes the overall architecture for the system, including this 
 
 ## Concepts
 
-The three top-level architectural abstractions in Mu are:
+The core top-level architectural abstractions in Mu are:
 
-* **Stack**: A static blueprint, or "type", that describes a topology of cloud resources.
+* **Stack**: A static blueprint describing some specific topology of cloud resources.
 * **Service**: An instantiation of a Stack, grouping zero to many services, each with an optional API, together.
 * **Cluster**: A dynamic collection of zero to many Stacks deployed together into a shared hosting environment.
 * **Workspace**: A static collection of zero to many Stacks managed together in a single source repository.
@@ -23,10 +23,21 @@ Many concepts that are "distinct" in other systems, like the notion of Gateways,
 so on, are expressed as Stacks and Services in the Mu system.  They are essentially "subclasses" -- or specializations
 -- of this more general concept, unifying the configuration, provisioning, discovery, and overall management of them.
 
+In addition to those core abstractions, there are some supporting ones:
+
+* **Type**: A schematized type, sometimes Stack-based, that is used for type-checking Mu specifications.
+* **Configuration**: A bag of key/value settings used either at build or runtime.
+* **Secret**: A special kind of key/value configuration bag that is encrypted and protected by authorization.
+* **Group, User, and Identity**: A set of security concepts governing access control and capabilities.
+
 Because Mu is a tool for interacting with existing clouds -- including targets like AWS, Kubernetes, and Docker Swarm --
 one of the toolchain's most important jobs is faithfully mapping these abstractions onto "lower level" infrastructure
 abstractions, and vice versa.  Much of Mu's ability to deliver on its promise of better productivity, sharing, and reuse
 relies on its ability to robustly and intuitively perform these translations.
+
+TODO(joe): reusable schema types.
+
+TODO(joe): configuration/secrets; see https://github.com/docker/docker/issues/13490.
 
 ## Toolchain
 
@@ -49,11 +60,13 @@ for a work item tracking this.  For now, and to simplify this doc, we will ignor
 
 TODO(joe): discuss the concept of a deployment.
 
+TODO(joe): describe blue/green zero downtime deployments.
+
 ### Command Line Interface
 
 TODO(joe): deployment, ongoing interactions, management, etc.
 
-## Services
+## System Services
 
-TODO(joe): describe package manager, artifact repository, the relationship between them, etc.
+TODO(joe): describe package manager, artifact repository, CI/CD, the relationship between them, etc.
 
