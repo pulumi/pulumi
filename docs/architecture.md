@@ -45,6 +45,10 @@ This is very powerful when envisioning serverless architectures, where Stacks, S
 expressed all in a single file, and managed alongside the code and libraries they depend upon.  See marapongo/mu#xxx
 for a work item tracking this.  For now, and to simplify this doc, we will ignore this possibility.
 
+### Deployments
+
+TODO(joe): discuss the concept of a deployment.
+
 ### Command Line Interface
 
 TODO(joe): deployment, ongoing interactions, management, etc.

@@ -69,9 +69,7 @@ The output of a transformation is one or more AWS CloudFormation templates.
 Each Cluster is given a standard set of resources.  If multiple Stacks are deployed into a shared Cluster, then those
 Stacks will share all of these resources.  Otherwise, each Stack is given a dedicated set of them just for itself.
 
-TODO(joe): IAM.
-
-TODO(joe): keys.
+##### Configuration
 
 By default, all machines are placed into the XXX region and are given a size of YYY.  The choice of region may be
 specified at provisioning time (TODO(joe): how), and the size may be changed as a Cluster-wide default (TODO(joe): how),
@@ -84,6 +82,25 @@ TODO(joe): high availability.
 TODO(joe): see http://kubernetes.io/docs/getting-started-guides/aws/ for reasonable defaults.
 
 TODO(joe): see Empire for inspiration: https://s3.amazonaws.com/empirepaas/cloudformation.json, especially IAM, etc.
+
+All Nodes in the Cluster are configured uniformly:
+
+1. DNS for service discovery.
+2. Docker volume driver for EBS-based persistence (TODO: how does this interact with Mu volumes).
+
+TODO(joe): describe whether this is done thanks to an AMI, post-install script, or something else.
+
+TODO(joe): CloudWatch.
+
+TODO(joe): CloudTrail.
+
+##### Identity, Access Management, and Keys
+
+TODO(joe): IAM.
+
+TODO(joe): keys.
+
+##### Networking
 
 Each Cluster gets a Virtual Private Cloud (VPC) for network isolation.  Along with this VPC comes the standard set of
 sub-resources: a Subnet, Internet Gateway, and Route Table.  By default, Ingress and Egress ports are left closed.  As
@@ -105,6 +122,8 @@ TODO(joe): articulate how Route53 gets configured.
 
 TODO(joe): articulate how ELBs do or do not get created for the cluster as a whole.
 
+##### Discovery and Cluster State
+
 Next, each Cluster gets a key/value store.  By default, this is Hashicorp Consul.  This is used to manage Cluster
 configuration, in addition to a discovery service should a true CaaS orchestration platform be used (i.e., not VMs).
 
@@ -115,17 +134,6 @@ TODO(joe): ideally we would use an AWS native key/value/discovery service (or ou
 TODO(joe): this should be pluggable.
 
 TODO(joe): figure out how to handle persistence.
-
-All Nodes in the Cluster are configured uniformly:
-
-1. DNS for service discovery.
-2. Docker volume driver for EBS-based persistence (TODO: how does this interact with Mu volumes).
-
-TODO(joe): describe whether this is done thanks to an AMI, post-install script, or something else.
-
-TODO(joe): CloudWatch.
-
-TODO(joe): CloudTrail.
 
 TODO(joe): private container registries.
 
