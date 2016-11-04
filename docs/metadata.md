@@ -1,11 +1,9 @@
-# Mu Metadata
+# Mu Metadata Specification
 
-This document contains a formal description of Mu's metadata, in addition to the translation process for all current
-targets.
+This document contains a formal description of Mu's metadata.  For more details on how this metdata is compiled when
+targeting various cloud providers, please refer to [the companion design document](targets.md).
 
-## Specification
-
-This section includes the specification for Mu's metadata plus its core platform primitives.
+## Overview
 
 The essential artifact a developer uses to create Stacks and Services is something we call a Mufile.  It is
 conventionally named `Mu.yaml`, usually checked into the Workspace, and each single file describes a Stack.  (Note that
@@ -19,7 +17,7 @@ Mu preprocesses all metadata files to substitute context values not known until 
 arguments, and so on.  The [Go template syntax](https://golang.org/pkg/text/template/) is used for this.  Please refer
 to the API documentation for the context object (TODO(joe): do this) for details on what information is available.
 
-### Package Managament
+## Package Managament
 
 Each Mufile begins with some standard "package manager"-like metadata, like name, version, description, and so on.  As
 with most package managers, most of these elements are optional:
@@ -32,7 +30,7 @@ with most package managers, most of these elements are optional:
 
 TODO(joe): finish this section.
 
-### Subclassing
+## Stacks and Subclassing
 
 A Stack may subclass any other Stack, specializing aspects of it as appropriate.  This facilitates reuse.  For instance,
 perhaps my company wishes to enforce that certain best practices and standards are adhered to, for all Stacks.  Or
@@ -49,7 +47,7 @@ TODO(joe): what about mixins?
 
 TODO(joe): get more specific about what can be overridden.  Furthermore, what about "deletes"?
 
-### APIs
+## APIs
 
 Every Stack may choose to export one or more APIs.  These APIs can be standard "unconstrained" network interfaces, such
 as "HTTP over port 80", or can take on a more structured form, like leveraging OpenAPI to declare a protocol interface.
@@ -59,9 +57,9 @@ generation.  This also adds a sort of "strong typing" to the connections between
 
 TODO(joe): articulate this section further; e.g., the metadata format, precise advantages, etc.
 
-### Parameters
+## Stack Constructors
 
-Each Stack can declare a set of parameters that callers must supply, in the `parameters` section:
+Each Stack can declare a set of constructor parameters that callers must supply during creation:
 
     parameters:
 
@@ -144,9 +142,11 @@ The long-form, should other properties be used, is to use an array:
 Finally, note that anywhere inside of this Mufile, we may access the arguments supplied at Stack instantiation time
 using the Go template syntax mentioned earlier.  For example, `{{.args.tag.name}}`.
 
-### Configuration
+## Configuration
 
-### Services
+TODO(joe): write this section.
+
+## Services
 
 After that comes the section that describes what Services make up this Stack:
 
@@ -164,7 +164,7 @@ and the system topologically sorts that DAG in order to determine the order in w
 Notably there may be no cycles.  By default, the system understands liveness and health (TODO(joe): how); as a result,
 the developer need not explicitly worry about races, liveness, or retries during Service creation.
 
-#### Names
+### Names
 
 A Service's name can be set in one of two ways.  The simplest is to use the "default", derived from the Stack type.  For
 example, in the following metadata, the single Service has type `nginx/nginx`, gets a default name of `nginx`:
@@ -190,7 +190,7 @@ Stack, this outer name becomes its Namespace.  For instance, inside of a Stack n
 has a fully qualified name (FQN) of `marapongo/mu/x`.  Although we seldom need the FQN for references within a single
 Stack, they are sometimes needed for inter-Stack references, in addition to management activities.
 
-#### Types
+### Types
 
 Each Service has a type, which is merely the name of another Stack.  Most of the time this is the FQN, although for
 references to other Stacks defined within the same Mufile (more on that later), this can just be a simple name.  During
@@ -215,7 +215,7 @@ Although these may look like "magic", each primitive Stack simply leverages an o
 Most interesting tasks may be achieved by composing existing Stacks, however, this extensibility API may be used to
 define new, custom primitive Stacks for even richer functionality.  TODO(joe): more on this.
 
-#### Visibility
+### Visibility
 
 At this point, a new concept is introduced: *visibility*.  Visibility works much like your favorite programming
 language, in that a Stack may declare that any of its Services are `public` or `private`.  This impacts the
@@ -236,9 +236,11 @@ shouldn't be of interest to consumers of our Stack.  So, we split things accordi
 
 In this example, S3 buckets are volumes; we create a private one and mount it in our public Nginx container.
 
-#### Constructor Arguments
+### Constructor Arguments
 
-### Nested Stacks
+TODO(joe): describe the argument binding and verification process.
+
+## Nested Stacks
 
 Another feature that comes in handy sometimes is the ability to create nested Stacks:
 
@@ -286,7 +288,7 @@ Different scenarios call for subclassing versus composition, and the Mu system s
 TODO(joe): we need to decide whether you can export public Stacks for public consumption.  At this point, my stance is
     that you must create an entirely different Stack to do that.  This keeps things simple for the time being.
 
-### Target-Specific Metadata
+## Target-Specific Metadata
 
 Although for the most part, metadata strives to be cloud provider-agnostic, there are two ways in which it may not be.
 First, some Stack types are available only on a particular cloud, like `aws/s3/bucket` (and any that transitively
@@ -296,271 +298,4 @@ logically independent from any given cloud, like a Load Balancer, we may wish to
 Those appear in a special metadata section and are marked in such a way that erroneous deployments fail at compile-time.
 
 More details on target-specific Stacks and metadata settings are provided below in the relevant sections.
-
-### An Illustrative Example
-
-Before breaking down the implementation of these concepts, let's first look at an illustrative example.
-
-TODO(joe): a more comprehensive example (like Vote50) that illustrates more of these concepts working in harmony.
-
-## Targets
-
-This section contains a precise description of the mapping process from Mu metadata to various cloud targets.  Note
-that there are two dimensions to this process:
-
-* The first dimension is the system used for hosting the cluster environment, which we will call
-  Infrastructure-as-a-Service (IaaS).  Examples of this include AWS, Google Cloud Platform (GCP), Azure, and even VM
-  fabrics for on-premise installations, like VMWare VSphere.  Note that often IaaS goes beyond simply having VMs as
-  resources and can include hosted offerings such as blob storage, load balancers, domain name configurations, etc.
-
-* The second dimension is the system used for container orchestration, or what we will call, Containers-as-a-Service
-  (CaaS).  Examples of this include AWS ECS, Docker Swarm, and Kubernetes.  Note that the system can handle the
-  siituation where there is no container orchestration framework available, in which case raw VMs are utilized.
-
-Not all combinations of IaaS and CaaS fall out naturally, although it is a goal of the system to target them
-orthogonally such that the incremental cost of creating new pairings is as low as possible (minimizing combinatorics).
-Some combinations are also clearly nonsense, such as AWS as your IaaS and GKE as your CaaS.
-
-For reference, here is a compatibility matrix.  Each cell with an `X` is described in this document already; each cell
-with an `-` is planned, but not yet described; and blank entries are unsupported nonsense combinations:
-
-|               | AWS       | GCP       | Azure     | VMWare    |
-| ------------- | --------- | --------- | --------- | --------- |
-| none (VMs)    | X         | -         | -         | -         |
-| Docker Swarm  | -         | -         | -         | -         |
-| Kubernetes    | -         | -         | -         | -         |
-| Mesos         | -         | -         | -         | -         |
-| ECS           | X         |           |           |           |
-| GKE           |           | -         |           |           |
-| ACS           |           |           | -         |           |
-
-In all cases, the native metadata formats for the IaaS and CaaS provider in question is supported; for example, ECS on
-AWS will leverage CloudFormation as the target metadata.  In certain cases, we also support Terraform outputs.
-
-Refer to [marapongo/mu#2](https://github.com/marapongo/mu/issues/2) for an up-to-date prioritization of platforms.
-
-### Clusters
-
-A Stack is deployed to a Cluster.  Any given Cluster is a fixed combination of IaaS and CaaS provider.  Developers may
-choose to manage Clusters and multiplex many Stacks onto any given Cluster, or they may choose to simply deploy a
-Cluster per Stack.  The latter is of course easier, but may potentially incur more waste than the former.  Furthermore,
-it will likely take more time to provision and modify entire Clusters than just the Stacks running within them.
-
-Because creating and managing Clusters is a discrete step, the translation process will articulate them independently.
-The tools make both the complex and simple workflows possible.
-
-### Commonalities
-
-There are some common principles applied, no matter the target, which are worth calling out:
-
-* DNS is the primary means of service discovery.
-* TODO(joe): more...
-
-### IaaS Targets
-
-This section describes the translation for various IaaS targets.  Recall that deploying to an IaaS *without* any CaaS is
-a supported scenario, so each of these descriptions is "self-contained."  In the case that a CaaS is utilized, that
-process -- described below -- can override certain decisions made in the IaaS translation process.  For instance, rather
-than leveraging a VM per Docker Container, the CaaS translation will choose to target an orchestration layer.
-
-#### Amazon Web Services (AWS)
-
-The output of a transformation is one or more AWS CloudFormation templates.
-
-##### Clusters
-
-Each Cluster is given a standard set of resources.  If multiple Stacks are deployed into a shared Cluster, then those
-Stacks will share all of these resources.  Otherwise, each Stack is given a dedicated set of them just for itself.
-
-TODO(joe): IAM.
-
-TODO(joe): keys.
-
-By default, all machines are placed into the XXX region and are given a size of YYY.  The choice of region may be
-specified at provisioning time (TODO(joe): how), and the size may be changed as a Cluster-wide default (TODO(joe): how),
-or on an individual Node basis (TODO(joe): how).
-
-TODO(joe): multi-region.
-
-TODO(joe): high availability.
-
-TODO(joe): see http://kubernetes.io/docs/getting-started-guides/aws/ for reasonable defaults.
-
-TODO(joe): see Empire for inspiration: https://s3.amazonaws.com/empirepaas/cloudformation.json, especially IAM, etc.
-
-Each Cluster gets a Virtual Private Cloud (VPC) for network isolation.  Along with this VPC comes the standard set of
-sub-resources: a Subnet, Internet Gateway, and Route Table.  By default, Ingress and Egress ports are left closed.  As
-Stacks are deployed, ports are managed automatically (although an administrator can lock them (TODO(joe): how)).
-
-TODO(joe): open SSH by default?
-
-TODO(joe): joining existing VPCs.
-
-TODO(joe): how to override default settings.
-
-TODO(joe): multiple Availability Zones (and a Subnet per AZ); required for ELB.
-
-TODO(joe): HTTPS certs.
-
-TODO(joe): describe how ports get opened or closed (e.g., top-level Stack exports).
-
-TODO(joe): articulate how Route53 gets configured.
-
-TODO(joe): articulate how ELBs do or do not get created for the cluster as a whole.
-
-Next, each Cluster gets a key/value store.  By default, this is Hashicorp Consul.  This is used to manage Cluster
-configuration, in addition to a discovery service should a true CaaS orchestration platform be used (i.e., not VMs).
-
-TODO(joe): it's unfortunate that we need to do this.  It's a "cliff" akin to setting up a Kube cluster.
-
-TODO(joe): ideally we would use an AWS native key/value/discovery service (or our own, leveraging e.g. DynamoDB).
-
-TODO(joe): this should be pluggable.
-
-TODO(joe): figure out how to handle persistence.
-
-All Nodes in the Cluster are configured uniformly:
-
-1. DNS for service discovery.
-2. Docker volume driver for EBS-based persistence (TODO: how does this interact with Mu volumes).
-
-TODO(joe): describe whether this is done thanks to an AMI, post-install script, or something else.
-
-TODO(joe): CloudWatch.
-
-TODO(joe): CloudTrail.
-
-TODO(joe): private container registries.
-
-##### Stacks/Services
-
-Each Mu Stack compiles into a [CloudFormation Stack](
-http://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/stacks.html), leveraging a 1:1 mapping.  The only
-exceptions to this rule are resource types that map directly to a CloudFormation resource name, backed either by a
-standard AWS resource -- such as `AWS::S3::Bucket` -- or a custom one -- such as one of the Mu primitive types.
-
-We also leverage [cross-Stack references](
-http://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/walkthrough-crossstackref.html) to wire up references.
-
-This approach means that you can still leverage all of the same CloudFormation tooling on AWS should you need to.  For
-example, your IT team might have existing policies and practices in place that can be kept.  Managing Stacks through the
-Mu tools, however, is still ideal, as it is easier to keep your code, metadata, and live site in synch.
-
-TODO(joe): we need a strategy for dealing with AWS limits exhaustion; e.g.
-    http://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/cloudformation-limits.html.
-
-TODO(joe): should we support "importing" or "referencing" other CloudFormation Stacks, not in the Mu system?
-
-The most interesting question is how Mu projects the primitive concepts in the system into CloudFormation metadata.  For
-most Stacks, this is just "composition" that falls out from name substitution, etc.; however, the primitive concepts
-introduce "abstraction" and therefore manifest as groupings of physical constructs.  Let us take them in order.
-
-TODO(joe): I'm still unsure whether each of these should be a custom CloudFormation resource type (e.g.,
-    `Mu::Container`, `Mu::Gateway`, etc).  This could make it a bit nicer to view in the AWS tools because you'd see
-    our logical constructs rather than the deconstructed form.  It's a little less nice, however, in that it's more
-    complex implementation-wise, requiring dynamic Lambda actions that I'd prefer to be static compilation actions.
-
-`mu/container` maps to a single `AWS::EC2::Instance`.  However, by default, it runs a custom AMI that uses our daemon
-for container management, including configuration, image pulling policies, and more.  (Note that, later on, we will see
-that running a CaaS layer completely changes the shape of this particular primitive.)
-
-`mu/gateway` maps to a `AWS::ElasticLoadBalancing::LoadBalancer` (specifically, an [Application Load Balancer](
-https://aws.amazon.com/elasticloadbalancing/applicationloadbalancer/)).  Numerous policies are automatically applied
-to target the Services wired up to the Gateway, including routine rules and tables.  In the event that a Stack is
-publically exported from the Cluster, this may also entail modifications of the overall Cluster's Ingress/Egress rules.
-
-TODO: `mu/func` and `mu/event` are more, umm, difficult.
-
-`mu/volume` is an abstract Stack type and so has no footprint per se.  However, implementations of this type exist that
-do have a footprint.  For example, `aws/ebs/volume` derives from `mu/volume`, enabling easy EBS-based container
-persistence.  Please refer to the section below on native AWS Stacks to understand how this particular one works.
-
-`mu/autoscaler` generally maps to an `AWS::AutoScaling::AutoScalingGroup`, however, like the Gateway's mapping to the
-ELB, this one's mapping to the AutoScalingGroup entails a lot of automatic policy to properly scale attached Services.
-
-Finally, `mu/extension` is special, and doesn't require a specific mapping in AWS.
-
-TODO(joe): perhaps we should have an `aws/cf/customresource` extension type for custom CloudFormation types.
-
-##### AWS-Specific Metadata
-
-##### AWS-Specific Stacks
-
-As we saw above, AWS services are available as Stacks.  Let us now look at how they are expressed in Mu metadata and,
-more interestingly, how they are transformed to underlying resource concepts.  It's important to remember that these
-aren't "higher level" abstractions in any sense of the word; instead, they map directly onto AWS resources.  (Of course,
-other higher level abstractions may compose these platform primitives into more interesting services.  The key primitive
-to making this direct mapping work is `mu/extension`.  A simplified S3 bucket Stack, for example, looks like this:
-
-    name: bucket
-    parameters:
-        accessControl: string
-        bucketName: string
-        corsConfiguration: aws/schema/corsConfiguration
-        lifecycleConfiguration: aws/schema/lifecycleConfiguration
-        loggingConfiguration: aws/schema/loggingConfiguration
-        notificationConfiguration: aws/schema/notificationConfiguration
-        replicationConfiguration: aws/schema/replicationConfiguration
-        tags: [ aws/schema/resourceTag ]
-        versioningConfiguration: aws/schema/versioningConfiguration
-        websiteConfiguration: aws/schema/websiteConfigurationType
-    services:
-        public:
-            mu/extension:
-                provider: aws/cf/template
-                template: |
-                    {
-                        "Type": "AWS::S3::Bucket",
-                        "Properties": {
-                            "AccessControl": {{json .args.accessControl}},
-                            "BucketName": {{json .args.bucketName}},
-                            "CorsConfiguration": {{json .args.corsConfiguration}},
-                            "LifecycleConfiguration": {{json .args.lifecycleConfiguration}},
-                            "NotificationConfiguration": {{json .args.notificationConfiguration}},
-                            "ReplicationConfiguration": {{json .args.replicationConfiguration}},
-                            "Tags": {{json .args.tags}},
-                            "VersioningConfiguration": {{json .args.versioningConfiguration}},
-                            "WebsiteConfiguration": {{json .args.websiteConfiguration}}
-                        }
-                    }
-
-This simply leverages the abiliity to pass lifecycle events off to a provider, in this case `aws/cf/template`, along
-with some metadata, in this case a simple wrapper around the [AWS CloudFormation S3 Bucket specification format](
-http://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-s3-bucket.html).  The provider manages
-generating metadata and interacting with the AWS services required for provisioning, updating, and destroying resources.
-
-TODO(joe): we need to specify how extensions work somewhere.
-
-Mu offers all of the AWS resource type Stacks out-of-the-box, so that 3rd parties can consume them easily.  For example,
-to create a bucket, we simply refer to the predefined `aws/s3/bucket` Stack.  Please see [the AWS documentation](
-http://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-template-resource-type-ref.html) for an exhaustive
-list of available services.
-
-TODO(joe): should we be collapsing "single resource" stacks?  Seems superfluous and wasteful otherwise.
-
-#### Google Cloud Platform (GCP)
-
-#### Microsoft Azure
-
-#### VMWare
-
-### CaaS Targets
-
-#### VM
-
-#### Docker Swarm
-
-#### Kubernetes
-
-#### Mesos
-
-#### AWS EC2 Container Service (ECS)
-
-#### Google Container Engine (GKE)
-
-#### Azure Container Service (ACS)
-
-### Terraform
-
-TODO(joe): describe what Terraform may be used to target and how it works.
 
