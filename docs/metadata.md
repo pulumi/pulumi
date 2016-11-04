@@ -67,6 +67,7 @@ Each Stack can declare a set of parameters that callers must supply, in the `par
 Each parameter has the following properties:
 
 * `name`: A name unique amongst all parameters.
+* `description`: An optional long-form description of the parameter.
 * `type`: A parameter type, restricting the legal values.
 * `default`: A default value to be supplied if missing from the caller.
 * `optional`: If `true`, this parameter is optional.
@@ -93,7 +94,7 @@ Complex structures can be described simply using objects with properties:
         name: string
         value: object
 
-The most interesting capability here is the ability to request a "capability", or reference to another Service.  This
+The most interesting feature here is the ability to request a "capability", or reference to another Service.  This
 provides a strongly typed and more formal way of expressing Service dependencies, in a way that the system can
 understand and leverage in its management of the system (like ensuring Services are created in the right order).  It
 also eliminates some of the fragility of weakly typed and dynamic approaches, which can be prone to race conditions.
@@ -122,6 +123,22 @@ for etcd, Consul, Zookeeper, and others, which a caller is free to choose from a
 Another example leverages the primitive `mu/volume` type to require a Service which can be mounted as a volume:
 
     type: mu/volume
+
+The simple form of expressing parameters is `name: type`:
+
+    parameters:
+        first: string
+        second: number
+
+The long-form, should other properties be used, is to use an array:
+
+    parameters:
+        - name: first
+          type: string
+          ...
+        - name: second
+          type: number
+          ...
 
 Finally, note that anywhere inside of this Mufile, we may access the arguments supplied at Stack instantiation time
 using the Go template syntax mentioned earlier.  For example, `{{.args.tag.name}}`.
@@ -189,7 +206,7 @@ The primitive types available include:
 * `mu/event`: An Event that may be used to Trigger the execution of another Service (commonly a Function).
 * `mu/volume`: A volume stores data that can be mounted by another Service.
 * `mu/autoscaler`: A Service that automatically multi-instances and scales some other target Service based on policy.
-* `mu/hook`: A logical Service that has no concrete runtime manifestation other than running pre- or post-logic.
+* `mu/extension`: A logical Service that extends Mu by hooking into events, like Stack provisioning, and taking action.
 
 TODO(joe): link to exhaustive details on each of these.
 
@@ -400,11 +417,108 @@ TODO(joe): private container registries.
 
 ##### Stacks/Services
 
-##### AWS-Specific Stacks
+Each Mu Stack compiles into a [CloudFormation Stack](
+http://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/stacks.html), leveraging a 1:1 mapping.  The only
+exceptions to this rule are resource types that map directly to a CloudFormation resource name, backed either by a
+standard AWS resource -- such as `AWS::S3::Bucket` -- or a custom one -- such as one of the Mu primitive types.
 
-TODO(joe): describe all the AWS-specific Stacks, e.g. `aws/sqs/queue`, `aws/s3/bucket`, `aws/dynamodb/table`, etc.
+We also leverage [cross-Stack references](
+http://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/walkthrough-crossstackref.html) to wire up references.
+
+This approach means that you can still leverage all of the same CloudFormation tooling on AWS should you need to.  For
+example, your IT team might have existing policies and practices in place that can be kept.  Managing Stacks through the
+Mu tools, however, is still ideal, as it is easier to keep your code, metadata, and live site in synch.
+
+TODO(joe): we need a strategy for dealing with AWS limits exhaustion; e.g.
+    http://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/cloudformation-limits.html.
+TODO(joe): should we support "importing" or "referencing" other CloudFormation Stacks, not in the Mu system?
+
+The most interesting question is how Mu projects the primitive concepts in the system into CloudFormation metadata.  For
+most Stacks, this is just "composition" that falls out from name substitution, etc.; however, the primitive concepts
+introduce "abstraction" and therefore manifest as groupings of physical constructs.  Let us take them in order.
+
+TODO(joe): I'm still unsure whether each of these should be a custom CloudFormation resource type (e.g.,
+    `Mu::Container`, `Mu::Gateway`, etc).  This could make it a bit nicer to view in the AWS tools because you'd see
+    our logical constructs rather than the deconstructed form.  It's a little less nice, however, in that it's more
+    complex implementation-wise, requiring dynamic Lambda actions that I'd prefer to be static compilation actions.
+
+`mu/container` maps to a single `AWS::EC2::Instance`.  However, by default, it runs a custom AMI that uses our daemon
+for container management, including configuration, image pulling policies, and more.  (Note that, later on, we will see
+that running a CaaS layer completely changes the shape of this particular primitive.)
+
+`mu/gateway` maps to a `AWS::ElasticLoadBalancing::LoadBalancer` (specifically, an [Application Load Balancer](
+https://aws.amazon.com/elasticloadbalancing/applicationloadbalancer/)).  Numerous policies are automatically applied
+to target the Services wired up to the Gateway, including routine rules and tables.  In the event that a Stack is
+publically exported from the Cluster, this may also entail modifications of the overall Cluster's Ingress/Egress rules.
+
+TODO: `mu/func` and `mu/event` are more, umm, difficult.
+
+`mu/volume` is an abstract Stack type and so has no footprint per se.  However, implementations of this type exist that
+do have a footprint.  For example, `aws/ebs/volume` derives from `mu/volume`, enabling easy EBS-based container
+persistence.  Please refer to the section below on native AWS Stacks to understand how this particular one works.
+
+`mu/autoscaler` generally maps to an `AWS::AutoScaling::AutoScalingGroup`, however, like the Gateway's mapping to the
+ELB, this one's mapping to the AutoScalingGroup entails a lot of automatic policy to properly scale attached Services.
+
+Finally, `mu/extension` is special, and doesn't require a specific mapping in AWS.
+
+TODO(joe): perhaps we should have an `aws/cf/customresource` extension type for custom CloudFormation types.
 
 ##### AWS-Specific Metadata
+
+##### AWS-Specific Stacks
+
+As we saw above, AWS services are available as Stacks.  Let us now look at how they are expressed in Mu metadata and,
+more interestingly, how they are transformed to underlying resource concepts.  It's important to remember that these
+aren't "higher level" abstractions in any sense of the word; instead, they map directly onto AWS resources.  (Of course,
+other higher level abstractions may compose these platform primitives into more interesting services.  The key primitive
+to making this direct mapping work is `mu/extension`.  A simplified S3 bucket Stack, for example, looks like this:
+
+    name: bucket
+    parameters:
+        accessControl: string
+        bucketName: string
+        corsConfiguration: aws/schema/corsConfiguration
+        lifecycleConfiguration: aws/schema/lifecycleConfiguration
+        loggingConfiguration: aws/schema/loggingConfiguration
+        notificationConfiguration: aws/schema/notificationConfiguration
+        replicationConfiguration: aws/schema/replicationConfiguration
+        tags: [ aws/schema/resourceTag ]
+        versioningConfiguration: aws/schema/versioningConfiguration
+        websiteConfiguration: aws/schema/websiteConfigurationType
+    services:
+        public:
+            mu/extension:
+                provider: aws/cf/template
+                template: |
+                    {
+                        "Type": "AWS::S3::Bucket",
+                        "Properties": {
+                            "AccessControl": {{json .args.accessControl}},
+                            "BucketName": {{json .args.bucketName}},
+                            "CorsConfiguration": {{json .args.corsConfiguration}},
+                            "LifecycleConfiguration": {{json .args.lifecycleConfiguration}},
+                            "NotificationConfiguration": {{json .args.notificationConfiguration}},
+                            "ReplicationConfiguration": {{json .args.replicationConfiguration}},
+                            "Tags": {{json .args.tags}},
+                            "VersioningConfiguration": {{json .args.versioningConfiguration}},
+                            "WebsiteConfiguration": {{json .args.websiteConfiguration}}
+                        }
+                    }
+
+This simply leverages the abiliity to pass lifecycle events off to a provider, in this case `aws/cf/template`, along
+with some metadata, in this case a simple wrapper around the [AWS CloudFormation S3 Bucket specification format](
+http://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-s3-bucket.html).  The provider manages
+generating metadata and interacting with the AWS services required for provisioning, updating, and destroying resources.
+
+TODO(joe): we need to specify how extensions work somewhere.
+
+Mu offers all of the AWS resource type Stacks out-of-the-box, so that 3rd parties can consume them easily.  For example,
+to create a bucket, we simply refer to the predefined `aws/s3/bucket` Stack.  Please see [the AWS documentation](
+http://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-template-resource-type-ref.html) for an exhaustive
+list of available services.
+
+TODO(joe): should we be collapsing "single resource" stacks?  Seems superfluous and wasteful otherwise.
 
 #### Google Cloud Platform (GCP)
 
