@@ -186,8 +186,9 @@ TODO(joe): perhaps we should have an `aws/cf/customresource` extension type for 
 As we saw above, AWS services are available as Stacks.  Let us now look at how they are expressed in Mu metadata and,
 more interestingly, how they are transformed to underlying resource concepts.  It's important to remember that these
 aren't "higher level" abstractions in any sense of the word; instead, they map directly onto AWS resources.  (Of course,
-other higher level abstractions may compose these platform primitives into more interesting services.  The key primitive
-to making this direct mapping work is `mu/extension`.  A simplified S3 bucket Stack, for example, looks like this:
+other higher level abstractions may compose these platform primitives into more interesting services.)
+
+A simplified S3 bucket Stack, for example, looks like this:
 
     name: bucket
     parameters:
@@ -221,10 +222,11 @@ to making this direct mapping work is `mu/extension`.  A simplified S3 bucket St
                         }
                     }
 
-This simply leverages the abiliity to pass lifecycle events off to a provider, in this case `aws/cf/template`, along
-with some metadata, in this case a simple wrapper around the [AWS CloudFormation S3 Bucket specification format](
-http://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-s3-bucket.html).  The provider manages
-generating metadata and interacting with the AWS services required for provisioning, updating, and destroying resources.
+The key primitive at play here is `mu/extension`.   This passes off lifecycle events to a provider, in this case
+`aws/cf/template`, along with some metadata, in this case a simple wrapper around the [AWS CloudFormation S3 Bucket
+specification format](
+http://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-s3-bucket.html).  The provider generates
+metadata and knows how to interact with AWS services required for provisioning, updating, and destroying resources.
 
 TODO(joe): we need to specify how extensions work somewhere.
 

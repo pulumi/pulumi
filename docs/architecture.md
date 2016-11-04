@@ -34,9 +34,9 @@ In this section, we will look at the toolchain that powers the overall Mu archit
 
 ### Translation
 
-Now let us look at how a Mufile turns into a ready-to-run package.  This will not describe the precise translation and
-set of targets (that is available in the [metadata specification document](metadata.md)), instead focusing on the
-various bits of data and code involved, the plugin architecture, and overall translation process flow.
+Now let us look at how a Mufile turns into a ready-to-run package.  This will not describe the metadata and precise
+translation targets (those are available as separate docs [here](metadata.md) and [here](targets.md), respectively);
+instead, we will look at the tools, plugin architecture, and overall translation process.
 
 TODO(joe): write this section; just cover the overall structure and plugin model, not the details of each target.
 
