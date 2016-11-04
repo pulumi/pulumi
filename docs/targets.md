@@ -264,8 +264,10 @@ Targeting the [ECS](http://docs.aws.amazon.com/AmazonECS/latest/developerguide/)
 service manage scheduling of containers on EC2 VMs.  It is only legal when using the AWS IaaS provider.
 
 First and foremost, every Cluster containing at least one `mu/container` in its transitive closure of Stacks gets an
-associated [ECS cluster](http://docs.aws.amazon.com/AmazonECS/latest/developerguide/ECS_GetStarted.html).  A reasonable
-default number of instances, of a predefined type, are chosen, but you may override them (TODO(joe): how).
+associated [ECS cluster](http://docs.aws.amazon.com/AmazonECS/latest/developerguide/ECS_GetStarted.html).
+
+A reasonable default number of instances, of a predefined type, are chosen, but you may override them (TODO(joe): how).
+All of the AWS-wide settings, such as IAM, credentials, and region, are inherited from the base AWS IaaS configuration.
 
 The next difference is that, rather than provisioning entire VMs per `mu/container`, each one maps to an [ECS service](
 http://docs.aws.amazon.com/AmazonECS/latest/developerguide/ecs_services.html).
