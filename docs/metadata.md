@@ -210,6 +210,8 @@ The primitive types available include:
 * `mu/extension`: A logical Service that extends Mu by hooking into events, like Stack provisioning, and taking action.
 
 TODO(joe): link to exhaustive details on each of these.
+TODO(joe): consider a `mu/job` (e.g., ECS's RunTask); unclear on how this would differ from `mu/func`.
+TODO(joe): consider a `mu/daemon` type, similar to Kube's DaemonSet abstraction.
 
 Although these may look like "magic", each primitive Stack simply leverages an open extensibility API in the platform.
 Most interesting tasks may be achieved by composing existing Stacks, however, this extensibility API may be used to
