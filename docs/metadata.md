@@ -46,6 +46,7 @@ To do this, reference another Stack's fully qualified name in the `base` propert
 From there, I can use all of the other metadata in this section, however we will have inherieted anything in the base.
 
 TODO(joe): what about mixins?
+
 TODO(joe): get more specific about what can be overridden.  Furthermore, what about "deletes"?
 
 ### APIs
@@ -283,7 +284,7 @@ environment variable default value, to differentiate the roles as per the contai
 Different scenarios call for subclassing versus composition, and the Mu system supports both in a first class way.
 
 TODO(joe): we need to decide whether you can export public Stacks for public consumption.  At this point, my stance is
-that you must create an entirely different Stack to do that.  This keeps things simple for the time being.
+    that you must create an entirely different Stack to do that.  This keeps things simple for the time being.
 
 ### Target-Specific Metadata
 
@@ -372,6 +373,7 @@ Each Cluster is given a standard set of resources.  If multiple Stacks are deplo
 Stacks will share all of these resources.  Otherwise, each Stack is given a dedicated set of them just for itself.
 
 TODO(joe): IAM.
+
 TODO(joe): keys.
 
 By default, all machines are placed into the XXX region and are given a size of YYY.  The choice of region may be
@@ -379,8 +381,11 @@ specified at provisioning time (TODO(joe): how), and the size may be changed as 
 or on an individual Node basis (TODO(joe): how).
 
 TODO(joe): multi-region.
+
 TODO(joe): high availability.
+
 TODO(joe): see http://kubernetes.io/docs/getting-started-guides/aws/ for reasonable defaults.
+
 TODO(joe): see Empire for inspiration: https://s3.amazonaws.com/empirepaas/cloudformation.json, especially IAM, etc.
 
 Each Cluster gets a Virtual Private Cloud (VPC) for network isolation.  Along with this VPC comes the standard set of
@@ -388,20 +393,30 @@ sub-resources: a Subnet, Internet Gateway, and Route Table.  By default, Ingress
 Stacks are deployed, ports are managed automatically (although an administrator can lock them (TODO(joe): how)).
 
 TODO(joe): open SSH by default?
+
 TODO(joe): joining existing VPCs.
+
 TODO(joe): how to override default settings.
+
 TODO(joe): multiple Availability Zones (and a Subnet per AZ); required for ELB.
+
 TODO(joe): HTTPS certs.
+
 TODO(joe): describe how ports get opened or closed (e.g., top-level Stack exports).
+
 TODO(joe): articulate how Route53 gets configured.
+
 TODO(joe): articulate how ELBs do or do not get created for the cluster as a whole.
 
 Next, each Cluster gets a key/value store.  By default, this is Hashicorp Consul.  This is used to manage Cluster
 configuration, in addition to a discovery service should a true CaaS orchestration platform be used (i.e., not VMs).
 
 TODO(joe): it's unfortunate that we need to do this.  It's a "cliff" akin to setting up a Kube cluster.
+
 TODO(joe): ideally we would use an AWS native key/value/discovery service (or our own, leveraging e.g. DynamoDB).
+
 TODO(joe): this should be pluggable.
+
 TODO(joe): figure out how to handle persistence.
 
 All Nodes in the Cluster are configured uniformly:
@@ -412,7 +427,9 @@ All Nodes in the Cluster are configured uniformly:
 TODO(joe): describe whether this is done thanks to an AMI, post-install script, or something else.
 
 TODO(joe): CloudWatch.
+
 TODO(joe): CloudTrail.
+
 TODO(joe): private container registries.
 
 ##### Stacks/Services
@@ -431,6 +448,7 @@ Mu tools, however, is still ideal, as it is easier to keep your code, metadata, 
 
 TODO(joe): we need a strategy for dealing with AWS limits exhaustion; e.g.
     http://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/cloudformation-limits.html.
+
 TODO(joe): should we support "importing" or "referencing" other CloudFormation Stacks, not in the Mu system?
 
 The most interesting question is how Mu projects the primitive concepts in the system into CloudFormation metadata.  For
