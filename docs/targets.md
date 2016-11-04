@@ -173,9 +173,10 @@ do have a footprint.  For example, `aws/ebs/volume` derives from `mu/volume`, en
 persistence.  Please refer to the section below on native AWS Stacks to understand how this particular one works.
 
 `mu/autoscaler` generally maps to an `AWS::AutoScaling::AutoScalingGroup`, however, like the Gateway's mapping to the
-ELB, this one's mapping to the AutoScalingGroup entails a lot of automatic policy to properly scale attached Services.
+ELB, its mapping to the AWS scaling group entails a lot of automatic policy to properly scale attached Services.
 
-Finally, `mu/extension` is special, and doesn't require a specific mapping in AWS.
+Finally, `mu/extension` is special, and doesn't require a specific mapping in AWS.  The extension providers themselves,
+like `aws/cf/template`, will possibly generate domain-specific mappings of their own, however.
 
 TODO(joe): perhaps we should have an `aws/cf/customresource` extension type for custom CloudFormation types.
 
@@ -185,7 +186,7 @@ TODO(joe): perhaps we should have an `aws/cf/customresource` extension type for 
 
 As we saw above, AWS services are available as Stacks.  Let us now look at how they are expressed in Mu metadata and,
 more interestingly, how they are transformed to underlying resource concepts.  It's important to remember that these
-aren't "higher level" abstractions in any sense of the word; instead, they map directly onto AWS resources.  (Of course,
+aren't "higher level" abstractions in any sense of the word; instead, they map directly onto AWS resources.  (O course,
 other higher level abstractions may compose these platform primitives into more interesting services.)
 
 A simplified S3 bucket Stack, for example, looks like this:
@@ -245,7 +246,11 @@ TODO(joe): should we be collapsing "single resource" stacks?  Seems superfluous 
 
 ## CaaS Targets
 
-### VM
+All of the IaaS targets above described the default behavior when deploying containers, which is to map each container
+to a dedicated VM instance.  This is secure, robust, and easy to reason about, but can be wasteful.  A CaaS framework
+like Docker Swarm, Kubernetes, Mesos, or one of the native cloud provider container services, can bring about
+efficiencies by multiplexing many containers onto a smaller shared pool of physical resources.  This section describes
+the incremental differences brought about when targeting such a framework.
 
 ### Docker Swarm
 
@@ -255,6 +260,22 @@ TODO(joe): should we be collapsing "single resource" stacks?  Seems superfluous 
 
 ### AWS EC2 Container Service (ECS)
 
+Targeting the [ECS](http://docs.aws.amazon.com/AmazonECS/latest/developerguide/) CaaS lets AWS's native container
+service manage scheduling of containers on EC2 VMs.  It is only legal when using the AWS IaaS provider.
+
+First and foremost, every Cluster containing at least one `mu/container` in its transitive closure of Stacks gets an
+associated [ECS cluster](http://docs.aws.amazon.com/AmazonECS/latest/developerguide/ECS_GetStarted.html).  A reasonable
+default number of instances, of a predefined type, are chosen, but you may override them (TODO(joe): how).
+
+The next difference is that, rather than provisioning entire VMs per `mu/container`, each one maps to an [ECS service](
+http://docs.aws.amazon.com/AmazonECS/latest/developerguide/ecs_services.html).
+
+TODO(joe): describe the auto-scaling differences.  In ECS, service auto-scaling is *not* the same as ordinary EC2
+    auto-scaling.  (See [this](http://docs.aws.amazon.com/AmazonECS/latest/developerguide/service-auto-scaling.html).)
+    This could cause some challenges around the composition of `mu/autoscaler`, particularly with encapsulation.
+
+TODO(joe): if we do end up supporting a `mu/job` type, we would presumably map it to ECS's CreateTask construct.
+
 ### Google Container Engine (GKE)
 
 ### Azure Container Service (ACS)
@@ -262,4 +283,8 @@ TODO(joe): should we be collapsing "single resource" stacks?  Seems superfluous 
 ## Terraform
 
 TODO(joe): describe what Terraform may be used to target and how it works.
+
+## Redeploying Cluster and Stack Deltas
+
+TODO(joe): describe how we perform delta checking in `$ mu apply` and how that impacts the various target generations.
 
