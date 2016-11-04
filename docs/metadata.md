@@ -30,6 +30,10 @@ with most package managers, most of these elements are optional:
 
 TODO(joe): finish this section.
 
+## Security
+
+TODO(joe): we need the ability to override the default Role/ACLs/etc.
+
 ## Stacks and Subclassing
 
 A Stack may subclass any other Stack, specializing aspects of it as appropriate.  This facilitates reuse.  For instance,
