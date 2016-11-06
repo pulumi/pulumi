@@ -203,7 +203,7 @@ instantiation of that Service, a fresh instance of that Stack is created and bou
 Although there are obviously many opportunities for ecosystems of user-defined Stacks, and indeed a rich library offered
 by the Mu platofrm itself, we eventually bottom out on a core set of "primitive" constructs.
 
-The primitive types available include:
+The primitive types are in the `mu` namespace and include:
 
 * `mu/container`: A Docker container wrapped in Mu metadata.
 * `mu/gateway`: An API gateway and/or load balancer, multiplexing requests onto multiple target Services.
@@ -220,6 +220,8 @@ TODO(joe): consider a `mu/daemon` type, similar to Kube's DaemonSet abstraction.
 Although these may look like "magic", each primitive Stack simply leverages an open extensibility API in the platform.
 Most interesting tasks may be achieved by composing existing Stacks, however, this extensibility API may be used to
 define new, custom primitive Stacks for even richer functionality.  TODO(joe): more on this.
+
+Finally, note that a companion namespace, `mu/x` also exists, that offers more cloud-neutral platform abstractions.
 
 ### Visibility
 
