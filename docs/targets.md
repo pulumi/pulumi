@@ -69,6 +69,8 @@ The output of a transformation is one or more AWS CloudFormation templates.
 Each Cluster is given a standard set of resources.  If multiple Stacks are deployed into a shared Cluster, then those
 Stacks will share all of these resources.  Otherwise, each Stack is given a dedicated set of them just for itself.
 
+TODO(joe): compare with Convox Racks: https://convox.com/docs/rack.
+
 ##### Configuration
 
 By default, all machines are placed into the XXX region and are given a size of YYY.  The choice of region may be
@@ -96,9 +98,16 @@ TODO(joe): CloudTrail.
 
 ##### Identity, Access Management, and Keys
 
-TODO(joe): IAM.
+The AWS translation for security constructs follows the [AWS best practices for IAM and key management](
+http://docs.aws.amazon.com/IAM/latest/UserGuide/best-practices.html).  There is a fairly direct mapping between Mu
+Users, Roles, and Groups, and the IAM equivalents with the same names.
+
+AWS does not support Group nesting or inheritance, however.  Mu handles this by "template expansion"; that is, by
+copying any parent Group metadata from parent to all of its ancestors.
 
 TODO(joe): keys.
+
+TODO(joe): auth tokens.
 
 ##### Networking
 
@@ -264,6 +273,8 @@ the incremental differences brought about when targeting such a framework.
 
 ### Docker Swarm
 
+TODO(joe): figure out how Docker InfraKit does or does not relate to all of this (maybe even beyond Swarm target).
+
 ### Kubernetes
 
 ### Mesos
@@ -299,4 +310,6 @@ TODO(joe): describe what Terraform may be used to target and how it works.
 ## Redeploying Cluster and Stack Deltas
 
 TODO(joe): describe how we perform delta checking in `$ mu apply` and how that impacts the various target generations.
+
+TODO(joe): look into how Convox does this https://convox.com/guide/reloading/, and others.
 

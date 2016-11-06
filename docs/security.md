@@ -62,9 +62,14 @@ such that they can only modify certain Stacks, or perform only certain operation
 
 ## Rights and Access Controls (ACLs)
 
-
 TODO(joe): we still need to figure out the ACL "language" to use.  Perhaps just RWX for each Stack.  It's unclear how
     this muddies up the IAM mappings, etc. however.
+
+## Authentication
+
+TODO(joe): enforced credential rotations.
+
+TODO(joe): articulate how the mapping between Mu identity and cloud-provider identity works.
 
 ## Secrets
 
