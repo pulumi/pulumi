@@ -2,13 +2,7 @@ name: demo1-example
 description: A simple Express voting app with a MongoDB backend, ready for production use.
 services:
     private:
-        {{if aws .target}}
-            - aws/ebs/volume
-        {{done}}
         - mongodb/mongodb
-            {{if aws .target}}
-                volume: @volume
-            {{done}}
     public:
         - app:
             type: mu/container
