@@ -29,11 +29,15 @@ There are three primary constructs:
 
 * **User**: An account that may be logged into by a human.
 * **Roles**: An account that is assumed by services and cannot be logged into directly.
-* **Groups**: A collection of Users and/or Roles that are granted a set of permissions in bulk, based on membership.
+* **Groups**: A collection of Users, Roles, and/or other Groups that are granted a set of permissions in bulk.
 
-To illustrate two ends of the spectrum, let's look at two cases.
+Note that adding a Group B to another Group A essentially makes Group B a "child" of Group A, in that Group B inherits
+the capabilities of A.  If Group B itself has children, those too become "grandchildren" of Group A, and so forth.
 
-First, a small team.  This case, the default if no extra settings are chosen, pre-populates the following:
+These constructs can be used to create flexible security policies, ranging from very simple to very capable.  To
+illustrate two ends of the usage spectrum, let's look at two common "extremes."
+
+First, consider a small team.  This case, the default if no extra settings are chosen, pre-populates the following:
 
 * An `administrators` Group with full permissions to everything in the Cluster.
 * An `administrator` User assigned to the `administrators` Group.
@@ -51,12 +55,13 @@ TODO(joe): having one Role per Stack sounds good in theory, but I suspect it wil
     shared resources.  We do understand dependencies, and prohibit cycles, however, thanks to capabilities.  So it's
     worth giving this a shot... (this is left as an exercise in the translation doc.)
 
-Second, an Enterprise-wide, shared cluster.  In this case, we expect a operations engineer to configure the identities
-with precision, defense-in-depth, and the principle of least privilege.  It is unlikely that `administrator` versus
-`developer` will be fine-grained enough.  For instance, we may want to segment groups of developers differently, such
-that they can only modify certain Stacks, or perform only certain operations on Stacks.
+Second, consider an Enterprise-wide, shared cluster.  In this case, we expect a operations engineer to configure the
+identities with precision, defense-in-depth, and the principle of least privilege.  It is unlikely that `administrator`
+versus `developer` will be fine-grained enough.  For instance, we may want to segment groups of developers differently,
+such that they can only modify certain Stacks, or perform only certain operations on Stacks.
 
-## Access Controls (ACLs)
+## Rights and Access Controls (ACLs)
+
 
 TODO(joe): we still need to figure out the ACL "language" to use.  Perhaps just RWX for each Stack.  It's unclear how
     this muddies up the IAM mappings, etc. however.
@@ -64,4 +69,8 @@ TODO(joe): we still need to figure out the ACL "language" to use.  Perhaps just 
 ## Secrets
 
 TODO(joe): configuration/secrets; see https://github.com/docker/docker/issues/13490.
+
+## Auditing
+
+TODO(joe): describe the auditing capabilities of the platform.
 
