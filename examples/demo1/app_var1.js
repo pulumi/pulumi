@@ -1,23 +1,18 @@
-// Standard Express and MongoDB app.
+// Variant #1. Simplify service discovery and configuration using Mu.
 
 "use strict";
 
+var mu = require("mu");
 var express = require("express");
 var bodyParser = require("body-parser");
 var mongodb = require("mongodb");
 
-// First read in the arguments.
-if (process.argv.length < 3) {
-    console.log("Missing required database argument");
-    process.exit(-1);
-}
-
-var db = process.argv[2];
+var db = new mu.Service("db");
 
 // Connect to the database and then fire up an Express app.
-mongodb.MongoClient.connect(`mongodb://${db}`, (err, conn) => {
+mongodb.MongoClient.connect(`mongodb://${db.URL}`, (err, conn) => {
     if (err) {
-        console.log(`Problem connecting to database ${db}:`);
+        console.log(`Problem connecting to database ${db.URL}:`);
         console.log(err);
         process.exit(-1);
     }
