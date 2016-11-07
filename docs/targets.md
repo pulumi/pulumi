@@ -31,6 +31,8 @@ with an `-` is planned, but not yet described; and blank entries are unsupported
 | GKE           |           | -         |           |           |
 | ACS           |           |           | -         |           |
 
+TODO(joe): describe the "local" cases, e.g. none(?), Docker, VirtualBox, HyperV, etc.
+
 In all cases, the native metadata formats for the IaaS and CaaS provider in question is supported; for example, ECS on
 AWS will leverage CloudFormation as the target metadata.  In certain cases, we also support Terraform outputs.
 
