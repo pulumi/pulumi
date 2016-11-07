@@ -39,18 +39,47 @@ relies on its ability to robustly and intuitively perform these translations.
 
 In this section, we will look at the toolchain that powers the overall Mu architecture.
 
-### Translation
+### Compilation
 
-Now let us look at how a Mufile turns into a ready-to-run package.  This will not describe the metadata and precise
-translation targets (those are available as separate docs [here](metadata.md) and [here](targets.md), respectively);
-instead, we will look at the tools, plugin architecture, and overall translation process.
+All descriptions of Mu objects must be "compiled" in order to turn them into runnable artifacts in the target
+environment.  This process, like an ordinary compiler, takes some inputs, parses them into an AST that is analyzed for
+correctness, and, provided this process occurs error-free, produces some outputs.
 
-TODO(joe): write this section; just cover the overall structure and plugin model, not the details of each target.
+This will not describe the metadata and precise translation targets (those are available as separate docs [here](
+metadata.md) and [here](targets.md), respectively); instead, we will look at the tools, plugin architecture, and overall
+translation process.
 
-In the future, we envision that Mufiles might be generated from code, for an even more seamless developer experience.
-This is very powerful when envisioning serverless architectures, where Stacks, Services, Functions, and Triggers can be
-expressed all in a single file, and managed alongside the code and libraries they depend upon.  See marapongo/mu#xxx
-for a work item tracking this.  For now, and to simplify this doc, we will ignore this possibility.
+Mu inputs may include the following:
+
+* Mufile (`Mu.yaml`): each instance of such a file describes a single outer Stack.
+* DSL snippet: a Mufile may execute "code as infrastructure" that produce pieces of the Stack.
+* Deployment assets: a Mufile often references assets, like binary program files, that must get deployed.
+* Clusterfile (`Mucluster.yaml`): each instance of such a file describes one or more Cluster environments.
+
+The collection of inputs effectively describe a desired state.  In many use-cases, therefore, the desired "output" of
+the compilation process is not an artifact at all, but rather a series of actions that accomplish this desired state.
+
+The phases inside of the compilation process may produce intermediate outputs.  For example, if we are targeting AWS,
+perhaps a collection of CloudFormation templates are produced before applying to the target environment.  This document
+describes each such intermediate output because they can be useful for certain scenarios, although in the common case, a
+developer can safely ignore their existence.  It's entirely possible, however, to run the Mu toolchain in a mode where
+the backend operations are done outside of the purview of Mu.  For instance, maybe a developer describes everything in
+Mufiles, etc., however then hands off the process to IT who edits and applies the CloudFormation outputs manually.
+
+At a high-level, the compilation process look like this:
+
+* Front-end:
+    - Parsing: inputs in the form of Mu.yaml and Mucluster.yaml are turned into ASTs.
+    - Generation: execution of any "code as infrastructure" artifacts necessary to generate additional input.
+    - Expansion: expansion of templates in the artifacts, leveraging configuration and other inputs.
+* Middle-end:
+    - Semantic analysis: analysis of the results, post generation and expansion, to ensure they are valid.
+    - Changeset generation: delta analysis to ensure that only changed parts of the topology are modified if possible.
+* Back-end:
+    - Targeting: lowering from the AST form to the cloud target's specific representation.
+    - Deployment: execution of the resulting changes necessary for the target to reach the desired state.
+
+TODO(joe): describe each of these in more detail.
 
 ### Deployments
 
@@ -65,4 +94,9 @@ TODO(joe): deployment, ongoing interactions, management, etc.
 ## System Services
 
 TODO(joe): describe package manager, artifact repository, CI/CD, the relationship between them, etc.
+
+## Runtime Services
+
+TODO(joe): describe what out of the box runtime features are there.  It would be nice if we can do "auto-retry" for
+    service connections...somehow.  E.g., see https://convox.com/guide/databases/.
 
