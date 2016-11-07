@@ -1,0 +1,65 @@
+# Demo #0
+
+The first demo of the full system in action.
+
+## Part 1: Core Demo (Nov, 2016)
+
+TODO: start with the "dumb" Docker Compose / Mongo demo.
+    - then add one by one to get to Mu
+    - persistence
+    - multi-node/sharding
+    - service discovery
+    - api contracts, pluggability, reuse
+
+1. Muify an Express app plus MongoDB backend
+    Leverage Express and MongoDB containers
+    App already exists, just add a Mu.yaml (Compose-like) file
+    Show how adding AWS persistence to the MongoDB service is easy
+    TODO: starting point?  Existing compose/cloud formation/kubernetes app?
+    TODO: talk about Mongo sharding, etc. as an implementation detail of mongodb/mongodb?
+    TODO: talking point on abstractions like key-value store (impl w/ Mongo, Dynamo, etc).  Maybe show?
+2. Import to my Marapongo account
+    $ mu remote add https://paxmu.com/joeduffy/demo1 && mu push
+    Shows up in UI sorta like a GitHub repo
+    I see a "deploy" button and a "live site" tab
+3. Click the deploy button
+    Mention the capability for multiple environments
+    Deploys entirely to the cloud in <5 minutes (runs in AWS but customer needn't know)
+    To kill time, demonstrate running locally; talk to GCE, Kube etc.
+4. Inspect the live site tab
+    Click production, see some simple "DataDog-like" analytics (requests per second, free disk space, etc)
+5. Desire deeper analytics; add a "one liner" to my app to add ELK Mu stack
+    For bonus points, show searching MuHub for ELK in the UI
+    Click the deploy button, just deploys the delta (in <5 minutes)
+    To kill time, demonstrate that an AWS CF stack was created, click around CloudWatch, etc.
+    TODO: consume ES data via its API?
+    TODO: need more examples of the daemon concept... less infra, more app-oriented.
+6. Reinspect the live site tab
+    Now I see lots of great Elasticsearch data (IFRAME-like), etc.
+
+## Part 2: Serverless (TBD)
+
+7. Now we want to set up alerts; navigate to the "alerts" tab
+    Ability to set up "PagerDuty-like" alerts
+    Log an issue and send message to Slack channel when condition occurs
+    Lambdas/Triggers from the ELK stack (e.g., https://github.com/Yelp/elastalert)
+    Demos the Riff-like serverless capabilities of the platform, incl SaaS integration w/ Slack
+
+## Part 3: Sharing and Reuse (TBD)
+
+8. Share my template with my other teammates
+    TODO: carve up in half: 1/2 reusable boilerplate, 1/2 app logic (routes.js-like)?
+    Refactor to be generic "Express, MongoDB, and ELK" template, publish in Marapongo
+    Show how cloning and deriving a new project off it is as easy as "base: myteam-jselk-stack"
+    Now also show sharing and reuse of our "PagerDuty stack" just like others ($ mu add pagers)
+
+## Part 3: GitHub Integration (TBD)
+
+(maybe earlier, if schedule order makes sense)
+
+9. Hook Marapongo up to my GitHub account, so I can use GitFlow for deploys
+    Use a GitHub "workspace" (monorepo) to contain multiple services
+    Link branches to environments
+    Simply push a branch to trigger CI/CD workflow
+    GitHub protected branches and automatic propagation from stage to prod
+

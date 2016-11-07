@@ -1,0 +1,11 @@
+{
+  "name": "demo1",
+  "version": "0.0.1",
+  "description": "A simple Express voting app with a cloud-agnostic hosted backend, ready for production use.",
+  "main": "app.js",
+  "dependencies": {
+    "body-parser": "^1.15.2",
+    "express": "^4.14.0",
+    "mongodb": "^2.2.11"
+  }
+}
