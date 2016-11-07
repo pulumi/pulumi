@@ -1,12 +1,6 @@
 name: demo1-example
-description: A simple Express voting app with a MongoDB backend, ready for production use.
+description: A simple Express voting app with a cloud-agnostic hosted backend, ready for production use.
 services:
-    private:
-        - votes: mongodb/mongodb
-    public:
-        - app:
-            type: mu/container
-            build: .
-            arguments:
-                db: @votes
+    sources:
+        - ./app.js
 
