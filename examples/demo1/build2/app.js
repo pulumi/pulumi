@@ -11,7 +11,7 @@ app.get("/", (req, res) => {
     try {
         var q = await votes.
             groupBy(vote => vote.candidate).
-            map(key, group => {
+            map((key, group) => {
                 candidate: key,
                 count: group.count()
             });
