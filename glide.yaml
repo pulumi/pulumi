@@ -1,0 +1,10 @@
+package: github.com/marapongo/mu
+import:
+- package: github.com/ghodss/yaml
+- package: github.com/spf13/cobra
+- package: github.com/spf13/pflag
+- package: gopkg.in/yaml.v2
+- package: github.com/golang/glog
+- package: github.com/golang/lint
+  subpackages:
+  - golint
