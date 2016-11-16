@@ -28,12 +28,15 @@ type Node struct {
 // Metadata contains human-readable metadata common to Mu's packaging formats (like Stacks and Clusters).
 type Metadata struct {
 	Node
-	Name        Name   `json:"name,omitempty"`
-	Version     SemVer `json:"version,omitempty"`
-	Description string `json:"description,omitempty"`
-	Author      string `json:"author,omitempty"`
-	Website     string `json:"website,omitempty"`
-	License     string `json:"license,omitempty"`
+
+	Kind string `json:"-"` // kind is decorated post-parsing, since it is contextual.
+
+	Name        Name   `json:"name,omitempty"`        // a friendly name for this node.
+	Version     SemVer `json:"version,omitempty"`     // a specific semantic version.
+	Description string `json:"description,omitempty"` // an optional friendly description.
+	Author      string `json:"author,omitempty"`      // an optional author.
+	Website     string `json:"website,omitempty"`     // an optional website for additional info.
+	License     string `json:"license,omitempty"`     // an optional license governing legal uses of this package.
 }
 
 // Stack represents a collection of private and public cloud resources, a method for constructing them, and optional
@@ -52,10 +55,13 @@ type Parameters map[string]*Parameter
 // Parameter describes the requirements of arguments used when constructing Stacks, etc.
 type Parameter struct {
 	Node
-	Description string      `json:"description,omitempty"`
-	Type        Name        `json:"type,omitempty"`
-	Default     interface{} `json:"default,omitempty"`
-	Optional    bool        `json:"optional,omitempty"`
+
+	Name string `json:"-"` // name is decorated post-parsing, since it is contextual.
+
+	Type        Name        `json:"type,omitempty"`        // the type of the parameter; required.
+	Description string      `json:"description,omitempty"` // an optional friendly description of the parameter.
+	Default     interface{} `json:"default,omitempty"`     // an optional default value if the caller doesn't pass one.
+	Optional    bool        `json:"optional,omitempty"`    // true if may be omitted (inferred if a default value).
 }
 
 // Services maps service names to metadata about those services.
@@ -64,8 +70,12 @@ type Services map[string]*Service
 // Service is a directive for instantiating another Stack, including its name, arguments, etc.
 type Service struct {
 	Node
-	Type Name `json:"type,omitempty"`
-	// TODO: Service metadata is highly extensible.  It's not yet clear how best to represent this.
+
+	Name   string `json:"-"` // a friendly name; decorated post-parsing, since it is contextual.
+	Public bool   `json:"-"` // true if this service is publicly exposed; also decorated post-parsing.
+
+	Type Name `json:"type,omitempty"` // an explicit type; if missing, the name is used.
+	// TODO: Service metadata is highly type-dependent.  It's not yet clear how best to represent this in the schema.
 }
 
 // Dependencies maps dependency names to the semantic version the consumer depends on.
