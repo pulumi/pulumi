@@ -69,7 +69,10 @@ type Service struct {
 }
 
 // Dependencies maps dependency names to the semantic version the consumer depends on.
-type Dependencies map[string]SemVer
+type Dependencies map[string]Dependency
+
+// Dependency is metadata describing a dependency target (for now, just its semantic version).
+type Dependency string
 
 // Cluster describes a cluster of many Stacks, in addition to other metadata, like predefined Targets.
 type Cluster struct {

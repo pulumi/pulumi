@@ -9,8 +9,9 @@ import (
 	"github.com/marapongo/mu/pkg/diag"
 )
 
+// Binder annotates an existing parse tree with semantic information.
 type Binder interface {
-	Pass
+	Visitor
 
 	// Bind takes the parse tree, binds all names inside of it, mutating it in place.
 	Bind(doc *diag.Document, stack *ast.Stack)
@@ -36,8 +37,20 @@ func (b *binder) Bind(doc *diag.Document, stack *ast.Stack) {
 				stack.Name, b.Diag().Warnings(), b.Diag().Errors())
 		}()
 	}
-	b.bindStack(doc, stack)
+	b.VisitStack(doc, stack)
 }
 
-func (b *binder) bindStack(doc *diag.Document, stack *ast.Stack) {
+func (b *binder) VisitMetadata(doc *diag.Document, kind string, meta *ast.Metadata) {
+}
+
+func (b *binder) VisitStack(doc *diag.Document, stack *ast.Stack) {
+}
+
+func (b *binder) VisitParameter(doc *diag.Document, name string, param *ast.Parameter) {
+}
+
+func (b *binder) VisitService(doc *diag.Document, name string, public bool, svc *ast.Service) {
+}
+
+func (b *binder) VisitDependency(doc *diag.Document, name string, dep *ast.Dependency) {
 }

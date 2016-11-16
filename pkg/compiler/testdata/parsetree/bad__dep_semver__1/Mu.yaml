@@ -1,0 +1,5 @@
+name: baddep
+version: 1.0.0
+dependencies:
+    dep1: badbadbad
+

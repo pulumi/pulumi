@@ -11,8 +11,9 @@ import (
 	"github.com/marapongo/mu/pkg/errors"
 )
 
+// Parse transforms a program's input text into a parse tree.
 type Parser interface {
-	Pass
+	Phase
 
 	// Parse detects and parses input from the given path.  If an error occurs, the return value will be nil.  It is
 	// expected that errors are conveyed using the diag.Sink interface.

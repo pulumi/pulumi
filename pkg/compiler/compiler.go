@@ -15,14 +15,15 @@ import (
 	"github.com/marapongo/mu/pkg/workspace"
 )
 
-type Pass interface {
+// Phase represents a compiler phase.
+type Phase interface {
 	// Diag fetches the diagnostics sink used by this compiler pass.
 	Diag() diag.Sink
 }
 
 // Compiler provides an interface into the many phases of the Mu compilation process.
 type Compiler interface {
-	Pass
+	Phase
 
 	// Context returns the current compiler context.
 	Context() *Context
