@@ -35,6 +35,10 @@ func DefaultSink(pwd string) Sink {
 	return &defaultSink{pwd: pwd}
 }
 
+const DefaultSinkIDPrefix = "MU"
+const DefaultSinkErrorPrefix = "error"
+const DefaultSinkWarningPrefix = "warning"
+
 // defaultSink is the default sink which logs output to stderr/stdout.
 type defaultSink struct {
 	pwd      string // an optional present working directory to which output paths will be relative to.
@@ -55,19 +59,19 @@ func (d *defaultSink) Warnings() int {
 }
 
 func (d *defaultSink) Errorf(diag *Diag, args ...interface{}) {
-	msg := d.Stringify(diag, "error", args...)
+	msg := d.Stringify(diag, DefaultSinkErrorPrefix, args...)
 	if glog.V(3) {
 		glog.V(3).Infof("defaultSink::Error(%v)", msg)
 	}
-	fmt.Fprintln(os.Stderr, msg)
+	fmt.Fprintf(os.Stderr, msg)
 }
 
 func (d *defaultSink) Warningf(diag *Diag, args ...interface{}) {
-	msg := d.Stringify(diag, "warning", args...)
+	msg := d.Stringify(diag, DefaultSinkWarningPrefix, args...)
 	if glog.V(4) {
 		glog.V(4).Infof("defaultSink::Warning(%v)", msg)
 	}
-	fmt.Fprintln(os.Stdout, msg)
+	fmt.Fprintf(os.Stdout, msg)
 }
 
 func (d *defaultSink) Stringify(diag *Diag, prefix string, args ...interface{}) string {
@@ -77,18 +81,21 @@ func (d *defaultSink) Stringify(diag *Diag, prefix string, args ...interface{}) 
 	buffer.WriteString(": ")
 
 	if diag.ID > 0 {
-		buffer.WriteString("MU")
+		buffer.WriteString(DefaultSinkIDPrefix)
 		buffer.WriteString(strconv.Itoa(int(diag.ID)))
 		buffer.WriteString(": ")
 	}
 
 	if diag.Doc != nil {
-		rel := diag.Doc.File
+		file := diag.Doc.File
 		if d.pwd != "" {
-			// If a PWD is available, convert the file to be relative to it.
-			rel, _ = filepath.Rel(d.pwd, rel)
+			// If a PWD is available, try to create a relative path.
+			rel, err := filepath.Rel(d.pwd, file)
+			if err == nil {
+				file = rel
+			}
 		}
-		buffer.WriteString(rel)
+		buffer.WriteString(file)
 
 		if diag.Loc != nil && !diag.Loc.IsEmpty() {
 			buffer.WriteRune(':')

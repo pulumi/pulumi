@@ -43,9 +43,9 @@ func (p *parser) Parse(doc *diag.Document) *schema.Stack {
 	// We support many file formats.  Detect the file extension and deserialize the contents.
 	// TODO: we need to expand templates as part of the parsing process
 	var stack schema.Stack
-	marshaler, has := schema.MufileExts[doc.Ext()]
+	marshaler, has := schema.Marshalers[doc.Ext()]
 	if !has {
-		p.Diag().Errorf(errors.IllegalMufileExt.WithDocument(doc), doc.Ext())
+		glog.Fatalf("No marshaler registered for this Mufile extension: %v", doc.Ext())
 		return nil
 	}
 

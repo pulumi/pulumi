@@ -8,6 +8,9 @@ import (
 	"github.com/ghodss/yaml"
 )
 
+// Marshalers is a map of extension to a Marshaler object for that extension.
+var Marshalers map[string]Marshaler
+
 // Marshaler is a type that knows how to marshal and unmarshal data in one format.
 type Marshaler interface {
 	Marshal(v interface{}) ([]byte, error)
