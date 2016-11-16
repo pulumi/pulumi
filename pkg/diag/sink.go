@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strconv"
 
 	"github.com/golang/glog"
@@ -27,14 +28,15 @@ type Sink interface {
 }
 
 // DefaultDiags returns a default sink that simply logs output to stderr/stdout.
-func DefaultSink() Sink {
-	return &defaultSink{}
+func DefaultSink(pwd string) Sink {
+	return &defaultSink{pwd: pwd}
 }
 
 // defaultSink is the default sink which logs output to stderr/stdout.
 type defaultSink struct {
-	errors   int
-	warnings int
+	pwd      string // an optional present working directory to which output paths will be relative to.
+	errors   int    // the number of errors that have been issued.
+	warnings int    // the number of warnings that have been issued.
 }
 
 func (d *defaultSink) Count() int {
@@ -79,10 +81,16 @@ func (d *defaultSink) stringify(diag *Diag, prefix string, args ...interface{}) 
 	}
 
 	if diag.Doc != nil {
-		buffer.WriteString(diag.Doc.File)
-		if diag.Loc != nil {
+		rel := diag.Doc.File
+		if d.pwd != "" {
+			// If a PWD is available, convert the file to be relative to it.
+			rel, _ = filepath.Rel(d.pwd, rel)
+		}
+		buffer.WriteString(rel)
+
+		if diag.Loc != nil && !diag.Loc.IsEmpty() {
 			buffer.WriteRune(':')
-			buffer.WriteString(strconv.Itoa(diag.Loc.Start.Row))
+			buffer.WriteString(strconv.Itoa(diag.Loc.Start.Ln))
 			buffer.WriteRune(':')
 			buffer.WriteString(strconv.Itoa(diag.Loc.Start.Col))
 		}
