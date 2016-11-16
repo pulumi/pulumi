@@ -7,6 +7,6 @@ import (
 )
 
 var MissingStackName = &diag.Diag{
-	ID:      2000,
+	ID:      200,
 	Message: "This Stack is missing a `name` property (or it is empty)",
 }

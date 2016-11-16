@@ -25,6 +25,9 @@ type Sink interface {
 	Errorf(diag *Diag, args ...interface{})
 	// Warning issues a new warning diagnostic.
 	Warningf(diag *Diag, args ...interface{})
+
+	// Stringify stringifies a diagnostic in the usual way (e.g., "error: MU123: Mu.yaml:7:39: error goes here\n").
+	Stringify(diag *Diag, prefix string, args ...interface{}) string
 }
 
 // DefaultDiags returns a default sink that simply logs output to stderr/stdout.
@@ -52,7 +55,7 @@ func (d *defaultSink) Warnings() int {
 }
 
 func (d *defaultSink) Errorf(diag *Diag, args ...interface{}) {
-	msg := d.stringify(diag, "error", args...)
+	msg := d.Stringify(diag, "error", args...)
 	if glog.V(3) {
 		glog.V(3).Infof("defaultSink::Error(%v)", msg)
 	}
@@ -60,15 +63,14 @@ func (d *defaultSink) Errorf(diag *Diag, args ...interface{}) {
 }
 
 func (d *defaultSink) Warningf(diag *Diag, args ...interface{}) {
-	msg := d.stringify(diag, "warning", args...)
+	msg := d.Stringify(diag, "warning", args...)
 	if glog.V(4) {
 		glog.V(4).Infof("defaultSink::Warning(%v)", msg)
 	}
 	fmt.Fprintln(os.Stdout, msg)
 }
 
-// stringify stringifies a diagnostic in the usual way (e.g., "error: MU123: Mu.yaml:7:39: error goes here\n").
-func (d *defaultSink) stringify(diag *Diag, prefix string, args ...interface{}) string {
+func (d *defaultSink) Stringify(diag *Diag, prefix string, args ...interface{}) string {
 	var buffer bytes.Buffer
 
 	buffer.WriteString(prefix)
