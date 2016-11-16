@@ -9,8 +9,8 @@ type ID int
 type Diag struct {
 	ID      ID        // a unique identifier for this diagnostic.
 	Message string    // a human-friendly message for this diagnostic.
-	File    string    // the document in which this diagnostic occurred.
-	Filepos *PosRange // the document position at which this diagnostic occurred.
+	Doc     *Document // the document in which this diagnostic occurred.
+	Loc     *Location // the document location at which this diagnostic occurred.
 }
 
 // WithFile adds a file to an existing diagnostic, retaining its ID and message.
@@ -18,17 +18,27 @@ func (diag *Diag) WithFile(file string) *Diag {
 	return &Diag{
 		ID:      diag.ID,
 		Message: diag.Message,
-		File:    file,
-		Filepos: &EmptyPosRange,
+		Doc:     NewDocument(file),
+		Loc:     &EmptyLocation,
 	}
 }
 
-// WithFilepos adds a file and position to an existing diagnostic, retaining its ID and message.
-func (diag *Diag) WithFilepos(file string, filepos *PosRange) *Diag {
+// WithDocument adds a file to an existing diagnostic, retaining its ID and message.
+func (diag *Diag) WithDocument(doc *Document) *Diag {
 	return &Diag{
 		ID:      diag.ID,
 		Message: diag.Message,
-		File:    file,
-		Filepos: filepos,
+		Doc:     doc,
+		Loc:     &EmptyLocation,
+	}
+}
+
+// WithLocation adds a file and position to an existing diagnostic, retaining its ID and message.
+func (diag *Diag) WithLocation(doc *Document, loc *Location) *Diag {
+	return &Diag{
+		ID:      diag.ID,
+		Message: diag.Message,
+		Doc:     doc,
+		Loc:     loc,
 	}
 }

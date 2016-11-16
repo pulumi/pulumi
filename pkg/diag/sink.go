@@ -78,13 +78,13 @@ func (d *defaultSink) stringify(diag *Diag, prefix string, args ...interface{}) 
 		buffer.WriteString(": ")
 	}
 
-	if diag.File != "" {
-		buffer.WriteString(diag.File)
-		if diag.Filepos != nil {
+	if diag.Doc != nil {
+		buffer.WriteString(diag.Doc.File)
+		if diag.Loc != nil {
 			buffer.WriteRune(':')
-			buffer.WriteString(strconv.Itoa(diag.Filepos.Start.Row))
+			buffer.WriteString(strconv.Itoa(diag.Loc.Start.Row))
 			buffer.WriteRune(':')
-			buffer.WriteString(strconv.Itoa(diag.Filepos.Start.Col))
+			buffer.WriteString(strconv.Itoa(diag.Loc.Start.Col))
 		}
 		buffer.WriteString(": ")
 	}

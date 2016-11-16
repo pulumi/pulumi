@@ -11,11 +11,11 @@ type Pos struct {
 // EmptyPos may be used when no position is needed.
 var EmptyPos = Pos{0, 0}
 
-// PosRange represents a position range in a file.
-type PosRange struct {
+// Location represents a region spanning two positions in a file.
+type Location struct {
 	Start Pos
 	End   Pos
 }
 
-// EmptyPosRange may be used when no position range is needed.
-var EmptyPosRange = PosRange{EmptyPos, EmptyPos}
+// EmptyLocation may be used when no position information is available.
+var EmptyLocation = Location{EmptyPos, EmptyPos}

@@ -3,8 +3,6 @@
 package compiler
 
 import (
-	"fmt"
-
 	"github.com/golang/glog"
 
 	"github.com/marapongo/mu/pkg/diag"
@@ -14,6 +12,9 @@ import (
 
 // Compiler provides an interface into the many phases of the Mu compilation process.
 type Compiler interface {
+	// Context returns the current compiler context.
+	Context() *Context
+
 	// Diag fetches the diagnostics sink used by this compiler instance.
 	Diag() diag.Sink
 
@@ -23,12 +24,20 @@ type Compiler interface {
 
 // compiler is the canonical implementation of the Mu compiler.
 type compiler struct {
+	ctx  *Context
 	opts Options
 }
 
 // NewCompiler creates a new instance of the Mu compiler, with the given initialization settings.
 func NewCompiler(opts Options) Compiler {
-	return &compiler{opts}
+	return &compiler{
+		ctx:  &Context{},
+		opts: opts,
+	}
+}
+
+func (c *compiler) Context() *Context {
+	return c.ctx
 }
 
 func (c *compiler) Diag() diag.Sink {
@@ -51,15 +60,34 @@ func (c *compiler) Build(inp string, outp string) {
 		return
 	}
 
-	// To build the Mu package, first parse the input file.
-	p := NewParser(c)
-	stack := p.Parse(mufile)
-
-	// If any errors happened during parsing, we cannot proceed; exit now.
-	if c.Diag().Errors() > 0 {
+	// Read in the contents of the document and make it available to subsequent stages.
+	doc, err := diag.ReadDocument(mufile)
+	if err != nil {
+		c.Diag().Errorf(errors.CouldNotReadMufile.WithFile(mufile), err)
 		return
 	}
 
-	fmt.Printf("PARSED: %v\n", stack)
+	// To build the Mu package, first parse the input file.
+	p := NewParser(c)
+	stack := p.Parse(doc)
+	if p.Diag().Errors() > 0 {
+		// If any errors happened during parsing, we cannot proceed; exit now.
+		return
+	}
 
+	// Do a pass over the parse tree to ensure that all is well.
+	ptAnalyzer := NewPTAnalyzer(c)
+	ptAnalyzer.Analyze(doc, stack)
+	if p.Diag().Errors() > 0 {
+		// If any errors happened during parse tree analysis, we cannot proceed; exit now.
+		return
+	}
+
+	// TODO: here are some steps still remaining during compilation:
+	// 		- read in dependencies (mu_modules or equivalent necessary).
+	// 		- binding.
+	// 		- decide if we need a "lower" form that includes bound nodes (likely yes).
+	//		- semantic analysis (e.g., check that cloud targets aren't incompatible; argument checking; etc).
+	// 		- read in cluster targets information if present.
+	// 		- lower the ASTs to the provider's representation, and emit it.
 }
