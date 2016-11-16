@@ -14,8 +14,8 @@ import (
 
 // Compiler provides an interface into the many phases of the Mu compilation process.
 type Compiler interface {
-	// Diags fetches the diagnostics sink used by this compiler instance.
-	Diags() diag.Sink
+	// Diag fetches the diagnostics sink used by this compiler instance.
+	Diag() diag.Sink
 
 	// Build detects and compiles inputs from the given location, storing build artifacts in the given destination.
 	Build(inp string, outp string)
@@ -31,17 +31,23 @@ func NewCompiler(opts Options) Compiler {
 	return &compiler{opts}
 }
 
-func (c *compiler) Diags() diag.Sink {
-	return c.opts.Diags
+func (c *compiler) Diag() diag.Sink {
+	return c.opts.Diag
 }
 
 func (c *compiler) Build(inp string, outp string) {
-	glog.Infof("Building target directory '%v' to '%v'", inp, outp)
+	glog.Infof("Building target '%v' (out='%v')", inp, outp)
+	if glog.V(2) {
+		defer func() {
+			glog.V(2).Infof("Building target '%v' completed w/ %v warnings and %v errors",
+				inp, c.Diag().Warnings(), c.Diag().Errors())
+		}()
+	}
 
 	// First find the root of the current package based on the location of its Mufile.
 	mufile, err := workspace.DetectMufile(inp)
 	if err != nil {
-		c.Diags().Errorf(errors.MissingMufile, inp)
+		c.Diag().Errorf(errors.MissingMufile, inp)
 		return
 	}
 
@@ -50,7 +56,7 @@ func (c *compiler) Build(inp string, outp string) {
 	stack := p.Parse(mufile)
 
 	// If any errors happened during parsing, we cannot proceed; exit now.
-	if c.Diags().Errors() > 0 {
+	if c.Diag().Errors() > 0 {
 		return
 	}
 

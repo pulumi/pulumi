@@ -16,8 +16,8 @@ type Name string
 // delimited by `.`s: a major version number, a minor version number, and a revision number.  For example, `1.0.10`.
 type Semver string
 
-// Meta contains human-readable metadata common to Mu's packaging formats (like Stacks and Clusters).
-type Meta struct {
+// Metadata contains human-readable metadata common to Mu's packaging formats (like Stacks and Clusters).
+type Metadata struct {
 	Name        Name   `json:"name,omitempty"`
 	Version     Semver `json:"version,omitempty"`
 	Description string `json:"description,omitempty"`
@@ -29,7 +29,7 @@ type Meta struct {
 // Stack represents a collection of private and public cloud resources, a method for constructing them, and optional
 // dependencies on other Stacks (by name).
 type Stack struct {
-	Meta
+	Metadata
 	Parameters   Parameters   `json:"parameters,omitempty"`
 	Public       Services     `json:"public,omitempty"`
 	Private      Services     `json:"private,omitempty"`
@@ -61,14 +61,14 @@ type Dependencies map[string]Semver
 
 // Cluster describes a cluster of many Stacks, in addition to other metadata, like predefined Targets.
 type Cluster struct {
-	Meta
+	Metadata
 	Targets map[string]Target `json:"targets,omitempty"`
 }
 
 // Target describes a predefined cloud runtime target, including its OS and Scheduler combination.
 type Target struct {
-	Description    string `json:"description,omitempty"`
-	CloudOS        string `json:"infra,omitempty"`
-	CloudScheduler string `json:"containers,omitempty"`
+	Description string `json:"description,omitempty"`
+	Cloud       string `json:"cloud,omitempty"`
+	Scheduler   string `json:"scheduler,omitempty"`
 	// TODO(joe): configuration.
 }

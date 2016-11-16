@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+
+	"github.com/golang/glog"
 )
 
 // Sink facilitates pluggable diagnostics messages.
@@ -26,37 +28,45 @@ type Sink interface {
 
 // DefaultDiags returns a default sink that simply logs output to stderr/stdout.
 func DefaultSink() Sink {
-	return &defaultDiags{}
+	return &defaultSink{}
 }
 
-// defaultDiags is the default sink which logs output to stderr/stdout.
-type defaultDiags struct {
+// defaultSink is the default sink which logs output to stderr/stdout.
+type defaultSink struct {
 	errors   int
 	warnings int
 }
 
-func (d *defaultDiags) Count() int {
+func (d *defaultSink) Count() int {
 	return d.errors + d.warnings
 }
 
-func (d *defaultDiags) Errors() int {
+func (d *defaultSink) Errors() int {
 	return d.errors
 }
 
-func (d *defaultDiags) Warnings() int {
+func (d *defaultSink) Warnings() int {
 	return d.warnings
 }
 
-func (d *defaultDiags) Errorf(diag *Diag, args ...interface{}) {
-	fmt.Fprintln(os.Stdout, d.stringify(diag, "error", args...))
+func (d *defaultSink) Errorf(diag *Diag, args ...interface{}) {
+	msg := d.stringify(diag, "error", args...)
+	if glog.V(3) {
+		glog.V(3).Infof("defaultSink::Error(%v)", msg)
+	}
+	fmt.Fprintln(os.Stderr, msg)
 }
 
-func (d *defaultDiags) Warningf(diag *Diag, args ...interface{}) {
-	fmt.Fprintln(os.Stdout, d.stringify(diag, "warning", args...))
+func (d *defaultSink) Warningf(diag *Diag, args ...interface{}) {
+	msg := d.stringify(diag, "warning", args...)
+	if glog.V(4) {
+		glog.V(4).Infof("defaultSink::Warning(%v)", msg)
+	}
+	fmt.Fprintln(os.Stdout, msg)
 }
 
 // stringify stringifies a diagnostic in the usual way (e.g., "error: MU123: Mu.yaml:7:39: error goes here\n").
-func (d *defaultDiags) stringify(diag *Diag, prefix string, args ...interface{}) string {
+func (d *defaultSink) stringify(diag *Diag, prefix string, args ...interface{}) string {
 	var buffer bytes.Buffer
 
 	buffer.WriteString(prefix)
