@@ -15,8 +15,8 @@ type Visitor interface {
 	VisitMetadata(doc *diag.Document, kind string, meta *ast.Metadata)
 	VisitStack(doc *diag.Document, stack *ast.Stack)
 	VisitParameter(doc *diag.Document, name string, param *ast.Parameter)
-	VisitService(doc *diag.Document, name string, public bool, svc *ast.Service)
-	VisitDependency(doc *diag.Document, name string, dep *ast.Dependency)
+	VisitService(doc *diag.Document, name ast.Name, public bool, svc *ast.Service)
+	VisitDependency(doc *diag.Document, name ast.Name, dep *ast.Dependency)
 }
 
 // NewInOrderVisitor wraps another Visitor and walks the tree in a deterministic order, deferring to another set of
@@ -70,30 +70,33 @@ func (v *inOrderVisitor) VisitStack(doc *diag.Document, stack *ast.Stack) {
 
 	publics := make([]string, 0, len(stack.Public))
 	for public := range stack.Public {
-		publics = append(publics, public)
+		publics = append(publics, string(public))
 	}
 	sort.Strings(publics)
 	for _, name := range publics {
-		v.VisitService(doc, name, true, stack.Public[name])
+		aname := ast.Name(name)
+		v.VisitService(doc, aname, true, stack.Public[aname])
 	}
 
 	privates := make([]string, 0, len(stack.Private))
 	for private := range stack.Private {
-		privates = append(privates, private)
+		privates = append(privates, string(private))
 	}
 	sort.Strings(privates)
 	for _, name := range privates {
-		v.VisitService(doc, name, false, stack.Private[name])
+		aname := ast.Name(name)
+		v.VisitService(doc, aname, false, stack.Private[aname])
 	}
 
 	deps := make([]string, 0, len(stack.Dependencies))
 	for dep := range stack.Dependencies {
-		deps = append(deps, dep)
+		deps = append(deps, string(dep))
 	}
 	sort.Strings(deps)
 	for _, name := range deps {
-		dep := stack.Dependencies[name]
-		v.VisitDependency(doc, name, &dep)
+		aname := ast.Name(name)
+		dep := stack.Dependencies[aname]
+		v.VisitDependency(doc, aname, &dep)
 	}
 
 	if v.post != nil {
@@ -110,7 +113,7 @@ func (v *inOrderVisitor) VisitParameter(doc *diag.Document, name string, param *
 	}
 }
 
-func (v *inOrderVisitor) VisitService(doc *diag.Document, name string, public bool, svc *ast.Service) {
+func (v *inOrderVisitor) VisitService(doc *diag.Document, name ast.Name, public bool, svc *ast.Service) {
 	if v.pre != nil {
 		v.pre.VisitService(doc, name, public, svc)
 	}
@@ -119,7 +122,7 @@ func (v *inOrderVisitor) VisitService(doc *diag.Document, name string, public bo
 	}
 }
 
-func (v *inOrderVisitor) VisitDependency(doc *diag.Document, name string, dep *ast.Dependency) {
+func (v *inOrderVisitor) VisitDependency(doc *diag.Document, name ast.Name, dep *ast.Dependency) {
 	if v.pre != nil {
 		v.pre.VisitDependency(doc, name, dep)
 	}

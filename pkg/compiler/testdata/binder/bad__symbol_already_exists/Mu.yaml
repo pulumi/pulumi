@@ -1,0 +1,7 @@
+name: symexists
+public:
+    foo:
+        type: mu/container
+    foo:
+        type: mu/container
+

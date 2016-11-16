@@ -12,11 +12,11 @@ var MissingMetadataName = &diag.Diag{
 }
 
 var IllegalMetadataSemVer = &diag.Diag{
-	ID:      1502,
+	ID:      201,
 	Message: "This %v's version '%v' is not a valid semantic version number (note: it may not be a range)",
 }
 
 var IllegalDependencySemVer = &diag.Diag{
-	ID:      1503,
+	ID:      202,
 	Message: "Dependency '%v's version '%v' is not a valid semantic version number or range",
 }

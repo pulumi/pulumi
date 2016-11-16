@@ -65,21 +65,21 @@ type Parameter struct {
 }
 
 // Services maps service names to metadata about those services.
-type Services map[string]*Service
+type Services map[Name]*Service
 
 // Service is a directive for instantiating another Stack, including its name, arguments, etc.
 type Service struct {
 	Node
 
-	Name   string `json:"-"` // a friendly name; decorated post-parsing, since it is contextual.
-	Public bool   `json:"-"` // true if this service is publicly exposed; also decorated post-parsing.
+	Name   Name `json:"-"` // a friendly name; decorated post-parsing, since it is contextual.
+	Public bool `json:"-"` // true if this service is publicly exposed; also decorated post-parsing.
 
 	Type Name `json:"type,omitempty"` // an explicit type; if missing, the name is used.
 	// TODO: Service metadata is highly type-dependent.  It's not yet clear how best to represent this in the schema.
 }
 
 // Dependencies maps dependency names to the semantic version the consumer depends on.
-type Dependencies map[string]Dependency
+type Dependencies map[Name]Dependency
 
 // Dependency is metadata describing a dependency target (for now, just its semantic version).
 type Dependency SemVer

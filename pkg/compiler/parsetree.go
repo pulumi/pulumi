@@ -73,13 +73,13 @@ func (a *ptAnalyzer) VisitParameter(doc *diag.Document, name string, param *ast.
 	param.Name = name
 }
 
-func (a *ptAnalyzer) VisitService(doc *diag.Document, name string, public bool, svc *ast.Service) {
+func (a *ptAnalyzer) VisitService(doc *diag.Document, name ast.Name, public bool, svc *ast.Service) {
 	// Decorate the AST with contextual information so subsequent passes can operate context-free.
 	svc.Name = name
 	svc.Public = public
 }
 
-func (a *ptAnalyzer) VisitDependency(doc *diag.Document, name string, dep *ast.Dependency) {
+func (a *ptAnalyzer) VisitDependency(doc *diag.Document, name ast.Name, dep *ast.Dependency) {
 	// Dependency versions must be valid semantic versions *or* ranges.
 	// TODO: should we require dependencies to have versions?
 	ver := *dep

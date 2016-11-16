@@ -7,11 +7,11 @@ import (
 )
 
 var CouldNotReadMufile = &diag.Diag{
-	ID:      1500,
+	ID:      150,
 	Message: "An IO error occurred while reading the Mufile: %v",
 }
 
 var IllegalMufileSyntax = &diag.Diag{
-	ID:      1501,
+	ID:      151,
 	Message: "A syntax error was detected while parsing the Mufile: %v",
 }
