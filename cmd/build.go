@@ -3,6 +3,9 @@
 package cmd
 
 import (
+	"path/filepath"
+
+	"github.com/golang/glog"
 	"github.com/marapongo/mu/pkg/compiler"
 	"github.com/spf13/cobra"
 )
@@ -24,8 +27,13 @@ func newBuildCmd() *cobra.Command {
 				inp = args[0]
 			}
 
-			mup := compiler.NewCompiler(compiler.DefaultOpts())
-			mup.Build(inp, outp)
+			abs, err := filepath.Abs(inp)
+			if err != nil {
+				glog.Fatal(err)
+			}
+
+			mup := compiler.NewCompiler(compiler.DefaultOpts(abs))
+			mup.Build(abs, outp)
 		},
 	}
 

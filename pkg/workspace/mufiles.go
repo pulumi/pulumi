@@ -7,11 +7,9 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+
+	"github.com/marapongo/mu/pkg/schema"
 )
-
-const mufileBase = "Mu"
-
-var mufileExts = []string{"json", "yaml"}
 
 // DetectMufile locates the closest Mufile from the given path, searching "upwards" in the directory hierarchy.  If
 // no Mufile is found, a non-nil error is returned.
@@ -63,8 +61,8 @@ func IsMufile(path string) bool {
 	}
 
 	// Check all supported extensions.
-	for _, ext := range mufileExts {
-		if info.Name() == mufileBase+"."+ext {
+	for ext := range schema.MufileExts {
+		if info.Name() == schema.MufileBase+ext {
 			return true
 		}
 	}

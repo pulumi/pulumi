@@ -3,9 +3,6 @@
 package compiler
 
 import (
-	"encoding/json"
-
-	"github.com/ghodss/yaml"
 	"github.com/golang/glog"
 
 	"github.com/marapongo/mu/pkg/diag"
@@ -43,32 +40,16 @@ func (p *parser) Parse(doc *diag.Document) *schema.Stack {
 		}()
 	}
 
-	// We support both JSON and YAML as a file format.  Detect the file extension and deserialize the contents.
-	// TODO: we need to expand templates as part of the parsing process.
-	switch doc.Ext() {
-	case ".json":
-		return p.parseFromJSON(doc)
-	case ".yaml":
-		return p.parseFromYAML(doc)
-	default:
+	// We support many file formats.  Detect the file extension and deserialize the contents.
+	// TODO: we need to expand templates as part of the parsing process
+	var stack schema.Stack
+	marshaler, has := schema.MufileExts[doc.Ext()]
+	if !has {
 		p.Diag().Errorf(errors.IllegalMufileExt.WithDocument(doc), doc.Ext())
 		return nil
 	}
-}
 
-func (p *parser) parseFromJSON(doc *diag.Document) *schema.Stack {
-	var stack schema.Stack
-	if err := json.Unmarshal(doc.Body, &stack); err != nil {
-		p.Diag().Errorf(errors.IllegalMufileSyntax.WithDocument(doc), err)
-		// TODO: it would be great if we issued an error per issue found in the file with line/col numbers.
-		return nil
-	}
-	return &stack
-}
-
-func (p *parser) parseFromYAML(doc *diag.Document) *schema.Stack {
-	var stack schema.Stack
-	if err := yaml.Unmarshal(doc.Body, &stack); err != nil {
+	if err := marshaler.Unmarshal(doc.Body, &stack); err != nil {
 		p.Diag().Errorf(errors.IllegalMufileSyntax.WithDocument(doc), err)
 		// TODO: it would be great if we issued an error per issue found in the file with line/col numbers.
 		return nil
