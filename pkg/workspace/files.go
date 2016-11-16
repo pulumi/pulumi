@@ -5,6 +5,9 @@ package workspace
 // Muspace is a file that contains optional settings about a workspace, and delimits its boundaries.
 var Muspace = ".muspace"
 
+// Mumodules is where dependency modules exist, either local to a workspace, or globally on a machine.
+var Mumodules = ".mu_modules"
+
 // MufileBase is the base name of a Mufile.
 const MufileBase = "Mu"
 
