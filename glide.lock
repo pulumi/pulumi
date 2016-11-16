@@ -1,5 +1,5 @@
-hash: 4c4bc0757150232b4473c5ac62d3c5b5e13c6e07ac2e580f901b95cdb6508498
-updated: 2016-11-15T14:05:43.951339623-05:00
+hash: cd5dee494610ee202808363ca7cd311616e200e4b50c12b0212cc7286c5c13f3
+updated: 2016-11-15T19:17:50.08202193-08:00
 imports:
 - name: github.com/ghodss/yaml
   version: bea76d6a4713e18b7f5321a2b020738552def3ea
@@ -15,6 +15,8 @@ imports:
   version: 6b74a60562f5c1c920299b8f02d153e16f4897fc
 - name: github.com/spf13/pflag
   version: 5ccb023bc27df288a957c5e994cd44fd19619465
+- name: github.com/stretchr/testify
+  version: 976c720a22c8eb4eb6a0b4348ad85ad12491a506
 - name: gopkg.in/yaml.v2
   version: a5b47d31c556af34a302ce5d659e6fea44d90de0
 devImports: []
