@@ -42,9 +42,9 @@ func (p *parser) Parse(mufile string) *api.Stack {
 	// We support both JSON and YAML as a file format.  Detect the file extension and deserialize the contents.
 	ext := filepath.Ext(mufile)
 	switch ext {
-	case "json":
+	case ".json":
 		return p.parseFromJSON(mufile)
-	case "yaml":
+	case ".yaml":
 		return p.parseFromYAML(mufile)
 	default:
 		p.Diags().Errorf(errors.IllegalMufileExt.WithFile(mufile), ext)
