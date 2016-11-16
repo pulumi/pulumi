@@ -12,14 +12,14 @@ package schema
 // conforms to the regex [A-Za-z_][A-Za-z0-9_]*.  For example, `marapongo/mu/stack`.
 type Name string
 
-// Semver represents a version using "semantic versioning" style.  This may include up to three distinct numbers
+// SemVer represents a version using "semantic versioning" style.  This may include up to three distinct numbers
 // delimited by `.`s: a major version number, a minor version number, and a revision number.  For example, `1.0.10`.
-type Semver string
+type SemVer string
 
 // Metadata contains human-readable metadata common to Mu's packaging formats (like Stacks and Clusters).
 type Metadata struct {
 	Name        Name   `json:"name,omitempty"`
-	Version     Semver `json:"version,omitempty"`
+	Version     SemVer `json:"version,omitempty"`
 	Description string `json:"description,omitempty"`
 	Author      string `json:"author,omitempty"`
 	Website     string `json:"website,omitempty"`
@@ -57,7 +57,7 @@ type Service struct {
 }
 
 // Dependencies maps dependency names to the semantic version the consumer depends on.
-type Dependencies map[string]Semver
+type Dependencies map[string]SemVer
 
 // Cluster describes a cluster of many Stacks, in addition to other metadata, like predefined Targets.
 type Cluster struct {
