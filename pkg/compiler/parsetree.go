@@ -3,6 +3,8 @@
 package compiler
 
 import (
+	"github.com/blang/semver"
+
 	"github.com/marapongo/mu/pkg/ast"
 	"github.com/marapongo/mu/pkg/diag"
 	"github.com/marapongo/mu/pkg/errors"
@@ -31,7 +33,15 @@ func (a *ptAnalyzer) Diag() diag.Sink {
 }
 
 func (a *ptAnalyzer) Analyze(doc *diag.Document, stack *ast.Stack) {
+	// Stacks must have names.
 	if stack.Name == "" {
 		a.Diag().Errorf(errors.MissingStackName.WithDocument(doc))
+	}
+
+	// Stack versions must be valid semantic versions (and specifically, not ranges).
+	if stack.Version != "" {
+		if _, err := semver.Parse(string(stack.Version)); err != nil {
+			a.Diag().Errorf(errors.IllegalStackSemVer.WithDocument(doc), stack.Version)
+		}
 	}
 }

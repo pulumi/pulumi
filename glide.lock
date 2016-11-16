@@ -1,6 +1,8 @@
-hash: cd5dee494610ee202808363ca7cd311616e200e4b50c12b0212cc7286c5c13f3
-updated: 2016-11-15T19:17:50.08202193-08:00
+hash: 78eb6cd5c4e38966ff9d4360ec109b9dde02cf297c75f781386f021d922f7737
+updated: 2016-11-16T09:35:26.195183037-08:00
 imports:
+- name: github.com/blang/semver
+  version: 60ec3488bfea7cca02b021d106d9911120d25fe9
 - name: github.com/ghodss/yaml
   version: bea76d6a4713e18b7f5321a2b020738552def3ea
 - name: github.com/golang/glog
@@ -12,7 +14,7 @@ imports:
 - name: github.com/inconshreveable/mousetrap
   version: 76626ae9c91c4f2a10f34cad8ce83ea42c93bb75
 - name: github.com/spf13/cobra
-  version: 6b74a60562f5c1c920299b8f02d153e16f4897fc
+  version: 9495bc009a56819bdb0ddbc1a373e29c140bc674
 - name: github.com/spf13/pflag
   version: 5ccb023bc27df288a957c5e994cd44fd19619465
 - name: github.com/stretchr/testify
