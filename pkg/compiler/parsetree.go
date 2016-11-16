@@ -40,7 +40,10 @@ func (a *ptAnalyzer) Analyze(doc *diag.Document, stack *ast.Stack) {
 				stack.Name, a.Diag().Warnings(), a.Diag().Errors())
 		}()
 	}
-	a.VisitStack(doc, stack)
+
+	// Use an InOrderVisitor to walk the tree in-order; this handles determinism for us.
+	v := NewInOrderVisitor(a, nil)
+	v.VisitStack(doc, stack)
 }
 
 func (a *ptAnalyzer) VisitMetadata(doc *diag.Document, kind string, meta *ast.Metadata) {
@@ -60,19 +63,6 @@ func (a *ptAnalyzer) VisitMetadata(doc *diag.Document, kind string, meta *ast.Me
 }
 
 func (a *ptAnalyzer) VisitStack(doc *diag.Document, stack *ast.Stack) {
-	a.VisitMetadata(doc, "Stack", &stack.Metadata)
-	for name, param := range stack.Parameters {
-		a.VisitParameter(doc, name, param)
-	}
-	for name, svc := range stack.Public {
-		a.VisitService(doc, name, true, svc)
-	}
-	for name, svc := range stack.Private {
-		a.VisitService(doc, name, false, svc)
-	}
-	for name, dep := range stack.Dependencies {
-		a.VisitDependency(doc, name, &dep)
-	}
 }
 
 func (a *ptAnalyzer) VisitParameter(doc *diag.Document, name string, param *ast.Parameter) {
