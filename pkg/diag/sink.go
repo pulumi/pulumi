@@ -99,9 +99,9 @@ func (d *defaultSink) Stringify(diag *Diag, prefix string, args ...interface{}) 
 
 		if diag.Loc != nil && !diag.Loc.IsEmpty() {
 			buffer.WriteRune(':')
-			buffer.WriteString(strconv.Itoa(diag.Loc.Start.Ln))
+			buffer.WriteString(strconv.Itoa(diag.Loc.From.Ln))
 			buffer.WriteRune(':')
-			buffer.WriteString(strconv.Itoa(diag.Loc.Start.Col))
+			buffer.WriteString(strconv.Itoa(diag.Loc.From.Col))
 		}
 		buffer.WriteString(": ")
 	}

@@ -3,9 +3,9 @@
 package compiler
 
 import (
+	"github.com/marapongo/mu/pkg/ast"
 	"github.com/marapongo/mu/pkg/diag"
 	"github.com/marapongo/mu/pkg/errors"
-	"github.com/marapongo/mu/pkg/schema"
 )
 
 // PTAnalyzer knows how to walk and validate parse trees.
@@ -14,7 +14,7 @@ type PTAnalyzer interface {
 	Diag() diag.Sink
 
 	// Analyze checks the validity of an entire parse tree (starting with a top-level Stack).
-	Analyze(doc *diag.Document, stack *schema.Stack)
+	Analyze(doc *diag.Document, stack *ast.Stack)
 }
 
 // NewPTAnalayzer allocates a new PTAnalyzer associated with the given Compiler.
@@ -30,7 +30,7 @@ func (a *ptAnalyzer) Diag() diag.Sink {
 	return a.c.Diag()
 }
 
-func (a *ptAnalyzer) Analyze(doc *diag.Document, stack *schema.Stack) {
+func (a *ptAnalyzer) Analyze(doc *diag.Document, stack *ast.Stack) {
 	if stack.Name == "" {
 		a.Diag().Errorf(errors.MissingStackName.WithDocument(doc))
 	}

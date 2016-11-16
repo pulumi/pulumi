@@ -18,8 +18,8 @@ func (pos Pos) IsEmpty() bool {
 
 // Location represents a region spanning two positions in a file.
 type Location struct {
-	Start Pos
-	End   Pos
+	From Pos
+	To   Pos
 }
 
 // EmptyLocation may be used when no position information is available.
@@ -27,5 +27,5 @@ var EmptyLocation = Location{EmptyPos, EmptyPos}
 
 // IsEmpty returns true if the Location information is missing.
 func (loc Location) IsEmpty() bool {
-	return loc.Start.IsEmpty() && loc.End.IsEmpty()
+	return loc.From.IsEmpty() && loc.To.IsEmpty()
 }

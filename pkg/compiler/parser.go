@@ -5,18 +5,18 @@ package compiler
 import (
 	"github.com/golang/glog"
 
+	"github.com/marapongo/mu/pkg/ast"
 	"github.com/marapongo/mu/pkg/diag"
+	"github.com/marapongo/mu/pkg/encoding"
 	"github.com/marapongo/mu/pkg/errors"
-	"github.com/marapongo/mu/pkg/schema"
 )
 
 type Parser interface {
-	// Diag fetches the diagnostics sink used by this parser.
-	Diag() diag.Sink
+	Pass
 
 	// Parse detects and parses input from the given path.  If an error occurs, the return value will be nil.  It is
 	// expected that errors are conveyed using the diag.Sink interface.
-	Parse(doc *diag.Document) *schema.Stack
+	Parse(doc *diag.Document) *ast.Stack
 }
 
 func NewParser(c Compiler) Parser {
@@ -31,7 +31,7 @@ func (p *parser) Diag() diag.Sink {
 	return p.c.Diag()
 }
 
-func (p *parser) Parse(doc *diag.Document) *schema.Stack {
+func (p *parser) Parse(doc *diag.Document) *ast.Stack {
 	glog.Infof("Parsing Mufile: %v (len(body)=%v)", doc.File, len(doc.Body))
 	if glog.V(2) {
 		defer func() {
@@ -42,8 +42,8 @@ func (p *parser) Parse(doc *diag.Document) *schema.Stack {
 
 	// We support many file formats.  Detect the file extension and deserialize the contents.
 	// TODO: we need to expand templates as part of the parsing process
-	var stack schema.Stack
-	marshaler, has := schema.Marshalers[doc.Ext()]
+	var stack ast.Stack
+	marshaler, has := encoding.Marshalers[doc.Ext()]
 	if !has {
 		glog.Fatalf("No marshaler registered for this Mufile extension: %v", doc.Ext())
 		return nil

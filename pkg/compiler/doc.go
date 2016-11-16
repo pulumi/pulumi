@@ -3,10 +3,10 @@
 package compiler
 
 import (
-	"github.com/marapongo/mu/pkg/schema"
+	"github.com/marapongo/mu/pkg/ast"
 )
 
 type Document struct {
-	File  string        // the file that this document refers to.
-	Stack *schema.Stack // the root stack element inside of this document.
+	File  string     // the file that this document refers to.
+	Stack *ast.Stack // the root stack element inside of this document.
 }

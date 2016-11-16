@@ -15,13 +15,17 @@ import (
 	"github.com/marapongo/mu/pkg/workspace"
 )
 
+type Pass interface {
+	// Diag fetches the diagnostics sink used by this compiler pass.
+	Diag() diag.Sink
+}
+
 // Compiler provides an interface into the many phases of the Mu compilation process.
 type Compiler interface {
+	Pass
+
 	// Context returns the current compiler context.
 	Context() *Context
-
-	// Diag fetches the diagnostics sink used by this compiler instance.
-	Diag() diag.Sink
 
 	// Build detects and compiles inputs from the given location, storing build artifacts in the given destination.
 	Build(inp string, outp string)
@@ -76,7 +80,7 @@ func (c *compiler) Build(inp string, outp string) {
 	p := NewParser(c)
 	stack := p.Parse(doc)
 	if p.Diag().Errors() > 0 {
-		// If any errors happened during parsing, we cannot proceed; exit now.
+		// If any errors happened during parsing, exit.
 		return
 	}
 
@@ -84,17 +88,23 @@ func (c *compiler) Build(inp string, outp string) {
 	ptAnalyzer := NewPTAnalyzer(c)
 	ptAnalyzer.Analyze(doc, stack)
 	if p.Diag().Errors() > 0 {
-		// If any errors happened during parse tree analysis, we cannot proceed; exit now.
+		// If any errors happened during parse tree analysis, exit.
 		return
 	}
 
-	// TODO: here are some steps still remaining during compilation:
-	// 		- read in dependencies (mu_modules or equivalent necessary).
-	// 		- binding.
-	// 		- decide if we need a "lower" form that includes bound nodes (likely yes).
-	//		- semantic analysis (e.g., check that cloud targets aren't incompatible; argument checking; etc).
-	// 		- read in cluster targets information if present.
-	// 		- lower the ASTs to the provider's representation, and emit it.
+	// TODO: load dependencies.
+
+	binder := NewBinder(c)
+	binder.Bind(doc, stack)
+	if p.Diag().Errors() > 0 {
+		// If any errors happened during binding, exit.
+		return
+	}
+
+	// TODO: perform semantic analysis on the bound tree.
+	// TODO: select a target backend (including reading in a Muclusters file if needed).
+	// TODO: lower the ASTs to the target backend's representation, emit it.
+	// TODO: delta generation, deployment, etc.
 }
 
 // detectMufile locates the closest Mufile-looking file from the given path, searching "upwards" in the directory
