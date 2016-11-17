@@ -23,6 +23,7 @@ const defaultOutp = ".mu"
 
 func newBuildCmd() *cobra.Command {
 	var outp string
+	var arch string
 	var target string
 	var cmd = &cobra.Command{
 		Use:   "build [source]",
@@ -39,7 +40,8 @@ func newBuildCmd() *cobra.Command {
 			}
 
 			opts := compiler.DefaultOpts(abs)
-			setCloudTargetOptions(target, &opts)
+			opts.Target = target
+			setCloudArchOptions(arch, &opts)
 
 			mup := compiler.NewCompiler(opts)
 			mup.Build(abs, outp)
@@ -50,44 +52,47 @@ func newBuildCmd() *cobra.Command {
 		&outp, "out", defaultOutp,
 		"The directory in which to place build artifacts")
 	cmd.PersistentFlags().StringVarP(
+		&arch, "arch", "a", "",
+		"Generate output for a specific cloud architecture (format: \"cloud[:scheduler]\")")
+	cmd.PersistentFlags().StringVarP(
 		&target, "target", "t", "",
-		"Generate output for the given target (format: \"cloud[:scheduler]\")")
+		"Generate output for an existing, named target")
 
 	return cmd
 }
 
-func setCloudTargetOptions(target string, opts *compiler.Options) {
-	// If a target was specified, parse the pieces and set the options.  A target isn't required because stacks
-	// and workspaces can have default targets.  This simply overrides it or provides one where none exists.
-	if target != "" {
+func setCloudArchOptions(arch string, opts *compiler.Options) {
+	// If an architecture was specified, parse the pieces and set the options.  This isn't required because stacks
+	// and workspaces can have defaults.  This simply overrides or provides one where none exists.
+	if arch != "" {
 		// The format is "cloud[:scheduler]"; parse out the pieces.
 		var cloud string
 		var cloudScheduler string
-		if delim := strings.IndexRune(target, ':'); delim != -1 {
-			cloud = target[:delim]
-			cloudScheduler = target[delim+1:]
+		if delim := strings.IndexRune(arch, ':'); delim != -1 {
+			cloud = arch[:delim]
+			cloudScheduler = arch[delim+1:]
 		} else {
-			cloud = target
+			cloud = arch
 		}
 
-		cloudTarget, ok := clouds.TargetMap[cloud]
+		cloudArch, ok := clouds.ArchMap[cloud]
 		if !ok {
-			fmt.Fprintf(os.Stderr, "Unrecognized cloud target '%v'\n", cloud)
+			fmt.Fprintf(os.Stderr, "Unrecognized cloud arch '%v'\n", cloud)
 			os.Exit(-1)
 		}
 
-		var cloudSchedulerTarget schedulers.Target
+		var cloudSchedulerArch schedulers.Arch
 		if cloudScheduler != "" {
-			cloudSchedulerTarget, ok = schedulers.TargetMap[cloudScheduler]
+			cloudSchedulerArch, ok = schedulers.ArchMap[cloudScheduler]
 			if !ok {
-				fmt.Fprintf(os.Stderr, "Unrecognized cloud scheduler target '%v'\n", cloudScheduler)
+				fmt.Fprintf(os.Stderr, "Unrecognized cloud scheduler arch '%v'\n", cloudScheduler)
 				os.Exit(-1)
 			}
 		}
 
-		opts.Target = compiler.Target{
-			Cloud:     cloudTarget,
-			Scheduler: cloudSchedulerTarget,
+		opts.Arch = compiler.Arch{
+			Cloud:     cloudArch,
+			Scheduler: cloudSchedulerArch,
 		}
 	}
 }
