@@ -17,12 +17,14 @@ type Binder interface {
 }
 
 func NewBinder(c Compiler) Binder {
-	return &binder{c, make(map[ast.Name]*Symbol)}
+	b := &binder{c: c}
+	b.PushScope()
+	return b
 }
 
 type binder struct {
-	c      Compiler
-	symtbl map[ast.Name]*Symbol
+	c     Compiler
+	scope *scope
 }
 
 func (b *binder) Diag() diag.Sink {
@@ -54,26 +56,77 @@ func (b *binder) Bind(doc *diag.Document, stack *ast.Stack) {
 
 // LookupStack binds a name to a Stack type.
 func (b *binder) LookupStack(nm ast.Name) (*Symbol, *ast.Stack) {
-	sym := b.LookupSymbol(nm)
-	if sym != nil && sym.Kind == SymKindStack {
-		return sym, sym.Real.(*ast.Stack)
+	if b.scope == nil {
+		glog.Fatalf("Unexpected empty binding scope during LookupStack")
 	}
-	return nil, nil
+	return b.scope.LookupStack(nm)
 }
 
 // LookupSymbol binds a name to any kind of Symbol.
 func (b *binder) LookupSymbol(nm ast.Name) *Symbol {
-	return b.symtbl[nm]
+	if b.scope == nil {
+		glog.Fatalf("Unexpected empty binding scope during LookupSymbol")
+	}
+	return b.scope.LookupSymbol(nm)
 }
 
 // RegisterSymbol registers a symbol with the given name; if it already exists, the function returns false.
 func (b *binder) RegisterSymbol(sym *Symbol) bool {
+	if b.scope == nil {
+		glog.Fatalf("Unexpected empty binding scope during RegisterSymbol")
+	}
+	return b.scope.RegisterSymbol(sym)
+}
+
+// PushScope creates a new scope with an empty symbol table parented to the existing one.
+func (b *binder) PushScope() {
+	b.scope = &scope{parent: b.scope, symtbl: make(map[ast.Name]*Symbol)}
+}
+
+// PopScope replaces the current scope with its parent.
+func (b *binder) PopScope() {
+	if b.scope == nil {
+		glog.Fatalf("Unexpected empty binding scope during pop")
+	}
+	b.scope = b.scope.parent
+}
+
+// scope enables lookups and symbols to obey traditional language scoping rules.
+type scope struct {
+	parent *scope
+	symtbl map[ast.Name]*Symbol
+}
+
+// LookupStack binds a name to a Stack type.
+func (s *scope) LookupStack(nm ast.Name) (*Symbol, *ast.Stack) {
+	sym := s.LookupSymbol(nm)
+	if sym != nil && sym.Kind == SymKindStack {
+		return sym, sym.Real.(*ast.Stack)
+	}
+	// TODO: we probably need to issue an error for this condition (wrong expected symbol type).
+	return nil, nil
+}
+
+// LookupSymbol binds a name to any kind of Symbol.
+func (s *scope) LookupSymbol(nm ast.Name) *Symbol {
+	for s != nil {
+		if sym, exists := s.symtbl[nm]; exists {
+			return sym
+		}
+		s = s.parent
+	}
+	return nil
+}
+
+// RegisterSymbol registers a symbol with the given name; if it already exists, the function returns false.
+func (s *scope) RegisterSymbol(sym *Symbol) bool {
 	nm := sym.Name
-	if _, exists := b.symtbl[nm]; exists {
+	if _, exists := s.symtbl[nm]; exists {
+		// TODO: this won't catch "shadowing" for parent scopes; do we care about this?
 		return false
 	}
 
-	b.symtbl[nm] = sym
+	s.symtbl[nm] = sym
 	return true
 }
 
