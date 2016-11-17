@@ -17,7 +17,7 @@ func TestSymbolAlreadyExists(t *testing.T) {
 
 	// Check that the compiler complained about a duplicate symbol.
 	d := errors.SymbolAlreadyExists
-	assert.Equal(t, sink.Errors(), 1, "expected a single error")
+	assert.Equal(t, 1, sink.Errors(), "expected a single error")
 	assert.Equal(t,
 		fmt.Sprintf("%v: %v%v: %v: %v\n",
 			diag.DefaultSinkErrorPrefix, diag.DefaultSinkIDPrefix, d.ID, "Mu.yaml",

@@ -17,7 +17,7 @@ func TestBadMissingStackName(t *testing.T) {
 
 	// Check that the compiler complained about a missing Stack name.
 	d := errors.MissingMetadataName
-	assert.Equal(t, sink.Errors(), 1, "expected a single error")
+	assert.Equal(t, 1, sink.Errors(), "expected a single error")
 	assert.Equal(t,
 		fmt.Sprintf("%v: %v%v: %v: %v\n",
 			diag.DefaultSinkErrorPrefix, diag.DefaultSinkIDPrefix, d.ID, "Mu.yaml",
@@ -30,7 +30,7 @@ func TestBadStackSemVer1(t *testing.T) {
 
 	// Check that the compiler complained about an illegal semantic version.
 	d := errors.IllegalMetadataSemVer
-	assert.Equal(t, sink.Errors(), 1, "expected a single error")
+	assert.Equal(t, 1, sink.Errors(), "expected a single error")
 	assert.Equal(t,
 		fmt.Sprintf("%v: %v%v: %v: %v\n",
 			diag.DefaultSinkErrorPrefix, diag.DefaultSinkIDPrefix, d.ID, "Mu.yaml",
@@ -43,7 +43,7 @@ func TestBadStackSemVer2(t *testing.T) {
 
 	// Check that the compiler complained about an illegal semantic version.
 	d := errors.IllegalMetadataSemVer
-	assert.Equal(t, sink.Errors(), 1, "expected a single error")
+	assert.Equal(t, 1, sink.Errors(), "expected a single error")
 	assert.Equal(t,
 		fmt.Sprintf("%v: %v%v: %v: %v\n",
 			diag.DefaultSinkErrorPrefix, diag.DefaultSinkIDPrefix, d.ID, "Mu.yaml",
@@ -56,7 +56,7 @@ func TestBadDepSemVer1(t *testing.T) {
 
 	// Check that the compiler complained about an illegal semantic version.
 	d := errors.IllegalDependencySemVer
-	assert.Equal(t, sink.Errors(), 1, "expected a single error")
+	assert.Equal(t, 1, sink.Errors(), "expected a single error")
 	assert.Equal(t,
 		fmt.Sprintf("%v: %v%v: %v: %v\n",
 			diag.DefaultSinkErrorPrefix, diag.DefaultSinkIDPrefix, d.ID, "Mu.yaml",
@@ -69,7 +69,7 @@ func TestBadDepSemVer2(t *testing.T) {
 
 	// Check that the compiler complained about an illegal semantic version.
 	d := errors.IllegalDependencySemVer
-	assert.Equal(t, sink.Errors(), 1, "expected a single error")
+	assert.Equal(t, 1, sink.Errors(), "expected a single error")
 	assert.Equal(t,
 		fmt.Sprintf("%v: %v%v: %v: %v\n",
 			diag.DefaultSinkErrorPrefix, diag.DefaultSinkIDPrefix, d.ID, "Mu.yaml",
@@ -82,7 +82,7 @@ func TestBadDepSemVer3(t *testing.T) {
 
 	// Check that the compiler complained about an illegal semantic version.
 	d := errors.IllegalDependencySemVer
-	assert.Equal(t, sink.Errors(), 4, "expected an error for each bad semver")
+	assert.Equal(t, 4, sink.Errors(), "expected an error for each bad semver")
 	assert.Equal(t,
 		fmt.Sprintf("%v: %v%v: %v: %v\n",
 			diag.DefaultSinkErrorPrefix, diag.DefaultSinkIDPrefix, d.ID, "Mu.yaml",
