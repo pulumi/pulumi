@@ -37,29 +37,31 @@ TODO: start with the "dumb" Docker Compose / Mongo demo.
 6. Reinspect the live site tab
     Now I see lots of great Elasticsearch data (IFRAME-like), etc.
 
-## Part 2: Serverless (TBD)
+## Part 2: GitHub Integration (TBD)
 
-7. Now we want to set up alerts; navigate to the "alerts" tab
+1. Hook Marapongo up to my GitHub account, so I can use GitFlow for deploys
+    Use a GitHub "workspace" (monorepo) to contain multiple services
+    Link branches to environments
+    Simply push a branch to trigger CI/CD workflow
+    GitHub protected branches and automatic propagation from stage to prod
+
+## Part 3: Serverless (TBD)
+
+1. Now we want to set up alerts; navigate to the "alerts" tab
     Ability to set up "PagerDuty-like" alerts
     Log an issue and send message to Slack channel when condition occurs
     Lambdas/Triggers from the ELK stack (e.g., https://github.com/Yelp/elastalert)
     Demos the Riff-like serverless capabilities of the platform, incl SaaS integration w/ Slack
 
-## Part 3: Sharing and Reuse (TBD)
+## Part 4: DSL
 
-8. Share my template with my other teammates
+1. Refactor the whole thing to have zero metadata, just beautiful code
+
+## Part 5: Sharing and Reuse (TBD)
+
+1. Share my template with my other teammates
     TODO: carve up in half: 1/2 reusable boilerplate, 1/2 app logic (routes.js-like)?
     Refactor to be generic "Express, MongoDB, and ELK" template, publish in Marapongo
     Show how cloning and deriving a new project off it is as easy as "base: myteam-jselk-stack"
     Now also show sharing and reuse of our "PagerDuty stack" just like others ($ mu add pagers)
-
-## Part 3: GitHub Integration (TBD)
-
-(maybe earlier, if schedule order makes sense)
-
-9. Hook Marapongo up to my GitHub account, so I can use GitFlow for deploys
-    Use a GitHub "workspace" (monorepo) to contain multiple services
-    Link branches to environments
-    Simply push a branch to trigger CI/CD workflow
-    GitHub protected branches and automatic propagation from stage to prod
 
