@@ -44,9 +44,8 @@ type Metadata struct {
 type Stack struct {
 	Metadata
 	Parameters   Parameters   `json:"parameters,omitempty"`
-	Public       Services     `json:"public,omitempty"`
-	Private      Services     `json:"private,omitempty"`
 	Dependencies Dependencies `json:"dependencies,omitempty"`
+	Services     Services     `json:"services,omitempty"`
 }
 
 // Parameters maps parameter names to metadata about those parameters.
@@ -64,8 +63,20 @@ type Parameter struct {
 	Optional    bool        `json:"optional,omitempty"`    // true if may be omitted (inferred if a default value).
 }
 
-// Services maps service names to metadata about those services.
-type Services map[Name]Service
+// Dependencies maps dependency names to the semantic version the consumer depends on.
+type Dependencies map[Name]Dependency
+
+// Dependency is metadata describing a dependency target (for now, just its semantic version).
+type Dependency SemVer
+
+// Services is a list of public and private service references, keyed by name.
+type Services struct {
+	Public  ServiceMap `json:"public,omitempty"`
+	Private ServiceMap `json:"private,omitempty"`
+}
+
+// ServiceMap is a map of service names to metadata about those services.
+type ServiceMap map[Name]Service
 
 // Service is a directive for instantiating another Stack, including its name, arguments, etc.
 type Service struct {
@@ -77,12 +88,6 @@ type Service struct {
 	Type Name `json:"type,omitempty"` // an explicit type; if missing, the name is used.
 	// TODO: Service metadata is highly type-dependent.  It's not yet clear how best to represent this in the schema.
 }
-
-// Dependencies maps dependency names to the semantic version the consumer depends on.
-type Dependencies map[Name]Dependency
-
-// Dependency is metadata describing a dependency target (for now, just its semantic version).
-type Dependency SemVer
 
 // Cluster describes a cluster of many Stacks, in addition to other metadata, like predefined Targets.
 type Cluster struct {

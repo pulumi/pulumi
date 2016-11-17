@@ -15,8 +15,9 @@ type Visitor interface {
 	VisitMetadata(doc *diag.Document, kind string, meta *ast.Metadata)
 	VisitStack(doc *diag.Document, stack *ast.Stack)
 	VisitParameter(doc *diag.Document, name string, param *ast.Parameter)
-	VisitService(doc *diag.Document, name ast.Name, public bool, svc *ast.Service)
 	VisitDependency(doc *diag.Document, name ast.Name, dep *ast.Dependency)
+	VisitServices(doc *diag.Document, svcs *ast.Services)
+	VisitService(doc *diag.Document, name ast.Name, public bool, svc *ast.Service)
 }
 
 // NewInOrderVisitor wraps another Visitor and walks the tree in a deterministic order, deferring to another set of
@@ -71,32 +72,6 @@ func (v *inOrderVisitor) VisitStack(doc *diag.Document, stack *ast.Stack) {
 		stack.Parameters[name] = param
 	}
 
-	publics := make([]string, 0, len(stack.Public))
-	for public := range stack.Public {
-		publics = append(publics, string(public))
-	}
-	sort.Strings(publics)
-	for _, name := range publics {
-		aname := ast.Name(name)
-		public := stack.Public[aname]
-		v.VisitService(doc, aname, true, &public)
-		// Copy the public service back in case it was updated.
-		stack.Public[aname] = public
-	}
-
-	privates := make([]string, 0, len(stack.Private))
-	for private := range stack.Private {
-		privates = append(privates, string(private))
-	}
-	sort.Strings(privates)
-	for _, name := range privates {
-		aname := ast.Name(name)
-		private := stack.Private[aname]
-		v.VisitService(doc, aname, false, &private)
-		// Copy the private service back in case it was updated.
-		stack.Private[aname] = private
-	}
-
 	deps := make([]string, 0, len(stack.Dependencies))
 	for dep := range stack.Dependencies {
 		deps = append(deps, string(dep))
@@ -109,6 +84,8 @@ func (v *inOrderVisitor) VisitStack(doc *diag.Document, stack *ast.Stack) {
 		// Copy the dependency back in case it was updated.
 		stack.Dependencies[aname] = dep
 	}
+
+	v.VisitServices(doc, &stack.Services)
 
 	if v.post != nil {
 		v.post.VisitStack(doc, stack)
@@ -124,20 +101,48 @@ func (v *inOrderVisitor) VisitParameter(doc *diag.Document, name string, param *
 	}
 }
 
-func (v *inOrderVisitor) VisitService(doc *diag.Document, name ast.Name, public bool, svc *ast.Service) {
-	if v.pre != nil {
-		v.pre.VisitService(doc, name, public, svc)
-	}
-	if v.post != nil {
-		v.post.VisitService(doc, name, public, svc)
-	}
-}
-
 func (v *inOrderVisitor) VisitDependency(doc *diag.Document, name ast.Name, dep *ast.Dependency) {
 	if v.pre != nil {
 		v.pre.VisitDependency(doc, name, dep)
 	}
 	if v.post != nil {
 		v.post.VisitDependency(doc, name, dep)
+	}
+}
+
+func (v *inOrderVisitor) VisitServices(doc *diag.Document, svcs *ast.Services) {
+	publics := make([]string, 0, len(svcs.Public))
+	for public := range svcs.Public {
+		publics = append(publics, string(public))
+	}
+	sort.Strings(publics)
+	for _, name := range publics {
+		aname := ast.Name(name)
+		public := svcs.Public[aname]
+		v.VisitService(doc, aname, true, &public)
+		// Copy the public service back in case it was updated.
+		svcs.Public[aname] = public
+	}
+
+	privates := make([]string, 0, len(svcs.Private))
+	for private := range svcs.Private {
+		privates = append(privates, string(private))
+	}
+	sort.Strings(privates)
+	for _, name := range privates {
+		aname := ast.Name(name)
+		private := svcs.Private[aname]
+		v.VisitService(doc, aname, false, &private)
+		// Copy the private service back in case it was updated.
+		svcs.Private[aname] = private
+	}
+}
+
+func (v *inOrderVisitor) VisitService(doc *diag.Document, name ast.Name, public bool, svc *ast.Service) {
+	if v.pre != nil {
+		v.pre.VisitService(doc, name, public, svc)
+	}
+	if v.post != nil {
+		v.post.VisitService(doc, name, public, svc)
 	}
 }

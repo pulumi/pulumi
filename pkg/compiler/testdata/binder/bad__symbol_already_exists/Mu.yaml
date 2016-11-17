@@ -1,8 +1,9 @@
 name: symexists
-public:
-    foo:
-        type: mu/container
-private:
-    foo:
-        type: mu/container
+services:
+    public:
+        foo:
+            type: mu/container
+    private:
+        foo:
+            type: mu/container
 

@@ -79,6 +79,12 @@ func (p *binderPhase1) VisitStack(doc *diag.Document, stack *ast.Stack) {
 func (p *binderPhase1) VisitParameter(doc *diag.Document, name string, param *ast.Parameter) {
 }
 
+func (p *binderPhase1) VisitDependency(doc *diag.Document, name ast.Name, dep *ast.Dependency) {
+}
+
+func (p *binderPhase1) VisitServices(doc *diag.Document, svcs *ast.Services) {
+}
+
 func (p *binderPhase1) VisitService(doc *diag.Document, name ast.Name, public bool, svc *ast.Service) {
 	// Each service has a type.  There are two forms of specifying a type, and this phase will normalize this to a
 	// single canonical form to simplify subsequent phases.  First, there is a shorthand form:
@@ -111,9 +117,6 @@ func (p *binderPhase1) VisitService(doc *diag.Document, name ast.Name, public bo
 	}
 }
 
-func (p *binderPhase1) VisitDependency(doc *diag.Document, name ast.Name, dep *ast.Dependency) {
-}
-
 type binderPhase2 struct {
 	b   *binder
 	doc *diag.Document
@@ -132,10 +135,13 @@ func (p *binderPhase2) VisitStack(doc *diag.Document, stack *ast.Stack) {
 func (p *binderPhase2) VisitParameter(doc *diag.Document, name string, param *ast.Parameter) {
 }
 
+func (p *binderPhase2) VisitDependency(doc *diag.Document, name ast.Name, dep *ast.Dependency) {
+}
+
+func (p *binderPhase2) VisitServices(doc *diag.Document, svcs *ast.Services) {
+}
+
 func (p *binderPhase2) VisitService(doc *diag.Document, name ast.Name, public bool, svc *ast.Service) {
 	// The service's type has been prepared in phase 1, and must now be bound to a symbol.  All shorthand type
 	// expressions, intra stack references, cycles, and so forth, will have been taken care of by this earlier phase.
-}
-
-func (p *binderPhase2) VisitDependency(doc *diag.Document, name ast.Name, dep *ast.Dependency) {
 }
