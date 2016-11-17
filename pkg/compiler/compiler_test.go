@@ -65,7 +65,7 @@ func TestMissingTarget(t *testing.T) {
 	mufile := []byte("name: notarget\n")
 
 	// Check that the compiler issued an error due to missing cloud targets.
-	sink := buildYAML(Options{}, mufile)
+	sink := buildFile(Options{}, mufile, ".yaml")
 	d := errors.MissingTarget
 	assert.Equal(t, 1, sink.Errors(), "expected a single error")
 	assert.Equal(t,
@@ -74,11 +74,11 @@ func TestMissingTarget(t *testing.T) {
 		sink.ErrorMsgs()[0])
 
 	// Now check that this same project compiles fine if we manually specify an architecture.
-	sink = buildYAML(Options{
+	sink = buildFile(Options{
 		Arch: Arch{
 			Cloud: clouds.AWSArch,
 		},
-	}, mufile)
+	}, mufile, ".yaml")
 	assert.Equal(t, 0, sink.Errors(), "expected no compilation errors")
 }
 
@@ -89,7 +89,7 @@ func TestUnrecognizedCloud(t *testing.T) {
 		"        default: true\n" +
 		"        cloud: badcloud\n")
 	// Check that the compiler issued an error due to an unrecognized cloud.
-	sink := buildYAML(Options{}, mufile)
+	sink := buildFile(Options{}, mufile, ".yaml")
 	d := errors.UnrecognizedCloudArch
 	assert.Equal(t, 1, sink.Errors(), "expected a single error")
 	assert.Equal(t,

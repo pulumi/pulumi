@@ -28,10 +28,8 @@ type Compiler interface {
 
 	// Build detects and compiles inputs from the given location, storing build artifacts in the given destination.
 	Build(inp string, outp string)
-	// BuildJSON uses the given JSON-based Mufile directly, and stores build artifacts in the given destination.
-	BuildJSON(mufile []byte, outp string)
-	// BuildYAML uses the given YAML-based Mufile directly, and stores build artifacts in the given destination.
-	BuildYAML(mufile []byte, outp string)
+	// BuildFile uses the given Mufile directly, and stores build artifacts in the given destination.
+	BuildFile(mufile []byte, ext string, outp string)
 }
 
 // compiler is the canonical implementation of the Mu compiler.
@@ -76,14 +74,9 @@ func (c *compiler) Build(inp string, outp string) {
 	c.buildDocument(doc, outp)
 }
 
-func (c *compiler) BuildJSON(mufile []byte, outp string) {
-	glog.Infof("Building in-memory JSON file (bytes=%v out='%v')", len(mufile), outp)
-	c.buildDocument(&diag.Document{File: workspace.MufileBase + ".json", Body: mufile}, outp)
-}
-
-func (c *compiler) BuildYAML(mufile []byte, outp string) {
-	glog.Infof("Building in-memory YAML file (bytes=%v out='%v')", len(mufile), outp)
-	c.buildDocument(&diag.Document{File: workspace.MufileBase + ".yaml", Body: mufile}, outp)
+func (c *compiler) BuildFile(mufile []byte, ext string, outp string) {
+	glog.Infof("Building in-memory %v file (bytes=%v out='%v')", ext, len(mufile), outp)
+	c.buildDocument(&diag.Document{File: workspace.MufileBase + ext, Body: mufile}, outp)
 }
 
 func (c *compiler) buildDocument(doc *diag.Document, outp string) {

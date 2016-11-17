@@ -69,20 +69,11 @@ func buildNoCodegen(paths ...string) *testDiagSink {
 	return build(Options{SkipCodegen: true}, paths...)
 }
 
-// buildJSON runs all phases of compilation with the specified options, using an in-memory file.
-func buildJSON(opts Options, mufile []byte) *testDiagSink {
+// buildFile runs all phases of compilation with the specified options, using an in-memory file.
+func buildFile(opts Options, mufile []byte, ext string) *testDiagSink {
 	sink := newTestDiagSink(".")
 	opts.Diag = sink
 	c := NewCompiler(opts)
-	c.BuildJSON(mufile, ".")
-	return sink
-}
-
-// buildYAML runs all phases of compilation with the specified options, using an in-memory file.
-func buildYAML(opts Options, mufile []byte) *testDiagSink {
-	sink := newTestDiagSink(".")
-	opts.Diag = sink
-	c := NewCompiler(opts)
-	c.BuildYAML(mufile, ".")
+	c.BuildFile(mufile, ext, ".")
 	return sink
 }
