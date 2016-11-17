@@ -1,6 +1,6 @@
 // Copyright 2016 Marapongo, Inc. All rights reserved.
 
-package compiler
+package core
 
 import (
 	"github.com/marapongo/mu/pkg/ast"

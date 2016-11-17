@@ -31,12 +31,34 @@ type Metadata struct {
 
 	Kind string `json:"-"` // kind is decorated post-parsing, since it is contextual.
 
-	Name        Name   `json:"name,omitempty"`        // a friendly name for this node.
-	Version     SemVer `json:"version,omitempty"`     // a specific semantic version.
-	Description string `json:"description,omitempty"` // an optional friendly description.
-	Author      string `json:"author,omitempty"`      // an optional author.
-	Website     string `json:"website,omitempty"`     // an optional website for additional info.
-	License     string `json:"license,omitempty"`     // an optional license governing legal uses of this package.
+	Name        Name    `json:"name,omitempty"`        // a friendly name for this node.
+	Version     SemVer  `json:"version,omitempty"`     // a specific semantic version.
+	Description string  `json:"description,omitempty"` // an optional friendly description.
+	Author      string  `json:"author,omitempty"`      // an optional author.
+	Website     string  `json:"website,omitempty"`     // an optional website for additional info.
+	License     string  `json:"license,omitempty"`     // an optional license governing legal uses of this package.
+	Targets     Targets `json:"targets,omitempty"`     // an optional set of predefined target cloud environments.
+}
+
+// Targets is a map of target names to metadata about those targets.
+type Targets map[string]Target
+
+// Target describes a predefined cloud runtime target, including its OS and Scheduler combination.
+type Target struct {
+	Node
+
+	Name string `json:"-"` // name is decorated post-parsing, since it is contextual.
+
+	Default     bool                   `json:"default,omitempty"`     // a single target can carry default settings.
+	Description string                 `json:"description,omitempty"` // a human-friendly description of this target.
+	Cloud       string                 `json:"cloud,omitempty"`       // the cloud target.
+	Scheduler   string                 `json:"scheduler,omitempty"`   // the cloud scheduler target.
+	Options     map[string]interface{} `json:"options,omitempty"`     // any options passed to the cloud provider.
+}
+
+// Cluster describes a cluster of many Stacks, in addition to other metadata, like predefined Targets.
+type Cluster struct {
+	Metadata
 }
 
 // Stack represents a collection of private and public cloud resources, a method for constructing them, and optional
@@ -87,21 +109,6 @@ type Service struct {
 
 	Type Name `json:"type,omitempty"` // an explicit type; if missing, the name is used.
 	// TODO: Service metadata is highly type-dependent.  It's not yet clear how best to represent this in the schema.
-}
-
-// Cluster describes a cluster of many Stacks, in addition to other metadata, like predefined Targets.
-type Cluster struct {
-	Metadata
-	Targets map[string]*Target `json:"targets,omitempty"`
-}
-
-// Target describes a predefined cloud runtime target, including its OS and Scheduler combination.
-type Target struct {
-	Node
-	Description string `json:"description,omitempty"`
-	Cloud       string `json:"cloud,omitempty"`
-	Scheduler   string `json:"scheduler,omitempty"`
-	// TODO(joe): configuration.
 }
 
 // TODO: several more core types still need to be mapped:

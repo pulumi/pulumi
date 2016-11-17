@@ -2,20 +2,39 @@
 
 package clouds
 
-// Target selects a cloud infrastructure to target when compiling.
-type Target int
+// Arch selects a cloud infrastructure to target when compiling.
+type Arch int
 
 const (
-	AWSTarget    Target = iota // Amazon Web Services
-	GCPTarget                  // Google Cloud Platform
-	AzureTarget                // Microsoft Azure
-	VMWareTarget               // VMWare vSphere, etc.
+	NoArch     Arch = iota // no target specified.
+	AWSArch                // Amazon Web Services.
+	GCPArch                // Google Cloud Platform.
+	AzureArch              // Microsoft Azure.
+	VMWareArch             // VMWare vSphere, etc.
 )
 
-// TargetMap maps human-friendly names to the Targets for those names.
-var TargetMap = map[string]Target{
-	"aws":    AWSTarget,
-	"gcp":    GCPTarget,
-	"azure":  AzureTarget,
-	"vmware": VMWareTarget,
+const (
+	noArch     = ""
+	awsArch    = "aws"
+	gcpArch    = "gcp"
+	azureArch  = "azure"
+	vmwareArch = "vmware"
+)
+
+// ArchMap maps human-friendly names to the Archs for those names.
+var ArchMap = map[string]Arch{
+	noArch:     NoArch,
+	awsArch:    AWSArch,
+	gcpArch:    GCPArch,
+	azureArch:  AzureArch,
+	vmwareArch: VMWareArch,
+}
+
+// ArchNames maps Archs to human-friendly names.
+var ArchNames = map[Arch]string{
+	NoArch:     noArch,
+	AWSArch:    awsArch,
+	GCPArch:    gcpArch,
+	AzureArch:  azureArch,
+	VMWareArch: vmwareArch,
 }

@@ -10,8 +10,9 @@ import (
 
 // Options contains all of the settings a user can use to control the compiler's behavior.
 type Options struct {
-	Diag   diag.Sink
-	Target Target
+	Diag   diag.Sink // a sink to use for all diagnostics.
+	Arch   Arch      // a target cloud architecture.
+	Target string    // a named target to generate outputs against.
 }
 
 // DefaultOpts returns the default set of compiler options.
@@ -21,8 +22,16 @@ func DefaultOpts(pwd string) Options {
 	}
 }
 
-// Target is the target "architecture" we are compiling against.
-type Target struct {
-	Cloud     clouds.Target
-	Scheduler schedulers.Target
+// Arch is the target cloud "architecture" we are compiling against.
+type Arch struct {
+	Cloud     clouds.Arch
+	Scheduler schedulers.Arch
+}
+
+func (a Arch) String() string {
+	s := clouds.ArchNames[a.Cloud]
+	if a.Scheduler != schedulers.NoArch {
+		s += ":" + schedulers.ArchNames[a.Scheduler]
+	}
+	return s
 }

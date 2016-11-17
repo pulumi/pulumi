@@ -20,3 +20,33 @@ var WarnIllegalMufileExt = &diag.Diag{
 	ID:      102,
 	Message: "A file named `Mufile` was located, but '%v' isn't a valid file extension (expected .json or .yaml)",
 }
+
+var UnrecognizedCloudArch = &diag.Diag{
+	ID:      120,
+	Message: "The cloud architecture '%v' was not recognized",
+}
+
+var UnrecognizedSchedulerArch = &diag.Diag{
+	ID:      121,
+	Message: "The cloud scheduler architecture '%v' was not recognized",
+}
+
+var IllegalCloudSchedulerCombination = &diag.Diag{
+	ID:      122,
+	Message: "The cloud architecture '%v' is incompatible with scheduler '%v'",
+}
+
+var ConflictingTargetArchSelection = &diag.Diag{
+	ID:      123,
+	Message: "The cloud architecture specification '%v' conflicts with target '%v's setting of '%v'",
+}
+
+var CloudTargetNotFound = &diag.Diag{
+	ID:      124,
+	Message: "A cloud target '%v' was not found in the stack or cluster definition",
+}
+
+var NoTargetSpecified = &diag.Diag{
+	ID:      125,
+	Message: "Neither a target nor cloud architecture was provided, and no defaults were found",
+}

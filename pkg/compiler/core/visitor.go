@@ -18,6 +18,7 @@ type Visitor interface {
 	VisitDependency(doc *diag.Document, name ast.Name, dep *ast.Dependency)
 	VisitServices(doc *diag.Document, svcs *ast.Services)
 	VisitService(doc *diag.Document, name ast.Name, public bool, svc *ast.Service)
+	VisitTarget(doc *diag.Document, name string, target *ast.Target)
 }
 
 // NewInOrderVisitor wraps another Visitor and walks the tree in a deterministic order, deferring to another set of
@@ -26,6 +27,10 @@ func NewInOrderVisitor(pre Visitor, post Visitor) Visitor {
 	return &inOrderVisitor{pre, post}
 }
 
+// inOrderVisitor simply implements the Visitor pattern as specified above.
+//
+// Note that we need to iterate all maps in a stable order (since Go's are unordered by default).  Sadly, this
+// is rather verbose due to Go's lack of generics, reflectionless Keys() functions, and so on.
 type inOrderVisitor struct {
 	pre  Visitor
 	post Visitor
@@ -45,6 +50,19 @@ func (v *inOrderVisitor) VisitMetadata(doc *diag.Document, kind string, meta *as
 	if v.pre != nil {
 		v.pre.VisitMetadata(doc, kind, meta)
 	}
+
+	targets := make([]string, 0, len(meta.Targets))
+	for target := range meta.Targets {
+		targets = append(targets, target)
+	}
+	sort.Strings(targets)
+	for _, name := range targets {
+		target := meta.Targets[name]
+		v.VisitTarget(doc, name, &target)
+		// Copy the targeteter back in case it was updated.
+		meta.Targets[name] = target
+	}
+
 	if v.post != nil {
 		v.post.VisitMetadata(doc, kind, meta)
 	}
@@ -56,9 +74,6 @@ func (v *inOrderVisitor) VisitStack(doc *diag.Document, stack *ast.Stack) {
 	}
 
 	v.VisitMetadata(doc, "Stack", &stack.Metadata)
-
-	// Note that we need to iterate all maps in a stable order (since Go's are unordered by default).  Sadly, this
-	// is rather verbose due to Go's lack of generics, reflectionless Keys() functions, and so on.
 
 	params := make([]string, 0, len(stack.Parameters))
 	for param := range stack.Parameters {
@@ -144,5 +159,14 @@ func (v *inOrderVisitor) VisitService(doc *diag.Document, name ast.Name, public 
 	}
 	if v.post != nil {
 		v.post.VisitService(doc, name, public, svc)
+	}
+}
+
+func (v *inOrderVisitor) VisitTarget(doc *diag.Document, name string, target *ast.Target) {
+	if v.pre != nil {
+		v.pre.VisitTarget(doc, name, target)
+	}
+	if v.post != nil {
+		v.post.VisitTarget(doc, name, target)
 	}
 }

@@ -93,3 +93,8 @@ func (a *ptAnalyzer) VisitService(doc *diag.Document, name ast.Name, public bool
 	svc.Name = name
 	svc.Public = public
 }
+
+func (a *ptAnalyzer) VisitTarget(doc *diag.Document, name string, target *ast.Target) {
+	// Decorate the AST with contextual information so subsequent passes can operate context-free.
+	target.Name = name
+}
