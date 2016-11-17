@@ -50,7 +50,7 @@ type Stack struct {
 }
 
 // Parameters maps parameter names to metadata about those parameters.
-type Parameters map[string]*Parameter
+type Parameters map[string]Parameter
 
 // Parameter describes the requirements of arguments used when constructing Stacks, etc.
 type Parameter struct {
@@ -65,7 +65,7 @@ type Parameter struct {
 }
 
 // Services maps service names to metadata about those services.
-type Services map[Name]*Service
+type Services map[Name]Service
 
 // Service is a directive for instantiating another Stack, including its name, arguments, etc.
 type Service struct {

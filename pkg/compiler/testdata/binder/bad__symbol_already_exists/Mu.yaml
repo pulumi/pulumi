@@ -2,6 +2,7 @@ name: symexists
 public:
     foo:
         type: mu/container
+private:
     foo:
         type: mu/container
 

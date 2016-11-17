@@ -65,7 +65,10 @@ func (v *inOrderVisitor) VisitStack(doc *diag.Document, stack *ast.Stack) {
 	}
 	sort.Strings(params)
 	for _, name := range params {
-		v.VisitParameter(doc, name, stack.Parameters[name])
+		param := stack.Parameters[name]
+		v.VisitParameter(doc, name, &param)
+		// Copy the parameter back in case it was updated.
+		stack.Parameters[name] = param
 	}
 
 	publics := make([]string, 0, len(stack.Public))
@@ -75,7 +78,10 @@ func (v *inOrderVisitor) VisitStack(doc *diag.Document, stack *ast.Stack) {
 	sort.Strings(publics)
 	for _, name := range publics {
 		aname := ast.Name(name)
-		v.VisitService(doc, aname, true, stack.Public[aname])
+		public := stack.Public[aname]
+		v.VisitService(doc, aname, true, &public)
+		// Copy the public service back in case it was updated.
+		stack.Public[aname] = public
 	}
 
 	privates := make([]string, 0, len(stack.Private))
@@ -85,7 +91,10 @@ func (v *inOrderVisitor) VisitStack(doc *diag.Document, stack *ast.Stack) {
 	sort.Strings(privates)
 	for _, name := range privates {
 		aname := ast.Name(name)
-		v.VisitService(doc, aname, false, stack.Private[aname])
+		private := stack.Private[aname]
+		v.VisitService(doc, aname, false, &private)
+		// Copy the private service back in case it was updated.
+		stack.Private[aname] = private
 	}
 
 	deps := make([]string, 0, len(stack.Dependencies))
@@ -97,6 +106,8 @@ func (v *inOrderVisitor) VisitStack(doc *diag.Document, stack *ast.Stack) {
 		aname := ast.Name(name)
 		dep := stack.Dependencies[aname]
 		v.VisitDependency(doc, aname, &dep)
+		// Copy the dependency back in case it was updated.
+		stack.Dependencies[aname] = dep
 	}
 
 	if v.post != nil {
