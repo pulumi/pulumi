@@ -17,8 +17,18 @@ type Binder interface {
 }
 
 func NewBinder(c Compiler) Binder {
+	// Create a new binder and a new scope with an empty symbol table.
 	b := &binder{c: c}
 	b.PushScope()
+
+	// And now populate that symbol table with all known predefined Stack types before returning it.
+	for nm, stack := range PredefStackTypes {
+		sym := NewStackSymbol(nm, stack)
+		if ok := b.RegisterSymbol(sym); !ok {
+			glog.Fatalf("Unexpected Symbol collision when registering predef Stack type %v\n", nm)
+		}
+	}
+
 	return b
 }
 
@@ -39,6 +49,10 @@ func (b *binder) Bind(doc *diag.Document, stack *ast.Stack) {
 				stack.Name, b.Diag().Warnings(), b.Diag().Errors())
 		}()
 	}
+
+	// Push a new scope for this binding pass.
+	b.PushScope()
+	defer b.PopScope()
 
 	// The binding logic is split into two-phases, due to the possibility of intra-stack references between elements.
 	phase1 := &binderPhase1{b, doc}

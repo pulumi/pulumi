@@ -50,3 +50,10 @@ func TestTypeNotFound2(t *testing.T) {
 			fmt.Sprintf(d.Message, "something/non/existent")),
 		sink.ErrorMsgs()[0])
 }
+
+func TestGoodPredefTypes(t *testing.T) {
+	sink := builddir("testdata", "binder", "good__predef_types")
+
+	// Check that no errors are found when using predefined stack types.
+	assert.Equal(t, 0, sink.Errors(), "expected no errors when binding to predef types")
+}

@@ -1,0 +1,12 @@
+name: goodpredefs
+services:
+    private:
+        mu/volume:
+        mu/container:
+        mu/func:
+        mu/event:
+        mu/extension:
+    public:
+        mu/autoscaler:
+        mu/gateway:
+
