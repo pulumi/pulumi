@@ -52,7 +52,7 @@ func (b *binder) Bind(doc *diag.Document, stack *ast.Stack) {
 	}
 }
 
-// BindStack binds a name to a Stack type.
+// LookupStack binds a name to a Stack type.
 func (b *binder) LookupStack(nm ast.Name) (*Symbol, *ast.Stack) {
 	sym := b.LookupSymbol(nm)
 	if sym != nil && sym.Kind == SymKindStack {
@@ -61,7 +61,7 @@ func (b *binder) LookupStack(nm ast.Name) (*Symbol, *ast.Stack) {
 	return nil, nil
 }
 
-// BindSymbol binds a name to any kind of Symbol.
+// LookupSymbol binds a name to any kind of Symbol.
 func (b *binder) LookupSymbol(nm ast.Name) *Symbol {
 	return b.symtbl[nm]
 }
