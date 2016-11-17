@@ -20,13 +20,17 @@ to the API documentation for the context object (TODO(joe): do this) for details
 ## Package Managament
 
 Each Mufile begins with some standard "package manager"-like metadata, like name, version, description, and so on.  As
-with most package managers, most of these elements are optional:
+with most package managers, most of these elements are optional.  For example:
 
     name: elk
     version: 1.0.1
     description: A fully functioning ELK stack (Elasticsearch, Logstash, Kibana).
     author: Joe Smith <joesmith@elk.com>
     website: https://github.com/joesmith/elk
+
+TODO(joe): full set of attributes.
+
+In addition to basic metadata like this, any dependency packages must also be listed explicitly.
 
 TODO(joe): finish this section.
 
@@ -260,7 +264,7 @@ multiple Services inside of the same Mufile.  For example, consider a container 
 
     stacks:
         private:
-            - common:
+            common:
                 type: mu/container
                 image: acmecorp/great
                 env:
@@ -273,16 +277,16 @@ Now that we've defined `common`, we can go ahead and create it, without needing 
 
     services:
         private:
-            - data:
+            data:
                 type: common
                 env:
                     DATA: true
         public:
-            - master:
+            master:
                 type: common
                 env:
                     MASTER: true
-            - worker:
+            worker:
                 type: common
                 env:
                     HTTP: true

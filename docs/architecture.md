@@ -89,6 +89,10 @@ TODO(joe): describe blue/green zero downtime deployments.
 
 ### Command Line Interface
 
+    mu check
+    mu diff
+    mu build
+
 TODO(joe): deployment, ongoing interactions, management, etc.
 
 ## System Services
