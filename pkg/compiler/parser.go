@@ -6,6 +6,7 @@ import (
 	"github.com/golang/glog"
 
 	"github.com/marapongo/mu/pkg/ast"
+	"github.com/marapongo/mu/pkg/compiler/core"
 	"github.com/marapongo/mu/pkg/diag"
 	"github.com/marapongo/mu/pkg/encoding"
 	"github.com/marapongo/mu/pkg/errors"
@@ -13,7 +14,7 @@ import (
 
 // Parse transforms a program's input text into a parse tree.
 type Parser interface {
-	Phase
+	core.Phase
 
 	// Parse detects and parses input from the given path.  If an error occurs, the return value will be nil.  It is
 	// expected that errors are conveyed using the diag.Sink interface.

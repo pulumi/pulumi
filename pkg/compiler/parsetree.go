@@ -7,13 +7,14 @@ import (
 	"github.com/golang/glog"
 
 	"github.com/marapongo/mu/pkg/ast"
+	"github.com/marapongo/mu/pkg/compiler/core"
 	"github.com/marapongo/mu/pkg/diag"
 	"github.com/marapongo/mu/pkg/errors"
 )
 
 // PTAnalyzer knows how to walk and validate parse trees.
 type PTAnalyzer interface {
-	Visitor
+	core.Visitor
 
 	// Analyze checks the validity of an entire parse tree (starting with a top-level Stack).
 	Analyze(doc *diag.Document, stack *ast.Stack)
@@ -42,7 +43,7 @@ func (a *ptAnalyzer) Analyze(doc *diag.Document, stack *ast.Stack) {
 	}
 
 	// Use an InOrderVisitor to walk the tree in-order; this handles determinism for us.
-	v := NewInOrderVisitor(a, nil)
+	v := core.NewInOrderVisitor(a, nil)
 	v.VisitStack(doc, stack)
 }
 

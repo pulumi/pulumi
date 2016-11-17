@@ -6,12 +6,15 @@ import (
 	"github.com/golang/glog"
 
 	"github.com/marapongo/mu/pkg/ast"
+	"github.com/marapongo/mu/pkg/compiler/core"
 	"github.com/marapongo/mu/pkg/diag"
 	"github.com/marapongo/mu/pkg/errors"
 )
 
 // Binder annotates an existing parse tree with semantic information.
 type Binder interface {
+	core.Phase
+
 	// Bind takes the parse tree, binds all names inside of it, mutating it in place.
 	Bind(doc *diag.Document, stack *ast.Stack)
 }
@@ -55,15 +58,15 @@ func (b *binder) Bind(doc *diag.Document, stack *ast.Stack) {
 	defer b.PopScope()
 
 	// The binding logic is split into two-phases, due to the possibility of intra-stack references between elements.
-	phase1 := &binderPhase1{b, doc}
-	phase2 := &binderPhase2{b, doc}
+	phase1 := &binderPhase1{b: b, doc: doc}
+	phase2 := &binderPhase2{b: b, doc: doc}
 
 	// Now walk the trees.  We use an InOrderVisitor to do this in the right order, handling determinism, etc. for us.
-	v1 := NewInOrderVisitor(phase1, nil)
+	v1 := core.NewInOrderVisitor(phase1, nil)
 	v1.VisitStack(doc, stack)
 
 	if b.Diag().Errors() == 0 {
-		v2 := NewInOrderVisitor(phase2, nil)
+		v2 := core.NewInOrderVisitor(phase2, nil)
 		v2.VisitStack(doc, stack)
 	}
 }
@@ -145,6 +148,7 @@ func (s *scope) RegisterSymbol(sym *Symbol) bool {
 }
 
 type binderPhase1 struct {
+	core.Visitor
 	b   *binder
 	doc *diag.Document
 }
@@ -201,6 +205,7 @@ func (p *binderPhase1) VisitService(doc *diag.Document, name ast.Name, public bo
 }
 
 type binderPhase2 struct {
+	core.Visitor
 	b   *binder
 	doc *diag.Document
 }

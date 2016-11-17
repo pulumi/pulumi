@@ -10,20 +10,15 @@ import (
 
 	"github.com/golang/glog"
 
+	"github.com/marapongo/mu/pkg/compiler/core"
 	"github.com/marapongo/mu/pkg/diag"
 	"github.com/marapongo/mu/pkg/errors"
 	"github.com/marapongo/mu/pkg/workspace"
 )
 
-// Phase represents a compiler phase.
-type Phase interface {
-	// Diag fetches the diagnostics sink used by this compiler pass.
-	Diag() diag.Sink
-}
-
 // Compiler provides an interface into the many phases of the Mu compilation process.
 type Compiler interface {
-	Phase
+	core.Phase
 
 	// Context returns the current compiler context.
 	Context() *Context
