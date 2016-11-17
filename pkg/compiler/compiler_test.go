@@ -8,12 +8,13 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	"github.com/marapongo/mu/pkg/compiler/clouds"
 	"github.com/marapongo/mu/pkg/diag"
 	"github.com/marapongo/mu/pkg/errors"
 )
 
 func TestBadMissingMufile(t *testing.T) {
-	sink := builddir("testdata", "compiler", "bad__missing_mufile")
+	sink := buildNoCodegen("testdata", "compiler", "bad__missing_mufile")
 
 	// Check that the compiler complained about a missing Mufile.
 	d := errors.MissingMufile
@@ -25,7 +26,7 @@ func TestBadMissingMufile(t *testing.T) {
 }
 
 func TestBadMufileCasing(t *testing.T) {
-	sink := builddir("testdata", "compiler", "bad__mufile_casing")
+	sink := buildNoCodegen("testdata", "compiler", "bad__mufile_casing")
 
 	// Check that the compiler warned about a bad Mufile casing (mu.yaml).
 	d := errors.WarnIllegalMufileCasing
@@ -37,7 +38,7 @@ func TestBadMufileCasing(t *testing.T) {
 }
 
 func TestBadMufileExt1(t *testing.T) {
-	sink := builddir("testdata", "compiler", "bad__mufile_ext__1")
+	sink := buildNoCodegen("testdata", "compiler", "bad__mufile_ext__1")
 
 	// Check that the compiler warned about a bad Mufile extension (none).
 	d := errors.WarnIllegalMufileExt
@@ -49,7 +50,7 @@ func TestBadMufileExt1(t *testing.T) {
 }
 
 func TestBadMufileExt2(t *testing.T) {
-	sink := builddir("testdata", "compiler", "bad__mufile_ext__2")
+	sink := buildNoCodegen("testdata", "compiler", "bad__mufile_ext__2")
 
 	// Check that the compiler warned about a bad Mufile extension (".txt").
 	d := errors.WarnIllegalMufileExt
@@ -58,4 +59,42 @@ func TestBadMufileExt2(t *testing.T) {
 		fmt.Sprintf("%v: %v%v: %v: %v\n",
 			diag.DefaultSinkWarningPrefix, diag.DefaultSinkIDPrefix, d.ID, "Mu.txt", fmt.Sprintf(d.Message, ".txt")),
 		sink.WarningMsgs()[0])
+}
+
+func TestMissingTarget(t *testing.T) {
+	mufile := []byte("name: notarget\n")
+
+	// Check that the compiler issued an error due to missing cloud targets.
+	sink := buildYAML(Options{}, mufile)
+	d := errors.MissingTarget
+	assert.Equal(t, 1, sink.Errors(), "expected a single error")
+	assert.Equal(t,
+		fmt.Sprintf("%v: %v%v: %v: %v\n",
+			diag.DefaultSinkErrorPrefix, diag.DefaultSinkIDPrefix, d.ID, "Mu.yaml", d.Message),
+		sink.ErrorMsgs()[0])
+
+	// Now check that this same project compiles fine if we manually specify an architecture.
+	sink = buildYAML(Options{
+		Arch: Arch{
+			Cloud: clouds.AWSArch,
+		},
+	}, mufile)
+	assert.Equal(t, 0, sink.Errors(), "expected no compilation errors")
+}
+
+func TestUnrecognizedCloud(t *testing.T) {
+	mufile := []byte("name: notarget\n" +
+		"targets:\n" +
+		"    prod:\n" +
+		"        default: true\n" +
+		"        cloud: badcloud\n")
+	// Check that the compiler issued an error due to an unrecognized cloud.
+	sink := buildYAML(Options{}, mufile)
+	d := errors.UnrecognizedCloudArch
+	assert.Equal(t, 1, sink.Errors(), "expected a single error")
+	assert.Equal(t,
+		fmt.Sprintf("%v: %v%v: %v: %v\n",
+			diag.DefaultSinkErrorPrefix, diag.DefaultSinkIDPrefix, d.ID, "Mu.yaml",
+			fmt.Sprintf(d.Message, "badcloud")),
+		sink.ErrorMsgs()[0])
 }

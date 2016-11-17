@@ -13,7 +13,7 @@ import (
 )
 
 func TestSymbolAlreadyExists(t *testing.T) {
-	sink := builddir("testdata", "binder", "bad__symbol_already_exists")
+	sink := buildNoCodegen("testdata", "binder", "bad__symbol_already_exists")
 
 	// Check that the compiler complained about a duplicate symbol.
 	d := errors.SymbolAlreadyExists
@@ -26,7 +26,7 @@ func TestSymbolAlreadyExists(t *testing.T) {
 }
 
 func TestTypeNotFound1(t *testing.T) {
-	sink := builddir("testdata", "binder", "bad__type_not_found__1")
+	sink := buildNoCodegen("testdata", "binder", "bad__type_not_found__1")
 
 	// Check that the compiler complained about the type missisng.
 	d := errors.TypeNotFound
@@ -39,7 +39,7 @@ func TestTypeNotFound1(t *testing.T) {
 }
 
 func TestTypeNotFound2(t *testing.T) {
-	sink := builddir("testdata", "binder", "bad__type_not_found__2")
+	sink := buildNoCodegen("testdata", "binder", "bad__type_not_found__2")
 
 	// Check that the compiler complained about the type missisng.
 	d := errors.TypeNotFound
@@ -52,7 +52,7 @@ func TestTypeNotFound2(t *testing.T) {
 }
 
 func TestGoodPredefTypes(t *testing.T) {
-	sink := builddir("testdata", "binder", "good__predef_types")
+	sink := buildNoCodegen("testdata", "binder", "good__predef_types")
 
 	// Check that no errors are found when using predefined stack types.
 	assert.Equal(t, 0, sink.Errors(), "expected no errors when binding to predef types")

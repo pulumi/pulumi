@@ -53,11 +53,36 @@ func (d *testDiagSink) Stringify(dia *diag.Diag, prefix string, args ...interfac
 	return d.sink.Stringify(dia, prefix, args...)
 }
 
-func builddir(paths ...string) *testDiagSink {
+// build runs all phases of compilation with the specified options.
+func build(opts Options, paths ...string) *testDiagSink {
 	pwd, _ := os.Getwd()
 	td := filepath.Join(append([]string{pwd}, paths...)...)
 	sink := newTestDiagSink(td)
-	c := NewCompiler(Options{Diag: sink})
+	opts.Diag = sink
+	c := NewCompiler(opts)
 	c.Build(td, td)
+	return sink
+}
+
+// buildNoCodegen just runs the front-end phases of compilation, skipping code-generation.
+func buildNoCodegen(paths ...string) *testDiagSink {
+	return build(Options{SkipCodegen: true}, paths...)
+}
+
+// buildJSON runs all phases of compilation with the specified options, using an in-memory file.
+func buildJSON(opts Options, mufile []byte) *testDiagSink {
+	sink := newTestDiagSink(".")
+	opts.Diag = sink
+	c := NewCompiler(opts)
+	c.BuildJSON(mufile, ".")
+	return sink
+}
+
+// buildYAML runs all phases of compilation with the specified options, using an in-memory file.
+func buildYAML(opts Options, mufile []byte) *testDiagSink {
+	sink := newTestDiagSink(".")
+	opts.Diag = sink
+	c := NewCompiler(opts)
+	c.BuildYAML(mufile, ".")
 	return sink
 }

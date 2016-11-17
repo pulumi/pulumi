@@ -28,6 +28,10 @@ type Compiler interface {
 
 	// Build detects and compiles inputs from the given location, storing build artifacts in the given destination.
 	Build(inp string, outp string)
+	// BuildJSON uses the given JSON-based Mufile directly, and stores build artifacts in the given destination.
+	BuildJSON(mufile []byte, outp string)
+	// BuildYAML uses the given YAML-based Mufile directly, and stores build artifacts in the given destination.
+	BuildYAML(mufile []byte, outp string)
 }
 
 // compiler is the canonical implementation of the Mu compiler.
@@ -54,30 +58,47 @@ func (c *compiler) Diag() diag.Sink {
 
 func (c *compiler) Build(inp string, outp string) {
 	glog.Infof("Building target '%v' (out='%v')", inp, outp)
+
+	// First find the root of the current package based on the location of its Mufile.
+	mufile := c.detectMufile(inp)
+	if mufile == "" {
+		c.Diag().Errorf(errors.MissingMufile, inp)
+		return
+	}
+
+	// Read in the contents of the document and make it available to subsequent stages.
+	doc, err := diag.ReadDocument(mufile)
+	if err != nil {
+		c.Diag().Errorf(errors.CouldNotReadMufile.WithFile(mufile), err)
+		return
+	}
+
+	c.buildDocument(doc, outp)
+}
+
+func (c *compiler) BuildJSON(mufile []byte, outp string) {
+	glog.Infof("Building in-memory JSON file (bytes=%v out='%v')", len(mufile), outp)
+	c.buildDocument(&diag.Document{File: workspace.MufileBase + ".json", Body: mufile}, outp)
+}
+
+func (c *compiler) BuildYAML(mufile []byte, outp string) {
+	glog.Infof("Building in-memory YAML file (bytes=%v out='%v')", len(mufile), outp)
+	c.buildDocument(&diag.Document{File: workspace.MufileBase + ".yaml", Body: mufile}, outp)
+}
+
+func (c *compiler) buildDocument(doc *diag.Document, outp string) {
+	glog.Infof("Building doc '%v' (bytes=%v out='%v')", doc.File, len(doc.Body), outp)
 	if glog.V(2) {
 		defer func() {
-			glog.V(2).Infof("Building target '%v' completed w/ %v warnings and %v errors",
-				inp, c.Diag().Warnings(), c.Diag().Errors())
+			glog.V(2).Infof("Building doc '%v' completed w/ %v warnings and %v errors",
+				doc.File, c.Diag().Warnings(), c.Diag().Errors())
 		}()
 	}
 
 	// Perform the front-end passes to generate a stack AST.
-	doc, stack, ok := c.loadAndParseStack(inp)
+	stack, ok := c.parseStack(doc)
 	if !ok {
 		return
-	}
-
-	// Figure out which cloud architecture we will be targeting during code-gen.
-	target, arch, ok := c.discoverTargetArch(doc, stack)
-	if !ok {
-		return
-	}
-	if glog.V(2) {
-		tname := "n/a"
-		if target != nil {
-			tname = target.Name
-		}
-		glog.V(2).Infof("Stack %v targets target=%v cloud=%v", stack.Name, tname, arch)
 	}
 
 	// Perform the semantic analysis passes to validate, transform, and/or update the AST.
@@ -86,34 +107,34 @@ func (c *compiler) Build(inp string, outp string) {
 		return
 	}
 
-	// TODO: lower the ASTs to the target backend's representation, emit it.
-	// TODO: delta generation, deployment, etc.
+	if !c.opts.SkipCodegen {
+		// Figure out which cloud architecture we will be targeting during code-gen.
+		target, arch, ok := c.discoverTargetArch(doc, stack)
+		if !ok {
+			return
+		}
+		if glog.V(2) {
+			tname := "n/a"
+			if target != nil {
+				tname = target.Name
+			}
+			glog.V(2).Infof("Stack %v targets target=%v cloud=%v", stack.Name, tname, arch)
+		}
 
+		// TODO: lower the ASTs to the target backend's representation, emit it.
+		// TODO: delta generation, deployment, etc.
+	}
 }
 
-// loadAndParseStack takes an input path, discovers a Mufile, parses and validates it, and returns a stack AST.  If
-// anything goes wrong during this process, the number of errors will be non-zero, and the bool will be false.
-func (c *compiler) loadAndParseStack(inp string) (*diag.Document, *ast.Stack, bool) {
-	// First find the root of the current package based on the location of its Mufile.
-	mufile := c.detectMufile(inp)
-	if mufile == "" {
-		c.Diag().Errorf(errors.MissingMufile, inp)
-		return nil, nil, false
-	}
-
-	// Read in the contents of the document and make it available to subsequent stages.
-	doc, err := diag.ReadDocument(mufile)
-	if err != nil {
-		c.Diag().Errorf(errors.CouldNotReadMufile.WithFile(mufile), err)
-		return doc, nil, false
-	}
-
+// loadAndParseStack takes a Mufile document, parses and validates it, and returns a stack AST.  If anything goes wrong
+// during this process, the number of errors will be non-zero, and the bool will be false.
+func (c *compiler) parseStack(doc *diag.Document) (*ast.Stack, bool) {
 	// To build the Mu package, first parse the input file.
 	p := NewParser(c)
 	stack := p.Parse(doc)
 	if p.Diag().Errors() > 0 {
 		// If any errors happened during parsing, exit.
-		return doc, stack, false
+		return stack, false
 	}
 
 	// Do a pass over the parse tree to ensure that all is well.
@@ -121,10 +142,10 @@ func (c *compiler) loadAndParseStack(inp string) (*diag.Document, *ast.Stack, bo
 	ptAnalyzer.Analyze(doc, stack)
 	if p.Diag().Errors() > 0 {
 		// If any errors happened during parse tree analysis, exit.
-		return doc, stack, false
+		return stack, false
 	}
 
-	return doc, stack, true
+	return stack, true
 }
 
 // discoverTargetArch uses a variety of mechanisms to discover the target architecture, returning it.  If no
@@ -164,7 +185,7 @@ func (c *compiler) discoverTargetArch(doc *diag.Document, stack *ast.Stack) (*as
 	if target == nil {
 		// If no target was found, and we don't have an architecture, error out.
 		if arch.Cloud == clouds.NoArch {
-			c.Diag().Errorf(errors.NoTargetSpecified.WithDocument(doc))
+			c.Diag().Errorf(errors.MissingTarget.WithDocument(doc))
 			return target, arch, false
 		}
 	} else {

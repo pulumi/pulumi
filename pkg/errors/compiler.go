@@ -46,7 +46,7 @@ var CloudTargetNotFound = &diag.Diag{
 	Message: "A cloud target '%v' was not found in the stack or cluster definition",
 }
 
-var NoTargetSpecified = &diag.Diag{
+var MissingTarget = &diag.Diag{
 	ID:      125,
 	Message: "Neither a target nor cloud architecture was provided, and no defaults were found",
 }

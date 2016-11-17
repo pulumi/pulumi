@@ -13,7 +13,7 @@ import (
 )
 
 func TestBadMissingStackName(t *testing.T) {
-	sink := builddir("testdata", "parsetree", "bad__missing_stack_name")
+	sink := buildNoCodegen("testdata", "parsetree", "bad__missing_stack_name")
 
 	// Check that the compiler complained about a missing Stack name.
 	d := errors.MissingMetadataName
@@ -26,7 +26,7 @@ func TestBadMissingStackName(t *testing.T) {
 }
 
 func TestBadStackSemVer1(t *testing.T) {
-	sink := builddir("testdata", "parsetree", "bad__stack_semver__1")
+	sink := buildNoCodegen("testdata", "parsetree", "bad__stack_semver__1")
 
 	// Check that the compiler complained about an illegal semantic version.
 	d := errors.IllegalMetadataSemVer
@@ -39,7 +39,7 @@ func TestBadStackSemVer1(t *testing.T) {
 }
 
 func TestBadStackSemVer2(t *testing.T) {
-	sink := builddir("testdata", "parsetree", "bad__stack_semver__2")
+	sink := buildNoCodegen("testdata", "parsetree", "bad__stack_semver__2")
 
 	// Check that the compiler complained about an illegal semantic version.
 	d := errors.IllegalMetadataSemVer
@@ -52,7 +52,7 @@ func TestBadStackSemVer2(t *testing.T) {
 }
 
 func TestBadDepSemVer1(t *testing.T) {
-	sink := builddir("testdata", "parsetree", "bad__dep_semver__1")
+	sink := buildNoCodegen("testdata", "parsetree", "bad__dep_semver__1")
 
 	// Check that the compiler complained about an illegal semantic version.
 	d := errors.IllegalDependencySemVer
@@ -65,7 +65,7 @@ func TestBadDepSemVer1(t *testing.T) {
 }
 
 func TestBadDepSemVer2(t *testing.T) {
-	sink := builddir("testdata", "parsetree", "bad__dep_semver__2")
+	sink := buildNoCodegen("testdata", "parsetree", "bad__dep_semver__2")
 
 	// Check that the compiler complained about an illegal semantic version.
 	d := errors.IllegalDependencySemVer
@@ -78,7 +78,7 @@ func TestBadDepSemVer2(t *testing.T) {
 }
 
 func TestBadDepSemVer3(t *testing.T) {
-	sink := builddir("testdata", "parsetree", "bad__dep_semver__3")
+	sink := buildNoCodegen("testdata", "parsetree", "bad__dep_semver__3")
 
 	// Check that the compiler complained about an illegal semantic version.
 	d := errors.IllegalDependencySemVer

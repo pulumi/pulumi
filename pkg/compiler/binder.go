@@ -204,6 +204,9 @@ func (p *binderPhase1) VisitService(doc *diag.Document, name ast.Name, public bo
 	}
 }
 
+func (p *binderPhase1) VisitTarget(doc *diag.Document, name string, target *ast.Target) {
+}
+
 type binderPhase2 struct {
 	core.Visitor
 	b   *binder
@@ -239,4 +242,7 @@ func (p *binderPhase2) VisitService(doc *diag.Document, name ast.Name, public bo
 	if ty == nil {
 		p.Diag().Errorf(errors.TypeNotFound.WithDocument(p.doc), svc.Type)
 	}
+}
+
+func (p *binderPhase2) VisitTarget(doc *diag.Document, name string, target *ast.Target) {
 }
