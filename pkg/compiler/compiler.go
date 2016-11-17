@@ -103,6 +103,7 @@ func (c *compiler) Build(inp string, outp string) {
 	}
 
 	// TODO: perform semantic analysis on the bound tree.
+
 	// TODO: select a target backend (including reading in a Muclusters file if needed).
 	// TODO: lower the ASTs to the target backend's representation, emit it.
 	// TODO: delta generation, deployment, etc.

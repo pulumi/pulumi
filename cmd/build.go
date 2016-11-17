@@ -3,10 +3,15 @@
 package cmd
 
 import (
+	"fmt"
+	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/golang/glog"
 	"github.com/marapongo/mu/pkg/compiler"
+	"github.com/marapongo/mu/pkg/compiler/clouds"
+	"github.com/marapongo/mu/pkg/compiler/schedulers"
 	"github.com/spf13/cobra"
 )
 
@@ -18,6 +23,7 @@ const defaultOutp = ".mu"
 
 func newBuildCmd() *cobra.Command {
 	var outp string
+	var target string
 	var cmd = &cobra.Command{
 		Use:   "build [source]",
 		Short: "Compile a Mu Stack",
@@ -32,15 +38,56 @@ func newBuildCmd() *cobra.Command {
 				glog.Fatal(err)
 			}
 
-			mup := compiler.NewCompiler(compiler.DefaultOpts(abs))
+			opts := compiler.DefaultOpts(abs)
+			setCloudTargetOptions(target, &opts)
+
+			mup := compiler.NewCompiler(opts)
 			mup.Build(abs, outp)
 		},
 	}
 
 	cmd.PersistentFlags().StringVar(
 		&outp, "out", defaultOutp,
-		"The directory in which to place build artifacts",
-	)
+		"The directory in which to place build artifacts")
+	cmd.PersistentFlags().StringVarP(
+		&target, "target", "t", "",
+		"Generate output for the given target (format: \"cloud[:scheduler]\")")
 
 	return cmd
+}
+
+func setCloudTargetOptions(target string, opts *compiler.Options) {
+	// If a target was specified, parse the pieces and set the options.  A target isn't required because stacks
+	// and workspaces can have default targets.  This simply overrides it or provides one where none exists.
+	if target != "" {
+		// The format is "cloud[:scheduler]"; parse out the pieces.
+		var cloud string
+		var cloudScheduler string
+		if delim := strings.IndexRune(target, ':'); delim != -1 {
+			cloud = target[:delim]
+			cloudScheduler = target[delim+1:]
+		} else {
+			cloud = target
+		}
+
+		cloudTarget, ok := clouds.TargetMap[cloud]
+		if !ok {
+			fmt.Fprintf(os.Stderr, "Unrecognized cloud target '%v'\n", cloud)
+			os.Exit(-1)
+		}
+
+		var cloudSchedulerTarget schedulers.Target
+		if cloudScheduler != "" {
+			cloudSchedulerTarget, ok = schedulers.TargetMap[cloudScheduler]
+			if !ok {
+				fmt.Fprintf(os.Stderr, "Unrecognized cloud scheduler target '%v'\n", cloudScheduler)
+				os.Exit(-1)
+			}
+		}
+
+		opts.Target = compiler.Target{
+			Cloud:     cloudTarget,
+			Scheduler: cloudSchedulerTarget,
+		}
+	}
 }

@@ -19,7 +19,7 @@ func main() {
 	defer glog.Flush()
 
 	if err := cmd.NewMuCmd().Execute(); err != nil {
-		fmt.Println(err)
+		fmt.Fprintf(os.Stderr, "An error occurred: %v\n", err)
 		os.Exit(-1)
 	}
 }
