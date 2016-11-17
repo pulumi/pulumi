@@ -5,6 +5,7 @@ package diag
 import (
 	"bytes"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -32,7 +33,11 @@ type Sink interface {
 
 // DefaultDiags returns a default sink that simply logs output to stderr/stdout.
 func DefaultSink(pwd string) Sink {
-	return &defaultSink{pwd: pwd}
+	return newDefaultSink(pwd, os.Stderr, os.Stdout)
+}
+
+func newDefaultSink(pwd string, errorW io.Writer, warningW io.Writer) *defaultSink {
+	return &defaultSink{pwd: pwd, errorW: errorW, warningW: warningW}
 }
 
 const DefaultSinkIDPrefix = "MU"
@@ -41,9 +46,11 @@ const DefaultSinkWarningPrefix = "warning"
 
 // defaultSink is the default sink which logs output to stderr/stdout.
 type defaultSink struct {
-	pwd      string // an optional present working directory to which output paths will be relative to.
-	errors   int    // the number of errors that have been issued.
-	warnings int    // the number of warnings that have been issued.
+	pwd      string    // an optional present working directory to which output paths will be relative to.
+	errors   int       // the number of errors that have been issued.
+	errorW   io.Writer // the output stream to use for errors.
+	warnings int       // the number of warnings that have been issued.
+	warningW io.Writer // the output stream to use for warnings.
 }
 
 func (d *defaultSink) Count() int {
@@ -63,7 +70,8 @@ func (d *defaultSink) Errorf(diag *Diag, args ...interface{}) {
 	if glog.V(3) {
 		glog.V(3).Infof("defaultSink::Error(%v)", msg)
 	}
-	fmt.Fprintf(os.Stderr, msg)
+	fmt.Fprintf(d.errorW, msg)
+	d.errors++
 }
 
 func (d *defaultSink) Warningf(diag *Diag, args ...interface{}) {
@@ -71,7 +79,8 @@ func (d *defaultSink) Warningf(diag *Diag, args ...interface{}) {
 	if glog.V(4) {
 		glog.V(4).Infof("defaultSink::Warning(%v)", msg)
 	}
-	fmt.Fprintf(os.Stdout, msg)
+	fmt.Fprintf(d.warningW, msg)
+	d.warnings++
 }
 
 func (d *defaultSink) Stringify(diag *Diag, prefix string, args ...interface{}) string {
