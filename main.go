@@ -16,8 +16,9 @@ func main() {
 	// Ensure the glog library has been initialized, including calling flag.Parse beforehand.
 	flag.Parse()
 	glog.Info("Mu CLI is running")
+	defer glog.Flush()
 
-	if err := cmd.Cmd.Execute(); err != nil {
+	if err := cmd.NewMuCmd().Execute(); err != nil {
 		fmt.Println(err)
 		os.Exit(-1)
 	}

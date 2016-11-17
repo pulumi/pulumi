@@ -55,5 +55,10 @@ func (p *parser) Parse(doc *diag.Document) *ast.Stack {
 		// TODO: it would be great if we issued an error per issue found in the file with line/col numbers.
 		return nil
 	}
+
+	if glog.V(3) {
+		glog.V(3).Infof("Mufile %v stack parsed: %v name; %v deps; %v publics; %v privates",
+			doc.File, stack.Name, len(stack.Dependencies), len(stack.Public), len(stack.Private))
+	}
 	return &stack
 }
