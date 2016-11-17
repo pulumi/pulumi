@@ -1,0 +1,6 @@
+name: typenotfound
+services:
+    public:
+        nicename:
+            type: something/non/existent
+

@@ -24,3 +24,29 @@ func TestSymbolAlreadyExists(t *testing.T) {
 			fmt.Sprintf(d.Message, "foo")),
 		sink.ErrorMsgs()[0])
 }
+
+func TestTypeNotFound1(t *testing.T) {
+	sink := builddir("testdata", "binder", "bad__type_not_found__1")
+
+	// Check that the compiler complained about the type missisng.
+	d := errors.TypeNotFound
+	assert.Equal(t, 1, sink.Errors(), "expected a single error")
+	assert.Equal(t,
+		fmt.Sprintf("%v: %v%v: %v: %v\n",
+			diag.DefaultSinkErrorPrefix, diag.DefaultSinkIDPrefix, d.ID, "Mu.yaml",
+			fmt.Sprintf(d.Message, "something/non/existent")),
+		sink.ErrorMsgs()[0])
+}
+
+func TestTypeNotFound2(t *testing.T) {
+	sink := builddir("testdata", "binder", "bad__type_not_found__2")
+
+	// Check that the compiler complained about the type missisng.
+	d := errors.TypeNotFound
+	assert.Equal(t, 1, sink.Errors(), "expected a single error")
+	assert.Equal(t,
+		fmt.Sprintf("%v: %v%v: %v: %v\n",
+			diag.DefaultSinkErrorPrefix, diag.DefaultSinkIDPrefix, d.ID, "Mu.yaml",
+			fmt.Sprintf(d.Message, "something/non/existent")),
+		sink.ErrorMsgs()[0])
+}

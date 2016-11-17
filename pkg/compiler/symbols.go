@@ -8,17 +8,24 @@ import (
 
 // Symbol is a named entity that can be referenced and bound to.
 type Symbol struct {
-	Name ast.Name
-	Node *ast.Node
+	Kind SymbolKind  // the kind of symbol.
+	Name ast.Name    // the symbol's unique name.
+	Node *ast.Node   // the Node part of the payload data structure.
+	Real interface{} // the real part of the payload (i.e., the whole structure).
 }
 
 // SymbolKind indicates the kind of symbol being registered (e.g., Stack, Service, etc).
 type SymbolKind int
 
 const (
-	Service SymbolKind = iota
+	SymKindStack SymbolKind = iota
+	SymKindService
 )
 
+func NewStackSymbol(nm ast.Name, stack *ast.Stack) *Symbol {
+	return &Symbol{SymKindStack, nm, &stack.Node, stack}
+}
+
 func NewServiceSymbol(nm ast.Name, svc *ast.Service) *Symbol {
-	return &Symbol{nm, &svc.Node}
+	return &Symbol{SymKindService, nm, &svc.Node, svc}
 }

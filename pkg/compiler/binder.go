@@ -46,8 +46,24 @@ func (b *binder) Bind(doc *diag.Document, stack *ast.Stack) {
 	v1 := NewInOrderVisitor(phase1, nil)
 	v1.VisitStack(doc, stack)
 
-	v2 := NewInOrderVisitor(phase2, nil)
-	v2.VisitStack(doc, stack)
+	if b.Diag().Errors() == 0 {
+		v2 := NewInOrderVisitor(phase2, nil)
+		v2.VisitStack(doc, stack)
+	}
+}
+
+// BindStack binds a name to a Stack type.
+func (b *binder) LookupStack(nm ast.Name) (*Symbol, *ast.Stack) {
+	sym := b.LookupSymbol(nm)
+	if sym != nil && sym.Kind == SymKindStack {
+		return sym, sym.Real.(*ast.Stack)
+	}
+	return nil, nil
+}
+
+// BindSymbol binds a name to any kind of Symbol.
+func (b *binder) LookupSymbol(nm ast.Name) *Symbol {
+	return b.symtbl[nm]
 }
 
 // RegisterSymbol registers a symbol with the given name; if it already exists, the function returns false.
@@ -144,4 +160,11 @@ func (p *binderPhase2) VisitServices(doc *diag.Document, svcs *ast.Services) {
 func (p *binderPhase2) VisitService(doc *diag.Document, name ast.Name, public bool, svc *ast.Service) {
 	// The service's type has been prepared in phase 1, and must now be bound to a symbol.  All shorthand type
 	// expressions, intra stack references, cycles, and so forth, will have been taken care of by this earlier phase.
+	if svc.Type == "" {
+		glog.Fatalf("Expected all Services to have types in binding phase2; %v is missing one", svc.Name)
+	}
+	ty, _ := p.b.LookupStack(svc.Type)
+	if ty == nil {
+		p.Diag().Errorf(errors.TypeNotFound.WithDocument(p.doc), svc.Type)
+	}
 }
