@@ -2,11 +2,11 @@ name: demo1-example
 description: A simple Express voting app with a MongoDB backend, ready for production use.
 services:
     private:
-        - votes: mongodb/mongodb
+        mongodb/mongodb:
     public:
-        - app:
+        app:
             type: mu/container
             build: .
             arguments:
-                db: @votes
+                db: mongodb
 
