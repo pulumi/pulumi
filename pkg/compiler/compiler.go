@@ -11,9 +11,10 @@ import (
 	"github.com/golang/glog"
 
 	"github.com/marapongo/mu/pkg/ast"
-	"github.com/marapongo/mu/pkg/compiler/clouds"
+	"github.com/marapongo/mu/pkg/compiler/backends"
+	"github.com/marapongo/mu/pkg/compiler/backends/clouds"
+	"github.com/marapongo/mu/pkg/compiler/backends/schedulers"
 	"github.com/marapongo/mu/pkg/compiler/core"
-	"github.com/marapongo/mu/pkg/compiler/schedulers"
 	"github.com/marapongo/mu/pkg/diag"
 	"github.com/marapongo/mu/pkg/errors"
 	"github.com/marapongo/mu/pkg/workspace"
@@ -114,7 +115,10 @@ func (c *compiler) buildDocument(doc *diag.Document, outp string) {
 			glog.V(2).Infof("Stack %v targets target=%v cloud=%v", stack.Name, tname, arch)
 		}
 
-		// TODO: lower the ASTs to the target backend's representation, emit it.
+		// Now get the backend cloud provider to process the stack from here on out.
+		be := backends.New(arch)
+		be.CodeGen(target, doc, stack)
+
 		// TODO: delta generation, deployment, etc.
 	}
 }
@@ -143,7 +147,7 @@ func (c *compiler) parseStack(doc *diag.Document) (*ast.Stack, bool) {
 
 // discoverTargetArch uses a variety of mechanisms to discover the target architecture, returning it.  If no
 // architecture was discovered, an error is issued, and the bool return will be false.
-func (c *compiler) discoverTargetArch(doc *diag.Document, stack *ast.Stack) (*ast.Target, Arch, bool) {
+func (c *compiler) discoverTargetArch(doc *diag.Document, stack *ast.Stack) (*ast.Target, backends.Arch, bool) {
 	// Target and architectures settings may come from one of three places, in order of search preference:
 	//		1) command line arguments.
 	//		2) settings specific to this stack.
@@ -194,7 +198,7 @@ func (c *compiler) discoverTargetArch(doc *diag.Document, stack *ast.Stack) (*as
 }
 
 // getTargetArch gets and validates the architecture from an existing target.
-func (c *compiler) getTargetArch(doc *diag.Document, target *ast.Target, existing Arch) (Arch, bool) {
+func (c *compiler) getTargetArch(doc *diag.Document, target *ast.Target, existing backends.Arch) (backends.Arch, bool) {
 	targetCloud := existing.Cloud
 	targetScheduler := existing.Scheduler
 
@@ -217,7 +221,7 @@ func (c *compiler) getTargetArch(doc *diag.Document, target *ast.Target, existin
 	}
 
 	// Ensure there aren't any conflicts, comparing compiler options to target settings.
-	tarch := Arch{targetCloud, targetScheduler}
+	tarch := backends.Arch{targetCloud, targetScheduler}
 	if targetCloud != existing.Cloud && existing.Cloud != clouds.NoArch {
 		c.Diag().Errorf(errors.ConflictingTargetArchSelection.WithDocument(doc), existing, target.Name, tarch)
 		return tarch, false

@@ -8,7 +8,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/marapongo/mu/pkg/compiler/clouds"
+	"github.com/marapongo/mu/pkg/compiler/backends"
+	"github.com/marapongo/mu/pkg/compiler/backends/clouds"
 	"github.com/marapongo/mu/pkg/diag"
 	"github.com/marapongo/mu/pkg/errors"
 )
@@ -75,7 +76,7 @@ func TestMissingTarget(t *testing.T) {
 
 	// Now check that this same project compiles fine if we manually specify an architecture.
 	sink = buildFile(Options{
-		Arch: Arch{
+		Arch: backends.Arch{
 			Cloud: clouds.AWSArch,
 		},
 	}, mufile, ".yaml")

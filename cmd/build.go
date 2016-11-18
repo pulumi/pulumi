@@ -10,8 +10,9 @@ import (
 
 	"github.com/golang/glog"
 	"github.com/marapongo/mu/pkg/compiler"
-	"github.com/marapongo/mu/pkg/compiler/clouds"
-	"github.com/marapongo/mu/pkg/compiler/schedulers"
+	"github.com/marapongo/mu/pkg/compiler/backends"
+	"github.com/marapongo/mu/pkg/compiler/backends/clouds"
+	"github.com/marapongo/mu/pkg/compiler/backends/schedulers"
 	"github.com/spf13/cobra"
 )
 
@@ -90,7 +91,7 @@ func setCloudArchOptions(arch string, opts *compiler.Options) {
 			}
 		}
 
-		opts.Arch = compiler.Arch{
+		opts.Arch = backends.Arch{
 			Cloud:     cloudArch,
 			Scheduler: cloudSchedulerArch,
 		}
