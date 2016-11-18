@@ -3,8 +3,6 @@
 package core
 
 import (
-	"sort"
-
 	"github.com/marapongo/mu/pkg/ast"
 	"github.com/marapongo/mu/pkg/diag"
 )
@@ -51,12 +49,7 @@ func (v *inOrderVisitor) VisitMetadata(doc *diag.Document, kind string, meta *as
 		v.pre.VisitMetadata(doc, kind, meta)
 	}
 
-	targets := make([]string, 0, len(meta.Targets))
-	for target := range meta.Targets {
-		targets = append(targets, target)
-	}
-	sort.Strings(targets)
-	for _, name := range targets {
+	for _, name := range ast.StableTargets(meta.Targets) {
 		target := meta.Targets[name]
 		v.VisitTarget(doc, name, &target)
 		// Copy the targeteter back in case it was updated.
@@ -75,24 +68,14 @@ func (v *inOrderVisitor) VisitStack(doc *diag.Document, stack *ast.Stack) {
 
 	v.VisitMetadata(doc, "Stack", &stack.Metadata)
 
-	params := make([]string, 0, len(stack.Parameters))
-	for param := range stack.Parameters {
-		params = append(params, param)
-	}
-	sort.Strings(params)
-	for _, name := range params {
+	for _, name := range ast.StableParameters(stack.Parameters) {
 		param := stack.Parameters[name]
 		v.VisitParameter(doc, name, &param)
 		// Copy the parameter back in case it was updated.
 		stack.Parameters[name] = param
 	}
 
-	deps := make([]string, 0, len(stack.Dependencies))
-	for dep := range stack.Dependencies {
-		deps = append(deps, string(dep))
-	}
-	sort.Strings(deps)
-	for _, name := range deps {
+	for _, name := range ast.StableDependencies(stack.Dependencies) {
 		aname := ast.Name(name)
 		dep := stack.Dependencies[aname]
 		v.VisitDependency(doc, aname, &dep)
@@ -126,12 +109,7 @@ func (v *inOrderVisitor) VisitDependency(doc *diag.Document, name ast.Name, dep 
 }
 
 func (v *inOrderVisitor) VisitServices(doc *diag.Document, svcs *ast.Services) {
-	publics := make([]string, 0, len(svcs.Public))
-	for public := range svcs.Public {
-		publics = append(publics, string(public))
-	}
-	sort.Strings(publics)
-	for _, name := range publics {
+	for _, name := range ast.StableServices(svcs.Public) {
 		aname := ast.Name(name)
 		public := svcs.Public[aname]
 		v.VisitService(doc, aname, true, &public)
@@ -139,12 +117,7 @@ func (v *inOrderVisitor) VisitServices(doc *diag.Document, svcs *ast.Services) {
 		svcs.Public[aname] = public
 	}
 
-	privates := make([]string, 0, len(svcs.Private))
-	for private := range svcs.Private {
-		privates = append(privates, string(private))
-	}
-	sort.Strings(privates)
-	for _, name := range privates {
+	for _, name := range ast.StableServices(svcs.Private) {
 		aname := ast.Name(name)
 		private := svcs.Private[aname]
 		v.VisitService(doc, aname, false, &private)
