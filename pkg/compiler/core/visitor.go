@@ -109,6 +109,10 @@ func (v *inOrderVisitor) VisitDependency(doc *diag.Document, name ast.Name, dep 
 }
 
 func (v *inOrderVisitor) VisitServices(doc *diag.Document, svcs *ast.Services) {
+	if v.pre != nil {
+		v.pre.VisitServices(doc, svcs)
+	}
+
 	for _, name := range ast.StableServices(svcs.Public) {
 		aname := ast.Name(name)
 		public := svcs.Public[aname]
@@ -123,6 +127,10 @@ func (v *inOrderVisitor) VisitServices(doc *diag.Document, svcs *ast.Services) {
 		v.VisitService(doc, aname, false, &private)
 		// Copy the private service back in case it was updated.
 		svcs.Private[aname] = private
+	}
+
+	if v.post != nil {
+		v.post.VisitServices(doc, svcs)
 	}
 }
 

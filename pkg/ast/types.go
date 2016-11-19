@@ -29,8 +29,6 @@ type Node struct {
 type Metadata struct {
 	Node
 
-	Kind string `json:"-"` // kind is decorated post-parsing, since it is contextual.
-
 	Name        Name    `json:"name,omitempty"`        // a friendly name for this node.
 	Version     SemVer  `json:"version,omitempty"`     // a specific semantic version.
 	Description string  `json:"description,omitempty"` // an optional friendly description.
@@ -38,6 +36,8 @@ type Metadata struct {
 	Website     string  `json:"website,omitempty"`     // an optional website for additional info.
 	License     string  `json:"license,omitempty"`     // an optional license governing legal uses of this package.
 	Targets     Targets `json:"targets,omitempty"`     // an optional set of predefined target cloud environments.
+
+	Kind string `json:"-"` // kind is decorated post-parsing, since it is contextual.
 }
 
 // Targets is a map of target names to metadata about those targets.
@@ -47,13 +47,13 @@ type Targets map[string]Target
 type Target struct {
 	Node
 
-	Name string `json:"-"` // name is decorated post-parsing, since it is contextual.
-
 	Default     bool                   `json:"default,omitempty"`     // a single target can carry default settings.
 	Description string                 `json:"description,omitempty"` // a human-friendly description of this target.
 	Cloud       string                 `json:"cloud,omitempty"`       // the cloud target.
 	Scheduler   string                 `json:"scheduler,omitempty"`   // the cloud scheduler target.
 	Options     map[string]interface{} `json:"options,omitempty"`     // any options passed to the cloud provider.
+
+	Name string `json:"-"` // name is decorated post-parsing, since it is contextual.
 }
 
 // Cluster describes a cluster of many Stacks, in addition to other metadata, like predefined Targets.
@@ -83,12 +83,12 @@ type Parameters map[string]Parameter
 type Parameter struct {
 	Node
 
-	Name string `json:"-"` // name is decorated post-parsing, since it is contextual.
-
 	Type        Name        `json:"type,omitempty"`        // the type of the parameter; required.
 	Description string      `json:"description,omitempty"` // an optional friendly description of the parameter.
 	Default     interface{} `json:"default,omitempty"`     // an optional default value if the caller doesn't pass one.
 	Optional    bool        `json:"optional,omitempty"`    // true if may be omitted (inferred if a default value).
+
+	Name string `json:"-"` // name is decorated post-parsing, since it is contextual.
 }
 
 // Dependencies maps dependency names to the semantic version the consumer depends on.
@@ -102,8 +102,17 @@ type BoundDependencies map[Name]*Stack
 
 // Services is a list of public and private service references, keyed by name.
 type Services struct {
-	Public  ServiceMap `json:"public,omitempty"`
-	Private ServiceMap `json:"private,omitempty"`
+	// These fields are expanded after parsing:
+	Public  ServiceMap `json:"-"`
+	Private ServiceMap `json:"-"`
+
+	// These fields are "untyped" due to limitations in the JSON parser.  Namely, Go's parser will ignore
+	// properties in the payload that it doesn't recognize as mapping to a field.  That's not what we want, especially
+	// for services since they are highly extensible and the contents will differ per-type.  Therefore, we will first
+	// map the services into a weakly typed map, and later on during compilation, expand them to the below fields.
+	// TODO[golang/go#6213]: support for `json:",inline"` fields should address this in Go 1.7.x/1.8.
+	PublicUntyped  UntypedServiceMap `json:"public,omitempty"`
+	PrivateUntyped UntypedServiceMap `json:"private,omitempty"`
 }
 
 // ServiceMap is a map of service names to metadata about those services.
@@ -113,14 +122,20 @@ type ServiceMap map[Name]Service
 type Service struct {
 	Node
 
+	Type  Name                   `json:"type,omitempty"` // an explicit type; if missing, the name is used.
+	Extra map[string]interface{} `json:"-"`              // all of the "extra" properties, other than what is above.
+
 	Name   Name `json:"-"` // a friendly name; decorated post-parsing, since it is contextual.
 	Public bool `json:"-"` // true if this service is publicly exposed; also decorated post-parsing.
 
-	Type Name `json:"type,omitempty"` // an explicit type; if missing, the name is used.
-	// TODO: Service metadata is highly type-dependent.  It's not yet clear how best to represent this in the schema.
-
 	BoundType *Stack `json:"-"` // services are bound to stacks during semantic analysis.
 }
+
+// UntypedServiceMap is a map of service names to untyped, bags of parsed properties for those services.
+type UntypedServiceMap map[Name]PropertyBag
+
+// PropertyBag is simply a map of string property names to untyped data values.
+type PropertyBag map[string]interface{}
 
 // TODO: several more core types still need to be mapped:
 //     - Schema

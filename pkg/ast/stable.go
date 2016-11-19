@@ -33,6 +33,15 @@ func StableServices(s ServiceMap) []Name {
 	return svcs
 }
 
+func StableUntypedServices(s UntypedServiceMap) []Name {
+	svcs := make(Names, 0, len(s))
+	for svc := range s {
+		svcs = append(svcs, svc)
+	}
+	sort.Sort(svcs)
+	return svcs
+}
+
 func StableTargets(t Targets) []string {
 	targets := make([]string, 0, len(t))
 	for target := range t {

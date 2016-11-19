@@ -86,12 +86,41 @@ func (a *ptAnalyzer) VisitDependency(doc *diag.Document, name ast.Name, dep *ast
 }
 
 func (a *ptAnalyzer) VisitServices(doc *diag.Document, svcs *ast.Services) {
+	// We need to expand the UntypedServiceMaps into strongly typed ServiceMaps.  As part of this, we also decorate the
+	// AST with extra contextual information so subsequent passes can operate context-free.
+	svcs.Public = make(ast.ServiceMap)
+	for _, name := range ast.StableUntypedServices(svcs.PublicUntyped) {
+		svcs.Public[name] = a.untypedServiceToTyped(doc, name, true, svcs.PublicUntyped[name])
+	}
+	svcs.Private = make(ast.ServiceMap)
+	for _, name := range ast.StableUntypedServices(svcs.PrivateUntyped) {
+		svcs.Private[name] = a.untypedServiceToTyped(doc, name, false, svcs.PrivateUntyped[name])
+	}
+}
+
+func (a *ptAnalyzer) untypedServiceToTyped(doc *diag.Document,
+	name ast.Name, public bool, bag map[string]interface{}) ast.Service {
+	var typ ast.Name
+	t, has := bag["type"]
+	if has {
+		// If the bag contains a type, ensure that it is a string.
+		ts, ok := t.(string)
+		if ok {
+			typ = ast.Name(ts)
+		} else {
+			a.Diag().Errorf(errors.IllegalMufileSyntax.WithDocument(doc), "service type must be a string")
+		}
+	}
+
+	return ast.Service{
+		Name:   name,
+		Type:   typ,
+		Public: public,
+		Extra:  bag,
+	}
 }
 
 func (a *ptAnalyzer) VisitService(doc *diag.Document, name ast.Name, public bool, svc *ast.Service) {
-	// Decorate the AST with contextual information so subsequent passes can operate context-free.
-	svc.Name = name
-	svc.Public = public
 }
 
 func (a *ptAnalyzer) VisitTarget(doc *diag.Document, name string, target *ast.Target) {
