@@ -19,11 +19,11 @@ func AsMuExtensionService(svc *ast.Service) *MuExtensionService {
 
 	p, ok := svc.Extra["provider"]
 	util.AssertM(ok, "MuExtension is expected to have a required 'provider' property")
-	prov, ok := p.(ast.Name)
-	util.AssertM(ok, "MuExtension's 'provider' property is expected to be of type 'string'")
+	prov, ok := p.(string)
+	util.AssertMF(ok, "MuExtension's 'provider' property is expected to be of type 'string'; got %v", p)
 
 	return &MuExtensionService{
 		Service:  *svc,
-		Provider: prov,
+		Provider: ast.Name(prov),
 	}
 }
