@@ -65,14 +65,16 @@ func (c *awsCloud) genClusterTemplate(comp core.Compiland) *cfTemplate {
 
 // genStackName creates a name for the stack, which must be globally unique within an account.
 func (c *awsCloud) genStackName(comp core.Compiland) string {
-	nm := fmt.Sprintf("MuStack-%v-%v", comp.Target.Name, comp.Stack.Name)
+	nm := fmt.Sprintf("MuStack-%v-%v",
+		makeAWSFriendlyName(comp.Target.Name, true), makeAWSFriendlyName(string(comp.Stack.Name), true))
 	util.Assert(IsValidStackName(nm))
 	return nm
 }
 
 // genServiceName creates a name for the service, which must be unique within a single CloudFormation template.
 func (c *awsCloud) genServiceName(stack *ast.Stack, svc *ast.Service) cfLogicalID {
-	nm := fmt.Sprintf("%v%v", stack.Name, svc.Name)
+	nm := fmt.Sprintf("%v%v",
+		makeAWSFriendlyName(string(stack.Name), true), makeAWSFriendlyName(string(svc.Name), true))
 	util.Assert(IsValidLogicalID(nm))
 	return cfLogicalID(nm)
 }
