@@ -15,7 +15,7 @@ func makeAWSFriendlyName(s string, pascal bool) string {
 	}
 	t := []rune{}
 	b := []byte(s)
-	first := false
+	first := true
 	capnext := pascal
 	for {
 		r, s := utf8.DecodeRune(b)
@@ -25,9 +25,10 @@ func makeAWSFriendlyName(s string, pascal bool) string {
 
 		if (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') {
 			if capnext {
+				// We must capitalize, either due to PascalCasing, or because of a non-printable rune.
 				r = unicode.ToUpper(r)
 				capnext = false
-			} else if first && !pascal {
+			} else if first {
 				// For the first letter, we'll have PascalCased (thanks to capnext), but need to camelCase.
 				r = unicode.ToLower(r)
 			}
