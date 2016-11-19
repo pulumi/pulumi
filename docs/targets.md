@@ -228,21 +228,18 @@ A simplified S3 bucket Stack, for example, looks like this:
         public:
             mu/extension:
                 provider: aws/cf
-                template: |
-                    {
-                        "Type": "AWS::S3::Bucket",
-                        "Properties": {
-                            "AccessControl": {{json .props.accessControl}},
-                            "BucketName": {{json .props.bucketName}},
-                            "CorsConfiguration": {{json .props.corsConfiguration}},
-                            "LifecycleConfiguration": {{json .props.lifecycleConfiguration}},
-                            "NotificationConfiguration": {{json .props.notificationConfiguration}},
-                            "ReplicationConfiguration": {{json .props.replicationConfiguration}},
-                            "Tags": {{json .props.tags}},
-                            "VersioningConfiguration": {{json .props.versioningConfiguration}},
-                            "WebsiteConfiguration": {{json .props.websiteConfiguration}}
-                        }
-                    }
+                resource:
+                    Type: "AWS::S3::Bucket"
+                    Properties:
+                        AccessControl: {{json .props.accessControl}}
+                        BucketName: {{json .props.bucketName}}
+                        CorsConfiguration: {{json .props.corsConfiguration}}
+                        LifecycleConfiguration: {{json .props.lifecycleConfiguration}}
+                        NotificationConfiguration: {{json .props.notificationConfiguration}}
+                        ReplicationConfiguration: {{json .props.replicationConfiguration}}
+                        Tags: {{json .props.tags}}
+                        VersioningConfiguration: {{json .props.versioningConfiguration}}
+                        WebsiteConfiguration: {{json .props.websiteConfiguration}}
 
 The key primitive at play here is `mu/extension`.   This passes off lifecycle events to a provider, in this case
 `aws/cf/template`, along with some metadata, in this case a simple wrapper around the [AWS CloudFormation S3 Bucket

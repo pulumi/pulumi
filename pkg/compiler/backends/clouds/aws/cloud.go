@@ -162,6 +162,7 @@ func (c *awsCloud) genMuAutoscalerServiceTemplate(comp core.Compiland, svc *ast.
 // CloudFormation templating as the output.  This happens after Mu templates have been expanded, allowing stack
 // properties, target environments, and so on, to be leveraged in the way these templates are generated.
 const CloudFormationExtensionProvider = "aws/cf"
+const CloudFormationExtensionProviderResource = "resource"
 const CloudFormationExtensionProviderTypeField = "Type"
 const CloudFormationExtensionProviderPropertiesField = "Properties"
 
@@ -170,13 +171,13 @@ func (c *awsCloud) genMuExtensionServiceTemplate(comp core.Compiland, svc *prede
 	case CloudFormationExtensionProvider:
 		// The AWS CF extension provider simply creates a CF resource out of the provided template.
 
-		var resType cfResourceType
-		t, ok := svc.Extra[CloudFormationExtensionProviderTypeField]
+		var res map[string]interface{}
+		r, ok := svc.Extra[CloudFormationExtensionProviderResource]
 		if ok {
-			resType, ok = t.(cfResourceType)
+			res, ok = r.(map[string]interface{})
 			if !ok {
 				c.Diag().Errorf(errors.ErrorIncorrectExtensionPropertyType.WithDocument(comp.Doc),
-					CloudFormationExtensionProviderTypeField, "string")
+					CloudFormationExtensionProviderResource, "string-keyed map")
 				return nil
 			}
 		} else {
@@ -185,22 +186,41 @@ func (c *awsCloud) genMuExtensionServiceTemplate(comp core.Compiland, svc *prede
 			return nil
 		}
 
-		var resProps cfResourceProperties
-		p, ok := svc.Extra[CloudFormationExtensionProviderPropertiesField]
+		var resType string
+		t, ok := res[CloudFormationExtensionProviderTypeField]
 		if ok {
-			resProps, ok = p.(cfResourceProperties)
+			resType, ok = t.(string)
 			if !ok {
 				c.Diag().Errorf(errors.ErrorIncorrectExtensionPropertyType.WithDocument(comp.Doc),
-					CloudFormationExtensionProviderPropertiesField, "string-keyed map")
+					fmt.Sprintf("%v.%v", CloudFormationExtensionProviderResource,
+						CloudFormationExtensionProviderTypeField), "string")
 				return nil
 			}
 		} else {
 			c.Diag().Errorf(errors.ErrorMissingExtensionProperty.WithDocument(comp.Doc),
-				CloudFormationExtensionProviderPropertiesField)
+				fmt.Sprintf("%v.%v", CloudFormationExtensionProviderResource,
+					CloudFormationExtensionProviderTypeField))
 			return nil
 		}
 
-		return &cfResource{resType, resProps}
+		var resProps map[string]interface{}
+		p, ok := res[CloudFormationExtensionProviderPropertiesField]
+		if ok {
+			resProps, ok = p.(map[string]interface{})
+			if !ok {
+				c.Diag().Errorf(errors.ErrorIncorrectExtensionPropertyType.WithDocument(comp.Doc),
+					fmt.Sprintf("%v.%v", CloudFormationExtensionProviderResource,
+						CloudFormationExtensionProviderPropertiesField), "string-keyed map")
+				return nil
+			}
+		} else {
+			c.Diag().Errorf(errors.ErrorMissingExtensionProperty.WithDocument(comp.Doc),
+				fmt.Sprintf("%v.%v", CloudFormationExtensionProviderResource,
+					CloudFormationExtensionProviderPropertiesField))
+			return nil
+		}
+
+		return &cfResource{cfResourceType(resType), cfResourceProperties(resProps)}
 	default:
 		c.Diag().Errorf(errors.ErrorUnrecognizedExtensionProvider.WithDocument(comp.Doc), svc.Provider)
 	}
