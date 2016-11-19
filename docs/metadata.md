@@ -49,11 +49,18 @@ To do this, reference another Stack's fully qualified name in the `base` propert
 
     base: some/other/stack
 
-From there, I can use all of the other metadata in this section, however we will have inherieted anything in the base.
+From there, I can specify additional metadata, however we will have inherited everything from the base.
 
 TODO(joe): what about mixins?
 
 TODO(joe): get more specific about what can be overridden.  Furthermore, what about "deletes"?
+
+In addition to subclassing, a Stack may be marked abstract, indicating that it cannot be instantiated:
+
+    abstract: true
+
+A non-abstract Stack must in fact have a non-zero number of Services, whereas an abstract one can omit Services
+entirely; this can be used, for example, to predefine certain non-Service metadata for subclassing Stacks.
 
 ## APIs
 

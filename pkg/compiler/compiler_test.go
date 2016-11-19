@@ -63,7 +63,8 @@ func TestBadMufileExt2(t *testing.T) {
 }
 
 func TestMissingTarget(t *testing.T) {
-	mufile := []byte("name: notarget\n")
+	mufile := []byte("name: notarget\n" +
+		"abstract: true\n")
 
 	// Check that the compiler issued an error due to missing cloud targets.
 	sink := buildFile(Options{}, mufile, ".yaml")
@@ -85,6 +86,7 @@ func TestMissingTarget(t *testing.T) {
 
 func TestUnrecognizedCloud(t *testing.T) {
 	mufile := []byte("name: notarget\n" +
+		"abstract: true\n" +
 		"targets:\n" +
 		"    prod:\n" +
 		"        default: true\n" +

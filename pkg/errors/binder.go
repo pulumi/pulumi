@@ -15,3 +15,8 @@ var TypeNotFound = &diag.Diag{
 	ID:      501,
 	Message: "Type '%v' was not found",
 }
+
+var NonAbstractStacksMustDefineServices = &diag.Diag{
+	ID:      502,
+	Message: "Non-abstract stacks must declare at least one private or public service",
+}

@@ -66,11 +66,14 @@ type Cluster struct {
 type Stack struct {
 	Metadata
 
+	Base         Name         `json:"base,omitempty"`     // an optional base Stack type.
+	Abstract     bool         `json:"abstract,omitempty"` // true if this stack is "abstract" (uninstantiable).
 	Parameters   Parameters   `json:"parameters,omitempty"`
 	Dependencies Dependencies `json:"dependencies,omitempty"`
 	Services     Services     `json:"services,omitempty"`
 
-	BoundDependencies BoundDependencies `json:"-"` // bindings populated during semantic analysis.
+	BoundBase         *Stack            `json:"-"` // base, if available, is bound during semantic analysis.
+	BoundDependencies BoundDependencies `json:"-"` // dependencies are bound during semantic analysis.
 }
 
 // Parameters maps parameter names to metadata about those parameters.

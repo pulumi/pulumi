@@ -222,6 +222,17 @@ func (p *binderPhase2) VisitMetadata(doc *diag.Document, kind string, meta *ast.
 }
 
 func (p *binderPhase2) VisitStack(doc *diag.Document, stack *ast.Stack) {
+	if stack.Base != "" {
+		// Ensure the name of the base is in scope, and remember the binding information.
+		_, stack.BoundBase = p.b.LookupStack(stack.Base)
+		if stack.BoundBase == nil {
+			p.Diag().Errorf(errors.TypeNotFound.WithDocument(doc), stack.Base)
+		}
+	}
+	if !stack.Abstract && len(stack.Services.Public) == 0 && len(stack.Services.Private) == 0 {
+		// Non-abstract Stacks must declare at least one Service.
+		p.Diag().Errorf(errors.NonAbstractStacksMustDefineServices.WithDocument(doc))
+	}
 }
 
 func (p *binderPhase2) VisitParameter(doc *diag.Document, name string, param *ast.Parameter) {
