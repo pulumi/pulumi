@@ -1,30 +1,30 @@
 // Copyright 2016 Marapongo, Inc. All rights reserved.
 
-package compiler
+package predef
 
 import (
 	"github.com/marapongo/mu/pkg/ast"
 )
 
-// PredefStackTypes contains all of the built-in primitive types known to the Mu compiler.
-var PredefStackTypes = map[ast.Name]*ast.Stack{
-	PredefStackMuContainer.Name:  PredefStackMuContainer,
-	PredefStackMuGateway.Name:    PredefStackMuGateway,
-	PredefStackMuFunc.Name:       PredefStackMuFunc,
-	PredefStackMuEvent.Name:      PredefStackMuEvent,
-	PredefStackMuVolume.Name:     PredefStackMuVolume,
-	PredefStackMuAutoscaler.Name: PredefStackMuAutoscaler,
-	PredefStackMuExtension.Name:  PredefStackMuExtension,
+// StackTypes contains all of the built-in primitive types known to the Mu compiler.
+var StackTypes = map[ast.Name]*ast.Stack{
+	MuContainer.Name:  MuContainer,
+	MuGateway.Name:    MuGateway,
+	MuFunc.Name:       MuFunc,
+	MuEvent.Name:      MuEvent,
+	MuVolume.Name:     MuVolume,
+	MuAutoscaler.Name: MuAutoscaler,
+	MuExtension.Name:  MuExtension,
 }
 
-const PredefStackMuNamespace = "mu"
+const MuNamespace = "mu"
 
 func muName(nm string) ast.Name {
-	return ast.Name(PredefStackMuNamespace + ast.NameDelimiter + nm)
+	return ast.Name(MuNamespace + ast.NameDelimiter + nm)
 }
 
 var (
-	PredefStackMuContainer = &ast.Stack{
+	MuContainer = &ast.Stack{
 		Metadata: ast.Metadata{
 			Name:        muName("container"),
 			Description: "An LXC or Windows container.",
@@ -32,7 +32,7 @@ var (
 		},
 		Parameters: ast.Parameters{},
 	}
-	PredefStackMuGateway = &ast.Stack{
+	MuGateway = &ast.Stack{
 		Metadata: ast.Metadata{
 			Name:        muName("gateway"),
 			Description: "An API gateway and load balancer, multiplexing requests over services.",
@@ -40,7 +40,7 @@ var (
 		},
 		Parameters: ast.Parameters{},
 	}
-	PredefStackMuFunc = &ast.Stack{
+	MuFunc = &ast.Stack{
 		Metadata: ast.Metadata{
 			Name:        muName("func"),
 			Description: "A single standalone function for serverless scenarios.",
@@ -48,7 +48,7 @@ var (
 		},
 		Parameters: ast.Parameters{},
 	}
-	PredefStackMuEvent = &ast.Stack{
+	MuEvent = &ast.Stack{
 		Metadata: ast.Metadata{
 			Name:        muName("event"),
 			Description: "An event that may be used to trigger execution of another service.",
@@ -56,7 +56,7 @@ var (
 		},
 		Parameters: ast.Parameters{},
 	}
-	PredefStackMuVolume = &ast.Stack{
+	MuVolume = &ast.Stack{
 		Metadata: ast.Metadata{
 			Name:        muName("volume"),
 			Description: "A volume that stores data and can be mounted by other services.",
@@ -64,7 +64,7 @@ var (
 		},
 		Parameters: ast.Parameters{},
 	}
-	PredefStackMuAutoscaler = &ast.Stack{
+	MuAutoscaler = &ast.Stack{
 		Metadata: ast.Metadata{
 			Name:        muName("autoscaler"),
 			Description: "A service that can automatically scale other services based on policy.",
@@ -72,7 +72,7 @@ var (
 		},
 		Parameters: ast.Parameters{},
 	}
-	PredefStackMuExtension = &ast.Stack{
+	MuExtension = &ast.Stack{
 		Metadata: ast.Metadata{
 			Name:        muName("extension"),
 			Description: "A logical service that extends the system by hooking system events.",
