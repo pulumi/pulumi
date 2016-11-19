@@ -18,9 +18,9 @@ func AsMuExtensionService(svc *ast.Service) *MuExtensionService {
 	util.AssertM(svc.BoundType == MuExtension, "ServiceToMuExtension expects a bound MuExtension service type")
 
 	p, ok := svc.Extra["provider"]
-	util.AssertM(ok, "MuExtension is expected to have a required 'provider' parameter")
+	util.AssertM(ok, "MuExtension is expected to have a required 'provider' property")
 	prov, ok := p.(ast.Name)
-	util.AssertM(ok, "MuExtension's 'provider' parameter is expected to be of type 'string'")
+	util.AssertM(ok, "MuExtension's 'provider' property is expected to be of type 'string'")
 
 	return &MuExtensionService{
 		Service:  *svc,
