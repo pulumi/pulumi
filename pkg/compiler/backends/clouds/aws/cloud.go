@@ -12,6 +12,7 @@ import (
 	"github.com/marapongo/mu/pkg/compiler/backends/clouds"
 	"github.com/marapongo/mu/pkg/compiler/core"
 	"github.com/marapongo/mu/pkg/compiler/predef"
+	"github.com/marapongo/mu/pkg/diag"
 	"github.com/marapongo/mu/pkg/errors"
 )
 
@@ -20,13 +21,18 @@ import (
 // Lambda, and so on, for the actual services in those stack templates.
 //
 // For more details, see https://github.com/marapongo/mu/blob/master/docs/targets.md#amazon-web-services-aws
-func New() clouds.Cloud {
-	return &awsCloud{}
+func New(d diag.Sink) clouds.Cloud {
+	return &awsCloud{d: d}
 }
 
 type awsCloud struct {
 	clouds.Cloud
+	d diag.Sink
 	// TODO: support cloud provider options (e.g., ranging from simple like YAML vs. JSON to complex like IAM).
+}
+
+func (c *awsCloud) Diag() diag.Sink {
+	return c.d
 }
 
 func (c *awsCloud) CodeGen(comp core.Compiland) {
@@ -41,7 +47,7 @@ func (c *awsCloud) CodeGen(comp core.Compiland) {
 	// TODO: actually save this (and any other outputs) to disk, rather than spewing to STDOUT.
 	y, err := yaml.Marshal(cf)
 	if err != nil {
-		comp.Diag.Errorf(ErrorMarshalingCloudFormationTemplate.WithDocument(comp.Doc), err)
+		c.Diag().Errorf(ErrorMarshalingCloudFormationTemplate.WithDocument(comp.Doc), err)
 		return
 	}
 	fmt.Printf("%v:\n", nm)

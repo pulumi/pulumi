@@ -117,8 +117,8 @@ func (c *compiler) buildDocument(doc *diag.Document, outp string) {
 		}
 
 		// Now get the backend cloud provider to process the stack from here on out.
-		be := backends.New(arch)
-		be.CodeGen(core.Compiland{c.Diag(), target, doc, stack})
+		be := backends.New(arch, c.Diag())
+		be.CodeGen(core.Compiland{target, doc, stack})
 	}
 }
 
