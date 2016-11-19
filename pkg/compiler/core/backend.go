@@ -11,5 +11,13 @@ import (
 type Backend interface {
 	Phase
 	// CodeGen lowers and emits code for the given target and stack.
-	CodeGen(target *ast.Target, doc *diag.Document, stack *ast.Stack)
+	CodeGen(comp Compiland)
+}
+
+// Compiland contains all of settings passed from front-end to back-end compiler phases.
+type Compiland struct {
+	Diag   diag.Sink      // a shared diagnostics sink to use for warnings, errors, etc.
+	Target *ast.Target    // the compilation target.
+	Doc    *diag.Document // the document from which the root stack came.
+	Stack  *ast.Stack     // the root stack to compile.
 }
