@@ -1,5 +1,5 @@
-hash: 78eb6cd5c4e38966ff9d4360ec109b9dde02cf297c75f781386f021d922f7737
-updated: 2016-11-16T09:35:26.195183037-08:00
+hash: 7f23b1abcf47b97140d202cc4d34ed475bfc98141d82f3965c23ba9cca181763
+updated: 2016-11-18T16:12:37.723141107-08:00
 imports:
 - name: github.com/blang/semver
   version: 60ec3488bfea7cca02b021d106d9911120d25fe9
@@ -13,12 +13,14 @@ imports:
   - golint
 - name: github.com/inconshreveable/mousetrap
   version: 76626ae9c91c4f2a10f34cad8ce83ea42c93bb75
+- name: github.com/satori/go.uuid
+  version: b061729afc07e77a8aa4fad0a2fd840958f1942a
 - name: github.com/spf13/cobra
   version: 9495bc009a56819bdb0ddbc1a373e29c140bc674
 - name: github.com/spf13/pflag
   version: 5ccb023bc27df288a957c5e994cd44fd19619465
 - name: github.com/stretchr/testify
-  version: 976c720a22c8eb4eb6a0b4348ad85ad12491a506
+  version: 18a02ba4a312f95da08ff4cfc0055750ce50ae9e
 - name: gopkg.in/yaml.v2
   version: a5b47d31c556af34a302ce5d659e6fea44d90de0
 devImports: []

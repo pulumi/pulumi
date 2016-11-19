@@ -25,19 +25,8 @@ const (
 	acsArch        = "acs"
 )
 
-// ArchMap maps human-friendly names to the Archs for those names.
-var ArchMap = map[string]Arch{
-	noArch:         NoArch,
-	swarmArch:      SwarmArch,
-	kubernetesArch: KubernetesArch,
-	mesosArch:      MesosArch,
-	ecsArch:        ECSArch,
-	gkeArch:        GKEArch,
-	acsArch:        ACSArch,
-}
-
-// ArchNames maps Archs to human-friendly names.
-var ArchNames = map[Arch]string{
+// Names maps Archs to human-friendly names.
+var Names = map[Arch]string{
 	NoArch:         noArch,
 	SwarmArch:      swarmArch,
 	KubernetesArch: kubernetesArch,
@@ -45,4 +34,15 @@ var ArchNames = map[Arch]string{
 	ECSArch:        ecsArch,
 	GKEArch:        gkeArch,
 	ACSArch:        acsArch,
+}
+
+// Values maps human-friendly names to the Archs for those names.
+var Values = map[string]Arch{
+	noArch:         NoArch,
+	swarmArch:      SwarmArch,
+	kubernetesArch: KubernetesArch,
+	mesosArch:      MesosArch,
+	ecsArch:        ECSArch,
+	gkeArch:        GKEArch,
+	acsArch:        ACSArch,
 }

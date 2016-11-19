@@ -68,32 +68,32 @@ func setCloudArchOptions(arch string, opts *compiler.Options) {
 	if arch != "" {
 		// The format is "cloud[:scheduler]"; parse out the pieces.
 		var cloud string
-		var cloudScheduler string
+		var scheduler string
 		if delim := strings.IndexRune(arch, ':'); delim != -1 {
 			cloud = arch[:delim]
-			cloudScheduler = arch[delim+1:]
+			scheduler = arch[delim+1:]
 		} else {
 			cloud = arch
 		}
 
-		cloudArch, ok := clouds.ArchMap[cloud]
+		cloudArch, ok := clouds.Values[cloud]
 		if !ok {
 			fmt.Fprintf(os.Stderr, "Unrecognized cloud arch '%v'\n", cloud)
 			os.Exit(-1)
 		}
 
-		var cloudSchedulerArch schedulers.Arch
-		if cloudScheduler != "" {
-			cloudSchedulerArch, ok = schedulers.ArchMap[cloudScheduler]
+		var schedulerArch schedulers.Arch
+		if scheduler != "" {
+			schedulerArch, ok = schedulers.Values[scheduler]
 			if !ok {
-				fmt.Fprintf(os.Stderr, "Unrecognized cloud scheduler arch '%v'\n", cloudScheduler)
+				fmt.Fprintf(os.Stderr, "Unrecognized cloud scheduler arch '%v'\n", scheduler)
 				os.Exit(-1)
 			}
 		}
 
 		opts.Arch = backends.Arch{
 			Cloud:     cloudArch,
-			Scheduler: cloudSchedulerArch,
+			Scheduler: schedulerArch,
 		}
 	}
 }

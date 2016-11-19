@@ -10,3 +10,4 @@ import:
   - golint
 - package: github.com/stretchr/testify
 - package: github.com/blang/semver
+- package: github.com/satori/go.uuid

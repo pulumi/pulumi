@@ -65,9 +65,12 @@ type Cluster struct {
 // dependencies on other Stacks (by name).
 type Stack struct {
 	Metadata
+
 	Parameters   Parameters   `json:"parameters,omitempty"`
 	Dependencies Dependencies `json:"dependencies,omitempty"`
 	Services     Services     `json:"services,omitempty"`
+
+	BoundDependencies BoundDependencies `json:"-"` // bindings populated during semantic analysis.
 }
 
 // Parameters maps parameter names to metadata about those parameters.
@@ -90,6 +93,9 @@ type Dependencies map[Name]Dependency
 
 // Dependency is metadata describing a dependency target (for now, just its semantic version).
 type Dependency SemVer
+
+// BoundDependencies contains a map of all bound dependencies, populated during semantic analysis.
+type BoundDependencies map[Name]*Stack
 
 // Services is a list of public and private service references, keyed by name.
 type Services struct {

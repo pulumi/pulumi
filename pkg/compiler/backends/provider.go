@@ -20,14 +20,14 @@ func New(arch Arch) core.Backend {
 	case clouds.NoArch:
 		glog.Fatalf("Expected a valid cloud architecture for backends.New")
 	default:
-		glog.Fatalf("Cloud architecture '%v' not yet supported", clouds.ArchNames[arch.Cloud])
+		glog.Fatalf("Cloud architecture '%v' not yet supported", clouds.Names[arch.Cloud])
 	}
 
 	switch arch.Scheduler {
 	case schedulers.NoArch:
 		// Nothing to do.
 	default:
-		glog.Fatalf("Scheduler architecture '%v' not yet supported", schedulers.ArchNames[arch.Scheduler])
+		glog.Fatalf("Scheduler architecture '%v' not yet supported", schedulers.Names[arch.Scheduler])
 	}
 
 	return be

@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/golang/glog"
+	"github.com/satori/go.uuid"
 
 	"github.com/marapongo/mu/pkg/ast"
 	"github.com/marapongo/mu/pkg/compiler/backends"
@@ -118,8 +119,6 @@ func (c *compiler) buildDocument(doc *diag.Document, outp string) {
 		// Now get the backend cloud provider to process the stack from here on out.
 		be := backends.New(arch)
 		be.CodeGen(target, doc, stack)
-
-		// TODO: delta generation, deployment, etc.
 	}
 }
 
@@ -185,6 +184,9 @@ func (c *compiler) discoverTargetArch(doc *diag.Document, stack *ast.Stack) (*as
 			c.Diag().Errorf(errors.MissingTarget.WithDocument(doc))
 			return target, arch, false
 		}
+
+		// If we got here, generate an "anonymous" target, so that we at least have a name.
+		target = c.newAnonTarget(arch)
 	} else {
 		// If a target was found, go ahead and extract and validate the target architecture.
 		a, ok := c.getTargetArch(doc, target, arch)
@@ -197,6 +199,17 @@ func (c *compiler) discoverTargetArch(doc *diag.Document, stack *ast.Stack) (*as
 	return target, arch, true
 }
 
+// newAnonTarget creates an anonymous target for stacks that didn't declare one.
+func (c *compiler) newAnonTarget(arch backends.Arch) *ast.Target {
+	// TODO: ensure this is unique.
+	// TODO: we want to cache names somewhere (~/.mu/?) so that we can reuse temporary local stacks, etc.
+	return &ast.Target{
+		Name:      uuid.NewV4().String(),
+		Cloud:     clouds.Names[arch.Cloud],
+		Scheduler: schedulers.Names[arch.Scheduler],
+	}
+}
+
 // getTargetArch gets and validates the architecture from an existing target.
 func (c *compiler) getTargetArch(doc *diag.Document, target *ast.Target, existing backends.Arch) (backends.Arch, bool) {
 	targetCloud := existing.Cloud
@@ -204,7 +217,7 @@ func (c *compiler) getTargetArch(doc *diag.Document, target *ast.Target, existin
 
 	// If specified, look up the target's architecture settings.
 	if target.Cloud != "" {
-		tc, ok := clouds.ArchMap[target.Cloud]
+		tc, ok := clouds.Values[target.Cloud]
 		if !ok {
 			c.Diag().Errorf(errors.UnrecognizedCloudArch.WithDocument(doc), target.Cloud)
 			return existing, false
@@ -212,7 +225,7 @@ func (c *compiler) getTargetArch(doc *diag.Document, target *ast.Target, existin
 		targetCloud = tc
 	}
 	if target.Scheduler != "" {
-		ts, ok := schedulers.ArchMap[target.Scheduler]
+		ts, ok := schedulers.Values[target.Scheduler]
 		if !ok {
 			c.Diag().Errorf(errors.UnrecognizedSchedulerArch.WithDocument(doc), target.Scheduler)
 			return existing, false
@@ -237,8 +250,6 @@ func (c *compiler) getTargetArch(doc *diag.Document, target *ast.Target, existin
 // analyzeStack performs semantic analysis on a stack -- validating, transforming, and/or updating it -- and then
 // returns the result.  If a problem occurs, errors will have been emitted, and the bool return will be false.
 func (c *compiler) analyzeStack(doc *diag.Document, stack *ast.Stack) (*ast.Stack, bool) {
-	// TODO: load dependencies.
-
 	binder := NewBinder(c)
 	binder.Bind(doc, stack)
 	if c.Diag().Errors() > 0 {

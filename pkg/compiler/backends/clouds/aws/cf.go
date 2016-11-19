@@ -327,8 +327,8 @@ type cfOutputs map[string]cfOutput
 type cfOutput struct {
 	Description string         `json:",omitempty"` // a string that describes the output value.
 	Value       interface{}    `json:","`          // the value returned in this output position.
-	Export      cfOutputExport `json:","`          // the name of this output for cross-stack references.
-	Condition   string         `json:","`          // a conditional name controlling when to export this output.
+	Export      cfOutputExport `json:",omitempty"` // the name of this output for cross-stack references.
+	Condition   string         `json:",omitempty"` // a conditional name controlling when to export this output.
 }
 
 type cfOutputExport struct {

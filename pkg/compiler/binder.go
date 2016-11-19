@@ -167,6 +167,7 @@ func (p *binderPhase1) VisitParameter(doc *diag.Document, name string, param *as
 }
 
 func (p *binderPhase1) VisitDependency(doc *diag.Document, name ast.Name, dep *ast.Dependency) {
+	// TODO: populate the symbol table with each dependency's stack object.
 }
 
 func (p *binderPhase1) VisitServices(doc *diag.Document, svcs *ast.Services) {

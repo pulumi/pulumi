@@ -21,20 +21,20 @@ const (
 	vmwareArch = "vmware"
 )
 
-// ArchMap maps human-friendly names to the Archs for those names.
-var ArchMap = map[string]Arch{
-	noArch:     NoArch,
-	awsArch:    AWSArch,
-	gcpArch:    GCPArch,
-	azureArch:  AzureArch,
-	vmwareArch: VMWareArch,
-}
-
-// ArchNames maps Archs to human-friendly names.
-var ArchNames = map[Arch]string{
+// Names maps Archs to human-friendly names.
+var Names = map[Arch]string{
 	NoArch:     noArch,
 	AWSArch:    awsArch,
 	GCPArch:    gcpArch,
 	AzureArch:  azureArch,
 	VMWareArch: vmwareArch,
+}
+
+// Values maps human-friendly names to the Archs for those names.
+var Values = map[string]Arch{
+	noArch:     NoArch,
+	awsArch:    AWSArch,
+	gcpArch:    GCPArch,
+	azureArch:  AzureArch,
+	vmwareArch: VMWareArch,
 }
