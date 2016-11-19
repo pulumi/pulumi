@@ -37,8 +37,16 @@ type Metadata struct {
 	License     string  `json:"license,omitempty"`     // an optional license governing legal uses of this package.
 	Targets     Targets `json:"targets,omitempty"`     // an optional set of predefined target cloud environments.
 
-	Kind string `json:"-"` // kind is decorated post-parsing, since it is contextual.
+	Kind MetadataKind `json:"-"` // kind is decorated post-parsing, since it is contextual.
 }
+
+// MetadataKind represents the kind of metadata subclass.
+type MetadataKind string
+
+const (
+	MetadataKindCluster MetadataKind = "Cluster"
+	MetadataKindStack                = "Stack"
+)
 
 // Targets is a map of target names to metadata about those targets.
 type Targets map[string]Target
@@ -83,13 +91,25 @@ type Parameters map[string]Parameter
 type Parameter struct {
 	Node
 
-	Type        Name        `json:"type,omitempty"`        // the type of the parameter; required.
-	Description string      `json:"description,omitempty"` // an optional friendly description of the parameter.
-	Default     interface{} `json:"default,omitempty"`     // an optional default value if the caller doesn't pass one.
-	Optional    bool        `json:"optional,omitempty"`    // true if may be omitted (inferred if a default value).
+	Type        ParameterType `json:"type,omitempty"`        // the type of the parameter; required.
+	Description string        `json:"description,omitempty"` // an optional friendly description of the parameter.
+	Default     interface{}   `json:"default,omitempty"`     // an optional default value if the caller elides one.
+	Optional    bool          `json:"optional,omitempty"`    // true if may be omitted (inferred if a default value).
 
 	Name string `json:"-"` // name is decorated post-parsing, since it is contextual.
 }
+
+// ParameterType stores the name of a parameter's type.
+type ParameterType Name
+
+// A set of known parameter types.  Note that this is extensible, so names outside of this list are legal.
+// TODO: support complex types (like arrays, custom JSON shapes, and so on).
+const (
+	ParameterTypeAny     ParameterType = "any"
+	ParameterTypeString                = "string"
+	ParameterTypeNumber                = "number"
+	ParameterTypeBoolean               = "boolean"
+)
 
 // Dependencies maps dependency names to the semantic version the consumer depends on.
 type Dependencies map[Name]Dependency

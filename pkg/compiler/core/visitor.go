@@ -10,7 +10,7 @@ import (
 // Visitor unifies all visitation patterns under a single interface.
 type Visitor interface {
 	Phase
-	VisitMetadata(doc *diag.Document, kind string, meta *ast.Metadata)
+	VisitMetadata(doc *diag.Document, kind ast.MetadataKind, meta *ast.Metadata)
 	VisitStack(doc *diag.Document, stack *ast.Stack)
 	VisitParameter(doc *diag.Document, name string, param *ast.Parameter)
 	VisitDependency(doc *diag.Document, name ast.Name, dep *ast.Dependency)
@@ -44,7 +44,7 @@ func (v *inOrderVisitor) Diag() diag.Sink {
 	return nil
 }
 
-func (v *inOrderVisitor) VisitMetadata(doc *diag.Document, kind string, meta *ast.Metadata) {
+func (v *inOrderVisitor) VisitMetadata(doc *diag.Document, kind ast.MetadataKind, meta *ast.Metadata) {
 	if v.pre != nil {
 		v.pre.VisitMetadata(doc, kind, meta)
 	}

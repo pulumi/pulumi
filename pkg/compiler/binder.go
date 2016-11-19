@@ -158,7 +158,7 @@ func (p *binderPhase1) Diag() diag.Sink {
 	return p.b.Diag()
 }
 
-func (p *binderPhase1) VisitMetadata(doc *diag.Document, kind string, meta *ast.Metadata) {
+func (p *binderPhase1) VisitMetadata(doc *diag.Document, kind ast.MetadataKind, meta *ast.Metadata) {
 }
 
 func (p *binderPhase1) VisitStack(doc *diag.Document, stack *ast.Stack) {
@@ -219,7 +219,7 @@ func (p *binderPhase2) Diag() diag.Sink {
 	return p.b.Diag()
 }
 
-func (p *binderPhase2) VisitMetadata(doc *diag.Document, kind string, meta *ast.Metadata) {
+func (p *binderPhase2) VisitMetadata(doc *diag.Document, kind ast.MetadataKind, meta *ast.Metadata) {
 }
 
 func (p *binderPhase2) VisitStack(doc *diag.Document, stack *ast.Stack) {

@@ -47,7 +47,7 @@ func (a *ptAnalyzer) Analyze(doc *diag.Document, stack *ast.Stack) {
 	v.VisitStack(doc, stack)
 }
 
-func (a *ptAnalyzer) VisitMetadata(doc *diag.Document, kind string, meta *ast.Metadata) {
+func (a *ptAnalyzer) VisitMetadata(doc *diag.Document, kind ast.MetadataKind, meta *ast.Metadata) {
 	// Decorate the AST with contextual information so subsequent passes can operate context-free.
 	meta.Kind = kind
 
