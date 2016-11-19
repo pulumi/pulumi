@@ -131,7 +131,7 @@ type Services struct {
 	// properties in the payload that it doesn't recognize as mapping to a field.  That's not what we want, especially
 	// for services since they are highly extensible and the contents will differ per-type.  Therefore, we will first
 	// map the services into a weakly typed map, and later on during compilation, expand them to the below fields.
-	// TODO[golang/go#6213]: support for `json:",inline"` fields should address this in Go 1.7.x/1.8.
+	// TODO[marapongo/mu#4]: support for `json:",inline"` or the equivalent so we can eliminate these fields.
 	PublicUntyped  UntypedServiceMap `json:"public,omitempty"`
 	PrivateUntyped UntypedServiceMap `json:"private,omitempty"`
 }

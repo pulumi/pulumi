@@ -88,6 +88,7 @@ func (a *ptAnalyzer) VisitDependency(doc *diag.Document, name ast.Name, dep *ast
 func (a *ptAnalyzer) VisitServices(doc *diag.Document, svcs *ast.Services) {
 	// We need to expand the UntypedServiceMaps into strongly typed ServiceMaps.  As part of this, we also decorate the
 	// AST with extra contextual information so subsequent passes can operate context-free.
+	// TODO[marapongo/mu#4]: once we harden the marshalers, we should be able to largely eliminate this.
 	svcs.Public = make(ast.ServiceMap)
 	for _, name := range ast.StableUntypedServices(svcs.PublicUntyped) {
 		svcs.Public[name] = a.untypedServiceToTyped(doc, name, true, svcs.PublicUntyped[name])
