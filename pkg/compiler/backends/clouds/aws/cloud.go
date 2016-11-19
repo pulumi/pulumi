@@ -162,8 +162,8 @@ func (c *awsCloud) genMuAutoscalerServiceTemplate(comp core.Compiland, svc *ast.
 // CloudFormation templating as the output.  This happens after Mu templates have been expanded, allowing stack
 // properties, target environments, and so on, to be leveraged in the way these templates are generated.
 const CloudFormationExtensionProvider = "aws/cf"
-const CloudFormationExtensionProviderTypeField = "type"
-const CloudFormationExtensionProviderPropertiesField = "type"
+const CloudFormationExtensionProviderTypeField = "Type"
+const CloudFormationExtensionProviderPropertiesField = "Properties"
 
 func (c *awsCloud) genMuExtensionServiceTemplate(comp core.Compiland, svc *predef.MuExtensionService) *cfResource {
 	switch svc.Provider {
