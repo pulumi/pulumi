@@ -17,6 +17,6 @@ func TestAWSFriendlyNames(t *testing.T) {
 	assert.Equal(t, "TEST", makeAWSFriendlyName("TEST", true))
 	assert.Equal(t, "test123Test", makeAWSFriendlyName("test123Test", false))
 	assert.Equal(t, "Test123Test", makeAWSFriendlyName("test123Test", true))
-	assert.Equal(t, "test123TestAbc", makeAWSFriendlyName("test-123.Test/abc", false))
-	assert.Equal(t, "Test123TestAbc", makeAWSFriendlyName("test-123.Test/abc", true))
+	assert.Equal(t, "test123TestAbc", makeAWSFriendlyName("!.:test-123.Test/abc", false))
+	assert.Equal(t, "Test123TestAbc", makeAWSFriendlyName("!.:test-123.Test/abc", true))
 }
