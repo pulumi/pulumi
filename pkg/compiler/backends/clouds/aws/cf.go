@@ -133,8 +133,8 @@ type cfLogicalID string
 type cfResources map[string]cfResource
 
 type cfResource struct {
-	Type       cfResourceType         `json:","`          // the resource type being declared.
-	Properties map[string]interface{} `json:",omitempty"` // additional options for the resource.
+	Type       cfResourceType       `json:","`          // the resource type being declared.
+	Properties cfResourceProperties `json:",omitempty"` // additional options for the resource.
 }
 
 // A resource type identifier always takes the form:
@@ -319,6 +319,8 @@ const (
 	cfResourceTypeWAFXSSMatchSet                                       = "AWS::WAF::XssMatchSet"
 	cfResourceTypeWorkSpacesWorkspace                                  = "AWS::WorkSpaces::Workspace"
 )
+
+type cfResourceProperties map[string]interface{}
 
 // cfOutputs optionally declares output values that can be imported into other stacks to create cross-stack references.
 // See http://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/outputs-section-structure.html for more details.

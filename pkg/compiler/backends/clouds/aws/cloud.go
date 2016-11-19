@@ -12,6 +12,7 @@ import (
 	"github.com/marapongo/mu/pkg/compiler/backends/clouds"
 	"github.com/marapongo/mu/pkg/compiler/core"
 	"github.com/marapongo/mu/pkg/compiler/predef"
+	"github.com/marapongo/mu/pkg/errors"
 )
 
 // New returns a fresh instance of an AWS Cloud implementation.  This targets "native AWS" for the code-gen outputs.
@@ -146,8 +147,49 @@ func (c *awsCloud) genMuAutoscalerServiceTemplate(comp core.Compiland, svc *ast.
 	return nil
 }
 
+// CloudFormationExtensionProvider, when used with mu/extension, allows a stack to directly generate arbitrary
+// CloudFormation templating as the output.  This happens after Mu templates have been expanded, allowing stack
+// properties, target environments, and so on, to be leveraged in the way these templates are generated.
+const CloudFormationExtensionProvider = "aws/cf"
+const CloudFormationExtensionProviderTypeField = "type"
+const CloudFormationExtensionProviderPropertiesField = "type"
+
 func (c *awsCloud) genMuExtensionServiceTemplate(comp core.Compiland, svc *predef.MuExtensionService) *cfResource {
-	glog.Fatalf("%v service types are not yet supported\n", svc.Name)
+	switch svc.Provider {
+	case CloudFormationExtensionProvider:
+		// The AWS CF extension provider simply creates a CF resource out of the provided template.
+
+		var resType cfResourceType
+		t, ok := svc.Extra[CloudFormationExtensionProviderTypeField]
+		if ok {
+			resType, ok = t.(cfResourceType)
+			if !ok {
+				c.Diag().Errorf(errors.ErrorIncorrectExtensionPropertyType.WithDocument(comp.Doc),
+					CloudFormationExtensionProviderTypeField, "string")
+			}
+		} else {
+			c.Diag().Errorf(errors.ErrorMissingExtensionProperty.WithDocument(comp.Doc),
+				CloudFormationExtensionProviderTypeField)
+		}
+
+		var resProps cfResourceProperties
+		p, ok := svc.Extra[CloudFormationExtensionProviderPropertiesField]
+		if ok {
+			resProps, ok = p.(cfResourceProperties)
+			if !ok {
+				c.Diag().Errorf(errors.ErrorIncorrectExtensionPropertyType.WithDocument(comp.Doc),
+					CloudFormationExtensionProviderPropertiesField, "string-keyed map")
+			}
+		} else {
+			c.Diag().Errorf(errors.ErrorMissingExtensionProperty.WithDocument(comp.Doc),
+				CloudFormationExtensionProviderPropertiesField)
+		}
+
+		return &cfResource{resType, resProps}
+	default:
+		c.Diag().Errorf(errors.ErrorUnrecognizedExtensionProvider.WithDocument(comp.Doc), svc.Provider)
+	}
+
 	return nil
 }
 

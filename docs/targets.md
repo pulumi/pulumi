@@ -227,7 +227,7 @@ A simplified S3 bucket Stack, for example, looks like this:
     services:
         public:
             mu/extension:
-                provider: aws/cf/template
+                provider: aws/cf
                 template: |
                     {
                         "Type": "AWS::S3::Bucket",
