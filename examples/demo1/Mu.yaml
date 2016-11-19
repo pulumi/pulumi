@@ -1,5 +1,7 @@
 name: demo1-example
 description: A simple Express voting app with a MongoDB backend, ready for production use.
+dependencies:
+    mongodb/mongodb: 1.0.0
 services:
     private:
         mongodb/mongodb:
