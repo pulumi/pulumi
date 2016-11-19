@@ -104,16 +104,10 @@ type BoundDependencies map[Name]*Stack
 type Services struct {
 	Public  ServiceMap `json:"public,omitempty"`
 	Private ServiceMap `json:"private,omitempty"`
-
-	BoundPublic  BoundServiceMap `json:"-"` // services are bound to stacks during semantic analysis.
-	BoundPrivate BoundServiceMap `json:"-"` // services are bound to stacks during semantic analysis.
 }
 
 // ServiceMap is a map of service names to metadata about those services.
 type ServiceMap map[Name]Service
-
-// BoundServiceMap is a map of service names to a bound stack representing that service's type.
-type BoundServiceMap map[Name]*Stack
 
 // Service is a directive for instantiating another Stack, including its name, arguments, etc.
 type Service struct {
@@ -124,6 +118,8 @@ type Service struct {
 
 	Type Name `json:"type,omitempty"` // an explicit type; if missing, the name is used.
 	// TODO: Service metadata is highly type-dependent.  It's not yet clear how best to represent this in the schema.
+
+	BoundType *Stack `json:"-"` // services are bound to stacks during semantic analysis.
 }
 
 // TODO: several more core types still need to be mapped:

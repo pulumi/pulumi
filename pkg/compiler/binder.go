@@ -225,8 +225,7 @@ func (p *binderPhase2) VisitMetadata(doc *diag.Document, kind string, meta *ast.
 func (p *binderPhase2) VisitStack(doc *diag.Document, stack *ast.Stack) {
 	if stack.Base != "" {
 		// Ensure the name of the base is in scope, and remember the binding information.
-		_, stack.BoundBase = p.b.LookupStack(stack.Base)
-		if stack.BoundBase == nil {
+		if _, stack.BoundBase = p.b.LookupStack(stack.Base); stack.BoundBase == nil {
 			p.Diag().Errorf(errors.TypeNotFound.WithDocument(doc), stack.Base)
 		}
 	}
@@ -251,8 +250,7 @@ func (p *binderPhase2) VisitService(doc *diag.Document, name ast.Name, public bo
 	if svc.Type == "" {
 		glog.Fatalf("Expected all Services to have types in binding phase2; %v is missing one", svc.Name)
 	}
-	ty, _ := p.b.LookupStack(svc.Type)
-	if ty == nil {
+	if _, svc.BoundType = p.b.LookupStack(svc.Type); svc.BoundType == nil {
 		p.Diag().Errorf(errors.TypeNotFound.WithDocument(p.doc), svc.Type)
 	}
 }

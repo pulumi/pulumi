@@ -77,13 +77,11 @@ func (c *awsCloud) genStackTemplate(comp core.Compiland) *cfTemplate {
 	// matter.  The reason is that those dependencies are "runtime"-based and will get resolved elsewhere.
 	for _, name := range ast.StableServices(comp.Stack.Services.Private) {
 		svc := comp.Stack.Services.Private[name]
-		svcType := comp.Stack.Services.BoundPrivate[name]
-		cf.Resources[string(svc.Name)] = *c.genServiceTemplate(comp, &svc, svcType)
+		cf.Resources[string(svc.Name)] = *c.genServiceTemplate(comp, &svc)
 	}
 	for _, name := range ast.StableServices(comp.Stack.Services.Public) {
 		svc := comp.Stack.Services.Public[name]
-		svcType := comp.Stack.Services.BoundPublic[name]
-		cf.Resources[string(svc.Name)] = *c.genServiceTemplate(comp, &svc, svcType)
+		cf.Resources[string(svc.Name)] = *c.genServiceTemplate(comp, &svc)
 	}
 
 	// TODO: emit output exports (public services) that can be consumed by other stacks.
@@ -92,77 +90,69 @@ func (c *awsCloud) genStackTemplate(comp core.Compiland) *cfTemplate {
 }
 
 // genServiceTemplate creates a CloudFormation resource for a single service.
-func (c *awsCloud) genServiceTemplate(comp core.Compiland, svc *ast.Service, svcType *ast.Stack) *cfResource {
+func (c *awsCloud) genServiceTemplate(comp core.Compiland, svc *ast.Service) *cfResource {
 	// Code-generation differs greatly for the various service types.  There are three categories:
 	//		1) A Mu primitive: these have very specific manifestations to accomplish the desired Mu semantics.
 	//		2) An AWS-specific extension type: these largely just pass-through CloudFormation goo that we will emit.
 	//		3) A reference to another Stack: these just instantiate those Stacks and reference their outputs.
 
-	switch svcType {
+	switch svc.BoundType {
 	case predef.MuContainer:
-		return c.genMuContainerServiceTemplate(comp, svc, svcType)
+		return c.genMuContainerServiceTemplate(comp, svc)
 	case predef.MuGateway:
-		return c.genMuGatewayServiceTemplate(comp, svc, svcType)
+		return c.genMuGatewayServiceTemplate(comp, svc)
 	case predef.MuFunc:
-		return c.genMuFuncServiceTemplate(comp, svc, svcType)
+		return c.genMuFuncServiceTemplate(comp, svc)
 	case predef.MuEvent:
-		return c.genMuEventServiceTemplate(comp, svc, svcType)
+		return c.genMuEventServiceTemplate(comp, svc)
 	case predef.MuVolume:
-		return c.genMuVolumeServiceTemplate(comp, svc, svcType)
+		return c.genMuVolumeServiceTemplate(comp, svc)
 	case predef.MuAutoscaler:
-		return c.genMuAutoscalerServiceTemplate(comp, svc, svcType)
+		return c.genMuAutoscalerServiceTemplate(comp, svc)
 	case predef.MuExtension:
-		return c.genMuExtensionServiceTemplate(comp, svc, svcType)
+		return c.genMuExtensionServiceTemplate(comp, svc)
 	default:
-		return c.genStackServiceTemplate(comp, svc, svcType)
+		return c.genStackServiceTemplate(comp, svc)
 	}
 }
 
-func (c *awsCloud) genMuContainerServiceTemplate(
-	comp core.Compiland, svc *ast.Service, svcType *ast.Stack) *cfResource {
+func (c *awsCloud) genMuContainerServiceTemplate(comp core.Compiland, svc *ast.Service) *cfResource {
 	glog.Fatalf("%v service types are not yet supported\n", svc.Name)
 	return nil
 }
 
-func (c *awsCloud) genMuGatewayServiceTemplate(
-	comp core.Compiland, svc *ast.Service, svcType *ast.Stack) *cfResource {
+func (c *awsCloud) genMuGatewayServiceTemplate(comp core.Compiland, svc *ast.Service) *cfResource {
 	glog.Fatalf("%v service types are not yet supported\n", svc.Name)
 	return nil
 }
 
-func (c *awsCloud) genMuFuncServiceTemplate(
-	comp core.Compiland, svc *ast.Service, svcType *ast.Stack) *cfResource {
+func (c *awsCloud) genMuFuncServiceTemplate(comp core.Compiland, svc *ast.Service) *cfResource {
 	glog.Fatalf("%v service types are not yet supported\n", svc.Name)
 	return nil
 }
 
-func (c *awsCloud) genMuEventServiceTemplate(
-	comp core.Compiland, svc *ast.Service, svcType *ast.Stack) *cfResource {
+func (c *awsCloud) genMuEventServiceTemplate(comp core.Compiland, svc *ast.Service) *cfResource {
 	glog.Fatalf("%v service types are not yet supported\n", svc.Name)
 	return nil
 }
 
-func (c *awsCloud) genMuVolumeServiceTemplate(
-	comp core.Compiland, svc *ast.Service, svcType *ast.Stack) *cfResource {
+func (c *awsCloud) genMuVolumeServiceTemplate(comp core.Compiland, svc *ast.Service) *cfResource {
 	glog.Fatalf("%v service types are not yet supported\n", svc.Name)
 	return nil
 }
 
-func (c *awsCloud) genMuAutoscalerServiceTemplate(
-	comp core.Compiland, svc *ast.Service, svcType *ast.Stack) *cfResource {
+func (c *awsCloud) genMuAutoscalerServiceTemplate(comp core.Compiland, svc *ast.Service) *cfResource {
 	glog.Fatalf("%v service types are not yet supported\n", svc.Name)
 	return nil
 }
 
-func (c *awsCloud) genMuExtensionServiceTemplate(
-	comp core.Compiland, svc *ast.Service, svcType *ast.Stack) *cfResource {
+func (c *awsCloud) genMuExtensionServiceTemplate(comp core.Compiland, svc *ast.Service) *cfResource {
 	glog.Fatalf("%v service types are not yet supported\n", svc.Name)
 	return nil
 }
 
 // genStackServiceTemplate generates code for a general-purpose Stack service reference.
-func (c *awsCloud) genStackServiceTemplate(
-	comp core.Compiland, svc *ast.Service, svcType *ast.Stack) *cfResource {
+func (c *awsCloud) genStackServiceTemplate(comp core.Compiland, svc *ast.Service) *cfResource {
 	glog.Fatalf("%v service types are not yet supported\n", svc.Name)
 	return nil
 }
