@@ -26,7 +26,7 @@ func NewBinder(c Compiler) Binder {
 	b.PushScope()
 
 	// And now populate that symbol table with all known predefined Stack types before returning it.
-	for nm, stack := range predef.StackTypes {
+	for nm, stack := range predef.Stacks {
 		sym := NewStackSymbol(nm, stack)
 		if ok := b.RegisterSymbol(sym); !ok {
 			glog.Fatalf("Unexpected Symbol collision when registering predef Stack type %v\n", nm)

@@ -110,7 +110,7 @@ func (c *awsCloud) genServiceTemplate(comp core.Compiland, svc *ast.Service) *cf
 	case predef.MuAutoscaler:
 		return c.genMuAutoscalerServiceTemplate(comp, svc)
 	case predef.MuExtension:
-		return c.genMuExtensionServiceTemplate(comp, svc)
+		return c.genMuExtensionServiceTemplate(comp, predef.AsMuExtensionService(svc))
 	default:
 		return c.genStackServiceTemplate(comp, svc)
 	}
@@ -146,7 +146,7 @@ func (c *awsCloud) genMuAutoscalerServiceTemplate(comp core.Compiland, svc *ast.
 	return nil
 }
 
-func (c *awsCloud) genMuExtensionServiceTemplate(comp core.Compiland, svc *ast.Service) *cfResource {
+func (c *awsCloud) genMuExtensionServiceTemplate(comp core.Compiland, svc *predef.MuExtensionService) *cfResource {
 	glog.Fatalf("%v service types are not yet supported\n", svc.Name)
 	return nil
 }
