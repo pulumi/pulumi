@@ -2,6 +2,10 @@
 
 package aws
 
+import (
+	"regexp"
+)
+
 // This file maps the schema for AWS CloudFormation so that we can generate it in a more typesafe way.  Please see
 // http://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/template-anatomy.html for more information.  In
 // general, we mark all optional properties with `json:",omitempty"`, while required ones lack `omitempty`.
@@ -11,20 +15,22 @@ var cfVersion = "2010-09-09"
 // This section specifies some handy limits to improve compile-time checking.  For more details on the limits, please
 // see http://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/cloudformation-limits.html.
 const (
+	cfMaxLogicalIDChars               = 255
 	cfMaxMappings                     = 100
 	cfMaxMappingAttributes            = 64
 	cfMaxMappingNameChars             = 255
 	cfMaxOutputs                      = 60
-	cfMaxOutputNameChars              = 255
+	cfMaxOutputNameChars              = cfMaxLogicalIDChars
 	cfMaxOutputDescriptionChars       = 4096
 	cfMaxParameters                   = 60
 	cfMaxParameterDescriptionChars    = 4000
 	cfMaxParameterNameChars           = 255
 	cfMaxParameterValueBytes          = 4096
 	cfMaxResources                    = 200
-	cfMaxResourceNameChars            = 255
+	cfMaxResourceNameChars            = cfMaxLogicalIDChars
 	cfMaxSignalWaitConditionDataBytes = 4096
 	cfMaxStacks                       = 200
+	cfMaxStackNameChars               = 128
 	cfMaxTemplateDescriptionBytes     = 1024
 	cfMaxTemplateBodySizeRequestBytes = 51200
 	cfMaxTemplateBodySizeS3Bytes      = 460800
@@ -40,6 +46,17 @@ type cfTemplate struct {
 	Conditions               cfConditions `json:",omitempty"` // conditions to control resource modification.
 	Resources                cfResources  `json:","`          // the stack's resources and their properties.
 	Outputs                  cfOutputs    `json:",omitempty"` // values returned when you view your stack.
+}
+
+// IsValidStackName checks that the given string is a valid CloudFormation stack name.  It cannot be empty, must be
+// shorter than cfMaxStackNameChars, and can be comprised only of alphanumeric (a-z, A-Z, 0-9) or hyphen (-) characters.
+func IsValidStackName(s string) bool {
+	if len(s) == 0 || len(s) > cfMaxStackNameChars {
+		return false
+	}
+
+	m, _ := regexp.MatchString("[a-zA-Z0-9-]+", s)
+	return m
 }
 
 // cfMetadata can be used to include arbitrary JSON objects that provide details about the template.  Please see
@@ -124,13 +141,24 @@ type cfMappingKeyValues map[string]string
 // TODO: consider mapping these in a more strongly typed manner (e.g., the inner Fn::* function syntaxes).
 type cfConditions map[string]interface{}
 
-// cfLogicalID is used for resource identifiers; it must be alphanumeric (a-z, A-Z, 0-9) and unique in the template.
+// cfLogicalID represents a resource identifier; it must match the below regexp and be unique in the template.
 type cfLogicalID string
+
+// IsValidLogicalID checks that the given string is a valid CloudFormation logical ID.  It cannot be empty, must be less
+// than cfMaxLogicalIDChars in length, and must be comprised only of alphanumeric (a-z, A-Z, 0-9) characters.
+func IsValidLogicalID(s string) bool {
+	if len(s) == 0 || len(s) > cfMaxLogicalIDChars {
+		return false
+	}
+
+	m, _ := regexp.MatchString("[a-zA-Z0-9]+", s)
+	return m
+}
 
 // cfResources declares the AWS resources that you want as part of your stack.  It is a map of string-based logical IDs
 // to structures describing the types and properties for those resources.  For more information, please see
 // http://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/resources-section-structure.html.
-type cfResources map[string]cfResource
+type cfResources map[cfLogicalID]cfResource
 
 type cfResource struct {
 	Type       cfResourceType       `json:","`          // the resource type being declared.
@@ -324,7 +352,7 @@ type cfResourceProperties map[string]interface{}
 
 // cfOutputs optionally declares output values that can be imported into other stacks to create cross-stack references.
 // See http://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/outputs-section-structure.html for more details.
-type cfOutputs map[string]cfOutput
+type cfOutputs map[cfLogicalID]cfOutput
 
 type cfOutput struct {
 	Description string         `json:",omitempty"` // a string that describes the output value.

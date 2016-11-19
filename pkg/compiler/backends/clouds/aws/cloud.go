@@ -14,6 +14,7 @@ import (
 	"github.com/marapongo/mu/pkg/compiler/predef"
 	"github.com/marapongo/mu/pkg/diag"
 	"github.com/marapongo/mu/pkg/errors"
+	"github.com/marapongo/mu/pkg/util"
 )
 
 // New returns a fresh instance of an AWS Cloud implementation.  This targets "native AWS" for the code-gen outputs.
@@ -44,14 +45,16 @@ func (c *awsCloud) CodeGen(comp core.Compiland) {
 	// TODO: prepare full deployment packages (e.g., tarballs of code, Docker images, etc).
 	nm := c.genStackName(comp)
 	cf := c.genStackTemplate(comp)
-	// TODO: actually save this (and any other outputs) to disk, rather than spewing to STDOUT.
-	y, err := yaml.Marshal(cf)
-	if err != nil {
-		c.Diag().Errorf(ErrorMarshalingCloudFormationTemplate.WithDocument(comp.Doc), err)
-		return
+	if c.Diag().Errors() == 0 {
+		// TODO: actually save this (and any other outputs) to disk, rather than spewing to STDOUT.
+		y, err := yaml.Marshal(cf)
+		if err != nil {
+			c.Diag().Errorf(ErrorMarshalingCloudFormationTemplate.WithDocument(comp.Doc), err)
+			return
+		}
+		fmt.Printf("# %v:\n", nm)
+		fmt.Println(string(y))
 	}
-	fmt.Printf("%v:\n", nm)
-	fmt.Println(string(y))
 }
 
 // genClusterTemplate creates a CloudFormation template for a standard overall cluster.
@@ -62,7 +65,16 @@ func (c *awsCloud) genClusterTemplate(comp core.Compiland) *cfTemplate {
 
 // genStackName creates a name for the stack, which must be globally unique within an account.
 func (c *awsCloud) genStackName(comp core.Compiland) string {
-	return fmt.Sprintf("MuStack-%v-%v", comp.Target.Name, comp.Stack.Name)
+	nm := fmt.Sprintf("MuStack-%v-%v", comp.Target.Name, comp.Stack.Name)
+	util.Assert(IsValidStackName(nm))
+	return nm
+}
+
+// genServiceName creates a name for the service, which must be unique within a single CloudFormation template.
+func (c *awsCloud) genServiceName(stack *ast.Stack, svc *ast.Service) cfLogicalID {
+	nm := fmt.Sprintf("%v%v", stack.Name, svc.Name)
+	util.Assert(IsValidLogicalID(nm))
+	return cfLogicalID(nm)
 }
 
 // genStackTemplate creates a CloudFormation template for an entire stack and all of its services.
@@ -86,13 +98,15 @@ func (c *awsCloud) genStackTemplate(comp core.Compiland) *cfTemplate {
 	for _, name := range ast.StableServices(comp.Stack.Services.Private) {
 		svc := comp.Stack.Services.Private[name]
 		if res := c.genServiceTemplate(comp, &svc); res != nil {
-			cf.Resources[string(svc.Name)] = *res
+			nm := c.genServiceName(comp.Stack, &svc)
+			cf.Resources[nm] = *res
 		}
 	}
 	for _, name := range ast.StableServices(comp.Stack.Services.Public) {
 		svc := comp.Stack.Services.Public[name]
 		if res := c.genServiceTemplate(comp, &svc); res != nil {
-			cf.Resources[string(svc.Name)] = *res
+			nm := c.genServiceName(comp.Stack, &svc)
+			cf.Resources[nm] = *res
 		}
 	}
 
