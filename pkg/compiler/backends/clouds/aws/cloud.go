@@ -38,8 +38,7 @@ func (c *awsCloud) CodeGen(comp core.Compiland) {
 	// TODO: actually save this (and any other outputs) to disk, rather than spewing to STDOUT.
 	y, err := yaml.Marshal(cf)
 	if err != nil {
-		// TODO: we need to arrange for the compiler's sink to pass through here.  Another core interface.
-		fmt.Printf("error: %v\n", err)
+		comp.Diag.Errorf(ErrorMarshalingCloudFormationTemplate.WithDocument(comp.Doc), err)
 		return
 	}
 	fmt.Printf("%v:\n", nm)
