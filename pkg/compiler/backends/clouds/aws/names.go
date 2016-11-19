@@ -33,7 +33,7 @@ func makeAWSFriendlyName(s string, pascal bool) string {
 			}
 			t = append(t, r)
 			first = false
-		} else {
+		} else if !first {
 			capnext = true
 		}
 
