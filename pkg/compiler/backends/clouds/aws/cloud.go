@@ -71,6 +71,7 @@ func (c *awsCloud) genStackTemplate(comp core.Compiland) *cfTemplate {
 	cf := &cfTemplate{
 		AWSTemplateFormatVersion: cfVersion,
 		Description:              comp.Stack.Description,
+		Resources:                make(cfResources),
 	}
 
 	// TODO: add parameters.
@@ -84,11 +85,15 @@ func (c *awsCloud) genStackTemplate(comp core.Compiland) *cfTemplate {
 	// matter.  The reason is that those dependencies are "runtime"-based and will get resolved elsewhere.
 	for _, name := range ast.StableServices(comp.Stack.Services.Private) {
 		svc := comp.Stack.Services.Private[name]
-		cf.Resources[string(svc.Name)] = *c.genServiceTemplate(comp, &svc)
+		if res := c.genServiceTemplate(comp, &svc); res != nil {
+			cf.Resources[string(svc.Name)] = *res
+		}
 	}
 	for _, name := range ast.StableServices(comp.Stack.Services.Public) {
 		svc := comp.Stack.Services.Public[name]
-		cf.Resources[string(svc.Name)] = *c.genServiceTemplate(comp, &svc)
+		if res := c.genServiceTemplate(comp, &svc); res != nil {
+			cf.Resources[string(svc.Name)] = *res
+		}
 	}
 
 	// TODO: emit output exports (public services) that can be consumed by other stacks.
@@ -172,10 +177,12 @@ func (c *awsCloud) genMuExtensionServiceTemplate(comp core.Compiland, svc *prede
 			if !ok {
 				c.Diag().Errorf(errors.ErrorIncorrectExtensionPropertyType.WithDocument(comp.Doc),
 					CloudFormationExtensionProviderTypeField, "string")
+				return nil
 			}
 		} else {
 			c.Diag().Errorf(errors.ErrorMissingExtensionProperty.WithDocument(comp.Doc),
 				CloudFormationExtensionProviderTypeField)
+			return nil
 		}
 
 		var resProps cfResourceProperties
@@ -185,10 +192,12 @@ func (c *awsCloud) genMuExtensionServiceTemplate(comp core.Compiland, svc *prede
 			if !ok {
 				c.Diag().Errorf(errors.ErrorIncorrectExtensionPropertyType.WithDocument(comp.Doc),
 					CloudFormationExtensionProviderPropertiesField, "string-keyed map")
+				return nil
 			}
 		} else {
 			c.Diag().Errorf(errors.ErrorMissingExtensionProperty.WithDocument(comp.Doc),
 				CloudFormationExtensionProviderPropertiesField)
+			return nil
 		}
 
 		return &cfResource{resType, resProps}
