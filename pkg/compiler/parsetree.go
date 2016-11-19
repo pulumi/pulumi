@@ -69,7 +69,7 @@ func (a *ptAnalyzer) VisitMetadata(doc *diag.Document, kind ast.MetadataKind, me
 func (a *ptAnalyzer) VisitStack(doc *diag.Document, stack *ast.Stack) {
 }
 
-func (a *ptAnalyzer) VisitParameter(doc *diag.Document, name string, param *ast.Parameter) {
+func (a *ptAnalyzer) VisitProperty(doc *diag.Document, name string, param *ast.Property) {
 	// Decorate the AST with contextual information so subsequent passes can operate context-free.
 	param.Name = name
 }

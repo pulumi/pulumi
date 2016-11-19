@@ -15,13 +15,13 @@ func StableDependencies(d Dependencies) []Name {
 	return deps
 }
 
-func StableParameters(p Parameters) []string {
-	params := make([]string, 0, len(p))
-	for param := range p {
-		params = append(params, param)
+func StableProperties(p Properties) []string {
+	props := make([]string, 0, len(p))
+	for prop := range p {
+		props = append(props, prop)
 	}
-	sort.Strings(params)
-	return params
+	sort.Strings(props)
+	return props
 }
 
 func StableServices(s ServiceMap) []Name {

@@ -164,7 +164,7 @@ func (p *binderPhase1) VisitMetadata(doc *diag.Document, kind ast.MetadataKind, 
 func (p *binderPhase1) VisitStack(doc *diag.Document, stack *ast.Stack) {
 }
 
-func (p *binderPhase1) VisitParameter(doc *diag.Document, name string, param *ast.Parameter) {
+func (p *binderPhase1) VisitProperty(doc *diag.Document, name string, param *ast.Property) {
 }
 
 func (p *binderPhase1) VisitDependency(doc *diag.Document, name ast.Name, dep *ast.Dependency) {
@@ -235,7 +235,7 @@ func (p *binderPhase2) VisitStack(doc *diag.Document, stack *ast.Stack) {
 	}
 }
 
-func (p *binderPhase2) VisitParameter(doc *diag.Document, name string, param *ast.Parameter) {
+func (p *binderPhase2) VisitProperty(doc *diag.Document, name string, param *ast.Property) {
 }
 
 func (p *binderPhase2) VisitDependency(doc *diag.Document, name ast.Name, dep *ast.Dependency) {

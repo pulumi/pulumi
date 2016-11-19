@@ -12,7 +12,7 @@ type Visitor interface {
 	Phase
 	VisitMetadata(doc *diag.Document, kind ast.MetadataKind, meta *ast.Metadata)
 	VisitStack(doc *diag.Document, stack *ast.Stack)
-	VisitParameter(doc *diag.Document, name string, param *ast.Parameter)
+	VisitProperty(doc *diag.Document, name string, prop *ast.Property)
 	VisitDependency(doc *diag.Document, name ast.Name, dep *ast.Dependency)
 	VisitServices(doc *diag.Document, svcs *ast.Services)
 	VisitService(doc *diag.Document, name ast.Name, public bool, svc *ast.Service)
@@ -68,11 +68,11 @@ func (v *inOrderVisitor) VisitStack(doc *diag.Document, stack *ast.Stack) {
 
 	v.VisitMetadata(doc, "Stack", &stack.Metadata)
 
-	for _, name := range ast.StableParameters(stack.Parameters) {
-		param := stack.Parameters[name]
-		v.VisitParameter(doc, name, &param)
-		// Copy the parameter back in case it was updated.
-		stack.Parameters[name] = param
+	for _, name := range ast.StableProperties(stack.Properties) {
+		prop := stack.Properties[name]
+		v.VisitProperty(doc, name, &prop)
+		// Copy the property back in case it was updated.
+		stack.Properties[name] = prop
 	}
 
 	for _, name := range ast.StableDependencies(stack.Dependencies) {
@@ -90,12 +90,12 @@ func (v *inOrderVisitor) VisitStack(doc *diag.Document, stack *ast.Stack) {
 	}
 }
 
-func (v *inOrderVisitor) VisitParameter(doc *diag.Document, name string, param *ast.Parameter) {
+func (v *inOrderVisitor) VisitProperty(doc *diag.Document, name string, prop *ast.Property) {
 	if v.pre != nil {
-		v.pre.VisitParameter(doc, name, param)
+		v.pre.VisitProperty(doc, name, prop)
 	}
 	if v.post != nil {
-		v.post.VisitParameter(doc, name, param)
+		v.post.VisitProperty(doc, name, prop)
 	}
 }
 

@@ -76,7 +76,7 @@ type Stack struct {
 
 	Base         Name         `json:"base,omitempty"`     // an optional base Stack type.
 	Abstract     bool         `json:"abstract,omitempty"` // true if this stack is "abstract" (uninstantiable).
-	Parameters   Parameters   `json:"parameters,omitempty"`
+	Properties   Properties   `json:"properties,omitempty"`
 	Dependencies Dependencies `json:"dependencies,omitempty"`
 	Services     Services     `json:"services,omitempty"`
 
@@ -84,31 +84,32 @@ type Stack struct {
 	BoundDependencies BoundDependencies `json:"-"` // dependencies are bound during semantic analysis.
 }
 
-// Parameters maps parameter names to metadata about those parameters.
-type Parameters map[string]Parameter
+// Propertys maps property names to metadata about those propertys.
+type Properties map[string]Property
 
-// Parameter describes the requirements of arguments used when constructing Stacks, etc.
-type Parameter struct {
+// Property describes the requirements of arguments used when constructing Stacks, etc.
+type Property struct {
 	Node
 
-	Type        ParameterType `json:"type,omitempty"`        // the type of the parameter; required.
-	Description string        `json:"description,omitempty"` // an optional friendly description of the parameter.
-	Default     interface{}   `json:"default,omitempty"`     // an optional default value if the caller elides one.
-	Optional    bool          `json:"optional,omitempty"`    // true if may be omitted (inferred if a default value).
+	Type        PropertyType `json:"type,omitempty"`        // the type of the property; required.
+	Description string       `json:"description,omitempty"` // an optional friendly description of the property.
+	Default     interface{}  `json:"default,omitempty"`     // an optional default value if the caller elides one.
+	Optional    bool         `json:"optional,omitempty"`    // true if may be omitted (inferred if a default value).
 
 	Name string `json:"-"` // name is decorated post-parsing, since it is contextual.
 }
 
-// ParameterType stores the name of a parameter's type.
-type ParameterType Name
+// PropertyType stores the name of a property's type.
+type PropertyType Name
 
-// A set of known parameter types.  Note that this is extensible, so names outside of this list are legal.
+// A set of known property types.  Note that this is extensible, so names outside of this list are legal.
 // TODO: support complex types (like arrays, custom JSON shapes, and so on).
 const (
-	ParameterTypeAny     ParameterType = "any"
-	ParameterTypeString                = "string"
-	ParameterTypeNumber                = "number"
-	ParameterTypeBoolean               = "boolean"
+	PropertyTypeAny     PropertyType = "any"     // any structure.
+	PropertyTypeString               = "string"  // a JSON-like string.
+	PropertyTypeNumber               = "number"  // a JSON-like number (integer or floating point).
+	PropertyTypeBoolean              = "boolean" // a JSON-like boolean (`true` or `false`).
+	PropertyTypeService              = "service" // an untyped service reference; the runtime manifestation is a URL.
 )
 
 // Dependencies maps dependency names to the semantic version the consumer depends on.

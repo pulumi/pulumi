@@ -30,7 +30,7 @@ var (
 			Description: "An LXC or Windows container.",
 			Kind:        ast.MetadataKindStack,
 		},
-		Parameters: ast.Parameters{},
+		Properties: ast.Properties{},
 	}
 	MuGateway = &ast.Stack{
 		Metadata: ast.Metadata{
@@ -38,7 +38,7 @@ var (
 			Description: "An API gateway and load balancer, multiplexing requests over services.",
 			Kind:        ast.MetadataKindStack,
 		},
-		Parameters: ast.Parameters{},
+		Properties: ast.Properties{},
 	}
 	MuFunc = &ast.Stack{
 		Metadata: ast.Metadata{
@@ -46,7 +46,7 @@ var (
 			Description: "A single standalone function for serverless scenarios.",
 			Kind:        ast.MetadataKindStack,
 		},
-		Parameters: ast.Parameters{},
+		Properties: ast.Properties{},
 	}
 	MuEvent = &ast.Stack{
 		Metadata: ast.Metadata{
@@ -54,7 +54,7 @@ var (
 			Description: "An event that may be used to trigger execution of another service.",
 			Kind:        ast.MetadataKindStack,
 		},
-		Parameters: ast.Parameters{},
+		Properties: ast.Properties{},
 	}
 	MuVolume = &ast.Stack{
 		Metadata: ast.Metadata{
@@ -62,7 +62,7 @@ var (
 			Description: "A volume that stores data and can be mounted by other services.",
 			Kind:        ast.MetadataKindStack,
 		},
-		Parameters: ast.Parameters{},
+		Properties: ast.Properties{},
 	}
 	MuAutoscaler = &ast.Stack{
 		Metadata: ast.Metadata{
@@ -70,7 +70,7 @@ var (
 			Description: "A service that can automatically scale other services based on policy.",
 			Kind:        ast.MetadataKindStack,
 		},
-		Parameters: ast.Parameters{},
+		Properties: ast.Properties{},
 	}
 	MuExtension = &ast.Stack{
 		Metadata: ast.Metadata{
@@ -78,10 +78,10 @@ var (
 			Description: "A logical service that extends the system by hooking system events.",
 			Kind:        ast.MetadataKindStack,
 		},
-		Parameters: ast.Parameters{
-			"provider": ast.Parameter{
+		Properties: ast.Properties{
+			"provider": ast.Property{
 				Name:        "provider",
-				Type:        ast.ParameterTypeString,
+				Type:        ast.PropertyTypeString,
 				Description: "The name of the provider that will handle this service.",
 			},
 		},

@@ -213,7 +213,7 @@ other higher level abstractions may compose these platform primitives into more 
 A simplified S3 bucket Stack, for example, looks like this:
 
     name: bucket
-    parameters:
+    properties:
         accessControl: string
         bucketName: string
         corsConfiguration: aws/schema/corsConfiguration
@@ -232,15 +232,15 @@ A simplified S3 bucket Stack, for example, looks like this:
                     {
                         "Type": "AWS::S3::Bucket",
                         "Properties": {
-                            "AccessControl": {{json .args.accessControl}},
-                            "BucketName": {{json .args.bucketName}},
-                            "CorsConfiguration": {{json .args.corsConfiguration}},
-                            "LifecycleConfiguration": {{json .args.lifecycleConfiguration}},
-                            "NotificationConfiguration": {{json .args.notificationConfiguration}},
-                            "ReplicationConfiguration": {{json .args.replicationConfiguration}},
-                            "Tags": {{json .args.tags}},
-                            "VersioningConfiguration": {{json .args.versioningConfiguration}},
-                            "WebsiteConfiguration": {{json .args.websiteConfiguration}}
+                            "AccessControl": {{json .props.accessControl}},
+                            "BucketName": {{json .props.bucketName}},
+                            "CorsConfiguration": {{json .props.corsConfiguration}},
+                            "LifecycleConfiguration": {{json .props.lifecycleConfiguration}},
+                            "NotificationConfiguration": {{json .props.notificationConfiguration}},
+                            "ReplicationConfiguration": {{json .props.replicationConfiguration}},
+                            "Tags": {{json .props.tags}},
+                            "VersioningConfiguration": {{json .props.versioningConfiguration}},
+                            "WebsiteConfiguration": {{json .props.websiteConfiguration}}
                         }
                     }
 

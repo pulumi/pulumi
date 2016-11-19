@@ -74,19 +74,26 @@ TODO(joe): articulate this section further; e.g., the metadata format, precise a
 
 ## Stack Constructors
 
-Each Stack can declare a set of constructor parameters that callers must supply during creation:
+Each Stack can declare a set of properties that callers can set during creation:
 
-    parameters:
+    properties:
 
-Each parameter has the following properties:
+This is a bag of property names to property values, each of which has the following:
 
-* `name`: A name unique amongst all parameters.
-* `description`: An optional long-form description of the parameter.
-* `type`: A parameter type, restricting the legal values.
-* `default`: A default value to be supplied if missing from the caller.
-* `optional`: If `true`, this parameter is optional.
+* `type`: A property type, restricting the legal values.
+* `description`: An optional long-form description of the property.
+* `default`: A default value to be supplied if the caller doesn't supply one.
+* `optional`: If `true`, this property can be omitted at creation time.
 
-The set of types a parameter may take on are "JSON-like".  This includes simple primitives:
+For example:
+
+    properties:
+        title:
+            type: string
+            description: The title of this thing.
+            default: Anonymous
+
+The set of types a property may take on are "JSON-like".  This includes simple primitives:
 
     type: string
     type: number
@@ -102,7 +109,6 @@ As well as array shapes utilizing them:
 
 Complex structures can be described simply using objects with properties:
 
-    name: tag
     type:
         id: number
         name: string
@@ -138,22 +144,6 @@ Another example leverages the primitive `mu/volume` type to require a Service wh
 
     type: mu/volume
 
-The simple form of expressing parameters is `name: type`:
-
-    parameters:
-        first: string
-        second: number
-
-The long-form, should other properties be used, is to use an array:
-
-    parameters:
-        - name: first
-          type: string
-          ...
-        - name: second
-          type: number
-          ...
-
 Finally, note that anywhere inside of this Mufile, we may access the arguments supplied at Stack instantiation time
 using the Go template syntax mentioned earlier.  For example, `{{.args.tag.name}}`.
 
@@ -172,7 +162,7 @@ In this section is zero-to-many Services that are co-created with one another.  
 * A name, both for dynamic and static use.
 * A type, which is just the name of a Stack to instantiate.
 * A visibility governing whether consumers of this Stack have access to it or not.
-* One or more named arguments, mapping to the Stack's constructor parameters.
+* Any number of name/value properties, mapping to the Stack's settable properties.
 
 Although these Services are co-created, they may reference one another.  The references between each other forms a DAG
 and the system topologically sorts that DAG in order to determine the order in which to create and destroy Services.
