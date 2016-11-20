@@ -119,7 +119,14 @@ type Dependencies map[Name]Dependency
 type Dependency SemVer
 
 // BoundDependencies contains a map of all bound dependencies, populated during semantic analysis.
-type BoundDependencies map[Name]*Stack
+type BoundDependencies map[Name]BoundDependency
+
+// BoundDependency contains information about a binding.
+type BoundDependency struct {
+	Name    Name       // the name used to bind to this dependency.
+	Version Semver     // the version requested to bind to this dependency.
+	Stack   *ast.Stack // the bound stack for this dependency.
+}
 
 // Services is a list of public and private service references, keyed by name.
 type Services struct {

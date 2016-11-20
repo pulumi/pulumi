@@ -154,13 +154,18 @@ func (p *binderPhase1) VisitMetadata(doc *diag.Document, kind ast.MetadataKind, 
 }
 
 func (p *binderPhase1) VisitStack(doc *diag.Document, stack *ast.Stack) {
+	// Make space for bound dependencies.
+	stack.BoundDependencies = make(ast.BoundDependencies)
 }
 
 func (p *binderPhase1) VisitProperty(doc *diag.Document, name string, param *ast.Property) {
 }
 
 func (p *binderPhase1) VisitDependency(doc *diag.Document, name ast.Name, dep *ast.Dependency) {
-	// TODO: populate the symbol table with each dependency's stack object.
+	// During the first phase of binding, we need to populate the symbol table with this Stack's dependencies, as well
+	// as remember them on the AST for subsequent use (e.g., during code-generation).
+	// TODO: come up with some way of identifying unused dependencies and warning about them.
+	// TODO: actually implement this.
 }
 
 func (p *binderPhase1) VisitServices(doc *diag.Document, svcs *ast.Services) {
