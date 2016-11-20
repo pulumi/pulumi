@@ -8,22 +8,25 @@ import (
 	"github.com/golang/glog"
 )
 
-const assertFailure = "An assertion has failed"
+const assertMsg = "An assertion has failed"
 
+// Assert checks a condition and Fails if it is false.
 func Assert(cond bool) {
 	if !cond {
-		glog.Fatal(assertFailure)
+		glog.Fatal(assertMsg)
 	}
 }
 
+// AssertM checks a condition and FailsMs if it is false, logging the given message.
 func AssertM(cond bool, msg string) {
 	if !cond {
-		glog.Fatalf("%v: %v", assertFailure, msg)
+		glog.Fatalf("%v: %v", assertMsg, msg)
 	}
 }
 
+// AssertMF checks a condition and FailsMFs if it is false, formatting and logging the given message.
 func AssertMF(cond bool, msg string, args ...interface{}) {
 	if !cond {
-		glog.Fatalf("%v: %v", assertFailure, fmt.Sprintf(msg, args...))
+		glog.Fatalf("%v: %v", assertMsg, fmt.Sprintf(msg, args...))
 	}
 }

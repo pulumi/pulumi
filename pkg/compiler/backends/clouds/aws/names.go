@@ -5,6 +5,8 @@ package aws
 import (
 	"unicode"
 	"unicode/utf8"
+
+	"github.com/marapongo/mu/pkg/util"
 )
 
 // makeAWSFriendlyName returns a name part that is suitable for inclusion in a CloudFormation string.  This includes
@@ -30,6 +32,7 @@ func makeAWSFriendlyName(s string, pascal bool) string {
 				capnext = false
 			} else if first {
 				// For the first letter, we'll have PascalCased (thanks to capnext), but need to camelCase.
+				util.Assert(!pascal)
 				r = unicode.ToLower(r)
 			}
 			t = append(t, r)

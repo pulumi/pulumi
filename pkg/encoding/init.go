@@ -3,8 +3,7 @@
 package encoding
 
 import (
-	"github.com/golang/glog"
-
+	"github.com/marapongo/mu/pkg/util"
 	"github.com/marapongo/mu/pkg/workspace"
 )
 
@@ -20,7 +19,7 @@ func init() {
 		case ".yaml":
 			Marshalers[ext] = &yamlMarshaler{}
 		default:
-			glog.Fatalf("No Marshaler available for MufileExt %v", ext)
+			util.FailMF("No Marshaler available for MufileExt %v", ext)
 		}
 	}
 }

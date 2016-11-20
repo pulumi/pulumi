@@ -6,7 +6,6 @@ import (
 	"fmt"
 
 	"github.com/ghodss/yaml"
-	"github.com/golang/glog"
 
 	"github.com/marapongo/mu/pkg/ast"
 	"github.com/marapongo/mu/pkg/compiler/backends/clouds"
@@ -145,32 +144,32 @@ func (c *awsCloud) genServiceTemplate(comp core.Compiland, svc *ast.Service) *cf
 }
 
 func (c *awsCloud) genMuContainerServiceTemplate(comp core.Compiland, svc *ast.Service) *cfResource {
-	glog.Fatalf("%v service types are not yet supported\n", svc.Name)
+	util.FailMF("%v service types are not yet supported\n", svc.Name)
 	return nil
 }
 
 func (c *awsCloud) genMuGatewayServiceTemplate(comp core.Compiland, svc *ast.Service) *cfResource {
-	glog.Fatalf("%v service types are not yet supported\n", svc.Name)
+	util.FailMF("%v service types are not yet supported\n", svc.Name)
 	return nil
 }
 
 func (c *awsCloud) genMuFuncServiceTemplate(comp core.Compiland, svc *ast.Service) *cfResource {
-	glog.Fatalf("%v service types are not yet supported\n", svc.Name)
+	util.FailMF("%v service types are not yet supported\n", svc.Name)
 	return nil
 }
 
 func (c *awsCloud) genMuEventServiceTemplate(comp core.Compiland, svc *ast.Service) *cfResource {
-	glog.Fatalf("%v service types are not yet supported\n", svc.Name)
+	util.FailMF("%v service types are not yet supported\n", svc.Name)
 	return nil
 }
 
 func (c *awsCloud) genMuVolumeServiceTemplate(comp core.Compiland, svc *ast.Service) *cfResource {
-	glog.Fatalf("%v service types are not yet supported\n", svc.Name)
+	util.FailMF("%v service types are not yet supported\n", svc.Name)
 	return nil
 }
 
 func (c *awsCloud) genMuAutoscalerServiceTemplate(comp core.Compiland, svc *ast.Service) *cfResource {
-	glog.Fatalf("%v service types are not yet supported\n", svc.Name)
+	util.FailMF("%v service types are not yet supported\n", svc.Name)
 	return nil
 }
 
@@ -246,6 +245,6 @@ func (c *awsCloud) genMuExtensionServiceTemplate(comp core.Compiland, svc *prede
 
 // genStackServiceTemplate generates code for a general-purpose Stack service reference.
 func (c *awsCloud) genStackServiceTemplate(comp core.Compiland, svc *ast.Service) *cfResource {
-	glog.Fatalf("%v service types are not yet supported\n", svc.Name)
+	util.FailMF("%v service types are not yet supported\n", svc.Name)
 	return nil
 }

@@ -10,6 +10,7 @@ import (
 	"github.com/marapongo/mu/pkg/compiler/predef"
 	"github.com/marapongo/mu/pkg/diag"
 	"github.com/marapongo/mu/pkg/errors"
+	"github.com/marapongo/mu/pkg/util"
 )
 
 // Binder annotates an existing parse tree with semantic information.
@@ -28,9 +29,8 @@ func NewBinder(c Compiler) Binder {
 	// And now populate that symbol table with all known predefined Stack types before returning it.
 	for nm, stack := range predef.Stacks {
 		sym := NewStackSymbol(nm, stack)
-		if ok := b.RegisterSymbol(sym); !ok {
-			glog.Fatalf("Unexpected Symbol collision when registering predef Stack type %v\n", nm)
-		}
+		ok := b.RegisterSymbol(sym)
+		util.AssertMF(ok, "Unexpected Symbol collision when registering predef Stack type %v", nm)
 	}
 
 	return b
@@ -74,25 +74,19 @@ func (b *binder) Bind(doc *diag.Document, stack *ast.Stack) {
 
 // LookupStack binds a name to a Stack type.
 func (b *binder) LookupStack(nm ast.Name) (*Symbol, *ast.Stack) {
-	if b.scope == nil {
-		glog.Fatalf("Unexpected empty binding scope during LookupStack")
-	}
+	util.AssertM(b.scope != nil, "Unexpected empty binding scope during LookupStack")
 	return b.scope.LookupStack(nm)
 }
 
 // LookupSymbol binds a name to any kind of Symbol.
 func (b *binder) LookupSymbol(nm ast.Name) *Symbol {
-	if b.scope == nil {
-		glog.Fatalf("Unexpected empty binding scope during LookupSymbol")
-	}
+	util.AssertM(b.scope != nil, "Unexpected empty binding scope during LookupSymbol")
 	return b.scope.LookupSymbol(nm)
 }
 
 // RegisterSymbol registers a symbol with the given name; if it already exists, the function returns false.
 func (b *binder) RegisterSymbol(sym *Symbol) bool {
-	if b.scope == nil {
-		glog.Fatalf("Unexpected empty binding scope during RegisterSymbol")
-	}
+	util.AssertM(b.scope != nil, "Unexpected empty binding scope during RegisterSymbol")
 	return b.scope.RegisterSymbol(sym)
 }
 
@@ -103,9 +97,7 @@ func (b *binder) PushScope() {
 
 // PopScope replaces the current scope with its parent.
 func (b *binder) PopScope() {
-	if b.scope == nil {
-		glog.Fatalf("Unexpected empty binding scope during pop")
-	}
+	util.AssertM(b.scope != nil, "Unexpected empty binding scope during pop")
 	b.scope = b.scope.parent
 }
 
@@ -247,9 +239,8 @@ func (p *binderPhase2) VisitServices(doc *diag.Document, svcs *ast.Services) {
 func (p *binderPhase2) VisitService(doc *diag.Document, name ast.Name, public bool, svc *ast.Service) {
 	// The service's type has been prepared in phase 1, and must now be bound to a symbol.  All shorthand type
 	// expressions, intra stack references, cycles, and so forth, will have been taken care of by this earlier phase.
-	if svc.Type == "" {
-		glog.Fatalf("Expected all Services to have types in binding phase2; %v is missing one", svc.Name)
-	}
+	util.AssertMF(svc.Type != "",
+		"Expected all Services to have types in binding phase2; %v is missing one", svc.Name)
 	if _, svc.BoundType = p.b.LookupStack(svc.Type); svc.BoundType == nil {
 		p.Diag().Errorf(errors.TypeNotFound.WithDocument(p.doc), svc.Type)
 	}

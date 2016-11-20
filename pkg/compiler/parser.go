@@ -10,6 +10,7 @@ import (
 	"github.com/marapongo/mu/pkg/diag"
 	"github.com/marapongo/mu/pkg/encoding"
 	"github.com/marapongo/mu/pkg/errors"
+	"github.com/marapongo/mu/pkg/util"
 )
 
 // Parse transforms a program's input text into a parse tree.
@@ -46,11 +47,7 @@ func (p *parser) Parse(doc *diag.Document) *ast.Stack {
 	// TODO: we need to expand templates as part of the parsing process
 	var stack ast.Stack
 	marshaler, has := encoding.Marshalers[doc.Ext()]
-	if !has {
-		glog.Fatalf("No marshaler registered for this Mufile extension: %v", doc.Ext())
-		return nil
-	}
-
+	util.AssertMF(has, "No marshaler registered for this Mufile extension: %v", doc.Ext())
 	if err := marshaler.Unmarshal(doc.Body, &stack); err != nil {
 		p.Diag().Errorf(errors.IllegalMufileSyntax.WithDocument(doc), err)
 		// TODO: it would be great if we issued an error per issue found in the file with line/col numbers.

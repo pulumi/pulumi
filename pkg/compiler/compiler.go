@@ -18,6 +18,7 @@ import (
 	"github.com/marapongo/mu/pkg/compiler/core"
 	"github.com/marapongo/mu/pkg/diag"
 	"github.com/marapongo/mu/pkg/errors"
+	"github.com/marapongo/mu/pkg/util"
 	"github.com/marapongo/mu/pkg/workspace"
 )
 
@@ -266,10 +267,7 @@ func (c *compiler) analyzeStack(doc *diag.Document, stack *ast.Stack) (*ast.Stac
 // hierarchy.  If no Mufile is found, an empty path is returned.
 func (c *compiler) detectMufile(from string) string {
 	abs, err := filepath.Abs(from)
-	if err != nil {
-		glog.Fatalf("An IO error occurred while searching for a Mufile: %v", err)
-		return ""
-	}
+	util.AssertMF(err == nil, "An IO error occurred while searching for a Mufile: %v", err)
 
 	// It's possible the target is already the file we seek; if so, return right away.
 	if c.isMufile(abs) {
@@ -282,10 +280,7 @@ func (c *compiler) detectMufile(from string) string {
 
 		// If the target is a directory, enumerate its files, checking each to see if it's a Mufile.
 		files, err := ioutil.ReadDir(curr)
-		if err != nil {
-			glog.Fatalf("An IO error occurred while searching for a Mufile: %v", err)
-			return ""
-		}
+		util.AssertMF(err == nil, "An IO error occurred while searching for a Mufile: %v", err)
 		for _, file := range files {
 			name := file.Name()
 			path := filepath.Join(curr, name)
