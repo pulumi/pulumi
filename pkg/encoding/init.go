@@ -10,7 +10,7 @@ import (
 func init() {
 	// Ensure a marshaler is available for every possible Mufile extension
 	Marshalers = make(map[string]Marshaler)
-	for _, ext := range workspace.MufileExts {
+	for _, ext := range workspace.Exts {
 		switch ext {
 		case ".json":
 			Marshalers[ext] = &jsonMarshaler{}
