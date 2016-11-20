@@ -9,11 +9,12 @@ import (
 	"strings"
 
 	"github.com/golang/glog"
+	"github.com/spf13/cobra"
+
 	"github.com/marapongo/mu/pkg/compiler"
 	"github.com/marapongo/mu/pkg/compiler/backends"
 	"github.com/marapongo/mu/pkg/compiler/backends/clouds"
 	"github.com/marapongo/mu/pkg/compiler/backends/schedulers"
-	"github.com/spf13/cobra"
 )
 
 // defaultIn is where the Mu compiler looks for inputs by default.

@@ -6,28 +6,37 @@ import (
 	"flag"
 	"strconv"
 
+	"github.com/golang/glog"
 	"github.com/spf13/cobra"
 )
 
 func NewMuCmd() *cobra.Command {
+	var logToStderr bool
 	var verbose int
-
 	cmd := &cobra.Command{
 		Use:   "mu",
 		Short: "Mu is a framework and toolset for reusable stacks of services",
-		Run: func(cmd *cobra.Command, args []string) {
+		PersistentPreRun: func(cmd *cobra.Command, args []string) {
+			// Ensure the glog library has been initialized, including calling flag.Parse beforehand.  Unfortunately,
+			// this is the only way to control the way glog runs.  That includes poking around at flags below.
+			flag.Parse()
+			glog.Info("Mu CLI is running")
+
+			if logToStderr {
+				flag.Lookup("logtostderr").Value.Set("true")
+			}
 			if verbose > 0 {
-				// Enable verbose logging in glog at the specified level.  Poking around at the flags by name feels
-				// kind of hacky, however it's how the glog library works.
 				flag.Lookup("v").Value.Set(strconv.Itoa(verbose))
 			}
 		},
+		PersistentPostRun: func(cmd *cobra.Command, args []string) {
+			glog.Flush()
+		},
 	}
 
+	cmd.PersistentFlags().BoolVar(&logToStderr, "logtostderr", false, "Log to stderr instead of to files")
 	cmd.PersistentFlags().IntVarP(
-		&verbose, "verbose", "v", 0,
-		"Enable verbose logging (e.g., v=3); warning: anything >3 is very verbose",
-	)
+		&verbose, "verbose", "v", 0, "Enable verbose logging (e.g., v=3); anything >3 is very verbose")
 
 	cmd.AddCommand(newBuildCmd())
 	cmd.AddCommand(newVersionCmd())
