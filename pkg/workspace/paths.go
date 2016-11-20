@@ -22,8 +22,8 @@ const Muspace = ".mu"
 // MuspaceStacks is the directory in which dependency modules exist, either local to a workspace, or globally.
 const MuspaceStacks = "stacks"
 
-// MuspaceClusters is the base name of a clusters specification file.
-const MuspaceClusters = "clusters"
+// MuspaceWorkspace is the base name of a workspace settings file.
+const MuspaceWorkspace = "workspace"
 
 // Exts contains a list of all the valid Mufile and Mucluster extensions.
 var Exts = []string{

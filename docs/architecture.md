@@ -74,12 +74,35 @@ At a high-level, the compilation process look like this:
     - Expansion: expansion of templates in the artifacts, leveraging configuration and other inputs.
 * Middle-end:
     - Semantic analysis: analysis of the results, post generation and expansion, to ensure they are valid.
-    - Changeset generation: delta analysis to ensure that only changed parts of the topology are modified if possible.
 * Back-end:
     - Targeting: lowering from the AST form to the cloud target's specific representation.
+    - Changeset generation: delta analysis to ensure that only changed parts of the topology are modified if possible.
     - Deployment: execution of the resulting changes necessary for the target to reach the desired state.
 
 TODO(joe): describe each of these in more detail.
+
+### Workspaces
+
+A Workspace is a directory on the filesystem that helps to organize many Stacks, shared settings among them (like shared
+Cluster settings), and dependencies.  The root of a Workspace is identified by the presence of a `.mu/` directory.
+Inside of this directory, you will find up to two things:
+
+1. A `stacks/` subdirectory containing downloaded dependencies.
+2. A `workspace.yaml` (or `.json`) file, containing settings shared across this workspace.
+
+For example, let's say we have two Stacks, `db` and `webapp`; a reasonable directory structure might be:
+
+    .mu/
+        stacks/
+        workspace.yaml
+    db/
+        Mu.yaml
+    webapp/
+        Mu.yaml
+
+For convenience, there is also a global Workspace, under `~/.mu/`, whose structure is identical but whose contents are
+shared by all other Workspaces on the machine.  There are additional hidden directories, however, like `~/.mu/.cache/`,
+that the toolchain uses throughout the course of its business to do things like package caching.
 
 ### Deployments
 
