@@ -74,15 +74,18 @@ func (a *ptAnalyzer) VisitProperty(doc *diag.Document, name string, param *ast.P
 	param.Name = name
 }
 
-func (a *ptAnalyzer) VisitDependency(doc *diag.Document, name ast.Name, dep *ast.Dependency) {
+func (a *ptAnalyzer) VisitDependency(doc *diag.Document, ref ast.Ref, dep *ast.Dependency) {
 	// Dependency versions must be valid semantic versions *or* ranges.
 	// TODO: should we require dependencies to have versions?
 	ver := *dep
 	if ver != "" {
 		if _, err := semver.ParseRange(string(ver)); err != nil {
-			a.Diag().Errorf(errors.IllegalDependencySemVer.WithDocument(doc), name, ver)
+			a.Diag().Errorf(errors.IllegalDependencySemVer.WithDocument(doc), ref, ver)
 		}
 	}
+}
+
+func (a *ptAnalyzer) VisitBoundDependency(doc *diag.Document, ref ast.Ref, dep *ast.BoundDependency) {
 }
 
 func (a *ptAnalyzer) VisitServices(doc *diag.Document, svcs *ast.Services) {

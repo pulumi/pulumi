@@ -35,6 +35,9 @@ var Exts = []string{
 // InstallRootEnvvar is the envvar describing where Mu has been installed.
 const InstallRootEnvvar = "MUROOT"
 
+// InstallRootLibdir is the directory in which the standard Mu library exists.
+const InstallRootLibdir = "lib"
+
 // DefaultInstallRoot is where Mu is installed by default, if the envvar is missing.
 // TODO: support Windows.
 const DefaultInstallRoot = "/usr/lib/mu"
@@ -48,105 +51,31 @@ func InstallRoot() string {
 	return root
 }
 
-// Workspace offers functionality for interacting with Mu workspaces.
-type Workspace interface {
-	// Root returns the base path of the current workspace.
-	Root() string
-	// DetectMufile locates the closest Mufile from the given path, searching "upwards" in the directory hierarchy.  If no
-	// Mufile is found, an empty path is returned.  If problems are detected, they are logged to the diag.Sink.
-	DetectMufile() (string, error)
-}
-
-// New creates a new workspace from the given starting path.
-func New(path string, d diag.Sink) (Workspace, error) {
-	// First normalize the path to an absolute one.
-	var err error
-	path, err = filepath.Abs(path)
-	if err != nil {
-		return nil, err
-	}
-	ws := workspace{
-		path: path,
-		d:    d,
-	}
-	if _, err := ws.detectRoot(); err != nil {
-		return nil, err
-	}
-	return &ws, nil
-}
-
-type workspace struct {
-	path string    // the path at which the workspace was constructed.
-	root string    // the root of the workspace.
-	d    diag.Sink // a diagnostics sink to use for workspace operations.
-}
-
 // isTop returns true if the path represents the top of the filesystem.
 func isTop(path string) bool {
 	return os.IsPathSeparator(path[len(path)-1])
 }
 
-// pathDir returns the nearest directory to the workspace's path.
-func (w *workspace) pathDir() (string, error) {
+// pathDir returns the nearest directory to the given path (identity if a directory; parent otherwise).
+func pathDir(path string) string {
 	// It's possible that the path is a file (e.g., a Mu.yaml file); if so, we want the directory.
-	info, err := os.Stat(w.path)
-	if err != nil {
-		return "", err
-	}
-	if info.IsDir() {
-		return w.path, nil
+	info, err := os.Stat(path)
+	if err != nil || info.IsDir() {
+		return path
 	} else {
-		return filepath.Dir(w.path), nil
+		return filepath.Dir(path)
 	}
 }
 
-// detectRoot finds the root of the workspace and caches it for fast lookups.
-func (w *workspace) detectRoot() (string, error) {
-	if w.root == "" {
-		root, err := w.pathDir()
-		if err != nil {
-			return "", err
-		}
-
-		// Now search for the root of the workspace so we can cache it.
-	Search:
-		for {
-			files, err := ioutil.ReadDir(root)
-			if err != nil {
-				return "", err
-			}
-			for _, file := range files {
-				// A muspace file delimits the root of the workspace.
-				if file.Name() == Muspace {
-					break Search
-				}
-			}
-
-			// If neither succeeded, keep looking in our parent directory.
-			root = filepath.Dir(root)
-			if isTop(root) {
-				// We reached the top of the filesystem.  Just set root back to the path and stop.
-				root = w.path
-				break
-			}
-		}
-
-		w.root = root
-	}
-
-	return w.root, nil
-}
-
-func (w *workspace) DetectMufile() (string, error) {
+// DetectMufile locates the closest Mufile from the given path, searching "upwards" in the directory hierarchy.  If no
+// Mufile is found, an empty path is returned.  If problems are detected, they are logged to the diag.Sink.
+func DetectMufile(path string, d diag.Sink) (string, error) {
 	// It's possible the target is already the file we seek; if so, return right away.
-	if IsMufile(w.path, w.d) {
-		return w.path, nil
+	if IsMufile(path, d) {
+		return path, nil
 	}
 
-	curr, err := w.pathDir()
-	if err != nil {
-		return "", err
-	}
+	curr := pathDir(path)
 	for {
 		stop := false
 
@@ -158,7 +87,7 @@ func (w *workspace) DetectMufile() (string, error) {
 		for _, file := range files {
 			name := file.Name()
 			path := filepath.Join(curr, name)
-			if IsMufile(path, w.d) {
+			if IsMufile(path, d) {
 				return path, nil
 			} else if name == Muspace {
 				// If we hit a .muspace file, stop looking.
@@ -181,21 +110,12 @@ func (w *workspace) DetectMufile() (string, error) {
 	return "", nil
 }
 
-// Root returns the current workspace's root.
-func (w *workspace) Root() string {
-	return w.root
-}
-
 // IsMufile returns true if the path references what appears to be a valid Mufile.  If problems are detected -- like
 // an incorrect extension -- they are logged to the provided diag.Sink (if non-nil).
 func IsMufile(path string, d diag.Sink) bool {
 	info, err := os.Stat(path)
-	if err != nil {
-		return false
-	}
-
-	// Directories can't be Mufiles.
-	if info.IsDir() {
+	if err != nil || info.IsDir() {
+		// Missing files and directories can't be Mufiles.
 		return false
 	}
 

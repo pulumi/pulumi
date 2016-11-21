@@ -23,7 +23,12 @@ var WarnIllegalMufileExt = &diag.Diag{
 
 var IOError = &diag.Diag{
 	ID:      103,
-	Message: "An IO error occurred while processing this file: %v",
+	Message: "An IO error occurred during the current operation: %v",
+}
+
+var MissingDependency = &diag.Diag{
+	ID:      104,
+	Message: "The dependency '%v' could not be found; has it been installed?",
 }
 
 var UnrecognizedCloudArch = &diag.Diag{

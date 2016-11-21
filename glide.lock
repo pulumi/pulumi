@@ -1,5 +1,5 @@
-hash: 7f23b1abcf47b97140d202cc4d34ed475bfc98141d82f3965c23ba9cca181763
-updated: 2016-11-18T16:12:37.723141107-08:00
+hash: a2c12ef5c4b38c5d96b62b5d71471c2ae1f6c4e2909ba7dde9f0f31ef547bbce
+updated: 2016-11-21T10:01:11.023378253-08:00
 imports:
 - name: github.com/blang/semver
   version: 60ec3488bfea7cca02b021d106d9911120d25fe9
@@ -13,6 +13,8 @@ imports:
   - golint
 - name: github.com/inconshreveable/mousetrap
   version: 76626ae9c91c4f2a10f34cad8ce83ea42c93bb75
+- name: github.com/mitchellh/go-homedir
+  version: 756f7b183b7ab78acdbbee5c7f392838ed459dda
 - name: github.com/satori/go.uuid
   version: b061729afc07e77a8aa4fad0a2fd840958f1942a
 - name: github.com/spf13/cobra

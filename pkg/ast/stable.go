@@ -6,8 +6,17 @@ import (
 	"sort"
 )
 
-func StableDependencies(d Dependencies) []Name {
-	deps := make(Names, 0, len(d))
+func StableDependencies(d Dependencies) []Ref {
+	deps := make(Refs, 0, len(d))
+	for dep := range d {
+		deps = append(deps, dep)
+	}
+	sort.Sort(deps)
+	return deps
+}
+
+func StableBoundDependencies(d BoundDependencies) []Ref {
+	deps := make(Refs, 0, len(d))
 	for dep := range d {
 		deps = append(deps, dep)
 	}
@@ -62,5 +71,19 @@ func (s Names) Swap(i, j int) {
 }
 
 func (s Names) Less(i, j int) bool {
+	return s[i] < s[j]
+}
+
+type Refs []Ref
+
+func (s Refs) Len() int {
+	return len(s)
+}
+
+func (s Refs) Swap(i, j int) {
+	s[i], s[j] = s[j], s[i]
+}
+
+func (s Refs) Less(i, j int) bool {
 	return s[i] < s[j]
 }

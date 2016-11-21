@@ -154,18 +154,23 @@ func (p *binderPhase1) VisitMetadata(doc *diag.Document, kind ast.MetadataKind, 
 }
 
 func (p *binderPhase1) VisitStack(doc *diag.Document, stack *ast.Stack) {
-	// Make space for bound dependencies.
-	stack.BoundDependencies = make(ast.BoundDependencies)
 }
 
 func (p *binderPhase1) VisitProperty(doc *diag.Document, name string, param *ast.Property) {
 }
 
-func (p *binderPhase1) VisitDependency(doc *diag.Document, name ast.Name, dep *ast.Dependency) {
+func (p *binderPhase1) VisitDependency(doc *diag.Document, ref ast.Ref, dep *ast.Dependency) {
+}
+
+func (p *binderPhase1) VisitBoundDependency(doc *diag.Document, ref ast.Ref, dep *ast.BoundDependency) {
 	// During the first phase of binding, we need to populate the symbol table with this Stack's dependencies, as well
 	// as remember them on the AST for subsequent use (e.g., during code-generation).
+	sym := NewStackSymbol(ref.Name(), dep.Stack)
+	if !p.b.RegisterSymbol(sym) {
+		p.Diag().Errorf(errors.SymbolAlreadyExists.WithDocument(p.doc), ref.Name())
+	}
+
 	// TODO: come up with some way of identifying unused dependencies and warning about them.
-	// TODO: actually implement this.
 }
 
 func (p *binderPhase1) VisitServices(doc *diag.Document, svcs *ast.Services) {
@@ -190,7 +195,7 @@ func (p *binderPhase1) VisitService(doc *diag.Document, name ast.Name, public bo
 	// In this example, "acmecorp/db" is still the type, however the name is given the nicer name of "customers."
 	if svc.Type == "" {
 		svc.Type = svc.Name
-		svc.Name = ast.NamePart(svc.Name)
+		svc.Name = svc.Name.Simple()
 	}
 
 	// Next, note that service definitions can "refer" to other service definitions within the same file.  Any
@@ -235,7 +240,10 @@ func (p *binderPhase2) VisitStack(doc *diag.Document, stack *ast.Stack) {
 func (p *binderPhase2) VisitProperty(doc *diag.Document, name string, param *ast.Property) {
 }
 
-func (p *binderPhase2) VisitDependency(doc *diag.Document, name ast.Name, dep *ast.Dependency) {
+func (p *binderPhase2) VisitDependency(doc *diag.Document, ref ast.Ref, dep *ast.Dependency) {
+}
+
+func (p *binderPhase2) VisitBoundDependency(doc *diag.Document, ref ast.Ref, dep *ast.BoundDependency) {
 }
 
 func (p *binderPhase2) VisitServices(doc *diag.Document, svcs *ast.Services) {

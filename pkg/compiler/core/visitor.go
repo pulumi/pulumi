@@ -13,7 +13,8 @@ type Visitor interface {
 	VisitMetadata(doc *diag.Document, kind ast.MetadataKind, meta *ast.Metadata)
 	VisitStack(doc *diag.Document, stack *ast.Stack)
 	VisitProperty(doc *diag.Document, name string, prop *ast.Property)
-	VisitDependency(doc *diag.Document, name ast.Name, dep *ast.Dependency)
+	VisitDependency(doc *diag.Document, ref ast.Ref, dep *ast.Dependency)
+	VisitBoundDependency(doc *diag.Document, ref ast.Ref, dep *ast.BoundDependency)
 	VisitServices(doc *diag.Document, svcs *ast.Services)
 	VisitService(doc *diag.Document, name ast.Name, public bool, svc *ast.Service)
 	VisitTarget(doc *diag.Document, name string, target *ast.Target)
@@ -75,12 +76,18 @@ func (v *inOrderVisitor) VisitStack(doc *diag.Document, stack *ast.Stack) {
 		stack.Properties[name] = prop
 	}
 
-	for _, name := range ast.StableDependencies(stack.Dependencies) {
-		aname := ast.Name(name)
-		dep := stack.Dependencies[aname]
-		v.VisitDependency(doc, aname, &dep)
+	for _, ref := range ast.StableDependencies(stack.Dependencies) {
+		dep := stack.Dependencies[ref]
+		v.VisitDependency(doc, ref, &dep)
 		// Copy the dependency back in case it was updated.
-		stack.Dependencies[aname] = dep
+		stack.Dependencies[ref] = dep
+	}
+
+	for _, ref := range ast.StableBoundDependencies(stack.BoundDependencies) {
+		dep := stack.BoundDependencies[ref]
+		v.VisitBoundDependency(doc, ref, &dep)
+		// Copy the dependency back in case it was updated.
+		stack.BoundDependencies[ref] = dep
 	}
 
 	v.VisitServices(doc, &stack.Services)
@@ -99,12 +106,21 @@ func (v *inOrderVisitor) VisitProperty(doc *diag.Document, name string, prop *as
 	}
 }
 
-func (v *inOrderVisitor) VisitDependency(doc *diag.Document, name ast.Name, dep *ast.Dependency) {
+func (v *inOrderVisitor) VisitDependency(doc *diag.Document, ref ast.Ref, dep *ast.Dependency) {
 	if v.pre != nil {
-		v.pre.VisitDependency(doc, name, dep)
+		v.pre.VisitDependency(doc, ref, dep)
 	}
 	if v.post != nil {
-		v.post.VisitDependency(doc, name, dep)
+		v.post.VisitDependency(doc, ref, dep)
+	}
+}
+
+func (v *inOrderVisitor) VisitBoundDependency(doc *diag.Document, ref ast.Ref, dep *ast.BoundDependency) {
+	if v.pre != nil {
+		v.pre.VisitBoundDependency(doc, ref, dep)
+	}
+	if v.post != nil {
+		v.post.VisitBoundDependency(doc, ref, dep)
 	}
 }
 

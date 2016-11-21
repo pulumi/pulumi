@@ -3,6 +3,8 @@
 package compiler
 
 import (
+	"os"
+
 	"github.com/golang/glog"
 	"github.com/satori/go.uuid"
 
@@ -33,6 +35,7 @@ type Compiler interface {
 type compiler struct {
 	ctx  *core.Context
 	opts Options
+	deps ast.BoundDependencies // a cache of loaded dependencies.
 }
 
 // NewCompiler creates a new instance of the Mu compiler, with the given initialization settings.
@@ -77,15 +80,29 @@ func (c *compiler) Build(inp string, outp string) {
 		return
 	}
 
-	c.buildDocument(doc, outp)
+	c.buildDocument(w, doc, outp)
 }
 
 func (c *compiler) BuildFile(mufile []byte, ext string, outp string) {
 	glog.Infof("Building in-memory %v file (bytes=%v out='%v')", ext, len(mufile), outp)
-	c.buildDocument(&diag.Document{File: workspace.Mufile + ext, Body: mufile}, outp)
+
+	// Default to the current working directory for the workspace.
+	dir, err := os.Getwd()
+	if err != nil {
+		c.Diag().Errorf(errors.IOError, err)
+		return
+	}
+	w, err := workspace.New(dir, c.Diag())
+	if err != nil {
+		c.Diag().Errorf(errors.IOError, err)
+		return
+	}
+
+	doc := &diag.Document{File: workspace.Mufile + ext, Body: mufile}
+	c.buildDocument(w, doc, outp)
 }
 
-func (c *compiler) buildDocument(doc *diag.Document, outp string) {
+func (c *compiler) buildDocument(w workspace.W, doc *diag.Document, outp string) {
 	glog.Infof("Building doc '%v' (bytes=%v out='%v')", doc.File, len(doc.Body), outp)
 	if glog.V(2) {
 		defer func() {
@@ -96,6 +113,12 @@ func (c *compiler) buildDocument(doc *diag.Document, outp string) {
 
 	// Perform the front-end passes to generate a stack AST.
 	stack, ok := c.parseStack(doc)
+	if !ok {
+		return
+	}
+
+	// Now expand all dependencies so they are available to semantic analysis.
+	deps, ok := c.loadDependencies(w, doc, stack)
 	if !ok {
 		return
 	}
@@ -122,11 +145,11 @@ func (c *compiler) buildDocument(doc *diag.Document, outp string) {
 
 		// Now get the backend cloud provider to process the stack from here on out.
 		be := backends.New(arch, c.Diag())
-		be.CodeGen(core.Compiland{target, doc, stack})
+		be.CodeGen(core.Compiland{target, doc, stack, deps})
 	}
 }
 
-// loadAndParseStack takes a Mufile document, parses and validates it, and returns a stack AST.  If anything goes wrong
+// parseStack takes a Mufile document, parses and validates it, and returns a stack AST.  If anything goes wrong
 // during this process, the number of errors will be non-zero, and the bool will be false.
 func (c *compiler) parseStack(doc *diag.Document) (*ast.Stack, bool) {
 	// To build the Mu package, first parse the input file.
@@ -144,6 +167,87 @@ func (c *compiler) parseStack(doc *diag.Document) (*ast.Stack, bool) {
 		// If any errors happened during parse tree analysis, exit.
 		return stack, false
 	}
+
+	return stack, true
+}
+
+// loadDependencies enumerates all of the target stack's dependencies, and parses them into AST form.
+func (c *compiler) loadDependencies(w workspace.W, doc *diag.Document, stack *ast.Stack) (ast.BoundDependencies, bool) {
+	stack.BoundDependencies = make(ast.BoundDependencies)
+
+	ok := true
+	for _, ref := range ast.StableDependencies(stack.Dependencies) {
+		// First see if we've already loaded this dependency.  In that case, we can reuse it.
+		var dep *ast.BoundDependency
+		if d, exists := c.deps[ref]; exists {
+			dep = &d
+		} else {
+			dep = c.loadDependency(w, doc, ref, stack.Dependencies[ref])
+			c.deps[ref] = *dep
+		}
+
+		if dep == nil {
+			// Missing dependency; return false to the caller so we can stop before things get worse.
+			ok = false
+		} else {
+			// TODO: check for version mismatches.
+			stack.BoundDependencies[ref] = *dep
+
+			// Now recursively load this stack's dependenciess too.  We won't return them, however, they need to exist
+			// on the ASTs so that we can use dependency information during code-generation, for example.
+			c.loadDependencies(w, doc, dep.Stack)
+		}
+	}
+
+	return stack.BoundDependencies, ok
+}
+
+// loadDependency loads up the target dependency from the current workspace using the stack resolution rules.
+func (c *compiler) loadDependency(w workspace.W, doc *diag.Document, ref ast.Ref,
+	dep ast.Dependency) *ast.BoundDependency {
+	// There are many places a dependency could come from.  Consult the workspace for a list of those paths.  It will
+	// return a number of them, in preferred order, and we simply probe each one until we find something.
+	for _, loc := range w.DepCandidates(ref) {
+		// Try to read this location as a document.
+		if workspace.IsMufile(loc, c.Diag()) {
+			doc, err := diag.ReadDocument(loc)
+			if err != nil {
+				c.Diag().Errorf(errors.CouldNotReadMufile.WithFile(loc), err)
+				return nil
+			}
+
+			// If we got this far, we've loaded up the dependency's Mufile; parse it and return the result.
+			// TODO: it's not clear how much "validation" to perform here.  If the target won't compile, for example,
+			//     we are going to get weird errors and failure modes.
+			stack, ok := c.parseStack(doc)
+			if !ok {
+				return nil
+			}
+
+			return &ast.BoundDependency{
+				Ref:     ref,
+				Version: ast.SemVer(dep),
+				Stack:   stack,
+			}
+		}
+	}
+
+	// If we got to this spot, we could not find the dependency.  Issue an error and bail out.
+	c.Diag().Errorf(errors.MissingDependency.WithDocument(doc), ref)
+	return nil
+}
+
+// analyzeStack performs semantic analysis on a stack -- validating, transforming, and/or updating it -- and then
+// returns the result.  If a problem occurs, errors will have been emitted, and the bool return will be false.
+func (c *compiler) analyzeStack(doc *diag.Document, stack *ast.Stack) (*ast.Stack, bool) {
+	binder := NewBinder(c)
+	binder.Bind(doc, stack)
+	if c.Diag().Errors() > 0 {
+		// If any errors happened during binding, exit.
+		return stack, false
+	}
+
+	// TODO: perform semantic analysis on the bound tree.
 
 	return stack, true
 }
@@ -249,19 +353,4 @@ func (c *compiler) getTargetArch(doc *diag.Document, target *ast.Target, existin
 	}
 
 	return tarch, true
-}
-
-// analyzeStack performs semantic analysis on a stack -- validating, transforming, and/or updating it -- and then
-// returns the result.  If a problem occurs, errors will have been emitted, and the bool return will be false.
-func (c *compiler) analyzeStack(doc *diag.Document, stack *ast.Stack) (*ast.Stack, bool) {
-	binder := NewBinder(c)
-	binder.Bind(doc, stack)
-	if c.Diag().Errors() > 0 {
-		// If any errors happened during binding, exit.
-		return stack, false
-	}
-
-	// TODO: perform semantic analysis on the bound tree.
-
-	return stack, true
 }

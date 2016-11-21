@@ -17,6 +17,11 @@ package ast
 // conforms to the regex [A-Za-z_][A-Za-z0-9_]*.  For example, `marapongo/mu/stack`.
 type Name string
 
+// Ref is a dependency reference.  It is "name-like", in that it contains a Name embedded inside of it, but also carries
+// a URL-like structure.  A Ref starts with an optional "protocol" (like https://, git://, etc), followed by an optional
+// "base" part (like hub.mu.com/, github.com/, etc), followed by the "name" part (which is just a Name).
+type Ref string
+
 // SemVer represents a version using "semantic versioning" style.  This may include up to three distinct numbers
 // delimited by `.`s: a major version number, a minor version number, and a revision number.  For example, `1.0.10`.
 type SemVer string
@@ -113,17 +118,17 @@ const (
 )
 
 // Dependencies maps dependency names to the semantic version the consumer depends on.
-type Dependencies map[Name]Dependency
+type Dependencies map[Ref]Dependency
 
 // Dependency is metadata describing a dependency target (for now, just its semantic version).
 type Dependency SemVer
 
 // BoundDependencies contains a map of all bound dependencies, populated during semantic analysis.
-type BoundDependencies map[Name]BoundDependency
+type BoundDependencies map[Ref]BoundDependency
 
 // BoundDependency contains information about a binding.
 type BoundDependency struct {
-	Name    Name   // the name used to bind to this dependency.
+	Ref     Ref    // the reference used to bind to this dependency.
 	Version SemVer // the version requested to bind to this dependency.
 	Stack   *Stack // the bound stack for this dependency.
 }
