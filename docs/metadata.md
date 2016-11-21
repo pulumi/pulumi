@@ -123,19 +123,13 @@ The most basic form is to use the special type `service`:
 
     type: service
 
-This is helpful, as it exposes a dependency to the system, but it isn't perfect.  The shape of the dependency is still
-opaque to the system.  A step further is to express that a specific port is utilized:
+This is helpful, as it exposes a dependency to the system -- compared to dynamically discovering and depending on a name
+at runtime -- but it isn't perfect.  The shape of the dependency is still opaque to the system.
 
-    type: service:80
+Even better is to declare that we depend on a specific kind of Service, by specifying the fully qualified name of a
+Stack.  In such a case, the system ensures an instance of this Stack type, or subclass, is provided:
 
-This declaration says that we require a Service with an exposed port 80.  This strong typing flows through the system,
-permitting liveness detection, and even compile-time type checking that the supplied Service argument actually does
-expose something on port 80 -- in the event that this ever changes, we will find out upon recompilation.
-
-Even better still is to declare that we depend on a specific kind of Service, by specifying the fully qualified name of
-a Stack.  In such a case, the system ensures an instance of this Stack type, or subclass, is provided:
-
-    type: examples/keyValueStore
+    type: ex/kvstore
 
 This hypothetical Stack defines an API that can be used as a key-value store.  Presumably we would find subclasses of it
 for etcd, Consul, Zookeeper, and others, which a caller is free to choose from at instantiation time.
@@ -245,9 +239,86 @@ shouldn't be of interest to consumers of our Stack.  So, we split things accordi
 
 In this example, S3 buckets are volumes; we create a private one and mount it in our public Nginx container.
 
-### Constructor Arguments
+### Service Properties
 
-TODO(joe): describe the argument binding and verification process.
+We have already seen plenty of property setters.  But supplying capabilities -- or references to other Services --
+warrants a special mention.
+
+First, imagine we are creating a Stack that asks for a `service`; its `properties` might look like:
+
+    name: acmecorp/factory
+    properties:
+        worker:
+            type: service
+
+Now let's create a Stack that instantiates `acmecorp/factory`, providing a reference to its own worker Service:
+
+    name: my/factory
+    services:
+        private:
+            myworker:
+                type: mu/container
+                build: .
+                port: 80
+            acmecorp/factory:
+                worker: myworker
+
+Notice that we have set `acmecorp/factory`'s `worker` factory to `myworker`.  This is a reference to our very own
+`myworker` Service, instantiated in the section just prior.  At runtime, this simply expands to a URL referring to our
+worker's public endpoint listening on port 80.
+
+If multiple possible ports are available, an error will occur, and you will need to pick one explicitly.  For example:
+
+            myworker:
+                type: mu/container
+                build: .
+                ports: [ 80, 8080 ]
+
+In this example, we still want to bind to port 80, however the system has no idea which to choose.  So we must say:
+
+            acmecorp/factory:
+                worker: myworker:80
+
+A similar problem happens if we are passing another Service as the argument.  For example, let's say that we are using a
+3rd party worker Service, rather than our own.  For instance:
+
+            jazzcorp/jazzworker:
+            acmecorp/factory:
+                worker: jazzworker
+
+This will of course work just fine, provided `jazzworker` has a public Service enpoint.  For example:
+
+    name: jazzcorp/jazzworker
+    services:
+        public:
+            api:
+                port: 80
+                ..
+
+Much like how the system picked port 80 when there was only one in the raw container example, the system knows how to
+pick the right public endpoint when there is just one (in this case, `api` on port 80).  However, just as the system
+needed a hint when there were multiple possible ports, it may need one here too, such as in this example:
+
+    name: jazzcorp/jazzworker
+    services:
+        public:
+            api:
+                port: 80
+                ..
+            admin:
+                port: 8080
+                ..
+
+Now `jazzworker` has two public endpoints: `api` on port 80 and `admin` on port 8080.  We must select one:
+
+            jazzcorp/jazzworker:
+            acmecorp/factory:
+                worker: jazzworker:api
+
+Because this is a weakly typed example, using the base `service` type, plus a container, the amount of typechecking
+performed is quite minimal.  In fact, just about the only thing it does is build a DAG of dependencies, ensure they are
+cycle-free, and select the port.  Strongly typed examples, like the `ex/kvstore` one mentioned earlier, work similarly,
+except that there is extra compile-time validation and more rugged selection of endpoints.
 
 ## Nested Stacks
 
