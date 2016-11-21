@@ -3,11 +3,29 @@
 package ast
 
 import (
+	"regexp"
 	"strings"
+
+	"github.com/marapongo/mu/pkg/util"
 )
 
 // NameDelimiter is what delimits Namespace and Name parts.
 const NameDelimiter = "/"
+
+var nameRegexp = regexp.MustCompile(nameRegexps)
+var nameRegexps = "(" + namePartRegexps + "\\" + NameDelimiter + ")*" + namePartRegexps
+var namePartRegexps = "[A-Za-z_][A-Za-z0-9_]*"
+
+// IsName checks whether a string is a legal Name.
+func IsName(s string) bool {
+	return nameRegexp.FindString(s) == s
+}
+
+// AsName converts a given string to a Name, asserting its validity.
+func AsName(s string) Name {
+	util.AssertMF(nameRegexp.MatchString(s), "Expected string '%v' to be a name (%v)", s, nameRegexps)
+	return Name(s)
+}
 
 // Simple extracts the name portion of a Name (dropping any Namespace).
 func (nm Name) Simple() Name {
@@ -30,6 +48,11 @@ func (nm Name) Namespace() Name {
 // DefaultRefBase is the base part used if a Ref doesn't specify one explicitly.
 const DefaultRefBase = "hub.mu.com/"
 
+// Proto extracts the protocol portion of a Ref.
+func (r Ref) Proto() string {
+	return r.parse().Proto
+}
+
 // Base extracts the base portion of a Ref.
 func (r Ref) Base() string {
 	return r.parse().Base
@@ -51,29 +74,28 @@ func (r Ref) parse() refParts {
 	parts := refParts{}
 
 	// Look for the leading protocol, if any.
-	pix := strings.Index(s, "://")
-	if pix != -1 {
+	protoEnd := strings.Index(s, "://")
+	if protoEnd != -1 {
 		// Remember it and then strip it off for subsequent parsing.
-		parts.Proto = s[:pix]
-		s = s[pix+1:]
+		parts.Proto = s[:protoEnd+3]
+		s = s[protoEnd+3:]
 	}
 
 	// Now look to see if there is a dot, indicating a base part.
-	bix := strings.Index(s, ".")
-	if bix == -1 {
+	dotIndex := strings.Index(s, ".")
+	if dotIndex == -1 {
 		// No base seems to be here; populate it with the default ref base.
 		// TODO(joe): this might be questionable; e.g., domain-less hosts will require a trailing period.
 		parts.Base = DefaultRefBase
 	} else {
-		// A base exists; look for a slash (indicating the name), and capture everything up to it.
-		six := strings.Index(s[bix+1:], NameDelimiter)
-		if six == -1 {
+		// A base exists; look for a slash (indicating the name), and capture everything up to it (including it).
+		slashIndex := strings.Index(s, NameDelimiter)
+		if slashIndex == -1 {
 			parts.Base = s
 			s = ""
 		} else {
-			rest := bix + 1 + six
-			parts.Base = s[:rest]
-			s = s[rest+1:]
+			parts.Base = s[:slashIndex+1]
+			s = s[slashIndex+1:]
 		}
 	}
 
