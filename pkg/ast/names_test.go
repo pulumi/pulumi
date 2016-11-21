@@ -97,4 +97,11 @@ func TestRefParse(t *testing.T) {
 		assert.Equal(t, p.Base, r.Base())
 		assert.Equal(t, p.Name, r.Name())
 	}
+	{
+		r := Ref("git://github.com/_/_/_/_/a0/c0Mpl3x_")
+		p := r.parse()
+		assert.Equal(t, p.Proto, r.Proto())
+		assert.Equal(t, p.Base, r.Base())
+		assert.Equal(t, p.Name, r.Name())
+	}
 }
