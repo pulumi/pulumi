@@ -55,7 +55,16 @@ func (c *compiler) Build(inp string, outp string) {
 	glog.Infof("Building target '%v' (out='%v')", inp, outp)
 
 	// First find the root of the current package based on the location of its Mufile.
-	mufile := workspace.DetectMufile(inp, c.Diag())
+	w, err := workspace.New(inp, c.Diag())
+	if err != nil {
+		c.Diag().Errorf(errors.IOError.WithFile(inp), err)
+		return
+	}
+	mufile, err := w.DetectMufile()
+	if err != nil {
+		c.Diag().Errorf(errors.IOError.WithFile(inp), err)
+		return
+	}
 	if mufile == "" {
 		c.Diag().Errorf(errors.MissingMufile, inp)
 		return

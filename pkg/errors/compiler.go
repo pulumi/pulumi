@@ -21,6 +21,11 @@ var WarnIllegalMufileExt = &diag.Diag{
 	Message: "A file named `Mufile` was located, but '%v' isn't a valid file extension (expected .json or .yaml)",
 }
 
+var IOError = &diag.Diag{
+	ID:      103,
+	Message: "An IO error occurred while processing this file: %v",
+}
+
 var UnrecognizedCloudArch = &diag.Diag{
 	ID:      120,
 	Message: "The cloud architecture '%v' was not recognized",
