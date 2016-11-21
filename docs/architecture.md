@@ -104,6 +104,8 @@ For convenience, there is also a global Workspace, under `~/.mu/`, whose structu
 shared by all other Workspaces on the machine.  There are additional hidden directories, however, like `~/.mu/.cache/`,
 that the toolchain uses throughout the course of its business to do things like package caching.
 
+Please refer to [this doc](deps.md) for more information about how dependencies are dealt with and resolved.
+
 ### Deployments
 
 TODO(joe): discuss the concept of a deployment.

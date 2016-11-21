@@ -37,12 +37,14 @@ Roughly speaking, these locations are are searched, in order:
 1. The current Workspace, for intra-Workspace but inter-Stack dependencies.
 2. The current Workspace's `.mu/stacks/` directory.
 3. The global Workspace's `.mu/stacks/` directory.
+4. The Mu installation location's `$MUROOT/bin/stacks/` directory (default `/usr/local/mu`).
 
 To be more precise, given a StackRef `r` and a workspace root `w`, we look in these locations:
 
 1. `w/name(r)`
 2. `w/.mu/stacks/base(r)/name(r)`
 3. `~/.mu/stacks/base(r)/name(r)`
+4. `$MUROOT/bin/stacks/base(r)/name(r)`
 
 To illustrate this process, let us imagine we are looking up `https://hub.mu.com/aws/s3/bucket`.
 
