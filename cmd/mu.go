@@ -20,8 +20,6 @@ func NewMuCmd() *cobra.Command {
 			// Ensure the glog library has been initialized, including calling flag.Parse beforehand.  Unfortunately,
 			// this is the only way to control the way glog runs.  That includes poking around at flags below.
 			flag.Parse()
-			glog.Info("Mu CLI is running")
-
 			if logToStderr {
 				flag.Lookup("logtostderr").Value.Set("true")
 			}
