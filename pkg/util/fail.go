@@ -8,7 +8,7 @@ import (
 	"github.com/golang/glog"
 )
 
-const failMsg = "A fail error has occurred"
+const failMsg = "A failure has occurred"
 
 // Fail unconditionally abandons the process.
 func Fail() {
