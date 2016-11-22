@@ -218,6 +218,35 @@ define new, custom primitive Stacks for even richer functionality.  TODO(joe): m
 
 Finally, note that a companion namespace, `mu/x` also exists, that offers more cloud-neutral platform abstractions.
 
+### Dependencies
+
+We just saw that Service types can refer to other Stacks.  That is done with a so-called StackRef, which is simply a
+name that contains multiple parts:
+
+* An optional protocol (e.g., `https://`).
+* An optional base URL (e.g., `hub.mu.com/`, `github.com/`, etc).
+* A required namespace and/or name part (e.g., `acmecorp/worker`, `aws/s3/bucket`, etc).
+* An optional `@` followed by version number (e.g., `@^1.0.6`, `@6f99088`, `@latest`, etc).
+
+If protocol and base URL are absent, Mu will default to `https://hub.mu.com/`.  If the version is omitted, Mu will
+default to `latest`, which just means "tip"; in other words, the most recent version is used at compile-time.
+
+For Workspaces containing multiple Stacks, it can be advantageous to omit version information from your Stacks, and
+instead place them into your `workspace.yaml` file's `dependencies` section.  For example:
+
+    dependencies:
+        aws/s3/bucket: ^1.0.6
+
+This helps to manage version numbers centrally which can be especially convenient when upgrading.  Any StackRefs missing
+version information will consult this workspace at compile-time.  You may even pin an entire namespace this way:
+
+    dependencies:
+        aws/...: ^1.0.6
+
+Note that the compiled `Mu.yaml` will always contain pinned versions, so that it stands on its own.
+
+Please refer to [Mu Dependencies](deps.md) for more details on dependencies and how they are resolved.
+
 ### Visibility
 
 At this point, a new concept is introduced: *visibility*.  Visibility works much like your favorite programming

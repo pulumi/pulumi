@@ -10,22 +10,20 @@ Stack may also carry arbitrary assets also (e.g., a program's `Dockerfile` and a
 
 Each Stack reference (StackRef) combines a URL where the Stack may be downloaded from plus the desired version.
 
-Each StackRef URL has a protocol, a base, and a name part; for example, in the Stack `https://hub.mu.com/aws/s3/bucket`,
-`https://` is the protocol, `hub.mu.com/` is the base, and `aws/s3/bucket` is the name.  It is most common to simply see
-the name, because Mu treats `https://hub.mu.com/` as the default protocol and base, and will use it when not stated
-explicitly.  The way these URLs map to workspace paths during resolution is discussed later on.
+Each StackRef URL has a protocol, a base URL, a name, and a version; for example, in the Stack
+`https://hub.mu.com/aws/s3/bucket@^1.0.6`, `https://` is the protocol, `hub.mu.com/` is the base, `aws/s3/bucket` is the
+name, and `^1.0.6` is the version.  It is common to simply see the name, because Mu has reasonable defaults:
 
-Note that StackRef URLs may reference multiple Stacks at once.  To do so, the triple dot is appended to the URL to
-be treated as a unit.  For example, `https://hub.mu.com/aws/...` refers to the entirety of the available AWS Stacks.
+* `https://` is the default protocol.
+* `hub.mu.com/` is the default base URL.
+* `latest` is the default version number (meaning "tip").
 
-Each StackRef version may be either a specific Git SHA hash *or* a semantic version.  If a specific hash, the reference
-is said to be "pinned" to a precise version of that Stack.  If a semantic version, the toolchain is given some "wiggle
-room" in how it resolves the reference (in [the usual ways](https://yarnpkg.com/en/docs/dependency-versions)).  Git tags
-are used to specify semantic versions.
+Each StackRef version may be either a specific Git SHA hash or a semantic version range.  If a specific hash, the
+reference is said to be "pinned" to a precise version of that Stack.  If a semantic version, the toolchain is given some
+"wiggle room" in how it resolves the reference (in [the usual ways](https://yarnpkg.com/en/docs/dependency-versions)).
+Git tags are used to specify semantic versions.  After compilation, all StackRefs will have been pinned.
 
-It is possible, and indeed relatively common, for developers to use semantic versions in their Stacks but to pin
-references by generating a so-called "lock file."  This performs the usual dependency resolution process and saves the
-output so that subsequent version updates are explicit, evident, and intentional.
+The way these URLs map to workspace paths during resolution is discussed later on.
 
 ## Stack Resolution
 
