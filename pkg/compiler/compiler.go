@@ -43,6 +43,7 @@ func NewCompiler(opts Options) Compiler {
 	return &compiler{
 		ctx:  &core.Context{},
 		opts: opts,
+		deps: make(ast.BoundDependencies),
 	}
 }
 
