@@ -68,7 +68,7 @@ func (d *defaultSink) Warnings() int {
 func (d *defaultSink) Errorf(diag *Diag, args ...interface{}) {
 	msg := d.Stringify(diag, DefaultSinkErrorPrefix, args...)
 	if glog.V(3) {
-		glog.V(3).Infof("defaultSink::Error(%v)", msg)
+		glog.V(3).Infof("defaultSink::Error(%v)", msg[:len(msg)-1])
 	}
 	fmt.Fprintf(d.errorW, msg)
 	d.errors++
@@ -77,7 +77,7 @@ func (d *defaultSink) Errorf(diag *Diag, args ...interface{}) {
 func (d *defaultSink) Warningf(diag *Diag, args ...interface{}) {
 	msg := d.Stringify(diag, DefaultSinkWarningPrefix, args...)
 	if glog.V(4) {
-		glog.V(4).Infof("defaultSink::Warning(%v)", msg)
+		glog.V(4).Infof("defaultSink::Warning(%v)", msg[:len(msg)-1])
 	}
 	fmt.Fprintf(d.warningW, msg)
 	d.warnings++

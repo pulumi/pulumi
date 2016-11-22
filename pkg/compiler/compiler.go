@@ -129,7 +129,9 @@ func (c *compiler) buildDocument(w workspace.W, doc *diag.Document, outp string)
 		return
 	}
 
-	if !c.opts.SkipCodegen {
+	if c.opts.SkipCodegen {
+		glog.V(2).Infof("Skipping code-generation (opts.SkipCodegen=true)")
+	} else {
 		// Figure out which cloud architecture we will be targeting during code-gen.
 		target, arch, ok := c.discoverTargetArch(doc, stack)
 		if !ok {
@@ -177,25 +179,32 @@ func (c *compiler) loadDependencies(w workspace.W, doc *diag.Document, stack *as
 
 	ok := true
 	for _, ref := range ast.StableDependencies(stack.Dependencies) {
-		// First see if we've already loaded this dependency.  In that case, we can reuse it.
-		var dep *ast.BoundDependency
-		if d, exists := c.deps[ref]; exists {
-			dep = &d
-		} else {
-			dep = c.loadDependency(w, doc, ref, stack.Dependencies[ref])
-			c.deps[ref] = *dep
+		dep := stack.Dependencies[ref]
+		if glog.V(3) {
+			glog.V(3).Infof("Loading Stack %v dependency %v:%v", stack.Name, ref, dep)
 		}
 
-		if dep == nil {
+		// First see if we've already loaded this dependency.  In that case, we can reuse it.
+		var bound *ast.BoundDependency
+		if bd, exists := c.deps[ref]; exists {
+			bound = &bd
+		} else {
+			bound = c.loadDependency(w, doc, ref, dep)
+			if bound != nil {
+				c.deps[ref] = *bound
+			}
+		}
+
+		if bound == nil {
 			// Missing dependency; return false to the caller so we can stop before things get worse.
 			ok = false
 		} else {
 			// TODO: check for version mismatches.
-			stack.BoundDependencies[ref] = *dep
+			stack.BoundDependencies[ref] = *bound
 
 			// Now recursively load this stack's dependenciess too.  We won't return them, however, they need to exist
 			// on the ASTs so that we can use dependency information during code-generation, for example.
-			c.loadDependencies(w, doc, dep.Stack)
+			c.loadDependencies(w, doc, bound.Stack)
 		}
 	}
 
@@ -209,7 +218,12 @@ func (c *compiler) loadDependency(w workspace.W, doc *diag.Document, ref ast.Ref
 	// return a number of them, in preferred order, and we simply probe each one until we find something.
 	for _, loc := range w.DepCandidates(ref) {
 		// Try to read this location as a document.
-		if workspace.IsMufile(loc, c.Diag()) {
+		isMufile := workspace.IsMufile(loc, c.Diag())
+		if glog.V(5) {
+			glog.V(5).Infof("Probing for dependency %v at %v: %v", ref, loc, isMufile)
+		}
+
+		if isMufile {
 			doc, err := diag.ReadDocument(loc)
 			if err != nil {
 				c.Diag().Errorf(errors.CouldNotReadMufile.WithFile(loc), err)
