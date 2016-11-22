@@ -39,12 +39,20 @@ Roughly speaking, these locations are are searched, in order:
 3. The global Workspace's `.mu/stacks/` directory.
 4. The Mu installation location's `$MUROOT/bin/stacks/` directory (default `/usr/local/mu`).
 
-To be more precise, given a StackRef `r` and a workspace root `w`, we look in these locations:
+In each location, we prefer a fully qualified hit if it exists -- containing both the base of the reference plus the
+name -- however, we also accept name-only hits.  This allows developers to organize their workspace without worrying
+about where their Mu Stacks are hosted.  Most of the Mu tools, however, prefer fully qualified paths.
 
-1. `w/name(r)`
-2. `w/.mu/stacks/base(r)/name(r)`
-3. `~/.mu/stacks/base(r)/name(r)`
-4. `$MUROOT/bin/stacks/base(r)/name(r)`
+To be more precise, given a StackRef `r` and a workspace root `w`, we look in these locations, in order:
+
+1. `w/base(r)/name(r)`
+2. `w/name(r)`
+3. `w/.mu/stacks/base(r)/name(r)`
+4. `w/.mu/stacks/name(r)`
+5. `~/.mu/stacks/base(r)/name(r)`
+6. `~/.mu/stacks/name(r)`
+7. `$MUROOT/bin/stacks/base(r)/name(r)`
+8. `$MUROOT/bin/stacks/name(r)`
 
 To illustrate this process, let us imagine we are looking up `https://hub.mu.com/aws/s3/bucket`.
 
@@ -72,6 +80,8 @@ in which case the following simpler directory structure would also do the trick:
     |   |   bucket/
     |   |   |   Mu.yaml
 
+Notice that we didn't have to mention the `hub.mu.com/` part in our Workspace, although we can if we choose to.
+
 In the second case, we would have probably used package management functionality like `mu get` to download dependencies.
 For example, perhaps we ran:
 
@@ -88,7 +98,8 @@ in which case our local Workspace will have been populated with a copy of this S
     |   |   |   |   |   |   bucket/
     |   |   |   |   |   |   |   Mu.yaml
 
-The StackRef resolution process will find this and use it, provided, of course, that it is the right version.
+Notice that in this case, the full base part `hub.mu.com/` is part of the path, since we downloaded it.  The StackRef
+resolution process will find this and use it, provided, of course, that it is the right version.
 
 In the third case, a globally available copy of the Stack has been downloaded, and placed in the `~/.mu/stacks/`
 directory.  This might have been thanks to running `mu get` with the `--global` (or `-g`) flag:

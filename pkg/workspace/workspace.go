@@ -111,12 +111,20 @@ func (w *workspace) DepCandidates(dep ast.Ref) []string {
 	// 		3. The global Workspace's .mu/stacks/ directory.
 	// 		4. The Mu installation location's $MUROOT/lib/ directory (default /usr/local/mu/lib).
 	//
-	// To be more precise, given a StackRef r and a workspace root w, we look in these locations:
+	// In each location, we prefer a fully qualified hit if it exists -- containing both the base of the reference plus
+	// the name -- however, we also accept name-only hits.  This allows developers to organize their workspace without
+	// worrying about where their Mu Stacks are hosted.  Most of the Mu tools, however, prefer fully qualified paths.
 	//
-	// 		1. w/name(r)
-	// 		2. w/.mu/stacks/base(r)/name(r)
-	// 		3. ~/.mu/stacks/base(r)/name(r)
-	// 		4. $MUROOT/lib/base(r)/name(r)
+	// To be more precise, given a StackRef r and a workspace root w, we look in these locations, in order:
+	//
+	//		1. w/base(r)/name(r)
+	//		2. w/name(r)
+	//		3. w/.mu/stacks/base(r)/name(r)
+	//		4. w/.mu/stacks/name(r)
+	//		5. ~/.mu/stacks/base(r)/name(r)
+	//		6. ~/.mu/stacks/name(r)
+	//		7. $MUROOT/bin/stacks/base(r)/name(r)
+	//		8. $MUROOT/bin/stacks/name(r)
 	//
 	// The following code simply produces an array of these candidate locations, in order.
 
@@ -126,10 +134,14 @@ func (w *workspace) DepCandidates(dep ast.Ref) []string {
 	// For each extension we support, add the same set of search locations.
 	cands := make([]string, 0, 4*len(Exts))
 	for _, ext := range Exts {
+		cands = append(cands, filepath.Join(w.root, base, name, Mufile+ext))
 		cands = append(cands, filepath.Join(w.root, name, Mufile+ext))
 		cands = append(cands, filepath.Join(w.root, Muspace, MuspaceStacks, base, name, Mufile+ext))
+		cands = append(cands, filepath.Join(w.root, Muspace, MuspaceStacks, name, Mufile+ext))
 		cands = append(cands, filepath.Join(w.home, Muspace, MuspaceStacks, base, name, Mufile+ext))
+		cands = append(cands, filepath.Join(w.home, Muspace, MuspaceStacks, name, Mufile+ext))
 		cands = append(cands, filepath.Join(InstallRoot(), InstallRootLibdir, base, name, Mufile+ext))
+		cands = append(cands, filepath.Join(InstallRoot(), InstallRootLibdir, name, Mufile+ext))
 	}
 	return cands
 }
