@@ -9,4 +9,5 @@ import (
 // Scheduler is an interface for providers that can target a Mu stack to a specific cloud CaaS.
 type Scheduler interface {
 	core.Backend
+	Arch() Arch
 }

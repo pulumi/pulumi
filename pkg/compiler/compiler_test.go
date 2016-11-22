@@ -78,7 +78,7 @@ func TestMissingTarget(t *testing.T) {
 	// Now check that this same project compiles fine if we manually specify an architecture.
 	sink = buildFile(Options{
 		Arch: backends.Arch{
-			Cloud: clouds.AWSArch,
+			Cloud: clouds.AWS,
 		},
 	}, mufile, ".yaml")
 	assert.Equal(t, 0, sink.Errors(), "expected no compilation errors")

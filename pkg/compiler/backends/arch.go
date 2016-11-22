@@ -15,7 +15,7 @@ type Arch struct {
 
 func (a Arch) String() string {
 	s := clouds.Names[a.Cloud]
-	if a.Scheduler != schedulers.NoArch {
+	if a.Scheduler != schedulers.None {
 		s += ":" + schedulers.Names[a.Scheduler]
 	}
 	return s

@@ -9,4 +9,5 @@ import (
 // Cloud is an interface for providers that can target a Mu stack to a specific cloud IaaS.
 type Cloud interface {
 	core.Backend
+	Arch() Arch
 }

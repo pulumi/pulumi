@@ -316,7 +316,7 @@ func (c *compiler) discoverClusterArch(w workspace.W, doc *diag.Document,
 
 	if cluster == nil {
 		// If no target was found, and we don't have an architecture, error out.
-		if arch.Cloud == clouds.NoArch {
+		if arch.Cloud == clouds.None {
 			c.Diag().Errorf(errors.MissingTarget.WithDocument(doc))
 			return cluster, arch, false
 		}
@@ -372,11 +372,11 @@ func (c *compiler) getClusterArch(doc *diag.Document, cluster *ast.Cluster,
 
 	// Ensure there aren't any conflicts, comparing compiler options to cluster settings.
 	tarch := backends.Arch{targetCloud, targetScheduler}
-	if targetCloud != existing.Cloud && existing.Cloud != clouds.NoArch {
+	if targetCloud != existing.Cloud && existing.Cloud != clouds.None {
 		c.Diag().Errorf(errors.ConflictingClusterArchSelection.WithDocument(doc), existing, cluster.Name, tarch)
 		return tarch, false
 	}
-	if targetScheduler != existing.Scheduler && existing.Scheduler != schedulers.NoArch {
+	if targetScheduler != existing.Scheduler && existing.Scheduler != schedulers.None {
 		c.Diag().Errorf(errors.ConflictingClusterArchSelection.WithDocument(doc), existing, cluster.Name, tarch)
 		return tarch, false
 	}

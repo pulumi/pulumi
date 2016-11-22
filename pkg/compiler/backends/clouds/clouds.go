@@ -6,35 +6,35 @@ package clouds
 type Arch int
 
 const (
-	NoArch     Arch = iota // no target specified.
-	AWSArch                // Amazon Web Services.
-	GCPArch                // Google Cloud Platform.
-	AzureArch              // Microsoft Azure.
-	VMWareArch             // VMWare vSphere, etc.
+	None   Arch = iota // no target specified.
+	AWS                // Amazon Web Services.
+	GCP                // Google Cloud Platform.
+	Azure              // Microsoft Azure.
+	VMWare             // VMWare vSphere, etc.
 )
 
 const (
-	noArch     = ""
-	awsArch    = "aws"
-	gcpArch    = "gcp"
-	azureArch  = "azure"
-	vmwareArch = "vmware"
+	none   = ""
+	aws    = "aws"
+	gcp    = "gcp"
+	azure  = "azure"
+	vmware = "vmware"
 )
 
 // Names maps Archs to human-friendly names.
 var Names = map[Arch]string{
-	NoArch:     noArch,
-	AWSArch:    awsArch,
-	GCPArch:    gcpArch,
-	AzureArch:  azureArch,
-	VMWareArch: vmwareArch,
+	None:   none,
+	AWS:    aws,
+	GCP:    gcp,
+	Azure:  azure,
+	VMWare: vmware,
 }
 
 // Values maps human-friendly names to the Archs for those names.
 var Values = map[string]Arch{
-	noArch:     NoArch,
-	awsArch:    AWSArch,
-	gcpArch:    GCPArch,
-	azureArch:  AzureArch,
-	vmwareArch: VMWareArch,
+	none:   None,
+	aws:    AWS,
+	gcp:    GCP,
+	azure:  Azure,
+	vmware: VMWare,
 }

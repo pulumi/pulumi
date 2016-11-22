@@ -31,6 +31,10 @@ type awsCloud struct {
 	// TODO: support cloud provider options (e.g., ranging from simple like YAML vs. JSON to complex like IAM).
 }
 
+func (c *awsCloud) Arch() clouds.Arch {
+	return clouds.AWS
+}
+
 func (c *awsCloud) Diag() diag.Sink {
 	return c.d
 }
@@ -157,32 +161,32 @@ func (c *awsCloud) genServiceTemplate(comp core.Compiland, stack *ast.Stack, svc
 }
 
 func (c *awsCloud) genMuContainerServiceTemplate(comp core.Compiland, stack *ast.Stack, svc *ast.Service) cfResources {
-	util.FailMF("%v service types are not yet supported\n", svc.Name)
+	util.FailMF("%v service types are not yet supported (svc:  %v)\n", svc.BoundType.Name, svc.Name)
 	return nil
 }
 
 func (c *awsCloud) genMuGatewayServiceTemplate(comp core.Compiland, stack *ast.Stack, svc *ast.Service) cfResources {
-	util.FailMF("%v service types are not yet supported\n", svc.Name)
+	util.FailMF("%v service types are not yet supported (svc:  %v)\n", svc.BoundType.Name, svc.Name)
 	return nil
 }
 
 func (c *awsCloud) genMuFuncServiceTemplate(comp core.Compiland, stack *ast.Stack, svc *ast.Service) cfResources {
-	util.FailMF("%v service types are not yet supported\n", svc.Name)
+	util.FailMF("%v service types are not yet supported (svc:  %v)\n", svc.BoundType.Name, svc.Name)
 	return nil
 }
 
 func (c *awsCloud) genMuEventServiceTemplate(comp core.Compiland, stack *ast.Stack, svc *ast.Service) cfResources {
-	util.FailMF("%v service types are not yet supported\n", svc.Name)
+	util.FailMF("%v service types are not yet supported (svc:  %v)\n", svc.BoundType.Name, svc.Name)
 	return nil
 }
 
 func (c *awsCloud) genMuVolumeServiceTemplate(comp core.Compiland, stack *ast.Stack, svc *ast.Service) cfResources {
-	util.FailMF("%v service types are not yet supported\n", svc.Name)
+	util.FailMF("%v service types are not yet supported (svc:  %v)\n", svc.BoundType.Name, svc.Name)
 	return nil
 }
 
 func (c *awsCloud) genMuAutoscalerServiceTemplate(comp core.Compiland, stack *ast.Stack, svc *ast.Service) cfResources {
-	util.FailMF("%v service types are not yet supported\n", svc.Name)
+	util.FailMF("%v service types are not yet supported (svc:  %v)\n", svc.BoundType.Name, svc.Name)
 	return nil
 }
 
