@@ -5,8 +5,7 @@ services:
         - votes: mongodb/mongodb
     public:
         - app:
-            type: mu/container
-            build: .
+            type: mu/app
             arguments:
                 db: @votes
 
