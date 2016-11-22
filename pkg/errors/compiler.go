@@ -46,12 +46,12 @@ var IllegalCloudSchedulerCombination = &diag.Diag{
 	Message: "The cloud architecture '%v' is incompatible with scheduler '%v'",
 }
 
-var ConflictingTargetArchSelection = &diag.Diag{
+var ConflictingClusterArchSelection = &diag.Diag{
 	ID:      123,
-	Message: "The cloud architecture specification '%v' conflicts with target '%v's setting of '%v'",
+	Message: "The cloud architecture specification '%v' conflicts with cluster '%v's setting of '%v'",
 }
 
-var CloudTargetNotFound = &diag.Diag{
+var ClusterNotFound = &diag.Diag{
 	ID:      124,
 	Message: "A cloud target '%v' was not found in the stack or cluster definition",
 }

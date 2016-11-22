@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/marapongo/mu/pkg/diag"
+	"github.com/marapongo/mu/pkg/encoding"
 	"github.com/marapongo/mu/pkg/errors"
 )
 
@@ -23,14 +24,6 @@ const MuspaceStacks = "stacks"
 
 // MuspaceWorkspace is the base name of a workspace settings file.
 const MuspaceWorkspace = "workspace"
-
-// Exts contains a list of all the valid Mufile and Mucluster extensions.
-var Exts = []string{
-	".json",
-	".yaml",
-	// Although ".yml" is not a sanctioned YAML extension, it is used quite broadly; so we will support it.
-	".yml",
-}
 
 // InstallRootEnvvar is the envvar describing where Mu has been installed.
 const InstallRootEnvvar = "MUROOT"
@@ -132,7 +125,7 @@ func IsMufile(path string, d diag.Sink) bool {
 	}
 
 	// Check all supported extensions.
-	for _, mufileExt := range Exts {
+	for _, mufileExt := range encoding.Exts {
 		if name == Mufile+mufileExt {
 			return true
 		}

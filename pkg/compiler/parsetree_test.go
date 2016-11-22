@@ -16,12 +16,11 @@ func TestBadMissingStackName(t *testing.T) {
 	sink := buildNoCodegen("testdata", "parsetree", "bad__missing_stack_name")
 
 	// Check that the compiler complained about a missing Stack name.
-	d := errors.MissingMetadataName
+	d := errors.MissingStackName
 	assert.Equal(t, 1, sink.Errors(), "expected a single error")
 	assert.Equal(t,
 		fmt.Sprintf("%v: %v%v: %v: %v\n",
-			diag.DefaultSinkErrorPrefix, diag.DefaultSinkIDPrefix, d.ID, "Mu.yaml",
-			fmt.Sprintf(d.Message, "Stack")),
+			diag.DefaultSinkErrorPrefix, diag.DefaultSinkIDPrefix, d.ID, "Mu.yaml", d.Message),
 		sink.ErrorMsgs()[0])
 }
 
@@ -29,12 +28,12 @@ func TestBadStackSemVer1(t *testing.T) {
 	sink := buildNoCodegen("testdata", "parsetree", "bad__stack_semver__1")
 
 	// Check that the compiler complained about an illegal semantic version.
-	d := errors.IllegalMetadataSemVer
+	d := errors.IllegalStackSemVer
 	assert.Equal(t, 1, sink.Errors(), "expected a single error")
 	assert.Equal(t,
 		fmt.Sprintf("%v: %v%v: %v: %v\n",
 			diag.DefaultSinkErrorPrefix, diag.DefaultSinkIDPrefix, d.ID, "Mu.yaml",
-			fmt.Sprintf(d.Message, "Stack", "badbadbad")),
+			fmt.Sprintf(d.Message, "badbadbad")),
 		sink.ErrorMsgs()[0])
 }
 
@@ -42,12 +41,12 @@ func TestBadStackSemVer2(t *testing.T) {
 	sink := buildNoCodegen("testdata", "parsetree", "bad__stack_semver__2")
 
 	// Check that the compiler complained about an illegal semantic version.
-	d := errors.IllegalMetadataSemVer
+	d := errors.IllegalStackSemVer
 	assert.Equal(t, 1, sink.Errors(), "expected a single error")
 	assert.Equal(t,
 		fmt.Sprintf("%v: %v%v: %v: %v\n",
 			diag.DefaultSinkErrorPrefix, diag.DefaultSinkIDPrefix, d.ID, "Mu.yaml",
-			fmt.Sprintf(d.Message, "Stack", ">1.0.0")),
+			fmt.Sprintf(d.Message, ">1.0.0")),
 		sink.ErrorMsgs()[0])
 }
 

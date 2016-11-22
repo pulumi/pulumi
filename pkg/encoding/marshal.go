@@ -8,6 +8,14 @@ import (
 	"github.com/ghodss/yaml"
 )
 
+// Exts contains a list of all the valid marshalable extension types.
+var Exts = []string{
+	".json",
+	".yaml",
+	// Although ".yml" is not a sanctioned YAML extension, it is used quite broadly; so we will support it.
+	".yml",
+}
+
 // Marshalers is a map of extension to a Marshaler object for that extension.
 var Marshalers map[string]Marshaler
 

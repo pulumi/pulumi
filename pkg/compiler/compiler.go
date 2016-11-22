@@ -134,7 +134,7 @@ func (c *compiler) buildDocument(w workspace.W, doc *diag.Document, outp string)
 		glog.V(2).Infof("Skipping code-generation (opts.SkipCodegen=true)")
 	} else {
 		// Figure out which cloud architecture we will be targeting during code-gen.
-		target, arch, ok := c.discoverTargetArch(doc, stack)
+		target, arch, ok := c.discoverClusterArch(w, doc, stack)
 		if !ok {
 			return
 		}
@@ -181,9 +181,7 @@ func (c *compiler) loadDependencies(w workspace.W, doc *diag.Document, stack *as
 	ok := true
 	for _, ref := range ast.StableDependencies(stack.Dependencies) {
 		dep := stack.Dependencies[ref]
-		if glog.V(3) {
-			glog.V(3).Infof("Loading Stack %v dependency %v:%v", stack.Name, ref, dep)
-		}
+		glog.V(3).Infof("Loading Stack %v dependency %v:%v", stack.Name, ref, dep)
 
 		// First see if we've already loaded this dependency.  In that case, we can reuse it.
 		var bound *ast.BoundDependency
@@ -220,9 +218,7 @@ func (c *compiler) loadDependency(w workspace.W, doc *diag.Document, ref ast.Ref
 	for _, loc := range w.DepCandidates(ref) {
 		// Try to read this location as a document.
 		isMufile := workspace.IsMufile(loc, c.Diag())
-		if glog.V(5) {
-			glog.V(5).Infof("Probing for dependency %v at %v: %v", ref, loc, isMufile)
-		}
+		glog.V(5).Infof("Probing for dependency %v at %v: %v", ref, loc, isMufile)
 
 		if isMufile {
 			doc, err := diag.ReadDocument(loc)
@@ -267,103 +263,116 @@ func (c *compiler) analyzeStack(doc *diag.Document, stack *ast.Stack) (*ast.Stac
 	return stack, true
 }
 
-// discoverTargetArch uses a variety of mechanisms to discover the target architecture, returning it.  If no
+// discoverClusterArch uses a variety of mechanisms to discover the target architecture, returning it.  If no
 // architecture was discovered, an error is issued, and the bool return will be false.
-func (c *compiler) discoverTargetArch(doc *diag.Document, stack *ast.Stack) (*ast.Target, backends.Arch, bool) {
-	// Target and architectures settings may come from one of three places, in order of search preference:
+func (c *compiler) discoverClusterArch(w workspace.W, doc *diag.Document,
+	stack *ast.Stack) (*ast.Cluster, backends.Arch, bool) {
+	// Cluster and architectures settings may come from one of three places, in order of search preference:
 	//		1) command line arguments.
 	//		2) settings specific to this stack.
-	//		3) cluster-wide settings in a Mucluster file.
+	//		3) cluster-wide settings in a workspace.
 	// In other words, 1 overrides 2 which overrides 3.
 	arch := c.opts.Arch
 
-	// If a target was specified, look it up and load up its options.
-	var target *ast.Target
-	if c.opts.Target != "" {
+	// If a cluster was specified, look it up and load up its options.
+	var cluster *ast.Cluster
+	if c.opts.Cluster != "" {
 		// First, check the stack to see if it has a targets section.
-		if t, exists := stack.Targets[c.opts.Target]; exists {
-			target = &t
+		if cl, exists := stack.Clusters[c.opts.Cluster]; exists {
+			cluster = &cl
 		} else {
-			// If that didn't work, see if there's a clusters file we can consult.
-			// TODO: support Mucluster files.
-			c.Diag().Errorf(errors.CloudTargetNotFound.WithDocument(doc), c.opts.Target)
-			return target, arch, false
-		}
-	}
-
-	// If no target was specified or discovered yet, see if there is a default one to use.
-	if target == nil {
-		for _, t := range stack.Targets {
-			if t.Default {
-				target = &t
-				break
+			// If that didn't work, see if the workspace has an opinion.
+			if cl, exists := w.Settings().Clusters[c.opts.Cluster]; exists {
+				cluster = &cl
+			} else {
+				c.Diag().Errorf(errors.ClusterNotFound.WithDocument(doc), c.opts.Cluster)
+				return cluster, arch, false
 			}
 		}
 	}
 
-	if target == nil {
+	// If no cluster was specified or discovered yet, see if there is a default one to use.
+	if cluster == nil {
+		for _, cl := range stack.Clusters {
+			if cl.Default {
+				cluster = &cl
+				break
+			}
+		}
+		if cluster == nil {
+			for _, cl := range w.Settings().Clusters {
+				if cl.Default {
+					cluster = &cl
+					break
+				}
+			}
+		}
+	}
+
+	if cluster == nil {
 		// If no target was found, and we don't have an architecture, error out.
 		if arch.Cloud == clouds.NoArch {
 			c.Diag().Errorf(errors.MissingTarget.WithDocument(doc))
-			return target, arch, false
+			return cluster, arch, false
 		}
 
-		// If we got here, generate an "anonymous" target, so that we at least have a name.
-		target = c.newAnonTarget(arch)
+		// If we got here, generate an "anonymous" cluster, so that we at least have a name.
+		cluster = c.newAnonCluster(arch)
 	} else {
 		// If a target was found, go ahead and extract and validate the target architecture.
-		a, ok := c.getTargetArch(doc, target, arch)
+		a, ok := c.getClusterArch(doc, cluster, arch)
 		if !ok {
-			return target, arch, false
+			return cluster, arch, false
 		}
 		arch = a
 	}
 
-	return target, arch, true
+	return cluster, arch, true
 }
 
-// newAnonTarget creates an anonymous target for stacks that didn't declare one.
-func (c *compiler) newAnonTarget(arch backends.Arch) *ast.Target {
+// newAnonCluster creates an anonymous cluster for stacks that didn't declare one.
+func (c *compiler) newAnonCluster(arch backends.Arch) *ast.Cluster {
 	// TODO: ensure this is unique.
 	// TODO: we want to cache names somewhere (~/.mu/?) so that we can reuse temporary local stacks, etc.
-	return &ast.Target{
+	return &ast.Cluster{
 		Name:      uuid.NewV4().String(),
 		Cloud:     clouds.Names[arch.Cloud],
 		Scheduler: schedulers.Names[arch.Scheduler],
 	}
 }
 
-// getTargetArch gets and validates the architecture from an existing target.
-func (c *compiler) getTargetArch(doc *diag.Document, target *ast.Target, existing backends.Arch) (backends.Arch, bool) {
+// getClusterArch gets and validates the architecture from an existing target.
+func (c *compiler) getClusterArch(doc *diag.Document, cluster *ast.Cluster,
+	existing backends.Arch) (backends.Arch, bool) {
 	targetCloud := existing.Cloud
 	targetScheduler := existing.Scheduler
 
-	// If specified, look up the target's architecture settings.
-	if target.Cloud != "" {
-		tc, ok := clouds.Values[target.Cloud]
+	// If specified, look up the cluster's architecture settings.
+	if cluster.Cloud != "" {
+		tc, ok := clouds.Values[cluster.Cloud]
 		if !ok {
-			c.Diag().Errorf(errors.UnrecognizedCloudArch.WithDocument(doc), target.Cloud)
+			c.Diag().Errorf(errors.UnrecognizedCloudArch.WithDocument(doc), cluster.Cloud)
 			return existing, false
 		}
 		targetCloud = tc
 	}
-	if target.Scheduler != "" {
-		ts, ok := schedulers.Values[target.Scheduler]
+	if cluster.Scheduler != "" {
+		ts, ok := schedulers.Values[cluster.Scheduler]
 		if !ok {
-			c.Diag().Errorf(errors.UnrecognizedSchedulerArch.WithDocument(doc), target.Scheduler)
+			c.Diag().Errorf(errors.UnrecognizedSchedulerArch.WithDocument(doc), cluster.Scheduler)
 			return existing, false
 		}
 		targetScheduler = ts
 	}
 
-	// Ensure there aren't any conflicts, comparing compiler options to target settings.
+	// Ensure there aren't any conflicts, comparing compiler options to cluster settings.
 	tarch := backends.Arch{targetCloud, targetScheduler}
 	if targetCloud != existing.Cloud && existing.Cloud != clouds.NoArch {
-		c.Diag().Errorf(errors.ConflictingTargetArchSelection.WithDocument(doc), existing, target.Name, tarch)
+		c.Diag().Errorf(errors.ConflictingClusterArchSelection.WithDocument(doc), existing, cluster.Name, tarch)
 		return tarch, false
 	}
 	if targetScheduler != existing.Scheduler && existing.Scheduler != schedulers.NoArch {
-		c.Diag().Errorf(errors.ConflictingTargetArchSelection.WithDocument(doc), existing, target.Name, tarch)
+		c.Diag().Errorf(errors.ConflictingClusterArchSelection.WithDocument(doc), existing, cluster.Name, tarch)
 		return tarch, false
 	}
 

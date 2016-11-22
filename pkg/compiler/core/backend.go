@@ -16,7 +16,7 @@ type Backend interface {
 
 // Compiland contains all of settings passed from front-end to back-end compiler phases.
 type Compiland struct {
-	Target       *ast.Target           // the compilation target.
+	Cluster      *ast.Cluster          // the target cluster.
 	Doc          *diag.Document        // the document from which the root stack came.
 	Stack        *ast.Stack            // the root stack to compile.
 	Dependencies ast.BoundDependencies // the whole transitive closure of dependency stacks.

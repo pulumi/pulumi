@@ -65,7 +65,7 @@ func (c *awsCloud) genClusterTemplate(comp core.Compiland) *cfTemplate {
 // genStackName creates a name for the stack, which must be globally unique within an account.
 func (c *awsCloud) genStackName(comp core.Compiland) string {
 	nm := fmt.Sprintf("MuStack-%v-%v",
-		makeAWSFriendlyName(comp.Target.Name, true), makeAWSFriendlyName(string(comp.Stack.Name), true))
+		makeAWSFriendlyName(comp.Cluster.Name, true), makeAWSFriendlyName(string(comp.Stack.Name), true))
 	util.Assert(IsValidCFStackName(nm))
 	return nm
 }

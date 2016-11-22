@@ -6,14 +6,14 @@ import (
 	"github.com/marapongo/mu/pkg/diag"
 )
 
-var MissingMetadataName = &diag.Diag{
+var MissingStackName = &diag.Diag{
 	ID:      200,
-	Message: "This %v is missing a `name` property (or it is empty)",
+	Message: "This Stack is missing a `name` property (or it is empty)",
 }
 
-var IllegalMetadataSemVer = &diag.Diag{
+var IllegalStackSemVer = &diag.Diag{
 	ID:      201,
-	Message: "This %v's version '%v' is not a valid semantic version number (note: it may not be a range)",
+	Message: "This Stack's version '%v' is not a valid semantic version number (note: it must not be a range)",
 }
 
 var IllegalDependencySemVer = &diag.Diag{

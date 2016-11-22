@@ -26,7 +26,7 @@ const defaultOutp = ".mu"
 func newBuildCmd() *cobra.Command {
 	var outp string
 	var arch string
-	var target string
+	var cluster string
 	var cmd = &cobra.Command{
 		Use:   "build [source]",
 		Short: "Compile a Mu Stack",
@@ -42,7 +42,7 @@ func newBuildCmd() *cobra.Command {
 			}
 
 			opts := compiler.DefaultOpts(abs)
-			opts.Target = target
+			opts.Cluster = cluster
 			setCloudArchOptions(arch, &opts)
 
 			mup := compiler.NewCompiler(opts)
@@ -55,10 +55,10 @@ func newBuildCmd() *cobra.Command {
 		"The directory in which to place build artifacts")
 	cmd.PersistentFlags().StringVarP(
 		&arch, "arch", "a", "",
-		"Generate output for a specific cloud architecture (format: \"cloud[:scheduler]\")")
+		"Generate output for the target cloud architecture (format: \"cloud[:scheduler]\")")
 	cmd.PersistentFlags().StringVarP(
-		&target, "target", "t", "",
-		"Generate output for an existing, named target")
+		&cluster, "cluster", "c", "",
+		"Generate output for an existing, named cluster")
 
 	return cmd
 }

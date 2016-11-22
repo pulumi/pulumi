@@ -8,6 +8,6 @@ import (
 
 // Context holds all state available to any templates or code evaluated at compile-time.
 type Context struct {
-	Args   map[string]interface{}
-	Target *ast.Target
+	P       map[string]interface{} // properties supplied at stack construction time.
+	Cluster *ast.Cluster           // the target cluster.
 }

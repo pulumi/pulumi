@@ -6,58 +6,58 @@ import (
 	"sort"
 )
 
-func StableDependencies(d Dependencies) []Ref {
-	deps := make(Refs, 0, len(d))
-	for dep := range d {
-		deps = append(deps, dep)
+func StableClusters(cs Clusters) []string {
+	sorted := make([]string, 0, len(cs))
+	for c := range cs {
+		sorted = append(sorted, c)
 	}
-	sort.Sort(deps)
-	return deps
+	sort.Strings(sorted)
+	return sorted
 }
 
-func StableBoundDependencies(d BoundDependencies) []Ref {
-	deps := make(Refs, 0, len(d))
-	for dep := range d {
-		deps = append(deps, dep)
+func StableDependencies(ds Dependencies) []Ref {
+	sorted := make(Refs, 0, len(ds))
+	for d := range ds {
+		sorted = append(sorted, d)
 	}
-	sort.Sort(deps)
-	return deps
+	sort.Sort(sorted)
+	return sorted
 }
 
-func StableProperties(p Properties) []string {
-	props := make([]string, 0, len(p))
-	for prop := range p {
-		props = append(props, prop)
+func StableBoundDependencies(ds BoundDependencies) []Ref {
+	sorted := make(Refs, 0, len(ds))
+	for d := range ds {
+		sorted = append(sorted, d)
 	}
-	sort.Strings(props)
-	return props
+	sort.Sort(sorted)
+	return sorted
 }
 
-func StableServices(s ServiceMap) []Name {
-	svcs := make(Names, 0, len(s))
-	for svc := range s {
-		svcs = append(svcs, svc)
+func StableProperties(ps Properties) []string {
+	sorted := make([]string, 0, len(ps))
+	for p := range ps {
+		sorted = append(sorted, p)
 	}
-	sort.Sort(svcs)
-	return svcs
+	sort.Strings(sorted)
+	return sorted
 }
 
-func StableUntypedServices(s UntypedServiceMap) []Name {
-	svcs := make(Names, 0, len(s))
-	for svc := range s {
-		svcs = append(svcs, svc)
+func StableServices(ss ServiceMap) []Name {
+	sorted := make(Names, 0, len(ss))
+	for s := range ss {
+		sorted = append(sorted, s)
 	}
-	sort.Sort(svcs)
-	return svcs
+	sort.Sort(sorted)
+	return sorted
 }
 
-func StableTargets(t Targets) []string {
-	targets := make([]string, 0, len(t))
-	for target := range t {
-		targets = append(targets, target)
+func StableUntypedServices(ss UntypedServiceMap) []Name {
+	sorted := make(Names, 0, len(ss))
+	for s := range ss {
+		sorted = append(sorted, s)
 	}
-	sort.Strings(targets)
-	return targets
+	sort.Sort(sorted)
+	return sorted
 }
 
 type Names []Name

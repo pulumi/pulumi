@@ -8,16 +8,23 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/golang/glog"
 	homedir "github.com/mitchellh/go-homedir"
 
 	"github.com/marapongo/mu/pkg/ast"
 	"github.com/marapongo/mu/pkg/diag"
+	"github.com/marapongo/mu/pkg/encoding"
+	"github.com/marapongo/mu/pkg/errors"
+	"github.com/marapongo/mu/pkg/util"
 )
 
 // W offers functionality for interacting with Mu workspaces.
 type W interface {
 	// Root returns the base path of the current workspace.
 	Root() string
+	// Settings returns a mutable pointer to the optional workspace settings info.
+	Settings() *ast.Workspace
+
 	// DetectMufile locates the closest Mufile from the given path, searching "upwards" in the directory hierarchy.
 	DetectMufile() (string, error)
 	// DepCandidates fetches all candidate locations for resolving a dependency name to its installed artifacts.
@@ -45,7 +52,7 @@ func New(path string, d diag.Sink) (W, error) {
 	}
 
 	// Memoize the root directory before returning.
-	if _, err := ws.detectRoot(); err != nil {
+	if _, err := ws.initRootInfo(); err != nil {
 		return nil, err
 	}
 
@@ -53,14 +60,15 @@ func New(path string, d diag.Sink) (W, error) {
 }
 
 type workspace struct {
-	path string    // the path at which the workspace was constructed.
-	root string    // the root of the workspace.
-	home string    // the home directory to use for this workspace.
-	d    diag.Sink // a diagnostics sink to use for workspace operations.
+	path     string        // the path at which the workspace was constructed.
+	root     string        // the root of the workspace.
+	home     string        // the home directory to use for this workspace.
+	settings ast.Workspace // an optional bag of workspace-wide settings.
+	d        diag.Sink     // a diagnostics sink to use for workspace operations.
 }
 
-// detectRoot finds the root of the workspace and caches it for fast lookups.
-func (w *workspace) detectRoot() (string, error) {
+// initRootInfo finds the root of the workspace, caches it for fast lookups, and loads up any workspace settings.
+func (w *workspace) initRootInfo() (string, error) {
 	if w.root == "" {
 		// Detect the root of the workspace and cache it.
 		root := pathDir(w.path)
@@ -73,6 +81,31 @@ func (w *workspace) detectRoot() (string, error) {
 			for _, file := range files {
 				// A muspace file delimits the root of the workspace.
 				if file.Name() == Muspace {
+					w.root = root
+					glog.V(3).Infof("Mu workspace detected; setting root to %v", w.root)
+
+					// If there is a workspace settings file in here, load it up before returning.
+					if file.IsDir() {
+						for _, ext := range encoding.Exts {
+							path := filepath.Join(root, Muspace, MuspaceWorkspace+ext)
+							wb, err := ioutil.ReadFile(path)
+							if err == nil {
+								glog.V(3).Infof("Parsing Workspace file: %v", path)
+								m := encoding.Marshalers[ext]
+								util.AssertMF(m != nil, "Expected a non-nil marshaler for extension %v", ext)
+								if err = m.Unmarshal(wb, &w.settings); err != nil {
+									w.d.Errorf(errors.IllegalWorkspaceSyntax.WithFile(path), err)
+								}
+								break
+							}
+							if os.IsNotExist(err) {
+								// OK if it's just the standard ENOENT error.  Skip ahead and try the next extension.
+								continue
+							}
+							return "", err
+						}
+					}
+
 					break Search
 				}
 			}
@@ -81,20 +114,22 @@ func (w *workspace) detectRoot() (string, error) {
 			root = filepath.Dir(root)
 			if isTop(root) {
 				// We reached the top of the filesystem.  Just set root back to the path and stop.
-				root = w.path
+				w.root = w.path
+				glog.V(3).Infof("No Mu workspace found; defaulting to current path %v", w.root)
 				break
 			}
 		}
-
-		w.root = root
 	}
 
 	return w.root, nil
 }
 
-// Root returns the current workspace's root.
 func (w *workspace) Root() string {
 	return w.root
+}
+
+func (w *workspace) Settings() *ast.Workspace {
+	return &w.settings
 }
 
 func (w *workspace) DetectMufile() (string, error) {
@@ -132,8 +167,8 @@ func (w *workspace) DepCandidates(dep ast.Ref) []string {
 	name := namePath(dep.Name())
 
 	// For each extension we support, add the same set of search locations.
-	cands := make([]string, 0, 4*len(Exts))
-	for _, ext := range Exts {
+	cands := make([]string, 0, 4*len(encoding.Exts))
+	for _, ext := range encoding.Exts {
 		cands = append(cands, filepath.Join(w.root, base, name, Mufile+ext))
 		cands = append(cands, filepath.Join(w.root, name, Mufile+ext))
 		cands = append(cands, filepath.Join(w.root, Muspace, MuspaceStacks, base, name, Mufile+ext))

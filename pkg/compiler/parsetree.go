@@ -47,26 +47,25 @@ func (a *ptAnalyzer) Analyze(doc *diag.Document, stack *ast.Stack) {
 	v.VisitStack(doc, stack)
 }
 
-func (a *ptAnalyzer) VisitMetadata(doc *diag.Document, kind ast.MetadataKind, meta *ast.Metadata) {
-	// Decorate the AST with contextual information so subsequent passes can operate context-free.
-	meta.Kind = kind
-
-	// Metadata names are required.
-	if meta.Name == "" {
-		a.Diag().Errorf(errors.MissingMetadataName.WithDocument(doc), kind)
+func (a *ptAnalyzer) VisitStack(doc *diag.Document, stack *ast.Stack) {
+	// Stack names are required.
+	if stack.Name == "" {
+		a.Diag().Errorf(errors.MissingStackName.WithDocument(doc))
 	}
 
-	// Metadata versions must be valid semantic versions (and specifically, not ranges).  In other words, we need
+	// Stack versions must be valid semantic versions (and specifically, not ranges).  In other words, we need
 	// a concrete version number like "1.3.9-beta2" and *not* a range like ">1.3.9".
 	// TODO: should we require a version number?
-	if meta.Version != "" {
-		if _, err := semver.Parse(string(meta.Version)); err != nil {
-			a.Diag().Errorf(errors.IllegalMetadataSemVer.WithDocument(doc), kind, meta.Version)
+	if stack.Version != "" {
+		if _, err := semver.Parse(string(stack.Version)); err != nil {
+			a.Diag().Errorf(errors.IllegalStackSemVer.WithDocument(doc), stack.Version)
 		}
 	}
 }
 
-func (a *ptAnalyzer) VisitStack(doc *diag.Document, stack *ast.Stack) {
+func (a *ptAnalyzer) VisitCluster(doc *diag.Document, name string, cluster *ast.Cluster) {
+	// Decorate the AST with contextual information so subsequent passes can operate context-free.
+	cluster.Name = name
 }
 
 func (a *ptAnalyzer) VisitProperty(doc *diag.Document, name string, param *ast.Property) {
@@ -125,9 +124,4 @@ func (a *ptAnalyzer) untypedServiceToTyped(doc *diag.Document,
 }
 
 func (a *ptAnalyzer) VisitService(doc *diag.Document, name ast.Name, public bool, svc *ast.Service) {
-}
-
-func (a *ptAnalyzer) VisitTarget(doc *diag.Document, name string, target *ast.Target) {
-	// Decorate the AST with contextual information so subsequent passes can operate context-free.
-	target.Name = name
 }

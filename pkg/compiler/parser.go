@@ -54,9 +54,7 @@ func (p *parser) Parse(doc *diag.Document) *ast.Stack {
 		return nil
 	}
 
-	if glog.V(3) {
-		glog.V(3).Infof("Mufile %v stack parsed: %v name; %v deps; %v publics; %v privates",
-			doc.File, stack.Name, len(stack.Dependencies), len(stack.Services.Public), len(stack.Services.Private))
-	}
+	glog.V(3).Infof("Mufile %v stack parsed: %v name; %v deps; %v publics; %v privates",
+		doc.File, stack.Name, len(stack.Dependencies), len(stack.Services.Public), len(stack.Services.Private))
 	return &stack
 }

@@ -10,14 +10,13 @@ import (
 // Visitor unifies all visitation patterns under a single interface.
 type Visitor interface {
 	Phase
-	VisitMetadata(doc *diag.Document, kind ast.MetadataKind, meta *ast.Metadata)
 	VisitStack(doc *diag.Document, stack *ast.Stack)
+	VisitCluster(doc *diag.Document, name string, cluster *ast.Cluster)
 	VisitProperty(doc *diag.Document, name string, prop *ast.Property)
 	VisitDependency(doc *diag.Document, ref ast.Ref, dep *ast.Dependency)
 	VisitBoundDependency(doc *diag.Document, ref ast.Ref, dep *ast.BoundDependency)
 	VisitServices(doc *diag.Document, svcs *ast.Services)
 	VisitService(doc *diag.Document, name ast.Name, public bool, svc *ast.Service)
-	VisitTarget(doc *diag.Document, name string, target *ast.Target)
 }
 
 // NewInOrderVisitor wraps another Visitor and walks the tree in a deterministic order, deferring to another set of
@@ -45,29 +44,17 @@ func (v *inOrderVisitor) Diag() diag.Sink {
 	return nil
 }
 
-func (v *inOrderVisitor) VisitMetadata(doc *diag.Document, kind ast.MetadataKind, meta *ast.Metadata) {
-	if v.pre != nil {
-		v.pre.VisitMetadata(doc, kind, meta)
-	}
-
-	for _, name := range ast.StableTargets(meta.Targets) {
-		target := meta.Targets[name]
-		v.VisitTarget(doc, name, &target)
-		// Copy the targeteter back in case it was updated.
-		meta.Targets[name] = target
-	}
-
-	if v.post != nil {
-		v.post.VisitMetadata(doc, kind, meta)
-	}
-}
-
 func (v *inOrderVisitor) VisitStack(doc *diag.Document, stack *ast.Stack) {
 	if v.pre != nil {
 		v.pre.VisitStack(doc, stack)
 	}
 
-	v.VisitMetadata(doc, "Stack", &stack.Metadata)
+	for _, name := range ast.StableClusters(stack.Clusters) {
+		cluster := stack.Clusters[name]
+		v.VisitCluster(doc, name, &cluster)
+		// Copy the cluster back in case it was updated.
+		stack.Clusters[name] = cluster
+	}
 
 	for _, name := range ast.StableProperties(stack.Properties) {
 		prop := stack.Properties[name]
@@ -94,6 +81,15 @@ func (v *inOrderVisitor) VisitStack(doc *diag.Document, stack *ast.Stack) {
 
 	if v.post != nil {
 		v.post.VisitStack(doc, stack)
+	}
+}
+
+func (v *inOrderVisitor) VisitCluster(doc *diag.Document, name string, cluster *ast.Cluster) {
+	if v.pre != nil {
+		v.pre.VisitCluster(doc, name, cluster)
+	}
+	if v.post != nil {
+		v.post.VisitCluster(doc, name, cluster)
 	}
 }
 
@@ -156,14 +152,5 @@ func (v *inOrderVisitor) VisitService(doc *diag.Document, name ast.Name, public 
 	}
 	if v.post != nil {
 		v.post.VisitService(doc, name, public, svc)
-	}
-}
-
-func (v *inOrderVisitor) VisitTarget(doc *diag.Document, name string, target *ast.Target) {
-	if v.pre != nil {
-		v.pre.VisitTarget(doc, name, target)
-	}
-	if v.post != nil {
-		v.post.VisitTarget(doc, name, target)
 	}
 }

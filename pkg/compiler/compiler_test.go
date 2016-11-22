@@ -87,7 +87,7 @@ func TestMissingTarget(t *testing.T) {
 func TestUnrecognizedCloud(t *testing.T) {
 	mufile := []byte("name: notarget\n" +
 		"abstract: true\n" +
-		"targets:\n" +
+		"clusters:\n" +
 		"    prod:\n" +
 		"        default: true\n" +
 		"        cloud: badcloud\n")

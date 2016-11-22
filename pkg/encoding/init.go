@@ -4,13 +4,12 @@ package encoding
 
 import (
 	"github.com/marapongo/mu/pkg/util"
-	"github.com/marapongo/mu/pkg/workspace"
 )
 
 func init() {
 	// Ensure a marshaler is available for every possible Mufile extension
 	Marshalers = make(map[string]Marshaler)
-	for _, ext := range workspace.Exts {
+	for _, ext := range Exts {
 		switch ext {
 		case ".json":
 			Marshalers[ext] = &jsonMarshaler{}

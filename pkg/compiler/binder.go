@@ -150,10 +150,10 @@ func (p *binderPhase1) Diag() diag.Sink {
 	return p.b.Diag()
 }
 
-func (p *binderPhase1) VisitMetadata(doc *diag.Document, kind ast.MetadataKind, meta *ast.Metadata) {
+func (p *binderPhase1) VisitStack(doc *diag.Document, stack *ast.Stack) {
 }
 
-func (p *binderPhase1) VisitStack(doc *diag.Document, stack *ast.Stack) {
+func (p *binderPhase1) VisitCluster(doc *diag.Document, name string, cluster *ast.Cluster) {
 }
 
 func (p *binderPhase1) VisitProperty(doc *diag.Document, name string, param *ast.Property) {
@@ -208,9 +208,6 @@ func (p *binderPhase1) VisitService(doc *diag.Document, name ast.Name, public bo
 	}
 }
 
-func (p *binderPhase1) VisitTarget(doc *diag.Document, name string, target *ast.Target) {
-}
-
 type binderPhase2 struct {
 	core.Visitor
 	b   *binder
@@ -219,9 +216,6 @@ type binderPhase2 struct {
 
 func (p *binderPhase2) Diag() diag.Sink {
 	return p.b.Diag()
-}
-
-func (p *binderPhase2) VisitMetadata(doc *diag.Document, kind ast.MetadataKind, meta *ast.Metadata) {
 }
 
 func (p *binderPhase2) VisitStack(doc *diag.Document, stack *ast.Stack) {
@@ -235,6 +229,9 @@ func (p *binderPhase2) VisitStack(doc *diag.Document, stack *ast.Stack) {
 		// Non-abstract Stacks must declare at least one Service.
 		p.Diag().Errorf(errors.NonAbstractStacksMustDefineServices.WithDocument(doc))
 	}
+}
+
+func (p *binderPhase2) VisitCluster(doc *diag.Document, name string, cluster *ast.Cluster) {
 }
 
 func (p *binderPhase2) VisitProperty(doc *diag.Document, name string, param *ast.Property) {
@@ -257,7 +254,4 @@ func (p *binderPhase2) VisitService(doc *diag.Document, name ast.Name, public bo
 	if _, svc.BoundType = p.b.LookupStack(svc.Type); svc.BoundType == nil {
 		p.Diag().Errorf(errors.TypeNotFound.WithDocument(p.doc), svc.Type)
 	}
-}
-
-func (p *binderPhase2) VisitTarget(doc *diag.Document, name string, target *ast.Target) {
 }

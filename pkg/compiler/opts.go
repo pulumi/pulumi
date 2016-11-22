@@ -12,7 +12,7 @@ type Options struct {
 	Diag        diag.Sink     // a sink to use for all diagnostics.
 	SkipCodegen bool          // if true, no code-generation phases run.
 	Arch        backends.Arch // a target cloud architecture.
-	Target      string        // a named target to generate outputs against.
+	Cluster     string        // a named cluster with predefined settings to target.
 }
 
 // DefaultOpts returns the default set of compiler options.

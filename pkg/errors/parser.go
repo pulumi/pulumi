@@ -15,3 +15,8 @@ var IllegalMufileSyntax = &diag.Diag{
 	ID:      151,
 	Message: "A syntax error was detected while parsing the Mufile: %v",
 }
+
+var IllegalWorkspaceSyntax = &diag.Diag{
+	ID:      152,
+	Message: "A syntax error was detected while parsing workspace settings: %v",
+}
