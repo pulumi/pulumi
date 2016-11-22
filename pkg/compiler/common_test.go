@@ -41,6 +41,10 @@ func (d *testDiagSink) WarningMsgs() []string {
 	return d.warnings
 }
 
+func (d *testDiagSink) Success() bool {
+	return d.Errors() == 0
+}
+
 func (d *testDiagSink) Errorf(dia *diag.Diag, args ...interface{}) {
 	d.errors = append(d.errors, d.Stringify(dia, diag.DefaultSinkErrorPrefix, args...))
 }

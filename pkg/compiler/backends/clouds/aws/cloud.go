@@ -44,7 +44,7 @@ func (c *awsCloud) CodeGen(comp core.Compiland) {
 	// TODO: prepare full deployment packages (e.g., tarballs of code, Docker images, etc).
 	nm := c.genStackName(comp)
 	cf := c.genStackTemplate(comp)
-	if c.Diag().Errors() == 0 {
+	if c.Diag().Success() {
 		// TODO: actually save this (and any other outputs) to disk, rather than spewing to STDOUT.
 		y, err := yaml.Marshal(cf)
 		if err != nil {

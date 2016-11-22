@@ -158,7 +158,7 @@ func (c *compiler) parseStack(doc *diag.Document) (*ast.Stack, bool) {
 	// To build the Mu package, first parse the input file.
 	p := NewParser(c)
 	stack := p.Parse(doc)
-	if p.Diag().Errors() > 0 {
+	if !p.Diag().Success() {
 		// If any errors happened during parsing, exit.
 		return stack, false
 	}
@@ -166,7 +166,7 @@ func (c *compiler) parseStack(doc *diag.Document) (*ast.Stack, bool) {
 	// Do a pass over the parse tree to ensure that all is well.
 	ptAnalyzer := NewPTAnalyzer(c)
 	ptAnalyzer.Analyze(doc, stack)
-	if p.Diag().Errors() > 0 {
+	if !p.Diag().Success() {
 		// If any errors happened during parse tree analysis, exit.
 		return stack, false
 	}
@@ -257,7 +257,7 @@ func (c *compiler) loadDependency(w workspace.W, doc *diag.Document, ref ast.Ref
 func (c *compiler) analyzeStack(doc *diag.Document, stack *ast.Stack) (*ast.Stack, bool) {
 	binder := NewBinder(c)
 	binder.Bind(doc, stack)
-	if c.Diag().Errors() > 0 {
+	if !c.Diag().Success() {
 		// If any errors happened during binding, exit.
 		return stack, false
 	}

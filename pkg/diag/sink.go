@@ -21,6 +21,8 @@ type Sink interface {
 	Errors() int
 	// Warnings fetches the number of warnings issued.
 	Warnings() int
+	// Success returns true if this sink is currently error-free.
+	Success() bool
 
 	// Error issues a new error diagnostic.
 	Errorf(diag *Diag, args ...interface{})
@@ -63,6 +65,10 @@ func (d *defaultSink) Errors() int {
 
 func (d *defaultSink) Warnings() int {
 	return d.warnings
+}
+
+func (d *defaultSink) Success() bool {
+	return d.errors == 0
 }
 
 func (d *defaultSink) Errorf(diag *Diag, args ...interface{}) {

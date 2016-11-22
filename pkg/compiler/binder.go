@@ -66,7 +66,7 @@ func (b *binder) Bind(doc *diag.Document, stack *ast.Stack) {
 	v1 := core.NewInOrderVisitor(phase1, nil)
 	v1.VisitStack(doc, stack)
 
-	if b.Diag().Errors() == 0 {
+	if b.Diag().Success() {
 		v2 := core.NewInOrderVisitor(phase2, nil)
 		v2.VisitStack(doc, stack)
 	}
