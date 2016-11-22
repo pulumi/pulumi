@@ -66,7 +66,7 @@ func (c *awsCloud) genClusterTemplate(comp core.Compiland) *cfTemplate {
 func (c *awsCloud) genStackName(comp core.Compiland) string {
 	nm := fmt.Sprintf("MuStack-%v-%v",
 		makeAWSFriendlyName(comp.Target.Name, true), makeAWSFriendlyName(string(comp.Stack.Name), true))
-	util.Assert(IsValidStackName(nm))
+	util.Assert(IsValidCFStackName(nm))
 	return nm
 }
 
@@ -74,7 +74,7 @@ func (c *awsCloud) genStackName(comp core.Compiland) string {
 func (c *awsCloud) genServiceName(stack *ast.Stack, svc *ast.Service) cfLogicalID {
 	nm := fmt.Sprintf("%v%v",
 		makeAWSFriendlyName(string(stack.Name), true), makeAWSFriendlyName(string(svc.Name), true))
-	util.Assert(IsValidLogicalID(nm))
+	util.Assert(IsValidCFLogicalID(nm))
 	return cfLogicalID(nm)
 }
 

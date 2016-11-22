@@ -48,15 +48,15 @@ type cfTemplate struct {
 	Outputs                  cfOutputs    `json:",omitempty"` // values returned when you view your stack.
 }
 
-// IsValidStackName checks that the given string is a valid CloudFormation stack name.  It cannot be empty, must be
+var cfStackNameRegexp = regexp.MustCompile("[a-zA-Z0-9-]+")
+
+// IsValidCFStackName checks that the given string is a valid CloudFormation stack name.  It cannot be empty, must be
 // shorter than cfMaxStackNameChars, and can be comprised only of alphanumeric (a-z, A-Z, 0-9) or hyphen (-) characters.
-func IsValidStackName(s string) bool {
+func IsValidCFStackName(s string) bool {
 	if len(s) == 0 || len(s) > cfMaxStackNameChars {
 		return false
 	}
-
-	m, _ := regexp.MatchString("[a-zA-Z0-9-]+", s)
-	return m
+	return cfStackNameRegexp.MatchString(s)
 }
 
 // cfMetadata can be used to include arbitrary JSON objects that provide details about the template.  Please see
@@ -144,15 +144,15 @@ type cfConditions map[string]interface{}
 // cfLogicalID represents a resource identifier; it must match the below regexp and be unique in the template.
 type cfLogicalID string
 
-// IsValidLogicalID checks that the given string is a valid CloudFormation logical ID.  It cannot be empty, must be less
-// than cfMaxLogicalIDChars in length, and must be comprised only of alphanumeric (a-z, A-Z, 0-9) characters.
-func IsValidLogicalID(s string) bool {
+var cfLogicalIDRegexp = regexp.MustCompile("[a-zA-Z0-9]+")
+
+// IsValidCFLogicalID checks that the given string is a valid CloudFormation logical ID.  It cannot be empty, must be
+// less than cfMaxLogicalIDChars in length, and must be comprised only of alphanumeric (a-z, A-Z, 0-9) characters.
+func IsValidCFLogicalID(s string) bool {
 	if len(s) == 0 || len(s) > cfMaxLogicalIDChars {
 		return false
 	}
-
-	m, _ := regexp.MatchString("[a-zA-Z0-9]+", s)
-	return m
+	return cfLogicalIDRegexp.MatchString(s)
 }
 
 // cfResources declares the AWS resources that you want as part of your stack.  It is a map of string-based logical IDs
