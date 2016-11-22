@@ -124,10 +124,15 @@ func (c *compiler) buildDocument(w workspace.W, doc *diag.Document, outp string)
 		return
 	}
 
-	// Perform the semantic analysis passes to validate, transform, and/or update the AST.
+	// Perform semantic analysis on all stacks passes to validate, transform, and/or update the AST.
 	stack, ok = c.analyzeStack(doc, stack)
 	if !ok {
 		return
+	}
+	for _, dep := range deps {
+		if _, ok := c.analyzeStack(doc, dep.Stack); !ok {
+			return
+		}
 	}
 
 	if c.opts.SkipCodegen {

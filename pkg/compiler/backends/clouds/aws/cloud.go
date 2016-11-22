@@ -43,7 +43,7 @@ func (c *awsCloud) CodeGen(comp core.Compiland) {
 	// TODO: allow for a "dry-run" mode that queries the target, checks things like limits, shows what will be done.
 	// TODO: prepare full deployment packages (e.g., tarballs of code, Docker images, etc).
 	nm := c.genStackName(comp)
-	cf := c.genStackTemplate(comp)
+	cf := c.genTemplate(comp)
 	if c.Diag().Success() {
 		// TODO: actually save this (and any other outputs) to disk, rather than spewing to STDOUT.
 		y, err := yaml.Marshal(cf)
@@ -70,16 +70,16 @@ func (c *awsCloud) genStackName(comp core.Compiland) string {
 	return nm
 }
 
-// genServiceName creates a name for the service, which must be unique within a single CloudFormation template.
-func (c *awsCloud) genServiceName(stack *ast.Stack, svc *ast.Service) cfLogicalID {
+// genResourceID creates an ID for a resource, which must be unique within a single CloudFormation template.
+func (c *awsCloud) genResourceID(stack *ast.Stack, svc *ast.Service) cfLogicalID {
 	nm := fmt.Sprintf("%v%v",
 		makeAWSFriendlyName(string(stack.Name), true), makeAWSFriendlyName(string(svc.Name), true))
 	util.Assert(IsValidCFLogicalID(nm))
 	return cfLogicalID(nm)
 }
 
-// genStackTemplate creates a CloudFormation template for an entire stack and all of its services.
-func (c *awsCloud) genStackTemplate(comp core.Compiland) *cfTemplate {
+// genTemplate creates a CloudFormation template for an entire compiland and all of its services.
+func (c *awsCloud) genTemplate(comp core.Compiland) *cfTemplate {
 	// Allocate a new template object that we will populate and return.
 	cf := &cfTemplate{
 		AWSTemplateFormatVersion: cfVersion,
@@ -96,19 +96,12 @@ func (c *awsCloud) genStackTemplate(comp core.Compiland) *cfTemplate {
 
 	// Emit the services.  Although services can depend on one another, the order in which we emit them here doesn't
 	// matter.  The reason is that those dependencies are "runtime"-based and will get resolved elsewhere.
-	for _, name := range ast.StableServices(comp.Stack.Services.Private) {
-		svc := comp.Stack.Services.Private[name]
-		if res := c.genServiceTemplate(comp, &svc); res != nil {
-			nm := c.genServiceName(comp.Stack, &svc)
-			cf.Resources[nm] = *res
-		}
+	privates, publics := c.genStackServiceTemplates(comp, comp.Stack)
+	for nm, private := range privates {
+		cf.Resources[nm] = private
 	}
-	for _, name := range ast.StableServices(comp.Stack.Services.Public) {
-		svc := comp.Stack.Services.Public[name]
-		if res := c.genServiceTemplate(comp, &svc); res != nil {
-			nm := c.genServiceName(comp.Stack, &svc)
-			cf.Resources[nm] = *res
-		}
+	for nm, public := range publics {
+		cf.Resources[nm] = public
 	}
 
 	// TODO: emit output exports (public services) that can be consumed by other stacks.
@@ -116,59 +109,79 @@ func (c *awsCloud) genStackTemplate(comp core.Compiland) *cfTemplate {
 	return cf
 }
 
+// genStackServiceTemplates returns two maps of service templates, one for private, the other for public, services.
+func (c *awsCloud) genStackServiceTemplates(comp core.Compiland, stack *ast.Stack) (cfResources, cfResources) {
+	privates := make(cfResources)
+	for _, name := range ast.StableServices(stack.Services.Private) {
+		svc := stack.Services.Private[name]
+		for nm, r := range c.genServiceTemplate(comp, stack, &svc) {
+			privates[nm] = r
+		}
+	}
+
+	publics := make(cfResources)
+	for _, name := range ast.StableServices(stack.Services.Public) {
+		svc := stack.Services.Public[name]
+		for nm, r := range c.genServiceTemplate(comp, stack, &svc) {
+			publics[nm] = r
+		}
+	}
+
+	return privates, publics
+}
+
 // genServiceTemplate creates a CloudFormation resource for a single service.
-func (c *awsCloud) genServiceTemplate(comp core.Compiland, svc *ast.Service) *cfResource {
+func (c *awsCloud) genServiceTemplate(comp core.Compiland, stack *ast.Stack, svc *ast.Service) cfResources {
 	// Code-generation differs greatly for the various service types.  There are three categories:
 	//		1) A Mu primitive: these have very specific manifestations to accomplish the desired Mu semantics.
 	//		2) An AWS-specific extension type: these largely just pass-through CloudFormation goo that we will emit.
 	//		3) A reference to another Stack: these just instantiate those Stacks and reference their outputs.
-
 	switch svc.BoundType {
 	case predef.MuContainer:
-		return c.genMuContainerServiceTemplate(comp, svc)
+		return c.genMuContainerServiceTemplate(comp, stack, svc)
 	case predef.MuGateway:
-		return c.genMuGatewayServiceTemplate(comp, svc)
+		return c.genMuGatewayServiceTemplate(comp, stack, svc)
 	case predef.MuFunc:
-		return c.genMuFuncServiceTemplate(comp, svc)
+		return c.genMuFuncServiceTemplate(comp, stack, svc)
 	case predef.MuEvent:
-		return c.genMuEventServiceTemplate(comp, svc)
+		return c.genMuEventServiceTemplate(comp, stack, svc)
 	case predef.MuVolume:
-		return c.genMuVolumeServiceTemplate(comp, svc)
+		return c.genMuVolumeServiceTemplate(comp, stack, svc)
 	case predef.MuAutoscaler:
-		return c.genMuAutoscalerServiceTemplate(comp, svc)
+		return c.genMuAutoscalerServiceTemplate(comp, stack, svc)
 	case predef.MuExtension:
-		return c.genMuExtensionServiceTemplate(comp, predef.AsMuExtensionService(svc))
+		return c.genMuExtensionServiceTemplate(comp, stack, predef.AsMuExtensionService(svc))
 	default:
-		return c.genStackServiceTemplate(comp, svc)
+		return c.genOtherServiceTemplate(comp, stack, svc)
 	}
 }
 
-func (c *awsCloud) genMuContainerServiceTemplate(comp core.Compiland, svc *ast.Service) *cfResource {
+func (c *awsCloud) genMuContainerServiceTemplate(comp core.Compiland, stack *ast.Stack, svc *ast.Service) cfResources {
 	util.FailMF("%v service types are not yet supported\n", svc.Name)
 	return nil
 }
 
-func (c *awsCloud) genMuGatewayServiceTemplate(comp core.Compiland, svc *ast.Service) *cfResource {
+func (c *awsCloud) genMuGatewayServiceTemplate(comp core.Compiland, stack *ast.Stack, svc *ast.Service) cfResources {
 	util.FailMF("%v service types are not yet supported\n", svc.Name)
 	return nil
 }
 
-func (c *awsCloud) genMuFuncServiceTemplate(comp core.Compiland, svc *ast.Service) *cfResource {
+func (c *awsCloud) genMuFuncServiceTemplate(comp core.Compiland, stack *ast.Stack, svc *ast.Service) cfResources {
 	util.FailMF("%v service types are not yet supported\n", svc.Name)
 	return nil
 }
 
-func (c *awsCloud) genMuEventServiceTemplate(comp core.Compiland, svc *ast.Service) *cfResource {
+func (c *awsCloud) genMuEventServiceTemplate(comp core.Compiland, stack *ast.Stack, svc *ast.Service) cfResources {
 	util.FailMF("%v service types are not yet supported\n", svc.Name)
 	return nil
 }
 
-func (c *awsCloud) genMuVolumeServiceTemplate(comp core.Compiland, svc *ast.Service) *cfResource {
+func (c *awsCloud) genMuVolumeServiceTemplate(comp core.Compiland, stack *ast.Stack, svc *ast.Service) cfResources {
 	util.FailMF("%v service types are not yet supported\n", svc.Name)
 	return nil
 }
 
-func (c *awsCloud) genMuAutoscalerServiceTemplate(comp core.Compiland, svc *ast.Service) *cfResource {
+func (c *awsCloud) genMuAutoscalerServiceTemplate(comp core.Compiland, stack *ast.Stack, svc *ast.Service) cfResources {
 	util.FailMF("%v service types are not yet supported\n", svc.Name)
 	return nil
 }
@@ -181,7 +194,8 @@ const CloudFormationExtensionProviderResource = "resource"
 const CloudFormationExtensionProviderTypeField = "Type"
 const CloudFormationExtensionProviderPropertiesField = "Properties"
 
-func (c *awsCloud) genMuExtensionServiceTemplate(comp core.Compiland, svc *predef.MuExtensionService) *cfResource {
+func (c *awsCloud) genMuExtensionServiceTemplate(comp core.Compiland, stack *ast.Stack,
+	svc *predef.MuExtensionService) cfResources {
 	switch svc.Provider {
 	case CloudFormationExtensionProvider:
 		// The AWS CF extension provider simply creates a CF resource out of the provided template.
@@ -235,7 +249,10 @@ func (c *awsCloud) genMuExtensionServiceTemplate(comp core.Compiland, svc *prede
 			return nil
 		}
 
-		return &cfResource{cfResourceType(resType), cfResourceProperties(resProps)}
+		id := c.genResourceID(stack, &svc.Service)
+		return cfResources{
+			id: cfResource{cfResourceType(resType), cfResourceProperties(resProps)},
+		}
 	default:
 		c.Diag().Errorf(errors.ErrorUnrecognizedExtensionProvider.WithDocument(comp.Doc), svc.Provider)
 	}
@@ -243,8 +260,24 @@ func (c *awsCloud) genMuExtensionServiceTemplate(comp core.Compiland, svc *prede
 	return nil
 }
 
-// genStackServiceTemplate generates code for a general-purpose Stack service reference.
-func (c *awsCloud) genStackServiceTemplate(comp core.Compiland, svc *ast.Service) *cfResource {
-	util.FailMF("%v service types are not yet supported\n", svc.Name)
-	return nil
+// genOtherServiceTemplate generates code for a general-purpose Stack service reference.
+func (c *awsCloud) genOtherServiceTemplate(comp core.Compiland, stack *ast.Stack, svc *ast.Service) cfResources {
+	// Instantiate and textually include the BoundStack into our current template.
+	// TODO: consider an option where a Stack can become a distinct CloudFormation Stack, and then reference it by
+	//     name.  This would be a terrible default, because we'd end up with dozens of CloudFormation Stacks for even
+	//     the simplest of Mu Stacks.  Especially because many Mu Stacks are single-Service.  Perhaps we could come
+	//     up with some clever default, like multi-Service Mu Stacks map to CloudFormation Stacks, and single-Service
+	//     ones don't, however I'm not yet convinced this is the right path.  So, for now, we keep it simple.
+	util.Assert(svc.BoundType != nil)
+	privates, publics := c.genStackServiceTemplates(comp, svc.BoundType)
+
+	// Copy all of the returned resources to a single map and return it.
+	all := make(cfResources)
+	for nm, private := range privates {
+		all[nm] = private
+	}
+	for nm, public := range publics {
+		all[nm] = public
+	}
+	return all
 }
