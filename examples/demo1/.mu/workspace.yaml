@@ -1,0 +1,5 @@
+clusters:
+    standard:
+        cloud: aws
+        default: true
+
