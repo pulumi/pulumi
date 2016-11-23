@@ -175,7 +175,7 @@ func (p *binderPhase1) VisitDependency(parent *ast.Workspace, ref ast.Ref, dep *
 	// later on without needing to worry about additional validation.
 	_, err := ref.Parse()
 	if err != nil {
-		p.Diag().Errorf(errors.ErrorMalformedStackReference.WithDocument(parent.Doc), ref, err)
+		p.Diag().Errorf(errors.ErrorMalformedStackReference.At(parent.Doc), ref, err)
 	}
 }
 
@@ -202,7 +202,7 @@ func (p *binderPhase1) registerDependencyToBind(stack *ast.Stack, ref ast.Ref) (
 		return ty, true
 	}
 
-	p.Diag().Errorf(errors.ErrorMalformedStackReference.WithDocument(stack.Doc), ref, err)
+	p.Diag().Errorf(errors.ErrorMalformedStackReference.At(stack.Doc), ref, err)
 	return ty, false
 }
 
@@ -218,7 +218,7 @@ func (p *binderPhase1) VisitStack(stack *ast.Stack) {
 
 	// Stack names are required.
 	if stack.Name == "" {
-		p.Diag().Errorf(errors.ErrorMissingStackName.WithDocument(stack.Doc))
+		p.Diag().Errorf(errors.ErrorMissingStackName.At(stack.Doc))
 	}
 
 	// Stack versions must be valid semantic versions (and specifically, not ranges).  In other words, we need
@@ -226,7 +226,7 @@ func (p *binderPhase1) VisitStack(stack *ast.Stack) {
 	// TODO: should we require a version number?
 	if stack.Version != "" {
 		if err := stack.Version.Check(); err != nil {
-			p.Diag().Errorf(errors.ErrorIllegalStackVersion.WithDocument(stack.Doc), stack.Version, err)
+			p.Diag().Errorf(errors.ErrorIllegalStackVersion.At(stack.Doc), stack.Version, err)
 		}
 	}
 }
@@ -275,7 +275,7 @@ func (p *binderPhase1) VisitService(pstack *ast.Stack, parent *ast.Services, nam
 	// Add this service to the symbol table so that other service definitions can refer to it by name.
 	sym := NewServiceSymbol(svc.Name, svc)
 	if !p.b.RegisterSymbol(sym) {
-		p.Diag().Errorf(errors.ErrorSymbolAlreadyExists.WithDocument(pstack.Doc), sym.Name)
+		p.Diag().Errorf(errors.ErrorSymbolAlreadyExists.At(pstack.Doc), sym.Name)
 	}
 }
 
@@ -307,7 +307,7 @@ func (p *binderPhase2) VisitStack(stack *ast.Stack) {
 		util.Assert(dep.Stack != nil)
 		sym := NewStackSymbol(dep.Ref.Name, dep.Stack)
 		if !p.b.RegisterSymbol(sym) {
-			p.Diag().Errorf(errors.ErrorSymbolAlreadyExists.WithDocument(stack.Doc), dep.Ref.Name)
+			p.Diag().Errorf(errors.ErrorSymbolAlreadyExists.At(stack.Doc), dep.Ref.Name)
 		}
 	}
 
@@ -320,7 +320,7 @@ func (p *binderPhase2) VisitStack(stack *ast.Stack) {
 
 	// Non-abstract Stacks must declare at least one Service.
 	if !stack.Predef && !stack.Abstract && len(stack.Services.Public) == 0 && len(stack.Services.Private) == 0 {
-		p.Diag().Errorf(errors.ErrorNonAbstractStacksMustDefineServices.WithDocument(stack.Doc))
+		p.Diag().Errorf(errors.ErrorNonAbstractStacksMustDefineServices.At(stack.Doc))
 	}
 }
 

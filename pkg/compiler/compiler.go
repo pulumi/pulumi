@@ -58,12 +58,12 @@ func (c *compiler) Build(inp string, outp string) {
 	// First find the root of the current package based on the location of its Mufile.
 	w, err := workspace.New(inp, c.Diag())
 	if err != nil {
-		c.Diag().Errorf(errors.ErrorIO.WithFile(inp), err)
+		c.Diag().Errorf(errors.ErrorIO.AtFile(inp), err)
 		return
 	}
 	mufile, err := w.DetectMufile()
 	if err != nil {
-		c.Diag().Errorf(errors.ErrorIO.WithFile(inp), err)
+		c.Diag().Errorf(errors.ErrorIO.AtFile(inp), err)
 		return
 	}
 	if mufile == "" {
@@ -74,7 +74,7 @@ func (c *compiler) Build(inp string, outp string) {
 	// Read in the contents of the document and make it available to subsequent stages.
 	doc, err := diag.ReadDocument(mufile)
 	if err != nil {
-		c.Diag().Errorf(errors.ErrorCouldNotReadMufile.WithFile(mufile), err)
+		c.Diag().Errorf(errors.ErrorCouldNotReadMufile.AtFile(mufile), err)
 		return
 	}
 

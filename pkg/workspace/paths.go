@@ -119,7 +119,7 @@ func IsMufile(path string, d diag.Sink) bool {
 	if base != Mufile {
 		if d != nil && strings.EqualFold(base, Mufile) {
 			// If the strings aren't equal, but case-insensitively match, issue a warning.
-			d.Warningf(errors.WarningIllegalMufileCasing.WithFile(name))
+			d.Warningf(errors.WarningIllegalMufileCasing.AtFile(name))
 		}
 		return false
 	}
@@ -133,7 +133,7 @@ func IsMufile(path string, d diag.Sink) bool {
 
 	// If we got here, it means the base name matched, but not the extension.  Warn and return.
 	if d != nil {
-		d.Warningf(errors.WarningIllegalMufileExt.WithFile(name), ext)
+		d.Warningf(errors.WarningIllegalMufileExt.AtFile(name), ext)
 	}
 	return false
 }

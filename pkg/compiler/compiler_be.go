@@ -53,7 +53,7 @@ func (c *compiler) discoverClusterArch(w workspace.W, stack *ast.Stack) (*ast.Cl
 			if cl, exists := w.Settings().Clusters[c.opts.Cluster]; exists {
 				cluster = &cl
 			} else {
-				c.Diag().Errorf(errors.ErrorClusterNotFound.WithDocument(stack.Doc), c.opts.Cluster)
+				c.Diag().Errorf(errors.ErrorClusterNotFound.At(stack.Doc), c.opts.Cluster)
 				return nil, arch
 			}
 		}
@@ -80,7 +80,7 @@ func (c *compiler) discoverClusterArch(w workspace.W, stack *ast.Stack) (*ast.Cl
 	if cluster == nil {
 		// If no target was found, and we don't have an architecture, error out.
 		if arch.Cloud == clouds.None {
-			c.Diag().Errorf(errors.ErrorMissingTarget.WithDocument(stack.Doc))
+			c.Diag().Errorf(errors.ErrorMissingTarget.At(stack.Doc))
 			return nil, arch
 		}
 
@@ -119,7 +119,7 @@ func (c *compiler) getClusterArch(stack *ast.Stack, cluster *ast.Cluster,
 	if cluster.Cloud != "" {
 		tc, ok := clouds.Values[cluster.Cloud]
 		if !ok {
-			c.Diag().Errorf(errors.ErrorUnrecognizedCloudArch.WithDocument(stack.Doc), cluster.Cloud)
+			c.Diag().Errorf(errors.ErrorUnrecognizedCloudArch.At(stack.Doc), cluster.Cloud)
 			return existing, false
 		}
 		targetCloud = tc
@@ -127,7 +127,7 @@ func (c *compiler) getClusterArch(stack *ast.Stack, cluster *ast.Cluster,
 	if cluster.Scheduler != "" {
 		ts, ok := schedulers.Values[cluster.Scheduler]
 		if !ok {
-			c.Diag().Errorf(errors.ErrorUnrecognizedSchedulerArch.WithDocument(stack.Doc), cluster.Scheduler)
+			c.Diag().Errorf(errors.ErrorUnrecognizedSchedulerArch.At(stack.Doc), cluster.Scheduler)
 			return existing, false
 		}
 		targetScheduler = ts
@@ -137,12 +137,12 @@ func (c *compiler) getClusterArch(stack *ast.Stack, cluster *ast.Cluster,
 	tarch := backends.Arch{targetCloud, targetScheduler}
 	if targetCloud != existing.Cloud && existing.Cloud != clouds.None {
 		c.Diag().Errorf(
-			errors.ErrorConflictingClusterArchSelection.WithDocument(stack.Doc), existing, cluster.Name, tarch)
+			errors.ErrorConflictingClusterArchSelection.At(stack.Doc), existing, cluster.Name, tarch)
 		return tarch, false
 	}
 	if targetScheduler != existing.Scheduler && existing.Scheduler != schedulers.None {
 		c.Diag().Errorf(
-			errors.ErrorConflictingClusterArchSelection.WithDocument(stack.Doc), existing, cluster.Name, tarch)
+			errors.ErrorConflictingClusterArchSelection.At(stack.Doc), existing, cluster.Name, tarch)
 		return tarch, false
 	}
 

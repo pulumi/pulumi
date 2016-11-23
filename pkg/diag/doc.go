@@ -14,6 +14,8 @@ type Document struct {
 	Body []byte
 }
 
+var _ Diagable = &Document{} // compile-time assertion that *Document implements Diagable.
+
 func NewDocument(file string) *Document {
 	return &Document{File: file}
 }
@@ -32,4 +34,8 @@ func (doc *Document) Ext() string {
 
 func (doc *Document) Forget() {
 	doc.Body = nil
+}
+
+func (doc *Document) Where() (*Document, *Location) {
+	return doc, &EmptyLocation
 }

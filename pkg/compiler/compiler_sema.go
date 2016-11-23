@@ -75,7 +75,7 @@ func (c *compiler) resolveDependency(w workspace.W, stack *ast.Stack, ref ast.Re
 		if isMufile {
 			doc, err := diag.ReadDocument(loc)
 			if err != nil {
-				c.Diag().Errorf(errors.ErrorCouldNotReadMufile.WithFile(loc), err)
+				c.Diag().Errorf(errors.ErrorCouldNotReadMufile.AtFile(loc), err)
 				return nil
 			}
 
@@ -94,6 +94,6 @@ func (c *compiler) resolveDependency(w workspace.W, stack *ast.Stack, ref ast.Re
 	}
 
 	// If we got to this spot, we could not find the dependency.  Issue an error and bail out.
-	c.Diag().Errorf(errors.ErrorStackTypeNotFound.WithDocument(stack.Doc), dep)
+	c.Diag().Errorf(errors.ErrorStackTypeNotFound.At(stack.Doc), dep)
 	return nil
 }

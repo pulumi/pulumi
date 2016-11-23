@@ -13,32 +13,28 @@ type Diag struct {
 	Loc     *Location // the document location at which this diagnostic occurred.
 }
 
-// WithFile adds a file to an existing diagnostic, retaining its ID and message.
-func (diag *Diag) WithFile(file string) *Diag {
-	return &Diag{
-		ID:      diag.ID,
-		Message: diag.Message,
-		Doc:     NewDocument(file),
-		Loc:     &EmptyLocation,
-	}
+// Diagable can be used to determine a diagnostic's position.
+type Diagable interface {
+	Where() (*Document, *Location)
 }
 
-// WithDocument adds a file to an existing diagnostic, retaining its ID and message.
-func (diag *Diag) WithDocument(doc *Document) *Diag {
-	return &Diag{
-		ID:      diag.ID,
-		Message: diag.Message,
-		Doc:     doc,
-		Loc:     &EmptyLocation,
-	}
-}
-
-// WithLocation adds a file and position to an existing diagnostic, retaining its ID and message.
-func (diag *Diag) WithLocation(doc *Document, loc *Location) *Diag {
+// At adds a position to an existing diagnostic, retaining its ID and message.
+func (diag *Diag) At(d Diagable) *Diag {
+	doc, loc := d.Where()
 	return &Diag{
 		ID:      diag.ID,
 		Message: diag.Message,
 		Doc:     doc,
 		Loc:     loc,
+	}
+}
+
+// WithFile adds a file to an existing diagnostic, retaining its ID and message.
+func (diag *Diag) AtFile(file string) *Diag {
+	return &Diag{
+		ID:      diag.ID,
+		Message: diag.Message,
+		Doc:     NewDocument(file),
+		Loc:     &EmptyLocation,
 	}
 }

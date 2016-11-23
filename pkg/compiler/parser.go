@@ -52,7 +52,7 @@ func (p *parser) ParseWorkspace(doc *diag.Document) *ast.Workspace {
 	marshaler, has := encoding.Marshalers[doc.Ext()]
 	util.AssertMF(has, "No marshaler registered for this workspace extension: %v", doc.Ext())
 	if err := marshaler.Unmarshal(doc.Body, &w); err != nil {
-		p.Diag().Errorf(errors.ErrorIllegalWorkspaceSyntax.WithDocument(doc), err)
+		p.Diag().Errorf(errors.ErrorIllegalWorkspaceSyntax.At(doc), err)
 		// TODO: it would be great if we issued an error per issue found in the file with line/col numbers.
 		return nil
 	}
@@ -80,7 +80,7 @@ func (p *parser) ParseStack(doc *diag.Document) *ast.Stack {
 	marshaler, has := encoding.Marshalers[doc.Ext()]
 	util.AssertMF(has, "No marshaler registered for this Mufile extension: %v", doc.Ext())
 	if err := marshaler.Unmarshal(doc.Body, &stack); err != nil {
-		p.Diag().Errorf(errors.ErrorIllegalMufileSyntax.WithDocument(doc), err)
+		p.Diag().Errorf(errors.ErrorIllegalMufileSyntax.At(doc), err)
 		// TODO: it would be great if we issued an error per issue found in the file with line/col numbers.
 		return nil
 	}
