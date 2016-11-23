@@ -1,0 +1,7 @@
+name: baddep
+version: 1.0.0
+services:
+    private:
+        dep1:
+            type: dep1@badbadbad
+

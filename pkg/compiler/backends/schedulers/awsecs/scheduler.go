@@ -17,7 +17,7 @@ import (
 func New(d diag.Sink, be clouds.Cloud) schedulers.Scheduler {
 	arch := be.Arch()
 	if arch != clouds.AWS {
-		d.Errorf(errors.IllegalCloudSchedulerCombination, clouds.Names[arch], "awsecs")
+		d.Errorf(errors.ErrorIllegalCloudSchedulerCombination, clouds.Names[arch], "awsecs")
 	}
 	return &awsECSScheduler{d: d, be: be}
 }

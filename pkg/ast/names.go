@@ -9,7 +9,7 @@ import (
 	"github.com/marapongo/mu/pkg/util"
 )
 
-// NameDelimiter is what delimits Namespace and Name parts.
+// NameDelimiter is what delimits Namespace and Name parsed.
 const NameDelimiter = "/"
 
 var nameRegexp = regexp.MustCompile(nameRegexps)
@@ -43,64 +43,4 @@ func (nm Name) Namespace() Name {
 		return ""
 	}
 	return nm[:ix]
-}
-
-// DefaultRefBase is the base part used if a Ref doesn't specify one explicitly.
-const DefaultRefBase = "hub.mu.com/"
-
-// Proto extracts the protocol portion of a Ref.
-func (r Ref) Proto() string {
-	return r.parse().Proto
-}
-
-// Base extracts the base portion of a Ref.
-func (r Ref) Base() string {
-	return r.parse().Base
-}
-
-// Name extracts the name portion of a Ref (including the Namespace).
-func (r Ref) Name() Name {
-	return r.parse().Name
-}
-
-type refParts struct {
-	Proto string // the protocol (e.g., "https://").
-	Base  string // the base part of the URL (e.g., "mu.hub.com/").
-	Name  Name   // the name part of the URL (e.g., "mu/container").
-}
-
-func (r Ref) parse() refParts {
-	s := string(r)
-	parts := refParts{}
-
-	// Look for the leading protocol, if any.
-	protoEnd := strings.Index(s, "://")
-	if protoEnd != -1 {
-		// Remember it and then strip it off for subsequent parsing.
-		parts.Proto = s[:protoEnd+3]
-		s = s[protoEnd+3:]
-	}
-
-	// Now look to see if there is a dot, indicating a base part.
-	dotIndex := strings.Index(s, ".")
-	if dotIndex == -1 {
-		// No base seems to be here; populate it with the default ref base.
-		// TODO(joe): this might be questionable; e.g., domain-less hosts will require a trailing period.
-		parts.Base = DefaultRefBase
-	} else {
-		// A base exists; look for a slash (indicating the name), and capture everything up to it (including it).
-		slashIndex := strings.Index(s, NameDelimiter)
-		if slashIndex == -1 {
-			parts.Base = s
-			s = ""
-		} else {
-			parts.Base = s[:slashIndex+1]
-			s = s[slashIndex+1:]
-		}
-	}
-
-	// Anything remaining at this point represents the name.
-	parts.Name = Name(s)
-
-	return parts
 }

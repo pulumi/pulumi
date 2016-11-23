@@ -35,7 +35,7 @@ type Compiler interface {
 type compiler struct {
 	ctx  *core.Context
 	opts Options
-	deps ast.BoundDependencies // a cache of loaded dependencies.
+	deps map[ast.Name]*ast.BoundDependency // a cache of mapping names to loaded dependencies.
 }
 
 // NewCompiler creates a new instance of the Mu compiler, with the given initialization settings.
@@ -43,7 +43,7 @@ func NewCompiler(opts Options) Compiler {
 	return &compiler{
 		ctx:  &core.Context{},
 		opts: opts,
-		deps: make(ast.BoundDependencies),
+		deps: make(map[ast.Name]*ast.BoundDependency),
 	}
 }
 
@@ -61,23 +61,23 @@ func (c *compiler) Build(inp string, outp string) {
 	// First find the root of the current package based on the location of its Mufile.
 	w, err := workspace.New(inp, c.Diag())
 	if err != nil {
-		c.Diag().Errorf(errors.IOError.WithFile(inp), err)
+		c.Diag().Errorf(errors.ErrorIO.WithFile(inp), err)
 		return
 	}
 	mufile, err := w.DetectMufile()
 	if err != nil {
-		c.Diag().Errorf(errors.IOError.WithFile(inp), err)
+		c.Diag().Errorf(errors.ErrorIO.WithFile(inp), err)
 		return
 	}
 	if mufile == "" {
-		c.Diag().Errorf(errors.MissingMufile, inp)
+		c.Diag().Errorf(errors.ErrorMissingMufile, inp)
 		return
 	}
 
 	// Read in the contents of the document and make it available to subsequent stages.
 	doc, err := diag.ReadDocument(mufile)
 	if err != nil {
-		c.Diag().Errorf(errors.CouldNotReadMufile.WithFile(mufile), err)
+		c.Diag().Errorf(errors.ErrorCouldNotReadMufile.WithFile(mufile), err)
 		return
 	}
 
@@ -90,12 +90,12 @@ func (c *compiler) BuildFile(mufile []byte, ext string, outp string) {
 	// Default to the current working directory for the workspace.
 	dir, err := os.Getwd()
 	if err != nil {
-		c.Diag().Errorf(errors.IOError, err)
+		c.Diag().Errorf(errors.ErrorIO, err)
 		return
 	}
 	w, err := workspace.New(dir, c.Diag())
 	if err != nil {
-		c.Diag().Errorf(errors.IOError, err)
+		c.Diag().Errorf(errors.ErrorIO, err)
 		return
 	}
 
@@ -112,36 +112,93 @@ func (c *compiler) buildDocument(w workspace.W, doc *diag.Document, outp string)
 		}()
 	}
 
-	// Perform the front-end passes to generate a stack AST.
-	stack, ok := c.parseStack(doc)
+	// Perform the front-end phases of the compiler.
+	stack, ok := c.buildDocumentFE(w, doc)
 	if !ok {
 		return
 	}
 
+	// Next, perform the semantic analysis phases of the compiler.
+	stack, deps, ok := c.buildDocumentSema(w, doc, stack)
+	if !ok {
+		return
+	}
+
+	// Finally, perform the back-end phases of the compiler.
+	c.buildDocumentBE(w, doc, stack, deps)
+}
+
+// buildDocumentFE runs the front-end phases of the compiler.
+func (c *compiler) buildDocumentFE(w workspace.W, doc *diag.Document) (*ast.Stack, bool) {
+	// If there's a workspace-wide settings file available, load it up.
+	wdoc, err := w.ReadSettings()
+	if err != nil {
+		// TODO: we should include the file information in the error message.
+		c.Diag().Errorf(errors.ErrorIO, err)
+		return nil, false
+	}
+
+	// Now create a parser to create ASTs from the workspace settings file and Mufile.
+	p := NewParser(c)
+	if wdoc != nil {
+		// Store the parsed AST on the workspace object itself.
+		*w.Settings() = *p.ParseWorkspace(doc)
+	}
+	stack := p.ParseStack(doc)
+
+	// If any parser errors occurred, bail now to prevent needlessly obtuse error messages.
+	if !p.Diag().Success() {
+		return nil, false
+	}
+
+	// Now create a parse tree analyzer to walk the parse trees and ensure that all is well.
+	ptAnalyzer := NewPTAnalyzer(c)
+	if wdoc != nil {
+		ptAnalyzer.AnalyzeWorkspace(wdoc, w.Settings())
+	}
+	ptAnalyzer.AnalyzeStack(doc, stack)
+
+	// If any errors happened during parse tree analysis, exit.
+	if !p.Diag().Success() {
+		return nil, false
+	}
+
+	return stack, true
+}
+
+// buildDocumentSema runs the middle semantic analysis phases of the compiler.
+func (c *compiler) buildDocumentSema(w workspace.W, doc *diag.Document,
+	stack *ast.Stack) (*ast.Stack, ast.BoundDependencies, bool) {
 	// Now expand all dependencies so they are available to semantic analysis.
 	deps, ok := c.loadDependencies(w, doc, stack)
 	if !ok {
-		return
+		return nil, nil, false
 	}
 
 	// Perform semantic analysis on all stacks passes to validate, transform, and/or update the AST.
 	stack, ok = c.analyzeStack(doc, stack)
 	if !ok {
-		return
+		return nil, nil, false
 	}
 	for _, dep := range deps {
 		if _, ok := c.analyzeStack(doc, dep.Stack); !ok {
-			return
+			return nil, nil, false
 		}
 	}
 
+	return stack, deps, true
+}
+
+// buildDocumentBE runs the back-end phases of the compiler.
+func (c *compiler) buildDocumentBE(w workspace.W, doc *diag.Document, stack *ast.Stack,
+	deps ast.BoundDependencies) bool {
 	if c.opts.SkipCodegen {
 		glog.V(2).Infof("Skipping code-generation (opts.SkipCodegen=true)")
 	} else {
 		// Figure out which cloud architecture we will be targeting during code-gen.
 		target, arch, ok := c.discoverClusterArch(w, doc, stack)
 		if !ok {
-			return
+			return false
 		}
 		if glog.V(2) {
 			tname := "n/a"
@@ -155,47 +212,28 @@ func (c *compiler) buildDocument(w workspace.W, doc *diag.Document, outp string)
 		be := backends.New(arch, c.Diag())
 		be.CodeGen(core.Compiland{target, doc, stack, deps})
 	}
-}
 
-// parseStack takes a Mufile document, parses and validates it, and returns a stack AST.  If anything goes wrong
-// during this process, the number of errors will be non-zero, and the bool will be false.
-func (c *compiler) parseStack(doc *diag.Document) (*ast.Stack, bool) {
-	// To build the Mu package, first parse the input file.
-	p := NewParser(c)
-	stack := p.Parse(doc)
-	if !p.Diag().Success() {
-		// If any errors happened during parsing, exit.
-		return stack, false
-	}
-
-	// Do a pass over the parse tree to ensure that all is well.
-	ptAnalyzer := NewPTAnalyzer(c)
-	ptAnalyzer.Analyze(doc, stack)
-	if !p.Diag().Success() {
-		// If any errors happened during parse tree analysis, exit.
-		return stack, false
-	}
-
-	return stack, true
+	return true
 }
 
 // loadDependencies enumerates all of the target stack's dependencies, and parses them into AST form.
 func (c *compiler) loadDependencies(w workspace.W, doc *diag.Document, stack *ast.Stack) (ast.BoundDependencies, bool) {
-	stack.BoundDependencies = make(ast.BoundDependencies)
-
 	ok := true
-	for _, ref := range ast.StableDependencies(stack.Dependencies) {
-		dep := stack.Dependencies[ref]
-		glog.V(3).Infof("Loading Stack %v dependency %v:%v", stack.Name, ref, dep)
+
+	// Gather up all dependency refs located in the Mufile, and then process each one.
+	deps := c.gatherDependencyRefs(w, doc, stack)
+	for _, dep := range deps {
+		glog.V(3).Infof("Loading Stack %v dependency %v", stack.Name, dep)
 
 		// First see if we've already loaded this dependency.  In that case, we can reuse it.
 		var bound *ast.BoundDependency
-		if bd, exists := c.deps[ref]; exists {
-			bound = &bd
+		if bd, exists := c.deps[dep.Name]; exists {
+			// TODO: check for version mismatches.
+			bound = bd
 		} else {
-			bound = c.loadDependency(w, doc, ref, dep)
+			bound = c.loadDependency(w, doc, dep)
 			if bound != nil {
-				c.deps[ref] = *bound
+				c.deps[dep.Name] = bound
 			}
 		}
 
@@ -203,8 +241,7 @@ func (c *compiler) loadDependencies(w workspace.W, doc *diag.Document, stack *as
 			// Missing dependency; return false to the caller so we can stop before things get worse.
 			ok = false
 		} else {
-			// TODO: check for version mismatches.
-			stack.BoundDependencies[ref] = *bound
+			stack.BoundDependencies = append(stack.BoundDependencies, *bound)
 
 			// Now recursively load this stack's dependenciess too.  We won't return them, however, they need to exist
 			// on the ASTs so that we can use dependency information during code-generation, for example.
@@ -215,41 +252,51 @@ func (c *compiler) loadDependencies(w workspace.W, doc *diag.Document, stack *as
 	return stack.BoundDependencies, ok
 }
 
+// gatherDependencyRefs walks the AST to gather up all known dependencies in a given stack.
+func (c *compiler) gatherDependencyRefs(w workspace.W, doc *diag.Document, stack *ast.Stack) []ast.RefParts {
+	// Parse the dependency reference so we can access its parts.
+	//parts, err := dep.Parse()
+	//if err != nil {
+	//		c.Diag().Errorf(errors.ErrorMalformedStackReference.WithDocument(doc), dep, err)
+	//		continue
+	//	}
+	return nil
+}
+
 // loadDependency loads up the target dependency from the current workspace using the stack resolution rules.
-func (c *compiler) loadDependency(w workspace.W, doc *diag.Document, ref ast.Ref,
-	dep ast.Dependency) *ast.BoundDependency {
+func (c *compiler) loadDependency(w workspace.W, doc *diag.Document, dep ast.RefParts) *ast.BoundDependency {
 	// There are many places a dependency could come from.  Consult the workspace for a list of those paths.  It will
 	// return a number of them, in preferred order, and we simply probe each one until we find something.
-	for _, loc := range w.DepCandidates(ref) {
+	for _, loc := range w.DepCandidates(dep) {
 		// Try to read this location as a document.
 		isMufile := workspace.IsMufile(loc, c.Diag())
-		glog.V(5).Infof("Probing for dependency %v at %v: %v", ref, loc, isMufile)
+		glog.V(5).Infof("Probing for dependency %v at %v: %v", dep, loc, isMufile)
 
 		if isMufile {
 			doc, err := diag.ReadDocument(loc)
 			if err != nil {
-				c.Diag().Errorf(errors.CouldNotReadMufile.WithFile(loc), err)
+				c.Diag().Errorf(errors.ErrorCouldNotReadMufile.WithFile(loc), err)
 				return nil
 			}
 
 			// If we got this far, we've loaded up the dependency's Mufile; parse it and return the result.
 			// TODO: it's not clear how much "validation" to perform here.  If the target won't compile, for example,
 			//     we are going to get weird errors and failure modes.
-			stack, ok := c.parseStack(doc)
-			if !ok {
+			p := NewParser(c)
+			stack := p.ParseStack(doc)
+			if !c.Diag().Success() {
 				return nil
 			}
 
 			return &ast.BoundDependency{
-				Ref:     ref,
-				Version: ast.SemVer(dep),
-				Stack:   stack,
+				Ref:   dep,
+				Stack: stack,
 			}
 		}
 	}
 
 	// If we got to this spot, we could not find the dependency.  Issue an error and bail out.
-	c.Diag().Errorf(errors.MissingDependency.WithDocument(doc), ref)
+	c.Diag().Errorf(errors.ErrorMissingDependency.WithDocument(doc), dep)
 	return nil
 }
 
@@ -290,7 +337,7 @@ func (c *compiler) discoverClusterArch(w workspace.W, doc *diag.Document,
 			if cl, exists := w.Settings().Clusters[c.opts.Cluster]; exists {
 				cluster = &cl
 			} else {
-				c.Diag().Errorf(errors.ClusterNotFound.WithDocument(doc), c.opts.Cluster)
+				c.Diag().Errorf(errors.ErrorClusterNotFound.WithDocument(doc), c.opts.Cluster)
 				return cluster, arch, false
 			}
 		}
@@ -317,7 +364,7 @@ func (c *compiler) discoverClusterArch(w workspace.W, doc *diag.Document,
 	if cluster == nil {
 		// If no target was found, and we don't have an architecture, error out.
 		if arch.Cloud == clouds.None {
-			c.Diag().Errorf(errors.MissingTarget.WithDocument(doc))
+			c.Diag().Errorf(errors.ErrorMissingTarget.WithDocument(doc))
 			return cluster, arch, false
 		}
 
@@ -356,7 +403,7 @@ func (c *compiler) getClusterArch(doc *diag.Document, cluster *ast.Cluster,
 	if cluster.Cloud != "" {
 		tc, ok := clouds.Values[cluster.Cloud]
 		if !ok {
-			c.Diag().Errorf(errors.UnrecognizedCloudArch.WithDocument(doc), cluster.Cloud)
+			c.Diag().Errorf(errors.ErrorUnrecognizedCloudArch.WithDocument(doc), cluster.Cloud)
 			return existing, false
 		}
 		targetCloud = tc
@@ -364,7 +411,7 @@ func (c *compiler) getClusterArch(doc *diag.Document, cluster *ast.Cluster,
 	if cluster.Scheduler != "" {
 		ts, ok := schedulers.Values[cluster.Scheduler]
 		if !ok {
-			c.Diag().Errorf(errors.UnrecognizedSchedulerArch.WithDocument(doc), cluster.Scheduler)
+			c.Diag().Errorf(errors.ErrorUnrecognizedSchedulerArch.WithDocument(doc), cluster.Scheduler)
 			return existing, false
 		}
 		targetScheduler = ts
@@ -373,11 +420,11 @@ func (c *compiler) getClusterArch(doc *diag.Document, cluster *ast.Cluster,
 	// Ensure there aren't any conflicts, comparing compiler options to cluster settings.
 	tarch := backends.Arch{targetCloud, targetScheduler}
 	if targetCloud != existing.Cloud && existing.Cloud != clouds.None {
-		c.Diag().Errorf(errors.ConflictingClusterArchSelection.WithDocument(doc), existing, cluster.Name, tarch)
+		c.Diag().Errorf(errors.ErrorConflictingClusterArchSelection.WithDocument(doc), existing, cluster.Name, tarch)
 		return tarch, false
 	}
 	if targetScheduler != existing.Scheduler && existing.Scheduler != schedulers.None {
-		c.Diag().Errorf(errors.ConflictingClusterArchSelection.WithDocument(doc), existing, cluster.Name, tarch)
+		c.Diag().Errorf(errors.ErrorConflictingClusterArchSelection.WithDocument(doc), existing, cluster.Name, tarch)
 		return tarch, false
 	}
 

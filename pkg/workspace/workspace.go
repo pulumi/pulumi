@@ -14,8 +14,6 @@ import (
 	"github.com/marapongo/mu/pkg/ast"
 	"github.com/marapongo/mu/pkg/diag"
 	"github.com/marapongo/mu/pkg/encoding"
-	"github.com/marapongo/mu/pkg/errors"
-	"github.com/marapongo/mu/pkg/util"
 )
 
 // W offers functionality for interacting with Mu workspaces.
@@ -24,11 +22,13 @@ type W interface {
 	Root() string
 	// Settings returns a mutable pointer to the optional workspace settings info.
 	Settings() *ast.Workspace
+	// ReadSettings reads in the settings file and returns it, returning nil if there is none.
+	ReadSettings() (*diag.Document, error)
 
 	// DetectMufile locates the closest Mufile from the given path, searching "upwards" in the directory hierarchy.
 	DetectMufile() (string, error)
 	// DepCandidates fetches all candidate locations for resolving a dependency name to its installed artifacts.
-	DepCandidates(dep ast.Ref) []string
+	DepCandidates(dep ast.RefParts) []string
 }
 
 // New creates a new workspace from the given starting path.
@@ -83,29 +83,6 @@ func (w *workspace) initRootInfo() (string, error) {
 				if file.Name() == Muspace {
 					w.root = root
 					glog.V(3).Infof("Mu workspace detected; setting root to %v", w.root)
-
-					// If there is a workspace settings file in here, load it up before returning.
-					if file.IsDir() {
-						for _, ext := range encoding.Exts {
-							path := filepath.Join(root, Muspace, MuspaceWorkspace+ext)
-							wb, err := ioutil.ReadFile(path)
-							if err == nil {
-								glog.V(3).Infof("Parsing Workspace file: %v", path)
-								m := encoding.Marshalers[ext]
-								util.AssertMF(m != nil, "Expected a non-nil marshaler for extension %v", ext)
-								if err = m.Unmarshal(wb, &w.settings); err != nil {
-									w.d.Errorf(errors.IllegalWorkspaceSyntax.WithFile(path), err)
-								}
-								break
-							}
-							if os.IsNotExist(err) {
-								// OK if it's just the standard ENOENT error.  Skip ahead and try the next extension.
-								continue
-							}
-							return "", err
-						}
-					}
-
 					break Search
 				}
 			}
@@ -132,11 +109,34 @@ func (w *workspace) Settings() *ast.Workspace {
 	return &w.settings
 }
 
+func (w *workspace) ReadSettings() (*diag.Document, error) {
+	// If there is a workspace settings file in here, load it up before returning.
+	info, err := os.Stat(filepath.Join(w.root, Muspace))
+	if err != nil {
+		return nil, err
+	}
+	if info.IsDir() {
+		for _, ext := range encoding.Exts {
+			path := filepath.Join(w.root, Muspace, MuspaceWorkspace+ext)
+			doc, err := diag.ReadDocument(path)
+			if err == nil {
+				return doc, nil
+			} else if os.IsNotExist(err) {
+				// OK if it's just the standard ENOENT error.  Skip ahead and try the next extension.
+				continue
+			} else {
+				return nil, err
+			}
+		}
+	}
+	return nil, nil
+}
+
 func (w *workspace) DetectMufile() (string, error) {
 	return DetectMufile(w.path, w.d)
 }
 
-func (w *workspace) DepCandidates(dep ast.Ref) []string {
+func (w *workspace) DepCandidates(dep ast.RefParts) []string {
 	// The search order for dependencies is specified in https://github.com/marapongo/mu/blob/master/docs/deps.md.
 	//
 	// Roughly speaking, these locations are are searched, in order:
@@ -163,8 +163,8 @@ func (w *workspace) DepCandidates(dep ast.Ref) []string {
 	//
 	// The following code simply produces an array of these candidate locations, in order.
 
-	base := stringNamePath(dep.Base())
-	name := namePath(dep.Name())
+	base := stringNamePath(dep.Base)
+	name := namePath(dep.Name)
 
 	// For each extension we support, add the same set of search locations.
 	cands := make([]string, 0, 4*len(encoding.Exts))

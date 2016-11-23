@@ -1,8 +1,0 @@
-name: baddep
-version: 1.0.0
-dependencies:
-    dep1: bad1
-    dep2: "0.0"
-    dep3: bad3
-    dep4: 0.6.bad.ness.1
-

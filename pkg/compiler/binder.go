@@ -141,42 +141,66 @@ func (s *scope) RegisterSymbol(sym *Symbol) bool {
 }
 
 type binderPhase1 struct {
-	core.Visitor
 	b   *binder
 	doc *diag.Document
 }
+
+var _ core.Visitor = &binderPhase1{} // compile-time assertion that the binder implements core.Visitor.
 
 func (p *binderPhase1) Diag() diag.Sink {
 	return p.b.Diag()
 }
 
-func (p *binderPhase1) VisitStack(doc *diag.Document, stack *ast.Stack) {
+func (p *binderPhase1) VisitWorkspace(doc *diag.Document, workspace *ast.Workspace) {
 }
 
 func (p *binderPhase1) VisitCluster(doc *diag.Document, name string, cluster *ast.Cluster) {
 }
 
-func (p *binderPhase1) VisitProperty(doc *diag.Document, name string, param *ast.Property) {
+func (p *binderPhase1) VisitDependency(doc *diag.Document, parent *ast.Workspace, ref ast.Ref, dep *ast.Dependency) {
+	// Dependency versions must be valid semantic versions or ranges.  Ensure this parses.
+	_, err := ref.Parse()
+	if err != nil {
+		p.Diag().Errorf(errors.ErrorMalformedStackReference.WithDocument(doc), ref, err)
+	}
 }
 
-func (p *binderPhase1) VisitDependency(doc *diag.Document, ref ast.Ref, dep *ast.Dependency) {
+func (p *binderPhase1) VisitStack(doc *diag.Document, stack *ast.Stack) {
+	// Stack names are required.
+	if stack.Name == "" {
+		p.Diag().Errorf(errors.ErrorMissingStackName.WithDocument(doc))
+	}
+
+	// Stack versions must be valid semantic versions (and specifically, not ranges).  In other words, we need
+	// a concrete version number like "1.3.9-beta2" and *not* a range like ">1.3.9".
+	// TODO: should we require a version number?
+	if stack.Version != "" {
+		if err := stack.Version.Check(); err != nil {
+			p.Diag().Errorf(errors.ErrorIllegalStackVersion.WithDocument(doc), stack.Version, err)
+		}
+	}
 }
 
-func (p *binderPhase1) VisitBoundDependency(doc *diag.Document, ref ast.Ref, dep *ast.BoundDependency) {
+func (p *binderPhase1) VisitProperty(doc *diag.Document, parent *ast.Stack, name string, param *ast.Property) {
+}
+
+func (p *binderPhase1) VisitBoundDependency(doc *diag.Document, parent *ast.Stack, dep *ast.BoundDependency) {
 	// During the first phase of binding, we need to populate the symbol table with this Stack's dependencies, as well
 	// as remember them on the AST for subsequent use (e.g., during code-generation).
-	sym := NewStackSymbol(ref.Name(), dep.Stack)
+	nm := dep.Ref.Name
+	sym := NewStackSymbol(nm, dep.Stack)
 	if !p.b.RegisterSymbol(sym) {
-		p.Diag().Errorf(errors.SymbolAlreadyExists.WithDocument(p.doc), ref.Name())
+		p.Diag().Errorf(errors.ErrorSymbolAlreadyExists.WithDocument(p.doc), nm)
 	}
 
 	// TODO: come up with some way of identifying unused dependencies and warning about them.
 }
 
-func (p *binderPhase1) VisitServices(doc *diag.Document, svcs *ast.Services) {
+func (p *binderPhase1) VisitServices(doc *diag.Document, parent *ast.Stack, svcs *ast.Services) {
 }
 
-func (p *binderPhase1) VisitService(doc *diag.Document, name ast.Name, public bool, svc *ast.Service) {
+func (p *binderPhase1) VisitService(doc *diag.Document, parent *ast.Services, name ast.Name, public bool,
+	svc *ast.Service) {
 	// Each service has a type.  There are two forms of specifying a type, and this phase will normalize this to a
 	// single canonical form to simplify subsequent phases.  First, there is a shorthand form:
 	//
@@ -193,9 +217,22 @@ func (p *binderPhase1) VisitService(doc *diag.Document, name ast.Name, public bo
 	//				...
 	//
 	// In this example, "acmecorp/db" is still the type, however the name is given the nicer name of "customers."
+	simplify := false
 	if svc.Type == "" {
-		svc.Type = svc.Name
-		svc.Name = svc.Name.Simple()
+		svc.Type = ast.Ref(svc.Name)
+		simplify = true
+	}
+
+	// Now verify that the type is a valid stack reference.  If not, bail quickly.
+	ty, err := svc.Type.Parse()
+	if err != nil {
+		p.Diag().Errorf(errors.ErrorMalformedStackReference.WithDocument(doc), svc.Type, err)
+		return
+	}
+
+	// If we used the simple form, we must now propagate the friendly name over to the service's name.
+	if simplify {
+		svc.Name = ty.Name.Simple()
 	}
 
 	// Next, note that service definitions can "refer" to other service definitions within the same file.  Any
@@ -204,54 +241,61 @@ func (p *binderPhase1) VisitService(doc *diag.Document, name ast.Name, public bo
 	// fact, making its logic far simpler.
 	sym := NewServiceSymbol(svc.Name, svc)
 	if !p.b.RegisterSymbol(sym) {
-		p.Diag().Errorf(errors.SymbolAlreadyExists.WithDocument(p.doc), sym.Name)
+		p.Diag().Errorf(errors.ErrorSymbolAlreadyExists.WithDocument(p.doc), sym.Name)
 	}
 }
 
 type binderPhase2 struct {
-	core.Visitor
 	b   *binder
 	doc *diag.Document
 }
 
+var _ core.Visitor = &binderPhase2{} // compile-time assertion that the binder implements core.Visitor.
+
 func (p *binderPhase2) Diag() diag.Sink {
 	return p.b.Diag()
+}
+
+func (p *binderPhase2) VisitWorkspace(doc *diag.Document, workspace *ast.Workspace) {
+}
+
+func (p *binderPhase2) VisitCluster(doc *diag.Document, name string, cluster *ast.Cluster) {
+}
+
+func (p *binderPhase2) VisitDependency(doc *diag.Document, parent *ast.Workspace, ref ast.Ref, dep *ast.Dependency) {
 }
 
 func (p *binderPhase2) VisitStack(doc *diag.Document, stack *ast.Stack) {
 	if stack.Base != "" {
 		// Ensure the name of the base is in scope, and remember the binding information.
 		if _, stack.BoundBase = p.b.LookupStack(stack.Base); stack.BoundBase == nil {
-			p.Diag().Errorf(errors.TypeNotFound.WithDocument(doc), stack.Base)
+			p.Diag().Errorf(errors.ErrorTypeNotFound.WithDocument(doc), stack.Base)
 		}
 	}
 	if !stack.Abstract && len(stack.Services.Public) == 0 && len(stack.Services.Private) == 0 {
 		// Non-abstract Stacks must declare at least one Service.
-		p.Diag().Errorf(errors.NonAbstractStacksMustDefineServices.WithDocument(doc))
+		p.Diag().Errorf(errors.ErrorNonAbstractStacksMustDefineServices.WithDocument(doc))
 	}
 }
 
-func (p *binderPhase2) VisitCluster(doc *diag.Document, name string, cluster *ast.Cluster) {
+func (p *binderPhase2) VisitProperty(doc *diag.Document, parent *ast.Stack, name string, param *ast.Property) {
 }
 
-func (p *binderPhase2) VisitProperty(doc *diag.Document, name string, param *ast.Property) {
+func (p *binderPhase2) VisitBoundDependency(doc *diag.Document, parent *ast.Stack, dep *ast.BoundDependency) {
 }
 
-func (p *binderPhase2) VisitDependency(doc *diag.Document, ref ast.Ref, dep *ast.Dependency) {
+func (p *binderPhase2) VisitServices(doc *diag.Document, parent *ast.Stack, svcs *ast.Services) {
 }
 
-func (p *binderPhase2) VisitBoundDependency(doc *diag.Document, ref ast.Ref, dep *ast.BoundDependency) {
-}
-
-func (p *binderPhase2) VisitServices(doc *diag.Document, svcs *ast.Services) {
-}
-
-func (p *binderPhase2) VisitService(doc *diag.Document, name ast.Name, public bool, svc *ast.Service) {
+func (p *binderPhase2) VisitService(doc *diag.Document, parent *ast.Services, name ast.Name, public bool,
+	svc *ast.Service) {
 	// The service's type has been prepared in phase 1, and must now be bound to a symbol.  All shorthand type
 	// expressions, intra stack references, cycles, and so forth, will have been taken care of by this earlier phase.
 	util.AssertMF(svc.Type != "",
 		"Expected all Services to have types in binding phase2; %v is missing one", svc.Name)
-	if _, svc.BoundType = p.b.LookupStack(svc.Type); svc.BoundType == nil {
-		p.Diag().Errorf(errors.TypeNotFound.WithDocument(p.doc), svc.Type)
+	if ty, err := svc.Type.Parse(); err == nil {
+		if _, svc.BoundType = p.b.LookupStack(ty.Name); svc.BoundType == nil {
+			p.Diag().Errorf(errors.ErrorTypeNotFound.WithDocument(p.doc), svc.Type)
+		}
 	}
 }

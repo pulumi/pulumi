@@ -19,12 +19,17 @@ type Name string
 
 // Ref is a dependency reference.  It is "name-like", in that it contains a Name embedded inside of it, but also carries
 // a URL-like structure.  A Ref starts with an optional "protocol" (like https://, git://, etc), followed by an optional
-// "base" part (like hub.mu.com/, github.com/, etc), followed by the "name" part (which is just a Name).
+// "base" part (like hub.mu.com/, github.com/, etc), followed by the "name" part (which is just a Name), followed by
+// an optional "@" and version number (where version may be "latest", a semantic version range, or a Git SHA hash).
 type Ref string
 
-// SemVer represents a version using "semantic versioning" style.  This may include up to three distinct numbers
-// delimited by `.`s: a major version number, a minor version number, and a revision number.  For example, `1.0.10`.
-type SemVer string
+// Version represents a precise version number.  It may be either a Git SHA hash or a semantic version (not a range).
+type Version string
+
+// VersionSpec represents a specification of a version that is bound to a precise number through a separate process.
+// It may take the form of a Version (see above), a semantic version range, or the string "latest", to indicate that the
+// latest available sources are to be used at compile-time.
+type VersionSpec string
 
 // Node is the base of all abstract syntax tree types.
 type Node struct {
@@ -34,30 +39,8 @@ type Node struct {
 type Workspace struct {
 	Node
 
-	Clusters Clusters `json:"clusters,omitempty"` // an optional set of predefined target clusters.
-}
-
-// Stack represents a collection of private and public cloud resources, a method for constructing them, and optional
-// dependencies on other Stacks (by name).
-type Stack struct {
-	Node
-
-	Name        Name     `json:"name,omitempty"`        // a friendly name for this node.
-	Version     SemVer   `json:"version,omitempty"`     // a specific semantic version.
-	Description string   `json:"description,omitempty"` // an optional friendly description.
-	Author      string   `json:"author,omitempty"`      // an optional author.
-	Website     string   `json:"website,omitempty"`     // an optional website for additional info.
-	License     string   `json:"license,omitempty"`     // an optional license governing legal uses of this package.
-	Clusters    Clusters `json:"clusters,omitempty"`    // an optional set of predefined target clusters.
-
-	Base         Name         `json:"base,omitempty"`     // an optional base Stack type.
-	Abstract     bool         `json:"abstract,omitempty"` // true if this stack is "abstract" (uninstantiable).
-	Properties   Properties   `json:"properties,omitempty"`
+	Clusters     Clusters     `json:"clusters,omitempty"` // an optional set of predefined target clusters.
 	Dependencies Dependencies `json:"dependencies,omitempty"`
-	Services     Services     `json:"services,omitempty"`
-
-	BoundBase         *Stack            `json:"-"` // base, if available, is bound during semantic analysis.
-	BoundDependencies BoundDependencies `json:"-"` // dependencies are bound during semantic analysis.
 }
 
 // Clusters is a map of target names to metadata about those targets.
@@ -74,6 +57,34 @@ type Cluster struct {
 	Options     map[string]interface{} `json:"options,omitempty"`     // any options passed to the cloud provider.
 
 	Name string `json:"-"` // name is decorated post-parsing, since it is contextual.
+}
+
+// Dependencies maps dependency refs to the semantic version the consumer depends on.
+type Dependencies map[Ref]Dependency
+
+// Dependency is metadata describing a dependency target (for now, just its target version).
+type Dependency VersionSpec
+
+// Stack represents a collection of private and public cloud resources, a method for constructing them, and optional
+// dependencies on other Stacks (by name).
+type Stack struct {
+	Node
+
+	Name        Name     `json:"name,omitempty"`        // a friendly name for this node.
+	Version     Version  `json:"version,omitempty"`     // a specific version number.
+	Description string   `json:"description,omitempty"` // an optional friendly description.
+	Author      string   `json:"author,omitempty"`      // an optional author.
+	Website     string   `json:"website,omitempty"`     // an optional website for additional info.
+	License     string   `json:"license,omitempty"`     // an optional license governing legal uses of this package.
+	Clusters    Clusters `json:"clusters,omitempty"`    // an optional set of predefined target clusters.
+
+	Base       Name       `json:"base,omitempty"`     // an optional base Stack type.
+	Abstract   bool       `json:"abstract,omitempty"` // true if this stack is "abstract" (uninstantiable).
+	Properties Properties `json:"properties,omitempty"`
+	Services   Services   `json:"services,omitempty"`
+
+	BoundBase         *Stack            `json:"-"` // base, if available, is bound during semantic analysis.
+	BoundDependencies BoundDependencies `json:"-"` // dependencies are bound during semantic analysis.
 }
 
 // Propertys maps property names to metadata about those propertys.
@@ -104,20 +115,13 @@ const (
 	PropertyTypeService              = "service" // an untyped service reference; the runtime manifestation is a URL.
 )
 
-// Dependencies maps dependency names to the semantic version the consumer depends on.
-type Dependencies map[Ref]Dependency
-
-// Dependency is metadata describing a dependency target (for now, just its semantic version).
-type Dependency SemVer
-
-// BoundDependencies contains a map of all bound dependencies, populated during semantic analysis.
-type BoundDependencies map[Ref]BoundDependency
+// BoundDependencies contains a list of dependencies, populated during semantic analysis.
+type BoundDependencies []BoundDependency
 
 // BoundDependency contains information about a binding.
 type BoundDependency struct {
-	Ref     Ref    // the reference used to bind to this dependency.
-	Version SemVer // the version requested to bind to this dependency.
-	Stack   *Stack // the bound stack for this dependency.
+	Ref   RefParts // the reference used to bind to this dependency.
+	Stack *Stack   // the bound stack for this dependency.
 }
 
 // Services is a list of public and private service references, keyed by name.
@@ -142,7 +146,7 @@ type ServiceMap map[Name]Service
 type Service struct {
 	Node
 
-	Type  Name                   `json:"type,omitempty"` // an explicit type; if missing, the name is used.
+	Type  Ref                    `json:"type,omitempty"` // an explicit type; if missing, the name is used.
 	Extra map[string]interface{} `json:"-"`              // all of the "extra" properties, other than what is above.
 
 	Name   Name `json:"-"` // a friendly name; decorated post-parsing, since it is contextual.

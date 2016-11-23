@@ -6,17 +6,17 @@ import (
 	"github.com/marapongo/mu/pkg/diag"
 )
 
-var CouldNotReadMufile = &diag.Diag{
+var ErrorCouldNotReadMufile = &diag.Diag{
 	ID:      150,
 	Message: "An IO error occurred while reading the Mufile: %v",
 }
 
-var IllegalMufileSyntax = &diag.Diag{
+var ErrorIllegalMufileSyntax = &diag.Diag{
 	ID:      151,
 	Message: "A syntax error was detected while parsing the Mufile: %v",
 }
 
-var IllegalWorkspaceSyntax = &diag.Diag{
+var ErrorIllegalWorkspaceSyntax = &diag.Diag{
 	ID:      152,
 	Message: "A syntax error was detected while parsing workspace settings: %v",
 }

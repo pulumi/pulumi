@@ -24,15 +24,6 @@ func StableDependencies(ds Dependencies) []Ref {
 	return sorted
 }
 
-func StableBoundDependencies(ds BoundDependencies) []Ref {
-	sorted := make(Refs, 0, len(ds))
-	for d := range ds {
-		sorted = append(sorted, d)
-	}
-	sort.Sort(sorted)
-	return sorted
-}
-
 func StableProperties(ps Properties) []string {
 	sorted := make([]string, 0, len(ps))
 	for p := range ps {

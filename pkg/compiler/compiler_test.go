@@ -18,7 +18,7 @@ func TestBadMissingMufile(t *testing.T) {
 	sink := buildNoCodegen("testdata", "compiler", "bad__missing_mufile")
 
 	// Check that the compiler complained about a missing Mufile.
-	d := errors.MissingMufile
+	d := errors.ErrorMissingMufile
 	assert.Equal(t, 1, sink.Errors(), "expected a single error")
 	assert.Equal(t,
 		fmt.Sprintf("%v: %v%v: %v\n",
@@ -30,7 +30,7 @@ func TestBadMufileCasing(t *testing.T) {
 	sink := buildNoCodegen("testdata", "compiler", "bad__mufile_casing")
 
 	// Check that the compiler warned about a bad Mufile casing (mu.yaml).
-	d := errors.WarnIllegalMufileCasing
+	d := errors.WarningIllegalMufileCasing
 	assert.Equal(t, 1, sink.Warnings(), "expected a single warning")
 	assert.Equal(t,
 		fmt.Sprintf("%v: %v%v: %v: %v\n",
@@ -42,7 +42,7 @@ func TestBadMufileExt1(t *testing.T) {
 	sink := buildNoCodegen("testdata", "compiler", "bad__mufile_ext__1")
 
 	// Check that the compiler warned about a bad Mufile extension (none).
-	d := errors.WarnIllegalMufileExt
+	d := errors.WarningIllegalMufileExt
 	assert.Equal(t, 1, sink.Warnings(), "expected a single warning")
 	assert.Equal(t,
 		fmt.Sprintf("%v: %v%v: %v: %v\n",
@@ -54,7 +54,7 @@ func TestBadMufileExt2(t *testing.T) {
 	sink := buildNoCodegen("testdata", "compiler", "bad__mufile_ext__2")
 
 	// Check that the compiler warned about a bad Mufile extension (".txt").
-	d := errors.WarnIllegalMufileExt
+	d := errors.WarningIllegalMufileExt
 	assert.Equal(t, 1, sink.Warnings(), "expected a single warning")
 	assert.Equal(t,
 		fmt.Sprintf("%v: %v%v: %v: %v\n",
@@ -68,7 +68,7 @@ func TestMissingTarget(t *testing.T) {
 
 	// Check that the compiler issued an error due to missing cloud targets.
 	sink := buildFile(Options{}, mufile, ".yaml")
-	d := errors.MissingTarget
+	d := errors.ErrorMissingTarget
 	assert.Equal(t, 1, sink.Errors(), "expected a single error")
 	assert.Equal(t,
 		fmt.Sprintf("%v: %v%v: %v: %v\n",
@@ -93,7 +93,7 @@ func TestUnrecognizedCloud(t *testing.T) {
 		"        cloud: badcloud\n")
 	// Check that the compiler issued an error due to an unrecognized cloud.
 	sink := buildFile(Options{}, mufile, ".yaml")
-	d := errors.UnrecognizedCloudArch
+	d := errors.ErrorUnrecognizedCloudArch
 	assert.Equal(t, 1, sink.Errors(), "expected a single error")
 	assert.Equal(t,
 		fmt.Sprintf("%v: %v%v: %v: %v\n",

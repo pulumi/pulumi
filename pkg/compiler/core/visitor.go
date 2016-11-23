@@ -10,13 +10,14 @@ import (
 // Visitor unifies all visitation patterns under a single interface.
 type Visitor interface {
 	Phase
-	VisitStack(doc *diag.Document, stack *ast.Stack)
+	VisitWorkspace(doc *diag.Document, w *ast.Workspace)
 	VisitCluster(doc *diag.Document, name string, cluster *ast.Cluster)
-	VisitProperty(doc *diag.Document, name string, prop *ast.Property)
-	VisitDependency(doc *diag.Document, ref ast.Ref, dep *ast.Dependency)
-	VisitBoundDependency(doc *diag.Document, ref ast.Ref, dep *ast.BoundDependency)
-	VisitServices(doc *diag.Document, svcs *ast.Services)
-	VisitService(doc *diag.Document, name ast.Name, public bool, svc *ast.Service)
+	VisitDependency(doc *diag.Document, parent *ast.Workspace, ref ast.Ref, dep *ast.Dependency)
+	VisitStack(doc *diag.Document, stack *ast.Stack)
+	VisitProperty(doc *diag.Document, parent *ast.Stack, name string, prop *ast.Property)
+	VisitBoundDependency(doc *diag.Document, parent *ast.Stack, dep *ast.BoundDependency)
+	VisitServices(doc *diag.Document, parent *ast.Stack, svcs *ast.Services)
+	VisitService(doc *diag.Document, parent *ast.Services, name ast.Name, public bool, svc *ast.Service)
 }
 
 // NewInOrderVisitor wraps another Visitor and walks the tree in a deterministic order, deferring to another set of
@@ -34,6 +35,8 @@ type inOrderVisitor struct {
 	post Visitor
 }
 
+var _ Visitor = &inOrderVisitor{} // compile-time assert that inOrderVisitor implements Visitor.
+
 func (v *inOrderVisitor) Diag() diag.Sink {
 	if v.pre != nil {
 		return v.pre.Diag()
@@ -42,6 +45,48 @@ func (v *inOrderVisitor) Diag() diag.Sink {
 		return v.post.Diag()
 	}
 	return nil
+}
+
+func (v *inOrderVisitor) VisitWorkspace(doc *diag.Document, w *ast.Workspace) {
+	if v.pre != nil {
+		v.pre.VisitWorkspace(doc, w)
+	}
+
+	for _, name := range ast.StableClusters(w.Clusters) {
+		cluster := w.Clusters[name]
+		v.VisitCluster(doc, name, &cluster)
+		// Copy the cluster back in case it was updated.
+		w.Clusters[name] = cluster
+	}
+
+	for _, ref := range ast.StableDependencies(w.Dependencies) {
+		dep := w.Dependencies[ref]
+		v.VisitDependency(doc, w, ref, &dep)
+		// Copy the dependency back in case it was updated.
+		w.Dependencies[ref] = dep
+	}
+
+	if v.post != nil {
+		v.post.VisitWorkspace(doc, w)
+	}
+}
+
+func (v *inOrderVisitor) VisitCluster(doc *diag.Document, name string, cluster *ast.Cluster) {
+	if v.pre != nil {
+		v.pre.VisitCluster(doc, name, cluster)
+	}
+	if v.post != nil {
+		v.post.VisitCluster(doc, name, cluster)
+	}
+}
+
+func (v *inOrderVisitor) VisitDependency(doc *diag.Document, parent *ast.Workspace, ref ast.Ref, dep *ast.Dependency) {
+	if v.pre != nil {
+		v.pre.VisitDependency(doc, parent, ref, dep)
+	}
+	if v.post != nil {
+		v.post.VisitDependency(doc, parent, ref, dep)
+	}
 }
 
 func (v *inOrderVisitor) VisitStack(doc *diag.Document, stack *ast.Stack) {
@@ -58,99 +103,70 @@ func (v *inOrderVisitor) VisitStack(doc *diag.Document, stack *ast.Stack) {
 
 	for _, name := range ast.StableProperties(stack.Properties) {
 		prop := stack.Properties[name]
-		v.VisitProperty(doc, name, &prop)
+		v.VisitProperty(doc, stack, name, &prop)
 		// Copy the property back in case it was updated.
 		stack.Properties[name] = prop
 	}
 
-	for _, ref := range ast.StableDependencies(stack.Dependencies) {
-		dep := stack.Dependencies[ref]
-		v.VisitDependency(doc, ref, &dep)
-		// Copy the dependency back in case it was updated.
-		stack.Dependencies[ref] = dep
+	for i := range stack.BoundDependencies {
+		v.VisitBoundDependency(doc, stack, &stack.BoundDependencies[i])
 	}
 
-	for _, ref := range ast.StableBoundDependencies(stack.BoundDependencies) {
-		dep := stack.BoundDependencies[ref]
-		v.VisitBoundDependency(doc, ref, &dep)
-		// Copy the dependency back in case it was updated.
-		stack.BoundDependencies[ref] = dep
-	}
-
-	v.VisitServices(doc, &stack.Services)
+	v.VisitServices(doc, stack, &stack.Services)
 
 	if v.post != nil {
 		v.post.VisitStack(doc, stack)
 	}
 }
 
-func (v *inOrderVisitor) VisitCluster(doc *diag.Document, name string, cluster *ast.Cluster) {
+func (v *inOrderVisitor) VisitProperty(doc *diag.Document, parent *ast.Stack, name string, prop *ast.Property) {
 	if v.pre != nil {
-		v.pre.VisitCluster(doc, name, cluster)
+		v.pre.VisitProperty(doc, parent, name, prop)
 	}
 	if v.post != nil {
-		v.post.VisitCluster(doc, name, cluster)
+		v.post.VisitProperty(doc, parent, name, prop)
 	}
 }
 
-func (v *inOrderVisitor) VisitProperty(doc *diag.Document, name string, prop *ast.Property) {
+func (v *inOrderVisitor) VisitBoundDependency(doc *diag.Document, parent *ast.Stack, dep *ast.BoundDependency) {
 	if v.pre != nil {
-		v.pre.VisitProperty(doc, name, prop)
+		v.pre.VisitBoundDependency(doc, parent, dep)
 	}
 	if v.post != nil {
-		v.post.VisitProperty(doc, name, prop)
+		v.post.VisitBoundDependency(doc, parent, dep)
 	}
 }
 
-func (v *inOrderVisitor) VisitDependency(doc *diag.Document, ref ast.Ref, dep *ast.Dependency) {
+func (v *inOrderVisitor) VisitServices(doc *diag.Document, parent *ast.Stack, svcs *ast.Services) {
 	if v.pre != nil {
-		v.pre.VisitDependency(doc, ref, dep)
-	}
-	if v.post != nil {
-		v.post.VisitDependency(doc, ref, dep)
-	}
-}
-
-func (v *inOrderVisitor) VisitBoundDependency(doc *diag.Document, ref ast.Ref, dep *ast.BoundDependency) {
-	if v.pre != nil {
-		v.pre.VisitBoundDependency(doc, ref, dep)
-	}
-	if v.post != nil {
-		v.post.VisitBoundDependency(doc, ref, dep)
-	}
-}
-
-func (v *inOrderVisitor) VisitServices(doc *diag.Document, svcs *ast.Services) {
-	if v.pre != nil {
-		v.pre.VisitServices(doc, svcs)
-	}
-
-	for _, name := range ast.StableServices(svcs.Public) {
-		aname := ast.Name(name)
-		public := svcs.Public[aname]
-		v.VisitService(doc, aname, true, &public)
-		// Copy the public service back in case it was updated.
-		svcs.Public[aname] = public
+		v.pre.VisitServices(doc, parent, svcs)
 	}
 
 	for _, name := range ast.StableServices(svcs.Private) {
-		aname := ast.Name(name)
-		private := svcs.Private[aname]
-		v.VisitService(doc, aname, false, &private)
+		private := svcs.Private[name]
+		v.VisitService(doc, svcs, name, false, &private)
 		// Copy the private service back in case it was updated.
-		svcs.Private[aname] = private
+		svcs.Private[name] = private
+	}
+
+	for _, name := range ast.StableServices(svcs.Public) {
+		public := svcs.Public[name]
+		v.VisitService(doc, svcs, name, true, &public)
+		// Copy the public service back in case it was updated.
+		svcs.Public[name] = public
 	}
 
 	if v.post != nil {
-		v.post.VisitServices(doc, svcs)
+		v.post.VisitServices(doc, parent, svcs)
 	}
 }
 
-func (v *inOrderVisitor) VisitService(doc *diag.Document, name ast.Name, public bool, svc *ast.Service) {
+func (v *inOrderVisitor) VisitService(doc *diag.Document, parent *ast.Services, name ast.Name, public bool,
+	svc *ast.Service) {
 	if v.pre != nil {
-		v.pre.VisitService(doc, name, public, svc)
+		v.pre.VisitService(doc, parent, name, public, svc)
 	}
 	if v.post != nil {
-		v.post.VisitService(doc, name, public, svc)
+		v.post.VisitService(doc, parent, name, public, svc)
 	}
 }

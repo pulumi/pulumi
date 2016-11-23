@@ -1,4 +1,5 @@
 name: badsemver
 description: A Stack with a bad semantic version number.
 version: badbadbad
+abstract: true
 
