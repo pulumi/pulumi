@@ -1,0 +1,57 @@
+name: aws/s3/bucket
+description: An Amazon S3 bucket.
+website: http://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-s3-bucket.html
+properties:
+    accessControl:
+        type: string
+        description: A canned access control list (ACL) that grants predefined permissions to the bucket.
+        optional: true
+    bucketName:
+        type: string
+        description: A name for the bucket.  If not specified, AWS generates a unique physical ID and uses that as the
+            bucket name.  The bucket name must contain only lowercase letters, numbers, periods (.), and dashes (-).
+        optional: true
+    corsConfiguration:
+        type: any
+        description: Rules that define cross-origin resource sharing of objects in this bucket.
+        optional: true
+    lifecycleConfiguration:
+        type: any
+        description: Rules that define how Amazon S3 managed objects during their lifetime.
+        optional: true
+    loggingConfiguration:
+        type: any
+        description: Settings that define where logs are stored.
+        optional: true
+    notificationConfiguration:
+        type: any
+        description: Configuration that defines how Amazon S3 handles bucket notifications.
+        optional: true
+    replicationConfiguration:
+        type: any
+        description: Configuration for replacing objects in an S3 bucket.  To enable replication, you must also enable
+            versioning by using the `versioningConfiguration` property.  Amazon S3 can store replicated objects in only
+            one destination (S3 bucket).  The destination bucket must already exist and be in a different region than
+            your source bucket.
+        optional: true
+    tags:
+        type: any
+        description: An arbitrary set of tags (key-value pairs) for this Amazon S3 bucket.
+        optional: true
+    versioningConfiguration:
+        type: any
+        description: Enable multiple variants of all objects in this bucket.  You might enable versioning to prevent
+            objects from being deleted or overwritten by mistake or to archive objects so that you can retrieve previous
+            versions of them.
+        optional: true
+    websiteConfiguration:
+        type: any
+        description: Information used to configure the bucket as a static website.
+        optional: true
+services:
+    public:
+        bucket:
+            type: mu/extension
+            provider: aws/cf
+            resource: "AWS::S3::Bucket"
+

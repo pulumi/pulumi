@@ -195,64 +195,39 @@ func (c *awsCloud) genMuAutoscalerServiceTemplate(comp core.Compiland, stack *as
 // properties, target environments, and so on, to be leveraged in the way these templates are generated.
 const CloudFormationExtensionProvider = "aws/cf"
 const CloudFormationExtensionProviderResource = "resource"
-const CloudFormationExtensionProviderTypeField = "Type"
-const CloudFormationExtensionProviderPropertiesField = "Properties"
 
 func (c *awsCloud) genMuExtensionServiceTemplate(comp core.Compiland, stack *ast.Stack,
 	svc *predef.MuExtensionService) cfResources {
 	switch svc.Provider {
 	case CloudFormationExtensionProvider:
-		// The AWS CF extension provider simply creates a CF resource out of the provided template.
-
-		var res map[string]interface{}
+		// The AWS CF extension provider simply creates a CF resource out of the provided template.  First, we extract
+		// the resource type, which is simply the AWS CF resource type name to emit directly, unmanipulated.
+		var resType string
 		r, ok := svc.Extra[CloudFormationExtensionProviderResource]
 		if ok {
-			res, ok = r.(map[string]interface{})
+			resType, ok = r.(string)
 			if !ok {
 				c.Diag().Errorf(errors.ErrorIncorrectExtensionPropertyType.At(stack),
-					CloudFormationExtensionProviderResource, "string-keyed map")
+					CloudFormationExtensionProviderResource, "string")
 				return nil
 			}
 		} else {
 			c.Diag().Errorf(errors.ErrorMissingExtensionProperty.At(stack),
-				CloudFormationExtensionProviderTypeField)
+				CloudFormationExtensionProviderResource)
 			return nil
 		}
 
-		var resType string
-		t, ok := res[CloudFormationExtensionProviderTypeField]
-		if ok {
-			resType, ok = t.(string)
-			if !ok {
-				c.Diag().Errorf(errors.ErrorIncorrectExtensionPropertyType.At(stack),
-					fmt.Sprintf("%v.%v", CloudFormationExtensionProviderResource,
-						CloudFormationExtensionProviderTypeField), "string")
-				return nil
+		// Next, we perform a straighforward mapping from Mu stack properties to the equivalent CF properties.
+		resProps := make(cfResourceProperties)
+
+		for _, name := range ast.StableProperties(stack.Properties) {
+			if p, has := svc.Service.Extra[name]; has {
+				pname := makeAWSFriendlyName(name, true)
+				resProps[pname] = p
 			}
-		} else {
-			c.Diag().Errorf(errors.ErrorMissingExtensionProperty.At(stack),
-				fmt.Sprintf("%v.%v", CloudFormationExtensionProviderResource,
-					CloudFormationExtensionProviderTypeField))
-			return nil
 		}
 
-		var resProps map[string]interface{}
-		p, ok := res[CloudFormationExtensionProviderPropertiesField]
-		if ok {
-			resProps, ok = p.(map[string]interface{})
-			if !ok {
-				c.Diag().Errorf(errors.ErrorIncorrectExtensionPropertyType.At(stack),
-					fmt.Sprintf("%v.%v", CloudFormationExtensionProviderResource,
-						CloudFormationExtensionProviderPropertiesField), "string-keyed map")
-				return nil
-			}
-		} else {
-			c.Diag().Errorf(errors.ErrorMissingExtensionProperty.At(stack),
-				fmt.Sprintf("%v.%v", CloudFormationExtensionProviderResource,
-					CloudFormationExtensionProviderPropertiesField))
-			return nil
-		}
-
+		// Finally, generate an ID from the service's name, and return the result.
 		id := c.genResourceID(stack, &svc.Service)
 		return cfResources{
 			id: cfResource{cfResourceType(resType), cfResourceProperties(resProps)},
