@@ -37,5 +37,5 @@ func (doc *Document) Forget() {
 }
 
 func (doc *Document) Where() (*Document, *Location) {
-	return doc, &EmptyLocation
+	return doc, nil
 }

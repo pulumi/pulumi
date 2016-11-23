@@ -35,6 +35,5 @@ func (diag *Diag) AtFile(file string) *Diag {
 		ID:      diag.ID,
 		Message: diag.Message,
 		Doc:     NewDocument(file),
-		Loc:     &EmptyLocation,
 	}
 }

@@ -52,7 +52,7 @@ func (c *awsCloud) CodeGen(comp core.Compiland) {
 		// TODO: actually save this (and any other outputs) to disk, rather than spewing to STDOUT.
 		y, err := yaml.Marshal(cf)
 		if err != nil {
-			c.Diag().Errorf(ErrorMarshalingCloudFormationTemplate.At(comp.Stack.Doc), err)
+			c.Diag().Errorf(ErrorMarshalingCloudFormationTemplate.At(comp.Stack), err)
 			return
 		}
 		fmt.Printf("# %v:\n", nm)
@@ -209,12 +209,12 @@ func (c *awsCloud) genMuExtensionServiceTemplate(comp core.Compiland, stack *ast
 		if ok {
 			res, ok = r.(map[string]interface{})
 			if !ok {
-				c.Diag().Errorf(errors.ErrorIncorrectExtensionPropertyType.At(stack.Doc),
+				c.Diag().Errorf(errors.ErrorIncorrectExtensionPropertyType.At(stack),
 					CloudFormationExtensionProviderResource, "string-keyed map")
 				return nil
 			}
 		} else {
-			c.Diag().Errorf(errors.ErrorMissingExtensionProperty.At(stack.Doc),
+			c.Diag().Errorf(errors.ErrorMissingExtensionProperty.At(stack),
 				CloudFormationExtensionProviderTypeField)
 			return nil
 		}
@@ -224,13 +224,13 @@ func (c *awsCloud) genMuExtensionServiceTemplate(comp core.Compiland, stack *ast
 		if ok {
 			resType, ok = t.(string)
 			if !ok {
-				c.Diag().Errorf(errors.ErrorIncorrectExtensionPropertyType.At(stack.Doc),
+				c.Diag().Errorf(errors.ErrorIncorrectExtensionPropertyType.At(stack),
 					fmt.Sprintf("%v.%v", CloudFormationExtensionProviderResource,
 						CloudFormationExtensionProviderTypeField), "string")
 				return nil
 			}
 		} else {
-			c.Diag().Errorf(errors.ErrorMissingExtensionProperty.At(stack.Doc),
+			c.Diag().Errorf(errors.ErrorMissingExtensionProperty.At(stack),
 				fmt.Sprintf("%v.%v", CloudFormationExtensionProviderResource,
 					CloudFormationExtensionProviderTypeField))
 			return nil
@@ -241,13 +241,13 @@ func (c *awsCloud) genMuExtensionServiceTemplate(comp core.Compiland, stack *ast
 		if ok {
 			resProps, ok = p.(map[string]interface{})
 			if !ok {
-				c.Diag().Errorf(errors.ErrorIncorrectExtensionPropertyType.At(stack.Doc),
+				c.Diag().Errorf(errors.ErrorIncorrectExtensionPropertyType.At(stack),
 					fmt.Sprintf("%v.%v", CloudFormationExtensionProviderResource,
 						CloudFormationExtensionProviderPropertiesField), "string-keyed map")
 				return nil
 			}
 		} else {
-			c.Diag().Errorf(errors.ErrorMissingExtensionProperty.At(stack.Doc),
+			c.Diag().Errorf(errors.ErrorMissingExtensionProperty.At(stack),
 				fmt.Sprintf("%v.%v", CloudFormationExtensionProviderResource,
 					CloudFormationExtensionProviderPropertiesField))
 			return nil
@@ -258,7 +258,7 @@ func (c *awsCloud) genMuExtensionServiceTemplate(comp core.Compiland, stack *ast
 			id: cfResource{cfResourceType(resType), cfResourceProperties(resProps)},
 		}
 	default:
-		c.Diag().Errorf(errors.ErrorUnrecognizedExtensionProvider.At(stack.Doc), svc.Provider)
+		c.Diag().Errorf(errors.ErrorUnrecognizedExtensionProvider.At(stack), svc.Provider)
 	}
 
 	return nil

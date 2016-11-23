@@ -107,7 +107,7 @@ func (a *ptAnalyzer) untypedServiceToTyped(parent *ast.Stack, name ast.Name, pub
 		if ok {
 			typ = ast.Name(ts)
 		} else {
-			a.Diag().Errorf(errors.ErrorIllegalMufileSyntax.At(parent.Doc), "service type must be a string")
+			a.Diag().Errorf(errors.ErrorIllegalMufileSyntax.At(parent), "service type must be a string")
 		}
 	}
 

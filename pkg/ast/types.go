@@ -37,6 +37,7 @@ type VersionSpec string
 
 // Node is the base of all abstract syntax tree types.
 type Node struct {
+	// TODO(joe): implement diag.Diagable on all AST nodes.  To do this, we need to crack open the JSON/YAML parsers.
 }
 
 // Workspace defines settings shared amongst many related Stacks.
@@ -47,6 +48,10 @@ type Workspace struct {
 	Dependencies Dependencies `json:"dependencies,omitempty"`
 
 	Doc *diag.Document `json:"-"` // the document from which this came.
+}
+
+func (w *Workspace) Where() (*diag.Document, *diag.Location) {
+	return w.Doc, nil
 }
 
 // Clusters is a map of target names to metadata about those targets.
@@ -93,6 +98,10 @@ type Stack struct {
 	Doc               *diag.Document    `json:"-"` // the document from which this came.
 	BoundBase         *Stack            `json:"-"` // base, if available, is bound during semantic analysis.
 	BoundDependencies BoundDependencies `json:"-"` // dependencies are bound during semantic analysis.
+}
+
+func (stack *Stack) Where() (*diag.Document, *diag.Location) {
+	return stack.Doc, nil
 }
 
 // Propertys maps property names to metadata about those propertys.
