@@ -37,7 +37,7 @@ type VersionSpec string
 
 // Node is the base of all abstract syntax tree types.
 type Node struct {
-	// TODO(joe): implement diag.Diagable on all AST nodes.  To do this, we need to crack open the JSON/YAML parsers.
+	// TODO[marapongo/mu#14]: implement diag.Diagable on all AST nodes.
 }
 
 // Workspace defines settings shared amongst many related Stacks.
@@ -98,6 +98,8 @@ type Stack struct {
 	Doc               *diag.Document    `json:"-"` // the document from which this came.
 	BoundBase         *Stack            `json:"-"` // base, if available, is bound during semantic analysis.
 	BoundDependencies BoundDependencies `json:"-"` // dependencies are bound during semantic analysis.
+
+	// TODO[marapongo/mu#8]: permit Stacks to declare exported APIs.
 }
 
 func (stack *Stack) Where() (*diag.Document, *diag.Location) {
@@ -123,7 +125,7 @@ type Property struct {
 type PropertyType Name
 
 // A set of known property types.  Note that this is extensible, so names outside of this list are legal.
-// TODO: support complex types (like arrays, custom JSON shapes, and so on).
+// TODO[marapongo/mu#9]: support complex types (like arrays, custom JSON shapes, and so on).
 const (
 	PropertyTypeAny     PropertyType = "any"     // any structure.
 	PropertyTypeString               = "string"  // a JSON-like string.
@@ -178,8 +180,6 @@ type UntypedServiceMap map[Name]PropertyBag
 // PropertyBag is simply a map of string property names to untyped data values.
 type PropertyBag map[string]interface{}
 
-// TODO: several more core types still need to be mapped:
-//     - Schema
-//     - Identity: User, Role, Group
-//     - Configuration
-//     - Secret
+// TODO[marapongo/mu#9]: extensible schema support.
+// TODO[marapongo/mu#17]: identity (users, roles, groups).
+// TODO[marapongo/mu#16]: configuration and secret support.

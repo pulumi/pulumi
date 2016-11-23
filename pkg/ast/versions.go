@@ -7,7 +7,7 @@ import (
 	"regexp"
 
 	"github.com/blang/semver"
-	// TODO(joe): consider supporting the sugared NPM-style semvers, like tilde and caret ranges.
+	// TODO[marapongo/mu#18]: consider supporting the sugared NPM-style semvers, like tilde and caret ranges.
 )
 
 var sha1HashRegexps = "[0-9a-fA-F]"

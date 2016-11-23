@@ -124,7 +124,8 @@ func (d *defaultSink) Stringify(diag *Diag, prefix string, args ...interface{}) 
 	buffer.WriteString(fmt.Sprintf(diag.Message, args...))
 	buffer.WriteRune('\n')
 
-	// TODO: support Clang-style caret diagnostics; e.g., see http://clang.llvm.org/diagnostics.html.
+	// TODO[marapongo/mu#15]: support Clang-style expressive diagnostics.  This would entail, for example, using the
+	//     buffer within the target document, to demonstrate the offending line/column range of code.
 
 	return buffer.String()
 }

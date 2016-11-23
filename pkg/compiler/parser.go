@@ -47,13 +47,13 @@ func (p *parser) ParseWorkspace(doc *diag.Document) *ast.Workspace {
 	}
 
 	// We support many file formats.  Detect the file extension and deserialize the contents.
-	// TODO: we need to expand templates as part of the parsing process
+	// TODO[marapongo/mu#7]: we need to expand templates as part of the parsing process
 	var w ast.Workspace
 	marshaler, has := encoding.Marshalers[doc.Ext()]
 	util.AssertMF(has, "No marshaler registered for this workspace extension: %v", doc.Ext())
 	if err := marshaler.Unmarshal(doc.Body, &w); err != nil {
 		p.Diag().Errorf(errors.ErrorIllegalWorkspaceSyntax.At(doc), err)
-		// TODO: it would be great if we issued an error per issue found in the file with line/col numbers.
+		// TODO[marapongo/mu#14]: issue an error per issue found in the file with line/col numbers.
 		return nil
 	}
 
@@ -75,13 +75,13 @@ func (p *parser) ParseStack(doc *diag.Document) *ast.Stack {
 	}
 
 	// We support many file formats.  Detect the file extension and deserialize the contents.
-	// TODO: we need to expand templates as part of the parsing process
+	// TODO[marapongo/mu#7]: we need to expand templates as part of the parsing process
 	var stack ast.Stack
 	marshaler, has := encoding.Marshalers[doc.Ext()]
 	util.AssertMF(has, "No marshaler registered for this Mufile extension: %v", doc.Ext())
 	if err := marshaler.Unmarshal(doc.Body, &stack); err != nil {
 		p.Diag().Errorf(errors.ErrorIllegalMufileSyntax.At(doc), err)
-		// TODO: it would be great if we issued an error per issue found in the file with line/col numbers.
+		// TODO[marapongo/mu#14]: issue an error per issue found in the file with line/col numbers.
 		return nil
 	}
 

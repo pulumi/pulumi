@@ -8,7 +8,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-const version = "0.0.1" // TODO: a real auto-incrementing version number.
+const version = "0.0.1" // TODO[marapongo/mu#13]: a real auto-incrementing version number.
 
 func newVersionCmd() *cobra.Command {
 	return &cobra.Command{
