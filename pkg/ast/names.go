@@ -9,7 +9,7 @@ import (
 	"github.com/marapongo/mu/pkg/util"
 )
 
-// NameDelimiter is what delimits Namespace and Name parsed.
+// NameDelimiter is what delimits Namespace and Name parts.
 const NameDelimiter = "/"
 
 var nameRegexp = regexp.MustCompile(nameRegexps)
