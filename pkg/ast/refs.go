@@ -8,15 +8,6 @@ import (
 	"strings"
 )
 
-// DefaultRefProto is the default ref protocol.
-const DefaultRefProto = "https://"
-
-// DefaultRefBase is the base part used if a Ref doesn't specify one explicitly.
-const DefaultRefBase = "hub.mu.com/"
-
-// DefaultRefVersion is the default ref version if none is specified.
-const DefaultRefVersion = LatestVersion
-
 // RefParts parses the parts of a Ref into a data structure for convenient access.
 func (r Ref) Parse() (RefParts, error) {
 	s := string(r)
@@ -24,9 +15,7 @@ func (r Ref) Parse() (RefParts, error) {
 
 	// Look for the leading protocol, if any.
 	protoEnd := strings.Index(s, "://")
-	if protoEnd == -1 {
-		parsed.Proto = DefaultRefProto
-	} else {
+	if protoEnd != -1 {
 		// Remember it and then strip it off for subsequent parsing.
 		parsed.Proto = s[:protoEnd+3]
 		s = s[protoEnd+3:]
@@ -34,9 +23,7 @@ func (r Ref) Parse() (RefParts, error) {
 
 	// Strip off the version first, so looking for dots doesn't get confused.
 	verIndex := strings.Index(s, "@")
-	if verIndex == -1 {
-		parsed.Version = DefaultRefVersion
-	} else {
+	if verIndex != -1 {
 		parsed.Version = VersionSpec(s[verIndex+1:])
 		if err := parsed.Version.Check(); err != nil {
 			return parsed, errors.New("Illegal version spec: " + err.Error())
@@ -46,12 +33,9 @@ func (r Ref) Parse() (RefParts, error) {
 
 	// Now look to see if there is a dot, indicating a base part.
 	dotIndex := strings.Index(s, ".")
-	if dotIndex == -1 {
-		// No base seems to be here; populate it with the default ref base.
-		// TODO(joe): this might be questionable; e.g., domain-less hosts will require a trailing period.
-		parsed.Base = DefaultRefBase
-	} else {
+	if dotIndex != -1 {
 		// A base exists; look for a slash (indicating the name), and capture everything up to it (including it).
+		// TODO(joe): this might be questionable; e.g., domain-less hosts will require a trailing period.
 		slashIndex := strings.Index(s, NameDelimiter)
 		if slashIndex == -1 {
 			return parsed, errors.New("Expected a name to follow the base URL")
@@ -77,6 +61,34 @@ type RefParts struct {
 
 var _ fmt.Stringer = RefParts{} // compile-time assertion that RefParts implements Stringer.
 
+// DefaultRefProto is the default ref protocol.
+const DefaultRefProto = "https://"
+
+// DefaultRefBase is the base part used if a Ref doesn't specify one explicitly.
+const DefaultRefBase = "hub.mu.com/"
+
+// DefaultRefVersion is the default ref version if none is specified.
+const DefaultRefVersion = LatestVersion
+
+// Defaults replaces any empty parts of the RefParts with their default values.
+func (r RefParts) Defaults() RefParts {
+	d := r
+	if d.Proto == "" {
+		d.Proto = DefaultRefProto
+	}
+	if d.Base == "" {
+		d.Base = DefaultRefBase
+	}
+	if string(d.Version) == "" {
+		d.Version = DefaultRefVersion
+	}
+	return d
+}
+
 func (r RefParts) String() string {
-	return fmt.Sprintf("%v://%v%v@%v", r.Proto, r.Base, r.Name, r.Version)
+	s := r.Proto + r.Base + string(r.Name)
+	if string(r.Version) != "" {
+		s += "@" + string(r.Version)
+	}
+	return s
 }
