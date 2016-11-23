@@ -21,9 +21,9 @@ var ErrorSymbolAlreadyExists = &diag.Diag{
 	Message: "A symbol already exists with the name '%v'",
 }
 
-var ErrorTypeNotFound = &diag.Diag{
+var ErrorStackTypeNotFound = &diag.Diag{
 	ID:      503,
-	Message: "Type '%v' was not found",
+	Message: "Stack type '%v' was not found; has it been installed?",
 }
 
 var ErrorNonAbstractStacksMustDefineServices = &diag.Diag{

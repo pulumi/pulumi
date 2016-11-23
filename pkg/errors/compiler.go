@@ -26,11 +26,6 @@ var ErrorIO = &diag.Diag{
 	Message: "An IO error occurred during the current operation: %v",
 }
 
-var ErrorMissingDependency = &diag.Diag{
-	ID:      104,
-	Message: "The dependency '%v' could not be found; has it been installed?",
-}
-
 var ErrorUnrecognizedCloudArch = &diag.Diag{
 	ID:      120,
 	Message: "The cloud architecture '%v' was not recognized",

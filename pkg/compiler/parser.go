@@ -57,10 +57,14 @@ func (p *parser) ParseWorkspace(doc *diag.Document) *ast.Workspace {
 		return nil
 	}
 
+	// Remember that this workspace came from this document.
+	w.Doc = doc
+
 	glog.V(3).Infof("Workspace settings %v parsed: %v clusters; %v deps",
 		doc.File, len(w.Clusters), len(w.Dependencies))
 	return &w
 }
+
 func (p *parser) ParseStack(doc *diag.Document) *ast.Stack {
 	glog.Infof("Parsing Mufile: %v (len(body)=%v)", doc.File, len(doc.Body))
 	if glog.V(2) {
@@ -80,6 +84,9 @@ func (p *parser) ParseStack(doc *diag.Document) *ast.Stack {
 		// TODO: it would be great if we issued an error per issue found in the file with line/col numbers.
 		return nil
 	}
+
+	// Remember that this stack came from this document.
+	stack.Doc = doc
 
 	glog.V(3).Infof("Mufile %v stack parsed: %v name; %v publics; %v privates",
 		doc.File, stack.Name, len(stack.Services.Public), len(stack.Services.Private))

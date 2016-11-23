@@ -4,7 +4,6 @@ package core
 
 import (
 	"github.com/marapongo/mu/pkg/ast"
-	"github.com/marapongo/mu/pkg/diag"
 )
 
 // Backend represents the last phase during compilation; it handles code-generation and emission.
@@ -16,8 +15,6 @@ type Backend interface {
 
 // Compiland contains all of settings passed from front-end to back-end compiler phases.
 type Compiland struct {
-	Cluster      *ast.Cluster          // the target cluster.
-	Doc          *diag.Document        // the document from which the root stack came.
-	Stack        *ast.Stack            // the root stack to compile.
-	Dependencies ast.BoundDependencies // the whole transitive closure of dependency stacks.
+	Cluster *ast.Cluster // the target cluster.
+	Stack   *ast.Stack   // the root stack to compile.
 }

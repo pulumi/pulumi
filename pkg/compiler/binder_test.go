@@ -132,7 +132,7 @@ func TestTypeNotFound1(t *testing.T) {
 	sink := buildNoCodegen("testdata", "binder", "bad__type_not_found__1")
 
 	// Check that the compiler complained about the type missisng.
-	d := errors.ErrorTypeNotFound
+	d := errors.ErrorStackTypeNotFound
 	assert.Equal(t, 1, sink.Errors(), "expected a single error")
 	assert.Equal(t,
 		fmt.Sprintf("%v: %v%v: %v: %v\n",
@@ -145,7 +145,7 @@ func TestTypeNotFound2(t *testing.T) {
 	sink := buildNoCodegen("testdata", "binder", "bad__type_not_found__2")
 
 	// Check that the compiler complained about the type missisng.
-	d := errors.ErrorTypeNotFound
+	d := errors.ErrorStackTypeNotFound
 	assert.Equal(t, 1, sink.Errors(), "expected a single error")
 	assert.Equal(t,
 		fmt.Sprintf("%v: %v%v: %v: %v\n",

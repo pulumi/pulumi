@@ -13,6 +13,10 @@
 // Of course, during lowering, sometimes nodes will be transformed to new types entirely, allocating entirely anew.
 package ast
 
+import (
+	"github.com/marapongo/mu/pkg/diag"
+)
+
 // Name is an identifier.  Names may be optionally fully qualified, using the delimiter `/`, or simple.  Each element
 // conforms to the regex [A-Za-z_][A-Za-z0-9_]*.  For example, `marapongo/mu/stack`.
 type Name string
@@ -41,6 +45,8 @@ type Workspace struct {
 
 	Clusters     Clusters     `json:"clusters,omitempty"` // an optional set of predefined target clusters.
 	Dependencies Dependencies `json:"dependencies,omitempty"`
+
+	Doc *diag.Document `json:"-"` // the document from which this came.
 }
 
 // Clusters is a map of target names to metadata about those targets.
@@ -78,11 +84,13 @@ type Stack struct {
 	License     string   `json:"license,omitempty"`     // an optional license governing legal uses of this package.
 	Clusters    Clusters `json:"clusters,omitempty"`    // an optional set of predefined target clusters.
 
-	Base       Name       `json:"base,omitempty"`     // an optional base Stack type.
+	Base       Ref        `json:"base,omitempty"`     // an optional base Stack type.
 	Abstract   bool       `json:"abstract,omitempty"` // true if this stack is "abstract" (uninstantiable).
 	Properties Properties `json:"properties,omitempty"`
 	Services   Services   `json:"services,omitempty"`
 
+	Predef            bool              `json:"-"` // true if this is a predefined type (treated specially).
+	Doc               *diag.Document    `json:"-"` // the document from which this came.
 	BoundBase         *Stack            `json:"-"` // base, if available, is bound during semantic analysis.
 	BoundDependencies BoundDependencies `json:"-"` // dependencies are bound during semantic analysis.
 }
@@ -115,8 +123,8 @@ const (
 	PropertyTypeService              = "service" // an untyped service reference; the runtime manifestation is a URL.
 )
 
-// BoundDependencies contains a list of dependencies, populated during semantic analysis.
-type BoundDependencies []BoundDependency
+// BoundDependencies contains a map of dependencies, populated during semantic analysis.
+type BoundDependencies map[Ref]BoundDependency
 
 // BoundDependency contains information about a binding.
 type BoundDependency struct {

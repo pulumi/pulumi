@@ -6,6 +6,8 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+
+	"github.com/marapongo/mu/pkg/util"
 )
 
 // RefParts parses the parts of a Ref into a data structure for convenient access.
@@ -51,6 +53,13 @@ func (r Ref) Parse() (RefParts, error) {
 	return parsed, nil
 }
 
+// MustParse parses the parts of a Ref into a RefParts, failing fast if parsing fails.
+func (r Ref) MustParse() RefParts {
+	p, err := r.Parse()
+	util.AssertMF(err == nil, "Expected a nil error from Ref.Parse; got %v", err)
+	return p
+}
+
 // RefParts represents a parsed Ref structure.
 type RefParts struct {
 	Proto   string      // the protocol (e.g., "https://").
@@ -83,6 +92,10 @@ func (r RefParts) Defaults() RefParts {
 		d.Version = DefaultRefVersion
 	}
 	return d
+}
+
+func (r RefParts) Ref() Ref {
+	return Ref(r.String())
 }
 
 func (r RefParts) String() string {
