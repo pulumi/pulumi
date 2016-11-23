@@ -33,7 +33,7 @@ const InstallRootLibdir = "lib"
 
 // DefaultInstallRoot is where Mu is installed by default, if the envvar is missing.
 // TODO: support Windows.
-const DefaultInstallRoot = "/usr/lib/mu"
+const DefaultInstallRoot = "/usr/local/mu"
 
 // InstallRoot returns Mu's installation location.  This is controlled my the MUROOT envvar.
 func InstallRoot() string {
