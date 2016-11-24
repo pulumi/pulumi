@@ -1,0 +1,61 @@
+syntax = "proto3";
+
+package marapongo.mu.x.bucket;
+
+service Bucket {
+    // TODO: consider an AppendObject API.
+    // TODO: consider range-based read and write APIs.
+    rpc CopyObject(CopyObjectRequest) returns (CopyObjectResponse) {}
+    rpc DeleteObject(DeleteObjectRequest) returns (DeleteObjectResponse) {}
+    rpc GetObject(GetObjectRequest) returns (GetObjectResponse) {}
+    rpc GetObjectBlob(GetObjectBlobRequest) returns (stream GetObjectBlobResponse) {}
+    rpc PutObject(stream PutObjectRequest) returns (PutObjectResponse) {}
+    rpc ListObjects(ListObjectsRequest) returns (stream ListObjectsResponse) {}
+}
+
+message CopyObjectRequest {
+    string from = 1;
+    string to = 2;
+}
+
+message CopyObjectResponse {
+}
+
+message DeleteObjectRequest {
+    string name = 1;
+}
+
+message DeleteObjectResponse {
+}
+
+message GetObjectRequest {
+    string name = 1;
+}
+
+message GetObjectResponse {
+    // TODO: some interesting Object metadata.
+}
+
+message GetObjectBlobRequest {
+    string name = 1;
+}
+
+message GetObjectBlobResponse {
+    bytes chunk = 1; // chunk contains a sequence of bytes, in order, represent the object's blob.
+}
+
+message PutObjectRequest {
+    bytes chunk = 1; // chunk is the data stream to put; the first chunk contains the UTF-8 encoded objectName.
+}
+
+message PutObjectResponse {
+}
+
+message ListObjectsRequest {
+    string prefix = 1;
+}
+
+message ListObjectsResponse {
+    string name = 1;
+}
+
