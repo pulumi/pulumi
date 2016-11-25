@@ -12,3 +12,5 @@ import:
 - package: github.com/blang/semver
 - package: github.com/satori/go.uuid
 - package: github.com/mitchellh/go-homedir
+- package: github.com/Masterminds/sprig
+- package: github.com/aokoli/goutils

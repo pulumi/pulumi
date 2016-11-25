@@ -17,7 +17,7 @@ type MuExtensionService struct {
 func AsMuExtensionService(svc *ast.Service) *MuExtensionService {
 	util.AssertM(svc.BoundType == MuExtension, "ServiceToMuExtension expects a bound MuExtension service type")
 
-	p, ok := svc.Extra["provider"]
+	p, ok := svc.Props["provider"]
 	util.AssertM(ok, "MuExtension is expected to have a required 'provider' property")
 	prov, ok := p.(string)
 	util.AssertMF(ok, "MuExtension's 'provider' property is expected to be of type 'string'; got %v", p)

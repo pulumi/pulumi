@@ -137,10 +137,13 @@ const (
 // BoundDependencies contains a map of dependencies, populated during semantic analysis.
 type BoundDependencies map[Ref]BoundDependency
 
-// BoundDependency contains information about a binding.
+// BoundDependency contains information about a binding.  In the event that a simple type binding is discovered, such
+// as a primitive type, Stack will be non-nil.  In more complex cases, however, where 3rd party stacks are involed and
+// template expansion might be needed, Stack will remain nil and Doc instead will become non-nil.
 type BoundDependency struct {
-	Ref   RefParts // the reference used to bind to this dependency.
-	Stack *Stack   // the bound stack for this dependency.
+	Ref   RefParts       // the reference used to bind to this dependency.
+	Stack *Stack         // the bound stack for this dependency (for simple cases).
+	Doc   *diag.Document // the document containing this dependency (for complex cases).
 }
 
 // Services is a list of public and private service references, keyed by name.
@@ -165,8 +168,8 @@ type ServiceMap map[Name]Service
 type Service struct {
 	Node
 
-	Type  Ref                    `json:"type,omitempty"` // an explicit type; if missing, the name is used.
-	Extra map[string]interface{} `json:"-"`              // all of the "extra" properties, other than what is above.
+	Type  Ref         `json:"type,omitempty"` // an explicit type; if missing, the name is used.
+	Props PropertyBag `json:"-"`              // all of the "extra" properties, other than what is above.
 
 	Name   Name `json:"-"` // a friendly name; decorated post-parsing, since it is contextual.
 	Public bool `json:"-"` // true if this service is publicly exposed; also decorated post-parsing.

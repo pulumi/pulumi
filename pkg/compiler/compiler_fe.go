@@ -25,7 +25,9 @@ func (c *compiler) buildDocumentFE(w workspace.W, doc *diag.Document) *ast.Stack
 		// Store the parsed AST on the workspace object itself.
 		*w.Settings() = *p.ParseWorkspace(doc)
 	}
-	stack := p.ParseStack(doc)
+
+	// TODO[marapongo/mu#7]: for top-level stacks with arguments, they need to be supplied at the CLI.
+	stack := p.ParseStack(doc, nil)
 
 	// If any parser errors occurred, bail now to prevent needlessly obtuse error messages.
 	if !p.Diag().Success() {

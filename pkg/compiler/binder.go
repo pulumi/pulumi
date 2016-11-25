@@ -91,6 +91,12 @@ func (b *binder) LookupStack(nm ast.Name) (*Symbol, *ast.Stack) {
 	return b.scope.LookupStack(nm)
 }
 
+// LookupDocument binds a name to a Document type.
+func (b *binder) LookupDocument(nm ast.Name) (*Symbol, *diag.Document) {
+	util.AssertM(b.scope != nil, "Unexpected empty binding scope during LookupDocument")
+	return b.scope.LookupDocument(nm)
+}
+
 // LookupSymbol binds a name to any kind of Symbol.
 func (b *binder) LookupSymbol(nm ast.Name) *Symbol {
 	util.AssertM(b.scope != nil, "Unexpected empty binding scope during LookupSymbol")
@@ -125,6 +131,16 @@ func (s *scope) LookupStack(nm ast.Name) (*Symbol, *ast.Stack) {
 	sym := s.LookupSymbol(nm)
 	if sym != nil && sym.Kind == SymKindStack {
 		return sym, sym.Real.(*ast.Stack)
+	}
+	// TODO: we probably need to issue an error for this condition (wrong expected symbol type).
+	return nil, nil
+}
+
+// LookupDocument binds a name to a Document type.
+func (s *scope) LookupDocument(nm ast.Name) (*Symbol, *diag.Document) {
+	sym := s.LookupSymbol(nm)
+	if sym != nil && sym.Kind == SymKindDocument {
+		return sym, sym.Real.(*diag.Document)
 	}
 	// TODO: we probably need to issue an error for this condition (wrong expected symbol type).
 	return nil, nil
@@ -313,9 +329,8 @@ func (p *binderPhase2) VisitStack(stack *ast.Stack) {
 
 	// Ensure the name of the base is in scope, and remember the binding information.
 	if stack.Base != "" {
-		nm := stack.Base.MustParse().Name
-		_, stack.BoundBase = p.b.LookupStack(nm)
-		util.AssertMF(stack.BoundBase != nil, "Expected 1st pass of binding to guarantee %v exists", nm)
+		// TODO[marapongo/mu#7]: we need to plumb construction properties for this stack.
+		stack.BoundBase = p.ensureStackType(stack.Base, nil)
 	}
 
 	// Non-abstract Stacks must declare at least one Service.
@@ -336,7 +351,33 @@ func (p *binderPhase2) VisitService(pstack *ast.Stack, parent *ast.Services, nam
 	// expressions, intra stack references, cycles, and so forth, will have been taken care of by this earlier phase.
 	util.AssertMF(svc.Type != "",
 		"Expected all Services to have types in binding phase2; %v is missing one", svc.Name)
-	nm := svc.Type.MustParse().Name
-	_, svc.BoundType = p.b.LookupStack(nm)
-	util.AssertMF(svc.BoundType != nil, "Expected 1st pass of binding to guarantee %v exists", nm)
+	svc.BoundType = p.ensureStackType(svc.Type, svc.Props)
+}
+
+func (p *binderPhase2) ensureStackType(ref ast.Ref, props ast.PropertyBag) *ast.Stack {
+	// There are two possibilities.  The first is that a type resolves to an *ast.Stack.  That's simple, we just fetch
+	// and return it.  The second is that a type resolves to a *diag.Document.  That's more complex, as we need to
+	// actually parse the stack from a document, supplying properties, etc., for template expansion.
+	nm := ref.MustParse().Name
+
+	_, stack := p.b.LookupStack(nm)
+	if stack != nil {
+		return stack
+	}
+
+	_, doc := p.b.LookupDocument(nm)
+	if doc != nil {
+		// If we got this far, we've loaded up the dependency's Mufile; parse it and return the result.  Note that
+		// this will be processed later on in semantic analysis, to ensure semantic problems are caught.
+		p := NewParser(p.b.c)
+		stack := p.ParseStack(doc, props)
+		if p.Diag().Success() {
+			return stack
+		} else {
+			return nil
+		}
+	}
+
+	util.FailMF("Expected 1st pass of binding to guarantee type %v exists (%v)", ref, nm)
+	return nil
 }

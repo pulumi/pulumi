@@ -25,6 +25,8 @@ type Marshaler interface {
 	Unmarshal(data []byte, v interface{}) error
 }
 
+var JSON Marshaler = &jsonMarshaler{}
+
 type jsonMarshaler struct {
 }
 
@@ -37,6 +39,8 @@ func (m *jsonMarshaler) Unmarshal(data []byte, v interface{}) error {
 	//     set aside an officially sanctioned area in the metadata for extensibility by 3rd parties.
 	return json.Unmarshal(data, v)
 }
+
+var YAML Marshaler = &yamlMarshaler{}
 
 type yamlMarshaler struct {
 }

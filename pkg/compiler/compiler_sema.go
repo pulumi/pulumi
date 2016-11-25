@@ -41,9 +41,12 @@ func (c *compiler) bindStack(b Binder, w workspace.W, stack *ast.Stack) {
 	for _, ref := range ast.StableBoundDependencies(stack.BoundDependencies) {
 		dep := stack.BoundDependencies[ref]
 		if dep.Stack == nil {
+			util.Assert(dep.Doc == nil)
 			// Only resolve dependencies that are currently unknown.  This will exlude built-in types that have already
-			// been bound to a stack during the first phase of binding.
-			dep.Stack = c.resolveDependency(w, stack, ref, dep.Ref)
+			// been bound to a stack during the first phase of binding.  Note that we don't actually parse and perform
+			// template substitution here; instead, we remember the document and let the binder do this, since it has
+			// all of the information necessary to create a unique Stack per-PropertyBag used to instantiate it.
+			dep.Doc = c.resolveDependency(w, stack, ref, dep.Ref)
 			stack.BoundDependencies[ref] = dep
 		}
 	}
@@ -56,13 +59,13 @@ func (c *compiler) bindStack(b Binder, w workspace.W, stack *ast.Stack) {
 }
 
 // resolveDependency loads up the target dependency from the current workspace using the stack resolution rules.
-func (c *compiler) resolveDependency(w workspace.W, stack *ast.Stack, ref ast.Ref, dep ast.RefParts) *ast.Stack {
+func (c *compiler) resolveDependency(w workspace.W, stack *ast.Stack, ref ast.Ref, dep ast.RefParts) *diag.Document {
 	glog.V(3).Infof("Loading Stack %v dependency %v", stack.Name, dep)
 
 	// First, see if we've already loaded this dependency (anywhere in any Stacks).  If yes, reuse it.
 	// TODO: check for version mismatches.
-	if stack, exists := c.deps[ref]; exists {
-		return stack
+	if doc, exists := c.deps[ref]; exists {
+		return doc
 	}
 
 	// There are many places a dependency could come from.  Consult the workspace for a list of those paths.  It will
@@ -79,17 +82,9 @@ func (c *compiler) resolveDependency(w workspace.W, stack *ast.Stack, ref ast.Re
 				return nil
 			}
 
-			// If we got this far, we've loaded up the dependency's Mufile; parse it and return the result.  Note that
-			// this will be processed later on in semantic analysis, to ensure semantic problems are caught.
-			p := NewParser(c)
-			stack := p.ParseStack(doc)
-			if !c.Diag().Success() {
-				return nil
-			}
-
 			// Memoize this in the compiler's cache and return it.
-			c.deps[ref] = stack
-			return stack
+			c.deps[ref] = doc
+			return doc
 		}
 	}
 

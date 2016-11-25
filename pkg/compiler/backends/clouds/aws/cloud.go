@@ -203,7 +203,7 @@ func (c *awsCloud) genMuExtensionServiceTemplate(comp core.Compiland, stack *ast
 		// The AWS CF extension provider simply creates a CF resource out of the provided template.  First, we extract
 		// the resource type, which is simply the AWS CF resource type name to emit directly, unmanipulated.
 		var resType string
-		r, ok := svc.Extra[CloudFormationExtensionProviderResource]
+		r, ok := svc.Props[CloudFormationExtensionProviderResource]
 		if ok {
 			resType, ok = r.(string)
 			if !ok {
@@ -221,7 +221,7 @@ func (c *awsCloud) genMuExtensionServiceTemplate(comp core.Compiland, stack *ast
 		resProps := make(cfResourceProperties)
 
 		for _, name := range ast.StableProperties(stack.Properties) {
-			if p, has := svc.Service.Extra[name]; has {
+			if p, has := svc.Service.Props[name]; has {
 				pname := makeAWSFriendlyName(name, true)
 				resProps[pname] = p
 			}

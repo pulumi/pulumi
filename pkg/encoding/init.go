@@ -12,11 +12,11 @@ func init() {
 	for _, ext := range Exts {
 		switch ext {
 		case ".json":
-			Marshalers[ext] = &jsonMarshaler{}
+			Marshalers[ext] = JSON
 		case ".yml":
 			fallthrough
 		case ".yaml":
-			Marshalers[ext] = &yamlMarshaler{}
+			Marshalers[ext] = YAML
 		default:
 			util.FailMF("No Marshaler available for MufileExt %v", ext)
 		}

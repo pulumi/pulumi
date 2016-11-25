@@ -20,3 +20,8 @@ var ErrorIllegalWorkspaceSyntax = &diag.Diag{
 	ID:      152,
 	Message: "A syntax error was detected while parsing workspace settings: %v",
 }
+
+var ErrorBadTemplate = &diag.Diag{
+	ID:      153,
+	Message: "A template error occurred: %v",
+}

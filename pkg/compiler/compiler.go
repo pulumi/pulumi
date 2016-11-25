@@ -32,7 +32,7 @@ type Compiler interface {
 type compiler struct {
 	ctx  *core.Context
 	opts Options
-	deps map[ast.Ref]*ast.Stack // a cache of mapping names to loaded dependencies.
+	deps map[ast.Ref]*diag.Document // a cache of mapping names to loaded dependencies.
 }
 
 // NewCompiler creates a new instance of the Mu compiler, with the given initialization settings.
@@ -40,7 +40,7 @@ func NewCompiler(opts Options) Compiler {
 	return &compiler{
 		ctx:  &core.Context{},
 		opts: opts,
-		deps: make(map[ast.Ref]*ast.Stack),
+		deps: make(map[ast.Ref]*diag.Document),
 	}
 }
 

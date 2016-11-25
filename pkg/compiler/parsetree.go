@@ -115,7 +115,7 @@ func (a *ptAnalyzer) untypedServiceToTyped(parent *ast.Stack, name ast.Name, pub
 		Name:   name,
 		Type:   ast.Ref(typ),
 		Public: public,
-		Extra:  bag,
+		Props:  bag,
 	}
 }
 
