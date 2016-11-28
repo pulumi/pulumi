@@ -75,6 +75,11 @@ func (r *renderer) standardTemplateFuncs() template.FuncMap {
 	//     some that we don't actually want to offer.
 	funcs := sprig.TxtFuncMap()
 
+	// Panic simply quits the template processing by injecting an ordinary error into it.
+	funcs["panic"] = func(name string, args ...interface{}) (string, error) {
+		return "", fmt.Errorf(name, args...)
+	}
+
 	// Include textually includes the given document, also expanding templates.
 	funcs["include"] = func(name string) (string, error) {
 		// Attempt to load the target file so that we may expand templates within it.
