@@ -11,7 +11,9 @@ import (
 
 	"github.com/Masterminds/sprig"
 
-	"github.com/marapongo/mu/pkg/compiler/core"
+	"github.com/marapongo/mu/pkg/ast"
+	"github.com/marapongo/mu/pkg/compiler/backends/clouds"
+	"github.com/marapongo/mu/pkg/compiler/backends/schedulers"
 	"github.com/marapongo/mu/pkg/diag"
 	"github.com/marapongo/mu/pkg/encoding"
 )
@@ -19,34 +21,35 @@ import (
 // RenderTemplates performs standard template substitution on the given buffer using the given properties object.
 // TODO[marapongo/mu#7]: render many templates at once so they can share code.
 // TODO[marapongo/mu#7]: support configuration sections, etc., that can also contain templates.
-func RenderTemplates(doc *diag.Document, ctx *core.Context) (*diag.Document, error) {
+func RenderTemplates(doc *diag.Document, ctx *Context) (*diag.Document, error) {
 	r, err := newRenderer(doc, ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	// Now actually render the template, supplying the context object as the data argument.
-	b := bytes.NewBuffer(nil)
-	if err = r.T.Execute(b, ctx); err != nil {
+	// Now actually render the template.
+	b, err := r.Render()
+	if err != nil {
 		return nil, err
 	}
-	fmt.Printf("==\n%v\n", b.String())
 
 	return &diag.Document{
 		File: doc.File,
-		Body: b.Bytes(),
+		Body: b,
 	}, nil
 }
 
 type renderer struct {
 	T   *template.Template
 	doc *diag.Document
-	ctx *core.Context
+	ctx *renderContext
 }
 
-func newRenderer(doc *diag.Document, ctx *core.Context) (*renderer, error) {
-	r := &renderer{doc: doc, ctx: ctx}
+func newRenderer(doc *diag.Document, ctx *Context) (*renderer, error) {
+	// Create a new renderer; note that the template will be set last.
+	r := &renderer{doc: doc, ctx: newRenderContext(ctx)}
 
+	// Now create the template; this is a multi-step process.
 	t := template.New(doc.File)
 
 	// We will issue errors if the template tries to use a key that doesn't exist.
@@ -65,6 +68,15 @@ func newRenderer(doc *diag.Document, ctx *core.Context) (*renderer, error) {
 
 	r.T = t
 	return r, nil
+}
+
+// Render renders the root template and returns the result, or an error, whichever occurs.
+func (r *renderer) Render() ([]byte, error) {
+	b := bytes.NewBuffer(nil)
+	if err := r.T.Execute(b, r.ctx); err != nil {
+		return nil, err
+	}
+	return b.Bytes(), nil
 }
 
 // standardTemplateFuncs returns a new FuncMap containing all of the functions available to templates.  It is a
@@ -113,4 +125,27 @@ func (r *renderer) standardTemplateFuncs() template.FuncMap {
 	}
 
 	return funcs
+}
+
+// renderContext is a "template-friendly" version of the Context object.  Namely, certain structured types are projected
+// as strings for easier usage within markup templates.
+type renderContext struct {
+	Arch       renderArch
+	Properties ast.PropertyBag
+}
+
+// renderArch is just like a normal Arch, except it has been expanded into strings for easier usage.
+type renderArch struct {
+	Cloud     string
+	Scheduler string
+}
+
+func newRenderContext(ctx *Context) *renderContext {
+	return &renderContext{
+		Arch: renderArch{
+			Cloud:     clouds.Names[ctx.Arch.Cloud],
+			Scheduler: schedulers.Names[ctx.Arch.Scheduler],
+		},
+		Properties: ctx.Properties,
+	}
 }

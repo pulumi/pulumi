@@ -20,7 +20,7 @@ type Compiler interface {
 	core.Phase
 
 	// Context returns the current compiler context.
-	Context() *core.Context
+	Context() *Context
 
 	// Build detects and compiles inputs from the given location, storing build artifacts in the given destination.
 	Build(inp string, outp string)
@@ -30,7 +30,7 @@ type Compiler interface {
 
 // compiler is the canonical implementation of the Mu compiler.
 type compiler struct {
-	ctx  *core.Context
+	ctx  *Context
 	opts Options
 	deps map[ast.Ref]*diag.Document // a cache of mapping names to loaded dependencies.
 }
@@ -38,13 +38,13 @@ type compiler struct {
 // NewCompiler creates a new instance of the Mu compiler, with the given initialization settings.
 func NewCompiler(opts Options) Compiler {
 	return &compiler{
-		ctx:  &core.Context{},
+		ctx:  &Context{},
 		opts: opts,
 		deps: make(map[ast.Ref]*diag.Document),
 	}
 }
 
-func (c *compiler) Context() *core.Context {
+func (c *compiler) Context() *Context {
 	return c.ctx
 }
 
