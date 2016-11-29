@@ -84,6 +84,7 @@ This is a bag of property names to property values, each of which has the follow
 * `description`: An optional long-form description of the property.
 * `default`: A default value to be supplied if the caller doesn't supply one.
 * `optional`: If `true`, this property can be omitted at creation time.
+* `readonly`: If `true`, this property cannot be set on a resource after provisioning, without recreating it.
 
 For example:
 
@@ -92,6 +93,8 @@ For example:
             type: string
             description: The title of this thing.
             default: Anonymous
+
+### Types
 
 The set of types a property may take on are "JSON-like".  This includes simple primitives:
 
@@ -113,6 +116,8 @@ Complex structures can be described simply using objects with properties:
         id: number
         name: string
         value: object
+
+### Capability Types
 
 The most interesting feature here is the ability to request a "capability", or reference to another Service.  This
 provides a strongly typed and more formal way of expressing Service dependencies, in a way that the system can
@@ -138,8 +143,20 @@ Another example leverages the primitive `mu/volume` type to require a Service wh
 
     type: mu/volume
 
-Finally, note that anywhere inside of this Mufile, we may access the arguments supplied at Stack instantiation time
-using the Go template syntax mentioned earlier.  For example, `{{.args.tag.name}}`.
+Note that anywhere inside of this Mufile, we may access the arguments supplied at Stack instantiation time using the Go
+template syntax mentioned earlier.  For example, `{{.args.tag.name}}`.
+
+### Readonly Properties
+
+A readonly property is one that cannot be changed after provisioning a resource without replacing it.  This is often
+used by core "infrastructure" that cannot change certain properties after creation, for example, the data-center,
+virtual private cloud, or physical machine size.  Although the tools allow you to change these, the mental model is that
+of creating a "new" object, and wiring up all of its dependencies all over again.  As a result, the deployment process
+is more delicate, and may trigger a cascading recreation of many resources.
+
+TODO(joe): CloudFormation distinguishes between three modes: update w/out interruption, update w/ interruption, and
+replacement; I personally like the logical nature of readonly, however it's possible we should adopt something closer to
+it: http://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/using-cfn-updating-stacks-update-behaviors.html.
 
 ## Configuration
 

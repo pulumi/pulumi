@@ -117,6 +117,7 @@ type Property struct {
 	Description string       `json:"description,omitempty"` // an optional friendly description of the property.
 	Default     interface{}  `json:"default,omitempty"`     // an optional default value if the caller elides one.
 	Optional    bool         `json:"optional,omitempty"`    // true if may be omitted (inferred if a default value).
+	Readonly    bool         `json:"readonly,omitempty"`    // true if this property is readonly.
 
 	Name string `json:"-"` // name is decorated post-parsing, since it is contextual.
 }
