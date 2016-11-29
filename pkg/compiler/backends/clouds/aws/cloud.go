@@ -199,6 +199,9 @@ const CloudFormationExtensionProvider = "aws/cf"
 // CloudFormationExtensionProviderResource is the property that contains the AWS CF resource name (required).
 const CloudFormationExtensionProviderResource = "resource"
 
+// CloudFormationExtensionproviderProperties optionally contains the set of properties to auto-map (default is all).
+const CloudFormationExtensionProviderProperties = "properties"
+
 // CloudFormationExtensionproviderSkipProperties optionally contains a set of properties to skip in auto-mapping.
 const CloudFormationExtensionProviderSkipProperties = "skipProperties"
 
@@ -226,9 +229,21 @@ func (c *awsCloud) genMuExtensionServiceTemplate(comp core.Compiland, stack *ast
 			return nil
 		}
 
+		// See if there are a set of properties to auto-map; if missing, the default is "all of them."
+		var auto map[string]bool
+		if au, ok := svc.Props[CloudFormationExtensionProviderProperties]; ok {
+			if aups, ok := au.([]string); ok {
+				auto = make(map[string]bool)
+				for _, p := range aups {
+					auto[p] = true
+				}
+			}
+		}
+
 		// See if there are any properties to skip during auto-mapping.
-		skip := make(map[string]bool)
+		var skip map[string]bool
 		if sk, ok := svc.Props[CloudFormationExtensionProviderSkipProperties]; ok {
+			skip = make(map[string]bool)
 			if ska, ok := sk.([]string); ok {
 				for _, s := range ska {
 					skip[s] = true
@@ -239,7 +254,7 @@ func (c *awsCloud) genMuExtensionServiceTemplate(comp core.Compiland, stack *ast
 		// Next, we perform a straighforward auto-mapping from Mu stack properties to the equivalent CF properties.
 		resProps := make(cfResourceProperties)
 		for _, name := range ast.StableProperties(stack.Properties) {
-			if !skip[name] {
+			if (auto == nil || auto[name]) && (skip == nil || !skip[name]) {
 				if p, has := svc.Service.Props[name]; has {
 					pname := makeAWSFriendlyName(name, true)
 					resProps[pname] = p
