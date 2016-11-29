@@ -9,7 +9,7 @@ private:
     aws/ec2/subnet:
         name: {{.Cluster.Name}}-Subnet
         vpc: <vpc>
-        availabilityZone: "nine"
+        availabilityZone: {{.Cluster.Settings.AvailabilityZone}}
         cidrBlock: {{get "cidr"}}
     aws/ec2/internetGateway:
         name: {{.Cluster.Name}}-InternetGateway
