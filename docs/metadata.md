@@ -85,6 +85,7 @@ This is a bag of property names to property values, each of which has the follow
 * `default`: A default value to be supplied if the caller doesn't supply one.
 * `optional`: If `true`, this property can be omitted at creation time.
 * `readonly`: If `true`, this property cannot be set on a resource after provisioning, without recreating it.
+* `perturbs`: If `true`, this property can be set after provisioning, but doing so "perturbs" the live service.
 
 For example:
 
@@ -146,13 +147,17 @@ Another example leverages the primitive `mu/volume` type to require a Service wh
 Note that anywhere inside of this Mufile, we may access the arguments supplied at Stack instantiation time using the Go
 template syntax mentioned earlier.  For example, `{{.args.tag.name}}`.
 
-### Readonly Properties
+### Readonly and Perturbing Properties
 
 A readonly property is one that cannot be changed after provisioning a resource without replacing it.  This is often
 used by core "infrastructure" that cannot change certain properties after creation, for example, the data-center,
 virtual private cloud, or physical machine size.  Although the tools allow you to change these, the mental model is that
 of creating a "new" object, and wiring up all of its dependencies all over again.  As a result, the deployment process
 is more delicate, and may trigger a cascading recreation of many resources.
+
+A perturbing property is one that can be changed after provisioning, but doing so requires perturbing the existing
+service in a way that may interrupt the live service.  Modifying this isn't quite as impactful to the deployment process
+as modifying a readonly property, however it too must be treated with care.
 
 TODO(joe): CloudFormation distinguishes between three modes: update w/out interruption, update w/ interruption, and
 replacement; I personally like the logical nature of readonly, however it's possible we should adopt something closer to
