@@ -66,6 +66,11 @@ func (p *parser) ParseWorkspace(doc *diag.Document) *ast.Workspace {
 
 func (p *parser) ParseStack(doc *diag.Document, props ast.PropertyBag) *ast.Stack {
 	glog.Infof("Parsing Mufile: %v (len(body)=%v len(props)=%v)", doc.File, len(doc.Body), len(props))
+	if glog.V(7) {
+		for pk, pv := range props {
+			glog.V(7).Infof("Mufile %v property '%v'='%v'", doc.File, pk, pv)
+		}
+	}
 	if glog.V(2) {
 		defer func() {
 			glog.V(2).Infof("Parsing Mufile '%v' completed w/ %v warnings and %v errors",
