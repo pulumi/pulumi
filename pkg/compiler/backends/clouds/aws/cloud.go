@@ -4,6 +4,7 @@ package aws
 
 import (
 	"fmt"
+	"reflect"
 
 	"github.com/ghodss/yaml"
 
@@ -194,7 +195,15 @@ func (c *awsCloud) genMuAutoscalerServiceTemplate(comp core.Compiland, stack *as
 // CloudFormation templating as the output.  This happens after Mu templates have been expanded, allowing stack
 // properties, target environments, and so on, to be leveraged in the way these templates are generated.
 const CloudFormationExtensionProvider = "aws/cf"
+
+// CloudFormationExtensionProviderResource is the property that contains the AWS CF resource name (required).
 const CloudFormationExtensionProviderResource = "resource"
+
+// CloudFormationExtensionproviderSkipProperties optionally contains a set of properties to skip in auto-mapping.
+const CloudFormationExtensionProviderSkipProperties = "skipProperties"
+
+// CloudFormationExtensionproviderExtraProperties contains an optional set of arbitrary properties to merge.
+const CloudFormationExtensionProviderExtraProperties = "extraProperties"
 
 func (c *awsCloud) genMuExtensionServiceTemplate(comp core.Compiland, stack *ast.Stack,
 	svc *predef.MuExtensionService) cfResources {
@@ -217,13 +226,69 @@ func (c *awsCloud) genMuExtensionServiceTemplate(comp core.Compiland, stack *ast
 			return nil
 		}
 
-		// Next, we perform a straighforward mapping from Mu stack properties to the equivalent CF properties.
-		resProps := make(cfResourceProperties)
+		// See if there are any properties to skip during auto-mapping.
+		skip := make(map[string]bool)
+		if sk, ok := svc.Props[CloudFormationExtensionProviderSkipProperties]; ok {
+			if ska, ok := sk.([]string); ok {
+				for _, s := range ska {
+					skip[s] = true
+				}
+			}
+		}
 
+		// Next, we perform a straighforward auto-mapping from Mu stack properties to the equivalent CF properties.
+		resProps := make(cfResourceProperties)
 		for _, name := range ast.StableProperties(stack.Properties) {
-			if p, has := svc.Service.Props[name]; has {
-				pname := makeAWSFriendlyName(name, true)
-				resProps[pname] = p
+			if !skip[name] {
+				if p, has := svc.Service.Props[name]; has {
+					pname := makeAWSFriendlyName(name, true)
+					resProps[pname] = p
+				}
+			}
+		}
+
+		// Next, if there are any "extra" properties, merge them in with the existing map.
+		if ex, ok := svc.Props[CloudFormationExtensionProviderExtraProperties]; ok {
+			if extra, ok := ex.(ast.PropertyBag); ok {
+				for _, exname := range ast.StableKeys(extra) {
+					v := extra[exname]
+					// If there is an existing property, we can (possibly) merge it, for maps and slices (using some
+					// reflection voodoo).  For all other types, issue a warning.
+					if exist, has := resProps[exname]; has {
+						merged := true
+						switch reflect.TypeOf(exist).Kind() {
+						case reflect.Map:
+							// Merge two maps, provided both are maps; if any conflicting keys exist, bail out.
+							if reflect.TypeOf(v).Kind() == reflect.Map {
+								vm := reflect.ValueOf(v).Interface().(map[string]interface{})
+								em := reflect.ValueOf(exist).Interface().(map[string]interface{})
+								for k, v := range vm {
+									if _, has := em[k]; has {
+										merged = false
+									} else {
+										em[k] = v
+									}
+								}
+							} else {
+								merged = false
+							}
+						case reflect.Slice:
+							// Merge two slices, provided both are slices.
+							if reflect.TypeOf(v).Kind() == reflect.Slice {
+								reflect.AppendSlice(reflect.ValueOf(exist), reflect.ValueOf(v))
+							} else {
+								merged = false
+							}
+						default:
+							merged = false
+						}
+						if !merged {
+							c.Diag().Errorf(ErrorDuplicateExtraProperty.At(stack), exname)
+						}
+					} else {
+						resProps[exname] = v
+					}
+				}
 			}
 		}
 

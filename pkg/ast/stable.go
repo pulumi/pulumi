@@ -33,6 +33,15 @@ func StableBoundDependencies(ds BoundDependencies) []Ref {
 	return sorted
 }
 
+func StableKeys(ps PropertyBag) []string {
+	sorted := make([]string, 0, len(ps))
+	for p := range ps {
+		sorted = append(sorted, p)
+	}
+	sort.Strings(sorted)
+	return sorted
+}
+
 func StableProperties(ps Properties) []string {
 	sorted := make([]string, 0, len(ps))
 	for p := range ps {
