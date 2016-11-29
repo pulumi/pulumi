@@ -145,8 +145,8 @@ func (r *renderer) standardTemplateFuncs() template.FuncMap {
 
 	// Functions for interacting with maps.
 	funcs["has"] = func(m map[string]interface{}, k string) bool {
-		_, ok := m[k]
-		return ok
+		_, has := m[k]
+		return has
 	}
 
 	// Functions for interacting with the mutable set of template variables.
