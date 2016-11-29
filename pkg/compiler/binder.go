@@ -319,9 +319,14 @@ func (p *binderPhase2) VisitStack(stack *ast.Stack) {
 	// Populate the symbol table with this Stack's bound dependencies so that any type lookups are found.
 	util.Assert(stack.BoundDependencies != nil)
 	for _, nm := range ast.StableBoundDependencies(stack.BoundDependencies) {
+		var sym *Symbol
 		dep := stack.BoundDependencies[nm]
-		util.Assert(dep.Stack != nil)
-		sym := NewStackSymbol(dep.Ref.Name, dep.Stack)
+		if dep.Stack == nil {
+			util.Assert(dep.Doc != nil)
+			sym = NewDocumentSymbol(dep.Ref.Name, dep.Doc)
+		} else {
+			sym = NewStackSymbol(dep.Ref.Name, dep.Stack)
+		}
 		if !p.b.RegisterSymbol(sym) {
 			p.Diag().Errorf(errors.ErrorSymbolAlreadyExists.At(stack), dep.Ref.Name)
 		}
