@@ -40,8 +40,14 @@ func (c *compiler) buildDocumentFE(w workspace.W, doc *diag.Document) *ast.Stack
 	c.ctx = c.ctx.WithClusterArch(cl, a)
 	util.Assert(c.ctx.Cluster != nil)
 
-	// TODO[marapongo/mu#7]: for top-level stacks with arguments, they need to be supplied at the CLI.
-	stack := p.ParseStack(doc, make(ast.PropertyBag))
+	// Now parse the stack, using whatever args may have been supplied as the properties.
+	// TODO[marapongo/mu#7]: we want to strongly type the properties; e.g., a stack expecting a number should
+	//     get a number, etc.  However, to know that we must first have parsed the metadata for the target stack!
+	props := make(ast.PropertyBag)
+	for arg, val := range c.opts.Args {
+		props[arg] = val
+	}
+	stack := p.ParseStack(doc, props)
 
 	// If any parser errors occurred, bail now to prevent needlessly obtuse error messages.
 	if !p.Diag().Success() {

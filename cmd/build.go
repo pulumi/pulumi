@@ -28,23 +28,60 @@ func newBuildCmd() *cobra.Command {
 	var arch string
 	var cluster string
 	var cmd = &cobra.Command{
-		Use:   "build [source]",
+		Use:   "build [source] -- [args]",
 		Short: "Compile a Mu Stack",
 		Run: func(cmd *cobra.Command, args []string) {
+			flags := cmd.Flags()
+			ddash := flags.ArgsLenAtDash()
+
+			// If there's a --, we need to separate out the command args from the stack args.
+			var sargs []string
+			if ddash != -1 {
+				sargs = args[ddash:]
+				args = args[0:ddash]
+			}
+
+			// Fetch the input source directory.
 			inp := defaultInp
 			if len(args) > 0 {
 				inp = args[0]
 			}
-
 			abs, err := filepath.Abs(inp)
 			if err != nil {
 				glog.Fatal(err)
 			}
 
 			opts := compiler.DefaultOpts(abs)
+
+			// Set the cluster and architecture if specified.
 			opts.Cluster = cluster
 			setCloudArchOptions(arch, &opts)
 
+			// See if there are any arguments and, if so, accumulate them.
+			if len(sargs) > 0 {
+				opts.Args = make(map[string]string)
+				// TODO[marapongo/mu#7]: This is a very rudimentary parser.  We can and should do better.
+				for _, sarg := range sargs {
+					// Eat - or -- at the start.
+					if sarg[0] == '-' {
+						sarg = sarg[1:]
+						if sarg[0] == '-' {
+							sarg = sarg[1:]
+						}
+					}
+					// Now find an k=v, and split the k/v part.
+					if eq := strings.IndexByte(sarg, '='); eq != -1 {
+						opts.Args[sarg[:eq]] = sarg[eq+1:]
+					} else {
+						// No =, must be a boolean, just inject "true".
+						// TODO(joe): support --no-key style "false"s.
+						opts.Args[sarg] = "true"
+					}
+				}
+
+			}
+
+			// Now new up a compiler and actually perform the build.
 			mup := compiler.NewCompiler(opts)
 			mup.Build(abs, outp)
 		},
