@@ -5,9 +5,11 @@ properties:
     groupDescription:
         type: string
         description: Description of the security group.
+        readonly: true
     vpc:
         type: aws/ec2/vpc
         description: The VPC in which this security group resides.
+        readonly: true
     securityGroupEgress:
         type: any
         description: A list of Amazon EC2 security group egress rules.

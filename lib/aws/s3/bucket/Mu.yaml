@@ -10,6 +10,7 @@ properties:
         type: string
         description: A name for the bucket.  If not specified, AWS generates a unique physical ID and uses that as the
             bucket name.  The bucket name must contain only lowercase letters, numbers, periods (.), and dashes (-).
+        readonly: true
         optional: true
     corsConfiguration:
         type: any

@@ -6,9 +6,11 @@ properties:
         type: string
         description: The CIDR address block used for the destination match.  For example, `0.0.0.0/0`.  Routing
             decisions are based on the most specific match.
+        readonly: true
     routeTable:
         type: aws/ec2/routeTable
         description: The route table where the route will be added.
+        readonly: true
     # TODO(joe): the CF docs lump internetGateway and vpnGateway underneath the same gatewayId property.  And it is a
     #     requirement that you pass only one of gatewayId, instanceId, natGatewayId, networkInterfaceId, or
     #     vpcPeeringConnectionId.  Ideally we would leverage custom schema types for this.  In other words, we could

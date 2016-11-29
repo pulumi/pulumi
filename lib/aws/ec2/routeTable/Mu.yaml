@@ -6,6 +6,7 @@ properties:
     vpc:
         type: aws/ec2/vpc
         description: The VPC where the route table will be created.
+        readonly: true
     name:
         type: string
         description: An optional name for this route table resource.

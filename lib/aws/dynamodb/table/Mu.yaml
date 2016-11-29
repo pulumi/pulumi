@@ -5,17 +5,21 @@ properties:
     attributeDefinitions:
         type: any
         description: A list of objects that describe the key schema for the table and indexes.
+        readonly: true
     globalSecondaryIndexes:
         type: any
         description: Global secondary indexes to be created on the table.  You can create up to 5.
+        readonly: true
         optional: true
     keySchema:
         type: any
         description: Specifies the attributes that make up the primary key for the table.
+        readonly: true
     localSecondaryIndexes:
         type: any
         description: Local secondary indexes to be created on the table.  You can create up to 5.  Each index is
             scoped to a given hash key value.  The size of each hash key can be up to 10 gigabytes.
+        readonly: true
         optional: true
     provisionedThroughput:
         type: any
@@ -28,6 +32,7 @@ properties:
     tableName:
         type: string
         description: A name for the table.  If you don't specify a name, a unique physical ID is generated and used.
+        readonly: true
         optional: true
 services:
     public:

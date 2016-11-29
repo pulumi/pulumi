@@ -5,12 +5,15 @@ properties:
     cidrBlock:
         type: string
         description: The CIDR block that you want the subnet to cover (for example, `"10.0.0.0/24"`).
+        readonly: true
     vpc:
         type: aws/ec2/vpc
         description: The VPC on which you want to create the subnet.
+        readonly: true
     availabilityZone:
         type: string
         description: The availability zone in which you want the subnet.  Default: AWS selects a zone for you.
+        readonly: true
         optional: true
     mapPublicIpOnLaunch:
         type: bool

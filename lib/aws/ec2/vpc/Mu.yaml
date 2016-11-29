@@ -5,6 +5,7 @@ properties:
     cidrBlock:
         type: string
         description: The CIDR block you want the VPC to cover.  For example, "10.0.0.0/16".
+        readonly: true
     enableDnsSupport:
         type: bool
         description: Specifies whether DNS resolution is supported for the VPC.  If true, the Amazon DNS server resolves
@@ -22,6 +23,7 @@ properties:
         description: The allowed tenancy of instances launched into the VPC.  "default" indicates that instances can be
             launched with any tenancy, while "dedicated" indicates that any instance launched into the VPC
             automatically has dedicated tenancy, unless you launch it with the default tenancy.
+        readonly: true
         optional: true
     name:
         type: string
