@@ -91,9 +91,18 @@ func (r *renderer) standardTemplateFuncs() template.FuncMap {
 	//     some that we don't actually want to offer.
 	funcs := sprig.TxtFuncMap()
 
-	// Panic simply quits the template processing by injecting an ordinary error into it.
-	funcs["panic"] = func(name string, args ...interface{}) (string, error) {
-		return "", fmt.Errorf(name, args...)
+	// Panic abruptly quits the template processing by injecting an ordinary error into it.
+	funcs["panic"] = func(msg string, args ...interface{}) (string, error) {
+		return "", fmt.Errorf(msg, args...)
+	}
+
+	// Require checks that a condition is true, and errors out if it does not.  This is useful for validation tasks.
+	funcs["require"] = func(cond bool, msg string, args ...interface{}) (string, error) {
+		if cond {
+			return "", nil
+		} else {
+			return "", fmt.Errorf(msg, args...)
+		}
 	}
 
 	// Include textually includes the given document, also expanding templates.
