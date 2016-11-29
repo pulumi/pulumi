@@ -228,7 +228,7 @@ func (c *awsCloud) genMuExtensionServiceTemplate(comp core.Compiland, stack *ast
 			resType, ok = r.(string)
 			if !ok {
 				c.Diag().Errorf(errors.ErrorIncorrectExtensionPropertyType.At(stack),
-					CloudFormationExtensionProviderResource, "string")
+					CloudFormationExtensionProviderResource, reflect.TypeOf(r), "string")
 				return nil
 			}
 		} else {
@@ -247,7 +247,7 @@ func (c *awsCloud) genMuExtensionServiceTemplate(comp core.Compiland, stack *ast
 				}
 			} else {
 				c.Diag().Errorf(errors.ErrorIncorrectExtensionPropertyType.At(stack),
-					CloudFormationExtensionProviderProperties, "[]string")
+					CloudFormationExtensionProviderProperties, reflect.TypeOf(au), "[]string")
 			}
 		}
 
@@ -261,7 +261,7 @@ func (c *awsCloud) genMuExtensionServiceTemplate(comp core.Compiland, stack *ast
 				}
 			} else {
 				c.Diag().Errorf(errors.ErrorIncorrectExtensionPropertyType.At(stack),
-					CloudFormationExtensionProviderSkipProperties, "[]string")
+					CloudFormationExtensionProviderSkipProperties, reflect.TypeOf(sk), "[]string")
 			}
 		}
 
@@ -278,7 +278,7 @@ func (c *awsCloud) genMuExtensionServiceTemplate(comp core.Compiland, stack *ast
 
 		// Next, if there are any "extra" properties, merge them in with the existing map.
 		if ex, ok := svc.Props[CloudFormationExtensionProviderExtraProperties]; ok {
-			if extra, ok := ex.(ast.PropertyBag); ok {
+			if extra, ok := ex.(map[string]interface{}); ok {
 				for _, exname := range ast.StableKeys(extra) {
 					v := extra[exname]
 					// If there is an existing property, we can (possibly) merge it, for maps and slices (using some
@@ -318,6 +318,9 @@ func (c *awsCloud) genMuExtensionServiceTemplate(comp core.Compiland, stack *ast
 						resProps[exname] = v
 					}
 				}
+			} else {
+				c.Diag().Errorf(errors.ErrorIncorrectExtensionPropertyType.At(stack),
+					CloudFormationExtensionProviderExtraProperties, reflect.TypeOf(ex), "map[string]interface{}")
 			}
 		}
 
@@ -331,7 +334,7 @@ func (c *awsCloud) genMuExtensionServiceTemplate(comp core.Compiland, stack *ast
 				}
 			} else {
 				c.Diag().Errorf(errors.ErrorIncorrectExtensionPropertyType.At(stack),
-					CloudFormationExtensionProviderDependsOn, "[]string")
+					CloudFormationExtensionProviderDependsOn, reflect.TypeOf(do), "[]string")
 			}
 		}
 

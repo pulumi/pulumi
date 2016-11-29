@@ -18,5 +18,5 @@ var ErrorMissingExtensionProperty = &diag.Diag{
 
 var ErrorIncorrectExtensionPropertyType = &diag.Diag{
 	ID:      1001,
-	Message: "Property '%v' has the wrong type; expected '%v'",
+	Message: "Property '%v' has the wrong type; got '%v', expected '%v'",
 }
