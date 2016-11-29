@@ -53,25 +53,25 @@ services:
             properties: [ destinationCidrBlock ]
             extraProperties:
                 RouteTableId: {{.Properties.routeTable}}
-                {{if has .Properties "internetGateway"}}
+                {{if has .Properties "internetGateway" -}}
+                {{- require (has .Properties "vpcGatewayAttachment") "A gateway attachment is required" -}}
                 InternetGatewayId: {{.Properties.internetGateway}}
-                {{require has .Properties "vpcGatewayAttachment" "A gateway attachment is required"}}
-                {{else if has .Properties "vpnGateway"}}
+                {{- else if has .Properties "vpnGateway" -}}
+                {{- require (has .Properties "vpcGatewayAttachment") "A gateway attachment is required" -}}
                 VpnGatewayId: {{.Properties.vpnGateway}}
-                {{require has .Properties "vpcGatewayAttachment" "A gateway attachment is required"}}
-                {{else if has .Properties "instance"}}
+                {{- else if has .Properties "instance" -}}
                 InstanceId: {{.Properties.instance}}
-                {{else if has .Properties "natGateway"}}
+                {{- else if has .Properties "natGateway" -}}
                 NatGatewayId: {{.Properties.natGateway}}
-                {{else if has .Properties "networkInterface"}}
+                {{- else if has .Properties "networkInterface" -}}
                 NetworkInterfaceId: {{.Properties.networkInterface}}
-                {{else if has .Properties "vpcPeeringConnection"}}
+                {{- else if has .Properties "vpcPeeringConnection" -}}
                 VpcPeeringConnectionid: {{.Properties.vpcPeeringConnection}}
-                {{else}}
-                {{panic "Expected one of the gateway/target properties to have been set"}}
-                {{end}}
-            {{if has .Properties "vpcGatewayAttachment"}}
+                {{- else -}}
+                {{- panic "Expected one of the gateway/target properties to have been set" -}}
+                {{- end}}
+            {{if has .Properties "vpcGatewayAttachment" -}}
             dependsOn:
                 - {{.Properties.vpcGatewayAttachment}}
-            {{end}}
+            {{- end}}
 

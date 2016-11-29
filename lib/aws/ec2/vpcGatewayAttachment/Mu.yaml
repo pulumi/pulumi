@@ -22,12 +22,11 @@ services:
             skipProperties: [ vpc, internetGateway, vpnGateway ]
             extraProperties:
                 VpcId: {{.Properties.vpc}}
-                {{if has .Properties "internetGateway"}}
+                {{if has .Properties "internetGateway" -}}
                 InternetGatewayId: {{.Properties.internetGateway}}
-                {{else if has .Properties "vpnGateway"}}
+                {{- else if has .Properties "vpnGateway" -}}
                 VpnGatewayId: {{.Properties.vpnGateway}}
-                {{else}}
-                {{panic "Either an Internet or VPN gateway must be provided"}}
-                {{end}}
-
+                {{- else -}}
+                {{- panic "Either an Internet or VPN gateway must be provided" -}}
+                {{- end}}
 

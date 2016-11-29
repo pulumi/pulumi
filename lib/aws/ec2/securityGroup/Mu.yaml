@@ -30,10 +30,10 @@ services:
             type: mu/extension
             provider: aws/cf
             resource: "AWS::EC2::SecurityGroup"
+            {{if has .Properties "name" -}}
             extraProperties:
-                {{if has .Properties "name"}}
                 Tags:
                     - Key: Name
                       Value: {{.Properties.name}}
-                {{end}}
+            {{- end}}
 

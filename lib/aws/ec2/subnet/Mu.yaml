@@ -34,9 +34,9 @@ services:
             skipProperties: [ vpc ]
             extraProperties:
                 VpcId: {{.Properties.vpc}}
-                {{if has .Properties "name"}}
+                {{if has .Properties "name" -}}
                 Tags:
                     - Key: Name
                       Value: {{.Properties.name}}
-                {{end}}
+                {{- end}}
 
