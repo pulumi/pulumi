@@ -1,0 +1,29 @@
+# This file contains a standard Mu cluster blueprint for AWS.
+
+{{set "cidr" "10.0.0.0/16"}}
+
+private:
+    aws/ec2/vpc:
+        name: {{.Cluster.Name}}-VPC
+        cidrBlock: {{get "cidr"}}
+    aws/ec2/subnet:
+        name: {{.Cluster.Name}}-Subnet
+        vpc: <vpc>
+        availabilityZone: "nine"
+        cidrBlock: {{get "cidr"}}
+    aws/ec2/internetGateway:
+        name: {{.Cluster.Name}}-InternetGateway
+    aws/ec2/internetGatewayAttachment:
+        igw: <internetGateway>
+        vpc: <vpc>
+    aws/ec2/routeTable:
+        name: {{.Cluster.Name}}-RouteTable
+        vpc: <vpc>
+    aws/ec2/route:
+        destinationCidrBlock: 0.0.0.0/0
+        gateway: <internetGateway>
+        routeTable: <routeTable>
+    aws/ec2/securityGroup:
+        name: {{.Cluster.Name}}-SecurityGroup
+        vpc: <vpc>
+

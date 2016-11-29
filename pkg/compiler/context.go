@@ -10,6 +10,7 @@ import (
 // Context holds all state available to any templates or code evaluated at compile-time.
 type Context struct {
 	Arch       backends.Arch   // the target cloud architecture.
+	Cluster    ast.Cluster     // the cluster that we will deploy to.
 	Properties ast.PropertyBag // properties supplied at stack construction time.
 }
 

@@ -38,7 +38,15 @@ type compiler struct {
 // NewCompiler creates a new instance of the Mu compiler, with the given initialization settings.
 func NewCompiler(opts Options) Compiler {
 	return &compiler{
-		ctx:  &Context{},
+		ctx: &Context{
+			// TODO[marapongo/mu#7]: this isn't quite right, since Arch and Cluster are decided upon closer to the
+			//     backend code-generation phase.  And yet paradoxically we need them for template processing.
+			Arch: opts.Arch,
+			Cluster: ast.Cluster{
+				Name:     opts.Cluster,
+				Settings: make(ast.PropertyBag),
+			},
+		},
 		opts: opts,
 		deps: make(map[ast.Ref]*diag.Document),
 	}

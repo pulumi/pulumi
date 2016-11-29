@@ -10,6 +10,7 @@ import (
 	"text/template"
 
 	"github.com/Masterminds/sprig"
+	"github.com/golang/glog"
 
 	"github.com/marapongo/mu/pkg/ast"
 	"github.com/marapongo/mu/pkg/compiler/backends/clouds"
@@ -22,6 +23,8 @@ import (
 // TODO[marapongo/mu#7]: render many templates at once so they can share code.
 // TODO[marapongo/mu#7]: support configuration sections, etc., that can also contain templates.
 func RenderTemplates(doc *diag.Document, ctx *Context) (*diag.Document, error) {
+	glog.V(2).Infof("Rendering template %v", doc.File)
+
 	r, err := newRenderer(doc, ctx)
 	if err != nil {
 		return nil, err
@@ -33,6 +36,7 @@ func RenderTemplates(doc *diag.Document, ctx *Context) (*diag.Document, error) {
 		return nil, err
 	}
 
+	glog.V(5).Infof("Rendered template %v:\n%v", doc.File, string(b))
 	return &diag.Document{
 		File: doc.File,
 		Body: b,
@@ -94,6 +98,8 @@ func (r *renderer) standardTemplateFuncs() template.FuncMap {
 
 	// Include textually includes the given document, also expanding templates.
 	funcs["include"] = func(name string) (string, error) {
+		glog.V(3).Infof("Recursive include of template file: %v", name)
+
 		// Attempt to load the target file so that we may expand templates within it.
 		dir := filepath.Dir(r.doc.File)
 		path := filepath.Join(dir, name)
@@ -111,7 +117,10 @@ func (r *renderer) standardTemplateFuncs() template.FuncMap {
 		if err := u.Execute(b, r.ctx); err != nil {
 			return "", err
 		}
-		return b.String(), nil
+
+		s := b.String()
+		glog.V(5).Infof("Recursively included template file %v:\n%v", name, s)
+		return s, nil
 	}
 
 	// Add functions to unmarshal structures into their JSON/YAML textual equivalents.
@@ -124,14 +133,25 @@ func (r *renderer) standardTemplateFuncs() template.FuncMap {
 		return string(res), err
 	}
 
+	// Functions for interacting with the mutable set of template variables.
+	funcs["get"] = func(key string) interface{} {
+		return r.ctx.Vars[key]
+	}
+	funcs["set"] = func(key string, v interface{}) string {
+		r.ctx.Vars[key] = v
+		return ""
+	}
+
 	return funcs
 }
 
 // renderContext is a "template-friendly" version of the Context object.  Namely, certain structured types are projected
 // as strings for easier usage within markup templates.
 type renderContext struct {
-	Arch       renderArch
-	Properties ast.PropertyBag
+	Arch       renderArch      // the cloud architecture to target.
+	Cluster    ast.Cluster     // the cluster we will deploy to.
+	Properties ast.PropertyBag // a set of properties associated with the current stack.
+	Vars       ast.PropertyBag // mutable variables used throughout this template's evaluation.
 }
 
 // renderArch is just like a normal Arch, except it has been expanded into strings for easier usage.
@@ -146,6 +166,8 @@ func newRenderContext(ctx *Context) *renderContext {
 			Cloud:     clouds.Names[ctx.Arch.Cloud],
 			Scheduler: schedulers.Names[ctx.Arch.Scheduler],
 		},
+		Cluster:    ctx.Cluster,
 		Properties: ctx.Properties,
+		Vars:       make(ast.PropertyBag),
 	}
 }

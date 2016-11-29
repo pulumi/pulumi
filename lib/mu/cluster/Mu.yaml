@@ -1,0 +1,9 @@
+name: mu/cluster
+description: A base Mu cluster, ready to host stacks.
+services:
+    {{if eq .Arch.Cloud "aws"}}
+        {{include "Mu_aws.yaml" | indent 4}}
+    {{else}}
+        {{panic "Unrecognized cloud target: %v" .Arch.Cloud}}
+    {{end}}
+

@@ -61,11 +61,11 @@ type Clusters map[string]Cluster
 type Cluster struct {
 	Node
 
-	Default     bool                   `json:"default,omitempty"`     // a single target can carry default settings.
-	Description string                 `json:"description,omitempty"` // a human-friendly description of this target.
-	Cloud       string                 `json:"cloud,omitempty"`       // the cloud target.
-	Scheduler   string                 `json:"scheduler,omitempty"`   // the cloud scheduler target.
-	Options     map[string]interface{} `json:"options,omitempty"`     // any options passed to the cloud provider.
+	Default     bool        `json:"default,omitempty"`     // a single target can carry default settings.
+	Description string      `json:"description,omitempty"` // a human-friendly description of this target.
+	Cloud       string      `json:"cloud,omitempty"`       // the cloud target.
+	Scheduler   string      `json:"scheduler,omitempty"`   // the cloud scheduler target.
+	Settings    PropertyBag `json:"settings,omitempty"`    // any options passed to the cloud provider.
 
 	Name string `json:"-"` // name is decorated post-parsing, since it is contextual.
 }
