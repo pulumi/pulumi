@@ -8,22 +8,22 @@ private:
         cidrBlock: {{get "cidr"}}
     aws/ec2/subnet:
         name: {{.Cluster.Name}}-Subnet
-        vpc: <vpc>
-        availabilityZone: {{.Cluster.Settings.AvailabilityZone}}
+        vpc: vpc
         cidrBlock: {{get "cidr"}}
     aws/ec2/internetGateway:
         name: {{.Cluster.Name}}-InternetGateway
-    aws/ec2/internetGatewayAttachment:
-        igw: <internetGateway>
-        vpc: <vpc>
+    aws/ec2/vpcGatewayAttachment:
+        internetGateway: internetGateway
+        vpc: vpc
     aws/ec2/routeTable:
         name: {{.Cluster.Name}}-RouteTable
-        vpc: <vpc>
+        vpc: vpc
     aws/ec2/route:
         destinationCidrBlock: 0.0.0.0/0
-        gateway: <internetGateway>
-        routeTable: <routeTable>
+        internetGateway: internetGateway
+        vpcGatewayAttachment: vpcGatewayAttachment
+        routeTable: routeTable
     aws/ec2/securityGroup:
         name: {{.Cluster.Name}}-SecurityGroup
-        vpc: <vpc>
+        vpc: vpc
 
