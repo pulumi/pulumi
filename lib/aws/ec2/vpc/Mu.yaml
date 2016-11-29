@@ -33,14 +33,14 @@ properties:
         optional: true
 services:
     public:
-        vpc:
+        self:
             type: mu/extension
             provider: aws/cf
             resource: "AWS::EC2::VPC"
-            properties:
-                {{if isset .Properties.name}}
+            extraProperties:
+                {{if has .Properties "name"}}
                 Tags:
                     - Key: Name
                       Value: {{.Properties.name}}
-                {{done}}
+                {{end}}
 

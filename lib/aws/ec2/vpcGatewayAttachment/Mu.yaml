@@ -1,0 +1,33 @@
+name: aws/ec2/vpcGatewayAttachment
+description: Attaches a gateway to a VPC.
+website: http://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-ec2-vpc-gateway-attachment.html
+properties:
+    vpc:
+        type: aws/ec2/vpc
+        description: The VPC to associate with this gateway.
+    internetGateway:
+        type: aws/ec2/internetGateway
+        description: The Internet gateway to attach to the VPC.  You must specify either this or a VPN gateway.
+        optional: true
+    vpnGateway:
+        type: aws/ec2/vpnGateway
+        description: The VPN gateway to attach to the VPC.  You must specify either this or an Internet gateway.
+        optional: true
+services:
+    public:
+        self:
+            type: mu/extension
+            provider: aws/cf
+            resource: "AWS::EC2::VPCGatewayAttachment"
+            skipProperties: [ vpc, internetGateway, vpnGateway ]
+            extraProperties:
+                VpcId: {{.Properties.vpc}}
+                {{if has .Properties "internetGateway"}}
+                InternetGatewayId: {{.Properties.internetGateway}}
+                {{else if has .Properties "vpnGateway"}}
+                VpnGatewayId: {{.Properties.vpnGateway}}
+                {{else}}
+                {{panic "Either an Internet or VPN gateway must be provided"}}
+                {{end}}
+
+
