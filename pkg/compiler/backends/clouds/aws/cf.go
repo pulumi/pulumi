@@ -163,6 +163,7 @@ type cfResources map[cfLogicalID]cfResource
 type cfResource struct {
 	Type       cfResourceType       `json:","`          // the resource type being declared.
 	Properties cfResourceProperties `json:",omitempty"` // additional options for the resource.
+	DependsOn  []cfLogicalID        `json:",omitempty"` // optional dependencies for this resource.
 }
 
 // A resource type identifier always takes the form:

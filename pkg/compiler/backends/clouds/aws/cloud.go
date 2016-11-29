@@ -111,6 +111,11 @@ func (c *awsCloud) genTemplate(comp core.Compiland) *cfTemplate {
 
 	// TODO: emit output exports (public services) that can be consumed by other stacks.
 
+	// TODO: we will need to consider whether to emit DependsOn attributes for capability references.  In many cases,
+	//     we will consume them (emitting a Ref:: in the CF output), so there is no need.  In other cases, however, a
+	//     service may depend on them "ambiently" -- e.g., by DNS name or worse, nothing visible to the system at all --
+	//     in which case we will need to emit the DependsOn.  It'd be really nice if developers didn't do this by hand.
+
 	return cf
 }
 
@@ -199,6 +204,9 @@ const CloudFormationExtensionProvider = "aws/cf"
 // CloudFormationExtensionProviderResource is the property that contains the AWS CF resource name (required).
 const CloudFormationExtensionProviderResource = "resource"
 
+// CloudFormationExtensionProviderDependsOn optionally lists other AWS CF resource IDs that this resource depends on.
+const CloudFormationExtensionProviderDependsOn = "dependsOn"
+
 // CloudFormationExtensionproviderProperties optionally contains the set of properties to auto-map (default is all).
 const CloudFormationExtensionProviderProperties = "properties"
 
@@ -237,6 +245,9 @@ func (c *awsCloud) genMuExtensionServiceTemplate(comp core.Compiland, stack *ast
 				for _, p := range aups {
 					auto[p] = true
 				}
+			} else {
+				c.Diag().Errorf(errors.ErrorIncorrectExtensionPropertyType.At(stack),
+					CloudFormationExtensionProviderProperties, "[]string")
 			}
 		}
 
@@ -248,6 +259,9 @@ func (c *awsCloud) genMuExtensionServiceTemplate(comp core.Compiland, stack *ast
 				for _, s := range ska {
 					skip[s] = true
 				}
+			} else {
+				c.Diag().Errorf(errors.ErrorIncorrectExtensionPropertyType.At(stack),
+					CloudFormationExtensionProviderSkipProperties, "[]string")
 			}
 		}
 
@@ -307,10 +321,28 @@ func (c *awsCloud) genMuExtensionServiceTemplate(comp core.Compiland, stack *ast
 			}
 		}
 
+		// If there are any explicit dependencies listed, we need to fish them out and add them.
+		var resDeps []cfLogicalID
+		if do, ok := svc.Props[CloudFormationExtensionProviderDependsOn]; ok {
+			resDeps = make([]cfLogicalID, 0)
+			if doa, ok := do.([]string); ok {
+				for _, d := range doa {
+					resDeps = append(resDeps, cfLogicalID(d))
+				}
+			} else {
+				c.Diag().Errorf(errors.ErrorIncorrectExtensionPropertyType.At(stack),
+					CloudFormationExtensionProviderDependsOn, "[]string")
+			}
+		}
+
 		// Finally, generate an ID from the service's name, and return the result.
 		id := c.genResourceID(stack, &svc.Service)
 		return cfResources{
-			id: cfResource{cfResourceType(resType), cfResourceProperties(resProps)},
+			id: cfResource{
+				Type:       cfResourceType(resType),
+				Properties: cfResourceProperties(resProps),
+				DependsOn:  resDeps,
+			},
 		}
 	default:
 		c.Diag().Errorf(errors.ErrorUnrecognizedExtensionProvider.At(stack), svc.Provider)
