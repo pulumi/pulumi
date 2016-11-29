@@ -120,6 +120,7 @@ func (w *workspace) ReadSettings() (*diag.Document, error) {
 			path := filepath.Join(w.root, Muspace, MuspaceWorkspace+ext)
 			doc, err := diag.ReadDocument(path)
 			if err == nil {
+				glog.V(5).Infof("Mu workspace settings file found: %v", path)
 				return doc, nil
 			} else if os.IsNotExist(err) {
 				// OK if it's just the standard ENOENT error.  Skip ahead and try the next extension.

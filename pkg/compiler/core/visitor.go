@@ -93,13 +93,6 @@ func (v *inOrderVisitor) VisitStack(stack *ast.Stack) {
 		v.pre.VisitStack(stack)
 	}
 
-	for _, name := range ast.StableClusters(stack.Clusters) {
-		cluster := stack.Clusters[name]
-		v.VisitCluster(name, &cluster)
-		// Copy the cluster back in case it was updated.
-		stack.Clusters[name] = cluster
-	}
-
 	for _, name := range ast.StableProperties(stack.Properties) {
 		prop := stack.Properties[name]
 		v.VisitProperty(stack, name, &prop)

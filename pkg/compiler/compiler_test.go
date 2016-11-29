@@ -71,9 +71,8 @@ func TestMissingTarget(t *testing.T) {
 	d := errors.ErrorMissingTarget
 	assert.Equal(t, 1, sink.Errors(), "expected a single error")
 	assert.Equal(t,
-		fmt.Sprintf("%v: %v%v: %v: %v\n",
-			diag.DefaultSinkErrorPrefix, diag.DefaultSinkIDPrefix, d.ID, "Mu.yaml", d.Message),
-		sink.ErrorMsgs()[0])
+		fmt.Sprintf("%v: %v%v: %v\n",
+			diag.DefaultSinkErrorPrefix, diag.DefaultSinkIDPrefix, d.ID, d.Message), sink.ErrorMsgs()[0])
 
 	// Now check that this same project compiles fine if we manually specify an architecture.
 	sink = buildFile(Options{
@@ -85,19 +84,13 @@ func TestMissingTarget(t *testing.T) {
 }
 
 func TestUnrecognizedCloud(t *testing.T) {
-	mufile := []byte("name: notarget\n" +
-		"abstract: true\n" +
-		"clusters:\n" +
-		"    prod:\n" +
-		"        default: true\n" +
-		"        cloud: badcloud\n")
-	// Check that the compiler issued an error due to an unrecognized cloud.
-	sink := buildFile(Options{}, mufile, ".yaml")
+	sink := buildNoCodegen("testdata", "compiler", "bad__unrecognized_cloud")
+
+	// Check that the compiler issued an error about an unrecognized cloud.
 	d := errors.ErrorUnrecognizedCloudArch
 	assert.Equal(t, 1, sink.Errors(), "expected a single error")
 	assert.Equal(t,
-		fmt.Sprintf("%v: %v%v: %v: %v\n",
-			diag.DefaultSinkErrorPrefix, diag.DefaultSinkIDPrefix, d.ID, "Mu.yaml",
-			fmt.Sprintf(d.Message, "badcloud")),
+		fmt.Sprintf("%v: %v%v: %v\n",
+			diag.DefaultSinkErrorPrefix, diag.DefaultSinkIDPrefix, d.ID, fmt.Sprintf(d.Message, "badcloud")),
 		sink.ErrorMsgs()[0])
 }

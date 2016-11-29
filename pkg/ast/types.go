@@ -81,13 +81,12 @@ type Dependency VersionSpec
 type Stack struct {
 	Node
 
-	Name        Name     `json:"name,omitempty"`        // a friendly name for this node.
-	Version     Version  `json:"version,omitempty"`     // a specific version number.
-	Description string   `json:"description,omitempty"` // an optional friendly description.
-	Author      string   `json:"author,omitempty"`      // an optional author.
-	Website     string   `json:"website,omitempty"`     // an optional website for additional info.
-	License     string   `json:"license,omitempty"`     // an optional license governing legal uses of this package.
-	Clusters    Clusters `json:"clusters,omitempty"`    // an optional set of predefined target clusters.
+	Name        Name    `json:"name,omitempty"`        // a friendly name for this node.
+	Version     Version `json:"version,omitempty"`     // a specific version number.
+	Description string  `json:"description,omitempty"` // an optional friendly description.
+	Author      string  `json:"author,omitempty"`      // an optional author.
+	Website     string  `json:"website,omitempty"`     // an optional website for additional info.
+	License     string  `json:"license,omitempty"`     // an optional license governing legal uses of this package.
 
 	Base       Ref        `json:"base,omitempty"`     // an optional base Stack type.
 	Abstract   bool       `json:"abstract,omitempty"` // true if this stack is "abstract" (uninstantiable).

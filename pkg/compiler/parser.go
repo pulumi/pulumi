@@ -84,11 +84,12 @@ func (p *parser) ParseStack(doc *diag.Document, props ast.PropertyBag) *ast.Stac
 	// TODO[marapongo/mu#14]: when we produce precise line/column errors, we'll need to somehow trace back to pre-
 	//     template expansion, otherwise the numbers may not make sense to the user.
 	var err error
-	doc, err = RenderTemplates(doc, p.c.Context().WithProps(props))
+	rdoc, err := RenderTemplates(doc, p.c.Context().WithProps(props))
 	if err != nil {
 		p.Diag().Errorf(errors.ErrorBadTemplate.At(doc), err)
 		return nil
 	}
+	doc = rdoc
 
 	// We support many file formats.  Detect the file extension and deserialize the contents.
 	var stack ast.Stack
