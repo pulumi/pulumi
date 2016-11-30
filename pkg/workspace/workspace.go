@@ -61,8 +61,9 @@ func New(path string, d diag.Sink) (W, error) {
 
 type workspace struct {
 	path     string        // the path at which the workspace was constructed.
-	root     string        // the root of the workspace.
 	home     string        // the home directory to use for this workspace.
+	root     string        // the root of the workspace.
+	muspace  string        // a path to the Muspace file, if any.
 	settings ast.Workspace // an optional bag of workspace-wide settings.
 	d        diag.Sink     // a diagnostics sink to use for workspace operations.
 }
@@ -80,9 +81,11 @@ func (w *workspace) initRootInfo() (string, error) {
 			}
 			for _, file := range files {
 				// A muspace file delimits the root of the workspace.
-				if file.Name() == Muspace {
-					w.root = root
+				muspace := filepath.Join(root, file.Name())
+				if IsMuspace(muspace, w.d) {
 					glog.V(3).Infof("Mu workspace detected; setting root to %v", w.root)
+					w.root = root
+					w.muspace = muspace
 					break Search
 				}
 			}
@@ -91,8 +94,8 @@ func (w *workspace) initRootInfo() (string, error) {
 			root = filepath.Dir(root)
 			if isTop(root) {
 				// We reached the top of the filesystem.  Just set root back to the path and stop.
-				w.root = w.path
 				glog.V(3).Infof("No Mu workspace found; defaulting to current path %v", w.root)
+				w.root = w.path
 				break
 			}
 		}
@@ -110,27 +113,12 @@ func (w *workspace) Settings() *ast.Workspace {
 }
 
 func (w *workspace) ReadSettings() (*diag.Document, error) {
+	if w.muspace == "" {
+		return nil, nil
+	}
+
 	// If there is a workspace settings file in here, load it up before returning.
-	info, err := os.Stat(filepath.Join(w.root, Muspace))
-	if err != nil {
-		return nil, err
-	}
-	if info.IsDir() {
-		for _, ext := range encoding.Exts {
-			path := filepath.Join(w.root, Muspace, MuspaceWorkspace+ext)
-			doc, err := diag.ReadDocument(path)
-			if err == nil {
-				glog.V(5).Infof("Mu workspace settings file found: %v", path)
-				return doc, nil
-			} else if os.IsNotExist(err) {
-				// OK if it's just the standard ENOENT error.  Skip ahead and try the next extension.
-				continue
-			} else {
-				return nil, err
-			}
-		}
-	}
-	return nil, nil
+	return diag.ReadDocument(w.muspace)
 }
 
 func (w *workspace) DetectMufile() (string, error) {
@@ -155,12 +143,12 @@ func (w *workspace) DepCandidates(dep ast.RefParts) []string {
 	//
 	//		1. w/base(r)/name(r)
 	//		2. w/name(r)
-	//		3. w/.mu/stacks/base(r)/name(r)
-	//		4. w/.mu/stacks/name(r)
-	//		5. ~/.mu/stacks/base(r)/name(r)
-	//		6. ~/.mu/stacks/name(r)
-	//		7. $MUROOT/bin/stacks/base(r)/name(r)
-	//		8. $MUROOT/bin/stacks/name(r)
+	//		3. w/.Mudeps/base(r)/name(r)
+	//		4. w/.Mudeps/name(r)
+	//		5. ~/.Mudeps/base(r)/name(r)
+	//		6. ~/.Mudeps/name(r)
+	//		7. $MUROOT/lib/base(r)/name(r)
+	//		8. $MUROOT/lib/name(r)
 	//
 	// The following code simply produces an array of these candidate locations, in order.
 
@@ -172,10 +160,10 @@ func (w *workspace) DepCandidates(dep ast.RefParts) []string {
 	for _, ext := range encoding.Exts {
 		cands = append(cands, filepath.Join(w.root, base, name, Mufile+ext))
 		cands = append(cands, filepath.Join(w.root, name, Mufile+ext))
-		cands = append(cands, filepath.Join(w.root, Muspace, MuspaceStacks, base, name, Mufile+ext))
-		cands = append(cands, filepath.Join(w.root, Muspace, MuspaceStacks, name, Mufile+ext))
-		cands = append(cands, filepath.Join(w.home, Muspace, MuspaceStacks, base, name, Mufile+ext))
-		cands = append(cands, filepath.Join(w.home, Muspace, MuspaceStacks, name, Mufile+ext))
+		cands = append(cands, filepath.Join(w.root, Mudeps, base, name, Mufile+ext))
+		cands = append(cands, filepath.Join(w.root, Mudeps, name, Mufile+ext))
+		cands = append(cands, filepath.Join(w.home, Mudeps, base, name, Mufile+ext))
+		cands = append(cands, filepath.Join(w.home, Mudeps, name, Mufile+ext))
 		cands = append(cands, filepath.Join(InstallRoot(), InstallRootLibdir, base, name, Mufile+ext))
 		cands = append(cands, filepath.Join(InstallRoot(), InstallRootLibdir, name, Mufile+ext))
 	}

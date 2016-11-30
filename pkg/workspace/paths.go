@@ -16,14 +16,11 @@ import (
 // Mufile is the base name of a Mufile.
 const Mufile = "Mu"
 
-// Muspace is a directory containing settings, modules, etc., delimiting a workspace.
-const Muspace = ".mu"
+// Muspace is the base name of a markup file containing settings shared amongst a workspace.
+const Muspace = "Muspace"
 
-// MuspaceStacks is the directory in which dependency modules exist, either local to a workspace, or globally.
-const MuspaceStacks = "stacks"
-
-// MuspaceWorkspace is the base name of a workspace settings file.
-const MuspaceWorkspace = "workspace"
+// Mudeps is the directory in which dependency modules exist, either local to a workspace, or globally.
+const Mudeps = ".Mudeps"
 
 // InstallRootEnvvar is the envvar describing where Mu has been installed.
 const InstallRootEnvvar = "MUROOT"
@@ -82,8 +79,8 @@ func DetectMufile(path string, d diag.Sink) (string, error) {
 			path := filepath.Join(curr, name)
 			if IsMufile(path, d) {
 				return path, nil
-			} else if name == Muspace {
-				// If we hit a .muspace file, stop looking.
+			} else if IsMuspace(path, d) {
+				// If we hit a Muspace file, stop looking.
 				stop = true
 			}
 		}
@@ -106,9 +103,19 @@ func DetectMufile(path string, d diag.Sink) (string, error) {
 // IsMufile returns true if the path references what appears to be a valid Mufile.  If problems are detected -- like
 // an incorrect extension -- they are logged to the provided diag.Sink (if non-nil).
 func IsMufile(path string, d diag.Sink) bool {
+	return isMarkupFile(path, Mufile, d)
+}
+
+// IsMuspace returns true if the path references what appears to be a valid Muspace file.  If problems are detected --
+// like an incorrect extension -- they are logged to the provided diag.Sink (if non-nil).
+func IsMuspace(path string, d diag.Sink) bool {
+	return isMarkupFile(path, Muspace, d)
+}
+
+func isMarkupFile(path string, expect string, d diag.Sink) bool {
 	info, err := os.Stat(path)
 	if err != nil || info.IsDir() {
-		// Missing files and directories can't be Mufiles.
+		// Missing files and directories can't be markup files.
 		return false
 	}
 
@@ -116,24 +123,24 @@ func IsMufile(path string, d diag.Sink) bool {
 	name := info.Name()
 	ext := filepath.Ext(name)
 	base := strings.TrimSuffix(name, ext)
-	if base != Mufile {
-		if d != nil && strings.EqualFold(base, Mufile) {
+	if base != expect {
+		if d != nil && strings.EqualFold(base, expect) {
 			// If the strings aren't equal, but case-insensitively match, issue a warning.
-			d.Warningf(errors.WarningIllegalMufileCasing.AtFile(name))
+			d.Warningf(errors.WarningIllegalMarkupFileCasing.AtFile(name), expect)
 		}
 		return false
 	}
 
 	// Check all supported extensions.
-	for _, mufileExt := range encoding.Exts {
-		if name == Mufile+mufileExt {
+	for _, mext := range encoding.Exts {
+		if name == expect+mext {
 			return true
 		}
 	}
 
 	// If we got here, it means the base name matched, but not the extension.  Warn and return.
 	if d != nil {
-		d.Warningf(errors.WarningIllegalMufileExt.AtFile(name), ext)
+		d.Warningf(errors.WarningIllegalMarkupFileExt.AtFile(name), expect, ext)
 	}
 	return false
 }

@@ -30,11 +30,11 @@ func TestBadMufileCasing(t *testing.T) {
 	sink := buildNoCodegen("testdata", "compiler", "bad__mufile_casing")
 
 	// Check that the compiler warned about a bad Mufile casing (mu.yaml).
-	d := errors.WarningIllegalMufileCasing
+	d := errors.WarningIllegalMarkupFileCasing
 	assert.Equal(t, 1, sink.Warnings(), "expected a single warning")
 	assert.Equal(t,
 		fmt.Sprintf("%v: %v%v: %v: %v\n",
-			diag.DefaultSinkWarningPrefix, diag.DefaultSinkIDPrefix, d.ID, "mu.yaml", d.Message),
+			diag.DefaultSinkWarningPrefix, diag.DefaultSinkIDPrefix, d.ID, "mu.yaml", fmt.Sprintf(d.Message, "Mu")),
 		sink.WarningMsgs()[0])
 }
 
@@ -42,11 +42,12 @@ func TestBadMufileExt1(t *testing.T) {
 	sink := buildNoCodegen("testdata", "compiler", "bad__mufile_ext__1")
 
 	// Check that the compiler warned about a bad Mufile extension (none).
-	d := errors.WarningIllegalMufileExt
+	d := errors.WarningIllegalMarkupFileExt
 	assert.Equal(t, 1, sink.Warnings(), "expected a single warning")
 	assert.Equal(t,
 		fmt.Sprintf("%v: %v%v: %v: %v\n",
-			diag.DefaultSinkWarningPrefix, diag.DefaultSinkIDPrefix, d.ID, "Mu", fmt.Sprintf(d.Message, "")),
+			diag.DefaultSinkWarningPrefix, diag.DefaultSinkIDPrefix, d.ID, "Mu",
+			fmt.Sprintf(d.Message, "Mu", "")),
 		sink.WarningMsgs()[0])
 }
 
@@ -54,11 +55,12 @@ func TestBadMufileExt2(t *testing.T) {
 	sink := buildNoCodegen("testdata", "compiler", "bad__mufile_ext__2")
 
 	// Check that the compiler warned about a bad Mufile extension (".txt").
-	d := errors.WarningIllegalMufileExt
+	d := errors.WarningIllegalMarkupFileExt
 	assert.Equal(t, 1, sink.Warnings(), "expected a single warning")
 	assert.Equal(t,
 		fmt.Sprintf("%v: %v%v: %v: %v\n",
-			diag.DefaultSinkWarningPrefix, diag.DefaultSinkIDPrefix, d.ID, "Mu.txt", fmt.Sprintf(d.Message, ".txt")),
+			diag.DefaultSinkWarningPrefix, diag.DefaultSinkIDPrefix, d.ID, "Mu.txt",
+			fmt.Sprintf(d.Message, "Mu", ".txt")),
 		sink.WarningMsgs()[0])
 }
 

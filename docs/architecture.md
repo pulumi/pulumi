@@ -83,26 +83,24 @@ TODO(joe): describe each of these in more detail.
 
 ### Workspaces
 
-A Workspace is a directory on the filesystem that helps to organize many Stacks, shared settings among them (like shared
-Cluster settings), and dependencies.  The root of a Workspace is identified by the presence of a `.mu/` directory.
-Inside of this directory, you will find up to two things:
+A workspace is a root directory on the filesystem that helps to organize many stacks, shared settings among them (like
+shared cluster definitions, dependencies, etc).  The root of a workspace is identified by the presence of a
+`Muspace.yaml` (or `.json`) file, containing all of the relevant metadata.  The workspace metadata goes here because
+stack definitions are generally agnostic to it.  In addition to this, there will be an optional `.Mudeps` directory
+that contains all of the downloaded dependencies.
 
-1. A `stacks/` subdirectory containing downloaded dependencies.
-2. A `workspace.yaml` (or `.json`) file, containing settings shared across this workspace.
+For example, let's say we have two Stacks, `db` and `webapp`; a reasonable workspace structure might be:
 
-For example, let's say we have two Stacks, `db` and `webapp`; a reasonable directory structure might be:
-
-    .mu/
-        stacks/
-        workspace.yaml
+    .Mudeps/
+        ...
     db/
         Mu.yaml
     webapp/
         Mu.yaml
+    Muspace.yaml
 
-For convenience, there is also a global Workspace, under `~/.mu/`, whose structure is identical but whose contents are
-shared by all other Workspaces on the machine.  There are additional hidden directories, however, like `~/.mu/.cache/`,
-that the toolchain uses throughout the course of its business to do things like package caching.
+For convenience, the home directory `~` can also be its own workspace with identical structure, for settings and
+dependencies that are shared by all other workspaces on the machine.
 
 Please refer to [this doc](deps.md) for more information about how dependencies are dealt with and resolved.
 
