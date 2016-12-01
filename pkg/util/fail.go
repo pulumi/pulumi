@@ -27,8 +27,5 @@ func FailMF(msg string, args ...interface{}) {
 
 // failfast logs and panics the process in a way that is friendly to debugging.
 func failfast(msg string) {
-	// We first log an error using glog, and then we use panic, not glog, to ensure good debugging no matter what
-	// glog flags have been passed (e.g., logtostderr).
-	glog.Error(msg)
-	panic(msg)
+	glog.Fatal(msg)
 }
