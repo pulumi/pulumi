@@ -37,7 +37,7 @@ func RenderTemplates(doc *diag.Document, ctx *Context) (*diag.Document, error) {
 		return nil, err
 	}
 
-	glog.V(5).Infof("Rendered template %v:\n%v", doc.File, string(b))
+	glog.V(7).Infof("Rendered template %v:\n%v", doc.File, string(b))
 	return &diag.Document{
 		File: doc.File,
 		Body: b,
@@ -129,7 +129,7 @@ func (r *renderer) standardTemplateFuncs() template.FuncMap {
 		}
 
 		s := b.String()
-		glog.V(5).Infof("Recursively included template file %v:\n%v", name, s)
+		glog.V(7).Infof("Recursively included template file %v:\n%v", name, s)
 		return s, nil
 	}
 
