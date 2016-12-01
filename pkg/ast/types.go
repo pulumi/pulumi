@@ -76,6 +76,9 @@ type Dependencies map[Ref]Dependency
 // Dependency is metadata describing a dependency target (for now, just its target version).
 type Dependency VersionSpec
 
+// DependendyDocuments is simply a map of dependency reference to the associated document containing that dependency.
+type DependencyDocuments map[Ref]*diag.Document
+
 // Stack represents a collection of private and public cloud resources, a method for constructing them, and optional
 // dependencies on other Stacks (by name).
 type Stack struct {
@@ -89,14 +92,13 @@ type Stack struct {
 	License     string  `json:"license,omitempty"`     // an optional license governing legal uses of this package.
 
 	Base       Ref        `json:"base,omitempty"`     // an optional base Stack type.
+	BoundBase  *Stack     `json:"-"`                  // base, if available, is bound during semantic analysis.
 	Abstract   bool       `json:"abstract,omitempty"` // true if this stack is "abstract" (uninstantiable).
 	Properties Properties `json:"properties,omitempty"`
 	Services   Services   `json:"services,omitempty"`
 
-	Predef            bool              `json:"-"` // true if this is a predefined type (treated specially).
-	Doc               *diag.Document    `json:"-"` // the document from which this came.
-	BoundBase         *Stack            `json:"-"` // base, if available, is bound during semantic analysis.
-	BoundDependencies BoundDependencies `json:"-"` // dependencies are bound during semantic analysis.
+	Predef bool           `json:"-"` // true if this is a predefined type (treated specially).
+	Doc    *diag.Document `json:"-"` // the document from which this came.
 
 	// TODO[marapongo/mu#8]: permit Stacks to declare exported APIs.
 }
@@ -135,18 +137,6 @@ const (
 	PropertyTypeService              = "service" // an untyped service reference; the runtime manifestation is a URL.
 )
 
-// BoundDependencies contains a map of dependencies, populated during semantic analysis.
-type BoundDependencies map[Ref]BoundDependency
-
-// BoundDependency contains information about a binding.  In the event that a simple type binding is discovered, such
-// as a primitive type, Stack will be non-nil.  In more complex cases, however, where 3rd party stacks are involed and
-// template expansion might be needed, Stack will remain nil and Doc instead will become non-nil.
-type BoundDependency struct {
-	Ref   RefParts       // the reference used to bind to this dependency.
-	Stack *Stack         // the bound stack for this dependency (for simple cases).
-	Doc   *diag.Document // the document containing this dependency (for complex cases).
-}
-
 // Services is a list of public and private service references, keyed by name.
 type Services struct {
 	// These fields are expanded after parsing:
@@ -169,13 +159,12 @@ type ServiceMap map[Name]Service
 type Service struct {
 	Node
 
-	Type  Ref         `json:"type,omitempty"` // an explicit type; if missing, the name is used.
-	Props PropertyBag `json:"-"`              // all of the "extra" properties, other than what is above.
+	Type      Ref         `json:"type,omitempty"` // an explicit type; if missing, the name is used.
+	BoundType *Stack      `json:"-"`              // services are bound to stacks during semantic analysis.
+	Props     PropertyBag `json:"-"`              // all of the "extra" properties, other than what is above.
 
 	Name   Name `json:"-"` // a friendly name; decorated post-parsing, since it is contextual.
 	Public bool `json:"-"` // true if this service is publicly exposed; also decorated post-parsing.
-
-	BoundType *Stack `json:"-"` // services are bound to stacks during semantic analysis.
 }
 
 // UntypedServiceMap is a map of service names to untyped, bags of parsed properties for those services.

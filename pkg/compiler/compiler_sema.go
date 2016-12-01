@@ -27,24 +27,20 @@ func (c *compiler) bindStack(b Binder, w workspace.W, stack *ast.Stack) {
 	util.Assert(stack != nil)
 
 	// First prepare the AST for binding.
-	util.Assert(stack.BoundDependencies == nil)
-	b.PrepareStack(stack)
+	deprefs := b.PrepareStack(stack)
 	if !c.Diag().Success() {
 		return
 	}
 
 	// Next, resolve all dependencies discovered during this first pass.
-	util.Assert(stack.BoundDependencies != nil)
-	for _, ref := range ast.StableBoundDependencies(stack.BoundDependencies) {
-		dep := stack.BoundDependencies[ref]
-		if dep.Stack == nil {
-			util.Assert(dep.Doc == nil)
-			// Only resolve dependencies that are currently unknown.  This will exlude built-in types that have already
-			// been bound to a stack during the first phase of binding.  Note that we don't actually parse and perform
-			// template substitution here; instead, we remember the document and let the binder do this, since it has
-			// all of the information necessary to create a unique Stack per-PropertyBag used to instantiate it.
-			dep.Doc = c.resolveDependency(w, stack, ref, dep.Ref)
-			stack.BoundDependencies[ref] = dep
+	depdocs := make(ast.DependencyDocuments)
+	for _, ref := range deprefs {
+		// Only resolve dependencies that are currently unknown.  This will exlude built-in types that have already
+		// been bound to a stack during the first phase of binding.  Note that we don't actually parse and perform
+		// template substitution here; instead, we remember the document and let the binder do this, since it has
+		// all of the information necessary to create a unique Stack per-PropertyBag used to instantiate it.
+		if doc := c.resolveDependency(w, stack, ref); doc != nil {
+			depdocs[ref] = doc
 		}
 	}
 	if !c.Diag().Success() {
@@ -52,12 +48,20 @@ func (c *compiler) bindStack(b Binder, w workspace.W, stack *ast.Stack) {
 	}
 
 	// Complete the binding process.
-	b.BindStack(stack)
+	deps := b.BindStack(stack, depdocs)
+	if !c.Diag().Success() {
+		return
+	}
+
+	// Now ensure we bind all dependency stacks too.
+	for _, dep := range deps {
+		c.bindStack(b, w, dep)
+	}
 }
 
 // resolveDependency loads up the target dependency from the current workspace using the stack resolution rules.
-func (c *compiler) resolveDependency(w workspace.W, stack *ast.Stack, ref ast.Ref, dep ast.RefParts) *diag.Document {
-	glog.V(3).Infof("Loading Stack %v dependency %v", stack.Name, dep)
+func (c *compiler) resolveDependency(w workspace.W, stack *ast.Stack, ref ast.Ref) *diag.Document {
+	glog.V(3).Infof("Loading Stack %v dependency %v", stack.Name, ref)
 
 	// First, see if we've already loaded this dependency (anywhere in any Stacks).  If yes, reuse it.
 	// TODO: check for version mismatches.
@@ -67,6 +71,7 @@ func (c *compiler) resolveDependency(w workspace.W, stack *ast.Stack, ref ast.Re
 
 	// There are many places a dependency could come from.  Consult the workspace for a list of those paths.  It will
 	// return a number of them, in preferred order, and we simply probe each one until we find something.
+	dep := ref.MustParse()
 	for _, loc := range w.DepCandidates(dep) {
 		// Try to read this location as a document.
 		isMufile := workspace.IsMufile(loc, c.Diag())
@@ -86,6 +91,6 @@ func (c *compiler) resolveDependency(w workspace.W, stack *ast.Stack, ref ast.Re
 	}
 
 	// If we got to this spot, we could not find the dependency.  Issue an error and bail out.
-	c.Diag().Errorf(errors.ErrorStackTypeNotFound.At(stack), dep)
+	c.Diag().Errorf(errors.ErrorStackTypeNotFound.At(stack), ref)
 	return nil
 }

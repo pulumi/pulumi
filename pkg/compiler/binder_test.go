@@ -8,6 +8,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	"github.com/marapongo/mu/pkg/ast"
 	"github.com/marapongo/mu/pkg/diag"
 	"github.com/marapongo/mu/pkg/errors"
 )
@@ -137,7 +138,9 @@ func TestTypeNotFound1(t *testing.T) {
 	assert.Equal(t,
 		fmt.Sprintf("%v: %v%v: %v: %v\n",
 			diag.DefaultSinkErrorPrefix, diag.DefaultSinkIDPrefix, d.ID, "Mu.yaml",
-			fmt.Sprintf(d.Message, "something/non/existent")),
+			fmt.Sprintf(d.Message,
+				fmt.Sprintf("%v%vsomething/non/existent@%v",
+					ast.DefaultRefProto, ast.DefaultRefBase, ast.DefaultRefVersion))),
 		sink.ErrorMsgs()[0])
 }
 
@@ -150,7 +153,9 @@ func TestTypeNotFound2(t *testing.T) {
 	assert.Equal(t,
 		fmt.Sprintf("%v: %v%v: %v: %v\n",
 			diag.DefaultSinkErrorPrefix, diag.DefaultSinkIDPrefix, d.ID, "Mu.yaml",
-			fmt.Sprintf(d.Message, "something/non/existent")),
+			fmt.Sprintf(d.Message,
+				fmt.Sprintf("%v%vsomething/non/existent@%v",
+					ast.DefaultRefProto, ast.DefaultRefBase, ast.DefaultRefVersion))),
 		sink.ErrorMsgs()[0])
 }
 
