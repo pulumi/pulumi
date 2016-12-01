@@ -7,6 +7,7 @@ import (
 	"reflect"
 
 	"github.com/ghodss/yaml"
+	"github.com/golang/glog"
 
 	"github.com/marapongo/mu/pkg/ast"
 	"github.com/marapongo/mu/pkg/compiler/backends/clouds"
@@ -41,6 +42,13 @@ func (c *awsCloud) Diag() diag.Sink {
 }
 
 func (c *awsCloud) CodeGen(comp core.Compiland) {
+	glog.Infof("%v CodeGen: cluster=%v stack=%v", clouds.Names[c.Arch()], comp.Cluster.Name, comp.Stack.Name)
+	if glog.V(2) {
+		defer glog.Infof("%v CodeGen: cluster=%v stack=%v completed w/ %v warnings and %v errors",
+			clouds.Names[c.Arch()], comp.Cluster.Name, comp.Stack.Name,
+			c.Diag().Warnings(), c.Diag().Errors())
+	}
+
 	// For now, this routine simply generates the equivalent CloudFormation stack for the input.  Eventually this needs
 	// to do a whole lot more, which the following running list of TODOs will serve as a reminder about:
 	// TODO: perform delta analysis so that we can emit changesets:
@@ -121,7 +129,15 @@ func (c *awsCloud) genTemplate(comp core.Compiland) *cfTemplate {
 
 // genStackServiceTemplates returns two maps of service templates, one for private, the other for public, services.
 func (c *awsCloud) genStackServiceTemplates(comp core.Compiland, stack *ast.Stack) (cfResources, cfResources) {
+	util.Assert(stack != nil)
+	glog.V(4).Infof("Generating stack service templates: stack=%v private=%v public=%v",
+		stack.Name, len(stack.Services.Private), len(stack.Services.Public))
+
 	privates := make(cfResources)
+	publics := make(cfResources)
+	defer glog.V(5).Infof("Generated stack service templates: stack=%v private=%v public=%v",
+		stack.Name, len(privates), len(publics))
+
 	for _, name := range ast.StableServices(stack.Services.Private) {
 		svc := stack.Services.Private[name]
 		for nm, r := range c.genServiceTemplate(comp, stack, &svc) {
@@ -129,7 +145,6 @@ func (c *awsCloud) genStackServiceTemplates(comp core.Compiland, stack *ast.Stac
 		}
 	}
 
-	publics := make(cfResources)
 	for _, name := range ast.StableServices(stack.Services.Public) {
 		svc := stack.Services.Public[name]
 		for nm, r := range c.genServiceTemplate(comp, stack, &svc) {
@@ -142,6 +157,9 @@ func (c *awsCloud) genStackServiceTemplates(comp core.Compiland, stack *ast.Stac
 
 // genServiceTemplate creates a CloudFormation resource for a single service.
 func (c *awsCloud) genServiceTemplate(comp core.Compiland, stack *ast.Stack, svc *ast.Service) cfResources {
+	util.Assert(svc.BoundType != nil)
+	glog.V(4).Infof("Generating service templates: svc=%v type=%v", svc.Name, svc.BoundType.Name)
+
 	// Code-generation differs greatly for the various service types.  There are three categories:
 	//		1) A Mu primitive: these have very specific manifestations to accomplish the desired Mu semantics.
 	//		2) An AWS-specific extension type: these largely just pass-through CloudFormation goo that we will emit.
@@ -363,10 +381,14 @@ func (c *awsCloud) genOtherServiceTemplate(comp core.Compiland, stack *ast.Stack
 	//     up with some clever default, like multi-Service Mu Stacks map to CloudFormation Stacks, and single-Service
 	//     ones don't, however I'm not yet convinced this is the right path.  So, for now, we keep it simple.
 	util.Assert(svc.BoundType != nil)
+	glog.V(4).Infof("Generating \"other\" service template: svc=%v type=%v", svc.Name, svc.BoundType.Name)
+
+	all := make(cfResources)
 	privates, publics := c.genStackServiceTemplates(comp, svc.BoundType)
+	defer glog.V(5).Infof("Generated \"other\" service template: svc=%v type=%v private=%v public=%v all=%v",
+		svc.Name, svc.BoundType.Name, len(privates), len(publics), len(all))
 
 	// Copy all of the returned resources to a single map and return it.
-	all := make(cfResources)
 	for nm, private := range privates {
 		all[nm] = private
 	}

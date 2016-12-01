@@ -40,10 +40,8 @@ func (p *parser) Diag() diag.Sink {
 func (p *parser) ParseWorkspace(doc *diag.Document) *ast.Workspace {
 	glog.Infof("Parsing workspace settings: %v (len(body)=%v)", doc.File, len(doc.Body))
 	if glog.V(2) {
-		defer func() {
-			glog.V(2).Infof("Parsing workspace settings '%v' completed w/ %v warnings and %v errors",
-				doc.File, p.Diag().Warnings(), p.Diag().Errors())
-		}()
+		defer glog.V(2).Infof("Parsing workspace settings '%v' completed w/ %v warnings and %v errors",
+			doc.File, p.Diag().Warnings(), p.Diag().Errors())
 	}
 
 	// We support many file formats.  Detect the file extension and deserialize the contents.
@@ -55,12 +53,16 @@ func (p *parser) ParseWorkspace(doc *diag.Document) *ast.Workspace {
 		// TODO[marapongo/mu#14]: issue an error per issue found in the file with line/col numbers.
 		return nil
 	}
+	glog.V(3).Infof("Workspace settings %v parsed: %v clusters; %v deps",
+		doc.File, len(w.Clusters), len(w.Dependencies))
 
 	// Remember that this workspace came from this document.
 	w.Doc = doc
 
-	glog.V(3).Infof("Workspace settings %v parsed: %v clusters; %v deps",
-		doc.File, len(w.Clusters), len(w.Dependencies))
+	// Now create a parse tree analyzer to walk the parse trees and ensure that all is well.
+	ptAnalyzer := NewPTAnalyzer(p.c)
+	ptAnalyzer.AnalyzeWorkspace(&w)
+
 	return &w
 }
 
@@ -72,10 +74,8 @@ func (p *parser) ParseStack(doc *diag.Document, props ast.PropertyBag) *ast.Stac
 		}
 	}
 	if glog.V(2) {
-		defer func() {
-			glog.V(2).Infof("Parsing Mufile '%v' completed w/ %v warnings and %v errors",
-				doc.File, p.Diag().Warnings(), p.Diag().Errors())
-		}()
+		defer glog.V(2).Infof("Parsing Mufile '%v' completed w/ %v warnings and %v errors",
+			doc.File, p.Diag().Warnings(), p.Diag().Errors())
 	}
 
 	// Expand templates in the document first and foremost.
@@ -105,11 +105,15 @@ func (p *parser) ParseStack(doc *diag.Document, props ast.PropertyBag) *ast.Stac
 		// TODO[marapongo/mu#14]: issue an error per issue found in the file with line/col numbers.
 		return nil
 	}
+	glog.V(3).Infof("Mufile %v stack parsed: %v name; %v publics; %v privates",
+		doc.File, stack.Name, len(stack.Services.PublicUntyped), len(stack.Services.PrivateUntyped))
 
 	// Remember that this stack came from this document.
 	stack.Doc = doc
 
-	glog.V(3).Infof("Mufile %v stack parsed: %v name; %v publics; %v privates",
-		doc.File, stack.Name, len(stack.Services.Public), len(stack.Services.Private))
+	// Now create a parse tree analyzer to walk the parse trees and ensure that all is well.
+	ptAnalyzer := NewPTAnalyzer(p.c)
+	ptAnalyzer.AnalyzeStack(&stack)
+
 	return &stack
 }

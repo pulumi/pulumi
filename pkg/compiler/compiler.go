@@ -105,10 +105,8 @@ func (c *compiler) BuildFile(mufile []byte, ext string, outp string) {
 func (c *compiler) buildDocument(w workspace.W, doc *diag.Document, outp string) {
 	glog.Infof("Building doc '%v' (bytes=%v out='%v')", doc.File, len(doc.Body), outp)
 	if glog.V(2) {
-		defer func() {
-			glog.V(2).Infof("Building doc '%v' completed w/ %v warnings and %v errors",
-				doc.File, c.Diag().Warnings(), c.Diag().Errors())
-		}()
+		defer glog.V(2).Infof("Building doc '%v' completed w/ %v warnings and %v errors",
+			doc.File, c.Diag().Warnings(), c.Diag().Errors())
 	}
 
 	// Perform the front-end phases of the compiler.

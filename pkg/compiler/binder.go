@@ -50,10 +50,8 @@ func (b *binder) Diag() diag.Sink {
 func (b *binder) PrepareStack(stack *ast.Stack) {
 	glog.Infof("Preparing Mu Stack: %v", stack.Name)
 	if glog.V(2) {
-		defer func() {
-			glog.V(2).Infof("Preparing Mu Stack %v completed w/ %v warnings and %v errors",
-				stack.Name, b.Diag().Warnings(), b.Diag().Errors())
-		}()
+		defer glog.V(2).Infof("Preparing Mu Stack %v completed w/ %v warnings and %v errors",
+			stack.Name, b.Diag().Warnings(), b.Diag().Errors())
 	}
 
 	// Push a new scope for this binding pass.
@@ -69,10 +67,8 @@ func (b *binder) PrepareStack(stack *ast.Stack) {
 func (b *binder) BindStack(stack *ast.Stack) {
 	glog.Infof("Binding Mu Stack: %v", stack.Name)
 	if glog.V(2) {
-		defer func() {
-			glog.V(2).Infof("Binding Mu Stack %v completed w/ %v warnings and %v errors",
-				stack.Name, b.Diag().Warnings(), b.Diag().Errors())
-		}()
+		defer glog.V(2).Infof("Binding Mu Stack %v completed w/ %v warnings and %v errors",
+			stack.Name, b.Diag().Warnings(), b.Diag().Errors())
 	}
 
 	// Restore the original scope after this binding pass.

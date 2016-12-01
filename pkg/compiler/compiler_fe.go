@@ -54,18 +54,6 @@ func (c *compiler) buildDocumentFE(w workspace.W, doc *diag.Document) *ast.Stack
 		return nil
 	}
 
-	// Now create a parse tree analyzer to walk the parse trees and ensure that all is well.
-	ptAnalyzer := NewPTAnalyzer(c)
-	if wdoc != nil {
-		ptAnalyzer.AnalyzeWorkspace(w.Settings())
-	}
-	ptAnalyzer.AnalyzeStack(stack)
-
-	// If any errors happened during parse tree analysis, exit.
-	if !p.Diag().Success() {
-		return nil
-	}
-
 	return stack
 }
 
