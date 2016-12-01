@@ -20,15 +20,12 @@ func (c *compiler) buildDocumentSema(w workspace.W, stack *ast.Stack) {
 	if !c.Diag().Success() {
 		return
 	}
-
-	// Now ensure that we analyze all dependency ASTs also, which will populate their bound nodes.
-	for _, ref := range ast.StableBoundDependencies(stack.BoundDependencies) {
-		c.bindStack(b, w, stack.BoundDependencies[ref].Stack)
-	}
 }
 
 // bindStack performs the two phases of binding plus dependency resolution for the given Stack.
 func (c *compiler) bindStack(b Binder, w workspace.W, stack *ast.Stack) {
+	util.Assert(stack != nil)
+
 	// First prepare the AST for binding.
 	util.Assert(stack.BoundDependencies == nil)
 	b.PrepareStack(stack)
@@ -54,7 +51,7 @@ func (c *compiler) bindStack(b Binder, w workspace.W, stack *ast.Stack) {
 		return
 	}
 
-	// Finally, actually complete the binding process.
+	// Complete the binding process.
 	b.BindStack(stack)
 }
 
