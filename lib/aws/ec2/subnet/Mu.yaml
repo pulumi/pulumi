@@ -12,7 +12,7 @@ properties:
         readonly: true
     availabilityZone:
         type: string
-        description: The availability zone in which you want the subnet.  Default: AWS selects a zone for you.
+        description: The availability zone in which you want the subnet.  By default, AWS selects a zone for you.
         readonly: true
         optional: true
     mapPublicIpOnLaunch:
