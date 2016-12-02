@@ -189,26 +189,26 @@ type LiteralAny struct {
 	Any interface{}
 }
 
-// LiteralString is an AST node containing a literal string (`string`).
-type LiteralString struct {
+// StringLiteral is an AST node containing a literal string (`string`).
+type StringLiteral struct {
 	Literal
 	String string
 }
 
-// LiteralNumber is an AST node containing a literal number (`float64`).
-type LiteralNumber struct {
+// NumberLiteral is an AST node containing a literal number (`float64`).
+type NumberLiteral struct {
 	Literal
 	Number float64
 }
 
-// LiteralBool is an AST node containing a literal boolean (`bool`).
-type LiteralBool struct {
+// BoolLiteral is an AST node containing a literal boolean (`bool`).
+type BoolLiteral struct {
 	Literal
 	Bool bool
 }
 
-// LiteralCapRef is an AST node containing a literal capability reference (`string`).
-type LiteralCapRef struct {
+// CapRefLiteral is an AST node containing a literal capability reference (`string`).
+type CapRefLiteral struct {
 	Literal
 	Name     Name     // the name used to resolve the capability.
 	Selector Name     // the "selector" used if the target service exports multiple endpoints.

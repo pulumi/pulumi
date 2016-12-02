@@ -116,7 +116,8 @@ func TestBadDepSemVer3(t *testing.T) {
 					"Invalid character(s) found in patch number \"bad.ness.1\"")),
 		sink.ErrorMsgs()[3])
 }
-func TestSymbolAlreadyExists(t *testing.T) {
+
+func TestBadSymbolAlreadyExists(t *testing.T) {
 	sink := buildNoCodegen("testdata", "binder", "bad__symbol_already_exists")
 
 	// Check that the compiler complained about a duplicate symbol.
@@ -129,7 +130,7 @@ func TestSymbolAlreadyExists(t *testing.T) {
 		sink.ErrorMsgs()[0])
 }
 
-func TestTypeNotFound1(t *testing.T) {
+func TestBadTypeNotFound1(t *testing.T) {
 	sink := buildNoCodegen("testdata", "binder", "bad__type_not_found__1")
 
 	// Check that the compiler complained about the type missisng.
@@ -144,7 +145,7 @@ func TestTypeNotFound1(t *testing.T) {
 		sink.ErrorMsgs()[0])
 }
 
-func TestTypeNotFound2(t *testing.T) {
+func TestBadTypeNotFound2(t *testing.T) {
 	sink := buildNoCodegen("testdata", "binder", "bad__type_not_found__2")
 
 	// Check that the compiler complained about the type missisng.
@@ -157,6 +158,52 @@ func TestTypeNotFound2(t *testing.T) {
 				fmt.Sprintf("%v%vsomething/non/existent@%v",
 					ast.DefaultRefProto, ast.DefaultRefBase, ast.DefaultRefVersion))),
 		sink.ErrorMsgs()[0])
+}
+
+func TestBadMissingProperties(t *testing.T) {
+	sink := buildNoCodegen("testdata", "binder", "bad__properties", "bad__missing")
+
+	d := errors.ErrorMissingRequiredProperty
+	reqs := []string{"req_bool", "req_number", "req_service", "req_string"}
+	assert.Equal(t, len(reqs), sink.Errors(), "expected an error per property")
+	for i, req := range reqs {
+		assert.Equal(t,
+			fmt.Sprintf("%v: %v%v: %v: %v\n",
+				diag.DefaultSinkErrorPrefix, diag.DefaultSinkIDPrefix, d.ID, "Mu.yaml",
+				fmt.Sprintf(d.Message, req, "mutest/provider")),
+			sink.ErrorMsgs()[i])
+	}
+}
+
+func TestBadUnrecognizedProperties(t *testing.T) {
+	sink := buildNoCodegen("testdata", "binder", "bad__properties", "bad__unrecognized")
+
+	d := errors.ErrorUnrecognizedProperty
+	unks := []string{"unk_bool", "unk_number", "unk_service", "unk_string"}
+	assert.Equal(t, len(unks), sink.Errors(), "expected an error per property")
+	for i, unk := range unks {
+		assert.Equal(t,
+			fmt.Sprintf("%v: %v%v: %v: %v\n",
+				diag.DefaultSinkErrorPrefix, diag.DefaultSinkIDPrefix, d.ID, "Mu.yaml",
+				fmt.Sprintf(d.Message, unk, "mutest/provider")),
+			sink.ErrorMsgs()[i])
+	}
+}
+
+func TestBadPropertyTypes(t *testing.T) {
+	sink := buildNoCodegen("testdata", "binder", "bad__properties", "bad__types")
+
+	d := errors.ErrorIncorrectPropertyType
+	exp := []string{"bool", "number", "service", "string"}
+	got := []string{"string", "string", "bool", "float64"}
+	assert.Equal(t, len(exp), sink.Errors(), "expected an error per property")
+	for i, ty := range exp {
+		assert.Equal(t,
+			fmt.Sprintf("%v: %v%v: %v: %v\n",
+				diag.DefaultSinkErrorPrefix, diag.DefaultSinkIDPrefix, d.ID, "Mu.yaml",
+				fmt.Sprintf(d.Message, "req_"+ty, ty, got[i], "mutest/provider")),
+			sink.ErrorMsgs()[i])
+	}
 }
 
 func TestGoodPredefTypes(t *testing.T) {

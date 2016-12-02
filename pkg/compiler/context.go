@@ -34,7 +34,9 @@ func (c *Context) WithClusterArch(cl *ast.Cluster, a backends.Arch) *Context {
 
 // WithProps returns a clone of this Context with the given properties attached to it.
 func (c *Context) WithProps(props ast.PropertyBag) *Context {
-	util.Assert(props != nil)
+	if props == nil {
+		props = make(ast.PropertyBag)
+	}
 	return &Context{
 		Cluster:    c.Cluster,
 		Arch:       c.Arch,

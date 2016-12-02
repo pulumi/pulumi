@@ -1,0 +1,13 @@
+name: mutest/bad__unrecognized
+services:
+    public:
+        mutest/provider:
+            req_string: "string"
+            req_number: 42
+            req_bool: true
+            req_service: "service"
+            unk_string: "string"
+            unk_number: 42
+            unk_bool: true
+            unk_service: "service"
+

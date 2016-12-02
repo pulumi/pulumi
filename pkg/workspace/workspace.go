@@ -191,7 +191,7 @@ func workspacePath(w *workspace, nm ast.Name) string {
 	if ns := w.Settings().Namespace; ns != "" {
 		// If the name starts with the namespace, trim the name part.
 		orig := string(nm)
-		if trim := strings.TrimPrefix(orig, ns); trim != orig {
+		if trim := strings.TrimPrefix(orig, ns+ast.NameDelimiter); trim != orig {
 			return stringNamePath(trim)
 		}
 	}

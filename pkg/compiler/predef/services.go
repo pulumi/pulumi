@@ -3,27 +3,29 @@
 package predef
 
 import (
+	"reflect"
+
 	"github.com/marapongo/mu/pkg/ast"
 	"github.com/marapongo/mu/pkg/util"
 )
 
-// MuExtensionService contains the extra properties that are specific to MuExtension stacks.
-type MuExtensionService struct {
+// ExtensionService contains the extra properties that are specific to MuExtension stacks.
+type ExtensionService struct {
 	ast.Service
 	Provider ast.Name `json:"-"` // the extensible provider name.
 }
 
-// AsMuExtensionService converts a given service to a MuExtensionService, validating it as we go.
-func AsMuExtensionService(svc *ast.Service) *MuExtensionService {
-	util.AssertM(svc.BoundType == MuExtension, "ServiceToMuExtension expects a bound MuExtension service type")
+// AsExtensionService converts a given service to a MuExtensionService, validating it as we go.
+func AsExtensionService(svc *ast.Service) *ExtensionService {
+	util.AssertM(svc.BoundType == Extension, "ServiceToMuExtension expects a bound MuExtension service type")
 
 	p, ok := svc.Props["provider"]
-	util.AssertM(ok, "MuExtension is expected to have a required 'provider' property")
-	prov, ok := p.(string)
-	util.AssertMF(ok, "MuExtension's 'provider' property is expected to be of type 'string'; got %v", p)
+	util.AssertM(ok, "Extension is expected to have a required 'provider' property")
+	lit, ok := p.(ast.StringLiteral)
+	util.AssertMF(ok, "Extension 'provider' property is expected to be of type 'string'; got %v", reflect.TypeOf(p))
 
-	return &MuExtensionService{
+	return &ExtensionService{
 		Service:  *svc,
-		Provider: ast.Name(prov),
+		Provider: ast.Name(lit.String),
 	}
 }

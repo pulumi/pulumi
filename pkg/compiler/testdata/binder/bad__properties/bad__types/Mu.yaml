@@ -1,0 +1,9 @@
+name: mutest/bad__types
+services:
+    public:
+        mutest/provider:
+            req_string: 42
+            req_number: "Not a number"
+            req_bool: "Not a bool"
+            req_service: true
+

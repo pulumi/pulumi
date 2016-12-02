@@ -23,7 +23,7 @@ func IsName(s string) bool {
 
 // AsName converts a given string to a Name, asserting its validity.
 func AsName(s string) Name {
-	util.AssertMF(NameRegexp.MatchString(s), "Expected string '%v' to be a name (%v)", s, NameRegexps)
+	util.AssertMF(IsName(s), "Expected string '%v' to be a name (%v)", s, NameRegexps)
 	return Name(s)
 }
 

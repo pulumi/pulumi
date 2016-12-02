@@ -40,17 +40,17 @@ var ErrorMalformedStackReference = &diag.Diag{
 
 var ErrorMissingRequiredProperty = &diag.Diag{
 	ID:      506,
-	Message: "Missing required property '%v' when creating '%v'",
+	Message: "Missing required property '%v' on '%v'",
 }
 
 var ErrorUnrecognizedProperty = &diag.Diag{
 	ID:      505,
-	Message: "Unrecognized property '%v' on when creating '%v'",
+	Message: "Unrecognized property '%v' on '%v'",
 }
 
 var ErrorIncorrectPropertyType = &diag.Diag{
 	ID:      506,
-	Message: "Property '%v' has the wrong type; got '%v', expected '%v' when creating '%v'",
+	Message: "Property '%v' has the wrong type; expected '%v', got '%v', on '%v'",
 }
 
 var ErrorServiceNotFound = &diag.Diag{

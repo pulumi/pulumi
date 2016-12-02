@@ -475,7 +475,9 @@ func (p *binderValidatePhase) bindStackProperties(parent *ast.Stack, stack *ast.
 
 	// First, enumerate all known properties on the stack.  Ensure all required properties are present, expand default
 	// values for missing ones where applicable, and check that types are correct, converting them as appropriate.
-	for pname, prop := range stack.Properties {
+	for _, pname := range ast.StableProperties(stack.Properties) {
+		prop := stack.Properties[pname]
+
 		// First see if a value has been supplied by the caller.
 		val, has := props[pname]
 		if !has {
@@ -503,26 +505,26 @@ func (p *binderValidatePhase) bindStackProperties(parent *ast.Stack, stack *ast.
 		case ast.PropertyTypeString:
 			// Convert the value to a string, and store it, or issue an error if it's the wrong type.
 			if s, ok := val.(string); ok {
-				bound[pname] = ast.LiteralString{String: s}
+				bound[pname] = ast.StringLiteral{String: s}
 			} else {
 				p.Diag().Errorf(errors.ErrorIncorrectPropertyType.At(parent),
-					pname, reflect.TypeOf(val), "string", stack.Name)
+					pname, "string", reflect.TypeOf(val), stack.Name)
 			}
 		case ast.PropertyTypeNumber:
 			// Convert the value to a float64 (JSON), and store it, or issue an error if it's the wrong type.
 			if n, ok := val.(float64); ok {
-				bound[pname] = ast.LiteralNumber{Number: n}
+				bound[pname] = ast.NumberLiteral{Number: n}
 			} else {
 				p.Diag().Errorf(errors.ErrorIncorrectPropertyType.At(parent),
-					pname, reflect.TypeOf(val), "number", stack.Name)
+					pname, "number", reflect.TypeOf(val), stack.Name)
 			}
 		case ast.PropertyTypeBool:
 			// Convert the value to a boolean, and store it, or issue an error if it's the wrong type.
 			if b, ok := val.(bool); ok {
-				bound[pname] = ast.LiteralBool{Bool: b}
+				bound[pname] = ast.BoolLiteral{Bool: b}
 			} else {
 				p.Diag().Errorf(errors.ErrorIncorrectPropertyType.At(parent),
-					pname, reflect.TypeOf(val), "bool", stack.Name)
+					pname, "bool", reflect.TypeOf(val), stack.Name)
 			}
 		case ast.PropertyTypeService:
 			// Extract the name of the service reference as a string.  Then bind it to an actual service in our symbol
@@ -589,7 +591,7 @@ func (p *binderValidatePhase) bindStackProperties(parent *ast.Stack, stack *ast.
 					}
 
 					if selsvc != nil {
-						bound[pname] = ast.LiteralCapRef{
+						bound[pname] = ast.CapRefLiteral{
 							Name:     nm,
 							Selector: sel,
 							Stack:    parent,
@@ -602,18 +604,22 @@ func (p *binderValidatePhase) bindStackProperties(parent *ast.Stack, stack *ast.
 				}
 			} else {
 				p.Diag().Errorf(errors.ErrorIncorrectPropertyType.At(parent),
-					pname, reflect.TypeOf(val), "service (string)", stack.Name)
+					pname, "service", reflect.TypeOf(val), stack.Name)
 			}
 		default:
 			util.FailMF("Unrecognized property type (prop=%v type=%v)", pname, prop.Type)
 		}
 	}
 
-	// Next, issue an error for any properties not recognized as belonging to this stack.
-	for pname := range props {
-		if _, ok := stack.Properties[pname]; !ok {
-			// TODO: edit distance checking to help with suggesting a fix.
-			p.Diag().Errorf(errors.ErrorUnrecognizedProperty.At(parent), pname)
+	// Next, issue an error for any properties not recognized as belonging to this stack.  Don't do this for the one
+	// special mu/extension type, since it's sole purpose in life is to allow arbitrary properties (and provides
+	// themselves will perform semantic analysis and validation of them).
+	if stack != predef.Extension {
+		for pname := range props {
+			if _, ok := stack.Properties[pname]; !ok {
+				// TODO: edit distance checking to help with suggesting a fix.
+				p.Diag().Errorf(errors.ErrorUnrecognizedProperty.At(parent), pname, stack.Name)
+			}
 		}
 	}
 

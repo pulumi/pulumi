@@ -166,20 +166,20 @@ func (c *awsCloud) genServiceTemplate(comp core.Compiland, stack *ast.Stack, svc
 	//		2) An AWS-specific extension type: these largely just pass-through CloudFormation goo that we will emit.
 	//		3) A reference to another Stack: these just instantiate those Stacks and reference their outputs.
 	switch svc.BoundType {
-	case predef.MuContainer:
+	case predef.Container:
 		return c.genMuContainerServiceTemplate(comp, stack, svc)
-	case predef.MuGateway:
+	case predef.Gateway:
 		return c.genMuGatewayServiceTemplate(comp, stack, svc)
-	case predef.MuFunc:
+	case predef.Func:
 		return c.genMuFuncServiceTemplate(comp, stack, svc)
-	case predef.MuEvent:
+	case predef.Event:
 		return c.genMuEventServiceTemplate(comp, stack, svc)
-	case predef.MuVolume:
+	case predef.Volume:
 		return c.genMuVolumeServiceTemplate(comp, stack, svc)
-	case predef.MuAutoscaler:
+	case predef.Autoscaler:
 		return c.genMuAutoscalerServiceTemplate(comp, stack, svc)
-	case predef.MuExtension:
-		return c.genMuExtensionServiceTemplate(comp, stack, predef.AsMuExtensionService(svc))
+	case predef.Extension:
+		return c.genMuExtensionServiceTemplate(comp, stack, predef.AsExtensionService(svc))
 	default:
 		return c.genOtherServiceTemplate(comp, stack, svc)
 	}
@@ -236,7 +236,7 @@ const CloudFormationExtensionProviderSkipProperties = "skipProperties"
 const CloudFormationExtensionProviderExtraProperties = "extraProperties"
 
 func (c *awsCloud) genMuExtensionServiceTemplate(comp core.Compiland, stack *ast.Stack,
-	svc *predef.MuExtensionService) cfResources {
+	svc *predef.ExtensionService) cfResources {
 	switch svc.Provider {
 	case CloudFormationExtensionProvider:
 		// The AWS CF extension provider simply creates a CF resource out of the provided template.  First, we extract
@@ -247,7 +247,7 @@ func (c *awsCloud) genMuExtensionServiceTemplate(comp core.Compiland, stack *ast
 			resType, ok = r.(string)
 			if !ok {
 				c.Diag().Errorf(errors.ErrorIncorrectPropertyType.At(stack),
-					CloudFormationExtensionProviderResource, reflect.TypeOf(r), "string",
+					CloudFormationExtensionProviderResource, "string", reflect.TypeOf(r),
 					CloudFormationExtensionProvider)
 				return nil
 			}
@@ -267,7 +267,7 @@ func (c *awsCloud) genMuExtensionServiceTemplate(comp core.Compiland, stack *ast
 				}
 			} else {
 				c.Diag().Errorf(errors.ErrorIncorrectPropertyType.At(stack),
-					CloudFormationExtensionProviderProperties, reflect.TypeOf(au), "[]string",
+					CloudFormationExtensionProviderProperties, "[]string", reflect.TypeOf(au),
 					CloudFormationExtensionProvider)
 			}
 		}
@@ -282,7 +282,7 @@ func (c *awsCloud) genMuExtensionServiceTemplate(comp core.Compiland, stack *ast
 				}
 			} else {
 				c.Diag().Errorf(errors.ErrorIncorrectPropertyType.At(stack),
-					CloudFormationExtensionProviderSkipProperties, reflect.TypeOf(sk), "[]string",
+					CloudFormationExtensionProviderSkipProperties, "[]string", reflect.TypeOf(sk),
 					CloudFormationExtensionProvider)
 			}
 		}
@@ -342,7 +342,7 @@ func (c *awsCloud) genMuExtensionServiceTemplate(comp core.Compiland, stack *ast
 				}
 			} else {
 				c.Diag().Errorf(errors.ErrorIncorrectPropertyType.At(stack),
-					CloudFormationExtensionProviderExtraProperties, reflect.TypeOf(ex), "map[string]interface{}",
+					CloudFormationExtensionProviderExtraProperties, "map[string]interface{}", reflect.TypeOf(ex),
 					CloudFormationExtensionProvider)
 			}
 		}
@@ -357,7 +357,7 @@ func (c *awsCloud) genMuExtensionServiceTemplate(comp core.Compiland, stack *ast
 				}
 			} else {
 				c.Diag().Errorf(errors.ErrorIncorrectPropertyType.At(stack),
-					CloudFormationExtensionProviderDependsOn, reflect.TypeOf(do), "[]string",
+					CloudFormationExtensionProviderDependsOn, "[]string", reflect.TypeOf(do),
 					CloudFormationExtensionProvider)
 			}
 		}

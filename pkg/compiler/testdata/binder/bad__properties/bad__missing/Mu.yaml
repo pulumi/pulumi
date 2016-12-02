@@ -1,0 +1,5 @@
+name: mutest/bad__missing
+services:
+    public:
+        mutest/provider:
+
