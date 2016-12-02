@@ -381,9 +381,10 @@ func (p *binderPhase2) ensureStackType(ref ast.Ref, props ast.PropertyBag) *ast.
 	if exists {
 		// If we got this far, we've loaded up the dependency's Mufile; parse it and return the result.  Note that
 		// this will be processed later on in semantic analysis, to ensure semantic problems are caught.
-		p := NewParser(p.b.c)
-		stack := p.ParseStack(doc, props)
-		if p.Diag().Success() {
+		pa := NewParser(p.b.c)
+		stack := pa.ParseStack(doc, props)
+		if pa.Diag().Success() {
+			p.deps = append(p.deps, stack)
 			return stack
 		} else {
 			return nil
