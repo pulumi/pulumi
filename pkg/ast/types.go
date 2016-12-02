@@ -44,7 +44,8 @@ type Node struct {
 type Workspace struct {
 	Node
 
-	Clusters     Clusters     `json:"clusters,omitempty"` // an optional set of predefined target clusters.
+	Namespace    string       `json:"namespace,omitempty"` // an optional namespace for this project space.
+	Clusters     Clusters     `json:"clusters,omitempty"`  // an optional set of predefined target clusters.
 	Dependencies Dependencies `json:"dependencies,omitempty"`
 
 	Doc *diag.Document `json:"-"` // the document from which this came.

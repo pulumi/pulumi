@@ -150,16 +150,22 @@ func (w *workspace) DepCandidates(dep ast.RefParts) []string {
 	//		7. $MUROOT/lib/base(r)/name(r)
 	//		8. $MUROOT/lib/name(r)
 	//
+	// A workspace may optionally have a namespace, in which case, we will also look for stacks in the workspace whose
+	// name is simplified to omit that namespace part.  For example, if a stack is named `mu/project/stack`, and the
+	// workspace namespace is `mu/`, then we will search `w/project/stack`; if the workspace is `mu/project/`, then we
+	// will search `w/stack`; and so on.  This helps to avoid needing to deeply nest workspaces needlessly.
+	//
 	// The following code simply produces an array of these candidate locations, in order.
 
 	base := stringNamePath(dep.Base)
 	name := namePath(dep.Name)
+	wsname := workspacePath(w, dep.Name)
 
 	// For each extension we support, add the same set of search locations.
 	cands := make([]string, 0, 4*len(encoding.Exts))
 	for _, ext := range encoding.Exts {
 		cands = append(cands, filepath.Join(w.root, base, name, Mufile+ext))
-		cands = append(cands, filepath.Join(w.root, name, Mufile+ext))
+		cands = append(cands, filepath.Join(w.root, wsname, Mufile+ext))
 		cands = append(cands, filepath.Join(w.root, Mudeps, base, name, Mufile+ext))
 		cands = append(cands, filepath.Join(w.root, Mudeps, name, Mufile+ext))
 		cands = append(cands, filepath.Join(w.home, Mudeps, base, name, Mufile+ext))
@@ -178,4 +184,16 @@ func namePath(nm ast.Name) string {
 // stringNamePart cleans a string component of a name and makes sure it's appropriate to use as a path.
 func stringNamePath(nm string) string {
 	return strings.Replace(nm, ast.NameDelimiter, string(os.PathSeparator), -1)
+}
+
+// workspacePath converts a name into the relevant name-part in the workspace to look for that dependency.
+func workspacePath(w *workspace, nm ast.Name) string {
+	if ns := w.Settings().Namespace; ns != "" {
+		// If the name starts with the namespace, trim the name part.
+		orig := string(nm)
+		if trim := strings.TrimPrefix(orig, ns); trim != orig {
+			return stringNamePath(trim)
+		}
+	}
+	return namePath(nm)
 }
