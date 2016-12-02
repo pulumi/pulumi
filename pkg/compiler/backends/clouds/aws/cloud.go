@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/ghodss/yaml"
 	"github.com/golang/glog"
 
 	"github.com/marapongo/mu/pkg/ast"
@@ -24,14 +23,28 @@ import (
 // Lambda, and so on, for the actual services in those stack templates.
 //
 // For more details, see https://github.com/marapongo/mu/blob/master/docs/targets.md#amazon-web-services-aws
-func New(d diag.Sink) clouds.Cloud {
-	return &awsCloud{d: d}
+func New(d diag.Sink, opts Options) clouds.Cloud {
+	// If no format was specified, pick YAML.
+	var m encoding.Marshaler
+	if opts.Ext == "" {
+		m = encoding.YAML
+	} else {
+		m = encoding.Marshalers[opts.Ext]
+	}
+
+	return &awsCloud{d: d, m: m, opts: opts}
+}
+
+// Options controls the behavior of the AWS Cloud backend implementation.
+type Options struct {
+	Ext string // the output format to generate (e.g., ".yaml", ".json")
 }
 
 type awsCloud struct {
 	clouds.Cloud
-	d diag.Sink
-	// TODO: support cloud provider options (e.g., ranging from simple like YAML vs. JSON to complex like IAM).
+	d    diag.Sink
+	m    encoding.Marshaler
+	opts Options
 }
 
 func (c *awsCloud) Arch() clouds.Arch {
@@ -60,7 +73,7 @@ func (c *awsCloud) CodeGen(comp core.Compiland) {
 	cf := c.genTemplate(comp)
 	if c.Diag().Success() {
 		// TODO: actually save this (and any other outputs) to disk, rather than spewing to STDOUT.
-		y, err := yaml.Marshal(cf)
+		y, err := c.m.Marshal(cf)
 		if err != nil {
 			c.Diag().Errorf(ErrorMarshalingCloudFormationTemplate.At(comp.Stack), err)
 			return
@@ -82,6 +95,21 @@ func (c *awsCloud) genStackName(comp core.Compiland) string {
 		makeAWSFriendlyName(comp.Cluster.Name, true), makeAWSFriendlyName(string(comp.Stack.Name), true))
 	util.Assert(IsValidCFStackName(nm))
 	return nm
+}
+
+// genResourceRef creates a reference to another resource inside of this same stack.  For more information, see
+// http://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/intrinsic-function-reference-ref.html.
+func (c *awsCloud) genResourceRef(ref ast.CapRefLiteral) interface{} {
+	// TODO: support cross-stack references.
+	id := string(c.genResourceID(ref.Service.BoundType, ref.Selected))
+	if c.m.IsYAMLLike() {
+		return "!Ref " + id
+	} else {
+		util.Assert(c.m.IsJSONLike())
+		return map[string]interface{}{
+			"Ref": id,
+		}
+	}
 }
 
 // genResourceID creates an ID for a resource, which must be unique within a single CloudFormation template.
@@ -293,7 +321,7 @@ func (c *awsCloud) genMuExtensionServiceTemplate(comp core.Compiland, stack *ast
 			if (auto == nil || auto[name]) && (skip == nil || !skip[name]) {
 				if p, has := svc.Service.Props[name]; has {
 					pname := makeAWSFriendlyName(name, true)
-					resProps[pname] = p
+					resProps[pname] = c.propertyLiteralToValue(p)
 				}
 			}
 		}
@@ -402,4 +430,24 @@ func (c *awsCloud) genOtherServiceTemplate(comp core.Compiland, stack *ast.Stack
 		all[nm] = public
 	}
 	return all
+}
+
+// propertyLiteralToValue converts an AST literal to a JSON/YAML literal appropriate for emission.
+func (c *awsCloud) propertyLiteralToValue(lit interface{}) interface{} {
+	switch v := lit.(type) {
+	case ast.AnyLiteral:
+		// TODO[marapongo/mu#9]: once we have complex structures, we'll need to perform a deep transformation.
+		return v.Any
+	case ast.StringLiteral:
+		return v.String
+	case ast.NumberLiteral:
+		return v.Number
+	case ast.BoolLiteral:
+		return v.Bool
+	case ast.CapRefLiteral:
+		return c.genResourceRef(v)
+	default:
+		util.FailMF("Unrecognized property literal type: %v", reflect.TypeOf(lit))
+	}
+	return nil
 }

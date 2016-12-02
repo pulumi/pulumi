@@ -501,7 +501,7 @@ func (p *binderValidatePhase) bindStackProperties(parent *ast.Stack, stack *ast.
 		case ast.PropertyTypeAny:
 			// Any is easy: just store it as-is.
 			// TODO(joe): eventually we'll need to do translation to canonicalize the contents.
-			bound[pname] = ast.LiteralAny{Any: val}
+			bound[pname] = ast.AnyLiteral{Any: val}
 		case ast.PropertyTypeString:
 			// Convert the value to a string, and store it, or issue an error if it's the wrong type.
 			if s, ok := val.(string); ok {

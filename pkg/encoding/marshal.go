@@ -8,10 +8,13 @@ import (
 	"github.com/ghodss/yaml"
 )
 
+var JSONExt = ".json"
+var YAMLExt = ".yaml"
+
 // Exts contains a list of all the valid marshalable extension types.
 var Exts = []string{
-	".json",
-	".yaml",
+	JSONExt,
+	YAMLExt,
 	// Although ".yml" is not a sanctioned YAML extension, it is used quite broadly; so we will support it.
 	".yml",
 }
@@ -21,6 +24,8 @@ var Marshalers map[string]Marshaler
 
 // Marshaler is a type that knows how to marshal and unmarshal data in one format.
 type Marshaler interface {
+	IsJSONLike() bool
+	IsYAMLLike() bool
 	Marshal(v interface{}) ([]byte, error)
 	Unmarshal(data []byte, v interface{}) error
 }
@@ -28,6 +33,14 @@ type Marshaler interface {
 var JSON Marshaler = &jsonMarshaler{}
 
 type jsonMarshaler struct {
+}
+
+func (m *jsonMarshaler) IsJSONLike() bool {
+	return true
+}
+
+func (m *jsonMarshaler) IsYAMLLike() bool {
+	return false
 }
 
 func (m *jsonMarshaler) Marshal(v interface{}) ([]byte, error) {
@@ -43,6 +56,14 @@ func (m *jsonMarshaler) Unmarshal(data []byte, v interface{}) error {
 var YAML Marshaler = &yamlMarshaler{}
 
 type yamlMarshaler struct {
+}
+
+func (m *yamlMarshaler) IsJSONLike() bool {
+	return false
+}
+
+func (m *yamlMarshaler) IsYAMLLike() bool {
+	return true
 }
 
 func (m *yamlMarshaler) Marshal(v interface{}) ([]byte, error) {

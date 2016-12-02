@@ -17,7 +17,8 @@ func New(arch Arch, d diag.Sink) core.Backend {
 	var cloud clouds.Cloud
 	switch arch.Cloud {
 	case clouds.AWS:
-		cloud = aws.New(d)
+		// TODO(joe): come up with a way to get options from CLI/workspace/etc. to here.
+		cloud = aws.New(d, aws.Options{})
 	case clouds.None:
 		util.FailM("Expected a valid cloud architecture for backends.New")
 	default:

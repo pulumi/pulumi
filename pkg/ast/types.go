@@ -183,8 +183,8 @@ type Literal struct {
 	Node
 }
 
-// LiteralAny is an AST node containing a literal value of "any" type (`interface{}`).
-type LiteralAny struct {
+// AnyLiteral is an AST node containing a literal value of "any" type (`interface{}`).
+type AnyLiteral struct {
 	Literal
 	Any interface{}
 }
