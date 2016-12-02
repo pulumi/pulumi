@@ -14,6 +14,7 @@ import (
 	"github.com/marapongo/mu/pkg/compiler/core"
 	"github.com/marapongo/mu/pkg/compiler/predef"
 	"github.com/marapongo/mu/pkg/diag"
+	"github.com/marapongo/mu/pkg/encoding"
 	"github.com/marapongo/mu/pkg/errors"
 	"github.com/marapongo/mu/pkg/util"
 )
@@ -258,7 +259,7 @@ func (c *awsCloud) genMuExtensionServiceTemplate(comp core.Compiland, stack *ast
 		// See if there are a set of properties to auto-map; if missing, the default is "all of them."
 		var auto map[string]bool
 		if au, ok := svc.Props[CloudFormationExtensionProviderProperties]; ok {
-			if aups, ok := au.([]string); ok {
+			if aups, ok := encoding.ArrayOfStrings(au); ok {
 				auto = make(map[string]bool)
 				for _, p := range aups {
 					auto[p] = true
@@ -273,7 +274,7 @@ func (c *awsCloud) genMuExtensionServiceTemplate(comp core.Compiland, stack *ast
 		var skip map[string]bool
 		if sk, ok := svc.Props[CloudFormationExtensionProviderSkipProperties]; ok {
 			skip = make(map[string]bool)
-			if ska, ok := sk.([]string); ok {
+			if ska, ok := encoding.ArrayOfStrings(sk); ok {
 				for _, s := range ska {
 					skip[s] = true
 				}
@@ -346,7 +347,7 @@ func (c *awsCloud) genMuExtensionServiceTemplate(comp core.Compiland, stack *ast
 		var resDeps []cfLogicalID
 		if do, ok := svc.Props[CloudFormationExtensionProviderDependsOn]; ok {
 			resDeps = make([]cfLogicalID, 0)
-			if doa, ok := do.([]string); ok {
+			if doa, ok := encoding.ArrayOfStrings(do); ok {
 				for _, d := range doa {
 					resDeps = append(resDeps, cfLogicalID(d))
 				}
