@@ -246,27 +246,29 @@ func (c *awsCloud) genMuExtensionServiceTemplate(comp core.Compiland, stack *ast
 		if ok {
 			resType, ok = r.(string)
 			if !ok {
-				c.Diag().Errorf(errors.ErrorIncorrectExtensionPropertyType.At(stack),
-					CloudFormationExtensionProviderResource, reflect.TypeOf(r), "string")
+				c.Diag().Errorf(errors.ErrorIncorrectPropertyType.At(stack),
+					CloudFormationExtensionProviderResource, reflect.TypeOf(r), "string",
+					CloudFormationExtensionProvider)
 				return nil
 			}
 		} else {
-			c.Diag().Errorf(errors.ErrorMissingExtensionProperty.At(stack),
-				CloudFormationExtensionProviderResource)
+			c.Diag().Errorf(errors.ErrorMissingRequiredProperty.At(stack),
+				CloudFormationExtensionProviderResource, CloudFormationExtensionProvider)
 			return nil
 		}
 
 		// See if there are a set of properties to auto-map; if missing, the default is "all of them."
 		var auto map[string]bool
 		if au, ok := svc.Props[CloudFormationExtensionProviderProperties]; ok {
-			if aups, ok := encoding.ArrayOfStrings(au); ok {
+			if aups, ok := encoding.StringSlice(au); ok {
 				auto = make(map[string]bool)
 				for _, p := range aups {
 					auto[p] = true
 				}
 			} else {
-				c.Diag().Errorf(errors.ErrorIncorrectExtensionPropertyType.At(stack),
-					CloudFormationExtensionProviderProperties, reflect.TypeOf(au), "[]string")
+				c.Diag().Errorf(errors.ErrorIncorrectPropertyType.At(stack),
+					CloudFormationExtensionProviderProperties, reflect.TypeOf(au), "[]string",
+					CloudFormationExtensionProvider)
 			}
 		}
 
@@ -274,13 +276,14 @@ func (c *awsCloud) genMuExtensionServiceTemplate(comp core.Compiland, stack *ast
 		var skip map[string]bool
 		if sk, ok := svc.Props[CloudFormationExtensionProviderSkipProperties]; ok {
 			skip = make(map[string]bool)
-			if ska, ok := encoding.ArrayOfStrings(sk); ok {
+			if ska, ok := encoding.StringSlice(sk); ok {
 				for _, s := range ska {
 					skip[s] = true
 				}
 			} else {
-				c.Diag().Errorf(errors.ErrorIncorrectExtensionPropertyType.At(stack),
-					CloudFormationExtensionProviderSkipProperties, reflect.TypeOf(sk), "[]string")
+				c.Diag().Errorf(errors.ErrorIncorrectPropertyType.At(stack),
+					CloudFormationExtensionProviderSkipProperties, reflect.TypeOf(sk), "[]string",
+					CloudFormationExtensionProvider)
 			}
 		}
 
@@ -338,8 +341,9 @@ func (c *awsCloud) genMuExtensionServiceTemplate(comp core.Compiland, stack *ast
 					}
 				}
 			} else {
-				c.Diag().Errorf(errors.ErrorIncorrectExtensionPropertyType.At(stack),
-					CloudFormationExtensionProviderExtraProperties, reflect.TypeOf(ex), "map[string]interface{}")
+				c.Diag().Errorf(errors.ErrorIncorrectPropertyType.At(stack),
+					CloudFormationExtensionProviderExtraProperties, reflect.TypeOf(ex), "map[string]interface{}",
+					CloudFormationExtensionProvider)
 			}
 		}
 
@@ -347,13 +351,14 @@ func (c *awsCloud) genMuExtensionServiceTemplate(comp core.Compiland, stack *ast
 		var resDeps []cfLogicalID
 		if do, ok := svc.Props[CloudFormationExtensionProviderDependsOn]; ok {
 			resDeps = make([]cfLogicalID, 0)
-			if doa, ok := encoding.ArrayOfStrings(do); ok {
+			if doa, ok := encoding.StringSlice(do); ok {
 				for _, d := range doa {
 					resDeps = append(resDeps, cfLogicalID(d))
 				}
 			} else {
-				c.Diag().Errorf(errors.ErrorIncorrectExtensionPropertyType.At(stack),
-					CloudFormationExtensionProviderDependsOn, reflect.TypeOf(do), "[]string")
+				c.Diag().Errorf(errors.ErrorIncorrectPropertyType.At(stack),
+					CloudFormationExtensionProviderDependsOn, reflect.TypeOf(do), "[]string",
+					CloudFormationExtensionProvider)
 			}
 		}
 

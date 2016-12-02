@@ -2,9 +2,9 @@
 
 package encoding
 
-// ArrayOfStrings checks a weakly typed interface ptr to see if it's a []string; if yes, the resulting converted array
+// StringSlice checks a weakly typed interface ptr to see if it's a []string; if yes, the resulting converted array
 // is returned with a "true"; otherwise, nil with a "false" is returned.
-func ArrayOfStrings(i interface{}) ([]string, bool) {
+func StringSlice(i interface{}) ([]string, bool) {
 	// First try a direct conversion.
 	if s, ok := i.([]string); ok {
 		return s, true

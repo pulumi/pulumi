@@ -3,6 +3,9 @@
 package compiler
 
 import (
+	"reflect"
+	"strings"
+
 	"github.com/golang/glog"
 
 	"github.com/marapongo/mu/pkg/ast"
@@ -23,6 +26,8 @@ type Binder interface {
 	// BindStack takes an AST, and its set of dependencies, and binds all names inside, mutating it in place.  It
 	// returns a full list of all dependency Stacks that this Stack depends upon (which must then be bound).
 	BindStack(stack *ast.Stack, depdocs ast.DependencyDocuments) []*ast.Stack
+	// ValidateStack runs last, after all transitive dependencies have been bound, to perform last minute validation.
+	ValidateStack(stack *ast.Stack)
 }
 
 func NewBinder(c Compiler) Binder {
@@ -61,13 +66,13 @@ func (b *binder) PrepareStack(stack *ast.Stack) []ast.Ref {
 
 	// Now perform a phase1 walk of the tree, preparing it for subsequent binding.  This must be done as a
 	// separate phase because we won't know what to stick into the symbol table until after this first walk.
-	phase1 := newBinderPhase1(b, stack)
-	v1 := core.NewInOrderVisitor(phase1, nil)
-	v1.VisitStack(stack)
+	phase := newBinderPreparePhase(b, stack)
+	v := core.NewInOrderVisitor(phase, nil)
+	v.VisitStack(stack)
 
 	// Return a set of dependency references that must be loaded before BindStack occurs.
-	deprefs := make([]ast.Ref, 0, len(phase1.deps))
-	for dep := range phase1.deps {
+	deprefs := make([]ast.Ref, 0, len(phase.deps))
+	for dep := range phase.deps {
 		deprefs = append(deprefs, dep)
 	}
 	return deprefs
@@ -80,15 +85,28 @@ func (b *binder) BindStack(stack *ast.Stack, depdocs ast.DependencyDocuments) []
 			stack.Name, b.Diag().Warnings(), b.Diag().Errors())
 	}
 
+	// Now perform a phase2 walk of the tree, completing the binding process.  The 1st walk will have given
+	// us everything we need for a fully populated symbol table, so that type binding will resolve correctly.
+	phase := newBinderBindPhase(b, stack, depdocs)
+	v := core.NewInOrderVisitor(phase, nil)
+	v.VisitStack(stack)
+	return phase.deps
+}
+
+func (b *binder) ValidateStack(stack *ast.Stack) {
+	glog.Infof("Validating Mu Stack: %v", stack.Name)
+	if glog.V(2) {
+		defer glog.V(2).Infof("Validating Mu Stack %v completed w/ %v warnings and %v errors",
+			stack.Name, b.Diag().Warnings(), b.Diag().Errors())
+	}
+
 	// Restore the original scope after this binding pass.
 	defer b.PopScope()
 
-	// Now perform a phase2 walk of the tree, completing the binding process.  The 1st walk will have given
-	// us everything we need for a fully populated symbol table, so that type binding will resolve correctly.
-	phase2 := newBinderPhase2(b, stack, depdocs)
-	v2 := core.NewInOrderVisitor(phase2, nil)
-	v2.VisitStack(stack)
-	return phase2.deps
+	// Now perform the final validation of the AST.  There's nothing to return, it just may issue errors.
+	phase := newBinderValidatePhase(b)
+	v := core.NewInOrderVisitor(phase, nil)
+	v.VisitStack(stack)
 }
 
 // LookupStack binds a name to a Stack type.
@@ -101,6 +119,12 @@ func (b *binder) LookupStack(nm ast.Name) (*ast.Stack, bool) {
 func (b *binder) LookupDocument(nm ast.Name) (*diag.Document, bool) {
 	util.AssertM(b.scope != nil, "Unexpected empty binding scope during LookupDocument")
 	return b.scope.LookupDocument(nm)
+}
+
+// LookupService binds a name to a Service type.
+func (b *binder) LookupService(nm ast.Name) (*ast.Service, bool) {
+	util.AssertM(b.scope != nil, "Unexpected empty binding scope during LookupService")
+	return b.scope.LookupService(nm)
 }
 
 // LookupSymbol binds a name to any kind of Symbol.
@@ -152,6 +176,16 @@ func (s *scope) LookupDocument(nm ast.Name) (*diag.Document, bool) {
 	return nil, false
 }
 
+// LookupService binds a name to a Service type.
+func (s *scope) LookupService(nm ast.Name) (*ast.Service, bool) {
+	sym, exists := s.LookupSymbol(nm)
+	if exists && sym.Kind == SymKindService {
+		return sym.Real.(*ast.Service), true
+	}
+	// TODO: we probably need to issue an error for this condition (wrong expected symbol type).
+	return nil, false
+}
+
 // LookupSymbol binds a name to any kind of Symbol.
 func (s *scope) LookupSymbol(nm ast.Name) (*Symbol, bool) {
 	for s != nil {
@@ -175,29 +209,29 @@ func (s *scope) RegisterSymbol(sym *Symbol) bool {
 	return true
 }
 
-type binderPhase1 struct {
+type binderPreparePhase struct {
 	b    *binder
 	top  *ast.Stack
 	deps map[ast.Ref]bool
 }
 
-var _ core.Visitor = &binderPhase1{} // compile-time assertion that the binder implements core.Visitor.
+var _ core.Visitor = &binderPreparePhase{} // compile-time assertion that the binder implements core.Visitor.
 
-func newBinderPhase1(b *binder, top *ast.Stack) *binderPhase1 {
-	return &binderPhase1{b, top, make(map[ast.Ref]bool)}
+func newBinderPreparePhase(b *binder, top *ast.Stack) *binderPreparePhase {
+	return &binderPreparePhase{b, top, make(map[ast.Ref]bool)}
 }
 
-func (p *binderPhase1) Diag() diag.Sink {
+func (p *binderPreparePhase) Diag() diag.Sink {
 	return p.b.Diag()
 }
 
-func (p *binderPhase1) VisitWorkspace(workspace *ast.Workspace) {
+func (p *binderPreparePhase) VisitWorkspace(workspace *ast.Workspace) {
 }
 
-func (p *binderPhase1) VisitCluster(name string, cluster *ast.Cluster) {
+func (p *binderPreparePhase) VisitCluster(name string, cluster *ast.Cluster) {
 }
 
-func (p *binderPhase1) VisitDependency(parent *ast.Workspace, ref ast.Ref, dep *ast.Dependency) {
+func (p *binderPreparePhase) VisitDependency(parent *ast.Workspace, ref ast.Ref, dep *ast.Dependency) {
 	// Workspace dependencies must use legal version specs; validate that this parses now so that we can use it
 	// later on without needing to worry about additional validation.
 	_, err := ref.Parse()
@@ -207,7 +241,7 @@ func (p *binderPhase1) VisitDependency(parent *ast.Workspace, ref ast.Ref, dep *
 }
 
 // registerDependency adds a dependency that needs to be resolved/bound before phase 2 occurs.
-func (p *binderPhase1) registerDependency(stack *ast.Stack, ref ast.Ref) (ast.RefParts, bool) {
+func (p *binderPreparePhase) registerDependency(stack *ast.Stack, ref ast.Ref) (ast.RefParts, bool) {
 	ty, err := ref.Parse()
 	if err == nil {
 		// First see if this resolves to a stack.  If it does, it's already in scope; nothing more to do.
@@ -226,7 +260,7 @@ func (p *binderPhase1) registerDependency(stack *ast.Stack, ref ast.Ref) (ast.Re
 	return ty, false
 }
 
-func (p *binderPhase1) VisitStack(stack *ast.Stack) {
+func (p *binderPreparePhase) VisitStack(stack *ast.Stack) {
 	// If the stack has a base type, we must add it as a bound dependency.
 	if stack.Base != "" {
 		p.registerDependency(stack, stack.Base)
@@ -247,13 +281,13 @@ func (p *binderPhase1) VisitStack(stack *ast.Stack) {
 	}
 }
 
-func (p *binderPhase1) VisitProperty(parent *ast.Stack, name string, param *ast.Property) {
+func (p *binderPreparePhase) VisitProperty(parent *ast.Stack, name string, param *ast.Property) {
 }
 
-func (p *binderPhase1) VisitServices(parent *ast.Stack, svcs *ast.Services) {
+func (p *binderPreparePhase) VisitServices(parent *ast.Stack, svcs *ast.Services) {
 }
 
-func (p *binderPhase1) VisitService(pstack *ast.Stack, parent *ast.Services, name ast.Name,
+func (p *binderPreparePhase) VisitService(pstack *ast.Stack, parent *ast.Services, name ast.Name,
 	public bool, svc *ast.Service) {
 	// Each service has a type.  There are two forms of specifying a type, and this phase will normalize this to a
 	// single canonical form to simplify subsequent phases.  First, there is a shorthand form:
@@ -295,16 +329,16 @@ func (p *binderPhase1) VisitService(pstack *ast.Stack, parent *ast.Services, nam
 	}
 }
 
-type binderPhase2 struct {
+type binderBindPhase struct {
 	b    *binder
 	top  *ast.Stack   // the top-most stack being bound.
 	deps []*ast.Stack // a set of dependencies instantiated during this binding phase.
 }
 
-var _ core.Visitor = &binderPhase2{} // compile-time assertion that the binder implements core.Visitor.
+var _ core.Visitor = &binderBindPhase{} // compile-time assertion that the binder implements core.Visitor.
 
-func newBinderPhase2(b *binder, top *ast.Stack, depdocs ast.DependencyDocuments) *binderPhase2 {
-	p := &binderPhase2{b: b, top: top}
+func newBinderBindPhase(b *binder, top *ast.Stack, depdocs ast.DependencyDocuments) *binderBindPhase {
+	p := &binderBindPhase{b: b, top: top}
 
 	// Populate the symbol table with this Stack's bound dependencies so that any type lookups are found.
 	for _, ref := range ast.StableDependencyDocuments(depdocs) {
@@ -321,20 +355,20 @@ func newBinderPhase2(b *binder, top *ast.Stack, depdocs ast.DependencyDocuments)
 	return p
 }
 
-func (p *binderPhase2) Diag() diag.Sink {
+func (p *binderBindPhase) Diag() diag.Sink {
 	return p.b.Diag()
 }
 
-func (p *binderPhase2) VisitWorkspace(workspace *ast.Workspace) {
+func (p *binderBindPhase) VisitWorkspace(workspace *ast.Workspace) {
 }
 
-func (p *binderPhase2) VisitCluster(name string, cluster *ast.Cluster) {
+func (p *binderBindPhase) VisitCluster(name string, cluster *ast.Cluster) {
 }
 
-func (p *binderPhase2) VisitDependency(parent *ast.Workspace, ref ast.Ref, dep *ast.Dependency) {
+func (p *binderBindPhase) VisitDependency(parent *ast.Workspace, ref ast.Ref, dep *ast.Dependency) {
 }
 
-func (p *binderPhase2) VisitStack(stack *ast.Stack) {
+func (p *binderBindPhase) VisitStack(stack *ast.Stack) {
 	// Ensure the name of the base is in scope, and remember the binding information.
 	if stack.Base != "" {
 		// TODO[marapongo/mu#7]: we need to plumb construction properties for this stack.
@@ -347,13 +381,13 @@ func (p *binderPhase2) VisitStack(stack *ast.Stack) {
 	}
 }
 
-func (p *binderPhase2) VisitProperty(parent *ast.Stack, name string, param *ast.Property) {
+func (p *binderBindPhase) VisitProperty(parent *ast.Stack, name string, param *ast.Property) {
 }
 
-func (p *binderPhase2) VisitServices(parent *ast.Stack, svcs *ast.Services) {
+func (p *binderBindPhase) VisitServices(parent *ast.Stack, svcs *ast.Services) {
 }
 
-func (p *binderPhase2) VisitService(pstack *ast.Stack, parent *ast.Services, name ast.Name, public bool,
+func (p *binderBindPhase) VisitService(pstack *ast.Stack, parent *ast.Services, name ast.Name, public bool,
 	svc *ast.Service) {
 	// The service's type has been prepared in phase 1, and must now be bound to a symbol.  All shorthand type
 	// expressions, intra stack references, cycles, and so forth, will have been taken care of by this earlier phase.
@@ -362,12 +396,7 @@ func (p *binderPhase2) VisitService(pstack *ast.Stack, parent *ast.Services, nam
 	svc.BoundType = p.ensureStackType(svc.Type, svc.Props)
 }
 
-// refToName converts a reference to its simple symbolic name.
-func refToName(ref ast.Ref) ast.Name {
-	return ref.MustParse().Name
-}
-
-func (p *binderPhase2) ensureStackType(ref ast.Ref, props ast.PropertyBag) *ast.Stack {
+func (p *binderBindPhase) ensureStackType(ref ast.Ref, props ast.PropertyBag) *ast.Stack {
 	// There are two possibilities.  The first is that a type resolves to an *ast.Stack.  That's simple, we just fetch
 	// and return it.  The second is that a type resolves to a *diag.Document.  That's more complex, as we need to
 	// actually parse the stack from a document, supplying properties, etc., for template expansion.
@@ -393,4 +422,205 @@ func (p *binderPhase2) ensureStackType(ref ast.Ref, props ast.PropertyBag) *ast.
 
 	util.FailMF("Expected 1st pass of binding to guarantee type %v exists (%v)", ref, nm)
 	return nil
+}
+
+type binderValidatePhase struct {
+	b *binder
+}
+
+var _ core.Visitor = &binderValidatePhase{} // compile-time assertion that the binder implements core.Visitor.
+
+func newBinderValidatePhase(b *binder) *binderValidatePhase {
+	return &binderValidatePhase{b: b}
+}
+
+func (p *binderValidatePhase) Diag() diag.Sink {
+	return p.b.Diag()
+}
+
+func (p *binderValidatePhase) VisitWorkspace(workspace *ast.Workspace) {
+}
+
+func (p *binderValidatePhase) VisitCluster(name string, cluster *ast.Cluster) {
+}
+
+func (p *binderValidatePhase) VisitDependency(parent *ast.Workspace, ref ast.Ref, dep *ast.Dependency) {
+}
+
+func (p *binderValidatePhase) VisitStack(stack *ast.Stack) {
+	// TODO: bind this stack's properties.
+	if stack.Base != "" {
+		// TODO[marapongo/mu#7]: validate the properties from this stack on the base.
+	}
+}
+
+func (p *binderValidatePhase) VisitProperty(parent *ast.Stack, name string, param *ast.Property) {
+}
+
+func (p *binderValidatePhase) VisitServices(parent *ast.Stack, svcs *ast.Services) {
+}
+
+func (p *binderValidatePhase) VisitService(pstack *ast.Stack, parent *ast.Services, name ast.Name, public bool,
+	svc *ast.Service) {
+
+	// Ensure the properties supplied at stack construction time are correct and bind them.
+	svc.BoundProps = p.bindStackProperties(pstack, svc.BoundType, svc.Props)
+}
+
+// bindStackProperties typechecks a set of unbounded properties against the target stack, and expands them into a bag
+// of bound properties (with AST nodes rather than the naked parsed types).
+func (p *binderValidatePhase) bindStackProperties(parent *ast.Stack, stack *ast.Stack,
+	props ast.PropertyBag) ast.LiteralPropertyBag {
+	bound := make(ast.LiteralPropertyBag)
+
+	// First, enumerate all known properties on the stack.  Ensure all required properties are present, expand default
+	// values for missing ones where applicable, and check that types are correct, converting them as appropriate.
+	for pname, prop := range stack.Properties {
+		// First see if a value has been supplied by the caller.
+		val, has := props[pname]
+		if !has {
+			if prop.Default != nil {
+				// If the property has a default value, stick it in and process it normally.
+				val = prop.Default
+			} else if prop.Optional {
+				// If this is an optional property, ok, just skip the remainder of processing.
+				continue
+			} else {
+				// If there's no value, no default, and it isn't optional, issue an error and move on.
+				p.Diag().Errorf(errors.ErrorMissingRequiredProperty.At(parent), pname, stack.Name)
+				continue
+			}
+		}
+
+		// Now, value in hand, let's make sure it's the right type.
+		// TODO(joe): support arrays and complex custom types.
+		// TODO(joe): support strongly typed capability types, not just "service."
+		switch prop.Type {
+		case ast.PropertyTypeAny:
+			// Any is easy: just store it as-is.
+			// TODO(joe): eventually we'll need to do translation to canonicalize the contents.
+			bound[pname] = ast.LiteralAny{Any: val}
+		case ast.PropertyTypeString:
+			// Convert the value to a string, and store it, or issue an error if it's the wrong type.
+			if s, ok := val.(string); ok {
+				bound[pname] = ast.LiteralString{String: s}
+			} else {
+				p.Diag().Errorf(errors.ErrorIncorrectPropertyType.At(parent),
+					pname, reflect.TypeOf(val), "string", stack.Name)
+			}
+		case ast.PropertyTypeNumber:
+			// Convert the value to a float64 (JSON), and store it, or issue an error if it's the wrong type.
+			if n, ok := val.(float64); ok {
+				bound[pname] = ast.LiteralNumber{Number: n}
+			} else {
+				p.Diag().Errorf(errors.ErrorIncorrectPropertyType.At(parent),
+					pname, reflect.TypeOf(val), "number", stack.Name)
+			}
+		case ast.PropertyTypeBool:
+			// Convert the value to a boolean, and store it, or issue an error if it's the wrong type.
+			if b, ok := val.(bool); ok {
+				bound[pname] = ast.LiteralBool{Bool: b}
+			} else {
+				p.Diag().Errorf(errors.ErrorIncorrectPropertyType.At(parent),
+					pname, reflect.TypeOf(val), "bool", stack.Name)
+			}
+		case ast.PropertyTypeService:
+			// Extract the name of the service reference as a string.  Then bind it to an actual service in our symbol
+			// table, and store a strong reference to the result.  This lets the backend connect the dots.
+			if s, ok := val.(string); ok {
+				// Peel off the selector, if there is one.
+				var sels string
+				if selix := strings.LastIndex(s, ":"); selix != -1 {
+					sels = s[selix+1:]
+					s = s[:selix]
+				}
+
+				// Validate and convert the name and selector to names.
+				var nm ast.Name
+				if ast.IsName(s) {
+					nm = ast.AsName(s)
+				} else {
+					p.Diag().Errorf(errors.ErrorNotAName.At(parent), s)
+				}
+				var sel ast.Name
+				if ast.IsName(sels) {
+					sel = ast.AsName(sels)
+				} else {
+					p.Diag().Errorf(errors.ErrorNotAName.At(parent), sels)
+				}
+
+				// If either name or selector didn't pass muster, skip the rest.
+				if nm == "" || sel == "" {
+					break
+				}
+
+				// Bind the name to a service.
+				if svc, ok := p.b.LookupService(ast.Name(nm)); ok {
+					ty := svc.BoundType
+					util.Assert(ty != nil)
+
+					var selsvc *ast.Service
+					if sel == "" {
+						// If no selector was specified, make sure there's only a single public service, and use it.
+						if len(ty.Services.Public) == 0 {
+							p.Diag().Errorf(errors.ErrorServiceHasNoPublics.At(stack), svc.Name, ty.Name)
+						} else if len(ty.Services.Public) == 1 {
+							for _, pub := range ty.Services.Public {
+								selsvc = &pub
+								break
+							}
+						} else {
+							util.Assert(len(ty.Services.Public) > 1)
+							p.Diag().Errorf(errors.ErrorServiceHasManyPublics.At(stack), svc.Name, ty.Name)
+						}
+					} else {
+						// If a selector was specified, ensure that it actually exists.
+						if entry, ok := ty.Services.Public[sel]; ok {
+							selsvc = &entry
+						} else {
+							// The selector wasn't found.  Issue an error.  If there's a private service by that name,
+							// say so, for better diagnostics.
+							if _, has := ty.Services.Private[sel]; has {
+								p.Diag().Errorf(errors.ErrorServiceSelectorIsPrivate.At(stack), sel, svc.Name, ty.Name)
+							} else {
+								p.Diag().Errorf(errors.ErrorServiceSelectorNotFound.At(stack), sel, svc.Name, ty.Name)
+							}
+						}
+					}
+
+					if selsvc != nil {
+						bound[pname] = ast.LiteralCapRef{
+							Name:     nm,
+							Selector: sel,
+							Stack:    parent,
+							Service:  svc,
+							Selected: selsvc,
+						}
+					}
+				} else {
+					p.Diag().Errorf(errors.ErrorServiceNotFound.At(parent), nm)
+				}
+			} else {
+				p.Diag().Errorf(errors.ErrorIncorrectPropertyType.At(parent),
+					pname, reflect.TypeOf(val), "service (string)", stack.Name)
+			}
+		default:
+			util.FailMF("Unrecognized property type (prop=%v type=%v)", pname, prop.Type)
+		}
+	}
+
+	// Next, issue an error for any properties not recognized as belonging to this stack.
+	for pname := range props {
+		if _, ok := stack.Properties[pname]; !ok {
+			// TODO: edit distance checking to help with suggesting a fix.
+			p.Diag().Errorf(errors.ErrorUnrecognizedProperty.At(parent), pname)
+		}
+	}
+
+	return bound
+}
+
+// refToName converts a reference to its simple symbolic name.
+func refToName(ref ast.Ref) ast.Name {
+	return ref.MustParse().Name
 }

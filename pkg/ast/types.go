@@ -133,7 +133,7 @@ const (
 	PropertyTypeAny     PropertyType = "any"     // any structure.
 	PropertyTypeString               = "string"  // a JSON-like string.
 	PropertyTypeNumber               = "number"  // a JSON-like number (integer or floating point).
-	PropertyTypeBoolean              = "boolean" // a JSON-like boolean (`true` or `false`).
+	PropertyTypeBool                 = "bool"    // a JSON-like boolean (`true` or `false`).
 	PropertyTypeService              = "service" // an untyped service reference; the runtime manifestation is a URL.
 )
 
@@ -159,9 +159,10 @@ type ServiceMap map[Name]Service
 type Service struct {
 	Node
 
-	Type      Ref         `json:"type,omitempty"` // an explicit type; if missing, the name is used.
-	BoundType *Stack      `json:"-"`              // services are bound to stacks during semantic analysis.
-	Props     PropertyBag `json:"-"`              // all of the "extra" properties, other than what is above.
+	Type       Ref                `json:"type,omitempty"` // an explicit type; if missing, the name is used.
+	BoundType  *Stack             `json:"-"`              // services are bound to stacks during semantic analysis.
+	Props      PropertyBag        `json:"-"`              // all of the "extra" properties, other than what is above.
+	BoundProps LiteralPropertyBag `json:"-"`              // the bound properties, expanded and typed correctly.
 
 	Name   Name `json:"-"` // a friendly name; decorated post-parsing, since it is contextual.
 	Public bool `json:"-"` // true if this service is publicly exposed; also decorated post-parsing.
@@ -172,6 +173,48 @@ type UntypedServiceMap map[Name]PropertyBag
 
 // PropertyBag is simply a map of string property names to untyped data values.
 type PropertyBag map[string]interface{}
+
+// LiteralPropertyBag is simply a map of string property names to literal typed AST nodes.
+type LiteralPropertyBag map[string]interface{} /*Literal*/
+
+// Literal represents a strongly typed AST value.
+type Literal struct {
+	Node
+}
+
+// LiteralAny is an AST node containing a literal value of "any" type (`interface{}`).
+type LiteralAny struct {
+	Literal
+	Any interface{}
+}
+
+// LiteralString is an AST node containing a literal string (`string`).
+type LiteralString struct {
+	Literal
+	String string
+}
+
+// LiteralNumber is an AST node containing a literal number (`float64`).
+type LiteralNumber struct {
+	Literal
+	Number float64
+}
+
+// LiteralBool is an AST node containing a literal boolean (`bool`).
+type LiteralBool struct {
+	Literal
+	Bool bool
+}
+
+// LiteralCapRef is an AST node containing a literal capability reference (`string`).
+type LiteralCapRef struct {
+	Literal
+	Name     Name     // the name used to resolve the capability.
+	Selector Name     // the "selector" used if the target service exports multiple endpoints.
+	Stack    *Stack   // the stack in which the capability resides.
+	Service  *Service // the service that this capability reference names.
+	Selected *Service // the selected service resolved during binding.
+}
 
 // TODO[marapongo/mu#9]: extensible schema support.
 // TODO[marapongo/mu#17]: identity (users, roles, groups).

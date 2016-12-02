@@ -12,18 +12,18 @@ import (
 // NameDelimiter is what delimits Namespace and Name parts.
 const NameDelimiter = "/"
 
-var nameRegexp = regexp.MustCompile(nameRegexps)
-var nameRegexps = "(" + namePartRegexps + "\\" + NameDelimiter + ")*" + namePartRegexps
-var namePartRegexps = "[A-Za-z_][A-Za-z0-9_]*"
+var NameRegexp = regexp.MustCompile(NameRegexps)
+var NameRegexps = "(" + NamePartRegexps + "\\" + NameDelimiter + ")*" + NamePartRegexps
+var NamePartRegexps = "[A-Za-z_][A-Za-z0-9_]*"
 
 // IsName checks whether a string is a legal Name.
 func IsName(s string) bool {
-	return nameRegexp.FindString(s) == s
+	return NameRegexp.FindString(s) == s
 }
 
 // AsName converts a given string to a Name, asserting its validity.
 func AsName(s string) Name {
-	util.AssertMF(nameRegexp.MatchString(s), "Expected string '%v' to be a name (%v)", s, nameRegexps)
+	util.AssertMF(NameRegexp.MatchString(s), "Expected string '%v' to be a name (%v)", s, NameRegexps)
 	return Name(s)
 }
 

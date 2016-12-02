@@ -57,6 +57,12 @@ func (c *compiler) bindStack(b Binder, w workspace.W, stack *ast.Stack) {
 	for _, dep := range deps {
 		c.bindStack(b, w, dep)
 	}
+	if !c.Diag().Success() {
+		return
+	}
+
+	// Finally, now that we know the entire tree, and its transitive closure, is bound, perform final validation.
+	b.ValidateStack(stack)
 }
 
 // resolveDependency loads up the target dependency from the current workspace using the stack resolution rules.
