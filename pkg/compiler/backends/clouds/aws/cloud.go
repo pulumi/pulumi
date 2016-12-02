@@ -87,7 +87,7 @@ func (c *awsCloud) genStackName(comp core.Compiland) string {
 // genResourceID creates an ID for a resource, which must be unique within a single CloudFormation template.
 func (c *awsCloud) genResourceID(stack *ast.Stack, svc *ast.Service) cfLogicalID {
 	nm := fmt.Sprintf("%v%v",
-		makeAWSFriendlyName(string(stack.Name), true), makeAWSFriendlyName(string(svc.Name), true))
+		makeAWSFriendlyName(string(svc.Name), true), makeAWSFriendlyName(string(stack.Name), true))
 	util.Assert(IsValidCFLogicalID(nm))
 	return cfLogicalID(nm)
 }
