@@ -21,15 +21,15 @@ properties:
         description: The Internet gateway that is attached to your VPC.  For route entries that specify a gateway, you
             must also specify a dependency on the gateway attachment resource (`vpcGatewayAttachment`).
         optional: true
+    vpcGatewayAttachment:
+        type: aws/ec2/vpcGatewayAttachment
+        description: The gateway attachment resource that attached the specified gateway to the VPC.
+        optional: true
     # TODO[marapongo/mu#27]: project more of the AWS CF types; until then, this remains commented out.
     # vpnGateway:
     #     type: aws/ec2/vpnGateway
     #     description: The VPN gateway that is attached to your VPC.  For route entries that specify a gateway, you must
     #         also specify a dependency on the gateway attachment resource (`vpcGatewayAttachment`).
-    #     optional: true
-    # vpcGatewayAttachment:
-    #     type: aws/ec2/vpcGatewayAttachment
-    #     description: The gateway attachment resource that attached the specified gateway to the VPC.
     #     optional: true
     # instance:
     #     type: aws/ec2/instance

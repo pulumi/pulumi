@@ -26,4 +26,5 @@ private:
     aws/ec2/securityGroup:
         name: {{.Cluster.Name}}-SecurityGroup
         vpc: vpc
+        groupDescription: The primary cluster group.
 
