@@ -448,6 +448,6 @@ func (c *awsCloud) propertyLiteralToValue(lit interface{}) interface{} {
 		return c.genResourceRef(v)
 	default:
 		util.FailMF("Unrecognized property literal type: %v", reflect.TypeOf(lit))
+		return nil
 	}
-	return nil
 }
