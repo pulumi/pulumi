@@ -1,12 +1,10 @@
-hash: eb213e78c26d542462d9fa9ce9dd6de7709087f7fef6c992e0d26ed77cb19b11
-updated: 2016-12-03T12:52:15.42546522-08:00
+hash: c020f7609e37666f38d163397b6d7022668103e8f82e6eaf244b322bc1a9c878
+updated: 2016-12-03T13:17:46.263591232-08:00
 imports:
 - name: github.com/aokoli/goutils
   version: 9c37978a95bd5c709a15883b6242714ea6709e64
 - name: github.com/blang/semver
   version: 3a37c301dda64cbe17f16f661b4c976803c0e2d2
-- name: github.com/ghodss/yaml
-  version: a54de18a07046d8c4b26e9327698a2ebb9285b36
 - name: github.com/golang/glog
   version: 23def4e6c14b4da8ac2ed8007337bc5eb5007998
 - name: github.com/golang/lint
@@ -15,6 +13,8 @@ imports:
   - golint
 - name: github.com/inconshreveable/mousetrap
   version: 76626ae9c91c4f2a10f34cad8ce83ea42c93bb75
+- name: github.com/joeduffy/yaml
+  version: 8220212d5b2bb207e2755ab2a04e4bc06564d2b2
 - name: github.com/Masterminds/sprig
   version: 1e60e4ce482a1e2c7b9c9be667535ef152e04300
 - name: github.com/mitchellh/go-homedir
