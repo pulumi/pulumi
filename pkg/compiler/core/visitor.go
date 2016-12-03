@@ -52,17 +52,10 @@ func (v *inOrderVisitor) VisitWorkspace(w *ast.Workspace) {
 	}
 
 	for _, name := range ast.StableClusters(w.Clusters) {
-		cluster := w.Clusters[name]
-		v.VisitCluster(name, &cluster)
-		// Copy the cluster back in case it was updated.
-		w.Clusters[name] = cluster
+		v.VisitCluster(name, w.Clusters[name])
 	}
-
 	for _, ref := range ast.StableDependencies(w.Dependencies) {
-		dep := w.Dependencies[ref]
-		v.VisitDependency(w, ref, &dep)
-		// Copy the dependency back in case it was updated.
-		w.Dependencies[ref] = dep
+		v.VisitDependency(w, ref, w.Dependencies[ref])
 	}
 
 	if v.post != nil {
@@ -94,12 +87,8 @@ func (v *inOrderVisitor) VisitStack(stack *ast.Stack) {
 	}
 
 	for _, name := range ast.StableProperties(stack.Properties) {
-		prop := stack.Properties[name]
-		v.VisitProperty(stack, name, &prop)
-		// Copy the property back in case it was updated.
-		stack.Properties[name] = prop
+		v.VisitProperty(stack, name, stack.Properties[name])
 	}
-
 	v.VisitServices(stack, &stack.Services)
 
 	if v.post != nil {
@@ -122,17 +111,10 @@ func (v *inOrderVisitor) VisitServices(parent *ast.Stack, svcs *ast.Services) {
 	}
 
 	for _, name := range ast.StableServices(svcs.Private) {
-		private := svcs.Private[name]
-		v.VisitService(parent, svcs, name, false, &private)
-		// Copy the private service back in case it was updated.
-		svcs.Private[name] = private
+		v.VisitService(parent, svcs, name, false, svcs.Private[name])
 	}
-
 	for _, name := range ast.StableServices(svcs.Public) {
-		public := svcs.Public[name]
-		v.VisitService(parent, svcs, name, true, &public)
-		// Copy the public service back in case it was updated.
-		svcs.Public[name] = public
+		v.VisitService(parent, svcs, name, true, svcs.Public[name])
 	}
 
 	if v.post != nil {

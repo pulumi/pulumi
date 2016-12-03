@@ -58,7 +58,7 @@ func (w *Workspace) Where() (*diag.Document, *diag.Location) {
 }
 
 // Clusters is a map of target names to metadata about those targets.
-type Clusters map[string]Cluster
+type Clusters map[string]*Cluster
 
 // Cluster describes a predefined cloud runtime target, including its OS and Scheduler combination.
 type Cluster struct {
@@ -74,7 +74,7 @@ type Cluster struct {
 }
 
 // Dependencies maps dependency refs to the semantic version the consumer depends on.
-type Dependencies map[Ref]Dependency
+type Dependencies map[Ref]*Dependency
 
 // Dependency is metadata describing a dependency target (for now, just its target version).
 type Dependency VersionSpec
@@ -115,18 +115,25 @@ type StackRef struct {
 	Doc *diag.Document `json:"-"`
 }
 
+// StackType is a union type of either a Stack or a StackRef.  This permits scenarios where either a fully
+// instantiated type (Stack) or an uninstantiated one (StackRef) are legally permitted.
+type StackType struct {
+	Stack    *Stack    // non-nil if fully instantiated (implying that StackRef is nil).
+	StackRef *StackRef // non-nil if uninstantiated (implying that Stack is nil).
+}
+
 // DependendyRefs is simply a map of dependency reference to the associated StackRef for that dependency.
-type DependencyRefs map[Ref]StackRef
+type DependencyRefs map[Ref]*StackRef
 
 // Propertys maps property names to metadata about those propertys.
-type Properties map[string]Property
+type Properties map[string]*Property
 
 // Property describes the requirements of arguments used when constructing Stacks, etc.
 type Property struct {
 	Node
 
 	Type        PropertyType `json:"type,omitempty"`        // the type of the property; required.
-	BoundType   interface{}  `json:"-"`                     // if the property is a stack type, it will be bound.
+	BoundType   *StackType   `json:"-"`                     // if the property is a stack type, it will be bound.
 	Description string       `json:"description,omitempty"` // an optional friendly description of the property.
 	Default     interface{}  `json:"default,omitempty"`     // an optional default value if the caller elides one.
 	Optional    bool         `json:"optional,omitempty"`    // true if may be omitted (inferred if a default value).
@@ -170,7 +177,7 @@ type Services struct {
 }
 
 // ServiceMap is a map of service names to metadata about those services.
-type ServiceMap map[Name]Service
+type ServiceMap map[Name]*Service
 
 // Service is a directive for instantiating another Stack, including its name, arguments, etc.
 type Service struct {

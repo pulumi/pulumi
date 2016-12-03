@@ -65,7 +65,7 @@ var (
 		Predef:      true,
 		Description: "A logical service that extends the system by hooking system events.",
 		Properties: ast.Properties{
-			"provider": ast.Property{
+			"provider": &ast.Property{
 				Name:        "provider",
 				Type:        ast.PropertyTypeString,
 				Description: "The name of the provider that will handle this service.",

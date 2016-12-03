@@ -1,10 +1,10 @@
-hash: a5438f680dce8e6b28158d508e611c4ea51e54ea8c88c581be464eb7cef01a92
-updated: 2016-11-25T11:02:01.343805907-08:00
+hash: eb213e78c26d542462d9fa9ce9dd6de7709087f7fef6c992e0d26ed77cb19b11
+updated: 2016-12-03T12:52:15.42546522-08:00
 imports:
 - name: github.com/aokoli/goutils
   version: 9c37978a95bd5c709a15883b6242714ea6709e64
 - name: github.com/blang/semver
-  version: 99c25b2dbb9b8a6389fab5fb785ee7428a7a6ab8
+  version: 3a37c301dda64cbe17f16f661b4c976803c0e2d2
 - name: github.com/ghodss/yaml
   version: a54de18a07046d8c4b26e9327698a2ebb9285b36
 - name: github.com/golang/glog
@@ -16,9 +16,9 @@ imports:
 - name: github.com/inconshreveable/mousetrap
   version: 76626ae9c91c4f2a10f34cad8ce83ea42c93bb75
 - name: github.com/Masterminds/sprig
-  version: ff6305605b31df2c4b2df03b80f199936268ec35
+  version: 1e60e4ce482a1e2c7b9c9be667535ef152e04300
 - name: github.com/mitchellh/go-homedir
-  version: 756f7b183b7ab78acdbbee5c7f392838ed459dda
+  version: b8bc1bf767474819792c23f32d8286a45736f1c6
 - name: github.com/satori/go.uuid
   version: 879c5887cd475cd7864858769793b2ceb0d44feb
 - name: github.com/spf13/cobra

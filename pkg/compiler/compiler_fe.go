@@ -69,7 +69,7 @@ func (c *compiler) detectClusterArch(w workspace.W) (*ast.Cluster, backends.Arch
 	var cluster *ast.Cluster
 	if c.opts.Cluster != "" {
 		if cl, exists := w.Settings().Clusters[c.opts.Cluster]; exists {
-			cluster = &cl
+			cluster = cl
 		} else {
 			c.Diag().Errorf(errors.ErrorClusterNotFound, c.opts.Cluster)
 			return nil, arch
@@ -80,7 +80,7 @@ func (c *compiler) detectClusterArch(w workspace.W) (*ast.Cluster, backends.Arch
 	if cluster == nil {
 		for _, cl := range w.Settings().Clusters {
 			if cl.Default {
-				cluster = &cl
+				cluster = cl
 				break
 			}
 		}

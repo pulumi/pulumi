@@ -356,7 +356,7 @@ func newBinderBindPhase(b *binder, top *ast.Stack, deprefs ast.DependencyRefs) *
 		util.Assert(dep.Doc != nil)
 
 		nm := refToName(ref)
-		sym := NewStackRefSymbol(nm, &dep)
+		sym := NewStackRefSymbol(nm, dep)
 		if !p.b.RegisterSymbol(sym) {
 			p.Diag().Errorf(errors.ErrorSymbolAlreadyExists.At(dep.Doc), nm)
 		}
@@ -382,7 +382,8 @@ func (p *binderBindPhase) VisitStack(stack *ast.Stack) {
 	// Ensure the name of the base is in scope, and remember the binding information.
 	if stack.Base != "" {
 		// TODO[marapongo/mu#7]: we need to plumb construction properties for this stack.
-		stack.BoundBase = p.ensureStackType(stack.Base, nil)
+		stack.BoundBase = p.ensureStack(stack.Base, nil)
+		util.Assert(stack.BoundBase != nil)
 	}
 
 	// Non-abstract Stacks must declare at least one Service.
@@ -394,7 +395,8 @@ func (p *binderBindPhase) VisitStack(stack *ast.Stack) {
 func (p *binderBindPhase) VisitProperty(parent *ast.Stack, name string, param *ast.Property) {
 	// For properties whose types represent stack types, we must bind them.
 	if ast.IsPropertyStackType(param.Type) {
-		param.BoundType = p.ensureStack(ast.Ref(param.Type))
+		param.BoundType = p.ensureStackType(ast.Ref(param.Type))
+		util.Assert(param.BoundType != nil)
 	}
 }
 
@@ -407,50 +409,48 @@ func (p *binderBindPhase) VisitService(pstack *ast.Stack, parent *ast.Services, 
 	// expressions, intra stack references, cycles, and so forth, will have been taken care of by this earlier phase.
 	util.AssertMF(svc.Type != "",
 		"Expected all Services to have types in binding phase2; %v is missing one", svc.Name)
-	svc.BoundType = p.ensureStackType(svc.Type, svc.Props)
+	svc.BoundType = p.ensureStack(svc.Type, svc.Props)
+	util.Assert(svc.BoundType != nil)
 }
 
-// ensureStack looks up a ref, either as a stack or document symbol, and returns it as-is.
-// TODO: it would be ideal if we had a richer AST that could represent uninstantiated vs. instantiated stack types
-//     more uniformly.  As we figure out how to break the circularity of template expansions, we should fix this.
-func (p *binderBindPhase) ensureStack(ref ast.Ref) interface{} {
-	nm := refToName(ref)
-	stack, exists := p.b.LookupStack(nm)
-	if exists {
-		return stack
-	}
-	stref, exists := p.b.LookupStackRef(nm)
-	if exists {
-		return stref
-	}
-	util.FailMF("Expected 1st pass of binding to guarantee type %v exists (%v)", ref, nm)
-	return nil
-}
-
-// ensureStackType binds a ref to a symbol, possibly instantiating it, and returns a fully bound stack.
-func (p *binderBindPhase) ensureStackType(ref ast.Ref, props ast.PropertyBag) *ast.Stack {
-	ty := p.ensureStack(ref)
+// ensureStack binds a ref to a symbol, possibly instantiating it, and returns a fully bound stack.
+func (p *binderBindPhase) ensureStack(ref ast.Ref, props ast.PropertyBag) *ast.Stack {
+	ty := p.ensureStackType(ref)
+	util.Assert(ty != nil)
 
 	// There are two possibilities.  The first is that a type resolves to an *ast.Stack.  That's simple, we just fetch
 	// and return it.  The second is that a type resolves to a *diag.Document.  That's more complex, as we need to
 	// actually parse the stack from a document, supplying properties, etc., for template expansion.
-	switch tty := ty.(type) {
-	case *ast.Stack:
-		return tty
-	case *ast.StackRef:
+	if ty.Stack != nil {
+		return ty.Stack
+	} else {
+		util.Assert(ty.StackRef != nil)
+
 		// We have the dependency's Mufile; now we must "instantiate it", by parsing it and returning the result.  Note
 		// that this will be processed later on in semantic analysis, to ensure semantic problems are caught.
 		pa := NewParser(p.b.c)
-		stack := pa.ParseStack(tty.Doc, props)
+		stack := pa.ParseStack(ty.StackRef.Doc, props)
 		if !pa.Diag().Success() {
 			return nil
 		}
 		p.deps = append(p.deps, stack)
 		return stack
-	default:
-		util.FailMF("Expected either a Stack or a Document")
-		return nil
 	}
+}
+
+// ensureStackType looksType up a ref, either as a stack or document symbol, and returns it as-is.
+func (p *binderBindPhase) ensureStackType(ref ast.Ref) *ast.StackType {
+	nm := refToName(ref)
+	stack, exists := p.b.LookupStack(nm)
+	if exists {
+		return &ast.StackType{Stack: stack}
+	}
+	stref, exists := p.b.LookupStackRef(nm)
+	if exists {
+		return &ast.StackType{StackRef: stref}
+	}
+	util.FailMF("Expected 1st pass of binding to guarantee type %v exists (%v)", ref, nm)
+	return nil
 }
 
 type binderValidatePhase struct {
@@ -479,11 +479,13 @@ func (p *binderValidatePhase) VisitDependency(parent *ast.Workspace, ref ast.Ref
 func (p *binderValidatePhase) VisitStack(stack *ast.Stack) {
 	// TODO: bind this stack's properties.
 	if stack.Base != "" {
+		util.Assert(stack.BoundBase != nil)
 		// TODO[marapongo/mu#7]: validate the properties from this stack on the base.
 	}
 }
 
-func (p *binderValidatePhase) VisitProperty(parent *ast.Stack, name string, param *ast.Property) {
+func (p *binderValidatePhase) VisitProperty(parent *ast.Stack, name string, prop *ast.Property) {
+	util.Assert(!ast.IsPropertyStackType(prop.Type) || prop.BoundType != nil)
 }
 
 func (p *binderValidatePhase) VisitServices(parent *ast.Stack, svcs *ast.Services) {
@@ -491,7 +493,7 @@ func (p *binderValidatePhase) VisitServices(parent *ast.Stack, svcs *ast.Service
 
 func (p *binderValidatePhase) VisitService(pstack *ast.Stack, parent *ast.Services, name ast.Name, public bool,
 	svc *ast.Service) {
-
+	util.Assert(svc.BoundType != nil)
 	// Ensure the properties supplied at stack construction time are correct and bind them.
 	svc.BoundProps = p.bindStackProperties(pstack, svc.BoundType, svc.Props)
 }
@@ -525,7 +527,6 @@ func (p *binderValidatePhase) bindStackProperties(parent *ast.Stack, stack *ast.
 
 		// Now, value in hand, let's make sure it's the right type.
 		// TODO(joe): support arrays and complex custom types.
-		// TODO(joe): support strongly typed capability types, not just "service."
 		switch prop.Type {
 		case ast.PropertyTypeAny:
 			// Any is easy: just store it as-is.
@@ -559,84 +560,27 @@ func (p *binderValidatePhase) bindStackProperties(parent *ast.Stack, stack *ast.
 			// Extract the name of the service reference as a string.  Then bind it to an actual service in our symbol
 			// table, and store a strong reference to the result.  This lets the backend connect the dots.
 			if s, ok := val.(string); ok {
-				// Peel off the selector, if there is one.
-				var sels string
-				if selix := strings.LastIndex(s, ":"); selix != -1 {
-					sels = s[selix+1:]
-					s = s[:selix]
-				}
-
-				// Validate and convert the name and selector to names.
-				var nm ast.Name
-				if ast.IsName(s) {
-					nm = ast.AsName(s)
-				} else {
-					p.Diag().Errorf(errors.ErrorNotAName.At(parent), s)
-				}
-				var sel ast.Name
-				if ast.IsName(sels) {
-					sel = ast.AsName(sels)
-				} else {
-					p.Diag().Errorf(errors.ErrorNotAName.At(parent), sels)
-				}
-
-				// If either name or selector didn't pass muster, skip the rest.
-				if nm == "" || sel == "" {
-					break
-				}
-
-				// Bind the name to a service.
-				if svc, ok := p.b.LookupService(ast.Name(nm)); ok {
-					ty := svc.BoundType
-					util.Assert(ty != nil)
-
-					var selsvc *ast.Service
-					if sel == "" {
-						// If no selector was specified, make sure there's only a single public service, and use it.
-						if len(ty.Services.Public) == 0 {
-							p.Diag().Errorf(errors.ErrorServiceHasNoPublics.At(stack), svc.Name, ty.Name)
-						} else if len(ty.Services.Public) == 1 {
-							for _, pub := range ty.Services.Public {
-								selsvc = &pub
-								break
-							}
-						} else {
-							util.Assert(len(ty.Services.Public) > 1)
-							p.Diag().Errorf(errors.ErrorServiceHasManyPublics.At(stack), svc.Name, ty.Name)
-						}
-					} else {
-						// If a selector was specified, ensure that it actually exists.
-						if entry, ok := ty.Services.Public[sel]; ok {
-							selsvc = &entry
-						} else {
-							// The selector wasn't found.  Issue an error.  If there's a private service by that name,
-							// say so, for better diagnostics.
-							if _, has := ty.Services.Private[sel]; has {
-								p.Diag().Errorf(errors.ErrorServiceSelectorIsPrivate.At(stack), sel, svc.Name, ty.Name)
-							} else {
-								p.Diag().Errorf(errors.ErrorServiceSelectorNotFound.At(stack), sel, svc.Name, ty.Name)
-							}
-						}
-					}
-
-					if selsvc != nil {
-						bound[pname] = ast.CapRefLiteral{
-							Name:     nm,
-							Selector: sel,
-							Stack:    parent,
-							Service:  svc,
-							Selected: selsvc,
-						}
-					}
-				} else {
-					p.Diag().Errorf(errors.ErrorServiceNotFound.At(parent), nm)
+				if cap := p.bindStackRefValue(parent, stack, pname, prop, s, nil); cap != nil {
+					bound[pname] = *cap
 				}
 			} else {
 				p.Diag().Errorf(errors.ErrorIncorrectPropertyType.At(parent),
 					pname, "service", reflect.TypeOf(val), stack.Name)
 			}
 		default:
-			util.FailMF("Unrecognized property type (prop=%v type=%v)", pname, prop.Type)
+			util.AssertMF(ast.IsPropertyStackType(prop.Type),
+				"Unrecognized property type (prop=%v type=%v)", pname, prop.Type)
+			util.Assert(prop.BoundType != nil)
+
+			// Bind the capability ref for this stack type.
+			if s, ok := val.(string); ok {
+				if cap := p.bindStackRefValue(parent, stack, pname, prop, s, prop.BoundType); cap != nil {
+					bound[pname] = *cap
+				}
+			} else {
+				p.Diag().Errorf(errors.ErrorIncorrectPropertyType.At(parent),
+					pname, prop.Type, reflect.TypeOf(val), stack.Name)
+			}
 		}
 	}
 
@@ -653,6 +597,109 @@ func (p *binderValidatePhase) bindStackProperties(parent *ast.Stack, stack *ast.
 	}
 
 	return bound
+}
+
+func (p *binderValidatePhase) bindStackRefValue(parent *ast.Stack, stack *ast.Stack, pname string, prop *ast.Property,
+	val string, ty *ast.StackType) *ast.CapRefLiteral {
+	// Peel off the selector, if there is one.
+	var sels string
+	if selix := strings.LastIndex(val, ":"); selix != -1 {
+		sels = val[selix+1:]
+		val = val[:selix]
+	}
+
+	// Validate and convert the name and selector to names.
+	var nm ast.Name
+	if ast.IsName(val) {
+		nm = ast.AsName(val)
+	} else {
+		p.Diag().Errorf(errors.ErrorNotAName.At(parent), val)
+	}
+	var sel ast.Name
+	if ast.IsName(sels) {
+		sel = ast.AsName(sels)
+	} else {
+		p.Diag().Errorf(errors.ErrorNotAName.At(parent), sels)
+	}
+
+	// If we have errors at this juncture, bail early, before it just gets worse.
+	if !p.Diag().Success() {
+		return nil
+	}
+
+	// Bind the name to a service.
+	var lit *ast.CapRefLiteral
+	if svc, ok := p.b.LookupService(ast.Name(nm)); ok {
+		svct := svc.BoundType
+		util.AssertMF(svct != nil, "Expected service '%v' to have a type", svc.Name)
+
+		var selsvc *ast.Service
+		if sel == "" {
+			// If no selector was specified, make sure there's only a single public service, and use it.
+			if len(svct.Services.Public) == 0 {
+				p.Diag().Errorf(errors.ErrorServiceHasNoPublics.At(stack), svc.Name, svct.Name)
+			} else if len(svct.Services.Public) == 1 {
+				for _, pub := range svct.Services.Public {
+					selsvc = pub
+					break
+				}
+			} else {
+				util.Assert(len(svct.Services.Public) > 1)
+				p.Diag().Errorf(errors.ErrorServiceHasManyPublics.At(stack), svc.Name, svct.Name)
+			}
+		} else {
+			// If a selector was specified, ensure that it actually exists.
+			if entry, ok := svct.Services.Public[sel]; ok {
+				selsvc = entry
+			} else {
+				// The selector wasn't found.  Issue an error.  If there's a private service by that name,
+				// say so, for better diagnostics.
+				if _, has := svct.Services.Private[sel]; has {
+					p.Diag().Errorf(errors.ErrorServiceSelectorIsPrivate.At(stack), sel, svc.Name, svct.Name)
+				} else {
+					p.Diag().Errorf(errors.ErrorServiceSelectorNotFound.At(stack), sel, svc.Name, svct.Name)
+				}
+			}
+		}
+
+		if selsvc != nil {
+			// If there is an expected type, now ensure that the selected Service is of the right kind.
+			util.Assert(selsvc.BoundType != nil)
+			if ty != nil && !subclassOf(selsvc.BoundType, ty) {
+				p.Diag().Errorf(errors.ErrorIncorrectPropertyType.At(parent),
+					pname, prop.Type, selsvc.BoundType.Name, stack.Name)
+			} else {
+				lit = &ast.CapRefLiteral{
+					Name:     nm,
+					Selector: sel,
+					Stack:    parent,
+					Service:  svc,
+					Selected: selsvc,
+				}
+			}
+		}
+	} else {
+		p.Diag().Errorf(errors.ErrorServiceNotFound.At(parent), nm)
+	}
+
+	return lit
+}
+
+// subclassOf checks that the left type ("typ") is equal to or a subclass of the right type ("or").  The right type is a
+// union between *ast.Stack and *ast.StackRef, so that it can be an uninstantiated type if needed.
+func subclassOf(typ *ast.Stack, of *ast.StackType) bool {
+	for typ != nil {
+		if typ == of.Stack {
+			// If the type matches the target directly, obviously it's a hit.
+			return true
+		} else if of.StackRef != nil && typ.Doc == of.StackRef.Doc {
+			// If the type was produced from the same "document" (uninstantiated type), then it's also a hit.
+			return true
+		}
+		// Finally, if neither of those worked, we must see if there's a base class and keep searching.
+		typ = typ.BoundBase
+	}
+	return false
 }
 
 // refToName converts a reference to its simple symbolic name.

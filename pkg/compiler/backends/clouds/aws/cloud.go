@@ -168,15 +168,13 @@ func (c *awsCloud) genStackServiceTemplates(comp core.Compiland, stack *ast.Stac
 		stack.Name, len(privates), len(publics))
 
 	for _, name := range ast.StableServices(stack.Services.Private) {
-		svc := stack.Services.Private[name]
-		for nm, r := range c.genServiceTemplate(comp, stack, &svc) {
+		for nm, r := range c.genServiceTemplate(comp, stack, stack.Services.Private[name]) {
 			privates[nm] = r
 		}
 	}
 
 	for _, name := range ast.StableServices(stack.Services.Public) {
-		svc := stack.Services.Public[name]
-		for nm, r := range c.genServiceTemplate(comp, stack, &svc) {
+		for nm, r := range c.genServiceTemplate(comp, stack, stack.Services.Public[name]) {
 			publics[nm] = r
 		}
 	}

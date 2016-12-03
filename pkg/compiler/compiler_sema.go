@@ -40,7 +40,7 @@ func (c *compiler) bindStack(b Binder, w workspace.W, stack *ast.Stack) {
 		// template substitution here; instead, we remember the document and let the binder do this, since it has
 		// all of the information necessary to create a unique Stack per-PropertyBag used to instantiate it.
 		if doc := c.resolveDependency(w, stack, ref); doc != nil {
-			deprefs[ref] = ast.StackRef{Ref: ref, Doc: doc}
+			deprefs[ref] = &ast.StackRef{Ref: ref, Doc: doc}
 		}
 	}
 	if !c.Diag().Success() {

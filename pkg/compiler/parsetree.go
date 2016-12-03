@@ -98,7 +98,7 @@ func (a *ptAnalyzer) VisitServices(parent *ast.Stack, svcs *ast.Services) {
 }
 
 func (a *ptAnalyzer) untypedServiceToTyped(parent *ast.Stack, name ast.Name, public bool,
-	bag map[string]interface{}) ast.Service {
+	bag map[string]interface{}) *ast.Service {
 	var typ ast.Name
 	t, has := bag["type"]
 	if has {
@@ -109,9 +109,12 @@ func (a *ptAnalyzer) untypedServiceToTyped(parent *ast.Stack, name ast.Name, pub
 		} else {
 			a.Diag().Errorf(errors.ErrorIllegalMufileSyntax.At(parent), "service type must be a string")
 		}
+
+		// Delete the type property so it's not considered semantically meaningful for the target.
+		delete(bag, "type")
 	}
 
-	return ast.Service{
+	return &ast.Service{
 		Name:   name,
 		Type:   ast.Ref(typ),
 		Public: public,
