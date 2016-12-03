@@ -27,20 +27,20 @@ func (c *compiler) bindStack(b Binder, w workspace.W, stack *ast.Stack) {
 	util.Assert(stack != nil)
 
 	// First prepare the AST for binding.
-	deprefs := b.PrepareStack(stack)
+	refs := b.PrepareStack(stack)
 	if !c.Diag().Success() {
 		return
 	}
 
 	// Next, resolve all dependencies discovered during this first pass.
-	depdocs := make(ast.DependencyDocuments)
-	for _, ref := range deprefs {
+	deprefs := make(ast.DependencyRefs)
+	for _, ref := range refs {
 		// Only resolve dependencies that are currently unknown.  This will exlude built-in types that have already
 		// been bound to a stack during the first phase of binding.  Note that we don't actually parse and perform
 		// template substitution here; instead, we remember the document and let the binder do this, since it has
 		// all of the information necessary to create a unique Stack per-PropertyBag used to instantiate it.
 		if doc := c.resolveDependency(w, stack, ref); doc != nil {
-			depdocs[ref] = doc
+			deprefs[ref] = ast.StackRef{Ref: ref, Doc: doc}
 		}
 	}
 	if !c.Diag().Success() {
@@ -48,7 +48,7 @@ func (c *compiler) bindStack(b Binder, w workspace.W, stack *ast.Stack) {
 	}
 
 	// Complete the binding process.
-	deps := b.BindStack(stack, depdocs)
+	deps := b.BindStack(stack, deprefs)
 	if !c.Diag().Success() {
 		return
 	}

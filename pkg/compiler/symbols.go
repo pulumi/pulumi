@@ -4,7 +4,6 @@ package compiler
 
 import (
 	"github.com/marapongo/mu/pkg/ast"
-	"github.com/marapongo/mu/pkg/diag"
 )
 
 // Symbol is a named entity that can be referenced and bound to.
@@ -19,19 +18,19 @@ type Symbol struct {
 type SymbolKind int
 
 const (
-	SymKindStack SymbolKind = iota
-	SymKindService
-	SymKindDocument
+	SymKindService SymbolKind = iota
+	SymKindStack
+	SymKindStackRef
 )
-
-func NewStackSymbol(nm ast.Name, stack *ast.Stack) *Symbol {
-	return &Symbol{SymKindStack, nm, &stack.Node, stack}
-}
 
 func NewServiceSymbol(nm ast.Name, svc *ast.Service) *Symbol {
 	return &Symbol{SymKindService, nm, &svc.Node, svc}
 }
 
-func NewDocumentSymbol(nm ast.Name, doc *diag.Document) *Symbol {
-	return &Symbol{SymKindDocument, nm, nil, doc}
+func NewStackSymbol(nm ast.Name, stack *ast.Stack) *Symbol {
+	return &Symbol{SymKindStack, nm, &stack.Node, stack}
+}
+
+func NewStackRefSymbol(nm ast.Name, ref *ast.StackRef) *Symbol {
+	return &Symbol{SymKindStackRef, nm, &ref.Node, ref}
 }

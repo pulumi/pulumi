@@ -25,7 +25,7 @@ type Binder interface {
 	PrepareStack(stack *ast.Stack) []ast.Ref
 	// BindStack takes an AST, and its set of dependencies, and binds all names inside, mutating it in place.  It
 	// returns a full list of all dependency Stacks that this Stack depends upon (which must then be bound).
-	BindStack(stack *ast.Stack, depdocs ast.DependencyDocuments) []*ast.Stack
+	BindStack(stack *ast.Stack, deprefs ast.DependencyRefs) []*ast.Stack
 	// ValidateStack runs last, after all transitive dependencies have been bound, to perform last minute validation.
 	ValidateStack(stack *ast.Stack)
 }
@@ -78,7 +78,7 @@ func (b *binder) PrepareStack(stack *ast.Stack) []ast.Ref {
 	return deprefs
 }
 
-func (b *binder) BindStack(stack *ast.Stack, depdocs ast.DependencyDocuments) []*ast.Stack {
+func (b *binder) BindStack(stack *ast.Stack, deprefs ast.DependencyRefs) []*ast.Stack {
 	glog.Infof("Binding Mu Stack: %v", stack.Name)
 	if glog.V(2) {
 		defer glog.V(2).Infof("Binding Mu Stack %v completed w/ %v warnings and %v errors",
@@ -87,7 +87,7 @@ func (b *binder) BindStack(stack *ast.Stack, depdocs ast.DependencyDocuments) []
 
 	// Now perform a phase2 walk of the tree, completing the binding process.  The 1st walk will have given
 	// us everything we need for a fully populated symbol table, so that type binding will resolve correctly.
-	phase := newBinderBindPhase(b, stack, depdocs)
+	phase := newBinderBindPhase(b, stack, deprefs)
 	v := core.NewInOrderVisitor(phase, nil)
 	v.VisitStack(stack)
 	return phase.deps
@@ -109,22 +109,22 @@ func (b *binder) ValidateStack(stack *ast.Stack) {
 	v.VisitStack(stack)
 }
 
+// LookupService binds a name to a Service type.
+func (b *binder) LookupService(nm ast.Name) (*ast.Service, bool) {
+	util.AssertM(b.scope != nil, "Unexpected empty binding scope during LookupService")
+	return b.scope.LookupService(nm)
+}
+
 // LookupStack binds a name to a Stack type.
 func (b *binder) LookupStack(nm ast.Name) (*ast.Stack, bool) {
 	util.AssertM(b.scope != nil, "Unexpected empty binding scope during LookupStack")
 	return b.scope.LookupStack(nm)
 }
 
-// LookupDocument binds a name to a Document type.
-func (b *binder) LookupDocument(nm ast.Name) (*diag.Document, bool) {
-	util.AssertM(b.scope != nil, "Unexpected empty binding scope during LookupDocument")
-	return b.scope.LookupDocument(nm)
-}
-
-// LookupService binds a name to a Service type.
-func (b *binder) LookupService(nm ast.Name) (*ast.Service, bool) {
-	util.AssertM(b.scope != nil, "Unexpected empty binding scope during LookupService")
-	return b.scope.LookupService(nm)
+// LookupStackRef binds a name to a StackRef type.
+func (b *binder) LookupStackRef(nm ast.Name) (*ast.StackRef, bool) {
+	util.AssertM(b.scope != nil, "Unexpected empty binding scope during LookupStackRef")
+	return b.scope.LookupStackRef(nm)
 }
 
 // LookupSymbol binds a name to any kind of Symbol.
@@ -156,6 +156,16 @@ type scope struct {
 	symtbl map[ast.Name]*Symbol
 }
 
+// LookupService binds a name to a Service type.
+func (s *scope) LookupService(nm ast.Name) (*ast.Service, bool) {
+	sym, exists := s.LookupSymbol(nm)
+	if exists && sym.Kind == SymKindService {
+		return sym.Real.(*ast.Service), true
+	}
+	// TODO: we probably need to issue an error for this condition (wrong expected symbol type).
+	return nil, false
+}
+
 // LookupStack binds a name to a Stack type.
 func (s *scope) LookupStack(nm ast.Name) (*ast.Stack, bool) {
 	sym, exists := s.LookupSymbol(nm)
@@ -166,21 +176,11 @@ func (s *scope) LookupStack(nm ast.Name) (*ast.Stack, bool) {
 	return nil, false
 }
 
-// LookupDocument binds a name to a Document type.
-func (s *scope) LookupDocument(nm ast.Name) (*diag.Document, bool) {
+// LookupStackRef binds a name to a StackRef type.
+func (s *scope) LookupStackRef(nm ast.Name) (*ast.StackRef, bool) {
 	sym, exists := s.LookupSymbol(nm)
-	if exists && sym.Kind == SymKindDocument {
-		return sym.Real.(*diag.Document), true
-	}
-	// TODO: we probably need to issue an error for this condition (wrong expected symbol type).
-	return nil, false
-}
-
-// LookupService binds a name to a Service type.
-func (s *scope) LookupService(nm ast.Name) (*ast.Service, bool) {
-	sym, exists := s.LookupSymbol(nm)
-	if exists && sym.Kind == SymKindService {
-		return sym.Real.(*ast.Service), true
+	if exists && sym.Kind == SymKindStackRef {
+		return sym.Real.(*ast.StackRef), true
 	}
 	// TODO: we probably need to issue an error for this condition (wrong expected symbol type).
 	return nil, false
@@ -240,26 +240,6 @@ func (p *binderPreparePhase) VisitDependency(parent *ast.Workspace, ref ast.Ref,
 	}
 }
 
-// registerDependency adds a dependency that needs to be resolved/bound before phase 2 occurs.
-func (p *binderPreparePhase) registerDependency(stack *ast.Stack, ref ast.Ref) (ast.RefParts, bool) {
-	ty, err := ref.Parse()
-	if err == nil {
-		// First see if this resolves to a stack.  If it does, it's already in scope; nothing more to do.
-		nm := ty.Name
-		if _, exists := p.b.LookupStack(nm); !exists {
-			// Otherwise, we need to track this as a dependency to resolve.  Make sure to canonicalize the key so that
-			// we don't end up with duplicate semantically equivalent dependency references.
-			key := ty.Defaults().Ref()
-			p.deps[key] = true
-		}
-
-		return ty, true
-	}
-
-	p.Diag().Errorf(errors.ErrorMalformedStackReference.At(stack), ref, err)
-	return ty, false
-}
-
 func (p *binderPreparePhase) VisitStack(stack *ast.Stack) {
 	// If the stack has a base type, we must add it as a bound dependency.
 	if stack.Base != "" {
@@ -282,6 +262,10 @@ func (p *binderPreparePhase) VisitStack(stack *ast.Stack) {
 }
 
 func (p *binderPreparePhase) VisitProperty(parent *ast.Stack, name string, param *ast.Property) {
+	// For properties whose types represent stack types, register them as a dependency.
+	if ast.IsPropertyStackType(param.Type) {
+		p.registerDependency(parent, ast.Ref(param.Type))
+	}
 }
 
 func (p *binderPreparePhase) VisitServices(parent *ast.Stack, svcs *ast.Services) {
@@ -329,6 +313,26 @@ func (p *binderPreparePhase) VisitService(pstack *ast.Stack, parent *ast.Service
 	}
 }
 
+// registerDependency adds a dependency that needs to be resolved/bound before phase 2 occurs.
+func (p *binderPreparePhase) registerDependency(stack *ast.Stack, ref ast.Ref) (ast.RefParts, bool) {
+	ty, err := ref.Parse()
+	if err == nil {
+		// First see if this resolves to a stack.  If it does, it's already in scope; nothing more to do.
+		nm := ty.Name
+		if _, exists := p.b.LookupStack(nm); !exists {
+			// Otherwise, we need to track this as a dependency to resolve.  Make sure to canonicalize the key so that
+			// we don't end up with duplicate semantically equivalent dependency references.
+			key := ty.Defaults().Ref()
+			p.deps[key] = true
+		}
+
+		return ty, true
+	}
+
+	p.Diag().Errorf(errors.ErrorMalformedStackReference.At(stack), ref, err)
+	return ty, false
+}
+
 type binderBindPhase struct {
 	b    *binder
 	top  *ast.Stack   // the top-most stack being bound.
@@ -337,18 +341,18 @@ type binderBindPhase struct {
 
 var _ core.Visitor = &binderBindPhase{} // compile-time assertion that the binder implements core.Visitor.
 
-func newBinderBindPhase(b *binder, top *ast.Stack, depdocs ast.DependencyDocuments) *binderBindPhase {
+func newBinderBindPhase(b *binder, top *ast.Stack, deprefs ast.DependencyRefs) *binderBindPhase {
 	p := &binderBindPhase{b: b, top: top}
 
 	// Populate the symbol table with this Stack's bound dependencies so that any type lookups are found.
-	for _, ref := range ast.StableDependencyDocuments(depdocs) {
-		doc := depdocs[ref]
-		util.Assert(doc != nil)
+	for _, ref := range ast.StableDependencyRefs(deprefs) {
+		dep := deprefs[ref]
+		util.Assert(dep.Doc != nil)
 
 		nm := refToName(ref)
-		sym := NewDocumentSymbol(nm, doc)
+		sym := NewStackRefSymbol(nm, &dep)
 		if !p.b.RegisterSymbol(sym) {
-			p.Diag().Errorf(errors.ErrorSymbolAlreadyExists.At(doc), nm)
+			p.Diag().Errorf(errors.ErrorSymbolAlreadyExists.At(dep.Doc), nm)
 		}
 	}
 
@@ -382,6 +386,10 @@ func (p *binderBindPhase) VisitStack(stack *ast.Stack) {
 }
 
 func (p *binderBindPhase) VisitProperty(parent *ast.Stack, name string, param *ast.Property) {
+	// For properties whose types represent stack types, we must bind them.
+	if ast.IsPropertyStackType(param.Type) {
+		param.BoundType = p.ensureStack(ast.Ref(param.Type))
+	}
 }
 
 func (p *binderBindPhase) VisitServices(parent *ast.Stack, svcs *ast.Services) {
@@ -396,32 +404,47 @@ func (p *binderBindPhase) VisitService(pstack *ast.Stack, parent *ast.Services, 
 	svc.BoundType = p.ensureStackType(svc.Type, svc.Props)
 }
 
-func (p *binderBindPhase) ensureStackType(ref ast.Ref, props ast.PropertyBag) *ast.Stack {
-	// There are two possibilities.  The first is that a type resolves to an *ast.Stack.  That's simple, we just fetch
-	// and return it.  The second is that a type resolves to a *diag.Document.  That's more complex, as we need to
-	// actually parse the stack from a document, supplying properties, etc., for template expansion.
+// ensureStack looks up a ref, either as a stack or document symbol, and returns it as-is.
+// TODO: it would be ideal if we had a richer AST that could represent uninstantiated vs. instantiated stack types
+//     more uniformly.  As we figure out how to break the circularity of template expansions, we should fix this.
+func (p *binderBindPhase) ensureStack(ref ast.Ref) interface{} {
 	nm := refToName(ref)
 	stack, exists := p.b.LookupStack(nm)
 	if exists {
 		return stack
 	}
-
-	doc, exists := p.b.LookupDocument(nm)
+	stref, exists := p.b.LookupStackRef(nm)
 	if exists {
-		// If we got this far, we've loaded up the dependency's Mufile; parse it and return the result.  Note that
-		// this will be processed later on in semantic analysis, to ensure semantic problems are caught.
-		pa := NewParser(p.b.c)
-		stack := pa.ParseStack(doc, props)
-		if pa.Diag().Success() {
-			p.deps = append(p.deps, stack)
-			return stack
-		} else {
-			return nil
-		}
+		return stref
 	}
-
 	util.FailMF("Expected 1st pass of binding to guarantee type %v exists (%v)", ref, nm)
 	return nil
+}
+
+// ensureStackType binds a ref to a symbol, possibly instantiating it, and returns a fully bound stack.
+func (p *binderBindPhase) ensureStackType(ref ast.Ref, props ast.PropertyBag) *ast.Stack {
+	ty := p.ensureStack(ref)
+
+	// There are two possibilities.  The first is that a type resolves to an *ast.Stack.  That's simple, we just fetch
+	// and return it.  The second is that a type resolves to a *diag.Document.  That's more complex, as we need to
+	// actually parse the stack from a document, supplying properties, etc., for template expansion.
+	switch tty := ty.(type) {
+	case *ast.Stack:
+		return tty
+	case *ast.StackRef:
+		// We have the dependency's Mufile; now we must "instantiate it", by parsing it and returning the result.  Note
+		// that this will be processed later on in semantic analysis, to ensure semantic problems are caught.
+		pa := NewParser(p.b.c)
+		stack := pa.ParseStack(tty.Doc, props)
+		if !pa.Diag().Success() {
+			return nil
+		}
+		p.deps = append(p.deps, stack)
+		return stack
+	default:
+		util.FailMF("Expected either a Stack or a Document")
+		return nil
+	}
 }
 
 type binderValidatePhase struct {

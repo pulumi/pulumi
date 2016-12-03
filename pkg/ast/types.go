@@ -14,6 +14,8 @@
 package ast
 
 import (
+	"strings"
+
 	"github.com/marapongo/mu/pkg/diag"
 )
 
@@ -77,9 +79,6 @@ type Dependencies map[Ref]Dependency
 // Dependency is metadata describing a dependency target (for now, just its target version).
 type Dependency VersionSpec
 
-// DependendyDocuments is simply a map of dependency reference to the associated document containing that dependency.
-type DependencyDocuments map[Ref]*diag.Document
-
 // Stack represents a collection of private and public cloud resources, a method for constructing them, and optional
 // dependencies on other Stacks (by name).
 type Stack struct {
@@ -108,6 +107,17 @@ func (stack *Stack) Where() (*diag.Document, *diag.Location) {
 	return stack.Doc, nil
 }
 
+// StackRef represents an uninstantiated Stack reference.  This is sort of like an uninstantiated generic type in
+// classical programming languages, except that in our case we use template expansion on the document itself.
+type StackRef struct {
+	Node
+	Ref Ref            `json:"-"`
+	Doc *diag.Document `json:"-"`
+}
+
+// DependendyRefs is simply a map of dependency reference to the associated StackRef for that dependency.
+type DependencyRefs map[Ref]StackRef
+
 // Propertys maps property names to metadata about those propertys.
 type Properties map[string]Property
 
@@ -116,6 +126,7 @@ type Property struct {
 	Node
 
 	Type        PropertyType `json:"type,omitempty"`        // the type of the property; required.
+	BoundType   interface{}  `json:"-"`                     // if the property is a stack type, it will be bound.
 	Description string       `json:"description,omitempty"` // an optional friendly description of the property.
 	Default     interface{}  `json:"default,omitempty"`     // an optional default value if the caller elides one.
 	Optional    bool         `json:"optional,omitempty"`    // true if may be omitted (inferred if a default value).
@@ -137,6 +148,11 @@ const (
 	PropertyTypeBool                 = "bool"    // a JSON-like boolean (`true` or `false`).
 	PropertyTypeService              = "service" // an untyped service reference; the runtime manifestation is a URL.
 )
+
+// IsPropertyStackType indicates whether the given property type is a stack type.
+func IsPropertyStackType(prop PropertyType) bool {
+	return strings.Index(string(prop), NameDelimiter) != -1
+}
 
 // Services is a list of public and private service references, keyed by name.
 type Services struct {

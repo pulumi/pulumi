@@ -24,10 +24,10 @@ func StableDependencies(ds Dependencies) []Ref {
 	return sorted
 }
 
-func StableDependencyDocuments(docs DependencyDocuments) []Ref {
-	sorted := make(Refs, 0, len(docs))
-	for doc := range docs {
-		sorted = append(sorted, doc)
+func StableDependencyRefs(refs DependencyRefs) []Ref {
+	sorted := make(Refs, 0, len(refs))
+	for ref := range refs {
+		sorted = append(sorted, ref)
 	}
 	sort.Sort(sorted)
 	return sorted
