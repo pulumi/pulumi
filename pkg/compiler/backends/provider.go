@@ -20,7 +20,7 @@ func New(arch Arch, d diag.Sink) core.Backend {
 		// TODO(joe): come up with a way to get options from CLI/workspace/etc. to here.
 		cloud = aws.New(d, aws.Options{})
 	case clouds.None:
-		util.FailM("Expected a valid cloud architecture for backends.New")
+		util.FailM("Expected a non-None cloud architecture")
 	default:
 		util.FailMF("Cloud architecture '%v' not yet supported", clouds.Names[arch.Cloud])
 	}
