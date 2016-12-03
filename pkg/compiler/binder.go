@@ -604,6 +604,8 @@ func (p *binderValidatePhase) bindStackProperties(parent *ast.Stack, stack *ast.
 // <selector> is an optional selector of a public service exported from that service.
 func (p *binderValidatePhase) bindCapRef(parent *ast.Stack, stack *ast.Stack, pname string, prop *ast.Property,
 	val string, ty *ast.StackType) *ast.CapRefLiteral {
+	glog.V(5).Infof("Binding capref '%v' stack=%v pname=%v", val, stack.Name, pname)
+
 	// Peel off the selector, if there is one.
 	var sels string
 	if selix := strings.LastIndex(val, ":"); selix != -1 {
@@ -700,9 +702,16 @@ func subclassOf(typ *ast.Stack, of *ast.StackType) bool {
 		if typ == of.Stack {
 			// If the type matches the target directly, obviously it's a hit.
 			return true
-		} else if of.StackRef != nil && typ.Doc == of.StackRef.Doc {
-			// If the type was produced from the same "document" (uninstantiated type), then it's also a hit.
-			return true
+		} else if of.StackRef != nil {
+			// If the type was produced from the same "document" (uninstantiated type), then it's also a hit.  Note that
+			// due to template expansion, we need to walk the document hierarchy to see if there's a match.
+			doc := typ.Doc
+			for doc != nil {
+				if doc == of.StackRef.Doc {
+					return true
+				}
+				doc = doc.Parent
+			}
 		}
 		// Finally, if neither of those worked, we must see if there's a base class and keep searching.
 		typ = typ.BoundBase

@@ -39,8 +39,9 @@ func RenderTemplates(doc *diag.Document, ctx *Context) (*diag.Document, error) {
 
 	glog.V(7).Infof("Rendered template %v:\n%v", doc.File, string(b))
 	return &diag.Document{
-		File: doc.File,
-		Body: b,
+		File:   doc.File,
+		Body:   b,
+		Parent: doc,
 	}, nil
 }
 

@@ -10,8 +10,9 @@ import (
 // Document is a file used during compilation, for which advanced diagnostics, such as line/column numbers, may be
 // required.  It stores the contents of the entire file so that precise errors can be given; Forget discards them.
 type Document struct {
-	File string
-	Body []byte
+	File   string
+	Body   []byte
+	Parent *Document // if this document was generated from another, this will point to it.
 }
 
 var _ Diagable = &Document{} // compile-time assertion that *Document implements Diagable.

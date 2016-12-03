@@ -88,13 +88,12 @@ func (p *parser) ParseStack(doc *diag.Document, props ast.PropertyBag) *ast.Stac
 	// TODO[marapongo/mu#7]: related to this, certain information (like cluster target) isn't even available yet!
 	// TODO[marapongo/mu#14]: when we produce precise line/column errors, we'll need to somehow trace back to pre-
 	//     template expansion, otherwise the numbers may not make sense to the user.
-	var err error
-	rdoc, err := RenderTemplates(doc, p.c.Context().WithProps(props))
+	rend, err := RenderTemplates(doc, p.c.Context().WithProps(props))
 	if err != nil {
 		p.Diag().Errorf(errors.ErrorBadTemplate.At(doc), err)
 		return nil
 	}
-	doc = rdoc
+	doc = rend
 
 	// We support many file formats.  Detect the file extension and deserialize the contents.
 	var stack ast.Stack
@@ -108,7 +107,7 @@ func (p *parser) ParseStack(doc *diag.Document, props ast.PropertyBag) *ast.Stac
 	glog.V(3).Infof("Mufile %v stack parsed: %v name; %v publics; %v privates",
 		doc.File, stack.Name, len(stack.Services.PublicUntyped), len(stack.Services.PrivateUntyped))
 
-	// Remember that this stack came from this document.
+	// Remember that this stack came from this document (both template expanded and unexpanded forms).
 	stack.Doc = doc
 
 	// Now create a parse tree analyzer to walk the parse trees and ensure that all is well.
