@@ -71,11 +71,7 @@ func (b *binder) PrepareStack(stack *ast.Stack) []ast.Ref {
 	v.VisitStack(stack)
 
 	// Return a set of dependency references that must be loaded before BindStack occurs.
-	deprefs := make([]ast.Ref, 0, len(phase.deps))
-	for dep := range phase.deps {
-		deprefs = append(deprefs, dep)
-	}
-	return deprefs
+	return phase.deps
 }
 
 func (b *binder) BindStack(stack *ast.Stack, deprefs ast.DependencyRefs) []*ast.Stack {
@@ -210,15 +206,21 @@ func (s *scope) RegisterSymbol(sym *Symbol) bool {
 }
 
 type binderPreparePhase struct {
-	b    *binder
-	top  *ast.Stack
-	deps map[ast.Ref]bool
+	b     *binder
+	top   *ast.Stack
+	deps  []ast.Ref
+	depsm map[ast.Ref]bool
 }
 
 var _ core.Visitor = &binderPreparePhase{} // compile-time assertion that the binder implements core.Visitor.
 
 func newBinderPreparePhase(b *binder, top *ast.Stack) *binderPreparePhase {
-	return &binderPreparePhase{b, top, make(map[ast.Ref]bool)}
+	return &binderPreparePhase{
+		b:     b,
+		top:   top,
+		deps:  make([]ast.Ref, 0),
+		depsm: make(map[ast.Ref]bool),
+	}
 }
 
 func (p *binderPreparePhase) Diag() diag.Sink {
@@ -323,7 +325,11 @@ func (p *binderPreparePhase) registerDependency(stack *ast.Stack, ref ast.Ref) (
 			// Otherwise, we need to track this as a dependency to resolve.  Make sure to canonicalize the key so that
 			// we don't end up with duplicate semantically equivalent dependency references.
 			key := ty.Defaults().Ref()
-			p.deps[key] = true
+			if _, exist := p.depsm[key]; !exist {
+				// Store these in an array so that the order is deterministic.  But use a map to avoid duplicates.
+				p.deps = append(p.deps, key)
+				p.depsm[key] = true
+			}
 		}
 
 		return ty, true
