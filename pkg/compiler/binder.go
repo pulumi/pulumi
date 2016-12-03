@@ -615,7 +615,7 @@ func (p *binderValidatePhase) bindStackProperties(parent *ast.Stack, stack *ast.
 	// special mu/extension type, since it's sole purpose in life is to allow arbitrary properties (and provides
 	// themselves will perform semantic analysis and validation of them).
 	if stack != predef.Extension {
-		for pname := range props {
+		for _, pname := range ast.StablePropertyBag(props) {
 			if _, ok := stack.Properties[pname]; !ok {
 				// TODO: edit distance checking to help with suggesting a fix.
 				p.Diag().Errorf(errors.ErrorUnrecognizedProperty.At(parent), pname, stack.Name)
