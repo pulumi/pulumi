@@ -560,7 +560,7 @@ func (p *binderValidatePhase) bindStackProperties(parent *ast.Stack, stack *ast.
 			// Extract the name of the service reference as a string.  Then bind it to an actual service in our symbol
 			// table, and store a strong reference to the result.  This lets the backend connect the dots.
 			if s, ok := val.(string); ok {
-				if cap := p.bindStackRefValue(parent, stack, pname, prop, s, nil); cap != nil {
+				if cap := p.bindCapRef(parent, stack, pname, prop, s, nil); cap != nil {
 					bound[pname] = *cap
 				}
 			} else {
@@ -574,7 +574,7 @@ func (p *binderValidatePhase) bindStackProperties(parent *ast.Stack, stack *ast.
 
 			// Bind the capability ref for this stack type.
 			if s, ok := val.(string); ok {
-				if cap := p.bindStackRefValue(parent, stack, pname, prop, s, prop.BoundType); cap != nil {
+				if cap := p.bindCapRef(parent, stack, pname, prop, s, prop.BoundType); cap != nil {
 					bound[pname] = *cap
 				}
 			} else {
@@ -599,7 +599,10 @@ func (p *binderValidatePhase) bindStackProperties(parent *ast.Stack, stack *ast.
 	return bound
 }
 
-func (p *binderValidatePhase) bindStackRefValue(parent *ast.Stack, stack *ast.Stack, pname string, prop *ast.Property,
+// bindCapRef binds a string to a service reference, resulting in a CapRefLiteral.  The reference is expected to be
+// in the form "<service>[:<selector>]", where <service> is the name of a service that's currently in scope, and
+// <selector> is an optional selector of a public service exported from that service.
+func (p *binderValidatePhase) bindCapRef(parent *ast.Stack, stack *ast.Stack, pname string, prop *ast.Property,
 	val string, ty *ast.StackType) *ast.CapRefLiteral {
 	// Peel off the selector, if there is one.
 	var sels string
@@ -616,10 +619,12 @@ func (p *binderValidatePhase) bindStackRefValue(parent *ast.Stack, stack *ast.St
 		p.Diag().Errorf(errors.ErrorNotAName.At(parent), val)
 	}
 	var sel ast.Name
-	if ast.IsName(sels) {
-		sel = ast.AsName(sels)
-	} else {
-		p.Diag().Errorf(errors.ErrorNotAName.At(parent), sels)
+	if sels != "" {
+		if ast.IsName(sels) {
+			sel = ast.AsName(sels)
+		} else {
+			p.Diag().Errorf(errors.ErrorNotAName.At(parent), sels)
+		}
 	}
 
 	// If we have errors at this juncture, bail early, before it just gets worse.
@@ -635,7 +640,10 @@ func (p *binderValidatePhase) bindStackRefValue(parent *ast.Stack, stack *ast.St
 
 		var selsvc *ast.Service
 		if sel == "" {
-			// If no selector was specified, make sure there's only a single public service, and use it.
+			// If no selector was specified, just use the service itself as the selsvc.
+			selsvc = svc
+		} else if sel == "." {
+			// A special dot selector can be used to pick the sole public service.
 			if len(svct.Services.Public) == 0 {
 				p.Diag().Errorf(errors.ErrorServiceHasNoPublics.At(stack), svc.Name, svct.Name)
 			} else if len(svct.Services.Public) == 1 {
@@ -668,14 +676,14 @@ func (p *binderValidatePhase) bindStackRefValue(parent *ast.Stack, stack *ast.St
 			if ty != nil && !subclassOf(selsvc.BoundType, ty) {
 				p.Diag().Errorf(errors.ErrorIncorrectPropertyType.At(parent),
 					pname, prop.Type, selsvc.BoundType.Name, stack.Name)
-			} else {
-				lit = &ast.CapRefLiteral{
-					Name:     nm,
-					Selector: sel,
-					Stack:    parent,
-					Service:  svc,
-					Selected: selsvc,
-				}
+			}
+
+			lit = &ast.CapRefLiteral{
+				Name:     nm,
+				Selector: sel,
+				Stack:    parent,
+				Service:  svc,
+				Selected: selsvc,
 			}
 		}
 	} else {
