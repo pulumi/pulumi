@@ -70,10 +70,10 @@ services:
             properties:
                 DestinationCidrBlock: destinationCidrBlock
                 RouteTableId: routeTable
-                InternetGatewayId: internetGateway
-                #VpnGatewayId: vpnGateway
-                #InstanceId: instance
-                #NatGatewayId: natGateway
-                #NetworkInterfaceId: networkInterface
-                #VpcPeeringConnectionId: vpcPeeringConnection
+                GatewayId: internetGateway
+                # GatewayId: vpnGateway
+                # InstanceId: instance
+                # NatGatewayId: natGateway
+                # NetworkInterfaceId: networkInterface
+                # VpcPeeringConnectionId: vpcPeeringConnection
     
