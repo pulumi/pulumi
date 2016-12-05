@@ -317,7 +317,7 @@ func (c *awsCloud) genMuExtensionServiceTemplate(comp core.Compiland, stack *ast
 		resProps := make(cfResourceProperties)
 		for _, name := range ast.StableProperties(stack.Properties) {
 			if (auto == nil || auto[name]) && (skip == nil || !skip[name]) {
-				if p, has := svc.Service.BoundProperties[name]; has {
+				if p, has := stack.BoundPropertyValues[name]; has {
 					pname := makeAWSFriendlyName(name, true)
 					resProps[pname] = c.propertyLiteralToValue(p)
 				}
