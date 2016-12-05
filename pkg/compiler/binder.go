@@ -497,12 +497,15 @@ func (p *binderValidatePhase) VisitServices(parent *ast.Stack, svcs *ast.Service
 func (p *binderValidatePhase) VisitService(pstack *ast.Stack, parent *ast.Services, name ast.Name, public bool,
 	svc *ast.Service) {
 	util.Assert(svc.BoundType != nil)
-	// Ensure the properties supplied at stack construction time are correct and bind them.
-	svc.BoundProperties = p.bindStackProperties(pstack, svc.BoundType, svc.Properties)
-	if svc.BoundType.PropertyValues != nil {
-		// If this is a constructed type, be sure to remember the bound property values too.
-		util.Assert(svc.BoundType.BoundPropertyValues == nil)
-		svc.BoundType.BoundPropertyValues = svc.BoundProperties
+	if svc.BoundType.PropertyValues == nil {
+		// For some types, there aren't any property values (e.g., built-in types).  For those, bind now.
+		// TODO: we could clean this up a bit by having primitive types work more like unconstructed types.
+		svc.BoundProperties = p.bindStackProperties(pstack, svc.BoundType, svc.Properties)
+	} else {
+		// For imported types, we should have property values, which already got bound in an earlier phase.
+		util.Assert(svc.BoundType.BoundPropertyValues != nil)
+		util.Assert(len(svc.BoundType.PropertyValues) == len(svc.Properties))
+		svc.BoundProperties = svc.BoundType.BoundPropertyValues
 	}
 }
 
