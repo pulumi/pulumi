@@ -12,6 +12,7 @@ import (
 	"github.com/marapongo/mu/pkg/compiler/core"
 	"github.com/marapongo/mu/pkg/compiler/predef"
 	"github.com/marapongo/mu/pkg/diag"
+	"github.com/marapongo/mu/pkg/encoding"
 	"github.com/marapongo/mu/pkg/errors"
 	"github.com/marapongo/mu/pkg/util"
 )
@@ -387,7 +388,7 @@ func (p *binderBindPhase) VisitStack(stack *ast.Stack) {
 	}
 
 	// Non-abstract Stacks must declare at least one Service.
-	if !stack.Predef && !stack.Abstract && len(stack.Services.Public) == 0 && len(stack.Services.Private) == 0 {
+	if !stack.Intrinsic && !stack.Abstract && len(stack.Services.Public) == 0 && len(stack.Services.Private) == 0 {
 		p.Diag().Errorf(errors.ErrorNonAbstractStacksMustDefineServices.At(stack))
 	}
 }
@@ -537,84 +538,93 @@ func (p *binderValidatePhase) bindStackProperties(parent *ast.Stack, stack *ast.
 		}
 
 		// Now, value in hand, let's make sure it's the right type.
-		// TODO(joe): support arrays and complex custom types.
-		switch prop.Type {
-		case ast.PropertyTypeAny:
-			// Any is easy: just store it as-is.
-			// TODO(joe): eventually we'll need to do translation to canonicalize the contents.
-			bound[pname] = ast.AnyLiteral{Any: val}
-		case ast.PropertyTypeString:
-			// Convert the value to a string, and store it, or issue an error if it's the wrong type.
-			if s, ok := val.(string); ok {
-				bound[pname] = ast.StringLiteral{String: s}
-			} else {
-				p.Diag().Errorf(errors.ErrorIncorrectPropertyType.At(parent),
-					pname, "string", reflect.TypeOf(val), stack.Name)
-			}
-		case ast.PropertyTypeNumber:
-			// Convert the value to a float64 (JSON), and store it, or issue an error if it's the wrong type.
-			if n, ok := val.(float64); ok {
-				bound[pname] = ast.NumberLiteral{Number: n}
-			} else {
-				p.Diag().Errorf(errors.ErrorIncorrectPropertyType.At(parent),
-					pname, "number", reflect.TypeOf(val), stack.Name)
-			}
-		case ast.PropertyTypeBool:
-			// Convert the value to a boolean, and store it, or issue an error if it's the wrong type.
-			if b, ok := val.(bool); ok {
-				bound[pname] = ast.BoolLiteral{Bool: b}
-			} else {
-				p.Diag().Errorf(errors.ErrorIncorrectPropertyType.At(parent),
-					pname, "bool", reflect.TypeOf(val), stack.Name)
-			}
-		case ast.PropertyTypeService:
-			// Extract the name of the service reference as a string.  Then bind it to an actual service in our symbol
-			// table, and store a strong reference to the result.  This lets the backend connect the dots.
-			if s, ok := val.(string); ok {
-				if cap := p.bindCapRef(parent, stack, pname, prop, s, nil); cap != nil {
-					bound[pname] = *cap
-				}
-			} else {
-				p.Diag().Errorf(errors.ErrorIncorrectPropertyType.At(parent),
-					pname, "service", reflect.TypeOf(val), stack.Name)
-			}
-		default:
-			util.AssertMF(ast.IsPropertyStackType(prop.Type),
-				"Unrecognized property type (prop=%v type=%v)", pname, prop.Type)
-			util.Assert(prop.BoundType != nil)
-
-			// Bind the capability ref for this stack type.
-			if s, ok := val.(string); ok {
-				if cap := p.bindCapRef(parent, stack, pname, prop, s, prop.BoundType); cap != nil {
-					bound[pname] = *cap
-				}
-			} else {
-				p.Diag().Errorf(errors.ErrorIncorrectPropertyType.At(parent),
-					pname, prop.Type, reflect.TypeOf(val), stack.Name)
-			}
+		if lit := p.bindPropertyValueToLiteral(parent, stack, pname, prop, val); lit != nil {
+			bound[pname] = lit
 		}
 	}
 
-	// Next, issue an error for any properties not recognized as belonging to this stack.  Don't do this for the one
-	// special mu/extension type, since it's sole purpose in life is to allow arbitrary properties (and provides
-	// themselves will perform semantic analysis and validation of them).
-	if stack != predef.Extension {
-		for _, pname := range ast.StablePropertyBag(props) {
-			if _, ok := stack.Properties[pname]; !ok {
-				// TODO: edit distance checking to help with suggesting a fix.
-				p.Diag().Errorf(errors.ErrorUnrecognizedProperty.At(parent), pname, stack.Name)
-			}
+	for _, pname := range ast.StablePropertyBag(props) {
+		if _, ok := stack.Properties[pname]; !ok {
+			// TODO: edit distance checking to help with suggesting a fix.
+			p.Diag().Errorf(errors.ErrorUnrecognizedProperty.At(parent), pname, stack.Name)
 		}
 	}
 
 	return bound
 }
 
-// bindCapRef binds a string to a service reference, resulting in a CapRefLiteral.  The reference is expected to be
-// in the form "<service>[:<selector>]", where <service> is the name of a service that's currently in scope, and
+// bindPropertyValueToLiteral takes a value and binds it to a literal AST node, returning nil if the conversions fails.
+func (p *binderValidatePhase) bindPropertyValueToLiteral(parent *ast.Stack, stack *ast.Stack, pname string,
+	prop *ast.Property, val interface{}) interface{} {
+	// TODO(joe): support arrays and complex custom types.
+	switch prop.Type {
+	case ast.PropertyTypeAny:
+		// Any is easy: just store it as-is.
+		// TODO(joe): eventually we'll need to do translation to canonicalize the contents.
+		return ast.AnyLiteral{Any: val}
+	case ast.PropertyTypeString:
+		if s, ok := val.(string); ok {
+			return ast.StringLiteral{String: s}
+		}
+	case ast.PropertyTypeStringList:
+		if ss, ok := encoding.StringSlice(val); ok {
+			return ast.StringListLiteral{StringList: ss}
+		}
+	case ast.PropertyTypeStringMap:
+		if sm, ok := val.(map[string]interface{}); ok {
+			// TODO(joe): eventually we'll need to do translation on values to canonicalize the contents.
+			return ast.StringMapLiteral{StringMap: sm}
+		}
+	case ast.PropertyTypeNumber:
+		if n, ok := val.(float64); ok {
+			return ast.NumberLiteral{Number: n}
+		}
+	case ast.PropertyTypeBool:
+		if b, ok := val.(bool); ok {
+			return ast.BoolLiteral{Bool: b}
+		}
+	case ast.PropertyTypeService:
+		// Extract the name of the service reference as a string.  Then bind it to an actual service in our symbol
+		// table, and store a strong reference to the result.  This lets the backend connect the dots.
+		if s, ok := val.(string); ok {
+			if cap := p.bindServiceLiteral(parent, stack, pname, prop, s, nil); cap != nil {
+				return *cap
+			}
+		}
+	case ast.PropertyTypeServiceList:
+		// Extract a list of strings that are interpreted as service references.
+		if ss, ok := encoding.StringSlice(val); ok {
+			lst := make([]ast.ServiceLiteral, 0)
+			for _, s := range ss {
+				if cap := p.bindServiceLiteral(parent, stack, pname, prop, s, nil); cap != nil {
+					lst = append(lst, *cap)
+				}
+			}
+			return ast.ServiceListLiteral{ServiceList: lst}
+		}
+	default:
+		util.AssertMF(ast.IsPropertyStackType(prop.Type),
+			"Unrecognized property type (prop=%v type=%v)", pname, prop.Type)
+		util.Assert(prop.BoundType != nil)
+
+		// Bind the capability ref for this stack type.
+		if s, ok := val.(string); ok {
+			if cap := p.bindServiceLiteral(parent, stack, pname, prop, s, prop.BoundType); cap != nil {
+				return *cap
+			}
+		}
+	}
+
+	p.Diag().Errorf(errors.ErrorIncorrectPropertyType.At(parent),
+		pname, prop.Type, reflect.TypeOf(val), stack.Name)
+	return nil
+}
+
+// bindServiceLiteral binds a string to a service reference, resulting in a ServiceLiteral.  The reference is expected
+// to be in the form "<service>[:<selector>]", where <service> is the name of a service that's currently in scope, and
 // <selector> is an optional selector of a public service exported from that service.
-func (p *binderValidatePhase) bindCapRef(parent *ast.Stack, stack *ast.Stack, pname string, prop *ast.Property,
-	val string, ty *ast.StackType) *ast.CapRefLiteral {
+func (p *binderValidatePhase) bindServiceLiteral(parent *ast.Stack, stack *ast.Stack, pname string, prop *ast.Property,
+	val string, ty *ast.StackType) *ast.ServiceLiteral {
 	glog.V(5).Infof("Binding capref '%v' stack=%v pname=%v", val, stack.Name, pname)
 
 	// Peel off the selector, if there is one.
@@ -646,7 +656,7 @@ func (p *binderValidatePhase) bindCapRef(parent *ast.Stack, stack *ast.Stack, pn
 	}
 
 	// Bind the name to a service.
-	var lit *ast.CapRefLiteral
+	var lit *ast.ServiceLiteral
 	if svc, ok := p.b.LookupService(ast.Name(nm)); ok {
 		svct := svc.BoundType
 		util.AssertMF(svct != nil, "Expected service '%v' to have a type", svc.Name)
@@ -691,7 +701,7 @@ func (p *binderValidatePhase) bindCapRef(parent *ast.Stack, stack *ast.Stack, pn
 					pname, prop.Type, selsvc.BoundType.Name, stack.Name)
 			}
 
-			lit = &ast.CapRefLiteral{
+			lit = &ast.ServiceLiteral{
 				Name:     nm,
 				Selector: sel,
 				Stack:    parent,

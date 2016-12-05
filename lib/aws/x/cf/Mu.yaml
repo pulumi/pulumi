@@ -1,0 +1,24 @@
+name: aws/x/cf
+description: A special service that simply emits a CloudFormation template.
+intrinsic: true
+properties:
+    resource:
+        type: string
+        description: The CF resource name.
+    properties:
+        type: string[]
+        description: An optional list of properties to auto-map (default is all).
+        optional: true
+    skipProperties:
+        type: string[]
+        description: An optional list of properties to skip during auto-mapping.
+        optional: true
+    extraProperties:
+        type: map[string]any
+        description: An optional set of arbitrary properties to merge with the auto-mapped ones.
+        optional: true
+    dependsOn:
+        type: service[]
+        description: An optional list of other CF resources that this depends on.
+        optional: true
+

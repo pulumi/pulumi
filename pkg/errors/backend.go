@@ -6,7 +6,7 @@ import (
 	"github.com/marapongo/mu/pkg/diag"
 )
 
-var ErrorUnrecognizedExtensionProvider = &diag.Diag{
+var ErrorUnrecognizedIntrinsic = &diag.Diag{
 	ID:      1000,
-	Message: "Extension type '%v' was not recognized",
+	Message: "Intrinsic '%v' was not recognized; it may be unsupported for the target cloud architecture",
 }

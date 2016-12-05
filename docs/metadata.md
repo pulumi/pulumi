@@ -228,15 +228,14 @@ The primitive types are in the `mu` namespace and include:
 * `mu/event`: An Event that may be used to Trigger the execution of another Service (commonly a Function).
 * `mu/volume`: A volume stores data that can be mounted by another Service.
 * `mu/autoscaler`: A Service that automatically multi-instances and scales some other target Service based on policy.
-* `mu/extension`: A logical Service that extends Mu by hooking into events, like Stack provisioning, and taking action.
 
 TODO(joe): link to exhaustive details on each of these.
 TODO(joe): consider a `mu/job` (e.g., ECS's RunTask); unclear on how this would differ from `mu/func`.
 TODO(joe): consider a `mu/daemon` type, similar to Kube's DaemonSet abstraction.
 
-Although these may look like "magic", each primitive Stack simply leverages an open extensibility API in the platform.
-Most interesting tasks may be achieved by composing existing Stacks, however, this extensibility API may be used to
-define new, custom primitive Stacks for even richer functionality.  TODO(joe): more on this.
+Although these types may look "magical", each one simply leverages an open extensibility capability in the platform.
+Most interesting tasks may be achieved by composing existing Stacks, however, particular cloud providers may choose to
+offer new primitive types for even richer functionality.  This is done by defining a so-called `intrinsic` type.
 
 Finally, note that a companion namespace, `mu/x` also exists, that offers more cloud-neutral platform abstractions.
 

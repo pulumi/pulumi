@@ -196,10 +196,8 @@ persistence.  Please refer to the section below on native AWS Stacks to understa
 `mu/autoscaler` generally maps to an `AWS::AutoScaling::AutoScalingGroup`, however, like the Gateway's mapping to the
 ELB, its mapping to the AWS scaling group entails a lot of automatic policy to properly scale attached Services.
 
-Finally, `mu/extension` is special, and doesn't require a specific mapping in AWS.  The extension providers themselves,
-like `aws/cf/template`, will possibly generate domain-specific mappings of their own, however.
-
-TODO(joe): perhaps we should have an `aws/cf/customresource` extension type for custom CloudFormation types.
+The general case is any Stack marked `intrinsic: true`.  These are mapped in a cloud backend-specific manner.  For
+example, AWS offers an `aws/x/cf` Stack type, which merely turns around and generates CloudFormation templates.
 
 #### AWS-Specific Metadata
 
@@ -226,17 +224,16 @@ A simplified S3 bucket Stack, for example, looks like this:
         websiteConfiguration: aws/schema/websiteConfigurationType
     services:
         public:
-            mu/extension:
-                provider: aws/cf
+            aws/x/cf:
                 resource: "AWS::S3::Bucket"
 
-The key primitive at play here is `mu/extension`.   This passes off lifecycle events to a provider, in this case
-`aws/cf/template`, along with some metadata, in this case a simple wrapper around the [AWS CloudFormation S3 Bucket
-specification format](
+The key concept at play here is `aws/x/cf`, which is an intrinsic type.   This passes off lifecycle events to a
+provider, in this case the AWS backend, along with some metadata, in this case a simple wrapper around the [AWS
+CloudFormation S3 Bucket specification format](
 http://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-s3-bucket.html).  The provider generates
 metadata and knows how to interact with AWS services required for provisioning, updating, and destroying resources.
 
-TODO(joe): we need to specify how extensions work somewhere.
+TODO(joe): we need to specify how intrinsics work somewhere.
 
 Mu offers all of the AWS resource type Stacks out-of-the-box, so that 3rd parties can consume them easily.  For example,
 to create a bucket, we simply refer to the predefined `aws/s3/bucket` Stack.  Please see [the AWS documentation](

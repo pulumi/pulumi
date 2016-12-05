@@ -91,16 +91,16 @@ type Stack struct {
 	Website     string  `json:"website,omitempty"`     // an optional website for additional info.
 	License     string  `json:"license,omitempty"`     // an optional license governing legal uses of this package.
 
-	Base                Ref                `json:"base,omitempty"`     // an optional base Stack type.
-	BoundBase           *Stack             `json:"-"`                  // base, optionally bound during semantic analysis.
-	Abstract            bool               `json:"abstract,omitempty"` // true if this stack is "abstract" (uninstantiable).
+	Base                Ref                `json:"base,omitempty"`      // an optional base Stack type.
+	BoundBase           *Stack             `json:"-"`                   // base, optionally bound during analysis.
+	Abstract            bool               `json:"abstract,omitempty"`  // true if this stack is "abstract".
+	Intrinsic           bool               `json:"intrinsic,omitempty"` // true if this stack is an "intrinsic" type.
 	Properties          Properties         `json:"properties,omitempty"`
 	PropertyValues      PropertyBag        `json:"-"` // the properties used to construct this stack.
 	BoundPropertyValues LiteralPropertyBag `json:"-"` // the bound properties used to construct this stack.
 	Services            Services           `json:"services,omitempty"`
 
-	Predef bool           `json:"-"` // true if this is a predefined type (treated specially).
-	Doc    *diag.Document `json:"-"` // the document from which this came.
+	Doc *diag.Document `json:"-"` // the document from which this came.
 
 	// TODO[marapongo/mu#8]: permit Stacks to declare exported APIs.
 }
@@ -151,11 +151,14 @@ type PropertyType Name
 // A set of known property types.  Note that this is extensible, so names outside of this list are legal.
 // TODO[marapongo/mu#9]: support complex types (like arrays, custom JSON shapes, and so on).
 const (
-	PropertyTypeAny     PropertyType = "any"     // any structure.
-	PropertyTypeString               = "string"  // a JSON-like string.
-	PropertyTypeNumber               = "number"  // a JSON-like number (integer or floating point).
-	PropertyTypeBool                 = "bool"    // a JSON-like boolean (`true` or `false`).
-	PropertyTypeService              = "service" // an untyped service reference; the runtime manifestation is a URL.
+	PropertyTypeAny         PropertyType = "any"            // any structure.
+	PropertyTypeString                   = "string"         // a JSON-like string.
+	PropertyTypeStringList               = "string[]"       // a JSON-like array of strings.
+	PropertyTypeStringMap                = "map[string]any" // a JSON-like map of strings to anys.
+	PropertyTypeNumber                   = "number"         // a JSON-like number (integer or floating point).
+	PropertyTypeBool                     = "bool"           // a JSON-like boolean (`true` or `false`).
+	PropertyTypeService                  = "service"        // an untyped service reference; at runtime, a URL.
+	PropertyTypeServiceList              = "service[]"      // an array of service references.
 )
 
 // IsPropertyStackType indicates whether the given property type is a stack type.
@@ -220,6 +223,18 @@ type StringLiteral struct {
 	String string
 }
 
+// StringListLiteral is an AST node containing a list of literal strings (`[]string`).
+type StringListLiteral struct {
+	Literal
+	StringList []string
+}
+
+// StringMapLiteral is an AST node containing a map of literal strings to anys (`map[string]interface{}`).
+type StringMapLiteral struct {
+	Literal
+	StringMap map[string]interface{}
+}
+
 // NumberLiteral is an AST node containing a literal number (`float64`).
 type NumberLiteral struct {
 	Literal
@@ -232,14 +247,20 @@ type BoolLiteral struct {
 	Bool bool
 }
 
-// CapRefLiteral is an AST node containing a literal capability reference (`string`).
-type CapRefLiteral struct {
+// ServiceLiteral is an AST node containing a literal capability reference.
+type ServiceLiteral struct {
 	Literal
 	Name     Name     // the name used to resolve the capability.
 	Selector Name     // the "selector" used if the target service exports multiple endpoints.
 	Stack    *Stack   // the stack in which the capability resides.
 	Service  *Service // the service that this capability reference names.
 	Selected *Service // the selected service resolved during binding.
+}
+
+// ServieListLiteral is an AST node containing a list of literal capability references.
+type ServiceListLiteral struct {
+	Literal
+	ServiceList []ServiceLiteral
 }
 
 // TODO[marapongo/mu#9]: extensible schema support.

@@ -5,8 +5,6 @@ services:
         mu/container:
         mu/func:
         mu/event:
-        mu/extension:
-            provider: none
     public:
         mu/autoscaler:
         mu/gateway:

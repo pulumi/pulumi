@@ -50,8 +50,7 @@ properties:
 services:
     public:
         self:
-            type: mu/extension
-            provider: aws/cf
+            type: aws/x/cf
             resource: "AWS::EC2::Route"
             properties: [ destinationCidrBlock ]
             extraProperties:

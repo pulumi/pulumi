@@ -97,15 +97,21 @@ func (c *awsCloud) genStackName(comp core.Compiland) string {
 	return nm
 }
 
-// genResourceRef creates a reference to another resource inside of this same stack.  For more information, see
-// http://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/intrinsic-function-reference-ref.html.
-func (c *awsCloud) genResourceRef(ref ast.CapRefLiteral) interface{} {
+// genResourceID creates an ID for a resource, which must be unique within a single CloudFormation template.
+func (c *awsCloud) genResourceID(stack *ast.Stack, svc *ast.Service) cfLogicalID {
+	nm := fmt.Sprintf("%v%v",
+		makeAWSFriendlyName(string(svc.Name), true), makeAWSFriendlyName(string(stack.Name), true))
+	util.Assert(IsValidCFLogicalID(nm))
+	return cfLogicalID(nm)
+}
+
+// genResourceDependsID discovers the CF logical ID used to reference the selected service in the same stack.
+func (c *awsCloud) genResourceDependsID(lit ast.ServiceLiteral) cfLogicalID {
 	// First, we need to dig deep down to figure out what actual AWS resource this dependency is on.
 	// TODO: support cross-stack references.
-	sel := ref.Selected
+	sel := lit.Selected
 	for {
-		if sel.BoundType == predef.Extension &&
-			predef.AsExtensionService(sel).Provider == CloudFormationExtensionProvider {
+		if sel.BoundType.Name == cfIntrinsicName {
 			break
 		}
 
@@ -119,8 +125,13 @@ func (c *awsCloud) genResourceRef(ref ast.CapRefLiteral) interface{} {
 			break
 		}
 	}
+	return c.genResourceID(lit.Service.BoundType, sel)
+}
 
-	id := string(c.genResourceID(ref.Service.BoundType, sel))
+// genResourceDependsRef creates a reference to another resource inside of this same stack.  For more information, see
+// http://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/intrinsic-function-reference-ref.html.
+func (c *awsCloud) genResourceDependsRef(lit ast.ServiceLiteral) interface{} {
+	id := c.genResourceDependsID(lit)
 	if c.m.IsYAMLLike() {
 		return "!Ref " + id
 	} else {
@@ -129,14 +140,6 @@ func (c *awsCloud) genResourceRef(ref ast.CapRefLiteral) interface{} {
 			"Ref": id,
 		}
 	}
-}
-
-// genResourceID creates an ID for a resource, which must be unique within a single CloudFormation template.
-func (c *awsCloud) genResourceID(stack *ast.Stack, svc *ast.Service) cfLogicalID {
-	nm := fmt.Sprintf("%v%v",
-		makeAWSFriendlyName(string(svc.Name), true), makeAWSFriendlyName(string(stack.Name), true))
-	util.Assert(IsValidCFLogicalID(nm))
-	return cfLogicalID(nm)
 }
 
 // genTemplate creates a CloudFormation template for an entire compiland and all of its services.
@@ -223,8 +226,6 @@ func (c *awsCloud) genServiceTemplate(comp core.Compiland, stack *ast.Stack, svc
 		return c.genMuVolumeServiceTemplate(comp, stack, svc)
 	case predef.Autoscaler:
 		return c.genMuAutoscalerServiceTemplate(comp, stack, svc)
-	case predef.Extension:
-		return c.genMuExtensionServiceTemplate(comp, stack, predef.AsExtensionService(svc))
 	default:
 		return c.genOtherServiceTemplate(comp, stack, svc)
 	}
@@ -260,169 +261,6 @@ func (c *awsCloud) genMuAutoscalerServiceTemplate(comp core.Compiland, stack *as
 	return nil
 }
 
-// CloudFormationExtensionProvider, when used with mu/extension, allows a stack to directly generate arbitrary
-// CloudFormation templating as the output.  This happens after Mu templates have been expanded, allowing stack
-// properties, target environments, and so on, to be leveraged in the way these templates are generated.
-const CloudFormationExtensionProvider = "aws/cf"
-
-// CloudFormationExtensionProviderResource is the property that contains the AWS CF resource name (required).
-const CloudFormationExtensionProviderResource = "resource"
-
-// CloudFormationExtensionProviderDependsOn optionally lists other AWS CF resource IDs that this resource depends on.
-const CloudFormationExtensionProviderDependsOn = "dependsOn"
-
-// CloudFormationExtensionproviderProperties optionally contains the set of properties to auto-map (default is all).
-const CloudFormationExtensionProviderProperties = "properties"
-
-// CloudFormationExtensionproviderSkipProperties optionally contains a set of properties to skip in auto-mapping.
-const CloudFormationExtensionProviderSkipProperties = "skipProperties"
-
-// CloudFormationExtensionproviderExtraProperties contains an optional set of arbitrary properties to merge.
-const CloudFormationExtensionProviderExtraProperties = "extraProperties"
-
-func (c *awsCloud) genMuExtensionServiceTemplate(comp core.Compiland, stack *ast.Stack,
-	svc *predef.ExtensionService) cfResources {
-	switch svc.Provider {
-	case CloudFormationExtensionProvider:
-		// The AWS CF extension provider simply creates a CF resource out of the provided template.  First, we extract
-		// the resource type, which is simply the AWS CF resource type name to emit directly, unmanipulated.
-		var resType string
-		r, ok := svc.Properties[CloudFormationExtensionProviderResource]
-		if ok {
-			resType, ok = r.(string)
-			if !ok {
-				c.Diag().Errorf(errors.ErrorIncorrectPropertyType.At(stack),
-					CloudFormationExtensionProviderResource, "string", reflect.TypeOf(r),
-					CloudFormationExtensionProvider)
-				return nil
-			}
-		} else {
-			c.Diag().Errorf(errors.ErrorMissingRequiredProperty.At(stack),
-				CloudFormationExtensionProviderResource, CloudFormationExtensionProvider)
-			return nil
-		}
-
-		// See if there are a set of properties to auto-map; if missing, the default is "all of them."
-		var auto map[string]bool
-		if au, ok := svc.Properties[CloudFormationExtensionProviderProperties]; ok {
-			if aups, ok := encoding.StringSlice(au); ok {
-				auto = make(map[string]bool)
-				for _, p := range aups {
-					auto[p] = true
-				}
-			} else {
-				c.Diag().Errorf(errors.ErrorIncorrectPropertyType.At(stack),
-					CloudFormationExtensionProviderProperties, "[]string", reflect.TypeOf(au),
-					CloudFormationExtensionProvider)
-			}
-		}
-
-		// See if there are any properties to skip during auto-mapping.
-		var skip map[string]bool
-		if sk, ok := svc.Properties[CloudFormationExtensionProviderSkipProperties]; ok {
-			skip = make(map[string]bool)
-			if ska, ok := encoding.StringSlice(sk); ok {
-				for _, s := range ska {
-					skip[s] = true
-				}
-			} else {
-				c.Diag().Errorf(errors.ErrorIncorrectPropertyType.At(stack),
-					CloudFormationExtensionProviderSkipProperties, "[]string", reflect.TypeOf(sk),
-					CloudFormationExtensionProvider)
-			}
-		}
-
-		// Next, we perform a straighforward auto-mapping from Mu stack properties to the equivalent CF properties.
-		resProps := make(cfResourceProperties)
-		for _, name := range ast.StableProperties(stack.Properties) {
-			if (auto == nil || auto[name]) && (skip == nil || !skip[name]) {
-				if p, has := stack.BoundPropertyValues[name]; has {
-					pname := makeAWSFriendlyName(name, true)
-					resProps[pname] = c.propertyLiteralToValue(p)
-				}
-			}
-		}
-
-		// Next, if there are any "extra" properties, merge them in with the existing map.
-		if ex, ok := svc.Properties[CloudFormationExtensionProviderExtraProperties]; ok {
-			if extra, ok := ex.(map[string]interface{}); ok {
-				for _, exname := range ast.StableKeys(extra) {
-					v := extra[exname]
-					// If there is an existing property, we can (possibly) merge it, for maps and slices (using some
-					// reflection voodoo).  For all other types, issue a warning.
-					if exist, has := resProps[exname]; has {
-						merged := true
-						switch reflect.TypeOf(exist).Kind() {
-						case reflect.Map:
-							// Merge two maps, provided both are maps; if any conflicting keys exist, bail out.
-							if reflect.TypeOf(v).Kind() == reflect.Map {
-								vm := reflect.ValueOf(v).Interface().(map[string]interface{})
-								em := reflect.ValueOf(exist).Interface().(map[string]interface{})
-								for k, v := range vm {
-									if _, has := em[k]; has {
-										merged = false
-									} else {
-										em[k] = v
-									}
-								}
-							} else {
-								merged = false
-							}
-						case reflect.Slice:
-							// Merge two slices, provided both are slices.
-							if reflect.TypeOf(v).Kind() == reflect.Slice {
-								reflect.AppendSlice(reflect.ValueOf(exist), reflect.ValueOf(v))
-							} else {
-								merged = false
-							}
-						default:
-							merged = false
-						}
-						if !merged {
-							c.Diag().Errorf(ErrorDuplicateExtraProperty.At(stack), exname)
-						}
-					} else {
-						resProps[exname] = v
-					}
-				}
-			} else {
-				c.Diag().Errorf(errors.ErrorIncorrectPropertyType.At(stack),
-					CloudFormationExtensionProviderExtraProperties, "map[string]interface{}", reflect.TypeOf(ex),
-					CloudFormationExtensionProvider)
-			}
-		}
-
-		// If there are any explicit dependencies listed, we need to fish them out and add them.
-		var resDeps []cfLogicalID
-		if do, ok := svc.Properties[CloudFormationExtensionProviderDependsOn]; ok {
-			resDeps = make([]cfLogicalID, 0)
-			if doa, ok := encoding.StringSlice(do); ok {
-				for _, d := range doa {
-					resDeps = append(resDeps, cfLogicalID(d))
-				}
-			} else {
-				c.Diag().Errorf(errors.ErrorIncorrectPropertyType.At(stack),
-					CloudFormationExtensionProviderDependsOn, "[]string", reflect.TypeOf(do),
-					CloudFormationExtensionProvider)
-			}
-		}
-
-		// Finally, generate an ID from the service's name, and return the result.
-		id := c.genResourceID(stack, &svc.Service)
-		return cfResources{
-			id: cfResource{
-				Type:       cfResourceType(resType),
-				Properties: cfResourceProperties(resProps),
-				DependsOn:  resDeps,
-			},
-		}
-	default:
-		c.Diag().Errorf(errors.ErrorUnrecognizedExtensionProvider.At(stack), svc.Provider)
-	}
-
-	return nil
-}
-
 // genOtherServiceTemplate generates code for a general-purpose Stack service reference.
 func (c *awsCloud) genOtherServiceTemplate(comp core.Compiland, stack *ast.Stack, svc *ast.Service) cfResources {
 	// Instantiate and textually include the BoundStack into our current template.
@@ -434,6 +272,18 @@ func (c *awsCloud) genOtherServiceTemplate(comp core.Compiland, stack *ast.Stack
 	util.Assert(svc.BoundType != nil)
 	glog.V(4).Infof("Generating \"other\" service template: svc=%v type=%v", svc.Name, svc.BoundType.Name)
 
+	if svc.BoundType.Intrinsic {
+		// For intrinsics, generate code for those that we understand; for all others, issue an error.
+		switch svc.BoundType.Name {
+		case cfIntrinsicName:
+			intrin := asCFIntrinsic(svc)
+			return c.genCFIntrinsicServiceTemplate(comp, stack, intrin)
+		default:
+			c.Diag().Errorf(errors.ErrorUnrecognizedIntrinsic.At(stack), svc.BoundType.Name)
+		}
+	}
+
+	// For everything else, go through the usual template generation.
 	all := make(cfResources)
 	privates, publics := c.genStackServiceTemplates(comp, svc.BoundType)
 	defer glog.V(5).Infof("Generated \"other\" service template: svc=%v type=%v private=%v public=%v all=%v",
@@ -449,6 +299,91 @@ func (c *awsCloud) genOtherServiceTemplate(comp core.Compiland, stack *ast.Stack
 	return all
 }
 
+// genCFIntrinsicServiceTemplate simply creates a CF resource out of the provided template.  This will have already been
+// typechecked, etc., during earlier phases of the compiler; extract it into a strong wrapper.
+func (c *awsCloud) genCFIntrinsicServiceTemplate(comp core.Compiland, stack *ast.Stack, cf *cfIntrinsic) cfResources {
+	// See if there are a set of properties to auto-map; if missing, the default is "all of them."
+	auto := make(map[string]bool)
+	for _, p := range cf.Properties.StringList {
+		auto[p] = true
+	}
+
+	// See if there are any properties to skip during auto-mapping.
+	skip := make(map[string]bool)
+	for _, p := range cf.SkipProperties.StringList {
+		skip[p] = true
+	}
+
+	// Next, we perform a straighforward auto-mapping from Mu stack properties to the equivalent CF properties.
+	resProps := make(cfResourceProperties)
+	for _, name := range ast.StableProperties(stack.Properties) {
+		if (auto == nil || auto[name]) && (skip == nil || !skip[name]) {
+			if p, has := stack.BoundPropertyValues[name]; has {
+				pname := makeAWSFriendlyName(name, true)
+				resProps[pname] = c.propertyLiteralToValue(p)
+			}
+		}
+	}
+
+	// Next, if there are any "extra" properties, merge them in with the existing map.
+	extra := cf.ExtraProperties.StringMap
+	for _, exname := range ast.StableKeys(extra) {
+		v := extra[exname]
+		// If there is an existing property, we can (possibly) merge it, for maps and slices (using some
+		// reflection voodoo).  For all other types, issue a warning.
+		if exist, has := resProps[exname]; has {
+			merged := true
+			switch reflect.TypeOf(exist).Kind() {
+			case reflect.Map:
+				// Merge two maps, provided both are maps; if any conflicting keys exist, bail out.
+				if reflect.TypeOf(v).Kind() == reflect.Map {
+					vm := reflect.ValueOf(v).Interface().(map[string]interface{})
+					em := reflect.ValueOf(exist).Interface().(map[string]interface{})
+					for k, v := range vm {
+						if _, has := em[k]; has {
+							merged = false
+						} else {
+							em[k] = v
+						}
+					}
+				} else {
+					merged = false
+				}
+			case reflect.Slice:
+				// Merge two slices, provided both are slices.
+				if reflect.TypeOf(v).Kind() == reflect.Slice {
+					reflect.AppendSlice(reflect.ValueOf(exist), reflect.ValueOf(v))
+				} else {
+					merged = false
+				}
+			default:
+				merged = false
+			}
+			if !merged {
+				c.Diag().Errorf(ErrorDuplicateExtraProperty.At(stack), exname)
+			}
+		} else {
+			resProps[exname] = v
+		}
+	}
+
+	// If there are any explicit dependencies listed, we need to fish them out and add them.
+	var resDeps []cfLogicalID
+	for _, d := range cf.DependsOn.ServiceList {
+		resDeps = append(resDeps, c.genResourceDependsID(d))
+	}
+
+	// Finally, generate an ID from the service's name, and return the result.
+	id := c.genResourceID(stack, cf.Service)
+	return cfResources{
+		id: cfResource{
+			Type:       cfResourceType(cf.Resource.String),
+			Properties: cfResourceProperties(resProps),
+			DependsOn:  resDeps,
+		},
+	}
+}
+
 // propertyLiteralToValue converts an AST literal to a JSON/YAML literal appropriate for emission.
 func (c *awsCloud) propertyLiteralToValue(lit interface{}) interface{} {
 	switch v := lit.(type) {
@@ -457,12 +392,23 @@ func (c *awsCloud) propertyLiteralToValue(lit interface{}) interface{} {
 		return v.Any
 	case ast.StringLiteral:
 		return v.String
+	case ast.StringListLiteral:
+		return v.StringList
+	case ast.StringMapLiteral:
+		// TODO[marapongo/mu#9]: once we have complex structures, we'll need to perform a deep transformation.
+		return v.StringMap
 	case ast.NumberLiteral:
 		return v.Number
 	case ast.BoolLiteral:
 		return v.Bool
-	case ast.CapRefLiteral:
-		return c.genResourceRef(v)
+	case ast.ServiceLiteral:
+		return c.genResourceDependsRef(v)
+	case ast.ServiceListLiteral:
+		ids := make([]interface{}, len(v.ServiceList))
+		for i, lit := range v.ServiceList {
+			ids[i] = c.genResourceDependsRef(lit)
+		}
+		return ids
 	default:
 		util.FailMF("Unrecognized property literal type: %v", reflect.TypeOf(lit))
 		return nil
