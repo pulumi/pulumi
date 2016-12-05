@@ -61,7 +61,9 @@ func newBuildCmd() *cobra.Command {
 			if len(sargs) > 0 {
 				opts.Args = make(map[string]string)
 				// TODO[marapongo/mu#7]: This is a very rudimentary parser.  We can and should do better.
-				for _, sarg := range sargs {
+				for i := 0; i < len(sargs); i++ {
+					sarg := sargs[i]
+
 					// Eat - or -- at the start.
 					if sarg[0] == '-' {
 						sarg = sarg[1:]
@@ -73,9 +75,14 @@ func newBuildCmd() *cobra.Command {
 					if eq := strings.IndexByte(sarg, '='); eq != -1 {
 						opts.Args[sarg[:eq]] = sarg[eq+1:]
 					} else {
-						// No =, must be a boolean, just inject "true".
-						// TODO(joe): support --no-key style "false"s.
-						opts.Args[sarg] = "true"
+						// No =; if the next arg doesn't start with '-', use it.  Else it  must be a boolean "true".
+						if i+1 < len(sargs) && sargs[i+1][0] != '-' {
+							opts.Args[sarg] = sargs[i+1]
+							i++
+						} else {
+							// TODO(joe): support --no-key style "false"s.
+							opts.Args[sarg] = "true"
+						}
 					}
 				}
 
