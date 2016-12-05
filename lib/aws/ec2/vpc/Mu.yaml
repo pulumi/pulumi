@@ -42,8 +42,7 @@ services:
                 CidrBlock: cidrBlock
                 EnableDnsSupport: enableDnsSupport
                 InstanceTenancy: instanceTenancy
-                EnableDnsHostnames: EnableDnsHostnames
-                InstanceTenancy: instanceTenancy
+                EnableDnsHostnames: enableDnsHostnames
                 Tags: tags
             {{if has .Properties "name" -}}
             extraProperties:

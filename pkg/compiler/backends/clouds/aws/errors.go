@@ -13,7 +13,12 @@ var ErrorMarshalingCloudFormationTemplate = &diag.Diag{
 	Message: "An error occurred when marshaling the output AWS CloudFormation template: %v",
 }
 
-var ErrorDuplicateExtraProperty = &diag.Diag{
+var ErrorPropertyNotFound = &diag.Diag{
 	ID:      10001,
-	Message: "Extra property %v conflicts with an existing auto-mapped property; did you mean to use skipProperties?",
+	Message: "Property %v was not found within this stack",
+}
+
+var ErrorDuplicateExtraProperty = &diag.Diag{
+	ID:      10002,
+	Message: "Extra property %v conflicts with an existing mapped property",
 }

@@ -22,7 +22,7 @@ services:
             resource: "AWS::EC2::RouteTable"
             properties:
                 VpcId: vpc
-                Tags: tag
+                Tags: tags
             {{if has .Properties "name" -}}
             extraProperties:
                 Tags:

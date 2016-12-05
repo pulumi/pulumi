@@ -71,9 +71,9 @@ services:
                 DestinationCidrBlock: destinationCidrBlock
                 RouteTableId: routeTable
                 InternetGatewayId: internetGateway
-                VpnGatewayId: vpnGateway
-                InstanceId: instance
-                NatGatewayId: natGateway
-                NetworkInterfaceId: networkInterface
-                VpcPeeringConnectionId: vpcPeeringConnection
+                #VpnGatewayId: vpnGateway
+                #InstanceId: instance
+                #NatGatewayId: natGateway
+                #NetworkInterfaceId: networkInterface
+                #VpcPeeringConnectionId: vpcPeeringConnection
     

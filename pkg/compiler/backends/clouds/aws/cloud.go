@@ -309,6 +309,13 @@ func (c *awsCloud) genCFIntrinsicServiceTemplate(comp core.Compiland, stack *ast
 		from := cf.Properties.StringStringMap[to]
 		if p, has := stack.BoundPropertyValues[from]; has {
 			resProps[to] = c.propertyLiteralToValue(p)
+		} else {
+			// It's ok if there is no bound property for this; that just means the caller didn't supply a value, which
+			// is totally legal for optional properties.  But at least make sure the property refers to a valid property
+			// name, otherwise this could be a mistake (mispelled name, etc).
+			if _, has := stack.Properties[from]; !has {
+				c.Diag().Errorf(ErrorPropertyNotFound.At(stack), from)
+			}
 		}
 	}
 
