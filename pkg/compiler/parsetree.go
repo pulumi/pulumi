@@ -115,10 +115,10 @@ func (a *ptAnalyzer) untypedServiceToTyped(parent *ast.Stack, name ast.Name, pub
 	}
 
 	return &ast.Service{
-		Name:   name,
-		Type:   ast.Ref(typ),
-		Public: public,
-		Props:  bag,
+		Name:       name,
+		Type:       ast.Ref(typ),
+		Public:     public,
+		Properties: bag,
 	}
 }
 

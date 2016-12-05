@@ -184,7 +184,7 @@ func TestBadUnrecognizedProperties(t *testing.T) {
 	for i, unk := range unks {
 		assert.Equal(t,
 			fmt.Sprintf("%v: %v%v: %v: %v\n",
-				diag.DefaultSinkErrorPrefix, diag.DefaultSinkIDPrefix, d.ID, "Mu.yaml",
+				diag.DefaultSinkErrorPrefix, diag.DefaultSinkIDPrefix, d.ID, "../provider/Mu.yaml",
 				fmt.Sprintf(d.Message, unk, "mutest/provider")),
 			sink.ErrorMsgs()[i])
 	}
@@ -200,7 +200,7 @@ func TestBadPropertyTypes(t *testing.T) {
 	for i, ty := range exp {
 		assert.Equal(t,
 			fmt.Sprintf("%v: %v%v: %v: %v\n",
-				diag.DefaultSinkErrorPrefix, diag.DefaultSinkIDPrefix, d.ID, "Mu.yaml",
+				diag.DefaultSinkErrorPrefix, diag.DefaultSinkIDPrefix, d.ID, "../provider/Mu.yaml",
 				fmt.Sprintf(d.Message, "req_"+ty, ty, got[i], "mutest/provider")),
 			sink.ErrorMsgs()[i])
 	}

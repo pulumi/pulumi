@@ -409,7 +409,7 @@ func (p *binderBindPhase) VisitService(pstack *ast.Stack, parent *ast.Services, 
 	// expressions, intra stack references, cycles, and so forth, will have been taken care of by this earlier phase.
 	util.AssertMF(svc.Type != "",
 		"Expected all Services to have types in binding phase2; %v is missing one", svc.Name)
-	svc.BoundType = p.ensureStack(svc.Type, svc.Props)
+	svc.BoundType = p.ensureStack(svc.Type, svc.Properties)
 	util.Assert(svc.BoundType != nil)
 }
 
@@ -477,7 +477,10 @@ func (p *binderValidatePhase) VisitDependency(parent *ast.Workspace, ref ast.Ref
 }
 
 func (p *binderValidatePhase) VisitStack(stack *ast.Stack) {
-	// TODO: bind this stack's properties.
+	if stack.PropertyValues != nil {
+		// Bind property values.
+		stack.BoundPropertyValues = p.bindStackProperties(stack, stack, stack.PropertyValues)
+	}
 	if stack.Base != "" {
 		util.Assert(stack.BoundBase != nil)
 		// TODO[marapongo/mu#7]: validate the properties from this stack on the base.
@@ -495,7 +498,12 @@ func (p *binderValidatePhase) VisitService(pstack *ast.Stack, parent *ast.Servic
 	svc *ast.Service) {
 	util.Assert(svc.BoundType != nil)
 	// Ensure the properties supplied at stack construction time are correct and bind them.
-	svc.BoundProps = p.bindStackProperties(pstack, svc.BoundType, svc.Props)
+	svc.BoundProperties = p.bindStackProperties(pstack, svc.BoundType, svc.Properties)
+	if svc.BoundType.PropertyValues != nil {
+		// If this is a constructed type, be sure to remember the bound property values too.
+		util.Assert(svc.BoundType.BoundPropertyValues == nil)
+		svc.BoundType.BoundPropertyValues = svc.BoundProperties
+	}
 }
 
 // bindStackProperties typechecks a set of unbounded properties against the target stack, and expands them into a bag

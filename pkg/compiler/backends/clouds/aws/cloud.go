@@ -268,7 +268,7 @@ func (c *awsCloud) genMuExtensionServiceTemplate(comp core.Compiland, stack *ast
 		// The AWS CF extension provider simply creates a CF resource out of the provided template.  First, we extract
 		// the resource type, which is simply the AWS CF resource type name to emit directly, unmanipulated.
 		var resType string
-		r, ok := svc.Props[CloudFormationExtensionProviderResource]
+		r, ok := svc.Properties[CloudFormationExtensionProviderResource]
 		if ok {
 			resType, ok = r.(string)
 			if !ok {
@@ -285,7 +285,7 @@ func (c *awsCloud) genMuExtensionServiceTemplate(comp core.Compiland, stack *ast
 
 		// See if there are a set of properties to auto-map; if missing, the default is "all of them."
 		var auto map[string]bool
-		if au, ok := svc.Props[CloudFormationExtensionProviderProperties]; ok {
+		if au, ok := svc.Properties[CloudFormationExtensionProviderProperties]; ok {
 			if aups, ok := encoding.StringSlice(au); ok {
 				auto = make(map[string]bool)
 				for _, p := range aups {
@@ -300,7 +300,7 @@ func (c *awsCloud) genMuExtensionServiceTemplate(comp core.Compiland, stack *ast
 
 		// See if there are any properties to skip during auto-mapping.
 		var skip map[string]bool
-		if sk, ok := svc.Props[CloudFormationExtensionProviderSkipProperties]; ok {
+		if sk, ok := svc.Properties[CloudFormationExtensionProviderSkipProperties]; ok {
 			skip = make(map[string]bool)
 			if ska, ok := encoding.StringSlice(sk); ok {
 				for _, s := range ska {
@@ -317,7 +317,7 @@ func (c *awsCloud) genMuExtensionServiceTemplate(comp core.Compiland, stack *ast
 		resProps := make(cfResourceProperties)
 		for _, name := range ast.StableProperties(stack.Properties) {
 			if (auto == nil || auto[name]) && (skip == nil || !skip[name]) {
-				if p, has := svc.Service.Props[name]; has {
+				if p, has := svc.Service.BoundProperties[name]; has {
 					pname := makeAWSFriendlyName(name, true)
 					resProps[pname] = c.propertyLiteralToValue(p)
 				}
@@ -325,7 +325,7 @@ func (c *awsCloud) genMuExtensionServiceTemplate(comp core.Compiland, stack *ast
 		}
 
 		// Next, if there are any "extra" properties, merge them in with the existing map.
-		if ex, ok := svc.Props[CloudFormationExtensionProviderExtraProperties]; ok {
+		if ex, ok := svc.Properties[CloudFormationExtensionProviderExtraProperties]; ok {
 			if extra, ok := ex.(map[string]interface{}); ok {
 				for _, exname := range ast.StableKeys(extra) {
 					v := extra[exname]
@@ -375,7 +375,7 @@ func (c *awsCloud) genMuExtensionServiceTemplate(comp core.Compiland, stack *ast
 
 		// If there are any explicit dependencies listed, we need to fish them out and add them.
 		var resDeps []cfLogicalID
-		if do, ok := svc.Props[CloudFormationExtensionProviderDependsOn]; ok {
+		if do, ok := svc.Properties[CloudFormationExtensionProviderDependsOn]; ok {
 			resDeps = make([]cfLogicalID, 0)
 			if doa, ok := encoding.StringSlice(do); ok {
 				for _, d := range doa {

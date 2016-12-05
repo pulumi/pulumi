@@ -110,6 +110,9 @@ func (p *parser) ParseStack(doc *diag.Document, props ast.PropertyBag) *ast.Stac
 	// Remember that this stack came from this document (both template expanded and unexpanded forms).
 	stack.Doc = doc
 
+	// Remember the properties used to construct this stack.
+	stack.PropertyValues = props
+
 	// Now create a parse tree analyzer to walk the parse trees and ensure that all is well.
 	ptAnalyzer := NewPTAnalyzer(p.c)
 	ptAnalyzer.AnalyzeStack(&stack)

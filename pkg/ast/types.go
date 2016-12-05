@@ -91,11 +91,13 @@ type Stack struct {
 	Website     string  `json:"website,omitempty"`     // an optional website for additional info.
 	License     string  `json:"license,omitempty"`     // an optional license governing legal uses of this package.
 
-	Base       Ref        `json:"base,omitempty"`     // an optional base Stack type.
-	BoundBase  *Stack     `json:"-"`                  // base, if available, is bound during semantic analysis.
-	Abstract   bool       `json:"abstract,omitempty"` // true if this stack is "abstract" (uninstantiable).
-	Properties Properties `json:"properties,omitempty"`
-	Services   Services   `json:"services,omitempty"`
+	Base                Ref                `json:"base,omitempty"`     // an optional base Stack type.
+	BoundBase           *Stack             `json:"-"`                  // base, optionally bound during semantic analysis.
+	Abstract            bool               `json:"abstract,omitempty"` // true if this stack is "abstract" (uninstantiable).
+	Properties          Properties         `json:"properties,omitempty"`
+	PropertyValues      PropertyBag        `json:"-"` // the properties used to construct this stack.
+	BoundPropertyValues LiteralPropertyBag `json:"-"` // the bound properties used to construct this stack.
+	Services            Services           `json:"services,omitempty"`
 
 	Predef bool           `json:"-"` // true if this is a predefined type (treated specially).
 	Doc    *diag.Document `json:"-"` // the document from which this came.
@@ -183,10 +185,10 @@ type ServiceMap map[Name]*Service
 type Service struct {
 	Node
 
-	Type       Ref                `json:"type,omitempty"` // an explicit type; if missing, the name is used.
-	BoundType  *Stack             `json:"-"`              // services are bound to stacks during semantic analysis.
-	Props      PropertyBag        `json:"-"`              // all of the "extra" properties, other than what is above.
-	BoundProps LiteralPropertyBag `json:"-"`              // the bound properties, expanded and typed correctly.
+	Type            Ref                `json:"type,omitempty"` // an explicit type; if missing, the name is used.
+	BoundType       *Stack             `json:"-"`              // services are bound to stacks during semantic analysis.
+	Properties      PropertyBag        `json:"-"`              // all of the custom properties (minus what's above).
+	BoundProperties LiteralPropertyBag `json:"-"`              // the bound properties, expanded and typed correctly.
 
 	Name   Name `json:"-"` // a friendly name; decorated post-parsing, since it is contextual.
 	Public bool `json:"-"` // true if this service is publicly exposed; also decorated post-parsing.
