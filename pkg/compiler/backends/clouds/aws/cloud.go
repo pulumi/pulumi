@@ -132,13 +132,8 @@ func (c *awsCloud) genResourceDependsID(lit ast.ServiceLiteral) cfLogicalID {
 // http://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/intrinsic-function-reference-ref.html.
 func (c *awsCloud) genResourceDependsRef(lit ast.ServiceLiteral) interface{} {
 	id := c.genResourceDependsID(lit)
-	if c.m.IsYAMLLike() {
-		return "!Ref " + id
-	} else {
-		util.Assert(c.m.IsJSONLike())
-		return map[string]interface{}{
-			"Ref": id,
-		}
+	return map[string]interface{}{
+		"Ref": id,
 	}
 }
 
