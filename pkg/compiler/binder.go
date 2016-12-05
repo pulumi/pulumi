@@ -412,6 +412,11 @@ func (p *binderBindPhase) VisitService(pstack *ast.Stack, parent *ast.Services, 
 		"Expected all Services to have types in binding phase2; %v is missing one", svc.Name)
 	svc.BoundType = p.ensureStack(svc.Type, svc.Properties)
 	util.Assert(svc.BoundType != nil)
+
+	// A service cannot instantiate an abstract stack.
+	if svc.BoundType.Abstract {
+		p.Diag().Errorf(errors.ErrorCannotCreateAbstractStack.At(pstack), svc.Name, svc.BoundType.Name)
+	}
 }
 
 // ensureStack binds a ref to a symbol, possibly instantiating it, and returns a fully bound stack.
