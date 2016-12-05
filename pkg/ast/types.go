@@ -151,14 +151,16 @@ type PropertyType Name
 // A set of known property types.  Note that this is extensible, so names outside of this list are legal.
 // TODO[marapongo/mu#9]: support complex types (like arrays, custom JSON shapes, and so on).
 const (
-	PropertyTypeAny         PropertyType = "any"            // any structure.
-	PropertyTypeString                   = "string"         // a JSON-like string.
-	PropertyTypeStringList               = "string[]"       // a JSON-like array of strings.
-	PropertyTypeStringMap                = "map[string]any" // a JSON-like map of strings to anys.
-	PropertyTypeNumber                   = "number"         // a JSON-like number (integer or floating point).
-	PropertyTypeBool                     = "bool"           // a JSON-like boolean (`true` or `false`).
-	PropertyTypeService                  = "service"        // an untyped service reference; at runtime, a URL.
-	PropertyTypeServiceList              = "service[]"      // an array of service references.
+	PropertyTypeAny             PropertyType = "any"                // any structure.
+	PropertyTypeString                       = "string"             // a JSON-like string.
+	PropertyTypeStringList                   = "string[]"           // a JSON-like array of strings.
+	PropertyTypeStringMap                    = "map[string]any"     // a JSON-like map of strings to anys.
+	PropertyTypeStringStringMap              = "map[string]string"  // a JSON-like map of strings to strings.
+	PropertyTypeNumber                       = "number"             // a JSON-like number (integer or floating point).
+	PropertyTypeBool                         = "bool"               // a JSON-like boolean (`true` or `false`).
+	PropertyTypeService                      = "service"            // an untyped service reference; at runtime, a URL.
+	PropertyTypeServiceList                  = "service[]"          // an array of service references.
+	PropertyTypeServiceMap                   = "map[string]service" // a map of strings to service references.
 )
 
 // IsPropertyStackType indicates whether the given property type is a stack type.
@@ -235,6 +237,12 @@ type StringMapLiteral struct {
 	StringMap map[string]interface{}
 }
 
+// StringStringMapLiteral is an AST node containing a map of literal strings to strings (`map[string]string`).
+type StringStringMapLiteral struct {
+	Literal
+	StringStringMap map[string]string
+}
+
 // NumberLiteral is an AST node containing a literal number (`float64`).
 type NumberLiteral struct {
 	Literal
@@ -257,10 +265,16 @@ type ServiceLiteral struct {
 	Selected *Service // the selected service resolved during binding.
 }
 
-// ServieListLiteral is an AST node containing a list of literal capability references.
+// ServiceListLiteral is an AST node containing a list of literal capability references.
 type ServiceListLiteral struct {
 	Literal
 	ServiceList []ServiceLiteral
+}
+
+// ServiceMapLiteral is an AST node containing a map of names to the associated capability references.
+type ServiceMapLiteral struct {
+	Literal
+	ServiceMap map[string]ServiceLiteral
 }
 
 // TODO[marapongo/mu#9]: extensible schema support.

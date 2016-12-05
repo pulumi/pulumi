@@ -575,6 +575,10 @@ func (p *binderValidatePhase) bindPropertyValueToLiteral(parent *ast.Stack, stac
 			// TODO(joe): eventually we'll need to do translation on values to canonicalize the contents.
 			return ast.StringMapLiteral{StringMap: sm}
 		}
+	case ast.PropertyTypeStringStringMap:
+		if ssm, ok := encoding.StringStringMap(val); ok {
+			return ast.StringStringMapLiteral{StringStringMap: ssm}
+		}
 	case ast.PropertyTypeNumber:
 		if n, ok := val.(float64); ok {
 			return ast.NumberLiteral{Number: n}
@@ -587,8 +591,8 @@ func (p *binderValidatePhase) bindPropertyValueToLiteral(parent *ast.Stack, stac
 		// Extract the name of the service reference as a string.  Then bind it to an actual service in our symbol
 		// table, and store a strong reference to the result.  This lets the backend connect the dots.
 		if s, ok := val.(string); ok {
-			if cap := p.bindServiceLiteral(parent, stack, pname, prop, s, nil); cap != nil {
-				return *cap
+			if lit := p.bindServiceLiteral(parent, stack, pname, prop, s, nil); lit != nil {
+				return *lit
 			}
 		}
 	case ast.PropertyTypeServiceList:
@@ -596,11 +600,21 @@ func (p *binderValidatePhase) bindPropertyValueToLiteral(parent *ast.Stack, stac
 		if ss, ok := encoding.StringSlice(val); ok {
 			lst := make([]ast.ServiceLiteral, 0)
 			for _, s := range ss {
-				if cap := p.bindServiceLiteral(parent, stack, pname, prop, s, nil); cap != nil {
-					lst = append(lst, *cap)
+				if lit := p.bindServiceLiteral(parent, stack, pname, prop, s, nil); lit != nil {
+					lst = append(lst, *lit)
 				}
 			}
 			return ast.ServiceListLiteral{ServiceList: lst}
+		}
+	case ast.PropertyTypeServiceMap:
+		if ssm, ok := encoding.StringStringMap(val); ok {
+			svm := make(map[string]ast.ServiceLiteral, 0)
+			for k, s := range ssm {
+				if lit := p.bindServiceLiteral(parent, stack, pname, prop, s, nil); lit != nil {
+					svm[k] = *lit
+				}
+			}
+			return ast.ServiceMapLiteral{ServiceMap: svm}
 		}
 	default:
 		util.AssertMF(ast.IsPropertyStackType(prop.Type),

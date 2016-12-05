@@ -17,6 +17,10 @@ properties:
         type: map[string]any
         description: An optional set of arbitrary properties to merge with the auto-mapped ones.
         optional: true
+    renamedProperties:
+        type: map[string]string
+        description: An optional set of properties to be mapped to alternative names.
+        optional: true
     dependsOn:
         type: service[]
         description: An optional list of other CF resources that this depends on.

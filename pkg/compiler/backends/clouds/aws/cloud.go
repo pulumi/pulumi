@@ -302,6 +302,8 @@ func (c *awsCloud) genOtherServiceTemplate(comp core.Compiland, stack *ast.Stack
 // genCFIntrinsicServiceTemplate simply creates a CF resource out of the provided template.  This will have already been
 // typechecked, etc., during earlier phases of the compiler; extract it into a strong wrapper.
 func (c *awsCloud) genCFIntrinsicServiceTemplate(comp core.Compiland, stack *ast.Stack, cf *cfIntrinsic) cfResources {
+	resProps := make(cfResourceProperties)
+
 	// See if there are a set of properties to auto-map; if missing, the default is "all of them."
 	auto := make(map[string]bool)
 	for _, p := range cf.Properties.StringList {
@@ -314,8 +316,15 @@ func (c *awsCloud) genCFIntrinsicServiceTemplate(comp core.Compiland, stack *ast
 		skip[p] = true
 	}
 
+	// See if there are any renamed properties to avoid mapping in the usual way.
+	for from, to := range cf.RenamedProperties.StringStringMap {
+		if p, has := stack.BoundPropertyValues[from]; has {
+			resProps[to] = c.propertyLiteralToValue(p)
+		}
+		skip[to] = true
+	}
+
 	// Next, we perform a straighforward auto-mapping from Mu stack properties to the equivalent CF properties.
-	resProps := make(cfResourceProperties)
 	for _, name := range ast.StableProperties(stack.Properties) {
 		if (auto == nil || auto[name]) && (skip == nil || !skip[name]) {
 			if p, has := stack.BoundPropertyValues[name]; has {
@@ -397,6 +406,8 @@ func (c *awsCloud) propertyLiteralToValue(lit interface{}) interface{} {
 	case ast.StringMapLiteral:
 		// TODO[marapongo/mu#9]: once we have complex structures, we'll need to perform a deep transformation.
 		return v.StringMap
+	case ast.StringStringMapLiteral:
+		return v.StringStringMap
 	case ast.NumberLiteral:
 		return v.Number
 	case ast.BoolLiteral:
@@ -409,6 +420,12 @@ func (c *awsCloud) propertyLiteralToValue(lit interface{}) interface{} {
 			ids[i] = c.genResourceDependsRef(lit)
 		}
 		return ids
+	case ast.ServiceMapLiteral:
+		idm := make(map[string]interface{})
+		for k, lit := range v.ServiceMap {
+			idm[k] = c.genResourceDependsRef(lit)
+		}
+		return idm
 	default:
 		util.FailMF("Unrecognized property literal type: %v", reflect.TypeOf(lit))
 		return nil

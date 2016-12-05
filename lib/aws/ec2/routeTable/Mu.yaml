@@ -26,4 +26,6 @@ services:
                     - Key: Name
                       Value: {{.Properties.name}}
             {{- end}}
+            renamedProperties:
+                vpc: VpcId
 

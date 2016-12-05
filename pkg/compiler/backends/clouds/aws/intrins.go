@@ -15,6 +15,7 @@ const cfIntrinsicDependsOn = "dependsOn"
 const cfIntrinsicProperties = "properties"
 const cfIntrinsicSkipProperties = "skipProperties"
 const cfIntrinsicExtraProperties = "extraProperties"
+const cfIntrinsicRenamedProperties = "renamedProperties"
 
 // cfIntrinsic is a service with an intrinsic type allowing stacks to directly generate arbitrary CloudFormation
 // templating as the output.  This forms the basic for most AWS cloud native resources.  Expansion of this type happens
@@ -22,11 +23,12 @@ const cfIntrinsicExtraProperties = "extraProperties"
 // the way these templates are generated.
 type cfIntrinsic struct {
 	*ast.Service
-	Resource        ast.StringLiteral
-	DependsOn       ast.ServiceListLiteral
-	Properties      ast.StringListLiteral
-	SkipProperties  ast.StringListLiteral
-	ExtraProperties ast.StringMapLiteral
+	Resource          ast.StringLiteral
+	DependsOn         ast.ServiceListLiteral
+	Properties        ast.StringListLiteral
+	SkipProperties    ast.StringListLiteral
+	ExtraProperties   ast.StringMapLiteral
+	RenamedProperties ast.StringStringMapLiteral
 }
 
 // AsCFIntrinsic converts a given service to a CloudFormationService, validating it as we go.

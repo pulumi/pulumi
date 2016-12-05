@@ -33,12 +33,12 @@ services:
         self:
             type: aws/x/cf
             resource: "AWS::EC2::Subnet"
-            skipProperties: [ vpc ]
+            {{if has .Properties "name" -}}
             extraProperties:
-                VpcId: {{.Properties.vpc}}
-                {{if has .Properties "name" -}}
                 Tags:
                     - Key: Name
                       Value: {{.Properties.name}}
-                {{- end}}
+            {{- end}}
+            renamedProperties:
+                vpc: VpcId
 
