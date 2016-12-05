@@ -100,8 +100,27 @@ func (c *awsCloud) genStackName(comp core.Compiland) string {
 // genResourceRef creates a reference to another resource inside of this same stack.  For more information, see
 // http://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/intrinsic-function-reference-ref.html.
 func (c *awsCloud) genResourceRef(ref ast.CapRefLiteral) interface{} {
+	// First, we need to dig deep down to figure out what actual AWS resource this dependency is on.
 	// TODO: support cross-stack references.
-	id := string(c.genResourceID(ref.Service.BoundType, ref.Selected))
+	sel := ref.Selected
+	for {
+		if sel.BoundType == predef.Extension &&
+			predef.AsExtensionService(sel).Provider == CloudFormationExtensionProvider {
+			break
+		}
+
+		// TODO: this works "one-level deep"; however, we will need to figure out a scheme for logical dependencies;
+		//     that is, dependencies on stacks that are merely a composition of many other stacks.
+		util.AssertMF(len(sel.BoundType.Services.Public) == 1,
+			"expected service type '%v' to export a single public service; got %v",
+			sel.BoundType.Name, len(sel.BoundType.Services.Public))
+		for _, s := range sel.BoundType.Services.Public {
+			sel = s
+			break
+		}
+	}
+
+	id := string(c.genResourceID(ref.Service.BoundType, sel))
 	if c.m.IsYAMLLike() {
 		return "!Ref " + id
 	} else {
