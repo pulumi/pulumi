@@ -24,9 +24,8 @@ services:
         self:
             type: aws/x/cf
             resource: "AWS::EC2::VPCGatewayAttachment"
-            skipProperties: [ vpc, internetGateway, vpnGateway ]
-            renamedProperties:
-                vpc: VpcId
-                internetGateway: InternetGatewayId
-                vpnGateway: VpnGatewayId
+            properties:
+                VpcId: vpc
+                InternetGatewayId: internetGateway
+                VpnGatewayId: vpnGateway
 

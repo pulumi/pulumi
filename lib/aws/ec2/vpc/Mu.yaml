@@ -38,6 +38,13 @@ services:
         self:
             type: aws/x/cf
             resource: "AWS::EC2::VPC"
+            properties:
+                CidrBlock: cidrBlock
+                EnableDnsSupport: enableDnsSupport
+                InstanceTenancy: instanceTenancy
+                EnableDnsHostnames: EnableDnsHostnames
+                InstanceTenancy: instanceTenancy
+                Tags: tags
             {{if has .Properties "name" -}}
             extraProperties:
                 Tags:

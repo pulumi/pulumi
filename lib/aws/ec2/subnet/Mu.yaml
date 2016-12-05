@@ -33,12 +33,16 @@ services:
         self:
             type: aws/x/cf
             resource: "AWS::EC2::Subnet"
+            properties:
+                CidrBlock: cidrBlock
+                VpcId: vpc
+                AvailabilityZone: availabilityZone
+                MapPublicIpOnLaunch: mapPublicIpOnLaunch
+                Tags: tags
             {{if has .Properties "name" -}}
             extraProperties:
                 Tags:
                     - Key: Name
                       Value: {{.Properties.name}}
             {{- end}}
-            renamedProperties:
-                vpc: VpcId
 

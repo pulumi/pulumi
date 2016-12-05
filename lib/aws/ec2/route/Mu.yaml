@@ -67,12 +67,13 @@ services:
             dependsOn:
                 - vpcGatewayAttachment
             {{- end}}
-            renamedProperties:
-                routeTable: RouteTableId
-                internetGateway: InternetGatewayId
-                vpnGateway: VpnGatewayId
-                instance: InstanceId
-                natGateway: NatGatewayId
-                networkInterface: NetworkInterfaceId
-                vpcPeeringConnection: VpcPeeringConnectionId
+            properties:
+                DestinationCidrBlock: destinationCidrBlock
+                RouteTableId: routeTable
+                InternetGatewayId: internetGateway
+                VpnGatewayId: vpnGateway
+                InstanceId: instance
+                NatGatewayId: natGateway
+                NetworkInterfaceId: networkInterface
+                VpcPeeringConnectionId: vpcPeeringConnection
     

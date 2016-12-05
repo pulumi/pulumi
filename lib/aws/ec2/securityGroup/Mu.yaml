@@ -31,12 +31,16 @@ services:
         self:
             type: aws/x/cf
             resource: "AWS::EC2::SecurityGroup"
+            properties:
+                GroupDescription: groupDescription
+                VpcId: vpc
+                SecurityGroupEgress: securityGroupEgress
+                SecurityGroupIngress: securityGroupIngress
+                Tags: tags
             {{if has .Properties "name" -}}
             extraProperties:
                 Tags:
                     - Key: Name
                       Value: {{.Properties.name}}
             {{- end}}
-            renamedProperties:
-                vpc: VpcId
 

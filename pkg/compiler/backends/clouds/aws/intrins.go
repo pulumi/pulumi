@@ -13,9 +13,7 @@ const cfIntrinsicName = namespace + ast.NameDelimiter + "cf"
 const cfIntrinsicResource = "resource"
 const cfIntrinsicDependsOn = "dependsOn"
 const cfIntrinsicProperties = "properties"
-const cfIntrinsicSkipProperties = "skipProperties"
 const cfIntrinsicExtraProperties = "extraProperties"
-const cfIntrinsicRenamedProperties = "renamedProperties"
 
 // cfIntrinsic is a service with an intrinsic type allowing stacks to directly generate arbitrary CloudFormation
 // templating as the output.  This forms the basic for most AWS cloud native resources.  Expansion of this type happens
@@ -23,12 +21,10 @@ const cfIntrinsicRenamedProperties = "renamedProperties"
 // the way these templates are generated.
 type cfIntrinsic struct {
 	*ast.Service
-	Resource          ast.StringLiteral
-	DependsOn         ast.ServiceListLiteral
-	Properties        ast.StringListLiteral
-	SkipProperties    ast.StringListLiteral
-	ExtraProperties   ast.StringMapLiteral
-	RenamedProperties ast.StringStringMapLiteral
+	Resource        ast.StringLiteral
+	DependsOn       ast.ServiceListLiteral
+	Properties      ast.StringStringMapLiteral
+	ExtraProperties ast.StringMapLiteral
 }
 
 // AsCFIntrinsic converts a given service to a CloudFormationService, validating it as we go.
@@ -50,11 +46,7 @@ func asCFIntrinsic(svc *ast.Service) *cfIntrinsic {
 		util.Assert(ok)
 	}
 	if props, ok := svc.BoundProperties[cfIntrinsicProperties]; ok {
-		res.Properties, ok = props.(ast.StringListLiteral)
-		util.Assert(ok)
-	}
-	if skips, ok := svc.BoundProperties[cfIntrinsicSkipProperties]; ok {
-		res.SkipProperties, ok = skips.(ast.StringListLiteral)
+		res.Properties, ok = props.(ast.StringStringMapLiteral)
 		util.Assert(ok)
 	}
 	if extras, ok := svc.BoundProperties[cfIntrinsicExtraProperties]; ok {

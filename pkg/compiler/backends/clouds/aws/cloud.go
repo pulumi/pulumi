@@ -304,37 +304,15 @@ func (c *awsCloud) genOtherServiceTemplate(comp core.Compiland, stack *ast.Stack
 func (c *awsCloud) genCFIntrinsicServiceTemplate(comp core.Compiland, stack *ast.Stack, cf *cfIntrinsic) cfResources {
 	resProps := make(cfResourceProperties)
 
-	// See if there are a set of properties to auto-map; if missing, the default is "all of them."
-	auto := make(map[string]bool)
-	for _, p := range cf.Properties.StringList {
-		auto[p] = true
-	}
-
-	// See if there are any properties to skip during auto-mapping.
-	skip := make(map[string]bool)
-	for _, p := range cf.SkipProperties.StringList {
-		skip[p] = true
-	}
-
-	// See if there are any renamed properties to avoid mapping in the usual way.
-	for from, to := range cf.RenamedProperties.StringStringMap {
+	// Map the properties requested.
+	for _, to := range ast.StableStringStringMap(cf.Properties.StringStringMap) {
+		from := cf.Properties.StringStringMap[to]
 		if p, has := stack.BoundPropertyValues[from]; has {
 			resProps[to] = c.propertyLiteralToValue(p)
 		}
-		skip[to] = true
 	}
 
-	// Next, we perform a straighforward auto-mapping from Mu stack properties to the equivalent CF properties.
-	for _, name := range ast.StableProperties(stack.Properties) {
-		if (auto == nil || auto[name]) && (skip == nil || !skip[name]) {
-			if p, has := stack.BoundPropertyValues[name]; has {
-				pname := makeAWSFriendlyName(name, true)
-				resProps[pname] = c.propertyLiteralToValue(p)
-			}
-		}
-	}
-
-	// Next, if there are any "extra" properties, merge them in with the existing map.
+	// If there are any "extra" properties, merge them in with the existing map.
 	extra := cf.ExtraProperties.StringMap
 	for _, exname := range ast.StableKeys(extra) {
 		v := extra[exname]

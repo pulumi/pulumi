@@ -69,6 +69,15 @@ func StableServices(ss ServiceMap) []Name {
 	return sorted
 }
 
+func StableStringStringMap(ssm map[string]string) []string {
+	sorted := make([]string, 0, len(ssm))
+	for s := range ssm {
+		sorted = append(sorted, s)
+	}
+	sort.Strings(sorted)
+	return sorted
+}
+
 func StableUntypedServices(ss UntypedServiceMap) []Name {
 	sorted := make(Names, 0, len(ss))
 	for s := range ss {
