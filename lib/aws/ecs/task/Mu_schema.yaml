@@ -1,214 +1,224 @@
-schemas:
+schema:
     container:
-        image:
-            type: string
-            description: The image to use for a container, which is passed directly to the Docker daemon. You can use
-                images in the Docker Hub registry or specify other repositories (`repository-url/image:tag`).
-        memory:
-            type: integer
-            description: The number of MiB of memory to reserve for the container. If your container attempts to exceed
-                the allocated memory, the container is terminated.
-        name:
-            type: string
-            description: A name for the container.
-        command:
-            type: string[]
-            description: The `CMD` value to pass to the container.
-            optional: true
-        cpu:
-            type: integer
-            description: The minimum number of CPU units to reserve for the container. Containers share unallocated CPU
-                units with other containers on the instance by using the same ratio as their allocated CPU units.
-            optional: true
-        disableNetworking:
-            type: bool
-            description: Indicates whether networking is disabled within the container.
-            optional: true
-        dnsSearchDomains:
-            type: string[]
-            description: A list of DNS search domains that are provided to the container. The domain names that the DNS
-                logic looks up when a process attempts to access a bare unqualified hostname.
-            optional: true
-        dnsServers:
-            type: string[]
-            description: A list of DNS servers that Amazon ECS provides to the container.
-            optional: true
-        dockerLabels:
-            type: string
-            spattern: ".+:.+"
-            description: A key-value map of labels for the container.
-            optional: true
-        dockerSecurityOptions:
-            type: string[]
-            description: A list of custom labels for SELinux and AppArmor multi-level security systems.
-            optional: true
-        entryPoint:
-            type: string[]
-            description: The `ENTRYPOINT` value to pass to the container.
-            optional: true
-        environment:
-            type: map[string]string
-            description: The environment variables to pass to the container.
-            optional: true
-        essential:
-            type: bool
-            description: Indicates whether the task stops if this container fails. If you specify `true` and the
-                container fails, all other containers in the task stop. If you specify `false` and the container fails,
-                none of the other containers in the task is affected. This value is `true` by default.
-            optional: true
-        extraHosts:
-            type: hostEntry[]
-            description: A list of hostnames and IP address mappings to append to the `/etc/hosts` file.
-            optional: true
-        hostname:
-            type: string
-            description: The name that Docker will use for the container's hostname.
-            optional: true
-        links:
-            type: string[]
-            description: The name of another container to connect to. With links, containers can communicate with each
-                other without using port mappings.
-            optional: true
-        logConfiguration:
-            type: logConfiguration
-            description: Configures a custom log driver for the container.
-            optional: true
-        mountPoints:
-            type: mountPoint[]
-            description: The mount points for data volumes in the container.
-            optional: true
-        portMappings:
-            type: portMap[]
-            description: A mapping of the container port to a host port. Port mappings enable containers to access ports
-                on the host container instance to send or receive traffic.
-            optional: true
-        privileged:
-            type: bool
-            description: Indicates whether the container is given full access to the host container instance.
-            optional: true
-        readonlyRootFilesystem:
-            type: bool
-            description: Indicates whether the container's root file system is mounted as read only.
-            optional: true
-        ulimits:
-            type: ulimit[]
-            description: A list of ulimits to set in the container. The ulimits set constraints on how much resources a
-                container can consume so that it doesn't deplete all available resources on the host.
-            optional: true
-        user:
-            type: string
-            description: The user name to use inside the container.
-            optional: true
-        volumesFrom:
-            type: volumeFrom[]
-            description: The data volumes to mount from another container.
-            optional: true
-        workingDirectory:
-            type: string
-            description: The working directory in the container in which to run commands.
-            optional: true
+        properties:
+            image:
+                type: string
+                description: The image to use for a container, which is passed directly to the Docker daemon. You can
+                    use images in the Docker Hub registry or specify other repositories (`repository-url/image:tag`).
+            memory:
+                type: integer
+                description: The number of MiB of memory to reserve for the container. If your container attempts to
+                    exceed the allocated memory, the container is terminated.
+            name:
+                type: string
+                description: A name for the container.
+            command:
+                type: string[]
+                description: The `CMD` value to pass to the container.
+                optional: true
+            cpu:
+                type: integer
+                description: The minimum number of CPU units to reserve for the container. Containers share unallocated
+                    CPU units with other containers on the instance by using the same ratio as their allocated CPU
+                    units.
+                optional: true
+            disableNetworking:
+                type: bool
+                description: Indicates whether networking is disabled within the container.
+                optional: true
+            dnsSearchDomains:
+                type: string[]
+                description: A list of DNS search domains that are provided to the container. The domain names that the
+                    DNS logic looks up when a process attempts to access a bare unqualified hostname.
+                optional: true
+            dnsServers:
+                type: string[]
+                description: A list of DNS servers that Amazon ECS provides to the container.
+                optional: true
+            dockerLabels:
+                type: string
+                pattern: ".+:.+"
+                description: A key-value map of labels for the container.
+                optional: true
+            dockerSecurityOptions:
+                type: string[]
+                description: A list of custom labels for SELinux and AppArmor multi-level security systems.
+                optional: true
+            entryPoint:
+                type: string[]
+                description: The `ENTRYPOINT` value to pass to the container.
+                optional: true
+            environment:
+                type: map[string]string
+                description: The environment variables to pass to the container.
+                optional: true
+            essential:
+                type: bool
+                description: Indicates whether the task stops if this container fails. If you specify `true` and the
+                    container fails, all other containers in the task stop. If you specify `false` and the container
+                    fails, none of the other containers in the task is affected. This value is `true` by default.
+                optional: true
+            extraHosts:
+                type: hostEntry[]
+                description: A list of hostnames and IP address mappings to append to the `/etc/hosts` file.
+                optional: true
+            hostname:
+                type: string
+                description: The name that Docker will use for the container's hostname.
+                optional: true
+            links:
+                type: string[]
+                description: The name of another container to connect to. With links, containers can communicate with
+                    each other without using port mappings.
+                optional: true
+            logConfiguration:
+                type: logConfiguration
+                description: Configures a custom log driver for the container.
+                optional: true
+            mountPoints:
+                type: mountPoint[]
+                description: The mount points for data volumes in the container.
+                optional: true
+            portMappings:
+                type: portMap[]
+                description: A mapping of the container port to a host port. Port mappings enable containers to access
+                    ports on the host container instance to send or receive traffic.
+                optional: true
+            privileged:
+                type: bool
+                description: Indicates whether the container is given full access to the host container instance.
+                optional: true
+            readonlyRootFilesystem:
+                type: bool
+                description: Indicates whether the container's root file system is mounted as read only.
+                optional: true
+            ulimits:
+                type: ulimit[]
+                description: A list of ulimits to set in the container. The ulimits set constraints on how much
+                    resources a container can consume so that it doesn't deplete all available resources on the host.
+                optional: true
+            user:
+                type: string
+                description: The user name to use inside the container.
+                optional: true
+            volumesFrom:
+                type: volumeFrom[]
+                description: The data volumes to mount from another container.
+                optional: true
+            workingDirectory:
+                type: string
+                description: The working directory in the container in which to run commands.
+                optional: true
     host:
-        sourcePath:
-            type: string
-            description: The data volume path on the host container instance. If you don't specify this parameter, the
-                Docker daemon assigns a path for you, but the data volume might not persist after the associated
-                container stops running. If you do specify a path, the data volume persists at that location on the host
-                container instance until you manually delete it.
-            optional: true
+        properties:
+            sourcePath:
+                type: string
+                description: The data volume path on the host container instance. If you don't specify this parameter,
+                    the Docker daemon assigns a path for you, but the data volume might not persist after the associated
+                    container stops running. If you do specify a path, the data volume persists at that location on the
+                    host container instance until you manually delete it.
+                optional: true
     hostEntry:
-        hostname:
-            type: string
-            description: The hostname to use in the `/etc/hosts` file.
-        ipAddress:
-            type: string
-            description: The IP address to use in the `/etc/hosts` file.
+        properties:
+            hostname:
+                type: string
+                description: The hostname to use in the `/etc/hosts` file.
+            ipAddress:
+                type: string
+                description: The IP address to use in the `/etc/hosts` file.
     logConfiguration:
-        logDriver:
-            type: string
-            description: The log driver to use for the container.  This parameter requires that your container instance
-                use Docker Remote API Version 1.18 or greater.
-        options:
-            type: string
-            spattern: ".+:.+"
-            description: The configuration options to send to the log driver. This parameter requires that your
-                container instance uses Docker Remote API Version 1.18 or greater.
+        properties:
+            logDriver:
+                type: string
+                description: The log driver to use for the container.  This parameter requires that your container
+                    instance use Docker Remote API Version 1.18 or greater.
+            options:
+                type: string
+                pattern: ".+:.+"
+                description: The configuration options to send to the log driver. This parameter requires that your
+                    container instance uses Docker Remote API Version 1.18 or greater.
     mountPoint:
-        containerPath:
-            type: string
-            description: The path on the container that indicates where you want to mount the volume.
-        sourceVolume:
-            type: string
-            description: The name of the volume to mount.
-        readOnly:
-            type: bool
-            description: Indicates whether the container can write to the volume. If you specify `true`, the container
-                has read-only access to the volume. If you specify `false`, the container can write to the volume. By
-                default, the value is `false`.
-            optional: true
+        properties:
+            containerPath:
+                type: string
+                description: The path on the container that indicates where you want to mount the volume.
+            sourceVolume:
+                type: string
+                description: The name of the volume to mount.
+            readOnly:
+                type: bool
+                description: Indicates whether the container can write to the volume. If you specify `true`, the
+                    container has read-only access to the volume. If you specify `false`, the container can write to the
+                    volume. By default, the value is `false`.
+                optional: true
     portMap:
-        containerPort:
-            type: integer
-            description: The port number on the container bound to the host port.
-        hostPort:
-            type: integer
-            description: The host port number on the container instance that you want to reserve for your container. You
-                can specify a non-reserved host port for your container port mapping, omit the host port, or set the
-                host port to `0`. If you specify a container port but no host port, your container host port is assigned
-                automatically. Don't specify a host port in the `49153` to `65535` port range; these ports are reserved
-                for automatic assignment. Other reserved ports include `22` for SSH, `2375` and `2376` for Docker, and
-                `51678` for the Amazon EC2 Container Service container agent. Don't specify a host port that is being
-                used for a task—that port is reserved while the task is running.
-            optional: true
-        protocol:
-            type: string
-            svalues: [ tcp, udp ]
-            description: The protocol used for the port mapping.
-            optional: true
+        properties:
+            containerPort:
+                type: integer
+                description: The port number on the container bound to the host port.
+            hostPort:
+                type: integer
+                description: The host port number on the container instance that you want to reserve for your container.
+                    You can specify a non-reserved host port for your container port mapping, omit the host port, or set
+                    the host port to `0`. If you specify a container port but no host port, your container host port is
+                    assigned automatically. Don't specify a host port in the `49153` to `65535` port range; these ports
+                    are reserved for automatic assignment. Other reserved ports include `22` for SSH, `2375` and `2376`
+                    for Docker, and `51678` for the Amazon EC2 Container Service container agent. Don't specify a host
+                    port that is being used for a task—that port is reserved while the task is running.
+                optional: true
+            protocol:
+                type: string
+                enum: [ tcp, udp ]
+                description: The protocol used for the port mapping.
+                optional: true
     ulimit:
-        hardLimit:
-            type: integer
-            description: The hard limit for the ulimit type.
-        softLimit:
-            type: integer
-            description: The soft limit for the ulimit type.
-        name:
-            type: string
-            svalues:
-                - core
-                - cpu
-                - data
-                - fsize
-                - locks
-                - memlock
-                - msgqueue
-                - nice
-                - nofile
-                - nproc
-                - rss
-                - rtprio
-                - rttime
-                - sigpending
-                - stack
-            description: The type of ulimit.
-            optional: true
+        properties:
+            hardLimit:
+                type: integer
+                description: The hard limit for the ulimit type.
+            softLimit:
+                type: integer
+                description: The soft limit for the ulimit type.
+            name:
+                type: string
+                enum:
+                    - core
+                    - cpu
+                    - data
+                    - fsize
+                    - locks
+                    - memlock
+                    - msgqueue
+                    - nice
+                    - nofile
+                    - nproc
+                    - rss
+                    - rtprio
+                    - rttime
+                    - sigpending
+                    - stack
+                description: The type of ulimit.
+                optional: true
     volume:
-        name:
-            type: string
-            description: The name of the volume. To specify mount points in your container definitions, use the value of
-                this property.
-        host:
-            type: host
-            description: Determines whether your data volume persists on the host container instance and at the location
-                where it is stored.
-            optional: true
+        properties:
+            name:
+                type: string
+                description: The name of the volume. To specify mount points in your container definitions, use the
+                    value of this property.
+            host:
+                type: host
+                description: Determines whether your data volume persists on the host container instance and at the
+                    location where it is stored.
+                optional: true
     volumeFrom:
-        sourceContainer:
-            type: string
-            description: The name of the container that has the volumes to mount.
-        readOnly:
-            type: bool
-            description: Indicates whether the container can write to the volume. If you specify `true`, the container
-                has read-only access to the volume. If you specify `false`, the container can write to the volume. By
-                default, the value is `false`.
-            optional: true
+        properties:
+            sourceContainer:
+                type: string
+                description: The name of the container that has the volumes to mount.
+            readOnly:
+                type: bool
+                description: Indicates whether the container can write to the volume. If you specify `true`, the
+                    container has read-only access to the volume. If you specify `false`, the container can write to the
+                    volume. By default, the value is `false`.
+                optional: true
 
