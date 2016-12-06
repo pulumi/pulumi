@@ -11,7 +11,6 @@ import (
 	"github.com/marapongo/mu/pkg/ast"
 	"github.com/marapongo/mu/pkg/compiler/backends/clouds"
 	"github.com/marapongo/mu/pkg/compiler/core"
-	"github.com/marapongo/mu/pkg/compiler/predef"
 	"github.com/marapongo/mu/pkg/diag"
 	"github.com/marapongo/mu/pkg/encoding"
 	"github.com/marapongo/mu/pkg/errors"
@@ -201,71 +200,14 @@ func (c *awsCloud) genStackServiceTemplates(comp core.Compiland, stack *ast.Stac
 
 // genServiceTemplate creates a CloudFormation resource for a single service.
 func (c *awsCloud) genServiceTemplate(comp core.Compiland, stack *ast.Stack, svc *ast.Service) cfResources {
-	util.Assert(svc.BoundType != nil)
-	glog.V(4).Infof("Generating service templates: svc=%v type=%v", svc.Name, svc.BoundType.Name)
-
-	// Code-generation differs greatly for the various service types.  There are three categories:
-	//		1) A Mu primitive: these have very specific manifestations to accomplish the desired Mu semantics.
-	//		2) An AWS-specific extension type: these largely just pass-through CloudFormation goo that we will emit.
-	//		3) A reference to another Stack: these just instantiate those Stacks and reference their outputs.
-	switch svc.BoundType {
-	case predef.Container:
-		return c.genMuContainerServiceTemplate(comp, stack, svc)
-	case predef.Gateway:
-		return c.genMuGatewayServiceTemplate(comp, stack, svc)
-	case predef.Func:
-		return c.genMuFuncServiceTemplate(comp, stack, svc)
-	case predef.Event:
-		return c.genMuEventServiceTemplate(comp, stack, svc)
-	case predef.Volume:
-		return c.genMuVolumeServiceTemplate(comp, stack, svc)
-	case predef.Autoscaler:
-		return c.genMuAutoscalerServiceTemplate(comp, stack, svc)
-	default:
-		return c.genOtherServiceTemplate(comp, stack, svc)
-	}
-}
-
-func (c *awsCloud) genMuContainerServiceTemplate(comp core.Compiland, stack *ast.Stack, svc *ast.Service) cfResources {
-	util.FailMF("%v service types are not yet supported (svc:  %v)\n", svc.BoundType.Name, svc.Name)
-	return nil
-}
-
-func (c *awsCloud) genMuGatewayServiceTemplate(comp core.Compiland, stack *ast.Stack, svc *ast.Service) cfResources {
-	util.FailMF("%v service types are not yet supported (svc:  %v)\n", svc.BoundType.Name, svc.Name)
-	return nil
-}
-
-func (c *awsCloud) genMuFuncServiceTemplate(comp core.Compiland, stack *ast.Stack, svc *ast.Service) cfResources {
-	util.FailMF("%v service types are not yet supported (svc:  %v)\n", svc.BoundType.Name, svc.Name)
-	return nil
-}
-
-func (c *awsCloud) genMuEventServiceTemplate(comp core.Compiland, stack *ast.Stack, svc *ast.Service) cfResources {
-	util.FailMF("%v service types are not yet supported (svc:  %v)\n", svc.BoundType.Name, svc.Name)
-	return nil
-}
-
-func (c *awsCloud) genMuVolumeServiceTemplate(comp core.Compiland, stack *ast.Stack, svc *ast.Service) cfResources {
-	util.FailMF("%v service types are not yet supported (svc:  %v)\n", svc.BoundType.Name, svc.Name)
-	return nil
-}
-
-func (c *awsCloud) genMuAutoscalerServiceTemplate(comp core.Compiland, stack *ast.Stack, svc *ast.Service) cfResources {
-	util.FailMF("%v service types are not yet supported (svc:  %v)\n", svc.BoundType.Name, svc.Name)
-	return nil
-}
-
-// genOtherServiceTemplate generates code for a general-purpose Stack service reference.
-func (c *awsCloud) genOtherServiceTemplate(comp core.Compiland, stack *ast.Stack, svc *ast.Service) cfResources {
-	// Instantiate and textually include the BoundStack into our current template.
+	// Instantiate and textually include the stack into our current template.
 	// TODO: consider an option where a Stack can become a distinct CloudFormation Stack, and then reference it by
 	//     name.  This would be a terrible default, because we'd end up with dozens of CloudFormation Stacks for even
 	//     the simplest of Mu Stacks.  Especially because many Mu Stacks are single-Service.  Perhaps we could come
 	//     up with some clever default, like multi-Service Mu Stacks map to CloudFormation Stacks, and single-Service
 	//     ones don't, however I'm not yet convinced this is the right path.  So, for now, we keep it simple.
 	util.Assert(svc.BoundType != nil)
-	glog.V(4).Infof("Generating \"other\" service template: svc=%v type=%v", svc.Name, svc.BoundType.Name)
+	glog.V(4).Infof("Generating service template: svc=%v type=%v", svc.Name, svc.BoundType.Name)
 
 	if svc.BoundType.Intrinsic {
 		// For intrinsics, generate code for those that we understand; for all others, issue an error.

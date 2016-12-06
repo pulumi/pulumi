@@ -1,0 +1,5 @@
+name: mu/container
+description: A Docker/LXC/Windows container.
+intrinsic: true
+properties:
+

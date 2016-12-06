@@ -10,7 +10,6 @@ import (
 
 	"github.com/marapongo/mu/pkg/ast"
 	"github.com/marapongo/mu/pkg/compiler/core"
-	"github.com/marapongo/mu/pkg/compiler/predef"
 	"github.com/marapongo/mu/pkg/diag"
 	"github.com/marapongo/mu/pkg/encoding"
 	"github.com/marapongo/mu/pkg/errors"
@@ -35,14 +34,6 @@ func NewBinder(c Compiler) Binder {
 	// Create a new binder and a new scope with an empty symbol table.
 	b := &binder{c: c}
 	b.PushScope()
-
-	// And now populate that symbol table with all known predefined Stack types before returning it.
-	for nm, stack := range predef.Stacks {
-		sym := NewStackSymbol(nm, stack)
-		ok := b.RegisterSymbol(sym)
-		util.AssertMF(ok, "Unexpected Symbol collision when registering predef Stack type %v", nm)
-	}
-
 	return b
 }
 

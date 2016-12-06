@@ -1,0 +1,5 @@
+name: mu/func
+description: A single standalone function for serverless scenarios.
+intrinsic: true
+properties:
+
