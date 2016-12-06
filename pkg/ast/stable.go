@@ -60,6 +60,15 @@ func StablePropertyBag(ps PropertyBag) []string {
 	return sorted
 }
 
+func StableSchemas(ss SchemaMap) []Name {
+	sorted := make(Names, 0, len(ss))
+	for s := range ss {
+		sorted = append(sorted, s)
+	}
+	sort.Sort(sorted)
+	return sorted
+}
+
 func StableServices(ss ServiceMap) []Name {
 	sorted := make(Names, 0, len(ss))
 	for s := range ss {

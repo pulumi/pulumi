@@ -3,6 +3,9 @@
 package errors
 
 import (
+	"fmt"
+
+	"github.com/marapongo/mu/pkg/ast"
 	"github.com/marapongo/mu/pkg/diag"
 )
 
@@ -24,4 +27,22 @@ var ErrorIllegalWorkspaceSyntax = &diag.Diag{
 var ErrorBadTemplate = &diag.Diag{
 	ID:      153,
 	Message: "A template error occurred: %v",
+}
+
+var ErrorIllegalMapLikeSyntax = &diag.Diag{
+	ID: 154,
+	Message: "The map type '%v' is malformed (expected syntax is '" +
+		fmt.Sprintf(string(ast.TypeDecorsMap), "key", "value") + "')",
+}
+
+var ErrorIllegalArrayLikeSyntax = &diag.Diag{
+	ID: 155,
+	Message: "The array type '%v' is malformed (expected syntax is '" +
+		fmt.Sprintf(string(ast.TypeDecorsArray), "element") + "')",
+}
+
+var ErrorIllegalNameLikeSyntax = &diag.Diag{
+	ID: 156,
+	Message: "The named type '%v' is malformed; " +
+		"expected format is '[[proto://]base.url/]stack/../name[@version]': %v",
 }

@@ -11,7 +11,6 @@ import (
 	"github.com/marapongo/mu/pkg/ast"
 	"github.com/marapongo/mu/pkg/compiler/core"
 	"github.com/marapongo/mu/pkg/diag"
-	"github.com/marapongo/mu/pkg/encoding"
 	"github.com/marapongo/mu/pkg/errors"
 	"github.com/marapongo/mu/pkg/util"
 )
@@ -109,10 +108,16 @@ func (b *binder) LookupStack(nm ast.Name) (*ast.Stack, bool) {
 	return b.scope.LookupStack(nm)
 }
 
-// LookupStackRef binds a name to a StackRef type.
-func (b *binder) LookupStackRef(nm ast.Name) (*ast.StackRef, bool) {
-	util.AssertM(b.scope != nil, "Unexpected empty binding scope during LookupStackRef")
-	return b.scope.LookupStackRef(nm)
+// LookupUninstStack binds a name to a UninstStack type.
+func (b *binder) LookupUninstStack(nm ast.Name) (*ast.UninstStack, bool) {
+	util.AssertM(b.scope != nil, "Unexpected empty binding scope during LookupUninstStack")
+	return b.scope.LookupUninstStack(nm)
+}
+
+// LookupSchema binds a name to a Schema type.
+func (b *binder) LookupSchema(nm ast.Name) (*ast.Schema, bool) {
+	util.AssertM(b.scope != nil, "Unexpected empty binding scope during LookupSchema")
+	return b.scope.LookupSchema(nm)
 }
 
 // LookupSymbol binds a name to any kind of Symbol.
@@ -164,11 +169,21 @@ func (s *scope) LookupStack(nm ast.Name) (*ast.Stack, bool) {
 	return nil, false
 }
 
-// LookupStackRef binds a name to a StackRef type.
-func (s *scope) LookupStackRef(nm ast.Name) (*ast.StackRef, bool) {
+// LookupUninstStack binds a name to a UninstStack type.
+func (s *scope) LookupUninstStack(nm ast.Name) (*ast.UninstStack, bool) {
 	sym, exists := s.LookupSymbol(nm)
-	if exists && sym.Kind == SymKindStackRef {
-		return sym.Real.(*ast.StackRef), true
+	if exists && sym.Kind == SymKindUninstStack {
+		return sym.Real.(*ast.UninstStack), true
+	}
+	// TODO: we probably need to issue an error for this condition (wrong expected symbol type).
+	return nil, false
+}
+
+// LookupSchema binds a name to a Schema type.
+func (s *scope) LookupSchema(nm ast.Name) (*ast.Schema, bool) {
+	sym, exists := s.LookupSymbol(nm)
+	if exists && sym.Kind == SymKindSchema {
+		return sym.Real.(*ast.Schema), true
 	}
 	// TODO: we probably need to issue an error for this condition (wrong expected symbol type).
 	return nil, false
@@ -230,7 +245,7 @@ func (p *binderPreparePhase) VisitDependency(parent *ast.Workspace, ref ast.Ref,
 	// later on without needing to worry about additional validation.
 	_, err := ref.Parse()
 	if err != nil {
-		p.Diag().Errorf(errors.ErrorMalformedStackReference.At(parent), ref, err)
+		p.Diag().Errorf(errors.ErrorIllegalNameLikeSyntax.At(parent), ref, err)
 	}
 }
 
@@ -255,10 +270,18 @@ func (p *binderPreparePhase) VisitStack(stack *ast.Stack) {
 	}
 }
 
-func (p *binderPreparePhase) VisitProperty(parent *ast.Stack, name string, param *ast.Property) {
+func (p *binderPreparePhase) VisitSchemas(parent *ast.Stack, schemas *ast.Schemas) {
+}
+
+func (p *binderPreparePhase) VisitSchema(pstack *ast.Stack, parent *ast.Schemas, name ast.Name,
+	public bool, schema *ast.Schema) {
+	// TODO[marapongo/mu#9]: implement this as part of extensible schema types.
+}
+
+func (p *binderPreparePhase) VisitProperty(parent *ast.Stack, name string, prop *ast.Property) {
 	// For properties whose types represent stack types, register them as a dependency.
-	if ast.IsPropertyStackType(param.Type) {
-		p.registerDependency(parent, ast.Ref(param.Type))
+	if prop.BoundType.IsUnresolvedRef() {
+		p.registerDependency(parent, *prop.BoundType.Unref)
 	}
 }
 
@@ -327,7 +350,7 @@ func (p *binderPreparePhase) registerDependency(stack *ast.Stack, ref ast.Ref) (
 		return ty, true
 	}
 
-	p.Diag().Errorf(errors.ErrorMalformedStackReference.At(stack), ref, err)
+	p.Diag().Errorf(errors.ErrorIllegalNameLikeSyntax.At(stack), ref, err)
 	return ty, false
 }
 
@@ -348,7 +371,7 @@ func newBinderBindPhase(b *binder, top *ast.Stack, deprefs ast.DependencyRefs) *
 		util.Assert(dep.Doc != nil)
 
 		nm := refToName(ref)
-		sym := NewStackRefSymbol(nm, dep)
+		sym := NewUninstStackSymbol(nm, dep)
 		if !p.b.RegisterSymbol(sym) {
 			p.Diag().Errorf(errors.ErrorSymbolAlreadyExists.At(dep.Doc), nm)
 		}
@@ -384,11 +407,19 @@ func (p *binderBindPhase) VisitStack(stack *ast.Stack) {
 	}
 }
 
-func (p *binderBindPhase) VisitProperty(parent *ast.Stack, name string, param *ast.Property) {
-	// For properties whose types represent stack types, we must bind them.
-	if ast.IsPropertyStackType(param.Type) {
-		param.BoundType = p.ensureStackType(ast.Ref(param.Type))
-		util.Assert(param.BoundType != nil)
+func (p *binderBindPhase) VisitSchemas(parent *ast.Stack, schemas *ast.Schemas) {
+}
+
+func (p *binderBindPhase) VisitSchema(pstack *ast.Stack, parent *ast.Schemas, name ast.Name,
+	public bool, schema *ast.Schema) {
+	// TODO[marapongo/mu#9]: implement this as part of extensible schema types.
+}
+
+func (p *binderBindPhase) VisitProperty(parent *ast.Stack, name string, prop *ast.Property) {
+	// For properties whose types represent unresolved names, we must bind them to a name now.
+	if prop.BoundType.IsUnresolvedRef() {
+		prop.BoundType = p.ensureType(*prop.BoundType.Unref)
+		util.Assert(prop.BoundType != nil)
 	}
 }
 
@@ -412,21 +443,21 @@ func (p *binderBindPhase) VisitService(pstack *ast.Stack, parent *ast.Services, 
 
 // ensureStack binds a ref to a symbol, possibly instantiating it, and returns a fully bound stack.
 func (p *binderBindPhase) ensureStack(ref ast.Ref, props ast.PropertyBag) *ast.Stack {
-	ty := p.ensureStackType(ref)
+	ty := p.ensureType(ref)
 	util.Assert(ty != nil)
 
 	// There are two possibilities.  The first is that a type resolves to an *ast.Stack.  That's simple, we just fetch
 	// and return it.  The second is that a type resolves to a *diag.Document.  That's more complex, as we need to
 	// actually parse the stack from a document, supplying properties, etc., for template expansion.
-	if ty.Stack != nil {
+	if ty.IsStack() {
 		return ty.Stack
 	} else {
-		util.Assert(ty.StackRef != nil)
+		util.Assert(ty.IsUninstStack())
 
 		// We have the dependency's Mufile; now we must "instantiate it", by parsing it and returning the result.  Note
 		// that this will be processed later on in semantic analysis, to ensure semantic problems are caught.
 		pa := NewParser(p.b.c)
-		stack := pa.ParseStack(ty.StackRef.Doc, props)
+		stack := pa.ParseStack(ty.UninstStack.Doc, props)
 		if !pa.Diag().Success() {
 			return nil
 		}
@@ -435,16 +466,20 @@ func (p *binderBindPhase) ensureStack(ref ast.Ref, props ast.PropertyBag) *ast.S
 	}
 }
 
-// ensureStackType looksType up a ref, either as a stack or document symbol, and returns it as-is.
-func (p *binderBindPhase) ensureStackType(ref ast.Ref) *ast.StackType {
+// ensureType looksType up a ref, either as a stack, document, or schema symbol, and returns it as-is.
+func (p *binderBindPhase) ensureType(ref ast.Ref) *ast.Type {
 	nm := refToName(ref)
 	stack, exists := p.b.LookupStack(nm)
 	if exists {
-		return &ast.StackType{Stack: stack}
+		return ast.NewStackType(stack)
 	}
-	stref, exists := p.b.LookupStackRef(nm)
+	stref, exists := p.b.LookupUninstStack(nm)
 	if exists {
-		return &ast.StackType{StackRef: stref}
+		return ast.NewUninstStackType(stref)
+	}
+	schema, exists := p.b.LookupSchema(nm)
+	if exists {
+		return ast.NewSchemaType(schema)
 	}
 	util.FailMF("Expected 1st pass of binding to guarantee type %v exists (%v)", ref, nm)
 	return nil
@@ -476,7 +511,7 @@ func (p *binderValidatePhase) VisitDependency(parent *ast.Workspace, ref ast.Ref
 func (p *binderValidatePhase) VisitStack(stack *ast.Stack) {
 	if stack.PropertyValues != nil {
 		// Bind property values.
-		stack.BoundPropertyValues = p.bindStackProperties(stack, stack, stack.PropertyValues)
+		stack.BoundPropertyValues = p.bindProperties(stack, stack, stack.PropertyValues)
 	}
 	if stack.Base != "" {
 		util.Assert(stack.BoundBase != nil)
@@ -484,8 +519,15 @@ func (p *binderValidatePhase) VisitStack(stack *ast.Stack) {
 	}
 }
 
+func (p *binderValidatePhase) VisitSchemas(parent *ast.Stack, schemas *ast.Schemas) {
+}
+
+func (p *binderValidatePhase) VisitSchema(pstack *ast.Stack, parent *ast.Schemas, name ast.Name,
+	public bool, schema *ast.Schema) {
+	// TODO[marapongo/mu#9]: implement this as part of extensible schema types.
+}
+
 func (p *binderValidatePhase) VisitProperty(parent *ast.Stack, name string, prop *ast.Property) {
-	util.Assert(!ast.IsPropertyStackType(prop.Type) || prop.BoundType != nil)
 }
 
 func (p *binderValidatePhase) VisitServices(parent *ast.Stack, svcs *ast.Services) {
@@ -497,7 +539,7 @@ func (p *binderValidatePhase) VisitService(pstack *ast.Stack, parent *ast.Servic
 	if svc.BoundType.PropertyValues == nil {
 		// For some types, there aren't any property values (e.g., built-in types).  For those, bind now.
 		// TODO: we could clean this up a bit by having primitive types work more like unconstructed types.
-		svc.BoundProperties = p.bindStackProperties(pstack, svc.BoundType, svc.Properties)
+		svc.BoundProperties = p.bindProperties(pstack, svc.BoundType, svc.Properties)
 	} else {
 		// For imported types, we should have property values, which already got bound in an earlier phase.
 		util.Assert(svc.BoundType.BoundPropertyValues != nil)
@@ -506,9 +548,9 @@ func (p *binderValidatePhase) VisitService(pstack *ast.Stack, parent *ast.Servic
 	}
 }
 
-// bindStackProperties typechecks a set of unbounded properties against the target stack, and expands them into a bag
+// bindProperties typechecks a set of unbounded properties against the target stack, and expands them into a bag
 // of bound properties (with AST nodes rather than the naked parsed types).
-func (p *binderValidatePhase) bindStackProperties(parent *ast.Stack, stack *ast.Stack,
+func (p *binderValidatePhase) bindProperties(parent *ast.Stack, stack *ast.Stack,
 	props ast.PropertyBag) ast.LiteralPropertyBag {
 	bound := make(ast.LiteralPropertyBag)
 
@@ -534,7 +576,7 @@ func (p *binderValidatePhase) bindStackProperties(parent *ast.Stack, stack *ast.
 		}
 
 		// Now, value in hand, let's make sure it's the right type.
-		if lit := p.bindPropertyValueToLiteral(parent, stack, pname, prop, val); lit != nil {
+		if lit := p.bindValue(&prop.Node, val, prop.BoundType); lit != nil {
 			bound[pname] = lit
 		}
 	}
@@ -549,93 +591,102 @@ func (p *binderValidatePhase) bindStackProperties(parent *ast.Stack, stack *ast.
 	return bound
 }
 
-// bindPropertyValueToLiteral takes a value and binds it to a literal AST node, returning nil if the conversions fails.
-func (p *binderValidatePhase) bindPropertyValueToLiteral(parent *ast.Stack, stack *ast.Stack, pname string,
-	prop *ast.Property, val interface{}) interface{} {
-	// TODO(joe): support arrays and complex custom types.
-	switch prop.Type {
-	case ast.PropertyTypeAny:
-		// Any is easy: just store it as-is.
-		// TODO(joe): eventually we'll need to do translation to canonicalize the contents.
-		return ast.AnyLiteral{Any: val}
-	case ast.PropertyTypeString:
-		if s, ok := val.(string); ok {
-			return ast.StringLiteral{String: s}
-		}
-	case ast.PropertyTypeStringList:
-		if ss, ok := encoding.StringSlice(val); ok {
-			return ast.StringListLiteral{StringList: ss}
-		}
-	case ast.PropertyTypeStringMap:
-		if sm, ok := val.(map[string]interface{}); ok {
-			// TODO(joe): eventually we'll need to do translation on values to canonicalize the contents.
-			return ast.StringMapLiteral{StringMap: sm}
-		}
-	case ast.PropertyTypeStringStringMap:
-		if ssm, ok := encoding.StringStringMap(val); ok {
-			return ast.StringStringMapLiteral{StringStringMap: ssm}
-		}
-	case ast.PropertyTypeNumber:
-		if n, ok := val.(float64); ok {
-			return ast.NumberLiteral{Number: n}
-		}
-	case ast.PropertyTypeBool:
-		if b, ok := val.(bool); ok {
-			return ast.BoolLiteral{Bool: b}
-		}
-	case ast.PropertyTypeService:
-		// Extract the name of the service reference as a string.  Then bind it to an actual service in our symbol
-		// table, and store a strong reference to the result.  This lets the backend connect the dots.
-		if s, ok := val.(string); ok {
-			if lit := p.bindServiceLiteral(parent, stack, pname, prop, s, nil); lit != nil {
-				return *lit
-			}
-		}
-	case ast.PropertyTypeServiceList:
-		// Extract a list of strings that are interpreted as service references.
-		if ss, ok := encoding.StringSlice(val); ok {
-			lst := make([]ast.ServiceLiteral, 0)
-			for _, s := range ss {
-				if lit := p.bindServiceLiteral(parent, stack, pname, prop, s, nil); lit != nil {
-					lst = append(lst, *lit)
+// bindValue takes a value and binds it to a type and literal AST node, returning nils if the conversions fails.
+func (p *binderValidatePhase) bindValue(node *ast.Node, val interface{}, ty *ast.Type) ast.Literal {
+	util.Assert(ty != nil)
+	if ty.IsDecors() {
+		// For decorated types, we need to recurse.
+		if ty.Decors.ElemType != nil {
+			if arr := reflect.ValueOf(val); arr.Kind() == reflect.Slice {
+				len := arr.Len()
+				lits := make([]ast.Literal, len)
+				err := false
+				for i := 0; i < len; i++ {
+					if lits[i] = p.bindValue(node, arr.Index(i), ty.Decors.ElemType); lits[i] == nil {
+						err = true
+					}
+				}
+				if !err {
+					return ast.NewArrayLiteral(node, ty.Decors.ElemType, lits)
 				}
 			}
-			return ast.ServiceListLiteral{ServiceList: lst}
-		}
-	case ast.PropertyTypeServiceMap:
-		if ssm, ok := encoding.StringStringMap(val); ok {
-			svm := make(map[string]ast.ServiceLiteral, 0)
-			for k, s := range ssm {
-				if lit := p.bindServiceLiteral(parent, stack, pname, prop, s, nil); lit != nil {
-					svm[k] = *lit
-				}
-			}
-			return ast.ServiceMapLiteral{ServiceMap: svm}
-		}
-	default:
-		util.AssertMF(ast.IsPropertyStackType(prop.Type),
-			"Unrecognized property type (prop=%v type=%v)", pname, prop.Type)
-		util.Assert(prop.BoundType != nil)
+		} else {
+			util.Assert(ty.Decors.KeyType != nil)
+			util.Assert(ty.Decors.ValueType != nil)
 
+			// TODO: ensure that keytype is something we can actually use as a key (primitive).
+
+			if m := reflect.ValueOf(val); m.Kind() == reflect.Map {
+				mk := m.MapKeys()
+				keys := make([]ast.Literal, len(mk))
+				err := false
+				for i := 0; i < len(mk); i++ {
+					if keys[i] = p.bindValue(node, mk[i], ty.Decors.KeyType); keys[i] == nil {
+						err = true
+					}
+				}
+				vals := make([]ast.Literal, len(mk))
+				for i := 0; i < len(mk); i++ {
+					if vals[i] = p.bindValue(node, m.MapIndex(mk[i]), ty.Decors.ValueType); vals[i] == nil {
+						err = true
+					}
+				}
+				if !err {
+					return ast.NewMapLiteral(node, ty.Decors.KeyType, ty.Decors.ValueType, keys, vals)
+				}
+			}
+		}
+	} else if ty.IsPrimitive() {
+		// For primitive types, simply cast the target to the expected type.
+		switch *ty.Primitive {
+		case ast.PrimitiveTypeAny:
+			// Any is easy: just store it as-is.
+			// TODO(joe): eventually we'll need to do translation to canonicalize the contents.
+			return ast.NewAnyLiteral(node, val)
+		case ast.PrimitiveTypeString:
+			if s, ok := val.(string); ok {
+				return ast.NewStringLiteral(node, s)
+			}
+		case ast.PrimitiveTypeNumber:
+			if n, ok := val.(float64); ok {
+				return ast.NewNumberLiteral(node, n)
+			}
+		case ast.PrimitiveTypeBool:
+			if b, ok := val.(bool); ok {
+				return ast.NewBoolLiteral(node, b)
+			}
+		case ast.PrimitiveTypeService:
+			// Extract the name of the service reference as a string.  Then bind it to an actual service in our symbol
+			// table, and store a strong reference to the result.  This lets the backend connect the dots.
+			if s, ok := val.(string); ok {
+				if ref := p.bindServiceRef(node, s, nil); ref != nil {
+					return ast.NewServiceLiteral(node, ref)
+				}
+			}
+		}
+	} else if ty.IsStack() {
 		// Bind the capability ref for this stack type.
 		if s, ok := val.(string); ok {
-			if cap := p.bindServiceLiteral(parent, stack, pname, prop, s, prop.BoundType); cap != nil {
-				return *cap
+			if ref := p.bindServiceRef(node, s, ty); ref != nil {
+				return ast.NewServiceLiteral(node, ref)
 			}
 		}
+	} else if ty.IsSchema() {
+		// TODO[marapongo/mu#9]: implement this as part of extensible schema types.
+		util.FailM("Custom schema types not yet supported")
+	} else if ty.IsUnresolvedRef() {
+		util.FailM("Expected all unresolved refs to be gone by this phase in binding")
 	}
 
-	p.Diag().Errorf(errors.ErrorIncorrectPropertyType.At(parent),
-		pname, prop.Type, reflect.TypeOf(val), stack.Name)
+	p.Diag().Errorf(errors.ErrorIncorrectType.At(node), ty, reflect.TypeOf(val))
 	return nil
 }
 
-// bindServiceLiteral binds a string to a service reference, resulting in a ServiceLiteral.  The reference is expected
+// bindServiceRef binds a string to a service reference, resulting in a ServiceRef.  The reference is expected
 // to be in the form "<service>[:<selector>]", where <service> is the name of a service that's currently in scope, and
 // <selector> is an optional selector of a public service exported from that service.
-func (p *binderValidatePhase) bindServiceLiteral(parent *ast.Stack, stack *ast.Stack, pname string, prop *ast.Property,
-	val string, ty *ast.StackType) *ast.ServiceLiteral {
-	glog.V(5).Infof("Binding capref '%v' stack=%v pname=%v", val, stack.Name, pname)
+func (p *binderValidatePhase) bindServiceRef(node *ast.Node, val string, ty *ast.Type) *ast.ServiceRef {
+	glog.V(5).Infof("Binding capref '%v'", val)
 
 	// Peel off the selector, if there is one.
 	var sels string
@@ -649,14 +700,14 @@ func (p *binderValidatePhase) bindServiceLiteral(parent *ast.Stack, stack *ast.S
 	if ast.IsName(val) {
 		nm = ast.AsName(val)
 	} else {
-		p.Diag().Errorf(errors.ErrorNotAName.At(parent), val)
+		p.Diag().Errorf(errors.ErrorNotAName.At(node), val)
 	}
 	var sel ast.Name
 	if sels != "" {
 		if ast.IsName(sels) {
 			sel = ast.AsName(sels)
 		} else {
-			p.Diag().Errorf(errors.ErrorNotAName.At(parent), sels)
+			p.Diag().Errorf(errors.ErrorNotAName.At(node), sels)
 		}
 	}
 
@@ -666,7 +717,7 @@ func (p *binderValidatePhase) bindServiceLiteral(parent *ast.Stack, stack *ast.S
 	}
 
 	// Bind the name to a service.
-	var lit *ast.ServiceLiteral
+	var ref *ast.ServiceRef
 	if svc, ok := p.b.LookupService(ast.Name(nm)); ok {
 		svct := svc.BoundType
 		util.AssertMF(svct != nil, "Expected service '%v' to have a type", svc.Name)
@@ -678,7 +729,7 @@ func (p *binderValidatePhase) bindServiceLiteral(parent *ast.Stack, stack *ast.S
 		} else if sel == "." {
 			// A special dot selector can be used to pick the sole public service.
 			if len(svct.Services.Public) == 0 {
-				p.Diag().Errorf(errors.ErrorServiceHasNoPublics.At(stack), svc.Name, svct.Name)
+				p.Diag().Errorf(errors.ErrorServiceHasNoPublics.At(node), svc.Name, svct.Name)
 			} else if len(svct.Services.Public) == 1 {
 				for _, pub := range svct.Services.Public {
 					selsvc = pub
@@ -686,7 +737,7 @@ func (p *binderValidatePhase) bindServiceLiteral(parent *ast.Stack, stack *ast.S
 				}
 			} else {
 				util.Assert(len(svct.Services.Public) > 1)
-				p.Diag().Errorf(errors.ErrorServiceHasManyPublics.At(stack), svc.Name, svct.Name)
+				p.Diag().Errorf(errors.ErrorServiceHasManyPublics.At(node), svc.Name, svct.Name)
 			}
 		} else {
 			// If a selector was specified, ensure that it actually exists.
@@ -696,9 +747,9 @@ func (p *binderValidatePhase) bindServiceLiteral(parent *ast.Stack, stack *ast.S
 				// The selector wasn't found.  Issue an error.  If there's a private service by that name,
 				// say so, for better diagnostics.
 				if _, has := svct.Services.Private[sel]; has {
-					p.Diag().Errorf(errors.ErrorServiceSelectorIsPrivate.At(stack), sel, svc.Name, svct.Name)
+					p.Diag().Errorf(errors.ErrorServiceSelectorIsPrivate.At(node), sel, svc.Name, svct.Name)
 				} else {
-					p.Diag().Errorf(errors.ErrorServiceSelectorNotFound.At(stack), sel, svc.Name, svct.Name)
+					p.Diag().Errorf(errors.ErrorServiceSelectorNotFound.At(node), sel, svc.Name, svct.Name)
 				}
 			}
 		}
@@ -707,38 +758,36 @@ func (p *binderValidatePhase) bindServiceLiteral(parent *ast.Stack, stack *ast.S
 			// If there is an expected type, now ensure that the selected Service is of the right kind.
 			util.Assert(selsvc.BoundType != nil)
 			if ty != nil && !subclassOf(selsvc.BoundType, ty) {
-				p.Diag().Errorf(errors.ErrorIncorrectPropertyType.At(parent),
-					pname, prop.Type, selsvc.BoundType.Name, stack.Name)
+				p.Diag().Errorf(errors.ErrorIncorrectType.At(node), ty, selsvc.BoundType.Name)
 			}
 
-			lit = &ast.ServiceLiteral{
+			ref = &ast.ServiceRef{
 				Name:     nm,
 				Selector: sel,
-				Stack:    parent,
 				Service:  svc,
 				Selected: selsvc,
 			}
 		}
 	} else {
-		p.Diag().Errorf(errors.ErrorServiceNotFound.At(parent), nm)
+		p.Diag().Errorf(errors.ErrorServiceNotFound.At(node), nm)
 	}
 
-	return lit
+	return ref
 }
 
 // subclassOf checks that the left type ("typ") is equal to or a subclass of the right type ("or").  The right type is a
-// union between *ast.Stack and *ast.StackRef, so that it can be an uninstantiated type if needed.
-func subclassOf(typ *ast.Stack, of *ast.StackType) bool {
+// union between *ast.Stack and *ast.UninstStack, so that it can be an uninstantiated type if needed.
+func subclassOf(typ *ast.Stack, of *ast.Type) bool {
 	for typ != nil {
 		if typ == of.Stack {
 			// If the type matches the target directly, obviously it's a hit.
 			return true
-		} else if of.StackRef != nil {
+		} else if of.UninstStack != nil {
 			// If the type was produced from the same "document" (uninstantiated type), then it's also a hit.  Note that
 			// due to template expansion, we need to walk the document hierarchy to see if there's a match.
 			doc := typ.Doc
 			for doc != nil {
-				if doc == of.StackRef.Doc {
+				if doc == of.UninstStack.Doc {
 					return true
 				}
 				doc = doc.Parent

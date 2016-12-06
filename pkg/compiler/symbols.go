@@ -20,7 +20,8 @@ type SymbolKind int
 const (
 	SymKindService SymbolKind = iota
 	SymKindStack
-	SymKindStackRef
+	SymKindUninstStack
+	SymKindSchema
 )
 
 func NewServiceSymbol(nm ast.Name, svc *ast.Service) *Symbol {
@@ -31,6 +32,10 @@ func NewStackSymbol(nm ast.Name, stack *ast.Stack) *Symbol {
 	return &Symbol{SymKindStack, nm, &stack.Node, stack}
 }
 
-func NewStackRefSymbol(nm ast.Name, ref *ast.StackRef) *Symbol {
-	return &Symbol{SymKindStackRef, nm, &ref.Node, ref}
+func NewUninstStackSymbol(nm ast.Name, ref *ast.UninstStack) *Symbol {
+	return &Symbol{SymKindUninstStack, nm, &ref.Node, ref}
+}
+
+func NewSchemaSymbol(nm ast.Name, schema *ast.Schema) *Symbol {
+	return &Symbol{SymKindSchema, nm, &schema.Node, schema}
 }

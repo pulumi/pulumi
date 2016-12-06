@@ -4,6 +4,7 @@ package aws
 
 import (
 	"github.com/marapongo/mu/pkg/ast"
+	"github.com/marapongo/mu/pkg/ast/conv"
 	"github.com/marapongo/mu/pkg/util"
 )
 
@@ -21,10 +22,10 @@ const cfIntrinsicExtraProperties = "extraProperties"
 // the way these templates are generated.
 type cfIntrinsic struct {
 	*ast.Service
-	Resource        ast.StringLiteral
-	DependsOn       ast.ServiceListLiteral
-	Properties      ast.StringStringMapLiteral
-	ExtraProperties ast.StringMapLiteral
+	Resource        string
+	DependsOn       []*ast.ServiceRef
+	Properties      map[string]string
+	ExtraProperties map[string]interface{}
 }
 
 // AsCFIntrinsic converts a given service to a CloudFormationService, validating it as we go.
@@ -36,21 +37,21 @@ func asCFIntrinsic(svc *ast.Service) *cfIntrinsic {
 	}
 
 	if r, ok := svc.BoundProperties[cfIntrinsicResource]; ok {
-		res.Resource, ok = r.(ast.StringLiteral)
+		res.Resource, ok = conv.ToString(r)
 		util.Assert(ok)
 	} else {
 		util.FailMF("Expected a required 'resource' property")
 	}
 	if do, ok := svc.BoundProperties[cfIntrinsicDependsOn]; ok {
-		res.DependsOn, ok = do.(ast.ServiceListLiteral)
+		res.DependsOn, ok = conv.ToServiceArray(do)
 		util.Assert(ok)
 	}
 	if props, ok := svc.BoundProperties[cfIntrinsicProperties]; ok {
-		res.Properties, ok = props.(ast.StringStringMapLiteral)
+		res.Properties, ok = conv.ToStringStringMap(props)
 		util.Assert(ok)
 	}
 	if extras, ok := svc.BoundProperties[cfIntrinsicExtraProperties]; ok {
-		res.ExtraProperties, ok = extras.(ast.StringMapLiteral)
+		res.ExtraProperties, ok = conv.ToStringMap(extras)
 		util.Assert(ok)
 	}
 

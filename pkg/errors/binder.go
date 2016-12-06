@@ -37,53 +37,47 @@ var ErrorCannotCreateAbstractStack = &diag.Diag{
 	Message: "Service '%v' cannot create abstract stack '%v'; only concrete stacks may be created",
 }
 
-var ErrorMalformedStackReference = &diag.Diag{
-	ID: 506,
-	Message: "The stack reference '%v' is malformed; " +
-		"expected format is '[[proto://]base.url/]stack/../name[@version]': %v",
-}
-
 var ErrorMissingRequiredProperty = &diag.Diag{
-	ID:      507,
+	ID:      506,
 	Message: "Missing required property '%v' on '%v'",
 }
 
 var ErrorUnrecognizedProperty = &diag.Diag{
-	ID:      508,
+	ID:      507,
 	Message: "Unrecognized property '%v' on '%v'",
 }
 
-var ErrorIncorrectPropertyType = &diag.Diag{
-	ID:      509,
-	Message: "Property '%v' has the wrong type; expected '%v', got '%v', on '%v'",
+var ErrorIncorrectType = &diag.Diag{
+	ID:      508,
+	Message: "Incorrect type; expected '%v', got '%v'",
 }
 
 var ErrorServiceNotFound = &diag.Diag{
-	ID:      510,
+	ID:      509,
 	Message: "A service named '%v' was not found",
 }
 
 var ErrorServiceHasNoPublics = &diag.Diag{
-	ID:      511,
+	ID:      510,
 	Message: "The service '%v' of type '%v' has no public entrypoint; it cannot be referenced",
 }
 
 var ErrorServiceHasManyPublics = &diag.Diag{
-	ID:      512,
+	ID:      511,
 	Message: "The service '%v' of type '%v' has multiple public entrypoints; please choose one using a selector",
 }
 
 var ErrorServiceSelectorNotFound = &diag.Diag{
-	ID:      513,
+	ID:      512,
 	Message: "No public by the given selector '%v' was found in service '%v' of type '%v'",
 }
 
 var ErrorServiceSelectorIsPrivate = &diag.Diag{
-	ID:      514,
+	ID:      513,
 	Message: "The given selector '%v' references a private service in '%v' of type '%v'; it must be public",
 }
 
 var ErrorNotAName = &diag.Diag{
-	ID:      515,
+	ID:      514,
 	Message: "The string '%v' is not a valid name (expected: " + ast.NamePartRegexps + ")",
 }

@@ -1,282 +1,300 @@
 // Copyright 2016 Marapongo, Inc. All rights reserved.
 
-// This package contains the core Mu abstract syntax tree types.
-//
-// N.B. for the time being, we are leveraging the same set of types for parse trees and abstract syntax trees.  The
-// reason is that minimal "extra" information is necessary between front- and back-end parts of the compiler, and so
-// reusing the trees leads to less duplication in types and faster runtime performance.  As the compiler matures in
-// functionality, we may want to revisit this.  The "back-end-only" parts of the data structures are easily identified
-// because their fields do not map to any serializable fields (i.e., `json:"-"`).
-//
-// Another controversial decision is to mutate nodes in place, rather than taking the performance hit of immutability.
-// This can certainly be tricky to deal with, however, it is simpler and we can revisit it down the road if needed.
-// Of course, during lowering, sometimes nodes will be transformed to new types entirely, allocating entirely anew.
 package ast
 
 import (
-	"strings"
+	"fmt"
 
-	"github.com/marapongo/mu/pkg/diag"
+	"github.com/marapongo/mu/pkg/util"
 )
 
-// Name is an identifier.  Names may be optionally fully qualified, using the delimiter `/`, or simple.  Each element
-// conforms to the regex [A-Za-z_][A-Za-z0-9_]*.  For example, `marapongo/mu/stack`.
-type Name string
-
-// Ref is a dependency reference.  It is "name-like", in that it contains a Name embedded inside of it, but also carries
-// a URL-like structure.  A Ref starts with an optional "protocol" (like https://, git://, etc), followed by an optional
-// "base" part (like hub.mu.com/, github.com/, etc), followed by the "name" part (which is just a Name), followed by
-// an optional "@" and version number (where version may be "latest", a semantic version range, or a Git SHA hash).
-type Ref string
-
-// Version represents a precise version number.  It may be either a Git SHA hash or a semantic version (not a range).
-type Version string
-
-// VersionSpec represents a specification of a version that is bound to a precise number through a separate process.
-// It may take the form of a Version (see above), a semantic version range, or the string "latest", to indicate that the
-// latest available sources are to be used at compile-time.
-type VersionSpec string
-
-// Node is the base of all abstract syntax tree types.
-type Node struct {
-	// TODO[marapongo/mu#14]: implement diag.Diagable on all AST nodes.
+// Type is a union type that can represent any of the sort of "types" in the system.
+type Type struct {
+	// one, and only one, of these will be non-nil:
+	Primitive   *PrimitiveType // a simple type (like `string`, `number`, etc).
+	Decors      *TypeDecors    // a decorated type; this is either an array or map.
+	Unref       *Ref           // an unresolved name.
+	UninstStack *UninstStack   // a resolved, but uninstantiated, stack reference.
+	Stack       *Stack         // a specific stack type.
+	Schema      *Schema        // a specific schema type.
 }
 
-// Workspace defines settings shared amongst many related Stacks.
-type Workspace struct {
-	Node
-
-	Namespace    string       `json:"namespace,omitempty"` // an optional namespace for this project space.
-	Clusters     Clusters     `json:"clusters,omitempty"`  // an optional set of predefined target clusters.
-	Dependencies Dependencies `json:"dependencies,omitempty"`
-
-	Doc *diag.Document `json:"-"` // the document from which this came.
+func NewPrimitiveType(p *PrimitiveType) *Type {
+	return &Type{Primitive: p}
 }
 
-func (w *Workspace) Where() (*diag.Document, *diag.Location) {
-	return w.Doc, nil
+func NewAnyType() *Type {
+	return NewPrimitiveType(&PrimitiveTypeAny)
 }
 
-// Clusters is a map of target names to metadata about those targets.
-type Clusters map[string]*Cluster
-
-// Cluster describes a predefined cloud runtime target, including its OS and Scheduler combination.
-type Cluster struct {
-	Node
-
-	Default     bool        `json:"default,omitempty"`     // a single target can carry default settings.
-	Description string      `json:"description,omitempty"` // a human-friendly description of this target.
-	Cloud       string      `json:"cloud,omitempty"`       // the cloud target.
-	Scheduler   string      `json:"scheduler,omitempty"`   // the cloud scheduler target.
-	Settings    PropertyBag `json:"settings,omitempty"`    // any options passed to the cloud provider.
-
-	Name string `json:"-"` // name is decorated post-parsing, since it is contextual.
+func NewBoolType() *Type {
+	return NewPrimitiveType(&PrimitiveTypeBool)
 }
 
-// Dependencies maps dependency refs to the semantic version the consumer depends on.
-type Dependencies map[Ref]*Dependency
-
-// Dependency is metadata describing a dependency target (for now, just its target version).
-type Dependency VersionSpec
-
-// Stack represents a collection of private and public cloud resources, a method for constructing them, and optional
-// dependencies on other Stacks (by name).
-type Stack struct {
-	Node
-
-	Name        Name    `json:"name,omitempty"`        // a friendly name for this node.
-	Version     Version `json:"version,omitempty"`     // a specific version number.
-	Description string  `json:"description,omitempty"` // an optional friendly description.
-	Author      string  `json:"author,omitempty"`      // an optional author.
-	Website     string  `json:"website,omitempty"`     // an optional website for additional info.
-	License     string  `json:"license,omitempty"`     // an optional license governing legal uses of this package.
-
-	Base                Ref                `json:"base,omitempty"`      // an optional base Stack type.
-	BoundBase           *Stack             `json:"-"`                   // base, optionally bound during analysis.
-	Abstract            bool               `json:"abstract,omitempty"`  // true if this stack is "abstract".
-	Intrinsic           bool               `json:"intrinsic,omitempty"` // true if this stack is an "intrinsic" type.
-	Properties          Properties         `json:"properties,omitempty"`
-	PropertyValues      PropertyBag        `json:"-"` // the properties used to construct this stack.
-	BoundPropertyValues LiteralPropertyBag `json:"-"` // the bound properties used to construct this stack.
-	Services            Services           `json:"services,omitempty"`
-
-	Doc *diag.Document `json:"-"` // the document from which this came.
-
-	// TODO[marapongo/mu#8]: permit Stacks to declare exported APIs.
+func NewNumberType() *Type {
+	return NewPrimitiveType(&PrimitiveTypeNumber)
 }
 
-func (stack *Stack) Where() (*diag.Document, *diag.Location) {
-	return stack.Doc, nil
+func NewStringType() *Type {
+	return NewPrimitiveType(&PrimitiveTypeString)
 }
 
-// StackRef represents an uninstantiated Stack reference.  This is sort of like an uninstantiated generic type in
-// classical programming languages, except that in our case we use template expansion on the document itself.
-type StackRef struct {
-	Node
-	Ref Ref            `json:"-"`
-	Doc *diag.Document `json:"-"`
+func NewServiceType() *Type {
+	return NewPrimitiveType(&PrimitiveTypeService)
 }
 
-// StackType is a union type of either a Stack or a StackRef.  This permits scenarios where either a fully
-// instantiated type (Stack) or an uninstantiated one (StackRef) are legally permitted.
-type StackType struct {
-	Stack    *Stack    // non-nil if fully instantiated (implying that StackRef is nil).
-	StackRef *StackRef // non-nil if uninstantiated (implying that Stack is nil).
+func NewArrayType(elemType *Type) *Type {
+	return &Type{Decors: &TypeDecors{ElemType: elemType}}
 }
 
-// DependendyRefs is simply a map of dependency reference to the associated StackRef for that dependency.
-type DependencyRefs map[Ref]*StackRef
-
-// Propertys maps property names to metadata about those propertys.
-type Properties map[string]*Property
-
-// Property describes the requirements of arguments used when constructing Stacks, etc.
-type Property struct {
-	Node
-
-	Type        PropertyType `json:"type,omitempty"`        // the type of the property; required.
-	BoundType   *StackType   `json:"-"`                     // if the property is a stack type, it will be bound.
-	Description string       `json:"description,omitempty"` // an optional friendly description of the property.
-	Default     interface{}  `json:"default,omitempty"`     // an optional default value if the caller elides one.
-	Optional    bool         `json:"optional,omitempty"`    // true if may be omitted (inferred if a default value).
-	Readonly    bool         `json:"readonly,omitempty"`    // true if this property is readonly.
-	Perturbs    bool         `json:"perturbs,omitempty"`    // true if changing this property is perturbing.
-
-	Name string `json:"-"` // name is decorated post-parsing, since it is contextual.
+func NewMapType(keyType, valType *Type) *Type {
+	return &Type{Decors: &TypeDecors{KeyType: keyType, ValueType: valType}}
 }
 
-// PropertyType stores the name of a property's type.
-type PropertyType Name
+func NewStackType(stack *Stack) *Type {
+	return &Type{Stack: stack}
+}
 
-// A set of known property types.  Note that this is extensible, so names outside of this list are legal.
-// TODO[marapongo/mu#9]: support complex types (like arrays, custom JSON shapes, and so on).
+func NewSchemaType(schema *Schema) *Type {
+	return &Type{Schema: schema}
+}
+
+func NewUninstStackType(uninst *UninstStack) *Type {
+	return &Type{UninstStack: uninst}
+}
+
+func NewUnresolvedRefType(ref *Ref) *Type {
+	return &Type{Unref: ref}
+}
+
+// Name converts the given type into its corresponding friendly name.
+func (ty *Type) Name() Ref {
+	if ty.Primitive != nil {
+		return Ref(*ty.Primitive)
+	} else if ty.Stack != nil {
+		return Ref(ty.Stack.Name)
+	} else if ty.Schema != nil {
+		return Ref(ty.Schema.Name)
+	} else if ty.Unref != nil {
+		return *ty.Unref
+	} else if ty.UninstStack != nil {
+		return ty.UninstStack.Ref
+	} else if ty.Decors != nil {
+		// TODO: consider caching these so we don't produce lots of strings.
+		if ty.Decors.ElemType != nil {
+			return Ref(fmt.Sprintf(string(TypeDecorsArray), ty.Decors.ElemType.Name()))
+		} else {
+			util.Assert(ty.Decors.KeyType != nil)
+			util.Assert(ty.Decors.ValueType != nil)
+			return Ref(fmt.Sprintf(string(TypeDecorsMap), ty.Decors.KeyType.Name(), ty.Decors.ValueType.Name()))
+		}
+	} else {
+		util.FailM("Expected this type to have one of primitive, stack, schema, unref, resref, or decors")
+		return Ref("")
+	}
+}
+
+// IsDecors checks whether the Type is decorated.
+func (ty *Type) IsDecors() bool {
+	return ty.Decors != nil
+}
+
+// IsPrimitive checks whether the Type is primitive.
+func (ty *Type) IsPrimitive() bool {
+	return ty.Primitive != nil
+}
+
+// IsStack checks whether the Type represents a bound Stack node.
+func (ty *Type) IsStack() bool {
+	return ty.Stack != nil
+}
+
+// IsSchema checks whether the Type represents a bound Schema node.
+func (ty *Type) IsSchema() bool {
+	return ty.Schema != nil
+}
+
+// IsUninstStack checks whether the Type is a resolved named reference.
+func (ty *Type) IsUninstStack() bool {
+	return ty.UninstStack != nil
+}
+
+// IsUnresolvedRef checks whether the Type is an unresolved named reference.
+func (ty *Type) IsUnresolvedRef() bool {
+	return ty.Unref != nil
+}
+
+// String merely provides a convenient Stringer implementation that fetches a type's name.
+func (ty *Type) String() string {
+	return string(ty.Name())
+}
+
+// TypeDecors is non-nil for arrays and maps, and contains other essential information about them.
+type TypeDecors struct {
+	ElemType  *Type // the element type, non-nil only for arrays
+	KeyType   *Type // the key type, non-nil only for maps
+	ValueType *Type // the value type, non-nil only for maps
+}
+
+// TypeDecorsFormat is a modifier for arrays and maps.
+type TypeDecorsFormat string
+
 const (
-	PropertyTypeAny             PropertyType = "any"                // any structure.
-	PropertyTypeString                       = "string"             // a JSON-like string.
-	PropertyTypeStringList                   = "string[]"           // a JSON-like array of strings.
-	PropertyTypeStringMap                    = "map[string]any"     // a JSON-like map of strings to anys.
-	PropertyTypeStringStringMap              = "map[string]string"  // a JSON-like map of strings to strings.
-	PropertyTypeNumber                       = "number"             // a JSON-like number (integer or floating point).
-	PropertyTypeBool                         = "bool"               // a JSON-like boolean (`true` or `false`).
-	PropertyTypeService                      = "service"            // an untyped service reference; at runtime, a URL.
-	PropertyTypeServiceList                  = "service[]"          // an array of service references.
-	PropertyTypeServiceMap                   = "map[string]service" // a map of strings to service references.
+	TypeDecorsArray        TypeDecorsFormat = TypeDecorsArrayPrefix + "%v"
+	TypeDecorsArrayPrefix                   = "[]"
+	TypeDecorsMap                           = TypeDecorsMapPrefix + "%v" + TypeDecorsMapSeparator + "%v"
+	TypeDecorsMapPrefix                     = "map["
+	TypeDecorsMapSeparator                  = "]"
 )
 
-// IsPropertyStackType indicates whether the given property type is a stack type.
-func IsPropertyStackType(prop PropertyType) bool {
-	return strings.Index(string(prop), NameDelimiter) != -1
+// PrimitiveType is the name of a primitive type.
+type PrimitiveType Name
+
+// A set of known primitive types.
+var (
+	PrimitiveTypeAny     PrimitiveType = "any"     // any structure.
+	PrimitiveTypeBool    PrimitiveType = "bool"    // a JSON-like boolean (`true` or `false`).
+	PrimitiveTypeNumber  PrimitiveType = "number"  // a JSON-like number (integer or floating point).
+	PrimitiveTypeService PrimitiveType = "service" // an untyped service reference; at runtime, a URL.
+	PrimitiveTypeString  PrimitiveType = "string"  // a JSON-like string.
+)
+
+// NewAnyLiteral allocates a fresh AnyLiteral with the given contents.
+func NewAnyLiteral(node *Node, any interface{}) AnyLiteral {
+	return &anyLiteral{node, any}
 }
 
-// Services is a list of public and private service references, keyed by name.
-type Services struct {
-	// These fields are expanded after parsing:
-	Public  ServiceMap `json:"-"`
-	Private ServiceMap `json:"-"`
-
-	// These fields are "untyped" due to limitations in the JSON parser.  Namely, Go's parser will ignore
-	// properties in the payload that it doesn't recognize as mapping to a field.  That's not what we want, especially
-	// for services since they are highly extensible and the contents will differ per-type.  Therefore, we will first
-	// map the services into a weakly typed map, and later on during compilation, expand them to the below fields.
-	// TODO[marapongo/mu#4]: support for `json:",inline"` or the equivalent so we can eliminate these fields.
-	PublicUntyped  UntypedServiceMap `json:"public,omitempty"`
-	PrivateUntyped UntypedServiceMap `json:"private,omitempty"`
+type anyLiteral struct {
+	node *Node
+	any  interface{}
 }
 
-// ServiceMap is a map of service names to metadata about those services.
-type ServiceMap map[Name]*Service
+var _ AnyLiteral = &anyLiteral{} // ensure anyLiteral implements AnyLiteral.
 
-// Service is a directive for instantiating another Stack, including its name, arguments, etc.
-type Service struct {
-	Node
+func (l *anyLiteral) Node() *Node      { return l.node }
+func (l *anyLiteral) Type() *Type      { return NewAnyType() }
+func (l *anyLiteral) Any() interface{} { return l.any }
 
-	Type            Ref                `json:"type,omitempty"` // an explicit type; if missing, the name is used.
-	BoundType       *Stack             `json:"-"`              // services are bound to stacks during semantic analysis.
-	Properties      PropertyBag        `json:"-"`              // all of the custom properties (minus what's above).
-	BoundProperties LiteralPropertyBag `json:"-"`              // the bound properties, expanded and typed correctly.
-
-	Name   Name `json:"-"` // a friendly name; decorated post-parsing, since it is contextual.
-	Public bool `json:"-"` // true if this service is publicly exposed; also decorated post-parsing.
+// NewBoolLiteral allocates a fresh BoolLiteral with the given contents.
+func NewBoolLiteral(node *Node, b bool) BoolLiteral {
+	return &boolLiteral{node, b}
 }
 
-// UntypedServiceMap is a map of service names to untyped, bags of parsed properties for those services.
-type UntypedServiceMap map[Name]PropertyBag
-
-// PropertyBag is simply a map of string property names to untyped data values.
-type PropertyBag map[string]interface{}
-
-// LiteralPropertyBag is simply a map of string property names to literal typed AST nodes.
-type LiteralPropertyBag map[string]interface{} /*Literal*/
-
-// Literal represents a strongly typed AST value.
-type Literal struct {
-	Node
+type boolLiteral struct {
+	node *Node
+	b    bool
 }
 
-// AnyLiteral is an AST node containing a literal value of "any" type (`interface{}`).
-type AnyLiteral struct {
-	Literal
-	Any interface{}
+var _ BoolLiteral = &boolLiteral{} // ensure boolLiteral implements BoolLiteral.
+
+func (l *boolLiteral) Node() *Node { return l.node }
+func (l *boolLiteral) Type() *Type { return NewBoolType() }
+func (l *boolLiteral) Bool() bool  { return l.b }
+
+// NewNumberLiteral allocates a fresh NumberLiteral with the given contents.
+func NewNumberLiteral(node *Node, n float64) NumberLiteral {
+	return &numberLiteral{node, n}
 }
 
-// StringLiteral is an AST node containing a literal string (`string`).
-type StringLiteral struct {
-	Literal
-	String string
+type numberLiteral struct {
+	node *Node
+	n    float64
 }
 
-// StringListLiteral is an AST node containing a list of literal strings (`[]string`).
-type StringListLiteral struct {
-	Literal
-	StringList []string
+var _ NumberLiteral = &numberLiteral{} // ensure numberLiteral implements NumberLiteral.
+
+func (l *numberLiteral) Node() *Node     { return l.node }
+func (l *numberLiteral) Type() *Type     { return NewNumberType() }
+func (l *numberLiteral) Number() float64 { return l.n }
+
+// NewStringLiteral allocates a fresh StringLiteral with the given contents.
+func NewStringLiteral(node *Node, s string) StringLiteral {
+	return &stringLiteral{node, s}
 }
 
-// StringMapLiteral is an AST node containing a map of literal strings to anys (`map[string]interface{}`).
-type StringMapLiteral struct {
-	Literal
-	StringMap map[string]interface{}
+type stringLiteral struct {
+	node *Node
+	s    string
 }
 
-// StringStringMapLiteral is an AST node containing a map of literal strings to strings (`map[string]string`).
-type StringStringMapLiteral struct {
-	Literal
-	StringStringMap map[string]string
+var _ StringLiteral = &stringLiteral{} // ensure stringLiteral implements StringLiteral.
+
+func (l *stringLiteral) Node() *Node    { return l.node }
+func (l *stringLiteral) Type() *Type    { return NewStringType() }
+func (l *stringLiteral) String() string { return l.s }
+
+// NewServiceLiteral allocates a fresh ServiceLiteral with the given contents.
+func NewServiceLiteral(node *Node, sref *ServiceRef) ServiceLiteral {
+	return &serviceLiteral{node, sref}
 }
 
-// NumberLiteral is an AST node containing a literal number (`float64`).
-type NumberLiteral struct {
-	Literal
-	Number float64
+type serviceLiteral struct {
+	node *Node
+	sref *ServiceRef
 }
 
-// BoolLiteral is an AST node containing a literal boolean (`bool`).
-type BoolLiteral struct {
-	Literal
-	Bool bool
+var _ ServiceLiteral = &serviceLiteral{} // ensure serviceLiteral implements ServiceLiteral.
+
+func (l *serviceLiteral) Node() *Node { return l.node }
+
+// TODO should Type return Stack?
+
+func (l *serviceLiteral) Type() *Type          { return NewServiceType() }
+func (l *serviceLiteral) Service() *ServiceRef { return l.sref }
+
+// NewArrayLiteral allocates a fresh ArrayLiteral with the given contents.
+func NewArrayLiteral(node *Node, elemType *Type, arr []Literal) ArrayLiteral {
+	return &arrayLiteral{node, elemType, arr}
 }
 
-// ServiceLiteral is an AST node containing a literal capability reference.
-type ServiceLiteral struct {
-	Literal
-	Name     Name     // the name used to resolve the capability.
-	Selector Name     // the "selector" used if the target service exports multiple endpoints.
-	Stack    *Stack   // the stack in which the capability resides.
-	Service  *Service // the service that this capability reference names.
-	Selected *Service // the selected service resolved during binding.
+type arrayLiteral struct {
+	node     *Node
+	elemType *Type
+	arr      []Literal
 }
 
-// ServiceListLiteral is an AST node containing a list of literal capability references.
-type ServiceListLiteral struct {
-	Literal
-	ServiceList []ServiceLiteral
+var _ ArrayLiteral = &arrayLiteral{} // ensure arrayLiteral implements ArrayLiteral.
+
+func (l *arrayLiteral) Node() *Node      { return l.node }
+func (l *arrayLiteral) Type() *Type      { return NewArrayType(l.elemType) }
+func (l *arrayLiteral) ElemType() *Type  { return l.elemType }
+func (l *arrayLiteral) Array() []Literal { return l.arr }
+
+// NewMapLiteral allocates a fresh MapLiteral with the given contents.
+func NewMapLiteral(node *Node, keyType *Type, valType *Type, keys []Literal, vals []Literal) MapLiteral {
+	return &mapLiteral{node, keyType, valType, keys, vals}
 }
 
-// ServiceMapLiteral is an AST node containing a map of names to the associated capability references.
-type ServiceMapLiteral struct {
-	Literal
-	ServiceMap map[string]ServiceLiteral
+type mapLiteral struct {
+	node    *Node
+	keyType *Type
+	valType *Type
+	keys    []Literal
+	vals    []Literal
 }
 
-// TODO[marapongo/mu#9]: extensible schema support.
-// TODO[marapongo/mu#17]: identity (users, roles, groups).
-// TODO[marapongo/mu#16]: configuration and secret support.
+var _ MapLiteral = &mapLiteral{} // ensure mapLiteral implements MapLiteral.
+
+func (l *mapLiteral) Node() *Node       { return l.node }
+func (l *mapLiteral) Type() *Type       { return NewMapType(l.keyType, l.valType) }
+func (l *mapLiteral) KeyType() *Type    { return l.keyType }
+func (l *mapLiteral) ValueType() *Type  { return l.valType }
+func (l *mapLiteral) Keys() []Literal   { return l.keys }
+func (l *mapLiteral) Values() []Literal { return l.vals }
+
+// NewComplexLiteral allocates a fresh ComplexLiteral with the given contents.
+func NewTypedLiteral(node *Node, typ *Type, val interface{}) ComplexLiteral {
+	return &complexLiteral{node, typ, val}
+}
+
+type complexLiteral struct {
+	node *Node
+	typ  *Type
+	val  interface{}
+}
+
+var _ ComplexLiteral = &complexLiteral{} // ensure complexLiteral implements ComplexLiteral.
+
+func (l *complexLiteral) Node() *Node        { return l.node }
+func (l *complexLiteral) Type() *Type        { return l.typ }
+func (l *complexLiteral) Value() interface{} { return l.val }

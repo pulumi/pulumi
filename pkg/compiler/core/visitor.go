@@ -14,6 +14,8 @@ type Visitor interface {
 	VisitCluster(name string, cluster *ast.Cluster)
 	VisitDependency(parent *ast.Workspace, ref ast.Ref, dep *ast.Dependency)
 	VisitStack(stack *ast.Stack)
+	VisitSchemas(parent *ast.Stack, schmas *ast.Schemas)
+	VisitSchema(pstack *ast.Stack, parent *ast.Schemas, name ast.Name, public bool, schema *ast.Schema)
 	VisitProperty(parent *ast.Stack, name string, prop *ast.Property)
 	VisitServices(parent *ast.Stack, svcs *ast.Services)
 	VisitService(pstack *ast.Stack, parent *ast.Services, name ast.Name, public bool, svc *ast.Service)
@@ -86,6 +88,7 @@ func (v *inOrderVisitor) VisitStack(stack *ast.Stack) {
 		v.pre.VisitStack(stack)
 	}
 
+	v.VisitSchemas(stack, &stack.Schema)
 	for _, name := range ast.StableProperties(stack.Properties) {
 		v.VisitProperty(stack, name, stack.Properties[name])
 	}
@@ -93,6 +96,33 @@ func (v *inOrderVisitor) VisitStack(stack *ast.Stack) {
 
 	if v.post != nil {
 		v.post.VisitStack(stack)
+	}
+}
+
+func (v *inOrderVisitor) VisitSchemas(parent *ast.Stack, schemas *ast.Schemas) {
+	if v.pre != nil {
+		v.pre.VisitSchemas(parent, schemas)
+	}
+
+	for _, name := range ast.StableSchemas(schemas.Private) {
+		v.VisitSchema(parent, schemas, name, false, schemas.Private[name])
+	}
+	for _, name := range ast.StableSchemas(schemas.Public) {
+		v.VisitSchema(parent, schemas, name, true, schemas.Public[name])
+	}
+
+	if v.post != nil {
+		v.post.VisitSchemas(parent, schemas)
+	}
+}
+
+func (v *inOrderVisitor) VisitSchema(pstack *ast.Stack, parent *ast.Schemas, name ast.Name,
+	public bool, schema *ast.Schema) {
+	if v.pre != nil {
+		v.pre.VisitSchema(pstack, parent, name, public, schema)
+	}
+	if v.post != nil {
+		v.post.VisitSchema(pstack, parent, name, public, schema)
 	}
 }
 

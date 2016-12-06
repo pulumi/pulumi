@@ -56,7 +56,7 @@ func TestBadDepSemVer1(t *testing.T) {
 	sink := buildNoCodegen("testdata", "binder", "bad__dep_semver__1")
 
 	// Check that the compiler complained about an illegal semantic version.
-	d := errors.ErrorMalformedStackReference
+	d := errors.ErrorIllegalNameLikeSyntax
 	assert.Equal(t, 1, sink.Errors(), "expected a single error")
 	assert.Equal(t,
 		fmt.Sprintf("%v: %v%v: %v: %v\n",
@@ -70,7 +70,7 @@ func TestBadDepSemVer2(t *testing.T) {
 	sink := buildNoCodegen("testdata", "binder", "bad__dep_semver__2")
 
 	// Check that the compiler complained about an illegal semantic version.
-	d := errors.ErrorMalformedStackReference
+	d := errors.ErrorIllegalNameLikeSyntax
 	assert.Equal(t, 1, sink.Errors(), "expected a single error")
 	assert.Equal(t,
 		fmt.Sprintf("%v: %v%v: %v: %v\n",
@@ -84,7 +84,7 @@ func TestBadDepSemVer3(t *testing.T) {
 	sink := buildNoCodegen("testdata", "binder", "bad__dep_semver__3")
 
 	// Check that the compiler complained about an illegal semantic version.
-	d := errors.ErrorMalformedStackReference
+	d := errors.ErrorIllegalNameLikeSyntax
 	assert.Equal(t, 4, sink.Errors(), "expected an error for each bad semver")
 	assert.Equal(t,
 		fmt.Sprintf("%v: %v%v: %v: %v\n",
@@ -193,7 +193,7 @@ func TestBadUnrecognizedProperties(t *testing.T) {
 func TestBadPropertyTypes(t *testing.T) {
 	sink := buildNoCodegen("testdata", "binder", "bad__properties", "bad__types")
 
-	d := errors.ErrorIncorrectPropertyType
+	d := errors.ErrorIncorrectType
 	exp := []string{"bool", "number", "service", "string"}
 	got := []string{"string", "string", "bool", "float64"}
 	assert.Equal(t, len(exp), sink.Errors(), "expected an error per property")
@@ -201,7 +201,7 @@ func TestBadPropertyTypes(t *testing.T) {
 		assert.Equal(t,
 			fmt.Sprintf("%v: %v%v: %v: %v\n",
 				diag.DefaultSinkErrorPrefix, diag.DefaultSinkIDPrefix, d.ID, "../provider/Mu.yaml",
-				fmt.Sprintf(d.Message, "req_"+ty, ty, got[i], "mutest/provider")),
+				fmt.Sprintf(d.Message, ty, got[i])),
 			sink.ErrorMsgs()[i])
 	}
 }

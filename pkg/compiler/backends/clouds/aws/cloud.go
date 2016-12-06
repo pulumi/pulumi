@@ -9,6 +9,7 @@ import (
 	"github.com/golang/glog"
 
 	"github.com/marapongo/mu/pkg/ast"
+	"github.com/marapongo/mu/pkg/ast/conv"
 	"github.com/marapongo/mu/pkg/compiler/backends/clouds"
 	"github.com/marapongo/mu/pkg/compiler/core"
 	"github.com/marapongo/mu/pkg/diag"
@@ -105,10 +106,10 @@ func (c *awsCloud) genResourceID(stack *ast.Stack, svc *ast.Service) cfLogicalID
 }
 
 // genResourceDependsID discovers the CF logical ID used to reference the selected service in the same stack.
-func (c *awsCloud) genResourceDependsID(lit ast.ServiceLiteral) cfLogicalID {
+func (c *awsCloud) genResourceDependsID(ref *ast.ServiceRef) cfLogicalID {
 	// First, we need to dig deep down to figure out what actual AWS resource this dependency is on.
 	// TODO: support cross-stack references.
-	sel := lit.Selected
+	sel := ref.Selected
 	for {
 		if sel.BoundType.Name == cfIntrinsicName {
 			break
@@ -124,13 +125,13 @@ func (c *awsCloud) genResourceDependsID(lit ast.ServiceLiteral) cfLogicalID {
 			break
 		}
 	}
-	return c.genResourceID(lit.Service.BoundType, sel)
+	return c.genResourceID(ref.Service.BoundType, sel)
 }
 
 // genResourceDependsRef creates a reference to another resource inside of this same stack.  For more information, see
 // http://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/intrinsic-function-reference-ref.html.
-func (c *awsCloud) genResourceDependsRef(lit ast.ServiceLiteral) interface{} {
-	id := c.genResourceDependsID(lit)
+func (c *awsCloud) genResourceDependsRef(ref *ast.ServiceRef) interface{} {
+	id := c.genResourceDependsID(ref)
 	return map[string]interface{}{
 		"Ref": id,
 	}
@@ -242,10 +243,10 @@ func (c *awsCloud) genCFIntrinsicServiceTemplate(comp core.Compiland, stack *ast
 	resProps := make(cfResourceProperties)
 
 	// Map the properties requested.
-	for _, to := range ast.StableStringStringMap(cf.Properties.StringStringMap) {
-		from := cf.Properties.StringStringMap[to]
+	for _, to := range ast.StableStringStringMap(cf.Properties) {
+		from := cf.Properties[to]
 		if p, has := stack.BoundPropertyValues[from]; has {
-			resProps[to] = c.propertyLiteralToValue(p)
+			resProps[to] = conv.ToValue(p)
 		} else {
 			// It's ok if there is no bound property for this; that just means the caller didn't supply a value, which
 			// is totally legal for optional properties.  But at least make sure the property refers to a valid property
@@ -257,9 +258,8 @@ func (c *awsCloud) genCFIntrinsicServiceTemplate(comp core.Compiland, stack *ast
 	}
 
 	// If there are any "extra" properties, merge them in with the existing map.
-	extra := cf.ExtraProperties.StringMap
-	for _, exname := range ast.StableKeys(extra) {
-		v := extra[exname]
+	for _, exname := range ast.StableKeys(cf.ExtraProperties) {
+		v := cf.ExtraProperties[exname]
 		// If there is an existing property, we can (possibly) merge it, for maps and slices (using some
 		// reflection voodoo).  For all other types, issue a warning.
 		if exist, has := resProps[exname]; has {
@@ -300,7 +300,7 @@ func (c *awsCloud) genCFIntrinsicServiceTemplate(comp core.Compiland, stack *ast
 
 	// If there are any explicit dependencies listed, we need to fish them out and add them.
 	var resDeps []cfLogicalID
-	for _, d := range cf.DependsOn.ServiceList {
+	for _, d := range cf.DependsOn {
 		resDeps = append(resDeps, c.genResourceDependsID(d))
 	}
 
@@ -308,48 +308,9 @@ func (c *awsCloud) genCFIntrinsicServiceTemplate(comp core.Compiland, stack *ast
 	id := c.genResourceID(stack, cf.Service)
 	return cfResources{
 		id: cfResource{
-			Type:       cfResourceType(cf.Resource.String),
+			Type:       cfResourceType(cf.Resource),
 			Properties: cfResourceProperties(resProps),
 			DependsOn:  resDeps,
 		},
-	}
-}
-
-// propertyLiteralToValue converts an AST literal to a JSON/YAML literal appropriate for emission.
-func (c *awsCloud) propertyLiteralToValue(lit interface{}) interface{} {
-	switch v := lit.(type) {
-	case ast.AnyLiteral:
-		// TODO[marapongo/mu#9]: once we have complex structures, we'll need to perform a deep transformation.
-		return v.Any
-	case ast.StringLiteral:
-		return v.String
-	case ast.StringListLiteral:
-		return v.StringList
-	case ast.StringMapLiteral:
-		// TODO[marapongo/mu#9]: once we have complex structures, we'll need to perform a deep transformation.
-		return v.StringMap
-	case ast.StringStringMapLiteral:
-		return v.StringStringMap
-	case ast.NumberLiteral:
-		return v.Number
-	case ast.BoolLiteral:
-		return v.Bool
-	case ast.ServiceLiteral:
-		return c.genResourceDependsRef(v)
-	case ast.ServiceListLiteral:
-		ids := make([]interface{}, len(v.ServiceList))
-		for i, lit := range v.ServiceList {
-			ids[i] = c.genResourceDependsRef(lit)
-		}
-		return ids
-	case ast.ServiceMapLiteral:
-		idm := make(map[string]interface{})
-		for k, lit := range v.ServiceMap {
-			idm[k] = c.genResourceDependsRef(lit)
-		}
-		return idm
-	default:
-		util.FailMF("Unrecognized property literal type: %v", reflect.TypeOf(lit))
-		return nil
 	}
 }
