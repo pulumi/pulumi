@@ -102,21 +102,65 @@ The set of types a property may take on are "JSON-like".  This includes simple p
     type: string
     type: number
     type: boolean
-    type: object
+    type: any
 
-As well as array shapes utilizing them:
+As well as array shapes utilizing them simply by appending a `[]` to any type:
 
-    type: [ string ]
-    type: [ number ]
-    type: [ boolean ]
-    type: [ object ]
+    type: string[]
+    type: number[]
+    type: boolean[]
+    type: any[]
 
-Complex structures can be described simply using objects with properties:
+And maps, in which the syntax is `map[key]value`, where `key` and `value` are any types:
+
+    type: map[string]string
+    type: map[number]any
+    // etc...
+
+More complex types, in addition to names ones, can be created using a [JSON Schema](http://json-schema.org/)-like
+syntax.  This may be done a number of ways, depending on what level of reuse you want for your custom types.
+
+The simplest is to simply specify the type inline, as a sort of anonymous type:
 
     type:
-        id: number
-        name: string
-        value: object
+        base: string
+        pattern: "[a-zA-Z0-9-]+"
+
+Of course, types can be created from scratch, without depending on a `base` type:
+
+    type:
+        properties:
+            id:
+                type: number
+            name:
+                type: string
+
+Alternatively, we can declare a named schema type inside of the Mufile, and then reference it by name:
+
+    schema:
+        private:
+            literal:
+                base: string
+                pattern: "[a-zA-Z0-9-]+"
+    ...
+    type: literal
+
+This also has the advantage of being able to easily create arrays and maps of these types:
+
+    type: literal[]
+    type: map[string]literal
+
+The final way to go about this is to create a stack whose sole purpose is to export schema types.  The `schema` section
+can have a `public` notation to allow this stack to export types.  Schema-only stacks must be marked `abstract`:
+
+    abstract: true
+    schema:
+        public:
+            literal:
+                base: string
+                pattern: "a-zA-Z0-9-]+"
+
+From there, the usual stack referencing and package management concerns are consistent with what we've encountered.
 
 ### Capability Types
 
