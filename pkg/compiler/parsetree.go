@@ -157,26 +157,30 @@ func (a *ptAnalyzer) parseType(ref ast.Ref) *ast.Type {
 		rest := refs[mix+len(ast.TypeDecorsMapPrefix):]
 		if sep := strings.Index(rest, ast.TypeDecorsMapSeparator); sep != -1 {
 			keyn := ast.Ref(rest[:sep])
-			valn := ast.Ref(rest[:sep+len(ast.TypeDecorsMapSeparator)])
-			keyt := a.parseType(keyn)
-			valt := a.parseType(valn)
-			if keyt != nil && valt != nil {
-				return ast.NewMapType(keyt, valt)
+			valn := ast.Ref(rest[sep+len(ast.TypeDecorsMapSeparator):])
+			if keyn != "" && valn != "" {
+				keyt := a.parseType(keyn)
+				valt := a.parseType(valn)
+				if keyt != nil && valt != nil {
+					return ast.NewMapType(keyt, valt)
+				}
 			}
-		} else {
-			a.Diag().Errorf(errors.ErrorIllegalMapLikeSyntax, refs)
 		}
-	} else if aix := strings.Index(refs, ast.TypeDecorsArrayPrefix); aix != -1 {
-		if aix == 0 {
+
+		a.Diag().Errorf(errors.ErrorIllegalMapLikeSyntax, refs)
+	} else if aix := strings.LastIndex(refs, ast.TypeDecorsArraySuffix); aix != -1 {
+		if aix == len(refs)-len(ast.TypeDecorsArraySuffix) {
 			// If we have an array, peel off the front and keep going.
-			rest := refs[aix+len(ast.TypeDecorsArrayPrefix):]
-			if elem := a.parseType(ast.Ref(rest)); elem != nil {
-				return ast.NewArrayType(elem)
+			rest := refs[:aix]
+			if rest != "" {
+				if elem := a.parseType(ast.Ref(rest)); elem != nil {
+					return ast.NewArrayType(elem)
+				}
 			}
-		} else {
-			// The array part was in the wrong position.  Issue an error.  Maybe they did T[] instead of []T?
-			a.Diag().Errorf(errors.ErrorIllegalArrayLikeSyntax, refs)
 		}
+
+		// The array part was in the wrong position.  Issue an error.  Maybe they did T[] instead of []T?
+		a.Diag().Errorf(errors.ErrorIllegalArrayLikeSyntax, refs)
 	} else if mix != -1 {
 		// The map part was in the wrong position.  Issue an error.
 		a.Diag().Errorf(errors.ErrorIllegalMapLikeSyntax, refs)

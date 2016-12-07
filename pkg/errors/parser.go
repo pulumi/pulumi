@@ -32,13 +32,13 @@ var ErrorBadTemplate = &diag.Diag{
 var ErrorIllegalMapLikeSyntax = &diag.Diag{
 	ID: 154,
 	Message: "The map type '%v' is malformed (expected syntax is '" +
-		fmt.Sprintf(string(ast.TypeDecorsMap), "key", "value") + "')",
+		fmt.Sprintf(string(ast.TypeDecorsMap), "K", "V") + "')",
 }
 
 var ErrorIllegalArrayLikeSyntax = &diag.Diag{
 	ID: 155,
 	Message: "The array type '%v' is malformed (expected syntax is '" +
-		fmt.Sprintf(string(ast.TypeDecorsArray), "element") + "')",
+		fmt.Sprintf(string(ast.TypeDecorsArray), "T") + "')",
 }
 
 var ErrorIllegalNameLikeSyntax = &diag.Diag{

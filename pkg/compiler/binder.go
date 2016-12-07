@@ -687,7 +687,6 @@ func (p *binderValidatePhase) bindPrimitiveValue(node *ast.Node, val interface{}
 	switch prim {
 	case ast.PrimitiveTypeAny:
 		// Any is easy: just store it as-is.
-		// TODO(joe): eventually we'll need to do translation to canonicalize the contents.
 		return ast.NewAnyLiteral(node, val)
 	case ast.PrimitiveTypeString:
 		if s, ok := val.(string); ok {

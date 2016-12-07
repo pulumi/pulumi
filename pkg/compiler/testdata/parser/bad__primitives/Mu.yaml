@@ -1,0 +1,35 @@
+name: badprimitives
+properties:
+    goodarr1:
+        type: string[]
+    goodarr2:
+        type: string[][]
+    badarr1:
+        type: "[]string"
+    badarr2:
+        type: stri[]ng
+    badarr3:
+        type: "[]string[]"
+    badarr4:
+        type: "[]"
+    goodmap1:
+        type: map[string]int
+    goodmap2:
+        type: map[string]map[string]int
+    badmap1:
+        type: map[string
+    badmap2:
+        type: map[string]
+    badmap3:
+        type: map[]
+    badmap4:
+        type: map[]int
+    goodboth1:
+        type: map[string]int[]
+    goodboth2:
+        type: map[int]string[][]
+    badboth1:
+        type: map[]int[string]
+    badboth2:
+        type: map[]int[]
+

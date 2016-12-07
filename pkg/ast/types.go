@@ -140,8 +140,8 @@ type TypeDecors struct {
 type TypeDecorsFormat string
 
 const (
-	TypeDecorsArray        TypeDecorsFormat = TypeDecorsArrayPrefix + "%v"
-	TypeDecorsArrayPrefix                   = "[]"
+	TypeDecorsArray        TypeDecorsFormat = "%v" + TypeDecorsArraySuffix
+	TypeDecorsArraySuffix                   = "[]"
 	TypeDecorsMap                           = TypeDecorsMapPrefix + "%v" + TypeDecorsMapSeparator + "%v"
 	TypeDecorsMapPrefix                     = "map["
 	TypeDecorsMapSeparator                  = "]"
