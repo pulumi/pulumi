@@ -616,20 +616,24 @@ func (p *binderValidatePhase) bindProperties(node *ast.Node, props ast.Propertie
 // bindValue takes a value and binds it to a type and literal AST node, returning nils if the conversions fails.
 func (p *binderValidatePhase) bindValue(node *ast.Node, val interface{}, ty *ast.Type) ast.Literal {
 	util.Assert(ty != nil)
+	var lit ast.Literal
 	if ty.IsDecors() {
-		return p.bindDecorsValue(node, val, ty.Decors)
+		lit = p.bindDecorsValue(node, val, ty.Decors)
 	} else if ty.IsPrimitive() {
-		return p.bindPrimitiveValue(node, val, *ty.Primitive)
+		lit = p.bindPrimitiveValue(node, val, *ty.Primitive)
 	} else if ty.IsStack() {
-		return p.bindServiceValue(node, val, ty)
+		lit = p.bindServiceValue(node, val, ty)
 	} else if ty.IsSchema() {
-		return p.bindSchemaValue(node, val, ty.Schema)
+		lit = p.bindSchemaValue(node, val, ty.Schema)
 	} else if ty.IsUnresolvedRef() {
 		util.FailM("Expected all unresolved refs to be gone by this phase in binding")
 	}
 
-	p.Diag().Errorf(errors.ErrorIncorrectType.At(node), ty, reflect.TypeOf(val))
-	return nil
+	if lit == nil {
+		// If no successful type binding happened, issue an error.
+		p.Diag().Errorf(errors.ErrorIncorrectType.At(node), ty, reflect.TypeOf(val))
+	}
+	return lit
 }
 
 func (p *binderValidatePhase) bindDecorsValue(node *ast.Node, val interface{}, decors *ast.TypeDecors) ast.Literal {
