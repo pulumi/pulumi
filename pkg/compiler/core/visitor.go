@@ -16,7 +16,7 @@ type Visitor interface {
 	VisitStack(stack *ast.Stack)
 	VisitSchemas(parent *ast.Stack, schmas *ast.Schemas)
 	VisitSchema(pstack *ast.Stack, parent *ast.Schemas, name ast.Name, public bool, schema *ast.Schema)
-	VisitProperty(parent *ast.Stack, name string, prop *ast.Property)
+	VisitProperty(parent *ast.Stack, schema *ast.Schema, name string, prop *ast.Property)
 	VisitServices(parent *ast.Stack, svcs *ast.Services)
 	VisitService(pstack *ast.Stack, parent *ast.Services, name ast.Name, public bool, svc *ast.Service)
 }
@@ -90,7 +90,7 @@ func (v *inOrderVisitor) VisitStack(stack *ast.Stack) {
 
 	v.VisitSchemas(stack, &stack.Schema)
 	for _, name := range ast.StableProperties(stack.Properties) {
-		v.VisitProperty(stack, name, stack.Properties[name])
+		v.VisitProperty(stack, nil, name, stack.Properties[name])
 	}
 	v.VisitServices(stack, &stack.Services)
 
@@ -121,17 +121,22 @@ func (v *inOrderVisitor) VisitSchema(pstack *ast.Stack, parent *ast.Schemas, nam
 	if v.pre != nil {
 		v.pre.VisitSchema(pstack, parent, name, public, schema)
 	}
+
+	for _, name := range ast.StableProperties(schema.Properties) {
+		v.VisitProperty(pstack, schema, name, schema.Properties[name])
+	}
+
 	if v.post != nil {
 		v.post.VisitSchema(pstack, parent, name, public, schema)
 	}
 }
 
-func (v *inOrderVisitor) VisitProperty(parent *ast.Stack, name string, prop *ast.Property) {
+func (v *inOrderVisitor) VisitProperty(parent *ast.Stack, schema *ast.Schema, name string, prop *ast.Property) {
 	if v.pre != nil {
-		v.pre.VisitProperty(parent, name, prop)
+		v.pre.VisitProperty(parent, schema, name, prop)
 	}
 	if v.post != nil {
-		v.post.VisitProperty(parent, name, prop)
+		v.post.VisitProperty(parent, schema, name, prop)
 	}
 }
 

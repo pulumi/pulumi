@@ -164,8 +164,12 @@ func ToValue(l ast.Literal) interface{} {
 			util.FailMF("Unexpected map key type: %v", keyt)
 			return nil
 		}
-	case ast.ComplexLiteral:
-		return t.Value()
+	case ast.SchemaLiteral:
+		p := make(map[string]interface{})
+		for k, v := range t.Properties() {
+			p[k] = ToValue(v)
+		}
+		return p
 	default:
 		util.FailM("Unexpected literal type")
 		return nil

@@ -168,9 +168,9 @@ func TestBadMissingProperties(t *testing.T) {
 	assert.Equal(t, len(reqs), sink.Errors(), "expected an error per property")
 	for i, req := range reqs {
 		assert.Equal(t,
-			fmt.Sprintf("%v: %v%v: %v: %v\n",
-				diag.DefaultSinkErrorPrefix, diag.DefaultSinkIDPrefix, d.ID, "Mu.yaml",
-				fmt.Sprintf(d.Message, req, "mutest/provider")),
+			fmt.Sprintf("%v: %v%v: %v\n",
+				diag.DefaultSinkErrorPrefix, diag.DefaultSinkIDPrefix, d.ID,
+				fmt.Sprintf(d.Message, req)),
 			sink.ErrorMsgs()[i])
 	}
 }
@@ -183,9 +183,9 @@ func TestBadUnrecognizedProperties(t *testing.T) {
 	assert.Equal(t, len(unks), sink.Errors(), "expected an error per property")
 	for i, unk := range unks {
 		assert.Equal(t,
-			fmt.Sprintf("%v: %v%v: %v: %v\n",
-				diag.DefaultSinkErrorPrefix, diag.DefaultSinkIDPrefix, d.ID, "../provider/Mu.yaml",
-				fmt.Sprintf(d.Message, unk, "mutest/provider")),
+			fmt.Sprintf("%v: %v%v: %v\n",
+				diag.DefaultSinkErrorPrefix, diag.DefaultSinkIDPrefix, d.ID,
+				fmt.Sprintf(d.Message, unk)),
 			sink.ErrorMsgs()[i])
 	}
 }
@@ -199,8 +199,8 @@ func TestBadPropertyTypes(t *testing.T) {
 	assert.Equal(t, len(exp), sink.Errors(), "expected an error per property")
 	for i, ty := range exp {
 		assert.Equal(t,
-			fmt.Sprintf("%v: %v%v: %v: %v\n",
-				diag.DefaultSinkErrorPrefix, diag.DefaultSinkIDPrefix, d.ID, "../provider/Mu.yaml",
+			fmt.Sprintf("%v: %v%v: %v\n",
+				diag.DefaultSinkErrorPrefix, diag.DefaultSinkIDPrefix, d.ID,
 				fmt.Sprintf(d.Message, ty, got[i])),
 			sink.ErrorMsgs()[i])
 	}

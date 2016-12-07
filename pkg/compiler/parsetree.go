@@ -88,75 +88,19 @@ func (a *ptAnalyzer) VisitSchema(pstack *ast.Stack, parent *ast.Schemas, name as
 	// Decorate the AST with contextual information.
 	schema.Name = name
 	schema.Public = public
+
+	// If the schema has a base type listed, parse it to the best of our ability.
+	if schema.Base != "" {
+		schema.BoundBase = a.parseType(schema.Base)
+	}
 }
 
-func (a *ptAnalyzer) VisitProperty(parent *ast.Stack, name string, prop *ast.Property) {
+func (a *ptAnalyzer) VisitProperty(parent *ast.Stack, schema *ast.Schema, name string, prop *ast.Property) {
 	// Decorate the AST with contextual information so subsequent passes can operate context-free.
 	prop.Name = name
 
 	// Parse the property type to the best of our ability at this phase in the compiler.
-	prop.BoundType = a.parsePropertyType(prop.Type)
-}
-
-// parsePropertyType produces an ast.Type.  This will not have been bound yet, so for example, we won't know whether
-// an arbitrary non-primitive reference name references a stack or a schema, however at least this is a start.
-func (a *ptAnalyzer) parsePropertyType(ref ast.Ref) *ast.Type {
-	refs := string(ref)
-
-	mix := strings.Index(refs, ast.TypeDecorsMapPrefix)
-	if mix == 0 {
-		// If we have a map, find the separator, and then parse the key and value parts.
-		rest := refs[mix+len(ast.TypeDecorsMapPrefix):]
-		if sep := strings.Index(rest, ast.TypeDecorsMapSeparator); sep != -1 {
-			keyn := ast.Ref(rest[:sep])
-			valn := ast.Ref(rest[:sep+len(ast.TypeDecorsMapSeparator)])
-			keyt := a.parsePropertyType(keyn)
-			valt := a.parsePropertyType(valn)
-			if keyt != nil && valt != nil {
-				return ast.NewMapType(keyt, valt)
-			}
-		} else {
-			a.Diag().Errorf(errors.ErrorIllegalMapLikeSyntax, refs)
-		}
-	} else if aix := strings.Index(refs, ast.TypeDecorsArrayPrefix); aix != -1 {
-		if aix == 0 {
-			// If we have an array, peel off the front and keep going.
-			rest := refs[aix+len(ast.TypeDecorsArrayPrefix):]
-			if elem := a.parsePropertyType(ast.Ref(rest)); elem != nil {
-				return ast.NewArrayType(elem)
-			}
-		} else {
-			// The array part was in the wrong position.  Issue an error.  Maybe they did T[] instead of []T?
-			a.Diag().Errorf(errors.ErrorIllegalArrayLikeSyntax, refs)
-		}
-	} else if mix != -1 {
-		// The map part was in the wrong position.  Issue an error.
-		a.Diag().Errorf(errors.ErrorIllegalMapLikeSyntax, refs)
-	} else {
-		// Otherwise, there are no decorators.  Parse the result as either a primitive type or unresolved name.
-		switch ast.PrimitiveType(refs) {
-		case ast.PrimitiveTypeAny:
-			return ast.NewAnyType()
-		case ast.PrimitiveTypeString:
-			return ast.NewStringType()
-		case ast.PrimitiveTypeNumber:
-			return ast.NewNumberType()
-		case ast.PrimitiveTypeBool:
-			return ast.NewBoolType()
-		case ast.PrimitiveTypeService:
-			return ast.NewServiceType()
-		}
-
-		// If we didn't recognize anything thus far, it's a simple name.  We don't yet know what it references --
-		// it could be a stack, schema, or even a completely bogus, missing name -- so just store it as it is.
-		if _, err := ref.Parse(); err != nil {
-			a.Diag().Errorf(errors.ErrorIllegalNameLikeSyntax, refs, err)
-		} else {
-			return ast.NewUnresolvedRefType(&ref)
-		}
-	}
-
-	return nil
+	prop.BoundType = a.parseType(prop.Type)
 }
 
 func (a *ptAnalyzer) VisitServices(parent *ast.Stack, svcs *ast.Services) {
@@ -200,4 +144,65 @@ func (a *ptAnalyzer) untypedServiceToTyped(parent *ast.Stack, name ast.Name, pub
 
 func (a *ptAnalyzer) VisitService(pstack *ast.Stack, parent *ast.Services, name ast.Name, public bool,
 	svc *ast.Service) {
+}
+
+// parseType produces an ast.Type.  This will not have been bound yet, so for example, we won't know whether
+// an arbitrary non-primitive reference name references a stack or a schema, however at least this is a start.
+func (a *ptAnalyzer) parseType(ref ast.Ref) *ast.Type {
+	refs := string(ref)
+
+	mix := strings.Index(refs, ast.TypeDecorsMapPrefix)
+	if mix == 0 {
+		// If we have a map, find the separator, and then parse the key and value parts.
+		rest := refs[mix+len(ast.TypeDecorsMapPrefix):]
+		if sep := strings.Index(rest, ast.TypeDecorsMapSeparator); sep != -1 {
+			keyn := ast.Ref(rest[:sep])
+			valn := ast.Ref(rest[:sep+len(ast.TypeDecorsMapSeparator)])
+			keyt := a.parseType(keyn)
+			valt := a.parseType(valn)
+			if keyt != nil && valt != nil {
+				return ast.NewMapType(keyt, valt)
+			}
+		} else {
+			a.Diag().Errorf(errors.ErrorIllegalMapLikeSyntax, refs)
+		}
+	} else if aix := strings.Index(refs, ast.TypeDecorsArrayPrefix); aix != -1 {
+		if aix == 0 {
+			// If we have an array, peel off the front and keep going.
+			rest := refs[aix+len(ast.TypeDecorsArrayPrefix):]
+			if elem := a.parseType(ast.Ref(rest)); elem != nil {
+				return ast.NewArrayType(elem)
+			}
+		} else {
+			// The array part was in the wrong position.  Issue an error.  Maybe they did T[] instead of []T?
+			a.Diag().Errorf(errors.ErrorIllegalArrayLikeSyntax, refs)
+		}
+	} else if mix != -1 {
+		// The map part was in the wrong position.  Issue an error.
+		a.Diag().Errorf(errors.ErrorIllegalMapLikeSyntax, refs)
+	} else {
+		// Otherwise, there are no decorators.  Parse the result as either a primitive type or unresolved name.
+		switch ast.PrimitiveType(refs) {
+		case ast.PrimitiveTypeAny:
+			return ast.NewAnyType()
+		case ast.PrimitiveTypeString:
+			return ast.NewStringType()
+		case ast.PrimitiveTypeNumber:
+			return ast.NewNumberType()
+		case ast.PrimitiveTypeBool:
+			return ast.NewBoolType()
+		case ast.PrimitiveTypeService:
+			return ast.NewServiceType()
+		}
+
+		// If we didn't recognize anything thus far, it's a simple name.  We don't yet know what it references --
+		// it could be a stack, schema, or even a completely bogus, missing name -- so just store it as it is.
+		if _, err := ref.Parse(); err != nil {
+			a.Diag().Errorf(errors.ErrorIllegalNameLikeSyntax, refs, err)
+		} else {
+			return ast.NewUnresolvedRefType(&ref)
+		}
+	}
+
+	return nil
 }

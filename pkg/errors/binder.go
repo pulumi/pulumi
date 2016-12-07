@@ -39,12 +39,12 @@ var ErrorCannotCreateAbstractStack = &diag.Diag{
 
 var ErrorMissingRequiredProperty = &diag.Diag{
 	ID:      506,
-	Message: "Missing required property '%v' on '%v'",
+	Message: "Missing required property '%v'",
 }
 
 var ErrorUnrecognizedProperty = &diag.Diag{
 	ID:      507,
-	Message: "Unrecognized property '%v' on '%v'",
+	Message: "Unrecognized property '%v'",
 }
 
 var ErrorIncorrectType = &diag.Diag{
@@ -80,4 +80,24 @@ var ErrorServiceSelectorIsPrivate = &diag.Diag{
 var ErrorNotAName = &diag.Diag{
 	ID:      514,
 	Message: "The string '%v' is not a valid name (expected: " + ast.NamePartRegexps + ")",
+}
+
+var ErrorStackTypeExpected = &diag.Diag{
+	ID:      515,
+	Message: "A stack type was expected here; '%v' did not resolve to a stack ('%v')",
+}
+
+var ErrorSchemaTypeExpected = &diag.Diag{
+	ID:      516,
+	Message: "A schema type was expected here; '%v' did not resolve to a schema ('%v')",
+}
+
+var ErrorSchemaConstraintUnmet = &diag.Diag{
+	ID:      517,
+	Message: "Schema constraint %v unmet; expected %v, got %v",
+}
+
+var ErrorSchemaConstraintType = &diag.Diag{
+	ID:      517,
+	Message: "Unexpected type conflict with constraint %v; expected %v, got %v",
 }

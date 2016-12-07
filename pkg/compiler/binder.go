@@ -3,12 +3,16 @@
 package compiler
 
 import (
+	"fmt"
 	"reflect"
+	"regexp"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/golang/glog"
 
 	"github.com/marapongo/mu/pkg/ast"
+	"github.com/marapongo/mu/pkg/ast/conv"
 	"github.com/marapongo/mu/pkg/compiler/core"
 	"github.com/marapongo/mu/pkg/diag"
 	"github.com/marapongo/mu/pkg/errors"
@@ -275,10 +279,20 @@ func (p *binderPreparePhase) VisitSchemas(parent *ast.Stack, schemas *ast.Schema
 
 func (p *binderPreparePhase) VisitSchema(pstack *ast.Stack, parent *ast.Schemas, name ast.Name,
 	public bool, schema *ast.Schema) {
-	// TODO[marapongo/mu#9]: implement this as part of extensible schema types.
+
+	// If the schema has an unresolved base type, add it as a bound dependency.
+	if schema.BoundBase != nil && schema.BoundBase.IsUnresolvedRef() {
+		p.registerDependency(pstack, *schema.BoundBase.Unref)
+	}
+
+	// Add this schema to the symbol table so that this stack can reference it.
+	sym := NewSchemaSymbol(schema.Name, schema)
+	if !p.b.RegisterSymbol(sym) {
+		p.Diag().Errorf(errors.ErrorSymbolAlreadyExists.At(pstack), sym.Name)
+	}
 }
 
-func (p *binderPreparePhase) VisitProperty(parent *ast.Stack, name string, prop *ast.Property) {
+func (p *binderPreparePhase) VisitProperty(parent *ast.Stack, schema *ast.Schema, name string, prop *ast.Property) {
 	// For properties whose types represent stack types, register them as a dependency.
 	if prop.BoundType.IsUnresolvedRef() {
 		p.registerDependency(parent, *prop.BoundType.Unref)
@@ -398,7 +412,6 @@ func (p *binderBindPhase) VisitStack(stack *ast.Stack) {
 	if stack.Base != "" {
 		// TODO[marapongo/mu#7]: we need to plumb construction properties for this stack.
 		stack.BoundBase = p.ensureStack(stack.Base, nil)
-		util.Assert(stack.BoundBase != nil)
 	}
 
 	// Non-abstract Stacks must declare at least one Service.
@@ -412,10 +425,21 @@ func (p *binderBindPhase) VisitSchemas(parent *ast.Stack, schemas *ast.Schemas) 
 
 func (p *binderBindPhase) VisitSchema(pstack *ast.Stack, parent *ast.Schemas, name ast.Name,
 	public bool, schema *ast.Schema) {
-	// TODO[marapongo/mu#9]: implement this as part of extensible schema types.
+
+	// Ensure the base schema is available to us.
+	if schema.BoundBase != nil && schema.BoundBase.IsUnresolvedRef() {
+		ref := *schema.BoundBase.Unref
+		base := p.ensureType(ref)
+		// Check to ensure that the base is of one of the legal kinds.
+		if !base.IsPrimitive() && !base.IsSchema() {
+			p.Diag().Errorf(errors.ErrorSchemaTypeExpected, ref, base)
+		}
+	}
+
+	// TODO: ensure that schemas with constraints don't have illegal constraints (wrong type; regex won't parse; etc).
 }
 
-func (p *binderBindPhase) VisitProperty(parent *ast.Stack, name string, prop *ast.Property) {
+func (p *binderBindPhase) VisitProperty(parent *ast.Stack, schema *ast.Schema, name string, prop *ast.Property) {
 	// For properties whose types represent unresolved names, we must bind them to a name now.
 	if prop.BoundType.IsUnresolvedRef() {
 		prop.BoundType = p.ensureType(*prop.BoundType.Unref)
@@ -433,40 +457,40 @@ func (p *binderBindPhase) VisitService(pstack *ast.Stack, parent *ast.Services, 
 	util.AssertMF(svc.Type != "",
 		"Expected all Services to have types in binding phase2; %v is missing one", svc.Name)
 	svc.BoundType = p.ensureStack(svc.Type, svc.Properties)
-	util.Assert(svc.BoundType != nil)
 
 	// A service cannot instantiate an abstract stack.
-	if svc.BoundType.Abstract {
+	if svc.BoundType != nil && svc.BoundType.Abstract {
 		p.Diag().Errorf(errors.ErrorCannotCreateAbstractStack.At(pstack), svc.Name, svc.BoundType.Name)
 	}
 }
 
-// ensureStack binds a ref to a symbol, possibly instantiating it, and returns a fully bound stack.
+// ensureStack binds a ref to a stack symbol, possibly instantiating it if needed.
 func (p *binderBindPhase) ensureStack(ref ast.Ref, props ast.PropertyBag) *ast.Stack {
 	ty := p.ensureType(ref)
-	util.Assert(ty != nil)
 
 	// There are two possibilities.  The first is that a type resolves to an *ast.Stack.  That's simple, we just fetch
 	// and return it.  The second is that a type resolves to a *diag.Document.  That's more complex, as we need to
 	// actually parse the stack from a document, supplying properties, etc., for template expansion.
 	if ty.IsStack() {
 		return ty.Stack
-	} else {
-		util.Assert(ty.IsUninstStack())
-
+	} else if ty.IsUninstStack() {
 		// We have the dependency's Mufile; now we must "instantiate it", by parsing it and returning the result.  Note
 		// that this will be processed later on in semantic analysis, to ensure semantic problems are caught.
 		pa := NewParser(p.b.c)
 		stack := pa.ParseStack(ty.UninstStack.Doc, props)
 		if !pa.Diag().Success() {
+			// If we failed to parse the stack, there was something wrong with our dependency information.  Bail out.
 			return nil
 		}
 		p.deps = append(p.deps, stack)
 		return stack
+	} else {
+		p.Diag().Errorf(errors.ErrorStackTypeExpected, ref, ty)
+		return nil
 	}
 }
 
-// ensureType looksType up a ref, either as a stack, document, or schema symbol, and returns it as-is.
+// ensureStackType looks up a ref, either as a stack, document, or schema symbol, and returns it as-is.
 func (p *binderBindPhase) ensureType(ref ast.Ref) *ast.Type {
 	nm := refToName(ref)
 	stack, exists := p.b.LookupStack(nm)
@@ -511,7 +535,7 @@ func (p *binderValidatePhase) VisitDependency(parent *ast.Workspace, ref ast.Ref
 func (p *binderValidatePhase) VisitStack(stack *ast.Stack) {
 	if stack.PropertyValues != nil {
 		// Bind property values.
-		stack.BoundPropertyValues = p.bindProperties(stack, stack, stack.PropertyValues)
+		stack.BoundPropertyValues = p.bindProperties(&stack.Node, stack.Properties, stack.PropertyValues)
 	}
 	if stack.Base != "" {
 		util.Assert(stack.BoundBase != nil)
@@ -524,10 +548,9 @@ func (p *binderValidatePhase) VisitSchemas(parent *ast.Stack, schemas *ast.Schem
 
 func (p *binderValidatePhase) VisitSchema(pstack *ast.Stack, parent *ast.Schemas, name ast.Name,
 	public bool, schema *ast.Schema) {
-	// TODO[marapongo/mu#9]: implement this as part of extensible schema types.
 }
 
-func (p *binderValidatePhase) VisitProperty(parent *ast.Stack, name string, prop *ast.Property) {
+func (p *binderValidatePhase) VisitProperty(parent *ast.Stack, schema *ast.Schema, name string, prop *ast.Property) {
 }
 
 func (p *binderValidatePhase) VisitServices(parent *ast.Stack, svcs *ast.Services) {
@@ -538,8 +561,7 @@ func (p *binderValidatePhase) VisitService(pstack *ast.Stack, parent *ast.Servic
 	util.Assert(svc.BoundType != nil)
 	if svc.BoundType.PropertyValues == nil {
 		// For some types, there aren't any property values (e.g., built-in types).  For those, bind now.
-		// TODO: we could clean this up a bit by having primitive types work more like unconstructed types.
-		svc.BoundProperties = p.bindProperties(pstack, svc.BoundType, svc.Properties)
+		svc.BoundProperties = p.bindProperties(&pstack.Node, svc.BoundType.Properties, svc.Properties)
 	} else {
 		// For imported types, we should have property values, which already got bound in an earlier phase.
 		util.Assert(svc.BoundType.BoundPropertyValues != nil)
@@ -550,17 +572,17 @@ func (p *binderValidatePhase) VisitService(pstack *ast.Stack, parent *ast.Servic
 
 // bindProperties typechecks a set of unbounded properties against the target stack, and expands them into a bag
 // of bound properties (with AST nodes rather than the naked parsed types).
-func (p *binderValidatePhase) bindProperties(parent *ast.Stack, stack *ast.Stack,
-	props ast.PropertyBag) ast.LiteralPropertyBag {
+func (p *binderValidatePhase) bindProperties(node *ast.Node, props ast.Properties,
+	vals ast.PropertyBag) ast.LiteralPropertyBag {
 	bound := make(ast.LiteralPropertyBag)
 
 	// First, enumerate all known properties on the stack.  Ensure all required properties are present, expand default
 	// values for missing ones where applicable, and check that types are correct, converting them as appropriate.
-	for _, pname := range ast.StableProperties(stack.Properties) {
-		prop := stack.Properties[pname]
+	for _, pname := range ast.StableProperties(props) {
+		prop := props[pname]
 
 		// First see if a value has been supplied by the caller.
-		val, has := props[pname]
+		val, has := vals[pname]
 		if !has {
 			if prop.Default != nil {
 				// If the property has a default value, stick it in and process it normally.
@@ -570,7 +592,7 @@ func (p *binderValidatePhase) bindProperties(parent *ast.Stack, stack *ast.Stack
 				continue
 			} else {
 				// If there's no value, no default, and it isn't optional, issue an error and move on.
-				p.Diag().Errorf(errors.ErrorMissingRequiredProperty.At(parent), pname, stack.Name)
+				p.Diag().Errorf(errors.ErrorMissingRequiredProperty.At(node), pname)
 				continue
 			}
 		}
@@ -581,10 +603,10 @@ func (p *binderValidatePhase) bindProperties(parent *ast.Stack, stack *ast.Stack
 		}
 	}
 
-	for _, pname := range ast.StablePropertyBag(props) {
-		if _, ok := stack.Properties[pname]; !ok {
+	for _, pname := range ast.StablePropertyBag(vals) {
+		if _, ok := props[pname]; !ok {
 			// TODO: edit distance checking to help with suggesting a fix.
-			p.Diag().Errorf(errors.ErrorUnrecognizedProperty.At(parent), pname, stack.Name)
+			p.Diag().Errorf(errors.ErrorUnrecognizedProperty.At(node), pname)
 		}
 	}
 
@@ -595,90 +617,215 @@ func (p *binderValidatePhase) bindProperties(parent *ast.Stack, stack *ast.Stack
 func (p *binderValidatePhase) bindValue(node *ast.Node, val interface{}, ty *ast.Type) ast.Literal {
 	util.Assert(ty != nil)
 	if ty.IsDecors() {
-		// For decorated types, we need to recurse.
-		if ty.Decors.ElemType != nil {
-			if arr := reflect.ValueOf(val); arr.Kind() == reflect.Slice {
-				len := arr.Len()
-				lits := make([]ast.Literal, len)
-				err := false
-				for i := 0; i < len; i++ {
-					if lits[i] = p.bindValue(node, arr.Index(i), ty.Decors.ElemType); lits[i] == nil {
-						err = true
-					}
-				}
-				if !err {
-					return ast.NewArrayLiteral(node, ty.Decors.ElemType, lits)
-				}
-			}
-		} else {
-			util.Assert(ty.Decors.KeyType != nil)
-			util.Assert(ty.Decors.ValueType != nil)
-
-			// TODO: ensure that keytype is something we can actually use as a key (primitive).
-
-			if m := reflect.ValueOf(val); m.Kind() == reflect.Map {
-				mk := m.MapKeys()
-				keys := make([]ast.Literal, len(mk))
-				err := false
-				for i := 0; i < len(mk); i++ {
-					if keys[i] = p.bindValue(node, mk[i], ty.Decors.KeyType); keys[i] == nil {
-						err = true
-					}
-				}
-				vals := make([]ast.Literal, len(mk))
-				for i := 0; i < len(mk); i++ {
-					if vals[i] = p.bindValue(node, m.MapIndex(mk[i]), ty.Decors.ValueType); vals[i] == nil {
-						err = true
-					}
-				}
-				if !err {
-					return ast.NewMapLiteral(node, ty.Decors.KeyType, ty.Decors.ValueType, keys, vals)
-				}
-			}
-		}
+		return p.bindDecorsValue(node, val, ty.Decors)
 	} else if ty.IsPrimitive() {
-		// For primitive types, simply cast the target to the expected type.
-		switch *ty.Primitive {
-		case ast.PrimitiveTypeAny:
-			// Any is easy: just store it as-is.
-			// TODO(joe): eventually we'll need to do translation to canonicalize the contents.
-			return ast.NewAnyLiteral(node, val)
-		case ast.PrimitiveTypeString:
-			if s, ok := val.(string); ok {
-				return ast.NewStringLiteral(node, s)
-			}
-		case ast.PrimitiveTypeNumber:
-			if n, ok := val.(float64); ok {
-				return ast.NewNumberLiteral(node, n)
-			}
-		case ast.PrimitiveTypeBool:
-			if b, ok := val.(bool); ok {
-				return ast.NewBoolLiteral(node, b)
-			}
-		case ast.PrimitiveTypeService:
-			// Extract the name of the service reference as a string.  Then bind it to an actual service in our symbol
-			// table, and store a strong reference to the result.  This lets the backend connect the dots.
-			if s, ok := val.(string); ok {
-				if ref := p.bindServiceRef(node, s, nil); ref != nil {
-					return ast.NewServiceLiteral(node, ref)
-				}
-			}
-		}
+		return p.bindPrimitiveValue(node, val, *ty.Primitive)
 	} else if ty.IsStack() {
-		// Bind the capability ref for this stack type.
-		if s, ok := val.(string); ok {
-			if ref := p.bindServiceRef(node, s, ty); ref != nil {
-				return ast.NewServiceLiteral(node, ref)
-			}
-		}
+		return p.bindServiceValue(node, val, ty)
 	} else if ty.IsSchema() {
-		// TODO[marapongo/mu#9]: implement this as part of extensible schema types.
-		util.FailM("Custom schema types not yet supported")
+		return p.bindSchemaValue(node, val, ty.Schema)
 	} else if ty.IsUnresolvedRef() {
 		util.FailM("Expected all unresolved refs to be gone by this phase in binding")
 	}
 
 	p.Diag().Errorf(errors.ErrorIncorrectType.At(node), ty, reflect.TypeOf(val))
+	return nil
+}
+
+func (p *binderValidatePhase) bindDecorsValue(node *ast.Node, val interface{}, decors *ast.TypeDecors) ast.Literal {
+	// For decorated types, we need to recurse.
+	if decors.ElemType != nil {
+		if arr := reflect.ValueOf(val); arr.Kind() == reflect.Slice {
+			len := arr.Len()
+			lits := make([]ast.Literal, len)
+			err := false
+			for i := 0; i < len; i++ {
+				if lits[i] = p.bindValue(node, arr.Index(i), decors.ElemType); lits[i] == nil {
+					err = true
+				}
+			}
+			if !err {
+				return ast.NewArrayLiteral(node, decors.ElemType, lits)
+			}
+		}
+	} else {
+		util.Assert(decors.KeyType != nil)
+		util.Assert(decors.ValueType != nil)
+
+		// TODO: ensure that keytype is something we can actually use as a key (primitive).
+
+		if m := reflect.ValueOf(val); m.Kind() == reflect.Map {
+			mk := m.MapKeys()
+			keys := make([]ast.Literal, len(mk))
+			err := false
+			for i := 0; i < len(mk); i++ {
+				if keys[i] = p.bindValue(node, mk[i], decors.KeyType); keys[i] == nil {
+					err = true
+				}
+			}
+			vals := make([]ast.Literal, len(mk))
+			for i := 0; i < len(mk); i++ {
+				if vals[i] = p.bindValue(node, m.MapIndex(mk[i]), decors.ValueType); vals[i] == nil {
+					err = true
+				}
+			}
+			if !err {
+				return ast.NewMapLiteral(node, decors.KeyType, decors.ValueType, keys, vals)
+			}
+		}
+	}
+
+	return nil
+}
+
+func (p *binderValidatePhase) bindPrimitiveValue(node *ast.Node, val interface{}, prim ast.PrimitiveType) ast.Literal {
+	// For primitive types, simply cast the target to the expected type.
+	switch prim {
+	case ast.PrimitiveTypeAny:
+		// Any is easy: just store it as-is.
+		// TODO(joe): eventually we'll need to do translation to canonicalize the contents.
+		return ast.NewAnyLiteral(node, val)
+	case ast.PrimitiveTypeString:
+		if s, ok := val.(string); ok {
+			return ast.NewStringLiteral(node, s)
+		}
+		return nil
+	case ast.PrimitiveTypeNumber:
+		if n, ok := val.(float64); ok {
+			return ast.NewNumberLiteral(node, n)
+		}
+		return nil
+	case ast.PrimitiveTypeBool:
+		if b, ok := val.(bool); ok {
+			return ast.NewBoolLiteral(node, b)
+		}
+		return nil
+	case ast.PrimitiveTypeService:
+		// Extract the name of the service reference as a string.  Then bind it to an actual service in our symbol
+		// table, and store a strong reference to the result.  This lets the backend connect the dots.
+		return p.bindServiceValue(node, val, nil)
+	default:
+		util.FailMF("Unrecognized primitive type: %v", prim)
+		return nil
+	}
+}
+
+func (p *binderValidatePhase) bindServiceValue(node *ast.Node, val interface{}, expect *ast.Type) ast.Literal {
+	// Bind the capability ref for this stack type.
+	if s, ok := val.(string); ok {
+		if ref := p.bindServiceRef(node, s, expect); ref != nil {
+			return ast.NewServiceLiteral(node, ref)
+		}
+	}
+	return nil
+}
+
+func (p *binderValidatePhase) bindSchemaValue(node *ast.Node, val interface{}, schema *ast.Schema) ast.Literal {
+	// Bind the custom schema type.  This is rather involved, but there are two primary cases:
+	//     1) A base type exists, plus an optional set of constraints on that base type (if it's a primitive).
+	//     2) A set of properties exist, meaning an entirely custom object.  We must go recursive.
+	// TODO[marapongo/mu#9]: we may want to support mixing these (e.g., additive properties); for now, we won't.
+	if schema.BoundBase != nil {
+		// There is a base type.  Bind it as-is, and then apply any additional constraints we have added.
+		util.Assert(schema.Properties == nil)
+		lit := p.bindValue(node, val, schema.BoundBase)
+		if lit != nil {
+			// The following constraints are valid only on strings:
+			if schema.Pattern != nil {
+				if s, ok := conv.ToString(lit); ok {
+					rex := regexp.MustCompile(*schema.Pattern)
+					if rex.FindString(s) != s {
+						p.Diag().Errorf(errors.ErrorSchemaConstraintUnmet, "pattern", schema.Pattern, s)
+					}
+				} else {
+					p.Diag().Errorf(errors.ErrorSchemaConstraintType, "maxLength", ast.PrimitiveTypeString, lit.Type())
+				}
+			}
+			if schema.MaxLength != nil {
+				if s, ok := conv.ToString(lit); ok {
+					c := utf8.RuneCountInString(s)
+					if float64(c) > *schema.MaxLength {
+						p.Diag().Errorf(errors.ErrorSchemaConstraintUnmet,
+							"maxLength", fmt.Sprintf("max %v", schema.MaxLength), c)
+					}
+				} else {
+					p.Diag().Errorf(errors.ErrorSchemaConstraintType, "maxLength", ast.PrimitiveTypeString, lit.Type())
+				}
+			}
+			if schema.MinLength != nil {
+				if s, ok := conv.ToString(lit); ok {
+					c := utf8.RuneCountInString(s)
+					if float64(c) < *schema.MinLength {
+						p.Diag().Errorf(errors.ErrorSchemaConstraintUnmet,
+							"minLength", fmt.Sprintf("min %v", schema.MinLength), c)
+					}
+				} else {
+					p.Diag().Errorf(errors.ErrorSchemaConstraintType, "minLength", ast.PrimitiveTypeString, lit.Type())
+				}
+			}
+
+			// The following constraints are valid only on numeric ypes:
+			if schema.Maximum != nil {
+				if n, ok := conv.ToNumber(lit); ok {
+					if n > *schema.Maximum {
+						p.Diag().Errorf(errors.ErrorSchemaConstraintUnmet,
+							"maximum", fmt.Sprintf("max %v", schema.Maximum), n)
+					}
+				} else {
+					p.Diag().Errorf(errors.ErrorSchemaConstraintType, "maximum", ast.PrimitiveTypeNumber, lit.Type())
+				}
+			}
+			if schema.Minimum != nil {
+				if n, ok := conv.ToNumber(lit); ok {
+					if n < *schema.Minimum {
+						p.Diag().Errorf(errors.ErrorSchemaConstraintUnmet,
+							"minimum", fmt.Sprintf("min %v", schema.Minimum), n)
+					}
+				} else {
+					p.Diag().Errorf(errors.ErrorSchemaConstraintType, "minimum", ast.PrimitiveTypeNumber, lit.Type())
+				}
+			}
+
+			// The following constraints are valid on strings *and* number types.
+			if len(schema.Enum) > 0 {
+				if s, ok := conv.ToString(lit); ok {
+					ok := false
+					for _, e := range schema.Enum {
+						if s == e.(string) {
+							ok = true
+							break
+						}
+					}
+					if !ok {
+						p.Diag().Errorf(errors.ErrorSchemaConstraintUnmet,
+							"enum", fmt.Sprintf("enum %v", schema.Enum), s)
+					}
+				} else if n, ok := conv.ToNumber(lit); ok {
+					ok := false
+					for _, e := range schema.Enum {
+						if n == e.(float64) {
+							ok = true
+							break
+						}
+					}
+					if !ok {
+						p.Diag().Errorf(errors.ErrorSchemaConstraintUnmet,
+							"enum", fmt.Sprintf("enum %v", schema.Enum), n)
+					}
+				} else {
+					p.Diag().Errorf(errors.ErrorSchemaConstraintType,
+						"enum", ast.PrimitiveTypeString+" or "+ast.PrimitiveTypeNumber, lit.Type())
+				}
+			}
+		}
+	} else if schema.Properties != nil {
+		// There are some properties.  This is a custom type.  Bind the properties as usual.
+		if props, ok := val.(ast.PropertyBag); ok {
+			bag := p.bindProperties(node, schema.Properties, props)
+			return ast.NewSchemaLiteral(node, schema, bag)
+		}
+	}
+
 	return nil
 }
 

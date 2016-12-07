@@ -282,19 +282,19 @@ func (l *mapLiteral) ValueType() *Type  { return l.valType }
 func (l *mapLiteral) Keys() []Literal   { return l.keys }
 func (l *mapLiteral) Values() []Literal { return l.vals }
 
-// NewComplexLiteral allocates a fresh ComplexLiteral with the given contents.
-func NewTypedLiteral(node *Node, typ *Type, val interface{}) ComplexLiteral {
-	return &complexLiteral{node, typ, val}
+// NewSchemaLiteral allocates a fresh SchemaLiteral with the given contents.
+func NewSchemaLiteral(node *Node, schema *Schema, props LiteralPropertyBag) SchemaLiteral {
+	return &schemaLiteral{node, schema, props}
 }
 
-type complexLiteral struct {
-	node *Node
-	typ  *Type
-	val  interface{}
+type schemaLiteral struct {
+	node   *Node
+	schema *Schema
+	props  LiteralPropertyBag
 }
 
-var _ ComplexLiteral = &complexLiteral{} // ensure complexLiteral implements ComplexLiteral.
+var _ SchemaLiteral = &schemaLiteral{} // ensure schemaLiteral implements SchemaLiteral.
 
-func (l *complexLiteral) Node() *Node        { return l.node }
-func (l *complexLiteral) Type() *Type        { return l.typ }
-func (l *complexLiteral) Value() interface{} { return l.val }
+func (l *schemaLiteral) Node() *Node                    { return l.node }
+func (l *schemaLiteral) Type() *Type                    { return NewSchemaType(l.schema) }
+func (l *schemaLiteral) Properties() LiteralPropertyBag { return l.props }

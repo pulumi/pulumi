@@ -152,29 +152,28 @@ type Schemas struct {
 type SchemaMap map[Name]*Schema
 
 // Schema represents a complex schema type that extends Mu's type system and can be used by name.
-// TODO: support the full set of JSON schema operators (like allOf, anyOf, etc.); to see the full list, refer to the
-//     spec: http://json-schema.org/latest/json-schema-validation.html.
-// TODO: we deviate from the spec in a few areas; for example, we default to required and support optional.  We should
-//     do an audit of all such places and decide whether it's worth deviating.  If yes, we should clearly document.
+// TODO[marapongo/mu#9]: support the full set of JSON schema operators (like allOf, anyOf, etc.); to see the full list,
+//     refer to the spec: http://json-schema.org/latest/json-schema-validation.html.
+// TODO[marapongo/mu#9]: we deviate from the spec in a few areas; e.g., we default to required and support optional.  We
+//     should do an audit of all such places and decide whether it's worth deviating.  If yes, we must clearly document.
 type Schema struct {
 	Node
 
 	Base       Ref        `json:"base,omitempty"`       // the base type from which this derives.
-	Properties Properties `json:"properties,omitempty"` // all of the custom properties for object-based types.
-
-	// constraints for all types:
-	Enum []interface{} `json:"enum,omitempty"` // an optional enum of legal values.
+	BoundBase  *Type      `json:"-"`                    // base, optionally bound during analysis.
+	Properties Properties `json:"properties,omitempty"` // all of the custom properties for object types.
 
 	// constraints for string types:
-	Pattern   string  `json:"pattern,omitempty"`   // an optional regex pattern for string types.
-	MaxLength float64 `json:"maxLength,omitempty"` // an optional max string length (in characters).
-	MinLength float64 `json:"minLength,omitempty"` // an optional min string length (in characters).
+	Pattern   *string  `json:"pattern,omitempty"`   // an optional regex pattern for string types.
+	MaxLength *float64 `json:"maxLength,omitempty"` // an optional max string length (in characters).
+	MinLength *float64 `json:"minLength,omitempty"` // an optional min string length (in characters).
 
 	// constraints for numeric types:
-	Maximum          float64 `json:"maximum,omitempty"`          // an optional max value for numeric types.
-	ExclusiveMaximum float64 `json:"exclusiveMaximum,omitempty"` // an optional exclusive max value for numeric types.
-	Minimum          float64 `json:"minimum,omitempty"`          // an optional min value for numeric types.
-	ExclusiveMinimum float64 `json:"exclusiveMinimum,omitempty"` // an optional exclusive min value for numeric types.
+	Maximum *float64 `json:"maximum,omitempty"` // an optional max value for numeric types.
+	Minimum *float64 `json:"minimum,omitempty"` // an optional min value for numeric types.
+
+	// constraints for strings *and* number types:
+	Enum []interface{} `json:"enum,omitempty"` // an optional enum of legal values.
 
 	Name   Name `json:"-"` // a friendly name; decorated post-parsing, since it is contextual.
 	Public bool `json:"-"` // true if this schema type is publicly exposed; also decorated post-parsing.
@@ -280,11 +279,11 @@ type MapLiteral interface {
 	Values() []Literal
 }
 
-// ComplexLiteral is an AST node containing a literal value that is strongly typed, but too complex to represent
+// SchemaLiteral is an AST node containing a literal value that is strongly typed, but too complex to represent
 // structually in Go's type system.  For these types, we resort to dynamic manipulation of the contents.
-type ComplexLiteral interface {
+type SchemaLiteral interface {
 	Literal
-	Value() interface{}
+	Properties() LiteralPropertyBag
 }
 
 // TODO[marapongo/mu#9]: extensible schema support.
