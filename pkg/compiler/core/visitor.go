@@ -88,7 +88,7 @@ func (v *inOrderVisitor) VisitStack(stack *ast.Stack) {
 		v.pre.VisitStack(stack)
 	}
 
-	v.VisitSchemas(stack, &stack.Schema)
+	v.VisitSchemas(stack, &stack.Types)
 	for _, name := range ast.StableProperties(stack.Properties) {
 		v.VisitProperty(stack, nil, name, stack.Properties[name])
 	}

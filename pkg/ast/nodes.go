@@ -98,9 +98,9 @@ type Stack struct {
 	Abstract            bool               `json:"abstract,omitempty"`  // true if this stack is "abstract".
 	Intrinsic           bool               `json:"intrinsic,omitempty"` // true if this stack is an "intrinsic" type.
 	Properties          Properties         `json:"properties,omitempty"`
-	PropertyValues      PropertyBag        `json:"-"`                // the properties used to construct this stack.
-	BoundPropertyValues LiteralPropertyBag `json:"-"`                // bound properties used to construct this stack.
-	Schema              Schemas            `json:"schema,omitempty"` // an optional schema section with custom types.
+	PropertyValues      PropertyBag        `json:"-"`               // the properties used to construct this stack.
+	BoundPropertyValues LiteralPropertyBag `json:"-"`               // bound properties used to construct this stack.
+	Types               Schemas            `json:"types,omitempty"` // an optional types section with custom schemas.
 	Services            Services           `json:"services,omitempty"`
 
 	Doc *diag.Document `json:"-"` // the document from which this came.
