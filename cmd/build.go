@@ -27,6 +27,7 @@ func newBuildCmd() *cobra.Command {
 	var outp string
 	var cluster string
 	var targetArch string
+	var skipCodegen bool
 	var cmd = &cobra.Command{
 		Use:   "build [source] -- [args]",
 		Short: "Compile a Mu Stack",
@@ -52,6 +53,10 @@ func newBuildCmd() *cobra.Command {
 			}
 
 			opts := compiler.DefaultOpts(abs)
+
+			if skipCodegen {
+				opts.SkipCodegen = true
+			}
 
 			// Set the cluster and architecture if specified.
 			opts.Cluster = cluster
@@ -103,6 +108,9 @@ func newBuildCmd() *cobra.Command {
 	cmd.PersistentFlags().StringVarP(
 		&targetArch, "target", "t", "",
 		"Generate output for the target cloud architecture (format: \"cloud[:scheduler]\")")
+	cmd.PersistentFlags().BoolVar(
+		&skipCodegen, "skip-codegen", false,
+		"Skip code-generation phases of the compiler")
 
 	return cmd
 }
