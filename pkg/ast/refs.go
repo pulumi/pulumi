@@ -48,8 +48,11 @@ func (r Ref) Parse() (RefParts, error) {
 	}
 
 	// Anything remaining at this point represents the name.
-	parsed.Name = Name(s)
+	if s == "" {
+		return parsed, errors.New("Expected a name")
+	}
 
+	parsed.Name = Name(s)
 	return parsed, nil
 }
 
