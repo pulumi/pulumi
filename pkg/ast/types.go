@@ -169,7 +169,7 @@ type anyLiteral struct {
 	any  interface{}
 }
 
-var _ AnyLiteral = &anyLiteral{} // ensure anyLiteral implements AnyLiteral.
+var _ AnyLiteral = (*anyLiteral)(nil) // ensure anyLiteral implements AnyLiteral.
 
 func (l *anyLiteral) Node() *Node      { return l.node }
 func (l *anyLiteral) Type() *Type      { return NewAnyType() }
@@ -185,7 +185,7 @@ type boolLiteral struct {
 	b    bool
 }
 
-var _ BoolLiteral = &boolLiteral{} // ensure boolLiteral implements BoolLiteral.
+var _ BoolLiteral = (*boolLiteral)(nil) // ensure boolLiteral implements BoolLiteral.
 
 func (l *boolLiteral) Node() *Node { return l.node }
 func (l *boolLiteral) Type() *Type { return NewBoolType() }
@@ -201,7 +201,7 @@ type numberLiteral struct {
 	n    float64
 }
 
-var _ NumberLiteral = &numberLiteral{} // ensure numberLiteral implements NumberLiteral.
+var _ NumberLiteral = (*numberLiteral)(nil) // ensure numberLiteral implements NumberLiteral.
 
 func (l *numberLiteral) Node() *Node     { return l.node }
 func (l *numberLiteral) Type() *Type     { return NewNumberType() }
@@ -217,7 +217,7 @@ type stringLiteral struct {
 	s    string
 }
 
-var _ StringLiteral = &stringLiteral{} // ensure stringLiteral implements StringLiteral.
+var _ StringLiteral = (*stringLiteral)(nil) // ensure stringLiteral implements StringLiteral.
 
 func (l *stringLiteral) Node() *Node    { return l.node }
 func (l *stringLiteral) Type() *Type    { return NewStringType() }
@@ -233,7 +233,7 @@ type serviceLiteral struct {
 	sref *ServiceRef
 }
 
-var _ ServiceLiteral = &serviceLiteral{} // ensure serviceLiteral implements ServiceLiteral.
+var _ ServiceLiteral = (*serviceLiteral)(nil) // ensure serviceLiteral implements ServiceLiteral.
 
 func (l *serviceLiteral) Node() *Node { return l.node }
 
@@ -253,7 +253,7 @@ type arrayLiteral struct {
 	arr      []Literal
 }
 
-var _ ArrayLiteral = &arrayLiteral{} // ensure arrayLiteral implements ArrayLiteral.
+var _ ArrayLiteral = (*arrayLiteral)(nil) // ensure arrayLiteral implements ArrayLiteral.
 
 func (l *arrayLiteral) Node() *Node      { return l.node }
 func (l *arrayLiteral) Type() *Type      { return NewArrayType(l.elemType) }
@@ -273,7 +273,7 @@ type mapLiteral struct {
 	vals    []Literal
 }
 
-var _ MapLiteral = &mapLiteral{} // ensure mapLiteral implements MapLiteral.
+var _ MapLiteral = (*mapLiteral)(nil) // ensure mapLiteral implements MapLiteral.
 
 func (l *mapLiteral) Node() *Node       { return l.node }
 func (l *mapLiteral) Type() *Type       { return NewMapType(l.keyType, l.valType) }
@@ -293,7 +293,7 @@ type schemaLiteral struct {
 	props  LiteralPropertyBag
 }
 
-var _ SchemaLiteral = &schemaLiteral{} // ensure schemaLiteral implements SchemaLiteral.
+var _ SchemaLiteral = (*schemaLiteral)(nil) // ensure schemaLiteral implements SchemaLiteral.
 
 func (l *schemaLiteral) Node() *Node                    { return l.node }
 func (l *schemaLiteral) Type() *Type                    { return NewSchemaType(l.schema) }

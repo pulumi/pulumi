@@ -32,7 +32,7 @@ type ptAnalyzer struct {
 	c Compiler
 }
 
-var _ PTAnalyzer = &ptAnalyzer{} // compile-time assert that binder implements PTAnalyzer.
+var _ PTAnalyzer = (*ptAnalyzer)(nil) // compile-time assert that binder implements PTAnalyzer.
 
 func (a *ptAnalyzer) Diag() diag.Sink {
 	return a.c.Diag()

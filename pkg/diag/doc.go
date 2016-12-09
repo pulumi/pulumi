@@ -15,7 +15,7 @@ type Document struct {
 	Parent *Document // if this document was generated from another, this will point to it.
 }
 
-var _ Diagable = &Document{} // compile-time assertion that *Document implements Diagable.
+var _ Diagable = (*Document)(nil) // compile-time assertion that *Document implements Diagable.
 
 func NewDocument(file string) *Document {
 	return &Document{File: file}

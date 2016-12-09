@@ -223,7 +223,7 @@ type binderPreparePhase struct {
 	depsm map[ast.Ref]bool
 }
 
-var _ core.Visitor = &binderPreparePhase{} // compile-time assertion that the binder implements core.Visitor.
+var _ core.Visitor = (*binderPreparePhase)(nil) // compile-time assertion that the binder implements core.Visitor.
 
 func newBinderPreparePhase(b *binder, top *ast.Stack) *binderPreparePhase {
 	return &binderPreparePhase{
@@ -374,7 +374,7 @@ type binderBindPhase struct {
 	deps []*ast.Stack // a set of dependencies instantiated during this binding phase.
 }
 
-var _ core.Visitor = &binderBindPhase{} // compile-time assertion that the binder implements core.Visitor.
+var _ core.Visitor = (*binderBindPhase)(nil) // compile-time assertion that the binder implements core.Visitor.
 
 func newBinderBindPhase(b *binder, top *ast.Stack, deprefs ast.DependencyRefs) *binderBindPhase {
 	p := &binderBindPhase{b: b, top: top}
@@ -513,7 +513,7 @@ type binderValidatePhase struct {
 	b *binder
 }
 
-var _ core.Visitor = &binderValidatePhase{} // compile-time assertion that the binder implements core.Visitor.
+var _ core.Visitor = (*binderValidatePhase)(nil) // compile-time assertion that the binder implements core.Visitor.
 
 func newBinderValidatePhase(b *binder) *binderValidatePhase {
 	return &binderValidatePhase{b: b}
@@ -583,7 +583,7 @@ func (p *binderValidatePhase) bindProperties(node *ast.Node, props ast.Propertie
 
 		// First see if a value has been supplied by the caller.
 		val, has := vals[pname]
-		if !has {
+		if !has || val == nil {
 			if prop.Default != nil {
 				// If the property has a default value, stick it in and process it normally.
 				val = prop.Default
@@ -640,18 +640,22 @@ func (p *binderValidatePhase) bindValue(node *ast.Node, val interface{}, ty *ast
 func (p *binderValidatePhase) bindDecorsValue(node *ast.Node, val interface{}, decors *ast.TypeDecors) ast.Literal {
 	// For decorated types, we need to recurse.
 	if decors.ElemType != nil {
-		if arr := reflect.ValueOf(val); arr.Kind() == reflect.Slice {
+		arr := reflect.ValueOf(val)
+		if arr.Kind() == reflect.Slice {
 			len := arr.Len()
 			lits := make([]ast.Literal, len)
 			err := false
 			for i := 0; i < len; i++ {
-				if lits[i] = p.bindValue(node, arr.Index(i), decors.ElemType); lits[i] == nil {
+				v := arr.Index(i).Interface()
+				if lits[i] = p.bindValue(node, v, decors.ElemType); lits[i] == nil {
 					err = true
 				}
 			}
 			if !err {
 				return ast.NewArrayLiteral(node, decors.ElemType, lits)
 			}
+		} else {
+			glog.V(7).Infof("Expected array for value %v, got %v", val, arr.Kind())
 		}
 	} else {
 		util.Assert(decors.KeyType != nil)
@@ -659,24 +663,33 @@ func (p *binderValidatePhase) bindDecorsValue(node *ast.Node, val interface{}, d
 
 		// TODO: ensure that keytype is something we can actually use as a key (primitive).
 
-		if m := reflect.ValueOf(val); m.Kind() == reflect.Map {
+		m := reflect.ValueOf(val)
+		if m.Kind() == reflect.Map {
 			mk := m.MapKeys()
 			keys := make([]ast.Literal, len(mk))
 			err := false
 			for i := 0; i < len(mk); i++ {
-				if keys[i] = p.bindValue(node, mk[i], decors.KeyType); keys[i] == nil {
+				k := mk[i].Interface()
+				if keys[i] = p.bindValue(node, k, decors.KeyType); keys[i] == nil {
+					glog.V(7).Infof("Error binding map key #%v (%v); expected %v",
+						i, k, decors.KeyType)
 					err = true
 				}
 			}
 			vals := make([]ast.Literal, len(mk))
 			for i := 0; i < len(mk); i++ {
-				if vals[i] = p.bindValue(node, m.MapIndex(mk[i]), decors.ValueType); vals[i] == nil {
+				v := m.MapIndex(mk[i])
+				if vals[i] = p.bindValue(node, v, decors.ValueType); vals[i] == nil {
+					glog.V(7).Infof("Error binding map value #%v (k=%v v=%v); expected %v",
+						i, mk[i].Interface(), v, decors.ValueType)
 					err = true
 				}
 			}
 			if !err {
 				return ast.NewMapLiteral(node, decors.KeyType, decors.ValueType, keys, vals)
 			}
+		} else {
+			glog.V(7).Infof("Expected map for value %v, got %v", val, m.Kind())
 		}
 	}
 

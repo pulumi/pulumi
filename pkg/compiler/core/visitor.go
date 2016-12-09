@@ -36,7 +36,7 @@ type inOrderVisitor struct {
 	post Visitor
 }
 
-var _ Visitor = &inOrderVisitor{} // compile-time assert that inOrderVisitor implements Visitor.
+var _ Visitor = (*inOrderVisitor)(nil) // compile-time assert that inOrderVisitor implements Visitor.
 
 func (v *inOrderVisitor) Diag() diag.Sink {
 	if v.pre != nil {
