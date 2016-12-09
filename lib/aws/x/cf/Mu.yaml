@@ -17,4 +17,5 @@ properties:
         type: service[]
         description: An optional list of other CF resources that this depends on.
         optional: true
+{{require (eq .Arch.Cloud "aws") "aws/x/cf only supported when targeting AWS"}}
 
