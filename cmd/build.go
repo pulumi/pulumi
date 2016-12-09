@@ -60,7 +60,7 @@ func newBuildCmd() *cobra.Command {
 
 			// Set the cluster and architecture if specified.
 			opts.Cluster = cluster
-			setCloudArchOptions(targetArch, &opts)
+			setCloudArchOptions(targetArch, opts)
 
 			// See if there are any arguments and, if so, accumulate them.
 			if len(sargs) > 0 {

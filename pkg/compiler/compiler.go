@@ -30,16 +30,16 @@ type Compiler interface {
 
 // compiler is the canonical implementation of the Mu compiler.
 type compiler struct {
+	opts *Options
 	ctx  *Context
-	opts Options
 	deps map[ast.Ref]*diag.Document // a cache of mapping names to loaded dependencies.
 }
 
 // NewCompiler creates a new instance of the Mu compiler, with the given initialization settings.
-func NewCompiler(opts Options) Compiler {
+func NewCompiler(opts *Options) Compiler {
 	return &compiler{
-		ctx:  NewContext(),
 		opts: opts,
+		ctx:  NewContext(opts),
 		deps: make(map[ast.Ref]*diag.Document),
 	}
 }

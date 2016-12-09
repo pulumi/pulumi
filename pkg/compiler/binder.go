@@ -596,6 +596,7 @@ func (p *binderValidatePhase) bindProperties(node *ast.Node, props ast.Propertie
 				continue
 			}
 		}
+		util.Assert(val != nil)
 
 		// Now, value in hand, let's make sure it's the right type.
 		if lit := p.bindValue(&prop.Node, val, prop.BoundType); lit != nil {

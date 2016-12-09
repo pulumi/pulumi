@@ -167,6 +167,7 @@ func (r *renderer) standardTemplateFuncs() template.FuncMap {
 type renderContext struct {
 	Arch       renderArch      // the cloud architecture to target.
 	Cluster    ast.Cluster     // the cluster we will deploy to.
+	Options    Options         // any compiler options supplied.
 	Properties ast.PropertyBag // a set of properties associated with the current stack.
 	Vars       ast.PropertyBag // mutable variables used throughout this template's evaluation.
 }
@@ -187,6 +188,7 @@ func newRenderContext(ctx *Context) *renderContext {
 			Scheduler: schedulers.Names[ctx.Arch.Scheduler],
 		},
 		Cluster:    *ctx.Cluster,
+		Options:    *ctx.Options,
 		Properties: ctx.Properties,
 		Vars:       make(ast.PropertyBag),
 	}

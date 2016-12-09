@@ -10,14 +10,16 @@ import (
 
 // Context holds all state available to any templates or code evaluated at compile-time.
 type Context struct {
+	Options    *Options        // compiler options supplied.
 	Cluster    *ast.Cluster    // the cluster that we will deploy to.
 	Arch       backends.Arch   // the target cloud architecture.
 	Properties ast.PropertyBag // properties supplied at stack construction time.
 }
 
 // NewContext returns a new, empty context.
-func NewContext() *Context {
+func NewContext(opts *Options) *Context {
 	return &Context{
+		Options:    opts,
 		Properties: make(ast.PropertyBag),
 	}
 }
@@ -28,6 +30,7 @@ func (c *Context) WithClusterArch(cl *ast.Cluster, a backends.Arch) *Context {
 	return &Context{
 		Cluster:    cl,
 		Arch:       a,
+		Options:    c.Options,
 		Properties: c.Properties,
 	}
 }
@@ -40,6 +43,7 @@ func (c *Context) WithProps(props ast.PropertyBag) *Context {
 	return &Context{
 		Cluster:    c.Cluster,
 		Arch:       c.Arch,
+		Options:    c.Options,
 		Properties: props,
 	}
 }

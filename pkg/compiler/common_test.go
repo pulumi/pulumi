@@ -58,7 +58,7 @@ func (d *testDiagSink) Stringify(dia *diag.Diag, prefix string, args ...interfac
 }
 
 // build runs all phases of compilation with the specified options.
-func build(opts Options, paths ...string) *testDiagSink {
+func build(opts *Options, paths ...string) *testDiagSink {
 	pwd, _ := os.Getwd()
 	td := filepath.Join(append([]string{pwd}, paths...)...)
 	sink := newTestDiagSink(td)
@@ -70,11 +70,11 @@ func build(opts Options, paths ...string) *testDiagSink {
 
 // buildNoCodegen just runs the front-end phases of compilation, skipping code-generation.
 func buildNoCodegen(paths ...string) *testDiagSink {
-	return build(Options{SkipCodegen: true}, paths...)
+	return build(&Options{SkipCodegen: true}, paths...)
 }
 
 // buildFile runs all phases of compilation with the specified options, using an in-memory file.
-func buildFile(opts Options, mufile []byte, ext string) *testDiagSink {
+func buildFile(opts *Options, mufile []byte, ext string) *testDiagSink {
 	sink := newTestDiagSink(".")
 	opts.Diag = sink
 	c := NewCompiler(opts)

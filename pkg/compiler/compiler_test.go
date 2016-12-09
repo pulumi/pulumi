@@ -69,7 +69,7 @@ func TestMissingTarget(t *testing.T) {
 		"abstract: true\n")
 
 	// Check that the compiler issued an error due to missing cloud targets.
-	sink := buildFile(Options{}, mufile, ".yaml")
+	sink := buildFile(&Options{}, mufile, ".yaml")
 	d := errors.ErrorMissingTarget
 	assert.Equal(t, 1, sink.Errors(), "expected a single error")
 	assert.Equal(t,
@@ -77,7 +77,7 @@ func TestMissingTarget(t *testing.T) {
 			diag.DefaultSinkErrorPrefix, diag.DefaultSinkIDPrefix, d.ID, d.Message), sink.ErrorMsgs()[0])
 
 	// Now check that this same project compiles fine if we manually specify an architecture.
-	sink = buildFile(Options{
+	sink = buildFile(&Options{
 		Arch: backends.Arch{
 			Cloud: clouds.AWS,
 		},

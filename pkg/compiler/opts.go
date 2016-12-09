@@ -17,8 +17,8 @@ type Options struct {
 }
 
 // DefaultOpts returns the default set of compiler options.
-func DefaultOpts(pwd string) Options {
-	return Options{
+func DefaultOpts(pwd string) *Options {
+	return &Options{
 		Diag: diag.DefaultSink(pwd),
 	}
 }
