@@ -12,4 +12,3 @@ import:
 - package: github.com/mitchellh/go-homedir
 - package: github.com/Masterminds/sprig
 - package: github.com/aokoli/goutils
-- package: github.com/joeduffy/yaml

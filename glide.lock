@@ -13,8 +13,6 @@ imports:
   - golint
 - name: github.com/inconshreveable/mousetrap
   version: 76626ae9c91c4f2a10f34cad8ce83ea42c93bb75
-- name: github.com/joeduffy/yaml
-  version: 8220212d5b2bb207e2755ab2a04e4bc06564d2b2
 - name: github.com/Masterminds/sprig
   version: 1e60e4ce482a1e2c7b9c9be667535ef152e04300
 - name: github.com/mitchellh/go-homedir

@@ -5,7 +5,7 @@ package encoding
 import (
 	"encoding/json"
 
-	"github.com/joeduffy/yaml"
+	"github.com/ghodss/yaml"
 )
 
 var JSONExt = ".json"
