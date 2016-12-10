@@ -149,6 +149,18 @@ func (r *renderer) standardTemplateFuncs() template.FuncMap {
 		_, has := m[k]
 		return has
 	}
+	funcs["orElse"] = func(m map[string]interface{}, k string, els interface{}) interface{} {
+		if v, has := m[k]; has {
+			return v
+		}
+		return els
+	}
+	funcs["orEmpty"] = func(m map[string]interface{}, k string) interface{} {
+		if v, has := m[k]; has {
+			return v
+		}
+		return ""
+	}
 
 	// Functions for interacting with the mutable set of template variables.
 	funcs["get"] = func(key string) interface{} {
