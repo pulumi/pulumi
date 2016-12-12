@@ -66,6 +66,10 @@ The value constraints only apply to custom types whose "base" is either `string`
 * For strings and numbers:
     - An enum array of legal values.
 
+TODO: we need to specify precisely where custom types may appear, how the system knows to bind them, etc.  In the
+    Mu case, there are actually two places: the stack's property definitions themselves (`properties`), and the custom
+    type section (`types`).  Maybe we can use some "meta-typing" to indicate this, e.g. in the Mufile schema itself.
+
 ## Embedded Quotations
 
 A quotation allows computation to be mixed into what is otherwise just markup data.
@@ -130,6 +134,13 @@ The scope can be customized and populated in any number of ways.  There are alwa
 
 * `type` refers to the current type specification.
 * `this` refers to the "current object" (whatever that means in the domain-specific context; sometimes just `type`).
+
+TODO: we still don't have an elegant formalism or even a good mental "model" for the distinction between "this script"
+    (e.g., `type`), and "this object" (e.g., `this`).  In Mu, this makes sense, because the primary use case for
+    templating is accessing the properties set by a caller instantiating the current stack represented by the file.
+    But for many other cases, you actually just want to access enclosing properties inside of the file.  I should note,
+    if we went back to `parameters` and `arguments`, rather than `properties`, we'd have a distinction between the two
+    rooted by a single object (with the unfortunate indirection of needing to say `arguments.foo` instead of just `foo`.
 
 Much like your favorite programming language, properties on `this` may be accessed either by explicitly naming `this`,
 as in `${this.foo}`, or simply by naming the property without a prefix, as in `${foo}`.
