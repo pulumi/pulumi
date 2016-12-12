@@ -235,9 +235,9 @@ amount of boilerplate in Mull files; remember, they are intentionally kept simpl
 
 In expression form, `each` evaluates to an array or map of values.
 
-For example, `${each(a, item)}` is the identity statement for an array variable `a`, while `${each(m, { key: value })}`
+For example, `${for(a, item)}` is the identity statement for an array variable `a`, while `${for(m, { key: value })}`
 is the identity statement for a map variable `m`.  We can do more interesting things, like square an array of numbers,
-`${each(a, item*item)}`, or prepend a constant to the keys in a map, `${each(m, { "prefix-" + key: value }}`.  By
+`${for(a, item*item)}`, or prepend a constant to the keys in a map, `${for(m, { "prefix-" + key: value }}`.  By
 default, the result of an `each` is an array containing the values of each iteration, in order, unless the body
 evaluates to a map, in which case its keys are merged to produce a single aggregate map.  By default, keys are sorted
 before enumerating a map, in order to provide a guaranteed and deterministic execution order.
