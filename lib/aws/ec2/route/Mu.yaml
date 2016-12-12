@@ -65,15 +65,15 @@ services:
             resource: "AWS::EC2::Route"
             {{if has .Properties "vpcGatewayAttachment" -}}
             dependsOn:
-                - vpcGatewayAttachment
+                - ${vpcGatewayAttachment}
             {{- end}}
             properties:
-                DestinationCidrBlock: destinationCidrBlock
-                RouteTableId: routeTable
-                GatewayId: internetGateway
-                # GatewayId: vpnGateway
-                # InstanceId: instance
-                # NatGatewayId: natGateway
-                # NetworkInterfaceId: networkInterface
-                # VpcPeeringConnectionId: vpcPeeringConnection
+                DestinationCidrBlock: .destinationCidrBlock
+                RouteTableId: .routeTable
+                GatewayId: .internetGateway
+                # GatewayId: .vpnGateway
+                # InstanceId: .instance
+                # NatGatewayId: .natGateway
+                # NetworkInterfaceId: .networkInterface
+                # VpcPeeringConnectionId: .vpcPeeringConnection
     
