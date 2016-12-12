@@ -1,7 +1,9 @@
+// Copyright 2016 Marapongo, Inc. All rights reserved.
+
 import * as mu from 'mu';
 import * as aws from 'aws';
 
-// An Internet gateway enables your instances to connect to the Internet through the Amazon EC2 edge network.a
+// An Internet gateway enables your instances to connect to the Internet through the Amazon EC2 edge network.
 // @name: aws/ec2/internetGateway
 // @website: http://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-ec2-internet-gateway.html 
 export default class InternetGateway extends aws.cloudformation.Resource {
@@ -9,7 +11,7 @@ export default class InternetGateway extends aws.cloudformation.Resource {
         super(ctx, {
             resource: "AWS::EC2::InternetGateway",
             properties: {
-                tags: aws.tagsPlusName(tags, args.name),
+                tags: aws.tagsPlusName(args.tags, args.name),
             },
         });
     }

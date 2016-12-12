@@ -1,3 +1,5 @@
+// Copyright 2016 Marapongo, Inc. All rights reserved.
+
 import * as mu from 'mu';
 import * as aws from 'aws';
 

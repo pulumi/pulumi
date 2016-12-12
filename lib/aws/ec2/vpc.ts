@@ -1,3 +1,5 @@
+// Copyright 2016 Marapongo, Inc. All rights reserved.
+
 import * as mu from 'mu';
 import * as aws from 'aws';
 
@@ -13,7 +15,7 @@ export class VPC extends aws.cloudformation.Resource {
                 instanceTenancy: args.instanceTenancy,
                 enableDnsSupport: args.enableDnsSupport,
                 enableDnsHostnames: args.enableDnsHostnames,
-                tags: aws.tagsPlusName(tags, args.name),
+                tags: aws.tagsPlusName(args.tags, args.name),
             },
         });
     }
@@ -39,5 +41,5 @@ export interface VPCArgs {
     tags?: aws.Tag[];
 }
 
-type VPCInstanceTenancy = "default" | "dedicated";
+export type VPCInstanceTenancy = "default" | "dedicated";
 

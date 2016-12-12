@@ -1,3 +1,5 @@
+// Copyright 2016 Marapongo, Inc. All rights reserved.
+
 import * as mu from 'mu';
 import * as aws from 'aws';
 
@@ -11,7 +13,7 @@ export class RouteTable extends aws.cloudformation.Resource {
             resource: "AWS::EC2::RouteTable",
             properties: {
                 vpcId: args.vpc,
-                tags: aws.tagsPlusName(tags, args.name),
+                tags: aws.tagsPlusName(args.tags, args.name),
             },
         });
     }

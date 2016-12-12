@@ -1,3 +1,5 @@
+// Copyright 2016 Marapongo, Inc. All rights reserved.
+
 import * as mu from 'mu';
 import * as aws from 'aws';
 
@@ -13,7 +15,7 @@ export class SecurityGroup extends aws.cloudformation.Resource {
                 vpcId: args.vpc,
                 securityGroupEgress: args.securityGroupEgress,
                 securityGroupIngress: args.securityGroupIngress,
-                tags: aws.tagsPlusName(tags, args.name),
+                tags: aws.tagsPlusName(args.tags, args.name),
             },
         });
     }

@@ -1,3 +1,5 @@
+// Copyright 2016 Marapongo, Inc. All rights reserved.
+
 import * as mu from 'mu';
 import * as aws from 'aws';
 
@@ -13,13 +15,13 @@ export class Subnet extends aws.cloudformation.Resource {
                 vpcId: args.vpc,
                 availabilityZone: args.availabilityZone,
                 mapPublicIpOnLaunch: args.mapPublicIpOnLaunch,
-                tags: aws.tagsPlusName(tags, args.name),
+                tags: aws.tagsPlusName(args.tags, args.name),
             },
         });
     }
 }
 
-export interface RouteTableArgs {
+export interface SubnetArgs {
     // The CIDR block that you want the subnet to cover (for example, `"10.0.0.0/24"`).
     readonly cidrBlock: string;
     // The VPC on which you want to create the subnet.
