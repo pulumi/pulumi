@@ -14,7 +14,7 @@ export class Route extends cloudformation.Resource {
         super(ctx, {
             resource: "AWS::EC2::Route",
             dependsOn: [
-                "vpcGatewayAttachment",
+                args.vpcGatewayAttachment,
             ],
             properties: args,
         });

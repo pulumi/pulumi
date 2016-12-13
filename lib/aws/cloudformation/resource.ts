@@ -17,6 +17,6 @@ export interface ResourceArgs {
     // An optional list of properties to map.
     readonly properties?: any /*actually, JSON-like*/;
     // An optional list of other CloudFormation resources that this depends on.
-    readonly dependsOn?: string[];
+    readonly dependsOn?: mu.Stack[];
 }
 
