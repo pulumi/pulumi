@@ -22,7 +22,7 @@ service Cluster {
             cidrBlock = cidr
         }
         resource ec2.Subnet {
-            name = context.cluster.name + "-VPC"
+            name = context.cluster.name + "-Subnet"
             vpc = VPC
             cidrBlock = cidr
         }

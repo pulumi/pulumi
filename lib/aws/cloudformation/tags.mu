@@ -24,7 +24,7 @@ schema TagArgs {
 }
 
 // ExpandTags takes a TagArgs and expands the "Name" key in-place, for naming, when present.
-func ExpandTags(t: TagArgs): void {
+macro ExpandTags(t: TagArgs): void {
     if (t.name != null) {
         t.tags = append(t.tags, { key: "Name", value: t.name })
         ts.name = null
