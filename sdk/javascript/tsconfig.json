@@ -18,9 +18,11 @@
     "files": [
         "index.ts",
         "arch.ts",
+        "cluster.ts",
         "context.ts",
         "extension.ts",
-        "index.ts",
+        "json.ts",
+        "options.ts",
         "stack.ts"
     ]
 }
