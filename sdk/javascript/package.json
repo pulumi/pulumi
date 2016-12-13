@@ -1,0 +1,6 @@
+{
+    "name": "mu",
+    "main": "bin/index.js",
+    "typings": "bin/index.d.ts"
+}
+
