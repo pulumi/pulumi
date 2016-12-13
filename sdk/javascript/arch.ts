@@ -7,21 +7,15 @@ export interface Arch {
 }
 
 // The cloud operating system to target.
-export type Cloud =
-    "aws" |   // Amazon Web Services.
-    "gcp" |   // Google Cloud Platform.
-    "azure" | // Microsoft Azure.
-    "vmware"  // VMWare vSphere, etc.
-;
+// TODO: As soon as this PR is merged, https://github.com/Microsoft/TypeScript/pull/10676, I believe we can replace
+//     these with references to the above Clouds literals (e.g., `typeof clouds.AWS`, etc).  For now, duplicate.
+export type Cloud = "aws" | "gcp" | "azure" | "vmware";
 
 // The container scheduler and runtime to target.
+// TODO: As soon as this PR is merged, https://github.com/Microsoft/TypeScript/pull/10676, I believe we can replace
+//     these with references to the above Clouds literals (e.g., `typeof schedulers.Swarm`, etc).  For now, duplicate.
 export type Scheduler =
-    undefined |    // no scheduler, just use native VMs.
-    "swarm" |      // Docker Swarm.
-    "kubernetes" | // Kubernetes.
-    "mesos" |      // Apache Mesos.
-    "ecs" |        // Amazon Elastic Container Service (only valid for AWS clouds).
-    "gke" |        // Google Container Engine (only valid for GCP clouds).
-    "acs"          // Microsoft Azure Container Service (only valid for Azure).
-;
+    undefined |                        // no scheduler, just use VMs.
+    "swarm" | "kubernetes" | "mesos" | // cloud-neutral schedulers.
+    "ecs" | "gke" | "acs";             // cloud-specific schedulers.
 

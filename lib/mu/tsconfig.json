@@ -17,17 +17,7 @@
     },
     "files": [
         "index.ts",
-
-        "arch.ts",
-        "cluster.ts",
-        "context.ts",
-        "extension.ts",
-        "json.ts",
-        "options.ts",
-        "stack.ts",
-
-        "clouds/index.ts",
-        "schedulers/index.ts"
+        "cluster.ts"
     ]
 }
 
