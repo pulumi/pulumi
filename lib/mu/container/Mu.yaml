@@ -2,4 +2,34 @@ name: mu/container
 description: A Docker/LXC/Windows container.
 intrinsic: true
 properties:
+    build:
+        type: string
+        description: A path to the Dockerfile, or its directory, to build; defaults to the current directory.
+        optional: true
+    args:
+        type: map[string]any
+        description: An optional map of arguments to pass to the Dockerfile during building.
+        optional: true
+    image:
+        type: string
+        description: An image name; if building, the container will be tagged; otherwise, this image will be used.
+        optional: true
+    command:
+        type: string[]
+        description: An optional command line to override the Dockerfile's default CMD.
+        optional: true
+    env:
+        type: map[string]string
+        description: An optional environment map for envvars to be set before building and running.
+        optional: true
+services:
+    {{if .Arch.Cloud eq "aws"}}
+    {{if .Arch.Scheduler eq "ecs"}}
+    {{include "Mu_aws_ecs.yaml"}}
+    {{else if .Options.SkipCodegen == false}}
+    {{panic "ECS scheduler is required for AWS containers; got %v" .Arch.Scheduler}}
+    {{end}}
+    {{else}}
+        {{panic "Unrecognized cloud target: %v" .Arch.Cloud}}
+    {{end}}
 
