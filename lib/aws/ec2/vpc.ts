@@ -1,27 +1,22 @@
 // Copyright 2016 Marapongo, Inc. All rights reserved.
 
 import * as mu from 'mu';
-import * as aws from 'aws';
+import * as cloudformation from '../cloudformation';
 
 // A Virtual Private Cloud (VPC) with a specified CIDR block.
 // @name: aws/ec2/vpc
 // @website: http://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-ec2-vpc.html
-export class VPC extends aws.cloudformation.Resource {
+export class VPC extends cloudformation.Resource {
     constructor(ctx: mu.Context, args: VPCArgs) {
+        cloudformation.expandTags(args);
         super(ctx, {
             resource: "AWS::EC2::VPC",
-            properties: {
-                cidrBlock: args.cidrBlock,
-                instanceTenancy: args.instanceTenancy,
-                enableDnsSupport: args.enableDnsSupport,
-                enableDnsHostnames: args.enableDnsHostnames,
-                tags: aws.tagsPlusName(args.tags, args.name),
-            },
+            properties: args,
         });
     }
 }
 
-export interface VPCArgs {
+export interface VPCArgs extends cloudformation.TagArgs {
     // The CIDR block you want the VPC to cover.  For example, "10.0.0.0/16".
     readonly cidrBlock: string;
     // The allowed tenancy of instances launched into the VPC.  "default" indicates that instances can be launched with
@@ -38,7 +33,7 @@ export interface VPCArgs {
     // An optional name for this resource.
     name?: string;
     // An arbitrary set of tags (key-value pairs) for this resource.
-    tags?: aws.Tag[];
+    tags?: cloudformation.Tags;
 }
 
 export type VPCInstanceTenancy = "default" | "dedicated";
