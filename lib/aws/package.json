@@ -1,0 +1,6 @@
+{
+    "name": "mu-aws",
+    "main": "bin/index.js",
+    "typings": "bin/index.d.ts"
+}
+
