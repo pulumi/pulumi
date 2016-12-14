@@ -1,7 +1,7 @@
 // Copyright 2016 Marapongo, Inc. All rights reserved.
 
-module "aws/ec2"
-import "aws/cloudformation"
+module aws/ec2
+import aws/cloudformation
 
 // An Amazon EC2 security group.
 // @website: http://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-ec2-security-group.html

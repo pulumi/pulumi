@@ -1,6 +1,6 @@
 // Copyright 2016 Marapongo, Inc. All rights reserved.
 
-module "aws/cloudformation"
+module aws/cloudformation
 
 // Tag can be applied to a resource, helping to identify and categorize those resources.
 schema Tag {

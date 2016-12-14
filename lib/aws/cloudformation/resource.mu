@@ -1,6 +1,6 @@
 // Copyright 2016 Marapongo, Inc. All rights reserved.
 
-module "aws/cloudformation"
+module aws/cloudformation
 
 // A special service that simply emits a CloudFormation template.
 service Resource {

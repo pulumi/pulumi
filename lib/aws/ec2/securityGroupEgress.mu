@@ -1,7 +1,7 @@
 // Copyright 2016 Marapongo, Inc. All rights reserved.
 
-module "aws/ec2"
-import "aws/cloudformation"
+module aws/ec2
+import aws/cloudformation
 
 // Adds an egress rule to an Amazon VPC security group.
 // @website: http://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-ec2-security-group-egress.html

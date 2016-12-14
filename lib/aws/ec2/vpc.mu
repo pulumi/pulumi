@@ -1,7 +1,7 @@
 // Copyright 2016 Marapongo, Inc. All rights reserved.
 
-module "aws/ec2"
-import "aws/cloudformation"
+module aws/ec2
+import aws/cloudformation
 
 // A Virtual Private Cloud (VPC) with a specified CIDR block.
 // @website: http://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-ec2-vpc.html

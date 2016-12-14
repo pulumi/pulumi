@@ -1,7 +1,7 @@
 // Copyright 2016 Marapongo, Inc. All rights reserved.
 
-module "aws/ec2"
-import "aws/cloudformation"
+module aws/ec2
+import aws/cloudformation
 
 // A new route table within your VPC.  After creating a route table, you can add routes and associate the table with a
 // subnet.

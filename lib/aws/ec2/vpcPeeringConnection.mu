@@ -1,7 +1,7 @@
 // Copyright 2016 Marapongo, Inc. All rights reserved.
 
-module "aws/ec2"
-import "aws/cloudformation"
+module aws/ec2
+import aws/cloudformation
 
 // A VPC peering connection enables a network connection between two virtual private clouds (VPCs) so that you can route
 // traffic between them by means of a private IP addresses.

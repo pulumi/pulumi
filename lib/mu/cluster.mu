@@ -1,7 +1,7 @@
 // Copyright 2016 Marapongo, Inc. All rights reserved.
 
-module "mu"
-import "aws/ec2"
+module mu
+import aws/ec2
 
 // A base Mu cluster, ready to host stacks.
 service Cluster {
