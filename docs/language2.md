@@ -323,18 +323,16 @@ however as noted about `ctor`s above, they are different in that they are compil
 These are convenient for splitting lengthy `ctor`s into better factored sub-macros.  For macros shared between many
 service definitions, and possibly even exported from a module, please see the Macros section below.
 
-An `rpcs` block defines all of the RPC functions available on this service.  These are function signatures without the
-bodies; the bindings must be done separately, as we describe later on in the language bindings section.
+An `interface` block defines all of the RPC functions available on this service.  These are function signatures without
+the bodies; the bindings must be done separately, as we describe later on in the language bindings section.
 
-        rpcs {
+        interface {
             Entries(): stream<Person>
             CreateEntry(entry: Person): number
             DeleteEntry(id: number)
             ReadEntry(id: number): Person
             UpdateEntry(id: number, entry: Person)
         }
-
-TODO: perhaps we should call this `interface` and then reify the notion of RPC interfaces as a first class thing.
 
 All RPC functions must deal solely in terms of schema types on the wire, since these generally map to HTTP/2-based RPC
 and Internet protocols.  Notice also here the mention of a new built-in type, `stream<T>`.  This is a flow-controlled
