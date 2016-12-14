@@ -7,7 +7,7 @@ import "aws/cloudformation"
 // @website: http://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-ec2-security-group-ingress.html
 service SecurityGroupIngress {
     ctor() {
-        resource cloudformation.Resource {
+        new cloudformation.Resource {
             resource = "AWS::EC2::SecurityGroupIngress"
             properties = this.properties
         }

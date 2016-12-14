@@ -9,7 +9,7 @@ import "aws/cloudformation"
 service VPCPeeringConnection {
     ctor() {
         cloudformation.ExpandTags(this.properties)
-        resource cloudformation.Resource {
+        new cloudformation.Resource {
             resource = "AWS::EC2::VPCPeeringConnection" 
             properties = this.properties
         }

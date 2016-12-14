@@ -1,5 +1,7 @@
 // Copyright 2016 Marapongo, Inc. All rights reserved.
 
+module "aws/cloudformation"
+
 // Tag can be applied to a resource, helping to identify and categorize those resources.
 schema Tag {
     // The key name of the tag. You can specify a value that is 1 to 127 Unicode characters in length and cannot be
@@ -15,8 +17,8 @@ schema Tag {
 // Tags is simply a collection of Tag values.
 schema Tags = Tag[]
 
-// TagArgs represents a base type for the common pattern of resources accepting tags and a name.
-schema TagArgs {
+// TagSchema represents a base type for the common pattern of resources accepting tags and a name.
+schema TagSchema {
     // An optional name for this resource.
     optional name: string
     // An arbitrary set of tags (key-value pairs) for this resource.
@@ -24,7 +26,7 @@ schema TagArgs {
 }
 
 // ExpandTags takes a TagArgs and expands the "Name" key in-place, for naming, when present.
-macro ExpandTags(t: TagArgs): void {
+func ExpandTags(t: TagArgs) {
     if (t.name != null) {
         t.tags = append(t.tags, { key: "Name", value: t.name })
         ts.name = null

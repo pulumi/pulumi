@@ -8,7 +8,7 @@ import "aws/cloudformation"
 service Subnet {
     ctor() {
         cloudformation.ExpandTags(this.properties)
-        resource cloudformation.Resource {
+        new cloudformation.Resource {
             resource = "AWS::EC2::Subnet"
             properties = this.properties
         }
@@ -22,7 +22,7 @@ service Subnet {
         // The availability zone in which you want the subnet.  By default, AWS selects a zone for you.
         optional readonly availabilityZone: string
         // Indicates whether instances that are launched in this subnet receive a public IP address.  By default, `false`.
-        optional mapPublicIpOnLaunch: boolean
+        optional mapPublicIpOnLaunch: bool
     }
 }
 

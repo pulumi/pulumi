@@ -8,7 +8,7 @@ import "aws/cloudformation"
 service SecurityGroup {
     ctor() {
         cloudformation.ExpandTags(this.properties)
-        resource cloudformation.Resource {
+        new cloudformation.Resource {
             resource = "AWS::EC2::SecurityGroup"
             properties = this.properties
         }

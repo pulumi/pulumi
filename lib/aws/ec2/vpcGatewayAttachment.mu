@@ -7,7 +7,7 @@ import "aws/cloudformation"
 // @website: http://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-ec2-vpc-gateway-attachment.html
 service VPCGatewayAttachment {
     ctor() {
-        resource cloudformation.Resource {
+        new cloudformation.Resource {
             resource = "AWS::EC2::VPCGatewayAttachment"
             properties = this.properties
         }

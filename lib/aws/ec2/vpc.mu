@@ -8,7 +8,7 @@ import "aws/cloudformation"
 service VPC {
     ctor() {
         cloudformation.ExpandTags(this.properties)
-        resource cloudformation.Resource {
+        new cloudformation.Resource {
             resource = "AWS::EC2::VPC"
             properties = this.properties
         }
@@ -23,11 +23,11 @@ service VPC {
         optional readonly instanceTenancy: "default" | "dedicated"
         // Specifies whether DNS resolution is supported for the VPC.  If true, the Amazon DNS server resolves DNS hostnames
         // for your instances to their corresponding IP addresses; otherwise, it does not.  By default, the value is true. 
-        optional enableDnsSupport: boolean
+        optional enableDnsSupport: bool
         // Specifies whether the instances launched in the VPC get DNS hostnames.  If this attribute is true, instances in
         // the VPC get DNS hostnames; otherwise, they do not.  You can only set enableDnsHostnames to true if you also set
         // the enableDnsSupport property to true.  By default, the value is set to false.
-        optional enableDnsHostnames: boolean
+        optional enableDnsHostnames: bool
     }
 }
 

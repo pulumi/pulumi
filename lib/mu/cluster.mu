@@ -14,31 +14,32 @@ service Cluster {
         }
     }
 
-    macro createAWSResources() {
+    func createAWSResources() {
         // First set up a VPC with a single subnet.
         var cidr = "10.0.0.0/16"
-        resource ec2.VPC {
+        new ec2.VPC {
             name = context.cluster.name + "-VPC"
             cidrBlock = cidr
         }
-        resource ec2.Subnet {
+        new ec2.Subnet {
             name = context.cluster.name + "-Subnet"
             vpc = VPC
             cidrBlock = cidr
         }
+
         // Now create an Internet-facing gateway to expose this cluster's subnet to Internet traffic.
-        resource ec2.InternetGateway {
+        new ec2.InternetGateway {
             name = context.cluster.name + "-InternetGateway"
         }
-        resource ec2.VPCGatewayAttachment {
+        new ec2.VPCGatewayAttachment {
             internetGateway = internetGateway
             vpc = VPC
         }
-        resource ec2.RouteTable {
+        new ec2.RouteTable {
             name = context.cluster.name + "-RouteTable"
             vpc = VPC
         }
-        resource ec2.Route {
+        new ec2.Route {
             destinationCidrBlock = "0.0.0.0/0"
             internetGateway = InternetGateway
             vpcGatewayAttachment = VPCGatewayAttachment
@@ -46,7 +47,7 @@ service Cluster {
         }
 
         // Finally, create a sole security group to use for everything by default.
-        resource ec2.SecurityGroup {
+        new ec2.SecurityGroup {
             name = context.cluster.name + "-SecurityGroup"
             vpc = VPC
             groupDescription = "The primary cluster's security group."

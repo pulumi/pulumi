@@ -7,7 +7,7 @@ import "aws/cloudformation"
 // @website: https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-ec2-route.html
 service Route {
     ctor() {
-        resource cloudformation.Resource {
+        new cloudformation.Resource {
             resource = "AWS::EC2::Route"
             dependsOn = [ vpcGatewayAttachment ]
             properties = this.properties
