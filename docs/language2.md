@@ -173,6 +173,8 @@ At the core, schema types are built out of primitive types:
   index into the map and `V` is the type of value inside: e.g., `map<string, number>`, `map<number, any>`, and so on.
   Note that only the primtive types `bool`, `number`, and `string` can be used as key types inside of a map.
 
+TODO: `null`.
+
 Additionally, `number`, `string`, and array types can carry additional constraints to further subset legal values:
 
 * For `number`s:
@@ -226,6 +228,15 @@ Of course, it is possible to define custom named schema types beyond these primi
         state: string<2>
         zip: string<"[0-9]{5}(-[0-9]{4})?">
     }
+
+Each schema property is assumed to be mutable and required by default.  To disable mutation of a property (shallowly),
+mark it as `readonly`.  To indicate that a property is optional, mark it as `optional`.  An optional property may also
+be given a default value, for example as follows.  It is illegal to give a required property a default value.
+
+        optional age: number = 42
+
+TODO(joe): protobufs took the opposite approach (and even ditched required altogether eventually).  I do wonder if we
+    should flip the polarity on this one.
 
 Schema types may subtype other schema types.  Because there is no implementation code associated with schema types, this
 behaves like structural subtyping.  For example, imagine we want an `Employee` which is a special kind of `Person`:
@@ -316,17 +327,21 @@ An `rpcs` block defines all of the RPC functions available on this service.  The
 bodies; the bindings must be done separately, as we describe later on in the language bindings section.
 
         rpcs {
-            Entries(): stream<AddressBookEntry>
-            CreateEntry(entry: AddressBookEntry): number
+            Entries(): stream<Person>
+            CreateEntry(entry: Person): number
             DeleteEntry(id: number)
-            ReadEntry(id: number): AddressBookEntry
-            UpdateEntry(id: number, entry: AddressBookEntry)
+            ReadEntry(id: number): Person
+            UpdateEntry(id: number, entry: Person)
         }
+
+TODO: perhaps we should call this `interface` and then reify the notion of RPC interfaces as a first class thing.
 
 All RPC functions must deal solely in terms of schema types on the wire, since these generally map to HTTP/2-based RPC
 and Internet protocols.  Notice also here the mention of a new built-in type, `stream<T>`.  This is a flow-controlled
-stream that can be used to efficiently transmit a variable number of schema elements of type `T`.  It is the only
-"special type" beyond schema types that can appear in the wire protocol, and can appear in input positions also.
+stream that can be used to efficiently transmit a variable number of schema elements of type `T`.  This is different
+than an array, `T[]`, which includes the entirety of the array on the wire at one time and is more appropriate for
+smaller payloads.  `stream<T>` is the only "special type" beyond schema types that can appear in the wire protocol; it
+can appear in input positions also for large inputs, and of course any mixture of the two is fine.
 
 An `events` block defines all of the events that may be subscribed to.  This permits event-driven inter-dependencies
 between services that are expressed to the system as subscriptions.
@@ -344,11 +359,15 @@ Finally, a `services` block defines all public sub-services exported by this par
 available to consumers of the outer service, and  must be assigned to by the constructor and/or invoked macros.
 
         ctor() {
-            reporter = new AddressBookReporter { book = this }
+            new AddressBookReporter reporter {
+                book = this
+            }
         }
         services {
             reporter: AddressBookReporter
         }
+
+All services listed must of course have service types (although they may be less specific than the concrete type).
 
 ### Variables and Constants
 
@@ -365,8 +384,27 @@ Conventions
 
 ### Expressions
 
-## Language Bindings
+## Runtime Bindings
 
-## Detailed Specification
+## Output: Graph State
 
+The output of evaluating a Mull program is something we call Mu graph state (MuGS).
+
+The overall service topology isn't known until evaluating the entire Mull program, due to the presence of logic,
+componentization, and reuse.  The resulting topology is MuGS, a fully serializable metadata description of a graph.
+
+A MuGS file, paired with its associated Mull program, provides everything you need to know about a deployment.  Two MuGS
+files can be compared to understand the differences in topology and/or individual service metadata.
+
+TODO: we need target-specific metadata in the MuGS file too, like instance IDs, etc.  Maybe we need different files?
+
+In order to perform a deployment, an existing "before" MuGS file will be required, so that an accurate difference can be
+computed and then applied.  Although MuGS files are human-readable -- primarily for auditability and version control
+purposes -- they are not meant to be edited by hand.  Doing so can cause corruption during the deployment process.
+
+TODO: specify the full graph state format and contents.
+
+## Language Specification
+
+TODO: a formal specification of the language and its grammar.
 
