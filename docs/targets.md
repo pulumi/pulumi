@@ -187,7 +187,7 @@ https://aws.amazon.com/elasticloadbalancing/applicationloadbalancer/)).  Numerou
 to target the Services wired up to the Gateway, including routine rules and tables.  In the event that a Stack is
 publically exported from the Cluster, this may also entail modifications of the overall Cluster's Ingress/Egress rules.
 
-TODO: `mu/func` and `mu/event` are more, umm, difficult.
+TODO: `mu/lambda` and `mu/event` are more, umm, difficult.
 
 `mu/volume` is an abstract Stack type and so has no footprint per se.  However, implementations of this type exist that
 do have a footprint.  For example, `aws/ebs/volume` derives from `mu/volume`, enabling easy EBS-based container

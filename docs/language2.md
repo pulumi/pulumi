@@ -297,8 +297,9 @@ A `ctor` (constructor) defines the logic and services encapsulated by this servi
             new mu.Table {}
         }
 
-Although it isn't stated in the source code, a `ctor` is actually just a macro.  Macros are explained later on, however,
-these are computations evaluated at "compile-time", but not deployed and run in the cloud runtime environment.
+Although it isn't stated in the source code, a `ctor` is a function.  Functions are explained later on, however,
+these are computations evaluated at "compile-time", but not deployed and run in the cloud runtime environment.  As a
+result, they have some restrictions placed on them so that they are deterministic; for instance, they cannot do I/O.
 
 A `properties` block defines a schema attached to this service instance, describing its essential settings.
 
@@ -307,21 +308,21 @@ A `properties` block defines a schema attached to this service instance, describ
             optional persistent bool
         }
 
-A `macros` block defines additional macros inside of this service definition.  Each macro looks just like a function,
-however as noted about `ctor`s above, they are different in that they are compile-time evaluated.
+A `funcs` block defines additional functions inside of this service definition.  As with the restrictions on  `ctor`
+above, they are different than your usual programming language's functions, because they must be deterministic.
 
         ctor {
             createTable("table1")
             createTable("table2")
         }
-        macros {
+        funcs {
             createTable(name: string) {
                 new mu.Table() { name: name }
             }
         }
 
-These are convenient for splitting lengthy `ctor`s into better factored sub-macros.  For macros shared between many
-service definitions, and possibly even exported from a module, please see the Macros section below.
+Functions are convenient for splitting lengthy `ctor`s into better factored, smaller bits of logic.  For functions
+shared between many service definitions, and possibly even exported from a module, please see Functions below.
 
 An `interface` block defines all of the RPC functions available on this service.  These are function signatures without
 the bodies; the bindings must be done separately, as we describe later on in the language bindings section.
@@ -354,7 +355,7 @@ semantics of how frequently an event fires, whether it is single-shot or repeati
 of the event itself and not specified by the system.  The system does, however, specify what it means to unsubscribe.
 
 Finally, a `services` block defines all public sub-services exported by this particular service.  Each service is
-available to consumers of the outer service, and  must be assigned to by the constructor and/or invoked macros.
+available to consumers of the outer service, and  must be assigned to by the constructor and/or invoked functions.
 
         ctor() {
             new AddressBookReporter reporter {
@@ -378,7 +379,7 @@ Accessibility
 
 Conventions
 
-### Macros
+### Functions
 
 ### Expressions
 

@@ -268,13 +268,13 @@ The primitive types are in the `mu` namespace and include:
 
 * `mu/container`: A Docker container wrapped in Mu metadata.
 * `mu/gateway`: An API gateway and/or load balancer, multiplexing requests onto multiple target Services.
-* `mu/func`: A single Function ordinarily used for serverless/stateless scenarios.
+* `mu/lambda`: A single lambda function ordinarily used for serverless/stateless scenarios.
 * `mu/event`: An Event that may be used to Trigger the execution of another Service (commonly a Function).
 * `mu/volume`: A volume stores data that can be mounted by another Service.
 * `mu/autoscaler`: A Service that automatically multi-instances and scales some other target Service based on policy.
 
 TODO(joe): link to exhaustive details on each of these.
-TODO(joe): consider a `mu/job` (e.g., ECS's RunTask); unclear on how this would differ from `mu/func`.
+TODO(joe): consider a `mu/job` (e.g., ECS's RunTask); unclear on how this would differ from `mu/lambda`.
 TODO(joe): consider a `mu/daemon` type, similar to Kube's DaemonSet abstraction.
 
 Although these types may look "magical", each one simply leverages an open extensibility capability in the platform.
