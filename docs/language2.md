@@ -42,7 +42,37 @@ most notably its unique combination of metadata-orientation, strong typing, decl
 
 ### Formatting
 
-### Comments
+A few brief words on formatting are noteworthy, since they will show up throughout this document.
+
+#### Punctuation and Whitespace
+
+In order to place an emphasis on brevity, further encourage declarative patterns, and following the lead of newer
+languages, Mull elides needless C-style punctuation in two specific places.
+
+First, semicolons `;` are not required to terminate statements or declarations.
+
+    var three = 1 + 2
+
+Second, commas are not required to separate property values when creating values, maps, and so on.
+
+    var map = {
+        "a": 42
+        "b": 99
+    }
+
+In the latter case, it is possible to write single-line initializers, in which case commas are still necessary.
+
+    var map = { "a": 42, "b": 99 }
+
+In both cases, punctuation is still legal in the grammar, however good Mull style omits it.
+
+    var three = 1 + 2;
+    var map = {
+        "a": 42,
+        "b": 99,
+    }
+
+#### Comments
 
 Mull provides C-style `/* */` block comments in addition to C++-style `//` line comments.
 
@@ -146,7 +176,19 @@ To break the tie, an alternative name can be given.
 
 In this example, elements may be accessed using the `awshelpers` and `helpers` prefixes, respectively.
 
+TODO: consider adding a shortcut for importing many things at once.  E.g.
+        import aws/*
+    There's a question of whether we'd still want to refer to types by module name, e.g. `ec2.Instance` versus just
+    `Instance`.  This impacts naming guidelines.  Best to optimize for "cut and paste," however.
+
 For information on how imports are resolved, please see [the dependencies document](deps.md).
+
+#### Exports
+
+To export a top-level type from a module, capitalize it.  This applies to types, functions, and constants.
+
+    service foo {} // private, not exported
+    service Bar {} // public, available to consumers
 
 ### Types
 
@@ -255,12 +297,26 @@ Schema types may give aliases to other structured schema types.
 
 Given this definition, we can use `Employees` as a type alias anywhere for an array of `Employee` schema values.
 
-Finally, schema types can be strongly typed enums, constraining the value space to what is listed.  To do this, use an
-alias but list the valid values using the or '|' delimiter.  All possible values must be of the same type.
+Mull supports the concept of union and literal types in place of enums.  This allows more concise expression of common
+patterns in declarative specifications.  For example, to declare the set of states:
+
+    schema Address {
+        // as above ...
+        state: "AL" | "AK" | ... | "WI" | "WY"
+    }
+
+The union expression may instead be given a name using aliases for easier readability and/or reuse.
 
     schema State = "AL" | "AK" | ... | "WI" | "WY"
 
-TODO: numeric enums?  named key/value enums?
+Finally, Mull also supports the concept of intersection types, allowing easy combination of multiple types into one.
+
+    schema A ...
+    schema B ...
+    schema AplusB = A & B
+
+The resulting type `AplusB` contains the entire set of properties from both `A` and `B`.  As a result, instances can be
+freely structurally converted in place where `A` or `B` values are required, without explicit conversions.
 
 #### Service Types
 
@@ -298,7 +354,8 @@ A `properties` block defines a schema attached to this service instance, describ
             optional persistent: bool
         }
 
-Any instantiation of a service will need to provide these properties.
+Any instantiation of a service will need to provide these properties.  These properties are also publically available
+on the service instance post-construction, although they cannot be mutated afterwards.
 
 A `new()` block creates any services encapsulated by this service, typically using the properties as input.
 
@@ -307,13 +364,17 @@ A `new()` block creates any services encapsulated by this service, typically usi
         }
 
 By default, services created within this block are private implementation details of the enclosing service definition.
-It is possible to export instances for public usage, however.  To do so, list it in the `exports` block:
+It is possible to export instances for public usage, however.  To do so, list it in the `outputs` block:
 
-        exports {
+        new() {
+            table = new mu.Table {}
+        }
+        outputs {
             table: mu.Table
         }
 
-All exported services must be definitely assigned inside of the `new()` function block.
+After constructing a service with outputs, they will be available for read access by callers.  Note that output
+variables can be of any type, not just services.  Each must be definitely assigned inside of the `new()` function block.
 
 Although it isn't stated in the source code, `new()` is a function.  Functions are explained later on, however,
 these are computations evaluated at "compile-time", but not deployed and run in the cloud runtime environment.  As a
@@ -362,20 +423,189 @@ types may appear).  The input is used to control the subscription and output is 
 semantics of how frequently an event fires, whether it is single-shot or repeating, and so on, are part of the semantics
 of the event itself and not specified by the system.  The system does, however, specify what it means to unsubscribe.
 
-### Values, Variables, and Constants
-
-TODO: constructing new values (including maps, arrays, etc).
-
-TODO: string interpolation.
-
-var
-const
-
 ### Names
 
+Identifiers
 Accessibility
-
 Conventions
+
+### Storage
+
+There are two kinds of storage locations.
+
+The first are immutable constants.  These are indicated by the `<ident> := <expr>` declaration.
+
+    cidr := "0.0.0.0/24"
+
+    service A {
+        new() {
+            subnetCIDRs := [ "10.0.1.0/24", "10.0.2.0/24" ]
+        }   
+    }
+
+A constant may not be reassigned after being declared and names may not be shadowed in any way.  Notice that constants
+can appear at the module-level -- including being exported -- or inside of a function.  A constant at the module-level
+cannot be of a service type, since only service constructors are permitted to allocate new services.
+
+The second are mutable variables.  These are indicated by the `var <ident>` declaration and may not appear at the
+module-level, since then modules would be stateful, and things like import order would matter, opening the door to
+non-determinism.  Such a statement may optionally have an initializer for its initial value, as in
+`var <ident> = <expr>`.  If a declaration does not have an initializer, it must be followed by a type annotation, as in
+`var <ident>: <type>`.  Note that a declaration may have both a type annotation and an initializer, as in
+`var <ident>: <type> = <expr>`, although the type annotation is optional in this case as the compiler will perform
+local type inference to assign a type otherwise.
+
+### Values
+
+There are a few different ways to construct new values in Mull, depending on the target type.  The primitive types are
+all literal-based while the other types require other forms of creation.
+
+#### Booleans
+
+Each `bool` value has the literal value `true` or `false`.
+
+#### Numbers
+
+Because Mull, like JavaScript, has a single number type to represent both integers and floating-point numbers, numeric
+literals can take many forms.
+
+Integer literals are sequences of digits, with an optional prefix.  By default a number is base-10, however the `0x`
+prefix may be used to specify hexadecimal numbers in base-16 (digits `0-9a-z`), `0o` to specify octal numbers in base-7
+(digits `0-7`), or `0b` to specify binary numbers in base-2 (digits `0-1`).  For example:
+
+    42
+    1701483783280928
+    0o600
+    0xcafebeef
+    0b11011011000110
+
+Floating-point literals have an integer part, a decimal point `.`, a fractional part, and an exponent part.  The integer
+and fractional part represent the decimal digits, for example `72.33`, while the exponent part is an `e` or `E` followed
+by an optionally signed decimal exponent, for example `E+5`.  One of the integer or fractional part may be elided; one
+of the decimal point or the exponent may be elided.  For example:
+
+    0
+    72.40
+    072.40
+    2.71828
+    1.E+0
+    6.67428E-11
+    1E6
+    .25
+    .12345E+5
+
+TODO: JavaScript stores numbers as IEEE 754 and hence can't support more than 2^53-1.  So traditional 64-bit longs are
+    out.  This seems like a problem and so we should consider supporting ints, longs, and/or maybe just bignums.
+
+#### Strings
+
+A string literal represents a UTF-8 encoded string.  There are two forms of literals.
+
+The first is a raw string literal, enclosed in double quotes `"`.  It may contain any UTF8 codepoint sequence.  As is
+typical in C-like languages, however, the following special characters may also be embedded using an escape `\\`:
+`\"` (double quote), `\\` (backslash), `\a` (bell), `\b` (backspace), `\f` (new page), `\n` (newline), `\r` (carriage
+return), `\t` (horizontal tab), `\v` (vertical tab), `\nnn` (octal character value), `\xnn` (hexadecimal character
+value), `\unnnn` (universal code point `U+nnnn`), `\Unnnnnnnn` (universal code point `U+nnnnnnnn`).
+
+    "abc"
+    "\n"
+    "Hello, world!\n"
+    "日本語"
+    "\u65e5本\U00008a9e"
+    "\xff\u00FF"
+
+The second form is an interpolated string literal, enclosed in backticks ````.  These literals may span newlines and
+may include embedded expressions using the sequence `${expr}`.  In these cases, the string contents are replaced by the
+value resulting from evaluating `expr`, which must be convertible to a string.
+
+    `abc`
+    `
+    `                   // same as "\n"
+    `\n`                // same as "\\n"
+    `Hello, ${name}!`
+
+Both forms may be concatenated using the `+` character.  Strings separated only by newlines and spaces are automatically
+concatenated together.  For example, this:
+
+    "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod\n" +
+    "tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam,\n" +
+    "quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.\n"
+
+is the same as this:
+
+    "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod\n"
+    "tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam,\n"
+    "quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.\n"
+
+Both are equivalent to using the interpolated string form, but permits explicit injection of newlines and formatting:
+
+    `Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod
+    tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam,
+    quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.`
+
+#### Arrays
+
+An new array is created by enclosing elements within `[` and `]` tokens.
+
+    mems := [ 128, 64, 512, 1024*8, 8 ]
+    disks := [
+        4
+        2
+        1
+        4
+        0
+    ]
+    labels := [ "web", "registry", "db", "discovery" ]
+    instances := [
+        "t2.nano"
+        "t2.micro"
+        "t2.small"
+        "t2.medium"
+        "t2.large"
+        "t2.xlarge"
+        "t2.2xlarge"
+    ]
+
+Notice that we can elide the commas `,` as per the earlier discussion of punctuation.
+
+The most common type amongst all elements will be assumed as the resulting array's element type.  So, for example, an
+array of numbers *and* strings, will yield an `any[]`.  If the elements do not share a common base type -- as would be
+the case for a mixture of schema and service types -- the compiler will produce an error.
+
+To explicitly produce an array with specific element types, you may use the `new` keyword to explicitly state one:
+
+    tags := new tag[] {
+        { key: "Name", value: name }
+        { key: "Kind", value: kind }
+    }
+
+If any elements cannot be converted to the target type -- in this case `tag` -- an error will occur.
+
+#### Maps
+
+A new map is created by enclosing elements within `{` and `}` tokens.
+
+    zoneCounts := {
+        "us-east-1": 5
+        "us-east-2": 3
+        "us-west-1": 3
+        "us-west-2": 3
+        "ca-central-1": 2
+    }
+
+A map may be keyed by `number` or `string`s.
+
+TODO: discuss omission of quotes for keys.
+
+TODO: talk about explicit typing.
+
+TODO: custom key types if schema types can have stringification functions.
+
+#### Custom Schema Types
+
+#### Services
+
+#### Default Values
 
 ### Functions
 
@@ -383,23 +613,24 @@ Conventions
 
 There are a plethora of built-in macros.
 
-An entry in a map can be deleted entirely using the `delete` function:
+An entry in a map can be deleted entirely using the `map.Delete` function:
 
+    import mu/map
+    
     var m = map<string, int> {
         "a" = 1
         "b" = 2
     }
     
-    delete(m, "a")
+    map.Delete(m, "a")
         
     // At this point, m is just {
     //     "b" = 2
     // }
 
-
 ### Expressions
 
-TODO: array and map initialization.
+TODO: arithmetic.
 
 ## Runtime Bindings
 
@@ -447,6 +678,8 @@ computed and then applied.  Although MuGS files are human-readable -- primarily 
 purposes -- they are not meant to be edited by hand.  Doing so can cause corruption during the deployment process.
 
 TODO: specify the full graph state format and contents.
+
+TODO: import from AWS.
 
 ## Language Specification
 
