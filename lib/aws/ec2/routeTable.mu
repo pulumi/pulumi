@@ -7,11 +7,11 @@ import aws/cloudformation
 // subnet.
 // @website: http://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-ec2-route-table.html
 service RouteTable {
-    ctor() {
+    new() {
         cloudformation.ExpandTags(this.properties)
-        new cloudformation.Resource {
-            resource = "AWS::EC2::RouteTable"
-            properties = this.properties
+        cf := new cloudformation.Resource {
+            resource: "AWS::EC2::RouteTable"
+            properties: this.properties
         }
     }
 

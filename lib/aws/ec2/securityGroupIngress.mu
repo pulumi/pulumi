@@ -6,10 +6,10 @@ import aws/cloudformation
 // Adds an ingress rule to an Amazon VPC security group.
 // @website: http://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-ec2-security-group-ingress.html
 service SecurityGroupIngress {
-    ctor() {
-        new cloudformation.Resource {
-            resource = "AWS::EC2::SecurityGroupIngress"
-            properties = this.properties
+    new() {
+        cf := new cloudformation.Resource {
+            resource: "AWS::EC2::SecurityGroupIngress"
+            properties: this.properties
         }
     }
 

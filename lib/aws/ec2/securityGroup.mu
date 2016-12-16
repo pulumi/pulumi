@@ -6,11 +6,11 @@ import aws/cloudformation
 // An Amazon EC2 security group.
 // @website: http://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-ec2-security-group.html
 service SecurityGroup {
-    ctor() {
+    new() {
         cloudformation.ExpandTags(this.properties)
-        new cloudformation.Resource {
-            resource = "AWS::EC2::SecurityGroup"
-            properties = this.properties
+        cf := new cloudformation.Resource {
+            resource: "AWS::EC2::SecurityGroup"
+            properties: this.properties
         }
     }
 

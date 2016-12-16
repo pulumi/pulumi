@@ -6,10 +6,10 @@ import aws/cloudformation
 // Attaches a gateway to a VPC.
 // @website: http://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-ec2-vpc-gateway-attachment.html
 service VPCGatewayAttachment {
-    ctor() {
-        new cloudformation.Resource {
-            resource = "AWS::EC2::VPCGatewayAttachment"
-            properties = this.properties
+    new() {
+        cf := new cloudformation.Resource {
+            resource: "AWS::EC2::VPCGatewayAttachment"
+            properties: this.properties
         }
     }
 

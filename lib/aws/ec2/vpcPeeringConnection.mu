@@ -7,11 +7,11 @@ import aws/cloudformation
 // traffic between them by means of a private IP addresses.
 // @website: http://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-ec2-vpcpeeringconnection.html
 service VPCPeeringConnection {
-    ctor() {
+    new() {
         cloudformation.ExpandTags(this.properties)
-        new cloudformation.Resource {
-            resource = "AWS::EC2::VPCPeeringConnection" 
-            properties = this.properties
+        cf := new cloudformation.Resource {
+            resource: "AWS::EC2::VPCPeeringConnection" 
+            properties: this.properties
         }
     }
 

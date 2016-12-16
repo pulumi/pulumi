@@ -6,11 +6,11 @@ import aws/cloudformation
 // A route in a route table within a VPC.
 // @website: https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-ec2-route.html
 service Route {
-    ctor() {
-        new cloudformation.Resource {
-            resource = "AWS::EC2::Route"
-            dependsOn = [ vpcGatewayAttachment ]
-            properties = this.properties
+    new() {
+        cf := new cloudformation.Resource {
+            resource: "AWS::EC2::Route"
+            dependsOn: [ vpcGatewayAttachment ]
+            properties: this.properties
         }
     }
 

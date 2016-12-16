@@ -6,11 +6,11 @@ import aws/cloudformation
 // A Virtual Private Cloud (VPC) with a specified CIDR block.
 // @website: http://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-ec2-vpc.html
 service VPC {
-    ctor() {
+    new() {
         cloudformation.ExpandTags(this.properties)
-        new cloudformation.Resource {
-            resource = "AWS::EC2::VPC"
-            properties = this.properties
+        cf := new cloudformation.Resource {
+            resource: "AWS::EC2::VPC"
+            properties: this.properties
         }
     }
 

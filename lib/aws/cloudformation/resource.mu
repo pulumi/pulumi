@@ -4,7 +4,7 @@ module aws/cloudformation
 
 // A special service that simply emits a CloudFormation template.
 service Resource {
-    ctor() intrinsic
+    new() intrinsic
 
     properties {
         // The CF resource name.

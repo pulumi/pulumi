@@ -6,11 +6,11 @@ import aws/cloudformation
 // An Internet gateway enables your instances to connect to the Internet through the Amazon EC2 edge network.
 // @website: http://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-ec2-internet-gateway.html 
 service InternetGateway {
-    ctor() {
+    new() {
         cloudformation.ExpandTags(this.properties)
-        new cloudformation.Resource {
-            resource = "AWS::EC2::InternetGateway"
-            properties = this.properties
+        cf := new cloudformation.Resource {
+            resource: "AWS::EC2::InternetGateway"
+            properties: this.properties
         }
     }
 

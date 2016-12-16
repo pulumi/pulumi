@@ -5,12 +5,12 @@ import mu/clouds/aws
 
 // A base Mu cluster that can run on any cloud/scheduler target.
 service Cluster {
-    ctor() {
+    new() {
         switch context.arch.cloud {
         case "aws":
-            new aws.Cluster {}
+            cf := new aws.Cluster {}
         default:
-            panic("Unrecognized cloud target: %v", context.arch.cloud)
+            mu.Panic("Unrecognized cloud target: %v", context.arch.cloud)
         }
     }
 }

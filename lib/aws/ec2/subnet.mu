@@ -6,11 +6,11 @@ import aws/cloudformation
 // A subnet in an existing VPC.
 // @website: http://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-ec2-subnet.html
 service Subnet {
-    ctor() {
+    new() {
         cloudformation.ExpandTags(this.properties)
-        new cloudformation.Resource {
-            resource = "AWS::EC2::Subnet"
-            properties = this.properties
+        cf := new cloudformation.Resource {
+            resource: "AWS::EC2::Subnet"
+            properties: this.properties
         }
     }
 
