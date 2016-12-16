@@ -180,12 +180,18 @@ service rackNetwork {
     }
 
     properties {
-        existingVpc: string
-        private: boolean
-        privateApi: boolean
-        subnetCIDRs: string[]
-        subnetPrivateCIDRs: string[]
-        vpccidr: string
+        // Existing VPC ID (if blank a VPC will be created)
+        existingVpc: string = ""
+        // Create non publicly routable resources
+        private: bool: false
+        // Put Rack API Load Balancer in private network
+        privateApi: bool: false
+        // Public Subnet CIDR Blocks
+        subnetCIDRs: string[] = [ "10.0.1.0/24", "10.0.2.0/24", "10.0.3.0/24" ]
+        // Private Subnet CIDR Blocks
+        subnetPrivateCIDRs: string = [ "10.0.4.0/24", "10.0.5.0/24", "10.0.6.0/24" ]
+        // VPC CIDR Block
+        vpccidr: string = "10.0.0.0/16"
     }
 }
 

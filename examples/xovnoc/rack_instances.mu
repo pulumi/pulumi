@@ -116,5 +116,33 @@ service rackInstances {
             role: instancesLifecycleRole
         }
     }
+
+    properties {
+        // Amazon Machine Image: 
+        // http://docs.aws.amazon.com/AmazonECS/latest/developerguide/launch_container_instance.html
+        ami: string = ""
+        // Default container disk size in GB
+        containerDisk: number = 10
+        // Existing VPC ID (if blank a VPC will be created)
+        existingVpc: string = ""
+        // A single line of shell script to run as CloudInit command early during instance boot.
+        instanceBootCommand: string = ""
+        // A single line of shell script to run as CloudInit command late during instance boot.
+        instanceRunCommand: strign = ""
+        // The number of instances in the runtime cluster
+        instanceCount: number<3:> = 3
+        // The type of the instances in the runtime cluster 
+        instanceType: string = "t2.small"
+        // The number of instances to update in a batch
+        instanceUpdateBatchSize: number<1:> = 1
+        // Create non publicly routable resources
+        private: bool: false
+        // Default swap volume size in GB
+        swapSize: number = 5
+        // Default disk size in GB
+        volumeSize: number = 50
+        // Dedicated Hardware
+        tenancy: "default" | "dedicated" = "default"
+    }
 }
 

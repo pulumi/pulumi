@@ -32,8 +32,9 @@ service rackVolumes {
 
     properties {
         vpc: ec2.VPC
-        vpccidr: string
         subnets: ec2.Subnet[]
+        // VPC CIDR Block
+        vpccidr: string = "10.0.0.0/16"
     }
 }
 

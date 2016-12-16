@@ -201,5 +201,32 @@ service rackServices {
             taskDefinition: rackMonitorTasks
         }
     }
+
+    properties {
+        // How much cpu should be reserved by the api web process.
+        apiCpu: string = "128"
+        // How much memory should be reserved by the api web process
+        apiMemory: string = "128"
+        // Autoscale rack instances
+        autoscale: bool = false
+        // How much cpu should be reserved by the builder
+        buildCpu: string = "0"
+        // Override the default build image
+        buildImage: string = ""
+        // How much memory should be reserved by the builder
+        buildMemory: string = "1024"
+        // Anonymous identifier
+        clientId: string = "dev@xovnoc.com"
+        // Create applications that are only accessible inside the VPC
+        internal: bool = false
+        // (REQUIRED) API HTTP password
+        secret password: string<1, 50>
+        // Create non publicly routable resources
+        private: bool: false
+        // (REQUIRED) Xovnoc release version
+        version: string<1:>
+        // VPC CIDR Block
+        vpccidr: string = "10.0.0.0/16"
+    }
 }
 
