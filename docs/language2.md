@@ -173,7 +173,7 @@ At the core, schema types are built out of primitive types:
   index into the map and `V` is the type of value inside: e.g., `map<string, number>`, `map<number, any>`, and so on.
   Note that only the primtive types `bool`, `number`, and `string` can be used as key types inside of a map.
 
-TODO: `null`.
+* Any of the above can be replaced with the special `null` value.
 
 Additionally, `number`, `string`, and array types can carry additional constraints to further subset legal values:
 
@@ -230,13 +230,17 @@ Of course, it is possible to define custom named schema types beyond these primi
     }
 
 Each schema property is assumed to be mutable and required by default.  To disable mutation of a property (shallowly),
-mark it as `readonly`.  To indicate that a property is optional, mark it as `optional`.  An optional property may also
-be given a default value, for example as follows.  It is illegal to give a required property a default value.
+mark it as `readonly`.  To indicate that a property is optional, mark it as `optional`.  An property may also be given a
+default value, in which case it is implicitly optional, for example as follows.
 
-        optional age: number = 42
+        age: number = 42
 
 TODO(joe): protobufs took the opposite approach (and even ditched required altogether eventually).  I do wonder if we
     should flip the polarity on this one.
+
+TODO(joe): non-nullability?  (or, conversely, nullability?)  How does this relate to optional?
+
+TODO(joe): `secret` keyword for Amazon NoEcho-like cases.
 
 Schema types may subtype other schema types.  Because there is no implementation code associated with schema types, this
 behaves like structural subtyping.  For example, imagine we want an `Employee` which is a special kind of `Person`:
@@ -245,22 +249,18 @@ behaves like structural subtyping.  For example, imagine we want an `Employee` w
         title: string
     }
 
-Schema types can be strongly typed enums, constraining the value space to what is listed.  To do this, list the base
-type as `enum<T>`, where `T` is either `string` or `number`, depending on how the enum is meant to be backed.
-
-    schema State: enum<string> {
-        "AL"
-        "AK"
-        ...
-        "WI"
-        "WY"
-    }
-
-Finally, schema types may give names to other structured schema types.
+Schema types may give aliases to other structured schema types.
 
     schema Employees = Employee[]
 
 Given this definition, we can use `Employees` as a type alias anywhere for an array of `Employee` schema values.
+
+Finally, schema types can be strongly typed enums, constraining the value space to what is listed.  To do this, use an
+alias but list the valid values using the or '|' delimiter.  All possible values must be of the same type.
+
+    schema State = "AL" | "AK" | ... | "WI" | "WY"
+
+TODO: numeric enums?  named key/value enums?
 
 #### Service Types
 
@@ -304,14 +304,14 @@ result, they have some restrictions placed on them so that they are deterministi
 A `properties` block defines a schema attached to this service instance, describing its essential settings.
 
         properties {
-            title string
-            optional persistent bool
+            title: string
+            optional persistent: bool
         }
 
 A `funcs` block defines additional functions inside of this service definition.  As with the restrictions on  `ctor`
 above, they are different than your usual programming language's functions, because they must be deterministic.
 
-        ctor {
+        ctor() {
             createTable("table1")
             createTable("table2")
         }
@@ -368,7 +368,11 @@ available to consumers of the outer service, and  must be assigned to by the con
 
 All services listed must of course have service types (although they may be less specific than the concrete type).
 
-### Variables and Constants
+### Values, Variables, and Constants
+
+TODO: constructing new values (including maps, arrays, etc).
+
+TODO: string interpolation.
 
 var
 const
@@ -381,7 +385,27 @@ Conventions
 
 ### Functions
 
+#### Built-In Macros
+
+There are a plethora of built-in macros.
+
+An entry in a map can be deleted entirely using the `delete` function:
+
+    var m = map<string, int> {
+        "a" = 1
+        "b" = 2
+    }
+    
+    delete(m, "a")
+        
+    // At this point, m is just {
+    //     "b" = 2
+    // }
+
+
 ### Expressions
+
+TODO: array and map initialization.
 
 ## Runtime Bindings
 
