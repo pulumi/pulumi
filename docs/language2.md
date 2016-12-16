@@ -291,16 +291,6 @@ updated, and managed, that are not commonly found in other languages.
 
 A service contains up to six discrete sections.
 
-A `ctor` (constructor) defines the logic and services encapsulated by this service.
-
-        ctor() {
-            new mu.Table {}
-        }
-
-Although it isn't stated in the source code, a `ctor` is a function.  Functions are explained later on, however,
-these are computations evaluated at "compile-time", but not deployed and run in the cloud runtime environment.  As a
-result, they have some restrictions placed on them so that they are deterministic; for instance, they cannot do I/O.
-
 A `properties` block defines a schema attached to this service instance, describing its essential settings.
 
         properties {
@@ -308,21 +298,39 @@ A `properties` block defines a schema attached to this service instance, describ
             optional persistent: bool
         }
 
-A `funcs` block defines additional functions inside of this service definition.  As with the restrictions on  `ctor`
-above, they are different than your usual programming language's functions, because they must be deterministic.
+Any instantiation of a service will need to provide these properties.
 
-        ctor() {
-            createTable("table1")
-            createTable("table2")
-        }
-        funcs {
-            createTable(name: string) {
-                new mu.Table() { name: name }
-            }
+A `new()` block creates any services encapsulated by this service, typically using the properties as input.
+
+        new() {
+            table := new mu.Table {}
         }
 
-Functions are convenient for splitting lengthy `ctor`s into better factored, smaller bits of logic.  For functions
-shared between many service definitions, and possibly even exported from a module, please see Functions below.
+By default, services created within this block are private implementation details of the enclosing service definition.
+It is possible to export instances for public usage, however.  To do so, list it in the `exports` block:
+
+        exports {
+            table: mu.Table
+        }
+
+All exported services must be definitely assigned inside of the `new()` function block.
+
+Although it isn't stated in the source code, `new()` is a function.  Functions are explained later on, however,
+these are computations evaluated at "compile-time", but not deployed and run in the cloud runtime environment.  As a
+result, they have some restrictions placed on them so that they are deterministic; for instance, they cannot do I/O.
+
+In fact, a service can contain any number of additional functions to help modularize code, using the `func` keyword.
+
+        new() {
+            table1 := createTable("table1")
+            table2 := createTable("table2")
+        }
+
+        func createTable(name: string) mu.Table {
+            return new mu.Table() { name: name }
+        }
+
+For functions shared between many services, and possibly even exported from a module, please see Functions below.
 
 An `interface` block defines all of the RPC functions available on this service.  These are function signatures without
 the bodies; the bindings must be done separately, as we describe later on in the language bindings section.
@@ -353,20 +361,6 @@ All events are subject to the same restrictions as RPC functions on inputs and o
 types may appear).  The input is used to control the subscription and output is the element type.  Note that the
 semantics of how frequently an event fires, whether it is single-shot or repeating, and so on, are part of the semantics
 of the event itself and not specified by the system.  The system does, however, specify what it means to unsubscribe.
-
-Finally, a `services` block defines all public sub-services exported by this particular service.  Each service is
-available to consumers of the outer service, and  must be assigned to by the constructor and/or invoked functions.
-
-        ctor() {
-            new AddressBookReporter reporter {
-                book = this
-            }
-        }
-        services {
-            reporter: AddressBookReporter
-        }
-
-All services listed must of course have service types (although they may be less specific than the concrete type).
 
 ### Values, Variables, and Constants
 
