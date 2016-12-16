@@ -20,9 +20,9 @@ service Rack {
     // TODO: possibly even refactor individual things into services (e.g., the networks).
     // TODO: we probably need a ToString()-like thing for services (e.g., ARN/ID for most AWS ones).
 
-    resources {
+    new() {
         // IAM goo.
-        customTopicRole iam.Role {
+        customTopicRole := new iam.Role {
             assumeRolePolicyDocument = {
                 version = "2012-10-17"
                 statement = [{
@@ -43,7 +43,7 @@ service Rack {
                 }]
             }
         }
-        kernelUser: iam.User {
+        kerneluser := new iam.User {
             path = "xovnoc"
             policies = [{
                 policyName = "Administrator"
@@ -53,12 +53,12 @@ service Rack {
                 }
             }]
         }
-        kernelAccess: iam.AccessKey {
+        kernelAccess := new iam.AccessKey {
             serial = 1
             status = "Active"
             userName = kernelUser
         }
-        logSubscriptionFilterRole: iam.Role {
+        logSubscriptionFilterRole := new iam.Role {
             assumeRolePolicyDocument = {
                 version = "2012-10-17"
                 statement = [{
@@ -91,7 +91,7 @@ service Rack {
                 }]
             }
         }
-        iamRole: iam.Role {
+        iamRole := new iam.Role {
             assumeRolePolicyDocument = {
                 version = "2012-10-17"
                 statement = [{
@@ -135,11 +135,11 @@ service Rack {
                 }
             }]
         }
-        instanceProfile: aim.InstanceProfile {
+        instanceProfile := new aim.InstanceProfile {
             path = "/xovnoc/"
             roles = [ iamRole ]
         }
-        instancesLifecycleRole: iam.Role {
+        instancesLifecycleRole := new iam.Role {
             assumeRolePolicyDocument = {
                 version = "2012-10-17"
                 statement = [{
@@ -161,7 +161,7 @@ service Rack {
                 }]
             }
         }
-        instancesHandlerRole: iam.Role {
+        instancesHandlerRole := new iam.Role {
             assumeRolePolicyDocument = {
                 version = "2012-10-17"
                 statement = [{
@@ -199,22 +199,22 @@ service Rack {
             }
         }
 
-        encryptionKey: KMSKey {
+        encryptionKey := new KMSKey {
             serviceToken = customTopic.Arn
             description = "Xovnoc Master Encryption"
             keyUsage = "ENCRYPT_DECRYPT"
         }
 
         // Logging resources.
-        logGroup: logs.LogGroup {}
-        logSubscriptionFilterPermission: lambda.Permission {
+        logGroup := new logs.LogGroup {}
+        logSubscriptionFilterPermission := new lambda.Permission {
             action = "lambda:InvokeFunction"
             functionName = logSubscriptionFilterFunction
             principal = "logs." + context.region + ".amazonaws.com"
             sourceAccount = context.accountId
             sourceArn = logGroup.Arn
         }
-        logSubscriptionFilterFunction: lambda.Function {
+        logSubscriptionFilterFunction := new lambda.Function {
             code = // TODO
             handler = "index.handler"
             memorySize = 128
@@ -222,17 +222,17 @@ service Rack {
             runtime = "nodejs"
             timeout = 30
         }
-        logSubscriptionFilter: logs.SubscriptionFilter {
+        logSubscriptionFilter := new logs.SubscriptionFilter {
             destinationArn = logSubscriptionFilterFunction.Arn
             filterPattern = ""
             logGroupName = logGroup
         }
 
         // Topic resources.
-        notificationTopic: sns.Topic {
+        notificationTopic := new sns.Topic {
             topicName = context.stack.name + "-notifications"
         }
-        customTopic: lambda.Function {
+        customTopic := new lambda.Function {
             code = // TODO
             handler = "index.external"
             memorySize = 128
@@ -240,14 +240,14 @@ service Rack {
             runtime = "nodejs"
             timeout = 300
         }
-        instancesLifecycleTopic: sns.Topic {
+        instancesLifecycleTopic := new sns.Topic {
             subscription = {
                 endpoint = instancesLifecycleHandler
                 protocol = lambda
             }
             topicName = context.stack.name + "-lifecycle"
         }
-        instancesLifecycleHandler: lambda.Function {
+        instancesLifecycleHandler := new lambda.Function {
             code = // TODO
             description = `{ "Cluster": "${cluster}", "Rack": "${context.stack.name}" }`
             handler = "index.external"
@@ -256,17 +256,18 @@ service Rack {
             runtime = nodejs
             timeout = 300
         }
-        instancesLifecycleHandlerPermission: lambda.Permission {
+        instancesLifecycleHandlerPermission := new lambda.Permission {
             source = instancesLifecycleTopic
             function = instancesLifecycleHandler
             action = "lambda:InvokeFunction"
             principal = "sns.amazonaws.com"
         }
 
-        cluster: ecs.Cluster {}
+        cluster :=  new ecs.Cluster {}
 
+        var vpc: ec2.VPC
         if existingVpc == "" {
-            vpc: ec2.VPC {
+            vpc = new ec2.VPC {
                 cidrBlock = vpccidr
                 enableDnsSupport = true
                 enableDnsHostnames = true
@@ -274,18 +275,18 @@ service Rack {
                 name = context.stack.name
             }
 
-            gateway: ec2.InternetGateway {}
+            gateway := new ec2.InternetGateway {}
 
-            gatewayAttachment: ec2.VPCGatewayAttachment {
+            gatewayAttachment := new ec2.VPCGatewayAttachment {
                 internetGateway = gateway
                 vpc = vpc
             }
 
-            routes: ec2.RouteTable {
+            routes := new ec2.RouteTable {
                 vpc = vpc
             }
 
-            routeDefault: ec2.Route {
+            routeDefault := new ec2.Route {
                 destinationCidrBlock = "0.0.0.0/0"
                 gateway = gateway
                 routeTable = routes
@@ -295,12 +296,12 @@ service Rack {
             vpc = existingVpc
         }
 
-        availabilityZones: EC2AvailabilityZones {
+        availabilityZones := new EC2AvailabilityZones {
             serviceToken = customTopic
             vpc = vpc
         }
 
-        subnets = new ec2.Subnet[]
+        var subnets: ec2.Subnet[]
         for zone in availabilityZones {
             append(subnets, new ec2.Subnet {
                 availabilityZone = zone
@@ -311,10 +312,10 @@ service Rack {
         }
 
         if private {
-            natAddresses = new ec2.EIP[]
-            nats = new ec2.NatGateway[]
-            routeTablePrivates = new ec2.RouteTable[]
-            routeTableDefaultPrivates = new ec2.Route[]
+            var natAddresses: ec2.EIP[]
+            var nats: ec2.NatGateway[]
+            var routeTablePrivates: ec2.RouteTable[]
+            var routeTableDefaultPrivates: ec2.Route[]
             for i, subnet in subnets {
                 append(natAddresses, new ec.EIP {
                     domain = vpc
@@ -333,7 +334,7 @@ service Rack {
                 })
             }
 
-            subnetPrivates = new ec2.Subnet[]
+            var subnetPrivates: ec2.Subnet[]
             for i, zone in availabilityZones {
                 append(subnetPrivates, ec2.Subnet {
                     availabilityZone = zone
@@ -345,7 +346,7 @@ service Rack {
         }
 
         if existingVpc == "" {
-            subnetRoutes = new ec2.SubnetRouteTableAssociation[]
+            var subnetRoutes: ec2.SubnetRouteTableAssociation[]
             for i, subnet in subnets {
                 append(subnetRoutes, new ec2.SubnetRouteTableAssociation {
                     subnet = subnet0
@@ -354,7 +355,7 @@ service Rack {
             }
 
             if private {
-                subnetPrivateRoutes = new ec2.SubnetRouteTableAssociation[]
+                var subnetPrivateRoutes: ec2.SubnetRouteTableAssociation[]
                 for i, subnetPrivate in subnetPrivates {
                     append(subnetPrivateRoutes, ec2.SubnetRouteTableAssociation {
                         subnet = subnetPrivate
@@ -364,7 +365,7 @@ service Rack {
             }
         }
 
-        securityGroup: ec2.SecurityGroup = {
+        securityGroup := new ec2.SecurityGroup = {
             groupDescription = "Instances"
             securityGroupIngress = [
                 { ipProtocol = "tcp", fromPort = 22, toPort = 22, cidrIp = vpccidr }
@@ -374,7 +375,7 @@ service Rack {
             vpc = vpc
         }
 
-        launchConfiguration: autoscaling.LaunchConfiguration {
+        launchConfiguration := new autoscaling.LaunchConfiguration {
             associatePublicIpAddress = !private
             blockDeviceMappings = [
                 {
@@ -402,7 +403,7 @@ service Rack {
             userData = base64(makeUserData)
         }
 
-        instances: autoscaling.AutoScalingGroup {
+        instances := new autoscaling.AutoScalingGroup {
             launchConfiguration = launchConfiguration
             availabilityZones = availabilityZones
             vpcZoneIdentifier = private ? subnetPrivates : subnets
@@ -442,7 +443,7 @@ service Rack {
                 }
             }
         }
-        instancesLifecycleLaunching: autoscaling.LifecycleHook = {
+        instancesLifecycleLaunching := new autoscaling.LifecycleHook = {
             autoScalingGroup = instances
             defaultResult = "CONTINUE"
             heartbeatTimeout = 600
@@ -450,7 +451,7 @@ service Rack {
             notificationTarget = instancesLifecycleTopic
             roleARN = instancesLifecycleRole.Arn
         }
-        instancesLifecycleTerminating: autoscaling.LifecycleHook = {
+        instancesLifecycleTerminating := new autoscaling.LifecycleHook = {
             autoScalingGroup = instances
             defaultResult = "CONTINUE"
             heartbeatTimeout = 300
@@ -459,11 +460,11 @@ service Rack {
             roleARN = instancesLifecycleRole.Arn
         }
 
-        registryBucket: s3.bucket = {
+        registryBucket := new s3.bucket = {
             deletionPolicy = "Retain" // TODO: not actually a property, it's a peer.
             accessControl = "Private"
         }
-        registryUser: iam.User {
+        registryUser := new iam.User {
             path = "/xovnoc/"
             policies = [{
                 policyName = "Administrator"
@@ -473,13 +474,13 @@ service Rack {
                 }
             }]
         }
-        registryAccess: iam.AccessKey {
+        registryAccess := new iam.AccessKey {
             serial = 1
             status = "Active"
             user = registryUser
         }
 
-        balancer: elasticloadbalancing.LoadBalancer {
+        balancer := new elasticloadbalancing.LoadBalancer {
             connectionDrainingPolicy = { enabled = true, timeout = 60 }
             connectionSettings = { idleTimeout = 3600 }
             crossZone = true
@@ -516,7 +517,7 @@ service Rack {
             subnets = privateApi == "" ? subnets : subnetPrivates
             tags = [{ key = "GatewayAttachment", value = existingVpc == "" ? gatewayAttachment : "existing" }]
         }
-        balancerSecurityGroup: ec2.SecurityGroup {
+        balancerSecurityGroup := new ec2.SecurityGroup {
             groupDescription = context.stack.name + "-balancer"
             securityGroupIngress = [
                 {
@@ -540,7 +541,7 @@ service Rack {
             ]
             vpc = vpc
         }
-        rackWeb = ecs.Service {
+        rackWeb := new ecs.Service {
             cluster = cluster
             deploymentConfiguration = {
                 minimumHealthyPercent = 100
@@ -555,7 +556,7 @@ service Rack {
             role = serviceRole
             taskDefinition = rackWebTasks
         }
-        rackMonitor: ecs.Service {
+        rackMonitor := new ecs.Service {
             cluster = cluster
             deploymentConfiguration = {
                 minimumHealthyPercent = 100
@@ -564,7 +565,7 @@ service Rack {
             desiredCount = 1
             taskDefinition = rackMonitorTasks
         }
-        serviceRole: iam.Role {
+        serviceRole := new iam.Role {
             assumeRolePolicyDocument = {
                 version = "2012-10-17"
                 statement = [{
@@ -593,7 +594,7 @@ service Rack {
             }
         }
 
-        dynamoBuilds: dynamodb.Table {
+        dynamoBuilds := new dynamodb.Table {
             tableName = context.stack.name + "-builds"
             attributeDefinitions = [
                 { attributeName = "id", attributeType = "S" }
@@ -612,7 +613,7 @@ service Rack {
             }]
             provisionedThroughput = { readCapacityUnits = 5, writeCapacityUnits = 5 }
         }
-        dynamoReleases: dynamodb.Table {
+        dynamoReleases := new dynamodb.Table {
             tableName = context.stack.name + "-releases"
             attributeDefinitions = [
                 { attributeName = "id", attributeType = "S" }
@@ -633,10 +634,10 @@ service Rack {
         }
 
         if regionHasEFS {
-            volumeFilesystem: efs.FileSystem {
+            volumeFilesystem := new efs.FileSystem {
                 fileSystemTags = [{ key = "Name", value = context.stack.name + "-shared-volumes" }]
             }
-            volumeSecurity: ec2.SecurityGroup {
+            volumeSecurity := new ec2.SecurityGroup {
                 groupDescription = "volume security group"
                 securityGroupIngress = [{
                     ipProtocol = "tcp"
@@ -646,7 +647,7 @@ service Rack {
                 }]
                 vpc = vpc
             }
-            volumeTargets = new efs.MountTarget[]
+            var volumeTargets: efs.MountTarget[]
             for i, subnet in (private ? subnetPrivates : subnets) {
                 append(volumeTargets, new efs.MountTarget {
                     fileSystem = volumeFilesystem
@@ -656,7 +657,7 @@ service Rack {
             }
         }
 
-        settings: s3.Bucket {
+        settings := new s3.Bucket {
             deletionPolicy = "Retain"
             accessControl = "Private"
             tags = [
@@ -665,7 +666,7 @@ service Rack {
             ]
         }
 
-        rackBuildTasks: ECSTaskDefinition {
+        rackBuildTasks := new ECSTaskDefinition {
             name = context.stack.name + "-build"
             serviceToken = customTopic
             tasks = [{
@@ -696,7 +697,7 @@ service Rack {
                 volumes = [ "/var/run/docker.sock:/var/run/docker.sock" ]
             }]
         }
-        rackWebTasks: ECSTaskDefinition {
+        rackWebTasks := new ECSTaskDefinition {
             name = context.stack.name + "-web"
             serviceToken = customTopic
             tasks = [
@@ -764,7 +765,7 @@ service Rack {
                 }
             ]
         }
-        rackMonitorTasks: ECSTaskDefinition {
+        rackMonitorTasks := new ECSTaskDefinition {
             name = context.stack.name + "-monitor"
             serviceToken = customTopic
             tasks = [{
