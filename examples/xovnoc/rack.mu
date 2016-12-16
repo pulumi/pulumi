@@ -1,17 +1,5 @@
 module xovnoc
 
-import "aws/autoscaling"
-import "aws/dynamodb"
-import "aws/ec2"
-import "aws/ecs"
-import "aws/efs"
-import "aws/elasticloadbalancing"
-import "aws/iam"
-import "aws/lambda"
-import "aws/logs"
-import "aws/s3"
-import "aws/sns"
-
 service Rack {
     // TODO: lambda code.
     // TODO: that big nasty UserData shell script.
