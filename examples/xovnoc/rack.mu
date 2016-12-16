@@ -22,7 +22,7 @@ service Rack {
 
     resources {
         // IAM goo.
-        customTopicRole: iam.Role {
+        customTopicRole iam.Role {
             assumeRolePolicyDocument = {
                 version = "2012-10-17"
                 statement = [{
@@ -300,132 +300,66 @@ service Rack {
             vpc = vpc
         }
 
-        if private {
-            natAddress0: ec2.EIP {
-                domain = vpc
-            }
-            nat0: ec2.NatGateway {
-                allocation = natAddress0
-                subnet = subnet0
-            }
-            routeTablePrivate0: ec2.RouteTable {
-                vpc= vpc
-            }
-            routeTableDefaultPrivate0: ec2.Route {
-                destinationCidrBlock = "0.0.0.0/0"
-                natGateway = nat0
-                routeTable = routeTablePrivate0
-            }
-
-            natAddress1: ec2.EIP {
-                domain = vpc
-            }
-            nat1: ec2.NatGateway {
-                allocation = natAddress1
-                subnet = subnet1
-            }
-            routeTablePrivate1: ec2.RouteTable {
+        subnets = new ec2.Subnet[]
+        for zone in availabilityZones {
+            append(subnets, new ec2.Subnet {
+                availabilityZone = zone
+                cidrBlock = subnet0CIDR
                 vpc = vpc
-            }
-            routeTableDefaultPrivate1: ec2.Route {
-                destinationCidrBlock = "0.0.0.0/0"
-                natGateway = nat1
-                routeTable = routeTablePrivate1
-            }
+                name = context.stack.name + " public " + i
+            })
+        }
 
-            if thirdAvailabilityZone {
-                natAddress2: ec2.EIP {
+        if private {
+            natAddresses = new ec2.EIP[]
+            nats = new ec2.NatGateway[]
+            routeTablePrivates = new ec2.RouteTable[]
+            routeTableDefaultPrivates = new ec2.Route[]
+            for i, subnet in subnets {
+                append(natAddresses, new ec.EIP {
                     domain = vpc
-                }
-                nat2: ec2.NatGateway {
-                    allocation = natAddress2
-                    subnet = subnet2
-                }
-                routeTablePrivate2: ec2.RouteTable {
+                })
+                append(nats, new ec2.NatGateway {
+                    allocation = natAddresses[i]
+                    subnet = subnets
+                })
+                append(routeTablePrivates, new ec2.RouteTable {
                     vpc = vpc
-                }
-                routeTableDefaultPrivate2: ec2.Route {
+                })
+                append(routeTableDefaultPrivates, new ec2.Route {
                     destinationCidrBlock = "0.0.0.0/0"
-                    natGateway = nat2
-                    routeTable = routeTablePrivate2
-                }
+                    natGateway = nats[i]
+                    routeTable = routeTablePrivates[i]
+                })
             }
-        }
 
-        subnet0: ec2.Subnet {
-            availabilityZone = availabilityZones.availabilityZone0
-            cidrBlock = subnet0CIDR
-            vpc = vpc
-            name = context.stack.name + " public 0"
-        }
-        subnet1: ec2.Subnet {
-            availabilityZone = availabilityZones.availabilityZone1
-            cidrBlock = subnet1CIDR
-            vpc = vpc
-            name = context.stack.name + " public 1"
-        }
-        if thirdAvailabilityZone {
-            subnet2: ec2.Subnet {
-                availabilityZone = availabilityZones.availabilityZone2
-                cidrBlock = subnet2CIDR
-                vpc = vpc
-                name = context.stack.name + " public 2"
-            }
-        }
-
-        if private {
-            subnetPrivate0: ec2.Subnet {
-                availabilityZone = availabilityZones.availabilityZone0
-                cidrBlock = subnetPrivate0CIDR
-                vpc = vpc
-                name = context.stack.name + " private 0"
-            }
-            subnetPrivate1: ec2.Subnet {
-                availabilityZone = availabilityZones.availabilityZone1
-                cidrBlock = subnetPrivate1CIDR
-                vpc = vpc
-                name = context.stack.name + " private 1"
-            }
-            if thirdAvailabilityZone {
-                subnet2: ec2.Subnet {
-                    availabilityZone = availabilityZones.availabilityZone2
-                    cidrBlock = subnetPrivate2CIDR
+            subnetPrivates = new ec2.Subnet[]
+            for i, zone in availabilityZones {
+                append(subnetPrivates, ec2.Subnet {
+                    availabilityZone = zone
+                    cidrBlock = subnetPrivateCIDR[i]
                     vpc = vpc
-                    name = context.stack.name + " private 2"
+                    name = context.stack.name + " private " + i
                 }
             }
         }
 
         if existingVpc == "" {
-            subnet0Routes: ec2.SubnetRouteTableAssociation {
-                subnet = subnet0
-                routesTable = routes
-            }
-            subnet1Routes: ec2.SubnetRouteTableAssociation {
-                subnet = subnet1
-                routesTable = routes
-            }
-            if thirdAvailabilityZone {
-                subnet2Routes: ec2.SubnetRouteTableAssociation {
-                    subnet = subnet2
+            subnetRoutes = new ec2.SubnetRouteTableAssociation[]
+            for i, subnet in subnets {
+                append(subnetRoutes, new ec2.SubnetRouteTableAssociation {
+                    subnet = subnet0
                     routesTable = routes
-                }
+                })
             }
 
             if private {
-                subnetPrivate0Routes: ec2.SubnetRouteTableAssociation {
-                    subnet = subnetPrivate0
-                    routesTable = routeTablePrivate0
-                }
-                subnetPrivate1Routes: ec2.SubnetRouteTableAssociation {
-                    subnet = subnetPrivate1
-                    routesTable = routeTablePrivate1
-                }
-                if thirdAvailabilityZone {
-                    subnetPrivate2Routes: ec2.SubnetRouteTableAssociation {
-                        subnet = subnetPrivate2
-                        routesTable = routeTablePrivate2
-                    }
+                subnetPrivateRoutes = new ec2.SubnetRouteTableAssociation[]
+                for i, subnetPrivate in subnetPrivates {
+                    append(subnetPrivateRoutes, ec2.SubnetRouteTableAssociation {
+                        subnet = subnetPrivate
+                        routesTable = routeTablePrivates[i]
+                    })
                 }
             }
         }
@@ -470,22 +404,8 @@ service Rack {
 
         instances: autoscaling.AutoScalingGroup {
             launchConfiguration = launchConfiguration
-            availabilityZones = [
-                availabilityZone0
-                availabilityZone1
-                thirdAvailabilityZone ? availabilityZone2 : undefined
-            ]
-            vpcZoneIdentifier = private ?
-                [
-                    subnetPrivate0
-                    subnetPrivate1
-                    thirdAvailabilityZone ? subnetPrivate2 : undefined
-                ] :
-                [
-                    subnet0
-                    subnet1
-                    thirdAvailabilityZone ? subnet2 : undefined
-                ]
+            availabilityZones = availabilityZones
+            vpcZoneIdentifier = private ? subnetPrivates : subnets
             cooldown = 5
             desiredCapacity = instanceCount
             healthCheckType = "EC2"
@@ -593,9 +513,7 @@ service Rack {
             ]
             loadBalancerName = privateApi == "" ? undefined : "internal"
             securityGroups = [ balancerSecurityGroup ]
-            subnets = privateApi == "" ?
-                [ subnetPrivate0, subnetPrivate1, thirdAvailabilityZone ? subnetPrivate2 : undefined ] :
-                [ subnet0, subnet1, thirdAvailabilityZone ? subnet2 : undefined ]
+            subnets = privateApi == "" ? subnets : subnetPrivates
             tags = [{ key = "GatewayAttachment", value = existingVpc == "" ? gatewayAttachment : "existing" }]
         }
         balancerSecurityGroup: ec2.SecurityGroup {
@@ -728,22 +646,13 @@ service Rack {
                 }]
                 vpc = vpc
             }
-            volumeTarget0: efs.MountTarget {
-                fileSystem = volumeFilesystem
-                subnet = private ? subnetPrivate0 : subnet0
-                securityGroups = [ volumeSecurity ]
-            }
-            volumeTarget1: efs.MountTarget {
-                fileSystem = volumeFilesystem
-                subnet = private ? subnetPrivate1 : subnet1
-                securityGroups = [ volumeSecurity ]
-            }
-            if thirdAvailabilityZone {
-                volumeTarget2: efs.MountTarget {
+            volumeTargets = new efs.MountTarget[]
+            for i, subnet in (private ? subnetPrivates : subnets) {
+                append(volumeTargets, new efs.MountTarget {
                     fileSystem = volumeFilesystem
-                    subnet = private ? subnetPrivate2 : subnet2
+                    subnet = subnet
                     securityGroups = [ volumeSecurity ]
-                }
+                })
             }
         }
 
@@ -821,10 +730,8 @@ service Rack {
                         "SEGMENT_WRITE_KEY" = "KLvwCXo6qcTmQHLpF69DEwGf9zh7lt9i"
                         "SETTINGS_BUCKET" = settings
                         "STACK_ID" = context.stack.id
-                        "SUBNETS" = subnet0 + "," + subnet1 +
-                            (thirdAvailabilityZone ? "," + subnet2 : "")
-                        "SUBNETS_PRIVATE" = subnetPrivate0 + "," + subnetPrivate1 +
-                            (thirdAvailabilityZone ? "," + subnetPrivate2 : "")
+                        "SUBNETS" = join(subnets, ",")
+                        "SUBNETS_PRIVATE" = join(subnetPrivates, ",")
                         "VPC" = vpc
                         "VPCCIDR" = vpccidr
                     }
@@ -886,10 +793,8 @@ service Rack {
                     "ROLLBAR_TOKEN" = "f67f25b8a9024d5690f997bd86bf14b0"
                     "SEGMENT_WRITE_KEY" = "KLvwCXo6qcTmQHLpF69DEwGf9zh7lt9i"
                     "STACK_ID" = context.stack.id
-                    "SUBNETS" = subnet0 + "," + subnet1 +
-                        (thirdAvailabilityZone ? "," + subnet2 : "")
-                    "SUBNETS_PRIVATE" = subnetPrivate0 + "," + subnetPrivate1 +
-                        (thirdAvailabilityZone ? "," + subnetPrivate2 : "")
+                    "SUBNETS" = join(subnets, ",")
+                    "SUBNETS_PRIVATE" = join(subnetPrivates, ",")
                     "VPC" = vpc
                     "VPCCIDR" = vpccidr
                 }
@@ -948,18 +853,10 @@ service Rack {
         private: bool = false
         // Put Rack API Load Balancer in private network
         privateApi: bool = false
-        // Public Subnet 0 CIDR Block
-        subnet0CIDR: string = "10.0.1.0/24"
-        // Public Subnet 1 CIDR Block 
-        subnet1CIDR: string = "10.0.2.0/24"
-        // Public Subnet 2 CIDR Block
-        subnet2CIDR: string = "10.0.3.0/24"
-        // Private Subnet 0 CIDR Block
-        subnetPrivate0CIDR: string = "10.0.4.0/24"
-        // Private Subnet 1 CIDR Block
-        subnetPrivate1CIDR: string = "10.0.5.0/24"
-        // Private Subnet 2 CIDR Block
-        subnetPrivate2CIDR: string = "10.0.6.0/24"
+        // Public Subnet CIDR Blocks
+        subnetCIDRs: string[] = [ "10.0.1.0/24", "10.0.2.0/24", "10.0.3.0/24" ]
+        // Private Subnet CIDR Blocks
+        subnetPrivateCIDRs: string = [ "10.0.4.0/24", "10.0.5.0/24", "10.0.6.0/24" ]
         // Default swap volume size in GB
         swapSize: number = 5
         // (REQUIRED) Xovnoc release version
