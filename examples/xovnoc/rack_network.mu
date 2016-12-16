@@ -4,7 +4,7 @@ import "aws/ec2"
 import "aws/elasticloadbalancing"
 
 service rackNetwork {
-    resources {
+    new() {
         export var vpc: ec2.VPC
         if existingVpc == "" {
             vpc =  new ec2.VPC {
@@ -178,7 +178,7 @@ service rackNetwork {
             vpc: vpc
         }
     }
-
+    
     properties {
         // Existing VPC ID (if blank a VPC will be created)
         existingVpc: string = ""

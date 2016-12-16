@@ -4,7 +4,7 @@ import "aws/dynamodb"
 import "aws/s3"
 
 service rackStorage {
-    resources {
+    new() {
         // S3 buckets:
         registryBucket := new s3.Bucket {
             deletionPolicy: "Retain"

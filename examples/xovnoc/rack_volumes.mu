@@ -4,7 +4,7 @@ import "aws/efs"
 import "aws/ec2"
 
 service rackVolumes {
-    resources {
+    new() {
         if regionHasEFS {
             volumeFilesystem := new efs.FileSystem {
                 fileSystemTags: [{ key: "Name", value: context.stack.name + "-shared-volumes" }]

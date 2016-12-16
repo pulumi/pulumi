@@ -5,7 +5,7 @@ import "aws/lambda"
 import "aws/sns"
 
 service rackServices {
-    resources {
+    new() {
         // Make a cluster for all of our ECS services below.
         cluster :=  new ecs.Cluster {}
 
@@ -221,12 +221,13 @@ service rackServices {
         internal: bool = false
         // (REQUIRED) API HTTP password
         secret password: string<1, 50>
-        // Create non publicly routable resources
+        // Create non publicly routable services
         private: bool: false
         // (REQUIRED) Xovnoc release version
         version: string<1:>
         // VPC CIDR Block
         vpccidr: string = "10.0.0.0/16"
     }
+
 }
 

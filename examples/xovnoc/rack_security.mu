@@ -5,7 +5,7 @@ import "aws/ec2/iam"
 service rackSecurity {
     new() {
         // Roles:
-        export customTopicRole := new iam.Role {
+        customTopicRole := new iam.Role {
             assumeRolePolicyDocument: {
                 version: "2012-10-17"
                 statement: [{
@@ -27,7 +27,7 @@ service rackSecurity {
             }
         }
 
-        export logSubscriptionFilterRole := new iam.Role {
+        logSubscriptionFilterRole := new iam.Role {
             assumeRolePolicyDocument: {
                 version: "2012-10-17"
                 statement: [{
@@ -61,7 +61,7 @@ service rackSecurity {
             }
         }
 
-        export instancesLifecycleRole := new iam.Role {
+        instancesLifecycleRole := new iam.Role {
             assumeRolePolicyDocument: {
                 version: "2012-10-17"
                 statement: [{
@@ -84,7 +84,7 @@ service rackSecurity {
             }
         }
 
-        export instancesHandlerRole := new iam.Role {
+        instancesHandlerRole := new iam.Role {
             assumeRolePolicyDocument: {
                 version: "2012-10-17"
                 statement: [{
@@ -122,7 +122,7 @@ service rackSecurity {
             }
         }
 
-        export serviceRole := new iam.Role {
+        serviceRole := new iam.Role {
             assumeRolePolicyDocument: {
                 version: "2012-10-17"
                 statement: [{
@@ -152,7 +152,7 @@ service rackSecurity {
         }
 
         // Instance profiles:
-        export instanceProfile := new aim.InstanceProfile {
+        instanceProfile := new aim.InstanceProfile {
             path: "/xovnoc/"
             roles: [
                 new iam.Role {
@@ -204,7 +204,7 @@ service rackSecurity {
 
 
         // Users and access keys:
-        export kernelAccess := new iam.AccessKey {
+        kernelAccess := new iam.AccessKey {
             serial: 1
             status: "Active"
             user: new iam.User {
@@ -219,7 +219,7 @@ service rackSecurity {
             }
         }
 
-        export registryAccess := new iam.AccessKey {
+        registryAccess := new iam.AccessKey {
             serial: 1
             status: "Active"
             user: new iam.User {

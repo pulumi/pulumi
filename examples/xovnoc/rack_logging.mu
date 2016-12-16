@@ -5,7 +5,7 @@ import "aws/logs"
 import "aws/lambda"
 
 service rackLogging {
-    resources {
+    new() {
         logGroup := new logs.LogGroup {}
         logSubscriptionFilterFunction := new lambda.Function {
             code: // TODO

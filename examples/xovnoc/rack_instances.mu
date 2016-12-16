@@ -5,7 +5,7 @@ import "aws/lambda"
 import "aws/sns"
 
 service rackInstances {
-    resources {
+    new() {
         // Create a configuration and auto-scaling group that controls instance launching.
         launchConfiguration := new autoscaling.LaunchConfiguration {
             associatePublicIpAddress: !private
@@ -135,7 +135,7 @@ service rackInstances {
         instanceType: string = "t2.small"
         // The number of instances to update in a batch
         instanceUpdateBatchSize: number<1:> = 1
-        // Create non publicly routable resources
+        // Create non publicly routable services
         private: bool: false
         // Default swap volume size in GB
         swapSize: number = 5

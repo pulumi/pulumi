@@ -1,12 +1,12 @@
 module xovnoc
 
-service Rack {
-    // TODO: lambda code.
-    // TODO: that big nasty UserData shell script.
-    // TODO: possibly even refactor individual things into services (e.g., the networks).
-    // TODO: we probably need a ToString()-like thing for services (e.g., ARN/ID for most AWS ones).
+// TODO: lambda code.
+// TODO: that big nasty UserData shell script.
+// TODO: possibly even refactor individual things into services (e.g., the networks).
+// TODO: we probably need a ToString()-like thing for services (e.g., ARN/ID for most AWS ones).
 
-    resources {
+service Rack {
+    new() {
         security := new rackSecurity { this.properties }
         network := new rackNetwork { this.properties }
         logging := new rackLogging {
