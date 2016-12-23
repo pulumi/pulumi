@@ -1,5 +1,7 @@
 # Mull (Mu's Little Language)
 
+**Caution: This document is out of date.  Please refer to [languages](languages.md) for the latest thinking.**
+
 This design note describes Mull, Mu's Little Language.
 
 Mull is the universal metadata format for the Mu framework, runtime, and tools.  Mull has three primary goals:
