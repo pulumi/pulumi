@@ -19,7 +19,8 @@ can be compared to any other graph to compute a delta, a capability essential to
 analysis.  Each graph is [directed and acyclic](https://en.wikipedia.org/wiki/Directed_acyclic_graph) (DAG), in which
 nodes are cloud services, edges are [directed dependencies](https://en.wikipedia.org/wiki/Dependency_graph) between
 services, and all input and output properties are known.  Any given MuIL module can create many possible MuGL graphs,
-because a MuIL module can be parameterized and can include computations.  A graph can be generated from a live cluster.
+and identical MuGL graphs can be created by different MuIL modules, because MuIL can contain parameterized logic and
+conditional computations.  A MuGL graph can also be generated from a live environment.
 
 This document describes the various language concepts at play, the requirements for a high-level Mu language (although
 details for each language are specified elsehwere), the MuIL and MuGL formats, and the overall compilation process.
@@ -78,9 +79,10 @@ approach, so that MuIL processors do not need to re-parse, re-analyze, or re-bin
 performance advantages and simplifies the toolchain.  An optional verifier can check to ensure ASTs are well-formed.
 
 Each MuIL module may also declare custom types and functions.  MuIL uses a "JSON-like" type system so that its universe
-of types is accessible to the lowest common denominator amongst MuMLs.  But this type system may be extended with custom
-types, including service types to encapsulate patterns of service instantiations, and schema types to govern the shape
-of data and property values.  Any of these types and functions may or may not be exported from the module.
+of types is accessible to the lowest common denominator amongst MuMLs.  This is common for Internet data exchange
+already and facilitates cross-language composability.  This type system may be extended with custom types, including
+service types to encapsulate patterns of service instantiations, and schema types to govern the shape of data and
+property values.  Any of these types and functions may or may not be exported from the module.
 
 MuIL is the unit of module sharing and reuse.  Although the MuMLs exist to make creating such modules easier -- as you
 would typically not want to write out MuIL by hand -- each language is just convenient syntactic sugar, in a sense.
@@ -125,13 +127,13 @@ can be an in-memory data structure and/or a serialized JSON or YAML document.  I
 represents a service, each edge is a dependeny between services, and each input and output property value in the graph
 is a concrete, known value, and no unresolved computations are present in the graph (holes notwithstanding).
 
-Each graph represents the outcome of some deployment activity, either planned or actually haven taken place.  Subtly,
+Each graph represents the outcome of some deployment activity, either planned or actually having taken place.  Subtly,
 the graph is never considered the "source of truth"; only the corresponding live running environment can be the source
 of truth.  Instead, the graph describes the *intended* eventual state that a deployment activity is meant to achieve.  A
 process called *reconciliation* may be used to compare differences between the two -- either on-demand or as part of a
 continuous deployment process -- and resolve any differences as appropriate (through updates in either direction).
 
-Each node in a graph carries the service's type, human-friendly name, and set of property values.
+Each node in a graph carries the service's unique ID, human-friendly name, type, and its set of named property values.
 
 A service's type tells the MuGL toolchain how to deal with physical resources that need to be created, read, updated, or
 deleted, and governs which properties are legal and their expected types.  Note that any module references within the
@@ -189,27 +191,31 @@ to change the live environment only where a difference between actual and desire
 
 As seen above, MuGL can be generated from a live environment.  As such, a live environment can be compared to another
 MuGL file -- perhaps generated from another live environment -- to determine and reconcile "drift" between them.  This
-could be used to discover differences between environments that are meant to be similar (e.g., in different zones).
-Alternatively, it could be used to to compare an environment against a MuML description's resulting MuGL, to identify
-places where manual changes were made to an actual environment without having made corresponding changes in the sources.
+could be used to discover differences between environments that are meant to be similar (e.g., in different zones,
+staging vs. production, etc).  Alternatively, this analysis could be used to to compare an environment against a MuML
+description's resulting MuGL, to identify places where manual changes were made to an actual environment without having
+made corresponding changes in the sources.
 
 To cope with some of the potential lossiness during graph inference, Mu implements a *semantic diff*, in addition to a
-more strict exact diff, algorithm.  The semantic diff classifies differences due to lossy inference differently from
+more strict exact diff, algorithm.  The semantic diff classifies differences due to lossy inference distinct from
 ordinary semantically meaningful differences that could be impacting a live environment's behavior.
 
 ### Creating or Updating MuML and MuIL from MuGL
 
-It is possible to raise MuGL into MuIL and, from there, raise MuIL into your favorite MuML.  It is important to note one
-thing before getting into the details.  There are many possible MuIL modules that could generate a given MuGL, due to
-conditional execution of code.  There may even be many possible MuML descriptions that could generate a given MuIL,
-since MuIL's language constructs are intentionally smaller than what might exist in a higher-level programming language.
+It is possible to raise MuGL into MuIL and, from there, raise MuIL into your favorite MuML.
+
+It is, however, important to note one thing before getting into the details.  There are many possible MuIL modules that
+could generate a given MuGL, due to conditional execution of code.  There may even be many possible MuML descriptions
+that could generate a given MuIL, since MuIL's language constructs are intentionally smaller than what might exist in a
+higher-level programming language.  In short, lowering and re-raising is not a round-trippable operation.
 
 Nevertheless, this raising can come in handy for two reasons.
 
 The first is that, thanks to raising, it is possible to reconcile diffs in part by making changes to the source MuML
 descriptions.  If we just altered the MuGL for a given MuML description, the process would be incomplete, because then
 the developer would be responsible for taking that altered MuGL and translating it by hand into edits to the
-description.  Automating this process as much as possible is obviously appealing.
+description.  Automating this process as much as possible is obviously appealing even if -- similar to manual diff
+resolution when applying source patches -- this process requires a little bit of manual, but tool-assistable, work.
 
 The second helps when bootstrapping an existing environment into Mu for the first time.  Not only can we generate the
 MuGL that corresponds to an existing environment, but we can generate a MuML in your favorite language, that will
