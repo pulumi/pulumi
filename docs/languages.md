@@ -8,7 +8,7 @@ a subset of Python, MuRu is a subset of Ruby, and MuGo is a subset of Go, for ex
 languages are simply to ensure static analyzability, determinism, and compilability into an intermediate form.  To
 distinguish between these and their ordinary counterparts, we call these Mu Metadata Languages (MuMLs).
 
-In the middle, this intermediate form, Mu Intermediate Language (MuIL), is a standard metadata representation for a
+In the middle, an intermediate form, Mu Intermediate Language (MuIL), is a standard metadata representation for a
 compiled module.  It is the unit of package management.  This format is inherently multi-langauge and, in addition to
 containing standard metadata elements such as types and variables, it may contain computations in the form of functions,
 statements, and expressions, expressed as a serialized AST plus token tables.  Because of these computations, the final
@@ -29,11 +29,12 @@ details for each language are specified elsehwere), the MuIL and MuGL formats, a
 We envision a collection of high-level languages so IT professionals and developers can pick the one they feel most
 comfortable with.  For example, we currently plan to support JavaScript (MuJS), Python (MuPy), Ruby (MuRu), and Go
 (MuGo).  Furthermore, we imagine translators from other cloud topology formats like AWS CloudFormation and Hashicorp
-Terraform.  These are called metadata languages, or MuMLs, and we call instances of them *descriptions*.
+Terraform.  These are called metadata languages, or MuMLs, and we call code written in them *descriptions*.
 
-In principle, there is no limit to the breadth of MuMLs that we can support, although we do require that they compile
-down into MuIL.  This is admittedly a bit more difficult for fully dynamically typed languages -- for example, it
-requires devirtualization and therefore global analysis -- although the task is certainly not impossible.
+In principle, there is no limit to the breadth of MuMLs that Mu can support -- and it is indeed extensible by 3rd
+parties -- although we do require that any MuML compiles down into MuIL.  This is admittedly a bit more difficult for
+fully dynamically typed languages -- for example, it requires devirtualization and therefore global analysis -- although
+the task is certainly not impossible (as evidenced by MuJS, MuPy, and MuRu support).
 
 The restrictions placed on MuMLs streamline the task of producing cloud topology graphs, and ensure that descriptions
 are deterministic.  Determinism is important, otherwise two deployments from the exact same source descriptions might
@@ -49,7 +50,8 @@ In general, this means MuMLs may not perform these actions:
 
 Examples of existing efforts to define such a subset in JavaScript, simply as an illustration, include: [Gatekeeper](
 https://www.microsoft.com/en-us/research/wp-content/uploads/2016/02/gatekeeper_tr.pdf), [ADsafe](
-http://www.adsafe.org/), and even JavaScript's own [strict mode](
+http://www.adsafe.org/), [Caja](https://github.com/google/caja), [WebPPL](http://dippl.org/chapters/02-webppl.html),
+[Deterministic.js](https://deterministic.js.org/) and even JavaScript's own [strict mode](
 https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Strict_mode).  There are also multiple attempts to
 catalogue sources of nondeterminism in [JavaScript](
 https://github.com/burg/timelapse/wiki/Note-sources-of-nondeterminism) and [its variants](
