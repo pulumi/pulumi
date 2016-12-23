@@ -149,13 +149,28 @@ closure](https://en.wikipedia.org/wiki/Transitive_closure) of services created b
 Because the graph is a DAG, any cycles in this graph are illegal and will result in an error.  It is ideal if higher-
 level translation catches this, since each step in the translation process reduces the diagnosability of errors.
 
-TODO: queryability (GraphQL?)
-
 TODO: a complete file format specification.
 
-TODO: provider / plugin models.
-
 TODO: specify how "holes" show up during planning.
+
+### Resource Providers
+
+Some services are simply abstractions.  They exist solely as convenient ways to create other services, but, at the end
+of the day, there are no physical manifestations of them.
+
+Some services, however, correspond to real physical resources that must be consulted or manipulated during the planning
+and/or application processes.  The extensibility mechanism used to define this logic is part of the Mu SDK and is called
+a *resource provider*.  Each resource provider is associated with a Mu service type, is written in Go, and provides
+standard create, read, update, and delete (CRUD) operations, that achieve the desired state changes in an environment.
+
+Resource providers are dynamically loaded plugins that implement a standard set of interfaces.  Each resource type in Mu
+must resolve to a provider, otherwise an error occurs.  Each plugin can contain multiple resource providers.
+
+TODO: articulate the interface.
+
+### Graph Queryability
+
+TODO: queryability (GraphQL?  RDF/SPARQL?  Neo4j/Cypher?  Gremlin?  Etc.)
 
 ## Scenarios
 
