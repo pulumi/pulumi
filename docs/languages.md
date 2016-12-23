@@ -170,7 +170,7 @@ TODO: articulate the interface.
 
 ### Graph Queryability
 
-TODO: queryability (GraphQL?  RDF/SPARQL?  Neo4j/Cypher?  Gremlin?  Etc.)
+TODO[marapongo/mu#30]: queryability (GraphQL?  RDF/SPARQL?  Neo4j/Cypher?  Gremlin?  Etc.)
 
 ## Scenarios
 
