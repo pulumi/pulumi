@@ -51,16 +51,17 @@ In general, this means MuMLs may not perform these actions:
 Examples of existing efforts to define such a subset in JavaScript, simply as an illustration, include: [Gatekeeper](
 https://www.microsoft.com/en-us/research/wp-content/uploads/2016/02/gatekeeper_tr.pdf), [ADsafe](
 http://www.adsafe.org/), [Caja](https://github.com/google/caja), [WebPPL](http://dippl.org/chapters/02-webppl.html),
-[Deterministic.js](https://deterministic.js.org/) and even JavaScript's own [strict mode](
+[Deterministic.js](https://deterministic.js.org/), and even JavaScript's own [strict mode](
 https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Strict_mode).  There are also multiple attempts to
 catalogue sources of nondeterminism in [JavaScript](
 https://github.com/burg/timelapse/wiki/Note-sources-of-nondeterminism) and [its variants](
 https://github.com/WebAssembly/design/blob/master/Nondeterminism.md).
 
-MuMLs may in fact use 3rd party packages, but they must be blessed by the MuML compiler for your language of choice.
-This either means recompiling packages from source -- and dealing with the possibility that they fail to compile.  Or,
-preferably, using a package that has already been pre-compiled using a MuML compiler, likely in MuIL format, in which
-case you are guaranteed that it will work without any unexpected difficulties.
+MuMLs may in fact consume 3rd party packages (e.g., from NPM, Pip, or elsewhere), but they must be blessed by the MuML
+compiler for your language of choice.  This means recompiling packages from source -- and dealing with the possibility
+that they will fail to compile if they perform illegal operations -- or, preferably, using a package that has already
+been pre-compiled using a MuML compiler, likely in MuIL format, in which case you are guaranteed that it will work
+without any unexpected difficulties.  The Mu Hub contains precompiled packages in this form for easy consumption.
 
 Each MuML description is *compiled* into a MuIL module.
 
@@ -69,15 +70,16 @@ Each MuML description is *compiled* into a MuIL module.
 Each Mu *module* is represented in MuIL.  This format includes high-level metadata about the module's contents.  All
 functions, statements, and expressions are also encoded in MuIL using a simple [abstract syntax tree](
 https://en.wikipedia.org/wiki/Abstract_syntax_tree) (AST) [intermediate representation](
-https://en.wikipedia.org/wiki/Intermediate_representation) (IR).  MuIL is currently available as JSON or YAML.
+https://en.wikipedia.org/wiki/Intermediate_representation) (IR).  MuIL is currently serialized as JSON or YAML.
 
 MuIL's AST is slightly higher level than a classical IR, and is closer to a real "language" (somewhat resembling an
 [MIR](https://blog.rust-lang.org/2016/04/19/MIR.html) in other languages).  This AST is fully bound using a token table
-approach, so that MuIL processors do not need to re-parse, re-analyze, or re-bind the resulting trees.
+approach, so that MuIL processors do not need to re-parse, re-analyze, or re-bind the resulting trees.  This has
+performance advantages and simplifies the toolchain.  An optional verifier can check to ensure ASTs are well-formed.
 
 Each MuIL module may also declare custom types and functions.  MuIL uses a "JSON-like" type system so that its universe
 of types is accessible to the lowest common denominator amongst MuMLs.  But this type system may be extended with custom
-types, including service types, to encapsulate patterns of service instantiations, and schema types governing the shape
+types, including service types to encapsulate patterns of service instantiations, and schema types to govern the shape
 of data and property values.  Any of these types and functions may or may not be exported from the module.
 
 MuIL is the unit of module sharing and reuse.  Although the MuMLs exist to make creating such modules easier -- as you
@@ -105,27 +107,27 @@ both of which entails translating it into a MuGL graph:
 
 * A module may be used to generate a *plan*, which is a form of graph that doesn't reflect an actual deployed
   environment.  To create a plan, any unbound property values from the MuIL module, if any, must be provided.  The act
-  of providing such values is called *instantiation*.
+  of providing such values is called *instantiation*.  Note that, as we will see, a plan's graph may be incomplete.
 
-* After planning, a module may be *applied* through a similar instantiation process.  The only difference between the
-  plan and the application of the plan is that, if the plan contains dependencies on output properties from services
-  that are to be created, those values are obviously unknown a priori.  Therefore, the plan might contain "holes", which
-  will be shown in the plan output.  The most subtle   aspect of this is that, thanks to conditional execution, the plan
-  may in fact not just have holes in the values, but also uncertainty around specifically which services will be created
-  or updated.  The application process performs the physical deployment steps, so all outputs will be known.
+* A plan may then be *applied* through a similar instantiation process.  The only difference between a plan and the
+  application of that plan is that, if the plan contains dependencies on output properties from services   that are to
+  be created, those values are obviously unknown a priori.  Therefore, the plan might contain "holes", which will be
+  shown in the plan output.  The most subtle aspect of this is that, thanks to conditional execution, the plan may in
+  fact not just have holes in the values, but also uncertainty around specifically which services will be created or
+  updated.  The application process performs the physical deployment steps, so all outputs are known before completion.
 
 The result of both steps is a MuGL graph, one being more complete than the other.
 
 ## Mu Graph Language (MuGL)
 
-MuGL is the simplest format and the final frontier of Mu artifacts.  Each MuGL file -- something we just call a
-*graph* -- is an in-memory format, in addition to being serializable to JSON or YAML, and contains a graph in which
-each node represents a service, each edge is a dependeny between services, and each input and output property value in
-the graph is a concrete, known value, and no unresolved computations are present in the graph (holes notwithstanding).
+MuGL is the simplest and final frontier of Mu's languages.  Each MuGL artifact -- something we just call a *graph* --
+can be an in-memory data structure and/or a serialized JSON or YAML document.  It contains a graph in which each node
+represents a service, each edge is a dependeny between services, and each input and output property value in the graph
+is a concrete, known value, and no unresolved computations are present in the graph (holes notwithstanding).
 
-Each graph represents the outcome of some deployment activity, either planned or actually taken place.  Subtly, the
-graph is never considered the "source of truth"; only the corresponding live running environment can be the source of
-truth.  Instead, the graph describes the *intended* eventual state that a deployment activity is meant to achieve.  A
+Each graph represents the outcome of some deployment activity, either planned or actually haven taken place.  Subtly,
+the graph is never considered the "source of truth"; only the corresponding live running environment can be the source
+of truth.  Instead, the graph describes the *intended* eventual state that a deployment activity is meant to achieve.  A
 process called *reconciliation* may be used to compare differences between the two -- either on-demand or as part of a
 continuous deployment process -- and resolve any differences as appropriate (through updates in either direction).
 
