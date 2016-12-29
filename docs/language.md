@@ -1,5 +1,7 @@
 # Mu Language
 
+**Caution: This document is out of date.  Please refer to [languages](languages.md) for the latest thinking.**
+
 [Mu Metadata](metadata.md) is written in a "YAML-like" language, Mull (Mu's little language).  (There is a "JSON-like"
 alternative for those who prefer a JSON style of syntax.)  Mull isn't vanilla YAML, however, for two reasons:
 
