@@ -23,6 +23,8 @@ From there, any data or computations associated with those abstractions may be r
 MuPack is serialized in JSON/YAML form, although in the future we may explore more efficient file formats.  Examples in
 this document will use a YAML syntax for brevity's sake.
 
+TODO: hello, world.
+
 ## Metadata
 
 Each package may contain self-describing metadata, such as a name, and optional attributes that are common in package
@@ -43,7 +45,7 @@ hashes and tags, while packages registered with a traditional package management
 
 ## Symbols
 
-Each symbol refepresents one of four kinds of abstractions: module, variable, function, and type:
+Each symbol represents one of four kinds of abstractions: module, variable, function, or a type:
 
 * A *module* represents a collection of said abstractions.  No type, function, or const can exist outside of one.  Every
   MuPackage consists of at least one top-level module, with optional nested modules inside of it.
@@ -98,25 +100,25 @@ TODO: talk about casing.
 
 Each package contains a definitions map containing all modules, types, variables, and functions:
 
-    declarations:
+    definitions:
 
 This map is laid out in a hierarchical manner, so that any types belonging to a module are nested underneath it, etc.,
 making the name resolution process straightforward.  It contains both internal and exported members.
 
 ### Modules
 
-Because each package has an implicit top-level module, the `declarations:` element itself is actually a module
+Because each package has an implicit top-level module, the `definitions:` element itself is actually a module
 specification.  Every module specification may contain up to the four kinds of members underneath it listed earlier:
 
-    declarations:
-        functions:
-            # functions, keyed by name
+    definitions:
         modules:
             # submodules, keyed by name
-        types:
-            # types, keyed by name
         variables:
             # variables, keyed by name
+        functions:
+            # functions, keyed by name
+        types:
+            # types, keyed by name
 
 Each of these elements may be made accessible outside of the package by attaching the `export: true` attribute:
 
@@ -126,10 +128,72 @@ A module may contain definitions that aren't exported simply by leaving off `exp
 definition as `export: false`.  These are for use within the package only.  No additional accessibility level is
 available at the MuPack level of abstraction, although of course MetaMu languages may project things however they wish.
 
-Modules cannot contain statements or expressions outside of functions and types.  This is unlike some programming
-languages that permit "global" code that runs at module load time.  The only code that is permitted at this level is
-variable initializers, which is run in a deterministic order at module load time.  Such initializers might depend on
-other variable initializers, in which case, this dependency tree must provably form a DAG.  This ensures determinism.
+Modules may contain a single special function, called its "initializer", to run code at module load time.  It is denoted
+by the special name `.init`.  Any variables with complex initialization must be written to from this initializer.
+
+### Variables
+
+A variable is a typed, named storage location.  As we will see, variables show up in several places: as module
+properties, struct and class properties, function parameters, and function local variables.
+
+Each variable definition, no matter which of the above places it appears, shares the following attributes:
+
+* A `name` (its key).
+* An required `type` token.
+* An optional `default` value.
+* An optional `readonly` indicator.
+* An optional informative `description`.
+
+TODO(joe): `secret` keyword for Amazon NoEcho-like cases.
+
+The following is an example variable that demonstrates several of these attributes:
+
+    availabilityZoneCount:
+        description: A map from AZ to the count of its subzones.
+        type: map[string]number
+        default:
+            "us-east-1": 3
+            "us-east-2": 3
+            "us-west-1": 3
+            "us-west-2": 3
+            "eu-west-1": 3
+            "eu-central-1": 2
+            "ap-northeast-1": 2
+            "ap-southeast-1": 2
+            "ap-southeast-2": 3
+
+A variable can be given a `default` value if it can be represented using a simple serialized literal value.  For more
+complex cases, such as using arbitrary expressions, initialization must happen in a function somewhere.  For module
+properties, for instance, this occurs in the module initialzer; for class properties, in its constructor; and so on.
+
+By default, each variable is mutable.  The `readonly` attribute indicates that it isn't:
+
+    availabilityZoneCount:
+        type: map[string]number
+        readonly: true
+        # ...
+
+As with most uses of `readonly` in other programming languages, it is shallow (that is, the property value cannot be
+changed by if the target is a mutable record, properties on *that* record can be).
+
+All variables are initialized to `null` by default.  Problems may arise if the type is not nullable (more on this
+later).  All loads guard against this possibility, however loading a `null` value from a non-null location will lead to
+runtime failure (which can be difficult to diagnose).  It is better if MetaMu compilers ensure this cannot happen.
+
+### Functions
+
+A function is a named executable computation, with typed parameters, and an optional typed return value.  As we will
+see, functions show up in a few places: as module functions, class functions, and lambdas.
+
+All function definitions have two following common attributes:
+
+* An optional list of parameters, each of which is a variable.
+* An optional return type.
+
+Module and class functions are required to also carry a `name` (the function's key).  Lambdas do not have one.
+
+Module functions and lambdas are required to have a MuIL `body`.  Class functions often have one, but it can be omitted,
+in which case the enclosing class must be abstract and concrete subclasses must provide a `body`.
 
 ### Types
 
@@ -171,14 +235,15 @@ TODO(joe): we likely want ints/longs.  Perhaps not in the JSON-like subset, howe
 
 #### Records
 
+New named `record` types can be created by composing primitives and other `record` types.  Each record is defined
+primarily by its name and a set of properties, each of which is simply a variable that belongs to record objects.
+
 Records are pure data, and instances are representable in [JSON](https://tools.ietf.org/html/rfc7159), ensuring
 interoperability with languages and Internet protocols.  This is in contrast to objects which may represent types with
 invariants that make them unappealing to serialize and deserialize.  There may be additional constraints placed on
 records, to enforce contracts, but this does not alter their runtime representation.
 
 The special type `record` may refer to any record type.  This represents the JSON-like subset of types.
-
-It is of course possible to define new `record` types, comprised solely out of primitives and other `record` types.
 
 Each custom `record` type has the following attributes:
 
@@ -204,50 +269,18 @@ For instance, here is an example of a custom `Person` record type:
                 type: number
                 description: The person's current age.
 
-##### Properties
+All properties are simply instances of variable definition shown earlier.  An optional property is merely one that is of
+a nullable type.  So, for example, if we wanted to mark `age` as optional, we would alter the above to:
 
-In the case of properties, each property has the following attributes:
-
-* A `name` (its key).
-* An required `type`, indicating its primitive or `record` type.
-* An optional `default` value.
-* An optional `optional` indicator.
-* An optional `readonly` indicator.
-* An optional informative `description`.
-
-By default, each property is mutable.  The `readonly` attribute on a property indicates that it isn't:
-
-    Person:
-        properties:
-            firstName:
-                type: string
-                readonly: true
-            # ...
-
-As with most uses of `readonly` in other programming languages, it is shallow (that is, the property value cannot be
-changed by if the target is a mutable record, properties on *that* record can be).
-
-By default, each property is also required.  The `optional` attribute on a property indicates that it isn't:
-
-    Person:
-        properties:
-            # ...
             age:
-                type: number
-                optional: true
+                type: number?
+                description: The person's current age.
 
-Any property can be given a default value, in which case it is implicitly optional, for example as follows:
+Please refer to the Advanced Types section for details on constraints and defining custom enum-like types.
 
-    Person:
-        properties:
-            # ...
-            age:
-                type: number
-                default: 42
+#### Classes
 
-TODO(joe): `secret` keyword for Amazon NoEcho-like cases.
-
-##### Subtyping
+#### Subtyping
 
 Record types may subtype other record type using the `base:` element.
 
@@ -277,13 +310,13 @@ Although schemas are nominal, they also enjoy convenient structural conversions 
 
 IDENTITY.
 
-#### Classes
+#### Lambda Types
 
 #### Advanced Types
 
 MuIL supports some additional "advanced" type system features.
 
-##### Constraints
+#### Constraints
 
 To support rich validation, even in the presence of representations that faciliate data interoperability, MuIL supports
 additional constraints on `number`, `string`, and array types, inspired by [JSON Schema](http://json-schema.org/):
@@ -343,7 +376,9 @@ MuIL runtime validation will ensure that it is the case.
 
 ##### Type Aliases
 
-Any type `A` can be used as an alias for another type `B`, simply by listing `B` as `A`'s base type:
+Any type `A` can be used as an alias for another type `B`, simply by listing `B` as `A`'s base type.
+
+For instance, imagine we want to alias `Employees` to mean an array of `Employee` records, or `Employee[]`:
 
     Employees:
         base: Employee[]
@@ -359,7 +394,23 @@ Now, given this new `State` type, we can simplify our `state` property example f
         state:
             type: State
 
-## Data and Computations
+## Mu Intermediate Language (MuIL)
+
+Loads/stores
+    Load constants (null, number, string)
+    Load/store variable (modvar, field, local)
+    Load/store map element (same as variable?)
+    Load/store array element
+    Array and map intrinsics (ldlen)
+    Different for static vs. dynamic load?
+Branches (ble, bge, lt)
+Calls
+Lambdas
+New (records and classes) / init
+Conversion, isinst, casts(structural plus nominal)
+Throw
+Try/Catch/Finally
+Operators
 
 ## Possibly-Controversial Decisions
 
@@ -393,7 +444,7 @@ higher-level MetaMu compiler may decide to emit calls to intrinsic functions rat
 ### Smaller Items
 
 MuIL doesn't currently support "attributes" (a.k.a., decorators).  This isn't for any principled reason other than the
-lack of a need for them and, as such, attributes may be something we consider adding at a lter date.
+lack of a need for them and, as such, attributes may be something we consider adding at a later date.
 
 ## Open Questions
 
@@ -417,4 +468,12 @@ Numeric types (long, int, etc)
 Main entrypoint (vs. open-ended code)
 
 Boxing/unboxing?
+
+Async/await
+
+Static variables
+
+Module variable initialization
+
+Varargs
 
