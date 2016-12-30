@@ -183,6 +183,10 @@ The sole top-level module for an executable MuPackage may also contain a special
 perform graph evaluation.  It is denoted by the special name `.main`.  It is illegal for non-executable MuPackages to
 contain such a function, just as it is for a submodule to contain one (versus the MuPackage's top-level module).
 
+Note that it is up to a MetaMu compiler to decide how to partition code between `.init` and `.main`.  For languages that
+allow "open-ended" coding in a module definition, it is likely that such statements would appear in the `.main` method,
+and that library-only MuPackages containing such code would be rejected outright.
+
 ### Variables
 
 A variable is a typed, named storage location.  As we will see, variables show up in several places: as module
@@ -200,7 +204,7 @@ TODO(joe): `secret` keyword for Amazon NoEcho-like cases.
 
 The following is an example variable that demonstrates several of these attributes:
 
-    availabilityZoneCount:
+    availabilityZoneCounts:
         description: A map from AZ to the count of its subzones.
         type: map[string]number
         default:
@@ -220,7 +224,7 @@ properties, for instance, this occurs in the module initialzer; for class proper
 
 By default, each variable is mutable.  The `readonly` attribute indicates that it isn't:
 
-    availabilityZoneCount:
+    availabilityZoneCounts:
         type: map[string]number
         readonly: true
         # ...
@@ -250,8 +254,9 @@ in which case the enclosing class must be abstract and concrete subclasses must 
 ### Classes
 
 New named `class` types can be created by composing primitives and other `class` types.  Classes are capable of
-representing an array of constructs, from data-only, to pure interfaces, and everything in between.  Because Mu's
-primitive type system is restricted to JSON-like types, all instances can be serialized as [JSON](
+representing a multitude of constructs, from data-only, to pure interfaces, and everything in between.
+
+Because Mu's primitive type system is restricted to JSON-like types, all instances can be serialized as [JSON](
 https://tools.ietf.org/html/rfc7159), ensuring interoperability with languages and Internet protocols.  There may be
 additional constraints placed on classes to enforce contracts, but this does not alter their runtime representation.
 
@@ -295,7 +300,7 @@ In pseudo-code, it is as though constructing a `Person` object is done as thus:
 This is in contrast to a constructor, and/or even a hybrid between the two approaches, again in pseudo-code:
 
     new Person("Alexander", "Hamilton", 47);
-
+    
     new Person(47) {
         firstName: "Alexander",
         lastName:  "Hamilton",
@@ -305,7 +310,7 @@ A type with only primary properties and no constructor is called *conjurable*.  
 constructor -- only functions -- is called *pure* (similar to an interface in many languages).   Both enjoy certain
 benefits that will become apparent later, when we discuss dynamicism and structural conversions (like duck typing).
 
-TODO: should 
+TODO: should pure classes require that functions are abstract?  Should we call these interfaces (`interface: true`)?
 
 ### Subclassing
 
@@ -478,6 +483,16 @@ These might come as a surprise to higher level programmers, however, it is worth
 strike a balance between high- and low-level multi-language representations.  In doing so, some opinions had to be
 discard, while others were strengthened.  And some of them aren't set in stone and may be something we revisit later.
 
+### Values
+
+MuIL does not support unboxed values.  This is entirely a performance and low-level interop concern.
+
+### Pointers
+
+On one hand, MuIL supports pointers everywhere, since all values are actually references to values.  But, MuIL does not
+support an explicit pointer type with associated indirection, arithmetic, and dereferencing operations.  Runtime
+functionality can be written in Go, which leverages pointers, but MuIL itself is not for systems programming.
+
 ### Generics
 
 MuIL does not support generics.  MetaMu languages are free to, however they must be erased at compile-time.
@@ -508,35 +523,19 @@ MuIL does not support function overloading.
 MuIL doesn't currently support "attributes" (a.k.a., decorators).  This isn't for any principled reason other than the
 lack of a need for them and, as such, attributes may be something we consider adding at a later date.
 
+MuIL doesn't support varargs; instead, just use arrays.  The benefit of true varargs is twofold: usability -- something
+that doesn't matter at the MuIL level -- and runtime performance -- something MuIL is less concerned about.
+
 ## Open Questions
-
-AST shapes
-
-Exporting classes: how much do you get?  E.g., Go is a good litmus test.
 
 Exceptions: fail-fast
 
 Abstract
-
 Virtuals
 
-Inheritance
-
-RTTI/Casting/Conversion
-
 Numeric types (long, int, etc)
-
-Main entrypoint (vs. open-ended code)
-
-Boxing/unboxing?
 
 Async/await
 
 Static variables
-
-Module variable initialization
-
-Varargs
-
-Overloading generally
 
