@@ -144,6 +144,23 @@ comma-delimited list of parameter types with an optional return type: `func(PT0,
 unique in that they can only appear in module properties, arguments, local variables, but not class properties.  This
 ensures that all data structures are serializable as JSON, an important property to the interoperability of Mu data.
 
+### Accessibility
+
+MuIL supports two levels of accessibility on all elements:
+
+* `public` means an element is accessible outside of its container.
+* `private` means an element is accessible only within its container (the default).
+
+In these sentences, "container" refers to either the enclosing module or class.
+
+MuIL supports one additional level of accessibility on class members:
+
+* `protected` means an element is accessible only within its class and subclasses.
+
+Accessibility determines whether elements are exported outside of the package.  For an element to be exported, it, and
+all of its ancestor containers, must be marked `public`.  By default, elements are *not* exported, which is useful for
+internal functionality that is invoked within the package but not meant for public consumption.
+
 ## Definitions
 
 Each package contains a definitions map containing all modules, variables, functions, and classes:
@@ -168,14 +185,6 @@ specification.  Every module specification may contain up to the four kinds of m
         classes:
             # classes, keyed by name
 
-Each of these elements may be made accessible outside of the package by attaching the `export: true` attribute:
-
-    export: true
-
-A module may contain definitions that aren't exported simply by leaving off `export: true` or explicitly marking a
-definition as `export: false`.  These are for use within the package only.  No additional accessibility level is
-available at the MuPack level of abstraction, although of course MetaMu languages may project things however they wish.
-
 Modules may contain a single special function, called its "initializer", to run code at module load time.  It is denoted
 by the special name `.init`.  Any variables with complex initialization must be written to from this initializer.
 
@@ -196,6 +205,7 @@ Each variable definition, no matter which of the above places it appears, shares
 
 * A `name` (its key).
 * An required `type` token.
+* An accessibility modifier (default: `private`).
 * An optional `default` value.
 * An optional `readonly` indicator.
 * An optional informative `description`.
@@ -238,6 +248,10 @@ All variables are initialized to `null` by default.  Problems may arise if the t
 later).  All loads guard against this possibility, however loading a `null` value from a non-null location will lead to
 runtime failure (which can be difficult to diagnose).  It is better if MetaMu compilers ensure this cannot happen.
 
+Finally, class properties can be marked as `primary`, to make it both publicly accessible and facilitate easy
+initialization.  Any properties that will be initialized as pure data should be marked primary.  This has special
+meaning with respect to construction that is described later in the section on classes.
+
 ### Functions
 
 A function is a named executable computation, with typed parameters, and an optional typed return value.  As we will
@@ -245,6 +259,7 @@ see, functions show up in a few places: as module functions, class methods, and 
 
 All function definitions have two following common attributes:
 
+* An accessibility modifier (default: `private`).
 * An optional list of parameters, each of which is a variable.
 * An optional return type.
 
@@ -279,6 +294,7 @@ additional constraints placed on classes to enforce contracts, but this does not
 Each custom `class` type has the following attributes:
 
 * A `name` (its key).
+* An accessibility modifier (default: `private`).
 * An optional `extends` listing base type(s).
 * An optional informative `description`.
 * An optional set of `properties` and/or `methods`.
@@ -295,12 +311,15 @@ For instance, here is an example of a pure data-only `Person` class:
             firstName:
                 type: string
                 description: The person's given name.
+                primary: true
             lastName:
                 type: string
                 description: The person's family name.
+                primary: true
             age:
                 type: number
                 description: The person's current age.
+                primary: true
 
 All properties are variable definitions and methods are function definitions, per the earlier descriptions.
 
@@ -308,10 +327,10 @@ A class can have a constructor, which is a special method named `.ctor`, that is
 may also contain a class initializer that runs code to initialize static variables.  It is denoted by the special name
 `.init`.  Any of the class's static variables with complex initialization must be written to from this initializer.
 
-Class properties are special in one important way: each property is, by default, a so-called *primary property*.
+As noted earlier, class properties that are pure data should be marked as `primary`, to make initialization easier.
 Although classes can have constructors, they are not required to, and primary properties are set by the calling object
-initializer *before* invoking that constructor.  In fact, unless the type of a property is nullable, or marked
-`computed: true`, a value will be *required* at initialization time.  This reinforces Mu's data-oriented viewpoint.
+initializer *before* invoking that constructor.  In fact, a primary property's value *must* be provided at
+initialization time (unless it is marked nullable).  This feature helps to reinforce Mu's data-oriented viewpoint.
  
 In pseudo-code, it is as though constructing a `Person` object is done as thus:
 
@@ -343,7 +362,14 @@ conjurable.  Both enjoy certain benefits that will become apparent later, like s
 
 ### Subclassing
 
-Classes may subclass other types using `extends`.
+Classes may subclass other types using `extends` and `implements`:
+
+* A class may subclass a single implementation class using `extends`.
+* A class may subclass any number of conjurable classes using `implements`.
+
+The distinction between these is that `extends` is used to inherit properties, methods, and possibly a constructor from
+one other concrete class, while `implements` marks a particular type as explicitly convertable to certain conjurable
+types.  This can be used to declare that a particular conjurable type is convertible even when duck-typing handles it.
 
 For example, imagine we want an `Employee` which is a special kind of `Person`:
 
@@ -358,11 +384,8 @@ For example, imagine we want an `Employee` which is a special kind of `Person`:
                 type: string
                 description: The employee's current title.
 
-This facilitates easy conversion from an `employee` value to a `person`.  Because MuIL leverages a nominal type system,
-the parent/child relationship between these types is preserved at runtime for purposes of RTTI.  This caters to MetaMu
-languages that use nominal type systems as well as MetaMu languages that use structural ones.
-
-TODO: multiple-inheritance: restrict to pure classes?  If yes, should those be implementation-free?
+This facilitates implicit conversions from `Employee` to `Person`.  Because MuIL preserves RTTI for objects, recovering
+the fact that such an object is an `Employee` is possible using an explicit downcast.
 
 At the moment, there is no support for redeclaration of properties, and therefore no support for covariance (i.e.,
 strengthening property types).  All base-type properties are simply inherited "as-is".
@@ -403,9 +426,10 @@ A compatible function is one whose signature is structurally compatible through 
 types are contravariant (equal or relaxed), return types are covariant (equal or strengthened).  Properties, on the
 other hand, are invariant, since they are both input and output.  This is the same for lambda conversions.
 
-MuIL also supports purely dynamic property and method operations against objects, as though the object were a map
-indexed by the desired member's string name.  This is often used in conjunction with the untyped `any` type.  These
-operations may, of course, fail at runtime, as is usual in dynamic languages.  They are described in the MuIL section.
+The above conversions are based on static types.  MuIL also supports dynamic coercion, dynamic castability checks, plus
+dynamic property and method operations, as though the object were simply a map indexed by member names.  This is often
+used in conjunction with the untyped `any` type.  These operations may, of course, fail at runtime, as is usual in
+dynamic languages.  These operations respect accessibility.  These operations are described in the MuIL section.
 
 ### Advanced Types
 
@@ -552,8 +576,18 @@ MuIL does not support function overloading.
 
 ### Threading/Async/Await
 
-There is no multithreading in MuIL.  And there is no I/O.  As a result, there are neither  multithreading facilities nor
+There is no multithreading in MuIL.  And there is no I/O.  As a result, there are neither multithreading facilities nor
 the commonly found `async` and `await` features in modern programming languages.
+
+## Accessibility, Dynamicism, and Secrets
+
+MuIL dynamic operations respect accessibility.  This is unconventional but allows encapsulation of sensitive
+information.  This is admittedly a risky guarantee to make -- since type systems are intricate things that can be
+subverted in [subtle ways](https://www.microsoft.com/en-us/research/wp-content/uploads/2007/01/appsem-tcs.pdf) --
+and I am honestly on the fence about it.  However, particularly given that Mu abstractions often manipulate sensitive
+secrets, this seems like an important line in the sand to draw, until we are forced to do otherwise.  In practice, it
+does mean that most dynamic languages will simply mark all properties as `public`, although it leaves open the door for
+them to offer a `private` or `secret` annotation to protect those few fields that may deal with secret information.
 
 ### Smaller Items
 
