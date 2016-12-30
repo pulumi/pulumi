@@ -518,6 +518,11 @@ higher-level MetaMu compiler may decide to emit calls to intrinsic functions rat
 
 MuIL does not support function overloading.
 
+### Threading/Async/Await
+
+There is no multithreading in MuIL.  And there is no I/O.  As a result, there is no need for threading constructor, or
+the commonly found `async` and `await` features in modern programming languages.
+
 ### Smaller Items
 
 MuIL doesn't currently support "attributes" (a.k.a., decorators).  This isn't for any principled reason other than the
@@ -534,8 +539,6 @@ Abstract
 Virtuals
 
 Numeric types (long, int, etc)
-
-Async/await
 
 Static variables
 
