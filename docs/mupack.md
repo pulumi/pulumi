@@ -200,6 +200,8 @@ Each variable definition, no matter which of the above places it appears, shares
 * An optional `readonly` indicator.
 * An optional informative `description`.
 
+A class property can be marked `static` to indicate that it belongs to the class itself and not an instance object.
+
 TODO(joe): `secret` keyword for Amazon NoEcho-like cases.
 
 The following is an example variable that demonstrates several of these attributes:
@@ -239,17 +241,31 @@ runtime failure (which can be difficult to diagnose).  It is better if MetaMu co
 ### Functions
 
 A function is a named executable computation, with typed parameters, and an optional typed return value.  As we will
-see, functions show up in a few places: as module functions, class functions, and lambdas.
+see, functions show up in a few places: as module functions, class methods, and lambdas.
 
 All function definitions have two following common attributes:
 
 * An optional list of parameters, each of which is a variable.
 * An optional return type.
 
-Module and class functions are required to also carry a `name` (the function's key).  Lambdas do not have one.
+Module functions and class methods are required to also carry a `name` (the function's key).  Lambdas do not have one.
 
-Module functions and lambdas are required to have a MuIL `body`.  Class functions often have one, but it can be omitted,
-in which case the enclosing class must be abstract and concrete subclasses must provide a `body`.
+Class methods have a few additional optional attributes that may be set:
+
+* An optional `static` attribute.
+* An optional `sealed` attribute.
+* An optional `abstract` attribute.
+
+A `static` method does not have access to an enclosing `this` instance; instead, it is defined at the class scope.
+
+All methods are virtual by default (and hence may be overridden), however the `sealed` attribute prevents overrides.
+Conversely, the `abstract` annotation indicates that a method must be overridden by a concrete subclass.  Any class
+containing even a single abstract method must itself be marked `abstract` (more on this shortly).
+
+It is illegal to mark a `static` method as either `sealed` or `abstract`.
+
+Module functions and lambdas are required to define a `body`, which is a MuIL block.  Class methods often have one, but
+it can be omitted, in which case the method must be abstract and concrete subclasses must provide a `body` block.
 
 ### Classes
 
@@ -266,6 +282,10 @@ Each custom `class` type has the following attributes:
 * An optional `extends` listing base type(s).
 * An optional informative `description`.
 * An optional set of `properties` and/or `methods`.
+* An optional `sealed` attribute.
+* An optional `abstract` attribute.
+* An optional `record` attribute, indicating that a class is data-only.
+* An optional `interface` attribute, indicating that a class has only pure functions.
 
 For instance, here is an example of a pure data-only `Person` class:
 
@@ -283,6 +303,10 @@ For instance, here is an example of a pure data-only `Person` class:
                 description: The person's current age.
 
 All properties are variable definitions and methods are function definitions, per the earlier descriptions.
+
+A class can have a constructor, which is a special method named `.ctor`, that is invoked during initialization.  A class
+may also contain a class initializer that runs code to initialize static variables.  It is denoted by the special name
+`.init`.  Any of the class's static variables with complex initialization must be written to from this initializer.
 
 Class properties are special in one important way: each property is, by default, a so-called *primary property*.
 Although classes can have constructors, they are not required to, and primary properties are set by the calling object
@@ -306,11 +330,16 @@ This is in contrast to a constructor, and/or even a hybrid between the two appro
         lastName:  "Hamilton",
     };
 
-A type with only primary properties and no constructor is called *conjurable*.  A type with no properties and no
-constructor -- only functions -- is called *pure* (similar to an interface in many languages).   Both enjoy certain
-benefits that will become apparent later, when we discuss dynamicism and structural conversions (like duck typing).
+A class marked `sealed` may not be subclassed.  Any attempt to do so leads to failure at load time.
 
-TODO: should pure classes require that functions are abstract?  Should we call these interfaces (`interface: true`)?
+A class may be marked `abstract` to disallow creating new instances.
+
+A class with only primary properties and no constructor may be marked as a `record`.  A class with no properties, no
+constructor, and only abstract methods may be marked as an `interface`.  This is a superset of `abstract`.
+
+A class without a constructor and only primary properties is called a *conjurable* type.  Conjurability is helpful
+because instances can be "conjured" out of thin air without regard for invariants.  Both records and interfaces are
+conjurable.  Both enjoy certain benefits that will become apparent later, like structural duck typing.
 
 ### Subclassing
 
@@ -357,14 +386,16 @@ Imagining that `Base` is the superclass and `Derived` is the subclass, then in p
 
 MuIL also supports a dynamic `isinst` operator, to check whether a given object is of a certain class.
 
-In addition, however, MuIL supports structural "duck typed" conversions between conjurable types.  Recall that a
-conjurable type is one with only primary properties and no constructor.  Such types do not have invariants that might be
-violated by free coercions between such types.  Therefore so long as the source and target are compatible at
-compile-time, implicit conversions between them work just fine.  Dynamic structural casts are also available.
+In addition, however, MuIL supports structural "duck typed" conversions between conjurable types (records and
+interfaces).  Recall that a conjurable type is one with only primary properties and no constructor.  Such types do not
+have invariants that might be violated by free coercions between such types.  So long as the source and target are
+"compatible" at compile-time, duck-type conversions between them work just fine.
 
 What does it mean for two classes to be "compatible?"  Given a source `S` and destination `T`:
 
-* Both `S` and `T` must be conjurable.
+* Either:
+    - `T` is an interface; or,
+    - `S` and `T` are both conjurable.
 * For all functions in `T`, there exists a like-named, compatible function in `S`.
 * For all non-nullable properties in `T`, there exists a like-named, like-typed property in `S`.
 
@@ -372,8 +403,9 @@ A compatible function is one whose signature is structurally compatible through 
 types are contravariant (equal or relaxed), return types are covariant (equal or strengthened).  Properties, on the
 other hand, are invariant, since they are both input and output.  This is the same for lambda conversions.
 
-MuIL also supports purely dynamic property and method operations against objects.  These may, of course, fail at
-runtime, as it usual in a dynamic language.  These are described further in the MuIL section.
+MuIL also supports purely dynamic property and method operations against objects, as though the object were a map
+indexed by the desired member's string name.  This is often used in conjunction with the untyped `any` type.  These
+operations may, of course, fail at runtime, as is usual in dynamic languages.  They are described in the MuIL section.
 
 ### Advanced Types
 
@@ -461,7 +493,7 @@ Now, given this new `State` type, we can simplify our `state` property example f
 
 Loads/stores
     Load constants (null, number, string)
-    Load/store variable (modvar, field, local)
+    Load/store variable (modvar, this, field, local)
     Load/store map element (same as variable?)
     Load/store array element
     Array and map intrinsics (ldlen)
@@ -520,7 +552,7 @@ MuIL does not support function overloading.
 
 ### Threading/Async/Await
 
-There is no multithreading in MuIL.  And there is no I/O.  As a result, there is no need for threading constructor, or
+There is no multithreading in MuIL.  And there is no I/O.  As a result, there are neither  multithreading facilities nor
 the commonly found `async` and `await` features in modern programming languages.
 
 ### Smaller Items
@@ -535,10 +567,7 @@ that doesn't matter at the MuIL level -- and runtime performance -- something Mu
 
 Exceptions: fail-fast
 
-Abstract
-Virtuals
-
 Numeric types (long, int, etc)
 
-Static variables
+Intrinsics: do they appear in MuIL?  Or just in MuGL?
 
