@@ -14,11 +14,17 @@ Each MuPack file is called a MuPackage and contains four things:
 
 The metadata section describes attributes about the overall MuPackage, like its name and version.
 
-All data and computation AST nodes are fully bound, and ready for interpretation/execution.  Higher level MetaMu
+All data and computations are fully bound to types, and ready for interpretation/execution.  Higher level MetaMu
 language compilers are responsible for performing this binding, and encoding the results.  Those results are symbol
 names and tokens that are registered and available for lookup within any given MuPackage.  These symbols provide a
 quick, and binding logic-free, way of resolving any bound node to its target abstraction (module, type, or function).
 From there, any data or computations associated with those abstractions may be retrieved thanks to the definitions.
+
+Mu's type system was designed to be supported by a broad cross-section of modern programming languages.  That said,
+it's entirely possible that MuPack exposes a construct that a certain language doesn't support.  Because MuIL is
+designed for interpretation, determinism, and predictability -- and not runtime speed -- all type coercions are checked
+and fail-fast if an illegal coercion is attempted.  It is obviously a better choice to verify such conversions where
+possible in the MetaMu compilers themselves, however this approach naturally accomodates dynamic languages.
 
 MuPack is serialized in JSON/YAML form, although in the future we may explore more efficient file formats.  Examples in
 this document will use a YAML syntax for brevity's sake.
@@ -43,9 +49,14 @@ Note that a version number is *not* part of the metadata prelude.  The version n
 system outside of the purview of the package contents.  For example, packages checked into Git are managed by SHA1
 hashes and tags, while packages registered with a traditional package management system might be versioned manually.
 
-## Symbols
+## Names
 
-Each symbol represents one of four kinds of abstractions: module, variable, function, or a type:
+As with most metadata formats, names are central to how things reference one another.  The two key concepts to
+understand in how MuPack and MuIL encode such references are *symbols* and *tokens*.
+
+### Symbols
+
+Each symbol represents one of four kinds of abstractions: module, variable, function, or a class:
 
 * A *module* represents a collection of said abstractions.  No type, function, or const can exist outside of one.  Every
   MuPackage consists of at least one top-level module, with optional nested modules inside of it.
@@ -54,15 +65,14 @@ Each symbol represents one of four kinds of abstractions: module, variable, func
 
 * A *function* represents a named computation with typed parameters and an optional typed return value.
 
-* A *type* is either a *record* or *class*.  A record type is pure data and is restricted to a "JSON-like" subset of
-  interoperable data types.  A class type, on the other hand, can contain "behavior" by way of functions, although Mu
-  severely restricts this to ensure cross-language interoperability with languages that don't support OOP.
+* A *class* is a named abstraction that contains properties (variables) and behavior (functions).  Classes have been
+  designed to support both nominal and structural typing, catering to a subset of most dynamic and static languages.
 
 ### Tokens
 
 Each symbol is keyed by a token, which is a unique identifier used to reference the symbol from elsewhere inside and/or
 outside of the defining module.  Each token is just a string name that encodes the entire context necessary to resolve
-it to a concrete module and, within that module, a symbol definition:
+it to a concrete module and, within that module, its corresponding definition:
 
 * A protocol (e.g., `https://`).
 * A base URL (e.g., `hub.mu.com/`, `github.com/`, etc).
@@ -96,9 +106,41 @@ MuPackages may export other symbols in the form of modules, types, variables, an
 
 TODO: talk about casing.
 
+## Types
+
+This section describes the core aspects of MuIL's type system.
+
+There is a single top-type that may refer to any record or class value: the `any` type.
+
+All instances of classes in MuIL are called *objects*.  They are allocated on the heap, in map-like data structures that
+have strong type identity, facilitating dynamic and structural conversions, in addition to classical RTTI and OOP
+patterns.  In a sense, this is a lot like how ECMAScript works.  Furthermore, there is no notion of a pointer in MuIL
+and so the exact storage location is kept hidden from MetaMu languages and their semantics.
+
+Because all instances are objects, we must talk about `null`.  By default, types do not include the special value `null`
+in their domain.  To include it in a type's domain, suffix athat type `T` with a question mark, as in `T?`.
+
+### Primitives
+
+At the core, all types are built out of the primitives:
+
+* The basic primitive types: `bool`, `number`, and `string`.
+
+* Any record `S` can be modified by appending `[]` to make an array type `S[]`: e.g., `number[]` and `string[]`.
+
+* Similarly, two types can be paired up to make a map type using `map[K]V`, where `K` is the type of keys used to
+  index into the map and `V` is the type of value inside: e.g., `map[string]number` and `map[string]record`, and so on.
+  Note that only the primtive types `bool`, `number`, and `string` can be used as keys for a map type.  A map type with
+  a value type `V` that belongs to the `record` subset of types is also a `record`; otherwise, it is a `class`.
+
+As with JSON, all numbers are [IEEE 754 64-bit floating point numbers](
+https://en.wikipedia.org/wiki/IEEE_floating_point).
+
+TODO(joe): we likely want ints/longs.  Perhaps not in the JSON-like subset, however.  Maybe even bignum.
+
 ## Definitions
 
-Each package contains a definitions map containing all modules, types, variables, and functions:
+Each package contains a definitions map containing all modules, variables, functions, and classes:
 
     definitions:
 
@@ -117,8 +159,8 @@ specification.  Every module specification may contain up to the four kinds of m
             # variables, keyed by name
         functions:
             # functions, keyed by name
-        types:
-            # types, keyed by name
+        classes:
+            # classes, keyed by name
 
 Each of these elements may be made accessible outside of the package by attaching the `export: true` attribute:
 
@@ -130,6 +172,10 @@ available at the MuPack level of abstraction, although of course MetaMu language
 
 Modules may contain a single special function, called its "initializer", to run code at module load time.  It is denoted
 by the special name `.init`.  Any variables with complex initialization must be written to from this initializer.
+
+The sole top-level module for an executable MuPackage may also contain a special entrypoint function that is used to
+perform graph evaluation.  It is denoted by the special name `.main`.  It is illegal for non-executable MuPackages to
+contain such a function, just as it is for a submodule to contain one (versus the MuPackage's top-level module).
 
 ### Variables
 
@@ -195,69 +241,25 @@ Module and class functions are required to also carry a `name` (the function's k
 Module functions and lambdas are required to have a MuIL `body`.  Class functions often have one, but it can be omitted,
 in which case the enclosing class must be abstract and concrete subclasses must provide a `body`.
 
-### Types
+### Classes
 
-This section describes MuIL's type system, plus the type definition metadata formats.
+New named `class` types can be created by composing primitives and other `class` types.  Classes are capable of
+representing an array of constructs, from pure-data, to pure-interfaces, to everything in between.  Because Mu's
+primitive type system is restricted to JSON-like types, all instances can be serialized as [JSON](
+https://tools.ietf.org/html/rfc7159), ensuring interoperability with languages and Internet protocols.  There may be
+additional constraints placed on classes to enforce contracts, but this does not alter their runtime representation.
 
-MuPack's type system was designed to be supported by a broad cross-section of modern programming languages.  That said,
-it's entirely possible that MuPack exposes a construct that a certain language doesn't support.  Because MuIL is
-designed for interpretation, determinism, and predictability -- and not runtime speed -- all type coercions are checked
-and fail-fast if an illegal coercion is attempted.  It is obviously a better choice to verify such conversions where
-possible in the MetaMu compilers themselves, however this approach naturally accomodates dynamic languages.
-
-There is a single top-type that may refer to any record or class value: the `any` type.
-
-All instances of records and classes in MuIL are called *objects*.  They are allocated on the heap, in map-like data
-structures that have strong type identity, facilitating dynamic and structural conversions, in addition to classical
-RTTI and OOP patterns.  In a sense, this is a lot like how ECMAScript works.  Furthermore, there is no notion of a
-pointer in MuIL and so the exact storage location is kept hidden from MetaMu languages and their semantics.
-
-Because all instances are objects, we must talk about `null`.  By default, types do not include the special value `null`
-in their domain.  To include it in a type's domain, suffix athat type `T` with a question mark, as in `T?`.
-
-#### Primitives
-
-At the core, all types are built out of the primitives:
-
-* The basic primitive types: `bool`, `number`, and `string`.
-
-* Any record `S` can be modified by appending `[]` to make an array type `S[]`: e.g., `number[]` and `string[]`.
-
-* Similarly, two types can be paired up to make a map type using `map[K]V`, where `K` is the type of keys used to
-  index into the map and `V` is the type of value inside: e.g., `map[string]number` and `map[string]record`, and so on.
-  Note that only the primtive types `bool`, `number`, and `string` can be used as keys for a map type.  A map type with
-  a value type `V` that belongs to the `record` subset of types is also a `record`; otherwise, it is a `class`.
-
-As with JSON, all numbers are [IEEE 754 64-bit floating point numbers](
-https://en.wikipedia.org/wiki/IEEE_floating_point).
-
-TODO(joe): we likely want ints/longs.  Perhaps not in the JSON-like subset, however.  Maybe even bignum.
-
-#### Records
-
-New named `record` types can be created by composing primitives and other `record` types.  Each record is defined
-primarily by its name and a set of properties, each of which is simply a variable that belongs to record objects.
-
-Records are pure data, and instances are representable in [JSON](https://tools.ietf.org/html/rfc7159), ensuring
-interoperability with languages and Internet protocols.  This is in contrast to objects which may represent types with
-invariants that make them unappealing to serialize and deserialize.  There may be additional constraints placed on
-records, to enforce contracts, but this does not alter their runtime representation.
-
-The special type `record` may refer to any record type.  This represents the JSON-like subset of types.
-
-Each custom `record` type has the following attributes:
+Each custom `class` type has the following attributes:
 
 * A `name` (its key).
 * An optional `base` type.
 * An optional informative `description`.
-* Either of these:
-    - An optional set of properties; or,
-    - An optional set of value constraints.
+* An optional set of `properties` and/or `functions`.
 
-For instance, here is an example of a custom `Person` record type:
+For instance, here is an example of a pure data-only `Person` class:
 
     Person:
-        description: A record describing a person.
+        description: A person.
         properties:
             firstName:
                 type: string
@@ -269,25 +271,23 @@ For instance, here is an example of a custom `Person` record type:
                 type: number
                 description: The person's current age.
 
-All properties are simply instances of variable definition shown earlier.  An optional property is merely one that is of
-a nullable type.  So, for example, if we wanted to mark `age` as optional, we would alter the above to:
+All properties are variable definitions and functions are function definitions, per the earlier descriptions.
 
-            age:
-                type: number?
-                description: The person's current age.
-
-Please refer to the Advanced Types section for details on constraints and defining custom enum-like types.
-
-#### Classes
+Class properties are special in one important way: each property is, by default, a *primary property*.  Although classes
+can have constructors, primary properties are set by the calling object initializer *before* invoking that constructor.
+In fact, unless the type of a property is nullable, a value will be *required* at initialization time.  As a result,
+data-only classes like the above `Person` class may omit a constructor altogether.  A constructor can, however, run
+afterwards to initialize more complex properties, possibly based on constructor arguments.  Properties that will be
+initialized in this manner can be marked `computed: true` so that callers need not manually initialize them.
 
 #### Subtyping
 
-Record types may subtype other record type using the `base:` element.
+Classes may subtype other record type using the `base:` element.
 
 For example, imagine we want an `Employee` which is a special kind of `Person`:
 
     Employee:
-        description: A record describing an employee.
+        description: An employee person.
         base: Person
         properties:
             company:
@@ -304,15 +304,15 @@ languages that use nominal type systems as well as MetaMu languages that use str
 At the moment, there is support for covariance (i.e., strengthening properties).  All base-type properties are simply
 inherited "as-is".
 
-##### Conversions
+### Conversions
 
 Although schemas are nominal, they also enjoy convenient structural conversions in the language without undue ceremony.
 
-IDENTITY.
+TODO: RTTI, type identity, structual conversions, isinst vs type (Python-esque), etc.
 
-#### Lambda Types
+### Lambda Types
 
-#### Advanced Types
+### Advanced Types
 
 MuIL supports some additional "advanced" type system features.
 
@@ -357,7 +357,7 @@ As examples of these, consider:
 
 These constructs are frequently useful for validating properties of schemas without needing custom code.
 
-##### Union and Literal Types
+#### Union and Literal Types
 
 A union type is simply an array containing all possible types that a value might resolve to.  For example, the type
 `[ string, number ]` resolves to either a string or number value at runtime.
@@ -374,7 +374,7 @@ For example, imaging we wish our `state` property to be confined to the 50 state
 A compiler should check that any value for the `state` property has one of the legal string values.  If it doesn't,
 MuIL runtime validation will ensure that it is the case.
 
-##### Type Aliases
+#### Type Aliases
 
 Any type `A` can be used as an alias for another type `B`, simply by listing `B` as `A`'s base type.
 
@@ -476,4 +476,6 @@ Static variables
 Module variable initialization
 
 Varargs
+
+Overloading generally
 
