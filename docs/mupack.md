@@ -574,6 +574,13 @@ higher-level MetaMu compiler may decide to emit calls to intrinsic functions rat
 
 MuIL does not support function overloading.
 
+### Exceptions
+
+Most languages we envision supporting have exception-based error models (with the sole exception of Go).  As a result,
+MuIL supports exceptions.  At the moment, there are no throws annotations of any kind; if Go or Java become interesting
+MetaMu languages to support down the road, we may wish to add optional throws annotations to drive proxy generation,
+including the possibility of flowing return and exception types to Go and Java, respectively.
+
 ### Threading/Async/Await
 
 There is no multithreading in MuIL.  And there is no I/O.  As a result, there are neither multithreading facilities nor
@@ -598,8 +605,6 @@ MuIL doesn't support varargs; instead, just use arrays.  The benefit of true var
 that doesn't matter at the MuIL level -- and runtime performance -- something MuIL is less concerned about.
 
 ## Open Questions
-
-Exceptions: fail-fast
 
 Numeric types (long, int, etc)
 
