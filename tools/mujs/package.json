@@ -1,0 +1,20 @@
+{
+  "name": "MuJS",
+  "version": "0.0.1",
+  "description": "MuJS: An ECMAScript compiler for Mu",
+  "repository": "https://github.com/marapongo/mu",
+  "author": "Joe Duffy (joeduffy@acm.org)",
+  "main": "lib/index.js",
+  "typings": "lib/index.d.ts",
+  "scripts": {
+    "build": "tsc && tslint src/*.ts src/**/*.ts",
+    "postinstall": "typings install",
+    "test": "npm run cov && npm run covreport",
+    "cov": "istanbul cover --print none node_modules/.bin/_mocha -- --recursive --es_staging --timeout 15000 bin/tests/",
+    "covreport": "istanbul report text-summary && istanbul report text"
+  },
+  "devDependencies": {
+    "tslint": "^4.2.0",
+    "typescript": "^2.1.4"
+  }
+}

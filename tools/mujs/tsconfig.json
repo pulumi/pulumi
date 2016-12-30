@@ -1,0 +1,25 @@
+{
+    "compilerOptions": {
+        "outDir": "lib",
+        "target": "es6",
+        "module": "commonjs",
+        "moduleResolution": "node",
+        "declaration": true,
+        "sourceMap": false,
+        "stripInternal": true,
+        "experimentalDecorators": true,
+        "pretty": true,
+        "noFallthroughCasesInSwitch": true,
+        "noImplicitAny": true,
+        "noImplicitReturns": true,
+        "forceConsistentCasingInFileNames": true,
+        "strictNullChecks": true
+    },
+    "files": [
+        "src/index.ts",
+        "src/il/index.ts",
+        "src/pack/index.ts",
+        "src/symbols/index.ts"
+    ]
+}
+

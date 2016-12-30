@@ -1,0 +1,4 @@
+*.swp
+lib/
+node_modules/
+
