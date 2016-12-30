@@ -65,7 +65,7 @@ Each symbol represents one of four kinds of abstractions: module, variable, func
 
 * A *function* represents a named computation with typed parameters and an optional typed return value.
 
-* A *class* is a named abstraction that contains properties (variables) and behavior (functions).  Classes have been
+* A *class* is a named abstraction that contains properties (variables) and methods (functions).  Classes have been
   designed to support both nominal and structural typing, catering to a subset of most dynamic and static languages.
 
 ### Tokens
@@ -137,6 +137,12 @@ As with JSON, all numbers are [IEEE 754 64-bit floating point numbers](
 https://en.wikipedia.org/wiki/IEEE_floating_point).
 
 TODO(joe): we likely want ints/longs.  Perhaps not in the JSON-like subset, however.  Maybe even bignum.
+
+In addition to the above types, function types are available, in support of lambdas.  Such a type has an optional
+comma-delimited list of parameter types with an optional return type: `func(PT0,...,PTN)RT`.  For example,
+`func(string,number)bool` is a function that takes a `string` and `number`, and returns a `bool`.  Function types are
+unique in that they can only appear in module properties, arguments, local variables, but not class properties.  This
+ensures that all data structures are serializable as JSON, an important property to the interoperability of Mu data.
 
 ## Definitions
 
@@ -244,7 +250,7 @@ in which case the enclosing class must be abstract and concrete subclasses must 
 ### Classes
 
 New named `class` types can be created by composing primitives and other `class` types.  Classes are capable of
-representing an array of constructs, from pure-data, to pure-interfaces, to everything in between.  Because Mu's
+representing an array of constructs, from data-only, to pure interfaces, and everything in between.  Because Mu's
 primitive type system is restricted to JSON-like types, all instances can be serialized as [JSON](
 https://tools.ietf.org/html/rfc7159), ensuring interoperability with languages and Internet protocols.  There may be
 additional constraints placed on classes to enforce contracts, but this does not alter their runtime representation.
@@ -252,9 +258,9 @@ additional constraints placed on classes to enforce contracts, but this does not
 Each custom `class` type has the following attributes:
 
 * A `name` (its key).
-* An optional `base` type.
+* An optional `extends` listing base type(s).
 * An optional informative `description`.
-* An optional set of `properties` and/or `functions`.
+* An optional set of `properties` and/or `methods`.
 
 For instance, here is an example of a pure data-only `Person` class:
 
@@ -271,24 +277,45 @@ For instance, here is an example of a pure data-only `Person` class:
                 type: number
                 description: The person's current age.
 
-All properties are variable definitions and functions are function definitions, per the earlier descriptions.
+All properties are variable definitions and methods are function definitions, per the earlier descriptions.
 
-Class properties are special in one important way: each property is, by default, a *primary property*.  Although classes
-can have constructors, primary properties are set by the calling object initializer *before* invoking that constructor.
-In fact, unless the type of a property is nullable, a value will be *required* at initialization time.  As a result,
-data-only classes like the above `Person` class may omit a constructor altogether.  A constructor can, however, run
-afterwards to initialize more complex properties, possibly based on constructor arguments.  Properties that will be
-initialized in this manner can be marked `computed: true` so that callers need not manually initialize them.
+Class properties are special in one important way: each property is, by default, a so-called *primary property*.
+Although classes can have constructors, they are not required to, and primary properties are set by the calling object
+initializer *before* invoking that constructor.  In fact, unless the type of a property is nullable, or marked
+`computed: true`, a value will be *required* at initialization time.  This reinforces Mu's data-oriented viewpoint.
+ 
+In pseudo-code, it is as though constructing a `Person` object is done as thus:
 
-#### Subtyping
+    new Person {
+        firstName: "Alexander",
+        lastName:  "Hamilton",
+        age:       47,
+    };
 
-Classes may subtype other record type using the `base:` element.
+This is in contrast to a constructor, and/or even a hybrid between the two approaches, again in pseudo-code:
+
+    new Person("Alexander", "Hamilton", 47);
+
+    new Person(47) {
+        firstName: "Alexander",
+        lastName:  "Hamilton",
+    };
+
+A type with only primary properties and no constructor is called *conjurable*.  A type with no properties and no
+constructor -- only functions -- is called *pure* (similar to an interface in many languages).   Both enjoy certain
+benefits that will become apparent later, when we discuss dynamicism and structural conversions (like duck typing).
+
+TODO: should 
+
+### Subclassing
+
+Classes may subclass other types using `extends`.
 
 For example, imagine we want an `Employee` which is a special kind of `Person`:
 
     Employee:
         description: An employee person.
-        base: Person
+        extends: Person
         properties:
             company:
                 type: string
@@ -301,16 +328,47 @@ This facilitates easy conversion from an `employee` value to a `person`.  Becaus
 the parent/child relationship between these types is preserved at runtime for purposes of RTTI.  This caters to MetaMu
 languages that use nominal type systems as well as MetaMu languages that use structural ones.
 
-At the moment, there is support for covariance (i.e., strengthening properties).  All base-type properties are simply
-inherited "as-is".
+TODO: multiple-inheritance: restrict to pure classes?  If yes, should those be implementation-free?
+
+At the moment, there is no support for redeclaration of properties, and therefore no support for covariance (i.e.,
+strengthening property types).  All base-type properties are simply inherited "as-is".
 
 ### Conversions
 
-Although schemas are nominal, they also enjoy convenient structural conversions in the language without undue ceremony.
+The MuIL type system uses a combination of subtyping and structural conversions.
 
-TODO: RTTI, type identity, structual conversions, isinst vs type (Python-esque), etc.
+At its core, MuIL is a nominal static type system.  As such, it obeys the usual subtyping relations: upcasting from a
+subclass to its superclass can be done without any explicit action; downcasting from a superclass to a given subclass
+can be done explicitly with a MuIL instruction, and it might fail should the cast be wrong.
 
-### Lambda Types
+Imagining that `Base` is the superclass and `Derived` is the subclass, then in pseudo-code:
+
+    Base b = new Base();
+    Derived d = new Derived();
+    
+    d = b;    // Error at compile-time, requires an explicit cast.
+    d = (D)b; // Error at runtime, Base is not an instance of Derived.
+    b = d;    // OK.
+
+MuIL also supports a dynamic `isinst` operator, to check whether a given object is of a certain class.
+
+In addition, however, MuIL supports structural "duck typed" conversions between conjurable types.  Recall that a
+conjurable type is one with only primary properties and no constructor.  Such types do not have invariants that might be
+violated by free coercions between such types.  Therefore so long as the source and target are compatible at
+compile-time, implicit conversions between them work just fine.  Dynamic structural casts are also available.
+
+What does it mean for two classes to be "compatible?"  Given a source `S` and destination `T`:
+
+* Both `S` and `T` must be conjurable.
+* For all functions in `T`, there exists a like-named, compatible function in `S`.
+* For all non-nullable properties in `T`, there exists a like-named, like-typed property in `S`.
+
+A compatible function is one whose signature is structurally compatible through the usual subtyping rules (parameter
+types are contravariant (equal or relaxed), return types are covariant (equal or strengthened).  Properties, on the
+other hand, are invariant, since they are both input and output.  This is the same for lambda conversions.
+
+MuIL also supports purely dynamic property and method operations against objects.  These may, of course, fail at
+runtime, as it usual in a dynamic language.  These are described further in the MuIL section.
 
 ### Advanced Types
 
@@ -441,6 +499,10 @@ appear in the tree.  Parenthesis nodes may be used to group expressions so that 
 MuIL does not support operator overloading.  The set of operators is fixed and cannot be overridden, although a
 higher-level MetaMu compiler may decide to emit calls to intrinsic functions rather than depending on MuIL operators.
 
+### Overloading
+
+MuIL does not support function overloading.
+
 ### Smaller Items
 
 MuIL doesn't currently support "attributes" (a.k.a., decorators).  This isn't for any principled reason other than the
@@ -462,7 +524,6 @@ Inheritance
 
 RTTI/Casting/Conversion
 
-Lambda types
 Numeric types (long, int, etc)
 
 Main entrypoint (vs. open-ended code)
