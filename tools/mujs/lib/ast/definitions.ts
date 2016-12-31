@@ -45,9 +45,7 @@ export const modulePropertyKind = "ModuleProperty";
 export type  ModulePropertyKind = "ModuleProperty";
 
 // A class property is just like a module property with some extra attributes.
-export interface ClassProperty extends Variable {
-    access?:  symbols.ClassMemberAccessibility;
-    static?:  boolean;
+export interface ClassProperty extends Variable, ClassMember {
     primary?: boolean;
 }
 export const classPropertyKind = "ClassProperty";
@@ -69,10 +67,8 @@ export const moduleMethodKind = "ModuleMethod";
 export type  ModuleMethodKind = "ModuleMethod";
 
 // A class method is just like a module method with some extra attributes.
-export interface ClassMethod extends Function {
+export interface ClassMethod extends Function, ClassMember {
     kind:      ClassMethodKind;
-    access?:   symbols.ClassMemberAccessibility;
-    static?:   boolean;
     sealed?:   boolean;
     abstract?: boolean;
 }
@@ -89,9 +85,14 @@ export interface Class extends Definition {
     abstract?:   boolean;
     record?:     boolean;
     interface?:  boolean;
-    properties?: ClassProperty[];
-    methods?:    ClassMethod[];
+    members?:    ClassMember[];
 }
 export const classKind = "Class";
 export type  ClassKind = "Class";
+
+// A simple marker interface for members of a class.
+export interface ClassMember extends Node {
+    access?:  symbols.ClassMemberAccessibility;
+    static?: boolean;
+}
 

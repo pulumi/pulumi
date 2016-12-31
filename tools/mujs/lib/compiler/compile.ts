@@ -10,9 +10,9 @@ import * as ts from "typescript";
 const TS_PROJECT_FILE = "tsconfig.json";
 
 export interface ICompilation {
-    root: string;                    // the root directory for the compilation.
-    program: ts.Program | undefined; // the resulting TypeScript program object.
-    diagnostics: ts.Diagnostic[];    // any diagnostics resulting from compilation.
+    root:        string;                 // the root directory for the compilation.
+    tree:        ts.Program | undefined; // the resulting TypeScript program object.
+    diagnostics: ts.Diagnostic[];        // any diagnostics resulting from compilation.
 }
 
 // Compiles a TypeScript program and returns its output.  The path can be one of three things: 1) a single TypeScript
@@ -105,7 +105,7 @@ export async function compile(path: string, options?: ts.CompilerOptions): Promi
 
     return {
         root:        root,
-        program:     program,
+        tree:        program,
         diagnostics: diagnostics,
     };
 }
