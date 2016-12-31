@@ -82,6 +82,22 @@ export interface LabeledStatement extends Statement {
 export const labeledStatementKind = "LabeledStatement";
 export type  LabeledStatementKind = "LabeledStatement";
 
+// A `return` statement to exit from a function.
+export interface ReturnStatement extends Statement {
+    kind:        ReturnStatementKind;
+    expression?: Expression;
+}
+export const returnStatementKind = "ReturnStatement";
+export type  ReturnStatementKind = "ReturnStatement";
+
+// A `throw` statement to throw an exception object.
+export interface ThrowStatement extends Statement {
+    kind:        ThrowStatementKind;
+    expression?: Expression;
+}
+export const throwStatementKind = "ThrowStatement";
+export type  ThrowStatementKind = "ThrowStatement";
+
 // A `while` statement.  To simplify the AST, this is the only looping statement available.  All higher-level
 // looping constructs such as `for`, `foreach`, `for in`, `for of`, `do / while`, etc. must be desugared into it.
 export interface WhileStatement extends Statement {
@@ -92,6 +108,13 @@ export const whileStatementKind = "WhileStatement";
 export type  WhileStatementKind = "WhileStatement";
 
 /** Miscellaneous **/
+
+// An empty statement.
+export interface EmptyStatement extends Statement {
+    kind: EmptyStatementKind;
+}
+export const emptyStatementKind = "EmptyStatement";
+export type  EmptyStatementKind = "EmptyStatement";
 
 // A statement that performs an expression, but ignores its result.
 export interface ExpressionStatement extends Statement {

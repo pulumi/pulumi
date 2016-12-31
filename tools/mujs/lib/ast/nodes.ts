@@ -30,7 +30,10 @@ export type NodeKind =
     statements.ContinueStatementKind |
     statements.IfStatementKind |
     statements.LabeledStatementKind |
+    statements.ReturnStatementKind |
+    statements.ThrowStatementKind |
     statements.WhileStatementKind |
+    statements.EmptyStatementKind |
     statements.ExpressionStatementKind |
 
     expressions.NullLiteralExpressionKind |
