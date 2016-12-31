@@ -16,6 +16,8 @@ export interface Node {
 // NodeType contains all of the legal Node implementations.  This effectively "seales" the discriminated node type,
 // and makes constructing and inspecting nodes a little more bulletproof (i.e., they aren't arbitrary strings).
 export type NodeKind =
+    IdentifierKind |
+
     definitions.ModuleKind |
     definitions.ParameterKind |
     definitions.ModulePropertyKind |
@@ -54,4 +56,11 @@ export type NodeKind =
     expressions.CastExpressionKind |
     expressions.ConditionalExpressionKind
 ;
+
+export interface Identifier extends Node {
+    kind:  IdentifierKind;
+    ident: symbols.Identifier;
+}
+export const identifierKind = "Identifier";
+export type  IdentifierKind = "Identifier";
 
