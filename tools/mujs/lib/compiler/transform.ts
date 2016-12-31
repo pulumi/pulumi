@@ -546,28 +546,44 @@ function transformYieldExpression(node: ts.YieldExpression): ast.Expression {
 
 /** Literals **/
 
-function transformBooleanLiteral(node: ts.BooleanLiteral): ast.Expression {
-    return contract.failf("NYI");
+function transformBooleanLiteral(node: ts.BooleanLiteral): ast.BoolLiteralExpression {
+    contract.assert(node.kind === ts.SyntaxKind.FalseKeyword || node.kind === ts.SyntaxKind.TrueKeyword);
+    return copyLocation(node, {
+        kind:  ast.boolLiteralExpressionKind,
+        raw:   node.getText(),
+        value: (node.kind === ts.SyntaxKind.TrueKeyword),
+    });
 }
 
 function transformNoSubstitutionTemplateLiteral(node: ts.NoSubstitutionTemplateLiteral): ast.Expression {
     return contract.failf("NYI");
 }
 
-function transformNullLiteral(node: ts.NullLiteral): ast.Expression {
-    return contract.failf("NYI");
+function transformNullLiteral(node: ts.NullLiteral): ast.NullLiteralExpression {
+    return copyLocation(node, {
+        kind: ast.nullLiteralExpressionKind,
+        raw:  node.getText(),
+    });
 }
 
-function transformNumericLiteral(node: ts.NumericLiteral): ast.Expression {
-    return contract.failf("NYI");
+function transformNumericLiteral(node: ts.NumericLiteral): ast.NumberLiteralExpression {
+    return copyLocation(node, {
+        kind:  ast.numberLiteralExpressionKind,
+        raw:   node.text,
+        value: Number(node.text),
+    });
 }
 
 function transformRegularExpressionLiteral(node: ts.RegularExpressionLiteral): ast.Expression {
     return contract.failf("NYI");
 }
 
-function transformStringLiteral(node: ts.StringLiteral): ast.Expression {
-    return contract.failf("NYI");
+function transformStringLiteral(node: ts.StringLiteral): ast.StringLiteralExpression {
+    return copyLocation(node, {
+        kind:  ast.stringLiteralExpressionKind,
+        raw:   node.text,
+        value: node.text,
+    });
 }
 
 /** Patterns **/

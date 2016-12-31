@@ -1,13 +1,17 @@
 // Copyright 2016 Marapongo, Inc. All rights reserved.
 
-import * as symbols from "../symbols";
+import {Node} from "./nodes";
 import * as statements from "./statements";
+
+import * as symbols from "../symbols";
 
 export interface Expression extends Node {}
 
 /** Literals **/
 
-export interface LiteralExpression extends Expression {}
+export interface LiteralExpression extends Expression {
+    raw: string; // the raw literal, for round tripping purposes.
+}
 
 // A `null` literal.
 export interface NullLiteralExpression extends LiteralExpression {
