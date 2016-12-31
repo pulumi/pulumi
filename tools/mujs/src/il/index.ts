@@ -242,8 +242,8 @@ export const LoadFunctionExpressionKindName = "LoadFunctionExpression";
 // TODO(joe): I'm unsure if we should permit assigning to functions by name; I think we'll need to for Python/Ruby/etc.
 export interface LoadDynamicExpression extends Expression {
     kind:   LoadDynamicExpressionKind;
-    key:    symbols.Identifier; // the name of the property to load.
-    object: Expression;         // the object to load a property from.
+    key:    Expression; // the name of the property to load (a string expression).
+    object: Expression; // the object to load a property from.
 }
 export type  LoadDynamicExpressionKind     = "LoadDynamicExpression";
 export const LoadDynamicExpressionKindName = "LoadDynamicExpression";
