@@ -81,16 +81,16 @@ export interface Block extends Statement {
     locals:     LocalVariableDeclaration[];
     statements: Statement[];
 }
-export type  BlockKind     = "Block";
-export const BlockKindName = "Block";
+export const blockKind = "Block";
+export type  BlockKind = "Block";
 
 export interface LocalVariableDeclaration extends Node {
     kind: LocalVariableDeclarationKind;
     key:  symbols.VariableToken; // the token used to reference this local variable.
     type: symbols.TypeToken;     // the static type of this local variable's slot.
 }
-export type  LocalVariableDeclarationKind     = "LocalVariableDeclaration";
-export const LocalVariableDeclarationKindName = "LocalVariableDeclaration";
+export const localVariableDeclarationKind = "LocalVariableDeclaration";
+export type  LocalVariableDeclarationKind = "LocalVariableDeclaration";
 
 /** ## Try/Catch/Finally **/
 
@@ -100,16 +100,16 @@ export interface TryCatchFinally extends Statement {
     catchBlocks?:  TryCatchBlock[];
     finallyBlock?: Block;
 }
-export type  TryCatchFinallyKind     = "TryCatchFinally";
-export const TryCatchFinallyKindName = "TryCatchFinally";
+export const tryCatchFinallyKind = "TryCatchFinally";
+export type  TryCatchFinallyKind = "TryCatchFinally";
 
 export interface TryCatchBlock extends Node {
     kind:      TryCatchBlockKind;
     exception: symbols.TypeToken;
     block:     Block;
 }
-export type  TryCatchBlockKind     = "TryCatchBlock";
-export const TryCatchBlockKindName = "TryCatchBlock";
+export const tryCatchBlockKind = "TryCatchBlock";
+export type  TryCatchBlockKind = "TryCatchBlock";
 
 /** ## Branches **/
 
@@ -118,16 +118,16 @@ export interface BreakStatement extends Statement {
     kind:   BreakStatementKind;
     label?: symbols.Identifier;
 }
-export type  BreakStatementKind     = "BreakStatement";
-export const BreakStatementKindName = "BreakStatement";
+export const breakStatementKind = "BreakStatement";
+export type  BreakStatementKind = "BreakStatement";
 
 // A `continue` statement (valid only within loops).
 export interface ContinueStatement extends Statement {
     kind:   ContinueStatementKind;
     label?: symbols.Identifier;
 }
-export type  ContinueStatementKind     = "ContinueStatement";
-export const ContinueStatementKindName = "ContinueStatement";
+export const continueStatementKind = "ContinueStatement";
+export type  ContinueStatementKind = "ContinueStatement";
 
 // An `if` statement.  To simplify the AST, this is the only conditional statement available.  All higher-level
 // conditional constructs such as `switch`, `if / else if / ...`, etc. must be desugared into it.
@@ -137,8 +137,8 @@ export interface IfStatement extends Statement {
     consequent: Statement; // the statement to execute if `true`.
     alternate?: Statement; // the statement to execute if `false`.
 }
-export type  IfStatementKind     = "IfStatement";
-export const IfStatementKindName = "IfStatement";
+export const ifStatementKind = "IfStatement";
+export type  IfStatementKind = "IfStatement";
 
 // A labeled statement associates an identifier with a statement for purposes of labeled jumps.
 export interface LabeledStatement extends Statement {
@@ -146,8 +146,8 @@ export interface LabeledStatement extends Statement {
     label:     symbols.Identifier;
     statement: Statement;
 }
-export type  LabeledStatementKind     = "LabeledStatement";
-export const LabeledStatementKindName = "LabeledStatement";
+export const labeledStatementKind = "LabeledStatement";
+export type  LabeledStatementKind = "LabeledStatement";
 
 // A `while` statement.  To simplify the AST, this is the only looping statement available.  All higher-level
 // looping constructs such as `for`, `foreach`, `for in`, `for of`, `do / while`, etc. must be desugared into it.
@@ -155,8 +155,8 @@ export interface WhileStatement extends Statement {
     kind: WhileStatementKind;
     test: Expression; // a `bool` statement indicating whether to continue.
 }
-export type  WhileStatementKind     = "WhileStatement";
-export const WhileStatementKindName = "WhileStatement";
+export const whileStatementKind = "WhileStatement";
+export type  WhileStatementKind = "WhileStatement";
 
 /** ## Miscellaneous **/
 
@@ -165,8 +165,8 @@ export interface ExpressionStatement extends Statement {
     kind:       ExpressionStatementKind;
     expression: Expression;
 }
-export type  ExpressionStatementKind     = "ExpressionStatement";
-export const ExpressionStatementKindName = "ExpressionStatement";
+export const expressionStatementKind = "ExpressionStatement";
+export type  ExpressionStatementKind = "ExpressionStatement";
 
 /** # Expressions **/
 
@@ -180,32 +180,32 @@ export interface LiteralExpression extends Expression {}
 export interface NullLiteralExpression extends LiteralExpression {
     kind: NullLiteralExpressionKind;
 }
-export type  NullLiteralExpressionKind     = "NullLiteralExpression";
-export const NullLiteralExpressionKindName = "NullLiteralExpression";
+export const nullLiteralExpressionKind = "NullLiteralExpression";
+export type  NullLiteralExpressionKind = "NullLiteralExpression";
 
 // A `bool`-typed literal (`true` or `false`).
 export interface BoolLiteralExpression extends LiteralExpression {
     kind:  BoolLiteralExpressionKind;
     value: boolean;
 }
-export type  BoolLiteralExpressionKind     = "BoolLiteralExpression";
-export const BoolLiteralExpressionKindName = "BoolLiteralExpression";
+export const boolLiteralExpressionKind = "BoolLiteralExpression";
+export type  BoolLiteralExpressionKind = "BoolLiteralExpression";
 
 // A `number`-typed literal (floating point IEEE 754).
 export interface NumberLiteralExpression extends LiteralExpression {
     kind:  NumberLiteralExpressionKind;
     value: number;
 }
-export type  NumberLiteralExpressionKind     = "NumberLiteralExpression";
-export const NumberLiteralExpressionKindName = "NumberLiteralExpression";
+export const numberLiteralExpressionKind = "NumberLiteralExpression";
+export type  NumberLiteralExpressionKind = "NumberLiteralExpression";
 
 // A `string`-typed literal.
 export interface StringLiteralExpression extends LiteralExpression {
     kind:  StringLiteralExpressionKind;
     value: string;
 }
-export type  StringLiteralExpressionKind     = "StringLiteralExpression";
-export const StringLiteralExpressionKindName = "StringLiteralExpression";
+export const stringLiteralExpressionKind = "StringLiteralExpression";
+export type  StringLiteralExpressionKind = "StringLiteralExpression";
 
 // An object literal (`new` and/or initialization).
 export interface ObjectLiteralExpression extends LiteralExpression {
@@ -214,8 +214,8 @@ export interface ObjectLiteralExpression extends LiteralExpression {
     initializers?: ObjectLiteralInitializer[]; // an optional array of property initializers.
     arguments?:    Expression[];               // an optional set of arguments for the constructor.
 }
-export type  ObjectLiteralExpressionKind     = "ObjectLiteralExpression";
-export const ObjectLiteralExpressionKindName = "ObjectLiteralExpression";
+export const objectLiteralExpressionKind = "ObjectLiteralExpression";
+export type  ObjectLiteralExpressionKind = "ObjectLiteralExpression";
 
 // An object literal property initializer.
 export interface ObjectLiteralInitializer extends Node {
@@ -223,8 +223,8 @@ export interface ObjectLiteralInitializer extends Node {
     property: symbols.VariableToken; // the property being initialized.
     value:    Expression;            // the expression value to store into the property.
 }
-export type  ObjectLiteralInitializerKind     = "ObjectLiteralInitializer";
-export const ObjectLiteralInitializerKindName = "ObjectLiteralInitializer";
+export const objectLiteralInitializerKind = "ObjectLiteralInitializer";
+export type  ObjectLiteralInitializerKind = "ObjectLiteralInitializer";
 
 /** ## Loads **/
 
@@ -236,8 +236,8 @@ export interface LoadVariableExpression extends Expression {
     variable: symbols.VariableToken; // the variable to load from.
     object?:  Expression;            // the `this` object, in the case of class properties.
 }
-export type  LoadVariableExpressionKind     = "LoadVariableExpression";
-export const LoadVariableExpressionKindName = "LoadVariableExpression";
+export const loadVariableExpressionKind = "LoadVariableExpression";
+export type  LoadVariableExpressionKind = "LoadVariableExpression";
 
 // Loads a function's address, producing a pointer that can be dereferenced to produce an invocable expression.
 export interface LoadFunctionExpression extends Expression {
@@ -245,8 +245,8 @@ export interface LoadFunctionExpression extends Expression {
     function: symbols.FunctionToken; // the function to load as a lambda.
     object?: Expression;             // the `this` object, in the case of class methods.
 }
-export type  LoadFunctionExpressionKind     = "LoadFunctionExpression";
-export const LoadFunctionExpressionKindName = "LoadFunctionExpression";
+export const loadFunctionExpressionKind = "LoadFunctionExpression";
+export type  LoadFunctionExpressionKind = "LoadFunctionExpression";
 
 // Dynamically loads either a variable or function, by name, from an object.
 // TODO(joe): I'm unsure if we should permit assigning to functions by name; I think we'll need to for Python/Ruby/etc.
@@ -255,8 +255,8 @@ export interface LoadDynamicExpression extends Expression {
     key:    Expression; // the name of the property to load (a string expression).
     object: Expression; // the object to load a property from.
 }
-export type  LoadDynamicExpressionKind     = "LoadDynamicExpression";
-export const LoadDynamicExpressionKindName = "LoadDynamicExpression";
+export const loadDynamicExpressionKind = "LoadDynamicExpression";
+export type  LoadDynamicExpressionKind = "LoadDynamicExpression";
 
 /** ## Functions **/
 
@@ -266,8 +266,8 @@ export interface InvokeFunctionExpression extends Expression {
     function:   Expression;   // a function to invoke (of a func type).
     arguments?: Expression[]; // the list of arguments in sequential order.
 }
-export type  InvokeFunctionExpressionKind     = "InvokeFunctionExpression";
-export const InvokeFunctionExpressionKindName = "InvokeFunctionExpression";
+export const invokeFunctionExpressionKind = "InvokeFunctionExpression";
+export type  InvokeFunctionExpressionKind = "InvokeFunctionExpression";
 
 // Creates a lambda, a sort of "anonymous" function.
 export interface LambdaExpression extends Expression {
@@ -276,8 +276,8 @@ export interface LambdaExpression extends Expression {
     parameters: symbols.VariableToken[]; // the parameter variables.
     body:       Block;                   // the lambda's body block.
 }
-export type  LambdaExpressionKind     = "LambdaExpression";
-export const LambdaExpressionKindName = "LambdaExpression";
+export const lambdaExpressionKind = "LambdaExpression";
+export type  LambdaExpressionKind = "LambdaExpression";
 
 /** ## Operators **/
 
@@ -288,8 +288,8 @@ export interface UnaryOperatorExpression extends Expression {
     operand:  Expression;    // the right hand side operand.
     postfix:  boolean;       // whether this is a postifx operator (only legal for UnaryPfixOperator).
 }
-export type  UnaryOperatorExpressionKind     = "UnaryOperatorExpression";
-export const UnaryOperatorExpressionKindName = "UnaryOperatorExpression";
+export const unaryOperatorExpressionKind = "UnaryOperatorExpression";
+export type  UnaryOperatorExpressionKind = "UnaryOperatorExpression";
 
 // A unary prefix/postfix operator token.
 export type UnaryPfixOperator = "++" | "--";
@@ -308,8 +308,8 @@ export interface BinaryOperatorExpression extends Expression {
     operator: BinaryOperator; // the operator.
     right:    Expression;     // the right hand side.
 }
-export type  BinaryOperatorExpressionKind     = "BinaryOperatorExpression";
-export const BinaryOperatorExpressionKindName = "BinaryOperatorExpression";
+export const binaryOperatorExpressionKind = "BinaryOperatorExpression";
+export type  BinaryOperatorExpressionKind = "BinaryOperatorExpression";
 
 // All of the available arithmetic operators.
 export type BinaryArithmeticOperator  = "+"   | "-"   | // addition and subtraction.
@@ -357,8 +357,8 @@ export interface CastExpression extends Expression {
     type:       symbols.TypeToken; // the target type.
     expression: Expression;        // the source expression.
 }
-export type  CastExpressionKind     = "CastExpression";
-export const CastExpressionKindName = "CastExpression";
+export const castExpressionKind = "CastExpression";
+export type  CastExpressionKind = "CastExpression";
 
 // A conditional expression.
 export interface ConditionalExpression extends Expression {
@@ -367,6 +367,6 @@ export interface ConditionalExpression extends Expression {
     consequent: Expression; // the expression to evaluate if `true`.
     alternate:  Expression; // the expression to evaluate if `false`.
 }
-export type  ConditionalExpressionKind     = "ConditionalExpression";
-export const ConditionalExpressionKindName = "ConditionalExpression";
+export const conditionalExpressionKind = "ConditionalExpression";
+export type  ConditionalExpressionKind = "ConditionalExpression";
 

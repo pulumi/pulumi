@@ -34,9 +34,9 @@ export type Classes =   Map<symbols.Identifier, Class>;    // a map of classes k
 export type Accessibility = "public" | "private";                          // accessibility modifiers common to all.
 export type ClassMemberAccessibility = "public" | "private" | "protected"; // accessibility modifiers for class members.
 
-export const SpecialFunctionEntryPoint =  ".main"; // the special package entrypoint function.
-export const SpecialFunctionInitializer = ".init"; // the special module/class initialize function.
-export const SpecialFunctionConstructor = ".ctor"; // the special class instance constructor function.
+export const specialFunctionEntryPoint =  ".main"; // the special package entrypoint function.
+export const specialFunctionInitializer = ".init"; // the special module/class initialize function.
+export const specialFunctionConstructor = ".ctor"; // the special class instance constructor function.
 
 // A module contains other members, including submodules, variables, functions, and/or classes.
 export interface Module extends Definitions {
