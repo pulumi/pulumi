@@ -53,6 +53,17 @@ function isComputed(name: ts.Node | undefined): boolean {
 
 /** Transformations **/
 
+/** Symbols **/
+
+function transformIdentifier(node: ts.Identifier): ast.Identifier {
+    return copyLocation(node, {
+        kind:  ast.identifierKind,
+        ident: node.text,
+    });
+}
+
+/** Modules **/
+
 function transformSourceFile(node: ts.SourceFile): ast.Module {
     return contract.failf("NYI");
 }
@@ -65,8 +76,6 @@ function transformSourceFile(node: ts.SourceFile): ast.Module {
 function transformSourceFileElement(node: ts.Statement): ast.Definition {
     return contract.failf("NYI");
 }
-
-/** Modules **/
 
 function transformExportAssignment(node: ts.ExportAssignment): ast.Definition {
     return contract.failf("NYI");
@@ -158,6 +167,19 @@ function transformStatement(node: ts.Statement): ast.Statement {
     }
 }
 
+// This function transforms a TypeScript Statement, and returns a Block (allocating a new one if needed).
+function transformStatementAsBlock(node: ts.Statement): ast.Block {
+    // Transform the statement.  Then, if it is already a block, return it; otherwise, append it to a new one.
+    let statement: ast.Statement = transformStatement(node);
+    if (statement.kind === ast.blockKind) {
+        return <ast.Block>statement;
+    }
+    return copyLocation(node, {
+        kind:       ast.blockKind,
+        statements: [ statement ],
+    });
+}
+
 /** Declaration statements **/
 
 function transformClassDeclaration(node: ts.ClassDeclaration): ast.Class {
@@ -173,7 +195,7 @@ function transformDeclarationName(node: ts.DeclarationName): ast.Expression {
         case ts.SyntaxKind.ObjectBindingPattern:
             return transformObjectBindingPattern(node);
         case ts.SyntaxKind.Identifier:
-            return transformIdentifier(node);
+            return transformIdentifierExpression(node);
         default:
             return contract.failf(`Unrecognized declaration node: ${ts.SyntaxKind[node.kind]}`);
     }
@@ -252,7 +274,10 @@ function transformClassElementProperty(node: ts.PropertyDeclaration): ast.ClassP
 /** Control flow statements **/
 
 function transformBreakStatement(node: ts.BreakStatement): ast.BreakStatement {
-    return contract.failf("NYI");
+    return copyLocation(node, {
+        kind:  ast.breakStatementKind,
+        label: object.maybeUndefined(node.label, transformIdentifier),
+    });
 }
 
 function transformCaseOrDefaultClause(node: ts.CaseOrDefaultClause): ast.Statement {
@@ -264,11 +289,41 @@ function transformCatchClause(node: ts.CatchClause): ast.Statement {
 }
 
 function transformContinueStatement(node: ts.ContinueStatement): ast.ContinueStatement {
-    return contract.failf("NYI");
+    return copyLocation(node, {
+        kind:  ast.continueStatementKind,
+        label: object.maybeUndefined(node.label, transformIdentifier),
+    });
 }
 
-function transformDoStatement(node: ts.DoStatement): ast.Statement {
-    return contract.failf("NYI");
+// This transforms a higher-level TypeScript `do`/`while` statement by expanding into an ordinary `while` statement.
+function transformDoStatement(node: ts.DoStatement): ast.WhileStatement {
+    // Now create a new block that simply concatenates the existing one with a test/`break`.
+    let body: ast.Block = copyLocation(node.statement, {
+        kind:       ast.blockKind,
+        statements: [
+            transformStatement(node.statement),
+            <ast.IfStatement>{
+                kind:      ast.ifStatementKind,
+                condition: <ast.UnaryOperatorExpression>{
+                    kind:     ast.unaryOperatorExpressionKind,
+                    operator: "!",
+                    operand:  transformExpression(node.expression),
+                },
+                consequent: <ast.BreakStatement>{
+                    kind: ast.breakStatementKind,
+                },
+            },
+        ],
+    });
+
+    return copyLocation(node, {
+        kind: ast.whileStatementKind,
+        test: <ast.BoolLiteralExpression>{
+            kind:  ast.boolLiteralExpressionKind,
+            value: true,
+        },
+        body: body,
+    });
 }
 
 function transformForStatement(node: ts.ForStatement): ast.Statement {
@@ -308,7 +363,11 @@ function transformTryStatement(node: ts.TryStatement): ast.Statement {
 }
 
 function transformWhileStatement(node: ts.WhileStatement): ast.Statement {
-    return contract.failf("NYI");
+    return copyLocation(node, {
+        kind: ast.whileStatementKind,
+        test: transformExpression(node.expression),
+        body: transformStatementAsBlock(node.statement),
+    });
 }
 
 /** Miscellaneous statements **/
@@ -365,7 +424,7 @@ function transformExpression(node: ts.Expression): ast.Expression {
         case ts.SyntaxKind.FunctionExpression:
             return transformFunctionExpression(<ts.FunctionExpression>node);
         case ts.SyntaxKind.Identifier:
-            return transformIdentifier(<ts.Identifier>node);
+            return transformIdentifierExpression(<ts.Identifier>node);
         case ts.SyntaxKind.ObjectLiteralExpression:
             return transformObjectLiteralExpression(<ts.ObjectLiteralExpression>node);
         case ts.SyntaxKind.PostfixUnaryExpression:
@@ -608,7 +667,7 @@ function transformComputedPropertyName(node: ts.ComputedPropertyName): ast.Expre
     return contract.failf("NYI");
 }
 
-function transformIdentifier(node: ts.Identifier): ast.Expression {
+function transformIdentifierExpression(node: ts.Identifier): ast.Expression {
     return contract.failf("NYI");
 }
 

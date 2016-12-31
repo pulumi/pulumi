@@ -1,7 +1,7 @@
 // Copyright 2016 Marapongo, Inc. All rights reserved.
 
 import {Expression} from "./expressions";
-import {Node} from "./nodes";
+import {Identifier, Node} from "./nodes";
 
 import * as symbols from "../symbols";
 
@@ -11,7 +11,7 @@ export interface Statement extends Node {}
 
 export interface Block extends Statement {
     kind:       BlockKind;
-    locals:     LocalVariableDeclaration[];
+    locals?:    LocalVariableDeclaration[];
     statements: Statement[];
 }
 export const blockKind = "Block";
@@ -49,7 +49,7 @@ export type  TryCatchBlockKind = "TryCatchBlock";
 // A `break` statement (valid only within loops).
 export interface BreakStatement extends Statement {
     kind:   BreakStatementKind;
-    label?: symbols.Identifier;
+    label?: Identifier;
 }
 export const breakStatementKind = "BreakStatement";
 export type  BreakStatementKind = "BreakStatement";
@@ -57,7 +57,7 @@ export type  BreakStatementKind = "BreakStatement";
 // A `continue` statement (valid only within loops).
 export interface ContinueStatement extends Statement {
     kind:   ContinueStatementKind;
-    label?: symbols.Identifier;
+    label?: Identifier;
 }
 export const continueStatementKind = "ContinueStatement";
 export type  ContinueStatementKind = "ContinueStatement";
@@ -76,7 +76,7 @@ export type  IfStatementKind = "IfStatement";
 // A labeled statement associates an identifier with a statement for purposes of labeled jumps.
 export interface LabeledStatement extends Statement {
     kind:      LabeledStatementKind;
-    label:     symbols.Identifier;
+    label:     Identifier;
     statement: Statement;
 }
 export const labeledStatementKind = "LabeledStatement";
@@ -103,6 +103,7 @@ export type  ThrowStatementKind = "ThrowStatement";
 export interface WhileStatement extends Statement {
     kind: WhileStatementKind;
     test: Expression; // a `bool` statement indicating whether to continue.
+    body: Block;      // the body to execute provided the test remains `true`.
 }
 export const whileStatementKind = "WhileStatement";
 export type  WhileStatementKind = "WhileStatement";

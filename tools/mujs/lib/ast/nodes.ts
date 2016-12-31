@@ -5,6 +5,8 @@ import * as expressions from "./expressions";
 import * as source from "./source";
 import * as statements from "./statements";
 
+import * as symbols from "../symbols";
+
 // TODO(joe): consider adding trivia (like comments and whitespace), for round-tripping purposes.
 
 // Node is a discriminated type for all serialized blocks and instructions.
