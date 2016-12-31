@@ -23,6 +23,7 @@ export type NodeKind =
     BreakStatementKind |
     ContinueStatementKind |
     IfStatementKind |
+    LabeledStatementKind |
     WhileStatementKind |
 
     // ## Miscellaneous
@@ -138,6 +139,15 @@ export interface IfStatement extends Statement {
 }
 export type  IfStatementKind     = "IfStatement";
 export const IfStatementKindName = "IfStatement";
+
+// A labeled statement associates an identifier with a statement for purposes of labeled jumps.
+export interface LabeledStatement extends Statement {
+    kind:      LabeledStatementKind;
+    label:     symbols.Identifier;
+    statement: Statement;
+}
+export type  LabeledStatementKind     = "LabeledStatement";
+export const LabeledStatementKindName = "LabeledStatement";
 
 // A `while` statement.  To simplify the AST, this is the only looping statement available.  All higher-level
 // looping constructs such as `for`, `foreach`, `for in`, `for of`, `do / while`, etc. must be desugared into it.
