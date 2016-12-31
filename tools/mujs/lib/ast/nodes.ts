@@ -1,60 +1,52 @@
 // Copyright 2016 Marapongo, Inc. All rights reserved.
 
-import {Location} from "./source";
-import * as symbols from "../symbols";
+import * as definitions from "./definitions";
+import * as expressions from "./expressions";
+import * as source from "./source";
+import * as statements from "./statements";
 
 // Node is a discriminated type for all serialized blocks and instructions.
 export interface Node {
     kind: NodeKind;
-    loc?: Location;
+    loc?: source.Location;
 }
 
 // NodeType contains all of the legal Node implementations.  This effectively "seales" the discriminated node type,
 // and makes constructing and inspecting nodes a little more bulletproof (i.e., they aren't arbitrary strings).
 export type NodeKind =
-    // # Statements
+    definitions.ModuleKind |
+    definitions.ParameterKind |
+    definitions.ModulePropertyKind |
+    definitions.ClassPropertyKind |
+    definitions.ModuleMethodKind |
+    definitions.ClassMethodKind |
+    definitions.ClassKind |
 
-    // ## Blocks
-    BlockKind |
-    LocalVariableDeclarationKind |
-    TryCatchFinallyKind |
-    TryCatchBlockKind |
+    statements.BlockKind |
+    statements.LocalVariableDeclarationKind |
+    statements.TryCatchFinallyKind |
+    statements.TryCatchBlockKind |
+    statements.BreakStatementKind |
+    statements.ContinueStatementKind |
+    statements.IfStatementKind |
+    statements.LabeledStatementKind |
+    statements.WhileStatementKind |
+    statements.ExpressionStatementKind |
 
-    // ## Branches
-    BreakStatementKind |
-    ContinueStatementKind |
-    IfStatementKind |
-    LabeledStatementKind |
-    WhileStatementKind |
-
-    // ## Miscellaneous
-    ExpressionStatementKind |
-
-    // # Expressions
-
-    // ## Literals
-    NullLiteralExpressionKind |
-    BoolLiteralExpressionKind |
-    NumberLiteralExpressionKind |
-    StringLiteralExpressionKind |
-    ObjectLiteralExpressionKind |
-    ObjectLiteralInitializerKind |
-
-    // ## Loads
-    LoadVariableExpressionKind |
-    LoadFunctionExpressionKind |
-    LoadDynamicExpressionKind |
-
-    // ## Functions
-    InvokeFunctionExpressionKind |
-    LambdaExpressionKind |
-
-    // ## Operators
-    UnaryOperatorExpressionKind |
-    BinaryOperatorExpressionKind |
-
-    // ## Miscellaneous
-    CastExpressionKind |
-    ConditionalExpressionKind
+    expressions.NullLiteralExpressionKind |
+    expressions.BoolLiteralExpressionKind |
+    expressions.NumberLiteralExpressionKind |
+    expressions.StringLiteralExpressionKind |
+    expressions.ObjectLiteralExpressionKind |
+    expressions.ObjectLiteralInitializerKind |
+    expressions.LoadVariableExpressionKind |
+    expressions.LoadFunctionExpressionKind |
+    expressions.LoadDynamicExpressionKind |
+    expressions.InvokeFunctionExpressionKind |
+    expressions.LambdaExpressionKind |
+    expressions.UnaryOperatorExpressionKind |
+    expressions.BinaryOperatorExpressionKind |
+    expressions.CastExpressionKind |
+    expressions.ConditionalExpressionKind
 ;
 

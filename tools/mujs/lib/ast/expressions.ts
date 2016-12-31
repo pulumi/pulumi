@@ -1,6 +1,7 @@
 // Copyright 2016 Marapongo, Inc. All rights reserved.
 
 import * as symbols from "../symbols";
+import * as statements from "./statements";
 
 export interface Expression extends Node {}
 
@@ -106,7 +107,7 @@ export interface LambdaExpression extends Expression {
     kind:       LambdaExpressionKind;
     signature:  symbols.TypeToken;       // the func signature type.
     parameters: symbols.VariableToken[]; // the parameter variables.
-    body:       Block;                   // the lambda's body block.
+    body:       statements.Block;        // the lambda's body block.
 }
 export const lambdaExpressionKind = "LambdaExpression";
 export type  LambdaExpressionKind = "LambdaExpression";

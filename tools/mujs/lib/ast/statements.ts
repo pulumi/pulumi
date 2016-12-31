@@ -1,6 +1,8 @@
 // Copyright 2016 Marapongo, Inc. All rights reserved.
 
-import {Node} from "./node";
+import {Expression} from "./expressions";
+import {Node} from "./nodes";
+
 import * as symbols from "../symbols";
 
 export interface Statement extends Node {}
