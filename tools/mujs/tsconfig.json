@@ -18,10 +18,14 @@
         "strictNullChecks": true
     },
     "files": [
-        "src/index.ts",
-        "src/il/index.ts",
-        "src/pack/index.ts",
-        "src/symbols/index.ts"
+        "cmd/index.ts",
+
+        "lib/index.ts",
+        "lib/compiler/index.ts",
+        "lib/compiler/compile.ts",
+        "lib/il/index.ts",
+        "lib/pack/index.ts",
+        "lib/symbols/index.ts"
     ]
 }
 

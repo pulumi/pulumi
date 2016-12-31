@@ -7,14 +7,17 @@
   "main": "bin/lib/index.js",
   "typings": "bin/lib/index.d.ts",
   "scripts": {
-    "build": "tsc && tslint src/*.ts src/**/*.ts",
+    "build": "tsc && tslint cmd/*.ts cmd/**/*.ts lib/*.ts lib/**/*.ts",
     "postinstall": "typings install",
     "test": "npm run cov && npm run covreport",
     "cov": "istanbul cover --print none node_modules/.bin/_mocha -- --recursive --es_staging --timeout 15000 bin/tests/",
     "covreport": "istanbul report text-summary && istanbul report text"
   },
   "dependencies": {
+    "@types/minimist": "^1.2.0",
     "@types/node": "^6.0.55",
+    "minimist": "^1.2.0",
+    "source-map-support": "^0.4.8",
     "typescript": "^2.1.4"
   },
   "devDependencies": {
