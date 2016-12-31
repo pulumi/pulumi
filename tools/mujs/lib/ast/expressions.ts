@@ -2,177 +2,9 @@
 
 import * as symbols from "../symbols";
 
-// Node is a discriminated type for all serialized blocks and instructions.
-export interface Node {
-    kind: NodeKind;
-    loc?: SourceLocation;
-}
-
-// NodeType contains all of the legal Node implementations.  This effectively "seales" the discriminated node type,
-// and makes constructing and inspecting nodes a little more bulletproof (i.e., they aren't arbitrary strings).
-export type NodeKind =
-    // # Statements
-
-    // ## Blocks
-    BlockKind |
-    LocalVariableDeclarationKind |
-    TryCatchFinallyKind |
-    TryCatchBlockKind |
-
-    // ## Branches
-    BreakStatementKind |
-    ContinueStatementKind |
-    IfStatementKind |
-    LabeledStatementKind |
-    WhileStatementKind |
-
-    // ## Miscellaneous
-    ExpressionStatementKind |
-
-    // # Expressions
-
-    // ## Literals
-    NullLiteralExpressionKind |
-    BoolLiteralExpressionKind |
-    NumberLiteralExpressionKind |
-    StringLiteralExpressionKind |
-    ObjectLiteralExpressionKind |
-    ObjectLiteralInitializerKind |
-
-    // ## Loads
-    LoadVariableExpressionKind |
-    LoadFunctionExpressionKind |
-    LoadDynamicExpressionKind |
-
-    // ## Functions
-    InvokeFunctionExpressionKind |
-    LambdaExpressionKind |
-
-    // ## Operators
-    UnaryOperatorExpressionKind |
-    BinaryOperatorExpressionKind |
-
-    // ## Miscellaneous
-    CastExpressionKind |
-    ConditionalExpressionKind
-;
-
-// SourceLocation is a location, possibly a region, in the source code.
-export interface SourceLocation {
-    file?: string;         // an optional filename in which this location resides.
-    start: SourcePosition; // a starting position.
-    end?:  SourcePosition; // an optional end position for a range (if empty, this represents just a point).
-}
-
-// SourcePosition consists of a 1-indexed `line` number and a 0-indexed `column` number.
-export interface SourcePosition {
-    line:   number; // >= 1
-    column: number; // >= 0
-}
-
-/** # Statements **/
-
-export interface Statement extends Node {}
-
-/** ## Blocks **/
-
-export interface Block extends Statement {
-    kind:       BlockKind;
-    locals:     LocalVariableDeclaration[];
-    statements: Statement[];
-}
-export const blockKind = "Block";
-export type  BlockKind = "Block";
-
-export interface LocalVariableDeclaration extends Node {
-    kind: LocalVariableDeclarationKind;
-    key:  symbols.VariableToken; // the token used to reference this local variable.
-    type: symbols.TypeToken;     // the static type of this local variable's slot.
-}
-export const localVariableDeclarationKind = "LocalVariableDeclaration";
-export type  LocalVariableDeclarationKind = "LocalVariableDeclaration";
-
-/** ## Try/Catch/Finally **/
-
-export interface TryCatchFinally extends Statement {
-    kind:          TryCatchFinallyKind;
-    tryBlock:      Block;
-    catchBlocks?:  TryCatchBlock[];
-    finallyBlock?: Block;
-}
-export const tryCatchFinallyKind = "TryCatchFinally";
-export type  TryCatchFinallyKind = "TryCatchFinally";
-
-export interface TryCatchBlock extends Node {
-    kind:      TryCatchBlockKind;
-    exception: symbols.TypeToken;
-    block:     Block;
-}
-export const tryCatchBlockKind = "TryCatchBlock";
-export type  TryCatchBlockKind = "TryCatchBlock";
-
-/** ## Branches **/
-
-// A `break` statement (valid only within loops).
-export interface BreakStatement extends Statement {
-    kind:   BreakStatementKind;
-    label?: symbols.Identifier;
-}
-export const breakStatementKind = "BreakStatement";
-export type  BreakStatementKind = "BreakStatement";
-
-// A `continue` statement (valid only within loops).
-export interface ContinueStatement extends Statement {
-    kind:   ContinueStatementKind;
-    label?: symbols.Identifier;
-}
-export const continueStatementKind = "ContinueStatement";
-export type  ContinueStatementKind = "ContinueStatement";
-
-// An `if` statement.  To simplify the AST, this is the only conditional statement available.  All higher-level
-// conditional constructs such as `switch`, `if / else if / ...`, etc. must be desugared into it.
-export interface IfStatement extends Statement {
-    kind:       IfStatementKind;
-    condition:  Expression; // a `bool` condition expression.
-    consequent: Statement; // the statement to execute if `true`.
-    alternate?: Statement; // the statement to execute if `false`.
-}
-export const ifStatementKind = "IfStatement";
-export type  IfStatementKind = "IfStatement";
-
-// A labeled statement associates an identifier with a statement for purposes of labeled jumps.
-export interface LabeledStatement extends Statement {
-    kind:      LabeledStatementKind;
-    label:     symbols.Identifier;
-    statement: Statement;
-}
-export const labeledStatementKind = "LabeledStatement";
-export type  LabeledStatementKind = "LabeledStatement";
-
-// A `while` statement.  To simplify the AST, this is the only looping statement available.  All higher-level
-// looping constructs such as `for`, `foreach`, `for in`, `for of`, `do / while`, etc. must be desugared into it.
-export interface WhileStatement extends Statement {
-    kind: WhileStatementKind;
-    test: Expression; // a `bool` statement indicating whether to continue.
-}
-export const whileStatementKind = "WhileStatement";
-export type  WhileStatementKind = "WhileStatement";
-
-/** ## Miscellaneous **/
-
-// A statement that performs an expression, but ignores its result.
-export interface ExpressionStatement extends Statement {
-    kind:       ExpressionStatementKind;
-    expression: Expression;
-}
-export const expressionStatementKind = "ExpressionStatement";
-export type  ExpressionStatementKind = "ExpressionStatement";
-
-/** # Expressions **/
-
 export interface Expression extends Node {}
 
-/** ## Literals **/
+/** Literals **/
 
 export interface LiteralExpression extends Expression {}
 
@@ -226,7 +58,7 @@ export interface ObjectLiteralInitializer extends Node {
 export const objectLiteralInitializerKind = "ObjectLiteralInitializer";
 export type  ObjectLiteralInitializerKind = "ObjectLiteralInitializer";
 
-/** ## Loads **/
+/** Loads **/
 
 // TODO(joe): figure out how to load/store elements and maps.  Possibly just use intrinsic functions.
 
@@ -258,7 +90,7 @@ export interface LoadDynamicExpression extends Expression {
 export const loadDynamicExpressionKind = "LoadDynamicExpression";
 export type  LoadDynamicExpressionKind = "LoadDynamicExpression";
 
-/** ## Functions **/
+/** Functions **/
 
 // Invokes a function.
 export interface InvokeFunctionExpression extends Expression {
@@ -279,7 +111,7 @@ export interface LambdaExpression extends Expression {
 export const lambdaExpressionKind = "LambdaExpression";
 export type  LambdaExpressionKind = "LambdaExpression";
 
-/** ## Operators **/
+/** Operators **/
 
 // A unary operator expression.
 export interface UnaryOperatorExpression extends Expression {
@@ -349,7 +181,7 @@ export type BinaryOperator = BinaryArithmeticOperator  |
                              BinaryConditionalOperator |
                              BinaryRelationalOperator  ;
 
-/** ## Miscellaneous **/
+/** Miscellaneous **/
 
 // A cast expression; this handles both nominal and structural casts, and will throw an exception upon failure.
 export interface CastExpression extends Expression {

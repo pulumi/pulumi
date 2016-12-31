@@ -1,7 +1,8 @@
 // Copyright 2016 Marapongo, Inc. All rights reserved.
 
+import * as ast from "./ast";
 import * as compiler from "./compiler";
 import * as pack from "./pack";
 import * as symbols from "./symbols";
-export { compiler, pack, symbols };
+export { ast, compiler, pack, symbols };
 

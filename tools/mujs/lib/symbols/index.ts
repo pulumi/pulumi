@@ -10,3 +10,12 @@ export type FunctionToken = Token; // a symbol token that resolves to a function
 // Identifiers.
 export type Identifier = string; // a valid identifier:  (letter|"_") (letter | digit | "_")*
 
+// Accessibility modifiers.
+export type Accessibility = "public" | "private";                          // accessibility modifiers common to all.
+export type ClassMemberAccessibility = "public" | "private" | "protected"; // accessibility modifiers for class members.
+
+// Special function tokens.
+export const specialFunctionEntryPoint =  ".main"; // the special package entrypoint function.
+export const specialFunctionInitializer = ".init"; // the special module/class initialize function.
+export const specialFunctionConstructor = ".ctor"; // the special class instance constructor function.
+

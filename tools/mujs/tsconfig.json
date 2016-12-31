@@ -21,10 +21,19 @@
         "cmd/index.ts",
 
         "lib/index.ts",
+
+        "lib/ast/index.ts",
+        "lib/ast/definitions.ts",
+        "lib/ast/expressions.ts",
+        "lib/ast/nodes.ts",
+        "lib/ast/source.ts",
+        "lib/ast/statements.ts",
+
         "lib/compiler/index.ts",
         "lib/compiler/compile.ts",
-        "lib/il/index.ts",
+
         "lib/pack/index.ts",
+
         "lib/symbols/index.ts"
     ]
 }
