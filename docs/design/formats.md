@@ -1,29 +1,30 @@
-# Mu Languages
+# Mu Formats
 
-Mu cloud topologies are described to the toolchain using three language formats.
+Mu cloud services are described to the toolchain with three logical formats: MetaMus, MuPack/MuIL, and MuGL.
 
-At the highest level, developers write Mu modules using a high-level language.  There are multiple languages to choose
-from, and each is a proper subset of an existing popular programming language.  MuJS is a subset of JavaScript, MuPy is
+At the highest level, developers write Mu packages using a high-level language.  There are multiple languages to choose
+from, and each is a proper subset of an existing popular programming language; MuJS is a subset of JavaScript, MuPy is
 a subset of Python, MuRu is a subset of Ruby, and MuGo is a subset of Go, for example.  The restrictions placed on these
-languages are simply to ensure static analyzability, determinism, and compilability into an intermediate form.  To
-distinguish between these and their ordinary counterparts, we call these Mu Metadata Languages (MetaMus).
+languages ensure static analyzability, determinism, and compilability into an intermediate form.  It is, however, a goal
+to retain most of the popular features, including the libraries, so that these languages feel familiar.  To distinguish
+them from their ordinary counterparts, we will call these subsetted language dialects Mu Metadata Languages (MetaMus).
 
 In the middle, a packaging format, Mu Package Metadata (MuPack), is a standard metadata representation for a MuPackage.
 This is the unit of distribution in the classical package management sense.  MuPack is inherently multi-langauge and
 contains both internal and exported modules, types, functions, and variables.  All code is serialized in an intermediate
-language, MuIL, that is suitable for interpretation for the Mu toolchain.  Because of computations, the final "shape" of
+language (MuIL), that is suitable for interpretation by the Mu toolchain.  Because of computations, the final "shape" of
 the cloud topology cannot yet be determined until the MuPackage is evaluated as part of a deployment planning step.
 
-The final shape, Mu Graph Language (MuGL), represents a complete cloud topology with concrte property values.  Any graph
-can be compared to any other graph to compute a delta, a capability essential to incremental deployment and drift
+The final shape, Mu Graph Language (MuGL), represents a cloud topology with concrte property values and dependencies.
+A graph can be compared to another graph to compute a delta, a capability essential to incremental deployment and drift
 analysis.  Each graph is [directed and acyclic](https://en.wikipedia.org/wiki/Directed_acyclic_graph) (DAG), in which
 nodes are cloud services, edges are [directed dependencies](https://en.wikipedia.org/wiki/Dependency_graph) between
-services, and all input and output properties are known.  Any given MuPackage can create many possible MuGL graphs,
+services, and all input and output properties are values.  Any given MuPackage can create many possible MuGL graphs,
 and identical MuGL graphs can be created by different MuPackages, because MuPackage can contain parameterized logic and
 conditional computations.  A MuGL graph can also be generated from a live environment.
 
-This document describes the various language concepts at play, the requirements for a high-level Mu language (although
-details for each language are specified elsehwere), the MuPack and MuGL formats, and the overall compilation process.
+This document describes these formats, the requirements for a high-level Mu language (although details for each language
+are specified elsehwere), the MuPack/MuIL and MuGL formats, and the overall compilation process.
 
 ## Mu Metadata Languages (MetaMus)
 
@@ -58,11 +59,16 @@ catalogue sources of nondeterminism in [JavaScript](
 https://github.com/burg/timelapse/wiki/Note-sources-of-nondeterminism) and [its variants](
 https://github.com/WebAssembly/design/blob/master/Nondeterminism.md).
 
-MetaMus may in fact consume 3rd party packages (e.g., from NPM, Pip, or elsewhere), but they must be blessed by the MetaMu
-compiler for your language of choice.  This means recompiling packages from source -- and dealing with the possibility
-that they will fail to compile if they perform illegal operations -- or, preferably, using a package that has already
-been pre-compiled using a MetaMu compiler, likely in MuPack format, in which case you are guaranteed that it will work
-without any unexpected difficulties.  The Mu Hub contains precompiled packages in this form for easy consumption.
+MetaMus may in fact consume 3rd party packages (e.g., from NPM, Pip, or elsewhere), but they must be blessed by the
+MetaMu compiler for your language of choice.  This means recompiling packages from source -- and dealing with the
+possibility that they will fail to compile if they perform illegal operations -- or, preferably, using a package that
+has already been pre-compiled using a MetaMu compiler, likely in MuPack format, in which case you are guaranteed that it
+will work without any unexpected difficulties.  The MuHub contains precompiled MuPacks for easy consumption.
+
+It is possible to mix MetaMu and regular code in the respective source language.  This is particularly helpful when
+associating runtime code to deployment-time artifacts, and is common when dealing with serverless programming.  For
+example, instead of needing to manually separate out the description of a cloud lambda and its code, we can just write a
+lambda that the compiler will "shred" into a distinct asset that is bundled inside the cloud deployment automatically.
 
 Each MetaMu program is *compiled* into a MuPackage, encoded in MuPack.
 
@@ -71,8 +77,8 @@ Each MetaMu program is *compiled* into a MuPackage, encoded in MuPack.
 Each MuPackage is encoded in MuPack and serialized in a JSON/YAML form for easy toolability.
 
 MuPack is the unit of sharing and reuse, and includes high-level metadata about the module's contents, in addition to
-its modules, types, functions, and variables.  Each MuPackage can be either a "library" -- purely meant for sharing and
-reuse purposes -- or it can be an "executable" -- in which case it can create a MuGL cloud topology all on its own.
+its modules, types, functions, and variables.  Each MuPackage can be either a "library" -- meant solely for sharing and
+reuse -- or it can be an executable "blueprint"" -- in which case it can create a MuGL cloud topology all on its own.
 
 MuPack uses a "JSON-like" type system so that its type system is accessible to many MetaMus.  This eases Internet-scale
 interoperability and facilitates cross-language reuse.  This type system may be extended with custom types, including
@@ -90,24 +96,22 @@ performance advantages and simplifies the toolchain.  An optional verifier can c
 
 The full MuPack specification is available [here](mupack.md).
 
-There are two actions that can be taken against an executable MuPackage, both resulting in a MuGL graph:
+There are two actions that can be taken against a MuPackage blueprint:
 
-* A MuPack may generate a *plan*, which is a form of graph that doesn't reflect an actual deployment yet.  Instead, it
-  is essentially a "dry run" of the deployment process.  To create a plan, the MuPack's main entrypoint must be invoked,
-  meaning that all of its arguments must be supplied.  Because this is a dry run, a plan's graph may be incomplete.
+* `mu plan` turns a blueprint into a *plan*, which is a possibly-incomplete graph, and does not actually mutate any live
+  environment.  This is essentially a "dry run" of a deployment.  To create a plan, the MuPack's main entrypoint is
+  called, requiring that its arguments be supplied.  The graph may be incomplete if code depends on plan outputs for
+  conditional execution or property values,  resulting in so-called "holes" that will be shown in the plan's output.
 
-* A plan may then be *applied* through a similar process.  The only difference between a plan and the application of
-  that plan is that, if the plan contains dependencies on output properties from services   that are to be created,
-  those values are obviously unknown a priori.  Therefore, the plan might contain "holes", which will be shown in the
-  plan output.  The most subtle aspect of this is that, thanks to conditional execution, the plan may in fact not just
-  have holes in the values, but also uncertainty around specifically which services will be created or updated.  The
-  application process performs the physical deployment steps, so all outputs are known before completion.
+* `mu apply` applies a plan to a target environment.  The primary difference between generating and applying a plan is
+  that real resources may be created, updated, and deleted.  Because actions are actually performed, all outputs are
+  known, and so the resulting graph will be complete.  The resulting graph can be saved for future use.
 
-The result of both steps is a MuGL graph, one being more complete than the other.
+The result of both steps is a MuGL graph, the latter being strictly more complete than the former.
 
 ## Mu Graph Language (MuGL)
 
-MuGL is the simplest and final frontier of Mu's languages.  Each MuGL artifact -- something we just call a *graph* --
+MuGL is the simplest and final frontier of Mu's formats.  Each MuGL artifact -- something we just call a *graph* --
 can be an in-memory data structure and/or a serialized JSON or YAML document.  It contains a graph in which each node
 represents a service, each edge is a dependeny between services, and each input and output property value in the graph
 is a concrete, known value, and no unresolved computations are present in the graph (holes notwithstanding).
