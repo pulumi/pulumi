@@ -1,9 +1,58 @@
-# Mu Architecture
+# Mu Overview
 
-Mu introduces abstractions that help developers create, maintain, and reason about microservice-based architectures.
-More than that, Mu facilitates sharing and reuse of these architectures between developers and teams.
+Mu is a toolset and runtime for creating reusable cloud services.  Mu lets you author packages that can be shared and
+consumed just like your favorite programming language's libraries.  Mu is inherently multi-language, multi-cloud, and
+supports building abstractions that span different cloud environments and topologies.
 
-This document describes the overall architecture for the system, including this translation process.
+This document provides an overview of the Mu system, its goals, primary concepts, and the system architecture.
+
+## Problem
+
+Cloud services are complex.  They are complex to build, complex to deploy, and complex to manage.  The current trend to
+use increasingly fine-grained microservices simply exacerbates this complexity, transforming most modern cloud
+applications into complex distributed systems.
+
+There are many aspects to building distributed systems that aren't evident to the newcomer -- like RPC, logging,
+fault tolerance, and zero-downtime deployments -- and even the experienced practitioner will quickly find that the
+developer and operations tools do not guide developers down the golden path.  Indeed, it is common to need to master a
+dozen tools before even getting an application up and running in production.
+
+On top of that complexity, it is difficult to share knowledge.  Most modern programming languages have component models
+that allow you to bundle up complex functionality underneath simple abstractions, and package managers that allow you
+to share these components with others, and consume components shared by others, in the form of libraries.  The current
+way that cloud architectures are built and deployed is simply not amenable to this kind of sharing.
+
+Even if there was a way to share components, the cloud platforms are divergent in the configuration languages they
+accept, infrastructure abstractions that they provide, and the specific knobs used to configure those abstractions.  It
+is as though every Node.js programmer out there needs to understand the intricate details of the Linux scheduler, versus
+macOS, versus Windows, just to deliver a simple web application.
+
+Finally, once such an application is up and running, managing and evolving it requires similarly ad-hoc and
+individualized tools and practices.  Applying changes to a running environment is often done manually, in a
+hard-to-audit way, and patches are applied unevenly and inconsistently, often leaving security problems open to attack.
+
+All of the above is a big productivity drain, negatively impacting the agility of organizations that need to innovate
+in service of their businesses.  It means that improvements are more costly to deliver.  Containers have delivered a
+great improvement to the management of single nodes in a cluster, but has not yet expanded that same simplicity to
+managing entire applications or entire clusters.  Thankfully by adopting concepts and ideas that have worked in the
+overall landscape of languages and runtimes, we can make considerable improvements in all of these dimensions.
+
+## Solution
+
+Mu lets developers author components in their language of choice (JavaScript, Python, Ruby, Go, etc).  This is in
+contrast to most cloud programming models today which require the use of often-obscure configuration languages or DSLs.
+This unified view is particularly helpful when building serverless applications where you want to focus on code.
+
+At the same time, Mu is polyglot, allowing composition of components authored in many different languages.
+
+These components can be built by reusing existing components shared by others, and published to the Mu package manager
+for others to use.  Cloud services are simply instances of these components, with property values configured
+appropriately, and change management is done automatically by Mu's understanding of the overall graph of dependencies
+between those services.  Think of each service as an "object" that is running in the cloud.
+
+Mu runs on any public or private cloud.  Although you are free to program directly to your cloud provider's specific
+abstractions, Mu also facilitates building more abstract cloud-neutral components that can run anywhere.  This includes
+compute services, storage services, and even more logical domain-specific services like AI, ML, and recognition.
 
 ## Concepts
 
