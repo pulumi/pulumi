@@ -1,4 +1,4 @@
-# Mu Compilation Targets
+# Mu Clouds
 
 This document describes how Mu metadata is compiled and deployed to various cloud targets.  Please refer to [the
 companion metadata specification](metadata.md) to understand the source input in more detail.
