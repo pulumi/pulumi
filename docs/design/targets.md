@@ -18,20 +18,19 @@ Not all combinations of IaaS and CaaS fall out naturally, although it is a goal 
 orthogonally such that the incremental cost of creating new pairings is as low as possible (minimizing combinatorics).
 Some combinations are also clearly nonsense, such as AWS as your IaaS and GKE as your CaaS.
 
-For reference, here is a compatibility matrix.  Each cell with an `X` is described in this document already; each cell
-with an `-` is planned, but not yet described; and blank entries are unsupported nonsense combinations:
+For reference, here is a compatibility matrix.  Each cell optionally contains a number.  The lower the number, the
+higher the priority (a sorted list will produce the intended implementation order).  Any number followed by a `*` means
+"in progress".  Blank cells are not supported, most likely because the combination is nonsensical.
 
-|               | AWS       | GCP       | Azure     | VMWare    |
-| ------------- | --------- | --------- | --------- | --------- |
-| none (VMs)    | X         | -         | -         | -         |
-| Docker Swarm  | -         | -         | -         | -         |
-| Kubernetes    | -         | -         | -         | -         |
-| Mesos         | -         | -         | -         | -         |
-| ECS           | X         |           |           |           |
-| GKE           |           | -         |           |           |
-| ACS           |           |           | -         |           |
-
-TODO(joe): describe the "local" cases, e.g. none(?), Docker, VirtualBox, HyperV, etc.
+|               | AWS       | GCP       | Azure     | VMWare    | Local     |
+| ------------- | --------- | --------- | --------- | --------- | --------- |
+| none (VMs)    | 1*        | 7         | 10        | 200       |           |
+| Docker Swarm  | 4         | 50        | 101       | 201       | 3         |
+| Kubernetes    | 6         | 9         | 102       | 202       | 5         |
+| Mesos         | 400       | 300       | 103       | 203       | 150       |
+| ECS           | 2*        |           |           |           |           |
+| GKE           |           | 8         |           |           |           |
+| ACS           |           |           | 11        |           |           |
 
 In all cases, the native metadata formats for the IaaS and CaaS provider in question is supported; for example, ECS on
 AWS will leverage CloudFormation as the target metadata.  In certain cases, we also support Terraform outputs.
