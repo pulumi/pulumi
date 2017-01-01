@@ -31,6 +31,13 @@ this document will use a YAML syntax for brevity's sake.
 
 TODO: hello, world.
 
+## Interpretation
+
+MuPack and MuIL are interpreted representations.  That means we do not compile them to assembly and, in certain cases,
+we have made design decisions that favor correctness over performance.  The toolchain has a built in verifier that
+enforces these design decisions at runtime.  This is unlike most runtimes that leverage an independent static
+verification step to avoid runtime penalties.  That said, the `mu verify` command will run the verifier independently.
+
 ## Metadata
 
 Each package may contain self-describing metadata, such as a name, and optional attributes that are common in package
