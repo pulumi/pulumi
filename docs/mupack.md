@@ -106,6 +106,8 @@ MuPackages may export other symbols in the form of modules, types, variables, an
 
 TODO: talk about casing.
 
+TODO: talk about identifier naming (including `.` prefix meaning "system usage").
+
 ## Types
 
 This section describes the core aspects of MuIL's type system.
@@ -234,15 +236,16 @@ A variable can be given a `default` value if it can be represented using a simpl
 complex cases, such as using arbitrary expressions, initialization must happen in a function somewhere.  For module
 properties, for instance, this occurs in the module initialzer; for class properties, in its constructor; and so on.
 
-By default, each variable is mutable.  The `readonly` attribute indicates that it isn't:
+By default, variables are mutable.  The `readonly` attribute indicates that a variable cannot be written to:
 
     availabilityZoneCounts:
         type: map[string]number
         readonly: true
         # ...
 
-As with most uses of `readonly` in other programming languages, it is shallow (that is, the property value cannot be
-changed by if the target is a mutable record, properties on *that* record can be).
+Note that module properties are `readonly` by default.  As with most uses of `readonly` in other programming languages,
+this is a shallow indication; that is, the property value cannot be changed but properties on the object to which the
+property refers can be mutated freely, unless that object is immutable or a constant value.
 
 All variables are initialized to `null` by default.  Problems may arise if the type is not nullable (more on this
 later).  All loads guard against this possibility, however loading a `null` value from a non-null location will lead to
@@ -515,12 +518,20 @@ Now, given this new `State` type, we can simplify our `state` property example f
 
 ## Mu Intermediate Language (MuIL)
 
+MuIL is an AST-based intermediate language, unlike some of its relatives, which use lower-level stack or register
+machines.  There are three reasons MuIL chooses ASTs over these other forms.  First, it simplifies the task of writing
+new MetaMu compilers, something important to the overall Mu ecosystem.  Second, performance is less important than
+simplicity; so, although the AST model most likely complicates certain backend optimizations, this matters less to an
+interpreted environment like Mu than a system that compiles down to machine code.  Third, it makes writing tools that
+process MuPacks easier, including MuGL processing tools that reraise AST edits back to the original program text.
+
 Loads/stores
-    Load constants (null, number, string)
+    Load literals (null, number, string)
     Load/store variable (modvar, this, field, local)
-    Load/store map element (same as variable?)
-    Load/store array element
-    Array and map intrinsics (ldlen)
+    Model as intrinsic functions:
+        Load/store map element (same as variable?)
+        Load/store array element
+        Array and map intrinsics (ldlen)
     Different for static vs. dynamic load?
 Branches (ble, bge, lt)
 Calls
@@ -528,8 +539,10 @@ Lambdas
 New (records and classes) / init
 Conversion, isinst, casts(structural plus nominal)
 Throw
-Try/Catch/Finally
+Try/Catch/Finally  (note: typed to support e.g. Python; TODO: what about exception base class?)
 Operators
+
+TODO(joe): articulate how failures are conveyed (dynamic, casts, etc).
 
 ## Possibly-Controversial Decisions
 

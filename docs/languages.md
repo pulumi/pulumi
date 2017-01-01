@@ -83,7 +83,7 @@ All executable code is encoded using a simple intermediate language, MuIL, that 
 This captures a deterministic, bounded set of type system and execution constructs that a subset of most higher level
 languages can target and consume.  The design has been inspired by existing "minimalistic" multi-language intermediate
 formats, and is very similar to [CIL](https://www.ecma-international.org/publications/standards/Ecma-335.htm), with
-elements of [asm.js](http://asmjs.org/spec/latest/) mixed in (particularly for the dynamic elements).
+elements of [asm.js](http://asmjs.org/spec/latest/) and [WebAssembly](https://github.com/WebAssembly/) mixed in.
 
 This IL is fully bound, so that IL processing needn't re-parse, re-analyze, or re-bind the resulting trees.  This has
 performance advantages and simplifies the toolchain.  An optional verifier can check to ensure ASTs are well-formed.
