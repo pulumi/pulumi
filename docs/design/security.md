@@ -16,7 +16,7 @@ That said, we see the following three personas emerging in modern cloud manageme
 
 * Application/service developer: A person who writes and deploys code into an existing cluster.
 * Application/service ops: A person who performs operational activities against an existing cluster, including
-    provisioning or managing new or existing applications or services.
+  provisioning or managing new or existing applications or services.
 * IT ops: A person who performs operational activities on the cluster and underlying infrastructure itself.
 
 Note that a single person may assume multiple personas.  For instance, an ISV might choose to lump all developers into

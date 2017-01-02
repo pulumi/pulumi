@@ -473,3 +473,13 @@ Those appear in a special metadata section and are marked in such a way that err
 
 More details on target-specific Stacks and metadata settings are provided below in the relevant sections.
 
+## Runtime Bindings
+
+As we saw earlier, a function can be marked `intrinsic`, to delegate evaluation to the an extensible runtime.  Since
+MetaMus do not have side-effects, this runtime is solely responsible for performing the create, read, update, and
+delete (CRUD) operations on the physical environment.  This is also used for low-level runtime operations.
+
+TODO: specify the extensibility APIs in depth.
+
+TODO: list the set of extensibility providers that come out-of-the-box.
+

@@ -1,4 +1,4 @@
-# Mu Package Metadata (MuPack)
+# Mu Package Metadata (MuPack) and Intermediate Language (IL)
 
 This document describes the overall concepts, capabilities, and serialization format for MuPack.  It also describes the
 intermediate language (IL) and type system for MuPack, something we refer to as MuIL.
@@ -628,16 +628,6 @@ lack of a need for them and, as such, attributes may be something we consider ad
 
 MuIL doesn't support varargs; instead, just use arrays.  The benefit of true varargs is twofold: usability -- something
 that doesn't matter at the MuIL level -- and runtime performance -- something MuIL is less concerned about.
-
-## Runtime Bindings
-
-As we saw earlier, a function can be marked `intrinsic`, to delegate evaluation to the an extensible runtime.  Since
-MetaMus do not have side-effects, this runtime is solely responsible for performing the create, read, update, and
-delete (CRUD) operations on the physical environment.  This is also used for low-level runtime operations.
-
-TODO: specify the extensibility APIs in depth.
-
-TODO: list the set of extensibility providers that come out-of-the-box.
 
 ## Open Questions
 

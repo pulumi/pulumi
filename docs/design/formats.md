@@ -94,9 +94,12 @@ will work without any unexpected difficulties.  The MuHub contains precompiled M
 
 Each MetaMu program is *compiled* into a MuPackage, encoded in MuPack.
 
-## Mu Package Metadata (MuPack)
+## Mu Package Metadata (MuPack) and Intermediate Language (IL)
 
-Each MuPackage is encoded in MuPack and serialized in a JSON/YAML form for easy toolability.
+Each MuPackage is encoded in MuPack and serialized in a JSON/YAML form for easy toolability.  The full MuPack and MuIL
+specifications are available in the [Mu Package Metadata (MuPack) and Intermediate Language (IL) design doc](mupack.md).
+
+### MuPack
 
 MuPack is the unit of sharing and reuse, and includes high-level metadata about the module's contents, in addition to
 its modules, types, functions, and variables.  Each MuPackage can be either a "library" -- meant solely for sharing and
@@ -107,6 +110,8 @@ interoperability and facilitates cross-language reuse.  This type system may be 
 custom service types that encapsulate patterns of infrastructure coordination, and schema types that govern the shape of
 data and property values being exchanged.  Any of these types and functions may or may not be exported from the module.
 
+### MuIL
+
 All executable code is encoded using a simple intermediate language, MuIL, that is interpreted by the Mu toolchain.
 This captures a deterministic, bounded set of type system and execution constructs that a subset of most higher level
 languages can target and consume.  The design has been inspired by existing "minimalistic" multi-language intermediate
@@ -116,7 +121,7 @@ elements of [asm.js](http://asmjs.org/spec/latest/) and [WebAssembly](https://gi
 This IL is fully bound, so that IL processing needn't re-parse, re-analyze, or re-bind the resulting trees.  This has
 performance advantages and simplifies the toolchain.  An optional verifier can check to ensure ASTs are well-formed.
 
-The full MuPack specification is available [here](mupack.md).
+### Planning and Applying
 
 There are two actions that can be taken against a MuPackage blueprint:
 
@@ -149,7 +154,7 @@ Each node in a graph carries the service's unique ID, human-friendly name, type,
 A service's type tells the MuGL toolchain how to deal with physical resources that need to be created, read, updated, or
 deleted, and governs which properties are legal and their expected types.  Note that any module references within the
 MuGL file still refer to the MuPackages that define abstractions, which are still resolved during evaluation.  All
-module references will have been "locked" to a specific version of that MuPackage, however, for repeatability.
+module references will have been "locked" to a specific version of that MuPackage, however, for repeatability's sake.
 
 Edges between these nodes represent dependencies, and are therefore directed, and must be explicit.  Despite property
 values potentially governing the dependencies, these are gone by the time MuGL is created.  Therefore, the translation
@@ -166,18 +171,21 @@ TODO: specify how "holes" show up during planning.
 
 ### Resource Providers
 
-Some services are simply abstractions.  They exist solely as convenient ways to create other services, but, at the end
-of the day, there are no physical manifestations of them.
+In general, the Mu toolset simply performs an in-order walk of the MuGS DAG in order to perform a deployment.  However,
+clearly there must be more to this, in order to actually perform mutations in the target environment.
 
-Some services, however, correspond to real physical resources that must be consulted or manipulated during the planning
-and/or application processes.  The extensibility mechanism used to define this logic is part of the Mu SDK and is called
-a *resource provider*.  Each resource provider is associated with a Mu service type, is written in Go, and provides
-standard create, read, update, and delete (CRUD) operations, that achieve the desired state changes in an environment.
+Some services are simply abstractions.  They exist solely as convenient ways to create other services, but, at the end
+of the day, there are no physical manifestations of them.  Some services, however, correspond to real physical resources
+that must be consulted or manipulated during the planning and/or application processes.  These are called *resources*.
+
+The extensibility mechanism used to define this logic is part of the Mu SDK and is called a *resource provider*.  Each
+resource provider is associated with a Mu service type, is written in Go, and provides standard create, read, update,
+and delete (CRUD) operations, that achieve the desired state changes in an environment.
 
 Resource providers are dynamically loaded plugins that implement a standard set of interfaces.  Each resource type in Mu
 must resolve to a provider, otherwise an error occurs.  Each plugin can contain multiple resource providers.
 
-TODO: articulate the interface.
+Please refer to the [resource extensibility design doc](resources.md) for more details on this model.
 
 ### Graph Queryability
 
