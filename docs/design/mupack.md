@@ -29,14 +29,16 @@ possible in the MetaMu compilers themselves, however this approach naturally acc
 MuPack is serialized in JSON/YAML form, although in the future we may explore more efficient file formats.  Examples in
 this document will use a YAML syntax for brevity's sake.
 
-TODO: hello, world.
-
 ## Interpretation
 
 MuPack and MuIL are interpreted representations.  That means we do not compile them to assembly and, in certain cases,
 we have made design decisions that favor correctness over performance.  The toolchain has a built in verifier that
 enforces these design decisions at runtime.  This is unlike most runtimes that leverage an independent static
 verification step to avoid runtime penalties.  That said, the `mu verify` command will run the verifier independently.
+
+TODO: specify more information about the runtime context in which evaluation is performed.
+
+TODO: specify how failures are conveyed (fail-fast, exception, etc).
 
 ## Metadata
 
@@ -531,31 +533,97 @@ Now, given this new `State` type, we can simplify our `state` property example f
 
 ## Mu Intermediate Language (MuIL)
 
-MuIL is an AST-based intermediate language, unlike some of its relatives, which use lower-level stack or register
-machines.  There are three reasons MuIL chooses ASTs over these other forms.  First, it simplifies the task of writing
-new MetaMu compilers, something important to the overall Mu ecosystem.  Second, performance is less important than
-simplicity; so, although the AST model most likely complicates certain backend optimizations, this matters less to an
-interpreted environment like Mu than a system that compiles down to machine code.  Third, it makes writing tools that
-process MuPacks easier, including MuGL processing tools that reraise AST edits back to the original program text.
+MuIL is an AST-based intermediate language.  This is in contrast to some of its relatives which use lower-level stack or
+register machines.  There are three reasons MuIL chooses ASTs over these other forms:
 
-Loads/stores
-    Load literals (null, number, string)
-    Load/store variable (modvar, this, field, local)
-    Model as intrinsic functions:
-        Load/store map element (same as variable?)
-        Load/store array element
-        Array and map intrinsics (ldlen)
-    Different for static vs. dynamic load?
-Branches (ble, bge, lt)
-Calls
-Lambdas
-New (records and classes) / init
-Conversion, isinst, casts(structural plus nominal)
-Throw
-Try/Catch/Finally  (note: typed to support e.g. Python; TODO: what about exception base class?)
-Operators
+* First, it simplifies the task of writing new MetaMu compilers, something important to the overall Mu ecosystem.
 
-TODO(joe): articulate how failures are conveyed (dynamic, casts, etc).
+* Second, performance is less important than simplicity; so, although the AST model most likely complicates certain
+  backend optimizations, this matters less to an interpreted environment like Mu than a system that compiles down to
+  machine code.  Especially when considering the cost of provisioning cloud infrastructure (often measured in minutes).
+
+* Third, it makes writing tools that process MuPacks easier, including MuGL processing tools that reraise AST edits back
+  to the original program text.
+
+Below is an overview of the AST shapes supported by MuIL.
+
+### AST Nodes
+
+TODO: this is just a dumb name listing; eventually we want to specify each and every node type.
+
+Every MuIL AST node derives from a common base type that includes information about its location in the source code:
+
+    // Node is a discriminated type for all AST subtypes.
+    interface Node {
+        kind: NodeKind;
+        loc?: Location;
+    }
+
+    // NodeType contains all legal Node implementations, effectively "sealing" Node.
+    type NodeKind = ...;
+
+    // Location is a location, possibly a region, in the source code.
+    interface Location {
+        file?: string;   // an optional filename.
+        start: Position; // a starting position in the source text.
+        end?:  Position; // an optional end position (if empty, just a point, not a range).
+    }
+
+    // Position consists of a 1-indexed `line` and a 0-indexed `column`.
+    interface Position {
+        line:   number; // >= 1
+        column: number; // >= 0
+    }
+
+#### Definitions
+
+    interface Definition extends Node {...}
+        interface Module extends Definition {...}
+        interface Variable extends Definition {...}
+            interface Parameter extends Variable {...}
+            interface ModuleProperty extends Variable {...}
+            interface ClassProperty extends Variable, ClassMember {...}
+        interface Function extends Definition {...}
+            interface ModuleMethod extends Function {...}
+            interface ClassMethod extends Function, ClassMember {...}
+        interface Class extends Definition {...}
+        interface ClassMember extends Definition {...}
+
+#### Statements
+
+    interface Statement extends Node {...}
+        interface Block extends Statement {...}
+        interface TryCatchFinally extends Statement {...}
+        interface BreakStatement extends Statement {...}
+        interface ContinueStatement extends Statement {...}
+        interface IfStatement extends Statement {...}
+        interface LabeledStatement extends Statement {...}
+        interface ReturnStatement extends Statement {...}
+        interface ThrowStatement extends Statement {...}
+        interface WhileStatement extends Statement {...}
+        interface EmptyStatement extends Statement {...}
+        interface ExpressionStatement extends Statement {...}
+
+    interface LocalVariableDeclaration
+
+#### Expressions
+
+    interface Expression extends Node {...}
+        interface LiteralExpression extends Expression {...}
+            interface NullLiteralExpression extends LiteralExpression {...}
+            interface BoolLiteralExpression extends LiteralExpression {...}
+            interface NumberLiteralExpression extends LiteralExpression {...}
+            interface StringLiteralExpression extends LiteralExpression {...}
+            interface ObjectLiteralLiteralExpression extends LiteralExpression {...}
+        interface LoadVariableExpression extends Expression {...}
+        interface LoadFunctionExpression extends Expression {...}
+        interface LoadDynamicExpression extends Expression {...}
+        interface InvokeFunctionExpression extends Expression {...}
+        interface LambdaExpression extends Expression {...}
+        interface UnaryOperatorExpression extends Expression {...}
+        interface BinaryOperatorExpression extends Expression {...}
+        interface CastExpression extends Expression {...}
+        interface ConditionalExpression extends Expression {...}
 
 ## Possibly-Controversial Decisions
 
@@ -571,9 +639,11 @@ MuIL does not support unboxed values.  This is entirely a performance and low-le
 
 ### Pointers
 
-On one hand, MuIL supports pointers everywhere, since all values are actually references to values.  But, MuIL does not
-support an explicit pointer type with associated indirection, arithmetic, and dereferencing operations.  Runtime
-functionality can be written in Go, which leverages pointers, but MuIL itself is not for systems programming.
+MuIL supports pointers for implementing runtime functionality.  It does not embellish them very much, however, other
+than letting the runtime (written in Go) grab ahold of them and do whatever it pleases.  For example, MuIL does not
+contain operators for indirection, arithmetic, or dereferencing.  MuIL itself is not for systems programming.
+
+TODO: this could evolve further as we look to adopting MuGo, which, clearly, will have the concept of pointers.
 
 ### Generics
 
@@ -633,6 +703,4 @@ that doesn't matter at the MuIL level -- and runtime performance -- something Mu
 ## Open Questions
 
 Numeric types (long, int, etc)
-
-Intrinsics: do they appear in MuIL?  Or just in MuGL?
 

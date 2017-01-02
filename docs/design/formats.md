@@ -167,7 +167,11 @@ level translation catches this, since each step in the translation process reduc
 
 TODO: a complete file format specification.
 
-TODO: specify how "holes" show up during planning.
+TODO: specify how "holes" show up during planning ("<computed>").  E.g., do we simulate control flow paths.
+
+TODO: describe the algorithm used for diffing two MuGLs.
+
+TODO: describe what happens in the face of partial application failure.  Do graphs become tainted?
 
 ### Resource Providers
 
