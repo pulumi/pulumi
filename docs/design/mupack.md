@@ -29,17 +29,6 @@ possible in the MetaMu compilers themselves, however this approach naturally acc
 MuPack is serialized in JSON/YAML form, although in the future we may explore more efficient file formats.  Examples in
 this document will use a YAML syntax for brevity's sake.
 
-## Interpretation
-
-MuPack and MuIL are interpreted representations.  That means we do not compile them to assembly and, in certain cases,
-we have made design decisions that favor correctness over performance.  The toolchain has a built in verifier that
-enforces these design decisions at runtime.  This is unlike most runtimes that leverage an independent static
-verification step to avoid runtime penalties.  That said, the `mu verify` command will run the verifier independently.
-
-TODO: specify more information about the runtime context in which evaluation is performed.
-
-TODO: specify how failures are conveyed (fail-fast, exception, etc).
-
 ## Metadata
 
 Each package may contain self-describing metadata, such as a name, and optional attributes that are common in package
@@ -625,6 +614,17 @@ Every MuIL AST node derives from a common base type that includes information ab
         interface CastExpression extends Expression {...}
         interface ConditionalExpression extends Expression {...}
 
+## Interpretation
+
+MuPack and MuIL are interpreted representations.  That means we do not compile them to assembly and, in certain cases,
+we have made design decisions that favor correctness over performance.  The toolchain has a built in verifier that
+enforces these design decisions at runtime.  This is unlike most runtimes that leverage an independent static
+verification step to avoid runtime penalties.  That said, the `mu verify` command will run the verifier independently.
+
+TODO: specify more information about the runtime context in which evaluation is performed.
+
+TODO: specify how failures are conveyed (fail-fast, exception, etc).
+
 ## Possibly-Controversial Decisions
 
 It's worth describing for a moment some possibly-controversial decisions about MuPack and MuIL.
@@ -682,7 +682,7 @@ including the possibility of flowing return and exception types to Go and Java, 
 There is no multithreading in MuIL.  And there is no I/O.  As a result, there are neither multithreading facilities nor
 the commonly found `async` and `await` features in modern programming languages.
 
-## Accessibility, Dynamicism, and Secrets
+### Accessibility, Dynamicism, and Secrets
 
 MuIL dynamic operations respect accessibility.  This is unconventional but allows encapsulation of sensitive
 information.  This is admittedly a risky guarantee to make -- since type systems are intricate things that can be
