@@ -97,7 +97,7 @@ Each MetaMu program is *compiled* into a MuPackage, encoded in MuPack.
 ## Mu Package Metadata (MuPack) and Intermediate Language (IL)
 
 Each MuPackage is encoded in MuPack and serialized in a JSON/YAML form for easy toolability.  The full MuPack and MuIL
-specifications are available in the [Mu Package Metadata (MuPack) and Intermediate Language (IL) design doc](mupack.md).
+specifications are available in the [Mu Package Metadata (MuPack) design doc](mupack.md).
 
 ### MuPack
 

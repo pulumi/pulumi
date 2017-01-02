@@ -1,4 +1,4 @@
-# Mu Package Metadata (MuPack) and Intermediate Language (IL)
+# Mu Package Metadata (MuPack)
 
 This document describes the overall concepts, capabilities, and serialization format for MuPack.  It also describes the
 intermediate language (IL) and type system for MuPack, something we refer to as MuIL.
