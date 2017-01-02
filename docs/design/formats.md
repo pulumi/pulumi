@@ -38,6 +38,33 @@ parties -- although we do require that any MetaMu compiles down into MuPack.  Th
 for fully dynamically typed languages -- for example, it requires a real compiler to analyze and emit code statically --
 although the task is certainly not impossible (as evidenced by MuJS, MuPy, and MuRu support).
 
+### Not Your Average Language
+
+It is important to reiterate that MetaMus are not traditional languages.  Programs describe the desired state of a
+cloud service or collection of cloud services.  The evaluation of a MetaMu program results in a MuGL DAG that captures
+dependencies and state that correspond to physical entities in a target cloud environment.  The Mu toolset then takes
+this DAG, compares it to the existing environment, and "makes it so."
+
+Note that this approach fully embraces the [immutable infrastructure](
+http://martinfowler.com/bliki/ImmutableServer.html) philosophy, including embracing [cattle over pets](
+https://blog.engineyard.com/2014/pets-vs-cattle).
+
+A MetaMu program itself is just metadata, therefore, and any computations in the language itself exist solely to
+determine this DAG.  This is a subtle but critical point, so it bears repeating: MetaMu code does not actually execute
+within the target cloud environment; instead, MetaMu code merely describes the topology of the code and resources.
+
+It is possible to mix MetaMu and regular code in the respective source language.  This is particularly helpful when
+associating runtime code to deployment-time artifacts, and is common when dealing with serverless programming.  For
+example, instead of needing to manually separate out the description of a cloud lambda and its code, we can just write a
+lambda that the compiler will "shred" into a distinct asset that is bundled inside the cloud deployment automatically.
+
+In any case, "language bindings" bind elements of Mu services to executable code.  This executable code can come in many
+forms, aside from the above lambda example.  For example, a "container" service may bind to a real, physical Docker
+container image.  As another example, an "RPC" service may bind to an entire Go program, with many endpoints implemented
+as Go functions.  A MuPackage is incomplete without being fully bound to the program assets that must be co-deployed.
+
+### Restricted Subsets
+
 The restrictions placed on MetaMus streamline the task of producing cloud topology graphs, and ensure that programs
 are deterministic.  Determinism is important, otherwise two deployments from the exact same source programs might
 result in two graphs that differ in surprising and unwanted ways.  Evaluation of the the same program must be
@@ -64,11 +91,6 @@ MetaMu compiler for your language of choice.  This means recompiling packages fr
 possibility that they will fail to compile if they perform illegal operations -- or, preferably, using a package that
 has already been pre-compiled using a MetaMu compiler, likely in MuPack format, in which case you are guaranteed that it
 will work without any unexpected difficulties.  The MuHub contains precompiled MuPacks for easy consumption.
-
-It is possible to mix MetaMu and regular code in the respective source language.  This is particularly helpful when
-associating runtime code to deployment-time artifacts, and is common when dealing with serverless programming.  For
-example, instead of needing to manually separate out the description of a cloud lambda and its code, we can just write a
-lambda that the compiler will "shred" into a distinct asset that is bundled inside the cloud deployment automatically.
 
 Each MetaMu program is *compiled* into a MuPackage, encoded in MuPack.
 

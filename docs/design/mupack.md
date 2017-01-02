@@ -292,6 +292,10 @@ It is illegal to mark a `static` method as either `sealed` or `abstract`.
 Module functions and lambdas are required to define a `body`, which is a MuIL block.  Class methods often have one, but
 it can be omitted, in which case the method must be abstract and concrete subclasses must provide a `body` block.
 
+Any function can be marked with `intrinsic: true` to delegate execution to a runtime intrinsic.  This is used to
+express custom resource types, but is seldom used in everyday Mu development.  Please refer to the section on Runtime
+Intrinsics later in this document for details on how this extensibility model works.
+
 ### Classes
 
 New named `class` types can be created by composing primitives and other `class` types.  Classes are capable of
@@ -333,8 +337,9 @@ For instance, here is an example of a pure data-only `Person` class:
 
 All properties are variable definitions and methods are function definitions, per the earlier descriptions.
 
-A class can have a constructor, which is a special method named `.ctor`, that is invoked during initialization.  A class
-may also contain a class initializer that runs code to initialize static variables.  It is denoted by the special name
+A class can have a constructor, which is a special method named `.ctor`, that is invoked during initialization.
+
+A class may have a class initializer that runs code to initialize static variables.  It is denoted by the special name
 `.init`.  Any of the class's static variables with complex initialization must be written to from this initializer.
 
 As noted earlier, class properties that are pure data should be marked as `primary`, to make initialization easier.
@@ -623,6 +628,16 @@ lack of a need for them and, as such, attributes may be something we consider ad
 
 MuIL doesn't support varargs; instead, just use arrays.  The benefit of true varargs is twofold: usability -- something
 that doesn't matter at the MuIL level -- and runtime performance -- something MuIL is less concerned about.
+
+## Runtime Bindings
+
+As we saw earlier, a function can be marked `intrinsic`, to delegate evaluation to the an extensible runtime.  Since
+MetaMus do not have side-effects, this runtime is solely responsible for performing the create, read, update, and
+delete (CRUD) operations on the physical environment.  This is also used for low-level runtime operations.
+
+TODO: specify the extensibility APIs in depth.
+
+TODO: list the set of extensibility providers that come out-of-the-box.
 
 ## Open Questions
 
