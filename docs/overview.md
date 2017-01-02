@@ -69,10 +69,12 @@ these appear in the programming model is exactly this way; for example, in Mu's 
 
     export class Registry extends mu.Stack {
         private table: mu.Table;
+
         constructor() {
             this.table = new mu.Table("names");
         }
-        public register(name: string): Promise<number> {
+
+        @api public register(name: string): Promise<number> {
             return this.table.insert({ name: name });
         }
     }
@@ -110,5 +112,6 @@ More details are left to the respective design documents.  Here are some key one
 * [**Runtime**](design/runtime.md): An overview of Mu's runtime footprint and services common to all clouds.
 * [**Cross-Cloud**](design/x-cloud.md): A brief description of how Mu can be used to create cloud-neutral abstractions.
 * [**Security**](design/security.md): An overview of Mu's security model, including identity and group management.
+* [**Resources**](design/resources.md): A description of how extensible resource providers are authored and registered.
 * [**FAQ**](faq.md): Frequently asked questions, including how Mu differs from its primary competition.
 

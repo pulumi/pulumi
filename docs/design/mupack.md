@@ -45,8 +45,9 @@ managers, like a description, author, website, license, and so on.  For example:
 
     name: acmecorp/elk
     description: A fully functioning ELK stack (Elasticsearch, Logstash, Kibana).
-    author: Joe Smith <joesmith@elk.com>
-    website: https://github.com/joesmith/elk
+    author: Joe Smith <joesmith@acmecorp.com>
+    website: https://acmecorp.github.io/elk
+    keywords: [ elasticsearch, logstash, kibana ]
 
 TODO(joe): describe the full informational attributes available.
 
