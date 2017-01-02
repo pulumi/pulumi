@@ -151,6 +151,8 @@ TODO(joe): encrypted secret storage (a la Vault).
 
 #### Stacks/Services
 
+TODO: this section is out of date.  We no longer target CloudFormation, and instead orchestrate resource CRUD manually.
+
 Each Mu Stack compiles into a [CloudFormation Stack](
 http://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/stacks.html), leveraging a 1:1 mapping.  The only
 exceptions to this rule are resource types that map directly to a CloudFormation resource name, backed either by a

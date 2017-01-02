@@ -1,5 +1,7 @@
 # Mu Tools
 
+**Warning:** This document is out of date and needs some love.
+
 ## Toolchain
 
 In this section, we will look at the toolchain that powers the overall Mu architecture.
