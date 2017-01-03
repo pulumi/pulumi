@@ -63,6 +63,10 @@ A compiled MuPackage always contains the set of specific versions it was compile
 by the author.  Alternatively, the semantic version ranges can be left in, for more flexibility in dealing with diamond
 dependencies in consumer code, at the risk of behavioral changes that are discovered only on the client machine.
 
+The recommended practice is for libraries to leave more flexible semantic version ranges, while individual blueprints
+are pinned to specific versions.  This pinning is important to ensure that deployments are repeatable, and is encouraged
+by the command line tools; in particular, generating a plan automatically first generates a lockfile.
+
 ## Package Resolution
 
 Now let us see how references are resolved to physical MuPackages.
