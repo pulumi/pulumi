@@ -91,7 +91,7 @@ export const classKind = "Class";
 export type  ClassKind = "Class";
 
 // A simple marker interface for members of a class.
-export interface ClassMember extends Node {
+export interface ClassMember extends Definition {
     access?:  symbols.ClassMemberAccessibility;
     static?: boolean;
 }

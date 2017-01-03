@@ -342,23 +342,34 @@ function transformForOfStatement(node: ts.ForOfStatement): ast.Statement {
     return contract.failf("NYI");
 }
 
-function transformIfStatement(node: ts.IfStatement): ast.Statement {
-    return contract.failf("NYI");
+function transformIfStatement(node: ts.IfStatement): ast.IfStatement {
+    return copyLocation(node, {
+        kind:       ast.ifStatementKind,
+        condition:  transformExpression(node.expression),
+        consequent: transformStatement(node.thenStatement),
+        alternate:  object.maybeUndefined(node.elseStatement, transformStatement),
+    });
 }
 
-function transformReturnStatement(node: ts.ReturnStatement): ast.Statement {
-    return contract.failf("NYI");
+function transformReturnStatement(node: ts.ReturnStatement): ast.ReturnStatement {
+    return copyLocation(node, {
+        kind:       ast.returnStatementKind,
+        expression: object.maybeUndefined(node.expression, transformExpression),
+    });
 }
 
 function transformSwitchStatement(node: ts.SwitchStatement): ast.Statement {
     return contract.failf("NYI");
 }
 
-function transformThrowStatement(node: ts.ThrowStatement): ast.Statement {
-    return contract.failf("NYI");
+function transformThrowStatement(node: ts.ThrowStatement): ast.ThrowStatement {
+    return copyLocation(node, {
+        kind:       ast.throwStatementKind,
+        expression: transformExpression(node.expression),
+    });
 }
 
-function transformTryStatement(node: ts.TryStatement): ast.Statement {
+function transformTryStatement(node: ts.TryStatement): ast.TryCatchFinally {
     return contract.failf("NYI");
 }
 
@@ -373,7 +384,11 @@ function transformWhileStatement(node: ts.WhileStatement): ast.Statement {
 /** Miscellaneous statements **/
 
 function transformBlock(node: ts.Block): ast.Block {
-    return contract.failf("NYI");
+    // TODO(joe): map directives.
+    return copyLocation(node, {
+        kind:       ast.blockKind,
+        statements: node.statements.map(transformStatement),
+    });
 }
 
 function transformDebuggerStatement(node: ts.DebuggerStatement): ast.Statement {
@@ -381,15 +396,24 @@ function transformDebuggerStatement(node: ts.DebuggerStatement): ast.Statement {
 }
 
 function transformEmptyStatement(node: ts.EmptyStatement): ast.EmptyStatement {
-    return contract.failf("NYI");
+    return copyLocation(node, {
+        kind: ast.emptyStatementKind
+    });
 }
 
 function transformExpressionStatement(node: ts.ExpressionStatement): ast.ExpressionStatement {
-    return contract.failf("NYI");
+    return copyLocation(node, {
+        kind:       ast.expressionStatementKind,
+        expression: transformExpression(node.expression),
+    });
 }
 
 function transformLabeledStatement(node: ts.LabeledStatement): ast.LabeledStatement {
-    return contract.failf("NYI");
+    return copyLocation(node, {
+        kind:      ast.labeledStatementKind,
+        label:     transformIdentifier(node.label),
+        statement: transformStatement(node.statement),
+    });
 }
 
 function transformModuleBlock(node: ts.ModuleBlock): ast.Block {
