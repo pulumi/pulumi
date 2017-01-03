@@ -9,7 +9,7 @@ provisioned in the target cloud provider, please refer to [the cloud targeting d
 
 The following are the basic steps to creating a new MuPackage:
 
-* Picks your favorite MetaMu language.
+* Pick your favorite MetaMu language.
 * Create a new project folder in your workspace.
 * Create a Mufile (`Mu.yaml`) containing the top-level metadata.
 * Install any dependencies using the `mu get` command line.

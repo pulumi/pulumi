@@ -15,7 +15,7 @@ contains both internal and exported modules, types, functions, and variables.  A
 language (MuIL), that is suitable for interpretation by the Mu toolchain.  Because of computations, the final "shape" of
 the cloud topology cannot yet be determined until the MuPackage is evaluated as part of a deployment planning step.
 
-The final shape, Mu Graph Language (MuGL), represents a cloud topology with concrte property values and dependencies.
+The final shape, Mu Graph Language (MuGL), represents a cloud topology with concrete property values and dependencies.
 A graph can be compared to another graph to compute a delta, a capability essential to incremental deployment and drift
 analysis.  Each graph is [directed and acyclic](https://en.wikipedia.org/wiki/Directed_acyclic_graph) (DAG), in which
 nodes are cloud services, edges are [directed dependencies](https://en.wikipedia.org/wiki/Dependency_graph) between
@@ -102,8 +102,8 @@ specifications are available in the [Mu Package Metadata (MuPack) design doc](mu
 ### MuPack
 
 MuPack is the unit of sharing and reuse, and includes high-level metadata about the module's contents, in addition to
-its modules, types, functions, and variables.  Each MuPackage can be either a "library" -- meant solely for sharing and
-reuse -- or it can be an executable "blueprint"" -- in which case it can create a MuGL cloud topology all on its own.
+its modules, types, functions, and variables.  Each MuPackage can be either a *library* -- meant solely for sharing and
+reuse -- or it can be an executable *blueprint* -- in which case it can create a MuGL cloud topology all on its own.
 
 MuPack uses a "JSON-like" type system so that its type system is accessible to many MetaMus.  This eases Internet-scale
 interoperability and facilitates cross-language reuse.  This type system may be extended with custom types, including

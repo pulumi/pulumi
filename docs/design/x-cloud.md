@@ -4,7 +4,7 @@ The Mu metadata and primitives are intentionally cloud-agnostic and have been de
 clouds.md).  This can be used to build, share, and reuse portable abstractions.
 
 It is easy, however, to introduce a dependency on a particular cloud provider by relying on certain stacks.  For
-example, mounting an `aws/ebs/volume` for a database volume pins it to the AWS IaaS provider; in fact, *any* such
+example, mounting an `aws/ebs/Volume` for a database volume pins it to the AWS IaaS provider; in fact, *any* such
 service in the transitive closure of dependencies pins the whole stack to AWS.
 
 On one hand, this is great, because the Mu abstractions do not get in the way of leveraging the full power of your cloud

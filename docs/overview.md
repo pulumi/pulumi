@@ -58,8 +58,8 @@ compute services, storage services, and even more logical domain-specific servic
 
 The primary concepts in Mu are:
 
-* **Stack**: A stack is a static description of a topology cloud services with optional APIs.
-* **Package**: A package exports stacks for consumption by others.
+* **Stack**: A static description of a topology of cloud services with optional APIs.
+* **Package**: A collection of exports stacks for consumption by others.
 * **Service**: An instantiation of a stack, grouping zero to many services, together.
 * **Cluster**: A hosting environment that stacks can be deployed into, reifying them as services.
 * **Workspace**: A static collection of zero to many stacks managed together in a single source repository.
