@@ -671,6 +671,9 @@ function transformRegularExpressionLiteral(node: ts.RegularExpressionLiteral): a
 }
 
 function transformStringLiteral(node: ts.StringLiteral): ast.StringLiteralExpression {
+    // TODO: we need to dynamically populate the resulting object with ECMAScript-style string functions.  It's not
+    //     yet clear how to do this in a way that facilitates inter-language interoperability.  This is especially
+    //     challenging because most use of such functions will be entirely dynamic.
     return copyLocation(node, {
         kind:  ast.stringLiteralExpressionKind,
         raw:   node.text,
