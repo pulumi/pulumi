@@ -513,24 +513,99 @@ function transformArrowFunction(node: ts.ArrowFunction): ast.Expression {
     return contract.failf("NYI");
 }
 
+// A mapping from TypeScript operator to Mu AST operator.
+let binaryOperators = new Map<ts.SyntaxKind, ast.BinaryOperator>([
+    // Arithmetic
+    [ ts.SyntaxKind.PlusToken,                              "+" ],
+    [ ts.SyntaxKind.MinusToken,                             "-" ],
+    [ ts.SyntaxKind.AsteriskToken,                          "*" ],
+    [ ts.SyntaxKind.SlashToken,                             "/" ],
+    [ ts.SyntaxKind.PercentToken,                           "%" ],
+    [ ts.SyntaxKind.AsteriskAsteriskToken,                  "**" ],
+
+    // Assignment
+    [ ts.SyntaxKind.EqualsToken,                                  "=" ],
+    [ ts.SyntaxKind.PlusEqualsToken,                              "+=" ],
+    [ ts.SyntaxKind.MinusEqualsToken,                             "-=" ],
+    [ ts.SyntaxKind.AsteriskEqualsToken,                          "*=" ],
+    [ ts.SyntaxKind.SlashEqualsToken,                             "/=" ],
+    [ ts.SyntaxKind.PercentEqualsToken,                           "%=" ],
+    [ ts.SyntaxKind.AsteriskAsteriskEqualsToken,                  "**=" ],
+    [ ts.SyntaxKind.LessThanLessThanEqualsToken,                  "<<=" ],
+    [ ts.SyntaxKind.GreaterThanGreaterThanEqualsToken,            ">>=" ],
+    // TODO: [ ts.SyntaxKind.GreaterThanGreaterThanGreaterThanEqualsToken, ">>>=" ],
+    [ ts.SyntaxKind.AmpersandEqualsToken,                         "&=" ],
+    [ ts.SyntaxKind.BarEqualsToken,                               "|=" ],
+    [ ts.SyntaxKind.CaretEqualsToken,                             "^=" ],
+
+    // Bitwise
+    [ ts.SyntaxKind.LessThanLessThanToken,                  "<<" ],
+    [ ts.SyntaxKind.GreaterThanGreaterThanToken,            ">>" ],
+    [ ts.SyntaxKind.BarToken,                               "|" ],
+    [ ts.SyntaxKind.CaretToken,                             "^" ],
+    [ ts.SyntaxKind.AmpersandToken,                         "&" ],
+    // TODO: [ ts.SyntaxKind.GreaterThanGreaterThanGreaterThanToken, ">>>" ],
+
+    // Logical
+    [ ts.SyntaxKind.AmpersandAmpersandToken, "&&" ],
+    [ ts.SyntaxKind.BarBarToken,             "||" ],
+
+    // Relational
+    [ ts.SyntaxKind.LessThanToken,                          "<" ],
+    [ ts.SyntaxKind.LessThanEqualsToken,                    "<=" ],
+    [ ts.SyntaxKind.GreaterThanToken,                       ">" ],
+    [ ts.SyntaxKind.GreaterThanEqualsToken,                 ">=" ],
+    [ ts.SyntaxKind.EqualsEqualsToken,                      "==" ],
+    [ ts.SyntaxKind.ExclamationEqualsToken,                 "!=" ],
+    // TODO: [ ts.SyntaxKind.EqualsEqualsEqualsToken,                "===" ],
+    // TODO: [ ts.SyntaxKind.ExclamationEqualsEqualsToken,           "!==" ],
+
+    // Intrinsics
+    // TODO: [ ts.SyntaxKind.InKeyword,                              "in" ],
+    // TODO: [ ts.SyntaxKind.InstanceOfKeyword,                      "instanceof" ],
+]);
+
 function transformBinaryExpression(node: ts.BinaryExpression): ast.Expression {
-    return contract.failf("NYI");
+    let op: ts.SyntaxKind = node.operatorToken.kind;
+    if (op === ts.SyntaxKind.CommaToken) {
+        // Translate this into a sequence expression.
+        return transformBinarySequenceExpression(node);
+    }
+    else {
+        // Translate this into an ordinary binary operator.
+        return transformBinaryOperatorExpression(node);
+    }
 }
 
-function transformBinaryAssignmentExpression(node: ts.BinaryExpression): ast.Expression {
-    return contract.failf("NYI");
+function transformBinaryOperatorExpression(node: ts.BinaryExpression): ast.BinaryOperatorExpression {
+    let operator: ast.BinaryOperator | undefined = binaryOperators.get(node.operatorToken.kind);
+    if (!operator) {
+        // TODO: finish binary operator mapping; for any left that are unsupported, introduce a real error message.
+        return contract.failf(`Unsupported binary operator: ${ts.SyntaxKind[node.operatorToken.kind]}`);
+    }
+    return copyLocation(node, {
+        kind:     ast.binaryOperatorExpressionKind,
+        operator: operator,
+        left:     transformExpression(node.left),
+        right:    transformExpression(node.right),
+    });
 }
 
-function transformBinaryLogicalExpression(node: ts.BinaryExpression): ast.Expression {
-    return contract.failf("NYI");
-}
-
-function transformBinaryOperatorExpression(node: ts.BinaryExpression): ast.Expression {
-    return contract.failf("NYI");
-}
-
-function transformBinarySequenceExpression(node: ts.BinaryExpression): ast.Expression {
-    return contract.failf("NYI");
+function transformBinarySequenceExpression(node: ts.BinaryExpression): ast.SequenceExpression {
+    contract.assert(node.operatorToken.kind === ts.SyntaxKind.CommaToken);
+    let curr: ts.Expression = node;
+    let binary: ts.BinaryExpression = node;
+    let expressions: ast.Expression[] = [];
+    while (curr.kind === ts.SyntaxKind.BinaryExpression &&
+            (binary = <ts.BinaryExpression>curr).operatorToken.kind === ts.SyntaxKind.CommaToken) {
+        expressions.unshift(transformExpression(binary.right));
+        curr = binary.left;
+    }
+    expressions.unshift(transformExpression(curr));
+    return {
+        kind:        ast.sequenceExpressionKind,
+        expressions: expressions,
+    };
 }
 
 function transformCallExpression(node: ts.CallExpression): ast.Expression {

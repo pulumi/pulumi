@@ -58,7 +58,8 @@ export type NodeKind =
     expressions.CastExpressionKind |
     expressions.IsInstExpressionKind |
     expressions.TypeOfExpressionKind |
-    expressions.ConditionalExpressionKind
+    expressions.ConditionalExpressionKind |
+    expressions.SequenceExpressionKind
 ;
 
 export interface Identifier extends Node {
