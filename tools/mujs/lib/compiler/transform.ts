@@ -392,7 +392,11 @@ function transformBlock(node: ts.Block): ast.Block {
 }
 
 function transformDebuggerStatement(node: ts.DebuggerStatement): ast.Statement {
-    return contract.failf("NYI");
+    // The debugger statement in ECMAScript can be used to trip a breakpoint.  We don't have the equivalent in Mu at
+    // the moment, so we simply produce an empty statement in its place.
+    return copyLocation(node, {
+        kind: ast.emptyStatementKind,
+    });
 }
 
 function transformEmptyStatement(node: ts.EmptyStatement): ast.EmptyStatement {
@@ -537,8 +541,13 @@ function transformClassExpression(node: ts.ClassExpression): ast.Expression {
     return contract.failf("NYI");
 }
 
-function transformConditionalExpression(node: ts.ConditionalExpression): ast.Expression {
-    return contract.failf("NYI");
+function transformConditionalExpression(node: ts.ConditionalExpression): ast.ConditionalExpression {
+    return copyLocation(node, {
+        kind:       ast.conditionalExpressionKind,
+        condition:  transformExpression(node.condition),
+        consequent: transformExpression(node.whenTrue),
+        alternate:  transformExpression(node.whenFalse),
+    });
 }
 
 function transformDeleteExpression(node: ts.DeleteExpression): ast.Expression {
