@@ -612,7 +612,10 @@ Every MuIL AST node derives from a common base type that includes information ab
         interface UnaryOperatorExpression extends Expression {...}
         interface BinaryOperatorExpression extends Expression {...}
         interface CastExpression extends Expression {...}
+        interface IsInstExpression extend Expression {...}
+        interface TypeOfExpression extend Expression {...}
         interface ConditionalExpression extends Expression {...}
+        interface SequenceExpression extends Expression {...}
 
 ## Interpretation
 
