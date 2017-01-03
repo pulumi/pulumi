@@ -56,6 +56,8 @@ export type NodeKind =
     expressions.UnaryOperatorExpressionKind |
     expressions.BinaryOperatorExpressionKind |
     expressions.CastExpressionKind |
+    expressions.IsInstExpressionKind |
+    expressions.TypeOfExpressionKind |
     expressions.ConditionalExpressionKind
 ;
 

@@ -186,16 +186,35 @@ export type BinaryOperator = BinaryArithmeticOperator  |
                              BinaryConditionalOperator |
                              BinaryRelationalOperator  ;
 
-/** Miscellaneous **/
+/** Type Testing **/
 
 // A cast expression; this handles both nominal and structural casts, and will throw an exception upon failure.
 export interface CastExpression extends Expression {
     kind:       CastExpressionKind;
-    type:       symbols.TypeToken; // the target type.
     expression: Expression;        // the source expression.
+    type:       symbols.TypeToken; // the target type.
 }
 export const castExpressionKind = "CastExpression";
 export type  CastExpressionKind = "CastExpression";
+
+// An isinst expression checks an expression for compatibility with the given type token, evaluating to a boolean.
+export interface IsInstExpression extends Expression {
+    kind:       IsInstExpressionKind;
+    expression: Expression;        // the source expression.
+    type:       symbols.TypeToken; // the target type.
+}
+export const isInstExpressionKind = "IsInstExpression";
+export type  IsInstExpressionKind = "IsInstExpression";
+
+// An typeof instruction gets the type token -- just a string -- of a particular expression at runtime.
+export interface TypeOfExpression extends Expression {
+    kind:       TypeOfExpressionKind;
+    expression: Expression;        // the source expression.
+}
+export const typeOfExpressionKind = "TypeOfExpression";
+export type  TypeOfExpressionKind = "TypeOfExpression";
+
+/** Miscellaneous **/
 
 // A conditional expression.
 export interface ConditionalExpression extends Expression {
