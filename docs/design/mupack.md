@@ -23,8 +23,8 @@ From there, any data or computations associated with those abstractions may be r
 Mu's type system was designed to be supported by a broad cross-section of modern programming languages.  That said,
 it's entirely possible that MuPack exposes a construct that a certain language doesn't support.  Because MuIL is
 designed for interpretation, determinism, and predictability -- and not runtime speed -- all type coercions are checked
-and fail-fast if an illegal coercion is attempted.  It is obviously a better choice to verify such conversions where
-possible in the MetaMu compilers themselves, however this approach naturally accomodates dynamic languages.
+and throw an exception if an illegal coercion is attempted.  It is obviously a better choice to verify such conversions
+where possible in the MetaMu compilers themselves, however this approach naturally accomodates dynamic languages.
 
 MuPack is serialized in JSON/YAML form, although in the future we may explore more efficient file formats.  Examples in
 this document will use a YAML syntax for brevity's sake.
@@ -675,10 +675,15 @@ MuIL does not support function overloading.
 
 ### Exceptions
 
-Most languages we envision supporting have exception-based error models (with the sole exception of Go).  As a result,
-MuIL supports exceptions.  At the moment, there are no throws annotations of any kind; if Go or Java become interesting
-MetaMu languages to support down the road, we may wish to add optional throws annotations to drive proxy generation,
-including the possibility of flowing return and exception types to Go and Java, respectively.
+Most MetaMus have exception-based error models (with the sole exception of Go).  As a result, MuIL supports exceptions.
+
+At the moment, there are no throws annotations of any kind; if Go or Java become interesting MetaMu languages to support
+down the road, we may wish to add optional throws annotations to drive proxy generation, including the possibility of
+flowing return and exception types to Go and Java, respectively, or fail-fasting at the boundary.
+
+It is a possibly unpopular decision, and possibly missing an opportunity to help Mu debuggability, however we choose to
+preserve the common semantic in dynamic languages of using exceptions in response to failed casts, dynamic lookups and
+invokes, and so on.  Though, it's worth noting, we don't support Ruby-style `missing_method` or Python `__getattr__`.
 
 ### Threading/Async/Await
 
