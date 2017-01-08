@@ -7,19 +7,23 @@ import * as symbols from "../symbols";
 
 // TODO(joe): consider refactoring modifiers from booleans to enums.
 
+// A module contains members, including variables, functions, and/or classes.
+export interface Module extends Node {
+    kind:        ModuleKind;
+    access?:     symbols.Accessibility;
+    definitions: Definitions;
+}
+export const moduleKind = "Module";
+export type  ModuleKind = "Module";
+
+export type Modules = Map<symbols.Identifier, Definition>;
+
+// A definition is something that a module has exported.
 export interface Definition extends Node {
     description?: string; // an optional informative description.
 }
 
 export type Definitions = Map<symbols.Identifier, Definition>;
-
-// A module contains other members, including submodules, variables, functions, and/or classes.
-export interface Module extends Definition {
-    kind:    ModuleKind;
-    access?: symbols.Accessibility;
-}
-export const moduleKind = "Module";
-export type  ModuleKind = "Module";
 
 // A variable is a typed storage location.
 export interface Variable extends Definition {

@@ -11,8 +11,7 @@ export interface Package {
     website?: string;     // an optional website for additional information.
     license?: string;     // an optional license governing this package's usage.
 
-    dependencies?: symbols.ModuleToken[];
-
-    definitions?: ast.Definitions;
+    dependencies?: symbols.ModuleToken[]; // all of the module dependencies.
+    modules?: ast.Modules;                // a collection of top-level modules.
 }
 
