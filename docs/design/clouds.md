@@ -116,7 +116,7 @@ Each Cluster gets a Virtual Private Cloud (VPC) for network isolation.  Along wi
 sub-resources: a Subnet, Internet Gateway, and Route Table.  By default, Ingress and Egress ports are left closed.  As
 Stacks are deployed, ports are managed automatically (although an administrator can lock them (TODO(joe): how)).
 
-TODO(joe): open SSH by default?
+TODO[marapongo/mu#33]: figure out what to do with SSH by default; most likely, we want to lock this down.
 
 TODO(joe): joining existing VPCs.
 
