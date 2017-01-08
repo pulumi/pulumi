@@ -401,7 +401,7 @@ function transformDebuggerStatement(node: ts.DebuggerStatement): ast.Statement {
 
 function transformEmptyStatement(node: ts.EmptyStatement): ast.EmptyStatement {
     return copyLocation(node, {
-        kind: ast.emptyStatementKind
+        kind: ast.emptyStatementKind,
     });
 }
 

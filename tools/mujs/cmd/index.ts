@@ -4,8 +4,6 @@
 
 import * as minimist from "minimist";
 import {log} from "nodets";
-import "source-map-support/register"; // just for side-effects.
-
 import * as mujs from "../lib";
 
 async function main(args: string[]): Promise<number> {
@@ -50,10 +48,10 @@ async function main(args: string[]): Promise<number> {
             // Default to pwd if no argument was supplied.
             process.cwd();
 
-    let comp: mujs.compiler.ICompilation = await mujs.compiler.compile(path);
+    let comp: mujs.compiler.Compilation = await mujs.compiler.compile(path);
     if (comp.diagnostics.length > 0) {
         // If any errors occurred, print them out, and skip pretty-printing the AST.
-        console.log(mujs.compiler.formatDiagnostics(comp));
+        console.log(comp.formatDiagnostics());
     }
     else {
         // No errors, great, transform the AST into a MuPack program, and output it.

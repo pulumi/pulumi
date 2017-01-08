@@ -2,24 +2,18 @@
 
 "use strict";
 
-import { fs, log } from "nodets";
+import {contract, fs, log} from "nodets";
 import * as os from "os";
 import * as fspath from "path";
 import * as ts from "typescript";
 
 const TS_PROJECT_FILE = "tsconfig.json";
 
-export interface ICompilation {
-    root:        string;                 // the root directory for the compilation.
-    tree:        ts.Program | undefined; // the resulting TypeScript program object.
-    diagnostics: ts.Diagnostic[];        // any diagnostics resulting from compilation.
-}
-
 // Compiles a TypeScript program and returns its output.  The path can be one of three things: 1) a single TypeScript
 // file (`*.ts`), 2) a TypeScript project file (`tsconfig.json`), or 3) a directory containing a TypeScript project
 // file.  An optional set of compiler options may also be supplied.  In the project file cases, both options and files
 // are read in the from the project file, and will override any options passed in the argument form.
-export async function compile(path: string, options?: ts.CompilerOptions): Promise<ICompilation> {
+export async function compile(path: string, options?: ts.CompilerOptions): Promise<Compilation> {
     // Default the options to TypeScript's usual defaults if not provided.
     options = options || ts.getDefaultCompilerOptions();
 
@@ -103,11 +97,33 @@ export async function compile(path: string, options?: ts.CompilerOptions): Promi
         diagnostics = diagnostics.concat(emitOutput.diagnostics);
     }
 
-    return {
-        root:        root,
-        tree:        program,
-        diagnostics: diagnostics,
-    };
+    return new Compilation(root, diagnostics, program);
+}
+
+// The result of a compilation.
+export class Compilation {
+    public readonly root:        string;                 // the root directory for the compilation.
+    public readonly diagnostics: ts.Diagnostic[];        // any diagnostics resulting from compilation.
+    public readonly tree:        ts.Program | undefined; // the resulting TypeScript program object.
+
+    private readonly diagnosticsHost: ts.FormatDiagnosticsHost; // the host for formatting diagnostics.
+
+    constructor(root: string, diagnostics: ts.Diagnostic[], tree: ts.Program | undefined) {
+        this.root = root;
+        this.diagnostics = diagnostics;
+        this.tree = tree;
+        this.diagnosticsHost = new FormatDiagnosticsHost(root);
+    }
+
+    public formatDiagnostic(index: number): string {
+        contract.assert(index >= 0 && index < this.diagnostics.length);
+        return ts.formatDiagnostics([ this.diagnostics[index] ], this.diagnosticsHost);
+    }
+
+    public formatDiagnostics(): string {
+        // TODO: implement colorization and fancy source context pretty-printing.
+        return ts.formatDiagnostics(this.diagnostics, this.diagnosticsHost);
+    }
 }
 
 class ParseConfigHost implements ts.ParseConfigHost {
@@ -124,11 +140,6 @@ class ParseConfigHost implements ts.ParseConfigHost {
     public readFile(path: string): string {
         return ts.sys.readFile(path);
     }
-}
-
-export function formatDiagnostics(comp: ICompilation): string {
-    // TODO: implement colorization and fancy source context pretty-printing.
-    return ts.formatDiagnostics(comp.diagnostics, new FormatDiagnosticsHost(comp.root));
 }
 
 class FormatDiagnosticsHost implements ts.FormatDiagnosticsHost {

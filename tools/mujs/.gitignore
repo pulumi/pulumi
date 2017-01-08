@@ -1,4 +1,6 @@
 *.swp
+npm-debug.log
 bin/
+coverage/
 node_modules/
 
