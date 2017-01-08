@@ -1,0 +1,3 @@
+#!/bin/bash
+node `dirname $0`/bin/cmd "$@"
+
