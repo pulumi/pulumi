@@ -46,8 +46,8 @@ The way these URLs are resolved to physical MuPackages is discussed later on.
 
 ## Versions
 
-Each physical incarnation of a MuPackage can be tagged with one or more versions.  How this tagging process happens is
-left to the specific package provider.  Each version can either be a semantic version number or arbitrary string tag.
+Each physical MuPackage can be tagged with one or more versions.  How this tagging process happens is left to the
+specific package provider.  Each version can either be a semantic version number or arbitrary string tag.
 
 For example, the Git provider allows dependency on a specific Git SHA hash.  For example,
 `https://github.com/mu/aws/ec2#1895753f53a63c055e7cae81ebe4ea5d5805584f` depends on a MuPackage published in a GitHub
@@ -55,17 +55,48 @@ repo at commit `1895753`.  Alternatively, Git tags can be used to give MuPackage
 `https://github.com/mu/aws/ec2#beta1` uses on the arbitrary tag `beta1`; the same scheme can be used to denote semantic
 versions simply by using Git tags, for instance `https://github.com/mu/aws/ec2#^1.0.6`.
 
-If the reference uses a semantic version range, the toolchain is given some "wiggle room" in how it resolves the
-reference (in [the usual ways](https://yarnpkg.com/en/docs/dependency-versions)).  If the reference uses a non-range
-semantic version, Git commit hash, or Git tag, the reference is said to be "pinned" to a specific version.
+### Flexible vs. Pinned
 
-A compiled MuPackage always contains the set of specific versions it was compiled against and can be optionally pinned
-by the author.  Alternatively, the semantic version ranges can be left in, for more flexibility in dealing with diamond
-dependencies in consumer code, at the risk of behavioral changes that are discovered only on the client machine.
+If the reference uses a semantic version range, the toolchain is given some wiggle room in how it resolves the
+reference (in [the usual ways](https://yarnpkg.com/en/docs/dependency-versions)).  Such a reference is said to be
+"flexible."  If the reference uses a non-range semantic version, Git commit hash, or Git tag, on the other hand, the
+reference is said to be "pinned" to a specific version and can never bind to anything else.
 
-The recommended practice is for libraries to leave more flexible semantic version ranges, while individual blueprints
-are pinned to specific versions.  This pinning is important to ensure that deployments are repeatable, and is encouraged
-by the command line tools; in particular, generating a plan automatically first generates a lockfile.
+At development-time, flexible versions are nice, because you're often getting the latest-and-greatest that a library
+has to offer, without having to spend a great deal of time manually managing version numbers.  Flexible versions are
+also nice for libraries, as the package manager can resolve multiple close, but different, semantic versions of a given
+library to a single physical incarnation of it.   But when it comes to managing a production system, flexible versions
+can cause problems, since upgrading to a new version may change a topology unexpectedly and/or at an inopportune time.
+
+It is up to you, the package author, to decide whether to use flexible or pinned versions.  The recommended practice is,
+however, for package manifests to specify flexible semantic version ranges.  This ensures development-time is flexible.
+These package manifests should be published as-is, permitting more versioning flexibility on the consumer side.
+Blueprints, however, should be pinned to specific versions, both in version control, and in the default developer
+workflow.  This pinning is important to ensure that deployments are repeatable, and is encouraged by the command line
+tools; in particular, generating a plan automatically first generates a so-called "pinfile."
+
+### Pinning
+
+A pinfile exists alongside a package's manifest to lock all versions to specific pinned versions; it is called
+`Mudeps.yaml` (or `Mudeps.json`).  Using a separate pinfile enables an independent pinning step without modifying the
+package manifest, which can continue using flexible versions if appropriate.  This file contains the entire transitive
+closure of a package, its dependencies, their dependencies, and so on, pinned to specific versions.
+
+All CLI commands respect the pinfile when it exists.  There are CLI commands to manage this pinfile too.  For example:
+
+* `mu pin` will generate a new pinfile.
+* `mu upgrade` will upgrade all packages to new versions where available.
+* And so on.
+
+To encourage the recommended workflow above, a few other behaviors are worth noting.
+
+First, all deployment CLI commands will generate a pinfile if it doesn't exist (`mu plan`, `mu apply`, etc).  This
+ensures that blueprints are generally pinned to versions during, between, and after deployment activities.  Such
+pinfiles should be checked into blueprint source control repositories and versioned intentionally.  The option
+`--no-pin` suppresses the automatic generation of pinfiles fo rthe deployment commands.
+
+Second, publishing a library package, by default, omits the pinfile.  This encourages publication of libraries that are
+not pinned to specific versions.  If that is desired, the pinned versions belong in the package manifest.
 
 ## Package Resolution
 
