@@ -655,12 +655,40 @@ function transformObjectLiteralFunctionLikeElement(
     return contract.failf("NYI");
 }
 
-function transformPostfixUnaryExpression(node: ts.PostfixUnaryExpression): ast.Expression {
-    return contract.failf("NYI");
+let postfixUnaryOperators = new Map<ts.SyntaxKind, ast.UnaryOperator>([
+    [ ts.SyntaxKind.PlusPlusToken,   "++" ],
+    [ ts.SyntaxKind.MinusMinusToken, "--" ],
+]);
+
+function transformPostfixUnaryExpression(node: ts.PostfixUnaryExpression): ast.UnaryOperatorExpression {
+    let operator: ast.UnaryOperator | undefined = postfixUnaryOperators.get(node.operator);
+    contract.assert(!!(operator = operator!));
+    return copyLocation(node, {
+        kind:     ast.unaryOperatorExpressionKind,
+        postfix:  true,
+        operator: operator,
+        operand:  transformExpression(node.operand),
+    });
 }
 
-function transformPrefixUnaryExpression(node: ts.PrefixUnaryExpression): ast.Expression {
-    return contract.failf("NYI");
+let prefixUnaryOperators = new Map<ts.SyntaxKind, ast.UnaryOperator>([
+    [ ts.SyntaxKind.PlusPlusToken,    "++" ],
+    [ ts.SyntaxKind.MinusMinusToken,  "--" ],
+    [ ts.SyntaxKind.PlusToken,        "+" ],
+    [ ts.SyntaxKind.MinusToken,       "-" ],
+    [ ts.SyntaxKind.TildeToken,       "~" ],
+    [ ts.SyntaxKind.ExclamationToken, "!" ],
+]);
+
+function transformPrefixUnaryExpression(node: ts.PrefixUnaryExpression): ast.UnaryOperatorExpression {
+    let operator: ast.UnaryOperator | undefined = prefixUnaryOperators.get(node.operator);
+    contract.assert(!!(operator = operator!));
+    return copyLocation(node, {
+        kind:     ast.unaryOperatorExpressionKind,
+        postfix:  false,
+        operator: operator,
+        operand:  transformExpression(node.operand),
+    });
 }
 
 function transformPropertyAccessExpression(node: ts.PropertyAccessExpression): ast.Expression {
