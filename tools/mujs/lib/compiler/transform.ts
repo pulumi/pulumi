@@ -93,13 +93,13 @@ interface VariableDeclaration {
 
 // A transpiler is responsible for transforming TypeScript program artifacts into MuPack/MuIL AST forms.
 export class Transpiler {
+    private meta: pack.Metadata; // the package's metadata.
+    private comp: Compilation;   // the package's compiled TypeScript tree and context.
+
     // Loads up Mu metadata and then creates a new Transpiler object.
     public static async createFrom(comp: Compilation): Promise<Transpiler> {
         return new Transpiler(await discover(comp.root), comp);
     }
-
-    private meta: pack.Metadata; // the package's metadata.
-    private comp: Compilation;   // the package's compiled TypeScript tree and context.
 
     constructor(meta: pack.Metadata, comp: Compilation) {
         contract.requires(!!comp.tree, "comp", "A valid MuJS AST is required to lower to MuPack/MuIL");
@@ -143,9 +143,12 @@ export class Transpiler {
             };
         };
 
+        // Turn the source file name into one relative to the current root path.
         let s: ts.SourceFile = src.getSourceFile();
+        let relativePath: string = fspath.relative(this.comp.root, s.fileName);
+
         dst.loc = {
-            file:  s.fileName,
+            file:  relativePath,
             start: pos(s, src.getStart()),
             end:   pos(s, src.getEnd()),
         };
@@ -177,7 +180,7 @@ export class Transpiler {
     /** Modules **/
 
     // This transforms top-level TypeScript module elements into their corresponding nodes.  This transformation
-    // is largely evident in how it works, except that "loose code" in the form of arbitrary statements is not permitted in
+    // is largely evident in how it works, except that "loose code" (arbitrary statements) is not permitted in
     // MuPack/MuIL.  As such, the appropriate top-level definitions (variables, functions, and classes) are returned as
     // definitions, while any loose code (including variable initializers) is bundled into module inits and entrypoints.
     private transformSourceFile(node: ts.SourceFile, root: string): ast.Module {
@@ -272,8 +275,8 @@ export class Transpiler {
     private transformExportStatement(node: ts.Statement): ModuleElement[] {
         let elements: ModuleElement[] = this.transformModuleDeclarationStatement(node, symbols.publicAccessibility);
 
-        // If this is a default export, first ensure that it is one of the legal default export kinds; namely, only function
-        // or class is permitted, and specifically not interface or let.  Then smash the name with "default".
+        // If this is a default export, first ensure that it is one of the legal default export kinds; namely, only
+        // function or class is permitted, and specifically not interface or let.  Then smash the name with "default".
         if (ts.getCombinedModifierFlags(node) & ts.ModifierFlags.Default) {
             contract.assert(elements.length === 1);
             contract.assert(elements[0].kind === ast.moduleMethodKind || elements[0].kind === ast.classKind);
@@ -373,9 +376,9 @@ export class Transpiler {
         }
     }
 
-    // This routine transforms a declaration statement in TypeScript to a MuIL definition.  Note that definitions in MuIL
-    // aren't statements, hence the partitioning between transformDeclaration and transformStatement.  Note that variables
-    // do not result in Definitions because they may require higher-level processing to deal with initializer.
+    // This routine transforms a declaration statement in TypeScript to a MuIL definition.  Note that definitions in
+    // MuIL aren't statements, hence the partitioning between transformDeclaration and transformStatement.  Note that
+    // variables do not result in Definitions because they may require higher-level processing to deal with initializer.
     private transformModuleDeclarationStatement(node: ts.Statement, access: symbols.Accessibility): ModuleElement[] {
         switch (node.kind) {
             // Declarations:
@@ -476,7 +479,8 @@ export class Transpiler {
     }
 
     private transformVariableStatement(node: ts.VariableStatement): VariableDeclaration[] {
-        let variables: VariableDeclaration[] = node.declarationList.declarations.map(this.transformVariableDeclaration);
+        let variables: VariableDeclaration[] = node.declarationList.declarations.map(
+            (decl: ts.VariableDeclaration) => this.transformVariableDeclaration(decl));
 
         // If the node is marked "const", tag all variables as readonly.
         if (!!(node.declarationList.flags & ts.NodeFlags.Const)) {
@@ -520,7 +524,8 @@ export class Transpiler {
         }
     }
 
-    private transformModuleVariableStatement(node: ts.VariableStatement, access: symbols.Accessibility): ModuleElement[] {
+    private transformModuleVariableStatement(
+            node: ts.VariableStatement, access: symbols.Accessibility): ModuleElement[] {
         let elements: ModuleElement[] = [];
         let variables: VariableDeclaration[] = this.transformVariableStatement(node);
         for (let variable of variables) {
@@ -560,7 +565,7 @@ export class Transpiler {
     }
 
     private transformVariableDeclarationList(node: ts.VariableDeclarationList): VariableDeclaration[] {
-        return node.declarations.map(this.transformVariableDeclaration);
+        return node.declarations.map((decl: ts.VariableDeclaration) => this.transformVariableDeclaration(decl));
     }
 
     /** Classes **/
@@ -713,7 +718,7 @@ export class Transpiler {
         // TODO(joe): map directives.
         return this.copyLocation(node, {
             kind:       ast.blockKind,
-            statements: node.statements.map(this.transformStatement),
+            statements: node.statements.map((stmt: ts.Statement) => this.transformStatement(stmt)),
         });
     }
 

@@ -9,7 +9,7 @@
             },
             "members": {},
             "loc": {
-                "file": "/Users/joeduffy/dev/code/src/github.com/marapongo/mu/tools/mujs/bin/tests/output/empty/empty.ts",
+                "file": "empty.ts",
                 "start": {
                     "line": 1,
                     "column": 0
