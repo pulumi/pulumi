@@ -1,11 +1,11 @@
 {
     "name": "empty",
     "modules": {
-        "/Users/joeduffy/dev/code/src/github.com/marapongo/mu/tools/mujs/bin/tests/output/empty/empty.ts": {
+        "empty": {
             "kind": "Module",
             "name": {
                 "kind": "Identifier",
-                "ident": "/Users/joeduffy/dev/code/src/github.com/marapongo/mu/tools/mujs/bin/tests/output/empty/empty.ts"
+                "ident": "empty"
             },
             "members": {},
             "loc": {

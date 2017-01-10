@@ -62,8 +62,7 @@ describe("outputs", () => {
 
             if (output.tree) {
                 if (expectedOutputTree) {
-                    let muMeta: pack.Metadata = await compiler.discover(output.root);
-                    let mupackTree: pack.Package = compiler.transform(muMeta, output.tree);
+                    let mupackTree: pack.Package = await compiler.transpile(output);
                     let mupackTreeText: string = JSON.stringify(mupackTree, null, 4) + "\n";
 
                     // Do a line-by-line comparison to make debugging failures nicer.

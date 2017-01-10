@@ -3,24 +3,38 @@
 "use strict";
 
 import {contract, object} from "nodets";
+import * as fspath from "path";
 import * as ts from "typescript";
-
 import * as ast from "../ast";
 import * as pack from "../pack";
 import * as symbols from "../symbols";
+import {Compilation} from "./compile";
+import {discover} from "./discover";
 
-// Translates a TypeScript bound tree into its equivalent MuPack/MuIL AST form, one tree per file.
-export function transform(meta: pack.Metadata, program: ts.Program): pack.Package {
+// Loads the metadata and transforms a TypeScript program into its equivalent MuPack/MuIL AST form.
+export async function transpile(comp: Compilation): Promise<pack.Package> {
+    // First load up the Mu metadata.
+    let meta: pack.Metadata = await discover(comp.root);
+    // And now perform the transformation.
+    return transform(meta, comp);
+}
+
+// Translates a TypeScript bound tree into its equivalent MuPack/MuIL AST form, one module per file.
+export function transform(meta: pack.Metadata, comp: Compilation): pack.Package {
+    if (!comp.tree) {
+        throw new Error("A valid MuJS AST is required to lower to MuPack/MuIL");
+    }
+
     // Enumerate all source files (each of which is a module in ECMAScript), and transform it.
     let modules: ast.Modules = {};
-    for (let sourceFile of program.getSourceFiles()) {
+    for (let sourceFile of comp.tree.getSourceFiles()) {
         // By default, skip declaration files, since they are "dependencies."
         // TODO(joe): how to handle re-exports in ECMAScript, such as index aggregation.
         // TODO(joe): this isn't a perfect heuristic.  But ECMAScript is all source dependencies, so there isn't a
         //     true notion of source versus binary dependency.  We could crack open the dependencies to see if they
         //     exist within an otherwise known package, but that seems a little hokey.
         if (!sourceFile.isDeclarationFile) {
-            let mod: ast.Module = transformSourceFile(sourceFile);
+            let mod: ast.Module = transformSourceFile(sourceFile, comp.root);
             modules[mod.name.ident] = mod;
         }
     }
@@ -89,7 +103,7 @@ type ModuleElement = ast.Definition | ast.Statement;
 // is largely evident in how it works, except that "loose code" in the form of arbitrary statements is not permitted in
 // MuPack/MuIL.  As such, the appropriate top-level definitions (variables, functions, and classes) are returned as
 // definitions, while any loose code (including variable initializers) is bundled into module inits and entrypoints.
-function transformSourceFile(node: ts.SourceFile): ast.Module {
+function transformSourceFile(node: ts.SourceFile, root: string): ast.Module {
     // All definitions will go into a map keyed by their identifier.
     let members: ast.ModuleMembers = {};
 
@@ -127,13 +141,19 @@ function transformSourceFile(node: ts.SourceFile): ast.Module {
         members[initializer.name.ident] = initializer;
     }
 
-    // TODO(joe): we are using the fileName as the module name; this will lead to pretty hokey names, and we will
-    //     need to do a pass over this to massage it.  To do this properly, we'll need some path "context".
+    // To create a module name, make it relative to the current root directory, and lop off the extension.
+    // TODO(joe): this still isn't 100% correct, because we might have ".."s for "up and over" module references.
+    let moduleName: string = fspath.relative(root, node.fileName);
+    let moduleExtIndex: number = moduleName.lastIndexOf(".");
+    if (moduleExtIndex !== -1) {
+        moduleName = moduleName.substring(0, moduleExtIndex);
+    }
+
     return copyLocation(node, {
         kind:    ast.moduleKind,
         name:    <ast.Identifier>{
             kind:  ast.identifierKind,
-            ident: node.fileName,
+            ident: moduleName,
         },
         members: members,
     });

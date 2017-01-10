@@ -1,11 +1,11 @@
 {
     "name": "exp_one_var",
     "modules": {
-        "/Users/joeduffy/dev/code/src/github.com/marapongo/mu/tools/mujs/bin/tests/output/modules/exp_one_var/index.ts": {
+        "index": {
             "kind": "Module",
             "name": {
                 "kind": "Identifier",
-                "ident": "/Users/joeduffy/dev/code/src/github.com/marapongo/mu/tools/mujs/bin/tests/output/modules/exp_one_var/index.ts"
+                "ident": "index"
             },
             "members": {
                 "x": {
