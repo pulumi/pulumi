@@ -67,8 +67,8 @@ export async function compile(path: string, options?: ts.CompilerOptions): Promi
     options.declaration = false;
 
     if (log.v(5)) {
-        log.out(5).infof(`files: ${JSON.stringify(files)}`);
-        log.out(5).infof(`options: ${JSON.stringify(options, null, 4)}`);
+        log.out(5).info(`files: ${JSON.stringify(files)}`);
+        log.out(5).info(`options: ${JSON.stringify(options, null, 4)}`);
     }
     if (log.v(7)) {
         options.traceResolution = true;
