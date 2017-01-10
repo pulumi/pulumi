@@ -38,13 +38,13 @@ export interface Module extends Definition {
 }
 export const moduleKind = "Module";
 export type  ModuleKind = "Module";
-export type  Modules = Map<symbols.Token, Definition>;
+export type  Modules = { [token: string /*symbols.Token*/]: Definition };
 
 // A module member is a definition that belongs to a module.
 export interface ModuleMember extends Definition {
     access?: symbols.Accessibility;
 }
-export type ModuleMembers = Map<symbols.ModuleToken, ModuleMember>;
+export type ModuleMembers = { [token: string /*symbols.ModuleToken*/]: ModuleMember };
 
 /* Classes */
 
@@ -67,7 +67,7 @@ export interface ClassMember extends Definition {
     access?: symbols.ClassMemberAccessibility;
     static?: boolean;
 }
-export type ClassMembers = Map<symbols.TypeToken, ClassMember>;
+export type ClassMembers = { [token: string /*symbols.TypeToken*/]: ClassMember };
 
 /* Variables */
 

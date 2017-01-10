@@ -12,7 +12,7 @@ import * as symbols from "../symbols";
 // Translates a TypeScript bound tree into its equivalent MuPack/MuIL AST form, one tree per file.
 export function transform(program: ts.Program): pack.Package {
     // Enumerate all source files (each of which is a module in ECMAScript), and transform it.
-    let modules = new Map<string, ast.Module>();
+    let modules: ast.Modules = {};
     for (let sourceFile of program.getSourceFiles()) {
         // By default, skip declaration files, since they are "dependencies."
         // TODO(joe): how to handle re-exports in ECMAScript, such as index aggregation.
@@ -20,7 +20,8 @@ export function transform(program: ts.Program): pack.Package {
         //     true notion of source versus binary dependency.  We could crack open the dependencies to see if they
         //     exist within an otherwise known package, but that seems a little hokey.
         if (!sourceFile.isDeclarationFile) {
-            modules.set(sourceFile.moduleName, transformSourceFile(sourceFile));
+            let mod: ast.Module = transformSourceFile(sourceFile);
+            modules[mod.name.ident] = mod;
         }
     }
 
@@ -91,7 +92,7 @@ type ModuleElement = ast.Definition | ast.Statement;
 // definitions, while any loose code (including variable initializers) is bundled into module inits and entrypoints.
 function transformSourceFile(node: ts.SourceFile): ast.Module {
     // All definitions will go into a map keyed by their identifier.
-    let definitions = new Map<symbols.Token, ast.Definition>();
+    let members: ast.ModuleMembers = {};
 
     // Any top-level non-definition statements will pile up into the module initializer.
     let statements: ast.Statement[] = [];
@@ -102,7 +103,7 @@ function transformSourceFile(node: ts.SourceFile): ast.Module {
         for (let element of elements) {
             if (ast.isDefinition(element)) {
                 let defn: ast.Definition = <ast.Definition>element;
-                definitions.set(defn.name.ident, defn)
+                members[defn.name.ident] = defn;
             }
             else {
                 statements.push(<ast.Statement>element);
@@ -124,7 +125,7 @@ function transformSourceFile(node: ts.SourceFile): ast.Module {
                 statements: statements,
             },
         };
-        definitions.set(initializer.name.ident, initializer);
+        members[initializer.name.ident] = initializer;
     }
 
     return copyLocation(node, {
@@ -133,7 +134,7 @@ function transformSourceFile(node: ts.SourceFile): ast.Module {
             kind:  ast.identifierKind,
             ident: node.moduleName,
         },
-        members: definitions,
+        members: members,
     });
 }
 
