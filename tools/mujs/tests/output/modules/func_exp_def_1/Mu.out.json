@@ -1,0 +1,89 @@
+{
+    "name": "func_def_exp_1",
+    "modules": {
+        "index": {
+            "kind": "Module",
+            "name": {
+                "kind": "Identifier",
+                "ident": "index"
+            },
+            "members": {
+                "default": {
+                    "kind": "ModuleMethod",
+                    "name": {
+                        "kind": "Identifier",
+                        "ident": "default"
+                    },
+                    "access": "public",
+                    "parameters": [
+                        {
+                            "kind": "LocalVariable",
+                            "name": {
+                                "kind": "Identifier",
+                                "ident": "x",
+                                "loc": {
+                                    "file": "index.ts",
+                                    "start": {
+                                        "line": 1,
+                                        "column": 24
+                                    },
+                                    "end": {
+                                        "line": 1,
+                                        "column": 25
+                                    }
+                                }
+                            },
+                            "type": "TODO"
+                        },
+                        {
+                            "kind": "LocalVariable",
+                            "name": {
+                                "kind": "Identifier",
+                                "ident": "y",
+                                "loc": {
+                                    "file": "index.ts",
+                                    "start": {
+                                        "line": 1,
+                                        "column": 35
+                                    },
+                                    "end": {
+                                        "line": 1,
+                                        "column": 36
+                                    }
+                                }
+                            },
+                            "type": "TODO"
+                        }
+                    ],
+                    "body": {
+                        "kind": "Block",
+                        "statements": [],
+                        "loc": {
+                            "file": "index.ts",
+                            "start": {
+                                "line": 1,
+                                "column": 52
+                            },
+                            "end": {
+                                "line": 2,
+                                "column": 1
+                            }
+                        }
+                    },
+                    "returnType": "TODO"
+                }
+            },
+            "loc": {
+                "file": "index.ts",
+                "start": {
+                    "line": 1,
+                    "column": 0
+                },
+                "end": {
+                    "line": 4,
+                    "column": 0
+                }
+            }
+        }
+    }
+}

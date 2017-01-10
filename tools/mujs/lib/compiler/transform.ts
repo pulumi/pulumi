@@ -385,7 +385,8 @@ export class Transpiler {
             case ts.SyntaxKind.ClassDeclaration:
                 return [ this.transformClassDeclaration(<ts.ClassDeclaration>node, access) ];
             case ts.SyntaxKind.FunctionDeclaration:
-                return [ this.transformFunctionDeclaration(<ts.FunctionDeclaration>node, access) ];
+                return [ this.transformFunctionDeclaration<ast.ModuleMethod>(
+                    <ts.FunctionDeclaration>node, ast.moduleMethodKind, access) ];
             case ts.SyntaxKind.InterfaceDeclaration:
                 return [ this.transformInterfaceDeclaration(<ts.InterfaceDeclaration>node, access) ];
             case ts.SyntaxKind.ModuleDeclaration:
@@ -442,12 +443,54 @@ export class Transpiler {
         }
     }
 
-    private transformFunctionDeclaration(node: ts.FunctionDeclaration, access: symbols.Accessibility): ast.Function {
-        return contract.fail("NYI");
-    }
+    private transformFunctionDeclaration<T extends ast.Function>(
+            node: ts.FunctionDeclaration, kind: ast.NodeKind, access: symbols.Accessibility): ast.Function {
+        contract.requires(!!node.body, "node", "Expected a function body");
 
-    private transformFunctionLikeDeclaration(node: ts.FunctionLikeDeclaration): ast.Function {
-        return contract.fail("NYI");
+        // Ensure we are dealing with the supported subset of functions.
+        // TODO: turn these into real errors.
+        if (ts.getCombinedModifierFlags(node) & ts.ModifierFlags.Async) {
+            throw new Error("Async functions are not supported in MuJS");
+        }
+        if (!!node.asteriskToken) {
+            throw new Error("Generator functions are not supported in MuJS");
+        }
+
+        // First transform the name into an identifier.  In the absence of a name, we will proceed under the assumption
+        // that it is the default export.  This should be verified later on.
+        let name: ast.Identifier;
+        if (node.name) {
+            name = this.transformIdentifier(node.name);
+        }
+        else {
+            name = {
+                kind:  ast.identifierKind,
+                ident: defaultExport,
+            };
+        }
+
+        // Now visit the body; it can either be a block or a free-standing expression.
+        let body: ast.Block = this.transformBlock(<ts.Block>node.body!);
+
+        // Next transform the parameter variables into locals.
+        let parameters: VariableDeclaration[] = node.parameters.map(
+            (param: ts.ParameterDeclaration) => this.transformParameterDeclaration(param));
+
+        // If there are any initializers, make sure to prepend them (in order) to the body block.
+        for (let parameter of parameters) {
+            if (parameter.initializer) {
+                body.statements = [ this.makeVariableInitializer(parameter) ].concat(body.statements);
+            }
+        }
+
+        return <T><any>{
+            kind:       kind,
+            name:       name,
+            access:     access,
+            parameters: parameters.map((p: VariableDeclaration) => p.local),
+            body:       body,
+            returnType: "TODO",
+        };
     }
 
     private transformInterfaceDeclaration(node: ts.InterfaceDeclaration, access: symbols.Accessibility): ast.Class {
@@ -458,8 +501,29 @@ export class Transpiler {
         return contract.fail("NYI");
     }
 
-    private transformParameterDeclaration(node: ts.ParameterDeclaration): ast.LocalVariable {
-        return contract.fail("NYI");
+    private transformParameterDeclaration(node: ts.ParameterDeclaration): VariableDeclaration {
+        // Validate that we're dealing with the supported subset.
+        // TODO(joe): turn these into real error messages.
+        if (!!node.dotDotDotToken) {
+            throw new Error("Rest-style arguments not supported by MuJS");
+        }
+
+        // TODO[marapongo/mu#43]: parameters can be any binding name, including destructuring patterns.  For now,
+        //     however, we only support the identifier forms.
+        let name: ast.Identifier = this.transformBindingIdentifier(node.name);
+        let initializer: ast.Expression | undefined;
+        if (node.initializer) {
+            initializer = this.transformExpression(node.initializer);
+        }
+        return {
+            node:  node,
+            local: {
+                kind: ast.localVariableKind,
+                name: name,
+                type: "TODO",
+            },
+            initializer: initializer,
+        };
     }
 
     private transformTypeAliasDeclaration(node: ts.TypeAliasDeclaration, access: symbols.Accessibility): ast.Class {
@@ -467,6 +531,7 @@ export class Transpiler {
     }
 
     private makeVariableInitializer(variable: VariableDeclaration): ast.Statement {
+        contract.requires(!!variable.initializer, "variable", "Expected variable to have an initializer");
         return this.copyLocation(variable.node, {
             kind:     ast.binaryOperatorExpressionKind,
             left:     <ast.LoadVariableExpression>{
@@ -545,6 +610,9 @@ export class Transpiler {
     }
 
     private transformVariableDeclaration(node: ts.VariableDeclaration): VariableDeclaration {
+        // TODO[marapongo/mu#43]: parameters can be any binding name, including destructuring patterns.  For now,
+        //     however, we only support the identifier forms.
+        let name: ast.Identifier = this.transformDeclarationIdentifier(node.name);
         let initializer: ast.Expression | undefined;
         if (node.initializer) {
             initializer = this.transformExpression(node.initializer);
@@ -553,7 +621,7 @@ export class Transpiler {
             node:  node,
             local: {
                 kind: ast.localVariableKind,
-                name: this.transformDeclarationIdentifier(node.name),
+                name: name,
                 type: "TODO",
             },
             initializer: initializer,
@@ -1057,6 +1125,12 @@ export class Transpiler {
 
     private transformBindingName(node: ts.BindingName): ast.Expression {
         return contract.fail("NYI");
+    }
+
+    private transformBindingIdentifier(node: ts.BindingName): ast.Identifier {
+        contract.assert(node.kind === ts.SyntaxKind.Identifier,
+                        "Binding name must be an identifier (TODO[marapongo/mu#34])");
+        return this.transformIdentifier(<ts.Identifier>node);
     }
 
     private transformBindingPattern(node: ts.BindingPattern): ast.Expression {
