@@ -62,9 +62,17 @@ describe("outputs", () => {
 
             if (output.tree) {
                 if (expectedOutputTree) {
-                    let mupackTree: pack.Package = compiler.transform(output.tree);
-                    let mupackTreeText: string = JSON.stringify(mupackTree, null, 4) + os.EOL;
-                    assert.strictEqual(mupackTreeText, expectedOutputTree, "Expected program trees to match");
+                    let muMeta: pack.Metadata = await compiler.discover(output.root);
+                    let mupackTree: pack.Package = compiler.transform(muMeta, output.tree);
+                    let mupackTreeText: string = JSON.stringify(mupackTree, null, 4) + "\n";
+
+                    // Do a line-by-line comparison to make debugging failures nicer.
+                    let actualLines: string[] = mupackTreeText.split("\n");
+                    let expectLines: string[] = expectedOutputTree.split("\n");
+                    assert.strictEqual(actualLines.length, expectLines.length, "Expected tree line count to match");
+                    for (let i = 0; i < actualLines.length && i < expectLines.length; i++) {
+                        assert.strictEqual(actualLines[i], expectLines[i], `Expected tree line #${i} to match`);
+                    }
                 }
                 else {
                     assert(false, "Expected an empty program tree, but one was returned");
