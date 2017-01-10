@@ -531,14 +531,10 @@ export class Transpiler {
         for (let variable of variables) {
             // First transform the local varaible into a module property.
             // TODO(joe): emulate "var"-like scoping.
-            elements.push(<ast.ModuleProperty>{
-                kind:        ast.modulePropertyKind,
-                name:        variable.local.name,
-                type:        variable.local.type,
-                description: variable.local.description,
-                default:     variable.local.default,
-                readonly:    variable.local.readonly,
-            });
+            elements.push(object.extend(variable.local, {
+                kind:   ast.modulePropertyKind,
+                access: access,
+            }));
 
             // Next, if there is an initializer, use it to initialize the variable in the module initializer.
             if (variable.initializer) {

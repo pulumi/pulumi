@@ -1,5 +1,5 @@
 {
-    "name": "exp_one_var",
+    "name": "var_1",
     "modules": {
         "index": {
             "kind": "Module",
@@ -17,15 +17,16 @@
                             "file": "index.ts",
                             "start": {
                                 "line": 1,
-                                "column": 11
+                                "column": 4
                             },
                             "end": {
                                 "line": 1,
-                                "column": 12
+                                "column": 5
                             }
                         }
                     },
-                    "type": "TODO"
+                    "type": "TODO",
+                    "access": "private"
                 },
                 ".init": {
                     "kind": "ModuleMethod",
@@ -52,11 +53,11 @@
                                         "file": "index.ts",
                                         "start": {
                                             "line": 1,
-                                            "column": 15
+                                            "column": 8
                                         },
                                         "end": {
                                             "line": 1,
-                                            "column": 17
+                                            "column": 10
                                         }
                                     }
                                 },
@@ -64,11 +65,11 @@
                                     "file": "index.ts",
                                     "start": {
                                         "line": 1,
-                                        "column": 11
+                                        "column": 4
                                     },
                                     "end": {
                                         "line": 1,
-                                        "column": 17
+                                        "column": 10
                                     }
                                 }
                             }

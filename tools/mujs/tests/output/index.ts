@@ -13,7 +13,8 @@ import {asyncTest} from "../util";
 let testCases: string[] = [
     "empty",
 
-    "modules/exp_one_var",
+    "modules/var_1",
+    "modules/var_exp_1",
 ];
 
 describe("outputs", () => {
