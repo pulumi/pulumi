@@ -1,5 +1,6 @@
 // Copyright 2016 Marapongo, Inc. All rights reserved.
 
+import {LocalVariable} from "./definitions";
 import {Expression} from "./expressions";
 import {Identifier, Node} from "./nodes";
 
@@ -11,16 +12,16 @@ export interface Statement extends Node {}
 
 export interface Block extends Statement {
     kind:       BlockKind;
-    locals?:    LocalVariableDeclaration[];
     statements: Statement[];
 }
 export const blockKind = "Block";
 export type  BlockKind = "Block";
 
-export interface LocalVariableDeclaration extends Node {
-    kind: LocalVariableDeclarationKind;
-    key:  symbols.VariableToken; // the token used to reference this local variable.
-    type: symbols.TypeToken;     // the static type of this local variable's slot.
+/** Local Variables **/
+
+export interface LocalVariableDeclaration extends Statement {
+    kind:  LocalVariableDeclarationKind;
+    local: LocalVariable;
 }
 export const localVariableDeclarationKind = "LocalVariableDeclaration";
 export type  LocalVariableDeclarationKind = "LocalVariableDeclaration";
@@ -116,6 +117,13 @@ export interface EmptyStatement extends Statement {
 }
 export const emptyStatementKind = "EmptyStatement";
 export type  EmptyStatementKind = "EmptyStatement";
+
+// Multiple statements in one (unlike a block, this doesn't introduce a new scope).
+export interface MultiStatement extends Statement {
+    kind: MultiStatementKind;
+}
+export const multiStatementKind = "MultiStatement";
+export type  MultiStatementKind = "MultiStatement";
 
 // A statement that performs an expression, but ignores its result.
 export interface ExpressionStatement extends Statement {

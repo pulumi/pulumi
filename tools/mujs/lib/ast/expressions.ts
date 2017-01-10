@@ -9,50 +9,50 @@ export interface Expression extends Node {}
 
 /** Literals **/
 
-export interface LiteralExpression extends Expression {
+export interface Literal extends Expression {
     raw?: string; // the raw literal, for round tripping purposes.
 }
 
 // A `null` literal.
-export interface NullLiteralExpression extends LiteralExpression {
-    kind: NullLiteralExpressionKind;
+export interface NullLiteral extends Literal {
+    kind: NullLiteralKind;
 }
-export const nullLiteralExpressionKind = "NullLiteralExpression";
-export type  NullLiteralExpressionKind = "NullLiteralExpression";
+export const nullLiteralKind = "NullLiteral";
+export type  NullLiteralKind = "NullLiteral";
 
 // A `bool`-typed literal (`true` or `false`).
-export interface BoolLiteralExpression extends LiteralExpression {
-    kind:  BoolLiteralExpressionKind;
+export interface BoolLiteral extends Literal {
+    kind:  BoolLiteralKind;
     value: boolean;
 }
-export const boolLiteralExpressionKind = "BoolLiteralExpression";
-export type  BoolLiteralExpressionKind = "BoolLiteralExpression";
+export const boolLiteralKind = "BoolLiteral";
+export type  BoolLiteralKind = "BoolLiteral";
 
 // A `number`-typed literal (floating point IEEE 754).
-export interface NumberLiteralExpression extends LiteralExpression {
-    kind:  NumberLiteralExpressionKind;
+export interface NumberLiteral extends Literal {
+    kind:  NumberLiteralKind;
     value: number;
 }
-export const numberLiteralExpressionKind = "NumberLiteralExpression";
-export type  NumberLiteralExpressionKind = "NumberLiteralExpression";
+export const numberLiteralKind = "NumberLiteral";
+export type  NumberLiteralKind = "NumberLiteral";
 
 // A `string`-typed literal.
-export interface StringLiteralExpression extends LiteralExpression {
-    kind:  StringLiteralExpressionKind;
+export interface StringLiteral extends Literal {
+    kind:  StringLiteralKind;
     value: string;
 }
-export const stringLiteralExpressionKind = "StringLiteralExpression";
-export type  StringLiteralExpressionKind = "StringLiteralExpression";
+export const stringLiteralKind = "StringLiteral";
+export type  StringLiteralKind = "StringLiteral";
 
 // An object literal (`new` and/or initialization).
-export interface ObjectLiteralExpression extends LiteralExpression {
-    kind:          ObjectLiteralExpressionKind;
+export interface ObjectLiteral extends Literal {
+    kind:          ObjectLiteralKind;
     type:          symbols.TypeToken;          // the type of object to produce.
     initializers?: ObjectLiteralInitializer[]; // an optional array of property initializers.
     arguments?:    Expression[];               // an optional set of arguments for the constructor.
 }
-export const objectLiteralExpressionKind = "ObjectLiteralExpression";
-export type  ObjectLiteralExpressionKind = "ObjectLiteralExpression";
+export const objectLiteralKind = "ObjectLiteral";
+export type  ObjectLiteralKind = "ObjectLiteral";
 
 // An object literal property initializer.
 export interface ObjectLiteralInitializer extends Node {

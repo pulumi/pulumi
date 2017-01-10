@@ -21,7 +21,7 @@ export type NodeKind =
     IdentifierKind |
 
     definitions.ModuleKind |
-    definitions.ParameterKind |
+    definitions.LocalVariableKind |
     definitions.ModulePropertyKind |
     definitions.ClassPropertyKind |
     definitions.ModuleMethodKind |
@@ -40,13 +40,14 @@ export type NodeKind =
     statements.ThrowStatementKind |
     statements.WhileStatementKind |
     statements.EmptyStatementKind |
+    statements.MultiStatementKind |
     statements.ExpressionStatementKind |
 
-    expressions.NullLiteralExpressionKind |
-    expressions.BoolLiteralExpressionKind |
-    expressions.NumberLiteralExpressionKind |
-    expressions.StringLiteralExpressionKind |
-    expressions.ObjectLiteralExpressionKind |
+    expressions.NullLiteralKind |
+    expressions.BoolLiteralKind |
+    expressions.NumberLiteralKind |
+    expressions.StringLiteralKind |
+    expressions.ObjectLiteralKind |
     expressions.ObjectLiteralInitializerKind |
     expressions.LoadVariableExpressionKind |
     expressions.LoadFunctionExpressionKind |

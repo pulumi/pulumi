@@ -18,7 +18,7 @@ export function isDefinition(node: Node): boolean {
     switch (node.kind) {
         case moduleKind:
         case classKind:
-        case parameterKind:
+        case localVariableKind:
         case modulePropertyKind:
         case classPropertyKind:
         case moduleMethodKind:
@@ -74,17 +74,17 @@ export type ClassMembers = Map<symbols.Identifier, ClassMember>;
 // A variable is a typed storage location.
 export interface Variable extends Definition {
     type:      symbols.TypeToken;
-    default?:  any;
+    default?:  any; // a trivially serializable default value.
     readonly?: boolean;
 }
 
-// A parameter is a variable used for functions.
-export interface Parameter extends Variable {
-    kind: ParameterKind;
+// A variable that is lexically scoped within a function (either a parameter or local).
+export interface LocalVariable extends Variable {
+    kind: LocalVariableKind;
     name: symbols.Identifier;
 }
-export const parameterKind = "Parameter";
-export type  ParameterKind = "Parameter";
+export const localVariableKind = "LocalVariable";
+export type  LocalVariableKind = "LocalVariable";
 
 // A module property is like a variable but belongs to a module.
 export interface ModuleProperty extends Variable, ModuleMember {
@@ -105,7 +105,7 @@ export type  ClassPropertyKind = "ClassProperty";
 
 // A function is an executable bit of code: a class function, class method, or a lambda (see il module).
 export interface Function extends Definition {
-    parameters?: Parameter[];
+    parameters?: LocalVariable[];
     returnType?: symbols.TypeToken;
     body?:       statements.Block;
 }
