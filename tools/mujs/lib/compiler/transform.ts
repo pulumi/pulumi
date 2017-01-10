@@ -91,7 +91,7 @@ type ModuleElement = ast.Definition | ast.Statement;
 // definitions, while any loose code (including variable initializers) is bundled into module inits and entrypoints.
 function transformSourceFile(node: ts.SourceFile): ast.Module {
     // All definitions will go into a map keyed by their identifier.
-    let definitions = new Map<symbols.Identifier, ast.Definition>();
+    let definitions = new Map<symbols.Token, ast.Definition>();
 
     // Any top-level non-definition statements will pile up into the module initializer.
     let statements: ast.Statement[] = [];
@@ -102,7 +102,7 @@ function transformSourceFile(node: ts.SourceFile): ast.Module {
         for (let element of elements) {
             if (ast.isDefinition(element)) {
                 let defn: ast.Definition = <ast.Definition>element;
-                definitions.set(defn.name, defn);
+                definitions.set(defn.name.ident, defn)
             }
             else {
                 statements.push(<ast.Statement>element);
@@ -114,19 +114,25 @@ function transformSourceFile(node: ts.SourceFile): ast.Module {
     if (statements.length > 0) {
         let initializer: ast.ModuleMethod = {
             kind:   ast.moduleMethodKind,
-            name:   symbols.specialFunctionInitializer,
+            name:   {
+                kind:  ast.identifierKind,
+                ident: symbols.specialFunctionInitializer,
+            },
             access: symbols.publicAccessibility,
             body:   {
                 kind:       ast.blockKind,
                 statements: statements,
             },
         };
-        definitions.set(initializer.name, initializer);
+        definitions.set(initializer.name.ident, initializer);
     }
 
     return copyLocation(node, {
         kind:    ast.moduleKind,
-        name:    node.moduleName,
+        name:    <ast.Identifier>{
+            kind:  ast.identifierKind,
+            ident: node.moduleName,
+        },
         members: definitions,
     });
 }
@@ -172,7 +178,10 @@ function transformExportStatement(node: ts.Statement): ModuleElement[] {
     if (ts.getCombinedModifierFlags(node) & ts.ModifierFlags.Default) {
         contract.assert(elements.length === 1);
         contract.assert(elements[0].kind === ast.moduleMethodKind || elements[0].kind === ast.classKind);
-        (<ast.Definition>elements[0]).name = defaultExport;
+        (<ast.Definition>elements[0]).name = {
+            kind:  ast.identifierKind,
+            ident: defaultExport,
+        };
     }
 
     return elements;
@@ -322,6 +331,15 @@ function transformDeclarationName(node: ts.DeclarationName): ast.Expression {
     }
 }
 
+function transformDeclarationIdentifier(node: ts.DeclarationName): ast.Identifier {
+    switch (node.kind) {
+        case ts.SyntaxKind.Identifier:
+            return transformIdentifierExpression(node);
+        default:
+            return contract.failf(`Unrecognized declaration identifier: ${ts.SyntaxKind[node.kind]}`);
+    }
+}
+
 function transformFunctionDeclaration(node: ts.FunctionDeclaration, access: symbols.Accessibility): ast.Function {
     return contract.failf("NYI");
 }
@@ -360,7 +378,7 @@ function makeVariableInitializer(variable: VariableDeclaration): ast.Statement {
         kind:     ast.binaryOperatorExpressionKind,
         left:     <ast.LoadVariableExpression>{
             kind:     ast.loadVariableExpressionKind,
-            variable: variable.local.name,
+            variable: variable.local.name.ident,
         },
         operator: "=",
         right:    variable.initializer,
@@ -436,25 +454,15 @@ function transformModuleVariableStatement(node: ts.VariableStatement, access: sy
 }
 
 function transformVariableDeclaration(node: ts.VariableDeclaration): VariableDeclaration {
-    let name: string;
-    let nameExpression: ast.Expression = transformDeclarationName(node.name);
-    if (nameExpression.kind === ast.stringLiteralKind) {
-        name = (<ast.StringLiteral>nameExpression).value;
-    }
-    else {
-        return contract.failf("NYI");
-    }
-
     let initializer: ast.Expression | undefined;
     if (node.initializer) {
         initializer = transformExpression(node.initializer);
     }
-
     return {
         node:  node,
         local: {
             kind: ast.localVariableKind,
-            name: name,
+            name: transformDeclarationIdentifier(node.name),
             type: "TODO",
         },
         initializer: initializer,
@@ -1034,8 +1042,11 @@ function transformComputedPropertyName(node: ts.ComputedPropertyName): ast.Expre
     return contract.failf("NYI");
 }
 
-function transformIdentifierExpression(node: ts.Identifier): ast.Expression {
-    return contract.failf("NYI");
+function transformIdentifierExpression(node: ts.Identifier): ast.Identifier {
+    return copyLocation(node, {
+        kind:  ast.identifierKind,
+        ident: node.text,
+    });
 }
 
 function transformObjectBindingPattern(node: ts.ObjectBindingPattern): ast.Expression {

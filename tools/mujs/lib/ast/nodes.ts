@@ -65,7 +65,7 @@ export type NodeKind =
 
 export interface Identifier extends Node {
     kind:  IdentifierKind;
-    ident: symbols.Identifier;
+    ident: symbols.Token; // a valid identifier:  (letter|"_") (letter | digit | "_")*
 }
 export const identifierKind = "Identifier";
 export type  IdentifierKind = "Identifier";

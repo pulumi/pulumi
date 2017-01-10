@@ -1,6 +1,6 @@
 // Copyright 2016 Marapongo, Inc. All rights reserved.
 
-import {Node} from "./nodes";
+import {Node, Identifier} from "./nodes";
 import * as statements from "./statements";
 import * as symbols from "../symbols";
 
@@ -10,8 +10,8 @@ import * as symbols from "../symbols";
 
 // A definition is something that possibly exported for external usage.
 export interface Definition extends Node {
-    name:         symbols.Identifier; // a required name, unique amongst definitions with a common parent.
-    description?: string;             // an optional informative description.
+    name:         Identifier; // a required name, unique amongst definitions with a common parent.
+    description?: string;     // an optional informative description.
 }
 
 export function isDefinition(node: Node): boolean {
@@ -38,13 +38,13 @@ export interface Module extends Definition {
 }
 export const moduleKind = "Module";
 export type  ModuleKind = "Module";
-export type  Modules = Map<symbols.Identifier, Definition>;
+export type  Modules = Map<symbols.Token, Definition>;
 
 // A module member is a definition that belongs to a module.
 export interface ModuleMember extends Definition {
     access?: symbols.Accessibility;
 }
-export type ModuleMembers = Map<symbols.Identifier, ModuleMember>;
+export type ModuleMembers = Map<symbols.ModuleToken, ModuleMember>;
 
 /* Classes */
 
@@ -67,7 +67,7 @@ export interface ClassMember extends Definition {
     access?: symbols.ClassMemberAccessibility;
     static?: boolean;
 }
-export type ClassMembers = Map<symbols.Identifier, ClassMember>;
+export type ClassMembers = Map<symbols.TypeToken, ClassMember>;
 
 /* Variables */
 
@@ -81,7 +81,6 @@ export interface Variable extends Definition {
 // A variable that is lexically scoped within a function (either a parameter or local).
 export interface LocalVariable extends Variable {
     kind: LocalVariableKind;
-    name: symbols.Identifier;
 }
 export const localVariableKind = "LocalVariable";
 export type  LocalVariableKind = "LocalVariable";
