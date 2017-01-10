@@ -1,6 +1,6 @@
-# Mu Formats
+# Mu Languages
 
-Mu cloud services are described to the toolchain with three logical formats: MetaMus, MuPack/MuIL, and MuGL.
+Mu cloud services are described to the toolchain with three languages: MetaMus, MuPack/MuIL, and MuGL.
 
 At the highest level, developers write Mu packages using a high-level language.  There are multiple languages to choose
 from, and each is a proper subset of an existing popular programming language; MuJS is a subset of JavaScript, MuPy is

@@ -1,7 +1,7 @@
 # Mu Stacks
 
-This document describes how Mu Stacks and Services show up in Mu's various [formats](formats.md) (MetaMus, MuPack, MuIL,
-and MuGS).  Those are the definitive resources on the low-level formats, but this document describes the overall
+This document describes how Mu Stacks and Services show up in Mu's various [languages](languages.md) (MetaMus, MuPack,
+MuIL, and MuGS).  Those are the definitive resources on the low-level formats, but this document describes the overall
 programming model that a developer will encounter.  For more details on how this results in concrete resources
 provisioned in the target cloud provider, please refer to [the cloud targeting design document](clouds.md).
 

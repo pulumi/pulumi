@@ -104,7 +104,7 @@ creating new providers, which amounts to implementing create, read, update, and 
 
 More details are left to the respective design documents.  Here are some key ones:
 
-* [**Formats**](design/formats.md): An overview of Mu's three file formats: MetaMus, MuPack/MuIL, and MuGS.
+* [**Languages**](design/languages.md): An overview of Mu's three languages: MetaMus, MuPack/MuIL, and MuGS.
 * [**MuPack/MuIL**](design/mupack.md): A detailed description of Mu's packaging and computation formats.
 * [**Stacks**](design/stacks.md): An overview of how stacks are represented using the above fundamentals.
 * [**Dependencies**](design/deps.md): An overview of how package management and dependency management works.
