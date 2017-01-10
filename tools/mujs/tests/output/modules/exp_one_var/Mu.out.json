@@ -1,0 +1,92 @@
+{
+    "name": "TODO",
+    "modules": {
+        "/Users/joeduffy/dev/code/src/github.com/marapongo/mu/tools/mujs/bin/tests/output/modules/exp_one_var/index.ts": {
+            "kind": "Module",
+            "name": {
+                "kind": "Identifier",
+                "ident": "/Users/joeduffy/dev/code/src/github.com/marapongo/mu/tools/mujs/bin/tests/output/modules/exp_one_var/index.ts"
+            },
+            "members": {
+                "x": {
+                    "kind": "ModuleProperty",
+                    "name": {
+                        "kind": "Identifier",
+                        "ident": "x",
+                        "loc": {
+                            "file": "/Users/joeduffy/dev/code/src/github.com/marapongo/mu/tools/mujs/bin/tests/output/modules/exp_one_var/index.ts",
+                            "start": {
+                                "line": 1,
+                                "column": 11
+                            },
+                            "end": {
+                                "line": 1,
+                                "column": 12
+                            }
+                        }
+                    },
+                    "type": "TODO"
+                },
+                ".init": {
+                    "kind": "ModuleMethod",
+                    "name": {
+                        "kind": "Identifier",
+                        "ident": ".init"
+                    },
+                    "access": "public",
+                    "body": {
+                        "kind": "Block",
+                        "statements": [
+                            {
+                                "kind": "BinaryOperatorExpression",
+                                "left": {
+                                    "kind": "LoadVariableExpression",
+                                    "variable": "x"
+                                },
+                                "operator": "=",
+                                "right": {
+                                    "kind": "NumberLiteral",
+                                    "raw": "42",
+                                    "value": 42,
+                                    "loc": {
+                                        "file": "/Users/joeduffy/dev/code/src/github.com/marapongo/mu/tools/mujs/bin/tests/output/modules/exp_one_var/index.ts",
+                                        "start": {
+                                            "line": 1,
+                                            "column": 15
+                                        },
+                                        "end": {
+                                            "line": 1,
+                                            "column": 17
+                                        }
+                                    }
+                                },
+                                "loc": {
+                                    "file": "/Users/joeduffy/dev/code/src/github.com/marapongo/mu/tools/mujs/bin/tests/output/modules/exp_one_var/index.ts",
+                                    "start": {
+                                        "line": 1,
+                                        "column": 11
+                                    },
+                                    "end": {
+                                        "line": 1,
+                                        "column": 17
+                                    }
+                                }
+                            }
+                        ]
+                    }
+                }
+            },
+            "loc": {
+                "file": "/Users/joeduffy/dev/code/src/github.com/marapongo/mu/tools/mujs/bin/tests/output/modules/exp_one_var/index.ts",
+                "start": {
+                    "line": 1,
+                    "column": 0
+                },
+                "end": {
+                    "line": 3,
+                    "column": 0
+                }
+            }
+        }
+    }
+}

@@ -2,15 +2,18 @@
 
 import * as assert from "assert";
 import {fs} from "nodets";
+import * as os from "os";
 import * as path from "path";
+import {compiler, pack} from "../../lib";
 import {asyncTest} from "../util";
-import * as compiler from "../../lib/compiler";
 
 // This test suite loops through a list of programs and compiles each one.  For each, the expected set of diagnostics
 // are compared and, if successful, the lowered MuPack/MuIL AST is compared to the expected final output.
 
 let testCases: string[] = [
     "empty",
+
+    "modules/exp_one_var",
 ];
 
 describe("outputs", () => {
@@ -37,12 +40,12 @@ describe("outputs", () => {
                     throw err;
                 }
             }
-            assert.strictEqual(expectedMessages.length, output.diagnostics.length, "Expected message count to match");
+            assert.strictEqual(output.diagnostics.length, expectedMessages.length, "Expected message count to match");
 
             // Now format them and ensure the text of the messages are correct.
             for (let i = 0; i < expectedMessages.length; i++) {
-                let formatted: string = output.formatDiagnostic(i);
-                assert.strictEqual(expectedMessages[i], formatted, `Expected message #{i}'s text to match`);
+                let actual: string = output.formatDiagnostic(i);
+                assert.strictEqual(actual, expectedMessages[i], `Expected message #{i}'s text to match`);
             }
 
             // Next, see if there is an expected program tree (possibly none in the case of fatal errors).
@@ -59,14 +62,16 @@ describe("outputs", () => {
 
             if (output.tree) {
                 if (expectedOutputTree) {
-                    assert.strictEqual(expectedOutputTree, output.tree, `Expected program trees to match`);
+                    let mupackTree: pack.Package = compiler.transform(output.tree);
+                    let mupackTreeText: string = JSON.stringify(mupackTree, null, 4) + os.EOL;
+                    assert.strictEqual(mupackTreeText, expectedOutputTree, "Expected program trees to match");
                 }
                 else {
-                    assert(false, `Expected an empty program tree, but one was returned`);
+                    assert(false, "Expected an empty program tree, but one was returned");
                 }
             }
             else if (expectedOutputTree) {
-                assert(false, `Expected a non-empty program tree, but an empty one was returned`);
+                assert(false, "Expected a non-empty program tree, but an empty one was returned");
             }
         }));
     }
