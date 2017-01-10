@@ -128,11 +128,13 @@ function transformSourceFile(node: ts.SourceFile): ast.Module {
         members[initializer.name.ident] = initializer;
     }
 
+    // TODO(joe): we are using the fileName as the module name; this will lead to pretty hokey names, and we will
+    //     need to do a pass over this to massage it.  To do this properly, we'll need some path "context".
     return copyLocation(node, {
         kind:    ast.moduleKind,
         name:    <ast.Identifier>{
             kind:  ast.identifierKind,
-            ident: node.moduleName,
+            ident: node.fileName,
         },
         members: members,
     });
@@ -419,7 +421,7 @@ function transformLocalVariableStatement(node: ts.VariableStatement): ast.Statem
         if (variable.initializer) {
             statements.push(makeVariableInitializer(variable));
         }
-    };
+    }
     if (statements.length === 1) {
         return statements[0];
     }
