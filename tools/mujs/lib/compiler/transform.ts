@@ -135,11 +135,11 @@ function transformSourceFile(node: ts.SourceFile): ast.Module {
 // cases -- like variable initializers -- that expand to multiple elements.
 function transformSourceFileStatement(node: ts.Statement): ModuleElement[] {
     if (ts.getCombinedModifierFlags(node) & ts.ModifierFlags.Export) {
-        return [ transformExportStatement(node) ];
+        return transformExportStatement(node);
     }
     else {
         switch (node.kind) {
-            // Handle module directives; most of these translate into definitions.
+            // Handle module directives; most translate into definitions.
             case ts.SyntaxKind.ExportAssignment:
                 return [ transformExportAssignment(<ts.ExportAssignment>node) ];
             case ts.SyntaxKind.ExportDeclaration:
@@ -148,35 +148,14 @@ function transformSourceFileStatement(node: ts.Statement): ModuleElement[] {
                 // TODO: register the import name so we can "mangle" any references to it accordingly later on.
                 return contract.failf("NYI");
 
-            // Handle module variables:
-            case ts.SyntaxKind.VariableStatement:
-                let elements: ModuleElement[] = [];
-                let variables: VariableDeclaration[] = transformVariableStatement(<ts.VariableStatement>node);
-                for (let variable of variables) {
-                    // First transform the local varaible into a module property.
-                    // TODO(joe): emulate "var"-like scoping.
-                    elements.push(<ast.ModuleProperty>{
-                        kind:        ast.modulePropertyKind,
-                        name:        variable.local.name,
-                        description: variable.local.description,
-                        default:     variable.local.default,
-                        readonly:    variable.local.readonly,
-                    });
-
-                    // Next, if there is an initializer, use it to initialize the variable in the module initializer.
-                    if (variable.initializer) {
-                        elements.push(makeVariableInitializer(variable));
-                    }
-                }
-                return elements;
-
             // Handle declarations; each of these results in a definition.
             case ts.SyntaxKind.ClassDeclaration:
             case ts.SyntaxKind.FunctionDeclaration:
             case ts.SyntaxKind.InterfaceDeclaration:
             case ts.SyntaxKind.ModuleDeclaration:
             case ts.SyntaxKind.TypeAliasDeclaration:
-                return [ transformDeclarationStatement(node) ];
+            case ts.SyntaxKind.VariableStatement:
+                return transformModuleDeclarationStatement(node, symbols.privateAccessibility);
 
             // For any other top-level statements, transform them.  They'll be added to the module initializer.
             default:
@@ -185,29 +164,18 @@ function transformSourceFileStatement(node: ts.Statement): ModuleElement[] {
     }
 }
 
-function transformExportStatement(node: ts.Statement): ast.Definition {
-    let defn: ast.Definition;
-    if (ts.getCombinedModifierFlags(node) & ts.ModifierFlags.Default) {
-        // A default export; either a function or class, transform it.
-        switch (node.kind) {
-            case ts.SyntaxKind.FunctionDeclaration:
-                defn = transformFunctionDeclaration(<ts.FunctionDeclaration>node);
-                break;
-            case ts.SyntaxKind.ClassDeclaration:
-                defn = transformClassDeclaration(<ts.ClassDeclaration>node);
-                break;
-            default:
-                return contract.failf(`Unrecognized default export node: ${ts.SyntaxKind[node.kind]}`);
-        }
+function transformExportStatement(node: ts.Statement): ModuleElement[] {
+    let elements: ModuleElement[] = transformModuleDeclarationStatement(node, symbols.publicAccessibility);
 
-        // Smash the name to the default that ECMAScript uses ("default").
-        defn.name = defaultExport;
-        return defn;
+    // If this is a default export, first ensure that it is one of the legal default export kinds; namely, only function
+    // or class is permitted, and specifically not interface or let.  Then smash the name with "default".
+    if (ts.getCombinedModifierFlags(node) & ts.ModifierFlags.Default) {
+        contract.assert(elements.length === 1);
+        contract.assert(elements[0].kind === ast.moduleMethodKind || elements[0].kind === ast.classKind);
+        (<ast.Definition>elements[0]).name = defaultExport;
     }
-    else {
-        // A non-default, named export; transform it and add it under its name.
-        return transformDeclarationStatement(node);
-    }
+
+    return elements;
 }
 
 function transformExportAssignment(node: ts.ExportAssignment): ast.Definition {
@@ -247,28 +215,7 @@ function transformStatement(node: ts.Statement): ast.Statement {
             // TODO: issue a proper error; these sorts of declarations aren't valid statements in MuIL.
             return contract.failf(`Declaration node ${ts.SyntaxKind[node.kind]} isn't a valid statement in MuIL`);
         case ts.SyntaxKind.VariableStatement:
-            // For variables, we need to append initializers as assignments if there are any.
-            // TODO: emulate "var"-like scoping.
-            let statements: ast.Statement[] = [];
-            let variables: VariableDeclaration[] = transformVariableStatement(<ts.VariableStatement>node);
-            for (let variable of variables) {
-                statements.push(<ast.LocalVariableDeclaration>{
-                    kind:  ast.localVariableDeclarationKind,
-                    local: variable.local,
-                });
-                if (variable.initializer) {
-                    statements.push(makeVariableInitializer(variable));
-                }
-            };
-            if (statements.length === 1) {
-                return statements[0];
-            }
-            else {
-                return <ast.MultiStatement>{
-                    kind:       ast.multiStatementKind,
-                    statements: statements,
-                };
-            }
+            return transformLocalVariableStatement(<ts.VariableStatement>node);
 
         // Control flow statements:
         case ts.SyntaxKind.BreakStatement:
@@ -319,22 +266,25 @@ function transformStatement(node: ts.Statement): ast.Statement {
 }
 
 // This routine transforms a declaration statement in TypeScript to a MuIL definition.  Note that definitions in MuIL
-// aren't statements, hence the partitioning between transformDeclaration and transformStatement.
-function transformDeclarationStatement(node: ts.Statement): ast.Definition {
+// aren't statements, hence the partitioning between transformDeclaration and transformStatement.  Note that variables
+// do not result in Definitions because they may require higher-level processing to deal with initializer.
+function transformModuleDeclarationStatement(node: ts.Statement, access: symbols.Accessibility): ModuleElement[] {
     switch (node.kind) {
         // Declarations:
         case ts.SyntaxKind.ClassDeclaration:
-            return transformClassDeclaration(<ts.ClassDeclaration>node);
+            return [ transformClassDeclaration(<ts.ClassDeclaration>node, access) ];
         case ts.SyntaxKind.FunctionDeclaration:
-            return transformFunctionDeclaration(<ts.FunctionDeclaration>node);
+            return [ transformFunctionDeclaration(<ts.FunctionDeclaration>node, access) ];
         case ts.SyntaxKind.InterfaceDeclaration:
-            return transformInterfaceDeclaration(<ts.InterfaceDeclaration>node);
+            return [ transformInterfaceDeclaration(<ts.InterfaceDeclaration>node, access) ];
         case ts.SyntaxKind.ModuleDeclaration:
-            return transformModuleDeclaration(<ts.ModuleDeclaration>node);
+            return [ transformModuleDeclaration(<ts.ModuleDeclaration>node, access) ];
         case ts.SyntaxKind.TypeAliasDeclaration:
-            return transformTypeAliasDeclaration(<ts.TypeAliasDeclaration>node);
+            return [ transformTypeAliasDeclaration(<ts.TypeAliasDeclaration>node, access) ];
+        case ts.SyntaxKind.VariableStatement:
+            return transformModuleVariableStatement(<ts.VariableStatement>node, access);
         default:
-            return contract.failf(`Node kind is not a declaration: ${ts.SyntaxKind[node.kind]}`);
+            return contract.failf(`Node kind is not a module declaration: ${ts.SyntaxKind[node.kind]}`);
     }
 }
 
@@ -353,7 +303,7 @@ function transformStatementAsBlock(node: ts.Statement): ast.Block {
 
 /** Declaration statements **/
 
-function transformClassDeclaration(node: ts.ClassDeclaration): ast.Class {
+function transformClassDeclaration(node: ts.ClassDeclaration, access: symbols.Accessibility): ast.Class {
     return contract.failf("NYI");
 }
 
@@ -372,7 +322,7 @@ function transformDeclarationName(node: ts.DeclarationName): ast.Expression {
     }
 }
 
-function transformFunctionDeclaration(node: ts.FunctionDeclaration): ast.Function {
+function transformFunctionDeclaration(node: ts.FunctionDeclaration, access: symbols.Accessibility): ast.Function {
     return contract.failf("NYI");
 }
 
@@ -380,11 +330,11 @@ function transformFunctionLikeDeclaration(node: ts.FunctionLikeDeclaration): ast
     return contract.failf("NYI");
 }
 
-function transformInterfaceDeclaration(node: ts.InterfaceDeclaration): ast.Class {
+function transformInterfaceDeclaration(node: ts.InterfaceDeclaration, access: symbols.Accessibility): ast.Class {
     return contract.failf("NYI");
 }
 
-function transformModuleDeclaration(node: ts.ModuleDeclaration): ast.Module {
+function transformModuleDeclaration(node: ts.ModuleDeclaration, access: symbols.Accessibility): ast.Module {
     return contract.failf("NYI");
 }
 
@@ -392,7 +342,7 @@ function transformParameterDeclaration(node: ts.ParameterDeclaration): ast.Local
     return contract.failf("NYI");
 }
 
-function transformTypeAliasDeclaration(node: ts.TypeAliasDeclaration): ast.Class {
+function transformTypeAliasDeclaration(node: ts.TypeAliasDeclaration, access: symbols.Accessibility): ast.Class {
     return contract.failf("NYI");
 }
 
@@ -435,6 +385,54 @@ function transformVariableStatement(node: ts.VariableStatement): VariableDeclara
     }
 
     return variables;
+}
+
+function transformLocalVariableStatement(node: ts.VariableStatement): ast.Statement {
+    // For variables, we need to append initializers as assignments if there are any.
+    // TODO: emulate "var"-like scoping.
+    let statements: ast.Statement[] = [];
+    let variables: VariableDeclaration[] = transformVariableStatement(node);
+    for (let variable of variables) {
+        statements.push(<ast.LocalVariableDeclaration>{
+            kind:  ast.localVariableDeclarationKind,
+            local: variable.local,
+        });
+        if (variable.initializer) {
+            statements.push(makeVariableInitializer(variable));
+        }
+    };
+    if (statements.length === 1) {
+        return statements[0];
+    }
+    else {
+        return <ast.MultiStatement>{
+            kind:       ast.multiStatementKind,
+            statements: statements,
+        };
+    }
+}
+
+function transformModuleVariableStatement(node: ts.VariableStatement, access: symbols.Accessibility): ModuleElement[] {
+    let elements: ModuleElement[] = [];
+    let variables: VariableDeclaration[] = transformVariableStatement(node);
+    for (let variable of variables) {
+        // First transform the local varaible into a module property.
+        // TODO(joe): emulate "var"-like scoping.
+        elements.push(<ast.ModuleProperty>{
+            kind:        ast.modulePropertyKind,
+            name:        variable.local.name,
+            type:        variable.local.type,
+            description: variable.local.description,
+            default:     variable.local.default,
+            readonly:    variable.local.readonly,
+        });
+
+        // Next, if there is an initializer, use it to initialize the variable in the module initializer.
+        if (variable.initializer) {
+            elements.push(makeVariableInitializer(variable));
+        }
+    }
+    return elements;
 }
 
 function transformVariableDeclaration(node: ts.VariableDeclaration): VariableDeclaration {
