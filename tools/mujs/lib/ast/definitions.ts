@@ -1,8 +1,8 @@
 // Copyright 2016 Marapongo, Inc. All rights reserved.
 
-import {Node, Identifier} from "./nodes";
-import * as statements from "./statements";
 import * as symbols from "../symbols";
+import {Identifier, Node} from "./nodes";
+import * as statements from "./statements";
 
 // TODO(joe): consider refactoring modifiers from booleans to enums.
 
@@ -12,21 +12,6 @@ import * as symbols from "../symbols";
 export interface Definition extends Node {
     name:         Identifier; // a required name, unique amongst definitions with a common parent.
     description?: string;     // an optional informative description.
-}
-
-export function isDefinition(node: Node): boolean {
-    switch (node.kind) {
-        case moduleKind:
-        case classKind:
-        case localVariableKind:
-        case modulePropertyKind:
-        case classPropertyKind:
-        case moduleMethodKind:
-        case classMethodKind:
-            return true;
-        default:
-            return false;
-    }
 }
 
 /* Modules */
@@ -124,4 +109,21 @@ export interface ClassMethod extends Function, ClassMember {
 }
 export const classMethodKind = "ClassMethod";
 export type  ClassMethodKind = "ClassMethod";
+
+/** Helper functions **/
+
+export function isDefinition(node: Node): boolean {
+    switch (node.kind) {
+        case moduleKind:
+        case classKind:
+        case localVariableKind:
+        case modulePropertyKind:
+        case classPropertyKind:
+        case moduleMethodKind:
+        case classMethodKind:
+            return true;
+        default:
+            return false;
+    }
+}
 
