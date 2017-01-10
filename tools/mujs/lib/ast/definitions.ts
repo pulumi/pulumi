@@ -2,28 +2,74 @@
 
 import {Node} from "./nodes";
 import * as statements from "./statements";
-
 import * as symbols from "../symbols";
 
 // TODO(joe): consider refactoring modifiers from booleans to enums.
 
+/* Definitions */
+
+// A definition is something that possibly exported for external usage.
+export interface Definition extends Node {
+    name:         symbols.Identifier; // a required name, unique amongst definitions with a common parent.
+    description?: string;             // an optional informative description.
+}
+
+export function isDefinition(node: Node): boolean {
+    switch (node.kind) {
+        case moduleKind:
+        case classKind:
+        case parameterKind:
+        case modulePropertyKind:
+        case classPropertyKind:
+        case moduleMethodKind:
+        case classMethodKind:
+            return true;
+        default:
+            return false;
+    }
+}
+
+/* Modules */
+
 // A module contains members, including variables, functions, and/or classes.
-export interface Module extends Node {
-    kind:        ModuleKind;
-    access?:     symbols.Accessibility;
-    definitions: Definitions;
+export interface Module extends Definition {
+    kind:    ModuleKind;
+    members: ModuleMembers;
 }
 export const moduleKind = "Module";
 export type  ModuleKind = "Module";
+export type  Modules = Map<symbols.Identifier, Definition>;
 
-export type Modules = Map<symbols.Identifier, Definition>;
-
-// A definition is something that a module has exported.
-export interface Definition extends Node {
-    description?: string; // an optional informative description.
+// A module member is a definition that belongs to a module.
+export interface ModuleMember extends Definition {
+    access?: symbols.Accessibility;
 }
+export type ModuleMembers = Map<symbols.Identifier, ModuleMember>;
 
-export type Definitions = Map<symbols.Identifier, Definition>;
+/* Classes */
+
+// A class can be constructed to create an object, and exports properties, methods, and has a number of attributes.
+export interface Class extends Definition {
+    kind:        ClassKind;
+    extends?:    symbols.TypeToken;
+    implements?: symbols.TypeToken[];
+    sealed?:     boolean;
+    abstract?:   boolean;
+    record?:     boolean;
+    interface?:  boolean;
+    members?:    ClassMembers;
+}
+export const classKind = "Class";
+export type  ClassKind = "Class";
+
+// A class member is a definition that belongs to a class.
+export interface ClassMember extends Definition {
+    access?: symbols.ClassMemberAccessibility;
+    static?: boolean;
+}
+export type ClassMembers = Map<symbols.Identifier, ClassMember>;
+
+/* Variables */
 
 // A variable is a typed storage location.
 export interface Variable extends Definition {
@@ -40,20 +86,22 @@ export interface Parameter extends Variable {
 export const parameterKind = "Parameter";
 export type  ParameterKind = "Parameter";
 
-// A module property is like a variable but has an accessibility modifier.
-export interface ModuleProperty extends Variable {
-    kind:    ModulePropertyKind;
-    access?: symbols.Accessibility;
+// A module property is like a variable but belongs to a module.
+export interface ModuleProperty extends Variable, ModuleMember {
+    kind: ModulePropertyKind;
 }
 export const modulePropertyKind = "ModuleProperty";
 export type  ModulePropertyKind = "ModuleProperty";
 
 // A class property is just like a module property with some extra attributes.
 export interface ClassProperty extends Variable, ClassMember {
+    kind:     ClassPropertyKind;
     primary?: boolean;
 }
 export const classPropertyKind = "ClassProperty";
 export type  ClassPropertyKind = "ClassProperty";
+
+/* Functions */
 
 // A function is an executable bit of code: a class function, class method, or a lambda (see il module).
 export interface Function extends Definition {
@@ -63,9 +111,8 @@ export interface Function extends Definition {
 }
 
 // A module method is just a function with an accessibility.
-export interface ModuleMethod extends Function {
-    kind:    ModuleMethodKind;
-    access?: symbols.Accessibility;
+export interface ModuleMethod extends Function, ModuleMember {
+    kind: ModuleMethodKind;
 }
 export const moduleMethodKind = "ModuleMethod";
 export type  ModuleMethodKind = "ModuleMethod";
@@ -78,25 +125,4 @@ export interface ClassMethod extends Function, ClassMember {
 }
 export const classMethodKind = "ClassMethod";
 export type  ClassMethodKind = "ClassMethod";
-
-// A class can be constructed to create an object, and exports properties, methods, and has a number of attributes.
-export interface Class extends Definition {
-    kind:        ClassKind;
-    access?:     symbols.Accessibility;
-    extends?:    symbols.TypeToken;
-    implements?: symbols.TypeToken[];
-    sealed?:     boolean;
-    abstract?:   boolean;
-    record?:     boolean;
-    interface?:  boolean;
-    members?:    ClassMember[];
-}
-export const classKind = "Class";
-export type  ClassKind = "Class";
-
-// A simple marker interface for members of a class.
-export interface ClassMember extends Definition {
-    access?:  symbols.ClassMemberAccessibility;
-    static?: boolean;
-}
 

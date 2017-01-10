@@ -11,7 +11,25 @@ import * as symbols from "../symbols";
 
 // Translates a TypeScript bound tree into its equivalent MuPack/MuIL AST form, one tree per file.
 export function transform(program: ts.Program): pack.Package {
-    return contract.failf("NYI");
+    // Enumerate all source files (each of which is a module in ECMAScript), and transform it.
+    let modules = new Map<string, ast.Module>();
+    for (let sourceFile of program.getSourceFiles()) {
+        // By default, skip declaration files, since they are "dependencies."
+        // TODO(joe): how to handle re-exports in ECMAScript, such as index aggregation.
+        // TODO(joe): this isn't a perfect heuristic.  But ECMAScript is all source dependencies, so there isn't a
+        //     true notion of source versus binary dependency.  We could crack open the dependencies to see if they
+        //     exist within an otherwise known package, but that seems a little hokey.
+        if (!sourceFile.isDeclarationFile) {
+            modules.set(sourceFile.moduleName, transformSourceFile(sourceFile));
+        }
+    }
+
+    // Now create a new package object.
+    // TODO(joe): discover dependencies, name, etc. from Mu.json|yaml metadata.
+    return {
+        name:    "TODO",
+        modules: modules,
+    };
 }
 
 /** Constants **/
@@ -64,17 +82,108 @@ function transformIdentifier(node: ts.Identifier): ast.Identifier {
 
 /** Modules **/
 
+// A top-level module element is either a definition or a statement.
+type ModuleElement = ast.Definition | ast.Statement;
+
+// This function transforms top-level TypeScript module elements into their corresponding nodes.  This transformation
+// is largely evident in how it works, except that "loose code" in the form of arbitrary statements is not permitted in
+// MuPack/MuIL.  As such, the appropriate top-level definitions (variables, functions, and classes) are returned as
+// definitions, while any loose code (including variable initializers) is bundled into module inits and entrypoints.
 function transformSourceFile(node: ts.SourceFile): ast.Module {
-    return contract.failf("NYI");
+    // All definitions will go into a map keyed by their identifier.
+    let definitions = new Map<symbols.Identifier, ast.Definition>();
+
+    // Any top-level non-definition statements will pile up into the module initializer.
+    let statements: ast.Statement[] = [];
+
+    // Enumerate the module's statements and put them in the respective places.
+    for (let statement of node.statements) {
+        let element: ModuleElement = transformSourceFileStatement(statement);
+        if (ast.isDefinition(element)) {
+            let defn: ast.Definition = <ast.Definition>element;
+            definitions.set(defn.name, defn);
+        }
+        else {
+            statements.push(<ast.Statement>element);
+        }
+     }
+
+    // If the initialization statements are non-empty, add an initializer method.
+    if (statements.length > 0) {
+        let initializer: ast.ModuleMethod = {
+            kind:   ast.moduleMethodKind,
+            name:   symbols.specialFunctionInitializer,
+            access: symbols.publicAccessibility,
+            body:   {
+                kind:       ast.blockKind,
+                statements: statements,
+            },
+        };
+        definitions.set(initializer.name, initializer);
+    }
+
+    return copyLocation(node, {
+        kind:    ast.moduleKind,
+        name:    node.moduleName,
+        members: definitions,
+    });
 }
 
-// This function transforms a top-level TypeScript module element into its corresponding definition node.  This
-// transformation is largely evident in how it works, except that "loose code" in the form of arbitrary statements is
-// not permitted in MuIL.  As such, the appropriate top-level definitions (modules, variables, functions, and classes)
-// are returned as definition nodes, while any loose code (other than variable initializers) is rejected outright.
-// MuIL supports module initializers and entrypoint functions for executable MuPacks, where such code can go instead.
-function transformSourceFileElement(node: ts.Statement): ast.Definition {
-    return contract.failf("NYI");
+// This function transforms a top-level TypeScript module statement.
+function transformSourceFileStatement(node: ts.Statement): ModuleElement {
+    if (ts.getCombinedModifierFlags(node) & ts.ModifierFlags.Export) {
+        return transformExportStatement(node);
+    }
+    else {
+        switch (node.kind) {
+            // Handle module directives; most of these translate into definitions.
+            case ts.SyntaxKind.ExportAssignment:
+                return transformExportAssignment(<ts.ExportAssignment>node);
+            case ts.SyntaxKind.ExportDeclaration:
+                return transformExportDeclaration(<ts.ExportDeclaration>node);
+            case ts.SyntaxKind.ImportDeclaration:
+                // TODO: register the import name so we can "mangle" any references to it accordingly later on.
+                return contract.failf("NYI");
+
+            // Handle declarations; each of these results in a definition.
+            case ts.SyntaxKind.ClassDeclaration:
+            case ts.SyntaxKind.FunctionDeclaration:
+            case ts.SyntaxKind.InterfaceDeclaration:
+            case ts.SyntaxKind.ModuleDeclaration:
+            case ts.SyntaxKind.TypeAliasDeclaration:
+            case ts.SyntaxKind.VariableStatement:
+                return transformDeclarationStatement(node);
+
+            // For any other top-level statements, transform them.  They'll be added to the module initializer.
+            default:
+                return transformStatement(node);
+        }
+    }
+}
+
+function transformExportStatement(node: ts.Statement): ast.Definition {
+    let defn: ast.Definition;
+    if (ts.getCombinedModifierFlags(node) & ts.ModifierFlags.Default) {
+        // A default export; either a function or class, transform it.
+        switch (node.kind) {
+            case ts.SyntaxKind.FunctionDeclaration:
+                defn = transformFunctionDeclaration(<ts.FunctionDeclaration>node);
+                break;
+            case ts.SyntaxKind.ClassDeclaration:
+                defn = transformClassDeclaration(<ts.ClassDeclaration>node);
+                break;
+            default:
+                return contract.failf(`Unrecognized default export node: ${ts.SyntaxKind[node.kind]}`);
+        }
+
+        // Smash the name to the default that ECMAScript uses ("default").
+        defn.name = defaultExport;
+        return defn;
+    }
+    else {
+        // A non-default, named export; transform it and add it under its name.
+        return transformDeclarationStatement(node);
+    }
 }
 
 function transformExportAssignment(node: ts.ExportAssignment): ast.Definition {
@@ -107,15 +216,12 @@ function transformStatement(node: ts.Statement): ast.Statement {
     switch (node.kind) {
         // Declaration statements:
         case ts.SyntaxKind.ClassDeclaration:
-            return transformClassDeclaration(<ts.ClassDeclaration>node);
         case ts.SyntaxKind.FunctionDeclaration:
-            return transformFunctionDeclaration(<ts.FunctionDeclaration>node);
         case ts.SyntaxKind.InterfaceDeclaration:
-            return transformInterfaceDeclaration(<ts.InterfaceDeclaration>node);
         case ts.SyntaxKind.ModuleDeclaration:
-            return transformModuleDeclaration(<ts.ModuleDeclaration>node);
         case ts.SyntaxKind.TypeAliasDeclaration:
-            return transformTypeAliasDeclaration(<ts.TypeAliasDeclaration>node);
+            // TODO: issue a proper error; these sorts of declarations aren't valid statements in MuIL.
+            return contract.failf(`Declaration node ${ts.SyntaxKind[node.kind]} isn't a valid statement in MuIL`);
         case ts.SyntaxKind.VariableStatement:
             return transformVariableStatement(<ts.VariableStatement>node);
 
@@ -167,6 +273,28 @@ function transformStatement(node: ts.Statement): ast.Statement {
     }
 }
 
+// This routine transforms a declaration statement in TypeScript to a MuIL definition.  Note that definitions in MuIL
+// aren't statements, hence the partitioning between transformDeclaration and transformStatement.
+function transformDeclarationStatement(node: ts.Statement): ast.Definition {
+    switch (node.kind) {
+        // Declarations:
+        case ts.SyntaxKind.ClassDeclaration:
+            return transformClassDeclaration(<ts.ClassDeclaration>node);
+        case ts.SyntaxKind.FunctionDeclaration:
+            return transformFunctionDeclaration(<ts.FunctionDeclaration>node);
+        case ts.SyntaxKind.InterfaceDeclaration:
+            return transformInterfaceDeclaration(<ts.InterfaceDeclaration>node);
+        case ts.SyntaxKind.ModuleDeclaration:
+            return transformModuleDeclaration(<ts.ModuleDeclaration>node);
+        case ts.SyntaxKind.TypeAliasDeclaration:
+            return transformTypeAliasDeclaration(<ts.TypeAliasDeclaration>node);
+        case ts.SyntaxKind.VariableStatement:
+            return transformVariableStatement(<ts.VariableStatement>node);
+        default:
+            return contract.failf(`Node kind is not a declaration: ${ts.SyntaxKind[node.kind]}`);
+    }
+}
+
 // This function transforms a TypeScript Statement, and returns a Block (allocating a new one if needed).
 function transformStatementAsBlock(node: ts.Statement): ast.Block {
     // Transform the statement.  Then, if it is already a block, return it; otherwise, append it to a new one.
@@ -213,7 +341,7 @@ function transformInterfaceDeclaration(node: ts.InterfaceDeclaration): ast.Class
     return contract.failf("NYI");
 }
 
-function transformModuleDeclaration(node: ts.ModuleDeclaration): ast.Statement {
+function transformModuleDeclaration(node: ts.ModuleDeclaration): ast.Module {
     return contract.failf("NYI");
 }
 
@@ -221,19 +349,19 @@ function transformParameterDeclaration(node: ts.ParameterDeclaration): ast.Param
     return contract.failf("NYI");
 }
 
-function transformTypeAliasDeclaration(node: ts.TypeAliasDeclaration): ast.Statement {
+function transformTypeAliasDeclaration(node: ts.TypeAliasDeclaration): ast.Class {
     return contract.failf("NYI");
 }
 
-function transformVariableStatement(node: ts.VariableStatement): ast.LocalVariableDeclaration {
+function transformVariableStatement(node: ts.VariableStatement): ast.Variable {
     return contract.failf("NYI");
 }
 
-function transformVariableDeclaration(node: ts.VariableDeclaration): ast.LocalVariableDeclaration {
+function transformVariableDeclaration(node: ts.VariableDeclaration): ast.Variable {
     return contract.failf("NYI");
 }
 
-function transformVariableDeclarationList(node: ts.VariableDeclarationList): ast.LocalVariableDeclaration[] {
+function transformVariableDeclarationList(node: ts.VariableDeclarationList): ast.Variable[] {
     return contract.failf("NYI");
 }
 
