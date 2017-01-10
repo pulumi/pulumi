@@ -10,7 +10,7 @@ import * as pack from "../pack";
 import * as symbols from "../symbols";
 
 // Translates a TypeScript bound tree into its equivalent MuPack/MuIL AST form, one tree per file.
-export function transform(program: ts.Program): pack.Package {
+export function transform(meta: pack.Metadata, program: ts.Program): pack.Package {
     // Enumerate all source files (each of which is a module in ECMAScript), and transform it.
     let modules: ast.Modules = {};
     for (let sourceFile of program.getSourceFiles()) {
@@ -26,11 +26,10 @@ export function transform(program: ts.Program): pack.Package {
     }
 
     // Now create a new package object.
-    // TODO(joe): discover dependencies, name, etc. from Mu.json|yaml metadata.
-    return {
-        name:    "TODO",
+    // TODO: create a list of dependencies, partly from the metadata, partly from the TypeScript compilation.
+    return object.extend(meta, {
         modules: modules,
-    };
+    });
 }
 
 /** Constants **/

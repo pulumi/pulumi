@@ -54,9 +54,14 @@ async function main(args: string[]): Promise<number> {
         console.log(comp.formatDiagnostics());
     }
     else {
-        // No errors, great, transform the AST into a MuPack program, and output it.
+        // No errors, great, transform the AST into a MuPack program, and output it.  First, load the metadata:
+        let meta: mujs.pack.Metadata = await mujs.compiler.discover(comp.root);
+
+        // Next, perform the MuPack transformation:
+        let pack: mujs.pack.Package = mujs.compiler.transform(meta, comp.tree!);
+
+        // Now just print the output to the console.
         // TODO(joe): eventually we want a real compiler-like output scheme; for now, just print it.
-        let pack: mujs.pack.Package = mujs.compiler.transform(comp.tree!);
         console.log(JSON.stringify(pack, null, 4));
     }
     return 0;

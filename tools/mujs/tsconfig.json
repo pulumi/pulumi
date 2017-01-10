@@ -29,6 +29,8 @@
         "lib/ast/statements.ts",
         "lib/compiler/index.ts",
         "lib/compiler/compile.ts",
+        "lib/compiler/discover.ts",
+        "lib/compiler/transform.ts",
         "lib/pack/index.ts",
         "lib/symbols/index.ts",
 

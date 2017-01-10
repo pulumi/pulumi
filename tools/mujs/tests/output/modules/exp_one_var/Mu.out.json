@@ -1,5 +1,5 @@
 {
-    "name": "TODO",
+    "name": "exp_one_var",
     "modules": {
         "/Users/joeduffy/dev/code/src/github.com/marapongo/mu/tools/mujs/bin/tests/output/modules/exp_one_var/index.ts": {
             "kind": "Module",
