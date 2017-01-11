@@ -1145,8 +1145,12 @@ export class Transpiler {
         };
     }
 
-    private transformCallExpression(node: ts.CallExpression): ast.Expression {
-        return contract.fail("NYI");
+    private transformCallExpression(node: ts.CallExpression): ast.InvokeFunctionExpression {
+        return this.copyLocation(node, <ast.InvokeFunctionExpression>{
+            kind:      ast.invokeFunctionExpressionKind,
+            function:  this.transformExpression(node.expression),
+            arguments: node.arguments.map((expr: ts.Expression) => this.transformExpression(expr)),
+        });
     }
 
     private transformClassExpression(node: ts.ClassExpression): ast.Expression {
