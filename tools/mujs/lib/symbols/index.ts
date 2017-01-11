@@ -12,12 +12,16 @@ export type Accessibility            = "public" | "private";        // accessibi
 export type ClassMemberAccessibility = Accessibility | "protected"; // accessibility modifiers for class members.
 
 // Accessibility modifier constants.
-export const publicAccessibility    = "public";
-export const privateAccessibility   = "private";
-export const protectedAccessibility = "protected";
+export const publicAccessibility: Accessibility               = "public";
+export const privateAccessibility: Accessibility              = "private";
+export const protectedAccessibility: ClassMemberAccessibility = "protected";
+
+// Special variable tokens.
+export const specialVariableThis: VariableToken  = ".this";  // the current object (for class methods).
+export const specialVariableSuper: VariableToken = ".super"; // the parent class object (for class methods).
 
 // Special function tokens.
-export const specialFunctionEntryPoint  = ".main"; // the special package entrypoint function.
-export const specialFunctionInitializer = ".init"; // the special module/class initialize function.
-export const specialFunctionConstructor = ".ctor"; // the special class instance constructor function.
+export const specialFunctionEntryPoint: FunctionToken  = ".main"; // the special package entrypoint function.
+export const specialFunctionInitializer: FunctionToken = ".init"; // the special module/class initialize function.
+export const specialFunctionConstructor: FunctionToken = ".ctor"; // the special class instance constructor function.
 

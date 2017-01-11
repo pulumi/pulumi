@@ -1,6 +1,6 @@
 // Copyright 2016 Marapongo, Inc. All rights reserved.
 
-import {Node} from "./nodes";
+import {Identifier, Node} from "./nodes";
 import * as statements from "./statements";
 
 import * as symbols from "../symbols";
@@ -67,30 +67,21 @@ export type  ObjectLiteralInitializerKind = "ObjectLiteralInitializer";
 
 // TODO(joe): figure out how to load/store elements and maps.  Possibly just use intrinsic functions.
 
-// Loads a variable's address (module, argument, local, or property), producing a pointer that can be dereferenced.
-export interface LoadVariableExpression extends Expression {
-    kind:     LoadVariableExpressionKind;
-    variable: symbols.VariableToken; // the variable to load from.
-    object?:  Expression;            // the `this` object, in the case of class properties.
+// Loads a location's address, producing a pointer that can be dereferenced.
+export interface LoadLocationExpression extends Expression {
+    kind:    LoadLocationExpressionKind;
+    object?: Expression; // the `this` object, in the case of class properties.
+    name:    Identifier; // the name of the member to load.
 }
-export const loadVariableExpressionKind = "LoadVariableExpression";
-export type  LoadVariableExpressionKind = "LoadVariableExpression";
-
-// Loads a function's address, producing a pointer that can be dereferenced to produce an invocable expression.
-export interface LoadFunctionExpression extends Expression {
-    kind: LoadFunctionExpressionKind;
-    function: symbols.FunctionToken; // the function to load as a lambda.
-    object?: Expression;             // the `this` object, in the case of class methods.
-}
-export const loadFunctionExpressionKind = "LoadFunctionExpression";
-export type  LoadFunctionExpressionKind = "LoadFunctionExpression";
+export const loadLocationExpressionKind = "LoadLocationExpression";
+export type  LoadLocationExpressionKind = "LoadLocationExpression";
 
 // Dynamically loads either a variable or function, by name, from an object.
 // TODO(joe): I'm unsure if we should permit assigning to functions by name; I think we'll need to for Python/Ruby/etc.
 export interface LoadDynamicExpression extends Expression {
     kind:   LoadDynamicExpressionKind;
-    key:    Expression; // the name of the property to load (a string expression).
     object: Expression; // the object to load a property from.
+    name:   Expression; // the name of the property to load.
 }
 export const loadDynamicExpressionKind = "LoadDynamicExpression";
 export type  LoadDynamicExpressionKind = "LoadDynamicExpression";

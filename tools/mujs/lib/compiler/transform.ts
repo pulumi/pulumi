@@ -618,9 +618,9 @@ export class Transpiler {
         contract.requires(!!variable.initializer, "variable", "Expected variable to have an initializer");
         return this.copyLocation(variable.node, {
             kind:     ast.binaryOperatorExpressionKind,
-            left:     <ast.LoadVariableExpression>{
-                kind:     ast.loadVariableExpressionKind,
-                variable: variable.local.name.ident,
+            left:     <ast.LoadLocationExpression>{
+                kind: ast.loadLocationExpressionKind,
+                name: variable.local.name,
             },
             operator: "=",
             right:    variable.initializer,
@@ -1084,7 +1084,26 @@ export class Transpiler {
     }
 
     private transformElementAccessExpression(node: ts.ElementAccessExpression): ast.Expression {
-        return contract.fail("NYI");
+        let object: ast.Expression = this.transformExpression(node.expression);
+        if (node.argumentExpression) {
+            switch (node.argumentExpression.kind) {
+                case ts.SyntaxKind.Identifier:
+                    return this.copyLocation(node, {
+                        kind:   ast.loadLocationExpressionKind,
+                        object: object,
+                        key:    this.transformIdentifier(<ts.Identifier>node.argumentExpression),
+                    });
+                default:
+                    return this.copyLocation(node, {
+                        kind: ast.loadDynamicExpressionKind,
+                        object: object,
+                        key:    this.transformExpression(<ts.Expression>node.argumentExpression),
+                    });
+            }
+        }
+        else {
+            return object;
+        }
     }
 
     private transformFunctionExpression(node: ts.FunctionExpression): ast.Expression {
@@ -1151,8 +1170,14 @@ export class Transpiler {
         return contract.fail("NYI");
     }
 
-    private transformSuperExpression(node: ts.SuperExpression): ast.Expression {
-        return contract.fail("NYI");
+    private transformSuperExpression(node: ts.SuperExpression): ast.LoadLocationExpression {
+        return {
+            kind: ast.loadLocationExpressionKind,
+            name: {
+                kind:  ast.identifierKind,
+                ident: symbols.specialVariableSuper,
+            },
+        };
     }
 
     private transformTaggedTemplateExpression(node: ts.TaggedTemplateExpression): ast.Expression {
@@ -1163,8 +1188,14 @@ export class Transpiler {
         return contract.fail("NYI");
     }
 
-    private transformThisExpression(node: ts.ThisExpression): ast.Expression {
-        return contract.fail("NYI");
+    private transformThisExpression(node: ts.ThisExpression): ast.LoadLocationExpression {
+        return {
+            kind: ast.loadLocationExpressionKind,
+            name: {
+                kind:  ast.identifierKind,
+                ident: symbols.specialVariableThis,
+            },
+        };
     }
 
     private transformTypeOfExpression(node: ts.TypeOfExpression): ast.Expression {
