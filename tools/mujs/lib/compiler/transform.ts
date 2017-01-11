@@ -79,26 +79,58 @@ let postfixUnaryOperators = new Map<ts.SyntaxKind, ast.UnaryOperator>([
     [ ts.SyntaxKind.MinusMinusToken, "--" ],
 ]);
 
-// A top-level module element is either a definition or a statement.
-type ModuleElement = ast.Definition | ast.Statement;
+// A top-level module element is either a module member (definition) or a statement (initializer).
+type ModuleElement = ast.ModuleMember | VariableDeclaration<ast.ModuleProperty> | ast.Statement;
+
+// A top-level class element is either a class member (definition) or a statement (initializer).
+type ClassElement = ast.ClassMember | VariableDeclaration<ast.ClassProperty>;
+
+function isVariableDeclaration(element: ModuleElement | ClassElement): boolean {
+    return !!(element instanceof VariableDeclaration);
+}
 
 // A variable is a MuIL variable with an optional initializer expression.  This is required because MuIL doesn't support
 // complex initializers on the Variable AST node -- they must be explicitly placed into an initializer section.
-interface VariableDeclaration {
-    node:         ts.Node;           // the source node.
-    local:        ast.LocalVariable; // the MuIL variable information.
-    legacyVar?:   boolean;           // true if we should mimick legacy ECMAScript "var" behavior; false for "let".
-    initializer?: ast.Expression;    // an optional initialization expression.
+class VariableDeclaration<TVariable extends ast.Variable> {
+    constructor(
+        public node:         ts.Node,        // the source node.
+        public variable:     TVariable,      // the MuIL variable information.
+        public legacyVar?:   boolean,        // true to mimick legacy ECMAScript "var" behavior; false for "let".
+        public initializer?: ast.Expression, // an optional initialization expression.
+    ) { }
+}
+
+// A variable declaration isn't yet known to be a module or class property, and so it just contains the subset in common
+// between them.  This facilitates code reuse in the translation passes.
+interface VariableLikeDeclaration {
+    name:         ast.Identifier;
+    type:         symbols.TypeToken;
+    readonly?:    boolean;
+    legacyVar?:   boolean;
+    initializer?: ast.Expression;
 }
 
 // A function declaration isn't yet known to be a module or class method, and so it just contains the subset that is
 // common between them.  This facilitates code reuse in the translation passes.
-interface FunctionDeclaration {
-    node:        ts.Node;
+interface FunctionLikeDeclaration {
     name:        ast.Identifier;
     parameters:  ast.LocalVariable[];
     body?:       ast.Block;
     returnType?: symbols.TypeToken;
+}
+
+function ident(id: string): ast.Identifier {
+    return {
+        kind:  ast.identifierKind,
+        ident: id,
+    };
+}
+
+function isComputed(name: ts.Node | undefined): boolean {
+    if (name) {
+        return (name.kind === ts.SyntaxKind.ComputedPropertyName);
+    }
+    return false;
 }
 
 // A transpiler is responsible for transforming TypeScript program artifacts into MuPack/MuIL AST forms.
@@ -167,24 +199,12 @@ export class Transpiler {
         return dst;
     }
 
-    /** AST queries **/
-
-    private isComputed(name: ts.Node | undefined): boolean {
-        if (name) {
-            return (name.kind === ts.SyntaxKind.ComputedPropertyName);
-        }
-        return false;
-    }
-
     /** Transformations **/
 
     /** Symbols **/
 
     private transformIdentifier(node: ts.Identifier): ast.Identifier {
-        return this.copyLocation(node, {
-            kind:  ast.identifierKind,
-            ident: node.text,
-        });
+        return this.copyLocation(node, ident(node.text));
     }
 
     /** Modules **/
@@ -204,11 +224,23 @@ export class Transpiler {
         for (let statement of node.statements) {
             let elements: ModuleElement[] = this.transformSourceFileStatement(statement);
             for (let element of elements) {
-                if (ast.isDefinition(element)) {
-                    let defn: ast.Definition = <ast.Definition>element;
-                    members[defn.name.ident] = defn;
+                if (isVariableDeclaration(element)) {
+                    // This is a module property with a possible initializer.  The property should get registered as a
+                    // member in this module's member map, and the initializer must happen in the module initializer.
+                    // TODO(joe): respect legacyVar to emulate "var"-like scoping.
+                    let decl = <VariableDeclaration<ast.ModuleProperty>>element;
+                    if (decl.initializer) {
+                        statements.push(this.makeVariableInitializer(decl));
+                    }
+                    members[decl.variable.name.ident] = decl.variable;
+                }
+                else if (ast.isDefinition(<ast.Node>element)) {
+                    // This is a module member; simply add it to the list.
+                    let member = <ast.ModuleMember>element;
+                    members[member.name.ident] = member;
                 }
                 else {
+                    // This is a top-level module statement; place it into the module initializer.
                     statements.push(<ast.Statement>element);
                 }
             }
@@ -218,10 +250,7 @@ export class Transpiler {
         if (statements.length > 0) {
             let initializer: ast.ModuleMethod = {
                 kind:   ast.moduleMethodKind,
-                name:   {
-                    kind:  ast.identifierKind,
-                    ident: symbols.specialFunctionInitializer,
-                },
+                name:   ident(symbols.specialFunctionInitializer),
                 access: symbols.publicAccessibility,
                 body:   {
                     kind:       ast.blockKind,
@@ -241,10 +270,7 @@ export class Transpiler {
 
         return this.copyLocation(node, {
             kind:    ast.moduleKind,
-            name:    <ast.Identifier>{
-                kind:  ast.identifierKind,
-                ident: moduleName,
-            },
+            name:    ident(moduleName),
             members: members,
         });
     }
@@ -289,11 +315,9 @@ export class Transpiler {
         // function or class is permitted, and specifically not interface or let.  Then smash the name with "default".
         if (ts.getCombinedModifierFlags(node) & ts.ModifierFlags.Default) {
             contract.assert(elements.length === 1);
-            contract.assert(elements[0].kind === ast.moduleMethodKind || elements[0].kind === ast.classKind);
-            (<ast.Definition>elements[0]).name = {
-                kind:  ast.identifierKind,
-                ident: defaultExport,
-            };
+            let defn = <ast.Definition>elements[0];
+            contract.assert(defn.kind === ast.moduleMethodKind || defn.kind === ast.classKind);
+            defn.name = ident(defaultExport);
         }
 
         return elements;
@@ -395,8 +419,7 @@ export class Transpiler {
             case ts.SyntaxKind.ClassDeclaration:
                 return [ this.transformClassDeclaration(<ts.ClassDeclaration>node, access) ];
             case ts.SyntaxKind.FunctionDeclaration:
-                return [ this.transformFunctionDeclaration<ast.ModuleMethod>(
-                    <ts.FunctionDeclaration>node, ast.moduleMethodKind, access) ];
+                return [ this.transformModuleFunctionDeclaration(<ts.FunctionDeclaration>node, access) ];
             case ts.SyntaxKind.InterfaceDeclaration:
                 return [ this.transformInterfaceDeclaration(<ts.InterfaceDeclaration>node, access) ];
             case ts.SyntaxKind.ModuleDeclaration:
@@ -437,19 +460,61 @@ export class Transpiler {
             name = this.transformIdentifier(node.name);
         }
         else {
-            name = {
-                kind:  ast.identifierKind,
-                ident: defaultExport,
-            };
+            name = ident(defaultExport);
         }
 
-        // Transform all non-semicolon members for this declaration.
-        let members: ast.ClassMembers = {};
+        // Transform all non-semicolon members for this declaration into ClassMembers.
+        let elements: ClassElement[] = [];
         for (let member of node.members) {
             if (member.kind !== ts.SyntaxKind.SemicolonClassElement) {
-                let result: ast.ClassMember = this.transformClassElement(member);
-                members[result.name.ident] = result;
+                elements.push(this.transformClassElement(member));
             }
+        }
+
+        // Now create a member map for this class by translating the ClassMembers created during the translation.
+        let members: ast.ClassMembers = {};
+
+        // First do a pass over all methods (including constructor methods).
+        for (let element of elements) {
+            if (!isVariableDeclaration(element)) {
+                let method = <ast.ClassMethod>element;
+                members[method.name.ident] = method;
+            }
+        }
+
+        // For all class properties with default values, we need to spill the initializer into the constructor.  This
+        // is non-trivial, because the class may not have an explicit constructor.  If it doesn't we need to generate
+        // one.  In either case, we must be careful to respect initialization order with respect to super calls.
+        // Namely, all property initializers must occur *after* the invocation of `super()`.
+        let propertyInitializers: ast.Statement[] = [];
+        for (let element of elements) {
+            if (isVariableDeclaration(element)) {
+                let decl = <VariableDeclaration<ast.ClassProperty>>element;
+                if (decl.initializer) {
+                    propertyInitializers.push(this.makeVariableInitializer(decl));
+                }
+                members[decl.variable.name.ident] = decl.variable;
+            }
+        }
+        if (propertyInitializers.length > 0) {
+            // Locate the constructor, possibly fabricating one if necessary.
+            let ctor: ast.ClassMethod | undefined =
+                <ast.ClassMethod>members[symbols.specialFunctionConstructor];
+            if (!ctor) {
+                // TODO: once we support base classes, inject a call to super() at the front.
+                ctor = members[symbols.specialFunctionConstructor] = <ast.ClassMethod>{
+                    kind: ast.classMethodKind,
+                    name: ident(symbols.specialFunctionConstructor),
+                };
+            }
+            if (!ctor.body) {
+                ctor.body = <ast.Block>{
+                    kind:       ast.blockKind,
+                    statements: [],
+                };
+            }
+            // TODO: once we support base classes, search for the super() call and append afterwards.
+            ctor.body.statements = propertyInitializers.concat(ctor.body.statements);
         }
 
         let mods: ts.ModifierFlags = ts.getCombinedModifierFlags(node);
@@ -486,7 +551,9 @@ export class Transpiler {
         }
     }
 
-    private transformFunctionLikeDeclaration(node: ts.FunctionLikeDeclaration): FunctionDeclaration {
+    // A common routine for transforming FunctionLikeDeclarations.  The return is specialized per callsite, since it
+    // will differ slightly between module methods, class methods, lambdas, and so on.
+    private transformFunctionLikeDeclaration(node: ts.FunctionLikeDeclaration): FunctionLikeDeclaration {
         // Ensure we are dealing with the supported subset of functions.
         // TODO: turn these into real errors.
         if (ts.getCombinedModifierFlags(node) & ts.ModifierFlags.Async) {
@@ -502,21 +569,13 @@ export class Transpiler {
         if (node.name) {
             name = this.transformPropertyName(node.name);
         }
+        else if (node.kind === ts.SyntaxKind.Constructor) {
+            // Constructors have a special name.
+            name = ident(symbols.specialFunctionConstructor);
+        }
         else {
-            // Create a default identifier name.
-            let ident: string;
-            if (node.kind === ts.SyntaxKind.Constructor) {
-                // Constructors have a special name.
-                ident = symbols.specialFunctionConstructor;
-            }
-            else {
-                // All others are assumed to be default exports.
-                ident = defaultExport;
-            }
-            name = {
-                kind:  ast.identifierKind,
-                ident: ident,
-            };
+            // All others are assumed to be default exports.
+            name = ident(defaultExport);
         }
 
         // Now visit the body; it can either be a block or a free-standing expression.
@@ -545,7 +604,7 @@ export class Transpiler {
         }
 
         // Next transform the parameter variables into locals.
-        let parameters: VariableDeclaration[] = node.parameters.map(
+        let parameters: VariableDeclaration<ast.LocalVariable>[] = node.parameters.map(
             (param: ts.ParameterDeclaration) => this.transformParameterDeclaration(param));
 
         // If there are any initializers, make sure to prepend them (in order) to the body block.
@@ -555,20 +614,20 @@ export class Transpiler {
             }
         }
 
+        // Delegate to the factory method to turn this into a real function object.
         return {
-            node:       node,
             name:       name,
-            parameters: parameters.map((p: VariableDeclaration) => p.local),
+            parameters: parameters.map((p: VariableDeclaration<ast.LocalVariable>) => p.variable),
             body:       body,
             returnType: "TODO",
         };
     }
 
-    private transformFunctionDeclaration<TFunction extends ast.Function>(
-            node: ts.FunctionDeclaration, kind: ast.NodeKind, access: symbols.Accessibility): TFunction {
-        let decl: FunctionDeclaration = this.transformFunctionLikeDeclaration(node);
-        return this.copyLocation(node, <TFunction><any>{
-            kind:       kind,
+    private transformModuleFunctionDeclaration(
+            node: ts.FunctionDeclaration, access: symbols.Accessibility): ast.ModuleMethod {
+        let decl: FunctionLikeDeclaration = this.transformFunctionLikeDeclaration(node);
+        return this.copyLocation(node, <ast.ModuleMethod>{
+            kind:       ast.moduleMethodKind,
             name:       decl.name,
             access:     access,
             parameters: decl.parameters,
@@ -585,7 +644,7 @@ export class Transpiler {
         return contract.fail("NYI");
     }
 
-    private transformParameterDeclaration(node: ts.ParameterDeclaration): VariableDeclaration {
+    private transformParameterDeclaration(node: ts.ParameterDeclaration): VariableDeclaration<ast.LocalVariable> {
         // Validate that we're dealing with the supported subset.
         // TODO(joe): turn these into real error messages.
         if (!!node.dotDotDotToken) {
@@ -600,8 +659,8 @@ export class Transpiler {
             initializer = this.transformExpression(node.initializer);
         }
         return {
-            node:  node,
-            local: {
+            node:     node,
+            variable: {
                 kind: ast.localVariableKind,
                 name: name,
                 type: "TODO",
@@ -614,52 +673,58 @@ export class Transpiler {
         return contract.fail("NYI");
     }
 
-    private makeVariableInitializer(variable: VariableDeclaration): ast.Statement {
-        contract.requires(!!variable.initializer, "variable", "Expected variable to have an initializer");
-        return this.copyLocation(variable.node, {
+    private makeVariableInitializer(decl: VariableDeclaration<ast.Variable>): ast.Statement {
+        contract.requires(!!decl.initializer, "decl", "Expected variable declaration to have an initializer");
+        return this.copyLocation(decl.node, {
             kind:     ast.binaryOperatorExpressionKind,
             left:     <ast.LoadLocationExpression>{
                 kind: ast.loadLocationExpressionKind,
-                name: variable.local.name,
+                name: decl.variable.name,
             },
             operator: "=",
-            right:    variable.initializer,
+            right:    decl.initializer,
         });
     }
 
-    private transformVariableStatement(node: ts.VariableStatement): VariableDeclaration[] {
-        let variables: VariableDeclaration[] = node.declarationList.declarations.map(
-            (decl: ts.VariableDeclaration) => this.transformVariableDeclaration(decl));
-
-        // If the node is marked "const", tag all variables as readonly.
-        if (!!(node.declarationList.flags & ts.NodeFlags.Const)) {
-            for (let variable of variables) {
-                variable.local.readonly = true;
-            }
-        }
-
-        // If the node isn't marked "let", we must mark all variables to use legacy "var" behavior.
-        if (!(node.declarationList.flags & ts.NodeFlags.Let)) {
-            for (let variable of variables) {
-                variable.legacyVar = true;
-            }
-        }
-
-        return variables;
+    private transformVariableStatement(node: ts.VariableStatement): VariableLikeDeclaration[] {
+        return node.declarationList.declarations.map(
+            (decl: ts.VariableDeclaration) => {
+                let like: VariableLikeDeclaration = this.transformVariableDeclaration(decl);
+                // If the node is marked "const", tag all variables as readonly.
+                if (!!(node.declarationList.flags & ts.NodeFlags.Const)) {
+                    like.readonly = true;
+                }
+                // If the node isn't marked "let", we must mark all variables to use legacy "var" behavior.
+                if (!(node.declarationList.flags & ts.NodeFlags.Let)) {
+                    like.legacyVar = true;
+                }
+                return like;
+            },
+        );
     }
 
     private transformLocalVariableStatement(node: ts.VariableStatement): ast.Statement {
         // For variables, we need to append initializers as assignments if there are any.
         // TODO: emulate "var"-like scoping.
         let statements: ast.Statement[] = [];
-        let variables: VariableDeclaration[] = this.transformVariableStatement(node);
-        for (let variable of variables) {
+        let decls: VariableLikeDeclaration[] = this.transformVariableStatement(node);
+        for (let decl of decls) {
+            let local = <ast.LocalVariable>{
+                kind:     ast.localVariableKind,
+                name:     decl.name,
+                type:     decl.type,
+                readonly: decl.readonly,
+            };
+
             statements.push(<ast.LocalVariableDeclaration>{
                 kind:  ast.localVariableDeclarationKind,
-                local: variable.local,
+                local: local,
             });
-            if (variable.initializer) {
-                statements.push(this.makeVariableInitializer(variable));
+
+            if (decl.initializer) {
+                let vdecl = new VariableDeclaration<ast.LocalVariable>(
+                    node, local, decl.legacyVar, decl.initializer);
+                statements.push(this.makeVariableInitializer(vdecl));
             }
         }
         if (statements.length === 1) {
@@ -675,25 +740,24 @@ export class Transpiler {
 
     private transformModuleVariableStatement(
             node: ts.VariableStatement, access: symbols.Accessibility): ModuleElement[] {
-        let elements: ModuleElement[] = [];
-        let variables: VariableDeclaration[] = this.transformVariableStatement(node);
-        for (let variable of variables) {
-            // First transform the local varaible into a module property.
-            // TODO(joe): emulate "var"-like scoping.
-            elements.push(object.extend(variable.local, {
-                kind:   ast.modulePropertyKind,
-                access: access,
-            }));
-
-            // Next, if there is an initializer, use it to initialize the variable in the module initializer.
-            if (variable.initializer) {
-                elements.push(this.makeVariableInitializer(variable));
-            }
-        }
-        return elements;
+        let decls: VariableLikeDeclaration[] = this.transformVariableStatement(node);
+        return decls.map((decl: VariableLikeDeclaration) =>
+            new VariableDeclaration<ast.ModuleProperty>(
+                node,
+                <ast.ModuleProperty>{
+                    kind:     ast.modulePropertyKind,
+                    name:     decl.name,
+                    access:   access,
+                    readonly: decl.readonly,
+                    type:     decl.type,
+                },
+                decl.legacyVar,
+                decl.initializer,
+            ),
+        );
     }
 
-    private transformVariableDeclaration(node: ts.VariableDeclaration): VariableDeclaration {
+    private transformVariableDeclaration(node: ts.VariableDeclaration): VariableLikeDeclaration {
         // TODO[marapongo/mu#43]: parameters can be any binding name, including destructuring patterns.  For now,
         //     however, we only support the identifier forms.
         let name: ast.Identifier = this.transformDeclarationIdentifier(node.name);
@@ -702,17 +766,13 @@ export class Transpiler {
             initializer = this.transformExpression(node.initializer);
         }
         return {
-            node:  node,
-            local: {
-                kind: ast.localVariableKind,
-                name: name,
-                type: "TODO",
-            },
+            name:        name,
+            type:        "TODO",
             initializer: initializer,
         };
     }
 
-    private transformVariableDeclarationList(node: ts.VariableDeclarationList): VariableDeclaration[] {
+    private transformVariableDeclarationList(node: ts.VariableDeclarationList): VariableLikeDeclaration[] {
         return node.declarations.map((decl: ts.VariableDeclaration) => this.transformVariableDeclaration(decl));
     }
 
@@ -742,29 +802,31 @@ export class Transpiler {
         }
     }
 
-    private transformClassElementFunctionLike(node: ts.FunctionLikeDeclaration): ast.Definition {
+    private getClassAccessibility(node: ts.Node): symbols.ClassMemberAccessibility {
+        let mods: ts.ModifierFlags = ts.getCombinedModifierFlags(node);
+        if (!!(mods & ts.ModifierFlags.Private)) {
+            return symbols.privateAccessibility;
+        }
+        else if (!!(mods & ts.ModifierFlags.Protected)) {
+            return symbols.protectedAccessibility;
+        }
+        else {
+            // All members are public by default in ECMA/TypeScript.
+            return symbols.publicAccessibility;
+        }
+    }
+
+    private transformClassElementFunctionLike(node: ts.FunctionLikeDeclaration): ast.ClassMethod {
         // Get/Set accessors aren't yet supported.
         contract.assert(node.kind !== ts.SyntaxKind.GetAccessor, "GetAccessor NYI");
         contract.assert(node.kind !== ts.SyntaxKind.SetAccessor, "SetAccessor NYI");
 
         let mods: ts.ModifierFlags = ts.getCombinedModifierFlags(node);
-        let decl: FunctionDeclaration = this.transformFunctionLikeDeclaration(node);
-        let access: symbols.ClassMemberAccessibility;
-        if (!!(mods & ts.ModifierFlags.Private)) {
-            access = symbols.privateAccessibility;
-        }
-        else if (!!(mods & ts.ModifierFlags.Protected)) {
-            access = symbols.protectedAccessibility;
-        }
-        else {
-            // All members are public by default in ECMA/TypeScript.
-            access = symbols.publicAccessibility;
-        }
-
-        return this.copyLocation(node, {
+        let decl: FunctionLikeDeclaration = this.transformFunctionLikeDeclaration(node);
+        return this.copyLocation(node, <ast.ClassMethod>{
             kind:       ast.classMethodKind,
             name:       decl.name,
-            access:     access,
+            access:     this.getClassAccessibility(node),
             parameters: decl.parameters,
             body:       decl.body,
             returnType: decl.returnType,
@@ -1173,10 +1235,7 @@ export class Transpiler {
     private transformSuperExpression(node: ts.SuperExpression): ast.LoadLocationExpression {
         return {
             kind: ast.loadLocationExpressionKind,
-            name: {
-                kind:  ast.identifierKind,
-                ident: symbols.specialVariableSuper,
-            },
+            name: ident(symbols.specialVariableSuper),
         };
     }
 
@@ -1191,10 +1250,7 @@ export class Transpiler {
     private transformThisExpression(node: ts.ThisExpression): ast.LoadLocationExpression {
         return {
             kind: ast.loadLocationExpressionKind,
-            name: {
-                kind:  ast.identifierKind,
-                ident: symbols.specialVariableThis,
-            },
+            name: ident(symbols.specialVariableThis),
         };
     }
 
@@ -1284,10 +1340,7 @@ export class Transpiler {
     }
 
     private transformIdentifierExpression(node: ts.Identifier): ast.Identifier {
-        return this.copyLocation(node, {
-            kind:  ast.identifierKind,
-            ident: node.text,
-        });
+        return this.copyLocation(node, ident(node.text));
     }
 
     private transformObjectBindingPattern(node: ts.ObjectBindingPattern): ast.Expression {

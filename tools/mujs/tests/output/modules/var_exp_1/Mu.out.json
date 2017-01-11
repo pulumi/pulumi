@@ -25,8 +25,8 @@
                             }
                         }
                     },
-                    "type": "TODO",
-                    "access": "public"
+                    "access": "public",
+                    "type": "TODO"
                 },
                 ".init": {
                     "kind": "ModuleMethod",
@@ -41,8 +41,22 @@
                             {
                                 "kind": "BinaryOperatorExpression",
                                 "left": {
-                                    "kind": "LoadVariableExpression",
-                                    "variable": "x"
+                                    "kind": "LoadLocationExpression",
+                                    "name": {
+                                        "kind": "Identifier",
+                                        "ident": "x",
+                                        "loc": {
+                                            "file": "index.ts",
+                                            "start": {
+                                                "line": 1,
+                                                "column": 11
+                                            },
+                                            "end": {
+                                                "line": 1,
+                                                "column": 12
+                                            }
+                                        }
+                                    }
                                 },
                                 "operator": "=",
                                 "right": {
@@ -65,11 +79,11 @@
                                     "file": "index.ts",
                                     "start": {
                                         "line": 1,
-                                        "column": 11
+                                        "column": 0
                                     },
                                     "end": {
                                         "line": 1,
-                                        "column": 17
+                                        "column": 18
                                     }
                                 }
                             }
