@@ -13,11 +13,13 @@ import {asyncTest} from "../util";
 let testCases: string[] = [
     "empty",
 
+    "modules/var_1",
+    "modules/var_exp_1",
     "modules/func_1",
     "modules/func_exp_1",
     "modules/func_exp_def_1",
-    "modules/var_1",
-    "modules/var_exp_1",
+    "modules/class_1",
+    "modules/class_exp_1",
 ];
 
 describe("outputs", () => {

@@ -91,6 +91,16 @@ interface VariableDeclaration {
     initializer?: ast.Expression;    // an optional initialization expression.
 }
 
+// A function declaration isn't yet known to be a module or class method, and so it just contains the subset that is
+// common between them.  This facilitates code reuse in the translation passes.
+interface FunctionDeclaration {
+    node:        ts.Node;
+    name:        ast.Identifier;
+    parameters:  ast.LocalVariable[];
+    body?:       ast.Block;
+    returnType?: symbols.TypeToken;
+}
+
 // A transpiler is responsible for transforming TypeScript program artifacts into MuPack/MuIL AST forms.
 export class Transpiler {
     private meta: pack.Metadata; // the package's metadata.
@@ -416,7 +426,40 @@ export class Transpiler {
     /** Declaration statements **/
 
     private transformClassDeclaration(node: ts.ClassDeclaration, access: symbols.Accessibility): ast.Class {
-        return contract.fail("NYI");
+        // TODO(joe): generics.
+        // TODO(joe): decorators.
+        // TODO(joe): extends/implements.
+
+        // First transform the name into an identifier.  In the absence of a name, we will proceed under the assumption
+        // that it is the default export.  This should be verified later on.
+        let name: ast.Identifier;
+        if (node.name) {
+            name = this.transformIdentifier(node.name);
+        }
+        else {
+            name = {
+                kind:  ast.identifierKind,
+                ident: defaultExport,
+            };
+        }
+
+        // Transform all non-semicolon members for this declaration.
+        let members: ast.ClassMembers = {};
+        for (let member of node.members) {
+            if (member.kind !== ts.SyntaxKind.SemicolonClassElement) {
+                let result: ast.ClassMember = this.transformClassElement(member);
+                members[result.name.ident] = result;
+            }
+        }
+
+        let mods: ts.ModifierFlags = ts.getCombinedModifierFlags(node);
+        return this.copyLocation(node, {
+            kind:     ast.classKind,
+            name:     name,
+            access:   access,
+            members:  members,
+            abstract: !!(mods & ts.ModifierFlags.Abstract),
+        });
     }
 
     private transformDeclarationName(node: ts.DeclarationName): ast.Expression {
@@ -443,10 +486,7 @@ export class Transpiler {
         }
     }
 
-    private transformFunctionDeclaration<T extends ast.Function>(
-            node: ts.FunctionDeclaration, kind: ast.NodeKind, access: symbols.Accessibility): ast.Function {
-        contract.requires(!!node.body, "node", "Expected a function body");
-
+    private transformFunctionLikeDeclaration(node: ts.FunctionLikeDeclaration): FunctionDeclaration {
         // Ensure we are dealing with the supported subset of functions.
         // TODO: turn these into real errors.
         if (ts.getCombinedModifierFlags(node) & ts.ModifierFlags.Async) {
@@ -460,17 +500,49 @@ export class Transpiler {
         // that it is the default export.  This should be verified later on.
         let name: ast.Identifier;
         if (node.name) {
-            name = this.transformIdentifier(node.name);
+            name = this.transformPropertyName(node.name);
         }
         else {
+            // Create a default identifier name.
+            let ident: string;
+            if (node.kind === ts.SyntaxKind.Constructor) {
+                // Constructors have a special name.
+                ident = symbols.specialFunctionConstructor;
+            }
+            else {
+                // All others are assumed to be default exports.
+                ident = defaultExport;
+            }
             name = {
                 kind:  ast.identifierKind,
-                ident: defaultExport,
+                ident: ident,
             };
         }
 
         // Now visit the body; it can either be a block or a free-standing expression.
-        let body: ast.Block = this.transformBlock(<ts.Block>node.body!);
+        let body: ast.Block | undefined;
+        if (node.body) {
+            switch (node.body.kind) {
+                case ts.SyntaxKind.Block:
+                    body = this.transformBlock(<ts.Block>node.body);
+                    break;
+                default:
+                    // Translate a body of <expr> into
+                    //     {
+                    //         return <expr>;
+                    //     }
+                    body = {
+                        kind:       ast.blockKind,
+                        statements: [
+                            <ast.ReturnStatement>{
+                                kind:       ast.returnStatementKind,
+                                expression: this.transformExpression(<ts.Expression>node.body),
+                            },
+                        ],
+                    };
+                    break;
+            }
+        }
 
         // Next transform the parameter variables into locals.
         let parameters: VariableDeclaration[] = node.parameters.map(
@@ -478,19 +550,31 @@ export class Transpiler {
 
         // If there are any initializers, make sure to prepend them (in order) to the body block.
         for (let parameter of parameters) {
-            if (parameter.initializer) {
+            if (parameter.initializer && body) {
                 body.statements = [ this.makeVariableInitializer(parameter) ].concat(body.statements);
             }
         }
 
-        return <T><any>{
-            kind:       kind,
+        return {
+            node:       node,
             name:       name,
-            access:     access,
             parameters: parameters.map((p: VariableDeclaration) => p.local),
             body:       body,
             returnType: "TODO",
         };
+    }
+
+    private transformFunctionDeclaration<TFunction extends ast.Function>(
+            node: ts.FunctionDeclaration, kind: ast.NodeKind, access: symbols.Accessibility): TFunction {
+        let decl: FunctionDeclaration = this.transformFunctionLikeDeclaration(node);
+        return this.copyLocation(node, <TFunction><any>{
+            kind:       kind,
+            name:       decl.name,
+            access:     access,
+            parameters: decl.parameters,
+            body:       decl.body,
+            returnType: decl.returnType,
+        });
     }
 
     private transformInterfaceDeclaration(node: ts.InterfaceDeclaration, access: symbols.Accessibility): ast.Class {
@@ -659,7 +743,34 @@ export class Transpiler {
     }
 
     private transformClassElementFunctionLike(node: ts.FunctionLikeDeclaration): ast.Definition {
-        return contract.fail("NYI");
+        // Get/Set accessors aren't yet supported.
+        contract.assert(node.kind !== ts.SyntaxKind.GetAccessor, "GetAccessor NYI");
+        contract.assert(node.kind !== ts.SyntaxKind.SetAccessor, "SetAccessor NYI");
+
+        let mods: ts.ModifierFlags = ts.getCombinedModifierFlags(node);
+        let decl: FunctionDeclaration = this.transformFunctionLikeDeclaration(node);
+        let access: symbols.ClassMemberAccessibility;
+        if (!!(mods & ts.ModifierFlags.Private)) {
+            access = symbols.privateAccessibility;
+        }
+        else if (!!(mods & ts.ModifierFlags.Protected)) {
+            access = symbols.protectedAccessibility;
+        }
+        else {
+            // All members are public by default in ECMA/TypeScript.
+            access = symbols.publicAccessibility;
+        }
+
+        return this.copyLocation(node, {
+            kind:       ast.classMethodKind,
+            name:       decl.name,
+            access:     access,
+            parameters: decl.parameters,
+            body:       decl.body,
+            returnType: decl.returnType,
+            static:     !!(mods & ts.ModifierFlags.Static),
+            abstract:   !!(mods & ts.ModifierFlags.Abstract),
+        });
     }
 
     private transformClassElementProperty(node: ts.PropertyDeclaration): ast.ClassProperty {
@@ -1156,8 +1267,13 @@ export class Transpiler {
         return contract.fail("NYI");
     }
 
-    private transformPropertyName(node: ts.PropertyName): ast.Expression {
-        return contract.fail("NYI");
+    private transformPropertyName(node: ts.PropertyName): ast.Identifier {
+        switch (node.kind) {
+            case ts.SyntaxKind.Identifier:
+                return this.transformIdentifier(<ts.Identifier>node);
+            default:
+                return contract.fail("Property names other than identifiers not yet supported");
+        }
     }
 }
 

@@ -81,7 +81,18 @@
                             }
                         }
                     },
-                    "returnType": "TODO"
+                    "returnType": "TODO",
+                    "loc": {
+                        "file": "index.ts",
+                        "start": {
+                            "line": 1,
+                            "column": 0
+                        },
+                        "end": {
+                            "line": 2,
+                            "column": 1
+                        }
+                    }
                 }
             },
             "loc": {
