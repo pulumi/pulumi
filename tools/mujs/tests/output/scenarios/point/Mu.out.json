@@ -561,7 +561,18 @@
                                                         }
                                                     }
                                                 }
-                                            ]
+                                            ],
+                                            "loc": {
+                                                "file": "index.ts",
+                                                "start": {
+                                                    "line": 14,
+                                                    "column": 15
+                                                },
+                                                "end": {
+                                                    "line": 14,
+                                                    "column": 60
+                                                }
+                                            }
                                         },
                                         "loc": {
                                             "file": "index.ts",
