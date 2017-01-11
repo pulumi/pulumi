@@ -91,11 +91,22 @@ export type  LoadDynamicExpressionKind = "LoadDynamicExpression";
 
 /** Functions **/
 
-// Invokes a function.
-export interface InvokeFunctionExpression extends Expression {
-    kind:       InvokeFunctionExpressionKind;
-    function:   Expression;   // a function to invoke (of a func type).
+export interface CallExpression extends Expression {
     arguments?: Expression[]; // the list of arguments in sequential order.
+}
+
+// Allocates a new object and calls its constructor.
+export interface NewExpression extends CallExpression {
+    kind: NewExpressionKind;
+    type: Identifier; // the object type to allocate.
+}
+export const newExpressionKind = "NewExpression";
+export type  NewExpressionKind = "NewExpression";
+
+// Invokes a function.
+export interface InvokeFunctionExpression extends CallExpression {
+    kind:     InvokeFunctionExpressionKind;
+    function: Expression; // a function to invoke (of a func type).
 }
 export const invokeFunctionExpressionKind = "InvokeFunctionExpression";
 export type  InvokeFunctionExpressionKind = "InvokeFunctionExpression";

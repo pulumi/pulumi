@@ -51,6 +51,7 @@ export type NodeKind =
     expressions.ObjectLiteralInitializerKind |
     expressions.LoadLocationExpressionKind |
     expressions.LoadDynamicExpressionKind |
+    expressions.NewExpressionKind |
     expressions.InvokeFunctionExpressionKind |
     expressions.LambdaExpressionKind |
     expressions.UnaryOperatorExpressionKind |

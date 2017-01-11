@@ -20,6 +20,9 @@ let testCases: string[] = [
     "modules/func_exp_def_1",
     "modules/class_1",
     "modules/class_exp_1",
+
+    // These are not quite real-world-code, but they are more complex "integration" style tests.
+    "scenarios/point",
 ];
 
 describe("outputs", () => {

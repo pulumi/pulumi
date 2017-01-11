@@ -1241,8 +1241,21 @@ export class Transpiler {
         });
     }
 
-    private transformNewExpression(node: ts.NewExpression): ast.Expression {
-        return contract.fail("NYI");
+    private transformNewExpression(node: ts.NewExpression): ast.NewExpression {
+        // Only "new T(..)" constructors, where T is an identifier referring to a type, are permitted.
+        let ty: ast.Identifier;
+        if (node.expression.kind === ts.SyntaxKind.Identifier) {
+            ty = this.transformIdentifier(<ts.Identifier>node.expression);
+        }
+        else {
+            return contract.fail("New T(..) expression must have an identifier T");
+        }
+
+        return <ast.NewExpression>{
+            kind:      ast.newExpressionKind,
+            type:      ty,
+            arguments: node.arguments.map((expr: ts.Expression) => this.transformExpression(expr)),
+        };
     }
 
     private transformOmittedExpression(node: ts.OmittedExpression): ast.Expression {
