@@ -1231,8 +1231,12 @@ export class Transpiler {
         });
     }
 
-    private transformPropertyAccessExpression(node: ts.PropertyAccessExpression): ast.Expression {
-        return contract.fail("NYI");
+    private transformPropertyAccessExpression(node: ts.PropertyAccessExpression): ast.LoadLocationExpression {
+        return this.copyLocation(node, <ast.LoadLocationExpression>{
+            kind:   ast.loadLocationExpressionKind,
+            object: this.transformExpression(node.expression),
+            name:   this.transformIdentifier(node.name),
+        });
     }
 
     private transformNewExpression(node: ts.NewExpression): ast.Expression {
@@ -1252,10 +1256,10 @@ export class Transpiler {
     }
 
     private transformSuperExpression(node: ts.SuperExpression): ast.LoadLocationExpression {
-        return {
+        return this.copyLocation(node, <ast.LoadLocationExpression>{
             kind: ast.loadLocationExpressionKind,
             name: ident(symbols.specialVariableSuper),
-        };
+        });
     }
 
     private transformTaggedTemplateExpression(node: ts.TaggedTemplateExpression): ast.Expression {
@@ -1267,10 +1271,10 @@ export class Transpiler {
     }
 
     private transformThisExpression(node: ts.ThisExpression): ast.LoadLocationExpression {
-        return {
+        return this.copyLocation(node, <ast.LoadLocationExpression>{
             kind: ast.loadLocationExpressionKind,
             name: ident(symbols.specialVariableThis),
-        };
+        });
     }
 
     private transformTypeOfExpression(node: ts.TypeOfExpression): ast.Expression {
