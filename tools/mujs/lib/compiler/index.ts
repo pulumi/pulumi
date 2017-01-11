@@ -2,5 +2,6 @@
 
 export * from "./compile";
 export * from "./discover";
+export * from "./script";
 export * from "./transform";
 

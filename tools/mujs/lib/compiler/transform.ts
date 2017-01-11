@@ -6,10 +6,11 @@ import {contract, object} from "nodets";
 import * as fspath from "path";
 import * as ts from "typescript";
 import * as ast from "../ast";
+import * as diag from "../diag";
 import * as pack from "../pack";
 import * as symbols from "../symbols";
-import {Compilation} from "./compile";
 import {discover} from "./discover";
+import {Script} from "./script";
 
 const defaultExport: string = "default"; // the ES6 default export name.
 
@@ -133,86 +134,53 @@ function isComputed(name: ts.Node | undefined): boolean {
     return false;
 }
 
-// Translates a TypeScript position into a MuIL position (0 to 1 based lines).
-function mapPosition(s: ts.SourceFile, p: number): ast.Position {
-    let lc = s.getLineAndCharacterOfPosition(p);
-    return <ast.Position>{
-        line:   lc.line + 1,  // transform to 1-based line number
-        column: lc.character,
-    };
-}
-
 // A transpiler is responsible for transforming TypeScript program artifacts into MuPack/MuIL AST forms.
-export class Transpiler {
-    private meta: pack.Metadata; // the package's metadata.
-    private comp: Compilation;   // the package's compiled TypeScript tree and context.
+export class Transformer {
+    private meta: pack.Metadata;            // the package's metadata.
+    private script: Script;                 // the package's compiled TypeScript tree and context.
+    private dctx: diag.Context;             // the diagnostics context.
+    private diagnostics: diag.Diagnostic[]; // any diagnostics encountered during translation.
 
-    // Loads up Mu metadata and then creates a new Transpiler object.
-    public static async createFrom(comp: Compilation): Promise<Transpiler> {
-        return new Transpiler(await discover(comp.root), comp);
+    // Loads up Mu metadata and then creates a new Transformer object.
+    public static async createFrom(script: Script): Promise<Transformer> {
+        return new Transformer(await discover(script.root), script);
     }
 
-    constructor(meta: pack.Metadata, comp: Compilation) {
-        contract.requires(!!comp.tree, "comp", "A valid MuJS AST is required to lower to MuPack/MuIL");
+    constructor(meta: pack.Metadata, script: Script) {
+        contract.requires(!!script.tree, "script", "A valid MuJS AST is required to lower to MuPack/MuIL");
         this.meta = meta;
-        this.comp = comp;
+        this.script = script;
+        this.dctx = new diag.Context(script.root);
+        this.diagnostics = [];
     }
 
     // Translates a TypeScript bound tree into its equivalent MuPack/MuIL AST form, one module per file.
-    public transform(): pack.Package {
+    public transform(): TransformResult {
         // Enumerate all source files (each of which is a module in ECMAScript), and transform it.
         let modules: ast.Modules = {};
-        for (let sourceFile of this.comp.tree!.getSourceFiles()) {
+        for (let sourceFile of this.script.tree!.getSourceFiles()) {
             // By default, skip declaration files, since they are "dependencies."
             // TODO(joe): how to handle re-exports in ECMAScript, such as index aggregation.
             // TODO(joe): this isn't a perfect heuristic.  But ECMAScript is all source dependencies, so there isn't a
             //     true notion of source versus binary dependency.  We could crack open the dependencies to see if they
             //     exist within an otherwise known package, but that seems a little hokey.
             if (!sourceFile.isDeclarationFile) {
-                let mod: ast.Module = this.transformSourceFile(sourceFile, this.comp.root);
+                let mod: ast.Module = this.transformSourceFile(sourceFile, this.script.root);
                 modules[mod.name.ident] = mod;
             }
         }
 
         // Now create a new package object.
         // TODO: create a list of dependencies, partly from the metadata, partly from the TypeScript compilation.
-        return object.extend(this.meta, {
-            modules: modules,
-        });
+        return <TransformResult>{
+            diagnostics: this.diagnostics,
+            pack:        object.extend(this.meta, {
+                modules: modules,
+            }),
+        };
     }
 
     /** Helpers **/
-
-    // This annotates a given MuPack/MuIL node with another TypeScript node's source position information.
-    private addLocation<T extends ast.Node>(src: ts.Node, dst: T): T {
-        // Turn the source file name into one relative to the current root path.
-        let s: ts.SourceFile = src.getSourceFile();
-        let relativePath: string = fspath.relative(this.comp.root, s.fileName);
-        dst.loc = {
-            file:  relativePath,
-            start: mapPosition(s, src.getStart()),
-            end:   mapPosition(s, src.getEnd()),
-        };
-
-        // Despite mutating in place, we return the node to facilitate a more fluent style.
-        return dst;
-    }
-
-    // This annotates a given MuPack/MuIL node with a range of TypeScript node source positions.
-    private addLocationRange<T extends ast.Node>(start: ts.Node, end: ts.Node, dst: T): T {
-        contract.assert(start.getSourceFile() === end.getSourceFile());
-        // Turn the source file name into one relative to the current root path.
-        let s: ts.SourceFile = start.getSourceFile();
-        let relativePath: string = fspath.relative(this.comp.root, s.fileName);
-        dst.loc = {
-            file:  relativePath,
-            start: mapPosition(s, start.getStart()),
-            end:   mapPosition(s, end.getEnd()),
-        };
-
-        // Despite mutating in place, we return the node to facilitate a more fluent style.
-        return dst;
-    }
 
     // This just carries forward an existing location from another node.
     private copyLocation<T extends ast.Node>(src: ast.Node, dst: T): T {
@@ -235,12 +203,22 @@ export class Transpiler {
         return dst;
     }
 
+    // This annotates a given MuPack/MuIL node with another TypeScript node's source position information.
+    private withLocation<T extends ast.Node>(src: ts.Node, dst: T): T {
+        return this.dctx.withLocation<T>(src, dst);
+    }
+
+    // This annotates a given MuPack/MuIL node with a range of TypeScript node source positions.
+    private withLocationRange<T extends ast.Node>(start: ts.Node, end: ts.Node, dst: T): T {
+        return this.dctx.withLocationRange<T>(start, end, dst);
+    }
+
     /** Transformations **/
 
     /** Symbols **/
 
     private transformIdentifier(node: ts.Identifier): ast.Identifier {
-        return this.addLocation(node, ident(node.text));
+        return this.withLocation(node, ident(node.text));
     }
 
     /** Modules **/
@@ -304,7 +282,7 @@ export class Transpiler {
             moduleName = moduleName.substring(0, moduleExtIndex);
         }
 
-        return this.addLocation(node, <ast.Module>{
+        return this.withLocation(node, <ast.Module>{
             kind:    ast.moduleKind,
             name:    ident(moduleName),
             members: members,
@@ -393,8 +371,9 @@ export class Transpiler {
             case ts.SyntaxKind.InterfaceDeclaration:
             case ts.SyntaxKind.ModuleDeclaration:
             case ts.SyntaxKind.TypeAliasDeclaration:
-                // TODO: issue a proper error; these sorts of declarations aren't valid statements in MuIL.
-                return contract.fail(`Declaration node ${ts.SyntaxKind[node.kind]} isn't a valid statement in MuIL`);
+                // These declarations cannot appear as statements; given an error and return an empty statement.
+                this.diagnostics.push(this.dctx.newInvalidDeclarationStatementError(node));
+                return { kind: ast.emptyStatementKind };
             case ts.SyntaxKind.VariableStatement:
                 return this.transformLocalVariableStatement(<ts.VariableStatement>node);
 
@@ -476,7 +455,7 @@ export class Transpiler {
         if (statement.kind === ast.blockKind) {
             return <ast.Block>statement;
         }
-        return this.addLocation(node, <ast.Block>{
+        return this.withLocation(node, <ast.Block>{
             kind:       ast.blockKind,
             statements: [ statement ],
         });
@@ -554,7 +533,7 @@ export class Transpiler {
         }
 
         let mods: ts.ModifierFlags = ts.getCombinedModifierFlags(node);
-        return this.addLocation(node, <ast.Class>{
+        return this.withLocation(node, <ast.Class>{
             kind:     ast.classKind,
             name:     name,
             access:   access,
@@ -591,12 +570,11 @@ export class Transpiler {
     // will differ slightly between module methods, class methods, lambdas, and so on.
     private transformFunctionLikeDeclaration(node: ts.FunctionLikeDeclaration): FunctionLikeDeclaration {
         // Ensure we are dealing with the supported subset of functions.
-        // TODO: turn these into real errors.
         if (ts.getCombinedModifierFlags(node) & ts.ModifierFlags.Async) {
-            throw new Error("Async functions are not supported in MuJS");
+            this.diagnostics.push(this.dctx.newAsyncNotSupportedError(node));
         }
         if (!!node.asteriskToken) {
-            throw new Error("Generator functions are not supported in MuJS");
+            this.diagnostics.push(this.dctx.newGeneratorsNotSupportedError(node.asteriskToken));
         }
 
         // First transform the name into an identifier.  In the absence of a name, we will proceed under the assumption
@@ -662,7 +640,7 @@ export class Transpiler {
     private transformModuleFunctionDeclaration(
             node: ts.FunctionDeclaration, access: symbols.Accessibility): ast.ModuleMethod {
         let decl: FunctionLikeDeclaration = this.transformFunctionLikeDeclaration(node);
-        return this.addLocation(node, <ast.ModuleMethod>{
+        return this.withLocation(node, <ast.ModuleMethod>{
             kind:       ast.moduleMethodKind,
             name:       decl.name,
             access:     access,
@@ -682,9 +660,8 @@ export class Transpiler {
 
     private transformParameterDeclaration(node: ts.ParameterDeclaration): VariableDeclaration<ast.LocalVariable> {
         // Validate that we're dealing with the supported subset.
-        // TODO(joe): turn these into real error messages.
         if (!!node.dotDotDotToken) {
-            throw new Error("Rest-style arguments not supported by MuJS");
+            this.diagnostics.push(this.dctx.newRestParamsNotSupportedError(node.dotDotDotToken));
         }
 
         // TODO[marapongo/mu#43]: parameters can be any binding name, including destructuring patterns.  For now,
@@ -711,7 +688,7 @@ export class Transpiler {
 
     private makeVariableInitializer(decl: VariableDeclaration<ast.Variable>): ast.Statement {
         contract.requires(!!decl.initializer, "decl", "Expected variable declaration to have an initializer");
-        return this.addLocation(decl.node, {
+        return this.withLocation(decl.node, {
             kind:     ast.binaryOperatorExpressionKind,
             left:     <ast.LoadLocationExpression>{
                 kind: ast.loadLocationExpressionKind,
@@ -866,7 +843,7 @@ export class Transpiler {
 
         let mods: ts.ModifierFlags = ts.getCombinedModifierFlags(node);
         let decl: FunctionLikeDeclaration = this.transformFunctionLikeDeclaration(node);
-        return this.addLocation(node, <ast.ClassMethod>{
+        return this.withLocation(node, <ast.ClassMethod>{
             kind:       ast.classMethodKind,
             name:       decl.name,
             access:     this.getClassAccessibility(node),
@@ -904,7 +881,7 @@ export class Transpiler {
     /** Control flow statements **/
 
     private transformBreakStatement(node: ts.BreakStatement): ast.BreakStatement {
-        return this.addLocation(node, <ast.BreakStatement>{
+        return this.withLocation(node, <ast.BreakStatement>{
             kind:  ast.breakStatementKind,
             label: object.maybeUndefined(node.label, (id: ts.Identifier) => this.transformIdentifier(id)),
         });
@@ -919,7 +896,7 @@ export class Transpiler {
     }
 
     private transformContinueStatement(node: ts.ContinueStatement): ast.ContinueStatement {
-        return this.addLocation(node, <ast.ContinueStatement>{
+        return this.withLocation(node, <ast.ContinueStatement>{
             kind:  ast.continueStatementKind,
             label: object.maybeUndefined(node.label, (id: ts.Identifier) => this.transformIdentifier(id)),
         });
@@ -928,7 +905,7 @@ export class Transpiler {
     // This transforms a higher-level TypeScript `do`/`while` statement by expanding into an ordinary `while` statement.
     private transformDoStatement(node: ts.DoStatement): ast.WhileStatement {
         // Now create a new block that simply concatenates the existing one with a test/`break`.
-        let body: ast.Block = this.addLocation(node.statement, {
+        let body: ast.Block = this.withLocation(node.statement, {
             kind:       ast.blockKind,
             statements: [
                 this.transformStatement(node.statement),
@@ -946,7 +923,7 @@ export class Transpiler {
             ],
         });
 
-        return this.addLocation(node, <ast.WhileStatement>{
+        return this.withLocation(node, <ast.WhileStatement>{
             kind: ast.whileStatementKind,
             test: <ast.BoolLiteral>{
                 kind:  ast.boolLiteralKind,
@@ -973,7 +950,7 @@ export class Transpiler {
     }
 
     private transformIfStatement(node: ts.IfStatement): ast.IfStatement {
-        return this.addLocation(node, <ast.IfStatement>{
+        return this.withLocation(node, <ast.IfStatement>{
             kind:       ast.ifStatementKind,
             condition:  this.transformExpression(node.expression),
             consequent: this.transformStatement(node.thenStatement),
@@ -983,7 +960,7 @@ export class Transpiler {
     }
 
     private transformReturnStatement(node: ts.ReturnStatement): ast.ReturnStatement {
-        return this.addLocation(node, <ast.ReturnStatement>{
+        return this.withLocation(node, <ast.ReturnStatement>{
             kind:       ast.returnStatementKind,
             expression: object.maybeUndefined(
                 node.expression, (expr: ts.Expression) => this.transformExpression(expr)),
@@ -995,7 +972,7 @@ export class Transpiler {
     }
 
     private transformThrowStatement(node: ts.ThrowStatement): ast.ThrowStatement {
-        return this.addLocation(node, <ast.ThrowStatement>{
+        return this.withLocation(node, <ast.ThrowStatement>{
             kind:       ast.throwStatementKind,
             expression: this.transformExpression(node.expression),
         });
@@ -1006,7 +983,7 @@ export class Transpiler {
     }
 
     private transformWhileStatement(node: ts.WhileStatement): ast.WhileStatement {
-        return this.addLocation(node, <ast.WhileStatement>{
+        return this.withLocation(node, <ast.WhileStatement>{
             kind: ast.whileStatementKind,
             test: this.transformExpression(node.expression),
             body: this.transformStatementAsBlock(node.statement),
@@ -1017,7 +994,7 @@ export class Transpiler {
 
     private transformBlock(node: ts.Block): ast.Block {
         // TODO(joe): map directives.
-        return this.addLocation(node, <ast.Block>{
+        return this.withLocation(node, <ast.Block>{
             kind:       ast.blockKind,
             statements: node.statements.map((stmt: ts.Statement) => this.transformStatement(stmt)),
         });
@@ -1026,26 +1003,26 @@ export class Transpiler {
     private transformDebuggerStatement(node: ts.DebuggerStatement): ast.Statement {
         // The debugger statement in ECMAScript can be used to trip a breakpoint.  We don't have the equivalent in Mu at
         // the moment, so we simply produce an empty statement in its place.
-        return this.addLocation(node, <ast.Statement>{
+        return this.withLocation(node, <ast.Statement>{
             kind: ast.emptyStatementKind,
         });
     }
 
     private transformEmptyStatement(node: ts.EmptyStatement): ast.EmptyStatement {
-        return this.addLocation(node, <ast.EmptyStatement>{
+        return this.withLocation(node, <ast.EmptyStatement>{
             kind: ast.emptyStatementKind,
         });
     }
 
     private transformExpressionStatement(node: ts.ExpressionStatement): ast.ExpressionStatement {
-        return this.addLocation(node, <ast.ExpressionStatement>{
+        return this.withLocation(node, <ast.ExpressionStatement>{
             kind:       ast.expressionStatementKind,
             expression: this.transformExpression(node.expression),
         });
     }
 
     private transformLabeledStatement(node: ts.LabeledStatement): ast.LabeledStatement {
-        return this.addLocation(node, <ast.LabeledStatement>{
+        return this.withLocation(node, <ast.LabeledStatement>{
             kind:      ast.labeledStatementKind,
             label:     this.transformIdentifier(node.label),
             statement: this.transformStatement(node.statement),
@@ -1163,7 +1140,7 @@ export class Transpiler {
             // TODO: finish binary operator mapping; for any left that are unsupported, introduce a real error message.
             return contract.fail(`Unsupported binary operator: ${ts.SyntaxKind[node.operatorToken.kind]}`);
         }
-        return this.addLocation(node, <ast.BinaryOperatorExpression>{
+        return this.withLocation(node, <ast.BinaryOperatorExpression>{
             kind:     ast.binaryOperatorExpressionKind,
             operator: operator,
             left:     this.transformExpression(node.left),
@@ -1197,7 +1174,7 @@ export class Transpiler {
     }
 
     private transformCallExpression(node: ts.CallExpression): ast.InvokeFunctionExpression {
-        return this.addLocation(node, <ast.InvokeFunctionExpression>{
+        return this.withLocation(node, <ast.InvokeFunctionExpression>{
             kind:      ast.invokeFunctionExpressionKind,
             function:  this.transformExpression(node.expression),
             arguments: node.arguments.map((expr: ts.Expression) => this.transformExpression(expr)),
@@ -1209,7 +1186,7 @@ export class Transpiler {
     }
 
     private transformConditionalExpression(node: ts.ConditionalExpression): ast.ConditionalExpression {
-        return this.addLocation(node, <ast.ConditionalExpression>{
+        return this.withLocation(node, <ast.ConditionalExpression>{
             kind:       ast.conditionalExpressionKind,
             condition:  this.transformExpression(node.condition),
             consequent: this.transformExpression(node.whenTrue),
@@ -1226,13 +1203,13 @@ export class Transpiler {
         if (node.argumentExpression) {
             switch (node.argumentExpression.kind) {
                 case ts.SyntaxKind.Identifier:
-                    return this.addLocation(node, <ast.LoadLocationExpression>{
+                    return this.withLocation(node, <ast.LoadLocationExpression>{
                         kind:   ast.loadLocationExpressionKind,
                         object: object,
                         name:   this.transformIdentifier(<ts.Identifier>node.argumentExpression),
                     });
                 default:
-                    return this.addLocation(node, <ast.LoadDynamicExpression>{
+                    return this.withLocation(node, <ast.LoadDynamicExpression>{
                         kind:   ast.loadDynamicExpressionKind,
                         object: object,
                         name:   this.transformExpression(<ts.Expression>node.argumentExpression),
@@ -1269,7 +1246,7 @@ export class Transpiler {
     private transformPostfixUnaryExpression(node: ts.PostfixUnaryExpression): ast.UnaryOperatorExpression {
         let operator: ast.UnaryOperator | undefined = postfixUnaryOperators.get(node.operator);
         contract.assert(!!(operator = operator!));
-        return this.addLocation(node, <ast.UnaryOperatorExpression>{
+        return this.withLocation(node, <ast.UnaryOperatorExpression>{
             kind:     ast.unaryOperatorExpressionKind,
             postfix:  true,
             operator: operator,
@@ -1280,7 +1257,7 @@ export class Transpiler {
     private transformPrefixUnaryExpression(node: ts.PrefixUnaryExpression): ast.UnaryOperatorExpression {
         let operator: ast.UnaryOperator | undefined = prefixUnaryOperators.get(node.operator);
         contract.assert(!!(operator = operator!));
-        return this.addLocation(node, <ast.UnaryOperatorExpression>{
+        return this.withLocation(node, <ast.UnaryOperatorExpression>{
             kind:     ast.unaryOperatorExpressionKind,
             postfix:  false,
             operator: operator,
@@ -1289,7 +1266,7 @@ export class Transpiler {
     }
 
     private transformPropertyAccessExpression(node: ts.PropertyAccessExpression): ast.LoadLocationExpression {
-        return this.addLocation(node, <ast.LoadLocationExpression>{
+        return this.withLocation(node, <ast.LoadLocationExpression>{
             kind:   ast.loadLocationExpressionKind,
             object: this.transformExpression(node.expression),
             name:   this.transformIdentifier(node.name),
@@ -1306,7 +1283,7 @@ export class Transpiler {
             return contract.fail("New T(..) expression must have an identifier T");
         }
 
-        return this.addLocation(node, <ast.NewExpression>{
+        return this.withLocation(node, <ast.NewExpression>{
             kind:      ast.newExpressionKind,
             type:      ty,
             arguments: node.arguments.map((expr: ts.Expression) => this.transformExpression(expr)),
@@ -1326,7 +1303,7 @@ export class Transpiler {
     }
 
     private transformSuperExpression(node: ts.SuperExpression): ast.LoadLocationExpression {
-        return this.addLocation(node, <ast.LoadLocationExpression>{
+        return this.withLocation(node, <ast.LoadLocationExpression>{
             kind: ast.loadLocationExpressionKind,
             name: ident(symbols.specialVariableSuper),
         });
@@ -1341,7 +1318,7 @@ export class Transpiler {
     }
 
     private transformThisExpression(node: ts.ThisExpression): ast.LoadLocationExpression {
-        return this.addLocation(node, <ast.LoadLocationExpression>{
+        return this.withLocation(node, <ast.LoadLocationExpression>{
             kind: ast.loadLocationExpressionKind,
             name: ident(symbols.specialVariableThis),
         });
@@ -1363,7 +1340,7 @@ export class Transpiler {
 
     private transformBooleanLiteral(node: ts.BooleanLiteral): ast.BoolLiteral {
         contract.assert(node.kind === ts.SyntaxKind.FalseKeyword || node.kind === ts.SyntaxKind.TrueKeyword);
-        return this.addLocation(node, <ast.BoolLiteral>{
+        return this.withLocation(node, <ast.BoolLiteral>{
             kind:  ast.boolLiteralKind,
             raw:   node.getText(),
             value: (node.kind === ts.SyntaxKind.TrueKeyword),
@@ -1375,14 +1352,14 @@ export class Transpiler {
     }
 
     private transformNullLiteral(node: ts.NullLiteral): ast.NullLiteral {
-        return this.addLocation(node, <ast.NullLiteral>{
+        return this.withLocation(node, <ast.NullLiteral>{
             kind: ast.nullLiteralKind,
             raw:  node.getText(),
         });
     }
 
     private transformNumericLiteral(node: ts.NumericLiteral): ast.NumberLiteral {
-        return this.addLocation(node, <ast.NumberLiteral>{
+        return this.withLocation(node, <ast.NumberLiteral>{
             kind:  ast.numberLiteralKind,
             raw:   node.text,
             value: Number(node.text),
@@ -1397,7 +1374,7 @@ export class Transpiler {
         // TODO: we need to dynamically populate the resulting object with ECMAScript-style string functions.  It's not
         //     yet clear how to do this in a way that facilitates inter-language interoperability.  This is especially
         //     challenging because most use of such functions will be entirely dynamic.
-        return this.addLocation(node, <ast.StringLiteral>{
+        return this.withLocation(node, <ast.StringLiteral>{
             kind:  ast.stringLiteralKind,
             raw:   node.text,
             value: node.text,
@@ -1433,7 +1410,7 @@ export class Transpiler {
     }
 
     private transformIdentifierExpression(node: ts.Identifier): ast.Identifier {
-        return this.addLocation(node, ident(node.text));
+        return this.withLocation(node, ident(node.text));
     }
 
     private transformObjectBindingPattern(node: ts.ObjectBindingPattern): ast.Expression {
@@ -1455,8 +1432,13 @@ export class Transpiler {
 }
 
 // Loads the metadata and transforms a TypeScript program into its equivalent MuPack/MuIL AST form.
-export async function transpile(comp: Compilation): Promise<pack.Package> {
-    let t = await Transpiler.createFrom(comp);
+export async function transform(script: Script): Promise<TransformResult> {
+    let t = await Transformer.createFrom(script);
     return t.transform();
+}
+
+export interface TransformResult {
+    diagnostics: diag.Diagnostic[];        // any diagnostics resulting from translation.
+    pack:        pack.Package | undefined; // the resulting MuPack/MuIL AST.
 }
 

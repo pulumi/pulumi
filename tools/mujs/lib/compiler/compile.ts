@@ -2,173 +2,58 @@
 
 "use strict";
 
-import {contract, fs, log} from "nodets";
-import * as os from "os";
-import * as fspath from "path";
-import * as ts from "typescript";
+import {contract} from "nodets";
+import * as diag from "../diag";
+import * as pack from "../pack";
+import {compileScript, Script} from "./script";
+import {transform, TransformResult} from "./transform";
 
-const TS_PROJECT_FILE = "tsconfig.json";
+// Compiles a TypeScript program, translates it into MuPack/MuIL, and returns the output.
+//
+// The path can be one of three things: 1) a single TypeScript file (`*.ts`), 2) a TypeScript project file
+// (`tsconfig.json`), or 3) a directory containing a TypeScript project file.  An optional set of compiler options may
+// also be supplied.  In the project file cases, both options and files are read in the from the project file, and will
+// override any options passed in the argument form.
+//
+// If any errors occur, they will be returned in the form of diagnostics.  Unhandled exceptions should not occur unless
+// something dramatic has gone wrong.  The resulting tree and pack objects may or may not be undefined, depending on
+// what errors occur and during which phase of compilation they happen.
+export async function compile(path: string): Promise<CompileResult> {
+    // First perform the script compilation and analysis.
+    let script: Script = await compileScript(path);
+    let diagnostics: diag.Diagnostic[] = script.diagnostics;
 
-// Compiles a TypeScript program and returns its output.  The path can be one of three things: 1) a single TypeScript
-// file (`*.ts`), 2) a TypeScript project file (`tsconfig.json`), or 3) a directory containing a TypeScript project
-// file.  An optional set of compiler options may also be supplied.  In the project file cases, both options and files
-// are read in the from the project file, and will override any options passed in the argument form.
-export async function compile(path: string, options?: ts.CompilerOptions): Promise<Compilation> {
-    // Default the options to TypeScript's usual defaults if not provided.
-    options = options || ts.getDefaultCompilerOptions();
-
-    // See if we"re dealing with a tsproject.json file.  This happens when path directly points to one, or when
-    // path refers to a directory, in which case we will assume we"re searching for a config file underneath it.
-    let root: string | undefined;
-    let configPath: string | undefined;
-    if (fspath.basename(path) === TS_PROJECT_FILE) {
-        configPath = path;
-        root = fspath.dirname(path);
-    }
-    else if ((await fs.lstat(path)).isDirectory()) {
-        configPath = fspath.join(path, TS_PROJECT_FILE);
-        root = path;
-    }
-    else {
-        root = fspath.dirname(path);
+    // Next, if there is a tree to transpile into MuPack/MuIL, then do it.
+    let pack: pack.Package | undefined;
+    if (script.tree) {
+        let result: TransformResult = await transform(script);
+        pack = result.pack;
+        diagnostics = diagnostics.concat(result.diagnostics);
     }
 
-    let files: string[] = [];
-    let diagnostics: ts.Diagnostic[] = [];
-    if (configPath) {
-        // A config file is suspected; try to load it up and parse its contents.
-        let config: any = JSON.parse(await fs.readFile(configPath));
-        if (!config) {
-            throw new Error(`No ${TS_PROJECT_FILE} found underneath the path ${path}`);
-        }
-
-        const parseConfigHost: ts.ParseConfigHost = new ParseConfigHost();
-        const parsedConfig: ts.ParsedCommandLine = ts.parseJsonConfigFileContent(
-            config, parseConfigHost, root, options);
-        if (parsedConfig.errors.length > 0) {
-            diagnostics = diagnostics.concat(parsedConfig.errors);
-        }
-
-        if (parsedConfig.options) {
-            options = parsedConfig.options;
-        }
-
-        if (parsedConfig.fileNames) {
-            files = files.concat(parsedConfig.fileNames);
-        }
-    } else {
-        // Otherwise, assume it's a single file, and populate the paths with it.
-        files.push(path);
-    }
-
-    // Many options can be supplied, however, we want to hook the outputs to translate them on the fly.
-    options.rootDir = root;
-    options.outDir = undefined;
-    options.declaration = false;
-
-    if (log.v(5)) {
-        log.out(5).info(`files: ${JSON.stringify(files)}`);
-        log.out(5).info(`options: ${JSON.stringify(options, null, 4)}`);
-    }
-    if (log.v(7)) {
-        options.traceResolution = true;
-    }
-
-    let program: ts.Program | undefined;
-    if (diagnostics.length === 0) {
-        // Create a compiler host and perform the compilation.
-        const host: ts.CompilerHost = ts.createCompilerHost(options);
-        host.writeFile = (_: string, __: string, ___: boolean) => { /*ignore outputs*/ };
-        program = ts.createProgram(files, options, host);
-
-        // Concatenate all of the diagnostics into a single array.
-        diagnostics = diagnostics.concat(program.getSyntacticDiagnostics());
-        if (diagnostics.length === 0) {
-            diagnostics = diagnostics.concat(program.getOptionsDiagnostics());
-            diagnostics = diagnostics.concat(program.getGlobalDiagnostics());
-            if (diagnostics.length === 0) {
-                diagnostics = diagnostics.concat(program.getSemanticDiagnostics());
-                diagnostics = diagnostics.concat(program.getDeclarationDiagnostics());
-            }
-        }
-
-        // Now perform the creation of the AST data structures.
-        const emitOutput: ts.EmitResult = program.emit();
-        diagnostics = diagnostics.concat(emitOutput.diagnostics);
-    }
-
-    return new Compilation(root, diagnostics, program);
+    // Finally, return the overall result of the compilation.
+    return new CompileResult(script.root, diagnostics, pack);
 }
 
-// The result of a compilation.
-export class Compilation {
-    public readonly root:        string;                 // the root directory for the compilation.
-    public readonly diagnostics: ts.Diagnostic[];        // any diagnostics resulting from compilation.
-    public readonly tree:        ts.Program | undefined; // the resulting TypeScript program object.
+export class CompileResult {
+    private readonly dctx: diag.Context;
 
-    private readonly diagnosticsHost: ts.FormatDiagnosticsHost; // the host for formatting diagnostics.
-
-    constructor(root: string, diagnostics: ts.Diagnostic[], tree: ts.Program | undefined) {
-        this.root = root;
-        this.diagnostics = diagnostics;
-        this.tree = tree;
-        this.diagnosticsHost = new FormatDiagnosticsHost(root);
+    constructor(public readonly root:        string,                   // the root path for the compilation.
+                public readonly diagnostics: diag.Diagnostic[],        // any diagnostics resulting from translation.
+                public readonly pack:        pack.Package | undefined, // the resulting MuPack/MuIL AST.
+    ) {
+        this.dctx = new diag.Context(root);
     }
 
+    // Formats a specific diagnostic 
     public formatDiagnostic(index: number): string {
         contract.assert(index >= 0 && index < this.diagnostics.length);
-        return ts.formatDiagnostics([ this.diagnostics[index] ], this.diagnosticsHost);
+        return this.dctx.formatDiagnostic(this.diagnostics[index]);
     }
 
+    // Formats all of the diagnostics, separating each by a newline.
     public formatDiagnostics(): string {
-        // TODO: implement colorization and fancy source context pretty-printing.
-        return ts.formatDiagnostics(this.diagnostics, this.diagnosticsHost);
+        return this.dctx.formatDiagnostics(this.diagnostics);
     }
-}
-
-class ParseConfigHost implements ts.ParseConfigHost {
-    public readonly useCaseSensitiveFileNames = isFilesystemCaseSensitive();
-
-    public readDirectory(path: string, extensions: string[], exclude: string[], include: string[]): string[] {
-        return ts.sys.readDirectory(path, extensions, exclude, include);
-    }
-
-    public fileExists(path: string): boolean {
-        return ts.sys.fileExists(path);
-    }
-
-    public readFile(path: string): string {
-        return ts.sys.readFile(path);
-    }
-}
-
-class FormatDiagnosticsHost implements ts.FormatDiagnosticsHost {
-    private readonly cwd: string;
-
-    constructor(cwd: string) {
-        this.cwd = cwd;
-    }
-
-    public getCurrentDirectory(): string {
-        return this.cwd;
-    }
-
-    public getNewLine(): string {
-        return os.EOL;
-    }
-
-    public getCanonicalFileName(filename: string): string {
-        if (isFilesystemCaseSensitive()) {
-            return filename;
-        }
-        else {
-            return filename.toLowerCase();
-        }
-    }
-}
-
-function isFilesystemCaseSensitive(): boolean {
-    let platform: string = os.platform();
-    return platform === "win32" || platform === "win64";
 }
 

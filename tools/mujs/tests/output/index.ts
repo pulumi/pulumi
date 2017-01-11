@@ -33,7 +33,7 @@ describe("outputs", () => {
             let testPath: string = path.join(__dirname, testCase);
 
             // First, compile the code.
-            let output: compiler.Compilation = await compiler.compile(testPath);
+            let output: compiler.CompileResult = await compiler.compile(testPath);
 
             // Ensure that the expected number of messages got output.
             let expectedMessages: string[];
@@ -69,10 +69,9 @@ describe("outputs", () => {
                 }
             }
 
-            if (output.tree) {
+            if (output.pack) {
                 if (expectedOutputTree) {
-                    let mupackTree: pack.Package = await compiler.transpile(output);
-                    let mupackTreeText: string = JSON.stringify(mupackTree, null, 4) + "\n";
+                    let mupackTreeText: string = JSON.stringify(output.pack, null, 4) + "\n";
 
                     // Do a line-by-line comparison to make debugging failures nicer.
                     let actualLines: string[] = mupackTreeText.split("\n");

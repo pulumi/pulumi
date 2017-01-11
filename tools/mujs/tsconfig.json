@@ -30,7 +30,11 @@
         "lib/compiler/index.ts",
         "lib/compiler/compile.ts",
         "lib/compiler/discover.ts",
+        "lib/compiler/script.ts",
         "lib/compiler/transform.ts",
+        "lib/diag/index.ts",
+        "lib/diag/context.ts",
+        "lib/diag/diagnostic.ts",
         "lib/pack/index.ts",
         "lib/symbols/index.ts",
 

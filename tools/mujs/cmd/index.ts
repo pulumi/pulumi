@@ -48,19 +48,18 @@ async function main(args: string[]): Promise<number> {
             // Default to pwd if no argument was supplied.
             process.cwd();
 
-    let comp: mujs.compiler.Compilation = await mujs.compiler.compile(path);
-    if (comp.diagnostics.length > 0) {
+    let result: mujs.compiler.CompileResult = await mujs.compiler.compile(path);
+    if (result.diagnostics.length > 0) {
         // If any errors occurred, print them out, and skip pretty-printing the AST.
-        console.log(comp.formatDiagnostics());
+        console.log(result.formatDiagnostics());
     }
-    else {
-        // No errors, great, transform the AST into a MuPack program.
-        let pack: mujs.pack.Package = await mujs.compiler.transpile(comp);
 
+    if (result.pack) {
         // Now just print the output to the console.
         // TODO(joe): eventually we want a real compiler-like output scheme; for now, just print it.
-        console.log(JSON.stringify(pack, null, 4));
+        console.log(JSON.stringify(result.pack, null, 4));
     }
+
     return 0;
 }
 
