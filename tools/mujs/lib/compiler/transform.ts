@@ -863,7 +863,7 @@ export class Transpiler {
     private transformBreakStatement(node: ts.BreakStatement): ast.BreakStatement {
         return this.copyLocation(node, <ast.BreakStatement>{
             kind:  ast.breakStatementKind,
-            label: object.maybeUndefined(node.label, this.transformIdentifier),
+            label: object.maybeUndefined(node.label, (id: ts.Identifier) => this.transformIdentifier(id)),
         });
     }
 
@@ -878,7 +878,7 @@ export class Transpiler {
     private transformContinueStatement(node: ts.ContinueStatement): ast.ContinueStatement {
         return this.copyLocation(node, <ast.ContinueStatement>{
             kind:  ast.continueStatementKind,
-            label: object.maybeUndefined(node.label, this.transformIdentifier),
+            label: object.maybeUndefined(node.label, (id: ts.Identifier) => this.transformIdentifier(id)),
         });
     }
 
@@ -934,14 +934,16 @@ export class Transpiler {
             kind:       ast.ifStatementKind,
             condition:  this.transformExpression(node.expression),
             consequent: this.transformStatement(node.thenStatement),
-            alternate:  object.maybeUndefined(node.elseStatement, this.transformStatement),
+            alternate:  object.maybeUndefined(
+                node.elseStatement, (stmt: ts.Statement) => this.transformStatement(stmt)),
         });
     }
 
     private transformReturnStatement(node: ts.ReturnStatement): ast.ReturnStatement {
         return this.copyLocation(node, <ast.ReturnStatement>{
             kind:       ast.returnStatementKind,
-            expression: object.maybeUndefined(node.expression, this.transformExpression),
+            expression: object.maybeUndefined(
+                node.expression, (expr: ts.Expression) => this.transformExpression(expr)),
         });
     }
 
