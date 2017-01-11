@@ -739,7 +739,7 @@ export class Transpiler {
     }
 
     private transformModuleVariableStatement(
-            node: ts.VariableStatement, access: symbols.Accessibility): ModuleElement[] {
+            node: ts.VariableStatement, access: symbols.Accessibility): VariableDeclaration<ast.ModuleProperty>[] {
         let decls: VariableLikeDeclaration[] = this.transformVariableStatement(node);
         return decls.map((decl: VariableLikeDeclaration) =>
             new VariableDeclaration<ast.ModuleProperty>(
@@ -778,7 +778,7 @@ export class Transpiler {
 
     /** Classes **/
 
-    private transformClassElement(node: ts.ClassElement): ast.ClassMember {
+    private transformClassElement(node: ts.ClassElement): ClassElement {
         switch (node.kind) {
             // All the function-like members go here:
             case ts.SyntaxKind.Constructor:
@@ -835,8 +835,27 @@ export class Transpiler {
         });
     }
 
-    private transformClassElementProperty(node: ts.PropertyDeclaration): ast.ClassProperty {
-        return contract.fail("NYI");
+    private transformClassElementProperty(node: ts.PropertyDeclaration): VariableDeclaration<ast.ClassProperty> {
+        let initializer: ast.Expression | undefined;
+        if (node.initializer) {
+            initializer = this.transformExpression(node.initializer);
+        }
+
+        let mods: ts.ModifierFlags = ts.getCombinedModifierFlags(node);
+        // TODO: primary properties.
+        return new VariableDeclaration<ast.ClassProperty>(
+            node,
+            {
+                kind:     ast.classPropertyKind,
+                name:     this.transformPropertyName(node.name),
+                access:   this.getClassAccessibility(node),
+                readonly: !!(mods & ts.ModifierFlags.Readonly),
+                static:   !!(mods & ts.ModifierFlags.Static),
+                type:     "TODO",
+            },
+            false,
+            initializer,
+        );
     }
 
     /** Control flow statements **/
