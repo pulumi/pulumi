@@ -67,8 +67,11 @@ export type  ObjectLiteralInitializerKind = "ObjectLiteralInitializer";
 
 // TODO(joe): figure out how to load/store elements and maps.  Possibly just use intrinsic functions.
 
+export interface LoadExpression extends Expression {
+}
+
 // Loads a location's address, producing a pointer that can be dereferenced.
-export interface LoadLocationExpression extends Expression {
+export interface LoadLocationExpression extends LoadExpression {
     kind:    LoadLocationExpressionKind;
     object?: Expression; // the `this` object, in the case of class properties.
     name:    Identifier; // the name of the member to load.
@@ -78,7 +81,7 @@ export type  LoadLocationExpressionKind = "LoadLocationExpression";
 
 // Dynamically loads either a variable or function, by name, from an object.
 // TODO(joe): I'm unsure if we should permit assigning to functions by name; I think we'll need to for Python/Ruby/etc.
-export interface LoadDynamicExpression extends Expression {
+export interface LoadDynamicExpression extends LoadExpression {
     kind:   LoadDynamicExpressionKind;
     object: Expression; // the object to load a property from.
     name:   Expression; // the name of the property to load.

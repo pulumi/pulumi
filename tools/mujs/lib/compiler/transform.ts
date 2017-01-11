@@ -268,7 +268,7 @@ export class Transpiler {
             moduleName = moduleName.substring(0, moduleExtIndex);
         }
 
-        return this.copyLocation(node, {
+        return this.copyLocation(node, <ast.Module>{
             kind:    ast.moduleKind,
             name:    ident(moduleName),
             members: members,
@@ -440,7 +440,7 @@ export class Transpiler {
         if (statement.kind === ast.blockKind) {
             return <ast.Block>statement;
         }
-        return this.copyLocation(node, {
+        return this.copyLocation(node, <ast.Block>{
             kind:       ast.blockKind,
             statements: [ statement ],
         });
@@ -518,7 +518,7 @@ export class Transpiler {
         }
 
         let mods: ts.ModifierFlags = ts.getCombinedModifierFlags(node);
-        return this.copyLocation(node, {
+        return this.copyLocation(node, <ast.Class>{
             kind:     ast.classKind,
             name:     name,
             access:   access,
@@ -861,7 +861,7 @@ export class Transpiler {
     /** Control flow statements **/
 
     private transformBreakStatement(node: ts.BreakStatement): ast.BreakStatement {
-        return this.copyLocation(node, {
+        return this.copyLocation(node, <ast.BreakStatement>{
             kind:  ast.breakStatementKind,
             label: object.maybeUndefined(node.label, this.transformIdentifier),
         });
@@ -876,7 +876,7 @@ export class Transpiler {
     }
 
     private transformContinueStatement(node: ts.ContinueStatement): ast.ContinueStatement {
-        return this.copyLocation(node, {
+        return this.copyLocation(node, <ast.ContinueStatement>{
             kind:  ast.continueStatementKind,
             label: object.maybeUndefined(node.label, this.transformIdentifier),
         });
@@ -903,7 +903,7 @@ export class Transpiler {
             ],
         });
 
-        return this.copyLocation(node, {
+        return this.copyLocation(node, <ast.WhileStatement>{
             kind: ast.whileStatementKind,
             test: <ast.BoolLiteral>{
                 kind:  ast.boolLiteralKind,
@@ -930,7 +930,7 @@ export class Transpiler {
     }
 
     private transformIfStatement(node: ts.IfStatement): ast.IfStatement {
-        return this.copyLocation(node, {
+        return this.copyLocation(node, <ast.IfStatement>{
             kind:       ast.ifStatementKind,
             condition:  this.transformExpression(node.expression),
             consequent: this.transformStatement(node.thenStatement),
@@ -939,7 +939,7 @@ export class Transpiler {
     }
 
     private transformReturnStatement(node: ts.ReturnStatement): ast.ReturnStatement {
-        return this.copyLocation(node, {
+        return this.copyLocation(node, <ast.ReturnStatement>{
             kind:       ast.returnStatementKind,
             expression: object.maybeUndefined(node.expression, this.transformExpression),
         });
@@ -950,7 +950,7 @@ export class Transpiler {
     }
 
     private transformThrowStatement(node: ts.ThrowStatement): ast.ThrowStatement {
-        return this.copyLocation(node, {
+        return this.copyLocation(node, <ast.ThrowStatement>{
             kind:       ast.throwStatementKind,
             expression: this.transformExpression(node.expression),
         });
@@ -960,8 +960,8 @@ export class Transpiler {
         return contract.fail("NYI");
     }
 
-    private transformWhileStatement(node: ts.WhileStatement): ast.Statement {
-        return this.copyLocation(node, {
+    private transformWhileStatement(node: ts.WhileStatement): ast.WhileStatement {
+        return this.copyLocation(node, <ast.WhileStatement>{
             kind: ast.whileStatementKind,
             test: this.transformExpression(node.expression),
             body: this.transformStatementAsBlock(node.statement),
@@ -972,7 +972,7 @@ export class Transpiler {
 
     private transformBlock(node: ts.Block): ast.Block {
         // TODO(joe): map directives.
-        return this.copyLocation(node, {
+        return this.copyLocation(node, <ast.Block>{
             kind:       ast.blockKind,
             statements: node.statements.map((stmt: ts.Statement) => this.transformStatement(stmt)),
         });
@@ -981,26 +981,26 @@ export class Transpiler {
     private transformDebuggerStatement(node: ts.DebuggerStatement): ast.Statement {
         // The debugger statement in ECMAScript can be used to trip a breakpoint.  We don't have the equivalent in Mu at
         // the moment, so we simply produce an empty statement in its place.
-        return this.copyLocation(node, {
+        return this.copyLocation(node, <ast.Statement>{
             kind: ast.emptyStatementKind,
         });
     }
 
     private transformEmptyStatement(node: ts.EmptyStatement): ast.EmptyStatement {
-        return this.copyLocation(node, {
+        return this.copyLocation(node, <ast.EmptyStatement>{
             kind: ast.emptyStatementKind,
         });
     }
 
     private transformExpressionStatement(node: ts.ExpressionStatement): ast.ExpressionStatement {
-        return this.copyLocation(node, {
+        return this.copyLocation(node, <ast.ExpressionStatement>{
             kind:       ast.expressionStatementKind,
             expression: this.transformExpression(node.expression),
         });
     }
 
     private transformLabeledStatement(node: ts.LabeledStatement): ast.LabeledStatement {
-        return this.copyLocation(node, {
+        return this.copyLocation(node, <ast.LabeledStatement>{
             kind:      ast.labeledStatementKind,
             label:     this.transformIdentifier(node.label),
             statement: this.transformStatement(node.statement),
@@ -1118,7 +1118,7 @@ export class Transpiler {
             // TODO: finish binary operator mapping; for any left that are unsupported, introduce a real error message.
             return contract.fail(`Unsupported binary operator: ${ts.SyntaxKind[node.operatorToken.kind]}`);
         }
-        return this.copyLocation(node, {
+        return this.copyLocation(node, <ast.BinaryOperatorExpression>{
             kind:     ast.binaryOperatorExpressionKind,
             operator: operator,
             left:     this.transformExpression(node.left),
@@ -1137,7 +1137,7 @@ export class Transpiler {
             curr = binary.left;
         }
         expressions.unshift(this.transformExpression(curr));
-        return {
+        return <ast.SequenceExpression>{
             kind:        ast.sequenceExpressionKind,
             expressions: expressions,
         };
@@ -1152,7 +1152,7 @@ export class Transpiler {
     }
 
     private transformConditionalExpression(node: ts.ConditionalExpression): ast.ConditionalExpression {
-        return this.copyLocation(node, {
+        return this.copyLocation(node, <ast.ConditionalExpression>{
             kind:       ast.conditionalExpressionKind,
             condition:  this.transformExpression(node.condition),
             consequent: this.transformExpression(node.whenTrue),
@@ -1164,21 +1164,21 @@ export class Transpiler {
         return contract.fail("NYI");
     }
 
-    private transformElementAccessExpression(node: ts.ElementAccessExpression): ast.Expression {
+    private transformElementAccessExpression(node: ts.ElementAccessExpression): ast.LoadExpression {
         let object: ast.Expression = this.transformExpression(node.expression);
         if (node.argumentExpression) {
             switch (node.argumentExpression.kind) {
                 case ts.SyntaxKind.Identifier:
-                    return this.copyLocation(node, {
+                    return this.copyLocation(node, <ast.LoadLocationExpression>{
                         kind:   ast.loadLocationExpressionKind,
                         object: object,
-                        key:    this.transformIdentifier(<ts.Identifier>node.argumentExpression),
+                        name:   this.transformIdentifier(<ts.Identifier>node.argumentExpression),
                     });
                 default:
-                    return this.copyLocation(node, {
-                        kind: ast.loadDynamicExpressionKind,
+                    return this.copyLocation(node, <ast.LoadDynamicExpression>{
+                        kind:   ast.loadDynamicExpressionKind,
                         object: object,
-                        key:    this.transformExpression(<ts.Expression>node.argumentExpression),
+                        name:   this.transformExpression(<ts.Expression>node.argumentExpression),
                     });
             }
         }
@@ -1212,7 +1212,7 @@ export class Transpiler {
     private transformPostfixUnaryExpression(node: ts.PostfixUnaryExpression): ast.UnaryOperatorExpression {
         let operator: ast.UnaryOperator | undefined = postfixUnaryOperators.get(node.operator);
         contract.assert(!!(operator = operator!));
-        return this.copyLocation(node, {
+        return this.copyLocation(node, <ast.UnaryOperatorExpression>{
             kind:     ast.unaryOperatorExpressionKind,
             postfix:  true,
             operator: operator,
@@ -1223,7 +1223,7 @@ export class Transpiler {
     private transformPrefixUnaryExpression(node: ts.PrefixUnaryExpression): ast.UnaryOperatorExpression {
         let operator: ast.UnaryOperator | undefined = prefixUnaryOperators.get(node.operator);
         contract.assert(!!(operator = operator!));
-        return this.copyLocation(node, {
+        return this.copyLocation(node, <ast.UnaryOperatorExpression>{
             kind:     ast.unaryOperatorExpressionKind,
             postfix:  false,
             operator: operator,
@@ -1293,7 +1293,7 @@ export class Transpiler {
 
     private transformBooleanLiteral(node: ts.BooleanLiteral): ast.BoolLiteral {
         contract.assert(node.kind === ts.SyntaxKind.FalseKeyword || node.kind === ts.SyntaxKind.TrueKeyword);
-        return this.copyLocation(node, {
+        return this.copyLocation(node, <ast.BoolLiteral>{
             kind:  ast.boolLiteralKind,
             raw:   node.getText(),
             value: (node.kind === ts.SyntaxKind.TrueKeyword),
@@ -1305,14 +1305,14 @@ export class Transpiler {
     }
 
     private transformNullLiteral(node: ts.NullLiteral): ast.NullLiteral {
-        return this.copyLocation(node, {
+        return this.copyLocation(node, <ast.NullLiteral>{
             kind: ast.nullLiteralKind,
             raw:  node.getText(),
         });
     }
 
     private transformNumericLiteral(node: ts.NumericLiteral): ast.NumberLiteral {
-        return this.copyLocation(node, {
+        return this.copyLocation(node, <ast.NumberLiteral>{
             kind:  ast.numberLiteralKind,
             raw:   node.text,
             value: Number(node.text),
@@ -1327,7 +1327,7 @@ export class Transpiler {
         // TODO: we need to dynamically populate the resulting object with ECMAScript-style string functions.  It's not
         //     yet clear how to do this in a way that facilitates inter-language interoperability.  This is especially
         //     challenging because most use of such functions will be entirely dynamic.
-        return this.copyLocation(node, {
+        return this.copyLocation(node, <ast.StringLiteral>{
             kind:  ast.stringLiteralKind,
             raw:   node.text,
             value: node.text,
