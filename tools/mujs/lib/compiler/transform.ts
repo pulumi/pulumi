@@ -343,16 +343,12 @@ export class Transformer {
         return contract.fail("NYI");
     }
 
-    private transformImportDeclaration(node: ts.ImportDeclaration): ast.Definition {
-        return contract.fail("NYI");
-    }
-
-    private transformImportClause(node: ts.ImportClause | undefined): ast.Definition[] {
-        return contract.fail("NYI");
-    }
-
-    private transformImportSpecifier(node: ts.ImportSpecifier): ast.Definition {
-        return contract.fail("NYI");
+    private transformImportDeclaration(node: ts.ImportDeclaration): ModuleElement {
+        // TODO[marapongo/mu#46]: we are ignoring import declarations for the time being.  Eventually we need to
+        //     transform all dependency symbols into real MuIL references.  (Today, bound node information is
+        //     discarded.)  When that day comes (soon), import declarations will most likely still be ignored, however,
+        //     I am leaving this comment in here so that we can make an explicit decision about this.
+        return <ast.EmptyStatement>{ kind: ast.emptyStatementKind };
     }
 
     /** Statements **/
