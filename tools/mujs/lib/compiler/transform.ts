@@ -1178,7 +1178,7 @@ export class Transformer {
         }
     }
 
-    private transformArrayLiteralExpression(node: ts.ArrayLiteralExpression): ast.Expression {
+    private transformArrayLiteralExpression(node: ts.ArrayLiteralExpression): ast.ArrayLiteral {
         return this.withLocation(node, <ast.ArrayLiteral>{
             kind:     ast.arrayLiteralKind,
             type:     this.transformTypeNode(undefined),
@@ -1293,21 +1293,63 @@ export class Transformer {
         return contract.fail("NYI");
     }
 
-    private transformObjectLiteralExpression(node: ts.ObjectLiteralExpression): ast.Expression {
-        return contract.fail("NYI");
+    private transformObjectLiteralExpression(node: ts.ObjectLiteralExpression): ast.ObjectLiteral {
+        // TODO[marapongo/mu#46]: because TypeScript object literals are untyped, it's not clear what MuIL type this
+        //     expression should produce.  It's common for a TypeScript literal to be enclosed in a cast, for example,
+        //     `<SomeType>{ literal }`, in which case, perhaps we could detect `<SomeType>`.  Alternatively, MuIL could
+        //     just automatically dynamically coerce `any` to the target type, similar to TypeScript, when necessary.
+        //     I had envisioned requiring explicit dynamic casts for this, in which case, perhaps this expression should
+        //     always be encased in something that prepares it for dynamic cast in the consuming expression.
+        return this.withLocation(node, <ast.ObjectLiteral>{
+            kind:       ast.objectLiteralKind,
+            type:       this.transformTypeNode(undefined),
+            properties: node.properties.map(
+                (prop: ts.ObjectLiteralElement) => this.transformObjectLiteralElement(prop)),
+        });
     }
 
-    private transformObjectLiteralElement(node: ts.ObjectLiteralElement): ast.Expression {
-        return contract.fail("NYI");
+    private transformObjectLiteralElement(node: ts.ObjectLiteralElement): ast.ObjectLiteralProperty {
+        switch (node.kind) {
+            case ts.SyntaxKind.PropertyAssignment:
+                return this.transformObjectLiteralPropertyAssignment(<ts.PropertyAssignment>node);
+            case ts.SyntaxKind.ShorthandPropertyAssignment:
+                return this.transformObjectLiteralShorthandPropertyAssignment(<ts.ShorthandPropertyAssignment>node);
+
+            case ts.SyntaxKind.GetAccessor:
+                return this.transformObjectLiteralFunctionLikeElement(<ts.GetAccessorDeclaration>node);
+            case ts.SyntaxKind.SetAccessor:
+                return this.transformObjectLiteralFunctionLikeElement(<ts.SetAccessorDeclaration>node);
+            case ts.SyntaxKind.MethodDeclaration:
+                return this.transformObjectLiteralFunctionLikeElement(<ts.MethodDeclaration>node);
+
+            default:
+                return contract.fail(`Unrecognized object literal element kind ${ts.SyntaxKind[node.kind]}`);
+        }
     }
 
-    private transformObjectLiteralPropertyElement(
-            node: ts.PropertyAssignment | ts.ShorthandPropertyAssignment): ast.Expression {
-        return contract.fail("NYI");
+    private transformObjectLiteralPropertyAssignment(node: ts.PropertyAssignment): ast.ObjectLiteralProperty {
+        return this.withLocation(node, <ast.ObjectLiteralProperty>{
+            kind:  ast.objectLiteralPropertyKind,
+            name:  this.transformPropertyName(node.name),
+            value: this.transformExpression(node.initializer),
+        });
     }
 
-    private transformObjectLiteralFunctionLikeElement(
-            node: ts.AccessorDeclaration | ts.MethodDeclaration): ast.Expression {
+    private transformObjectLiteralShorthandPropertyAssignment(
+            node: ts.ShorthandPropertyAssignment): ast.ObjectLiteralProperty {
+        let name: ast.Identifier = this.transformIdentifier(node.name);
+        return this.withLocation(node, <ast.ObjectLiteralProperty>{
+            kind:  ast.objectLiteralPropertyKind,
+            name:  name,
+            value: this.withLocation(node.name, <ast.LoadLocationExpression>{
+                kind: ast.loadLocationExpressionKind,
+                name: name,
+            }),
+        });
+    }
+
+    private transformObjectLiteralFunctionLikeElement(node: ts.FunctionLikeDeclaration): ast.ObjectLiteralProperty {
+        // TODO: turn these into lambdas.
         return contract.fail("NYI");
     }
 

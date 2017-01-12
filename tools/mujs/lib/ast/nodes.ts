@@ -49,7 +49,7 @@ export type NodeKind =
     expressions.StringLiteralKind |
     expressions.ArrayLiteralKind |
     expressions.ObjectLiteralKind |
-    expressions.ObjectLiteralInitializerKind |
+    expressions.ObjectLiteralPropertyKind |
     expressions.LoadLocationExpressionKind |
     expressions.LoadDynamicExpressionKind |
     expressions.NewExpressionKind |

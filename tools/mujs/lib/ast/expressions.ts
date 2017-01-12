@@ -44,7 +44,7 @@ export interface StringLiteral extends Literal {
 export const stringLiteralKind = "StringLiteral";
 export type  StringLiteralKind = "StringLiteral";
 
-// A array literal (`new` and/or initialization).
+// A array literal plus optional initialization.
 export interface ArrayLiteral extends Literal {
     kind:      ArrayLiteralKind;
     type:      symbols.TypeToken; // the type of array to produce.
@@ -54,24 +54,23 @@ export interface ArrayLiteral extends Literal {
 export const arrayLiteralKind = "ArrayLiteral";
 export type  ArrayLiteralKind = "ArrayLiteral";
 
-// An object literal (`new` and/or initialization).
+// An object literal plus optional initialization.
 export interface ObjectLiteral extends Literal {
-    kind:          ObjectLiteralKind;
-    type:          symbols.TypeToken;          // the type of object to produce.
-    initializers?: ObjectLiteralInitializer[]; // an optional array of property initializers.
-    arguments?:    Expression[];               // an optional set of arguments for the constructor.
+    kind:        ObjectLiteralKind;
+    type:        symbols.TypeToken;       // the type of object to produce.
+    properties?: ObjectLiteralProperty[]; // an optional array of property initializers.
 }
 export const objectLiteralKind = "ObjectLiteral";
 export type  ObjectLiteralKind = "ObjectLiteral";
 
 // An object literal property initializer.
-export interface ObjectLiteralInitializer extends Node {
-    kind:     ObjectLiteralInitializerKind;
-    property: symbols.VariableToken; // the property being initialized.
-    value:    Expression;            // the expression value to store into the property.
+export interface ObjectLiteralProperty extends Node {
+    kind:  ObjectLiteralPropertyKind;
+    name:  Identifier; // the property being initialized.
+    value: Expression; // the expression value to store into the property.
 }
-export const objectLiteralInitializerKind = "ObjectLiteralInitializer";
-export type  ObjectLiteralInitializerKind = "ObjectLiteralInitializer";
+export const objectLiteralPropertyKind = "ObjectLiteralProperty";
+export type  ObjectLiteralPropertyKind = "ObjectLiteralProperty";
 
 /** Loads **/
 
