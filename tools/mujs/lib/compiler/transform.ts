@@ -2,7 +2,7 @@
 
 "use strict";
 
-import {contract, object} from "nodets";
+import {contract, log, object} from "nodets";
 import * as fspath from "path";
 import * as ts from "typescript";
 import * as ast from "../ast";
@@ -1203,11 +1203,23 @@ export class Transformer {
     }
 
     private transformBinaryOperatorExpression(node: ts.BinaryExpression): ast.BinaryOperatorExpression {
-        let operator: ast.BinaryOperator | undefined = binaryOperators.get(node.operatorToken.kind);
-        if (!operator) {
-            // TODO: finish binary operator mapping; for any left that are unsupported, introduce a real error message.
-            return contract.fail(`Unsupported binary operator: ${ts.SyntaxKind[node.operatorToken.kind]}`);
+        // A few operators aren't faithfully emulated; in those cases, log warnings.
+        if (log.v(3)) {
+            switch (node.operatorToken.kind) {
+                case ts.SyntaxKind.GreaterThanGreaterThanGreaterThanEqualsToken:
+                case ts.SyntaxKind.GreaterThanGreaterThanGreaterThanToken:
+                case ts.SyntaxKind.EqualsEqualsEqualsToken:
+                case ts.SyntaxKind.ExclamationEqualsEqualsToken:
+                    log.out(3).info(
+                        `ECMAScript operator ${ts.SyntaxKind[node.operatorToken.kind]} not supported; ` +
+                        `until marapongo/mu#50 is implemented, be careful about subtle behavioral differences`
+                    );
+                    break;
+            }
         }
+
+        let operator: ast.BinaryOperator | undefined = binaryOperators.get(node.operatorToken.kind);
+        contract.assert(!!operator, `Expected binary operator for: ${ts.SyntaxKind[node.operatorToken.kind]}`);
         return this.withLocation(node, <ast.BinaryOperatorExpression>{
             kind:     ast.binaryOperatorExpressionKind,
             operator: operator,
