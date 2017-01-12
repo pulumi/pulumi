@@ -52,7 +52,7 @@
                                             }
                                         }
                                     },
-                                    "type": "TODO"
+                                    "type": "any"
                                 },
                                 {
                                     "kind": "LocalVariable",
@@ -71,7 +71,7 @@
                                             }
                                         }
                                     },
-                                    "type": "TODO"
+                                    "type": "any"
                                 }
                             ],
                             "body": {
@@ -272,7 +272,7 @@
                                     }
                                 }
                             },
-                            "returnType": "TODO",
+                            "returnType": "any",
                             "static": false,
                             "abstract": false,
                             "loc": {
@@ -323,7 +323,7 @@
                                             }
                                         }
                                     },
-                                    "type": "TODO"
+                                    "type": "any"
                                 }
                             ],
                             "body": {
@@ -599,7 +599,7 @@
                                     }
                                 }
                             },
-                            "returnType": "TODO",
+                            "returnType": "any",
                             "static": false,
                             "abstract": false,
                             "loc": {
@@ -634,7 +634,7 @@
                             "access": "public",
                             "readonly": true,
                             "static": false,
-                            "type": "TODO"
+                            "type": "any"
                         },
                         "y": {
                             "kind": "ClassProperty",
@@ -656,7 +656,7 @@
                             "access": "public",
                             "readonly": true,
                             "static": false,
-                            "type": "TODO"
+                            "type": "any"
                         }
                     },
                     "abstract": false,

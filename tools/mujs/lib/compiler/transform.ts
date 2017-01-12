@@ -216,6 +216,11 @@ export class Transformer {
         return this.withLocation(node, ident(node.text));
     }
 
+    private transformTypeNode(node: ts.TypeNode | undefined): symbols.TypeToken {
+        // TODO[marapongo/mu#46]: emit strong typing information.
+        return "any";
+    }
+
     /** Modules **/
 
     // This transforms top-level TypeScript module elements into their corresponding nodes.  This transformation
@@ -628,7 +633,7 @@ export class Transformer {
             name:       name,
             parameters: parameters.map((p: VariableDeclaration<ast.LocalVariable>) => p.variable),
             body:       body,
-            returnType: "TODO",
+            returnType: this.transformTypeNode(node.type),
         };
     }
 
@@ -701,14 +706,21 @@ export class Transformer {
             variable: {
                 kind: ast.localVariableKind,
                 name: name,
-                type: "TODO",
+                type: this.transformTypeNode(node.type),
             },
             initializer: initializer,
         };
     }
 
+    // transformTypeAliasDeclaration emits a type whose base is the aliased type.  The MuIL type system permits
+    // conversions between such types in a way that is roughly compatible with TypeScript's notion of type aliases.
     private transformTypeAliasDeclaration(node: ts.TypeAliasDeclaration, access: symbols.Accessibility): ast.Class {
-        return contract.fail("NYI");
+        return this.withLocation(node, <ast.Class>{
+            kind:    ast.classKind,
+            name:    this.transformIdentifier(node.name),
+            access:  access,
+            extends: this.transformTypeNode(node.type),
+        });
     }
 
     private makeVariableInitializer(decl: VariableDeclaration<ast.Variable>): ast.Statement {
@@ -812,7 +824,7 @@ export class Transformer {
         }
         return {
             name:        name,
-            type:        "TODO",
+            type:        this.transformTypeNode(node.type),
             initializer: initializer,
         };
     }
@@ -911,7 +923,7 @@ export class Transformer {
                 access:   this.getClassAccessibility(node),
                 readonly: !!(mods & ts.ModifierFlags.Readonly),
                 static:   !!(mods & ts.ModifierFlags.Static),
-                type:     "TODO",
+                type:     this.transformTypeNode(node.type),
             },
             false,
             initializer,

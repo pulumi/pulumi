@@ -44,7 +44,7 @@
                                     }
                                 }
                             },
-                            "type": "TODO"
+                            "type": "any"
                         },
                         {
                             "kind": "LocalVariable",
@@ -63,7 +63,7 @@
                                     }
                                 }
                             },
-                            "type": "TODO"
+                            "type": "any"
                         }
                     ],
                     "body": {
@@ -81,7 +81,7 @@
                             }
                         }
                     },
-                    "returnType": "TODO",
+                    "returnType": "any",
                     "loc": {
                         "file": "index.ts",
                         "start": {
