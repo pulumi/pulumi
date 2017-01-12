@@ -80,16 +80,6 @@ let postfixUnaryOperators = new Map<ts.SyntaxKind, ast.UnaryOperator>([
     [ ts.SyntaxKind.MinusMinusToken, "--" ],
 ]);
 
-// A top-level module element is either a module member (definition) or a statement (initializer).
-type ModuleElement = ast.ModuleMember | VariableDeclaration<ast.ModuleProperty> | ast.Statement;
-
-// A top-level class element is either a class member (definition) or a statement (initializer).
-type ClassElement = ast.ClassMember | VariableDeclaration<ast.ClassProperty>;
-
-function isVariableDeclaration(element: ModuleElement | ClassElement): boolean {
-    return !!(element instanceof VariableDeclaration);
-}
-
 // A variable is a MuIL variable with an optional initializer expression.  This is required because MuIL doesn't support
 // complex initializers on the Variable AST node -- they must be explicitly placed into an initializer section.
 class VariableDeclaration<TVariable extends ast.Variable> {
@@ -99,6 +89,16 @@ class VariableDeclaration<TVariable extends ast.Variable> {
         public legacyVar?:   boolean,        // true to mimick legacy ECMAScript "var" behavior; false for "let".
         public initializer?: ast.Expression, // an optional initialization expression.
     ) { }
+}
+
+// A top-level module element is either a module member (definition) or a statement (initializer).
+type ModuleElement = ast.ModuleMember | VariableDeclaration<ast.ModuleProperty> | ast.Statement;
+
+// A top-level class element is either a class member (definition) or a statement (initializer).
+type ClassElement = ast.ClassMember | VariableDeclaration<ast.ClassProperty>;
+
+function isVariableDeclaration(element: ModuleElement | ClassElement): boolean {
+    return !!(element instanceof VariableDeclaration);
 }
 
 // A variable declaration isn't yet known to be a module or class property, and so it just contains the subset in common
@@ -132,6 +132,18 @@ function isComputed(name: ts.Node | undefined): boolean {
         return (name.kind === ts.SyntaxKind.ComputedPropertyName);
     }
     return false;
+}
+
+// notYetImplemented simply fail-fasts, but does so in a way where we at least get Node source information.
+function notYetImplemented(node: ts.Node | undefined): never {
+    let msg: string = "Not Yet Implemented";
+    if (node) {
+        let s: ts.SourceFile = node.getSourceFile();
+        let start: ts.LineAndCharacter = s.getLineAndCharacterOfPosition(node.getStart());
+        let end: ts.LineAndCharacter = s.getLineAndCharacterOfPosition(node.getEnd());
+        msg += `: ${s.fileName}(${start.line+1},${start.character})-(${end.line+1},${end.character})`;
+    }
+    return contract.fail(msg);
 }
 
 // A transpiler is responsible for transforming TypeScript program artifacts into MuPack/MuIL AST forms.
@@ -337,15 +349,15 @@ export class Transformer {
     }
 
     private transformExportAssignment(node: ts.ExportAssignment): ast.Definition {
-        return contract.fail("NYI");
+        return notYetImplemented(node);
     }
 
     private transformExportDeclaration(node: ts.ExportDeclaration): ast.Definition {
-        return contract.fail("NYI");
+        return notYetImplemented(node);
     }
 
     private transformExportSpecifier(node: ts.ExportSpecifier): ast.Definition {
-        return contract.fail("NYI");
+        return notYetImplemented(node);
     }
 
     private transformImportDeclaration(node: ts.ImportDeclaration): ModuleElement {
@@ -685,7 +697,7 @@ export class Transformer {
     }
 
     private transformModuleDeclaration(node: ts.ModuleDeclaration, access: symbols.Accessibility): ast.Module {
-        return contract.fail("NYI");
+        return notYetImplemented(node);
     }
 
     private transformParameterDeclaration(node: ts.ParameterDeclaration): VariableDeclaration<ast.LocalVariable> {
@@ -952,11 +964,11 @@ export class Transformer {
     }
 
     private transformCaseOrDefaultClause(node: ts.CaseOrDefaultClause): ast.Statement {
-        return contract.fail("NYI");
+        return notYetImplemented(node);
     }
 
     private transformCatchClause(node: ts.CatchClause): ast.Statement {
-        return contract.fail("NYI");
+        return notYetImplemented(node);
     }
 
     private transformContinueStatement(node: ts.ContinueStatement): ast.ContinueStatement {
@@ -998,19 +1010,19 @@ export class Transformer {
     }
 
     private transformForStatement(node: ts.ForStatement): ast.Statement {
-        return contract.fail("NYI");
+        return notYetImplemented(node);
     }
 
     private transformForInitializer(node: ts.ForInitializer): ast.Statement {
-        return contract.fail("NYI");
+        return notYetImplemented(node);
     }
 
     private transformForInStatement(node: ts.ForInStatement): ast.Statement {
-        return contract.fail("NYI");
+        return notYetImplemented(node);
     }
 
     private transformForOfStatement(node: ts.ForOfStatement): ast.Statement {
-        return contract.fail("NYI");
+        return notYetImplemented(node);
     }
 
     private transformIfStatement(node: ts.IfStatement): ast.IfStatement {
@@ -1032,7 +1044,7 @@ export class Transformer {
     }
 
     private transformSwitchStatement(node: ts.SwitchStatement): ast.Statement {
-        return contract.fail("NYI");
+        return notYetImplemented(node);
     }
 
     private transformThrowStatement(node: ts.ThrowStatement): ast.ThrowStatement {
@@ -1043,7 +1055,7 @@ export class Transformer {
     }
 
     private transformTryStatement(node: ts.TryStatement): ast.TryCatchFinally {
-        return contract.fail("NYI");
+        return notYetImplemented(node);
     }
 
     private transformWhileStatement(node: ts.WhileStatement): ast.WhileStatement {
@@ -1094,11 +1106,11 @@ export class Transformer {
     }
 
     private transformModuleBlock(node: ts.ModuleBlock): ast.Block {
-        return contract.fail("NYI");
+        return notYetImplemented(node);
     }
 
     private transformWithStatement(node: ts.WithStatement): ast.Statement {
-        return contract.fail("NYI");
+        return notYetImplemented(node);
     }
 
     /** Expressions **/
@@ -1187,7 +1199,7 @@ export class Transformer {
     }
 
     private transformArrowFunction(node: ts.ArrowFunction): ast.Expression {
-        return contract.fail("NYI");
+        return notYetImplemented(node);
     }
 
     private transformBinaryExpression(node: ts.BinaryExpression): ast.Expression {
@@ -1262,7 +1274,7 @@ export class Transformer {
     }
 
     private transformClassExpression(node: ts.ClassExpression): ast.Expression {
-        return contract.fail("NYI");
+        return notYetImplemented(node);
     }
 
     private transformConditionalExpression(node: ts.ConditionalExpression): ast.ConditionalExpression {
@@ -1275,7 +1287,7 @@ export class Transformer {
     }
 
     private transformDeleteExpression(node: ts.DeleteExpression): ast.Expression {
-        return contract.fail("NYI");
+        return notYetImplemented(node);
     }
 
     private transformElementAccessExpression(node: ts.ElementAccessExpression): ast.LoadExpression {
@@ -1302,7 +1314,7 @@ export class Transformer {
     }
 
     private transformFunctionExpression(node: ts.FunctionExpression): ast.Expression {
-        return contract.fail("NYI");
+        return notYetImplemented(node);
     }
 
     private transformObjectLiteralExpression(node: ts.ObjectLiteralExpression): ast.ObjectLiteral {
@@ -1362,7 +1374,7 @@ export class Transformer {
 
     private transformObjectLiteralFunctionLikeElement(node: ts.FunctionLikeDeclaration): ast.ObjectLiteralProperty {
         // TODO: turn these into lambdas.
-        return contract.fail("NYI");
+        return notYetImplemented(node);
     }
 
     private transformPostfixUnaryExpression(node: ts.PostfixUnaryExpression): ast.UnaryOperatorExpression {
@@ -1413,15 +1425,15 @@ export class Transformer {
     }
 
     private transformOmittedExpression(node: ts.OmittedExpression): ast.Expression {
-        return contract.fail("NYI");
+        return notYetImplemented(node);
     }
 
     private transformParenthesizedExpression(node: ts.ParenthesizedExpression): ast.Expression {
-        return contract.fail("NYI");
+        return notYetImplemented(node);
     }
 
     private transformSpreadElement(node: ts.SpreadElement): ast.Expression {
-        return contract.fail("NYI");
+        return notYetImplemented(node);
     }
 
     private transformSuperExpression(node: ts.SuperExpression): ast.LoadLocationExpression {
@@ -1432,11 +1444,11 @@ export class Transformer {
     }
 
     private transformTaggedTemplateExpression(node: ts.TaggedTemplateExpression): ast.Expression {
-        return contract.fail("NYI");
+        return notYetImplemented(node);
     }
 
     private transformTemplateExpression(node: ts.TemplateExpression): ast.Expression {
-        return contract.fail("NYI");
+        return notYetImplemented(node);
     }
 
     private transformThisExpression(node: ts.ThisExpression): ast.LoadLocationExpression {
@@ -1447,15 +1459,15 @@ export class Transformer {
     }
 
     private transformTypeOfExpression(node: ts.TypeOfExpression): ast.Expression {
-        return contract.fail("NYI");
+        return notYetImplemented(node);
     }
 
     private transformVoidExpression(node: ts.VoidExpression): ast.Expression {
-        return contract.fail("NYI");
+        return notYetImplemented(node);
     }
 
     private transformYieldExpression(node: ts.YieldExpression): ast.Expression {
-        return contract.fail("NYI");
+        return notYetImplemented(node);
     }
 
     /** Literals **/
@@ -1470,7 +1482,7 @@ export class Transformer {
     }
 
     private transformNoSubstitutionTemplateLiteral(node: ts.NoSubstitutionTemplateLiteral): ast.Expression {
-        return contract.fail("NYI");
+        return notYetImplemented(node);
     }
 
     private transformNullLiteral(node: ts.NullLiteral): ast.NullLiteral {
@@ -1489,7 +1501,7 @@ export class Transformer {
     }
 
     private transformRegularExpressionLiteral(node: ts.RegularExpressionLiteral): ast.Expression {
-        return contract.fail("NYI");
+        return notYetImplemented(node);
     }
 
     private transformStringLiteral(node: ts.StringLiteral): ast.StringLiteral {
@@ -1506,15 +1518,15 @@ export class Transformer {
     /** Patterns **/
 
     private transformArrayBindingPattern(node: ts.ArrayBindingPattern): ast.Expression {
-        return contract.fail("NYI");
+        return notYetImplemented(node);
     }
 
     private transformArrayBindingElement(node: ts.ArrayBindingElement): (ast.Expression | null) {
-        return contract.fail("NYI");
+        return notYetImplemented(node);
     }
 
     private transformBindingName(node: ts.BindingName): ast.Expression {
-        return contract.fail("NYI");
+        return notYetImplemented(node);
     }
 
     private transformBindingIdentifier(node: ts.BindingName): ast.Identifier {
@@ -1524,11 +1536,11 @@ export class Transformer {
     }
 
     private transformBindingPattern(node: ts.BindingPattern): ast.Expression {
-        return contract.fail("NYI");
+        return notYetImplemented(node);
     }
 
     private transformComputedPropertyName(node: ts.ComputedPropertyName): ast.Expression {
-        return contract.fail("NYI");
+        return notYetImplemented(node);
     }
 
     private transformIdentifierExpression(node: ts.Identifier): ast.Identifier {
@@ -1536,11 +1548,11 @@ export class Transformer {
     }
 
     private transformObjectBindingPattern(node: ts.ObjectBindingPattern): ast.Expression {
-        return contract.fail("NYI");
+        return notYetImplemented(node);
     }
 
     private transformObjectBindingElement(node: ts.BindingElement): ast.Expression {
-        return contract.fail("NYI");
+        return notYetImplemented(node);
     }
 
     private transformPropertyName(node: ts.PropertyName): ast.Identifier {
