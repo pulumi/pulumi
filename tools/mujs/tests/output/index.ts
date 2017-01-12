@@ -20,6 +20,8 @@ let testCases: string[] = [
     "modules/func_exp_def_1",
     "modules/class_1",
     "modules/class_exp_1",
+    "modules/iface_1",
+    "modules/iface_exp_1",
 
     // These are not quite real-world-code, but they are more complex "integration" style tests.
     "scenarios/point",
@@ -55,7 +57,7 @@ describe("outputs", () => {
             for (let i = 0; i < output.diagnostics.length; i++) {
                 actualMessages.push(output.formatDiagnostic(i));
             }
-            compareLines(actualMessages, expectedMessages);
+            compareLines(actualMessages, expectedMessages, "messages");
 
             // Next, see if there is an expected program tree (possibly none in the case of fatal errors).
             let expectedOutputTree: string | undefined;
@@ -76,7 +78,7 @@ describe("outputs", () => {
                     // Do a line-by-line comparison to make debugging failures nicer.
                     let actualLines: string[] = mupackTreeText.split("\n");
                     let expectLines: string[] = expectedOutputTree.split("\n");
-                    compareLines(actualLines, expectLines);
+                    compareLines(actualLines, expectLines, "AST");
                 }
                 else {
                     assert(false, "Expected an empty program tree, but one was returned");
@@ -89,7 +91,7 @@ describe("outputs", () => {
     }
 });
 
-function compareLines(actuals: string[], expects: string[]): void {
+function compareLines(actuals: string[], expects: string[], label: string): void {
     let mismatches: { num: number, actual: string, expect: string }[] = [];
     for (let i = 0; i < actuals.length && i < expects.length; i++) {
         if (actuals[i] !== expects[i]) {
@@ -108,8 +110,8 @@ function compareLines(actuals: string[], expects: string[]): void {
             actual += `${mismatch.num}: ${mismatch.actual}${os.EOL}`;
             expect += `${mismatch.num}: ${mismatch.expect}${os.EOL}`;
         }
-        assert.strictEqual(actual, expect, `Expected messages to match; ${mismatches.length} did not`);
+        assert.strictEqual(actual, expect, `Expected ${label} to match; ${mismatches.length} did not`);
     }
-    assert.strictEqual(actuals.length, expects.length, "Expected message count to match");
+    assert.strictEqual(actuals.length, expects.length, `Expected ${label} line count to match`);
 }
 

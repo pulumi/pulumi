@@ -298,8 +298,7 @@ export class Transformer {
                 case ts.SyntaxKind.ExportDeclaration:
                     return [ this.transformExportDeclaration(<ts.ExportDeclaration>node) ];
                 case ts.SyntaxKind.ImportDeclaration:
-                    // TODO: register the import name so we can "mangle" any references to it accordingly later on.
-                    return contract.fail("NYI");
+                    return [ this.transformImportDeclaration(<ts.ImportDeclaration>node) ];
 
                 // Handle declarations; each of these results in a definition.
                 case ts.SyntaxKind.ClassDeclaration:
@@ -561,33 +560,12 @@ export class Transformer {
         }
     }
 
-    // A common routine for transforming FunctionLikeDeclarations.  The return is specialized per callsite, since it
-    // will differ slightly between module methods, class methods, lambdas, and so on.
-    private transformFunctionLikeDeclaration(node: ts.FunctionLikeDeclaration): FunctionLikeDeclaration {
-        // Ensure we are dealing with the supported subset of functions.
-        if (ts.getCombinedModifierFlags(node) & ts.ModifierFlags.Async) {
-            this.diagnostics.push(this.dctx.newAsyncNotSupportedError(node));
-        }
+    private transformFunctionLikeCommon(node: ts.FunctionLikeDeclaration): FunctionLikeDeclaration {
         if (!!node.asteriskToken) {
             this.diagnostics.push(this.dctx.newGeneratorsNotSupportedError(node.asteriskToken));
         }
 
-        // First transform the name into an identifier.  In the absence of a name, we will proceed under the assumption
-        // that it is the default export.  This should be verified later on.
-        let name: ast.Identifier;
-        if (node.name) {
-            name = this.transformPropertyName(node.name);
-        }
-        else if (node.kind === ts.SyntaxKind.Constructor) {
-            // Constructors have a special name.
-            name = ident(symbols.specialFunctionConstructor);
-        }
-        else {
-            // All others are assumed to be default exports.
-            name = ident(defaultExport);
-        }
-
-        // Now visit the body; it can either be a block or a free-standing expression.
+        // First, visit the body; it can either be a block or a free-standing expression.
         let body: ast.Block | undefined;
         if (node.body) {
             switch (node.body.kind) {
@@ -610,6 +588,32 @@ export class Transformer {
                     };
                     break;
             }
+        }
+        return this.transformFunctionLikeOrSignatureCommon(node, body);
+    }
+
+    // A common routine for transforming FunctionLikeDeclarations and MethodSignatures.  The return is specialized per
+    // callsite, since differs slightly between module methods, class and interface methods, lambdas, and so on.
+    private transformFunctionLikeOrSignatureCommon(
+            node: ts.FunctionLikeDeclaration | ts.MethodSignature, body?: ast.Block): FunctionLikeDeclaration {
+        // Ensure we are dealing with the supported subset of functions.
+        if (ts.getCombinedModifierFlags(node) & ts.ModifierFlags.Async) {
+            this.diagnostics.push(this.dctx.newAsyncNotSupportedError(node));
+        }
+
+        // First transform the name into an identifier.  In the absence of a name, we will proceed under the assumption
+        // that it is the default export.  This should be verified later on.
+        let name: ast.Identifier;
+        if (node.name) {
+            name = this.transformPropertyName(node.name);
+        }
+        else if (node.kind === ts.SyntaxKind.Constructor) {
+            // Constructors have a special name.
+            name = ident(symbols.specialFunctionConstructor);
+        }
+        else {
+            // All others are assumed to be default exports.
+            name = ident(defaultExport);
         }
 
         // Next transform the parameter variables into locals.
@@ -634,7 +638,7 @@ export class Transformer {
 
     private transformModuleFunctionDeclaration(
             node: ts.FunctionDeclaration, access: symbols.Accessibility): ast.ModuleMethod {
-        let decl: FunctionLikeDeclaration = this.transformFunctionLikeDeclaration(node);
+        let decl: FunctionLikeDeclaration = this.transformFunctionLikeCommon(node);
         return this.withLocation(node, <ast.ModuleMethod>{
             kind:       ast.moduleMethodKind,
             name:       decl.name,
@@ -645,8 +649,38 @@ export class Transformer {
         });
     }
 
+    // transformInterfaceDeclaration turns a TypeScript interface into a MuIL interface class.
     private transformInterfaceDeclaration(node: ts.InterfaceDeclaration, access: symbols.Accessibility): ast.Class {
-        return contract.fail("NYI");
+        // TODO(joe): generics.
+        // TODO(joe): decorators.
+        // TODO(joe): extends/implements.
+
+        // Transform all valid members for this declaration into ClassMembers.
+        let members: ast.ClassMembers = {};
+        for (let member of node.members) {
+            if (member.kind !== ts.SyntaxKind.MissingDeclaration) {
+                let decl: ast.ClassMember;
+                let element: ClassElement = this.transformTypeElement(member);
+                if (isVariableDeclaration(element)) {
+                    let vardecl = <VariableDeclaration<ast.ClassProperty>>element;
+                    contract.assert(!vardecl.initializer, "Interface properties do not have initializers");
+                    decl = vardecl.variable;
+                }
+                else {
+                    decl = <ast.ClassMember>element;
+                }
+
+                members[decl.name.ident] = decl;
+            }
+        }
+
+        return this.withLocation(node, <ast.Class>{
+            kind:      ast.classKind,
+            name:      this.transformIdentifier(node.name),
+            access:    access,
+            members:   members,
+            interface: true,
+        });
     }
 
     private transformModuleDeclaration(node: ts.ModuleDeclaration, access: symbols.Accessibility): ast.Module {
@@ -791,27 +825,41 @@ export class Transformer {
         return node.declarations.map((decl: ts.VariableDeclaration) => this.transformVariableDeclaration(decl));
     }
 
-    /** Classes **/
+    /** Class/type elements **/
 
     private transformClassElement(node: ts.ClassElement): ClassElement {
         switch (node.kind) {
             // All the function-like members go here:
             case ts.SyntaxKind.Constructor:
-                return this.transformClassElementFunctionLike(<ts.ConstructorDeclaration>node);
+                return this.transformFunctionLikeDeclaration(<ts.ConstructorDeclaration>node);
             case ts.SyntaxKind.MethodDeclaration:
-                return this.transformClassElementFunctionLike(<ts.MethodDeclaration>node);
+                return this.transformFunctionLikeDeclaration(<ts.MethodDeclaration>node);
             case ts.SyntaxKind.GetAccessor:
-                return this.transformClassElementFunctionLike(<ts.GetAccessorDeclaration>node);
+                return this.transformFunctionLikeDeclaration(<ts.GetAccessorDeclaration>node);
             case ts.SyntaxKind.SetAccessor:
-                return this.transformClassElementFunctionLike(<ts.SetAccessorDeclaration>node);
+                return this.transformFunctionLikeDeclaration(<ts.SetAccessorDeclaration>node);
 
             // Properties are not function-like, so we translate them differently.
             case ts.SyntaxKind.PropertyDeclaration:
-                return this.transformClassElementProperty(<ts.PropertyDeclaration>node);
+                return this.transformPropertyDeclarationOrSignature(<ts.PropertyDeclaration>node);
 
             // Unrecognized cases:
             case ts.SyntaxKind.SemicolonClassElement:
                 return contract.fail("Expected all SemiColonClassElements to be filtered out of AST tree");
+            default:
+                return contract.fail(`Unrecognized ClassElement node kind: ${ts.SyntaxKind[node.kind]}`);
+        }
+    }
+
+    // transformTypeElement turns a TypeScript type element, typically an interface member, into a MuIL class member.
+    private transformTypeElement(node: ts.TypeElement): ClassElement {
+        switch (node.kind) {
+            // Property and method signatures are like their class counterparts, but have no bodies:
+            case ts.SyntaxKind.PropertySignature:
+                return this.transformPropertyDeclarationOrSignature(<ts.PropertySignature>node);
+            case ts.SyntaxKind.MethodSignature:
+                return this.transformMethodSignature(<ts.MethodSignature>node);
+
             default:
                 return contract.fail(`Unrecognized TypeElement node kind: ${ts.SyntaxKind[node.kind]}`);
         }
@@ -831,13 +879,13 @@ export class Transformer {
         }
     }
 
-    private transformClassElementFunctionLike(node: ts.FunctionLikeDeclaration): ast.ClassMethod {
+    private transformFunctionLikeDeclaration(node: ts.FunctionLikeDeclaration): ast.ClassMethod {
         // Get/Set accessors aren't yet supported.
         contract.assert(node.kind !== ts.SyntaxKind.GetAccessor, "GetAccessor NYI");
         contract.assert(node.kind !== ts.SyntaxKind.SetAccessor, "SetAccessor NYI");
 
         let mods: ts.ModifierFlags = ts.getCombinedModifierFlags(node);
-        let decl: FunctionLikeDeclaration = this.transformFunctionLikeDeclaration(node);
+        let decl: FunctionLikeDeclaration = this.transformFunctionLikeCommon(node);
         return this.withLocation(node, <ast.ClassMethod>{
             kind:       ast.classMethodKind,
             name:       decl.name,
@@ -850,7 +898,8 @@ export class Transformer {
         });
     }
 
-    private transformClassElementProperty(node: ts.PropertyDeclaration): VariableDeclaration<ast.ClassProperty> {
+    private transformPropertyDeclarationOrSignature(
+            node: ts.PropertyDeclaration | ts.PropertySignature): VariableDeclaration<ast.ClassProperty> {
         let initializer: ast.Expression | undefined;
         if (node.initializer) {
             initializer = this.transformExpression(node.initializer);
@@ -871,6 +920,18 @@ export class Transformer {
             false,
             initializer,
         );
+    }
+
+    private transformMethodSignature(node: ts.MethodSignature): ast.ClassMethod {
+        let decl: FunctionLikeDeclaration = this.transformFunctionLikeOrSignatureCommon(node);
+        return this.withLocation(node, <ast.ClassMethod>{
+            kind:       ast.classMethodKind,
+            name:       decl.name,
+            access:     this.getClassAccessibility(node),
+            parameters: decl.parameters,
+            returnType: decl.returnType,
+            abstract:   true,
+        });
     }
 
     /** Control flow statements **/
