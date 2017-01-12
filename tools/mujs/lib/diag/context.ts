@@ -104,6 +104,22 @@ export class Context {
 
     /** Error factories **/
 
+    public newMissingMufileError(path: string): Diagnostic {
+        return {
+            category: DiagnosticCategory.Error,
+            code:     1,
+            message:  `No Mufile was found at '${path}'`,
+        };
+    }
+
+    public newMissingMupackNameError(path: string): Diagnostic {
+        return {
+            category: DiagnosticCategory.Error,
+            code:     2,
+            message:  `Mufile '${path}' is missing a name`,
+        };
+    }
+
     public newAsyncNotSupportedError(node: ts.Node): Diagnostic {
         return {
             category: DiagnosticCategory.Error,

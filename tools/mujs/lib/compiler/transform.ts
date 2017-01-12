@@ -9,7 +9,7 @@ import * as ast from "../ast";
 import * as diag from "../diag";
 import * as pack from "../pack";
 import * as symbols from "../symbols";
-import {discover} from "./discover";
+import {discover, DiscoverResult} from "./discover";
 import {Script} from "./script";
 
 const defaultExport: string = "default"; // the ES6 default export name.
@@ -140,11 +140,6 @@ export class Transformer {
     private script: Script;                 // the package's compiled TypeScript tree and context.
     private dctx: diag.Context;             // the diagnostics context.
     private diagnostics: diag.Diagnostic[]; // any diagnostics encountered during translation.
-
-    // Loads up Mu metadata and then creates a new Transformer object.
-    public static async createFrom(script: Script): Promise<Transformer> {
-        return new Transformer(await discover(script.root), script);
-    }
 
     constructor(meta: pack.Metadata, script: Script) {
         contract.requires(!!script.tree, "script", "A valid MuJS AST is required to lower to MuPack/MuIL");
@@ -1433,8 +1428,23 @@ export class Transformer {
 
 // Loads the metadata and transforms a TypeScript program into its equivalent MuPack/MuIL AST form.
 export async function transform(script: Script): Promise<TransformResult> {
-    let t = await Transformer.createFrom(script);
-    return t.transform();
+    let disc: DiscoverResult = await discover(script.root);
+    let result: TransformResult = {
+        diagnostics: disc.diagnostics, // ensure we propagate the diagnostics
+        pack:        undefined,
+    };
+
+    if (disc.meta) {
+        // New up a transformer and do it.
+        let t = new Transformer(disc.meta, script);
+        let trans: TransformResult = t.transform();
+
+        // Copy the return to our running result, so we propagate the aggregate of all diagnostics.
+        result.diagnostics = result.diagnostics.concat(trans.diagnostics);
+        result.pack = trans.pack;
+    }
+
+    return result;
 }
 
 export interface TransformResult {
