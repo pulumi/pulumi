@@ -1179,7 +1179,11 @@ export class Transformer {
     }
 
     private transformArrayLiteralExpression(node: ts.ArrayLiteralExpression): ast.Expression {
-        return contract.fail("NYI");
+        return this.withLocation(node, <ast.ArrayLiteral>{
+            kind:     ast.arrayLiteralKind,
+            type:     this.transformTypeNode(undefined),
+            elements: node.elements.map((expr: ts.Expression) => this.transformExpression(expr)),
+        });
     }
 
     private transformArrowFunction(node: ts.ArrowFunction): ast.Expression {

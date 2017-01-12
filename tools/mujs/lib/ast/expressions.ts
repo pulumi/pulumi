@@ -44,6 +44,16 @@ export interface StringLiteral extends Literal {
 export const stringLiteralKind = "StringLiteral";
 export type  StringLiteralKind = "StringLiteral";
 
+// A array literal (`new` and/or initialization).
+export interface ArrayLiteral extends Literal {
+    kind:      ArrayLiteralKind;
+    type:      symbols.TypeToken; // the type of array to produce.
+    size?:     Expression;        // an optiojnal expression for the array size.
+    elements?: Expression[];      // an optional array of element expressions to store into the array.
+}
+export const arrayLiteralKind = "ArrayLiteral";
+export type  ArrayLiteralKind = "ArrayLiteral";
+
 // An object literal (`new` and/or initialization).
 export interface ObjectLiteral extends Literal {
     kind:          ObjectLiteralKind;

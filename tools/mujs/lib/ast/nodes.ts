@@ -47,6 +47,7 @@ export type NodeKind =
     expressions.BoolLiteralKind |
     expressions.NumberLiteralKind |
     expressions.StringLiteralKind |
+    expressions.ArrayLiteralKind |
     expressions.ObjectLiteralKind |
     expressions.ObjectLiteralInitializerKind |
     expressions.LoadLocationExpressionKind |
