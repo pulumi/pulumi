@@ -21,12 +21,13 @@ export type NodeKind =
     IdentifierKind |
 
     definitions.ModuleKind |
-    definitions.LocalVariableKind |
-    definitions.ModulePropertyKind |
-    definitions.ClassPropertyKind |
-    definitions.ModuleMethodKind |
-    definitions.ClassMethodKind |
     definitions.ClassKind |
+    definitions.ExportKind |
+    definitions.LocalVariableKind |
+    definitions.ClassPropertyKind |
+    definitions.ModulePropertyKind |
+    definitions.ClassMethodKind |
+    definitions.ModuleMethodKind |
 
     statements.BlockKind |
     statements.LocalVariableDeclarationKind |

@@ -33,8 +33,16 @@ export type ModuleMembers = { [token: string /*symbols.ModuleToken*/]: ModuleMem
 
 /* Classes */
 
+// An export definition re-exports a definition from another module, possibly with a different name.
+export interface Export extends ModuleMember {
+    kind:  ExportKind;
+    token: symbols.Token;
+}
+export const exportKind = "Export";
+export type  ExportKind = "Export";
+
 // A class can be constructed to create an object, and exports properties, methods, and has a number of attributes.
-export interface Class extends Definition {
+export interface Class extends ModuleMember {
     kind:        ClassKind;
     extends?:    symbols.TypeToken;
     implements?: symbols.TypeToken[];

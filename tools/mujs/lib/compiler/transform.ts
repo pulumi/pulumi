@@ -135,8 +135,11 @@ function isComputed(name: ts.Node | undefined): boolean {
 }
 
 // notYetImplemented simply fail-fasts, but does so in a way where we at least get Node source information.
-function notYetImplemented(node: ts.Node | undefined): never {
+function notYetImplemented(node: ts.Node | undefined, label?: string): never {
     let msg: string = "Not Yet Implemented";
+    if (label) {
+        msg += `[${label}]`;
+    }
     if (node) {
         let s: ts.SourceFile = node.getSourceFile();
         let start: ts.LineAndCharacter = s.getLineAndCharacterOfPosition(node.getStart());
@@ -313,7 +316,7 @@ export class Transformer {
                 case ts.SyntaxKind.ExportAssignment:
                     return [ this.transformExportAssignment(<ts.ExportAssignment>node) ];
                 case ts.SyntaxKind.ExportDeclaration:
-                    return [ this.transformExportDeclaration(<ts.ExportDeclaration>node) ];
+                    return this.transformExportDeclaration(<ts.ExportDeclaration>node);
                 case ts.SyntaxKind.ImportDeclaration:
                     return [ this.transformImportDeclaration(<ts.ImportDeclaration>node) ];
 
@@ -352,8 +355,46 @@ export class Transformer {
         return notYetImplemented(node);
     }
 
-    private transformExportDeclaration(node: ts.ExportDeclaration): ast.Definition {
-        return notYetImplemented(node);
+    private transformExportDeclaration(node: ts.ExportDeclaration): ast.ModuleMember[] {
+        // In the case of a module specifier, we are re-exporting elements from another module.
+        if (node.moduleSpecifier) {
+            return this.transformReExportDeclaration(node);
+        }
+
+        // Otherwise, we are exporting already-imported names from the current module.
+        // TODO(joe): support this, by enumerating all exports, and flipping any privates to publics.  As we proceed, we
+        //     will need to keep an eye out for exporting whole sub-modules.
+        return notYetImplemented(node, "manual exports");
+    }
+
+    private transformReExportDeclaration(node: ts.ExportDeclaration): ast.ModuleMember[] {
+        contract.assert(!!node.moduleSpecifier);
+        contract.assert(node.moduleSpecifier!.kind === ts.SyntaxKind.StringLiteral);
+        let spec: ts.StringLiteral = <ts.StringLiteral>node.moduleSpecifier!;
+
+        // The module specifier will be a string literal; fetch that so we can resolve to a symbol token.
+        let source: symbols.ModuleToken = this.transformStringLiteral(spec).value;
+        if (node.exportClause) {
+            // For every export clause, we will issue a top-level MuIL export AST node.
+            let exports: ast.Export[] = [];
+            for (let exportClause of node.exportClause.elements) {
+                contract.assert(!exportClause.propertyName);
+                let name: ast.Identifier = this.transformIdentifier(exportClause.name);
+                // TODO[marapongo/mu#46]: produce real module tokens that will be recognizable.
+                let token: symbols.Token = `${source}::${name.ident}`;
+                exports.push(<ast.Export>{
+                    kind:  ast.exportKind,
+                    name:  name,
+                    token: token,
+                });
+            }
+            return exports;
+        }
+        else {
+            // TODO[marapongo/mu#46]: we need to enumerate all known exports, but to do that, we'll need to have
+            //     semantic understanding of the imported module with a given name.
+            return notYetImplemented(node, "export *");
+        }
     }
 
     private transformExportSpecifier(node: ts.ExportSpecifier): ast.Definition {
@@ -1224,8 +1265,10 @@ export class Transformer {
                 case ts.SyntaxKind.ExclamationEqualsEqualsToken:
                     log.out(3).info(
                         `ECMAScript operator '${ts.SyntaxKind[node.operatorToken.kind]}' not supported; ` +
-                        `until marapongo/mu#50 is implemented, be careful about subtle behavioral differences`
+                        `until marapongo/mu#50 is implemented, be careful about subtle behavioral differences`,
                     );
+                    break;
+                default:
                     break;
             }
         }
@@ -1290,7 +1333,7 @@ export class Transformer {
         if (log.v(3)) {
             log.out(3).info(
                 `ECMAScript operator 'delete' not supported; ` +
-                `until marapongo/mu#50 is implemented, be careful about subtle behavioral differences`
+                `until marapongo/mu#50 is implemented, be careful about subtle behavioral differences`,
             );
         }
         // TODO[marapongo/mu#50]: we need to decide how to map `delete` into a runtime MuIL operator.  It's possible
