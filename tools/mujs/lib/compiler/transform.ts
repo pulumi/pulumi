@@ -34,7 +34,7 @@ let binaryOperators = new Map<ts.SyntaxKind, ast.BinaryOperator>([
     [ ts.SyntaxKind.AsteriskAsteriskEqualsToken,                  "**=" ],
     [ ts.SyntaxKind.LessThanLessThanEqualsToken,                  "<<=" ],
     [ ts.SyntaxKind.GreaterThanGreaterThanEqualsToken,            ">>=" ],
-    // TODO: [ ts.SyntaxKind.GreaterThanGreaterThanGreaterThanEqualsToken, ">>>=" ],
+    [ ts.SyntaxKind.GreaterThanGreaterThanGreaterThanEqualsToken, ">>=" ], // TODO[marapongo/mu#50]: emulate >>>=.
     [ ts.SyntaxKind.AmpersandEqualsToken,                         "&=" ],
     [ ts.SyntaxKind.BarEqualsToken,                               "|=" ],
     [ ts.SyntaxKind.CaretEqualsToken,                             "^=" ],
@@ -42,10 +42,10 @@ let binaryOperators = new Map<ts.SyntaxKind, ast.BinaryOperator>([
     // Bitwise
     [ ts.SyntaxKind.LessThanLessThanToken,                  "<<" ],
     [ ts.SyntaxKind.GreaterThanGreaterThanToken,            ">>" ],
+    [ ts.SyntaxKind.GreaterThanGreaterThanGreaterThanToken, ">>" ], // TODO[marapongo/mu#50]: emulate >>>.
     [ ts.SyntaxKind.BarToken,                               "|" ],
     [ ts.SyntaxKind.CaretToken,                             "^" ],
     [ ts.SyntaxKind.AmpersandToken,                         "&" ],
-    // TODO: [ ts.SyntaxKind.GreaterThanGreaterThanGreaterThanToken, ">>>" ],
 
     // Logical
     [ ts.SyntaxKind.AmpersandAmpersandToken, "&&" ],
@@ -57,9 +57,9 @@ let binaryOperators = new Map<ts.SyntaxKind, ast.BinaryOperator>([
     [ ts.SyntaxKind.GreaterThanToken,                       ">" ],
     [ ts.SyntaxKind.GreaterThanEqualsToken,                 ">=" ],
     [ ts.SyntaxKind.EqualsEqualsToken,                      "==" ],
+    [ ts.SyntaxKind.EqualsEqualsEqualsToken,                "==" ], // TODO[marapongo/mu#50]: emulate ===.
     [ ts.SyntaxKind.ExclamationEqualsToken,                 "!=" ],
-    // TODO: [ ts.SyntaxKind.EqualsEqualsEqualsToken,                "===" ],
-    // TODO: [ ts.SyntaxKind.ExclamationEqualsEqualsToken,           "!==" ],
+    [ ts.SyntaxKind.ExclamationEqualsEqualsToken,           "!=" ], // TODO[marapongo/mu#50]: emulate !==.
 
     // Intrinsics
     // TODO: [ ts.SyntaxKind.InKeyword,                              "in" ],
