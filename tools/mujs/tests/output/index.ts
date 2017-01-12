@@ -49,13 +49,13 @@ describe("outputs", () => {
                     throw err;
                 }
             }
-            assert.strictEqual(output.diagnostics.length, expectedMessages.length, "Expected message count to match");
 
             // Now format them and ensure the text of the messages are correct.
-            for (let i = 0; i < expectedMessages.length; i++) {
-                let actual: string = output.formatDiagnostic(i);
-                assert.strictEqual(actual, expectedMessages[i], `Expected message #{i}'s text to match`);
+            let actualMessages: string[] = [];
+            for (let i = 0; i < output.diagnostics.length; i++) {
+                actualMessages.push(output.formatDiagnostic(i));
             }
+            compareLines(actualMessages, expectedMessages);
 
             // Next, see if there is an expected program tree (possibly none in the case of fatal errors).
             let expectedOutputTree: string | undefined;
@@ -76,10 +76,7 @@ describe("outputs", () => {
                     // Do a line-by-line comparison to make debugging failures nicer.
                     let actualLines: string[] = mupackTreeText.split("\n");
                     let expectLines: string[] = expectedOutputTree.split("\n");
-                    assert.strictEqual(actualLines.length, expectLines.length, "Expected tree line count to match");
-                    for (let i = 0; i < actualLines.length && i < expectLines.length; i++) {
-                        assert.strictEqual(actualLines[i], expectLines[i], `Expected tree line #${i} to match`);
-                    }
+                    compareLines(actualLines, expectLines);
                 }
                 else {
                     assert(false, "Expected an empty program tree, but one was returned");
@@ -91,4 +88,28 @@ describe("outputs", () => {
         }));
     }
 });
+
+function compareLines(actuals: string[], expects: string[]): void {
+    let mismatches: { num: number, actual: string, expect: string }[] = [];
+    for (let i = 0; i < actuals.length && i < expects.length; i++) {
+        if (actuals[i] !== expects[i]) {
+            mismatches.push({
+                num:    i,
+                actual: actuals[i],
+                expect: expects[i],
+            });
+        }
+    }
+    if (mismatches.length > 0) {
+        // We batch up the mismatches so we can report them in one batch, easing debugging.
+        let expect: string = "";
+        let actual: string = "";
+        for (let mismatch of mismatches) {
+            actual += `${mismatch.num}: ${mismatch.actual}${os.EOL}`;
+            expect += `${mismatch.num}: ${mismatch.expect}${os.EOL}`;
+        }
+        assert.strictEqual(actual, expect, `Expected messages to match; ${mismatches.length} did not`);
+    }
+    assert.strictEqual(actuals.length, expects.length, "Expected message count to match");
+}
 
