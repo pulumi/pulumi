@@ -1223,7 +1223,7 @@ export class Transformer {
                 case ts.SyntaxKind.EqualsEqualsEqualsToken:
                 case ts.SyntaxKind.ExclamationEqualsEqualsToken:
                     log.out(3).info(
-                        `ECMAScript operator ${ts.SyntaxKind[node.operatorToken.kind]} not supported; ` +
+                        `ECMAScript operator '${ts.SyntaxKind[node.operatorToken.kind]}' not supported; ` +
                         `until marapongo/mu#50 is implemented, be careful about subtle behavioral differences`
                     );
                     break;
@@ -1287,7 +1287,24 @@ export class Transformer {
     }
 
     private transformDeleteExpression(node: ts.DeleteExpression): ast.Expression {
-        return notYetImplemented(node);
+        if (log.v(3)) {
+            log.out(3).info(
+                `ECMAScript operator 'delete' not supported; ` +
+                `until marapongo/mu#50 is implemented, be careful about subtle behavioral differences`
+            );
+        }
+        // TODO[marapongo/mu#50]: we need to decide how to map `delete` into a runtime MuIL operator.  It's possible
+        //     this can leverage some dynamic trickery to delete an entry from a map.  But for strong typing reasons,
+        //     this is dubious (at best); for now, we will simply `null` the target out, however, this will cause
+        //     problems down the road once we properly support nullable types.
+        return this.withLocation(node, <ast.BinaryOperatorExpression>{
+            kind:     ast.binaryOperatorExpressionKind,
+            left:     this.transformExpression(node.expression),
+            operator: "=",
+            right:    <ast.NullLiteral>{
+                kind: ast.nullLiteralKind,
+            },
+        });
     }
 
     private transformElementAccessExpression(node: ts.ElementAccessExpression): ast.LoadExpression {
