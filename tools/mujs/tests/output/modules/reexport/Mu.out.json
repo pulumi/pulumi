@@ -191,7 +191,7 @@
                             }
                         }
                     },
-                    "token": "other/C"
+                    "token": "other:C"
                 },
                 "I": {
                     "kind": "Export",
@@ -210,7 +210,7 @@
                             }
                         }
                     },
-                    "token": "other/I"
+                    "token": "other:I"
                 },
                 "v": {
                     "kind": "Export",
@@ -229,7 +229,7 @@
                             }
                         }
                     },
-                    "token": "other/v"
+                    "token": "other:v"
                 }
             },
             "loc": {

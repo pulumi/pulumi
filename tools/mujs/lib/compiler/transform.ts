@@ -259,10 +259,13 @@ export class Transformer {
     }
 
     // createModuleMemberToken binds a string-based exported member name to the associated token that references it.
-    private createModuleMemberToken(mod: ModuleReference, name: string): symbols.Token {
+    private createModuleMemberToken(mod: ModuleReference | undefined, name: string): symbols.Token {
         // The concatenated name of the module plus identifier will resolve correctly to an exported definition.
+        if (!mod) {
+            mod = symbols.selfModule;
+        }
         let modtok: symbols.ModuleToken = this.createModuleToken(mod);
-        return `${modtok}${symbols.tokenSep}${name}`;
+        return `${modtok}${symbols.moduleSep}${name}`;
     }
 
     // createModuleReference turns a ECMAScript import path into a MuIL module token.
@@ -515,14 +518,10 @@ export class Transformer {
                     // The export is being renamed (`<propertyName> as <name>`).  This yields an export node, even for
                     // elements exported from the current module.
                     let propertyName: ast.Identifier = this.transformIdentifier(exportClause.propertyName);
-                    let token: symbols.Token = propertyName.ident;
-                    if (sourceModule) {
-                        token = this.createModuleMemberToken(sourceModule, token);
-                    }
                     exports.push(<ast.Export>{
                         kind:  ast.exportKind,
                         name:  name,
-                        token: token,
+                        token: this.createModuleMemberToken(sourceModule, propertyName.ident),
                     });
                 }
                 else {

@@ -174,29 +174,29 @@
                 "ident": "index"
             },
             "members": {
-                "other/C": {
+                "other:C": {
                     "kind": "Export",
                     "name": {
                         "kind": "Identifier",
-                        "ident": "other/C"
+                        "ident": "other:C"
                     },
-                    "token": "other/C"
+                    "token": "other:C"
                 },
-                "other/I": {
+                "other:I": {
                     "kind": "Export",
                     "name": {
                         "kind": "Identifier",
-                        "ident": "other/I"
+                        "ident": "other:I"
                     },
-                    "token": "other/I"
+                    "token": "other:I"
                 },
-                "other/v": {
+                "other:v": {
                     "kind": "Export",
                     "name": {
                         "kind": "Identifier",
-                        "ident": "other/v"
+                        "ident": "other:v"
                     },
-                    "token": "other/v"
+                    "token": "other:v"
                 }
             },
             "loc": {

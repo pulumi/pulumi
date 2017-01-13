@@ -18,7 +18,7 @@ understand how to recognize.  The details of how a language does this is outside
 
 ## References
 
-Each package is referred to using a URL-like scheme, facilitating multiple package management distribution schemes.
+Each package is referenced using a URL-like scheme, facilitating multiple package management distribution schemes.
 For example, the URL `https://hub.mu.com/aws/ec2#^1.0.6` references the `aws/ec2` package on MuHub's built-in package
 manager, and askes specifically for version `1.0.6` or higher using semantic versioning resolution.
 
@@ -37,10 +37,15 @@ Although there are four parts, three of them are optional, because because Mu us
 * `hub.mu.com/` is the default base URL.
 * `latest` is the default version number (a.k.a., "tip").
 
-Although we're concerned with package references right now, we'll see soon that the same reference scheme is also used
-to address elements exported from a package, like a module, class, function, or variable.  For example, to reference the
-`VM` class from a MuIL token, we might say `https://hub.mu.com/aws/ec2/VM#^1.0.6`.  Most likely, we would leave
-off the protocol, base URL, and version in the token, and leave it to the MuPackage to bind to a specific version.
+Although we're concerned with package references right now, we'll see soon that a similar reference scheme is used
+to address elements exported from a package, like a module, class, function, or variable.  The package plus module uses
+the same grammar as above, however members inside of a module are followed by a `:`.  Furthermore, such references do
+not have version numbers.  These references are not strictly URLs and must be interpreted by the Mu toolchain.
+
+For example, to reference the `VM` class from a MuIL token -- assuming we have a dependency declared on
+`https://hub.mu.com/aws/ec2#^1.0.6` as shown above -- we would most likely say `aws/ec2:VM`.  A fully qualified, but
+versionless, reference is also permitted, as in `https://hub.mu.com/aws/ec2:VM`, although this is less conventional.
+Sometimes the self-referential package plus module identifier `.` will be used as a short-hand, as in `.:VM`.
 
 The way these URLs are resolved to physical MuPackages is discussed later on.
 
