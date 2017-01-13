@@ -1,0 +1,359 @@
+{
+    "name": "export",
+    "modules": {
+        "other": {
+            "kind": "Module",
+            "name": {
+                "kind": "Identifier",
+                "ident": "other"
+            },
+            "members": {
+                "D": {
+                    "kind": "Class",
+                    "name": {
+                        "kind": "Identifier",
+                        "ident": "D",
+                        "loc": {
+                            "file": "other.ts",
+                            "start": {
+                                "line": 1,
+                                "column": 13
+                            },
+                            "end": {
+                                "line": 1,
+                                "column": 14
+                            }
+                        }
+                    },
+                    "access": "public",
+                    "members": {},
+                    "abstract": false,
+                    "loc": {
+                        "file": "other.ts",
+                        "start": {
+                            "line": 1,
+                            "column": 0
+                        },
+                        "end": {
+                            "line": 1,
+                            "column": 17
+                        }
+                    }
+                },
+                "J": {
+                    "kind": "Class",
+                    "name": {
+                        "kind": "Identifier",
+                        "ident": "J",
+                        "loc": {
+                            "file": "other.ts",
+                            "start": {
+                                "line": 2,
+                                "column": 17
+                            },
+                            "end": {
+                                "line": 2,
+                                "column": 18
+                            }
+                        }
+                    },
+                    "access": "public",
+                    "members": {},
+                    "interface": true,
+                    "loc": {
+                        "file": "other.ts",
+                        "start": {
+                            "line": 2,
+                            "column": 0
+                        },
+                        "end": {
+                            "line": 2,
+                            "column": 21
+                        }
+                    }
+                },
+                "w": {
+                    "kind": "ModuleProperty",
+                    "name": {
+                        "kind": "Identifier",
+                        "ident": "w",
+                        "loc": {
+                            "file": "other.ts",
+                            "start": {
+                                "line": 3,
+                                "column": 11
+                            },
+                            "end": {
+                                "line": 3,
+                                "column": 12
+                            }
+                        }
+                    },
+                    "access": "public",
+                    "type": "any"
+                },
+                ".init": {
+                    "kind": "ModuleMethod",
+                    "name": {
+                        "kind": "Identifier",
+                        "ident": ".init"
+                    },
+                    "access": "public",
+                    "body": {
+                        "kind": "Block",
+                        "statements": [
+                            {
+                                "kind": "BinaryOperatorExpression",
+                                "left": {
+                                    "kind": "LoadLocationExpression",
+                                    "name": {
+                                        "kind": "Identifier",
+                                        "ident": "w",
+                                        "loc": {
+                                            "file": "other.ts",
+                                            "start": {
+                                                "line": 3,
+                                                "column": 11
+                                            },
+                                            "end": {
+                                                "line": 3,
+                                                "column": 12
+                                            }
+                                        }
+                                    }
+                                },
+                                "operator": "=",
+                                "right": {
+                                    "kind": "NumberLiteral",
+                                    "raw": "42",
+                                    "value": 42,
+                                    "loc": {
+                                        "file": "other.ts",
+                                        "start": {
+                                            "line": 3,
+                                            "column": 15
+                                        },
+                                        "end": {
+                                            "line": 3,
+                                            "column": 17
+                                        }
+                                    }
+                                },
+                                "loc": {
+                                    "file": "other.ts",
+                                    "start": {
+                                        "line": 3,
+                                        "column": 0
+                                    },
+                                    "end": {
+                                        "line": 3,
+                                        "column": 18
+                                    }
+                                }
+                            }
+                        ]
+                    }
+                }
+            },
+            "loc": {
+                "file": "other.ts",
+                "start": {
+                    "line": 1,
+                    "column": 0
+                },
+                "end": {
+                    "line": 5,
+                    "column": 0
+                }
+            }
+        },
+        "index": {
+            "kind": "Module",
+            "name": {
+                "kind": "Identifier",
+                "ident": "index"
+            },
+            "members": {
+                "other": {
+                    "kind": "Export",
+                    "name": {
+                        "kind": "Identifier",
+                        "ident": "other",
+                        "loc": {
+                            "file": "index.ts",
+                            "start": {
+                                "line": 3,
+                                "column": 8
+                            },
+                            "end": {
+                                "line": 3,
+                                "column": 13
+                            }
+                        }
+                    },
+                    "token": "other"
+                },
+                "C": {
+                    "kind": "Class",
+                    "name": {
+                        "kind": "Identifier",
+                        "ident": "C",
+                        "loc": {
+                            "file": "index.ts",
+                            "start": {
+                                "line": 6,
+                                "column": 6
+                            },
+                            "end": {
+                                "line": 6,
+                                "column": 7
+                            }
+                        }
+                    },
+                    "access": "public",
+                    "members": {},
+                    "abstract": false,
+                    "loc": {
+                        "file": "index.ts",
+                        "start": {
+                            "line": 6,
+                            "column": 0
+                        },
+                        "end": {
+                            "line": 6,
+                            "column": 10
+                        }
+                    }
+                },
+                "I": {
+                    "kind": "Class",
+                    "name": {
+                        "kind": "Identifier",
+                        "ident": "I",
+                        "loc": {
+                            "file": "index.ts",
+                            "start": {
+                                "line": 7,
+                                "column": 10
+                            },
+                            "end": {
+                                "line": 7,
+                                "column": 11
+                            }
+                        }
+                    },
+                    "access": "public",
+                    "members": {},
+                    "interface": true,
+                    "loc": {
+                        "file": "index.ts",
+                        "start": {
+                            "line": 7,
+                            "column": 0
+                        },
+                        "end": {
+                            "line": 7,
+                            "column": 14
+                        }
+                    }
+                },
+                "v": {
+                    "kind": "ModuleProperty",
+                    "name": {
+                        "kind": "Identifier",
+                        "ident": "v",
+                        "loc": {
+                            "file": "index.ts",
+                            "start": {
+                                "line": 8,
+                                "column": 4
+                            },
+                            "end": {
+                                "line": 8,
+                                "column": 5
+                            }
+                        }
+                    },
+                    "access": "public",
+                    "type": "any"
+                },
+                ".init": {
+                    "kind": "ModuleMethod",
+                    "name": {
+                        "kind": "Identifier",
+                        "ident": ".init"
+                    },
+                    "access": "public",
+                    "body": {
+                        "kind": "Block",
+                        "statements": [
+                            {
+                                "kind": "EmptyStatement"
+                            },
+                            {
+                                "kind": "BinaryOperatorExpression",
+                                "left": {
+                                    "kind": "LoadLocationExpression",
+                                    "name": {
+                                        "kind": "Identifier",
+                                        "ident": "v",
+                                        "loc": {
+                                            "file": "index.ts",
+                                            "start": {
+                                                "line": 8,
+                                                "column": 4
+                                            },
+                                            "end": {
+                                                "line": 8,
+                                                "column": 5
+                                            }
+                                        }
+                                    }
+                                },
+                                "operator": "=",
+                                "right": {
+                                    "kind": "NumberLiteral",
+                                    "raw": "42",
+                                    "value": 42,
+                                    "loc": {
+                                        "file": "index.ts",
+                                        "start": {
+                                            "line": 8,
+                                            "column": 8
+                                        },
+                                        "end": {
+                                            "line": 8,
+                                            "column": 10
+                                        }
+                                    }
+                                },
+                                "loc": {
+                                    "file": "index.ts",
+                                    "start": {
+                                        "line": 8,
+                                        "column": 0
+                                    },
+                                    "end": {
+                                        "line": 8,
+                                        "column": 11
+                                    }
+                                }
+                            }
+                        ]
+                    }
+                }
+            },
+            "loc": {
+                "file": "index.ts",
+                "start": {
+                    "line": 2,
+                    "column": 0
+                },
+                "end": {
+                    "line": 11,
+                    "column": 0
+                }
+            }
+        }
+    }
+}

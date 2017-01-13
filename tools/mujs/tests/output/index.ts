@@ -26,6 +26,7 @@ let testCases: string[] = [
     "modules/reexport",
     "modules/reexport_all",
     "modules/reexport_rename",
+    "modules/export",
 
     // These are not quite real-world-code, but they are more complex "integration" style tests.
     "scenarios/point",

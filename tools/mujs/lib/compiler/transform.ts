@@ -155,10 +155,16 @@ function notYetImplemented(node: ts.Node | undefined, label?: string): never {
 
 // A transpiler is responsible for transforming TypeScript program artifacts into MuPack/MuIL AST forms.
 export class Transformer {
-    private meta: pack.Metadata;            // the package's metadata.
-    private script: Script;                 // the package's compiled TypeScript tree and context.
-    private dctx: diag.Context;             // the diagnostics context.
-    private diagnostics: diag.Diagnostic[]; // any diagnostics encountered during translation.
+    // Immutable elements of the transformer that exist throughout an entire pass:
+    private readonly meta: pack.Metadata;            // the package's metadata.
+    private readonly script: Script;                 // the package's compiled TypeScript tree and context.
+    private readonly dctx: diag.Context;             // the diagnostics context.
+    private readonly diagnostics: diag.Diagnostic[]; // any diagnostics encountered during translation.
+
+    // Mutable elements of the transformer that are pushed/popped as we perform visitations:
+    private currentSourceFile: ts.SourceFile | undefined;
+    private currentModuleMembers: ast.ModuleMembers | undefined;
+    private currentModuleImports: Map<string, ModuleReference>;
 
     constructor(meta: pack.Metadata, script: Script) {
         contract.requires(!!script.tree, "script", "A valid MuJS AST is required to lower to MuPack/MuIL");
@@ -252,8 +258,8 @@ export class Transformer {
         return moduleTok;
     }
 
-    // createModuleDefinitionToken binds a string-based export name to the associated token that references it.
-    private createModuleDefinitionToken(mod: ModuleReference, name: string): symbols.Token {
+    // createModuleMemberToken binds a string-based exported member name to the associated token that references it.
+    private createModuleMemberToken(mod: ModuleReference, name: string): symbols.Token {
         // The concatenated name of the module plus identifier will resolve correctly to an exported definition.
         let modtok: symbols.ModuleToken = this.createModuleToken(mod);
         return `${modtok}${symbols.tokenSep}${name}`;
@@ -330,7 +336,7 @@ export class Transformer {
             `Expected discovered module '${this.createModuleReference(moduleSymbol.name)}' to equal '${mod}'`,
         );
         for (let expsym of this.checker().getExportsOfModule(moduleSymbol)) {
-            exports.push(this.createModuleDefinitionToken(mod, expsym.name));
+            exports.push(this.createModuleMemberToken(mod, expsym.name));
         }
 
         return exports;
@@ -352,59 +358,71 @@ export class Transformer {
     // MuPack/MuIL.  As such, the appropriate top-level definitions (variables, functions, and classes) are returned as
     // definitions, while any loose code (including variable initializers) is bundled into module inits and entrypoints.
     private transformSourceFile(node: ts.SourceFile): ast.Module {
-        // All definitions will go into a map keyed by their identifier.
-        let members: ast.ModuleMembers = {};
+        // Each source file is a separate module, and we maintain some amount of context about it.  Push some state.
+        let priorSourceFile: ts.SourceFile | undefined = this.currentSourceFile;
+        let priorModuleMembers: ast.ModuleMembers | undefined = this.currentModuleMembers;
+        let priorModuleImports: Map<string, ModuleReference> | undefined = this.currentModuleImports;
+        try {
+            this.currentSourceFile = node;
+            this.currentModuleMembers = {};
+            this.currentModuleImports = new Map<string, ModuleReference>();
 
-        // Any top-level non-definition statements will pile up into the module initializer.
-        let statements: ast.Statement[] = [];
+            // Any top-level non-definition statements will pile up into the module initializer.
+            let statements: ast.Statement[] = [];
 
-        // Enumerate the module's statements and put them in the respective places.
-        for (let statement of node.statements) {
-            let elements: ModuleElement[] = this.transformSourceFileStatement(statement);
-            for (let element of elements) {
-                if (isVariableDeclaration(element)) {
-                    // This is a module property with a possible initializer.  The property should get registered as a
-                    // member in this module's member map, and the initializer must happen in the module initializer.
-                    // TODO(joe): respect legacyVar to emulate "var"-like scoping.
-                    let decl = <VariableDeclaration<ast.ModuleProperty>>element;
-                    if (decl.initializer) {
-                        statements.push(this.makeVariableInitializer(decl));
+            // Enumerate the module's statements and put them in the respective places.
+            for (let statement of node.statements) {
+                let elements: ModuleElement[] = this.transformSourceFileStatement(statement);
+                for (let element of elements) {
+                    if (isVariableDeclaration(element)) {
+                        // This is a module property with a possible initializer.  The property must be registered as a
+                        // member in this module's member map, and the initializer must go into the module initializer.
+                        // TODO(joe): respect legacyVar to emulate "var"-like scoping.
+                        let decl = <VariableDeclaration<ast.ModuleProperty>>element;
+                        if (decl.initializer) {
+                            statements.push(this.makeVariableInitializer(decl));
+                        }
+                        this.currentModuleMembers[decl.variable.name.ident] = decl.variable;
                     }
-                    members[decl.variable.name.ident] = decl.variable;
+                    else if (ast.isDefinition(<ast.Node>element)) {
+                        // This is a module member; simply add it to the list.
+                        let member = <ast.ModuleMember>element;
+                        this.currentModuleMembers[member.name.ident] = member;
+                    }
+                    else {
+                        // This is a top-level module statement; place it into the module initializer.
+                        statements.push(<ast.Statement>element);
+                    }
                 }
-                else if (ast.isDefinition(<ast.Node>element)) {
-                    // This is a module member; simply add it to the list.
-                    let member = <ast.ModuleMember>element;
-                    members[member.name.ident] = member;
-                }
-                else {
-                    // This is a top-level module statement; place it into the module initializer.
-                    statements.push(<ast.Statement>element);
-                }
+             }
+
+            // If the initialization statements are non-empty, add an initializer method.
+            if (statements.length > 0) {
+                let initializer: ast.ModuleMethod = {
+                    kind:   ast.moduleMethodKind,
+                    name:   ident(symbols.specialFunctionInitializer),
+                    access: symbols.publicAccessibility,
+                    body:   {
+                        kind:       ast.blockKind,
+                        statements: statements,
+                    },
+                };
+                this.currentModuleMembers[initializer.name.ident] = initializer;
             }
-         }
 
-        // If the initialization statements are non-empty, add an initializer method.
-        if (statements.length > 0) {
-            let initializer: ast.ModuleMethod = {
-                kind:   ast.moduleMethodKind,
-                name:   ident(symbols.specialFunctionInitializer),
-                access: symbols.publicAccessibility,
-                body:   {
-                    kind:       ast.blockKind,
-                    statements: statements,
-                },
-            };
-            members[initializer.name.ident] = initializer;
+            let modref: ModuleReference = this.createModuleReference(node.fileName);
+            let modtok: symbols.ModuleToken = this.createModuleToken(modref);
+            return this.withLocation(node, <ast.Module>{
+                kind:    ast.moduleKind,
+                name:    ident(modtok),
+                members: this.currentModuleMembers,
+            });
         }
-
-        let modref: ModuleReference = this.createModuleReference(node.fileName);
-        let modtok: symbols.ModuleToken = this.createModuleToken(modref);
-        return this.withLocation(node, <ast.Module>{
-            kind:    ast.moduleKind,
-            name:    ident(modtok),
-            members: members,
-        });
+        finally {
+            this.currentSourceFile = priorSourceFile;
+            this.currentModuleMembers = priorModuleMembers;
+            this.currentModuleImports = priorModuleImports;
+        }
     }
 
     // This transforms a top-level TypeScript module statement.  It might return multiple elements in the rare
@@ -459,54 +477,83 @@ export class Transformer {
     }
 
     private transformExportDeclaration(node: ts.ExportDeclaration): ast.ModuleMember[] {
-        // In the case of a module specifier, we are re-exporting elements from another module.
-        if (node.moduleSpecifier) {
-            return this.transformReExportDeclaration(node);
-        }
+        let exports: ast.Export[] = [];
 
         // Otherwise, we are exporting already-imported names from the current module.
-        // TODO(joe): support this, by enumerating all exports, and flipping any privates to publics.  As we proceed, we
-        //     will need to keep an eye out for exporting whole sub-modules.
-        return notYetImplemented(node, "manual exports");
-    }
+        // TODO: in ECMAScript, this is order independent, so we can actually export before declaring something.
+        //     To simplify things, we are only allowing you to export things declared lexically before the export.
 
-    private transformReExportDeclaration(node: ts.ExportDeclaration): ast.ModuleMember[] {
-        contract.assert(!!node.moduleSpecifier);
-        contract.assert(node.moduleSpecifier!.kind === ts.SyntaxKind.StringLiteral);
+        // In the case of a module specifier, we are re-exporting elements from another module.
+        let sourceModule: ModuleReference | undefined;
+        if (node.moduleSpecifier) {
+            // The module specifier will be a string literal; fetch and resolve it to a module.
+            contract.assert(node.moduleSpecifier.kind === ts.SyntaxKind.StringLiteral);
+            let spec: ts.StringLiteral = <ts.StringLiteral>node.moduleSpecifier;
+            let source: string = this.transformStringLiteral(spec).value;
+            sourceModule = this.resolveModuleReferenceByName(node, source);
+        }
 
-        let exports: ast.Export[] = [];
-        let spec: ts.StringLiteral = <ts.StringLiteral>node.moduleSpecifier!;
-
-        // The module specifier will be a string literal; fetch that so we can resolve to a symbol token.
-        let source: string = this.transformStringLiteral(spec).value;
-        let sourceModule: ModuleReference = this.resolveModuleReferenceByName(node, source);
         if (node.exportClause) {
             // This is an export declaration of the form
             //
-            //     export { a, b, c } from "module";
+            //     export { a, b, c }[ from "module"];
             //
-            // in which a, b, and c are elements from another module that shall be exported.  Each re-export may
+            // in which a, b, and c are elements that shall be exported, possibly from another module "module".  If not
+            // another module, then these are expected to be definitions within the current module.  Each re-export may
             // optionally rename the symbol being exported.  For example:
             //
-            //     export { a as x, b as y, c as z } from "module";
+            //     export { a as x, b as y, c as z }[ from "module"];
             //
             // For every export clause, we will issue a top-level MuIL re-export AST node.
             for (let exportClause of node.exportClause.elements) {
                 let name: ast.Identifier = this.transformIdentifier(exportClause.name);
-                let propertyName: ast.Identifier;
                 if (exportClause.propertyName) {
-                    // The export is being renamed (`<propertyName> as <name`).  Bind the rename.
-                    propertyName = this.transformIdentifier(exportClause.propertyName);
+                    // The export is being renamed (`<propertyName> as <name>`).  This yields an export node, even for
+                    // elements exported from the current module.
+                    let propertyName: ast.Identifier = this.transformIdentifier(exportClause.propertyName);
+                    let token: symbols.Token = propertyName.ident;
+                    if (sourceModule) {
+                        token = this.createModuleMemberToken(sourceModule, token);
+                    }
+                    exports.push(<ast.Export>{
+                        kind:  ast.exportKind,
+                        name:  name,
+                        token: token,
+                    });
                 }
                 else {
-                    propertyName = name;
+                    // If this is an export from another module, create an export definition.  Otherwise, for exports
+                    // from within the same module, just look up the definition and change its accessibility to public.
+                    if (sourceModule) {
+                        exports.push(<ast.Export>{
+                            kind:  ast.exportKind,
+                            name:  name,
+                            token: this.createModuleMemberToken(sourceModule, name.ident),
+                        });
+                    }
+                    else {
+                        contract.assert(!!this.currentModuleMembers);
+                        contract.assert(!!this.currentModuleImports);
+                        // First look for a module member, for reexporting classes, interfaces, and variables.
+                        let member: ast.ModuleMember = this.currentModuleMembers![name.ident];
+                        if (member) {
+                            contract.assert(member.access !== symbols.publicAccessibility);
+                            member.access = symbols.publicAccessibility;
+                        }
+                        else {
+                            // If that failed, look for a known import.  This enables reexporting whole modules, e.g.:
+                            //      import * as other from "other";
+                            //      export {other};
+                            let otherModule: ModuleReference | undefined = this.currentModuleImports!.get(name.ident);
+                            contract.assert(!!otherModule, "Expected either a member or import match for export name");
+                            exports.push(<ast.Export>{
+                                kind: ast.exportKind,
+                                name: name,
+                                token: this.createModuleToken(otherModule!),
+                            });
+                        }
+                    }
                 }
-
-                exports.push(<ast.Export>{
-                    kind:  ast.exportKind,
-                    name:  name,
-                    token: this.createModuleDefinitionToken(sourceModule, propertyName.ident),
-                });
             }
         }
         else {
@@ -515,7 +562,8 @@ export class Transformer {
             //     export * from "module";
             //
             // For this to work, we simply enumerate all known exports from "module".
-            for (let name of this.resolveModuleExportNames(node, sourceModule)) {
+            contract.assert(!!sourceModule);
+            for (let name of this.resolveModuleExportNames(node, sourceModule!)) {
                 exports.push(<ast.Export>{
                     kind:  ast.exportKind,
                     name:  <ast.Identifier>{
@@ -526,14 +574,69 @@ export class Transformer {
                 });
             }
         }
+
         return exports;
     }
 
     private transformImportDeclaration(node: ts.ImportDeclaration): ModuleElement {
-        // TODO[marapongo/mu#46]: we are ignoring import declarations for the time being.  Eventually we need to
-        //     transform all dependency symbols into real MuIL references.  (Today, bound node information is
-        //     discarded.)  When that day comes (soon), import declarations will most likely still be ignored, however,
-        //     I am leaving this comment in here so that we can make an explicit decision about this.
+        // An import declaration is erased in the output AST, however, we must keep track of the set of known import
+        // names so that we can easily look them up by name later on (e.g., in the case of reexporting whole modules).
+        if (node.importClause) {
+            // First turn the module path into a reference.  The module path may be relative, so we need to consult the
+            // current file's module table in order to find its fully resolved path.
+            contract.assert(node.moduleSpecifier.kind === ts.SyntaxKind.StringLiteral);
+            let importModule: ModuleReference =
+                this.resolveModuleReferenceByName(node, (<ts.StringLiteral>node.moduleSpecifier).text);
+
+            // Figure out what kind of import statement this is (there are many, see below).
+            let name: ts.Identifier | undefined;
+            let namedImports: ts.NamedImports | undefined;
+            if (node.importClause.name) {
+                name = name;
+            }
+            else if (node.importClause.namedBindings) {
+                if (node.importClause.namedBindings.kind === ts.SyntaxKind.NamespaceImport) {
+                    name = (<ts.NamespaceImport>node.importClause.namedBindings).name;
+                }
+                else {
+                    contract.assert(node.importClause.namedBindings.kind === ts.SyntaxKind.NamedImports);
+                    namedImports = <ts.NamedImports>node.importClause.namedBindings;
+                }
+            }
+
+            // Now associate the import names with the module and/or members within it.
+            if (name) {
+                // This is an import of the form
+                //      import * as <name> from "<module>";
+                // Just bind the name to an identifier and module to its module reference, and remember the association.
+                let importName: ast.Identifier = this.transformIdentifier(name);
+                log.out(5).info(`Detected bulk import ${importName.ident}=${importModule}`);
+                this.currentModuleImports.set(importName.ident, importModule);
+            }
+            else if (namedImports) {
+                // This is an import of the form
+                //      import {a, b, c} from "<module>";
+                //  In which case we will need to bind each name and associate it with a fully qualified token.
+                for (let importSpec of namedImports.elements) {
+                    let member: ast.Identifier = this.transformIdentifier(importSpec.name);
+                    let memberToken: symbols.Token = this.createModuleMemberToken(importModule, member.ident);
+                    let memberName: string;
+                    if (importSpec.propertyName) {
+                        // This is of the form
+                        //      import {a as x} from "<module>";
+                        // in other words, the member is renamed for purposes of this source file.  But we still need to
+                        // be able to trace it back to the actual fully qualified exported token name later on.
+                        memberName = this.transformIdentifier(importSpec.propertyName).ident;
+                    }
+                    else {
+                        // Otherwise, simply associate the raw member name with the fully qualified member token.
+                        memberName = member.ident;
+                    }
+                    this.currentModuleImports.set(memberName, memberToken);
+                    log.out(5).info(`Detected named import ${memberToken} as ${memberName} from ${importModule}`);
+                }
+            }
+        }
         return <ast.EmptyStatement>{ kind: ast.emptyStatementKind };
     }
 
