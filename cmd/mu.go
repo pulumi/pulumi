@@ -37,6 +37,7 @@ func NewMuCmd() *cobra.Command {
 		&verbose, "verbose", "v", 0, "Enable verbose logging (e.g., v=3); anything >3 is very verbose")
 
 	cmd.AddCommand(newBuildCmd())
+	cmd.AddCommand(newDescribeCmd())
 	cmd.AddCommand(newGetCmd())
 	cmd.AddCommand(newVersionCmd())
 
