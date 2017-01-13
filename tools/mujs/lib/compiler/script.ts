@@ -104,6 +104,7 @@ export async function compileScript(path: string, options?: ts.CompilerOptions):
 
     return <Script>{
         root:        root,
+        files:       files,
         diagnostics: muDiagnostics,
         tree:        tree,
     };
@@ -128,6 +129,7 @@ function transformDiagnostics(root: string, diagnostics: ts.Diagnostic[]): diag.
 // The result of script compilation.
 export interface Script {
     root:        string;                 // the root directory for the compilation.
+    files:       string[];               // the files that are considered part of this script's package.
     diagnostics: diag.Diagnostic[];      // any diagnostics resulting from compilation.
     tree:        ts.Program | undefined; // the resulting TypeScript program object.
 }

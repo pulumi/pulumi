@@ -177,13 +177,8 @@ export class Transformer {
         // Enumerate all source files (each of which is a module in ECMAScript), and transform it.
         let modules: ast.Modules = {};
         for (let sourceFile of this.script.tree!.getSourceFiles()) {
-            // By default, skip declaration files, since they are "dependencies."
-            // TODO(joe): how to handle re-exports in ECMAScript, such as index aggregation.
-            // TODO(joe): this isn't a perfect heuristic.  But ECMAScript is all source dependencies, so there isn't a
-            //     true notion of source versus binary dependency.  We could crack open the dependencies to see if they
-            //     exist within an otherwise known package, but that seems a little hokey.  TypeScript seems to based
-            //     this on whether the file appears in the `tsconfig.json` file or not, which seems fine.
-            if (!sourceFile.isDeclarationFile) {
+            // If the file exists in this script's package list, we will export it as a module.
+            if (this.script.files.indexOf(sourceFile.fileName) !== -1) {
                 let mod: ast.Module = this.transformSourceFile(sourceFile);
                 modules[mod.name.ident] = mod;
             }
