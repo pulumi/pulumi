@@ -2,7 +2,7 @@
 
 "use strict";
 
-import {contract, fs, log} from "nodets";
+import {fs, log} from "nodets";
 import * as os from "os";
 import * as fspath from "path";
 import * as ts from "typescript";

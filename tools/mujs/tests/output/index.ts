@@ -4,7 +4,7 @@ import * as assert from "assert";
 import {fs} from "nodets";
 import * as os from "os";
 import * as path from "path";
-import {compiler, pack} from "../../lib";
+import {compiler} from "../../lib";
 import {asyncTest} from "../util";
 
 // This test suite loops through a list of programs and compiles each one.  For each, the expected set of diagnostics

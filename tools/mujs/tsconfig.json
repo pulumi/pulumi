@@ -11,6 +11,7 @@
         "pretty": true,
         "noFallthroughCasesInSwitch": true,
         "noImplicitAny": true,
+        "noImplicitThis": true,
         "noImplicitReturns": true,
         "noUnusedLocals": false,
         "noUnusedParameters": false,

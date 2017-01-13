@@ -136,13 +136,6 @@ function ident(id: string): ast.Identifier {
     };
 }
 
-function isComputed(name: ts.Node | undefined): boolean {
-    if (name) {
-        return (name.kind === ts.SyntaxKind.ComputedPropertyName);
-    }
-    return false;
-}
-
 // notYetImplemented simply fail-fasts, but does so in a way where we at least get Node source information.
 function notYetImplemented(node: ts.Node | undefined, label?: string): never {
     let msg: string = "Not Yet Implemented";
