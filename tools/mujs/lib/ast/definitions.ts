@@ -123,6 +123,7 @@ export type  ClassMethodKind = "ClassMethod";
 export function isDefinition(node: Node): boolean {
     switch (node.kind) {
         case moduleKind:
+        case exportKind:
         case classKind:
         case localVariableKind:
         case modulePropertyKind:

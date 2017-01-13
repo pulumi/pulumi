@@ -13,6 +13,7 @@ import {asyncTest} from "../util";
 let testCases: string[] = [
     "empty",
 
+    // Module members and exports.
     "modules/var_1",
     "modules/var_exp_1",
     "modules/func_1",
@@ -22,6 +23,8 @@ let testCases: string[] = [
     "modules/class_exp_1",
     "modules/iface_1",
     "modules/iface_exp_1",
+    "modules/reexport",
+    "modules/reexport_all",
 
     // These are not quite real-world-code, but they are more complex "integration" style tests.
     "scenarios/point",
