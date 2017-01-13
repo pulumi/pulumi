@@ -177,8 +177,17 @@ export class Transformer {
         // Enumerate all source files (each of which is a module in ECMAScript), and transform it.
         let modules: ast.Modules = {};
         for (let sourceFile of this.script.tree!.getSourceFiles()) {
-            // If the file exists in this script's package list, we will export it as a module.
-            if (this.script.files.indexOf(sourceFile.fileName) !== -1) {
+            // TODO[marapongo/mu#52]: to determine whether a SourceFile is part of the current compilation unit or not,
+            // we must rely on a private TypeScript API, isSourceFileFromExternalLibrary.  An alternative would be to
+            // check to see if the file was loaded from the node_modules/ directory, which is essentially what the
+            // TypeScript compiler does (except that it has logic for nesting and symbolic links that would be hard to
+            // emulate).  Neither approach is great, however, I prefer to use the API and assert that it exists so we
+            // match the semantics.  Thankfully, the tsserverlib library will contain these, once it is useable.
+            let isSourceFileFromExternalLibrary =
+                <((file: ts.SourceFile) => boolean)>(<any>this.script.tree).isSourceFileFromExternalLibrary;
+            contract.assert(!!isSourceFileFromExternalLibrary,
+                            "Expected internal Program.isSourceFileFromExternalLibrary function to be non-null");
+            if (!isSourceFileFromExternalLibrary(sourceFile) && !sourceFile.isDeclarationFile) {
                 let mod: ast.Module = this.transformSourceFile(sourceFile);
                 modules[mod.name.ident] = mod;
             }
@@ -279,10 +288,12 @@ export class Transformer {
         // TODO(joe): ensure that this dependency exists, to avoid "accidentally" satisfyied name resolution in the
         //     TypeScript compiler; for example, if the package just happens to exist in `node_modules`, etc.
         let sourceContext: ts.SourceFile = node.getSourceFile();
-        // HACK: we are grabbing the sourceContext's resolvedModules property directly, because TypeScript doesn't
-        // currently offer a convenient way of accessing this information.  The (unexported) getResolvedModule function
-        // almost does this, but not quite, because it doesn't allow us to perform a lookup based on path.
+        // TODO[marapongo/mu#52]: we are grabbing the sourceContext's resolvedModules property directly, because
+        // TypeScript doesn't currently offer a convenient way of accessing this information.  The (unexported)
+        // getResolvedModule function almost does this, but not quite, because it doesn't allow us to perform a lookup
+        // based on path.  Ideally we can remove this as soon as the tsserverlibrary is consumable as a module.
         let candidates = <ts.Map<ts.ResolvedModuleFull>>(<any>sourceContext).resolvedModules;
+        contract.assert(!!candidates, "Expected internal SourceFile.resolvedModules property to be non-null");
         let resolvedModule: ts.ResolvedModuleFull | undefined;
         for (let candidateName of Object.keys(candidates)) {
             let candidate: ts.ResolvedModuleFull = candidates[candidateName];
