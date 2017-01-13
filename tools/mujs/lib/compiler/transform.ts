@@ -568,7 +568,7 @@ export class Transformer {
                         contract.assert(!!this.currentModuleMembers);
                         contract.assert(!!this.currentModuleImports);
                         // First look for a module member, for reexporting classes, interfaces, and variables.
-                        let member: ast.ModuleMember = this.currentModuleMembers![name.ident];
+                        let member: ast.ModuleMember | undefined = this.currentModuleMembers![name.ident];
                         if (member) {
                             contract.assert(member.access !== symbols.publicAccessibility);
                             member.access = symbols.publicAccessibility;
