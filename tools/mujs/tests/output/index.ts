@@ -97,11 +97,11 @@ describe("outputs", () => {
 });
 
 function compareLines(actuals: string[], expects: string[], label: string): void {
-    let mismatches: { num: number, actual: string, expect: string }[] = [];
+    let mismatches: { line: number, actual: string, expect: string }[] = [];
     for (let i = 0; i < actuals.length && i < expects.length; i++) {
         if (actuals[i] !== expects[i]) {
             mismatches.push({
-                num:    i,
+                line:   i+1,
                 actual: actuals[i],
                 expect: expects[i],
             });
@@ -112,8 +112,8 @@ function compareLines(actuals: string[], expects: string[], label: string): void
         let expect: string = "";
         let actual: string = "";
         for (let mismatch of mismatches) {
-            actual += `${mismatch.num}: ${mismatch.actual}${os.EOL}`;
-            expect += `${mismatch.num}: ${mismatch.expect}${os.EOL}`;
+            actual += `${mismatch.line}: ${mismatch.actual}${os.EOL}`;
+            expect += `${mismatch.line}: ${mismatch.expect}${os.EOL}`;
         }
         assert.strictEqual(actual, expect, `Expected ${label} to match; ${mismatches.length} did not`);
     }

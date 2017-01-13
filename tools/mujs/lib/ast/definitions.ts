@@ -66,7 +66,7 @@ export type ClassMembers = { [token: string /*symbols.TypeToken*/]: ClassMember 
 
 // A variable is a typed storage location.
 export interface Variable extends Definition {
-    type:      symbols.TypeToken;
+    type?:     symbols.TypeToken;
     default?:  any; // a trivially serializable default value.
     readonly?: boolean;
 }

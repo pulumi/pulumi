@@ -33,7 +33,7 @@
                                     }
                                 }
                             },
-                            "type": "any"
+                            "type": "number"
                         },
                         {
                             "kind": "LocalVariable",
@@ -52,7 +52,7 @@
                                     }
                                 }
                             },
-                            "type": "any"
+                            "type": "string"
                         }
                     ],
                     "body": {

@@ -109,7 +109,7 @@ type ModuleReference = string;
 // between them.  This facilitates code reuse in the translation passes.
 interface VariableLikeDeclaration {
     name:         ast.Identifier;
-    type:         symbols.TypeToken;
+    type?:        symbols.TypeToken;
     readonly?:    boolean;
     legacyVar?:   boolean;
     initializer?: ast.Expression;
@@ -122,6 +122,11 @@ interface FunctionLikeDeclaration {
     parameters:  ast.LocalVariable[];
     body?:       ast.Block;
     returnType?: symbols.TypeToken;
+}
+
+// TypeLike is any interface that has a possible TypeNode attached to it and can be queried for binding information.
+interface TypeLike extends ts.Node {
+    type?: ts.TypeNode;
 }
 
 function ident(id: string): ast.Identifier {
@@ -345,13 +350,39 @@ export class Transformer {
         return exports;
     }
 
-    private transformIdentifier(node: ts.Identifier): ast.Identifier {
-        return this.withLocation(node, ident(node.text));
+    // resolveTypeToken takes a TypeScript AST node that carries possible typing information and resolves it to a fully
+    // qualified MuIL type token name.
+    private resolveTypeToken(node: TypeLike): symbols.TypeToken | undefined {
+        if (node) {
+            let ty: ts.Type = this.checker().getTypeAtLocation(node);
+            contract.assert(!!ty);
+
+            if (ty.flags & ts.TypeFlags.Any) {
+                return symbols.anyType;
+            }
+            else if (ty.flags & ts.TypeFlags.String) {
+                return symbols.stringType;
+            }
+            else if (ty.flags & ts.TypeFlags.Number) {
+                return symbols.numberType;
+            }
+            else if (ty.flags & ts.TypeFlags.Boolean) {
+                return symbols.boolType;
+            }
+            else if (ty.flags & ts.TypeFlags.Void) {
+                return undefined;
+            }
+
+            // TODO[marapongo/mu#36]: detect more cases (including complex types).
+        }
+
+        // If none of those matched, simply default to the weakly typed "any" type.
+        return symbols.anyType;
     }
 
-    private transformTypeNode(node: ts.TypeNode | undefined): symbols.TypeToken {
-        // TODO[marapongo/mu#46]: emit strong typing information.
-        return "any";
+
+    private transformIdentifier(node: ts.Identifier): ast.Identifier {
+        return this.withLocation(node, ident(node.text));
     }
 
     /** Modules **/
@@ -407,7 +438,7 @@ export class Transformer {
             if (statements.length > 0) {
                 let initializer: ast.ModuleMethod = {
                     kind:   ast.moduleMethodKind,
-                    name:   ident(symbols.specialFunctionInitializer),
+                    name:   ident(symbols.initializerFunction),
                     access: symbols.publicAccessibility,
                     body:   {
                         kind:       ast.blockKind,
@@ -796,12 +827,12 @@ export class Transformer {
         if (propertyInitializers.length > 0) {
             // Locate the constructor, possibly fabricating one if necessary.
             let ctor: ast.ClassMethod | undefined =
-                <ast.ClassMethod>members[symbols.specialFunctionConstructor];
+                <ast.ClassMethod>members[symbols.constructorFunction];
             if (!ctor) {
                 // TODO: once we support base classes, inject a call to super() at the front.
-                ctor = members[symbols.specialFunctionConstructor] = <ast.ClassMethod>{
+                ctor = members[symbols.constructorFunction] = <ast.ClassMethod>{
                     kind: ast.classMethodKind,
-                    name: ident(symbols.specialFunctionConstructor),
+                    name: ident(symbols.constructorFunction),
                 };
             }
             if (!ctor.body) {
@@ -897,7 +928,7 @@ export class Transformer {
         }
         else if (node.kind === ts.SyntaxKind.Constructor) {
             // Constructors have a special name.
-            name = ident(symbols.specialFunctionConstructor);
+            name = ident(symbols.constructorFunction);
         }
         else {
             // All others are assumed to be default exports.
@@ -920,7 +951,7 @@ export class Transformer {
             name:       name,
             parameters: parameters.map((p: VariableDeclaration<ast.LocalVariable>) => p.variable),
             body:       body,
-            returnType: this.transformTypeNode(node.type),
+            returnType: this.resolveTypeToken(node),
         };
     }
 
@@ -993,7 +1024,7 @@ export class Transformer {
             variable: {
                 kind: ast.localVariableKind,
                 name: name,
-                type: this.transformTypeNode(node.type),
+                type: this.resolveTypeToken(node),
             },
             initializer: initializer,
         };
@@ -1006,7 +1037,7 @@ export class Transformer {
             kind:    ast.classKind,
             name:    this.transformIdentifier(node.name),
             access:  access,
-            extends: this.transformTypeNode(node.type),
+            extends: this.resolveTypeToken(node),
         });
     }
 
@@ -1111,7 +1142,7 @@ export class Transformer {
         }
         return {
             name:        name,
-            type:        this.transformTypeNode(node.type),
+            type:        this.resolveTypeToken(node),
             initializer: initializer,
         };
     }
@@ -1199,7 +1230,6 @@ export class Transformer {
         if (node.initializer) {
             initializer = this.transformExpression(node.initializer);
         }
-
         let mods: ts.ModifierFlags = ts.getCombinedModifierFlags(node);
         // TODO: primary properties.
         return new VariableDeclaration<ast.ClassProperty>(
@@ -1210,7 +1240,7 @@ export class Transformer {
                 access:   this.getClassAccessibility(node),
                 readonly: !!(mods & ts.ModifierFlags.Readonly),
                 static:   !!(mods & ts.ModifierFlags.Static),
-                type:     this.transformTypeNode(node.type),
+                type:     this.resolveTypeToken(node),
             },
             false,
             initializer,
@@ -1468,7 +1498,7 @@ export class Transformer {
     private transformArrayLiteralExpression(node: ts.ArrayLiteralExpression): ast.ArrayLiteral {
         return this.withLocation(node, <ast.ArrayLiteral>{
             kind:     ast.arrayLiteralKind,
-            type:     this.transformTypeNode(undefined),
+            type:     symbols.anyType, // TODO[marapongo/mu#46]: come up with a type.
             elements: node.elements.map((expr: ts.Expression) => this.transformExpression(expr)),
         });
     }
@@ -1620,7 +1650,7 @@ export class Transformer {
         //     always be encased in something that prepares it for dynamic cast in the consuming expression.
         return this.withLocation(node, <ast.ObjectLiteral>{
             kind:       ast.objectLiteralKind,
-            type:       this.transformTypeNode(undefined),
+            type:       symbols.anyType, // TODO[marapongo/mu#46]: come up with a type.
             properties: node.properties.map(
                 (prop: ts.ObjectLiteralElement) => this.transformObjectLiteralElement(prop)),
         });
@@ -1733,7 +1763,7 @@ export class Transformer {
     private transformSuperExpression(node: ts.SuperExpression): ast.LoadLocationExpression {
         return this.withLocation(node, <ast.LoadLocationExpression>{
             kind: ast.loadLocationExpressionKind,
-            name: ident(symbols.specialVariableSuper),
+            name: ident(symbols.superVariable),
         });
     }
 
@@ -1748,7 +1778,7 @@ export class Transformer {
     private transformThisExpression(node: ts.ThisExpression): ast.LoadLocationExpression {
         return this.withLocation(node, <ast.LoadLocationExpression>{
             kind: ast.loadLocationExpressionKind,
-            name: ident(symbols.specialVariableThis),
+            name: ident(symbols.thisVariable),
         });
     }
 

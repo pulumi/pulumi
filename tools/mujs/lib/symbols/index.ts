@@ -20,11 +20,17 @@ export const privateAccessibility: Accessibility              = "private";
 export const protectedAccessibility: ClassMemberAccessibility = "protected";
 
 // Special variable tokens.
-export const specialVariableThis: VariableToken  = ".this";  // the current object (for class methods).
-export const specialVariableSuper: VariableToken = ".super"; // the parent class object (for class methods).
+export const thisVariable: VariableToken  = ".this";  // the current object (for class methods).
+export const superVariable: VariableToken = ".super"; // the parent class object (for class methods).
 
 // Special function tokens.
-export const specialFunctionEntryPoint: FunctionToken  = ".main"; // the special package entrypoint function.
-export const specialFunctionInitializer: FunctionToken = ".init"; // the special module/class initialize function.
-export const specialFunctionConstructor: FunctionToken = ".ctor"; // the special class instance constructor function.
+export const entryPointFunction: FunctionToken  = ".main"; // the special package entrypoint function.
+export const initializerFunction: FunctionToken = ".init"; // the special module/class initialize function.
+export const constructorFunction: FunctionToken = ".ctor"; // the special class instance constructor function.
+
+// Special type tokens.
+export const anyType: TypeToken    = "any";
+export const stringType: TypeToken = "string";
+export const numberType: TypeToken = "number";
+export const boolType: TypeToken   = "bool";
 

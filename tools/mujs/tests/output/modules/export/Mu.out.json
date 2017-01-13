@@ -90,7 +90,7 @@
                         }
                     },
                     "access": "public",
-                    "type": "any"
+                    "type": "number"
                 },
                 ".init": {
                     "kind": "ModuleMethod",
@@ -275,7 +275,7 @@
                         }
                     },
                     "access": "public",
-                    "type": "any"
+                    "type": "number"
                 },
                 ".init": {
                     "kind": "ModuleMethod",
