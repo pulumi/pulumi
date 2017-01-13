@@ -7,6 +7,8 @@ export type TypeToken = Token;     // a symbol token that resolves to a type.
 export type VariableToken = Token; // a symbol token that resolves to a variable.
 export type FunctionToken = Token; // a symbol token that resolves to a function.
 
+export const tokenSep = "/";       // the separator for token "parts" (modules names, etc).
+
 // Accessibility modifiers.
 export type Accessibility            = "public" | "private";        // accessibility modifiers common to all.
 export type ClassMemberAccessibility = Accessibility | "protected"; // accessibility modifiers for class members.

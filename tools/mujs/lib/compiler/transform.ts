@@ -101,6 +101,10 @@ function isVariableDeclaration(element: ModuleElement | ClassElement): boolean {
     return !!(element instanceof VariableDeclaration);
 }
 
+// ModuleReference represents a reference to an imported module.  It's really just a fancy, strongly typed string-based
+// path that can be resolved to a concrete symbol any number of times before serialization.
+type ModuleReference = string;
+
 // A variable declaration isn't yet known to be a module or class property, and so it just contains the subset in common
 // between them.  This facilitates code reuse in the translation passes.
 interface VariableLikeDeclaration {
@@ -173,9 +177,10 @@ export class Transformer {
             // TODO(joe): how to handle re-exports in ECMAScript, such as index aggregation.
             // TODO(joe): this isn't a perfect heuristic.  But ECMAScript is all source dependencies, so there isn't a
             //     true notion of source versus binary dependency.  We could crack open the dependencies to see if they
-            //     exist within an otherwise known package, but that seems a little hokey.
+            //     exist within an otherwise known package, but that seems a little hokey.  TypeScript seems to based
+            //     this on whether the file appears in the `tsconfig.json` file or not, which seems fine.
             if (!sourceFile.isDeclarationFile) {
-                let mod: ast.Module = this.transformSourceFile(sourceFile, this.script.root);
+                let mod: ast.Module = this.transformSourceFile(sourceFile);
                 modules[mod.name.ident] = mod;
             }
         }
@@ -191,6 +196,12 @@ export class Transformer {
     }
 
     /** Helpers **/
+
+    // checker returns the TypeScript type checker object, to inspect semantic bound information on the nodes.
+    private checker(): ts.TypeChecker {
+        contract.assert(!!this.script.tree);
+        return this.script.tree!.getTypeChecker();
+    }
 
     // This just carries forward an existing location from another node.
     private copyLocation<T extends ast.Node>(src: ast.Node, dst: T): T {
@@ -225,7 +236,105 @@ export class Transformer {
 
     /** Transformations **/
 
-    /** Symbols **/
+    /** Semantics and symbols **/
+
+    // createModuleToken turns a module reference -- which encodes a module's fully qualified import path, so that it
+    // can be resolved and reresolved any number of times -- into a ModuleToken suitable for long-term serialization.
+    private createModuleToken(ref: ModuleReference): symbols.ModuleToken {
+        // To create a module name, make it relative to the current root directory, and lop off the extension.
+        // TODO(joe): this still isn't 100% correct, because we might have ".."s for "up and over" module references.
+        //     We should consult the dependency list to ensure that it exists, and use that for normalization.
+        let moduleTok: string = fspath.relative(this.script.root, ref);
+        let moduleExtIndex: number = moduleTok.lastIndexOf(".");
+        if (moduleExtIndex !== -1) {
+            moduleTok = moduleTok.substring(0, moduleExtIndex);
+        }
+        return moduleTok;
+    }
+
+    // createModuleDefinitionToken binds a string-based export name to the associated token that references it.
+    private createModuleDefinitionToken(mod: ModuleReference, name: string): symbols.Token {
+        // The concatenated name of the module plus identifier will resolve correctly to an exported definition.
+        let modtok: symbols.ModuleToken = this.createModuleToken(mod);
+        return `${modtok}${symbols.tokenSep}${name}`;
+    }
+
+    // createModuleReference turns a ECMAScript import path into a MuIL module token.
+    private createModuleReference(path: string): ModuleReference {
+        // Module paths can be enclosed in quotes; eliminate them.
+        if (path && path[0] === "\"") {
+            path = path.substring(1);
+        }
+        if (path && path[path.length-1] === "\"") {
+            path = path.substring(0, path.length-1);
+        }
+        return path;
+    }
+
+    // resolveModuleSymbol binds either a name or a path to an associated module symbol.
+    private resolveModuleSymbol(node: ts.Node, name?: string, path?: string): ts.Symbol {
+        // Resolve the module name to a real symbol.
+        // TODO(joe): ensure that this dependency exists, to avoid "accidentally" satisfyied name resolution in the
+        //     TypeScript compiler; for example, if the package just happens to exist in `node_modules`, etc.
+        let sourceContext: ts.SourceFile = node.getSourceFile();
+        // HACK: we are grabbing the sourceContext's resolvedModules property directly, because TypeScript doesn't
+        // currently offer a convenient way of accessing this information.  The (unexported) getResolvedModule function
+        // almost does this, but not quite, because it doesn't allow us to perform a lookup based on path.
+        let candidates = <ts.Map<ts.ResolvedModuleFull>>(<any>sourceContext).resolvedModules;
+        let resolvedModule: ts.ResolvedModuleFull | undefined;
+        for (let candidateName of Object.keys(candidates)) {
+            let candidate: ts.ResolvedModuleFull = candidates[candidateName];
+            if ((name && candidateName === name) ||
+                    (path && (candidate.resolvedFileName === path || candidate.resolvedFileName === path+".ts"))) {
+                resolvedModule = candidate;
+                break;
+            }
+        }
+        contract.assert(!!resolvedModule, `Expected '${name}' to resolve to a module`);
+        let moduleSource: ts.SourceFile = this.script.tree!.getSourceFile(resolvedModule!.resolvedFileName);
+        let moduleSymbol: ts.Symbol = this.checker().getSymbolAtLocation(moduleSource);
+        contract.assert(!!moduleSymbol, `Expected '${name}' module to resolve to a symbol`);
+        return moduleSymbol;
+    }
+
+    // resolveModuleSymbolByName binds a string-based module path to the associated symbol.
+    private resolveModuleSymbolByName(node: ts.Node, name: string): ts.Symbol {
+        return this.resolveModuleSymbol(node, name);
+    }
+
+    // resolveModuleSymbolByPath binds a string-based module path to the associated symbol.
+    private resolveModuleSymbolByPath(node: ts.Node, path: string): ts.Symbol {
+        return this.resolveModuleSymbol(node, undefined, path);
+    }
+
+    // resolveModuleReferenceByName binds a string-based module name to the associated token that references it.
+    private resolveModuleReferenceByName(node: ts.Node, name: string): ModuleReference {
+        let moduleSymbol: ts.Symbol = this.resolveModuleSymbol(node, name);
+        return this.createModuleReference(moduleSymbol.name);
+    }
+
+    // resolveModuleReferenceByPath binds a string-based module path to the associated token that references it.
+    private resolveModuleReferenceByPath(node: ts.Node, path: string): ModuleReference {
+        let moduleSymbol: ts.Symbol = this.resolveModuleSymbol(node, undefined, path);
+        return this.createModuleReference(moduleSymbol.name);
+    }
+
+    // resolveModuleExportNames binds a module token to the set of tokens that it exports.
+    private resolveModuleExportNames(node: ts.Node, mod: ModuleReference): symbols.Token[] {
+        let exports: symbols.Token[] = [];
+
+        // Resolve the module name to a real symbol.
+        let moduleSymbol: ts.Symbol = this.resolveModuleSymbolByPath(node, mod);
+        contract.assert(
+            mod === this.createModuleReference(moduleSymbol.name),
+            `Expected discovered module '${this.createModuleReference(moduleSymbol.name)}' to equal '${mod}'`,
+        );
+        for (let expsym of this.checker().getExportsOfModule(moduleSymbol)) {
+            exports.push(this.createModuleDefinitionToken(mod, expsym.name));
+        }
+
+        return exports;
+    }
 
     private transformIdentifier(node: ts.Identifier): ast.Identifier {
         return this.withLocation(node, ident(node.text));
@@ -242,7 +351,7 @@ export class Transformer {
     // is largely evident in how it works, except that "loose code" (arbitrary statements) is not permitted in
     // MuPack/MuIL.  As such, the appropriate top-level definitions (variables, functions, and classes) are returned as
     // definitions, while any loose code (including variable initializers) is bundled into module inits and entrypoints.
-    private transformSourceFile(node: ts.SourceFile, root: string): ast.Module {
+    private transformSourceFile(node: ts.SourceFile): ast.Module {
         // All definitions will go into a map keyed by their identifier.
         let members: ast.ModuleMembers = {};
 
@@ -289,17 +398,11 @@ export class Transformer {
             members[initializer.name.ident] = initializer;
         }
 
-        // To create a module name, make it relative to the current root directory, and lop off the extension.
-        // TODO(joe): this still isn't 100% correct, because we might have ".."s for "up and over" module references.
-        let moduleName: string = fspath.relative(root, node.fileName);
-        let moduleExtIndex: number = moduleName.lastIndexOf(".");
-        if (moduleExtIndex !== -1) {
-            moduleName = moduleName.substring(0, moduleExtIndex);
-        }
-
+        let modref: ModuleReference = this.createModuleReference(node.fileName);
+        let modtok: symbols.ModuleToken = this.createModuleToken(modref);
         return this.withLocation(node, <ast.Module>{
             kind:    ast.moduleKind,
-            name:    ident(moduleName),
+            name:    ident(modtok),
             members: members,
         });
     }
@@ -370,35 +473,52 @@ export class Transformer {
     private transformReExportDeclaration(node: ts.ExportDeclaration): ast.ModuleMember[] {
         contract.assert(!!node.moduleSpecifier);
         contract.assert(node.moduleSpecifier!.kind === ts.SyntaxKind.StringLiteral);
+
+        let exports: ast.Export[] = [];
         let spec: ts.StringLiteral = <ts.StringLiteral>node.moduleSpecifier!;
 
         // The module specifier will be a string literal; fetch that so we can resolve to a symbol token.
-        let source: symbols.ModuleToken = this.transformStringLiteral(spec).value;
+        let source: string = this.transformStringLiteral(spec).value;
+        let sourceModule: ModuleReference = this.resolveModuleReferenceByName(node, source);
         if (node.exportClause) {
-            // For every export clause, we will issue a top-level MuIL export AST node.
-            let exports: ast.Export[] = [];
+            // This is an export declaration of the form
+            //
+            //     export { a, b, c } from "module";
+            //
+            // in which a, b, and c are elements from another module that shall be exported.  Each re-export may
+            // optionally rename the symbol being exported.  For example:
+            //
+            //     export { a as x, b as y, c as z } from "module";
+            //
+            // For every export clause, we will issue a top-level MuIL re-export AST node.
             for (let exportClause of node.exportClause.elements) {
                 contract.assert(!exportClause.propertyName);
                 let name: ast.Identifier = this.transformIdentifier(exportClause.name);
-                // TODO[marapongo/mu#46]: produce real module tokens that will be recognizable.
-                let token: symbols.Token = `${source}::${name.ident}`;
                 exports.push(<ast.Export>{
                     kind:  ast.exportKind,
                     name:  name,
-                    token: token,
+                    token: this.createModuleDefinitionToken(sourceModule, name.ident),
                 });
             }
-            return exports;
         }
         else {
-            // TODO[marapongo/mu#46]: we need to enumerate all known exports, but to do that, we'll need to have
-            //     semantic understanding of the imported module with a given name.
-            return notYetImplemented(node, "export *");
+            // This is an export declaration of the form
+            //
+            //     export * from "module";
+            //
+            // For this to work, we simply enumerate all known exports from "module".
+            for (let name of this.resolveModuleExportNames(node, sourceModule)) {
+                exports.push(<ast.Export>{
+                    kind:  ast.exportKind,
+                    name:  <ast.Identifier>{
+                        kind:  ast.identifierKind,
+                        ident: name,
+                    },
+                    token: name,
+                });
+            }
         }
-    }
-
-    private transformExportSpecifier(node: ts.ExportSpecifier): ast.Definition {
-        return notYetImplemented(node);
+        return exports;
     }
 
     private transformImportDeclaration(node: ts.ImportDeclaration): ModuleElement {
