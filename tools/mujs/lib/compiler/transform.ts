@@ -492,12 +492,20 @@ export class Transformer {
             //
             // For every export clause, we will issue a top-level MuIL re-export AST node.
             for (let exportClause of node.exportClause.elements) {
-                contract.assert(!exportClause.propertyName);
                 let name: ast.Identifier = this.transformIdentifier(exportClause.name);
+                let propertyName: ast.Identifier;
+                if (exportClause.propertyName) {
+                    // The export is being renamed (`<propertyName> as <name`).  Bind the rename.
+                    propertyName = this.transformIdentifier(exportClause.propertyName);
+                }
+                else {
+                    propertyName = name;
+                }
+
                 exports.push(<ast.Export>{
                     kind:  ast.exportKind,
                     name:  name,
-                    token: this.createModuleDefinitionToken(sourceModule, name.ident),
+                    token: this.createModuleDefinitionToken(sourceModule, propertyName.ident),
                 });
             }
         }

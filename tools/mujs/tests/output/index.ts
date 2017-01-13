@@ -25,6 +25,7 @@ let testCases: string[] = [
     "modules/iface_exp_1",
     "modules/reexport",
     "modules/reexport_all",
+    "modules/reexport_rename",
 
     // These are not quite real-world-code, but they are more complex "integration" style tests.
     "scenarios/point",
