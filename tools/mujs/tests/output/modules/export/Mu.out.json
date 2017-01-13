@@ -288,9 +288,6 @@
                         "kind": "Block",
                         "statements": [
                             {
-                                "kind": "EmptyStatement"
-                            },
-                            {
                                 "kind": "BinaryOperatorExpression",
                                 "left": {
                                     "kind": "LoadLocationExpression",

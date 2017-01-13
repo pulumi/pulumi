@@ -390,8 +390,12 @@ export class Transformer {
                         this.currentModuleMembers[member.name.ident] = member;
                     }
                     else {
-                        // This is a top-level module statement; place it into the module initializer.
-                        statements.push(<ast.Statement>element);
+                        // This is a top-level module statement; place it into the module initializer.  Note that we
+                        // skip empty statements just to avoid superfluously polluting the module with initializers.
+                        let stmt = <ast.Statement>element;
+                        if (stmt.kind !== ast.emptyStatementKind) {
+                            statements.push(stmt);
+                        }
                     }
                 }
              }
