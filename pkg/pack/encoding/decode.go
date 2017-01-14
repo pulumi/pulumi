@@ -12,7 +12,7 @@ import (
 	"github.com/marapongo/mu/pkg/encoding"
 	"github.com/marapongo/mu/pkg/pack"
 	//"github.com/marapongo/mu/pkg/pack/ast"
-	//"github.com/marapongo/mu/pkg/pack/symbols"
+	"github.com/marapongo/mu/pkg/pack/symbols"
 	"github.com/marapongo/mu/pkg/util"
 )
 
@@ -28,6 +28,19 @@ func Decode(m encoding.Marshaler, b []byte) (*pack.Package, error) {
 		return nil, err
 	}
 	return decodePackage(tree)
+}
+
+func noExcess(tree object, ty string, fields ...string) error {
+	m := make(map[string]bool)
+	for _, f := range fields {
+		m[f] = true
+	}
+	for k := range tree {
+		if !m[k] {
+			return fmt.Errorf("Unrecognized %v field `%v`", ty, k)
+		}
+	}
+	return nil
 }
 
 func newMissing(ty string, field string) error {
@@ -101,12 +114,40 @@ func decodeMetadata(tree object) (*pack.Metadata, error) {
 }
 
 func decodePackage(tree object) (*pack.Package, error) {
+	// Ensure only recognized fields are present.
+	if err := noExcess(tree,
+		"Package", "name", "description", "author", "website", "license", "dependencies", "modules"); err != nil {
+		return nil, err
+	}
+
+	// Deserialize the informational metadata portion.
 	meta, err := decodeMetadata(tree)
 	if err != nil {
 		return nil, err
 	}
 
+	// Now deserialize the dependencies and modules section.
 	pack := pack.Package{Metadata: *meta}
+
+	if deps, has := tree["dependencies"]; has {
+		if adeps, ok := deps.([]interface{}); ok {
+			var tokens []symbols.ModuleToken
+			for i, dep := range adeps {
+				if sdep, ok := dep.(string); ok {
+					tokens = append(tokens, symbols.ModuleToken(sdep))
+				} else {
+					return nil, newWrongType(
+						"Package", fmt.Sprintf("dependencies[%v]", i),
+						"string", reflect.ValueOf(dep).Type().Name())
+				}
+			}
+			pack.Dependencies = &tokens
+		} else {
+			return nil, newWrongType(
+				"Package", "dependencies",
+				"[]ModuleToken", reflect.ValueOf(deps).Type().Name())
+		}
+	}
 
 	// TODO: dependencies.
 	// TODO: modules.

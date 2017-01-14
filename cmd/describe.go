@@ -72,7 +72,7 @@ func newDescribeCmd() *cobra.Command {
 					for _, dep := range *pkg.Dependencies {
 						fmt.Printf("\t\t%v", dep)
 					}
-					fmt.Printf("\t")
+					fmt.Printf("\n\t")
 				}
 				fmt.Printf("]\n")
 
