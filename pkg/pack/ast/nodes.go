@@ -17,14 +17,17 @@ import (
 // Node is a discriminated type for all serialized blocks and instructions.
 type Node interface {
 	nd()
+	GetKind() string   // the node kind.
 	GetLoc() *Location // an optional location associated with this node.
 }
 
 type node struct {
-	Loc *Location `json:"loc,omitempty"`
+	Kind string    `json:"kind"`
+	Loc  *Location `json:"loc,omitempty"`
 }
 
 func (node *node) nd()               {}
+func (node *node) GetKind() string   { return node.Kind }
 func (node *node) GetLoc() *Location { return node.Loc }
 
 // Identifier represents a simple string token associated with its source location context.

@@ -21,6 +21,6 @@ type Metadata struct {
 type Package struct {
 	Metadata
 
-	Dependencies *[]symbols.ModuleToken `json:"dependencies,omitempty"`   // all of the module dependencies.
-	Modules      *ast.Modules           `json:"modules,omitempty,custom"` // a collection of top-level modules.
+	Dependencies *[]symbols.ModuleToken `json:"dependencies,omitempty"` // all of the module dependencies.
+	Modules      *ast.Modules           `json:"modules,omitempty"`      // a collection of top-level modules.
 }

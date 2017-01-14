@@ -31,7 +31,7 @@ func (node *definition) GetDescription() *string { return node.Description }
 // Module contains members, including variables, functions, and/or classes.
 type Module struct {
 	definition
-	Members *ModuleMembers `json:"members"`
+	Members *ModuleMembers `json:"members,omitempty,custom"`
 }
 
 // Modules is a map of ModuleToken to Module.

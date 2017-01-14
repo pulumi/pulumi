@@ -11,6 +11,6 @@ type Location struct {
 
 // Position consists of a 1-indexed `line` number and a 0-indexed `column` number.
 type Position struct {
-	Line   int64 // >= 1
-	Column int64 // >= 0
+	Line   int64 `json:"line"`   // >= 1
+	Column int64 `json:"column"` // >= 0
 }
