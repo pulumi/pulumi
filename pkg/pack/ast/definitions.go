@@ -22,7 +22,6 @@ type definition struct {
 	Description *string     `json:"description,omitempty"`
 }
 
-func (node *definition) nd()                     {}
 func (node *definition) definition()             {}
 func (node *definition) GetName() *Identifier    { return node.Name }
 func (node *definition) GetDescription() *string { return node.Description }
@@ -32,6 +31,7 @@ func (node *definition) GetDescription() *string { return node.Description }
 // Module contains members, including variables, functions, and/or classes.
 type Module struct {
 	definition
+	Members *ModuleMembers `json:"members"`
 }
 
 // Modules is a map of ModuleToken to Module.
@@ -72,7 +72,7 @@ type Class struct {
 	Abstract   *bool              `json:"abstract,omitempty"`
 	Record     *bool              `json:"record,omitempty"`
 	Interface  *bool              `json:"interface,omitempty"`
-	Members    []ClassMember      `json:"members,omitempty"`
+	Members    *[]ClassMember     `json:"members,omitempty"`
 }
 
 // ClassMember is a Definition that belongs to a Class.

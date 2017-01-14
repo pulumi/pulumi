@@ -11,7 +11,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/marapongo/mu/pkg/encoding"
-	"github.com/marapongo/mu/pkg/pack"
+	decode "github.com/marapongo/mu/pkg/pack/encoding"
 )
 
 func newDescribeCmd() *cobra.Command {
@@ -25,11 +25,9 @@ func newDescribeCmd() *cobra.Command {
 		Run: func(cmd *cobra.Command, args []string) {
 			// Enumerate the list of packages, deserialize them, and print information.
 			for _, arg := range args {
-				fmt.Printf("%v\n", arg)
-
 				// Lookup the marshaler for this format.
 				ext := filepath.Ext(arg)
-				marshaler, has := encoding.Marshalers[ext]
+				m, has := encoding.Marshalers[ext]
 				if !has {
 					fmt.Fprintf(os.Stderr, "error: no marshaler found for file format '%v'\n", ext)
 					return
@@ -44,14 +42,40 @@ func newDescribeCmd() *cobra.Command {
 				}
 
 				// Unmarshal the contents into a fresh package.
-				var pkg pack.Package
-				if err := marshaler.Unmarshal(b, &pkg); err != nil {
+				pkg, err := decode.Decode(m, b)
+				if err != nil {
 					fmt.Fprintf(os.Stderr, "error: a problem occurred when unmarshaling file '%v'\n", arg)
 					fmt.Fprintf(os.Stderr, "       %v\n", err)
 					return
 				}
 
-				// TODO: pretty-print.
+				// Pretty-print the package metadata:
+				fmt.Printf("Package %v\n", pkg.Name)
+				fmt.Printf("\tpath = %v\n", arg)
+				if pkg.Description != "" {
+					fmt.Printf("\tdescription = %v\n", pkg.Description)
+				}
+				if pkg.Author != "" {
+					fmt.Printf("\tauthor = %v\n", pkg.Author)
+				}
+				if pkg.Website != "" {
+					fmt.Printf("\twebsite = %v\n", pkg.Website)
+				}
+				if pkg.License != "" {
+					fmt.Printf("\tlicense = %v\n", pkg.License)
+				}
+
+				// Print the dependencies:
+				fmt.Printf("\tdependencies = [")
+				if pkg.Dependencies != nil && len(*pkg.Dependencies) > 0 {
+					fmt.Printf("\n")
+					for _, dep := range *pkg.Dependencies {
+						fmt.Printf("\t\t%v", dep)
+					}
+					fmt.Printf("\t")
+				}
+				fmt.Printf("]\n")
+
 				// TODO: respect printExports.
 				// TODO: respect printIL.
 				// TODO: respect printSymbols.
