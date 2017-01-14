@@ -76,6 +76,17 @@ func newDescribeCmd() *cobra.Command {
 				}
 				fmt.Printf("]\n")
 
+				// Print the module names:
+				fmt.Printf("\tmodules = [")
+				if pkg.Modules != nil && len(*pkg.Modules) > 0 {
+					fmt.Printf("\n")
+					for mod := range *pkg.Modules {
+						fmt.Printf("\t\t%v", mod)
+					}
+					fmt.Printf("\n\t")
+				}
+				fmt.Printf("]\n")
+
 				// TODO: respect printExports.
 				// TODO: respect printIL.
 				// TODO: respect printSymbols.
