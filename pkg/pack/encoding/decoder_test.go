@@ -164,3 +164,36 @@ func TestNestedDecode(t *testing.T) {
 	assert.Equal(t, float64(2), b.Boggers[1].Num)
 	assert.Equal(t, float64(42), b.Boggers[2].Num)
 }
+
+type hasmap struct {
+	Entries  map[string]mapentry  `json:"entries"`
+	EntriesP map[string]*mapentry `json:"entriesp"`
+}
+
+type mapentry struct {
+	Title string `json:"title"`
+}
+
+func TestMapDecode(t *testing.T) {
+	// Ensure we can decode both maps of structs and maps of pointers to structs.
+	var hm hasmap
+	err := decode(object{
+		"entries": object{
+			"a": object{"title": "first"},
+			"b": object{"title": "second"},
+		},
+		"entriesp": object{
+			"x": object{"title": "firstp"},
+			"y": object{"title": "secondp"},
+		},
+	}, &hm)
+	assert.Nil(t, err)
+	assert.Equal(t, 2, len(hm.Entries))
+	assert.Equal(t, "first", hm.Entries["a"].Title)
+	assert.Equal(t, "second", hm.Entries["b"].Title)
+	assert.Equal(t, 2, len(hm.EntriesP))
+	assert.NotNil(t, hm.EntriesP["x"])
+	assert.NotNil(t, hm.EntriesP["y"])
+	assert.Equal(t, "firstp", hm.EntriesP["x"].Title)
+	assert.Equal(t, "secondp", hm.EntriesP["y"].Title)
+}

@@ -37,17 +37,41 @@ func newWrongType(ty string, field string, expect reflect.Type, actual reflect.T
 // adjustValue converts if possible to produce the target type.
 func adjustValue(val reflect.Value, to reflect.Type) (reflect.Value, error) {
 	for !val.Type().AssignableTo(to) {
+		var emptyObject map[string]interface{}
 		if val.Type().ConvertibleTo(to) {
 			// A simple conversion exists to make this right.
 			val = val.Convert(to)
+		} else if to.Kind() == reflect.Ptr && val.Type().AssignableTo(to.Elem()) {
+			// If the target is a pointer, turn the target into a pointer.  If it's not addressable, make a copy.
+			if val.CanAddr() {
+				val = val.Addr()
+			} else {
+				slot := reflect.New(val.Type().Elem())
+				copy := reflect.ValueOf(val.Interface())
+				util.Assert(copy.CanAddr())
+				slot.Set(copy)
+				val = slot
+			}
 		} else if val.Kind() == reflect.Interface && to.Kind() != reflect.Interface {
 			// It could be that the source is an interface{} with the right element type (or the right element type
 			// through a series of successive conversions); go ahead and give it a try.
 			val = val.Elem()
-		} else if val.Type() == reflect.TypeOf(object{}) && to.Kind() == reflect.Struct {
+		} else if (val.Type() == reflect.TypeOf(object{}) || val.Type() == reflect.TypeOf(emptyObject)) &&
+			(to.Kind() == reflect.Struct || (to.Kind() == reflect.Ptr && to.Elem().Kind() == reflect.Struct)) {
 			// If we're assigning to a custom struct, and the source is a JSON object, try to map it.
-			tree := val.Interface().(object)
-			target := reflect.New(to).Interface()
+			var tree map[string]interface{}
+			mi := val.Interface()
+			if ma, ok := mi.(object); ok {
+				tree = ma
+			} else {
+				tree = mi.(map[string]interface{})
+			}
+			var target interface{}
+			if to.Kind() == reflect.Ptr {
+				target = reflect.New(to.Elem()).Interface()
+			} else {
+				target = reflect.New(to).Interface()
+			}
 			if err := decode(tree, target); err != nil {
 				return val, err
 			}
@@ -62,17 +86,16 @@ func adjustValue(val reflect.Value, to reflect.Type) (reflect.Value, error) {
 // decodeField decodes primitive fields.  For fields of complex types, we use custom deserialization.
 func decodeField(tree object, ty string, key string, target interface{}, optional bool) error {
 	vdst := reflect.ValueOf(target)
-	util.AssertM(vdst.Kind() == reflect.Ptr && !vdst.IsNil() && vdst.Elem().CanSet(),
-		"Target must be a non-nil, settable pointer")
+	util.AssertMF(vdst.Kind() == reflect.Ptr && !vdst.IsNil() && vdst.Elem().CanSet(),
+		"Target %v must be a non-nil, settable pointer", vdst.Type())
 	if v, has := tree[key]; has {
 		// The field exists; okay, try to map it to the right type.
 		vsrc := reflect.ValueOf(v)
-		vsrcType := vsrc.Type()
 		vdstType := vdst.Type().Elem()
 
 		// So long as the target element is a pointer, we have a pointer to pointer; keep digging through until we
 		// bottom out on the non-pointer type that matches the source.  This assumes the source isn't itself a pointer!
-		util.Assert(vsrcType.Kind() != reflect.Ptr)
+		util.Assert(vsrc.Type().Kind() != reflect.Ptr)
 		for vdstType.Kind() == reflect.Ptr {
 			vdst = vdst.Elem()
 			vdstType = vdstType.Elem()
@@ -83,23 +106,27 @@ func decodeField(tree object, ty string, key string, target interface{}, optiona
 			}
 		}
 
-		// If the source is an interface, convert it to its element type.
-		if !vsrcType.AssignableTo(vdstType) && vsrcType.Kind() == reflect.Interface {
-			vsrc = vsrc.Elem()
-			vsrcType = vsrc.Type()
+		// Adjust the value if necessary; this handles recursive struct marshaling, interface unboxing, and more.
+		var err error
+		if vsrc, err = adjustValue(vsrc, vdstType); err != nil {
+			return err
 		}
 
-		if !vsrcType.AssignableTo(vdstType) {
+		// If the source is an interface, convert it to its element type.
+		if !vsrc.Type().AssignableTo(vdstType) && vsrc.Type().Kind() == reflect.Interface {
+			vsrc = vsrc.Elem()
+		}
+
+		if !vsrc.Type().AssignableTo(vdstType) {
 			// If the source and destination types don't match, after depointerizing the type above, something's up.
-			if vsrcType.Kind() == vdstType.Kind() {
-				switch vsrcType.Kind() {
+			if vsrc.Type().Kind() == vdstType.Kind() {
+				switch vsrc.Type().Kind() {
 				case reflect.Slice:
 					// If a slice, everything's ok so long as the elements are compatible.
 					arr := reflect.New(vdstType).Elem()
 					for i := 0; i < vsrc.Len(); i++ {
 						elem := vsrc.Index(i)
 						if !elem.Type().AssignableTo(vdstType.Elem()) {
-							var err error
 							if elem, err = adjustValue(elem, vdstType.Elem()); err != nil {
 								return err
 							}
@@ -110,14 +137,12 @@ func decodeField(tree object, ty string, key string, target interface{}, optiona
 						arr = reflect.Append(arr, elem)
 					}
 					vsrc = arr
-					vsrcType = vsrc.Type()
 				case reflect.Map:
 					// Similarly, if a map, everything's ok so long as elements and keys are compatible.
-					m := reflect.New(vdstType).Elem()
+					m := reflect.MakeMap(vdstType)
 					for _, k := range vsrc.MapKeys() {
 						val := vsrc.MapIndex(k)
 						if !k.Type().AssignableTo(vdstType.Key()) {
-							var err error
 							if k, err = adjustValue(k, vdstType.Key()); err != nil {
 								return err
 							}
@@ -127,7 +152,6 @@ func decodeField(tree object, ty string, key string, target interface{}, optiona
 							}
 						}
 						if !val.Type().AssignableTo(vdstType.Elem()) {
-							var err error
 							if val, err = adjustValue(val, vdstType.Elem()); err != nil {
 								return err
 							}
@@ -139,16 +163,15 @@ func decodeField(tree object, ty string, key string, target interface{}, optiona
 						m.SetMapIndex(k, val)
 					}
 					vsrc = m
-					vsrcType = vsrc.Type()
 				}
 			}
 		}
 
 		// Finally, provided everything is kosher, go ahead and store the value; otherwise, issue an error.
-		if vsrcType.AssignableTo(vdstType) {
+		if vsrc.Type().AssignableTo(vdstType) {
 			vdst.Elem().Set(vsrc)
 		} else {
-			return newWrongType(ty, key, vdstType, vsrcType)
+			return newWrongType(ty, key, vdstType, vsrc.Type())
 		}
 	} else if !optional {
 		// The field doesn't exist and yet it is required; issue an error.
@@ -160,11 +183,11 @@ func decodeField(tree object, ty string, key string, target interface{}, optiona
 // decode decodes an entire map into a target object, using tag-directed mappings.
 func decode(tree object, target interface{}) error {
 	vdst := reflect.ValueOf(target)
-	util.AssertM(vdst.Kind() == reflect.Ptr && !vdst.IsNil() && vdst.Elem().CanSet(),
-		"Target must be a non-nil, settable pointer")
+	util.AssertMF(vdst.Kind() == reflect.Ptr && !vdst.IsNil() && vdst.Elem().CanSet(),
+		"Target %v must be a non-nil, settable pointer", vdst.Type())
 	vdstType := vdst.Type().Elem()
-	util.AssertM(vdstType.Kind() == reflect.Struct && !vdst.IsNil(),
-		"Target must be a struct type with `json:\"x\"` tags to direct decoding")
+	util.AssertMF(vdstType.Kind() == reflect.Struct && !vdst.IsNil(),
+		"Target %v must be a struct type with `json:\"x\"` tags to direct decoding", vdstType)
 
 	// For each field in the struct that has a `json:"name"`, look it up in the map by that `name`, issuing an error if
 	// it is missing or of the wrong type.  For each field that has a tag with omitempty specified, i.e.,
