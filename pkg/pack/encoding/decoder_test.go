@@ -140,3 +140,27 @@ func TestDecode(t *testing.T) {
 	assert.Equal(t, "Missing required bagtag field `s`", err.Error())
 	assert.Equal(t, "", b4.String)
 }
+
+type bog struct {
+	Boggers []bogger `json:"boggers"`
+}
+
+type bogger struct {
+	Num float64 `json:"num"`
+}
+
+func TestNestedDecode(t *testing.T) {
+	var b bog
+	err := decode(object{
+		"boggers": []object{
+			{"num": float64(1)},
+			{"num": float64(2)},
+			{"num": float64(42)},
+		},
+	}, &b)
+	assert.Nil(t, err)
+	assert.Equal(t, 3, len(b.Boggers))
+	assert.Equal(t, float64(1), b.Boggers[0].Num)
+	assert.Equal(t, float64(2), b.Boggers[1].Num)
+	assert.Equal(t, float64(42), b.Boggers[2].Num)
+}

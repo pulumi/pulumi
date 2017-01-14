@@ -35,17 +35,28 @@ func newWrongType(ty string, field string, expect reflect.Type, actual reflect.T
 }
 
 // adjustValue converts if possible to produce the target type.
-func adjustValue(val reflect.Value, to reflect.Type) reflect.Value {
+func adjustValue(val reflect.Value, to reflect.Type) (reflect.Value, error) {
 	for !val.Type().AssignableTo(to) {
 		if val.Type().ConvertibleTo(to) {
+			// A simple conversion exists to make this right.
 			val = val.Convert(to)
 		} else if val.Kind() == reflect.Interface && to.Kind() != reflect.Interface {
+			// It could be that the source is an interface{} with the right element type (or the right element type
+			// through a series of successive conversions); go ahead and give it a try.
 			val = val.Elem()
+		} else if val.Type() == reflect.TypeOf(object{}) && to.Kind() == reflect.Struct {
+			// If we're assigning to a custom struct, and the source is a JSON object, try to map it.
+			tree := val.Interface().(object)
+			target := reflect.New(to).Interface()
+			if err := decode(tree, target); err != nil {
+				return val, err
+			}
+			val = reflect.ValueOf(target).Elem()
 		} else {
 			break
 		}
 	}
-	return val
+	return val, nil
 }
 
 // decodeField decodes primitive fields.  For fields of complex types, we use custom deserialization.
@@ -88,7 +99,10 @@ func decodeField(tree object, ty string, key string, target interface{}, optiona
 					for i := 0; i < vsrc.Len(); i++ {
 						elem := vsrc.Index(i)
 						if !elem.Type().AssignableTo(vdstType.Elem()) {
-							elem = adjustValue(elem, vdstType.Elem())
+							var err error
+							if elem, err = adjustValue(elem, vdstType.Elem()); err != nil {
+								return err
+							}
 							if !elem.Type().AssignableTo(vdstType.Elem()) {
 								return newWrongType(ty, fmt.Sprintf("%v[%v]", key, i), vdstType.Elem(), elem.Type())
 							}
@@ -103,14 +117,20 @@ func decodeField(tree object, ty string, key string, target interface{}, optiona
 					for _, k := range vsrc.MapKeys() {
 						val := vsrc.MapIndex(k)
 						if !k.Type().AssignableTo(vdstType.Key()) {
-							k = adjustValue(k, vdstType.Key())
+							var err error
+							if k, err = adjustValue(k, vdstType.Key()); err != nil {
+								return err
+							}
 							if !k.Type().AssignableTo(vdstType.Key()) {
 								return newWrongType(ty,
 									fmt.Sprintf("%v[%v] key", key, k.Interface()), vdstType.Key(), k.Type())
 							}
 						}
 						if !val.Type().AssignableTo(vdstType.Elem()) {
-							val = adjustValue(val, vdstType.Elem())
+							var err error
+							if val, err = adjustValue(val, vdstType.Elem()); err != nil {
+								return err
+							}
 							if !val.Type().AssignableTo(vdstType.Elem()) {
 								return newWrongType(ty,
 									fmt.Sprintf("%v[%v] value", key, k.Interface()), vdstType.Elem(), val.Type())
