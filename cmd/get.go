@@ -5,7 +5,7 @@ package cmd
 import (
 	"github.com/spf13/cobra"
 
-	"github.com/marapongo/mu/pkg/util"
+	"github.com/marapongo/mu/pkg/util/contract"
 )
 
 func newGetCmd() *cobra.Command {
@@ -18,7 +18,7 @@ func newGetCmd() *cobra.Command {
 			"to download dependencies referenced by the current Stack.  Otherwise, if one\n" +
 			"or more specific dependencies are provided, only those will be downloaded.",
 		Run: func(cmd *cobra.Command, args []string) {
-			util.FailM("Get command is not yet implemented")
+			contract.FailM("Get command is not yet implemented")
 		},
 	}
 

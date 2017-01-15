@@ -16,23 +16,26 @@ type Definition interface {
 	GetDescription() *string // an optional informative description.
 }
 
-type definition struct {
+type definitionNode struct {
 	node
 	Name        *Identifier `json:"name"`
 	Description *string     `json:"description,omitempty"`
 }
 
-func (node *definition) definition()             {}
-func (node *definition) GetName() *Identifier    { return node.Name }
-func (node *definition) GetDescription() *string { return node.Description }
+func (node *definitionNode) definition()             {}
+func (node *definitionNode) GetName() *Identifier    { return node.Name }
+func (node *definitionNode) GetDescription() *string { return node.Description }
 
 /* Modules */
 
 // Module contains members, including variables, functions, and/or classes.
 type Module struct {
-	definition
+	definitionNode
 	Members *ModuleMembers `json:"members,omitempty,custom"`
 }
+
+var _ Node = (*Module)(nil)
+var _ Definition = (*Module)(nil)
 
 // Modules is a map of ModuleToken to Module.
 type Modules map[symbols.ModuleToken]*Module
@@ -44,36 +47,44 @@ type ModuleMember interface {
 	GetAccess() *symbols.Accessibility
 }
 
-type moduleMember struct {
-	definition
+type moduleMemberNode struct {
+	definitionNode
 	Access *symbols.Accessibility `json:"access,omitempty"`
 }
 
-func (node *moduleMember) moduleMember()                     {}
-func (node *moduleMember) GetAccess() *symbols.Accessibility { return node.Access }
+func (node *moduleMemberNode) moduleMember()                     {}
+func (node *moduleMemberNode) GetAccess() *symbols.Accessibility { return node.Access }
 
 // ModuleMembers is a map of Token to ModuleMember.
 type ModuleMembers map[symbols.Token]ModuleMember
 
 // Export re-exports a Definition from another Module, possibly with a different name.
 type Export struct {
-	moduleMember
+	moduleMemberNode
 	Token symbols.Token `json:"token"`
 }
+
+var _ Node = (*Export)(nil)
+var _ Definition = (*Export)(nil)
+var _ ModuleMember = (*Export)(nil)
 
 /* Classes */
 
 // Class can be constructed to create an object, and exports properties, methods, and has a number of attributes.
 type Class struct {
-	moduleMember
+	moduleMemberNode
 	Extends    *symbols.TypeToken `json:"extends,omitempty"`
 	Implements *symbols.TypeToken `json:"implements,omitempty"`
 	Sealed     *bool              `json:"sealed,omitempty"`
 	Abstract   *bool              `json:"abstract,omitempty"`
 	Record     *bool              `json:"record,omitempty"`
 	Interface  *bool              `json:"interface,omitempty"`
-	Members    *[]ClassMember     `json:"members,omitempty"`
+	Members    *[]ClassMember     `json:"members,omitempty,custom"`
 }
+
+var _ Node = (*Class)(nil)
+var _ Definition = (*Class)(nil)
+var _ ModuleMember = (*Class)(nil)
 
 // ClassMember is a Definition that belongs to a Class.
 type ClassMember interface {
@@ -82,11 +93,15 @@ type ClassMember interface {
 	GetStatic() *bool
 }
 
-type classMember struct {
-	definition
+type classMemberNode struct {
+	definitionNode
 	Access *symbols.ClassMemberAccessibility `json:"access,omitempty"`
 	Static *bool                             `json:"static,omitempty"`
 }
+
+func (node *classMemberNode) classMember()                                 {}
+func (node *classMemberNode) GetAccess() *symbols.ClassMemberAccessibility { return node.Access }
+func (node *classMemberNode) GetStatic() *bool                             { return node.Static }
 
 // ClassMembers is a map of Token to ClassMember.
 type ClassMembers map[symbols.Token]ClassMember
@@ -101,34 +116,46 @@ type Variable interface {
 	GetReadonly() *bool
 }
 
-type variable struct {
-	definition
+type variableNode struct {
+	// note that this node intentionally omits any embedded base, to avoid diamond "inheritance".
 	Type     *symbols.TypeToken `json:"type,omitempty"`
 	Default  *interface{}       `json:"default,omitempty"`
 	Readonly *bool              `json:"readonly,omitempty"`
 }
 
-func (node *variable) GetType() *symbols.TypeToken { return node.Type }
-func (node *variable) GetDefault() *interface{}    { return node.Default }
-func (node *variable) GetReadonly() *bool          { return node.Readonly }
+func (node *variableNode) GetType() *symbols.TypeToken { return node.Type }
+func (node *variableNode) GetDefault() *interface{}    { return node.Default }
+func (node *variableNode) GetReadonly() *bool          { return node.Readonly }
 
 // LocalVariable is a variable that is lexically scoped within a function (either a parameter or local).
 type LocalVariable struct {
-	variable
+	variableNode
+	definitionNode
 }
+
+var _ Node = (*LocalVariable)(nil)
+var _ Definition = (*LocalVariable)(nil)
 
 // ModuleProperty is like a variable but belongs to a module.
 type ModuleProperty struct {
-	variable
-	moduleMember
+	variableNode
+	moduleMemberNode
 }
+
+var _ Node = (*ModuleProperty)(nil)
+var _ Definition = (*ModuleProperty)(nil)
+var _ ModuleMember = (*ModuleProperty)(nil)
 
 // ClassProperty is like a module property with some extra attributes.
 type ClassProperty struct {
-	variable
-	classMember
+	variableNode
+	classMemberNode
 	Primary *bool `json:"primary,omitempty"`
 }
+
+var _ Node = (*ClassProperty)(nil)
+var _ Definition = (*ClassProperty)(nil)
+var _ ClassMember = (*ClassProperty)(nil)
 
 /* Functions */
 
@@ -140,27 +167,35 @@ type Function interface {
 	GetBody() *Block
 }
 
-type function struct {
-	definition
+type functionNode struct {
+	// note that this node intentionally omits any embedded base, to avoid diamond "inheritance".
 	Parameters *[]*LocalVariable  `json:"parameters,omitempty"`
 	ReturnType *symbols.TypeToken `json:"returnType,omitempty"`
 	Body       *Block             `json:"body,omitempty"`
 }
 
-func (node *function) GetParameters() *[]*LocalVariable  { return node.Parameters }
-func (node *function) GetReturnType() *symbols.TypeToken { return node.ReturnType }
-func (node *function) GetBody() *Block                   { return node.Body }
+func (node *functionNode) GetParameters() *[]*LocalVariable  { return node.Parameters }
+func (node *functionNode) GetReturnType() *symbols.TypeToken { return node.ReturnType }
+func (node *functionNode) GetBody() *Block                   { return node.Body }
 
 // ModuleMethod is just a function with an accessibility modifier.
 type ModuleMethod struct {
-	function
-	moduleMember
+	functionNode
+	moduleMemberNode
 }
+
+var _ Node = (*ModuleMethod)(nil)
+var _ Definition = (*ModuleMethod)(nil)
+var _ ModuleMember = (*ModuleMethod)(nil)
 
 // ClassMethod is just like a module method with some extra attributes.
 type ClassMethod struct {
-	function
-	classMember
+	functionNode
+	classMemberNode
 	Sealed   *bool `json:"sealed,omitempty"`
 	Abstract *bool `json:"abstract,omitempty"`
 }
+
+var _ Node = (*ClassMethod)(nil)
+var _ Definition = (*ClassMethod)(nil)
+var _ ClassMember = (*ClassMethod)(nil)

@@ -7,7 +7,7 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/marapongo/mu/pkg/util"
+	"github.com/marapongo/mu/pkg/util/contract"
 )
 
 type object map[string]interface{}
@@ -26,11 +26,11 @@ func noExcess(tree object, ty string, fields ...string) error {
 	return nil
 }
 
-func newMissing(ty string, field string) error {
+func errMissing(ty reflect.Type, field string) error {
 	return fmt.Errorf("Missing required %v field `%v`", ty, field)
 }
 
-func newWrongType(ty string, field string, expect reflect.Type, actual reflect.Type) error {
+func errWrongType(ty reflect.Type, field string, expect reflect.Type, actual reflect.Type) error {
 	return fmt.Errorf("%v `%v` must be a `%v`, got `%v`", ty, field, expect, actual)
 }
 
@@ -48,7 +48,7 @@ func adjustValue(val reflect.Value, to reflect.Type) (reflect.Value, error) {
 			} else {
 				slot := reflect.New(val.Type().Elem())
 				copy := reflect.ValueOf(val.Interface())
-				util.Assert(copy.CanAddr())
+				contract.Assert(copy.CanAddr())
 				slot.Set(copy)
 				val = slot
 			}
@@ -84,9 +84,9 @@ func adjustValue(val reflect.Value, to reflect.Type) (reflect.Value, error) {
 }
 
 // decodeField decodes primitive fields.  For fields of complex types, we use custom deserialization.
-func decodeField(tree object, ty string, key string, target interface{}, optional bool) error {
+func decodeField(tree object, ty reflect.Type, key string, target interface{}, optional bool) error {
 	vdst := reflect.ValueOf(target)
-	util.AssertMF(vdst.Kind() == reflect.Ptr && !vdst.IsNil() && vdst.Elem().CanSet(),
+	contract.AssertMF(vdst.Kind() == reflect.Ptr && !vdst.IsNil() && vdst.Elem().CanSet(),
 		"Target %v must be a non-nil, settable pointer", vdst.Type())
 	if v, has := tree[key]; has {
 		// The field exists; okay, try to map it to the right type.
@@ -95,13 +95,13 @@ func decodeField(tree object, ty string, key string, target interface{}, optiona
 
 		// So long as the target element is a pointer, we have a pointer to pointer; keep digging through until we
 		// bottom out on the non-pointer type that matches the source.  This assumes the source isn't itself a pointer!
-		util.Assert(vsrc.Type().Kind() != reflect.Ptr)
+		contract.Assert(vsrc.Type().Kind() != reflect.Ptr)
 		for vdstType.Kind() == reflect.Ptr {
 			vdst = vdst.Elem()
 			vdstType = vdstType.Elem()
 			if !vdst.Elem().CanSet() {
 				// If the pointer is nil, initialize it so we can set it below.
-				util.Assert(vdst.IsNil())
+				contract.Assert(vdst.IsNil())
 				vdst.Set(reflect.New(vdstType))
 			}
 		}
@@ -131,7 +131,7 @@ func decodeField(tree object, ty string, key string, target interface{}, optiona
 								return err
 							}
 							if !elem.Type().AssignableTo(vdstType.Elem()) {
-								return newWrongType(ty, fmt.Sprintf("%v[%v]", key, i), vdstType.Elem(), elem.Type())
+								return errWrongType(ty, fmt.Sprintf("%v[%v]", key, i), vdstType.Elem(), elem.Type())
 							}
 						}
 						arr = reflect.Append(arr, elem)
@@ -147,7 +147,7 @@ func decodeField(tree object, ty string, key string, target interface{}, optiona
 								return err
 							}
 							if !k.Type().AssignableTo(vdstType.Key()) {
-								return newWrongType(ty,
+								return errWrongType(ty,
 									fmt.Sprintf("%v[%v] key", key, k.Interface()), vdstType.Key(), k.Type())
 							}
 						}
@@ -156,7 +156,7 @@ func decodeField(tree object, ty string, key string, target interface{}, optiona
 								return err
 							}
 							if !val.Type().AssignableTo(vdstType.Elem()) {
-								return newWrongType(ty,
+								return errWrongType(ty,
 									fmt.Sprintf("%v[%v] value", key, k.Interface()), vdstType.Elem(), val.Type())
 							}
 						}
@@ -171,11 +171,11 @@ func decodeField(tree object, ty string, key string, target interface{}, optiona
 		if vsrc.Type().AssignableTo(vdstType) {
 			vdst.Elem().Set(vsrc)
 		} else {
-			return newWrongType(ty, key, vdstType, vsrc.Type())
+			return errWrongType(ty, key, vdstType, vsrc.Type())
 		}
 	} else if !optional {
 		// The field doesn't exist and yet it is required; issue an error.
-		return newMissing(ty, key)
+		return errMissing(ty, key)
 	}
 	return nil
 }
@@ -183,10 +183,10 @@ func decodeField(tree object, ty string, key string, target interface{}, optiona
 // decode decodes an entire map into a target object, using tag-directed mappings.
 func decode(tree object, target interface{}) error {
 	vdst := reflect.ValueOf(target)
-	util.AssertMF(vdst.Kind() == reflect.Ptr && !vdst.IsNil() && vdst.Elem().CanSet(),
+	contract.AssertMF(vdst.Kind() == reflect.Ptr && !vdst.IsNil() && vdst.Elem().CanSet(),
 		"Target %v must be a non-nil, settable pointer", vdst.Type())
 	vdstType := vdst.Type().Elem()
-	util.AssertMF(vdstType.Kind() == reflect.Struct && !vdst.IsNil(),
+	contract.AssertMF(vdstType.Kind() == reflect.Struct && !vdst.IsNil(),
 		"Target %v must be a struct type with `json:\"x\"` tags to direct decoding", vdstType)
 
 	// For each field in the struct that has a `json:"name"`, look it up in the map by that `name`, issuing an error if
@@ -221,7 +221,7 @@ func decode(tree object, target interface{}) error {
 
 			// Decode the tag.
 			tagparts := strings.Split(tag, ",")
-			util.AssertMF(len(tagparts) > 0,
+			contract.AssertMF(len(tagparts) > 0,
 				"Expected >0 tagparts on field %v.%v; got %v", vdstType.Name(), fldinfo.Name, len(tagparts))
 			key = tagparts[0]
 			for i := 1; i < len(tagparts); i++ {
@@ -231,14 +231,14 @@ func decode(tree object, target interface{}) error {
 				case "custom":
 					custom = true
 				default:
-					util.FailMF("Unrecognized tagpart on field %v.%v: %v", vdstType.Name(), fldinfo.Name, tagparts[i])
+					contract.FailMF("Unrecognized tagpart on field %v.%v: %v", vdstType.Name(), fldinfo.Name, tagparts[i])
 				}
 			}
 
 			// Now use the tag to direct unmarshaling.
 			fld := vdst.Elem().FieldByName(fldinfo.Name)
 			if !custom {
-				if err := decodeField(tree, vdstType.Name(), key, fld.Addr().Interface(), optional); err != nil {
+				if err := decodeField(tree, vdstType, key, fld.Addr().Interface(), optional); err != nil {
 					return err
 				}
 			}
