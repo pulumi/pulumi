@@ -15,7 +15,7 @@ import (
 	"github.com/marapongo/mu/pkg/diag"
 	"github.com/marapongo/mu/pkg/encoding"
 	"github.com/marapongo/mu/pkg/errors"
-	"github.com/marapongo/mu/pkg/util"
+	"github.com/marapongo/mu/pkg/util/contract"
 )
 
 // New returns a fresh instance of an AWS Cloud implementation.  This targets "native AWS" for the code-gen outputs.
@@ -93,7 +93,7 @@ func (c *awsCloud) genClusterTemplate(comp core.Compiland) *cfTemplate {
 func (c *awsCloud) genStackName(comp core.Compiland) string {
 	nm := fmt.Sprintf("MuStack-%v-%v",
 		makeAWSFriendlyName(comp.Cluster.Name, true), makeAWSFriendlyName(string(comp.Stack.Name), true))
-	util.Assert(IsValidCFStackName(nm))
+	contract.Assert(IsValidCFStackName(nm))
 	return nm
 }
 
@@ -101,7 +101,7 @@ func (c *awsCloud) genStackName(comp core.Compiland) string {
 func (c *awsCloud) genResourceID(stack *ast.Stack, svc *ast.Service) cfLogicalID {
 	nm := fmt.Sprintf("%v%v",
 		makeAWSFriendlyName(string(svc.Name), true), makeAWSFriendlyName(string(stack.Name), true))
-	util.Assert(IsValidCFLogicalID(nm))
+	contract.Assert(IsValidCFLogicalID(nm))
 	return cfLogicalID(nm)
 }
 
@@ -117,7 +117,7 @@ func (c *awsCloud) genResourceDependsID(ref *ast.ServiceRef) cfLogicalID {
 
 		// TODO: this works "one-level deep"; however, we will need to figure out a scheme for logical dependencies;
 		//     that is, dependencies on stacks that are merely a composition of many other stacks.
-		util.AssertMF(len(sel.BoundType.Services.Public) == 1,
+		contract.AssertMF(len(sel.BoundType.Services.Public) == 1,
 			"expected service type '%v' to export a single public service; got %v",
 			sel.BoundType.Name, len(sel.BoundType.Services.Public))
 		for _, s := range sel.BoundType.Services.Public {
@@ -175,7 +175,7 @@ func (c *awsCloud) genTemplate(comp core.Compiland) *cfTemplate {
 
 // genStackServiceTemplates returns two maps of service templates, one for private, the other for public, services.
 func (c *awsCloud) genStackServiceTemplates(comp core.Compiland, stack *ast.Stack) (cfResources, cfResources) {
-	util.Assert(stack != nil)
+	contract.Assert(stack != nil)
 	glog.V(4).Infof("Generating stack service templates: stack=%v private=%v public=%v",
 		stack.Name, len(stack.Services.Private), len(stack.Services.Public))
 
@@ -207,7 +207,7 @@ func (c *awsCloud) genServiceTemplate(comp core.Compiland, stack *ast.Stack, svc
 	//     the simplest of Mu Stacks.  Especially because many Mu Stacks are single-Service.  Perhaps we could come
 	//     up with some clever default, like multi-Service Mu Stacks map to CloudFormation Stacks, and single-Service
 	//     ones don't, however I'm not yet convinced this is the right path.  So, for now, we keep it simple.
-	util.Assert(svc.BoundType != nil)
+	contract.Assert(svc.BoundType != nil)
 	glog.V(4).Infof("Generating service template: svc=%v type=%v", svc.Name, svc.BoundType.Name)
 
 	if svc.BoundType.Intrinsic {

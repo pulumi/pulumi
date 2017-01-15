@@ -16,7 +16,7 @@ import (
 	"github.com/marapongo/mu/pkg/compiler/core"
 	"github.com/marapongo/mu/pkg/diag"
 	"github.com/marapongo/mu/pkg/errors"
-	"github.com/marapongo/mu/pkg/util"
+	"github.com/marapongo/mu/pkg/util/contract"
 )
 
 // Binder annotates an existing parse tree with semantic information.
@@ -102,37 +102,37 @@ func (b *binder) ValidateStack(stack *ast.Stack) {
 
 // LookupService binds a name to a Service type.
 func (b *binder) LookupService(nm ast.Name) (*ast.Service, bool) {
-	util.AssertM(b.scope != nil, "Unexpected empty binding scope during LookupService")
+	contract.AssertM(b.scope != nil, "Unexpected empty binding scope during LookupService")
 	return b.scope.LookupService(nm)
 }
 
 // LookupStack binds a name to a Stack type.
 func (b *binder) LookupStack(nm ast.Name) (*ast.Stack, bool) {
-	util.AssertM(b.scope != nil, "Unexpected empty binding scope during LookupStack")
+	contract.AssertM(b.scope != nil, "Unexpected empty binding scope during LookupStack")
 	return b.scope.LookupStack(nm)
 }
 
 // LookupUninstStack binds a name to a UninstStack type.
 func (b *binder) LookupUninstStack(nm ast.Name) (*ast.UninstStack, bool) {
-	util.AssertM(b.scope != nil, "Unexpected empty binding scope during LookupUninstStack")
+	contract.AssertM(b.scope != nil, "Unexpected empty binding scope during LookupUninstStack")
 	return b.scope.LookupUninstStack(nm)
 }
 
 // LookupSchema binds a name to a Schema type.
 func (b *binder) LookupSchema(nm ast.Name) (*ast.Schema, bool) {
-	util.AssertM(b.scope != nil, "Unexpected empty binding scope during LookupSchema")
+	contract.AssertM(b.scope != nil, "Unexpected empty binding scope during LookupSchema")
 	return b.scope.LookupSchema(nm)
 }
 
 // LookupSymbol binds a name to any kind of Symbol.
 func (b *binder) LookupSymbol(nm ast.Name) (*Symbol, bool) {
-	util.AssertM(b.scope != nil, "Unexpected empty binding scope during LookupSymbol")
+	contract.AssertM(b.scope != nil, "Unexpected empty binding scope during LookupSymbol")
 	return b.scope.LookupSymbol(nm)
 }
 
 // RegisterSymbol registers a symbol with the given name; if it already exists, the function returns false.
 func (b *binder) RegisterSymbol(sym *Symbol) bool {
-	util.AssertM(b.scope != nil, "Unexpected empty binding scope during RegisterSymbol")
+	contract.AssertM(b.scope != nil, "Unexpected empty binding scope during RegisterSymbol")
 	return b.scope.RegisterSymbol(sym)
 }
 
@@ -143,7 +143,7 @@ func (b *binder) PushScope() {
 
 // PopScope replaces the current scope with its parent.
 func (b *binder) PopScope() {
-	util.AssertM(b.scope != nil, "Unexpected empty binding scope during pop")
+	contract.AssertM(b.scope != nil, "Unexpected empty binding scope during pop")
 	b.scope = b.scope.parent
 }
 
@@ -382,7 +382,7 @@ func newBinderBindPhase(b *binder, top *ast.Stack, deprefs ast.DependencyRefs) *
 	// Populate the symbol table with this Stack's bound dependencies so that any type lookups are found.
 	for _, ref := range ast.StableDependencyRefs(deprefs) {
 		dep := deprefs[ref]
-		util.Assert(dep.Doc != nil)
+		contract.Assert(dep.Doc != nil)
 
 		nm := refToName(ref)
 		sym := NewUninstStackSymbol(nm, dep)
@@ -443,7 +443,7 @@ func (p *binderBindPhase) VisitProperty(parent *ast.Stack, schema *ast.Schema, n
 	// For properties whose types represent unresolved names, we must bind them to a name now.
 	if prop.BoundType.IsUnresolvedRef() {
 		prop.BoundType = p.ensureType(*prop.BoundType.Unref)
-		util.Assert(prop.BoundType != nil)
+		contract.Assert(prop.BoundType != nil)
 	}
 }
 
@@ -454,7 +454,7 @@ func (p *binderBindPhase) VisitService(pstack *ast.Stack, parent *ast.Services, 
 	svc *ast.Service) {
 	// The service's type has been prepared in phase 1, and must now be bound to a symbol.  All shorthand type
 	// expressions, intra stack references, cycles, and so forth, will have been taken care of by this earlier phase.
-	util.AssertMF(svc.Type != "",
+	contract.AssertMF(svc.Type != "",
 		"Expected all Services to have types in binding phase2; %v is missing one", svc.Name)
 	svc.BoundType = p.ensureStack(svc.Type, svc.Properties)
 
@@ -505,7 +505,7 @@ func (p *binderBindPhase) ensureType(ref ast.Ref) *ast.Type {
 	if exists {
 		return ast.NewSchemaType(schema)
 	}
-	util.FailMF("Expected 1st pass of binding to guarantee type %v exists (%v)", ref, nm)
+	contract.FailMF("Expected 1st pass of binding to guarantee type %v exists (%v)", ref, nm)
 	return nil
 }
 
@@ -538,7 +538,7 @@ func (p *binderValidatePhase) VisitStack(stack *ast.Stack) {
 		stack.BoundPropertyValues = p.bindProperties(&stack.Node, stack.Properties, stack.PropertyValues)
 	}
 	if stack.Base != "" {
-		util.Assert(stack.BoundBase != nil)
+		contract.Assert(stack.BoundBase != nil)
 		// TODO[marapongo/mu#7]: validate the properties from this stack on the base.
 	}
 }
@@ -558,14 +558,14 @@ func (p *binderValidatePhase) VisitServices(parent *ast.Stack, svcs *ast.Service
 
 func (p *binderValidatePhase) VisitService(pstack *ast.Stack, parent *ast.Services, name ast.Name, public bool,
 	svc *ast.Service) {
-	util.Assert(svc.BoundType != nil)
+	contract.Assert(svc.BoundType != nil)
 	if svc.BoundType.PropertyValues == nil {
 		// For some types, there aren't any property values (e.g., built-in types).  For those, bind now.
 		svc.BoundProperties = p.bindProperties(&pstack.Node, svc.BoundType.Properties, svc.Properties)
 	} else {
 		// For imported types, we should have property values, which already got bound in an earlier phase.
-		util.Assert(svc.BoundType.BoundPropertyValues != nil)
-		util.Assert(len(svc.BoundType.PropertyValues) == len(svc.Properties))
+		contract.Assert(svc.BoundType.BoundPropertyValues != nil)
+		contract.Assert(len(svc.BoundType.PropertyValues) == len(svc.Properties))
 		svc.BoundProperties = svc.BoundType.BoundPropertyValues
 	}
 }
@@ -596,7 +596,7 @@ func (p *binderValidatePhase) bindProperties(node *ast.Node, props ast.Propertie
 				continue
 			}
 		}
-		util.Assert(val != nil)
+		contract.Assert(val != nil)
 
 		// Now, value in hand, let's make sure it's the right type.
 		if lit := p.bindValue(&prop.Node, val, prop.BoundType); lit != nil {
@@ -616,7 +616,7 @@ func (p *binderValidatePhase) bindProperties(node *ast.Node, props ast.Propertie
 
 // bindValue takes a value and binds it to a type and literal AST node, returning nils if the conversions fails.
 func (p *binderValidatePhase) bindValue(node *ast.Node, val interface{}, ty *ast.Type) ast.Literal {
-	util.Assert(ty != nil)
+	contract.Assert(ty != nil)
 	var lit ast.Literal
 	if ty.IsDecors() {
 		lit = p.bindDecorsValue(node, val, ty.Decors)
@@ -627,7 +627,7 @@ func (p *binderValidatePhase) bindValue(node *ast.Node, val interface{}, ty *ast
 	} else if ty.IsSchema() {
 		lit = p.bindSchemaValue(node, val, ty.Schema)
 	} else if ty.IsUnresolvedRef() {
-		util.FailM("Expected all unresolved refs to be gone by this phase in binding")
+		contract.FailM("Expected all unresolved refs to be gone by this phase in binding")
 	}
 
 	if lit == nil {
@@ -658,8 +658,8 @@ func (p *binderValidatePhase) bindDecorsValue(node *ast.Node, val interface{}, d
 			glog.V(7).Infof("Expected array for value %v, got %v", val, arr.Kind())
 		}
 	} else {
-		util.Assert(decors.KeyType != nil)
-		util.Assert(decors.ValueType != nil)
+		contract.Assert(decors.KeyType != nil)
+		contract.Assert(decors.ValueType != nil)
 
 		// TODO: ensure that keytype is something we can actually use as a key (primitive).
 
@@ -722,7 +722,7 @@ func (p *binderValidatePhase) bindPrimitiveValue(node *ast.Node, val interface{}
 		// table, and store a strong reference to the result.  This lets the backend connect the dots.
 		return p.bindServiceValue(node, val, nil)
 	default:
-		util.FailMF("Unrecognized primitive type: %v", prim)
+		contract.FailMF("Unrecognized primitive type: %v", prim)
 		return nil
 	}
 }
@@ -744,7 +744,7 @@ func (p *binderValidatePhase) bindSchemaValue(node *ast.Node, val interface{}, s
 	// TODO[marapongo/mu#9]: we may want to support mixing these (e.g., additive properties); for now, we won't.
 	if schema.BoundBase != nil {
 		// There is a base type.  Bind it as-is, and then apply any additional constraints we have added.
-		util.Assert(schema.Properties == nil)
+		contract.Assert(schema.Properties == nil)
 		lit := p.bindValue(node, val, schema.BoundBase)
 		if lit != nil {
 			// The following constraints are valid only on strings:
@@ -884,7 +884,7 @@ func (p *binderValidatePhase) bindServiceRef(node *ast.Node, val string, ty *ast
 	var ref *ast.ServiceRef
 	if svc, ok := p.b.LookupService(ast.Name(nm)); ok {
 		svct := svc.BoundType
-		util.AssertMF(svct != nil, "Expected service '%v' to have a type", svc.Name)
+		contract.AssertMF(svct != nil, "Expected service '%v' to have a type", svc.Name)
 
 		var selsvc *ast.Service
 		if sel == "" {
@@ -900,7 +900,7 @@ func (p *binderValidatePhase) bindServiceRef(node *ast.Node, val string, ty *ast
 					break
 				}
 			} else {
-				util.Assert(len(svct.Services.Public) > 1)
+				contract.Assert(len(svct.Services.Public) > 1)
 				p.Diag().Errorf(errors.ErrorServiceHasManyPublics.At(node), svc.Name, svct.Name)
 			}
 		} else {
@@ -920,7 +920,7 @@ func (p *binderValidatePhase) bindServiceRef(node *ast.Node, val string, ty *ast
 
 		if selsvc != nil {
 			// If there is an expected type, now ensure that the selected Service is of the right kind.
-			util.Assert(selsvc.BoundType != nil)
+			contract.Assert(selsvc.BoundType != nil)
 			if ty != nil && !subclassOf(selsvc.BoundType, ty) {
 				p.Diag().Errorf(errors.ErrorIncorrectType.At(node), ty, selsvc.BoundType.Name)
 			}

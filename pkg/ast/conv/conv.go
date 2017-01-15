@@ -5,7 +5,7 @@ package conv
 
 import (
 	"github.com/marapongo/mu/pkg/ast"
-	"github.com/marapongo/mu/pkg/util"
+	"github.com/marapongo/mu/pkg/util/contract"
 )
 
 // Simple conversions to the direct underlying contents of literal nodes:
@@ -137,7 +137,7 @@ func ToValue(l ast.Literal) interface{} {
 		vals := t.Values()
 		// Map keys must be one of the primitive types.
 		keyt := t.KeyType().Primitive
-		util.Assert(keyt != nil)
+		contract.Assert(keyt != nil)
 		switch *keyt {
 		case ast.PrimitiveTypeBool:
 			m := make(map[bool]interface{})
@@ -161,7 +161,7 @@ func ToValue(l ast.Literal) interface{} {
 			}
 			return m
 		default:
-			util.FailMF("Unexpected map key type: %v", keyt)
+			contract.FailMF("Unexpected map key type: %v", keyt)
 			return nil
 		}
 	case ast.SchemaLiteral:
@@ -171,7 +171,7 @@ func ToValue(l ast.Literal) interface{} {
 		}
 		return p
 	default:
-		util.FailM("Unexpected literal type")
+		contract.FailM("Unexpected literal type")
 		return nil
 	}
 }

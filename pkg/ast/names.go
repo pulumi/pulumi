@@ -6,7 +6,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/marapongo/mu/pkg/util"
+	"github.com/marapongo/mu/pkg/util/contract"
 )
 
 // NameDelimiter is what delimits Namespace and Name parts.
@@ -23,7 +23,7 @@ func IsName(s string) bool {
 
 // AsName converts a given string to a Name, asserting its validity.
 func AsName(s string) Name {
-	util.AssertMF(IsName(s), "Expected string '%v' to be a name (%v)", s, NameRegexps)
+	contract.AssertMF(IsName(s), "Expected string '%v' to be a name (%v)", s, NameRegexps)
 	return Name(s)
 }
 

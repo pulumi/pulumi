@@ -9,7 +9,7 @@ import (
 	"github.com/marapongo/mu/pkg/compiler/backends/schedulers/awsecs"
 	"github.com/marapongo/mu/pkg/compiler/core"
 	"github.com/marapongo/mu/pkg/diag"
-	"github.com/marapongo/mu/pkg/util"
+	"github.com/marapongo/mu/pkg/util/contract"
 )
 
 func New(arch Arch, d diag.Sink) core.Backend {
@@ -20,12 +20,12 @@ func New(arch Arch, d diag.Sink) core.Backend {
 		// TODO(joe): come up with a way to get options from CLI/workspace/etc. to here.
 		cloud = aws.New(d, aws.Options{})
 	case clouds.None:
-		util.FailM("Expected a non-None cloud architecture")
+		contract.FailM("Expected a non-None cloud architecture")
 	default:
-		util.FailMF("Cloud architecture '%v' not yet supported", clouds.Names[arch.Cloud])
+		contract.FailMF("Cloud architecture '%v' not yet supported", clouds.Names[arch.Cloud])
 	}
-	util.Assert(cloud != nil)
-	util.Assert(cloud.Arch() == arch.Cloud)
+	contract.Assert(cloud != nil)
+	contract.Assert(cloud.Arch() == arch.Cloud)
 
 	// Set the backend to the cloud provider.
 	var be core.Backend = cloud
@@ -38,10 +38,10 @@ func New(arch Arch, d diag.Sink) core.Backend {
 	case schedulers.AWSECS:
 		scheduler = awsecs.New(d, cloud)
 	default:
-		util.FailMF("Scheduler architecture '%v' not yet supported", schedulers.Names[arch.Scheduler])
+		contract.FailMF("Scheduler architecture '%v' not yet supported", schedulers.Names[arch.Scheduler])
 	}
 	if scheduler != nil {
-		util.Assert(scheduler.Arch() == arch.Scheduler)
+		contract.Assert(scheduler.Arch() == arch.Scheduler)
 		be = scheduler
 	}
 

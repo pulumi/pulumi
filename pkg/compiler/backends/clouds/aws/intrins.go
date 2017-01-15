@@ -5,7 +5,7 @@ package aws
 import (
 	"github.com/marapongo/mu/pkg/ast"
 	"github.com/marapongo/mu/pkg/ast/conv"
-	"github.com/marapongo/mu/pkg/util"
+	"github.com/marapongo/mu/pkg/util/contract"
 )
 
 const namespace = "aws/x"
@@ -30,7 +30,7 @@ type cfIntrinsic struct {
 
 // AsCFIntrinsic converts a given service to a CloudFormationService, validating it as we go.
 func asCFIntrinsic(svc *ast.Service) *cfIntrinsic {
-	util.AssertM(svc.BoundType.Name == cfIntrinsicName, "asCFIntrinsic expects a bound CF service type")
+	contract.AssertM(svc.BoundType.Name == cfIntrinsicName, "asCFIntrinsic expects a bound CF service type")
 
 	res := &cfIntrinsic{
 		Service: svc,
@@ -38,21 +38,21 @@ func asCFIntrinsic(svc *ast.Service) *cfIntrinsic {
 
 	if r, ok := svc.BoundProperties[cfIntrinsicResource]; ok {
 		res.Resource, ok = conv.ToString(r)
-		util.Assert(ok)
+		contract.Assert(ok)
 	} else {
-		util.FailMF("Expected a required 'resource' property")
+		contract.FailMF("Expected a required 'resource' property")
 	}
 	if do, ok := svc.BoundProperties[cfIntrinsicDependsOn]; ok {
 		res.DependsOn, ok = conv.ToServiceArray(do)
-		util.Assert(ok)
+		contract.Assert(ok)
 	}
 	if props, ok := svc.BoundProperties[cfIntrinsicProperties]; ok {
 		res.Properties, ok = conv.ToStringStringMap(props)
-		util.Assert(ok)
+		contract.Assert(ok)
 	}
 	if extras, ok := svc.BoundProperties[cfIntrinsicExtraProperties]; ok {
 		res.ExtraProperties, ok = conv.ToStringMap(extras)
-		util.Assert(ok)
+		contract.Assert(ok)
 	}
 
 	return res

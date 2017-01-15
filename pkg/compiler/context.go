@@ -5,7 +5,7 @@ package compiler
 import (
 	"github.com/marapongo/mu/pkg/ast"
 	"github.com/marapongo/mu/pkg/compiler/backends"
-	"github.com/marapongo/mu/pkg/util"
+	"github.com/marapongo/mu/pkg/util/contract"
 )
 
 // Context holds all state available to any templates or code evaluated at compile-time.
@@ -26,7 +26,7 @@ func NewContext(opts *Options) *Context {
 
 // WithClusterArch returns a clone of this Context with the given cluster and architecture attached to it.
 func (c *Context) WithClusterArch(cl *ast.Cluster, a backends.Arch) *Context {
-	util.Assert(cl != nil)
+	contract.Assert(cl != nil)
 	return &Context{
 		Cluster:    cl,
 		Arch:       a,

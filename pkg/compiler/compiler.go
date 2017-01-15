@@ -11,7 +11,7 @@ import (
 	"github.com/marapongo/mu/pkg/compiler/core"
 	"github.com/marapongo/mu/pkg/diag"
 	"github.com/marapongo/mu/pkg/errors"
-	"github.com/marapongo/mu/pkg/util"
+	"github.com/marapongo/mu/pkg/util/contract"
 	"github.com/marapongo/mu/pkg/workspace"
 )
 
@@ -114,7 +114,7 @@ func (c *compiler) buildDocument(w workspace.W, doc *diag.Document, outp string)
 	if !c.Diag().Success() {
 		return
 	}
-	util.Assert(stack != nil)
+	contract.Assert(stack != nil)
 
 	// Next, perform the semantic analysis phases of the compiler.
 	c.buildDocumentSema(w, stack)

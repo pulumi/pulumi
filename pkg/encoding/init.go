@@ -3,7 +3,7 @@
 package encoding
 
 import (
-	"github.com/marapongo/mu/pkg/util"
+	"github.com/marapongo/mu/pkg/util/contract"
 )
 
 func init() {
@@ -18,7 +18,7 @@ func init() {
 		case ".yaml":
 			Marshalers[ext] = YAML
 		default:
-			util.FailMF("No Marshaler available for MufileExt %v", ext)
+			contract.FailMF("No Marshaler available for MufileExt %v", ext)
 		}
 	}
 }

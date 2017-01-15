@@ -5,7 +5,7 @@ package ast
 import (
 	"fmt"
 
-	"github.com/marapongo/mu/pkg/util"
+	"github.com/marapongo/mu/pkg/util/contract"
 )
 
 // Type is a union type that can represent any of the sort of "types" in the system.
@@ -84,12 +84,12 @@ func (ty *Type) Name() Ref {
 		if ty.Decors.ElemType != nil {
 			return Ref(fmt.Sprintf(string(TypeDecorsArray), ty.Decors.ElemType.Name()))
 		} else {
-			util.Assert(ty.Decors.KeyType != nil)
-			util.Assert(ty.Decors.ValueType != nil)
+			contract.Assert(ty.Decors.KeyType != nil)
+			contract.Assert(ty.Decors.ValueType != nil)
 			return Ref(fmt.Sprintf(string(TypeDecorsMap), ty.Decors.KeyType.Name(), ty.Decors.ValueType.Name()))
 		}
 	} else {
-		util.FailM("Expected this type to have one of primitive, stack, schema, unref, resref, or decors")
+		contract.FailM("Expected this type to have one of primitive, stack, schema, unref, resref, or decors")
 		return Ref("")
 	}
 }

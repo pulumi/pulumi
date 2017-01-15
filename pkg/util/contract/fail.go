@@ -1,6 +1,6 @@
 // Copyright 2016 Marapongo, Inc. All rights reserved.
 
-package util
+package contract
 
 import (
 	"fmt"

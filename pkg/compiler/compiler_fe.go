@@ -11,7 +11,7 @@ import (
 	"github.com/marapongo/mu/pkg/compiler/backends/schedulers"
 	"github.com/marapongo/mu/pkg/diag"
 	"github.com/marapongo/mu/pkg/errors"
-	"github.com/marapongo/mu/pkg/util"
+	"github.com/marapongo/mu/pkg/util/contract"
 	"github.com/marapongo/mu/pkg/workspace"
 )
 
@@ -38,7 +38,7 @@ func (c *compiler) buildDocumentFE(w workspace.W, doc *diag.Document) *ast.Stack
 		return nil
 	}
 	c.ctx = c.ctx.WithClusterArch(cl, a)
-	util.Assert(c.ctx.Cluster != nil)
+	contract.Assert(c.ctx.Cluster != nil)
 
 	// Now parse the stack, using whatever args may have been supplied as the properties.
 	// TODO[marapongo/mu#7]: we want to strongly type the properties; e.g., a stack expecting a number should

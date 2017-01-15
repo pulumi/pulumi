@@ -8,7 +8,7 @@ import (
 	"github.com/marapongo/mu/pkg/ast"
 	"github.com/marapongo/mu/pkg/diag"
 	"github.com/marapongo/mu/pkg/errors"
-	"github.com/marapongo/mu/pkg/util"
+	"github.com/marapongo/mu/pkg/util/contract"
 	"github.com/marapongo/mu/pkg/workspace"
 )
 
@@ -24,7 +24,7 @@ func (c *compiler) buildDocumentSema(w workspace.W, stack *ast.Stack) {
 
 // bindStack performs the two phases of binding plus dependency resolution for the given Stack.
 func (c *compiler) bindStack(b Binder, w workspace.W, stack *ast.Stack) {
-	util.Assert(stack != nil)
+	contract.Assert(stack != nil)
 
 	// First prepare the AST for binding.
 	refs := b.PrepareStack(stack)

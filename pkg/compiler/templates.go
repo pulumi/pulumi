@@ -17,7 +17,7 @@ import (
 	"github.com/marapongo/mu/pkg/compiler/backends/schedulers"
 	"github.com/marapongo/mu/pkg/diag"
 	"github.com/marapongo/mu/pkg/encoding"
-	"github.com/marapongo/mu/pkg/util"
+	"github.com/marapongo/mu/pkg/util/contract"
 )
 
 // RenderTemplates performs standard template substitution on the given buffer using the given properties object.
@@ -191,9 +191,9 @@ type renderArch struct {
 }
 
 func newRenderContext(ctx *Context) *renderContext {
-	util.Assert(ctx != nil)
-	util.Assert(ctx.Cluster != nil)
-	util.Assert(ctx.Properties != nil)
+	contract.Assert(ctx != nil)
+	contract.Assert(ctx.Cluster != nil)
+	contract.Assert(ctx.Properties != nil)
 	return &renderContext{
 		Arch: renderArch{
 			Cloud:     clouds.Names[ctx.Arch.Cloud],

@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/marapongo/mu/pkg/util"
+	"github.com/marapongo/mu/pkg/util/contract"
 )
 
 // RefParts parses the parts of a Ref into a data structure for convenient access.
@@ -59,7 +59,7 @@ func (r Ref) Parse() (RefParts, error) {
 // MustParse parses the parts of a Ref into a RefParts, failing fast if parsing fails.
 func (r Ref) MustParse() RefParts {
 	p, err := r.Parse()
-	util.AssertMF(err == nil, "Expected a nil error from Ref.Parse; got %v", err)
+	contract.AssertMF(err == nil, "Expected a nil error from Ref.Parse; got %v", err)
 	return p
 }
 
