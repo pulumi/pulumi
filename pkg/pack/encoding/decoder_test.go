@@ -142,7 +142,10 @@ func TestDecode(t *testing.T) {
 }
 
 type bog struct {
-	Boggers []bogger `json:"boggers"`
+	Boggy    bogger     `json:"boggy"`
+	BoggyP   *bogger    `json:"boggyp"`
+	Boggers  []bogger   `json:"boggers"`
+	BoggersP *[]*bogger `json:"boggersp"`
 }
 
 type bogger struct {
@@ -150,19 +153,121 @@ type bogger struct {
 }
 
 func TestNestedDecode(t *testing.T) {
+	// Test one level deep nesting (fields, arrays, pointers).
 	var b bog
 	err := decode(object{
+		"boggy":  object{"num": float64(99)},
+		"boggyp": object{"num": float64(180)},
 		"boggers": []object{
 			{"num": float64(1)},
 			{"num": float64(2)},
 			{"num": float64(42)},
 		},
+		"boggersp": []object{
+			{"num": float64(4)},
+			{"num": float64(8)},
+			{"num": float64(84)},
+		},
 	}, &b)
 	assert.Nil(t, err)
+	assert.Equal(t, float64(99), b.Boggy.Num)
+	assert.NotNil(t, b.BoggyP)
+	assert.Equal(t, float64(180), b.BoggyP.Num)
 	assert.Equal(t, 3, len(b.Boggers))
 	assert.Equal(t, float64(1), b.Boggers[0].Num)
 	assert.Equal(t, float64(2), b.Boggers[1].Num)
 	assert.Equal(t, float64(42), b.Boggers[2].Num)
+	assert.NotNil(t, b.BoggersP)
+	assert.Equal(t, 3, len(*b.BoggersP))
+	assert.NotNil(t, (*b.BoggersP)[0])
+	assert.Equal(t, float64(4), (*b.BoggersP)[0].Num)
+	assert.NotNil(t, (*b.BoggersP)[1])
+	assert.Equal(t, float64(8), (*b.BoggersP)[1].Num)
+	assert.NotNil(t, (*b.BoggersP)[2])
+	assert.Equal(t, float64(84), (*b.BoggersP)[2].Num)
+}
+
+type boggerdybogger struct {
+	Bogs  map[string]bog   `json:"bogs"`
+	BogsP *map[string]*bog `json:"bogsp"`
+}
+
+func TestMultiplyNestedDecode(t *testing.T) {
+	// Test multilevel nesting (maps, fields, arrays, pointers).
+	var ber boggerdybogger
+	err := decode(object{
+		"bogs": object{
+			"a": object{
+				"boggy":  object{"num": float64(99)},
+				"boggyp": object{"num": float64(180)},
+				"boggers": []object{
+					{"num": float64(1)},
+					{"num": float64(2)},
+					{"num": float64(42)},
+				},
+				"boggersp": []object{
+					{"num": float64(4)},
+					{"num": float64(8)},
+					{"num": float64(84)},
+				},
+			},
+		},
+		"bogsp": object{
+			"z": object{
+				"boggy":  object{"num": float64(188)},
+				"boggyp": object{"num": float64(360)},
+				"boggers": []object{
+					{"num": float64(2)},
+					{"num": float64(4)},
+					{"num": float64(84)},
+				},
+				"boggersp": []object{
+					{"num": float64(8)},
+					{"num": float64(16)},
+					{"num": float64(168)},
+				},
+			},
+		},
+	}, &ber)
+	assert.Nil(t, err)
+
+	assert.Equal(t, 1, len(ber.Bogs))
+	b := ber.Bogs["a"]
+	assert.Equal(t, float64(99), b.Boggy.Num)
+	assert.NotNil(t, b.BoggyP)
+	assert.Equal(t, float64(180), b.BoggyP.Num)
+	assert.Equal(t, 3, len(b.Boggers))
+	assert.Equal(t, float64(1), b.Boggers[0].Num)
+	assert.Equal(t, float64(2), b.Boggers[1].Num)
+	assert.Equal(t, float64(42), b.Boggers[2].Num)
+	assert.NotNil(t, b.BoggersP)
+	assert.Equal(t, 3, len(*b.BoggersP))
+	assert.NotNil(t, (*b.BoggersP)[0])
+	assert.Equal(t, float64(4), (*b.BoggersP)[0].Num)
+	assert.NotNil(t, (*b.BoggersP)[1])
+	assert.Equal(t, float64(8), (*b.BoggersP)[1].Num)
+	assert.NotNil(t, (*b.BoggersP)[2])
+	assert.Equal(t, float64(84), (*b.BoggersP)[2].Num)
+
+	assert.NotNil(t, ber.BogsP)
+	assert.Equal(t, 1, len(*ber.BogsP))
+	p := (*ber.BogsP)["z"]
+	assert.NotNil(t, p)
+	assert.Equal(t, float64(188), p.Boggy.Num)
+	assert.NotNil(t, p.BoggyP)
+	assert.Equal(t, float64(360), p.BoggyP.Num)
+	assert.Equal(t, 3, len(p.Boggers))
+	assert.Equal(t, float64(2), p.Boggers[0].Num)
+	assert.Equal(t, float64(4), p.Boggers[1].Num)
+	assert.Equal(t, float64(84), p.Boggers[2].Num)
+	assert.NotNil(t, p.BoggersP)
+	assert.Equal(t, 3, len(*p.BoggersP))
+	assert.NotNil(t, (*p.BoggersP)[0])
+	assert.Equal(t, float64(8), (*p.BoggersP)[0].Num)
+	assert.NotNil(t, (*p.BoggersP)[1])
+	assert.Equal(t, float64(16), (*p.BoggersP)[1].Num)
+	assert.NotNil(t, (*p.BoggersP)[2])
+	assert.Equal(t, float64(168), (*p.BoggersP)[2].Num)
 }
 
 type hasmap struct {
