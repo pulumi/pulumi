@@ -128,12 +128,13 @@ func printPackage(pkg *pack.Package, printSymbols bool, printExports bool, print
 }
 
 func printModules(pkg *pack.Package, printSymbols bool, printExports bool, printIL bool, indent string) {
-	for modName, mod := range *pkg.Modules {
-		fmt.Printf("%vmodule \"%v\" {", indent, modName)
+	for _, name := range ast.StableModules(*pkg.Modules) {
+		fmt.Printf("%vmodule \"%v\" {", indent, name)
+		mod := (*pkg.Modules)[name]
 		if (printSymbols || printExports) && mod.Members != nil {
 			fmt.Printf("\n")
-			for memberName, member := range *mod.Members {
-				printModuleMember(memberName, member, printExports, indent+"\t")
+			for _, member := range ast.StableModuleMembers(*mod.Members) {
+				printModuleMember(member, (*mod.Members)[member], printExports, indent+"\t")
 			}
 			fmt.Printf("%v", indent)
 		}
@@ -200,8 +201,8 @@ func printClass(name symbols.Token, class *ast.Class, exportOnly bool, indent st
 	fmt.Printf(" {")
 	if class.Members != nil {
 		fmt.Printf("\n")
-		for memberName, member := range *class.Members {
-			printClassMember(memberName, member, exportOnly, indent+"\t")
+		for _, member := range ast.StableClassMembers(*class.Members) {
+			printClassMember(member, (*class.Members)[member], exportOnly, indent+"\t")
 		}
 		fmt.Printf(indent)
 	}
