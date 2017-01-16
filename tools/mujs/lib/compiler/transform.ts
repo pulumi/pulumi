@@ -282,6 +282,15 @@ export class Transformer {
         return path;
     }
 
+    // extractMemberToken returns just the member part of a fully qualified token, leaving off the module part.
+    private extractMemberToken(token: symbols.Token): symbols.Token {
+        let sepIndex: number = token.indexOf(symbols.moduleSep);
+        if (sepIndex !== -1) {
+            token = token.substring(sepIndex+1);
+        }
+        return token;
+    }
+
     // resolveModuleSymbol binds either a name or a path to an associated module symbol.
     private resolveModuleSymbol(node: ts.Node, name?: string, path?: string): ts.Symbol {
         // Resolve the module name to a real symbol.
@@ -601,7 +610,7 @@ export class Transformer {
                     kind:  ast.exportKind,
                     name:  <ast.Identifier>{
                         kind:  ast.identifierKind,
-                        ident: name,
+                        ident: this.extractMemberToken(name),
                     },
                     token: name,
                 });

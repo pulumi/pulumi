@@ -188,27 +188,27 @@
                 "ident": "index"
             },
             "members": {
-                "other:C": {
+                "C": {
                     "kind": "Export",
                     "name": {
                         "kind": "Identifier",
-                        "ident": "other:C"
+                        "ident": "C"
                     },
                     "token": "other:C"
                 },
-                "other:I": {
+                "I": {
                     "kind": "Export",
                     "name": {
                         "kind": "Identifier",
-                        "ident": "other:I"
+                        "ident": "I"
                     },
                     "token": "other:I"
                 },
-                "other:v": {
+                "v": {
                     "kind": "Export",
                     "name": {
                         "kind": "Identifier",
-                        "ident": "other:v"
+                        "ident": "v"
                     },
                     "token": "other:v"
                 }
