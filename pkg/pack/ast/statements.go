@@ -22,7 +22,7 @@ func (node *statementNode) statement() {}
 
 type Block struct {
 	statementNode
-	Statements []Statement `json:"statements,custom"`
+	Statements []Statement `json:"statements"`
 }
 
 var _ Node = (*Block)(nil)

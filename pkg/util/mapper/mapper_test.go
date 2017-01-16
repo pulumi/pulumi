@@ -1,8 +1,9 @@
 // Copyright 2016 Marapongo, Inc. All rights reserved.
 
-package encoding
+package mapper
 
 import (
+	"reflect"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -19,8 +20,9 @@ type bag struct {
 	StringsP *[]string
 }
 
-func TestDecodeField(t *testing.T) {
-	tree := object{
+func TestFieldMapper(t *testing.T) {
+	md := New(nil)
+	tree := Object{
 		"b":  true,
 		"s":  "hello",
 		"f":  float64(3.14159265359),
@@ -30,76 +32,77 @@ func TestDecodeField(t *testing.T) {
 	// Try some simple primitive decodes.
 	var s bag
 	var err error
-	err = decodeField(tree, "bag", "b", &s.Bool, false)
+	err = md.DecodeField(tree, reflect.TypeOf(bag{}), "b", &s.Bool, false)
 	assert.Nil(t, err)
 	assert.Equal(t, tree["b"], s.Bool)
-	err = decodeField(tree, "bag", "b", &s.BoolP, false)
+	err = md.DecodeField(tree, reflect.TypeOf(bag{}), "b", &s.BoolP, false)
 	assert.Nil(t, err)
 	assert.Equal(t, tree["b"], *s.BoolP)
-	err = decodeField(tree, "bag", "s", &s.String, false)
+	err = md.DecodeField(tree, reflect.TypeOf(bag{}), "s", &s.String, false)
 	assert.Nil(t, err)
 	assert.Equal(t, tree["s"], s.String)
-	err = decodeField(tree, "bag", "s", &s.StringP, false)
+	err = md.DecodeField(tree, reflect.TypeOf(bag{}), "s", &s.StringP, false)
 	assert.Nil(t, err)
 	assert.Equal(t, tree["s"], *s.StringP)
-	err = decodeField(tree, "bag", "f", &s.Float64, false)
+	err = md.DecodeField(tree, reflect.TypeOf(bag{}), "f", &s.Float64, false)
 	assert.Nil(t, err)
 	assert.Equal(t, tree["f"], s.Float64)
-	err = decodeField(tree, "bag", "f", &s.Float64P, false)
+	err = md.DecodeField(tree, reflect.TypeOf(bag{}), "f", &s.Float64P, false)
 	assert.Nil(t, err)
 	assert.Equal(t, tree["f"], *s.Float64P)
-	err = decodeField(tree, "bag", "ss", &s.Strings, false)
+	err = md.DecodeField(tree, reflect.TypeOf(bag{}), "ss", &s.Strings, false)
 	assert.Nil(t, err)
 	assert.Equal(t, tree["ss"], s.Strings)
-	err = decodeField(tree, "bag", "ss", &s.StringsP, false)
+	err = md.DecodeField(tree, reflect.TypeOf(bag{}), "ss", &s.StringsP, false)
 	assert.Nil(t, err)
 	assert.Equal(t, tree["ss"], *s.StringsP)
 
 	// Ensure interface{} conversions work:
 	var sif string
-	err = decodeField(object{"x": interface{}("hello")}, "bag", "x", &sif, false)
+	err = md.DecodeField(Object{"x": interface{}("hello")}, reflect.TypeOf(bag{}), "x", &sif, false)
 	assert.Nil(t, err)
 	assert.Equal(t, "hello", sif)
 
 	var sifs []string
-	err = decodeField(object{"arr": []interface{}{"a", "b", "c"}}, "bag", "arr", &sifs, false)
+	err = md.DecodeField(Object{"arr": []interface{}{"a", "b", "c"}}, reflect.TypeOf(bag{}), "arr", &sifs, false)
 	assert.Nil(t, err)
 	assert.Equal(t, []string{"a", "b", "c"}, sifs)
 
 	// Ensure missing optional fields are ignored:
 	s.String = "x"
-	err = decodeField(tree, "bag", "missing", &s.String, true)
+	err = md.DecodeField(tree, reflect.TypeOf(bag{}), "missing", &s.String, true)
 	assert.Nil(t, err)
 	assert.Equal(t, "x", s.String)
 
 	// Try some error conditions; first, wrong type:
 	s.String = "x"
-	err = decodeField(tree, "bag", "b", &s.String, false)
+	err = md.DecodeField(tree, reflect.TypeOf(bag{}), "b", &s.String, false)
 	assert.NotNil(t, err)
-	assert.Equal(t, "bag `b` must be a `string`, got `bool`", err.Error())
+	assert.Equal(t, "mapper.bag `b` must be a `string`, got `bool`", err.Error())
 	assert.Equal(t, "x", s.String)
 
 	// Next, missing required field:
 	s.String = "x"
-	err = decodeField(tree, "bag", "missing", &s.String, false)
+	err = md.DecodeField(tree, reflect.TypeOf(bag{}), "missing", &s.String, false)
 	assert.NotNil(t, err)
-	assert.Equal(t, "Missing required bag field `missing`", err.Error())
+	assert.Equal(t, "Missing required mapper.bag field `missing`", err.Error())
 	assert.Equal(t, "x", s.String)
 }
 
 type bagtag struct {
 	String        string `json:"s"`
-	StringCust    string `json:"sc,custom"`
+	StringSkip    string `json:"sc,skip"`
 	StringOpt     string `json:"so,omitempty"`
-	StringCustOpt string `json:"sco,custom,omitempty"`
+	StringSkipOpt string `json:"sco,skip,omitempty"`
 }
 
-func TestDecode(t *testing.T) {
+func TestMapper(t *testing.T) {
 	var err error
+	md := New(nil)
 
 	// First, test the fully populated case.
 	var b1 bagtag
-	err = decode(object{
+	err = md.Decode(Object{
 		"s":   "something",
 		"sc":  "nothing",
 		"so":  "ohmy",
@@ -107,37 +110,37 @@ func TestDecode(t *testing.T) {
 	}, &b1)
 	assert.Nil(t, err)
 	assert.Equal(t, "something", b1.String)
-	assert.Equal(t, "", b1.StringCust)
+	assert.Equal(t, "", b1.StringSkip)
 	assert.Equal(t, "ohmy", b1.StringOpt)
-	assert.Equal(t, "", b1.StringCustOpt)
+	assert.Equal(t, "", b1.StringSkipOpt)
 
 	// Now let optional fields go missing.
 	var b2 bagtag
-	err = decode(object{
+	err = md.Decode(Object{
 		"s":  "something",
 		"sc": "nothing",
 	}, &b2)
 	assert.Nil(t, err)
 	assert.Equal(t, "something", b2.String)
-	assert.Equal(t, "", b2.StringCust)
+	assert.Equal(t, "", b2.StringSkip)
 	assert.Equal(t, "", b2.StringOpt)
-	assert.Equal(t, "", b2.StringCustOpt)
+	assert.Equal(t, "", b2.StringSkipOpt)
 
 	// Try some error conditions; first, wrong type:
 	var b3 bagtag
-	err = decode(object{
+	err = md.Decode(Object{
 		"s":  true,
 		"sc": "",
 	}, &b3)
 	assert.NotNil(t, err)
-	assert.Equal(t, "bagtag `s` must be a `string`, got `bool`", err.Error())
+	assert.Equal(t, "mapper.bagtag `s` must be a `string`, got `bool`", err.Error())
 	assert.Equal(t, "", b3.String)
 
 	// Next, missing required field:
 	var b4 bagtag
-	err = decode(object{}, &b4)
+	err = md.Decode(Object{}, &b4)
 	assert.NotNil(t, err)
-	assert.Equal(t, "Missing required bagtag field `s`", err.Error())
+	assert.Equal(t, "Missing required mapper.bagtag field `s`", err.Error())
 	assert.Equal(t, "", b4.String)
 }
 
@@ -152,18 +155,20 @@ type bogger struct {
 	Num float64 `json:"num"`
 }
 
-func TestNestedDecode(t *testing.T) {
+func TestNestedMapper(t *testing.T) {
+	md := New(nil)
+
 	// Test one level deep nesting (fields, arrays, pointers).
 	var b bog
-	err := decode(object{
-		"boggy":  object{"num": float64(99)},
-		"boggyp": object{"num": float64(180)},
-		"boggers": []object{
+	err := md.Decode(Object{
+		"boggy":  Object{"num": float64(99)},
+		"boggyp": Object{"num": float64(180)},
+		"boggers": []Object{
 			{"num": float64(1)},
 			{"num": float64(2)},
 			{"num": float64(42)},
 		},
-		"boggersp": []object{
+		"boggersp": []Object{
 			{"num": float64(4)},
 			{"num": float64(8)},
 			{"num": float64(84)},
@@ -192,36 +197,38 @@ type boggerdybogger struct {
 	BogsP *map[string]*bog `json:"bogsp"`
 }
 
-func TestMultiplyNestedDecode(t *testing.T) {
+func TestMultiplyNestedMapper(t *testing.T) {
+	md := New(nil)
+
 	// Test multilevel nesting (maps, fields, arrays, pointers).
 	var ber boggerdybogger
-	err := decode(object{
-		"bogs": object{
-			"a": object{
-				"boggy":  object{"num": float64(99)},
-				"boggyp": object{"num": float64(180)},
-				"boggers": []object{
+	err := md.Decode(Object{
+		"bogs": Object{
+			"a": Object{
+				"boggy":  Object{"num": float64(99)},
+				"boggyp": Object{"num": float64(180)},
+				"boggers": []Object{
 					{"num": float64(1)},
 					{"num": float64(2)},
 					{"num": float64(42)},
 				},
-				"boggersp": []object{
+				"boggersp": []Object{
 					{"num": float64(4)},
 					{"num": float64(8)},
 					{"num": float64(84)},
 				},
 			},
 		},
-		"bogsp": object{
-			"z": object{
-				"boggy":  object{"num": float64(188)},
-				"boggyp": object{"num": float64(360)},
-				"boggers": []object{
+		"bogsp": Object{
+			"z": Object{
+				"boggy":  Object{"num": float64(188)},
+				"boggyp": Object{"num": float64(360)},
+				"boggers": []Object{
 					{"num": float64(2)},
 					{"num": float64(4)},
 					{"num": float64(84)},
 				},
-				"boggersp": []object{
+				"boggersp": []Object{
 					{"num": float64(8)},
 					{"num": float64(16)},
 					{"num": float64(168)},
@@ -279,17 +286,19 @@ type mapentry struct {
 	Title string `json:"title"`
 }
 
-func TestMapDecode(t *testing.T) {
+func TestMapMapper(t *testing.T) {
+	md := New(nil)
+
 	// Ensure we can decode both maps of structs and maps of pointers to structs.
 	var hm hasmap
-	err := decode(object{
-		"entries": object{
-			"a": object{"title": "first"},
-			"b": object{"title": "second"},
+	err := md.Decode(Object{
+		"entries": Object{
+			"a": Object{"title": "first"},
+			"b": Object{"title": "second"},
 		},
-		"entriesp": object{
-			"x": object{"title": "firstp"},
-			"y": object{"title": "secondp"},
+		"entriesp": Object{
+			"x": Object{"title": "firstp"},
+			"y": Object{"title": "secondp"},
 		},
 	}, &hm)
 	assert.Nil(t, err)
@@ -301,4 +310,70 @@ func TestMapDecode(t *testing.T) {
 	assert.NotNil(t, hm.EntriesP["y"])
 	assert.Equal(t, "firstp", hm.EntriesP["x"].Title)
 	assert.Equal(t, "secondp", hm.EntriesP["y"].Title)
+}
+
+type wrap struct {
+	C  customStruct    `json:"c"`
+	CI customInterface `json:"ci"`
+}
+
+type customInterface interface {
+	GetX() float64
+	GetY() float64
+}
+
+type customStruct struct {
+	X float64 `json:"x"`
+	Y float64 `json:"y"`
+}
+
+func (s *customStruct) GetX() float64 { return s.X }
+func (s *customStruct) GetY() float64 { return s.Y }
+
+func TestCustomMapper(t *testing.T) {
+	var md Mapper
+	md = New(Decoders{
+		reflect.TypeOf((*customInterface)(nil)).Elem(): decodeCustomInterface,
+		reflect.TypeOf(customStruct{}):                 decodeCustomStruct,
+	})
+
+	var w wrap
+	err := md.Decode(Object{
+		"c": Object{
+			"x": float64(-99.2),
+			"y": float64(127.127),
+		},
+		"ci": Object{
+			"x": float64(42.6),
+			"y": float64(247.9),
+		},
+	}, &w)
+	assert.Nil(t, err)
+	assert.Equal(t, float64(-99.2), w.C.X)
+	assert.Equal(t, float64(127.127), w.C.Y)
+	assert.NotNil(t, w.CI)
+	assert.Equal(t, float64(42.6), w.CI.GetX())
+	assert.Equal(t, float64(247.9), w.CI.GetY())
+}
+
+func decodeCustomInterface(m Mapper, tree Object) (interface{}, error) {
+	var s customStruct
+	if err := m.DecodeField(tree, reflect.TypeOf(s), "x", &s.X, false); err != nil {
+		return nil, err
+	}
+	if err := m.DecodeField(tree, reflect.TypeOf(s), "y", &s.Y, false); err != nil {
+		return nil, err
+	}
+	return customInterface(&s), nil
+}
+
+func decodeCustomStruct(m Mapper, tree Object) (interface{}, error) {
+	var s customStruct
+	if err := m.DecodeField(tree, reflect.TypeOf(s), "x", &s.X, false); err != nil {
+		return nil, err
+	}
+	if err := m.DecodeField(tree, reflect.TypeOf(s), "y", &s.Y, false); err != nil {
+		return nil, err
+	}
+	return s, nil
 }
