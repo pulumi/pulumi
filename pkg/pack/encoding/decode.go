@@ -120,9 +120,83 @@ func decodeClass(tree object) (*ast.Class, error) {
 	}
 
 	// Now decode the members by hand, since they are polymorphic.
-	// TODO: do this.
+	contract.Assert(class.Members == nil)
+	if m, has := tree["members"]; has {
+		if mm, ok := m.(map[string]interface{}); ok {
+			var err error
+			if class.Members, err = decodeClassMembers(mm); err != nil {
+				return nil, err
+			}
+		} else {
+			return nil, errWrongType(
+				reflect.TypeOf(ast.Class{}), "members",
+				reflect.TypeOf(make(map[string]interface{})), reflect.TypeOf(m))
+		}
+	}
 
 	return &class, nil
+}
+
+// decodeClassMembers decodes a module's members.  Members are polymorphic, requiring custom decoding.
+func decodeClassMembers(tree object) (*ast.ClassMembers, error) {
+	members := make(ast.ClassMembers)
+	for k, v := range tree {
+		if vobj, ok := v.(map[string]interface{}); ok {
+			var err error
+			if members[symbols.Token(k)], err = decodeClassMember(vobj); err != nil {
+				return nil, err
+			}
+		} else {
+			return nil, errWrongType(
+				reflect.TypeOf(ast.Class{}), fmt.Sprintf("members[%v]", k),
+				reflect.TypeOf(map[string]interface{}{}), reflect.TypeOf(v))
+		}
+	}
+	return &members, nil
+}
+
+func decodeClassMember(tree object) (ast.ClassMember, error) {
+	if kind, has := tree["kind"]; has {
+		if skind, ok := kind.(string); ok {
+			switch skind {
+			case "ClassProperty":
+				return decodeClassProperty(tree)
+			case "ClassMethod":
+				return decodeClassMethod(tree)
+			default:
+				contract.FailMF("Unrecognized ClassMember kind: %v\n", skind)
+				return nil, nil
+			}
+		} else {
+			return nil, errWrongType(
+				reflect.TypeOf(ast.ClassMember(nil)), "kind",
+				reflect.TypeOf(""), reflect.TypeOf(kind))
+		}
+	} else {
+		return nil, errors.New("Class member is missing required `kind` property")
+	}
+}
+
+func decodeClassProperty(tree object) (*ast.ClassProperty, error) {
+	// ClassProperty is a simple struct, so we can rely entirely on tag-directed decoding.
+	var prop ast.ClassProperty
+	if err := decode(tree, &prop); err != nil {
+		return nil, err
+	}
+	return &prop, nil
+}
+
+func decodeClassMethod(tree object) (*ast.ClassMethod, error) {
+	// First decode the simple parts of the method using tag-directed decoding.
+	var meth ast.ClassMethod
+	if err := decode(tree, &meth); err != nil {
+		return nil, err
+	}
+
+	// Next, the body of the method requires an AST-like discriminated union, so we must do it explicitly.
+	// TODO: do this.
+
+	return &meth, nil
 }
 
 func decodeExport(tree object) (*ast.Export, error) {
@@ -136,22 +210,22 @@ func decodeExport(tree object) (*ast.Export, error) {
 
 func decodeModuleProperty(tree object) (*ast.ModuleProperty, error) {
 	// ModuleProperty is a simple struct, so we can rely entirely on tag-directed decoding.
-	var modprop ast.ModuleProperty
-	if err := decode(tree, &modprop); err != nil {
+	var prop ast.ModuleProperty
+	if err := decode(tree, &prop); err != nil {
 		return nil, err
 	}
-	return &modprop, nil
+	return &prop, nil
 }
 
 func decodeModuleMethod(tree object) (*ast.ModuleMethod, error) {
 	// First decode the simple parts of the method using tag-directed decoding.
-	var modmeth ast.ModuleMethod
-	if err := decode(tree, &modmeth); err != nil {
+	var meth ast.ModuleMethod
+	if err := decode(tree, &meth); err != nil {
 		return nil, err
 	}
 
 	// Next, the body of the method requires an AST-like discriminated union, so we must do it explicitly.
 	// TODO: do this.
 
-	return &modmeth, nil
+	return &meth, nil
 }

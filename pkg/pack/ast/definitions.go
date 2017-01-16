@@ -79,7 +79,7 @@ type Class struct {
 	Abstract   *bool              `json:"abstract,omitempty"`
 	Record     *bool              `json:"record,omitempty"`
 	Interface  *bool              `json:"interface,omitempty"`
-	Members    *[]ClassMember     `json:"members,omitempty,custom"`
+	Members    *ClassMembers      `json:"members,omitempty,custom"`
 }
 
 var _ Node = (*Class)(nil)
