@@ -63,13 +63,26 @@ async function main(args: string[]): Promise<number> {
     return 0;
 }
 
+// exit is a workaround for nodejs/node#6456, a longstanding issue wherein there's no good way to synchronize with the
+// flushing of console's asynchronous buffered output.  This leads to truncated output, particularly when redirecting.
+// As a workaround, we will write to process.stdout/stderr and only invoke process.exit after they have run.
+function exit(code: number): void {
+    process.stdout.write("", () => {
+        process.stderr.write("", () => {
+            process.exit(code);
+        });
+    });
+}
+
 // Fire off the main process, and log any errors that go unhandled.
 main(process.argv.slice(2)).then(
-    (code: number) => process.exit(code),
+    (code: number) => {
+        exit(code);
+    },
     (err: Error) => {
         console.error("Unhandled exception:");
         console.error(err.stack);
-        process.exit(-1);
+        exit(-1);
     },
 );
 
