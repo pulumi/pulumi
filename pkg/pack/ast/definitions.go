@@ -37,6 +37,8 @@ type Module struct {
 var _ Node = (*Module)(nil)
 var _ Definition = (*Module)(nil)
 
+const ModuleKind NodeKind = "Module"
+
 // Modules is a map of ModuleToken to Module.
 type Modules map[symbols.ModuleToken]*Module
 
@@ -68,6 +70,8 @@ var _ Node = (*Export)(nil)
 var _ Definition = (*Export)(nil)
 var _ ModuleMember = (*Export)(nil)
 
+const ExportKind NodeKind = "Export"
+
 /* Classes */
 
 // Class can be constructed to create an object, and exports properties, methods, and has a number of attributes.
@@ -85,6 +89,8 @@ type Class struct {
 var _ Node = (*Class)(nil)
 var _ Definition = (*Class)(nil)
 var _ ModuleMember = (*Class)(nil)
+
+const ClassKind NodeKind = "Class"
 
 // ClassMember is a Definition that belongs to a Class.
 type ClassMember interface {
@@ -136,6 +142,8 @@ type LocalVariable struct {
 var _ Node = (*LocalVariable)(nil)
 var _ Definition = (*LocalVariable)(nil)
 
+const LocalVariableKind NodeKind = "LocalVariable"
+
 // ModuleProperty is like a variable but belongs to a module.
 type ModuleProperty struct {
 	variableNode
@@ -145,6 +153,8 @@ type ModuleProperty struct {
 var _ Node = (*ModuleProperty)(nil)
 var _ Definition = (*ModuleProperty)(nil)
 var _ ModuleMember = (*ModuleProperty)(nil)
+
+const ModulePropertyKind NodeKind = "ModuleProperty"
 
 // ClassProperty is like a module property with some extra attributes.
 type ClassProperty struct {
@@ -156,6 +166,8 @@ type ClassProperty struct {
 var _ Node = (*ClassProperty)(nil)
 var _ Definition = (*ClassProperty)(nil)
 var _ ClassMember = (*ClassProperty)(nil)
+
+const ClassPropertyKind NodeKind = "ClassProperty"
 
 /* Functions */
 
@@ -188,6 +200,8 @@ var _ Node = (*ModuleMethod)(nil)
 var _ Definition = (*ModuleMethod)(nil)
 var _ ModuleMember = (*ModuleMethod)(nil)
 
+const ModuleMethodKind NodeKind = "ModuleMethod"
+
 // ClassMethod is just like a module method with some extra attributes.
 type ClassMethod struct {
 	functionNode
@@ -199,3 +213,5 @@ type ClassMethod struct {
 var _ Node = (*ClassMethod)(nil)
 var _ Definition = (*ClassMethod)(nil)
 var _ ClassMember = (*ClassMethod)(nil)
+
+const ClassMethodKind NodeKind = "ClassMethod"
