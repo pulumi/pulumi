@@ -254,7 +254,7 @@ func printClassMethod(name symbols.Token, meth *ast.ClassMethod, indent string) 
 	if meth.Abstract != nil && *meth.Abstract {
 		mods = append(mods, "abstract")
 	}
-	fmt.Printf("%vmethod \"%v\": %v\n", indent, name, funcSig(meth))
+	fmt.Printf("%vmethod \"%v\"%v: %v\n", indent, name, modString(mods), funcSig(meth))
 }
 
 func printModuleMethod(name symbols.Token, meth *ast.ModuleMethod, indent string) {
