@@ -194,6 +194,7 @@
                         "kind": "Identifier",
                         "ident": "C"
                     },
+                    "access": "public",
                     "token": "other:C"
                 },
                 "I": {
@@ -202,6 +203,7 @@
                         "kind": "Identifier",
                         "ident": "I"
                     },
+                    "access": "public",
                     "token": "other:I"
                 },
                 "v": {
@@ -210,6 +212,7 @@
                         "kind": "Identifier",
                         "ident": "v"
                     },
+                    "access": "public",
                     "token": "other:v"
                 }
             },

@@ -205,6 +205,7 @@
                             }
                         }
                     },
+                    "access": "public",
                     "token": "other:C"
                 },
                 "I": {
@@ -224,6 +225,7 @@
                             }
                         }
                     },
+                    "access": "public",
                     "token": "other:I"
                 },
                 "v": {
@@ -243,6 +245,7 @@
                             }
                         }
                     },
+                    "access": "public",
                     "token": "other:v"
                 }
             },
