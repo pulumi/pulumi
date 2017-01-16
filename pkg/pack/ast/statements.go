@@ -92,7 +92,7 @@ const ContinueStatementKind NodeKind = "ContinueStatement"
 // All higher-level conditional constructs such as `switch`, if`/`else if`/..., etc., must be desugared into it.
 type IfStatement struct {
 	statementNode
-	Condition  Expression `json:"expression"`            // a `bool` conditional expression.
+	Condition  Expression `json:"condition"`             // a `bool` conditional expression.
 	Consequent Statement  `json:"consequent"`            // the statement to execute if `true`.
 	Alternate  *Statement `json:"alternative,omitempty"` // the optional statement to execute if `false`.
 }
