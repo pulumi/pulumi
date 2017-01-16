@@ -39,39 +39,53 @@
                         "kind": "Block",
                         "statements": [
                             {
-                                "kind": "BinaryOperatorExpression",
-                                "left": {
-                                    "kind": "LoadLocationExpression",
-                                    "name": {
-                                        "kind": "Identifier",
-                                        "ident": "x",
+                                "kind": "ExpressionStatement",
+                                "expression": {
+                                    "kind": "BinaryOperatorExpression",
+                                    "left": {
+                                        "kind": "LoadLocationExpression",
+                                        "name": {
+                                            "kind": "Identifier",
+                                            "ident": "x",
+                                            "loc": {
+                                                "file": "index.ts",
+                                                "start": {
+                                                    "line": 1,
+                                                    "column": 4
+                                                },
+                                                "end": {
+                                                    "line": 1,
+                                                    "column": 5
+                                                }
+                                            }
+                                        }
+                                    },
+                                    "operator": "=",
+                                    "right": {
+                                        "kind": "NumberLiteral",
+                                        "raw": "42",
+                                        "value": 42,
                                         "loc": {
                                             "file": "index.ts",
                                             "start": {
                                                 "line": 1,
-                                                "column": 4
+                                                "column": 8
                                             },
                                             "end": {
                                                 "line": 1,
-                                                "column": 5
+                                                "column": 10
                                             }
                                         }
-                                    }
-                                },
-                                "operator": "=",
-                                "right": {
-                                    "kind": "NumberLiteral",
-                                    "raw": "42",
-                                    "value": 42,
+                                    },
                                     "loc": {
                                         "file": "index.ts",
                                         "start": {
                                             "line": 1,
-                                            "column": 8
+                                            "column": 0
                                         },
                                         "end": {
                                             "line": 1,
-                                            "column": 10
+                                            "column": 11
                                         }
                                     }
                                 },

@@ -1042,14 +1042,17 @@ export class Transformer {
 
     private makeVariableInitializer(decl: VariableDeclaration<ast.Variable>): ast.Statement {
         contract.requires(!!decl.initializer, "decl", "Expected variable declaration to have an initializer");
-        return this.withLocation(decl.node, {
-            kind:     ast.binaryOperatorExpressionKind,
-            left:     <ast.LoadLocationExpression>{
-                kind: ast.loadLocationExpressionKind,
-                name: decl.variable.name,
-            },
-            operator: "=",
-            right:    decl.initializer,
+        return this.withLocation(decl.node, <ast.ExpressionStatement>{
+            kind:       ast.expressionStatementKind,
+            expression: this.withLocation(decl.node, <ast.BinaryOperatorExpression>{
+                kind:     ast.binaryOperatorExpressionKind,
+                left:     <ast.LoadLocationExpression>{
+                    kind: ast.loadLocationExpressionKind,
+                    name: decl.variable.name,
+                },
+                operator: "=",
+                right:    decl.initializer,
+            }),
         });
     }
 

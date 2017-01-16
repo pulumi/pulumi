@@ -103,39 +103,53 @@
                         "kind": "Block",
                         "statements": [
                             {
-                                "kind": "BinaryOperatorExpression",
-                                "left": {
-                                    "kind": "LoadLocationExpression",
-                                    "name": {
-                                        "kind": "Identifier",
-                                        "ident": "v",
+                                "kind": "ExpressionStatement",
+                                "expression": {
+                                    "kind": "BinaryOperatorExpression",
+                                    "left": {
+                                        "kind": "LoadLocationExpression",
+                                        "name": {
+                                            "kind": "Identifier",
+                                            "ident": "v",
+                                            "loc": {
+                                                "file": "other.ts",
+                                                "start": {
+                                                    "line": 3,
+                                                    "column": 11
+                                                },
+                                                "end": {
+                                                    "line": 3,
+                                                    "column": 12
+                                                }
+                                            }
+                                        }
+                                    },
+                                    "operator": "=",
+                                    "right": {
+                                        "kind": "NumberLiteral",
+                                        "raw": "42",
+                                        "value": 42,
                                         "loc": {
                                             "file": "other.ts",
                                             "start": {
                                                 "line": 3,
-                                                "column": 11
+                                                "column": 15
                                             },
                                             "end": {
                                                 "line": 3,
-                                                "column": 12
+                                                "column": 17
                                             }
                                         }
-                                    }
-                                },
-                                "operator": "=",
-                                "right": {
-                                    "kind": "NumberLiteral",
-                                    "raw": "42",
-                                    "value": 42,
+                                    },
                                     "loc": {
                                         "file": "other.ts",
                                         "start": {
                                             "line": 3,
-                                            "column": 15
+                                            "column": 0
                                         },
                                         "end": {
                                             "line": 3,
-                                            "column": 17
+                                            "column": 18
                                         }
                                     }
                                 },
