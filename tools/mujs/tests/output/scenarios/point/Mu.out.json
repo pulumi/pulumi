@@ -130,8 +130,22 @@
                                                 }
                                             },
                                             "right": {
-                                                "kind": "Identifier",
-                                                "ident": "x",
+                                                "kind": "LoadLocationExpression",
+                                                "name": {
+                                                    "kind": "Identifier",
+                                                    "ident": "x",
+                                                    "loc": {
+                                                        "file": "index.ts",
+                                                        "start": {
+                                                            "line": 9,
+                                                            "column": 17
+                                                        },
+                                                        "end": {
+                                                            "line": 9,
+                                                            "column": 18
+                                                        }
+                                                    }
+                                                },
                                                 "loc": {
                                                     "file": "index.ts",
                                                     "start": {
@@ -221,8 +235,22 @@
                                                 }
                                             },
                                             "right": {
-                                                "kind": "Identifier",
-                                                "ident": "y",
+                                                "kind": "LoadLocationExpression",
+                                                "name": {
+                                                    "kind": "Identifier",
+                                                    "ident": "y",
+                                                    "loc": {
+                                                        "file": "index.ts",
+                                                        "start": {
+                                                            "line": 10,
+                                                            "column": 17
+                                                        },
+                                                        "end": {
+                                                            "line": 10,
+                                                            "column": 18
+                                                        }
+                                                    }
+                                                },
                                                 "loc": {
                                                     "file": "index.ts",
                                                     "start": {
@@ -402,8 +430,22 @@
                                                     "right": {
                                                         "kind": "LoadLocationExpression",
                                                         "object": {
-                                                            "kind": "Identifier",
-                                                            "ident": "other",
+                                                            "kind": "LoadLocationExpression",
+                                                            "name": {
+                                                                "kind": "Identifier",
+                                                                "ident": "other",
+                                                                "loc": {
+                                                                    "file": "index.ts",
+                                                                    "start": {
+                                                                        "line": 14,
+                                                                        "column": 34
+                                                                    },
+                                                                    "end": {
+                                                                        "line": 14,
+                                                                        "column": 39
+                                                                    }
+                                                                }
+                                                            },
                                                             "loc": {
                                                                 "file": "index.ts",
                                                                 "start": {
@@ -508,8 +550,22 @@
                                                     "right": {
                                                         "kind": "LoadLocationExpression",
                                                         "object": {
-                                                            "kind": "Identifier",
-                                                            "ident": "other",
+                                                            "kind": "LoadLocationExpression",
+                                                            "name": {
+                                                                "kind": "Identifier",
+                                                                "ident": "other",
+                                                                "loc": {
+                                                                    "file": "index.ts",
+                                                                    "start": {
+                                                                        "line": 14,
+                                                                        "column": 52
+                                                                    },
+                                                                    "end": {
+                                                                        "line": 14,
+                                                                        "column": 57
+                                                                    }
+                                                                }
+                                                            },
                                                             "loc": {
                                                                 "file": "index.ts",
                                                                 "start": {

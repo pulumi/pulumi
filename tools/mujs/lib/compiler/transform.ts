@@ -379,7 +379,7 @@ export class Transformer {
         return symbols.anyType;
     }
 
-
+    // transformIdentifier takes a TypeScript identifier node and yields a true MuIL identifier.
     private transformIdentifier(node: ts.Identifier): ast.Identifier {
         return this.withLocation(node, ident(node.text));
     }
@@ -872,7 +872,7 @@ export class Transformer {
     private transformDeclarationIdentifier(node: ts.DeclarationName): ast.Identifier {
         switch (node.kind) {
             case ts.SyntaxKind.Identifier:
-                return this.transformIdentifierExpression(node);
+                return this.transformIdentifier(node);
             default:
                 return contract.fail(`Unrecognized declaration identifier: ${ts.SyntaxKind[node.kind]}`);
         }
@@ -1866,8 +1866,13 @@ export class Transformer {
         return notYetImplemented(node);
     }
 
-    private transformIdentifierExpression(node: ts.Identifier): ast.Identifier {
-        return this.withLocation(node, ident(node.text));
+    // transformIdentifierExpression takes a TypeScript identifier node and yields a MuIL expression.  This expression,
+    // when evaluated, will load the value of the target identifier, so that it's suitable as an expression node.
+    private transformIdentifierExpression(node: ts.Identifier): ast.Expression {
+        return this.withLocation(node, <ast.LoadLocationExpression>{
+            kind: ast.loadLocationExpressionKind,
+            name: this.transformIdentifier(node),
+        });
     }
 
     private transformObjectBindingPattern(node: ts.ObjectBindingPattern): ast.Expression {
