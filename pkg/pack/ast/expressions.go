@@ -172,7 +172,7 @@ func (node *callExpressionNode) GetArguments() *[]Expression { return node.Argum
 // NewExpression allocates a new object and calls its constructor.
 type NewExpression struct {
 	callExpressionNode
-	Type *Identifier // the object type to allocate.
+	Type *Identifier `json:"type"` // the object type to allocate.
 }
 
 var _ Node = (*NewExpression)(nil)
