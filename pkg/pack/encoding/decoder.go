@@ -83,6 +83,50 @@ func adjustValue(val reflect.Value, to reflect.Type) (reflect.Value, error) {
 	return val, nil
 }
 
+// asObject attempts to coerce an existing value to an object map, returning a non-nil error if it cannot be done.
+func asObject(v interface{}, ty reflect.Type, key string) (*object, error) {
+	if vmap, ok := v.(map[string]interface{}); ok {
+		vobj := object(vmap)
+		return &vobj, nil
+	} else {
+		return nil, errWrongType(
+			ty, key, reflect.TypeOf(make(map[string]interface{})), reflect.TypeOf(v))
+	}
+}
+
+// asString attempts to coerce an existing value to a string, returning a non-nil error if it cannot be done.
+func asString(v interface{}, ty reflect.Type, key string) (*string, error) {
+	if s, ok := v.(string); ok {
+		return &s, nil
+	} else {
+		return nil, errWrongType(ty, key, reflect.TypeOf(""), reflect.TypeOf(v))
+	}
+}
+
+// fieldObject looks up a field by name within an object map, coerces it to an object itself, and returns it.  If the
+// field exists but is not an object map, or it is missing and optional is false, a non-nil error is returned.
+func fieldObject(tree object, ty reflect.Type, key string, optional bool) (*object, error) {
+	if o, has := tree[key]; has {
+		return asObject(o, ty, key)
+	} else if !optional {
+		// The field doesn't exist and yet it is required; issue an error.
+		return nil, errMissing(ty, key)
+	}
+	return nil, nil
+}
+
+// fieldString looks up a field by name within an object map, coerces it to a string, and returns it.  If the
+// field exists but is not a string, or it is missing and optional is false, a non-nil error is returned.
+func fieldString(tree object, ty reflect.Type, key string, optional bool) (*string, error) {
+	if s, has := tree[key]; has {
+		return asString(s, ty, key)
+	} else if !optional {
+		// The field doesn't exist and yet it is required; issue an error.
+		return nil, errMissing(ty, key)
+	}
+	return nil, nil
+}
+
 // decodeField decodes primitive fields.  For fields of complex types, we use custom deserialization.
 func decodeField(tree object, ty reflect.Type, key string, target interface{}, optional bool) error {
 	vdst := reflect.ValueOf(target)
