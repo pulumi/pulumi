@@ -77,13 +77,13 @@ const ExportKind NodeKind = "Export"
 // Class can be constructed to create an object, and exports properties, methods, and has a number of attributes.
 type Class struct {
 	moduleMemberNode
-	Extends    *symbols.TypeToken `json:"extends,omitempty"`
-	Implements *symbols.TypeToken `json:"implements,omitempty"`
-	Sealed     *bool              `json:"sealed,omitempty"`
-	Abstract   *bool              `json:"abstract,omitempty"`
-	Record     *bool              `json:"record,omitempty"`
-	Interface  *bool              `json:"interface,omitempty"`
-	Members    *ClassMembers      `json:"members,omitempty"`
+	Extends    *symbols.TypeToken   `json:"extends,omitempty"`
+	Implements *[]symbols.TypeToken `json:"implements,omitempty"`
+	Sealed     *bool                `json:"sealed,omitempty"`
+	Abstract   *bool                `json:"abstract,omitempty"`
+	Record     *bool                `json:"record,omitempty"`
+	Interface  *bool                `json:"interface,omitempty"`
+	Members    *ClassMembers        `json:"members,omitempty"`
 }
 
 var _ Node = (*Class)(nil)
