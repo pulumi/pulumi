@@ -30,7 +30,7 @@ func decodeExpression(m mapper.Mapper, tree mapper.Object) (ast.Expression, erro
 		case ast.ArrayLiteralKind:
 			return decodeArrayLiteral(m, tree)
 		case ast.ObjectLiteralKind:
-			return decodeArrayLiteral(m, tree)
+			return decodeObjectLiteral(m, tree)
 
 		// Loads
 		case ast.LoadLocationExpressionKind:
