@@ -38,9 +38,9 @@ export const tryCatchFinallyKind = "TryCatchFinally";
 export type  TryCatchFinallyKind = "TryCatchFinally";
 
 export interface TryCatchBlock extends Node {
-    kind:      TryCatchBlockKind;
-    exception: symbols.TypeToken;
-    block:     Block;
+    kind:       TryCatchBlockKind;
+    block:      Block;
+    exception?: symbols.TypeToken;
 }
 export const tryCatchBlockKind = "TryCatchBlock";
 export type  TryCatchBlockKind = "TryCatchBlock";
@@ -120,7 +120,8 @@ export type  EmptyStatementKind = "EmptyStatement";
 
 // Multiple statements in one (unlike a block, this doesn't introduce a new scope).
 export interface MultiStatement extends Statement {
-    kind: MultiStatementKind;
+    kind:       MultiStatementKind;
+    statements: Statement[];
 }
 export const multiStatementKind = "MultiStatement";
 export type  MultiStatementKind = "MultiStatement";

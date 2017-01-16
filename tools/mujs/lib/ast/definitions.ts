@@ -18,20 +18,18 @@ export interface Definition extends Node {
 
 // A module contains members, including variables, functions, and/or classes.
 export interface Module extends Definition {
-    kind:    ModuleKind;
-    members: ModuleMembers;
+    kind:     ModuleKind;
+    members?: ModuleMembers;
 }
 export const moduleKind = "Module";
 export type  ModuleKind = "Module";
-export type  Modules = { [token: string /*symbols.Token*/]: Definition };
+export type  Modules = { [token: string /*symbols.ModuleToken*/]: Module };
 
 // A module member is a definition that belongs to a module.
 export interface ModuleMember extends Definition {
     access?: symbols.Accessibility;
 }
-export type ModuleMembers = { [token: string /*symbols.ModuleToken*/]: ModuleMember };
-
-/* Classes */
+export type ModuleMembers = { [token: string /*symbols.Token*/]: ModuleMember };
 
 // An export definition re-exports a definition from another module, possibly with a different name.
 export interface Export extends ModuleMember {
@@ -40,6 +38,8 @@ export interface Export extends ModuleMember {
 }
 export const exportKind = "Export";
 export type  ExportKind = "Export";
+
+/* Classes */
 
 // A class can be constructed to create an object, and exports properties, methods, and has a number of attributes.
 export interface Class extends ModuleMember {
@@ -60,7 +60,7 @@ export interface ClassMember extends Definition {
     access?: symbols.ClassMemberAccessibility;
     static?: boolean;
 }
-export type ClassMembers = { [token: string /*symbols.TypeToken*/]: ClassMember };
+export type ClassMembers = { [token: string /*symbols.Token*/]: ClassMember };
 
 /* Variables */
 

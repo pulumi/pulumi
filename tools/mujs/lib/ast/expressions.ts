@@ -47,8 +47,8 @@ export type  StringLiteralKind = "StringLiteral";
 // A array literal plus optional initialization.
 export interface ArrayLiteral extends Literal {
     kind:      ArrayLiteralKind;
-    type:      symbols.TypeToken; // the type of array to produce.
-    size?:     Expression;        // an optiojnal expression for the array size.
+    type?:     symbols.TypeToken; // the type of array to produce.
+    size?:     Expression;        // an optional expression for the array size.
     elements?: Expression[];      // an optional array of element expressions to store into the array.
 }
 export const arrayLiteralKind = "ArrayLiteral";
@@ -57,7 +57,7 @@ export type  ArrayLiteralKind = "ArrayLiteral";
 // An object literal plus optional initialization.
 export interface ObjectLiteral extends Literal {
     kind:        ObjectLiteralKind;
-    type:        symbols.TypeToken;       // the type of object to produce.
+    type?:       symbols.TypeToken;       // the type of object to produce.
     properties?: ObjectLiteralProperty[]; // an optional array of property initializers.
 }
 export const objectLiteralKind = "ObjectLiteral";
@@ -137,7 +137,7 @@ export interface UnaryOperatorExpression extends Expression {
     kind:     UnaryOperatorExpressionKind;
     operator: UnaryOperator; // the operator type.
     operand:  Expression;    // the right hand side operand.
-    postfix:  boolean;       // whether this is a postifx operator (only legal for UnaryPfixOperator).
+    postfix?: boolean;       // whether this is a postifx operator (only legal for UnaryPfixOperator).
 }
 export const unaryOperatorExpressionKind = "UnaryOperatorExpression";
 export type  UnaryOperatorExpressionKind = "UnaryOperatorExpression";
