@@ -10,11 +10,11 @@ import (
 
 // Metadata is an informational section describing a package.
 type Metadata struct {
-	Name        string `json:"name"`                  // a required fully qualified name.
-	Description string `json:"description,omitempty"` // an optional informational description.
-	Author      string `json:"author,omitempty"`      // an optional author.
-	Website     string `json:"website,omitempty"`     // an optional website for additional info.
-	License     string `json:"license,omitempty"`     // an optional license governing this package's usage.
+	Name        string  `json:"name"`                  // a required fully qualified name.
+	Description *string `json:"description,omitempty"` // an optional informational description.
+	Author      *string `json:"author,omitempty"`      // an optional author.
+	Website     *string `json:"website,omitempty"`     // an optional website for additional info.
+	License     *string `json:"license,omitempty"`     // an optional license governing this package's usage.
 }
 
 // Package is a top-level package definition.

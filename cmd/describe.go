@@ -7,6 +7,8 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
+	"unicode"
 
 	"github.com/spf13/cobra"
 
@@ -94,35 +96,99 @@ func decodePackage(m encoding.Marshaler, b []byte, path string) *pack.Package {
 	return pkg
 }
 
+func printComment(pc *string, indent string) {
+	// Prints a comment header using the given indentation, wrapping at 100 lines.
+	if pc != nil {
+		prefix := "// "
+		maxlen := 100 - len(indent)
+
+		// For every tab, chew up 3 more chars (so each one is 4 chars wide).
+		for _, i := range indent {
+			if i == '\t' {
+				maxlen -= 3
+			}
+		}
+		maxlen -= len(prefix)
+		if maxlen < 40 {
+			maxlen = 40
+		}
+
+		c := make([]rune, 0)
+		for _, r := range *pc {
+			c = append(c, r)
+		}
+
+		for len(c) > 0 {
+			fmt.Print(indent + prefix)
+			// Now, try to split the comment as close to maxlen-3 chars as possible (taking into account indent+"// "),
+			// but don't split words -- only split at whitespace characters if we can help it.
+			six := maxlen
+			for {
+				if len(c) <= six {
+					six = len(c)
+					break
+				} else if unicode.IsSpace(c[six]) {
+					// It's a space, set six to the first non-space character beforehand, and eix to the first
+					// non-space character afterwards.
+					for six > 0 && unicode.IsSpace(c[six-1]) {
+						six--
+					}
+					break
+				} else if six == 0 {
+					// We hit the start of the string and didn't find any spaces.  Start over and try to find the
+					// first space *beyond* the start point (instead of *before*) and use that.
+					six = maxlen + 1
+					for !unicode.IsSpace(c[six]) {
+						six++
+					}
+					break
+				}
+
+				// We need to keep searching, back up one and try again.
+				six--
+			}
+
+			// Print what we've got thus far, plus a newline.
+			fmt.Printf("%v\n", string(c[:six]))
+
+			// Now find the first non-space character beyond the split point and use that for the remainder.
+			eix := six
+			for eix < len(c) && unicode.IsSpace(c[eix]) {
+				eix++
+			}
+			c = c[eix:]
+		}
+	}
+}
+
+// printPackage pretty-prints the package metadata.
 func printPackage(pkg *pack.Package, printSymbols bool, printExports bool, printIL bool) {
-	// Pretty-print the package metadata:
+	printComment(pkg.Description, "")
 	fmt.Printf("package \"%v\" {\n", pkg.Name)
-	if pkg.Description != "" {
-		fmt.Printf("\tdescription %v\n", pkg.Description)
+
+	if pkg.Author != nil {
+		fmt.Printf("%vauthor \"%v\"\n", tab, *pkg.Author)
 	}
-	if pkg.Author != "" {
-		fmt.Printf("\tauthor %v\n", pkg.Author)
+	if pkg.Website != nil {
+		fmt.Printf("%vwebsite \"%v\"\n", tab, *pkg.Website)
 	}
-	if pkg.Website != "" {
-		fmt.Printf("\twebsite %v\n", pkg.Website)
-	}
-	if pkg.License != "" {
-		fmt.Printf("\tlicense %v\n", pkg.License)
+	if pkg.License != nil {
+		fmt.Printf("%vlicense \"%v\"\n", tab, *pkg.License)
 	}
 
 	// Print the dependencies:
-	fmt.Printf("\tdependencies [")
+	fmt.Printf("%vdependencies [", tab)
 	if pkg.Dependencies != nil && len(*pkg.Dependencies) > 0 {
 		fmt.Printf("\n")
 		for _, dep := range *pkg.Dependencies {
-			fmt.Printf("\t\t\"%v\"", dep)
+			fmt.Printf("%v\"%v\"", tab+tab, dep)
 		}
-		fmt.Printf("\n\t")
+		fmt.Printf("\n%v", tab)
 	}
 	fmt.Printf("]\n")
 
 	// Print the modules (just names by default, or full symbols and/or IL if requested).
-	printModules(pkg, printSymbols, printExports, printIL, "\t")
+	printModules(pkg, printSymbols, printExports, printIL, tab)
 
 	fmt.Printf("}\n")
 }
@@ -134,7 +200,7 @@ func printModules(pkg *pack.Package, printSymbols bool, printExports bool, print
 		if (printSymbols || printExports) && mod.Members != nil {
 			fmt.Printf("\n")
 			for _, member := range ast.StableModuleMembers(*mod.Members) {
-				printModuleMember(member, (*mod.Members)[member], printExports, indent+"\t")
+				printModuleMember(member, (*mod.Members)[member], printExports, indent+tab)
 			}
 			fmt.Printf("%v", indent)
 		}
@@ -143,6 +209,8 @@ func printModules(pkg *pack.Package, printSymbols bool, printExports bool, print
 }
 
 func printModuleMember(name symbols.Token, member ast.ModuleMember, exportOnly bool, indent string) {
+	printComment(member.GetDescription(), indent)
+
 	acc := member.GetAccess()
 	if !exportOnly || (acc != nil && *acc == symbols.PublicAccessibility) {
 		switch member.GetKind() {
@@ -190,11 +258,11 @@ func printClass(name symbols.Token, class *ast.Class, exportOnly bool, indent st
 	fmt.Printf(modString(mods))
 
 	if class.Extends != nil {
-		fmt.Printf("\n%v\t\textends %v", indent, string(*class.Extends))
+		fmt.Printf("\n%vextends %v", indent+tab+tab, string(*class.Extends))
 	}
 	if class.Implements != nil {
 		for _, impl := range *class.Implements {
-			fmt.Printf("\n%v\t\timplements %v", indent, string(impl))
+			fmt.Printf("\n%vimplements %v", indent+tab+tab, string(impl))
 		}
 	}
 
@@ -202,7 +270,7 @@ func printClass(name symbols.Token, class *ast.Class, exportOnly bool, indent st
 	if class.Members != nil {
 		fmt.Printf("\n")
 		for _, member := range ast.StableClassMembers(*class.Members) {
-			printClassMember(member, (*class.Members)[member], exportOnly, indent+"\t")
+			printClassMember(member, (*class.Members)[member], exportOnly, indent+tab)
 		}
 		fmt.Printf(indent)
 	}
@@ -210,6 +278,8 @@ func printClass(name symbols.Token, class *ast.Class, exportOnly bool, indent st
 }
 
 func printClassMember(name symbols.Token, member ast.ClassMember, exportOnly bool, indent string) {
+	printComment(member.GetDescription(), indent)
+
 	acc := member.GetAccess()
 	if !exportOnly || (acc != nil && *acc == symbols.PublicClassAccessibility) {
 		switch member.GetKind() {
@@ -295,6 +365,14 @@ func modString(mods []string) string {
 	s += "]"
 	return s
 }
+
+// spaces returns a string with the given number of spaces.
+func spaces(num int) string {
+	return strings.Repeat(" ", num)
+}
+
+// tab is a tab represented as spaces, since some consoles have ridiculously wide true tabs.
+var tab = spaces(4)
 
 func funcSig(fun ast.Function) string {
 	sig := "("
