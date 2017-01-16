@@ -3,7 +3,6 @@
 package encoding
 
 import (
-	"errors"
 	"fmt"
 	"reflect"
 
@@ -44,29 +43,26 @@ func decodeModuleMembers(tree object) (*ast.ModuleMembers, error) {
 }
 
 func decodeModuleMember(tree object) (ast.ModuleMember, error) {
-	if kind, has := tree["kind"]; has {
-		if skind, ok := kind.(string); ok {
-			switch skind {
-			case "Class":
-				return decodeClass(tree)
-			case "Export":
-				return decodeExport(tree)
-			case "ModuleProperty":
-				return decodeModuleProperty(tree)
-			case "ModuleMethod":
-				return decodeModuleMethod(tree)
-			default:
-				contract.FailMF("Unrecognized ModuleMember kind: %v\n", skind)
-				return nil, nil
-			}
-		} else {
-			return nil, errWrongType(
-				reflect.TypeOf(ast.ModuleMember(nil)), "kind",
-				reflect.TypeOf(""), reflect.TypeOf(kind))
-		}
-	} else {
-		return nil, errors.New("Module member is missing required `kind` property")
+	k, err := fieldString(tree, reflect.TypeOf(ast.ClassMember(nil)), "kind", true)
+	if err != nil {
+		return nil, err
 	}
+	if k != nil {
+		kind := ast.NodeKind(*k)
+		switch kind {
+		case ast.ClassKind:
+			return decodeClass(tree)
+		case ast.ExportKind:
+			return decodeExport(tree)
+		case ast.ModulePropertyKind:
+			return decodeModuleProperty(tree)
+		case ast.ModuleMethodKind:
+			return decodeModuleMethod(tree)
+		default:
+			contract.FailMF("Unrecognized ModuleMember kind: %v\n", kind)
+		}
+	}
+	return nil, nil
 }
 
 func decodeClass(tree object) (*ast.Class, error) {
@@ -106,18 +102,19 @@ func decodeClassMembers(tree object) (*ast.ClassMembers, error) {
 }
 
 func decodeClassMember(tree object) (ast.ClassMember, error) {
-	kind, err := fieldString(tree, reflect.TypeOf(ast.ClassMember(nil)), "kind", true)
+	k, err := fieldString(tree, reflect.TypeOf(ast.ClassMember(nil)), "kind", true)
 	if err != nil {
 		return nil, err
 	}
-	if kind != nil {
-		switch *kind {
-		case "ClassProperty":
+	if k != nil {
+		kind := ast.NodeKind(*k)
+		switch kind {
+		case ast.ClassPropertyKind:
 			return decodeClassProperty(tree)
-		case "ClassMethod":
+		case ast.ClassMethodKind:
 			return decodeClassMethod(tree)
 		default:
-			contract.FailMF("Unrecognized ClassMember kind: %v\n", *kind)
+			contract.FailMF("Unrecognized ClassMember kind: %v\n", kind)
 		}
 	}
 	return nil, nil
