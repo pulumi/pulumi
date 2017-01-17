@@ -15,9 +15,11 @@
     "covreport": "istanbul report text-summary && istanbul report text"
   },
   "dependencies": {
+    "@types/js-yaml": "^3.5.29",
     "@types/minimist": "^1.2.0",
     "@types/node": "^6.0.55",
     "global": "^4.3.1",
+    "js-yaml": "^3.7.0",
     "minimist": "^1.2.0",
     "source-map-support": "^0.4.8",
     "typescript": "^2.1.4"

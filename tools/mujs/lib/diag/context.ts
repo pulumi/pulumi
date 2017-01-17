@@ -104,11 +104,25 @@ export class Context {
 
     /** Error factories **/
 
-    public newMissingMufileError(path: string): Diagnostic {
+    public newMissingMufileError(path: string, exts: string[]): Diagnostic {
+        let altExts: string = "";
+        if (exts.length > 0) {
+            path = path + exts[0];
+            if (exts.length > 1) {
+                altExts = " (or the alternative extensions: ";
+                for (let i = 1; i < exts.length; i++) {
+                    if (i > 1) {
+                        altExts += ", ";
+                    }
+                    altExts += `'${exts[i]}'`;
+                }
+                altExts += ")";
+            }
+        }
         return {
             category: DiagnosticCategory.Error,
             code:     1,
-            message:  `No Mufile was found at '${path}'`,
+            message:  `No Mufile was found at '${path}'${altExts}`,
         };
     }
 
@@ -117,6 +131,14 @@ export class Context {
             category: DiagnosticCategory.Error,
             code:     2,
             message:  `Mufile '${path}' is missing a name`,
+        };
+    }
+
+    public newMalformedMufileError(path: string, err: Error): Diagnostic {
+        return {
+            category: DiagnosticCategory.Error,
+            code:     3,
+            message:  `Mufile '${path}' is malformed: ${err}`,
         };
     }
 

@@ -12,6 +12,7 @@ import {asyncTest} from "../util";
 
 let testCases: string[] = [
     "empty",
+    "empty_yaml",
 
     // Module members and exports.
     "modules/var_1",

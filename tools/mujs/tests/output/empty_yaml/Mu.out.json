@@ -1,0 +1,25 @@
+{
+    "name": "empty_yaml",
+    "modules": {
+        "empty": {
+            "kind": "Module",
+            "name": {
+                "kind": "Identifier",
+                "ident": "empty"
+            },
+            "imports": [],
+            "members": {},
+            "loc": {
+                "file": "empty.ts",
+                "start": {
+                    "line": 1,
+                    "column": 0
+                },
+                "end": {
+                    "line": 1,
+                    "column": 0
+                }
+            }
+        }
+    }
+}
