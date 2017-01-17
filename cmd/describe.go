@@ -181,9 +181,9 @@ func printPackage(pkg *pack.Package, printSymbols bool, printExports bool, print
 	if pkg.Dependencies != nil && len(*pkg.Dependencies) > 0 {
 		fmt.Printf("\n")
 		for _, dep := range *pkg.Dependencies {
-			fmt.Printf("%v\"%v\"", tab+tab, dep)
+			fmt.Printf("%v\"%v\"\n", tab+tab, dep)
 		}
-		fmt.Printf("\n%v", tab)
+		fmt.Printf("%v", tab)
 	}
 	fmt.Printf("]\n")
 
@@ -195,10 +195,27 @@ func printPackage(pkg *pack.Package, printSymbols bool, printExports bool, print
 
 func printModules(pkg *pack.Package, printSymbols bool, printExports bool, printIL bool, indent string) {
 	for _, name := range ast.StableModules(*pkg.Modules) {
-		fmt.Printf("%vmodule \"%v\" {", indent, name)
 		mod := (*pkg.Modules)[name]
+
+		// Print the name.
+		fmt.Printf("%vmodule \"%v\" {", indent, name)
+
+		// Now, if requested, print the symbols.
 		if (printSymbols || printExports) && mod.Members != nil {
 			fmt.Printf("\n")
+
+			// Print the imports.
+			fmt.Printf("%vimports [", indent+tab)
+			if mod.Imports != nil && len(*mod.Imports) > 0 {
+				fmt.Printf("\n")
+				for _, imp := range *mod.Imports {
+					fmt.Printf("%v\"%v\"\n", indent+tab+tab, imp)
+				}
+				fmt.Printf("%v", indent+tab)
+			}
+			fmt.Printf("]\n")
+
+			// Now the members.
 			for _, member := range ast.StableModuleMembers(*mod.Members) {
 				printModuleMember(member, (*mod.Members)[member], printExports, indent+tab)
 			}
