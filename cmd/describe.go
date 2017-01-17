@@ -138,7 +138,7 @@ func printComment(pc *string, indent string) {
 					// We hit the start of the string and didn't find any spaces.  Start over and try to find the
 					// first space *beyond* the start point (instead of *before*) and use that.
 					six = maxlen + 1
-					for !unicode.IsSpace(c[six]) {
+					for six < len(c) && !unicode.IsSpace(c[six]) {
 						six++
 					}
 					break
