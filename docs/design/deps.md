@@ -19,14 +19,15 @@ understand how to recognize.  The details of how a language does this is outside
 ## References
 
 Each package is referenced using a URL-like scheme, facilitating multiple package management distribution schemes.
-For example, the URL `https://hub.mu.com/aws/ec2#^1.0.6` references the `aws/ec2` package on MuHub's built-in package
-manager, and askes specifically for version `1.0.6` or higher using semantic versioning resolution.
+For example, the URL `https://hub.mu.com/aws#^1.0.6` references the `aws` package on MuHub's built-in package
+manager, and askes specifically for version `1.0.6` or higher using semantic versioning resolution.  Note that package
+names may have multiple parts, delimited by `/`, as part of the URL; for example `https:/hub.mu.com/a/b/c`.
 
 Specifically, the reference has up to four parts: a protocol, base URL, name, and version:
 
     PackName = [ Protocol ] [ BaseURL ] NamePart [ Version ]
     Protocol = "http://" | "https://" | "ssh://" | ...
-    BaseURL  = URL* . (URL | .)* "/"
+    BaseURL  = URL* "." (URL | ".")* "/"
     URL      = (* valid URL characters *)
     NamePart = (Identifier "/")* Identifier
     Version  = "#" (* valid version numbers *)
@@ -38,16 +39,19 @@ Although there are four parts, three of them are optional, because because Mu us
 * `latest` is the default version number (a.k.a., "tip").
 
 Although we're concerned with package references right now, we'll see soon that a similar reference scheme is used
-to address elements exported from a package, like a module, class, function, or variable.  The package plus module uses
-the same grammar as above, however members inside of a module are followed by a `:`.  Furthermore, such references do
-not have version numbers.  These references are not strictly URLs and must be interpreted by the Mu toolchain.
+to address elements exported from a package, like a module, class, function, or variable.  The package part of the
+reference uses the above grammar, however members inside of it are preceded by a `:`.  Furthermore, such references do
+not have version numbers.  These references are not strictly URLs and must be interpreted by the Mu toolchain:
+
+    MemberName = [ Protocol ] [ BaseURL ] NamePart MemberPart
+    MemberPart = ":" NamePart
 
 For example, to reference the `VM` class from a MuIL token -- assuming we have a dependency declared on
-`https://hub.mu.com/aws/ec2#^1.0.6` as shown above -- we would most likely say `aws/ec2:VM`.  A fully qualified, but
-versionless, reference is also permitted, as in `https://hub.mu.com/aws/ec2:VM`, although this is less conventional.
-Sometimes the self-referential package plus module identifier `.` will be used as a short-hand, as in `.:VM`.
+`https://hub.mu.com/aws#^1.0.6` as shown above -- we would most likely say `aws:ec2/VM`.  A fully qualified, but
+versionless, reference is also permitted, as in `https://hub.mu.com/aws:ec2/VM`, although this is less conventional.
+The self-referential package plus module identifier `.` can be used to reference members in the current package.
 
-The way these URLs are resolved to physical MuPackages is discussed later on.
+The way these URLs are resolved to physical MuPackages is discussed later on in this document.
 
 ## Versions
 
