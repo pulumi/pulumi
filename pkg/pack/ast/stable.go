@@ -5,7 +5,7 @@ package ast
 import (
 	"sort"
 
-	"github.com/marapongo/mu/pkg/pack/symbols"
+	"github.com/marapongo/mu/pkg/symbols"
 )
 
 func StableClassMembers(cm ClassMembers) Tokens {

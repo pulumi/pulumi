@@ -11,7 +11,7 @@
 package ast
 
 import (
-	"github.com/marapongo/mu/pkg/pack/symbols"
+	"github.com/marapongo/mu/pkg/symbols"
 )
 
 // Node is a discriminated type for all serialized blocks and instructions.

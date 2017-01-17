@@ -3,7 +3,7 @@
 package ast
 
 import (
-	"github.com/marapongo/mu/pkg/pack/symbols"
+	"github.com/marapongo/mu/pkg/symbols"
 )
 
 /* Definitions */

@@ -5,7 +5,7 @@ package pack
 
 import (
 	"github.com/marapongo/mu/pkg/pack/ast"
-	"github.com/marapongo/mu/pkg/pack/symbols"
+	"github.com/marapongo/mu/pkg/symbols"
 )
 
 // Metadata is an informational section describing a package.

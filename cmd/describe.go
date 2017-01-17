@@ -11,7 +11,7 @@ import (
 
 	"github.com/marapongo/mu/pkg/pack"
 	"github.com/marapongo/mu/pkg/pack/ast"
-	"github.com/marapongo/mu/pkg/pack/symbols"
+	"github.com/marapongo/mu/pkg/symbols"
 	"github.com/marapongo/mu/pkg/util/contract"
 )
 

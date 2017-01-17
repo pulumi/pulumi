@@ -3,7 +3,7 @@
 package ast
 
 import (
-	"github.com/marapongo/mu/pkg/pack/symbols"
+	"github.com/marapongo/mu/pkg/symbols"
 )
 
 // Expression is an executable operation that usually produces a value.
