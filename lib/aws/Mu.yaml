@@ -1,4 +1,3 @@
 name: aws
 description: A collection of AWS resources as Mu stacks.
-index: index.ts
 
