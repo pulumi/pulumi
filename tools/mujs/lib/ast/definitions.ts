@@ -19,7 +19,8 @@ export interface Definition extends Node {
 // A module contains members, including variables, functions, and/or classes.
 export interface Module extends Definition {
     kind:     ModuleKind;
-    members?: ModuleMembers;
+    imports?: symbols.ModuleToken[]; // an ordered list of import modules to initialize.
+    members?: ModuleMembers;         // a list of members (both private and public, exported ones).
 }
 export const moduleKind = "Module";
 export type  ModuleKind = "Module";

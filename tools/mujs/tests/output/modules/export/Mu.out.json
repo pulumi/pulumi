@@ -7,6 +7,7 @@
                 "kind": "Identifier",
                 "ident": "other"
             },
+            "imports": [],
             "members": {
                 "D": {
                     "kind": "Class",
@@ -187,6 +188,9 @@
                 "kind": "Identifier",
                 "ident": "index"
             },
+            "imports": [
+                "/Users/joeduffy/dev/code/src/github.com/marapongo/mu/tools/mujs/tests/output/modules/export/other"
+            ],
             "members": {
                 "other": {
                     "kind": "Export",

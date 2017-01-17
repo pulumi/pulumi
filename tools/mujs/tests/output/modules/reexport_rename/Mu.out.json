@@ -7,6 +7,7 @@
                 "kind": "Identifier",
                 "ident": "other"
             },
+            "imports": [],
             "members": {
                 "C": {
                     "kind": "Class",
@@ -187,6 +188,7 @@
                 "kind": "Identifier",
                 "ident": "index"
             },
+            "imports": [],
             "members": {
                 "D": {
                     "kind": "Export",
