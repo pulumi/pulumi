@@ -4,46 +4,37 @@ package cmd
 
 import (
 	"fmt"
-	"io/ioutil"
-	"os"
-	"path/filepath"
 	"strings"
 	"unicode"
 
 	"github.com/spf13/cobra"
 
-	"github.com/marapongo/mu/pkg/encoding"
 	"github.com/marapongo/mu/pkg/pack"
 	"github.com/marapongo/mu/pkg/pack/ast"
-	decode "github.com/marapongo/mu/pkg/pack/encoding"
 	"github.com/marapongo/mu/pkg/pack/symbols"
 	"github.com/marapongo/mu/pkg/util/contract"
 )
 
 func newDescribeCmd() *cobra.Command {
+	var printAll bool
 	var printExports bool
 	var printIL bool
 	var printSymbols bool
 	var cmd = &cobra.Command{
-		Use:   "describe [packages]",
+		Use:   "describe [packages...]",
 		Short: "Describe a MuPackage",
 		Long:  "Describe prints package, symbol, and IL information from one or more MuPackages.",
 		Run: func(cmd *cobra.Command, args []string) {
+			// If printAll is true, flip all the flags.
+			if printAll {
+				printExports = true
+				printIL = true
+				printSymbols = true
+			}
+
 			// Enumerate the list of packages, deserialize them, and print information.
 			for _, arg := range args {
-				var pkg *pack.Package
-				if arg == "-" {
-					// Read the package from stdin.
-					b, err := ioutil.ReadAll(os.Stdin)
-					if err != nil {
-						fmt.Fprintf(os.Stderr, "error: could not read from stdin\n")
-						fmt.Fprintf(os.Stderr, "       %v\n", err)
-					}
-					pkg = decodePackage(encoding.Marshalers[".json"], b, "stdin")
-				} else {
-					// Read the package from a file.
-					pkg = readPackage(arg)
-				}
+				pkg := readPackageFromArg(arg)
 				if pkg == nil {
 					break
 				}
@@ -52,6 +43,9 @@ func newDescribeCmd() *cobra.Command {
 		},
 	}
 
+	cmd.PersistentFlags().BoolVarP(
+		&printSymbols, "all", "a", false,
+		"Print everything: the package, symbols, and MuIL")
 	cmd.PersistentFlags().BoolVarP(
 		&printExports, "exports", "e", false,
 		"Print just the exported symbols")
@@ -63,37 +57,6 @@ func newDescribeCmd() *cobra.Command {
 		"Print a complete listing of all symbols, exported or otherwise")
 
 	return cmd
-}
-
-func readPackage(path string) *pack.Package {
-	// Lookup the marshaler for this format.
-	ext := filepath.Ext(path)
-	m, has := encoding.Marshalers[ext]
-	if !has {
-		fmt.Fprintf(os.Stderr, "error: no marshaler found for file format '%v'\n", ext)
-		return nil
-	}
-
-	// Read the contents.
-	b, err := ioutil.ReadFile(path)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "error: a problem occurred when reading file '%v'\n", path)
-		fmt.Fprintf(os.Stderr, "       %v\n", err)
-		return nil
-	}
-
-	return decodePackage(m, b, path)
-}
-
-func decodePackage(m encoding.Marshaler, b []byte, path string) *pack.Package {
-	// Unmarshal the contents into a fresh package.
-	pkg, err := decode.Decode(m, b)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "error: a problem occurred when unmarshaling file '%v'\n", path)
-		fmt.Fprintf(os.Stderr, "       %v\n", err)
-		return nil
-	}
-	return pkg
 }
 
 func printComment(pc *string, indent string) {
@@ -201,25 +164,34 @@ func printModules(pkg *pack.Package, printSymbols bool, printExports bool, print
 		fmt.Printf("%vmodule \"%v\" {", indent, name)
 
 		// Now, if requested, print the symbols.
-		if (printSymbols || printExports) && mod.Members != nil {
-			fmt.Printf("\n")
-
-			// Print the imports.
-			fmt.Printf("%vimports [", indent+tab)
-			if mod.Imports != nil && len(*mod.Imports) > 0 {
+		if printSymbols || printExports {
+			if mod.Imports != nil || mod.Members != nil {
 				fmt.Printf("\n")
-				for _, imp := range *mod.Imports {
-					fmt.Printf("%v\"%v\"\n", indent+tab+tab, imp)
-				}
-				fmt.Printf("%v", indent+tab)
-			}
-			fmt.Printf("]\n")
 
-			// Now the members.
-			for _, member := range ast.StableModuleMembers(*mod.Members) {
-				printModuleMember(member, (*mod.Members)[member], printExports, indent+tab)
+				if mod.Imports != nil {
+					// Print the imports.
+					fmt.Printf("%vimports [", indent+tab)
+					if mod.Imports != nil && len(*mod.Imports) > 0 {
+						fmt.Printf("\n")
+						for _, imp := range *mod.Imports {
+							fmt.Printf("%v\"%v\"\n", indent+tab+tab, imp)
+						}
+						fmt.Printf("%v", indent+tab)
+					}
+					fmt.Printf("]\n")
+				}
+
+				if mod.Members != nil {
+					// Print the members.
+					for _, member := range ast.StableModuleMembers(*mod.Members) {
+						printModuleMember(member, (*mod.Members)[member], printExports, indent+tab)
+					}
+					fmt.Printf("%v", indent)
+				}
 			}
-			fmt.Printf("%v", indent)
+		} else {
+			// Print a "..." so that it's clear we're omitting information, versus the module being empty.
+			fmt.Printf("...")
 		}
 		fmt.Printf("}\n")
 	}
