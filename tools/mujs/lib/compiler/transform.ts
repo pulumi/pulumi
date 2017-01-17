@@ -271,7 +271,13 @@ export class Transformer {
     }
 
     // createModuleReference turns a ECMAScript import path into a MuIL module token.
-    private createModuleReference(path: string): ModuleReference {
+    private createModuleReference(sym: ts.Symbol): ModuleReference {
+        contract.assert(!!(sym.flags & (ts.SymbolFlags.ValueModule | ts.SymbolFlags.NamespaceModule)));
+        return this.createModuleReferenceFromPath(sym.name);
+    }
+
+    // createModuleReferenceFromPath turns a ECMAScript import path into a MuIL module token.
+    private createModuleReferenceFromPath(path: string): ModuleReference {
         // Module paths can be enclosed in quotes; eliminate them.
         if (path && path[0] === "\"") {
             path = path.substring(1);
@@ -291,18 +297,31 @@ export class Transformer {
         return token;
     }
 
+    // getResolvedModules returns the current SourceFile's known modules inside of a map.
+    private getResolvedModules(): ts.Map<ts.ResolvedModuleFull> {
+        // TODO[marapongo/mu#52]: we are grabbing the sourceContext's resolvedModules property directly, because
+        //     TypeScript doesn't currently offer a convenient way of accessing this information.  The (unexported)
+        //     getResolvedModule function almost does this, but not quite, because it doesn't allow us to look up
+        //     based on path.  Ideally we can remove this as soon as the tsserverlibrary is consumable as a module.
+        let modules = <ts.Map<ts.ResolvedModuleFull>>(<any>this.currentSourceFile).resolvedModules;
+        contract.assert(!!modules, "Expected internal SourceFile.resolvedModules property to be non-null");
+        return modules;
+    }
+
+    // getResolvedModuleSymbol turns a TypeScript module descriptor into a real symbol.
+    private getResolvedModuleSymbol(mod: ts.ResolvedModuleFull): ts.Symbol {
+        let moduleFile: ts.SourceFile = this.script.tree!.getSourceFile(mod.resolvedFileName);
+        let moduleSymbol: ts.Symbol = this.checker().getSymbolAtLocation(moduleFile);
+        contract.assert(!!moduleSymbol, `Expected '${mod.resolvedFileName}' module to resolve to a symbol`);
+        return moduleSymbol;
+    }
+
     // resolveModuleSymbol binds either a name or a path to an associated module symbol.
-    private resolveModuleSymbol(node: ts.Node, name?: string, path?: string): ts.Symbol {
+    private resolveModuleSymbol(name?: string, path?: string): ts.Symbol {
         // Resolve the module name to a real symbol.
         // TODO(joe): ensure that this dependency exists, to avoid "accidentally" satisfyied name resolution in the
         //     TypeScript compiler; for example, if the package just happens to exist in `node_modules`, etc.
-        let sourceContext: ts.SourceFile = node.getSourceFile();
-        // TODO[marapongo/mu#52]: we are grabbing the sourceContext's resolvedModules property directly, because
-        // TypeScript doesn't currently offer a convenient way of accessing this information.  The (unexported)
-        // getResolvedModule function almost does this, but not quite, because it doesn't allow us to perform a lookup
-        // based on path.  Ideally we can remove this as soon as the tsserverlibrary is consumable as a module.
-        let candidates = <ts.Map<ts.ResolvedModuleFull>>(<any>sourceContext).resolvedModules;
-        contract.assert(!!candidates, "Expected internal SourceFile.resolvedModules property to be non-null");
+        let candidates: ts.Map<ts.ResolvedModuleFull> = this.getResolvedModules();
         let resolvedModule: ts.ResolvedModuleFull | undefined;
         for (let candidateName of Object.keys(candidates)) {
             let candidate: ts.ResolvedModuleFull = candidates[candidateName];
@@ -312,44 +331,47 @@ export class Transformer {
                 break;
             }
         }
-        contract.assert(!!resolvedModule, `Expected '${name}' to resolve to a module`);
-        let moduleSource: ts.SourceFile = this.script.tree!.getSourceFile(resolvedModule!.resolvedFileName);
-        let moduleSymbol: ts.Symbol = this.checker().getSymbolAtLocation(moduleSource);
-        contract.assert(!!moduleSymbol, `Expected '${name}' module to resolve to a symbol`);
-        return moduleSymbol;
+        contract.assert(!!resolvedModule, `Expected '${name}|${path}' to resolve to a module`);
+        return this.getResolvedModuleSymbol(resolvedModule!);
     }
 
     // resolveModuleSymbolByName binds a string-based module path to the associated symbol.
-    private resolveModuleSymbolByName(node: ts.Node, name: string): ts.Symbol {
-        return this.resolveModuleSymbol(node, name);
+    private resolveModuleSymbolByName(name: string): ts.Symbol {
+        return this.resolveModuleSymbol(name);
     }
 
     // resolveModuleSymbolByPath binds a string-based module path to the associated symbol.
-    private resolveModuleSymbolByPath(node: ts.Node, path: string): ts.Symbol {
-        return this.resolveModuleSymbol(node, undefined, path);
+    private resolveModuleSymbolByPath(path: string): ts.Symbol {
+        return this.resolveModuleSymbol(undefined, path);
     }
 
     // resolveModuleReferenceByName binds a string-based module name to the associated token that references it.
-    private resolveModuleReferenceByName(node: ts.Node, name: string): ModuleReference {
-        let moduleSymbol: ts.Symbol = this.resolveModuleSymbol(node, name);
-        return this.createModuleReference(moduleSymbol.name);
+    private resolveModuleReferenceByName(name: string): ModuleReference {
+        let moduleSymbol: ts.Symbol = this.resolveModuleSymbol(name);
+        return this.createModuleReference(moduleSymbol);
     }
 
     // resolveModuleReferenceByPath binds a string-based module path to the associated token that references it.
-    private resolveModuleReferenceByPath(node: ts.Node, path: string): ModuleReference {
-        let moduleSymbol: ts.Symbol = this.resolveModuleSymbol(node, undefined, path);
-        return this.createModuleReference(moduleSymbol.name);
+    private resolveModuleReferenceByPath(path: string): ModuleReference {
+        let moduleSymbol: ts.Symbol = this.resolveModuleSymbol(undefined, path);
+        return this.createModuleReference(moduleSymbol);
+    }
+
+    // resolveModuleReferenceByFile binds a TypeScript SourceFile path to the associated token that references it.
+    private resolveModuleReferenceByFile(file: ts.SourceFile): ModuleReference {
+        let moduleSymbol: ts.Symbol = this.resolveModuleSymbol(undefined, file.fileName);
+        return this.createModuleReference(moduleSymbol);
     }
 
     // resolveModuleExportNames binds a module token to the set of tokens that it exports.
-    private resolveModuleExportNames(node: ts.Node, mod: ModuleReference): symbols.Token[] {
+    private resolveModuleExportNames(mod: ModuleReference): symbols.Token[] {
         let exports: symbols.Token[] = [];
 
         // Resolve the module name to a real symbol.
-        let moduleSymbol: ts.Symbol = this.resolveModuleSymbolByPath(node, mod);
+        let moduleSymbol: ts.Symbol = this.resolveModuleSymbolByPath(mod);
         contract.assert(
-            mod === this.createModuleReference(moduleSymbol.name),
-            `Expected discovered module '${this.createModuleReference(moduleSymbol.name)}' to equal '${mod}'`,
+            mod === this.createModuleReference(moduleSymbol),
+            `Expected discovered module '${this.createModuleReference(moduleSymbol)}' to equal '${mod}'`,
         );
         for (let expsym of this.checker().getExportsOfModule(moduleSymbol)) {
             exports.push(this.createModuleMemberToken(mod, expsym.name));
@@ -358,34 +380,60 @@ export class Transformer {
         return exports;
     }
 
-    // resolveTypeToken takes a TypeScript AST node that carries possible typing information and resolves it to a fully
-    // qualified MuIL type token name.
-    private resolveTypeToken(node: TypeLike): symbols.TypeToken | undefined {
-        if (node) {
-            let ty: ts.Type = this.checker().getTypeAtLocation(node);
-            contract.assert(!!ty);
-
-            if (ty.flags & ts.TypeFlags.Any) {
-                return symbols.anyType;
-            }
-            else if (ty.flags & ts.TypeFlags.String) {
-                return symbols.stringType;
-            }
-            else if (ty.flags & ts.TypeFlags.Number) {
-                return symbols.numberType;
-            }
-            else if (ty.flags & ts.TypeFlags.Boolean) {
-                return symbols.boolType;
-            }
-            else if (ty.flags & ts.TypeFlags.Void) {
-                return undefined;
-            }
-
-            // TODO[marapongo/mu#36]: detect more cases (including complex types).
+    // resolveTypeToken takes a concrete TypeScript Type resolves it to a fully qualified MuIL type token name.
+    private resolveTypeToken(ty: ts.Type): symbols.TypeToken | undefined {
+        if (ty.flags & ts.TypeFlags.Any) {
+            return symbols.anyType;
+        }
+        else if (ty.flags & ts.TypeFlags.String) {
+            return symbols.stringType;
+        }
+        else if (ty.flags & ts.TypeFlags.Number) {
+            return symbols.numberType;
+        }
+        else if (ty.flags & ts.TypeFlags.Boolean) {
+            return symbols.boolType;
+        }
+        else if (ty.flags & ts.TypeFlags.Void) {
+            // void is represented as the absence of a type.
+            return undefined;
+        }
+        else if (ty.symbol) {
+            return this.resolveTypeTokenFromSymbol(ty.symbol);
         }
 
         // If none of those matched, simply default to the weakly typed "any" type.
+        // TODO[marapongo/mu#36]: detect more cases: unions, literals, complex types, generics, more.
         return symbols.anyType;
+    }
+
+    // resolveTypeTokenFromSymbol resolves a symbol to a fully qualified TypeToken that can be used to reference it.
+    private resolveTypeTokenFromSymbol(sym: ts.Symbol): symbols.TypeToken {
+        // By default, just the type symbol's naked name.
+        let token: symbols.TypeToken = sym.name;
+
+        // It's possible this type came from another module; in that case, fully qualify it.
+        let decls: ts.Declaration[] = sym.getDeclarations();
+        if (decls.length > 0) {
+            let file: ts.SourceFile = decls[0].getSourceFile();
+            if (file !== this.currentSourceFile) {
+                let modref: ModuleReference = this.createModuleReferenceFromPath(file.fileName);
+                let modtok: symbols.ModuleToken = this.createModuleToken(modref);
+                token = `${modtok}${symbols.moduleSep}${token}`;
+            }
+        }
+
+        return token;
+    }
+
+    // resolveTypeTokenFromTypeLike takes a TypeScript AST node that carries possible typing information and resolves
+    // it to fully qualified MuIL type token name.
+    private resolveTypeTokenFromTypeLike(node: TypeLike): symbols.TypeToken | undefined {
+        // Note that we use the getTypeAtLocation API, rather than node's type AST information, so that we can get the
+        // fully bound type.  The compiler may have arranged for this to be there through various means, e.g. inference.
+        let ty: ts.Type = this.checker().getTypeAtLocation(node);
+        contract.assert(!!ty);
+        return this.resolveTypeToken(ty);
     }
 
     // transformIdentifier takes a TypeScript identifier node and yields a true MuIL identifier.
@@ -456,7 +504,7 @@ export class Transformer {
                 this.currentModuleMembers[initializer.name.ident] = initializer;
             }
 
-            let modref: ModuleReference = this.createModuleReference(node.fileName);
+            let modref: ModuleReference = this.createModuleReferenceFromPath(node.fileName);
             let modtok: symbols.ModuleToken = this.createModuleToken(modref);
             return this.withLocation(node, <ast.Module>{
                 kind:    ast.moduleKind,
@@ -536,7 +584,7 @@ export class Transformer {
             contract.assert(node.moduleSpecifier.kind === ts.SyntaxKind.StringLiteral);
             let spec: ts.StringLiteral = <ts.StringLiteral>node.moduleSpecifier;
             let source: string = this.transformStringLiteral(spec).value;
-            sourceModule = this.resolveModuleReferenceByName(node, source);
+            sourceModule = this.resolveModuleReferenceByName(source);
         }
 
         if (node.exportClause) {
@@ -608,7 +656,7 @@ export class Transformer {
             //
             // For this to work, we simply enumerate all known exports from "module".
             contract.assert(!!sourceModule);
-            for (let name of this.resolveModuleExportNames(node, sourceModule!)) {
+            for (let name of this.resolveModuleExportNames(sourceModule!)) {
                 exports.push(<ast.Export>{
                     kind:   ast.exportKind,
                     name:   <ast.Identifier>{
@@ -632,7 +680,7 @@ export class Transformer {
             // current file's module table in order to find its fully resolved path.
             contract.assert(node.moduleSpecifier.kind === ts.SyntaxKind.StringLiteral);
             let importModule: ModuleReference =
-                this.resolveModuleReferenceByName(node, (<ts.StringLiteral>node.moduleSpecifier).text);
+                this.resolveModuleReferenceByName((<ts.StringLiteral>node.moduleSpecifier).text);
 
             // Figure out what kind of import statement this is (there are many, see below).
             let name: ts.Identifier | undefined;
@@ -958,12 +1006,19 @@ export class Transformer {
             }
         }
 
+        // Get the signature so that we can fetch the return type.
+        let returnType: symbols.TypeToken | undefined;
+        if (node.kind !== ts.SyntaxKind.Constructor) {
+            let signature: ts.Signature = this.checker().getSignatureFromDeclaration(node);
+            returnType = this.resolveTypeToken(signature.getReturnType());
+        }
+
         // Delegate to the factory method to turn this into a real function object.
         return {
             name:       name,
             parameters: parameters.map((p: VariableDeclaration<ast.LocalVariable>) => p.variable),
             body:       body,
-            returnType: this.resolveTypeToken(node),
+            returnType: returnType,
         };
     }
 
@@ -1036,7 +1091,7 @@ export class Transformer {
             variable: {
                 kind: ast.localVariableKind,
                 name: name,
-                type: this.resolveTypeToken(node),
+                type: this.resolveTypeTokenFromTypeLike(node),
             },
             initializer: initializer,
         };
@@ -1049,7 +1104,7 @@ export class Transformer {
             kind:    ast.classKind,
             name:    this.transformIdentifier(node.name),
             access:  access,
-            extends: this.resolveTypeToken(node),
+            extends: this.resolveTypeTokenFromTypeLike(node),
         });
     }
 
@@ -1157,7 +1212,7 @@ export class Transformer {
         }
         return {
             name:        name,
-            type:        this.resolveTypeToken(node),
+            type:        this.resolveTypeTokenFromTypeLike(node),
             initializer: initializer,
         };
     }
@@ -1255,7 +1310,7 @@ export class Transformer {
                 access:   this.getClassAccessibility(node),
                 readonly: !!(mods & ts.ModifierFlags.Readonly),
                 static:   !!(mods & ts.ModifierFlags.Static),
-                type:     this.resolveTypeToken(node),
+                type:     this.resolveTypeTokenFromTypeLike(node),
             },
             false,
             initializer,

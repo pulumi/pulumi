@@ -81,7 +81,6 @@
                             }
                         }
                     },
-                    "returnType": "any",
                     "loc": {
                         "file": "index.ts",
                         "start": {

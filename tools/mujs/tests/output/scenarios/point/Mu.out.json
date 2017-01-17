@@ -300,7 +300,6 @@
                                     }
                                 }
                             },
-                            "returnType": "any",
                             "static": false,
                             "abstract": false,
                             "loc": {
@@ -351,7 +350,7 @@
                                             }
                                         }
                                     },
-                                    "type": "any"
+                                    "type": "Point"
                                 }
                             ],
                             "body": {
@@ -655,7 +654,7 @@
                                     }
                                 }
                             },
-                            "returnType": "any",
+                            "returnType": "Point",
                             "static": false,
                             "abstract": false,
                             "loc": {
