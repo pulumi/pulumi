@@ -10,7 +10,6 @@ import (
 
 	"github.com/marapongo/mu/pkg/encoding"
 	"github.com/marapongo/mu/pkg/pack"
-	decode "github.com/marapongo/mu/pkg/pack/encoding"
 )
 
 // readPackage attempts to read a package from the given path; if an error occurs, it will be printed to Stderr, and
@@ -65,7 +64,7 @@ func readPackageFromStdin() *pack.Package {
 // Stderr, and the returned package value will be nil.
 func decodePackage(m encoding.Marshaler, b []byte, path string) *pack.Package {
 	// Unmarshal the contents into a fresh package.
-	pkg, err := decode.Decode(m, b)
+	pkg, err := encoding.Decode(m, b)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "error: a problem occurred when unmarshaling file '%v'\n", path)
 		fmt.Fprintf(os.Stderr, "       %v\n", err)

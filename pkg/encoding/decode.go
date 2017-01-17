@@ -7,14 +7,13 @@ package encoding
 import (
 	"reflect"
 
-	"github.com/marapongo/mu/pkg/encoding"
 	"github.com/marapongo/mu/pkg/pack"
 	"github.com/marapongo/mu/pkg/pack/ast"
 	"github.com/marapongo/mu/pkg/util/mapper"
 )
 
 // Decode unmarshals the entire contents of the given byte array into a Package object.
-func Decode(m encoding.Marshaler, b []byte) (*pack.Package, error) {
+func Decode(m Marshaler, b []byte) (*pack.Package, error) {
 	// First convert the whole contents of the metadata into a map.  Although it would be more efficient to walk the
 	// token stream, token by token, this allows us to reuse existing YAML packages in addition to JSON ones.
 	var tree mapper.Object

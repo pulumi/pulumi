@@ -49,6 +49,7 @@ func newCompileCmd() *cobra.Command {
 
 			// Next, create a compiler object, and use it to generate a MuGL graph.
 			// TODO: this.
+			_ = packArgs
 
 			// Finally, serialize that MuGL graph so that it's suitable for printing/serializing.
 			// TODO: this.
