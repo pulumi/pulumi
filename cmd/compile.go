@@ -3,13 +3,15 @@
 package cmd
 
 import (
-	"fmt"
-	"os"
+	"path/filepath"
+	"strings"
 
 	"github.com/spf13/cobra"
 
 	"github.com/marapongo/mu/pkg/cmdutil"
-	"github.com/marapongo/mu/pkg/pack"
+	"github.com/marapongo/mu/pkg/compiler"
+	"github.com/marapongo/mu/pkg/graph"
+	"github.com/marapongo/mu/pkg/util/contract"
 )
 
 func newCompileCmd() *cobra.Command {
@@ -35,22 +37,37 @@ func newCompileCmd() *cobra.Command {
 				args = args[0:dashdash]
 			}
 
-			// Now load up the package.
-			var pkg *pack.Package
-			if len(args) > 0 {
-				// The user has specified a path (or requested Stdin).
-				pkg = cmdutil.ReadPackageFromArg(args[0])
+			// Create a compiler options object and map any flags and arguments to settings on it.
+			opts := compiler.DefaultOptions()
+			opts.Args = dashdashArgsToMap(packArgs)
+
+			// In the case of an argument, load that specific package and new up a compiler based on its base path.
+			// Otherwise, use the default workspace and package logic (which consults the current working directory).
+			var mugl graph.Graph
+			if len(args) == 0 {
+				comp, err := compiler.Newwd(opts)
+				if err != nil {
+					contract.Failf("fatal: %v", err)
+				}
+				mugl = comp.Compile()
 			} else {
-				// Otherwise, use default Mu package name.
-				fmt.Fprintf(os.Stderr, "error: Default package names NYI")
+				fn := args[0]
+				pkg := cmdutil.ReadPackageFromArg(fn)
+				var comp compiler.Compiler
+				var err error
+				if fn == "-" {
+					comp, err = compiler.Newwd(opts)
+				} else {
+					comp, err = compiler.New(filepath.Dir(fn), opts)
+				}
+				if err != nil {
+					contract.Failf("fatal: %v", err)
+				}
+				mugl = comp.CompilePackage(pkg)
 			}
-			if pkg == nil {
+			if mugl == nil {
 				return
 			}
-
-			// Next, create a compiler object, and use it to generate a MuGL graph.
-			// TODO: this.
-			_ = packArgs
 
 			// Finally, serialize that MuGL graph so that it's suitable for printing/serializing.
 			// TODO: this.
@@ -58,4 +75,43 @@ func newCompileCmd() *cobra.Command {
 	}
 
 	return cmd
+}
+
+// dashdashArgsToMap is a simple args parser that places incoming key/value pairs into a map.  These are then used
+// during MuPackage compilation as inputs to the main entrypoint function.
+// TODO: this is fairly rudimentary; we eventually want to support arrays, maps, and complex types.
+func dashdashArgsToMap(args []string) map[string]interface{} {
+	mapped := make(map[string]interface{})
+
+	for i := 0; i < len(args); i++ {
+		arg := args[i]
+
+		// Eat - or -- at the start.
+		if arg[0] == '-' {
+			arg = arg[1:]
+			if arg[0] == '-' {
+				arg = arg[1:]
+			}
+		}
+
+		// Now find a k=v, and split the k/v part.
+		if eq := strings.IndexByte(arg, '='); eq != -1 {
+			// For --k=v, simply store v underneath k's entry.
+			mapped[arg[:eq]] = arg[eq+1:]
+		} else {
+			if i+1 < len(args) && args[i+1][0] != '-' {
+				// If the next arg doesn't start with '-' (i.e., another flag) use its value.
+				mapped[arg] = args[i+1]
+				i++
+			} else if arg[0:3] == "no-" {
+				// For --no-k style args, strip off the no- prefix and store false underneath k.
+				mapped[arg[3:]] = false
+			} else {
+				// For all other --k args, assume this is a boolean flag, and set the value of k to true.
+				mapped[arg] = true
+			}
+		}
+	}
+
+	return mapped
 }
