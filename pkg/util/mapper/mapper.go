@@ -73,6 +73,9 @@ func (md *mapper) Decode(tree Object, target interface{}) error {
 			contract.Assertf(len(tagparts) > 0,
 				"Expected >0 tagparts on field %v.%v; got %v", vdstType.Name(), fldinfo.Name, len(tagparts))
 			key = tagparts[0]
+			if key == "-" {
+				skip = true // a name of "-" means skip
+			}
 			for i := 1; i < len(tagparts); i++ {
 				switch tagparts[i] {
 				case "omitempty":

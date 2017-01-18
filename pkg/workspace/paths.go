@@ -8,9 +8,9 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/marapongo/mu/pkg/compiler/errors"
 	"github.com/marapongo/mu/pkg/diag"
 	"github.com/marapongo/mu/pkg/encoding"
-	"github.com/marapongo/mu/pkg/errors"
 )
 
 // Mufile is the base name of a Mufile.
@@ -57,9 +57,9 @@ func pathDir(path string) string {
 	}
 }
 
-// DetectMufile locates the closest Mufile from the given path, searching "upwards" in the directory hierarchy.  If no
+// DetectPackage locates the closest package from the given path, searching "upwards" in the directory hierarchy.  If no
 // Mufile is found, an empty path is returned.  If problems are detected, they are logged to the diag.Sink.
-func DetectMufile(path string, d diag.Sink) (string, error) {
+func DetectPackage(path string, d diag.Sink) (string, error) {
 	// It's possible the target is already the file we seek; if so, return right away.
 	if IsMufile(path, d) {
 		return path, nil

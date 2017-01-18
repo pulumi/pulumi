@@ -8,13 +8,13 @@ import (
 
 	"github.com/golang/glog"
 
+	"github.com/marapongo/mu/pkg/compiler/binder"
 	"github.com/marapongo/mu/pkg/compiler/core"
+	"github.com/marapongo/mu/pkg/compiler/errors"
+	"github.com/marapongo/mu/pkg/compiler/metadata"
 	"github.com/marapongo/mu/pkg/diag"
-	"github.com/marapongo/mu/pkg/errors"
 	"github.com/marapongo/mu/pkg/graph"
-	"github.com/marapongo/mu/pkg/options"
 	"github.com/marapongo/mu/pkg/pack"
-	"github.com/marapongo/mu/pkg/symbols"
 	"github.com/marapongo/mu/pkg/util/contract"
 	"github.com/marapongo/mu/pkg/workspace"
 )
@@ -23,66 +23,110 @@ import (
 type Compiler interface {
 	core.Phase
 
-	Options() *options.Options // the options this compiler is using.
-	Workspace() workspace.W    // the workspace that this compielr is using.
+	Ctx() *core.Context     // the shared context object.
+	Options() *Options      // the options this compiler is using.
+	Workspace() workspace.W // the workspace that this compielr is using.
 
-	// Compile takes a MuPackage as input and compiles it into a MuGL graph.
-	Compile(pkg *pack.Package) graph.Graph
+	// Compile detects a package from the workspace and compiles it into a graph.
+	Compile() graph.Graph
+	// CompilePath compiles a package given its path into its graph form.
+	CompilePath(path string) graph.Graph
+	// CompilePackage compiles a given package object into its associated graph form.
+	CompilePackage(pkg *pack.Package) graph.Graph
 }
 
 // compiler is the canonical implementation of the Mu compiler.
 type compiler struct {
-	w    workspace.W
-	deps map[symbols.Ref]*diag.Document // a cache of mapping names to loaded dependencies.
+	w      workspace.W
+	opts   *Options
+	ctx    *core.Context
+	reader metadata.Reader
 }
 
-// New creates a new instance of the Mu compiler with the given workspace and options.
-func New(w workspace.W) Compiler {
-	contract.Requiref(w != nil, "w", "!= nil")
-	return &compiler{
-		w:    w,
-		deps: make(map[symbols.Ref]*diag.Document),
-	}
-}
-
-// NewDefault creates a new instance of the Mu compiler, along with a new workspace, from the given path.  If options
+// New creates a new instance of the Mu compiler, along with a new workspace, from the given path.  If options
 // is nil, the default compiler options will be used instead.  If any IO errors occur, they will be output in the usual
 // diagnostics ways, and the compiler return value will be nil while the error will be non-nil.
-func NewDefault(path string, opts *options.Options) (Compiler, error) {
+func New(path string, opts *Options) (Compiler, error) {
+	// Ensure the options and diagnostics sink have been initialized.
 	if opts == nil {
-		opts = options.Default(path)
-	} else {
-		opts.Pwd = path
+		opts = DefaultOptions()
+	}
+	d := opts.Diag
+	if d == nil {
+		d = diag.DefaultSink(path)
 	}
 
-	w, err := workspace.New(opts)
+	// Now create a new context to share amongst the compiler and workspace.
+	ctx := core.NewContext(path, d)
+
+	// Create a metadata reader for workspaces and packages (both the root one and dependencies).
+	reader := metadata.NewReader(ctx)
+
+	// Allocate the workspace object.
+	w, err := workspace.New(ctx)
 	if err != nil {
-		opts.Diag.Errorf(errors.ErrorIO.AtFile(path), err)
+		d.Errorf(errors.ErrorIO.AtFile(path), err)
 		return nil, fmt.Errorf("cannot proceed without a workspace")
 	}
 
-	return New(w), nil
+	// If there's a workspace-wide settings file available, load it and parse it.
+	wdoc, err := w.ReadSettings()
+	if err != nil {
+		d.Errorf(errors.ErrorIO, err)
+	} else if wdoc != nil {
+		*w.Settings() = *reader.ReadWorkspace(wdoc)
+	}
+
+	// And finally return the freshly allocated compiler object.
+	return &compiler{
+		w:      w,
+		opts:   opts,
+		ctx:    ctx,
+		reader: reader,
+	}, nil
 }
 
-// NewDefaultwd creates a new instance of the Mu compiler, along with a new workspace, from the current working
-// directory.  If options is nil, the default compiler options will be used instead.  If any IO errors occur, they will
-// be output in the usual diagnostics ways, and the compiler return value will be nil while the error will be non-nil.
-func NewDefaultwd(opts *options.Options) (Compiler, error) {
+// Newwd creates a new instance of the Mu compiler, along with a new workspace, from the current working directory.
+// If options is nil, the default compiler options will be used instead.  If any IO errors occur, they will be output in
+// the usual diagnostics ways, and the compiler return value will be nil while the error will be non-nil.
+func Newwd(opts *Options) (Compiler, error) {
 	pwd, err := os.Getwd()
 	contract.Assertf(err == nil, "Unexpected os.Getwd error: %v", err)
-	return NewDefault(pwd, opts)
+	return New(pwd, opts)
 }
 
-func (c *compiler) Diag() diag.Sink           { return c.Options().Diag }
-func (c *compiler) Options() *options.Options { return c.w.Options() }
-func (c *compiler) Workspace() workspace.W    { return c.w }
+func (c *compiler) Ctx() *core.Context     { return c.ctx }
+func (c *compiler) Diag() diag.Sink        { return c.ctx.Diag }
+func (c *compiler) Options() *Options      { return c.opts }
+func (c *compiler) Workspace() workspace.W { return c.w }
 
-func (c *compiler) Compile(pkg *pack.Package) graph.Graph {
+// Compile attempts to detect the package from the current working directory and, provided that succeeds, compiles it.
+func (c *compiler) Compile() graph.Graph {
+	path, err := c.w.DetectPackage()
+	if err != nil {
+		c.Diag().Errorf(errors.ErrorIO, err)
+		return nil
+	}
+	return c.CompilePath(path)
+}
+
+// CompilePath loads a package at the given path and compiles it into a graph.
+func (c *compiler) CompilePath(path string) graph.Graph {
+	doc, err := diag.ReadDocument(path)
+	if err != nil {
+		c.Diag().Errorf(errors.ErrorCouldNotReadMufile.AtFile(path), err)
+		return nil
+	}
+	pkg := c.reader.ReadPackage(doc)
+	if pkg == nil {
+		return nil
+	}
+	return c.CompilePackage(pkg)
+}
+
+// CompilePackage compiles the given package into a graph.
+func (c *compiler) CompilePackage(pkg *pack.Package) graph.Graph {
 	contract.Requiref(pkg != nil, "pkg", "!= nil")
-	return c.compilePackage(pkg)
-}
-
-func (c *compiler) compilePackage(pkg *pack.Package) graph.Graph {
 	glog.Infof("Compiling package '%v' (w=%v)", pkg.Name, c.w.Root())
 	if glog.V(2) {
 		defer glog.V(2).Infof("Building package '%v' completed w/ %v warnings and %v errors",
@@ -106,6 +150,14 @@ func (c *compiler) compilePackage(pkg *pack.Package) graph.Graph {
 	// file is invalid.  We require all MetaMu compilers to produce valid, verifiable MuIL, and this is a requriement.
 	//
 	// Afterwards, we can safely evaluate the MuIL entrypoint, using our MuIL AST interpreter.
+
+	b := binder.New(c.w, c.ctx, c.reader)
+	b.BindPackage(pkg)
+	if !c.Diag().Success() {
+		return nil
+	}
+
+	// TODO: actually perform the evaluation that yields a graph.
 
 	return nil
 }

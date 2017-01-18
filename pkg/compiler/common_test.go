@@ -6,7 +6,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/marapongo/mu/pkg/diag"
+	"github.com/marapongo/mu/pkg/compiler/diag"
 )
 
 // testDiagSink suppresses message output, but captures them, so that they can be compared to expected results.

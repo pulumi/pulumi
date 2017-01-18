@@ -7,8 +7,8 @@ package encoding
 import (
 	"reflect"
 
+	"github.com/marapongo/mu/pkg/compiler/ast"
 	"github.com/marapongo/mu/pkg/pack"
-	"github.com/marapongo/mu/pkg/pack/ast"
 	"github.com/marapongo/mu/pkg/util/mapper"
 )
 

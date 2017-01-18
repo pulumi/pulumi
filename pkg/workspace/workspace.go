@@ -11,11 +11,10 @@ import (
 	"github.com/golang/glog"
 	homedir "github.com/mitchellh/go-homedir"
 
-	"github.com/marapongo/mu/pkg/ast"
+	"github.com/marapongo/mu/pkg/compiler/core"
 	"github.com/marapongo/mu/pkg/diag"
 	"github.com/marapongo/mu/pkg/encoding"
-	"github.com/marapongo/mu/pkg/options"
-	"github.com/marapongo/mu/pkg/symbols"
+	"github.com/marapongo/mu/pkg/tokens"
 	"github.com/marapongo/mu/pkg/util/contract"
 )
 
@@ -24,26 +23,24 @@ import (
 type W interface {
 	// Root returns the base path of the current workspace.
 	Root() string
-	// Options represents the current options governing the compilation.
-	Options() *options.Options
 	// Settings returns a mutable pointer to the optional workspace settings info.
-	Settings() *ast.Workspace
+	Settings() *Workspace
 
 	// ReadSettings reads in the settings file and returns it, returning nil if there is none.
 	ReadSettings() (*diag.Document, error)
 
-	// DetectMufile locates the closest Mufile from the given path, searching "upwards" in the directory hierarchy.
-	DetectMufile() (string, error)
+	// DetectPackage locates the closest Mufile from the given path, searching "upwards" in the directory hierarchy.
+	DetectPackage() (string, error)
 	// DepCandidates fetches all candidate locations for resolving a dependency name to its installed artifacts.
-	DepCandidates(dep symbols.RefParts) []string
+	DepCandidates(dep tokens.RefParts) []string
 }
 
 // New creates a new workspace from the given starting path.
-func New(options *options.Options) (W, error) {
-	contract.Requiref(options != nil, "options", "!= nil")
+func New(ctx *core.Context) (W, error) {
+	contract.Requiref(ctx != nil, "ctx", "!= nil")
 
 	// First normalize the path to an absolute one.
-	path, err := filepath.Abs(options.Pwd)
+	path, err := filepath.Abs(ctx.Path)
 	if err != nil {
 		return nil, err
 	}
@@ -54,9 +51,9 @@ func New(options *options.Options) (W, error) {
 	}
 
 	ws := workspace{
-		path:    path,
-		home:    home,
-		options: options,
+		ctx:  ctx,
+		path: path,
+		home: home,
 	}
 
 	// Memoize the root directory before returning.
@@ -68,12 +65,12 @@ func New(options *options.Options) (W, error) {
 }
 
 type workspace struct {
-	path     string           // the path at which the workspace was constructed.
-	home     string           // the home directory to use for this workspace.
-	root     string           // the root of the workspace.
-	muspace  string           // a path to the Muspace file, if any.
-	options  *options.Options // the options governing the current compilation.
-	settings ast.Workspace    // an optional bag of workspace-wide settings.
+	ctx      *core.Context // the shared compiler context object.
+	path     string        // the path at which the workspace was constructed.
+	home     string        // the home directory to use for this workspace.
+	root     string        // the root of the workspace.
+	muspace  string        // a path to the Muspace file, if any.
+	settings Workspace     // an optional bag of workspace-wide settings.
 }
 
 // initRootInfo finds the root of the workspace, caches it for fast lookups, and loads up any workspace settings.
@@ -90,7 +87,7 @@ func (w *workspace) initRootInfo() (string, error) {
 			for _, file := range files {
 				// A muspace file delimits the root of the workspace.
 				muspace := filepath.Join(root, file.Name())
-				if IsMuspace(muspace, w.options.Diag) {
+				if IsMuspace(muspace, w.ctx.Diag) {
 					glog.V(3).Infof("Mu workspace detected; setting root to %v", w.root)
 					w.root = root
 					w.muspace = muspace
@@ -112,9 +109,8 @@ func (w *workspace) initRootInfo() (string, error) {
 	return w.root, nil
 }
 
-func (w *workspace) Root() string              { return w.root }
-func (w *workspace) Options() *options.Options { return w.options }
-func (w *workspace) Settings() *ast.Workspace  { return &w.settings }
+func (w *workspace) Root() string         { return w.root }
+func (w *workspace) Settings() *Workspace { return &w.settings }
 
 func (w *workspace) ReadSettings() (*diag.Document, error) {
 	if w.muspace == "" {
@@ -125,11 +121,11 @@ func (w *workspace) ReadSettings() (*diag.Document, error) {
 	return diag.ReadDocument(w.muspace)
 }
 
-func (w *workspace) DetectMufile() (string, error) {
-	return DetectMufile(w.path, w.options.Diag)
+func (w *workspace) DetectPackage() (string, error) {
+	return DetectPackage(w.path, w.ctx.Diag)
 }
 
-func (w *workspace) DepCandidates(dep symbols.RefParts) []string {
+func (w *workspace) DepCandidates(dep tokens.RefParts) []string {
 	// The search order for dependencies is specified in https://github.com/marapongo/mu/blob/master/docs/deps.md.
 	//
 	// Roughly speaking, these locations are are searched, in order:
@@ -181,21 +177,21 @@ func (w *workspace) DepCandidates(dep symbols.RefParts) []string {
 }
 
 // namePath just cleans a name and makes sure it's appropriate to use as a path.
-func namePath(nm symbols.Name) string {
+func namePath(nm tokens.Name) string {
 	return stringNamePath(string(nm))
 }
 
 // stringNamePart cleans a string component of a name and makes sure it's appropriate to use as a path.
 func stringNamePath(nm string) string {
-	return strings.Replace(nm, symbols.NameDelimiter, string(os.PathSeparator), -1)
+	return strings.Replace(nm, tokens.NameDelimiter, string(os.PathSeparator), -1)
 }
 
 // workspacePath converts a name into the relevant name-part in the workspace to look for that dependency.
-func workspacePath(w *workspace, nm symbols.Name) string {
+func workspacePath(w *workspace, nm tokens.Name) string {
 	if ns := w.Settings().Namespace; ns != "" {
 		// If the name starts with the namespace, trim the name part.
 		orig := string(nm)
-		if trim := strings.TrimPrefix(orig, ns+symbols.NameDelimiter); trim != orig {
+		if trim := strings.TrimPrefix(orig, ns+tokens.NameDelimiter); trim != orig {
 			return stringNamePath(trim)
 		}
 	}

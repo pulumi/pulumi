@@ -8,13 +8,13 @@ import (
 
 	"github.com/golang/glog"
 
-	"github.com/marapongo/mu/pkg/ast"
-	"github.com/marapongo/mu/pkg/ast/conv"
 	"github.com/marapongo/mu/pkg/compiler/backends/clouds"
 	"github.com/marapongo/mu/pkg/compiler/core"
+	"github.com/marapongo/mu/pkg/compiler/errors"
+	"github.com/marapongo/mu/pkg/compiler/legacy/ast"
+	"github.com/marapongo/mu/pkg/compiler/legacy/ast/conv"
 	"github.com/marapongo/mu/pkg/diag"
 	"github.com/marapongo/mu/pkg/encoding"
-	"github.com/marapongo/mu/pkg/errors"
 	"github.com/marapongo/mu/pkg/util/contract"
 )
 

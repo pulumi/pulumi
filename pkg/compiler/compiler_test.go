@@ -10,8 +10,8 @@ import (
 
 	"github.com/marapongo/mu/pkg/compiler/backends"
 	"github.com/marapongo/mu/pkg/compiler/backends/clouds"
-	"github.com/marapongo/mu/pkg/diag"
-	"github.com/marapongo/mu/pkg/errors"
+	"github.com/marapongo/mu/pkg/compiler/diag"
+	"github.com/marapongo/mu/pkg/compiler/errors"
 )
 
 func TestBadMissingMufile(t *testing.T) {

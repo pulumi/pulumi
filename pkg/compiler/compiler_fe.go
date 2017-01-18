@@ -5,63 +5,22 @@ package compiler
 import (
 	"github.com/satori/go.uuid"
 
-	"github.com/marapongo/mu/pkg/ast"
 	"github.com/marapongo/mu/pkg/compiler/backends"
 	"github.com/marapongo/mu/pkg/compiler/backends/clouds"
 	"github.com/marapongo/mu/pkg/compiler/backends/schedulers"
-	"github.com/marapongo/mu/pkg/diag"
-	"github.com/marapongo/mu/pkg/errors"
+	"github.com/marapongo/mu/pkg/compiler/errors"
+	"github.com/marapongo/mu/pkg/config"
 	"github.com/marapongo/mu/pkg/workspace"
 )
 
-// buildDocumentFE runs the front-end phases of the compiler.
-func (c *compiler) buildDocumentFE(w workspace.W, doc *diag.Document) *ast.Stack {
-	// If there's a workspace-wide settings file available, load it up.
-	wdoc, err := w.ReadSettings()
-	if err != nil {
-		// TODO: we should include the file information in the error message.
-		c.Diag().Errorf(errors.ErrorIO, err)
-		return nil
-	}
-
-	// Now create a parser to create ASTs from the workspace settings file and Mufile.
-	p := NewParser(c)
-	if wdoc != nil {
-		// Store the parsed AST on the workspace object itself.
-		*w.Settings() = *p.ParseWorkspace(wdoc)
-	}
-
-	// Determine what cloud target we will be using; we need this to process the Mufile and imports.
-	c.detectClusterArch(w)
-	if !c.Diag().Success() {
-		return nil
-	}
-
-	// Now parse the stack, using whatever args may have been supplied as the properties.
-	// TODO[marapongo/mu#7]: we want to strongly type the properties; e.g., a stack expecting a number should
-	//     get a number, etc.  However, to know that we must first have parsed the metadata for the target stack!
-	props := make(ast.PropertyBag)
-	for arg, val := range c.Options().Args {
-		props[arg] = val
-	}
-	stack := p.ParseStack(doc, props)
-
-	// If any parser errors occurred, bail now to prevent needlessly obtuse error messages.
-	if !p.Diag().Success() {
-		return nil
-	}
-
-	return stack
-}
-
 // detectClusterArch uses a variety of mechanisms to discover the target architecture, returning it.  If no
 // architecture was discovered, an error is issued, and the bool return will be false.
-func (c *compiler) detectClusterArch(w workspace.W) (*ast.Cluster, backends.Arch) {
+func (c *compiler) detectClusterArch(w workspace.W) (*config.Cluster, backends.Arch) {
 	// Cluster and architectures settings may come from one of two places, in order of search preference:
 	//		1) command line arguments.
 	//		2) cluster-wide settings in a workspace.
 	var arch backends.Arch
-	var cluster *ast.Cluster
+	var cluster *config.Cluster
 
 	// If a cluster was specified, look it up and load up its options.
 	clname := c.Options().Cluster
@@ -106,10 +65,10 @@ func (c *compiler) detectClusterArch(w workspace.W) (*ast.Cluster, backends.Arch
 }
 
 // newAnonCluster creates an anonymous cluster for stacks that didn't declare one.
-func (c *compiler) newAnonCluster(arch backends.Arch) *ast.Cluster {
+func (c *compiler) newAnonCluster(arch backends.Arch) *config.Cluster {
 	// TODO: ensure this is unique.
 	// TODO: we want to cache names somewhere (~/.mu/?) so that we can reuse temporary local stacks, etc.
-	return &ast.Cluster{
+	return &config.Cluster{
 		Name:      uuid.NewV4().String(),
 		Cloud:     clouds.Names[arch.Cloud],
 		Scheduler: schedulers.Names[arch.Scheduler],
@@ -117,7 +76,7 @@ func (c *compiler) newAnonCluster(arch backends.Arch) *ast.Cluster {
 }
 
 // extractClusterArch gets and validates the architecture from an existing target.
-func (c *compiler) extractClusterArch(cluster *ast.Cluster, existing backends.Arch) (backends.Arch, bool) {
+func (c *compiler) extractClusterArch(cluster *config.Cluster, existing backends.Arch) (backends.Arch, bool) {
 	targetCloud := existing.Cloud
 	targetScheduler := existing.Scheduler
 

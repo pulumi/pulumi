@@ -3,23 +3,20 @@
 package core
 
 import (
-	"github.com/marapongo/mu/pkg/ast"
+	"github.com/marapongo/mu/pkg/compiler/legacy/ast"
 	"github.com/marapongo/mu/pkg/diag"
-	"github.com/marapongo/mu/pkg/symbols"
+	"github.com/marapongo/mu/pkg/tokens"
 )
 
 // Visitor unifies all visitation patterns under a single interface.
 type Visitor interface {
 	Phase
-	VisitWorkspace(w *ast.Workspace)
-	VisitCluster(name string, cluster *ast.Cluster)
-	VisitDependency(parent *ast.Workspace, ref symbols.Ref, dep *ast.Dependency)
 	VisitStack(stack *ast.Stack)
 	VisitSchemas(parent *ast.Stack, schmas *ast.Schemas)
-	VisitSchema(pstack *ast.Stack, parent *ast.Schemas, name symbols.Name, public bool, schema *ast.Schema)
+	VisitSchema(pstack *ast.Stack, parent *ast.Schemas, name tokens.Name, public bool, schema *ast.Schema)
 	VisitProperty(parent *ast.Stack, schema *ast.Schema, name string, prop *ast.Property)
 	VisitServices(parent *ast.Stack, svcs *ast.Services)
-	VisitService(pstack *ast.Stack, parent *ast.Services, name symbols.Name, public bool, svc *ast.Service)
+	VisitService(pstack *ast.Stack, parent *ast.Services, name tokens.Name, public bool, svc *ast.Service)
 }
 
 // NewInOrderVisitor wraps another Visitor and walks the tree in a deterministic order, deferring to another set of
@@ -47,41 +44,6 @@ func (v *inOrderVisitor) Diag() diag.Sink {
 		return v.post.Diag()
 	}
 	return nil
-}
-
-func (v *inOrderVisitor) VisitWorkspace(w *ast.Workspace) {
-	if v.pre != nil {
-		v.pre.VisitWorkspace(w)
-	}
-
-	for _, name := range ast.StableClusters(w.Clusters) {
-		v.VisitCluster(name, w.Clusters[name])
-	}
-	for _, ref := range ast.StableDependencies(w.Dependencies) {
-		v.VisitDependency(w, ref, w.Dependencies[ref])
-	}
-
-	if v.post != nil {
-		v.post.VisitWorkspace(w)
-	}
-}
-
-func (v *inOrderVisitor) VisitCluster(name string, cluster *ast.Cluster) {
-	if v.pre != nil {
-		v.pre.VisitCluster(name, cluster)
-	}
-	if v.post != nil {
-		v.post.VisitCluster(name, cluster)
-	}
-}
-
-func (v *inOrderVisitor) VisitDependency(parent *ast.Workspace, ref symbols.Ref, dep *ast.Dependency) {
-	if v.pre != nil {
-		v.pre.VisitDependency(parent, ref, dep)
-	}
-	if v.post != nil {
-		v.post.VisitDependency(parent, ref, dep)
-	}
 }
 
 func (v *inOrderVisitor) VisitStack(stack *ast.Stack) {
@@ -117,7 +79,7 @@ func (v *inOrderVisitor) VisitSchemas(parent *ast.Stack, schemas *ast.Schemas) {
 	}
 }
 
-func (v *inOrderVisitor) VisitSchema(pstack *ast.Stack, parent *ast.Schemas, name symbols.Name,
+func (v *inOrderVisitor) VisitSchema(pstack *ast.Stack, parent *ast.Schemas, name tokens.Name,
 	public bool, schema *ast.Schema) {
 	if v.pre != nil {
 		v.pre.VisitSchema(pstack, parent, name, public, schema)
@@ -158,7 +120,7 @@ func (v *inOrderVisitor) VisitServices(parent *ast.Stack, svcs *ast.Services) {
 	}
 }
 
-func (v *inOrderVisitor) VisitService(pstack *ast.Stack, parent *ast.Services, name symbols.Name,
+func (v *inOrderVisitor) VisitService(pstack *ast.Stack, parent *ast.Services, name tokens.Name,
 	public bool, svc *ast.Service) {
 	if v.pre != nil {
 		v.pre.VisitService(pstack, parent, name, public, svc)

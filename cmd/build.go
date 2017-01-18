@@ -13,7 +13,6 @@ import (
 
 	"github.com/marapongo/mu/pkg/cmdutil"
 	"github.com/marapongo/mu/pkg/compiler"
-	"github.com/marapongo/mu/pkg/options"
 )
 
 // defaultIn is where the Mu compiler looks for inputs by default.
@@ -50,7 +49,7 @@ func newBuildCmd() *cobra.Command {
 				glog.Fatal(err)
 			}
 
-			opts := options.Default(abs)
+			opts := compiler.DefaultOptions()
 
 			// Set the cluster and architecture if specified.
 			opts.Cluster = cluster
@@ -88,11 +87,11 @@ func newBuildCmd() *cobra.Command {
 			}
 
 			// Now new up a compiler and actually perform the build.
-			mup, err := compiler.NewDefault(abs, opts)
+			mup, err := compiler.New(abs, opts)
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "fatal: %v", err)
 			}
-			mup.Compile(nil)
+			mup.Compile()
 		},
 	}
 

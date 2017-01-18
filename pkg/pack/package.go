@@ -4,23 +4,28 @@
 package pack
 
 import (
-	"github.com/marapongo/mu/pkg/pack/ast"
-	"github.com/marapongo/mu/pkg/symbols"
+	"github.com/marapongo/mu/pkg/compiler/ast"
+	"github.com/marapongo/mu/pkg/diag"
+	"github.com/marapongo/mu/pkg/tokens"
 )
 
-// Metadata is an informational section describing a package.
-type Metadata struct {
-	Name        string  `json:"name"`                  // a required fully qualified name.
+// Package is a top-level package definition.
+type Package struct {
+	Name string `json:"name"` // a required fully qualified name.
+
 	Description *string `json:"description,omitempty"` // an optional informational description.
 	Author      *string `json:"author,omitempty"`      // an optional author.
 	Website     *string `json:"website,omitempty"`     // an optional website for additional info.
 	License     *string `json:"license,omitempty"`     // an optional license governing this package's usage.
+
+	Dependencies *[]tokens.Package `json:"dependencies,omitempty"` // all of the package dependencies.
+	Modules      *ast.Modules      `json:"modules,omitempty"`      // a collection of top-level modules.
+
+	Doc *diag.Document `json:"-"` // the document from which this package came.
 }
 
-// Package is a top-level package definition.
-type Package struct {
-	Metadata
+var _ diag.Diagable = (*Package)(nil)
 
-	Dependencies *[]symbols.ModuleToken `json:"dependencies,omitempty"` // all of the module dependencies.
-	Modules      *ast.Modules           `json:"modules,omitempty"`      // a collection of top-level modules.
+func (s *Package) Where() (*diag.Document, *diag.Location) {
+	return s.Doc, nil
 }

@@ -7,13 +7,13 @@ import (
 	"os"
 	"strings"
 
+	"github.com/marapongo/mu/pkg/compiler"
 	"github.com/marapongo/mu/pkg/compiler/backends"
 	"github.com/marapongo/mu/pkg/compiler/backends/clouds"
 	"github.com/marapongo/mu/pkg/compiler/backends/schedulers"
-	"github.com/marapongo/mu/pkg/options"
 )
 
-func SetCloudArchOptions(arch string, opts *options.Options) {
+func SetCloudArchOptions(arch string, opts *compiler.Options) {
 	// If an architecture was specified, parse the pieces and set the options.  This isn't required because stacks
 	// and workspaces can have defaults.  This simply overrides or provides one where none exists.
 	if arch != "" {

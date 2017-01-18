@@ -10,9 +10,9 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/marapongo/mu/pkg/cmdutil"
+	"github.com/marapongo/mu/pkg/compiler/ast"
 	"github.com/marapongo/mu/pkg/pack"
-	"github.com/marapongo/mu/pkg/pack/ast"
-	"github.com/marapongo/mu/pkg/symbols"
+	"github.com/marapongo/mu/pkg/tokens"
 	"github.com/marapongo/mu/pkg/util/contract"
 )
 
@@ -164,7 +164,7 @@ func printModules(pkg *pack.Package, printSymbols bool, printExports bool, print
 		// Print the name.
 		fmt.Printf("%vmodule \"%v\" {", indent, name)
 
-		// Now, if requested, print the symbols.
+		// Now, if requested, print the tokens.
 		if printSymbols || printExports {
 			if mod.Imports != nil || mod.Members != nil {
 				fmt.Printf("\n")
@@ -198,11 +198,11 @@ func printModules(pkg *pack.Package, printSymbols bool, printExports bool, print
 	}
 }
 
-func printModuleMember(name symbols.Token, member ast.ModuleMember, exportOnly bool, indent string) {
+func printModuleMember(name tokens.Token, member ast.ModuleMember, exportOnly bool, indent string) {
 	printComment(member.GetDescription(), indent)
 
 	acc := member.GetAccess()
-	if !exportOnly || (acc != nil && *acc == symbols.PublicAccessibility) {
+	if !exportOnly || (acc != nil && *acc == tokens.PublicAccessibility) {
 		switch member.GetKind() {
 		case ast.ExportKind:
 			printExport(name, member.(*ast.Export), indent)
@@ -218,7 +218,7 @@ func printModuleMember(name symbols.Token, member ast.ModuleMember, exportOnly b
 	}
 }
 
-func printExport(name symbols.Token, export *ast.Export, indent string) {
+func printExport(name tokens.Token, export *ast.Export, indent string) {
 	var mods []string
 	if export.Access != nil {
 		mods = append(mods, string(*export.Access))
@@ -226,7 +226,7 @@ func printExport(name symbols.Token, export *ast.Export, indent string) {
 	fmt.Printf("%vexport \"%v\"%v %v\n", indent, name, modString(mods), export.Token)
 }
 
-func printClass(name symbols.Token, class *ast.Class, exportOnly bool, indent string) {
+func printClass(name tokens.Token, class *ast.Class, exportOnly bool, indent string) {
 	fmt.Printf("%vclass \"%v\"", indent, name)
 
 	var mods []string
@@ -267,11 +267,11 @@ func printClass(name symbols.Token, class *ast.Class, exportOnly bool, indent st
 	fmt.Printf("}\n")
 }
 
-func printClassMember(name symbols.Token, member ast.ClassMember, exportOnly bool, indent string) {
+func printClassMember(name tokens.Token, member ast.ClassMember, exportOnly bool, indent string) {
 	printComment(member.GetDescription(), indent)
 
 	acc := member.GetAccess()
-	if !exportOnly || (acc != nil && *acc == symbols.PublicClassAccessibility) {
+	if !exportOnly || (acc != nil && *acc == tokens.PublicClassAccessibility) {
 		switch member.GetKind() {
 		case ast.ClassPropertyKind:
 			printClassProperty(name, member.(*ast.ClassProperty), indent)
@@ -283,7 +283,7 @@ func printClassMember(name symbols.Token, member ast.ClassMember, exportOnly boo
 	}
 }
 
-func printClassProperty(name symbols.Token, prop *ast.ClassProperty, indent string) {
+func printClassProperty(name tokens.Token, prop *ast.ClassProperty, indent string) {
 	var mods []string
 	if prop.Access != nil {
 		mods = append(mods, string(*prop.Access))
@@ -301,7 +301,7 @@ func printClassProperty(name symbols.Token, prop *ast.ClassProperty, indent stri
 	fmt.Printf("\n")
 }
 
-func printClassMethod(name symbols.Token, meth *ast.ClassMethod, indent string) {
+func printClassMethod(name tokens.Token, meth *ast.ClassMethod, indent string) {
 	var mods []string
 	if meth.Access != nil {
 		mods = append(mods, string(*meth.Access))
@@ -318,7 +318,7 @@ func printClassMethod(name symbols.Token, meth *ast.ClassMethod, indent string) 
 	fmt.Printf("%vmethod \"%v\"%v: %v\n", indent, name, modString(mods), funcSig(meth))
 }
 
-func printModuleMethod(name symbols.Token, meth *ast.ModuleMethod, indent string) {
+func printModuleMethod(name tokens.Token, meth *ast.ModuleMethod, indent string) {
 	var mods []string
 	if meth.Access != nil {
 		mods = append(mods, string(*meth.Access))
@@ -326,7 +326,7 @@ func printModuleMethod(name symbols.Token, meth *ast.ModuleMethod, indent string
 	fmt.Printf("%vmethod \"%v\"%v: %v\n", indent, name, modString(mods), funcSig(meth))
 }
 
-func printModuleProperty(name symbols.Token, prop *ast.ModuleProperty, indent string) {
+func printModuleProperty(name tokens.Token, prop *ast.ModuleProperty, indent string) {
 	var mods []string
 	if prop.Access != nil {
 		mods = append(mods, string(*prop.Access))

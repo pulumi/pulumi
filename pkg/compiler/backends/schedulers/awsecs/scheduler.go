@@ -6,8 +6,8 @@ import (
 	"github.com/marapongo/mu/pkg/compiler/backends/clouds"
 	"github.com/marapongo/mu/pkg/compiler/backends/schedulers"
 	"github.com/marapongo/mu/pkg/compiler/core"
+	"github.com/marapongo/mu/pkg/compiler/errors"
 	"github.com/marapongo/mu/pkg/diag"
-	"github.com/marapongo/mu/pkg/errors"
 )
 
 // New returns a fresh instance of an AWS ECS Scheduler implementation.  This requires an AWS backend, since ECS only
