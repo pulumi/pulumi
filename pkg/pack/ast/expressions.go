@@ -95,8 +95,8 @@ const ArrayLiteralKind NodeKind = "ArrayLiteral"
 // ObjectLiteral evaluates to a new object, with optional property initializers for primary properties.
 type ObjectLiteral struct {
 	literalNode
-	Type       *symbols.TypeToken       `json:"type,omitempty"`       // the optional type of object to produce.
-	Properties *[]ObjectLiteralProperty `json:"properties,omitempty"` // an optional array of property initializers.
+	Type       *symbols.TypeToken        `json:"type,omitempty"`       // the optional type of object to produce.
+	Properties *[]*ObjectLiteralProperty `json:"properties,omitempty"` // an optional array of property initializers.
 }
 
 var _ Node = (*ObjectLiteral)(nil)
