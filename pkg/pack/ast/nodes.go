@@ -11,6 +11,7 @@
 package ast
 
 import (
+	"github.com/marapongo/mu/pkg/diag"
 	"github.com/marapongo/mu/pkg/symbols"
 )
 
@@ -30,9 +31,33 @@ type node struct {
 	Loc  *Location `json:"loc,omitempty"`
 }
 
+var _ diag.Diagable = (*node)(nil)
+
 func (node *node) nd()               {}
 func (node *node) GetKind() NodeKind { return node.Kind }
 func (node *node) GetLoc() *Location { return node.Loc }
+
+func (node *node) Where() (*diag.Document, *diag.Location) {
+	// TODO: consider caching Document objects; allocating one per Node is wasteful.
+	// TODO: for development scenarios, it would be really great to recover the original source file text for purposes
+	//     of the diag.Document part.  Doing so would give nice error messages tied back to the original source code
+	//     for any errors associated with the AST.  Absent that, we will simply return nil.
+	if node.Loc == nil {
+		return nil, nil
+	} else {
+		var doc *diag.Document
+		if node.Loc.File != nil {
+			doc = diag.NewDocument(*node.Loc.File)
+		}
+		var end *diag.Pos
+		if node.Loc.End != nil {
+			end = &diag.Pos{int(node.Loc.End.Line), int(node.Loc.End.Column)}
+		}
+		return doc, &diag.Location{
+			diag.Pos{int(node.Loc.Start.Line), int(node.Loc.Start.Column)}, end,
+		}
+	}
+}
 
 // Identifier represents a simple string token associated with its source location context.
 type Identifier struct {
