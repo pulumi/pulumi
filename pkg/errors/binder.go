@@ -3,8 +3,8 @@
 package errors
 
 import (
-	"github.com/marapongo/mu/pkg/ast"
 	"github.com/marapongo/mu/pkg/diag"
+	"github.com/marapongo/mu/pkg/symbols"
 )
 
 var ErrorMissingStackName = &diag.Diag{
@@ -79,7 +79,7 @@ var ErrorServiceSelectorIsPrivate = &diag.Diag{
 
 var ErrorNotAName = &diag.Diag{
 	ID:      514,
-	Message: "The string '%v' is not a valid name (expected: " + ast.NamePartRegexps + ")",
+	Message: "The string '%v' is not a valid name (expected: " + symbols.NamePartRegexps + ")",
 }
 
 var ErrorStackTypeExpected = &diag.Diag{

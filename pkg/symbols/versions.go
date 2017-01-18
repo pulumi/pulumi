@@ -1,14 +1,21 @@
 // Copyright 2016 Marapongo, Inc. All rights reserved.
 
-package ast
+package symbols
 
 import (
 	"errors"
 	"regexp"
 
 	"github.com/blang/semver"
-	// TODO[marapongo/mu#18]: consider supporting the sugared NPM-style semvers, like tilde and caret ranges.
 )
+
+// Version represents a precise version number.  It may be either a Git SHA hash or a semantic version (not a range).
+type Version string
+
+// VersionSpec represents a specification of a version that is bound to a precise number through a separate process.
+// It may take the form of a Version (see above), a semantic version range, or the string "latest", to indicate that the
+// latest available sources are to be used at compile-time.
+type VersionSpec string
 
 var sha1HashRegexps = "[0-9a-fA-F]"
 var shortSHA1HashRegexp = regexp.MustCompile(sha1HashRegexps + "{7}")
@@ -51,5 +58,6 @@ func (v VersionSpec) Check() error {
 		return errors.New("Missing version")
 	}
 	_, err := semver.ParseRange(vs)
+	// TODO[marapongo/mu#18]: consider supporting the sugared NPM-style semvers, like tilde and caret ranges.
 	return err
 }

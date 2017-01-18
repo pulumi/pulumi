@@ -15,25 +15,8 @@ package ast
 
 import (
 	"github.com/marapongo/mu/pkg/diag"
+	"github.com/marapongo/mu/pkg/symbols"
 )
-
-// Name is an identifier.  Names may be optionally fully qualified, using the delimiter `/`, or simple.  Each element
-// conforms to the regex [A-Za-z_][A-Za-z0-9_]*.  For example, `marapongo/mu/stack`.
-type Name string
-
-// Ref is a dependency reference.  It is "name-like", in that it contains a Name embedded inside of it, but also carries
-// a URL-like structure.  A Ref starts with an optional "protocol" (like https://, git://, etc), followed by an optional
-// "base" part (like hub.mu.com/, github.com/, etc), followed by the "name" part (which is just a Name), followed by
-// an optional "@" and version number (where version may be "latest", a semantic version range, or a Git SHA hash).
-type Ref string
-
-// Version represents a precise version number.  It may be either a Git SHA hash or a semantic version (not a range).
-type Version string
-
-// VersionSpec represents a specification of a version that is bound to a precise number through a separate process.
-// It may take the form of a Version (see above), a semantic version range, or the string "latest", to indicate that the
-// latest available sources are to be used at compile-time.
-type VersionSpec string
 
 // Node is the base of all abstract syntax tree types.
 type Node struct {
@@ -76,24 +59,24 @@ type Cluster struct {
 }
 
 // Dependencies maps dependency refs to the semantic version the consumer depends on.
-type Dependencies map[Ref]*Dependency
+type Dependencies map[symbols.Ref]*Dependency
 
 // Dependency is metadata describing a dependency target (for now, just its target version).
-type Dependency VersionSpec
+type Dependency symbols.VersionSpec
 
 // Stack represents a collection of private and public cloud resources, a method for constructing them, and optional
 // dependencies on other Stacks (by name).
 type Stack struct {
 	Node
 
-	Name        Name    `json:"name,omitempty"`        // a friendly name for this node.
-	Version     Version `json:"version,omitempty"`     // a specific version number.
-	Description string  `json:"description,omitempty"` // an optional friendly description.
-	Author      string  `json:"author,omitempty"`      // an optional author.
-	Website     string  `json:"website,omitempty"`     // an optional website for additional info.
-	License     string  `json:"license,omitempty"`     // an optional license governing legal uses of this package.
+	Name        symbols.Name    `json:"name,omitempty"`        // a friendly name for this node.
+	Version     symbols.Version `json:"version,omitempty"`     // a specific version number.
+	Description string          `json:"description,omitempty"` // an optional friendly description.
+	Author      string          `json:"author,omitempty"`      // an optional author.
+	Website     string          `json:"website,omitempty"`     // an optional website for additional info.
+	License     string          `json:"license,omitempty"`     // an optional license governing use of this package.
 
-	Base                Ref                `json:"base,omitempty"`      // an optional base Stack type.
+	Base                symbols.Ref        `json:"base,omitempty"`      // an optional base Stack type.
 	BoundBase           *Stack             `json:"-"`                   // base, optionally bound during analysis.
 	Abstract            bool               `json:"abstract,omitempty"`  // true if this stack is "abstract".
 	Intrinsic           bool               `json:"intrinsic,omitempty"` // true if this stack is an "intrinsic" type.
@@ -117,12 +100,12 @@ func (stack *Stack) Where() (*diag.Document, *diag.Location) {
 // TODO(joe): eventually this ought to also encompass cross-stack schema references.
 type UninstStack struct {
 	Node
-	Ref Ref            `json:"-"`
+	Ref symbols.Ref    `json:"-"`
 	Doc *diag.Document `json:"-"`
 }
 
 // DependendyRefs is simply a map of dependency reference to the associated uninstantiated Stack for that dependency.
-type DependencyRefs map[Ref]*UninstStack
+type DependencyRefs map[symbols.Ref]*UninstStack
 
 // Propertys maps property names to metadata about those propertys.
 type Properties map[string]*Property
@@ -131,7 +114,7 @@ type Properties map[string]*Property
 type Property struct {
 	Node
 
-	Type        Ref         `json:"type,omitempty"`        // the type of the property; required.
+	Type        symbols.Ref `json:"type,omitempty"`        // the type of the property; required.
 	BoundType   *Type       `json:"-"`                     // if the property is a stack type, it will be bound.
 	Description string      `json:"description,omitempty"` // an optional friendly description of the property.
 	Default     interface{} `json:"default,omitempty"`     // an optional default value if the caller elides one.
@@ -149,7 +132,7 @@ type Schemas struct {
 }
 
 // SchemaMap is a map of schema names to metadata about those schemas.
-type SchemaMap map[Name]*Schema
+type SchemaMap map[symbols.Name]*Schema
 
 // Schema represents a complex schema type that extends Mu's type system and can be used by name.
 // TODO[marapongo/mu#9]: support the full set of JSON schema operators (like allOf, anyOf, etc.); to see the full list,
@@ -159,9 +142,9 @@ type SchemaMap map[Name]*Schema
 type Schema struct {
 	Node
 
-	Base       Ref        `json:"base,omitempty"`       // the base type from which this derives.
-	BoundBase  *Type      `json:"-"`                    // base, optionally bound during analysis.
-	Properties Properties `json:"properties,omitempty"` // all of the custom properties for object types.
+	Base       symbols.Ref `json:"base,omitempty"`       // the base type from which this derives.
+	BoundBase  *Type       `json:"-"`                    // base, optionally bound during analysis.
+	Properties Properties  `json:"properties,omitempty"` // all of the custom properties for object types.
 
 	// constraints for string types:
 	Pattern   *string  `json:"pattern,omitempty"`   // an optional regex pattern for string types.
@@ -175,8 +158,8 @@ type Schema struct {
 	// constraints for strings *and* number types:
 	Enum []interface{} `json:"enum,omitempty"` // an optional enum of legal values.
 
-	Name   Name `json:"-"` // a friendly name; decorated post-parsing, since it is contextual.
-	Public bool `json:"-"` // true if this schema type is publicly exposed; also decorated post-parsing.
+	Name   symbols.Name `json:"-"` // a friendly name; decorated post-parsing, since it is contextual.
+	Public bool         `json:"-"` // true if this schema type is publicly exposed; also decorated post-parsing.
 }
 
 // Services is a list of public and private service references, keyed by name.
@@ -195,22 +178,22 @@ type Services struct {
 }
 
 // ServiceMap is a map of service names to metadata about those services.
-type ServiceMap map[Name]*Service
+type ServiceMap map[symbols.Name]*Service
 
 // UntypedServiceMap is a map of service names to untyped, bags of parsed properties for those services.
-type UntypedServiceMap map[Name]PropertyBag
+type UntypedServiceMap map[symbols.Name]PropertyBag
 
 // Service is a directive for instantiating another Stack, including its name, arguments, etc.
 type Service struct {
 	Node
 
-	Type            Ref                `json:"type,omitempty"` // an explicit type; if missing, the name is used.
+	Type            symbols.Ref        `json:"type,omitempty"` // an explicit type; if missing, the name is used.
 	BoundType       *Stack             `json:"-"`              // services are bound to stacks during semantic analysis.
 	Properties      PropertyBag        `json:"-"`              // all of the custom properties (minus what's above).
 	BoundProperties LiteralPropertyBag `json:"-"`              // the bound properties, expanded and typed correctly.
 
-	Name   Name `json:"-"` // a friendly name; decorated post-parsing, since it is contextual.
-	Public bool `json:"-"` // true if this service is publicly exposed; also decorated post-parsing.
+	Name   symbols.Name `json:"-"` // a friendly name; decorated post-parsing, since it is contextual.
+	Public bool         `json:"-"` // true if this service is publicly exposed; also decorated post-parsing.
 }
 
 // PropertyBag is simply a map of string property names to untyped data values.
@@ -221,10 +204,10 @@ type LiteralPropertyBag map[string]Literal
 
 // ServiceRef is an intra- or inter-stack reference to a specific service.
 type ServiceRef struct {
-	Name     Name     // the name used to resolve the capability.
-	Selector Name     // the "selector" used if the target service exports multiple endpoints.
-	Service  *Service // the service that this capability reference names.
-	Selected *Service // the selected service resolved during binding.
+	Name     symbols.Name // the name used to resolve the capability.
+	Selector symbols.Name // the "selector" used if the target service exports multiple endpoints.
+	Service  *Service     // the service that this capability reference names.
+	Selected *Service     // the selected service resolved during binding.
 }
 
 // Literal represents a strongly typed AST value.

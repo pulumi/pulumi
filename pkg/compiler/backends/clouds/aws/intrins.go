@@ -5,12 +5,13 @@ package aws
 import (
 	"github.com/marapongo/mu/pkg/ast"
 	"github.com/marapongo/mu/pkg/ast/conv"
+	"github.com/marapongo/mu/pkg/symbols"
 	"github.com/marapongo/mu/pkg/util/contract"
 )
 
 const namespace = "aws/x"
 
-const cfIntrinsicName = namespace + ast.NameDelimiter + "cf"
+const cfIntrinsicName = namespace + symbols.NameDelimiter + "cf"
 const cfIntrinsicResource = "resource"
 const cfIntrinsicDependsOn = "dependsOn"
 const cfIntrinsicProperties = "properties"

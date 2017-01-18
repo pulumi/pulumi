@@ -15,6 +15,7 @@ import (
 	"github.com/marapongo/mu/pkg/diag"
 	"github.com/marapongo/mu/pkg/encoding"
 	"github.com/marapongo/mu/pkg/options"
+	"github.com/marapongo/mu/pkg/symbols"
 	"github.com/marapongo/mu/pkg/util/contract"
 )
 
@@ -34,7 +35,7 @@ type W interface {
 	// DetectMufile locates the closest Mufile from the given path, searching "upwards" in the directory hierarchy.
 	DetectMufile() (string, error)
 	// DepCandidates fetches all candidate locations for resolving a dependency name to its installed artifacts.
-	DepCandidates(dep ast.RefParts) []string
+	DepCandidates(dep symbols.RefParts) []string
 }
 
 // New creates a new workspace from the given starting path.
@@ -128,7 +129,7 @@ func (w *workspace) DetectMufile() (string, error) {
 	return DetectMufile(w.path, w.options.Diag)
 }
 
-func (w *workspace) DepCandidates(dep ast.RefParts) []string {
+func (w *workspace) DepCandidates(dep symbols.RefParts) []string {
 	// The search order for dependencies is specified in https://github.com/marapongo/mu/blob/master/docs/deps.md.
 	//
 	// Roughly speaking, these locations are are searched, in order:
@@ -180,21 +181,21 @@ func (w *workspace) DepCandidates(dep ast.RefParts) []string {
 }
 
 // namePath just cleans a name and makes sure it's appropriate to use as a path.
-func namePath(nm ast.Name) string {
+func namePath(nm symbols.Name) string {
 	return stringNamePath(string(nm))
 }
 
 // stringNamePart cleans a string component of a name and makes sure it's appropriate to use as a path.
 func stringNamePath(nm string) string {
-	return strings.Replace(nm, ast.NameDelimiter, string(os.PathSeparator), -1)
+	return strings.Replace(nm, symbols.NameDelimiter, string(os.PathSeparator), -1)
 }
 
 // workspacePath converts a name into the relevant name-part in the workspace to look for that dependency.
-func workspacePath(w *workspace, nm ast.Name) string {
+func workspacePath(w *workspace, nm symbols.Name) string {
 	if ns := w.Settings().Namespace; ns != "" {
 		// If the name starts with the namespace, trim the name part.
 		orig := string(nm)
-		if trim := strings.TrimPrefix(orig, ns+ast.NameDelimiter); trim != orig {
+		if trim := strings.TrimPrefix(orig, ns+symbols.NameDelimiter); trim != orig {
 			return stringNamePath(trim)
 		}
 	}

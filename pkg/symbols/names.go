@@ -1,6 +1,6 @@
 // Copyright 2016 Marapongo, Inc. All rights reserved.
 
-package ast
+package symbols
 
 import (
 	"regexp"
@@ -8,6 +8,10 @@ import (
 
 	"github.com/marapongo/mu/pkg/util/contract"
 )
+
+// Name is an identifier.  Names may be optionally fully qualified, using the delimiter `/`, or simple.  Each element
+// conforms to the regex [A-Za-z_][A-Za-z0-9_]*.  For example, `marapongo/mu/stack`.
+type Name string
 
 // NameDelimiter is what delimits Namespace and Name parts.
 const NameDelimiter = "/"

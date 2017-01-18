@@ -1,6 +1,6 @@
 // Copyright 2016 Marapongo, Inc. All rights reserved.
 
-package ast
+package symbols
 
 import (
 	"testing"

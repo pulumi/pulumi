@@ -1,6 +1,6 @@
 // Copyright 2016 Marapongo, Inc. All rights reserved.
 
-package ast
+package symbols
 
 import (
 	"errors"
@@ -9,6 +9,12 @@ import (
 
 	"github.com/marapongo/mu/pkg/util/contract"
 )
+
+// Ref is a dependency reference.  It is "name-like", in that it contains a Name embedded inside of it, but also carries
+// a URL-like structure.  A Ref starts with an optional "protocol" (like https://, git://, etc), followed by an optional
+// "base" part (like hub.mu.com/, github.com/, etc), followed by the "name" part (which is just a Name), followed by
+// an optional "@" and version number (where version may be "latest", a semantic version range, or a Git SHA hash).
+type Ref string
 
 // RefParts parses the parts of a Ref into a data structure for convenient access.
 func (r Ref) Parse() (RefParts, error) {

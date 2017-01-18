@@ -8,6 +8,7 @@ import (
 	"github.com/marapongo/mu/pkg/ast"
 	"github.com/marapongo/mu/pkg/diag"
 	"github.com/marapongo/mu/pkg/errors"
+	"github.com/marapongo/mu/pkg/symbols"
 	"github.com/marapongo/mu/pkg/util/contract"
 	"github.com/marapongo/mu/pkg/workspace"
 )
@@ -66,7 +67,7 @@ func (c *compiler) bindStack(b Binder, w workspace.W, stack *ast.Stack) {
 }
 
 // resolveDependency loads up the target dependency from the current workspace using the stack resolution rules.
-func (c *compiler) resolveDependency(w workspace.W, stack *ast.Stack, ref ast.Ref) *diag.Document {
+func (c *compiler) resolveDependency(w workspace.W, stack *ast.Stack, ref symbols.Ref) *diag.Document {
 	glog.V(3).Infof("Loading Stack %v dependency %v", stack.Name, ref)
 
 	// First, see if we've already loaded this dependency (anywhere in any Stacks).  If yes, reuse it.

@@ -13,13 +13,13 @@
 package graph
 
 import (
-	"github.com/marapongo/mu/pkg/ast"
+	"github.com/marapongo/mu/pkg/symbols"
 )
 
 // Graph is an instance of a MuGL graph.  Each is associated with a single blueprint MuPackage as its input, along with
 // a set of optional arguments used to evaluate it, along with the output DAG with node types and properties.
 type Graph interface {
-	Pkg() ast.Name       // the blueprint package that this graph corresponds to.
+	Pkg() symbols.Name   // the blueprint package that this graph corresponds to.
 	Args() []interface{} // the parsed arguments used to instantiate this blueprint.
 	Root() Node          // the root node in the graph.
 }

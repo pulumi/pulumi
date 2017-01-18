@@ -8,13 +8,13 @@ import (
 
 	"github.com/golang/glog"
 
-	"github.com/marapongo/mu/pkg/ast"
 	"github.com/marapongo/mu/pkg/compiler/core"
 	"github.com/marapongo/mu/pkg/diag"
 	"github.com/marapongo/mu/pkg/errors"
 	"github.com/marapongo/mu/pkg/graph"
 	"github.com/marapongo/mu/pkg/options"
 	"github.com/marapongo/mu/pkg/pack"
+	"github.com/marapongo/mu/pkg/symbols"
 	"github.com/marapongo/mu/pkg/util/contract"
 	"github.com/marapongo/mu/pkg/workspace"
 )
@@ -33,7 +33,7 @@ type Compiler interface {
 // compiler is the canonical implementation of the Mu compiler.
 type compiler struct {
 	w    workspace.W
-	deps map[ast.Ref]*diag.Document // a cache of mapping names to loaded dependencies.
+	deps map[symbols.Ref]*diag.Document // a cache of mapping names to loaded dependencies.
 }
 
 // New creates a new instance of the Mu compiler with the given workspace and options.
@@ -41,7 +41,7 @@ func New(w workspace.W) Compiler {
 	contract.Requiref(w != nil, "w", "!= nil")
 	return &compiler{
 		w:    w,
-		deps: make(map[ast.Ref]*diag.Document),
+		deps: make(map[symbols.Ref]*diag.Document),
 	}
 }
 

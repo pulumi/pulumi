@@ -4,6 +4,8 @@ package ast
 
 import (
 	"sort"
+
+	"github.com/marapongo/mu/pkg/symbols"
 )
 
 func StableClusters(cs Clusters) []string {
@@ -15,7 +17,7 @@ func StableClusters(cs Clusters) []string {
 	return sorted
 }
 
-func StableDependencies(ds Dependencies) []Ref {
+func StableDependencies(ds Dependencies) []symbols.Ref {
 	sorted := make(Refs, 0, len(ds))
 	for d := range ds {
 		sorted = append(sorted, d)
@@ -24,7 +26,7 @@ func StableDependencies(ds Dependencies) []Ref {
 	return sorted
 }
 
-func StableDependencyRefs(refs DependencyRefs) []Ref {
+func StableDependencyRefs(refs DependencyRefs) []symbols.Ref {
 	sorted := make(Refs, 0, len(refs))
 	for ref := range refs {
 		sorted = append(sorted, ref)
@@ -60,7 +62,7 @@ func StablePropertyBag(ps PropertyBag) []string {
 	return sorted
 }
 
-func StableSchemas(ss SchemaMap) []Name {
+func StableSchemas(ss SchemaMap) []symbols.Name {
 	sorted := make(Names, 0, len(ss))
 	for s := range ss {
 		sorted = append(sorted, s)
@@ -69,7 +71,7 @@ func StableSchemas(ss SchemaMap) []Name {
 	return sorted
 }
 
-func StableServices(ss ServiceMap) []Name {
+func StableServices(ss ServiceMap) []symbols.Name {
 	sorted := make(Names, 0, len(ss))
 	for s := range ss {
 		sorted = append(sorted, s)
@@ -87,7 +89,7 @@ func StableStringStringMap(ssm map[string]string) []string {
 	return sorted
 }
 
-func StableUntypedServices(ss UntypedServiceMap) []Name {
+func StableUntypedServices(ss UntypedServiceMap) []symbols.Name {
 	sorted := make(Names, 0, len(ss))
 	for s := range ss {
 		sorted = append(sorted, s)
@@ -96,7 +98,7 @@ func StableUntypedServices(ss UntypedServiceMap) []Name {
 	return sorted
 }
 
-type Names []Name
+type Names []symbols.Name
 
 func (s Names) Len() int {
 	return len(s)
@@ -110,7 +112,7 @@ func (s Names) Less(i, j int) bool {
 	return s[i] < s[j]
 }
 
-type Refs []Ref
+type Refs []symbols.Ref
 
 func (s Refs) Len() int {
 	return len(s)

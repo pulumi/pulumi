@@ -5,6 +5,7 @@ package ast
 import (
 	"fmt"
 
+	"github.com/marapongo/mu/pkg/symbols"
 	"github.com/marapongo/mu/pkg/util/contract"
 )
 
@@ -13,7 +14,7 @@ type Type struct {
 	// one, and only one, of these will be non-nil:
 	Primitive   *PrimitiveType // a simple type (like `string`, `number`, etc).
 	Decors      *TypeDecors    // a decorated type; this is either an array or map.
-	Unref       *Ref           // an unresolved name.
+	Unref       *symbols.Ref   // an unresolved name.
 	UninstStack *UninstStack   // a resolved, but uninstantiated, stack reference.
 	Stack       *Stack         // a specific stack type.
 	Schema      *Schema        // a specific schema type.
@@ -63,18 +64,18 @@ func NewUninstStackType(uninst *UninstStack) *Type {
 	return &Type{UninstStack: uninst}
 }
 
-func NewUnresolvedRefType(ref *Ref) *Type {
+func NewUnresolvedRefType(ref *symbols.Ref) *Type {
 	return &Type{Unref: ref}
 }
 
 // Name converts the given type into its corresponding friendly name.
-func (ty *Type) Name() Ref {
+func (ty *Type) Name() symbols.Ref {
 	if ty.Primitive != nil {
-		return Ref(*ty.Primitive)
+		return symbols.Ref(*ty.Primitive)
 	} else if ty.Stack != nil {
-		return Ref(ty.Stack.Name)
+		return symbols.Ref(ty.Stack.Name)
 	} else if ty.Schema != nil {
-		return Ref(ty.Schema.Name)
+		return symbols.Ref(ty.Schema.Name)
 	} else if ty.Unref != nil {
 		return *ty.Unref
 	} else if ty.UninstStack != nil {
@@ -82,15 +83,15 @@ func (ty *Type) Name() Ref {
 	} else if ty.Decors != nil {
 		// TODO: consider caching these so we don't produce lots of strings.
 		if ty.Decors.ElemType != nil {
-			return Ref(fmt.Sprintf(string(TypeDecorsArray), ty.Decors.ElemType.Name()))
+			return symbols.Ref(fmt.Sprintf(string(TypeDecorsArray), ty.Decors.ElemType.Name()))
 		} else {
 			contract.Assert(ty.Decors.KeyType != nil)
 			contract.Assert(ty.Decors.ValueType != nil)
-			return Ref(fmt.Sprintf(string(TypeDecorsMap), ty.Decors.KeyType.Name(), ty.Decors.ValueType.Name()))
+			return symbols.Ref(fmt.Sprintf(string(TypeDecorsMap), ty.Decors.KeyType.Name(), ty.Decors.ValueType.Name()))
 		}
 	} else {
 		contract.Failf("Expected this type to have one of primitive, stack, schema, unref, resref, or decors")
-		return Ref("")
+		return symbols.Ref("")
 	}
 }
 
@@ -148,7 +149,7 @@ const (
 )
 
 // PrimitiveType is the name of a primitive type.
-type PrimitiveType Name
+type PrimitiveType symbols.Name
 
 // A set of known primitive types.
 var (

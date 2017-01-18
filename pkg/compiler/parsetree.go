@@ -11,6 +11,7 @@ import (
 	"github.com/marapongo/mu/pkg/compiler/core"
 	"github.com/marapongo/mu/pkg/diag"
 	"github.com/marapongo/mu/pkg/errors"
+	"github.com/marapongo/mu/pkg/symbols"
 )
 
 // PTAnalyzer knows how to walk and validate parse trees.
@@ -74,7 +75,7 @@ func (a *ptAnalyzer) VisitCluster(name string, cluster *ast.Cluster) {
 	cluster.Name = name
 }
 
-func (a *ptAnalyzer) VisitDependency(parent *ast.Workspace, ref ast.Ref, dep *ast.Dependency) {
+func (a *ptAnalyzer) VisitDependency(parent *ast.Workspace, ref symbols.Ref, dep *ast.Dependency) {
 }
 
 func (a *ptAnalyzer) VisitStack(stack *ast.Stack) {
@@ -83,7 +84,7 @@ func (a *ptAnalyzer) VisitStack(stack *ast.Stack) {
 func (a *ptAnalyzer) VisitSchemas(parent *ast.Stack, schemas *ast.Schemas) {
 }
 
-func (a *ptAnalyzer) VisitSchema(pstack *ast.Stack, parent *ast.Schemas, name ast.Name, public bool,
+func (a *ptAnalyzer) VisitSchema(pstack *ast.Stack, parent *ast.Schemas, name symbols.Name, public bool,
 	schema *ast.Schema) {
 	// Decorate the AST with contextual information.
 	schema.Name = name
@@ -117,15 +118,15 @@ func (a *ptAnalyzer) VisitServices(parent *ast.Stack, svcs *ast.Services) {
 	}
 }
 
-func (a *ptAnalyzer) untypedServiceToTyped(parent *ast.Stack, name ast.Name, public bool,
+func (a *ptAnalyzer) untypedServiceToTyped(parent *ast.Stack, name symbols.Name, public bool,
 	bag map[string]interface{}) *ast.Service {
-	var typ ast.Name
+	var typ symbols.Name
 	t, has := bag["type"]
 	if has {
 		// If the bag contains a type, ensure that it is a string.
 		ts, ok := t.(string)
 		if ok {
-			typ = ast.Name(ts)
+			typ = symbols.Name(ts)
 		} else {
 			a.Diag().Errorf(errors.ErrorIllegalMufileSyntax.At(parent), "service type must be a string")
 		}
@@ -136,19 +137,19 @@ func (a *ptAnalyzer) untypedServiceToTyped(parent *ast.Stack, name ast.Name, pub
 
 	return &ast.Service{
 		Name:       name,
-		Type:       ast.Ref(typ),
+		Type:       symbols.Ref(typ),
 		Public:     public,
 		Properties: bag,
 	}
 }
 
-func (a *ptAnalyzer) VisitService(pstack *ast.Stack, parent *ast.Services, name ast.Name, public bool,
+func (a *ptAnalyzer) VisitService(pstack *ast.Stack, parent *ast.Services, name symbols.Name, public bool,
 	svc *ast.Service) {
 }
 
 // parseType produces an ast.Type.  This will not have been bound yet, so for example, we won't know whether
 // an arbitrary non-primitive reference name references a stack or a schema, however at least this is a start.
-func (a *ptAnalyzer) parseType(ref ast.Ref) *ast.Type {
+func (a *ptAnalyzer) parseType(ref symbols.Ref) *ast.Type {
 	refs := string(ref)
 
 	mix := strings.Index(refs, ast.TypeDecorsMapPrefix)
@@ -156,8 +157,8 @@ func (a *ptAnalyzer) parseType(ref ast.Ref) *ast.Type {
 		// If we have a map, find the separator, and then parse the key and value parts.
 		rest := refs[mix+len(ast.TypeDecorsMapPrefix):]
 		if sep := strings.Index(rest, ast.TypeDecorsMapSeparator); sep != -1 {
-			keyn := ast.Ref(rest[:sep])
-			valn := ast.Ref(rest[sep+len(ast.TypeDecorsMapSeparator):])
+			keyn := symbols.Ref(rest[:sep])
+			valn := symbols.Ref(rest[sep+len(ast.TypeDecorsMapSeparator):])
 			if keyn != "" && valn != "" {
 				keyt := a.parseType(keyn)
 				valt := a.parseType(valn)
@@ -173,7 +174,7 @@ func (a *ptAnalyzer) parseType(ref ast.Ref) *ast.Type {
 			// If we have an array, peel off the front and keep going.
 			rest := refs[:aix]
 			if rest != "" {
-				if elem := a.parseType(ast.Ref(rest)); elem != nil {
+				if elem := a.parseType(symbols.Ref(rest)); elem != nil {
 					return ast.NewArrayType(elem)
 				}
 			}

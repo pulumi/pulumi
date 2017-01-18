@@ -16,6 +16,7 @@ import (
 	"github.com/marapongo/mu/pkg/compiler/core"
 	"github.com/marapongo/mu/pkg/diag"
 	"github.com/marapongo/mu/pkg/errors"
+	"github.com/marapongo/mu/pkg/symbols"
 	"github.com/marapongo/mu/pkg/util/contract"
 )
 
@@ -25,7 +26,7 @@ type Binder interface {
 
 	// PrepareStack prepares the AST for binding.  It returns a list of all unresolved dependency references.  These
 	// must be bound and supplied to the BindStack function as the deps argument.
-	PrepareStack(stack *ast.Stack) []ast.Ref
+	PrepareStack(stack *ast.Stack) []symbols.Ref
 	// BindStack takes an AST, and its set of dependencies, and binds all names inside, mutating it in place.  It
 	// returns a full list of all dependency Stacks that this Stack depends upon (which must then be bound).
 	BindStack(stack *ast.Stack, deprefs ast.DependencyRefs) []*ast.Stack
@@ -49,7 +50,7 @@ func (b *binder) Diag() diag.Sink {
 	return b.c.Diag()
 }
 
-func (b *binder) PrepareStack(stack *ast.Stack) []ast.Ref {
+func (b *binder) PrepareStack(stack *ast.Stack) []symbols.Ref {
 	glog.Infof("Preparing Mu Stack: %v", stack.Name)
 	if glog.V(2) {
 		defer glog.V(2).Infof("Preparing Mu Stack %v completed w/ %v warnings and %v errors",
@@ -101,31 +102,31 @@ func (b *binder) ValidateStack(stack *ast.Stack) {
 }
 
 // LookupService binds a name to a Service type.
-func (b *binder) LookupService(nm ast.Name) (*ast.Service, bool) {
+func (b *binder) LookupService(nm symbols.Name) (*ast.Service, bool) {
 	contract.Assertf(b.scope != nil, "Unexpected empty binding scope during LookupService")
 	return b.scope.LookupService(nm)
 }
 
 // LookupStack binds a name to a Stack type.
-func (b *binder) LookupStack(nm ast.Name) (*ast.Stack, bool) {
+func (b *binder) LookupStack(nm symbols.Name) (*ast.Stack, bool) {
 	contract.Assertf(b.scope != nil, "Unexpected empty binding scope during LookupStack")
 	return b.scope.LookupStack(nm)
 }
 
 // LookupUninstStack binds a name to a UninstStack type.
-func (b *binder) LookupUninstStack(nm ast.Name) (*ast.UninstStack, bool) {
+func (b *binder) LookupUninstStack(nm symbols.Name) (*ast.UninstStack, bool) {
 	contract.Assertf(b.scope != nil, "Unexpected empty binding scope during LookupUninstStack")
 	return b.scope.LookupUninstStack(nm)
 }
 
 // LookupSchema binds a name to a Schema type.
-func (b *binder) LookupSchema(nm ast.Name) (*ast.Schema, bool) {
+func (b *binder) LookupSchema(nm symbols.Name) (*ast.Schema, bool) {
 	contract.Assertf(b.scope != nil, "Unexpected empty binding scope during LookupSchema")
 	return b.scope.LookupSchema(nm)
 }
 
 // LookupSymbol binds a name to any kind of Symbol.
-func (b *binder) LookupSymbol(nm ast.Name) (*Symbol, bool) {
+func (b *binder) LookupSymbol(nm symbols.Name) (*Symbol, bool) {
 	contract.Assertf(b.scope != nil, "Unexpected empty binding scope during LookupSymbol")
 	return b.scope.LookupSymbol(nm)
 }
@@ -138,7 +139,7 @@ func (b *binder) RegisterSymbol(sym *Symbol) bool {
 
 // PushScope creates a new scope with an empty symbol table parented to the existing one.
 func (b *binder) PushScope() {
-	b.scope = &scope{parent: b.scope, symtbl: make(map[ast.Name]*Symbol)}
+	b.scope = &scope{parent: b.scope, symtbl: make(map[symbols.Name]*Symbol)}
 }
 
 // PopScope replaces the current scope with its parent.
@@ -150,11 +151,11 @@ func (b *binder) PopScope() {
 // scope enables lookups and symbols to obey traditional language scoping rules.
 type scope struct {
 	parent *scope
-	symtbl map[ast.Name]*Symbol
+	symtbl map[symbols.Name]*Symbol
 }
 
 // LookupService binds a name to a Service type.
-func (s *scope) LookupService(nm ast.Name) (*ast.Service, bool) {
+func (s *scope) LookupService(nm symbols.Name) (*ast.Service, bool) {
 	sym, exists := s.LookupSymbol(nm)
 	if exists && sym.Kind == SymKindService {
 		return sym.Real.(*ast.Service), true
@@ -164,7 +165,7 @@ func (s *scope) LookupService(nm ast.Name) (*ast.Service, bool) {
 }
 
 // LookupStack binds a name to a Stack type.
-func (s *scope) LookupStack(nm ast.Name) (*ast.Stack, bool) {
+func (s *scope) LookupStack(nm symbols.Name) (*ast.Stack, bool) {
 	sym, exists := s.LookupSymbol(nm)
 	if exists && sym.Kind == SymKindStack {
 		return sym.Real.(*ast.Stack), true
@@ -174,7 +175,7 @@ func (s *scope) LookupStack(nm ast.Name) (*ast.Stack, bool) {
 }
 
 // LookupUninstStack binds a name to a UninstStack type.
-func (s *scope) LookupUninstStack(nm ast.Name) (*ast.UninstStack, bool) {
+func (s *scope) LookupUninstStack(nm symbols.Name) (*ast.UninstStack, bool) {
 	sym, exists := s.LookupSymbol(nm)
 	if exists && sym.Kind == SymKindUninstStack {
 		return sym.Real.(*ast.UninstStack), true
@@ -184,7 +185,7 @@ func (s *scope) LookupUninstStack(nm ast.Name) (*ast.UninstStack, bool) {
 }
 
 // LookupSchema binds a name to a Schema type.
-func (s *scope) LookupSchema(nm ast.Name) (*ast.Schema, bool) {
+func (s *scope) LookupSchema(nm symbols.Name) (*ast.Schema, bool) {
 	sym, exists := s.LookupSymbol(nm)
 	if exists && sym.Kind == SymKindSchema {
 		return sym.Real.(*ast.Schema), true
@@ -194,7 +195,7 @@ func (s *scope) LookupSchema(nm ast.Name) (*ast.Schema, bool) {
 }
 
 // LookupSymbol binds a name to any kind of Symbol.
-func (s *scope) LookupSymbol(nm ast.Name) (*Symbol, bool) {
+func (s *scope) LookupSymbol(nm symbols.Name) (*Symbol, bool) {
 	for s != nil {
 		if sym, exists := s.symtbl[nm]; exists {
 			return sym, true
@@ -219,8 +220,8 @@ func (s *scope) RegisterSymbol(sym *Symbol) bool {
 type binderPreparePhase struct {
 	b     *binder
 	top   *ast.Stack
-	deps  []ast.Ref
-	depsm map[ast.Ref]bool
+	deps  []symbols.Ref
+	depsm map[symbols.Ref]bool
 }
 
 var _ core.Visitor = (*binderPreparePhase)(nil) // compile-time assertion that the binder implements core.Visitor.
@@ -229,8 +230,8 @@ func newBinderPreparePhase(b *binder, top *ast.Stack) *binderPreparePhase {
 	return &binderPreparePhase{
 		b:     b,
 		top:   top,
-		deps:  make([]ast.Ref, 0),
-		depsm: make(map[ast.Ref]bool),
+		deps:  make([]symbols.Ref, 0),
+		depsm: make(map[symbols.Ref]bool),
 	}
 }
 
@@ -244,7 +245,7 @@ func (p *binderPreparePhase) VisitWorkspace(workspace *ast.Workspace) {
 func (p *binderPreparePhase) VisitCluster(name string, cluster *ast.Cluster) {
 }
 
-func (p *binderPreparePhase) VisitDependency(parent *ast.Workspace, ref ast.Ref, dep *ast.Dependency) {
+func (p *binderPreparePhase) VisitDependency(parent *ast.Workspace, ref symbols.Ref, dep *ast.Dependency) {
 	// Workspace dependencies must use legal version specs; validate that this parses now so that we can use it
 	// later on without needing to worry about additional validation.
 	_, err := ref.Parse()
@@ -277,7 +278,7 @@ func (p *binderPreparePhase) VisitStack(stack *ast.Stack) {
 func (p *binderPreparePhase) VisitSchemas(parent *ast.Stack, schemas *ast.Schemas) {
 }
 
-func (p *binderPreparePhase) VisitSchema(pstack *ast.Stack, parent *ast.Schemas, name ast.Name,
+func (p *binderPreparePhase) VisitSchema(pstack *ast.Stack, parent *ast.Schemas, name symbols.Name,
 	public bool, schema *ast.Schema) {
 
 	// If the schema has an unresolved base type, add it as a bound dependency.
@@ -302,7 +303,7 @@ func (p *binderPreparePhase) VisitProperty(parent *ast.Stack, schema *ast.Schema
 func (p *binderPreparePhase) VisitServices(parent *ast.Stack, svcs *ast.Services) {
 }
 
-func (p *binderPreparePhase) VisitService(pstack *ast.Stack, parent *ast.Services, name ast.Name,
+func (p *binderPreparePhase) VisitService(pstack *ast.Stack, parent *ast.Services, name symbols.Name,
 	public bool, svc *ast.Service) {
 	// Each service has a type.  There are two forms of specifying a type, and this phase will normalize this to a
 	// single canonical form to simplify subsequent phases.  First, there is a shorthand form:
@@ -322,7 +323,7 @@ func (p *binderPreparePhase) VisitService(pstack *ast.Stack, parent *ast.Service
 	// In this example, "acmecorp/db" is still the type, however the name is given the nicer name of "customers."
 	simplify := false
 	if svc.Type == "" {
-		svc.Type = ast.Ref(svc.Name)
+		svc.Type = symbols.Ref(svc.Name)
 		simplify = true
 	}
 
@@ -345,7 +346,7 @@ func (p *binderPreparePhase) VisitService(pstack *ast.Stack, parent *ast.Service
 }
 
 // registerDependency adds a dependency that needs to be resolved/bound before phase 2 occurs.
-func (p *binderPreparePhase) registerDependency(stack *ast.Stack, ref ast.Ref) (ast.RefParts, bool) {
+func (p *binderPreparePhase) registerDependency(stack *ast.Stack, ref symbols.Ref) (symbols.RefParts, bool) {
 	ty, err := ref.Parse()
 	if err == nil {
 		// First see if this resolves to a stack.  If it does, it's already in scope; nothing more to do.
@@ -404,7 +405,7 @@ func (p *binderBindPhase) VisitWorkspace(workspace *ast.Workspace) {
 func (p *binderBindPhase) VisitCluster(name string, cluster *ast.Cluster) {
 }
 
-func (p *binderBindPhase) VisitDependency(parent *ast.Workspace, ref ast.Ref, dep *ast.Dependency) {
+func (p *binderBindPhase) VisitDependency(parent *ast.Workspace, ref symbols.Ref, dep *ast.Dependency) {
 }
 
 func (p *binderBindPhase) VisitStack(stack *ast.Stack) {
@@ -423,7 +424,7 @@ func (p *binderBindPhase) VisitStack(stack *ast.Stack) {
 func (p *binderBindPhase) VisitSchemas(parent *ast.Stack, schemas *ast.Schemas) {
 }
 
-func (p *binderBindPhase) VisitSchema(pstack *ast.Stack, parent *ast.Schemas, name ast.Name,
+func (p *binderBindPhase) VisitSchema(pstack *ast.Stack, parent *ast.Schemas, name symbols.Name,
 	public bool, schema *ast.Schema) {
 
 	// Ensure the base schema is available to us.
@@ -450,7 +451,7 @@ func (p *binderBindPhase) VisitProperty(parent *ast.Stack, schema *ast.Schema, n
 func (p *binderBindPhase) VisitServices(parent *ast.Stack, svcs *ast.Services) {
 }
 
-func (p *binderBindPhase) VisitService(pstack *ast.Stack, parent *ast.Services, name ast.Name, public bool,
+func (p *binderBindPhase) VisitService(pstack *ast.Stack, parent *ast.Services, name symbols.Name, public bool,
 	svc *ast.Service) {
 	// The service's type has been prepared in phase 1, and must now be bound to a symbol.  All shorthand type
 	// expressions, intra stack references, cycles, and so forth, will have been taken care of by this earlier phase.
@@ -465,7 +466,7 @@ func (p *binderBindPhase) VisitService(pstack *ast.Stack, parent *ast.Services, 
 }
 
 // ensureStack binds a ref to a stack symbol, possibly instantiating it if needed.
-func (p *binderBindPhase) ensureStack(ref ast.Ref, props ast.PropertyBag) *ast.Stack {
+func (p *binderBindPhase) ensureStack(ref symbols.Ref, props ast.PropertyBag) *ast.Stack {
 	ty := p.ensureType(ref)
 
 	// There are two possibilities.  The first is that a type resolves to an *ast.Stack.  That's simple, we just fetch
@@ -491,7 +492,7 @@ func (p *binderBindPhase) ensureStack(ref ast.Ref, props ast.PropertyBag) *ast.S
 }
 
 // ensureStackType looks up a ref, either as a stack, document, or schema symbol, and returns it as-is.
-func (p *binderBindPhase) ensureType(ref ast.Ref) *ast.Type {
+func (p *binderBindPhase) ensureType(ref symbols.Ref) *ast.Type {
 	nm := refToName(ref)
 	stack, exists := p.b.LookupStack(nm)
 	if exists {
@@ -529,7 +530,7 @@ func (p *binderValidatePhase) VisitWorkspace(workspace *ast.Workspace) {
 func (p *binderValidatePhase) VisitCluster(name string, cluster *ast.Cluster) {
 }
 
-func (p *binderValidatePhase) VisitDependency(parent *ast.Workspace, ref ast.Ref, dep *ast.Dependency) {
+func (p *binderValidatePhase) VisitDependency(parent *ast.Workspace, ref symbols.Ref, dep *ast.Dependency) {
 }
 
 func (p *binderValidatePhase) VisitStack(stack *ast.Stack) {
@@ -546,7 +547,7 @@ func (p *binderValidatePhase) VisitStack(stack *ast.Stack) {
 func (p *binderValidatePhase) VisitSchemas(parent *ast.Stack, schemas *ast.Schemas) {
 }
 
-func (p *binderValidatePhase) VisitSchema(pstack *ast.Stack, parent *ast.Schemas, name ast.Name,
+func (p *binderValidatePhase) VisitSchema(pstack *ast.Stack, parent *ast.Schemas, name symbols.Name,
 	public bool, schema *ast.Schema) {
 }
 
@@ -556,7 +557,7 @@ func (p *binderValidatePhase) VisitProperty(parent *ast.Stack, schema *ast.Schem
 func (p *binderValidatePhase) VisitServices(parent *ast.Stack, svcs *ast.Services) {
 }
 
-func (p *binderValidatePhase) VisitService(pstack *ast.Stack, parent *ast.Services, name ast.Name, public bool,
+func (p *binderValidatePhase) VisitService(pstack *ast.Stack, parent *ast.Services, name symbols.Name, public bool,
 	svc *ast.Service) {
 	contract.Assert(svc.BoundType != nil)
 	if svc.BoundType.PropertyValues == nil {
@@ -860,16 +861,16 @@ func (p *binderValidatePhase) bindServiceRef(node *ast.Node, val string, ty *ast
 	}
 
 	// Validate and convert the name and selector to names.
-	var nm ast.Name
-	if ast.IsName(val) {
-		nm = ast.AsName(val)
+	var nm symbols.Name
+	if symbols.IsName(val) {
+		nm = symbols.AsName(val)
 	} else {
 		p.Diag().Errorf(errors.ErrorNotAName.At(node), val)
 	}
-	var sel ast.Name
+	var sel symbols.Name
 	if sels != "" {
-		if ast.IsName(sels) {
-			sel = ast.AsName(sels)
+		if symbols.IsName(sels) {
+			sel = symbols.AsName(sels)
 		} else {
 			p.Diag().Errorf(errors.ErrorNotAName.At(node), sels)
 		}
@@ -882,7 +883,7 @@ func (p *binderValidatePhase) bindServiceRef(node *ast.Node, val string, ty *ast
 
 	// Bind the name to a service.
 	var ref *ast.ServiceRef
-	if svc, ok := p.b.LookupService(ast.Name(nm)); ok {
+	if svc, ok := p.b.LookupService(symbols.Name(nm)); ok {
 		svct := svc.BoundType
 		contract.Assertf(svct != nil, "Expected service '%v' to have a type", svc.Name)
 
@@ -964,6 +965,6 @@ func subclassOf(typ *ast.Stack, of *ast.Type) bool {
 }
 
 // refToName converts a reference to its simple symbolic name.
-func refToName(ref ast.Ref) ast.Name {
+func refToName(ref symbols.Ref) symbols.Name {
 	return ref.MustParse().Name
 }
