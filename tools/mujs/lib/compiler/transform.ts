@@ -405,6 +405,7 @@ export class Transformer {
 
         // If none of those matched, simply default to the weakly typed "any" type.
         // TODO[marapongo/mu#36]: detect more cases: unions, literals, complex types, generics, more.
+        log.out(3).info(`Unimplemented ts.Type node: ${ts.TypeFlags[ty.flags]}`);
         return symbols.anyType;
     }
 
