@@ -20,9 +20,9 @@ func New(arch Arch, d diag.Sink) core.Backend {
 		// TODO(joe): come up with a way to get options from CLI/workspace/etc. to here.
 		cloud = aws.New(d, aws.Options{})
 	case clouds.None:
-		contract.FailM("Expected a non-None cloud architecture")
+		contract.Failf("Expected a non-None cloud architecture")
 	default:
-		contract.FailMF("Cloud architecture '%v' not yet supported", clouds.Names[arch.Cloud])
+		contract.Failf("Cloud architecture '%v' not yet supported", clouds.Names[arch.Cloud])
 	}
 	contract.Assert(cloud != nil)
 	contract.Assert(cloud.Arch() == arch.Cloud)
@@ -38,7 +38,7 @@ func New(arch Arch, d diag.Sink) core.Backend {
 	case schedulers.AWSECS:
 		scheduler = awsecs.New(d, cloud)
 	default:
-		contract.FailMF("Scheduler architecture '%v' not yet supported", schedulers.Names[arch.Scheduler])
+		contract.Failf("Scheduler architecture '%v' not yet supported", schedulers.Names[arch.Scheduler])
 	}
 	if scheduler != nil {
 		contract.Assert(scheduler.Arch() == arch.Scheduler)

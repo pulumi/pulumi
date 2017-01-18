@@ -11,10 +11,9 @@ import (
 	"github.com/golang/glog"
 	"github.com/spf13/cobra"
 
+	"github.com/marapongo/mu/pkg/cmdutil"
 	"github.com/marapongo/mu/pkg/compiler"
-	"github.com/marapongo/mu/pkg/compiler/backends"
-	"github.com/marapongo/mu/pkg/compiler/backends/clouds"
-	"github.com/marapongo/mu/pkg/compiler/backends/schedulers"
+	"github.com/marapongo/mu/pkg/options"
 )
 
 // defaultIn is where the Mu compiler looks for inputs by default.
@@ -27,7 +26,6 @@ func newBuildCmd() *cobra.Command {
 	var outp string
 	var cluster string
 	var targetArch string
-	var skipCodegen bool
 	var cmd = &cobra.Command{
 		Use:   "build [source] -- [args]",
 		Short: "Compile a Mu Stack",
@@ -52,19 +50,15 @@ func newBuildCmd() *cobra.Command {
 				glog.Fatal(err)
 			}
 
-			opts := compiler.DefaultOpts(abs)
-
-			if skipCodegen {
-				opts.SkipCodegen = true
-			}
+			opts := options.Default(abs)
 
 			// Set the cluster and architecture if specified.
 			opts.Cluster = cluster
-			setCloudArchOptions(targetArch, opts)
+			cmdutil.SetCloudArchOptions(targetArch, opts)
 
 			// See if there are any arguments and, if so, accumulate them.
 			if len(sargs) > 0 {
-				opts.Args = make(map[string]string)
+				opts.Args = make(map[string]interface{})
 				// TODO[marapongo/mu#7]: This is a very rudimentary parser.  We can and should do better.
 				for i := 0; i < len(sargs); i++ {
 					sarg := sargs[i]
@@ -94,8 +88,11 @@ func newBuildCmd() *cobra.Command {
 			}
 
 			// Now new up a compiler and actually perform the build.
-			mup := compiler.NewCompiler(opts)
-			mup.Build(abs, outp)
+			mup, err := compiler.NewDefault(abs, opts)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "fatal: %v", err)
+			}
+			mup.Compile(nil)
 		},
 	}
 
@@ -108,45 +105,6 @@ func newBuildCmd() *cobra.Command {
 	cmd.PersistentFlags().StringVarP(
 		&targetArch, "target", "t", "",
 		"Generate output for the target cloud architecture (format: \"cloud[:scheduler]\")")
-	cmd.PersistentFlags().BoolVar(
-		&skipCodegen, "skip-codegen", false,
-		"Skip code-generation phases of the compiler")
 
 	return cmd
-}
-
-func setCloudArchOptions(arch string, opts *compiler.Options) {
-	// If an architecture was specified, parse the pieces and set the options.  This isn't required because stacks
-	// and workspaces can have defaults.  This simply overrides or provides one where none exists.
-	if arch != "" {
-		// The format is "cloud[:scheduler]"; parse out the pieces.
-		var cloud string
-		var scheduler string
-		if delim := strings.IndexRune(arch, ':'); delim != -1 {
-			cloud = arch[:delim]
-			scheduler = arch[delim+1:]
-		} else {
-			cloud = arch
-		}
-
-		cloudArch, ok := clouds.Values[cloud]
-		if !ok {
-			fmt.Fprintf(os.Stderr, "Unrecognized cloud arch '%v'\n", cloud)
-			os.Exit(-1)
-		}
-
-		var schedulerArch schedulers.Arch
-		if scheduler != "" {
-			schedulerArch, ok = schedulers.Values[scheduler]
-			if !ok {
-				fmt.Fprintf(os.Stderr, "Unrecognized cloud scheduler arch '%v'\n", scheduler)
-				os.Exit(-1)
-			}
-		}
-
-		opts.Arch = backends.Arch{
-			Cloud:     cloudArch,
-			Scheduler: schedulerArch,
-		}
-	}
 }

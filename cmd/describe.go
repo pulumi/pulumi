@@ -9,6 +9,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/marapongo/mu/pkg/cmdutil"
 	"github.com/marapongo/mu/pkg/pack"
 	"github.com/marapongo/mu/pkg/pack/ast"
 	"github.com/marapongo/mu/pkg/symbols"
@@ -34,7 +35,7 @@ func newDescribeCmd() *cobra.Command {
 
 			// Enumerate the list of packages, deserialize them, and print information.
 			for _, arg := range args {
-				pkg := readPackageFromArg(arg)
+				pkg := cmdutil.ReadPackageFromArg(arg)
 				if pkg == nil {
 					break
 				}
@@ -212,7 +213,7 @@ func printModuleMember(name symbols.Token, member ast.ModuleMember, exportOnly b
 		case ast.ModuleMethodKind:
 			printModuleMethod(name, member.(*ast.ModuleMethod), indent)
 		default:
-			contract.FailMF("Unexpected ModuleMember kind: %v\n", member.GetKind())
+			contract.Failf("Unexpected ModuleMember kind: %v\n", member.GetKind())
 		}
 	}
 }
@@ -277,7 +278,7 @@ func printClassMember(name symbols.Token, member ast.ClassMember, exportOnly boo
 		case ast.ClassMethodKind:
 			printClassMethod(name, member.(*ast.ClassMethod), indent)
 		default:
-			contract.FailMF("Unexpected ClassMember kind: %v\n", member.GetKind())
+			contract.Failf("Unexpected ClassMember kind: %v\n", member.GetKind())
 		}
 	}
 }

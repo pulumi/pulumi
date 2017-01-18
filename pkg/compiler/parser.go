@@ -47,7 +47,7 @@ func (p *parser) ParseWorkspace(doc *diag.Document) *ast.Workspace {
 	// We support many file formats.  Detect the file extension and deserialize the contents.
 	var w ast.Workspace
 	marshaler, has := encoding.Marshalers[doc.Ext()]
-	contract.AssertMF(has, "No marshaler registered for this workspace extension: %v", doc.Ext())
+	contract.Assertf(has, "No marshaler registered for this workspace extension: %v", doc.Ext())
 	if err := marshaler.Unmarshal(doc.Body, &w); err != nil {
 		p.Diag().Errorf(errors.ErrorIllegalWorkspaceSyntax.At(doc), err)
 		// TODO[marapongo/mu#14]: issue an error per issue found in the file with line/col numbers.
@@ -78,27 +78,10 @@ func (p *parser) ParseStack(doc *diag.Document, props ast.PropertyBag) *ast.Stac
 			doc.File, p.Diag().Warnings(), p.Diag().Errors())
 	}
 
-	// Expand templates in the document first and foremost.
-	// TODO[marapongo/mu#7]: the order of template expansion is not clear.  The way we've done it right now (i.e.,
-	//     performing it right here), we haven't yet type-checked the properties supplied to the stack.  As a result,
-	//     there is less compile-time safety.  And furthermore, the properties are in a map rather than being stored
-	//     in structured types.  In other words, this is really just a fancy pre-processor, rather than being well-
-	//     integrated into the type system.  To do that, however, we'd need to delay processing of templates, which
-	//     itself will mess with our ability to parse the document.  This is an area of future thinking.
-	// TODO[marapongo/mu#7]: related to this, certain information (like cluster target) isn't even available yet!
-	// TODO[marapongo/mu#14]: when we produce precise line/column errors, we'll need to somehow trace back to pre-
-	//     template expansion, otherwise the numbers may not make sense to the user.
-	rend, err := RenderTemplates(doc, p.c.Context().WithProps(props))
-	if err != nil {
-		p.Diag().Errorf(errors.ErrorBadTemplate.At(doc), err)
-		return nil
-	}
-	doc = rend
-
 	// We support many file formats.  Detect the file extension and deserialize the contents.
 	var stack ast.Stack
 	marshaler, has := encoding.Marshalers[doc.Ext()]
-	contract.AssertMF(has, "No marshaler registered for this Mufile extension: %v", doc.Ext())
+	contract.Assertf(has, "No marshaler registered for this Mufile extension: %v", doc.Ext())
 	if err := marshaler.Unmarshal(doc.Body, &stack); err != nil {
 		p.Diag().Errorf(errors.ErrorIllegalMufileSyntax.At(doc), err)
 		// TODO[marapongo/mu#14]: issue an error per issue found in the file with line/col numbers.

@@ -15,15 +15,8 @@ func Assert(cond bool) {
 	}
 }
 
-// AssertM checks a condition and FailsMs if it is false, logging the given message.
-func AssertM(cond bool, msg string) {
-	if !cond {
-		failfast(fmt.Sprintf("%v: %v", assertMsg, msg))
-	}
-}
-
-// AssertMF checks a condition and FailsMFs if it is false, formatting and logging the given message.
-func AssertMF(cond bool, msg string, args ...interface{}) {
+// Assertf checks a condition and Failfs if it is false, formatting and logging the given message.
+func Assertf(cond bool, msg string, args ...interface{}) {
 	if !cond {
 		failfast(fmt.Sprintf("%v: %v", assertMsg, fmt.Sprintf(msg, args...)))
 	}

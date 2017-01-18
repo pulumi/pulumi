@@ -102,37 +102,37 @@ func (b *binder) ValidateStack(stack *ast.Stack) {
 
 // LookupService binds a name to a Service type.
 func (b *binder) LookupService(nm ast.Name) (*ast.Service, bool) {
-	contract.AssertM(b.scope != nil, "Unexpected empty binding scope during LookupService")
+	contract.Assertf(b.scope != nil, "Unexpected empty binding scope during LookupService")
 	return b.scope.LookupService(nm)
 }
 
 // LookupStack binds a name to a Stack type.
 func (b *binder) LookupStack(nm ast.Name) (*ast.Stack, bool) {
-	contract.AssertM(b.scope != nil, "Unexpected empty binding scope during LookupStack")
+	contract.Assertf(b.scope != nil, "Unexpected empty binding scope during LookupStack")
 	return b.scope.LookupStack(nm)
 }
 
 // LookupUninstStack binds a name to a UninstStack type.
 func (b *binder) LookupUninstStack(nm ast.Name) (*ast.UninstStack, bool) {
-	contract.AssertM(b.scope != nil, "Unexpected empty binding scope during LookupUninstStack")
+	contract.Assertf(b.scope != nil, "Unexpected empty binding scope during LookupUninstStack")
 	return b.scope.LookupUninstStack(nm)
 }
 
 // LookupSchema binds a name to a Schema type.
 func (b *binder) LookupSchema(nm ast.Name) (*ast.Schema, bool) {
-	contract.AssertM(b.scope != nil, "Unexpected empty binding scope during LookupSchema")
+	contract.Assertf(b.scope != nil, "Unexpected empty binding scope during LookupSchema")
 	return b.scope.LookupSchema(nm)
 }
 
 // LookupSymbol binds a name to any kind of Symbol.
 func (b *binder) LookupSymbol(nm ast.Name) (*Symbol, bool) {
-	contract.AssertM(b.scope != nil, "Unexpected empty binding scope during LookupSymbol")
+	contract.Assertf(b.scope != nil, "Unexpected empty binding scope during LookupSymbol")
 	return b.scope.LookupSymbol(nm)
 }
 
 // RegisterSymbol registers a symbol with the given name; if it already exists, the function returns false.
 func (b *binder) RegisterSymbol(sym *Symbol) bool {
-	contract.AssertM(b.scope != nil, "Unexpected empty binding scope during RegisterSymbol")
+	contract.Assertf(b.scope != nil, "Unexpected empty binding scope during RegisterSymbol")
 	return b.scope.RegisterSymbol(sym)
 }
 
@@ -143,7 +143,7 @@ func (b *binder) PushScope() {
 
 // PopScope replaces the current scope with its parent.
 func (b *binder) PopScope() {
-	contract.AssertM(b.scope != nil, "Unexpected empty binding scope during pop")
+	contract.Assertf(b.scope != nil, "Unexpected empty binding scope during pop")
 	b.scope = b.scope.parent
 }
 
@@ -454,7 +454,7 @@ func (p *binderBindPhase) VisitService(pstack *ast.Stack, parent *ast.Services, 
 	svc *ast.Service) {
 	// The service's type has been prepared in phase 1, and must now be bound to a symbol.  All shorthand type
 	// expressions, intra stack references, cycles, and so forth, will have been taken care of by this earlier phase.
-	contract.AssertMF(svc.Type != "",
+	contract.Assertf(svc.Type != "",
 		"Expected all Services to have types in binding phase2; %v is missing one", svc.Name)
 	svc.BoundType = p.ensureStack(svc.Type, svc.Properties)
 
@@ -505,7 +505,7 @@ func (p *binderBindPhase) ensureType(ref ast.Ref) *ast.Type {
 	if exists {
 		return ast.NewSchemaType(schema)
 	}
-	contract.FailMF("Expected 1st pass of binding to guarantee type %v exists (%v)", ref, nm)
+	contract.Failf("Expected 1st pass of binding to guarantee type %v exists (%v)", ref, nm)
 	return nil
 }
 
@@ -627,7 +627,7 @@ func (p *binderValidatePhase) bindValue(node *ast.Node, val interface{}, ty *ast
 	} else if ty.IsSchema() {
 		lit = p.bindSchemaValue(node, val, ty.Schema)
 	} else if ty.IsUnresolvedRef() {
-		contract.FailM("Expected all unresolved refs to be gone by this phase in binding")
+		contract.Failf("Expected all unresolved refs to be gone by this phase in binding")
 	}
 
 	if lit == nil {
@@ -722,7 +722,7 @@ func (p *binderValidatePhase) bindPrimitiveValue(node *ast.Node, val interface{}
 		// table, and store a strong reference to the result.  This lets the backend connect the dots.
 		return p.bindServiceValue(node, val, nil)
 	default:
-		contract.FailMF("Unrecognized primitive type: %v", prim)
+		contract.Failf("Unrecognized primitive type: %v", prim)
 		return nil
 	}
 }
@@ -884,7 +884,7 @@ func (p *binderValidatePhase) bindServiceRef(node *ast.Node, val string, ty *ast
 	var ref *ast.ServiceRef
 	if svc, ok := p.b.LookupService(ast.Name(nm)); ok {
 		svct := svc.BoundType
-		contract.AssertMF(svct != nil, "Expected service '%v' to have a type", svc.Name)
+		contract.Assertf(svct != nil, "Expected service '%v' to have a type", svc.Name)
 
 		var selsvc *ast.Service
 		if sel == "" {

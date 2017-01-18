@@ -67,7 +67,7 @@ func decodeExpression(m mapper.Mapper, tree mapper.Object) (ast.Expression, erro
 			return decodeSequenceExpression(m, tree)
 
 		default:
-			contract.FailMF("Unrecognized Expression kind: %v\n%v\n", kind, tree)
+			contract.Failf("Unrecognized Expression kind: %v\n%v\n", kind, tree)
 		}
 	}
 	return nil, nil

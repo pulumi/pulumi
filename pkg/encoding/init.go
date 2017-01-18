@@ -18,7 +18,7 @@ func init() {
 		case ".yaml":
 			Marshalers[ext] = YAML
 		default:
-			contract.FailMF("No Marshaler available for MufileExt %v", ext)
+			contract.Failf("No Marshaler available for MufileExt %v", ext)
 		}
 	}
 }

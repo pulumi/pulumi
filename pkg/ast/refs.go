@@ -59,7 +59,7 @@ func (r Ref) Parse() (RefParts, error) {
 // MustParse parses the parts of a Ref into a RefParts, failing fast if parsing fails.
 func (r Ref) MustParse() RefParts {
 	p, err := r.Parse()
-	contract.AssertMF(err == nil, "Expected a nil error from Ref.Parse; got %v", err)
+	contract.Assertf(err == nil, "Expected a nil error from Ref.Parse; got %v", err)
 	return p
 }
 

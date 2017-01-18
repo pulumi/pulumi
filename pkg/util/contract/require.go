@@ -15,15 +15,8 @@ func Require(cond bool, param string) {
 	}
 }
 
-// RequireM checks a precondition condition pertaining to a function parameter, and FailMs if it is false.
-func RequireM(cond bool, param string, msg string) {
-	if !cond {
-		failfast(fmt.Sprintf("%v: %v", fmt.Sprintf(requireMsg, param), msg))
-	}
-}
-
-// RequireMF checks a precondition condition pertaining to a function parameter, and FailMFs if it is false.
-func RequireMF(cond bool, param string, msg string, args ...interface{}) {
+// Requiref checks a precondition condition pertaining to a function parameter, and Failfs if it is false.
+func Requiref(cond bool, param string, msg string, args ...interface{}) {
 	if !cond {
 		failfast(fmt.Sprintf("%v: %v", fmt.Sprintf(requireMsg, param), fmt.Sprintf(msg, args...)))
 	}

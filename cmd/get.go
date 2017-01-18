@@ -18,7 +18,7 @@ func newGetCmd() *cobra.Command {
 			"to download dependencies referenced by the current Stack.  Otherwise, if one\n" +
 			"or more specific dependencies are provided, only those will be downloaded.",
 		Run: func(cmd *cobra.Command, args []string) {
-			contract.FailM("Get command is not yet implemented")
+			contract.Failf("Get command is not yet implemented")
 		},
 	}
 

@@ -32,10 +32,10 @@ type Decoders map[reflect.Type]Decoder
 // Decode decodes an entire map into a target object, using tag-directed mappings.
 func (md *mapper) Decode(tree Object, target interface{}) error {
 	vdst := reflect.ValueOf(target)
-	contract.AssertMF(vdst.Kind() == reflect.Ptr && !vdst.IsNil() && vdst.Elem().CanSet(),
+	contract.Assertf(vdst.Kind() == reflect.Ptr && !vdst.IsNil() && vdst.Elem().CanSet(),
 		"Target %v must be a non-nil, settable pointer", vdst.Type())
 	vdstType := vdst.Type().Elem()
-	contract.AssertMF(vdstType.Kind() == reflect.Struct && !vdst.IsNil(),
+	contract.Assertf(vdstType.Kind() == reflect.Struct && !vdst.IsNil(),
 		"Target %v must be a struct type with `json:\"x\"` tags to direct decoding", vdstType)
 
 	// For each field in the struct that has a `json:"name"`, look it up in the map by that `name`, issuing an error if
@@ -70,7 +70,7 @@ func (md *mapper) Decode(tree Object, target interface{}) error {
 
 			// Decode the tag.
 			tagparts := strings.Split(tag, ",")
-			contract.AssertMF(len(tagparts) > 0,
+			contract.Assertf(len(tagparts) > 0,
 				"Expected >0 tagparts on field %v.%v; got %v", vdstType.Name(), fldinfo.Name, len(tagparts))
 			key = tagparts[0]
 			for i := 1; i < len(tagparts); i++ {
@@ -80,7 +80,7 @@ func (md *mapper) Decode(tree Object, target interface{}) error {
 				case "skip":
 					skip = true
 				default:
-					contract.FailMF("Unrecognized tagpart on field %v.%v: %v", vdstType.Name(), fldinfo.Name, tagparts[i])
+					contract.Failf("Unrecognized tagpart on field %v.%v: %v", vdstType.Name(), fldinfo.Name, tagparts[i])
 				}
 			}
 
@@ -110,7 +110,7 @@ func (md *mapper) Decode(tree Object, target interface{}) error {
 // decodeField decodes primitive fields.  For fields of complex types, we use custom deserialization.
 func (md *mapper) DecodeField(tree Object, ty reflect.Type, key string, target interface{}, optional bool) error {
 	vdst := reflect.ValueOf(target)
-	contract.AssertMF(vdst.Kind() == reflect.Ptr && !vdst.IsNil() && vdst.Elem().CanSet(),
+	contract.Assertf(vdst.Kind() == reflect.Ptr && !vdst.IsNil() && vdst.Elem().CanSet(),
 		"Target %v must be a non-nil, settable pointer", vdst.Type())
 	if v, has := tree[key]; has {
 		// The field exists; okay, try to map it to the right type.

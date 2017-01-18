@@ -27,7 +27,7 @@ func decodeModuleMember(m mapper.Mapper, tree mapper.Object) (ast.ModuleMember, 
 		case ast.ModuleMethodKind:
 			return decodeModuleMethod(m, tree)
 		default:
-			contract.FailMF("Unrecognized ModuleMember kind: %v\n", kind)
+			contract.Failf("Unrecognized ModuleMember kind: %v\n", kind)
 		}
 	}
 	return nil, nil
@@ -54,7 +54,7 @@ func decodeClassMember(m mapper.Mapper, tree mapper.Object) (ast.ClassMember, er
 		case ast.ClassMethodKind:
 			return decodeClassMethod(m, tree)
 		default:
-			contract.FailMF("Unrecognized ClassMember kind: %v\n", kind)
+			contract.Failf("Unrecognized ClassMember kind: %v\n", kind)
 		}
 	}
 	return nil, nil

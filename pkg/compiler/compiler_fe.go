@@ -11,7 +11,6 @@ import (
 	"github.com/marapongo/mu/pkg/compiler/backends/schedulers"
 	"github.com/marapongo/mu/pkg/diag"
 	"github.com/marapongo/mu/pkg/errors"
-	"github.com/marapongo/mu/pkg/util/contract"
 	"github.com/marapongo/mu/pkg/workspace"
 )
 
@@ -33,18 +32,16 @@ func (c *compiler) buildDocumentFE(w workspace.W, doc *diag.Document) *ast.Stack
 	}
 
 	// Determine what cloud target we will be using; we need this to process the Mufile and imports.
-	cl, a := c.detectClusterArch(w)
+	c.detectClusterArch(w)
 	if !c.Diag().Success() {
 		return nil
 	}
-	c.ctx = c.ctx.WithClusterArch(cl, a)
-	contract.Assert(c.ctx.Cluster != nil)
 
 	// Now parse the stack, using whatever args may have been supplied as the properties.
 	// TODO[marapongo/mu#7]: we want to strongly type the properties; e.g., a stack expecting a number should
 	//     get a number, etc.  However, to know that we must first have parsed the metadata for the target stack!
 	props := make(ast.PropertyBag)
-	for arg, val := range c.opts.Args {
+	for arg, val := range c.Options().Args {
 		props[arg] = val
 	}
 	stack := p.ParseStack(doc, props)
@@ -63,15 +60,16 @@ func (c *compiler) detectClusterArch(w workspace.W) (*ast.Cluster, backends.Arch
 	// Cluster and architectures settings may come from one of two places, in order of search preference:
 	//		1) command line arguments.
 	//		2) cluster-wide settings in a workspace.
-	arch := c.opts.Arch
+	var arch backends.Arch
+	var cluster *ast.Cluster
 
 	// If a cluster was specified, look it up and load up its options.
-	var cluster *ast.Cluster
-	if c.opts.Cluster != "" {
-		if cl, exists := w.Settings().Clusters[c.opts.Cluster]; exists {
+	clname := c.Options().Cluster
+	if clname != "" {
+		if cl, exists := w.Settings().Clusters[clname]; exists {
 			cluster = cl
 		} else {
-			c.Diag().Errorf(errors.ErrorClusterNotFound, c.opts.Cluster)
+			c.Diag().Errorf(errors.ErrorClusterNotFound, clname)
 			return nil, arch
 		}
 	}
@@ -88,7 +86,7 @@ func (c *compiler) detectClusterArch(w workspace.W) (*ast.Cluster, backends.Arch
 
 	if cluster == nil {
 		// If no target was found, and we don't have an architecture, error out.
-		if arch.Cloud == clouds.None && !c.opts.SkipCodegen {
+		if arch.Cloud == clouds.None {
 			c.Diag().Errorf(errors.ErrorMissingTarget)
 			return nil, arch
 		}

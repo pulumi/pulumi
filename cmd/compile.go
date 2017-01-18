@@ -8,6 +8,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/marapongo/mu/pkg/cmdutil"
 	"github.com/marapongo/mu/pkg/pack"
 )
 
@@ -38,7 +39,7 @@ func newCompileCmd() *cobra.Command {
 			var pkg *pack.Package
 			if len(args) > 0 {
 				// The user has specified a path (or requested Stdin).
-				pkg = readPackageFromArg(args[0])
+				pkg = cmdutil.ReadPackageFromArg(args[0])
 			} else {
 				// Otherwise, use default Mu package name.
 				fmt.Fprintf(os.Stderr, "error: Default package names NYI")

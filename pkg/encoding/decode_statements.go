@@ -55,7 +55,7 @@ func decodeStatement(m mapper.Mapper, tree mapper.Object) (ast.Statement, error)
 			return decodeExpressionStatement(m, tree)
 
 		default:
-			contract.FailMF("Unrecognized Statement kind: %v\n", kind)
+			contract.Failf("Unrecognized Statement kind: %v\n", kind)
 		}
 	}
 	return nil, nil

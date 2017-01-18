@@ -117,7 +117,7 @@ func (c *awsCloud) genResourceDependsID(ref *ast.ServiceRef) cfLogicalID {
 
 		// TODO: this works "one-level deep"; however, we will need to figure out a scheme for logical dependencies;
 		//     that is, dependencies on stacks that are merely a composition of many other stacks.
-		contract.AssertMF(len(sel.BoundType.Services.Public) == 1,
+		contract.Assertf(len(sel.BoundType.Services.Public) == 1,
 			"expected service type '%v' to export a single public service; got %v",
 			sel.BoundType.Name, len(sel.BoundType.Services.Public))
 		for _, s := range sel.BoundType.Services.Public {

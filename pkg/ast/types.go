@@ -89,7 +89,7 @@ func (ty *Type) Name() Ref {
 			return Ref(fmt.Sprintf(string(TypeDecorsMap), ty.Decors.KeyType.Name(), ty.Decors.ValueType.Name()))
 		}
 	} else {
-		contract.FailM("Expected this type to have one of primitive, stack, schema, unref, resref, or decors")
+		contract.Failf("Expected this type to have one of primitive, stack, schema, unref, resref, or decors")
 		return Ref("")
 	}
 }

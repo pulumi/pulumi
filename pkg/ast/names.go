@@ -23,7 +23,7 @@ func IsName(s string) bool {
 
 // AsName converts a given string to a Name, asserting its validity.
 func AsName(s string) Name {
-	contract.AssertMF(IsName(s), "Expected string '%v' to be a name (%v)", s, NameRegexps)
+	contract.Assertf(IsName(s), "Expected string '%v' to be a name (%v)", s, NameRegexps)
 	return Name(s)
 }
 

@@ -161,7 +161,7 @@ func ToValue(l ast.Literal) interface{} {
 			}
 			return m
 		default:
-			contract.FailMF("Unexpected map key type: %v", keyt)
+			contract.Failf("Unexpected map key type: %v", keyt)
 			return nil
 		}
 	case ast.SchemaLiteral:
@@ -171,7 +171,7 @@ func ToValue(l ast.Literal) interface{} {
 		}
 		return p
 	default:
-		contract.FailM("Unexpected literal type")
+		contract.Failf("Unexpected literal type")
 		return nil
 	}
 }

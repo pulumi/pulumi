@@ -30,7 +30,7 @@ type cfIntrinsic struct {
 
 // AsCFIntrinsic converts a given service to a CloudFormationService, validating it as we go.
 func asCFIntrinsic(svc *ast.Service) *cfIntrinsic {
-	contract.AssertM(svc.BoundType.Name == cfIntrinsicName, "asCFIntrinsic expects a bound CF service type")
+	contract.Assertf(svc.BoundType.Name == cfIntrinsicName, "asCFIntrinsic expects a bound CF service type")
 
 	res := &cfIntrinsic{
 		Service: svc,
@@ -40,7 +40,7 @@ func asCFIntrinsic(svc *ast.Service) *cfIntrinsic {
 		res.Resource, ok = conv.ToString(r)
 		contract.Assert(ok)
 	} else {
-		contract.FailMF("Expected a required 'resource' property")
+		contract.Failf("Expected a required 'resource' property")
 	}
 	if do, ok := svc.BoundProperties[cfIntrinsicDependsOn]; ok {
 		res.DependsOn, ok = conv.ToServiceArray(do)

@@ -14,14 +14,20 @@ import (
 	"github.com/marapongo/mu/pkg/ast"
 	"github.com/marapongo/mu/pkg/diag"
 	"github.com/marapongo/mu/pkg/encoding"
+	"github.com/marapongo/mu/pkg/options"
+	"github.com/marapongo/mu/pkg/util/contract"
 )
 
-// W offers functionality for interacting with Mu workspaces.
+// W offers functionality for interacting with Mu workspaces.  A workspace influences Mu compilation; for example, it
+// can specify default versions of dependencies, easing the process of working with multiple projects.
 type W interface {
 	// Root returns the base path of the current workspace.
 	Root() string
+	// Options represents the current options governing the compilation.
+	Options() *options.Options
 	// Settings returns a mutable pointer to the optional workspace settings info.
 	Settings() *ast.Workspace
+
 	// ReadSettings reads in the settings file and returns it, returning nil if there is none.
 	ReadSettings() (*diag.Document, error)
 
@@ -32,10 +38,11 @@ type W interface {
 }
 
 // New creates a new workspace from the given starting path.
-func New(path string, d diag.Sink) (W, error) {
+func New(options *options.Options) (W, error) {
+	contract.Requiref(options != nil, "options", "!= nil")
+
 	// First normalize the path to an absolute one.
-	var err error
-	path, err = filepath.Abs(path)
+	path, err := filepath.Abs(options.Pwd)
 	if err != nil {
 		return nil, err
 	}
@@ -46,9 +53,9 @@ func New(path string, d diag.Sink) (W, error) {
 	}
 
 	ws := workspace{
-		path: path,
-		home: home,
-		d:    d,
+		path:    path,
+		home:    home,
+		options: options,
 	}
 
 	// Memoize the root directory before returning.
@@ -60,12 +67,12 @@ func New(path string, d diag.Sink) (W, error) {
 }
 
 type workspace struct {
-	path     string        // the path at which the workspace was constructed.
-	home     string        // the home directory to use for this workspace.
-	root     string        // the root of the workspace.
-	muspace  string        // a path to the Muspace file, if any.
-	settings ast.Workspace // an optional bag of workspace-wide settings.
-	d        diag.Sink     // a diagnostics sink to use for workspace operations.
+	path     string           // the path at which the workspace was constructed.
+	home     string           // the home directory to use for this workspace.
+	root     string           // the root of the workspace.
+	muspace  string           // a path to the Muspace file, if any.
+	options  *options.Options // the options governing the current compilation.
+	settings ast.Workspace    // an optional bag of workspace-wide settings.
 }
 
 // initRootInfo finds the root of the workspace, caches it for fast lookups, and loads up any workspace settings.
@@ -82,7 +89,7 @@ func (w *workspace) initRootInfo() (string, error) {
 			for _, file := range files {
 				// A muspace file delimits the root of the workspace.
 				muspace := filepath.Join(root, file.Name())
-				if IsMuspace(muspace, w.d) {
+				if IsMuspace(muspace, w.options.Diag) {
 					glog.V(3).Infof("Mu workspace detected; setting root to %v", w.root)
 					w.root = root
 					w.muspace = muspace
@@ -104,13 +111,9 @@ func (w *workspace) initRootInfo() (string, error) {
 	return w.root, nil
 }
 
-func (w *workspace) Root() string {
-	return w.root
-}
-
-func (w *workspace) Settings() *ast.Workspace {
-	return &w.settings
-}
+func (w *workspace) Root() string              { return w.root }
+func (w *workspace) Options() *options.Options { return w.options }
+func (w *workspace) Settings() *ast.Workspace  { return &w.settings }
 
 func (w *workspace) ReadSettings() (*diag.Document, error) {
 	if w.muspace == "" {
@@ -122,7 +125,7 @@ func (w *workspace) ReadSettings() (*diag.Document, error) {
 }
 
 func (w *workspace) DetectMufile() (string, error) {
-	return DetectMufile(w.path, w.d)
+	return DetectMufile(w.path, w.options.Diag)
 }
 
 func (w *workspace) DepCandidates(dep ast.RefParts) []string {
