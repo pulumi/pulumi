@@ -3,12 +3,13 @@
 package symbols
 
 import (
-	"github.com/marapongo/mu/pkg/compiler/ast"
+	"github.com/marapongo/mu/pkg/diag"
 	"github.com/marapongo/mu/pkg/tokens"
 )
 
-// Symbol is the base type for all MuIL symbol types.
-type Symbol struct {
-	Name tokens.Token // the name of this symbol.
-	Tree ast.Node     // the program tree associated with this symbol.
+// Symbol is the base interface for all MuIL symbol types.
+type Symbol interface {
+	symbol()
+	GetName() tokens.Token  // the unique name of this symbol.
+	GetTree() diag.Diagable // the diagnosable tree associated with this symbol.
 }

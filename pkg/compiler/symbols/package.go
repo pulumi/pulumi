@@ -9,5 +9,6 @@ import (
 // Package is a fully bound package symbol.
 type Package struct {
 	Symbol
-	Modules map[tokens.Module]*Module
+	Dependencies map[tokens.Package]*Package
+	Modules      map[tokens.Module]*Module
 }
