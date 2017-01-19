@@ -15,6 +15,9 @@ type Type interface {
 	typesym()
 }
 
+// Types is a list of type symbols.
+type Types []Type
+
 // primitive is an internal representation of a primitive type symbol (any, bool, number, string).
 type primitive struct {
 	Name tokens.Token
@@ -23,10 +26,10 @@ type primitive struct {
 var _ Symbol = (*primitive)(nil)
 var _ Type = (*primitive)(nil)
 
-func (node *primitive) symbol()                {}
-func (node *primitive) typesym()               {}
-func (node *primitive) GetName() tokens.Token  { return node.Name }
-func (node *primitive) GetTree() diag.Diagable { return nil }
+func (node *primitive) symbol()             {}
+func (node *primitive) typesym()            {}
+func (node *primitive) Token() tokens.Token { return node.Name }
+func (node *primitive) Tree() diag.Diagable { return nil }
 
 // All of the primitive types.
 var (
@@ -46,23 +49,51 @@ var Primitives = map[tokens.Token]Type{
 
 // Declare some type decorator strings used for parsing and producing array/map types.
 const (
-	TypeDecorsArray        = "%v" + TypeDecorsArraySuffix
-	TypeDecorsArraySuffix  = "[]"
-	TypeDecorsMap          = TypeDecorsMapPrefix + "%v" + TypeDecorsMapSeparator + "%v"
-	TypeDecorsMapPrefix    = "map["
-	TypeDecorsMapSeparator = "]"
+	TypeDecorsArray             = "%v" + TypeDecorsArraySuffix
+	TypeDecorsArraySuffix       = "[]"
+	TypeDecorsMap               = TypeDecorsMapPrefix + "%v" + TypeDecorsMapSeparator + "%v"
+	TypeDecorsMapPrefix         = "map["
+	TypeDecorsMapSeparator      = "]"
+	TypeDecorsFunction          = TypeDecorsFunctionPrefix + "%v" + TypeDecorsFunctionSeparator + "%v"
+	TypeDecorsFunctionPrefix    = "("
+	TypeDecorsFunctionParamSep  = ","
+	TypeDecorsFunctionSeparator = ")"
 )
 
 // ArrayName creates a new array name from an element type.
 func ArrayName(elem Type) tokens.Token {
 	// TODO: consider caching this to avoid creating needless strings.
-	return tokens.Token(fmt.Sprintf(TypeDecorsArray, elem.GetName()))
+	return tokens.Token(fmt.Sprintf(TypeDecorsArray, elem.Token()))
 }
 
 // MapName creates a new array name from an element type.
 func MapName(key Type, elem Type) tokens.Token {
 	// TODO: consider caching this to avoid creating needless strings.
-	return tokens.Token(fmt.Sprintf(TypeDecorsMap, key.GetName(), elem.GetName()))
+	return tokens.Token(fmt.Sprintf(TypeDecorsMap, key.Token(), elem.Token()))
+}
+
+// FunctionName creates a new array name from an element type.
+func FunctionName(params *[]Type, ret *Type) tokens.Token {
+	// TODO: consider caching this to avoid creating needless strings.
+
+	// Stringify the parameters (if any).
+	sparams := ""
+	if params != nil {
+		for i, param := range *params {
+			if i > 0 {
+				sparams += TypeDecorsFunctionParamSep
+			}
+			sparams += string(param.Token())
+		}
+	}
+
+	// Stringify the return type (if any).
+	sret := ""
+	if ret != nil {
+		sret = string((*ret).Token())
+	}
+
+	return tokens.Token(fmt.Sprintf(TypeDecorsFunction, sparams, sret))
 }
 
 // ArrayType is an array whose elements are of some other type.
@@ -73,10 +104,14 @@ type ArrayType struct {
 var _ Symbol = (*ArrayType)(nil)
 var _ Type = (*ArrayType)(nil)
 
-func (node *ArrayType) symbol()                {}
-func (node *ArrayType) typesym()               {}
-func (node *ArrayType) GetName() tokens.Token  { return ArrayName(node.Element) }
-func (node *ArrayType) GetTree() diag.Diagable { return nil }
+func (node *ArrayType) symbol()             {}
+func (node *ArrayType) typesym()            {}
+func (node *ArrayType) Token() tokens.Token { return ArrayName(node.Element) }
+func (node *ArrayType) Tree() diag.Diagable { return nil }
+
+func NewArrayType(elem Type) *ArrayType {
+	return &ArrayType{elem}
+}
 
 // KeyType is an array whose keys and elements are of some other types.
 type MapType struct {
@@ -87,7 +122,29 @@ type MapType struct {
 var _ Symbol = (*MapType)(nil)
 var _ Type = (*MapType)(nil)
 
-func (node *MapType) symbol()                {}
-func (node *MapType) typesym()               {}
-func (node *MapType) GetName() tokens.Token  { return MapName(node.Key, node.Element) }
-func (node *MapType) GetTree() diag.Diagable { return nil }
+func (node *MapType) symbol()             {}
+func (node *MapType) typesym()            {}
+func (node *MapType) Token() tokens.Token { return MapName(node.Key, node.Element) }
+func (node *MapType) Tree() diag.Diagable { return nil }
+
+func NewMapType(key Type, elem Type) *MapType {
+	return &MapType{key, elem}
+}
+
+// FunctionType is an invocable type, representing a signature with optional parameters and a return type.
+type FunctionType struct {
+	Parameters *[]Type
+	Return     *Type
+}
+
+var _ Symbol = (*FunctionType)(nil)
+var _ Type = (*FunctionType)(nil)
+
+func (node *FunctionType) symbol()             {}
+func (node *FunctionType) typesym()            {}
+func (node *FunctionType) Token() tokens.Token { return FunctionName(node.Parameters, node.Return) }
+func (node *FunctionType) Tree() diag.Diagable { return nil }
+
+func NewFunctionType(params *[]Type, ret *Type) *FunctionType {
+	return &FunctionType{params, ret}
+}

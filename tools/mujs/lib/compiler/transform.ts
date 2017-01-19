@@ -612,10 +612,10 @@ export class Transformer {
                     // elements exported from the current module.
                     let propertyName: ast.Identifier = this.transformIdentifier(exportClause.propertyName);
                     exports.push(<ast.Export>{
-                        kind:   ast.exportKind,
-                        name:   name,
-                        access: symbols.publicAccessibility,
-                        token:  this.createModuleMemberToken(sourceModule, propertyName.ident),
+                        kind:     ast.exportKind,
+                        name:     name,
+                        access:   symbols.publicAccessibility,
+                        referent: this.createModuleMemberToken(sourceModule, propertyName.ident),
                     });
                 }
                 else {
@@ -623,10 +623,10 @@ export class Transformer {
                     // from within the same module, just look up the definition and change its accessibility to public.
                     if (sourceModule) {
                         exports.push(<ast.Export>{
-                            kind:   ast.exportKind,
-                            name:   name,
-                            access: symbols.publicAccessibility,
-                            token:  this.createModuleMemberToken(sourceModule, name.ident),
+                            kind:     ast.exportKind,
+                            name:     name,
+                            access:   symbols.publicAccessibility,
+                            referent: this.createModuleMemberToken(sourceModule, name.ident),
                         });
                     }
                     else {
@@ -646,10 +646,10 @@ export class Transformer {
                             let otherModule: ModuleReference | undefined = this.currentModuleImports!.get(name.ident);
                             contract.assert(!!otherModule, "Expected either a member or import match for export name");
                             exports.push(<ast.Export>{
-                                kind:  ast.exportKind,
-                                name:  name,
-                                access: symbols.publicAccessibility,
-                                token:  this.createModuleToken(otherModule!),
+                                kind:     ast.exportKind,
+                                name:     name,
+                                access:   symbols.publicAccessibility,
+                                referent: this.createModuleToken(otherModule!),
                             });
                         }
                     }
@@ -665,13 +665,13 @@ export class Transformer {
             contract.assert(!!sourceModule);
             for (let name of this.resolveModuleExportNames(sourceModule!)) {
                 exports.push(<ast.Export>{
-                    kind:   ast.exportKind,
-                    name:   <ast.Identifier>{
+                    kind:    ast.exportKind,
+                    name:    <ast.Identifier>{
                         kind:  ast.identifierKind,
                         ident: this.extractMemberToken(name),
                     },
-                    access: symbols.publicAccessibility,
-                    token:  name,
+                    access:  symbols.publicAccessibility,
+                    referent: name,
                 });
             }
         }

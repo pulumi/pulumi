@@ -34,8 +34,8 @@ export type ModuleMembers = { [token: string /*symbols.Token*/]: ModuleMember };
 
 // An export definition re-exports a definition from another module, possibly with a different name.
 export interface Export extends ModuleMember {
-    kind:  ExportKind;
-    token: symbols.Token;
+    kind:     ExportKind;
+    referent: symbols.Token;
 }
 export const exportKind = "Export";
 export type  ExportKind = "Export";

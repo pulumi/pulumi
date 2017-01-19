@@ -10,6 +10,6 @@ import (
 // Symbol is the base interface for all MuIL symbol types.
 type Symbol interface {
 	symbol()
-	GetName() tokens.Token  // the unique name of this symbol.
-	GetTree() diag.Diagable // the diagnosable tree associated with this symbol.
+	Token() tokens.Token // the unique name token for this symbol.
+	Tree() diag.Diagable // the diagnosable tree associated with this symbol.
 }

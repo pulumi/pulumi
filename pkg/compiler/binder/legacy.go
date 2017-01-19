@@ -77,37 +77,37 @@ func (b *binder) ValidateStack(stack *ast.Stack) {
 // LookupService binds a name to a Service type.
 func (b *binder) LookupService(nm tokens.Name) (*ast.Service, bool) {
 	contract.Assertf(b.scope != nil, "Unexpected empty binding scope during LookupService")
-	return b.scope.LookupService(nm)
+	return nil, false
 }
 
 // LookupStack binds a name to a Stack type.
 func (b *binder) LookupStack(nm tokens.Name) (*ast.Stack, bool) {
 	contract.Assertf(b.scope != nil, "Unexpected empty binding scope during LookupStack")
-	return b.scope.LookupStack(nm)
+	return nil, false
 }
 
 // LookupUninstStack binds a name to a UninstStack type.
 func (b *binder) LookupUninstStack(nm tokens.Name) (*ast.UninstStack, bool) {
 	contract.Assertf(b.scope != nil, "Unexpected empty binding scope during LookupUninstStack")
-	return b.scope.LookupUninstStack(nm)
+	return nil, false
 }
 
 // LookupSchema binds a name to a Schema type.
 func (b *binder) LookupSchema(nm tokens.Name) (*ast.Schema, bool) {
 	contract.Assertf(b.scope != nil, "Unexpected empty binding scope during LookupSchema")
-	return b.scope.LookupSchema(nm)
+	return nil, false
 }
 
 // LookupSymbol binds a name to any kind of Symbol.
 func (b *binder) LookupSymbol(nm tokens.Name) (*legacy.Symbol, bool) {
 	contract.Assertf(b.scope != nil, "Unexpected empty binding scope during LookupSymbol")
-	return b.scope.LookupSymbol(nm)
+	return nil, false
 }
 
 // RegisterSymbol registers a symbol with the given name; if it already exists, the function returns false.
 func (b *binder) RegisterSymbol(sym *legacy.Symbol) bool {
 	contract.Assertf(b.scope != nil, "Unexpected empty binding scope during RegisterSymbol")
-	return b.scope.RegisterSymbol(sym)
+	return false
 }
 
 type binderPreparePhase struct {
