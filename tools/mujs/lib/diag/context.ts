@@ -22,7 +22,13 @@ export class Context {
         // If the message is already formatted, return it as-is.
         // TODO: unify this formatting w/ TypeScript so they are uniform.
         if (d.preformatted) {
-            return d.message;
+            let msg: string = d.message;
+            // Strip off any trailing newline characters.
+            while (msg.length >= os.EOL.length &&
+                   msg.substring(msg.length - os.EOL.length) === os.EOL) {
+                msg = d.message.substring(0, msg.length - os.EOL.length);
+            }
+            return msg;
         }
 
         // Otherwise, format it in the usual ways.
