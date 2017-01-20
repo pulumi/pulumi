@@ -163,7 +163,7 @@ export class Transformer {
     private currentSourceFile: ts.SourceFile | undefined;
     private currentModuleMembers: ast.ModuleMembers | undefined;
     private currentModuleImports: Map<string, ModuleReference>;
-    private currentModuleImportsList: ModuleReference[];
+    private currentModuleImportTokens: symbols.ModuleToken[];
 
     constructor(meta: pack.Metadata, script: Script) {
         contract.requires(!!script.tree, "script", "A valid MuJS AST is required to lower to MuPack/MuIL");
@@ -454,12 +454,12 @@ export class Transformer {
         let priorSourceFile: ts.SourceFile | undefined = this.currentSourceFile;
         let priorModuleMembers: ast.ModuleMembers | undefined = this.currentModuleMembers;
         let priorModuleImports: Map<string, ModuleReference> | undefined = this.currentModuleImports;
-        let priorModuleImportsList: ModuleReference[] | undefined = this.currentModuleImportsList;
+        let priorModuleImportsList: ModuleReference[] | undefined = this.currentModuleImportTokens;
         try {
             this.currentSourceFile = node;
             this.currentModuleMembers = {};
             this.currentModuleImports = new Map<string, ModuleReference>();
-            this.currentModuleImportsList = []; // to track the imports, in order.
+            this.currentModuleImportTokens = []; // to track the imports, in order.
 
             // Any top-level non-definition statements will pile up into the module initializer.
             let statements: ast.Statement[] = [];
@@ -513,7 +513,7 @@ export class Transformer {
             return this.withLocation(node, <ast.Module>{
                 kind:    ast.moduleKind,
                 name:    ident(modtok),
-                imports: this.currentModuleImportsList,
+                imports: this.currentModuleImportTokens,
                 members: this.currentModuleMembers,
             });
         }
@@ -521,7 +521,7 @@ export class Transformer {
             this.currentSourceFile = priorSourceFile;
             this.currentModuleMembers = priorModuleMembers;
             this.currentModuleImports = priorModuleImports;
-            this.currentModuleImportsList = priorModuleImportsList;
+            this.currentModuleImportTokens = priorModuleImportsList;
         }
     }
 
@@ -632,7 +632,7 @@ export class Transformer {
                     else {
                         contract.assert(!!this.currentModuleMembers);
                         contract.assert(!!this.currentModuleImports);
-                        contract.assert(!!this.currentModuleImportsList);
+                        contract.assert(!!this.currentModuleImportTokens);
                         // First look for a module member, for reexporting classes, interfaces, and variables.
                         let member: ast.ModuleMember | undefined = this.currentModuleMembers![name.ident];
                         if (member) {
@@ -688,6 +688,7 @@ export class Transformer {
             contract.assert(node.moduleSpecifier.kind === ts.SyntaxKind.StringLiteral);
             let importModule: ModuleReference =
                 this.resolveModuleReferenceByName((<ts.StringLiteral>node.moduleSpecifier).text);
+            let importModuleToken: symbols.ModuleToken = this.createModuleToken(importModule);
 
             // Figure out what kind of import statement this is (there are many, see below).
             let name: ts.Identifier | undefined;
@@ -713,7 +714,7 @@ export class Transformer {
                 let importName: ast.Identifier = this.transformIdentifier(name);
                 log.out(5).info(`Detected bulk import ${importName.ident}=${importModule}`);
                 this.currentModuleImports.set(importName.ident, importModule);
-                this.currentModuleImportsList.push(importModule);
+                this.currentModuleImportTokens.push(importModuleToken);
             }
             else if (namedImports) {
                 // This is an import of the form
@@ -735,9 +736,9 @@ export class Transformer {
                         memberName = member.ident;
                     }
                     this.currentModuleImports.set(memberName, memberToken);
-                    this.currentModuleImportsList.push(memberToken);
                     log.out(5).info(`Detected named import ${memberToken} as ${memberName} from ${importModule}`);
                 }
+                this.currentModuleImportTokens.push(importModuleToken);
             }
         }
         return <ast.EmptyStatement>{ kind: ast.emptyStatementKind };

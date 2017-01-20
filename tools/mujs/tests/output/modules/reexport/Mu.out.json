@@ -208,7 +208,7 @@
                         }
                     },
                     "access": "public",
-                    "token": "other:C"
+                    "referent": "other:C"
                 },
                 "I": {
                     "kind": "Export",
@@ -228,7 +228,7 @@
                         }
                     },
                     "access": "public",
-                    "token": "other:I"
+                    "referent": "other:I"
                 },
                 "v": {
                     "kind": "Export",
@@ -248,7 +248,7 @@
                         }
                     },
                     "access": "public",
-                    "token": "other:v"
+                    "referent": "other:v"
                 }
             },
             "loc": {

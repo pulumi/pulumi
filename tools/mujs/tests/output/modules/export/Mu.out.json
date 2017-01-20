@@ -189,7 +189,7 @@
                 "ident": "index"
             },
             "imports": [
-                "/Users/joeduffy/dev/code/src/github.com/marapongo/mu/tools/mujs/tests/output/modules/export/other"
+                "other"
             ],
             "members": {
                 "other": {
@@ -210,7 +210,7 @@
                         }
                     },
                     "access": "public",
-                    "token": "other"
+                    "referent": "other"
                 },
                 "C": {
                     "kind": "Class",
