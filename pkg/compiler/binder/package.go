@@ -51,7 +51,7 @@ func (b *binder) resolvePackageDeps(pkg *pack.Package) symbols.PackageMap {
 var cyclicTombstone = &symbols.Package{}
 
 // resolveDep actually performs the package resolution process, populating the compiler symbol tables.
-func (b *binder) resolveDep(dep tokens.Package) *symbols.Package {
+func (b *binder) resolveDep(dep pack.PackageURL) *symbols.Package {
 	// First, see if we've already loaded this package.  If yes, reuse it.
 	// TODO: ensure versions match.
 	if pkgsym, exists := b.ctx.Pkgs[dep]; exists {

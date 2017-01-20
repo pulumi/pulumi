@@ -2,10 +2,6 @@
 
 package ast
 
-import (
-	"github.com/marapongo/mu/pkg/tokens"
-)
-
 // Statement is an element inside of an executable function body.
 type Statement interface {
 	Node
@@ -58,8 +54,8 @@ const TryCatchFinallyKind NodeKind = "TryCatchFinally"
 
 type TryCatchBlock struct {
 	node
-	Block     *Block       `json:"block"`
-	Exception *tokens.Type `json:"exception,omitempty"`
+	Block     *Block         `json:"block"`
+	Exception *LocalVariable `json:"exception,omitempty"`
 }
 
 var _ Node = (*TryCatchBlock)(nil)

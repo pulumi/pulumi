@@ -40,7 +40,7 @@ export type  TryCatchFinallyKind = "TryCatchFinally";
 export interface TryCatchBlock extends Node {
     kind:       TryCatchBlockKind;
     block:      Block;
-    exception?: symbols.TypeToken;
+    exception?: LocalVariable;
 }
 export const tryCatchBlockKind = "TryCatchBlock";
 export type  TryCatchBlockKind = "TryCatchBlock";

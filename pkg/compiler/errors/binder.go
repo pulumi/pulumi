@@ -79,7 +79,7 @@ var ErrorServiceSelectorIsPrivate = &diag.Diag{
 
 var ErrorNotAName = &diag.Diag{
 	ID:      514,
-	Message: "The string '%v' is not a valid name (expected: " + tokens.NamePartRegexps + ")",
+	Message: "The string '%v' is not a valid name (expected: " + tokens.NameRegexpPattern + ")",
 }
 
 var ErrorStackTypeExpected = &diag.Diag{

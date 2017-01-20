@@ -183,7 +183,7 @@ func namePath(nm tokens.Name) string {
 
 // stringNamePart cleans a string component of a name and makes sure it's appropriate to use as a path.
 func stringNamePath(nm string) string {
-	return strings.Replace(nm, tokens.NameDelimiter, string(os.PathSeparator), -1)
+	return strings.Replace(nm, tokens.QNameDelimiter, string(os.PathSeparator), -1)
 }
 
 // workspacePath converts a name into the relevant name-part in the workspace to look for that dependency.
@@ -191,7 +191,7 @@ func workspacePath(w *workspace, nm tokens.Name) string {
 	if ns := w.Settings().Namespace; ns != "" {
 		// If the name starts with the namespace, trim the name part.
 		orig := string(nm)
-		if trim := strings.TrimPrefix(orig, ns+tokens.NameDelimiter); trim != orig {
+		if trim := strings.TrimPrefix(orig, ns+tokens.QNameDelimiter); trim != orig {
 			return stringNamePath(trim)
 		}
 	}

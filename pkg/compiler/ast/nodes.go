@@ -62,7 +62,7 @@ func (node *node) Where() (*diag.Document, *diag.Location) {
 // Identifier represents a simple string token associated with its source location context.
 type Identifier struct {
 	node
-	Ident tokens.Token `json:"ident"` // a valid identifier: (letter | "_") (letter | digit | "_")*
+	Ident tokens.Name `json:"ident"` // a valid identifier: (letter | "_") (letter | digit | "_")*
 }
 
 const IdentifierKind NodeKind = "Identifier"

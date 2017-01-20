@@ -18,8 +18,8 @@ type Package struct {
 	Website     *string `json:"website,omitempty"`     // an optional website for additional info.
 	License     *string `json:"license,omitempty"`     // an optional license governing this package's usage.
 
-	Dependencies *[]tokens.Package `json:"dependencies,omitempty"` // all of the package dependencies.
-	Modules      *ast.Modules      `json:"modules,omitempty"`      // a collection of top-level modules.
+	Dependencies *Dependencies `json:"dependencies,omitempty"` // all of the package dependencies.
+	Modules      *ast.Modules  `json:"modules,omitempty"`      // a collection of top-level modules.
 
 	Doc *diag.Document `json:"-"` // the document from which this package came.
 }
@@ -29,3 +29,12 @@ var _ diag.Diagable = (*Package)(nil)
 func (s *Package) Where() (*diag.Document, *diag.Location) {
 	return s.Doc, nil
 }
+
+// Dependencies maps dependency names to the full URL, including version, of the package.
+type Dependencies map[tokens.Package]PackageURL
+
+// PackageURL represents a fully qualified "URL-like" reference to an entity, usually another package.  This string
+// starts with an optional "protocol" (like https://, git://, etc), followed by an optional "base" part (like
+// hub.mu.com/, github.com/, etc), followed by the "name" part (which is just a Name), followed by an optional "#" and
+// version number (where version may be "latest", a semantic version range, or a Git SHA hash).
+type PackageURL string

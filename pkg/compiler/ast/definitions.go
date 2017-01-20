@@ -40,8 +40,8 @@ var _ Definition = (*Module)(nil)
 
 const ModuleKind NodeKind = "Module"
 
-// Modules is a map of Module token to Module AST node.
-type Modules map[tokens.Module]*Module
+// Modules is a map of Name to Module AST node
+type Modules map[tokens.Name]*Module
 
 // ModuleMember is a definition that belongs to a Module.
 type ModuleMember interface {
@@ -59,7 +59,7 @@ func (node *moduleMemberNode) moduleMember()                    {}
 func (node *moduleMemberNode) GetAccess() *tokens.Accessibility { return node.Access }
 
 // ModuleMembers is a map of Token to ModuleMember.
-type ModuleMembers map[tokens.Token]ModuleMember
+type ModuleMembers map[tokens.Name]ModuleMember
 
 // Export re-exports a Definition from another Module, possibly with a different name.
 type Export struct {
@@ -110,8 +110,8 @@ func (node *classMemberNode) classMember()                                {}
 func (node *classMemberNode) GetAccess() *tokens.ClassMemberAccessibility { return node.Access }
 func (node *classMemberNode) GetStatic() *bool                            { return node.Static }
 
-// ClassMembers is a map of Token to ClassMember.
-type ClassMembers map[tokens.Token]ClassMember
+// ClassMembers is a map of Name to ClassMember.
+type ClassMembers map[tokens.Name]ClassMember
 
 /* Variables */
 

@@ -196,9 +196,7 @@ const InvokeFunctionExpressionKind NodeKind = "InvokeFunctionExpression"
 // LambdaExpression creates a lambda, a sort of "anonymous" function, that evaluates to a function type.
 type LambdaExpression struct {
 	expressionNode
-	Signature  tokens.Type       `json:"signature"`  // the function signature type.
-	Parameters []tokens.Variable `json:"parameters"` // the parameter variables.
-	Body       *Block            `json:"body"`       // the lambda's body block.
+	functionNode
 }
 
 var _ Node = (*LambdaExpression)(nil)
