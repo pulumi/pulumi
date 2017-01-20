@@ -18,12 +18,13 @@ import (
 	"github.com/marapongo/mu/pkg/compiler/legacy/ast/conv"
 	"github.com/marapongo/mu/pkg/config"
 	"github.com/marapongo/mu/pkg/diag"
+	"github.com/marapongo/mu/pkg/pack"
 	"github.com/marapongo/mu/pkg/tokens"
 	"github.com/marapongo/mu/pkg/util/contract"
 	"github.com/marapongo/mu/pkg/workspace"
 )
 
-func (b *binder) PrepareStack(stack *ast.Stack) []tokens.Ref {
+func (b *binder) PrepareStack(stack *ast.Stack) []pack.PackageURLString {
 	glog.Infof("Preparing Mu Stack: %v", stack.Name)
 	if glog.V(2) {
 		defer glog.V(2).Infof("Preparing Mu Stack %v completed w/ %v warnings and %v errors",
@@ -81,19 +82,19 @@ func (b *binder) LookupService(nm tokens.Name) (*ast.Service, bool) {
 }
 
 // LookupStack binds a name to a Stack type.
-func (b *binder) LookupStack(nm tokens.Name) (*ast.Stack, bool) {
+func (b *binder) LookupStack(nm tokens.PackageName) (*ast.Stack, bool) {
 	contract.Assertf(b.scope != nil, "Unexpected empty binding scope during LookupStack")
 	return nil, false
 }
 
 // LookupUninstStack binds a name to a UninstStack type.
-func (b *binder) LookupUninstStack(nm tokens.Name) (*ast.UninstStack, bool) {
+func (b *binder) LookupUninstStack(nm tokens.PackageName) (*ast.UninstStack, bool) {
 	contract.Assertf(b.scope != nil, "Unexpected empty binding scope during LookupUninstStack")
 	return nil, false
 }
 
 // LookupSchema binds a name to a Schema type.
-func (b *binder) LookupSchema(nm tokens.Name) (*ast.Schema, bool) {
+func (b *binder) LookupSchema(nm tokens.PackageName) (*ast.Schema, bool) {
 	contract.Assertf(b.scope != nil, "Unexpected empty binding scope during LookupSchema")
 	return nil, false
 }
@@ -113,8 +114,8 @@ func (b *binder) RegisterSymbol(sym *legacy.Symbol) bool {
 type binderPreparePhase struct {
 	b     *binder
 	top   *ast.Stack
-	deps  []tokens.Ref
-	depsm map[tokens.Ref]bool
+	deps  []pack.PackageURLString
+	depsm map[pack.PackageURLString]bool
 }
 
 var _ core.Visitor = (*binderPreparePhase)(nil) // compile-time assertion that the binder implements core.Visitor.
@@ -123,8 +124,8 @@ func newBinderPreparePhase(b *binder, top *ast.Stack) *binderPreparePhase {
 	return &binderPreparePhase{
 		b:     b,
 		top:   top,
-		deps:  make([]tokens.Ref, 0),
-		depsm: make(map[tokens.Ref]bool),
+		deps:  make([]pack.PackageURLString, 0),
+		depsm: make(map[pack.PackageURLString]bool),
 	}
 }
 
@@ -138,7 +139,7 @@ func (p *binderPreparePhase) VisitWorkspace(workspace *workspace.Workspace) {
 func (p *binderPreparePhase) VisitCluster(name string, cluster *config.Cluster) {
 }
 
-func (p *binderPreparePhase) VisitDependency(parent *workspace.Workspace, ref tokens.Ref, dep *tokens.VersionSpec) {
+func (p *binderPreparePhase) VisitDependency(parent *workspace.Workspace, ref pack.PackageURLString, dep *pack.VersionSpec) {
 	// Workspace dependencies must use legal version specs; validate that this parses now so that we can use it
 	// later on without needing to worry about additional validation.
 	_, err := ref.Parse()
@@ -216,7 +217,7 @@ func (p *binderPreparePhase) VisitService(pstack *ast.Stack, parent *ast.Service
 	// In this example, "acmecorp/db" is still the type, however the name is given the nicer name of "customers."
 	simplify := false
 	if svc.Type == "" {
-		svc.Type = tokens.Ref(svc.Name)
+		svc.Type = pack.PackageURLString(svc.Name)
 		simplify = true
 	}
 
@@ -228,7 +229,7 @@ func (p *binderPreparePhase) VisitService(pstack *ast.Stack, parent *ast.Service
 
 	// If we used the simple form, we must now propagate the friendly name over to the service's name.
 	if simplify {
-		svc.Name = ty.Name.Simple()
+		svc.Name = tokens.Name(ty.Name)
 	}
 
 	// Add this service to the symbol table so that other service definitions can refer to it by name.
@@ -239,7 +240,7 @@ func (p *binderPreparePhase) VisitService(pstack *ast.Stack, parent *ast.Service
 }
 
 // registerDependency adds a dependency that needs to be resolved/bound before phase 2 occurs.
-func (p *binderPreparePhase) registerDependency(stack *ast.Stack, ref tokens.Ref) (tokens.RefParts, bool) {
+func (p *binderPreparePhase) registerDependency(stack *ast.Stack, ref pack.PackageURLString) (pack.PackageURL, bool) {
 	ty, err := ref.Parse()
 	if err == nil {
 		// First see if this resolves to a stack.  If it does, it's already in scope; nothing more to do.
@@ -247,7 +248,7 @@ func (p *binderPreparePhase) registerDependency(stack *ast.Stack, ref tokens.Ref
 		if _, exists := p.b.LookupStack(nm); !exists {
 			// Otherwise, we need to track this as a dependency to resolve.  Make sure to canonicalize the key so that
 			// we don't end up with duplicate semantically equivalent dependency references.
-			key := ty.Defaults().Ref()
+			key := ty.Defaults().URL()
 			if _, exist := p.depsm[key]; !exist {
 				// Store these in an array so that the order is deterministic.  But use a map to avoid duplicates.
 				p.deps = append(p.deps, key)
@@ -274,12 +275,11 @@ func newBinderBindPhase(b *binder, top *ast.Stack, deprefs ast.DependencyRefs) *
 	p := &binderBindPhase{b: b, top: top}
 
 	// Populate the symbol table with this Stack's bound dependencies so that any type lookups are found.
-	for _, ref := range ast.StableDependencyRefs(deprefs) {
-		dep := deprefs[ref]
+	for ref, dep := range deprefs {
 		contract.Assert(dep.Doc != nil)
 
 		nm := refToName(ref)
-		sym := legacy.NewUninstStackSymbol(nm, dep)
+		sym := legacy.NewUninstStackSymbol(tokens.Name(nm), dep)
 		if !p.b.RegisterSymbol(sym) {
 			p.Diag().Errorf(errors.ErrorSymbolAlreadyExists.At(dep.Doc), nm)
 		}
@@ -298,7 +298,7 @@ func (p *binderBindPhase) VisitWorkspace(workspace *workspace.Workspace) {
 func (p *binderBindPhase) VisitCluster(name string, cluster *config.Cluster) {
 }
 
-func (p *binderBindPhase) VisitDependency(parent *workspace.Workspace, ref tokens.Ref, dep *tokens.VersionSpec) {
+func (p *binderBindPhase) VisitDependency(parent *workspace.Workspace, ref pack.PackageURLString, dep *pack.VersionSpec) {
 }
 
 func (p *binderBindPhase) VisitStack(stack *ast.Stack) {
@@ -359,7 +359,7 @@ func (p *binderBindPhase) VisitService(pstack *ast.Stack, parent *ast.Services, 
 }
 
 // ensureStack binds a ref to a stack symbol, possibly instantiating it if needed.
-func (p *binderBindPhase) ensureStack(ref tokens.Ref, props ast.PropertyBag) *ast.Stack {
+func (p *binderBindPhase) ensureStack(ref pack.PackageURLString, props ast.PropertyBag) *ast.Stack {
 	ty := p.ensureType(ref)
 
 	// There are two possibilities.  The first is that a type resolves to an *ast.Stack.  That's simple, we just fetch
@@ -389,7 +389,7 @@ func (p *binderBindPhase) ensureStack(ref tokens.Ref, props ast.PropertyBag) *as
 }
 
 // ensureStackType looks up a ref, either as a stack, document, or schema symbol, and returns it as-is.
-func (p *binderBindPhase) ensureType(ref tokens.Ref) *ast.Type {
+func (p *binderBindPhase) ensureType(ref pack.PackageURLString) *ast.Type {
 	nm := refToName(ref)
 	stack, exists := p.b.LookupStack(nm)
 	if exists {
@@ -427,7 +427,7 @@ func (p *binderValidatePhase) VisitWorkspace(workspace *workspace.Workspace) {
 func (p *binderValidatePhase) VisitCluster(name string, cluster *config.Cluster) {
 }
 
-func (p *binderValidatePhase) VisitDependency(parent *workspace.Workspace, ref tokens.Ref, dep *tokens.VersionSpec) {
+func (p *binderValidatePhase) VisitDependency(parent *workspace.Workspace, ref pack.PackageURLString, dep *pack.VersionSpec) {
 }
 
 func (p *binderValidatePhase) VisitStack(stack *ast.Stack) {
@@ -862,6 +862,6 @@ func subclassOf(typ *ast.Stack, of *ast.Type) bool {
 }
 
 // refToName converts a reference to its simple symbolic name.
-func refToName(ref tokens.Ref) tokens.Name {
+func refToName(ref pack.PackageURLString) tokens.PackageName {
 	return ref.MustParse().Name
 }

@@ -8,15 +8,6 @@ import (
 	"github.com/marapongo/mu/pkg/tokens"
 )
 
-func StableDependencyRefs(drs DependencyRefs) []tokens.Ref {
-	sorted := make(refs, 0, len(drs))
-	for dr := range drs {
-		sorted = append(sorted, dr)
-	}
-	sort.Sort(sorted)
-	return sorted
-}
-
 func StableKeys(ps PropertyBag) []string {
 	sorted := make([]string, 0, len(ps))
 	for p := range ps {
@@ -91,19 +82,5 @@ func (s Names) Swap(i, j int) {
 }
 
 func (s Names) Less(i, j int) bool {
-	return s[i] < s[j]
-}
-
-type refs []tokens.Ref
-
-func (s refs) Len() int {
-	return len(s)
-}
-
-func (s refs) Swap(i, j int) {
-	s[i], s[j] = s[j], s[i]
-}
-
-func (s refs) Less(i, j int) bool {
 	return s[i] < s[j]
 }

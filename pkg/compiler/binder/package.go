@@ -9,7 +9,6 @@ import (
 	"github.com/marapongo/mu/pkg/compiler/symbols"
 	"github.com/marapongo/mu/pkg/diag"
 	"github.com/marapongo/mu/pkg/pack"
-	"github.com/marapongo/mu/pkg/tokens"
 	"github.com/marapongo/mu/pkg/util/contract"
 	"github.com/marapongo/mu/pkg/workspace"
 )
@@ -37,14 +36,23 @@ func (b *binder) BindPackage(pkg *pack.Package) *symbols.Package {
 // into dependency dependencies, and so on, until we have reached a fixed point.
 func (b *binder) resolvePackageDeps(pkg *pack.Package) symbols.PackageMap {
 	contract.Require(pkg != nil, "pkg")
+
 	deps := make(symbols.PackageMap)
 	if pkg.Dependencies != nil {
-		for _, dep := range *pkg.Dependencies {
-			glog.V(3).Infof("Resolving package %v dependency %v", pkg.Name, dep)
-			depsym := b.resolveDep(dep)
-			deps[dep] = depsym
+		for _, depurl := range *pkg.Dependencies {
+			// The dependency is a URL.  Transform it into a name used for symbol resolution.
+			dep, err := depurl.Parse()
+			if err != nil {
+				b.Diag().Errorf(errors.ErrorPackageURLMalformed, depurl, err)
+			} else {
+				glog.V(3).Infof("Resolving package %v dependency name=%v, url=%v", pkg.Name, dep.Name, dep.URL())
+				if depsym := b.resolveDep(dep); depsym != nil {
+					deps[dep.Name] = depsym
+				}
+			}
 		}
 	}
+
 	return deps
 }
 
@@ -53,20 +61,21 @@ var cyclicTombstone = &symbols.Package{}
 // resolveDep actually performs the package resolution process, populating the compiler symbol tables.
 func (b *binder) resolveDep(dep pack.PackageURL) *symbols.Package {
 	// First, see if we've already loaded this package.  If yes, reuse it.
-	// TODO: ensure versions match.
-	if pkgsym, exists := b.ctx.Pkgs[dep]; exists {
+	if pkgsym, exists := b.ctx.Pkgs[dep.Name]; exists {
 		// Check for cycles.  If one exists, do not process this dependency any further.
 		if pkgsym == cyclicTombstone {
 			// TODO: report the full transitive loop to help debug cycles.
-			b.Diag().Errorf(errors.ErrorImportCycle, dep)
+			b.Diag().Errorf(errors.ErrorImportCycle, dep.Name)
+			return nil
 		}
+
+		// TODO: ensure versions match.
 		return pkgsym
 	}
 
 	// There are many places a dependency could come from.  Consult the workspace for a list of those paths.  It will
 	// return a number of them, in preferred order, and we simply probe each one until we find something.
-	ref := tokens.Ref(dep).MustParse()
-	for _, loc := range b.w.DepCandidates(ref) {
+	for _, loc := range b.w.DepCandidates(dep) {
 		// See if this candidate actually exists.
 		isMufile := workspace.IsMufile(loc, b.Diag())
 		glog.V(5).Infof("Probing for dependency %v at %v: %v", dep, loc, isMufile)
@@ -82,19 +91,19 @@ func (b *binder) resolveDep(dep pack.PackageURL) *symbols.Package {
 			pkg := b.reader.ReadPackage(doc)
 
 			// Inject a tombstone so we can easily detect cycles.
-			b.ctx.Pkgs[dep] = cyclicTombstone
+			b.ctx.Pkgs[dep.Name] = cyclicTombstone
 
 			// Now perform the binding.
 			pkgsym := b.BindPackage(pkg)
 
-			// Memoize this in the compiler's cache and return it.
-			b.ctx.Pkgs[dep] = pkgsym
+			// Erase the tombstone, memoize the symbol in the compiler's cache, and return it.
+			b.ctx.Pkgs[dep.Name] = pkgsym
 			return pkgsym
 		}
 	}
 
 	// If we got to this spot, we could not find the dependency.  Issue an error and bail out.
-	b.Diag().Errorf(errors.ErrorPackageNotFound, ref)
+	b.Diag().Errorf(errors.ErrorPackageNotFound, dep)
 	return nil
 }
 

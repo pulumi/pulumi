@@ -15,6 +15,9 @@ type Name string
 var NameRegexp = regexp.MustCompile(NameRegexpPattern)
 var NameRegexpPattern = "[A-Za-z_.][A-Za-z0-9_]*"
 
+// Q turns a Name into a qualified name; this is legal, since Name's is a proper subset of QName's grammar.
+func (nm Name) Q() QName { return QName(nm) }
+
 // IsName checks whether a string is a legal Name.
 func IsName(s string) bool {
 	return NameRegexp.FindString(s) == s

@@ -5,6 +5,7 @@ package ast
 import (
 	"fmt"
 
+	"github.com/marapongo/mu/pkg/pack"
 	"github.com/marapongo/mu/pkg/tokens"
 	"github.com/marapongo/mu/pkg/util/contract"
 )
@@ -12,12 +13,12 @@ import (
 // Type is a union type that can represent any of the sort of "types" in the system.
 type Type struct {
 	// one, and only one, of these will be non-nil:
-	Primitive   *PrimitiveType // a simple type (like `string`, `number`, etc).
-	Decors      *TypeDecors    // a decorated type; this is either an array or map.
-	Unref       *tokens.Ref    // an unresolved name.
-	UninstStack *UninstStack   // a resolved, but uninstantiated, stack reference.
-	Stack       *Stack         // a specific stack type.
-	Schema      *Schema        // a specific schema type.
+	Primitive   *PrimitiveType         // a simple type (like `string`, `number`, etc).
+	Decors      *TypeDecors            // a decorated type; this is either an array or map.
+	Unref       *pack.PackageURLString // an unresolved name.
+	UninstStack *UninstStack           // a resolved, but uninstantiated, stack reference.
+	Stack       *Stack                 // a specific stack type.
+	Schema      *Schema                // a specific schema type.
 }
 
 func NewPrimitiveType(p *PrimitiveType) *Type {
@@ -64,18 +65,18 @@ func NewUninstStackType(uninst *UninstStack) *Type {
 	return &Type{UninstStack: uninst}
 }
 
-func NewUnresolvedRefType(ref *tokens.Ref) *Type {
+func NewUnresolvedRefType(ref *pack.PackageURLString) *Type {
 	return &Type{Unref: ref}
 }
 
 // Name converts the given type into its corresponding friendly name.
-func (ty *Type) Name() tokens.Ref {
+func (ty *Type) Name() pack.PackageURLString {
 	if ty.Primitive != nil {
-		return tokens.Ref(*ty.Primitive)
+		return pack.PackageURLString(*ty.Primitive)
 	} else if ty.Stack != nil {
-		return tokens.Ref(ty.Stack.Name)
+		return pack.PackageURLString(ty.Stack.Name)
 	} else if ty.Schema != nil {
-		return tokens.Ref(ty.Schema.Name)
+		return pack.PackageURLString(ty.Schema.Name)
 	} else if ty.Unref != nil {
 		return *ty.Unref
 	} else if ty.UninstStack != nil {
@@ -83,15 +84,15 @@ func (ty *Type) Name() tokens.Ref {
 	} else if ty.Decors != nil {
 		// TODO: consider caching these so we don't produce lots of strings.
 		if ty.Decors.ElemType != nil {
-			return tokens.Ref(fmt.Sprintf(string(TypeDecorsArray), ty.Decors.ElemType.Name()))
+			return pack.PackageURLString(fmt.Sprintf(string(TypeDecorsArray), ty.Decors.ElemType.Name()))
 		} else {
 			contract.Assert(ty.Decors.KeyType != nil)
 			contract.Assert(ty.Decors.ValueType != nil)
-			return tokens.Ref(fmt.Sprintf(string(TypeDecorsMap), ty.Decors.KeyType.Name(), ty.Decors.ValueType.Name()))
+			return pack.PackageURLString(fmt.Sprintf(string(TypeDecorsMap), ty.Decors.KeyType.Name(), ty.Decors.ValueType.Name()))
 		}
 	} else {
 		contract.Failf("Expected this type to have one of primitive, stack, schema, unref, resref, or decors")
-		return tokens.Ref("")
+		return pack.PackageURLString("")
 	}
 }
 

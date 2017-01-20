@@ -198,7 +198,7 @@ func printModules(pkg *pack.Package, printSymbols bool, printExports bool, print
 	}
 }
 
-func printModuleMember(name tokens.Token, member ast.ModuleMember, exportOnly bool, indent string) {
+func printModuleMember(name tokens.ModuleMemberName, member ast.ModuleMember, exportOnly bool, indent string) {
 	printComment(member.GetDescription(), indent)
 
 	acc := member.GetAccess()
@@ -218,7 +218,7 @@ func printModuleMember(name tokens.Token, member ast.ModuleMember, exportOnly bo
 	}
 }
 
-func printExport(name tokens.Token, export *ast.Export, indent string) {
+func printExport(name tokens.ModuleMemberName, export *ast.Export, indent string) {
 	var mods []string
 	if export.Access != nil {
 		mods = append(mods, string(*export.Access))
@@ -226,7 +226,7 @@ func printExport(name tokens.Token, export *ast.Export, indent string) {
 	fmt.Printf("%vexport \"%v\"%v %v\n", indent, name, modString(mods), export.Referent)
 }
 
-func printClass(name tokens.Token, class *ast.Class, exportOnly bool, indent string) {
+func printClass(name tokens.ModuleMemberName, class *ast.Class, exportOnly bool, indent string) {
 	fmt.Printf("%vclass \"%v\"", indent, name)
 
 	var mods []string
@@ -267,7 +267,7 @@ func printClass(name tokens.Token, class *ast.Class, exportOnly bool, indent str
 	fmt.Printf("}\n")
 }
 
-func printClassMember(name tokens.Token, member ast.ClassMember, exportOnly bool, indent string) {
+func printClassMember(name tokens.ClassMemberName, member ast.ClassMember, exportOnly bool, indent string) {
 	printComment(member.GetDescription(), indent)
 
 	acc := member.GetAccess()
@@ -283,7 +283,7 @@ func printClassMember(name tokens.Token, member ast.ClassMember, exportOnly bool
 	}
 }
 
-func printClassProperty(name tokens.Token, prop *ast.ClassProperty, indent string) {
+func printClassProperty(name tokens.ClassMemberName, prop *ast.ClassProperty, indent string) {
 	var mods []string
 	if prop.Access != nil {
 		mods = append(mods, string(*prop.Access))
@@ -301,7 +301,7 @@ func printClassProperty(name tokens.Token, prop *ast.ClassProperty, indent strin
 	fmt.Printf("\n")
 }
 
-func printClassMethod(name tokens.Token, meth *ast.ClassMethod, indent string) {
+func printClassMethod(name tokens.ClassMemberName, meth *ast.ClassMethod, indent string) {
 	var mods []string
 	if meth.Access != nil {
 		mods = append(mods, string(*meth.Access))
@@ -318,7 +318,7 @@ func printClassMethod(name tokens.Token, meth *ast.ClassMethod, indent string) {
 	fmt.Printf("%vmethod \"%v\"%v: %v\n", indent, name, modString(mods), funcSig(meth))
 }
 
-func printModuleMethod(name tokens.Token, meth *ast.ModuleMethod, indent string) {
+func printModuleMethod(name tokens.ModuleMemberName, meth *ast.ModuleMethod, indent string) {
 	var mods []string
 	if meth.Access != nil {
 		mods = append(mods, string(*meth.Access))
@@ -326,7 +326,7 @@ func printModuleMethod(name tokens.Token, meth *ast.ModuleMethod, indent string)
 	fmt.Printf("%vmethod \"%v\"%v: %v\n", indent, name, modString(mods), funcSig(meth))
 }
 
-func printModuleProperty(name tokens.Token, prop *ast.ModuleProperty, indent string) {
+func printModuleProperty(name tokens.ModuleMemberName, prop *ast.ModuleProperty, indent string) {
 	var mods []string
 	if prop.Access != nil {
 		mods = append(mods, string(*prop.Access))

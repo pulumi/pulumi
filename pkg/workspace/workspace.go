@@ -14,6 +14,7 @@ import (
 	"github.com/marapongo/mu/pkg/compiler/core"
 	"github.com/marapongo/mu/pkg/diag"
 	"github.com/marapongo/mu/pkg/encoding"
+	"github.com/marapongo/mu/pkg/pack"
 	"github.com/marapongo/mu/pkg/tokens"
 	"github.com/marapongo/mu/pkg/util/contract"
 )
@@ -32,7 +33,7 @@ type W interface {
 	// DetectPackage locates the closest Mufile from the given path, searching "upwards" in the directory hierarchy.
 	DetectPackage() (string, error)
 	// DepCandidates fetches all candidate locations for resolving a dependency name to its installed artifacts.
-	DepCandidates(dep tokens.RefParts) []string
+	DepCandidates(dep pack.PackageURL) []string
 }
 
 // New creates a new workspace from the given starting path.
@@ -125,7 +126,7 @@ func (w *workspace) DetectPackage() (string, error) {
 	return DetectPackage(w.path, w.ctx.Diag)
 }
 
-func (w *workspace) DepCandidates(dep tokens.RefParts) []string {
+func (w *workspace) DepCandidates(dep pack.PackageURL) []string {
 	// The search order for dependencies is specified in https://github.com/marapongo/mu/blob/master/docs/deps.md.
 	//
 	// Roughly speaking, these locations are are searched, in order:
@@ -158,7 +159,7 @@ func (w *workspace) DepCandidates(dep tokens.RefParts) []string {
 	// The following code simply produces an array of these candidate locations, in order.
 
 	base := stringNamePath(dep.Base)
-	name := namePath(dep.Name)
+	name := packageNamePath(dep.Name)
 	wsname := workspacePath(w, dep.Name)
 
 	// For each extension we support, add the same set of search locations.
@@ -181,13 +182,18 @@ func namePath(nm tokens.Name) string {
 	return stringNamePath(string(nm))
 }
 
+// packageNamePath just cleans a package name and makes sure it's appropriate to use as a path.
+func packageNamePath(nm tokens.PackageName) string {
+	return stringNamePath(string(nm))
+}
+
 // stringNamePart cleans a string component of a name and makes sure it's appropriate to use as a path.
 func stringNamePath(nm string) string {
 	return strings.Replace(nm, tokens.QNameDelimiter, string(os.PathSeparator), -1)
 }
 
 // workspacePath converts a name into the relevant name-part in the workspace to look for that dependency.
-func workspacePath(w *workspace, nm tokens.Name) string {
+func workspacePath(w *workspace, nm tokens.PackageName) string {
 	if ns := w.Settings().Namespace; ns != "" {
 		// If the name starts with the namespace, trim the name part.
 		orig := string(nm)
@@ -195,5 +201,5 @@ func workspacePath(w *workspace, nm tokens.Name) string {
 			return stringNamePath(trim)
 		}
 	}
-	return namePath(nm)
+	return packageNamePath(nm)
 }

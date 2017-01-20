@@ -106,3 +106,8 @@ var ErrorImportCycle = &diag.Diag{
 	ID:      520,
 	Message: "An import cycle was found in %v's transitive closure of package imports",
 }
+
+var ErrorPackageURLMalformed = &diag.Diag{
+	ID:      521,
+	Message: "Package URL '%v' is malformed: %v",
+}

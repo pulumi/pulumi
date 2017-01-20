@@ -39,8 +39,8 @@ type ModuleMember interface {
 	moduleMember()
 }
 
-// ModuleMembers is a map from a module member's token to its associated symbol.
-type ModuleMemberMap map[tokens.Name]ModuleMember
+// ModuleMembers is a map from a module member's name to its associated symbol.
+type ModuleMemberMap map[tokens.ModuleMemberName]ModuleMember
 
 // Export is a fully bound module property symbol that associates a name with some other symbol.
 type Export struct {

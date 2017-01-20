@@ -15,6 +15,7 @@ package ast
 
 import (
 	"github.com/marapongo/mu/pkg/diag"
+	"github.com/marapongo/mu/pkg/pack"
 	"github.com/marapongo/mu/pkg/tokens"
 )
 
@@ -32,22 +33,22 @@ func (node *Node) Where() (*diag.Document, *diag.Location) {
 type Stack struct {
 	Node
 
-	Name        tokens.Name    `json:"name,omitempty"`        // a friendly name for this node.
-	Version     tokens.Version `json:"version,omitempty"`     // a specific version number.
-	Description string         `json:"description,omitempty"` // an optional friendly description.
-	Author      string         `json:"author,omitempty"`      // an optional author.
-	Website     string         `json:"website,omitempty"`     // an optional website for additional info.
-	License     string         `json:"license,omitempty"`     // an optional license governing use of this package.
+	Name        tokens.Name  `json:"name,omitempty"`        // a friendly name for this node.
+	Version     pack.Version `json:"version,omitempty"`     // a specific version number.
+	Description string       `json:"description,omitempty"` // an optional friendly description.
+	Author      string       `json:"author,omitempty"`      // an optional author.
+	Website     string       `json:"website,omitempty"`     // an optional website for additional info.
+	License     string       `json:"license,omitempty"`     // an optional license governing use of this package.
 
-	Base                tokens.Ref         `json:"base,omitempty"`      // an optional base Stack type.
-	BoundBase           *Stack             `json:"-"`                   // base, optionally bound during analysis.
-	Abstract            bool               `json:"abstract,omitempty"`  // true if this stack is "abstract".
-	Intrinsic           bool               `json:"intrinsic,omitempty"` // true if this stack is an "intrinsic" type.
-	Properties          Properties         `json:"properties,omitempty"`
-	PropertyValues      PropertyBag        `json:"-"`               // the properties used to construct this stack.
-	BoundPropertyValues LiteralPropertyBag `json:"-"`               // bound properties used to construct this stack.
-	Types               Schemas            `json:"types,omitempty"` // an optional types section with custom schemas.
-	Services            Services           `json:"services,omitempty"`
+	Base                pack.PackageURLString `json:"base,omitempty"`      // an optional base Stack type.
+	BoundBase           *Stack                `json:"-"`                   // base, optionally bound during analysis.
+	Abstract            bool                  `json:"abstract,omitempty"`  // true if this stack is "abstract".
+	Intrinsic           bool                  `json:"intrinsic,omitempty"` // true if this stack is an "intrinsic" type.
+	Properties          Properties            `json:"properties,omitempty"`
+	PropertyValues      PropertyBag           `json:"-"`               // the properties used to construct this stack.
+	BoundPropertyValues LiteralPropertyBag    `json:"-"`               // bound properties used to construct this stack.
+	Types               Schemas               `json:"types,omitempty"` // an optional types section with custom schemas.
+	Services            Services              `json:"services,omitempty"`
 
 	Doc *diag.Document `json:"-"` // the document from which this came.
 
@@ -63,12 +64,12 @@ func (stack *Stack) Where() (*diag.Document, *diag.Location) {
 // TODO(joe): eventually this ought to also encompass cross-stack schema references.
 type UninstStack struct {
 	Node
-	Ref tokens.Ref     `json:"-"`
-	Doc *diag.Document `json:"-"`
+	Ref pack.PackageURLString `json:"-"`
+	Doc *diag.Document        `json:"-"`
 }
 
 // DependendyRefs is simply a map of dependency reference to the associated uninstantiated Stack for that dependency.
-type DependencyRefs map[tokens.Ref]*UninstStack
+type DependencyRefs map[pack.PackageURLString]*UninstStack
 
 // Propertys maps property names to metadata about those propertys.
 type Properties map[string]*Property
@@ -77,13 +78,13 @@ type Properties map[string]*Property
 type Property struct {
 	Node
 
-	Type        tokens.Ref  `json:"type,omitempty"`        // the type of the property; required.
-	BoundType   *Type       `json:"-"`                     // if the property is a stack type, it will be bound.
-	Description string      `json:"description,omitempty"` // an optional friendly description of the property.
-	Default     interface{} `json:"default,omitempty"`     // an optional default value if the caller elides one.
-	Optional    bool        `json:"optional,omitempty"`    // true if may be omitted (inferred if a default value).
-	Readonly    bool        `json:"readonly,omitempty"`    // true if this property is readonly.
-	Perturbs    bool        `json:"perturbs,omitempty"`    // true if changing this property is perturbing.
+	Type        pack.PackageURLString `json:"type,omitempty"`        // the type of the property; required.
+	BoundType   *Type                 `json:"-"`                     // if the property is a stack type, it will be bound.
+	Description string                `json:"description,omitempty"` // an optional friendly description of the property.
+	Default     interface{}           `json:"default,omitempty"`     // an optional default value if the caller elides one.
+	Optional    bool                  `json:"optional,omitempty"`    // true if may be omitted (inferred if a default value).
+	Readonly    bool                  `json:"readonly,omitempty"`    // true if this property is readonly.
+	Perturbs    bool                  `json:"perturbs,omitempty"`    // true if changing this property is perturbing.
 
 	Name string `json:"-"` // name is decorated post-parsing, since it is contextual.
 }
@@ -105,9 +106,9 @@ type SchemaMap map[tokens.Name]*Schema
 type Schema struct {
 	Node
 
-	Base       tokens.Ref `json:"base,omitempty"`       // the base type from which this derives.
-	BoundBase  *Type      `json:"-"`                    // base, optionally bound during analysis.
-	Properties Properties `json:"properties,omitempty"` // all of the custom properties for object types.
+	Base       pack.PackageURLString `json:"base,omitempty"`       // the base type from which this derives.
+	BoundBase  *Type                 `json:"-"`                    // base, optionally bound during analysis.
+	Properties Properties            `json:"properties,omitempty"` // all of the custom properties for object types.
 
 	// constraints for string types:
 	Pattern   *string  `json:"pattern,omitempty"`   // an optional regex pattern for string types.
@@ -150,10 +151,10 @@ type UntypedServiceMap map[tokens.Name]PropertyBag
 type Service struct {
 	Node
 
-	Type            tokens.Ref         `json:"type,omitempty"` // an explicit type; if missing, the name is used.
-	BoundType       *Stack             `json:"-"`              // services are bound to stacks during semantic analysis.
-	Properties      PropertyBag        `json:"-"`              // all of the custom properties (minus what's above).
-	BoundProperties LiteralPropertyBag `json:"-"`              // the bound properties, expanded and typed correctly.
+	Type            pack.PackageURLString `json:"type,omitempty"` // an explicit type; if missing, the name is used.
+	BoundType       *Stack                `json:"-"`              // services are bound to stacks during semantic analysis.
+	Properties      PropertyBag           `json:"-"`              // all of the custom properties (minus what's above).
+	BoundProperties LiteralPropertyBag    `json:"-"`              // the bound properties, expanded and typed correctly.
 
 	Name   tokens.Name `json:"-"` // a friendly name; decorated post-parsing, since it is contextual.
 	Public bool        `json:"-"` // true if this service is publicly exposed; also decorated post-parsing.

@@ -8,8 +8,8 @@ import (
 	"github.com/marapongo/mu/pkg/tokens"
 )
 
-func StableClassMembers(cm ClassMembers) Names {
-	sorted := make(Names, 0, len(cm))
+func StableClassMembers(cm ClassMembers) []tokens.ClassMemberName {
+	sorted := make(classMemberNames, 0, len(cm))
 	for m := range cm {
 		sorted = append(sorted, m)
 	}
@@ -17,8 +17,8 @@ func StableClassMembers(cm ClassMembers) Names {
 	return sorted
 }
 
-func StableModules(mm Modules) Names {
-	sorted := make(Names, 0, len(mm))
+func StableModules(mm Modules) []tokens.ModuleName {
+	sorted := make(moduleNames, 0, len(mm))
 	for m := range mm {
 		sorted = append(sorted, m)
 	}
@@ -26,8 +26,8 @@ func StableModules(mm Modules) Names {
 	return sorted
 }
 
-func StableModuleMembers(mm ModuleMembers) Names {
-	sorted := make(Names, 0, len(mm))
+func StableModuleMembers(mm ModuleMembers) []tokens.ModuleMemberName {
+	sorted := make(moduleMemberNames, 0, len(mm))
 	for m := range mm {
 		sorted = append(sorted, m)
 	}
@@ -35,16 +35,44 @@ func StableModuleMembers(mm ModuleMembers) Names {
 	return sorted
 }
 
-type Names []tokens.Name
+type classMemberNames []tokens.ClassMemberName
 
-func (s Names) Len() int {
+func (s classMemberNames) Len() int {
 	return len(s)
 }
 
-func (s Names) Swap(i, j int) {
+func (s classMemberNames) Swap(i, j int) {
 	s[i], s[j] = s[j], s[i]
 }
 
-func (s Names) Less(i, j int) bool {
+func (s classMemberNames) Less(i, j int) bool {
+	return s[i] < s[j]
+}
+
+type moduleNames []tokens.ModuleName
+
+func (s moduleNames) Len() int {
+	return len(s)
+}
+
+func (s moduleNames) Swap(i, j int) {
+	s[i], s[j] = s[j], s[i]
+}
+
+func (s moduleNames) Less(i, j int) bool {
+	return s[i] < s[j]
+}
+
+type moduleMemberNames []tokens.ModuleMemberName
+
+func (s moduleMemberNames) Len() int {
+	return len(s)
+}
+
+func (s moduleMemberNames) Swap(i, j int) {
+	s[i], s[j] = s[j], s[i]
+}
+
+func (s moduleMemberNames) Less(i, j int) bool {
 	return s[i] < s[j]
 }

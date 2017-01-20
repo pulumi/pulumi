@@ -23,7 +23,7 @@ func (node *Package) Token() tokens.Token { return tokens.Token(node.Node.Name) 
 func (node *Package) Tree() diag.Diagable { return node.Node }
 
 // PackageMap is a map from package token to the associated symbols.
-type PackageMap map[tokens.Name]*Package
+type PackageMap map[tokens.PackageName]*Package
 
 // ModuleMap is a map from module token to the associated symbols.
-type ModuleMap map[tokens.Name]*Module
+type ModuleMap map[tokens.ModuleName]*Module

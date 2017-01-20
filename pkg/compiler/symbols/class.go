@@ -41,8 +41,8 @@ type ClassMember interface {
 	classMember()
 }
 
-// ClassMemberMap is a map from a class member's token to its associated symbol.
-type ClassMemberMap map[tokens.Name]ClassMember
+// ClassMemberMap is a map from a class member's name to its associated symbol.
+type ClassMemberMap map[tokens.ClassMemberName]ClassMember
 
 // ClassProperty is a fully bound module property symbol.
 type ClassProperty struct {

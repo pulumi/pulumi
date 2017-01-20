@@ -31,10 +31,4 @@ func (s *Package) Where() (*diag.Document, *diag.Location) {
 }
 
 // Dependencies maps dependency names to the full URL, including version, of the package.
-type Dependencies map[tokens.Package]PackageURL
-
-// PackageURL represents a fully qualified "URL-like" reference to an entity, usually another package.  This string
-// starts with an optional "protocol" (like https://, git://, etc), followed by an optional "base" part (like
-// hub.mu.com/, github.com/, etc), followed by the "name" part (which is just a Name), followed by an optional "#" and
-// version number (where version may be "latest", a semantic version range, or a Git SHA hash).
-type PackageURL string
+type Dependencies map[tokens.PackageName]PackageURLString
