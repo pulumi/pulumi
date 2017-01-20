@@ -11,7 +11,7 @@ import (
 )
 
 func (b *binder) bindModule(node *ast.Module, parent *symbols.Package) *symbols.Module {
-	glog.V(3).Infof("Binding package %v module %v", parent.Name, node.Name)
+	glog.V(3).Infof("Binding package '%v' module '%v'", parent.Name(), node.Name.Ident)
 
 	// First create a module symbol with empty members, so we can use it as a parent below.
 	module := symbols.NewModuleSym(node, parent)
@@ -26,15 +26,14 @@ func (b *binder) bindModule(node *ast.Module, parent *symbols.Package) *symbols.
 		// TODO: add the imports to the symbol table.
 	}
 
-	// Next, bind each member at the symbolic level; in particular, we do not yet bind bodies of methods.
+	// Next, bind each member and add it to the module's map.
 	if node.Members != nil {
-		for memtok, member := range *node.Members {
-			module.Members[memtok] = b.bindModuleMember(member, module)
+		// First bind members and add them to the symbol table.  Note that this does not bind bodies just yet.  The
+		// reason is that module members may freely reference one another, so we must do this in a second pass.
+		for nm, member := range *node.Members {
+			module.Members[nm] = b.bindModuleMember(member, module)
 		}
 	}
-	// TODO: add these to the the symbol table for binding bodies.
-
-	// TODO: bind the bodies.
 
 	return module
 }
@@ -56,6 +55,8 @@ func (b *binder) bindModuleMember(node ast.ModuleMember, parent *symbols.Module)
 }
 
 func (b *binder) bindExport(node *ast.Export, parent *symbols.Module) *symbols.Export {
+	glog.V(3).Infof("Binding module '%v' export '%v'", parent.Name(), node.Name.Ident)
+
 	// To bind an export, simply look up the referent symbol and associate this name with it.
 	refsym := b.scope.Lookup(node.Referent)
 	if refsym == nil {
@@ -66,16 +67,25 @@ func (b *binder) bindExport(node *ast.Export, parent *symbols.Module) *symbols.E
 }
 
 func (b *binder) bindModuleProperty(node *ast.ModuleProperty, parent *symbols.Module) *symbols.ModuleProperty {
+	glog.V(3).Infof("Binding module '%v' property '%v'", parent.Name(), node.Name.Ident)
+
 	// Look up this node's type and inject it into the type table.
 	b.registerVariableType(node)
 	return symbols.NewModulePropertySym(node, parent)
 }
 
 func (b *binder) bindModuleMethod(node *ast.ModuleMethod, parent *symbols.Module) *symbols.ModuleMethod {
+	glog.V(3).Infof("Binding module '%v' method '%v'", parent.Name(), node.Name.Ident)
+
 	// Make a function type out of this method and inject it into the type table.
 	b.registerFunctionType(node)
 
 	// Note that we don't actually bind the body of this method yet.  Until we have gone ahead and injected *all*
 	// top-level symbols into the type table, we would potentially encounter missing intra-module symbols.
 	return symbols.NewModuleMethodSym(node, parent)
+}
+
+func (b *binder) bindModuleMethodBody(method *symbols.ModuleMethod) {
+	glog.V(3).Infof("Binding module method '%v' body", method.Token())
+	b.bindFunctionBody(method.Node)
 }

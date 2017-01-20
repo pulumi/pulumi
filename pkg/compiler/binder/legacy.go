@@ -31,9 +31,6 @@ func (b *binder) PrepareStack(stack *ast.Stack) []pack.PackageURLString {
 			stack.Name, b.Diag().Warnings(), b.Diag().Errors())
 	}
 
-	// Push a new scope for this binding pass.
-	b.PushScope()
-
 	// Now perform a phase1 walk of the tree, preparing it for subsequent binding.  This must be done as a
 	// separate phase because we won't know what to stick into the symbol table until after this first walk.
 	phase := newBinderPreparePhase(b, stack)
@@ -65,9 +62,6 @@ func (b *binder) ValidateStack(stack *ast.Stack) {
 		defer glog.V(2).Infof("Validating Mu Stack %v completed w/ %v warnings and %v errors",
 			stack.Name, b.Diag().Warnings(), b.Diag().Errors())
 	}
-
-	// Restore the original scope after this binding pass.
-	defer b.PopScope()
 
 	// Now perform the final validation of the AST.  There's nothing to return, it just may issue errors.
 	phase := newBinderValidatePhase(b)

@@ -3,13 +3,14 @@
 package binder
 
 import (
+	"github.com/golang/glog"
+
 	"github.com/marapongo/mu/pkg/compiler/ast"
 	"github.com/marapongo/mu/pkg/compiler/core"
 	"github.com/marapongo/mu/pkg/compiler/metadata"
 	"github.com/marapongo/mu/pkg/compiler/symbols"
 	"github.com/marapongo/mu/pkg/diag"
 	"github.com/marapongo/mu/pkg/pack"
-	"github.com/marapongo/mu/pkg/util/contract"
 	"github.com/marapongo/mu/pkg/workspace"
 )
 
@@ -38,8 +39,8 @@ func New(w workspace.W, ctx *core.Context, reader metadata.Reader) Binder {
 		types:  make(TypeMap),
 	}
 
-	// Create a global scope and populate it with all of the predefined type names.
-	b.PushScope()
+	// Create a global scope and populate it with all of the predefined type names.  This one's never popped.
+	NewScope(&b.scope)
 	for _, prim := range symbols.Primitives {
 		b.scope.MustRegister(prim)
 	}
@@ -59,26 +60,14 @@ func (b *binder) Diag() diag.Sink {
 	return b.ctx.Diag
 }
 
-// PushScope creates a new scope with an empty symbol table parented to the existing one.
-func (b *binder) PushScope() {
-	b.scope = NewScope(b.ctx, b.scope)
-}
-
-// PopScope replaces the current scope with its parent.
-func (b *binder) PopScope() {
-	contract.Assertf(b.scope != nil, "Unexpected empty binding scope during PopScope")
-	b.scope = b.scope.parent
-}
-
 // registerFunctionType understands how to turn any function node into a type, and adds it to the type table.  This
 // works for any kind of function-like AST node: module property, class property, or lambda.
 func (b *binder) registerFunctionType(node ast.Function) {
 	// Make a function type and inject it into the type table.
-	var params *[]symbols.Type
+	var params []symbols.Type
 	np := node.GetParameters()
 	if np != nil {
-		*params = make([]symbols.Type, len(*np))
-		for i, param := range *np {
+		for _, param := range *np {
 			var ptysym symbols.Type
 
 			// If there was an explicit type, look it up.
@@ -91,17 +80,21 @@ func (b *binder) registerFunctionType(node ast.Function) {
 				ptysym = symbols.AnyType
 			}
 
-			(*params)[i] = ptysym
+			params = append(params, ptysym)
 		}
 	}
 
-	var ret *symbols.Type
+	var ret symbols.Type
 	nr := node.GetReturnType()
 	if nr != nil {
-		*ret = b.scope.LookupType(*nr)
+		ret = b.scope.LookupType(*nr)
 	}
 
-	b.types[node] = symbols.NewFunctionType(params, ret)
+	tysym := symbols.NewFunctionType(params, ret)
+	if glog.V(7) {
+		glog.V(7).Infof("Registered function type: '%v' => %v", node.GetName().Ident, tysym.Name())
+	}
+	b.types[node] = tysym
 }
 
 // registerVariableType understands how to turn any variable node into a type, and adds it to the type table.  This
@@ -120,5 +113,8 @@ func (b *binder) registerVariableType(node ast.Variable) {
 		tysym = symbols.AnyType
 	}
 
+	if glog.V(7) {
+		glog.V(7).Infof("Registered variable type: '%v' => %v", node.GetName().Ident, tysym.Name())
+	}
 	b.types[node] = tysym
 }

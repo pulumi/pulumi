@@ -13,8 +13,8 @@ type Visitor interface {
 	// which nodes are visitied is specific to the specific visitation API being used.
 	Visit(node Node) Visitor
 
-	// PostVisit is invoked after visitation of a given node.
-	PostVisit(node Node)
+	// After is invoked after visitation of a given node.
+	After(node Node)
 }
 
 // Walk visits an AST node and all of its children.  It walks the AST in depth-first order.  A pre- and/or
@@ -174,7 +174,7 @@ func Walk(v Visitor, node Node) {
 	}
 
 	// Finally let the visitor know that we are done processing this node.
-	v.PostVisit(node)
+	v.After(node)
 }
 
 // Inspector is a very simple Visitor implementation; it simply returns true to continue visitation, or false to stop.
@@ -187,5 +187,18 @@ func (insp Inspector) Visit(node Node) Visitor {
 	return nil
 }
 
-func (insp Inspector) PostVisit(node Node) {
+func (insp Inspector) After(node Node) {
+	// nothing to do.
+}
+
+// AfterInspector is a very simple Visitor implementation; it simply runs after visitation has occurred on nodes.
+type AfterInspector func(Node)
+
+func (insp AfterInspector) Visit(node Node) Visitor {
+	// nothing to do.
+	return insp
+}
+
+func (insp AfterInspector) After(node Node) {
+	insp(node)
 }

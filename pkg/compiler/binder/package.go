@@ -21,10 +21,15 @@ func (b *binder) BindPackage(pkg *pack.Package) *symbols.Package {
 
 	// Resolve all package dependencies.
 	b.resolvePackageDeps(pkgsym)
-	// TODO: add these packages and their modules into the symbol table.
 
-	// Now bind all of the package's modules (if any).
+	// Now bind all of the package's modules (if any).  This pass does not yet actually bind bodies.
 	b.bindPackageModules(pkgsym)
+
+	// TODO: fix up the symbol table.
+
+	// Finally, bind all of the package's method bodies.  This second pass is required to ensure that inter-module
+	// dependencies can resolve to symbols, after reaching the symbol-level fixed point above.
+	b.bindPackageMethodBodies(pkgsym)
 
 	return pkgsym
 }
@@ -41,7 +46,7 @@ func (b *binder) resolvePackageDeps(pkg *symbols.Package) {
 			if err != nil {
 				b.Diag().Errorf(errors.ErrorPackageURLMalformed, depurl, err)
 			} else {
-				glog.V(3).Infof("Resolving package %v dependency name=%v, url=%v", pkg.Name, dep.Name, dep.URL())
+				glog.V(3).Infof("Resolving package '%v' dependency name=%v, url=%v", pkg.Name(), dep.Name, dep.URL())
 				if depsym := b.resolveDep(dep); depsym != nil {
 					pkg.Dependencies[dep.Name] = depsym
 				}
@@ -72,7 +77,7 @@ func (b *binder) resolveDep(dep pack.PackageURL) *symbols.Package {
 	for _, loc := range b.w.DepCandidates(dep) {
 		// See if this candidate actually exists.
 		isMufile := workspace.IsMufile(loc, b.Diag())
-		glog.V(5).Infof("Probing for dependency %v at %v: %v", dep, loc, isMufile)
+		glog.V(5).Infof("Probing for dependency '%v' at '%v': isMufile=%v", dep, loc, isMufile)
 
 		// If it does, go ahead and read it in, and bind it (recursively).
 		if isMufile {
@@ -107,6 +112,28 @@ func (b *binder) bindPackageModules(pkg *symbols.Package) {
 	if pkg.Node.Modules != nil {
 		for modtok, mod := range *pkg.Node.Modules {
 			pkg.Modules[modtok] = b.bindModule(mod, pkg)
+		}
+	}
+}
+
+// bindPackageMethodBodies binds all method bodies, in a second pass, after binding all symbol-level information.
+func (b *binder) bindPackageMethodBodies(pkg *symbols.Package) {
+	contract.Require(pkg != nil, "pkg")
+
+	// Just dig through, find all ModuleMethod and ClassMethod symbols, and bind them.
+	for _, module := range pkg.Modules {
+		for _, member := range module.Members {
+			switch m := member.(type) {
+			case *symbols.ModuleMethod:
+				b.bindModuleMethodBody(m)
+			case *symbols.Class:
+				for _, cmember := range m.Members {
+					switch cm := cmember.(type) {
+					case *symbols.ClassMethod:
+						b.bindClassMethodBody(cm)
+					}
+				}
+			}
 		}
 	}
 }

@@ -3,7 +3,6 @@
 package binder
 
 import (
-	"github.com/marapongo/mu/pkg/compiler/core"
 	"github.com/marapongo/mu/pkg/compiler/symbols"
 	"github.com/marapongo/mu/pkg/tokens"
 	"github.com/marapongo/mu/pkg/util/contract"
@@ -11,7 +10,7 @@ import (
 
 // Scope enables lookups and symbols to obey traditional language scoping rules.
 type Scope struct {
-	ctx    *core.Context
+	slot   **Scope
 	parent *Scope
 	symtbl SymbolTable
 }
@@ -19,13 +18,25 @@ type Scope struct {
 // SymbolTable is a mapping from symbol token to an actual symbol object representing it.
 type SymbolTable map[tokens.Token]symbols.Symbol
 
-// NewScope allocates and returns a fresh scope with the optional parent scope attached to it.
-func NewScope(ctx *core.Context, parent *Scope) *Scope {
-	return &Scope{
-		ctx:    ctx,
-		parent: parent,
+// NewScope allocates and returns a fresh scope using the given slot, populating it.
+func NewScope(slot **Scope) *Scope {
+	scope := &Scope{
+		slot:   slot,
+		parent: *slot,
 		symtbl: make(SymbolTable),
 	}
+	*slot = scope
+	return scope
+}
+
+// Push creates a new scope with an empty symbol table parented to the existing one.
+func (s *Scope) Push() *Scope {
+	return NewScope(s.slot)
+}
+
+// Pop restores the prior scope into the underlying slot, tossing away the current symbol table.
+func (s *Scope) Pop() {
+	*s.slot = s.parent
 }
 
 // Lookup finds a symbol registered underneath the given token, issuing an error and returning nil if not found.

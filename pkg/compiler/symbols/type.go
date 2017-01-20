@@ -74,24 +74,22 @@ func MapTypeToken(key Type, elem Type) tokens.Type {
 }
 
 // FunctionTypeToken creates a new function type token from parameter and return types.
-func FunctionTypeToken(params *[]Type, ret *Type) tokens.Type {
+func FunctionTypeToken(params []Type, ret Type) tokens.Type {
 	// TODO: consider caching this to avoid creating needless strings.
 
 	// Stringify the parameters (if any).
 	sparams := ""
-	if params != nil {
-		for i, param := range *params {
-			if i > 0 {
-				sparams += TypeDecorsFunctionParamSep
-			}
-			sparams += string(param.Token())
+	for i, param := range params {
+		if i > 0 {
+			sparams += TypeDecorsFunctionParamSep
 		}
+		sparams += string(param.Token())
 	}
 
 	// Stringify the return type (if any).
 	sret := ""
 	if ret != nil {
-		sret = string((*ret).Token())
+		sret = string(ret.Token())
 	}
 
 	return tokens.Type(fmt.Sprintf(TypeDecorsFunction, sparams, sret))
@@ -136,8 +134,8 @@ func NewMapType(key Type, elem Type) *MapType {
 
 // FunctionType is an invocable type, representing a signature with optional parameters and a return type.
 type FunctionType struct {
-	Parameters *[]Type
-	Return     *Type
+	Parameters []Type // an array of optional parameter types.
+	Return     Type   // a return type, or nil if "void".
 }
 
 var _ Symbol = (*FunctionType)(nil)
@@ -151,6 +149,6 @@ func (node *FunctionType) Token() tokens.Token {
 }
 func (node *FunctionType) Tree() diag.Diagable { return nil }
 
-func NewFunctionType(params *[]Type, ret *Type) *FunctionType {
+func NewFunctionType(params []Type, ret Type) *FunctionType {
 	return &FunctionType{params, ret}
 }

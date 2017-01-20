@@ -42,6 +42,7 @@ func NewClassSym(node *ast.Class, parent *Module, extends *Type, implements *Typ
 		Parent:     parent,
 		Extends:    extends,
 		Implements: implements,
+		Members:    make(ClassMemberMap),
 	}
 }
 
