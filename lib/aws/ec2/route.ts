@@ -10,8 +10,8 @@ import * as cloudformation from '../cloudformation';
 // @name: aws/ec2/route
 // @website: https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-ec2-route.html
 export class Route extends cloudformation.Resource {
-    constructor(ctx: mu.Context, args: RouteArgs) {
-        super(ctx, {
+    constructor(args: RouteArgs) {
+        super({
             resource: "AWS::EC2::Route",
             dependsOn: [
                 args.vpcGatewayAttachment,

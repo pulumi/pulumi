@@ -8,8 +8,8 @@ import * as cloudformation from '../cloudformation';
 // @name: aws/ec2/securityGroupEgressRule
 // @website: http://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-ec2-security-group-egress.html
 export class SecurityGroupEgress extends cloudformation.Resource {
-    constructor(ctx: mu.Context, args: SecurityGroupEgressArgs) {
-        super(ctx, {
+    constructor(args: SecurityGroupEgressArgs) {
+        super({
             resource: "AWS::EC2::SecurityGroupEgress",
             properties: args,
         });

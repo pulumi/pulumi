@@ -17,7 +17,12 @@
     },
     "files": [
         "index.ts",
-        "cluster.ts"
+
+        "context.ts",
+        "json.ts",
+        "options.ts",
+        "resource.ts",
+        "stack.ts"
     ]
 }
 

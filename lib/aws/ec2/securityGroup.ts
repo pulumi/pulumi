@@ -9,9 +9,9 @@ import * as cloudformation from '../cloudformation';
 // @name: aws/ec2/securityGroup
 // @website: http://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-ec2-security-group.html
 export class SecurityGroup extends cloudformation.Resource {
-    constructor(ctx: mu.Context, args: SecurityGroupArgs) {
+    constructor(args: SecurityGroupArgs) {
         cloudformation.expandTags(args);
-        super(ctx, {
+        super({
             resource: "AWS::EC2::SecurityGroup",
             properties: args,
         });

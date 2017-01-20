@@ -9,9 +9,9 @@ import * as cloudformation from '../cloudformation';
 // @name: aws/ec2/vpcPeeringConnection
 // @website: http://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-ec2-vpcpeeringconnection.html
 export class VPCPeeringConnection extends cloudformation.Resource {
-    constructor(ctx: mu.Context, args: VPCPeeringConnectionArgs) {
+    constructor(args: VPCPeeringConnectionArgs) {
         cloudformation.expandTags(args);
-        super(ctx, {
+        super({
             resource: "AWS::EC2::VPCPeeringConnection",
             properties: args,
         });

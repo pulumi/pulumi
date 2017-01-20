@@ -8,9 +8,9 @@ import * as cloudformation from '../cloudformation';
 // @name: aws/ec2/subnet
 // @website: http://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-ec2-subnet.html
 export class Subnet extends cloudformation.Resource {
-    constructor(ctx: mu.Context, args: SubnetArgs) {
+    constructor(args: SubnetArgs) {
         cloudformation.expandTags(args);
-        super(ctx, {
+        super({
             resource: "AWS::EC2::Subnet",
             properties: args,
         });
