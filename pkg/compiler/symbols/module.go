@@ -30,6 +30,16 @@ func (node *Module) Token() tokens.Token {
 }
 func (node *Module) Tree() diag.Diagable { return node.Node }
 
+// NewModuleSym returns a new Module symbol with the given node and parent, and empty imports and members.
+func NewModuleSym(node *ast.Module, parent *Package) *Module {
+	return &Module{
+		Node:    node,
+		Parent:  parent,
+		Imports: make(Modules, 0),
+		Members: make(ModuleMemberMap),
+	}
+}
+
 // Modules is an array of module pointers.
 type Modules []*Module
 
@@ -65,6 +75,15 @@ func (node *Export) Token() tokens.Token {
 }
 func (node *Export) Tree() diag.Diagable { return node.Node }
 
+// NewExportSym returns a new Export symbol with the given node, parent, and referent symbol.
+func NewExportSym(node *ast.Export, parent *Module, referent Symbol) *Export {
+	return &Export{
+		Node:     node,
+		Parent:   parent,
+		Referent: referent,
+	}
+}
+
 // ModuleProperty is a fully bound module property symbol.
 type ModuleProperty struct {
 	Node   *ast.ModuleProperty
@@ -87,6 +106,14 @@ func (node *ModuleProperty) Token() tokens.Token {
 }
 func (node *ModuleProperty) Tree() diag.Diagable { return node.Node }
 
+// NewModulePropertySym returns a new ModuleProperty symbol with the given node and parent.
+func NewModulePropertySym(node *ast.ModuleProperty, parent *Module) *ModuleProperty {
+	return &ModuleProperty{
+		Node:   node,
+		Parent: parent,
+	}
+}
+
 // ModuleMethod is a fully bound module method symbol.
 type ModuleMethod struct {
 	Node   *ast.ModuleMethod
@@ -108,3 +135,11 @@ func (node *ModuleMethod) Token() tokens.Token {
 	)
 }
 func (node *ModuleMethod) Tree() diag.Diagable { return node.Node }
+
+// NewModuleMethodSym returns a new ModuleMethod symbol with the given node and parent.
+func NewModuleMethodSym(node *ast.ModuleMethod, parent *Module) *ModuleMethod {
+	return &ModuleMethod{
+		Node:   node,
+		Parent: parent,
+	}
+}

@@ -35,6 +35,16 @@ func (node *Class) Token() tokens.Token {
 }
 func (node *Class) Tree() diag.Diagable { return node.Node }
 
+// NewClassSym returns a new Class symbol with the given node, parent, extends, and implements, and empty members.
+func NewClassSym(node *ast.Class, parent *Module, extends *Type, implements *Types) *Class {
+	return &Class{
+		Node:       node,
+		Parent:     parent,
+		Extends:    extends,
+		Implements: implements,
+	}
+}
+
 // ClassMember is a marker interface for things that can be module members.
 type ClassMember interface {
 	Symbol
@@ -66,6 +76,14 @@ func (node *ClassProperty) Token() tokens.Token {
 }
 func (node *ClassProperty) Tree() diag.Diagable { return node.Node }
 
+// NewClassPropertySym returns a new ClassProperty symbol with the given node and parent.
+func NewClassPropertySym(node *ast.ClassProperty, parent *Class) *ClassProperty {
+	return &ClassProperty{
+		Node:   node,
+		Parent: parent,
+	}
+}
+
 // ClassMethod is a fully bound module method symbol.
 type ClassMethod struct {
 	Node   *ast.ClassMethod
@@ -87,3 +105,11 @@ func (node *ClassMethod) Token() tokens.Token {
 	)
 }
 func (node *ClassMethod) Tree() diag.Diagable { return node.Node }
+
+// NewClassMethodSym returns a new ClassMethod symbol with the given node and parent.
+func NewClassMethodSym(node *ast.ClassMethod, parent *Class) *ClassMethod {
+	return &ClassMethod{
+		Node:   node,
+		Parent: parent,
+	}
+}

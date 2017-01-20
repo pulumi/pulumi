@@ -22,6 +22,15 @@ func (node *Package) Name() tokens.Name   { return tokens.Name(node.Node.Name) }
 func (node *Package) Token() tokens.Token { return tokens.Token(node.Node.Name) }
 func (node *Package) Tree() diag.Diagable { return node.Node }
 
+// NewPackageSym returns a new Package symbol with the given node.
+func NewPackageSym(node *pack.Package) *Package {
+	return &Package{
+		Node:         node,
+		Dependencies: make(PackageMap),
+		Modules:      make(ModuleMap),
+	}
+}
+
 // PackageMap is a map from package token to the associated symbols.
 type PackageMap map[tokens.PackageName]*Package
 

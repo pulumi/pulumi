@@ -8,7 +8,7 @@ import (
 	"github.com/marapongo/mu/pkg/util/contract"
 )
 
-func (b *binder) bindClass(node *ast.Class) *symbols.Class {
+func (b *binder) bindClass(node *ast.Class, parent *symbols.Module) *symbols.Class {
 	// Bind base type tokens to actual symbols.
 	var extends *symbols.Type
 	if node.Extends != nil {
@@ -24,48 +24,45 @@ func (b *binder) bindClass(node *ast.Class) *symbols.Class {
 		}
 	}
 
+	// Now create a class symbol.  This is required as a parent for the members.
+	class := symbols.NewClassSym(node, parent, extends, implements)
+
 	// Next, bind each member at the symbolic level; in particular, we do not yet bind bodies of methods.
-	members := make(symbols.ClassMemberMap)
 	if node.Members != nil {
 		for memtok, member := range *node.Members {
-			members[memtok] = b.bindClassMember(member)
+			class.Members[memtok] = b.bindClassMember(member, class)
 		}
 	}
 	// TODO: add these to the the symbol table for binding bodies.
 
 	// TODO: bind the bodies.
 
-	return &symbols.Class{
-		Node:       node,
-		Extends:    extends,
-		Implements: implements,
-		Members:    members,
-	}
+	return class
 }
 
-func (b *binder) bindClassMember(node ast.ClassMember) symbols.ClassMember {
+func (b *binder) bindClassMember(node ast.ClassMember, parent *symbols.Class) symbols.ClassMember {
 	switch n := node.(type) {
 	case *ast.ClassProperty:
-		return b.bindClassProperty(n)
+		return b.bindClassProperty(n, parent)
 	case *ast.ClassMethod:
-		return b.bindClassMethod(n)
+		return b.bindClassMethod(n, parent)
 	default:
 		contract.Failf("Unrecognized class member kind: %v", node.GetKind())
 		return nil
 	}
 }
 
-func (b *binder) bindClassProperty(node *ast.ClassProperty) *symbols.ClassProperty {
+func (b *binder) bindClassProperty(node *ast.ClassProperty, parent *symbols.Class) *symbols.ClassProperty {
 	// Look up this node's type and inject it into the type table.
 	b.registerVariableType(node)
-	return &symbols.ClassProperty{Node: node}
+	return symbols.NewClassPropertySym(node, parent)
 }
 
-func (b *binder) bindClassMethod(node *ast.ClassMethod) *symbols.ClassMethod {
+func (b *binder) bindClassMethod(node *ast.ClassMethod, parent *symbols.Class) *symbols.ClassMethod {
 	// Make a function type out of this method and inject it into the type table.
 	b.registerFunctionType(node)
 
 	// Note that we don't actually bind the body of this method yet.  Until we have gone ahead and injected *all*
 	// top-level symbols into the type table, we would potentially encounter missing intra-module symbols.
-	return &symbols.ClassMethod{Node: node}
+	return symbols.NewClassMethodSym(node, parent)
 }

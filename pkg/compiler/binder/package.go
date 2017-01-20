@@ -16,30 +16,26 @@ import (
 // BindPackages takes a package AST, resolves all dependencies and tokens inside of it, and returns a fully bound
 // package symbol that can be used for semantic operations (like interpretation and evaluation).
 func (b *binder) BindPackage(pkg *pack.Package) *symbols.Package {
+	// Create a symbol with empty dependencies and modules; this allows child symbols to parent to it.
+	pkgsym := symbols.NewPackageSym(pkg)
+
 	// Resolve all package dependencies.
-	deps := b.resolvePackageDeps(pkg)
+	b.resolvePackageDeps(pkgsym)
 	// TODO: add these packages and their modules into the symbol table.
 
 	// Now bind all of the package's modules (if any).
-	modules := b.bindPackageModules(pkg)
+	b.bindPackageModules(pkgsym)
 
-	// Finally, create a new symbol and return it.
-	// TODO: when to inject this into the symbol table?
-	return &symbols.Package{
-		Node:         pkg,
-		Dependencies: deps,
-		Modules:      modules,
-	}
+	return pkgsym
 }
 
 // resolvePackageDeps resolves all package dependencies, ensuring that all symbols are available to us.  This recurses
 // into dependency dependencies, and so on, until we have reached a fixed point.
-func (b *binder) resolvePackageDeps(pkg *pack.Package) symbols.PackageMap {
+func (b *binder) resolvePackageDeps(pkg *symbols.Package) {
 	contract.Require(pkg != nil, "pkg")
 
-	deps := make(symbols.PackageMap)
-	if pkg.Dependencies != nil {
-		for _, depurl := range *pkg.Dependencies {
+	if pkg.Node.Dependencies != nil {
+		for _, depurl := range *pkg.Node.Dependencies {
 			// The dependency is a URL.  Transform it into a name used for symbol resolution.
 			dep, err := depurl.Parse()
 			if err != nil {
@@ -47,16 +43,14 @@ func (b *binder) resolvePackageDeps(pkg *pack.Package) symbols.PackageMap {
 			} else {
 				glog.V(3).Infof("Resolving package %v dependency name=%v, url=%v", pkg.Name, dep.Name, dep.URL())
 				if depsym := b.resolveDep(dep); depsym != nil {
-					deps[dep.Name] = depsym
+					pkg.Dependencies[dep.Name] = depsym
 				}
 			}
 		}
 	}
-
-	return deps
 }
 
-var cyclicTombstone = &symbols.Package{}
+var cyclicTombstone = symbols.NewPackageSym(nil)
 
 // resolveDep actually performs the package resolution process, populating the compiler symbol tables.
 func (b *binder) resolveDep(dep pack.PackageURL) *symbols.Package {
@@ -107,16 +101,12 @@ func (b *binder) resolveDep(dep pack.PackageURL) *symbols.Package {
 	return nil
 }
 
-// bindPackageModules recursively binds all modules in the given package, returning a module map.
-func (b *binder) bindPackageModules(pkg *pack.Package) symbols.ModuleMap {
+// bindPackageModules recursively binds all modules and stores them in the given package.
+func (b *binder) bindPackageModules(pkg *symbols.Package) {
 	contract.Require(pkg != nil, "pkg")
-	modules := make(symbols.ModuleMap)
-	if pkg.Modules != nil {
-		for modtok, mod := range *pkg.Modules {
-			glog.V(3).Infof("Binding package %v module %v", pkg.Name, mod.Name)
-			modsym := b.bindModule(mod)
-			modules[modtok] = modsym
+	if pkg.Node.Modules != nil {
+		for modtok, mod := range *pkg.Node.Modules {
+			pkg.Modules[modtok] = b.bindModule(mod, pkg)
 		}
 	}
-	return modules
 }
