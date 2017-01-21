@@ -7,10 +7,14 @@ import (
 
 	"github.com/marapongo/mu/pkg/compiler/ast"
 	"github.com/marapongo/mu/pkg/compiler/core"
+	"github.com/marapongo/mu/pkg/compiler/errors"
 	"github.com/marapongo/mu/pkg/compiler/metadata"
 	"github.com/marapongo/mu/pkg/compiler/symbols"
+	"github.com/marapongo/mu/pkg/compiler/types"
 	"github.com/marapongo/mu/pkg/diag"
 	"github.com/marapongo/mu/pkg/pack"
+	"github.com/marapongo/mu/pkg/tokens"
+	"github.com/marapongo/mu/pkg/util/contract"
 	"github.com/marapongo/mu/pkg/workspace"
 )
 
@@ -41,7 +45,7 @@ func New(w workspace.W, ctx *core.Context, reader metadata.Reader) Binder {
 
 	// Create a global scope and populate it with all of the predefined type names.  This one's never popped.
 	NewScope(&b.scope)
-	for _, prim := range symbols.Primitives {
+	for _, prim := range types.Primitives {
 		b.scope.MustRegister(prim)
 	}
 
@@ -58,6 +62,81 @@ type binder struct {
 
 func (b *binder) Diag() diag.Sink {
 	return b.ctx.Diag
+}
+
+// bindType binds a type token to a symbol.  The node context is used for issuing errors.
+func (b *binder) bindType(node ast.Node, tok tokens.Type) symbols.Type {
+	var extra string
+	tyname := tok.Name()
+
+	// If a primitive type, simply do a lookup into our table of primitives.
+	if tok.Primitive() {
+		if ty, has := types.Primitives[tyname]; has {
+			return ty
+		} else {
+			glog.V(5).Infof("Failed to bind primitive type '%v'", tok)
+			extra = "primitive type unknown"
+		}
+	}
+
+	// Otherwise, we will need to perform a more exhaustive lookup of a qualified type token.
+	modtok := tok.Module()
+	pkgtok := modtok.Package()
+	if pkg, has := b.ctx.Pkgs[pkgtok.Name()]; has {
+		if mod, has := pkg.Modules[modtok.Name()]; has {
+			if member, has := mod.Members[tok.Member().Name()]; has {
+				// The member was found, but is it a class?
+				if ty, isty := member.(*symbols.Class); isty {
+					// It's a class; check its accessibility.
+					acc := member.MemberNode().GetAccess()
+					if pkg != b.ctx.Currpkg && (acc == nil || *acc != tokens.PublicAccessibility) {
+						b.Diag().Errorf(errors.ErrorMemberNotPublic.At(node), member)
+					}
+					return ty
+				}
+			} else {
+				glog.V(5).Infof("Failed to bind qualified type token; member missing: '%v'", tok)
+				extra = "module found, but type is unrecognized"
+			}
+		} else {
+			glog.V(5).Infof("Failed to bind qualified type token; module missing: '%v'", tok)
+			extra = "package found, but module is unrecognized"
+		}
+	} else {
+		glog.V(5).Infof("Failed to bind qualified type token; package missing: '%v'", tok)
+		extra = "package was not found"
+	}
+
+	// The type was not found; issue an error, and return Any so we can proceed with typechecking.
+	b.Diag().Errorf(errors.ErrorTypeNotFound.At(node), tok, extra)
+	return types.Any
+}
+
+// requireType requires that a type exists for the given AST node.
+func (b *binder) requireType(node ast.Node) symbols.Type {
+	ty := b.types[node]
+	contract.Assertf(ty != nil, "Expected a typemap entry for %v node", node.GetKind())
+	return ty
+}
+
+// requireExprType fetches an expression's non-nil type.
+func (b *binder) requireExprType(node ast.Expression) symbols.Type {
+	return b.requireType(node)
+}
+
+// registerExprType registers an expression's type.
+func (b *binder) registerExprType(node ast.Expression, tysym symbols.Type) {
+	contract.Require(tysym != nil, "tysym")
+	contract.Assert(b.types[node] == nil)
+	b.types[node] = tysym
+}
+
+// requireFunctionType fetches the non-nil registered type for a given function.
+func (b *binder) requireFunctionType(node ast.Function) *symbols.FunctionType {
+	ty := b.requireType(node)
+	fty, ok := ty.(*symbols.FunctionType)
+	contract.Assertf(ok, "Expected function type for %v; got %v", node.GetKind(), fty.Token())
+	return fty
 }
 
 // registerFunctionType understands how to turn any function node into a type, and adds it to the type table.  This
@@ -77,7 +156,7 @@ func (b *binder) registerFunctionType(node ast.Function) {
 
 			// If either the parameter's type was unknown, or the lookup failed (leaving an error), use the any type.
 			if ptysym == nil {
-				ptysym = symbols.AnyType
+				ptysym = types.Any
 			}
 
 			params = append(params, ptysym)
@@ -97,6 +176,11 @@ func (b *binder) registerFunctionType(node ast.Function) {
 	b.types[node] = tysym
 }
 
+// requireVariableType fetches the non-nil registered type for a given variable.
+func (b *binder) requireVariableType(node ast.Variable) symbols.Type {
+	return b.requireType(node)
+}
+
 // registerVariableType understands how to turn any variable node into a type, and adds it to the type table.  This
 // works for any kind of variable-like AST node: module property, class property, parameter, or local variable.
 func (b *binder) registerVariableType(node ast.Variable) {
@@ -110,7 +194,7 @@ func (b *binder) registerVariableType(node ast.Variable) {
 
 	// Otherwise, either there was no type, or the lookup failed (leaving behind an error); use the any type.
 	if tysym == nil {
-		tysym = symbols.AnyType
+		tysym = types.Any
 	}
 
 	if glog.V(7) {

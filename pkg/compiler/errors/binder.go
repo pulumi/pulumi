@@ -27,6 +27,16 @@ var ErrorPackageNotFound = &diag.Diag{
 	Message: "Package '%v' was not found; has it been installed?",
 }
 
+var ErrorTypeNotFound = &diag.Diag{
+	ID:      504,
+	Message: "Type '%v' is unknown; %v",
+}
+
+var ErrorMemberNotPublic = &diag.Diag{
+	ID:      505,
+	Message: "Member '%v' is not public, and so is unexported for use outside of its own package",
+}
+
 var ErrorNonAbstractStacksMustDefineServices = &diag.Diag{
 	ID:      504,
 	Message: "Non-abstract stacks must declare at least one private or public service",
@@ -47,9 +57,9 @@ var ErrorUnrecognizedProperty = &diag.Diag{
 	Message: "Unrecognized property '%v'",
 }
 
-var ErrorIncorrectType = &diag.Diag{
+var ErrorIncorrectExprType = &diag.Diag{
 	ID:      508,
-	Message: "Incorrect type; expected '%v', got '%v'",
+	Message: "Expression has an incorrect type; expected '%v', got '%v'",
 }
 
 var ErrorServiceNotFound = &diag.Diag{
@@ -110,4 +120,14 @@ var ErrorImportCycle = &diag.Diag{
 var ErrorPackageURLMalformed = &diag.Diag{
 	ID:      521,
 	Message: "Package URL '%v' is malformed: %v",
+}
+
+var ErrorExpectedReturnExpr = &diag.Diag{
+	ID:      522,
+	Message: "Expected a return expression of type %v",
+}
+
+var ErrorUnexpectedReturnExpr = &diag.Diag{
+	ID:      522,
+	Message: "Unexpected return expression; function has no return type (void)",
 }

@@ -19,6 +19,11 @@ func (b *binder) BindPackage(pkg *pack.Package) *symbols.Package {
 	// Create a symbol with empty dependencies and modules; this allows child symbols to parent to it.
 	pkgsym := symbols.NewPackageSym(pkg)
 
+	// Set the current package in the context so we can e.g. enforce accessibility.
+	priorpkg := b.ctx.Currpkg
+	b.ctx.Currpkg = pkgsym
+	defer func() { b.ctx.Currpkg = priorpkg }()
+
 	// Resolve all package dependencies.
 	b.resolvePackageDeps(pkgsym)
 

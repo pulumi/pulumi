@@ -12,8 +12,8 @@ import (
 type Class struct {
 	Node       *ast.Class
 	Parent     *Module
-	Extends    *Type
-	Implements *Types
+	Extends    Type
+	Implements Types
 	Members    ClassMemberMap
 }
 
@@ -33,10 +33,12 @@ func (node *Class) Token() tokens.Token {
 		),
 	)
 }
-func (node *Class) Tree() diag.Diagable { return node.Node }
+func (node *Class) Tree() diag.Diagable          { return node.Node }
+func (node *Class) String() string               { return string(node.Name()) }
+func (node *Class) MemberNode() ast.ModuleMember { return node.Node }
 
 // NewClassSym returns a new Class symbol with the given node, parent, extends, and implements, and empty members.
-func NewClassSym(node *ast.Class, parent *Module, extends *Type, implements *Types) *Class {
+func NewClassSym(node *ast.Class, parent *Module, extends Type, implements Types) *Class {
 	return &Class{
 		Node:       node,
 		Parent:     parent,
@@ -50,6 +52,7 @@ func NewClassSym(node *ast.Class, parent *Module, extends *Type, implements *Typ
 type ClassMember interface {
 	Symbol
 	classMember()
+	MemberNode() ast.ClassMember
 }
 
 // ClassMemberMap is a map from a class member's name to its associated symbol.
@@ -75,7 +78,9 @@ func (node *ClassProperty) Token() tokens.Token {
 		),
 	)
 }
-func (node *ClassProperty) Tree() diag.Diagable { return node.Node }
+func (node *ClassProperty) Tree() diag.Diagable         { return node.Node }
+func (node *ClassProperty) String() string              { return string(node.Name()) }
+func (node *ClassProperty) MemberNode() ast.ClassMember { return node.Node }
 
 // NewClassPropertySym returns a new ClassProperty symbol with the given node and parent.
 func NewClassPropertySym(node *ast.ClassProperty, parent *Class) *ClassProperty {
@@ -105,7 +110,9 @@ func (node *ClassMethod) Token() tokens.Token {
 		),
 	)
 }
-func (node *ClassMethod) Tree() diag.Diagable { return node.Node }
+func (node *ClassMethod) Tree() diag.Diagable         { return node.Node }
+func (node *ClassMethod) String() string              { return string(node.Name()) }
+func (node *ClassMethod) MemberNode() ast.ClassMember { return node.Node }
 
 // NewClassMethodSym returns a new ClassMethod symbol with the given node and parent.
 func NewClassMethodSym(node *ast.ClassMethod, parent *Class) *ClassMethod {

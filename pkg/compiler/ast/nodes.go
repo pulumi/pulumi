@@ -18,9 +18,12 @@ import (
 // Node is a discriminated type for all serialized blocks and instructions.
 type Node interface {
 	nd()
-	GetKind() NodeKind // the node kind.
-	GetLoc() *Location // an optional location associated with this node.
+	GetKind() NodeKind                       // the node kind.
+	GetLoc() *Location                       // an optional location associated with this node.
+	Where() (*diag.Document, *diag.Location) // source location information for this node.
 }
+
+var _ diag.Diagable = (Node)(nil)
 
 // NodeKind is a type discriminator, indicating what sort of kind a node instance represents.  Note that RTTI frequently
 // takes its place, however (a) the kind is part of the serialized form, and (b) can be useful for debugging.

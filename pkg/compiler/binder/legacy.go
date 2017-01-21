@@ -524,7 +524,7 @@ func (p *binderValidatePhase) bindValue(node *ast.Node, val interface{}, ty *ast
 
 	if lit == nil {
 		// If no successful type binding happened, issue an error.
-		p.Diag().Errorf(errors.ErrorIncorrectType.At(node), ty, reflect.TypeOf(val))
+		p.Diag().Errorf(errors.ErrorIncorrectExprType.At(node), ty, reflect.TypeOf(val))
 	}
 	return lit
 }
@@ -814,7 +814,7 @@ func (p *binderValidatePhase) bindServiceRef(node *ast.Node, val string, ty *ast
 			// If there is an expected type, now ensure that the selected Service is of the right kind.
 			contract.Assert(selsvc.BoundType != nil)
 			if ty != nil && !subclassOf(selsvc.BoundType, ty) {
-				p.Diag().Errorf(errors.ErrorIncorrectType.At(node), ty, selsvc.BoundType.Name)
+				p.Diag().Errorf(errors.ErrorIncorrectExprType.At(node), ty, selsvc.BoundType.Name)
 			}
 
 			ref = &ast.ServiceRef{

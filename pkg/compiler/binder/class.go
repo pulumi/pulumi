@@ -14,16 +14,15 @@ func (b *binder) bindClass(node *ast.Class, parent *symbols.Module) *symbols.Cla
 	glog.V(3).Infof("Binding module '%v' class '%v'", parent.Name(), node.Name.Ident)
 
 	// Bind base type tokens to actual symbols.
-	var extends *symbols.Type
+	var extends symbols.Type
 	if node.Extends != nil {
-		*extends = b.scope.LookupType(*node.Extends)
+		extends = b.scope.LookupType(*node.Extends)
 	}
-	var implements *symbols.Types
+	var implements symbols.Types
 	if node.Implements != nil {
-		*implements = make(symbols.Types, 0, len(*node.Implements))
 		for _, impltok := range *node.Implements {
 			if impl := b.scope.LookupType(impltok); impl != nil {
-				*implements = append(*implements, impl)
+				implements = append(implements, impl)
 			}
 		}
 	}
@@ -77,4 +76,5 @@ func (b *binder) bindClassMethod(node *ast.ClassMethod, parent *symbols.Class) *
 
 func (b *binder) bindClassMethodBody(method *symbols.ClassMethod) {
 	glog.V(3).Infof("Binding class method '%v' body", method.Token())
+	b.bindFunctionBody(method.Node)
 }

@@ -29,6 +29,7 @@ func (node *Module) Token() tokens.Token {
 	)
 }
 func (node *Module) Tree() diag.Diagable { return node.Node }
+func (node *Module) String() string      { return string(node.Name()) }
 
 // NewModuleSym returns a new Module symbol with the given node and parent, and empty imports and members.
 func NewModuleSym(node *ast.Module, parent *Package) *Module {
@@ -47,6 +48,7 @@ type Modules []*Module
 type ModuleMember interface {
 	Symbol
 	moduleMember()
+	MemberNode() ast.ModuleMember
 }
 
 // ModuleMembers is a map from a module member's name to its associated symbol.
@@ -73,7 +75,9 @@ func (node *Export) Token() tokens.Token {
 		),
 	)
 }
-func (node *Export) Tree() diag.Diagable { return node.Node }
+func (node *Export) Tree() diag.Diagable          { return node.Node }
+func (node *Export) String() string               { return string(node.Name()) }
+func (node *Export) MemberNode() ast.ModuleMember { return node.Node }
 
 // NewExportSym returns a new Export symbol with the given node, parent, and referent symbol.
 func NewExportSym(node *ast.Export, parent *Module, referent Symbol) *Export {
@@ -104,7 +108,9 @@ func (node *ModuleProperty) Token() tokens.Token {
 		),
 	)
 }
-func (node *ModuleProperty) Tree() diag.Diagable { return node.Node }
+func (node *ModuleProperty) Tree() diag.Diagable          { return node.Node }
+func (node *ModuleProperty) String() string               { return string(node.Name()) }
+func (node *ModuleProperty) MemberNode() ast.ModuleMember { return node.Node }
 
 // NewModulePropertySym returns a new ModuleProperty symbol with the given node and parent.
 func NewModulePropertySym(node *ast.ModuleProperty, parent *Module) *ModuleProperty {
@@ -134,7 +140,9 @@ func (node *ModuleMethod) Token() tokens.Token {
 		),
 	)
 }
-func (node *ModuleMethod) Tree() diag.Diagable { return node.Node }
+func (node *ModuleMethod) Tree() diag.Diagable          { return node.Node }
+func (node *ModuleMethod) String() string               { return string(node.Name()) }
+func (node *ModuleMethod) MemberNode() ast.ModuleMember { return node.Node }
 
 // NewModuleMethodSym returns a new ModuleMethod symbol with the given node and parent.
 func NewModuleMethodSym(node *ast.ModuleMethod, parent *Module) *ModuleMethod {
