@@ -29,18 +29,18 @@ var _ diag.Diagable = (Node)(nil)
 // takes its place, however (a) the kind is part of the serialized form, and (b) can be useful for debugging.
 type NodeKind string
 
-type node struct {
+type NodeValue struct {
 	Kind NodeKind  `json:"kind"`
 	Loc  *Location `json:"loc,omitempty"`
 }
 
-var _ diag.Diagable = (*node)(nil)
+var _ diag.Diagable = (*NodeValue)(nil)
 
-func (node *node) nd()               {}
-func (node *node) GetKind() NodeKind { return node.Kind }
-func (node *node) GetLoc() *Location { return node.Loc }
+func (node *NodeValue) nd()               {}
+func (node *NodeValue) GetKind() NodeKind { return node.Kind }
+func (node *NodeValue) GetLoc() *Location { return node.Loc }
 
-func (node *node) Where() (*diag.Document, *diag.Location) {
+func (node *NodeValue) Where() (*diag.Document, *diag.Location) {
 	// TODO: consider caching Document objects; allocating one per Node is wasteful.
 	// TODO: for development scenarios, it would be really great to recover the original source file text for purposes
 	//     of the diag.Document part.  Doing so would give nice error messages tied back to the original source code
@@ -64,7 +64,7 @@ func (node *node) Where() (*diag.Document, *diag.Location) {
 
 // Identifier represents a simple string token associated with its source location context.
 type Identifier struct {
-	node
+	NodeValue
 	Ident tokens.Name `json:"ident"` // a valid identifier: (letter | "_") (letter | digit | "_")*
 }
 

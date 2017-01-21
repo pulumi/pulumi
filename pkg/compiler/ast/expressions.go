@@ -12,11 +12,11 @@ type Expression interface {
 	expression()
 }
 
-type expressionNode struct {
-	node
+type ExpressionNode struct {
+	NodeValue
 }
 
-func (node *expressionNode) expression() {}
+func (node *ExpressionNode) expression() {}
 
 /* Literals */
 
@@ -24,16 +24,16 @@ type Literal interface {
 	GetRaw() *string // the raw literal, for round tripping purposes.
 }
 
-type literalNode struct {
-	expressionNode
+type LiteralNode struct {
+	ExpressionNode
 	Raw *string `json:"raw,omitempty"`
 }
 
-func (node *literalNode) GetRaw() *string { return node.Raw }
+func (node *LiteralNode) GetRaw() *string { return node.Raw }
 
 // NullLiteral represents the usual `null` constant.
 type NullLiteral struct {
-	literalNode
+	LiteralNode
 }
 
 var _ Node = (*NullLiteral)(nil)
@@ -44,7 +44,7 @@ const NullLiteralKind NodeKind = "NullLiteral"
 
 // BoolLiteral represents the usual Boolean literal constant (`true` or `false`).
 type BoolLiteral struct {
-	literalNode
+	LiteralNode
 	Value bool `json:"value"`
 }
 
@@ -56,7 +56,7 @@ const BoolLiteralKind NodeKind = "BoolLiteral"
 
 // NumberLiteral represents a floating point IEEE 754 literal value.
 type NumberLiteral struct {
-	literalNode
+	LiteralNode
 	Value float64 `json:"value"`
 }
 
@@ -68,7 +68,7 @@ const NumberLiteralKind NodeKind = "NumberLiteral"
 
 // StringLiteral represents a UTF8-encoded string literal.
 type StringLiteral struct {
-	literalNode
+	LiteralNode
 	Value string `json:"value"`
 }
 
@@ -80,7 +80,7 @@ const StringLiteralKind NodeKind = "StringLiteral"
 
 // ArrayLiteral evaluates to a newly allocated array, with optional initialized elements.
 type ArrayLiteral struct {
-	literalNode
+	LiteralNode
 	Type     *tokens.Type  `json:"type,omitempty"`     // the optional type of array being produced.
 	Size     *Expression   `json:"size,omitempty"`     // an optional expression for the array size.
 	Elements *[]Expression `json:"elements,omitempty"` // an optional array of element initializers.
@@ -94,7 +94,7 @@ const ArrayLiteralKind NodeKind = "ArrayLiteral"
 
 // ObjectLiteral evaluates to a new object, with optional property initializers for primary properties.
 type ObjectLiteral struct {
-	literalNode
+	LiteralNode
 	Type       *tokens.Type              `json:"type,omitempty"`       // the optional type of object to produce.
 	Properties *[]*ObjectLiteralProperty `json:"properties,omitempty"` // an optional array of property initializers.
 }
@@ -107,7 +107,7 @@ const ObjectLiteralKind NodeKind = "ObjectLiteral"
 
 // ObjectLiteralProperty initializes a single object literal property.
 type ObjectLiteralProperty struct {
-	node
+	NodeValue
 	Name  *Identifier `json:"name"`  // the property to initialize.
 	Value Expression  `json:"value"` // the expression whose value to store into the property.
 }
@@ -124,7 +124,7 @@ type LoadExpression interface {
 }
 
 type loadExpressionNode struct {
-	expressionNode
+	ExpressionNode
 }
 
 func (node *loadExpressionNode) loadExpression() {}
@@ -163,7 +163,7 @@ type CallExpression interface {
 }
 
 type callExpressionNode struct {
-	expressionNode
+	ExpressionNode
 	Arguments *[]Expression `json:"arguments,omitempty"`
 }
 
@@ -195,8 +195,8 @@ const InvokeFunctionExpressionKind NodeKind = "InvokeFunctionExpression"
 
 // LambdaExpression creates a lambda, a sort of "anonymous" function, that evaluates to a function type.
 type LambdaExpression struct {
-	expressionNode
-	functionNode
+	ExpressionNode
+	FunctionNode
 }
 
 var _ Node = (*LambdaExpression)(nil)
@@ -208,7 +208,7 @@ const LambdaExpressionKind NodeKind = "LambdaExpression"
 
 // UnaryOperatorExpression is the usual C-like unary operator.
 type UnaryOperatorExpression struct {
-	expressionNode
+	ExpressionNode
 	Operator UnaryOperator `json:"operator"` // the operator type.
 	Operand  Expression    `json:"operand"`  // the right hand side operand.
 	Postfix  bool          `json:"postfix"`  // whether this is a postfix operator (only legal for UnaryPfixOperators).
@@ -239,7 +239,7 @@ const (
 
 // BinaryOperatorExpression is the usual C-like binary operator (assignment, logical, operator, or relational).
 type BinaryOperatorExpression struct {
-	expressionNode
+	ExpressionNode
 	Left     Expression     `json:"left"`     // the left hand side.
 	Operator BinaryOperator `json:"operator"` // the operator.
 	Right    Expression     `json:"right"`    // the right hand side.
@@ -300,7 +300,7 @@ const (
 
 // CastExpression handles both nominal and structural casts, and will throw an exception upon failure.
 type CastExpression struct {
-	expressionNode
+	ExpressionNode
 	Expression Expression  `json:"expression"` // the source expression.
 	Type       tokens.Type `json:"type"`       // the target type.
 }
@@ -312,7 +312,7 @@ const CastExpressionKind NodeKind = "CastExpression"
 
 // IsInstExpression checks an expression for compatibility with the given type token, and evaluates to a bool.
 type IsInstExpression struct {
-	expressionNode
+	ExpressionNode
 	Expression Expression  `json:"expression"` // the source expression.
 	Type       tokens.Type `json:"type"`       // the target type.
 }
@@ -324,7 +324,7 @@ const IsInstExpressionKind NodeKind = "IsInstExpression"
 
 // TypeOfExpression gets the type token -- just a string -- of a particular type at runtime.
 type TypeOfExpression struct {
-	expressionNode
+	ExpressionNode
 	Expression Expression `json:"expression"` // the source expression
 }
 
@@ -337,7 +337,7 @@ const TypeOfExpressionKind NodeKind = "TypeOfExpression"
 
 // ConditionalExpression evaluates to either a consequent or alternate based on a predicate condition.
 type ConditionalExpression struct {
-	expressionNode
+	ExpressionNode
 	Condition  Expression `json:"condition"`  // a `bool` conditional expression.
 	Consequent Expression `json:"consequent"` // the expression to evaluate to if `true`.
 	Alternate  Expression `json:"alternate"`  // the expression to evaluate to if `false`.
@@ -350,7 +350,7 @@ const ConditionalExpressionKind NodeKind = "ConditionalExpression"
 
 // SequenceExpression allows composition of multiple expressions into one.  It evaluates to the last one.
 type SequenceExpression struct {
-	expressionNode
+	ExpressionNode
 	Expressions []Expression `json:"expressions"`
 }
 

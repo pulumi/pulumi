@@ -8,16 +8,16 @@ type Statement interface {
 	statement()
 }
 
-type statementNode struct {
-	node
+type StatementNode struct {
+	NodeValue
 }
 
-func (node *statementNode) statement() {}
+func (node *StatementNode) statement() {}
 
 /* Blocks */
 
 type Block struct {
-	statementNode
+	StatementNode
 	Statements []Statement `json:"statements"`
 }
 
@@ -29,7 +29,7 @@ const BlockKind NodeKind = "Block"
 /* Local Variables */
 
 type LocalVariableDeclaration struct {
-	statementNode
+	StatementNode
 	Local *LocalVariable `json:"local"`
 }
 
@@ -41,7 +41,7 @@ const LocalVariableDeclarationKind NodeKind = "LocalVariableDeclaration"
 /* Try/Catch/Finally */
 
 type TryCatchFinally struct {
-	statementNode
+	StatementNode
 	TryBlock     *Block            `json:"tryBlock"`
 	CatchBlocks  *[]*TryCatchBlock `json:"catchBlocks,omitempty"`
 	FinallyBlock *Block            `json:"finallyBlock"`
@@ -53,7 +53,7 @@ var _ Statement = (*TryCatchFinally)(nil)
 const TryCatchFinallyKind NodeKind = "TryCatchFinally"
 
 type TryCatchBlock struct {
-	node
+	NodeValue
 	Block     *Block         `json:"block"`
 	Exception *LocalVariable `json:"exception,omitempty"`
 }
@@ -64,7 +64,7 @@ var _ Node = (*TryCatchBlock)(nil)
 
 // BreakStatement is the usual C-style `break` (only valid within loops).
 type BreakStatement struct {
-	statementNode
+	StatementNode
 	Label *Identifier `json:"identifier,omitempty"`
 }
 
@@ -75,7 +75,7 @@ const BreakStatementKind NodeKind = "BreakStatement"
 
 // ContinueStatement is the usual C-style `continue` (only valid within loops).
 type ContinueStatement struct {
-	statementNode
+	StatementNode
 	Label *Identifier `json:"identifier,omitempty"`
 }
 
@@ -87,7 +87,7 @@ const ContinueStatementKind NodeKind = "ContinueStatement"
 // IfStatement is the usual C-style `if`.  To simplify the MuIL AST, this is the only conditional statement available.
 // All higher-level conditional constructs such as `switch`, if`/`else if`/..., etc., must be desugared into it.
 type IfStatement struct {
-	statementNode
+	StatementNode
 	Condition  Expression `json:"condition"`             // a `bool` conditional expression.
 	Consequent Statement  `json:"consequent"`            // the statement to execute if `true`.
 	Alternate  *Statement `json:"alternative,omitempty"` // the optional statement to execute if `false`.
@@ -100,7 +100,7 @@ const IfStatementKind NodeKind = "IfStatement"
 
 // LabeledStatement associates an identifier with a statement for purposes of labeled jumps.
 type LabeledStatement struct {
-	statementNode
+	StatementNode
 	Label     *Identifier `json:"label"`
 	Statement Statement   `json:"statement"`
 }
@@ -112,7 +112,7 @@ const LabeledStatementKind NodeKind = "LabeledStatement"
 
 // ReturnStatement is the usual C-style `return`, to exit a function.
 type ReturnStatement struct {
-	statementNode
+	StatementNode
 	Expression *Expression `json:"expression,omitempty"`
 }
 
@@ -123,7 +123,7 @@ const ReturnStatementKind NodeKind = "ReturnStatement"
 
 // ThrowStatement maps to raising an exception, usually `throw`, in the source language.
 type ThrowStatement struct {
-	statementNode
+	StatementNode
 	Expression *Expression `json:"expression,omitempty"`
 }
 
@@ -135,7 +135,7 @@ const ThrowStatementKind NodeKind = "ThrowStatement"
 // WhileStatement is the usual C-style `while`.  To simplify the MuIL AST, this is the only looping statement available.
 // All higher-level looping constructs such as `for`, `foreach`, `do`/`while`, etc. must be desugared into it.
 type WhileStatement struct {
-	statementNode
+	StatementNode
 	Test Expression `json:"test"`  // a `bool` statement indicating whether to condition.
 	Body *Block     `json:"block"` // the body to execute provided the test remains `true`.
 }
@@ -149,7 +149,7 @@ const WhileStatementKind NodeKind = "WhileStatement"
 
 // EmptyStatement is a statement with no effect.
 type EmptyStatement struct {
-	statementNode
+	StatementNode
 }
 
 var _ Node = (*EmptyStatement)(nil)
@@ -159,7 +159,7 @@ const EmptyStatementKind NodeKind = "EmptyStatement"
 
 // MultiStatement groups multiple statements into one; unlike a block, it doesn't introduce a new lexical scope.
 type MultiStatement struct {
-	statementNode
+	StatementNode
 	Statements []Statement `json:"statements"`
 }
 
@@ -170,7 +170,7 @@ const MultiStatementKind NodeKind = "MultiStatement"
 
 // ExpressionStatement performs an expression, in a statement position, and ignores its result.
 type ExpressionStatement struct {
-	statementNode
+	StatementNode
 	Expression Expression `json:"expression"`
 }
 

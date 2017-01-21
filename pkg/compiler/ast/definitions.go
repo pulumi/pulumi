@@ -16,21 +16,21 @@ type Definition interface {
 	GetDescription() *string // an optional informative description.
 }
 
-type definitionNode struct {
-	node
+type DefinitionNode struct {
+	NodeValue
 	Name        *Identifier `json:"name"`
 	Description *string     `json:"description,omitempty"`
 }
 
-func (node *definitionNode) definition()             {}
-func (node *definitionNode) GetName() *Identifier    { return node.Name }
-func (node *definitionNode) GetDescription() *string { return node.Description }
+func (node *DefinitionNode) definition()             {}
+func (node *DefinitionNode) GetName() *Identifier    { return node.Name }
+func (node *DefinitionNode) GetDescription() *string { return node.Description }
 
 /* Modules */
 
 // Module contains members, including variables, functions, and/or classes.
 type Module struct {
-	definitionNode
+	DefinitionNode
 	Imports *[]tokens.Module `json:"imports,omitempty"`
 	Members *ModuleMembers   `json:"members,omitempty"`
 }
@@ -50,20 +50,20 @@ type ModuleMember interface {
 	GetAccess() *tokens.Accessibility
 }
 
-type moduleMemberNode struct {
-	definitionNode
+type ModuleMemberNode struct {
+	DefinitionNode
 	Access *tokens.Accessibility `json:"access,omitempty"`
 }
 
-func (node *moduleMemberNode) moduleMember()                    {}
-func (node *moduleMemberNode) GetAccess() *tokens.Accessibility { return node.Access }
+func (node *ModuleMemberNode) moduleMember()                    {}
+func (node *ModuleMemberNode) GetAccess() *tokens.Accessibility { return node.Access }
 
 // ModuleMembers is a map of member name to ModuleMember symbol.
 type ModuleMembers map[tokens.ModuleMemberName]ModuleMember
 
 // Export re-exports a Definition from another Module, possibly with a different name.
 type Export struct {
-	moduleMemberNode
+	ModuleMemberNode
 	Referent tokens.Token `json:"referent"`
 }
 
@@ -77,7 +77,7 @@ const ExportKind NodeKind = "Export"
 
 // Class can be constructed to create an object, and exports properties, methods, and has a number of attributes.
 type Class struct {
-	moduleMemberNode
+	ModuleMemberNode
 	Extends    *tokens.Type   `json:"extends,omitempty"`
 	Implements *[]tokens.Type `json:"implements,omitempty"`
 	Sealed     *bool          `json:"sealed,omitempty"`
@@ -100,15 +100,15 @@ type ClassMember interface {
 	GetStatic() *bool
 }
 
-type classMemberNode struct {
-	definitionNode
+type ClassMemberNode struct {
+	DefinitionNode
 	Access *tokens.ClassMemberAccessibility `json:"access,omitempty"`
 	Static *bool                            `json:"static,omitempty"`
 }
 
-func (node *classMemberNode) classMember()                                {}
-func (node *classMemberNode) GetAccess() *tokens.ClassMemberAccessibility { return node.Access }
-func (node *classMemberNode) GetStatic() *bool                            { return node.Static }
+func (node *ClassMemberNode) classMember()                                {}
+func (node *ClassMemberNode) GetAccess() *tokens.ClassMemberAccessibility { return node.Access }
+func (node *ClassMemberNode) GetStatic() *bool                            { return node.Static }
 
 // ClassMembers is a map of class member name to ClassMember symbol.
 type ClassMembers map[tokens.ClassMemberName]ClassMember
@@ -123,21 +123,21 @@ type Variable interface {
 	GetReadonly() *bool
 }
 
-type variableNode struct {
+type VariableNode struct {
 	// note that this node intentionally omits any embedded base, to avoid diamond "inheritance".
 	Type     *tokens.Type `json:"type,omitempty"`
 	Default  *interface{} `json:"default,omitempty"`
 	Readonly *bool        `json:"readonly,omitempty"`
 }
 
-func (node *variableNode) GetType() *tokens.Type    { return node.Type }
-func (node *variableNode) GetDefault() *interface{} { return node.Default }
-func (node *variableNode) GetReadonly() *bool       { return node.Readonly }
+func (node *VariableNode) GetType() *tokens.Type    { return node.Type }
+func (node *VariableNode) GetDefault() *interface{} { return node.Default }
+func (node *VariableNode) GetReadonly() *bool       { return node.Readonly }
 
 // LocalVariable is a variable that is lexically scoped within a function (either a parameter or local).
 type LocalVariable struct {
-	variableNode
-	definitionNode
+	VariableNode
+	DefinitionNode
 }
 
 var _ Node = (*LocalVariable)(nil)
@@ -147,8 +147,8 @@ const LocalVariableKind NodeKind = "LocalVariable"
 
 // ModuleProperty is like a variable but belongs to a module.
 type ModuleProperty struct {
-	variableNode
-	moduleMemberNode
+	VariableNode
+	ModuleMemberNode
 }
 
 var _ Node = (*ModuleProperty)(nil)
@@ -159,8 +159,8 @@ const ModulePropertyKind NodeKind = "ModuleProperty"
 
 // ClassProperty is like a module property with some extra attributes.
 type ClassProperty struct {
-	variableNode
-	classMemberNode
+	VariableNode
+	ClassMemberNode
 	Primary *bool `json:"primary,omitempty"`
 }
 
@@ -180,21 +180,21 @@ type Function interface {
 	GetBody() *Block
 }
 
-type functionNode struct {
+type FunctionNode struct {
 	// note that this node intentionally omits any embedded base, to avoid diamond "inheritance".
 	Parameters *[]*LocalVariable `json:"parameters,omitempty"`
 	ReturnType *tokens.Type      `json:"returnType,omitempty"`
 	Body       *Block            `json:"body,omitempty"`
 }
 
-func (node *functionNode) GetParameters() *[]*LocalVariable { return node.Parameters }
-func (node *functionNode) GetReturnType() *tokens.Type      { return node.ReturnType }
-func (node *functionNode) GetBody() *Block                  { return node.Body }
+func (node *FunctionNode) GetParameters() *[]*LocalVariable { return node.Parameters }
+func (node *FunctionNode) GetReturnType() *tokens.Type      { return node.ReturnType }
+func (node *FunctionNode) GetBody() *Block                  { return node.Body }
 
 // ModuleMethod is just a function with an accessibility modifier.
 type ModuleMethod struct {
-	functionNode
-	moduleMemberNode
+	FunctionNode
+	ModuleMemberNode
 }
 
 var _ Node = (*ModuleMethod)(nil)
@@ -205,8 +205,8 @@ const ModuleMethodKind NodeKind = "ModuleMethod"
 
 // ClassMethod is just like a module method with some extra attributes.
 type ClassMethod struct {
-	functionNode
-	classMemberNode
+	FunctionNode
+	ClassMemberNode
 	Sealed   *bool `json:"sealed,omitempty"`
 	Abstract *bool `json:"abstract,omitempty"`
 }
