@@ -38,14 +38,14 @@ func Walk(v Visitor, node Node) {
 	// Definitions
 	case *Module:
 		if n.Members != nil {
-			for _, member := range *n.Members {
-				Walk(v, member)
+			for _, name := range StableModuleMembers(*n.Members) {
+				Walk(v, (*n.Members)[name])
 			}
 		}
 	case *Class:
 		if n.Members != nil {
-			for _, member := range *n.Members {
-				Walk(v, member)
+			for _, name := range StableClassMembers(*n.Members) {
+				Walk(v, (*n.Members)[name])
 			}
 		}
 	case *ModuleMethod:
