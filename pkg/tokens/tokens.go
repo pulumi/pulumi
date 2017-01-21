@@ -44,6 +44,11 @@ type Package Token
 // PackageName is a qualified name referring to an imported package.
 type PackageName QName
 
+func NewPackage(nm PackageName) Package {
+	contract.Assert(IsQName(string(nm)))
+	return Package(nm)
+}
+
 func (tok Package) Name() PackageName {
 	return PackageName(tok)
 }
@@ -55,6 +60,11 @@ type Module Token
 
 // ModuleName is a qualified name referring to an imported module from a package.
 type ModuleName QName
+
+func NewModule(pkg Package, nm ModuleName) Module {
+	contract.Assert(IsQName(string(nm)))
+	return Module(string(pkg) + ModuleDelimiter + string(nm))
+}
 
 func (tok Module) Package() Package {
 	ix := strings.LastIndex(string(tok), ModuleDelimiter)
@@ -75,6 +85,11 @@ type ModuleMember Token
 
 // ModuleMemberName is a simple name representing the module member's identifier.
 type ModuleMemberName Name
+
+func NewModuleMember(mod Module, nm ModuleMemberName) ModuleMember {
+	contract.Assert(IsName(string(nm)))
+	return ModuleMember(string(mod) + ModuleMemberDelimiter + string(nm))
+}
 
 func (tok ModuleMember) Package() Package {
 	return tok.Module().Package()
@@ -99,6 +114,11 @@ type ClassMember Token
 
 // ClassMemberName is a simple name representing the class member's identifier.
 type ClassMemberName Name
+
+func NewClassMember(class Type, nm ClassMemberName) ClassMember {
+	contract.Assert(IsName(string(nm)))
+	return ClassMember(string(class) + ClassMemberDelimiter + string(nm))
+}
 
 func (tok ClassMember) Package() Package {
 	return tok.Module().Package()
@@ -127,11 +147,16 @@ type Type Token
 // TypeName is a simple name representing the type's name, without any package/module qualifiers.
 type TypeName Name
 
+func NewType(mod Module, nm TypeName) Type {
+	contract.Assert(IsName(string(nm)))
+	return Type(string(mod) + ModuleMemberDelimiter + string(nm))
+}
+
 func (tok Type) Package() Package {
 	if tok.Primitive() {
 		return Package("")
 	} else {
-		return ClassMember(tok).Package()
+		return ModuleMember(tok).Package()
 	}
 }
 
@@ -139,7 +164,7 @@ func (tok Type) Module() Module {
 	if tok.Primitive() {
 		return Module("")
 	} else {
-		return ClassMember(tok).Module()
+		return ModuleMember(tok).Module()
 	}
 }
 
@@ -148,7 +173,7 @@ func (tok Type) Name() TypeName {
 		contract.Assert(IsName(string(tok)))
 		return TypeName(tok)
 	} else {
-		return TypeName(ClassMember(tok).Name())
+		return TypeName(ModuleMember(tok).Name())
 	}
 }
 
