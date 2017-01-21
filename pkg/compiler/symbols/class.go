@@ -73,7 +73,7 @@ func (node *ClassProperty) Name() tokens.Name { return node.Node.Name.Ident }
 func (node *ClassProperty) Token() tokens.Token {
 	return tokens.Token(
 		tokens.NewClassMemberToken(
-			tokens.ModuleMember(node.Parent.Token()),
+			tokens.Type(node.Parent.Token()),
 			tokens.ClassMemberName(node.Name()),
 		),
 	)
@@ -105,7 +105,7 @@ func (node *ClassMethod) Name() tokens.Name { return node.Node.Name.Ident }
 func (node *ClassMethod) Token() tokens.Token {
 	return tokens.Token(
 		tokens.NewClassMemberToken(
-			tokens.ModuleMember(node.Parent.Token()),
+			tokens.Type(node.Parent.Token()),
 			tokens.ClassMemberName(node.Name()),
 		),
 	)

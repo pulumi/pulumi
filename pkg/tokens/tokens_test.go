@@ -13,37 +13,37 @@ func TestTokens(t *testing.T) {
 	p := "test/package"
 	assert.False(t, IsName(p))
 	assert.True(t, IsQName(p))
-	pkg := NewPackage(PackageName(p))
-	assert.Equal(t, p, string(pkg.Name()))
-	assert.Equal(t, p, string(pkg))
+	pkg := NewPackageToken(PackageName(p))
+	assert.Equal(t, p, pkg.Name().String())
+	assert.Equal(t, p, pkg.String())
 
 	// Module tokens/names.
 	m := "my/module"
 	assert.False(t, IsName(m))
 	assert.True(t, IsQName(m))
-	mod := NewModule(pkg, ModuleName(m))
-	assert.Equal(t, m, string(mod.Name()))
-	assert.Equal(t, p, string(mod.Package().Name()))
-	assert.Equal(t, p+ModuleDelimiter+m, string(mod))
+	mod := NewModuleToken(pkg, ModuleName(m))
+	assert.Equal(t, m, mod.Name().String())
+	assert.Equal(t, p, mod.Package().Name().String())
+	assert.Equal(t, p+ModuleDelimiter+m, mod.String())
 
 	// Module member tokens/names.
 	mm := "memby"
 	assert.True(t, IsName(mm))
 	assert.True(t, IsQName(mm))
-	modm := NewModuleMember(mod, ModuleMemberName(mm))
-	assert.Equal(t, mm, string(modm.Name()))
-	assert.Equal(t, m, string(modm.Module().Name()))
-	assert.Equal(t, p, string(modm.Module().Package().Name()))
-	assert.Equal(t, p+ModuleDelimiter+m+ModuleMemberDelimiter+mm, string(modm))
+	modm := NewModuleMemberToken(mod, ModuleMemberName(mm))
+	assert.Equal(t, mm, modm.Name().String())
+	assert.Equal(t, m, modm.Module().Name().String())
+	assert.Equal(t, p, modm.Module().Package().Name().String())
+	assert.Equal(t, p+ModuleDelimiter+m+ModuleMemberDelimiter+mm, modm.String())
 
 	// Class member tokens/names.
 	cm := "property"
 	assert.True(t, IsName(cm))
 	assert.True(t, IsQName(cm))
-	clm := NewClassMember(Type(modm), ClassMemberName(cm))
-	assert.Equal(t, cm, string(clm.Name()))
-	assert.Equal(t, mm, string(clm.Class().Name()))
-	assert.Equal(t, m, string(clm.Class().Module().Name()))
-	assert.Equal(t, p, string(clm.Class().Module().Package().Name()))
-	assert.Equal(t, p+ModuleDelimiter+m+ModuleMemberDelimiter+mm+ClassMemberDelimiter+cm, string(clm))
+	clm := NewClassMemberToken(Type(modm), ClassMemberName(cm))
+	assert.Equal(t, cm, clm.Name().String())
+	assert.Equal(t, mm, clm.Class().Name().String())
+	assert.Equal(t, m, clm.Class().Module().Name().String())
+	assert.Equal(t, p, clm.Class().Module().Package().Name().String())
+	assert.Equal(t, p+ModuleDelimiter+m+ModuleMemberDelimiter+mm+ClassMemberDelimiter+cm, clm.String())
 }

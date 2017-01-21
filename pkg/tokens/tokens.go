@@ -32,6 +32,8 @@ import (
 // The specialized token kinds differ only in what elements they require as part of the token string.
 type Token string
 
+func (tok Token) String() string { return string(tok) }
+
 const ModuleDelimiter string = ":"       // the character following a package (before a module).
 const ModuleMemberDelimiter string = "/" // the character following a module (before a module member).
 const ClassMemberDelimiter string = "."  // the character following a class name (before a class member).
@@ -41,10 +43,7 @@ const ClassMemberDelimiter string = "."  // the character following a class name
 // Note that a package name of "." means "current package", to simplify emission and lookups.
 type Package Token
 
-// PackageName is a qualified name referring to an imported package.
-type PackageName QName
-
-func NewPackage(nm PackageName) Package {
+func NewPackageToken(nm PackageName) Package {
 	contract.Assert(IsQName(string(nm)))
 	return Package(nm)
 }
@@ -53,15 +52,19 @@ func (tok Package) Name() PackageName {
 	return PackageName(tok)
 }
 
+func (tok Package) String() string { return string(tok) }
+
+// PackageName is a qualified name referring to an imported package.
+type PackageName QName
+
+func (nm PackageName) String() string { return string(nm) }
+
 // Module is a token representing a module.  It uses the following subset of the token grammar:
 //		Module = <Package> ":" <ModuleName>
 // Note that a module name of "." means "current module", to simplify emission and lookups.
 type Module Token
 
-// ModuleName is a qualified name referring to an imported module from a package.
-type ModuleName QName
-
-func NewModule(pkg Package, nm ModuleName) Module {
+func NewModuleToken(pkg Package, nm ModuleName) Module {
 	contract.Assert(IsQName(string(nm)))
 	return Module(string(pkg) + ModuleDelimiter + string(nm))
 }
@@ -78,15 +81,19 @@ func (tok Module) Name() ModuleName {
 	return ModuleName(string(tok)[ix+1:])
 }
 
+func (tok Module) String() string { return string(tok) }
+
+// ModuleName is a qualified name referring to an imported module from a package.
+type ModuleName QName
+
+func (nm ModuleName) String() string { return string(nm) }
+
 // ModuleMember is a token representing a module's member.  It uses the following grammar.  Note that this is not
 // ambiguous because member names cannot contain slashes, and so the "last" slash in a name delimits the member:
 //		ModuleMember = <Module> "/" <ModuleMemberName>
 type ModuleMember Token
 
-// ModuleMemberName is a simple name representing the module member's identifier.
-type ModuleMemberName Name
-
-func NewModuleMember(mod Module, nm ModuleMemberName) ModuleMember {
+func NewModuleMemberToken(mod Module, nm ModuleMemberName) ModuleMember {
 	contract.Assert(IsName(string(nm)))
 	return ModuleMember(string(mod) + ModuleMemberDelimiter + string(nm))
 }
@@ -107,15 +114,19 @@ func (tok ModuleMember) Name() ModuleMemberName {
 	return ModuleMemberName(string(tok)[ix+1:])
 }
 
+func (tok ModuleMember) String() string { return string(tok) }
+
+// ModuleMemberName is a simple name representing the module member's identifier.
+type ModuleMemberName Name
+
+func (nm ModuleMemberName) String() string { return string(nm) }
+
 // ClassMember is a token representing a class's member.  It uses the following grammar.  Unlike ModuleMember, this
 // cannot use a slash for delimiting names, because we use often ClassMember and ModuleMember interchangably:
 //		ClassMember = <ModuleMember> "." <ClassMemberName>
 type ClassMember Token
 
-// ClassMemberName is a simple name representing the class member's identifier.
-type ClassMemberName Name
-
-func NewClassMember(class Type, nm ClassMemberName) ClassMember {
+func NewClassMemberToken(class Type, nm ClassMemberName) ClassMember {
 	contract.Assert(IsName(string(nm)))
 	return ClassMember(string(class) + ClassMemberDelimiter + string(nm))
 }
@@ -140,14 +151,18 @@ func (tok ClassMember) Name() ClassMemberName {
 	return ClassMemberName(string(tok)[ix+1:])
 }
 
+func (tok ClassMember) String() string { return string(tok) }
+
+// ClassMemberName is a simple name representing the class member's identifier.
+type ClassMemberName Name
+
+func (nm ClassMemberName) String() string { return string(nm) }
+
 // Type is a token representing a type.  It is either a primitive type name, or a reference to a module class:
 //		Type = <Name> | <ModuleMember>
 type Type Token
 
-// TypeName is a simple name representing the type's name, without any package/module qualifiers.
-type TypeName Name
-
-func NewType(mod Module, nm TypeName) Type {
+func NewTypeToken(mod Module, nm TypeName) Type {
 	contract.Assert(IsName(string(nm)))
 	return Type(string(mod) + ModuleMemberDelimiter + string(nm))
 }
@@ -186,26 +201,22 @@ func (tok Type) Primitive() bool {
 	return strings.LastIndex(string(tok), ModuleMemberDelimiter) == -1
 }
 
+func (tok Type) String() string { return string(tok) }
+
+// TypeName is a simple name representing the type's name, without any package/module qualifiers.
+type TypeName Name
+
+func (nm TypeName) String() string { return string(nm) }
+
 // Variable is a token representing a variable (module property, class property, or local variable (including
 // parameters)).  It can be a simple name for the local cases, or a true token for others:
 //		Variable = <Name> | <ModuleMember> | <ClassMember>
 type Variable Token
 
+func (tok Variable) String() string { return string(tok) }
+
 // Function is a token representing a variable (module method or class method).  Its grammar is as follows:
 //		Variable = <ModuleMember> | <ClassMember>
 type Function Token
 
-// NewModuleToken produces a new qualified token from a parent package and the module.
-func NewModuleToken(parent Package, name ModuleName) Module {
-	return Module(string(parent) + ModuleDelimiter + string(name))
-}
-
-// NewModuleMemberToken produces a new qualified token from a parent module and the member's identifier.
-func NewModuleMemberToken(parent Module, name ModuleMemberName) ModuleMember {
-	return ModuleMember(string(parent) + ModuleMemberDelimiter + string(name))
-}
-
-// NewClassMemberToken produces a new qualified token from a parent class and the class's identifier.
-func NewClassMemberToken(parent ModuleMember, name ClassMemberName) ClassMember {
-	return ClassMember(string(parent) + ClassMemberDelimiter + string(name))
-}
+func (tok Function) String() string { return string(tok) }

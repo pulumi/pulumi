@@ -296,7 +296,7 @@ func printClassProperty(name tokens.ClassMemberName, prop *ast.ClassProperty, in
 	}
 	fmt.Printf("%vproperty \"%v\"%v", indent, name, modString(mods))
 	if prop.Type != nil {
-		fmt.Printf(": %v", *prop.Type)
+		fmt.Printf(": %v", prop.Type.Tok)
 	}
 	fmt.Printf("\n")
 }
@@ -336,7 +336,7 @@ func printModuleProperty(name tokens.ModuleMemberName, prop *ast.ModuleProperty,
 	}
 	fmt.Printf("%vproperty \"%v\"%v", indent, name, modString(mods))
 	if prop.Type != nil {
-		fmt.Printf(": %v", *prop.Type)
+		fmt.Printf(": %v", prop.Type.Tok)
 	}
 	fmt.Printf("\n")
 }
