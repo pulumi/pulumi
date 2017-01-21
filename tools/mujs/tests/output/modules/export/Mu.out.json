@@ -92,6 +92,7 @@
                     },
                     "access": "public",
                     "type": {
+                        "kind": "TypeToken",
                         "tok": "number",
                         "loc": {
                             "file": "other.ts",
@@ -203,6 +204,7 @@
             },
             "imports": [
                 {
+                    "kind": "ModuleToken",
                     "tok": "other",
                     "loc": {
                         "file": "index.ts",
@@ -237,6 +239,7 @@
                     },
                     "access": "public",
                     "referent": {
+                        "kind": "Token",
                         "tok": "other",
                         "loc": {
                             "file": "index.ts",
@@ -345,6 +348,7 @@
                     },
                     "access": "public",
                     "type": {
+                        "kind": "TypeToken",
                         "tok": "number",
                         "loc": {
                             "file": "index.ts",

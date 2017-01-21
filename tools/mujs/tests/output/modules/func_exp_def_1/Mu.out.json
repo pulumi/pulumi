@@ -35,6 +35,7 @@
                                 }
                             },
                             "type": {
+                                "kind": "TypeToken",
                                 "tok": "number",
                                 "loc": {
                                     "file": "index.ts",
@@ -67,6 +68,7 @@
                                 }
                             },
                             "type": {
+                                "kind": "TypeToken",
                                 "tok": "string",
                                 "loc": {
                                     "file": "index.ts",

@@ -92,6 +92,7 @@
                     },
                     "access": "public",
                     "type": {
+                        "kind": "TypeToken",
                         "tok": "number",
                         "loc": {
                             "file": "other.ts",
@@ -222,6 +223,7 @@
                     },
                     "access": "public",
                     "referent": {
+                        "kind": "Token",
                         "tok": "other:C",
                         "loc": {
                             "file": "index.ts",
@@ -266,6 +268,7 @@
                     },
                     "access": "public",
                     "referent": {
+                        "kind": "Token",
                         "tok": "other:I",
                         "loc": {
                             "file": "index.ts",
@@ -310,6 +313,7 @@
                     },
                     "access": "public",
                     "referent": {
+                        "kind": "Token",
                         "tok": "other:v",
                         "loc": {
                             "file": "index.ts",

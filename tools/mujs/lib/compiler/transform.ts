@@ -436,7 +436,8 @@ export class Transformer {
         let ty: ts.Type = this.checker().getTypeAtLocation(node);
         contract.assert(!!ty);
         return this.withLocation(node, <ast.TypeToken>{
-            tok: this.resolveTypeToken(ty),
+            kind: ast.typeTokenKind,
+            tok:  this.resolveTypeToken(ty),
         });
     }
 
@@ -618,7 +619,8 @@ export class Transformer {
                         name:     name,
                         access:   symbols.publicAccessibility,
                         referent: this.withLocation(exportClause.propertyName, <ast.Token>{
-                            tok: this.createModuleMemberToken(sourceModule, propertyName.ident),
+                            kind: ast.tokenKind,
+                            tok:  this.createModuleMemberToken(sourceModule, propertyName.ident),
                         }),
                     }));
                 }
@@ -631,7 +633,8 @@ export class Transformer {
                             name:     name,
                             access:   symbols.publicAccessibility,
                             referent: this.withLocation(exportClause.name, <ast.Token>{
-                                tok: this.createModuleMemberToken(sourceModule, name.ident),
+                                kind: ast.tokenKind,
+                                tok:  this.createModuleMemberToken(sourceModule, name.ident),
                             }),
                         }));
                     }
@@ -656,7 +659,8 @@ export class Transformer {
                                 name:     name,
                                 access:   symbols.publicAccessibility,
                                 referent: this.withLocation(exportClause, <ast.Token>{
-                                    tok: this.createModuleToken(otherModule!),
+                                    kind: ast.tokenKind,
+                                    tok:  this.createModuleToken(otherModule!),
                                 }),
                             }));
                         }
@@ -680,7 +684,8 @@ export class Transformer {
                     },
                     access:   symbols.publicAccessibility,
                     referent: this.withLocation(node, <ast.Token>{
-                        tok: name,
+                        kind: ast.tokenKind,
+                        tok:  name,
                     }),
                 }));
             }
@@ -699,7 +704,8 @@ export class Transformer {
             let importModule: ModuleReference =
                 this.resolveModuleReferenceByName((<ts.StringLiteral>node.moduleSpecifier).text);
             let importModuleToken: ast.ModuleToken = this.withLocation(node.moduleSpecifier, <ast.ModuleToken>{
-                tok: this.createModuleToken(importModule),
+                kind: ast.moduleTokenKind,
+                tok:  this.createModuleToken(importModule),
             });
 
             // Figure out what kind of import statement this is (there are many, see below).
@@ -1829,7 +1835,8 @@ export class Transformer {
         if (node.expression.kind === ts.SyntaxKind.Identifier) {
             let ident: ast.Identifier = this.transformIdentifier(<ts.Identifier>node.expression);
             ty = this.withLocation(node.expression, <ast.TypeToken>{
-                tok: ident.ident,
+                kind: ast.typeTokenKind,
+                tok:  ident.ident,
             });
         }
         else {

@@ -28,6 +28,7 @@
                     },
                     "access": "private",
                     "type": {
+                        "kind": "TypeToken",
                         "tok": "number",
                         "loc": {
                             "file": "index.ts",

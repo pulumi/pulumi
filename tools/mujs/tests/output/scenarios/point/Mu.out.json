@@ -54,6 +54,7 @@
                                         }
                                     },
                                     "type": {
+                                        "kind": "TypeToken",
                                         "tok": "number",
                                         "loc": {
                                             "file": "index.ts",
@@ -86,6 +87,7 @@
                                         }
                                     },
                                     "type": {
+                                        "kind": "TypeToken",
                                         "tok": "number",
                                         "loc": {
                                             "file": "index.ts",
@@ -378,6 +380,7 @@
                                         }
                                     },
                                     "type": {
+                                        "kind": "TypeToken",
                                         "tok": "Point",
                                         "loc": {
                                             "file": "index.ts",
@@ -401,6 +404,7 @@
                                         "expression": {
                                             "kind": "NewExpression",
                                             "type": {
+                                                "kind": "TypeToken",
                                                 "tok": "Point",
                                                 "loc": {
                                                     "file": "index.ts",
@@ -729,6 +733,7 @@
                             "readonly": true,
                             "static": false,
                             "type": {
+                                "kind": "TypeToken",
                                 "tok": "number",
                                 "loc": {
                                     "file": "index.ts",
@@ -764,6 +769,7 @@
                             "readonly": true,
                             "static": false,
                             "type": {
+                                "kind": "TypeToken",
                                 "tok": "number",
                                 "loc": {
                                     "file": "index.ts",
