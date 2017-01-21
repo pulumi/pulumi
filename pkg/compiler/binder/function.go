@@ -7,6 +7,7 @@ import (
 	"github.com/marapongo/mu/pkg/compiler/errors"
 	"github.com/marapongo/mu/pkg/compiler/symbols"
 	"github.com/marapongo/mu/pkg/compiler/types"
+	"github.com/marapongo/mu/pkg/util/contract"
 )
 
 // bindFunctionBody binds a function body, including a scope, its parameters, and its expressions and statements.
@@ -162,6 +163,10 @@ func (a *astBinder) After(node ast.Node) {
 		// TODO: check that there's at least one!
 		a.b.registerExprType(n, a.b.requireExprType(n.Expressions[len(n.Expressions)-1]))
 	}
+
+	// Ensure that all expression types resulted in a type registration.
+	expr, isExpr := node.(ast.Expression)
+	contract.Assert(!isExpr || a.b.requireExprType(expr) != nil)
 }
 
 func (a *astBinder) checkExprType(expr ast.Expression, expect symbols.Type) bool {
