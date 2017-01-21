@@ -697,7 +697,10 @@
                                     }
                                 }
                             },
-                            "returnType": "Point",
+                            "returnType": {
+                                "kind": "TypeToken",
+                                "tok": "Point"
+                            },
                             "static": false,
                             "abstract": false,
                             "loc": {

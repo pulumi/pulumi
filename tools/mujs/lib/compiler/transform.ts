@@ -121,7 +121,7 @@ interface FunctionLikeDeclaration {
     name:        ast.Identifier;
     parameters:  ast.LocalVariable[];
     body?:       ast.Block;
-    returnType?: symbols.TypeToken;
+    returnType?: ast.TypeToken;
 }
 
 // TypeLike is any interface that has a possible TypeNode attached to it and can be queried for binding information.
@@ -1035,10 +1035,16 @@ export class Transformer {
         }
 
         // Get the signature so that we can fetch the return type.
-        let returnType: symbols.TypeToken | undefined;
+        let returnType: ast.TypeToken | undefined;
         if (node.kind !== ts.SyntaxKind.Constructor) {
             let signature: ts.Signature = this.checker().getSignatureFromDeclaration(node);
-            returnType = this.resolveTypeToken(signature.getReturnType());
+            let typeToken: symbols.TypeToken | undefined = this.resolveTypeToken(signature.getReturnType());
+            if (typeToken) {
+                returnType = <ast.TypeToken>{
+                    kind: ast.typeTokenKind,
+                    tok:  typeToken,
+                };
+            }
         }
 
         // Delegate to the factory method to turn this into a real function object.
