@@ -19,7 +19,7 @@ func (b *binder) bindModule(node *ast.Module, parent *symbols.Package) *symbols.
 	// First bind all imports to concrete symbols.  These will be used to perform initialization later on.
 	if node.Imports != nil {
 		for _, imptok := range *node.Imports {
-			if imp := b.scope.LookupModule(imptok); imp != nil {
+			if imp := b.scope.LookupModule(imptok.Tok); imp != nil {
 				module.Imports = append(module.Imports, imp)
 			}
 		}
@@ -58,7 +58,7 @@ func (b *binder) bindExport(node *ast.Export, parent *symbols.Module) *symbols.E
 	glog.V(3).Infof("Binding module '%v' export '%v'", parent.Name(), node.Name.Ident)
 
 	// To bind an export, simply look up the referent symbol and associate this name with it.
-	refsym := b.scope.Lookup(node.Referent)
+	refsym := b.scope.Lookup(node.Referent.Tok)
 	if refsym == nil {
 		// TODO: issue a verification error; name not found!  Also sub in a "bad" symbol.
 		contract.Failf("Export name not found: %v", node.Referent)

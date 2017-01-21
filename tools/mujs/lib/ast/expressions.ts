@@ -1,7 +1,7 @@
 // Copyright 2016 Marapongo, Inc. All rights reserved.
 
 import {LocalVariable} from "./definitions";
-import {Identifier, Node} from "./nodes";
+import {Identifier, Node, TypeToken} from "./nodes";
 import * as statements from "./statements";
 
 import * as symbols from "../symbols";
@@ -48,9 +48,9 @@ export type  StringLiteralKind = "StringLiteral";
 // A array literal plus optional initialization.
 export interface ArrayLiteral extends Literal {
     kind:      ArrayLiteralKind;
-    type?:     symbols.TypeToken; // the type of array to produce.
-    size?:     Expression;        // an optional expression for the array size.
-    elements?: Expression[];      // an optional array of element expressions to store into the array.
+    type?:     TypeToken;    // the type of array to produce.
+    size?:     Expression;   // an optional expression for the array size.
+    elements?: Expression[]; // an optional array of element expressions to store into the array.
 }
 export const arrayLiteralKind = "ArrayLiteral";
 export type  ArrayLiteralKind = "ArrayLiteral";
@@ -58,7 +58,7 @@ export type  ArrayLiteralKind = "ArrayLiteral";
 // An object literal plus optional initialization.
 export interface ObjectLiteral extends Literal {
     kind:        ObjectLiteralKind;
-    type?:       symbols.TypeToken;       // the type of object to produce.
+    type?:       TypeToken;               // the type of object to produce.
     properties?: ObjectLiteralProperty[]; // an optional array of property initializers.
 }
 export const objectLiteralKind = "ObjectLiteral";
@@ -108,7 +108,7 @@ export interface CallExpression extends Expression {
 // Allocates a new object and calls its constructor.
 export interface NewExpression extends CallExpression {
     kind: NewExpressionKind;
-    type: Identifier; // the object type to allocate.
+    type: TypeToken; // the object type to allocate.
 }
 export const newExpressionKind = "NewExpression";
 export type  NewExpressionKind = "NewExpression";
@@ -206,8 +206,8 @@ export type BinaryOperator = BinaryArithmeticOperator  |
 // A cast expression; this handles both nominal and structural casts, and will throw an exception upon failure.
 export interface CastExpression extends Expression {
     kind:       CastExpressionKind;
-    expression: Expression;        // the source expression.
-    type:       symbols.TypeToken; // the target type.
+    expression: Expression; // the source expression.
+    type:       TypeToken;  // the target type.
 }
 export const castExpressionKind = "CastExpression";
 export type  CastExpressionKind = "CastExpression";
@@ -215,8 +215,8 @@ export type  CastExpressionKind = "CastExpression";
 // An isinst expression checks an expression for compatibility with the given type token, evaluating to a boolean.
 export interface IsInstExpression extends Expression {
     kind:       IsInstExpressionKind;
-    expression: Expression;        // the source expression.
-    type:       symbols.TypeToken; // the target type.
+    expression: Expression; // the source expression.
+    type:       TypeToken;  // the target type.
 }
 export const isInstExpressionKind = "IsInstExpression";
 export type  IsInstExpressionKind = "IsInstExpression";

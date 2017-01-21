@@ -91,7 +91,20 @@
                         }
                     },
                     "access": "public",
-                    "type": "number"
+                    "type": {
+                        "tok": "number",
+                        "loc": {
+                            "file": "other.ts",
+                            "start": {
+                                "line": 3,
+                                "column": 11
+                            },
+                            "end": {
+                                "line": 3,
+                                "column": 17
+                            }
+                        }
+                    }
                 },
                 ".init": {
                     "kind": "ModuleMethod",
@@ -189,7 +202,20 @@
                 "ident": "index"
             },
             "imports": [
-                "other"
+                {
+                    "tok": "other",
+                    "loc": {
+                        "file": "index.ts",
+                        "start": {
+                            "line": 2,
+                            "column": 23
+                        },
+                        "end": {
+                            "line": 2,
+                            "column": 32
+                        }
+                    }
+                }
             ],
             "members": {
                 "other": {
@@ -210,7 +236,31 @@
                         }
                     },
                     "access": "public",
-                    "referent": "other"
+                    "referent": {
+                        "tok": "other",
+                        "loc": {
+                            "file": "index.ts",
+                            "start": {
+                                "line": 3,
+                                "column": 8
+                            },
+                            "end": {
+                                "line": 3,
+                                "column": 13
+                            }
+                        }
+                    },
+                    "loc": {
+                        "file": "index.ts",
+                        "start": {
+                            "line": 3,
+                            "column": 8
+                        },
+                        "end": {
+                            "line": 3,
+                            "column": 13
+                        }
+                    }
                 },
                 "C": {
                     "kind": "Class",
@@ -294,7 +344,20 @@
                         }
                     },
                     "access": "public",
-                    "type": "number"
+                    "type": {
+                        "tok": "number",
+                        "loc": {
+                            "file": "index.ts",
+                            "start": {
+                                "line": 8,
+                                "column": 4
+                            },
+                            "end": {
+                                "line": 8,
+                                "column": 10
+                            }
+                        }
+                    }
                 },
                 ".init": {
                     "kind": "ModuleMethod",

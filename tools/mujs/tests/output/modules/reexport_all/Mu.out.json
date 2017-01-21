@@ -91,7 +91,20 @@
                         }
                     },
                     "access": "public",
-                    "type": "number"
+                    "type": {
+                        "tok": "number",
+                        "loc": {
+                            "file": "other.ts",
+                            "start": {
+                                "line": 3,
+                                "column": 11
+                            },
+                            "end": {
+                                "line": 3,
+                                "column": 17
+                            }
+                        }
+                    }
                 },
                 ".init": {
                     "kind": "ModuleMethod",
@@ -197,7 +210,31 @@
                         "ident": "C"
                     },
                     "access": "public",
-                    "referent": "other:C"
+                    "referent": {
+                        "tok": "other:C",
+                        "loc": {
+                            "file": "index.ts",
+                            "start": {
+                                "line": 1,
+                                "column": 0
+                            },
+                            "end": {
+                                "line": 1,
+                                "column": 24
+                            }
+                        }
+                    },
+                    "loc": {
+                        "file": "index.ts",
+                        "start": {
+                            "line": 1,
+                            "column": 0
+                        },
+                        "end": {
+                            "line": 1,
+                            "column": 24
+                        }
+                    }
                 },
                 "I": {
                     "kind": "Export",
@@ -206,7 +243,31 @@
                         "ident": "I"
                     },
                     "access": "public",
-                    "referent": "other:I"
+                    "referent": {
+                        "tok": "other:I",
+                        "loc": {
+                            "file": "index.ts",
+                            "start": {
+                                "line": 1,
+                                "column": 0
+                            },
+                            "end": {
+                                "line": 1,
+                                "column": 24
+                            }
+                        }
+                    },
+                    "loc": {
+                        "file": "index.ts",
+                        "start": {
+                            "line": 1,
+                            "column": 0
+                        },
+                        "end": {
+                            "line": 1,
+                            "column": 24
+                        }
+                    }
                 },
                 "v": {
                     "kind": "Export",
@@ -215,7 +276,31 @@
                         "ident": "v"
                     },
                     "access": "public",
-                    "referent": "other:v"
+                    "referent": {
+                        "tok": "other:v",
+                        "loc": {
+                            "file": "index.ts",
+                            "start": {
+                                "line": 1,
+                                "column": 0
+                            },
+                            "end": {
+                                "line": 1,
+                                "column": 24
+                            }
+                        }
+                    },
+                    "loc": {
+                        "file": "index.ts",
+                        "start": {
+                            "line": 1,
+                            "column": 0
+                        },
+                        "end": {
+                            "line": 1,
+                            "column": 24
+                        }
+                    }
                 }
             },
             "loc": {

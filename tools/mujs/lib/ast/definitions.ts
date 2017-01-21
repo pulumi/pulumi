@@ -1,7 +1,7 @@
 // Copyright 2016 Marapongo, Inc. All rights reserved.
 
 import * as symbols from "../symbols";
-import {Identifier, Node} from "./nodes";
+import {Identifier, ModuleToken, Node, Token, TypeToken} from "./nodes";
 import * as statements from "./statements";
 
 // TODO(joe): consider refactoring modifiers from booleans to enums.
@@ -19,8 +19,8 @@ export interface Definition extends Node {
 // A module contains members, including variables, functions, and/or classes.
 export interface Module extends Definition {
     kind:     ModuleKind;
-    imports?: symbols.ModuleToken[]; // an ordered list of import modules to initialize.
-    members?: ModuleMembers;         // a list of members (both private and public, exported ones).
+    imports?: ModuleToken[]; // an ordered list of import modules to initialize.
+    members?: ModuleMembers; // a list of members (both private and public, exported ones).
 }
 export const moduleKind = "Module";
 export type  ModuleKind = "Module";
@@ -35,7 +35,7 @@ export type ModuleMembers = { [token: string /*symbols.Token*/]: ModuleMember };
 // An export definition re-exports a definition from another module, possibly with a different name.
 export interface Export extends ModuleMember {
     kind:     ExportKind;
-    referent: symbols.Token;
+    referent: Token;
 }
 export const exportKind = "Export";
 export type  ExportKind = "Export";
@@ -45,8 +45,8 @@ export type  ExportKind = "Export";
 // A class can be constructed to create an object, and exports properties, methods, and has a number of attributes.
 export interface Class extends ModuleMember {
     kind:        ClassKind;
-    extends?:    symbols.TypeToken;
-    implements?: symbols.TypeToken[];
+    extends?:    TypeToken;
+    implements?: TypeToken[];
     sealed?:     boolean;
     abstract?:   boolean;
     record?:     boolean;
@@ -67,7 +67,7 @@ export type ClassMembers = { [token: string /*symbols.Token*/]: ClassMember };
 
 // A variable is a typed storage location.
 export interface Variable extends Definition {
-    type?:     symbols.TypeToken;
+    type?:     TypeToken;
     default?:  any; // a trivially serializable default value.
     readonly?: boolean;
 }
@@ -99,7 +99,7 @@ export type  ClassPropertyKind = "ClassProperty";
 // A function is an executable bit of code: a class function, class method, or a lambda (see il module).
 export interface Function extends Definition {
     parameters?: LocalVariable[];
-    returnType?: symbols.TypeToken;
+    returnType?: TypeToken;
     body?:       statements.Block;
 }
 

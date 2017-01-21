@@ -2,10 +2,6 @@
 
 package ast
 
-import (
-	"github.com/marapongo/mu/pkg/tokens"
-)
-
 // Expression is an executable operation that usually produces a value.
 type Expression interface {
 	Node
@@ -81,7 +77,7 @@ const StringLiteralKind NodeKind = "StringLiteral"
 // ArrayLiteral evaluates to a newly allocated array, with optional initialized elements.
 type ArrayLiteral struct {
 	LiteralNode
-	Type     *tokens.Type  `json:"type,omitempty"`     // the optional type of array being produced.
+	Type     *TypeToken    `json:"type,omitempty"`     // the optional type of array being produced.
 	Size     *Expression   `json:"size,omitempty"`     // an optional expression for the array size.
 	Elements *[]Expression `json:"elements,omitempty"` // an optional array of element initializers.
 }
@@ -95,7 +91,7 @@ const ArrayLiteralKind NodeKind = "ArrayLiteral"
 // ObjectLiteral evaluates to a new object, with optional property initializers for primary properties.
 type ObjectLiteral struct {
 	LiteralNode
-	Type       *tokens.Type              `json:"type,omitempty"`       // the optional type of object to produce.
+	Type       *TypeToken                `json:"type,omitempty"`       // the optional type of object to produce.
 	Properties *[]*ObjectLiteralProperty `json:"properties,omitempty"` // an optional array of property initializers.
 }
 
@@ -172,7 +168,7 @@ func (node *callExpressionNode) GetArguments() *[]Expression { return node.Argum
 // NewExpression allocates a new object and calls its constructor.
 type NewExpression struct {
 	callExpressionNode
-	Type *Identifier `json:"type"` // the object type to allocate.
+	Type *TypeToken `json:"type"` // the object type to allocate.
 }
 
 var _ Node = (*NewExpression)(nil)
@@ -301,8 +297,8 @@ const (
 // CastExpression handles both nominal and structural casts, and will throw an exception upon failure.
 type CastExpression struct {
 	ExpressionNode
-	Expression Expression  `json:"expression"` // the source expression.
-	Type       tokens.Type `json:"type"`       // the target type.
+	Expression Expression `json:"expression"` // the source expression.
+	Type       *TypeToken `json:"type"`       // the target type.
 }
 
 var _ Node = (*CastExpression)(nil)
@@ -313,8 +309,8 @@ const CastExpressionKind NodeKind = "CastExpression"
 // IsInstExpression checks an expression for compatibility with the given type token, and evaluates to a bool.
 type IsInstExpression struct {
 	ExpressionNode
-	Expression Expression  `json:"expression"` // the source expression.
-	Type       tokens.Type `json:"type"`       // the target type.
+	Expression Expression `json:"expression"` // the source expression.
+	Type       *TypeToken `json:"type"`       // the target type.
 }
 
 var _ Node = (*IsInstExpression)(nil)

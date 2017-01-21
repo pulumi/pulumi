@@ -248,11 +248,11 @@ func printClass(name tokens.ModuleMemberName, class *ast.Class, exportOnly bool,
 	fmt.Printf(modString(mods))
 
 	if class.Extends != nil {
-		fmt.Printf("\n%vextends %v", indent+tab+tab, string(*class.Extends))
+		fmt.Printf("\n%vextends %v", indent+tab+tab, string(class.Extends.Tok))
 	}
 	if class.Implements != nil {
 		for _, impl := range *class.Implements {
-			fmt.Printf("\n%vimplements %v", indent+tab+tab, string(impl))
+			fmt.Printf("\n%vimplements %v", indent+tab+tab, string(impl.Tok))
 		}
 	}
 
@@ -376,7 +376,7 @@ func funcSig(fun ast.Function) string {
 			}
 			sig += string(param.Name.Ident)
 			if param.Type != nil {
-				sig += ": " + string(*param.Type)
+				sig += ": " + string(param.Type.Tok)
 			}
 		}
 	}
@@ -385,7 +385,7 @@ func funcSig(fun ast.Function) string {
 	// And then the return type, if present.
 	ret := fun.GetReturnType()
 	if ret != nil {
-		sig += ": " + string(*ret)
+		sig += ": " + string(ret.Tok)
 	}
 
 	return sig

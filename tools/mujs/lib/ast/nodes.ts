@@ -19,6 +19,9 @@ export interface Node {
 // and makes constructing and inspecting nodes a little more bulletproof (i.e., they aren't arbitrary strings).
 export type NodeKind =
     IdentifierKind |
+    TokenKind |
+    ModuleTokenKind |
+    TypeTokenKind |
 
     definitions.ModuleKind |
     definitions.ClassKind |
@@ -67,8 +70,29 @@ export type NodeKind =
 
 export interface Identifier extends Node {
     kind:  IdentifierKind;
-    ident: symbols.Token; // a valid identifier:  (letter|"_") (letter | digit | "_")*
+    ident: string; // a valid identifier:  (letter|"_") (letter | digit | "_")*
 }
 export const identifierKind = "Identifier";
 export type  IdentifierKind = "Identifier";
+
+export interface Token extends Node {
+    kind: TokenKind;
+    tok:  symbols.Token;
+}
+export const tokenKind = "Token";
+export type  TokenKind = "Token";
+
+export interface ModuleToken extends Node {
+    kind: ModuleTokenKind;
+    tok:  symbols.ModuleToken;
+}
+export const moduleTokenKind = "ModuleToken";
+export type  ModuleTokenKind = "ModuleToken";
+
+export interface TypeToken extends Node {
+    kind: TypeTokenKind;
+    tok:  symbols.TypeToken;
+}
+export const typeTokenKind = "TypeToken";
+export type  TypeTokenKind = "TypeToken";
 

@@ -62,10 +62,34 @@ func (node *NodeValue) Where() (*diag.Document, *diag.Location) {
 	}
 }
 
-// Identifier represents a simple string token associated with its source location context.
+// Identifier represents a simple string name associated with its source location context.
 type Identifier struct {
 	NodeValue
 	Ident tokens.Name `json:"ident"` // a valid identifier: (letter | "_") (letter | digit | "_")*
 }
 
 const IdentifierKind NodeKind = "Identifier"
+
+// Token represents a real string type token associated with its source location context.
+type Token struct {
+	NodeValue
+	Tok tokens.Token `json:"tok"`
+}
+
+const TokenKind NodeKind = "Token"
+
+// ModuleToken represents a real string type token associated with its source location context.
+type ModuleToken struct {
+	NodeValue
+	Tok tokens.Module `json:"tok"`
+}
+
+const ModuleTokenKind NodeKind = "ModuleToken"
+
+// TypeToken represents a real string module token associated with its source location context.
+type TypeToken struct {
+	NodeValue
+	Tok tokens.Type `json:"tok"`
+}
+
+const TypeTokenKind NodeKind = "TypeToken"

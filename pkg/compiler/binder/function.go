@@ -7,7 +7,6 @@ import (
 	"github.com/marapongo/mu/pkg/compiler/errors"
 	"github.com/marapongo/mu/pkg/compiler/symbols"
 	"github.com/marapongo/mu/pkg/compiler/types"
-	"github.com/marapongo/mu/pkg/tokens"
 )
 
 // bindFunctionBody binds a function body, including a scope, its parameters, and its expressions and statements.
@@ -108,14 +107,14 @@ func (a *astBinder) After(node ast.Node) {
 		if n.Type == nil {
 			a.b.registerExprType(n, types.AnyArray)
 		} else {
-			a.b.registerExprType(n, a.b.bindType(n, *n.Type))
+			a.b.registerExprType(n, a.b.bindType(n.Type))
 		}
 	case *ast.ObjectLiteral:
 		// TODO: check that the properties, if present, are correct.
 		if n.Type == nil {
 			a.b.registerExprType(n, types.Any)
 		} else {
-			a.b.registerExprType(n, a.b.bindType(n, *n.Type))
+			a.b.registerExprType(n, a.b.bindType(n.Type))
 		}
 	case *ast.LoadLocationExpression:
 		// TODO: look up the name in the given type (Object's type) and see what results.
@@ -127,7 +126,7 @@ func (a *astBinder) After(node ast.Node) {
 			a.b.registerExprType(n, types.Any)
 		} else {
 			// TODO: this identifier is expected to be fully bound and hence a full token (not a lexical name).
-			a.b.registerExprType(n, a.b.bindType(n, tokens.Type((*n.Type).Ident)))
+			a.b.registerExprType(n, a.b.bindType(n.Type))
 		}
 	case *ast.InvokeFunctionExpression:
 		// TODO: ensure the target is a function type.
@@ -142,7 +141,7 @@ func (a *astBinder) After(node ast.Node) {
 		}
 		var ret symbols.Type
 		if pret := n.GetReturnType(); pret != nil {
-			ret = a.b.bindType(n, *pret)
+			ret = a.b.bindType(pret)
 		}
 		a.b.registerExprType(n, symbols.NewFunctionType(params, ret))
 	case *ast.UnaryOperatorExpression:
@@ -153,7 +152,7 @@ func (a *astBinder) After(node ast.Node) {
 		// TODO: figure this out; almost certainly a number.
 	case *ast.CastExpression:
 		// TODO: validate that this is legal.
-		a.b.registerExprType(n, a.b.bindType(n, n.Type))
+		a.b.registerExprType(n, a.b.bindType(n.Type))
 	case *ast.TypeOfExpression:
 		// TODO: not sure; a string?
 	case *ast.ConditionalExpression:

@@ -16,12 +16,12 @@ func (b *binder) bindClass(node *ast.Class, parent *symbols.Module) *symbols.Cla
 	// Bind base type tokens to actual symbols.
 	var extends symbols.Type
 	if node.Extends != nil {
-		extends = b.scope.LookupType(*node.Extends)
+		extends = b.scope.LookupType(node.Extends.Tok)
 	}
 	var implements symbols.Types
 	if node.Implements != nil {
 		for _, impltok := range *node.Implements {
-			if impl := b.scope.LookupType(impltok); impl != nil {
+			if impl := b.scope.LookupType(impltok.Tok); impl != nil {
 				implements = append(implements, impl)
 			}
 		}

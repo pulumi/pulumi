@@ -31,8 +31,8 @@ func (node *DefinitionNode) GetDescription() *string { return node.Description }
 // Module contains members, including variables, functions, and/or classes.
 type Module struct {
 	DefinitionNode
-	Imports *[]tokens.Module `json:"imports,omitempty"`
-	Members *ModuleMembers   `json:"members,omitempty"`
+	Imports *[]*ModuleToken `json:"imports,omitempty"`
+	Members *ModuleMembers  `json:"members,omitempty"`
 }
 
 var _ Node = (*Module)(nil)
@@ -64,7 +64,7 @@ type ModuleMembers map[tokens.ModuleMemberName]ModuleMember
 // Export re-exports a Definition from another Module, possibly with a different name.
 type Export struct {
 	ModuleMemberNode
-	Referent tokens.Token `json:"referent"`
+	Referent Token `json:"referent"`
 }
 
 var _ Node = (*Export)(nil)
@@ -78,13 +78,13 @@ const ExportKind NodeKind = "Export"
 // Class can be constructed to create an object, and exports properties, methods, and has a number of attributes.
 type Class struct {
 	ModuleMemberNode
-	Extends    *tokens.Type   `json:"extends,omitempty"`
-	Implements *[]tokens.Type `json:"implements,omitempty"`
-	Sealed     *bool          `json:"sealed,omitempty"`
-	Abstract   *bool          `json:"abstract,omitempty"`
-	Record     *bool          `json:"record,omitempty"`
-	Interface  *bool          `json:"interface,omitempty"`
-	Members    *ClassMembers  `json:"members,omitempty"`
+	Extends    *TypeToken    `json:"extends,omitempty"`
+	Implements *[]*TypeToken `json:"implements,omitempty"`
+	Sealed     *bool         `json:"sealed,omitempty"`
+	Abstract   *bool         `json:"abstract,omitempty"`
+	Record     *bool         `json:"record,omitempty"`
+	Interface  *bool         `json:"interface,omitempty"`
+	Members    *ClassMembers `json:"members,omitempty"`
 }
 
 var _ Node = (*Class)(nil)
@@ -118,19 +118,19 @@ type ClassMembers map[tokens.ClassMemberName]ClassMember
 // Variable is a storage location with an optional type.
 type Variable interface {
 	Definition
-	GetType() *tokens.Type
+	GetType() *TypeToken
 	GetDefault() *interface{} // a trivially serializable default value.
 	GetReadonly() *bool
 }
 
 type VariableNode struct {
 	// note that this node intentionally omits any embedded base, to avoid diamond "inheritance".
-	Type     *tokens.Type `json:"type,omitempty"`
+	Type     *TypeToken   `json:"type,omitempty"`
 	Default  *interface{} `json:"default,omitempty"`
 	Readonly *bool        `json:"readonly,omitempty"`
 }
 
-func (node *VariableNode) GetType() *tokens.Type    { return node.Type }
+func (node *VariableNode) GetType() *TypeToken      { return node.Type }
 func (node *VariableNode) GetDefault() *interface{} { return node.Default }
 func (node *VariableNode) GetReadonly() *bool       { return node.Readonly }
 
@@ -176,19 +176,19 @@ const ClassPropertyKind NodeKind = "ClassProperty"
 type Function interface {
 	Definition
 	GetParameters() *[]*LocalVariable
-	GetReturnType() *tokens.Type
+	GetReturnType() *TypeToken
 	GetBody() *Block
 }
 
 type FunctionNode struct {
 	// note that this node intentionally omits any embedded base, to avoid diamond "inheritance".
 	Parameters *[]*LocalVariable `json:"parameters,omitempty"`
-	ReturnType *tokens.Type      `json:"returnType,omitempty"`
+	ReturnType *TypeToken        `json:"returnType,omitempty"`
 	Body       *Block            `json:"body,omitempty"`
 }
 
 func (node *FunctionNode) GetParameters() *[]*LocalVariable { return node.Parameters }
-func (node *FunctionNode) GetReturnType() *tokens.Type      { return node.ReturnType }
+func (node *FunctionNode) GetReturnType() *TypeToken        { return node.ReturnType }
 func (node *FunctionNode) GetBody() *Block                  { return node.Body }
 
 // ModuleMethod is just a function with an accessibility modifier.

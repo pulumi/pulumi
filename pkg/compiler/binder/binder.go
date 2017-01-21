@@ -65,8 +65,11 @@ func (b *binder) Diag() diag.Sink {
 }
 
 // bindType binds a type token to a symbol.  The node context is used for issuing errors.
-func (b *binder) bindType(node ast.Node, tok tokens.Type) symbols.Type {
+func (b *binder) bindType(node *ast.TypeToken) symbols.Type {
+	contract.Require(node != nil, "node")
+
 	var extra string
+	tok := node.Tok
 	tyname := tok.Name()
 
 	// If a primitive type, simply do a lookup into our table of primitives.
@@ -128,6 +131,9 @@ func (b *binder) requireExprType(node ast.Expression) symbols.Type {
 func (b *binder) registerExprType(node ast.Expression, tysym symbols.Type) {
 	contract.Require(tysym != nil, "tysym")
 	contract.Assert(b.types[node] == nil)
+	if glog.V(7) {
+		glog.V(7).Infof("Registered expression type: '%v' => %v", node.GetKind(), tysym.Name())
+	}
 	b.types[node] = tysym
 }
 
@@ -151,7 +157,7 @@ func (b *binder) registerFunctionType(node ast.Function) {
 
 			// If there was an explicit type, look it up.
 			if param.Type != nil {
-				ptysym = b.scope.LookupType(*param.Type)
+				ptysym = b.scope.LookupType(param.Type.Tok)
 			}
 
 			// If either the parameter's type was unknown, or the lookup failed (leaving an error), use the any type.
@@ -166,7 +172,7 @@ func (b *binder) registerFunctionType(node ast.Function) {
 	var ret symbols.Type
 	nr := node.GetReturnType()
 	if nr != nil {
-		ret = b.scope.LookupType(*nr)
+		ret = b.scope.LookupType(nr.Tok)
 	}
 
 	tysym := symbols.NewFunctionType(params, ret)
@@ -189,7 +195,7 @@ func (b *binder) registerVariableType(node ast.Variable) {
 	// If there is an explicit node type, use it.
 	nt := node.GetType()
 	if nt != nil {
-		tysym = b.scope.LookupType(*nt)
+		tysym = b.scope.LookupType(nt.Tok)
 	}
 
 	// Otherwise, either there was no type, or the lookup failed (leaving behind an error); use the any type.

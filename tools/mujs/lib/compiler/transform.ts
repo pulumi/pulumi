@@ -109,7 +109,7 @@ type ModuleReference = string;
 // between them.  This facilitates code reuse in the translation passes.
 interface VariableLikeDeclaration {
     name:         ast.Identifier;
-    type?:        symbols.TypeToken;
+    type?:        ast.TypeToken;
     readonly?:    boolean;
     legacyVar?:   boolean;
     initializer?: ast.Expression;
@@ -163,7 +163,7 @@ export class Transformer {
     private currentSourceFile: ts.SourceFile | undefined;
     private currentModuleMembers: ast.ModuleMembers | undefined;
     private currentModuleImports: Map<string, ModuleReference>;
-    private currentModuleImportTokens: symbols.ModuleToken[];
+    private currentModuleImportTokens: ast.ModuleToken[];
 
     constructor(meta: pack.Metadata, script: Script) {
         contract.requires(!!script.tree, "script", "A valid MuJS AST is required to lower to MuPack/MuIL");
@@ -430,12 +430,14 @@ export class Transformer {
 
     // resolveTypeTokenFromTypeLike takes a TypeScript AST node that carries possible typing information and resolves
     // it to fully qualified MuIL type token name.
-    private resolveTypeTokenFromTypeLike(node: TypeLike): symbols.TypeToken | undefined {
+    private resolveTypeTokenFromTypeLike(node: TypeLike): ast.TypeToken | undefined {
         // Note that we use the getTypeAtLocation API, rather than node's type AST information, so that we can get the
         // fully bound type.  The compiler may have arranged for this to be there through various means, e.g. inference.
         let ty: ts.Type = this.checker().getTypeAtLocation(node);
         contract.assert(!!ty);
-        return this.resolveTypeToken(ty);
+        return this.withLocation(node, <ast.TypeToken>{
+            tok: this.resolveTypeToken(ty),
+        });
     }
 
     // transformIdentifier takes a TypeScript identifier node and yields a true MuIL identifier.
@@ -454,7 +456,7 @@ export class Transformer {
         let priorSourceFile: ts.SourceFile | undefined = this.currentSourceFile;
         let priorModuleMembers: ast.ModuleMembers | undefined = this.currentModuleMembers;
         let priorModuleImports: Map<string, ModuleReference> | undefined = this.currentModuleImports;
-        let priorModuleImportsList: ModuleReference[] | undefined = this.currentModuleImportTokens;
+        let priorModuleImportTokens: ast.ModuleToken[] | undefined = this.currentModuleImportTokens;
         try {
             this.currentSourceFile = node;
             this.currentModuleMembers = {};
@@ -521,7 +523,7 @@ export class Transformer {
             this.currentSourceFile = priorSourceFile;
             this.currentModuleMembers = priorModuleMembers;
             this.currentModuleImports = priorModuleImports;
-            this.currentModuleImportTokens = priorModuleImportsList;
+            this.currentModuleImportTokens = priorModuleImportTokens;
         }
     }
 
@@ -611,23 +613,27 @@ export class Transformer {
                     // The export is being renamed (`<propertyName> as <name>`).  This yields an export node, even for
                     // elements exported from the current module.
                     let propertyName: ast.Identifier = this.transformIdentifier(exportClause.propertyName);
-                    exports.push(<ast.Export>{
+                    exports.push(this.withLocation(exportClause, <ast.Export>{
                         kind:     ast.exportKind,
                         name:     name,
                         access:   symbols.publicAccessibility,
-                        referent: this.createModuleMemberToken(sourceModule, propertyName.ident),
-                    });
+                        referent: this.withLocation(exportClause.propertyName, <ast.Token>{
+                            tok: this.createModuleMemberToken(sourceModule, propertyName.ident),
+                        }),
+                    }));
                 }
                 else {
                     // If this is an export from another module, create an export definition.  Otherwise, for exports
                     // from within the same module, just look up the definition and change its accessibility to public.
                     if (sourceModule) {
-                        exports.push(<ast.Export>{
+                        exports.push(this.withLocation(exportClause, <ast.Export>{
                             kind:     ast.exportKind,
                             name:     name,
                             access:   symbols.publicAccessibility,
-                            referent: this.createModuleMemberToken(sourceModule, name.ident),
-                        });
+                            referent: this.withLocation(exportClause.name, <ast.Token>{
+                                tok: this.createModuleMemberToken(sourceModule, name.ident),
+                            }),
+                        }));
                     }
                     else {
                         contract.assert(!!this.currentModuleMembers);
@@ -645,12 +651,14 @@ export class Transformer {
                             //      export {other};
                             let otherModule: ModuleReference | undefined = this.currentModuleImports!.get(name.ident);
                             contract.assert(!!otherModule, "Expected either a member or import match for export name");
-                            exports.push(<ast.Export>{
+                            exports.push(this.withLocation(exportClause, <ast.Export>{
                                 kind:     ast.exportKind,
                                 name:     name,
                                 access:   symbols.publicAccessibility,
-                                referent: this.createModuleToken(otherModule!),
-                            });
+                                referent: this.withLocation(exportClause, <ast.Token>{
+                                    tok: this.createModuleToken(otherModule!),
+                                }),
+                            }));
                         }
                     }
                 }
@@ -664,15 +672,17 @@ export class Transformer {
             // For this to work, we simply enumerate all known exports from "module".
             contract.assert(!!sourceModule);
             for (let name of this.resolveModuleExportNames(sourceModule!)) {
-                exports.push(<ast.Export>{
-                    kind:    ast.exportKind,
-                    name:    <ast.Identifier>{
+                exports.push(this.withLocation(node, <ast.Export>{
+                    kind:  ast.exportKind,
+                    name: <ast.Identifier>{
                         kind:  ast.identifierKind,
                         ident: this.extractMemberToken(name),
                     },
-                    access:  symbols.publicAccessibility,
-                    referent: name,
-                });
+                    access:   symbols.publicAccessibility,
+                    referent: this.withLocation(node, <ast.Token>{
+                        tok: name,
+                    }),
+                }));
             }
         }
 
@@ -688,7 +698,9 @@ export class Transformer {
             contract.assert(node.moduleSpecifier.kind === ts.SyntaxKind.StringLiteral);
             let importModule: ModuleReference =
                 this.resolveModuleReferenceByName((<ts.StringLiteral>node.moduleSpecifier).text);
-            let importModuleToken: symbols.ModuleToken = this.createModuleToken(importModule);
+            let importModuleToken: ast.ModuleToken = this.withLocation(node.moduleSpecifier, <ast.ModuleToken>{
+                tok: this.createModuleToken(importModule),
+            });
 
             // Figure out what kind of import statement this is (there are many, see below).
             let name: ts.Identifier | undefined;
@@ -1578,7 +1590,7 @@ export class Transformer {
     private transformArrayLiteralExpression(node: ts.ArrayLiteralExpression): ast.ArrayLiteral {
         return this.withLocation(node, <ast.ArrayLiteral>{
             kind:     ast.arrayLiteralKind,
-            type:     symbols.anyType, // TODO[marapongo/mu#46]: come up with a type.
+            type:     { tok: symbols.anyType }, // TODO[marapongo/mu#46]: come up with a type.
             elements: node.elements.map((expr: ts.Expression) => this.transformExpression(expr)),
         });
     }
@@ -1730,7 +1742,7 @@ export class Transformer {
         //     always be encased in something that prepares it for dynamic cast in the consuming expression.
         return this.withLocation(node, <ast.ObjectLiteral>{
             kind:       ast.objectLiteralKind,
-            type:       symbols.anyType, // TODO[marapongo/mu#46]: come up with a type.
+            type:       { tok: symbols.anyType }, // TODO[marapongo/mu#46]: come up with a type.
             properties: node.properties.map(
                 (prop: ts.ObjectLiteralElement) => this.transformObjectLiteralElement(prop)),
         });
@@ -1813,9 +1825,12 @@ export class Transformer {
 
     private transformNewExpression(node: ts.NewExpression): ast.NewExpression {
         // Only "new T(..)" constructors, where T is an identifier referring to a type, are permitted.
-        let ty: ast.Identifier;
+        let ty: ast.TypeToken;
         if (node.expression.kind === ts.SyntaxKind.Identifier) {
-            ty = this.transformIdentifier(<ts.Identifier>node.expression);
+            let ident: ast.Identifier = this.transformIdentifier(<ts.Identifier>node.expression);
+            ty = this.withLocation(node.expression, <ast.TypeToken>{
+                tok: ident.ident,
+            });
         }
         else {
             return contract.fail("New T(..) expression must have an identifier T");

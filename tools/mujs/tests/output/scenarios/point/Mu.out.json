@@ -53,7 +53,20 @@
                                             }
                                         }
                                     },
-                                    "type": "number"
+                                    "type": {
+                                        "tok": "number",
+                                        "loc": {
+                                            "file": "index.ts",
+                                            "start": {
+                                                "line": 8,
+                                                "column": 16
+                                            },
+                                            "end": {
+                                                "line": 8,
+                                                "column": 25
+                                            }
+                                        }
+                                    }
                                 },
                                 {
                                     "kind": "LocalVariable",
@@ -72,7 +85,20 @@
                                             }
                                         }
                                     },
-                                    "type": "number"
+                                    "type": {
+                                        "tok": "number",
+                                        "loc": {
+                                            "file": "index.ts",
+                                            "start": {
+                                                "line": 8,
+                                                "column": 27
+                                            },
+                                            "end": {
+                                                "line": 8,
+                                                "column": 36
+                                            }
+                                        }
+                                    }
                                 }
                             ],
                             "body": {
@@ -351,7 +377,20 @@
                                             }
                                         }
                                     },
-                                    "type": "Point"
+                                    "type": {
+                                        "tok": "Point",
+                                        "loc": {
+                                            "file": "index.ts",
+                                            "start": {
+                                                "line": 13,
+                                                "column": 15
+                                            },
+                                            "end": {
+                                                "line": 13,
+                                                "column": 27
+                                            }
+                                        }
+                                    }
                                 }
                             ],
                             "body": {
@@ -362,8 +401,7 @@
                                         "expression": {
                                             "kind": "NewExpression",
                                             "type": {
-                                                "kind": "Identifier",
-                                                "ident": "Point",
+                                                "tok": "Point",
                                                 "loc": {
                                                     "file": "index.ts",
                                                     "start": {
@@ -690,7 +728,20 @@
                             "access": "public",
                             "readonly": true,
                             "static": false,
-                            "type": "number"
+                            "type": {
+                                "tok": "number",
+                                "loc": {
+                                    "file": "index.ts",
+                                    "start": {
+                                        "line": 5,
+                                        "column": 4
+                                    },
+                                    "end": {
+                                        "line": 5,
+                                        "column": 30
+                                    }
+                                }
+                            }
                         },
                         "y": {
                             "kind": "ClassProperty",
@@ -712,7 +763,20 @@
                             "access": "public",
                             "readonly": true,
                             "static": false,
-                            "type": "number"
+                            "type": {
+                                "tok": "number",
+                                "loc": {
+                                    "file": "index.ts",
+                                    "start": {
+                                        "line": 6,
+                                        "column": 4
+                                    },
+                                    "end": {
+                                        "line": 6,
+                                        "column": 30
+                                    }
+                                }
+                            }
                         }
                     },
                     "abstract": false,
