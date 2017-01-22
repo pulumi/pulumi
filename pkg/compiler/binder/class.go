@@ -30,15 +30,17 @@ func (b *binder) bindClass(node *ast.Class, parent *symbols.Module) *symbols.Cla
 	// Now create a class symbol.  This is required as a parent for the members.
 	class := symbols.NewClassSym(node, parent, extends, implements)
 
+	// Set the current class in the context so we can e.g. enforce accessibility.
+	priorclass := b.ctx.Currclass
+	b.ctx.Currclass = class
+	defer func() { b.ctx.Currclass = priorclass }()
+
 	// Next, bind each member at the symbolic level; in particular, we do not yet bind bodies of methods.
 	if node.Members != nil {
 		for memtok, member := range *node.Members {
 			class.Members[memtok] = b.bindClassMember(member, class)
 		}
 	}
-	// TODO: add these to the the symbol table for binding bodies.
-
-	// TODO: bind the bodies.
 
 	return class
 }
@@ -76,5 +78,12 @@ func (b *binder) bindClassMethod(node *ast.ClassMethod, parent *symbols.Class) *
 
 func (b *binder) bindClassMethodBody(method *symbols.ClassMethod) {
 	glog.V(3).Infof("Binding class method '%v' body", method.Token())
+
+	// Set the current class in the context so we can e.g. enforce accessibility.  Note that we have to do it here, in
+	// addition to the above during ordinary class binding, due to the two pass function body binding model.
+	priorclass := b.ctx.Currclass
+	b.ctx.Currclass = method.Parent
+	defer func() { b.ctx.Currclass = priorclass }()
+
 	b.bindFunctionBody(method.Node)
 }

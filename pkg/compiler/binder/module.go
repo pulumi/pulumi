@@ -16,6 +16,11 @@ func (b *binder) bindModule(node *ast.Module, parent *symbols.Package) *symbols.
 	// First create a module symbol with empty members, so we can use it as a parent below.
 	module := symbols.NewModuleSym(node, parent)
 
+	// Set the current module in the context so we can e.g. enforce accessibility.
+	priormodule := b.ctx.Currmodule
+	b.ctx.Currmodule = module
+	defer func() { b.ctx.Currmodule = priormodule }()
+
 	// First bind all imports to concrete symbols.  These will be used to perform initialization later on.
 	if node.Imports != nil {
 		for _, imptok := range *node.Imports {
@@ -23,7 +28,6 @@ func (b *binder) bindModule(node *ast.Module, parent *symbols.Package) *symbols.
 				module.Imports = append(module.Imports, imp)
 			}
 		}
-		// TODO: add the imports to the symbol table.
 	}
 
 	// Next, bind each member and add it to the module's map.
@@ -83,6 +87,29 @@ func (b *binder) bindModuleMethod(node *ast.ModuleMethod, parent *symbols.Module
 	// Note that we don't actually bind the body of this method yet.  Until we have gone ahead and injected *all*
 	// top-level symbols into the type table, we would potentially encounter missing intra-module symbols.
 	return symbols.NewModuleMethodSym(node, parent)
+}
+
+func (b *binder) bindModuleBodies(module *symbols.Module) {
+	// Set the current module in the context so we can e.g. enforce accessibility.  We need to do this again while
+	// binding the module bodies so that the correct context is reestablished for lookups, etc.
+	priormodule := b.ctx.Currmodule
+	b.ctx.Currmodule = module
+	defer func() { b.ctx.Currmodule = priormodule }()
+
+	// Just dig through, find all ModuleMethod and ClassMethod symbols, and bind them.
+	for _, member := range module.Members {
+		switch m := member.(type) {
+		case *symbols.ModuleMethod:
+			b.bindModuleMethodBody(m)
+		case *symbols.Class:
+			for _, cmember := range m.Members {
+				switch cm := cmember.(type) {
+				case *symbols.ClassMethod:
+					b.bindClassMethodBody(cm)
+				}
+			}
+		}
+	}
 }
 
 func (b *binder) bindModuleMethodBody(method *symbols.ModuleMethod) {

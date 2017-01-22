@@ -37,9 +37,9 @@ var ErrorSymbolNotFound = &diag.Diag{
 	Message: "Symbol '%v' could not be found: %v",
 }
 
-var ErrorMemberNotPublic = &diag.Diag{
+var ErrorMemberNotAccessible = &diag.Diag{
 	ID:      505,
-	Message: "Member '%v' is not public, and so is unexported for use outside of its own package",
+	Message: "Member '%v' is not accessible (it is %v)",
 }
 
 var ErrorNonAbstractStacksMustDefineServices = &diag.Diag{

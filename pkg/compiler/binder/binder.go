@@ -122,6 +122,52 @@ func (b *binder) getTokenParts(tok tokens.Token) (tokens.PackageName,
 	return pkg, mod, mem, clm
 }
 
+func (b *binder) checkModuleVisibility(node ast.Node, module *symbols.Module, member symbols.ModuleMember) {
+	acc := member.MemberNode().GetAccess()
+	if acc == nil {
+		a := tokens.PrivateAccessibility // private is the default
+		acc = &a
+	}
+
+	// Module members have two accessibilities: public or private.  If it's public, no problem.  Otherwise, unless the
+	// target module and current module are the same, we should issue an error.
+	switch *acc {
+	case tokens.PublicAccessibility:
+		// ok.
+	case tokens.PrivateAccessibility:
+		if module != b.ctx.Currmodule {
+			b.Diag().Errorf(errors.ErrorMemberNotAccessible.At(node), member, *acc)
+		}
+	default:
+		contract.Failf("Unrecognized module member accessibility: %v", *acc)
+	}
+}
+
+func (b *binder) checkClassVisibility(node ast.Node, class *symbols.Class, member symbols.ClassMember) {
+	acc := member.MemberNode().GetAccess()
+	if acc == nil {
+		a := tokens.PrivateClassAccessibility // private is the default.
+		acc = &a
+	}
+
+	// Class members have three accessibilities: public, private, or protected.  If it's public, anything goes.  If
+	// private, only permit access from within the same class.  If protected, only the same class or base-classes.
+	switch *acc {
+	case tokens.PublicClassAccessibility:
+		// ok
+	case tokens.PrivateClassAccessibility:
+		if class != b.ctx.Currclass {
+			b.Diag().Errorf(errors.ErrorMemberNotAccessible.At(node), member, *acc)
+		}
+	case tokens.ProtectedClassAccessibility:
+		if !types.CanConvert(b.ctx.Currclass, class) {
+			b.Diag().Errorf(errors.ErrorMemberNotAccessible.At(node), member, *acc)
+		}
+	default:
+		contract.Failf("Unrecognized class member accessibility: %v", *acc)
+	}
+}
+
 // lookupSymbolToken performs a complex lookup for a complex token; if require is true, failed lookups will issue an
 // error; and in any case, the AST node is used as the context for errors (lookup, accessibility, or otherwise).
 func (b *binder) lookupSymbolToken(node ast.Node, tok tokens.Token, require bool) symbols.Symbol {
@@ -136,21 +182,14 @@ func (b *binder) lookupSymbolToken(node ast.Node, tok tokens.Token, require bool
 				sym = mod
 			} else if member, has := mod.Members[memnm]; has {
 				// The member was found; validate that it's got the right accessibility.
-				acc := member.MemberNode().GetAccess()
-				if pkg != b.ctx.Currpkg && (acc == nil || *acc != tokens.PublicAccessibility) {
-					b.Diag().Errorf(errors.ErrorMemberNotPublic.At(node), member)
-				}
+				b.checkModuleVisibility(node, mod, member)
 
 				if clmnm == "" {
 					sym = member
 				} else if class, isclass := member.(*symbols.Class); isclass {
 					if clmember, has := class.Members[clmnm]; has {
 						// The member was found; validate that it's got the right accessibility.
-						acc := member.MemberNode().GetAccess()
-						if pkg != b.ctx.Currpkg && (acc == nil || *acc != tokens.PublicAccessibility) {
-							b.Diag().Errorf(errors.ErrorMemberNotPublic.At(node), member)
-						}
-
+						b.checkClassVisibility(node, class, clmember)
 						sym = clmember
 					} else {
 						extra = "class found, but member was not found"

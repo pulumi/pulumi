@@ -30,8 +30,6 @@ func (b *binder) BindPackage(pkg *pack.Package) *symbols.Package {
 	// Now bind all of the package's modules (if any).  This pass does not yet actually bind bodies.
 	b.bindPackageModules(pkgsym)
 
-	// TODO: fix up the symbol table.
-
 	// Finally, bind all of the package's method bodies.  This second pass is required to ensure that inter-module
 	// dependencies can resolve to symbols, after reaching the symbol-level fixed point above.
 	b.bindPackageMethodBodies(pkgsym)
@@ -124,21 +122,7 @@ func (b *binder) bindPackageModules(pkg *symbols.Package) {
 // bindPackageMethodBodies binds all method bodies, in a second pass, after binding all symbol-level information.
 func (b *binder) bindPackageMethodBodies(pkg *symbols.Package) {
 	contract.Require(pkg != nil, "pkg")
-
-	// Just dig through, find all ModuleMethod and ClassMethod symbols, and bind them.
 	for _, module := range pkg.Modules {
-		for _, member := range module.Members {
-			switch m := member.(type) {
-			case *symbols.ModuleMethod:
-				b.bindModuleMethodBody(m)
-			case *symbols.Class:
-				for _, cmember := range m.Members {
-					switch cm := cmember.(type) {
-					case *symbols.ClassMethod:
-						b.bindClassMethodBody(cm)
-					}
-				}
-			}
-		}
+		b.bindModuleBodies(module)
 	}
 }

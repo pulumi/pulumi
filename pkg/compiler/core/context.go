@@ -9,10 +9,12 @@ import (
 
 // Context is a bag of state common throughout all compiler passes.
 type Context struct {
-	Path    string             // the root directory.
-	Diag    diag.Sink          // the diagnostics sink to use.
-	Pkgs    symbols.PackageMap // all imported/bound packages.
-	Currpkg *symbols.Package   // the current package being compiled.
+	Path       string             // the root directory.
+	Diag       diag.Sink          // the diagnostics sink to use.
+	Pkgs       symbols.PackageMap // all imported/bound packages.
+	Currpkg    *symbols.Package   // the current package being compiled.
+	Currmodule *symbols.Module    // the current module being compiled.
+	Currclass  *symbols.Class     // the current class being compiled.
 }
 
 // NewContext creates a new context with the given state.
