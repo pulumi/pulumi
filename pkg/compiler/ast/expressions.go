@@ -77,7 +77,7 @@ const StringLiteralKind NodeKind = "StringLiteral"
 // ArrayLiteral evaluates to a newly allocated array, with optional initialized elements.
 type ArrayLiteral struct {
 	LiteralNode
-	Type     *TypeToken    `json:"type,omitempty"`     // the optional type of array being produced.
+	ElemType *TypeToken    `json:"elemType,omitempty"` // the optional type of array elements.
 	Size     *Expression   `json:"size,omitempty"`     // an optional expression for the array size.
 	Elements *[]Expression `json:"elements,omitempty"` // an optional array of element initializers.
 }
@@ -129,7 +129,7 @@ func (node *loadExpressionNode) loadExpression() {}
 type LoadLocationExpression struct {
 	loadExpressionNode
 	Object *Expression `json:"object,omitempty"` // the `this` object, in the case of class properties.
-	Name   *Identifier `json:"name"`             // the name of the member to load.
+	Name   *Token      `json:"name"`             // the token of the member or local variable to load.
 }
 
 var _ Node = (*LoadLocationExpression)(nil)

@@ -29,7 +29,12 @@ var ErrorPackageNotFound = &diag.Diag{
 
 var ErrorTypeNotFound = &diag.Diag{
 	ID:      504,
-	Message: "Type '%v' is unknown; %v",
+	Message: "Type '%v' could not be found: %v",
+}
+
+var ErrorSymbolNotFound = &diag.Diag{
+	ID:      504,
+	Message: "Symbol '%v' could not be found: %v",
 }
 
 var ErrorMemberNotPublic = &diag.Diag{

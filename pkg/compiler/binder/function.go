@@ -7,6 +7,7 @@ import (
 	"github.com/marapongo/mu/pkg/compiler/errors"
 	"github.com/marapongo/mu/pkg/compiler/symbols"
 	"github.com/marapongo/mu/pkg/compiler/types"
+	"github.com/marapongo/mu/pkg/tokens"
 	"github.com/marapongo/mu/pkg/util/contract"
 )
 
@@ -103,22 +104,60 @@ func (a *astBinder) After(node ast.Node) {
 	case *ast.StringLiteral:
 		a.b.registerExprType(n, types.String)
 	case *ast.ArrayLiteral:
-		// TODO: check that size, if present, is a number.
-		// TODO: check that elements, if present, are of the right type.
-		if n.Type == nil {
+		// If there is a size, ensure it's a number.
+		if n.Size != nil {
+			a.checkExprType(*n.Size, types.Number)
+		}
+		// Now mark the resulting expression as an array of the right type.
+		if n.ElemType == nil {
 			a.b.registerExprType(n, types.AnyArray)
 		} else {
-			a.b.registerExprType(n, a.b.bindType(n.Type))
+			elemType := a.b.bindType(n.ElemType)
+			a.b.registerExprType(n, symbols.NewArrayType(elemType))
+
+			// Ensure the elements, if any, are of the right type.
+			if n.Elements != nil {
+				for _, elem := range *n.Elements {
+					a.checkExprType(elem, elemType)
+				}
+			}
 		}
 	case *ast.ObjectLiteral:
-		// TODO: check that the properties, if present, are correct.
+		// Mark the resulting object literal with the correct type.
 		if n.Type == nil {
 			a.b.registerExprType(n, types.Any)
 		} else {
 			a.b.registerExprType(n, a.b.bindType(n.Type))
+			// TODO: ensure the properties, if any, actually exist on the target object.
 		}
 	case *ast.LoadLocationExpression:
-		// TODO: look up the name in the given type (Object's type) and see what results.
+		// Create a pointer to the target location.
+		// TODO: what to do about readonly variables.
+		var sym symbols.Symbol
+		if n.Object == nil {
+			// If there is no object, we either have a local variable reference or a module property or function.  In
+			// the former case, the token will be "simple"; in the latter case, it will be qualified.
+			sym = a.b.requireToken(n.Name, n.Name.Tok)
+		} else {
+			// If there's an object, we are accessing a class member property or function.
+			typ := a.b.requireExprType(*n.Object)
+			sym = a.b.requireClassMember(n.Name, typ, tokens.ClassMember(n.Name.Tok))
+		}
+
+		// TODO: create a pointer type.
+
+		if sym == nil {
+			a.b.registerExprType(n, types.Any)
+		} else {
+			switch s := sym.(type) {
+			case ast.Function:
+				a.b.registerExprType(n, a.b.requireFunctionType(s))
+			case ast.Variable:
+				a.b.registerExprType(n, a.b.requireVariableType(s))
+			default:
+				contract.Failf("Unrecognized load location symbol type: %v", sym.Token())
+			}
+		}
 	case *ast.LoadDynamicExpression:
 		a.b.registerExprType(n, types.Any)
 	case *ast.NewExpression:

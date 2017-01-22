@@ -1602,7 +1602,7 @@ export class Transformer {
     private transformArrayLiteralExpression(node: ts.ArrayLiteralExpression): ast.ArrayLiteral {
         return this.withLocation(node, <ast.ArrayLiteral>{
             kind:     ast.arrayLiteralKind,
-            type:     { tok: symbols.anyType }, // TODO[marapongo/mu#46]: come up with a type.
+            elemType: { tok: symbols.anyType }, // TODO[marapongo/mu#46]: come up with a type.
             elements: node.elements.map((expr: ts.Expression) => this.transformExpression(expr)),
         });
     }

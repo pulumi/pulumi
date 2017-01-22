@@ -38,6 +38,12 @@ const ModuleDelimiter string = ":"       // the character following a package (b
 const ModuleMemberDelimiter string = "/" // the character following a module (before a module member).
 const ClassMemberDelimiter string = "."  // the character following a class name (before a class member).
 
+func (tok Token) HasModule() bool { return strings.Index(string(tok), ModuleDelimiter) != -1 }
+func (tok Token) HasModuleMember() bool {
+	return strings.Index(string(tok), ModuleMemberDelimiter) != -1
+}
+func (tok Token) HasClassMember() bool { return strings.Index(string(tok), ClassMemberDelimiter) != -1 }
+
 // Package is a token representing just a package.  It uses a much simpler grammar:
 //		Package = <PackageName>
 // Note that a package name of "." means "current package", to simplify emission and lookups.
@@ -198,7 +204,7 @@ func (tok Type) Member() ModuleMember {
 
 // Primitive indicates whether this type is a primitive type name (i.e., not qualified with a module, etc).
 func (tok Type) Primitive() bool {
-	return strings.LastIndex(string(tok), ModuleMemberDelimiter) == -1
+	return !Token(tok).HasModule()
 }
 
 func (tok Type) String() string { return string(tok) }

@@ -72,47 +72,144 @@ func (b *binder) bindType(node *ast.TypeToken) symbols.Type {
 	tok := node.Tok
 	tyname := tok.Name()
 
-	// If a primitive type, simply do a lookup into our table of primitives.
 	if tok.Primitive() {
+		// If a primitive type, simply do a lookup into our table of primitives.
 		if ty, has := types.Primitives[tyname]; has {
 			return ty
 		} else {
 			glog.V(5).Infof("Failed to bind primitive type '%v'", tok)
 			extra = "primitive type unknown"
 		}
-	}
-
-	// Otherwise, we will need to perform a more exhaustive lookup of a qualified type token.
-	modtok := tok.Module()
-	pkgtok := modtok.Package()
-	if pkg, has := b.ctx.Pkgs[pkgtok.Name()]; has {
-		if mod, has := pkg.Modules[modtok.Name()]; has {
-			if member, has := mod.Members[tok.Member().Name()]; has {
-				// The member was found, but is it a class?
-				if ty, isty := member.(*symbols.Class); isty {
-					// It's a class; check its accessibility.
-					acc := member.MemberNode().GetAccess()
-					if pkg != b.ctx.Currpkg && (acc == nil || *acc != tokens.PublicAccessibility) {
-						b.Diag().Errorf(errors.ErrorMemberNotPublic.At(node), member)
-					}
-					return ty
-				}
-			} else {
-				glog.V(5).Infof("Failed to bind qualified type token; member missing: '%v'", tok)
-				extra = "module found, but type is unrecognized"
-			}
-		} else {
-			glog.V(5).Infof("Failed to bind qualified type token; module missing: '%v'", tok)
-			extra = "package found, but module is unrecognized"
-		}
 	} else {
-		glog.V(5).Infof("Failed to bind qualified type token; package missing: '%v'", tok)
-		extra = "package was not found"
+		// Otherwise, we will need to perform a more exhaustive lookup of a qualified type token.
+		sym := b.lookupSymbolToken(node, tokens.Token(node.Tok), false)
+		if ty, ok := sym.(symbols.Type); ok {
+			return ty
+		}
 	}
 
 	// The type was not found; issue an error, and return Any so we can proceed with typechecking.
 	b.Diag().Errorf(errors.ErrorTypeNotFound.At(node), tok, extra)
 	return types.Any
+}
+
+func (b *binder) getTokenParts(tok tokens.Token) (tokens.PackageName,
+	tokens.ModuleName, tokens.ModuleMemberName, tokens.ClassMemberName) {
+	// Switch on the token kind to populate the set of names.
+	var pkg tokens.PackageName
+	var mod tokens.ModuleName
+	var mem tokens.ModuleMemberName
+	var clm tokens.ClassMemberName
+	if tok.HasClassMember() {
+		clmtok := tokens.ClassMember(tok)
+		pkg = clmtok.Package().Name()
+		mod = clmtok.Module().Name()
+		mem = tokens.ModuleMemberName(clmtok.Class().Name())
+		clm = clmtok.Name()
+	} else if tok.HasModuleMember() {
+		memtok := tokens.ModuleMember(tok)
+		pkg = memtok.Package().Name()
+		mod = memtok.Module().Name()
+		mem = memtok.Name()
+	} else if tok.HasModule() {
+		modtok := tokens.Module(tok)
+		pkg = modtok.Package().Name()
+		mod = modtok.Name()
+	} else {
+		pkg = tokens.Package(tok).Name()
+	}
+	contract.Assert(pkg != "")
+	return pkg, mod, mem, clm
+}
+
+// lookupSymbolToken performs a complex lookup for a complex token; if require is true, failed lookups will issue an
+// error; and in any case, the AST node is used as the context for errors (lookup, accessibility, or otherwise).
+func (b *binder) lookupSymbolToken(node ast.Node, tok tokens.Token, require bool) symbols.Symbol {
+	pkgnm, modnm, memnm, clmnm := b.getTokenParts(tok)
+	var sym symbols.Symbol
+	var extra string // extra error details
+	if pkg, has := b.ctx.Pkgs[pkgnm]; has {
+		if modnm == "" {
+			sym = pkg
+		} else if mod, has := pkg.Modules[modnm]; has {
+			if memnm == "" {
+				sym = mod
+			} else if member, has := mod.Members[memnm]; has {
+				// The member was found; validate that it's got the right accessibility.
+				acc := member.MemberNode().GetAccess()
+				if pkg != b.ctx.Currpkg && (acc == nil || *acc != tokens.PublicAccessibility) {
+					b.Diag().Errorf(errors.ErrorMemberNotPublic.At(node), member)
+				}
+
+				if clmnm == "" {
+					sym = member
+				} else if class, isclass := member.(*symbols.Class); isclass {
+					if clmember, has := class.Members[clmnm]; has {
+						// The member was found; validate that it's got the right accessibility.
+						acc := member.MemberNode().GetAccess()
+						if pkg != b.ctx.Currpkg && (acc == nil || *acc != tokens.PublicAccessibility) {
+							b.Diag().Errorf(errors.ErrorMemberNotPublic.At(node), member)
+						}
+
+						sym = clmember
+					} else {
+						extra = "class found, but member was not found"
+					}
+				} else {
+					extra = "module member is not a class"
+				}
+			} else {
+				extra = "module found, but member was not found"
+			}
+		} else {
+			extra = "package found, but module was not found"
+		}
+	} else {
+		extra = "package was not found"
+	}
+
+	if sym == nil {
+		glog.V(5).Info("Failed to bind qualified token; %v: '%v'", extra, tok)
+		if require {
+			// If requested, issue an error.
+			b.Diag().Errorf(errors.ErrorSymbolNotFound.At(node), tok, extra)
+		}
+	}
+
+	return sym
+}
+
+// requireToken takes a token of unknown kind and binds it to a symbol in either the symbol table or import map, through
+// a series of lookups.  It is a verfification error if the token could not be found.
+func (b *binder) requireToken(node ast.Node, tok tokens.Token) symbols.Symbol {
+	if tok.HasModule() {
+		// A complex token is bound through the normal token binding lookup process.
+		if sym := b.lookupSymbolToken(node, tok, true); sym != nil {
+			return sym
+		}
+	} else {
+		// A simple token has no package, module, or class part.  It refers to the symbol table.
+		if sym := b.scope.Lookup(tok); sym != nil {
+			return sym
+		} else {
+			b.Diag().Errorf(errors.ErrorSymbolNotFound.At(node), tok, "simple name not found")
+		}
+	}
+	return types.Any
+}
+
+// lookupClassMember takes a class member token and binds it to a member of the class symbol.  The type of the class
+// must match the class part of the token expression and the member must be found.  If not, a verification error occurs.
+func (b *binder) requireClassMember(node ast.Node, class symbols.Type, tok tokens.ClassMember) symbols.ClassMember {
+	if sym := b.lookupSymbolToken(node, tokens.Token(tok), true); sym != nil {
+		switch s := sym.(type) {
+		case symbols.ClassMember:
+			return s
+		default:
+			contract.Failf("Expected symbol to be a class member: %v", tok)
+		}
+	}
+	return nil
 }
 
 // requireType requires that a type exists for the given AST node.

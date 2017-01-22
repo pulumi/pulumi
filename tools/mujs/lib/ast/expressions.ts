@@ -48,7 +48,7 @@ export type  StringLiteralKind = "StringLiteral";
 // A array literal plus optional initialization.
 export interface ArrayLiteral extends Literal {
     kind:      ArrayLiteralKind;
-    type?:     TypeToken;    // the type of array to produce.
+    elemType?: TypeToken;    // the type of the array's elements.
     size?:     Expression;   // an optional expression for the array size.
     elements?: Expression[]; // an optional array of element expressions to store into the array.
 }
