@@ -161,7 +161,8 @@ const ModulePropertyKind NodeKind = "ModuleProperty"
 type ClassProperty struct {
 	VariableNode
 	ClassMemberNode
-	Primary *bool `json:"primary,omitempty"`
+	Primary  *bool `json:"primary,omitempty"`
+	Optional *bool `json:"optional,omitempty"`
 }
 
 var _ Node = (*ClassProperty)(nil)

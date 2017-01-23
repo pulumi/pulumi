@@ -734,6 +734,7 @@
                             },
                             "access": "public",
                             "readonly": true,
+                            "optional": false,
                             "static": false,
                             "type": {
                                 "kind": "TypeToken",
@@ -770,6 +771,7 @@
                             },
                             "access": "public",
                             "readonly": true,
+                            "optional": false,
                             "static": false,
                             "type": {
                                 "kind": "TypeToken",

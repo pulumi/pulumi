@@ -1343,6 +1343,7 @@ export class Transformer {
                 name:     this.transformPropertyName(node.name),
                 access:   this.getClassAccessibility(node),
                 readonly: !!(mods & ts.ModifierFlags.Readonly),
+                optional: !!(node.questionToken),
                 static:   !!(mods & ts.ModifierFlags.Static),
                 type:     this.resolveTypeTokenFromTypeLike(node),
             },

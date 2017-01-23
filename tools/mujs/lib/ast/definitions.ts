@@ -88,8 +88,9 @@ export type  ModulePropertyKind = "ModuleProperty";
 
 // A class property is just like a module property with some extra attributes.
 export interface ClassProperty extends Variable, ClassMember {
-    kind:     ClassPropertyKind;
-    primary?: boolean;
+    kind:      ClassPropertyKind;
+    primary?:  boolean;
+    optional?: boolean;
 }
 export const classPropertyKind = "ClassProperty";
 export type  ClassPropertyKind = "ClassProperty";
