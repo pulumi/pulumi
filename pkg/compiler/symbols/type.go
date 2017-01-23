@@ -37,6 +37,44 @@ func NewPrimitiveType(nm tokens.TypeName) *PrimitiveType {
 	return &PrimitiveType{nm}
 }
 
+// PointerType represents a pointer to any other type.
+type PointerType struct {
+	Nm      tokens.TypeName
+	Tok     tokens.Type
+	Element Type
+}
+
+var _ Symbol = (*PointerType)(nil)
+var _ Type = (*PointerType)(nil)
+
+func (node *PointerType) symbol()             {}
+func (node *PointerType) typesym()            {}
+func (node *PointerType) Name() tokens.Name   { return tokens.Name(node.Nm) }
+func (node *PointerType) Token() tokens.Token { return tokens.Token(node.Tok) }
+func (node *PointerType) Tree() diag.Diagable { return nil }
+func (node *PointerType) String() string      { return string(node.Name()) }
+
+func NewPointerType(elem Type) *PointerType {
+	nm := newPointerTypeName(elem)
+	tok := newPointerTypeToken(elem)
+	return &PointerType{nm, tok, elem}
+}
+
+const (
+	TypeDecorsPointer       = TypeDecorsPointerPrefix + "%v"
+	TypeDecorsPointerPrefix = "*"
+)
+
+// newPointerTypeName creates a new array type name from an element type.
+func newPointerTypeName(elem Type) tokens.TypeName {
+	return tokens.TypeName(fmt.Sprintf(TypeDecorsPointer, elem.Name()))
+}
+
+// newPointerTypeToken creates a new array type token from an element type.
+func newPointerTypeToken(elem Type) tokens.Type {
+	return tokens.Type(fmt.Sprintf(TypeDecorsPointer, elem.Token()))
+}
+
 // ArrayType is an array whose elements are of some other type.
 type ArrayType struct {
 	Nm      tokens.TypeName
@@ -61,8 +99,8 @@ func NewArrayType(elem Type) *ArrayType {
 }
 
 const (
-	TypeDecorsArray       = "%v" + TypeDecorsArraySuffix
-	TypeDecorsArraySuffix = "[]"
+	TypeDecorsArray       = TypeDecorsArrayPrefix + "%v"
+	TypeDecorsArrayPrefix = "[]"
 )
 
 // newArrayTypeName creates a new array type name from an element type.

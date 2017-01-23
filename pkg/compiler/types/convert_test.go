@@ -122,6 +122,27 @@ func TestClassConversions(t *testing.T) {
 	}
 }
 
+// TestPointerConversions tests pointers converting to their element types.
+func TestPointerConversions(t *testing.T) {
+	for _, prim := range Primitives {
+		ptr := symbols.NewPointerType(prim)
+		for i := 0; i < 3; i++ { // test that multiple levels of pointers convert.
+			assertCanConvert(t, ptr, prim)
+			ptr = symbols.NewPointerType(ptr)
+		}
+	}
+
+	assertCanConvert(t, symbols.NewPointerType(AnyArray), AnyArray)
+	assertCanConvert(t, symbols.NewPointerType(AnyMap), AnyMap)
+
+	class := newTestClass("class", nil, nil)
+	pclass := symbols.NewPointerType(class)
+	for i := 0; i < 3; i++ {
+		assertCanConvert(t, pclass, class)
+		pclass = symbols.NewPointerType(pclass)
+	}
+}
+
 // TestArrayConversions tests converting between structurally identical array types.
 func TestArrayConversions(t *testing.T) {
 	// Simple primitive cases:

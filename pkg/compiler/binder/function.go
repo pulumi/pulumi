@@ -159,7 +159,7 @@ func (a *astBinder) After(node ast.Node) {
 			// TODO: ensure the properties, if any, actually exist on the target object.
 		}
 	case *ast.LoadLocationExpression:
-		// Create a pointer to the target location.
+		// Bind the token to a location.
 		// TODO: what to do about readonly variables.
 		var sym symbols.Symbol
 		if n.Object == nil {
@@ -172,20 +172,23 @@ func (a *astBinder) After(node ast.Node) {
 			sym = a.b.requireClassMember(n.Name, typ, tokens.ClassMember(n.Name.Tok))
 		}
 
-		// TODO: create a pointer type.
-
+		// Produce a type of the right kind from the target location.
+		var ty symbols.Type
 		if sym == nil {
-			a.b.registerExprType(n, types.Any)
+			ty = types.Any
 		} else {
 			switch s := sym.(type) {
 			case ast.Function:
-				a.b.registerExprType(n, a.b.requireFunctionType(s))
+				ty = a.b.requireFunctionType(s)
 			case ast.Variable:
-				a.b.registerExprType(n, a.b.requireVariableType(s))
+				ty = a.b.requireVariableType(s)
 			default:
 				contract.Failf("Unrecognized load location symbol type: %v", sym.Token())
 			}
 		}
+
+		// Register a pointer type so that this expression is a valid l-expr.
+		a.b.registerExprType(n, symbols.NewPointerType(ty))
 	case *ast.LoadDynamicExpression:
 		a.b.registerExprType(n, types.Any)
 	case *ast.NewExpression:

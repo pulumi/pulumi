@@ -36,6 +36,11 @@ func CanConvert(from symbols.Type, to symbols.Type) bool {
 				return true
 			}
 		}
+	case *symbols.PointerType:
+		// A pointer type can be converted to a non-pointer type, since (like Go), dereferences are implicit.
+		if CanConvert(t.Element, to) {
+			return true
+		}
 	case *symbols.ArrayType:
 		// Array types with the same element type can convert.
 		if toArr, toIsArr := to.(*symbols.ArrayType); toIsArr {
