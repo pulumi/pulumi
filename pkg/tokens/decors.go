@@ -71,7 +71,7 @@ func IsPointerType(tok Type) bool {
 // ParsePointerType removes the pointer decorations from a token and returns its underlying type.
 func ParsePointerType(tok Type) PointerType {
 	ptr, extra := parseNextPointerType(tok)
-	contract.Assertf(extra == "", "Did not expect anything extra after the pointer type: %v", tok)
+	contract.Assertf(extra == "", "Did not expect anything extra after the pointer type %v; got: '%v'", tok, extra)
 	return ptr
 }
 
@@ -79,7 +79,7 @@ func ParsePointerType(tok Type) PointerType {
 func parseNextPointerType(tok Type) (PointerType, string) {
 	contract.Requiref(IsPointerType(tok), "tok", "IsPointerType")
 	rest := string(tok)[len(PointerTypePrefix):]
-	elem, rest := parseNextType(tok)
+	elem, rest := parseNextType(Type(rest))
 	return PointerType{tok, elem}, rest
 }
 
@@ -112,7 +112,7 @@ func IsArrayType(tok Type) bool {
 // ParseArrayType removes the array decorations from a token and returns its underlying type.
 func ParseArrayType(tok Type) ArrayType {
 	ptr, extra := parseNextArrayType(tok)
-	contract.Assertf(extra == "", "Did not expect anything extra after the array type: %v", tok)
+	contract.Assertf(extra == "", "Did not expect anything extra after the array type %v; got: '%v'", tok, extra)
 	return ptr
 }
 
@@ -120,7 +120,7 @@ func ParseArrayType(tok Type) ArrayType {
 func parseNextArrayType(tok Type) (ArrayType, string) {
 	contract.Requiref(IsArrayType(tok), "tok", "IsArrayType")
 	rest := string(tok)[len(ArrayTypePrefix):]
-	elem, rest := parseNextType(tok)
+	elem, rest := parseNextType(Type(rest))
 	return ArrayType{tok, elem}, rest
 }
 
@@ -155,7 +155,7 @@ func IsMapType(tok Type) bool {
 // ParseMapType removes the map decorations from a token and returns its underlying type.
 func ParseMapType(tok Type) MapType {
 	ptr, extra := parseNextMapType(tok)
-	contract.Assertf(extra == "", "Did not expect anything extra after the map type: %v", tok)
+	contract.Assertf(extra == "", "Did not expect anything extra after the map type %v; got: '%v'", tok, extra)
 	return ptr
 }
 
@@ -167,13 +167,14 @@ func parseNextMapType(tok Type) (MapType, string) {
 	rest := string(tok)[len(MapTypePrefix):]
 
 	// Now parse the key part.
-	key, rest := parseNextType(tok)
+	key, rest := parseNextType(Type(rest))
 
-	// Next, we expect to find the "]" separator token.
+	// Next, we expect to find the "]" separator token; eat it.
 	contract.Assertf(len(rest) > 0 && strings.HasPrefix(rest, MapTypeSeparator), "Expected a map separator")
+	rest = rest[1:]
 
 	// Next, parse the element type part.
-	elem, rest := parseNextType(tok)
+	elem, rest := parseNextType(Type(rest))
 	return MapType{tok, key, elem}, rest
 }
 
@@ -240,7 +241,7 @@ func IsFunctionType(tok Type) bool {
 // ParseFunctionType removes the function decorations from a token and returns its underlying type.
 func ParseFunctionType(tok Type) FunctionType {
 	ptr, extra := parseNextFunctionType(tok)
-	contract.Assertf(extra == "", "Did not expect anything extra after the function type: %v", tok)
+	contract.Assertf(extra == "", "Did not expect anything extra after the function type %v; got: '%v'", tok, extra)
 	return ptr
 }
 
