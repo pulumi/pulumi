@@ -129,7 +129,7 @@ func Walk(v Visitor, node Node) {
 			}
 		}
 	case *ObjectLiteralProperty:
-		Walk(v, n.Name)
+		Walk(v, n.Property)
 		Walk(v, n.Value)
 	case *LoadLocationExpression:
 		if n.Object != nil {

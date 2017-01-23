@@ -146,3 +146,8 @@ var ErrorUnknownJumpLabel = &diag.Diag{
 	ID:      525,
 	Message: "Unknown label '%v' used in the %v statement",
 }
+
+var ErrorIllegalObjectLiteralType = &diag.Diag{
+	ID:      526,
+	Message: "The type '%v' may not be used as an object literal type; only records and interfaces are permitted",
+}

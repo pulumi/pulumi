@@ -74,19 +74,19 @@ func (b *binder) bindModuleProperty(node *ast.ModuleProperty, parent *symbols.Mo
 	glog.V(3).Infof("Binding module '%v' property '%v'", parent.Name(), node.Name.Ident)
 
 	// Look up this node's type and inject it into the type table.
-	b.registerVariableType(node)
-	return symbols.NewModulePropertySym(node, parent)
+	ty := b.registerVariableType(node)
+	return symbols.NewModulePropertySym(node, parent, ty)
 }
 
 func (b *binder) bindModuleMethod(node *ast.ModuleMethod, parent *symbols.Module) *symbols.ModuleMethod {
 	glog.V(3).Infof("Binding module '%v' method '%v'", parent.Name(), node.Name.Ident)
 
 	// Make a function type out of this method and inject it into the type table.
-	b.registerFunctionType(node)
+	ty := b.registerFunctionType(node)
 
 	// Note that we don't actually bind the body of this method yet.  Until we have gone ahead and injected *all*
 	// top-level symbols into the type table, we would potentially encounter missing intra-module symbols.
-	return symbols.NewModuleMethodSym(node, parent)
+	return symbols.NewModuleMethodSym(node, parent, ty)
 }
 
 func (b *binder) bindModuleBodies(module *symbols.Module) {
@@ -102,7 +102,7 @@ func (b *binder) bindModuleBodies(module *symbols.Module) {
 		case *symbols.ModuleMethod:
 			b.bindModuleMethodBody(m)
 		case *symbols.Class:
-			for _, cmember := range m.Members {
+			for _, cmember := range m.Clmembers {
 				switch cm := cmember.(type) {
 				case *symbols.ClassMethod:
 					b.bindClassMethodBody(cm)

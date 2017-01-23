@@ -13,6 +13,9 @@ import (
 type Type interface {
 	Symbol
 	typesym()
+	Members() ClassMemberMap // this type's members.
+	Record() bool            // true if this is a record type.
+	Interface() bool         // true if this is an interface type.
 }
 
 // Types is a list of type symbols.
@@ -26,12 +29,15 @@ type PrimitiveType struct {
 var _ Symbol = (*PrimitiveType)(nil)
 var _ Type = (*PrimitiveType)(nil)
 
-func (node *PrimitiveType) symbol()             {}
-func (node *PrimitiveType) typesym()            {}
-func (node *PrimitiveType) Name() tokens.Name   { return tokens.Name(node.Nm) }
-func (node *PrimitiveType) Token() tokens.Token { return tokens.Token(node.Nm) }
-func (node *PrimitiveType) Tree() diag.Diagable { return nil }
-func (node *PrimitiveType) String() string      { return string(node.Name()) }
+func (node *PrimitiveType) symbol()                 {}
+func (node *PrimitiveType) Name() tokens.Name       { return tokens.Name(node.Nm) }
+func (node *PrimitiveType) Token() tokens.Token     { return tokens.Token(node.Nm) }
+func (node *PrimitiveType) Tree() diag.Diagable     { return nil }
+func (node *PrimitiveType) typesym()                {}
+func (node *PrimitiveType) Members() ClassMemberMap { return noClassMembers }
+func (node *PrimitiveType) Record() bool            { return false }
+func (node *PrimitiveType) Interface() bool         { return false }
+func (node *PrimitiveType) String() string          { return string(node.Name()) }
 
 func NewPrimitiveType(nm tokens.TypeName) *PrimitiveType {
 	return &PrimitiveType{nm}
@@ -47,12 +53,15 @@ type PointerType struct {
 var _ Symbol = (*PointerType)(nil)
 var _ Type = (*PointerType)(nil)
 
-func (node *PointerType) symbol()             {}
-func (node *PointerType) typesym()            {}
-func (node *PointerType) Name() tokens.Name   { return tokens.Name(node.Nm) }
-func (node *PointerType) Token() tokens.Token { return tokens.Token(node.Tok) }
-func (node *PointerType) Tree() diag.Diagable { return nil }
-func (node *PointerType) String() string      { return string(node.Name()) }
+func (node *PointerType) symbol()                 {}
+func (node *PointerType) Name() tokens.Name       { return tokens.Name(node.Nm) }
+func (node *PointerType) Token() tokens.Token     { return tokens.Token(node.Tok) }
+func (node *PointerType) Tree() diag.Diagable     { return nil }
+func (node *PointerType) typesym()                {}
+func (node *PointerType) Members() ClassMemberMap { return noClassMembers }
+func (node *PointerType) Record() bool            { return false }
+func (node *PointerType) Interface() bool         { return false }
+func (node *PointerType) String() string          { return string(node.Name()) }
 
 func NewPointerType(elem Type) *PointerType {
 	nm := newPointerTypeName(elem)
@@ -85,12 +94,15 @@ type ArrayType struct {
 var _ Symbol = (*ArrayType)(nil)
 var _ Type = (*ArrayType)(nil)
 
-func (node *ArrayType) symbol()             {}
-func (node *ArrayType) typesym()            {}
-func (node *ArrayType) Name() tokens.Name   { return tokens.Name(node.Nm) }
-func (node *ArrayType) Token() tokens.Token { return tokens.Token(node.Tok) }
-func (node *ArrayType) Tree() diag.Diagable { return nil }
-func (node *ArrayType) String() string      { return string(node.Name()) }
+func (node *ArrayType) symbol()                 {}
+func (node *ArrayType) Name() tokens.Name       { return tokens.Name(node.Nm) }
+func (node *ArrayType) Token() tokens.Token     { return tokens.Token(node.Tok) }
+func (node *ArrayType) Tree() diag.Diagable     { return nil }
+func (node *ArrayType) typesym()                {}
+func (node *ArrayType) Members() ClassMemberMap { return noClassMembers }
+func (node *ArrayType) Record() bool            { return false }
+func (node *ArrayType) Interface() bool         { return false }
+func (node *ArrayType) String() string          { return string(node.Name()) }
 
 func NewArrayType(elem Type) *ArrayType {
 	nm := newArrayTypeName(elem)
@@ -124,12 +136,15 @@ type MapType struct {
 var _ Symbol = (*MapType)(nil)
 var _ Type = (*MapType)(nil)
 
-func (node *MapType) symbol()             {}
-func (node *MapType) typesym()            {}
-func (node *MapType) Name() tokens.Name   { return tokens.Name(node.Nm) }
-func (node *MapType) Token() tokens.Token { return tokens.Token(node.Tok) }
-func (node *MapType) Tree() diag.Diagable { return nil }
-func (node *MapType) String() string      { return string(node.Name()) }
+func (node *MapType) symbol()                 {}
+func (node *MapType) Name() tokens.Name       { return tokens.Name(node.Nm) }
+func (node *MapType) Token() tokens.Token     { return tokens.Token(node.Tok) }
+func (node *MapType) Tree() diag.Diagable     { return nil }
+func (node *MapType) typesym()                {}
+func (node *MapType) Members() ClassMemberMap { return noClassMembers }
+func (node *MapType) Record() bool            { return false }
+func (node *MapType) Interface() bool         { return false }
+func (node *MapType) String() string          { return string(node.Name()) }
 
 func NewMapType(key Type, elem Type) *MapType {
 	nm := newMapTypeName(key, elem)
@@ -164,12 +179,15 @@ type FunctionType struct {
 var _ Symbol = (*FunctionType)(nil)
 var _ Type = (*FunctionType)(nil)
 
-func (node *FunctionType) symbol()             {}
-func (node *FunctionType) typesym()            {}
-func (node *FunctionType) Name() tokens.Name   { return tokens.Name(node.Nm) }
-func (node *FunctionType) Token() tokens.Token { return tokens.Token(node.Tok) }
-func (node *FunctionType) Tree() diag.Diagable { return nil }
-func (node *FunctionType) String() string      { return string(node.Name()) }
+func (node *FunctionType) symbol()                 {}
+func (node *FunctionType) Name() tokens.Name       { return tokens.Name(node.Nm) }
+func (node *FunctionType) Token() tokens.Token     { return tokens.Token(node.Tok) }
+func (node *FunctionType) Tree() diag.Diagable     { return nil }
+func (node *FunctionType) typesym()                {}
+func (node *FunctionType) Members() ClassMemberMap { return noClassMembers }
+func (node *FunctionType) Record() bool            { return false }
+func (node *FunctionType) Interface() bool         { return false }
+func (node *FunctionType) String() string          { return string(node.Name()) }
 
 func NewFunctionType(params []Type, ret Type) *FunctionType {
 	nm := newFunctionTypeName(params, ret)

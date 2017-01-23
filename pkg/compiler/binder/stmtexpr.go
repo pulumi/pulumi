@@ -11,27 +11,6 @@ import (
 	"github.com/marapongo/mu/pkg/util/contract"
 )
 
-// bindFunctionBody binds a function body, including a scope, its parameters, and its expressions and statements.
-func (b *binder) bindFunctionBody(node ast.Function) {
-	// Enter a new scope, bind the parameters, and then bind the body using a visitor.
-	scope := b.scope.Push()
-	defer scope.Pop()
-	params := node.GetParameters()
-	if params != nil {
-		for _, param := range *params {
-			// Register this variable's type and associate its name with the identifier.
-			b.registerVariableType(param)
-			b.scope.TryRegister(param, symbols.NewLocalVariableSym(param))
-		}
-	}
-
-	body := node.GetBody()
-	if body != nil {
-		v := newASTBinder(b, node)
-		ast.Walk(v, body)
-	}
-}
-
 // astBinder is an AST visitor implementation that understands how to deal with all sorts of node types.  It
 // does not visit children, however, as it relies on the depth-first order walk supplied by the AST package.  The
 // overall purpose of this is to perform validation, and record types and symbols that're needed during evaluation.
@@ -243,8 +222,39 @@ func (a *astBinder) checkObjectLiteral(node *ast.ObjectLiteral) {
 	if node.Type == nil {
 		a.b.registerExprType(node, types.Any)
 	} else {
-		a.b.registerExprType(node, a.b.bindType(node.Type))
-		// TODO: ensure the properties, if any, actually exist on the target object.
+		ty := a.b.bindType(node.Type)
+		a.b.registerExprType(node, ty)
+
+		// Only permit object literals for records and interfaces.  Classes have constructors.
+		if !ty.Record() && !ty.Interface() {
+			a.b.Diag().Errorf(errors.ErrorIllegalObjectLiteralType.At(node.Type), ty)
+		} else {
+			// Ensure that all required properties have been supplied, and that they are of the right type.
+			props := make(map[tokens.ClassMemberName]bool)
+			if node.Properties != nil {
+				for _, init := range *node.Properties {
+					sym := a.b.requireClassMember(init.Property, ty, init.Property.Tok)
+					if sym != nil {
+						switch s := sym.(type) {
+						case *symbols.ClassProperty, *symbols.ClassMethod:
+							a.checkExprType(init.Value, s.Type())
+						default:
+							contract.Failf("Unrecognized class member symbol: %v", sym)
+						}
+						props[init.Property.Tok.Name()] = true // record that we've seen this one.
+					}
+				}
+			}
+
+			// Issue an error about any missing required properties.
+			for name, member := range ty.Members() {
+				if _, has := props[name]; !has {
+					if !member.Optional() && member.Default() == nil {
+						a.b.Diag().Errorf(errors.ErrorMissingRequiredProperty.At(node), name)
+					}
+				}
+			}
+		}
 	}
 }
 

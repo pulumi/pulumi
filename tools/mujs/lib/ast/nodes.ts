@@ -20,6 +20,7 @@ export interface Node {
 export type NodeKind =
     IdentifierKind |
     TokenKind |
+    ClassMemberTokenKind |
     ModuleTokenKind |
     TypeTokenKind |
 
@@ -81,6 +82,13 @@ export interface Token extends Node {
 }
 export const tokenKind = "Token";
 export type  TokenKind = "Token";
+
+export interface ClassMemberToken extends Node {
+    kind: ClassMemberTokenKind;
+    tok:  symbols.ClassMemberToken;
+}
+export const classMemberTokenKind = "ClassMemberToken";
+export type  ClassMemberTokenKind = "ClassMemberToken";
 
 export interface ModuleToken extends Node {
     kind: ModuleTokenKind;

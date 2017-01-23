@@ -1,11 +1,13 @@
 // Copyright 2016 Marapongo, Inc. All rights reserved.
 
 // Tokens.
-export type Token = string;        // a valid symbol token.
-export type ModuleToken = Token;   // a symbol token that resolves to a module.
-export type TypeToken = Token;     // a symbol token that resolves to a type.
-export type VariableToken = Token; // a symbol token that resolves to a variable.
-export type FunctionToken = Token; // a symbol token that resolves to a function.
+export type Token = string;            // a valid symbol token.
+export type ModuleToken = Token;       // a symbol token that resolves to a module.
+export type ModuleMemberToken = Token; // a symbol token that resolves to a module member.
+export type ClassMemberToken = Token;  // a symbol token that resolves to a class member.
+export type TypeToken = Token;         // a symbol token that resolves to a type.
+export type VariableToken = Token;     // a symbol token that resolves to a variable.
+export type FunctionToken = Token;     // a symbol token that resolves to a function.
 
 export const moduleSep = ":";               // a character delimiting module / member names (e.g., "module:member").
 export const selfModule: ModuleToken = "."; // a self-referential token for the current module.

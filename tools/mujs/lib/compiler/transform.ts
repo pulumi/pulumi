@@ -1781,10 +1781,14 @@ export class Transformer {
     }
 
     private transformObjectLiteralPropertyAssignment(node: ts.PropertyAssignment): ast.ObjectLiteralProperty {
+        let pname: ast.Identifier = this.transformPropertyName(node.name);
         return this.withLocation(node, <ast.ObjectLiteralProperty>{
-            kind:  ast.objectLiteralPropertyKind,
-            name:  this.transformPropertyName(node.name),
-            value: this.transformExpression(node.initializer),
+            kind:     ast.objectLiteralPropertyKind,
+            property: <ast.ClassMemberToken>{
+                kind: ast.classMemberTokenKind,
+                tok:  pname.ident,
+            },
+            value:    this.transformExpression(node.initializer),
         });
     }
 
@@ -1792,9 +1796,12 @@ export class Transformer {
             node: ts.ShorthandPropertyAssignment): ast.ObjectLiteralProperty {
         let name: ast.Identifier = this.transformIdentifier(node.name);
         return this.withLocation(node, <ast.ObjectLiteralProperty>{
-            kind:  ast.objectLiteralPropertyKind,
-            name:  name,
-            value: this.withLocation(node.name, <ast.LoadLocationExpression>{
+            kind:     ast.objectLiteralPropertyKind,
+            property: <ast.ClassMemberToken>{
+                kind: ast.classMemberTokenKind,
+                tok:  name.ident,
+            },
+            value:   this.withLocation(node.name, <ast.LoadLocationExpression>{
                 kind: ast.loadLocationExpressionKind,
                 name: name,
             }),

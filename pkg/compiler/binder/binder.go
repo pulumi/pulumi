@@ -187,7 +187,7 @@ func (b *binder) lookupSymbolToken(node ast.Node, tok tokens.Token, require bool
 				if clmnm == "" {
 					sym = member
 				} else if class, isclass := member.(*symbols.Class); isclass {
-					if clmember, has := class.Members[clmnm]; has {
+					if clmember, has := class.Clmembers[clmnm]; has {
 						// The member was found; validate that it's got the right accessibility.
 						b.checkClassVisibility(node, class, clmember)
 						sym = clmember
@@ -211,6 +211,7 @@ func (b *binder) lookupSymbolToken(node ast.Node, tok tokens.Token, require bool
 		glog.V(5).Info("Failed to bind qualified token; %v: '%v'", extra, tok)
 		if require {
 			// If requested, issue an error.
+			// TODO: edit distance checking to help suggest a fix.
 			b.Diag().Errorf(errors.ErrorSymbolNotFound.At(node), tok, extra)
 		}
 	}
@@ -283,7 +284,7 @@ func (b *binder) requireFunctionType(node ast.Function) *symbols.FunctionType {
 
 // registerFunctionType understands how to turn any function node into a type, and adds it to the type table.  This
 // works for any kind of function-like AST node: module property, class property, or lambda.
-func (b *binder) registerFunctionType(node ast.Function) {
+func (b *binder) registerFunctionType(node ast.Function) *symbols.FunctionType {
 	// Make a function type and inject it into the type table.
 	var params []symbols.Type
 	np := node.GetParameters()
@@ -316,6 +317,8 @@ func (b *binder) registerFunctionType(node ast.Function) {
 		glog.V(7).Infof("Registered function type: '%v' => %v", node.GetName().Ident, tysym.Name())
 	}
 	b.types[node] = tysym
+
+	return tysym
 }
 
 // requireVariableType fetches the non-nil registered type for a given variable.
@@ -325,7 +328,7 @@ func (b *binder) requireVariableType(node ast.Variable) symbols.Type {
 
 // registerVariableType understands how to turn any variable node into a type, and adds it to the type table.  This
 // works for any kind of variable-like AST node: module property, class property, parameter, or local variable.
-func (b *binder) registerVariableType(node ast.Variable) {
+func (b *binder) registerVariableType(node ast.Variable) symbols.Type {
 	var tysym symbols.Type
 
 	// If there is an explicit node type, use it.
@@ -343,4 +346,6 @@ func (b *binder) registerVariableType(node ast.Variable) {
 		glog.V(7).Infof("Registered variable type: '%v' => %v", node.GetName().Ident, tysym.Name())
 	}
 	b.types[node] = tysym
+
+	return tysym
 }

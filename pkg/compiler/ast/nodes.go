@@ -78,6 +78,14 @@ type Token struct {
 
 const TokenKind NodeKind = "Token"
 
+// ClassMemberToken represents a real string class member token associated with its source location context.
+type ClassMemberToken struct {
+	NodeValue
+	Tok tokens.ClassMember `json:"tok"`
+}
+
+const ClassMemberTokenKind NodeKind = "ClassMemberToken"
+
 // ModuleToken represents a real string type token associated with its source location context.
 type ModuleToken struct {
 	NodeValue
