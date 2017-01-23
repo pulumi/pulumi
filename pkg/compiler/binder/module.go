@@ -102,7 +102,7 @@ func (b *binder) bindModuleBodies(module *symbols.Module) {
 		case *symbols.ModuleMethod:
 			b.bindModuleMethodBody(m)
 		case *symbols.Class:
-			for _, cmember := range m.Clmembers {
+			for _, cmember := range m.Members {
 				switch cm := cmember.(type) {
 				case *symbols.ClassMethod:
 					b.bindClassMethodBody(cm)

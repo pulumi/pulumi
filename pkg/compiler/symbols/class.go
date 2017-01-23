@@ -11,31 +11,28 @@ import (
 // Class is a fully bound class symbol.
 type Class struct {
 	Node       *ast.Class
+	Nm         tokens.TypeName
+	Tok        tokens.Type
 	Parent     *Module
 	Extends    Type
 	Implements Types
-	Clmembers  ClassMemberMap
+	Members    ClassMemberMap
 }
 
 var _ Symbol = (*Class)(nil)
 var _ Type = (*Class)(nil)
 var _ ModuleMember = (*Class)(nil)
 
-func (node *Class) symbol()           {}
-func (node *Class) Name() tokens.Name { return node.Node.Name.Ident }
-func (node *Class) Token() tokens.Token {
-	return tokens.Token(
-		tokens.NewModuleMemberToken(
-			tokens.Module(node.Parent.Token()),
-			tokens.ModuleMemberName(node.Name()),
-		),
-	)
-}
+func (node *Class) symbol()                      {}
+func (node *Class) Name() tokens.Name            { return tokens.Name(node.Nm) }
+func (node *Class) Token() tokens.Token          { return tokens.Token(node.Tok) }
 func (node *Class) Tree() diag.Diagable          { return node.Node }
 func (node *Class) moduleMember()                {}
 func (node *Class) MemberNode() ast.ModuleMember { return node.Node }
 func (node *Class) typesym()                     {}
-func (node *Class) Members() ClassMemberMap      { return node.Clmembers }
+func (node *Class) TypeName() tokens.TypeName    { return node.Nm }
+func (node *Class) TypeToken() tokens.Type       { return node.Tok }
+func (node *Class) TypeMembers() ClassMemberMap  { return node.Members }
 func (node *Class) Sealed() bool                 { return node.Node.Sealed != nil && *node.Node.Sealed }
 func (node *Class) Abstract() bool               { return node.Node.Abstract != nil && *node.Node.Abstract }
 func (node *Class) Record() bool                 { return node.Node.Record != nil && *node.Node.Record }
@@ -44,12 +41,20 @@ func (node *Class) String() string               { return string(node.Name()) }
 
 // NewClassSym returns a new Class symbol with the given node, parent, extends, and implements, and empty members.
 func NewClassSym(node *ast.Class, parent *Module, extends Type, implements Types) *Class {
+	nm := tokens.TypeName(node.Name.Ident)
 	return &Class{
-		Node:       node,
+		Node: node,
+		Nm:   nm,
+		Tok: tokens.Type(
+			tokens.NewModuleMemberToken(
+				tokens.Module(parent.Token()),
+				tokens.ModuleMemberName(nm),
+			),
+		),
 		Parent:     parent,
 		Extends:    extends,
 		Implements: implements,
-		Clmembers:  make(ClassMemberMap),
+		Members:    make(ClassMemberMap),
 	}
 }
 

@@ -64,32 +64,64 @@ func (b *binder) Diag() diag.Sink {
 	return b.ctx.Diag
 }
 
-// bindType binds a type token to a symbol.  The node context is used for issuing errors.
+// bindType binds a type token AST node to a symbol.
 func (b *binder) bindType(node *ast.TypeToken) symbols.Type {
 	contract.Require(node != nil, "node")
+	return b.bindTypeToken(node, node.Tok)
+}
 
-	var extra string
-	tok := node.Tok
-	tyname := tok.Name()
+// bindTypeToken binds a type token to a symbol.  The node context is used for issuing errors.
+func (b *binder) bindTypeToken(node ast.Node, tok tokens.Type) symbols.Type {
+	contract.Require(node != nil, "node")
 
+	var reason string // the reason a type could not be found.
 	if tok.Primitive() {
 		// If a primitive type, simply do a lookup into our table of primitives.
-		if ty, has := types.Primitives[tyname]; has {
+		if ty, has := types.Primitives[tok.Name()]; has {
 			return ty
 		} else {
 			glog.V(5).Infof("Failed to bind primitive type '%v'", tok)
-			extra = "primitive type unknown"
+			reason = "primitive type unknown"
 		}
+	} else if tok.Pointer() {
+		// If a pointer, parse it, bind the element type, and create a new pointer type.
+		ptr := tokens.ParsePointerType(tok)
+		elem := b.bindTypeToken(node, ptr.Elem)
+		return symbols.NewPointerType(elem)
+	} else if tok.Array() {
+		// If an array, parse it, bind the element type, and create a new array symbol.
+		arr := tokens.ParseArrayType(tok)
+		elem := b.bindTypeToken(node, arr.Elem)
+		return symbols.NewArrayType(elem)
+	} else if tok.Map() {
+		// If a map, parse it, bind the key and value types, and create a new map symbol.
+		ma := tokens.ParseMapType(tok)
+		key := b.bindTypeToken(node, ma.Key)
+		elem := b.bindTypeToken(node, ma.Elem)
+		return symbols.NewMapType(key, elem)
+	} else if tok.Function() {
+		// If a function, parse and bind the parameters and return types, and create a new symbol.
+		fnc := tokens.ParseFunctionType(tok)
+		var params []symbols.Type
+		for _, param := range fnc.Parameters {
+			params = append(params, b.bindTypeToken(node, param))
+		}
+		var ret symbols.Type
+		if fnc.Return != nil {
+			ret = b.bindTypeToken(node, *fnc.Return)
+		}
+		return symbols.NewFunctionType(params, ret)
 	} else {
 		// Otherwise, we will need to perform a more exhaustive lookup of a qualified type token.
-		sym := b.lookupSymbolToken(node, tokens.Token(node.Tok), false)
+		sym := b.lookupSymbolToken(node, tokens.Token(tok), false)
 		if ty, ok := sym.(symbols.Type); ok {
 			return ty
 		}
+		reason = "symbol not found"
 	}
 
 	// The type was not found; issue an error, and return Any so we can proceed with typechecking.
-	b.Diag().Errorf(errors.ErrorTypeNotFound.At(node), tok, extra)
+	b.Diag().Errorf(errors.ErrorTypeNotFound.At(node), tok, reason)
 	return types.Any
 }
 
@@ -187,7 +219,7 @@ func (b *binder) lookupSymbolToken(node ast.Node, tok tokens.Token, require bool
 				if clmnm == "" {
 					sym = member
 				} else if class, isclass := member.(*symbols.Class); isclass {
-					if clmember, has := class.Clmembers[clmnm]; has {
+					if clmember, has := class.Members[clmnm]; has {
 						// The member was found; validate that it's got the right accessibility.
 						b.checkClassVisibility(node, class, clmember)
 						sym = clmember

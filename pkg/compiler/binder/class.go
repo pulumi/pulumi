@@ -38,7 +38,7 @@ func (b *binder) bindClass(node *ast.Class, parent *symbols.Module) *symbols.Cla
 	// Next, bind each member at the symbolic level; in particular, we do not yet bind bodies of methods.
 	if node.Members != nil {
 		for memtok, member := range *node.Members {
-			class.Clmembers[memtok] = b.bindClassMember(member, class)
+			class.Members[memtok] = b.bindClassMember(member, class)
 		}
 	}
 

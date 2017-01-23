@@ -17,19 +17,31 @@ import (
 //
 // Token's grammar is as follows:
 //
-//		Token				= <Name> |
-//							= <PackageName> [ ":" <ModuleName> [ "/" <ModuleMemberName> [ "." <ClassMemberName> ] ] ]
+//		Token				= <Identifier> |
+//							  <QualifiedToken> |
+//							  <DecoratedType>
+//		Identifier			= <Name>
+//		QualifiedToken		= <PackageName> [ ":" <ModuleName> [ "/" <ModuleMemberName> [ "." <ClassMemberName> ] ] ]
 //		PackageName			= <QName>
 //		ModuleName			= <QName>
 //		ModuleMemberName	= <Name>
 //		ClassMemberName		= <Name>
 //
-// A token may be a simple name in the case that it refers to a built-in symbol, like a primitive type, or when it
-// refers to an identifier that is in scope, rather than a symbol that is to be bound through package/module resolution.
+// A token may be a simple identifier in the case that it refers to a built-in symbol, like a primitive type, or a
+// variable in scope, rather than a qualified token that is to be bound to a symbol through package/module resolution.
 //
 // Notice that both package and module names may be qualified names (meaning they can have "/" delimiters; see QName's
 // comments), and that module and class members must use unqualified, simple names (meaning they have no delimiters).
 // The specialized token kinds differ only in what elements they require as part of the token string.
+//
+// Finally, a token may also be a decorated type.  This is for built-in array, map, pointer, and function types:
+//
+//		DecoratedType		= "*" <Token> |
+//							  "[]" <Token> |
+//							  "map[" <Token> "]" <Token> |
+//							  "(" [ <Token> [ "," <Token> ]* ] ")" <Token>?
+//
+// Notice that a recursive parsing process is required to extract elements from a <DecoratedType> token.
 type Token string
 
 func (tok Token) String() string { return string(tok) }
@@ -164,8 +176,8 @@ type ClassMemberName Name
 
 func (nm ClassMemberName) String() string { return string(nm) }
 
-// Type is a token representing a type.  It is either a primitive type name, or a reference to a module class:
-//		Type = <Name> | <ModuleMember>
+// Type is a token representing a type.  It is either a primitive type name, reference to a module class, or decorated:
+//		Type = <Name> | <ModuleMember> | <DecoratedType>
 type Type Token
 
 func NewTypeToken(mod Module, nm TypeName) Type {
@@ -174,7 +186,7 @@ func NewTypeToken(mod Module, nm TypeName) Type {
 }
 
 func (tok Type) Package() Package {
-	if tok.Primitive() {
+	if tok.Primitive() || tok.Decorated() {
 		return Package("")
 	} else {
 		return ModuleMember(tok).Package()
@@ -182,7 +194,7 @@ func (tok Type) Package() Package {
 }
 
 func (tok Type) Module() Module {
-	if tok.Primitive() {
+	if tok.Primitive() || tok.Decorated() {
 		return Module("")
 	} else {
 		return ModuleMember(tok).Module()
@@ -190,8 +202,7 @@ func (tok Type) Module() Module {
 }
 
 func (tok Type) Name() TypeName {
-	if tok.Primitive() {
-		contract.Assert(IsName(string(tok)))
+	if tok.Primitive() || tok.Decorated() {
 		return TypeName(tok)
 	} else {
 		return TypeName(ModuleMember(tok).Name())
@@ -202,9 +213,19 @@ func (tok Type) Member() ModuleMember {
 	return ModuleMember(tok)
 }
 
+// Decorated indicates whether this token represents a decorated type.
+func (tok Type) Decorated() bool {
+	return tok.Pointer() || tok.Array() || tok.Map() || tok.Function()
+}
+
+func (tok Type) Pointer() bool  { return IsPointerType(tok) }
+func (tok Type) Array() bool    { return IsArrayType(tok) }
+func (tok Type) Map() bool      { return IsMapType(tok) }
+func (tok Type) Function() bool { return IsFunctionType(tok) }
+
 // Primitive indicates whether this type is a primitive type name (i.e., not qualified with a module, etc).
 func (tok Type) Primitive() bool {
-	return !Token(tok).HasModule()
+	return !tok.Decorated() && !Token(tok).HasModule()
 }
 
 func (tok Type) String() string { return string(tok) }

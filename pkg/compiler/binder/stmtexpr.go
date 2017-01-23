@@ -247,7 +247,7 @@ func (a *astBinder) checkObjectLiteral(node *ast.ObjectLiteral) {
 			}
 
 			// Issue an error about any missing required properties.
-			for name, member := range ty.Members() {
+			for name, member := range ty.TypeMembers() {
 				if _, has := props[name]; !has {
 					if !member.Optional() && member.Default() == nil {
 						a.b.Diag().Errorf(errors.ErrorMissingRequiredProperty.At(node), name)
