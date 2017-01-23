@@ -27,7 +27,7 @@ func (b *binder) bindFunctionBody(node ast.Function) {
 
 	body := node.GetBody()
 	if body != nil {
-		v := &astBinder{b, node}
+		v := newASTBinder(b, node)
 		ast.Walk(v, body)
 	}
 }
@@ -36,8 +36,17 @@ func (b *binder) bindFunctionBody(node ast.Function) {
 // does not visit children, however, as it relies on the depth-first order walk supplied by the AST package.  The
 // overall purpose of this is to perform validation, and record types and symbols that're needed during evaluation.
 type astBinder struct {
-	b   *binder
-	fnc ast.Function
+	b      *binder
+	fnc    ast.Function                  // the current function.
+	labels map[tokens.Name]ast.Statement // a map of known labels (for validation of jumps).
+}
+
+func newASTBinder(b *binder, fnc ast.Function) ast.Visitor {
+	return &astBinder{
+		b:      b,
+		fnc:    fnc,
+		labels: make(map[tokens.Name]ast.Statement),
+	}
 }
 
 var _ ast.Visitor = (*astBinder)(nil)
@@ -53,7 +62,12 @@ func (a *astBinder) Visit(node ast.Node) ast.Visitor {
 		a.b.registerVariableType(n)
 		a.b.scope.MustRegister(symbols.NewLocalVariableSym(n))
 	case *ast.LabeledStatement:
-		// TODO: register the label somehow.
+		// Ensure this label doesn't already exist and then register it.
+		label := tokens.Name(n.Label.Ident)
+		if other, has := a.labels[label]; has {
+			a.b.Diag().Errorf(errors.ErrorDuplicateLabel.At(n), label, other)
+		}
+		a.labels[label] = n
 	}
 
 	// Return the current visitor to keep on visitin'.
@@ -66,8 +80,22 @@ func (a *astBinder) After(node ast.Node) {
 	case *ast.Block:
 		// Exiting a block restores the prior lexical context.
 		a.b.scope.Pop()
-	case *ast.BreakStatement, *ast.ContinueStatement:
-		// TODO: check that the label is known.
+	case *ast.BreakStatement:
+		// If the break specifies a label, ensure that it exists.
+		if n.Label != nil {
+			label := tokens.Name(n.Label.Ident)
+			if _, has := a.labels[label]; !has {
+				a.b.Diag().Errorf(errors.ErrorUnknownJumpLabel.At(n), label, "break")
+			}
+		}
+	case *ast.ContinueStatement:
+		// If the continue specifies a label, ensure that it exists.
+		if n.Label != nil {
+			label := tokens.Name(n.Label.Ident)
+			if _, has := a.labels[label]; !has {
+				a.b.Diag().Errorf(errors.ErrorUnknownJumpLabel.At(n), label, "continue")
+			}
+		}
 	case *ast.IfStatement:
 		// Ensure that the condition is a boolean expression.
 		a.checkExprType(n.Condition, types.Bool)

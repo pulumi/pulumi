@@ -133,6 +133,16 @@ var ErrorExpectedReturnExpr = &diag.Diag{
 }
 
 var ErrorUnexpectedReturnExpr = &diag.Diag{
-	ID:      522,
+	ID:      523,
 	Message: "Unexpected return expression; function has no return type (void)",
+}
+
+var ErrorDuplicateLabel = &diag.Diag{
+	ID:      524,
+	Message: "Duplicate label '%v': %v",
+}
+
+var ErrorUnknownJumpLabel = &diag.Diag{
+	ID:      525,
+	Message: "Unknown label '%v' used in the %v statement",
 }
