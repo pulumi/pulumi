@@ -24,7 +24,6 @@ type Compiler interface {
 	core.Phase
 
 	Ctx() *core.Context     // the shared context object.
-	Options() *Options      // the options this compiler is using.
 	Workspace() workspace.W // the workspace that this compielr is using.
 
 	// Compile detects a package from the workspace and compiles it into a graph.
@@ -38,7 +37,6 @@ type Compiler interface {
 // compiler is the canonical implementation of the Mu compiler.
 type compiler struct {
 	w      workspace.W
-	opts   *Options
 	ctx    *core.Context
 	reader metadata.Reader
 }
@@ -46,10 +44,10 @@ type compiler struct {
 // New creates a new instance of the Mu compiler, along with a new workspace, from the given path.  If options
 // is nil, the default compiler options will be used instead.  If any IO errors occur, they will be output in the usual
 // diagnostics ways, and the compiler return value will be nil while the error will be non-nil.
-func New(path string, opts *Options) (Compiler, error) {
+func New(path string, opts *core.Options) (Compiler, error) {
 	// Ensure the options and diagnostics sink have been initialized.
 	if opts == nil {
-		opts = DefaultOptions()
+		opts = core.DefaultOptions()
 	}
 	d := opts.Diag
 	if d == nil {
@@ -57,7 +55,7 @@ func New(path string, opts *Options) (Compiler, error) {
 	}
 
 	// Now create a new context to share amongst the compiler and workspace.
-	ctx := core.NewContext(path, d)
+	ctx := core.NewContext(path, d, opts)
 
 	// Create a metadata reader for workspaces and packages (both the root one and dependencies).
 	reader := metadata.NewReader(ctx)
@@ -80,7 +78,6 @@ func New(path string, opts *Options) (Compiler, error) {
 	// And finally return the freshly allocated compiler object.
 	return &compiler{
 		w:      w,
-		opts:   opts,
 		ctx:    ctx,
 		reader: reader,
 	}, nil
@@ -89,7 +86,7 @@ func New(path string, opts *Options) (Compiler, error) {
 // Newwd creates a new instance of the Mu compiler, along with a new workspace, from the current working directory.
 // If options is nil, the default compiler options will be used instead.  If any IO errors occur, they will be output in
 // the usual diagnostics ways, and the compiler return value will be nil while the error will be non-nil.
-func Newwd(opts *Options) (Compiler, error) {
+func Newwd(opts *core.Options) (Compiler, error) {
 	pwd, err := os.Getwd()
 	contract.Assertf(err == nil, "Unexpected os.Getwd error: %v", err)
 	return New(pwd, opts)
@@ -97,7 +94,6 @@ func Newwd(opts *Options) (Compiler, error) {
 
 func (c *compiler) Ctx() *core.Context     { return c.ctx }
 func (c *compiler) Diag() diag.Sink        { return c.ctx.Diag }
-func (c *compiler) Options() *Options      { return c.opts }
 func (c *compiler) Workspace() workspace.W { return c.w }
 
 // Compile attempts to detect the package from the current working directory and, provided that succeeds, compiles it.

@@ -10,6 +10,7 @@ import (
 
 	"github.com/marapongo/mu/pkg/cmdutil"
 	"github.com/marapongo/mu/pkg/compiler"
+	"github.com/marapongo/mu/pkg/compiler/core"
 	"github.com/marapongo/mu/pkg/graph"
 	"github.com/marapongo/mu/pkg/util/contract"
 )
@@ -38,7 +39,7 @@ func newCompileCmd() *cobra.Command {
 			}
 
 			// Create a compiler options object and map any flags and arguments to settings on it.
-			opts := compiler.DefaultOptions()
+			opts := core.DefaultOptions()
 			opts.Args = dashdashArgsToMap(packArgs)
 
 			// In the case of an argument, load that specific package and new up a compiler based on its base path.

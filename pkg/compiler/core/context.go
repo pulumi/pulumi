@@ -11,6 +11,7 @@ import (
 type Context struct {
 	Path       string             // the root directory.
 	Diag       diag.Sink          // the diagnostics sink to use.
+	Opts       *Options           // the options used for this compilation.
 	Pkgs       symbols.PackageMap // all imported/bound packages.
 	Currpkg    *symbols.Package   // the current package being compiled.
 	Currmodule *symbols.Module    // the current module being compiled.
@@ -18,10 +19,11 @@ type Context struct {
 }
 
 // NewContext creates a new context with the given state.
-func NewContext(path string, d diag.Sink) *Context {
+func NewContext(path string, d diag.Sink, opts *Options) *Context {
 	return &Context{
 		Path: path,
 		Diag: d,
+		Opts: opts,
 		Pkgs: make(symbols.PackageMap),
 	}
 }
