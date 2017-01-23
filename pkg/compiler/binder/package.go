@@ -16,6 +16,14 @@ import (
 // BindPackages takes a package AST, resolves all dependencies and tokens inside of it, and returns a fully bound
 // package symbol that can be used for semantic operations (like interpretation and evaluation).
 func (b *binder) BindPackage(pkg *pack.Package) *symbols.Package {
+	// If the package is missing a name, issue an error.
+	if pkg.Name == "" {
+		b.Diag().Errorf(errors.ErrorMissingPackageName.At(pkg))
+	}
+
+	// TODO: read the package's version and ensure that it is not a range.  In other words, resolved packages must have
+	//     concrete versions, either semantic (e.g., "1.3.9-beta2") or SHA hashes.  See errors.ErrorIllegalStackVersion.
+
 	// Create a symbol with empty dependencies and modules; this allows child symbols to parent to it.
 	pkgsym := symbols.NewPackageSym(pkg)
 
@@ -51,6 +59,7 @@ func (b *binder) resolvePackageDeps(pkg *symbols.Package) {
 			} else {
 				glog.V(3).Infof("Resolving package '%v' dependency name=%v, url=%v", pkg.Name(), dep.Name, dep.URL())
 				if depsym := b.resolveDep(dep); depsym != nil {
+					// Store the symbol and URL with all its empty parts resolved (a.k.a. canonicalized) in the map.
 					pkg.Dependencies[dep.Name] = depsym
 				}
 			}
@@ -58,10 +67,10 @@ func (b *binder) resolvePackageDeps(pkg *symbols.Package) {
 	}
 }
 
-var cyclicTombstone = symbols.NewPackageSym(nil)
+var cyclicTombstone = &symbols.ResolvedPackage{Pkg: symbols.NewPackageSym(nil)}
 
 // resolveDep actually performs the package resolution process, populating the compiler symbol tables.
-func (b *binder) resolveDep(dep pack.PackageURL) *symbols.Package {
+func (b *binder) resolveDep(dep pack.PackageURL) *symbols.ResolvedPackage {
 	// First, see if we've already loaded this package.  If yes, reuse it.
 	if pkgsym, exists := b.ctx.Pkgs[dep.Name]; exists {
 		// Check for cycles.  If one exists, do not process this dependency any further.
@@ -77,6 +86,7 @@ func (b *binder) resolveDep(dep pack.PackageURL) *symbols.Package {
 
 	// There are many places a dependency could come from.  Consult the workspace for a list of those paths.  It will
 	// return a number of them, in preferred order, and we simply probe each one until we find something.
+	dep = dep.Defaults() // use defaults for missing parts
 	for _, loc := range b.w.DepCandidates(dep) {
 		// See if this candidate actually exists.
 		isMufile := workspace.IsMufile(loc, b.Diag())
@@ -98,9 +108,14 @@ func (b *binder) resolveDep(dep pack.PackageURL) *symbols.Package {
 			// Now perform the binding.
 			pkgsym := b.BindPackage(pkg)
 
-			// Erase the tombstone, memoize the symbol in the compiler's cache, and return it.
-			b.ctx.Pkgs[dep.Name] = pkgsym
-			return pkgsym
+			// Erase the tombstone, memoize the symbol in the compiler's cache, and return it.  Note that we have
+			// canonicalized the URL by substituting defaults for missing parts, to ease future binding endeavors.
+			respkg := &symbols.ResolvedPackage{
+				Pkg: pkgsym,
+				URL: dep,
+			}
+			b.ctx.Pkgs[dep.Name] = respkg
+			return respkg
 		}
 	}
 

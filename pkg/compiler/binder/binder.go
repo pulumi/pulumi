@@ -44,7 +44,7 @@ func New(w workspace.W, ctx *core.Context, reader metadata.Reader) Binder {
 	}
 
 	// Create a global scope and populate it with all of the predefined type names.  This one's never popped.
-	NewScope(&b.scope)
+	NewScope(ctx, &b.scope)
 	for _, prim := range types.Primitives {
 		b.scope.MustRegister(prim)
 	}
@@ -176,8 +176,8 @@ func (b *binder) lookupSymbolToken(node ast.Node, tok tokens.Token, require bool
 	var extra string // extra error details
 	if pkg, has := b.ctx.Pkgs[pkgnm]; has {
 		if modnm == "" {
-			sym = pkg
-		} else if mod, has := pkg.Modules[modnm]; has {
+			sym = pkg.Pkg
+		} else if mod, has := pkg.Pkg.Modules[modnm]; has {
 			if memnm == "" {
 				sym = mod
 			} else if member, has := mod.Members[memnm]; has {

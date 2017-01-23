@@ -37,6 +37,11 @@ func (node *Class) Tree() diag.Diagable          { return node.Node }
 func (node *Class) String() string               { return string(node.Name()) }
 func (node *Class) MemberNode() ast.ModuleMember { return node.Node }
 
+func (node *Class) Sealed() bool    { return node.Node.Sealed != nil && *node.Node.Sealed }
+func (node *Class) Abstract() bool  { return node.Node.Abstract != nil && *node.Node.Abstract }
+func (node *Class) Record() bool    { return node.Node.Record != nil && *node.Node.Record }
+func (node *Class) Interface() bool { return node.Node.Interface != nil && *node.Node.Interface }
+
 // NewClassSym returns a new Class symbol with the given node, parent, extends, and implements, and empty members.
 func NewClassSym(node *ast.Class, parent *Module, extends Type, implements Types) *Class {
 	return &Class{

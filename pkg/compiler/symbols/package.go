@@ -32,8 +32,14 @@ func NewPackageSym(node *pack.Package) *Package {
 	}
 }
 
-// PackageMap is a map from package token to the associated symbols.
-type PackageMap map[tokens.PackageName]*Package
+// ResolvedPackage contains the bound package symbol plus full URL used to resolve it.
+type ResolvedPackage struct {
+	Pkg *Package
+	URL pack.PackageURL
+}
+
+// PackageMap is a map from package token to a package plus its URL information.
+type PackageMap map[tokens.PackageName]*ResolvedPackage
 
 // ModuleMap is a map from module token to the associated symbols.
 type ModuleMap map[tokens.ModuleName]*Module

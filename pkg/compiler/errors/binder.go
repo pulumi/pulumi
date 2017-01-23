@@ -7,9 +7,9 @@ import (
 	"github.com/marapongo/mu/pkg/tokens"
 )
 
-var ErrorMissingStackName = &diag.Diag{
+var ErrorMissingPackageName = &diag.Diag{
 	ID:      500,
-	Message: "This Stack is missing a `name` property (or it is empty)",
+	Message: "This package is missing a `name` property (or it is empty)",
 }
 
 var ErrorIllegalStackVersion = &diag.Diag{
@@ -47,9 +47,9 @@ var ErrorNonAbstractStacksMustDefineServices = &diag.Diag{
 	Message: "Non-abstract stacks must declare at least one private or public service",
 }
 
-var ErrorCannotCreateAbstractStack = &diag.Diag{
+var ErrorCannotNewAbstractClass = &diag.Diag{
 	ID:      505,
-	Message: "Service '%v' cannot create abstract stack '%v'; only concrete stacks may be created",
+	Message: "Cannot `new` an abstract class '%v'",
 }
 
 var ErrorMissingRequiredProperty = &diag.Diag{

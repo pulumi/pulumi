@@ -3,6 +3,9 @@
 package binder
 
 import (
+	"github.com/marapongo/mu/pkg/compiler/ast"
+	"github.com/marapongo/mu/pkg/compiler/core"
+	"github.com/marapongo/mu/pkg/compiler/errors"
 	"github.com/marapongo/mu/pkg/compiler/symbols"
 	"github.com/marapongo/mu/pkg/tokens"
 	"github.com/marapongo/mu/pkg/util/contract"
@@ -10,6 +13,7 @@ import (
 
 // Scope enables lookups and symbols to obey traditional language scoping rules.
 type Scope struct {
+	ctx    *core.Context
 	slot   **Scope
 	parent *Scope
 	symtbl SymbolTable
@@ -19,8 +23,9 @@ type Scope struct {
 type SymbolTable map[tokens.Token]symbols.Symbol
 
 // NewScope allocates and returns a fresh scope using the given slot, populating it.
-func NewScope(slot **Scope) *Scope {
+func NewScope(ctx *core.Context, slot **Scope) *Scope {
 	scope := &Scope{
+		ctx:    ctx,
 		slot:   slot,
 		parent: *slot,
 		symtbl: make(SymbolTable),
@@ -31,7 +36,7 @@ func NewScope(slot **Scope) *Scope {
 
 // Push creates a new scope with an empty symbol table parented to the existing one.
 func (s *Scope) Push() *Scope {
-	return NewScope(s.slot)
+	return NewScope(s.ctx, s.slot)
 }
 
 // Pop restores the prior scope into the underlying slot, tossing away the current symbol table.
@@ -99,4 +104,11 @@ func (s *Scope) Register(sym symbols.Symbol) bool {
 func (s *Scope) MustRegister(sym symbols.Symbol) {
 	ok := s.Register(sym)
 	contract.Assertf(ok, "Expected symbol %v to be unique; entry already found in this scope", sym.Token())
+}
+
+// TryRegister registers a symbol with the given name; if it already exists, a compiler error is emitted.
+func (s *Scope) TryRegister(node ast.Node, sym symbols.Symbol) {
+	if !s.Register(sym) {
+		s.ctx.Diag.Errorf(errors.ErrorSymbolAlreadyExists.At(node), sym.Name)
+	}
 }

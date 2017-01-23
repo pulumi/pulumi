@@ -21,7 +21,7 @@ func (b *binder) bindFunctionBody(node ast.Function) {
 		for _, param := range *params {
 			// Register this variable's type and associate its name with the identifier.
 			b.registerVariableType(param)
-			b.scope.MustRegister(symbols.NewLocalVariableSym(param))
+			b.scope.TryRegister(param, symbols.NewLocalVariableSym(param))
 		}
 	}
 
@@ -55,19 +55,11 @@ func (a *astBinder) Visit(node ast.Node) ast.Visitor {
 	switch n := node.(type) {
 	// Statements
 	case *ast.Block:
-		// Entering a new block requires a fresh lexical scope.
-		a.b.scope.Push()
+		a.visitBlock(n)
 	case *ast.LocalVariable:
-		// Encountering a new local variable results in registering it; both to the type and symbol table.
-		a.b.registerVariableType(n)
-		a.b.scope.MustRegister(symbols.NewLocalVariableSym(n))
+		a.visitLocalVariable(n)
 	case *ast.LabeledStatement:
-		// Ensure this label doesn't already exist and then register it.
-		label := tokens.Name(n.Label.Ident)
-		if other, has := a.labels[label]; has {
-			a.b.Diag().Errorf(errors.ErrorDuplicateLabel.At(n), label, other)
-		}
-		a.labels[label] = n
+		a.visitLabeledStatement(n)
 	}
 
 	// Return the current visitor to keep on visitin'.
@@ -78,166 +70,143 @@ func (a *astBinder) After(node ast.Node) {
 	switch n := node.(type) {
 	// Statements
 	case *ast.Block:
-		// Exiting a block restores the prior lexical context.
-		a.b.scope.Pop()
+		a.checkBlock(n)
 	case *ast.BreakStatement:
-		// If the break specifies a label, ensure that it exists.
-		if n.Label != nil {
-			label := tokens.Name(n.Label.Ident)
-			if _, has := a.labels[label]; !has {
-				a.b.Diag().Errorf(errors.ErrorUnknownJumpLabel.At(n), label, "break")
-			}
-		}
+		a.checkBreakStatement(n)
 	case *ast.ContinueStatement:
-		// If the continue specifies a label, ensure that it exists.
-		if n.Label != nil {
-			label := tokens.Name(n.Label.Ident)
-			if _, has := a.labels[label]; !has {
-				a.b.Diag().Errorf(errors.ErrorUnknownJumpLabel.At(n), label, "continue")
-			}
-		}
+		a.checkContinueStatement(n)
 	case *ast.IfStatement:
-		// Ensure that the condition is a boolean expression.
-		a.checkExprType(n.Condition, types.Bool)
+		a.checkIfStatement(n)
 	case *ast.ReturnStatement:
-		// Ensure that the return expression is correct (present or missing; and its type).
-		fncty := a.b.requireFunctionType(a.fnc)
-		if fncty.Return == nil {
-			if n.Expression != nil {
-				// The function has no return type ("void"), and yet the return had an expression.
-				a.b.Diag().Errorf(errors.ErrorUnexpectedReturnExpr.At(*n.Expression))
-			}
-		} else {
-			if n.Expression == nil {
-				// The function has a return type, but there was no return expression.
-				a.b.Diag().Errorf(errors.ErrorExpectedReturnExpr.At(n))
-			} else {
-				// Ensure that the returned expression is convertible to the expected return type.
-				a.checkExprType(*n.Expression, fncty.Return)
-			}
-		}
+		a.checkReturnStatement(n)
 	case *ast.ThrowStatement:
-		// TODO: check that the type is an exception.
+		a.checkThrowStatement(n)
 	case *ast.WhileStatement:
-		// Ensure that the loop test is a boolean expression.
-		a.checkExprType(n.Test, types.Bool)
+		a.checkWhileStatement(n)
 
 	// Expressions
 	case *ast.NullLiteral:
-		a.b.registerExprType(n, types.Null)
+		a.b.registerExprType(n, types.Null) // register a null type.
 	case *ast.BoolLiteral:
-		a.b.registerExprType(n, types.Bool)
+		a.b.registerExprType(n, types.Bool) // register a bool type.
 	case *ast.NumberLiteral:
-		a.b.registerExprType(n, types.Number)
+		a.b.registerExprType(n, types.Number) // register as a number type.
 	case *ast.StringLiteral:
-		a.b.registerExprType(n, types.String)
+		a.b.registerExprType(n, types.String) // register as a string type.
 	case *ast.ArrayLiteral:
-		// If there is a size, ensure it's a number.
-		if n.Size != nil {
-			a.checkExprType(*n.Size, types.Number)
-		}
-		// Now mark the resulting expression as an array of the right type.
-		if n.ElemType == nil {
-			a.b.registerExprType(n, types.AnyArray)
-		} else {
-			elemType := a.b.bindType(n.ElemType)
-			a.b.registerExprType(n, symbols.NewArrayType(elemType))
-
-			// Ensure the elements, if any, are of the right type.
-			if n.Elements != nil {
-				for _, elem := range *n.Elements {
-					a.checkExprType(elem, elemType)
-				}
-			}
-		}
+		a.checkArrayLiteral(n)
 	case *ast.ObjectLiteral:
-		// Mark the resulting object literal with the correct type.
-		if n.Type == nil {
-			a.b.registerExprType(n, types.Any)
-		} else {
-			a.b.registerExprType(n, a.b.bindType(n.Type))
-			// TODO: ensure the properties, if any, actually exist on the target object.
-		}
+		a.checkObjectLiteral(n)
 	case *ast.LoadLocationExpression:
-		// Bind the token to a location.
-		// TODO: what to do about readonly variables.
-		var sym symbols.Symbol
-		if n.Object == nil {
-			// If there is no object, we either have a local variable reference or a module property or function.  In
-			// the former case, the token will be "simple"; in the latter case, it will be qualified.
-			sym = a.b.requireToken(n.Name, n.Name.Tok)
-		} else {
-			// If there's an object, we are accessing a class member property or function.
-			typ := a.b.requireExprType(*n.Object)
-			sym = a.b.requireClassMember(n.Name, typ, tokens.ClassMember(n.Name.Tok))
-		}
-
-		// Produce a type of the right kind from the target location.
-		var ty symbols.Type
-		if sym == nil {
-			ty = types.Any
-		} else {
-			switch s := sym.(type) {
-			case ast.Function:
-				ty = a.b.requireFunctionType(s)
-			case ast.Variable:
-				ty = a.b.requireVariableType(s)
-			default:
-				contract.Failf("Unrecognized load location symbol type: %v", sym.Token())
-			}
-		}
-
-		// Register a pointer type so that this expression is a valid l-expr.
-		a.b.registerExprType(n, symbols.NewPointerType(ty))
+		a.checkLoadLocationExpression(n)
 	case *ast.LoadDynamicExpression:
-		a.b.registerExprType(n, types.Any)
+		a.b.registerExprType(n, types.Any) // register as an any type.
 	case *ast.NewExpression:
-		// TODO: check the arguments.
-		if n.Type == nil {
-			a.b.registerExprType(n, types.Any)
-		} else {
-			// TODO: this identifier is expected to be fully bound and hence a full token (not a lexical name).
-			a.b.registerExprType(n, a.b.bindType(n.Type))
-		}
+		a.checkNewExpression(n)
 	case *ast.InvokeFunctionExpression:
-		// TODO: ensure the target is a function type.
-		// TODO: check the arguments.
-		// TODO: the result of this invocation is the return type.
+		a.checkInvokeFunctionExpression(n)
 	case *ast.LambdaExpression:
-		var params []symbols.Type
-		if pparams := n.GetParameters(); pparams != nil {
-			for _, param := range *pparams {
-				params = append(params, a.b.requireVariableType(param))
-			}
-		}
-		var ret symbols.Type
-		if pret := n.GetReturnType(); pret != nil {
-			ret = a.b.bindType(pret)
-		}
-		a.b.registerExprType(n, symbols.NewFunctionType(params, ret))
+		a.checkLambdaExpression(n)
 	case *ast.UnaryOperatorExpression:
-		// TODO: check operands.
-		// TODO: figure this out; almost certainly a number.
+		a.checkUnaryOperatorExpression(n)
 	case *ast.BinaryOperatorExpression:
-		// TODO: check operands.
-		// TODO: figure this out; almost certainly a number.
+		a.checkBinaryOperatorExpression(n)
 	case *ast.CastExpression:
-		// TODO: validate that this is legal.
-		a.b.registerExprType(n, a.b.bindType(n.Type))
+		a.checkCastExpression(n)
 	case *ast.TypeOfExpression:
-		// TODO: not sure; a string?
+		a.checkTypeOfExpression(n)
 	case *ast.ConditionalExpression:
-		// TODO: unify the consequent and alternate types.
+		a.checkConditionalExpression(n)
 	case *ast.SequenceExpression:
-		// The type of a sequence expression is just the type of the last expression in the sequence.
-		// TODO: check that there's at least one!
-		a.b.registerExprType(n, a.b.requireExprType(n.Expressions[len(n.Expressions)-1]))
+		a.checkSequenceExpression(n)
 	}
 
 	// Ensure that all expression types resulted in a type registration.
 	expr, isExpr := node.(ast.Expression)
 	contract.Assert(!isExpr || a.b.requireExprType(expr) != nil)
 }
+
+// Statements
+
+func (a *astBinder) visitBlock(node *ast.Block) {
+	// Entering a new block requires a fresh lexical scope.
+	a.b.scope.Push()
+}
+
+func (a *astBinder) checkBlock(node *ast.Block) {
+	// Exiting a block restores the prior lexical context.
+	a.b.scope.Pop()
+}
+
+func (a *astBinder) checkBreakStatement(node *ast.BreakStatement) {
+	// If the break specifies a label, ensure that it exists.
+	if node.Label != nil {
+		label := tokens.Name(node.Label.Ident)
+		if _, has := a.labels[label]; !has {
+			a.b.Diag().Errorf(errors.ErrorUnknownJumpLabel.At(node), label, "break")
+		}
+	}
+}
+
+func (a *astBinder) checkContinueStatement(node *ast.ContinueStatement) {
+	// If the continue specifies a label, ensure that it exists.
+	if node.Label != nil {
+		label := tokens.Name(node.Label.Ident)
+		if _, has := a.labels[label]; !has {
+			a.b.Diag().Errorf(errors.ErrorUnknownJumpLabel.At(node), label, "continue")
+		}
+	}
+}
+
+func (a *astBinder) checkIfStatement(node *ast.IfStatement) {
+	// Ensure that the condition is a boolean expression.
+	a.checkExprType(node.Condition, types.Bool)
+}
+
+func (a *astBinder) visitLocalVariable(node *ast.LocalVariable) {
+	// Encountering a new local variable results in registering it; both to the type and symbol table.
+	a.b.registerVariableType(node)
+	a.b.scope.TryRegister(node, symbols.NewLocalVariableSym(node))
+}
+
+func (a *astBinder) visitLabeledStatement(node *ast.LabeledStatement) {
+	// Ensure this label doesn't already exist and then register it.
+	label := tokens.Name(node.Label.Ident)
+	if other, has := a.labels[label]; has {
+		a.b.Diag().Errorf(errors.ErrorDuplicateLabel.At(node), label, other)
+	}
+	a.labels[label] = node
+}
+
+func (a *astBinder) checkReturnStatement(node *ast.ReturnStatement) {
+	// Ensure that the return expression is correct (present or missing; and its type).
+	fncty := a.b.requireFunctionType(a.fnc)
+	if fncty.Return == nil {
+		if node.Expression != nil {
+			// The function has no return type ("void"), and yet the return had an expression.
+			a.b.Diag().Errorf(errors.ErrorUnexpectedReturnExpr.At(*node.Expression))
+		}
+	} else {
+		if node.Expression == nil {
+			// The function has a return type, but there was no return expression.
+			a.b.Diag().Errorf(errors.ErrorExpectedReturnExpr.At(node))
+		} else {
+			// Ensure that the returned expression is convertible to the expected return type.
+			a.checkExprType(*node.Expression, fncty.Return)
+		}
+	}
+}
+
+func (a *astBinder) checkThrowStatement(node *ast.ThrowStatement) {
+	// TODO: ensure the expression is a throwable expression.
+}
+
+func (a *astBinder) checkWhileStatement(node *ast.WhileStatement) {
+	// Ensure that the loop test is a boolean expression.
+	a.checkExprType(node.Test, types.Bool)
+}
+
+// Expressions
 
 func (a *astBinder) checkExprType(expr ast.Expression, expect symbols.Type) bool {
 	actual := a.b.requireExprType(expr)
@@ -246,4 +215,135 @@ func (a *astBinder) checkExprType(expr ast.Expression, expect symbols.Type) bool
 		return false
 	}
 	return true
+}
+
+func (a *astBinder) checkArrayLiteral(node *ast.ArrayLiteral) {
+	// If there is a size, ensure it's a number.
+	if node.Size != nil {
+		a.checkExprType(*node.Size, types.Number)
+	}
+	// Now mark the resulting expression as an array of the right type.
+	if node.ElemType == nil {
+		a.b.registerExprType(node, types.AnyArray)
+	} else {
+		elemType := a.b.bindType(node.ElemType)
+		a.b.registerExprType(node, symbols.NewArrayType(elemType))
+
+		// Ensure the elements, if any, are of the right type.
+		if node.Elements != nil {
+			for _, elem := range *node.Elements {
+				a.checkExprType(elem, elemType)
+			}
+		}
+	}
+}
+
+func (a *astBinder) checkObjectLiteral(node *ast.ObjectLiteral) {
+	// Mark the resulting object literal with the correct type.
+	if node.Type == nil {
+		a.b.registerExprType(node, types.Any)
+	} else {
+		a.b.registerExprType(node, a.b.bindType(node.Type))
+		// TODO: ensure the properties, if any, actually exist on the target object.
+	}
+}
+
+func (a *astBinder) checkLoadLocationExpression(node *ast.LoadLocationExpression) {
+	// Bind the token to a location.
+	// TODO: what to do about readonly variables.
+	var sym symbols.Symbol
+	if node.Object == nil {
+		// If there is no object, we either have a local variable reference or a module property or function.  In
+		// the former case, the token will be "simple"; in the latter case, it will be qualified.
+		sym = a.b.requireToken(node.Name, node.Name.Tok)
+	} else {
+		// If there's an object, we are accessing a class member property or function.
+		typ := a.b.requireExprType(*node.Object)
+		sym = a.b.requireClassMember(node.Name, typ, tokens.ClassMember(node.Name.Tok))
+	}
+
+	// Produce a type of the right kind from the target location.
+	var ty symbols.Type
+	if sym == nil {
+		ty = types.Any
+	} else {
+		switch s := sym.(type) {
+		case ast.Function:
+			ty = a.b.requireFunctionType(s)
+		case ast.Variable:
+			ty = a.b.requireVariableType(s)
+		default:
+			contract.Failf("Unrecognized load location symbol type: %v", sym.Token())
+		}
+	}
+
+	// Register a pointer type so that this expression is a valid l-expr.
+	a.b.registerExprType(node, symbols.NewPointerType(ty))
+}
+
+func (a *astBinder) checkNewExpression(node *ast.NewExpression) {
+	// TODO: check the arguments.
+	var ty symbols.Type
+	if node.Type == nil {
+		ty = types.Any
+	} else {
+		ty = a.b.bindType(node.Type)
+		if class, isclass := ty.(*symbols.Class); isclass {
+			// Ensure we're not creating an abstract class.
+			if class.Abstract() {
+				a.b.Diag().Errorf(errors.ErrorCannotNewAbstractClass.At(node.Type), class)
+			}
+		}
+	}
+
+	a.b.registerExprType(node, ty)
+}
+
+func (a *astBinder) checkInvokeFunctionExpression(node *ast.InvokeFunctionExpression) {
+	// TODO: ensure the target is a function type.
+	// TODO: check the arguments.
+	// TODO: the result of this invocation is the return type.
+}
+
+func (a *astBinder) checkLambdaExpression(node *ast.LambdaExpression) {
+	var params []symbols.Type
+	if pparams := node.GetParameters(); pparams != nil {
+		for _, param := range *pparams {
+			params = append(params, a.b.requireVariableType(param))
+		}
+	}
+	var ret symbols.Type
+	if pret := node.GetReturnType(); pret != nil {
+		ret = a.b.bindType(pret)
+	}
+	a.b.registerExprType(node, symbols.NewFunctionType(params, ret))
+}
+
+func (a *astBinder) checkUnaryOperatorExpression(node *ast.UnaryOperatorExpression) {
+	// TODO: check operands.
+	// TODO: figure this out; almost certainly a number.
+}
+
+func (a *astBinder) checkBinaryOperatorExpression(node *ast.BinaryOperatorExpression) {
+	// TODO: check operands.
+	// TODO: figure this out; almost certainly a number.
+}
+
+func (a *astBinder) checkCastExpression(node *ast.CastExpression) {
+	// TODO: validate that this is legal.
+	a.b.registerExprType(node, a.b.bindType(node.Type))
+}
+
+func (a *astBinder) checkTypeOfExpression(node *ast.TypeOfExpression) {
+	// TODO: not sure; a string?
+}
+
+func (a *astBinder) checkConditionalExpression(node *ast.ConditionalExpression) {
+	// TODO: unify the consequent and alternate types.
+}
+
+func (a *astBinder) checkSequenceExpression(node *ast.SequenceExpression) {
+	// The type of a sequence expression is just the type of the last expression in the sequence.
+	// TODO: check that there's at least one!
+	a.b.registerExprType(node, a.b.requireExprType(node.Expressions[len(node.Expressions)-1]))
 }
