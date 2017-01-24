@@ -70,3 +70,64 @@ func TestMapTypes(t *testing.T) {
 		assert.Equal(t, string(class), string(parsed.Elem))
 	}
 }
+
+func TestFunctionTypes(t *testing.T) {
+	class := newTestTypeToken("FuncTest")
+	types := []string{"any", "bool", "string", "number", string(class)}
+	rtypes := append([]string{""}, types...)
+	for _, retty := range rtypes {
+		// If the return exists, use it.
+		var ret *Type
+		if retty != "" {
+			r := Type(retty)
+			ret = &r
+		}
+
+		// Do [0...4) parameter counts.
+		for i := 0; i < 4; i++ {
+			ixs := make([]int, i)
+			for {
+				// Append the current set to the params.
+				var params []Type
+				for _, ix := range ixs {
+					params = append(params, Type(types[ix]))
+				}
+
+				// Check the result.
+				fnc := NewFunctionTypeToken(params, ret)
+				assert.True(t, fnc.Function(), "Expected function type token to be a function")
+				parsed := ParseFunctionType(fnc)
+				assert.Equal(t, len(params), len(parsed.Parameters))
+				for i, param := range parsed.Parameters {
+					assert.Equal(t, string(params[i]), string(param))
+				}
+				if ret == nil {
+					assert.Nil(t, parsed.Return)
+				} else {
+					assert.NotNil(t, parsed.Return)
+					assert.Equal(t, string(*ret), string(*parsed.Return))
+				}
+
+				// Now rotate the parameters (or break if done).
+				done := (i == 0)
+				for j := 0; j < i; j++ {
+					ixs[j]++
+					if ixs[j] == len(types) {
+						// Reset the counter, and keep incrementing.
+						ixs[j] = 0
+						if j == i-1 {
+							// Done altogether; break break break!
+							done = true
+						}
+					} else {
+						// The lower indices aren't exhausted, stop incrementing.
+						break
+					}
+				}
+				if done {
+					break
+				}
+			}
+		}
+	}
+}

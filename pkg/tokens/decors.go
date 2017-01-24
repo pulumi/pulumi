@@ -263,14 +263,16 @@ func parseNextFunctionType(tok Type) (FunctionType, string) {
 			// The end is in sight.  Maybe there's more, maybe not.
 			if term := strings.Index(rest, FunctionTypeSeparator); term != 0 {
 				params = append(params, Type(rest[:term]))
+				rest = rest[term:]
 			}
 			break
 		}
 	}
 
-	// Next, we expect to find the ")" separator token.
+	// Next, we expect to find the ")" separator token; eat it.
 	contract.Assertf(
 		len(rest) > 0 && strings.HasPrefix(rest, FunctionTypeSeparator), "Expected a function separator")
+	rest = rest[1:]
 
 	// Next, if there is anything remaining, parse out the return type.
 	var ret *Type
