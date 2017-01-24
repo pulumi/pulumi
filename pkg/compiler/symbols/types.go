@@ -67,10 +67,20 @@ func (node *PointerType) Record() bool                { return false }
 func (node *PointerType) Interface() bool             { return false }
 func (node *PointerType) String() string              { return string(node.Name()) }
 
+// pointerTypeCache is a cache keyed by token, helping to avoid creating superfluous symbol objects.
+var pointerTypeCache = make(map[tokens.Type]*PointerType)
+
+// NewPointerType returns an existing type symbol from the cache, if one exists, or allocates a new one otherwise.
 func NewPointerType(elem Type) *PointerType {
-	nm := tokens.NewPointerTypeName(elem.TypeName())
 	tok := tokens.NewPointerTypeToken(elem.TypeToken())
-	return &PointerType{nm, tok, elem}
+	if ptr, has := pointerTypeCache[tok]; has {
+		return ptr
+	}
+
+	nm := tokens.NewPointerTypeName(elem.TypeName())
+	ptr := &PointerType{nm, tok, elem}
+	pointerTypeCache[tok] = ptr
+	return ptr
 }
 
 // ArrayType is an array whose elements are of some other type.
@@ -95,10 +105,20 @@ func (node *ArrayType) Record() bool                { return false }
 func (node *ArrayType) Interface() bool             { return false }
 func (node *ArrayType) String() string              { return string(node.Name()) }
 
+// arrayTypeCache is a cache keyed by token, helping to avoid creating superfluous symbol objects.
+var arrayTypeCache = make(map[tokens.Type]*ArrayType)
+
+// NewArrayType returns an existing type symbol from the cache, if one exists, or allocates a new one otherwise.
 func NewArrayType(elem Type) *ArrayType {
-	nm := tokens.NewArrayTypeName(elem.TypeName())
 	tok := tokens.NewArrayTypeToken(elem.TypeToken())
-	return &ArrayType{nm, tok, elem}
+	if arr, has := arrayTypeCache[tok]; has {
+		return arr
+	}
+
+	nm := tokens.NewArrayTypeName(elem.TypeName())
+	arr := &ArrayType{nm, tok, elem}
+	arrayTypeCache[tok] = arr
+	return arr
 }
 
 // KeyType is an array whose keys and elements are of some other types.
@@ -124,10 +144,20 @@ func (node *MapType) Record() bool                { return false }
 func (node *MapType) Interface() bool             { return false }
 func (node *MapType) String() string              { return string(node.Name()) }
 
+// mapTypeCache is a cache keyed by token, helping to avoid creating superfluous symbol objects.
+var mapTypeCache = make(map[tokens.Type]*MapType)
+
+// NewMapType returns an existing type symbol from the cache, if one exists, or allocates a new one otherwise.
 func NewMapType(key Type, elem Type) *MapType {
-	nm := tokens.NewMapTypeName(key.TypeName(), elem.TypeName())
 	tok := tokens.NewMapTypeToken(key.TypeToken(), elem.TypeToken())
-	return &MapType{nm, tok, key, elem}
+	if mam, has := mapTypeCache[tok]; has {
+		return mam
+	}
+
+	nm := tokens.NewMapTypeName(key.TypeName(), elem.TypeName())
+	mam := &MapType{nm, tok, key, elem}
+	mapTypeCache[tok] = mam
+	return mam
 }
 
 // FunctionType is an invocable type, representing a signature with optional parameters and a return type.
@@ -153,6 +183,10 @@ func (node *FunctionType) Record() bool                { return false }
 func (node *FunctionType) Interface() bool             { return false }
 func (node *FunctionType) String() string              { return string(node.Name()) }
 
+// functionTypeCache is a cache keyed by token, helping to avoid creating superfluous symbol objects.
+var functionTypeCache = make(map[tokens.Type]*FunctionType)
+
+// NewFunctionType returns an existing type symbol from the cache, if one exists, or allocates a new one otherwise.
 func NewFunctionType(params []Type, ret Type) *FunctionType {
 	var paramsn []tokens.TypeName
 	var paramst []tokens.Type
@@ -169,7 +203,13 @@ func NewFunctionType(params []Type, ret Type) *FunctionType {
 		rett = &tok
 	}
 
-	nm := tokens.NewFunctionTypeName(paramsn, retn)
 	tok := tokens.NewFunctionTypeToken(paramst, rett)
-	return &FunctionType{nm, tok, params, ret}
+	if fnc, has := functionTypeCache[tok]; has {
+		return fnc
+	}
+
+	nm := tokens.NewFunctionTypeName(paramsn, retn)
+	fnc := &FunctionType{nm, tok, params, ret}
+	functionTypeCache[tok] = fnc
+	return fnc
 }
