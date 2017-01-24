@@ -131,3 +131,98 @@ func TestFunctionTypes(t *testing.T) {
 		}
 	}
 }
+
+func TestComplexTypes(t *testing.T) {
+	// Create a crazy nested type and make sure they parse correctly; essentially:
+	//		*[]map[string]map[()*(bool,string,Crazy)number][][]Crazy
+	// or, in the fully qualified form:
+	//		*[]map[string]map[()*(bool,string,test/package:test/module/Crazy)number][][]test/package:test/module/Crazy
+	// which should parse as
+	//		Pointer
+	//			Elem=Array
+	//				Elem=Map
+	//					Key=string
+	//					Elem=Map
+	//						Key=Func
+	//							Params=()
+	//							Return=Pointer
+	//								Func
+	//									Params=
+	//										bool
+	//										string
+	//										Crazy
+	//									Return=number
+	//						Elem=Array
+	//							Elem=Array
+	//								Elem=Crazy
+	crazy := newTestTypeToken("Crazy")
+
+	number := Type("number")
+	ptrret := NewPointerTypeToken(NewFunctionTypeToken([]Type{"bool", "string", crazy}, &number))
+
+	ptr := NewPointerTypeToken(
+		NewArrayTypeToken(
+			NewMapTypeToken(
+				Type("string"),
+				NewMapTypeToken(
+					NewFunctionTypeToken(
+						[]Type{},
+						&ptrret,
+					),
+					NewArrayTypeToken(
+						NewArrayTypeToken(
+							crazy,
+						),
+					),
+				),
+			),
+		),
+	)
+
+	assert.True(t, ptr.Pointer(), "Expected pointer type token to be an pointer")
+	p1 := ParsePointerType(ptr) // Pointer<Array>
+	{
+		assert.True(t, p1.Elem.Array())
+		p2 := ParseArrayType(p1.Elem) // Array<Map>
+		{
+			assert.True(t, p2.Elem.Map())
+			p3 := ParseMapType(p2.Elem) // Map<string, Map>
+			{
+				assert.Equal(t, "string", string(p3.Key))
+				assert.True(t, p3.Elem.Map())
+				p4 := ParseMapType(p3.Elem) // Map<Func, Array>
+				{
+					assert.True(t, p4.Key.Function())
+					p5 := ParseFunctionType(p4.Key) // Func<(), Pointer>
+					{
+						assert.Equal(t, 0, len(p5.Parameters))
+						assert.NotNil(t, p5.Return)
+						assert.True(t, (*p5.Return).Pointer())
+						p6 := ParsePointerType(*p5.Return) // Pointer<Func>
+						{
+							assert.True(t, p6.Elem.Function())
+							p7 := ParseFunctionType(p6.Elem) // Func<(bool,string,Crazy), number>
+							{
+								assert.Equal(t, 3, len(p7.Parameters))
+								assert.Equal(t, "bool", string(p7.Parameters[0]))
+								assert.Equal(t, "string", string(p7.Parameters[1]))
+								assert.Equal(t, string(crazy), string(p7.Parameters[2]))
+								assert.NotNil(t, p7.Return)
+								assert.Equal(t, "number", string(*p7.Return))
+							}
+						}
+					}
+					assert.True(t, p4.Elem.Array())
+					p8 := ParseArrayType(p4.Elem) // Array<Array>
+					{
+						assert.True(t, p8.Elem.Array())
+						p9 := ParseArrayType(p8.Elem) // Array<Crazy>
+						{
+							assert.Equal(t, string(crazy), string(p9.Elem))
+						}
+					}
+				}
+			}
+		}
+	}
+}

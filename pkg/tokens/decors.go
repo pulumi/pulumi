@@ -10,34 +10,84 @@ import (
 	"github.com/marapongo/mu/pkg/util/contract"
 )
 
+// tokenBuffer is a parseable token buffer that simply carries a position.
+type tokenBuffer struct {
+	Tok Type
+	Pos int
+}
+
+func newTokenBuffer(tok Type) *tokenBuffer {
+	return &tokenBuffer{
+		Tok: tok,
+		Pos: 0,
+	}
+}
+
+func (b *tokenBuffer) Curr() Type {
+	return b.Tok[b.Pos:]
+}
+
+func (b *tokenBuffer) From(from int) Type {
+	return b.Tok[from:b.Pos]
+}
+
+func (b *tokenBuffer) Eat(s string) {
+	ate := b.MayEat(s)
+	contract.Assertf(ate, "Expected to eat '%v'", s)
+}
+
+func (b *tokenBuffer) MayEat(s string) bool {
+	if strings.HasPrefix(string(b.Curr()), s) {
+		b.Advance(len(s))
+		return true
+	} else {
+		return false
+	}
+}
+
+func (b *tokenBuffer) Advance(by int) {
+	b.Pos += by
+}
+
+func (b *tokenBuffer) Done() bool {
+	return b.Pos == len(b.Tok)
+}
+
+func (b *tokenBuffer) Finish() {
+	b.Pos = len(b.Tok)
+}
+
 // typePartDelims are separator characters that are used to parse recursive types.
 var typePartDelims = MapTypeSeparator + FunctionTypeParamSeparator + FunctionTypeSeparator
 
-// parseNextType parses one type out of the given token, returning both the resulting type token plus the remainder of
-// the string.  This allows recursive parsing of complex decorated types below (like `map[[]string]func(func())`).
-func parseNextType(tok Type) (Type, string) {
+// parseNextType parses one type out of the given token, mutating the buffer in place and returning the resulting type
+// token.  This allows recursive parsing of complex decorated types below (like `map[[]string]func(func())`).
+func parseNextType(b *tokenBuffer) Type {
 	// First, check for decorated types.
+	tok := b.Curr()
 	if tok.Pointer() {
-		ptr, rest := parseNextPointerType(tok)
-		return ptr.Tok, rest
+		ptr := parseNextPointerType(b)
+		return ptr.Tok
 	} else if tok.Array() {
-		arr, rest := parseNextArrayType(tok)
-		return arr.Tok, rest
+		arr := parseNextArrayType(b)
+		return arr.Tok
 	} else if tok.Map() {
-		mam, rest := parseNextMapType(tok)
-		return mam.Tok, rest
+		mam := parseNextMapType(b)
+		return mam.Tok
 	} else if tok.Function() {
-		fnc, rest := parseNextFunctionType(tok)
-		return fnc.Tok, rest
+		fnc := parseNextFunctionType(b)
+		return fnc.Tok
 	} else {
 		// Otherwise, we have either a qualified or simple (primitive) name.  Since we might be deep in the middle
 		// of parsing another token, however, we only parse up to any other decorator termination/separator tokens.
 		s := string(tok)
 		sep := strings.IndexAny(s, typePartDelims)
 		if sep == -1 {
-			return tok, ""
+			b.Finish()
+			return tok
 		} else {
-			return tok[:sep], s[sep:]
+			b.Advance(sep)
+			return tok[:sep]
 		}
 	}
 }
@@ -70,17 +120,21 @@ func IsPointerType(tok Type) bool {
 
 // ParsePointerType removes the pointer decorations from a token and returns its underlying type.
 func ParsePointerType(tok Type) PointerType {
-	ptr, extra := parseNextPointerType(tok)
-	contract.Assertf(extra == "", "Did not expect anything extra after the pointer type %v; got: '%v'", tok, extra)
+	b := newTokenBuffer(tok)
+	ptr := parseNextPointerType(b)
+	if !b.Done() {
+		contract.Failf("Did not expect anything extra after the pointer type %v; got: '%v'", tok, b.Curr())
+	}
 	return ptr
 }
 
-// parseNextPointerType parses the next pointer type from the given token, returning any excess.
-func parseNextPointerType(tok Type) (PointerType, string) {
-	contract.Requiref(IsPointerType(tok), "tok", "IsPointerType")
-	rest := string(tok)[len(PointerTypePrefix):]
-	elem, rest := parseNextType(Type(rest))
-	return PointerType{tok, elem}, rest
+// parseNextPointerType parses the next pointer type from the given buffer.
+func parseNextPointerType(b *tokenBuffer) PointerType {
+	mark := b.Pos            // remember where this token begins.
+	b.Eat(PointerTypePrefix) // eat the "*" part.
+	elem := parseNextType(b) // parse the required element type token.
+	contract.Assert(elem != "")
+	return PointerType{Tok: b.From(mark), Elem: elem}
 }
 
 // ArrayType is a type token that decorates an element type token to turn it into an array: `"[]" <Elem>`.
@@ -111,17 +165,21 @@ func IsArrayType(tok Type) bool {
 
 // ParseArrayType removes the array decorations from a token and returns its underlying type.
 func ParseArrayType(tok Type) ArrayType {
-	ptr, extra := parseNextArrayType(tok)
-	contract.Assertf(extra == "", "Did not expect anything extra after the array type %v; got: '%v'", tok, extra)
-	return ptr
+	b := newTokenBuffer(tok)
+	arr := parseNextArrayType(b)
+	if !b.Done() {
+		contract.Failf("Did not expect anything extra after the array type %v; got: '%v'", tok, b.Curr())
+	}
+	return arr
 }
 
-// parseNextArrayType parses the next array type from the given token, returning any excess.
-func parseNextArrayType(tok Type) (ArrayType, string) {
-	contract.Requiref(IsArrayType(tok), "tok", "IsArrayType")
-	rest := string(tok)[len(ArrayTypePrefix):]
-	elem, rest := parseNextType(Type(rest))
-	return ArrayType{tok, elem}, rest
+// parseNextArrayType parses the next array type from the given buffer.
+func parseNextArrayType(b *tokenBuffer) ArrayType {
+	mark := b.Pos            // remember where this token begins.
+	b.Eat(ArrayTypePrefix)   // eat the "[]" part.
+	elem := parseNextType(b) // parse the required element type token.
+	contract.Assert(elem != "")
+	return ArrayType{Tok: b.From(mark), Elem: elem}
 }
 
 // MapType is a type token that decorates a key and element type token to turn them into a map: `"map[" <Key> "]" <Elem>`.
@@ -154,28 +212,30 @@ func IsMapType(tok Type) bool {
 
 // ParseMapType removes the map decorations from a token and returns its underlying type.
 func ParseMapType(tok Type) MapType {
-	ptr, extra := parseNextMapType(tok)
-	contract.Assertf(extra == "", "Did not expect anything extra after the map type %v; got: '%v'", tok, extra)
-	return ptr
+	b := newTokenBuffer(tok)
+	mam := parseNextMapType(b)
+	if !b.Done() {
+		contract.Failf("Did not expect anything extra after the map type %v; got: '%v'", tok, b.Curr())
+	}
+	return mam
 }
 
-// parseNextMapType parses the next map type from the given token, returning any excess.
-func parseNextMapType(tok Type) (MapType, string) {
-	contract.Requiref(IsMapType(tok), "tok", "IsMapType")
-
-	// Strip off the "map[" part.
-	rest := string(tok)[len(MapTypePrefix):]
+// parseNextMapType parses the next map type from the given buffer.
+func parseNextMapType(b *tokenBuffer) MapType {
+	mark := b.Pos        // remember where this token begins.
+	b.Eat(MapTypePrefix) // eat the "map[" prefix.
 
 	// Now parse the key part.
-	key, rest := parseNextType(Type(rest))
+	key := parseNextType(b)
+	contract.Assert(key != "")
 
 	// Next, we expect to find the "]" separator token; eat it.
-	contract.Assertf(len(rest) > 0 && strings.HasPrefix(rest, MapTypeSeparator), "Expected a map separator")
-	rest = rest[1:]
+	b.Eat(MapTypeSeparator)
 
 	// Next, parse the element type part.
-	elem, rest := parseNextType(Type(rest))
-	return MapType{tok, key, elem}, rest
+	elem := parseNextType(b)
+	contract.Assert(elem != "")
+	return MapType{Tok: b.From(mark), Key: key, Elem: elem}
 }
 
 // FunctionType is a type token that decorates a set of optional parameter and return tokens to turn them into a function
@@ -240,47 +300,45 @@ func IsFunctionType(tok Type) bool {
 
 // ParseFunctionType removes the function decorations from a token and returns its underlying type.
 func ParseFunctionType(tok Type) FunctionType {
-	ptr, extra := parseNextFunctionType(tok)
-	contract.Assertf(extra == "", "Did not expect anything extra after the function type %v; got: '%v'", tok, extra)
-	return ptr
+	b := newTokenBuffer(tok)
+	fnc := parseNextFunctionType(b)
+	if !b.Done() {
+		contract.Failf("Did not expect anything extra after the function type %v; got: '%v'", tok, b.Curr())
+	}
+	return fnc
 }
 
+// funcDelims are the set of characters that might delimit function type parameters.
+var funcDelims = FunctionTypeParamSeparator + FunctionTypeSeparator
+
 // parseNextFunctionType parses the next function type from the given token, returning any excess.
-func parseNextFunctionType(tok Type) (FunctionType, string) {
-	contract.Requiref(IsFunctionType(tok), "tok", "IsFunctionType")
+func parseNextFunctionType(b *tokenBuffer) FunctionType {
+	mark := b.Pos             // remember the start of this token.
+	b.Eat(FunctionTypePrefix) // eat the function prefix "(".
 
-	// Strip off the "(" part.
-	rest := string(tok)[len(FunctionTypePrefix):]
-
+	// Parse out parameters until we encounter and eat a ")".
 	var params []Type
-	for {
-		if comma := strings.Index(rest, FunctionTypeParamSeparator); comma != -1 {
-			// More parameters are coming... parse up to the comma.
-			params = append(params, Type(rest[:comma]))
-			rest = rest[comma+1:]
-			contract.Assert(len(rest) > 0 && !strings.HasPrefix(rest, FunctionTypeSeparator))
+	for !b.MayEat(FunctionTypeSeparator) {
+		next := parseNextType(b)
+		if next == "" {
+			contract.Assert(strings.HasPrefix(string(b.Curr()), FunctionTypeSeparator))
 		} else {
-			// The end is in sight.  Maybe there's more, maybe not.
-			if term := strings.Index(rest, FunctionTypeSeparator); term != 0 {
-				params = append(params, Type(rest[:term]))
-				rest = rest[term:]
+			params = append(params, next)
+
+			// Eat the separator, if any, and keep going.
+			if !b.MayEat(FunctionTypeParamSeparator) {
+				contract.Assert(strings.HasPrefix(string(b.Curr()), FunctionTypeSeparator))
 			}
-			break
 		}
 	}
 
-	// Next, we expect to find the ")" separator token; eat it.
-	contract.Assertf(
-		len(rest) > 0 && strings.HasPrefix(rest, FunctionTypeSeparator), "Expected a function separator")
-	rest = rest[1:]
-
 	// Next, if there is anything remaining, parse out the return type.
 	var ret *Type
-	if rest != "" {
-		var rett Type
-		rett, rest = parseNextType(Type(rest))
-		ret = &rett
+	if !b.Done() {
+		if rett := parseNextType(b); rett != "" {
+			ret = &rett
+		}
 	}
 
-	return FunctionType{tok, params, ret}, rest
+	return FunctionType{Tok: b.From(mark), Parameters: params, Return: ret}
 }
