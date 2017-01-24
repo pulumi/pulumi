@@ -16,12 +16,12 @@ func (b *binder) bindClass(node *ast.Class, parent *symbols.Module) *symbols.Cla
 	// Bind base type tokens to actual symbols.
 	var extends symbols.Type
 	if node.Extends != nil {
-		extends = b.scope.LookupType(node.Extends.Tok)
+		extends = b.ctx.Scope.LookupType(node.Extends.Tok)
 	}
 	var implements symbols.Types
 	if node.Implements != nil {
 		for _, impltok := range *node.Implements {
-			if impl := b.scope.LookupType(impltok.Tok); impl != nil {
+			if impl := b.ctx.Scope.LookupType(impltok.Tok); impl != nil {
 				implements = append(implements, impl)
 			}
 		}
@@ -61,7 +61,7 @@ func (b *binder) bindClassProperty(node *ast.ClassProperty, parent *symbols.Clas
 	glog.V(3).Infof("Binding class '%v' property '%v'", parent.Name(), node.Name.Ident)
 
 	// Look up this node's type and inject it into the type table.
-	ty := b.registerVariableType(node)
+	ty := b.ctx.RegisterVariableType(node)
 	return symbols.NewClassPropertySym(node, parent, ty)
 }
 
@@ -69,7 +69,7 @@ func (b *binder) bindClassMethod(node *ast.ClassMethod, parent *symbols.Class) *
 	glog.V(3).Infof("Binding class '%v' method '%v'", parent.Name(), node.Name.Ident)
 
 	// Make a function type out of this method and inject it into the type table.
-	ty := b.registerFunctionType(node)
+	ty := b.ctx.RegisterFunctionType(node)
 
 	// Note that we don't actually bind the body of this method yet.  Until we have gone ahead and injected *all*
 	// top-level symbols into the type table, we would potentially encounter missing intra-module symbols.

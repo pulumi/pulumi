@@ -71,37 +71,37 @@ func (b *binder) ValidateStack(stack *ast.Stack) {
 
 // LookupService binds a name to a Service type.
 func (b *binder) LookupService(nm tokens.Name) (*ast.Service, bool) {
-	contract.Assertf(b.scope != nil, "Unexpected empty binding scope during LookupService")
+	contract.Assertf(b.ctx.Scope != nil, "Unexpected empty binding scope during LookupService")
 	return nil, false
 }
 
 // LookupStack binds a name to a Stack type.
 func (b *binder) LookupStack(nm tokens.PackageName) (*ast.Stack, bool) {
-	contract.Assertf(b.scope != nil, "Unexpected empty binding scope during LookupStack")
+	contract.Assertf(b.ctx.Scope != nil, "Unexpected empty binding scope during LookupStack")
 	return nil, false
 }
 
 // LookupUninstStack binds a name to a UninstStack type.
 func (b *binder) LookupUninstStack(nm tokens.PackageName) (*ast.UninstStack, bool) {
-	contract.Assertf(b.scope != nil, "Unexpected empty binding scope during LookupUninstStack")
+	contract.Assertf(b.ctx.Scope != nil, "Unexpected empty binding scope during LookupUninstStack")
 	return nil, false
 }
 
 // LookupSchema binds a name to a Schema type.
 func (b *binder) LookupSchema(nm tokens.PackageName) (*ast.Schema, bool) {
-	contract.Assertf(b.scope != nil, "Unexpected empty binding scope during LookupSchema")
+	contract.Assertf(b.ctx.Scope != nil, "Unexpected empty binding scope during LookupSchema")
 	return nil, false
 }
 
 // LookupSymbol binds a name to any kind of Symbol.
 func (b *binder) LookupSymbol(nm tokens.Name) (*legacy.Symbol, bool) {
-	contract.Assertf(b.scope != nil, "Unexpected empty binding scope during LookupSymbol")
+	contract.Assertf(b.ctx.Scope != nil, "Unexpected empty binding scope during LookupSymbol")
 	return nil, false
 }
 
 // RegisterSymbol registers a symbol with the given name; if it already exists, the function returns false.
 func (b *binder) RegisterSymbol(sym *legacy.Symbol) bool {
-	contract.Assertf(b.scope != nil, "Unexpected empty binding scope during RegisterSymbol")
+	contract.Assertf(b.ctx.Scope != nil, "Unexpected empty binding scope during RegisterSymbol")
 	return false
 }
 
@@ -150,7 +150,6 @@ func (p *binderPreparePhase) VisitStack(stack *ast.Stack) {
 
 	// Stack names are required.
 	if stack.Name == "" {
-		p.Diag().Errorf(errors.ErrorMissingStackName.At(stack))
 	}
 
 	// Stack versions must be valid semantic versions (and specifically, not ranges).  In other words, we need
@@ -348,7 +347,6 @@ func (p *binderBindPhase) VisitService(pstack *ast.Stack, parent *ast.Services, 
 
 	// A service cannot instantiate an abstract stack.
 	if svc.BoundType != nil && svc.BoundType.Abstract {
-		p.Diag().Errorf(errors.ErrorCannotCreateAbstractStack.At(pstack), svc.Name, svc.BoundType.Name)
 	}
 }
 

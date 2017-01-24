@@ -24,7 +24,7 @@ func (b *binder) bindModule(node *ast.Module, parent *symbols.Package) *symbols.
 	// First bind all imports to concrete symbols.  These will be used to perform initialization later on.
 	if node.Imports != nil {
 		for _, imptok := range *node.Imports {
-			if imp := b.scope.LookupModule(imptok.Tok); imp != nil {
+			if imp := b.ctx.Scope.LookupModule(imptok.Tok); imp != nil {
 				module.Imports = append(module.Imports, imp)
 			}
 		}
@@ -62,7 +62,7 @@ func (b *binder) bindExport(node *ast.Export, parent *symbols.Module) *symbols.E
 	glog.V(3).Infof("Binding module '%v' export '%v'", parent.Name(), node.Name.Ident)
 
 	// To bind an export, simply look up the referent symbol and associate this name with it.
-	refsym := b.scope.Lookup(node.Referent.Tok)
+	refsym := b.ctx.Scope.Lookup(node.Referent.Tok)
 	if refsym == nil {
 		// TODO: issue a verification error; name not found!  Also sub in a "bad" symbol.
 		contract.Failf("Export name not found: %v", node.Referent)
@@ -74,7 +74,7 @@ func (b *binder) bindModuleProperty(node *ast.ModuleProperty, parent *symbols.Mo
 	glog.V(3).Infof("Binding module '%v' property '%v'", parent.Name(), node.Name.Ident)
 
 	// Look up this node's type and inject it into the type table.
-	ty := b.registerVariableType(node)
+	ty := b.ctx.RegisterVariableType(node)
 	return symbols.NewModulePropertySym(node, parent, ty)
 }
 
@@ -82,7 +82,7 @@ func (b *binder) bindModuleMethod(node *ast.ModuleMethod, parent *symbols.Module
 	glog.V(3).Infof("Binding module '%v' method '%v'", parent.Name(), node.Name.Ident)
 
 	// Make a function type out of this method and inject it into the type table.
-	ty := b.registerFunctionType(node)
+	ty := b.ctx.RegisterFunctionType(node)
 
 	// Note that we don't actually bind the body of this method yet.  Until we have gone ahead and injected *all*
 	// top-level symbols into the type table, we would potentially encounter missing intra-module symbols.

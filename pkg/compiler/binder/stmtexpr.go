@@ -65,13 +65,13 @@ func (a *astBinder) After(node ast.Node) {
 
 	// Expressions
 	case *ast.NullLiteral:
-		a.b.registerExprType(n, types.Null) // register a null type.
+		a.b.ctx.RegisterExprType(n, types.Null) // register a null type.
 	case *ast.BoolLiteral:
-		a.b.registerExprType(n, types.Bool) // register a bool type.
+		a.b.ctx.RegisterExprType(n, types.Bool) // register a bool type.
 	case *ast.NumberLiteral:
-		a.b.registerExprType(n, types.Number) // register as a number type.
+		a.b.ctx.RegisterExprType(n, types.Number) // register as a number type.
 	case *ast.StringLiteral:
-		a.b.registerExprType(n, types.String) // register as a string type.
+		a.b.ctx.RegisterExprType(n, types.String) // register as a string type.
 	case *ast.ArrayLiteral:
 		a.checkArrayLiteral(n)
 	case *ast.ObjectLiteral:
@@ -79,7 +79,7 @@ func (a *astBinder) After(node ast.Node) {
 	case *ast.LoadLocationExpression:
 		a.checkLoadLocationExpression(n)
 	case *ast.LoadDynamicExpression:
-		a.b.registerExprType(n, types.Any) // register as an any type.
+		a.b.ctx.RegisterExprType(n, types.Any) // register as an any type.
 	case *ast.NewExpression:
 		a.checkNewExpression(n)
 	case *ast.InvokeFunctionExpression:
@@ -102,19 +102,19 @@ func (a *astBinder) After(node ast.Node) {
 
 	// Ensure that all expression types resulted in a type registration.
 	expr, isExpr := node.(ast.Expression)
-	contract.Assert(!isExpr || a.b.requireExprType(expr) != nil)
+	contract.Assert(!isExpr || a.b.ctx.RequireExprType(expr) != nil)
 }
 
 // Statements
 
 func (a *astBinder) visitBlock(node *ast.Block) {
 	// Entering a new block requires a fresh lexical scope.
-	a.b.scope.Push()
+	a.b.ctx.Scope.Push()
 }
 
 func (a *astBinder) checkBlock(node *ast.Block) {
 	// Exiting a block restores the prior lexical context.
-	a.b.scope.Pop()
+	a.b.ctx.Scope.Pop()
 }
 
 func (a *astBinder) checkBreakStatement(node *ast.BreakStatement) {
@@ -144,8 +144,8 @@ func (a *astBinder) checkIfStatement(node *ast.IfStatement) {
 
 func (a *astBinder) visitLocalVariable(node *ast.LocalVariable) {
 	// Encountering a new local variable results in registering it; both to the type and symbol table.
-	a.b.registerVariableType(node)
-	a.b.scope.TryRegister(node, symbols.NewLocalVariableSym(node))
+	a.b.ctx.RegisterVariableType(node)
+	a.b.ctx.Scope.TryRegister(node, symbols.NewLocalVariableSym(node))
 }
 
 func (a *astBinder) visitLabeledStatement(node *ast.LabeledStatement) {
@@ -159,7 +159,7 @@ func (a *astBinder) visitLabeledStatement(node *ast.LabeledStatement) {
 
 func (a *astBinder) checkReturnStatement(node *ast.ReturnStatement) {
 	// Ensure that the return expression is correct (present or missing; and its type).
-	fncty := a.b.requireFunctionType(a.fnc)
+	fncty := a.b.ctx.RequireFunctionType(a.fnc)
 	if fncty.Return == nil {
 		if node.Expression != nil {
 			// The function has no return type ("void"), and yet the return had an expression.
@@ -188,7 +188,7 @@ func (a *astBinder) checkWhileStatement(node *ast.WhileStatement) {
 // Expressions
 
 func (a *astBinder) checkExprType(expr ast.Expression, expect symbols.Type) bool {
-	actual := a.b.requireExprType(expr)
+	actual := a.b.ctx.RequireExprType(expr)
 	if !types.CanConvert(actual, expect) {
 		a.b.Diag().Errorf(errors.ErrorIncorrectExprType.At(expr), expect, actual)
 		return false
@@ -203,10 +203,10 @@ func (a *astBinder) checkArrayLiteral(node *ast.ArrayLiteral) {
 	}
 	// Now mark the resulting expression as an array of the right type.
 	if node.ElemType == nil {
-		a.b.registerExprType(node, types.AnyArray)
+		a.b.ctx.RegisterExprType(node, types.AnyArray)
 	} else {
 		elemType := a.b.bindType(node.ElemType)
-		a.b.registerExprType(node, symbols.NewArrayType(elemType))
+		a.b.ctx.RegisterExprType(node, symbols.NewArrayType(elemType))
 
 		// Ensure the elements, if any, are of the right type.
 		if node.Elements != nil {
@@ -220,10 +220,10 @@ func (a *astBinder) checkArrayLiteral(node *ast.ArrayLiteral) {
 func (a *astBinder) checkObjectLiteral(node *ast.ObjectLiteral) {
 	// Mark the resulting object literal with the correct type.
 	if node.Type == nil {
-		a.b.registerExprType(node, types.Any)
+		a.b.ctx.RegisterExprType(node, types.Any)
 	} else {
 		ty := a.b.bindType(node.Type)
-		a.b.registerExprType(node, ty)
+		a.b.ctx.RegisterExprType(node, ty)
 
 		// Only permit object literals for records and interfaces.  Classes have constructors.
 		if !ty.Record() && !ty.Interface() {
@@ -268,7 +268,7 @@ func (a *astBinder) checkLoadLocationExpression(node *ast.LoadLocationExpression
 		sym = a.b.requireToken(node.Name, node.Name.Tok)
 	} else {
 		// If there's an object, we are accessing a class member property or function.
-		typ := a.b.requireExprType(*node.Object)
+		typ := a.b.ctx.RequireExprType(*node.Object)
 		sym = a.b.requireClassMember(node.Name, typ, tokens.ClassMember(node.Name.Tok))
 	}
 
@@ -279,16 +279,16 @@ func (a *astBinder) checkLoadLocationExpression(node *ast.LoadLocationExpression
 	} else {
 		switch s := sym.(type) {
 		case ast.Function:
-			ty = a.b.requireFunctionType(s)
+			ty = a.b.ctx.RequireFunctionType(s)
 		case ast.Variable:
-			ty = a.b.requireVariableType(s)
+			ty = a.b.ctx.RequireVariableType(s)
 		default:
 			contract.Failf("Unrecognized load location symbol type: %v", sym.Token())
 		}
 	}
 
 	// Register a pointer type so that this expression is a valid l-expr.
-	a.b.registerExprType(node, symbols.NewPointerType(ty))
+	a.b.ctx.RegisterExprType(node, symbols.NewPointerType(ty))
 }
 
 func (a *astBinder) checkNewExpression(node *ast.NewExpression) {
@@ -306,7 +306,7 @@ func (a *astBinder) checkNewExpression(node *ast.NewExpression) {
 		}
 	}
 
-	a.b.registerExprType(node, ty)
+	a.b.ctx.RegisterExprType(node, ty)
 }
 
 func (a *astBinder) checkInvokeFunctionExpression(node *ast.InvokeFunctionExpression) {
@@ -319,14 +319,14 @@ func (a *astBinder) checkLambdaExpression(node *ast.LambdaExpression) {
 	var params []symbols.Type
 	if pparams := node.GetParameters(); pparams != nil {
 		for _, param := range *pparams {
-			params = append(params, a.b.requireVariableType(param))
+			params = append(params, a.b.ctx.RequireVariableType(param))
 		}
 	}
 	var ret symbols.Type
 	if pret := node.GetReturnType(); pret != nil {
 		ret = a.b.bindType(pret)
 	}
-	a.b.registerExprType(node, symbols.NewFunctionType(params, ret))
+	a.b.ctx.RegisterExprType(node, symbols.NewFunctionType(params, ret))
 }
 
 func (a *astBinder) checkUnaryOperatorExpression(node *ast.UnaryOperatorExpression) {
@@ -341,7 +341,7 @@ func (a *astBinder) checkBinaryOperatorExpression(node *ast.BinaryOperatorExpres
 
 func (a *astBinder) checkCastExpression(node *ast.CastExpression) {
 	// TODO: validate that this is legal.
-	a.b.registerExprType(node, a.b.bindType(node.Type))
+	a.b.ctx.RegisterExprType(node, a.b.bindType(node.Type))
 }
 
 func (a *astBinder) checkTypeOfExpression(node *ast.TypeOfExpression) {
@@ -355,5 +355,5 @@ func (a *astBinder) checkConditionalExpression(node *ast.ConditionalExpression) 
 func (a *astBinder) checkSequenceExpression(node *ast.SequenceExpression) {
 	// The type of a sequence expression is just the type of the last expression in the sequence.
 	// TODO: check that there's at least one!
-	a.b.registerExprType(node, a.b.requireExprType(node.Expressions[len(node.Expressions)-1]))
+	a.b.ctx.RegisterExprType(node, a.b.ctx.RequireExprType(node.Expressions[len(node.Expressions)-1]))
 }
