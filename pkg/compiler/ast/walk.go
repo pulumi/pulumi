@@ -177,28 +177,49 @@ func Walk(v Visitor, node Node) {
 	v.After(node)
 }
 
-// Inspector is a very simple Visitor implementation; it simply returns true to continue visitation, or false to stop.
-type Inspector func(Node) bool
+// Inspector is an anonymous visitation struct that implements the Visitor interface.
+type Inspector struct {
+	V Visitator
+	A Afterator
+}
 
-func (insp Inspector) Visit(node Node) Visitor {
-	if insp(node) {
-		return insp
+func (v Inspector) Visit(node Node) Visitor {
+	if v.V != nil {
+		if !v.V(node) {
+			return nil
+		}
+	}
+	return v
+}
+
+func (v Inspector) After(node Node) {
+	if v.A != nil {
+		v.A(node)
+	}
+}
+
+// Visitator is a very simple Visitor implementation; it simply returns true to continue visitation, or false to stop.
+type Visitator func(Node) bool
+
+func (v Visitator) Visit(node Node) Visitor {
+	if v(node) {
+		return v
 	}
 	return nil
 }
 
-func (insp Inspector) After(node Node) {
+func (v Visitator) After(node Node) {
 	// nothing to do.
 }
 
-// AfterInspector is a very simple Visitor implementation; it simply runs after visitation has occurred on nodes.
-type AfterInspector func(Node)
+// Afterator is a very simple Visitor implementation; it simply runs after visitation has occurred on nodes.
+type Afterator func(Node)
 
-func (insp AfterInspector) Visit(node Node) Visitor {
+func (a Afterator) Visit(node Node) Visitor {
 	// nothing to do.
-	return insp
+	return a
 }
 
-func (insp AfterInspector) After(node Node) {
-	insp(node)
+func (a Afterator) After(node Node) {
+	a(node)
 }
