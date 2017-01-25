@@ -84,6 +84,9 @@ func Walk(v Visitor, node Node) {
 		if n.FinallyBlock != nil {
 			Walk(v, n.FinallyBlock)
 		}
+	case *TryCatchBlock:
+		Walk(v, n.Exception)
+		Walk(v, n.Block)
 	case *IfStatement:
 		Walk(v, n.Condition)
 		Walk(v, n.Consequent)
@@ -97,9 +100,7 @@ func Walk(v Visitor, node Node) {
 			Walk(v, *n.Expression)
 		}
 	case *ThrowStatement:
-		if n.Expression != nil {
-			Walk(v, *n.Expression)
-		}
+		Walk(v, n.Expression)
 	case *WhileStatement:
 		Walk(v, n.Test)
 		Walk(v, n.Body)

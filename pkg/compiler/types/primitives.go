@@ -14,6 +14,7 @@ var (
 	Number = symbols.NewPrimitiveType("number")
 	String = symbols.NewPrimitiveType("string")
 	Null   = symbols.NewPrimitiveType("null")
+	Error  = symbols.NewPrimitiveType("error")
 )
 
 // Primitives contains a map of all primitive types, keyed by their token/name.
@@ -23,6 +24,7 @@ var Primitives = map[tokens.TypeName]symbols.Type{
 	Number.Nm: Number,
 	String.Nm: String,
 	Null.Nm:   Null,
+	Error.Nm:  Error,
 }
 
 // Common weakly typed types.

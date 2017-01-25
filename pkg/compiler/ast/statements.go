@@ -54,8 +54,8 @@ const TryCatchFinallyKind NodeKind = "TryCatchFinally"
 
 type TryCatchBlock struct {
 	NodeValue
-	Block     *Block         `json:"block"`
 	Exception *LocalVariable `json:"exception,omitempty"`
+	Block     *Block         `json:"block"`
 }
 
 var _ Node = (*TryCatchBlock)(nil)
@@ -124,7 +124,7 @@ const ReturnStatementKind NodeKind = "ReturnStatement"
 // ThrowStatement maps to raising an exception, usually `throw`, in the source language.
 type ThrowStatement struct {
 	StatementNode
-	Expression *Expression `json:"expression,omitempty"`
+	Expression Expression `json:"expression"`
 }
 
 var _ Node = (*ThrowStatement)(nil)

@@ -93,8 +93,8 @@ export type  ReturnStatementKind = "ReturnStatement";
 
 // A `throw` statement to throw an exception object.
 export interface ThrowStatement extends Statement {
-    kind:        ThrowStatementKind;
-    expression?: Expression;
+    kind:       ThrowStatementKind;
+    expression: Expression;
 }
 export const throwStatementKind = "ThrowStatement";
 export type  ThrowStatementKind = "ThrowStatement";

@@ -16,9 +16,10 @@ func (b *binder) bindFunctionBody(node ast.Function) {
 	if params != nil {
 		for _, param := range *params {
 			// Register this variable's type and associate its name with the identifier.
-			// TODO: stick this into the scope.
 			ty := b.bindType(param.Type)
-			b.ctx.Scope.TryRegister(param, symbols.NewLocalVariableSym(param, ty))
+			sym := symbols.NewLocalVariableSym(param, ty)
+			b.ctx.RegisterSymbol(param, sym)
+			b.ctx.Scope.TryRegister(param, sym) // TODO: figure out whether to keep this.
 		}
 	}
 

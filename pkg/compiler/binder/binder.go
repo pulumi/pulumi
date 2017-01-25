@@ -22,8 +22,8 @@ import (
 type Binder interface {
 	core.Phase
 
-	// BindCtx represents the contextual information resulting from binding.
-	BindCtx() *Context
+	// Ctx represents the contextual information resulting from binding.
+	Ctx() *Context
 
 	// BindPackages takes a package AST, resolves all dependencies and tokens inside of it, and returns a fully bound
 	// package symbol that can be used for semantic operations (like interpretation and evaluation).
@@ -46,8 +46,8 @@ type binder struct {
 	reader metadata.Reader // a metadata reader (in case we encounter package references).
 }
 
-func (b *binder) BindCtx() *Context { return b.ctx }
-func (b *binder) Diag() diag.Sink   { return b.ctx.Diag }
+func (b *binder) Ctx() *Context   { return b.ctx }
+func (b *binder) Diag() diag.Sink { return b.ctx.Diag }
 
 // bindType binds a type token AST node to a symbol.
 func (b *binder) bindType(node *ast.TypeToken) symbols.Type {
