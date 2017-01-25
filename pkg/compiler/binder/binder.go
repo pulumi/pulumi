@@ -105,7 +105,7 @@ func (b *binder) bindTypeToken(node ast.Node, tok tokens.Type) symbols.Type {
 		if ty, ok := sym.(symbols.Type); ok {
 			return ty
 		}
-		reason = "symbol not found"
+		reason = "symbol kind incorrect"
 	}
 
 	// The type was not found; issue an error, and return Any so we can proceed with typechecking.
@@ -135,6 +135,20 @@ func (b *binder) bindFunctionType(node ast.Function) *symbols.FunctionType {
 	ret := b.bindType(node.GetReturnType())
 
 	return symbols.NewFunctionType(params, ret)
+}
+
+// bindModuleToken binds a module token AST node to a symbol.
+func (b *binder) bindModuleToken(node *ast.ModuleToken) *symbols.Module {
+	if node == nil {
+		return nil
+	} else {
+		sym := b.lookupSymbolToken(node, tokens.Token(node.Tok), true)
+		if module, ok := sym.(*symbols.Module); ok {
+			return module
+		}
+		b.Diag().Errorf(errors.ErrorSymbolNotFound.At(node), node.Tok, "symbol isn't a module")
+		return nil
+	}
 }
 
 func (b *binder) checkModuleVisibility(node ast.Node, module *symbols.Module, member symbols.ModuleMember) {
@@ -244,7 +258,7 @@ func (b *binder) requireToken(node ast.Node, tok tokens.Token) symbols.Symbol {
 		}
 	} else {
 		// A simple token has no package, module, or class part.  It refers to the symbol table.
-		if sym := b.ctx.Scope.Lookup(tok); sym != nil {
+		if sym := b.ctx.Scope.Lookup(tok.Name()); sym != nil {
 			return sym
 		} else {
 			b.Diag().Errorf(errors.ErrorSymbolNotFound.At(node), tok, "simple name not found")

@@ -8,7 +8,6 @@ import (
 	"github.com/marapongo/mu/pkg/compiler/ast"
 	"github.com/marapongo/mu/pkg/compiler/core"
 	"github.com/marapongo/mu/pkg/compiler/symbols"
-	"github.com/marapongo/mu/pkg/compiler/types"
 	"github.com/marapongo/mu/pkg/util/contract"
 )
 
@@ -30,19 +29,11 @@ type SymbolMap map[ast.Definition]symbols.Symbol
 
 // NewContextFrom allocates a fresh binding context linked to the shared context object.
 func NewContextFrom(ctx *core.Context) *Context {
-	bctx := &Context{
+	return &Context{
 		Context: ctx,
 		Types:   make(TypeMap),
 		Symbols: make(SymbolMap),
 	}
-
-	// Create a global scope and populate it with all of the predefined type names.  This one's never popped.
-	NewScope(ctx, &bctx.Scope)
-	for _, prim := range types.Primitives {
-		bctx.Scope.MustRegister(prim)
-	}
-
-	return bctx
 }
 
 // RequireType requires that a type exists for the given AST expression node.

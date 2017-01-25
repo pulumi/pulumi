@@ -13,22 +13,22 @@ import (
 
 // Scope enables lookups and symbols to obey traditional language scoping rules.
 type Scope struct {
-	ctx    *core.Context
-	slot   **Scope
-	parent *Scope
-	symtbl SymbolTable
+	ctx       *core.Context // the shared context object for errors, etc.
+	slot      **Scope       // the slot rooting the tree of current scopes for pushing/popping.
+	parent    *Scope        // the parent scope to restore upon pop, or nil if this is the top.
+	variables Variables     // the current scope's variables map (name to variable symbol).
 }
 
-// SymbolTable is a mapping from symbol token to an actual symbol object representing it.
-type SymbolTable map[tokens.Token]symbols.Symbol
+// Variables is a mapping from identifier to an actual local variable symbol object representing it.
+type Variables map[tokens.Name]*symbols.LocalVariable
 
 // NewScope allocates and returns a fresh scope using the given slot, populating it.
 func NewScope(ctx *core.Context, slot **Scope) *Scope {
 	scope := &Scope{
-		ctx:    ctx,
-		slot:   slot,
-		parent: *slot,
-		symtbl: make(SymbolTable),
+		ctx:       ctx,
+		slot:      slot,
+		parent:    *slot,
+		variables: make(Variables),
 	}
 	*slot = scope
 	return scope
@@ -44,10 +44,10 @@ func (s *Scope) Pop() {
 	*s.slot = s.parent
 }
 
-// Lookup finds a symbol registered underneath the given token, issuing an error and returning nil if not found.
-func (s *Scope) Lookup(tok tokens.Token) symbols.Symbol {
+// Lookup finds a variable underneath the given name, issuing an error and returning nil if not found.
+func (s *Scope) Lookup(nm tokens.Name) *symbols.LocalVariable {
 	for s != nil {
-		if sym, exists := s.symtbl[tok]; exists {
+		if sym, exists := s.variables[nm]; exists {
 			contract.Assert(sym != nil)
 			return sym
 		}
@@ -60,54 +60,20 @@ func (s *Scope) Lookup(tok tokens.Token) symbols.Symbol {
 	return nil
 }
 
-// LookupModule finds a module symbol registered underneath the given token, issuing an error and returning nil if
-// missing.  If the symbol exists, but is of the wrong type (i.e., not a *symbols.Module), then an error is issued.
-func (s *Scope) LookupModule(tok tokens.Module) *symbols.Module {
-	if sym := s.Lookup(tokens.Token(tok)); sym != nil {
-		if typsym, ok := sym.(*symbols.Module); ok {
-			return typsym
-		}
-		// TODO: issue an error about an incorrect symbol type.
-	} else {
-		// TODO: issue an error about a missing symbol.
-	}
-	return nil
-}
-
-// LookupType finds a type symbol registered underneath the given token, issuing an error and returning nil if missing.
-// If the symbol exists, but is of the wrong type (i.e., not a symbols.Type), then an error is issued.
-func (s *Scope) LookupType(tok tokens.Type) symbols.Type {
-	if sym := s.Lookup(tokens.Token(tok)); sym != nil {
-		if typsym, ok := sym.(symbols.Type); ok {
-			return typsym
-		}
-		// TODO: issue an error about an incorrect symbol type.
-	} else {
-		// TODO: issue an error about a missing symbol.
-	}
-	return nil
-}
-
-// Register registers a symbol with a given name; if it already exists, the function returns false.
-func (s *Scope) Register(sym symbols.Symbol) bool {
-	tok := sym.Token()
-	if _, exists := s.symtbl[tok]; exists {
+// Register registers a local variable with a given name; if it already exists, the function returns false.
+func (s *Scope) Register(sym *symbols.LocalVariable) bool {
+	nm := sym.Name()
+	if _, exists := s.variables[nm]; exists {
 		// TODO: this won't catch "shadowing" for parent scopes; do we care about this?
 		return false
 	}
 
-	s.symtbl[tok] = sym
+	s.variables[nm] = sym
 	return true
 }
 
-// MustRegister registers a symbol with a given name; if it already exists, the function fail-fasts.
-func (s *Scope) MustRegister(sym symbols.Symbol) {
-	ok := s.Register(sym)
-	contract.Assertf(ok, "Expected symbol %v to be unique; entry already found in this scope", sym.Token())
-}
-
-// TryRegister registers a symbol with the given name; if it already exists, a compiler error is emitted.
-func (s *Scope) TryRegister(node ast.Node, sym symbols.Symbol) {
+// TryRegister registers a local with the given name; if it already exists, a compiler error is emitted.
+func (s *Scope) TryRegister(node ast.Node, sym *symbols.LocalVariable) {
 	if !s.Register(sym) {
 		s.ctx.Diag.Errorf(errors.ErrorSymbolAlreadyExists.At(node), sym.Name)
 	}

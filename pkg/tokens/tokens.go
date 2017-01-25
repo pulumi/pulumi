@@ -50,11 +50,19 @@ const ModuleDelimiter string = ":"       // the character following a package (b
 const ModuleMemberDelimiter string = "/" // the character following a module (before a module member).
 const ClassMemberDelimiter string = "."  // the character following a class name (before a class member).
 
+func (tok Token) Simple() bool    { return !tok.HasModule() }
 func (tok Token) HasModule() bool { return strings.Index(string(tok), ModuleDelimiter) != -1 }
 func (tok Token) HasModuleMember() bool {
 	return strings.Index(string(tok), ModuleMemberDelimiter) != -1
 }
 func (tok Token) HasClassMember() bool { return strings.Index(string(tok), ClassMemberDelimiter) != -1 }
+
+// Name returns the Token as a Name (and assumes it is a legal one).
+func (tok Token) Name() Name {
+	contract.Requiref(tok.Simple(), "tok", "Simple")
+	contract.Requiref(IsName(tok.String()), "tok", "IsName")
+	return Name(tok.String())
+}
 
 // Parts returns as many parts as the Token has, each in a return slot, or "" for those that don't exist.
 func (tok Token) Parts() (PackageName, ModuleName, ModuleMemberName, ClassMemberName) {

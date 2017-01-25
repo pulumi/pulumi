@@ -14,14 +14,11 @@ func (b *binder) bindClass(node *ast.Class, parent *symbols.Module) *symbols.Cla
 	glog.V(3).Infof("Binding module '%v' class '%v'", parent.Name(), node.Name.Ident)
 
 	// Bind base type tokens to actual symbols.
-	var extends symbols.Type
-	if node.Extends != nil {
-		extends = b.ctx.Scope.LookupType(node.Extends.Tok)
-	}
+	extends := b.bindType(node.Extends)
 	var implements symbols.Types
 	if node.Implements != nil {
 		for _, impltok := range *node.Implements {
-			if impl := b.ctx.Scope.LookupType(impltok.Tok); impl != nil {
+			if impl := b.bindType(impltok); impl != nil {
 				implements = append(implements, impl)
 			}
 		}

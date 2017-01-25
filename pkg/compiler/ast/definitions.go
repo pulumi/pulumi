@@ -64,7 +64,7 @@ type ModuleMembers map[tokens.ModuleMemberName]ModuleMember
 // Export re-exports a Definition from another Module, possibly with a different name.
 type Export struct {
 	ModuleMemberNode
-	Referent Token `json:"referent"`
+	Referent *Token `json:"referent"`
 }
 
 var _ Node = (*Export)(nil)

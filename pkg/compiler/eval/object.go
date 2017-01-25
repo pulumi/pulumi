@@ -73,8 +73,8 @@ func (o *Object) Bool() bool {
 // Number asserts that the target is a numeric literal and returns its value.
 func (o *Object) Number() float64 {
 	contract.Assertf(o.Type == types.Number, "Expected object type to be Number; got %v", o.Type)
-	contract.Assertf(o.Data != nil, "Expected boolean literal to carry a Data payload; got nil")
+	contract.Assertf(o.Data != nil, "Expected numeric literal to carry a Data payload; got nil")
 	n, ok := o.Data.(float64)
-	contract.Assertf(ok, "Expected a boolean literal value for condition expr; conversion failed")
+	contract.Assertf(ok, "Expected a numeric literal value for condition expr; conversion failed")
 	return n
 }

@@ -25,7 +25,7 @@ func (b *binder) bindModule(node *ast.Module, parent *symbols.Package) *symbols.
 	// First bind all imports to concrete symbols.  These will be used to perform initialization later on.
 	if node.Imports != nil {
 		for _, imptok := range *node.Imports {
-			if imp := b.ctx.Scope.LookupModule(imptok.Tok); imp != nil {
+			if imp := b.bindModuleToken(imptok); imp != nil {
 				module.Imports = append(module.Imports, imp)
 			}
 		}
@@ -63,14 +63,12 @@ func (b *binder) bindExport(node *ast.Export, parent *symbols.Module) *symbols.E
 	glog.V(3).Infof("Binding module '%v' export '%v'", parent.Name(), node.Name.Ident)
 
 	// To bind an export, simply look up the referent symbol and associate this name with it.
-	refsym := b.ctx.Scope.Lookup(node.Referent.Tok)
-	if refsym == nil {
-		// TODO: issue a verification error; name not found!  Also sub in a "bad" symbol.
-		contract.Failf("Export name not found: %v", node.Referent)
+	if refsym := b.lookupSymbolToken(node.Referent, node.Referent.Tok, true); refsym != nil {
+		sym := symbols.NewExportSym(node, parent, refsym)
+		b.ctx.RegisterSymbol(node, sym)
+		return sym
 	}
-	sym := symbols.NewExportSym(node, parent, refsym)
-	b.ctx.RegisterSymbol(node, sym)
-	return sym
+	return nil
 }
 
 func (b *binder) bindModuleProperty(node *ast.ModuleProperty, parent *symbols.Module) *symbols.ModuleProperty {

@@ -68,6 +68,8 @@ type Identifier struct {
 	Ident tokens.Name `json:"ident"` // a valid identifier: (letter | "_") (letter | digit | "_")*
 }
 
+var _ Node = (*Identifier)(nil)
+
 const IdentifierKind NodeKind = "Identifier"
 
 // Token represents a real string type token associated with its source location context.
@@ -75,6 +77,8 @@ type Token struct {
 	NodeValue
 	Tok tokens.Token `json:"tok"`
 }
+
+var _ Node = (*Token)(nil)
 
 const TokenKind NodeKind = "Token"
 
@@ -84,6 +88,8 @@ type ClassMemberToken struct {
 	Tok tokens.ClassMember `json:"tok"`
 }
 
+var _ Node = (*ClassMemberToken)(nil)
+
 const ClassMemberTokenKind NodeKind = "ClassMemberToken"
 
 // ModuleToken represents a real string type token associated with its source location context.
@@ -92,6 +98,8 @@ type ModuleToken struct {
 	Tok tokens.Module `json:"tok"`
 }
 
+var _ Node = (*ModuleToken)(nil)
+
 const ModuleTokenKind NodeKind = "ModuleToken"
 
 // TypeToken represents a real string module token associated with its source location context.
@@ -99,5 +107,7 @@ type TypeToken struct {
 	NodeValue
 	Tok tokens.Type `json:"tok"`
 }
+
+var _ Node = (*TypeToken)(nil)
 
 const TypeTokenKind NodeKind = "TypeToken"
