@@ -22,6 +22,7 @@ type Object struct {
 type Data interface{}                   // literal object data.
 type Properties map[tokens.Name]*Object // an object's properties.
 
+// NewObject creates a new empty object of the given type.
 func NewObject(t symbols.Type) *Object {
 	return &Object{
 		Type:       t,

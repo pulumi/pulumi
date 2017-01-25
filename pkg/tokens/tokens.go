@@ -211,6 +211,7 @@ func (tok ClassMember) String() string { return string(tok) }
 // ClassMemberName is a simple name representing the class member's identifier.
 type ClassMemberName Name
 
+func (nm ClassMemberName) Name() Name     { return Name(nm) }
 func (nm ClassMemberName) String() string { return string(nm) }
 
 // Type is a token representing a type.  It is either a primitive type name, reference to a module class, or decorated:

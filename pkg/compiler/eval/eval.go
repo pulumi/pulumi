@@ -395,8 +395,21 @@ func (e *evaluator) evalArrayLiteral(node *ast.ArrayLiteral) (*Object, *unwind) 
 }
 
 func (e *evaluator) evalObjectLiteral(node *ast.ObjectLiteral) (*Object, *unwind) {
-	// TODO: create a new object value.
-	return nil, nil
+	obj := NewObject(e.ctx.Types[node])
+
+	if node.Properties != nil {
+		// The binder already checked that the properties are legal, so we will simply store them as values.
+		for _, init := range *node.Properties {
+			val, uw := e.evalExpression(init.Value)
+			if uw != nil {
+				return nil, uw
+			}
+			member := init.Property.Tok.Name()
+			obj.Properties[member.Name()] = val
+		}
+	}
+
+	return obj, nil
 }
 
 func (e *evaluator) evalLoadLocationExpression(node *ast.LoadLocationExpression) (*Object, *unwind) {
