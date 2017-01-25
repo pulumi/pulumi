@@ -252,6 +252,7 @@ func (e *evaluator) evalWhileStatement(node *ast.WhileStatement) *unwind {
 				} else {
 					// If it's not a continue or break, stash the unwind away and return it.
 					uw = uws
+					break
 				}
 			}
 		} else {
