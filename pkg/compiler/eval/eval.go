@@ -59,8 +59,8 @@ func (e *evaluator) EvaluatePackage(pkg *pack.Package) graph.Graph {
 // Utility functions
 
 func (e *evaluator) pushScope() {
-	e.locals.Push()   // for local variables
-	e.ctx.Scope.Pop() // for symbol bindings
+	e.locals.Push()    // for local variables
+	e.ctx.Scope.Push() // for symbol bindings
 }
 
 func (e *evaluator) popScope() {
