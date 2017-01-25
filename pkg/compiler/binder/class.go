@@ -29,6 +29,7 @@ func (b *binder) bindClass(node *ast.Class, parent *symbols.Module) *symbols.Cla
 
 	// Now create a class symbol.  This is required as a parent for the members.
 	class := symbols.NewClassSym(node, parent, extends, implements)
+	b.ctx.RegisterSymbol(node, class)
 
 	// Set the current class in the context so we can e.g. enforce accessibility.
 	priorclass := b.ctx.Currclass
@@ -61,19 +62,23 @@ func (b *binder) bindClassProperty(node *ast.ClassProperty, parent *symbols.Clas
 	glog.V(3).Infof("Binding class '%v' property '%v'", parent.Name(), node.Name.Ident)
 
 	// Look up this node's type and inject it into the type table.
-	ty := b.ctx.RegisterVariableType(node)
-	return symbols.NewClassPropertySym(node, parent, ty)
+	typ := b.bindType(node.Type)
+	sym := symbols.NewClassPropertySym(node, parent, typ)
+	b.ctx.RegisterSymbol(node, sym)
+	return sym
 }
 
 func (b *binder) bindClassMethod(node *ast.ClassMethod, parent *symbols.Class) *symbols.ClassMethod {
 	glog.V(3).Infof("Binding class '%v' method '%v'", parent.Name(), node.Name.Ident)
 
 	// Make a function type out of this method and inject it into the type table.
-	ty := b.ctx.RegisterFunctionType(node)
+	typ := b.bindFunctionType(node)
+	sym := symbols.NewClassMethodSym(node, parent, typ)
+	b.ctx.RegisterSymbol(node, sym)
 
 	// Note that we don't actually bind the body of this method yet.  Until we have gone ahead and injected *all*
 	// top-level symbols into the type table, we would potentially encounter missing intra-module symbols.
-	return symbols.NewClassMethodSym(node, parent, ty)
+	return sym
 }
 
 func (b *binder) bindClassMethodBody(method *symbols.ClassMethod) {

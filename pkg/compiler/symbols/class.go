@@ -78,11 +78,12 @@ var noClassMembers = make(ClassMemberMap)
 type ClassProperty struct {
 	Node   *ast.ClassProperty
 	Parent *Class
-	Typ    Type
+	Ty     Type
 }
 
 var _ Symbol = (*ClassProperty)(nil)
 var _ ClassMember = (*ClassProperty)(nil)
+var _ Variable = (*ClassProperty)(nil)
 
 func (node *ClassProperty) symbol()           {}
 func (node *ClassProperty) Name() tokens.Name { return node.Node.Name.Ident }
@@ -98,16 +99,17 @@ func (node *ClassProperty) Tree() diag.Diagable         { return node.Node }
 func (node *ClassProperty) classMember()                {}
 func (node *ClassProperty) Optional() bool              { return node.Node.Optional != nil && *node.Node.Optional }
 func (node *ClassProperty) Default() *interface{}       { return node.Node.Default }
-func (node *ClassProperty) Type() Type                  { return node.Typ }
+func (node *ClassProperty) Type() Type                  { return node.Ty }
 func (node *ClassProperty) MemberNode() ast.ClassMember { return node.Node }
+func (node *ClassProperty) VarNode() ast.Variable       { return node.Node }
 func (node *ClassProperty) String() string              { return string(node.Name()) }
 
 // NewClassPropertySym returns a new ClassProperty symbol with the given node and parent.
-func NewClassPropertySym(node *ast.ClassProperty, parent *Class, typ Type) *ClassProperty {
+func NewClassPropertySym(node *ast.ClassProperty, parent *Class, ty Type) *ClassProperty {
 	return &ClassProperty{
 		Node:   node,
 		Parent: parent,
-		Typ:    typ,
+		Ty:     ty,
 	}
 }
 
@@ -115,7 +117,7 @@ func NewClassPropertySym(node *ast.ClassProperty, parent *Class, typ Type) *Clas
 type ClassMethod struct {
 	Node   *ast.ClassMethod
 	Parent *Class
-	Typ    *FunctionType
+	Ty     *FunctionType
 }
 
 var _ Symbol = (*ClassMethod)(nil)
@@ -135,15 +137,16 @@ func (node *ClassMethod) Tree() diag.Diagable         { return node.Node }
 func (node *ClassMethod) classMember()                {}
 func (node *ClassMethod) Optional() bool              { return true }
 func (node *ClassMethod) Default() *interface{}       { return nil }
-func (node *ClassMethod) Type() Type                  { return node.Typ }
+func (node *ClassMethod) Type() Type                  { return node.Ty }
 func (node *ClassMethod) MemberNode() ast.ClassMember { return node.Node }
+func (node *ClassMethod) FuncNode() ast.Function      { return node.Node }
 func (node *ClassMethod) String() string              { return string(node.Name()) }
 
 // NewClassMethodSym returns a new ClassMethod symbol with the given node and parent.
-func NewClassMethodSym(node *ast.ClassMethod, parent *Class, typ *FunctionType) *ClassMethod {
+func NewClassMethodSym(node *ast.ClassMethod, parent *Class, ty *FunctionType) *ClassMethod {
 	return &ClassMethod{
 		Node:   node,
 		Parent: parent,
-		Typ:    typ,
+		Ty:     ty,
 	}
 }

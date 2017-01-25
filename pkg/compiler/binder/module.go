@@ -15,6 +15,7 @@ func (b *binder) bindModule(node *ast.Module, parent *symbols.Package) *symbols.
 
 	// First create a module symbol with empty members, so we can use it as a parent below.
 	module := symbols.NewModuleSym(node, parent)
+	b.ctx.RegisterSymbol(node, module)
 
 	// Set the current module in the context so we can e.g. enforce accessibility.
 	priormodule := b.ctx.Currmodule
@@ -67,26 +68,32 @@ func (b *binder) bindExport(node *ast.Export, parent *symbols.Module) *symbols.E
 		// TODO: issue a verification error; name not found!  Also sub in a "bad" symbol.
 		contract.Failf("Export name not found: %v", node.Referent)
 	}
-	return symbols.NewExportSym(node, parent, refsym)
+	sym := symbols.NewExportSym(node, parent, refsym)
+	b.ctx.RegisterSymbol(node, sym)
+	return sym
 }
 
 func (b *binder) bindModuleProperty(node *ast.ModuleProperty, parent *symbols.Module) *symbols.ModuleProperty {
 	glog.V(3).Infof("Binding module '%v' property '%v'", parent.Name(), node.Name.Ident)
 
 	// Look up this node's type and inject it into the type table.
-	ty := b.ctx.RegisterVariableType(node)
-	return symbols.NewModulePropertySym(node, parent, ty)
+	ty := b.bindType(node.Type)
+	sym := symbols.NewModulePropertySym(node, parent, ty)
+	b.ctx.RegisterSymbol(node, sym)
+	return sym
 }
 
 func (b *binder) bindModuleMethod(node *ast.ModuleMethod, parent *symbols.Module) *symbols.ModuleMethod {
 	glog.V(3).Infof("Binding module '%v' method '%v'", parent.Name(), node.Name.Ident)
 
 	// Make a function type out of this method and inject it into the type table.
-	ty := b.ctx.RegisterFunctionType(node)
+	ty := b.bindFunctionType(node)
+	sym := symbols.NewModuleMethodSym(node, parent, ty)
+	b.ctx.RegisterSymbol(node, sym)
 
 	// Note that we don't actually bind the body of this method yet.  Until we have gone ahead and injected *all*
 	// top-level symbols into the type table, we would potentially encounter missing intra-module symbols.
-	return symbols.NewModuleMethodSym(node, parent, ty)
+	return sym
 }
 
 func (b *binder) bindModuleBodies(module *symbols.Module) {

@@ -11,6 +11,7 @@ import (
 	"github.com/marapongo/mu/pkg/compiler/binder"
 	"github.com/marapongo/mu/pkg/compiler/core"
 	"github.com/marapongo/mu/pkg/compiler/errors"
+	"github.com/marapongo/mu/pkg/compiler/eval"
 	"github.com/marapongo/mu/pkg/compiler/metadata"
 	"github.com/marapongo/mu/pkg/diag"
 	"github.com/marapongo/mu/pkg/graph"
@@ -153,7 +154,6 @@ func (c *compiler) CompilePackage(pkg *pack.Package) graph.Graph {
 		return nil
 	}
 
-	// TODO: actually perform the evaluation that yields a graph.
-
-	return nil
+	e := eval.New(b.Ctx())
+	return e.EvaluatePackage(pkg)
 }

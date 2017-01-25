@@ -92,11 +92,12 @@ func NewExportSym(node *ast.Export, parent *Module, referent Symbol) *Export {
 type ModuleProperty struct {
 	Node   *ast.ModuleProperty
 	Parent *Module
-	Type   Type
+	Ty     Type
 }
 
 var _ Symbol = (*ModuleProperty)(nil)
 var _ ModuleMember = (*ModuleProperty)(nil)
+var _ Variable = (*ClassProperty)(nil)
 
 func (node *ModuleProperty) symbol()           {}
 func (node *ModuleProperty) Name() tokens.Name { return node.Node.Name.Ident }
@@ -111,14 +112,16 @@ func (node *ModuleProperty) Token() tokens.Token {
 func (node *ModuleProperty) Tree() diag.Diagable          { return node.Node }
 func (node *ModuleProperty) moduleMember()                {}
 func (node *ModuleProperty) MemberNode() ast.ModuleMember { return node.Node }
+func (node *ModuleProperty) Type() Type                   { return node.Ty }
+func (node *ModuleProperty) VarNode() ast.Variable        { return node.Node }
 func (node *ModuleProperty) String() string               { return string(node.Name()) }
 
 // NewModulePropertySym returns a new ModuleProperty symbol with the given node and parent.
-func NewModulePropertySym(node *ast.ModuleProperty, parent *Module, typ Type) *ModuleProperty {
+func NewModulePropertySym(node *ast.ModuleProperty, parent *Module, ty Type) *ModuleProperty {
 	return &ModuleProperty{
 		Node:   node,
 		Parent: parent,
-		Type:   typ,
+		Ty:     ty,
 	}
 }
 
@@ -145,13 +148,14 @@ func (node *ModuleMethod) Token() tokens.Token {
 func (node *ModuleMethod) Tree() diag.Diagable          { return node.Node }
 func (node *ModuleMethod) moduleMember()                {}
 func (node *ModuleMethod) MemberNode() ast.ModuleMember { return node.Node }
+func (node *ModuleMethod) FuncNode() ast.Function       { return node.Node }
 func (node *ModuleMethod) String() string               { return string(node.Name()) }
 
 // NewModuleMethodSym returns a new ModuleMethod symbol with the given node and parent.
-func NewModuleMethodSym(node *ast.ModuleMethod, parent *Module, typ *FunctionType) *ModuleMethod {
+func NewModuleMethodSym(node *ast.ModuleMethod, parent *Module, ty *FunctionType) *ModuleMethod {
 	return &ModuleMethod{
 		Node:   node,
 		Parent: parent,
-		Type:   typ,
+		Type:   ty,
 	}
 }

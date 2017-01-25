@@ -56,6 +56,35 @@ func (tok Token) HasModuleMember() bool {
 }
 func (tok Token) HasClassMember() bool { return strings.Index(string(tok), ClassMemberDelimiter) != -1 }
 
+// Parts returns as many parts as the Token has, each in a return slot, or "" for those that don't exist.
+func (tok Token) Parts() (PackageName, ModuleName, ModuleMemberName, ClassMemberName) {
+	// Switch on the token kind to populate the set of names.
+	var pkg PackageName
+	var mod ModuleName
+	var mem ModuleMemberName
+	var clm ClassMemberName
+	if tok.HasClassMember() {
+		clmtok := ClassMember(tok)
+		pkg = clmtok.Package().Name()
+		mod = clmtok.Module().Name()
+		mem = ModuleMemberName(clmtok.Class().Name())
+		clm = clmtok.Name()
+	} else if tok.HasModuleMember() {
+		memtok := ModuleMember(tok)
+		pkg = memtok.Package().Name()
+		mod = memtok.Module().Name()
+		mem = memtok.Name()
+	} else if tok.HasModule() {
+		modtok := Module(tok)
+		pkg = modtok.Package().Name()
+		mod = modtok.Name()
+	} else {
+		pkg = Package(tok).Name()
+	}
+	contract.Assert(pkg != "")
+	return pkg, mod, mem, clm
+}
+
 // Package is a token representing just a package.  It uses a much simpler grammar:
 //		Package = <PackageName>
 // Note that a package name of "." means "current package", to simplify emission and lookups.

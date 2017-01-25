@@ -51,8 +51,11 @@ func (b *binder) Diag() diag.Sink   { return b.ctx.Diag }
 
 // bindType binds a type token AST node to a symbol.
 func (b *binder) bindType(node *ast.TypeToken) symbols.Type {
-	contract.Require(node != nil, "node")
-	return b.bindTypeToken(node, node.Tok)
+	if node == nil {
+		return nil
+	} else {
+		return b.bindTypeToken(node, node.Tok)
+	}
 }
 
 // bindTypeToken binds a type token to a symbol.  The node context is used for issuing errors.
@@ -110,33 +113,28 @@ func (b *binder) bindTypeToken(node ast.Node, tok tokens.Type) symbols.Type {
 	return types.Any
 }
 
-func (b *binder) getTokenParts(tok tokens.Token) (tokens.PackageName,
-	tokens.ModuleName, tokens.ModuleMemberName, tokens.ClassMemberName) {
-	// Switch on the token kind to populate the set of names.
-	var pkg tokens.PackageName
-	var mod tokens.ModuleName
-	var mem tokens.ModuleMemberName
-	var clm tokens.ClassMemberName
-	if tok.HasClassMember() {
-		clmtok := tokens.ClassMember(tok)
-		pkg = clmtok.Package().Name()
-		mod = clmtok.Module().Name()
-		mem = tokens.ModuleMemberName(clmtok.Class().Name())
-		clm = clmtok.Name()
-	} else if tok.HasModuleMember() {
-		memtok := tokens.ModuleMember(tok)
-		pkg = memtok.Package().Name()
-		mod = memtok.Module().Name()
-		mem = memtok.Name()
-	} else if tok.HasModule() {
-		modtok := tokens.Module(tok)
-		pkg = modtok.Package().Name()
-		mod = modtok.Name()
-	} else {
-		pkg = tokens.Package(tok).Name()
+// bindFunctionType binds a function node to its corresponding FunctionType symbol.
+func (b *binder) bindFunctionType(node ast.Function) *symbols.FunctionType {
+	var params []symbols.Type
+	np := node.GetParameters()
+	if np != nil {
+		for _, param := range *np {
+			// If there was an explicit type, look it up.
+			ptysym := b.bindType(param.Type)
+
+			// If either the parameter's type was unknown, or the lookup failed (leaving an error), use the any type.
+			if ptysym == nil {
+				ptysym = types.Any
+			}
+
+			params = append(params, ptysym)
+		}
 	}
-	contract.Assert(pkg != "")
-	return pkg, mod, mem, clm
+
+	// Bind the optional return type.
+	ret := b.bindType(node.GetReturnType())
+
+	return symbols.NewFunctionType(params, ret)
 }
 
 func (b *binder) checkModuleVisibility(node ast.Node, module *symbols.Module, member symbols.ModuleMember) {
@@ -188,7 +186,7 @@ func (b *binder) checkClassVisibility(node ast.Node, class *symbols.Class, membe
 // lookupSymbolToken performs a complex lookup for a complex token; if require is true, failed lookups will issue an
 // error; and in any case, the AST node is used as the context for errors (lookup, accessibility, or otherwise).
 func (b *binder) lookupSymbolToken(node ast.Node, tok tokens.Token, require bool) symbols.Symbol {
-	pkgnm, modnm, memnm, clmnm := b.getTokenParts(tok)
+	pkgnm, modnm, memnm, clmnm := tok.Parts()
 	var sym symbols.Symbol
 	var extra string // extra error details
 	if pkg, has := b.ctx.Pkgs[pkgnm]; has {
