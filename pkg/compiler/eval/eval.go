@@ -56,6 +56,18 @@ func (e *evaluator) EvaluatePackage(pkg *pack.Package) graph.Graph {
 	return nil
 }
 
+// Utility functions
+
+func (e *evaluator) pushScope() {
+	e.locals.Push()   // for local variables
+	e.ctx.Scope.Pop() // for symbol bindings
+}
+
+func (e *evaluator) popScope() {
+	e.locals.Pop()    // for local variables.
+	e.ctx.Scope.Pop() // for symbol bindings.
+}
+
 // Statements
 
 func (e *evaluator) evalStatement(node ast.Statement) *unwind {
@@ -95,12 +107,8 @@ func (e *evaluator) evalStatement(node ast.Statement) *unwind {
 
 func (e *evaluator) evalBlock(node *ast.Block) *unwind {
 	// Push a scope at the start, and pop it at afterwards; both for the symbol context and local variable values.
-	e.ctx.Scope.Push()
-	e.locals.Push()
-	defer func() {
-		e.locals.Pop()
-		e.ctx.Scope.Pop()
-	}()
+	e.pushScope()
+	defer e.popScope()
 
 	for _, stmt := range node.Statements {
 		if uw := e.evalStatement(stmt); uw != nil {
@@ -119,27 +127,10 @@ func (e *evaluator) evalLocalVariableDeclaration(node *ast.LocalVariableDeclarat
 	// If there is a default value, set it now.
 	if node.Local.Default != nil {
 		obj := NewConstantObject(*node.Local.Default)
-		contract.Assert(obj.Type == sym.Type())
-		e.locals.Values[sym] = obj
+		e.locals.SetValue(sym, obj)
 	}
 
 	return nil
-}
-
-func (e *evaluator) evalBreakStatement(node *ast.BreakStatement) *unwind {
-	var label *tokens.Name
-	if node.Label != nil {
-		label = &node.Label.Ident
-	}
-	return breakUnwind(label)
-}
-
-func (e *evaluator) evalContinueStatement(node *ast.ContinueStatement) *unwind {
-	var label *tokens.Name
-	if node.Label != nil {
-		label = &node.Label.Ident
-	}
-	return continueUnwind(label)
 }
 
 func (e *evaluator) evalTryCatchFinally(node *ast.TryCatchFinally) *unwind {
@@ -149,13 +140,16 @@ func (e *evaluator) evalTryCatchFinally(node *ast.TryCatchFinally) *unwind {
 		// The try block threw something; see if there is a handler that covers this.
 		if node.CatchBlocks != nil {
 			for _, catch := range *node.CatchBlocks {
-				ex := e.ctx.RequireVariable(catch.Exception).Type()
-				contract.Assert(types.CanConvert(ex, types.Error))
-				if types.CanConvert(uw.Thrown.Type, ex) {
-					// This type matched; set the exception type and swap the unwind information with the catch block's.
-					// This has the effect of "handling" the exception (i.e., only reraise if the handler does).
-					// TODO: set the value of the exception somehow.
+				ex := e.ctx.RequireVariable(catch.Exception).(*symbols.LocalVariable)
+				exty := ex.Type()
+				contract.Assert(types.CanConvert(exty, types.Error))
+				if types.CanConvert(uw.Thrown.Type, exty) {
+					// This type matched, so this handler will catch the exception.  Set the exception variable,
+					// evaluate the block, and swap the unwind information (thereby "handling" the in-flight exception).
+					e.pushScope()
+					e.locals.SetValue(ex, uw.Thrown)
 					uw = e.evalBlock(catch.Block)
+					e.popScope()
 					break
 				}
 			}
@@ -173,6 +167,22 @@ func (e *evaluator) evalTryCatchFinally(node *ast.TryCatchFinally) *unwind {
 	}
 
 	return uw
+}
+
+func (e *evaluator) evalBreakStatement(node *ast.BreakStatement) *unwind {
+	var label *tokens.Name
+	if node.Label != nil {
+		label = &node.Label.Ident
+	}
+	return breakUnwind(label)
+}
+
+func (e *evaluator) evalContinueStatement(node *ast.ContinueStatement) *unwind {
+	var label *tokens.Name
+	if node.Label != nil {
+		label = &node.Label.Ident
+	}
+	return continueUnwind(label)
 }
 
 func (e *evaluator) evalIfStatement(node *ast.IfStatement) *unwind {
