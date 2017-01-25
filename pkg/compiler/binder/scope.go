@@ -11,24 +11,24 @@ import (
 	"github.com/marapongo/mu/pkg/util/contract"
 )
 
-// Scope enables lookups and symbols to obey traditional language scoping rules.
+// Scope facilitates storing information that obeys lexically nested scoping rules.
 type Scope struct {
-	ctx       *core.Context // the shared context object for errors, etc.
-	slot      **Scope       // the slot rooting the tree of current scopes for pushing/popping.
-	parent    *Scope        // the parent scope to restore upon pop, or nil if this is the top.
-	variables Variables     // the current scope's variables map (name to variable symbol).
+	ctx    *core.Context // the shared context object for errors, etc.
+	slot   **Scope       // the slot rooting the tree of current scopes for pushing/popping.
+	parent *Scope        // the parent scope to restore upon pop, or nil if this is the top.
+	locals LocalMap      // the current scope's locals map (name to local symbol).
 }
 
-// Variables is a mapping from identifier to an actual local variable symbol object representing it.
-type Variables map[tokens.Name]*symbols.LocalVariable
+// LocalMap maps the name of locals to their corresponding symbols, for the few places we need name-based lookup.
+type LocalMap map[tokens.Name]*symbols.LocalVariable
 
 // NewScope allocates and returns a fresh scope using the given slot, populating it.
 func NewScope(ctx *core.Context, slot **Scope) *Scope {
 	scope := &Scope{
-		ctx:       ctx,
-		slot:      slot,
-		parent:    *slot,
-		variables: make(Variables),
+		ctx:    ctx,
+		slot:   slot,
+		parent: *slot,
+		locals: make(LocalMap),
 	}
 	*slot = scope
 	return scope
@@ -41,13 +41,14 @@ func (s *Scope) Push() *Scope {
 
 // Pop restores the prior scope into the underlying slot, tossing away the current symbol table.
 func (s *Scope) Pop() {
+	contract.Assert(*s.slot == s)
 	*s.slot = s.parent
 }
 
 // Lookup finds a variable underneath the given name, issuing an error and returning nil if not found.
 func (s *Scope) Lookup(nm tokens.Name) *symbols.LocalVariable {
 	for s != nil {
-		if sym, exists := s.variables[nm]; exists {
+		if sym, exists := s.locals[nm]; exists {
 			contract.Assert(sym != nil)
 			return sym
 		}
@@ -63,12 +64,12 @@ func (s *Scope) Lookup(nm tokens.Name) *symbols.LocalVariable {
 // Register registers a local variable with a given name; if it already exists, the function returns false.
 func (s *Scope) Register(sym *symbols.LocalVariable) bool {
 	nm := sym.Name()
-	if _, exists := s.variables[nm]; exists {
+	if _, exists := s.locals[nm]; exists {
 		// TODO: this won't catch "shadowing" for parent scopes; do we care about this?
 		return false
 	}
 
-	s.variables[nm] = sym
+	s.locals[nm] = sym
 	return true
 }
 

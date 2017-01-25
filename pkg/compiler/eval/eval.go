@@ -27,14 +27,22 @@ type Interpreter interface {
 
 // New creates an interpreter that can be used to evaluate MuPackages.
 func New(ctx *binder.Context) Interpreter {
-	return &evaluator{ctx: ctx}
+	e := &evaluator{
+		ctx:     ctx,
+		globals: make(globalMap),
+	}
+	initLocalScope(&e.locals)
+	return e
 }
 
 type evaluator struct {
-	fnc       *symbols.ModuleMethod        // the function under evaluation.
-	ctx       *binder.Context              // the binding context with type and symbol information.
-	variables map[symbols.Variable]*Object // the object values for variable symbols.  TODO: make this scope-based.
+	fnc     *symbols.ModuleMethod // the function under evaluation.
+	ctx     *binder.Context       // the binding context with type and symbol information.
+	globals globalMap             // the object values for global variable symbols.
+	locals  *localScope           // local variable values scoped by the lexical structure.
 }
+
+type globalMap map[symbols.Variable]*Object
 
 var _ Interpreter = (*evaluator)(nil)
 
@@ -86,18 +94,33 @@ func (e *evaluator) evalStatement(node ast.Statement) *unwind {
 }
 
 func (e *evaluator) evalBlock(node *ast.Block) *unwind {
-	// TODO: erect a variable scope (and tear it down afterwards).
+	// Push a scope at the start, and pop it at afterwards; both for the symbol context and local variable values.
+	e.ctx.Scope.Push()
+	e.locals.Push()
+	defer func() {
+		e.locals.Pop()
+		e.ctx.Scope.Pop()
+	}()
+
+	for _, stmt := range node.Statements {
+		if uw := e.evalStatement(stmt); uw != nil {
+			return uw
+		}
+	}
+
 	return nil
 }
 
 func (e *evaluator) evalLocalVariableDeclaration(node *ast.LocalVariableDeclaration) *unwind {
+	// Populate the variable in the scope.
+	sym := e.ctx.RequireVariable(node.Local).(*symbols.LocalVariable)
+	e.ctx.Scope.Register(sym)
+
 	// If there is a default value, set it now.
 	if node.Local.Default != nil {
 		obj := NewConstantObject(*node.Local.Default)
-		sym := e.ctx.RequireVariable(node.Local)
-		contract.Assert(sym != nil)
 		contract.Assert(obj.Type == sym.Type())
-		e.variables[sym] = obj
+		e.locals.Values[sym] = obj
 	}
 
 	return nil
