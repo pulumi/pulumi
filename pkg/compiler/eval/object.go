@@ -40,6 +40,7 @@ func NewPrimitiveObject(t symbols.Type, data interface{}) *Object {
 
 // NewErrorObject creates a new exception with the given message.
 func NewErrorObject(message string, args ...interface{}) *Object {
+	// TODO: capture a stack trace.
 	return NewPrimitiveObject(types.Error, fmt.Sprintf(message, args...))
 }
 

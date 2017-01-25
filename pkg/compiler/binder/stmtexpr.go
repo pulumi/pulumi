@@ -109,7 +109,7 @@ func (a *astBinder) After(node ast.Node) {
 
 func (a *astBinder) visitBlock(node *ast.Block) {
 	// Entering a new block requires a fresh lexical scope.
-	a.b.ctx.Scope.Push()
+	a.b.ctx.Scope.Push(false)
 }
 
 func (a *astBinder) checkBlock(node *ast.Block) {

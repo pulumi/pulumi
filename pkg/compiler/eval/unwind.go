@@ -6,8 +6,8 @@ import (
 	"github.com/marapongo/mu/pkg/tokens"
 )
 
-// unwind instructs callers how to unwind the stack.
-type unwind struct {
+// Unwind instructs callers how to Unwind the stack.
+type Unwind struct {
 	Break    bool         // true if breaking.
 	Continue bool         // true if continuing.
 	Label    *tokens.Name // a label being sought.
@@ -17,7 +17,7 @@ type unwind struct {
 	Thrown   *Object      // an exception object being thrown.
 }
 
-func breakUnwind(label *tokens.Name) *unwind    { return &unwind{Break: true, Label: label} }
-func continueUnwind(label *tokens.Name) *unwind { return &unwind{Continue: true, Label: label} }
-func returnUnwind(ret *Object) *unwind          { return &unwind{Return: true, Returned: ret} }
-func throwUnwind(thrown *Object) *unwind        { return &unwind{Throw: true, Thrown: thrown} }
+func breakUnwind(label *tokens.Name) *Unwind    { return &Unwind{Break: true, Label: label} }
+func continueUnwind(label *tokens.Name) *Unwind { return &Unwind{Continue: true, Label: label} }
+func returnUnwind(ret *Object) *Unwind          { return &Unwind{Return: true, Returned: ret} }
+func throwUnwind(thrown *Object) *Unwind        { return &Unwind{Throw: true, Thrown: thrown} }
