@@ -8,6 +8,7 @@ import (
 	"github.com/marapongo/mu/pkg/compiler/ast"
 	"github.com/marapongo/mu/pkg/compiler/core"
 	"github.com/marapongo/mu/pkg/compiler/symbols"
+	"github.com/marapongo/mu/pkg/tokens"
 	"github.com/marapongo/mu/pkg/util/contract"
 )
 
@@ -16,6 +17,7 @@ type Context struct {
 	*core.Context           // inherits all of the other context info.
 	Scope         *Scope    // the current (mutable) scope.
 	Types         TypeMap   // the type-checked type symbols for expressions.
+	Tokens        TokenMap  // the mapping from tokens to all fully bound symbols.
 	Symbols       SymbolMap // the fully bound symbol information for all definitions.
 }
 
@@ -23,6 +25,9 @@ type Context struct {
 // evaluation, to perform type-sensitive operations.  This avoids needing to recreate scopes in subsequent passes of the
 // compiler and/or storing type information on every single node in the AST.
 type TypeMap map[ast.Expression]symbols.Type
+
+// TokenMap maps all known tokens to their corresponding symbols.
+type TokenMap map[tokens.Token]symbols.Symbol
 
 // SymbolMap maps all known definition AST definition nodes to their corresponding symbols.
 type SymbolMap map[ast.Definition]symbols.Symbol
@@ -32,6 +37,7 @@ func NewContextFrom(ctx *core.Context) *Context {
 	return &Context{
 		Context: ctx,
 		Types:   make(TypeMap),
+		Tokens:  make(TokenMap),
 		Symbols: make(SymbolMap),
 	}
 }
@@ -63,6 +69,13 @@ func (ctx *Context) RequireSymbol(node ast.Definition) symbols.Symbol {
 	return sym
 }
 
+// RequireSymbolToken fetches the non-nil registered symbol for a given fully resolved token.
+func (ctx *Context) RequireSymbolToken(tok tokens.Token) symbols.Symbol {
+	sym := ctx.Tokens[tok]
+	contract.Assertf(sym != nil, "Expected a symbol entry for '%v' token", tok)
+	return sym
+}
+
 // RegisterSymbol registers a definition's symbol.
 func (ctx *Context) RegisterSymbol(node ast.Definition, sym symbols.Symbol) {
 	contract.Require(node != nil, "node")
@@ -72,6 +85,7 @@ func (ctx *Context) RegisterSymbol(node ast.Definition, sym symbols.Symbol) {
 		glog.V(7).Infof("Registered definition symbol: '%v' => %v", node.GetKind(), sym.Name())
 	}
 	ctx.Symbols[node] = sym
+	ctx.Tokens[sym.Token()] = sym
 }
 
 func (ctx *Context) RequireFunction(fnc ast.Function) symbols.Function {

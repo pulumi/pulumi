@@ -122,6 +122,7 @@ type ClassMethod struct {
 
 var _ Symbol = (*ClassMethod)(nil)
 var _ ClassMember = (*ClassMethod)(nil)
+var _ Function = (*ClassMethod)(nil)
 
 func (node *ClassMethod) symbol()           {}
 func (node *ClassMethod) Name() tokens.Name { return node.Node.Name.Ident }
@@ -140,6 +141,7 @@ func (node *ClassMethod) Default() *interface{}       { return nil }
 func (node *ClassMethod) Type() Type                  { return node.Ty }
 func (node *ClassMethod) MemberNode() ast.ClassMember { return node.Node }
 func (node *ClassMethod) FuncNode() ast.Function      { return node.Node }
+func (node *ClassMethod) FuncType() *FunctionType     { return node.Ty }
 func (node *ClassMethod) String() string              { return string(node.Name()) }
 
 // NewClassMethodSym returns a new ClassMethod symbol with the given node and parent.

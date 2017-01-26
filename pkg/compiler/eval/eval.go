@@ -45,7 +45,7 @@ type evaluator struct {
 	locals  *localScope      // local variable values scoped by the lexical structure.
 }
 
-type globalMap map[symbols.Variable]*Object
+type globalMap map[symbols.Variable]*Reference
 
 var _ Interpreter = (*evaluator)(nil)
 
@@ -134,7 +134,7 @@ func (e *evaluator) evalCall(fnc symbols.Function, args ...*Object) (*Object, *U
 	//     3) any return is checked to be of the expected type, and returned as the result of the call.
 	contract.Assert(!uw.Break)
 	contract.Assert(!uw.Continue)
-	retty := fnc.Type().Return
+	retty := fnc.FuncType().Return
 	if uw.Throw {
 		return nil, uw
 	} else if uw.Return {
@@ -486,7 +486,7 @@ func (e *evaluator) evalObjectLiteral(node *ast.ObjectLiteral) (*Object, *Unwind
 				return nil, uw
 			}
 			member := init.Property.Tok.Name()
-			obj.Properties[member.Name()] = val
+			obj.GetPropertyReference(member.Name(), true).Set(val)
 		}
 	}
 
@@ -494,8 +494,67 @@ func (e *evaluator) evalObjectLiteral(node *ast.ObjectLiteral) (*Object, *Unwind
 }
 
 func (e *evaluator) evalLoadLocationExpression(node *ast.LoadLocationExpression) (*Object, *Unwind) {
-	// TODO: create a pointer to the given location.
-	return nil, nil
+	// If there's a 'this', evaluate it.
+	var this *Object
+	if node.Object != nil {
+		var uw *Unwind
+		if this, uw = e.evalExpression(*node.Object); uw != nil {
+			return nil, uw
+		}
+	}
+
+	// Create a pointer to the target location.
+	var pv *Reference
+	var ty symbols.Type
+	tok := node.Name.Tok
+	if this == nil && tok.Simple() {
+		// If there is no object and the name is simple, it refers to a local variable in the current scope.
+		loc := e.ctx.Scope.Lookup(tok.Name())
+		contract.Assert(loc != nil)
+		pv = e.locals.GetValueReference(loc, true)
+		ty = loc.Type()
+	} else {
+		sym := e.ctx.RequireSymbolToken(tok)
+		switch s := sym.(type) {
+		case *symbols.ClassProperty:
+			// Search the class's properties and, if not present, allocate a new one.
+			contract.Assert(this != nil)
+			pv = this.GetPropertyReference(sym.Name(), true)
+			ty = s.Type()
+		case *symbols.ClassMethod:
+			// Create a new readonly ref slot, pointing to the method, that will abandon if overwritten.
+			contract.Assert(this != nil)
+			// TODO: should we be more "dynamic" and permit overwriting of methods?  I suspect yes, for compat.
+			pv = &Reference{
+				obj:      NewFunctionObject(s, this),
+				readonly: true,
+			}
+			ty = s.Type()
+		case *symbols.ModuleProperty:
+			// Search the globals table and, if not present, allocate a new property.
+			contract.Assert(this == nil)
+			ref, has := e.globals[s]
+			if !has {
+				ref = &Reference{}
+				e.globals[s] = ref
+			}
+			pv = ref
+			ty = s.Type()
+		case *symbols.ModuleMethod:
+			// Create a new readonly ref slot, pointing to the method, that will abandon if overwritten.
+			contract.Assert(this == nil)
+			// TODO: should we be more "dynamic" and permit overwriting of methods?  I suspect yes, for compat.
+			pv = &Reference{
+				obj:      NewFunctionObject(s, nil),
+				readonly: true,
+			}
+			ty = s.Type
+		default:
+			contract.Failf("Unexpected symbol token kind during load expression: %v", tok)
+		}
+	}
+
+	return NewReferenceObject(ty, pv), nil
 }
 
 func (e *evaluator) evalLoadDynamicExpression(node *ast.LoadDynamicExpression) (*Object, *Unwind) {

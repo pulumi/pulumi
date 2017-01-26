@@ -19,7 +19,7 @@ type localScope struct {
 }
 
 // valueMap maps local variables to their current known object value (if any).
-type valueMap map[*symbols.LocalVariable]*Object
+type valueMap map[*symbols.LocalVariable]*Reference
 
 func newLocalScope(slot **localScope, frame bool, lex *binder.Scope) *localScope {
 	return &localScope{
@@ -42,27 +42,19 @@ func (s *localScope) Pop() {
 	*s.Slot = s.Parent
 }
 
+// GetValue returns the object value for the given symbol.
 func (s *localScope) GetValue(sym *symbols.LocalVariable) *Object {
-	for s != nil {
-		if val, has := s.Values[sym]; has {
-			return val
-		}
-
-		// Keep looking into parent scopes so long as we didn't hit the top of an activation frame.
-		if s.Frame {
-			s = nil
-		} else {
-			s = s.Parent
-		}
+	if ref := s.GetValueReference(sym, false); ref != nil {
+		return ref.Get()
 	}
 	return nil
 }
 
-func (s *localScope) SetValue(sym *symbols.LocalVariable, obj *Object) {
-	contract.Assert(obj == nil || types.CanConvert(obj.Type, sym.Type()))
-
-	// To set a value, we must first find the position in the shadowed frames, so that the value's lifetime is identical
-	// to the actual local variable symbol's lifetime.  This ensures that once that frame is popped, so too is any value
+// GetValueReference returns a reference to the object for the given symbol.  If init is true, and the value doesn't
+// exist, a new slot will be allocated.  Otherwise, the return value is nil.
+func (s *localScope) GetValueReference(sym *symbols.LocalVariable, init bool) *Reference {
+	// To get a value's reference, we must first find the position in the shadowed frames, so that its lifetime equals
+	// the actual local variable symbol's lifetime.  This ensures that once that frame is popped, so too is any value
 	// associated with it; and similarly, that its value won't be popped until the frame containing the variable is.
 	lex := s.Lexical
 	for {
@@ -79,5 +71,16 @@ func (s *localScope) SetValue(sym *symbols.LocalVariable, obj *Object) {
 	}
 	contract.Assert(s != nil)
 	contract.Assert(lex != nil)
-	s.Values[sym] = obj
+
+	if ref, has := s.Values[sym]; has {
+		return ref
+	}
+	return nil
+}
+
+// SetValue overwrites the current value, or adds a new entry, for the given symbol.
+func (s *localScope) SetValue(sym *symbols.LocalVariable, obj *Object) {
+	contract.Assert(obj == nil || types.CanConvert(obj.Type, sym.Type()))
+	ref := s.GetValueReference(sym, true)
+	ref.Set(obj)
 }

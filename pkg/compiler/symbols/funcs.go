@@ -9,7 +9,7 @@ import (
 // Function is an interface common to all functions.
 type Function interface {
 	Symbol
-	Type() *FunctionType
+	FuncType() *FunctionType
 	FuncNode() ast.Function
 }
 

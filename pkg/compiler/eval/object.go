@@ -19,8 +19,8 @@ type Object struct {
 	Properties Properties   // the full set of known properties and their values.
 }
 
-type Data interface{}                   // literal object data.
-type Properties map[tokens.Name]*Object // an object's properties.
+type Data interface{}                      // literal object data.
+type Properties map[tokens.Name]*Reference // an object's properties.
 
 // NewObject creates a new empty object of the given type.
 func NewObject(t symbols.Type) *Object {
@@ -36,6 +36,27 @@ func NewPrimitiveObject(t symbols.Type, data interface{}) *Object {
 		Type: t,
 		Data: data,
 	}
+}
+
+// NewFunctionObject creates a new function object that can be invoked, with the given symbol.
+func NewFunctionObject(fnc symbols.Function, this *Object) *Object {
+	return &Object{
+		Type: fnc.FuncType(),
+		Data: funcStub{Func: fnc, This: this},
+	}
+}
+
+// funcStub is a stub that captures a symbol plus an optional instance 'this' object.
+type funcStub struct {
+	Func symbols.Function
+	This *Object
+}
+
+// NewReferenceObject allocates a new pointer-like object that wraps the given reference.
+func NewReferenceObject(t symbols.Type, ref *Reference) *Object {
+	contract.Require(ref != nil, "ref")
+	ptr := symbols.NewPointerType(t)
+	return NewPrimitiveObject(ptr, ref)
 }
 
 // NewErrorObject creates a new exception with the given message.
@@ -79,4 +100,30 @@ func (o *Object) Number() float64 {
 	n, ok := o.Data.(float64)
 	contract.Assertf(ok, "Expected a numeric literal value for condition expr; conversion failed")
 	return n
+}
+
+// GetPropertyReference returns the reference to an object's property, lazily initializing if 'init' is true, or
+// returning nil otherwise.
+func (o *Object) GetPropertyReference(nm tokens.Name, init bool) *Reference {
+	ref, has := o.Properties[nm]
+	if !has {
+		ref = &Reference{}
+		o.Properties[nm] = ref
+	}
+	return ref
+}
+
+// Reference is a slot that can be used for indirection purposes (since Go maps are not stable).
+type Reference struct {
+	obj      *Object // the object to which the value refers.
+	readonly bool    // true prevents writes to this slot (by abandoning).
+}
+
+func (ref *Reference) Get() *Object {
+	return ref.obj
+}
+
+func (ref *Reference) Set(obj *Object) {
+	contract.Assertf(!ref.readonly, "Unexpected write to readonly reference")
+	ref.obj = obj
 }

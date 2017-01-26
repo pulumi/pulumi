@@ -134,6 +134,7 @@ type ModuleMethod struct {
 
 var _ Symbol = (*ModuleMethod)(nil)
 var _ ModuleMember = (*ModuleMethod)(nil)
+var _ Function = (*ClassMethod)(nil)
 
 func (node *ModuleMethod) symbol()           {}
 func (node *ModuleMethod) Name() tokens.Name { return node.Node.Name.Ident }
@@ -149,6 +150,7 @@ func (node *ModuleMethod) Tree() diag.Diagable          { return node.Node }
 func (node *ModuleMethod) moduleMember()                {}
 func (node *ModuleMethod) MemberNode() ast.ModuleMember { return node.Node }
 func (node *ModuleMethod) FuncNode() ast.Function       { return node.Node }
+func (node *ModuleMethod) FuncType() *FunctionType      { return node.Type }
 func (node *ModuleMethod) String() string               { return string(node.Name()) }
 
 // NewModuleMethodSym returns a new ModuleMethod symbol with the given node and parent.

@@ -6,7 +6,7 @@ import (
 	"github.com/marapongo/mu/pkg/tokens"
 )
 
-// Unwind instructs callers how to Unwind the stack.
+// Unwind instructs callers how to unwind the stack.
 type Unwind struct {
 	Break    bool         // true if breaking.
 	Continue bool         // true if continuing.

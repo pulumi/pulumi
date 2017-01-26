@@ -161,7 +161,7 @@ func (a *astBinder) visitLabeledStatement(node *ast.LabeledStatement) {
 
 func (a *astBinder) checkReturnStatement(node *ast.ReturnStatement) {
 	// Ensure that the return expression is correct (present or missing; and its type).
-	fncty := a.b.ctx.RequireFunction(a.fnc).Type()
+	fncty := a.b.ctx.RequireFunction(a.fnc).FuncType()
 	if fncty.Return == nil {
 		if node.Expression != nil {
 			// The function has no return type ("void"), and yet the return had an expression.
@@ -281,7 +281,7 @@ func (a *astBinder) checkLoadLocationExpression(node *ast.LoadLocationExpression
 	} else {
 		switch s := sym.(type) {
 		case ast.Function:
-			ty = a.b.ctx.RequireFunction(s).Type()
+			ty = a.b.ctx.RequireFunction(s).FuncType()
 		case ast.Variable:
 			ty = a.b.ctx.RequireVariable(s).Type()
 		default:
