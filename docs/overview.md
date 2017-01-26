@@ -64,29 +64,10 @@ The primary concepts in Mu are:
 * **Cluster**: A hosting environment that stacks can be deployed into, reifying them as services.
 * **Workspace**: A static collection of zero to many stacks managed together in a single source repository.
 
-In an analogy with programming languages, a stack is like a *class* and service is like an *object*.  In fact, the way
-these appear in the programming model is exactly this way; for example, in Mu's flavor of JavaScript, MuJS:
-
-    export class Registry extends mu.Stack {
-        private table: mu.Table;
-
-        constructor() {
-            this.table = new mu.Table("names");
-        }
-
-        @api public register(name: string): Promise<number> {
-            return this.table.insert({ name: name });
-        }
-    }
-
-This `Registry` stack instantiates a `Table` service, a cloud database table.  This actually represents a cloud resource
-provisioned and managed by Mu.  It then offers a single RPC API, `register`, that triggers insertion of a new name
-record into that table.  Notice how Mu is letting us mix what would have been classically expressed using a combination
-of configuration and real programming languages in one consistent and idiomatic programming model.
-
-Many concepts that are "distinct" in other systems, like the notion of gateways, controllers, functions, triggers, and
-so on, are expressed as stacks and services in the Mu system.  They are essentially "subclasses" -- or specializations
--- of this more general concept, unifying the configuration, provisioning, discovery, and overall management of them.
+In an analogy with programming languages, a stack is like a *class* and a service is like an *object*.  Many concepts
+that are "distinct" in other systems, like the notion of gateways, controllers, functions, triggers, and so on, are
+expressed as stacks and services in the Mu system.  They are essentially "subclasses" -- or specializations -- of this
+more general concept, unifying the configuration, provisioning, discovery, and overall management of them.
 
 In addition to those core abstractions, there are some supporting ones:
 
@@ -99,6 +80,56 @@ one of the toolchain's most important jobs is faithfully mapping these abstracti
 abstractions, and vice versa.  Much of Mu's ability to deliver on its promise of better productivity, sharing, and reuse
 relies on its ability to robustly and intuitively perform these translations.  There is an extensible provider model for
 creating new providers, which amounts to implementing create, read, update, and delete (CRUD) methods per resource type.
+
+## Example
+
+Let us look at an example stack written in Mu's flavor of JavaScript, MuJS:
+
+    import * as mu from "mu";
+
+    export class Thumbnailer extends mu.Stack {
+        private source: mu.Bucket; // the source to monitor for images.
+        private dest: mu.Bucket;   // the destination to store thumbnails in.
+
+        constructor(source: mu.Bucket, dest: mu.Bucket) {
+            this.source = source;
+            this.dest = dest;
+            this.source.onObjectCreated(async (event) => {
+                let obj = await event.GetObject();
+                let thumb = await gm(obj.Data).thumbnail();
+                await this.dest.PutObject(thumb);
+            });
+        }
+    }
+
+This `Thumbnailer` stack simply accepts two `mu.Bucket`s in its constructor, stores them, and wires up a lambda to run
+on the source's `onObjectCreated` event.  This program describes a reusable cloud service that can be instantiated any
+number of times in any environment.  It is important to note that the body of this lambda is real JavaScript, while the
+configuration outside of it is the MuJS subset.  Mu is letting us mix what would have been classically expressed using a
+combination of configuration and real programming languages in one consistent and idiomatic programming model.
+
+Let us now look at an instantiation of `Thumbnailer`.  This happens elsewhere in something we call a *blueprint*:
+
+    import * as aws from "@mu/aws";
+    import * as mu from "mu";
+    import {Thumbnailer} from "...";
+
+    let images = new aws.s3.Bucket("images");
+    let thumbnails = new aws.s3.Bucket("thumbnails");
+    let thumbnailer = new Thumbnailer(images, thumbnails);
+
+Many Mu programs are libraries, while blueprints are akin to executables in your favorite language.
+
+The `aws.s3.Bucket` class is a subclass of `mu.Bucket`, and so can be passed to `Thumbnailer`'s constructor just fine.
+Notice how `Thumbnailer` is itself a cloud-neutral abstraction.  Of course, if it had wanted to access specific AWS S3
+features, it could have accepted a concrete `aws.s3.Bucket`; as with ordinary object-oriented languages, the
+abstraction's author decides (e.g., this is similar to accepting a concrete "list" versus "enumerable" interface).
+
+The Mu toolchain analyzes this program and understands its components.  The program isn't run directly; instead, it is
+fed into a command like `mu compile`, `mu plan`, and `mu apply`, to determine how to create, update, or delete resources
+in a target cluster environment, using resource providers.  For instance, running `mu apply` on the above program, in a
+new cluster, will create two S3 buckets and a single AWS lambda wired up to the source bucket.  If we make edits, and
+reapply those edits, just the parts that have been changed will be updated in the target environment.
 
 ## Further Reading
 
