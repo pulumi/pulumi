@@ -5,8 +5,8 @@ package errors
 import (
 	"fmt"
 
-	"github.com/marapongo/mu/pkg/compiler/legacy/ast"
 	"github.com/marapongo/mu/pkg/diag"
+	"github.com/marapongo/mu/pkg/tokens"
 )
 
 var ErrorCouldNotReadMufile = &diag.Diag{
@@ -32,13 +32,13 @@ var ErrorBadTemplate = &diag.Diag{
 var ErrorIllegalMapLikeSyntax = &diag.Diag{
 	ID: 154,
 	Message: "The map type '%v' is malformed (expected syntax is '" +
-		fmt.Sprintf(string(ast.TypeDecorsMap), "K", "V") + "')",
+		fmt.Sprintf(string(tokens.MapTypeDecors), "K", "V") + "')",
 }
 
 var ErrorIllegalArrayLikeSyntax = &diag.Diag{
 	ID: 155,
 	Message: "The array type '%v' is malformed (expected syntax is '" +
-		fmt.Sprintf(string(ast.TypeDecorsArray), "T") + "')",
+		fmt.Sprintf(string(tokens.ArrayTypeDecors), "T") + "')",
 }
 
 var ErrorIllegalNameLikeSyntax = &diag.Diag{
