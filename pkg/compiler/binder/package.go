@@ -9,6 +9,7 @@ import (
 	"github.com/marapongo/mu/pkg/compiler/symbols"
 	"github.com/marapongo/mu/pkg/diag"
 	"github.com/marapongo/mu/pkg/pack"
+	"github.com/marapongo/mu/pkg/tokens"
 	"github.com/marapongo/mu/pkg/util/contract"
 	"github.com/marapongo/mu/pkg/workspace"
 )
@@ -16,9 +17,9 @@ import (
 // BindPackages takes a package AST, resolves all dependencies and tokens inside of it, and returns a fully bound
 // package symbol that can be used for semantic operations (like interpretation and evaluation).
 func (b *binder) BindPackage(pkg *pack.Package) *symbols.Package {
-	// If the package is missing a name, issue an error.
-	if pkg.Name == "" {
-		b.Diag().Errorf(errors.ErrorMissingPackageName.At(pkg))
+	// If the package name isn't a legal identifier, say so.
+	if !tokens.IsQName(pkg.Name) {
+		b.Diag().Errorf(errors.ErrorInvalidPackageName.At(pkg.Doc))
 	}
 
 	// TODO: read the package's version and ensure that it is not a range.  In other words, resolved packages must have
@@ -55,7 +56,7 @@ func (b *binder) resolvePackageDeps(pkg *symbols.Package) {
 			// The dependency is a URL.  Transform it into a name used for symbol resolution.
 			dep, err := depurl.Parse()
 			if err != nil {
-				b.Diag().Errorf(errors.ErrorPackageURLMalformed, depurl, err)
+				b.Diag().Errorf(errors.ErrorMalformedPackageURL, depurl, err)
 			} else {
 				glog.V(3).Infof("Resolving package '%v' dependency name=%v, url=%v", pkg.Name(), dep.Name, dep.URL())
 				if depsym := b.resolveDep(dep); depsym != nil {

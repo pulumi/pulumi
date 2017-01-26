@@ -5,10 +5,13 @@ package binder
 import (
 	"github.com/marapongo/mu/pkg/compiler/ast"
 	"github.com/marapongo/mu/pkg/compiler/symbols"
+	"github.com/marapongo/mu/pkg/util/contract"
 )
 
 // bindFunctionBody binds a function body, including a scope, its parameters, and its expressions and statements.
 func (b *binder) bindFunctionBody(node ast.Function) {
+	contract.Require(node != nil, "node")
+
 	// Enter a new scope, bind the parameters, and then bind the body using a visitor.
 	scope := b.ctx.Scope.Push(true)
 	defer scope.Pop()

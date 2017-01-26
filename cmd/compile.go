@@ -8,11 +8,11 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/marapongo/mu/pkg/cmdutil"
 	"github.com/marapongo/mu/pkg/compiler"
 	"github.com/marapongo/mu/pkg/compiler/core"
 	"github.com/marapongo/mu/pkg/graph"
 	"github.com/marapongo/mu/pkg/tokens"
+	"github.com/marapongo/mu/pkg/util/cmdutil"
 	"github.com/marapongo/mu/pkg/util/contract"
 )
 

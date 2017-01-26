@@ -20,7 +20,7 @@ func (nm Name) Q() QName { return QName(nm) }
 
 // IsName checks whether a string is a legal Name.
 func IsName(s string) bool {
-	return NameRegexp.FindString(s) == s
+	return s != "" && NameRegexp.FindString(s) == s
 }
 
 // AsName converts a given string to a Name, asserting its validity.
@@ -41,7 +41,7 @@ var QNameRegexpPattern = "(" + NameRegexpPattern + "\\" + QNameDelimiter + ")*" 
 
 // IsQName checks whether a string is a legal Name.
 func IsQName(s string) bool {
-	return QNameRegexp.FindString(s) == s
+	return s != "" && QNameRegexp.FindString(s) == s
 }
 
 // AsQName converts a given string to a QName, asserting its validity.

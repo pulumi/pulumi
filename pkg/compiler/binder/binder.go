@@ -3,6 +3,9 @@
 package binder
 
 import (
+	"fmt"
+	"reflect"
+
 	"github.com/golang/glog"
 
 	"github.com/marapongo/mu/pkg/compiler/ast"
@@ -101,11 +104,14 @@ func (b *binder) bindTypeToken(node ast.Node, tok tokens.Type) symbols.Type {
 		return symbols.NewFunctionType(params, ret)
 	} else {
 		// Otherwise, we will need to perform a more exhaustive lookup of a qualified type token.
-		sym := b.lookupSymbolToken(node, tokens.Token(tok), false)
-		if ty, ok := sym.(symbols.Type); ok {
-			return ty
+		if sym := b.lookupSymbolToken(node, tokens.Token(tok), false); sym != nil {
+			if ty, ok := sym.(symbols.Type); ok {
+				return ty
+			}
+			reason = fmt.Sprintf("symbol kind %v incorrect", reflect.TypeOf(sym))
+		} else {
+			reason = "symbol missing"
 		}
-		reason = "symbol kind incorrect"
 	}
 
 	// The type was not found; issue an error, and return Any so we can proceed with typechecking.
@@ -237,7 +243,7 @@ func (b *binder) lookupSymbolToken(node ast.Node, tok tokens.Token, require bool
 	}
 
 	if sym == nil {
-		glog.V(5).Info("Failed to bind qualified token; %v: '%v'", extra, tok)
+		glog.V(5).Infof("Failed to bind qualified token; %v: '%v'", extra, tok)
 		if require {
 			// If requested, issue an error.
 			// TODO: edit distance checking to help suggest a fix.

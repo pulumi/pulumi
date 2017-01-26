@@ -118,34 +118,39 @@ func (md *mapper) DecodeField(tree Object, ty reflect.Type, key string, target i
 	if v, has := tree[key]; has {
 		// The field exists; okay, try to map it to the right type.
 		vsrc := reflect.ValueOf(v)
-		vdstType := vdst.Type().Elem()
+		// Ensure the source is valid; this is false if the value reflects the zero value.
+		if vsrc.IsValid() {
+			vdstType := vdst.Type().Elem()
 
-		// So long as the target element is a pointer, we have a pointer to pointer; keep digging through until we
-		// bottom out on the non-pointer type that matches the source.  This assumes the source isn't itself a pointer!
-		contract.Assert(vsrc.Type().Kind() != reflect.Ptr)
-		for vdstType.Kind() == reflect.Ptr {
-			vdst = vdst.Elem()
-			vdstType = vdstType.Elem()
-			if !vdst.Elem().CanSet() {
-				// If the pointer is nil, initialize it so we can set it below.
-				contract.Assert(vdst.IsNil())
-				vdst.Set(reflect.New(vdstType))
+			// So long as the target element is a pointer, we have a pointer to pointer; dig through until we bottom out
+			// on the non-pointer type that matches the source.  This assumes the source isn't itself a pointer!
+			contract.Assert(vsrc.Type().Kind() != reflect.Ptr)
+			for vdstType.Kind() == reflect.Ptr {
+				vdst = vdst.Elem()
+				vdstType = vdstType.Elem()
+				if !vdst.Elem().CanSet() {
+					// If the pointer is nil, initialize it so we can set it below.
+					contract.Assert(vdst.IsNil())
+					vdst.Set(reflect.New(vdstType))
+				}
+			}
+
+			// Adjust the value if necessary; this handles recursive struct marshaling, interface unboxing, and more.
+			var err error
+			if vsrc, err = md.adjustValue(vsrc, vdstType, ty, key); err != nil {
+				return err
+			}
+
+			// Finally, provided everything is kosher, go ahead and store the value; otherwise, issue an error.
+			if vsrc.Type().AssignableTo(vdstType) {
+				vdst.Elem().Set(vsrc)
+				return nil
+			} else {
+				return ErrWrongType(ty, key, vdstType, vsrc.Type())
 			}
 		}
-
-		// Adjust the value if necessary; this handles recursive struct marshaling, interface unboxing, and more.
-		var err error
-		if vsrc, err = md.adjustValue(vsrc, vdstType, ty, key); err != nil {
-			return err
-		}
-
-		// Finally, provided everything is kosher, go ahead and store the value; otherwise, issue an error.
-		if vsrc.Type().AssignableTo(vdstType) {
-			vdst.Elem().Set(vsrc)
-		} else {
-			return ErrWrongType(ty, key, vdstType, vsrc.Type())
-		}
-	} else if !optional {
+	}
+	if !optional {
 		// The field doesn't exist and yet it is required; issue an error.
 		return ErrMissing(ty, key)
 	}

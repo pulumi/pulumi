@@ -9,10 +9,10 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/marapongo/mu/pkg/cmdutil"
 	"github.com/marapongo/mu/pkg/compiler/ast"
 	"github.com/marapongo/mu/pkg/pack"
 	"github.com/marapongo/mu/pkg/tokens"
+	"github.com/marapongo/mu/pkg/util/cmdutil"
 	"github.com/marapongo/mu/pkg/util/contract"
 )
 

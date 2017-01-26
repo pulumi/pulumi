@@ -4,18 +4,36 @@ package compiler
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/marapongo/mu/pkg/compiler/backends"
-	"github.com/marapongo/mu/pkg/compiler/backends/clouds"
-	"github.com/marapongo/mu/pkg/compiler/diag"
+	"github.com/marapongo/mu/pkg/compiler/core"
 	"github.com/marapongo/mu/pkg/compiler/errors"
+	"github.com/marapongo/mu/pkg/diag"
+	"github.com/marapongo/mu/pkg/util/contract"
+	"github.com/marapongo/mu/pkg/util/testutil"
 )
 
+func testCompile(paths ...string) *testutil.TestDiagSink {
+	// Create the test directory path.
+	pwd, _ := os.Getwd()
+	testdir := filepath.Join(append([]string{pwd}, paths...)...)
+
+	// Create a test sink, so we can capture and inspect outputs.
+	sink := testutil.NewTestDiagSink(testdir)
+
+	// Create the compiler machinery, perform the compile, and return the sink.
+	comp, err := New(testdir, &core.Options{Diag: sink})
+	contract.Assertf(err == nil, "Expected a nil error from compiler constructor; got '%v'", err)
+	comp.Compile()
+	return sink
+}
+
 func TestBadMissingMufile(t *testing.T) {
-	sink := buildNoCodegen("testdata", "compiler", "bad__missing_mufile")
+	sink := testCompile("testdata", "bad__missing_mufile")
 
 	// Check that the compiler complained about a missing Mufile.
 	d := errors.ErrorMissingMufile
@@ -27,7 +45,7 @@ func TestBadMissingMufile(t *testing.T) {
 }
 
 func TestBadMufileCasing(t *testing.T) {
-	sink := buildNoCodegen("testdata", "compiler", "bad__mufile_casing")
+	sink := testCompile("testdata", "bad__mufile_casing")
 
 	// Check that the compiler warned about a bad Mufile casing (mu.yaml).
 	d := errors.WarningIllegalMarkupFileCasing
@@ -38,8 +56,8 @@ func TestBadMufileCasing(t *testing.T) {
 		sink.WarningMsgs()[0])
 }
 
-func TestBadMufileExt1(t *testing.T) {
-	sink := buildNoCodegen("testdata", "compiler", "bad__mufile_ext__1")
+func TestBadMufileExt(t *testing.T) {
+	sink := testCompile("testdata", "bad__mufile_ext")
 
 	// Check that the compiler warned about a bad Mufile extension (none).
 	d := errors.WarningIllegalMarkupFileExt
@@ -52,7 +70,7 @@ func TestBadMufileExt1(t *testing.T) {
 }
 
 func TestBadMufileExt2(t *testing.T) {
-	sink := buildNoCodegen("testdata", "compiler", "bad__mufile_ext__2")
+	sink := testCompile("testdata", "bad__mufile_ext_2")
 
 	// Check that the compiler warned about a bad Mufile extension (".txt").
 	d := errors.WarningIllegalMarkupFileExt
@@ -64,35 +82,40 @@ func TestBadMufileExt2(t *testing.T) {
 		sink.WarningMsgs()[0])
 }
 
-func TestMissingTarget(t *testing.T) {
-	mufile := []byte("name: notarget\n" +
-		"abstract: true\n")
+func TestBadMissingPackageName(t *testing.T) {
+	sink := testCompile("testdata", "bad__missing_package_name")
 
-	// Check that the compiler issued an error due to missing cloud targets.
-	sink := buildFile(&Options{}, mufile, ".yaml")
-	d := errors.ErrorMissingTarget
+	// Check that the compiler complained about a missing package name.
+	d := errors.ErrorIllegalMufileSyntax
 	assert.Equal(t, 1, sink.Errors(), "expected a single error")
 	assert.Equal(t,
-		fmt.Sprintf("%v: %v%v: %v\n",
-			diag.DefaultSinkErrorPrefix, diag.DefaultSinkIDPrefix, d.ID, d.Message), sink.ErrorMsgs()[0])
-
-	// Now check that this same project compiles fine if we manually specify an architecture.
-	sink = buildFile(&Options{
-		Arch: backends.Arch{
-			Cloud: clouds.AWS,
-		},
-	}, mufile, ".yaml")
-	assert.Equal(t, 0, sink.Errors(), "expected no compilation errors")
+		fmt.Sprintf("%v: %v%v: %v: %v\n",
+			diag.DefaultSinkErrorPrefix, diag.DefaultSinkIDPrefix, d.ID, "Mu.yaml",
+			fmt.Sprintf(d.Message, "Missing required pack.Package field `name`")),
+		sink.ErrorMsgs()[0])
 }
 
-func TestUnrecognizedCloud(t *testing.T) {
-	sink := buildNoCodegen("testdata", "compiler", "bad__unrecognized_cloud")
+func TestBadEmptyPackageName(t *testing.T) {
+	sink := testCompile("testdata", "bad__empty_package_name")
 
-	// Check that the compiler issued an error about an unrecognized cloud.
-	d := errors.ErrorUnrecognizedCloudArch
+	// Check that the compiler complained about a missing package name.
+	d := errors.ErrorIllegalMufileSyntax
 	assert.Equal(t, 1, sink.Errors(), "expected a single error")
 	assert.Equal(t,
-		fmt.Sprintf("%v: %v%v: %v\n",
-			diag.DefaultSinkErrorPrefix, diag.DefaultSinkIDPrefix, d.ID, fmt.Sprintf(d.Message, "badcloud")),
+		fmt.Sprintf("%v: %v%v: %v: %v\n",
+			diag.DefaultSinkErrorPrefix, diag.DefaultSinkIDPrefix, d.ID, "Mu.yaml",
+			fmt.Sprintf(d.Message, "Missing required pack.Package field `name`")),
+		sink.ErrorMsgs()[0])
+}
+
+func TestBadEmptyPackageName2(t *testing.T) {
+	sink := testCompile("testdata", "bad__empty_package_name_2")
+
+	// Check that the compiler complained about a missing package name.
+	d := errors.ErrorInvalidPackageName
+	assert.Equal(t, 1, sink.Errors(), "expected a single error")
+	assert.Equal(t,
+		fmt.Sprintf("%v: %v%v: %v: %v\n",
+			diag.DefaultSinkErrorPrefix, diag.DefaultSinkIDPrefix, d.ID, "Mu.yaml", d.Message),
 		sink.ErrorMsgs()[0])
 }

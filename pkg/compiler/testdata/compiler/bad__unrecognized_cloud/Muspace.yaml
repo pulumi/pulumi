@@ -1,5 +1,0 @@
-clusters:
-    prod:
-        default: true
-        cloud: badcloud
-

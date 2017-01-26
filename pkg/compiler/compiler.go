@@ -103,8 +103,12 @@ func (c *compiler) Compile() graph.Graph {
 	if err != nil {
 		c.Diag().Errorf(errors.ErrorIO, err)
 		return nil
+	} else if path == "" {
+		c.Diag().Errorf(errors.ErrorMissingMufile, c.ctx.Path)
+		return nil
+	} else {
+		return c.CompilePath(path)
 	}
-	return c.CompilePath(path)
 }
 
 // CompilePath loads a package at the given path and compiles it into a graph.

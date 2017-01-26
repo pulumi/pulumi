@@ -1,9 +1,0 @@
-name: symexists
-services:
-    public:
-        foo:
-            type: mu/container
-    private:
-        foo:
-            type: mu/container
-

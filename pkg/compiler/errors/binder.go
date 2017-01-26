@@ -4,8 +4,8 @@ package errors
 
 // Binder errors are in the [500-600) range.
 var (
-	ErrorMissingPackageName  = newError(500, "This package is missing a `name` property (or it is empty)")
-	ErrorPackageURLMalformed = newError(501, "Package URL '%v' is malformed: %v")
+	ErrorInvalidPackageName  = newError(500, "The package name must be a valid identifier")
+	ErrorMalformedPackageURL = newError(501, "Package URL '%v' is malformed: %v")
 	ErrorImportNotFound      = newError(502, "The imported package '%v' was not found; has it been installed?")
 	ErrorImportCycle         = newError(
 		503, "An import cycle was found in %v's transitive closure of package imports")
