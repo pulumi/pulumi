@@ -70,7 +70,7 @@ func (e *evaluator) EvaluatePackage(pkg *symbols.Package, args core.Args) graph.
 		}
 	}
 
-	e.Diag().Errorf(errors.ErrorPackageHasNoDefaultModule.At(pkg.Tree()), pkg.Name)
+	e.Diag().Errorf(errors.ErrorPackageHasNoDefaultModule.At(pkg.Tree()), pkg.Name())
 	return nil
 }
 
@@ -89,7 +89,7 @@ func (e *evaluator) EvaluateModule(mod *symbols.Module, args core.Args) graph.Gr
 		}
 	}
 
-	e.Diag().Errorf(errors.ErrorModuleHasNoEntryPoint.At(mod.Tree()), mod.Name)
+	e.Diag().Errorf(errors.ErrorModuleHasNoEntryPoint.At(mod.Tree()), mod.Name())
 	return nil
 }
 
