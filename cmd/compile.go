@@ -54,18 +54,19 @@ func newCompileCmd() *cobra.Command {
 				mugl = comp.Compile()
 			} else {
 				fn := args[0]
-				pkg := cmdutil.ReadPackageFromArg(fn)
-				var comp compiler.Compiler
-				var err error
-				if fn == "-" {
-					comp, err = compiler.Newwd(opts)
-				} else {
-					comp, err = compiler.New(filepath.Dir(fn), opts)
+				if pkg := cmdutil.ReadPackageFromArg(fn); pkg != nil {
+					var comp compiler.Compiler
+					var err error
+					if fn == "-" {
+						comp, err = compiler.Newwd(opts)
+					} else {
+						comp, err = compiler.New(filepath.Dir(fn), opts)
+					}
+					if err != nil {
+						contract.Failf("fatal: %v", err)
+					}
+					mugl = comp.CompilePackage(pkg)
 				}
-				if err != nil {
-					contract.Failf("fatal: %v", err)
-				}
-				mugl = comp.CompilePackage(pkg)
 			}
 			if mugl == nil {
 				return
