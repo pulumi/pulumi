@@ -1,7 +1,7 @@
 // Copyright 2016 Marapongo, Inc. All rights reserved.
 
 import {LocalVariable} from "./definitions";
-import {ClassMemberToken, Identifier, Node, TypeToken} from "./nodes";
+import {ClassMemberToken, Identifier, Node, Token, TypeToken} from "./nodes";
 import * as statements from "./statements";
 
 import * as symbols from "../symbols";
@@ -84,7 +84,7 @@ export interface LoadExpression extends Expression {
 export interface LoadLocationExpression extends LoadExpression {
     kind:    LoadLocationExpressionKind;
     object?: Expression; // the `this` object, in the case of class properties.
-    name:    Identifier; // the name of the member to load.
+    name:    Token;      // the full token of the member to load.
 }
 export const loadLocationExpressionKind = "LoadLocationExpression";
 export type  LoadLocationExpressionKind = "LoadLocationExpression";

@@ -116,8 +116,8 @@
                                                 "object": {
                                                     "kind": "LoadLocationExpression",
                                                     "name": {
-                                                        "kind": "Identifier",
-                                                        "ident": ".this"
+                                                        "kind": "Token",
+                                                        "tok": ".this"
                                                     },
                                                     "loc": {
                                                         "file": "index.ts",
@@ -132,8 +132,8 @@
                                                     }
                                                 },
                                                 "name": {
-                                                    "kind": "Identifier",
-                                                    "ident": "x",
+                                                    "kind": "Token",
+                                                    "tok": "x",
                                                     "loc": {
                                                         "file": "index.ts",
                                                         "start": {
@@ -161,8 +161,8 @@
                                             "right": {
                                                 "kind": "LoadLocationExpression",
                                                 "name": {
-                                                    "kind": "Identifier",
-                                                    "ident": "x",
+                                                    "kind": "Token",
+                                                    "tok": "x",
                                                     "loc": {
                                                         "file": "index.ts",
                                                         "start": {
@@ -221,8 +221,8 @@
                                                 "object": {
                                                     "kind": "LoadLocationExpression",
                                                     "name": {
-                                                        "kind": "Identifier",
-                                                        "ident": ".this"
+                                                        "kind": "Token",
+                                                        "tok": ".this"
                                                     },
                                                     "loc": {
                                                         "file": "index.ts",
@@ -237,8 +237,8 @@
                                                     }
                                                 },
                                                 "name": {
-                                                    "kind": "Identifier",
-                                                    "ident": "y",
+                                                    "kind": "Token",
+                                                    "tok": "y",
                                                     "loc": {
                                                         "file": "index.ts",
                                                         "start": {
@@ -266,8 +266,8 @@
                                             "right": {
                                                 "kind": "LoadLocationExpression",
                                                 "name": {
-                                                    "kind": "Identifier",
-                                                    "ident": "y",
+                                                    "kind": "Token",
+                                                    "tok": "y",
                                                     "loc": {
                                                         "file": "index.ts",
                                                         "start": {
@@ -427,8 +427,8 @@
                                                         "object": {
                                                             "kind": "LoadLocationExpression",
                                                             "name": {
-                                                                "kind": "Identifier",
-                                                                "ident": ".this"
+                                                                "kind": "Token",
+                                                                "tok": ".this"
                                                             },
                                                             "loc": {
                                                                 "file": "index.ts",
@@ -443,8 +443,8 @@
                                                             }
                                                         },
                                                         "name": {
-                                                            "kind": "Identifier",
-                                                            "ident": "x",
+                                                            "kind": "Token",
+                                                            "tok": "x",
                                                             "loc": {
                                                                 "file": "index.ts",
                                                                 "start": {
@@ -474,8 +474,8 @@
                                                         "object": {
                                                             "kind": "LoadLocationExpression",
                                                             "name": {
-                                                                "kind": "Identifier",
-                                                                "ident": "other",
+                                                                "kind": "Token",
+                                                                "tok": "other",
                                                                 "loc": {
                                                                     "file": "index.ts",
                                                                     "start": {
@@ -501,8 +501,8 @@
                                                             }
                                                         },
                                                         "name": {
-                                                            "kind": "Identifier",
-                                                            "ident": "x",
+                                                            "kind": "Token",
+                                                            "tok": "x",
                                                             "loc": {
                                                                 "file": "index.ts",
                                                                 "start": {
@@ -547,8 +547,8 @@
                                                         "object": {
                                                             "kind": "LoadLocationExpression",
                                                             "name": {
-                                                                "kind": "Identifier",
-                                                                "ident": ".this"
+                                                                "kind": "Token",
+                                                                "tok": ".this"
                                                             },
                                                             "loc": {
                                                                 "file": "index.ts",
@@ -563,8 +563,8 @@
                                                             }
                                                         },
                                                         "name": {
-                                                            "kind": "Identifier",
-                                                            "ident": "y",
+                                                            "kind": "Token",
+                                                            "tok": "y",
                                                             "loc": {
                                                                 "file": "index.ts",
                                                                 "start": {
@@ -594,8 +594,8 @@
                                                         "object": {
                                                             "kind": "LoadLocationExpression",
                                                             "name": {
-                                                                "kind": "Identifier",
-                                                                "ident": "other",
+                                                                "kind": "Token",
+                                                                "tok": "other",
                                                                 "loc": {
                                                                     "file": "index.ts",
                                                                     "start": {
@@ -621,8 +621,8 @@
                                                             }
                                                         },
                                                         "name": {
-                                                            "kind": "Identifier",
-                                                            "ident": "y",
+                                                            "kind": "Token",
+                                                            "tok": "y",
                                                             "loc": {
                                                                 "file": "index.ts",
                                                                 "start": {

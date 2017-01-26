@@ -60,8 +60,8 @@
                                     "left": {
                                         "kind": "LoadLocationExpression",
                                         "name": {
-                                            "kind": "Identifier",
-                                            "ident": "x",
+                                            "kind": "Token",
+                                            "tok": "x",
                                             "loc": {
                                                 "file": "index.ts",
                                                 "start": {

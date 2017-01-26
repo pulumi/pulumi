@@ -1150,7 +1150,10 @@ export class Transformer {
                 kind:     ast.binaryOperatorExpressionKind,
                 left:     <ast.LoadLocationExpression>{
                     kind: ast.loadLocationExpressionKind,
-                    name: decl.variable.name,
+                    name: this.copyLocation(decl.variable.name, <ast.Token>{
+                        kind: ast.tokenKind,
+                        tok:  decl.variable.name.ident,
+                    }),
                 },
                 operator: "=",
                 right:    decl.initializer,
@@ -1724,10 +1727,14 @@ export class Transformer {
         if (node.argumentExpression) {
             switch (node.argumentExpression.kind) {
                 case ts.SyntaxKind.Identifier:
+                    let id: ast.Identifier = this.transformIdentifier(<ts.Identifier>node.argumentExpression);
                     return this.withLocation(node, <ast.LoadLocationExpression>{
                         kind:   ast.loadLocationExpressionKind,
                         object: object,
-                        name:   this.transformIdentifier(<ts.Identifier>node.argumentExpression),
+                        name:   this.copyLocation(id, <ast.Token>{
+                            kind: ast.tokenKind,
+                            tok:  id.ident,
+                        }),
                     });
                 default:
                     return this.withLocation(node, <ast.LoadDynamicExpression>{
@@ -1801,9 +1808,12 @@ export class Transformer {
                 kind: ast.classMemberTokenKind,
                 tok:  name.ident,
             },
-            value:   this.withLocation(node.name, <ast.LoadLocationExpression>{
+            value: this.withLocation(node.name, <ast.LoadLocationExpression>{
                 kind: ast.loadLocationExpressionKind,
-                name: name,
+                name: this.copyLocation(name, <ast.Token>{
+                    kind: ast.tokenKind,
+                    tok:  name.ident,
+                }),
             }),
         });
     }
@@ -1836,10 +1846,14 @@ export class Transformer {
     }
 
     private transformPropertyAccessExpression(node: ts.PropertyAccessExpression): ast.LoadLocationExpression {
+        let id: ast.Identifier = this.transformIdentifier(node.name);
         return this.withLocation(node, <ast.LoadLocationExpression>{
             kind:   ast.loadLocationExpressionKind,
             object: this.transformExpression(node.expression),
-            name:   this.transformIdentifier(node.name),
+            name:   this.copyLocation(id, <ast.Token>{
+                kind: ast.tokenKind,
+                tok:  id.ident,
+            }),
         });
     }
 
@@ -1877,9 +1891,13 @@ export class Transformer {
     }
 
     private transformSuperExpression(node: ts.SuperExpression): ast.LoadLocationExpression {
+        let id: ast.Identifier = ident(symbols.superVariable);
         return this.withLocation(node, <ast.LoadLocationExpression>{
             kind: ast.loadLocationExpressionKind,
-            name: ident(symbols.superVariable),
+            name: this.copyLocation(id, <ast.Token>{
+                kind: ast.tokenKind,
+                tok:  id.ident,
+            }),
         });
     }
 
@@ -1892,9 +1910,13 @@ export class Transformer {
     }
 
     private transformThisExpression(node: ts.ThisExpression): ast.LoadLocationExpression {
+        let id: ast.Identifier = ident(symbols.thisVariable);
         return this.withLocation(node, <ast.LoadLocationExpression>{
             kind: ast.loadLocationExpressionKind,
-            name: ident(symbols.thisVariable),
+            name: this.copyLocation(id, <ast.Token>{
+                kind: ast.tokenKind,
+                tok:  id.ident,
+            }),
         });
     }
 
@@ -1986,9 +2008,13 @@ export class Transformer {
     // transformIdentifierExpression takes a TypeScript identifier node and yields a MuIL expression.  This expression,
     // when evaluated, will load the value of the target identifier, so that it's suitable as an expression node.
     private transformIdentifierExpression(node: ts.Identifier): ast.Expression {
+        let id: ast.Identifier = this.transformIdentifier(node);
         return this.withLocation(node, <ast.LoadLocationExpression>{
             kind: ast.loadLocationExpressionKind,
-            name: this.transformIdentifier(node),
+            name: this.copyLocation(id, <ast.Token>{
+                kind: ast.tokenKind,
+                tok:  id.ident,
+            }),
         });
     }
 

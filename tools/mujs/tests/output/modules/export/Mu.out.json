@@ -124,8 +124,8 @@
                                     "left": {
                                         "kind": "LoadLocationExpression",
                                         "name": {
-                                            "kind": "Identifier",
-                                            "ident": "w",
+                                            "kind": "Token",
+                                            "tok": "w",
                                             "loc": {
                                                 "file": "other.ts",
                                                 "start": {
@@ -380,8 +380,8 @@
                                     "left": {
                                         "kind": "LoadLocationExpression",
                                         "name": {
-                                            "kind": "Identifier",
-                                            "ident": "v",
+                                            "kind": "Token",
+                                            "tok": "v",
                                             "loc": {
                                                 "file": "index.ts",
                                                 "start": {
