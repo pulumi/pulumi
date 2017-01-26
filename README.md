@@ -4,6 +4,10 @@ Mu is a framework and toolset for creating reusable stacks of services.
 
 If you are learning about Mu for the first time, please see [the overview document](docs/overview.md).
 
+## Architecture
+
+![Architecture](docs/images/arch.png)
+
 ## Building and Testing
 
 To build Mu, first clone it into a standard Go workspace:
