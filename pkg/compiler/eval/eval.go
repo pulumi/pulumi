@@ -524,7 +524,7 @@ func (e *evaluator) evalLoadLocationExpression(node *ast.LoadLocationExpression)
 		case *symbols.ClassMethod:
 			// Create a new readonly ref slot, pointing to the method, that will abandon if overwritten.
 			contract.Assert(this != nil)
-			// TODO: should we be more "dynamic" and permit overwriting of methods?  I suspect yes, for compat.
+			// TODO[marapongo/mu#56]: consider permitting "dynamic" method overwriting.
 			pv = &Reference{
 				obj:      NewFunctionObject(s, this),
 				readonly: true,
@@ -543,7 +543,7 @@ func (e *evaluator) evalLoadLocationExpression(node *ast.LoadLocationExpression)
 		case *symbols.ModuleMethod:
 			// Create a new readonly ref slot, pointing to the method, that will abandon if overwritten.
 			contract.Assert(this == nil)
-			// TODO: should we be more "dynamic" and permit overwriting of methods?  I suspect yes, for compat.
+			// TODO[marapongo/mu#56]: consider permitting "dynamic" method overwriting.
 			pv = &Reference{
 				obj:      NewFunctionObject(s, nil),
 				readonly: true,
