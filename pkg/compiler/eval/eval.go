@@ -3,6 +3,8 @@
 package eval
 
 import (
+	"github.com/golang/glog"
+
 	"github.com/marapongo/mu/pkg/compiler/ast"
 	"github.com/marapongo/mu/pkg/compiler/binder"
 	"github.com/marapongo/mu/pkg/compiler/core"
@@ -11,7 +13,6 @@ import (
 	"github.com/marapongo/mu/pkg/compiler/types"
 	"github.com/marapongo/mu/pkg/diag"
 	"github.com/marapongo/mu/pkg/graph"
-	"github.com/marapongo/mu/pkg/pack"
 	"github.com/marapongo/mu/pkg/tokens"
 	"github.com/marapongo/mu/pkg/util/contract"
 )
@@ -22,10 +23,12 @@ type Interpreter interface {
 
 	Ctx() *binder.Context // the binding context object.
 
-	// EvaluatePackage performs evaluation on the given blueprint package, starting in its entrypoint.
-	EvaluatePackage(pkg *pack.Package) graph.Graph
+	// EvaluatePackage performs evaluation on the given blueprint package.
+	EvaluatePackage(pkg *symbols.Package, args core.Args) graph.Graph
+	// EvaluateModule performs evaluation on the given module's entrypoint function.
+	EvaluateModule(mod *symbols.Module, args core.Args) graph.Graph
 	// EvaluateFunction performs an evaluation of the given function, using the provided arguments, returning its graph.
-	EvaluateFunction(fnc symbols.Function, args ...interface{}) graph.Graph
+	EvaluateFunction(fnc symbols.Function, args core.Args) graph.Graph
 }
 
 // New creates an interpreter that can be used to evaluate MuPackages.
@@ -52,32 +55,100 @@ var _ Interpreter = (*evaluator)(nil)
 func (e *evaluator) Ctx() *binder.Context { return e.ctx }
 func (e *evaluator) Diag() diag.Sink      { return e.ctx.Diag }
 
-// EvaluatePackage performs evaluation on the given blueprint package, starting in its entrypoint.
-func (e *evaluator) EvaluatePackage(pkg *pack.Package) graph.Graph {
-	// TODO: find the entrypoint.
-	// TODO: pair up the ctx args, if any, with the entrypoint's parameters.
-	// TODO: visit the function.
+// EvaluatePackage performs evaluation on the given blueprint package.
+func (e *evaluator) EvaluatePackage(pkg *symbols.Package, args core.Args) graph.Graph {
+	glog.Infof("Evaluating package '%v'", pkg.Name)
+	if glog.V(2) {
+		defer glog.V(2).Infof("Evaluation of package '%v' completed w/ %v warnings and %v errors",
+			pkg.Name, e.Diag().Warnings(), e.Diag().Errors())
+	}
+
+	// Search the package for a default module "index" to evaluate.
+	for _, mod := range pkg.Modules {
+		if mod.Default() {
+			return e.EvaluateModule(mod, args)
+		}
+	}
+
+	e.Diag().Errorf(errors.ErrorPackageHasNoDefaultModule.At(pkg.Tree()), pkg.Name)
+	return nil
+}
+
+// EvaluateModule performs evaluation on the given module's entrypoint function.
+func (e *evaluator) EvaluateModule(mod *symbols.Module, args core.Args) graph.Graph {
+	glog.Infof("Evaluating module '%v'", mod.Token())
+	if glog.V(2) {
+		defer glog.V(2).Infof("Evaluation of module '%v' completed w/ %v warnings and %v errors",
+			mod.Token(), e.Diag().Warnings(), e.Diag().Errors())
+	}
+
+	// Fetch the module's entrypoint function, erroring out if it doesn't have one.
+	if ep, has := mod.Members[tokens.EntryPointFunction]; has {
+		if epfnc, ok := ep.(symbols.Function); ok {
+			return e.EvaluateFunction(epfnc, args)
+		}
+	}
+
+	e.Diag().Errorf(errors.ErrorModuleHasNoEntryPoint.At(mod.Tree()), mod.Name)
 	return nil
 }
 
 // EvaluateFunction performs an evaluation of the given function, using the provided arguments, returning its graph.
-func (e *evaluator) EvaluateFunction(fnc symbols.Function, args ...interface{}) graph.Graph {
-	// First, turn the arguments into real runtime *Objects.
-	argObjs := make([]*Object, len(args))
-	for i, arg := range args {
-		argObjs[i] = NewConstantObject(arg)
+func (e *evaluator) EvaluateFunction(fnc symbols.Function, args core.Args) graph.Graph {
+	glog.Infof("Evaluating function '%v'", fnc.Token())
+	if glog.V(2) {
+		defer glog.V(2).Infof("Evaluation of function '%v' completed w/ %v warnings and %v errors",
+			fnc.Token(), e.Diag().Warnings(), e.Diag().Errors())
 	}
 
-	// Next, make the call.
-	_, uw := e.evalCall(fnc, argObjs...)
-	if uw != nil {
-		// If the call had an unwind out of it, then presumably we have an unhandled exception.
-		contract.Assert(!uw.Break)
-		contract.Assert(!uw.Continue)
-		contract.Assert(!uw.Return)
-		contract.Assert(uw.Throw)
-		// TODO: ideally we would have a stack trace to show here.
-		e.Diag().Errorf(errors.ErrorUnhandledException, uw.Thrown.Data.(string))
+	// First, validate any arguments, and turn them into real runtime *Objects.
+	var argos []*Object
+	params := fnc.FuncNode().GetParameters()
+	if params == nil {
+		if len(args) != 0 {
+			e.Diag().Errorf(errors.ErrorFunctionArgMismatch.At(fnc.Tree()), 0, len(args))
+		}
+	} else {
+		if len(*params) != len(args) {
+			e.Diag().Errorf(errors.ErrorFunctionArgMismatch.At(fnc.Tree()), 0, len(args))
+		}
+
+		ptys := fnc.FuncType().Parameters
+		found := make(map[tokens.Name]bool)
+		for i, param := range *params {
+			pname := param.Name.Ident
+			if arg, has := args[pname]; has {
+				found[pname] = true
+				argo := NewConstantObject(arg)
+				if types.CanConvert(argo.Type, ptys[i]) {
+					argos = append(argos, argo)
+				} else {
+					e.Diag().Errorf(errors.ErrorFunctionArgIncorrectType.At(fnc.Tree()), ptys[i], argo.Type)
+					return nil
+				}
+			} else {
+				e.Diag().Errorf(errors.ErrorFunctionArgNotFound.At(fnc.Tree()), param.Name)
+			}
+		}
+		for arg := range args {
+			if !found[arg] {
+				e.Diag().Errorf(errors.ErrorFunctionArgUnknown.At(fnc.Tree()), arg)
+			}
+		}
+	}
+
+	if e.Diag().Success() {
+		// If the arguments bound correctly, make the call.
+		_, uw := e.evalCall(fnc, argos...)
+		if uw != nil {
+			// If the call had an unwind out of it, then presumably we have an unhandled exception.
+			contract.Assert(!uw.Break)
+			contract.Assert(!uw.Continue)
+			contract.Assert(!uw.Return)
+			contract.Assert(uw.Throw)
+			// TODO: ideally we would have a stack trace to show here.
+			e.Diag().Errorf(errors.ErrorUnhandledException, uw.Thrown.Data.(string))
+		}
 	}
 
 	// TODO: turn the returned object into a graph.

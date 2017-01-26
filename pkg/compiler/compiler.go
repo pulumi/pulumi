@@ -149,11 +149,11 @@ func (c *compiler) CompilePackage(pkg *pack.Package) graph.Graph {
 	// Afterwards, we can safely evaluate the MuIL entrypoint, using our MuIL AST interpreter.
 
 	b := binder.New(c.w, c.ctx, c.reader)
-	b.BindPackage(pkg)
+	pkgsym := b.BindPackage(pkg)
 	if !c.Diag().Success() {
 		return nil
 	}
 
 	e := eval.New(b.Ctx())
-	return e.EvaluatePackage(pkg)
+	return e.EvaluatePackage(pkgsym, c.ctx.Opts.Args)
 }

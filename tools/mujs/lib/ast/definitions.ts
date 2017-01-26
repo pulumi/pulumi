@@ -19,6 +19,7 @@ export interface Definition extends Node {
 // A module contains members, including variables, functions, and/or classes.
 export interface Module extends Definition {
     kind:     ModuleKind;
+    default?: boolean;       // true if this is the package entrypoint (just one).
     imports?: ModuleToken[]; // an ordered list of import modules to initialize.
     members?: ModuleMembers; // a list of members (both private and public, exported ones).
 }

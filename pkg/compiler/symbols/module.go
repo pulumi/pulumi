@@ -19,6 +19,7 @@ type Module struct {
 var _ Symbol = (*Module)(nil)
 
 func (node *Module) symbol()           {}
+func (node *Module) Default() bool     { return node.Node.Default }
 func (node *Module) Name() tokens.Name { return node.Node.Name.Ident }
 func (node *Module) Token() tokens.Token {
 	return tokens.Token(
