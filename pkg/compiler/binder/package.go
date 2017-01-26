@@ -120,7 +120,7 @@ func (b *binder) resolveDep(dep pack.PackageURL) *symbols.ResolvedPackage {
 	}
 
 	// If we got to this spot, we could not find the dependency.  Issue an error and bail out.
-	b.Diag().Errorf(errors.ErrorPackageNotFound, dep)
+	b.Diag().Errorf(errors.ErrorImportNotFound, dep)
 	return nil
 }
 

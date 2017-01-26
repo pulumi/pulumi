@@ -2,56 +2,13 @@
 
 package errors
 
-import (
-	"github.com/marapongo/mu/pkg/diag"
+// Compiler errors are in the [100-200) range.
+var (
+	ErrorIO                        = newError(100, "An IO error occurred during the current operation: %v")
+	ErrorCouldNotReadMufile        = newError(101, "An IO error occurred while reading the Mufile: %v")
+	ErrorIllegalMufileSyntax       = newError(102, "A syntax error was detected while parsing the Mufile: %v")
+	ErrorIllegalWorkspaceSyntax    = newError(103, "A syntax error was detected while parsing workspace settings: %v")
+	WarningIllegalMarkupFileCasing = newWarning(104, "A %v-like file was located, but it has incorrect casing")
+	WarningIllegalMarkupFileExt    = newWarning(
+		105, "A %v-like file was located, but %v isn't a valid file extension (expected .json or .yaml)")
 )
-
-var ErrorMissingMufile = &diag.Diag{
-	ID:      100,
-	Message: "No Mufile was found in the given path or any of its parents (%v)",
-}
-
-var WarningIllegalMarkupFileCasing = &diag.Diag{
-	ID:      101,
-	Message: "A %v-like file was located, but it has incorrect casing",
-}
-
-var WarningIllegalMarkupFileExt = &diag.Diag{
-	ID:      102,
-	Message: "A %v-like file was located, but %v isn't a valid file extension (expected .json or .yaml)",
-}
-
-var ErrorIO = &diag.Diag{
-	ID:      103,
-	Message: "An IO error occurred during the current operation: %v",
-}
-
-var ErrorUnrecognizedCloudArch = &diag.Diag{
-	ID:      120,
-	Message: "The cloud architecture '%v' was not recognized",
-}
-
-var ErrorUnrecognizedSchedulerArch = &diag.Diag{
-	ID:      121,
-	Message: "The cloud scheduler architecture '%v' was not recognized",
-}
-
-var ErrorIllegalCloudSchedulerCombination = &diag.Diag{
-	ID:      122,
-	Message: "The cloud architecture '%v' is incompatible with scheduler '%v'",
-}
-
-var ErrorConflictingClusterArchSelection = &diag.Diag{
-	ID:      123,
-	Message: "The cloud architecture specification '%v' conflicts with cluster '%v's setting of '%v'",
-}
-
-var ErrorClusterNotFound = &diag.Diag{
-	ID:      124,
-	Message: "A cloud target '%v' was not found in the stack or cluster definition",
-}
-
-var ErrorMissingTarget = &diag.Diag{
-	ID:      125,
-	Message: "Neither a target nor cloud architecture was provided, and no defaults were found",
-}

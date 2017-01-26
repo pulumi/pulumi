@@ -2,11 +2,7 @@
 
 package errors
 
-import (
-	"github.com/marapongo/mu/pkg/diag"
+// Eval errors are in the [1000,2000) range.
+var (
+	ErrorUnhandledException = newError(1000, "An unhandled exception terminated the program: %v")
 )
-
-var ErrorUnhandledException = &diag.Diag{
-	ID:      1000,
-	Message: "An unhandled exception terminated the program: %v",
-}
