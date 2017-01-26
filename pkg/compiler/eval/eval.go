@@ -567,8 +567,41 @@ func (e *evaluator) evalNewExpression(node *ast.NewExpression) (*Object, *Unwind
 }
 
 func (e *evaluator) evalInvokeFunctionExpression(node *ast.InvokeFunctionExpression) (*Object, *Unwind) {
-	// TODO: resolve the target to a function, set up an activation record, and invoke it.
-	return nil, nil
+	// Evaluate the function that we are meant to invoke.
+	fncobj, uw := e.evalExpression(node.Function)
+	if uw != nil {
+		return nil, uw
+	}
+
+	// Ensure that this actually led to a function; this is guaranteed by the binder.
+	var fnc funcStub
+	switch fncobj.Type.(type) {
+	case *symbols.FunctionType:
+		fnc = fncobj.Data.(funcStub)
+		contract.Assert(fnc.Func != nil)
+	default:
+		contract.Failf("Expected function expression to yield a function type")
+	}
+
+	// If there is a 'this' it goes first in the arguments.
+	var args []*Object
+	if fnc.This != nil {
+		args = append(args, fnc.This)
+	}
+
+	// Now evaluate the arguments to the function, in order.
+	if node.Arguments != nil {
+		for _, arg := range *node.Arguments {
+			argobj, uw := e.evalExpression(arg)
+			if uw != nil {
+				return nil, uw
+			}
+			args = append(args, argobj)
+		}
+	}
+
+	// Finally, actually dispatch the call; this will create the activation frame, etc. for us.
+	return e.evalCall(fnc.Func, args...)
 }
 
 func (e *evaluator) evalLambdaExpression(node *ast.LambdaExpression) (*Object, *Unwind) {
