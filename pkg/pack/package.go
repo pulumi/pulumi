@@ -1,6 +1,6 @@
 // Copyright 2016 Marapongo, Inc. All rights reserved.
 
-// This package contains the core MuPackage metadata types.
+// Package pack contains the core MuPackage metadata types.
 package pack
 
 import (

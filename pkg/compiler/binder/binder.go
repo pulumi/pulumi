@@ -56,9 +56,8 @@ func (b *binder) Diag() diag.Sink { return b.ctx.Diag }
 func (b *binder) bindType(node *ast.TypeToken) symbols.Type {
 	if node == nil {
 		return nil
-	} else {
-		return b.bindTypeToken(node, node.Tok)
 	}
+	return b.bindTypeToken(node, node.Tok)
 }
 
 // bindTypeToken binds a type token to a symbol.  The node context is used for issuing errors.
@@ -70,10 +69,9 @@ func (b *binder) bindTypeToken(node ast.Node, tok tokens.Type) symbols.Type {
 		// If a primitive type, simply do a lookup into our table of primitives.
 		if ty, has := types.Primitives[tok.Name()]; has {
 			return ty
-		} else {
-			glog.V(5).Infof("Failed to bind primitive type '%v'", tok)
-			reason = "primitive type unknown"
 		}
+		glog.V(5).Infof("Failed to bind primitive type '%v'", tok)
+		reason = "primitive type unknown"
 	} else if tok.Pointer() {
 		// If a pointer, parse it, bind the element type, and create a new pointer type.
 		ptr := tokens.ParsePointerType(tok)
@@ -102,16 +100,14 @@ func (b *binder) bindTypeToken(node ast.Node, tok tokens.Type) symbols.Type {
 			ret = b.bindTypeToken(node, *fnc.Return)
 		}
 		return symbols.NewFunctionType(params, ret)
-	} else {
+	} else if sym := b.lookupSymbolToken(node, tokens.Token(tok), false); sym != nil {
 		// Otherwise, we will need to perform a more exhaustive lookup of a qualified type token.
-		if sym := b.lookupSymbolToken(node, tokens.Token(tok), false); sym != nil {
-			if ty, ok := sym.(symbols.Type); ok {
-				return ty
-			}
-			reason = fmt.Sprintf("symbol kind %v incorrect", reflect.TypeOf(sym))
-		} else {
-			reason = "symbol missing"
+		if ty, ok := sym.(symbols.Type); ok {
+			return ty
 		}
+		reason = fmt.Sprintf("symbol kind %v incorrect", reflect.TypeOf(sym))
+	} else {
+		reason = "symbol missing"
 	}
 
 	// The type was not found; issue an error, and return Any so we can proceed with typechecking.
@@ -147,14 +143,14 @@ func (b *binder) bindFunctionType(node ast.Function) *symbols.FunctionType {
 func (b *binder) bindModuleToken(node *ast.ModuleToken) *symbols.Module {
 	if node == nil {
 		return nil
-	} else {
-		sym := b.lookupSymbolToken(node, tokens.Token(node.Tok), true)
-		if module, ok := sym.(*symbols.Module); ok {
-			return module
-		}
-		b.Diag().Errorf(errors.ErrorSymbolNotFound.At(node), node.Tok, "symbol isn't a module")
-		return nil
 	}
+
+	sym := b.lookupSymbolToken(node, tokens.Token(node.Tok), true)
+	if module, ok := sym.(*symbols.Module); ok {
+		return module
+	}
+	b.Diag().Errorf(errors.ErrorSymbolNotFound.At(node), node.Tok, "symbol isn't a module")
+	return nil
 }
 
 func (b *binder) checkModuleVisibility(node ast.Node, module *symbols.Module, member symbols.ModuleMember) {
@@ -243,16 +239,14 @@ func (b *binder) requireToken(node ast.Node, tok tokens.Token) symbols.Symbol {
 		// A complex token is bound through the normal token binding lookup process.
 		if sym := b.lookupSymbolToken(node, tok, true); sym != nil {
 			return sym
-		} else {
-			b.Diag().Errorf(errors.ErrorSymbolNotFound.At(node), tok, "qualified token not found")
 		}
+		b.Diag().Errorf(errors.ErrorSymbolNotFound.At(node), tok, "qualified token not found")
 	} else {
 		// A simple token has no package, module, or class part.  It refers to the symbol table.
 		if sym := b.ctx.Scope.Lookup(tok.Name()); sym != nil {
 			return sym
-		} else {
-			b.Diag().Errorf(errors.ErrorSymbolNotFound.At(node), tok, "simple name not found")
 		}
+		b.Diag().Errorf(errors.ErrorSymbolNotFound.At(node), tok, "simple name not found")
 	}
 	return nil
 }

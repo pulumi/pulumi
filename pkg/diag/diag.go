@@ -29,7 +29,7 @@ func (diag *Diag) At(d Diagable) *Diag {
 	}
 }
 
-// WithFile adds a file to an existing diagnostic, retaining its ID and message.
+// AtFile adds a file to an existing diagnostic, retaining its ID and message.
 func (diag *Diag) AtFile(file string) *Diag {
 	return &Diag{
 		ID:      diag.ID,

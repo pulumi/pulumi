@@ -37,14 +37,13 @@ func ReadPackage(path string) *pack.Package {
 // ReadPackageFromArg reads a package from an argument value.  It can be "-" to request reading from Stdin, and is
 // interpreted as a path otherwise.  If an error occurs, it is printed to Stderr, and the returned value will be nil.
 func ReadPackageFromArg(arg string) *pack.Package {
+	// If the arg is simply "-", read from stdin.
 	if arg == "-" {
-		// Read the package from stdin.
 		return ReadPackageFromStdin()
-	} else {
-		// Read the package from a file.
-		return ReadPackage(arg)
 	}
 
+	// Read the package from a file.
+	return ReadPackage(arg)
 }
 
 // ReadPackageFromStdin attempts to read a package from Stdin; if an error occurs, it will be printed to Stderr, and

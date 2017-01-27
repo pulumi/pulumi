@@ -63,7 +63,7 @@ type ModuleMember interface {
 	MemberNode() ast.ModuleMember
 }
 
-// ModuleMembers is a map from a module member's name to its associated symbol.
+// ModuleMemberMap is a map from a module member's name to its associated symbol.
 type ModuleMemberMap map[tokens.ModuleMemberName]ModuleMember
 
 // Export is a fully bound module property symbol that associates a name with some other symbol.

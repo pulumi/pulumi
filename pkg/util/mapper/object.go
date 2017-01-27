@@ -17,19 +17,17 @@ func AsObject(v interface{}, ty reflect.Type, key string) (*Object, error) {
 	if vmap, ok := v.(map[string]interface{}); ok {
 		vobj := Object(vmap)
 		return &vobj, nil
-	} else {
-		return nil, ErrWrongType(
-			ty, key, reflect.TypeOf(make(map[string]interface{})), reflect.TypeOf(v))
 	}
+	return nil, ErrWrongType(
+		ty, key, reflect.TypeOf(make(map[string]interface{})), reflect.TypeOf(v))
 }
 
 // AsString attempts to coerce an existing value to a string, returning a non-nil error if it cannot be done.
 func AsString(v interface{}, ty reflect.Type, key string) (*string, error) {
 	if s, ok := v.(string); ok {
 		return &s, nil
-	} else {
-		return nil, ErrWrongType(ty, key, reflect.TypeOf(""), reflect.TypeOf(v))
 	}
+	return nil, ErrWrongType(ty, key, reflect.TypeOf(""), reflect.TypeOf(v))
 }
 
 // FieldObject looks up a field by name within an object map, coerces it to an object itself, and returns it.  If the

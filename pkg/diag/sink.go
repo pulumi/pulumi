@@ -33,7 +33,7 @@ type Sink interface {
 	Stringify(diag *Diag, prefix string, args ...interface{}) string
 }
 
-// DefaultDiags returns a default sink that simply logs output to stderr/stdout.
+// DefaultSink returns a default sink that simply logs output to stderr/stdout.
 func DefaultSink(pwd string) Sink {
 	return newDefaultSink(pwd, os.Stderr, os.Stdout)
 }

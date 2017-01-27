@@ -52,9 +52,8 @@ func pathDir(path string) string {
 	info, err := os.Stat(path)
 	if err != nil || info.IsDir() {
 		return path
-	} else {
-		return filepath.Dir(path)
 	}
+	return filepath.Dir(path)
 }
 
 // DetectPackage locates the closest package from the given path, searching "upwards" in the directory hierarchy.  If no

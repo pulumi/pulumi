@@ -88,16 +88,17 @@ outer:
 	if ref, has := s.Values[sym]; has {
 		contract.Assertf(place == nil, "Expected an empty value slot, given init usage; it was non-nil: %v", sym)
 		return ref
-	} else if place != nil {
+	}
+	if place != nil {
 		s.Values[sym] = place
 		return place
-	} else if init {
+	}
+	if init {
 		ref := &Reference{}
 		s.Values[sym] = ref
 		return ref
-	} else {
-		return nil
 	}
+	return nil
 }
 
 // SetValue overwrites the current value, or adds a new entry, for the given symbol.

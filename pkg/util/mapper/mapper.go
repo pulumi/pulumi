@@ -145,9 +145,9 @@ func (md *mapper) DecodeField(tree Object, ty reflect.Type, key string, target i
 			if vsrc.Type().AssignableTo(vdstType) {
 				vdst.Elem().Set(vsrc)
 				return nil
-			} else {
-				return ErrWrongType(ty, key, vdstType, vsrc.Type())
 			}
+
+			return ErrWrongType(ty, key, vdstType, vsrc.Type())
 		}
 	}
 	if !optional {

@@ -177,7 +177,7 @@ var _ CallExpression = (*NewExpression)(nil)
 
 const NewExpressionKind NodeKind = "NewExpression"
 
-// InvokeFunction invokes a target expression that must evaluate to a function.
+// InvokeFunctionExpression invokes a target expression that must evaluate to a function.
 type InvokeFunctionExpression struct {
 	callExpressionNode
 	Function Expression `json:"function"` // a function to invoke (of a function type).
@@ -221,6 +221,7 @@ type UnaryOperator string
 
 const (
 	// Prefix-only operators:
+
 	OpDereference UnaryOperator = "*"
 	OpAddressof                 = "&"
 	OpUnaryPlus                 = "+"
@@ -229,6 +230,7 @@ const (
 	OpBitwiseNot                = "~"
 
 	// These are permitted to be prefix or postfix:
+
 	OpPlusPlus   = "++"
 	OpMinusMinus = "--"
 )
@@ -246,11 +248,12 @@ var _ Expression = (*BinaryOperatorExpression)(nil)
 
 const BinaryOperatorExpressionKind NodeKind = "BinaryOperatorExpression"
 
-// All of the available arithmetic operators.
+// BinaryOperator is an enumeration of all of the available arithmetic operators.
 type BinaryOperator string
 
 const (
 	// Arithmetic operators:
+
 	OpAdd          BinaryOperator = "+"
 	OpSubtract                    = "-"
 	OpMultiply                    = "*"
@@ -259,6 +262,7 @@ const (
 	OpExponentiate                = "**"
 
 	// Assignment operators:
+
 	OpAssign                  = "="
 	OpAssignSum               = "+="
 	OpAssignDifference        = "-="
@@ -273,6 +277,7 @@ const (
 	OpAssignBitwiseXor        = "^="
 
 	// Bitwise operators:
+
 	OpBitwiseShiftLeft  = "<<"
 	OpBitwiseShiftRight = ">>"
 	OpBitwiseAnd        = "&"
@@ -280,10 +285,12 @@ const (
 	OpBitwiseXor        = "^"
 
 	// Conditional operators:
+
 	OpLogicalAnd = "&&"
 	OpLogicalOr  = "||"
 
 	// Relational operators:
+
 	OpLt        = "<"
 	OpLtEquals  = "<="
 	OpGt        = ">"

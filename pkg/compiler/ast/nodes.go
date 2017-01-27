@@ -1,6 +1,6 @@
 // Copyright 2016 Marapongo, Inc. All rights reserved.
 
-// This package contains the core MuIL AST types.  These contain fully qualified tokens ready to resolve to packages.
+// Package ast contains the core MuIL AST types.  These contain fully qualified tokens ready to resolve to packages.
 //
 // All ASTs are fully serializable.  They require custom (de)serialization, however, due to the use of discriminated
 // AST node types.  This is in contrast to the package metadata which is simple enough for trivial (de)serialization.
@@ -47,22 +47,22 @@ func (node *NodeValue) Where() (*diag.Document, *diag.Location) {
 	//     for any errors associated with the AST.  Absent that, we will simply return nil.
 	if node.Loc == nil {
 		return nil, nil
-	} else {
-		var doc *diag.Document
-		if node.Loc.File != nil {
-			doc = diag.NewDocument(*node.Loc.File)
-		}
-		var end *diag.Pos
-		if node.Loc.End != nil {
-			end = &diag.Pos{Line: int(node.Loc.End.Line), Column: int(node.Loc.End.Column)}
-		}
-		return doc, &diag.Location{
-			Start: diag.Pos{
-				Line:   int(node.Loc.Start.Line),
-				Column: int(node.Loc.Start.Column),
-			},
-			End: end,
-		}
+	}
+
+	var doc *diag.Document
+	if node.Loc.File != nil {
+		doc = diag.NewDocument(*node.Loc.File)
+	}
+	var end *diag.Pos
+	if node.Loc.End != nil {
+		end = &diag.Pos{Line: int(node.Loc.End.Line), Column: int(node.Loc.End.Column)}
+	}
+	return doc, &diag.Location{
+		Start: diag.Pos{
+			Line:   int(node.Loc.Start.Line),
+			Column: int(node.Loc.Start.Column),
+		},
+		End: end,
 	}
 }
 

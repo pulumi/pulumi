@@ -1,6 +1,6 @@
 // Copyright 2016 Marapongo, Inc. All rights reserved.
 
-// The graph package defines MuGL graphs.  Each graph is directed and acyclic, and the nodes have been topologically
+// Package graph defines MuGL graphs.  Each graph is directed and acyclic, and the nodes have been topologically
 // sorted based on dependencies (edges) between them.  Each node in the graph has a type and a set of properties.
 //
 // There are two forms of graph: complete and incomplete.  A complete graph is one in which all nodes and their property

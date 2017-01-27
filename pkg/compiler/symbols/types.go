@@ -121,7 +121,7 @@ func NewArrayType(elem Type) *ArrayType {
 	return arr
 }
 
-// KeyType is an array whose keys and elements are of some other types.
+// MapType is an array whose keys and elements are of some other types.
 type MapType struct {
 	Nm      tokens.TypeName
 	Tok     tokens.Type

@@ -316,13 +316,13 @@ func (e *evaluator) evalCall(fnc symbols.Function, this *Object, args ...*Object
 	if uw != nil {
 		if uw.Throw() {
 			return nil, uw
-		} else {
-			contract.Assert(uw.Return()) // break/continue not expected.
-			ret := uw.Returned()
-			contract.Assert((retty == nil) == (ret == nil))
-			contract.Assert(ret == nil || types.CanConvert(ret.Type, retty))
-			return ret, nil
 		}
+
+		contract.Assert(uw.Return()) // break/continue not expected.
+		ret := uw.Returned()
+		contract.Assert((retty == nil) == (ret == nil))
+		contract.Assert(ret == nil || types.CanConvert(ret.Type, retty))
+		return ret, nil
 	}
 
 	// An absence of a return is okay for void-returning functions.
@@ -823,9 +823,8 @@ func (e *evaluator) evalConditionalExpression(node *ast.ConditionalExpression) (
 	}
 	if cond.Bool() {
 		return e.evalExpression(node.Consequent)
-	} else {
-		return e.evalExpression(node.Alternate)
 	}
+	return e.evalExpression(node.Alternate)
 }
 
 func (e *evaluator) evalSequenceExpression(node *ast.SequenceExpression) (*Object, *Unwind) {

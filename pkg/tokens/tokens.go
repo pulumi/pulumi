@@ -1,6 +1,6 @@
 // Copyright 2016 Marapongo, Inc. All rights reserved.
 
-// This package contains the core MuIL symbol and token types.
+// Package tokens contains the core MuIL symbol and token types.
 package tokens
 
 import (
@@ -77,9 +77,8 @@ func (tok Token) Names() (PackageName, ModuleName, ModuleMemberName, ClassMember
 	} else if tok.HasModule() {
 		modtok := Module(tok)
 		return modtok.Package().Name(), modtok.Name(), "", ""
-	} else {
-		return Package(tok).Name(), "", "", ""
 	}
+	return Package(tok).Name(), "", "", ""
 }
 
 // Tokens returns as many tokens as the Token has, each in a return slot, or "" for those that don't exist.
@@ -94,9 +93,8 @@ func (tok Token) Tokens() (Package, Module, ModuleMember, ClassMember) {
 	} else if tok.HasModule() {
 		modtok := Module(tok)
 		return modtok.Package(), modtok, "", ""
-	} else {
-		return Package(tok), "", "", ""
 	}
+	return Package(tok), "", "", ""
 }
 
 // Package is a token representing just a package.  It uses a much simpler grammar:
@@ -232,25 +230,22 @@ func NewTypeToken(mod Module, nm TypeName) Type {
 func (tok Type) Package() Package {
 	if tok.Primitive() || tok.Decorated() {
 		return Package("")
-	} else {
-		return ModuleMember(tok).Package()
 	}
+	return ModuleMember(tok).Package()
 }
 
 func (tok Type) Module() Module {
 	if tok.Primitive() || tok.Decorated() {
 		return Module("")
-	} else {
-		return ModuleMember(tok).Module()
 	}
+	return ModuleMember(tok).Module()
 }
 
 func (tok Type) Name() TypeName {
 	if tok.Primitive() || tok.Decorated() {
 		return TypeName(tok)
-	} else {
-		return TypeName(ModuleMember(tok).Name())
 	}
+	return TypeName(ModuleMember(tok).Name())
 }
 
 func (tok Type) Member() ModuleMember {

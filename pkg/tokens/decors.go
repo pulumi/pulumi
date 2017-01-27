@@ -1,6 +1,5 @@
 // Copyright 2016 Marapongo, Inc. All rights reserved.
 
-// This package contains the core MuIL symbol and token types.
 package tokens
 
 import (
@@ -40,9 +39,8 @@ func (b *tokenBuffer) MayEat(s string) bool {
 	if strings.HasPrefix(string(b.Curr()), s) {
 		b.Advance(len(s))
 		return true
-	} else {
-		return false
 	}
+	return false
 }
 
 func (b *tokenBuffer) Advance(by int) {
@@ -77,19 +75,18 @@ func parseNextType(b *tokenBuffer) Type {
 	} else if tok.Function() {
 		fnc := parseNextFunctionType(b)
 		return fnc.Tok
-	} else {
-		// Otherwise, we have either a qualified or simple (primitive) name.  Since we might be deep in the middle
-		// of parsing another token, however, we only parse up to any other decorator termination/separator tokens.
-		s := string(tok)
-		sep := strings.IndexAny(s, typePartDelims)
-		if sep == -1 {
-			b.Finish()
-			return tok
-		} else {
-			b.Advance(sep)
-			return tok[:sep]
-		}
 	}
+
+	// Otherwise, we have either a qualified or simple (primitive) name.  Since we might be deep in the middle
+	// of parsing another token, however, we only parse up to any other decorator termination/separator tokens.
+	s := string(tok)
+	sep := strings.IndexAny(s, typePartDelims)
+	if sep == -1 {
+		b.Finish()
+		return tok
+	}
+	b.Advance(sep)
+	return tok[:sep]
 }
 
 // PointerType is a type token that decorates an element type token turn it into a pointer: `"*" <Elem>`.

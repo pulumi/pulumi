@@ -1,7 +1,7 @@
 // Copyright 2016 Marapongo, Inc. All rights reserved.
 
-// Because of the complex structure of the MuPack and MuIL metadata formats, we cannot rely on the standard JSON
-// marshaling and unmarshaling routines.  Instead, we will need to do it mostly "by hand".  This package does that.
+// Package encoding can unmarshal MuPack and MuIL metadata formats.  Because of their complex structure, we cannot rely
+// on the standard JSON  marshaling and unmarshaling routines.  Instead, we will need to do it mostly "by hand".
 package encoding
 
 import (

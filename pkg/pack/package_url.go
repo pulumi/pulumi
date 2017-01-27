@@ -11,7 +11,7 @@ import (
 	"github.com/marapongo/mu/pkg/util/contract"
 )
 
-// PackageURLStringString represents a fully qualified "URL-like" reference to an entity, usually another package.  This
+// PackageURLString represents a fully qualified "URL-like" reference to an entity, usually another package.  This
 // string starts with an optional "protocol" (like https://, git://, etc), followed by an optional "base" part (like
 // hub.mu.com/, github.com/, etc), followed by the "name" part (which is just a Name), followed by an optional "#" and
 // version number (where version may be "latest", a semantic version range, or a Git SHA hash).
@@ -48,10 +48,10 @@ func (u PackageURLString) Parse() (PackageURL, error) {
 		slashIndex := strings.Index(s, tokens.QNameDelimiter)
 		if slashIndex == -1 {
 			return parsed, errors.New("Expected a name to follow the base URL")
-		} else {
-			parsed.Base = s[:slashIndex+1]
-			s = s[slashIndex+1:]
 		}
+
+		parsed.Base = s[:slashIndex+1]
+		s = s[slashIndex+1:]
 	}
 
 	// Anything remaining at this point represents the name.
