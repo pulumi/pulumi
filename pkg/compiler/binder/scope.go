@@ -77,6 +77,13 @@ func (s *Scope) Register(sym *symbols.LocalVariable) bool {
 	return true
 }
 
+// MustRegister registers a local with the given name; if it already exists, the function abandons.
+func (s *Scope) MustRegister(sym *symbols.LocalVariable) {
+	if !s.Register(sym) {
+		contract.Failf("Symbol already exists: %v", sym.Name)
+	}
+}
+
 // TryRegister registers a local with the given name; if it already exists, a compiler error is emitted.
 func (s *Scope) TryRegister(node ast.Node, sym *symbols.LocalVariable) {
 	if !s.Register(sym) {

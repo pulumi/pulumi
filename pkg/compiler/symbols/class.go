@@ -17,6 +17,8 @@ type Class struct {
 	Extends    Type
 	Implements Types
 	Members    ClassMemberMap
+	This       *LocalVariable // the special "this" local for instance members.
+	Super      *LocalVariable // the special "super" local for instance members.
 }
 
 var _ Symbol = (*Class)(nil)
@@ -42,7 +44,7 @@ func (node *Class) String() string               { return string(node.Name()) }
 // NewClassSym returns a new Class symbol with the given node, parent, extends, and implements, and empty members.
 func NewClassSym(node *ast.Class, parent *Module, extends Type, implements Types) *Class {
 	nm := tokens.TypeName(node.Name.Ident)
-	return &Class{
+	class := &Class{
 		Node: node,
 		Nm:   nm,
 		Tok: tokens.Type(
@@ -56,6 +58,16 @@ func NewClassSym(node *ast.Class, parent *Module, extends Type, implements Types
 		Implements: implements,
 		Members:    make(ClassMemberMap),
 	}
+
+	// Populate the "this" variable for instance methods.
+	class.This = NewSpecialVariableSym(tokens.ThisVariable, class)
+
+	// If this class extends something else, wire up the "super" variable too.
+	if extends != nil {
+		class.Super = NewSpecialVariableSym(tokens.SuperVariable, extends)
+	}
+
+	return class
 }
 
 // ClassMember is a marker interface for things that can be module members.
@@ -63,6 +75,7 @@ type ClassMember interface {
 	Symbol
 	classMember()
 	Optional() bool
+	Static() bool
 	Default() *interface{}
 	Type() Type
 	MemberNode() ast.ClassMember
@@ -98,6 +111,7 @@ func (node *ClassProperty) Token() tokens.Token {
 func (node *ClassProperty) Tree() diag.Diagable         { return node.Node }
 func (node *ClassProperty) classMember()                {}
 func (node *ClassProperty) Optional() bool              { return node.Node.Optional != nil && *node.Node.Optional }
+func (node *ClassProperty) Static() bool                { return node.Node.Static != nil && *node.Node.Static }
 func (node *ClassProperty) Default() *interface{}       { return node.Node.Default }
 func (node *ClassProperty) Type() Type                  { return node.Ty }
 func (node *ClassProperty) MemberNode() ast.ClassMember { return node.Node }
@@ -136,7 +150,8 @@ func (node *ClassMethod) Token() tokens.Token {
 }
 func (node *ClassMethod) Tree() diag.Diagable         { return node.Node }
 func (node *ClassMethod) classMember()                {}
-func (node *ClassMethod) Optional() bool              { return true }
+func (node *ClassMethod) Optional() bool              { return false }
+func (node *ClassMethod) Static() bool                { return node.Node.Static != nil && *node.Node.Static }
 func (node *ClassMethod) Default() *interface{}       { return nil }
 func (node *ClassMethod) Type() Type                  { return node.Ty }
 func (node *ClassMethod) MemberNode() ast.ClassMember { return node.Node }

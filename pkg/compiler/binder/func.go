@@ -11,10 +11,9 @@ import (
 // bindFunctionBody binds a function body, including a scope, its parameters, and its expressions and statements.
 func (b *binder) bindFunctionBody(node ast.Function) {
 	contract.Require(node != nil, "node")
+	contract.Assertf(b.ctx.Scope.Frame, "Expected an activation frame at the top of the scope")
 
 	// Enter a new scope, bind the parameters, and then bind the body using a visitor.
-	scope := b.ctx.Scope.Push(true)
-	defer scope.Pop()
 	params := node.GetParameters()
 	if params != nil {
 		for _, param := range *params {
@@ -22,7 +21,7 @@ func (b *binder) bindFunctionBody(node ast.Function) {
 			ty := b.bindType(param.Type)
 			sym := symbols.NewLocalVariableSym(param, ty)
 			b.ctx.RegisterSymbol(param, sym)
-			b.ctx.Scope.TryRegister(param, sym) // TODO: figure out whether to keep this.
+			b.ctx.Scope.TryRegister(param, sym)
 		}
 	}
 

@@ -94,7 +94,7 @@ func (b *binder) bindModuleMethod(node *ast.ModuleMethod, parent *symbols.Module
 	return sym
 }
 
-func (b *binder) bindModuleBodies(module *symbols.Module) {
+func (b *binder) bindModuleMethodBodies(module *symbols.Module) {
 	// Set the current module in the context so we can e.g. enforce accessibility.  We need to do this again while
 	// binding the module bodies so that the correct context is reestablished for lookups, etc.
 	priormodule := b.ctx.Currmodule
@@ -107,17 +107,15 @@ func (b *binder) bindModuleBodies(module *symbols.Module) {
 		case *symbols.ModuleMethod:
 			b.bindModuleMethodBody(m)
 		case *symbols.Class:
-			for _, cmember := range m.Members {
-				switch cm := cmember.(type) {
-				case *symbols.ClassMethod:
-					b.bindClassMethodBody(cm)
-				}
-			}
+			b.bindClassMethodBodies(m)
 		}
 	}
 }
 
 func (b *binder) bindModuleMethodBody(method *symbols.ModuleMethod) {
 	glog.V(3).Infof("Binding module method '%v' body", method.Token())
+	// Push a new activation frame and bind the body.
+	scope := b.ctx.Scope.Push(true)
+	defer scope.Pop()
 	b.bindFunctionBody(method.Node)
 }

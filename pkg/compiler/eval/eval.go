@@ -28,7 +28,7 @@ type Interpreter interface {
 	// EvaluateModule performs evaluation on the given module's entrypoint function.
 	EvaluateModule(mod *symbols.Module, args core.Args) graph.Graph
 	// EvaluateFunction performs an evaluation of the given function, using the provided arguments, returning its graph.
-	EvaluateFunction(fnc symbols.Function, args core.Args) graph.Graph
+	EvaluateFunction(fnc symbols.Function, this *Object, args core.Args) graph.Graph
 }
 
 // New creates an interpreter that can be used to evaluate MuPackages.
@@ -85,7 +85,7 @@ func (e *evaluator) EvaluateModule(mod *symbols.Module, args core.Args) graph.Gr
 	// Fetch the module's entrypoint function, erroring out if it doesn't have one.
 	if ep, has := mod.Members[tokens.EntryPointFunction]; has {
 		if epfnc, ok := ep.(symbols.Function); ok {
-			return e.EvaluateFunction(epfnc, args)
+			return e.EvaluateFunction(epfnc, nil, args)
 		}
 	}
 
@@ -94,7 +94,7 @@ func (e *evaluator) EvaluateModule(mod *symbols.Module, args core.Args) graph.Gr
 }
 
 // EvaluateFunction performs an evaluation of the given function, using the provided arguments, returning its graph.
-func (e *evaluator) EvaluateFunction(fnc symbols.Function, args core.Args) graph.Graph {
+func (e *evaluator) EvaluateFunction(fnc symbols.Function, this *Object, args core.Args) graph.Graph {
 	glog.Infof("Evaluating function '%v'", fnc.Token())
 	if glog.V(2) {
 		defer glog.V(2).Infof("Evaluation of function '%v' completed w/ %v warnings and %v errors",
@@ -139,7 +139,7 @@ func (e *evaluator) EvaluateFunction(fnc symbols.Function, args core.Args) graph
 
 	if e.Diag().Success() {
 		// If the arguments bound correctly, make the call.
-		_, uw := e.evalCall(fnc, argos...)
+		_, uw := e.evalCall(fnc, this, argos...)
 		if uw != nil {
 			// If the call had an unwind out of it, then presumably we have an unhandled exception.
 			contract.Assert(!uw.Break)
@@ -170,7 +170,7 @@ func (e *evaluator) popScope() {
 
 // Functions
 
-func (e *evaluator) evalCall(fnc symbols.Function, args ...*Object) (*Object, *Unwind) {
+func (e *evaluator) evalCall(fnc symbols.Function, this *Object, args ...*Object) (*Object, *Unwind) {
 	// Save the prior func, set the new one, and restore upon exit.
 	prior := fnc
 	e.fnc = fnc
@@ -179,6 +179,29 @@ func (e *evaluator) evalCall(fnc symbols.Function, args ...*Object) (*Object, *U
 	// Set up a new lexical scope "activation frame" in which we can bind the parameters; restore it upon exit.
 	e.pushScope(true)
 	defer e.popScope()
+
+	// If the target is an instance method, the "this" and "super" variables must be bound to values.
+	if this != nil {
+		switch f := fnc.(type) {
+		case *symbols.ClassMethod:
+			contract.Assertf(!f.Static(), "Static methods don't have 'this' arguments, but we got a non-nil one")
+			contract.Assertf(types.CanConvert(this.Type, f.Parent), "'this' argument was of the wrong type")
+			e.ctx.Scope.Register(f.Parent.This)
+			e.locals.InitValueReference(f.Parent.This, &Reference{obj: this, readonly: true})
+			if f.Parent.Super != nil {
+				e.ctx.Scope.Register(f.Parent.Super)
+				e.locals.InitValueReference(f.Parent.Super, &Reference{obj: this, readonly: true})
+			}
+		default:
+			contract.Failf("Only class methods should have 'this' arguments, but we got a non-nil one")
+		}
+	} else {
+		// If no this was supplied, we expect that this is either not a class method, or it is a static.
+		switch f := fnc.(type) {
+		case *symbols.ClassMethod:
+			contract.Assertf(f.Static(), "Instance methods require 'this' arguments, but we got nil")
+		}
+	}
 
 	// Ensure that the arguments line up to the parameter slots and add them to the frame.
 	node := fnc.FuncNode()
@@ -654,13 +677,8 @@ func (e *evaluator) evalInvokeFunctionExpression(node *ast.InvokeFunctionExpress
 		contract.Failf("Expected function expression to yield a function type")
 	}
 
-	// If there is a 'this' it goes first in the arguments.
-	var args []*Object
-	if fnc.This != nil {
-		args = append(args, fnc.This)
-	}
-
 	// Now evaluate the arguments to the function, in order.
+	var args []*Object
 	if node.Arguments != nil {
 		for _, arg := range *node.Arguments {
 			argobj, uw := e.evalExpression(arg)
@@ -672,7 +690,7 @@ func (e *evaluator) evalInvokeFunctionExpression(node *ast.InvokeFunctionExpress
 	}
 
 	// Finally, actually dispatch the call; this will create the activation frame, etc. for us.
-	return e.evalCall(fnc.Func, args...)
+	return e.evalCall(fnc.Func, fnc.This, args...)
 }
 
 func (e *evaluator) evalLambdaExpression(node *ast.LambdaExpression) (*Object, *Unwind) {

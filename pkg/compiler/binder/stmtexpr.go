@@ -3,6 +3,8 @@
 package binder
 
 import (
+	"reflect"
+
 	"github.com/marapongo/mu/pkg/compiler/ast"
 	"github.com/marapongo/mu/pkg/compiler/errors"
 	"github.com/marapongo/mu/pkg/compiler/symbols"
@@ -265,8 +267,8 @@ func (a *astBinder) checkLoadLocationExpression(node *ast.LoadLocationExpression
 	// TODO: what to do about readonly variables.
 	var sym symbols.Symbol
 	if node.Object == nil {
-		// If there is no object, we either have a local variable reference or a module property or function.  In
-		// the former case, the token will be "simple"; in the latter case, it will be qualified.
+		// If there is no object, we either have a "simple" local variable reference or a qualified module property or
+		// function identifier.  In both cases, requireToken will handle it for us.
 		sym = a.b.requireToken(node.Name, node.Name.Tok)
 	} else {
 		// If there's an object, we are accessing a class member property or function.
@@ -280,12 +282,12 @@ func (a *astBinder) checkLoadLocationExpression(node *ast.LoadLocationExpression
 		ty = types.Any
 	} else {
 		switch s := sym.(type) {
-		case ast.Function:
-			ty = a.b.ctx.RequireFunction(s).FuncType()
-		case ast.Variable:
-			ty = a.b.ctx.RequireVariable(s).Type()
+		case symbols.Function:
+			ty = s.FuncType()
+		case symbols.Variable:
+			ty = s.Type()
 		default:
-			contract.Failf("Unrecognized load location symbol type: %v", sym.Token())
+			contract.Failf("Unrecognized load location token '%v' symbol type: %v", sym.Token(), reflect.TypeOf(s))
 		}
 	}
 

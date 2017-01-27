@@ -134,6 +134,6 @@ func (b *binder) bindPackageModules(pkg *symbols.Package) {
 func (b *binder) bindPackageMethodBodies(pkg *symbols.Package) {
 	contract.Require(pkg != nil, "pkg")
 	for _, module := range pkg.Modules {
-		b.bindModuleBodies(module)
+		b.bindModuleMethodBodies(module)
 	}
 }

@@ -53,6 +53,16 @@ func (s *localScope) GetValue(sym *symbols.LocalVariable) *Object {
 // GetValueReference returns a reference to the object for the given symbol.  If init is true, and the value doesn't
 // exist, a new slot will be allocated.  Otherwise, the return value is nil.
 func (s *localScope) GetValueReference(sym *symbols.LocalVariable, init bool) *Reference {
+	return s.lookupValueReference(sym, nil, init)
+}
+
+// InitValue registers a reference for a local variable, and asserts that none previously existed.
+func (s *localScope) InitValueReference(sym *symbols.LocalVariable, ref *Reference) {
+	s.lookupValueReference(sym, ref, false)
+}
+
+// lookupValueReference is used to lookup and initialize references using a single, shared routine.
+func (s *localScope) lookupValueReference(sym *symbols.LocalVariable, place *Reference, init bool) *Reference {
 	// To get a value's reference, we must first find the position in the shadowed frames, so that its lifetime equals
 	// the actual local variable symbol's lifetime.  This ensures that once that frame is popped, so too is any value
 	// associated with it; and similarly, that its value won't be popped until the frame containing the variable is.
@@ -73,9 +83,18 @@ func (s *localScope) GetValueReference(sym *symbols.LocalVariable, init bool) *R
 	contract.Assert(lex != nil)
 
 	if ref, has := s.Values[sym]; has {
+		contract.Assertf(place == nil, "Expected an empty value slot, given init usage; it was non-nil: %v", sym)
 		return ref
+	} else if place != nil {
+		s.Values[sym] = place
+		return place
+	} else if init {
+		ref := &Reference{}
+		s.Values[sym] = ref
+		return ref
+	} else {
+		return nil
 	}
-	return nil
 }
 
 // SetValue overwrites the current value, or adds a new entry, for the given symbol.

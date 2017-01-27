@@ -78,6 +78,15 @@ func (b *binder) bindClassMethod(node *ast.ClassMethod, parent *symbols.Class) *
 	return sym
 }
 
+func (b *binder) bindClassMethodBodies(class *symbols.Class) {
+	for _, member := range class.Members {
+		switch m := member.(type) {
+		case *symbols.ClassMethod:
+			b.bindClassMethodBody(m)
+		}
+	}
+}
+
 func (b *binder) bindClassMethodBody(method *symbols.ClassMethod) {
 	glog.V(3).Infof("Binding class method '%v' body", method.Token())
 
@@ -86,6 +95,20 @@ func (b *binder) bindClassMethodBody(method *symbols.ClassMethod) {
 	priorclass := b.ctx.Currclass
 	b.ctx.Currclass = method.Parent
 	defer func() { b.ctx.Currclass = priorclass }()
+
+	// Push a new activation frame and, if this isn't a static, register the special this/super variables.
+	scope := b.ctx.Scope.Push(true)
+	defer scope.Pop()
+	if !method.Static() {
+		// Register the "this" and, if relevant, "super" special variables.
+		this := method.Parent.This
+		contract.Assert(this != nil)
+		b.ctx.Scope.MustRegister(this)
+		super := method.Parent.Super
+		if super != nil {
+			b.ctx.Scope.MustRegister(super)
+		}
+	}
 
 	b.bindFunctionBody(method.Node)
 }

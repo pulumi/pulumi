@@ -243,6 +243,8 @@ func (b *binder) requireToken(node ast.Node, tok tokens.Token) symbols.Symbol {
 		// A complex token is bound through the normal token binding lookup process.
 		if sym := b.lookupSymbolToken(node, tok, true); sym != nil {
 			return sym
+		} else {
+			b.Diag().Errorf(errors.ErrorSymbolNotFound.At(node), tok, "qualified token not found")
 		}
 	} else {
 		// A simple token has no package, module, or class part.  It refers to the symbol table.
@@ -252,7 +254,7 @@ func (b *binder) requireToken(node ast.Node, tok tokens.Token) symbols.Symbol {
 			b.Diag().Errorf(errors.ErrorSymbolNotFound.At(node), tok, "simple name not found")
 		}
 	}
-	return types.Any
+	return nil
 }
 
 // lookupClassMember takes a class member token and binds it to a member of the class symbol.  The type of the class
@@ -263,7 +265,7 @@ func (b *binder) requireClassMember(node ast.Node, class symbols.Type, tok token
 		case symbols.ClassMember:
 			return s
 		default:
-			contract.Failf("Expected symbol to be a class member: %v", tok)
+			b.Diag().Errorf(errors.ErrorSymbolNotFound.At(node), tok, "class member not found")
 		}
 	}
 	return nil
