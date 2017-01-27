@@ -19,5 +19,12 @@ var (
 	ErrorCannotNewAbstractClass   = newError(512, "Cannot `new` an abstract class '%v'")
 	ErrorIllegalObjectLiteralType = newError(513,
 		"The type '%v' may not be used as an object literal type; only records and interfaces are permitted")
-	ErrorMissingRequiredProperty = newError(514, "Missing required property '%v'")
+	ErrorMissingRequiredProperty        = newError(514, "Missing required property '%v'")
+	ErrorUnaryOperatorInvalidForType    = newError(515, "The operator %v is invalid on operand type %v; expected %v")
+	ErrorUnaryOperatorInvalidForOperand = newError(516, "The operator %v is invalid on operand %v; expected %v")
+	ErrorUnaryOperatorMustBePrefix      = newError(517, "The operator %v must be in a prefix position (not postfix)")
+	ErrorBinaryOperatorInvalidForType   = newError(518, "The operator %v is invalid on %v operand type %v; expected %v")
+	ErrorIllegalAssignmentLValue        = newError(519, "Cannot assign to the target LHS expression")
+	ErrorIllegalNumericAssignmentLValue = newError(520, "Cannot perform numeric assignment %v on a non-numeric LHS")
+	ErrorIllegalAssignmentTypes         = newError(521, "Cannot assign a value of type %v to target of type %v")
 )

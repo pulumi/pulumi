@@ -107,6 +107,25 @@ func (a *astBinder) After(node ast.Node) {
 	contract.Assert(!isExpr || a.b.ctx.RequireType(expr) != nil)
 }
 
+// Utility functions
+
+// isLValue checks whether the target is a valid l-value.
+func (a *astBinder) isLValue(expr ast.Expression) bool {
+	// If the target is the result of a load location, it is okay.
+	if _, isload := expr.(*ast.LoadLocationExpression); isload {
+		return true
+	}
+
+	// Otherwise, if the target is a pointer dereference, it is also okay.
+	if unop, isunop := expr.(*ast.UnaryOperatorExpression); isunop {
+		if unop.Operator == ast.OpDereference {
+			return true
+		}
+	}
+
+	return false
+}
+
 // Statements
 
 func (a *astBinder) visitBlock(node *ast.Block) {
@@ -291,8 +310,8 @@ func (a *astBinder) checkLoadLocationExpression(node *ast.LoadLocationExpression
 		}
 	}
 
-	// Register a pointer type so that this expression is a valid l-expr.
-	a.b.ctx.RegisterType(node, symbols.NewPointerType(ty))
+	// Register the type; not that, although this is a valid l-value, we do not create a pointer out of it implicitly.
+	a.b.ctx.RegisterType(node, ty)
 }
 
 func (a *astBinder) checkNewExpression(node *ast.NewExpression) {
@@ -334,13 +353,123 @@ func (a *astBinder) checkLambdaExpression(node *ast.LambdaExpression) {
 }
 
 func (a *astBinder) checkUnaryOperatorExpression(node *ast.UnaryOperatorExpression) {
-	// TODO: check operands.
-	// TODO: figure this out; almost certainly a number.
+	// First check that prefix/postfix isn't wrong.
+	switch node.Operator {
+	case ast.OpDereference, ast.OpAddressof, ast.OpUnaryPlus,
+		ast.OpUnaryMinus, ast.OpLogicalNot, ast.OpBitwiseNot:
+		if node.Postfix {
+			a.b.Diag().Errorf(errors.ErrorUnaryOperatorMustBePrefix.At(node), node.Operator)
+		}
+	case ast.OpPlusPlus, ast.OpMinusMinus:
+		// both prefix/post are fine.
+	default:
+		contract.Failf("Unrecognized unary operator: %v", node.Operator)
+	}
+
+	// Now check the types and assign a type to this expression.
+	opty := a.b.ctx.RequireType(node.Operand)
+	switch node.Operator {
+	case ast.OpDereference:
+		// The right hand side must be a pointer; produce its element type:
+		switch ot := opty.(type) {
+		case *symbols.PointerType:
+			a.b.ctx.RegisterType(node, ot.Element)
+		default:
+			a.b.Diag().Errorf(errors.ErrorUnaryOperatorInvalidForType.At(node), node.Operator, ot, "pointer type")
+			a.b.ctx.RegisterType(node, ot)
+		}
+	case ast.OpAddressof:
+		// The target must be a legal l-value expression:
+		if !a.isLValue(node.Operand) {
+			a.b.Diag().Errorf(errors.ErrorUnaryOperatorInvalidForOperand.At(node), node.Operator,
+				node.Operand.GetKind(), "load location")
+		}
+		a.b.ctx.RegisterType(node, symbols.NewPointerType(opty))
+	case ast.OpUnaryPlus, ast.OpUnaryMinus, ast.OpBitwiseNot, ast.OpPlusPlus, ast.OpMinusMinus:
+		// The target must be a number:
+		if opty != types.Number {
+			a.b.Diag().Errorf(errors.ErrorUnaryOperatorInvalidForType.At(node), node.Operator, opty, types.Number)
+		}
+		a.b.ctx.RegisterType(node, types.Number)
+	case ast.OpLogicalNot:
+		// The target must be a boolean:
+		if opty != types.Bool {
+			a.b.Diag().Errorf(errors.ErrorUnaryOperatorInvalidForType.At(node), node.Operator, opty, types.Bool)
+		}
+		a.b.ctx.RegisterType(node, types.Bool)
+	default:
+		contract.Failf("Unrecognized unary operator: %v", node.Operator)
+	}
 }
 
 func (a *astBinder) checkBinaryOperatorExpression(node *ast.BinaryOperatorExpression) {
-	// TODO: check operands.
-	// TODO: figure this out; almost certainly a number.
+	// Check that the operands are of the right type, and assign a type to this node.
+	lhs := a.b.ctx.RequireType(node.Left)
+	rhs := a.b.ctx.RequireType(node.Right)
+	switch node.Operator {
+	// Arithmetic and bitwise operators:
+	case ast.OpAdd, ast.OpSubtract, ast.OpMultiply, ast.OpDivide, ast.OpRemainder, ast.OpExponentiate,
+		ast.OpBitwiseShiftLeft, ast.OpBitwiseShiftRight, ast.OpBitwiseAnd, ast.OpBitwiseOr, ast.OpBitwiseXor:
+		// Both lhs and rhs must be numbers:
+		if lhs != types.Number {
+			a.b.Diag().Errorf(errors.ErrorBinaryOperatorInvalidForType.At(node),
+				node.Operator, "LHS", lhs, types.Number)
+		}
+		if rhs != types.Number {
+			a.b.Diag().Errorf(errors.ErrorBinaryOperatorInvalidForType.At(node),
+				node.Operator, "RHS", rhs, types.Number)
+		}
+		a.b.ctx.RegisterType(node, types.Number)
+
+	// Assignment operators:
+	case ast.OpAssign:
+		if !a.isLValue(node.Left) {
+			a.b.Diag().Errorf(errors.ErrorIllegalAssignmentLValue.At(node))
+		} else if !types.CanConvert(rhs, lhs) {
+			a.b.Diag().Errorf(errors.ErrorIllegalAssignmentTypes.At(node), rhs, lhs)
+		}
+		a.b.ctx.RegisterType(node, lhs)
+	case ast.OpAssignSum, ast.OpAssignDifference, ast.OpAssignProduct, ast.OpAssignQuotient,
+		ast.OpAssignRemainder, ast.OpAssignExponentiation, ast.OpAssignBitwiseShiftLeft, ast.OpAssignBitwiseShiftRight,
+		ast.OpAssignBitwiseAnd, ast.OpAssignBitwiseOr, ast.OpAssignBitwiseXor:
+		if !a.isLValue(node.Left) {
+			a.b.Diag().Errorf(errors.ErrorIllegalAssignmentLValue.At(node))
+		} else if lhs != types.Number {
+			a.b.Diag().Errorf(errors.ErrorIllegalNumericAssignmentLValue.At(node), node.Operator)
+		} else if !types.CanConvert(rhs, lhs) {
+			a.b.Diag().Errorf(errors.ErrorIllegalAssignmentTypes.At(node), rhs, lhs)
+		}
+		a.b.ctx.RegisterType(node, lhs)
+
+	// Conditional operators:
+	case ast.OpLogicalAnd, ast.OpLogicalOr:
+		// Both lhs and rhs must be booleans.
+		if lhs != types.Bool {
+			a.b.Diag().Errorf(errors.ErrorBinaryOperatorInvalidForType.At(node),
+				node.Operator, "LHS", lhs, types.Bool)
+		}
+		if rhs != types.Bool {
+			a.b.Diag().Errorf(errors.ErrorBinaryOperatorInvalidForType.At(node),
+				node.Operator, "RHS", rhs, types.Bool)
+		}
+		a.b.ctx.RegisterType(node, types.Bool)
+
+	// Relational operators:
+	case ast.OpLt, ast.OpLtEquals, ast.OpGt, ast.OpGtEquals:
+		// Both lhs and rhs must be numbers, and it produces a boolean.
+		if lhs != types.Number {
+			a.b.Diag().Errorf(errors.ErrorBinaryOperatorInvalidForType.At(node),
+				node.Operator, "LHS", lhs, types.Number)
+		}
+		if rhs != types.Number {
+			a.b.Diag().Errorf(errors.ErrorBinaryOperatorInvalidForType.At(node),
+				node.Operator, "RHS", rhs, types.Number)
+		}
+		a.b.ctx.RegisterType(node, types.Bool)
+	case ast.OpEquals, ast.OpNotEquals:
+		// Equality checking is valid on any type, and it always produces a boolean.
+		a.b.ctx.RegisterType(node, types.Bool)
+	}
 }
 
 func (a *astBinder) checkCastExpression(node *ast.CastExpression) {
