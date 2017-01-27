@@ -34,12 +34,14 @@ type SymbolMap map[ast.Definition]symbols.Symbol
 
 // NewContextFrom allocates a fresh binding context linked to the shared context object.
 func NewContextFrom(ctx *core.Context) *Context {
-	return &Context{
+	bctx := &Context{
 		Context: ctx,
 		Types:   make(TypeMap),
 		Tokens:  make(TokenMap),
 		Symbols: make(SymbolMap),
 	}
+	NewScope(bctx, true)
+	return bctx
 }
 
 // RequireType requires that a type exists for the given AST expression node.
