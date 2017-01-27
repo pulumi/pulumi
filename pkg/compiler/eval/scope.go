@@ -22,13 +22,15 @@ type localScope struct {
 type valueMap map[*symbols.LocalVariable]*Reference
 
 func newLocalScope(slot **localScope, frame bool, lex *binder.Scope) *localScope {
-	return &localScope{
+	s := &localScope{
 		Slot:    slot,
 		Parent:  *slot,
 		Frame:   frame,
 		Lexical: lex,
 		Values:  make(valueMap),
 	}
+	*slot = s
+	return s
 }
 
 func (s *localScope) Push(frame bool) *localScope {

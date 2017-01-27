@@ -38,6 +38,7 @@ func New(ctx *binder.Context) Interpreter {
 		globals: make(globalMap),
 	}
 	newLocalScope(&e.locals, true, ctx.Scope)
+	contract.Assert(e.locals != nil)
 	return e
 }
 
@@ -60,7 +61,7 @@ func (e *evaluator) EvaluatePackage(pkg *symbols.Package, args core.Args) graph.
 	glog.Infof("Evaluating package '%v'", pkg.Name)
 	if glog.V(2) {
 		defer glog.V(2).Infof("Evaluation of package '%v' completed w/ %v warnings and %v errors",
-			pkg.Name, e.Diag().Warnings(), e.Diag().Errors())
+			pkg.Name(), e.Diag().Warnings(), e.Diag().Errors())
 	}
 
 	// Search the package for a default module "index" to evaluate.
@@ -226,21 +227,23 @@ func (e *evaluator) evalCall(fnc symbols.Function, this *Object, args ...*Object
 	//     1) no breaks or continues are expected;
 	//     2) any throw is treated as an unhandled exception that propagates to the caller.
 	//     3) any return is checked to be of the expected type, and returned as the result of the call.
-	contract.Assert(!uw.Break)
-	contract.Assert(!uw.Continue)
 	retty := fnc.FuncType().Return
-	if uw.Throw {
-		return nil, uw
-	} else if uw.Return {
-		ret := uw.Returned
-		contract.Assert((retty == nil) == (ret == nil))
-		contract.Assert(ret == nil || types.CanConvert(ret.Type, retty))
-		return ret, nil
-	} else {
-		// An absence of a return is okay for void-returning functions.
-		contract.Assert(retty == nil)
-		return nil, nil
+	if uw != nil {
+		contract.Assert(!uw.Break)
+		contract.Assert(!uw.Continue)
+		if uw.Throw {
+			return nil, uw
+		} else if uw.Return {
+			ret := uw.Returned
+			contract.Assert((retty == nil) == (ret == nil))
+			contract.Assert(ret == nil || types.CanConvert(ret.Type, retty))
+			return ret, nil
+		}
 	}
+
+	// An absence of a return is okay for void-returning functions.
+	contract.Assert(retty == nil)
+	return nil, nil
 }
 
 // Statements
