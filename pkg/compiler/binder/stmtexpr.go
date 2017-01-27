@@ -112,6 +112,7 @@ func (a *astBinder) After(node ast.Node) {
 // isLValue checks whether the target is a valid l-value.
 func (a *astBinder) isLValue(expr ast.Expression) bool {
 	// If the target is the result of a load location, it is okay.
+	// TODO: ensure the target isn't a readonly location; if it is, issue an error.
 	if _, isload := expr.(*ast.LoadLocationExpression); isload {
 		return true
 	}
@@ -168,7 +169,7 @@ func (a *astBinder) visitLocalVariable(node *ast.LocalVariable) {
 	ty := a.b.bindType(node.Type)
 	sym := symbols.NewLocalVariableSym(node, ty)
 	a.b.ctx.RegisterSymbol(node, ty)
-	a.b.ctx.Scope.TryRegister(node, sym) // TODO: figure out whether to keep this.
+	a.b.ctx.Scope.TryRegister(node, sym)
 }
 
 func (a *astBinder) visitLabeledStatement(node *ast.LabeledStatement) {
@@ -201,6 +202,7 @@ func (a *astBinder) checkReturnStatement(node *ast.ReturnStatement) {
 
 func (a *astBinder) checkThrowStatement(node *ast.ThrowStatement) {
 	// TODO: ensure the expression is a throwable expression.
+	contract.Failf("Binding of %v nodes not yet implemented", node.GetKind())
 }
 
 func (a *astBinder) checkWhileStatement(node *ast.WhileStatement) {
@@ -283,7 +285,6 @@ func (a *astBinder) checkObjectLiteral(node *ast.ObjectLiteral) {
 
 func (a *astBinder) checkLoadLocationExpression(node *ast.LoadLocationExpression) {
 	// Bind the token to a location.
-	// TODO: what to do about readonly variables.
 	var sym symbols.Symbol
 	if node.Object == nil {
 		// If there is no object, we either have a "simple" local variable reference or a qualified module property or
@@ -316,6 +317,7 @@ func (a *astBinder) checkLoadLocationExpression(node *ast.LoadLocationExpression
 
 func (a *astBinder) checkNewExpression(node *ast.NewExpression) {
 	// TODO: check the arguments.
+
 	var ty symbols.Type
 	if node.Type == nil {
 		ty = types.Any
@@ -336,6 +338,7 @@ func (a *astBinder) checkInvokeFunctionExpression(node *ast.InvokeFunctionExpres
 	// TODO: ensure the target is a function type.
 	// TODO: check the arguments.
 	// TODO: the result of this invocation is the return type.
+	contract.Failf("Binding of %v nodes not yet implemented", node.GetKind())
 }
 
 func (a *astBinder) checkLambdaExpression(node *ast.LambdaExpression) {
@@ -479,10 +482,12 @@ func (a *astBinder) checkCastExpression(node *ast.CastExpression) {
 
 func (a *astBinder) checkTypeOfExpression(node *ast.TypeOfExpression) {
 	// TODO: not sure; a string?
+	contract.Failf("Binding of %v nodes not yet implemented", node.GetKind())
 }
 
 func (a *astBinder) checkConditionalExpression(node *ast.ConditionalExpression) {
 	// TODO: unify the consequent and alternate types.
+	contract.Failf("Binding of %v nodes not yet implemented", node.GetKind())
 }
 
 func (a *astBinder) checkSequenceExpression(node *ast.SequenceExpression) {

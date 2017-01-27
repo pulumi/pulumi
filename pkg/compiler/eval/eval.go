@@ -3,6 +3,8 @@
 package eval
 
 import (
+	"reflect"
+
 	"github.com/golang/glog"
 
 	"github.com/marapongo/mu/pkg/compiler/ast"
@@ -655,11 +657,13 @@ func (e *evaluator) evalLoadLocationExpression(node *ast.LoadLocationExpression)
 }
 
 func (e *evaluator) evalLoadDynamicExpression(node *ast.LoadDynamicExpression) (*Object, *Unwind) {
+	contract.Failf("Evaluation of %v nodes not yet implemented", reflect.TypeOf(node))
 	return nil, nil
 }
 
 func (e *evaluator) evalNewExpression(node *ast.NewExpression) (*Object, *Unwind) {
 	// TODO: create a new object and invoke its constructor.
+	contract.Failf("Evaluation of %v nodes not yet implemented", reflect.TypeOf(node))
 	return nil, nil
 }
 
@@ -698,28 +702,34 @@ func (e *evaluator) evalInvokeFunctionExpression(node *ast.InvokeFunctionExpress
 
 func (e *evaluator) evalLambdaExpression(node *ast.LambdaExpression) (*Object, *Unwind) {
 	// TODO: create the lambda object that can be invoked at runtime.
+	contract.Failf("Evaluation of %v nodes not yet implemented", reflect.TypeOf(node))
 	return nil, nil
 }
 
 func (e *evaluator) evalUnaryOperatorExpression(node *ast.UnaryOperatorExpression) (*Object, *Unwind) {
 	// TODO: perform the unary operator's behavior.
+	contract.Failf("Evaluation of %v nodes not yet implemented", reflect.TypeOf(node))
 	return nil, nil
 }
 
 func (e *evaluator) evalBinaryOperatorExpression(node *ast.BinaryOperatorExpression) (*Object, *Unwind) {
 	// TODO: perform the binary operator's behavior.
+	contract.Failf("Evaluation of %v nodes not yet implemented", reflect.TypeOf(node))
 	return nil, nil
 }
 
 func (e *evaluator) evalCastExpression(node *ast.CastExpression) (*Object, *Unwind) {
+	contract.Failf("Evaluation of %v nodes not yet implemented", reflect.TypeOf(node))
 	return nil, nil
 }
 
 func (e *evaluator) evalIsInstExpression(node *ast.IsInstExpression) (*Object, *Unwind) {
+	contract.Failf("Evaluation of %v nodes not yet implemented", reflect.TypeOf(node))
 	return nil, nil
 }
 
 func (e *evaluator) evalTypeOfExpression(node *ast.TypeOfExpression) (*Object, *Unwind) {
+	contract.Failf("Evaluation of %v nodes not yet implemented", reflect.TypeOf(node))
 	return nil, nil
 }
 
