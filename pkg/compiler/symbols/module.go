@@ -32,6 +32,17 @@ func (node *Module) Token() tokens.Token {
 func (node *Module) Tree() diag.Diagable { return node.Node }
 func (node *Module) String() string      { return string(node.Name()) }
 
+// HasInit returns true if this module has an initialzer associated with it.
+func (node *Module) HasInit() bool { return node.GetInit() != nil }
+
+// GetInit returns the initializer for this module, if one exists, or nil otherwise.
+func (node *Module) GetInit() *ModuleMethod {
+	if meth, has := node.Members[tokens.ModuleInitFunction]; has {
+		return meth.(*ModuleMethod)
+	}
+	return nil
+}
+
 // NewModuleSym returns a new Module symbol with the given node and parent, and empty imports and members.
 func NewModuleSym(node *ast.Module, parent *Package) *Module {
 	return &Module{

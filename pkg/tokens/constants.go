@@ -25,8 +25,8 @@ const (
 
 // Special function tokens.
 const (
-	EntryPointFunction        ModuleMemberName = ".main" // the special package entrypoint function.
-	ModuleInitializerFunction ModuleMemberName = ".init" // the special module initialization function.
-	ClassConstructorFunction  ClassMemberName  = ".ctor" // the special class instance constructor function.
-	ClassInitializerFunction  ClassMemberName  = ".init" // the special class initialization function.
+	EntryPointFunction       ModuleMemberName = ".main" // the special package entrypoint function.
+	ModuleInitFunction       ModuleMemberName = ".init" // the special module initialization function.
+	ClassConstructorFunction ClassMemberName  = ".ctor" // the special class instance constructor function.
+	ClassInitFunction        ClassMemberName  = ".init" // the special class initialization function.
 )

@@ -41,6 +41,17 @@ func (node *Class) Record() bool                 { return node.Node.Record != ni
 func (node *Class) Interface() bool              { return node.Node.Interface != nil && *node.Node.Interface }
 func (node *Class) String() string               { return string(node.Name()) }
 
+// HasInit returns true if this module has an initialzer associated with it.
+func (node *Class) HasInit() bool { return node.GetInit() != nil }
+
+// GetInit returns the initializer for this module, if one exists, or nil otherwise.
+func (node *Class) GetInit() *ClassMethod {
+	if meth, has := node.Members[tokens.ClassInitFunction]; has {
+		return meth.(*ClassMethod)
+	}
+	return nil
+}
+
 // NewClassSym returns a new Class symbol with the given node, parent, extends, and implements, and empty members.
 func NewClassSym(node *ast.Class, parent *Module, extends Type, implements Types) *Class {
 	nm := tokens.TypeName(node.Name.Ident)

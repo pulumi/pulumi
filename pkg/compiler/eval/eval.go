@@ -36,8 +36,10 @@ type Interpreter interface {
 // New creates an interpreter that can be used to evaluate MuPackages.
 func New(ctx *binder.Context) Interpreter {
 	e := &evaluator{
-		ctx:     ctx,
-		globals: make(globalMap),
+		ctx:        ctx,
+		globals:    make(globalMap),
+		modinits:   make(modinitMap),
+		classinits: make(classinitMap),
 	}
 	newLocalScope(&e.locals, true, ctx.Scope)
 	contract.Assert(e.locals != nil)
@@ -45,13 +47,17 @@ func New(ctx *binder.Context) Interpreter {
 }
 
 type evaluator struct {
-	fnc     symbols.Function // the function currently under evaluation.
-	ctx     *binder.Context  // the binding context with type and symbol information.
-	globals globalMap        // the object values for global variable symbols.
-	locals  *localScope      // local variable values scoped by the lexical structure.
+	fnc        symbols.Function // the function currently under evaluation.
+	ctx        *binder.Context  // the binding context with type and symbol information.
+	globals    globalMap        // the object values for global variable symbols.
+	locals     *localScope      // local variable values scoped by the lexical structure.
+	modinits   modinitMap       // a map of which modules have been initialized already.
+	classinits classinitMap     // a map of which classes have been initialized already.
 }
 
 type globalMap map[symbols.Variable]*Reference
+type modinitMap map[*symbols.Module]bool
+type classinitMap map[*symbols.Class]bool
 
 var _ Interpreter = (*evaluator)(nil)
 
@@ -60,7 +66,7 @@ func (e *evaluator) Diag() diag.Sink      { return e.ctx.Diag }
 
 // EvaluatePackage performs evaluation on the given blueprint package.
 func (e *evaluator) EvaluatePackage(pkg *symbols.Package, args core.Args) graph.Graph {
-	glog.Infof("Evaluating package '%v'", pkg.Name)
+	glog.Infof("Evaluating package '%v'", pkg.Name())
 	if glog.V(2) {
 		defer glog.V(2).Infof("Evaluation of package '%v' completed w/ %v warnings and %v errors",
 			pkg.Name(), e.Diag().Warnings(), e.Diag().Errors())
@@ -104,6 +110,16 @@ func (e *evaluator) EvaluateFunction(fnc symbols.Function, this *Object, args co
 			fnc.Token(), e.Diag().Warnings(), e.Diag().Errors())
 	}
 
+	// Ensure that initializers have been run.
+	switch f := fnc.(type) {
+	case *symbols.ClassMethod:
+		e.ensureClassInit(f.Parent)
+	case *symbols.ModuleMethod:
+		e.ensureModuleInit(f.Parent)
+	default:
+		contract.Failf("Unrecognized function evaluation type: %v", reflect.TypeOf(f))
+	}
+
 	// First, validate any arguments, and turn them into real runtime *Objects.
 	var argos []*Object
 	params := fnc.FuncNode().GetParameters()
@@ -145,12 +161,7 @@ func (e *evaluator) EvaluateFunction(fnc symbols.Function, this *Object, args co
 		_, uw := e.evalCall(fnc, this, argos...)
 		if uw != nil {
 			// If the call had an unwind out of it, then presumably we have an unhandled exception.
-			contract.Assert(!uw.Break)
-			contract.Assert(!uw.Continue)
-			contract.Assert(!uw.Return)
-			contract.Assert(uw.Throw)
-			// TODO: ideally we would have a stack trace to show here.
-			e.Diag().Errorf(errors.ErrorUnhandledException, uw.Thrown.Data.(string))
+			e.issueUnhandledException(uw, errors.ErrorUnhandledException.At(fnc.Tree()))
 		}
 	}
 
@@ -159,6 +170,76 @@ func (e *evaluator) EvaluateFunction(fnc symbols.Function, this *Object, args co
 }
 
 // Utility functions
+
+// ensureClassInit ensures that the target's class initializer has been run.
+func (e *evaluator) ensureClassInit(class *symbols.Class) {
+	already := e.classinits[class]
+	e.classinits[class] = true // set true before running, in case of cycles.
+
+	if !already {
+		// First ensure the module initializer has run.
+		e.ensureModuleInit(class.Parent)
+
+		// Next, run the class if it has an initializer.
+		if init := class.GetInit(); init != nil {
+			glog.V(7).Infof("Initializing class: %v", class)
+			contract.Assert(len(init.Ty.Parameters) == 0)
+			contract.Assert(init.Ty.Return == nil)
+			obj, uw := e.evalCall(init, nil)
+			contract.Assert(obj != nil)
+			if uw != nil {
+				// Must be an unhandled exception; spew it as an error (but keep going).
+				e.issueUnhandledException(uw, errors.ErrorUnhandledInitException.At(init.Tree()), class)
+			}
+		} else {
+			glog.V(7).Infof("Class has no initializer: %v", class)
+		}
+	}
+}
+
+// ensureModuleInit ensures that the target's module initializer has been run.  It also evaluates dependency module
+// initializers, assuming they have been declared.  If they have not, those will run when we access them.
+func (e *evaluator) ensureModuleInit(mod *symbols.Module) {
+	already := e.modinits[mod]
+	e.modinits[mod] = true // set true before running, in case of cycles.
+
+	if !already {
+		// First ensure all imported module initializers are run, in the order in which they were given.
+		for _, imp := range mod.Imports {
+			e.ensureModuleInit(imp)
+		}
+
+		// Next, run the module initializer if it has one.
+		if init := mod.GetInit(); init != nil {
+			glog.V(7).Infof("Initializing module: %v", mod)
+			contract.Assert(len(init.Type.Parameters) == 0)
+			contract.Assert(init.Type.Return == nil)
+			obj, uw := e.evalCall(init, nil)
+			contract.Assert(obj != nil)
+			if uw != nil {
+				// Must be an unhandled exception; spew it as an error (but keep going).
+				e.issueUnhandledException(uw, errors.ErrorUnhandledInitException.At(init.Tree()), mod)
+			}
+		} else {
+			glog.V(7).Infof("Module has no initializer: %v", mod)
+		}
+	}
+}
+
+// issueUnhandledException issues an unhandled exception error using the given diagnostic and unwind information.
+func (e *evaluator) issueUnhandledException(uw *Unwind, err *diag.Diag, args ...interface{}) {
+	contract.Assert(!uw.Break)
+	contract.Assert(!uw.Continue)
+	contract.Assert(!uw.Return)
+	contract.Assert(uw.Throw)
+	// TODO: ideally we would have a stack trace to show here.
+	msg := uw.Thrown.Data.(string)
+	if msg == "" {
+		msg = "no details available"
+	}
+	args = append(args, msg)
+	e.Diag().Errorf(err, args...)
+}
 
 // pushScope pushes a new local and context scope.  The frame argument indicates whether this is an activation frame,
 // meaning that searches for local variables will not probe into parent scopes (since they are inaccessible).
@@ -174,6 +255,8 @@ func (e *evaluator) popScope() {
 // Functions
 
 func (e *evaluator) evalCall(fnc symbols.Function, this *Object, args ...*Object) (*Object, *Unwind) {
+	glog.V(7).Infof("Evaluating call to fnc %v; this=%v args=%v", fnc, this != nil, len(args))
+
 	// Save the prior func, set the new one, and restore upon exit.
 	prior := fnc
 	e.fnc = fnc
