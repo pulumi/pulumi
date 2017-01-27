@@ -4,20 +4,48 @@ package eval
 
 import (
 	"github.com/marapongo/mu/pkg/tokens"
+	"github.com/marapongo/mu/pkg/util/contract"
 )
 
 // Unwind instructs callers how to unwind the stack.
 type Unwind struct {
-	Break    bool         // true if breaking.
-	Continue bool         // true if continuing.
-	Label    *tokens.Name // a label being sought.
-	Return   bool         // true if returning.
-	Returned *Object      // an object being returned.
-	Throw    bool         // true if raising an exception.
-	Thrown   *Object      // an exception object being thrown.
+	kind     unwindKind   // the kind of the unwind.
+	label    *tokens.Name // a label being sought (valid only on break/continue).
+	returned *Object      // an object being returned (valid only on return).
+	thrown   *Object      // an exception object being thrown (valid only on throw).
 }
 
-func breakUnwind(label *tokens.Name) *Unwind    { return &Unwind{Break: true, Label: label} }
-func continueUnwind(label *tokens.Name) *Unwind { return &Unwind{Continue: true, Label: label} }
-func returnUnwind(ret *Object) *Unwind          { return &Unwind{Return: true, Returned: ret} }
-func throwUnwind(thrown *Object) *Unwind        { return &Unwind{Throw: true, Thrown: thrown} }
+// unwindKind is the kind of unwind being performed.
+type unwindKind int
+
+const (
+	breakUnwind unwindKind = iota
+	continueUnwind
+	returnUnwind
+	throwUnwind
+)
+
+func NewBreakUnwind(label *tokens.Name) *Unwind    { return &Unwind{kind: breakUnwind, label: label} }
+func NewContinueUnwind(label *tokens.Name) *Unwind { return &Unwind{kind: continueUnwind, label: label} }
+func NewReturnUnwind(ret *Object) *Unwind          { return &Unwind{kind: returnUnwind, returned: ret} }
+func NewThrowUnwind(thrown *Object) *Unwind        { return &Unwind{kind: throwUnwind, thrown: thrown} }
+
+func (uw *Unwind) Break() bool    { return uw.kind == breakUnwind }
+func (uw *Unwind) Continue() bool { return uw.kind == continueUnwind }
+func (uw *Unwind) Return() bool   { return uw.kind == returnUnwind }
+func (uw *Unwind) Throw() bool    { return uw.kind == throwUnwind }
+
+func (uw *Unwind) Label() *tokens.Name {
+	contract.Assert(uw.Break() || uw.Continue())
+	return uw.label
+}
+
+func (uw *Unwind) Returned() *Object {
+	contract.Assert(uw.Return())
+	return uw.returned
+}
+
+func (uw *Unwind) Thrown() *Object {
+	contract.Assert(uw.Throw())
+	return uw.thrown
+}

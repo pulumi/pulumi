@@ -228,16 +228,16 @@ func (e *evaluator) ensureModuleInit(mod *symbols.Module) {
 
 // issueUnhandledException issues an unhandled exception error using the given diagnostic and unwind information.
 func (e *evaluator) issueUnhandledException(uw *Unwind, err *diag.Diag, args ...interface{}) {
-	contract.Assert(!uw.Break)
-	contract.Assert(!uw.Continue)
-	contract.Assert(!uw.Return)
-	contract.Assert(uw.Throw)
-	// TODO: ideally we would have a stack trace to show here.
-	msg := uw.Thrown.Data.(string)
+	contract.Assert(uw.Throw())
+	var msg string
+	if thrown := uw.Thrown(); thrown != nil {
+		msg = thrown.Data.(string)
+	}
 	if msg == "" {
 		msg = "no details available"
 	}
 	args = append(args, msg)
+	// TODO: ideally we would also have a stack trace to show here.
 	e.Diag().Errorf(err, args...)
 }
 
@@ -314,12 +314,11 @@ func (e *evaluator) evalCall(fnc symbols.Function, this *Object, args ...*Object
 	//     3) any return is checked to be of the expected type, and returned as the result of the call.
 	retty := fnc.FuncType().Return
 	if uw != nil {
-		contract.Assert(!uw.Break)
-		contract.Assert(!uw.Continue)
-		if uw.Throw {
+		if uw.Throw() {
 			return nil, uw
-		} else if uw.Return {
-			ret := uw.Returned
+		} else {
+			contract.Assert(uw.Return()) // break/continue not expected.
+			ret := uw.Returned()
 			contract.Assert((retty == nil) == (ret == nil))
 			contract.Assert(ret == nil || types.CanConvert(ret.Type, retty))
 			return ret, nil
@@ -399,18 +398,19 @@ func (e *evaluator) evalLocalVariableDeclaration(node *ast.LocalVariableDeclarat
 func (e *evaluator) evalTryCatchFinally(node *ast.TryCatchFinally) *Unwind {
 	// First, execute the TryBlock.
 	uw := e.evalBlock(node.TryBlock)
-	if uw != nil && uw.Thrown != nil {
+	if uw != nil && uw.Throw() {
 		// The try block threw something; see if there is a handler that covers this.
+		thrown := uw.Thrown()
 		if node.CatchBlocks != nil {
 			for _, catch := range *node.CatchBlocks {
 				ex := e.ctx.RequireVariable(catch.Exception).(*symbols.LocalVariable)
 				exty := ex.Type()
 				contract.Assert(types.CanConvert(exty, types.Error))
-				if types.CanConvert(uw.Thrown.Type, exty) {
+				if types.CanConvert(thrown.Type, exty) {
 					// This type matched, so this handler will catch the exception.  Set the exception variable,
 					// evaluate the block, and swap the Unwind information (thereby "handling" the in-flight exception).
 					e.pushScope(false)
-					e.locals.SetValue(ex, uw.Thrown)
+					e.locals.SetValue(ex, thrown)
 					uw = e.evalBlock(catch.Block)
 					e.popScope()
 					break
@@ -437,7 +437,7 @@ func (e *evaluator) evalBreakStatement(node *ast.BreakStatement) *Unwind {
 	if node.Label != nil {
 		label = &node.Label.Ident
 	}
-	return breakUnwind(label)
+	return NewBreakUnwind(label)
 }
 
 func (e *evaluator) evalContinueStatement(node *ast.ContinueStatement) *Unwind {
@@ -445,7 +445,7 @@ func (e *evaluator) evalContinueStatement(node *ast.ContinueStatement) *Unwind {
 	if node.Label != nil {
 		label = &node.Label.Ident
 	}
-	return continueUnwind(label)
+	return NewContinueUnwind(label)
 }
 
 func (e *evaluator) evalIfStatement(node *ast.IfStatement) *Unwind {
@@ -465,9 +465,8 @@ func (e *evaluator) evalIfStatement(node *ast.IfStatement) *Unwind {
 func (e *evaluator) evalLabeledStatement(node *ast.LabeledStatement) *Unwind {
 	// Evaluate the underlying statement; if it is breaking or continuing to this label, stop the Unwind.
 	uw := e.evalStatement(node.Statement)
-	if uw != nil && uw.Label != nil && *uw.Label == node.Label.Ident {
-		contract.Assert(uw.Return == false)
-		contract.Assert(uw.Throw == false)
+	if uw != nil && uw.Label() != nil && *uw.Label() == node.Label.Ident {
+		contract.Assert(uw.Continue() || uw.Break())
 		// TODO: perform correct break/continue behavior when the label is affixed to a loop.
 		uw = nil
 	}
@@ -483,7 +482,7 @@ func (e *evaluator) evalReturnStatement(node *ast.ReturnStatement) *Unwind {
 			return uw
 		}
 	}
-	return returnUnwind(ret)
+	return NewReturnUnwind(ret)
 }
 
 func (e *evaluator) evalThrowStatement(node *ast.ThrowStatement) *Unwind {
@@ -493,7 +492,7 @@ func (e *evaluator) evalThrowStatement(node *ast.ThrowStatement) *Unwind {
 		return uw
 	}
 	contract.Assert(thrown != nil)
-	return throwUnwind(thrown)
+	return NewThrowUnwind(thrown)
 }
 
 func (e *evaluator) evalWhileStatement(node *ast.WhileStatement) *Unwind {
@@ -506,11 +505,11 @@ func (e *evaluator) evalWhileStatement(node *ast.WhileStatement) *Unwind {
 		}
 		if test.Bool() {
 			if uws := e.evalStatement(node.Body); uw != nil {
-				if uws.Continue {
-					contract.Assertf(uws.Label == nil, "Labeled continue not yet supported")
+				if uws.Continue() {
+					contract.Assertf(uws.Label() == nil, "Labeled continue not yet supported")
 					continue
-				} else if uws.Break {
-					contract.Assertf(uws.Label == nil, "Labeled break not yet supported")
+				} else if uws.Break() {
+					contract.Assertf(uws.Label() == nil, "Labeled break not yet supported")
 					break
 				} else {
 					// If it's not a continue or break, stash the Unwind away and return it.
@@ -621,7 +620,7 @@ func (e *evaluator) evalArrayLiteral(node *ast.ArrayLiteral) (*Object, *Unwind) 
 		sz := int(sze.Number())
 		if sz < 0 {
 			// If the size is less than zero, raise a new error.
-			return nil, throwUnwind(NewErrorObject("Invalid array size (must be >= 0)"))
+			return nil, NewThrowUnwind(NewErrorObject("Invalid array size (must be >= 0)"))
 		}
 		arr = make([]Data, sz)
 	}
@@ -635,7 +634,7 @@ func (e *evaluator) evalArrayLiteral(node *ast.ArrayLiteral) (*Object, *Unwind) 
 			arr = make([]Data, 0, len(*node.Elements))
 		} else if len(*node.Elements) > *sz {
 			// The element count exceeds the size; raise an error.
-			return nil, throwUnwind(
+			return nil, NewThrowUnwind(
 				NewErrorObject("Invalid number of array elements; expected <=%v, got %v",
 					*sz, len(*node.Elements)))
 		}
