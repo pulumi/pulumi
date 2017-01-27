@@ -54,10 +54,14 @@ func (node *NodeValue) Where() (*diag.Document, *diag.Location) {
 		}
 		var end *diag.Pos
 		if node.Loc.End != nil {
-			end = &diag.Pos{int(node.Loc.End.Line), int(node.Loc.End.Column)}
+			end = &diag.Pos{Line: int(node.Loc.End.Line), Column: int(node.Loc.End.Column)}
 		}
 		return doc, &diag.Location{
-			diag.Pos{int(node.Loc.Start.Line), int(node.Loc.Start.Column)}, end,
+			Start: diag.Pos{
+				Line:   int(node.Loc.Start.Line),
+				Column: int(node.Loc.Start.Column),
+			},
+			End: end,
 		}
 	}
 }

@@ -69,10 +69,11 @@ func (s *localScope) lookupValueReference(sym *symbols.LocalVariable, place *Ref
 	// the actual local variable symbol's lifetime.  This ensures that once that frame is popped, so too is any value
 	// associated with it; and similarly, that its value won't be popped until the frame containing the variable is.
 	lex := s.Lexical
+outer:
 	for {
 		for _, lexloc := range lex.Locals {
 			if lexloc == sym {
-				break
+				break outer
 			}
 		}
 		contract.Assert(!s.Frame)
