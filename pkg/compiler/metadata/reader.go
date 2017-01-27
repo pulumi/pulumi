@@ -44,6 +44,7 @@ func (r *reader) ReadPackage(doc *diag.Document) *pack.Package {
 		defer glog.V(2).Infof("Reading MuPackage '%v' completed w/ %v warnings and %v errors",
 			doc.File, r.Diag().Warnings(), r.Diag().Errors())
 	}
+	contract.Assert(len(doc.Body) != 0)
 
 	// We support many file formats.  Detect the file extension and deserialize the contents.
 	m, has := encoding.Marshalers[doc.Ext()]

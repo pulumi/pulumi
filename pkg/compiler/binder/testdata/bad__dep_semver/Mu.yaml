@@ -1,0 +1,6 @@
+name: "binder/bad__dep_semver"
+dependencies:
+    dep1: dep1#badbadbad
+    dep2: hub.mu.com/dep2#badbadbad
+    dep3: https://hub.mu.com/dep3/a/b/c/d#badbadbad
+

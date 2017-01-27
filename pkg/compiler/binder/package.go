@@ -52,11 +52,12 @@ func (b *binder) resolvePackageDeps(pkg *symbols.Package) {
 	contract.Require(pkg != nil, "pkg")
 
 	if pkg.Node.Dependencies != nil {
-		for _, depurl := range *pkg.Node.Dependencies {
+		for _, dep := range pack.StableDependencies(*pkg.Node.Dependencies) {
+			depurl := (*pkg.Node.Dependencies)[dep]
 			// The dependency is a URL.  Transform it into a name used for symbol resolution.
 			dep, err := depurl.Parse()
 			if err != nil {
-				b.Diag().Errorf(errors.ErrorMalformedPackageURL, depurl, err)
+				b.Diag().Errorf(errors.ErrorMalformedPackageURL.At(pkg.Node), depurl, err)
 			} else {
 				glog.V(3).Infof("Resolving package '%v' dependency name=%v, url=%v", pkg.Name(), dep.Name, dep.URL())
 				if depsym := b.resolveDep(dep); depsym != nil {
