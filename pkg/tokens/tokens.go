@@ -64,33 +64,39 @@ func (tok Token) Name() Name {
 	return Name(tok.String())
 }
 
-// Parts returns as many parts as the Token has, each in a return slot, or "" for those that don't exist.
-func (tok Token) Parts() (PackageName, ModuleName, ModuleMemberName, ClassMemberName) {
-	// Switch on the token kind to populate the set of names.
-	var pkg PackageName
-	var mod ModuleName
-	var mem ModuleMemberName
-	var clm ClassMemberName
+// Names returns as many names as the Token has, each in a return slot, or "" for those that don't exist.
+func (tok Token) Names() (PackageName, ModuleName, ModuleMemberName, ClassMemberName) {
+	// Check the token for the most specific to least specific cases.
 	if tok.HasClassMember() {
 		clmtok := ClassMember(tok)
-		pkg = clmtok.Package().Name()
-		mod = clmtok.Module().Name()
-		mem = ModuleMemberName(clmtok.Class().Name())
-		clm = clmtok.Name()
+		return clmtok.Package().Name(), clmtok.Module().Name(),
+			ModuleMemberName(clmtok.Class().Name()), clmtok.Name()
 	} else if tok.HasModuleMember() {
 		memtok := ModuleMember(tok)
-		pkg = memtok.Package().Name()
-		mod = memtok.Module().Name()
-		mem = memtok.Name()
+		return memtok.Package().Name(), memtok.Module().Name(), memtok.Name(), ""
 	} else if tok.HasModule() {
 		modtok := Module(tok)
-		pkg = modtok.Package().Name()
-		mod = modtok.Name()
+		return modtok.Package().Name(), modtok.Name(), "", ""
 	} else {
-		pkg = Package(tok).Name()
+		return Package(tok).Name(), "", "", ""
 	}
-	contract.Assert(pkg != "")
-	return pkg, mod, mem, clm
+}
+
+// Tokens returns as many tokens as the Token has, each in a return slot, or "" for those that don't exist.
+func (tok Token) Tokens() (Package, Module, ModuleMember, ClassMember) {
+	// Check the token for the most specific to least specific cases.
+	if tok.HasClassMember() {
+		clmtok := ClassMember(tok)
+		return clmtok.Package(), clmtok.Module(), ModuleMember(clmtok.Class()), clmtok
+	} else if tok.HasModuleMember() {
+		memtok := ModuleMember(tok)
+		return memtok.Package(), memtok.Module(), memtok, ""
+	} else if tok.HasModule() {
+		modtok := Module(tok)
+		return modtok.Package(), modtok, "", ""
+	} else {
+		return Package(tok), "", "", ""
+	}
 }
 
 // Package is a token representing just a package.  It uses a much simpler grammar:

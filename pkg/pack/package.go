@@ -11,7 +11,7 @@ import (
 
 // Package is a top-level package definition.
 type Package struct {
-	Name string `json:"name"` // a required fully qualified name.
+	Name tokens.PackageName `json:"name"` // a required fully qualified name.
 
 	Description *string `json:"description,omitempty"` // an optional informational description.
 	Author      *string `json:"author,omitempty"`      // an optional author.

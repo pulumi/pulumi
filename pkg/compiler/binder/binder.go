@@ -206,49 +206,31 @@ func (b *binder) checkClassVisibility(node ast.Node, class *symbols.Class, membe
 // lookupSymbolToken performs a complex lookup for a complex token; if require is true, failed lookups will issue an
 // error; and in any case, the AST node is used as the context for errors (lookup, accessibility, or otherwise).
 func (b *binder) lookupSymbolToken(node ast.Node, tok tokens.Token, require bool) symbols.Symbol {
-	pkgnm, modnm, memnm, clmnm := tok.Parts()
-	var sym symbols.Symbol
-	var extra string // extra error details
-	if pkg, has := b.ctx.Pkgs[pkgnm]; has {
-		if modnm == "" {
-			sym = pkg.Pkg
-		} else if mod, has := pkg.Pkg.Modules[modnm]; has {
-			if memnm == "" {
-				sym = mod
-			} else if member, has := mod.Members[memnm]; has {
-				// The member was found; validate that it's got the right accessibility.
-				b.checkModuleVisibility(node, mod, member)
-
-				if clmnm == "" {
-					sym = member
-				} else if class, isclass := member.(*symbols.Class); isclass {
-					if clmember, has := class.Members[clmnm]; has {
-						// The member was found; validate that it's got the right accessibility.
-						b.checkClassVisibility(node, class, clmember)
-						sym = clmember
-					} else {
-						extra = "class found, but member was not found"
-					}
-				} else {
-					extra = "module member is not a class"
-				}
-			} else {
-				extra = "module found, but member was not found"
-			}
-		} else {
-			extra = "package found, but module was not found"
-		}
-	} else {
-		extra = "package was not found"
-	}
+	// Simply look up the symbol in the tokens map.
+	sym := b.ctx.Tokens[tok]
 
 	if sym == nil {
-		glog.V(5).Infof("Failed to bind qualified token; %v: '%v'", extra, tok)
+		glog.V(5).Infof("Failed to bind qualified token; '%v'", tok)
 		if require {
-			// If requested, issue an error.
+			// If requested, issue an error.  First, attempt to gather a good error message, however.
 			// TODO: edit distance checking to help suggest a fix.
-			b.Diag().Errorf(errors.ErrorSymbolNotFound.At(node), tok, extra)
+			var reason string
+			pkg, mod, mem, clm := tok.Tokens()
+			if _, has := b.ctx.Pkgs[pkg.Name()]; !has {
+				reason = fmt.Sprintf("package '%v' not found", pkg)
+			} else if _, has := b.ctx.Tokens[tokens.Token(mod)]; !has {
+				reason = fmt.Sprintf("module '%v' not found", pkg)
+			} else if _, has := b.ctx.Tokens[tokens.Token(mem)]; !has {
+				reason = fmt.Sprintf("class '%v' not found", pkg)
+			} else if _, has := b.ctx.Tokens[tokens.Token(clm)]; !has {
+				reason = fmt.Sprintf("class member '%v' not found", pkg)
+			} else {
+				reason = "invalid symbol token"
+			}
+			b.Diag().Errorf(errors.ErrorSymbolNotFound.At(node), tok, reason)
 		}
+	} else if glog.V(7) {
+		glog.V(7).Infof("Successfully bound qualified token: %v", tok)
 	}
 
 	return sym

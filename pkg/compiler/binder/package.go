@@ -17,8 +17,15 @@ import (
 // BindPackages takes a package AST, resolves all dependencies and tokens inside of it, and returns a fully bound
 // package symbol that can be used for semantic operations (like interpretation and evaluation).
 func (b *binder) BindPackage(pkg *pack.Package) *symbols.Package {
+	// Use the shared binding routine; but just use a default URL since we didn't fetch this as a dependency.
+	// TODO: detect the version from the workspace.
+	respkg := b.resolveBindPackage(pkg, pack.PackageURL{Name: pkg.Name})
+	return respkg.Pkg
+}
+
+func (b *binder) resolveBindPackage(pkg *pack.Package, pkgurl pack.PackageURL) *symbols.ResolvedPackage {
 	// If the package name isn't a legal identifier, say so.
-	if !tokens.IsQName(pkg.Name) {
+	if !tokens.IsQName(string(pkg.Name)) {
 		b.Diag().Errorf(errors.ErrorInvalidPackageName.At(pkg.Doc))
 	}
 
@@ -27,6 +34,15 @@ func (b *binder) BindPackage(pkg *pack.Package) *symbols.Package {
 
 	// Create a symbol with empty dependencies and modules; this allows child symbols to parent to it.
 	pkgsym := symbols.NewPackageSym(pkg)
+
+	// Enter this package into the table so that it can be resolved cyclically (including self-dependencies).  Note that
+	// we canonicalize the URL so that we can depend on its fully bound state in subsequent lookups.
+	respkg := &symbols.ResolvedPackage{
+		Pkg: pkgsym,
+		URL: pkgurl.Defaults(),
+	}
+	b.ctx.Pkgs[pkg.Name] = respkg
+	glog.V(5).Infof("Registered resolved package symbol: pkg=%v url=%v", pkgsym, pkgurl)
 
 	// Set the current package in the context so we can e.g. enforce accessibility.
 	priorpkg := b.ctx.Currpkg
@@ -43,7 +59,7 @@ func (b *binder) BindPackage(pkg *pack.Package) *symbols.Package {
 	// dependencies can resolve to symbols, after reaching the symbol-level fixed point above.
 	b.bindPackageMethodBodies(pkgsym)
 
-	return pkgsym
+	return respkg
 }
 
 // resolvePackageDeps resolves all package dependencies, ensuring that all symbols are available to us.  This recurses
@@ -69,26 +85,16 @@ func (b *binder) resolvePackageDeps(pkg *symbols.Package) {
 	}
 }
 
-var cyclicTombstone = &symbols.ResolvedPackage{Pkg: symbols.NewPackageSym(nil)}
-
 // resolveDep actually performs the package resolution process, populating the compiler symbol tables.
 func (b *binder) resolveDep(dep pack.PackageURL) *symbols.ResolvedPackage {
 	// First, see if we've already loaded this package.  If yes, reuse it.
 	if pkgsym, exists := b.ctx.Pkgs[dep.Name]; exists {
-		// Check for cycles.  If one exists, do not process this dependency any further.
-		if pkgsym == cyclicTombstone {
-			// TODO: report the full transitive loop to help debug cycles.
-			b.Diag().Errorf(errors.ErrorImportCycle, dep.Name)
-			return nil
-		}
-
 		// TODO: ensure versions match.
 		return pkgsym
 	}
 
 	// There are many places a dependency could come from.  Consult the workspace for a list of those paths.  It will
 	// return a number of them, in preferred order, and we simply probe each one until we find something.
-	dep = dep.Defaults() // use defaults for missing parts
 	for _, loc := range b.w.DepCandidates(dep) {
 		// See if this candidate actually exists.
 		isMufile := workspace.IsMufile(loc, b.Diag())
@@ -104,20 +110,8 @@ func (b *binder) resolveDep(dep pack.PackageURL) *symbols.ResolvedPackage {
 			}
 			pkg := b.reader.ReadPackage(doc)
 
-			// Inject a tombstone so we can easily detect cycles.
-			b.ctx.Pkgs[dep.Name] = cyclicTombstone
-
-			// Now perform the binding.
-			pkgsym := b.BindPackage(pkg)
-
-			// Erase the tombstone, memoize the symbol in the compiler's cache, and return it.  Note that we have
-			// canonicalized the URL by substituting defaults for missing parts, to ease future binding endeavors.
-			respkg := &symbols.ResolvedPackage{
-				Pkg: pkgsym,
-				URL: dep,
-			}
-			b.ctx.Pkgs[dep.Name] = respkg
-			return respkg
+			// Now perform the binding and return it.
+			return b.resolveBindPackage(pkg, dep)
 		}
 	}
 
