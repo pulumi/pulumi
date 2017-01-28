@@ -16,11 +16,11 @@ import (
 	"github.com/marapongo/mu/pkg/util/contract"
 )
 
-func newCompileCmd() *cobra.Command {
+func newEvalCmd() *cobra.Command {
 	var cmd = &cobra.Command{
-		Use:   "compile [blueprint] [-- [args]]",
-		Short: "Compile a MuPackage into its MuGL graph representation",
-		Long: "Compile a MuPackage into its MuGL graph representation.\n" +
+		Use:   "eval [blueprint] [-- [args]]",
+		Short: "Evaluate a MuPackage and create its MuGL graph representation",
+		Long: "Evaluate a MuPackage and create its MuGL graph representation.\n" +
 			"\n" +
 			"A graph is a topologically sorted directed-acyclic-graph (DAG), representing a\n" +
 			"collection of resources that may be used in a deployment operation like plan or apply.\n" +
