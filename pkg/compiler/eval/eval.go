@@ -3,6 +3,7 @@
 package eval
 
 import (
+	"math"
 	"reflect"
 
 	"github.com/golang/glog"
@@ -897,9 +898,193 @@ func (e *evaluator) evalUnaryOperatorExpressionFor(node *ast.UnaryOperatorExpres
 }
 
 func (e *evaluator) evalBinaryOperatorExpression(node *ast.BinaryOperatorExpression) (*Object, *Unwind) {
-	// TODO: perform the binary operator's behavior.
-	contract.Failf("Evaluation of %v nodes not yet implemented", reflect.TypeOf(node))
-	return nil, nil
+	// Evaluate the operands and prepare to use them.  First left, then right.
+	lhs, uw := e.evalExpression(node.Left)
+	if uw != nil {
+		return nil, uw
+	}
+
+	// For the logical && and ||, we will only evaluate the rhs it if the lhs was true.
+	if node.Operator == ast.OpLogicalAnd || node.Operator == ast.OpLogicalOr {
+		if lhs.Bool() {
+			return e.evalExpression(node.Right)
+		}
+		return NewBoolObject(false), nil
+	}
+
+	// Otherwise, just evaluate the rhs and prepare to evaluate the operator.
+	rhs, uw := e.evalExpression(node.Right)
+	if uw != nil {
+		return nil, uw
+	}
+
+	// Switch on operator to perform the operator's effects.
+	// TODO: anywhere there is type coercion to/from float64/int64/etc., we should be skeptical.  Because our numeric
+	//     type system is float64-based -- i.e., "JSON-like" -- we often find ourselves doing operations on floats that
+	//     honestly don't make sense (like shifting, masking, and whatnot).  If there is a type coercion, Golang
+	//     (rightfully) doesn't support an operator on numbers of that type.  I suspect we will eventually want to
+	//     consider integer types in MuIL, and/or verify that numbers aren't outside of the legal range as part of
+	//     verification, and then push the responsibility for presenting valid MuIL with whatever conversions are
+	//     necessary back up to the MetaMu compilers (compile-time, runtime, or othwerwise, per the language semantics).
+	switch node.Operator {
+	// Arithmetic operators
+	case ast.OpAdd:
+		// If the lhs/rhs are strings, concatenate them; if numbers, + them.
+		if lhs.Type == types.String {
+			return NewStringObject(lhs.String() + rhs.String()), nil
+		} else {
+			return NewNumberObject(lhs.Number() + rhs.Number()), nil
+		}
+	case ast.OpSubtract:
+		// Both targets are numbers; fetch them (asserting their types), and - them.
+		return NewNumberObject(lhs.Number() - rhs.Number()), nil
+	case ast.OpMultiply:
+		// Both targets are numbers; fetch them (asserting their types), and * them.
+		return NewNumberObject(lhs.Number() * rhs.Number()), nil
+	case ast.OpDivide:
+		// Both targets are numbers; fetch them (asserting their types), and / them.
+		return NewNumberObject(lhs.Number() / rhs.Number()), nil
+	case ast.OpRemainder:
+		// Both targets are numbers; fetch them (asserting their types), and % them.
+		return NewNumberObject(float64(int64(lhs.Number()) % int64(rhs.Number()))), nil
+	case ast.OpExponentiate:
+		// Both targets are numbers; fetch them (asserting their types), and raise lhs to rhs's power.
+		return NewNumberObject(math.Pow(lhs.Number(), rhs.Number())), nil
+
+	// Bitwise operators
+	// TODO: the ECMAScript specification for bitwise operators is a fair bit more complicated than these; for instance,
+	//     shifts mask out all but the least significant 5 bits of the rhs.  If we don't do it here, MuJS should; e.g.
+	//     see https://www.ecma-international.org/ecma-262/7.0/#sec-left-shift-operator.
+	case ast.OpBitwiseShiftLeft:
+		// Both targets are numbers; fetch them (asserting their types), and << them.
+		// TODO: consider a verification error if rhs is negative.
+		return NewNumberObject(float64(int64(lhs.Number()) << uint(rhs.Number()))), nil
+	case ast.OpBitwiseShiftRight:
+		// Both targets are numbers; fetch them (asserting their types), and >> them.
+		// TODO: consider a verification error if rhs is negative.
+		return NewNumberObject(float64(int64(lhs.Number()) >> uint(rhs.Number()))), nil
+	case ast.OpBitwiseAnd:
+		// Both targets are numbers; fetch them (asserting their types), and & them.
+		return NewNumberObject(float64(int64(lhs.Number()) & int64(rhs.Number()))), nil
+	case ast.OpBitwiseOr:
+		// Both targets are numbers; fetch them (asserting their types), and | them.
+		return NewNumberObject(float64(int64(lhs.Number()) | int64(rhs.Number()))), nil
+	case ast.OpBitwiseXor:
+		// Both targets are numbers; fetch them (asserting their types), and ^ them.
+		return NewNumberObject(float64(int64(lhs.Number()) ^ int64(rhs.Number()))), nil
+
+	// Assignment operators
+	case ast.OpAssign:
+		// The target is an l-value; just overwrite its value, and yield the new value as the result.
+		lhs.Reference().Set(rhs)
+		return rhs, nil
+	case ast.OpAssignSum:
+		// The target is a numeric l-value; just += rhs to it, and yield the new value as the result.
+		ref := lhs.Reference()
+		val := NewNumberObject(ref.Obj().Number() + rhs.Number())
+		ref.Set(val)
+		return val, nil
+	case ast.OpAssignDifference:
+		// The target is a numeric l-value; just -= rhs to it, and yield the new value as the result.
+		ref := lhs.Reference()
+		val := NewNumberObject(ref.Obj().Number() - rhs.Number())
+		ref.Set(val)
+		return val, nil
+	case ast.OpAssignProduct:
+		// The target is a numeric l-value; just *= rhs to it, and yield the new value as the result.
+		ref := lhs.Reference()
+		val := NewNumberObject(ref.Obj().Number() * rhs.Number())
+		ref.Set(val)
+		return val, nil
+	case ast.OpAssignQuotient:
+		// The target is a numeric l-value; just /= rhs to it, and yield the new value as the result.
+		ref := lhs.Reference()
+		val := NewNumberObject(ref.Obj().Number() / rhs.Number())
+		ref.Set(val)
+		return val, nil
+	case ast.OpAssignRemainder:
+		// The target is a numeric l-value; just %= rhs to it, and yield the new value as the result.
+		ref := lhs.Reference()
+		val := NewNumberObject(float64(int64(ref.Obj().Number()) % int64(rhs.Number())))
+		ref.Set(val)
+		return val, nil
+	case ast.OpAssignExponentiation:
+		// The target is a numeric l-value; just raise to rhs as a power, and yield the new value as the result.
+		ref := lhs.Reference()
+		val := NewNumberObject(math.Pow(ref.Obj().Number(), rhs.Number()))
+		ref.Set(val)
+		return val, nil
+	case ast.OpAssignBitwiseShiftLeft:
+		// The target is a numeric l-value; just <<= rhs to it, and yield the new value as the result.
+		ref := lhs.Reference()
+		val := NewNumberObject(float64(int64(ref.Obj().Number()) << uint(rhs.Number())))
+		ref.Set(val)
+		return val, nil
+	case ast.OpAssignBitwiseShiftRight:
+		// The target is a numeric l-value; just >>= rhs to it, and yield the new value as the result.
+		ref := lhs.Reference()
+		val := NewNumberObject(float64(int64(ref.Obj().Number()) >> uint(rhs.Number())))
+		ref.Set(val)
+		return val, nil
+	case ast.OpAssignBitwiseAnd:
+		// The target is a numeric l-value; just &= rhs to it, and yield the new value as the result.
+		ref := lhs.Reference()
+		val := NewNumberObject(float64(int64(ref.Obj().Number()) & int64(rhs.Number())))
+		ref.Set(val)
+		return val, nil
+	case ast.OpAssignBitwiseOr:
+		// The target is a numeric l-value; just |= rhs to it, and yield the new value as the result.
+		ref := lhs.Reference()
+		val := NewNumberObject(float64(int64(ref.Obj().Number()) | int64(rhs.Number())))
+		ref.Set(val)
+		return val, nil
+	case ast.OpAssignBitwiseXor:
+		// The target is a numeric l-value; just ^= rhs to it, and yield the new value as the result.
+		ref := lhs.Reference()
+		val := NewNumberObject(float64(int64(ref.Obj().Number()) ^ int64(rhs.Number())))
+		ref.Set(val)
+		return val, nil
+
+	// Relational operators
+	case ast.OpLt:
+		// The targets are numbers; just compare them with < and yield the boolean result.
+		return NewBoolObject(lhs.Number() < rhs.Number()), nil
+	case ast.OpLtEquals:
+		// The targets are numbers; just compare them with <= and yield the boolean result.
+		return NewBoolObject(lhs.Number() <= rhs.Number()), nil
+	case ast.OpGt:
+		// The targets are numbers; just compare them with > and yield the boolean result.
+		return NewBoolObject(lhs.Number() > rhs.Number()), nil
+	case ast.OpGtEquals:
+		// The targets are numbers; just compare them with >= and yield the boolean result.
+		return NewBoolObject(lhs.Number() >= rhs.Number()), nil
+	case ast.OpEquals:
+		// Equality checking handles many object types, so defer to a helper for it.
+		return NewBoolObject(e.evalBinaryOperatorEquals(lhs, rhs)), nil
+	case ast.OpNotEquals:
+		// Just return the inverse of what the operator equals function itself returns.
+		return NewBoolObject(!e.evalBinaryOperatorEquals(lhs, rhs)), nil
+
+	default:
+		contract.Failf("Unrecognized binary operator: %v", node.Operator)
+		return nil, nil
+	}
+}
+
+func (e *evaluator) evalBinaryOperatorEquals(lhs *Object, rhs *Object) bool {
+	if lhs == rhs {
+		return true
+	}
+	if lhs.Type == types.Bool && rhs.Type == types.Bool {
+		return lhs.Bool() == rhs.Bool()
+	}
+	if lhs.Type == types.Number && rhs.Type == types.Number {
+		return lhs.Number() == rhs.Number()
+	}
+	if lhs.Type == types.String && rhs.Type == types.String {
+		return lhs.String() == rhs.String()
+	}
+	return false
 }
 
 func (e *evaluator) evalCastExpression(node *ast.CastExpression) (*Object, *Unwind) {

@@ -419,7 +419,26 @@ func (a *astBinder) checkBinaryOperatorExpression(node *ast.BinaryOperatorExpres
 	rhs := a.b.ctx.RequireType(node.Right)
 	switch node.Operator {
 	// Arithmetic and bitwise operators:
-	case ast.OpAdd, ast.OpSubtract, ast.OpMultiply, ast.OpDivide, ast.OpRemainder, ast.OpExponentiate,
+	case ast.OpAdd:
+		// Lhs and rhs can be numbers (for addition) or strings (for concatenation).
+		if lhs == types.Number {
+			if rhs != types.Number {
+				a.b.Diag().Errorf(errors.ErrorBinaryOperatorInvalidForType.At(node),
+					node.Operator, "RHS", rhs, types.Number)
+			}
+			a.b.ctx.RegisterType(node, types.Number)
+		} else if lhs == types.String {
+			if rhs != types.String {
+				a.b.Diag().Errorf(errors.ErrorBinaryOperatorInvalidForType.At(node),
+					node.Operator, "RHS", rhs, types.String)
+			}
+			a.b.ctx.RegisterType(node, types.String)
+		} else {
+			a.b.Diag().Errorf(errors.ErrorBinaryOperatorInvalidForType.At(node),
+				node.Operator, "LHS", lhs, "string or number")
+			a.b.ctx.RegisterType(node, types.Number)
+		}
+	case ast.OpSubtract, ast.OpMultiply, ast.OpDivide, ast.OpRemainder, ast.OpExponentiate,
 		ast.OpBitwiseShiftLeft, ast.OpBitwiseShiftRight, ast.OpBitwiseAnd, ast.OpBitwiseOr, ast.OpBitwiseXor:
 		// Both lhs and rhs must be numbers:
 		if lhs != types.Number {

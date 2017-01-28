@@ -261,6 +261,14 @@ const (
 	OpRemainder                   = "%"
 	OpExponentiate                = "**"
 
+	// Bitwise operators:
+
+	OpBitwiseShiftLeft  = "<<"
+	OpBitwiseShiftRight = ">>"
+	OpBitwiseAnd        = "&"
+	OpBitwiseOr         = "|"
+	OpBitwiseXor        = "^"
+
 	// Assignment operators:
 
 	OpAssign                  = "="
@@ -275,14 +283,6 @@ const (
 	OpAssignBitwiseAnd        = "&="
 	OpAssignBitwiseOr         = "|="
 	OpAssignBitwiseXor        = "^="
-
-	// Bitwise operators:
-
-	OpBitwiseShiftLeft  = "<<"
-	OpBitwiseShiftRight = ">>"
-	OpBitwiseAnd        = "&"
-	OpBitwiseOr         = "|"
-	OpBitwiseXor        = "^"
 
 	// Conditional operators:
 
