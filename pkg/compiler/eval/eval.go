@@ -704,7 +704,7 @@ func (e *evaluator) evalObjectLiteral(node *ast.ObjectLiteral) (*Object, *Unwind
 				return nil, uw
 			}
 			member := init.Property.Tok.Name()
-			obj.GetPropertyPointer(member.Name(), true).Set(val)
+			obj.GetPropertyAddr(member.Name(), true).Set(val)
 		}
 	}
 
@@ -741,7 +741,7 @@ func (e *evaluator) evalLoadLocationExpressionFor(node *ast.LoadLocationExpressi
 		case *symbols.ClassProperty:
 			// Search the class's properties and, if not present, allocate a new one.
 			contract.Assert(this != nil)
-			pv = this.GetPropertyPointer(sym.Name(), true)
+			pv = this.GetPropertyAddr(sym.Name(), true)
 			ty = s.Type()
 		case *symbols.ClassMethod:
 			// Create a new readonly ref slot, pointing to the method, that will abandon if overwritten.

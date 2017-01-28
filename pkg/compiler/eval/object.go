@@ -150,9 +150,9 @@ func (o *Object) PointerValue() *Pointer {
 	return r
 }
 
-// GetPropertyPointer returns the reference to an object's property, lazily initializing if 'init' is true, or
+// GetPropertyAddr returns the reference to an object's property, lazily initializing if 'init' is true, or
 // returning nil otherwise.
-func (o *Object) GetPropertyPointer(nm tokens.Name, init bool) *Pointer {
+func (o *Object) GetPropertyAddr(nm tokens.Name, init bool) *Pointer {
 	ref, has := o.Properties[nm]
 	if !has {
 		ref = &Pointer{}
