@@ -1750,6 +1750,7 @@ export class Transformer {
     }
 
     private transformFunctionExpression(node: ts.FunctionExpression): ast.Expression {
+        // TODO[marapongo/mu#62]: implement lambdas.
         return notYetImplemented(node);
     }
 
@@ -1819,7 +1820,7 @@ export class Transformer {
     }
 
     private transformObjectLiteralFunctionLikeElement(node: ts.FunctionLikeDeclaration): ast.ObjectLiteralProperty {
-        // TODO: turn these into lambdas.
+        // TODO[marapongo/mu#62]: implement lambdas.
         return notYetImplemented(node);
     }
 
