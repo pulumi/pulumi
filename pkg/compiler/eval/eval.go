@@ -186,8 +186,8 @@ func (e *evaluator) ensureClassInit(class *symbols.Class) {
 			glog.V(7).Infof("Initializing class: %v", class)
 			contract.Assert(len(init.Ty.Parameters) == 0)
 			contract.Assert(init.Ty.Return == nil)
-			obj, uw := e.evalCall(init, nil)
-			contract.Assert(obj != nil)
+			ret, uw := e.evalCall(init, nil)
+			contract.Assert(ret == nil)
 			if uw != nil {
 				// Must be an unhandled exception; spew it as an error (but keep going).
 				e.issueUnhandledException(uw, errors.ErrorUnhandledInitException.At(init.Tree()), class)
@@ -215,8 +215,8 @@ func (e *evaluator) ensureModuleInit(mod *symbols.Module) {
 			glog.V(7).Infof("Initializing module: %v", mod)
 			contract.Assert(len(init.Type.Parameters) == 0)
 			contract.Assert(init.Type.Return == nil)
-			obj, uw := e.evalCall(init, nil)
-			contract.Assert(obj != nil)
+			ret, uw := e.evalCall(init, nil)
+			contract.Assert(ret == nil)
 			if uw != nil {
 				// Must be an unhandled exception; spew it as an error (but keep going).
 				e.issueUnhandledException(uw, errors.ErrorUnhandledInitException.At(init.Tree()), mod)
@@ -899,9 +899,17 @@ func (e *evaluator) evalUnaryOperatorExpressionFor(node *ast.UnaryOperatorExpres
 
 func (e *evaluator) evalBinaryOperatorExpression(node *ast.BinaryOperatorExpression) (*Object, *Unwind) {
 	// Evaluate the operands and prepare to use them.  First left, then right.
-	lhs, uw := e.evalExpression(node.Left)
-	if uw != nil {
-		return nil, uw
+	var lhs *Object
+	if isBinaryAssignmentOperator(node.Operator) {
+		var uw *Unwind
+		if lhs, uw = e.evalLValueExpression(node.Left); uw != nil {
+			return nil, uw
+		}
+	} else {
+		var uw *Unwind
+		if lhs, uw = e.evalExpression(node.Left); uw != nil {
+			return nil, uw
+		}
 	}
 
 	// For the logical && and ||, we will only evaluate the rhs it if the lhs was true.
@@ -1071,6 +1079,17 @@ func (e *evaluator) evalBinaryOperatorExpression(node *ast.BinaryOperatorExpress
 	}
 }
 
+func isBinaryAssignmentOperator(op ast.BinaryOperator) bool {
+	switch op {
+	case ast.OpAssign, ast.OpAssignSum, ast.OpAssignDifference, ast.OpAssignProduct, ast.OpAssignQuotient,
+		ast.OpAssignRemainder, ast.OpAssignExponentiation, ast.OpAssignBitwiseShiftLeft, ast.OpAssignBitwiseShiftRight,
+		ast.OpAssignBitwiseAnd, ast.OpAssignBitwiseOr, ast.OpAssignBitwiseXor:
+		return true
+	default:
+		return false
+	}
+}
+
 func (e *evaluator) evalBinaryOperatorEquals(lhs *Object, rhs *Object) bool {
 	if lhs == rhs {
 		return true
@@ -1083,6 +1102,9 @@ func (e *evaluator) evalBinaryOperatorEquals(lhs *Object, rhs *Object) bool {
 	}
 	if lhs.Type == types.String && rhs.Type == types.String {
 		return lhs.String() == rhs.String()
+	}
+	if lhs.Type == types.Null && rhs.Type == types.Null {
+		return true // all nulls are equal.
 	}
 	return false
 }
