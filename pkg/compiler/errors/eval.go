@@ -12,4 +12,5 @@ var (
 	ErrorFunctionArgIncorrectType  = newError(1005, "Function argument has an incorrect type; expected %v, got %v")
 	ErrorFunctionArgNotFound       = newError(1006, "Function argument '%v' was not supplied")
 	ErrorFunctionArgUnknown        = newError(1007, "Function argument '%v' was not recognized")
+	ErrorIllegalReadonlyLValue     = newError(1008, "A readonly target cannot be used as an assignment target")
 )

@@ -47,7 +47,7 @@ func (s *localScope) Pop() {
 // GetValue returns the object value for the given symbol.
 func (s *localScope) GetValue(sym *symbols.LocalVariable) *Object {
 	if ref := s.GetValueReference(sym, false); ref != nil {
-		return ref.Get()
+		return ref.Obj()
 	}
 	return nil
 }

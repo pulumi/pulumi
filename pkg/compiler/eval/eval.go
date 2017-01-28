@@ -586,6 +586,22 @@ func (e *evaluator) evalExpression(node ast.Expression) (*Object, *Unwind) {
 	}
 }
 
+// evalLValueExpression evaluates an expression for use as an l-value; in particular, this loads the target as a
+// pointer/reference object, rather than as an ordinary value, so that it can be used in an assignment.  This is only
+// valid on the subset of AST nodes that are legal l-values (very few of them, it turns out).
+func (e *evaluator) evalLValueExpression(node ast.Expression) (*Object, *Unwind) {
+	switch n := node.(type) {
+	case *ast.LoadLocationExpression:
+		return e.evalLoadLocationExpressionFor(n, true)
+	case *ast.UnaryOperatorExpression:
+		contract.Assert(n.Operator == ast.OpDereference)
+		return e.evalUnaryOperatorExpressionFor(n, true)
+	default:
+		contract.Failf("Unrecognized l-value expression type: %v", node.GetKind())
+		return nil, nil
+	}
+}
+
 func (e *evaluator) evalNullLiteral(node *ast.NullLiteral) (*Object, *Unwind) {
 	return NewPrimitiveObject(types.Null, nil), nil
 }
@@ -675,6 +691,10 @@ func (e *evaluator) evalObjectLiteral(node *ast.ObjectLiteral) (*Object, *Unwind
 }
 
 func (e *evaluator) evalLoadLocationExpression(node *ast.LoadLocationExpression) (*Object, *Unwind) {
+	return e.evalLoadLocationExpressionFor(node, false)
+}
+
+func (e *evaluator) evalLoadLocationExpressionFor(node *ast.LoadLocationExpression, lval bool) (*Object, *Unwind) {
 	// If there's a 'this', evaluate it.
 	var this *Object
 	if node.Object != nil {
@@ -735,7 +755,15 @@ func (e *evaluator) evalLoadLocationExpression(node *ast.LoadLocationExpression)
 		}
 	}
 
-	return NewReferenceObject(ty, pv), nil
+	// If this isn't for an l-value, return the raw object.  Otherwise, make sure it's not readonly, and return it.
+	if lval {
+		// A readonly reference cannot be used as an l-value.
+		if pv.Readonly() {
+			e.Diag().Errorf(errors.ErrorIllegalReadonlyLValue.At(node))
+		}
+		return NewReferenceObject(ty, pv), nil
+	}
+	return pv.Obj(), nil
 }
 
 func (e *evaluator) evalLoadDynamicExpression(node *ast.LoadDynamicExpression) (*Object, *Unwind) {
@@ -789,9 +817,83 @@ func (e *evaluator) evalLambdaExpression(node *ast.LambdaExpression) (*Object, *
 }
 
 func (e *evaluator) evalUnaryOperatorExpression(node *ast.UnaryOperatorExpression) (*Object, *Unwind) {
-	// TODO: perform the unary operator's behavior.
-	contract.Failf("Evaluation of %v nodes not yet implemented", reflect.TypeOf(node))
-	return nil, nil
+	return e.evalUnaryOperatorExpressionFor(node, false)
+}
+
+func (e *evaluator) evalUnaryOperatorExpressionFor(node *ast.UnaryOperatorExpression, lval bool) (*Object, *Unwind) {
+	contract.Assertf(!lval || node.Operator == ast.OpDereference, "Only dereference unary ops support l-values")
+
+	// Evaluate the operand and prepare to use it.
+	var opand *Object
+	if node.Operator == ast.OpAddressof ||
+		node.Operator == ast.OpPlusPlus || node.Operator == ast.OpMinusMinus {
+		// These operators require an l-value; so we bind the expression a bit differently.
+		var uw *Unwind
+		if opand, uw = e.evalLValueExpression(node.Operand); uw != nil {
+			return nil, uw
+		}
+	} else {
+		// Otherwise, we just need to evaluate the operand as usual.
+		var uw *Unwind
+		if opand, uw = e.evalExpression(node.Operand); uw != nil {
+			return nil, uw
+		}
+	}
+
+	// Now switch on the operator and perform its specific operation.
+	switch node.Operator {
+	case ast.OpDereference:
+		// The target is a pointer.  If this is for an l-value, just return it as-is; otherwise, dereference it.
+		ref := opand.Reference()
+		contract.Assert(ref != nil)
+		if lval {
+			return opand, nil
+		}
+		return ref.Obj(), nil
+	case ast.OpAddressof:
+		// The target is an l-value, load its address.
+		contract.Assert(opand.Reference() != nil)
+		return opand, nil
+	case ast.OpUnaryPlus:
+		// The target is a number; simply fetch it (asserting its value), and + it.
+		return NewNumberObject(+opand.Number()), nil
+	case ast.OpUnaryMinus:
+		// The target is a number; simply fetch it (asserting its value), and - it.
+		return NewNumberObject(-opand.Number()), nil
+	case ast.OpLogicalNot:
+		// The target is a boolean; simply fetch it (asserting its value), and ! it.
+		return NewBoolObject(!opand.Bool()), nil
+	case ast.OpBitwiseNot:
+		// The target is a number; simply fetch it (asserting its value), and ^ it (similar to C's ~ operator).
+		return NewNumberObject(float64(^int64(opand.Number()))), nil
+	case ast.OpPlusPlus:
+		// The target is an l-value; we must load it, ++ it, and return the appropriate prefix/postfix value.
+		ref := opand.Reference()
+		old := ref.Obj()
+		val := old.Number()
+		new := NewNumberObject(val + 1)
+		ref.Set(new)
+		if node.Postfix {
+			return old, nil
+		} else {
+			return new, nil
+		}
+	case ast.OpMinusMinus:
+		// The target is an l-value; we must load it, -- it, and return the appropriate prefix/postfix value.
+		ref := opand.Reference()
+		old := ref.Obj()
+		val := old.Number()
+		new := NewNumberObject(val - 1)
+		ref.Set(new)
+		if node.Postfix {
+			return old, nil
+		} else {
+			return new, nil
+		}
+	default:
+		contract.Failf("Unrecognized unary operator: %v", node.Operator)
+		return nil, nil
+	}
 }
 
 func (e *evaluator) evalBinaryOperatorExpression(node *ast.BinaryOperatorExpression) (*Object, *Unwind) {

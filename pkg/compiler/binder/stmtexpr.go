@@ -388,7 +388,7 @@ func (a *astBinder) checkUnaryOperatorExpression(node *ast.UnaryOperatorExpressi
 				node.Operand.GetKind(), "load location")
 		}
 		a.b.ctx.RegisterType(node, symbols.NewPointerType(opty))
-	case ast.OpUnaryPlus, ast.OpUnaryMinus, ast.OpBitwiseNot, ast.OpPlusPlus, ast.OpMinusMinus:
+	case ast.OpUnaryPlus, ast.OpUnaryMinus, ast.OpBitwiseNot:
 		// The target must be a number:
 		if opty != types.Number {
 			a.b.Diag().Errorf(errors.ErrorUnaryOperatorInvalidForType.At(node), node.Operator, opty, types.Number)
@@ -400,6 +400,14 @@ func (a *astBinder) checkUnaryOperatorExpression(node *ast.UnaryOperatorExpressi
 			a.b.Diag().Errorf(errors.ErrorUnaryOperatorInvalidForType.At(node), node.Operator, opty, types.Bool)
 		}
 		a.b.ctx.RegisterType(node, types.Bool)
+	case ast.OpPlusPlus, ast.OpMinusMinus:
+		// The target must be a numeric l-value.
+		if !a.isLValue(node.Operand) {
+			a.b.Diag().Errorf(errors.ErrorIllegalAssignmentLValue.At(node))
+		} else if opty != types.Number {
+			a.b.Diag().Errorf(errors.ErrorUnaryOperatorInvalidForType.At(node), node.Operator, opty, types.Number)
+		}
+		a.b.ctx.RegisterType(node, types.Number)
 	default:
 		contract.Failf("Unrecognized unary operator: %v", node.Operator)
 	}

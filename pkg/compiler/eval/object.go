@@ -38,6 +38,21 @@ func NewPrimitiveObject(t symbols.Type, data interface{}) *Object {
 	}
 }
 
+// NewBoolObject creates a new primitive number object.
+func NewBoolObject(v bool) *Object {
+	return NewPrimitiveObject(types.Bool, v)
+}
+
+// NewNumberObject creates a new primitive number object.
+func NewNumberObject(v float64) *Object {
+	return NewPrimitiveObject(types.Number, v)
+}
+
+// NewStringObject creates a new primitive number object.
+func NewStringObject(v string) *Object {
+	return NewPrimitiveObject(types.String, v)
+}
+
 // NewFunctionObject creates a new function object that can be invoked, with the given symbol.
 func NewFunctionObject(fnc symbols.Function, this *Object) *Object {
 	return &Object{
@@ -87,19 +102,36 @@ func NewConstantObject(v interface{}) *Object {
 // Bool asserts that the target is a boolean literal and returns its value.
 func (o *Object) Bool() bool {
 	contract.Assertf(o.Type == types.Bool, "Expected object type to be Bool; got %v", o.Type)
-	contract.Assertf(o.Data != nil, "Expected boolean literal to carry a Data payload; got nil")
+	contract.Assertf(o.Data != nil, "Expected Bool object to carry a Data payload; got nil")
 	b, ok := o.Data.(bool)
-	contract.Assertf(ok, "Expected a boolean literal value for condition expr; conversion failed")
+	contract.Assertf(ok, "Expected Bool object's Data payload to be boolean literal")
 	return b
 }
 
 // Number asserts that the target is a numeric literal and returns its value.
 func (o *Object) Number() float64 {
 	contract.Assertf(o.Type == types.Number, "Expected object type to be Number; got %v", o.Type)
-	contract.Assertf(o.Data != nil, "Expected numeric literal to carry a Data payload; got nil")
+	contract.Assertf(o.Data != nil, "Expected Number object to carry a Data payload; got nil")
 	n, ok := o.Data.(float64)
-	contract.Assertf(ok, "Expected a numeric literal value for condition expr; conversion failed")
+	contract.Assertf(ok, "Expected Number object's Data payload to be numeric literal")
 	return n
+}
+
+// String asserts that the target is a string and returns its value.
+func (o *Object) String() string {
+	contract.Assertf(o.Type == types.String, "Expected object type to be String; got %v", o.Type)
+	contract.Assertf(o.Data != nil, "Expected String object to carry a Data payload; got nil")
+	s, ok := o.Data.(string)
+	contract.Assertf(ok, "Expected String object's Data payload to be string")
+	return s
+}
+
+// Reference asserts that the target is a reference and returns its value.
+func (o *Object) Reference() *Reference {
+	contract.Assertf(o.Data != nil, "Expected Reference object to carry a Data payload; got nil")
+	r, ok := o.Data.(*Reference)
+	contract.Assertf(ok, "Expected Reference object's Data payload to be a Reference")
+	return r
 }
 
 // GetPropertyReference returns the reference to an object's property, lazily initializing if 'init' is true, or
@@ -119,9 +151,8 @@ type Reference struct {
 	readonly bool    // true prevents writes to this slot (by abandoning).
 }
 
-func (ref *Reference) Get() *Object {
-	return ref.obj
-}
+func (ref *Reference) Readonly() bool { return ref.readonly }
+func (ref *Reference) Obj() *Object   { return ref.obj }
 
 func (ref *Reference) Set(obj *Object) {
 	contract.Assertf(!ref.readonly, "Unexpected write to readonly reference")
