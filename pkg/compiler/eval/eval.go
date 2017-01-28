@@ -56,7 +56,7 @@ type evaluator struct {
 	classinits classinitMap     // a map of which classes have been initialized already.
 }
 
-type globalMap map[symbols.Variable]*Reference
+type globalMap map[symbols.Variable]*Pointer
 type modinitMap map[*symbols.Module]bool
 type classinitMap map[*symbols.Class]bool
 
@@ -166,11 +166,31 @@ func (e *evaluator) EvaluateFunction(fnc symbols.Function, this *Object, args co
 		}
 	}
 
+	// Dump the evaluation state at log-level 5, if it is enabled.
+	e.dumpEvalState(5)
+
 	// TODO: turn the returned object into a graph.
 	return nil
 }
 
 // Utility functions
+
+// dumpEvalState logs the evaluator's current state at the given log-level.
+func (e *evaluator) dumpEvalState(v glog.Level) {
+	if glog.V(v) {
+		glog.V(v).Infof("Evaluator state dump:")
+		glog.V(v).Infof("=====================")
+		for mod := range e.modinits {
+			glog.V(v).Infof("Module init: %v", mod)
+		}
+		for class := range e.classinits {
+			glog.V(v).Infof("Class init: %v", class)
+		}
+		for sym, ptr := range e.globals {
+			glog.V(v).Infof("Global %v: %v", sym.Token(), ptr.Obj())
+		}
+	}
+}
 
 // ensureClassInit ensures that the target's class initializer has been run.
 func (e *evaluator) ensureClassInit(class *symbols.Class) {
@@ -232,7 +252,7 @@ func (e *evaluator) issueUnhandledException(uw *Unwind, err *diag.Diag, args ...
 	contract.Assert(uw.Throw())
 	var msg string
 	if thrown := uw.Thrown(); thrown != nil {
-		msg = thrown.Data.(string)
+		msg = thrown.StringValue()
 	}
 	if msg == "" {
 		msg = "no details available"
@@ -274,10 +294,10 @@ func (e *evaluator) evalCall(fnc symbols.Function, this *Object, args ...*Object
 			contract.Assertf(!f.Static(), "Static methods don't have 'this' arguments, but we got a non-nil one")
 			contract.Assertf(types.CanConvert(this.Type, f.Parent), "'this' argument was of the wrong type")
 			e.ctx.Scope.Register(f.Parent.This)
-			e.locals.InitValueReference(f.Parent.This, &Reference{obj: this, readonly: true})
+			e.locals.InitValueAddr(f.Parent.This, &Pointer{obj: this, readonly: true})
 			if f.Parent.Super != nil {
 				e.ctx.Scope.Register(f.Parent.Super)
-				e.locals.InitValueReference(f.Parent.Super, &Reference{obj: this, readonly: true})
+				e.locals.InitValueAddr(f.Parent.Super, &Pointer{obj: this, readonly: true})
 			}
 		default:
 			contract.Failf("Only class methods should have 'this' arguments, but we got a non-nil one")
@@ -455,7 +475,7 @@ func (e *evaluator) evalIfStatement(node *ast.IfStatement) *Unwind {
 	if uw != nil {
 		return uw
 	}
-	if cond.Bool() {
+	if cond.BoolValue() {
 		return e.evalStatement(node.Consequent)
 	} else if node.Alternate != nil {
 		return e.evalStatement(*node.Alternate)
@@ -504,7 +524,7 @@ func (e *evaluator) evalWhileStatement(node *ast.WhileStatement) *Unwind {
 		if uw != nil {
 			return uw
 		}
-		if test.Bool() {
+		if test.BoolValue() {
 			if uws := e.evalStatement(node.Body); uw != nil {
 				if uws.Continue() {
 					contract.Assertf(uws.Label() == nil, "Labeled continue not yet supported")
@@ -625,7 +645,7 @@ func (e *evaluator) evalArrayLiteral(node *ast.ArrayLiteral) (*Object, *Unwind) 
 
 	// Now create the array data.
 	var sz *int
-	var arr []Data
+	var arr []Value
 
 	// If there's a node size, ensure it's a number, and initialize the array.
 	if node.Size != nil {
@@ -634,12 +654,12 @@ func (e *evaluator) evalArrayLiteral(node *ast.ArrayLiteral) (*Object, *Unwind) 
 			return nil, uw
 		}
 		// TODO: this really ought to be an int, not a float...
-		sz := int(sze.Number())
+		sz := int(sze.NumberValue())
 		if sz < 0 {
 			// If the size is less than zero, raise a new error.
 			return nil, NewThrowUnwind(NewErrorObject("Invalid array size (must be >= 0)"))
 		}
-		arr = make([]Data, sz)
+		arr = make([]Value, sz)
 	}
 
 	// If there are elements, place them into the array.  This has two behaviors:
@@ -648,7 +668,7 @@ func (e *evaluator) evalArrayLiteral(node *ast.ArrayLiteral) (*Object, *Unwind) 
 	if node.Elements != nil {
 		if sz == nil {
 			// Right-size the array.
-			arr = make([]Data, 0, len(*node.Elements))
+			arr = make([]Value, 0, len(*node.Elements))
 		} else if len(*node.Elements) > *sz {
 			// The element count exceeds the size; raise an error.
 			return nil, NewThrowUnwind(
@@ -684,7 +704,7 @@ func (e *evaluator) evalObjectLiteral(node *ast.ObjectLiteral) (*Object, *Unwind
 				return nil, uw
 			}
 			member := init.Property.Tok.Name()
-			obj.GetPropertyReference(member.Name(), true).Set(val)
+			obj.GetPropertyPointer(member.Name(), true).Set(val)
 		}
 	}
 
@@ -706,14 +726,14 @@ func (e *evaluator) evalLoadLocationExpressionFor(node *ast.LoadLocationExpressi
 	}
 
 	// Create a pointer to the target location.
-	var pv *Reference
+	var pv *Pointer
 	var ty symbols.Type
 	tok := node.Name.Tok
 	if this == nil && tok.Simple() {
 		// If there is no object and the name is simple, it refers to a local variable in the current scope.
 		loc := e.ctx.Scope.Lookup(tok.Name())
 		contract.Assert(loc != nil)
-		pv = e.locals.GetValueReference(loc, true)
+		pv = e.locals.GetValueAddr(loc, true)
 		ty = loc.Type()
 	} else {
 		sym := e.ctx.RequireSymbolToken(tok)
@@ -721,13 +741,13 @@ func (e *evaluator) evalLoadLocationExpressionFor(node *ast.LoadLocationExpressi
 		case *symbols.ClassProperty:
 			// Search the class's properties and, if not present, allocate a new one.
 			contract.Assert(this != nil)
-			pv = this.GetPropertyReference(sym.Name(), true)
+			pv = this.GetPropertyPointer(sym.Name(), true)
 			ty = s.Type()
 		case *symbols.ClassMethod:
 			// Create a new readonly ref slot, pointing to the method, that will abandon if overwritten.
 			contract.Assert(this != nil)
 			// TODO[marapongo/mu#56]: consider permitting "dynamic" method overwriting.
-			pv = &Reference{
+			pv = &Pointer{
 				obj:      NewFunctionObject(s, this),
 				readonly: true,
 			}
@@ -737,7 +757,7 @@ func (e *evaluator) evalLoadLocationExpressionFor(node *ast.LoadLocationExpressi
 			contract.Assert(this == nil)
 			ref, has := e.globals[s]
 			if !has {
-				ref = &Reference{}
+				ref = &Pointer{}
 				e.globals[s] = ref
 			}
 			pv = ref
@@ -746,7 +766,7 @@ func (e *evaluator) evalLoadLocationExpressionFor(node *ast.LoadLocationExpressi
 			// Create a new readonly ref slot, pointing to the method, that will abandon if overwritten.
 			contract.Assert(this == nil)
 			// TODO[marapongo/mu#56]: consider permitting "dynamic" method overwriting.
-			pv = &Reference{
+			pv = &Pointer{
 				obj:      NewFunctionObject(s, nil),
 				readonly: true,
 			}
@@ -762,7 +782,7 @@ func (e *evaluator) evalLoadLocationExpressionFor(node *ast.LoadLocationExpressi
 		if pv.Readonly() {
 			e.Diag().Errorf(errors.ErrorIllegalReadonlyLValue.At(node))
 		}
-		return NewReferenceObject(ty, pv), nil
+		return NewPointerObject(ty, pv), nil
 	}
 	return pv.Obj(), nil
 }
@@ -789,7 +809,7 @@ func (e *evaluator) evalInvokeFunctionExpression(node *ast.InvokeFunctionExpress
 	var fnc funcStub
 	switch fncobj.Type.(type) {
 	case *symbols.FunctionType:
-		fnc = fncobj.Data.(funcStub)
+		fnc = fncobj.FunctionValue()
 		contract.Assert(fnc.Func != nil)
 	default:
 		contract.Failf("Expected function expression to yield a function type")
@@ -845,35 +865,35 @@ func (e *evaluator) evalUnaryOperatorExpressionFor(node *ast.UnaryOperatorExpres
 	switch node.Operator {
 	case ast.OpDereference:
 		// The target is a pointer.  If this is for an l-value, just return it as-is; otherwise, dereference it.
-		ref := opand.Reference()
-		contract.Assert(ref != nil)
+		ptr := opand.PointerValue()
+		contract.Assert(ptr != nil)
 		if lval {
 			return opand, nil
 		}
-		return ref.Obj(), nil
+		return ptr.Obj(), nil
 	case ast.OpAddressof:
 		// The target is an l-value, load its address.
-		contract.Assert(opand.Reference() != nil)
+		contract.Assert(opand.PointerValue() != nil)
 		return opand, nil
 	case ast.OpUnaryPlus:
 		// The target is a number; simply fetch it (asserting its value), and + it.
-		return NewNumberObject(+opand.Number()), nil
+		return NewNumberObject(+opand.NumberValue()), nil
 	case ast.OpUnaryMinus:
 		// The target is a number; simply fetch it (asserting its value), and - it.
-		return NewNumberObject(-opand.Number()), nil
+		return NewNumberObject(-opand.NumberValue()), nil
 	case ast.OpLogicalNot:
 		// The target is a boolean; simply fetch it (asserting its value), and ! it.
-		return NewBoolObject(!opand.Bool()), nil
+		return NewBoolObject(!opand.BoolValue()), nil
 	case ast.OpBitwiseNot:
 		// The target is a number; simply fetch it (asserting its value), and ^ it (similar to C's ~ operator).
-		return NewNumberObject(float64(^int64(opand.Number()))), nil
+		return NewNumberObject(float64(^int64(opand.NumberValue()))), nil
 	case ast.OpPlusPlus:
 		// The target is an l-value; we must load it, ++ it, and return the appropriate prefix/postfix value.
-		ref := opand.Reference()
-		old := ref.Obj()
-		val := old.Number()
+		ptr := opand.PointerValue()
+		old := ptr.Obj()
+		val := old.NumberValue()
 		new := NewNumberObject(val + 1)
-		ref.Set(new)
+		ptr.Set(new)
 		if node.Postfix {
 			return old, nil
 		} else {
@@ -881,11 +901,11 @@ func (e *evaluator) evalUnaryOperatorExpressionFor(node *ast.UnaryOperatorExpres
 		}
 	case ast.OpMinusMinus:
 		// The target is an l-value; we must load it, -- it, and return the appropriate prefix/postfix value.
-		ref := opand.Reference()
-		old := ref.Obj()
-		val := old.Number()
+		ptr := opand.PointerValue()
+		old := ptr.Obj()
+		val := old.NumberValue()
 		new := NewNumberObject(val - 1)
-		ref.Set(new)
+		ptr.Set(new)
 		if node.Postfix {
 			return old, nil
 		} else {
@@ -914,7 +934,7 @@ func (e *evaluator) evalBinaryOperatorExpression(node *ast.BinaryOperatorExpress
 
 	// For the logical && and ||, we will only evaluate the rhs it if the lhs was true.
 	if node.Operator == ast.OpLogicalAnd || node.Operator == ast.OpLogicalOr {
-		if lhs.Bool() {
+		if lhs.BoolValue() {
 			return e.evalExpression(node.Right)
 		}
 		return NewBoolObject(false), nil
@@ -939,25 +959,25 @@ func (e *evaluator) evalBinaryOperatorExpression(node *ast.BinaryOperatorExpress
 	case ast.OpAdd:
 		// If the lhs/rhs are strings, concatenate them; if numbers, + them.
 		if lhs.Type == types.String {
-			return NewStringObject(lhs.String() + rhs.String()), nil
+			return NewStringObject(lhs.StringValue() + rhs.StringValue()), nil
 		} else {
-			return NewNumberObject(lhs.Number() + rhs.Number()), nil
+			return NewNumberObject(lhs.NumberValue() + rhs.NumberValue()), nil
 		}
 	case ast.OpSubtract:
 		// Both targets are numbers; fetch them (asserting their types), and - them.
-		return NewNumberObject(lhs.Number() - rhs.Number()), nil
+		return NewNumberObject(lhs.NumberValue() - rhs.NumberValue()), nil
 	case ast.OpMultiply:
 		// Both targets are numbers; fetch them (asserting their types), and * them.
-		return NewNumberObject(lhs.Number() * rhs.Number()), nil
+		return NewNumberObject(lhs.NumberValue() * rhs.NumberValue()), nil
 	case ast.OpDivide:
 		// Both targets are numbers; fetch them (asserting their types), and / them.
-		return NewNumberObject(lhs.Number() / rhs.Number()), nil
+		return NewNumberObject(lhs.NumberValue() / rhs.NumberValue()), nil
 	case ast.OpRemainder:
 		// Both targets are numbers; fetch them (asserting their types), and % them.
-		return NewNumberObject(float64(int64(lhs.Number()) % int64(rhs.Number()))), nil
+		return NewNumberObject(float64(int64(lhs.NumberValue()) % int64(rhs.NumberValue()))), nil
 	case ast.OpExponentiate:
 		// Both targets are numbers; fetch them (asserting their types), and raise lhs to rhs's power.
-		return NewNumberObject(math.Pow(lhs.Number(), rhs.Number())), nil
+		return NewNumberObject(math.Pow(lhs.NumberValue(), rhs.NumberValue())), nil
 
 	// Bitwise operators
 	// TODO: the ECMAScript specification for bitwise operators is a fair bit more complicated than these; for instance,
@@ -966,106 +986,106 @@ func (e *evaluator) evalBinaryOperatorExpression(node *ast.BinaryOperatorExpress
 	case ast.OpBitwiseShiftLeft:
 		// Both targets are numbers; fetch them (asserting their types), and << them.
 		// TODO: consider a verification error if rhs is negative.
-		return NewNumberObject(float64(int64(lhs.Number()) << uint(rhs.Number()))), nil
+		return NewNumberObject(float64(int64(lhs.NumberValue()) << uint(rhs.NumberValue()))), nil
 	case ast.OpBitwiseShiftRight:
 		// Both targets are numbers; fetch them (asserting their types), and >> them.
 		// TODO: consider a verification error if rhs is negative.
-		return NewNumberObject(float64(int64(lhs.Number()) >> uint(rhs.Number()))), nil
+		return NewNumberObject(float64(int64(lhs.NumberValue()) >> uint(rhs.NumberValue()))), nil
 	case ast.OpBitwiseAnd:
 		// Both targets are numbers; fetch them (asserting their types), and & them.
-		return NewNumberObject(float64(int64(lhs.Number()) & int64(rhs.Number()))), nil
+		return NewNumberObject(float64(int64(lhs.NumberValue()) & int64(rhs.NumberValue()))), nil
 	case ast.OpBitwiseOr:
 		// Both targets are numbers; fetch them (asserting their types), and | them.
-		return NewNumberObject(float64(int64(lhs.Number()) | int64(rhs.Number()))), nil
+		return NewNumberObject(float64(int64(lhs.NumberValue()) | int64(rhs.NumberValue()))), nil
 	case ast.OpBitwiseXor:
 		// Both targets are numbers; fetch them (asserting their types), and ^ them.
-		return NewNumberObject(float64(int64(lhs.Number()) ^ int64(rhs.Number()))), nil
+		return NewNumberObject(float64(int64(lhs.NumberValue()) ^ int64(rhs.NumberValue()))), nil
 
 	// Assignment operators
 	case ast.OpAssign:
 		// The target is an l-value; just overwrite its value, and yield the new value as the result.
-		lhs.Reference().Set(rhs)
+		lhs.PointerValue().Set(rhs)
 		return rhs, nil
 	case ast.OpAssignSum:
 		// The target is a numeric l-value; just += rhs to it, and yield the new value as the result.
-		ref := lhs.Reference()
-		val := NewNumberObject(ref.Obj().Number() + rhs.Number())
-		ref.Set(val)
+		ptr := lhs.PointerValue()
+		val := NewNumberObject(ptr.Obj().NumberValue() + rhs.NumberValue())
+		ptr.Set(val)
 		return val, nil
 	case ast.OpAssignDifference:
 		// The target is a numeric l-value; just -= rhs to it, and yield the new value as the result.
-		ref := lhs.Reference()
-		val := NewNumberObject(ref.Obj().Number() - rhs.Number())
-		ref.Set(val)
+		ptr := lhs.PointerValue()
+		val := NewNumberObject(ptr.Obj().NumberValue() - rhs.NumberValue())
+		ptr.Set(val)
 		return val, nil
 	case ast.OpAssignProduct:
 		// The target is a numeric l-value; just *= rhs to it, and yield the new value as the result.
-		ref := lhs.Reference()
-		val := NewNumberObject(ref.Obj().Number() * rhs.Number())
-		ref.Set(val)
+		ptr := lhs.PointerValue()
+		val := NewNumberObject(ptr.Obj().NumberValue() * rhs.NumberValue())
+		ptr.Set(val)
 		return val, nil
 	case ast.OpAssignQuotient:
 		// The target is a numeric l-value; just /= rhs to it, and yield the new value as the result.
-		ref := lhs.Reference()
-		val := NewNumberObject(ref.Obj().Number() / rhs.Number())
-		ref.Set(val)
+		ptr := lhs.PointerValue()
+		val := NewNumberObject(ptr.Obj().NumberValue() / rhs.NumberValue())
+		ptr.Set(val)
 		return val, nil
 	case ast.OpAssignRemainder:
 		// The target is a numeric l-value; just %= rhs to it, and yield the new value as the result.
-		ref := lhs.Reference()
-		val := NewNumberObject(float64(int64(ref.Obj().Number()) % int64(rhs.Number())))
-		ref.Set(val)
+		ptr := lhs.PointerValue()
+		val := NewNumberObject(float64(int64(ptr.Obj().NumberValue()) % int64(rhs.NumberValue())))
+		ptr.Set(val)
 		return val, nil
 	case ast.OpAssignExponentiation:
 		// The target is a numeric l-value; just raise to rhs as a power, and yield the new value as the result.
-		ref := lhs.Reference()
-		val := NewNumberObject(math.Pow(ref.Obj().Number(), rhs.Number()))
-		ref.Set(val)
+		ptr := lhs.PointerValue()
+		val := NewNumberObject(math.Pow(ptr.Obj().NumberValue(), rhs.NumberValue()))
+		ptr.Set(val)
 		return val, nil
 	case ast.OpAssignBitwiseShiftLeft:
 		// The target is a numeric l-value; just <<= rhs to it, and yield the new value as the result.
-		ref := lhs.Reference()
-		val := NewNumberObject(float64(int64(ref.Obj().Number()) << uint(rhs.Number())))
-		ref.Set(val)
+		ptr := lhs.PointerValue()
+		val := NewNumberObject(float64(int64(ptr.Obj().NumberValue()) << uint(rhs.NumberValue())))
+		ptr.Set(val)
 		return val, nil
 	case ast.OpAssignBitwiseShiftRight:
 		// The target is a numeric l-value; just >>= rhs to it, and yield the new value as the result.
-		ref := lhs.Reference()
-		val := NewNumberObject(float64(int64(ref.Obj().Number()) >> uint(rhs.Number())))
-		ref.Set(val)
+		ptr := lhs.PointerValue()
+		val := NewNumberObject(float64(int64(ptr.Obj().NumberValue()) >> uint(rhs.NumberValue())))
+		ptr.Set(val)
 		return val, nil
 	case ast.OpAssignBitwiseAnd:
 		// The target is a numeric l-value; just &= rhs to it, and yield the new value as the result.
-		ref := lhs.Reference()
-		val := NewNumberObject(float64(int64(ref.Obj().Number()) & int64(rhs.Number())))
-		ref.Set(val)
+		ptr := lhs.PointerValue()
+		val := NewNumberObject(float64(int64(ptr.Obj().NumberValue()) & int64(rhs.NumberValue())))
+		ptr.Set(val)
 		return val, nil
 	case ast.OpAssignBitwiseOr:
 		// The target is a numeric l-value; just |= rhs to it, and yield the new value as the result.
-		ref := lhs.Reference()
-		val := NewNumberObject(float64(int64(ref.Obj().Number()) | int64(rhs.Number())))
-		ref.Set(val)
+		ptr := lhs.PointerValue()
+		val := NewNumberObject(float64(int64(ptr.Obj().NumberValue()) | int64(rhs.NumberValue())))
+		ptr.Set(val)
 		return val, nil
 	case ast.OpAssignBitwiseXor:
 		// The target is a numeric l-value; just ^= rhs to it, and yield the new value as the result.
-		ref := lhs.Reference()
-		val := NewNumberObject(float64(int64(ref.Obj().Number()) ^ int64(rhs.Number())))
-		ref.Set(val)
+		ptr := lhs.PointerValue()
+		val := NewNumberObject(float64(int64(ptr.Obj().NumberValue()) ^ int64(rhs.NumberValue())))
+		ptr.Set(val)
 		return val, nil
 
 	// Relational operators
 	case ast.OpLt:
 		// The targets are numbers; just compare them with < and yield the boolean result.
-		return NewBoolObject(lhs.Number() < rhs.Number()), nil
+		return NewBoolObject(lhs.NumberValue() < rhs.NumberValue()), nil
 	case ast.OpLtEquals:
 		// The targets are numbers; just compare them with <= and yield the boolean result.
-		return NewBoolObject(lhs.Number() <= rhs.Number()), nil
+		return NewBoolObject(lhs.NumberValue() <= rhs.NumberValue()), nil
 	case ast.OpGt:
 		// The targets are numbers; just compare them with > and yield the boolean result.
-		return NewBoolObject(lhs.Number() > rhs.Number()), nil
+		return NewBoolObject(lhs.NumberValue() > rhs.NumberValue()), nil
 	case ast.OpGtEquals:
 		// The targets are numbers; just compare them with >= and yield the boolean result.
-		return NewBoolObject(lhs.Number() >= rhs.Number()), nil
+		return NewBoolObject(lhs.NumberValue() >= rhs.NumberValue()), nil
 	case ast.OpEquals:
 		// Equality checking handles many object types, so defer to a helper for it.
 		return NewBoolObject(e.evalBinaryOperatorEquals(lhs, rhs)), nil
@@ -1095,13 +1115,13 @@ func (e *evaluator) evalBinaryOperatorEquals(lhs *Object, rhs *Object) bool {
 		return true
 	}
 	if lhs.Type == types.Bool && rhs.Type == types.Bool {
-		return lhs.Bool() == rhs.Bool()
+		return lhs.BoolValue() == rhs.BoolValue()
 	}
 	if lhs.Type == types.Number && rhs.Type == types.Number {
-		return lhs.Number() == rhs.Number()
+		return lhs.NumberValue() == rhs.NumberValue()
 	}
 	if lhs.Type == types.String && rhs.Type == types.String {
-		return lhs.String() == rhs.String()
+		return lhs.StringValue() == rhs.StringValue()
 	}
 	if lhs.Type == types.Null && rhs.Type == types.Null {
 		return true // all nulls are equal.
@@ -1130,7 +1150,7 @@ func (e *evaluator) evalConditionalExpression(node *ast.ConditionalExpression) (
 	if uw != nil {
 		return nil, uw
 	}
-	if cond.Bool() {
+	if cond.BoolValue() {
 		return e.evalExpression(node.Consequent)
 	}
 	return e.evalExpression(node.Alternate)

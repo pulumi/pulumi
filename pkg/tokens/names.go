@@ -12,11 +12,13 @@ import (
 // Name is an identifier.  It conforms to the regex [A-Za-z_.][A-Za-z0-9_]*.
 type Name string
 
-var NameRegexp = regexp.MustCompile(NameRegexpPattern)
-var NameRegexpPattern = "[A-Za-z_.][A-Za-z0-9_]*"
+func (nm Name) String() string { return string(nm) }
 
 // Q turns a Name into a qualified name; this is legal, since Name's is a proper subset of QName's grammar.
 func (nm Name) Q() QName { return QName(nm) }
+
+var NameRegexp = regexp.MustCompile(NameRegexpPattern)
+var NameRegexpPattern = "[A-Za-z_.][A-Za-z0-9_]*"
 
 // IsName checks whether a string is a legal Name.
 func IsName(s string) bool {
@@ -32,6 +34,8 @@ func AsName(s string) Name {
 // QName is a qualified identifier.  The "/" character optionally delimits different pieces of the name.  Each element
 // conforms to the Name regex [A-Za-z_][A-Za-z0-9_]*.  For example, "marapongo/mu/stack".
 type QName string
+
+func (nm QName) String() string { return string(nm) }
 
 // QNameDelimiter is what delimits Namespace and Name parts.
 const QNameDelimiter = "/"

@@ -4,6 +4,9 @@ package eval
 
 import (
 	"fmt"
+	"strconv"
+
+	"github.com/golang/glog"
 
 	"github.com/marapongo/mu/pkg/compiler/symbols"
 	"github.com/marapongo/mu/pkg/compiler/types"
@@ -15,12 +18,14 @@ import (
 // are less concerned about performance of the evaluation (compared to the cost of provisioning cloud resources).
 type Object struct {
 	Type       symbols.Type // the runtime type of the object.
-	Data       Data         // any constant data associated with this object.
+	Value      Value        // any constant data associated with this object.
 	Properties Properties   // the full set of known properties and their values.
 }
 
-type Data interface{}                      // literal object data.
-type Properties map[tokens.Name]*Reference // an object's properties.
+var _ fmt.Stringer = (*Object)(nil)
+
+type Value interface{}                   // a literal object value.
+type Properties map[tokens.Name]*Pointer // an object's properties.
 
 // NewObject creates a new empty object of the given type.
 func NewObject(t symbols.Type) *Object {
@@ -31,10 +36,13 @@ func NewObject(t symbols.Type) *Object {
 }
 
 // NewPrimitiveObject creates a new primitive object with the given primitive type.
-func NewPrimitiveObject(t symbols.Type, data interface{}) *Object {
+func NewPrimitiveObject(t symbols.Type, v interface{}) *Object {
+	if glog.V(9) {
+		glog.V(9).Infof("New primitive object: t=%v; v=%v", t, v)
+	}
 	return &Object{
-		Type: t,
-		Data: data,
+		Type:  t,
+		Value: v,
 	}
 }
 
@@ -56,8 +64,8 @@ func NewStringObject(v string) *Object {
 // NewFunctionObject creates a new function object that can be invoked, with the given symbol.
 func NewFunctionObject(fnc symbols.Function, this *Object) *Object {
 	return &Object{
-		Type: fnc.FuncType(),
-		Data: funcStub{Func: fnc, This: this},
+		Type:  fnc.FuncType(),
+		Value: funcStub{Func: fnc, This: this},
 	}
 }
 
@@ -67,11 +75,11 @@ type funcStub struct {
 	This *Object
 }
 
-// NewReferenceObject allocates a new pointer-like object that wraps the given reference.
-func NewReferenceObject(t symbols.Type, ref *Reference) *Object {
-	contract.Require(ref != nil, "ref")
-	ptr := symbols.NewPointerType(t)
-	return NewPrimitiveObject(ptr, ref)
+// NewPointerObject allocates a new pointer-like object that wraps the given reference.
+func NewPointerObject(t symbols.Type, ptr *Pointer) *Object {
+	contract.Require(ptr != nil, "ptr")
+	ptrt := symbols.NewPointerType(t)
+	return NewPrimitiveObject(ptrt, ptr)
 }
 
 // NewErrorObject creates a new exception with the given message.
@@ -99,62 +107,132 @@ func NewConstantObject(v interface{}) *Object {
 	}
 }
 
-// Bool asserts that the target is a boolean literal and returns its value.
-func (o *Object) Bool() bool {
+// BoolValue asserts that the target is a boolean literal and returns its value.
+func (o *Object) BoolValue() bool {
 	contract.Assertf(o.Type == types.Bool, "Expected object type to be Bool; got %v", o.Type)
-	contract.Assertf(o.Data != nil, "Expected Bool object to carry a Data payload; got nil")
-	b, ok := o.Data.(bool)
-	contract.Assertf(ok, "Expected Bool object's Data payload to be boolean literal")
+	contract.Assertf(o.Value != nil, "Expected Bool object to carry a Value; got nil")
+	b, ok := o.Value.(bool)
+	contract.Assertf(ok, "Expected Bool object's Value to be boolean literal")
 	return b
 }
 
-// Number asserts that the target is a numeric literal and returns its value.
-func (o *Object) Number() float64 {
+// NumberValue asserts that the target is a numeric literal and returns its value.
+func (o *Object) NumberValue() float64 {
 	contract.Assertf(o.Type == types.Number, "Expected object type to be Number; got %v", o.Type)
-	contract.Assertf(o.Data != nil, "Expected Number object to carry a Data payload; got nil")
-	n, ok := o.Data.(float64)
-	contract.Assertf(ok, "Expected Number object's Data payload to be numeric literal")
+	contract.Assertf(o.Value != nil, "Expected Number object to carry a Value; got nil")
+	n, ok := o.Value.(float64)
+	contract.Assertf(ok, "Expected Number object's Value to be numeric literal")
 	return n
 }
 
-// String asserts that the target is a string and returns its value.
-func (o *Object) String() string {
+// StringValue asserts that the target is a string and returns its value.
+func (o *Object) StringValue() string {
 	contract.Assertf(o.Type == types.String, "Expected object type to be String; got %v", o.Type)
-	contract.Assertf(o.Data != nil, "Expected String object to carry a Data payload; got nil")
-	s, ok := o.Data.(string)
-	contract.Assertf(ok, "Expected String object's Data payload to be string")
+	contract.Assertf(o.Value != nil, "Expected String object to carry a Value; got nil")
+	s, ok := o.Value.(string)
+	contract.Assertf(ok, "Expected String object's Value to be string")
 	return s
 }
 
-// Reference asserts that the target is a reference and returns its value.
-func (o *Object) Reference() *Reference {
-	contract.Assertf(o.Data != nil, "Expected Reference object to carry a Data payload; got nil")
-	r, ok := o.Data.(*Reference)
-	contract.Assertf(ok, "Expected Reference object's Data payload to be a Reference")
+// FunctionValue asserts that the target is a reference and returns its value.
+func (o *Object) FunctionValue() funcStub {
+	contract.Assertf(o.Value != nil, "Expected Function object to carry a Value; got nil")
+	r, ok := o.Value.(funcStub)
+	contract.Assertf(ok, "Expected Function object's Value to be a Function")
 	return r
 }
 
-// GetPropertyReference returns the reference to an object's property, lazily initializing if 'init' is true, or
+// PointerValue asserts that the target is a reference and returns its value.
+func (o *Object) PointerValue() *Pointer {
+	contract.Assertf(o.Value != nil, "Expected Pointer object to carry a Value; got nil")
+	r, ok := o.Value.(*Pointer)
+	contract.Assertf(ok, "Expected Pointer object's Value to be a Pointer")
+	return r
+}
+
+// GetPropertyPointer returns the reference to an object's property, lazily initializing if 'init' is true, or
 // returning nil otherwise.
-func (o *Object) GetPropertyReference(nm tokens.Name, init bool) *Reference {
+func (o *Object) GetPropertyPointer(nm tokens.Name, init bool) *Pointer {
 	ref, has := o.Properties[nm]
 	if !has {
-		ref = &Reference{}
+		ref = &Pointer{}
 		o.Properties[nm] = ref
 	}
 	return ref
 }
 
-// Reference is a slot that can be used for indirection purposes (since Go maps are not stable).
-type Reference struct {
+// String can be used to print the contents of an object; it tries to be smart about the display.
+func (o *Object) String() string {
+	switch o.Type {
+	case types.Bool:
+		if o.BoolValue() {
+			return "true"
+		}
+		return "false"
+	case types.String:
+		return "\"" + o.StringValue() + "\""
+	case types.Number:
+		// TODO: it'd be nice to format as ints if the decimal part is close enough to "nothing".
+		return strconv.FormatFloat(o.NumberValue(), 'f', -1, 64)
+	case types.Null:
+		return "<nil>"
+	default:
+		// See if it's a func; if yes, do function formatting.
+		if _, isfnc := o.Type.(*symbols.FunctionType); isfnc {
+			stub := o.FunctionValue()
+			var this string
+			if stub.This == nil {
+				this = "<nil>"
+			} else {
+				this = stub.This.String()
+			}
+			return "func{this=" + this +
+				",type=" + stub.Func.FuncType().String() +
+				",targ=" + stub.Func.Token().String() + "}"
+		}
+
+		// See if it's a pointer; if yes, format the reference.
+		if _, isptr := o.Type.(*symbols.PointerType); isptr {
+			return o.PointerValue().String()
+		}
+
+		// Otherwise it's an arbitrary object; just dump out the type and properties.
+		var p string
+		for prop, ptr := range o.Properties {
+			if p != "" {
+				p += ","
+			}
+			p += prop.String() + "=" + ptr.String()
+		}
+		return "obj{type=" + o.Type.Token().String() + ",props={" + p + "}}"
+	}
+}
+
+// Pointer is a slot that can be used for indirection purposes (since Go maps are not stable).
+type Pointer struct {
 	obj      *Object // the object to which the value refers.
 	readonly bool    // true prevents writes to this slot (by abandoning).
 }
 
-func (ref *Reference) Readonly() bool { return ref.readonly }
-func (ref *Reference) Obj() *Object   { return ref.obj }
+var _ fmt.Stringer = (*Pointer)(nil)
 
-func (ref *Reference) Set(obj *Object) {
-	contract.Assertf(!ref.readonly, "Unexpected write to readonly reference")
-	ref.obj = obj
+func (ptr *Pointer) Readonly() bool { return ptr.readonly }
+func (ptr *Pointer) Obj() *Object   { return ptr.obj }
+
+func (ptr *Pointer) Set(obj *Object) {
+	contract.Assertf(!ptr.readonly, "Unexpected write to readonly reference")
+	ptr.obj = obj
+}
+
+func (ptr *Pointer) String() string {
+	var prefix string
+	if ptr.readonly {
+		prefix = "&"
+	} else {
+		prefix = "*"
+	}
+	if ptr.obj == nil {
+		return prefix + "{<nil>}"
+	}
+	return prefix + "{" + ptr.obj.String() + "}"
 }
