@@ -61,7 +61,7 @@
                                         "kind": "LoadLocationExpression",
                                         "name": {
                                             "kind": "Token",
-                                            "tok": "x",
+                                            "tok": "var_1:index/x",
                                             "loc": {
                                                 "file": "index.ts",
                                                 "start": {

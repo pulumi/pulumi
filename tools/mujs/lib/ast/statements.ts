@@ -4,7 +4,7 @@ import {LocalVariable} from "./definitions";
 import {Expression} from "./expressions";
 import {Identifier, Node} from "./nodes";
 
-import * as symbols from "../symbols";
+import * as tokens from "../tokens";
 
 export interface Statement extends Node {}
 

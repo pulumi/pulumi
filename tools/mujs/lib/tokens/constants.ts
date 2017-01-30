@@ -1,16 +1,6 @@
 // Copyright 2016 Marapongo, Inc. All rights reserved.
 
-// Tokens.
-export type Token = string;            // a valid symbol token.
-export type ModuleToken = Token;       // a symbol token that resolves to a module.
-export type ModuleMemberToken = Token; // a symbol token that resolves to a module member.
-export type ClassMemberToken = Token;  // a symbol token that resolves to a class member.
-export type TypeToken = Token;         // a symbol token that resolves to a type.
-export type VariableToken = Token;     // a symbol token that resolves to a variable.
-export type FunctionToken = Token;     // a symbol token that resolves to a function.
-
-export const moduleSep = ":";               // a character delimiting module / member names (e.g., "module:member").
-export const selfModule: ModuleToken = "."; // a self-referential token for the current module.
+import {FunctionToken, ModuleToken, TypeToken, VariableToken} from "./tokens";
 
 // Accessibility modifiers.
 export type Accessibility            = "public" | "private";        // accessibility modifiers common to all.
@@ -20,6 +10,9 @@ export type ClassMemberAccessibility = Accessibility | "protected"; // accessibi
 export const publicAccessibility: Accessibility               = "public";
 export const privateAccessibility: Accessibility              = "private";
 export const protectedAccessibility: ClassMemberAccessibility = "protected";
+
+// Special module tokens.
+export const selfModule: ModuleToken = "."; // a self-referential token for the current module.
 
 // Special variable tokens.
 export const thisVariable: VariableToken  = ".this";  // the current object (for class methods).

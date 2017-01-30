@@ -77,9 +77,9 @@ describe("outputs", () => {
                 }
             }
 
-            if (output.pack) {
+            if (output.pkg) {
                 if (expectedOutputTree) {
-                    let mupackTreeText: string = JSON.stringify(output.pack, null, 4) + "\n";
+                    let mupackTreeText: string = JSON.stringify(output.pkg, null, 4) + "\n";
 
                     // Do a line-by-line comparison to make debugging failures nicer.
                     let actualLines: string[] = mupackTreeText.split("\n");

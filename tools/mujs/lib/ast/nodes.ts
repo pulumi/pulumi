@@ -5,7 +5,7 @@ import * as expressions from "./expressions";
 import * as source from "./source";
 import * as statements from "./statements";
 
-import * as symbols from "../symbols";
+import * as tokens from "../tokens";
 
 // TODO(joe): consider adding trivia (like comments and whitespace), for round-tripping purposes.
 
@@ -78,28 +78,28 @@ export type  IdentifierKind = "Identifier";
 
 export interface Token extends Node {
     kind: TokenKind;
-    tok:  symbols.Token;
+    tok:  tokens.Token;
 }
 export const tokenKind = "Token";
 export type  TokenKind = "Token";
 
 export interface ClassMemberToken extends Node {
     kind: ClassMemberTokenKind;
-    tok:  symbols.ClassMemberToken;
+    tok:  tokens.ClassMemberToken;
 }
 export const classMemberTokenKind = "ClassMemberToken";
 export type  ClassMemberTokenKind = "ClassMemberToken";
 
 export interface ModuleToken extends Node {
     kind: ModuleTokenKind;
-    tok:  symbols.ModuleToken;
+    tok:  tokens.ModuleToken;
 }
 export const moduleTokenKind = "ModuleToken";
 export type  ModuleTokenKind = "ModuleToken";
 
 export interface TypeToken extends Node {
     kind: TypeTokenKind;
-    tok:  symbols.TypeToken;
+    tok:  tokens.TypeToken;
 }
 export const typeTokenKind = "TypeToken";
 export type  TypeTokenKind = "TypeToken";

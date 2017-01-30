@@ -8,6 +8,6 @@ import * as ast from "./ast";
 import * as compiler from "./compiler";
 import * as diag from "./diag";
 import * as pack from "./pack";
-import * as symbols from "./symbols";
-export { ast, compiler, diag, pack, symbols };
+import * as tokens from "./tokens";
+export { ast, compiler, diag, pack, tokens };
 

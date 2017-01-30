@@ -125,7 +125,7 @@
                                         "kind": "LoadLocationExpression",
                                         "name": {
                                             "kind": "Token",
-                                            "tok": "w",
+                                            "tok": "export:other/w",
                                             "loc": {
                                                 "file": "other.ts",
                                                 "start": {
@@ -205,7 +205,7 @@
             "imports": [
                 {
                     "kind": "ModuleToken",
-                    "tok": "other",
+                    "tok": "export:other",
                     "loc": {
                         "file": "index.ts",
                         "start": {
@@ -240,7 +240,7 @@
                     "access": "public",
                     "referent": {
                         "kind": "Token",
-                        "tok": "other",
+                        "tok": "export:index/other",
                         "loc": {
                             "file": "index.ts",
                             "start": {
@@ -266,100 +266,137 @@
                     }
                 },
                 "C": {
-                    "kind": "Class",
+                    "kind": "Export",
                     "name": {
                         "kind": "Identifier",
                         "ident": "C",
                         "loc": {
                             "file": "index.ts",
                             "start": {
-                                "line": 6,
-                                "column": 6
+                                "line": 9,
+                                "column": 8
                             },
                             "end": {
-                                "line": 6,
-                                "column": 7
+                                "line": 9,
+                                "column": 9
                             }
                         }
                     },
                     "access": "public",
-                    "members": {},
-                    "abstract": false,
+                    "referent": {
+                        "kind": "Token",
+                        "tok": "export:index/C",
+                        "loc": {
+                            "file": "index.ts",
+                            "start": {
+                                "line": 9,
+                                "column": 8
+                            },
+                            "end": {
+                                "line": 9,
+                                "column": 9
+                            }
+                        }
+                    },
                     "loc": {
                         "file": "index.ts",
                         "start": {
-                            "line": 6,
-                            "column": 0
+                            "line": 9,
+                            "column": 8
                         },
                         "end": {
-                            "line": 6,
-                            "column": 10
+                            "line": 9,
+                            "column": 9
                         }
                     }
                 },
                 "I": {
-                    "kind": "Class",
+                    "kind": "Export",
                     "name": {
                         "kind": "Identifier",
                         "ident": "I",
                         "loc": {
                             "file": "index.ts",
                             "start": {
-                                "line": 7,
-                                "column": 10
+                                "line": 9,
+                                "column": 11
                             },
                             "end": {
-                                "line": 7,
-                                "column": 11
+                                "line": 9,
+                                "column": 12
                             }
                         }
                     },
                     "access": "public",
-                    "members": {},
-                    "interface": true,
+                    "referent": {
+                        "kind": "Token",
+                        "tok": "export:index/I",
+                        "loc": {
+                            "file": "index.ts",
+                            "start": {
+                                "line": 9,
+                                "column": 11
+                            },
+                            "end": {
+                                "line": 9,
+                                "column": 12
+                            }
+                        }
+                    },
                     "loc": {
                         "file": "index.ts",
                         "start": {
-                            "line": 7,
-                            "column": 0
+                            "line": 9,
+                            "column": 11
                         },
                         "end": {
-                            "line": 7,
-                            "column": 14
+                            "line": 9,
+                            "column": 12
                         }
                     }
                 },
                 "v": {
-                    "kind": "ModuleProperty",
+                    "kind": "Export",
                     "name": {
                         "kind": "Identifier",
                         "ident": "v",
                         "loc": {
                             "file": "index.ts",
                             "start": {
-                                "line": 8,
-                                "column": 4
+                                "line": 9,
+                                "column": 14
                             },
                             "end": {
-                                "line": 8,
-                                "column": 5
+                                "line": 9,
+                                "column": 15
                             }
                         }
                     },
                     "access": "public",
-                    "type": {
-                        "kind": "TypeToken",
-                        "tok": "number",
+                    "referent": {
+                        "kind": "Token",
+                        "tok": "export:index/v",
                         "loc": {
                             "file": "index.ts",
                             "start": {
-                                "line": 8,
-                                "column": 4
+                                "line": 9,
+                                "column": 14
                             },
                             "end": {
-                                "line": 8,
-                                "column": 10
+                                "line": 9,
+                                "column": 15
                             }
+                        }
+                    },
+                    "loc": {
+                        "file": "index.ts",
+                        "start": {
+                            "line": 9,
+                            "column": 14
+                        },
+                        "end": {
+                            "line": 9,
+                            "column": 15
                         }
                     }
                 },
@@ -381,7 +418,7 @@
                                         "kind": "LoadLocationExpression",
                                         "name": {
                                             "kind": "Token",
-                                            "tok": "v",
+                                            "tok": "export:index/v",
                                             "loc": {
                                                 "file": "index.ts",
                                                 "start": {

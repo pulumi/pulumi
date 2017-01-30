@@ -1,6 +1,6 @@
 // Copyright 2016 Marapongo, Inc. All rights reserved.
 
-import * as symbols from "../symbols";
+import * as tokens from "../tokens";
 import {Identifier, ModuleToken, Node, Token, TypeToken} from "./nodes";
 import * as statements from "./statements";
 
@@ -25,13 +25,13 @@ export interface Module extends Definition {
 }
 export const moduleKind = "Module";
 export type  ModuleKind = "Module";
-export type  Modules = { [token: string /*symbols.ModuleToken*/]: Module };
+export type  Modules = { [token: string /*tokens.ModuleToken*/]: Module };
 
 // A module member is a definition that belongs to a module.
 export interface ModuleMember extends Definition {
-    access?: symbols.Accessibility;
+    access?: tokens.Accessibility;
 }
-export type ModuleMembers = { [token: string /*symbols.Token*/]: ModuleMember };
+export type ModuleMembers = { [token: string /*tokens.Token*/]: ModuleMember };
 
 // An export definition re-exports a definition from another module, possibly with a different name.
 export interface Export extends ModuleMember {
@@ -59,10 +59,10 @@ export type  ClassKind = "Class";
 
 // A class member is a definition that belongs to a class.
 export interface ClassMember extends Definition {
-    access?: symbols.ClassMemberAccessibility;
+    access?: tokens.ClassMemberAccessibility;
     static?: boolean;
 }
-export type ClassMembers = { [token: string /*symbols.Token*/]: ClassMember };
+export type ClassMembers = { [token: string /*tokens.Token*/]: ClassMember };
 
 /* Variables */
 

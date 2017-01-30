@@ -24,15 +24,15 @@ export async function compile(path: string): Promise<CompileResult> {
     let diagnostics: diag.Diagnostic[] = script.diagnostics;
 
     // Next, if there is a tree to transpile into MuPack/MuIL, then do it.
-    let pack: pack.Package | undefined;
+    let pkg: pack.Package | undefined;
     if (script.tree) {
         let result: TransformResult = await transform(script);
-        pack = result.pack;
+        pkg = result.pkg;
         diagnostics = diagnostics.concat(result.diagnostics);
     }
 
     // Finally, return the overall result of the compilation.
-    return new CompileResult(script.root, diagnostics, pack);
+    return new CompileResult(script.root, diagnostics, pkg);
 }
 
 export class CompileResult {
@@ -40,7 +40,7 @@ export class CompileResult {
 
     constructor(public readonly root:        string,                   // the root path for the compilation.
                 public readonly diagnostics: diag.Diagnostic[],        // any diagnostics resulting from translation.
-                public readonly pack:        pack.Package | undefined, // the resulting MuPack/MuIL AST.
+                public readonly pkg:         pack.Package | undefined, // the resulting MuPack/MuIL AST.
     ) {
         this.dctx = new diag.Context(root);
     }

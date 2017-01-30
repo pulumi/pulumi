@@ -30,14 +30,14 @@
         "lib/ast/statements.ts",
         "lib/compiler/index.ts",
         "lib/compiler/compile.ts",
-        "lib/compiler/discover.ts",
+        "lib/compiler/loader.ts",
         "lib/compiler/script.ts",
         "lib/compiler/transform.ts",
         "lib/diag/index.ts",
         "lib/diag/context.ts",
         "lib/diag/diagnostic.ts",
         "lib/pack/index.ts",
-        "lib/symbols/index.ts",
+        "lib/tokens/index.ts",
 
         "tests/util.ts",
         "tests/output/index.ts"

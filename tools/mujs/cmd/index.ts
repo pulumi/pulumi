@@ -54,10 +54,10 @@ async function main(args: string[]): Promise<number> {
         console.log(result.formatDiagnostics());
     }
 
-    if (result.pack) {
+    if (result.pkg) {
         // Now just print the output to the console.
         // TODO(joe): eventually we want a real compiler-like output scheme; for now, just print it.
-        console.log(JSON.stringify(result.pack, null, 4));
+        console.log(JSON.stringify(result.pkg, null, 4));
     }
 
     return 0;

@@ -4,7 +4,7 @@ import {LocalVariable} from "./definitions";
 import {ClassMemberToken, Identifier, Node, Token, TypeToken} from "./nodes";
 import * as statements from "./statements";
 
-import * as symbols from "../symbols";
+import * as tokens from "../tokens";
 
 export interface Expression extends Node {}
 
@@ -125,7 +125,7 @@ export type  InvokeFunctionExpressionKind = "InvokeFunctionExpression";
 export interface LambdaExpression extends Expression {
     kind:        LambdaExpressionKind;
     parameters?: LocalVariable[];   // the parameters.
-    returnType?: symbols.TypeToken; // the optional return type.
+    returnType?: tokens.TypeToken; // the optional return type.
     body:        statements.Block;  // the lambda's body block.
 }
 export const lambdaExpressionKind = "LambdaExpression";
