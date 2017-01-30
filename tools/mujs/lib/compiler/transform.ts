@@ -1028,10 +1028,14 @@ export class Transformer {
             (param: ts.ParameterDeclaration) => this.transformParameterDeclaration(param));
 
         // If there are any initializers, make sure to prepend them (in order) to the body block.
-        for (let parameter of parameters) {
-            if (parameter.initializer && body) {
-                body.statements = [ this.makeVariableInitializer(parameter) ].concat(body.statements);
+        if (body) {
+            let parameterInits: ast.Statement[] = [];
+            for (let parameter of parameters) {
+                if (parameter.initializer) {
+                    parameterInits.push(this.makeVariableInitializer(parameter));
+                }
             }
+            body.statements = parameterInits.concat(body.statements);
         }
 
         // Get the signature so that we can fetch the return type.
