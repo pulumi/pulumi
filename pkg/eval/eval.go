@@ -37,14 +37,14 @@ type Interpreter interface {
 
 // InterpreterHooks is a set of callbacks that can be used to hook into interesting interpreter events.
 type InterpreterHooks interface {
-	OnNewObject(o *rt.Object)                                       // invoked whenever an object is created.
-	OnAssignProperty(o *rt.Object, prop string, old, nw *rt.Object) // invoked whenever a property is (re)assigned.
-	OnEnterPackage(pkg *symbols.Package)                            // invoked whenever we enter a new package.
-	OnLeavePackage(pkg *symbols.Package)                            // invoked whenever we leave a package.
-	OnEnterModule(mod *symbols.Module)                              // invoked whenever we enter a new module.
-	OnLeaveModule(mod *symbols.Module)                              // invoked whenever we leave a module.
-	OnEnterFunction(fnc symbols.Function)                           // invoked whenever we enter a new function.
-	OnLeaveFunction(fnc symbols.Function)                           // invoked whenever we leave a function.
+	OnNewObject(o *rt.Object)                                              // invoked when an object is created.
+	OnVariableAssign(v symbols.Variable, o *rt.Object, old, nw *rt.Object) // invoked when a property is (re)assigned.
+	OnEnterPackage(pkg *symbols.Package)                                   // invoked when we enter a new package.
+	OnLeavePackage(pkg *symbols.Package)                                   // invoked when we leave a package.
+	OnEnterModule(mod *symbols.Module)                                     // invoked when we enter a new module.
+	OnLeaveModule(mod *symbols.Module)                                     // invoked when we leave a module.
+	OnEnterFunction(fnc symbols.Function)                                  // invoked when we enter a new function.
+	OnLeaveFunction(fnc symbols.Function)                                  // invoked when we leave a function.
 }
 
 // New creates an interpreter that can be used to evaluate MuPackages.
@@ -654,16 +654,17 @@ func (e *evaluator) evalExpression(node ast.Expression) (*rt.Object, *Unwind) {
 // evalLValueExpression evaluates an expression for use as an l-value; in particular, this loads the target as a
 // pointer/reference object, rather than as an ordinary value, so that it can be used in an assignment.  This is only
 // valid on the subset of AST nodes that are legal l-values (very few of them, it turns out).
-func (e *evaluator) evalLValueExpression(node ast.Expression) (*rt.Object, *Unwind) {
+func (e *evaluator) evalLValueExpression(node ast.Expression) (location, *Unwind) {
 	switch n := node.(type) {
 	case *ast.LoadLocationExpression:
-		return e.evalLoadLocationExpressionFor(n, true)
+		return e.evalLoadLocation(n, true)
 	case *ast.UnaryOperatorExpression:
 		contract.Assert(n.Operator == ast.OpDereference)
-		return e.evalUnaryOperatorExpressionFor(n, true)
+		obj, uw := e.evalUnaryOperatorExpressionFor(n, true)
+		return location{Obj: obj}, uw
 	default:
 		contract.Failf("Unrecognized l-value expression type: %v", node.GetKind())
-		return nil, nil
+		return location{}, nil
 	}
 }
 
@@ -756,22 +757,33 @@ func (e *evaluator) evalObjectLiteral(node *ast.ObjectLiteral) (*rt.Object, *Unw
 }
 
 func (e *evaluator) evalLoadLocationExpression(node *ast.LoadLocationExpression) (*rt.Object, *Unwind) {
-	return e.evalLoadLocationExpressionFor(node, false)
+	loc, uw := e.evalLoadLocation(node, false)
+	return loc.Obj, uw
 }
 
-func (e *evaluator) evalLoadLocationExpressionFor(node *ast.LoadLocationExpression, lval bool) (*rt.Object, *Unwind) {
+type location struct {
+	This *rt.Object     // the target object, if any.
+	Sym  symbols.Symbol // the target symbol whose location was loaded.
+	Lval bool           // whether the result is an lval.
+	Obj  *rt.Object     // the resulting object (pointer if lval, object otherwise).
+}
+
+// evalLoadLocationExpressionInfo evaluates and loads information about the target.  It takes an lval bool which
+// determines whether the resulting location object is an lval (pointer) or regular object.
+func (e *evaluator) evalLoadLocation(node *ast.LoadLocationExpression, lval bool) (location, *Unwind) {
 	// If there's a 'this', evaluate it.
 	var this *rt.Object
 	if node.Object != nil {
 		var uw *Unwind
 		if this, uw = e.evalExpression(*node.Object); uw != nil {
-			return nil, uw
+			return location{}, uw
 		}
 	}
 
 	// Create a pointer to the target location.
 	var pv *rt.Pointer
 	var ty symbols.Type
+	var sym symbols.Symbol
 	tok := node.Name.Tok
 	if this == nil && tok.Simple() {
 		// If there is no object and the name is simple, it refers to a local variable in the current scope.
@@ -779,8 +791,10 @@ func (e *evaluator) evalLoadLocationExpressionFor(node *ast.LoadLocationExpressi
 		contract.Assert(loc != nil)
 		pv = e.locals.GetValueAddr(loc, true)
 		ty = loc.Type()
+		sym = loc
 	} else {
-		sym := e.ctx.RequireSymbolToken(tok)
+		sym = e.ctx.RequireSymbolToken(tok)
+		contract.Assert(sym != nil)
 		switch s := sym.(type) {
 		case *symbols.ClassProperty:
 			// Search the class's properties and, if not present, allocate a new one.
@@ -815,14 +829,23 @@ func (e *evaluator) evalLoadLocationExpressionFor(node *ast.LoadLocationExpressi
 	}
 
 	// If this isn't for an l-value, return the raw object.  Otherwise, make sure it's not readonly, and return it.
+	var obj *rt.Object
 	if lval {
 		// A readonly reference cannot be used as an l-value.
 		if pv.Readonly() {
 			e.Diag().Errorf(errors.ErrorIllegalReadonlyLValue.At(node))
 		}
-		return e.alloc.NewPointer(ty, pv), nil
+		obj = e.alloc.NewPointer(ty, pv)
+	} else {
+		obj = pv.Obj()
 	}
-	return pv.Obj(), nil
+
+	return location{
+		This: this,
+		Sym:  sym,
+		Lval: lval,
+		Obj:  obj,
+	}, nil
 }
 
 func (e *evaluator) evalLoadDynamicExpression(node *ast.LoadDynamicExpression) (*rt.Object, *Unwind) {
@@ -884,13 +907,16 @@ func (e *evaluator) evalUnaryOperatorExpressionFor(node *ast.UnaryOperatorExpres
 
 	// Evaluate the operand and prepare to use it.
 	var opand *rt.Object
+	var opandloc *location
 	if node.Operator == ast.OpAddressof ||
 		node.Operator == ast.OpPlusPlus || node.Operator == ast.OpMinusMinus {
 		// These operators require an l-value; so we bind the expression a bit differently.
-		var uw *Unwind
-		if opand, uw = e.evalLValueExpression(node.Operand); uw != nil {
+		loc, uw := e.evalLValueExpression(node.Operand)
+		if uw != nil {
 			return nil, uw
 		}
+		opand = loc.Obj
+		opandloc = &loc
 	} else {
 		// Otherwise, we just need to evaluate the operand as usual.
 		var uw *Unwind
@@ -931,7 +957,7 @@ func (e *evaluator) evalUnaryOperatorExpressionFor(node *ast.UnaryOperatorExpres
 		old := ptr.Obj()
 		val := old.NumberValue()
 		new := e.alloc.NewNumber(val + 1)
-		ptr.Set(new)
+		e.evalAssign(*opandloc, new)
 		if node.Postfix {
 			return old, nil
 		} else {
@@ -943,7 +969,7 @@ func (e *evaluator) evalUnaryOperatorExpressionFor(node *ast.UnaryOperatorExpres
 		old := ptr.Obj()
 		val := old.NumberValue()
 		new := e.alloc.NewNumber(val - 1)
-		ptr.Set(new)
+		e.evalAssign(*opandloc, new)
 		if node.Postfix {
 			return old, nil
 		} else {
@@ -958,11 +984,14 @@ func (e *evaluator) evalUnaryOperatorExpressionFor(node *ast.UnaryOperatorExpres
 func (e *evaluator) evalBinaryOperatorExpression(node *ast.BinaryOperatorExpression) (*rt.Object, *Unwind) {
 	// Evaluate the operands and prepare to use them.  First left, then right.
 	var lhs *rt.Object
+	var lhsloc *location
 	if isBinaryAssignmentOperator(node.Operator) {
-		var uw *Unwind
-		if lhs, uw = e.evalLValueExpression(node.Left); uw != nil {
+		loc, uw := e.evalLValueExpression(node.Left)
+		if uw != nil {
 			return nil, uw
 		}
+		lhs = loc.Obj
+		lhsloc = &loc
 	} else {
 		var uw *Unwind
 		if lhs, uw = e.evalExpression(node.Left); uw != nil {
@@ -1042,73 +1071,73 @@ func (e *evaluator) evalBinaryOperatorExpression(node *ast.BinaryOperatorExpress
 	// Assignment operators
 	case ast.OpAssign:
 		// The target is an l-value; just overwrite its value, and yield the new value as the result.
-		lhs.PointerValue().Set(rhs)
+		e.evalAssign(*lhsloc, rhs)
 		return rhs, nil
 	case ast.OpAssignSum:
 		// The target is a numeric l-value; just += rhs to it, and yield the new value as the result.
 		ptr := lhs.PointerValue()
 		val := e.alloc.NewNumber(ptr.Obj().NumberValue() + rhs.NumberValue())
-		ptr.Set(val)
+		e.evalAssign(*lhsloc, val)
 		return val, nil
 	case ast.OpAssignDifference:
 		// The target is a numeric l-value; just -= rhs to it, and yield the new value as the result.
 		ptr := lhs.PointerValue()
 		val := e.alloc.NewNumber(ptr.Obj().NumberValue() - rhs.NumberValue())
-		ptr.Set(val)
+		e.evalAssign(*lhsloc, val)
 		return val, nil
 	case ast.OpAssignProduct:
 		// The target is a numeric l-value; just *= rhs to it, and yield the new value as the result.
 		ptr := lhs.PointerValue()
 		val := e.alloc.NewNumber(ptr.Obj().NumberValue() * rhs.NumberValue())
-		ptr.Set(val)
+		e.evalAssign(*lhsloc, val)
 		return val, nil
 	case ast.OpAssignQuotient:
 		// The target is a numeric l-value; just /= rhs to it, and yield the new value as the result.
 		ptr := lhs.PointerValue()
 		val := e.alloc.NewNumber(ptr.Obj().NumberValue() / rhs.NumberValue())
-		ptr.Set(val)
+		e.evalAssign(*lhsloc, val)
 		return val, nil
 	case ast.OpAssignRemainder:
 		// The target is a numeric l-value; just %= rhs to it, and yield the new value as the result.
 		ptr := lhs.PointerValue()
 		val := e.alloc.NewNumber(float64(int64(ptr.Obj().NumberValue()) % int64(rhs.NumberValue())))
-		ptr.Set(val)
+		e.evalAssign(*lhsloc, val)
 		return val, nil
 	case ast.OpAssignExponentiation:
 		// The target is a numeric l-value; just raise to rhs as a power, and yield the new value as the result.
 		ptr := lhs.PointerValue()
 		val := e.alloc.NewNumber(math.Pow(ptr.Obj().NumberValue(), rhs.NumberValue()))
-		ptr.Set(val)
+		e.evalAssign(*lhsloc, val)
 		return val, nil
 	case ast.OpAssignBitwiseShiftLeft:
 		// The target is a numeric l-value; just <<= rhs to it, and yield the new value as the result.
 		ptr := lhs.PointerValue()
 		val := e.alloc.NewNumber(float64(int64(ptr.Obj().NumberValue()) << uint(rhs.NumberValue())))
-		ptr.Set(val)
+		e.evalAssign(*lhsloc, val)
 		return val, nil
 	case ast.OpAssignBitwiseShiftRight:
 		// The target is a numeric l-value; just >>= rhs to it, and yield the new value as the result.
 		ptr := lhs.PointerValue()
 		val := e.alloc.NewNumber(float64(int64(ptr.Obj().NumberValue()) >> uint(rhs.NumberValue())))
-		ptr.Set(val)
+		e.evalAssign(*lhsloc, val)
 		return val, nil
 	case ast.OpAssignBitwiseAnd:
 		// The target is a numeric l-value; just &= rhs to it, and yield the new value as the result.
 		ptr := lhs.PointerValue()
 		val := e.alloc.NewNumber(float64(int64(ptr.Obj().NumberValue()) & int64(rhs.NumberValue())))
-		ptr.Set(val)
+		e.evalAssign(*lhsloc, val)
 		return val, nil
 	case ast.OpAssignBitwiseOr:
 		// The target is a numeric l-value; just |= rhs to it, and yield the new value as the result.
 		ptr := lhs.PointerValue()
 		val := e.alloc.NewNumber(float64(int64(ptr.Obj().NumberValue()) | int64(rhs.NumberValue())))
-		ptr.Set(val)
+		e.evalAssign(*lhsloc, val)
 		return val, nil
 	case ast.OpAssignBitwiseXor:
 		// The target is a numeric l-value; just ^= rhs to it, and yield the new value as the result.
 		ptr := lhs.PointerValue()
 		val := e.alloc.NewNumber(float64(int64(ptr.Obj().NumberValue()) ^ int64(rhs.NumberValue())))
-		ptr.Set(val)
+		e.evalAssign(*lhsloc, val)
 		return val, nil
 
 	// Relational operators
@@ -1146,6 +1175,17 @@ func isBinaryAssignmentOperator(op ast.BinaryOperator) bool {
 	default:
 		return false
 	}
+}
+
+func (e *evaluator) evalAssign(loc location, val *rt.Object) {
+	// Perform the assignment, but make sure to invoke the property assignment hook if necessary.
+	ptr := loc.Obj.PointerValue()
+	if e.hooks != nil {
+		if varsym, isvarsym := loc.Sym.(symbols.Variable); isvarsym {
+			e.hooks.OnVariableAssign(varsym, loc.This, ptr.Obj(), val)
+		}
+	}
+	ptr.Set(val)
 }
 
 func (e *evaluator) evalBinaryOperatorEquals(lhs *rt.Object, rhs *rt.Object) bool {

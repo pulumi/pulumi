@@ -82,8 +82,8 @@ func (g *generator) OnNewObject(o *rt.Object) {
 	}
 }
 
-// OnAssignProperty is called whenever a property has been (re)assigned; it receives both the old and new values.
-func (g *generator) OnAssignProperty(o *rt.Object, prop string, old *rt.Object, nw *rt.Object) {
+// OnVariableAssign is called whenever a property has been (re)assigned; it receives both the old and new values.
+func (g *generator) OnVariableAssign(sym symbols.Variable, o *rt.Object, old *rt.Object, nw *rt.Object) {
 	contract.Assert(o != nil)
 
 	// If the target of the assignment is a resource, we need to track dependencies.
