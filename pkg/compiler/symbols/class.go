@@ -122,6 +122,7 @@ func (node *ClassProperty) Token() tokens.Token {
 func (node *ClassProperty) Tree() diag.Diagable         { return node.Node }
 func (node *ClassProperty) classMember()                {}
 func (node *ClassProperty) Optional() bool              { return node.Node.Optional != nil && *node.Node.Optional }
+func (node *ClassProperty) Readonly() bool              { return node.Node.Readonly != nil && *node.Node.Readonly }
 func (node *ClassProperty) Static() bool                { return node.Node.Static != nil && *node.Node.Static }
 func (node *ClassProperty) Default() *interface{}       { return node.Node.Default }
 func (node *ClassProperty) Type() Type                  { return node.Ty }

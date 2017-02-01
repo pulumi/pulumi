@@ -3,6 +3,7 @@
 package eval
 
 import (
+	"github.com/marapongo/mu/pkg/eval/rt"
 	"github.com/marapongo/mu/pkg/tokens"
 	"github.com/marapongo/mu/pkg/util/contract"
 )
@@ -11,8 +12,8 @@ import (
 type Unwind struct {
 	kind     unwindKind   // the kind of the unwind.
 	label    *tokens.Name // a label being sought (valid only on break/continue).
-	returned *Object      // an object being returned (valid only on return).
-	thrown   *Object      // an exception object being thrown (valid only on throw).
+	returned *rt.Object   // an object being returned (valid only on return).
+	thrown   *rt.Object   // an exception object being thrown (valid only on throw).
 }
 
 // unwindKind is the kind of unwind being performed.
@@ -27,8 +28,8 @@ const (
 
 func NewBreakUnwind(label *tokens.Name) *Unwind    { return &Unwind{kind: breakUnwind, label: label} }
 func NewContinueUnwind(label *tokens.Name) *Unwind { return &Unwind{kind: continueUnwind, label: label} }
-func NewReturnUnwind(ret *Object) *Unwind          { return &Unwind{kind: returnUnwind, returned: ret} }
-func NewThrowUnwind(thrown *Object) *Unwind        { return &Unwind{kind: throwUnwind, thrown: thrown} }
+func NewReturnUnwind(ret *rt.Object) *Unwind       { return &Unwind{kind: returnUnwind, returned: ret} }
+func NewThrowUnwind(thrown *rt.Object) *Unwind     { return &Unwind{kind: throwUnwind, thrown: thrown} }
 
 func (uw *Unwind) Break() bool    { return uw.kind == breakUnwind }
 func (uw *Unwind) Continue() bool { return uw.kind == continueUnwind }
@@ -40,12 +41,12 @@ func (uw *Unwind) Label() *tokens.Name {
 	return uw.label
 }
 
-func (uw *Unwind) Returned() *Object {
+func (uw *Unwind) Returned() *rt.Object {
 	contract.Assert(uw.Return())
 	return uw.returned
 }
 
-func (uw *Unwind) Thrown() *Object {
+func (uw *Unwind) Thrown() *rt.Object {
 	contract.Assert(uw.Throw())
 	return uw.thrown
 }

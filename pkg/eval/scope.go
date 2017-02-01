@@ -6,6 +6,7 @@ import (
 	"github.com/marapongo/mu/pkg/compiler/binder"
 	"github.com/marapongo/mu/pkg/compiler/symbols"
 	"github.com/marapongo/mu/pkg/compiler/types"
+	"github.com/marapongo/mu/pkg/eval/rt"
 	"github.com/marapongo/mu/pkg/util/contract"
 )
 
@@ -19,7 +20,7 @@ type localScope struct {
 }
 
 // valueMap maps local variables to their current known object value (if any).
-type valueMap map[*symbols.LocalVariable]*Pointer
+type valueMap map[*symbols.LocalVariable]*rt.Pointer
 
 func newLocalScope(slot **localScope, frame bool, lex *binder.Scope) *localScope {
 	s := &localScope{
@@ -45,7 +46,7 @@ func (s *localScope) Pop() {
 }
 
 // GetValue returns the object value for the given symbol.
-func (s *localScope) GetValue(sym *symbols.LocalVariable) *Object {
+func (s *localScope) GetValue(sym *symbols.LocalVariable) *rt.Object {
 	if ref := s.GetValueAddr(sym, false); ref != nil {
 		return ref.Obj()
 	}
@@ -54,17 +55,17 @@ func (s *localScope) GetValue(sym *symbols.LocalVariable) *Object {
 
 // GetValueAddr returns a reference to the object for the given symbol.  If init is true, and the value doesn't
 // exist, a new slot will be allocated.  Otherwise, the return value is nil.
-func (s *localScope) GetValueAddr(sym *symbols.LocalVariable, init bool) *Pointer {
+func (s *localScope) GetValueAddr(sym *symbols.LocalVariable, init bool) *rt.Pointer {
 	return s.lookupValueAddr(sym, nil, init)
 }
 
 // InitValue registers a reference for a local variable, and asserts that none previously existed.
-func (s *localScope) InitValueAddr(sym *symbols.LocalVariable, ref *Pointer) {
+func (s *localScope) InitValueAddr(sym *symbols.LocalVariable, ref *rt.Pointer) {
 	s.lookupValueAddr(sym, ref, false)
 }
 
 // lookupValueAddr is used to lookup and initialize references using a single, shared routine.
-func (s *localScope) lookupValueAddr(sym *symbols.LocalVariable, place *Pointer, init bool) *Pointer {
+func (s *localScope) lookupValueAddr(sym *symbols.LocalVariable, place *rt.Pointer, init bool) *rt.Pointer {
 	// To get a value's reference, we must first find the position in the shadowed frames, so that its lifetime equals
 	// the actual local variable symbol's lifetime.  This ensures that once that frame is popped, so too is any value
 	// associated with it; and similarly, that its value won't be popped until the frame containing the variable is.
@@ -94,7 +95,7 @@ outer:
 		return place
 	}
 	if init {
-		ref := &Pointer{}
+		ref := rt.NewPointer(nil, sym.Readonly())
 		s.Values[sym] = ref
 		return ref
 	}
@@ -102,7 +103,7 @@ outer:
 }
 
 // SetValue overwrites the current value, or adds a new entry, for the given symbol.
-func (s *localScope) SetValue(sym *symbols.LocalVariable, obj *Object) {
+func (s *localScope) SetValue(sym *symbols.LocalVariable, obj *rt.Object) {
 	contract.Assert(obj == nil || types.CanConvert(obj.Type(), sym.Type()))
 	ptr := s.GetValueAddr(sym, true)
 	ptr.Set(obj)

@@ -5,10 +5,11 @@ package graphgen
 
 import (
 	"github.com/marapongo/mu/pkg/compiler/core"
-	"github.com/marapongo/mu/pkg/compiler/eval"
 	"github.com/marapongo/mu/pkg/compiler/symbols"
 	"github.com/marapongo/mu/pkg/compiler/types"
 	"github.com/marapongo/mu/pkg/compiler/types/predef"
+	"github.com/marapongo/mu/pkg/eval"
+	"github.com/marapongo/mu/pkg/eval/rt"
 	"github.com/marapongo/mu/pkg/graph"
 	"github.com/marapongo/mu/pkg/util/contract"
 )
@@ -33,20 +34,43 @@ type generator struct {
 }
 
 // objectSet is a set of object pointers; each entry has a ref-count to track how many occurrences it contains.
-type objectSet map[*eval.Object]int
+type objectSet map[*rt.Object]int
 
 // dependsSet is a map of object pointers to the objectSet containing the set of objects each such object depends upon.
-type dependsSet map[*eval.Object]objectSet
+type dependsSet map[*rt.Object]objectSet
 
 var _ Generator = (*generator)(nil)
 
 // Graph takes the information recorded thus far and produces a new MuGL graph from it.
 func (g *generator) Graph() graph.Graph {
-	return nil
+	// First create vertices for all objects.
+	verts := make(map[*rt.Object]*objectVertex)
+	for o := range g.res {
+		verts[o] = newObjectVertex(o)
+	}
+
+	// Now create edges connecting all vertices along dependency lines.
+	// TODO: detect and issue errors about cycles.
+	for o, deps := range g.res {
+		for dep := range deps {
+			verts[o].AddEdge(verts[dep])
+		}
+	}
+
+	// Finally, find all vertices that do not have any incoming edges, and consider them roots.
+	var roots []graph.Vertex
+	for _, vert := range verts {
+		if len(vert.Ins()) == 0 {
+			roots = append(roots, vert)
+		}
+	}
+	contract.Assert(len(roots) > 0) // should have been detected with the DAG algorithm above.
+
+	return newObjectGraph(roots)
 }
 
 // OnNewObject is called whenever a new object has been allocated.
-func (g *generator) OnNewObject(o *eval.Object) {
+func (g *generator) OnNewObject(o *rt.Object) {
 	contract.Assert(o != nil)
 	// We only care about subclasses of the mu.Resource type; all others are "just" data/computation.
 	if types.HasBaseName(o.Type(), predef.MuResourceClass) {
@@ -59,7 +83,7 @@ func (g *generator) OnNewObject(o *eval.Object) {
 }
 
 // OnAssignProperty is called whenever a property has been (re)assigned; it receives both the old and new values.
-func (g *generator) OnAssignProperty(o *eval.Object, prop string, old *eval.Object, nw *eval.Object) {
+func (g *generator) OnAssignProperty(o *rt.Object, prop string, old *rt.Object, nw *rt.Object) {
 	contract.Assert(o != nil)
 
 	// If the target of the assignment is a resource, we need to track dependencies.
@@ -72,12 +96,13 @@ func (g *generator) OnAssignProperty(o *eval.Object, prop string, old *eval.Obje
 			c, has := deps[old]
 			contract.Assertf(has, "Expected old resource property to exist in dependency map")
 			contract.Assertf(c > 0, "Expected old resource property ref-count to be > 0 in dependency map")
-			deps[old]--
+			deps[old] = c - 1
 		}
 
 		// If the new object is a resource, add a ref-count (or a whole new entry if needed).
 		if nw != nil && types.HasBaseName(nw.Type(), predef.MuResourceClass) {
 			if c, has := deps[nw]; has {
+				contract.Assertf(c >= 0, "Expected old resource property ref-count to be >= 0 in dependency map")
 				deps[nw] = c + 1
 			} else {
 				deps[nw] = 1

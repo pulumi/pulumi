@@ -124,6 +124,7 @@ func (node *ModuleProperty) Token() tokens.Token {
 func (node *ModuleProperty) Tree() diag.Diagable          { return node.Node }
 func (node *ModuleProperty) moduleMember()                {}
 func (node *ModuleProperty) MemberNode() ast.ModuleMember { return node.Node }
+func (node *ModuleProperty) Readonly() bool               { return node.Node.Readonly != nil && *node.Node.Readonly }
 func (node *ModuleProperty) Type() Type                   { return node.Ty }
 func (node *ModuleProperty) VarNode() ast.Variable        { return node.Node }
 func (node *ModuleProperty) String() string               { return string(node.Name()) }

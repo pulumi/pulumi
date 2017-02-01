@@ -15,6 +15,7 @@ import (
 	"github.com/marapongo/mu/pkg/compiler/symbols"
 	"github.com/marapongo/mu/pkg/compiler/types"
 	"github.com/marapongo/mu/pkg/diag"
+	"github.com/marapongo/mu/pkg/eval/rt"
 	"github.com/marapongo/mu/pkg/graph"
 	"github.com/marapongo/mu/pkg/tokens"
 	"github.com/marapongo/mu/pkg/util/contract"
@@ -31,19 +32,19 @@ type Interpreter interface {
 	// EvaluateModule performs evaluation on the given module's entrypoint function.
 	EvaluateModule(mod *symbols.Module, args core.Args) graph.Graph
 	// EvaluateFunction performs an evaluation of the given function, using the provided arguments, returning its graph.
-	EvaluateFunction(fnc symbols.Function, this *Object, args core.Args) graph.Graph
+	EvaluateFunction(fnc symbols.Function, this *rt.Object, args core.Args) graph.Graph
 }
 
 // InterpreterHooks is a set of callbacks that can be used to hook into interesting interpreter events.
 type InterpreterHooks interface {
-	OnNewObject(o *Object)                                    // invoked whenever an object is created.
-	OnAssignProperty(o *Object, prop string, old, nw *Object) // invoked whenever a property is (re)assigned.
-	OnEnterPackage(pkg *symbols.Package)                      // invoked whenever we enter a new package.
-	OnLeavePackage(pkg *symbols.Package)                      // invoked whenever we leave a package.
-	OnEnterModule(mod *symbols.Module)                        // invoked whenever we enter a new module.
-	OnLeaveModule(mod *symbols.Module)                        // invoked whenever we leave a module.
-	OnEnterFunction(fnc symbols.Function)                     // invoked whenever we enter a new function.
-	OnLeaveFunction(fnc symbols.Function)                     // invoked whenever we leave a function.
+	OnNewObject(o *rt.Object)                                       // invoked whenever an object is created.
+	OnAssignProperty(o *rt.Object, prop string, old, nw *rt.Object) // invoked whenever a property is (re)assigned.
+	OnEnterPackage(pkg *symbols.Package)                            // invoked whenever we enter a new package.
+	OnLeavePackage(pkg *symbols.Package)                            // invoked whenever we leave a package.
+	OnEnterModule(mod *symbols.Module)                              // invoked whenever we enter a new module.
+	OnLeaveModule(mod *symbols.Module)                              // invoked whenever we leave a module.
+	OnEnterFunction(fnc symbols.Function)                           // invoked whenever we enter a new function.
+	OnLeaveFunction(fnc symbols.Function)                           // invoked whenever we leave a function.
 }
 
 // New creates an interpreter that can be used to evaluate MuPackages.
@@ -72,7 +73,7 @@ type evaluator struct {
 	classinits classinitMap     // a map of which classes have been initialized already.
 }
 
-type globalMap map[symbols.Variable]*Pointer
+type globalMap map[symbols.Variable]*rt.Pointer
 type modinitMap map[*symbols.Module]bool
 type classinitMap map[*symbols.Class]bool
 
@@ -134,7 +135,7 @@ func (e *evaluator) EvaluateModule(mod *symbols.Module, args core.Args) graph.Gr
 }
 
 // EvaluateFunction performs an evaluation of the given function, using the provided arguments, returning its graph.
-func (e *evaluator) EvaluateFunction(fnc symbols.Function, this *Object, args core.Args) graph.Graph {
+func (e *evaluator) EvaluateFunction(fnc symbols.Function, this *rt.Object, args core.Args) graph.Graph {
 	glog.Infof("Evaluating function '%v'", fnc.Token())
 	if e.hooks != nil {
 		e.hooks.OnEnterFunction(fnc)
@@ -158,8 +159,8 @@ func (e *evaluator) EvaluateFunction(fnc symbols.Function, this *Object, args co
 		contract.Failf("Unrecognized function evaluation type: %v", reflect.TypeOf(f))
 	}
 
-	// First, validate any arguments, and turn them into real runtime *Objects.
-	var argos []*Object
+	// First, validate any arguments, and turn them into real runtime *rt.Objects.
+	var argos []*rt.Object
 	params := fnc.FuncNode().GetParameters()
 	if params == nil {
 		if len(args) != 0 {
@@ -312,7 +313,7 @@ func (e *evaluator) popScope() {
 
 // Functions
 
-func (e *evaluator) evalCall(fnc symbols.Function, this *Object, args ...*Object) (*Object, *Unwind) {
+func (e *evaluator) evalCall(fnc symbols.Function, this *rt.Object, args ...*rt.Object) (*rt.Object, *Unwind) {
 	glog.V(7).Infof("Evaluating call to fnc %v; this=%v args=%v", fnc, this != nil, len(args))
 
 	// Save the prior func, set the new one, and restore upon exit.
@@ -337,10 +338,10 @@ func (e *evaluator) evalCall(fnc symbols.Function, this *Object, args ...*Object
 			contract.Assertf(!f.Static(), "Static methods don't have 'this' arguments, but we got a non-nil one")
 			contract.Assertf(types.CanConvert(this.Type(), f.Parent), "'this' argument was of the wrong type")
 			e.ctx.Scope.Register(f.Parent.This)
-			e.locals.InitValueAddr(f.Parent.This, &Pointer{obj: this, readonly: true})
+			e.locals.InitValueAddr(f.Parent.This, rt.NewPointer(this, true))
 			if f.Parent.Super != nil {
 				e.ctx.Scope.Register(f.Parent.Super)
-				e.locals.InitValueAddr(f.Parent.Super, &Pointer{obj: this, readonly: true})
+				e.locals.InitValueAddr(f.Parent.Super, rt.NewPointer(this, true))
 			}
 		default:
 			contract.Failf("Only class methods should have 'this' arguments, but we got a non-nil one")
@@ -538,7 +539,7 @@ func (e *evaluator) evalLabeledStatement(node *ast.LabeledStatement) *Unwind {
 }
 
 func (e *evaluator) evalReturnStatement(node *ast.ReturnStatement) *Unwind {
-	var ret *Object
+	var ret *rt.Object
 	if node.Expression != nil {
 		var uw *Unwind
 		if ret, uw = e.evalExpression(*node.Expression); uw != nil {
@@ -605,7 +606,7 @@ func (e *evaluator) evalExpressionStatement(node *ast.ExpressionStatement) *Unwi
 
 // Expressions
 
-func (e *evaluator) evalExpression(node ast.Expression) (*Object, *Unwind) {
+func (e *evaluator) evalExpression(node ast.Expression) (*rt.Object, *Unwind) {
 	// Simply switch on the node type and dispatch to the specific function, returning the object and Unwind info.
 	switch n := node.(type) {
 	case *ast.NullLiteral:
@@ -653,7 +654,7 @@ func (e *evaluator) evalExpression(node ast.Expression) (*Object, *Unwind) {
 // evalLValueExpression evaluates an expression for use as an l-value; in particular, this loads the target as a
 // pointer/reference object, rather than as an ordinary value, so that it can be used in an assignment.  This is only
 // valid on the subset of AST nodes that are legal l-values (very few of them, it turns out).
-func (e *evaluator) evalLValueExpression(node ast.Expression) (*Object, *Unwind) {
+func (e *evaluator) evalLValueExpression(node ast.Expression) (*rt.Object, *Unwind) {
 	switch n := node.(type) {
 	case *ast.LoadLocationExpression:
 		return e.evalLoadLocationExpressionFor(n, true)
@@ -666,29 +667,29 @@ func (e *evaluator) evalLValueExpression(node ast.Expression) (*Object, *Unwind)
 	}
 }
 
-func (e *evaluator) evalNullLiteral(node *ast.NullLiteral) (*Object, *Unwind) {
+func (e *evaluator) evalNullLiteral(node *ast.NullLiteral) (*rt.Object, *Unwind) {
 	return e.alloc.NewPrimitive(types.Null, nil), nil
 }
 
-func (e *evaluator) evalBoolLiteral(node *ast.BoolLiteral) (*Object, *Unwind) {
+func (e *evaluator) evalBoolLiteral(node *ast.BoolLiteral) (*rt.Object, *Unwind) {
 	return e.alloc.NewPrimitive(types.Bool, node.Value), nil
 }
 
-func (e *evaluator) evalNumberLiteral(node *ast.NumberLiteral) (*Object, *Unwind) {
+func (e *evaluator) evalNumberLiteral(node *ast.NumberLiteral) (*rt.Object, *Unwind) {
 	return e.alloc.NewPrimitive(types.Number, node.Value), nil
 }
 
-func (e *evaluator) evalStringLiteral(node *ast.StringLiteral) (*Object, *Unwind) {
+func (e *evaluator) evalStringLiteral(node *ast.StringLiteral) (*rt.Object, *Unwind) {
 	return e.alloc.NewPrimitive(types.String, node.Value), nil
 }
 
-func (e *evaluator) evalArrayLiteral(node *ast.ArrayLiteral) (*Object, *Unwind) {
+func (e *evaluator) evalArrayLiteral(node *ast.ArrayLiteral) (*rt.Object, *Unwind) {
 	// Fetch this expression type and assert that it's an array.
 	ty := e.ctx.RequireType(node).(*symbols.ArrayType)
 
 	// Now create the array data.
 	var sz *int
-	var arr []Value
+	var arr []rt.Value
 
 	// If there's a node size, ensure it's a number, and initialize the array.
 	if node.Size != nil {
@@ -702,7 +703,7 @@ func (e *evaluator) evalArrayLiteral(node *ast.ArrayLiteral) (*Object, *Unwind) 
 			// If the size is less than zero, raise a new error.
 			return nil, NewThrowUnwind(e.alloc.NewError("Invalid array size (must be >= 0)"))
 		}
-		arr = make([]Value, sz)
+		arr = make([]rt.Value, sz)
 	}
 
 	// If there are elements, place them into the array.  This has two behaviors:
@@ -711,7 +712,7 @@ func (e *evaluator) evalArrayLiteral(node *ast.ArrayLiteral) (*Object, *Unwind) 
 	if node.Elements != nil {
 		if sz == nil {
 			// Right-size the array.
-			arr = make([]Value, 0, len(*node.Elements))
+			arr = make([]rt.Value, 0, len(*node.Elements))
 		} else if len(*node.Elements) > *sz {
 			// The element count exceeds the size; raise an error.
 			return nil, NewThrowUnwind(
@@ -736,7 +737,7 @@ func (e *evaluator) evalArrayLiteral(node *ast.ArrayLiteral) (*Object, *Unwind) 
 	return e.alloc.NewPrimitive(ty, arr), nil
 }
 
-func (e *evaluator) evalObjectLiteral(node *ast.ObjectLiteral) (*Object, *Unwind) {
+func (e *evaluator) evalObjectLiteral(node *ast.ObjectLiteral) (*rt.Object, *Unwind) {
 	obj := e.alloc.New(e.ctx.Types[node])
 
 	if node.Properties != nil {
@@ -754,13 +755,13 @@ func (e *evaluator) evalObjectLiteral(node *ast.ObjectLiteral) (*Object, *Unwind
 	return obj, nil
 }
 
-func (e *evaluator) evalLoadLocationExpression(node *ast.LoadLocationExpression) (*Object, *Unwind) {
+func (e *evaluator) evalLoadLocationExpression(node *ast.LoadLocationExpression) (*rt.Object, *Unwind) {
 	return e.evalLoadLocationExpressionFor(node, false)
 }
 
-func (e *evaluator) evalLoadLocationExpressionFor(node *ast.LoadLocationExpression, lval bool) (*Object, *Unwind) {
+func (e *evaluator) evalLoadLocationExpressionFor(node *ast.LoadLocationExpression, lval bool) (*rt.Object, *Unwind) {
 	// If there's a 'this', evaluate it.
-	var this *Object
+	var this *rt.Object
 	if node.Object != nil {
 		var uw *Unwind
 		if this, uw = e.evalExpression(*node.Object); uw != nil {
@@ -769,7 +770,7 @@ func (e *evaluator) evalLoadLocationExpressionFor(node *ast.LoadLocationExpressi
 	}
 
 	// Create a pointer to the target location.
-	var pv *Pointer
+	var pv *rt.Pointer
 	var ty symbols.Type
 	tok := node.Name.Tok
 	if this == nil && tok.Simple() {
@@ -790,17 +791,14 @@ func (e *evaluator) evalLoadLocationExpressionFor(node *ast.LoadLocationExpressi
 			// Create a new readonly ref slot, pointing to the method, that will abandon if overwritten.
 			contract.Assert(this != nil)
 			// TODO[marapongo/mu#56]: consider permitting "dynamic" method overwriting.
-			pv = &Pointer{
-				obj:      e.alloc.NewFunction(s, this),
-				readonly: true,
-			}
+			pv = rt.NewPointer(e.alloc.NewFunction(s, this), true)
 			ty = s.Type()
 		case *symbols.ModuleProperty:
 			// Search the globals table and, if not present, allocate a new property.
 			contract.Assert(this == nil)
 			ref, has := e.globals[s]
 			if !has {
-				ref = &Pointer{}
+				ref = rt.NewPointer(nil, s.Readonly())
 				e.globals[s] = ref
 			}
 			pv = ref
@@ -809,10 +807,7 @@ func (e *evaluator) evalLoadLocationExpressionFor(node *ast.LoadLocationExpressi
 			// Create a new readonly ref slot, pointing to the method, that will abandon if overwritten.
 			contract.Assert(this == nil)
 			// TODO[marapongo/mu#56]: consider permitting "dynamic" method overwriting.
-			pv = &Pointer{
-				obj:      e.alloc.NewFunction(s, nil),
-				readonly: true,
-			}
+			pv = rt.NewPointer(e.alloc.NewFunction(s, nil), true)
 			ty = s.Type
 		default:
 			contract.Failf("Unexpected symbol token kind during load expression: %v", tok)
@@ -830,18 +825,18 @@ func (e *evaluator) evalLoadLocationExpressionFor(node *ast.LoadLocationExpressi
 	return pv.Obj(), nil
 }
 
-func (e *evaluator) evalLoadDynamicExpression(node *ast.LoadDynamicExpression) (*Object, *Unwind) {
+func (e *evaluator) evalLoadDynamicExpression(node *ast.LoadDynamicExpression) (*rt.Object, *Unwind) {
 	contract.Failf("Evaluation of %v nodes not yet implemented", reflect.TypeOf(node))
 	return nil, nil
 }
 
-func (e *evaluator) evalNewExpression(node *ast.NewExpression) (*Object, *Unwind) {
+func (e *evaluator) evalNewExpression(node *ast.NewExpression) (*rt.Object, *Unwind) {
 	// TODO: create a new object and invoke its constructor.
 	contract.Failf("Evaluation of %v nodes not yet implemented", reflect.TypeOf(node))
 	return nil, nil
 }
 
-func (e *evaluator) evalInvokeFunctionExpression(node *ast.InvokeFunctionExpression) (*Object, *Unwind) {
+func (e *evaluator) evalInvokeFunctionExpression(node *ast.InvokeFunctionExpression) (*rt.Object, *Unwind) {
 	// Evaluate the function that we are meant to invoke.
 	fncobj, uw := e.evalExpression(node.Function)
 	if uw != nil {
@@ -849,7 +844,7 @@ func (e *evaluator) evalInvokeFunctionExpression(node *ast.InvokeFunctionExpress
 	}
 
 	// Ensure that this actually led to a function; this is guaranteed by the binder.
-	var fnc funcStub
+	var fnc rt.FuncStub
 	switch fncobj.Type().(type) {
 	case *symbols.FunctionType:
 		fnc = fncobj.FunctionValue()
@@ -859,7 +854,7 @@ func (e *evaluator) evalInvokeFunctionExpression(node *ast.InvokeFunctionExpress
 	}
 
 	// Now evaluate the arguments to the function, in order.
-	var args []*Object
+	var args []*rt.Object
 	if node.Arguments != nil {
 		for _, arg := range *node.Arguments {
 			argobj, uw := e.evalExpression(arg)
@@ -874,21 +869,21 @@ func (e *evaluator) evalInvokeFunctionExpression(node *ast.InvokeFunctionExpress
 	return e.evalCall(fnc.Func, fnc.This, args...)
 }
 
-func (e *evaluator) evalLambdaExpression(node *ast.LambdaExpression) (*Object, *Unwind) {
+func (e *evaluator) evalLambdaExpression(node *ast.LambdaExpression) (*rt.Object, *Unwind) {
 	// TODO: create the lambda object that can be invoked at runtime.
 	contract.Failf("Evaluation of %v nodes not yet implemented", reflect.TypeOf(node))
 	return nil, nil
 }
 
-func (e *evaluator) evalUnaryOperatorExpression(node *ast.UnaryOperatorExpression) (*Object, *Unwind) {
+func (e *evaluator) evalUnaryOperatorExpression(node *ast.UnaryOperatorExpression) (*rt.Object, *Unwind) {
 	return e.evalUnaryOperatorExpressionFor(node, false)
 }
 
-func (e *evaluator) evalUnaryOperatorExpressionFor(node *ast.UnaryOperatorExpression, lval bool) (*Object, *Unwind) {
+func (e *evaluator) evalUnaryOperatorExpressionFor(node *ast.UnaryOperatorExpression, lval bool) (*rt.Object, *Unwind) {
 	contract.Assertf(!lval || node.Operator == ast.OpDereference, "Only dereference unary ops support l-values")
 
 	// Evaluate the operand and prepare to use it.
-	var opand *Object
+	var opand *rt.Object
 	if node.Operator == ast.OpAddressof ||
 		node.Operator == ast.OpPlusPlus || node.Operator == ast.OpMinusMinus {
 		// These operators require an l-value; so we bind the expression a bit differently.
@@ -960,9 +955,9 @@ func (e *evaluator) evalUnaryOperatorExpressionFor(node *ast.UnaryOperatorExpres
 	}
 }
 
-func (e *evaluator) evalBinaryOperatorExpression(node *ast.BinaryOperatorExpression) (*Object, *Unwind) {
+func (e *evaluator) evalBinaryOperatorExpression(node *ast.BinaryOperatorExpression) (*rt.Object, *Unwind) {
 	// Evaluate the operands and prepare to use them.  First left, then right.
-	var lhs *Object
+	var lhs *rt.Object
 	if isBinaryAssignmentOperator(node.Operator) {
 		var uw *Unwind
 		if lhs, uw = e.evalLValueExpression(node.Left); uw != nil {
@@ -1153,7 +1148,7 @@ func isBinaryAssignmentOperator(op ast.BinaryOperator) bool {
 	}
 }
 
-func (e *evaluator) evalBinaryOperatorEquals(lhs *Object, rhs *Object) bool {
+func (e *evaluator) evalBinaryOperatorEquals(lhs *rt.Object, rhs *rt.Object) bool {
 	if lhs == rhs {
 		return true
 	}
@@ -1172,22 +1167,22 @@ func (e *evaluator) evalBinaryOperatorEquals(lhs *Object, rhs *Object) bool {
 	return false
 }
 
-func (e *evaluator) evalCastExpression(node *ast.CastExpression) (*Object, *Unwind) {
+func (e *evaluator) evalCastExpression(node *ast.CastExpression) (*rt.Object, *Unwind) {
 	contract.Failf("Evaluation of %v nodes not yet implemented", reflect.TypeOf(node))
 	return nil, nil
 }
 
-func (e *evaluator) evalIsInstExpression(node *ast.IsInstExpression) (*Object, *Unwind) {
+func (e *evaluator) evalIsInstExpression(node *ast.IsInstExpression) (*rt.Object, *Unwind) {
 	contract.Failf("Evaluation of %v nodes not yet implemented", reflect.TypeOf(node))
 	return nil, nil
 }
 
-func (e *evaluator) evalTypeOfExpression(node *ast.TypeOfExpression) (*Object, *Unwind) {
+func (e *evaluator) evalTypeOfExpression(node *ast.TypeOfExpression) (*rt.Object, *Unwind) {
 	contract.Failf("Evaluation of %v nodes not yet implemented", reflect.TypeOf(node))
 	return nil, nil
 }
 
-func (e *evaluator) evalConditionalExpression(node *ast.ConditionalExpression) (*Object, *Unwind) {
+func (e *evaluator) evalConditionalExpression(node *ast.ConditionalExpression) (*rt.Object, *Unwind) {
 	// Evaluate the branches explicitly based on the result of the condition node.
 	cond, uw := e.evalExpression(node.Condition)
 	if uw != nil {
@@ -1199,9 +1194,9 @@ func (e *evaluator) evalConditionalExpression(node *ast.ConditionalExpression) (
 	return e.evalExpression(node.Alternate)
 }
 
-func (e *evaluator) evalSequenceExpression(node *ast.SequenceExpression) (*Object, *Unwind) {
+func (e *evaluator) evalSequenceExpression(node *ast.SequenceExpression) (*rt.Object, *Unwind) {
 	// Simply walk through the sequence and return the last object.
-	var obj *Object
+	var obj *rt.Object
 	contract.Assert(len(node.Expressions) > 0)
 	for _, expr := range node.Expressions {
 		var uw *Unwind

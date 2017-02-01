@@ -31,6 +31,7 @@ func (node *LocalVariable) symbol()               {}
 func (node *LocalVariable) Name() tokens.Name     { return node.Nm }
 func (node *LocalVariable) Token() tokens.Token   { return tokens.Token(node.Name()) }
 func (node *LocalVariable) Tree() diag.Diagable   { return node.Node }
+func (node *LocalVariable) Readonly() bool        { return node.Node.Readonly != nil && *node.Node.Readonly }
 func (node *LocalVariable) Type() Type            { return node.Ty }
 func (node *LocalVariable) VarNode() ast.Variable { return node.Node }
 func (node *LocalVariable) String() string        { return string(node.Name()) }

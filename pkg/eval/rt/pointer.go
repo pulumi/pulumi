@@ -1,6 +1,6 @@
 // Copyright 2016 Marapongo, Inc. All rights reserved.
 
-package eval
+package rt
 
 import (
 	"fmt"
@@ -15,6 +15,10 @@ type Pointer struct {
 }
 
 var _ fmt.Stringer = (*Pointer)(nil)
+
+func NewPointer(obj *Object, readonly bool) *Pointer {
+	return &Pointer{obj: obj, readonly: readonly}
+}
 
 func (ptr *Pointer) Readonly() bool { return ptr.readonly }
 func (ptr *Pointer) Obj() *Object   { return ptr.obj }
