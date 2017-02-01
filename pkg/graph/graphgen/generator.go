@@ -64,7 +64,6 @@ func (g *generator) Graph() graph.Graph {
 			roots = append(roots, vert)
 		}
 	}
-	contract.Assert(len(roots) > 0) // should have been detected with the DAG algorithm above.
 
 	return newObjectGraph(roots)
 }
@@ -84,8 +83,6 @@ func (g *generator) OnNewObject(o *rt.Object) {
 
 // OnVariableAssign is called whenever a property has been (re)assigned; it receives both the old and new values.
 func (g *generator) OnVariableAssign(sym symbols.Variable, o *rt.Object, old *rt.Object, nw *rt.Object) {
-	contract.Assert(o != nil)
-
 	// If the target of the assignment is a resource, we need to track dependencies.
 	// TODO: if we are assigning to a structure inside of a structure inside... of a resource, we must also track.
 	if o != nil && types.HasBaseName(o.Type(), predef.MuResourceClass) {

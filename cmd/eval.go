@@ -3,6 +3,7 @@
 package cmd
 
 import (
+	"fmt"
 	"path/filepath"
 	"strings"
 
@@ -73,11 +74,30 @@ func newEvalCmd() *cobra.Command {
 			}
 
 			// Finally, serialize that MuGL graph so that it's suitable for printing/serializing.
-			// TODO: this.
+			shown := make(map[graph.Vertex]bool)
+			for _, root := range mugl.Roots() {
+				printVertex(root, shown, "")
+			}
 		},
 	}
 
 	return cmd
+}
+
+// printVertex just pretty-prints a graph.  The output is not serializable, it's just for display purposes.
+// TODO: option to print properties.
+// TODO: full serializability, including a DOT file option.
+func printVertex(v graph.Vertex, shown map[graph.Vertex]bool, indent string) {
+	s := v.Obj().Type()
+	if shown[v] {
+		fmt.Printf("%v%v: <cycle...>\n", indent, s)
+	} else {
+		shown[v] = true // prevent cycles.
+		fmt.Printf("%v%v:\n", indent, s)
+		for _, out := range v.Outs() {
+			printVertex(out, shown, indent+"    -> ")
+		}
+	}
 }
 
 // dashdashArgsToMap is a simple args parser that places incoming key/value pairs into a map.  These are then used
