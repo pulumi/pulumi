@@ -88,7 +88,7 @@ func (g *generator) OnVariableAssign(sym symbols.Variable, o *rt.Object, old *rt
 
 	// If the target of the assignment is a resource, we need to track dependencies.
 	// TODO: if we are assigning to a structure inside of a structure inside... of a resource, we must also track.
-	if types.HasBaseName(o.Type(), predef.MuResourceClass) {
+	if o != nil && types.HasBaseName(o.Type(), predef.MuResourceClass) {
 		deps := g.res[o]
 
 		// If the old object is a resource, drop a ref-count.
