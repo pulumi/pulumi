@@ -15,6 +15,7 @@ import (
 	"github.com/marapongo/mu/pkg/compiler/metadata"
 	"github.com/marapongo/mu/pkg/diag"
 	"github.com/marapongo/mu/pkg/graph"
+	"github.com/marapongo/mu/pkg/graph/graphgen"
 	"github.com/marapongo/mu/pkg/pack"
 	"github.com/marapongo/mu/pkg/util/contract"
 	"github.com/marapongo/mu/pkg/workspace"
@@ -152,12 +153,20 @@ func (c *compiler) CompilePackage(pkg *pack.Package) graph.Graph {
 	//
 	// Afterwards, we can safely evaluate the MuIL entrypoint, using our MuIL AST interpreter.
 
+	// First, bind.
 	b := binder.New(c.w, c.ctx, c.reader)
 	pkgsym := b.BindPackage(pkg)
 	if !c.Diag().Success() {
 		return nil
 	}
 
-	e := eval.New(b.Ctx())
-	return e.EvaluatePackage(pkgsym, c.ctx.Opts.Args)
+	// Now, create the machinery we need to generate a graph.
+	gg := graphgen.New(c.ctx)
+
+	// Now, evaluate.
+	e := eval.New(b.Ctx(), gg)
+	e.EvaluatePackage(pkgsym, c.ctx.Opts.Args)
+
+	// Finally ask the graph generator to return what it has seen in graph form.
+	return gg.Graph()
 }

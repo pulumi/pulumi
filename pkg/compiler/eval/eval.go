@@ -34,11 +34,24 @@ type Interpreter interface {
 	EvaluateFunction(fnc symbols.Function, this *Object, args core.Args) graph.Graph
 }
 
+// InterpreterHooks is a set of callbacks that can be used to hook into interesting interpreter events.
+type InterpreterHooks interface {
+	OnNewObject(o *Object)                                    // invoked whenever an object is created.
+	OnAssignProperty(o *Object, prop string, old, nw *Object) // invoked whenever a property is (re)assigned.
+	OnEnterPackage(pkg *symbols.Package)                      // invoked whenever we enter a new package.
+	OnLeavePackage(pkg *symbols.Package)                      // invoked whenever we leave a package.
+	OnEnterModule(mod *symbols.Module)                        // invoked whenever we enter a new module.
+	OnLeaveModule(mod *symbols.Module)                        // invoked whenever we leave a module.
+	OnEnterFunction(fnc symbols.Function)                     // invoked whenever we enter a new function.
+	OnLeaveFunction(fnc symbols.Function)                     // invoked whenever we leave a function.
+}
+
 // New creates an interpreter that can be used to evaluate MuPackages.
-func New(ctx *binder.Context) Interpreter {
+func New(ctx *binder.Context, hooks InterpreterHooks) Interpreter {
 	e := &evaluator{
 		ctx:        ctx,
-		alloc:      NewAllocator(nil),
+		hooks:      hooks,
+		alloc:      NewAllocator(hooks),
 		globals:    make(globalMap),
 		modinits:   make(modinitMap),
 		classinits: make(classinitMap),
@@ -51,6 +64,7 @@ func New(ctx *binder.Context) Interpreter {
 type evaluator struct {
 	fnc        symbols.Function // the function currently under evaluation.
 	ctx        *binder.Context  // the binding context with type and symbol information.
+	hooks      InterpreterHooks // callbacks that hook into interpreter events.
 	alloc      *Allocator       // the object allocator.
 	globals    globalMap        // the object values for global variable symbols.
 	locals     *localScope      // local variable values scoped by the lexical structure.
@@ -70,9 +84,16 @@ func (e *evaluator) Diag() diag.Sink      { return e.ctx.Diag }
 // EvaluatePackage performs evaluation on the given blueprint package.
 func (e *evaluator) EvaluatePackage(pkg *symbols.Package, args core.Args) graph.Graph {
 	glog.Infof("Evaluating package '%v'", pkg.Name())
+	if e.hooks != nil {
+		e.hooks.OnEnterPackage(pkg)
+	}
+
 	if glog.V(2) {
 		defer glog.V(2).Infof("Evaluation of package '%v' completed w/ %v warnings and %v errors",
 			pkg.Name(), e.Diag().Warnings(), e.Diag().Errors())
+		if e.hooks != nil {
+			e.hooks.OnLeavePackage(pkg)
+		}
 	}
 
 	// Search the package for a default module "index" to evaluate.
@@ -89,9 +110,16 @@ func (e *evaluator) EvaluatePackage(pkg *symbols.Package, args core.Args) graph.
 // EvaluateModule performs evaluation on the given module's entrypoint function.
 func (e *evaluator) EvaluateModule(mod *symbols.Module, args core.Args) graph.Graph {
 	glog.Infof("Evaluating module '%v'", mod.Token())
+	if e.hooks != nil {
+		e.hooks.OnEnterModule(mod)
+	}
+
 	if glog.V(2) {
 		defer glog.V(2).Infof("Evaluation of module '%v' completed w/ %v warnings and %v errors",
 			mod.Token(), e.Diag().Warnings(), e.Diag().Errors())
+		if e.hooks != nil {
+			e.hooks.OnLeaveModule(mod)
+		}
 	}
 
 	// Fetch the module's entrypoint function, erroring out if it doesn't have one.
@@ -108,9 +136,16 @@ func (e *evaluator) EvaluateModule(mod *symbols.Module, args core.Args) graph.Gr
 // EvaluateFunction performs an evaluation of the given function, using the provided arguments, returning its graph.
 func (e *evaluator) EvaluateFunction(fnc symbols.Function, this *Object, args core.Args) graph.Graph {
 	glog.Infof("Evaluating function '%v'", fnc.Token())
+	if e.hooks != nil {
+		e.hooks.OnEnterFunction(fnc)
+	}
+
 	if glog.V(2) {
 		defer glog.V(2).Infof("Evaluation of function '%v' completed w/ %v warnings and %v errors",
 			fnc.Token(), e.Diag().Warnings(), e.Diag().Errors())
+		if e.hooks != nil {
+			e.hooks.OnLeaveFunction(fnc)
+		}
 	}
 
 	// Ensure that initializers have been run.
@@ -288,6 +323,12 @@ func (e *evaluator) evalCall(fnc symbols.Function, this *Object, args ...*Object
 	// Set up a new lexical scope "activation frame" in which we can bind the parameters; restore it upon exit.
 	e.pushScope(true)
 	defer e.popScope()
+
+	// Invoke the hooks if available.
+	if e.hooks != nil {
+		e.hooks.OnEnterFunction(fnc)
+		defer e.hooks.OnLeaveFunction(fnc)
+	}
 
 	// If the target is an instance method, the "this" and "super" variables must be bound to values.
 	if this != nil {

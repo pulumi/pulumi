@@ -4,6 +4,7 @@ package types
 
 import (
 	"github.com/marapongo/mu/pkg/compiler/symbols"
+	"github.com/marapongo/mu/pkg/tokens"
 )
 
 // CanConvert returns true if the from type can be implicitly converted to the to type.
@@ -92,5 +93,27 @@ func CanConvert(from symbols.Type, to symbols.Type) bool {
 	}
 
 	// Otherwise, we cannot convert; note that an explicit conversion may still exist.
+	return false
+}
+
+// HasBaseName checks a class hierarchy for a base class or interface by the given name.
+func HasBaseName(t symbols.Type, base tokens.Type) bool {
+	for {
+		class, ok := t.(*symbols.Class)
+		if !ok {
+			break
+		}
+		if class.TypeToken() == base {
+			return true
+		}
+		if class.Extends != nil && HasBaseName(class.Extends, base) {
+			return true
+		}
+		for _, impl := range class.Implements {
+			if HasBaseName(impl, base) {
+				return true
+			}
+		}
+	}
 	return false
 }

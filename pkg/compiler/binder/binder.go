@@ -202,6 +202,29 @@ func (b *binder) checkClassVisibility(node ast.Node, class *symbols.Class, membe
 // lookupSymbolToken performs a complex lookup for a complex token; if require is true, failed lookups will issue an
 // error; and in any case, the AST node is used as the context for errors (lookup, accessibility, or otherwise).
 func (b *binder) lookupSymbolToken(node ast.Node, tok tokens.Token, require bool) symbols.Symbol {
+	// If the token has a default module embedded inside of it, expand it out.
+	pkg, mod, mem, clm := tok.Tokens()
+	if mod != "" && mod.Name() == tokens.DefaultModule {
+		if pkgsym, has := b.ctx.Pkgs[pkg.Name()]; has {
+			// Find the default.
+			for _, modsym := range pkgsym.Pkg.Modules {
+				if modsym.Default() {
+					mod = tokens.Module(modsym.Token())
+					break
+				}
+			}
+			// Now recreate the token accordingly.
+			if clm != "" {
+				tok = tokens.Token(clm)
+			} else if mem != "" {
+				tok = tokens.Token(mem)
+			} else {
+				contract.Assert(mod != "")
+				tok = tokens.Token(mod)
+			}
+		}
+	}
+
 	// Simply look up the symbol in the tokens map.
 	sym := b.ctx.Tokens[tok]
 
@@ -211,7 +234,6 @@ func (b *binder) lookupSymbolToken(node ast.Node, tok tokens.Token, require bool
 			// If requested, issue an error.  First, attempt to gather a good error message, however.
 			// TODO: edit distance checking to help suggest a fix.
 			var reason string
-			pkg, mod, mem, clm := tok.Tokens()
 			if _, has := b.ctx.Pkgs[pkg.Name()]; !has {
 				reason = fmt.Sprintf("package '%v' not found", pkg)
 			} else if _, has := b.ctx.Tokens[tokens.Token(mod)]; !has {

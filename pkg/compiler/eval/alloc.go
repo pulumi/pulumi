@@ -14,25 +14,19 @@ import (
 
 // Allocator is a factory for creating objects.
 type Allocator struct {
-	hooks *ObjectHooks // an optional set of allocation lifetime callback hooks.
-}
-
-// ObjectHooks is a struct of optional callbacks that can be used to hook into interesting allocator events.
-type ObjectHooks struct {
-	New    *func(*Object)          // invoked whenever an object of a certain type has been created.
-	Assign *func(*Object, *Object) // invoked whenever a property belonging to a certain type is (re)assigned.
+	hooks InterpreterHooks // an optional set of allocation lifetime callback hooks.
 }
 
 // NewAllocator allocates a fresh allocator instance.
-func NewAllocator(hooks *ObjectHooks) *Allocator {
+func NewAllocator(hooks InterpreterHooks) *Allocator {
 	return &Allocator{hooks: hooks}
 }
 
 // newObject is used internally for all allocator-driven object allocation, so that hooks can be run appropriately.
 func (a *Allocator) newObject(t symbols.Type, v interface{}, props Properties) *Object {
 	o := NewObject(t, nil, props)
-	if a.hooks != nil && a.hooks.New != nil {
-		(*a.hooks.New)(o)
+	if a.hooks != nil {
+		a.hooks.OnNewObject(o)
 	}
 	return o
 }
