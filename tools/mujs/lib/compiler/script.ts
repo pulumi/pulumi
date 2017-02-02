@@ -15,9 +15,6 @@ const TS_PROJECT_FILE = "tsconfig.json";
 // file.  An optional set of compiler options may also be supplied.  In the project file cases, both options and files
 // are read in the from the project file, and will override any options passed in the argument form.
 export async function compileScript(path: string, options?: ts.CompilerOptions): Promise<Script> {
-    // Default the options to TypeScript's usual defaults if not provided.
-    options = options || ts.getDefaultCompilerOptions();
-
     // See if we"re dealing with a tsproject.json file.  This happens when path directly points to one, or when
     // path refers to a directory, in which case we will assume we"re searching for a config file underneath it.
     let root: string | undefined;
@@ -61,6 +58,9 @@ export async function compileScript(path: string, options?: ts.CompilerOptions):
         // Otherwise, assume it's a single file, and populate the paths with it.
         files.push(path);
     }
+
+    // Default the options to TypeScript's usual defaults if not provided or discovered.
+    options = options || ts.getDefaultCompilerOptions();
 
     // Many options can be supplied, however, we want to hook the outputs to translate them on the fly.
     options.rootDir = root;

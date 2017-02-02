@@ -550,6 +550,8 @@ export class Transformer {
                     }
                 }
             }
+
+            // Otherwise, bottom out on resolving a fully qualified MuPackage type token out of the symbol.
             return await this.resolveTypeTokenFromSymbol(ty.symbol);
         }
 
