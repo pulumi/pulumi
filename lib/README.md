@@ -32,6 +32,6 @@ For example, let's say we want to use the Mu standard library and the AWS librar
     * `yarn link`
 * Finally, `cd /dev/mypackage`:
     * `yarn link mu`
-    * `yarn link mu/@aws`
+    * `yarn link @mu/aws`
 * Now we are ready to go working on `mypackage`; references to `mu` and `@mu/aws` will be resolved correctly.
 
