@@ -9,7 +9,6 @@
   "scripts": {
     "build": "tsc && tslint cmd/*.ts cmd/**/*.ts lib/*.ts lib/**/*.ts tests/*.ts tests/**/*.ts && npm run copytestdata",
     "copytestdata": "find tests/output/* -type d -exec cp -R {} bin/tests/output/ \\;",
-    "postinstall": "typings install",
     "test": "npm run cov && npm run covreport",
     "cov": "istanbul cover --print none node_modules/.bin/_mocha -- --recursive --es_staging --timeout 15000 bin/tests/",
     "covreport": "istanbul report text-summary && istanbul report text"
