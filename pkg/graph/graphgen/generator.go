@@ -4,6 +4,8 @@
 package graphgen
 
 import (
+	"github.com/golang/glog"
+
 	"github.com/marapongo/mu/pkg/compiler/core"
 	"github.com/marapongo/mu/pkg/compiler/symbols"
 	"github.com/marapongo/mu/pkg/compiler/types"
@@ -43,6 +45,8 @@ var _ Generator = (*generator)(nil)
 
 // Graph takes the information recorded thus far and produces a new MuGL graph from it.
 func (g *generator) Graph() graph.Graph {
+	glog.V(7).Infof("Generating graph with %v vertices", len(g.res))
+
 	// First create vertices for all objects.
 	verts := make(map[*rt.Object]*objectVertex)
 	for o := range g.res {
@@ -64,6 +68,7 @@ func (g *generator) Graph() graph.Graph {
 			roots = append(roots, vert)
 		}
 	}
+	glog.V(7).Infof("Generated graph with %v roots", len(roots))
 
 	return newObjectGraph(roots)
 }
