@@ -223,7 +223,7 @@ func printExport(name tokens.ModuleMemberName, export *ast.Export, indent string
 	if export.Access != nil {
 		mods = append(mods, string(*export.Access))
 	}
-	fmt.Printf("%vexport \"%v\"%v %v\n", indent, name, modString(mods), export.Referent)
+	fmt.Printf("%vexport \"%v\"%v %v\n", indent, name, modString(mods), export.Referent.Tok)
 }
 
 func printClass(name tokens.ModuleMemberName, class *ast.Class, exportOnly bool, indent string) {
