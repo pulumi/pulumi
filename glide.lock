@@ -1,10 +1,12 @@
-hash: c020f7609e37666f38d163397b6d7022668103e8f82e6eaf244b322bc1a9c878
-updated: 2016-12-03T13:17:46.263591232-08:00
+hash: 98d62cdaf6eb84bedfe70e8bfa14cfc0d88abda789d32cde68e4fe67b0b70cf7
+updated: 2017-02-01T19:34:06.71356202-08:00
 imports:
 - name: github.com/aokoli/goutils
   version: 9c37978a95bd5c709a15883b6242714ea6709e64
 - name: github.com/blang/semver
   version: 3a37c301dda64cbe17f16f661b4c976803c0e2d2
+- name: github.com/ghodss/yaml
+  version: 04f313413ffd65ce25f2541bfd2b2ceec5c0908c
 - name: github.com/golang/glog
   version: 23def4e6c14b4da8ac2ed8007337bc5eb5007998
 - name: github.com/golang/lint
