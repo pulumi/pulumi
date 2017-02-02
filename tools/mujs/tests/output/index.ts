@@ -79,11 +79,11 @@ describe("outputs", () => {
 
             if (output.pkg) {
                 if (expectedOutputTree) {
-                    let mupackTreeText: string = JSON.stringify(output.pkg, null, 4) + "\n";
+                    let mupackTreeText: string = JSON.stringify(output.pkg, null, 4) + os.EOL;
 
                     // Do a line-by-line comparison to make debugging failures nicer.
-                    let actualLines: string[] = mupackTreeText.split("\n");
-                    let expectLines: string[] = expectedOutputTree.split("\n");
+                    let actualLines: string[] = mupackTreeText.split(os.EOL);
+                    let expectLines: string[] = expectedOutputTree.split(os.EOL);
                     compareLines(actualLines, expectLines, "AST");
                 }
                 else {
