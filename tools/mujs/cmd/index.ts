@@ -55,9 +55,18 @@ async function main(args: string[]): Promise<number> {
     }
 
     if (result.pkg) {
-        // Now just print the output to the console.
-        // TODO(joe): eventually we want a real compiler-like output scheme; for now, just print it.
-        console.log(JSON.stringify(result.pkg, null, 4));
+        // Now just print the output to the console, but only if there weren't any errors.
+        let hadError: boolean = false;
+        for (let diag of result.diagnostics) {
+            if (diag.category === mujs.diag.DiagnosticCategory.Error) {
+                hadError = true;
+                break;
+            }
+        }
+        if (!hadError) {
+            // TODO(joe): eventually we want a real compiler-like output scheme; for now, just print it.
+            console.log(JSON.stringify(result.pkg, null, 4));
+        }
     }
 
     return 0;
