@@ -7,6 +7,7 @@
   "main": "bin/lib/index.js",
   "typings": "bin/lib/index.d.ts",
   "scripts": {
+    "clean": "rm -rf bin/",
     "build": "tsc && tslint 'cmd/**/*.ts' 'lib/**/*.ts' 'tests/**/*.ts' && npm run copytestdata",
     "copytestdata": "find tests/output/* -type d -exec cp -R {} bin/tests/output/ \\;",
     "test": "npm run cov && npm run covreport",
