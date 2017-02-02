@@ -1,6 +1,6 @@
 // Copyright 2016 Marapongo, Inc. All rights reserved.
 
-import {contract} from "nodets";
+import {contract} from "nodejs-ts";
 import * as os from "os";
 import * as fspath from "path";
 import * as ts from "typescript";

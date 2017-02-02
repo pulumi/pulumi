@@ -2,7 +2,7 @@
 
 "use strict";
 
-import {contract, log, object} from "nodets";
+import {contract, log, object} from "nodejs-ts";
 import * as fspath from "path";
 import * as ts from "typescript";
 import * as ast from "../ast";

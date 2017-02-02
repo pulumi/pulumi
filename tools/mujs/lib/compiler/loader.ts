@@ -3,7 +3,7 @@
 "use strict";
 
 import * as yaml from "js-yaml";
-import {contract, fs} from "nodets";
+import {contract, fs} from "nodejs-ts";
 import * as fspath from "path";
 import * as diag from "../diag";
 import * as pack from "../pack";

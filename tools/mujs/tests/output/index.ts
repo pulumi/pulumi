@@ -1,7 +1,7 @@
 // Copyright 2017 Marapongo, Inc. All rights reserved.
 
 import * as assert from "assert";
-import {fs} from "nodets";
+import {fs} from "nodejs-ts";
 import * as os from "os";
 import * as path from "path";
 import {compiler} from "../../lib";

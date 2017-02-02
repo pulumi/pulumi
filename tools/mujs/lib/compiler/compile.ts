@@ -2,7 +2,7 @@
 
 "use strict";
 
-import {contract} from "nodets";
+import {contract} from "nodejs-ts";
 import * as diag from "../diag";
 import * as pack from "../pack";
 import {compileScript, Script} from "./script";

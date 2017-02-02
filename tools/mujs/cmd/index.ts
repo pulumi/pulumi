@@ -3,7 +3,7 @@
 "use strict";
 
 import * as minimist from "minimist";
-import {log} from "nodets";
+import {log} from "nodejs-ts";
 import * as mujs from "../lib";
 
 async function main(args: string[]): Promise<number> {
