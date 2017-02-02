@@ -909,7 +909,7 @@ export class Transformer {
             case ts.SyntaxKind.EmptyStatement:
                 return this.transformEmptyStatement(<ts.EmptyStatement>node);
             case ts.SyntaxKind.ExpressionStatement:
-                return this.transformExpressionStatement(<ts.ExpressionStatement>node);
+                return await this.transformExpressionStatement(<ts.ExpressionStatement>node);
             case ts.SyntaxKind.LabeledStatement:
                 return this.transformLabeledStatement(<ts.LabeledStatement>node);
             case ts.SyntaxKind.ModuleBlock:
@@ -1091,7 +1091,7 @@ export class Transformer {
                         statements: [
                             <ast.ReturnStatement>{
                                 kind:       ast.returnStatementKind,
-                                expression: this.transformExpression(<ts.Expression>node.body),
+                                expression: await this.transformExpression(<ts.Expression>node.body),
                             },
                         ],
                     };
@@ -1233,7 +1233,7 @@ export class Transformer {
         let name: ast.Identifier = this.transformBindingIdentifier(node.name);
         let initializer: ast.Expression | undefined;
         if (node.initializer) {
-            initializer = this.transformExpression(node.initializer);
+            initializer = await this.transformExpression(node.initializer);
         }
         return {
             node:     node,
@@ -1367,7 +1367,7 @@ export class Transformer {
         let name: ast.Identifier = this.transformDeclarationIdentifier(node.name);
         let initializer: ast.Expression | undefined;
         if (node.initializer) {
-            initializer = this.transformExpression(node.initializer);
+            initializer = await this.transformExpression(node.initializer);
         }
         return {
             name:        name,
@@ -1465,7 +1465,7 @@ export class Transformer {
             node: ts.PropertyDeclaration | ts.PropertySignature): Promise<VariableDeclaration<ast.ClassProperty>> {
         let initializer: ast.Expression | undefined;
         if (node.initializer) {
-            initializer = this.transformExpression(node.initializer);
+            initializer = await this.transformExpression(node.initializer);
         }
         let mods: ts.ModifierFlags = ts.getCombinedModifierFlags(node);
         let name: ast.Identifier = this.transformPropertyName(node.name);
@@ -1535,7 +1535,7 @@ export class Transformer {
                     condition: <ast.UnaryOperatorExpression>{
                         kind:     ast.unaryOperatorExpressionKind,
                         operator: "!",
-                        operand:  this.transformExpression(node.expression),
+                        operand:  await this.transformExpression(node.expression),
                     },
                     consequent: <ast.BreakStatement>{
                         kind: ast.breakStatementKind,
@@ -1571,7 +1571,7 @@ export class Transformer {
     }
 
     private async transformIfStatement(node: ts.IfStatement): Promise<ast.IfStatement> {
-        let condition: ast.Expression = this.transformExpression(node.expression);
+        let condition: ast.Expression = await this.transformExpression(node.expression);
         let consequent: ast.Statement = await this.transformStatement(node.thenStatement);
         let alternate: ast.Statement | undefined;
         if (node.elseStatement) {
@@ -1585,11 +1585,14 @@ export class Transformer {
         });
     }
 
-    private transformReturnStatement(node: ts.ReturnStatement): ast.ReturnStatement {
+    private async transformReturnStatement(node: ts.ReturnStatement): Promise<ast.ReturnStatement> {
+        let expr: ast.Expression | undefined;
+        if (node.expression) {
+            expr = await this.transformExpression(node.expression);
+        }
         return this.withLocation(node, <ast.ReturnStatement>{
             kind:       ast.returnStatementKind,
-            expression: object.maybeUndefined(
-                node.expression, (expr: ts.Expression) => this.transformExpression(expr)),
+            expression: expr,
         });
     }
 
@@ -1597,10 +1600,10 @@ export class Transformer {
         return notYetImplemented(node);
     }
 
-    private transformThrowStatement(node: ts.ThrowStatement): ast.ThrowStatement {
+    private async transformThrowStatement(node: ts.ThrowStatement): Promise<ast.ThrowStatement> {
         return this.withLocation(node, <ast.ThrowStatement>{
             kind:       ast.throwStatementKind,
-            expression: this.transformExpression(node.expression),
+            expression: await this.transformExpression(node.expression),
         });
     }
 
@@ -1611,7 +1614,7 @@ export class Transformer {
     private async transformWhileStatement(node: ts.WhileStatement): Promise<ast.WhileStatement> {
         return this.withLocation(node, <ast.WhileStatement>{
             kind: ast.whileStatementKind,
-            test: this.transformExpression(node.expression),
+            test: await this.transformExpression(node.expression),
             body: await this.transformStatementAsBlock(node.statement),
         });
     }
@@ -1644,10 +1647,10 @@ export class Transformer {
         });
     }
 
-    private transformExpressionStatement(node: ts.ExpressionStatement): ast.ExpressionStatement {
+    private async transformExpressionStatement(node: ts.ExpressionStatement): Promise<ast.ExpressionStatement> {
         return this.withLocation(node, <ast.ExpressionStatement>{
             kind:       ast.expressionStatementKind,
-            expression: this.transformExpression(node.expression),
+            expression: await this.transformExpression(node.expression),
         });
     }
 
@@ -1669,7 +1672,7 @@ export class Transformer {
 
     /** Expressions **/
 
-    private transformExpression(node: ts.Expression): ast.Expression {
+    private async transformExpression(node: ts.Expression): Promise<ast.Expression> {
         switch (node.kind) {
             // Expressions:
             case ts.SyntaxKind.ArrayLiteralExpression:
@@ -1701,7 +1704,7 @@ export class Transformer {
             case ts.SyntaxKind.PropertyAccessExpression:
                 return this.transformPropertyAccessExpression(<ts.PropertyAccessExpression>node);
             case ts.SyntaxKind.NewExpression:
-                return this.transformNewExpression(<ts.NewExpression>node);
+                return await this.transformNewExpression(<ts.NewExpression>node);
             case ts.SyntaxKind.OmittedExpression:
                 return this.transformOmittedExpression(<ts.OmittedExpression>node);
             case ts.SyntaxKind.ParenthesizedExpression:
@@ -1744,11 +1747,15 @@ export class Transformer {
         }
     }
 
-    private transformArrayLiteralExpression(node: ts.ArrayLiteralExpression): ast.ArrayLiteral {
+    private async transformArrayLiteralExpression(node: ts.ArrayLiteralExpression): Promise<ast.ArrayLiteral> {
+        let elements: ast.Expression[] = [];
+        for (let elem of node.elements) {
+            elements.push(await this.transformExpression(elem));
+        }
         return this.withLocation(node, <ast.ArrayLiteral>{
             kind:     ast.arrayLiteralKind,
             elemType: { tok: tokens.anyType }, // TODO[marapongo/mu#46]: come up with a type.
-            elements: node.elements.map((expr: ts.Expression) => this.transformExpression(expr)),
+            elements: elements,
         });
     }
 
@@ -1756,19 +1763,19 @@ export class Transformer {
         return notYetImplemented(node);
     }
 
-    private transformBinaryExpression(node: ts.BinaryExpression): ast.Expression {
+    private async transformBinaryExpression(node: ts.BinaryExpression): Promise<ast.Expression> {
         let op: ts.SyntaxKind = node.operatorToken.kind;
         if (op === ts.SyntaxKind.CommaToken) {
             // Translate this into a sequence expression.
-            return this.transformBinarySequenceExpression(node);
+            return await this.transformBinarySequenceExpression(node);
         }
         else {
             // Translate this into an ordinary binary operator.
-            return this.transformBinaryOperatorExpression(node);
+            return await this.transformBinaryOperatorExpression(node);
         }
     }
 
-    private transformBinaryOperatorExpression(node: ts.BinaryExpression): ast.BinaryOperatorExpression {
+    private async transformBinaryOperatorExpression(node: ts.BinaryExpression): Promise<ast.BinaryOperatorExpression> {
         // A few operators aren't faithfully emulated; in those cases, log warnings.
         if (log.v(3)) {
             switch (node.operatorToken.kind) {
@@ -1791,12 +1798,12 @@ export class Transformer {
         return this.withLocation(node, <ast.BinaryOperatorExpression>{
             kind:     ast.binaryOperatorExpressionKind,
             operator: operator,
-            left:     this.transformExpression(node.left),
-            right:    this.transformExpression(node.right),
+            left:     await this.transformExpression(node.left),
+            right:    await this.transformExpression(node.right),
         });
     }
 
-    private transformBinarySequenceExpression(node: ts.BinaryExpression): ast.SequenceExpression {
+    private async transformBinarySequenceExpression(node: ts.BinaryExpression): Promise<ast.SequenceExpression> {
         contract.assert(node.operatorToken.kind === ts.SyntaxKind.CommaToken);
 
         // Pile up the expressions in the right order.
@@ -1805,10 +1812,10 @@ export class Transformer {
         let expressions: ast.Expression[] = [];
         while (curr.kind === ts.SyntaxKind.BinaryExpression &&
                 (binary = <ts.BinaryExpression>curr).operatorToken.kind === ts.SyntaxKind.CommaToken) {
-            expressions.unshift(this.transformExpression(binary.right));
+            expressions.unshift(await this.transformExpression(binary.right));
             curr = binary.left;
         }
-        expressions.unshift(this.transformExpression(curr));
+        expressions.unshift(await this.transformExpression(curr));
 
         contract.assert(expressions.length > 0);
         return this.copyLocationRange(
@@ -1821,11 +1828,16 @@ export class Transformer {
         );
     }
 
-    private transformCallExpression(node: ts.CallExpression): ast.InvokeFunctionExpression {
+    private async transformCallExpression(node: ts.CallExpression): Promise<ast.InvokeFunctionExpression> {
+        let func: ast.Expression = await this.transformExpression(node.expression);
+        let args: ast.Expression[] = [];
+        for (let argument of node.arguments) {
+            args.push(await this.transformExpression(argument));
+        }
         return this.withLocation(node, <ast.InvokeFunctionExpression>{
             kind:      ast.invokeFunctionExpressionKind,
-            function:  this.transformExpression(node.expression),
-            arguments: node.arguments.map((expr: ts.Expression) => this.transformExpression(expr)),
+            function:  func,
+            arguments: args,
         });
     }
 
@@ -1833,16 +1845,16 @@ export class Transformer {
         return notYetImplemented(node);
     }
 
-    private transformConditionalExpression(node: ts.ConditionalExpression): ast.ConditionalExpression {
+    private async transformConditionalExpression(node: ts.ConditionalExpression): Promise<ast.ConditionalExpression> {
         return this.withLocation(node, <ast.ConditionalExpression>{
             kind:       ast.conditionalExpressionKind,
-            condition:  this.transformExpression(node.condition),
-            consequent: this.transformExpression(node.whenTrue),
-            alternate:  this.transformExpression(node.whenFalse),
+            condition:  await this.transformExpression(node.condition),
+            consequent: await this.transformExpression(node.whenTrue),
+            alternate:  await this.transformExpression(node.whenFalse),
         });
     }
 
-    private transformDeleteExpression(node: ts.DeleteExpression): ast.Expression {
+    private async transformDeleteExpression(node: ts.DeleteExpression): Promise<ast.Expression> {
         if (log.v(3)) {
             log.out(3).info(
                 `ECMAScript operator 'delete' not supported; ` +
@@ -1855,7 +1867,7 @@ export class Transformer {
         //     problems down the road once we properly support nullable types.
         return this.withLocation(node, <ast.BinaryOperatorExpression>{
             kind:     ast.binaryOperatorExpressionKind,
-            left:     this.transformExpression(node.expression),
+            left:     await this.transformExpression(node.expression),
             operator: "=",
             right:    <ast.NullLiteral>{
                 kind: ast.nullLiteralKind,
@@ -1863,8 +1875,8 @@ export class Transformer {
         });
     }
 
-    private transformElementAccessExpression(node: ts.ElementAccessExpression): ast.LoadExpression {
-        let object: ast.Expression = this.transformExpression(node.expression);
+    private async transformElementAccessExpression(node: ts.ElementAccessExpression): Promise<ast.LoadExpression> {
+        let object: ast.Expression = await this.transformExpression(node.expression);
         if (node.argumentExpression) {
             switch (node.argumentExpression.kind) {
                 case ts.SyntaxKind.Identifier:
@@ -1881,7 +1893,7 @@ export class Transformer {
                     return this.withLocation(node, <ast.LoadDynamicExpression>{
                         kind:   ast.loadDynamicExpressionKind,
                         object: object,
-                        name:   this.transformExpression(<ts.Expression>node.argumentExpression),
+                        name:   await this.transformExpression(<ts.Expression>node.argumentExpression),
                     });
             }
         }
@@ -1895,25 +1907,28 @@ export class Transformer {
         return notYetImplemented(node);
     }
 
-    private transformObjectLiteralExpression(node: ts.ObjectLiteralExpression): ast.ObjectLiteral {
+    private async transformObjectLiteralExpression(node: ts.ObjectLiteralExpression): Promise<ast.ObjectLiteral> {
         // TODO[marapongo/mu#46]: because TypeScript object literals are untyped, it's not clear what MuIL type this
         //     expression should produce.  It's common for a TypeScript literal to be enclosed in a cast, for example,
         //     `<SomeType>{ literal }`, in which case, perhaps we could detect `<SomeType>`.  Alternatively, MuIL could
         //     just automatically dynamically coerce `any` to the target type, similar to TypeScript, when necessary.
         //     I had envisioned requiring explicit dynamic casts for this, in which case, perhaps this expression should
         //     always be encased in something that prepares it for dynamic cast in the consuming expression.
+        let properties: ast.ObjectLiteralProperty[] = [];
+        for (let prop of node.properties) {
+            properties.push(await this.transformObjectLiteralElement(prop));
+        }
         return this.withLocation(node, <ast.ObjectLiteral>{
             kind:       ast.objectLiteralKind,
             type:       { tok: tokens.anyType }, // TODO[marapongo/mu#46]: come up with a type.
-            properties: node.properties.map(
-                (prop: ts.ObjectLiteralElement) => this.transformObjectLiteralElement(prop)),
+            properties: properties,
         });
     }
 
-    private transformObjectLiteralElement(node: ts.ObjectLiteralElement): ast.ObjectLiteralProperty {
+    private async transformObjectLiteralElement(node: ts.ObjectLiteralElement): Promise<ast.ObjectLiteralProperty> {
         switch (node.kind) {
             case ts.SyntaxKind.PropertyAssignment:
-                return this.transformObjectLiteralPropertyAssignment(<ts.PropertyAssignment>node);
+                return await this.transformObjectLiteralPropertyAssignment(<ts.PropertyAssignment>node);
             case ts.SyntaxKind.ShorthandPropertyAssignment:
                 return this.transformObjectLiteralShorthandPropertyAssignment(<ts.ShorthandPropertyAssignment>node);
 
@@ -1929,7 +1944,8 @@ export class Transformer {
         }
     }
 
-    private transformObjectLiteralPropertyAssignment(node: ts.PropertyAssignment): ast.ObjectLiteralProperty {
+    private async transformObjectLiteralPropertyAssignment(
+            node: ts.PropertyAssignment): Promise<ast.ObjectLiteralProperty> {
         let pname: ast.Identifier = this.transformPropertyName(node.name);
         return this.withLocation(node, <ast.ObjectLiteralProperty>{
             kind:     ast.objectLiteralPropertyKind,
@@ -1937,7 +1953,7 @@ export class Transformer {
                 kind: ast.classMemberTokenKind,
                 tok:  pname.ident,
             },
-            value:    this.transformExpression(node.initializer),
+            value:    await this.transformExpression(node.initializer),
         });
     }
 
@@ -1965,33 +1981,36 @@ export class Transformer {
         return notYetImplemented(node);
     }
 
-    private transformPostfixUnaryExpression(node: ts.PostfixUnaryExpression): ast.UnaryOperatorExpression {
+    private async transformPostfixUnaryExpression(
+            node: ts.PostfixUnaryExpression): Promise<ast.UnaryOperatorExpression> {
         let operator: ast.UnaryOperator | undefined = postfixUnaryOperators.get(node.operator);
         contract.assert(!!(operator = operator!));
         return this.withLocation(node, <ast.UnaryOperatorExpression>{
             kind:     ast.unaryOperatorExpressionKind,
             postfix:  true,
             operator: operator,
-            operand:  this.transformExpression(node.operand),
+            operand:  await this.transformExpression(node.operand),
         });
     }
 
-    private transformPrefixUnaryExpression(node: ts.PrefixUnaryExpression): ast.UnaryOperatorExpression {
+    private async transformPrefixUnaryExpression(
+            node: ts.PrefixUnaryExpression): Promise<ast.UnaryOperatorExpression> {
         let operator: ast.UnaryOperator | undefined = prefixUnaryOperators.get(node.operator);
         contract.assert(!!(operator = operator!));
         return this.withLocation(node, <ast.UnaryOperatorExpression>{
             kind:     ast.unaryOperatorExpressionKind,
             postfix:  false,
             operator: operator,
-            operand:  this.transformExpression(node.operand),
+            operand:  await this.transformExpression(node.operand),
         });
     }
 
-    private transformPropertyAccessExpression(node: ts.PropertyAccessExpression): ast.LoadLocationExpression {
+    private async transformPropertyAccessExpression(
+            node: ts.PropertyAccessExpression): Promise<ast.LoadLocationExpression> {
         let id: ast.Identifier = this.transformIdentifier(node.name);
         return this.withLocation(node, <ast.LoadLocationExpression>{
             kind:   ast.loadLocationExpressionKind,
-            object: this.transformExpression(node.expression),
+            object: await this.transformExpression(node.expression),
             name:   this.copyLocation(id, <ast.Token>{
                 kind: ast.tokenKind,
                 tok:  id.ident,
@@ -1999,24 +2018,23 @@ export class Transformer {
         });
     }
 
-    private transformNewExpression(node: ts.NewExpression): ast.NewExpression {
-        // Only "new T(..)" constructors, where T is an identifier referring to a type, are permitted.
-        let ty: ast.TypeToken;
-        if (node.expression.kind === ts.SyntaxKind.Identifier) {
-            let ident: ast.Identifier = this.transformIdentifier(<ts.Identifier>node.expression);
-            ty = this.withLocation(node.expression, <ast.TypeToken>{
-                kind: ast.typeTokenKind,
-                tok:  ident.ident,
-            });
+    private async transformNewExpression(node: ts.NewExpression): Promise<ast.NewExpression> {
+        // To transform the new expression, find the signature TypeScript has bound it to.
+        let signature: ts.Signature = this.checker().getResolvedSignature(node);
+        contract.assert(!!signature);
+        let typeToken: tokens.TypeToken | undefined = await this.resolveTypeToken(signature.getReturnType());
+        contract.assert(!!typeToken);
+        let args: ast.Expression[] = [];
+        for (let expr of node.arguments) {
+            args.push(await this.transformExpression(expr));
         }
-        else {
-            return contract.fail("New T(..) expression must have an identifier T");
-        }
-
         return this.withLocation(node, <ast.NewExpression>{
             kind:      ast.newExpressionKind,
-            type:      ty,
-            arguments: node.arguments.map((expr: ts.Expression) => this.transformExpression(expr)),
+            type:      this.withLocation(node.expression, <ast.TypeToken>{
+                kind: ast.typeTokenKind,
+                tok:  typeToken!,
+            }),
+            arguments: args,
         });
     }
 
