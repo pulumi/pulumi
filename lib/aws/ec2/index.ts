@@ -1,5 +1,6 @@
 // Copyright 2016 Marapongo, Inc. All rights reserved.
 
+export * from './instance';
 export * from './internetGateway';
 export * from './route';
 export * from './routeTable';
