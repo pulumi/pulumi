@@ -1,4 +1,4 @@
 *.swp
-mu
-vendor/
+/mu
+/vendor/
 
