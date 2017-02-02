@@ -175,7 +175,7 @@ func printModules(pkg *pack.Package, printSymbols bool, printExports bool, print
 					if mod.Imports != nil && len(*mod.Imports) > 0 {
 						fmt.Printf("\n")
 						for _, imp := range *mod.Imports {
-							fmt.Printf("%v\"%v\"\n", indent+tab+tab, imp)
+							fmt.Printf("%v\"%v\"\n", indent+tab+tab, imp.Tok)
 						}
 						fmt.Printf("%v", indent+tab)
 					}
