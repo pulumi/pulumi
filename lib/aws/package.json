@@ -1,6 +1,12 @@
 {
     "name": "@mu/aws",
     "main": "bin/index.js",
-    "typings": "bin/index.d.ts"
+    "typings": "bin/index.d.ts",
+    "scripts": {
+        "build": "tsc"
+    },
+    "devDependencies": {
+        "typescript": "^2.1.4"
+    }
 }
 

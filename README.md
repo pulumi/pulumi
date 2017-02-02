@@ -8,10 +8,18 @@ If you are learning about Mu for the first time, please see [the overview docume
 
 ![Architecture](docs/images/arch.png)
 
-## Building and Testing
+## Prerequisites
 
-First install Go https://golang.org/doc/install
-And Glide https://github.com/Masterminds/glide
+Mu is written in Go and uses Glide for dependency management.  They must be installed:
+
+* [Go](https://golang.org/doc/install)
+* [Glide](https://github.com/Masterminds/glide)
+
+If you wish to use the optional `lint` make target, you'll also need to install Golint:
+
+* `go get -u github.com/golang/lint/golint`
+
+## Building and Testing
 
 To build Mu, first clone it into a standard Go workspace:
 

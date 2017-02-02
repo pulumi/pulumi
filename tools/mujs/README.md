@@ -30,3 +30,8 @@ Next, to test, simply run:
 
 It will be obvious if the tests passed or failed and, afterwards, code coverage data will be output to the console.
 
+## Libraries
+
+In order to use the Mu libraries -- including the Mu standard library -- you will need to do a few additional steps to
+prepare your developer workspace.  Please see [this document](/lib/README.md) for details on how to do this.
+
