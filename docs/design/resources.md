@@ -53,6 +53,8 @@ logging and operational performance counters.  These plugins are registered and 
 
 Each resource has a unique ID ("name") that enables Mu operations to address it.
 
+TODO: call these things monikers.  Reminds me of COM monikers.  Plus it's better to make them sound "special".
+
 Please note that this name doesn't need to be equivalent to the name or ID of the resource in the target environment.
 For example, AWS resources will have [ARNs](http://docs.aws.amazon.com/general/latest/gr/aws-arns-and-namespaces.html)
 that are distinct from Mu's name.  Mu maintains a mapping from its own names to these authoritative names.
@@ -73,6 +75,8 @@ In general, this name will be of one of these forms:
     <ENV>:<MODULE>:<RESOURCE>#ID
     <ENV>:<MODULE>/<CLASS>:<RESOURCE>
     <ENV>:<MODULE>/<CLASS>:<RESOURCE>#ID
+
+TODO: why not just use a general parenting scheme (so classes within classes, etc. nest properly).
 
 The `<ENV>` part is either just the environment name (e.g., `staging`) or the environment name plus namespace (e.g.,
 `staging:acmecorp`).  These are controlled through metadata and/or command line arguments and are shared amongst all
