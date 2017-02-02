@@ -49,6 +49,13 @@ At this point you should be able to build and run tests from the root directory:
 
 This installs the `mu` binary into `$GOPATH/bin`, which may now be run provided `make` exited successfully.
 
+## Compilers
+
+The Mu compilers are built and tested independently from the Mu tool and runtime written in Go.  Please see the
+respective pages for details on this process for each compiler:
+
+* [MuJS](tools/mujs/README.md)
+*
 ## Debugging
 
 The Mu tools have extensive logging built in.  In fact, we encourage liberal logging in new code, and addding new
