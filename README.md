@@ -10,6 +10,9 @@ If you are learning about Mu for the first time, please see [the overview docume
 
 ## Building and Testing
 
+First install Go https://golang.org/doc/install
+And Glide https://github.com/Masterminds/glide
+
 To build Mu, first clone it into a standard Go workspace:
 
     $ mkdir -p $GOPATH/src/github.com/marapongo
@@ -33,6 +36,7 @@ And placed on your path by:
 At this point you should be able to build and run tests from the root directory:
 
     $ cd $GOPATH/src/github.com/marapongo/mu
+    $ glide update
     $ make
 
 This installs the `mu` binary into `$GOPATH/bin`, which may now be run provided `make` exited successfully.
