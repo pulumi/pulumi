@@ -1754,7 +1754,10 @@ export class Transformer {
         }
         return this.withLocation(node, <ast.ArrayLiteral>{
             kind:     ast.arrayLiteralKind,
-            elemType: { tok: tokens.anyType }, // TODO[marapongo/mu#46]: come up with a type.
+            elemType: <ast.TypeToken>{
+                kind: ast.typeTokenKind,
+                tok:  tokens.anyType, // TODO[marapongo/mu#46]: come up with a type.
+            },
             elements: elements,
         });
     }
@@ -1920,7 +1923,10 @@ export class Transformer {
         }
         return this.withLocation(node, <ast.ObjectLiteral>{
             kind:       ast.objectLiteralKind,
-            type:       { tok: tokens.anyType }, // TODO[marapongo/mu#46]: come up with a type.
+            type:       <ast.TypeToken>{
+                kind: ast.typeTokenKind,
+                tok:  tokens.anyType, // TODO[marapongo/mu#46]: come up with a type.
+            },
             properties: properties,
         });
     }
