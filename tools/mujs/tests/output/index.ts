@@ -11,8 +11,10 @@ import {asyncTest} from "../util";
 // are compared and, if successful, the lowered MuPack/MuIL AST is compared to the expected final output.
 
 let testCases: string[] = [
-    "empty",
-    "empty_yaml",
+    // Basic language constructs.
+    "basic/empty",
+    "basic/empty_yaml",
+    "basic/arrays",
 
     // Module members and exports.
     "modules/var_1",

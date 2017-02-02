@@ -169,6 +169,10 @@ export class Transformer {
     private readonly diagnostics: diag.Diagnostic[]; // any diagnostics encountered during translation.
     private readonly loader: PackageLoader;          // a loader for resolving dependency packages.
 
+    // Cached symbols required during type checking:
+    private readonly builtinArrayType: ts.InterfaceType;           // the ECMA/TypeScript built-in array type.
+    private readonly builtinMapType: ts.InterfaceType | undefined; // the ECMA/TypeScript built-in map type.
+
     // A lookaside cache of resolved modules to their associated MuPackage metadata:
     private modulePackages: Map<ModuleReference, Promise<PackageInfo>>;
 
@@ -189,6 +193,36 @@ export class Transformer {
         this.diagnostics = [];
         this.loader = loader;
         this.modulePackages = new Map<ModuleReference, Promise<PackageInfo>>();
+
+        // Cache references to some important global symbols.
+        let globals: Map<string, ts.Symbol> = this.globals(ts.SymbolFlags.Interface);
+
+        // Find the built-in Array<T> type, used both for explicit "Array<T>" references and simple "T[]"s.
+        let builtinArraySymbol: ts.Symbol | undefined = globals.get("Array");
+        if (builtinArraySymbol) {
+            contract.assert(!!(builtinArraySymbol.flags & ts.SymbolFlags.Interface),
+                            "Expected built-in Array<T> type to be an interface");
+            this.builtinArrayType = <ts.InterfaceType>this.checker().getDeclaredTypeOfSymbol(builtinArraySymbol);
+            contract.assert(!!this.builtinArrayType, "Expected Array<T> symbol conversion to yield a valid type");
+            contract.assert(this.builtinArrayType.typeParameters.length === 1,
+                            `Expected Array<T> to have generic arity 1; ` +
+                            `got ${this.builtinArrayType.typeParameters.length} instead`);
+        }
+        else {
+            contract.fail("Expected to find a built-in Array<T> type");
+        }
+
+        // Find the built-in Map<K, V> type, used for ES6-style maps; when targeting pre-ES6, it might be missing.
+        let builtinMapSymbol: ts.Symbol | undefined = globals.get("Map");
+        if (builtinMapSymbol) {
+            contract.assert(!!(builtinMapSymbol.flags & ts.SymbolFlags.Interface),
+                            "Expected built-in Map<K, V> type to be an interface");
+            this.builtinMapType = <ts.InterfaceType>this.checker().getDeclaredTypeOfSymbol(builtinMapSymbol);
+            contract.assert(!!this.builtinMapType, "Expected Map<K, V> symbol conversion to yield a valid type");
+            contract.assert(this.builtinMapType.typeParameters.length === 2,
+                            `Expected Map<K, V> to have generic arity 2; ` +
+                            `got ${this.builtinMapType.typeParameters.length} instead`);
+        }
     }
 
     // Translates a TypeScript bound tree into its equivalent MuPack/MuIL AST form, one module per file.  This method is
@@ -229,6 +263,17 @@ export class Transformer {
     private checker(): ts.TypeChecker {
         contract.assert(!!this.script.tree);
         return this.script.tree!.getTypeChecker();
+    }
+
+    // globals returns the TypeScript globals symbol table.
+    private globals(flags: ts.SymbolFlags): Map<string, ts.Symbol> {
+        // TODO[marapongo/mu#52]: we are abusing getSymbolsInScope to access the global symbol table, because TypeScript
+        //     doesn't expose it.  It is conceivable that the undefined 1st parameter will cause troubles some day.
+        let globals = new Map<string, ts.Symbol>();
+        for (let sym of this.checker().getSymbolsInScope(<ts.Node><any>undefined, flags)) {
+            globals.set(sym.name, sym);
+        }
+        return globals;
     }
 
     // This just carries forward an existing location from another node.
@@ -480,10 +525,31 @@ export class Transformer {
             return tokens.boolType;
         }
         else if (ty.flags & ts.TypeFlags.Void) {
-            // void is represented as the absence of a type.
-            return undefined;
+            return undefined; // void is represented as the absence of a type.
         }
         else if (ty.symbol) {
+            // If it's an array or a map, translate it into the appropriate type token of that kind.
+            if (ty.flags & ts.TypeFlags.Object) {
+                if ((<ts.ObjectType>ty).objectFlags & ts.ObjectFlags.Reference) {
+                    let tyre = <ts.TypeReference>ty;
+                    if (tyre.target === this.builtinArrayType) {
+                        // Produce a token of the form "[]<elem>".
+                        contract.assert(tyre.typeArguments.length === 1);
+                        let elem: tokens.TypeToken | undefined = await this.resolveTypeToken(tyre.typeArguments[0]);
+                        contract.assert(!!elem);
+                        return `${tokens.arrayTypePrefix}${elem}`;
+                    }
+                    else if (tyre.target === this.builtinMapType) {
+                        // Produce a token of the form "map[<key>]<elem>".
+                        contract.assert(tyre.typeArguments.length === 2);
+                        let key: tokens.TypeToken | undefined = await this.resolveTypeToken(tyre.typeArguments[0]);
+                        contract.assert(!!key);
+                        let value: tokens.TypeToken | undefined = await this.resolveTypeToken(tyre.typeArguments[1]);
+                        contract.assert(!!value);
+                        return `${tokens.mapTypePrefix}${key}${tokens.mapTypeSeparator}${value}`;
+                    }
+                }
+            }
             return await this.resolveTypeTokenFromSymbol(ty.symbol);
         }
 

@@ -1,0 +1,10 @@
+{
+    "options": {
+        "lib": "es2016",
+        "target": "es2016"
+    },
+    "files": [
+        "index.ts"
+    ]
+}
+

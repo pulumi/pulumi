@@ -1,5 +1,5 @@
 {
-    "name": "empty_yaml",
+    "name": "basic/empty",
     "modules": {
         "empty": {
             "kind": "Module",
