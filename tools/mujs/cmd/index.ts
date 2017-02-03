@@ -3,7 +3,8 @@
 "use strict";
 
 import * as minimist from "minimist";
-import {log} from "nodejs-ts";
+import {fs, log} from "nodejs-ts";
+import * as fspath from "path";
 import * as mujs from "../lib";
 
 async function main(args: string[]): Promise<number> {
@@ -11,9 +12,11 @@ async function main(args: string[]): Promise<number> {
     let failed: boolean = false;
     let parsed: minimist.ParsedArgs = minimist(args, {
         boolean: [ "debug", "verbose" ],
-        string: [ "loglevel" ],
+        string: [ "format", "loglevel", "out" ],
         alias: {
+            "f": "format",
             "ll": "loglevel",
+            "o": "output",
         },
         unknown: (arg: string) => {
             if (arg[0] === "-") {
@@ -48,16 +51,58 @@ async function main(args: string[]): Promise<number> {
             // Default to pwd if no argument was supplied.
             process.cwd();
 
+    // By default, store the output in the current directory.
+    let output: string =
+        parsed["out"] ||
+        mujs.pack.mupackBase + mujs.pack.defaultFormatExtension;
+
+    // Pluck out the output format and path information.
+    let format: string;
+    let marshaler: ((out: any) => string) | undefined;
+    if (parsed["format"]) {
+        format = parsed["format"];
+        if (format && format[0] !== ".") {
+            format = "." + format;
+        }
+        marshaler = mujs.pack.marshalers.get(format)!;
+    }
+    else {
+        format = fspath.extname(output);
+        if (!format) {
+            format = mujs.pack.defaultFormatExtension;
+        }
+        marshaler = mujs.pack.marshalers.get(format)!;
+    }
+    if (!marshaler) {
+        let formats: string = "";
+        for (let supported of mujs.pack.marshalers) {
+            if (formats) {
+                formats += ", ";
+            }
+            formats += supported[0];
+        }
+        console.error(`Unrecognized MuPackage format extension: ${format};`);
+        console.error(`    available formats: ${formats}`);
+        return -3;
+    }
+
+    // Now go ahead and compile.
     let result: mujs.compiler.CompileResult = await mujs.compiler.compile(path);
     if (result.diagnostics.length > 0) {
         // If any errors occurred, print them out, and skip pretty-printing the AST.
         console.log(result.formatDiagnostics({ colors: true }));
     }
 
-    // Now just print the output to the console, but only if there weren't any errors.
+    // Now save (or print) the output so long as there weren't any errors.
     if (result.pkg && mujs.diag.success(result.diagnostics)) {
-        // TODO(joe): eventually we want a real compiler-like output scheme; for now, just print it.
-        console.log(JSON.stringify(result.pkg, null, 4));
+        let blob: string = marshaler(result.pkg);
+        if (output === "-") {
+            // "-" means print to stdout.
+            console.log(blob);
+        }
+        else {
+            await fs.writeFile(output, blob);
+        }
     }
 
     return 0;

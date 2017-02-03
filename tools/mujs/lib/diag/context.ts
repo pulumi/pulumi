@@ -59,7 +59,7 @@ export class Context {
 
                     // Now highlight the error/warning accordingly.
                     let post: number = msg.indexOf(":");
-                    contract.assert(post != -1);
+                    contract.assert(post !== -1);
                     switch (category) {
                         case DiagnosticCategory.Error:
                             colorized += colors.red(msg.substring(0, post+1));
@@ -67,6 +67,8 @@ export class Context {
                         case DiagnosticCategory.Warning:
                             colorized += colors.yellow(msg.substring(0, post+1));
                             break;
+                        default:
+                            contract.fail(`Unrecognized diagnostic category: ${category}`);
                     }
                     colorized += colors.white(msg.substring(post+1));
 

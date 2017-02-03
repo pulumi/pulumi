@@ -8,15 +8,6 @@ import * as fspath from "path";
 import * as diag from "../diag";
 import * as pack from "../pack";
 
-// projectFileBase is the base filename for Mufiles (sans extension).
-const projectFileBase = "Mu";
-
-// projectUnmarshalers is a mapping from Mufile extension to a function to unmarshal a raw blob.
-let projectUnmarshalers = new Map<string, (raw: string) => any>([
-    [ ".json", JSON.parse ],
-    [ ".yaml", yaml.load  ],
-]);
-
 // PackageLoader understands how to load a package.
 export class PackageLoader {
     private cache: Map<string, pack.Manifest>; // a cache of loaded packages.
@@ -37,8 +28,8 @@ export class PackageLoader {
         let blobPath: string | undefined;
         let search: string = fspath.resolve(root);
         while (!pkg && !blob) {
-            let base: string = fspath.join(search, projectFileBase);
-            for (let unmarshaler of projectUnmarshalers) {
+            let base: string = fspath.join(search, pack.mufileBase);
+            for (let unmarshaler of pack.unmarshalers) {
                 let path: string = base + unmarshaler[0];
 
                 // First, see if we have this package already in our cache.
@@ -104,10 +95,10 @@ export class PackageLoader {
             else {
                 // The file was missing; issue an error, and make sure to include the set of extensions we tried.
                 let triedExts: string[] = [];
-                for (let unmarshaler of projectUnmarshalers) {
+                for (let unmarshaler of pack.unmarshalers) {
                     triedExts.push(unmarshaler[0]);
                 }
-                diagnostics.push(dctx.newMissingMufileError(fspath.join(root, projectFileBase), triedExts));
+                diagnostics.push(dctx.newMissingMufileError(fspath.join(root, pack.mufileBase), triedExts));
             }
         }
 
