@@ -4,9 +4,9 @@ import * as mu from 'mu';
 import {SecurityGroup} from './securityGroup';
 import * as cloudformation from '../cloudformation';
 
-// An Amazon EC2 security group.
-// @name: aws/ec2/securityGroup
-// @website: http://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-ec2-security-group.html
+// An EC2 instance.
+// @name: aws/ec2/instance
+// @website: http://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-ec2-instance.html
 export class Instance extends cloudformation.Resource  {
     constructor(args: InstanceArgs) {
         cloudformation.expandTags(args);
