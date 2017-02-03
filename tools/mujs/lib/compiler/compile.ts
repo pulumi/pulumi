@@ -46,14 +46,14 @@ export class CompileResult {
     }
 
     // Formats a specific diagnostic 
-    public formatDiagnostic(index: number): string {
+    public formatDiagnostic(index: number, opts?: diag.FormatOptions): string {
         contract.assert(index >= 0 && index < this.diagnostics.length);
-        return this.dctx.formatDiagnostic(this.diagnostics[index]);
+        return this.dctx.formatDiagnostic(this.diagnostics[index], opts);
     }
 
     // Formats all of the diagnostics, separating each by a newline.
-    public formatDiagnostics(): string {
-        return this.dctx.formatDiagnostics(this.diagnostics);
+    public formatDiagnostics(opts?: diag.FormatOptions): string {
+        return this.dctx.formatDiagnostics(this.diagnostics, opts);
     }
 }
 

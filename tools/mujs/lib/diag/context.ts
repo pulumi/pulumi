@@ -1,5 +1,6 @@
 // Copyright 2016 Marapongo, Inc. All rights reserved.
 
+import * as colors from "colors";
 import {contract} from "nodejs-ts";
 import * as os from "os";
 import * as fspath from "path";
@@ -18,7 +19,7 @@ export class Context {
     /** Formatting **/
 
     // Formats a specific diagnostic 
-    public formatDiagnostic(d: Diagnostic): string {
+    public formatDiagnostic(d: Diagnostic, opts?: FormatOptions): string {
         // If the message is already formatted, return it as-is.
         // TODO: unify this formatting w/ TypeScript so they are uniform.
         if (d.preformatted) {
@@ -28,36 +29,105 @@ export class Context {
                    msg.substring(msg.length - os.EOL.length) === os.EOL) {
                 msg = d.message.substring(0, msg.length - os.EOL.length);
             }
+
+            // Until we've unified formatting w/ TypeScript, we must retroactively parse and apply colors.
+            if (opts && opts.colors) {
+                let colorized: string;
+                let catix: number | undefined;
+                let category: DiagnosticCategory | undefined;
+                for (let cat of [ DiagnosticCategory.Error, DiagnosticCategory.Warning ]) {
+                    catix = msg.indexOf(`${DiagnosticCategory[cat].toLowerCase()} TS`);
+                    if (catix !== -1) {
+                        category = cat;
+                        break;
+                    }
+                }
+                if (catix === undefined || catix === -1) {
+                    colorized = msg; // unrecognized format, just emit it as-is.
+                }
+                else {
+                    colorized = "";
+
+                    // See if there's a location part; if so, make it cyan.
+                    if (catix !== 0) {
+                        let pre: number = msg.indexOf(":");
+                        contract.assert(pre !== -1);
+                        colorized += colors.cyan(msg.substring(0, pre+1));
+                        colorized += msg.substring(pre+1, catix);
+                        msg = msg.substring(catix);
+                    }
+
+                    // Now highlight the error/warning accordingly.
+                    let post: number = msg.indexOf(":");
+                    contract.assert(post != -1);
+                    switch (category) {
+                        case DiagnosticCategory.Error:
+                            colorized += colors.red(msg.substring(0, post+1));
+                            break;
+                        case DiagnosticCategory.Warning:
+                            colorized += colors.yellow(msg.substring(0, post+1));
+                            break;
+                    }
+                    colorized += colors.white(msg.substring(post+1));
+
+                    msg = colorized;
+                }
+            }
+
             return msg;
         }
 
         // Otherwise, format it in the usual ways.
         let s = d.message;
+        if (opts && opts.colors) {
+            s = colors.white(s);
+        }
 
         // Now prepend both the category and the optional error number to the message.
         let category = DiagnosticCategory[d.category].toLowerCase();
         if (d.code) {
             category = `${category} MU${d.code}`;
         }
-        s = `${category}: ${s}`;
 
-        // Finally, if there is a location part, prepend that to the whole thing.
+        // Append a delimiter (we want this colorized if enabled).
+        category += ":";
+
+        if (opts && opts.colors) {
+            switch (d.category) {
+                case DiagnosticCategory.Error:
+                    category = colors.red(category);
+                    break;
+                case DiagnosticCategory.Warning:
+                    category = colors.yellow(category);
+                    break;
+                default:
+                    contract.fail(`Unexpected diagnostic category: ${d.category}`);
+            }
+        }
+
+        s = `${category} ${s}`;
+
+        // If there is a location part, prepend that to the whole thing (to come before the category/code).
         if (d.loc) {
-            // TODO: implement colorization and fancy source context, range-based pretty-printing.
-            s = `${d.loc.file}(${d.loc.start.line},${d.loc.start.column}): ${s}`;
+            // TODO: implementfancy source context, range-based pretty-printing.
+            let loc: string = `${d.loc.file}(${d.loc.start.line},${d.loc.start.column}):`;
+            if (opts && opts.colors) {
+                loc = colors.cyan(loc);
+            }
+            s = `${loc} ${s}`;
         }
 
         return s;
     }
 
     // Formats all of the diagnostics, separating each by a newline.
-    public formatDiagnostics(ds: Diagnostic[]): string {
+    public formatDiagnostics(ds: Diagnostic[], opts?: FormatOptions): string {
         let s: string = "";
         for (let d of ds) {
             if (s !== "") {
                 s += os.EOL;
             }
-            s += this.formatDiagnostic(d);
+            s += this.formatDiagnostic(d, opts);
         }
         return s;
     }
@@ -183,5 +253,10 @@ export class Context {
             loc:      this.locationFrom(node),
         };
     }
+}
+
+// FormatOptions controls the kind of formatting to apply, such as colorization, extended diagnostics, etc.
+export interface FormatOptions {
+    colors?: boolean; // If true, the output will be colorized.
 }
 

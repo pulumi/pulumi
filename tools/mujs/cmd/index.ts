@@ -51,7 +51,7 @@ async function main(args: string[]): Promise<number> {
     let result: mujs.compiler.CompileResult = await mujs.compiler.compile(path);
     if (result.diagnostics.length > 0) {
         // If any errors occurred, print them out, and skip pretty-printing the AST.
-        console.log(result.formatDiagnostics());
+        console.log(result.formatDiagnostics({ colors: true }));
     }
 
     if (result.pkg) {

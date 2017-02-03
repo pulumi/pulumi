@@ -2,6 +2,10 @@
 # yarn lockfile v1
 
 
+"@types/colors@^1.1.1":
+  version "1.1.1"
+  resolved "https://registry.yarnpkg.com/@types/colors/-/colors-1.1.1.tgz#49733928fb47cf11254b7611e2f6f85ff6020521"
+
 "@types/js-yaml":
   version "3.5.29"
   resolved "https://registry.yarnpkg.com/@types/js-yaml/-/js-yaml-3.5.29.tgz#29f4dd9314fbccb080d8bd84b9c23811ec5090c2"
