@@ -51,28 +51,34 @@ async function main(args: string[]): Promise<number> {
             // Default to pwd if no argument was supplied.
             process.cwd();
 
-    // By default, store the output in the current directory.
-    let output: string =
-        parsed["out"] ||
-        mujs.pack.mupackBase + mujs.pack.defaultFormatExtension;
-
-    // Pluck out the output format and path information.
-    let format: string;
-    let marshaler: ((out: any) => string) | undefined;
-    if (parsed["format"]) {
-        format = parsed["format"];
+    // Fetch the format and output arguments specified by the user.
+    let format: string | undefined = parsed["format"];
+    let output: string | undefined = parsed["out"];
+    if (format) {
+        // Ensure that the format has a leading ".".
         if (format && format[0] !== ".") {
             format = "." + format;
         }
-        marshaler = mujs.pack.marshalers.get(format)!;
     }
     else {
-        format = fspath.extname(output);
-        if (!format) {
-            format = mujs.pack.defaultFormatExtension;
+        // If there's an output path, try using its extension name.
+        if (output) {
+            format = fspath.extname(output);
         }
-        marshaler = mujs.pack.marshalers.get(format)!;
+
+        // Otherwise, by default, just use the MuPackage default extension.
+        if (!format) {
+            format = mujs.pack.defaultFormatExtension
+        }
     }
+
+    if (!output) {
+        // If no path has been specified, by default store the output in the current directory.
+        output = mujs.pack.mupackBase + format;
+    }
+
+    // Look up the marshaler for the given extension.  If none is found, it's an invalid extension.
+    let marshaler: ((out: any) => string) | undefined = mujs.pack.marshalers.get(format);
     if (!marshaler) {
         let formats: string = "";
         for (let supported of mujs.pack.marshalers) {
