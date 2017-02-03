@@ -18,3 +18,24 @@ export enum DiagnosticCategory {
     Error   = 1,
 }
 
+// success returns true if the diagnostics array contains zero errors.
+export function success(diags: Diagnostic[]): boolean {
+    return countErrors(diags) === 0;
+}
+
+// hasErrors returns true if the diagnostics array contains at least one error.
+export function hasErrors(diags: Diagnostic[]): boolean {
+    return countErrors(diags) > 0;
+}
+
+// countErrors returns the number of error diagnostics in the given array, if any.
+export function countErrors(diags: Diagnostic[]): number {
+    let errors: number = 0;
+    for (let diag of diags) {
+        if (diag.category === DiagnosticCategory.Error) {
+            errors++;
+        }
+    }
+    return errors;
+}
+

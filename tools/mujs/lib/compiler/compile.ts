@@ -25,7 +25,7 @@ export async function compile(path: string): Promise<CompileResult> {
 
     // Next, if there is a tree to transpile into MuPack/MuIL, then do it.
     let pkg: pack.Package | undefined;
-    if (script.tree) {
+    if (script.tree && diag.success(diagnostics)) {
         let result: TransformResult = await transform(script);
         pkg = result.pkg;
         diagnostics = diagnostics.concat(result.diagnostics);
