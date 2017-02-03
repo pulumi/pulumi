@@ -13,4 +13,5 @@ export class Thumbnailer extends mu.Stack {
             await this.dest.PutObject(thumb);
         });
     }
+}
 
