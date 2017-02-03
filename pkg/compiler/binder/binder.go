@@ -146,10 +146,13 @@ func (b *binder) bindModuleToken(node *ast.ModuleToken) *symbols.Module {
 	}
 
 	sym := b.lookupSymbolToken(node, tokens.Token(node.Tok), true)
-	if module, ok := sym.(*symbols.Module); ok {
-		return module
+	if sym != nil {
+		if module, ok := sym.(*symbols.Module); ok {
+			return module
+		}
+		b.Diag().Errorf(errors.ErrorSymbolNotFound.At(node),
+			node.Tok, fmt.Sprintf("symbol isn't a module: %v", reflect.TypeOf(sym)))
 	}
-	b.Diag().Errorf(errors.ErrorSymbolNotFound.At(node), node.Tok, "symbol isn't a module")
 	return nil
 }
 
@@ -237,11 +240,11 @@ func (b *binder) lookupSymbolToken(node ast.Node, tok tokens.Token, require bool
 			if _, has := b.ctx.Pkgs[pkg.Name()]; !has {
 				reason = fmt.Sprintf("package '%v' not found", pkg)
 			} else if _, has := b.ctx.Tokens[tokens.Token(mod)]; !has {
-				reason = fmt.Sprintf("module '%v' not found", pkg)
+				reason = fmt.Sprintf("module '%v' not found", mod)
 			} else if _, has := b.ctx.Tokens[tokens.Token(mem)]; !has {
-				reason = fmt.Sprintf("class '%v' not found", pkg)
+				reason = fmt.Sprintf("class '%v' not found", mem)
 			} else if _, has := b.ctx.Tokens[tokens.Token(clm)]; !has {
-				reason = fmt.Sprintf("class member '%v' not found", pkg)
+				reason = fmt.Sprintf("class member '%v' not found", clm)
 			} else {
 				reason = "invalid symbol token"
 			}
