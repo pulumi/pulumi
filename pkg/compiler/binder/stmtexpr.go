@@ -316,6 +316,7 @@ func (a *astBinder) checkLoadLocationExpression(node *ast.LoadLocationExpression
 }
 
 func (a *astBinder) checkNewExpression(node *ast.NewExpression) {
+	// TODO: look up the ctor.
 	// TODO: check the arguments.
 
 	var ty symbols.Type
@@ -335,10 +336,29 @@ func (a *astBinder) checkNewExpression(node *ast.NewExpression) {
 }
 
 func (a *astBinder) checkInvokeFunctionExpression(node *ast.InvokeFunctionExpression) {
-	// TODO: ensure the target is a function type.
-	// TODO: check the arguments.
-	// TODO: the result of this invocation is the return type.
-	contract.Failf("Binding of %v nodes not yet implemented", node.GetKind())
+	ty := a.b.ctx.RequireType(node.Function)
+	if funty, isfun := ty.(*symbols.FunctionType); isfun {
+		// Typecheck the arguments.
+		parc := len(funty.Parameters)
+		argc := 0
+		if node.Arguments != nil {
+			argc = len(*node.Arguments)
+		}
+		if parc != argc {
+			a.b.Diag().Errorf(errors.ErrorArgumentCountMismatch.At(node), parc, argc)
+		}
+		if argc > 0 {
+			for i := 0; i < parc && i < argc; i++ {
+				a.checkExprType((*node.Arguments)[i], funty.Parameters[i])
+			}
+		}
+
+		// The resulting type of this expression is the same as the function's return type.
+		a.b.ctx.RegisterType(node, funty.Return)
+	} else {
+		a.b.Diag().Errorf(errors.ErrorCannotInvokeNonFunction.At(node), ty)
+		a.b.ctx.RegisterType(node, types.Any)
+	}
 }
 
 func (a *astBinder) checkLambdaExpression(node *ast.LambdaExpression) {

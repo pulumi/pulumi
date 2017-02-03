@@ -27,4 +27,6 @@ var (
 	ErrorIllegalAssignmentLValue        = newError(519, "Cannot assign to the target LHS expression")
 	ErrorIllegalNumericAssignmentLValue = newError(520, "Cannot perform numeric assignment %v on a non-numeric LHS")
 	ErrorIllegalAssignmentTypes         = newError(521, "Cannot assign a value of type %v to target of type %v")
+	ErrorCannotInvokeNonFunction        = newError(522, "Cannot invoke a non-function; type '%v' is not a function")
+	ErrorArgumentCountMismatch          = newError(523, "Function expects %v arguments; got %v instead")
 )
