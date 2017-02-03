@@ -22,7 +22,7 @@ export interface SecurityGroupArgs extends cloudformation.TagArgs {
     // Description of the security group.
     readonly groupDescription: string;
     // The VPC in which this security group resides.
-    readonly vpc: VPC;
+    readonly vpc?: VPC;
     // A list of Amazon EC2 security group egress rules.
     securityGroupEgress?: SecurityGroupEgressRule[];
     // A list of Amazon EC2 security group ingress rules.
@@ -54,11 +54,11 @@ export interface SecurityGroupEgressRule extends SecurityGroupRule {
 // An EC2 Security Group Ingress Rule is an embedded property of the SecurityGroup (different from the resource).
 export interface SecurityGroupIngressRule extends SecurityGroupRule {
     // For VPC security groups only. Specifies the ID of the Amazon EC2 Security Group to allow access.
-    sourceSecurityGroup: SecurityGroup;
+    sourceSecurityGroup?: SecurityGroup;
     // For non-VPC security groups only. Specifies the name of the Amazon EC2 Security Group to use for access.
-    sourceSecurityGroupName: string;
+    sourceSecurityGroupName?: string;
     // Specifies the AWS Account ID of the owner of the Amazon EC2 Security Group that is specified in the
     // SourceSecurityGroupName property.
-    sourceSecurityGroupOwnerId: string;
+    sourceSecurityGroupOwnerId?: string;
 }
 
