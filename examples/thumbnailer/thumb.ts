@@ -5,6 +5,7 @@ export class Thumbnailer extends mu.Stack {
     private dest: mu.Bucket;   // the destination to store thumbnails in.
 
     constructor(source: mu.Bucket, dest: mu.Bucket) {
+        super();
         this.source = source;
         this.dest = dest;
         this.source.onObjectCreated(async (event) => {
