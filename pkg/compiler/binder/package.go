@@ -120,17 +120,40 @@ func (b *binder) resolveDep(dep pack.PackageURL) *symbols.ResolvedPackage {
 	return nil
 }
 
-// bindPackageModules recursively binds all modules and stores them in the given package.
+// bindPackageModules recursively binds all modules and stores them in the given package.  Note that this does not yet
+// bind module bodies -- both module and class methods -- because those require the top-levels for all modules first.
 func (b *binder) bindPackageModules(pkg *symbols.Package) {
 	contract.Require(pkg != nil, "pkg")
 	if pkg.Node.Modules != nil {
+		// First, for each module, simply create the symbol.  This ensures that inter-module references are found.
 		for modtok, mod := range *pkg.Node.Modules {
-			pkg.Modules[modtok] = b.bindModule(mod, pkg)
+			pkg.Modules[modtok] = b.createModule(mod, pkg)
+		}
+
+		// Now that every module has a symbol entry, bind all module imports.
+		for _, mod := range pkg.Modules {
+			b.bindModuleImports(mod)
+		}
+
+		// Next, we must bind the top level classes.  This is because inter-module references on classes might exist in
+		// many places (properties, signatures, exports, and so on).
+		for _, mod := range pkg.Modules {
+			b.bindModuleClasses(mod)
+		}
+
+		// Now we can safely bind the property and method members.
+		for _, mod := range pkg.Modules {
+			b.bindModuleMembers(mod)
+		}
+
+		// And finally, we can bind the exports, that might refer to all of the above.
+		for _, mod := range pkg.Modules {
+			b.bindModuleExports(mod)
 		}
 	}
 }
 
-// bindPackageMethodBodies binds all method bodies, in a second pass, after binding all symbol-level information.
+// bindPackageMethodBodies binds all method bodies, in a distinct pass, after binding all symbol-level information.
 func (b *binder) bindPackageMethodBodies(pkg *symbols.Package) {
 	contract.Require(pkg != nil, "pkg")
 	for _, module := range pkg.Modules {
