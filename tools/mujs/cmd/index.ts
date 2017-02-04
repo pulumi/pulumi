@@ -68,7 +68,7 @@ async function main(args: string[]): Promise<number> {
 
         // Otherwise, by default, just use the MuPackage default extension.
         if (!format) {
-            format = mujs.pack.defaultFormatExtension
+            format = mujs.pack.defaultFormatExtension;
         }
     }
 
