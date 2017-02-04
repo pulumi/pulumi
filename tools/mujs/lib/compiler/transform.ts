@@ -1049,8 +1049,8 @@ export class Transformer {
         let classtok: tokens.ModuleMemberToken = this.createModuleMemberToken(modtok, name.ident);
 
         // Discover any extends/implements clauses.
-        let extendType: tokens.TypeToken | undefined;
-        let implementTypes: tokens.TypeToken[] | undefined;
+        let extendType: ast.TypeToken | undefined;
+        let implementTypes: ast.TypeToken[] | undefined;
         if (node.heritageClauses) {
             for (let heritage of node.heritageClauses) {
                 switch (heritage.token) {
@@ -1062,7 +1062,10 @@ export class Transformer {
                             contract.assert(heritage.types.length === 1);
                             let extsym: ts.Symbol = this.checker().getSymbolAtLocation(heritage.types[0].expression);
                             contract.assert(!!extsym);
-                            extendType = await this.resolveTypeTokenFromSymbol(extsym);
+                            extendType = <ast.TypeToken>{
+                                kind: ast.typeTokenKind,
+                                tok:  await this.resolveTypeTokenFromSymbol(extsym),
+                            };
                         }
                         break;
                     case ts.SyntaxKind.ImplementsKeyword:
@@ -1076,7 +1079,10 @@ export class Transformer {
                             for (let impltype of heritage.types) {
                                 let implsym: ts.Symbol = this.checker().getSymbolAtLocation(impltype.expression);
                                 contract.assert(!!implsym);
-                                implementTypes.push(await this.resolveTypeTokenFromSymbol(implsym));
+                                implementTypes.push(<ast.TypeToken>{
+                                    kind: ast.typeTokenKind,
+                                    tok:  await this.resolveTypeTokenFromSymbol(implsym),
+                                });
                             }
                         }
                         break;
