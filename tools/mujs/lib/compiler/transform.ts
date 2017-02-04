@@ -2125,7 +2125,7 @@ export class Transformer {
     }
 
     private transformSuperExpression(node: ts.SuperExpression): ast.LoadLocationExpression {
-        let id: ast.Identifier = ident(tokens.superVariable);
+        let id: ast.Identifier = this.withLocation(node, ident(tokens.superVariable));
         return this.withLocation(node, <ast.LoadLocationExpression>{
             kind: ast.loadLocationExpressionKind,
             name: this.copyLocation(id, <ast.Token>{
@@ -2144,7 +2144,7 @@ export class Transformer {
     }
 
     private transformThisExpression(node: ts.ThisExpression): ast.LoadLocationExpression {
-        let id: ast.Identifier = ident(tokens.thisVariable);
+        let id: ast.Identifier = this.withLocation(node, ident(tokens.thisVariable));
         return this.withLocation(node, <ast.LoadLocationExpression>{
             kind: ast.loadLocationExpressionKind,
             name: this.copyLocation(id, <ast.Token>{
