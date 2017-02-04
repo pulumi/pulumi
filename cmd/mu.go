@@ -41,6 +41,7 @@ func NewMuCmd() *cobra.Command {
 	cmd.AddCommand(newEvalCmd())
 	cmd.AddCommand(newGetCmd())
 	cmd.AddCommand(newPlanCmd())
+	cmd.AddCommand(newVerifyCmd())
 	cmd.AddCommand(newVersionCmd())
 
 	return cmd

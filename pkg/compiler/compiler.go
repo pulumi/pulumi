@@ -34,6 +34,12 @@ type Compiler interface {
 	CompilePath(path string) graph.Graph
 	// CompilePackage compiles a given package object into its associated graph form.
 	CompilePackage(pkg *pack.Package) graph.Graph
+	// Verify detects a package from the workspace and validates its MuIL contents.
+	Verify() bool
+	// VerifyPath verifies a package given its path, validating that its MuIL contents are correct.
+	VerifyPath(path string) bool
+	// VerifyPackage verifies a given package object, validating that its MuIL contents are correct.
+	VerifyPackage(pkg *pack.Package) bool
 }
 
 // compiler is the canonical implementation of the Mu compiler.
@@ -100,30 +106,18 @@ func (c *compiler) Workspace() workspace.W { return c.w }
 
 // Compile attempts to detect the package from the current working directory and, provided that succeeds, compiles it.
 func (c *compiler) Compile() graph.Graph {
-	path, err := c.w.DetectPackage()
-	if err != nil {
-		c.Diag().Errorf(errors.ErrorIO, err)
-		return nil
-	} else if path == "" {
-		c.Diag().Errorf(errors.ErrorMissingMufile, c.ctx.Path)
-		return nil
-	} else {
+	if path := c.detectPackage(); path != "" {
 		return c.CompilePath(path)
 	}
+	return nil
 }
 
 // CompilePath loads a package at the given path and compiles it into a graph.
 func (c *compiler) CompilePath(path string) graph.Graph {
-	doc, err := diag.ReadDocument(path)
-	if err != nil {
-		c.Diag().Errorf(errors.ErrorCouldNotReadMufile.AtFile(path), err)
-		return nil
+	if pkg := c.readPackage(path); pkg != nil {
+		return c.CompilePackage(pkg)
 	}
-	pkg := c.reader.ReadPackage(doc)
-	if pkg == nil {
-		return nil
-	}
-	return c.CompilePackage(pkg)
+	return nil
 }
 
 // CompilePackage compiles the given package into a graph.
@@ -169,4 +163,52 @@ func (c *compiler) CompilePackage(pkg *pack.Package) graph.Graph {
 
 	// Finally ask the graph generator to return what it has seen in graph form.
 	return gg.Graph()
+}
+
+// Verify detects a package from the workspace and validates its MuIL contents.
+func (c *compiler) Verify() bool {
+	if path := c.detectPackage(); path != "" {
+		return c.VerifyPath(path)
+	}
+	return false
+}
+
+// VerifyPath verifies a package given its path, validating that its MuIL contents are correct.
+func (c *compiler) VerifyPath(path string) bool {
+	if pkg := c.readPackage(path); pkg != nil {
+		return c.VerifyPackage(pkg)
+	}
+	return false
+}
+
+// VerifyPackage verifies a given package object, validating that its MuIL contents are correct.
+func (c *compiler) VerifyPackage(pkg *pack.Package) bool {
+	// To verify a package, simply run the binder aspects of it.
+	b := binder.New(c.w, c.ctx, c.reader)
+	b.BindPackage(pkg)
+	return c.Diag().Success()
+}
+
+// detectPackage detects a package in the current workspace.
+func (c *compiler) detectPackage() string {
+	path, err := c.w.DetectPackage()
+	if err != nil {
+		c.Diag().Errorf(errors.ErrorIO, err)
+		return ""
+	}
+	if path == "" {
+		c.Diag().Errorf(errors.ErrorMissingMufile, c.ctx.Path)
+		return ""
+	}
+	return path
+}
+
+// readPackage loads a package from the given path, issuing errors if anything bad happens.
+func (c *compiler) readPackage(path string) *pack.Package {
+	doc, err := diag.ReadDocument(path)
+	if err != nil {
+		c.Diag().Errorf(errors.ErrorCouldNotReadMufile.AtFile(path), err)
+		return nil
+	}
+	return c.reader.ReadPackage(doc)
 }
