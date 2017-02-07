@@ -31,7 +31,6 @@ func (node *DefinitionNode) GetDescription() *string { return node.Description }
 // Module contains members, including variables, functions, and/or classes.
 type Module struct {
 	DefinitionNode
-	Default bool            `json:"default,omitempty"`
 	Imports *[]*ModuleToken `json:"imports,omitempty"`
 	Members *ModuleMembers  `json:"members,omitempty"`
 }

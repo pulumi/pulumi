@@ -209,21 +209,24 @@ func (b *binder) lookupSymbolToken(node ast.Node, tok tokens.Token, require bool
 	pkg, mod, mem, clm := tok.Tokens()
 	if mod != "" && mod.Name() == tokens.DefaultModule {
 		if pkgsym, has := b.ctx.Pkgs[pkg.Name()]; has {
-			// Find the default.
-			for _, modsym := range pkgsym.Pkg.Modules {
-				if modsym.Default() {
-					mod = tokens.Module(modsym.Token())
-					break
+			// Fetch the default module (if there is one; if not, we fall through and fail below).
+			defmod := pkgsym.Pkg.Default()
+			if defmod != nil {
+				contract.Assert(*defmod != "")
+
+				// Recreate the token using the new module value.
+				mod = tokens.NewModuleToken(pkg, *defmod)
+				if mem != "" {
+					mem = tokens.NewModuleMemberToken(mod, mem.Name())
+					if clm != "" {
+						clm = tokens.NewClassMemberToken(tokens.Type(mem), clm.Name())
+						tok = tokens.Token(clm)
+					} else {
+						tok = tokens.Token(mem)
+					}
+				} else {
+					tok = tokens.Token(mod)
 				}
-			}
-			// Now recreate the token accordingly.
-			if clm != "" {
-				tok = tokens.Token(clm)
-			} else if mem != "" {
-				tok = tokens.Token(mem)
-			} else {
-				contract.Assert(mod != "")
-				tok = tokens.Token(mod)
 			}
 		}
 	}

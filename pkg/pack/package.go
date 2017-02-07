@@ -18,8 +18,9 @@ type Package struct {
 	Website     *string `json:"website,omitempty"`     // an optional website for additional info.
 	License     *string `json:"license,omitempty"`     // an optional license governing this package's usage.
 
-	Dependencies *Dependencies `json:"dependencies,omitempty"` // all of the package dependencies.
-	Modules      *ast.Modules  `json:"modules,omitempty"`      // a collection of top-level modules.
+	Dependencies *Dependencies      `json:"dependencies,omitempty"` // all of the package dependencies.
+	Modules      *ast.Modules       `json:"modules,omitempty"`      // a collection of top-level modules.
+	Default      *tokens.ModuleName `json:"default,omitempty"`      // an optional default "entrypoint" module.
 
 	Doc *diag.Document `json:"-"` // the document from which this package came.
 }
