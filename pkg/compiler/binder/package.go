@@ -5,6 +5,7 @@ package binder
 import (
 	"github.com/golang/glog"
 
+	"github.com/marapongo/mu/pkg/compiler/ast"
 	"github.com/marapongo/mu/pkg/compiler/errors"
 	"github.com/marapongo/mu/pkg/compiler/symbols"
 	"github.com/marapongo/mu/pkg/diag"
@@ -126,29 +127,30 @@ func (b *binder) bindPackageModules(pkg *symbols.Package) {
 	contract.Require(pkg != nil, "pkg")
 	if pkg.Node.Modules != nil {
 		// First, for each module, simply create the symbol.  This ensures that inter-module references are found.
-		for modtok, mod := range *pkg.Node.Modules {
-			pkg.Modules[modtok] = b.createModule(mod, pkg)
+		modules := *pkg.Node.Modules
+		for _, modtok := range ast.StableModules(modules) {
+			pkg.Modules[modtok] = b.createModule(modules[modtok], pkg)
 		}
 
 		// Now that every module has a symbol entry, bind all module imports.
-		for _, mod := range pkg.Modules {
-			b.bindModuleImports(mod)
+		for _, mod := range symbols.StableModuleMap(pkg.Modules) {
+			b.bindModuleImports(pkg.Modules[mod])
 		}
 
 		// Next, we must bind the top level classes.  This is because inter-module references on classes might exist in
 		// many places (properties, signatures, exports, and so on).
-		for _, mod := range pkg.Modules {
-			b.bindModuleClasses(mod)
+		for _, mod := range symbols.StableModuleMap(pkg.Modules) {
+			b.bindModuleClasses(pkg.Modules[mod])
 		}
 
 		// Now we can safely bind the property and method members.
-		for _, mod := range pkg.Modules {
-			b.bindModuleMembers(mod)
+		for _, mod := range symbols.StableModuleMap(pkg.Modules) {
+			b.bindModuleMembers(pkg.Modules[mod])
 		}
 
 		// And finally, we can bind the exports, that might refer to all of the above.
-		for _, mod := range pkg.Modules {
-			b.bindModuleExports(mod)
+		for _, mod := range symbols.StableModuleMap(pkg.Modules) {
+			b.bindModuleExports(pkg.Modules[mod])
 		}
 	}
 }
@@ -156,7 +158,7 @@ func (b *binder) bindPackageModules(pkg *symbols.Package) {
 // bindPackageMethodBodies binds all method bodies, in a distinct pass, after binding all symbol-level information.
 func (b *binder) bindPackageMethodBodies(pkg *symbols.Package) {
 	contract.Require(pkg != nil, "pkg")
-	for _, module := range pkg.Modules {
-		b.bindModuleMethodBodies(module)
+	for _, mod := range symbols.StableModuleMap(pkg.Modules) {
+		b.bindModuleMethodBodies(pkg.Modules[mod])
 	}
 }

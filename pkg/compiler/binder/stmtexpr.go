@@ -272,8 +272,10 @@ func (a *astBinder) checkObjectLiteral(node *ast.ObjectLiteral) {
 			}
 
 			// Issue an error about any missing required properties.
-			for name, member := range ty.TypeMembers() {
+			membs := ty.TypeMembers()
+			for _, name := range symbols.StableClassMemberMap(membs) {
 				if _, has := props[name]; !has {
+					member := membs[name]
 					if !member.Optional() && member.Default() == nil {
 						a.b.Diag().Errorf(errors.ErrorMissingRequiredProperty.At(node), name)
 					}

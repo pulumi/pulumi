@@ -35,8 +35,9 @@ func (b *binder) bindClass(node *ast.Class, parent *symbols.Module) *symbols.Cla
 
 	// Next, bind each member at the symbolic level; in particular, we do not yet bind bodies of methods.
 	if node.Members != nil {
-		for memtok, member := range *node.Members {
-			class.Members[memtok] = b.bindClassMember(member, class)
+		members := *node.Members
+		for _, memtok := range ast.StableClassMembers(members) {
+			class.Members[memtok] = b.bindClassMember(members[memtok], class)
 		}
 	}
 
@@ -79,8 +80,8 @@ func (b *binder) bindClassMethod(node *ast.ClassMethod, parent *symbols.Class) *
 }
 
 func (b *binder) bindClassMethodBodies(class *symbols.Class) {
-	for _, member := range class.Members {
-		switch m := member.(type) {
+	for _, member := range symbols.StableClassMemberMap(class.Members) {
+		switch m := class.Members[member].(type) {
 		case *symbols.ClassMethod:
 			b.bindClassMethodBody(m)
 		}

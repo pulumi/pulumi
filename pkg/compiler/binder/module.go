@@ -46,7 +46,9 @@ func (b *binder) bindModuleClasses(module *symbols.Module) {
 
 	// Now bind all class members.
 	if module.Node.Members != nil {
-		for nm, member := range *module.Node.Members {
+		members := *module.Node.Members
+		for _, nm := range ast.StableModuleMembers(members) {
+			member := members[nm]
 			if class, isclass := member.(*ast.Class); isclass {
 				module.Members[nm] = b.bindClass(class, module)
 			}
@@ -66,7 +68,9 @@ func (b *binder) bindModuleMembers(module *symbols.Module) {
 
 	// Now bind all module methods and properties.
 	if module.Node.Members != nil {
-		for nm, member := range *module.Node.Members {
+		members := *module.Node.Members
+		for _, nm := range ast.StableModuleMembers(members) {
+			member := members[nm]
 			if method, ismethod := member.(*ast.ModuleMethod); ismethod {
 				module.Members[nm] = b.bindModuleMethod(method, module)
 			} else if property, isproperty := member.(*ast.ModuleProperty); isproperty {
@@ -88,7 +92,9 @@ func (b *binder) bindModuleExports(module *symbols.Module) {
 
 	// Now bind all module methods and properties.
 	if module.Node.Members != nil {
-		for nm, member := range *module.Node.Members {
+		members := *module.Node.Members
+		for _, nm := range ast.StableModuleMembers(members) {
+			member := members[nm]
 			if export, isexport := member.(*ast.Export); isexport {
 				module.Members[nm] = b.bindExport(export, module)
 			}
@@ -141,7 +147,8 @@ func (b *binder) bindModuleMethodBodies(module *symbols.Module) {
 	defer func() { b.ctx.Currmodule = priormodule }()
 
 	// Just dig through, find all ModuleMethod and ClassMethod symbols, and bind them.
-	for _, member := range module.Members {
+	for _, nm := range symbols.StableModuleMemberMap(module.Members) {
+		member := module.Members[nm]
 		switch m := member.(type) {
 		case *symbols.ModuleMethod:
 			b.bindModuleMethodBody(m)
