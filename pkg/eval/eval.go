@@ -960,9 +960,8 @@ func (e *evaluator) evalUnaryOperatorExpressionFor(node *ast.UnaryOperatorExpres
 		e.evalAssign(*opandloc, new)
 		if node.Postfix {
 			return old, nil
-		} else {
-			return new, nil
 		}
+		return new, nil
 	case ast.OpMinusMinus:
 		// The target is an l-value; we must load it, -- it, and return the appropriate prefix/postfix value.
 		ptr := opand.PointerValue()
@@ -972,9 +971,8 @@ func (e *evaluator) evalUnaryOperatorExpressionFor(node *ast.UnaryOperatorExpres
 		e.evalAssign(*opandloc, new)
 		if node.Postfix {
 			return old, nil
-		} else {
-			return new, nil
 		}
+		return new, nil
 	default:
 		contract.Failf("Unrecognized unary operator: %v", node.Operator)
 		return nil, nil
@@ -1027,9 +1025,8 @@ func (e *evaluator) evalBinaryOperatorExpression(node *ast.BinaryOperatorExpress
 		// If the lhs/rhs are strings, concatenate them; if numbers, + them.
 		if lhs.Type() == types.String {
 			return e.alloc.NewString(lhs.StringValue() + rhs.StringValue()), nil
-		} else {
-			return e.alloc.NewNumber(lhs.NumberValue() + rhs.NumberValue()), nil
 		}
+		return e.alloc.NewNumber(lhs.NumberValue() + rhs.NumberValue()), nil
 	case ast.OpSubtract:
 		// Both targets are numbers; fetch them (asserting their types), and - them.
 		return e.alloc.NewNumber(lhs.NumberValue() - rhs.NumberValue()), nil

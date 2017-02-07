@@ -67,7 +67,7 @@ func (a *Allocator) NewFunction(fnc symbols.Function, this *rt.Object) *rt.Objec
 	return obj
 }
 
-// NewPointerObject allocates a new pointer-like object that wraps the given reference.
+// NewPointer allocates a new pointer-like object that wraps the given reference.
 func (a *Allocator) NewPointer(t symbols.Type, ptr *rt.Pointer) *rt.Object {
 	obj := rt.NewPointerObject(t, ptr)
 	a.onNewObject(obj)
