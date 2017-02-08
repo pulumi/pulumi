@@ -14,11 +14,11 @@ func (b *binder) bindClass(node *ast.Class, parent *symbols.Module) *symbols.Cla
 	glog.V(3).Infof("Binding module '%v' class '%v'", parent.Name(), node.Name.Ident)
 
 	// Bind base type tokens to actual symbols.
-	extends := b.bindType(node.Extends)
+	extends := b.ctx.LookupType(node.Extends)
 	var implements symbols.Types
 	if node.Implements != nil {
 		for _, impltok := range *node.Implements {
-			if impl := b.bindType(impltok); impl != nil {
+			if impl := b.ctx.LookupType(impltok); impl != nil {
 				implements = append(implements, impl)
 			}
 		}
@@ -62,7 +62,7 @@ func (b *binder) bindClassProperty(node *ast.ClassProperty, parent *symbols.Clas
 	glog.V(3).Infof("Binding class '%v' property '%v'", parent.Name(), node.Name.Ident)
 
 	// Look up this node's type and inject it into the type table.
-	typ := b.bindType(node.Type)
+	typ := b.ctx.LookupType(node.Type)
 	sym := symbols.NewClassPropertySym(node, parent, typ)
 	b.ctx.RegisterSymbol(node, sym)
 	return sym
@@ -72,7 +72,7 @@ func (b *binder) bindClassMethod(node *ast.ClassMethod, parent *symbols.Class) *
 	glog.V(3).Infof("Binding class '%v' method '%v'", parent.Name(), node.Name.Ident)
 
 	// Make a function type out of this method and inject it into the type table.
-	typ := b.bindFunctionType(node)
+	typ := b.ctx.LookupFunctionType(node)
 	sym := symbols.NewClassMethodSym(node, parent, typ)
 	b.ctx.RegisterSymbol(node, sym)
 

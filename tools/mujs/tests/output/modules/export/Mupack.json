@@ -125,7 +125,7 @@
                                         "kind": "LoadLocationExpression",
                                         "name": {
                                             "kind": "Token",
-                                            "tok": "export:other/w",
+                                            "tok": "export:other:w",
                                             "loc": {
                                                 "file": "other.ts",
                                                 "start": {
@@ -240,7 +240,7 @@
                     "access": "public",
                     "referent": {
                         "kind": "Token",
-                        "tok": "export:index/other",
+                        "tok": "export:index:other",
                         "loc": {
                             "file": "index.ts",
                             "start": {
@@ -285,7 +285,7 @@
                     "access": "public",
                     "referent": {
                         "kind": "Token",
-                        "tok": "export:index/C",
+                        "tok": "export:index:C",
                         "loc": {
                             "file": "index.ts",
                             "start": {
@@ -330,7 +330,7 @@
                     "access": "public",
                     "referent": {
                         "kind": "Token",
-                        "tok": "export:index/I",
+                        "tok": "export:index:I",
                         "loc": {
                             "file": "index.ts",
                             "start": {
@@ -375,7 +375,7 @@
                     "access": "public",
                     "referent": {
                         "kind": "Token",
-                        "tok": "export:index/v",
+                        "tok": "export:index:v",
                         "loc": {
                             "file": "index.ts",
                             "start": {
@@ -418,7 +418,7 @@
                                         "kind": "LoadLocationExpression",
                                         "name": {
                                             "kind": "Token",
-                                            "tok": "export:index/v",
+                                            "tok": "export:index:v",
                                             "loc": {
                                                 "file": "index.ts",
                                                 "start": {

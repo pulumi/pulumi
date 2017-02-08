@@ -78,13 +78,19 @@ func TestBadTypeNotFound(t *testing.T) {
 	sink := testBind("testdata", "bad__type_not_found")
 
 	// Check that the compiler complained about the type missisng.
-	d := errors.ErrorTypeNotFound
-	assert.Equal(t, 1, sink.Errors(), "expected a single error")
+	assert.Equal(t, 2, sink.Errors(), "expected a single error")
+	d1 := errors.ErrorSymbolNotFound
 	assert.Equal(t,
 		fmt.Sprintf("%v: %v%v: %v\n",
-			diag.DefaultSinkErrorPrefix, diag.DefaultSinkIDPrefix, d.ID,
-			fmt.Sprintf(d.Message, "missing/package:bad/module/Clazz", "symbol missing")),
+			diag.DefaultSinkErrorPrefix, diag.DefaultSinkIDPrefix, d1.ID,
+			fmt.Sprintf(d1.Message, "missing/package:bad/module/Clazz", "package 'missing/package' not found")),
 		sink.ErrorMsgs()[0])
+	d2 := errors.ErrorTypeNotFound
+	assert.Equal(t,
+		fmt.Sprintf("%v: %v%v: %v\n",
+			diag.DefaultSinkErrorPrefix, diag.DefaultSinkIDPrefix, d2.ID,
+			fmt.Sprintf(d2.Message, "missing/package:bad/module/Clazz", "type symbol not found")),
+		sink.ErrorMsgs()[1])
 }
 
 func TestGoodPrimitiveTypes(t *testing.T) {

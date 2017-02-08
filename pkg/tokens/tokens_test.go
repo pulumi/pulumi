@@ -24,7 +24,7 @@ func TestTokens(t *testing.T) {
 	mod := NewModuleToken(pkg, ModuleName(m))
 	assert.Equal(t, m, mod.Name().String())
 	assert.Equal(t, p, mod.Package().Name().String())
-	assert.Equal(t, p+ModuleDelimiter+m, mod.String())
+	assert.Equal(t, p+TokenDelimiter+m, mod.String())
 
 	// Module member tokens/names.
 	mm := "memby"
@@ -34,7 +34,7 @@ func TestTokens(t *testing.T) {
 	assert.Equal(t, mm, modm.Name().String())
 	assert.Equal(t, m, modm.Module().Name().String())
 	assert.Equal(t, p, modm.Module().Package().Name().String())
-	assert.Equal(t, p+ModuleDelimiter+m+ModuleMemberDelimiter+mm, modm.String())
+	assert.Equal(t, p+TokenDelimiter+m+TokenDelimiter+mm, modm.String())
 
 	// Class member tokens/names.
 	cm := "property"
@@ -45,5 +45,5 @@ func TestTokens(t *testing.T) {
 	assert.Equal(t, mm, clm.Class().Name().String())
 	assert.Equal(t, m, clm.Class().Module().Name().String())
 	assert.Equal(t, p, clm.Class().Module().Package().Name().String())
-	assert.Equal(t, p+ModuleDelimiter+m+ModuleMemberDelimiter+mm+ClassMemberDelimiter+cm, clm.String())
+	assert.Equal(t, p+TokenDelimiter+m+TokenDelimiter+mm+TokenDelimiter+cm, clm.String())
 }

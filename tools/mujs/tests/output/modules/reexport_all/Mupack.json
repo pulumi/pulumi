@@ -125,7 +125,7 @@
                                         "kind": "LoadLocationExpression",
                                         "name": {
                                             "kind": "Token",
-                                            "tok": "reexport_all:other/v",
+                                            "tok": "reexport_all:other:v",
                                             "loc": {
                                                 "file": "other.ts",
                                                 "start": {
@@ -213,7 +213,7 @@
                     "access": "public",
                     "referent": {
                         "kind": "Token",
-                        "tok": "reexport_all:other/C",
+                        "tok": "reexport_all:other:C",
                         "loc": {
                             "file": "index.ts",
                             "start": {
@@ -247,7 +247,7 @@
                     "access": "public",
                     "referent": {
                         "kind": "Token",
-                        "tok": "reexport_all:other/I",
+                        "tok": "reexport_all:other:I",
                         "loc": {
                             "file": "index.ts",
                             "start": {
@@ -281,7 +281,7 @@
                     "access": "public",
                     "referent": {
                         "kind": "Token",
-                        "tok": "reexport_all:other/v",
+                        "tok": "reexport_all:other:v",
                         "loc": {
                             "file": "index.ts",
                             "start": {

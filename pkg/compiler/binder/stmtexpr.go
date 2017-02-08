@@ -166,7 +166,7 @@ func (a *astBinder) checkIfStatement(node *ast.IfStatement) {
 
 func (a *astBinder) visitLocalVariable(node *ast.LocalVariable) {
 	// Encountering a new local variable results in registering it; both to the type and symbol table.
-	ty := a.b.bindType(node.Type)
+	ty := a.b.ctx.LookupType(node.Type)
 	sym := symbols.NewLocalVariableSym(node, ty)
 	a.b.ctx.RegisterSymbol(node, ty)
 	a.b.ctx.Scope.TryRegister(node, sym)
@@ -230,7 +230,7 @@ func (a *astBinder) checkArrayLiteral(node *ast.ArrayLiteral) {
 	if node.ElemType == nil {
 		a.b.ctx.RegisterType(node, types.AnyArray)
 	} else {
-		elemType := a.b.bindType(node.ElemType)
+		elemType := a.b.ctx.LookupType(node.ElemType)
 		a.b.ctx.RegisterType(node, symbols.NewArrayType(elemType))
 
 		// Ensure the elements, if any, are of the right type.
@@ -247,7 +247,7 @@ func (a *astBinder) checkObjectLiteral(node *ast.ObjectLiteral) {
 	if node.Type == nil {
 		a.b.ctx.RegisterType(node, types.Any)
 	} else {
-		ty := a.b.bindType(node.Type)
+		ty := a.b.ctx.LookupType(node.Type)
 		a.b.ctx.RegisterType(node, ty)
 
 		// Only permit object literals for records and interfaces.  Classes have constructors.
@@ -258,7 +258,7 @@ func (a *astBinder) checkObjectLiteral(node *ast.ObjectLiteral) {
 			props := make(map[tokens.ClassMemberName]bool)
 			if node.Properties != nil {
 				for _, init := range *node.Properties {
-					sym := a.b.requireClassMember(init.Property, ty, init.Property.Tok)
+					sym := a.b.ctx.RequireClassMember(init.Property, ty, init.Property.Tok)
 					if sym != nil {
 						switch s := sym.(type) {
 						case *symbols.ClassProperty, *symbols.ClassMethod:
@@ -291,11 +291,11 @@ func (a *astBinder) checkLoadLocationExpression(node *ast.LoadLocationExpression
 	if node.Object == nil {
 		// If there is no object, we either have a "simple" local variable reference or a qualified module property or
 		// function identifier.  In both cases, requireToken will handle it for us.
-		sym = a.b.requireToken(node.Name, node.Name.Tok)
+		sym = a.b.ctx.RequireToken(node.Name, node.Name.Tok)
 	} else {
 		// If there's an object, we are accessing a class member property or function.
 		typ := a.b.ctx.RequireType(*node.Object)
-		sym = a.b.requireClassMember(node.Name, typ, tokens.ClassMember(node.Name.Tok))
+		sym = a.b.ctx.RequireClassMember(node.Name, typ, tokens.ClassMember(node.Name.Tok))
 	}
 
 	// Produce a type of the right kind from the target location.
@@ -325,7 +325,7 @@ func (a *astBinder) checkNewExpression(node *ast.NewExpression) {
 	if node.Type == nil {
 		ty = types.Any
 	} else {
-		ty = a.b.bindType(node.Type)
+		ty = a.b.ctx.LookupType(node.Type)
 		if class, isclass := ty.(*symbols.Class); isclass {
 			// Ensure we're not creating an abstract class.
 			if class.Abstract() {
@@ -373,7 +373,7 @@ func (a *astBinder) checkLambdaExpression(node *ast.LambdaExpression) {
 	}
 	var ret symbols.Type
 	if pret := node.GetReturnType(); pret != nil {
-		ret = a.b.bindType(pret)
+		ret = a.b.ctx.LookupType(pret)
 	}
 	a.b.ctx.RegisterType(node, symbols.NewFunctionType(params, ret))
 }
@@ -527,7 +527,7 @@ func (a *astBinder) checkBinaryOperatorExpression(node *ast.BinaryOperatorExpres
 
 func (a *astBinder) checkCastExpression(node *ast.CastExpression) {
 	// TODO: validate that this is legal.
-	a.b.ctx.RegisterType(node, a.b.bindType(node.Type))
+	a.b.ctx.RegisterType(node, a.b.ctx.LookupType(node.Type))
 }
 
 func (a *astBinder) checkTypeOfExpression(node *ast.TypeOfExpression) {

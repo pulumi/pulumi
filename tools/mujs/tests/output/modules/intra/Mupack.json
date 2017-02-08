@@ -119,7 +119,7 @@
                                     },
                                     "type": {
                                         "kind": "TypeToken",
-                                        "tok": "modules/intra:index/A",
+                                        "tok": "modules/intra:index:A",
                                         "loc": {
                                             "file": "index.ts",
                                             "start": {
@@ -152,7 +152,7 @@
                                     },
                                     "type": {
                                         "kind": "TypeToken",
-                                        "tok": "modules/intra:index/B",
+                                        "tok": "modules/intra:index:B",
                                         "loc": {
                                             "file": "index.ts",
                                             "start": {

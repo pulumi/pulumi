@@ -26,7 +26,7 @@ func (b *binder) bindModuleImports(module *symbols.Module) {
 	// Now bind all imports to concrete symbols: these are simple token bindings.
 	if module.Node.Imports != nil {
 		for _, imptok := range *module.Node.Imports {
-			if imp := b.bindModuleToken(imptok); imp != nil {
+			if imp := b.ctx.LookupModule(imptok); imp != nil {
 				module.Imports = append(module.Imports, imp)
 			}
 		}
@@ -124,7 +124,7 @@ func (b *binder) bindExport(node *ast.Export, parent *symbols.Module) *symbols.E
 	glog.V(3).Infof("Binding module '%v' export '%v'", parent.Name(), node.Name.Ident)
 
 	// To bind an export, simply look up the referent symbol and associate this name with it.
-	if refsym := b.lookupSymbolToken(node.Referent, node.Referent.Tok, true); refsym != nil {
+	if refsym := b.ctx.LookupSymbol(node.Referent, node.Referent.Tok, true); refsym != nil {
 		sym := symbols.NewExportSym(node, parent, refsym)
 		b.ctx.RegisterSymbol(node, sym)
 		return sym
@@ -136,7 +136,7 @@ func (b *binder) bindModuleProperty(node *ast.ModuleProperty, parent *symbols.Mo
 	glog.V(3).Infof("Binding module '%v' property '%v'", parent.Name(), node.Name.Ident)
 
 	// Look up this node's type and inject it into the type table.
-	ty := b.bindType(node.Type)
+	ty := b.ctx.LookupType(node.Type)
 	sym := symbols.NewModulePropertySym(node, parent, ty)
 	b.ctx.RegisterSymbol(node, sym)
 	return sym
@@ -146,7 +146,7 @@ func (b *binder) bindModuleMethod(node *ast.ModuleMethod, parent *symbols.Module
 	glog.V(3).Infof("Binding module '%v' method '%v'", parent.Name(), node.Name.Ident)
 
 	// Make a function type out of this method and inject it into the type table.
-	ty := b.bindFunctionType(node)
+	ty := b.ctx.LookupFunctionType(node)
 	sym := symbols.NewModuleMethodSym(node, parent, ty)
 	b.ctx.RegisterSymbol(node, sym)
 

@@ -265,7 +265,7 @@
                                         "kind": "LoadLocationExpression",
                                         "name": {
                                             "kind": "Token",
-                                            "tok": "basic/arrays:index/a1",
+                                            "tok": "basic/arrays:index:a1",
                                             "loc": {
                                                 "file": "index.ts",
                                                 "start": {
@@ -331,7 +331,7 @@
                                         "kind": "LoadLocationExpression",
                                         "name": {
                                             "kind": "Token",
-                                            "tok": "basic/arrays:index/a2",
+                                            "tok": "basic/arrays:index:a2",
                                             "loc": {
                                                 "file": "index.ts",
                                                 "start": {
@@ -446,7 +446,7 @@
                                         "kind": "LoadLocationExpression",
                                         "name": {
                                             "kind": "Token",
-                                            "tok": "basic/arrays:index/a3",
+                                            "tok": "basic/arrays:index:a3",
                                             "loc": {
                                                 "file": "index.ts",
                                                 "start": {
@@ -561,7 +561,7 @@
                                         "kind": "LoadLocationExpression",
                                         "name": {
                                             "kind": "Token",
-                                            "tok": "basic/arrays:index/a4",
+                                            "tok": "basic/arrays:index:a4",
                                             "loc": {
                                                 "file": "index.ts",
                                                 "start": {
@@ -695,7 +695,7 @@
                                         "kind": "LoadLocationExpression",
                                         "name": {
                                             "kind": "Token",
-                                            "tok": "basic/arrays:index/a5",
+                                            "tok": "basic/arrays:index:a5",
                                             "loc": {
                                                 "file": "index.ts",
                                                 "start": {
@@ -829,7 +829,7 @@
                                         "kind": "LoadLocationExpression",
                                         "name": {
                                             "kind": "Token",
-                                            "tok": "basic/arrays:index/a6",
+                                            "tok": "basic/arrays:index:a6",
                                             "loc": {
                                                 "file": "index.ts",
                                                 "start": {
@@ -1032,7 +1032,7 @@
                                         "kind": "LoadLocationExpression",
                                         "name": {
                                             "kind": "Token",
-                                            "tok": "basic/arrays:index/a7",
+                                            "tok": "basic/arrays:index:a7",
                                             "loc": {
                                                 "file": "index.ts",
                                                 "start": {

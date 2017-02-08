@@ -794,8 +794,8 @@ func (e *evaluator) evalLoadLocation(node *ast.LoadLocationExpression, lval bool
 		ty = loc.Type()
 		sym = loc
 	} else {
-		sym = e.ctx.RequireSymbolToken(tok)
-		contract.Assert(sym != nil)
+		sym = e.ctx.LookupSymbol(node.Name, tok, false)
+		contract.Assert(sym != nil) // don't issue errors; we shouldn't ever get here if verification failed.
 		switch s := sym.(type) {
 		case *symbols.ClassProperty:
 			// Search the class's properties and, if not present, allocate a new one.

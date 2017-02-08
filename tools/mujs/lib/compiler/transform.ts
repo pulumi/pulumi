@@ -371,23 +371,23 @@ export class Transformer {
         }
 
         // The module token is the package name, plus a delimiter, plus the module name.
-        return `${pkginfo.pkg.name}${tokens.moduleDelimiter}${moduleName}`;
+        return `${pkginfo.pkg.name}${tokens.tokenDelimiter}${moduleName}`;
     }
 
     // getModuleName extracts a name from the given module token as a string.
     private getModuleName(tok: tokens.ModuleToken): string {
-        return tok.substring(tok.indexOf(tokens.moduleDelimiter)+1);
+        return tok.substring(tok.indexOf(tokens.tokenDelimiter)+1);
     }
 
     // getPackageFromModule extracts the package name from a given module token.
     private getPackageFromModule(tok: tokens.ModuleToken): tokens.PackageToken {
-        return tok.substring(0, tok.indexOf(tokens.moduleDelimiter));
+        return tok.substring(0, tok.indexOf(tokens.tokenDelimiter));
     }
 
     // createModuleMemberToken binds a string-based exported member name to the associated token that references it.
     private createModuleMemberToken(modtok: tokens.ModuleToken, member: string): tokens.ModuleMemberToken {
         // The concatenated name of the module plus identifier will resolve correctly to an exported definition.
-        return `${modtok}${tokens.moduleMemberDelimiter}${member}`;
+        return `${modtok}${tokens.tokenDelimiter}${member}`;
     }
 
     // createModuleRefMemberToken binds a string-based exported member name to the associated token that references it.
@@ -399,7 +399,7 @@ export class Transformer {
     // createClassMemberToken binds a string-based exported member name to the associated token that references it.
     private createClassMemberToken(classtok: tokens.ModuleMemberToken, member: string): tokens.ClassMemberToken {
         // The concatenated name of the class plus identifier will resolve correctly to an exported definition.
-        return `${classtok}${tokens.classMemberDelimiter}${member}`;
+        return `${classtok}${tokens.tokenDelimiter}${member}`;
     }
 
     // createModuleReference turns a ECMAScript import path into a MuIL module token.
@@ -422,7 +422,7 @@ export class Transformer {
 
     // extractMemberToken returns just the member part of a fully qualified token, leaving off the module part.
     private extractMemberToken(token: tokens.Token): tokens.Token {
-        let memberIndex: number = token.lastIndexOf(tokens.moduleMemberDelimiter);
+        let memberIndex: number = token.lastIndexOf(tokens.tokenDelimiter);
         if (memberIndex !== -1) {
             token = token.substring(memberIndex+1);
         }
@@ -577,7 +577,7 @@ export class Transformer {
             let file: ts.SourceFile = decls[0].getSourceFile();
             let modref: ModuleReference = this.createModuleReferenceFromPath(file.fileName);
             let modtok: tokens.ModuleToken = await this.createModuleToken(modref);
-            token = `${modtok}${tokens.moduleMemberDelimiter}${token}`;
+            token = `${modtok}${tokens.tokenDelimiter}${token}`;
         }
 
         return token;

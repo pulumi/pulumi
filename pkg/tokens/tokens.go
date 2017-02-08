@@ -21,7 +21,7 @@ import (
 //							  <QualifiedToken> |
 //							  <DecoratedType>
 //		Identifier			= <Name>
-//		QualifiedToken		= <PackageName> [ ":" <ModuleName> [ "/" <ModuleMemberName> [ "." <ClassMemberName> ] ] ]
+//		QualifiedToken		= <PackageName> [ ":" <ModuleName> [ ":" <ModuleMemberName> [ ":" <ClassMemberName> ] ] ]
 //		PackageName			= <QName>
 //		ModuleName			= <QName>
 //		ModuleMemberName	= <Name>
@@ -30,7 +30,7 @@ import (
 // A token may be a simple identifier in the case that it refers to a built-in symbol, like a primitive type, or a
 // variable in scope, rather than a qualified token that is to be bound to a symbol through package/module resolution.
 //
-// Notice that both package and module names may be qualified names (meaning they can have "/" delimiters; see QName's
+// Notice that both package and module names may be qualified names (meaning they can have "/"s in them; see QName's
 // comments), and that module and class members must use unqualified, simple names (meaning they have no delimiters).
 // The specialized token kinds differ only in what elements they require as part of the token string.
 //
@@ -44,18 +44,36 @@ import (
 // Notice that a recursive parsing process is required to extract elements from a <DecoratedType> token.
 type Token string
 
-func (tok Token) String() string { return string(tok) }
+const TokenDelimiter string = ":" // the character delimiting portions of a qualified token.
 
-const ModuleDelimiter string = ":"       // the character following a package (before a module).
-const ModuleMemberDelimiter string = "/" // the character following a module (before a module member).
-const ClassMemberDelimiter string = "."  // the character following a class name (before a class member).
+func (tok Token) Delimiters() int       { return strings.Count(string(tok), TokenDelimiter) }
+func (tok Token) HasModule() bool       { return tok.Delimiters() > 0 }
+func (tok Token) HasModuleMember() bool { return tok.Delimiters() > 1 }
+func (tok Token) HasClassMember() bool  { return tok.Delimiters() > 2 }
+func (tok Token) Simple() bool          { return tok.Delimiters() == 0 }
+func (tok Token) String() string        { return string(tok) }
 
-func (tok Token) Simple() bool    { return !tok.HasModule() }
-func (tok Token) HasModule() bool { return strings.Index(string(tok), ModuleDelimiter) != -1 }
-func (tok Token) HasModuleMember() bool {
-	return strings.Index(string(tok), ModuleMemberDelimiter) != -1
+// delimiter returns the Nth index of a delimiter, as specified by the argument.
+func (tok Token) delimiter(n int) int {
+	ix := -1
+	for n > 0 {
+		// Make sure we still have space.
+		if ix+1 >= len(tok) {
+			ix = -1
+			break
+		}
+
+		// If we do, keep looking for the next delimiter.
+		nix := strings.Index(string(tok[ix+1:]), TokenDelimiter)
+		if nix == -1 {
+			break
+		}
+		ix += 1 + nix
+
+		n--
+	}
+	return ix
 }
-func (tok Token) HasClassMember() bool { return strings.Index(string(tok), ClassMemberDelimiter) != -1 }
 
 // Name returns the Token as a Name (and assumes it is a legal one).
 func (tok Token) Name() Name {
@@ -64,37 +82,45 @@ func (tok Token) Name() Name {
 	return Name(tok.String())
 }
 
-// Names returns as many names as the Token has, each in a return slot, or "" for those that don't exist.
-func (tok Token) Names() (PackageName, ModuleName, ModuleMemberName, ClassMemberName) {
-	// Check the token for the most specific to least specific cases.
-	if tok.HasClassMember() {
-		clmtok := ClassMember(tok)
-		return clmtok.Package().Name(), clmtok.Module().Name(),
-			ModuleMemberName(clmtok.Class().Name()), clmtok.Name()
-	} else if tok.HasModuleMember() {
-		memtok := ModuleMember(tok)
-		return memtok.Package().Name(), memtok.Module().Name(), memtok.Name(), ""
-	} else if tok.HasModule() {
-		modtok := Module(tok)
-		return modtok.Package().Name(), modtok.Name(), "", ""
+// Package extracts the package from the token, assuming one exists.
+func (tok Token) Package() Package {
+	if t := Type(tok); t.Decorated() || t.Primitive() {
+		return "" // decorated and primitive types are built-in (and hence have no package).
 	}
-	return Package(tok).Name(), "", "", ""
+	if tok.HasModule() {
+		return Package(tok[:tok.delimiter(1)])
+	}
+	return Package(tok)
 }
 
-// Tokens returns as many tokens as the Token has, each in a return slot, or "" for those that don't exist.
-func (tok Token) Tokens() (Package, Module, ModuleMember, ClassMember) {
-	// Check the token for the most specific to least specific cases.
-	if tok.HasClassMember() {
-		clmtok := ClassMember(tok)
-		return clmtok.Package(), clmtok.Module(), ModuleMember(clmtok.Class()), clmtok
-	} else if tok.HasModuleMember() {
-		memtok := ModuleMember(tok)
-		return memtok.Package(), memtok.Module(), memtok, ""
-	} else if tok.HasModule() {
-		modtok := Module(tok)
-		return modtok.Package(), modtok, "", ""
+// Module extracts the module portion from the token, assuming one exists.
+func (tok Token) Module() Module {
+	if tok.HasModule() {
+		if tok.HasModuleMember() {
+			return Module(tok[:tok.delimiter(2)])
+		}
+		return Module(tok)
 	}
-	return Package(tok), "", "", ""
+	return Module("")
+}
+
+// ModuleMember extracts the module member portion from the token, assuming one exists.
+func (tok Token) ModuleMember() ModuleMember {
+	if tok.HasModuleMember() {
+		if tok.HasClassMember() {
+			return ModuleMember(tok[:tok.delimiter(3)])
+		}
+		return ModuleMember(tok)
+	}
+	return ModuleMember("")
+}
+
+// ClassMember extracts the class member portion from the token, assuming one exists.
+func (tok Token) ClassMember() ClassMember {
+	if tok.HasClassMember() {
+		return ClassMember(tok)
+	}
+	return ClassMember("")
 }
 
 // Package is a token representing just a package.  It uses a much simpler grammar:
@@ -125,19 +151,19 @@ type Module Token
 
 func NewModuleToken(pkg Package, nm ModuleName) Module {
 	contract.Assertf(IsQName(string(nm)), "Package '%v' module name '%v' is not a legal qualified name", pkg, nm)
-	return Module(string(pkg) + ModuleDelimiter + string(nm))
+	return Module(string(pkg) + TokenDelimiter + string(nm))
 }
 
 func (tok Module) Package() Package {
-	ix := strings.LastIndex(string(tok), ModuleDelimiter)
-	contract.Assertf(ix != -1, "Module token '%v' missing module delimiter", tok)
-	return Package(string(tok)[:ix])
+	t := Token(tok)
+	contract.Assertf(t.HasModule(), "Module token '%v' missing module delimiter", tok)
+	return Package(tok[:t.delimiter(1)])
 }
 
 func (tok Module) Name() ModuleName {
-	ix := strings.LastIndex(string(tok), ModuleDelimiter)
-	contract.Assertf(ix != -1, "Module token '%v' missing module delimiter", tok)
-	return ModuleName(string(tok)[ix+1:])
+	t := Token(tok)
+	contract.Assertf(t.HasModule(), "Module token '%v' missing module delimiter", tok)
+	return ModuleName(tok[t.delimiter(1)+1:])
 }
 
 func (tok Module) String() string { return string(tok) }
@@ -154,7 +180,7 @@ type ModuleMember Token
 
 func NewModuleMemberToken(mod Module, nm ModuleMemberName) ModuleMember {
 	contract.Assertf(IsName(string(nm)), "Module '%v' member name '%v' is not a legal name", mod, nm)
-	return ModuleMember(string(mod) + ModuleMemberDelimiter + string(nm))
+	return ModuleMember(string(mod) + TokenDelimiter + string(nm))
 }
 
 func (tok ModuleMember) Package() Package {
@@ -162,15 +188,15 @@ func (tok ModuleMember) Package() Package {
 }
 
 func (tok ModuleMember) Module() Module {
-	ix := strings.LastIndex(string(tok), ModuleMemberDelimiter)
-	contract.Assertf(ix != -1, "Module member token '%v' missing module member delimiter", tok)
-	return Module(string(tok)[:ix])
+	t := Token(tok)
+	contract.Assertf(t.HasModuleMember(), "Module member token '%v' missing module member delimiter", tok)
+	return Module(tok[:t.delimiter(2)])
 }
 
 func (tok ModuleMember) Name() ModuleMemberName {
-	ix := strings.LastIndex(string(tok), ModuleMemberDelimiter)
-	contract.Assertf(ix != -1, "Module member token '%v' missing module member delimiter", tok)
-	return ModuleMemberName(string(tok)[ix+1:])
+	t := Token(tok)
+	contract.Assertf(t.HasModuleMember(), "Module member token '%v' missing module member delimiter", tok)
+	return ModuleMemberName(tok[t.delimiter(2)+1:])
 }
 
 func (tok ModuleMember) String() string { return string(tok) }
@@ -187,7 +213,7 @@ type ClassMember Token
 
 func NewClassMemberToken(class Type, nm ClassMemberName) ClassMember {
 	contract.Assertf(IsName(string(nm)), "Class '%v' member name '%v' is not a legal name", class, nm)
-	return ClassMember(string(class) + ClassMemberDelimiter + string(nm))
+	return ClassMember(string(class) + TokenDelimiter + string(nm))
 }
 
 func (tok ClassMember) Package() Package {
@@ -199,15 +225,15 @@ func (tok ClassMember) Module() Module {
 }
 
 func (tok ClassMember) Class() Type {
-	ix := strings.LastIndex(string(tok), ClassMemberDelimiter)
-	contract.Assertf(ix != -1, "Class member token '%v' missing class member delimiter", tok)
-	return Type(string(tok)[:ix])
+	t := Token(tok)
+	contract.Assertf(t.HasClassMember(), "Class member token '%v' missing class member delimiter", tok)
+	return Type(tok[:t.delimiter(3)])
 }
 
 func (tok ClassMember) Name() ClassMemberName {
-	ix := strings.LastIndex(string(tok), ClassMemberDelimiter)
-	contract.Assertf(ix != -1, "Class member token '%v' missing class member delimiter", tok)
-	return ClassMemberName(string(tok)[ix+1:])
+	t := Token(tok)
+	contract.Assertf(t.HasClassMember(), "Class member token '%v' missing class member delimiter", tok)
+	return ClassMemberName(tok[t.delimiter(3)+1:])
 }
 
 func (tok ClassMember) String() string { return string(tok) }
@@ -224,7 +250,7 @@ type Type Token
 
 func NewTypeToken(mod Module, nm TypeName) Type {
 	contract.Assertf(IsName(string(nm)), "Module '%v' type name '%v' is not a legal name", mod, nm)
-	return Type(string(mod) + ModuleMemberDelimiter + string(nm))
+	return Type(string(mod) + TokenDelimiter + string(nm))
 }
 
 func (tok Type) Package() Package {

@@ -10,7 +10,5 @@ export type TypeToken = Token;         // a symbol token that resolves to a type
 export type VariableToken = Token;     // a symbol token that resolves to a variable.
 export type FunctionToken = Token;     // a symbol token that resolves to a function.
 
-export const moduleDelimiter = ":";       // the character following a package (before a module).
-export const moduleMemberDelimiter = "/"; // the character following a module (before a module member).
-export const classMemberDelimiter = ".";  // the character following a class name (before a class member).
+export const tokenDelimiter = ":";     // the character delimiting modules/members/etc.
 
