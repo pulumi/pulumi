@@ -16,7 +16,7 @@ async function main(args: string[]): Promise<number> {
         alias: {
             "f": "format",
             "ll": "loglevel",
-            "o": "output",
+            "o": "out",
         },
         unknown: (arg: string) => {
             if (arg[0] === "-") {
