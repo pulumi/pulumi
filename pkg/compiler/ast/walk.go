@@ -144,8 +144,18 @@ func Walk(v Visitor, node Node) {
 		Walk(v, n.Name)
 	case *NewExpression:
 		Walk(v, n.Type)
+		if n.Arguments != nil {
+			for _, arg := range *n.Arguments {
+				Walk(v, arg)
+			}
+		}
 	case *InvokeFunctionExpression:
 		Walk(v, n.Function)
+		if n.Arguments != nil {
+			for _, arg := range *n.Arguments {
+				Walk(v, arg)
+			}
+		}
 	case *LambdaExpression:
 		Walk(v, n.Body)
 	case *UnaryOperatorExpression:
