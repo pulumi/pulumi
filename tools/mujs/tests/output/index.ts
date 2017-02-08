@@ -16,6 +16,7 @@ let testCases: string[] = [
     "basic/empty_yaml",
     "basic/arrays",
     "basic/maps",
+    "basic/super",
 
     // Module members and exports.
     "modules/var_1",

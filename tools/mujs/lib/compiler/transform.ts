@@ -182,6 +182,8 @@ export class Transformer {
     private currentModuleMembers: ast.ModuleMembers | undefined;
     private currentModuleImports: Map<string, ModuleReference>;
     private currentModuleImportTokens: ast.ModuleToken[];
+    private currentClassToken: tokens.TypeToken | undefined;
+    private currentSuperClassToken: tokens.TypeToken | undefined;
 
     constructor(pkg: pack.Manifest, script: Script, loader: PackageLoader) {
         contract.requires(!!pkg, "pkg", "A package manifest must be supplied");
@@ -1046,117 +1048,129 @@ export class Transformer {
             name = ident(defaultExport);
         }
 
-        // Next, make a class token to use below.
+        // Next, make a class token to use during this class's transformations.
         let classtok: tokens.ModuleMemberToken = this.createModuleMemberToken(modtok, name.ident);
+        let priorClassToken: tokens.TypeToken | undefined = this.currentClassToken;
+        let priorSuperClassToken: tokens.TypeToken | undefined = this.currentSuperClassToken;
+        try {
+            this.currentClassToken = classtok;
 
-        // Discover any extends/implements clauses.
-        let extendType: ast.TypeToken | undefined;
-        let implementTypes: ast.TypeToken[] | undefined;
-        if (node.heritageClauses) {
-            for (let heritage of node.heritageClauses) {
-                switch (heritage.token) {
-                    case ts.SyntaxKind.ExtendsKeyword:
-                        if (!heritage.types) {
-                            contract.fail();
-                        }
-                        else {
-                            contract.assert(heritage.types.length === 1);
-                            let extsym: ts.Symbol = this.checker().getSymbolAtLocation(heritage.types[0].expression);
-                            contract.assert(!!extsym);
-                            extendType = <ast.TypeToken>{
-                                kind: ast.typeTokenKind,
-                                tok:  await this.resolveTypeTokenFromSymbol(extsym),
-                            };
-                        }
-                        break;
-                    case ts.SyntaxKind.ImplementsKeyword:
-                        if (!heritage.types) {
-                            contract.fail();
-                        }
-                        else {
-                            if (!implementTypes) {
-                                implementTypes = [];
+            // Discover any extends/implements clauses.
+            let extendType: ast.TypeToken | undefined;
+            let implementTypes: ast.TypeToken[] | undefined;
+            if (node.heritageClauses) {
+                for (let heritage of node.heritageClauses) {
+                    switch (heritage.token) {
+                        case ts.SyntaxKind.ExtendsKeyword:
+                            if (!heritage.types) {
+                                contract.fail();
                             }
-                            for (let impltype of heritage.types) {
-                                let implsym: ts.Symbol = this.checker().getSymbolAtLocation(impltype.expression);
-                                contract.assert(!!implsym);
-                                implementTypes.push(<ast.TypeToken>{
+                            else {
+                                contract.assert(heritage.types.length === 1);
+                                let extsym: ts.Symbol =
+                                    this.checker().getSymbolAtLocation(heritage.types[0].expression);
+                                contract.assert(!!extsym);
+                                let exttok: tokens.TypeToken = await this.resolveTypeTokenFromSymbol(extsym);
+                                extendType = <ast.TypeToken>{
                                     kind: ast.typeTokenKind,
-                                    tok:  await this.resolveTypeTokenFromSymbol(implsym),
-                                });
+                                    tok:  exttok,
+                                };
+                                this.currentSuperClassToken = exttok;
                             }
-                        }
-                        break;
-                    default:
-                        contract.fail(`Unrecognized heritage token kind: ${ts.SyntaxKind[heritage.token]}`);
+                            break;
+                        case ts.SyntaxKind.ImplementsKeyword:
+                            if (!heritage.types) {
+                                contract.fail();
+                            }
+                            else {
+                                if (!implementTypes) {
+                                    implementTypes = [];
+                                }
+                                for (let impltype of heritage.types) {
+                                    let implsym: ts.Symbol = this.checker().getSymbolAtLocation(impltype.expression);
+                                    contract.assert(!!implsym);
+                                    implementTypes.push(<ast.TypeToken>{
+                                        kind: ast.typeTokenKind,
+                                        tok:  await this.resolveTypeTokenFromSymbol(implsym),
+                                    });
+                                }
+                            }
+                            break;
+                        default:
+                            contract.fail(`Unrecognized heritage token kind: ${ts.SyntaxKind[heritage.token]}`);
+                    }
                 }
             }
-        }
 
-        // Transform all non-semicolon members for this declaration into ClassMembers.
-        let elements: ClassElement[] = [];
-        for (let member of node.members) {
-            if (member.kind !== ts.SyntaxKind.SemicolonClassElement) {
-                elements.push(await this.transformClassElement(classtok, member));
-            }
-        }
-
-        // Now create a member map for this class by translating the ClassMembers created during the translation.
-        let members: ast.ClassMembers = {};
-
-        // First do a pass over all methods (including constructor methods).
-        for (let element of elements) {
-            if (!isVariableDeclaration(element)) {
-                let method = <ast.ClassMethod>element;
-                members[method.name.ident] = method;
-            }
-        }
-
-        // For all class properties with default values, we need to spill the initializer into the constructor.  This
-        // is non-trivial, because the class may not have an explicit constructor.  If it doesn't we need to generate
-        // one.  In either case, we must be careful to respect initialization order with respect to super calls.
-        // Namely, all property initializers must occur *after* the invocation of `super()`.
-        let propertyInitializers: ast.Statement[] = [];
-        for (let element of elements) {
-            if (isVariableDeclaration(element)) {
-                let decl = <VariableDeclaration<ast.ClassProperty>>element;
-                if (decl.initializer) {
-                    propertyInitializers.push(this.makeVariableInitializer(decl));
+            // Transform all non-semicolon members for this declaration into ClassMembers.
+            let elements: ClassElement[] = [];
+            for (let member of node.members) {
+                if (member.kind !== ts.SyntaxKind.SemicolonClassElement) {
+                    elements.push(await this.transformClassElement(classtok, member));
                 }
-                members[decl.variable.name.ident] = decl.variable;
             }
-        }
-        if (propertyInitializers.length > 0) {
-            // Locate the constructor, possibly fabricating one if necessary.
-            let ctor: ast.ClassMethod | undefined =
-                <ast.ClassMethod>members[tokens.constructorFunction];
-            if (!ctor) {
-                // TODO: once we support base classes, inject a call to super() at the front.
-                ctor = members[tokens.constructorFunction] = <ast.ClassMethod>{
-                    kind: ast.classMethodKind,
-                    name: ident(tokens.constructorFunction),
-                };
-            }
-            if (!ctor.body) {
-                ctor.body = <ast.Block>{
-                    kind:       ast.blockKind,
-                    statements: [],
-                };
-            }
-            // TODO: once we support base classes, search for the super() call and append afterwards.
-            ctor.body.statements = propertyInitializers.concat(ctor.body.statements);
-        }
 
-        let mods: ts.ModifierFlags = ts.getCombinedModifierFlags(node);
-        return this.withLocation(node, <ast.Class>{
-            kind:       ast.classKind,
-            name:       name,
-            access:     access,
-            members:    members,
-            abstract:   !!(mods & ts.ModifierFlags.Abstract),
-            extends:    extendType,
-            implements: implementTypes,
-        });
+            // Now create a member map for this class by translating the ClassMembers created during the translation.
+            let members: ast.ClassMembers = {};
+
+            // First do a pass over all methods (including constructor methods).
+            for (let element of elements) {
+                if (!isVariableDeclaration(element)) {
+                    let method = <ast.ClassMethod>element;
+                    members[method.name.ident] = method;
+                }
+            }
+
+            // For all class properties with default values, we need to spill the initializer into the constructor.
+            // This is non-trivial because the class may not have an explicit constructor.  If it doesn't we need to
+            // generate one.  In either case, we must be careful to respect initialization order with respect to super
+            // calls.  Namely, all property initializers must occur *after* the invocation of `super()`.
+            let propertyInitializers: ast.Statement[] = [];
+            for (let element of elements) {
+                if (isVariableDeclaration(element)) {
+                    let decl = <VariableDeclaration<ast.ClassProperty>>element;
+                    if (decl.initializer) {
+                        propertyInitializers.push(this.makeVariableInitializer(decl));
+                    }
+                    members[decl.variable.name.ident] = decl.variable;
+                }
+            }
+            if (propertyInitializers.length > 0) {
+                // Locate the constructor, possibly fabricating one if necessary.
+                let ctor: ast.ClassMethod | undefined =
+                    <ast.ClassMethod>members[tokens.constructorFunction];
+                if (!ctor) {
+                    // TODO: once we support base classes, inject a call to super() at the front.
+                    ctor = members[tokens.constructorFunction] = <ast.ClassMethod>{
+                        kind: ast.classMethodKind,
+                        name: ident(tokens.constructorFunction),
+                    };
+                }
+                if (!ctor.body) {
+                    ctor.body = <ast.Block>{
+                        kind:       ast.blockKind,
+                        statements: [],
+                    };
+                }
+                // TODO: once we support base classes, search for the super() call and append afterwards.
+                ctor.body.statements = propertyInitializers.concat(ctor.body.statements);
+            }
+
+            let mods: ts.ModifierFlags = ts.getCombinedModifierFlags(node);
+            return this.withLocation(node, <ast.Class>{
+                kind:       ast.classKind,
+                name:       name,
+                access:     access,
+                members:    members,
+                abstract:   !!(mods & ts.ModifierFlags.Abstract),
+                extends:    extendType,
+                implements: implementTypes,
+            });
+        }
+        finally {
+            this.currentClassToken = priorClassToken;
+            this.currentSuperClassToken = priorSuperClassToken;
+        }
     }
 
     private transformDeclarationName(node: ts.DeclarationName): ast.Expression {
@@ -1947,6 +1961,21 @@ export class Transformer {
 
     private async transformCallExpression(node: ts.CallExpression): Promise<ast.InvokeFunctionExpression> {
         let func: ast.Expression = await this.transformExpression(node.expression);
+
+        // In the special case of a `super(<args>)` call, we need to transform the `super` from a plain old variable
+        // load of the base object, into an actual invokable constructor function reference.
+        if (node.expression.kind === ts.SyntaxKind.SuperKeyword) {
+            contract.assert(!!this.currentSuperClassToken);
+            func = this.withLocation(node.expression, <ast.LoadLocationExpression>{
+                kind:   ast.loadLocationExpressionKind,
+                object: func,
+                name:   <ast.Token>{
+                    kind: ast.tokenKind,
+                    tok:  this.createClassMemberToken(this.currentSuperClassToken!, tokens.constructorFunction),
+                },
+            });
+        }
+
         let args: ast.Expression[] = [];
         for (let argument of node.arguments) {
             args.push(await this.transformExpression(argument));
