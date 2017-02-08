@@ -4,6 +4,7 @@
 
 import * as minimist from "minimist";
 import {fs, log} from "nodejs-ts";
+import * as os from "os";
 import * as fspath from "path";
 import * as mujs from "../lib";
 
@@ -107,7 +108,8 @@ async function main(args: string[]): Promise<number> {
             console.log(blob);
         }
         else {
-            await fs.writeFile(output, blob);
+            // Make sure to append a newline to the blob, and write it to disk.
+            await fs.writeFile(output, blob + os.EOL);
         }
     }
 
