@@ -2157,13 +2157,22 @@ export class Transformer {
 
     private async transformPropertyAccessExpression(
             node: ts.PropertyAccessExpression): Promise<ast.LoadLocationExpression> {
+        // Transform the name and object ASTs.
         let id: ast.Identifier = this.transformIdentifier(node.name);
+        let object: ast.Expression = await this.transformExpression(node.expression);
+
+        // Now qualify the name using the target expression's type.
+        let ty: ts.Type = this.checker().getTypeAtLocation(node.expression);
+        contract.assert(!!ty);
+        let tytok: tokens.TypeToken | undefined = await this.resolveTypeToken(ty);
+        contract.assert(!!tytok);
+
         return this.withLocation(node, <ast.LoadLocationExpression>{
             kind:   ast.loadLocationExpressionKind,
-            object: await this.transformExpression(node.expression),
+            object: object,
             name:   this.copyLocation(id, <ast.Token>{
                 kind: ast.tokenKind,
-                tok:  id.ident,
+                tok:  this.createClassMemberToken(tytok!, id.ident),
             }),
         });
     }

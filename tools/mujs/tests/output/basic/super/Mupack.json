@@ -111,7 +111,7 @@
                                                 },
                                                 "name": {
                                                     "kind": "Token",
-                                                    "tok": "x",
+                                                    "tok": "basic/super:index/B.x",
                                                     "loc": {
                                                         "file": "index.ts",
                                                         "start": {
@@ -273,7 +273,7 @@
                                             },
                                             "name": {
                                                 "kind": "Token",
-                                                "tok": "x",
+                                                "tok": "basic/super:index/B.x",
                                                 "loc": {
                                                     "file": "index.ts",
                                                     "start": {
@@ -612,7 +612,7 @@
                                                             },
                                                             "name": {
                                                                 "kind": "Token",
-                                                                "tok": "gx",
+                                                                "tok": "basic/super:index/B.gx",
                                                                 "loc": {
                                                                     "file": "index.ts",
                                                                     "start": {

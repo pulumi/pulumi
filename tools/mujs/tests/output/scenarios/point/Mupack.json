@@ -144,7 +144,7 @@
                                                 },
                                                 "name": {
                                                     "kind": "Token",
-                                                    "tok": "x",
+                                                    "tok": "scenarios/point:index/Point.x",
                                                     "loc": {
                                                         "file": "index.ts",
                                                         "start": {
@@ -260,7 +260,7 @@
                                                 },
                                                 "name": {
                                                     "kind": "Token",
-                                                    "tok": "y",
+                                                    "tok": "scenarios/point:index/Point.y",
                                                     "loc": {
                                                         "file": "index.ts",
                                                         "start": {
@@ -477,7 +477,7 @@
                                                         },
                                                         "name": {
                                                             "kind": "Token",
-                                                            "tok": "x",
+                                                            "tok": "scenarios/point:index/Point.x",
                                                             "loc": {
                                                                 "file": "index.ts",
                                                                 "start": {
@@ -535,7 +535,7 @@
                                                         },
                                                         "name": {
                                                             "kind": "Token",
-                                                            "tok": "x",
+                                                            "tok": "scenarios/point:index/Point.x",
                                                             "loc": {
                                                                 "file": "index.ts",
                                                                 "start": {
@@ -608,7 +608,7 @@
                                                         },
                                                         "name": {
                                                             "kind": "Token",
-                                                            "tok": "y",
+                                                            "tok": "scenarios/point:index/Point.y",
                                                             "loc": {
                                                                 "file": "index.ts",
                                                                 "start": {
@@ -666,7 +666,7 @@
                                                         },
                                                         "name": {
                                                             "kind": "Token",
-                                                            "tok": "y",
+                                                            "tok": "scenarios/point:index/Point.y",
                                                             "loc": {
                                                                 "file": "index.ts",
                                                                 "start": {
