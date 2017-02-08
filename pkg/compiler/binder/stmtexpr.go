@@ -104,7 +104,7 @@ func (a *astBinder) After(node ast.Node) {
 
 	// Ensure that all expression types resulted in a type registration.
 	expr, isExpr := node.(ast.Expression)
-	contract.Assert(!isExpr || a.b.ctx.RequireType(expr) != nil)
+	contract.Assert(!isExpr || a.b.ctx.HasType(expr))
 }
 
 // Utility functions
@@ -355,7 +355,8 @@ func (a *astBinder) checkInvokeFunctionExpression(node *ast.InvokeFunctionExpres
 			}
 		}
 
-		// The resulting type of this expression is the same as the function's return type.
+		// The resulting type of this expression is the same as the function's return type.  Note that if the return is
+		// nil ("void"-returning), we still register it; a nil entry is distinctly different from a missing entry.
 		a.b.ctx.RegisterType(node, funty.Return)
 	} else {
 		a.b.Diag().Errorf(errors.ErrorCannotInvokeNonFunction.At(node), ty)

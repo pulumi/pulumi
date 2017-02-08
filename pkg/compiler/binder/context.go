@@ -44,19 +44,23 @@ func NewContextFrom(ctx *core.Context) *Context {
 	return bctx
 }
 
+// HasType checks whether a typemap entry already exists.
+func (ctx *Context) HasType(node ast.Expression) bool {
+	_, has := ctx.Types[node]
+	return has
+}
+
 // RequireType requires that a type exists for the given AST expression node.
 func (ctx *Context) RequireType(node ast.Expression) symbols.Type {
 	contract.Require(node != nil, "node")
-	ty := ctx.Types[node]
-	contract.Assertf(ty != nil, "Expected a typemap entry for %v node", node.GetKind())
-	return ty
+	contract.Requiref(ctx.HasType(node), "ctx", "HasType(node)")
+	return ctx.Types[node]
 }
 
 // RegisterType registers an expression's type.
 func (ctx *Context) RegisterType(node ast.Expression, tysym symbols.Type) {
 	contract.Require(node != nil, "node")
-	contract.Require(tysym != nil, "tysym")
-	contract.Assert(ctx.Types[node] == nil)
+	contract.Requiref(!ctx.HasType(node), "ctx", "!HasType(node)")
 	if glog.V(7) {
 		glog.V(7).Infof("Registered expression type: '%v' => %v", node.GetKind(), tysym.Name())
 	}
