@@ -103,7 +103,7 @@ func (tok Token) Tokens() (Package, Module, ModuleMember, ClassMember) {
 type Package Token
 
 func NewPackageToken(nm PackageName) Package {
-	contract.Assert(IsQName(string(nm)))
+	contract.Assertf(IsQName(string(nm)), "Package name '%v' is not a legal qualified name")
 	return Package(nm)
 }
 
@@ -124,19 +124,19 @@ func (nm PackageName) String() string { return string(nm) }
 type Module Token
 
 func NewModuleToken(pkg Package, nm ModuleName) Module {
-	contract.Assert(IsQName(string(nm)))
+	contract.Assertf(IsQName(string(nm)), "Package '%v' module name '%v' is not a legal qualified name", pkg, nm)
 	return Module(string(pkg) + ModuleDelimiter + string(nm))
 }
 
 func (tok Module) Package() Package {
 	ix := strings.LastIndex(string(tok), ModuleDelimiter)
-	contract.Assert(ix != -1)
+	contract.Assertf(ix != -1, "Module token '%v' missing module delimiter", tok)
 	return Package(string(tok)[:ix])
 }
 
 func (tok Module) Name() ModuleName {
 	ix := strings.LastIndex(string(tok), ModuleDelimiter)
-	contract.Assert(ix != -1)
+	contract.Assertf(ix != -1, "Module token '%v' missing module delimiter", tok)
 	return ModuleName(string(tok)[ix+1:])
 }
 
@@ -153,7 +153,7 @@ func (nm ModuleName) String() string { return string(nm) }
 type ModuleMember Token
 
 func NewModuleMemberToken(mod Module, nm ModuleMemberName) ModuleMember {
-	contract.Assert(IsName(string(nm)))
+	contract.Assertf(IsName(string(nm)), "Module '%v' member name '%v' is not a legal name", mod, nm)
 	return ModuleMember(string(mod) + ModuleMemberDelimiter + string(nm))
 }
 
@@ -163,13 +163,13 @@ func (tok ModuleMember) Package() Package {
 
 func (tok ModuleMember) Module() Module {
 	ix := strings.LastIndex(string(tok), ModuleMemberDelimiter)
-	contract.Assert(ix != -1)
+	contract.Assertf(ix != -1, "Module member token '%v' missing module member delimiter", tok)
 	return Module(string(tok)[:ix])
 }
 
 func (tok ModuleMember) Name() ModuleMemberName {
 	ix := strings.LastIndex(string(tok), ModuleMemberDelimiter)
-	contract.Assert(ix != -1)
+	contract.Assertf(ix != -1, "Module member token '%v' missing module member delimiter", tok)
 	return ModuleMemberName(string(tok)[ix+1:])
 }
 
@@ -186,7 +186,7 @@ func (nm ModuleMemberName) String() string { return string(nm) }
 type ClassMember Token
 
 func NewClassMemberToken(class Type, nm ClassMemberName) ClassMember {
-	contract.Assert(IsName(string(nm)))
+	contract.Assertf(IsName(string(nm)), "Class '%v' member name '%v' is not a legal name", class, nm)
 	return ClassMember(string(class) + ClassMemberDelimiter + string(nm))
 }
 
@@ -200,13 +200,13 @@ func (tok ClassMember) Module() Module {
 
 func (tok ClassMember) Class() Type {
 	ix := strings.LastIndex(string(tok), ClassMemberDelimiter)
-	contract.Assert(ix != -1)
+	contract.Assertf(ix != -1, "Class member token '%v' missing class member delimiter", tok)
 	return Type(string(tok)[:ix])
 }
 
 func (tok ClassMember) Name() ClassMemberName {
 	ix := strings.LastIndex(string(tok), ClassMemberDelimiter)
-	contract.Assert(ix != -1)
+	contract.Assertf(ix != -1, "Class member token '%v' missing class member delimiter", tok)
 	return ClassMemberName(string(tok)[ix+1:])
 }
 
@@ -223,7 +223,7 @@ func (nm ClassMemberName) String() string { return string(nm) }
 type Type Token
 
 func NewTypeToken(mod Module, nm TypeName) Type {
-	contract.Assert(IsName(string(nm)))
+	contract.Assertf(IsName(string(nm)), "Module '%v' type name '%v' is not a legal name", mod, nm)
 	return Type(string(mod) + ModuleMemberDelimiter + string(nm))
 }
 
