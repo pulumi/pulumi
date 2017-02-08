@@ -163,7 +163,7 @@
                     "access": "private",
                     "type": {
                         "kind": "TypeToken",
-                        "tok": "map[string]C",
+                        "tok": "map[string]basic/maps:index/C",
                         "loc": {
                             "file": "index.ts",
                             "start": {
@@ -197,7 +197,7 @@
                     "access": "private",
                     "type": {
                         "kind": "TypeToken",
-                        "tok": "map[C]number",
+                        "tok": "map[basic/maps:index/C]number",
                         "loc": {
                             "file": "index.ts",
                             "start": {
@@ -231,7 +231,7 @@
                     "access": "private",
                     "type": {
                         "kind": "TypeToken",
-                        "tok": "map[C][]string",
+                        "tok": "map[basic/maps:index/C][]string",
                         "loc": {
                             "file": "index.ts",
                             "start": {
@@ -367,7 +367,7 @@
                     "access": "private",
                     "type": {
                         "kind": "TypeToken",
-                        "tok": "map[string]C",
+                        "tok": "map[string]basic/maps:index/C",
                         "loc": {
                             "file": "index.ts",
                             "start": {
@@ -401,7 +401,7 @@
                     "access": "private",
                     "type": {
                         "kind": "TypeToken",
-                        "tok": "map[C]number",
+                        "tok": "map[basic/maps:index/C]number",
                         "loc": {
                             "file": "index.ts",
                             "start": {
@@ -435,7 +435,7 @@
                     "access": "private",
                     "type": {
                         "kind": "TypeToken",
-                        "tok": "map[C][]string",
+                        "tok": "map[basic/maps:index/C][]string",
                         "loc": {
                             "file": "index.ts",
                             "start": {
@@ -751,7 +751,7 @@
                                         "kind": "NewExpression",
                                         "type": {
                                             "kind": "TypeToken",
-                                            "tok": "map[string]C",
+                                            "tok": "map[string]basic/maps:index/C",
                                             "loc": {
                                                 "file": "index.ts",
                                                 "start": {
@@ -828,7 +828,7 @@
                                         "kind": "NewExpression",
                                         "type": {
                                             "kind": "TypeToken",
-                                            "tok": "map[C]number",
+                                            "tok": "map[basic/maps:index/C]number",
                                             "loc": {
                                                 "file": "index.ts",
                                                 "start": {
@@ -905,7 +905,7 @@
                                         "kind": "NewExpression",
                                         "type": {
                                             "kind": "TypeToken",
-                                            "tok": "map[C][]string",
+                                            "tok": "map[basic/maps:index/C][]string",
                                             "loc": {
                                                 "file": "index.ts",
                                                 "start": {
@@ -1213,7 +1213,7 @@
                                         "kind": "NewExpression",
                                         "type": {
                                             "kind": "TypeToken",
-                                            "tok": "map[string]C",
+                                            "tok": "map[string]basic/maps:index/C",
                                             "loc": {
                                                 "file": "index.ts",
                                                 "start": {
@@ -1290,7 +1290,7 @@
                                         "kind": "NewExpression",
                                         "type": {
                                             "kind": "TypeToken",
-                                            "tok": "map[C]number",
+                                            "tok": "map[basic/maps:index/C]number",
                                             "loc": {
                                                 "file": "index.ts",
                                                 "start": {
@@ -1367,7 +1367,7 @@
                                         "kind": "NewExpression",
                                         "type": {
                                             "kind": "TypeToken",
-                                            "tok": "map[C][]string",
+                                            "tok": "map[basic/maps:index/C][]string",
                                             "loc": {
                                                 "file": "index.ts",
                                                 "start": {

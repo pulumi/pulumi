@@ -566,15 +566,16 @@ export class Transformer {
         // By default, just the type symbol's naked name.
         let token: tokens.TypeToken = sym.name;
 
-        // It's possible this type came from another module; in that case, fully qualify it.
-        let decls: ts.Declaration[] = sym.getDeclarations();
-        if (decls.length > 0) {
+        // For non-primitive declared types -- as opposed to inferred ones -- we must emit the fully qualified name.
+        if (!!(sym.flags & ts.SymbolFlags.Class) || !!(sym.flags & ts.SymbolFlags.Interface) ||
+                !!(sym.flags & ts.SymbolFlags.ConstEnum) || !!(sym.flags & ts.SymbolFlags.RegularEnum) ||
+                !!(sym.flags & ts.SymbolFlags.TypeAlias)) {
+            let decls: ts.Declaration[] = sym.getDeclarations();
+            contract.assert(decls.length > 0);
             let file: ts.SourceFile = decls[0].getSourceFile();
-            if (file !== this.currentSourceFile) {
-                let modref: ModuleReference = this.createModuleReferenceFromPath(file.fileName);
-                let modtok: tokens.ModuleToken = await this.createModuleToken(modref);
-                token = `${modtok}${tokens.moduleMemberDelimiter}${token}`;
-            }
+            let modref: ModuleReference = this.createModuleReferenceFromPath(file.fileName);
+            let modtok: tokens.ModuleToken = await this.createModuleToken(modref);
+            token = `${modtok}${tokens.moduleMemberDelimiter}${token}`;
         }
 
         return token;
