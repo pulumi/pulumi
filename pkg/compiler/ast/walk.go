@@ -32,7 +32,7 @@ func Walk(v Visitor, node Node) {
 	// order of them during runtime/interpretation.
 	switch n := node.(type) {
 	// Nodes
-	case *Identifier, *Token, *ModuleToken, *TypeToken:
+	case *Identifier, *Token, *ClassMemberToken, *ModuleToken, *TypeToken:
 		// No children, nothing to do.
 
 	// Definitions
