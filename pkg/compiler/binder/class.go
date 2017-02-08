@@ -28,20 +28,22 @@ func (b *binder) bindClass(node *ast.Class, parent *symbols.Module) *symbols.Cla
 	class := symbols.NewClassSym(node, parent, extends, implements)
 	b.ctx.RegisterSymbol(node, class)
 
+	return class
+}
+
+func (b *binder) bindClassMembers(class *symbols.Class) {
 	// Set the current class in the context so we can e.g. enforce accessibility.
 	priorclass := b.ctx.Currclass
 	b.ctx.Currclass = class
 	defer func() { b.ctx.Currclass = priorclass }()
 
-	// Next, bind each member at the symbolic level; in particular, we do not yet bind bodies of methods.
-	if node.Members != nil {
-		members := *node.Members
+	// Bind each member at the symbolic level; in particular, we do not yet bind bodies of methods.
+	if class.Node.Members != nil {
+		members := *class.Node.Members
 		for _, memtok := range ast.StableClassMembers(members) {
 			class.Members[memtok] = b.bindClassMember(members[memtok], class)
 		}
 	}
-
-	return class
 }
 
 func (b *binder) bindClassMember(node ast.ClassMember, parent *symbols.Class) symbols.ClassMember {

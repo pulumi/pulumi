@@ -53,8 +53,12 @@ func (b *binder) resolveBindPackage(pkg *pack.Package, pkgurl pack.PackageURL) *
 	// Resolve all package dependencies.
 	b.resolvePackageDeps(pkgsym)
 
-	// Now bind all of the package's modules (if any).  This pass does not yet actually bind bodies.
+	// Now bind all of the package's modules (if any).  This pass does not yet actually bind class members yet.
 	b.bindPackageModules(pkgsym)
+
+	// Next go ahead and bind class members.  This happens in a full pass after resolving all modules, because this
+	// phase might reference members that are only now exposed after the above phase.
+	b.bindPackageClassMembers(pkgsym)
 
 	// Finally, bind all of the package's method bodies.  This second pass is required to ensure that inter-module
 	// dependencies can resolve to symbols, after reaching the symbol-level fixed point above.
@@ -137,8 +141,8 @@ func (b *binder) bindPackageModules(pkg *symbols.Package) {
 			b.bindModuleImports(pkg.Modules[mod])
 		}
 
-		// Next, we must bind the top level classes.  This is because inter-module references on classes might exist in
-		// many places (properties, signatures, exports, and so on).
+		// Next, we must bind the top level class names.  This is because inter-module references on classes might
+		// exist in many places (properties, signatures, exports, and so on).
 		for _, mod := range symbols.StableModuleMap(pkg.Modules) {
 			b.bindModuleClasses(pkg.Modules[mod])
 		}
@@ -152,6 +156,15 @@ func (b *binder) bindPackageModules(pkg *symbols.Package) {
 		for _, mod := range symbols.StableModuleMap(pkg.Modules) {
 			b.bindModuleExports(pkg.Modules[mod])
 		}
+	}
+}
+
+// bindPackageClassMembers binds all class member definitions within a package (function signatures and varaibles), but
+// doesn't actually bind any function bodies yet.
+func (b *binder) bindPackageClassMembers(pkg *symbols.Package) {
+	contract.Require(pkg != nil, "pkg")
+	for _, mod := range symbols.StableModuleMap(pkg.Modules) {
+		b.bindModuleClassMembers(pkg.Modules[mod])
 	}
 }
 

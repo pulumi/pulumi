@@ -33,9 +33,9 @@ func (b *binder) bindModuleImports(module *symbols.Module) {
 	}
 }
 
-// bindModuleClasses binds a module's classes.  This must be done before binding variables and exports since they might
-// mention classes by name, and so the symbolic information must have been registered beforehand.  Note that class
-// method bodies are not yet bound during this pass, since they could reference module members not yet bound.
+// bindModuleClassNames binds a module's classes.  This must be done before binding variables and exports since they
+// might mention classes by name, and so the symbolic information must have been registered beforehand.  Note that class
+// definitions are not yet bound during this pass, since they could reference module members not yet bound.
 func (b *binder) bindModuleClasses(module *symbols.Module) {
 	glog.V(3).Infof("Binding module '%v' classes", module.Token())
 
@@ -52,6 +52,24 @@ func (b *binder) bindModuleClasses(module *symbols.Module) {
 			if class, isclass := member.(*ast.Class); isclass {
 				module.Members[nm] = b.bindClass(class, module)
 			}
+		}
+	}
+}
+
+// bindModuleClassMembers binds all class member definitions within a module (function signatures and varaibles),
+// but doesn't actually bind any function bodies yet.
+func (b *binder) bindModuleClassMembers(module *symbols.Module) {
+	glog.V(3).Infof("Binding module '%v' class members", module.Token())
+
+	// Set the current module in the context so we can e.g. enforce accessibility.
+	priormodule := b.ctx.Currmodule
+	b.ctx.Currmodule = module
+	defer func() { b.ctx.Currmodule = priormodule }()
+
+	// Now bind all class member definitions.
+	for _, nm := range symbols.StableModuleMemberMap(module.Members) {
+		if class, isclass := module.Members[nm].(*symbols.Class); isclass {
+			b.bindClassMembers(class)
 		}
 	}
 }
