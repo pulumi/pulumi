@@ -39,7 +39,7 @@ let testCases: string[] = [
 
 describe("outputs", () => {
     const messageBaselineFile: string = "messages.txt";
-    const outputTreeBaselineFile: string = "Mu.out.json";
+    const outputTreeBaselineFile: string = "Mupack.json";
     for (let testCase of testCases) {
         it(`${testCase} successfully produces the expected results`, asyncTest(async () => {
             let testPath: string = path.join(__dirname, testCase);
