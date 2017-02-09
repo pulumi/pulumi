@@ -74,16 +74,17 @@ func (b *binder) resolvePackageDeps(pkg *symbols.Package) {
 
 	if pkg.Node.Dependencies != nil {
 		for _, dep := range pack.StableDependencies(*pkg.Node.Dependencies) {
-			depurl := (*pkg.Node.Dependencies)[dep]
+			depstr := (*pkg.Node.Dependencies)[dep]
 			// The dependency is a URL.  Transform it into a name used for symbol resolution.
-			dep, err := depurl.Parse()
+			depurl, err := depstr.Parse(dep)
 			if err != nil {
-				b.Diag().Errorf(errors.ErrorMalformedPackageURL.At(pkg.Node), depurl, err)
+				b.Diag().Errorf(errors.ErrorMalformedPackageURL.At(pkg.Node), depstr, err)
 			} else {
-				glog.V(3).Infof("Resolving package '%v' dependency name=%v, url=%v", pkg.Name(), dep.Name, dep.URL())
-				if depsym := b.resolveDep(dep); depsym != nil {
+				glog.V(3).Infof("Resolving package '%v' dependency name=%v, url=%v",
+					pkg.Name(), depurl.Name, depurl.URL())
+				if depsym := b.resolveDep(depurl); depsym != nil {
 					// Store the symbol and URL with all its empty parts resolved (a.k.a. canonicalized) in the map.
-					pkg.Dependencies[dep.Name] = depsym
+					pkg.Dependencies[depurl.Name] = depsym
 				}
 			}
 		}

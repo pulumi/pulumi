@@ -54,23 +54,26 @@ func TestBadDepSemVer(t *testing.T) {
 	// Check that the compiler complained about an illegal semantic version.
 	d := errors.ErrorMalformedPackageURL
 	assert.Equal(t, 3, sink.Errors(), "expected an error for each bad semver")
+	bad0 := "dep1#badbadbad"
 	assert.Equal(t,
 		fmt.Sprintf("%v: %v%v: %v: %v\n",
 			diag.DefaultSinkErrorPrefix, diag.DefaultSinkIDPrefix, d.ID, "Mu.yaml",
-			fmt.Sprintf(d.Message, "dep1#badbadbad",
-				"Illegal version spec: Could not get version from string: \"badbadbad\"")),
+			fmt.Sprintf(d.Message, bad0,
+				"Illegal version spec in '"+bad0+"': Could not get version from string: \"badbadbad\"")),
 		sink.ErrorMsgs()[0])
+	bad1 := "hub.mu.com/dep2#badbadbad"
 	assert.Equal(t,
 		fmt.Sprintf("%v: %v%v: %v: %v\n",
 			diag.DefaultSinkErrorPrefix, diag.DefaultSinkIDPrefix, d.ID, "Mu.yaml",
-			fmt.Sprintf(d.Message, "hub.mu.com/dep2#badbadbad",
-				"Illegal version spec: Could not get version from string: \"badbadbad\"")),
+			fmt.Sprintf(d.Message, bad1,
+				"Illegal version spec in '"+bad1+"': Could not get version from string: \"badbadbad\"")),
 		sink.ErrorMsgs()[1])
+	bad2 := "https://hub.mu.com/dep3/a/b/c/d#badbadbad"
 	assert.Equal(t,
 		fmt.Sprintf("%v: %v%v: %v: %v\n",
 			diag.DefaultSinkErrorPrefix, diag.DefaultSinkIDPrefix, d.ID, "Mu.yaml",
-			fmt.Sprintf(d.Message, "https://hub.mu.com/dep3/a/b/c/d#badbadbad",
-				"Illegal version spec: Could not get version from string: \"badbadbad\"")),
+			fmt.Sprintf(d.Message, bad2,
+				"Illegal version spec in '"+bad2+"': Could not get version from string: \"badbadbad\"")),
 		sink.ErrorMsgs()[2])
 }
 

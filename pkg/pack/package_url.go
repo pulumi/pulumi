@@ -3,7 +3,6 @@
 package pack
 
 import (
-	"errors"
 	"fmt"
 	"strings"
 
@@ -18,9 +17,14 @@ import (
 type PackageURLString string
 
 // Parse parses a PackageURLString into a data structure for convenient access to its component parts.
-func (u PackageURLString) Parse() (PackageURL, error) {
+func (u PackageURLString) Parse(pkg tokens.PackageName) (PackageURL, error) {
 	s := string(u)
 	parsed := PackageURL{}
+
+	// The special "*" URL just takes the package name and uses it as-is, binding to the latest.
+	if s == "*" {
+		s = string(pkg)
+	}
 
 	// Look for the leading protocol, if any.
 	protoEnd := strings.Index(s, "://")
@@ -35,7 +39,7 @@ func (u PackageURLString) Parse() (PackageURL, error) {
 	if verIndex != -1 {
 		parsed.Version = VersionSpec(s[verIndex+1:])
 		if err := parsed.Version.Check(); err != nil {
-			return parsed, errors.New("Illegal version spec: " + err.Error())
+			return parsed, fmt.Errorf("Illegal version spec in '%v': %v", u, err)
 		}
 		s = s[:verIndex]
 	}
@@ -47,7 +51,7 @@ func (u PackageURLString) Parse() (PackageURL, error) {
 		// TODO(joe): this might be questionable; e.g., domain-less hosts will require a trailing period.
 		slashIndex := strings.Index(s, tokens.QNameDelimiter)
 		if slashIndex == -1 {
-			return parsed, errors.New("Expected a name to follow the base URL")
+			return parsed, fmt.Errorf("Expected a name to follow the base URL in '%v'", u)
 		}
 
 		parsed.Base = s[:slashIndex+1]
@@ -56,10 +60,10 @@ func (u PackageURLString) Parse() (PackageURL, error) {
 
 	// Anything remaining at this point represents the name.
 	if s == "" {
-		return parsed, errors.New("Expected a name")
+		return parsed, fmt.Errorf("Expected a name in '%v'", u)
 	}
 	if !tokens.IsQName(s) {
-		return parsed, errors.New("Expected a qualified package name")
+		return parsed, fmt.Errorf("Expected a qualified package name in '%v': %v", u, s)
 	}
 
 	parsed.Name = tokens.PackageName(s)
@@ -67,9 +71,9 @@ func (u PackageURLString) Parse() (PackageURL, error) {
 }
 
 // MustParse parses the parts of a PackageURLString into a PackageURL, failing fast if parsing fails.
-func (u PackageURLString) MustParse() PackageURL {
-	p, err := u.Parse()
-	contract.Assertf(err == nil, "Expected a nil error from PackageURLString.Parse; got %v", err)
+func (u PackageURLString) MustParse(pkg tokens.PackageName) PackageURL {
+	p, err := u.Parse(pkg)
+	contract.Assertf(err == nil, "Expected a nil error from PackageURLString.Parse(%v); got %v", pkg, err)
 	return p
 }
 
