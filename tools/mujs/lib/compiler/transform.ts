@@ -568,6 +568,11 @@ export class Transformer {
         // By default, just the type symbol's naked name.
         let token: tokens.TypeToken = sym.name;
 
+        // If the symbol is an aliased symbol, dealias it first.
+        if (sym.flags & ts.SymbolFlags.Alias) {
+            sym = this.checker().getAliasedSymbol(sym);
+        }
+
         // For member symbols, we must emit the fully qualified name.
         let kinds: ts.SymbolFlags =
             ts.SymbolFlags.Function |
