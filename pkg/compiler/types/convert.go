@@ -98,14 +98,13 @@ func CanConvert(from symbols.Type, to symbols.Type) bool {
 
 // HasBaseName checks a class hierarchy for a base class or interface by the given name.
 func HasBaseName(t symbols.Type, base tokens.Type) bool {
-	for {
-		class, ok := t.(*symbols.Class)
-		if !ok {
-			break
-		}
-		if class.TypeToken() == base {
-			return true
-		}
+	// If the tokens are equal, we are good.
+	if t.TypeToken() == base {
+		return true
+	}
+
+	// Otherwise, look to see if there is a base class conversion.
+	if class, isclass := t.(*symbols.Class); isclass {
 		if class.Extends != nil && HasBaseName(class.Extends, base) {
 			return true
 		}
@@ -115,5 +114,7 @@ func HasBaseName(t symbols.Type, base tokens.Type) bool {
 			}
 		}
 	}
+
+	// If we got here, we didn't have a match.
 	return false
 }
