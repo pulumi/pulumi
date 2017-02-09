@@ -860,9 +860,45 @@ func (e *evaluator) evalLoadDynamicExpression(node *ast.LoadDynamicExpression) (
 }
 
 func (e *evaluator) evalNewExpression(node *ast.NewExpression) (*rt.Object, *Unwind) {
-	// TODO: create a new object and invoke its constructor.
-	contract.Failf("Evaluation of %v nodes not yet implemented", reflect.TypeOf(node))
-	return nil, nil
+	// Fetch the type of this expression; that's the kind of object we are allocating.
+	ty := e.ctx.RequireType(node)
+
+	// Now create an empty object of that type.
+	obj := e.alloc.New(ty)
+
+	// See if there is a constructor method.  If there isn't, we just return the fresh object.
+	if ctor, has := ty.TypeMembers()[tokens.ClassConstructorFunction]; has {
+		ctormeth, isfunc := ctor.(*symbols.ClassMethod)
+		contract.Assertf(isfunc,
+			"Expected ctor %v to be a class method; got %v", ctor, reflect.TypeOf(ctor))
+		contract.Assertf(ctormeth.Ty.Return == nil,
+			"Expected ctor %v to have a nil return; got %v", ctor, ctormeth.Ty.Return)
+
+		// Evaluate the arguments in order.
+		var args []*rt.Object
+		if node.Arguments != nil {
+			for _, arg := range *node.Arguments {
+				argobj, uw := e.evalExpression(arg)
+				if uw != nil {
+					return nil, uw
+				}
+				args = append(args, argobj)
+			}
+		}
+
+		// Now dispatch the function call using the fresh object as the constructor's `this` argument.
+		if _, uw := e.evalCall(ctormeth, obj, args...); uw != nil {
+			return nil, uw
+		}
+	} else {
+		contract.Assertf(node.Arguments == nil || len(*node.Arguments) == 0,
+			"No constructor found for %v, yet the new expression had %v args", ty, len(*node.Arguments))
+		class, isclass := ty.(*symbols.Class)
+		contract.Assertf(!isclass || class.Extends == nil,
+			"No constructor found for %v, yet there is a base class; chaining must be done manually", ty)
+	}
+
+	return obj, nil
 }
 
 func (e *evaluator) evalInvokeFunctionExpression(node *ast.InvokeFunctionExpression) (*rt.Object, *Unwind) {
