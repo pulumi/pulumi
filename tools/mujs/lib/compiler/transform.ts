@@ -2346,13 +2346,20 @@ export class Transformer {
     // when evaluated, will load the value of the target identifier, so that it's suitable as an expression node.
     private transformIdentifierExpression(node: ts.Identifier): ast.Expression {
         let id: ast.Identifier = this.transformIdentifier(node);
-        return this.withLocation(node, <ast.LoadLocationExpression>{
-            kind: ast.loadLocationExpressionKind,
-            name: this.copyLocation(id, <ast.Token>{
-                kind: ast.tokenKind,
-                tok:  id.ident,
-            }),
-        });
+        if (id.ident === "null" || id.ident === "undefined") {
+            return this.withLocation(node, <ast.NullLiteral>{
+                kind: ast.nullLiteralKind,
+            });
+        }
+        else {
+            return this.withLocation(node, <ast.LoadLocationExpression>{
+                kind: ast.loadLocationExpressionKind,
+                name: this.copyLocation(id, <ast.Token>{
+                    kind: ast.tokenKind,
+                    tok:  id.ident,
+                }),
+            });
+        }
     }
 
     private transformObjectBindingPattern(node: ts.ObjectBindingPattern): ast.Expression {
