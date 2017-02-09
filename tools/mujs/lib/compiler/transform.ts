@@ -1045,6 +1045,56 @@ export class Transformer {
 
     /** Declaration statements **/
 
+    private async transformHeritageClauses(
+            clauses: ts.HeritageClause[] | undefined):
+                Promise<{ extend: ast.TypeToken | undefined, implement: ast.TypeToken[] | undefined }> {
+        let extend: ast.TypeToken | undefined;
+        let implement: ast.TypeToken[] | undefined;
+        if (clauses) {
+            for (let heritage of clauses) {
+                switch (heritage.token) {
+                    case ts.SyntaxKind.ExtendsKeyword:
+                        if (!heritage.types) {
+                            contract.fail();
+                        }
+                        else {
+                            contract.assert(heritage.types.length === 1);
+                            let extsym: ts.Symbol =
+                                this.checker().getSymbolAtLocation(heritage.types[0].expression);
+                            contract.assert(!!extsym);
+                            let exttok: tokens.TypeToken = await this.resolveTokenFromSymbol(extsym);
+                            extend = <ast.TypeToken>{
+                                kind: ast.typeTokenKind,
+                                tok:  exttok,
+                            };
+                        }
+                        break;
+                    case ts.SyntaxKind.ImplementsKeyword:
+                        if (!heritage.types) {
+                            contract.fail();
+                        }
+                        else {
+                            if (!implement) {
+                                implement = [];
+                            }
+                            for (let impltype of heritage.types) {
+                                let implsym: ts.Symbol = this.checker().getSymbolAtLocation(impltype.expression);
+                                contract.assert(!!implsym);
+                                implement.push(<ast.TypeToken>{
+                                    kind: ast.typeTokenKind,
+                                    tok:  await this.resolveTokenFromSymbol(implsym),
+                                });
+                            }
+                        }
+                        break;
+                    default:
+                        contract.fail(`Unrecognized heritage token kind: ${ts.SyntaxKind[heritage.token]}`);
+                }
+            }
+        }
+        return { extend, implement };
+    }
+
     private async transformClassDeclaration(
             modtok: tokens.ModuleToken, node: ts.ClassDeclaration, access: tokens.Accessibility): Promise<ast.Class> {
         // TODO(joe): generics.
@@ -1068,50 +1118,11 @@ export class Transformer {
             this.currentClassToken = classtok;
 
             // Discover any extends/implements clauses.
-            let extendType: ast.TypeToken | undefined;
-            let implementTypes: ast.TypeToken[] | undefined;
-            if (node.heritageClauses) {
-                for (let heritage of node.heritageClauses) {
-                    switch (heritage.token) {
-                        case ts.SyntaxKind.ExtendsKeyword:
-                            if (!heritage.types) {
-                                contract.fail();
-                            }
-                            else {
-                                contract.assert(heritage.types.length === 1);
-                                let extsym: ts.Symbol =
-                                    this.checker().getSymbolAtLocation(heritage.types[0].expression);
-                                contract.assert(!!extsym);
-                                let exttok: tokens.TypeToken = await this.resolveTokenFromSymbol(extsym);
-                                extendType = <ast.TypeToken>{
-                                    kind: ast.typeTokenKind,
-                                    tok:  exttok,
-                                };
-                                this.currentSuperClassToken = exttok;
-                            }
-                            break;
-                        case ts.SyntaxKind.ImplementsKeyword:
-                            if (!heritage.types) {
-                                contract.fail();
-                            }
-                            else {
-                                if (!implementTypes) {
-                                    implementTypes = [];
-                                }
-                                for (let impltype of heritage.types) {
-                                    let implsym: ts.Symbol = this.checker().getSymbolAtLocation(impltype.expression);
-                                    contract.assert(!!implsym);
-                                    implementTypes.push(<ast.TypeToken>{
-                                        kind: ast.typeTokenKind,
-                                        tok:  await this.resolveTokenFromSymbol(implsym),
-                                    });
-                                }
-                            }
-                            break;
-                        default:
-                            contract.fail(`Unrecognized heritage token kind: ${ts.SyntaxKind[heritage.token]}`);
-                    }
-                }
+            let extend: ast.TypeToken | undefined;
+            let implement: ast.TypeToken[] | undefined;
+            ({ extend, implement } = await this.transformHeritageClauses(node.heritageClauses));
+            if (extend) {
+                this.currentSuperClassToken = extend.tok;
             }
 
             // Transform all non-semicolon members for this declaration into ClassMembers.
@@ -1175,8 +1186,8 @@ export class Transformer {
                 access:     access,
                 members:    members,
                 abstract:   !!(mods & ts.ModifierFlags.Abstract),
-                extends:    extendType,
-                implements: implementTypes,
+                extends:    extend,
+                implements: implement,
             });
         }
         finally {
@@ -1327,34 +1338,55 @@ export class Transformer {
 
         // Create a name and token for the MuIL class representing this.
         let name: ast.Identifier = this.transformIdentifier(node.name);
+
+        // Next, make a class token to use during this class's transformations.
         let classtok: tokens.ModuleMemberToken = this.createModuleMemberToken(modtok, name.ident);
+        let priorClassToken: tokens.TypeToken | undefined = this.currentClassToken;
+        let priorSuperClassToken: tokens.TypeToken | undefined = this.currentSuperClassToken;
+        try {
+            this.currentClassToken = classtok;
 
-        // Transform all valid members for this declaration into ClassMembers.
-        let members: ast.ClassMembers = {};
-        for (let member of node.members) {
-            if (member.kind !== ts.SyntaxKind.MissingDeclaration) {
-                let decl: ast.ClassMember;
-                let element: ClassElement = await this.transformTypeElement(modtok, member);
-                if (isVariableDeclaration(element)) {
-                    let vardecl = <VariableDeclaration<ast.ClassProperty>>element;
-                    contract.assert(!vardecl.initializer, "Interface properties do not have initializers");
-                    decl = vardecl.variable;
-                }
-                else {
-                    decl = <ast.ClassMember>element;
-                }
-
-                members[decl.name.ident] = decl;
+            // Discover any extends/implements clauses.
+            let extend: ast.TypeToken | undefined;
+            let implement: ast.TypeToken[] | undefined;
+            ({ extend, implement } = await this.transformHeritageClauses(node.heritageClauses));
+            if (extend) {
+                this.currentSuperClassToken = extend.tok;
             }
-        }
 
-        return this.withLocation(node, <ast.Class>{
-            kind:      ast.classKind,
-            name:      name,
-            access:    access,
-            members:   members,
-            interface: true,
-        });
+            // Transform all valid members for this declaration into ClassMembers.
+            let members: ast.ClassMembers = {};
+            for (let member of node.members) {
+                if (member.kind !== ts.SyntaxKind.MissingDeclaration) {
+                    let decl: ast.ClassMember;
+                    let element: ClassElement = await this.transformTypeElement(modtok, member);
+                    if (isVariableDeclaration(element)) {
+                        let vardecl = <VariableDeclaration<ast.ClassProperty>>element;
+                        contract.assert(!vardecl.initializer, "Interface properties do not have initializers");
+                        decl = vardecl.variable;
+                    }
+                    else {
+                        decl = <ast.ClassMember>element;
+                    }
+
+                    members[decl.name.ident] = decl;
+                }
+            }
+
+            return this.withLocation(node, <ast.Class>{
+                kind:       ast.classKind,
+                name:       name,
+                access:     access,
+                members:    members,
+                interface:  true,
+                extends:    extend,
+                implements: implement,
+            });
+        }
+        finally {
+            this.currentClassToken = priorClassToken;
+            this.currentSuperClassToken = priorSuperClassToken;
+        }
     }
 
     private transformModuleDeclaration(node: ts.ModuleDeclaration, access: tokens.Accessibility): ast.Module {
