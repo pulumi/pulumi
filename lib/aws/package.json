@@ -7,6 +7,9 @@
     },
     "devDependencies": {
         "typescript": "^2.1.4"
+    },
+    "peerDependencies": {
+        "@mu/mu": "*"
     }
 }
 

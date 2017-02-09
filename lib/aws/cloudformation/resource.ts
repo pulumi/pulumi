@@ -1,6 +1,6 @@
 // Copyright 2016 Marapongo, Inc. All rights reserved.
 
-import * as mu from 'mu';
+import * as mu from '@mu/mu';
 
 // A special service that simply emits a CloudFormation template.
 // @name: aws/x/cf

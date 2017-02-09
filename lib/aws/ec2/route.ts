@@ -1,6 +1,6 @@
 // Copyright 2016 Marapongo, Inc. All rights reserved.
 
-import * as mu from 'mu';
+import * as mu from '@mu/mu';
 import {InternetGateway} from './internetGateway';
 import {RouteTable} from './routeTable';
 import {VPCGatewayAttachment} from './vpcGatewayAttachment';
