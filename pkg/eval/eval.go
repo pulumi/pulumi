@@ -471,7 +471,7 @@ func (e *evaluator) evalTryCatchFinally(node *ast.TryCatchFinally) *Unwind {
 			for _, catch := range *node.CatchBlocks {
 				ex := e.ctx.RequireVariable(catch.Exception).(*symbols.LocalVariable)
 				exty := ex.Type()
-				contract.Assert(types.CanConvert(exty, types.Error))
+				contract.Assert(types.CanConvert(exty, types.Exception))
 				if types.CanConvert(thrown.Type(), exty) {
 					// This type matched, so this handler will catch the exception.  Set the exception variable,
 					// evaluate the block, and swap the Unwind information (thereby "handling" the in-flight exception).
@@ -703,7 +703,7 @@ func (e *evaluator) evalArrayLiteral(node *ast.ArrayLiteral) (*rt.Object, *Unwin
 		sz := int(sze.NumberValue())
 		if sz < 0 {
 			// If the size is less than zero, raise a new error.
-			return nil, NewThrowUnwind(e.alloc.NewError("Invalid array size (must be >= 0)"))
+			return nil, NewThrowUnwind(e.alloc.NewException("Invalid array size (must be >= 0)"))
 		}
 		arr = make([]rt.Value, sz)
 	}
@@ -718,7 +718,7 @@ func (e *evaluator) evalArrayLiteral(node *ast.ArrayLiteral) (*rt.Object, *Unwin
 		} else if len(*node.Elements) > *sz {
 			// The element count exceeds the size; raise an error.
 			return nil, NewThrowUnwind(
-				e.alloc.NewError("Invalid number of array elements; expected <=%v, got %v",
+				e.alloc.NewException("Invalid number of array elements; expected <=%v, got %v",
 					*sz, len(*node.Elements)))
 		}
 

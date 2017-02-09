@@ -191,10 +191,10 @@ func NewPointerObject(t symbols.Type, ptr *Pointer) *Object {
 	return NewPrimitiveObject(ptrt, ptr)
 }
 
-// NewErrorObject creates a new exception with the given message.
-func NewErrorObject(message string, args ...interface{}) *Object {
+// NewExceptionObject creates a new exception with the given message.
+func NewExceptionObject(message string, args ...interface{}) *Object {
 	// TODO: capture a stack trace.
-	return NewPrimitiveObject(types.Error, fmt.Sprintf(message, args...))
+	return NewPrimitiveObject(types.Exception, fmt.Sprintf(message, args...))
 }
 
 // NewConstantObject returns a new object with the right type and value, based on some constant data.

@@ -201,13 +201,13 @@ func (ctx *Context) LookupTypeToken(node ast.Node, tok tokens.Type, require bool
 		}
 	}
 
-	// The type was not found; issue an error, and return Any so we can proceed with typechecking.
+	// The type was not found; issue an error, and return an error type so we can proceed with typechecking.
 	if ty == nil {
 		if require {
 			contract.Assert(reason != "")
 			ctx.Diag.Errorf(errors.ErrorTypeNotFound.At(node), tok, reason)
 		}
-		ty = types.Any
+		ty = types.Error
 	}
 	return ty
 }
@@ -221,9 +221,9 @@ func (ctx *Context) LookupFunctionType(node ast.Function) *symbols.FunctionType 
 			// If there was an explicit type, look it up.
 			ptysym := ctx.LookupType(param.Type)
 
-			// If either the parameter's type was unknown, or the lookup failed (leaving an error), use the any type.
+			// If either the parameter's type was unknown, or the lookup failed, sub in an error type.
 			if ptysym == nil {
-				ptysym = types.Any
+				ptysym = types.Error
 			}
 
 			params = append(params, ptysym)
@@ -287,7 +287,7 @@ func (ctx *Context) lookupBasicType(node ast.Node, tok tokens.Type, require bool
 	if require {
 		ctx.Diag.Errorf(errors.ErrorTypeNotFound.At(node), tok, "unrecognized primitive type name")
 	}
-	return types.Any
+	return types.Error
 }
 
 func (ctx *Context) checkModuleVisibility(node ast.Node, module *symbols.Module, member symbols.ModuleMember) {

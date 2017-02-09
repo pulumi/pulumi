@@ -74,9 +74,9 @@ func (a *Allocator) NewPointer(t symbols.Type, ptr *rt.Pointer) *rt.Object {
 	return obj
 }
 
-// NewError creates a new exception with the given message.
-func (a *Allocator) NewError(message string, args ...interface{}) *rt.Object {
-	obj := rt.NewErrorObject(message, args...)
+// NewException creates a new exception with the given message.
+func (a *Allocator) NewException(message string, args ...interface{}) *rt.Object {
+	obj := rt.NewExceptionObject(message, args...)
 	a.onNewObject(obj)
 	return obj
 }

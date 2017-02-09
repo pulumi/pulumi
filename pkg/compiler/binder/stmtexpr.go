@@ -305,7 +305,7 @@ func (a *astBinder) checkLoadLocationExpression(node *ast.LoadLocationExpression
 	// Produce a type of the right kind from the target location.
 	var ty symbols.Type
 	if sym == nil {
-		ty = types.Any
+		ty = types.Error // no symbol found, use an error type.
 	} else {
 		for ty == nil {
 			switch s := sym.(type) {
@@ -369,7 +369,7 @@ func (a *astBinder) checkInvokeFunctionExpression(node *ast.InvokeFunctionExpres
 		a.b.ctx.RegisterType(node, funty.Return)
 	} else {
 		a.b.Diag().Errorf(errors.ErrorCannotInvokeNonFunction.At(node), ty)
-		a.b.ctx.RegisterType(node, types.Any)
+		a.b.ctx.RegisterType(node, types.Error)
 	}
 }
 
