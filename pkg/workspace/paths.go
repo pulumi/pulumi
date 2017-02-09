@@ -108,6 +108,12 @@ func IsMufile(path string, d diag.Sink) bool {
 	return isMarkupFile(path, Mufile, d)
 }
 
+// IsMupack returns true if the path references what appears to be a valid Mupack.  If problems are detected -- like
+// an incorrect extension -- they are logged to the provided diag.Sink (if non-nil).
+func IsMupack(path string, d diag.Sink) bool {
+	return isMarkupFile(path, Mupack, d)
+}
+
 // IsMuspace returns true if the path references what appears to be a valid Muspace file.  If problems are detected --
 // like an incorrect extension -- they are logged to the provided diag.Sink (if non-nil).
 func IsMuspace(path string, d diag.Sink) bool {

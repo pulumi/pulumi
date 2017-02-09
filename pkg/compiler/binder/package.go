@@ -104,11 +104,11 @@ func (b *binder) resolveDep(dep pack.PackageURL) *symbols.ResolvedPackage {
 	locs := b.w.DepCandidates(dep)
 	for _, loc := range locs {
 		// See if this candidate actually exists.
-		isMufile := workspace.IsMufile(loc, b.Diag())
-		glog.V(5).Infof("Probing for dependency '%v' at '%v': isMufile=%v", dep, loc, isMufile)
+		isMupack := workspace.IsMupack(loc, b.Diag())
+		glog.V(5).Infof("Probing for dependency '%v' at '%v': isMupack=%v", dep, loc, isMupack)
 
 		// If it does, go ahead and read it in, and bind it (recursively).
-		if isMufile {
+		if isMupack {
 			// Read in the package AST.
 			doc, err := diag.ReadDocument(loc)
 			if err != nil {
