@@ -2,7 +2,7 @@
 
 "use strict";
 
-import {fs, log} from "nodejs-ts";
+import {contract, fs, log} from "nodejs-ts";
 import * as os from "os";
 import * as fspath from "path";
 import * as ts from "typescript";
@@ -71,11 +71,27 @@ export async function compileScript(path: string, options?: ts.CompilerOptions):
     }
 
     let tree: ts.Program | undefined;
+    let outputs: ScriptOutputs | undefined;
     let muDiagnostics: diag.Diagnostic[] = [];
     if (diagnostics.length === 0) {
         // Create a compiler host and perform the compilation.
         const host: ts.CompilerHost = ts.createCompilerHost(options);
-        host.writeFile = (filename: string, data: string, writeBOM: boolean) => { /*ignore outputs*/ };
+        host.writeFile = (filename: string, data: string, writeBOM: boolean) => {
+            if (!outputs) {
+                outputs = new Map<string, string>();
+            }
+            // Instead of writing the file, simply enter the it into the map entry, indexed by relative filename.  This
+            // filename is relative to the root directory, by default, and the outDir directory otherwise.  We expect
+            // callers to reconsutruct the absolute output target based on custom logic (and the compiler options).
+            contract.assert(!outputs.has(filename));
+            if (options && options.outDir) {
+                filename = fspath.relative(options.outDir, filename);
+            }
+            else if (root) {
+                filename = fspath.relative(root, filename);
+            }
+            outputs.set(filename, data);
+        };
         tree = ts.createProgram(files, options, host);
 
         // Concatenate all of the diagnostics into a single array.
@@ -92,17 +108,15 @@ export async function compileScript(path: string, options?: ts.CompilerOptions):
         // Now perform the creation of the AST data structures.
         const emitOutput: ts.EmitResult = tree.emit();
         diagnostics = diagnostics.concat(emitOutput.diagnostics);
-
-        // Finally, actually turn the diagnostics into useable MuIL diagnostics.
-        muDiagnostics = transformDiagnostics(root, diagnostics);
     }
 
     return <Script>{
         root:        root,
         files:       files,
         options:     options,
-        diagnostics: muDiagnostics,
+        diagnostics: transformDiagnostics(root, diagnostics),
         tree:        tree,
+        outputs:     outputs,
     };
 }
 
@@ -124,12 +138,15 @@ function transformDiagnostics(root: string, diagnostics: ts.Diagnostic[]): diag.
 
 // The result of script compilation.
 export interface Script {
-    root:        string;                 // the root directory for the compilation.
-    files:       string[];               // the files that are considered part of this script's package.
-    options:     ts.CompilerOptions;     // the compiler options used to compile this project.
-    diagnostics: diag.Diagnostic[];      // any diagnostics resulting from compilation.
-    tree:        ts.Program | undefined; // the resulting TypeScript program object.
+    root:        string;                    // the root directory for the compilation.
+    files:       string[];                  // the files that are considered part of this script's package.
+    options:     ts.CompilerOptions;        // the compiler options used to compile this project.
+    diagnostics: diag.Diagnostic[];         // any diagnostics resulting from compilation.
+    tree:        ts.Program | undefined;    // the resulting TypeScript program object.
+    outputs:     ScriptOutputs | undefined; // a collection of the resulting file outputs.
 }
+
+export type ScriptOutputs = Map<string, string>;
 
 class ParseConfigHost implements ts.ParseConfigHost {
     public readonly useCaseSensitiveFileNames = isFilesystemCaseSensitive();

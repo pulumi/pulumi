@@ -5,7 +5,7 @@
 import {contract} from "nodejs-ts";
 import * as diag from "../diag";
 import * as pack from "../pack";
-import {compileScript, Script} from "./script";
+import {compileScript, Script, ScriptOutputs} from "./script";
 import {transform, TransformResult} from "./transform";
 
 // Compiles a TypeScript program, translates it into MuPack/MuIL, and returns the output.
@@ -31,17 +31,31 @@ export async function compile(path: string): Promise<CompileResult> {
         diagnostics = diagnostics.concat(result.diagnostics);
     }
 
+    // Collect up all of the definition files produced by the compiler, and bring them along.
+    let definitions: ScriptOutputs | undefined;
+    if (script.outputs) {
+        for (let output of script.outputs) {
+            if (output[0].endsWith(".d.ts")) {
+                if (!definitions) {
+                    definitions = new Map<string, string>();
+                }
+                definitions.set(output[0], output[1]);
+            }
+        }
+    }
+
     // Finally, return the overall result of the compilation.
-    return new CompileResult(script.root, diagnostics, pkg, script.options.outDir);
+    return new CompileResult(script.root, diagnostics, pkg, definitions, script.options.outDir);
 }
 
 export class CompileResult {
     private readonly dctx: diag.Context;
 
-    constructor(public readonly root:          string,                   // the root path for the compilation.
-                public readonly diagnostics:   diag.Diagnostic[],        // any diagnostics resulting from translation.
-                public readonly pkg:           pack.Package | undefined, // the resulting MuPack/MuIL AST.
-                public readonly preferredOut?: string,                   // an optional preferred output location.
+    constructor(public readonly root:          string,                    // the root path for the compilation.
+                public readonly diagnostics:   diag.Diagnostic[],         // any diagnostics resulting from translation.
+                public readonly pkg:           pack.Package | undefined,  // the resulting MuPack/MuIL AST.
+                public readonly definitions:   ScriptOutputs | undefined, // the resulting TypeScript definition files.
+                public readonly preferredOut?: string,                    // an optional preferred output location.
     ) {
         this.dctx = new diag.Context(root);
     }

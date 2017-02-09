@@ -97,24 +97,45 @@ async function main(args: string[]): Promise<number> {
 
     // Now save (or print) the output so long as there weren't any errors.
     if (result.pkg && mujs.diag.success(result.diagnostics)) {
-        if (!outfile) {
-            // If no output file was specified, try to use the output specified in the target project file, if any;
-            // otherwise, simply store the output in the current directory using the standard Mupack.<ext> name.
-            outfile = mujs.pack.mupackBase + format;
-            if (result.preferredOut) {
-                await fs.mkdirp(result.preferredOut);                // ensure the output directory exists.
-                outfile = fspath.join(result.preferredOut, outfile); // and make a file path out of it.
-            }
-        }
-
+        // Marshal the resulting package tree into a string blob, and ready to write it somewhere.
         let blob: string = marshaler(result.pkg);
+
         if (outfile === "-") {
-            // "-" means print to stdout.
+            // "-" means print to stdout; we won't actually emit any of the definition files.
             console.log(blob);
         }
         else {
-            // Make sure to append a newline to the blob, and write it to disk.
+            let outbase: string;
+            if (outfile) {
+                // If there is an output file location, use its path for the base.
+                outbase = fspath.dirname(outfile);
+            }
+            else {
+                // If no output file was specified, try to use the output specified in the target project file, if any;
+                // otherwise, simply store the output in the current directory using the standard Mupack.<ext> name.
+                outfile = mujs.pack.mupackBase + format;
+                if (result.preferredOut) {
+                    outbase = result.preferredOut;
+                    await fs.mkdirp(outbase);                            // ensure the output directory exists.
+                    outfile = fspath.join(result.preferredOut, outfile); // and make a file path out of it.
+                }
+                else {
+                    outbase = ".";
+                }
+            }
+
+            // Now write out the Mupack file, terminated with a newline.
             await fs.writeFile(outfile, blob + os.EOL);
+
+            // Next, write out all definition files to their desired locations.
+            if (result.definitions) {
+                for (let definition of result.definitions) {
+                    // Ensure the directory exists and then write out the file.
+                    let deffile: string = fspath.join(outbase, definition[0]);
+                    await fs.mkdirp(fspath.dirname(deffile));
+                    await fs.writeFile(deffile, definition[1] + os.EOL);
+                }
+            }
         }
     }
 
