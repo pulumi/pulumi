@@ -364,9 +364,13 @@ export class Transformer {
             // TODO(joe): this still isn't 100% correct, because we might have ".."s for "up and over" references.
             //     We should consult the dependency list to ensure that it exists, and use that for normalization.
             moduleName = fspath.relative(pkginfo.root, ref);
-            let moduleExtIndex: number = moduleName.lastIndexOf(".");
-            if (moduleExtIndex !== -1) {
-                moduleName = moduleName.substring(0, moduleExtIndex);
+
+            // If the module contains a ".js", ".d.ts", or ".ts" on the end of it, strip it off.
+            for (let suffix of [ ".js", ".d.ts", ".ts" ]) {
+                if (moduleName.endsWith(suffix)) {
+                    moduleName = moduleName.substring(0, moduleName.length-suffix.length);
+                    break;
+                }
             }
         }
 
