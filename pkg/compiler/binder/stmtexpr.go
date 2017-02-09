@@ -250,34 +250,38 @@ func (a *astBinder) checkObjectLiteral(node *ast.ObjectLiteral) {
 		ty := a.b.ctx.LookupType(node.Type)
 		a.b.ctx.RegisterType(node, ty)
 
-		// Only permit object literals for records and interfaces.  Classes have constructors.
-		if !ty.Record() && !ty.Interface() {
-			a.b.Diag().Errorf(errors.ErrorIllegalObjectLiteralType.At(node.Type), ty)
-		} else {
-			// Ensure that all required properties have been supplied, and that they are of the right type.
-			props := make(map[tokens.ClassMemberName]bool)
-			if node.Properties != nil {
-				for _, init := range *node.Properties {
-					sym := a.b.ctx.RequireClassMember(init.Property, ty, init.Property.Tok)
-					if sym != nil {
-						switch s := sym.(type) {
-						case *symbols.ClassProperty, *symbols.ClassMethod:
-							a.checkExprType(init.Value, s.Type())
-						default:
-							contract.Failf("Unrecognized class member symbol: %v", sym)
+		// Check invariants of object literal types and properties.  In particular, only permit object literals for
+		// records and interfaces (since lasses have constructors), and ensure the required ones are present.  Note that
+		// all of this is skipped for so-called "anonymous" literals (of type `any`), since they are just bags.
+		if ty != types.Any {
+			if !ty.Record() && !ty.Interface() {
+				a.b.Diag().Errorf(errors.ErrorIllegalObjectLiteralType.At(node.Type), ty)
+			} else {
+				// Ensure that all required properties have been supplied, and that they are of the right type.
+				props := make(map[tokens.ClassMemberName]bool)
+				if node.Properties != nil {
+					for _, init := range *node.Properties {
+						sym := a.b.ctx.RequireClassMember(init.Property, ty, init.Property.Tok)
+						if sym != nil {
+							switch s := sym.(type) {
+							case *symbols.ClassProperty, *symbols.ClassMethod:
+								a.checkExprType(init.Value, s.Type())
+							default:
+								contract.Failf("Unrecognized class member symbol: %v", sym)
+							}
+							props[init.Property.Tok.Name()] = true // record that we've seen this one.
 						}
-						props[init.Property.Tok.Name()] = true // record that we've seen this one.
 					}
 				}
-			}
 
-			// Issue an error about any missing required properties.
-			membs := ty.TypeMembers()
-			for _, name := range symbols.StableClassMemberMap(membs) {
-				if _, has := props[name]; !has {
-					member := membs[name]
-					if !member.Optional() && member.Default() == nil {
-						a.b.Diag().Errorf(errors.ErrorMissingRequiredProperty.At(node), name)
+				// Issue an error about any missing required properties.
+				membs := ty.TypeMembers()
+				for _, name := range symbols.StableClassMemberMap(membs) {
+					if _, has := props[name]; !has {
+						member := membs[name]
+						if !member.Optional() && member.Default() == nil {
+							a.b.Diag().Errorf(errors.ErrorMissingRequiredProperty.At(node), name)
+						}
 					}
 				}
 			}
