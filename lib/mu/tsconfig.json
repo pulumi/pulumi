@@ -19,7 +19,6 @@
         "index.ts",
 
         "context.ts",
-        "json.ts",
         "resource.ts",
         "stack.ts"
     ]
