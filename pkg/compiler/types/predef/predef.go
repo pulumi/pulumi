@@ -13,6 +13,8 @@ var (
 	MuPackage tokens.Package = tokens.NewPackageToken("mu")
 	// MuDefaultModule is the predefined Mu standard library's main module.
 	MuDefaultModule tokens.Module = tokens.NewModuleToken(MuPackage, tokens.DefaultModule)
+	// MuResouceModule is the predefined Mu standard library's resource module.
+	MuResourceModule tokens.Module = tokens.NewModuleToken(MuPackage, "resource")
 	// MuResourceClass is the penultimate resource base class, from which all resources derive.
-	MuResourceClass tokens.Type = tokens.NewTypeToken(MuDefaultModule, "Resource")
+	MuResourceClass tokens.Type = tokens.NewTypeToken(MuResourceModule, "Resource")
 )
