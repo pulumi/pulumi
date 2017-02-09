@@ -16,6 +16,9 @@ import (
 // Mufile is the base name of a Mufile.
 const Mufile = "Mu"
 
+// Mupack is the base name of a MuPackage.
+const Mupack = "Mupack"
+
 // Muspace is the base name of a markup file containing settings shared amongst a workspace.
 const Muspace = "Muspace"
 

@@ -101,7 +101,8 @@ func (b *binder) resolveDep(dep pack.PackageURL) *symbols.ResolvedPackage {
 
 	// There are many places a dependency could come from.  Consult the workspace for a list of those paths.  It will
 	// return a number of them, in preferred order, and we simply probe each one until we find something.
-	for _, loc := range b.w.DepCandidates(dep) {
+	locs := b.w.DepCandidates(dep)
+	for _, loc := range locs {
 		// See if this candidate actually exists.
 		isMufile := workspace.IsMufile(loc, b.Diag())
 		glog.V(5).Infof("Probing for dependency '%v' at '%v': isMufile=%v", dep, loc, isMufile)
@@ -121,8 +122,18 @@ func (b *binder) resolveDep(dep pack.PackageURL) *symbols.ResolvedPackage {
 		}
 	}
 
-	// If we got to this spot, we could not find the dependency.  Issue an error and bail out.
-	b.Diag().Errorf(errors.ErrorImportNotFound, dep)
+	// If we got to this spot, we could not find the dependency.  Issue an error and bail out.  Note that we tack on all
+	// searched paths to help developers diagnose pathing problems that might cause dependency load failures.
+	searched := ""
+	for _, loc := range locs {
+		if searched == "" {
+			searched += "\n\tsearched paths: "
+		} else {
+			searched += "\n\t                "
+		}
+		searched += loc
+	}
+	b.Diag().Errorf(errors.ErrorImportNotFound, dep, searched)
 	return nil
 }
 

@@ -158,6 +158,7 @@ func (w *workspace) DepCandidates(dep pack.PackageURL) []string {
 	//
 	// The following code simply produces an array of these candidate locations, in order.
 
+	dep = dep.Defaults() // ensure we use defaults in the pathing.
 	base := stringNamePath(dep.Base)
 	name := packageNamePath(dep.Name)
 	wsname := workspacePath(w, dep.Name)
@@ -165,14 +166,14 @@ func (w *workspace) DepCandidates(dep pack.PackageURL) []string {
 	// For each extension we support, add the same set of search locations.
 	cands := make([]string, 0, 4*len(encoding.Exts))
 	for _, ext := range encoding.Exts {
-		cands = append(cands, filepath.Join(w.root, base, name, Mufile+ext))
-		cands = append(cands, filepath.Join(w.root, wsname, Mufile+ext))
-		cands = append(cands, filepath.Join(w.root, Mudeps, base, name, Mufile+ext))
-		cands = append(cands, filepath.Join(w.root, Mudeps, name, Mufile+ext))
-		cands = append(cands, filepath.Join(w.home, Mudeps, base, name, Mufile+ext))
-		cands = append(cands, filepath.Join(w.home, Mudeps, name, Mufile+ext))
-		cands = append(cands, filepath.Join(InstallRoot(), InstallRootLibdir, base, name, Mufile+ext))
-		cands = append(cands, filepath.Join(InstallRoot(), InstallRootLibdir, name, Mufile+ext))
+		cands = append(cands, filepath.Join(w.root, base, name, Mupack+ext))
+		cands = append(cands, filepath.Join(w.root, wsname, Mupack+ext))
+		cands = append(cands, filepath.Join(w.root, Mudeps, base, name, Mupack+ext))
+		cands = append(cands, filepath.Join(w.root, Mudeps, name, Mupack+ext))
+		cands = append(cands, filepath.Join(w.home, Mudeps, base, name, Mupack+ext))
+		cands = append(cands, filepath.Join(w.home, Mudeps, name, Mupack+ext))
+		cands = append(cands, filepath.Join(InstallRoot(), InstallRootLibdir, base, name, Mupack+ext))
+		cands = append(cands, filepath.Join(InstallRoot(), InstallRootLibdir, name, Mupack+ext))
 	}
 	return cands
 }

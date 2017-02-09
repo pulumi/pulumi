@@ -6,7 +6,7 @@ package errors
 var (
 	ErrorInvalidPackageName       = newError(500, "The package name must be a valid identifier")
 	ErrorMalformedPackageURL      = newError(501, "Package URL '%v' is malformed: %v")
-	ErrorImportNotFound           = newError(502, "The imported package '%v' was not found; has it been installed?")
+	ErrorImportNotFound           = newError(502, "The imported package '%v' was not found; has it been installed?%v")
 	ErrorTypeNotFound             = newError(503, "Type '%v' could not be found: %v")
 	ErrorSymbolNotFound           = newError(504, "Symbol '%v' could not be found: %v")
 	ErrorSymbolAlreadyExists      = newError(505, "A symbol already exists with the name '%v'")
