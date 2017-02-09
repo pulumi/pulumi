@@ -138,21 +138,21 @@ func (b *binder) bindModuleMemberDefinitions(module *symbols.Module) {
 }
 
 func (b *binder) bindExportDefinition(export *symbols.Export) {
-	glog.V(3).Infof("Binding module export '%v' defn", export.Token)
+	glog.V(3).Infof("Binding module export '%v' defn", export.Token())
 
 	// To bind an export definition, simply look up the referent symbol and associate this name with it.
 	export.Referent = b.ctx.LookupSymbol(export.Node.Referent, export.Node.Referent.Tok, true)
 }
 
 func (b *binder) bindModulePropertyDefinition(property *symbols.ModuleProperty) {
-	glog.V(3).Infof("Binding module property '%v' defn", property.Token)
+	glog.V(3).Infof("Binding module property '%v' defn", property.Token())
 
 	// Look up this node's type and remember the type on the symbol.
 	property.Ty = b.ctx.LookupType(property.Node.Type)
 }
 
 func (b *binder) bindModuleMethodDefinition(method *symbols.ModuleMethod) {
-	glog.V(3).Infof("Binding module method '%v' defn", method.Token)
+	glog.V(3).Infof("Binding module method '%v' defn", method.Token())
 
 	// Make a function type out of this method and store it on the symbol.
 	method.Type = b.ctx.LookupFunctionType(method.Node)
