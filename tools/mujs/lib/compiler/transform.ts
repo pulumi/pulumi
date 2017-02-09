@@ -2161,18 +2161,35 @@ export class Transformer {
         let id: ast.Identifier = this.transformIdentifier(node.name);
         let object: ast.Expression = await this.transformExpression(node.expression);
 
-        // Now qualify the name using the target expression's type.
+        // Now create a qualified token using the target expression's type.
+        let tok: tokens.Token;
+
+        // Fetch the type; it will either be a real type or a module (each of which is treated differently).  The module
+        // case occurs when we are accessing an exported member (property or method) from the module.  For instance:
+        // 
+        //      import * as foo from "foo";
+        //      foo.bar();
+        //
         let ty: ts.Type = this.checker().getTypeAtLocation(node.expression);
         contract.assert(!!ty);
-        let tytok: tokens.TypeToken | undefined = await this.resolveTypeToken(ty);
-        contract.assert(!!tytok);
+        let tysym: ts.Symbol = ty.getSymbol();
+        if (tysym.flags & ts.SymbolFlags.ValueModule) {
+            let modref: ModuleReference = this.createModuleReference(tysym);
+            let modtok: tokens.ModuleToken = await this.createModuleToken(modref);
+            tok = this.createModuleMemberToken(modtok, id.ident);
+        }
+        else {
+            let tytok: tokens.TypeToken | undefined = await this.resolveTypeToken(ty);
+            contract.assert(!!tytok);
+            tok = this.createClassMemberToken(tytok!, id.ident);
+        }
 
         return this.withLocation(node, <ast.LoadLocationExpression>{
             kind:   ast.loadLocationExpressionKind,
             object: object,
             name:   this.copyLocation(id, <ast.Token>{
                 kind: ast.tokenKind,
-                tok:  this.createClassMemberToken(tytok!, id.ident),
+                tok:  tok,
             }),
         });
     }

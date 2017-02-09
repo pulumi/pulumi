@@ -24,6 +24,7 @@ let testCases: string[] = [
     "modules/func_1",
     "modules/func_exp_1",
     "modules/func_exp_def_1",
+    "modules/func_cross_call",
     "modules/class_1",
     "modules/class_exp_1",
     "modules/iface_1",

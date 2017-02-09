@@ -1,0 +1,209 @@
+{
+    "name": "modules/func_cross_call",
+    "modules": {
+        "a": {
+            "kind": "Module",
+            "name": {
+                "kind": "Identifier",
+                "ident": "a"
+            },
+            "imports": [],
+            "members": {
+                "foo": {
+                    "kind": "ModuleMethod",
+                    "name": {
+                        "kind": "Identifier",
+                        "ident": "foo",
+                        "loc": {
+                            "file": "a.ts",
+                            "start": {
+                                "line": 1,
+                                "column": 16
+                            },
+                            "end": {
+                                "line": 1,
+                                "column": 19
+                            }
+                        }
+                    },
+                    "access": "public",
+                    "parameters": [],
+                    "body": {
+                        "kind": "Block",
+                        "statements": [],
+                        "loc": {
+                            "file": "a.ts",
+                            "start": {
+                                "line": 1,
+                                "column": 28
+                            },
+                            "end": {
+                                "line": 3,
+                                "column": 1
+                            }
+                        }
+                    },
+                    "loc": {
+                        "file": "a.ts",
+                        "start": {
+                            "line": 1,
+                            "column": 0
+                        },
+                        "end": {
+                            "line": 3,
+                            "column": 1
+                        }
+                    }
+                }
+            },
+            "loc": {
+                "file": "a.ts",
+                "start": {
+                    "line": 1,
+                    "column": 0
+                },
+                "end": {
+                    "line": 5,
+                    "column": 0
+                }
+            }
+        },
+        "b": {
+            "kind": "Module",
+            "name": {
+                "kind": "Identifier",
+                "ident": "b"
+            },
+            "imports": [
+                {
+                    "kind": "ModuleToken",
+                    "tok": "modules/func_cross_call:a",
+                    "loc": {
+                        "file": "b.ts",
+                        "start": {
+                            "line": 1,
+                            "column": 19
+                        },
+                        "end": {
+                            "line": 1,
+                            "column": 24
+                        }
+                    }
+                }
+            ],
+            "members": {
+                ".init": {
+                    "kind": "ModuleMethod",
+                    "name": {
+                        "kind": "Identifier",
+                        "ident": ".init"
+                    },
+                    "access": "public",
+                    "body": {
+                        "kind": "Block",
+                        "statements": [
+                            {
+                                "kind": "ExpressionStatement",
+                                "expression": {
+                                    "kind": "InvokeFunctionExpression",
+                                    "function": {
+                                        "kind": "LoadLocationExpression",
+                                        "object": {
+                                            "kind": "LoadLocationExpression",
+                                            "name": {
+                                                "kind": "Token",
+                                                "tok": "a",
+                                                "loc": {
+                                                    "file": "b.ts",
+                                                    "start": {
+                                                        "line": 2,
+                                                        "column": 0
+                                                    },
+                                                    "end": {
+                                                        "line": 2,
+                                                        "column": 1
+                                                    }
+                                                }
+                                            },
+                                            "loc": {
+                                                "file": "b.ts",
+                                                "start": {
+                                                    "line": 2,
+                                                    "column": 0
+                                                },
+                                                "end": {
+                                                    "line": 2,
+                                                    "column": 1
+                                                }
+                                            }
+                                        },
+                                        "name": {
+                                            "kind": "Token",
+                                            "tok": "modules/func_cross_call:a:foo",
+                                            "loc": {
+                                                "file": "b.ts",
+                                                "start": {
+                                                    "line": 2,
+                                                    "column": 2
+                                                },
+                                                "end": {
+                                                    "line": 2,
+                                                    "column": 5
+                                                }
+                                            }
+                                        },
+                                        "loc": {
+                                            "file": "b.ts",
+                                            "start": {
+                                                "line": 2,
+                                                "column": 0
+                                            },
+                                            "end": {
+                                                "line": 2,
+                                                "column": 5
+                                            }
+                                        }
+                                    },
+                                    "arguments": [],
+                                    "loc": {
+                                        "file": "b.ts",
+                                        "start": {
+                                            "line": 2,
+                                            "column": 0
+                                        },
+                                        "end": {
+                                            "line": 2,
+                                            "column": 7
+                                        }
+                                    }
+                                },
+                                "loc": {
+                                    "file": "b.ts",
+                                    "start": {
+                                        "line": 2,
+                                        "column": 0
+                                    },
+                                    "end": {
+                                        "line": 2,
+                                        "column": 8
+                                    }
+                                }
+                            }
+                        ]
+                    }
+                }
+            },
+            "loc": {
+                "file": "b.ts",
+                "start": {
+                    "line": 1,
+                    "column": 0
+                },
+                "end": {
+                    "line": 4,
+                    "column": 0
+                }
+            }
+        }
+    }
+}
