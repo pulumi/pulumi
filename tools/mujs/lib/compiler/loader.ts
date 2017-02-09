@@ -16,9 +16,19 @@ export class PackageLoader {
         this.cache = new Map<string, pack.Manifest>();
     }
 
-    // This function searches for Mu metadata from a given root directory.  If the upwards argument is true, it will
+    // loadCurrent searches for the Mu metadata for the currently compiled package in the given directory.
+    public loadCurrent(root: string): Promise<PackageResult> {
+        return this.loadCore(root, [ pack.mufileBase ], false);
+    }
+
+    // loadDependency searches for the MuPackage metadata for a dependency, starting from the given directory.
+    public loadDependency(root: string): Promise<PackageResult> {
+        return this.loadCore(root, [ pack.mupackBase, pack.mufileBase ], true);
+    }
+
+    // loadCore searches for Mu metadata from a given root directory.  If the upwards argument is true, it will
     // search upwards in the directory hierarchy until it finds a package file or hits the root of the filesystem.
-    public async load(root: string, upwards?: boolean): Promise<PackageResult> {
+    private async loadCore(root: string, filebases: string[], upwards: boolean): Promise<PackageResult> {
         let dctx = new diag.Context(root);
         let diagnostics: diag.Diagnostic[] = [];
         let pkg: pack.Manifest | undefined;
@@ -28,36 +38,38 @@ export class PackageLoader {
         let blobPath: string | undefined;
         let search: string = fspath.resolve(root);
         while (!pkg && !blob) {
-            let base: string = fspath.join(search, pack.mufileBase);
-            for (let unmarshaler of pack.unmarshalers) {
-                let path: string = base + unmarshaler[0];
+            for (let filebase of filebases) {
+                let base: string = fspath.join(search, filebase);
+                for (let unmarshaler of pack.unmarshalers) {
+                    let path: string = base + unmarshaler[0];
 
-                // First, see if we have this package already in our cache.
-                if (pkg = this.cache.get(path)) {
-                    break;
-                }
-
-                // If not, try to load it from the disk.
-                let raw: string | undefined;
-                try {
-                    raw = await fs.readFile(path);
-                }
-                catch (err) {
-                    if (err.code !== "ENOENT") {
-                        // For anything but "missing file" errors, rethrow the error.
-                        throw err;
+                    // First, see if we have this package already in our cache.
+                    if (pkg = this.cache.get(path)) {
+                        break;
                     }
-                }
-                if (raw) {
-                    // A file was found; parse its raw contents into a JSON object.
-                    blobPath = path;
+
+                    // If not, try to load it from the disk.
+                    let raw: string | undefined;
                     try {
-                        blob = unmarshaler[1](raw);
+                        raw = await fs.readFile(path);
                     }
                     catch (err) {
-                        diagnostics.push(dctx.newMalformedMufileError(path, err));
+                        if (err.code !== "ENOENT") {
+                            // For anything but "missing file" errors, rethrow the error.
+                            throw err;
+                        }
                     }
-                    break;
+                    if (raw) {
+                        // A file was found; parse its raw contents into a JSON object.
+                        blobPath = path;
+                        try {
+                            blob = unmarshaler[1](raw);
+                        }
+                        catch (err) {
+                            diagnostics.push(dctx.newMalformedMufileError(path, err));
+                        }
+                        break;
+                    }
                 }
             }
 
@@ -98,7 +110,9 @@ export class PackageLoader {
                 for (let unmarshaler of pack.unmarshalers) {
                     triedExts.push(unmarshaler[0]);
                 }
-                diagnostics.push(dctx.newMissingMufileError(fspath.join(root, pack.mufileBase), triedExts));
+                for (let filebase of filebases) {
+                    diagnostics.push(dctx.newMissingMufileError(fspath.join(root, filebase), triedExts));
+                }
             }
         }
 

@@ -323,7 +323,7 @@ export class Transformer {
             // Register the promise for loading this package, to ensure interleavings pile up correctly.
             pkginfo = (async () => {
                 let base: string = fspath.dirname(ref);
-                let disc: PackageResult = await this.loader.load(base, true);
+                let disc: PackageResult = await this.loader.loadDependency(base);
                 if (disc.diagnostics) {
                     for (let diagnostic of disc.diagnostics) {
                         this.diagnostics.push(diagnostic);
@@ -2398,7 +2398,7 @@ export class Transformer {
 // Loads the metadata and transforms a TypeScript program into its equivalent MuPack/MuIL AST form.
 export async function transform(script: Script): Promise<TransformResult> {
     let loader: PackageLoader = new PackageLoader();
-    let disc: PackageResult = await loader.load(script.root);
+    let disc: PackageResult = await loader.loadCurrent(script.root);
     let result: TransformResult = {
         diagnostics: disc.diagnostics, // ensure we propagate the diagnostics
         pkg:         undefined,
