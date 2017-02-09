@@ -382,7 +382,7 @@ func (ctx *Context) RegisterType(node ast.Expression, tysym symbols.Type) {
 	contract.Require(node != nil, "node")
 	contract.Requiref(!ctx.HasType(node), "ctx", "!HasType(node)")
 	if glog.V(7) {
-		glog.V(7).Infof("Registered expression type: '%v' => %v", node.GetKind(), tysym.Name())
+		glog.V(7).Infof("Registered expression type: '%v' => %v", node.GetKind(), tysym)
 	}
 	ctx.Types[node] = tysym
 }
