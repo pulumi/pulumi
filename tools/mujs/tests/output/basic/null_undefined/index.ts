@@ -20,3 +20,12 @@ function g(x: string | null) {
 
 g(null);
 
+class C {
+    pu: string | undefined;
+    pn: number | null;
+    constructor() {
+        this.pu = undefined;
+        this.pn = null;
+    }
+}
+

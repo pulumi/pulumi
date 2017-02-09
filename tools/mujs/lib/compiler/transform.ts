@@ -554,7 +554,7 @@ export class Transformer {
             }
 
             // Otherwise, bottom out on resolving a fully qualified MuPackage type token out of the symbol.
-            return await this.resolveTypeTokenFromSymbol(ty.symbol);
+            return await this.resolveTokenFromSymbol(ty.symbol);
         }
 
         // If none of those matched, simply default to the weakly typed "any" type.
@@ -563,15 +563,18 @@ export class Transformer {
         return tokens.anyType;
     }
 
-    // resolveTypeTokenFromSymbol resolves a symbol to a fully qualified TypeToken that can be used to reference it.
-    private async resolveTypeTokenFromSymbol(sym: ts.Symbol): Promise<tokens.TypeToken> {
+    // resolveTokenFromSymbol resolves a symbol to a fully qualified TypeToken that can be used to reference it.
+    private async resolveTokenFromSymbol(sym: ts.Symbol): Promise<tokens.Token> {
         // By default, just the type symbol's naked name.
         let token: tokens.TypeToken = sym.name;
 
-        // For non-primitive declared types -- as opposed to inferred ones -- we must emit the fully qualified name.
-        if (!!(sym.flags & ts.SymbolFlags.Class) || !!(sym.flags & ts.SymbolFlags.Interface) ||
-                !!(sym.flags & ts.SymbolFlags.ConstEnum) || !!(sym.flags & ts.SymbolFlags.RegularEnum) ||
-                !!(sym.flags & ts.SymbolFlags.TypeAlias)) {
+        // For member symbols, we must emit the fully qualified name.
+        let kinds: ts.SymbolFlags =
+            ts.SymbolFlags.Function |
+            ts.SymbolFlags.Class | ts.SymbolFlags.Interface |
+            ts.SymbolFlags.ConstEnum | ts.SymbolFlags.RegularEnum |
+            ts.SymbolFlags.TypeAlias;
+        if (sym.flags & kinds) {
             let decls: ts.Declaration[] = sym.getDeclarations();
             contract.assert(decls.length > 0);
             let file: ts.SourceFile = decls[0].getSourceFile();
@@ -1070,7 +1073,7 @@ export class Transformer {
                                 let extsym: ts.Symbol =
                                     this.checker().getSymbolAtLocation(heritage.types[0].expression);
                                 contract.assert(!!extsym);
-                                let exttok: tokens.TypeToken = await this.resolveTypeTokenFromSymbol(extsym);
+                                let exttok: tokens.TypeToken = await this.resolveTokenFromSymbol(extsym);
                                 extendType = <ast.TypeToken>{
                                     kind: ast.typeTokenKind,
                                     tok:  exttok,
@@ -1091,7 +1094,7 @@ export class Transformer {
                                     contract.assert(!!implsym);
                                     implementTypes.push(<ast.TypeToken>{
                                         kind: ast.typeTokenKind,
-                                        tok:  await this.resolveTypeTokenFromSymbol(implsym),
+                                        tok:  await this.resolveTokenFromSymbol(implsym),
                                     });
                                 }
                             }
@@ -1173,7 +1176,7 @@ export class Transformer {
         }
     }
 
-    private transformDeclarationName(node: ts.DeclarationName): ast.Expression {
+    private async transformDeclarationName(node: ts.DeclarationName): Promise<ast.Expression> {
         switch (node.kind) {
             case ts.SyntaxKind.ArrayBindingPattern:
                 return this.transformArrayBindingPattern(node);
@@ -1182,7 +1185,7 @@ export class Transformer {
             case ts.SyntaxKind.ObjectBindingPattern:
                 return this.transformObjectBindingPattern(node);
             case ts.SyntaxKind.Identifier:
-                return this.transformIdentifierExpression(node);
+                return await this.transformIdentifierExpression(node);
             default:
                 return contract.fail(`Unrecognized declaration node: ${ts.SyntaxKind[node.kind]}`);
         }
@@ -1822,7 +1825,7 @@ export class Transformer {
             case ts.SyntaxKind.FunctionExpression:
                 return this.transformFunctionExpression(<ts.FunctionExpression>node);
             case ts.SyntaxKind.Identifier:
-                return this.transformIdentifierExpression(<ts.Identifier>node);
+                return await this.transformIdentifierExpression(<ts.Identifier>node);
             case ts.SyntaxKind.ObjectLiteralExpression:
                 return this.transformObjectLiteralExpression(<ts.ObjectLiteralExpression>node);
             case ts.SyntaxKind.PostfixUnaryExpression:
@@ -2344,19 +2347,24 @@ export class Transformer {
 
     // transformIdentifierExpression takes a TypeScript identifier node and yields a MuIL expression.  This expression,
     // when evaluated, will load the value of the target identifier, so that it's suitable as an expression node.
-    private transformIdentifierExpression(node: ts.Identifier): ast.Expression {
+    private async transformIdentifierExpression(node: ts.Identifier): Promise<ast.Expression> {
         let id: ast.Identifier = this.transformIdentifier(node);
         if (id.ident === "null" || id.ident === "undefined") {
+            // For null and undefined, load a null literal.
             return this.withLocation(node, <ast.NullLiteral>{
                 kind: ast.nullLiteralKind,
             });
         }
         else {
+            // For other identifiers, check the expected kinds, and fully qualify them where necessary.
+            let sym: ts.Symbol = this.checker().getSymbolAtLocation(node);
+            contract.assert(!!sym);
+            let tok: tokens.Token = await this.resolveTokenFromSymbol(sym);
             return this.withLocation(node, <ast.LoadLocationExpression>{
                 kind: ast.loadLocationExpressionKind,
                 name: this.copyLocation(id, <ast.Token>{
                     kind: ast.tokenKind,
-                    tok:  id.ident,
+                    tok:  tok,
                 }),
             });
         }
