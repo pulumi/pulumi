@@ -220,10 +220,10 @@ func (e *evaluator) dumpEvalState(v glog.Level) {
 		glog.V(v).Infof("Evaluator state dump:")
 		glog.V(v).Infof("=====================")
 		for mod := range e.modinits {
-			glog.V(v).Infof("Module init: %v", mod)
+			glog.V(v).Infof("Module init: %v", mod.Token())
 		}
 		for class := range e.classinits {
-			glog.V(v).Infof("Class init: %v", class)
+			glog.V(v).Infof("Class init: %v", class.Token())
 		}
 		for sym, ptr := range e.globals {
 			glog.V(v).Infof("Global %v: %v", sym.Token(), ptr.Obj())
