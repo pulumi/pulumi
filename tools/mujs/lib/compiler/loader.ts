@@ -38,6 +38,7 @@ export class PackageLoader {
         let blobPath: string | undefined;
         let search: string = fspath.resolve(root);
         while (!pkg && !blob) {
+outer:
             for (let filebase of filebases) {
                 let base: string = fspath.join(search, filebase);
                 for (let unmarshaler of pack.unmarshalers) {
@@ -45,7 +46,7 @@ export class PackageLoader {
 
                     // First, see if we have this package already in our cache.
                     if (pkg = this.cache.get(path)) {
-                        break;
+                        break outer;
                     }
 
                     // If not, try to load it from the disk.
@@ -68,7 +69,7 @@ export class PackageLoader {
                         catch (err) {
                             diagnostics.push(dctx.newMalformedMufileError(path, err));
                         }
-                        break;
+                        break outer;
                     }
                 }
             }
