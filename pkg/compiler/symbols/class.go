@@ -6,6 +6,7 @@ import (
 	"github.com/marapongo/mu/pkg/compiler/ast"
 	"github.com/marapongo/mu/pkg/diag"
 	"github.com/marapongo/mu/pkg/tokens"
+	"github.com/marapongo/mu/pkg/util/contract"
 )
 
 // Class is a fully bound class symbol.
@@ -52,6 +53,17 @@ func (node *Class) GetInit() *ClassMethod {
 	return nil
 }
 
+// SetBase mutates the base class, in cases where it wasn't available at initialization time.
+func (node *Class) SetBase(extends Type) {
+	contract.Assert(node.Extends == nil)
+	node.Extends = extends
+
+	// If this class extends something else, wire up the "super" variable too.
+	if extends != nil {
+		node.Super = NewSpecialVariableSym(tokens.SuperVariable, extends)
+	}
+}
+
 // NewClassSym returns a new Class symbol with the given node, parent, extends, and implements, and empty members.
 func NewClassSym(node *ast.Class, parent *Module, extends Type, implements Types) *Class {
 	nm := tokens.TypeName(node.Name.Ident)
@@ -65,7 +77,6 @@ func NewClassSym(node *ast.Class, parent *Module, extends Type, implements Types
 			),
 		),
 		Parent:     parent,
-		Extends:    extends,
 		Implements: implements,
 		Members:    make(ClassMemberMap),
 	}
@@ -73,10 +84,8 @@ func NewClassSym(node *ast.Class, parent *Module, extends Type, implements Types
 	// Populate the "this" variable for instance methods.
 	class.This = NewSpecialVariableSym(tokens.ThisVariable, class)
 
-	// If this class extends something else, wire up the "super" variable too.
-	if extends != nil {
-		class.Super = NewSpecialVariableSym(tokens.SuperVariable, extends)
-	}
+	// Set the base class, possibly initializing "super" if appropriate.
+	class.SetBase(extends)
 
 	return class
 }

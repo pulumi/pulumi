@@ -10,32 +10,43 @@ import (
 	"github.com/marapongo/mu/pkg/util/contract"
 )
 
-func (b *binder) bindClass(node *ast.Class, parent *symbols.Module) *symbols.Class {
+func (b *binder) pushClass(class *symbols.Class) func() {
+	priorclass := b.ctx.Currclass
+	b.ctx.Currclass = class
+	return func() { b.ctx.Currclass = priorclass }
+}
+
+func (b *binder) bindClassDeclaration(node *ast.Class, parent *symbols.Module) *symbols.Class {
 	glog.V(3).Infof("Binding module '%v' class '%v'", parent.Name(), node.Name.Ident)
 
-	// Bind base type tokens to actual symbols.
-	extends := b.ctx.LookupType(node.Extends)
-	var implements symbols.Types
-	if node.Implements != nil {
-		for _, impltok := range *node.Implements {
-			if impl := b.ctx.LookupType(impltok); impl != nil {
-				implements = append(implements, impl)
-			}
-		}
-	}
-
-	// Now create a class symbol.  This is required as a parent for the members.
-	class := symbols.NewClassSym(node, parent, extends, implements)
+	// Now create an empty class symbol.  This is required as a parent for the members.
+	class := symbols.NewClassSym(node, parent, nil, nil)
 	b.ctx.RegisterSymbol(node, class)
 
 	return class
 }
 
+func (b *binder) bindClassDefinition(class *symbols.Class) {
+	// Bind base type tokens to actual symbols.
+	if class.Node.Extends != nil {
+		class.SetBase(b.ctx.LookupType(class.Node.Extends))
+	}
+
+	if class.Node.Implements != nil {
+		for _, impltok := range *class.Node.Implements {
+			if impl := b.ctx.LookupType(impltok); impl != nil {
+				class.Implements = append(class.Implements, impl)
+			}
+		}
+	}
+
+	b.bindClassMembers(class)
+}
+
 func (b *binder) bindClassMembers(class *symbols.Class) {
 	// Set the current class in the context so we can e.g. enforce accessibility.
-	priorclass := b.ctx.Currclass
-	b.ctx.Currclass = class
-	defer func() { b.ctx.Currclass = priorclass }()
+	pop := b.pushClass(class)
+	defer pop()
 
 	// Bind each member at the symbolic level; in particular, we do not yet bind bodies of methods.
 	if class.Node.Members != nil {
@@ -81,7 +92,7 @@ func (b *binder) bindClassMethod(node *ast.ClassMethod, parent *symbols.Class) *
 	return sym
 }
 
-func (b *binder) bindClassMethodBodies(class *symbols.Class) {
+func (b *binder) bindClassBodies(class *symbols.Class) {
 	for _, member := range symbols.StableClassMemberMap(class.Members) {
 		switch m := class.Members[member].(type) {
 		case *symbols.ClassMethod:

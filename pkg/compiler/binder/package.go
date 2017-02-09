@@ -53,16 +53,16 @@ func (b *binder) resolveBindPackage(pkg *pack.Package, pkgurl pack.PackageURL) *
 	// Resolve all package dependencies.
 	b.resolvePackageDeps(pkgsym)
 
-	// Now bind all of the package's modules (if any).  This pass does not yet actually bind class members yet.
-	b.bindPackageModules(pkgsym)
+	// Now bind all of the package's declarations (if any).  This pass does not yet actually bind definitions.
+	b.bindPackageDeclarations(pkgsym)
 
-	// Next go ahead and bind class members.  This happens in a full pass after resolving all modules, because this
-	// phase might reference members that are only now exposed after the above phase.
-	b.bindPackageClassMembers(pkgsym)
+	// Next go ahead and bind definitions.  This happens in a full pass after resolving all modules, because this
+	// phase might reference other declarations that are only now exposed after the above phase.
+	b.bindPackageDefinitions(pkgsym)
 
 	// Finally, bind all of the package's method bodies.  This second pass is required to ensure that inter-module
 	// dependencies can resolve to symbols, after reaching the symbol-level fixed point above.
-	b.bindPackageMethodBodies(pkgsym)
+	b.bindPackageBodies(pkgsym)
 
 	return respkg
 }
@@ -137,53 +137,32 @@ func (b *binder) resolveDep(dep pack.PackageURL) *symbols.ResolvedPackage {
 	return nil
 }
 
-// bindPackageModules recursively binds all modules and stores them in the given package.  Note that this does not yet
-// bind module bodies -- both module and class methods -- because those require the top-levels for all modules first.
-func (b *binder) bindPackageModules(pkg *symbols.Package) {
+// bindPackageDeclarations recursively binds all named entities and stores them in the given package.  This doesn't yet
+// bind definitions, because those require the top-level declarations for all modules and members to be available first.
+func (b *binder) bindPackageDeclarations(pkg *symbols.Package) {
 	contract.Require(pkg != nil, "pkg")
 	if pkg.Node.Modules != nil {
-		// First, for each module, simply create the symbol.  This ensures that inter-module references are found.
 		modules := *pkg.Node.Modules
 		for _, modtok := range ast.StableModules(modules) {
-			pkg.Modules[modtok] = b.createModule(modules[modtok], pkg)
-		}
-
-		// Now that every module has a symbol entry, bind all module imports.
-		for _, mod := range symbols.StableModuleMap(pkg.Modules) {
-			b.bindModuleImports(pkg.Modules[mod])
-		}
-
-		// Next, we must bind the top level class names.  This is because inter-module references on classes might
-		// exist in many places (properties, signatures, exports, and so on).
-		for _, mod := range symbols.StableModuleMap(pkg.Modules) {
-			b.bindModuleClasses(pkg.Modules[mod])
-		}
-
-		// Now we can safely bind the property and method members.
-		for _, mod := range symbols.StableModuleMap(pkg.Modules) {
-			b.bindModuleMembers(pkg.Modules[mod])
-		}
-
-		// And finally, we can bind the exports, that might refer to all of the above.
-		for _, mod := range symbols.StableModuleMap(pkg.Modules) {
-			b.bindModuleExports(pkg.Modules[mod])
+			pkg.Modules[modtok] = b.bindModuleDeclarations(modules[modtok], pkg)
 		}
 	}
 }
 
-// bindPackageClassMembers binds all class member definitions within a package (function signatures and varaibles), but
-// doesn't actually bind any function bodies yet.
-func (b *binder) bindPackageClassMembers(pkg *symbols.Package) {
+// bindPackageDefinitions binds all definitions within a package (classes, signatures, varaibles, etc), but doesn't
+// actually bind any function bodies yet.  The function bodies may depend upon information that depends upon information
+// that isn't fully computed until after the definition pass has been completed.
+func (b *binder) bindPackageDefinitions(pkg *symbols.Package) {
 	contract.Require(pkg != nil, "pkg")
 	for _, mod := range symbols.StableModuleMap(pkg.Modules) {
-		b.bindModuleClassMembers(pkg.Modules[mod])
+		b.bindModuleDefinitions(pkg.Modules[mod])
 	}
 }
 
-// bindPackageMethodBodies binds all method bodies, in a distinct pass, after binding all symbol-level information.
-func (b *binder) bindPackageMethodBodies(pkg *symbols.Package) {
+// bindPackageBodies binds all method bodies, in a distinct pass, after binding all symbol-level information.
+func (b *binder) bindPackageBodies(pkg *symbols.Package) {
 	contract.Require(pkg != nil, "pkg")
 	for _, mod := range symbols.StableModuleMap(pkg.Modules) {
-		b.bindModuleMethodBodies(pkg.Modules[mod])
+		b.bindModuleBodies(pkg.Modules[mod])
 	}
 }

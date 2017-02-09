@@ -3,21 +3,100 @@
 package binder
 
 import (
+	"reflect"
+
 	"github.com/golang/glog"
 
 	"github.com/marapongo/mu/pkg/compiler/ast"
 	"github.com/marapongo/mu/pkg/compiler/symbols"
+	"github.com/marapongo/mu/pkg/util/contract"
 )
 
-// createModule simply creates a module symbol with its immutable information.  In particular, it doesn't yet bind
-// members, since inter-module references must be resolved in later passes.
-func (b *binder) createModule(node *ast.Module, parent *symbols.Package) *symbols.Module {
-	glog.V(3).Infof("Creating package '%v' module '%v'", parent.Name(), node.Name.Ident)
+func (b *binder) pushModule(module *symbols.Module) func() {
+	priormodule := b.ctx.Currmodule
+	b.ctx.Currmodule = module
+	return func() { b.ctx.Currmodule = priormodule }
+}
+
+func (b *binder) bindModuleDeclarations(node *ast.Module, parent *symbols.Package) *symbols.Module {
+	glog.V(3).Infof("Binding package '%v' module '%v' decls", parent.Name(), node.Name.Ident)
 
 	// Create the module symbol and register it.
 	module := symbols.NewModuleSym(node, parent)
 	b.ctx.RegisterSymbol(node, module)
+
+	// Now bind module member declarations; this just populates the top-level declaration symbolic information, without
+	// any inter-dependencies on other module declarations that may not have yet been completed.
+	b.bindModuleMemberDeclarations(module)
+
 	return module
+}
+
+// bindModuleMemberDeclarations binds a module's member names.  This must be done before binding definitions because
+// they could mention other members whose symbolic information may not have been registered yet.  Note that class
+// definitions are not yet bound during this pass, since they could reference module members not yet bound.
+func (b *binder) bindModuleMemberDeclarations(module *symbols.Module) {
+	glog.V(3).Infof("Binding module '%v' member decls", module.Token())
+
+	// Set the current module in the context so we can e.g. enforce accessibility.
+	pop := b.pushModule(module)
+	defer pop()
+
+	// Now bind all member declarations.
+	if module.Node.Members != nil {
+		members := *module.Node.Members
+		for _, nm := range ast.StableModuleMembers(members) {
+			switch m := members[nm].(type) {
+			case *ast.Class:
+				module.Members[nm] = b.bindClassDeclaration(m, module)
+			case *ast.Export:
+				module.Members[nm] = b.bindExportDeclaration(m, module)
+			case *ast.ModuleMethod:
+				module.Members[nm] = b.bindModuleMethodDeclaration(m, module)
+			case *ast.ModuleProperty:
+				module.Members[nm] = b.bindModulePropertyDeclaration(m, module)
+			default:
+				contract.Failf("Unrecognized module member type: %v", reflect.TypeOf(m))
+			}
+		}
+	}
+}
+
+func (b *binder) bindExportDeclaration(node *ast.Export, parent *symbols.Module) *symbols.Export {
+	glog.V(3).Infof("Binding module '%v' export '%v' decl", parent.Name(), node.Name.Ident)
+
+	// Simply register an empty export, unlinked to the referent yet.
+	sym := symbols.NewExportSym(node, parent, nil)
+	b.ctx.RegisterSymbol(node, sym)
+	return sym
+}
+
+func (b *binder) bindModulePropertyDeclaration(node *ast.ModuleProperty,
+	parent *symbols.Module) *symbols.ModuleProperty {
+	glog.V(3).Infof("Binding module '%v' property '%v' decl", parent.Name(), node.Name.Ident)
+
+	// Simply create an untyped property declaration.  The type lookup will happen in a subsequent pass.
+	sym := symbols.NewModulePropertySym(node, parent, nil)
+	b.ctx.RegisterSymbol(node, sym)
+	return sym
+}
+
+func (b *binder) bindModuleMethodDeclaration(node *ast.ModuleMethod,
+	parent *symbols.Module) *symbols.ModuleMethod {
+	glog.V(3).Infof("Binding module '%v' method '%v' decl", parent.Name(), node.Name.Ident)
+
+	// Simply create a function declaration without any type.  That will happen in a subsequent pass.
+	sym := symbols.NewModuleMethodSym(node, parent, nil)
+	b.ctx.RegisterSymbol(node, sym)
+	return sym
+}
+
+func (b *binder) bindModuleDefinitions(module *symbols.Module) {
+	// Now we can bind module imports.
+	b.bindModuleImports(module)
+
+	// And finish binding the members themselves.
+	b.bindModuleMemberDefinitions(module)
 }
 
 // bindModuleImports binds module import tokens to their symbols.  This is done as a second pass just in case there are
@@ -33,131 +112,58 @@ func (b *binder) bindModuleImports(module *symbols.Module) {
 	}
 }
 
-// bindModuleClassNames binds a module's classes.  This must be done before binding variables and exports since they
-// might mention classes by name, and so the symbolic information must have been registered beforehand.  Note that class
-// definitions are not yet bound during this pass, since they could reference module members not yet bound.
-func (b *binder) bindModuleClasses(module *symbols.Module) {
-	glog.V(3).Infof("Binding module '%v' classes", module.Token())
+// bindModuleMemberDefinitions finishes binding module members, by doing lookups sensitive to the definition pass.
+func (b *binder) bindModuleMemberDefinitions(module *symbols.Module) {
+	glog.V(3).Infof("Binding module '%v' member defns", module.Token())
 
 	// Set the current module in the context so we can e.g. enforce accessibility.
-	priormodule := b.ctx.Currmodule
-	b.ctx.Currmodule = module
-	defer func() { b.ctx.Currmodule = priormodule }()
+	pop := b.pushModule(module)
+	defer pop()
 
-	// Now bind all class members.
-	if module.Node.Members != nil {
-		members := *module.Node.Members
-		for _, nm := range ast.StableModuleMembers(members) {
-			member := members[nm]
-			if class, isclass := member.(*ast.Class); isclass {
-				module.Members[nm] = b.bindClass(class, module)
-			}
-		}
-	}
-}
-
-// bindModuleClassMembers binds all class member definitions within a module (function signatures and varaibles),
-// but doesn't actually bind any function bodies yet.
-func (b *binder) bindModuleClassMembers(module *symbols.Module) {
-	glog.V(3).Infof("Binding module '%v' class members", module.Token())
-
-	// Set the current module in the context so we can e.g. enforce accessibility.
-	priormodule := b.ctx.Currmodule
-	b.ctx.Currmodule = module
-	defer func() { b.ctx.Currmodule = priormodule }()
-
-	// Now bind all class member definitions.
+	// Now bind all member definitions.
 	for _, nm := range symbols.StableModuleMemberMap(module.Members) {
-		if class, isclass := module.Members[nm].(*symbols.Class); isclass {
-			b.bindClassMembers(class)
+		switch m := module.Members[nm].(type) {
+		case *symbols.Class:
+			b.bindClassDefinition(m)
+		case *symbols.Export:
+			b.bindExportDefinition(m)
+		case *symbols.ModuleMethod:
+			b.bindModuleMethodDefinition(m)
+		case *symbols.ModuleProperty:
+			b.bindModulePropertyDefinition(m)
+		default:
+			contract.Failf("Unrecognized module member type: %v", reflect.TypeOf(m))
 		}
 	}
 }
 
-// bindModuleMembers binds a module's property and method members.  This must be done after binding classes, and before
-// binding exports, so that any classes referenced are found (and because exports might refer to these).
-func (b *binder) bindModuleMembers(module *symbols.Module) {
-	glog.V(3).Infof("Binding module '%v' methods and properties", module.Token())
+func (b *binder) bindExportDefinition(export *symbols.Export) {
+	glog.V(3).Infof("Binding module export '%v' defn", export.Token)
 
-	// Set the current module in the context so we can e.g. enforce accessibility.
-	priormodule := b.ctx.Currmodule
-	b.ctx.Currmodule = module
-	defer func() { b.ctx.Currmodule = priormodule }()
-
-	// Now bind all module methods and properties.
-	if module.Node.Members != nil {
-		members := *module.Node.Members
-		for _, nm := range ast.StableModuleMembers(members) {
-			member := members[nm]
-			if method, ismethod := member.(*ast.ModuleMethod); ismethod {
-				module.Members[nm] = b.bindModuleMethod(method, module)
-			} else if property, isproperty := member.(*ast.ModuleProperty); isproperty {
-				module.Members[nm] = b.bindModuleProperty(property, module)
-			}
-		}
-	}
+	// To bind an export definition, simply look up the referent symbol and associate this name with it.
+	export.Referent = b.ctx.LookupSymbol(export.Node.Referent, export.Node.Referent.Tok, true)
 }
 
-// bindModuleExports binds a module's exports.  This must be done after binding classes and members, since an export
-// might refer to those by symbolic token reference.  This can also safely be done before method bodies.
-func (b *binder) bindModuleExports(module *symbols.Module) {
-	glog.V(3).Infof("Binding module '%v' methods and properties", module.Token())
+func (b *binder) bindModulePropertyDefinition(property *symbols.ModuleProperty) {
+	glog.V(3).Infof("Binding module property '%v' defn", property.Token)
 
-	// Set the current module in the context so we can e.g. enforce accessibility.
-	priormodule := b.ctx.Currmodule
-	b.ctx.Currmodule = module
-	defer func() { b.ctx.Currmodule = priormodule }()
-
-	// Now bind all module methods and properties.
-	if module.Node.Members != nil {
-		members := *module.Node.Members
-		for _, nm := range ast.StableModuleMembers(members) {
-			member := members[nm]
-			if export, isexport := member.(*ast.Export); isexport {
-				module.Members[nm] = b.bindExport(export, module)
-			}
-		}
-	}
+	// Look up this node's type and remember the type on the symbol.
+	property.Ty = b.ctx.LookupType(property.Node.Type)
 }
 
-func (b *binder) bindExport(node *ast.Export, parent *symbols.Module) *symbols.Export {
-	glog.V(3).Infof("Binding module '%v' export '%v'", parent.Name(), node.Name.Ident)
+func (b *binder) bindModuleMethodDefinition(method *symbols.ModuleMethod) {
+	glog.V(3).Infof("Binding module method '%v' defn", method.Token)
 
-	// To bind an export, simply look up the referent symbol and associate this name with it.
-	if refsym := b.ctx.LookupSymbol(node.Referent, node.Referent.Tok, true); refsym != nil {
-		sym := symbols.NewExportSym(node, parent, refsym)
-		b.ctx.RegisterSymbol(node, sym)
-		return sym
-	}
-	return nil
-}
-
-func (b *binder) bindModuleProperty(node *ast.ModuleProperty, parent *symbols.Module) *symbols.ModuleProperty {
-	glog.V(3).Infof("Binding module '%v' property '%v'", parent.Name(), node.Name.Ident)
-
-	// Look up this node's type and inject it into the type table.
-	ty := b.ctx.LookupType(node.Type)
-	sym := symbols.NewModulePropertySym(node, parent, ty)
-	b.ctx.RegisterSymbol(node, sym)
-	return sym
-}
-
-func (b *binder) bindModuleMethod(node *ast.ModuleMethod, parent *symbols.Module) *symbols.ModuleMethod {
-	glog.V(3).Infof("Binding module '%v' method '%v'", parent.Name(), node.Name.Ident)
-
-	// Make a function type out of this method and inject it into the type table.
-	ty := b.ctx.LookupFunctionType(node)
-	sym := symbols.NewModuleMethodSym(node, parent, ty)
-	b.ctx.RegisterSymbol(node, sym)
+	// Make a function type out of this method and store it on the symbol.
+	method.Type = b.ctx.LookupFunctionType(method.Node)
 
 	// Note that we don't actually bind the body of this method yet.  Until we have gone ahead and injected *all*
 	// top-level symbols into the type table, we would potentially encounter missing intra-module symbols.
-	return sym
 }
 
-// bindModuleMethodBodies binds both the module's direct methods in addition to class methods.  This must be done after
+// bindModuleBodies binds both the module's direct methods in addition to class methods.  This must be done after
 // all top-level symbolic information has been bound, in case definitions, statements, and expressions depend upon them.
-func (b *binder) bindModuleMethodBodies(module *symbols.Module) {
+func (b *binder) bindModuleBodies(module *symbols.Module) {
 	// Set the current module in the context so we can e.g. enforce accessibility.  We need to do this again while
 	// binding the module bodies so that the correct context is reestablished for lookups, etc.
 	priormodule := b.ctx.Currmodule
@@ -171,7 +177,7 @@ func (b *binder) bindModuleMethodBodies(module *symbols.Module) {
 		case *symbols.ModuleMethod:
 			b.bindModuleMethodBody(m)
 		case *symbols.Class:
-			b.bindClassMethodBodies(m)
+			b.bindClassBodies(m)
 		}
 	}
 }
