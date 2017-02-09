@@ -795,37 +795,42 @@ func (e *evaluator) evalLoadLocation(node *ast.LoadLocationExpression, lval bool
 		sym = loc
 	} else {
 		sym = e.ctx.LookupSymbol(node.Name, tok, false)
-		contract.Assert(sym != nil) // don't issue errors; we shouldn't ever get here if verification failed.
-		switch s := sym.(type) {
-		case *symbols.ClassProperty:
-			// Search the class's properties and, if not present, allocate a new one.
-			contract.Assert(this != nil)
-			pv = this.GetPropertyAddr(sym.Name(), true)
-			ty = s.Type()
-		case *symbols.ClassMethod:
-			// Create a new readonly ref slot, pointing to the method, that will abandon if overwritten.
-			contract.Assert(this != nil)
-			// TODO[marapongo/mu#56]: consider permitting "dynamic" method overwriting.
-			pv = rt.NewPointer(e.alloc.NewFunction(s, this), true)
-			ty = s.Type()
-		case *symbols.ModuleProperty:
-			// Search the globals table and, if not present, allocate a new property.
-			contract.Assert(this == nil)
-			ref, has := e.globals[s]
-			if !has {
-				ref = rt.NewPointer(nil, s.Readonly())
-				e.globals[s] = ref
+		for ty == nil {
+			contract.Assert(sym != nil) // don't issue errors; we shouldn't ever get here if verification failed.
+			switch s := sym.(type) {
+			case *symbols.ClassProperty:
+				// Search the class's properties and, if not present, allocate a new one.
+				contract.Assert(this != nil)
+				pv = this.GetPropertyAddr(sym.Name(), true)
+				ty = s.Type()
+			case *symbols.ClassMethod:
+				// Create a new readonly ref slot, pointing to the method, that will abandon if overwritten.
+				contract.Assert(this != nil)
+				// TODO[marapongo/mu#56]: consider permitting "dynamic" method overwriting.
+				pv = rt.NewPointer(e.alloc.NewFunction(s, this), true)
+				ty = s.Type()
+			case *symbols.ModuleProperty:
+				// Search the globals table and, if not present, allocate a new property.
+				contract.Assert(this == nil)
+				ref, has := e.globals[s]
+				if !has {
+					ref = rt.NewPointer(nil, s.Readonly())
+					e.globals[s] = ref
+				}
+				pv = ref
+				ty = s.Type()
+			case *symbols.ModuleMethod:
+				// Create a new readonly ref slot, pointing to the method, that will abandon if overwritten.
+				contract.Assert(this == nil)
+				// TODO[marapongo/mu#56]: consider permitting "dynamic" method overwriting.
+				pv = rt.NewPointer(e.alloc.NewFunction(s, nil), true)
+				ty = s.Type
+			case *symbols.Export:
+				// Simply chase the referent symbol until we bottom out on one of the above cases.
+				sym = s.Referent
+			default:
+				contract.Failf("Unexpected symbol token kind during load expression: %v", tok)
 			}
-			pv = ref
-			ty = s.Type()
-		case *symbols.ModuleMethod:
-			// Create a new readonly ref slot, pointing to the method, that will abandon if overwritten.
-			contract.Assert(this == nil)
-			// TODO[marapongo/mu#56]: consider permitting "dynamic" method overwriting.
-			pv = rt.NewPointer(e.alloc.NewFunction(s, nil), true)
-			ty = s.Type
-		default:
-			contract.Failf("Unexpected symbol token kind during load expression: %v", tok)
 		}
 	}
 

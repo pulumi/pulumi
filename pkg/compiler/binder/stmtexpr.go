@@ -303,13 +303,18 @@ func (a *astBinder) checkLoadLocationExpression(node *ast.LoadLocationExpression
 	if sym == nil {
 		ty = types.Any
 	} else {
-		switch s := sym.(type) {
-		case symbols.Function:
-			ty = s.FuncType()
-		case symbols.Variable:
-			ty = s.Type()
-		default:
-			contract.Failf("Unrecognized load location token '%v' symbol type: %v", sym.Token(), reflect.TypeOf(s))
+		for ty == nil {
+			switch s := sym.(type) {
+			case symbols.Function:
+				ty = s.FuncType() // use the func's type.
+			case symbols.Variable:
+				ty = s.Type() // use the variable's type.
+			case *symbols.Export:
+				// For exports, let's keep digging until we hit something concrete.
+				sym = s.Referent
+			default:
+				contract.Failf("Unrecognized load location token '%v' symbol type: %v", sym.Token(), reflect.TypeOf(s))
+			}
 		}
 	}
 
