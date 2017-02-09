@@ -54,7 +54,7 @@ async function main(args: string[]): Promise<number> {
 
     // Fetch the format and output arguments specified by the user.
     let format: string | undefined = parsed["format"];
-    let output: string | undefined = parsed["out"];
+    let outfile: string | undefined = parsed["out"];
     if (format) {
         // Ensure that the format has a leading ".".
         if (format && format[0] !== ".") {
@@ -63,19 +63,14 @@ async function main(args: string[]): Promise<number> {
     }
     else {
         // If there's an output path, try using its extension name.
-        if (output) {
-            format = fspath.extname(output);
+        if (outfile) {
+            format = fspath.extname(outfile);
         }
 
         // Otherwise, by default, just use the MuPackage default extension.
         if (!format) {
             format = mujs.pack.defaultFormatExtension;
         }
-    }
-
-    if (!output) {
-        // If no path has been specified, by default store the output in the current directory.
-        output = mujs.pack.mupackBase + format;
     }
 
     // Look up the marshaler for the given extension.  If none is found, it's an invalid extension.
@@ -102,14 +97,24 @@ async function main(args: string[]): Promise<number> {
 
     // Now save (or print) the output so long as there weren't any errors.
     if (result.pkg && mujs.diag.success(result.diagnostics)) {
+        if (!outfile) {
+            // If no output file was specified, try to use the output specified in the target project file, if any;
+            // otherwise, simply store the output in the current directory using the standard Mupack.<ext> name.
+            outfile = mujs.pack.mupackBase + format;
+            if (result.preferredOut) {
+                await fs.mkdirp(result.preferredOut);                // ensure the output directory exists.
+                outfile = fspath.join(result.preferredOut, outfile); // and make a file path out of it.
+            }
+        }
+
         let blob: string = marshaler(result.pkg);
-        if (output === "-") {
+        if (outfile === "-") {
             // "-" means print to stdout.
             console.log(blob);
         }
         else {
             // Make sure to append a newline to the blob, and write it to disk.
-            await fs.writeFile(output, blob + os.EOL);
+            await fs.writeFile(outfile, blob + os.EOL);
         }
     }
 

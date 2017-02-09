@@ -32,15 +32,16 @@ export async function compile(path: string): Promise<CompileResult> {
     }
 
     // Finally, return the overall result of the compilation.
-    return new CompileResult(script.root, diagnostics, pkg);
+    return new CompileResult(script.root, diagnostics, pkg, script.options.outDir);
 }
 
 export class CompileResult {
     private readonly dctx: diag.Context;
 
-    constructor(public readonly root:        string,                   // the root path for the compilation.
-                public readonly diagnostics: diag.Diagnostic[],        // any diagnostics resulting from translation.
-                public readonly pkg:         pack.Package | undefined, // the resulting MuPack/MuIL AST.
+    constructor(public readonly root:          string,                   // the root path for the compilation.
+                public readonly diagnostics:   diag.Diagnostic[],        // any diagnostics resulting from translation.
+                public readonly pkg:           pack.Package | undefined, // the resulting MuPack/MuIL AST.
+                public readonly preferredOut?: string,                   // an optional preferred output location.
     ) {
         this.dctx = new diag.Context(root);
     }

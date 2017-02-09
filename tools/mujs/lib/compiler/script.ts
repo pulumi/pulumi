@@ -62,11 +62,6 @@ export async function compileScript(path: string, options?: ts.CompilerOptions):
     // Default the options to TypeScript's usual defaults if not provided or discovered.
     options = options || ts.getDefaultCompilerOptions();
 
-    // Many options can be supplied, however, we want to hook the outputs to translate them on the fly.
-    options.rootDir = root;
-    options.outDir = undefined;
-    options.declaration = false;
-
     if (log.v(5)) {
         log.out(5).info(`files: ${JSON.stringify(files)}`);
         log.out(5).info(`options: ${JSON.stringify(options, null, 4)}`);
@@ -80,7 +75,7 @@ export async function compileScript(path: string, options?: ts.CompilerOptions):
     if (diagnostics.length === 0) {
         // Create a compiler host and perform the compilation.
         const host: ts.CompilerHost = ts.createCompilerHost(options);
-        host.writeFile = (_: string, __: string, ___: boolean) => { /*ignore outputs*/ };
+        host.writeFile = (filename: string, data: string, writeBOM: boolean) => { /*ignore outputs*/ };
         tree = ts.createProgram(files, options, host);
 
         // Concatenate all of the diagnostics into a single array.
@@ -105,6 +100,7 @@ export async function compileScript(path: string, options?: ts.CompilerOptions):
     return <Script>{
         root:        root,
         files:       files,
+        options:     options,
         diagnostics: muDiagnostics,
         tree:        tree,
     };
@@ -130,6 +126,7 @@ function transformDiagnostics(root: string, diagnostics: ts.Diagnostic[]): diag.
 export interface Script {
     root:        string;                 // the root directory for the compilation.
     files:       string[];               // the files that are considered part of this script's package.
+    options:     ts.CompilerOptions;     // the compiler options used to compile this project.
     diagnostics: diag.Diagnostic[];      // any diagnostics resulting from compilation.
     tree:        ts.Program | undefined; // the resulting TypeScript program object.
 }
