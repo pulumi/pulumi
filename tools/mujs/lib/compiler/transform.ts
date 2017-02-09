@@ -2157,12 +2157,8 @@ export class Transformer {
 
     private async transformPropertyAccessExpression(
             node: ts.PropertyAccessExpression): Promise<ast.LoadLocationExpression> {
-        // Transform the name and object ASTs.
+        // Make a name.
         let id: ast.Identifier = this.transformIdentifier(node.name);
-        let object: ast.Expression = await this.transformExpression(node.expression);
-
-        // Now create a qualified token using the target expression's type.
-        let tok: tokens.Token;
 
         // Fetch the type; it will either be a real type or a module (each of which is treated differently).  The module
         // case occurs when we are accessing an exported member (property or method) from the module.  For instance:
@@ -2170,6 +2166,9 @@ export class Transformer {
         //      import * as foo from "foo";
         //      foo.bar();
         //
+        // Use this to create a qualified token using the target expression's fully qualified type/module.
+        let tok: tokens.Token;
+        let object: ast.Expression | undefined;
         let ty: ts.Type = this.checker().getTypeAtLocation(node.expression);
         contract.assert(!!ty);
         let tysym: ts.Symbol = ty.getSymbol();
@@ -2177,11 +2176,13 @@ export class Transformer {
             let modref: ModuleReference = this.createModuleReference(tysym);
             let modtok: tokens.ModuleToken = await this.createModuleToken(modref);
             tok = this.createModuleMemberToken(modtok, id.ident);
+            // note that we intentionally leave object blank, since the token is fully qualified.
         }
         else {
             let tytok: tokens.TypeToken | undefined = await this.resolveTypeToken(ty);
             contract.assert(!!tytok);
             tok = this.createClassMemberToken(tytok!, id.ident);
+            object = await this.transformExpression(node.expression);
         }
 
         return this.withLocation(node, <ast.LoadLocationExpression>{
