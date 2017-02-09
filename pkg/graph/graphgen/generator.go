@@ -76,6 +76,8 @@ func (g *generator) Graph() graph.Graph {
 // OnNewObject is called whenever a new object has been allocated.
 func (g *generator) OnNewObject(o *rt.Object) {
 	contract.Assert(o != nil)
+	glog.V(9).Infof("GraphGenerator OnNewObject %v", o)
+
 	// We only care about subclasses of the mu.Resource type; all others are "just" data/computation.
 	if types.HasBaseName(o.Type(), predef.MuResourceClass) {
 		// Add an entry to the depends set.  This should not already exist; it's the first time we encountered it.
@@ -88,6 +90,8 @@ func (g *generator) OnNewObject(o *rt.Object) {
 
 // OnVariableAssign is called whenever a property has been (re)assigned; it receives both the old and new values.
 func (g *generator) OnVariableAssign(sym symbols.Variable, o *rt.Object, old *rt.Object, nw *rt.Object) {
+	glog.V(9).Infof("GraphGenerator OnVariableAssign %v.%v=%v (old=%v)", o, sym, nw, old)
+
 	// If the target of the assignment is a resource, we need to track dependencies.
 	// TODO: if we are assigning to a structure inside of a structure inside... of a resource, we must also track.
 	if o != nil && types.HasBaseName(o.Type(), predef.MuResourceClass) {
@@ -115,24 +119,30 @@ func (g *generator) OnVariableAssign(sym symbols.Variable, o *rt.Object, old *rt
 
 // OnEnterPackage is invoked whenever we enter a new package.
 func (g *generator) OnEnterPackage(pkg *symbols.Package) {
+	glog.V(9).Infof("GraphGenerator OnEnterPackage %v", pkg)
 }
 
 // OnLeavePackage is invoked whenever we enter a new package.
 func (g *generator) OnLeavePackage(pkg *symbols.Package) {
+	glog.V(9).Infof("GraphGenerator OnLeavePackage %v", pkg)
 }
 
 // OnEnterModule is invoked whenever we enter a new module.
 func (g *generator) OnEnterModule(mod *symbols.Module) {
+	glog.V(9).Infof("GraphGenerator OnEnterModule %v", mod)
 }
 
 // OnLeaveModule is invoked whenever we enter a new module.
 func (g *generator) OnLeaveModule(mod *symbols.Module) {
+	glog.V(9).Infof("GraphGenerator OnLeaveModule %v", mod)
 }
 
 // OnEnterFunction is invoked whenever we enter a new function.
 func (g *generator) OnEnterFunction(fnc symbols.Function) {
+	glog.V(9).Infof("GraphGenerator OnEnterFunction %v", fnc)
 }
 
 // OnLeaveFunction is invoked whenever we enter a new function.
 func (g *generator) OnLeaveFunction(fnc symbols.Function) {
+	glog.V(9).Infof("GraphGenerator OnLeaveFunction %v", fnc)
 }
