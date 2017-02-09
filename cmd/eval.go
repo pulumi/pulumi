@@ -4,6 +4,7 @@ package cmd
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -12,12 +13,14 @@ import (
 	"github.com/marapongo/mu/pkg/compiler"
 	"github.com/marapongo/mu/pkg/compiler/core"
 	"github.com/marapongo/mu/pkg/graph"
+	"github.com/marapongo/mu/pkg/graph/dotconv"
 	"github.com/marapongo/mu/pkg/tokens"
 	"github.com/marapongo/mu/pkg/util/cmdutil"
 	"github.com/marapongo/mu/pkg/util/contract"
 )
 
 func newEvalCmd() *cobra.Command {
+	var dotOutput bool
 	var cmd = &cobra.Command{
 		Use:   "eval [blueprint] [-- [args]]",
 		Short: "Evaluate a MuPackage and create its MuGL graph representation",
@@ -74,12 +77,25 @@ func newEvalCmd() *cobra.Command {
 			}
 
 			// Finally, serialize that MuGL graph so that it's suitable for printing/serializing.
-			shown := make(map[graph.Vertex]bool)
-			for _, root := range mugl.Roots() {
-				printVertex(root, shown, "")
+			if dotOutput {
+				// Convert the output to a DOT file.
+				if err := dotconv.Print(mugl, os.Stdout); err != nil {
+					fmt.Fprintf(os.Stderr, "error: failed to write DOT file to output: %v\n", err)
+					os.Exit(-1)
+				}
+			} else {
+				// Just print a very basic, yet (hopefully) aesthetically pleasinge, ascii-ization of the graph.
+				shown := make(map[graph.Vertex]bool)
+				for _, root := range mugl.Roots() {
+					printVertex(root, shown, "")
+				}
 			}
 		},
 	}
+
+	cmd.PersistentFlags().BoolVar(
+		&dotOutput, "dot", false,
+		"Output the graph as a DOT digraph (graph description language)")
 
 	return cmd
 }

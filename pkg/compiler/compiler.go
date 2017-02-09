@@ -160,6 +160,9 @@ func (c *compiler) CompilePackage(pkg *pack.Package) graph.Graph {
 	// Now, evaluate.
 	e := eval.New(b.Ctx(), gg)
 	e.EvaluatePackage(pkgsym, c.ctx.Opts.Args)
+	if !c.Diag().Success() {
+		return nil
+	}
 
 	// Finally ask the graph generator to return what it has seen in graph form.
 	return gg.Graph()

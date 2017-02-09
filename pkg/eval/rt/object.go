@@ -27,6 +27,9 @@ type Properties map[tokens.Name]*Pointer // an object's properties.
 
 // NewObject allocates a new object with the given type, primitive value, and properties.
 func NewObject(t symbols.Type, value Value, properties Properties) *Object {
+	if properties == nil {
+		properties = make(Properties)
+	}
 	return &Object{t: t, value: value, properties: properties}
 }
 
