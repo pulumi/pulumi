@@ -11,7 +11,7 @@ import (
 
 func TestCounts(t *testing.T) {
 	// Create a new default sink with /dev/null writers to avoid spamming the test log.
-	sink := newDefaultSink("", ioutil.Discard, ioutil.Discard)
+	sink := newDefaultSink(FormatOptions{}, ioutil.Discard, ioutil.Discard)
 
 	const numEach = 10
 

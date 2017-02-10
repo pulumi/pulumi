@@ -39,8 +39,8 @@ func TestBadMissingMufile(t *testing.T) {
 	d := errors.ErrorMissingMufile
 	assert.Equal(t, 1, sink.Errors(), "expected a single error")
 	assert.Equal(t,
-		fmt.Sprintf("%v: %v%v: %v\n",
-			diag.DefaultSinkErrorPrefix, diag.DefaultSinkIDPrefix, d.ID, fmt.Sprintf(d.Message, sink.Pwd)),
+		fmt.Sprintf("%v %v%v: %v\n",
+			diag.Error, diag.DefaultSinkIDPrefix, d.ID, fmt.Sprintf(d.Message, sink.Pwd)),
 		sink.ErrorMsgs()[0])
 }
 
@@ -51,8 +51,8 @@ func TestBadMufileCasing(t *testing.T) {
 	d := errors.WarningIllegalMarkupFileCasing
 	assert.Equal(t, 1, sink.Warnings(), "expected a single warning")
 	assert.Equal(t,
-		fmt.Sprintf("%v: %v%v: %v: %v\n",
-			diag.DefaultSinkWarningPrefix, diag.DefaultSinkIDPrefix, d.ID, "mu.yaml", fmt.Sprintf(d.Message, "Mu")),
+		fmt.Sprintf("%v: %v %v%v: %v\n",
+			"mu.yaml", diag.Warning, diag.DefaultSinkIDPrefix, d.ID, fmt.Sprintf(d.Message, "Mu")),
 		sink.WarningMsgs()[0])
 }
 
@@ -63,8 +63,8 @@ func TestBadMufileExt(t *testing.T) {
 	d := errors.WarningIllegalMarkupFileExt
 	assert.Equal(t, 1, sink.Warnings(), "expected a single warning")
 	assert.Equal(t,
-		fmt.Sprintf("%v: %v%v: %v: %v\n",
-			diag.DefaultSinkWarningPrefix, diag.DefaultSinkIDPrefix, d.ID, "Mu",
+		fmt.Sprintf("%v: %v %v%v: %v\n",
+			"Mu", diag.Warning, diag.DefaultSinkIDPrefix, d.ID,
 			fmt.Sprintf(d.Message, "Mu", "")),
 		sink.WarningMsgs()[0])
 }
@@ -76,8 +76,8 @@ func TestBadMufileExt2(t *testing.T) {
 	d := errors.WarningIllegalMarkupFileExt
 	assert.Equal(t, 1, sink.Warnings(), "expected a single warning")
 	assert.Equal(t,
-		fmt.Sprintf("%v: %v%v: %v: %v\n",
-			diag.DefaultSinkWarningPrefix, diag.DefaultSinkIDPrefix, d.ID, "Mu.txt",
+		fmt.Sprintf("%v: %v %v%v: %v\n",
+			"Mu.txt", diag.Warning, diag.DefaultSinkIDPrefix, d.ID,
 			fmt.Sprintf(d.Message, "Mu", ".txt")),
 		sink.WarningMsgs()[0])
 }
@@ -89,8 +89,8 @@ func TestBadMissingPackageName(t *testing.T) {
 	d := errors.ErrorIllegalMufileSyntax
 	assert.Equal(t, 1, sink.Errors(), "expected a single error")
 	assert.Equal(t,
-		fmt.Sprintf("%v: %v%v: %v: %v\n",
-			diag.DefaultSinkErrorPrefix, diag.DefaultSinkIDPrefix, d.ID, "Mu.yaml",
+		fmt.Sprintf("%v: %v %v%v: %v\n",
+			"Mu.yaml", diag.Error, diag.DefaultSinkIDPrefix, d.ID,
 			fmt.Sprintf(d.Message, "Missing required pack.Package field `name`")),
 		sink.ErrorMsgs()[0])
 }
@@ -102,8 +102,8 @@ func TestBadEmptyPackageName(t *testing.T) {
 	d := errors.ErrorIllegalMufileSyntax
 	assert.Equal(t, 1, sink.Errors(), "expected a single error")
 	assert.Equal(t,
-		fmt.Sprintf("%v: %v%v: %v: %v\n",
-			diag.DefaultSinkErrorPrefix, diag.DefaultSinkIDPrefix, d.ID, "Mu.yaml",
+		fmt.Sprintf("%v: %v %v%v: %v\n",
+			"Mu.yaml", diag.Error, diag.DefaultSinkIDPrefix, d.ID,
 			fmt.Sprintf(d.Message, "Missing required pack.Package field `name`")),
 		sink.ErrorMsgs()[0])
 }
@@ -115,7 +115,7 @@ func TestBadEmptyPackageName2(t *testing.T) {
 	d := errors.ErrorInvalidPackageName
 	assert.Equal(t, 1, sink.Errors(), "expected a single error")
 	assert.Equal(t,
-		fmt.Sprintf("%v: %v%v: %v: %v\n",
-			diag.DefaultSinkErrorPrefix, diag.DefaultSinkIDPrefix, d.ID, "Mu.yaml", d.Message),
+		fmt.Sprintf("%v: %v %v%v: %v\n",
+			"Mu.yaml", diag.Error, diag.DefaultSinkIDPrefix, d.ID, d.Message),
 		sink.ErrorMsgs()[0])
 }

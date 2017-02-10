@@ -15,7 +15,12 @@ type TestDiagSink struct {
 }
 
 func NewTestDiagSink(pwd string) *TestDiagSink {
-	return &TestDiagSink{Pwd: pwd, sink: diag.DefaultSink(pwd)}
+	return &TestDiagSink{
+		Pwd: pwd,
+		sink: diag.DefaultSink(diag.FormatOptions{
+			Pwd: pwd,
+		}),
+	}
 }
 
 func (d *TestDiagSink) Count() int {
@@ -43,13 +48,13 @@ func (d *TestDiagSink) Success() bool {
 }
 
 func (d *TestDiagSink) Errorf(dia *diag.Diag, args ...interface{}) {
-	d.errors = append(d.errors, d.Stringify(dia, diag.DefaultSinkErrorPrefix, args...))
+	d.errors = append(d.errors, d.Stringify(dia, diag.Error, args...))
 }
 
 func (d *TestDiagSink) Warningf(dia *diag.Diag, args ...interface{}) {
-	d.warnings = append(d.warnings, d.Stringify(dia, diag.DefaultSinkWarningPrefix, args...))
+	d.warnings = append(d.warnings, d.Stringify(dia, diag.Warning, args...))
 }
 
-func (d *TestDiagSink) Stringify(dia *diag.Diag, prefix string, args ...interface{}) string {
-	return d.sink.Stringify(dia, prefix, args...)
+func (d *TestDiagSink) Stringify(dia *diag.Diag, cat diag.Category, args ...interface{}) string {
+	return d.sink.Stringify(dia, cat, args...)
 }

@@ -1,5 +1,5 @@
-hash: 98d62cdaf6eb84bedfe70e8bfa14cfc0d88abda789d32cde68e4fe67b0b70cf7
-updated: 2017-02-01T19:34:06.71356202-08:00
+hash: 4767d30079bae72547ac522a039a866092c556302afd0f4309afa0a5e17731be
+updated: 2017-02-09T17:02:52.616762432-08:00
 imports:
 - name: github.com/aokoli/goutils
   version: 9c37978a95bd5c709a15883b6242714ea6709e64
@@ -19,6 +19,8 @@ imports:
   version: 1e60e4ce482a1e2c7b9c9be667535ef152e04300
 - name: github.com/mitchellh/go-homedir
   version: b8bc1bf767474819792c23f32d8286a45736f1c6
+- name: github.com/reconquest/loreley
+  version: 2ab6b7470a54bfa9b5b0289f9b4e8fc4839838f7
 - name: github.com/satori/go.uuid
   version: 879c5887cd475cd7864858769793b2ceb0d44feb
 - name: github.com/spf13/cobra
@@ -27,6 +29,14 @@ imports:
   version: 5ccb023bc27df288a957c5e994cd44fd19619465
 - name: github.com/stretchr/testify
   version: 18a02ba4a312f95da08ff4cfc0055750ce50ae9e
+- name: golang.org/x/crypto
+  version: 453249f01cfeb54c3d549ddb75ff152ca243f9d8
+  subpackages:
+  - ssh/terminal
+- name: golang.org/x/sys
+  version: 7a6e5648d140666db5d920909e082ca00a87ba2c
+  subpackages:
+  - unix
 - name: gopkg.in/yaml.v2
   version: a5b47d31c556af34a302ce5d659e6fea44d90de0
 devImports: []

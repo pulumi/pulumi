@@ -11,6 +11,9 @@ import (
 	"strconv"
 
 	"github.com/golang/glog"
+	"github.com/reconquest/loreley"
+
+	"github.com/marapongo/mu/pkg/util/contract"
 )
 
 // Sink facilitates pluggable diagnostics messages.
@@ -30,29 +33,41 @@ type Sink interface {
 	Warningf(diag *Diag, args ...interface{})
 
 	// Stringify stringifies a diagnostic in the usual way (e.g., "error: MU123: Mu.yaml:7:39: error goes here\n").
-	Stringify(diag *Diag, prefix string, args ...interface{}) string
+	Stringify(diag *Diag, cat Category, args ...interface{}) string
+}
+
+// Category dictates the kind of diagnostic.
+type Category string
+
+const (
+	Error   Category = "error"
+	Warning          = "warning"
+)
+
+// FormatOptions controls the output style and content.
+type FormatOptions struct {
+	Pwd    string // the working directory.
+	Colors bool   // if true, output will be colorized.
 }
 
 // DefaultSink returns a default sink that simply logs output to stderr/stdout.
-func DefaultSink(pwd string) Sink {
-	return newDefaultSink(pwd, os.Stderr, os.Stdout)
+func DefaultSink(opts FormatOptions) Sink {
+	return newDefaultSink(opts, os.Stderr, os.Stdout)
 }
 
-func newDefaultSink(pwd string, errorW io.Writer, warningW io.Writer) *defaultSink {
-	return &defaultSink{pwd: pwd, errorW: errorW, warningW: warningW}
+func newDefaultSink(opts FormatOptions, errorW io.Writer, warningW io.Writer) *defaultSink {
+	return &defaultSink{opts: opts, errorW: errorW, warningW: warningW}
 }
 
 const DefaultSinkIDPrefix = "MU"
-const DefaultSinkErrorPrefix = "error"
-const DefaultSinkWarningPrefix = "warning"
 
 // defaultSink is the default sink which logs output to stderr/stdout.
 type defaultSink struct {
-	pwd      string    // an optional present working directory to which output paths will be relative to.
-	errors   int       // the number of errors that have been issued.
-	errorW   io.Writer // the output stream to use for errors.
-	warnings int       // the number of warnings that have been issued.
-	warningW io.Writer // the output stream to use for warnings.
+	opts     FormatOptions // a set of options that control output style and content.
+	errors   int           // the number of errors that have been issued.
+	errorW   io.Writer     // the output stream to use for errors.
+	warnings int           // the number of warnings that have been issued.
+	warningW io.Writer     // the output stream to use for warnings.
 }
 
 func (d *defaultSink) Count() int {
@@ -72,7 +87,7 @@ func (d *defaultSink) Success() bool {
 }
 
 func (d *defaultSink) Errorf(diag *Diag, args ...interface{}) {
-	msg := d.Stringify(diag, DefaultSinkErrorPrefix, args...)
+	msg := d.Stringify(diag, Error, args...)
 	if glog.V(3) {
 		glog.V(3).Infof("defaultSink::Error(%v)", msg[:len(msg)-1])
 	}
@@ -81,7 +96,7 @@ func (d *defaultSink) Errorf(diag *Diag, args ...interface{}) {
 }
 
 func (d *defaultSink) Warningf(diag *Diag, args ...interface{}) {
-	msg := d.Stringify(diag, DefaultSinkWarningPrefix, args...)
+	msg := d.Stringify(diag, Warning, args...)
 	if glog.V(4) {
 		glog.V(4).Infof("defaultSink::Warning(%v)", msg[:len(msg)-1])
 	}
@@ -89,23 +104,19 @@ func (d *defaultSink) Warningf(diag *Diag, args ...interface{}) {
 	d.warnings++
 }
 
-func (d *defaultSink) Stringify(diag *Diag, prefix string, args ...interface{}) string {
+func (d *defaultSink) Stringify(diag *Diag, cat Category, args ...interface{}) string {
 	var buffer bytes.Buffer
 
-	buffer.WriteString(prefix)
-	buffer.WriteString(": ")
-
-	if diag.ID > 0 {
-		buffer.WriteString(DefaultSinkIDPrefix)
-		buffer.WriteString(strconv.Itoa(int(diag.ID)))
-		buffer.WriteString(": ")
-	}
-
+	// First print the location if there is one.
 	if diag.Doc != nil {
+		if d.opts.Colors {
+			buffer.WriteString("{fg 6}") // cyan
+		}
+
 		file := diag.Doc.File
-		if d.pwd != "" {
+		if d.opts.Pwd != "" {
 			// If a PWD is available, try to create a relative path.
-			rel, err := filepath.Rel(d.pwd, file)
+			rel, err := filepath.Rel(d.opts.Pwd, file)
 			if err == nil {
 				file = rel
 			}
@@ -113,19 +124,69 @@ func (d *defaultSink) Stringify(diag *Diag, prefix string, args ...interface{}) 
 		buffer.WriteString(file)
 
 		if diag.Loc != nil && !diag.Loc.IsEmpty() {
-			buffer.WriteRune(':')
+			buffer.WriteRune('(')
 			buffer.WriteString(strconv.Itoa(diag.Loc.Start.Line))
-			buffer.WriteRune(':')
+			buffer.WriteRune(',')
 			buffer.WriteString(strconv.Itoa(diag.Loc.Start.Column))
+			buffer.WriteRune(')')
 		}
 		buffer.WriteString(": ")
+
+		if d.opts.Colors {
+			buffer.WriteString("{reset}")
+		}
+	}
+
+	// Now print the message category's prefix (error/warning).
+	if d.opts.Colors {
+		switch cat {
+		case Error:
+			buffer.WriteString("{fg 1}") // red
+		case Warning:
+			buffer.WriteString("{fg 11}") // bright yellow
+		default:
+			contract.Failf("Unrecognized diagnostic category: %v", cat)
+		}
+	}
+
+	buffer.WriteString(string(cat))
+
+	if diag.ID > 0 {
+		buffer.WriteString(" ")
+		buffer.WriteString(DefaultSinkIDPrefix)
+		buffer.WriteString(strconv.Itoa(int(diag.ID)))
+	}
+
+	buffer.WriteString(": ")
+
+	if d.opts.Colors {
+		buffer.WriteString("{reset}")
+	}
+
+	// Finally, actually print the message itself.
+	if d.opts.Colors {
+		buffer.WriteString("{fg 7}") // white
 	}
 
 	buffer.WriteString(fmt.Sprintf(diag.Message, args...))
+
+	if d.opts.Colors {
+		buffer.WriteString("{reset}")
+	}
+
 	buffer.WriteRune('\n')
 
 	// TODO[marapongo/mu#15]: support Clang-style expressive diagnostics.  This would entail, for example, using the
 	//     buffer within the target document, to demonstrate the offending line/column range of code.
 
-	return buffer.String()
+	s := buffer.String()
+
+	// If colorization was requested, compile and execute the directives now.
+	if d.opts.Colors {
+		var err error
+		s, err = loreley.CompileAndExecuteToString(s, nil, nil)
+		contract.Assert(err == nil)
+	}
+
+	return s
 }

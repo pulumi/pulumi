@@ -56,22 +56,22 @@ func TestBadDepSemVer(t *testing.T) {
 	assert.Equal(t, 3, sink.Errors(), "expected an error for each bad semver")
 	bad0 := "dep1#badbadbad"
 	assert.Equal(t,
-		fmt.Sprintf("%v: %v%v: %v: %v\n",
-			diag.DefaultSinkErrorPrefix, diag.DefaultSinkIDPrefix, d.ID, "Mu.yaml",
+		fmt.Sprintf("%v: %v %v%v: %v\n",
+			"Mu.yaml", diag.Error, diag.DefaultSinkIDPrefix, d.ID,
 			fmt.Sprintf(d.Message, bad0,
 				"Illegal version spec in '"+bad0+"': Could not get version from string: \"badbadbad\"")),
 		sink.ErrorMsgs()[0])
 	bad1 := "hub.mu.com/dep2#badbadbad"
 	assert.Equal(t,
-		fmt.Sprintf("%v: %v%v: %v: %v\n",
-			diag.DefaultSinkErrorPrefix, diag.DefaultSinkIDPrefix, d.ID, "Mu.yaml",
+		fmt.Sprintf("%v: %v %v%v: %v\n",
+			"Mu.yaml", diag.Error, diag.DefaultSinkIDPrefix, d.ID,
 			fmt.Sprintf(d.Message, bad1,
 				"Illegal version spec in '"+bad1+"': Could not get version from string: \"badbadbad\"")),
 		sink.ErrorMsgs()[1])
 	bad2 := "https://hub.mu.com/dep3/a/b/c/d#badbadbad"
 	assert.Equal(t,
-		fmt.Sprintf("%v: %v%v: %v: %v\n",
-			diag.DefaultSinkErrorPrefix, diag.DefaultSinkIDPrefix, d.ID, "Mu.yaml",
+		fmt.Sprintf("%v: %v %v%v: %v\n",
+			"Mu.yaml", diag.Error, diag.DefaultSinkIDPrefix, d.ID,
 			fmt.Sprintf(d.Message, bad2,
 				"Illegal version spec in '"+bad2+"': Could not get version from string: \"badbadbad\"")),
 		sink.ErrorMsgs()[2])
@@ -84,14 +84,14 @@ func TestBadTypeNotFound(t *testing.T) {
 	assert.Equal(t, 2, sink.Errors(), "expected a single error")
 	d1 := errors.ErrorSymbolNotFound
 	assert.Equal(t,
-		fmt.Sprintf("%v: %v%v: %v\n",
-			diag.DefaultSinkErrorPrefix, diag.DefaultSinkIDPrefix, d1.ID,
+		fmt.Sprintf("%v %v%v: %v\n",
+			diag.Error, diag.DefaultSinkIDPrefix, d1.ID,
 			fmt.Sprintf(d1.Message, "missing/package:bad/module/Clazz", "package 'missing/package' not found")),
 		sink.ErrorMsgs()[0])
 	d2 := errors.ErrorTypeNotFound
 	assert.Equal(t,
-		fmt.Sprintf("%v: %v%v: %v\n",
-			diag.DefaultSinkErrorPrefix, diag.DefaultSinkIDPrefix, d2.ID,
+		fmt.Sprintf("%v %v%v: %v\n",
+			diag.Error, diag.DefaultSinkIDPrefix, d2.ID,
 			fmt.Sprintf(d2.Message, "missing/package:bad/module/Clazz", "type symbol not found")),
 		sink.ErrorMsgs()[1])
 }
