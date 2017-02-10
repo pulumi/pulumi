@@ -10,7 +10,7 @@ var (
 	ErrorTypeNotFound             = newError(503, "Type '%v' could not be found: %v")
 	ErrorSymbolNotFound           = newError(504, "Symbol '%v' could not be found: %v")
 	ErrorSymbolAlreadyExists      = newError(505, "A symbol already exists with the name '%v'")
-	ErrorIncorrectExprType        = newError(506, "Expression has an incorrect type; expected '%v', got '%v'")
+	ErrorIncorrectExprType        = newError(506, "Expression has the wrong type; expected '%v', got '%v'")
 	ErrorMemberNotAccessible      = newError(507, "Member '%v' is not accessible (it is %v)")
 	ErrorExpectedReturnExpr       = newError(508, "Expected a return expression of type '%v'")
 	ErrorUnexpectedReturnExpr     = newError(509, "Unexpected return expression; function has no return type (void)")
@@ -26,7 +26,7 @@ var (
 	ErrorUnaryOperatorMustBePrefix      = newError(517, "The operator %v must be in a prefix position (not postfix)")
 	ErrorBinaryOperatorInvalidForType   = newError(518,
 		"The operator %v is invalid on %v operand type '%v'; expected '%v'")
-	ErrorIllegalAssignmentLValue        = newError(519, "Cannot assign to the target LHS expression")
+	ErrorIllegalAssignmentLValue        = newError(519, "Cannot assign to the target LHS expression (not an l-value)")
 	ErrorIllegalNumericAssignmentLValue = newError(520, "Cannot perform numeric assignment %v on a non-numeric LHS")
 	ErrorIllegalAssignmentTypes         = newError(521, "Cannot assign a value of type '%v' to target of type '%v'")
 	ErrorCannotInvokeNonFunction        = newError(522, "Cannot invoke a non-function; type '%v' is not a function")
