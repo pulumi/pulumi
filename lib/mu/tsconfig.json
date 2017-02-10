@@ -16,11 +16,11 @@
         "strictNullChecks": true
     },
     "files": [
-        "index.ts",
+        "src/index.ts",
 
-        "context.ts",
-        "resource.ts",
-        "stack.ts"
+        "src/context.ts",
+        "src/resource.ts",
+        "src/stack.ts"
     ]
 }
 
