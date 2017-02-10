@@ -9,7 +9,6 @@ import * as cloudformation from '../cloudformation';
 // @website: http://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-ec2-instance.html
 export class Instance extends cloudformation.Resource  {
     constructor(args: InstanceArgs) {
-        cloudformation.expandTags(args);
         super({
             resource: "AWS::EC2::Instance",
             properties: args,

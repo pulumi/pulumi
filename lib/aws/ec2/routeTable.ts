@@ -10,7 +10,6 @@ import * as cloudformation from '../cloudformation';
 // @website: http://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-ec2-route-table.html
 export class RouteTable extends cloudformation.Resource {
     constructor(args: RouteTableArgs) {
-        cloudformation.expandTags(args);
         super({
             resource: "AWS::EC2::RouteTable",
             properties: args,

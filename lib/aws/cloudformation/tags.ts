@@ -17,20 +17,7 @@ export type Tags = Tag[];
 
 // TagArgs represents a base type for the common pattern of resources accepting tags and a name.
 export interface TagArgs {
-    // An optional name for this resource.
-    name?: string;
     // An arbitrary set of tags (key-value pairs) for this resource.
     tags?: Tags;
-}
-
-// expandTags takes a TagArgs and expands the "Name" key in-place, for naming, when present.
-export function expandTags(args: TagArgs): void {
-    if (args.name !== undefined) {
-        if (args.tags == undefined) {
-            args.tags = [];
-        }
-        args.tags.push({ key: "Name", value: args.name });
-        delete args.name;
-    }
 }
 
