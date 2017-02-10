@@ -1,0 +1,29 @@
+// Copyright 2016 Marapongo, Inc. All rights reserved.
+
+syntax = "proto3";
+
+import "google/protobuf/empty.proto";
+
+package mu;
+
+// TODO: secrets.
+
+// Engine is an interface into the core engine responsible for orchestrating resource operations.
+service Engine {
+    // Log logs a global message in the engine, including errors and warnings.
+    rpc Log(LogRequest) returns (google.protobuf.Empty) {}
+}
+
+// LogSeverity is the severity level of a log message.  Errors are fatal; all others are informational.
+enum LogSeverity {
+    DEBUG = 0;   // a debug-level message not displayed to end-users (the default).
+    INFO = 1;    // an informational message printed to output during resource operations.
+    WARNING = 2; // a warning to indicate that something went wrong.
+    ERROR = 3;   // a fatal error indicating that the tool should stop processing subsequent resource operations.
+}
+
+message LogRequest {
+    LogSeverity severity = 1; // the logging level of this message.
+    string message = 2;       // the contents of the logged message.
+}
+

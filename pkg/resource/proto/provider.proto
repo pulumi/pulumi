@@ -1,0 +1,55 @@
+// Copyright 2016 Marapongo, Inc. All rights reserved.
+
+syntax = "proto3";
+
+import "google/protobuf/empty.proto";
+import "google/protobuf/struct.proto";
+
+package mu;
+
+// TODO: figure out "transactionality" and possibly "tainting".
+
+// ResourceProvider is a service that understands how to create, read, update, or delete resources for types defined
+// within a single MuPackage.  It is driven by the overall Mu toolchain in response to blueprints and graphs.
+service ResourceProvider {
+    // Create allocates a new instance of the provided resource and returns its unique ID afterwards.  (The input ID
+    // must be blank.)  If this call fails, the resource must not have been created (i.e., it is "transacational").
+    rpc Create(CreateRequest) returns (CreateResponse) {}
+    // Read read the instance state identifier by ID, returning a populated resource object, or an error if not found.
+    rpc Read(ReadRequest) returns (ReadResponse) {}
+    // Update updates an existing resource with new values.  Only those values in the provided resource object's
+    // property bag are updated to new values.  Nothing is returned; an error means the updates did not take place.
+    rpc Update(UpdateRequest) returns (google.protobuf.Empty) {}
+    // Delete tears down an existing resource with the given ID.  If it fails, the resource is assumed to still exist.
+    rpc Delete(DeleteRequest) returns (google.protobuf.Empty) {}
+}
+
+message CreateRequest {
+    string type = 1;                       // the type token of the resource.
+    google.protobuf.Struct properties = 2; // the properties to set during creation.
+}
+
+message CreateResponse {
+    string id = 1;                         // the ID of the resource created.
+}
+
+message ReadRequest {
+    string id = 1;                         // the ID of the resource to read.
+    string type = 2;                       // the type token of the resource.
+    google.protobuf.Struct properties = 3; // an optional list of properties to read (if empty, all).
+}
+
+message ReadResponse {
+    google.protobuf.Struct properties = 1; // the properties read from the resource.
+}
+
+message UpdateRequest {
+    string id = 1;                         // the ID of the resource to update.
+    string type = 2;                       // the type token of the resource.
+    google.protobuf.Struct properties = 3; // the properties to update (only those listed here are updated).
+}
+
+message DeleteRequest {
+    string id = 1;                         // the ID of the resource to delete.
+}
+
