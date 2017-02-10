@@ -3,6 +3,8 @@
 This directory contains the various MuPackage libraries that Mu programs may depend upon.  The Mu standard library
 (under `mu/`) is special in that every Mu program will ultimately use it directly or indirectly to create resources.
 
+Note that these are written in the Mu subsets of the languages and therefore cannot perform I/O, etc.
+
 Eventually these packages will be published like any other NPM MuPackage.  For now, they are consumed only in a
 development capacity, and so there are some manual steps required to prepare a development workspace.
 
