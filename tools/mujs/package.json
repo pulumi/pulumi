@@ -23,7 +23,7 @@
     "global": "^4.3.1",
     "js-yaml": "^3.7.0",
     "minimist": "^1.2.0",
-    "nodejs-ts": "^0.5.4",
+    "nodejs-ts": "^0.5.5",
     "source-map-support": "^0.4.8",
     "typescript": "^2.1.4"
   },

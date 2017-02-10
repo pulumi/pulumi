@@ -14,7 +14,7 @@
         "noImplicitThis": true,
         "noImplicitReturns": true,
         "noUnusedLocals": false,
-        "noUnusedParameters": false,
+        "noUnusedParameters": true,
         "forceConsistentCasingInFileNames": true,
         "strictNullChecks": true
     },

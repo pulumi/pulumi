@@ -617,9 +617,9 @@ node-status-codes@^1.0.0:
   version "1.0.0"
   resolved "https://registry.yarnpkg.com/node-status-codes/-/node-status-codes-1.0.0.tgz#5ae5541d024645d32a58fcddc9ceecea7ae3ac2f"
 
-nodejs-ts@^0.5.4:
-  version "0.5.4"
-  resolved "https://registry.yarnpkg.com/nodejs-ts/-/nodejs-ts-0.5.4.tgz#2d55ee73a2ee03d3cf34900b3b3baff350756720"
+nodejs-ts@^0.5.5:
+  version "0.5.5"
+  resolved "https://registry.yarnpkg.com/nodejs-ts/-/nodejs-ts-0.5.5.tgz#f1493d48f728ef539f6be415fe95e64195947e53"
   dependencies:
     "@types/mkdirp" "^0.3.29"
     "@types/npm" "^2.0.28"

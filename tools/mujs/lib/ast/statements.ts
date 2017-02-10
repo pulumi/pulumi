@@ -4,8 +4,6 @@ import {LocalVariable} from "./definitions";
 import {Expression} from "./expressions";
 import {Identifier, Node} from "./nodes";
 
-import * as tokens from "../tokens";
-
 export interface Statement extends Node {}
 
 /** Blocks **/

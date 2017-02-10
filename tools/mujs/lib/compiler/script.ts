@@ -72,11 +72,12 @@ export async function compileScript(path: string, options?: ts.CompilerOptions):
 
     let tree: ts.Program | undefined;
     let outputs: ScriptOutputs | undefined;
-    let muDiagnostics: diag.Diagnostic[] = [];
     if (diagnostics.length === 0) {
         // Create a compiler host and perform the compilation.
         const host: ts.CompilerHost = ts.createCompilerHost(options);
         host.writeFile = (filename: string, data: string, writeBOM: boolean) => {
+            contract.ignore(writeBOM); // TODO: consider respecting the BOM (for Windows).
+
             if (!outputs) {
                 outputs = new Map<string, string>();
             }

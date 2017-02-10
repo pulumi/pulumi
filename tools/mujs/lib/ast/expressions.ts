@@ -1,7 +1,7 @@
 // Copyright 2016 Marapongo, Inc. All rights reserved.
 
 import {LocalVariable} from "./definitions";
-import {ClassMemberToken, Identifier, Node, Token, TypeToken} from "./nodes";
+import {ClassMemberToken, Node, Token, TypeToken} from "./nodes";
 import * as statements from "./statements";
 
 import * as tokens from "../tokens";

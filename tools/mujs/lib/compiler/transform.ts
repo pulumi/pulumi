@@ -696,6 +696,7 @@ export class Transformer {
         }
         finally {
             this.currentSourceFile = priorSourceFile;
+            this.currentModuleToken = priorModuleToken;
             this.currentModuleMembers = priorModuleMembers;
             this.currentModuleImports = priorModuleImports;
             this.currentModuleImportTokens = priorModuleImportTokens;
@@ -1390,6 +1391,7 @@ export class Transformer {
     }
 
     private transformModuleDeclaration(node: ts.ModuleDeclaration, access: tokens.Accessibility): ast.Module {
+        contract.ignore(access);
         return notYetImplemented(node);
     }
 
