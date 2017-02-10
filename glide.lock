@@ -1,5 +1,5 @@
-hash: 4767d30079bae72547ac522a039a866092c556302afd0f4309afa0a5e17731be
-updated: 2017-02-09T17:02:52.616762432-08:00
+hash: 0b7799d9dd5f5f3ee86204521fddadc031b0f7eed01535e6c51816fee392b67f
+updated: 2017-02-10T09:07:28.955492616-08:00
 imports:
 - name: github.com/aokoli/goutils
   version: 9c37978a95bd5c709a15883b6242714ea6709e64
@@ -13,6 +13,12 @@ imports:
   version: 206c0f020eba0f7fbcfbc467a5eb808037df2ed6
   subpackages:
   - golint
+- name: github.com/golang/protobuf
+  version: 8ee79997227bf9b34611aee7946ae64735e6fd93
+  subpackages:
+  - proto
+  - ptypes/empty
+  - ptypes/struct
 - name: github.com/inconshreveable/mousetrap
   version: 76626ae9c91c4f2a10f34cad8ce83ea42c93bb75
 - name: github.com/Masterminds/sprig
@@ -33,10 +39,33 @@ imports:
   version: 453249f01cfeb54c3d549ddb75ff152ca243f9d8
   subpackages:
   - ssh/terminal
+- name: golang.org/x/net
+  version: a689eb3bc4b53af70390acc3cf68c9f549b6b8d6
+  subpackages:
+  - context
+  - http2
+  - trace
+  - http2/hpack
+  - idna
+  - lex/httplex
+  - internal/timeseries
 - name: golang.org/x/sys
-  version: 7a6e5648d140666db5d920909e082ca00a87ba2c
+  version: aaabbdc969c3935a2a7f61efac801e7163c73a2a
   subpackages:
   - unix
+- name: google.golang.org/grpc
+  version: 0ed6d0346777982c7d8f56c64f963f61a10e3f31
+  subpackages:
+  - codes
+  - credentials
+  - grpclog
+  - internal
+  - metadata
+  - naming
+  - peer
+  - stats
+  - tap
+  - transport
 - name: gopkg.in/yaml.v2
   version: a5b47d31c556af34a302ce5d659e6fea44d90de0
 devImports: []
