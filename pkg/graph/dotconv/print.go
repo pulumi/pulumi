@@ -32,7 +32,7 @@ func Print(g graph.Graph, w io.Writer) error {
 	}
 
 	// For now, we auto-generate IDs.
-	// TODO: use the object monikers instead, once we have them.
+	// TODO[marapongo/mu#76]: use the object monikers instead, once we have them.
 	c := 0
 	ids := make(map[graph.Vertex]string)
 	getID := func(v graph.Vertex) string {
