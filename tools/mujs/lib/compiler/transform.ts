@@ -529,28 +529,94 @@ export class Transformer {
         return exports;
     }
 
+    // simplifyTypeForToken attempts to simplify a type for purposes of token emission.
+    private simplifyTypeForToken(ty: ts.Type): [ ts.Type, ts.TypeFlags ] {
+        if (ty.flags & ts.TypeFlags.StringLiteral) {
+            return [ ty, ts.TypeFlags.String ]; // string literals just become strings.
+        }
+        else if (ty.flags & ts.TypeFlags.NumberLiteral) {
+            return [ ty, ts.TypeFlags.Number ]; // number literals just become numbers.
+        }
+        else if (ty.flags & ts.TypeFlags.BooleanLiteral) {
+            return [ ty, ts.TypeFlags.Boolean ]; // boolean literals just become booleans.
+        }
+        else if (ty.flags & ts.TypeFlags.EnumLiteral) {
+            // Desugar enum literal types to their base types.
+            return this.simplifyTypeForToken((<ts.EnumLiteralType>ty).baseType);
+        }
+        else if (ty.flags & ts.TypeFlags.Union) {
+            // If the type is a union type, see if we can flatten it into a single type:
+            //
+            //     1) All members of the union that are literal types of the same root type (e.g., all StringLiterals
+            //        which can safely compress to Strings) can be compressed just to the shared root type.
+            //        TODO[marapongo/mu#82]: eventually, we will support union and literal types natively.
+            //
+            //     2) Any `undefined` or `null` types can be stripped out.  The reason is that everything in MuIL is
+            //        nullable at the moment.  (Note that the special case of `T?` as an interface property is encoded
+            //        as `T|undefined`.)  The result is that we just yield just the underlying naked type.
+            //        TODO[marapongo/mu#64]: eventually we want to consider supporting nullability in a first class way.
+            //
+            let union = <ts.UnionOrIntersectionType>ty;
+            let result: ts.Type | undefined;
+            let resultFlags: ts.TypeFlags | undefined;
+            for (let uty of union.types) {
+                // Simplify the type first.
+                let simple: ts.Type;
+                let flags: ts.TypeFlags;
+                [ simple, flags ] = this.simplifyTypeForToken(uty);
+
+                if (flags & ts.TypeFlags.Undefined || flags & ts.TypeFlags.Null) {
+                    // Skip undefined and null types.
+                }
+                else {
+                    // Now choose this as our result checking for conflicts.  Conflicts around primitives -- string,
+                    // number, or boolean -- are permitted because they are harmless and expected due to simplification.
+                    if (result && resultFlags &&
+                            !(flags & (ts.TypeFlags.String | ts.TypeFlags.Number | ts.TypeFlags.Boolean))) {
+                        result = undefined;
+                        resultFlags = undefined;
+                        break;
+                    }
+                    result = simple;
+                    resultFlags = flags;
+                }
+            }
+            if (result && resultFlags) {
+                return [ result, resultFlags ];
+            }
+        }
+
+        // Otherwise, we fell through, just use the real type and its flags.
+        return [ ty, ty.flags ];
+    }
+
     // resolveTypeToken takes a concrete TypeScript Type resolves it to a fully qualified MuIL type token name.
     private async resolveTypeToken(node: ts.Node, ty: ts.Type): Promise<tokens.TypeToken | undefined> {
-        if (ty.flags & ts.TypeFlags.Any) {
+        // First, simplify the type, if possible, before emitting it.
+        let simple: ts.Type;
+        let flags: ts.TypeFlags;
+        [ simple, flags ] = this.simplifyTypeForToken(ty);
+
+        if (flags & ts.TypeFlags.Any) {
             return tokens.dynamicType;
         }
-        else if (ty.flags & ts.TypeFlags.String) {
+        else if (flags & ts.TypeFlags.String) {
             return tokens.stringType;
         }
-        else if (ty.flags & ts.TypeFlags.Number) {
+        else if (flags & ts.TypeFlags.Number) {
             return tokens.numberType;
         }
-        else if (ty.flags & ts.TypeFlags.Boolean) {
+        else if (flags & ts.TypeFlags.Boolean) {
             return tokens.boolType;
         }
-        else if (ty.flags & ts.TypeFlags.Void) {
+        else if (flags & ts.TypeFlags.Void) {
             return undefined; // void is represented as the absence of a type.
         }
-        else if (ty.symbol) {
+        else if (simple.symbol) {
             // If it's an array or a map, translate it into the appropriate type token of that kind.
-            if (ty.flags & ts.TypeFlags.Object) {
-                if ((<ts.ObjectType>ty).objectFlags & ts.ObjectFlags.Reference) {
-                    let tyre = <ts.TypeReference>ty;
+            if (flags & ts.TypeFlags.Object) {
+                if ((<ts.ObjectType>simple).objectFlags & ts.ObjectFlags.Reference) {
+                    let tyre = <ts.TypeReference>simple;
                     if (tyre.target === this.builtinObjectType) {
                         return `${tokens.objectType}`;
                     }
@@ -577,12 +643,11 @@ export class Transformer {
             }
 
             // Otherwise, bottom out on resolving a fully qualified MuPackage type token out of the symbol.
-            return await this.resolveTokenFromSymbol(ty.symbol);
+            return await this.resolveTokenFromSymbol(simple.symbol);
         }
 
         // Finally, if we got here, it's not a type we support yet; issue an error and return `dynamic`.
-        // TODO[marapongo/mu#36]: detect more cases: unions, literals, complex types, generics, more.
-        this.diagnostics.push(this.dctx.newInvalidTypeError(node, ty));
+        this.diagnostics.push(this.dctx.newInvalidTypeError(node, simple));
         return tokens.dynamicType;
     }
 
