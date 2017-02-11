@@ -679,10 +679,9 @@ export class Transformer {
 
         // For member symbols, we must emit the fully qualified name.
         let kinds: ts.SymbolFlags =
-            ts.SymbolFlags.Function |
-            ts.SymbolFlags.Class | ts.SymbolFlags.Interface |
-            ts.SymbolFlags.ConstEnum | ts.SymbolFlags.RegularEnum |
-            ts.SymbolFlags.TypeAlias;
+            ts.SymbolFlags.Function | ts.SymbolFlags.Property | ts.SymbolFlags.BlockScopedVariable |
+            ts.SymbolFlags.Class | ts.SymbolFlags.Interface | ts.SymbolFlags.TypeAlias |
+            ts.SymbolFlags.ConstEnum | ts.SymbolFlags.RegularEnum;
         if (sym.flags & kinds) {
             let decls: ts.Declaration[] = sym.getDeclarations();
             contract.assert(decls.length > 0);
