@@ -78,7 +78,7 @@ func (tok Token) delimiter(n int) int {
 // Name returns the Token as a Name (and assumes it is a legal one).
 func (tok Token) Name() Name {
 	contract.Requiref(tok.Simple(), "tok", "Simple")
-	contract.Requiref(IsName(tok.String()), "tok", "IsName")
+	contract.Requiref(IsName(tok.String()), "tok", "IsName(%v)", tok)
 	return Name(tok.String())
 }
 

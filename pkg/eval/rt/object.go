@@ -23,7 +23,8 @@ type Object struct {
 var _ fmt.Stringer = (*Object)(nil)
 
 type Value interface{}                   // a literal object value.
-type Properties map[tokens.Name]*Pointer // an object's properties.
+type Properties map[PropertyKey]*Pointer // an object's properties.
+type PropertyKey string                  // property keys are strings (incl. invalid identifiers for dynamic).
 
 // NewObject allocates a new object with the given type, primitive value, and properties.
 func NewObject(t symbols.Type, value Value, properties Properties) *Object {
@@ -82,14 +83,14 @@ func (o *Object) PointerValue() *Pointer {
 
 // GetPropertyAddr returns the reference to an object's property, lazily initializing if 'init' is true, or
 // returning nil otherwise.
-func (o *Object) GetPropertyAddr(nm tokens.Name, init bool) *Pointer {
-	ptr, hasprop := o.properties[nm]
+func (o *Object) GetPropertyAddr(key PropertyKey, init bool) *Pointer {
+	ptr, hasprop := o.properties[key]
 	if !hasprop {
 		// Look up the property definition (if any) in the members list, to seed a default value.
 		var obj *Object
 		var readonly bool
 		if class, isclass := o.t.(*symbols.Class); isclass {
-			if member, hasmember := class.Members[tokens.ClassMemberName(nm)]; hasmember {
+			if member, hasmember := class.Members[tokens.ClassMemberName(key)]; hasmember {
 				switch m := member.(type) {
 				case *symbols.ClassProperty:
 					if m.Default() != nil {
@@ -109,7 +110,7 @@ func (o *Object) GetPropertyAddr(nm tokens.Name, init bool) *Pointer {
 			}
 		}
 		ptr = NewPointer(obj, readonly)
-		o.properties[nm] = ptr
+		o.properties[key] = ptr
 	}
 	return ptr
 }
@@ -155,7 +156,7 @@ func (o *Object) String() string {
 			if p != "" {
 				p += ","
 			}
-			p += prop.String() + "=" + ptr.String()
+			p += string(prop) + "=" + ptr.String()
 		}
 		return "obj{type=" + o.t.Token().String() + ",props={" + p + "}}"
 	}

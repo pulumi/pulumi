@@ -757,11 +757,11 @@ func (e *evaluator) evalObjectLiteral(node *ast.ObjectLiteral) (*rt.Object, *Unw
 			id := init.Property.Tok
 			var addr *rt.Pointer
 			if ty == types.Dynamic {
-				addr = obj.GetPropertyAddr(id.Name(), true)
+				addr = obj.GetPropertyAddr(rt.PropertyKey(id), true)
 			} else {
 				contract.Assert(id.HasClassMember())
 				member := tokens.ClassMember(id).Name()
-				addr = obj.GetPropertyAddr(member.Name(), true)
+				addr = obj.GetPropertyAddr(rt.PropertyKey(member.Name()), true)
 			}
 			addr.Set(val)
 		}
@@ -814,7 +814,7 @@ func (e *evaluator) evalLoadLocation(node *ast.LoadLocationExpression, lval bool
 			case *symbols.ClassProperty:
 				// Search the class's properties and, if not present, allocate a new one.
 				contract.Assert(this != nil)
-				pv = this.GetPropertyAddr(sym.Name(), true)
+				pv = this.GetPropertyAddr(rt.PropertyKey(sym.Name()), true)
 				ty = s.Type()
 			case *symbols.ClassMethod:
 				// Create a new readonly ref slot, pointing to the method, that will abandon if overwritten.
