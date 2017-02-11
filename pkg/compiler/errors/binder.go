@@ -31,4 +31,6 @@ var (
 	ErrorIllegalAssignmentTypes         = newError(521, "Cannot assign a value of type '%v' to target of type '%v'")
 	ErrorCannotInvokeNonFunction        = newError(522, "Cannot invoke a non-function; type '%v' is not a function")
 	ErrorArgumentCountMismatch          = newError(523, "Function expects %v arguments; got %v instead")
+	ErrorConstructorReturnType          = newError(524, "Constructor '%v' has a return type '%v'; should be nil (void)")
+	ErrorConstructorNotMethod           = newError(525, "Constructor '%v' is not a method; got %v instead")
 )

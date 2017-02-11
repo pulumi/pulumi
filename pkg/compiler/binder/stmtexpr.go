@@ -215,7 +215,7 @@ func (a *astBinder) checkWhileStatement(node *ast.WhileStatement) {
 func (a *astBinder) checkExprType(expr ast.Expression, expect symbols.Type) bool {
 	actual := a.b.ctx.RequireType(expr)
 	// TODO: support auto-cast expressions.
-	if types.Convert(actual, expect) == types.ImplicitConversion {
+	if types.Convert(actual, expect) != types.ImplicitConversion {
 		a.b.Diag().Errorf(errors.ErrorIncorrectExprType.At(expr), expect, actual)
 		return false
 	}
@@ -333,9 +333,7 @@ func (a *astBinder) checkLoadLocationExpression(node *ast.LoadLocationExpression
 }
 
 func (a *astBinder) checkNewExpression(node *ast.NewExpression) {
-	// TODO: look up the ctor.
-	// TODO: check the arguments.
-
+	// Figure out which type we're instantiating.
 	var ty symbols.Type
 	if node.Type == nil {
 		ty = types.Object
@@ -349,6 +347,37 @@ func (a *astBinder) checkNewExpression(node *ast.NewExpression) {
 		}
 	}
 
+	// Find the constructor for that type and check the arguments.
+	argc := 0
+	if node.Arguments != nil {
+		argc = len(*node.Arguments)
+	}
+	if ctor, has := ty.TypeMembers()[tokens.ClassConstructorFunction]; has {
+		// The constructor should be a method.
+		if ctormeth, isfunc := ctor.(*symbols.ClassMethod); isfunc {
+			if ctormeth.Ty.Return != nil {
+				// Constructors ought not to have return types.
+				a.b.Diag().Errorf(errors.ErrorConstructorReturnType, ctormeth, ctormeth.Ty.Return)
+			}
+
+			// Typecheck the arguments.
+			parc := len(ctormeth.Ty.Parameters)
+			if parc != argc {
+				a.b.Diag().Errorf(errors.ErrorArgumentCountMismatch.At(node), parc, argc)
+			}
+			if argc > 0 {
+				for i := 0; i < parc && i < argc; i++ {
+					a.checkExprType((*node.Arguments)[i], ctormeth.Ty.Parameters[i])
+				}
+			}
+		} else {
+			a.b.Diag().Errorf(errors.ErrorConstructorNotMethod, ctormeth, reflect.TypeOf(ctor))
+		}
+	} else if argc > 0 {
+		a.b.Diag().Errorf(errors.ErrorArgumentCountMismatch.At(node), 0, argc)
+	}
+
+	// The expression evaluates to the type that is instantiated.
 	a.b.ctx.RegisterType(node, ty)
 }
 
