@@ -629,8 +629,8 @@ export class Transformer {
             return undefined; // void is represented as the absence of a type.
         }
         else if (simple.symbol) {
-            if (simple.symbol.flags & ts.SymbolFlags.ObjectLiteral) {
-                // For object literals, simply return the dynamic type.
+            if (simple.symbol.flags & (ts.SymbolFlags.ObjectLiteral | ts.SymbolFlags.TypeLiteral)) {
+                // For object and type literals, simply return the dynamic type.
                 // TODO: consider emitting strong types for these and using them anonymously.
                 return tokens.dynamicType;
             }
