@@ -255,6 +255,22 @@ export class Context {
             loc:      this.locationFrom(node),
         };
     }
+
+    public newInvalidTypeError(node: ts.Node, ty: ts.Type): Diagnostic {
+        let name: string;
+        if (ty.symbol) {
+            name = `'${ty.symbol.name}' `;
+        }
+        else {
+            name = "";
+        }
+        return {
+            category: DiagnosticCategory.Error,
+            code:     501,
+            message:  `Type ${name}(kind ${ts.TypeFlags[ty.flags]}) is not supported in MuJS`,
+            loc:      this.locationFrom(node),
+        };
+    }
 }
 
 // FormatOptions controls the kind of formatting to apply, such as colorization, extended diagnostics, etc.

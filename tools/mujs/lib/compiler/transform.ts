@@ -530,7 +530,7 @@ export class Transformer {
     }
 
     // resolveTypeToken takes a concrete TypeScript Type resolves it to a fully qualified MuIL type token name.
-    private async resolveTypeToken(ty: ts.Type): Promise<tokens.TypeToken | undefined> {
+    private async resolveTypeToken(node: ts.Node, ty: ts.Type): Promise<tokens.TypeToken | undefined> {
         if (ty.flags & ts.TypeFlags.Any) {
             return tokens.dynamicType;
         }
@@ -557,16 +557,19 @@ export class Transformer {
                     else if (tyre.target === this.builtinArrayType) {
                         // Produce a token of the form "[]<elem>".
                         contract.assert(tyre.typeArguments.length === 1);
-                        let elem: tokens.TypeToken | undefined = await this.resolveTypeToken(tyre.typeArguments[0]);
+                        let elem: tokens.TypeToken | undefined =
+                            await this.resolveTypeToken(node, tyre.typeArguments[0]);
                         contract.assert(!!elem);
                         return `${tokens.arrayTypePrefix}${elem}`;
                     }
                     else if (tyre.target === this.builtinMapType) {
                         // Produce a token of the form "map[<key>]<elem>".
                         contract.assert(tyre.typeArguments.length === 2);
-                        let key: tokens.TypeToken | undefined = await this.resolveTypeToken(tyre.typeArguments[0]);
+                        let key: tokens.TypeToken | undefined =
+                            await this.resolveTypeToken(node, tyre.typeArguments[0]);
                         contract.assert(!!key);
-                        let value: tokens.TypeToken | undefined = await this.resolveTypeToken(tyre.typeArguments[1]);
+                        let value: tokens.TypeToken | undefined =
+                            await this.resolveTypeToken(node, tyre.typeArguments[1]);
                         contract.assert(!!value);
                         return `${tokens.mapTypePrefix}${key}${tokens.mapTypeSeparator}${value}`;
                     }
@@ -577,8 +580,9 @@ export class Transformer {
             return await this.resolveTokenFromSymbol(ty.symbol);
         }
 
+        // Finally, if we got here, it's not a type we support yet; issue an error and return `dynamic`.
         // TODO[marapongo/mu#36]: detect more cases: unions, literals, complex types, generics, more.
-        contract.fail(`Unimplemented ts.Type node: ${ts.TypeFlags[ty.flags]}`);
+        this.diagnostics.push(this.dctx.newInvalidTypeError(node, ty));
         return tokens.dynamicType;
     }
 
@@ -619,7 +623,7 @@ export class Transformer {
         contract.assert(!!ty);
         return this.withLocation(node, <ast.TypeToken>{
             kind: ast.typeTokenKind,
-            tok:  await this.resolveTypeToken(ty),
+            tok:  await this.resolveTypeToken(node, ty),
         });
     }
 
@@ -1325,7 +1329,8 @@ export class Transformer {
         let returnType: ast.TypeToken | undefined;
         if (node.kind !== ts.SyntaxKind.Constructor) {
             let signature: ts.Signature = this.checker().getSignatureFromDeclaration(node);
-            let typeToken: tokens.TypeToken | undefined = await this.resolveTypeToken(signature.getReturnType());
+            let typeToken: tokens.TypeToken | undefined =
+                await this.resolveTypeToken(node, signature.getReturnType());
             if (typeToken) {
                 returnType = <ast.TypeToken>{
                     kind: ast.typeTokenKind,
@@ -2260,7 +2265,7 @@ export class Transformer {
             // note that we intentionally leave object blank, since the token is fully qualified.
         }
         else {
-            let tytok: tokens.TypeToken | undefined = await this.resolveTypeToken(ty);
+            let tytok: tokens.TypeToken | undefined = await this.resolveTypeToken(node.expression, ty);
             contract.assert(!!tytok);
             tok = this.createClassMemberToken(tytok!, id.ident);
             object = await this.transformExpression(node.expression);
@@ -2280,7 +2285,7 @@ export class Transformer {
         // To transform the new expression, find the signature TypeScript has bound it to.
         let signature: ts.Signature = this.checker().getResolvedSignature(node);
         contract.assert(!!signature);
-        let typeToken: tokens.TypeToken | undefined = await this.resolveTypeToken(signature.getReturnType());
+        let typeToken: tokens.TypeToken | undefined = await this.resolveTypeToken(node, signature.getReturnType());
         contract.assert(!!typeToken);
         let args: ast.Expression[] = [];
         for (let expr of node.arguments) {
