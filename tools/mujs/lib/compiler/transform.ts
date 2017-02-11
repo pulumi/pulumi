@@ -629,37 +629,45 @@ export class Transformer {
             return undefined; // void is represented as the absence of a type.
         }
         else if (simple.symbol) {
-            // If it's an array or a map, translate it into the appropriate type token of that kind.
-            if (flags & ts.TypeFlags.Object) {
-                if ((<ts.ObjectType>simple).objectFlags & ts.ObjectFlags.Reference) {
-                    let tyre = <ts.TypeReference>simple;
-                    if (tyre.target === this.builtinObjectType) {
-                        return `${tokens.objectType}`;
-                    }
-                    else if (tyre.target === this.builtinArrayType) {
-                        // Produce a token of the form "[]<elem>".
-                        contract.assert(tyre.typeArguments.length === 1);
-                        let elem: tokens.TypeToken | undefined =
-                            await this.resolveTypeToken(node, tyre.typeArguments[0]);
-                        contract.assert(!!elem);
-                        return `${tokens.arrayTypePrefix}${elem}`;
-                    }
-                    else if (tyre.target === this.builtinMapType) {
-                        // Produce a token of the form "map[<key>]<elem>".
-                        contract.assert(tyre.typeArguments.length === 2);
-                        let key: tokens.TypeToken | undefined =
-                            await this.resolveTypeToken(node, tyre.typeArguments[0]);
-                        contract.assert(!!key);
-                        let value: tokens.TypeToken | undefined =
-                            await this.resolveTypeToken(node, tyre.typeArguments[1]);
-                        contract.assert(!!value);
-                        return `${tokens.mapTypePrefix}${key}${tokens.mapTypeSeparator}${value}`;
+            if (simple.symbol.flags & ts.SymbolFlags.ObjectLiteral) {
+                // For object literals, simply return the dynamic type.
+                // TODO: consider emitting strong types for these and using them anonymously.
+                return tokens.dynamicType;
+            }
+            else {
+                // For object types, we will try to produce the fully qualified symbol name.  If the type is an array
+                // or a map, translate it into the appropriate simpler type token.
+                if ((flags & ts.TypeFlags.Object) && !(simple.symbol.flags & ts.SymbolFlags.ObjectLiteral)) {
+                    if ((<ts.ObjectType>simple).objectFlags & ts.ObjectFlags.Reference) {
+                        let tyre = <ts.TypeReference>simple;
+                        if (tyre.target === this.builtinObjectType) {
+                            return `${tokens.objectType}`;
+                        }
+                        else if (tyre.target === this.builtinArrayType) {
+                            // Produce a token of the form "[]<elem>".
+                            contract.assert(tyre.typeArguments.length === 1);
+                            let elem: tokens.TypeToken | undefined =
+                                await this.resolveTypeToken(node, tyre.typeArguments[0]);
+                            contract.assert(!!elem);
+                            return `${tokens.arrayTypePrefix}${elem}`;
+                        }
+                        else if (tyre.target === this.builtinMapType) {
+                            // Produce a token of the form "map[<key>]<elem>".
+                            contract.assert(tyre.typeArguments.length === 2);
+                            let key: tokens.TypeToken | undefined =
+                                await this.resolveTypeToken(node, tyre.typeArguments[0]);
+                            contract.assert(!!key);
+                            let value: tokens.TypeToken | undefined =
+                                await this.resolveTypeToken(node, tyre.typeArguments[1]);
+                            contract.assert(!!value);
+                            return `${tokens.mapTypePrefix}${key}${tokens.mapTypeSeparator}${value}`;
+                        }
                     }
                 }
-            }
 
-            // Otherwise, bottom out on resolving a fully qualified MuPackage type token out of the symbol.
-            return await this.resolveTokenFromSymbol(simple.symbol);
+                // Otherwise, bottom out on resolving a fully qualified MuPackage type token out of the symbol.
+                return await this.resolveTokenFromSymbol(simple.symbol);
+            }
         }
 
         // Finally, if we got here, it's not a type we support yet; issue an error and return `dynamic`.
@@ -2015,6 +2023,8 @@ export class Transformer {
                 return this.transformTemplateExpression(<ts.TemplateExpression>node);
             case ts.SyntaxKind.ThisKeyword:
                 return this.transformThisExpression(<ts.ThisExpression>node);
+            case ts.SyntaxKind.TypeAssertionExpression:
+                return this.transformTypeAssertionExpression(<ts.TypeAssertion>node);
             case ts.SyntaxKind.TypeOfExpression:
                 return this.transformTypeOfExpression(<ts.TypeOfExpression>node);
             case ts.SyntaxKind.VoidExpression:
@@ -2328,19 +2338,19 @@ export class Transformer {
         // Make a name.
         let id: ast.Identifier = this.transformIdentifier(node.name);
 
-        // Fetch the type; it will either be a real type or a module (each of which is treated differently).  The module
-        // case occurs when we are accessing an exported member (property or method) from the module.  For instance:
-        // 
-        //      import * as foo from "foo";
-        //      foo.bar();
-        //
-        // Use this to create a qualified token using the target expression's fully qualified type/module.
+        // Create a token for the property name based on the node's type and symbol.
         let tok: tokens.Token;
         let object: ast.Expression | undefined;
-        let ty: ts.Type = this.checker().getTypeAtLocation(node.expression);
+        let ty: ts.Type | undefined = this.checker().getTypeAtLocation(node.expression);
         contract.assert(!!ty);
-        let tysym: ts.Symbol = ty.getSymbol();
-        if (tysym.flags & ts.SymbolFlags.ValueModule) {
+        let tysym: ts.Symbol | undefined = ty.getSymbol();
+        if (tysym && (tysym.flags & ts.SymbolFlags.ValueModule)) {
+            // This is a module property; for instance:
+            // 
+            //      import * as foo from "foo";
+            //      foo.bar();
+            //
+            // Use this to create a qualified token using the target expression's fully qualified type/module.
             let modref: ModuleReference = this.createModuleReference(tysym);
             let modtok: tokens.ModuleToken = await this.createModuleToken(modref);
             tok = this.createModuleMemberToken(modtok, id.ident);
@@ -2350,7 +2360,21 @@ export class Transformer {
             let tytok: tokens.TypeToken | undefined = await this.resolveTypeToken(node.expression, ty);
             contract.assert(!!tytok);
             tok = this.createClassMemberToken(tytok!, id.ident);
-            object = await this.transformExpression(node.expression);
+
+            // If the property is static, object must be left blank, since the type token will be fully qualified.
+            let propIsStatic: boolean = false;
+            let prop: ts.Symbol | undefined = this.checker().getSymbolAtLocation(node.name);
+            if (prop && prop.declarations) {
+                for (let decl of prop.declarations) {
+                    if (ts.getCombinedModifierFlags(decl) & ts.ModifierFlags.Static) {
+                        propIsStatic = true;
+                        break;
+                    }
+                }
+            }
+            if (!propIsStatic) {
+                object = await this.transformExpression(node.expression);
+            }
         }
 
         return this.withLocation(node, <ast.LoadLocationExpression>{
@@ -2422,6 +2446,16 @@ export class Transformer {
                 kind: ast.tokenKind,
                 tok:  id.ident,
             }),
+        });
+    }
+
+    private async transformTypeAssertionExpression(node: ts.TypeAssertion): Promise<ast.CastExpression> {
+        let tytok: ast.TypeToken | undefined = await this.resolveTypeTokenFromTypeLike(node);
+        contract.assert(!!tytok);
+        return this.withLocation(node, <ast.CastExpression>{
+            kind:       ast.castExpressionKind,
+            expression: await this.transformExpression(node.expression),
+            type:       tytok,
         });
     }
 

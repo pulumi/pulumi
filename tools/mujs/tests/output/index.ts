@@ -18,6 +18,7 @@ let testCases: string[] = [
     "basic/maps",
     "basic/super",
     "basic/null_undefined",
+    "basic/props",
 
     // Module members and exports.
     "modules/var_1",

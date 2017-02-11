@@ -131,7 +131,7 @@
                     "access": "private",
                     "type": {
                         "kind": "TypeToken",
-                        "tok": "[]__object",
+                        "tok": "[]dynamic",
                         "loc": {
                             "file": "index.ts",
                             "start": {
