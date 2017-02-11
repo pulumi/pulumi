@@ -104,8 +104,8 @@ const ObjectLiteralKind NodeKind = "ObjectLiteral"
 // ObjectLiteralProperty initializes a single object literal property.
 type ObjectLiteralProperty struct {
 	NodeValue
-	Property *ClassMemberToken `json:"property"` // the property to initialize.
-	Value    Expression        `json:"value"`    // the expression whose value to store into the property.
+	Property *Token     `json:"property"` // the property (simple name if dynamic; member token otherwise).
+	Value    Expression `json:"value"`    // the expression whose value to store into the property.
 }
 
 var _ Node = (*ObjectLiteralProperty)(nil)

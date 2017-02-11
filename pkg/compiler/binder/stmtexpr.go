@@ -262,15 +262,18 @@ func (a *astBinder) checkObjectLiteral(node *ast.ObjectLiteral) {
 				props := make(map[tokens.ClassMemberName]bool)
 				if node.Properties != nil {
 					for _, init := range *node.Properties {
-						sym := a.b.ctx.RequireClassMember(init.Property, ty, init.Property.Tok)
-						if sym != nil {
-							switch s := sym.(type) {
-							case *symbols.ClassProperty, *symbols.ClassMethod:
-								a.checkExprType(init.Value, s.Type())
-							default:
-								contract.Failf("Unrecognized class member symbol: %v", sym)
+						if init.Property.Tok.HasClassMember() {
+							clm := tokens.ClassMember(init.Property.Tok)
+							sym := a.b.ctx.RequireClassMember(init.Property, ty, clm)
+							if sym != nil {
+								switch s := sym.(type) {
+								case *symbols.ClassProperty, *symbols.ClassMethod:
+									a.checkExprType(init.Value, s.Type())
+								default:
+									contract.Failf("Unrecognized class member symbol: %v", sym)
+								}
+								props[clm.Name()] = true // record that we've seen this one.
 							}
-							props[init.Property.Tok.Name()] = true // record that we've seen this one.
 						}
 					}
 				}

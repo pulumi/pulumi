@@ -252,12 +252,12 @@ export class Transformer {
             // Enumerate all source files (each of which is a module in ECMAScript), and transform it.
             let modules: ast.Modules = {};
             for (let sourceFile of this.script.tree!.getSourceFiles()) {
-                // TODO[marapongo/mu#52]: to determine whether a SourceFile is part of the current compilation unit or not,
-                // we must rely on a private TypeScript API, isSourceFileFromExternalLibrary.  An alternative would be to
+                // TODO[marapongo/mu#52]: to determine whether a SourceFile is part of the current compilation unit, we
+                // must rely on a private TypeScript API, isSourceFileFromExternalLibrary.  An alternative would be to
                 // check to see if the file was loaded from the node_modules/ directory, which is essentially what the
-                // TypeScript compiler does (except that it has logic for nesting and symbolic links that would be hard to
-                // emulate).  Neither approach is great, however, I prefer to use the API and assert that it exists so we
-                // match the semantics.  Thankfully, the tsserverlib library will contain these, once it is useable.
+                // TypeScript compiler does (except that it has logic for nesting and symbolic links that'd be hard to
+                // emulate).  Neither approach is great, however, I prefer to use the API and assert that it exists so
+                // we match the semantics.  Thankfully, the tsserverlib library will contain these, once it is useable.
                 let isSourceFileFromExternalLibrary =
                     <((file: ts.SourceFile) => boolean)>(<any>this.script.tree).isSourceFileFromExternalLibrary;
                 contract.assert(!!isSourceFileFromExternalLibrary,
@@ -270,7 +270,7 @@ export class Transformer {
 
             // Afterwards, ensure that all dependencies encountered were listed in the MuPackage manifest.
             for (let dep of this.currentPackageDependencies) {
-                if (dep != this.pkg.name && (!this.pkg.dependencies || !this.pkg.dependencies[dep])) {
+                if (dep !== this.pkg.name && (!this.pkg.dependencies || !this.pkg.dependencies[dep])) {
                     this.diagnostics.push(this.dctx.newMissingDependencyError(dep));
                 }
             }
@@ -2268,9 +2268,9 @@ export class Transformer {
         let pname: ast.Identifier = this.transformPropertyName(node.name);
         return this.withLocation(node, <ast.ObjectLiteralProperty>{
             kind:     ast.objectLiteralPropertyKind,
-            property: <ast.ClassMemberToken>{
-                kind: ast.classMemberTokenKind,
-                tok:  pname.ident,
+            property: <ast.Token>{
+                kind: ast.tokenKind,
+                tok:  pname.ident /*simple name, since this is dynamic*/,
             },
             value:    await this.transformExpression(node.initializer),
         });
@@ -2281,9 +2281,9 @@ export class Transformer {
         let name: ast.Identifier = this.transformIdentifier(node.name);
         return this.withLocation(node, <ast.ObjectLiteralProperty>{
             kind:     ast.objectLiteralPropertyKind,
-            property: <ast.ClassMemberToken>{
-                kind: ast.classMemberTokenKind,
-                tok:  name.ident,
+            property: <ast.Token>{
+                kind: ast.tokenKind,
+                tok:  name.ident /*simple name, since this is dynamic*/,
             },
             value: this.withLocation(node.name, <ast.LoadLocationExpression>{
                 kind: ast.loadLocationExpressionKind,

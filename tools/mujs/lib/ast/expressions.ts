@@ -1,7 +1,7 @@
 // Copyright 2016 Marapongo, Inc. All rights reserved.
 
 import {LocalVariable} from "./definitions";
-import {ClassMemberToken, Node, Token, TypeToken} from "./nodes";
+import {Node, Token, TypeToken} from "./nodes";
 import * as statements from "./statements";
 
 import * as tokens from "../tokens";
@@ -67,8 +67,8 @@ export type  ObjectLiteralKind = "ObjectLiteral";
 // An object literal property initializer.
 export interface ObjectLiteralProperty extends Node {
     kind:     ObjectLiteralPropertyKind;
-    property: ClassMemberToken; // the property being initialized.
-    value:    Expression;       // the expression value to store into the property.
+    property: Token;      // the property being initialized.
+    value:    Expression; // the expression value to store into the property.
 }
 export const objectLiteralPropertyKind = "ObjectLiteralProperty";
 export type  ObjectLiteralPropertyKind = "ObjectLiteralProperty";

@@ -742,7 +742,8 @@ func (e *evaluator) evalArrayLiteral(node *ast.ArrayLiteral) (*rt.Object, *Unwin
 }
 
 func (e *evaluator) evalObjectLiteral(node *ast.ObjectLiteral) (*rt.Object, *Unwind) {
-	obj := e.alloc.New(e.ctx.Types[node])
+	ty := e.ctx.Types[node]
+	obj := e.alloc.New(ty)
 
 	if node.Properties != nil {
 		// The binder already checked that the properties are legal, so we will simply store them as values.
@@ -751,8 +752,19 @@ func (e *evaluator) evalObjectLiteral(node *ast.ObjectLiteral) (*rt.Object, *Unw
 			if uw != nil {
 				return nil, uw
 			}
-			member := init.Property.Tok.Name()
-			obj.GetPropertyAddr(member.Name(), true).Set(val)
+
+			// For dynamic types, we simply store the values in the bag of properties.  For all other types, we actually
+			// require that the token be a class member token that references a valid property.
+			id := init.Property.Tok
+			var addr *rt.Pointer
+			if ty == types.Dynamic {
+				addr = obj.GetPropertyAddr(id.Name(), true)
+			} else {
+				contract.Assert(id.HasClassMember())
+				member := tokens.ClassMember(id).Name()
+				addr = obj.GetPropertyAddr(member.Name(), true)
+			}
+			addr.Set(val)
 		}
 	}
 
