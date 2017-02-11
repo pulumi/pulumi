@@ -179,12 +179,11 @@ func (e *evaluator) EvaluateFunction(fnc symbols.Function, this *rt.Object, args
 			if arg, has := args[pname]; has {
 				found[pname] = true
 				argo := e.alloc.NewConstant(arg)
-				if types.Convert(argo.Type(), ptys[i]) == types.ImplicitConversion {
-					argos = append(argos, argo)
-				} else {
+				if !types.CanConvert(argo.Type(), ptys[i]) {
 					e.Diag().Errorf(errors.ErrorFunctionArgIncorrectType.At(fnc.Tree()), ptys[i], argo.Type())
 					return nil
 				}
+				argos = append(argos, argo)
 			} else {
 				e.Diag().Errorf(errors.ErrorFunctionArgNotFound.At(fnc.Tree()), param.Name)
 			}
@@ -338,7 +337,7 @@ func (e *evaluator) evalCall(fnc symbols.Function, this *rt.Object, args ...*rt.
 		case *symbols.ClassMethod:
 			contract.Assertf(!f.Static(),
 				"Static methods don't have 'this' arguments, but we got a non-nil one")
-			contract.Assertf(types.Convert(this.Type(), f.Parent) == types.ImplicitConversion,
+			contract.Assertf(types.CanConvert(this.Type(), f.Parent),
 				"'this' argument was of the wrong type")
 			e.ctx.Scope.Register(f.Parent.This)
 			e.locals.InitValueAddr(f.Parent.This, rt.NewPointer(this, true))
@@ -368,7 +367,7 @@ func (e *evaluator) evalCall(fnc symbols.Function, this *rt.Object, args ...*rt.
 			sym := e.ctx.RequireVariable(param).(*symbols.LocalVariable)
 			e.ctx.Scope.Register(sym)
 			arg := args[i]
-			contract.Assert(types.Convert(arg.Type(), sym.Type()) == types.ImplicitConversion)
+			contract.Assert(types.CanConvert(arg.Type(), sym.Type()))
 			e.locals.SetValue(sym, arg)
 		}
 	}
@@ -389,7 +388,7 @@ func (e *evaluator) evalCall(fnc symbols.Function, this *rt.Object, args ...*rt.
 		contract.Assert(uw.Return()) // break/continue not expected.
 		ret := uw.Returned()
 		contract.Assert((retty == nil) == (ret == nil))
-		contract.Assert(ret == nil || types.Convert(ret.Type(), retty) == types.ImplicitConversion)
+		contract.Assert(ret == nil || types.CanConvert(ret.Type(), retty))
 		return ret, nil
 	}
 
@@ -473,8 +472,8 @@ func (e *evaluator) evalTryCatchFinally(node *ast.TryCatchFinally) *Unwind {
 			for _, catch := range *node.CatchBlocks {
 				ex := e.ctx.RequireVariable(catch.Exception).(*symbols.LocalVariable)
 				exty := ex.Type()
-				contract.Assert(types.Convert(exty, types.Exception) == types.ImplicitConversion)
-				if types.Convert(thrown.Type(), exty) == types.ImplicitConversion {
+				contract.Assert(types.CanConvert(exty, types.Exception))
+				if types.CanConvert(thrown.Type(), exty) {
 					// This type matched, so this handler will catch the exception.  Set the exception variable,
 					// evaluate the block, and swap the Unwind information (thereby "handling" the in-flight exception).
 					e.pushScope(false)

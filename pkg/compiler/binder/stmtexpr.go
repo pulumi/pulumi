@@ -214,8 +214,7 @@ func (a *astBinder) checkWhileStatement(node *ast.WhileStatement) {
 
 func (a *astBinder) checkExprType(expr ast.Expression, expect symbols.Type) bool {
 	actual := a.b.ctx.RequireType(expr)
-	// TODO: support auto-cast expressions.
-	if types.Convert(actual, expect) != types.ImplicitConversion {
+	if !types.CanConvert(actual, expect) {
 		a.b.Diag().Errorf(errors.ErrorIncorrectExprType.At(expr), expect, actual)
 		return false
 	}
@@ -522,7 +521,7 @@ func (a *astBinder) checkBinaryOperatorExpression(node *ast.BinaryOperatorExpres
 	case ast.OpAssign:
 		if !a.isLValue(node.Left) {
 			a.b.Diag().Errorf(errors.ErrorIllegalAssignmentLValue.At(node))
-		} else if types.Convert(rhs, lhs) != types.ImplicitConversion {
+		} else if !types.CanConvert(rhs, lhs) {
 			a.b.Diag().Errorf(errors.ErrorIllegalAssignmentTypes.At(node), rhs, lhs)
 		}
 		a.b.ctx.RegisterType(node, lhs)
@@ -533,7 +532,7 @@ func (a *astBinder) checkBinaryOperatorExpression(node *ast.BinaryOperatorExpres
 			a.b.Diag().Errorf(errors.ErrorIllegalAssignmentLValue.At(node))
 		} else if lhs != types.Number {
 			a.b.Diag().Errorf(errors.ErrorIllegalNumericAssignmentLValue.At(node), node.Operator)
-		} else if types.Convert(rhs, lhs) != types.ImplicitConversion {
+		} else if !types.CanConvert(rhs, lhs) {
 			a.b.Diag().Errorf(errors.ErrorIllegalAssignmentTypes.At(node), rhs, lhs)
 		}
 		a.b.ctx.RegisterType(node, lhs)

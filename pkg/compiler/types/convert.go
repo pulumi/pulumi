@@ -11,9 +11,9 @@ import (
 type Conversion int
 
 const (
-	NoConversion       Conversion = iota // there is no known conversion (though a cast could work)
-	ImplicitConversion                   // an implicit conversion exists (including identity)
-	AutoCastConversion                   // an automatic cast should be used (with possible runtime failure)
+	NoConversion          Conversion = iota // there is no known conversion (though a cast could work)
+	ImplicitConversion                      // an implicit conversion exists (including identity)
+	AutoDynamicConversion                   // an automatic dynamic cast should be used (with possible runtime failure)
 )
 
 // Convert returns the sort of conversion available from a given type to another.
@@ -25,11 +25,11 @@ func Convert(from symbols.Type, to symbols.Type) Conversion {
 
 	// If the from type is `dynamic`, we should auto-cast.
 	if from == Dynamic {
-		return AutoCastConversion
+		return AutoDynamicConversion
 	}
 
-	// Any source type converts to the top-most object type.
-	if to == Object {
+	// Any source type converts to the top-most object type as well as `dynamic`.
+	if to == Object || to == Dynamic {
 		return ImplicitConversion
 	}
 
@@ -44,13 +44,13 @@ func Convert(from symbols.Type, to symbols.Type) Conversion {
 	case *symbols.Class:
 		// Class types convert to their base types.
 		if t.Extends != nil {
-			if c := Convert(t.Extends, to); c != NoConversion {
-				return c
+			if HasBase(t.Extends, to) {
+				return ImplicitConversion
 			}
 		}
 		for _, impl := range t.Implements {
-			if c := Convert(impl, to); c != NoConversion {
-				return c
+			if HasBase(impl, to) {
+				return ImplicitConversion
 			}
 		}
 	case *symbols.PointerType:
@@ -110,6 +110,34 @@ func Convert(from symbols.Type, to symbols.Type) Conversion {
 
 	// Otherwise, we cannot convert.
 	return NoConversion
+}
+
+// CanConvert returns true if there's a conversion from a given type to another.
+func CanConvert(from symbols.Type, to symbols.Type) bool {
+	return Convert(from, to) != NoConversion
+}
+
+// HasBase checks a class hierarchy for a base class or interface.
+func HasBase(t symbols.Type, base symbols.Type) bool {
+	// If the types are equal, we are good.
+	if t == base {
+		return true
+	}
+
+	// Otherwise, look to see if there is a base class conversion.
+	if class, isclass := t.(*symbols.Class); isclass {
+		if class.Extends != nil && HasBase(class.Extends, base) {
+			return true
+		}
+		for _, impl := range class.Implements {
+			if HasBase(impl, base) {
+				return true
+			}
+		}
+	}
+
+	// If we got here, we didn't have a match.
+	return false
 }
 
 // HasBaseName checks a class hierarchy for a base class or interface by the given name.
