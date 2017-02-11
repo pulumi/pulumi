@@ -782,7 +782,10 @@ export class Transformer {
             return <ast.LoadDynamicExpression>{
                 kind:   ast.loadDynamicExpressionKind,
                 object: object,
-                name:   id,
+                name:   this.copyLocation(id, <ast.StringLiteral>{
+                    kind:  ast.stringLiteralKind,
+                    value: id.ident,
+                }),
             };
         }
         else {
