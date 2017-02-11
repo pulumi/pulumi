@@ -17,9 +17,9 @@ service ResourceProvider {
     rpc Create(CreateRequest) returns (CreateResponse) {}
     // Read read the instance state identifier by ID, returning a populated resource object, or an error if not found.
     rpc Read(ReadRequest) returns (ReadResponse) {}
-    // Update updates an existing resource with new values.  Only those values in the provided resource object's
-    // property bag are updated to new values.  Nothing is returned; an error means the updates did not take place.
-    rpc Update(UpdateRequest) returns (google.protobuf.Empty) {}
+    // Update updates an existing resource with new values.  Only those values in the provided property bag are updated
+    // to new values.  The resource ID is returned and may be different if the resource had to be recreated.
+    rpc Update(UpdateRequest) returns (UpdateResponse) {}
     // Delete tears down an existing resource with the given ID.  If it fails, the resource is assumed to still exist.
     rpc Delete(DeleteRequest) returns (google.protobuf.Empty) {}
 }
@@ -44,9 +44,14 @@ message ReadResponse {
 }
 
 message UpdateRequest {
-    string id = 1;                         // the ID of the resource to update.
-    string type = 2;                       // the type token of the resource.
-    google.protobuf.Struct properties = 3; // the properties to update (only those listed here are updated).
+    string id = 1;                   // the ID of the resource to update.
+    string type = 2;                 // the type token of the resource.
+    google.protobuf.Struct olds = 3; // the old values of properties to update.
+    google.protobuf.Struct news = 4; // the new values of properties to update.
+}
+
+message UpdateResponse {
+    string id = 1;
 }
 
 message DeleteRequest {
