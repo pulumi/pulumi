@@ -431,6 +431,7 @@ export class Transformer {
 
     // createClassMemberToken binds a string-based exported member name to the associated token that references it.
     private createClassMemberToken(classtok: tokens.ModuleMemberToken, member: string): tokens.ClassMemberToken {
+        contract.assert(classtok != tokens.dynamicType);
         // The concatenated name of the class plus identifier will resolve correctly to an exported definition.
         return `${classtok}${tokens.tokenDelimiter}${member}`;
     }
@@ -718,6 +719,83 @@ export class Transformer {
     // transformIdentifier takes a TypeScript identifier node and yields a true MuIL identifier.
     private transformIdentifier(node: ts.Identifier): ast.Identifier {
         return this.withLocation(node, ident(node.text));
+    }
+
+    // createLoadExpression creates an expression that handles all the possible location cases.  It may very well create
+    // a dynamic load, rather than a static one, if we are unable to dig through to find an underlying symbol.
+    private async createLoadExpression(
+            node: ts.Node, expression: ts.Expression, name: ts.Identifier): Promise<ast.LoadExpression> {
+        // Make an identifier out of the name.
+        let id: ast.Identifier = this.transformIdentifier(name);
+
+        // These properties will be initialized and used for the return.
+        let tok: tokens.Token | undefined;
+        let object: ast.Expression | undefined;
+        let isDynamic: boolean = false; // true if the load must be dynamic.
+
+        // Create a token for the property name based on the node's type and symbol.
+        let ty: ts.Type | undefined = this.checker().getTypeAtLocation(expression);
+        contract.assert(!!ty);
+        let tysym: ts.Symbol | undefined = ty.getSymbol();
+        if (tysym && (tysym.flags & ts.SymbolFlags.ValueModule)) {
+            // This is a module property; for instance:
+            // 
+            //      import * as foo from "foo";
+            //      foo.bar();
+            //
+            // Use this to create a qualified token using the target expression's fully qualified type/module.
+            let modref: ModuleReference = this.createModuleReference(tysym);
+            let modtok: tokens.ModuleToken = await this.createModuleToken(modref);
+            tok = this.createModuleMemberToken(modtok, id.ident);
+            // note that we intentionally leave object blank, since the token is fully qualified.
+        }
+        else {
+            let tytok: tokens.TypeToken | undefined = await this.resolveTypeToken(expression, ty);
+            contract.assert(!!tytok);
+            if (tytok === tokens.dynamicType) {
+                isDynamic = true; // skip the rest; we cannot possibly create a member token.
+                object = await this.transformExpression(expression);
+            }
+            else {
+                tok = this.createClassMemberToken(tytok!, id.ident);
+
+                // If the property is static, object must be left blank, since the type token will be fully qualified.
+                let propIsStatic: boolean = false;
+                let prop: ts.Symbol | undefined = this.checker().getSymbolAtLocation(name);
+                if (prop && (prop.flags & ts.SymbolFlags.Property) && prop.declarations) {
+                    for (let decl of prop.declarations) {
+                        if (ts.getCombinedModifierFlags(decl) & ts.ModifierFlags.Static) {
+                            propIsStatic = true;
+                            break;
+                        }
+                    }
+                }
+                if (!propIsStatic) {
+                    object = await this.transformExpression(expression);
+                }
+            }
+        }
+
+        if (isDynamic) {
+            // If the target type is `dynamic`, we cannot perform static lookups; devolve into a dynamic load.
+            contract.assert(!!object);
+            return <ast.LoadDynamicExpression>{
+                kind:   ast.loadDynamicExpressionKind,
+                object: object,
+                name:   id,
+            };
+        }
+        else {
+            contract.assert(!!tok);
+            return this.withLocation(node, <ast.LoadLocationExpression>{
+                kind:   ast.loadLocationExpressionKind,
+                object: object,
+                name:   this.copyLocation(id, <ast.Token>{
+                    kind: ast.tokenKind,
+                    tok:  tok,
+                }),
+            });
+        }
     }
 
     /** Modules **/
@@ -2200,30 +2278,23 @@ export class Transformer {
     }
 
     private async transformElementAccessExpression(node: ts.ElementAccessExpression): Promise<ast.LoadExpression> {
-        let object: ast.Expression = await this.transformExpression(node.expression);
-        if (node.argumentExpression) {
-            switch (node.argumentExpression.kind) {
-                case ts.SyntaxKind.Identifier:
-                    let id: ast.Identifier = this.transformIdentifier(<ts.Identifier>node.argumentExpression);
-                    // TODO: bogus; ident is wrong; need the fully qualified name.
-                    return this.withLocation(node, <ast.LoadLocationExpression>{
-                        kind:   ast.loadLocationExpressionKind,
-                        object: object,
-                        name:   this.copyLocation(id, <ast.Token>{
-                            kind: ast.tokenKind,
-                            tok:  id.ident,
-                        }),
-                    });
-                default:
-                    return this.withLocation(node, <ast.LoadDynamicExpression>{
-                        kind:   ast.loadDynamicExpressionKind,
-                        object: object,
-                        name:   await this.transformExpression(<ts.Expression>node.argumentExpression),
-                    });
-            }
+        let argument: ts.Expression | undefined = node.argumentExpression;
+        if (!argument) {
+            // If there's no argument, just return the underlying expression directly.
+            return await this.transformExpression(node.expression);
         }
-        else {
-            return object;
+
+        switch (argument.kind) {
+            case ts.SyntaxKind.Identifier:
+                // Attempt to create a static load, if possible.
+                return await this.createLoadExpression(node, node.expression, <ts.Identifier>argument);
+            default:
+                // Otherwise, fall back to loading the target dynamically.
+                return <ast.LoadDynamicExpression>{
+                    kind:   ast.loadDynamicExpressionKind,
+                    object: await this.transformExpression(node.expression),
+                    name:   await this.transformExpression(argument),
+                };
         }
     }
 
@@ -2334,57 +2405,8 @@ export class Transformer {
     }
 
     private async transformPropertyAccessExpression(
-            node: ts.PropertyAccessExpression): Promise<ast.LoadLocationExpression> {
-        // Make a name.
-        let id: ast.Identifier = this.transformIdentifier(node.name);
-
-        // Create a token for the property name based on the node's type and symbol.
-        let tok: tokens.Token;
-        let object: ast.Expression | undefined;
-        let ty: ts.Type | undefined = this.checker().getTypeAtLocation(node.expression);
-        contract.assert(!!ty);
-        let tysym: ts.Symbol | undefined = ty.getSymbol();
-        if (tysym && (tysym.flags & ts.SymbolFlags.ValueModule)) {
-            // This is a module property; for instance:
-            // 
-            //      import * as foo from "foo";
-            //      foo.bar();
-            //
-            // Use this to create a qualified token using the target expression's fully qualified type/module.
-            let modref: ModuleReference = this.createModuleReference(tysym);
-            let modtok: tokens.ModuleToken = await this.createModuleToken(modref);
-            tok = this.createModuleMemberToken(modtok, id.ident);
-            // note that we intentionally leave object blank, since the token is fully qualified.
-        }
-        else {
-            let tytok: tokens.TypeToken | undefined = await this.resolveTypeToken(node.expression, ty);
-            contract.assert(!!tytok);
-            tok = this.createClassMemberToken(tytok!, id.ident);
-
-            // If the property is static, object must be left blank, since the type token will be fully qualified.
-            let propIsStatic: boolean = false;
-            let prop: ts.Symbol | undefined = this.checker().getSymbolAtLocation(node.name);
-            if (prop && prop.declarations) {
-                for (let decl of prop.declarations) {
-                    if (ts.getCombinedModifierFlags(decl) & ts.ModifierFlags.Static) {
-                        propIsStatic = true;
-                        break;
-                    }
-                }
-            }
-            if (!propIsStatic) {
-                object = await this.transformExpression(node.expression);
-            }
-        }
-
-        return this.withLocation(node, <ast.LoadLocationExpression>{
-            kind:   ast.loadLocationExpressionKind,
-            object: object,
-            name:   this.copyLocation(id, <ast.Token>{
-                kind: ast.tokenKind,
-                tok:  tok,
-            }),
-        });
+            node: ts.PropertyAccessExpression): Promise<ast.LoadExpression> {
+        return await this.createLoadExpression(node, node.expression, node.name);
     }
 
     private async transformNewExpression(node: ts.NewExpression): Promise<ast.NewExpression> {
