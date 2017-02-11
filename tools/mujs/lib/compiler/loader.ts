@@ -36,8 +36,9 @@ export class PackageLoader {
         let blob: any | undefined;
         let blobPath: string | undefined;
         let search: string = fspath.resolve(root);
+
+        outer:
         while (!pkg && !blob) {
-outer:
             for (let filebase of filebases) {
                 let base: string = fspath.join(search, filebase);
                 for (let unmarshaler of pack.unmarshalers) {

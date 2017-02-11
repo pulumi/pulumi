@@ -1462,14 +1462,14 @@
                                                 "kind": "ArrayLiteral",
                                                 "elemType": {
                                                     "kind": "TypeToken",
-                                                    "tok": "any"
+                                                    "tok": "dynamic"
                                                 },
                                                 "elements": [
                                                     {
                                                         "kind": "ArrayLiteral",
                                                         "elemType": {
                                                             "kind": "TypeToken",
-                                                            "tok": "any"
+                                                            "tok": "dynamic"
                                                         },
                                                         "elements": [
                                                             {
@@ -1521,7 +1521,7 @@
                                                         "kind": "ArrayLiteral",
                                                         "elemType": {
                                                             "kind": "TypeToken",
-                                                            "tok": "any"
+                                                            "tok": "dynamic"
                                                         },
                                                         "elements": [
                                                             {

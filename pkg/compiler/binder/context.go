@@ -328,7 +328,7 @@ func (ctx *Context) checkClassVisibility(node ast.Node, class *symbols.Class, me
 			ctx.Diag.Errorf(errors.ErrorMemberNotAccessible.At(node), member, *acc)
 		}
 	case tokens.ProtectedClassAccessibility:
-		if !types.CanConvert(ctx.Currclass, class) {
+		if types.Convert(ctx.Currclass, class) != types.ImplicitConversion {
 			ctx.Diag.Errorf(errors.ErrorMemberNotAccessible.At(node), member, *acc)
 		}
 	default:

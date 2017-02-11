@@ -29,7 +29,7 @@
                     "access": "private",
                     "type": {
                         "kind": "TypeToken",
-                        "tok": "[]any",
+                        "tok": "[]dynamic",
                         "loc": {
                             "file": "index.ts",
                             "start": {
@@ -165,7 +165,7 @@
                     "access": "private",
                     "type": {
                         "kind": "TypeToken",
-                        "tok": "[]any",
+                        "tok": "[]dynamic",
                         "loc": {
                             "file": "index.ts",
                             "start": {
@@ -284,7 +284,7 @@
                                         "kind": "ArrayLiteral",
                                         "elemType": {
                                             "kind": "TypeToken",
-                                            "tok": "any"
+                                            "tok": "dynamic"
                                         },
                                         "elements": [],
                                         "loc": {
@@ -350,7 +350,7 @@
                                         "kind": "ArrayLiteral",
                                         "elemType": {
                                             "kind": "TypeToken",
-                                            "tok": "any"
+                                            "tok": "dynamic"
                                         },
                                         "elements": [
                                             {
@@ -465,7 +465,7 @@
                                         "kind": "ArrayLiteral",
                                         "elemType": {
                                             "kind": "TypeToken",
-                                            "tok": "any"
+                                            "tok": "dynamic"
                                         },
                                         "elements": [
                                             {
@@ -580,7 +580,7 @@
                                         "kind": "ArrayLiteral",
                                         "elemType": {
                                             "kind": "TypeToken",
-                                            "tok": "any"
+                                            "tok": "dynamic"
                                         },
                                         "elements": [
                                             {
@@ -635,7 +635,7 @@
                                                 "kind": "ObjectLiteral",
                                                 "type": {
                                                     "kind": "TypeToken",
-                                                    "tok": "any"
+                                                    "tok": "dynamic"
                                                 },
                                                 "properties": [],
                                                 "loc": {
@@ -714,7 +714,7 @@
                                         "kind": "ArrayLiteral",
                                         "elemType": {
                                             "kind": "TypeToken",
-                                            "tok": "any"
+                                            "tok": "dynamic"
                                         },
                                         "elements": [
                                             {
@@ -769,7 +769,7 @@
                                                 "kind": "ObjectLiteral",
                                                 "type": {
                                                     "kind": "TypeToken",
-                                                    "tok": "any"
+                                                    "tok": "dynamic"
                                                 },
                                                 "properties": [],
                                                 "loc": {
@@ -848,14 +848,14 @@
                                         "kind": "ArrayLiteral",
                                         "elemType": {
                                             "kind": "TypeToken",
-                                            "tok": "any"
+                                            "tok": "dynamic"
                                         },
                                         "elements": [
                                             {
                                                 "kind": "ArrayLiteral",
                                                 "elemType": {
                                                     "kind": "TypeToken",
-                                                    "tok": "any"
+                                                    "tok": "dynamic"
                                                 },
                                                 "elements": [
                                                     {
@@ -923,7 +923,7 @@
                                                 "kind": "ArrayLiteral",
                                                 "elemType": {
                                                     "kind": "TypeToken",
-                                                    "tok": "any"
+                                                    "tok": "dynamic"
                                                 },
                                                 "elements": [
                                                     {
@@ -1051,14 +1051,14 @@
                                         "kind": "ArrayLiteral",
                                         "elemType": {
                                             "kind": "TypeToken",
-                                            "tok": "any"
+                                            "tok": "dynamic"
                                         },
                                         "elements": [
                                             {
                                                 "kind": "ArrayLiteral",
                                                 "elemType": {
                                                     "kind": "TypeToken",
-                                                    "tok": "any"
+                                                    "tok": "dynamic"
                                                 },
                                                 "elements": [
                                                     {
@@ -1126,7 +1126,7 @@
                                                 "kind": "ArrayLiteral",
                                                 "elemType": {
                                                     "kind": "TypeToken",
-                                                    "tok": "any"
+                                                    "tok": "dynamic"
                                                 },
                                                 "elements": [
                                                     {

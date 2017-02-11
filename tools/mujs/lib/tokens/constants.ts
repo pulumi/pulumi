@@ -24,8 +24,9 @@ export const initializerFunction: FunctionToken = ".init"; // the special module
 export const constructorFunction: FunctionToken = ".ctor"; // the special class instance constructor function.
 
 // Special type tokens.
-export const anyType: TypeToken    = "any";
-export const stringType: TypeToken = "string";
-export const numberType: TypeToken = "number";
-export const boolType: TypeToken   = "bool";
+export const objectType: TypeToken  = "object";
+export const stringType: TypeToken  = "string";
+export const numberType: TypeToken  = "number";
+export const boolType: TypeToken    = "bool";
+export const dynamicType: TypeToken = "dynamic";
 

@@ -170,6 +170,7 @@ export class Transformer {
     private readonly loader: PackageLoader;          // a loader for resolving dependency packages.
 
     // Cached symbols required during type checking:
+    private readonly builtinObjectType: ts.InterfaceType;          // the ECMA/TypeScript built-in object type.
     private readonly builtinArrayType: ts.InterfaceType;           // the ECMA/TypeScript built-in array type.
     private readonly builtinMapType: ts.InterfaceType | undefined; // the ECMA/TypeScript built-in map type.
 
@@ -198,6 +199,18 @@ export class Transformer {
 
         // Cache references to some important global symbols.
         let globals: Map<string, ts.Symbol> = this.globals(ts.SymbolFlags.Interface);
+
+        // Find the built-in Object type, used both for explicit weakly-typed Object references.
+        let builtinObjectSymbol: ts.Symbol | undefined = globals.get("Object");
+        if (builtinObjectSymbol) {
+            contract.assert(!!(builtinObjectSymbol.flags & ts.SymbolFlags.Interface),
+                            "Expected built-in Object type to be an interface");
+            this.builtinObjectType = <ts.InterfaceType>this.checker().getDeclaredTypeOfSymbol(builtinObjectSymbol);
+            contract.assert(!!this.builtinObjectType, "Expected Object symbol conversion to yield a valid type");
+        }
+        else {
+            contract.fail("Expected to find a built-in Object type");
+        }
 
         // Find the built-in Array<T> type, used both for explicit "Array<T>" references and simple "T[]"s.
         let builtinArraySymbol: ts.Symbol | undefined = globals.get("Array");
@@ -519,7 +532,7 @@ export class Transformer {
     // resolveTypeToken takes a concrete TypeScript Type resolves it to a fully qualified MuIL type token name.
     private async resolveTypeToken(ty: ts.Type): Promise<tokens.TypeToken | undefined> {
         if (ty.flags & ts.TypeFlags.Any) {
-            return tokens.anyType;
+            return tokens.dynamicType;
         }
         else if (ty.flags & ts.TypeFlags.String) {
             return tokens.stringType;
@@ -538,7 +551,10 @@ export class Transformer {
             if (ty.flags & ts.TypeFlags.Object) {
                 if ((<ts.ObjectType>ty).objectFlags & ts.ObjectFlags.Reference) {
                     let tyre = <ts.TypeReference>ty;
-                    if (tyre.target === this.builtinArrayType) {
+                    if (tyre.target === this.builtinObjectType) {
+                        return `${tokens.objectType}`;
+                    }
+                    else if (tyre.target === this.builtinArrayType) {
                         // Produce a token of the form "[]<elem>".
                         contract.assert(tyre.typeArguments.length === 1);
                         let elem: tokens.TypeToken | undefined = await this.resolveTypeToken(tyre.typeArguments[0]);
@@ -561,10 +577,9 @@ export class Transformer {
             return await this.resolveTokenFromSymbol(ty.symbol);
         }
 
-        // If none of those matched, simply default to the weakly typed "any" type.
         // TODO[marapongo/mu#36]: detect more cases: unions, literals, complex types, generics, more.
-        log.out(3).info(`Unimplemented ts.Type node: ${ts.TypeFlags[ty.flags]}`);
-        return tokens.anyType;
+        contract.fail(`Unimplemented ts.Type node: ${ts.TypeFlags[ty.flags]}`);
+        return tokens.dynamicType;
     }
 
     // resolveTokenFromSymbol resolves a symbol to a fully qualified TypeToken that can be used to reference it.
@@ -1930,7 +1945,7 @@ export class Transformer {
             kind:     ast.arrayLiteralKind,
             elemType: <ast.TypeToken>{
                 kind: ast.typeTokenKind,
-                tok:  tokens.anyType, // TODO[marapongo/mu#46]: come up with a type.
+                tok:  tokens.dynamicType, // TODO[marapongo/mu#46]: come up with a type.
             },
             elements: elements,
         });
@@ -2115,7 +2130,7 @@ export class Transformer {
             kind:       ast.objectLiteralKind,
             type:       <ast.TypeToken>{
                 kind: ast.typeTokenKind,
-                tok:  tokens.anyType, // TODO[marapongo/mu#46]: come up with a type.
+                tok:  tokens.dynamicType,
             },
             properties: properties,
         });

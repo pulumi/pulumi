@@ -104,7 +104,7 @@ outer:
 
 // SetValue overwrites the current value, or adds a new entry, for the given symbol.
 func (s *localScope) SetValue(sym *symbols.LocalVariable, obj *rt.Object) {
-	contract.Assert(obj == nil || types.CanConvert(obj.Type(), sym.Type()))
+	contract.Assert(obj == nil || types.Convert(obj.Type(), sym.Type()) == types.ImplicitConversion)
 	ptr := s.GetValueAddr(sym, true)
 	ptr.Set(obj)
 }

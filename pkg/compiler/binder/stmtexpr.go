@@ -81,7 +81,7 @@ func (a *astBinder) After(node ast.Node) {
 	case *ast.LoadLocationExpression:
 		a.checkLoadLocationExpression(n)
 	case *ast.LoadDynamicExpression:
-		a.b.ctx.RegisterType(n, types.Any) // register as an any type.
+		a.b.ctx.RegisterType(n, types.Dynamic) // register as a dynamic type.
 	case *ast.NewExpression:
 		a.checkNewExpression(n)
 	case *ast.InvokeFunctionExpression:
@@ -214,7 +214,8 @@ func (a *astBinder) checkWhileStatement(node *ast.WhileStatement) {
 
 func (a *astBinder) checkExprType(expr ast.Expression, expect symbols.Type) bool {
 	actual := a.b.ctx.RequireType(expr)
-	if !types.CanConvert(actual, expect) {
+	// TODO: support auto-cast expressions.
+	if types.Convert(actual, expect) == types.ImplicitConversion {
 		a.b.Diag().Errorf(errors.ErrorIncorrectExprType.At(expr), expect, actual)
 		return false
 	}
@@ -228,7 +229,7 @@ func (a *astBinder) checkArrayLiteral(node *ast.ArrayLiteral) {
 	}
 	// Now mark the resulting expression as an array of the right type.
 	if node.ElemType == nil {
-		a.b.ctx.RegisterType(node, types.AnyArray)
+		a.b.ctx.RegisterType(node, symbols.NewArrayType(types.Object))
 	} else {
 		elemType := a.b.ctx.LookupType(node.ElemType)
 		a.b.ctx.RegisterType(node, symbols.NewArrayType(elemType))
@@ -245,7 +246,7 @@ func (a *astBinder) checkArrayLiteral(node *ast.ArrayLiteral) {
 func (a *astBinder) checkObjectLiteral(node *ast.ObjectLiteral) {
 	// Mark the resulting object literal with the correct type.
 	if node.Type == nil {
-		a.b.ctx.RegisterType(node, types.Any)
+		a.b.ctx.RegisterType(node, types.Object)
 	} else {
 		ty := a.b.ctx.LookupType(node.Type)
 		a.b.ctx.RegisterType(node, ty)
@@ -253,7 +254,7 @@ func (a *astBinder) checkObjectLiteral(node *ast.ObjectLiteral) {
 		// Check invariants of object literal types and properties.  In particular, only permit object literals for
 		// records and interfaces (since lasses have constructors), and ensure the required ones are present.  Note that
 		// all of this is skipped for so-called "anonymous" literals (of type `any`), since they are just bags.
-		if ty != types.Any {
+		if ty != types.Dynamic {
 			if !ty.Record() && !ty.Interface() {
 				a.b.Diag().Errorf(errors.ErrorIllegalObjectLiteralType.At(node.Type), ty)
 			} else {
@@ -284,6 +285,8 @@ func (a *astBinder) checkObjectLiteral(node *ast.ObjectLiteral) {
 						}
 					}
 				}
+
+				// TODO: consider issuing an error for "excess" properties.
 			}
 		}
 	}
@@ -332,7 +335,7 @@ func (a *astBinder) checkNewExpression(node *ast.NewExpression) {
 
 	var ty symbols.Type
 	if node.Type == nil {
-		ty = types.Any
+		ty = types.Object
 	} else {
 		ty = a.b.ctx.LookupType(node.Type)
 		if class, isclass := ty.(*symbols.Class); isclass {
@@ -487,7 +490,7 @@ func (a *astBinder) checkBinaryOperatorExpression(node *ast.BinaryOperatorExpres
 	case ast.OpAssign:
 		if !a.isLValue(node.Left) {
 			a.b.Diag().Errorf(errors.ErrorIllegalAssignmentLValue.At(node))
-		} else if !types.CanConvert(rhs, lhs) {
+		} else if types.Convert(rhs, lhs) != types.ImplicitConversion {
 			a.b.Diag().Errorf(errors.ErrorIllegalAssignmentTypes.At(node), rhs, lhs)
 		}
 		a.b.ctx.RegisterType(node, lhs)
@@ -498,7 +501,7 @@ func (a *astBinder) checkBinaryOperatorExpression(node *ast.BinaryOperatorExpres
 			a.b.Diag().Errorf(errors.ErrorIllegalAssignmentLValue.At(node))
 		} else if lhs != types.Number {
 			a.b.Diag().Errorf(errors.ErrorIllegalNumericAssignmentLValue.At(node), node.Operator)
-		} else if !types.CanConvert(rhs, lhs) {
+		} else if types.Convert(rhs, lhs) != types.ImplicitConversion {
 			a.b.Diag().Errorf(errors.ErrorIllegalAssignmentTypes.At(node), rhs, lhs)
 		}
 		a.b.ctx.RegisterType(node, lhs)

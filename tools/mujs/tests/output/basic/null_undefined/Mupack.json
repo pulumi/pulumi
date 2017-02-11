@@ -29,7 +29,7 @@
                     "access": "private",
                     "type": {
                         "kind": "TypeToken",
-                        "tok": "any",
+                        "tok": "dynamic",
                         "loc": {
                             "file": "index.ts",
                             "start": {
@@ -211,7 +211,7 @@
                     "access": "private",
                     "type": {
                         "kind": "TypeToken",
-                        "tok": "any",
+                        "tok": "dynamic",
                         "loc": {
                             "file": "index.ts",
                             "start": {
