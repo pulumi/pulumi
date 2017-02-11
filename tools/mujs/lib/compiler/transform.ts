@@ -635,6 +635,10 @@ export class Transformer {
     // MuPack/MuIL.  As such, the appropriate top-level definitions (variables, functions, and classes) are returned as
     // definitions, while any loose code (including variable initializers) is bundled into module inits and entrypoints.
     private async transformSourceFile(node: ts.SourceFile): Promise<ast.Module> {
+        if (log.v(7)) {
+            log.out(7).info(`Transforming source file: ${node.fileName}`);
+        }
+
         // Each source file is a separate module, and we maintain some amount of context about it.  Push some state.
         let priorSourceFile: ts.SourceFile | undefined = this.currentSourceFile;
         let priorModuleToken: tokens.ModuleToken | undefined = this.currentModuleToken;
@@ -961,6 +965,10 @@ export class Transformer {
     /** Statements **/
 
     private async transformStatement(node: ts.Statement): Promise<ast.Statement> {
+        if (log.v(7)) {
+            log.out(7).info(`Transforming statement: ${ts.SyntaxKind[node.kind]}`);
+        }
+
         switch (node.kind) {
             // Declaration statements:
             case ts.SyntaxKind.ClassDeclaration:
@@ -1124,6 +1132,10 @@ export class Transformer {
         }
         else {
             name = ident(defaultExport);
+        }
+
+        if (log.v(7)) {
+            log.out(7).info(`Transforming class declaration: ${name.ident}`);
         }
 
         // Next, make a class token to use during this class's transformations.
@@ -1354,6 +1366,10 @@ export class Transformer {
 
         // Create a name and token for the MuIL class representing this.
         let name: ast.Identifier = this.transformIdentifier(node.name);
+
+        if (log.v(7)) {
+            log.out(7).info(`Transforming interface declaration: ${name.ident}`);
+        }
 
         // Next, make a class token to use during this class's transformations.
         let classtok: tokens.ModuleMemberToken = this.createModuleMemberToken(modtok, name.ident);
@@ -1862,6 +1878,10 @@ export class Transformer {
     /** Expressions **/
 
     private async transformExpression(node: ts.Expression): Promise<ast.Expression> {
+        if (log.v(7)) {
+            log.out(7).info(`Transforming expression: ${ts.SyntaxKind[node.kind]}`);
+        }
+
         switch (node.kind) {
             // Expressions:
             case ts.SyntaxKind.ArrayLiteralExpression:
