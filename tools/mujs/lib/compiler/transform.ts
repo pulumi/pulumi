@@ -185,6 +185,7 @@ export class Transformer {
     private currentModuleImportTokens: ast.ModuleToken[];
     private currentClassToken: tokens.TypeToken | undefined;
     private currentSuperClassToken: tokens.TypeToken | undefined;
+    private currentPackageDependencies: Set<tokens.PackageToken>;
 
     constructor(pkg: pack.Manifest, script: Script, loader: PackageLoader) {
         contract.requires(!!pkg, "pkg", "A package manifest must be supplied");
@@ -243,33 +244,48 @@ export class Transformer {
     // Translates a TypeScript bound tree into its equivalent MuPack/MuIL AST form, one module per file.  This method is
     // asynchronous because it may need to perform I/O in order to fully resolve dependency packages.
     public async transform(): Promise<TransformResult> {
-        // Enumerate all source files (each of which is a module in ECMAScript), and transform it.
-        let modules: ast.Modules = {};
-        for (let sourceFile of this.script.tree!.getSourceFiles()) {
-            // TODO[marapongo/mu#52]: to determine whether a SourceFile is part of the current compilation unit or not,
-            // we must rely on a private TypeScript API, isSourceFileFromExternalLibrary.  An alternative would be to
-            // check to see if the file was loaded from the node_modules/ directory, which is essentially what the
-            // TypeScript compiler does (except that it has logic for nesting and symbolic links that would be hard to
-            // emulate).  Neither approach is great, however, I prefer to use the API and assert that it exists so we
-            // match the semantics.  Thankfully, the tsserverlib library will contain these, once it is useable.
-            let isSourceFileFromExternalLibrary =
-                <((file: ts.SourceFile) => boolean)>(<any>this.script.tree).isSourceFileFromExternalLibrary;
-            contract.assert(!!isSourceFileFromExternalLibrary,
-                            "Expected internal Program.isSourceFileFromExternalLibrary function to be non-null");
-            if (!isSourceFileFromExternalLibrary(sourceFile) && !sourceFile.isDeclarationFile) {
-                let mod: ast.Module = await this.transformSourceFile(sourceFile);
-                modules[mod.name.ident] = mod;
-            }
-        }
+        let priorPackageDependencies: Set<tokens.PackageToken> | undefined = this.currentPackageDependencies;
+        try {
+            // Keep track of all transform package dependencies.
+            this.currentPackageDependencies = new Set<tokens.PackageToken>();
 
-        // Now create a new package object.
-        // TODO: create a list of dependencies, partly from the metadata, partly from the TypeScript compilation.
-        return <TransformResult>{
-            diagnostics: this.diagnostics,
-            pkg:         object.extend(this.pkg, {
-                modules: modules,
-            }),
-        };
+            // Enumerate all source files (each of which is a module in ECMAScript), and transform it.
+            let modules: ast.Modules = {};
+            for (let sourceFile of this.script.tree!.getSourceFiles()) {
+                // TODO[marapongo/mu#52]: to determine whether a SourceFile is part of the current compilation unit or not,
+                // we must rely on a private TypeScript API, isSourceFileFromExternalLibrary.  An alternative would be to
+                // check to see if the file was loaded from the node_modules/ directory, which is essentially what the
+                // TypeScript compiler does (except that it has logic for nesting and symbolic links that would be hard to
+                // emulate).  Neither approach is great, however, I prefer to use the API and assert that it exists so we
+                // match the semantics.  Thankfully, the tsserverlib library will contain these, once it is useable.
+                let isSourceFileFromExternalLibrary =
+                    <((file: ts.SourceFile) => boolean)>(<any>this.script.tree).isSourceFileFromExternalLibrary;
+                contract.assert(!!isSourceFileFromExternalLibrary,
+                                "Expected internal Program.isSourceFileFromExternalLibrary function to be non-null");
+                if (!isSourceFileFromExternalLibrary(sourceFile) && !sourceFile.isDeclarationFile) {
+                    let mod: ast.Module = await this.transformSourceFile(sourceFile);
+                    modules[mod.name.ident] = mod;
+                }
+            }
+
+            // Afterwards, ensure that all dependencies encountered were listed in the MuPackage manifest.
+            for (let dep of this.currentPackageDependencies) {
+                if (dep != this.pkg.name && (!this.pkg.dependencies || !this.pkg.dependencies[dep])) {
+                    this.diagnostics.push(this.dctx.newMissingDependencyError(dep));
+                }
+            }
+
+            // Now create a new package object.
+            return <TransformResult>{
+                diagnostics: this.diagnostics,
+                pkg:         object.extend(this.pkg, {
+                    modules: modules,
+                }),
+            };
+        }
+        finally {
+            this.currentPackageDependencies = priorPackageDependencies;
+        }
     }
 
     /** Helpers **/
@@ -1001,7 +1017,6 @@ export class Transformer {
                 let importName: ast.Identifier = this.transformIdentifier(name);
                 log.out(5).info(`Detected bulk import ${importName.ident}=${importModule}`);
                 this.currentModuleImports.set(importName.ident, importModule);
-                this.currentModuleImportTokens.push(importModuleToken);
             }
             else if (namedImports) {
                 // This is an import of the form
@@ -1025,8 +1040,11 @@ export class Transformer {
                     this.currentModuleImports.set(memberName, memberToken);
                     log.out(5).info(`Detected named import ${memberToken} as ${memberName} from ${importModule}`);
                 }
-                this.currentModuleImportTokens.push(importModuleToken);
             }
+
+            // Now keep track of the import itself plus the package dependency.
+            this.currentModuleImportTokens.push(importModuleToken);
+            this.currentPackageDependencies.add(this.getPackageFromModule(importModuleToken.tok));
         }
         return <ast.EmptyStatement>{ kind: ast.emptyStatementKind };
     }

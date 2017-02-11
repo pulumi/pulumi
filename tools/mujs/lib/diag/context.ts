@@ -6,6 +6,7 @@ import * as os from "os";
 import * as fspath from "path";
 import * as ts from "typescript";
 import * as ast from "../ast";
+import * as tokens from "../tokens";
 import {Diagnostic, DiagnosticCategory} from "./diagnostic";
 
 // A diagnostics context understands how to manipulate diagnostics using the location.
@@ -269,6 +270,15 @@ export class Context {
             code:     501,
             message:  `Type ${name}(kind ${ts.TypeFlags[ty.flags]}) is not supported in MuJS`,
             loc:      this.locationFrom(node),
+        };
+    }
+
+    public newMissingDependencyError(pkg: tokens.PackageToken): Diagnostic {
+        return {
+            category: DiagnosticCategory.Error,
+            code:     502,
+            message:  `Package '${pkg}' was encountered during compilation, ` +
+                `but wasn't listed as a dependency in the Mufile`,
         };
     }
 }

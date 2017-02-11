@@ -29,16 +29,19 @@ export let unmarshalers = new Map<string, (raw: string) => any>([
 // packages loaded as dependencies in addition to packages that are actively being compiled (and hence possibly missing
 // the other parts in the full blown Package interface).
 export interface Manifest {
-    name: tokens.PackageToken;           // a required fully qualified name.
-    description?: string;                // an optional informational description.
-    author?: string;                     // an optional author.
-    website?: string;                    // an optional website for additional information.
-    license?: string;                    // an optional license governing this package's usage.
+    name: tokens.PackageToken;   // a required fully qualified name.
+    description?: string;        // an optional informational description.
+    author?: string;             // an optional author.
+    website?: string;            // an optional website for additional information.
+    license?: string;            // an optional license governing this package's usage.
+    dependencies?: Dependencies; // all of the package's dependencies.
 }
+
+// Dependencies is a map from dependency package token to a version string.
+export type Dependencies = {[pkg: string/*tokens.PackageToken*/]: string};
 
 // Package is a fully compiled package definition.
 export interface Package extends Manifest {
-    dependencies?: tokens.ModuleToken[]; // all of the module dependencies.
     modules?: ast.Modules;               // a collection of top-level modules.
 }
 
