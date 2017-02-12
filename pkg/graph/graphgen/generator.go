@@ -8,11 +8,10 @@ import (
 
 	"github.com/marapongo/mu/pkg/compiler/core"
 	"github.com/marapongo/mu/pkg/compiler/symbols"
-	"github.com/marapongo/mu/pkg/compiler/types"
-	"github.com/marapongo/mu/pkg/compiler/types/predef"
 	"github.com/marapongo/mu/pkg/eval"
 	"github.com/marapongo/mu/pkg/eval/rt"
 	"github.com/marapongo/mu/pkg/graph"
+	"github.com/marapongo/mu/pkg/tokens"
 	"github.com/marapongo/mu/pkg/util/contract"
 )
 
@@ -25,14 +24,16 @@ type Generator interface {
 // New allocates a fresh generator, ready to produce graphs.
 func New(ctx *core.Context) Generator {
 	return &generator{
-		ctx: ctx,
-		res: make(dependsSet),
+		ctx:     ctx,
+		objs:    make(dependsSet),
+		globals: make(objectSet),
 	}
 }
 
 type generator struct {
-	ctx *core.Context // the compiler context shared between passes.
-	res dependsSet    // a full set of objects and their dependencies.
+	ctx     *core.Context // the compiler context shared between passes.
+	objs    dependsSet    // a full set of objects and their dependencies.
+	globals objectSet     // a global set of objects (TODO: make this stack-aware).
 }
 
 // objectSet is a set of object pointers; each entry has a ref-count to track how many occurrences it contains.
@@ -45,21 +46,24 @@ var _ Generator = (*generator)(nil)
 
 // Graph takes the information recorded thus far and produces a new MuGL graph from it.
 func (g *generator) Graph() graph.Graph {
-	glog.V(7).Infof("Generating graph with %v vertices", len(g.res))
+	glog.V(7).Infof("Generating graph with %v vertices", len(g.objs))
 
 	// First create vertices for all objects.
 	verts := make(map[*rt.Object]*objectVertex)
-	for o := range g.res {
+	for o := range g.objs {
 		verts[o] = newObjectVertex(o)
 	}
 
 	// Now create edges connecting all vertices along dependency lines.
 	// TODO: detect and issue errors about cycles.
-	for o, deps := range g.res {
+	edges := int64(0)
+	for o, deps := range g.objs {
 		for dep := range deps {
 			verts[o].AddEdge(verts[dep])
+			edges++
 		}
 	}
+	glog.V(7).Infof("Generated graph with %v edges", edges)
 
 	// Finally, find all vertices that do not have any incoming edges, and consider them roots.
 	var roots []graph.Vertex
@@ -78,41 +82,47 @@ func (g *generator) OnNewObject(o *rt.Object) {
 	contract.Assert(o != nil)
 	glog.V(9).Infof("GraphGenerator OnNewObject %v", o)
 
-	// We only care about subclasses of the mu.Resource type; all others are "just" data/computation.
-	if types.HasBaseName(o.Type(), predef.MuResourceClass) {
-		// Add an entry to the depends set.  This should not already exist; it's the first time we encountered it.
-		if _, has := g.res[o]; has {
-			contract.Failf("Unexpected duplicate new object encountered")
-		}
-		g.res[o] = make(objectSet) // dependencies start out empty.
-	}
+	// Add an entry to the depends set.  This should not already exist; it's the first time we encountered it.
+	// TODO: eventually we may want to be smarter about this, since tracking all dependencies will obviously create
+	//     space leaks.  For instance, we could try to narrow down the objects we track to just those rooted by
+	//     resources -- since ultimately that's all we will care about -- however, doing that requires (expensive)
+	//     reachability analysis that we obviously wouldn't want to perform on each variable assignment.  Another
+	//     option would be to periodically garbage collect the heap, clearing out any objects that aren't rooted by a
+	//     resource.  This would amortize the cost of scanning, but clearly would be somewhat complex to implement.
+	_, has := g.objs[o]
+	contract.Assertf(!has, "Unexpected duplicate new object encountered")
+	g.objs[o] = make(objectSet) // dependencies start out empty.
 }
 
 // OnVariableAssign is called whenever a property has been (re)assigned; it receives both the old and new values.
-func (g *generator) OnVariableAssign(sym symbols.Variable, o *rt.Object, old *rt.Object, nw *rt.Object) {
-	glog.V(9).Infof("GraphGenerator OnVariableAssign %v.%v=%v (old=%v)", o, sym, nw, old)
+func (g *generator) OnVariableAssign(o *rt.Object, name tokens.Name, old *rt.Object, nw *rt.Object) {
+	glog.V(9).Infof("GraphGenerator OnVariableAssign %v.%v=%v (old=%v)", o, name, nw, old)
 
-	// If the target of the assignment is a resource, we need to track dependencies.
-	// TODO: if we are assigning to a structure inside of a structure inside... of a resource, we must also track.
-	if o != nil && types.HasBaseName(o.Type(), predef.MuResourceClass) {
-		deps := g.res[o]
+	// Unconditionally track all object dependencies.
+	var deps objectSet
+	if o == nil {
+		deps = g.globals
+	} else {
+		deps = g.objs[o]
+		contract.Assert(deps != nil) // we should have seen this object already
+	}
+	contract.Assert(deps != nil)
 
-		// If the old object is a resource, drop a ref-count.
-		if old != nil && types.HasBaseName(old.Type(), predef.MuResourceClass) {
-			c, has := deps[old]
-			contract.Assertf(has, "Expected old resource property to exist in dependency map")
-			contract.Assertf(c > 0, "Expected old resource property ref-count to be > 0 in dependency map")
-			deps[old] = c - 1
-		}
+	// If the old object is a resource, drop a ref-count.
+	if old != nil {
+		c, has := deps[old]
+		contract.Assertf(has, "Expected old resource property to exist in dependency map")
+		contract.Assertf(c > 0, "Expected old resource property ref-count to be > 0 in dependency map")
+		deps[old] = c - 1
+	}
 
-		// If the new object is a resource, add a ref-count (or a whole new entry if needed).
-		if nw != nil && types.HasBaseName(nw.Type(), predef.MuResourceClass) {
-			if c, has := deps[nw]; has {
-				contract.Assertf(c >= 0, "Expected old resource property ref-count to be >= 0 in dependency map")
-				deps[nw] = c + 1
-			} else {
-				deps[nw] = 1
-			}
+	// If the new object is non-nil, add a ref-count (or a whole new entry if needed).
+	if nw != nil {
+		if c, has := deps[nw]; has {
+			contract.Assertf(c >= 0, "Expected old resource property ref-count to be >= 0 in dependency map")
+			deps[nw] = c + 1
+		} else {
+			deps[nw] = 1
 		}
 	}
 }

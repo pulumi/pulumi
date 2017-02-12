@@ -26,8 +26,10 @@ func Print(g graph.Graph, w io.Writer) error {
 	}
 
 	// Initialize the frontier with unvisited graph vertices.
+	queued := make(map[graph.Vertex]bool)
 	frontier := make([]graph.Vertex, 0, len(g.Roots()))
 	for _, root := range g.Roots() {
+		queued[root] = true
 		frontier = append(frontier, root)
 	}
 
@@ -78,7 +80,8 @@ func Print(g graph.Graph, w io.Writer) error {
 				}
 				b.WriteString(getID(out))
 
-				if _, seen := emitted[out]; !seen {
+				if _, q := queued[out]; !q {
+					queued[out] = true
 					frontier = append(frontier, out)
 				}
 			}

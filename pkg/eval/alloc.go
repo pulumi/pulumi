@@ -32,6 +32,13 @@ func (a *Allocator) New(t symbols.Type) *rt.Object {
 	return obj
 }
 
+// NewArray creates a new array object of the given element type.
+func (a *Allocator) NewArray(elem symbols.Type, arr interface{}) *rt.Object {
+	obj := rt.NewArrayObject(elem, arr)
+	a.onNewObject(obj)
+	return obj
+}
+
 // NewPrimitive creates a new primitive object with the given primitive type.
 func (a *Allocator) NewPrimitive(t symbols.Type, v interface{}) *rt.Object {
 	obj := rt.NewPrimitiveObject(t, v)

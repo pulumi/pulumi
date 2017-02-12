@@ -182,6 +182,13 @@ func NewPrimitiveObject(t symbols.Type, v interface{}) *Object {
 	return NewObject(t, v, nil)
 }
 
+// NewArrayObject allocates a new pointer-like object that wraps the given reference.
+func NewArrayObject(elem symbols.Type, arr interface{}) *Object {
+	contract.Require(elem != nil, "elem")
+	arrt := symbols.NewArrayType(elem)
+	return NewPrimitiveObject(arrt, arr)
+}
+
 var trueObj *Object = NewPrimitiveObject(types.Bool, true)
 var falseObj *Object = NewPrimitiveObject(types.Bool, false)
 

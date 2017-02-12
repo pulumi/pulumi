@@ -6,6 +6,7 @@ import (
 	"math"
 	"reflect"
 	"sort"
+	"strconv"
 
 	"github.com/golang/glog"
 
@@ -37,14 +38,14 @@ type Interpreter interface {
 
 // InterpreterHooks is a set of callbacks that can be used to hook into interesting interpreter events.
 type InterpreterHooks interface {
-	OnNewObject(o *rt.Object)                                              // invoked when an object is created.
-	OnVariableAssign(v symbols.Variable, o *rt.Object, old, nw *rt.Object) // invoked when a property is (re)assigned.
-	OnEnterPackage(pkg *symbols.Package)                                   // invoked when we enter a new package.
-	OnLeavePackage(pkg *symbols.Package)                                   // invoked when we leave a package.
-	OnEnterModule(mod *symbols.Module)                                     // invoked when we enter a new module.
-	OnLeaveModule(mod *symbols.Module)                                     // invoked when we leave a module.
-	OnEnterFunction(fnc symbols.Function)                                  // invoked when we enter a new function.
-	OnLeaveFunction(fnc symbols.Function)                                  // invoked when we leave a function.
+	OnNewObject(o *rt.Object)                                            // invoked when an object is created.
+	OnVariableAssign(o *rt.Object, name tokens.Name, old, nw *rt.Object) // invoked when a property is (re)assigned.
+	OnEnterPackage(pkg *symbols.Package)                                 // invoked when we enter a new package.
+	OnLeavePackage(pkg *symbols.Package)                                 // invoked when we leave a package.
+	OnEnterModule(mod *symbols.Module)                                   // invoked when we enter a new module.
+	OnLeaveModule(mod *symbols.Module)                                   // invoked when we leave a module.
+	OnEnterFunction(fnc symbols.Function)                                // invoked when we enter a new function.
+	OnLeaveFunction(fnc symbols.Function)                                // invoked when we leave a function.
 }
 
 // New creates an interpreter that can be used to evaluate MuPackages.
@@ -760,6 +761,9 @@ func (e *evaluator) evalArrayLiteral(node *ast.ArrayLiteral) (*rt.Object, *Unwin
 		arr = make([]rt.Value, sz)
 	}
 
+	// Allocate a new array object.
+	arrobj := e.alloc.NewArray(ty, &arr)
+
 	// If there are elements, place them into the array.  This has two behaviors:
 	//     1) if there is a size, there can be up to that number of elements, which are set;
 	//     2) if there is no size, all of the elements are appended to the array.
@@ -774,19 +778,23 @@ func (e *evaluator) evalArrayLiteral(node *ast.ArrayLiteral) (*rt.Object, *Unwin
 		}
 
 		for i, elem := range *node.Elements {
-			expr, uw := e.evalExpression(elem)
+			elemobj, uw := e.evalExpression(elem)
 			if uw != nil {
 				return nil, uw
 			}
 			if sz == nil {
-				arr = append(arr, expr)
+				arr = append(arr, elemobj)
 			} else {
-				arr[i] = expr
+				arr[i] = elemobj
+			}
+
+			// Track all assignments.
+			if e.hooks != nil {
+				e.hooks.OnVariableAssign(arrobj, tokens.Name(strconv.Itoa(i)), nil, elemobj)
 			}
 		}
 	}
 
-	// Finally wrap the array data in a literal object.
 	return e.alloc.NewPrimitive(ty, arr), nil
 }
 
@@ -806,14 +814,22 @@ func (e *evaluator) evalObjectLiteral(node *ast.ObjectLiteral) (*rt.Object, *Unw
 			// require that the token be a class member token that references a valid property.
 			id := init.Property.Tok
 			var addr *rt.Pointer
+			var property rt.PropertyKey
 			if ty == types.Dynamic {
-				addr = obj.GetPropertyAddr(rt.PropertyKey(id), true)
+				property = rt.PropertyKey(id)
+				addr = obj.GetPropertyAddr(property, true)
 			} else {
 				contract.Assert(id.HasClassMember())
 				member := tokens.ClassMember(id).Name()
-				addr = obj.GetPropertyAddr(rt.PropertyKey(member.Name()), true)
+				property = rt.PropertyKey(member.Name())
+				addr = obj.GetPropertyAddr(property, true)
 			}
 			addr.Set(val)
+
+			// Track all assignments.
+			if e.hooks != nil {
+				e.hooks.OnVariableAssign(obj, tokens.Name(property), nil, val)
+			}
 		}
 	}
 
@@ -826,10 +842,10 @@ func (e *evaluator) evalLoadLocationExpression(node *ast.LoadLocationExpression)
 }
 
 type location struct {
-	This *rt.Object     // the target object, if any.
-	Sym  symbols.Symbol // the target symbol whose location was loaded.
-	Lval bool           // whether the result is an lval.
-	Obj  *rt.Object     // the resulting object (pointer if lval, object otherwise).
+	This *rt.Object  // the target object, if any.
+	Name tokens.Name // the simple name of the variable.
+	Lval bool        // whether the result is an lval.
+	Obj  *rt.Object  // the resulting object (pointer if lval, object otherwise).
 }
 
 // evalLoadLocation evaluates and loads information about the target.  It takes an lval bool which
@@ -928,7 +944,7 @@ func (e *evaluator) evalLoadLocation(node *ast.LoadLocationExpression, lval bool
 
 	return location{
 		This: this,
-		Sym:  sym,
+		Name: sym.Name(),
 		Lval: lval,
 		Obj:  obj,
 	}, nil
@@ -968,7 +984,8 @@ func (e *evaluator) evalLoadDynamic(node *ast.LoadDynamicExpression, lval bool) 
 
 	// Now go ahead and search the object for a property with the given name.
 	contract.Assertf(name.Type() == types.String, "At the moment, only string names are supported")
-	pv := this.GetPropertyAddr(rt.PropertyKey(name.StringValue()), true)
+	key := name.StringValue()
+	pv := this.GetPropertyAddr(rt.PropertyKey(key), true)
 
 	// If this isn't for an l-value, return the raw object.  Otherwise, make sure it's not readonly, and return it.
 	var obj *rt.Object
@@ -983,10 +1000,9 @@ func (e *evaluator) evalLoadDynamic(node *ast.LoadDynamicExpression, lval bool) 
 	}
 	contract.Assert(obj != nil)
 
-	// TODO: we need to produce a symbol (or something) for the graph hooks to use.
 	return location{
 		This: this,
-		Sym:  nil,
+		Name: tokens.Name(key),
 		Lval: lval,
 		Obj:  obj,
 	}, nil
@@ -1353,9 +1369,7 @@ func (e *evaluator) evalAssign(loc location, val *rt.Object) {
 	// Perform the assignment, but make sure to invoke the property assignment hook if necessary.
 	ptr := loc.Obj.PointerValue()
 	if e.hooks != nil {
-		if varsym, isvarsym := loc.Sym.(symbols.Variable); isvarsym {
-			e.hooks.OnVariableAssign(varsym, loc.This, ptr.Obj(), val)
-		}
+		e.hooks.OnVariableAssign(loc.This, loc.Name, ptr.Obj(), val)
 	}
 	ptr.Set(val)
 }
