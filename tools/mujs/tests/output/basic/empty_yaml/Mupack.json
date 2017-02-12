@@ -8,7 +8,20 @@
                 "ident": "empty"
             },
             "imports": [],
-            "members": {},
+            "members": {
+                ".main": {
+                    "kind": "ModuleMethod",
+                    "name": {
+                        "kind": "Identifier",
+                        "ident": ".main"
+                    },
+                    "access": "public",
+                    "body": {
+                        "kind": "Block",
+                        "statements": []
+                    }
+                }
+            },
             "loc": {
                 "file": "empty.ts",
                 "start": {

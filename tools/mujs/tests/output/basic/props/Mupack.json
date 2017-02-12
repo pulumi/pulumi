@@ -1146,6 +1146,18 @@
                             }
                         ]
                     }
+                },
+                ".main": {
+                    "kind": "ModuleMethod",
+                    "name": {
+                        "kind": "Identifier",
+                        "ident": ".main"
+                    },
+                    "access": "public",
+                    "body": {
+                        "kind": "Block",
+                        "statements": []
+                    }
                 }
             },
             "loc": {
@@ -1160,5 +1172,6 @@
                 }
             }
         }
-    }
+    },
+    "default": "index"
 }

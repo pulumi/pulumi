@@ -54,6 +54,18 @@
                             "column": 1
                         }
                     }
+                },
+                ".main": {
+                    "kind": "ModuleMethod",
+                    "name": {
+                        "kind": "Identifier",
+                        "ident": ".main"
+                    },
+                    "access": "public",
+                    "body": {
+                        "kind": "Block",
+                        "statements": []
+                    }
                 }
             },
             "loc": {
@@ -161,6 +173,18 @@
                                 }
                             }
                         ]
+                    }
+                },
+                ".main": {
+                    "kind": "ModuleMethod",
+                    "name": {
+                        "kind": "Identifier",
+                        "ident": ".main"
+                    },
+                    "access": "public",
+                    "body": {
+                        "kind": "Block",
+                        "statements": []
                     }
                 }
             },

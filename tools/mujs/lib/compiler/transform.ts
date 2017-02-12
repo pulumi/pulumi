@@ -251,6 +251,7 @@ export class Transformer {
 
             // Enumerate all source files (each of which is a module in ECMAScript), and transform it.
             let modules: ast.Modules = {};
+            let defaultModule: tokens.ModuleToken | undefined;
             for (let sourceFile of this.script.tree!.getSourceFiles()) {
                 // TODO[marapongo/mu#52]: to determine whether a SourceFile is part of the current compilation unit, we
                 // must rely on a private TypeScript API, isSourceFileFromExternalLibrary.  An alternative would be to
@@ -265,6 +266,10 @@ export class Transformer {
                 if (!isSourceFileFromExternalLibrary(sourceFile) && !sourceFile.isDeclarationFile) {
                     let mod: ast.Module = await this.transformSourceFile(sourceFile);
                     modules[mod.name.ident] = mod;
+                    if (mod.name.ident === "index") {
+                        // TODO[marapongo/mu#57]: respect the package.json "main" specifier, if it exists.
+                        defaultModule = mod.name.ident;
+                    }
                 }
             }
 
@@ -284,12 +289,12 @@ export class Transformer {
                 }
             }
 
-
             // Now create a new package object.
             return <TransformResult>{
                 diagnostics: this.diagnostics,
                 pkg:         object.extend(this.pkg, {
                     modules: modules,
+                    default: defaultModule,
                 }),
             };
         }
@@ -441,7 +446,7 @@ export class Transformer {
 
     // createClassMemberToken binds a string-based exported member name to the associated token that references it.
     private createClassMemberToken(classtok: tokens.ModuleMemberToken, member: string): tokens.ClassMemberToken {
-        contract.assert(classtok != tokens.dynamicType);
+        contract.assert(classtok !== tokens.dynamicType);
         // The concatenated name of the class plus identifier will resolve correctly to an exported definition.
         return `${classtok}${tokens.tokenDelimiter}${member}`;
     }
@@ -888,6 +893,19 @@ export class Transformer {
                 };
                 this.currentModuleMembers[initializer.name.ident] = initializer;
             }
+
+            // Emulate Node.js scripts, where every file is executable.  To do this, simply add an empty main function.
+            // Note that because top-level module statements go into the initializer, which will be run before executing
+            // any code inside of this module, the main function is actually just empty.
+            this.currentModuleMembers[tokens.entryPointFunction] = <ast.ModuleMethod>{
+                kind:   ast.moduleMethodKind,
+                name:   ident(tokens.entryPointFunction),
+                access: tokens.publicAccessibility,
+                body: {
+                    kind:       ast.blockKind,
+                    statements: [],
+                },
+            };
 
             return this.withLocation(node, <ast.Module>{
                 kind:    ast.moduleKind,

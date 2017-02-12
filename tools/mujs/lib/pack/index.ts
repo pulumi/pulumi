@@ -42,6 +42,7 @@ export type Dependencies = {[pkg: string/*tokens.PackageToken*/]: string};
 
 // Package is a fully compiled package definition.
 export interface Package extends Manifest {
-    modules?: ast.Modules;               // a collection of top-level modules.
+    default?: tokens.ModuleToken; // the default module, if any.
+    modules?: ast.Modules;        // a collection of top-level modules.
 }
 
