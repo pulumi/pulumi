@@ -794,14 +794,14 @@ export class Transformer {
         if (isDynamic) {
             // If the target type is `dynamic`, we cannot perform static lookups; devolve into a dynamic load.
             contract.assert(!!object);
-            return <ast.LoadDynamicExpression>{
+            return this.withLocation(node, <ast.LoadDynamicExpression>{
                 kind:   ast.loadDynamicExpressionKind,
                 object: object,
                 name:   this.copyLocation(id, <ast.StringLiteral>{
                     kind:  ast.stringLiteralKind,
                     value: id.ident,
                 }),
-            };
+            });
         }
         else {
             contract.assert(!!tok);
@@ -2321,11 +2321,11 @@ export class Transformer {
                 return await this.createLoadExpression(node, node.expression, <ts.Identifier>argument);
             default:
                 // Otherwise, fall back to loading the target dynamically.
-                return <ast.LoadDynamicExpression>{
+                return this.withLocation(node, <ast.LoadDynamicExpression>{
                     kind:   ast.loadDynamicExpressionKind,
                     object: await this.transformExpression(node.expression),
                     name:   await this.transformExpression(argument),
-                };
+                });
         }
     }
 
