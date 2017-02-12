@@ -322,6 +322,56 @@ export class Transformer {
         return globals;
     }
 
+    // isLocalVariableOrFunction tells us whether a symbol is a local one (versus, say, belonging to a class or module).
+    private isLocalVariableOrFunction(symbol: ts.Symbol): boolean {
+        if (!symbol.declarations) {
+            return false;
+        }
+        for (let decl of symbol.declarations) {
+            // All locals should be one of these kinds.
+            if (decl.kind !== ts.SyntaxKind.FunctionExpression &&
+                    decl.kind !== ts.SyntaxKind.VariableDeclaration &&
+                    decl.kind !== ts.SyntaxKind.Parameter &&
+                    decl.kind !== ts.SyntaxKind.FunctionDeclaration) {
+                return false;
+            }
+            // All locals should have functions in the parent tree before modules.
+            let parent: ts.Node | undefined = decl.parent;
+            while (parent) {
+                switch (parent.kind) {
+                    // These are function-like and qualify as local parents.
+                    case ts.SyntaxKind.Block:
+                    case ts.SyntaxKind.Constructor:
+                    case ts.SyntaxKind.FunctionExpression:
+                    case ts.SyntaxKind.FunctionDeclaration:
+                    case ts.SyntaxKind.ArrowFunction:
+                    case ts.SyntaxKind.MethodDeclaration:
+                    case ts.SyntaxKind.MethodSignature:
+                    case ts.SyntaxKind.GetAccessor:
+                    case ts.SyntaxKind.SetAccessor:
+                    case ts.SyntaxKind.CallSignature:
+                    case ts.SyntaxKind.ConstructSignature:
+                    case ts.SyntaxKind.IndexSignature:
+                    case ts.SyntaxKind.FunctionType:
+                    case ts.SyntaxKind.ConstructorType:
+                        parent = undefined;
+                        break;
+
+                    // These are the top of module definitions and disqualify this as a local.
+                    case ts.SyntaxKind.SourceFile:
+                    case ts.SyntaxKind.ModuleBlock:
+                        return false;
+
+                    // Otherwise, keep on searching.
+                    default:
+                        parent = parent.parent;
+                        break;
+                }
+            }
+        }
+        return true;
+    }
+
     // This just carries forward an existing location from another node.
     private copyLocation<T extends ast.Node>(src: ast.Node, dst: T): T {
         dst.loc = src.loc;
@@ -453,7 +503,8 @@ export class Transformer {
 
     // createModuleReference turns a ECMAScript import path into a MuIL module token.
     private createModuleReference(sym: ts.Symbol): ModuleReference {
-        contract.assert(!!(sym.flags & (ts.SymbolFlags.ValueModule | ts.SymbolFlags.NamespaceModule)));
+        contract.assert(!!(sym.flags & (ts.SymbolFlags.ValueModule | ts.SymbolFlags.NamespaceModule)),
+                       `Symbol is not a module: ${ts.SymbolFlags[sym.flags]}`);
         return this.createModuleReferenceFromPath(sym.name);
     }
 
@@ -739,46 +790,72 @@ export class Transformer {
     // createLoadExpression creates an expression that handles all the possible location cases.  It may very well create
     // a dynamic load, rather than a static one, if we are unable to dig through to find an underlying symbol.
     private async createLoadExpression(
-            node: ts.Node, expression: ts.Expression, name: ts.Identifier): Promise<ast.LoadExpression> {
+            node: ts.Node, objex: ts.Expression | undefined, name: ts.Identifier): Promise<ast.LoadExpression> {
         // Make an identifier out of the name.
         let id: ast.Identifier = this.transformIdentifier(name);
+
+        // Fetch the symbol that this name refers to.
+        let idsym: ts.Symbol = this.checker().getSymbolAtLocation(name);
+        contract.assert(!!idsym);
+
+        // Fetch information about the object we are loading from, if any.
+        let objty: ts.Type | undefined;
+        let objsym: ts.Symbol | undefined;
+        if (objex) {
+            objty = this.checker().getTypeAtLocation(objex);
+            contract.assert(!!objty);
+            objsym = objty.getSymbol();
+            contract.assert(!!objsym);
+        }
 
         // These properties will be initialized and used for the return.
         let tok: tokens.Token | undefined;
         let object: ast.Expression | undefined;
         let isDynamic: boolean = false; // true if the load must be dynamic.
 
-        // Create a token for the property name based on the node's type and symbol.
-        let ty: ts.Type | undefined = this.checker().getTypeAtLocation(expression);
-        contract.assert(!!ty);
-        let tysym: ts.Symbol | undefined = ty.getSymbol();
-        if (tysym && (tysym.flags & ts.SymbolFlags.ValueModule)) {
+        // In the special case that the object is a value module, we need to perform a special translation.
+        if (objsym && !!(objsym.flags & ts.SymbolFlags.ValueModule)) {
             // This is a module property; for instance:
             // 
             //      import * as foo from "foo";
             //      foo.bar();
             //
             // Use this to create a qualified token using the target expression's fully qualified type/module.
-            let modref: ModuleReference = this.createModuleReference(tysym);
+            contract.assert(!!(objsym.flags & ts.SymbolFlags.ValueModule));
+            let modref: ModuleReference = this.createModuleReference(objsym);
             let modtok: tokens.ModuleToken = await this.createModuleToken(modref);
             tok = this.createModuleMemberToken(modtok, id.ident);
             // note that we intentionally leave object blank, since the token is fully qualified.
         }
-        else {
-            let tytok: tokens.TypeToken | undefined = await this.resolveTypeToken(expression, ty);
+        else if (this.isLocalVariableOrFunction(idsym)) {
+            // For local variables, just use a simple name load.
+            contract.assert(!objex, "Local variables must not have 'this' expressions");
+            tok = id.ident;
+        }
+        else if (objex) {
+            // Otherwise, this is a property access, either on an object, or a static through a class.  Create as
+            // qualfiied a token we can based on the node's type and symbol; worst case, devolve into a dynamic load.
+            let allowed: ts.SymbolFlags =
+                ts.SymbolFlags.BlockScopedVariable | ts.SymbolFlags.FunctionScopedVariable |
+                ts.SymbolFlags.Function | ts.SymbolFlags.Property | ts.SymbolFlags.Method;
+            contract.assert(!!(idsym.flags & allowed),
+                            `Unexpected object access symbol: ${ts.SymbolFlags[idsym.flags]}`);
+            let ty: ts.Type | undefined = this.checker().getTypeAtLocation(objex);
+            contract.assert(!!ty);
+            let tytok: tokens.TypeToken | undefined = await this.resolveTypeToken(objex, ty);
             contract.assert(!!tytok);
             if (tytok === tokens.dynamicType) {
                 isDynamic = true; // skip the rest; we cannot possibly create a member token.
-                object = await this.transformExpression(expression);
+                object = await this.transformExpression(objex!);
             }
             else {
+                // Resolve this member to create a statically bound type token.
                 tok = this.createClassMemberToken(tytok!, id.ident);
 
                 // If the property is static, object must be left blank, since the type token will be fully qualified.
                 let propIsStatic: boolean = false;
-                let prop: ts.Symbol | undefined = this.checker().getSymbolAtLocation(name);
-                if (prop && (prop.flags & ts.SymbolFlags.Property) && prop.declarations) {
-                    for (let decl of prop.declarations) {
+                if (idsym.declarations) {
+                    for (let decl of idsym.declarations) {
                         if (ts.getCombinedModifierFlags(decl) & ts.ModifierFlags.Static) {
                             propIsStatic = true;
                             break;
@@ -786,9 +863,16 @@ export class Transformer {
                     }
                 }
                 if (!propIsStatic) {
-                    object = await this.transformExpression(expression);
+                    contract.assert(!!objex, "Instance methods must have 'this' expressions");
+                    object = await this.transformExpression(objex!);
                 }
             }
+        }
+        else {
+            // This is a module property load from the current ambient module.
+            contract.assert(!!this.currentModuleToken);
+            tok = this.createModuleMemberToken(this.currentModuleToken!, id.ident);
+            // note that we intentionally leave object blank, since the token is fully qualified.
         }
 
         if (isDynamic) {
@@ -2309,22 +2393,23 @@ export class Transformer {
     }
 
     private async transformElementAccessExpression(node: ts.ElementAccessExpression): Promise<ast.LoadExpression> {
-        let argument: ts.Expression | undefined = node.argumentExpression;
-        if (!argument) {
-            // If there's no argument, just return the underlying expression directly.
-            return await this.transformExpression(node.expression);
+        let expr: ts.Expression | undefined = node.expression;
+        let prop: ts.Expression | undefined = node.argumentExpression;
+        if (!prop) {
+            // If there's no argument, use the expression as the property to load.
+            prop = expr;
         }
 
-        switch (argument.kind) {
+        switch (prop.kind) {
             case ts.SyntaxKind.Identifier:
-                // Attempt to create a static load, if possible.
-                return await this.createLoadExpression(node, node.expression, <ts.Identifier>argument);
+                // Attempt to create a static load; this may fall back to dynamic if it can't resolve the property.
+                return await this.createLoadExpression(node, expr, <ts.Identifier>prop);
             default:
-                // Otherwise, fall back to loading the target dynamically.
+                // If we don't even have an identifier, we must fall back to loading the target property dynamically.
                 return this.withLocation(node, <ast.LoadDynamicExpression>{
                     kind:   ast.loadDynamicExpressionKind,
-                    object: await this.transformExpression(node.expression),
-                    name:   await this.transformExpression(argument),
+                    object: await this.transformExpression(expr),
+                    name:   await this.transformExpression(prop),
                 });
         }
     }
@@ -2600,25 +2685,15 @@ export class Transformer {
     // transformIdentifierExpression takes a TypeScript identifier node and yields a MuIL expression.  This expression,
     // when evaluated, will load the value of the target identifier, so that it's suitable as an expression node.
     private async transformIdentifierExpression(node: ts.Identifier): Promise<ast.Expression> {
-        let id: ast.Identifier = this.transformIdentifier(node);
-        if (id.ident === "null" || id.ident === "undefined") {
+        if (node.text === "null" || node.text === "undefined") {
             // For null and undefined, load a null literal.
             return this.withLocation(node, <ast.NullLiteral>{
                 kind: ast.nullLiteralKind,
             });
         }
         else {
-            // For other identifiers, check the expected kinds, and fully qualify them where necessary.
-            let sym: ts.Symbol = this.checker().getSymbolAtLocation(node);
-            contract.assert(!!sym);
-            let tok: tokens.Token = await this.resolveTokenFromSymbol(sym);
-            return this.withLocation(node, <ast.LoadLocationExpression>{
-                kind: ast.loadLocationExpressionKind,
-                name: this.copyLocation(id, <ast.Token>{
-                    kind: ast.tokenKind,
-                    tok:  tok,
-                }),
-            });
+            // For other identifiers, transform them into loads.
+            return this.createLoadExpression(node, undefined, node);
         }
     }
 
