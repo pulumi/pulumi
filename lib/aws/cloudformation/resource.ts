@@ -5,9 +5,11 @@ import * as mu from '@mu/mu';
 // A special service that simply emits a CloudFormation template.
 // @name: aws/x/cf
 export class Resource extends mu.Resource {
+    private args: ResourceArgs;
     constructor(args: ResourceArgs) {
         super();
         // TODO: encode the special translation logic as code (maybe as an overridden method).
+        this.args = args;
     }
 }
 
