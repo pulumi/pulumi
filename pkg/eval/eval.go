@@ -968,7 +968,7 @@ func (e *evaluator) evalLoadDynamic(node *ast.LoadDynamicExpression, lval bool) 
 
 	// Now go ahead and search the object for a property with the given name.
 	contract.Assertf(name.Type() == types.String, "At the moment, only string names are supported")
-	pv := this.GetPropertyAddr(rt.PropertyKey(name.String()), true)
+	pv := this.GetPropertyAddr(rt.PropertyKey(name.StringValue()), true)
 
 	// If this isn't for an l-value, return the raw object.  Otherwise, make sure it's not readonly, and return it.
 	var obj *rt.Object
