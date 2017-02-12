@@ -221,6 +221,14 @@ export class Context {
         };
     }
 
+    public newUnusedDependencyWarning(pkg: tokens.PackageToken): Diagnostic {
+        return {
+            category: DiagnosticCategory.Warning,
+            code:     4,
+            message:  `Package '${pkg}' was declared as a dependency but not used`,
+        };
+    }
+
     public newAsyncNotSupportedError(node: ts.Node): Diagnostic {
         return {
             category: DiagnosticCategory.Error,

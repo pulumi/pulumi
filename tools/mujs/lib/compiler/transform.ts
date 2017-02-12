@@ -275,6 +275,16 @@ export class Transformer {
                 }
             }
 
+            // Also warn about dependency packages that weren't actually used.
+            if (this.pkg.dependencies) {
+                for (let dep of Object.keys(this.pkg.dependencies)) {
+                    if (!this.currentPackageDependencies.has(dep)) {
+                        this.diagnostics.push(this.dctx.newUnusedDependencyWarning(dep));
+                    }
+                }
+            }
+
+
             // Now create a new package object.
             return <TransformResult>{
                 diagnostics: this.diagnostics,
