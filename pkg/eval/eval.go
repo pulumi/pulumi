@@ -762,7 +762,7 @@ func (e *evaluator) evalArrayLiteral(node *ast.ArrayLiteral) (*rt.Object, *Unwin
 	}
 
 	// Allocate a new array object.
-	arrobj := e.alloc.NewArray(ty, &arr)
+	arrobj := e.alloc.NewArray(ty.Element, &arr)
 
 	// If there are elements, place them into the array.  This has two behaviors:
 	//     1) if there is a size, there can be up to that number of elements, which are set;
@@ -795,7 +795,7 @@ func (e *evaluator) evalArrayLiteral(node *ast.ArrayLiteral) (*rt.Object, *Unwin
 		}
 	}
 
-	return e.alloc.NewPrimitive(ty, arr), nil
+	return arrobj, nil
 }
 
 func (e *evaluator) evalObjectLiteral(node *ast.ObjectLiteral) (*rt.Object, *Unwind) {

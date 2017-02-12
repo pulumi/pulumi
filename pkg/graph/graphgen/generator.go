@@ -81,7 +81,7 @@ func (g *generator) Graph() graph.Graph {
 // OnNewObject is called whenever a new object has been allocated.
 func (g *generator) OnNewObject(o *rt.Object) {
 	contract.Assert(o != nil)
-	glog.V(9).Infof("GraphGenerator OnNewObject %v", o)
+	glog.V(9).Infof("GraphGenerator OnNewObject t=%v, o=%v", o.Type(), o)
 
 	// Add an entry to the depends set.  This should not already exist; it's the first time we encountered it.
 	// TODO: eventually we may want to be smarter about this, since tracking all dependencies will obviously create
