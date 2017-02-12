@@ -5,6 +5,7 @@ package eval
 import (
 	"math"
 	"reflect"
+	"sort"
 
 	"github.com/golang/glog"
 
@@ -217,14 +218,38 @@ func (e *evaluator) dumpEvalState(v glog.Level) {
 	if glog.V(v) {
 		glog.V(v).Infof("Evaluator state dump:")
 		glog.V(v).Infof("=====================")
+
+		// Print all initialized modules in alphabetical order.
+		modtoks := make([]string, 0, len(e.modinits))
 		for mod := range e.modinits {
-			glog.V(v).Infof("Module init: %v", mod.Token())
+			modtoks = append(modtoks, string(mod.Token()))
 		}
+		sort.Strings(modtoks)
+		for _, mod := range modtoks {
+			glog.V(v).Infof("Module init: %v", mod)
+		}
+
+		// Print all initialized classes in alphabetical order.
+		classtoks := make([]string, 0, len(e.classinits))
 		for class := range e.classinits {
-			glog.V(v).Infof("Class init: %v", class.Token())
+			classtoks = append(classtoks, string(class.Token()))
 		}
+		sort.Strings(classtoks)
+		for _, class := range classtoks {
+			glog.V(v).Infof("Class init: %v", class)
+		}
+
+		// Print all initialized global variables in alphabetical order.
+		globaltoks := make([]string, 0, len(e.globals))
+		globals := make(map[string]*rt.Object)
 		for sym, ptr := range e.globals {
-			glog.V(v).Infof("Global %v: %v", sym.Token(), ptr.Obj())
+			s := string(sym.Token())
+			globaltoks = append(globaltoks, s)
+			globals[s] = ptr.Obj()
+		}
+		sort.Strings(globaltoks)
+		for _, sym := range globaltoks {
+			glog.V(v).Infof("Global %v: %v", sym, globals[sym])
 		}
 	}
 }
