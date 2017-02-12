@@ -881,7 +881,7 @@ export class Transformer {
             return this.withLocation(node, <ast.LoadDynamicExpression>{
                 kind:   ast.loadDynamicExpressionKind,
                 object: object,
-                name:   this.copyLocation(id, <ast.StringLiteral>{
+                name:   this.withLocation(name, <ast.StringLiteral>{
                     kind:  ast.stringLiteralKind,
                     value: id.ident,
                 }),
@@ -892,7 +892,7 @@ export class Transformer {
             return this.withLocation(node, <ast.LoadLocationExpression>{
                 kind:   ast.loadLocationExpressionKind,
                 object: object,
-                name:   this.copyLocation(id, <ast.Token>{
+                name:   this.withLocation(name, <ast.Token>{
                     kind: ast.tokenKind,
                     tok:  tok,
                 }),
@@ -2393,24 +2393,18 @@ export class Transformer {
     }
 
     private async transformElementAccessExpression(node: ts.ElementAccessExpression): Promise<ast.LoadExpression> {
-        let expr: ts.Expression | undefined = node.expression;
-        let prop: ts.Expression | undefined = node.argumentExpression;
-        if (!prop) {
-            // If there's no argument, use the expression as the property to load.
-            prop = expr;
+        // This is an indexer operation; fall back to using a dynamic load operation.
+        // TODO: detect array and module member loads.
+        let object: ast.Expression = await this.transformExpression(node.expression);
+        if (node.argumentExpression) {
+            return this.withLocation(node, <ast.LoadDynamicExpression>{
+                kind:   ast.loadDynamicExpressionKind,
+                object: object,
+                name:   await this.transformExpression(node.argumentExpression),
+            });
         }
-
-        switch (prop.kind) {
-            case ts.SyntaxKind.Identifier:
-                // Attempt to create a static load; this may fall back to dynamic if it can't resolve the property.
-                return await this.createLoadExpression(node, expr, <ts.Identifier>prop);
-            default:
-                // If we don't even have an identifier, we must fall back to loading the target property dynamically.
-                return this.withLocation(node, <ast.LoadDynamicExpression>{
-                    kind:   ast.loadDynamicExpressionKind,
-                    object: await this.transformExpression(expr),
-                    name:   await this.transformExpression(prop),
-                });
+        else {
+            return object;
         }
     }
 
