@@ -81,7 +81,7 @@ func (a *astBinder) After(node ast.Node) {
 	case *ast.LoadLocationExpression:
 		a.checkLoadLocationExpression(n)
 	case *ast.LoadDynamicExpression:
-		a.b.ctx.RegisterType(n, types.Dynamic) // register as a dynamic type.
+		a.checkLoadDynamicExpression(n)
 	case *ast.NewExpression:
 		a.checkNewExpression(n)
 	case *ast.InvokeFunctionExpression:
@@ -312,12 +312,25 @@ func (a *astBinder) checkLoadLocationExpression(node *ast.LoadLocationExpression
 	if sym == nil {
 		ty = types.Error // no symbol found, use an error type.
 	} else {
+		var usesThis bool
 		for ty == nil {
+			// Check that the this object is well-formed and extract the symbol.
 			switch s := sym.(type) {
-			case symbols.Function:
-				ty = s.FuncType() // use the func's type.
-			case symbols.Variable:
-				ty = s.Type() // use the variable's type.
+			case *symbols.LocalVariable:
+				ty = s.Type()
+				usesThis = false
+			case *symbols.ClassMethod:
+				ty = s.FuncType()
+				usesThis = !s.Static()
+			case *symbols.ClassProperty:
+				ty = s.Type()
+				usesThis = !s.Static()
+			case *symbols.ModuleMethod:
+				ty = s.FuncType()
+				usesThis = false
+			case *symbols.ModuleProperty:
+				ty = s.Type()
+				usesThis = false
 			case *symbols.Export:
 				// For exports, let's keep digging until we hit something concrete.
 				sym = s.Referent
@@ -325,10 +338,34 @@ func (a *astBinder) checkLoadLocationExpression(node *ast.LoadLocationExpression
 				contract.Failf("Unrecognized load location token '%v' symbol type: %v", sym.Token(), reflect.TypeOf(s))
 			}
 		}
+
+		if usesThis {
+			if node.Object == nil {
+				a.b.Diag().Errorf(errors.ErrorExpectedObject.At(node))
+			}
+		} else if node.Object != nil {
+			a.b.Diag().Errorf(errors.ErrorUnexpectedObject.At(node))
+		}
 	}
 
 	// Register the type; not that, although this is a valid l-value, we do not create a pointer out of it implicitly.
 	a.b.ctx.RegisterType(node, ty)
+}
+
+func (a *astBinder) checkLoadDynamicExpression(node *ast.LoadDynamicExpression) {
+	// Ensure the object is non-nil.
+	if node.Object == nil {
+		a.b.Diag().Errorf(errors.ErrorExpectedObject.At(node))
+	}
+
+	// Now ensure that the right hand side is either a string or a dynamic.
+	name := a.b.ctx.RequireType(node.Name)
+	if name != types.Dynamic && !types.CanConvert(name, types.String) {
+
+	}
+
+	// No matter the outcome, a load dynamic always produces a dynamically typed thing.
+	a.b.ctx.RegisterType(node, types.Dynamic)
 }
 
 func (a *astBinder) checkNewExpression(node *ast.NewExpression) {

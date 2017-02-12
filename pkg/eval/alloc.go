@@ -4,7 +4,6 @@ package eval
 
 import (
 	"github.com/marapongo/mu/pkg/compiler/symbols"
-	"github.com/marapongo/mu/pkg/compiler/types"
 	"github.com/marapongo/mu/pkg/eval/rt"
 )
 
@@ -34,28 +33,35 @@ func (a *Allocator) New(t symbols.Type) *rt.Object {
 
 // NewPrimitive creates a new primitive object with the given primitive type.
 func (a *Allocator) NewPrimitive(t symbols.Type, v interface{}) *rt.Object {
-	obj := rt.NewObject(t, v, nil)
+	obj := rt.NewPrimitiveObject(t, v)
 	a.onNewObject(obj)
 	return obj
 }
 
 // NewBool creates a new primitive number object.
 func (a *Allocator) NewBool(v bool) *rt.Object {
-	obj := rt.NewPrimitiveObject(types.Bool, v)
+	obj := rt.NewBoolObject(v)
 	a.onNewObject(obj)
 	return obj
 }
 
 // NewNumber creates a new primitive number object.
 func (a *Allocator) NewNumber(v float64) *rt.Object {
-	obj := rt.NewPrimitiveObject(types.Number, v)
+	obj := rt.NewNumberObject(v)
+	a.onNewObject(obj)
+	return obj
+}
+
+// NewNull creates a new null object.
+func (a *Allocator) NewNull() *rt.Object {
+	obj := rt.NewNullObject()
 	a.onNewObject(obj)
 	return obj
 }
 
 // NewString creates a new primitive number object.
 func (a *Allocator) NewString(v string) *rt.Object {
-	obj := rt.NewPrimitiveObject(types.String, v)
+	obj := rt.NewStringObject(v)
 	a.onNewObject(obj)
 	return obj
 }

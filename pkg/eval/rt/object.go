@@ -81,6 +81,15 @@ func (o *Object) PointerValue() *Pointer {
 	return r
 }
 
+// ExceptionMessage asserts that the target is an exception and returns its message.
+func (o *Object) ExceptionMessage() string {
+	contract.Assertf(o.t == types.Exception, "Expected object type to be Exception; got %v", o.t)
+	contract.Assertf(o.value != nil, "Expected Exception object to carry a Value; got nil")
+	s, ok := o.value.(string)
+	contract.Assertf(ok, "Expected Exception object's Value to be string")
+	return s
+}
+
 // GetPropertyAddr returns the reference to an object's property, lazily initializing if 'init' is true, or
 // returning nil otherwise.
 func (o *Object) GetPropertyAddr(key PropertyKey, init bool) *Pointer {
@@ -109,6 +118,12 @@ func (o *Object) GetPropertyAddr(key PropertyKey, init bool) *Pointer {
 				}
 			}
 		}
+
+		// If no members was found, this is presumably a dynamic scenario.  Initialize the slot to null.
+		if obj == nil {
+			obj = NewNullObject()
+		}
+
 		ptr = NewPointer(obj, readonly)
 		o.properties[key] = ptr
 	}
@@ -167,18 +182,31 @@ func NewPrimitiveObject(t symbols.Type, v interface{}) *Object {
 	return NewObject(t, v, nil)
 }
 
+var trueObj *Object = NewPrimitiveObject(types.Bool, true)
+var falseObj *Object = NewPrimitiveObject(types.Bool, false)
+
 // NewBoolObject creates a new primitive number object.
 func NewBoolObject(v bool) *Object {
-	return NewPrimitiveObject(types.Bool, v)
+	if v {
+		return trueObj
+	}
+	return falseObj
 }
 
-// NewNumber creates a new primitive number object.
-func NewNumber(v float64) *Object {
+// NewNumberObject creates a new primitive number object.
+func NewNumberObject(v float64) *Object {
 	return NewPrimitiveObject(types.Number, v)
 }
 
-// NewString creates a new primitive number object.
-func NewString(v string) *Object {
+var nullObj *Object = NewPrimitiveObject(types.Null, nil)
+
+// NewNullObject creates a new null object; null objects are not expected to have distinct identity.
+func NewNullObject() *Object {
+	return nullObj
+}
+
+// NewStringObject creates a new primitive number object.
+func NewStringObject(v string) *Object {
 	return NewPrimitiveObject(types.String, v)
 }
 

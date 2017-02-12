@@ -13,4 +13,6 @@ var (
 	ErrorFunctionArgNotFound       = newError(1006, "Function argument '%v' was not supplied")
 	ErrorFunctionArgUnknown        = newError(1007, "Function argument '%v' was not recognized")
 	ErrorIllegalReadonlyLValue     = newError(1008, "A readonly target cannot be used as an assignment target")
+	ErrorExpectedObject            = newError(1009, "Expected an object target for this instance member load operation")
+	ErrorUnexpectedObject          = newError(1010, "Unexpected object target for this static or module load operation")
 )

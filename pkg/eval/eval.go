@@ -197,7 +197,7 @@ func (e *evaluator) EvaluateFunction(fnc symbols.Function, this *rt.Object, args
 
 	if e.Diag().Success() {
 		// If the arguments bound correctly, make the call.
-		_, uw := e.evalCall(fnc, this, argos...)
+		_, uw := e.evalCall(fnc.Tree(), fnc, this, argos...)
 		if uw != nil {
 			// If the call had an unwind out of it, then presumably we have an unhandled exception.
 			e.issueUnhandledException(uw, errors.ErrorUnhandledException.At(fnc.Tree()))
@@ -244,7 +244,7 @@ func (e *evaluator) ensureClassInit(class *symbols.Class) {
 			glog.V(7).Infof("Initializing class: %v", class)
 			contract.Assert(len(init.Ty.Parameters) == 0)
 			contract.Assert(init.Ty.Return == nil)
-			ret, uw := e.evalCall(init, nil)
+			ret, uw := e.evalCall(class.Tree(), init, nil)
 			contract.Assert(ret == nil)
 			if uw != nil {
 				// Must be an unhandled exception; spew it as an error (but keep going).
@@ -273,7 +273,7 @@ func (e *evaluator) ensureModuleInit(mod *symbols.Module) {
 			glog.V(7).Infof("Initializing module: %v", mod)
 			contract.Assert(len(init.Type.Parameters) == 0)
 			contract.Assert(init.Type.Return == nil)
-			ret, uw := e.evalCall(init, nil)
+			ret, uw := e.evalCall(mod.Tree(), init, nil)
 			contract.Assert(ret == nil)
 			if uw != nil {
 				// Must be an unhandled exception; spew it as an error (but keep going).
@@ -290,7 +290,7 @@ func (e *evaluator) issueUnhandledException(uw *Unwind, err *diag.Diag, args ...
 	contract.Assert(uw.Throw())
 	var msg string
 	if thrown := uw.Thrown(); thrown != nil {
-		msg = thrown.StringValue()
+		msg = thrown.ExceptionMessage()
 	}
 	if msg == "" {
 		msg = "no details available"
@@ -313,8 +313,26 @@ func (e *evaluator) popScope() {
 
 // Functions
 
-func (e *evaluator) evalCall(fnc symbols.Function, this *rt.Object, args ...*rt.Object) (*rt.Object, *Unwind) {
+func (e *evaluator) evalCall(node diag.Diagable, fnc symbols.Function,
+	this *rt.Object, args ...*rt.Object) (*rt.Object, *Unwind) {
 	glog.V(7).Infof("Evaluating call to fnc %v; this=%v args=%v", fnc, this != nil, len(args))
+
+	// First check the this pointer, since it might throw before the call even happens.
+	var thisVariable *symbols.LocalVariable
+	var superVariable *symbols.LocalVariable
+	switch f := fnc.(type) {
+	case *symbols.ClassMethod:
+		if f.Static() {
+			contract.Assert(this == nil)
+		} else if uw := e.checkThis(node, this); uw != nil {
+			return nil, uw
+		} else {
+			thisVariable = f.Parent.This
+			superVariable = f.Parent.Super
+		}
+	default:
+		contract.Assert(this == nil)
+	}
 
 	// Save the prior func, set the new one, and restore upon exit.
 	prior := fnc
@@ -332,33 +350,20 @@ func (e *evaluator) evalCall(fnc symbols.Function, this *rt.Object, args ...*rt.
 	}
 
 	// If the target is an instance method, the "this" and "super" variables must be bound to values.
-	if this != nil {
-		switch f := fnc.(type) {
-		case *symbols.ClassMethod:
-			contract.Assertf(!f.Static(),
-				"Static methods don't have 'this' arguments, but we got a non-nil one")
-			contract.Assertf(types.CanConvert(this.Type(), f.Parent),
-				"'this' argument was of the wrong type")
-			e.ctx.Scope.Register(f.Parent.This)
-			e.locals.InitValueAddr(f.Parent.This, rt.NewPointer(this, true))
-			if f.Parent.Super != nil {
-				e.ctx.Scope.Register(f.Parent.Super)
-				e.locals.InitValueAddr(f.Parent.Super, rt.NewPointer(this, true))
-			}
-		default:
-			contract.Failf("Only class methods should have 'this' arguments, but we got a non-nil one")
-		}
-	} else {
-		// If no this was supplied, we expect that this is either not a class method, or it is a static.
-		switch f := fnc.(type) {
-		case *symbols.ClassMethod:
-			contract.Assertf(f.Static(), "Instance methods require 'this' arguments, but we got nil")
-		}
+	if thisVariable != nil {
+		contract.Assert(this != nil)
+		e.ctx.Scope.Register(thisVariable)
+		e.locals.InitValueAddr(thisVariable, rt.NewPointer(this, true))
+	}
+	if superVariable != nil {
+		contract.Assert(this != nil)
+		e.ctx.Scope.Register(superVariable)
+		e.locals.InitValueAddr(superVariable, rt.NewPointer(this, true))
 	}
 
 	// Ensure that the arguments line up to the parameter slots and add them to the frame.
-	node := fnc.FuncNode()
-	params := node.GetParameters()
+	fnode := fnc.FuncNode()
+	params := fnode.GetParameters()
 	if params == nil {
 		contract.Assert(len(args) == 0)
 	} else {
@@ -373,7 +378,7 @@ func (e *evaluator) evalCall(fnc symbols.Function, this *rt.Object, args ...*rt.
 	}
 
 	// Now perform the invocation by visiting the body.
-	uw := e.evalBlock(node.GetBody())
+	uw := e.evalBlock(fnode.GetBody())
 
 	// Check that the unwind is as expected.  In particular:
 	//     1) no breaks or continues are expected;
@@ -400,6 +405,10 @@ func (e *evaluator) evalCall(fnc symbols.Function, this *rt.Object, args ...*rt.
 // Statements
 
 func (e *evaluator) evalStatement(node ast.Statement) *Unwind {
+	if glog.V(7) {
+		glog.V(7).Infof("Evaluating statement: %v", reflect.TypeOf(node))
+	}
+
 	// Simply switch on the node type and dispatch to the specific function, returning the Unwind info.
 	switch n := node.(type) {
 	case *ast.Block:
@@ -609,6 +618,10 @@ func (e *evaluator) evalExpressionStatement(node *ast.ExpressionStatement) *Unwi
 // Expressions
 
 func (e *evaluator) evalExpression(node ast.Expression) (*rt.Object, *Unwind) {
+	if glog.V(7) {
+		glog.V(7).Infof("Evaluating expression: %v", reflect.TypeOf(node))
+	}
+
 	// Simply switch on the node type and dispatch to the specific function, returning the object and Unwind info.
 	switch n := node.(type) {
 	case *ast.NullLiteral:
@@ -660,6 +673,8 @@ func (e *evaluator) evalLValueExpression(node ast.Expression) (location, *Unwind
 	switch n := node.(type) {
 	case *ast.LoadLocationExpression:
 		return e.evalLoadLocation(n, true)
+	case *ast.LoadDynamicExpression:
+		return e.evalLoadDynamic(n, true)
 	case *ast.UnaryOperatorExpression:
 		contract.Assert(n.Operator == ast.OpDereference)
 		obj, uw := e.evalUnaryOperatorExpressionFor(n, true)
@@ -671,19 +686,19 @@ func (e *evaluator) evalLValueExpression(node ast.Expression) (location, *Unwind
 }
 
 func (e *evaluator) evalNullLiteral(node *ast.NullLiteral) (*rt.Object, *Unwind) {
-	return e.alloc.NewPrimitive(types.Null, nil), nil
+	return e.alloc.NewNull(), nil
 }
 
 func (e *evaluator) evalBoolLiteral(node *ast.BoolLiteral) (*rt.Object, *Unwind) {
-	return e.alloc.NewPrimitive(types.Bool, node.Value), nil
+	return e.alloc.NewBool(node.Value), nil
 }
 
 func (e *evaluator) evalNumberLiteral(node *ast.NumberLiteral) (*rt.Object, *Unwind) {
-	return e.alloc.NewPrimitive(types.Number, node.Value), nil
+	return e.alloc.NewNumber(node.Value), nil
 }
 
 func (e *evaluator) evalStringLiteral(node *ast.StringLiteral) (*rt.Object, *Unwind) {
-	return e.alloc.NewPrimitive(types.String, node.Value), nil
+	return e.alloc.NewString(node.Value), nil
 }
 
 func (e *evaluator) evalArrayLiteral(node *ast.ArrayLiteral) (*rt.Object, *Unwind) {
@@ -704,7 +719,7 @@ func (e *evaluator) evalArrayLiteral(node *ast.ArrayLiteral) (*rt.Object, *Unwin
 		sz := int(sze.NumberValue())
 		if sz < 0 {
 			// If the size is less than zero, raise a new error.
-			return nil, NewThrowUnwind(e.alloc.NewException("Invalid array size (must be >= 0)"))
+			return nil, NewThrowUnwind(e.NewNegativeArrayLengthException())
 		}
 		arr = make([]rt.Value, sz)
 	}
@@ -718,9 +733,7 @@ func (e *evaluator) evalArrayLiteral(node *ast.ArrayLiteral) (*rt.Object, *Unwin
 			arr = make([]rt.Value, 0, len(*node.Elements))
 		} else if len(*node.Elements) > *sz {
 			// The element count exceeds the size; raise an error.
-			return nil, NewThrowUnwind(
-				e.alloc.NewException("Invalid number of array elements; expected <=%v, got %v",
-					*sz, len(*node.Elements)))
+			return nil, NewThrowUnwind(e.NewIncorrectArrayElementCountException(*sz, len(*node.Elements)))
 		}
 
 		for i, elem := range *node.Elements {
@@ -782,10 +795,10 @@ type location struct {
 	Obj  *rt.Object     // the resulting object (pointer if lval, object otherwise).
 }
 
-// evalLoadLocationExpressionInfo evaluates and loads information about the target.  It takes an lval bool which
+// evalLoadLocation evaluates and loads information about the target.  It takes an lval bool which
 // determines whether the resulting location object is an lval (pointer) or regular object.
 func (e *evaluator) evalLoadLocation(node *ast.LoadLocationExpression, lval bool) (location, *Unwind) {
-	// If there's a 'this', evaluate it.
+	// If there's a target object, evaluate it.
 	var this *rt.Object
 	if node.Object != nil {
 		var uw *Unwind
@@ -799,8 +812,9 @@ func (e *evaluator) evalLoadLocation(node *ast.LoadLocationExpression, lval bool
 	var ty symbols.Type
 	var sym symbols.Symbol
 	tok := node.Name.Tok
-	if this == nil && tok.Simple() {
+	if tok.Simple() {
 		// If there is no object and the name is simple, it refers to a local variable in the current scope.
+		contract.Assert(this == nil)
 		loc := e.ctx.Scope.Lookup(tok.Name())
 		contract.Assert(loc != nil)
 		pv = e.locals.GetValueAddr(loc, true)
@@ -812,19 +826,30 @@ func (e *evaluator) evalLoadLocation(node *ast.LoadLocationExpression, lval bool
 			contract.Assert(sym != nil) // don't issue errors; we shouldn't ever get here if verification failed.
 			switch s := sym.(type) {
 			case *symbols.ClassProperty:
+				// Ensure that a this is present if instance, and not if static.
+				if s.Static() {
+					contract.Assert(this == nil)
+				} else if uw := e.checkThis(node, this); uw != nil {
+					return location{}, uw
+				}
+
 				// Search the class's properties and, if not present, allocate a new one.
-				contract.Assert(this != nil)
 				pv = this.GetPropertyAddr(rt.PropertyKey(sym.Name()), true)
 				ty = s.Type()
 			case *symbols.ClassMethod:
+				// Ensure that a this is present if instance, and not if static.
+				if s.Static() {
+					contract.Assert(this == nil)
+				} else if uw := e.checkThis(node, this); uw != nil {
+					return location{}, uw
+				}
+
 				// Create a new readonly ref slot, pointing to the method, that will abandon if overwritten.
-				contract.Assert(this != nil)
 				// TODO[marapongo/mu#56]: consider permitting "dynamic" method overwriting.
 				pv = rt.NewPointer(e.alloc.NewFunction(s, this), true)
 				ty = s.Type()
 			case *symbols.ModuleProperty:
 				// Search the globals table and, if not present, allocate a new property.
-				contract.Assert(this == nil)
 				ref, has := e.globals[s]
 				if !has {
 					ref = rt.NewPointer(nil, s.Readonly())
@@ -832,12 +857,17 @@ func (e *evaluator) evalLoadLocation(node *ast.LoadLocationExpression, lval bool
 				}
 				pv = ref
 				ty = s.Type()
+				if this != nil {
+					e.Diag().Errorf(errors.ErrorUnexpectedObject.At(node))
+				}
 			case *symbols.ModuleMethod:
 				// Create a new readonly ref slot, pointing to the method, that will abandon if overwritten.
-				contract.Assert(this == nil)
 				// TODO[marapongo/mu#56]: consider permitting "dynamic" method overwriting.
 				pv = rt.NewPointer(e.alloc.NewFunction(s, nil), true)
 				ty = s.Type
+				if this != nil {
+					e.Diag().Errorf(errors.ErrorUnexpectedObject.At(node))
+				}
 			case *symbols.Export:
 				// Simply chase the referent symbol until we bottom out on one of the above cases.
 				sym = s.Referent
@@ -867,9 +897,62 @@ func (e *evaluator) evalLoadLocation(node *ast.LoadLocationExpression, lval bool
 	}, nil
 }
 
+// checkThis checks a this object, raising a runtime error if it is the runtime null value.
+func (e *evaluator) checkThis(node diag.Diagable, this *rt.Object) *Unwind {
+	contract.Assert(this != nil) // binder should catch cases where this isn't true
+	if this.Type() == types.Null {
+		return NewThrowUnwind(e.NewNullObjectException())
+	}
+	return nil
+}
+
 func (e *evaluator) evalLoadDynamicExpression(node *ast.LoadDynamicExpression) (*rt.Object, *Unwind) {
-	contract.Failf("Evaluation of %v nodes not yet implemented", reflect.TypeOf(node))
-	return nil, nil
+	loc, uw := e.evalLoadDynamic(node, false)
+	return loc.Obj, uw
+}
+
+func (e *evaluator) evalLoadDynamic(node *ast.LoadDynamicExpression, lval bool) (location, *Unwind) {
+	var uw *Unwind
+
+	// Evaluate the object and then the property expression.
+	var this *rt.Object
+	if this, uw = e.evalExpression(node.Object); uw != nil {
+		return location{}, uw
+	}
+	var name *rt.Object
+	if name, uw = e.evalExpression(node.Name); uw != nil {
+		return location{}, uw
+	}
+
+	// Check that the object isn't null; if it is, raise an exception.
+	if uw = e.checkThis(node, this); uw != nil {
+		return location{}, uw
+	}
+
+	// Now go ahead and search the object for a property with the given name.
+	contract.Assertf(name.Type() == types.String, "At the moment, only string names are supported")
+	pv := this.GetPropertyAddr(rt.PropertyKey(name.String()), true)
+
+	// If this isn't for an l-value, return the raw object.  Otherwise, make sure it's not readonly, and return it.
+	var obj *rt.Object
+	if lval {
+		// A readonly reference cannot be used as an l-value.
+		if pv.Readonly() {
+			e.Diag().Errorf(errors.ErrorIllegalReadonlyLValue.At(node))
+		}
+		obj = e.alloc.NewPointer(types.Dynamic, pv)
+	} else {
+		obj = pv.Obj()
+	}
+	contract.Assert(obj != nil)
+
+	// TODO: we need to produce a symbol (or something) for the graph hooks to use.
+	return location{
+		This: this,
+		Sym:  nil,
+		Lval: lval,
+		Obj:  obj,
+	}, nil
 }
 
 func (e *evaluator) evalNewExpression(node *ast.NewExpression) (*rt.Object, *Unwind) {
@@ -900,7 +983,7 @@ func (e *evaluator) evalNewExpression(node *ast.NewExpression) (*rt.Object, *Unw
 		}
 
 		// Now dispatch the function call using the fresh object as the constructor's `this` argument.
-		if _, uw := e.evalCall(ctormeth, obj, args...); uw != nil {
+		if _, uw := e.evalCall(node, ctormeth, obj, args...); uw != nil {
 			return nil, uw
 		}
 	} else {
@@ -944,7 +1027,7 @@ func (e *evaluator) evalInvokeFunctionExpression(node *ast.InvokeFunctionExpress
 	}
 
 	// Finally, actually dispatch the call; this will create the activation frame, etc. for us.
-	return e.evalCall(fnc.Func, fnc.This, args...)
+	return e.evalCall(node, fnc.Func, fnc.This, args...)
 }
 
 func (e *evaluator) evalLambdaExpression(node *ast.LambdaExpression) (*rt.Object, *Unwind) {
