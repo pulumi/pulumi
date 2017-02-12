@@ -8,6 +8,7 @@ import (
 
 	"github.com/marapongo/mu/pkg/compiler/core"
 	"github.com/marapongo/mu/pkg/compiler/symbols"
+	"github.com/marapongo/mu/pkg/compiler/types"
 	"github.com/marapongo/mu/pkg/eval"
 	"github.com/marapongo/mu/pkg/eval/rt"
 	"github.com/marapongo/mu/pkg/graph"
@@ -109,7 +110,7 @@ func (g *generator) OnVariableAssign(o *rt.Object, name tokens.Name, old *rt.Obj
 	contract.Assert(deps != nil)
 
 	// If the old object is a resource, drop a ref-count.
-	if old != nil {
+	if old != nil && old.Type() != types.Null {
 		c, has := deps[old]
 		contract.Assertf(has, "Expected old resource property to exist in dependency map")
 		contract.Assertf(c > 0, "Expected old resource property ref-count to be > 0 in dependency map")
@@ -117,7 +118,7 @@ func (g *generator) OnVariableAssign(o *rt.Object, name tokens.Name, old *rt.Obj
 	}
 
 	// If the new object is non-nil, add a ref-count (or a whole new entry if needed).
-	if nw != nil {
+	if nw != nil && nw.Type() != types.Null {
 		if c, has := deps[nw]; has {
 			contract.Assertf(c >= 0, "Expected old resource property ref-count to be >= 0 in dependency map")
 			deps[nw] = c + 1
