@@ -34,6 +34,8 @@ type Sink interface {
 
 	// Stringify stringifies a diagnostic in the usual way (e.g., "error: MU123: Mu.yaml:7:39: error goes here\n").
 	Stringify(diag *Diag, cat Category, args ...interface{}) string
+	// StringifyLocation stringifies a source document location.
+	StringifyLocation(doc *Document, loc *Location) string
 }
 
 // Category dictates the kind of diagnostic.
@@ -108,33 +110,9 @@ func (d *defaultSink) Stringify(diag *Diag, cat Category, args ...interface{}) s
 	var buffer bytes.Buffer
 
 	// First print the location if there is one.
-	if diag.Doc != nil {
-		if d.opts.Colors {
-			buffer.WriteString("{fg 6}") // cyan
-		}
-
-		file := diag.Doc.File
-		if d.opts.Pwd != "" {
-			// If a PWD is available, try to create a relative path.
-			rel, err := filepath.Rel(d.opts.Pwd, file)
-			if err == nil {
-				file = rel
-			}
-		}
-		buffer.WriteString(file)
-
-		if diag.Loc != nil && !diag.Loc.IsEmpty() {
-			buffer.WriteRune('(')
-			buffer.WriteString(strconv.Itoa(diag.Loc.Start.Line))
-			buffer.WriteRune(',')
-			buffer.WriteString(strconv.Itoa(diag.Loc.Start.Column))
-			buffer.WriteRune(')')
-		}
+	if diag.Doc != nil || diag.Loc != nil {
+		buffer.WriteString(d.StringifyLocation(diag.Doc, diag.Loc))
 		buffer.WriteString(": ")
-
-		if d.opts.Colors {
-			buffer.WriteString("{reset}")
-		}
 	}
 
 	// Now print the message category's prefix (error/warning).
@@ -186,6 +164,52 @@ func (d *defaultSink) Stringify(diag *Diag, cat Category, args ...interface{}) s
 		var err error
 		s, err = loreley.CompileAndExecuteToString(s, nil, nil)
 		contract.Assert(err == nil)
+	}
+
+	return s
+}
+
+func (d *defaultSink) StringifyLocation(doc *Document, loc *Location) string {
+	var buffer bytes.Buffer
+
+	if doc != nil {
+		if d.opts.Colors {
+			buffer.WriteString("{fg 6}") // cyan
+		}
+
+		file := doc.File
+		if d.opts.Pwd != "" {
+			// If a PWD is available, try to create a relative path.
+			rel, err := filepath.Rel(d.opts.Pwd, file)
+			if err == nil {
+				file = rel
+			}
+		}
+		buffer.WriteString(file)
+	}
+
+	if loc != nil && !loc.IsEmpty() {
+		buffer.WriteRune('(')
+		buffer.WriteString(strconv.Itoa(loc.Start.Line))
+		buffer.WriteRune(',')
+		buffer.WriteString(strconv.Itoa(loc.Start.Column))
+		buffer.WriteRune(')')
+	}
+
+	var s string
+	if doc != nil || loc != nil {
+		if d.opts.Colors {
+			buffer.WriteString("{reset}")
+		}
+
+		s = buffer.String()
+
+		// If colorization was requested, compile and execute the directives now.
+		if d.opts.Colors {
+			var err error
+			s, err = loreley.CompileAndExecuteToString(s, nil, nil)
+			contract.Assert(err == nil)
+		}
 	}
 
 	return s

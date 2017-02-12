@@ -16,7 +16,6 @@ import (
 	"github.com/marapongo/mu/pkg/compiler/types"
 	"github.com/marapongo/mu/pkg/diag"
 	"github.com/marapongo/mu/pkg/eval/rt"
-	"github.com/marapongo/mu/pkg/graph"
 	"github.com/marapongo/mu/pkg/tokens"
 	"github.com/marapongo/mu/pkg/util/contract"
 )
@@ -28,11 +27,11 @@ type Interpreter interface {
 	Ctx() *binder.Context // the binding context object.
 
 	// EvaluatePackage performs evaluation on the given blueprint package.
-	EvaluatePackage(pkg *symbols.Package, args core.Args) graph.Graph
+	EvaluatePackage(pkg *symbols.Package, args core.Args)
 	// EvaluateModule performs evaluation on the given module's entrypoint function.
-	EvaluateModule(mod *symbols.Module, args core.Args) graph.Graph
-	// EvaluateFunction performs an evaluation of the given function, using the provided arguments, returning its graph.
-	EvaluateFunction(fnc symbols.Function, this *rt.Object, args core.Args) graph.Graph
+	EvaluateModule(mod *symbols.Module, args core.Args)
+	// EvaluateFunction performs an evaluation of the given function, using the provided arguments.
+	EvaluateFunction(fnc symbols.Function, this *rt.Object, args core.Args)
 }
 
 // InterpreterHooks is a set of callbacks that can be used to hook into interesting interpreter events.
@@ -68,6 +67,7 @@ type evaluator struct {
 	hooks      InterpreterHooks // callbacks that hook into interpreter events.
 	alloc      *Allocator       // the object allocator.
 	globals    globalMap        // the object values for global variable symbols.
+	stack      *rt.StackFrame   // a stack of frames to keep track of calls.
 	locals     *localScope      // local variable values scoped by the lexical structure.
 	modinits   modinitMap       // a map of which modules have been initialized already.
 	classinits classinitMap     // a map of which classes have been initialized already.
@@ -83,7 +83,7 @@ func (e *evaluator) Ctx() *binder.Context { return e.ctx }
 func (e *evaluator) Diag() diag.Sink      { return e.ctx.Diag }
 
 // EvaluatePackage performs evaluation on the given blueprint package.
-func (e *evaluator) EvaluatePackage(pkg *symbols.Package, args core.Args) graph.Graph {
+func (e *evaluator) EvaluatePackage(pkg *symbols.Package, args core.Args) {
 	glog.Infof("Evaluating package '%v'", pkg.Name())
 	if e.hooks != nil {
 		e.hooks.OnEnterPackage(pkg)
@@ -99,18 +99,17 @@ func (e *evaluator) EvaluatePackage(pkg *symbols.Package, args core.Args) graph.
 
 	// Search the package for a default module "index" to evaluate.
 	defmod := pkg.Default()
-	if defmod != nil {
+	if defmod == nil {
+		e.Diag().Errorf(errors.ErrorPackageHasNoDefaultModule.At(pkg.Tree()), pkg.Name())
+	} else {
 		mod := pkg.Modules[*defmod]
 		contract.Assert(mod != nil)
-		return e.EvaluateModule(mod, args)
+		e.EvaluateModule(mod, args)
 	}
-
-	e.Diag().Errorf(errors.ErrorPackageHasNoDefaultModule.At(pkg.Tree()), pkg.Name())
-	return nil
 }
 
 // EvaluateModule performs evaluation on the given module's entrypoint function.
-func (e *evaluator) EvaluateModule(mod *symbols.Module, args core.Args) graph.Graph {
+func (e *evaluator) EvaluateModule(mod *symbols.Module, args core.Args) {
 	glog.Infof("Evaluating module '%v'", mod.Token())
 	if e.hooks != nil {
 		e.hooks.OnEnterModule(mod)
@@ -125,18 +124,21 @@ func (e *evaluator) EvaluateModule(mod *symbols.Module, args core.Args) graph.Gr
 	}
 
 	// Fetch the module's entrypoint function, erroring out if it doesn't have one.
-	if ep, has := mod.Members[tokens.EntryPointFunction]; has {
-		if epfnc, ok := ep.(symbols.Function); ok {
-			return e.EvaluateFunction(epfnc, nil, args)
+	hadEntry := false
+	if entry, has := mod.Members[tokens.EntryPointFunction]; has {
+		if entryfnc, ok := entry.(symbols.Function); ok {
+			e.EvaluateFunction(entryfnc, nil, args)
+			hadEntry = true
 		}
 	}
 
-	e.Diag().Errorf(errors.ErrorModuleHasNoEntryPoint.At(mod.Tree()), mod.Name())
-	return nil
+	if !hadEntry {
+		e.Diag().Errorf(errors.ErrorModuleHasNoEntryPoint.At(mod.Tree()), mod.Name())
+	}
 }
 
 // EvaluateFunction performs an evaluation of the given function, using the provided arguments, returning its graph.
-func (e *evaluator) EvaluateFunction(fnc symbols.Function, this *rt.Object, args core.Args) graph.Graph {
+func (e *evaluator) EvaluateFunction(fnc symbols.Function, this *rt.Object, args core.Args) {
 	glog.Infof("Evaluating function '%v'", fnc.Token())
 	if e.hooks != nil {
 		e.hooks.OnEnterFunction(fnc)
@@ -181,7 +183,7 @@ func (e *evaluator) EvaluateFunction(fnc symbols.Function, this *rt.Object, args
 				argo := e.alloc.NewConstant(arg)
 				if !types.CanConvert(argo.Type(), ptys[i]) {
 					e.Diag().Errorf(errors.ErrorFunctionArgIncorrectType.At(fnc.Tree()), ptys[i], argo.Type())
-					return nil
+					break
 				}
 				argos = append(argos, argo)
 			} else {
@@ -206,9 +208,6 @@ func (e *evaluator) EvaluateFunction(fnc symbols.Function, this *rt.Object, args
 
 	// Dump the evaluation state at log-level 5, if it is enabled.
 	e.dumpEvalState(5)
-
-	// TODO: turn the returned object into a graph.
-	return nil
 }
 
 // Utility functions
@@ -288,26 +287,38 @@ func (e *evaluator) ensureModuleInit(mod *symbols.Module) {
 // issueUnhandledException issues an unhandled exception error using the given diagnostic and unwind information.
 func (e *evaluator) issueUnhandledException(uw *Unwind, err *diag.Diag, args ...interface{}) {
 	contract.Assert(uw.Throw())
+
+	// Produce a message with the exception text plus stack trace.
 	var msg string
 	if thrown := uw.Thrown(); thrown != nil {
-		msg = thrown.ExceptionMessage()
-	}
-	if msg == "" {
+		info := thrown.ExceptionValue()
+		msg = info.Message
+		msg += "\n" + info.Stack.Trace(e.Diag(), "\t", info.Node)
+	} else {
 		msg = "no details available"
 	}
+
+	// Now simply output the error with the message plus stack trace.
 	args = append(args, msg)
-	// TODO: ideally we would also have a stack trace to show here.
 	e.Diag().Errorf(err, args...)
 }
 
 // pushScope pushes a new local and context scope.  The frame argument indicates whether this is an activation frame,
 // meaning that searches for local variables will not probe into parent scopes (since they are inaccessible).
-func (e *evaluator) pushScope(frame bool) {
-	e.locals.Push(frame) // pushing the local scope also updates the context scope.
+func (e *evaluator) pushScope(frame *rt.StackFrame) {
+	if frame != nil {
+		frame.Parent = e.stack // remember the parent so we can pop.
+		e.stack = frame        // install this as the current frame.
+	}
+	e.locals.Push(frame != nil) // pushing the local scope also updates the context scope.
 }
 
 // popScope pops the current local and context scopes.
-func (e *evaluator) popScope() {
+func (e *evaluator) popScope(frame bool) {
+	if frame {
+		contract.Assert(e.stack != nil)
+		e.stack = e.stack.Parent
+	}
 	e.locals.Pop() // popping the local scope also updates the context scope.
 }
 
@@ -340,8 +351,8 @@ func (e *evaluator) evalCall(node diag.Diagable, fnc symbols.Function,
 	defer func() { e.fnc = prior }()
 
 	// Set up a new lexical scope "activation frame" in which we can bind the parameters; restore it upon exit.
-	e.pushScope(true)
-	defer e.popScope()
+	e.pushScope(&rt.StackFrame{Func: fnc, Caller: node})
+	defer e.popScope(true)
 
 	// Invoke the hooks if available.
 	if e.hooks != nil {
@@ -445,8 +456,8 @@ func (e *evaluator) evalStatement(node ast.Statement) *Unwind {
 
 func (e *evaluator) evalBlock(node *ast.Block) *Unwind {
 	// Push a scope at the start, and pop it at afterwards; both for the symbol context and local variable values.
-	e.pushScope(false)
-	defer e.popScope()
+	e.pushScope(nil)
+	defer e.popScope(false)
 
 	for _, stmt := range node.Statements {
 		if uw := e.evalStatement(stmt); uw != nil {
@@ -485,10 +496,10 @@ func (e *evaluator) evalTryCatchFinally(node *ast.TryCatchFinally) *Unwind {
 				if types.CanConvert(thrown.Type(), exty) {
 					// This type matched, so this handler will catch the exception.  Set the exception variable,
 					// evaluate the block, and swap the Unwind information (thereby "handling" the in-flight exception).
-					e.pushScope(false)
+					e.pushScope(nil)
 					e.locals.SetValue(ex, thrown)
 					uw = e.evalBlock(catch.Block)
-					e.popScope()
+					e.popScope(false)
 					break
 				}
 			}
@@ -719,7 +730,7 @@ func (e *evaluator) evalArrayLiteral(node *ast.ArrayLiteral) (*rt.Object, *Unwin
 		sz := int(sze.NumberValue())
 		if sz < 0 {
 			// If the size is less than zero, raise a new error.
-			return nil, NewThrowUnwind(e.NewNegativeArrayLengthException())
+			return nil, NewThrowUnwind(e.NewNegativeArrayLengthException(*node.Size))
 		}
 		arr = make([]rt.Value, sz)
 	}
@@ -733,7 +744,8 @@ func (e *evaluator) evalArrayLiteral(node *ast.ArrayLiteral) (*rt.Object, *Unwin
 			arr = make([]rt.Value, 0, len(*node.Elements))
 		} else if len(*node.Elements) > *sz {
 			// The element count exceeds the size; raise an error.
-			return nil, NewThrowUnwind(e.NewIncorrectArrayElementCountException(*sz, len(*node.Elements)))
+			return nil, NewThrowUnwind(
+				e.NewIncorrectArrayElementCountException(node, *sz, len(*node.Elements)))
 		}
 
 		for i, elem := range *node.Elements {
@@ -901,7 +913,7 @@ func (e *evaluator) evalLoadLocation(node *ast.LoadLocationExpression, lval bool
 func (e *evaluator) checkThis(node diag.Diagable, this *rt.Object) *Unwind {
 	contract.Assert(this != nil) // binder should catch cases where this isn't true
 	if this.Type() == types.Null {
-		return NewThrowUnwind(e.NewNullObjectException())
+		return NewThrowUnwind(e.NewNullObjectException(node))
 	}
 	return nil
 }

@@ -3,17 +3,25 @@
 package eval
 
 import (
+	"github.com/marapongo/mu/pkg/diag"
 	"github.com/marapongo/mu/pkg/eval/rt"
+	"github.com/marapongo/mu/pkg/util/contract"
 )
 
-func (e *evaluator) NewNullObjectException() *rt.Object {
-	return e.alloc.NewException("Target object is null")
+// NewException produces a new exception in the evaluator using the current location and stack frames.
+func (e *evaluator) NewException(node diag.Diagable, msg string, args ...interface{}) *rt.Object {
+	contract.Require(node != nil, "node")
+	return e.alloc.NewException(node, e.stack, msg, args...)
 }
 
-func (e *evaluator) NewNegativeArrayLengthException() *rt.Object {
-	return e.alloc.NewException("Invalid array size (must be >= 0)")
+func (e *evaluator) NewNullObjectException(node diag.Diagable) *rt.Object {
+	return e.NewException(node, "Target object is null")
 }
 
-func (e *evaluator) NewIncorrectArrayElementCountException(expect int, got int) *rt.Object {
-	return e.alloc.NewException("Invalid number of array elements; expected <=%v, got %v", expect, got)
+func (e *evaluator) NewNegativeArrayLengthException(node diag.Diagable) *rt.Object {
+	return e.NewException(node, "Invalid array size (must be >= 0)")
+}
+
+func (e *evaluator) NewIncorrectArrayElementCountException(node diag.Diagable, expect int, got int) *rt.Object {
+	return e.NewException(node, "Invalid number of array elements; expected <=%v, got %v", expect, got)
 }

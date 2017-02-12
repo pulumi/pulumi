@@ -8,6 +8,7 @@ import (
 
 	"github.com/marapongo/mu/pkg/compiler/symbols"
 	"github.com/marapongo/mu/pkg/compiler/types"
+	"github.com/marapongo/mu/pkg/diag"
 	"github.com/marapongo/mu/pkg/tokens"
 	"github.com/marapongo/mu/pkg/util/contract"
 )
@@ -65,7 +66,7 @@ func (o *Object) StringValue() string {
 	return s
 }
 
-// FunctionValue asserts that the target is a reference and returns its value.
+// FunctionValue asserts that the target is a function and returns its value.
 func (o *Object) FunctionValue() FuncStub {
 	contract.Assertf(o.value != nil, "Expected Function object to carry a Value; got nil")
 	r, ok := o.value.(FuncStub)
@@ -73,7 +74,7 @@ func (o *Object) FunctionValue() FuncStub {
 	return r
 }
 
-// PointerValue asserts that the target is a reference and returns its value.
+// PointerValue asserts that the target is a pointer and returns its value.
 func (o *Object) PointerValue() *Pointer {
 	contract.Assertf(o.value != nil, "Expected Pointer object to carry a Value; got nil")
 	r, ok := o.value.(*Pointer)
@@ -81,13 +82,12 @@ func (o *Object) PointerValue() *Pointer {
 	return r
 }
 
-// ExceptionMessage asserts that the target is an exception and returns its message.
-func (o *Object) ExceptionMessage() string {
-	contract.Assertf(o.t == types.Exception, "Expected object type to be Exception; got %v", o.t)
+// ExceptionValue asserts that the target is an exception and returns its value.
+func (o *Object) ExceptionValue() ExceptionInfo {
 	contract.Assertf(o.value != nil, "Expected Exception object to carry a Value; got nil")
-	s, ok := o.value.(string)
-	contract.Assertf(ok, "Expected Exception object's Value to be string")
-	return s
+	r, ok := o.value.(ExceptionInfo)
+	contract.Assertf(ok, "Expected Exception object's Value to be an ExceptionInfo")
+	return r
 }
 
 // GetPropertyAddr returns the reference to an object's property, lazily initializing if 'init' is true, or
@@ -216,6 +216,12 @@ func NewFunctionObject(fnc symbols.Function, this *Object) *Object {
 	return NewObject(fnc.FuncType(), stub, nil)
 }
 
+// FuncStub is a stub that captures a symbol plus an optional instance 'this' object.
+type FuncStub struct {
+	Func symbols.Function
+	This *Object
+}
+
 // NewPointerObject allocates a new pointer-like object that wraps the given reference.
 func NewPointerObject(t symbols.Type, ptr *Pointer) *Object {
 	contract.Require(ptr != nil, "ptr")
@@ -224,9 +230,22 @@ func NewPointerObject(t symbols.Type, ptr *Pointer) *Object {
 }
 
 // NewExceptionObject creates a new exception with the given message.
-func NewExceptionObject(message string, args ...interface{}) *Object {
-	// TODO: capture a stack trace.
-	return NewPrimitiveObject(types.Exception, fmt.Sprintf(message, args...))
+func NewExceptionObject(node diag.Diagable, stack *StackFrame, message string, args ...interface{}) *Object {
+	contract.Require(node != nil, "node")
+	contract.Require(stack != nil, "stack")
+	info := ExceptionInfo{
+		Node:    node,
+		Stack:   stack,
+		Message: fmt.Sprintf(message, args...),
+	}
+	return NewPrimitiveObject(types.Exception, info)
+}
+
+// ExceptionInfo captures information about a thrown exception (source, stack, and message).
+type ExceptionInfo struct {
+	Node    diag.Diagable // the location that the throw occurred.
+	Stack   *StackFrame   // the full linked stack trace.
+	Message string        // the optional pre-formatted error message.
 }
 
 // NewConstantObject returns a new object with the right type and value, based on some constant data.
@@ -246,10 +265,4 @@ func NewConstantObject(v interface{}) *Object {
 		contract.Failf("Unrecognized constant data literal: %v", data)
 		return nil
 	}
-}
-
-// FuncStub is a stub that captures a symbol plus an optional instance 'this' object.
-type FuncStub struct {
-	Func symbols.Function
-	This *Object
 }

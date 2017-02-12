@@ -4,6 +4,7 @@ package eval
 
 import (
 	"github.com/marapongo/mu/pkg/compiler/symbols"
+	"github.com/marapongo/mu/pkg/diag"
 	"github.com/marapongo/mu/pkg/eval/rt"
 )
 
@@ -81,8 +82,9 @@ func (a *Allocator) NewPointer(t symbols.Type, ptr *rt.Pointer) *rt.Object {
 }
 
 // NewException creates a new exception with the given message.
-func (a *Allocator) NewException(message string, args ...interface{}) *rt.Object {
-	obj := rt.NewExceptionObject(message, args...)
+func (a *Allocator) NewException(node diag.Diagable, stack *rt.StackFrame,
+	message string, args ...interface{}) *rt.Object {
+	obj := rt.NewExceptionObject(node, stack, message, args...)
 	a.onNewObject(obj)
 	return obj
 }
