@@ -1023,8 +1023,8 @@ export class Transformer {
                 kind:    ast.moduleKind,
                 name:    ident(this.getModuleName(modtok)),
                 imports: this.currentModuleImportTokens,
-                members: this.currentModuleMembers,
                 exports: this.currentModuleExports,
+                members: this.currentModuleMembers,
             });
         }
         finally {
@@ -1072,7 +1072,6 @@ export class Transformer {
 
     private async transformExportStatement(
             modtok: tokens.ModuleToken, node: ts.Statement): Promise<ModuleElement[]> {
-
         let elements: ModuleElement[] = await this.transformModuleDeclarationStatement(modtok, node);
 
         // Default exports get the special name "default"; all others will just reuse the element name.
@@ -1093,8 +1092,14 @@ export class Transformer {
         else {
             let exports: ast.Export[] = [];
             for (let element of elements) {
-                if (ast.isDefinition(<ast.Node>element)) {
-                    let member = <ast.ModuleMember>element;
+                let member: ast.ModuleMember | undefined;
+                if (isVariableDeclaration(element)) {
+                    member = (<VariableDeclaration<ast.ModuleProperty>>element).variable;
+                }
+                else if (ast.isDefinition(<ast.Node>element)) {
+                    member = <ast.ModuleMember>element;
+                }
+                if (member) {
                     let id: tokens.Name = member.name.ident;
                     exports.push(this.withLocation(node, <ast.Export>{
                         kind:     ast.exportKind,
@@ -1132,10 +1137,6 @@ export class Transformer {
             let source: string = this.transformStringLiteral(spec).value;
             sourceModule = this.resolveModuleReferenceByName(source);
         }
-        else {
-            // If there is no module specifier, we are exporting from the current compilation module.
-            sourceModule = tokens.selfModule;
-        }
 
         if (node.exportClause) {
             // This is an export declaration of the form
@@ -1150,65 +1151,54 @@ export class Transformer {
             //
             // For every export clause, we will issue a top-level MuIL re-export AST node.
             for (let exportClause of node.exportClause.elements) {
-                let name: ast.Identifier = this.transformIdentifier(exportClause.name);
+                let srcname: ast.Identifier = this.transformIdentifier(exportClause.name);
+                let dstname: ast.Identifier = srcname;
                 if (exportClause.propertyName) {
-                    // The export is being renamed (`<propertyName> as <name>`).  This yields an export node, even for
-                    // elements exported from the current module.
-                    let propertyName: ast.Identifier = this.transformIdentifier(exportClause.propertyName);
-                    exports.push(this.withLocation(exportClause, <ast.Export>{
-                        kind:     ast.exportKind,
-                        name:     name,
-                        referent: this.withLocation(exportClause.propertyName, <ast.Token>{
-                            kind: ast.tokenKind,
-                            tok:  await this.createModuleRefMemberToken(sourceModule, propertyName.ident),
-                        }),
-                    }));
+                    // The export is being renamed (`export <propertyName> as <name>`).  This yields an export node,
+                    // even for elements exported from the current module.
+                    srcname = this.transformIdentifier(exportClause.propertyName);
+                }
+
+                // If this is an export from another module, create an export definition.  Otherwise, for exports
+                // referring to ambient elements inside of the current module, we need to do a bitt of investigation.
+                let reftok: tokens.Token | undefined;
+                if (sourceModule) {
+                    reftok = await this.createModuleRefMemberToken(sourceModule, srcname.ident);
                 }
                 else {
-                    // If this is an export from another module, create an export definition.  Otherwise, for exports
-                    // from within the same module, just look up the definition and change its accessibility to public.
-                    if (sourceModule) {
-                        exports.push(this.withLocation(exportClause, <ast.Export>{
-                            kind:     ast.exportKind,
-                            name:     name,
-                            referent: this.withLocation(exportClause.name, <ast.Token>{
-                                kind: ast.tokenKind,
-                                tok:  await this.createModuleRefMemberToken(sourceModule, name.ident),
-                            }),
-                        }));
+                    let expsym: ts.Symbol | undefined = this.checker().getSymbolAtLocation(exportClause.name);
+                    contract.assert(!!expsym);
+                    if (expsym.flags & ts.SymbolFlags.Alias) {
+                        expsym = this.checker().getAliasedSymbol(expsym);
+                    }
+                    if (expsym.flags & (ts.SymbolFlags.ValueModule | ts.SymbolFlags.NamespaceModule)) {
+                        // If this is a module symbol, then we are rexporting an import, e.g.:
+                        //      import * as other from "other";
+                        //      export {other};
+                        // Create a fully qualified token for that other module using the one we used on import.
+                        contract.assert(!!this.currentModuleImports);
+                        let modref: ModuleReference | undefined = this.currentModuleImports!.get(srcname.ident);
+                        contract.assert(!!modref);
+                        reftok = await this.createModuleToken(modref!);
                     }
                     else {
+                        // Otherwise, it must be a module member, e.g. an exported class, interface, or variable.
+                        contract.assert(!!this.currentModuleToken);
                         contract.assert(!!this.currentModuleMembers);
-                        contract.assert(!!this.currentModuleImports);
-                        contract.assert(!!this.currentModuleImportTokens);
-                        // First look for a module member, for reexporting classes, interfaces, and variables.
-                        let reftok: tokens.Token | undefined;
-                        let member: ast.ModuleMember | undefined = this.currentModuleMembers![name.ident];
-                        if (member) {
-                            contract.assert(!!this.currentModuleToken);
-                            reftok = this.createModuleMemberToken(this.currentModuleToken!, name.ident);
-                        }
-                        else {
-                            // If that failed, look for a known import.  This enables reexporting whole modules, e.g.:
-                            //      import * as other from "other";
-                            //      export {other};
-                            contract.assert(!!this.currentModuleImports);
-                            let modref: ModuleReference | undefined = this.currentModuleImports!.get(name.ident);
-                            contract.assert(!!modref);
-                            reftok = await this.createModuleToken(modref!);
-                        }
-
-                        contract.assert(!!reftok, "Expected either a member or import match for export name");
-                        exports.push(this.withLocation(exportClause, <ast.Export>{
-                            kind:     ast.exportKind,
-                            name:     name,
-                            referent: this.withLocation(exportClause, <ast.Token>{
-                                kind: ast.tokenKind,
-                                tok:  reftok,
-                            }),
-                        }));
+                        contract.assert(!!this.currentModuleMembers![srcname.ident]);
+                        reftok = this.createModuleMemberToken(this.currentModuleToken!, srcname.ident);
                     }
                 }
+
+                contract.assert(!!reftok, "Expected either a member or import match for export name");
+                exports.push(this.withLocation(exportClause, <ast.Export>{
+                    kind:     ast.exportKind,
+                    name:     dstname,
+                    referent: this.copyLocation(srcname, <ast.Token>{
+                        kind: ast.tokenKind,
+                        tok:  reftok,
+                    }),
+                }));
             }
         }
         else {

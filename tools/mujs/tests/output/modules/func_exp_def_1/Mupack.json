@@ -8,6 +8,30 @@
                 "ident": "index"
             },
             "imports": [],
+            "exports": {
+                "default": {
+                    "kind": "Export",
+                    "name": {
+                        "kind": "Identifier",
+                        "ident": "default"
+                    },
+                    "referent": {
+                        "kind": "Token",
+                        "tok": "func_def_exp_1:index:default"
+                    },
+                    "loc": {
+                        "file": "index.ts",
+                        "start": {
+                            "line": 1,
+                            "column": 1
+                        },
+                        "end": {
+                            "line": 3,
+                            "column": 2
+                        }
+                    }
+                }
+            },
             "members": {
                 "default": {
                     "kind": "ModuleMethod",
@@ -119,30 +143,6 @@
                     "body": {
                         "kind": "Block",
                         "statements": []
-                    }
-                }
-            },
-            "exports": {
-                "default": {
-                    "kind": "Export",
-                    "name": {
-                        "kind": "Identifier",
-                        "ident": "default"
-                    },
-                    "referent": {
-                        "kind": "Token",
-                        "tok": "func_def_exp_1:index:default"
-                    },
-                    "loc": {
-                        "file": "index.ts",
-                        "start": {
-                            "line": 1,
-                            "column": 1
-                        },
-                        "end": {
-                            "line": 3,
-                            "column": 2
-                        }
                     }
                 }
             },

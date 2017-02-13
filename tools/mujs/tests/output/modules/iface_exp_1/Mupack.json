@@ -8,50 +8,6 @@
                 "ident": "index"
             },
             "imports": [],
-            "members": {
-                "I": {
-                    "kind": "Class",
-                    "name": {
-                        "kind": "Identifier",
-                        "ident": "I",
-                        "loc": {
-                            "file": "index.ts",
-                            "start": {
-                                "line": 1,
-                                "column": 18
-                            },
-                            "end": {
-                                "line": 1,
-                                "column": 19
-                            }
-                        }
-                    },
-                    "members": {},
-                    "interface": true,
-                    "loc": {
-                        "file": "index.ts",
-                        "start": {
-                            "line": 1,
-                            "column": 1
-                        },
-                        "end": {
-                            "line": 2,
-                            "column": 2
-                        }
-                    }
-                },
-                ".main": {
-                    "kind": "ModuleMethod",
-                    "name": {
-                        "kind": "Identifier",
-                        "ident": ".main"
-                    },
-                    "body": {
-                        "kind": "Block",
-                        "statements": []
-                    }
-                }
-            },
             "exports": {
                 "I": {
                     "kind": "Export",
@@ -95,6 +51,50 @@
                             "line": 2,
                             "column": 2
                         }
+                    }
+                }
+            },
+            "members": {
+                "I": {
+                    "kind": "Class",
+                    "name": {
+                        "kind": "Identifier",
+                        "ident": "I",
+                        "loc": {
+                            "file": "index.ts",
+                            "start": {
+                                "line": 1,
+                                "column": 18
+                            },
+                            "end": {
+                                "line": 1,
+                                "column": 19
+                            }
+                        }
+                    },
+                    "members": {},
+                    "interface": true,
+                    "loc": {
+                        "file": "index.ts",
+                        "start": {
+                            "line": 1,
+                            "column": 1
+                        },
+                        "end": {
+                            "line": 2,
+                            "column": 2
+                        }
+                    }
+                },
+                ".main": {
+                    "kind": "ModuleMethod",
+                    "name": {
+                        "kind": "Identifier",
+                        "ident": ".main"
+                    },
+                    "body": {
+                        "kind": "Block",
+                        "statements": []
                     }
                 }
             },

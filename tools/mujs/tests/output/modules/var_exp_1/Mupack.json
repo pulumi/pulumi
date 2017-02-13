@@ -8,6 +8,52 @@
                 "ident": "index"
             },
             "imports": [],
+            "exports": {
+                "x": {
+                    "kind": "Export",
+                    "name": {
+                        "kind": "Identifier",
+                        "ident": "x",
+                        "loc": {
+                            "file": "index.ts",
+                            "start": {
+                                "line": 1,
+                                "column": 12
+                            },
+                            "end": {
+                                "line": 1,
+                                "column": 13
+                            }
+                        }
+                    },
+                    "referent": {
+                        "kind": "Token",
+                        "tok": "var_exp_1:index:x",
+                        "loc": {
+                            "file": "index.ts",
+                            "start": {
+                                "line": 1,
+                                "column": 12
+                            },
+                            "end": {
+                                "line": 1,
+                                "column": 13
+                            }
+                        }
+                    },
+                    "loc": {
+                        "file": "index.ts",
+                        "start": {
+                            "line": 1,
+                            "column": 1
+                        },
+                        "end": {
+                            "line": 1,
+                            "column": 19
+                        }
+                    }
+                }
+            },
             "members": {
                 "x": {
                     "kind": "ModuleProperty",
@@ -140,7 +186,6 @@
                     }
                 }
             },
-            "exports": {},
             "loc": {
                 "file": "index.ts",
                 "start": {

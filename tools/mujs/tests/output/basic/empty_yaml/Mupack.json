@@ -8,6 +8,7 @@
                 "ident": "index"
             },
             "imports": [],
+            "exports": {},
             "members": {
                 ".main": {
                     "kind": "ModuleMethod",
@@ -21,7 +22,6 @@
                     }
                 }
             },
-            "exports": {},
             "loc": {
                 "file": "index.ts",
                 "start": {

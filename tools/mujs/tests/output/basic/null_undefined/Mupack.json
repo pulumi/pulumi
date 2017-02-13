@@ -8,6 +8,7 @@
                 "ident": "index"
             },
             "imports": [],
+            "exports": {},
             "members": {
                 "au": {
                     "kind": "ModuleProperty",
@@ -1318,7 +1319,6 @@
                     }
                 }
             },
-            "exports": {},
             "loc": {
                 "file": "index.ts",
                 "start": {

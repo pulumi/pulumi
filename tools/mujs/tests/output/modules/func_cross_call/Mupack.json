@@ -8,6 +8,52 @@
                 "ident": "other"
             },
             "imports": [],
+            "exports": {
+                "foo": {
+                    "kind": "Export",
+                    "name": {
+                        "kind": "Identifier",
+                        "ident": "foo",
+                        "loc": {
+                            "file": "other.ts",
+                            "start": {
+                                "line": 1,
+                                "column": 17
+                            },
+                            "end": {
+                                "line": 1,
+                                "column": 20
+                            }
+                        }
+                    },
+                    "referent": {
+                        "kind": "Token",
+                        "tok": "modules/func_cross_call:other:foo",
+                        "loc": {
+                            "file": "other.ts",
+                            "start": {
+                                "line": 1,
+                                "column": 17
+                            },
+                            "end": {
+                                "line": 1,
+                                "column": 20
+                            }
+                        }
+                    },
+                    "loc": {
+                        "file": "other.ts",
+                        "start": {
+                            "line": 1,
+                            "column": 1
+                        },
+                        "end": {
+                            "line": 3,
+                            "column": 2
+                        }
+                    }
+                }
+            },
             "members": {
                 "foo": {
                     "kind": "ModuleMethod",
@@ -66,52 +112,6 @@
                     }
                 }
             },
-            "exports": {
-                "foo": {
-                    "kind": "Export",
-                    "name": {
-                        "kind": "Identifier",
-                        "ident": "foo",
-                        "loc": {
-                            "file": "other.ts",
-                            "start": {
-                                "line": 1,
-                                "column": 17
-                            },
-                            "end": {
-                                "line": 1,
-                                "column": 20
-                            }
-                        }
-                    },
-                    "referent": {
-                        "kind": "Token",
-                        "tok": "modules/func_cross_call:other:foo",
-                        "loc": {
-                            "file": "other.ts",
-                            "start": {
-                                "line": 1,
-                                "column": 17
-                            },
-                            "end": {
-                                "line": 1,
-                                "column": 20
-                            }
-                        }
-                    },
-                    "loc": {
-                        "file": "other.ts",
-                        "start": {
-                            "line": 1,
-                            "column": 1
-                        },
-                        "end": {
-                            "line": 3,
-                            "column": 2
-                        }
-                    }
-                }
-            },
             "loc": {
                 "file": "other.ts",
                 "start": {
@@ -147,6 +147,7 @@
                     }
                 }
             ],
+            "exports": {},
             "members": {
                 ".init": {
                     "kind": "ModuleMethod",
@@ -230,7 +231,6 @@
                     }
                 }
             },
-            "exports": {},
             "loc": {
                 "file": "index.ts",
                 "start": {
