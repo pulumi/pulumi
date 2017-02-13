@@ -857,7 +857,7 @@ export class Transformer {
             contract.assert(!!ty);
             let tytok: tokens.TypeToken | undefined = await this.resolveTypeToken(objex, ty);
             contract.assert(!!tytok);
-            if (tytok === tokens.dynamicType) {
+            if (tytok === tokens.objectType || tytok === tokens.dynamicType) {
                 isDynamic = true; // skip the rest; we cannot possibly create a member token.
                 object = await this.transformExpression(objex!);
             }
