@@ -83,16 +83,17 @@ func (g *generator) OnNewObject(o *rt.Object) {
 	contract.Assert(o != nil)
 	glog.V(9).Infof("GraphGenerator OnNewObject t=%v, o=%v", o.Type(), o)
 
-	// Add an entry to the depends set.  This should not already exist; it's the first time we encountered it.
+	// Add an entry to the depends set.  It could already exist if it's one of the few "special" object types -- like
+	// boolean and null -- that have a fixed number of constant objects.
 	// TODO: eventually we may want to be smarter about this, since tracking all dependencies will obviously create
 	//     space leaks.  For instance, we could try to narrow down the objects we track to just those rooted by
 	//     resources -- since ultimately that's all we will care about -- however, doing that requires (expensive)
 	//     reachability analysis that we obviously wouldn't want to perform on each variable assignment.  Another
 	//     option would be to periodically garbage collect the heap, clearing out any objects that aren't rooted by a
 	//     resource.  This would amortize the cost of scanning, but clearly would be somewhat complex to implement.
-	_, has := g.objs[o]
-	contract.Assertf(!has, "Unexpected duplicate new object encountered")
-	g.objs[o] = make(objectSet) // dependencies start out empty.
+	if _, has := g.objs[o]; !has {
+		g.objs[o] = make(objectSet) // dependencies start out empty.
+	}
 }
 
 // OnVariableAssign is called whenever a property has been (re)assigned; it receives both the old and new values.
