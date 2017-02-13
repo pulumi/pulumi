@@ -18,10 +18,12 @@ class D extends C {
 let a: string = modprop;
 let b: number = C.clastaprop;
 let c: C = <C><any>undefined;
-let d: boolean = c.claprop;
-let e = {
-    f: modprop,
-    g: C.clastaprop,
-    h: c.claprop,
-};
+if (c !== undefined) {
+    let d: boolean = c.claprop;
+    let e = {
+        f: modprop,
+        g: C.clastaprop,
+        h: c.claprop,
+    };
+}
 

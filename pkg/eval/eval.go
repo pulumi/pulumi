@@ -1406,8 +1406,20 @@ func (e *evaluator) evalBinaryOperatorEquals(lhs *rt.Object, rhs *rt.Object) boo
 }
 
 func (e *evaluator) evalCastExpression(node *ast.CastExpression) (*rt.Object, *Unwind) {
-	contract.Failf("Evaluation of %v nodes not yet implemented", reflect.TypeOf(node))
-	return nil, nil
+	// Evaluate the underlying expression.
+	obj, uw := e.evalExpression(node.Expression)
+	if uw != nil {
+		return nil, uw
+	}
+
+	// All bad static casts have been rejected, so we now need to check the runtime types.
+	from := obj.Type()
+	to := e.ctx.RequireType(node)
+	if !types.CanConvert(from, to) {
+		return nil, NewThrowUnwind(e.NewInvalidCastException(node, from, to))
+	}
+
+	return obj, nil
 }
 
 func (e *evaluator) evalIsInstExpression(node *ast.IsInstExpression) (*rt.Object, *Unwind) {

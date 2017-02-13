@@ -3,6 +3,7 @@
 package eval
 
 import (
+	"github.com/marapongo/mu/pkg/compiler/symbols"
 	"github.com/marapongo/mu/pkg/diag"
 	"github.com/marapongo/mu/pkg/eval/rt"
 	"github.com/marapongo/mu/pkg/util/contract"
@@ -24,4 +25,8 @@ func (e *evaluator) NewNegativeArrayLengthException(node diag.Diagable) *rt.Obje
 
 func (e *evaluator) NewIncorrectArrayElementCountException(node diag.Diagable, expect int, got int) *rt.Object {
 	return e.NewException(node, "Invalid number of array elements; expected <=%v, got %v", expect, got)
+}
+
+func (e *evaluator) NewInvalidCastException(node diag.Diagable, from symbols.Type, to symbols.Type) *rt.Object {
+	return e.NewException(node, "Cannot cast object of type '%v' to '%v'", from, to)
 }

@@ -1,0 +1,310 @@
+{
+    "name": "basic/casts",
+    "modules": {
+        "index": {
+            "kind": "Module",
+            "name": {
+                "kind": "Identifier",
+                "ident": "index"
+            },
+            "imports": [],
+            "members": {
+                "a": {
+                    "kind": "ModuleProperty",
+                    "name": {
+                        "kind": "Identifier",
+                        "ident": "a",
+                        "loc": {
+                            "file": "index.ts",
+                            "start": {
+                                "line": 3,
+                                "column": 4
+                            },
+                            "end": {
+                                "line": 3,
+                                "column": 5
+                            }
+                        }
+                    },
+                    "access": "private",
+                    "type": {
+                        "kind": "TypeToken",
+                        "tok": "string",
+                        "loc": {
+                            "file": "index.ts",
+                            "start": {
+                                "line": 3,
+                                "column": 4
+                            },
+                            "end": {
+                                "line": 3,
+                                "column": 19
+                            }
+                        }
+                    }
+                },
+                "b": {
+                    "kind": "ModuleProperty",
+                    "name": {
+                        "kind": "Identifier",
+                        "ident": "b",
+                        "loc": {
+                            "file": "index.ts",
+                            "start": {
+                                "line": 4,
+                                "column": 4
+                            },
+                            "end": {
+                                "line": 4,
+                                "column": 5
+                            }
+                        }
+                    },
+                    "access": "private",
+                    "type": {
+                        "kind": "TypeToken",
+                        "tok": "dynamic",
+                        "loc": {
+                            "file": "index.ts",
+                            "start": {
+                                "line": 4,
+                                "column": 4
+                            },
+                            "end": {
+                                "line": 4,
+                                "column": 19
+                            }
+                        }
+                    }
+                },
+                ".init": {
+                    "kind": "ModuleMethod",
+                    "name": {
+                        "kind": "Identifier",
+                        "ident": ".init"
+                    },
+                    "access": "public",
+                    "body": {
+                        "kind": "Block",
+                        "statements": [
+                            {
+                                "kind": "ExpressionStatement",
+                                "expression": {
+                                    "kind": "BinaryOperatorExpression",
+                                    "left": {
+                                        "kind": "LoadLocationExpression",
+                                        "name": {
+                                            "kind": "Token",
+                                            "tok": "basic/casts:index:a",
+                                            "loc": {
+                                                "file": "index.ts",
+                                                "start": {
+                                                    "line": 3,
+                                                    "column": 4
+                                                },
+                                                "end": {
+                                                    "line": 3,
+                                                    "column": 5
+                                                }
+                                            }
+                                        },
+                                        "loc": {
+                                            "file": "index.ts",
+                                            "start": {
+                                                "line": 3,
+                                                "column": 16
+                                            },
+                                            "end": {
+                                                "line": 3,
+                                                "column": 19
+                                            }
+                                        }
+                                    },
+                                    "operator": "=",
+                                    "right": {
+                                        "kind": "StringLiteral",
+                                        "raw": "x",
+                                        "value": "x",
+                                        "loc": {
+                                            "file": "index.ts",
+                                            "start": {
+                                                "line": 3,
+                                                "column": 16
+                                            },
+                                            "end": {
+                                                "line": 3,
+                                                "column": 19
+                                            }
+                                        }
+                                    },
+                                    "loc": {
+                                        "file": "index.ts",
+                                        "start": {
+                                            "line": 3,
+                                            "column": 16
+                                        },
+                                        "end": {
+                                            "line": 3,
+                                            "column": 19
+                                        }
+                                    }
+                                },
+                                "loc": {
+                                    "file": "index.ts",
+                                    "start": {
+                                        "line": 3,
+                                        "column": 16
+                                    },
+                                    "end": {
+                                        "line": 3,
+                                        "column": 19
+                                    }
+                                }
+                            },
+                            {
+                                "kind": "ExpressionStatement",
+                                "expression": {
+                                    "kind": "BinaryOperatorExpression",
+                                    "left": {
+                                        "kind": "LoadLocationExpression",
+                                        "name": {
+                                            "kind": "Token",
+                                            "tok": "basic/casts:index:b",
+                                            "loc": {
+                                                "file": "index.ts",
+                                                "start": {
+                                                    "line": 4,
+                                                    "column": 4
+                                                },
+                                                "end": {
+                                                    "line": 4,
+                                                    "column": 5
+                                                }
+                                            }
+                                        },
+                                        "loc": {
+                                            "file": "index.ts",
+                                            "start": {
+                                                "line": 4,
+                                                "column": 13
+                                            },
+                                            "end": {
+                                                "line": 4,
+                                                "column": 19
+                                            }
+                                        }
+                                    },
+                                    "operator": "=",
+                                    "right": {
+                                        "kind": "CastExpression",
+                                        "expression": {
+                                            "kind": "LoadLocationExpression",
+                                            "name": {
+                                                "kind": "Token",
+                                                "tok": "basic/casts:index:a",
+                                                "loc": {
+                                                    "file": "index.ts",
+                                                    "start": {
+                                                        "line": 4,
+                                                        "column": 18
+                                                    },
+                                                    "end": {
+                                                        "line": 4,
+                                                        "column": 19
+                                                    }
+                                                }
+                                            },
+                                            "loc": {
+                                                "file": "index.ts",
+                                                "start": {
+                                                    "line": 4,
+                                                    "column": 18
+                                                },
+                                                "end": {
+                                                    "line": 4,
+                                                    "column": 19
+                                                }
+                                            }
+                                        },
+                                        "type": {
+                                            "kind": "TypeToken",
+                                            "tok": "dynamic",
+                                            "loc": {
+                                                "file": "index.ts",
+                                                "start": {
+                                                    "line": 4,
+                                                    "column": 13
+                                                },
+                                                "end": {
+                                                    "line": 4,
+                                                    "column": 19
+                                                }
+                                            }
+                                        },
+                                        "loc": {
+                                            "file": "index.ts",
+                                            "start": {
+                                                "line": 4,
+                                                "column": 13
+                                            },
+                                            "end": {
+                                                "line": 4,
+                                                "column": 19
+                                            }
+                                        }
+                                    },
+                                    "loc": {
+                                        "file": "index.ts",
+                                        "start": {
+                                            "line": 4,
+                                            "column": 13
+                                        },
+                                        "end": {
+                                            "line": 4,
+                                            "column": 19
+                                        }
+                                    }
+                                },
+                                "loc": {
+                                    "file": "index.ts",
+                                    "start": {
+                                        "line": 4,
+                                        "column": 13
+                                    },
+                                    "end": {
+                                        "line": 4,
+                                        "column": 19
+                                    }
+                                }
+                            }
+                        ]
+                    }
+                },
+                ".main": {
+                    "kind": "ModuleMethod",
+                    "name": {
+                        "kind": "Identifier",
+                        "ident": ".main"
+                    },
+                    "access": "public",
+                    "body": {
+                        "kind": "Block",
+                        "statements": []
+                    }
+                }
+            },
+            "loc": {
+                "file": "index.ts",
+                "start": {
+                    "line": 3,
+                    "column": 0
+                },
+                "end": {
+                    "line": 12,
+                    "column": 0
+                }
+            }
+        }
+    },
+    "default": "index"
+}
