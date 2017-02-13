@@ -1605,7 +1605,7 @@
                                                 "kind": "ArrayLiteral",
                                                 "elemType": {
                                                     "kind": "TypeToken",
-                                                    "tok": "dynamic"
+                                                    "tok": "object"
                                                 },
                                                 "elements": [
                                                     {

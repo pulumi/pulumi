@@ -701,11 +701,14 @@ export class Transformer {
         else if (flags & ts.TypeFlags.Void) {
             return undefined; // void is represented as the absence of a type.
         }
+        else if (flags & ts.TypeFlags.Null || flags & ts.TypeFlags.Undefined) {
+            return tokens.objectType;
+        }
         else if (simple.symbol) {
             if (simple.symbol.flags & (ts.SymbolFlags.ObjectLiteral | ts.SymbolFlags.TypeLiteral)) {
                 // For object and type literals, simply return the dynamic type.
                 // TODO: consider emitting strong types for these and using them anonymously.
-                return tokens.dynamicType;
+                return tokens.objectType;
             }
             else {
                 // For object types, we will try to produce the fully qualified symbol name.  If the type is an array
@@ -714,7 +717,7 @@ export class Transformer {
                     if ((<ts.ObjectType>simple).objectFlags & ts.ObjectFlags.Reference) {
                         let tyre = <ts.TypeReference>simple;
                         if (tyre.target === this.builtinObjectType) {
-                            return `${tokens.objectType}`;
+                            return tokens.objectType;
                         }
                         else if (tyre.target === this.builtinArrayType) {
                             // Produce a token of the form "[]<elem>".
@@ -741,6 +744,9 @@ export class Transformer {
                 // Otherwise, bottom out on resolving a fully qualified MuPackage type token out of the symbol.
                 return await this.resolveTokenFromSymbol(simple.symbol);
             }
+        }
+        else if (flags & ts.TypeFlags.Object) {
+            return tokens.objectType;
         }
 
         // Finally, if we got here, it's not a type we support yet; issue an error and return `dynamic`.
@@ -2317,15 +2323,35 @@ export class Transformer {
     }
 
     private async transformArrayLiteralExpression(node: ts.ArrayLiteralExpression): Promise<ast.ArrayLiteral> {
+        let elemtok: tokens.TypeToken | undefined;
+
+        // See if TypeScript has assigned a type for this; if it's an array type, extract the element.
+        let arrty: ts.Type = this.checker().getTypeAtLocation(node);
+        if ((arrty.flags & ts.TypeFlags.Object) &&
+                ((<ts.ObjectType>arrty).objectFlags & ts.ObjectFlags.Reference)) {
+            let arrobjty: ts.TypeReference = <ts.TypeReference>arrty;
+            if (arrobjty.target === this.builtinArrayType) {
+                contract.assert(arrobjty.typeArguments.length === 1);
+                let elemty: ts.Type = arrobjty.typeArguments[0];
+                elemtok = await this.resolveTypeToken(node, elemty);
+            }
+        }
+        if (!elemtok) {
+            // If no static type was determined, assign the dynamic type to it.
+            elemtok = tokens.dynamicType;
+        }
+
+        // If there is an initializer, transform all expressions.
         let elements: ast.Expression[] = [];
         for (let elem of node.elements) {
             elements.push(await this.transformExpression(elem));
         }
+
         return this.withLocation(node, <ast.ArrayLiteral>{
             kind:     ast.arrayLiteralKind,
             elemType: <ast.TypeToken>{
                 kind: ast.typeTokenKind,
-                tok:  tokens.dynamicType, // TODO[marapongo/mu#46]: come up with a type.
+                tok:  elemtok,
             },
             elements: elements,
         });

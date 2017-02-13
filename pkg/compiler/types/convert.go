@@ -63,13 +63,30 @@ func Convert(from symbols.Type, to symbols.Type) Conversion {
 		if toArr, toIsArr := to.(*symbols.ArrayType); toIsArr {
 			if t.Element == toArr.Element {
 				return ImplicitConversion
+			} else if t.Element == Dynamic || toArr.Element == Dynamic {
+				return AutoDynamicConversion
 			}
 		}
 	case *symbols.MapType:
 		// Map types with the same key and element types can convert.
 		if toMap, toIsMap := to.(*symbols.MapType); toIsMap {
-			if t.Key == toMap.Key && t.Element == toMap.Element {
-				return ImplicitConversion
+			k := NoConversion
+			if t.Key == toMap.Key {
+				k = ImplicitConversion
+			} else if t.Key == Dynamic || toMap.Key == Dynamic {
+				k = AutoDynamicConversion
+			}
+			e := NoConversion
+			if t.Element == toMap.Element {
+				e = ImplicitConversion
+			} else if t.Element == Dynamic || toMap.Element == Dynamic {
+				e = AutoDynamicConversion
+			}
+			if k != NoConversion && e != NoConversion {
+				if k < e {
+					return e
+				}
+				return k
 			}
 		}
 	case *symbols.FunctionType:

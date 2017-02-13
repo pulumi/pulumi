@@ -1261,7 +1261,7 @@
                                                         },
                                                         "type": {
                                                             "kind": "TypeToken",
-                                                            "tok": "dynamic",
+                                                            "tok": "object",
                                                             "loc": {
                                                                 "file": "index.ts",
                                                                 "start": {
