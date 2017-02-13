@@ -5,7 +5,7 @@ package diag
 // Pos represents a position in a file.
 type Pos struct {
 	Line   int // a 1-based line number
-	Column int // a 0-based column number
+	Column int // a 1-based column number
 }
 
 // EmptyPos may be used when no position is needed.

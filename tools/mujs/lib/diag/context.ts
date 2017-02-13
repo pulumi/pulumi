@@ -172,12 +172,12 @@ export class Context {
         };
     }
 
-    // Translates a TypeScript position into a MuIL position (0 to 1 based lines).
+    // Translates a TypeScript position into a MuIL position (0 to 1 based).
     private positionFrom(s: ts.SourceFile, p: number): ast.Position {
         let lc = s.getLineAndCharacterOfPosition(p);
         return <ast.Position>{
-            line:   lc.line + 1,  // transform to 1-based line number
-            column: lc.character,
+            line:   lc.line + 1,      // transform to 1-based line number
+            column: lc.character + 1, // transform to 1-based character number
         };
     }
 
