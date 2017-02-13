@@ -510,7 +510,7 @@ export class Transformer {
     // createModuleReference turns a ECMAScript import path into a MuIL module token.
     private createModuleReference(sym: ts.Symbol): ModuleReference {
         contract.assert(!!(sym.flags & (ts.SymbolFlags.ValueModule | ts.SymbolFlags.NamespaceModule)),
-                       `Symbol is not a module: ${ts.SymbolFlags[sym.flags]}`);
+                        `Symbol is not a module: ${ts.SymbolFlags[sym.flags]}`);
         return this.createModuleReferenceFromPath(sym.name);
     }
 
@@ -1760,17 +1760,17 @@ export class Transformer {
 
     private makeVariableInitializer(decl: VariableDeclaration<ast.Variable>): ast.Statement {
         contract.requires(!!decl.initializer, "decl", "Expected variable declaration to have an initializer");
-        return this.withLocation(decl.node, <ast.ExpressionStatement>{
+        return this.copyLocation(decl.initializer!, <ast.ExpressionStatement>{
             kind:       ast.expressionStatementKind,
-            expression: this.withLocation(decl.node, <ast.BinaryOperatorExpression>{
+            expression: this.copyLocation(decl.initializer!, <ast.BinaryOperatorExpression>{
                 kind:     ast.binaryOperatorExpressionKind,
-                left:     <ast.LoadLocationExpression>{
+                left:     this.copyLocation(decl.initializer!, <ast.LoadLocationExpression>{
                     kind: ast.loadLocationExpressionKind,
                     name: this.copyLocation(decl.variable.name, <ast.Token>{
                         kind: ast.tokenKind,
                         tok:  decl.tok,
                     }),
-                },
+                }),
                 operator: "=",
                 right:    decl.initializer,
             }),

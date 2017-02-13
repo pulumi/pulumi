@@ -1,11 +1,11 @@
 {
     "name": "modules/func_cross_call",
     "modules": {
-        "a": {
+        "other": {
             "kind": "Module",
             "name": {
                 "kind": "Identifier",
-                "ident": "a"
+                "ident": "other"
             },
             "imports": [],
             "members": {
@@ -15,7 +15,7 @@
                         "kind": "Identifier",
                         "ident": "foo",
                         "loc": {
-                            "file": "a.ts",
+                            "file": "other.ts",
                             "start": {
                                 "line": 1,
                                 "column": 16
@@ -32,7 +32,7 @@
                         "kind": "Block",
                         "statements": [],
                         "loc": {
-                            "file": "a.ts",
+                            "file": "other.ts",
                             "start": {
                                 "line": 1,
                                 "column": 28
@@ -44,7 +44,7 @@
                         }
                     },
                     "loc": {
-                        "file": "a.ts",
+                        "file": "other.ts",
                         "start": {
                             "line": 1,
                             "column": 0
@@ -69,7 +69,7 @@
                 }
             },
             "loc": {
-                "file": "a.ts",
+                "file": "other.ts",
                 "start": {
                     "line": 1,
                     "column": 0
@@ -80,25 +80,25 @@
                 }
             }
         },
-        "b": {
+        "index": {
             "kind": "Module",
             "name": {
                 "kind": "Identifier",
-                "ident": "b"
+                "ident": "index"
             },
             "imports": [
                 {
                     "kind": "ModuleToken",
-                    "tok": "modules/func_cross_call:a",
+                    "tok": "modules/func_cross_call:other",
                     "loc": {
-                        "file": "b.ts",
+                        "file": "index.ts",
                         "start": {
                             "line": 1,
-                            "column": 19
+                            "column": 23
                         },
                         "end": {
                             "line": 1,
-                            "column": 24
+                            "column": 32
                         }
                     }
                 }
@@ -122,53 +122,53 @@
                                         "kind": "LoadLocationExpression",
                                         "name": {
                                             "kind": "Token",
-                                            "tok": "modules/func_cross_call:a:foo",
+                                            "tok": "modules/func_cross_call:other:foo",
                                             "loc": {
-                                                "file": "b.ts",
+                                                "file": "index.ts",
                                                 "start": {
                                                     "line": 2,
-                                                    "column": 2
+                                                    "column": 6
                                                 },
                                                 "end": {
                                                     "line": 2,
-                                                    "column": 5
+                                                    "column": 9
                                                 }
                                             }
                                         },
                                         "loc": {
-                                            "file": "b.ts",
+                                            "file": "index.ts",
                                             "start": {
                                                 "line": 2,
                                                 "column": 0
                                             },
                                             "end": {
                                                 "line": 2,
-                                                "column": 5
+                                                "column": 9
                                             }
                                         }
                                     },
                                     "arguments": [],
                                     "loc": {
-                                        "file": "b.ts",
+                                        "file": "index.ts",
                                         "start": {
                                             "line": 2,
                                             "column": 0
                                         },
                                         "end": {
                                             "line": 2,
-                                            "column": 7
+                                            "column": 11
                                         }
                                     }
                                 },
                                 "loc": {
-                                    "file": "b.ts",
+                                    "file": "index.ts",
                                     "start": {
                                         "line": 2,
                                         "column": 0
                                     },
                                     "end": {
                                         "line": 2,
-                                        "column": 8
+                                        "column": 12
                                     }
                                 }
                             }
@@ -189,7 +189,7 @@
                 }
             },
             "loc": {
-                "file": "b.ts",
+                "file": "index.ts",
                 "start": {
                     "line": 1,
                     "column": 0
@@ -200,5 +200,6 @@
                 }
             }
         }
-    }
+    },
+    "default": "index"
 }

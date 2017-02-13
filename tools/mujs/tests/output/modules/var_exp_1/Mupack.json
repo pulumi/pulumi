@@ -73,6 +73,17 @@
                                                     "column": 12
                                                 }
                                             }
+                                        },
+                                        "loc": {
+                                            "file": "index.ts",
+                                            "start": {
+                                                "line": 1,
+                                                "column": 15
+                                            },
+                                            "end": {
+                                                "line": 1,
+                                                "column": 17
+                                            }
                                         }
                                     },
                                     "operator": "=",
@@ -96,11 +107,11 @@
                                         "file": "index.ts",
                                         "start": {
                                             "line": 1,
-                                            "column": 0
+                                            "column": 15
                                         },
                                         "end": {
                                             "line": 1,
-                                            "column": 18
+                                            "column": 17
                                         }
                                     }
                                 },
@@ -108,11 +119,11 @@
                                     "file": "index.ts",
                                     "start": {
                                         "line": 1,
-                                        "column": 0
+                                        "column": 15
                                     },
                                     "end": {
                                         "line": 1,
-                                        "column": 18
+                                        "column": 17
                                     }
                                 }
                             }

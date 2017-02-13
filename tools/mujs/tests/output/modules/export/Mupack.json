@@ -137,6 +137,17 @@
                                                     "column": 12
                                                 }
                                             }
+                                        },
+                                        "loc": {
+                                            "file": "other.ts",
+                                            "start": {
+                                                "line": 3,
+                                                "column": 15
+                                            },
+                                            "end": {
+                                                "line": 3,
+                                                "column": 17
+                                            }
                                         }
                                     },
                                     "operator": "=",
@@ -160,11 +171,11 @@
                                         "file": "other.ts",
                                         "start": {
                                             "line": 3,
-                                            "column": 0
+                                            "column": 15
                                         },
                                         "end": {
                                             "line": 3,
-                                            "column": 18
+                                            "column": 17
                                         }
                                     }
                                 },
@@ -172,11 +183,11 @@
                                     "file": "other.ts",
                                     "start": {
                                         "line": 3,
-                                        "column": 0
+                                        "column": 15
                                     },
                                     "end": {
                                         "line": 3,
-                                        "column": 18
+                                        "column": 17
                                     }
                                 }
                             }
@@ -442,6 +453,17 @@
                                                     "column": 5
                                                 }
                                             }
+                                        },
+                                        "loc": {
+                                            "file": "index.ts",
+                                            "start": {
+                                                "line": 8,
+                                                "column": 8
+                                            },
+                                            "end": {
+                                                "line": 8,
+                                                "column": 10
+                                            }
                                         }
                                     },
                                     "operator": "=",
@@ -465,11 +487,11 @@
                                         "file": "index.ts",
                                         "start": {
                                             "line": 8,
-                                            "column": 0
+                                            "column": 8
                                         },
                                         "end": {
                                             "line": 8,
-                                            "column": 11
+                                            "column": 10
                                         }
                                     }
                                 },
@@ -477,11 +499,11 @@
                                     "file": "index.ts",
                                     "start": {
                                         "line": 8,
-                                        "column": 0
+                                        "column": 8
                                     },
                                     "end": {
                                         "line": 8,
-                                        "column": 11
+                                        "column": 10
                                     }
                                 }
                             }
