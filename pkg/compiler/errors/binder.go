@@ -33,4 +33,8 @@ var (
 	ErrorArgumentCountMismatch          = newError(523, "Function expects %v arguments; got %v instead")
 	ErrorConstructorReturnType          = newError(524, "Constructor '%v' has a return type '%v'; should be nil (void)")
 	ErrorConstructorNotMethod           = newError(525, "Constructor '%v' is not a method; got %v instead")
+	ErrorExpectedObject                 = newError(526,
+		"Expected an object target for this instance member load operation")
+	ErrorUnexpectedObject = newError(527,
+		"Unexpected object target for this static or module load operation")
 )

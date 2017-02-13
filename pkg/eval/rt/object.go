@@ -9,7 +9,6 @@ import (
 	"github.com/marapongo/mu/pkg/compiler/symbols"
 	"github.com/marapongo/mu/pkg/compiler/types"
 	"github.com/marapongo/mu/pkg/diag"
-	"github.com/marapongo/mu/pkg/tokens"
 	"github.com/marapongo/mu/pkg/util/contract"
 )
 
@@ -23,9 +22,7 @@ type Object struct {
 
 var _ fmt.Stringer = (*Object)(nil)
 
-type Value interface{}                   // a literal object value.
-type Properties map[PropertyKey]*Pointer // an object's properties.
-type PropertyKey string                  // property keys are strings (incl. invalid identifiers for dynamic).
+type Value interface{} // a literal object value.
 
 // NewObject allocates a new object with the given type, primitive value, and properties.
 func NewObject(t symbols.Type, value Value, properties Properties) *Object {
@@ -93,41 +90,8 @@ func (o *Object) ExceptionValue() ExceptionInfo {
 // GetPropertyAddr returns the reference to an object's property, lazily initializing if 'init' is true, or
 // returning nil otherwise.
 func (o *Object) GetPropertyAddr(key PropertyKey, init bool) *Pointer {
-	ptr, hasprop := o.properties[key]
-	if !hasprop {
-		// Look up the property definition (if any) in the members list, to seed a default value.
-		var obj *Object
-		var readonly bool
-		if class, isclass := o.t.(*symbols.Class); isclass {
-			if member, hasmember := class.Members[tokens.ClassMemberName(key)]; hasmember {
-				switch m := member.(type) {
-				case *symbols.ClassProperty:
-					if m.Default() != nil {
-						obj = NewConstantObject(*m.Default())
-					}
-					readonly = m.Readonly()
-				case *symbols.ClassMethod:
-					if m.Static() {
-						obj = NewFunctionObject(m, nil)
-					} else {
-						obj = NewFunctionObject(m, o)
-					}
-					readonly = true // TODO[marapongo/mu#56]: consider permitting JS-style overwriting of methods.
-				default:
-					contract.Failf("Unexpected member type: %v", member)
-				}
-			}
-		}
-
-		// If no members was found, this is presumably a dynamic scenario.  Initialize the slot to null.
-		if obj == nil {
-			obj = NewNullObject()
-		}
-
-		ptr = NewPointer(obj, readonly)
-		o.properties[key] = ptr
-	}
-	return ptr
+	class, _ := o.t.(*symbols.Class)
+	return o.properties.GetAddr(key, init, class, o)
 }
 
 // String can be used to print the contents of an object; it tries to be smart about the display.

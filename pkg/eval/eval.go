@@ -55,6 +55,7 @@ func New(ctx *binder.Context, hooks InterpreterHooks) Interpreter {
 		hooks:      hooks,
 		alloc:      NewAllocator(hooks),
 		globals:    make(globalMap),
+		statics:    make(staticMap),
 		modinits:   make(modinitMap),
 		classinits: make(classinitMap),
 	}
@@ -69,6 +70,7 @@ type evaluator struct {
 	hooks      InterpreterHooks // callbacks that hook into interpreter events.
 	alloc      *Allocator       // the object allocator.
 	globals    globalMap        // the object values for global variable symbols.
+	statics    staticMap        // the object values for all static variable symbols.
 	stack      *rt.StackFrame   // a stack of frames to keep track of calls.
 	locals     *localScope      // local variable values scoped by the lexical structure.
 	modinits   modinitMap       // a map of which modules have been initialized already.
@@ -76,6 +78,7 @@ type evaluator struct {
 }
 
 type globalMap map[symbols.Variable]*rt.Pointer
+type staticMap map[*symbols.Class]*rt.ClassStatics
 type modinitMap map[*symbols.Module]bool
 type classinitMap map[*symbols.Class]bool
 
@@ -879,15 +882,24 @@ func (e *evaluator) evalLoadLocation(node *ast.LoadLocationExpression, lval bool
 			contract.Assert(sym != nil) // don't issue errors; we shouldn't ever get here if verification failed.
 			switch s := sym.(type) {
 			case *symbols.ClassProperty:
-				// Ensure that a this is present if instance, and not if static.
+				// Based on whether this is static or not, load either from the class statics map, or from `this`.
+				key := rt.PropertyKey(sym.Name())
 				if s.Static() {
 					contract.Assert(this == nil)
-				} else if uw := e.checkThis(node, this); uw != nil {
-					return location{}, uw
+					class := s.Parent
+					statics, has := e.statics[class]
+					if !has {
+						statics = rt.NewClassStatics(class)
+						e.statics[class] = statics
+					}
+					pv = statics.GetPropertyAddr(key, true)
+				} else {
+					contract.Assert(this != nil)
+					if uw := e.checkThis(node, this); uw != nil {
+						return location{}, uw
+					}
+					pv = this.GetPropertyAddr(key, true)
 				}
-
-				// Search the class's properties and, if not present, allocate a new one.
-				pv = this.GetPropertyAddr(rt.PropertyKey(sym.Name()), true)
 				ty = s.Type()
 			case *symbols.ClassMethod:
 				// Ensure that a this is present if instance, and not if static.
