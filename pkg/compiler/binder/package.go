@@ -56,6 +56,9 @@ func (b *binder) resolveBindPackage(pkg *pack.Package, pkgurl pack.PackageURL) *
 	// Now bind all of the package's declarations (if any).  This pass does not yet actually bind definitions.
 	b.bindPackageDeclarations(pkgsym)
 
+	// Now resolve all export entries to symbols (even though definitions aren't complete yet).
+	b.bindPackageExports(pkgsym)
+
 	// Next go ahead and bind definitions.  This happens in a full pass after resolving all modules, because this
 	// phase might reference other declarations that are only now exposed after the above phase.
 	b.bindPackageDefinitions(pkgsym)
@@ -146,6 +149,15 @@ func (b *binder) bindPackageDeclarations(pkg *symbols.Package) {
 		for _, modtok := range ast.StableModules(modules) {
 			pkg.Modules[modtok] = b.bindModuleDeclarations(modules[modtok], pkg)
 		}
+	}
+}
+
+// bindPackageExports resolves exports to their referent symbols, one level deep.  During this phase, exports may depend
+// upon other exports, and so until it has settled, we can't properly chase down export links.
+func (b *binder) bindPackageExports(pkg *symbols.Package) {
+	contract.Require(pkg != nil, "pkg")
+	for _, mod := range symbols.StableModuleMap(pkg.Modules) {
+		b.bindModuleExports(pkg.Modules[mod])
 	}
 }
 

@@ -64,7 +64,7 @@ type ModuleExportMap map[tokens.ModuleMemberName]*Export
 type Export struct {
 	Node     *ast.Export
 	Parent   *Module
-	Referent Symbol // the symbol that this export actually refers to.
+	Referent Symbol
 }
 
 var _ Symbol = (*Export)(nil)
@@ -82,7 +82,8 @@ func (node *Export) Token() tokens.Token {
 func (node *Export) Tree() diag.Diagable { return node.Node }
 func (node *Export) String() string      { return string(node.Name()) }
 
-// NewExportSym returns a new Export symbol with the given node, parent, and referent symbol.
+// NewExportSym returns a new Export symbol with the given node, parent, and referent.  The referent may be a fully
+// resolved module member or it might just point to yet another export symbol, in the case of chaining.
 func NewExportSym(node *ast.Export, parent *Module, referent Symbol) *Export {
 	return &Export{
 		Node:     node,

@@ -78,6 +78,17 @@ func (ctx *Context) LookupModule(node *ast.ModuleToken) *symbols.Module {
 // LookupSymbol performs a complex lookup for a complex token; if require is true, failed lookups will issue an
 // error; and in any case, the AST node is used as the context for errors (lookup, accessibility, or otherwise).
 func (ctx *Context) LookupSymbol(node ast.Node, tok tokens.Token, require bool) symbols.Symbol {
+	return ctx.lookupSymbolCore(node, tok, require, true)
+}
+
+// LookupShallowSymbol is just like LookupSymbol, except that it will not resolve exports fully.  As a result, the
+// returned symbol may not be bound to the actual underlying class member, and may return a symbols.Export instead.
+func (ctx *Context) LookupShallowSymbol(node ast.Node, tok tokens.Token, require bool) symbols.Symbol {
+	return ctx.lookupSymbolCore(node, tok, require, false)
+}
+
+func (ctx *Context) lookupSymbolCore(node ast.Node, tok tokens.Token,
+	require bool, resolveExports bool) symbols.Symbol {
 	var sym symbols.Symbol // the symbol, if found.
 	var reason string      // the reason reason, if a symbol could not be found.
 
@@ -113,19 +124,37 @@ func (ctx *Context) LookupSymbol(node ast.Node, tok tokens.Token, require bool) 
 						// We need to look up a module member.  Note that this has to respect the export table, to
 						// prevent unwanted access to internal routines.  Another subtlety worth calling out is that
 						// from *within* a module, these export names are not yet even accessible.
-						mem := tok.ModuleMember().Name()
-
 						var memsym symbols.Symbol
-						if modsym == ctx.Currmodule {
+						mem := tok.ModuleMember().Name()
+						useExports := (modsym != ctx.Currmodule)
+						if useExports {
+							// A foreign module; look in the exports table.
+							if export := modsym.Exports[mem]; export != nil {
+								memsym = export
+								if resolveExports {
+									// It is possible the export just links to another export, in which case, we must
+									// continue chasing it down until we find an actual module member.
+									for {
+										if symexp, isexport := memsym.(*symbols.Export); isexport {
+											memsym = symexp.Referent
+											contract.Assertf(memsym != nil, "Unexpected nil during export chasing")
+											contract.Assertf(memsym != export, "An export chasing cycle was detected")
+										} else {
+											break
+										}
+									}
+								}
+							}
+						} else {
 							// Current module; use the members table.
 							memsym = modsym.Members[mem]
-						} else {
-							// Otherwise, it's a foreign module; use the exports table.
-							memsym = modsym.Exports[mem]
 						}
 
 						if memsym != nil {
 							if tok.HasClassMember() {
+								_, ismember := memsym.(symbols.ModuleMember)
+								contract.Assertf(ismember, "Expected a module member symbol")
+								contract.Assertf(resolveExports, "Cannot access class members when resolving shallowly")
 								if class, isclass := memsym.(*symbols.Class); isclass {
 									clm := tok.ClassMember().Name()
 									if clmsym := class.Members[clm]; clmsym != nil {
@@ -144,6 +173,8 @@ func (ctx *Context) LookupSymbol(node ast.Node, tok tokens.Token, require bool) 
 								// Got a match: the token only specified a module member and we found it.
 								sym = memsym
 							}
+						} else if useExports {
+							reason = fmt.Sprintf("module export '%v' not found", mem)
 						} else {
 							reason = fmt.Sprintf("module member '%v' not found", mem)
 						}

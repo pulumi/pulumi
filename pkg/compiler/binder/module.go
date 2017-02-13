@@ -69,7 +69,7 @@ func (b *binder) bindModuleMemberDeclarations(module *symbols.Module) {
 }
 
 func (b *binder) bindExportDeclaration(node *ast.Export, parent *symbols.Module) *symbols.Export {
-	glog.V(3).Infof("Binding module '%v' export '%v' decl", parent.Name(), node.Name.Ident)
+	glog.V(3).Infof("Binding module '%v' export '%v' decl", parent.Token(), node.Name.Ident)
 
 	// Simply register an empty export, unlinked to the referent yet.
 	sym := symbols.NewExportSym(node, parent, nil)
@@ -79,7 +79,7 @@ func (b *binder) bindExportDeclaration(node *ast.Export, parent *symbols.Module)
 
 func (b *binder) bindModulePropertyDeclaration(node *ast.ModuleProperty,
 	parent *symbols.Module) *symbols.ModuleProperty {
-	glog.V(3).Infof("Binding module '%v' property '%v' decl", parent.Name(), node.Name.Ident)
+	glog.V(3).Infof("Binding module '%v' property '%v' decl", parent.Token(), node.Name.Ident)
 
 	// Simply create an untyped property declaration.  The type lookup will happen in a subsequent pass.
 	sym := symbols.NewModulePropertySym(node, parent, nil)
@@ -89,12 +89,28 @@ func (b *binder) bindModulePropertyDeclaration(node *ast.ModuleProperty,
 
 func (b *binder) bindModuleMethodDeclaration(node *ast.ModuleMethod,
 	parent *symbols.Module) *symbols.ModuleMethod {
-	glog.V(3).Infof("Binding module '%v' method '%v' decl", parent.Name(), node.Name.Ident)
+	glog.V(3).Infof("Binding module '%v' method '%v' decl", parent.Token(), node.Name.Ident)
 
 	// Simply create a function declaration without any type.  That will happen in a subsequent pass.
 	sym := symbols.NewModuleMethodSym(node, parent, nil)
 	b.ctx.RegisterSymbol(node, sym)
 	return sym
+}
+
+func (b *binder) bindModuleExports(module *symbols.Module) {
+	glog.V(3).Infof("Binding module '%v' exports", module.Token())
+
+	// Set the current module in the context so we can e.g. enforce accessibility.
+	pop := b.pushModule(module)
+	defer pop()
+
+	for _, nm := range symbols.StableModuleExportMap(module.Exports) {
+		export := module.Exports[nm]
+		glog.V(3).Infof("Binding module export '%v' defn", export.Token())
+		// To bind an export definition, simply look up the referent symbol and associate this name with it.  Note that
+		// we can't fully resolve the export recursively, since other exports might still being bound.
+		export.Referent = b.ctx.LookupShallowSymbol(export.Node.Referent, export.Node.Referent.Tok, true)
+	}
 }
 
 func (b *binder) bindModuleDefinitions(module *symbols.Module) {
@@ -126,11 +142,6 @@ func (b *binder) bindModuleMemberDefinitions(module *symbols.Module) {
 	pop := b.pushModule(module)
 	defer pop()
 
-	// Complete all exports definitions.
-	for _, nm := range symbols.StableModuleExportMap(module.Exports) {
-		b.bindExportDefinition(module.Exports[nm])
-	}
-
 	// Now complete all member definitions.
 	for _, nm := range symbols.StableModuleMemberMap(module.Members) {
 		switch m := module.Members[nm].(type) {
@@ -144,13 +155,6 @@ func (b *binder) bindModuleMemberDefinitions(module *symbols.Module) {
 			contract.Failf("Unrecognized module member type: %v", reflect.TypeOf(m))
 		}
 	}
-}
-
-func (b *binder) bindExportDefinition(export *symbols.Export) {
-	glog.V(3).Infof("Binding module export '%v' defn", export.Token())
-
-	// To bind an export definition, simply look up the referent symbol and associate this name with it.
-	export.Referent = b.ctx.LookupSymbol(export.Node.Referent, export.Node.Referent.Tok, true)
 }
 
 func (b *binder) bindModulePropertyDefinition(property *symbols.ModuleProperty) {

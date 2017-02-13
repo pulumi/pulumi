@@ -936,6 +936,7 @@ func (e *evaluator) evalLoadLocation(node *ast.LoadLocationExpression, lval bool
 				}
 			case *symbols.Export:
 				// Simply chase the referent symbol until we bottom out on one of the above cases.
+				contract.Assertf(s.Referent != sym, "Unexpected self-referential export token")
 				sym = s.Referent
 			default:
 				contract.Failf("Unexpected symbol token kind during load expression: %v", tok)
