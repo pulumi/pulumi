@@ -18,11 +18,11 @@
                             "file": "index.ts",
                             "start": {
                                 "line": 1,
-                                "column": 4
+                                "column": 5
                             },
                             "end": {
                                 "line": 1,
-                                "column": 5
+                                "column": 6
                             }
                         }
                     },
@@ -34,11 +34,11 @@
                             "file": "index.ts",
                             "start": {
                                 "line": 1,
-                                "column": 4
+                                "column": 5
                             },
                             "end": {
                                 "line": 1,
-                                "column": 10
+                                "column": 11
                             }
                         }
                     }
@@ -66,11 +66,11 @@
                                                 "file": "index.ts",
                                                 "start": {
                                                     "line": 1,
-                                                    "column": 4
+                                                    "column": 5
                                                 },
                                                 "end": {
                                                     "line": 1,
-                                                    "column": 5
+                                                    "column": 6
                                                 }
                                             }
                                         },
@@ -78,11 +78,11 @@
                                             "file": "index.ts",
                                             "start": {
                                                 "line": 1,
-                                                "column": 8
+                                                "column": 9
                                             },
                                             "end": {
                                                 "line": 1,
-                                                "column": 10
+                                                "column": 11
                                             }
                                         }
                                     },
@@ -95,11 +95,11 @@
                                             "file": "index.ts",
                                             "start": {
                                                 "line": 1,
-                                                "column": 8
+                                                "column": 9
                                             },
                                             "end": {
                                                 "line": 1,
-                                                "column": 10
+                                                "column": 11
                                             }
                                         }
                                     },
@@ -107,11 +107,11 @@
                                         "file": "index.ts",
                                         "start": {
                                             "line": 1,
-                                            "column": 8
+                                            "column": 9
                                         },
                                         "end": {
                                             "line": 1,
-                                            "column": 10
+                                            "column": 11
                                         }
                                     }
                                 },
@@ -119,11 +119,11 @@
                                     "file": "index.ts",
                                     "start": {
                                         "line": 1,
-                                        "column": 8
+                                        "column": 9
                                     },
                                     "end": {
                                         "line": 1,
-                                        "column": 10
+                                        "column": 11
                                     }
                                 }
                             }
@@ -147,11 +147,11 @@
                 "file": "index.ts",
                 "start": {
                     "line": 1,
-                    "column": 0
+                    "column": 1
                 },
                 "end": {
                     "line": 3,
-                    "column": 0
+                    "column": 1
                 }
             }
         }
