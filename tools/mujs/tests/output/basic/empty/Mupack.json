@@ -1,11 +1,11 @@
 {
     "name": "basic/empty",
     "modules": {
-        "empty": {
+        "index": {
             "kind": "Module",
             "name": {
                 "kind": "Identifier",
-                "ident": "empty"
+                "ident": "index"
             },
             "imports": [],
             "members": {
@@ -23,7 +23,7 @@
                 }
             },
             "loc": {
-                "file": "empty.ts",
+                "file": "index.ts",
                 "start": {
                     "line": 1,
                     "column": 0
@@ -34,5 +34,6 @@
                 }
             }
         }
-    }
+    },
+    "default": "index"
 }

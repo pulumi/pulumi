@@ -229,6 +229,14 @@ export class Context {
         };
     }
 
+    public newNoDefaultModuleWarning(): Diagnostic {
+        return {
+            category: DiagnosticCategory.Warning,
+            code:     5,
+            message:  "Package is missing a default module (either named 'index' or explicitly specified)",
+        };
+    }
+
     public newAsyncNotSupportedError(node: ts.Node): Diagnostic {
         return {
             category: DiagnosticCategory.Error,

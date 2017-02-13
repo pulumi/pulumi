@@ -289,6 +289,12 @@ export class Transformer {
                 }
             }
 
+            // Give a warning if this package didn't have a default module; technically, this is fine, but it is most
+            // likely a mistake as it will cause complications for consumers of it.
+            if (!defaultModule) {
+                this.diagnostics.push(this.dctx.newNoDefaultModuleWarning());
+            }
+
             // Now create a new package object.
             return <TransformResult>{
                 diagnostics: this.diagnostics,
