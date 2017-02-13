@@ -33,7 +33,7 @@ func (a *Allocator) New(t symbols.Type) *rt.Object {
 }
 
 // NewArray creates a new array object of the given element type.
-func (a *Allocator) NewArray(elem symbols.Type, arr interface{}) *rt.Object {
+func (a *Allocator) NewArray(elem symbols.Type, arr *[]*rt.Pointer) *rt.Object {
 	obj := rt.NewArrayObject(elem, arr)
 	a.onNewObject(obj)
 	return obj

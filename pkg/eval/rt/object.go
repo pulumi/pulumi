@@ -36,6 +36,16 @@ func (o *Object) Type() symbols.Type     { return o.t }
 func (o *Object) Value() Value           { return o.value }
 func (o *Object) Properties() Properties { return o.properties }
 
+// ArrayValue asserts that the target is an array literal and returns its value.
+func (o *Object) ArrayValue() *[]*Pointer {
+	_, isarr := o.t.(*symbols.ArrayType)
+	contract.Assertf(isarr, "Expected object type to be Array; got %v", o.t)
+	contract.Assertf(o.value != nil, "Expected Array object to carry a Value; got nil")
+	arr, ok := o.value.(*[]*Pointer)
+	contract.Assertf(ok, "Expected Array object's Value to be a *[]interface{}")
+	return arr
+}
+
 // BoolValue asserts that the target is a boolean literal and returns its value.
 func (o *Object) BoolValue() bool {
 	contract.Assertf(o.t == types.Bool, "Expected object type to be Bool; got %v", o.t)
@@ -146,8 +156,8 @@ func NewPrimitiveObject(t symbols.Type, v interface{}) *Object {
 	return NewObject(t, v, nil)
 }
 
-// NewArrayObject allocates a new pointer-like object that wraps the given reference.
-func NewArrayObject(elem symbols.Type, arr interface{}) *Object {
+// NewArrayObject allocates a new array object with the given array payload.
+func NewArrayObject(elem symbols.Type, arr *[]*Pointer) *Object {
 	contract.Require(elem != nil, "elem")
 	arrt := symbols.NewArrayType(elem)
 	return NewPrimitiveObject(arrt, arr)

@@ -117,6 +117,11 @@ func (a *astBinder) isLValue(expr ast.Expression) bool {
 		return true
 	}
 
+	// If the target is a dynamic load, permit that too.
+	if _, isdload := expr.(*ast.LoadDynamicExpression); isdload {
+		return true
+	}
+
 	// Otherwise, if the target is a pointer dereference, it is also okay.
 	if unop, isunop := expr.(*ast.UnaryOperatorExpression); isunop {
 		if unop.Operator == ast.OpDereference {

@@ -747,7 +747,7 @@ func (e *evaluator) evalArrayLiteral(node *ast.ArrayLiteral) (*rt.Object, *Unwin
 
 	// Now create the array data.
 	var sz *int
-	var arr []rt.Value
+	var arr []*rt.Pointer
 
 	// If there's a node size, ensure it's a number, and initialize the array.
 	if node.Size != nil {
@@ -761,7 +761,7 @@ func (e *evaluator) evalArrayLiteral(node *ast.ArrayLiteral) (*rt.Object, *Unwin
 			// If the size is less than zero, raise a new error.
 			return nil, NewThrowUnwind(e.NewNegativeArrayLengthException(*node.Size))
 		}
-		arr = make([]rt.Value, sz)
+		arr = make([]*rt.Pointer, sz)
 	}
 
 	// Allocate a new array object.
@@ -773,7 +773,7 @@ func (e *evaluator) evalArrayLiteral(node *ast.ArrayLiteral) (*rt.Object, *Unwin
 	if node.Elements != nil {
 		if sz == nil {
 			// Right-size the array.
-			arr = make([]rt.Value, 0, len(*node.Elements))
+			arr = make([]*rt.Pointer, 0, len(*node.Elements))
 		} else if len(*node.Elements) > *sz {
 			// The element count exceeds the size; raise an error.
 			return nil, NewThrowUnwind(
@@ -785,10 +785,11 @@ func (e *evaluator) evalArrayLiteral(node *ast.ArrayLiteral) (*rt.Object, *Unwin
 			if uw != nil {
 				return nil, uw
 			}
+			elemptr := rt.NewPointer(elemobj, false)
 			if sz == nil {
-				arr = append(arr, elemobj)
+				arr = append(arr, elemptr)
 			} else {
-				arr[i] = elemobj
+				arr[i] = elemptr
 			}
 
 			// Track all assignments.
@@ -995,9 +996,38 @@ func (e *evaluator) evalLoadDynamic(node *ast.LoadDynamicExpression, lval bool) 
 	}
 
 	// Now go ahead and search the object for a property with the given name.
-	contract.Assertf(name.Type() == types.String, "At the moment, only string names are supported")
-	key := name.StringValue()
-	pv := this.GetPropertyAddr(rt.PropertyKey(key), true)
+	var pv *rt.Pointer
+	var key tokens.Name
+	if name.Type() == types.Number {
+		_, isarr := this.Type().(*symbols.ArrayType)
+		contract.Assertf(isarr, "Expected an array for numeric dynamic load index")
+		ix := int(name.NumberValue())
+		arrv := this.ArrayValue()
+		// TODO[marapongo/mu#70]: Although storing arrays as arrays is fine for many circumstances, there are two cases
+		//     particular that could cause us troubles with ECMAScript compliance.  First, negative indices are fine in
+		//     ECMAScript.  Second, sparse arrays can be represented more efficiently as a "bag of properties" than as a
+		//     true array that needs to be resized (possibly growing to become enormous in memory usage).
+		// TODO[marapongo/mu#70]: We are emulating "ECMAScript-like" array accesses, where -- just like ordinary
+		//     property accesses below -- we will permit indexes that we've never seen before.  Out of bounds should
+		//     yield `undefined`, rather than the usual case of throwing an exception, for example.  And such
+		//     assignments are to be permitted.  This will cause troubles down the road when we do other languages that
+		//     reject out of bounds accesses e.g. Python.  An alternative approach would be to require ECMAScript to
+		//     use a runtime library anytime an array is accessed, translating exceptions like this into `undefined`s.
+		if ix > len(*arrv) {
+			newarr := make([]*rt.Pointer, ix+1)
+			copy(*arrv, newarr)
+			*arrv = newarr
+		}
+		pv = (*arrv)[ix]
+		if pv == nil {
+			pv = rt.NewPointer(e.alloc.NewNull(), false)
+			(*arrv)[ix] = pv
+		}
+	} else {
+		contract.Assertf(name.Type() == types.String, "Expected dynamic load name to be a string")
+		key = tokens.Name(name.StringValue())
+		pv = this.GetPropertyAddr(rt.PropertyKey(key), true)
+	}
 
 	// If this isn't for an l-value, return the raw object.  Otherwise, make sure it's not readonly, and return it.
 	var obj *rt.Object
