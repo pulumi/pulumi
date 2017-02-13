@@ -374,6 +374,20 @@ func (e *evaluator) evalCall(node diag.Diagable, fnc symbols.Function,
 		contract.Assert(this == nil)
 	}
 
+	// Ensure that we enter the right module/class context, otherwise module-sensitive binding won't work.
+	switch f := fnc.(type) {
+	case *symbols.ClassMethod:
+		popm := e.ctx.PushModule(f.Parent.Parent)
+		defer popm()
+		popc := e.ctx.PushClass(f.Parent)
+		defer popc()
+	case *symbols.ModuleMethod:
+		popm := e.ctx.PushModule(f.Parent)
+		defer popm()
+	default:
+		contract.Failf("Unrecognized function type during call: %v", reflect.TypeOf(fnc))
+	}
+
 	// Save the prior func, set the new one, and restore upon exit.
 	prior := fnc
 	e.fnc = fnc
@@ -878,7 +892,7 @@ func (e *evaluator) evalLoadLocation(node *ast.LoadLocationExpression, lval bool
 		ty = loc.Type()
 		sym = loc
 	} else {
-		sym = e.ctx.LookupSymbol(node.Name, tok, false)
+		sym = e.ctx.LookupSymbol(node.Name, tok, true)
 		for ty == nil {
 			contract.Assert(sym != nil) // don't issue errors; we shouldn't ever get here if verification failed.
 			switch s := sym.(type) {
@@ -938,6 +952,7 @@ func (e *evaluator) evalLoadLocation(node *ast.LoadLocationExpression, lval bool
 				// Simply chase the referent symbol until we bottom out on one of the above cases.
 				contract.Assertf(s.Referent != sym, "Unexpected self-referential export token")
 				sym = s.Referent
+				contract.Assertf(sym != nil, "Expected export '%v' to resolve to a token", s.Node.Referent.Tok)
 			default:
 				contract.Failf("Unexpected symbol token kind during load expression: %v", tok)
 			}

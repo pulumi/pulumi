@@ -10,12 +10,6 @@ import (
 	"github.com/marapongo/mu/pkg/util/contract"
 )
 
-func (b *binder) pushClass(class *symbols.Class) func() {
-	priorclass := b.ctx.Currclass
-	b.ctx.Currclass = class
-	return func() { b.ctx.Currclass = priorclass }
-}
-
 func (b *binder) bindClassDeclaration(node *ast.Class, parent *symbols.Module) *symbols.Class {
 	glog.V(3).Infof("Binding module '%v' class '%v'", parent.Name(), node.Name.Ident)
 
@@ -45,7 +39,7 @@ func (b *binder) bindClassDefinition(class *symbols.Class) {
 
 func (b *binder) bindClassMembers(class *symbols.Class) {
 	// Set the current class in the context so we can e.g. enforce accessibility.
-	pop := b.pushClass(class)
+	pop := b.ctx.PushClass(class)
 	defer pop()
 
 	// Bind each member at the symbolic level; in particular, we do not yet bind bodies of methods.

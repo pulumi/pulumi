@@ -44,6 +44,21 @@ func NewContextFrom(ctx *core.Context) *Context {
 	return bctx
 }
 
+func (ctx *Context) PushModule(module *symbols.Module) func() {
+	contract.Assert(module != nil)
+	priormodule := ctx.Currmodule
+	ctx.Currmodule = module
+	return func() { ctx.Currmodule = priormodule }
+}
+
+func (ctx *Context) PushClass(class *symbols.Class) func() {
+	contract.Assert(class != nil)
+	contract.Assert(ctx.Currmodule == class.Parent)
+	priorclass := ctx.Currclass
+	ctx.Currclass = class
+	return func() { ctx.Currclass = priorclass }
+}
+
 // HasType checks whether a typemap entry already exists.
 func (ctx *Context) HasType(node ast.Expression) bool {
 	_, has := ctx.Types[node]

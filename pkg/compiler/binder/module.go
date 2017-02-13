@@ -12,12 +12,6 @@ import (
 	"github.com/marapongo/mu/pkg/util/contract"
 )
 
-func (b *binder) pushModule(module *symbols.Module) func() {
-	priormodule := b.ctx.Currmodule
-	b.ctx.Currmodule = module
-	return func() { b.ctx.Currmodule = priormodule }
-}
-
 func (b *binder) bindModuleDeclarations(node *ast.Module, parent *symbols.Package) *symbols.Module {
 	glog.V(3).Infof("Binding package '%v' module '%v' decls", parent.Name(), node.Name.Ident)
 
@@ -39,7 +33,7 @@ func (b *binder) bindModuleMemberDeclarations(module *symbols.Module) {
 	glog.V(3).Infof("Binding module '%v' member decls", module.Token())
 
 	// Set the current module in the context so we can e.g. enforce accessibility.
-	pop := b.pushModule(module)
+	pop := b.ctx.PushModule(module)
 	defer pop()
 
 	// Bind all export declarations.
@@ -101,7 +95,7 @@ func (b *binder) bindModuleExports(module *symbols.Module) {
 	glog.V(3).Infof("Binding module '%v' exports", module.Token())
 
 	// Set the current module in the context so we can e.g. enforce accessibility.
-	pop := b.pushModule(module)
+	pop := b.ctx.PushModule(module)
 	defer pop()
 
 	for _, nm := range symbols.StableModuleExportMap(module.Exports) {
@@ -139,7 +133,7 @@ func (b *binder) bindModuleMemberDefinitions(module *symbols.Module) {
 	glog.V(3).Infof("Binding module '%v' member defns", module.Token())
 
 	// Set the current module in the context so we can e.g. enforce accessibility.
-	pop := b.pushModule(module)
+	pop := b.ctx.PushModule(module)
 	defer pop()
 
 	// Now complete all member definitions.
