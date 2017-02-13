@@ -99,9 +99,16 @@ func (o *Object) ExceptionValue() ExceptionInfo {
 
 // GetPropertyAddr returns the reference to an object's property, lazily initializing if 'init' is true, or
 // returning nil otherwise.
-func (o *Object) GetPropertyAddr(key PropertyKey, init bool) *Pointer {
+func (o *Object) GetPropertyAddr(key PropertyKey, init bool, ctx symbols.Function) *Pointer {
+	// First, try the fast path, so we can avoid allocating an initer if we don't need one.
+	if ptr := o.properties.GetAddr(key); ptr != nil || !init {
+		return ptr
+	}
+
+	// Otherwise, here's the slow path; figure out the defaults and initialize the slot.
 	class, _ := o.t.(*symbols.Class)
-	return o.properties.GetAddr(key, init, class, o)
+	obj, readonly := DefaultClassProperty(key, class, o, ctx)
+	return o.properties.InitAddr(key, obj, readonly)
 }
 
 // String can be used to print the contents of an object; it tries to be smart about the display.

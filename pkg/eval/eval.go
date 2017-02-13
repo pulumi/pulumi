@@ -77,7 +77,7 @@ type evaluator struct {
 	classinits classinitMap     // a map of which classes have been initialized already.
 }
 
-type globalMap map[symbols.Variable]*rt.Pointer
+type globalMap map[*symbols.Module]*rt.ModuleGlobals
 type staticMap map[*symbols.Class]*rt.ClassStatics
 type modinitMap map[*symbols.Module]bool
 type classinitMap map[*symbols.Class]bool
@@ -242,19 +242,6 @@ func (e *evaluator) dumpEvalState(v glog.Level) {
 		for _, class := range classtoks {
 			glog.V(v).Infof("Class init: %v", class)
 		}
-
-		// Print all initialized global variables in alphabetical order.
-		globaltoks := make([]string, 0, len(e.globals))
-		globals := make(map[string]*rt.Object)
-		for sym, ptr := range e.globals {
-			s := string(sym.Token())
-			globaltoks = append(globaltoks, s)
-			globals[s] = ptr.Obj()
-		}
-		sort.Strings(globaltoks)
-		for _, sym := range globaltoks {
-			glog.V(v).Infof("Global %v: %v", sym, globals[sym])
-		}
 	}
 }
 
@@ -277,6 +264,18 @@ func (e *evaluator) ensureClassInit(class *symbols.Class) {
 			if uw != nil {
 				// Must be an unhandled exception; spew it as an error (but keep going).
 				e.issueUnhandledException(uw, errors.ErrorUnhandledInitException.At(init.Tree()), class)
+			}
+
+			// Ensure that all readonly class statics are frozen.
+			statics := e.getClassStatics(class)
+			for _, member := range class.Members {
+				if prop, isprop := member.(*symbols.ClassProperty); isprop &&
+					prop.Static() && prop.Readonly() {
+					if ptr := statics.GetPropertyAddr(
+						rt.PropertyKey(prop.Name()), false, nil); ptr != nil {
+						ptr.Freeze() // ensure this is never written to again.
+					}
+				}
 			}
 		} else {
 			glog.V(7).Infof("Class has no initializer: %v", class)
@@ -307,10 +306,41 @@ func (e *evaluator) ensureModuleInit(mod *symbols.Module) {
 				// Must be an unhandled exception; spew it as an error (but keep going).
 				e.issueUnhandledException(uw, errors.ErrorUnhandledInitException.At(init.Tree()), mod)
 			}
+
+			// Ensure that all readonly module properties are frozen.
+			globals := e.getModuleGlobals(mod)
+			for _, member := range mod.Members {
+				if prop, isprop := member.(*symbols.ModuleProperty); isprop && prop.Readonly() {
+					if ptr := globals.GetPropertyAddr(
+						rt.PropertyKey(prop.Name()), false, nil); ptr != nil {
+						ptr.Freeze() // ensure this is never written to again.
+					}
+				}
+			}
 		} else {
 			glog.V(7).Infof("Module has no initializer: %v", mod)
 		}
 	}
+}
+
+// getModuleGlobals returns a module's globals, lazily initializing if needed.
+func (e *evaluator) getModuleGlobals(module *symbols.Module) *rt.ModuleGlobals {
+	globals, has := e.globals[module]
+	if !has {
+		globals = rt.NewModuleGlobals(module)
+		e.globals[module] = globals
+	}
+	return globals
+}
+
+// getClassStatics returns a statics table, lazily initializing if needed.
+func (e *evaluator) getClassStatics(class *symbols.Class) *rt.ClassStatics {
+	statics, has := e.statics[class]
+	if !has {
+		statics = rt.NewClassStatics(class)
+		e.statics[class] = statics
+	}
+	return statics
 }
 
 // issueUnhandledException issues an unhandled exception error using the given diagnostic and unwind information.
@@ -449,6 +479,22 @@ func (e *evaluator) evalCall(node diag.Diagable, fnc symbols.Function,
 		contract.Assert((retty == nil) == (ret == nil))
 		contract.Assert(ret == nil || types.CanConvert(ret.Type(), retty))
 		return ret, nil
+	}
+
+	// If this is an object constructor, ensure that all readonly properties are frozen now.
+	if classmeth, isclassmeth := fnc.(*symbols.ClassMethod); isclassmeth {
+		if this != nil && this.Type() == classmeth.Parent &&
+			classmeth.MemberName() == tokens.ClassConstructorFunction {
+			for _, member := range this.Type().(*symbols.Class).Members {
+				if prop, isprop := member.(*symbols.ClassProperty); isprop &&
+					!prop.Static() && prop.Readonly() {
+					if ptr := this.GetPropertyAddr(
+						rt.PropertyKey(prop.Name()), false, nil); ptr != nil {
+						ptr.Freeze() // ensure this is never written to again.
+					}
+				}
+			}
+		}
 	}
 
 	// An absence of a return is okay for void-returning functions.
@@ -835,12 +881,12 @@ func (e *evaluator) evalObjectLiteral(node *ast.ObjectLiteral) (*rt.Object, *Unw
 			var property rt.PropertyKey
 			if ty == types.Dynamic {
 				property = rt.PropertyKey(id)
-				addr = obj.GetPropertyAddr(property, true)
+				addr = obj.GetPropertyAddr(property, true, e.fnc)
 			} else {
 				contract.Assert(id.HasClassMember())
 				member := tokens.ClassMember(id).Name()
 				property = rt.PropertyKey(member.Name())
-				addr = obj.GetPropertyAddr(property, true)
+				addr = obj.GetPropertyAddr(property, true, e.fnc)
 			}
 			addr.Set(val)
 
@@ -901,19 +947,14 @@ func (e *evaluator) evalLoadLocation(node *ast.LoadLocationExpression, lval bool
 				key := rt.PropertyKey(sym.Name())
 				if s.Static() {
 					contract.Assert(this == nil)
-					class := s.Parent
-					statics, has := e.statics[class]
-					if !has {
-						statics = rt.NewClassStatics(class)
-						e.statics[class] = statics
-					}
-					pv = statics.GetPropertyAddr(key, true)
+					statics := e.getClassStatics(s.Parent)
+					pv = statics.GetPropertyAddr(key, true, e.fnc)
 				} else {
 					contract.Assert(this != nil)
 					if uw := e.checkThis(node, this); uw != nil {
 						return location{}, uw
 					}
-					pv = this.GetPropertyAddr(key, true)
+					pv = this.GetPropertyAddr(key, true, e.fnc)
 				}
 				ty = s.Type()
 			case *symbols.ClassMethod:
@@ -930,12 +971,8 @@ func (e *evaluator) evalLoadLocation(node *ast.LoadLocationExpression, lval bool
 				ty = s.Type()
 			case *symbols.ModuleProperty:
 				// Search the globals table and, if not present, allocate a new property.
-				ref, has := e.globals[s]
-				if !has {
-					ref = rt.NewPointer(nil, s.Readonly())
-					e.globals[s] = ref
-				}
-				pv = ref
+				globals := e.getModuleGlobals(s.Parent)
+				pv = globals.GetPropertyAddr(rt.PropertyKey(s.Name()), true, e.fnc)
 				ty = s.Type()
 				if this != nil {
 					e.Diag().Errorf(errors.ErrorUnexpectedObject.At(node))
@@ -959,13 +996,9 @@ func (e *evaluator) evalLoadLocation(node *ast.LoadLocationExpression, lval bool
 		}
 	}
 
-	// If this isn't for an l-value, return the raw object.  Otherwise, make sure it's not readonly, and return it.
+	// If this is an l-value, return a pointer to the object; otherwise, return the raw object.
 	var obj *rt.Object
 	if lval {
-		// A readonly reference cannot be used as an l-value.
-		if pv.Readonly() {
-			e.Diag().Errorf(errors.ErrorIllegalReadonlyLValue.At(node))
-		}
 		obj = e.alloc.NewPointer(ty, pv)
 	} else {
 		obj = pv.Obj()
@@ -1042,7 +1075,7 @@ func (e *evaluator) evalLoadDynamic(node *ast.LoadDynamicExpression, lval bool) 
 	} else {
 		contract.Assertf(name.Type() == types.String, "Expected dynamic load name to be a string")
 		key = tokens.Name(name.StringValue())
-		pv = this.GetPropertyAddr(rt.PropertyKey(key), true)
+		pv = this.GetPropertyAddr(rt.PropertyKey(key), true, e.fnc)
 	}
 
 	// If this isn't for an l-value, return the raw object.  Otherwise, make sure it's not readonly, and return it.
@@ -1206,7 +1239,7 @@ func (e *evaluator) evalUnaryOperatorExpressionFor(node *ast.UnaryOperatorExpres
 		old := ptr.Obj()
 		val := old.NumberValue()
 		new := e.alloc.NewNumber(val + 1)
-		e.evalAssign(*opandloc, new)
+		e.evalAssign(node.Operand, *opandloc, new)
 		if node.Postfix {
 			return old, nil
 		}
@@ -1217,7 +1250,7 @@ func (e *evaluator) evalUnaryOperatorExpressionFor(node *ast.UnaryOperatorExpres
 		old := ptr.Obj()
 		val := old.NumberValue()
 		new := e.alloc.NewNumber(val - 1)
-		e.evalAssign(*opandloc, new)
+		e.evalAssign(node.Operand, *opandloc, new)
 		if node.Postfix {
 			return old, nil
 		}
@@ -1317,73 +1350,73 @@ func (e *evaluator) evalBinaryOperatorExpression(node *ast.BinaryOperatorExpress
 	// Assignment operators
 	case ast.OpAssign:
 		// The target is an l-value; just overwrite its value, and yield the new value as the result.
-		e.evalAssign(*lhsloc, rhs)
+		e.evalAssign(node.Left, *lhsloc, rhs)
 		return rhs, nil
 	case ast.OpAssignSum:
 		// The target is a numeric l-value; just += rhs to it, and yield the new value as the result.
 		ptr := lhs.PointerValue()
 		val := e.alloc.NewNumber(ptr.Obj().NumberValue() + rhs.NumberValue())
-		e.evalAssign(*lhsloc, val)
+		e.evalAssign(node.Left, *lhsloc, val)
 		return val, nil
 	case ast.OpAssignDifference:
 		// The target is a numeric l-value; just -= rhs to it, and yield the new value as the result.
 		ptr := lhs.PointerValue()
 		val := e.alloc.NewNumber(ptr.Obj().NumberValue() - rhs.NumberValue())
-		e.evalAssign(*lhsloc, val)
+		e.evalAssign(node.Left, *lhsloc, val)
 		return val, nil
 	case ast.OpAssignProduct:
 		// The target is a numeric l-value; just *= rhs to it, and yield the new value as the result.
 		ptr := lhs.PointerValue()
 		val := e.alloc.NewNumber(ptr.Obj().NumberValue() * rhs.NumberValue())
-		e.evalAssign(*lhsloc, val)
+		e.evalAssign(node.Left, *lhsloc, val)
 		return val, nil
 	case ast.OpAssignQuotient:
 		// The target is a numeric l-value; just /= rhs to it, and yield the new value as the result.
 		ptr := lhs.PointerValue()
 		val := e.alloc.NewNumber(ptr.Obj().NumberValue() / rhs.NumberValue())
-		e.evalAssign(*lhsloc, val)
+		e.evalAssign(node.Left, *lhsloc, val)
 		return val, nil
 	case ast.OpAssignRemainder:
 		// The target is a numeric l-value; just %= rhs to it, and yield the new value as the result.
 		ptr := lhs.PointerValue()
 		val := e.alloc.NewNumber(float64(int64(ptr.Obj().NumberValue()) % int64(rhs.NumberValue())))
-		e.evalAssign(*lhsloc, val)
+		e.evalAssign(node.Left, *lhsloc, val)
 		return val, nil
 	case ast.OpAssignExponentiation:
 		// The target is a numeric l-value; just raise to rhs as a power, and yield the new value as the result.
 		ptr := lhs.PointerValue()
 		val := e.alloc.NewNumber(math.Pow(ptr.Obj().NumberValue(), rhs.NumberValue()))
-		e.evalAssign(*lhsloc, val)
+		e.evalAssign(node.Left, *lhsloc, val)
 		return val, nil
 	case ast.OpAssignBitwiseShiftLeft:
 		// The target is a numeric l-value; just <<= rhs to it, and yield the new value as the result.
 		ptr := lhs.PointerValue()
 		val := e.alloc.NewNumber(float64(int64(ptr.Obj().NumberValue()) << uint(rhs.NumberValue())))
-		e.evalAssign(*lhsloc, val)
+		e.evalAssign(node.Left, *lhsloc, val)
 		return val, nil
 	case ast.OpAssignBitwiseShiftRight:
 		// The target is a numeric l-value; just >>= rhs to it, and yield the new value as the result.
 		ptr := lhs.PointerValue()
 		val := e.alloc.NewNumber(float64(int64(ptr.Obj().NumberValue()) >> uint(rhs.NumberValue())))
-		e.evalAssign(*lhsloc, val)
+		e.evalAssign(node.Left, *lhsloc, val)
 		return val, nil
 	case ast.OpAssignBitwiseAnd:
 		// The target is a numeric l-value; just &= rhs to it, and yield the new value as the result.
 		ptr := lhs.PointerValue()
 		val := e.alloc.NewNumber(float64(int64(ptr.Obj().NumberValue()) & int64(rhs.NumberValue())))
-		e.evalAssign(*lhsloc, val)
+		e.evalAssign(node.Left, *lhsloc, val)
 		return val, nil
 	case ast.OpAssignBitwiseOr:
 		// The target is a numeric l-value; just |= rhs to it, and yield the new value as the result.
 		ptr := lhs.PointerValue()
 		val := e.alloc.NewNumber(float64(int64(ptr.Obj().NumberValue()) | int64(rhs.NumberValue())))
-		e.evalAssign(*lhsloc, val)
+		e.evalAssign(node.Left, *lhsloc, val)
 		return val, nil
 	case ast.OpAssignBitwiseXor:
 		// The target is a numeric l-value; just ^= rhs to it, and yield the new value as the result.
 		ptr := lhs.PointerValue()
 		val := e.alloc.NewNumber(float64(int64(ptr.Obj().NumberValue()) ^ int64(rhs.NumberValue())))
-		e.evalAssign(*lhsloc, val)
+		e.evalAssign(node.Left, *lhsloc, val)
 		return val, nil
 
 	// Relational operators
@@ -1423,13 +1456,19 @@ func isBinaryAssignmentOperator(op ast.BinaryOperator) bool {
 	}
 }
 
-func (e *evaluator) evalAssign(loc location, val *rt.Object) {
+func (e *evaluator) evalAssign(node ast.Node, loc location, val *rt.Object) {
 	// Perform the assignment, but make sure to invoke the property assignment hook if necessary.
 	ptr := loc.Obj.PointerValue()
-	if e.hooks != nil {
-		e.hooks.OnVariableAssign(loc.This, loc.Name, ptr.Obj(), val)
+
+	// If the pointer is readonly, however, we will disallow the assignment.
+	if ptr.Readonly() {
+		e.Diag().Errorf(errors.ErrorIllegalReadonlyLValue.At(node))
+	} else {
+		if e.hooks != nil {
+			e.hooks.OnVariableAssign(loc.This, loc.Name, ptr.Obj(), val)
+		}
+		ptr.Set(val)
 	}
-	ptr.Set(val)
 }
 
 func (e *evaluator) evalBinaryOperatorEquals(lhs *rt.Object, rhs *rt.Object) bool {

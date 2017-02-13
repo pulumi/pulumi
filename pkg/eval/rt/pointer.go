@@ -22,6 +22,7 @@ func NewPointer(obj *Object, readonly bool) *Pointer {
 
 func (ptr *Pointer) Readonly() bool { return ptr.readonly }
 func (ptr *Pointer) Obj() *Object   { return ptr.obj }
+func (ptr *Pointer) Freeze()        { ptr.readonly = true }
 
 func (ptr *Pointer) Set(obj *Object) {
 	contract.Assertf(!ptr.readonly, "Unexpected write to readonly reference")

@@ -21,6 +21,13 @@ func NewClassStatics(class *symbols.Class) *ClassStatics {
 
 // GetPropertyAddr returns the reference to a class's static property, lazily initializing if 'init' is true, or
 // returning nil otherwise.
-func (c *ClassStatics) GetPropertyAddr(key PropertyKey, init bool) *Pointer {
-	return c.statics.GetAddr(key, init, c.class, nil)
+func (c *ClassStatics) GetPropertyAddr(key PropertyKey, init bool, ctx symbols.Function) *Pointer {
+	// The fast path is a quick lookup.
+	if ptr := c.statics.GetAddr(key); ptr != nil || !init {
+		return ptr
+	}
+
+	// Nothing was found; go ahead and try again, initializing the slot with a default value.
+	obj, readonly := DefaultClassProperty(key, c.class, nil, ctx)
+	return c.statics.InitAddr(key, obj, readonly)
 }
