@@ -950,7 +950,7 @@ export class Transformer {
                         // TODO(joe): respect legacyVar to emulate "var"-like scoping.
                         let decl = <VariableDeclaration<ast.ModuleProperty>>element;
                         if (decl.initializer) {
-                            statements.push(this.makeVariableInitializer(decl));
+                            statements.push(this.makeVariableInitializer(undefined, decl));
                         }
                         this.currentModuleMembers[decl.variable.name.ident] = decl.variable;
                     }
@@ -1465,39 +1465,101 @@ export class Transformer {
                 }
             }
 
-            // For all class properties with default values, we need to spill the initializer into the constructor.
-            // This is non-trivial because the class may not have an explicit constructor.  If it doesn't we need to
+            // For all class properties with default values, we need to spill the initializer into either the
+            // constructor (for instance initializers) or the class constructor (for static initializers).  This is
+            // non-trivial because the class may not have an explicit constructor.  If it doesn't we need to
             // generate one.  In either case, we must be careful to respect initialization order with respect to super
             // calls.  Namely, all property initializers must occur *after* the invocation of `super()`.
-            let propertyInitializers: ast.Statement[] = [];
+            let staticPropertyInitializers: ast.Statement[] = [];
+            let instancePropertyInitializers: ast.Statement[] = [];
             for (let element of elements) {
                 if (isVariableDeclaration(element)) {
                     let decl = <VariableDeclaration<ast.ClassProperty>>element;
                     if (decl.initializer) {
-                        propertyInitializers.push(this.makeVariableInitializer(decl));
+                        let thisExpression: ast.Expression | undefined;
+                        if (decl.variable.static) {
+                            staticPropertyInitializers.push(this.makeVariableInitializer(undefined, decl));
+                        }
+                        else {
+                            instancePropertyInitializers.push(
+                                this.makeVariableInitializer(
+                                    thisExpression = <ast.LoadLocationExpression>{
+                                        kind: ast.loadLocationExpressionKind,
+                                        name: <ast.Token>{
+                                            kind: ast.tokenKind,
+                                            tok:  tokens.thisVariable,
+                                        },
+                                    },
+                                    decl,
+                                ),
+                            );
+                        }
                     }
                     members[decl.variable.name.ident] = decl.variable;
                 }
             }
-            if (propertyInitializers.length > 0) {
-                // Locate the constructor, possibly fabricating one if necessary.
-                let ctor: ast.ClassMethod | undefined =
-                    <ast.ClassMethod>members[tokens.constructorFunction];
+
+            // Create an .init method if there were any static initializers.
+            if (staticPropertyInitializers.length > 0) {
+                members[tokens.initializerFunction] = <ast.ClassMethod>{
+                    kind: ast.classMethodKind,
+                    name: ident(tokens.constructorFunction),
+                    body: <ast.Block>{
+                        kind:       ast.blockKind,
+                        statements: staticPropertyInitializers,
+                    },
+                };
+            }
+
+            // Locate the constructor, possibly creating a new one if necessary, if there were instance initializers.
+            if (instancePropertyInitializers.length > 0) {
+                let ctor: ast.ClassMethod | undefined = <ast.ClassMethod>members[tokens.constructorFunction];
+                let insertAt: number | undefined = undefined;
                 if (!ctor) {
-                    // TODO: once we support base classes, inject a call to super() at the front.
-                    ctor = members[tokens.constructorFunction] = <ast.ClassMethod>{
+                    // No explicit constructor was found; create a new one.
+                    ctor = <ast.ClassMethod>{
                         kind: ast.classMethodKind,
                         name: ident(tokens.constructorFunction),
                     };
+                    insertAt = 0; // add the initializers to the empty block.
+                    members[tokens.constructorFunction] = ctor;
                 }
-                if (!ctor.body) {
+                if (ctor.body) {
+                    if (extend) {
+                        // If there is a superclass, find the insertion point right *after* the explicit call to
+                        // `super()`, to achieve the expected initialization order.
+                        for (let i = 0; i < ctor.body.statements.length; i++) {
+                            if (this.isSuperCall(ctor.body.statements[i], extend.tok)) {
+                                insertAt = i+1; // place the initializers right after this call.
+                                break;
+                            }
+                        }
+                        contract.assert(insertAt !== undefined);
+                    }
+                    else {
+                        insertAt = 0; // put the initializers before everything else.
+                    }
+                }
+                else {
                     ctor.body = <ast.Block>{
                         kind:       ast.blockKind,
                         statements: [],
                     };
+                    if (extend) {
+                        // Generate an automatic call to the base class.  Omitting this is only legal if the base class
+                        // constructor has zero arguments, so we just generate a simple `super();` call.
+                        ctor.body.statements.push(this.createEmptySuperCall(extend.tok));
+                        insertAt = 1; // insert the initializers immediately after this call.
+                    }
+                    else {
+                        insertAt = 0; // place the initializers at the start of the (currently empty) block.
+                    }
                 }
-                // TODO: once we support base classes, search for the super() call and append afterwards.
-                ctor.body.statements = propertyInitializers.concat(ctor.body.statements);
+
+                ctor.body.statements =
+                    ctor.body.statements.slice(0, insertAt).concat(
+                        instancePropertyInitializers).concat(
+                            ctor.body.statements.slice(insertAt, ctor.body.statements.length));
             }
 
             let mods: ts.ModifierFlags = ts.getCombinedModifierFlags(node);
@@ -1608,7 +1670,7 @@ export class Transformer {
             let parameterInits: ast.Statement[] = [];
             for (let parameter of parameters) {
                 if (parameter.initializer) {
-                    parameterInits.push(this.makeVariableInitializer(parameter));
+                    parameterInits.push(this.makeVariableInitializer(undefined, parameter));
                 }
             }
             body.statements = parameterInits.concat(body.statements);
@@ -1758,15 +1820,17 @@ export class Transformer {
         });
     }
 
-    private makeVariableInitializer(decl: VariableDeclaration<ast.Variable>): ast.Statement {
+    private makeVariableInitializer(
+            object: ast.Expression | undefined, decl: VariableDeclaration<ast.Variable>): ast.Statement {
         contract.requires(!!decl.initializer, "decl", "Expected variable declaration to have an initializer");
         return this.copyLocation(decl.initializer!, <ast.ExpressionStatement>{
             kind:       ast.expressionStatementKind,
             expression: this.copyLocation(decl.initializer!, <ast.BinaryOperatorExpression>{
                 kind:     ast.binaryOperatorExpressionKind,
                 left:     this.copyLocation(decl.initializer!, <ast.LoadLocationExpression>{
-                    kind: ast.loadLocationExpressionKind,
-                    name: this.copyLocation(decl.variable.name, <ast.Token>{
+                    kind:   ast.loadLocationExpressionKind,
+                    object: object,
+                    name:   this.copyLocation(decl.variable.name, <ast.Token>{
                         kind: ast.tokenKind,
                         tok:  decl.tok,
                     }),
@@ -1818,7 +1882,7 @@ export class Transformer {
             if (decl.initializer) {
                 let vdecl = new VariableDeclaration<ast.LocalVariable>(
                     node, local.name.ident, local, decl.legacyVar, decl.initializer);
-                statements.push(this.makeVariableInitializer(vdecl));
+                statements.push(this.makeVariableInitializer(undefined, vdecl));
             }
         }
 
@@ -2334,6 +2398,58 @@ export class Transformer {
                 expressions: expressions,
             },
         );
+    }
+
+    // isSuperCall indicates whether a node represents a canonical `super(..)` base class constructor invocation.
+    // This requires digging through a bunch of properties on the given node and reverse engineering the code pattern.
+    private isSuperCall(node: ast.Statement, superclass: tokens.TypeToken): boolean {
+        if (node.kind !== ast.expressionStatementKind) {
+            return false;
+        }
+
+        let exprstmt = <ast.ExpressionStatement>node;
+        if (exprstmt.expression.kind !== ast.invokeFunctionExpressionKind) {
+            return false;
+        }
+
+        let invoke = <ast.InvokeFunctionExpression>exprstmt.expression;
+        if (invoke.function.kind !== ast.loadLocationExpressionKind) {
+            return false;
+        }
+
+        let ldloc = <ast.LoadLocationExpression>invoke.function;
+        if (!ldloc.object || ldloc.object.kind !== ast.loadLocationExpressionKind) {
+            return false;
+        }
+        if (ldloc.name.tok !== this.createClassMemberToken(superclass, tokens.constructorFunction)) {
+            return false;
+        }
+        let ldobjloc = <ast.LoadLocationExpression>ldloc.object;
+        return !ldobjloc.object && ldloc.name.tok === tokens.superVariable;
+    }
+
+    // createEmptySuperCall manufactures a synthetic call to a base class, with no arguments (i.e., `super();`).
+    private createEmptySuperCall(superclass: tokens.TypeToken): ast.ExpressionStatement {
+        return <ast.ExpressionStatement>{
+            kind:       ast.expressionStatementKind,
+            expression: <ast.InvokeFunctionExpression>{
+                kind:     ast.invokeFunctionExpressionKind,
+                function: <ast.LoadLocationExpression>{
+                    kind: ast.loadLocationExpressionKind,
+                    object: <ast.LoadLocationExpression>{
+                        kind: ast.loadLocationExpressionKind,
+                        name: <ast.Token>{
+                            kind: ast.tokenKind,
+                            tok:  tokens.superVariable,
+                        },
+                    },
+                    name: <ast.Token>{
+                        kind: ast.tokenKind,
+                        tok:  this.createClassMemberToken(superclass, tokens.constructorFunction),
+                    },
+                },
+            },
+        };
     }
 
     private async transformCallExpression(node: ts.CallExpression): Promise<ast.InvokeFunctionExpression> {

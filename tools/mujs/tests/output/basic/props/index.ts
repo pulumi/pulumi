@@ -9,6 +9,10 @@ class C {
     public claprop: boolean = true;
 }
 
+class D extends C {
+    public cladprop: string = "yeah d!";
+}
+
 // Now create some references to those properties:
 
 let a: string = modprop;
