@@ -26,7 +26,6 @@
                             }
                         }
                     },
-                    "access": "private",
                     "type": {
                         "kind": "TypeToken",
                         "tok": "number",
@@ -49,7 +48,6 @@
                         "kind": "Identifier",
                         "ident": ".init"
                     },
-                    "access": "public",
                     "body": {
                         "kind": "Block",
                         "statements": [
@@ -136,13 +134,13 @@
                         "kind": "Identifier",
                         "ident": ".main"
                     },
-                    "access": "public",
                     "body": {
                         "kind": "Block",
                         "statements": []
                     }
                 }
             },
+            "exports": {},
             "loc": {
                 "file": "index.ts",
                 "start": {

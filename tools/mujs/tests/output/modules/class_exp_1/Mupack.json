@@ -26,7 +26,6 @@
                             }
                         }
                     },
-                    "access": "public",
                     "members": {},
                     "abstract": false,
                     "loc": {
@@ -47,10 +46,55 @@
                         "kind": "Identifier",
                         "ident": ".main"
                     },
-                    "access": "public",
                     "body": {
                         "kind": "Block",
                         "statements": []
+                    }
+                }
+            },
+            "exports": {
+                "C": {
+                    "kind": "Export",
+                    "name": {
+                        "kind": "Identifier",
+                        "ident": "C",
+                        "loc": {
+                            "file": "index.ts",
+                            "start": {
+                                "line": 1,
+                                "column": 14
+                            },
+                            "end": {
+                                "line": 1,
+                                "column": 15
+                            }
+                        }
+                    },
+                    "referent": {
+                        "kind": "Token",
+                        "tok": "class_exp_1:index:C",
+                        "loc": {
+                            "file": "index.ts",
+                            "start": {
+                                "line": 1,
+                                "column": 14
+                            },
+                            "end": {
+                                "line": 1,
+                                "column": 15
+                            }
+                        }
+                    },
+                    "loc": {
+                        "file": "index.ts",
+                        "start": {
+                            "line": 1,
+                            "column": 1
+                        },
+                        "end": {
+                            "line": 2,
+                            "column": 2
+                        }
                     }
                 }
             },

@@ -15,7 +15,6 @@
                         "kind": "Identifier",
                         "ident": "default"
                     },
-                    "access": "public",
                     "members": {},
                     "abstract": false,
                     "loc": {
@@ -36,10 +35,33 @@
                         "kind": "Identifier",
                         "ident": ".main"
                     },
-                    "access": "public",
                     "body": {
                         "kind": "Block",
                         "statements": []
+                    }
+                }
+            },
+            "exports": {
+                "default": {
+                    "kind": "Export",
+                    "name": {
+                        "kind": "Identifier",
+                        "ident": "default"
+                    },
+                    "referent": {
+                        "kind": "Token",
+                        "tok": "class_exp_def_1:index:default"
+                    },
+                    "loc": {
+                        "file": "index.ts",
+                        "start": {
+                            "line": 1,
+                            "column": 1
+                        },
+                        "end": {
+                            "line": 2,
+                            "column": 2
+                        }
                     }
                 }
             },

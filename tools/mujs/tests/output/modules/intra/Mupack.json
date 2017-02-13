@@ -26,7 +26,6 @@
                             }
                         }
                     },
-                    "access": "private",
                     "members": {},
                     "interface": true,
                     "loc": {
@@ -58,7 +57,6 @@
                             }
                         }
                     },
-                    "access": "private",
                     "members": {},
                     "abstract": false,
                     "loc": {
@@ -90,7 +88,6 @@
                             }
                         }
                     },
-                    "access": "private",
                     "members": {
                         ".ctor": {
                             "kind": "ClassMethod",
@@ -216,13 +213,13 @@
                         "kind": "Identifier",
                         "ident": ".main"
                     },
-                    "access": "public",
                     "body": {
                         "kind": "Block",
                         "statements": []
                     }
                 }
             },
+            "exports": {},
             "loc": {
                 "file": "index.ts",
                 "start": {

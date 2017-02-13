@@ -18,9 +18,9 @@ import (
 
 func newDescribeCmd() *cobra.Command {
 	var printAll bool
-	var printExports bool
 	var printIL bool
 	var printSymbols bool
+	var printExportedSymbols bool
 	var cmd = &cobra.Command{
 		Use:   "describe [packages...]",
 		Short: "Describe a MuPackage",
@@ -28,9 +28,9 @@ func newDescribeCmd() *cobra.Command {
 		Run: func(cmd *cobra.Command, args []string) {
 			// If printAll is true, flip all the flags.
 			if printAll {
-				printExports = true
 				printIL = true
 				printSymbols = true
+				printExportedSymbols = true
 			}
 
 			// Enumerate the list of packages, deserialize them, and print information.
@@ -39,7 +39,7 @@ func newDescribeCmd() *cobra.Command {
 				if pkg == nil {
 					break
 				}
-				printPackage(pkg, printSymbols, printExports, printIL)
+				printPackage(pkg, printSymbols, printExportedSymbols, printIL)
 			}
 		},
 	}
@@ -48,7 +48,7 @@ func newDescribeCmd() *cobra.Command {
 		&printSymbols, "all", "a", false,
 		"Print everything: the package, symbols, and MuIL")
 	cmd.PersistentFlags().BoolVarP(
-		&printExports, "exports", "e", false,
+		&printExportedSymbols, "exports", "e", false,
 		"Print just the exported symbols")
 	cmd.PersistentFlags().BoolVarP(
 		&printIL, "il", "i", false,
@@ -158,8 +158,10 @@ func printPackage(pkg *pack.Package, printSymbols bool, printExports bool, print
 }
 
 func printModules(pkg *pack.Package, printSymbols bool, printExports bool, printIL bool, indent string) {
+	pkgtok := tokens.NewPackageToken(pkg.Name)
 	for _, name := range ast.StableModules(*pkg.Modules) {
 		mod := (*pkg.Modules)[name]
+		modtok := tokens.NewModuleToken(pkgtok, name)
 
 		// Print the name.
 		fmt.Printf("%vmodule \"%v\" {", indent, name)
@@ -182,10 +184,27 @@ func printModules(pkg *pack.Package, printSymbols bool, printExports bool, print
 					fmt.Printf("]\n")
 				}
 
+				exports := make(map[tokens.Token]bool)
+				if mod.Exports != nil {
+					// Print the exports.
+					fmt.Printf("%vexports [", indent+tab)
+					if mod.Exports != nil && len(*mod.Exports) > 0 {
+						fmt.Printf("\n")
+						for _, exp := range ast.StableModuleExports(*mod.Exports) {
+							ref := (*mod.Exports)[exp].Referent.Tok
+							fmt.Printf("%v\"%v\" -> \"%v\"\n", indent+tab+tab, exp, ref)
+							exports[ref] = true
+						}
+						fmt.Printf("%v", indent+tab)
+					}
+					fmt.Printf("]\n")
+				}
+
 				if mod.Members != nil {
 					// Print the members.
 					for _, member := range ast.StableModuleMembers(*mod.Members) {
-						printModuleMember(member, (*mod.Members)[member], printExports, indent+tab)
+						memtok := tokens.NewModuleMemberToken(modtok, member)
+						printModuleMember(memtok, (*mod.Members)[member], printExports, exports, indent+tab)
 					}
 					fmt.Printf("%v", indent)
 				}
@@ -198,41 +217,28 @@ func printModules(pkg *pack.Package, printSymbols bool, printExports bool, print
 	}
 }
 
-func printModuleMember(name tokens.ModuleMemberName, member ast.ModuleMember, exportOnly bool, indent string) {
+func printModuleMember(tok tokens.ModuleMember, member ast.ModuleMember,
+	exportOnly bool, exports map[tokens.Token]bool, indent string) {
 	printComment(member.GetDescription(), indent)
 
-	acc := member.GetAccess()
-	if !exportOnly || (acc != nil && *acc == tokens.PublicAccessibility) {
+	if !exportOnly || exports[tokens.Token(tok)] {
 		switch member.GetKind() {
-		case ast.ExportKind:
-			printExport(name, member.(*ast.Export), indent)
 		case ast.ClassKind:
-			printClass(name, member.(*ast.Class), exportOnly, indent)
+			printClass(tokens.Type(tok), member.(*ast.Class), exportOnly, indent)
 		case ast.ModulePropertyKind:
-			printModuleProperty(name, member.(*ast.ModuleProperty), indent)
+			printModuleProperty(tok, member.(*ast.ModuleProperty), indent)
 		case ast.ModuleMethodKind:
-			printModuleMethod(name, member.(*ast.ModuleMethod), indent)
+			printModuleMethod(tok, member.(*ast.ModuleMethod), indent)
 		default:
-			contract.Failf("Unexpected ModuleMember kind: %v\n", member.GetKind())
+			contract.Failf("Unexpected ModuleMember kind: %v (tok %v)\n", member.GetKind(), tok)
 		}
 	}
 }
 
-func printExport(name tokens.ModuleMemberName, export *ast.Export, indent string) {
-	var mods []string
-	if export.Access != nil {
-		mods = append(mods, string(*export.Access))
-	}
-	fmt.Printf("%vexport \"%v\"%v %v\n", indent, name, modString(mods), export.Referent.Tok)
-}
-
-func printClass(name tokens.ModuleMemberName, class *ast.Class, exportOnly bool, indent string) {
-	fmt.Printf("%vclass \"%v\"", indent, name)
+func printClass(tok tokens.Type, class *ast.Class, exportOnly bool, indent string) {
+	fmt.Printf("%vclass \"%v\"", indent, tok.Name())
 
 	var mods []string
-	if class.Access != nil {
-		mods = append(mods, string(*class.Access))
-	}
 	if class.Sealed != nil && *class.Sealed {
 		mods = append(mods, "sealed")
 	}
@@ -260,30 +266,31 @@ func printClass(name tokens.ModuleMemberName, class *ast.Class, exportOnly bool,
 	if class.Members != nil {
 		fmt.Printf("\n")
 		for _, member := range ast.StableClassMembers(*class.Members) {
-			printClassMember(member, (*class.Members)[member], exportOnly, indent+tab)
+			memtok := tokens.NewClassMemberToken(tok, member)
+			printClassMember(memtok, (*class.Members)[member], exportOnly, indent+tab)
 		}
 		fmt.Printf(indent)
 	}
 	fmt.Printf("}\n")
 }
 
-func printClassMember(name tokens.ClassMemberName, member ast.ClassMember, exportOnly bool, indent string) {
+func printClassMember(tok tokens.ClassMember, member ast.ClassMember, exportOnly bool, indent string) {
 	printComment(member.GetDescription(), indent)
 
 	acc := member.GetAccess()
-	if !exportOnly || (acc != nil && *acc == tokens.PublicClassAccessibility) {
+	if !exportOnly || (acc != nil && *acc == tokens.PublicAccessibility) {
 		switch member.GetKind() {
 		case ast.ClassPropertyKind:
-			printClassProperty(name, member.(*ast.ClassProperty), indent)
+			printClassProperty(tok, member.(*ast.ClassProperty), indent)
 		case ast.ClassMethodKind:
-			printClassMethod(name, member.(*ast.ClassMethod), indent)
+			printClassMethod(tok, member.(*ast.ClassMethod), indent)
 		default:
 			contract.Failf("Unexpected ClassMember kind: %v\n", member.GetKind())
 		}
 	}
 }
 
-func printClassProperty(name tokens.ClassMemberName, prop *ast.ClassProperty, indent string) {
+func printClassProperty(tok tokens.ClassMember, prop *ast.ClassProperty, indent string) {
 	var mods []string
 	if prop.Access != nil {
 		mods = append(mods, string(*prop.Access))
@@ -294,14 +301,14 @@ func printClassProperty(name tokens.ClassMemberName, prop *ast.ClassProperty, in
 	if prop.Readonly != nil && *prop.Readonly {
 		mods = append(mods, "readonly")
 	}
-	fmt.Printf("%vproperty \"%v\"%v", indent, name, modString(mods))
+	fmt.Printf("%vproperty \"%v\"%v", indent, tok.Name(), modString(mods))
 	if prop.Type != nil {
 		fmt.Printf(": %v", prop.Type.Tok)
 	}
 	fmt.Printf("\n")
 }
 
-func printClassMethod(name tokens.ClassMemberName, meth *ast.ClassMethod, indent string) {
+func printClassMethod(tok tokens.ClassMember, meth *ast.ClassMethod, indent string) {
 	var mods []string
 	if meth.Access != nil {
 		mods = append(mods, string(*meth.Access))
@@ -315,26 +322,19 @@ func printClassMethod(name tokens.ClassMemberName, meth *ast.ClassMethod, indent
 	if meth.Abstract != nil && *meth.Abstract {
 		mods = append(mods, "abstract")
 	}
-	fmt.Printf("%vmethod \"%v\"%v: %v\n", indent, name, modString(mods), funcSig(meth))
+	fmt.Printf("%vmethod \"%v\"%v: %v\n", indent, tok.Name(), modString(mods), funcSig(meth))
 }
 
-func printModuleMethod(name tokens.ModuleMemberName, meth *ast.ModuleMethod, indent string) {
-	var mods []string
-	if meth.Access != nil {
-		mods = append(mods, string(*meth.Access))
-	}
-	fmt.Printf("%vmethod \"%v\"%v: %v\n", indent, name, modString(mods), funcSig(meth))
+func printModuleMethod(tok tokens.ModuleMember, meth *ast.ModuleMethod, indent string) {
+	fmt.Printf("%vmethod \"%v\": %v\n", indent, tok.Name(), funcSig(meth))
 }
 
-func printModuleProperty(name tokens.ModuleMemberName, prop *ast.ModuleProperty, indent string) {
+func printModuleProperty(tok tokens.ModuleMember, prop *ast.ModuleProperty, indent string) {
 	var mods []string
-	if prop.Access != nil {
-		mods = append(mods, string(*prop.Access))
-	}
 	if prop.Readonly != nil && *prop.Readonly {
 		mods = append(mods, "readonly")
 	}
-	fmt.Printf("%vproperty \"%v\"%v", indent, name, modString(mods))
+	fmt.Printf("%vproperty \"%v\"%v", indent, tok.Name(), modString(mods))
 	if prop.Type != nil {
 		fmt.Printf(": %v", prop.Type.Tok)
 	}

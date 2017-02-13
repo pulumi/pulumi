@@ -26,7 +26,6 @@
                             }
                         }
                     },
-                    "access": "public",
                     "members": {
                         ".ctor": {
                             "kind": "ClassMethod",
@@ -853,10 +852,55 @@
                         "kind": "Identifier",
                         "ident": ".main"
                     },
-                    "access": "public",
                     "body": {
                         "kind": "Block",
                         "statements": []
+                    }
+                }
+            },
+            "exports": {
+                "Point": {
+                    "kind": "Export",
+                    "name": {
+                        "kind": "Identifier",
+                        "ident": "Point",
+                        "loc": {
+                            "file": "index.ts",
+                            "start": {
+                                "line": 4,
+                                "column": 14
+                            },
+                            "end": {
+                                "line": 4,
+                                "column": 19
+                            }
+                        }
+                    },
+                    "referent": {
+                        "kind": "Token",
+                        "tok": "scenarios/point:index:Point",
+                        "loc": {
+                            "file": "index.ts",
+                            "start": {
+                                "line": 4,
+                                "column": 14
+                            },
+                            "end": {
+                                "line": 4,
+                                "column": 19
+                            }
+                        }
+                    },
+                    "loc": {
+                        "file": "index.ts",
+                        "start": {
+                            "line": 4,
+                            "column": 1
+                        },
+                        "end": {
+                            "line": 16,
+                            "column": 2
+                        }
                     }
                 }
             },

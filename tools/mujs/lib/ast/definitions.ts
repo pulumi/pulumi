@@ -21,25 +21,27 @@ export interface Module extends Definition {
     kind:     ModuleKind;
     default?: boolean;       // true if this is the package entrypoint (just one).
     imports?: ModuleToken[]; // an ordered list of import modules to initialize.
-    members?: ModuleMembers; // a list of members (both private and public, exported ones).
+    exports?: ModuleExports; // a list of exported members, keyed by name.
+    members?: ModuleMembers; // a list of members, keyed by their simple name.
 }
 export const moduleKind = "Module";
 export type  ModuleKind = "Module";
 export type  Modules = { [token: string /*tokens.ModuleToken*/]: Module };
 
-// A module member is a definition that belongs to a module.
-export interface ModuleMember extends Definition {
-    access?: tokens.Accessibility;
-}
-export type ModuleMembers = { [token: string /*tokens.Token*/]: ModuleMember };
-
 // An export definition re-exports a definition from another module, possibly with a different name.
-export interface Export extends ModuleMember {
+export interface Export extends Definition {
     kind:     ExportKind;
     referent: Token;
 }
 export const exportKind = "Export";
 export type  ExportKind = "Export";
+
+export type ModuleExports = { [token: string /*tokens.Name*/]: Export };
+
+// A module member is a definition that belongs to a module.
+export interface ModuleMember extends Definition {
+}
+export type ModuleMembers = { [token: string /*tokens.Name*/]: ModuleMember };
 
 /* Classes */
 
@@ -59,7 +61,7 @@ export type  ClassKind = "Class";
 
 // A class member is a definition that belongs to a class.
 export interface ClassMember extends Definition {
-    access?: tokens.ClassMemberAccessibility;
+    access?: tokens.Accessibility;
     static?: boolean;
 }
 export type ClassMembers = { [token: string /*tokens.Token*/]: ClassMember };

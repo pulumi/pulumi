@@ -338,6 +338,7 @@ func (a *astBinder) checkLoadLocationExpression(node *ast.LoadLocationExpression
 				usesThis = false
 			case *symbols.Export:
 				// For exports, let's keep digging until we hit something concrete.
+				contract.Assertf(sym != s.Referent, "Unexpected self-referential export")
 				sym = s.Referent
 			default:
 				contract.Failf("Unrecognized load location token '%v' symbol type: %v", sym.Token(), reflect.TypeOf(s))

@@ -42,6 +42,14 @@ func (b *binder) bindModuleMemberDeclarations(module *symbols.Module) {
 	pop := b.pushModule(module)
 	defer pop()
 
+	// Bind all export declarations.
+	if module.Node.Exports != nil {
+		exports := *module.Node.Exports
+		for _, nm := range ast.StableModuleExports(exports) {
+			module.Exports[nm] = b.bindExportDeclaration(exports[nm], module)
+		}
+	}
+
 	// Now bind all member declarations.
 	if module.Node.Members != nil {
 		members := *module.Node.Members
@@ -49,8 +57,6 @@ func (b *binder) bindModuleMemberDeclarations(module *symbols.Module) {
 			switch m := members[nm].(type) {
 			case *ast.Class:
 				module.Members[nm] = b.bindClassDeclaration(m, module)
-			case *ast.Export:
-				module.Members[nm] = b.bindExportDeclaration(m, module)
 			case *ast.ModuleMethod:
 				module.Members[nm] = b.bindModuleMethodDeclaration(m, module)
 			case *ast.ModuleProperty:
@@ -120,13 +126,16 @@ func (b *binder) bindModuleMemberDefinitions(module *symbols.Module) {
 	pop := b.pushModule(module)
 	defer pop()
 
-	// Now bind all member definitions.
+	// Complete all exports definitions.
+	for _, nm := range symbols.StableModuleExportMap(module.Exports) {
+		b.bindExportDefinition(module.Exports[nm])
+	}
+
+	// Now complete all member definitions.
 	for _, nm := range symbols.StableModuleMemberMap(module.Members) {
 		switch m := module.Members[nm].(type) {
 		case *symbols.Class:
 			b.bindClassDefinition(m)
-		case *symbols.Export:
-			b.bindExportDefinition(m)
 		case *symbols.ModuleMethod:
 			b.bindModuleMethodDefinition(m)
 		case *symbols.ModuleProperty:

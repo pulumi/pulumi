@@ -2,21 +2,14 @@
 
 package tokens
 
-type Accessibility string // accessibility modifiers common to all.
+// Accessibility determines the visibility of a class member.
+type Accessibility string
 
-// Module accessibility modifiers.
+// Accessibility modifiers.
 const (
-	PublicAccessibility  Accessibility = "public"
-	PrivateAccessibility Accessibility = "private"
-)
-
-type ClassMemberAccessibility Accessibility // accessibility modifiers for class members.
-
-// Class member accessibility modifiers.
-const (
-	PublicClassAccessibility    ClassMemberAccessibility = "public"
-	PrivateClassAccessibility   ClassMemberAccessibility = "private"
-	ProtectedClassAccessibility ClassMemberAccessibility = "protected"
+	PublicAccessibility    Accessibility = "public"
+	PrivateAccessibility   Accessibility = "private"
+	ProtectedAccessibility Accessibility = "protected"
 )
 
 // Special module names.

@@ -26,7 +26,6 @@
                             }
                         }
                     },
-                    "access": "public",
                     "parameters": [],
                     "body": {
                         "kind": "Block",
@@ -61,10 +60,55 @@
                         "kind": "Identifier",
                         "ident": ".main"
                     },
-                    "access": "public",
                     "body": {
                         "kind": "Block",
                         "statements": []
+                    }
+                }
+            },
+            "exports": {
+                "foo": {
+                    "kind": "Export",
+                    "name": {
+                        "kind": "Identifier",
+                        "ident": "foo",
+                        "loc": {
+                            "file": "other.ts",
+                            "start": {
+                                "line": 1,
+                                "column": 17
+                            },
+                            "end": {
+                                "line": 1,
+                                "column": 20
+                            }
+                        }
+                    },
+                    "referent": {
+                        "kind": "Token",
+                        "tok": "modules/func_cross_call:other:foo",
+                        "loc": {
+                            "file": "other.ts",
+                            "start": {
+                                "line": 1,
+                                "column": 17
+                            },
+                            "end": {
+                                "line": 1,
+                                "column": 20
+                            }
+                        }
+                    },
+                    "loc": {
+                        "file": "other.ts",
+                        "start": {
+                            "line": 1,
+                            "column": 1
+                        },
+                        "end": {
+                            "line": 3,
+                            "column": 2
+                        }
                     }
                 }
             },
@@ -110,7 +154,6 @@
                         "kind": "Identifier",
                         "ident": ".init"
                     },
-                    "access": "public",
                     "body": {
                         "kind": "Block",
                         "statements": [
@@ -181,13 +224,13 @@
                         "kind": "Identifier",
                         "ident": ".main"
                     },
-                    "access": "public",
                     "body": {
                         "kind": "Block",
                         "statements": []
                     }
                 }
             },
+            "exports": {},
             "loc": {
                 "file": "index.ts",
                 "start": {

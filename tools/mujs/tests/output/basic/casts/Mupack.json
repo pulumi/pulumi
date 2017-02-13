@@ -26,7 +26,6 @@
                             }
                         }
                     },
-                    "access": "private",
                     "type": {
                         "kind": "TypeToken",
                         "tok": "string",
@@ -60,7 +59,6 @@
                             }
                         }
                     },
-                    "access": "private",
                     "type": {
                         "kind": "TypeToken",
                         "tok": "dynamic",
@@ -83,7 +81,6 @@
                         "kind": "Identifier",
                         "ident": ".init"
                     },
-                    "access": "public",
                     "body": {
                         "kind": "Block",
                         "statements": [
@@ -286,13 +283,13 @@
                         "kind": "Identifier",
                         "ident": ".main"
                     },
-                    "access": "public",
                     "body": {
                         "kind": "Block",
                         "statements": []
                     }
                 }
             },
+            "exports": {},
             "loc": {
                 "file": "index.ts",
                 "start": {

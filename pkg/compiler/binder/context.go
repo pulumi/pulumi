@@ -110,13 +110,30 @@ func (ctx *Context) LookupSymbol(node ast.Node, tok tokens.Token, require bool) 
 				mod := tok.Module().Name()
 				if modsym := ctx.LookupModuleSymbol(pkgsym, mod); modsym != nil {
 					if tok.HasModuleMember() {
+						// We need to look up a module member.  Note that this has to respect the export table, to
+						// prevent unwanted access to internal routines.  Another subtlety worth calling out is that
+						// from *within* a module, these export names are not yet even accessible.
 						mem := tok.ModuleMember().Name()
-						if memsym := modsym.Members[mem]; memsym != nil {
+
+						var memsym symbols.Symbol
+						if modsym == ctx.Currmodule {
+							// Current module; use the members table.
+							memsym = modsym.Members[mem]
+						} else {
+							// Otherwise, it's a foreign module; use the exports table.
+							memsym = modsym.Exports[mem]
+						}
+
+						if memsym != nil {
 							if tok.HasClassMember() {
 								if class, isclass := memsym.(*symbols.Class); isclass {
 									clm := tok.ClassMember().Name()
 									if clmsym := class.Members[clm]; clmsym != nil {
+										// Got a match: the full member was found.
 										sym = clmsym
+
+										// Ensure the class member is visible to this context.
+										ctx.checkClassVisibility(node, class, clmsym)
 									} else {
 										reason = fmt.Sprintf("class member '%v' not found", clm)
 									}
@@ -124,18 +141,21 @@ func (ctx *Context) LookupSymbol(node ast.Node, tok tokens.Token, require bool) 
 									reason = fmt.Sprintf("module member '%v' is not a class", mem)
 								}
 							} else {
+								// Got a match: the token only specified a module member and we found it.
 								sym = memsym
 							}
 						} else {
 							reason = fmt.Sprintf("module member '%v' not found", mem)
 						}
 					} else {
+						// Got a match: the token only specified a module and we found it.
 						sym = modsym
 					}
 				} else {
 					reason = fmt.Sprintf("module '%v' not found", mod)
 				}
 			} else {
+				// Got a match: the token only specified a package and we found it.
 				sym = pkgsym
 			}
 		} else {
@@ -290,44 +310,23 @@ func (ctx *Context) lookupBasicType(node ast.Node, tok tokens.Type, require bool
 	return types.Error
 }
 
-func (ctx *Context) checkModuleVisibility(node ast.Node, module *symbols.Module, member symbols.ModuleMember) {
-	acc := member.MemberNode().GetAccess()
-	if acc == nil {
-		a := tokens.PrivateAccessibility // private is the default
-		acc = &a
-	}
-
-	// Module members have two accessibilities: public or private.  If it's public, no problem.  Otherwise, unless the
-	// target module and current module are the same, we should issue an error.
-	switch *acc {
-	case tokens.PublicAccessibility:
-		// ok.
-	case tokens.PrivateAccessibility:
-		if module != ctx.Currmodule {
-			ctx.Diag.Errorf(errors.ErrorMemberNotAccessible.At(node), member, *acc)
-		}
-	default:
-		contract.Failf("Unrecognized module member accessibility: %v", *acc)
-	}
-}
-
 func (ctx *Context) checkClassVisibility(node ast.Node, class *symbols.Class, member symbols.ClassMember) {
 	acc := member.MemberNode().GetAccess()
 	if acc == nil {
-		a := tokens.PrivateClassAccessibility // private is the default.
+		a := tokens.PrivateAccessibility // private is the default.
 		acc = &a
 	}
 
 	// Class members have three accessibilities: public, private, or protected.  If it's public, anything goes.  If
 	// private, only permit access from within the same class.  If protected, only the same class or base-classes.
 	switch *acc {
-	case tokens.PublicClassAccessibility:
+	case tokens.PublicAccessibility:
 		// ok
-	case tokens.PrivateClassAccessibility:
+	case tokens.PrivateAccessibility:
 		if class != ctx.Currclass {
 			ctx.Diag.Errorf(errors.ErrorMemberNotAccessible.At(node), member, *acc)
 		}
-	case tokens.ProtectedClassAccessibility:
+	case tokens.ProtectedAccessibility:
 		if !types.HasBase(ctx.Currclass, class) {
 			ctx.Diag.Errorf(errors.ErrorMemberNotAccessible.At(node), member, *acc)
 		}

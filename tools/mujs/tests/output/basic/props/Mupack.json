@@ -26,7 +26,6 @@
                             }
                         }
                     },
-                    "access": "private",
                     "type": {
                         "kind": "TypeToken",
                         "tok": "string",
@@ -60,7 +59,6 @@
                             }
                         }
                     },
-                    "access": "private",
                     "members": {
                         "clastaprop": {
                             "kind": "ClassProperty",
@@ -346,7 +344,6 @@
                             }
                         }
                     },
-                    "access": "private",
                     "members": {
                         "cladprop": {
                             "kind": "ClassProperty",
@@ -533,7 +530,6 @@
                             }
                         }
                     },
-                    "access": "private",
                     "type": {
                         "kind": "TypeToken",
                         "tok": "string",
@@ -567,7 +563,6 @@
                             }
                         }
                     },
-                    "access": "private",
                     "type": {
                         "kind": "TypeToken",
                         "tok": "number",
@@ -601,7 +596,6 @@
                             }
                         }
                     },
-                    "access": "private",
                     "type": {
                         "kind": "TypeToken",
                         "tok": "basic/props:index:C",
@@ -624,7 +618,6 @@
                         "kind": "Identifier",
                         "ident": ".init"
                     },
-                    "access": "public",
                     "body": {
                         "kind": "Block",
                         "statements": [
@@ -1571,13 +1564,13 @@
                         "kind": "Identifier",
                         "ident": ".main"
                     },
-                    "access": "public",
                     "body": {
                         "kind": "Block",
                         "statements": []
                     }
                 }
             },
+            "exports": {},
             "loc": {
                 "file": "index.ts",
                 "start": {

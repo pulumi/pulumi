@@ -26,7 +26,6 @@
                             }
                         }
                     },
-                    "access": "private",
                     "type": {
                         "kind": "TypeToken",
                         "tok": "dynamic",
@@ -60,7 +59,6 @@
                             }
                         }
                     },
-                    "access": "private",
                     "type": {
                         "kind": "TypeToken",
                         "tok": "number",
@@ -94,7 +92,6 @@
                             }
                         }
                     },
-                    "access": "private",
                     "type": {
                         "kind": "TypeToken",
                         "tok": "string",
@@ -128,7 +125,6 @@
                             }
                         }
                     },
-                    "access": "private",
                     "parameters": [
                         {
                             "kind": "LocalVariable",
@@ -208,7 +204,6 @@
                             }
                         }
                     },
-                    "access": "private",
                     "type": {
                         "kind": "TypeToken",
                         "tok": "dynamic",
@@ -242,7 +237,6 @@
                             }
                         }
                     },
-                    "access": "private",
                     "type": {
                         "kind": "TypeToken",
                         "tok": "number",
@@ -276,7 +270,6 @@
                             }
                         }
                     },
-                    "access": "private",
                     "type": {
                         "kind": "TypeToken",
                         "tok": "string",
@@ -310,7 +303,6 @@
                             }
                         }
                     },
-                    "access": "private",
                     "parameters": [
                         {
                             "kind": "LocalVariable",
@@ -390,7 +382,6 @@
                             }
                         }
                     },
-                    "access": "private",
                     "members": {
                         ".ctor": {
                             "kind": "ClassMethod",
@@ -727,7 +718,6 @@
                         "kind": "Identifier",
                         "ident": ".init"
                     },
-                    "access": "public",
                     "body": {
                         "kind": "Block",
                         "statements": [
@@ -1322,13 +1312,13 @@
                         "kind": "Identifier",
                         "ident": ".main"
                     },
-                    "access": "public",
                     "body": {
                         "kind": "Block",
                         "statements": []
                     }
                 }
             },
+            "exports": {},
             "loc": {
                 "file": "index.ts",
                 "start": {

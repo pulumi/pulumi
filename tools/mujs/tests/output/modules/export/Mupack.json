@@ -26,7 +26,6 @@
                             }
                         }
                     },
-                    "access": "public",
                     "members": {},
                     "abstract": false,
                     "loc": {
@@ -58,7 +57,6 @@
                             }
                         }
                     },
-                    "access": "public",
                     "members": {},
                     "interface": true,
                     "loc": {
@@ -90,7 +88,6 @@
                             }
                         }
                     },
-                    "access": "public",
                     "type": {
                         "kind": "TypeToken",
                         "tok": "number",
@@ -113,7 +110,6 @@
                         "kind": "Identifier",
                         "ident": ".init"
                     },
-                    "access": "public",
                     "body": {
                         "kind": "Block",
                         "statements": [
@@ -200,10 +196,99 @@
                         "kind": "Identifier",
                         "ident": ".main"
                     },
-                    "access": "public",
                     "body": {
                         "kind": "Block",
                         "statements": []
+                    }
+                }
+            },
+            "exports": {
+                "D": {
+                    "kind": "Export",
+                    "name": {
+                        "kind": "Identifier",
+                        "ident": "D",
+                        "loc": {
+                            "file": "other.ts",
+                            "start": {
+                                "line": 1,
+                                "column": 14
+                            },
+                            "end": {
+                                "line": 1,
+                                "column": 15
+                            }
+                        }
+                    },
+                    "referent": {
+                        "kind": "Token",
+                        "tok": "export:other:D",
+                        "loc": {
+                            "file": "other.ts",
+                            "start": {
+                                "line": 1,
+                                "column": 14
+                            },
+                            "end": {
+                                "line": 1,
+                                "column": 15
+                            }
+                        }
+                    },
+                    "loc": {
+                        "file": "other.ts",
+                        "start": {
+                            "line": 1,
+                            "column": 1
+                        },
+                        "end": {
+                            "line": 1,
+                            "column": 18
+                        }
+                    }
+                },
+                "J": {
+                    "kind": "Export",
+                    "name": {
+                        "kind": "Identifier",
+                        "ident": "J",
+                        "loc": {
+                            "file": "other.ts",
+                            "start": {
+                                "line": 2,
+                                "column": 18
+                            },
+                            "end": {
+                                "line": 2,
+                                "column": 19
+                            }
+                        }
+                    },
+                    "referent": {
+                        "kind": "Token",
+                        "tok": "export:other:J",
+                        "loc": {
+                            "file": "other.ts",
+                            "start": {
+                                "line": 2,
+                                "column": 18
+                            },
+                            "end": {
+                                "line": 2,
+                                "column": 19
+                            }
+                        }
+                    },
+                    "loc": {
+                        "file": "other.ts",
+                        "start": {
+                            "line": 2,
+                            "column": 1
+                        },
+                        "end": {
+                            "line": 2,
+                            "column": 22
+                        }
                     }
                 }
             },
@@ -243,183 +328,98 @@
                 }
             ],
             "members": {
-                "other": {
-                    "kind": "Export",
-                    "name": {
-                        "kind": "Identifier",
-                        "ident": "other",
-                        "loc": {
-                            "file": "index.ts",
-                            "start": {
-                                "line": 3,
-                                "column": 9
-                            },
-                            "end": {
-                                "line": 3,
-                                "column": 14
-                            }
-                        }
-                    },
-                    "access": "public",
-                    "referent": {
-                        "kind": "Token",
-                        "tok": "export:index:other",
-                        "loc": {
-                            "file": "index.ts",
-                            "start": {
-                                "line": 3,
-                                "column": 9
-                            },
-                            "end": {
-                                "line": 3,
-                                "column": 14
-                            }
-                        }
-                    },
-                    "loc": {
-                        "file": "index.ts",
-                        "start": {
-                            "line": 3,
-                            "column": 9
-                        },
-                        "end": {
-                            "line": 3,
-                            "column": 14
-                        }
-                    }
-                },
                 "C": {
-                    "kind": "Export",
+                    "kind": "Class",
                     "name": {
                         "kind": "Identifier",
                         "ident": "C",
                         "loc": {
                             "file": "index.ts",
                             "start": {
-                                "line": 9,
-                                "column": 9
+                                "line": 6,
+                                "column": 7
                             },
                             "end": {
-                                "line": 9,
-                                "column": 10
+                                "line": 6,
+                                "column": 8
                             }
                         }
                     },
-                    "access": "public",
-                    "referent": {
-                        "kind": "Token",
-                        "tok": "export:index:C",
-                        "loc": {
-                            "file": "index.ts",
-                            "start": {
-                                "line": 9,
-                                "column": 9
-                            },
-                            "end": {
-                                "line": 9,
-                                "column": 10
-                            }
-                        }
-                    },
+                    "members": {},
+                    "abstract": false,
                     "loc": {
                         "file": "index.ts",
                         "start": {
-                            "line": 9,
-                            "column": 9
+                            "line": 6,
+                            "column": 1
                         },
                         "end": {
-                            "line": 9,
-                            "column": 10
+                            "line": 6,
+                            "column": 11
                         }
                     }
                 },
                 "I": {
-                    "kind": "Export",
+                    "kind": "Class",
                     "name": {
                         "kind": "Identifier",
                         "ident": "I",
                         "loc": {
                             "file": "index.ts",
                             "start": {
-                                "line": 9,
-                                "column": 12
+                                "line": 7,
+                                "column": 11
                             },
                             "end": {
-                                "line": 9,
-                                "column": 13
+                                "line": 7,
+                                "column": 12
                             }
                         }
                     },
-                    "access": "public",
-                    "referent": {
-                        "kind": "Token",
-                        "tok": "export:index:I",
-                        "loc": {
-                            "file": "index.ts",
-                            "start": {
-                                "line": 9,
-                                "column": 12
-                            },
-                            "end": {
-                                "line": 9,
-                                "column": 13
-                            }
-                        }
-                    },
+                    "members": {},
+                    "interface": true,
                     "loc": {
                         "file": "index.ts",
                         "start": {
-                            "line": 9,
-                            "column": 12
+                            "line": 7,
+                            "column": 1
                         },
                         "end": {
-                            "line": 9,
-                            "column": 13
+                            "line": 7,
+                            "column": 15
                         }
                     }
                 },
                 "v": {
-                    "kind": "Export",
+                    "kind": "ModuleProperty",
                     "name": {
                         "kind": "Identifier",
                         "ident": "v",
                         "loc": {
                             "file": "index.ts",
                             "start": {
-                                "line": 9,
-                                "column": 15
+                                "line": 8,
+                                "column": 5
                             },
                             "end": {
-                                "line": 9,
-                                "column": 16
+                                "line": 8,
+                                "column": 6
                             }
                         }
                     },
-                    "access": "public",
-                    "referent": {
-                        "kind": "Token",
-                        "tok": "export:index:v",
+                    "type": {
+                        "kind": "TypeToken",
+                        "tok": "number",
                         "loc": {
                             "file": "index.ts",
                             "start": {
-                                "line": 9,
-                                "column": 15
+                                "line": 8,
+                                "column": 5
                             },
                             "end": {
-                                "line": 9,
-                                "column": 16
+                                "line": 8,
+                                "column": 11
                             }
-                        }
-                    },
-                    "loc": {
-                        "file": "index.ts",
-                        "start": {
-                            "line": 9,
-                            "column": 15
-                        },
-                        "end": {
-                            "line": 9,
-                            "column": 16
                         }
                     }
                 },
@@ -429,7 +429,6 @@
                         "kind": "Identifier",
                         "ident": ".init"
                     },
-                    "access": "public",
                     "body": {
                         "kind": "Block",
                         "statements": [
@@ -516,10 +515,187 @@
                         "kind": "Identifier",
                         "ident": ".main"
                     },
-                    "access": "public",
                     "body": {
                         "kind": "Block",
                         "statements": []
+                    }
+                }
+            },
+            "exports": {
+                "other": {
+                    "kind": "Export",
+                    "name": {
+                        "kind": "Identifier",
+                        "ident": "other",
+                        "loc": {
+                            "file": "index.ts",
+                            "start": {
+                                "line": 3,
+                                "column": 9
+                            },
+                            "end": {
+                                "line": 3,
+                                "column": 14
+                            }
+                        }
+                    },
+                    "referent": {
+                        "kind": "Token",
+                        "tok": "export:index:other",
+                        "loc": {
+                            "file": "index.ts",
+                            "start": {
+                                "line": 3,
+                                "column": 9
+                            },
+                            "end": {
+                                "line": 3,
+                                "column": 14
+                            }
+                        }
+                    },
+                    "loc": {
+                        "file": "index.ts",
+                        "start": {
+                            "line": 3,
+                            "column": 9
+                        },
+                        "end": {
+                            "line": 3,
+                            "column": 14
+                        }
+                    }
+                },
+                "C": {
+                    "kind": "Export",
+                    "name": {
+                        "kind": "Identifier",
+                        "ident": "C",
+                        "loc": {
+                            "file": "index.ts",
+                            "start": {
+                                "line": 9,
+                                "column": 9
+                            },
+                            "end": {
+                                "line": 9,
+                                "column": 10
+                            }
+                        }
+                    },
+                    "referent": {
+                        "kind": "Token",
+                        "tok": "export:index:C",
+                        "loc": {
+                            "file": "index.ts",
+                            "start": {
+                                "line": 9,
+                                "column": 9
+                            },
+                            "end": {
+                                "line": 9,
+                                "column": 10
+                            }
+                        }
+                    },
+                    "loc": {
+                        "file": "index.ts",
+                        "start": {
+                            "line": 9,
+                            "column": 9
+                        },
+                        "end": {
+                            "line": 9,
+                            "column": 10
+                        }
+                    }
+                },
+                "I": {
+                    "kind": "Export",
+                    "name": {
+                        "kind": "Identifier",
+                        "ident": "I",
+                        "loc": {
+                            "file": "index.ts",
+                            "start": {
+                                "line": 9,
+                                "column": 12
+                            },
+                            "end": {
+                                "line": 9,
+                                "column": 13
+                            }
+                        }
+                    },
+                    "referent": {
+                        "kind": "Token",
+                        "tok": "export:index:I",
+                        "loc": {
+                            "file": "index.ts",
+                            "start": {
+                                "line": 9,
+                                "column": 12
+                            },
+                            "end": {
+                                "line": 9,
+                                "column": 13
+                            }
+                        }
+                    },
+                    "loc": {
+                        "file": "index.ts",
+                        "start": {
+                            "line": 9,
+                            "column": 12
+                        },
+                        "end": {
+                            "line": 9,
+                            "column": 13
+                        }
+                    }
+                },
+                "v": {
+                    "kind": "Export",
+                    "name": {
+                        "kind": "Identifier",
+                        "ident": "v",
+                        "loc": {
+                            "file": "index.ts",
+                            "start": {
+                                "line": 9,
+                                "column": 15
+                            },
+                            "end": {
+                                "line": 9,
+                                "column": 16
+                            }
+                        }
+                    },
+                    "referent": {
+                        "kind": "Token",
+                        "tok": "export:index:v",
+                        "loc": {
+                            "file": "index.ts",
+                            "start": {
+                                "line": 9,
+                                "column": 15
+                            },
+                            "end": {
+                                "line": 9,
+                                "column": 16
+                            }
+                        }
+                    },
+                    "loc": {
+                        "file": "index.ts",
+                        "start": {
+                            "line": 9,
+                            "column": 15
+                        },
+                        "end": {
+                            "line": 9,
+                            "column": 16
+                        }
                     }
                 }
             },

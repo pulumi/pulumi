@@ -94,8 +94,8 @@ class VariableDeclaration<TVariable extends ast.Variable> {
     ) { }
 }
 
-// A top-level module element is either a module member (definition) or a statement (initializer).
-type ModuleElement = ast.ModuleMember | VariableDeclaration<ast.ModuleProperty> | ast.Statement;
+// A top-level module element is an export, module member (definition), or statement (initializer).
+type ModuleElement = ast.ModuleMember | ast.Export | VariableDeclaration<ast.ModuleProperty> | ast.Statement;
 
 // A top-level class element is either a class member (definition) or a statement (initializer).
 type ClassElement = ast.ClassMember | VariableDeclaration<ast.ClassProperty>;
@@ -104,15 +104,15 @@ function isVariableDeclaration(element: ModuleElement | ClassElement): boolean {
     return !!(element instanceof VariableDeclaration);
 }
 
-// ModuleReference represents a reference to an imported module.  It's really just a fancy, strongly typed string-based
-// path that can be resolved to a concrete symbol any number of times before serialization.
-type ModuleReference = string;
-
 // PackageInfo contains information about a module's package: both its token and its base path.
 interface PackageInfo {
     root:  string;       // the root path from which the package was loaded.
     pkg:   pack.Package; // the package's metadata, including its token, etc.
 }
+
+// ModuleReference represents a reference to an imported module.  It's really just a fancy, strongly typed string-based
+// path that can be resolved to a concrete symbol any number of times before serialization.
+type ModuleReference = string;
 
 // A variable declaration isn't yet known to be a module or class property, and so it just contains the subset in common
 // between them.  This facilitates code reuse in the translation passes.
@@ -181,6 +181,7 @@ export class Transformer {
     private currentSourceFile: ts.SourceFile | undefined;
     private currentModuleToken: tokens.ModuleToken | undefined;
     private currentModuleMembers: ast.ModuleMembers | undefined;
+    private currentModuleExports: ast.ModuleExports | undefined;
     private currentModuleImports: Map<string, ModuleReference>;
     private currentModuleImportTokens: ast.ModuleToken[];
     private currentClassToken: tokens.TypeToken | undefined;
@@ -927,6 +928,7 @@ export class Transformer {
         let priorSourceFile: ts.SourceFile | undefined = this.currentSourceFile;
         let priorModuleToken: tokens.ModuleToken | undefined = this.currentModuleToken;
         let priorModuleMembers: ast.ModuleMembers | undefined = this.currentModuleMembers;
+        let priorModuleExports: ast.ModuleExports | undefined = this.currentModuleExports;
         let priorModuleImports: Map<string, ModuleReference> | undefined = this.currentModuleImports;
         let priorModuleImportTokens: ast.ModuleToken[] | undefined = this.currentModuleImportTokens;
         try {
@@ -940,6 +942,7 @@ export class Transformer {
             this.currentSourceFile = node;
             this.currentModuleToken = modtok;
             this.currentModuleMembers = {};
+            this.currentModuleExports = {};
             this.currentModuleImports = new Map<string, ModuleReference>();
             this.currentModuleImportTokens = []; // to track the imports, in order.
 
@@ -948,22 +951,37 @@ export class Transformer {
 
             // Enumerate the module's statements and put them in the respective places.
             for (let statement of node.statements) {
-                let elements: ModuleElement[] = await this.transformSourceFileStatement(modtok, statement);
+                // Translate the toplevel statement; note that it may produce multiple things, hence the loops below.
+                let elements: ModuleElement[] =
+                    await this.transformSourceFileStatement(modtok, statement);
                 for (let element of elements) {
                     if (isVariableDeclaration(element)) {
                         // This is a module property with a possible initializer.  The property must be registered as a
-                        // member in this module's member map, and the initializer must go into the module initializer.
+                        // export in this module's export map, and the initializer must go into the module initializer.
                         // TODO(joe): respect legacyVar to emulate "var"-like scoping.
                         let decl = <VariableDeclaration<ast.ModuleProperty>>element;
                         if (decl.initializer) {
                             statements.push(this.makeVariableInitializer(undefined, decl));
                         }
-                        this.currentModuleMembers[decl.variable.name.ident] = decl.variable;
+                        let id: tokens.Name = decl.variable.name.ident;
+                        contract.assert(!this.currentModuleMembers[id]);
+                        this.currentModuleMembers[id] = decl.variable;
                     }
                     else if (ast.isDefinition(<ast.Node>element)) {
-                        // This is a module member; simply add it to the list.
-                        let member = <ast.ModuleMember>element;
-                        this.currentModuleMembers[member.name.ident] = member;
+                        let defn = <ast.Definition>element;
+                        let id: tokens.Name = defn.name.ident;
+                        if (defn.kind === ast.exportKind) {
+                            // This is a module export; simply add it to the list.
+                            let exp = <ast.Export>defn;
+                            contract.assert(!this.currentModuleExports[id], `Unexpected duplicate export ${id}`);
+                            this.currentModuleExports[id] = exp;
+                        }
+                        else {
+                            // This is a module member; simply add it to the list.
+                            let member = <ast.ModuleMember>element;
+                            contract.assert(!this.currentModuleMembers[id], `Unexpected duplicate member ${id}`);
+                            this.currentModuleMembers[id] = member;
+                        }
                     }
                     else {
                         // This is a top-level module statement; place it into the module initializer.  Note that we
@@ -974,14 +992,13 @@ export class Transformer {
                         }
                     }
                 }
-             }
+            }
 
             // If the initialization statements are non-empty, add an initializer method.
             if (statements.length > 0) {
                 let initializer: ast.ModuleMethod = {
                     kind:   ast.moduleMethodKind,
                     name:   ident(tokens.initializerFunction),
-                    access: tokens.publicAccessibility,
                     body:   {
                         kind:       ast.blockKind,
                         statements: statements,
@@ -996,7 +1013,6 @@ export class Transformer {
             this.currentModuleMembers[tokens.entryPointFunction] = <ast.ModuleMethod>{
                 kind:   ast.moduleMethodKind,
                 name:   ident(tokens.entryPointFunction),
-                access: tokens.publicAccessibility,
                 body: {
                     kind:       ast.blockKind,
                     statements: [],
@@ -1008,12 +1024,14 @@ export class Transformer {
                 name:    ident(this.getModuleName(modtok)),
                 imports: this.currentModuleImportTokens,
                 members: this.currentModuleMembers,
+                exports: this.currentModuleExports,
             });
         }
         finally {
             this.currentSourceFile = priorSourceFile;
             this.currentModuleToken = priorModuleToken;
             this.currentModuleMembers = priorModuleMembers;
+            this.currentModuleExports = priorModuleExports;
             this.currentModuleImports = priorModuleImports;
             this.currentModuleImportTokens = priorModuleImportTokens;
         }
@@ -1043,7 +1061,7 @@ export class Transformer {
                 case ts.SyntaxKind.ModuleDeclaration:
                 case ts.SyntaxKind.TypeAliasDeclaration:
                 case ts.SyntaxKind.VariableStatement:
-                    return this.transformModuleDeclarationStatement(modtok, node, tokens.privateAccessibility);
+                    return this.transformModuleDeclarationStatement(modtok, node);
 
                 // For any other top-level statements, this.transform them.  They'll be added to the module initializer.
                 default:
@@ -1052,17 +1070,43 @@ export class Transformer {
         }
     }
 
-    private async transformExportStatement(modtok: tokens.ModuleToken, node: ts.Statement): Promise<ModuleElement[]> {
-        let elements: ModuleElement[] =
-            await this.transformModuleDeclarationStatement(modtok, node, tokens.publicAccessibility);
+    private async transformExportStatement(
+            modtok: tokens.ModuleToken, node: ts.Statement): Promise<ModuleElement[]> {
 
-        // If this is a default export, first ensure that it is one of the legal default export kinds; namely, only
-        // function or class is permitted, and specifically not interface or let.  Then smash the name with "default".
+        let elements: ModuleElement[] = await this.transformModuleDeclarationStatement(modtok, node);
+
+        // Default exports get the special name "default"; all others will just reuse the element name.
+        contract.assert(!!this.currentModuleToken);
         if (ts.getCombinedModifierFlags(node) & ts.ModifierFlags.Default) {
             contract.assert(elements.length === 1);
-            let defn = <ast.Definition>elements[0];
-            contract.assert(defn.kind === ast.moduleMethodKind || defn.kind === ast.classKind);
-            defn.name = ident(defaultExport);
+            contract.assert(ast.isDefinition(<ast.Node>elements[0]));
+            elements.push(this.withLocation(node, <ast.Export>{
+                kind:     ast.exportKind,
+                name:     ident(defaultExport),
+                referent: <ast.Token>{
+                    kind: ast.tokenKind,
+                    tok:  this.createModuleMemberToken(
+                        this.currentModuleToken!, (<ast.ModuleMember>elements[0]).name.ident),
+                },
+            }));
+        }
+        else {
+            let exports: ast.Export[] = [];
+            for (let element of elements) {
+                if (ast.isDefinition(<ast.Node>element)) {
+                    let member = <ast.ModuleMember>element;
+                    let id: tokens.Name = member.name.ident;
+                    exports.push(this.withLocation(node, <ast.Export>{
+                        kind:     ast.exportKind,
+                        name:     member.name,
+                        referent: this.copyLocation(member.name, <ast.Token>{
+                            kind: ast.tokenKind,
+                            tok:  this.createModuleMemberToken(this.currentModuleToken!, id),
+                        }),
+                    }));
+                }
+            }
+            elements = elements.concat(exports);
         }
 
         return elements;
@@ -1114,7 +1158,6 @@ export class Transformer {
                     exports.push(this.withLocation(exportClause, <ast.Export>{
                         kind:     ast.exportKind,
                         name:     name,
-                        access:   tokens.publicAccessibility,
                         referent: this.withLocation(exportClause.propertyName, <ast.Token>{
                             kind: ast.tokenKind,
                             tok:  await this.createModuleRefMemberToken(sourceModule, propertyName.ident),
@@ -1128,7 +1171,6 @@ export class Transformer {
                         exports.push(this.withLocation(exportClause, <ast.Export>{
                             kind:     ast.exportKind,
                             name:     name,
-                            access:   tokens.publicAccessibility,
                             referent: this.withLocation(exportClause.name, <ast.Token>{
                                 kind: ast.tokenKind,
                                 tok:  await this.createModuleRefMemberToken(sourceModule, name.ident),
@@ -1140,27 +1182,31 @@ export class Transformer {
                         contract.assert(!!this.currentModuleImports);
                         contract.assert(!!this.currentModuleImportTokens);
                         // First look for a module member, for reexporting classes, interfaces, and variables.
+                        let reftok: tokens.Token | undefined;
                         let member: ast.ModuleMember | undefined = this.currentModuleMembers![name.ident];
                         if (member) {
-                            contract.assert(member.access !== tokens.publicAccessibility);
-                            member.access = tokens.publicAccessibility;
+                            contract.assert(!!this.currentModuleToken);
+                            reftok = this.createModuleMemberToken(this.currentModuleToken!, name.ident);
                         }
                         else {
                             // If that failed, look for a known import.  This enables reexporting whole modules, e.g.:
                             //      import * as other from "other";
                             //      export {other};
-                            let otherModule: ModuleReference | undefined = this.currentModuleImports!.get(name.ident);
-                            contract.assert(!!otherModule, "Expected either a member or import match for export name");
-                            exports.push(this.withLocation(exportClause, <ast.Export>{
-                                kind:     ast.exportKind,
-                                name:     name,
-                                access:   tokens.publicAccessibility,
-                                referent: this.withLocation(exportClause, <ast.Token>{
-                                    kind: ast.tokenKind,
-                                    tok:  await this.createModuleToken(otherModule!),
-                                }),
-                            }));
+                            contract.assert(!!this.currentModuleImports);
+                            let modref: ModuleReference | undefined = this.currentModuleImports!.get(name.ident);
+                            contract.assert(!!modref);
+                            reftok = await this.createModuleToken(modref!);
                         }
+
+                        contract.assert(!!reftok, "Expected either a member or import match for export name");
+                        exports.push(this.withLocation(exportClause, <ast.Export>{
+                            kind:     ast.exportKind,
+                            name:     name,
+                            referent: this.withLocation(exportClause, <ast.Token>{
+                                kind: ast.tokenKind,
+                                tok:  reftok,
+                            }),
+                        }));
                     }
                 }
             }
@@ -1179,7 +1225,6 @@ export class Transformer {
                         kind:  ast.identifierKind,
                         ident: this.extractMemberToken(name),
                     },
-                    access:   tokens.publicAccessibility,
                     referent: this.withLocation(node, <ast.Token>{
                         kind: ast.tokenKind,
                         tok:  name,
@@ -1333,21 +1378,21 @@ export class Transformer {
     // MuIL aren't statements, hence the partitioning between transformDeclaration and transformStatement.  Note that
     // variables do not result in Definitions because they may require higher-level processing to deal with initializer.
     private async transformModuleDeclarationStatement(
-            modtok: tokens.ModuleToken, node: ts.Statement, access: tokens.Accessibility): Promise<ModuleElement[]> {
+            modtok: tokens.ModuleToken, node: ts.Statement): Promise<ModuleElement[]> {
         switch (node.kind) {
             // Declarations:
             case ts.SyntaxKind.ClassDeclaration:
-                return [ await this.transformClassDeclaration(modtok, <ts.ClassDeclaration>node, access) ];
+                return [ await this.transformClassDeclaration(modtok, <ts.ClassDeclaration>node) ];
             case ts.SyntaxKind.FunctionDeclaration:
-                return [ await this.transformModuleFunctionDeclaration(<ts.FunctionDeclaration>node, access) ];
+                return [ await this.transformModuleFunctionDeclaration(<ts.FunctionDeclaration>node) ];
             case ts.SyntaxKind.InterfaceDeclaration:
-                return [ await this.transformInterfaceDeclaration(modtok, <ts.InterfaceDeclaration>node, access) ];
+                return [ await this.transformInterfaceDeclaration(modtok, <ts.InterfaceDeclaration>node) ];
             case ts.SyntaxKind.ModuleDeclaration:
-                return [ this.transformModuleDeclaration(<ts.ModuleDeclaration>node, access) ];
+                return [ this.transformModuleDeclaration(<ts.ModuleDeclaration>node) ];
             case ts.SyntaxKind.TypeAliasDeclaration:
-                return [ await this.transformTypeAliasDeclaration(<ts.TypeAliasDeclaration>node, access) ];
+                return [ await this.transformTypeAliasDeclaration(<ts.TypeAliasDeclaration>node) ];
             case ts.SyntaxKind.VariableStatement:
-                return await this.transformModuleVariableStatement(modtok, <ts.VariableStatement>node, access);
+                return await this.transformModuleVariableStatement(modtok, <ts.VariableStatement>node);
             default:
                 return contract.fail(`Node kind is not a module declaration: ${ts.SyntaxKind[node.kind]}`);
         }
@@ -1419,7 +1464,7 @@ export class Transformer {
     }
 
     private async transformClassDeclaration(
-            modtok: tokens.ModuleToken, node: ts.ClassDeclaration, access: tokens.Accessibility): Promise<ast.Class> {
+            modtok: tokens.ModuleToken, node: ts.ClassDeclaration): Promise<ast.Class> {
         // TODO(joe): generics.
         // TODO(joe): decorators.
 
@@ -1572,7 +1617,6 @@ export class Transformer {
             return this.withLocation(node, <ast.Class>{
                 kind:       ast.classKind,
                 name:       name,
-                access:     access,
                 members:    members,
                 abstract:   !!(mods & ts.ModifierFlags.Abstract),
                 extends:    extend,
@@ -1705,13 +1749,11 @@ export class Transformer {
         };
     }
 
-    private async transformModuleFunctionDeclaration(
-            node: ts.FunctionDeclaration, access: tokens.Accessibility): Promise<ast.ModuleMethod> {
+    private async transformModuleFunctionDeclaration(node: ts.FunctionDeclaration): Promise<ast.ModuleMethod> {
         let decl: FunctionLikeDeclaration = await this.transformFunctionLikeCommon(node);
         return this.withLocation(node, <ast.ModuleMethod>{
             kind:       ast.moduleMethodKind,
             name:       decl.name,
-            access:     access,
             parameters: decl.parameters,
             body:       decl.body,
             returnType: decl.returnType,
@@ -1720,8 +1762,7 @@ export class Transformer {
 
     // transformInterfaceDeclaration turns a TypeScript interface into a MuIL interface class.
     private async transformInterfaceDeclaration(
-            modtok: tokens.ModuleToken, node: ts.InterfaceDeclaration,
-            access: tokens.Accessibility): Promise<ast.Class> {
+            modtok: tokens.ModuleToken, node: ts.InterfaceDeclaration): Promise<ast.Class> {
         // TODO(joe): generics.
         // TODO(joe): decorators.
         // TODO(joe): extends/implements.
@@ -1770,7 +1811,6 @@ export class Transformer {
             return this.withLocation(node, <ast.Class>{
                 kind:       ast.classKind,
                 name:       name,
-                access:     access,
                 members:    members,
                 interface:  true,
                 extends:    extend,
@@ -1783,8 +1823,7 @@ export class Transformer {
         }
     }
 
-    private transformModuleDeclaration(node: ts.ModuleDeclaration, access: tokens.Accessibility): ast.Module {
-        contract.ignore(access);
+    private transformModuleDeclaration(node: ts.ModuleDeclaration): ast.Module {
         return notYetImplemented(node);
     }
 
@@ -1816,12 +1855,10 @@ export class Transformer {
 
     // transformTypeAliasDeclaration emits a type whose base is the aliased type.  The MuIL type system permits
     // conversions between such types in a way that is roughly compatible with TypeScript's notion of type aliases.
-    private async transformTypeAliasDeclaration(
-            node: ts.TypeAliasDeclaration, access: tokens.Accessibility): Promise<ast.Class> {
+    private async transformTypeAliasDeclaration(node: ts.TypeAliasDeclaration): Promise<ast.Class> {
         return this.withLocation(node, <ast.Class>{
             kind:    ast.classKind,
             name:    this.transformIdentifier(node.name),
-            access:  access,
             extends: await this.resolveTypeTokenFromTypeLike(node),
         });
     }
@@ -1910,7 +1947,7 @@ export class Transformer {
     }
 
     private async transformModuleVariableStatement(
-            modtok: tokens.ModuleToken, node: ts.VariableStatement, access: tokens.Accessibility):
+            modtok: tokens.ModuleToken, node: ts.VariableStatement):
                 Promise<VariableDeclaration<ast.ModuleProperty>[]> {
         let decls: VariableLikeDeclaration[] = await this.transformVariableStatement(node);
         return decls.map((decl: VariableLikeDeclaration) =>
@@ -1920,7 +1957,6 @@ export class Transformer {
                 <ast.ModuleProperty>{
                     kind:     ast.modulePropertyKind,
                     name:     decl.name,
-                    access:   access,
                     readonly: decl.readonly,
                     type:     decl.type,
                 },
@@ -1996,7 +2032,7 @@ export class Transformer {
         }
     }
 
-    private getClassAccessibility(node: ts.Node): tokens.ClassMemberAccessibility {
+    private getClassAccessibility(node: ts.Node): tokens.Accessibility {
         let mods: ts.ModifierFlags = ts.getCombinedModifierFlags(node);
         if (!!(mods & ts.ModifierFlags.Private)) {
             return tokens.privateAccessibility;
@@ -2542,7 +2578,7 @@ export class Transformer {
 
     private async transformElementAccessExpression(node: ts.ElementAccessExpression): Promise<ast.LoadExpression> {
         // This is an indexer operation; fall back to using a dynamic load operation.
-        // TODO: detect array and module member loads.
+        // TODO: detect array, string constant property loads, and module member loads.
         let object: ast.Expression = await this.transformExpression(node.expression);
         if (node.argumentExpression) {
             return this.withLocation(node, <ast.LoadDynamicExpression>{

@@ -31,8 +31,9 @@ func (node *DefinitionNode) GetDescription() *string { return node.Description }
 // Module contains members, including variables, functions, and/or classes.
 type Module struct {
 	DefinitionNode
-	Imports *[]*ModuleToken `json:"imports,omitempty"`
-	Members *ModuleMembers  `json:"members,omitempty"`
+	Imports *[]*ModuleToken `json:"imports,omitempty"` // the imported modules consumed by this module.
+	Exports *ModuleExports  `json:"exports,omitempty"` // the exported symbols available for use by consuming modules.
+	Members *ModuleMembers  `json:"members,omitempty"` // the inner members of this module, private for its own use.
 }
 
 var _ Node = (*Module)(nil)
@@ -43,35 +44,34 @@ const ModuleKind NodeKind = "Module"
 // Modules is a map of qualified module name to Module AST node
 type Modules map[tokens.ModuleName]*Module
 
-// ModuleMember is a definition that belongs to a Module.
-type ModuleMember interface {
-	Definition
-	moduleMember()
-	GetAccess() *tokens.Accessibility
-}
-
-type ModuleMemberNode struct {
-	DefinitionNode
-	Access *tokens.Accessibility `json:"access,omitempty"`
-}
-
-func (node *ModuleMemberNode) moduleMember()                    {}
-func (node *ModuleMemberNode) GetAccess() *tokens.Accessibility { return node.Access }
-
-// ModuleMembers is a map of member name to ModuleMember symbol.
-type ModuleMembers map[tokens.ModuleMemberName]ModuleMember
-
 // Export re-exports a Definition from another Module, possibly with a different name.
 type Export struct {
-	ModuleMemberNode
+	DefinitionNode
 	Referent *Token `json:"referent"`
 }
 
 var _ Node = (*Export)(nil)
 var _ Definition = (*Export)(nil)
-var _ ModuleMember = (*Export)(nil)
 
 const ExportKind NodeKind = "Export"
+
+// ModuleExports is a map of name to export symbol.
+type ModuleExports map[tokens.ModuleMemberName]*Export
+
+// ModuleMember is a definition that belongs to a Module.
+type ModuleMember interface {
+	Definition
+	moduleMember()
+}
+
+type ModuleMemberNode struct {
+	DefinitionNode
+}
+
+func (node *ModuleMemberNode) moduleMember() {}
+
+// ModuleMembers is a map of member name to ModuleMember symbol.
+type ModuleMembers map[tokens.ModuleMemberName]ModuleMember
 
 /* Classes */
 
@@ -96,19 +96,19 @@ const ClassKind NodeKind = "Class"
 // ClassMember is a Definition that belongs to a Class.
 type ClassMember interface {
 	Definition
-	GetAccess() *tokens.ClassMemberAccessibility
+	GetAccess() *tokens.Accessibility
 	GetStatic() *bool
 }
 
 type ClassMemberNode struct {
 	DefinitionNode
-	Access *tokens.ClassMemberAccessibility `json:"access,omitempty"`
-	Static *bool                            `json:"static,omitempty"`
+	Access *tokens.Accessibility `json:"access,omitempty"`
+	Static *bool                 `json:"static,omitempty"`
 }
 
-func (node *ClassMemberNode) classMember()                                {}
-func (node *ClassMemberNode) GetAccess() *tokens.ClassMemberAccessibility { return node.Access }
-func (node *ClassMemberNode) GetStatic() *bool                            { return node.Static }
+func (node *ClassMemberNode) classMember()                     {}
+func (node *ClassMemberNode) GetAccess() *tokens.Accessibility { return node.Access }
+func (node *ClassMemberNode) GetStatic() *bool                 { return node.Static }
 
 // ClassMembers is a map of class member name to ClassMember symbol.
 type ClassMembers map[tokens.ClassMemberName]ClassMember

@@ -14,6 +14,9 @@ import (
 	"github.com/marapongo/mu/pkg/tokens"
 )
 
+var objectArray = symbols.NewArrayType(Object)
+var objectMap = symbols.NewMapType(Object, Object)
+
 func newTestClass(name tokens.Name, extends symbols.Type, implements symbols.Types) *symbols.Class {
 	pkg := symbols.NewPackageSym(&pack.Package{Name: "test"})
 	mod := symbols.NewModuleSym(&ast.Module{
@@ -44,24 +47,24 @@ func TestIdentityConversions(t *testing.T) {
 		assertCanConvert(t, prim, prim)
 	}
 
-	assertCanConvert(t, AnyArray, AnyArray)
-	assertCanConvert(t, AnyMap, AnyMap)
+	assertCanConvert(t, objectArray, objectArray)
+	assertCanConvert(t, objectMap, objectMap)
 
 	class := newTestClass("class", nil, nil)
 	assertCanConvert(t, class, class)
 }
 
-// TestAnyConversions tests converting a bunch of different types to "any".
-func TestAnyConversions(t *testing.T) {
+// TestObjectConversions tests converting a bunch of different types to "any".
+func TestObjectConversions(t *testing.T) {
 	for _, prim := range Primitives {
-		assertCanConvert(t, prim, Any)
+		assertCanConvert(t, prim, Object)
 	}
 
-	assertCanConvert(t, AnyArray, Any)
-	assertCanConvert(t, AnyMap, Any)
+	assertCanConvert(t, objectArray, Object)
+	assertCanConvert(t, objectMap, Object)
 
 	class := newTestClass("class", nil, nil)
-	assertCanConvert(t, class, Any)
+	assertCanConvert(t, class, Object)
 }
 
 // TestNullConversions tests converting to and from "null".
@@ -71,10 +74,10 @@ func TestNullConversions(t *testing.T) {
 		assertCanConvert(t, Null, prim)
 	}
 
-	assertCanConvert(t, AnyArray, Null)
-	assertCanConvert(t, Null, AnyArray)
-	assertCanConvert(t, AnyMap, Null)
-	assertCanConvert(t, Null, AnyMap)
+	assertCanConvert(t, objectArray, Null)
+	assertCanConvert(t, Null, objectArray)
+	assertCanConvert(t, objectMap, Null)
+	assertCanConvert(t, Null, objectMap)
 
 	class := newTestClass("class", nil, nil)
 	assertCanConvert(t, class, Null)
@@ -88,14 +91,14 @@ func TestClassConversions(t *testing.T) {
 	// A simple extends case.
 	{
 		derived := newTestClass("derived", base, nil)
-		assertCanConvert(t, derived, Any)
+		assertCanConvert(t, derived, Object)
 		assertCanConvert(t, derived, base)
 	}
 
 	// An implements case.
 	{
 		derived := newTestClass("derived", nil, symbols.Types{base})
-		assertCanConvert(t, derived, Any)
+		assertCanConvert(t, derived, Object)
 		assertCanConvert(t, derived, base)
 	}
 
@@ -105,7 +108,7 @@ func TestClassConversions(t *testing.T) {
 		base3 := newTestClass("base3", nil, nil)
 		base4 := newTestClass("base4", nil, nil)
 		derived := newTestClass("derived", base2, symbols.Types{base3, base, base4})
-		assertCanConvert(t, derived, Any)
+		assertCanConvert(t, derived, Object)
 		assertCanConvert(t, derived, base)
 	}
 
@@ -114,7 +117,7 @@ func TestClassConversions(t *testing.T) {
 		base2 := newTestClass("base2", nil, nil)
 		derived := newTestClass("derived", base2, nil)
 		for _, prim := range Primitives {
-			if prim != Any && prim != Null {
+			if prim != Object && prim != Null && prim != Dynamic {
 				assertCannotConvert(t, derived, prim)
 			}
 		}
@@ -132,8 +135,8 @@ func TestPointerConversions(t *testing.T) {
 		}
 	}
 
-	assertCanConvert(t, symbols.NewPointerType(AnyArray), AnyArray)
-	assertCanConvert(t, symbols.NewPointerType(AnyMap), AnyMap)
+	assertCanConvert(t, symbols.NewPointerType(objectArray), objectArray)
+	assertCanConvert(t, symbols.NewPointerType(objectMap), objectMap)
 
 	class := newTestClass("class", nil, nil)
 	pclass := symbols.NewPointerType(class)
@@ -148,7 +151,7 @@ func TestArrayConversions(t *testing.T) {
 	// Simple primitive cases:
 	for _, prim := range Primitives {
 		arr1 := symbols.NewArrayType(prim)
-		assertCanConvert(t, arr1, Any)
+		assertCanConvert(t, arr1, Object)
 		arr2 := symbols.NewArrayType(prim)
 		assertCanConvert(t, arr1, arr2)
 	}
@@ -164,7 +167,7 @@ func TestArrayConversions(t *testing.T) {
 	assertCannotConvert(t, arr3, arr2)
 
 	// And also ensure that covariant conversions for primitive "any" isn't allowed either:
-	arr4 := symbols.NewArrayType(Any)
+	arr4 := objectArray
 	assertCannotConvert(t, arr3, arr4)
 	assertCannotConvert(t, arr4, arr3)
 }
@@ -174,7 +177,7 @@ func TestMapConversions(t *testing.T) {
 	// Map types with the same key and element types can convert.
 	for _, prim := range Primitives {
 		map1 := symbols.NewMapType(String, prim)
-		assertCanConvert(t, map1, Any)
+		assertCanConvert(t, map1, Object)
 		map2 := symbols.NewMapType(String, prim)
 		assertCanConvert(t, map1, map2)
 	}
@@ -190,7 +193,7 @@ func TestMapConversions(t *testing.T) {
 	assertCannotConvert(t, map3, map2)
 
 	// And also ensure that covariant conversions for primitive "any" isn't allowed either:
-	map4 := symbols.NewMapType(String, Any)
+	map4 := symbols.NewMapType(String, Object)
 	assertCannotConvert(t, map3, map4)
 	assertCannotConvert(t, map4, map3)
 }
@@ -200,7 +203,7 @@ func TestFuncConversions(t *testing.T) {
 	// Empty functions convert to each other.
 	{
 		func1 := symbols.NewFunctionType(nil, nil)
-		assertCanConvert(t, func1, Any)
+		assertCanConvert(t, func1, Object)
 		func2 := symbols.NewFunctionType(nil, nil)
 		assertCanConvert(t, func1, func2)
 		assertCanConvert(t, func2, func1)
@@ -210,14 +213,14 @@ func TestFuncConversions(t *testing.T) {
 	for _, param1 := range Primitives {
 		for _, param2 := range Primitives {
 			func1 := symbols.NewFunctionType([]symbols.Type{param1, param2}, nil)
-			assertCanConvert(t, func1, Any)
+			assertCanConvert(t, func1, Object)
 			func2 := symbols.NewFunctionType([]symbols.Type{param1, param2}, nil)
 			assertCanConvert(t, func1, func2)
 			assertCanConvert(t, func2, func1)
 
 			for _, ret := range Primitives {
 				func3 := symbols.NewFunctionType([]symbols.Type{param1, param2}, ret)
-				assertCanConvert(t, func3, Any)
+				assertCanConvert(t, func3, Object)
 				func4 := symbols.NewFunctionType([]symbols.Type{param1, param2}, ret)
 				assertCanConvert(t, func3, func4)
 				assertCanConvert(t, func4, func3)
@@ -232,7 +235,7 @@ func TestFuncConversions(t *testing.T) {
 	{
 		// Simple primitive case.
 		strong1 := symbols.NewFunctionType([]symbols.Type{String, Number}, String)
-		weak1 := symbols.NewFunctionType([]symbols.Type{Any, Any}, String)
+		weak1 := symbols.NewFunctionType([]symbols.Type{Object, Object}, String)
 		assertCanConvert(t, weak1, strong1)
 		assertCannotConvert(t, strong1, weak1)
 
@@ -247,7 +250,7 @@ func TestFuncConversions(t *testing.T) {
 	{
 		// Simple primitive case.
 		strong1 := symbols.NewFunctionType([]symbols.Type{String, Number}, String)
-		weak1 := symbols.NewFunctionType([]symbols.Type{String, Number}, Any)
+		weak1 := symbols.NewFunctionType([]symbols.Type{String, Number}, Object)
 		assertCanConvert(t, strong1, weak1)
 		assertCannotConvert(t, weak1, strong1)
 
@@ -260,7 +263,7 @@ func TestFuncConversions(t *testing.T) {
 
 	// Both can happen at once.
 	{
-		from := symbols.NewFunctionType([]symbols.Type{Any, base, Any}, derived)
+		from := symbols.NewFunctionType([]symbols.Type{Object, base, Object}, derived)
 		to := symbols.NewFunctionType([]symbols.Type{String, derived, Number}, base)
 		assertCanConvert(t, from, to)
 		assertCannotConvert(t, to, from)

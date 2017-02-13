@@ -26,6 +26,15 @@ func StableModules(mm Modules) []tokens.ModuleName {
 	return sorted
 }
 
+func StableModuleExports(me ModuleExports) []tokens.ModuleMemberName {
+	sorted := make(moduleMemberNames, 0, len(me))
+	for e := range me {
+		sorted = append(sorted, e)
+	}
+	sort.Sort(sorted)
+	return sorted
+}
+
 func StableModuleMembers(mm ModuleMembers) []tokens.ModuleMemberName {
 	sorted := make(moduleMemberNames, 0, len(mm))
 	for m := range mm {

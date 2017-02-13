@@ -26,7 +26,6 @@
                             }
                         }
                     },
-                    "access": "private",
                     "members": {},
                     "abstract": false,
                     "loc": {
@@ -58,7 +57,6 @@
                             }
                         }
                     },
-                    "access": "private",
                     "type": {
                         "kind": "TypeToken",
                         "tok": "map[string]string",
@@ -92,7 +90,6 @@
                             }
                         }
                     },
-                    "access": "private",
                     "type": {
                         "kind": "TypeToken",
                         "tok": "map[string]number",
@@ -126,7 +123,6 @@
                             }
                         }
                     },
-                    "access": "private",
                     "type": {
                         "kind": "TypeToken",
                         "tok": "map[number]string",
@@ -160,7 +156,6 @@
                             }
                         }
                     },
-                    "access": "private",
                     "type": {
                         "kind": "TypeToken",
                         "tok": "map[string]basic/maps:index:C",
@@ -194,7 +189,6 @@
                             }
                         }
                     },
-                    "access": "private",
                     "type": {
                         "kind": "TypeToken",
                         "tok": "map[basic/maps:index:C]number",
@@ -228,7 +222,6 @@
                             }
                         }
                     },
-                    "access": "private",
                     "type": {
                         "kind": "TypeToken",
                         "tok": "map[basic/maps:index:C][]string",
@@ -262,7 +255,6 @@
                             }
                         }
                     },
-                    "access": "private",
                     "type": {
                         "kind": "TypeToken",
                         "tok": "map[string]string",
@@ -296,7 +288,6 @@
                             }
                         }
                     },
-                    "access": "private",
                     "type": {
                         "kind": "TypeToken",
                         "tok": "map[string]number",
@@ -330,7 +321,6 @@
                             }
                         }
                     },
-                    "access": "private",
                     "type": {
                         "kind": "TypeToken",
                         "tok": "map[number]string",
@@ -364,7 +354,6 @@
                             }
                         }
                     },
-                    "access": "private",
                     "type": {
                         "kind": "TypeToken",
                         "tok": "map[string]basic/maps:index:C",
@@ -398,7 +387,6 @@
                             }
                         }
                     },
-                    "access": "private",
                     "type": {
                         "kind": "TypeToken",
                         "tok": "map[basic/maps:index:C]number",
@@ -432,7 +420,6 @@
                             }
                         }
                     },
-                    "access": "private",
                     "type": {
                         "kind": "TypeToken",
                         "tok": "map[basic/maps:index:C][]string",
@@ -466,7 +453,6 @@
                             }
                         }
                     },
-                    "access": "private",
                     "type": {
                         "kind": "TypeToken",
                         "tok": "map[string]string",
@@ -489,7 +475,6 @@
                         "kind": "Identifier",
                         "ident": ".init"
                     },
-                    "access": "public",
                     "body": {
                         "kind": "Block",
                         "statements": [
@@ -1771,13 +1756,13 @@
                         "kind": "Identifier",
                         "ident": ".main"
                     },
-                    "access": "public",
                     "body": {
                         "kind": "Block",
                         "statements": []
                     }
                 }
             },
+            "exports": {},
             "loc": {
                 "file": "index.ts",
                 "start": {

@@ -20,8 +20,6 @@ func decodeModuleMember(m mapper.Mapper, tree mapper.Object) (ast.ModuleMember, 
 		switch kind {
 		case ast.ClassKind:
 			return decodeClass(m, tree)
-		case ast.ExportKind:
-			return decodeExport(m, tree)
 		case ast.ModulePropertyKind:
 			return decodeModuleProperty(m, tree)
 		case ast.ModuleMethodKind:
@@ -74,14 +72,6 @@ func decodeClassMethod(m mapper.Mapper, tree mapper.Object) (*ast.ClassMethod, e
 		return nil, err
 	}
 	return &meth, nil
-}
-
-func decodeExport(m mapper.Mapper, tree mapper.Object) (*ast.Export, error) {
-	var export ast.Export
-	if err := m.Decode(tree, &export); err != nil {
-		return nil, err
-	}
-	return &export, nil
 }
 
 func decodeModuleProperty(m mapper.Mapper, tree mapper.Object) (*ast.ModuleProperty, error) {

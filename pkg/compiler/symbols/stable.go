@@ -26,6 +26,15 @@ func StableModuleMap(mm ModuleMap) []tokens.ModuleName {
 	return sorted
 }
 
+func StableModuleExportMap(me ModuleExportMap) []tokens.ModuleMemberName {
+	sorted := make(moduleMemberNames, 0, len(me))
+	for e := range me {
+		sorted = append(sorted, e)
+	}
+	sort.Sort(sorted)
+	return sorted
+}
+
 func StableModuleMemberMap(mm ModuleMemberMap) []tokens.ModuleMemberName {
 	sorted := make(moduleMemberNames, 0, len(mm))
 	for m := range mm {

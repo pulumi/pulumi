@@ -26,7 +26,6 @@
                             }
                         }
                     },
-                    "access": "public",
                     "members": {},
                     "abstract": false,
                     "loc": {
@@ -58,7 +57,6 @@
                             }
                         }
                     },
-                    "access": "public",
                     "members": {},
                     "interface": true,
                     "loc": {
@@ -90,7 +88,6 @@
                             }
                         }
                     },
-                    "access": "public",
                     "type": {
                         "kind": "TypeToken",
                         "tok": "number",
@@ -113,7 +110,6 @@
                         "kind": "Identifier",
                         "ident": ".init"
                     },
-                    "access": "public",
                     "body": {
                         "kind": "Block",
                         "statements": [
@@ -200,10 +196,99 @@
                         "kind": "Identifier",
                         "ident": ".main"
                     },
-                    "access": "public",
                     "body": {
                         "kind": "Block",
                         "statements": []
+                    }
+                }
+            },
+            "exports": {
+                "C": {
+                    "kind": "Export",
+                    "name": {
+                        "kind": "Identifier",
+                        "ident": "C",
+                        "loc": {
+                            "file": "other.ts",
+                            "start": {
+                                "line": 1,
+                                "column": 14
+                            },
+                            "end": {
+                                "line": 1,
+                                "column": 15
+                            }
+                        }
+                    },
+                    "referent": {
+                        "kind": "Token",
+                        "tok": "reexport_all:other:C",
+                        "loc": {
+                            "file": "other.ts",
+                            "start": {
+                                "line": 1,
+                                "column": 14
+                            },
+                            "end": {
+                                "line": 1,
+                                "column": 15
+                            }
+                        }
+                    },
+                    "loc": {
+                        "file": "other.ts",
+                        "start": {
+                            "line": 1,
+                            "column": 1
+                        },
+                        "end": {
+                            "line": 1,
+                            "column": 18
+                        }
+                    }
+                },
+                "I": {
+                    "kind": "Export",
+                    "name": {
+                        "kind": "Identifier",
+                        "ident": "I",
+                        "loc": {
+                            "file": "other.ts",
+                            "start": {
+                                "line": 2,
+                                "column": 18
+                            },
+                            "end": {
+                                "line": 2,
+                                "column": 19
+                            }
+                        }
+                    },
+                    "referent": {
+                        "kind": "Token",
+                        "tok": "reexport_all:other:I",
+                        "loc": {
+                            "file": "other.ts",
+                            "start": {
+                                "line": 2,
+                                "column": 18
+                            },
+                            "end": {
+                                "line": 2,
+                                "column": 19
+                            }
+                        }
+                    },
+                    "loc": {
+                        "file": "other.ts",
+                        "start": {
+                            "line": 2,
+                            "column": 1
+                        },
+                        "end": {
+                            "line": 2,
+                            "column": 22
+                        }
                     }
                 }
             },
@@ -227,13 +312,25 @@
             },
             "imports": [],
             "members": {
+                ".main": {
+                    "kind": "ModuleMethod",
+                    "name": {
+                        "kind": "Identifier",
+                        "ident": ".main"
+                    },
+                    "body": {
+                        "kind": "Block",
+                        "statements": []
+                    }
+                }
+            },
+            "exports": {
                 "C": {
                     "kind": "Export",
                     "name": {
                         "kind": "Identifier",
                         "ident": "C"
                     },
-                    "access": "public",
                     "referent": {
                         "kind": "Token",
                         "tok": "reexport_all:other:C",
@@ -267,7 +364,6 @@
                         "kind": "Identifier",
                         "ident": "I"
                     },
-                    "access": "public",
                     "referent": {
                         "kind": "Token",
                         "tok": "reexport_all:other:I",
@@ -301,7 +397,6 @@
                         "kind": "Identifier",
                         "ident": "v"
                     },
-                    "access": "public",
                     "referent": {
                         "kind": "Token",
                         "tok": "reexport_all:other:v",
@@ -327,18 +422,6 @@
                             "line": 1,
                             "column": 25
                         }
-                    }
-                },
-                ".main": {
-                    "kind": "ModuleMethod",
-                    "name": {
-                        "kind": "Identifier",
-                        "ident": ".main"
-                    },
-                    "access": "public",
-                    "body": {
-                        "kind": "Block",
-                        "statements": []
                     }
                 }
             },

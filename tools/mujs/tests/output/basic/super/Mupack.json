@@ -26,7 +26,6 @@
                             }
                         }
                     },
-                    "access": "private",
                     "members": {
                         ".ctor": {
                             "kind": "ClassMethod",
@@ -409,7 +408,6 @@
                             }
                         }
                     },
-                    "access": "private",
                     "members": {
                         ".ctor": {
                             "kind": "ClassMethod",
@@ -749,13 +747,13 @@
                         "kind": "Identifier",
                         "ident": ".main"
                     },
-                    "access": "public",
                     "body": {
                         "kind": "Block",
                         "statements": []
                     }
                 }
             },
+            "exports": {},
             "loc": {
                 "file": "index.ts",
                 "start": {

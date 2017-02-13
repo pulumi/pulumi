@@ -13,6 +13,7 @@ type Module struct {
 	Node    *ast.Module
 	Parent  *Package
 	Imports Modules
+	Exports ModuleExportMap
 	Members ModuleMemberMap
 }
 
@@ -48,6 +49,7 @@ func NewModuleSym(node *ast.Module, parent *Package) *Module {
 		Node:    node,
 		Parent:  parent,
 		Imports: make(Modules, 0),
+		Exports: make(ModuleExportMap),
 		Members: make(ModuleMemberMap),
 	}
 }
@@ -55,15 +57,8 @@ func NewModuleSym(node *ast.Module, parent *Package) *Module {
 // Modules is an array of module pointers.
 type Modules []*Module
 
-// ModuleMember is a marker interface for things that can be module members.
-type ModuleMember interface {
-	Symbol
-	moduleMember()
-	MemberNode() ast.ModuleMember
-}
-
-// ModuleMemberMap is a map from a module member's name to its associated symbol.
-type ModuleMemberMap map[tokens.ModuleMemberName]ModuleMember
+// ModuleExportMap is a map from a module's export name to the actual export symbol.
+type ModuleExportMap map[tokens.ModuleMemberName]*Export
 
 // Export is a fully bound module property symbol that associates a name with some other symbol.
 type Export struct {
@@ -73,7 +68,6 @@ type Export struct {
 }
 
 var _ Symbol = (*Export)(nil)
-var _ ModuleMember = (*Export)(nil)
 
 func (node *Export) symbol()           {}
 func (node *Export) Name() tokens.Name { return node.Node.Name.Ident }
@@ -85,10 +79,8 @@ func (node *Export) Token() tokens.Token {
 		),
 	)
 }
-func (node *Export) Tree() diag.Diagable          { return node.Node }
-func (node *Export) moduleMember()                {}
-func (node *Export) MemberNode() ast.ModuleMember { return node.Node }
-func (node *Export) String() string               { return string(node.Name()) }
+func (node *Export) Tree() diag.Diagable { return node.Node }
+func (node *Export) String() string      { return string(node.Name()) }
 
 // NewExportSym returns a new Export symbol with the given node, parent, and referent symbol.
 func NewExportSym(node *ast.Export, parent *Module, referent Symbol) *Export {
@@ -98,6 +90,16 @@ func NewExportSym(node *ast.Export, parent *Module, referent Symbol) *Export {
 		Referent: referent,
 	}
 }
+
+// ModuleMember is a marker interface for things that can be module members.
+type ModuleMember interface {
+	Symbol
+	moduleMember()
+	MemberNode() ast.ModuleMember
+}
+
+// ModuleMemberMap is a map from a module member's name to its associated symbol.
+type ModuleMemberMap map[tokens.ModuleMemberName]ModuleMember
 
 // ModuleProperty is a fully bound module property symbol.
 type ModuleProperty struct {

@@ -26,7 +26,6 @@
                             }
                         }
                     },
-                    "access": "private",
                     "parameters": [
                         {
                             "kind": "LocalVariable",
@@ -128,13 +127,13 @@
                         "kind": "Identifier",
                         "ident": ".main"
                     },
-                    "access": "public",
                     "body": {
                         "kind": "Block",
                         "statements": []
                     }
                 }
             },
+            "exports": {},
             "loc": {
                 "file": "index.ts",
                 "start": {

@@ -2,15 +2,6 @@
 
 import {FunctionToken, ModuleToken, TypeToken, VariableToken} from "./tokens";
 
-// Accessibility modifiers.
-export type Accessibility            = "public" | "private";        // accessibility modifiers common to all.
-export type ClassMemberAccessibility = Accessibility | "protected"; // accessibility modifiers for class members.
-
-// Accessibility modifier constants.
-export const publicAccessibility: Accessibility               = "public";
-export const privateAccessibility: Accessibility              = "private";
-export const protectedAccessibility: ClassMemberAccessibility = "protected";
-
 // Special module tokens.
 export const selfModule: ModuleToken = "."; // a self-referential token for the current module.
 
@@ -29,4 +20,12 @@ export const stringType: TypeToken  = "string";
 export const numberType: TypeToken  = "number";
 export const boolType: TypeToken    = "bool";
 export const dynamicType: TypeToken = "dynamic";
+
+// Accessibility modifiers for class members.
+export type Accessibility = "public" | "private" | "protected";
+
+// Accessibility modifier constants.
+export const publicAccessibility: Accessibility    = "public";
+export const privateAccessibility: Accessibility   = "private";
+export const protectedAccessibility: Accessibility = "protected";
 

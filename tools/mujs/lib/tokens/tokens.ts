@@ -12,3 +12,6 @@ export type FunctionToken = Token;     // a symbol token that resolves to a func
 
 export const tokenDelimiter = ":";     // the character delimiting modules/members/etc.
 
+// Names.
+export type Name = string;             // a valid identifier name.
+
