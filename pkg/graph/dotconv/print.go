@@ -75,14 +75,16 @@ func Print(g graph.Graph, w io.Writer) error {
 
 			// Print the ID of each dependency and, for those we haven't seen, add them to the frontier.
 			for i, out := range outs {
+				to := out.To()
+
 				if i > 0 {
 					b.WriteString(" ")
 				}
-				b.WriteString(getID(out))
+				b.WriteString(getID(to))
 
-				if _, q := queued[out]; !q {
-					queued[out] = true
-					frontier = append(frontier, out)
+				if _, q := queued[to]; !q {
+					queued[to] = true
+					frontier = append(frontier, to)
 				}
 			}
 

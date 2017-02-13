@@ -56,11 +56,10 @@ func (g *generator) Graph() graph.Graph {
 	}
 
 	// Now create edges connecting all vertices along dependency lines.
-	// TODO: detect and issue errors about cycles.
 	edges := int64(0)
-	for o, deps := range g.objs {
-		for dep := range deps {
-			verts[o].AddEdge(verts[dep])
+	for o, targets := range g.objs {
+		for target := range targets {
+			verts[o].AddEdge(verts[target])
 			edges++
 		}
 	}

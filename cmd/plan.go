@@ -3,7 +3,14 @@
 package cmd
 
 import (
+	"fmt"
+	"os"
+
 	"github.com/spf13/cobra"
+
+	"github.com/marapongo/mu/pkg/compiler/types"
+	"github.com/marapongo/mu/pkg/compiler/types/predef"
+	"github.com/marapongo/mu/pkg/graph"
 )
 
 func newPlanCmd() *cobra.Command {
@@ -21,10 +28,30 @@ func newPlanCmd() *cobra.Command {
 			"By default, a blueprint package is loaded from the current directory.  Optionally,\n" +
 			"a path to a blueprint elsewhere can be provided as the [blueprint] argument.",
 		Run: func(cmd *cobra.Command, args []string) {
+			// Perform the compilation and, if non-nil is returned, output the plan.
+			if mugl := compile(cmd, args); mugl != nil {
+				// Sort the graph output so that it's a DAG.
+				// TODO: consider pruning out all non-resources so there is less to sort.
+				sorted, err := graph.TopSort(mugl)
+				if err != nil {
+					fmt.Fprintf(os.Stderr, "fatal: %v\n", err)
+					os.Exit(-1)
+				}
+
+				// Now walk the elements and (for now), just print out which resources will be created.
+				for _, vert := range sorted {
+					o := vert.Obj()
+					t := o.Type()
+					if types.HasBaseName(t, predef.MuResourceClass) {
+						fmt.Printf("%v:\n", o.Type())
+						for key, prop := range o.Properties() {
+							fmt.Printf("\t%v: %v\n", key, prop)
+						}
+					}
+				}
+			}
 		},
 	}
-
-	// TODO: options; most importantly, what to compare the blueprint against.
 
 	return cmd
 }

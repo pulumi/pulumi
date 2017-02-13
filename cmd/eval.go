@@ -5,18 +5,14 @@ package cmd
 import (
 	"fmt"
 	"os"
-	"path/filepath"
 	"strings"
 
 	"github.com/spf13/cobra"
 
-	"github.com/marapongo/mu/pkg/compiler"
 	"github.com/marapongo/mu/pkg/compiler/core"
 	"github.com/marapongo/mu/pkg/graph"
 	"github.com/marapongo/mu/pkg/graph/dotconv"
 	"github.com/marapongo/mu/pkg/tokens"
-	"github.com/marapongo/mu/pkg/util/cmdutil"
-	"github.com/marapongo/mu/pkg/util/contract"
 )
 
 func newEvalCmd() *cobra.Command {
@@ -34,60 +30,21 @@ func newEvalCmd() *cobra.Command {
 			"By default, a blueprint package is loaded from the current directory.  Optionally,\n" +
 			"a path to a blueprint elsewhere can be provided as the [blueprint] argument.",
 		Run: func(cmd *cobra.Command, args []string) {
-			// If there's a --, we need to separate out the command args from the stack args.
-			flags := cmd.Flags()
-			dashdash := flags.ArgsLenAtDash()
-			var packArgs []string
-			if dashdash != -1 {
-				packArgs = args[dashdash:]
-				args = args[0:dashdash]
-			}
-
-			// Create a compiler options object and map any flags and arguments to settings on it.
-			opts := core.DefaultOptions()
-			opts.Args = dashdashArgsToMap(packArgs)
-
-			// In the case of an argument, load that specific package and new up a compiler based on its base path.
-			// Otherwise, use the default workspace and package logic (which consults the current working directory).
-			var mugl graph.Graph
-			if len(args) == 0 {
-				comp, err := compiler.Newwd(opts)
-				if err != nil {
-					contract.Failf("fatal: %v", err)
-				}
-				mugl = comp.Compile()
-			} else {
-				fn := args[0]
-				if pkg := cmdutil.ReadPackageFromArg(fn); pkg != nil {
-					var comp compiler.Compiler
-					var err error
-					if fn == "-" {
-						comp, err = compiler.Newwd(opts)
-					} else {
-						comp, err = compiler.New(filepath.Dir(fn), opts)
+			// Perform the compilation and, if non-nil is returned, output the graph.
+			if mugl := compile(cmd, args); mugl != nil {
+				// Serialize that MuGL graph so that it's suitable for printing/serializing.
+				if dotOutput {
+					// Convert the output to a DOT file.
+					if err := dotconv.Print(mugl, os.Stdout); err != nil {
+						fmt.Fprintf(os.Stderr, "error: failed to write DOT file to output: %v\n", err)
+						os.Exit(-1)
 					}
-					if err != nil {
-						contract.Failf("fatal: %v", err)
+				} else {
+					// Just print a very basic, yet (hopefully) aesthetically pleasinge, ascii-ization of the graph.
+					shown := make(map[graph.Vertex]bool)
+					for _, root := range mugl.Roots() {
+						printVertex(root, shown, "")
 					}
-					mugl = comp.CompilePackage(pkg)
-				}
-			}
-			if mugl == nil {
-				return
-			}
-
-			// Finally, serialize that MuGL graph so that it's suitable for printing/serializing.
-			if dotOutput {
-				// Convert the output to a DOT file.
-				if err := dotconv.Print(mugl, os.Stdout); err != nil {
-					fmt.Fprintf(os.Stderr, "error: failed to write DOT file to output: %v\n", err)
-					os.Exit(-1)
-				}
-			} else {
-				// Just print a very basic, yet (hopefully) aesthetically pleasinge, ascii-ization of the graph.
-				shown := make(map[graph.Vertex]bool)
-				for _, root := range mugl.Roots() {
-					printVertex(root, shown, "")
 				}
 			}
 		},
@@ -111,7 +68,7 @@ func printVertex(v graph.Vertex, shown map[graph.Vertex]bool, indent string) {
 		shown[v] = true // prevent cycles.
 		fmt.Printf("%v%v:\n", indent, s)
 		for _, out := range v.Outs() {
-			printVertex(out, shown, indent+"    -> ")
+			printVertex(out.To(), shown, indent+"    -> ")
 		}
 	}
 }
