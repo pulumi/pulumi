@@ -12,6 +12,8 @@ import (
 type Variable interface {
 	Symbol
 	Type() Type
+	Default() *interface{}
+	Readonly() bool
 	VarNode() ast.Variable
 }
 
@@ -33,6 +35,7 @@ func (node *LocalVariable) Token() tokens.Token   { return tokens.Token(node.Nam
 func (node *LocalVariable) Tree() diag.Diagable   { return node.Node }
 func (node *LocalVariable) Readonly() bool        { return node.Node.Readonly != nil && *node.Node.Readonly }
 func (node *LocalVariable) Type() Type            { return node.Ty }
+func (node *LocalVariable) Default() *interface{} { return nil }
 func (node *LocalVariable) VarNode() ast.Variable { return node.Node }
 func (node *LocalVariable) String() string        { return string(node.Name()) }
 

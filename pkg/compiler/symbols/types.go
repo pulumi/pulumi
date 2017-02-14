@@ -11,6 +11,7 @@ import (
 type Type interface {
 	Symbol
 	typesym()
+	Base() Type                  // the optional base type.
 	TypeName() tokens.TypeName   // this type's name identifier.
 	TypeToken() tokens.Type      // this type's (qualified) token.
 	TypeMembers() ClassMemberMap // this type's members.
@@ -34,6 +35,7 @@ func (node *PrimitiveType) Name() tokens.Name           { return tokens.Name(nod
 func (node *PrimitiveType) Token() tokens.Token         { return tokens.Token(node.Nm) }
 func (node *PrimitiveType) Tree() diag.Diagable         { return nil }
 func (node *PrimitiveType) typesym()                    {}
+func (node *PrimitiveType) Base() Type                  { return nil }
 func (node *PrimitiveType) TypeName() tokens.TypeName   { return node.Nm }
 func (node *PrimitiveType) TypeToken() tokens.Type      { return tokens.Type(node.Nm) }
 func (node *PrimitiveType) TypeMembers() ClassMemberMap { return noClassMembers }
@@ -60,6 +62,7 @@ func (node *PointerType) Name() tokens.Name           { return tokens.Name(node.
 func (node *PointerType) Token() tokens.Token         { return tokens.Token(node.Tok) }
 func (node *PointerType) Tree() diag.Diagable         { return nil }
 func (node *PointerType) typesym()                    {}
+func (node *PointerType) Base() Type                  { return nil }
 func (node *PointerType) TypeName() tokens.TypeName   { return node.Nm }
 func (node *PointerType) TypeToken() tokens.Type      { return node.Tok }
 func (node *PointerType) TypeMembers() ClassMemberMap { return noClassMembers }
@@ -98,6 +101,7 @@ func (node *ArrayType) Name() tokens.Name           { return tokens.Name(node.Nm
 func (node *ArrayType) Token() tokens.Token         { return tokens.Token(node.Tok) }
 func (node *ArrayType) Tree() diag.Diagable         { return nil }
 func (node *ArrayType) typesym()                    {}
+func (node *ArrayType) Base() Type                  { return nil }
 func (node *ArrayType) TypeName() tokens.TypeName   { return node.Nm }
 func (node *ArrayType) TypeToken() tokens.Type      { return node.Tok }
 func (node *ArrayType) TypeMembers() ClassMemberMap { return noClassMembers }
@@ -137,6 +141,7 @@ func (node *MapType) Name() tokens.Name           { return tokens.Name(node.Nm) 
 func (node *MapType) Token() tokens.Token         { return tokens.Token(node.Tok) }
 func (node *MapType) Tree() diag.Diagable         { return nil }
 func (node *MapType) typesym()                    {}
+func (node *MapType) Base() Type                  { return nil }
 func (node *MapType) TypeName() tokens.TypeName   { return node.Nm }
 func (node *MapType) TypeToken() tokens.Type      { return node.Tok }
 func (node *MapType) TypeMembers() ClassMemberMap { return noClassMembers }
@@ -176,6 +181,7 @@ func (node *FunctionType) Name() tokens.Name           { return tokens.Name(node
 func (node *FunctionType) Token() tokens.Token         { return tokens.Token(node.Tok) }
 func (node *FunctionType) Tree() diag.Diagable         { return nil }
 func (node *FunctionType) typesym()                    {}
+func (node *FunctionType) Base() Type                  { return nil }
 func (node *FunctionType) TypeName() tokens.TypeName   { return node.Nm }
 func (node *FunctionType) TypeToken() tokens.Type      { return node.Tok }
 func (node *FunctionType) TypeMembers() ClassMemberMap { return noClassMembers }

@@ -98,10 +98,18 @@ type ModuleMember interface {
 	moduleMember()
 	MemberNode() ast.ModuleMember
 	MemberName() tokens.ModuleMemberName
+	MemberParent() *Module
 }
 
 // ModuleMemberMap is a map from a module member's name to its associated symbol.
 type ModuleMemberMap map[tokens.ModuleMemberName]ModuleMember
+
+// ModuleMemberProperty is an interface that gives a module member a type, such that it can be used as a property.
+type ModuleMemberProperty interface {
+	ModuleMember
+	moduleMemberProperty()
+	MemberType() Type
+}
 
 // ModuleProperty is a fully bound module property symbol.
 type ModuleProperty struct {
@@ -112,6 +120,7 @@ type ModuleProperty struct {
 
 var _ Symbol = (*ModuleProperty)(nil)
 var _ ModuleMember = (*ModuleProperty)(nil)
+var _ ModuleMemberProperty = (*ModuleProperty)(nil)
 var _ Variable = (*ClassProperty)(nil)
 
 func (node *ModuleProperty) symbol()           {}
@@ -130,6 +139,9 @@ func (node *ModuleProperty) MemberNode() ast.ModuleMember { return node.Node }
 func (node *ModuleProperty) MemberName() tokens.ModuleMemberName {
 	return tokens.ModuleMemberName(node.Name())
 }
+func (node *ModuleProperty) MemberParent() *Module { return node.Parent }
+func (node *ModuleProperty) moduleMemberProperty() {}
+func (node *ModuleProperty) MemberType() Type      { return node.Ty }
 func (node *ModuleProperty) Default() *interface{} { return node.Node.Default }
 func (node *ModuleProperty) Readonly() bool        { return node.Node.Readonly != nil && *node.Node.Readonly }
 func (node *ModuleProperty) Type() Type            { return node.Ty }
@@ -154,6 +166,7 @@ type ModuleMethod struct {
 
 var _ Symbol = (*ModuleMethod)(nil)
 var _ ModuleMember = (*ModuleMethod)(nil)
+var _ ModuleMemberProperty = (*ModuleMethod)(nil)
 var _ Function = (*ClassMethod)(nil)
 
 func (node *ModuleMethod) symbol()           {}
@@ -172,6 +185,9 @@ func (node *ModuleMethod) MemberNode() ast.ModuleMember { return node.Node }
 func (node *ModuleMethod) MemberName() tokens.ModuleMemberName {
 	return tokens.ModuleMemberName(node.Name())
 }
+func (node *ModuleMethod) MemberParent() *Module   { return node.Parent }
+func (node *ModuleMethod) moduleMemberProperty()   {}
+func (node *ModuleMethod) MemberType() Type        { return node.Type }
 func (node *ModuleMethod) FuncNode() ast.Function  { return node.Node }
 func (node *ModuleMethod) FuncType() *FunctionType { return node.Type }
 func (node *ModuleMethod) String() string          { return string(node.Name()) }

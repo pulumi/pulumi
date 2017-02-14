@@ -17,7 +17,7 @@ import (
 type Object struct {
 	t          symbols.Type // the runtime type of the object.
 	value      Value        // any constant data associated with this object.
-	properties Properties   // the full set of known properties and their values.
+	properties PropertyMap  // the full set of known properties and their values.
 }
 
 var _ fmt.Stringer = (*Object)(nil)
@@ -25,16 +25,16 @@ var _ fmt.Stringer = (*Object)(nil)
 type Value interface{} // a literal object value.
 
 // NewObject allocates a new object with the given type, primitive value, and properties.
-func NewObject(t symbols.Type, value Value, properties Properties) *Object {
+func NewObject(t symbols.Type, value Value, properties PropertyMap) *Object {
 	if properties == nil {
-		properties = make(Properties)
+		properties = make(PropertyMap)
 	}
 	return &Object{t: t, value: value, properties: properties}
 }
 
-func (o *Object) Type() symbols.Type     { return o.t }
-func (o *Object) Value() Value           { return o.value }
-func (o *Object) Properties() Properties { return o.properties }
+func (o *Object) Type() symbols.Type      { return o.t }
+func (o *Object) Value() Value            { return o.value }
+func (o *Object) Properties() PropertyMap { return o.properties }
 
 // ArrayValue asserts that the target is an array literal and returns its value.
 func (o *Object) ArrayValue() *[]*Pointer {
@@ -95,20 +95,6 @@ func (o *Object) ExceptionValue() ExceptionInfo {
 	r, ok := o.value.(ExceptionInfo)
 	contract.Assertf(ok, "Expected Exception object's Value to be an ExceptionInfo")
 	return r
-}
-
-// GetPropertyAddr returns the reference to an object's property, lazily initializing if 'init' is true, or
-// returning nil otherwise.
-func (o *Object) GetPropertyAddr(key PropertyKey, init bool, ctx symbols.Function) *Pointer {
-	// First, try the fast path, so we can avoid allocating an initer if we don't need one.
-	if ptr := o.properties.GetAddr(key); ptr != nil || !init {
-		return ptr
-	}
-
-	// Otherwise, here's the slow path; figure out the defaults and initialize the slot.
-	class, _ := o.t.(*symbols.Class)
-	obj, readonly := DefaultClassProperty(key, class, o, ctx)
-	return o.properties.InitAddr(key, obj, readonly)
 }
 
 // String can be used to print the contents of an object; it tries to be smart about the display.

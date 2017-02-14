@@ -77,8 +77,8 @@ type evaluator struct {
 	classinits classinitMap     // a map of which classes have been initialized already.
 }
 
-type globalMap map[*symbols.Module]*rt.ModuleGlobals
-type staticMap map[*symbols.Class]*rt.ClassStatics
+type globalMap map[*symbols.Module]rt.PropertyMap
+type staticMap map[*symbols.Class]rt.PropertyMap
 type modinitMap map[*symbols.Module]bool
 type classinitMap map[*symbols.Class]bool
 
@@ -245,6 +245,36 @@ func (e *evaluator) dumpEvalState(v glog.Level) {
 	}
 }
 
+// initProperty initializes a property entry in the given map, using an optional `this` pointer for member functions.
+// It returns the resulting pointer along with a boolean to indicate whether the property was left unfrozen.
+func (e *evaluator) initProperty(properties rt.PropertyMap, sym symbols.Symbol, this *rt.Object) (*rt.Pointer, bool) {
+	k := rt.PropertyKey(sym.Name())
+	switch m := sym.(type) {
+	case symbols.Function:
+		// A function results in a closure object referring to `this`, if any.
+		// TODO[marapongo/mu#56]: all methods are readonly; consider permitting JS-style overwriting of them.
+		obj := e.alloc.NewFunction(m, this)
+		if this != nil && e.hooks != nil {
+			e.hooks.OnVariableAssign(this, tokens.Name(k), nil, obj)
+		}
+		return properties.InitAddr(k, e.alloc.NewFunction(m, this), true), false
+	case symbols.Variable:
+		// A variable could have a default object; if so, use that; otherwise, null will be substituted automatically.
+		var obj *rt.Object
+		if m.Default() != nil {
+			obj = e.alloc.NewConstant(*m.Default())
+			if this != nil && e.hooks != nil {
+				e.hooks.OnVariableAssign(this, tokens.Name(k), nil, obj)
+			}
+		}
+		ptr := properties.InitAddr(k, obj, false)
+		return ptr, m.Readonly()
+	default:
+		contract.Failf("Unrecognized property symbol type: %v", reflect.TypeOf(sym))
+		return nil, false
+	}
+}
+
 // ensureClassInit ensures that the target's class initializer has been run.
 func (e *evaluator) ensureClassInit(class *symbols.Class) {
 	already := e.classinits[class]
@@ -253,6 +283,25 @@ func (e *evaluator) ensureClassInit(class *symbols.Class) {
 	if !already {
 		// First ensure the module initializer has run.
 		e.ensureModuleInit(class.Parent)
+
+		// Now populate this class's statics with all of the static members.
+		var readonlines []*rt.Pointer
+		statics := e.getClassStatics(class)
+		var current symbols.Type = class
+		for current != nil {
+			members := current.TypeMembers()
+			for _, member := range symbols.StableClassMemberMap(members) {
+				if m := members[member]; m.Static() {
+					if ptr, readonly := e.initProperty(statics, m, nil); readonly {
+						// Readonly properties are unfrozen during initialization; afterwards, they will be frozen.
+						readonlines = append(readonlines, ptr)
+					}
+				}
+			}
+
+			// Keep going up the type hierarchy.
+			current = current.Base()
+		}
 
 		// Next, run the class if it has an initializer.
 		if init := class.GetInit(); init != nil {
@@ -265,20 +314,13 @@ func (e *evaluator) ensureClassInit(class *symbols.Class) {
 				// Must be an unhandled exception; spew it as an error (but keep going).
 				e.issueUnhandledException(uw, errors.ErrorUnhandledInitException.At(init.Tree()), class)
 			}
-
-			// Ensure that all readonly class statics are frozen.
-			statics := e.getClassStatics(class)
-			for _, member := range class.Members {
-				if prop, isprop := member.(*symbols.ClassProperty); isprop &&
-					prop.Static() && prop.Readonly() {
-					if ptr := statics.GetPropertyAddr(
-						rt.PropertyKey(prop.Name()), false, nil); ptr != nil {
-						ptr.Freeze() // ensure this is never written to again.
-					}
-				}
-			}
 		} else {
 			glog.V(7).Infof("Class has no initializer: %v", class)
+		}
+
+		// Now, finally, ensure that all readonly class statics are frozen.
+		for _, readonly := range readonlines {
+			readonly.Freeze() // ensure this cannot be written post-initialization.
 		}
 	}
 }
@@ -295,6 +337,16 @@ func (e *evaluator) ensureModuleInit(mod *symbols.Module) {
 			e.ensureModuleInit(imp)
 		}
 
+		// Populate all properties in this module, even if they will be empty for now.
+		var readonlines []*rt.Pointer
+		globals := e.getModuleGlobals(mod)
+		for _, member := range symbols.StableModuleMemberMap(mod.Members) {
+			if ptr, readonly := e.initProperty(globals, mod.Members[member], nil); readonly {
+				// If this property was left unfrozen, be sure to remember it for freezing after we're done.
+				readonlines = append(readonlines, ptr)
+			}
+		}
+
 		// Next, run the module initializer if it has one.
 		if init := mod.GetInit(); init != nil {
 			glog.V(7).Infof("Initializing module: %v", mod)
@@ -306,41 +358,71 @@ func (e *evaluator) ensureModuleInit(mod *symbols.Module) {
 				// Must be an unhandled exception; spew it as an error (but keep going).
 				e.issueUnhandledException(uw, errors.ErrorUnhandledInitException.At(init.Tree()), mod)
 			}
-
-			// Ensure that all readonly module properties are frozen.
-			globals := e.getModuleGlobals(mod)
-			for _, member := range mod.Members {
-				if prop, isprop := member.(*symbols.ModuleProperty); isprop && prop.Readonly() {
-					if ptr := globals.GetPropertyAddr(
-						rt.PropertyKey(prop.Name()), false, nil); ptr != nil {
-						ptr.Freeze() // ensure this is never written to again.
-					}
-				}
-			}
 		} else {
 			glog.V(7).Infof("Module has no initializer: %v", mod)
+		}
+
+		// Ensure that all readonly module properties are frozen.
+		for _, readonly := range readonlines {
+			readonly.Freeze() // ensure this is never written to after initialization.
 		}
 	}
 }
 
 // getModuleGlobals returns a module's globals, lazily initializing if needed.
-func (e *evaluator) getModuleGlobals(module *symbols.Module) *rt.ModuleGlobals {
+func (e *evaluator) getModuleGlobals(module *symbols.Module) rt.PropertyMap {
 	globals, has := e.globals[module]
 	if !has {
-		globals = rt.NewModuleGlobals(module)
+		globals = make(rt.PropertyMap)
 		e.globals[module] = globals
 	}
 	return globals
 }
 
 // getClassStatics returns a statics table, lazily initializing if needed.
-func (e *evaluator) getClassStatics(class *symbols.Class) *rt.ClassStatics {
+func (e *evaluator) getClassStatics(class *symbols.Class) rt.PropertyMap {
 	statics, has := e.statics[class]
 	if !has {
-		statics = rt.NewClassStatics(class)
+		statics = make(rt.PropertyMap)
 		e.statics[class] = statics
 	}
 	return statics
+}
+
+// newObject allocates a fresh object of the given type, populating it with its default property values.  The return
+// value includes the object in addition to a set of properties that must be frozen after initialization is complete.
+func (e *evaluator) newObject(t symbols.Type) (*rt.Object, []*rt.Pointer) {
+	// Create an empty object of that type.
+	obj := e.alloc.New(t, nil)
+
+	// Populate a property map with this class's (and its ancestry's) instance members.
+	var readonlines []*rt.Pointer
+	current := t
+	properties := obj.Properties()
+	for current != nil {
+		members := current.TypeMembers()
+		for _, member := range symbols.StableClassMemberMap(members) {
+			if m := members[member]; !m.Static() {
+				// Skip superclass .ctor methods.
+				if current != t {
+					if meth, ismeth := m.(*symbols.ClassMethod); ismeth &&
+						meth.MemberName() == tokens.ClassConstructorFunction {
+						continue
+					}
+				}
+				// TODO: we need to figure out how to represent super constructors.
+				if ptr, readonly := e.initProperty(properties, m, obj); readonly {
+					readonlines = append(readonlines, ptr) // remember to freeze this post-construction.
+				}
+			}
+		}
+
+		// Keep going up the type hierarchy.
+		contract.Assert(current != current.Base())
+		current = current.Base()
+	}
+
+	return obj, readonlines
 }
 
 // issueUnhandledException issues an unhandled exception error using the given diagnostic and unwind information.
@@ -479,22 +561,6 @@ func (e *evaluator) evalCall(node diag.Diagable, fnc symbols.Function,
 		contract.Assert((retty == nil) == (ret == nil))
 		contract.Assert(ret == nil || types.CanConvert(ret.Type(), retty))
 		return ret, nil
-	}
-
-	// If this is an object constructor, ensure that all readonly properties are frozen now.
-	if classmeth, isclassmeth := fnc.(*symbols.ClassMethod); isclassmeth {
-		if this != nil && this.Type() == classmeth.Parent &&
-			classmeth.MemberName() == tokens.ClassConstructorFunction {
-			for _, member := range this.Type().(*symbols.Class).Members {
-				if prop, isprop := member.(*symbols.ClassProperty); isprop &&
-					!prop.Static() && prop.Readonly() {
-					if ptr := this.GetPropertyAddr(
-						rt.PropertyKey(prop.Name()), false, nil); ptr != nil {
-						ptr.Freeze() // ensure this is never written to again.
-					}
-				}
-			}
-		}
 	}
 
 	// An absence of a return is okay for void-returning functions.
@@ -864,9 +930,13 @@ func (e *evaluator) evalArrayLiteral(node *ast.ArrayLiteral) (*rt.Object, *Unwin
 
 func (e *evaluator) evalObjectLiteral(node *ast.ObjectLiteral) (*rt.Object, *Unwind) {
 	ty := e.ctx.Types[node]
-	obj := e.alloc.New(ty)
+
+	// Allocate a new object of the right type, containing all of the properties pre-populated.
+	obj, readonlies := e.newObject(ty)
 
 	if node.Properties != nil {
+		properties := obj.Properties()
+
 		// The binder already checked that the properties are legal, so we will simply store them as values.
 		for _, init := range *node.Properties {
 			val, uw := e.evalExpression(init.Value)
@@ -881,12 +951,12 @@ func (e *evaluator) evalObjectLiteral(node *ast.ObjectLiteral) (*rt.Object, *Unw
 			var property rt.PropertyKey
 			if ty == types.Dynamic {
 				property = rt.PropertyKey(id)
-				addr = obj.GetPropertyAddr(property, true, e.fnc)
+				addr = properties.GetAddr(property, true)
 			} else {
 				contract.Assert(id.HasClassMember())
 				member := tokens.ClassMember(id).Name()
 				property = rt.PropertyKey(member.Name())
-				addr = obj.GetPropertyAddr(property, true, e.fnc)
+				addr = properties.GetAddr(property, true)
 			}
 			addr.Set(val)
 
@@ -895,6 +965,11 @@ func (e *evaluator) evalObjectLiteral(node *ast.ObjectLiteral) (*rt.Object, *Unw
 				e.hooks.OnVariableAssign(obj, tokens.Name(property), nil, val)
 			}
 		}
+	}
+
+	// Ensure we freeze anything that must be frozen.
+	for _, readonly := range readonlies {
+		readonly.Freeze()
 	}
 
 	return obj, nil
@@ -941,50 +1016,36 @@ func (e *evaluator) evalLoadLocation(node *ast.LoadLocationExpression, lval bool
 		sym = e.ctx.LookupSymbol(node.Name, tok, true)
 		for ty == nil {
 			contract.Assert(sym != nil) // don't issue errors; we shouldn't ever get here if verification failed.
+
+			// Look up the symbol property in the right place.  Note that because this is a static load, we
+			// intentionally do not perform any lazily initialization of missing property slots; they must exist.
 			switch s := sym.(type) {
-			case *symbols.ClassProperty:
-				// Based on whether this is static or not, load either from the class statics map, or from `this`.
-				key := rt.PropertyKey(sym.Name())
+			case symbols.ClassMember:
+				// Consult either the statics map or the object's property based on the kind of symbol.
+				k := rt.PropertyKey(sym.Name())
 				if s.Static() {
 					contract.Assert(this == nil)
-					statics := e.getClassStatics(s.Parent)
-					pv = statics.GetPropertyAddr(key, true, e.fnc)
+					statics := e.getClassStatics(s.MemberParent())
+					pv = statics.GetAddr(k, false)
 				} else {
 					contract.Assert(this != nil)
 					if uw := e.checkThis(node, this); uw != nil {
 						return location{}, uw
 					}
-					pv = this.GetPropertyAddr(key, true, e.fnc)
+					pv = this.Properties().GetAddr(k, false)
 				}
 				ty = s.Type()
-			case *symbols.ClassMethod:
-				// Ensure that a this is present if instance, and not if static.
-				if s.Static() {
-					contract.Assert(this == nil)
-				} else if uw := e.checkThis(node, this); uw != nil {
-					return location{}, uw
-				}
-
-				// Create a new readonly ref slot, pointing to the method, that will abandon if overwritten.
-				// TODO[marapongo/mu#56]: consider permitting "dynamic" method overwriting.
-				pv = rt.NewPointer(e.alloc.NewFunction(s, this), true)
-				ty = s.Type()
-			case *symbols.ModuleProperty:
-				// Search the globals table and, if not present, allocate a new property.
-				globals := e.getModuleGlobals(s.Parent)
-				pv = globals.GetPropertyAddr(rt.PropertyKey(s.Name()), true, e.fnc)
-				ty = s.Type()
-				if this != nil {
-					e.Diag().Errorf(errors.ErrorUnexpectedObject.At(node))
-				}
-			case *symbols.ModuleMethod:
-				// Create a new readonly ref slot, pointing to the method, that will abandon if overwritten.
-				// TODO[marapongo/mu#56]: consider permitting "dynamic" method overwriting.
-				pv = rt.NewPointer(e.alloc.NewFunction(s, nil), true)
-				ty = s.Type
-				if this != nil {
-					e.Diag().Errorf(errors.ErrorUnexpectedObject.At(node))
-				}
+				contract.Assert(pv != nil)
+				contract.Assert(ty != nil)
+			case symbols.ModuleMemberProperty:
+				// Search the globals table for this module.
+				contract.Assert(this == nil)
+				k := rt.PropertyKey(s.Name())
+				globals := e.getModuleGlobals(s.MemberParent())
+				pv = globals.GetAddr(k, false)
+				ty = s.MemberType()
+				contract.Assert(pv != nil)
+				contract.Assert(ty != nil)
 			case *symbols.Export:
 				// Simply chase the referent symbol until we bottom out on one of the above cases.
 				contract.Assertf(s.Referent != sym, "Unexpected self-referential export token")
@@ -1075,7 +1136,7 @@ func (e *evaluator) evalLoadDynamic(node *ast.LoadDynamicExpression, lval bool) 
 	} else {
 		contract.Assertf(name.Type() == types.String, "Expected dynamic load name to be a string")
 		key = tokens.Name(name.StringValue())
-		pv = this.GetPropertyAddr(rt.PropertyKey(key), true, e.fnc)
+		pv = this.Properties().GetAddr(rt.PropertyKey(key), true)
 	}
 
 	// If this isn't for an l-value, return the raw object.  Otherwise, make sure it's not readonly, and return it.
@@ -1103,8 +1164,8 @@ func (e *evaluator) evalNewExpression(node *ast.NewExpression) (*rt.Object, *Unw
 	// Fetch the type of this expression; that's the kind of object we are allocating.
 	ty := e.ctx.RequireType(node)
 
-	// Now create an empty object of that type.
-	obj := e.alloc.New(ty)
+	// Create a object of the right type, containing all of the properties pre-populated.
+	obj, readonlines := e.newObject(ty)
 
 	// See if there is a constructor method.  If there isn't, we just return the fresh object.
 	if ctor, has := ty.TypeMembers()[tokens.ClassConstructorFunction]; has {
@@ -1136,6 +1197,11 @@ func (e *evaluator) evalNewExpression(node *ast.NewExpression) (*rt.Object, *Unw
 		class, isclass := ty.(*symbols.Class)
 		contract.Assertf(!isclass || class.Extends == nil,
 			"No constructor found for %v, yet there is a base class; chaining must be done manually", ty)
+	}
+
+	// Finally, ensure that all readonly properties are frozen now.
+	for _, readonly := range readonlines {
+		readonly.Freeze() // ensure this is never written to again.
 	}
 
 	return obj, nil
