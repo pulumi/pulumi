@@ -167,12 +167,22 @@ func (b *binder) bindPackageDeclarations(pkg *symbols.Package) {
 	}
 }
 
+func isModuleAlias(pkg *symbols.Package, mod tokens.ModuleName) bool {
+	if pkg.Node.Aliases == nil {
+		return false
+	}
+	_, isalias := (*pkg.Node.Aliases)[mod]
+	return isalias
+}
+
 // bindPackageExports resolves exports to their referent symbols, one level deep.  During this phase, exports may depend
 // upon other exports, and so until it has settled, we can't properly chase down export links.
 func (b *binder) bindPackageExports(pkg *symbols.Package) {
 	contract.Require(pkg != nil, "pkg")
 	for _, mod := range symbols.StableModuleMap(pkg.Modules) {
-		b.bindModuleExports(pkg.Modules[mod])
+		if !isModuleAlias(pkg, mod) {
+			b.bindModuleExports(pkg.Modules[mod])
+		}
 	}
 }
 
@@ -182,7 +192,9 @@ func (b *binder) bindPackageExports(pkg *symbols.Package) {
 func (b *binder) bindPackageDefinitions(pkg *symbols.Package) {
 	contract.Require(pkg != nil, "pkg")
 	for _, mod := range symbols.StableModuleMap(pkg.Modules) {
-		b.bindModuleDefinitions(pkg.Modules[mod])
+		if !isModuleAlias(pkg, mod) {
+			b.bindModuleDefinitions(pkg.Modules[mod])
+		}
 	}
 }
 
@@ -190,6 +202,8 @@ func (b *binder) bindPackageDefinitions(pkg *symbols.Package) {
 func (b *binder) bindPackageBodies(pkg *symbols.Package) {
 	contract.Require(pkg != nil, "pkg")
 	for _, mod := range symbols.StableModuleMap(pkg.Modules) {
-		b.bindModuleBodies(pkg.Modules[mod])
+		if !isModuleAlias(pkg, mod) {
+			b.bindModuleBodies(pkg.Modules[mod])
+		}
 	}
 }
