@@ -24,6 +24,7 @@ type LocalVariable struct {
 	Node *ast.LocalVariable
 	Nm   tokens.Name
 	Ty   Type
+	Spec bool // true if this local variable is "special" (usually this/super).
 }
 
 var _ Symbol = (*LocalVariable)(nil)
@@ -32,6 +33,7 @@ var _ Variable = (*LocalVariable)(nil)
 func (node *LocalVariable) symbol()               {}
 func (node *LocalVariable) Name() tokens.Name     { return node.Nm }
 func (node *LocalVariable) Token() tokens.Token   { return tokens.Token(node.Name()) }
+func (node *LocalVariable) Special() bool         { return node.Spec }
 func (node *LocalVariable) Tree() diag.Diagable   { return node.Node }
 func (node *LocalVariable) Readonly() bool        { return node.Node.Readonly != nil && *node.Node.Readonly }
 func (node *LocalVariable) Type() Type            { return node.Ty }
@@ -46,5 +48,5 @@ func NewLocalVariableSym(node *ast.LocalVariable, ty Type) *LocalVariable {
 
 // NewSpecialVariableSym returns a "special" LocalVariable symbol that has no corresponding AST node and has a name.
 func NewSpecialVariableSym(nm tokens.Name, ty Type) *LocalVariable {
-	return &LocalVariable{Node: nil, Nm: nm, Ty: ty}
+	return &LocalVariable{Node: nil, Nm: nm, Ty: ty, Spec: true}
 }

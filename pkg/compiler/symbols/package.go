@@ -20,6 +20,7 @@ var _ Symbol = (*Package)(nil)
 func (node *Package) symbol()                     {}
 func (node *Package) Name() tokens.Name           { return tokens.Name(node.Node.Name) }
 func (node *Package) Token() tokens.Token         { return tokens.Token(node.Node.Name) }
+func (node *Package) Special() bool               { return false }
 func (node *Package) Tree() diag.Diagable         { return node.Node }
 func (node *Package) Default() *tokens.ModuleName { return node.Node.Default }
 func (node *Package) String() string              { return string(node.Name()) }

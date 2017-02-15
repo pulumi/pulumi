@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/golang/glog"
+
 	"github.com/marapongo/mu/pkg/compiler/symbols"
 	"github.com/marapongo/mu/pkg/compiler/types"
 	"github.com/marapongo/mu/pkg/diag"
@@ -18,23 +20,40 @@ type Object struct {
 	t          symbols.Type // the runtime type of the object.
 	value      Value        // any constant data associated with this object.
 	properties PropertyMap  // the full set of known properties and their values.
+	proto      *Object      // the super (prototype) object if the object has a base class.
 }
 
 var _ fmt.Stringer = (*Object)(nil)
 
 type Value interface{} // a literal object value.
 
-// NewObject allocates a new object with the given type, primitive value, and properties.
-func NewObject(t symbols.Type, value Value, properties PropertyMap) *Object {
+// NewObject allocates a new object with the given type, primitive value, properties, and prototype object.
+func NewObject(t symbols.Type, value Value, properties PropertyMap, proto *Object) *Object {
 	if properties == nil {
 		properties = make(PropertyMap)
 	}
-	return &Object{t: t, value: value, properties: properties}
+	return &Object{t: t, value: value, properties: properties, proto: proto}
 }
 
 func (o *Object) Type() symbols.Type      { return o.t }
 func (o *Object) Value() Value            { return o.value }
 func (o *Object) Properties() PropertyMap { return o.properties }
+func (o *Object) Proto() *Object          { return o.proto }
+
+// PropertyValues returns a snapshot of the object's properties, by walking its prototype chain.  Note that mutations in
+// the map returned will not be reflected in the object state; this is a *snapshot*.
+func (o *Object) PropertyValues() PropertyMap {
+	properties := make(PropertyMap)
+	if o.proto != nil {
+		for k, v := range o.proto.PropertyValues() {
+			properties[k] = v
+		}
+	}
+	for k, v := range o.properties {
+		properties[k] = v
+	}
+	return properties
+}
 
 // ArrayValue asserts that the target is an array literal and returns its value.
 func (o *Object) ArrayValue() *[]*Pointer {
@@ -132,21 +151,14 @@ func (o *Object) String() string {
 			return o.PointerValue().String()
 		}
 
-		// Otherwise it's an arbitrary object; just dump out the type and properties.
-		var p string
-		for prop, ptr := range o.properties {
-			if p != "" {
-				p += ","
-			}
-			p += string(prop) + "=" + ptr.String()
-		}
-		return "obj{type=" + o.t.Token().String() + ",props={" + p + "}}"
+		// Otherwise it's an arbitrary object; just print the type (we can't recurse, due to possible cycles).
+		return "obj{type=" + o.t.Token().String() + ",props={...}}"
 	}
 }
 
 // NewPrimitiveObject creates a new primitive object with the given primitive type.
 func NewPrimitiveObject(t symbols.Type, v interface{}) *Object {
-	return NewObject(t, v, nil)
+	return NewObject(t, v, nil, nil)
 }
 
 // NewArrayObject allocates a new array object with the given array payload.
@@ -187,7 +199,7 @@ func NewStringObject(v string) *Object {
 // NewFunctionObject creates a new function object that can be invoked, with the given symbol.
 func NewFunctionObject(fnc symbols.Function, this *Object) *Object {
 	stub := FuncStub{Func: fnc, This: this}
-	return NewObject(fnc.FuncType(), stub, nil)
+	return NewObject(fnc.FuncType(), stub, nil, nil)
 }
 
 // FuncStub is a stub that captures a symbol plus an optional instance 'this' object.
@@ -239,4 +251,78 @@ func NewConstantObject(v interface{}) *Object {
 		contract.Failf("Unrecognized constant data literal: %v", data)
 		return nil
 	}
+}
+
+// FreezeReadonlyProperties freezes the readonly fields of an object, possibly copying properties down from the
+// prototype chain as necessary to accomplish the freezing (since modifying the prototype chain would clearly be wrong).
+// TODO[marapongo/mu#70]: this could cause subtle compatibility issues; e.g., it's possible to write to the prototype
+//     for an inherited property postconstruction; in vanilla ECMAscript, that write would be seen; in MuJS it won't.
+func (obj *Object) FreezeReadonlyProperties() {
+	current := obj.Type()
+	for current != nil {
+		members := current.TypeMembers()
+		for _, member := range symbols.StableClassMemberMap(members) {
+			if m := members[member]; !m.Static() {
+				if prop, isprop := m.(*symbols.ClassProperty); isprop && prop.Readonly() {
+					ptr := obj.GetPropertyAddr(PropertyKey(member), true, true)
+					if !ptr.Readonly() {
+						ptr.Freeze() // ensure we cannot write to this any longer.
+					}
+				}
+			}
+		}
+
+		// Keep going up the type hierarchy.
+		contract.Assert(current != current.Base())
+		current = current.Base()
+	}
+}
+
+// GetPropertyAddr locates a property with the given key in an object's property map and/or prototype chain.
+// If that property is not found, and init is true, then it will be added to the object's property map.  If direct is
+// true, then this function ensures that the property is in the object's map, versus being in the prototype chain.
+func (obj *Object) GetPropertyAddr(key PropertyKey, init bool, direct bool) *Pointer {
+	// If it's in the object's property map already, just return it.
+	properties := obj.Properties()
+	if ptr := properties.GetAddr(key, false); ptr != nil {
+		if glog.V(9) {
+			glog.V(9).Infof("Object(%v).GetPropertyAddr(%v, %v, %v) found in object map",
+				obj.Type(), key, init, direct)
+		}
+		return ptr
+	}
+
+	// Otherwise, consult the prototype chain.
+	var ptr *Pointer
+	proto := obj.Proto()
+	for ptr == nil && proto != nil {
+		if ptr = proto.Properties().GetAddr(key, false); ptr == nil {
+			proto = proto.Proto()
+		}
+	}
+
+	if ptr == nil {
+		// If we didn't find anything, and were asked to initialize, do so now.
+		if init {
+			ptr = properties.InitAddr(key, nil, false)
+			if glog.V(9) {
+				glog.V(9).Infof("Object(%v).GetPropertyAddr(%v, %v, %v) not found; initialized: %v",
+					obj.Type(), key, init, direct, ptr)
+			}
+		} else if glog.V(9) {
+			glog.V(9).Infof("Object(%v).GetPropertyAddr(%v, %v, %v) not found", obj.Type(), key, init, direct)
+		}
+	} else if direct {
+		// If we found the property in the prototype chain, but were asked to make it direct, copy it down.
+		ptr = properties.InitAddr(key, ptr.Obj(), ptr.Readonly())
+		if glog.V(9) {
+			glog.V(9).Infof("Object(%v).GetPropertyAddr(%v, %v, %v) found in prototype %v; copied to object map: %v",
+				obj.Type(), key, init, direct, proto.Type(), ptr)
+		}
+	} else if glog.V(9) {
+		glog.V(9).Infof("Object(%v).GetPropertyAddr(%v, %v, %v) found in prototype %v: %v",
+			obj.Type(), key, init, direct, proto.Type(), ptr)
+	}
+
+	return ptr
 }

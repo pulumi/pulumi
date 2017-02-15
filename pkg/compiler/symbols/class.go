@@ -29,6 +29,7 @@ var _ ModuleMember = (*Class)(nil)
 func (node *Class) symbol()                             {}
 func (node *Class) Name() tokens.Name                   { return tokens.Name(node.Nm) }
 func (node *Class) Token() tokens.Token                 { return tokens.Token(node.Tok) }
+func (node *Class) Special() bool                       { return false }
 func (node *Class) Tree() diag.Diagable                 { return node.Node }
 func (node *Class) moduleMember()                       {}
 func (node *Class) MemberNode() ast.ModuleMember        { return node.Node }
@@ -128,6 +129,7 @@ func (node *ClassProperty) Name() tokens.Name { return node.Node.Name.Ident }
 func (node *ClassProperty) Token() tokens.Token {
 	return tokens.Token(tokens.NewClassMemberToken(node.Parent.Tok, node.MemberName()))
 }
+func (node *ClassProperty) Special() bool               { return false }
 func (node *ClassProperty) Tree() diag.Diagable         { return node.Node }
 func (node *ClassProperty) classMember()                {}
 func (node *ClassProperty) Optional() bool              { return node.Node.Optional != nil && *node.Node.Optional }
@@ -168,6 +170,10 @@ func (node *ClassMethod) Name() tokens.Name { return node.Node.Name.Ident }
 func (node *ClassMethod) Token() tokens.Token {
 	return tokens.Token(tokens.NewClassMemberToken(node.Parent.Tok, node.MemberName()))
 }
+func (node *ClassMethod) Special() bool {
+	nm := node.MemberName()
+	return nm == tokens.ClassInitFunction || nm == tokens.ClassConstructorFunction
+}
 func (node *ClassMethod) Tree() diag.Diagable         { return node.Node }
 func (node *ClassMethod) classMember()                {}
 func (node *ClassMethod) Optional() bool              { return false }
@@ -178,7 +184,10 @@ func (node *ClassMethod) MemberNode() ast.ClassMember { return node.Node }
 func (node *ClassMethod) MemberName() tokens.ClassMemberName {
 	return tokens.ClassMemberName(node.Name())
 }
-func (node *ClassMethod) MemberParent() *Class    { return node.Parent }
+func (node *ClassMethod) MemberParent() *Class { return node.Parent }
+func (node *ClassMethod) Constructor() bool {
+	return node.MemberName() == tokens.ClassConstructorFunction
+}
 func (node *ClassMethod) FuncNode() ast.Function  { return node.Node }
 func (node *ClassMethod) FuncType() *FunctionType { return node.Ty }
 func (node *ClassMethod) String() string          { return string(node.Name()) }

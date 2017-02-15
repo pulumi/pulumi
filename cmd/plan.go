@@ -44,7 +44,7 @@ func newPlanCmd() *cobra.Command {
 					t := o.Type()
 					if types.HasBaseName(t, predef.MuResourceClass) {
 						fmt.Printf("%v:\n", o.Type())
-						for key, prop := range o.Properties() {
+						for key, prop := range o.PropertyValues() {
 							fmt.Printf("\t%v: %v\n", key, prop)
 						}
 					}

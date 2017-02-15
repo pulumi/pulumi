@@ -26,8 +26,8 @@ func (a *Allocator) onNewObject(o *rt.Object) {
 }
 
 // New creates a new empty object of the given type.
-func (a *Allocator) New(t symbols.Type, properties rt.PropertyMap) *rt.Object {
-	obj := rt.NewObject(t, nil, properties)
+func (a *Allocator) New(t symbols.Type, properties rt.PropertyMap, super *rt.Object) *rt.Object {
+	obj := rt.NewObject(t, nil, properties, super)
 	a.onNewObject(obj)
 	return obj
 }

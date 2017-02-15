@@ -14,6 +14,7 @@ type Symbol interface {
 	symbol()
 	Name() tokens.Name   // the simple name for this symbol.
 	Token() tokens.Token // the unique qualified name token for this symbol.
+	Special() bool       // indicates whether this is a "special" symbol; these are inaccessible to user code.
 	Tree() diag.Diagable // the diagnosable tree associated with this symbol.
 	String() string      // implement Stringer for easy formatting (e.g., in error messages).
 }

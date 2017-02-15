@@ -30,6 +30,7 @@ func (node *Module) Token() tokens.Token {
 	)
 }
 func (node *Module) Tree() diag.Diagable { return node.Node }
+func (node *Module) Special() bool       { return false }
 func (node *Module) String() string      { return string(node.Name()) }
 
 // HasInit returns true if this module has an initialzer associated with it.
@@ -79,6 +80,7 @@ func (node *Export) Token() tokens.Token {
 		),
 	)
 }
+func (node *Export) Special() bool       { return false }
 func (node *Export) Tree() diag.Diagable { return node.Node }
 func (node *Export) String() string      { return string(node.Name()) }
 
@@ -133,6 +135,7 @@ func (node *ModuleProperty) Token() tokens.Token {
 		),
 	)
 }
+func (node *ModuleProperty) Special() bool                { return false }
 func (node *ModuleProperty) Tree() diag.Diagable          { return node.Node }
 func (node *ModuleProperty) moduleMember()                {}
 func (node *ModuleProperty) MemberNode() ast.ModuleMember { return node.Node }
@@ -179,6 +182,7 @@ func (node *ModuleMethod) Token() tokens.Token {
 		),
 	)
 }
+func (node *ModuleMethod) Special() bool                { return node.MemberName() == tokens.ModuleInitFunction }
 func (node *ModuleMethod) Tree() diag.Diagable          { return node.Node }
 func (node *ModuleMethod) moduleMember()                {}
 func (node *ModuleMethod) MemberNode() ast.ModuleMember { return node.Node }

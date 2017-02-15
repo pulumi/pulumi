@@ -33,6 +33,7 @@ var _ Type = (*PrimitiveType)(nil)
 func (node *PrimitiveType) symbol()                     {}
 func (node *PrimitiveType) Name() tokens.Name           { return tokens.Name(node.Nm) }
 func (node *PrimitiveType) Token() tokens.Token         { return tokens.Token(node.Nm) }
+func (node *PrimitiveType) Special() bool               { return false }
 func (node *PrimitiveType) Tree() diag.Diagable         { return nil }
 func (node *PrimitiveType) typesym()                    {}
 func (node *PrimitiveType) Base() Type                  { return nil }
@@ -60,6 +61,7 @@ var _ Type = (*PointerType)(nil)
 func (node *PointerType) symbol()                     {}
 func (node *PointerType) Name() tokens.Name           { return tokens.Name(node.Nm) }
 func (node *PointerType) Token() tokens.Token         { return tokens.Token(node.Tok) }
+func (node *PointerType) Special() bool               { return false }
 func (node *PointerType) Tree() diag.Diagable         { return nil }
 func (node *PointerType) typesym()                    {}
 func (node *PointerType) Base() Type                  { return nil }
@@ -99,6 +101,7 @@ var _ Type = (*ArrayType)(nil)
 func (node *ArrayType) symbol()                     {}
 func (node *ArrayType) Name() tokens.Name           { return tokens.Name(node.Nm) }
 func (node *ArrayType) Token() tokens.Token         { return tokens.Token(node.Tok) }
+func (node *ArrayType) Special() bool               { return false }
 func (node *ArrayType) Tree() diag.Diagable         { return nil }
 func (node *ArrayType) typesym()                    {}
 func (node *ArrayType) Base() Type                  { return nil }
@@ -139,6 +142,7 @@ var _ Type = (*MapType)(nil)
 func (node *MapType) symbol()                     {}
 func (node *MapType) Name() tokens.Name           { return tokens.Name(node.Nm) }
 func (node *MapType) Token() tokens.Token         { return tokens.Token(node.Tok) }
+func (node *MapType) Special() bool               { return false }
 func (node *MapType) Tree() diag.Diagable         { return nil }
 func (node *MapType) typesym()                    {}
 func (node *MapType) Base() Type                  { return nil }
@@ -179,6 +183,7 @@ var _ Type = (*FunctionType)(nil)
 func (node *FunctionType) symbol()                     {}
 func (node *FunctionType) Name() tokens.Name           { return tokens.Name(node.Nm) }
 func (node *FunctionType) Token() tokens.Token         { return tokens.Token(node.Tok) }
+func (node *FunctionType) Special() bool               { return false }
 func (node *FunctionType) Tree() diag.Diagable         { return nil }
 func (node *FunctionType) typesym()                    {}
 func (node *FunctionType) Base() Type                  { return nil }
@@ -218,4 +223,42 @@ func NewFunctionType(params []Type, ret Type) *FunctionType {
 	fnc := &FunctionType{nm, tok, params, ret}
 	functionTypeCache[tok] = fnc
 	return fnc
+}
+
+// PrototypeType is the type for "prototypes" (blueprints for object construction).
+type PrototypeType struct {
+	Type Type // the type this prototype constructs.
+}
+
+var _ Symbol = (*PrototypeType)(nil)
+var _ Type = (*PrototypeType)(nil)
+
+func (node *PrototypeType) symbol()             {}
+func (node *PrototypeType) Name() tokens.Name   { return tokens.Name(node.TypeName()) }
+func (node *PrototypeType) Token() tokens.Token { return tokens.Token(node.TypeName()) }
+func (node *PrototypeType) Special() bool       { return false }
+func (node *PrototypeType) Tree() diag.Diagable { return nil }
+func (node *PrototypeType) typesym()            {}
+func (node *PrototypeType) Base() Type          { return nil }
+func (node *PrototypeType) TypeName() tokens.TypeName {
+	return tokens.TypeName(string(node.Type.Name())) + ".prototype"
+}
+func (node *PrototypeType) TypeToken() tokens.Type {
+	return tokens.Type(string(node.Type.Token()) + ".prototype")
+}
+func (node *PrototypeType) TypeMembers() ClassMemberMap { return noClassMembers }
+func (node *PrototypeType) Record() bool                { return false }
+func (node *PrototypeType) Interface() bool             { return false }
+func (node *PrototypeType) String() string              { return string(node.Name()) }
+
+// prototypeTypeCache is a cache keyed by token, helping to avoid creating superfluous symbol objects.
+var prototypeTypeCache = make(map[Type]*PrototypeType)
+
+func NewPrototypeType(t Type) *PrototypeType {
+	if proto, has := prototypeTypeCache[t]; has {
+		return proto
+	}
+	proto := &PrototypeType{t}
+	prototypeTypeCache[t] = proto
+	return proto
 }

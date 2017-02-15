@@ -5,6 +5,7 @@ package eval
 import (
 	"math"
 	"reflect"
+	"runtime/debug"
 	"sort"
 	"strconv"
 
@@ -71,6 +72,7 @@ type evaluator struct {
 	alloc      *Allocator       // the object allocator.
 	globals    globalMap        // the object values for global variable symbols.
 	statics    staticMap        // the object values for all static variable symbols.
+	protos     prototypeMap     // the current "prototypes" for all classes.
 	stack      *rt.StackFrame   // a stack of frames to keep track of calls.
 	locals     *localScope      // local variable values scoped by the lexical structure.
 	modinits   modinitMap       // a map of which modules have been initialized already.
@@ -79,6 +81,7 @@ type evaluator struct {
 
 type globalMap map[*symbols.Module]rt.PropertyMap
 type staticMap map[*symbols.Class]rt.PropertyMap
+type prototypeMap map[symbols.Type]*rt.Object
 type modinitMap map[*symbols.Module]bool
 type classinitMap map[*symbols.Class]bool
 
@@ -389,40 +392,44 @@ func (e *evaluator) getClassStatics(class *symbols.Class) rt.PropertyMap {
 	return statics
 }
 
-// newObject allocates a fresh object of the given type, populating it with its default property values.  The return
-// value includes the object in addition to a set of properties that must be frozen after initialization is complete.
-func (e *evaluator) newObject(t symbols.Type) (*rt.Object, []*rt.Pointer) {
-	// Create an empty object of that type.
-	obj := e.alloc.New(t, nil)
-
-	// Populate a property map with this class's (and its ancestry's) instance members.
-	var readonlines []*rt.Pointer
-	current := t
-	properties := obj.Properties()
-	for current != nil {
-		members := current.TypeMembers()
-		for _, member := range symbols.StableClassMemberMap(members) {
-			if m := members[member]; !m.Static() {
-				// Skip superclass .ctor methods.
-				if current != t {
-					if meth, ismeth := m.(*symbols.ClassMethod); ismeth &&
-						meth.MemberName() == tokens.ClassConstructorFunction {
-						continue
-					}
-				}
-				// TODO: we need to figure out how to represent super constructors.
-				if ptr, readonly := e.initProperty(properties, m, obj); readonly {
-					readonlines = append(readonlines, ptr) // remember to freeze this post-construction.
-				}
-			}
-		}
-
-		// Keep going up the type hierarchy.
-		contract.Assert(current != current.Base())
-		current = current.Base()
+// getPrototype returns the prototype for a given type.  The prototype is a mutable object, and so it is cached, and
+// reused for subsequent lookups.  This means that mutations in the prototype are lasting and visible for all later
+// uses.  This is similar to ECMAScript behavior; see http://www.ecma-international.org/ecma-262/6.0/#sec-objects.
+// TODO[marapongo/mu#70]: technically this should be gotten from the constructor function object; we will need to
+//     rewire things a bit, depending on how serious we are about ECMAScript compliance, especially dynamic scenarios.
+func (e *evaluator) getPrototype(t symbols.Type) *rt.Object {
+	// If there is already a proto for this type, use it.
+	if proto, has := e.protos[t]; has {
+		return proto
 	}
 
-	return obj, readonlines
+	// If not, we need to create a new one.  First, fetch the base if there is one.
+	var base *rt.Object
+	if t.Base() != nil {
+		base = e.getPrototype(t.Base())
+	}
+
+	// Now populate the prototype object with all members.
+	members := t.TypeMembers()
+	proto := e.alloc.New(symbols.NewPrototypeType(t), nil, base)
+	properties := proto.Properties()
+	for _, member := range symbols.StableClassMemberMap(members) {
+		if m := members[member]; !m.Static() {
+			e.initProperty(properties, m, proto)
+		}
+	}
+
+	return proto
+}
+
+// newObject allocates a fresh object of the given type, wired up to its prototype.
+func (e *evaluator) newObject(t symbols.Type) *rt.Object {
+	// First, fetch the prototype chain for this object.  This is required to implement property chaining.
+	proto := e.getPrototype(t)
+
+	// Now create an empty object of the desired type.  Subsequent operations will do the right thing with it.  E.g.,
+	// overwriting a property will add a new entry to the object's map; reading will search the prototpe chain; etc.
+	return e.alloc.New(t, nil, proto)
 }
 
 // issueUnhandledException issues an unhandled exception error using the given diagnostic and unwind information.
@@ -553,6 +560,9 @@ func (e *evaluator) evalCall(node diag.Diagable, fnc symbols.Function,
 	retty := fnc.FuncType().Return
 	if uw != nil {
 		if uw.Throw() {
+			if glog.V(7) {
+				glog.V(7).Infof("Evaluated call to fnc %v; unhandled exception: %v", uw.Thrown())
+			}
 			return nil, uw
 		}
 
@@ -560,11 +570,15 @@ func (e *evaluator) evalCall(node diag.Diagable, fnc symbols.Function,
 		ret := uw.Returned()
 		contract.Assert((retty == nil) == (ret == nil))
 		contract.Assert(ret == nil || types.CanConvert(ret.Type(), retty))
+		if glog.V(7) {
+			glog.V(7).Infof("Evaluated call to fnc %v; return=%v", fnc, ret)
+		}
 		return ret, nil
 	}
 
 	// An absence of a return is okay for void-returning functions.
 	contract.Assert(retty == nil)
+	glog.V(7).Infof("Evaluated call to fnc %v; return=<nil>", fnc)
 	return nil, nil
 }
 
@@ -786,6 +800,7 @@ func (e *evaluator) evalExpressionStatement(node *ast.ExpressionStatement) *Unwi
 func (e *evaluator) evalExpression(node ast.Expression) (*rt.Object, *Unwind) {
 	if glog.V(7) {
 		glog.V(7).Infof("Evaluating expression: %v", reflect.TypeOf(node))
+		debug.PrintStack()
 	}
 
 	// Simply switch on the node type and dispatch to the specific function, returning the object and Unwind info.
@@ -932,11 +947,9 @@ func (e *evaluator) evalObjectLiteral(node *ast.ObjectLiteral) (*rt.Object, *Unw
 	ty := e.ctx.Types[node]
 
 	// Allocate a new object of the right type, containing all of the properties pre-populated.
-	obj, readonlies := e.newObject(ty)
+	obj := e.newObject(ty)
 
 	if node.Properties != nil {
-		properties := obj.Properties()
-
 		// The binder already checked that the properties are legal, so we will simply store them as values.
 		for _, init := range *node.Properties {
 			val, uw := e.evalExpression(init.Value)
@@ -951,12 +964,12 @@ func (e *evaluator) evalObjectLiteral(node *ast.ObjectLiteral) (*rt.Object, *Unw
 			var property rt.PropertyKey
 			if ty == types.Dynamic {
 				property = rt.PropertyKey(id)
-				addr = properties.GetAddr(property, true)
+				addr = obj.GetPropertyAddr(property, true, true)
 			} else {
 				contract.Assert(id.HasClassMember())
 				member := tokens.ClassMember(id).Name()
 				property = rt.PropertyKey(member.Name())
-				addr = properties.GetAddr(property, true)
+				addr = obj.GetPropertyAddr(property, true, true)
 			}
 			addr.Set(val)
 
@@ -968,9 +981,7 @@ func (e *evaluator) evalObjectLiteral(node *ast.ObjectLiteral) (*rt.Object, *Unw
 	}
 
 	// Ensure we freeze anything that must be frozen.
-	for _, readonly := range readonlies {
-		readonly.Freeze()
-	}
+	obj.FreezeReadonlyProperties()
 
 	return obj, nil
 }
@@ -987,14 +998,48 @@ type location struct {
 	Obj  *rt.Object  // the resulting object (pointer if lval, object otherwise).
 }
 
+// getObjectOrSuperProperty loads a property pointer from an object using the given property key.  It understands how
+// to determine whether this is a `super` load, and bind it, and will adjust the resulting pointer accordingly.
+func (e *evaluator) getObjectOrSuperProperty(
+	obj *rt.Object, objexpr ast.Expression, k rt.PropertyKey, init bool, forWrite bool) *rt.Pointer {
+	// If this member is being accessed using "super", we need to start our property search from the
+	// superclass prototype, and not the object itself, so that we find the right value.
+	super := false
+	if objexpr != nil {
+		if ldloc, isldloc := objexpr.(*ast.LoadLocationExpression); isldloc {
+			if ldloc.Name.Tok == tokens.Token(tokens.SuperVariable) {
+				contract.Assert(ldloc.Object == nil)
+				super = true
+			}
+		}
+	}
+
+	// If a superclass, use the right prototype.
+	var target *rt.Object
+	if super {
+		proto := obj.Proto()
+		contract.Assertf(proto != nil, "Expected a prototype for a class object involved in `super`")
+		target = proto.Proto()
+		contract.Assertf(target != nil, "Expected a superclass prototype when accessing `super`")
+		// TODO: adjust the this object.
+	} else {
+		// Otherwise, simply fetch the property from the object directly.
+		target = obj
+	}
+
+	return target.GetPropertyAddr(k, init, forWrite)
+}
+
 // evalLoadLocation evaluates and loads information about the target.  It takes an lval bool which
 // determines whether the resulting location object is an lval (pointer) or regular object.
 func (e *evaluator) evalLoadLocation(node *ast.LoadLocationExpression, lval bool) (location, *Unwind) {
 	// If there's a target object, evaluate it.
 	var this *rt.Object
+	var thisexpr ast.Expression
 	if node.Object != nil {
+		thisexpr = *node.Object
 		var uw *Unwind
-		if this, uw = e.evalExpression(*node.Object); uw != nil {
+		if this, uw = e.evalExpression(thisexpr); uw != nil {
 			return location{}, uw
 		}
 	}
@@ -1013,47 +1058,55 @@ func (e *evaluator) evalLoadLocation(node *ast.LoadLocationExpression, lval bool
 		ty = loc.Type()
 		sym = loc
 	} else {
-		sym = e.ctx.LookupSymbol(node.Name, tok, true)
-		for ty == nil {
-			contract.Assert(sym != nil) // don't issue errors; we shouldn't ever get here if verification failed.
+		sym = e.ctx.LookupSymbol(node.Name, tok, false)
+		contract.Assert(sym != nil) // don't issue errors; we shouldn't ever get here if verification failed.
 
-			// Look up the symbol property in the right place.  Note that because this is a static load, we
-			// intentionally do not perform any lazily initialization of missing property slots; they must exist.
-			switch s := sym.(type) {
-			case symbols.ClassMember:
-				// Consult either the statics map or the object's property based on the kind of symbol.
-				k := rt.PropertyKey(sym.Name())
-				if s.Static() {
-					contract.Assert(this == nil)
-					statics := e.getClassStatics(s.MemberParent())
-					pv = statics.GetAddr(k, false)
-				} else {
-					contract.Assert(this != nil)
-					if uw := e.checkThis(node, this); uw != nil {
-						return location{}, uw
-					}
-					pv = this.Properties().GetAddr(k, false)
-				}
-				ty = s.Type()
-				contract.Assert(pv != nil)
-				contract.Assert(ty != nil)
-			case symbols.ModuleMemberProperty:
-				// Search the globals table for this module.
-				contract.Assert(this == nil)
-				k := rt.PropertyKey(s.Name())
-				globals := e.getModuleGlobals(s.MemberParent())
-				pv = globals.GetAddr(k, false)
-				ty = s.MemberType()
-				contract.Assert(pv != nil)
-				contract.Assert(ty != nil)
-			case *symbols.Export:
-				// Simply chase the referent symbol until we bottom out on one of the above cases.
-				contract.Assertf(s.Referent != sym, "Unexpected self-referential export token")
-				sym = s.Referent
-				contract.Assertf(sym != nil, "Expected export '%v' to resolve to a token", s.Node.Referent.Tok)
-			default:
-				contract.Failf("Unexpected symbol token kind during load expression: %v", tok)
+		// If the symbol is an export, keep chasing down the referents until we hit a real symbol.
+		for {
+			export, isexport := sym.(*symbols.Export)
+			if !isexport {
+				break
 			}
+			// Simply chase the referent symbol until we bottom out on something useful.
+			contract.Assertf(export.Referent != sym, "Unexpected self-referential export token")
+			sym = export.Referent
+			contract.Assertf(sym != nil, "Expected export '%v' to resolve to a token", export.Node.Referent.Tok)
+		}
+
+		// Look up the symbol property in the right place.  Note that because this is a static load, we
+		// intentionally do not perform any lazily initialization of missing property slots; they must exist.
+		switch s := sym.(type) {
+		case symbols.ClassMember:
+			// Consult either the statics map or the object's property based on the kind of symbol.  Note that we do
+			// this even for class functions so that in case they are replaced or overridden in derived types, we get
+			// the expected "virtual" dispatch behavior.  The one special case is constructors, where we intentionally
+			// return a statically resolved symbol (since they aren't stored as properties and to support `super`).
+			k := rt.PropertyKey(sym.Name())
+			if s.Static() {
+				contract.Assert(this == nil)
+				statics := e.getClassStatics(s.MemberParent())
+				pv = statics.GetAddr(k, false)
+			} else {
+				contract.Assert(this != nil)
+				if uw := e.checkThis(node, this); uw != nil {
+					return location{}, uw
+				}
+				pv = e.getObjectOrSuperProperty(this, thisexpr, k, false, lval)
+			}
+			ty = s.Type()
+			contract.Assert(pv != nil)
+			contract.Assert(ty != nil)
+		case symbols.ModuleMemberProperty:
+			// Search the globals table for this module.
+			contract.Assert(this == nil)
+			k := rt.PropertyKey(s.Name())
+			globals := e.getModuleGlobals(s.MemberParent())
+			pv = globals.GetAddr(k, false)
+			ty = s.MemberType()
+			contract.Assert(pv != nil)
+			contract.Assert(ty != nil)
+		default:
+			contract.Failf("Unexpected symbol token kind during load expression: %v", tok)
 		}
 	}
 
@@ -1136,7 +1189,7 @@ func (e *evaluator) evalLoadDynamic(node *ast.LoadDynamicExpression, lval bool) 
 	} else {
 		contract.Assertf(name.Type() == types.String, "Expected dynamic load name to be a string")
 		key = tokens.Name(name.StringValue())
-		pv = this.Properties().GetAddr(rt.PropertyKey(key), true)
+		pv = e.getObjectOrSuperProperty(this, node.Object, rt.PropertyKey(key), false, lval)
 	}
 
 	// If this isn't for an l-value, return the raw object.  Otherwise, make sure it's not readonly, and return it.
@@ -1165,7 +1218,7 @@ func (e *evaluator) evalNewExpression(node *ast.NewExpression) (*rt.Object, *Unw
 	ty := e.ctx.RequireType(node)
 
 	// Create a object of the right type, containing all of the properties pre-populated.
-	obj, readonlines := e.newObject(ty)
+	obj := e.newObject(ty)
 
 	// See if there is a constructor method.  If there isn't, we just return the fresh object.
 	if ctor, has := ty.TypeMembers()[tokens.ClassConstructorFunction]; has {
@@ -1200,9 +1253,7 @@ func (e *evaluator) evalNewExpression(node *ast.NewExpression) (*rt.Object, *Unw
 	}
 
 	// Finally, ensure that all readonly properties are frozen now.
-	for _, readonly := range readonlines {
-		readonly.Freeze() // ensure this is never written to again.
-	}
+	obj.FreezeReadonlyProperties()
 
 	return obj, nil
 }
