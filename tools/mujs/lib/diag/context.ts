@@ -183,7 +183,7 @@ export class Context {
 
     /** Error factories **/
 
-    public newMissingMufileError(path: string, exts: string[]): Diagnostic {
+    public newMissingMufileError(path: string, dependency: boolean, exts: string[]): Diagnostic {
         let altExts: string = "";
         if (exts.length > 0) {
             path = path + exts[0];
@@ -201,7 +201,7 @@ export class Context {
         return {
             category: DiagnosticCategory.Error,
             code:     1,
-            message:  `No Mufile was found at '${path}'${altExts}`,
+            message:  `No ${dependency ? "dependency" : "source"} Mufile was found at '${path}'${altExts}`,
         };
     }
 

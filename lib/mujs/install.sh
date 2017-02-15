@@ -10,10 +10,10 @@ echo Sharing NPM links:
 yarn link                # let NPM references resolve easily.
 
 MULIB=/usr/local/mu/lib
-THISLIB=$MULIB/mu/
-echo Installing Mu standard library to $THISLIB:
+THISLIB=$MULIB/mujs/
+echo Installing MuJS standard library to $THISLIB:
 mkdir -p $MULIB          # ensure the target library directory exists
-rm -rf $THISLIB          # clean the target
+rm -rf $THISLIB          # clean the target.
 cp -Rv ./bin/ $THISLIB   # copy to the standard library location
 
 echo Done.

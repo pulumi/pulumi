@@ -110,6 +110,33 @@ interface PackageInfo {
     pkg:   pack.Package; // the package's metadata, including its token, etc.
 }
 
+const mujsStdlibPackage: tokens.PackageToken = "mujs"; // the MuJS standard library package.
+const typeScriptStdlibPathPrefix: string = "/node_modules/typescript/lib/"; // the TypeScript library path part.
+const typeScriptStdlibModulePrefix: string = "lib."; // only modules with this prefix are consiedered "standard".
+
+// isTypeScriptStdlib indicates whether this module reference is to one of the TypeScript standard library headers.
+function isTypeScriptStdlib(ref: ModuleReference): boolean {
+    return (ref.indexOf(typeScriptStdlibPathPrefix+typeScriptStdlibModulePrefix) !== -1);
+}
+
+// getTypeScriptStdlibRoot extracts the root path of a TypeScript standard library module reference.
+function getTypeScriptStdlibRoot(ref: ModuleReference): string {
+    let stdlibIndex: number = ref.indexOf(typeScriptStdlibPathPrefix);
+    contract.assert(stdlibIndex !== -1);
+    return ref.substring(0, stdlibIndex+typeScriptStdlibPathPrefix.length);
+}
+
+
+// synthesizeMujsStdlibPackage creates a fake package that can be used to bind to MuJS standard library members.
+function synthesizeMujsStdlibPackage(root: string): PackageInfo {
+    return <PackageInfo>{
+        root: getTypeScriptStdlibRoot(root),
+        pkg: <pack.Package>{
+            name: mujsStdlibPackage,
+        },
+    };
+}
+
 // ModuleReference represents a reference to an imported module.  It's really just a fancy, strongly typed string-based
 // path that can be resolved to a concrete symbol any number of times before serialization.
 type ModuleReference = string;
@@ -200,46 +227,12 @@ export class Transformer {
         this.modulePackages = new Map<ModuleReference, Promise<PackageInfo>>();
 
         // Cache references to some important global symbols.
-        let globals: Map<string, ts.Symbol> = this.globals(ts.SymbolFlags.Interface);
-
-        // Find the built-in Object type, used both for explicit weakly-typed Object references.
-        let builtinObjectSymbol: ts.Symbol | undefined = globals.get("Object");
-        if (builtinObjectSymbol) {
-            contract.assert(!!(builtinObjectSymbol.flags & ts.SymbolFlags.Interface),
-                            "Expected built-in Object type to be an interface");
-            this.builtinObjectType = <ts.InterfaceType>this.checker().getDeclaredTypeOfSymbol(builtinObjectSymbol);
-            contract.assert(!!this.builtinObjectType, "Expected Object symbol conversion to yield a valid type");
-        }
-        else {
-            contract.fail("Expected to find a built-in Object type");
-        }
-
-        // Find the built-in Array<T> type, used both for explicit "Array<T>" references and simple "T[]"s.
-        let builtinArraySymbol: ts.Symbol | undefined = globals.get("Array");
-        if (builtinArraySymbol) {
-            contract.assert(!!(builtinArraySymbol.flags & ts.SymbolFlags.Interface),
-                            "Expected built-in Array<T> type to be an interface");
-            this.builtinArrayType = <ts.InterfaceType>this.checker().getDeclaredTypeOfSymbol(builtinArraySymbol);
-            contract.assert(!!this.builtinArrayType, "Expected Array<T> symbol conversion to yield a valid type");
-            contract.assert(this.builtinArrayType.typeParameters.length === 1,
-                            `Expected Array<T> to have generic arity 1; ` +
-                            `got ${this.builtinArrayType.typeParameters.length} instead`);
-        }
-        else {
-            contract.fail("Expected to find a built-in Array<T> type");
-        }
-
-        // Find the built-in Map<K, V> type, used for ES6-style maps; when targeting pre-ES6, it might be missing.
-        let builtinMapSymbol: ts.Symbol | undefined = globals.get("Map");
-        if (builtinMapSymbol) {
-            contract.assert(!!(builtinMapSymbol.flags & ts.SymbolFlags.Interface),
-                            "Expected built-in Map<K, V> type to be an interface");
-            this.builtinMapType = <ts.InterfaceType>this.checker().getDeclaredTypeOfSymbol(builtinMapSymbol);
-            contract.assert(!!this.builtinMapType, "Expected Map<K, V> symbol conversion to yield a valid type");
-            contract.assert(this.builtinMapType.typeParameters.length === 2,
-                            `Expected Map<K, V> to have generic arity 2; ` +
-                            `got ${this.builtinMapType.typeParameters.length} instead`);
-        }
+        //      - Object, used both for explicit weakly-typed Object references.
+        this.builtinObjectType = this.getBuiltinType("Object", 0);
+        //      - Array<T>, used both for explicit "Array<T>" references and simple "T[]"s.
+        this.builtinArrayType = this.getBuiltinType("Array", 1);
+        //      - Map<K, V>, used for ES6-style maps; when targeting pre-ES6, it might be missing.
+        this.builtinMapType = this.getOptionalBuiltinType("Map", 2);
     }
 
     // Translates a TypeScript bound tree into its equivalent MuPack/MuIL AST form, one module per file.  This method is
@@ -276,8 +269,20 @@ export class Transformer {
 
             // Afterwards, ensure that all dependencies encountered were listed in the MuPackage manifest.
             for (let dep of this.currentPackageDependencies) {
-                if (dep !== this.pkg.name && (!this.pkg.dependencies || !this.pkg.dependencies[dep])) {
-                    this.diagnostics.push(this.dctx.newMissingDependencyError(dep));
+                if (dep !== this.pkg.name) {
+                    if (!this.pkg.dependencies || !this.pkg.dependencies[dep]) {
+                        // If the reference is the MuJS standard library, we will auto-generate one for the user.
+                        // TODO: rather than using "*" as the version, take the version we actually compiled against.
+                        if (dep === mujsStdlibPackage) {
+                            if (!this.pkg.dependencies) {
+                                this.pkg.dependencies = {};
+                            }
+                            this.pkg.dependencies[dep] = "*";
+                        }
+                        else {
+                            this.diagnostics.push(this.dctx.newMissingDependencyError(dep));
+                        }
+                    }
                 }
             }
 
@@ -327,6 +332,34 @@ export class Transformer {
             globals.set(sym.name, sym);
         }
         return globals;
+    }
+
+    // getOptionalBuiltinType searches the global symbol table for an interface type with the given name and type
+    // parameter count.  It asserts that these properties are true; it is a programming error if they are not.
+    private getOptionalBuiltinType(name: string, typeParameterCount: number): ts.InterfaceType | undefined {
+        let globals: Map<string, ts.Symbol> = this.globals(ts.SymbolFlags.Interface);
+        let builtin: ts.Symbol | undefined = globals.get(name);
+        if (builtin) {
+            contract.assert(!!(builtin.flags & ts.SymbolFlags.Interface),
+                            `Expected built-in '${name}' type to be an interface`);
+            let builtinType = <ts.InterfaceType | undefined>this.checker().getDeclaredTypeOfSymbol(builtin);
+            contract.assert(!!builtinType,
+                            `Expected '${name}' symbol conversion to yield a valid type`);
+            let actualTypeParameterCount: number =
+                builtinType!.typeParameters ? builtinType!.typeParameters.length : 0;
+            contract.assert(actualTypeParameterCount === typeParameterCount,
+                            `Expected '${name}' type to have generic arity ${typeParameterCount}; ` +
+                            `got ${actualTypeParameterCount} instead`);
+            return builtinType!;
+        }
+        return undefined;
+    }
+
+    // getBuiltinType is like getOptionalBuiltinType, but fails if the type is missing.
+    private getBuiltinType(name: string, typeParameterCount: number): ts.InterfaceType {
+        let builtinType: ts.InterfaceType | undefined = this.getOptionalBuiltinType(name, typeParameterCount);
+        contract.assert(!!builtinType, `Expected to find required builtin type '${name}'`);
+        return builtinType!;
     }
 
     // isLocalVariableOrFunction tells us whether a symbol is a local one (versus, say, belonging to a class or module).
@@ -421,27 +454,47 @@ export class Transformer {
         let pkginfo: Promise<PackageInfo> | undefined = this.modulePackages.get(ref);
         contract.assert(!!pkginfo || ref !== tokens.selfModule); // expect selfrefs to always resolve.
         if (!pkginfo) {
-            // Register the promise for loading this package, to ensure interleavings pile up correctly.
-            pkginfo = (async () => {
-                let base: string = fspath.dirname(ref);
-                let disc: PackageResult = await this.loader.loadDependency(base);
-                if (disc.diagnostics) {
-                    for (let diagnostic of disc.diagnostics) {
-                        this.diagnostics.push(diagnostic);
+            // For references to the TypeScript library, hijack and redirect them to the MuJS runtime library.
+            if (isTypeScriptStdlib(ref)) {
+                // TODO[marapongo/mu#87]: at the moment, we unconditionally rewrite references.  This leads to silent
+                //     compilation of things that could be missing (either intentional, like `eval`, or simply because
+                //     we haven't gotten around to implementing them yet).  Ideally we would reject the MuJS compilation
+                //     later on during type token binding so that developers get a better experience.
+                let stdlib: PackageInfo = synthesizeMujsStdlibPackage(ref);
+                pkginfo = Promise.resolve(stdlib);
+                this.currentPackageDependencies.add(stdlib.pkg.name);
+            }
+            else {
+                // Register the promise for loading this package, to ensure interleavings pile up correctly.
+                pkginfo = (async () => {
+                    let base: string = fspath.dirname(ref);
+                    let disc: PackageResult = await this.loader.loadDependency(base);
+                    if (disc.diagnostics) {
+                        for (let diagnostic of disc.diagnostics) {
+                            this.diagnostics.push(diagnostic);
+                        }
                     }
-                }
-                if (!disc.pkg) {
-                    // If there was no package, an error is expected; stick a reference in here so we have a name/
-                    contract.assert(disc.diagnostics && disc.diagnostics.length > 0);
-                    disc.pkg = { name: tokens.selfModule };
-                }
-                return <PackageInfo>{
-                    root: disc.root,
-                    pkg:  disc.pkg,
-                };
-            })();
+                    if (disc.pkg) {
+                        // Track this package as a dependency.
+                        this.currentPackageDependencies.add(disc.pkg.name);
+                    }
+                    else {
+                        // If there was no package, an error is expected; stick a reference in here so we have a name.
+                        contract.assert(disc.diagnostics && disc.diagnostics.length > 0);
+                        disc.pkg = { name: tokens.selfModule };
+                    }
+                    return <PackageInfo>{
+                        root: disc.root,
+                        pkg:  disc.pkg,
+                    };
+                })();
+            }
+
+            // Memoize this result.  Note that this is the promise, not the actual resolved package, so that we don't
+            // attempt to load the same package multiple times when we are waiting for I/Os to complete.
             this.modulePackages.set(ref, pkginfo);
         }
+
         return pkginfo;
     }
 
@@ -515,7 +568,7 @@ export class Transformer {
         return this.createModuleReferenceFromPath(sym.name);
     }
 
-    // createModuleReferenceFromPath turns a ECMAScript import path into a MuIL module token.
+    // createModuleReferenceFromPath turns a ECMAScript import path into a MuIL module reference.
     private createModuleReferenceFromPath(path: string): ModuleReference {
         // Module paths can be enclosed in quotes; eliminate them.
         if (path && path[0] === "\"") {
@@ -712,33 +765,36 @@ export class Transformer {
                 return tokens.objectType;
             }
             else {
-                // For object types, we will try to produce the fully qualified symbol name.  If the type is an array
-                // or a map, translate it into the appropriate simpler type token.
-                if ((flags & ts.TypeFlags.Object) && !(simple.symbol.flags & ts.SymbolFlags.ObjectLiteral)) {
-                    if ((<ts.ObjectType>simple).objectFlags & ts.ObjectFlags.Reference) {
-                        let tyre = <ts.TypeReference>simple;
-                        if (tyre.target === this.builtinObjectType) {
-                            return tokens.objectType;
-                        }
-                        else if (tyre.target === this.builtinArrayType) {
-                            // Produce a token of the form "[]<elem>".
-                            contract.assert(tyre.typeArguments.length === 1);
-                            let elem: tokens.TypeToken | undefined =
-                                await this.resolveTypeToken(node, tyre.typeArguments[0]);
-                            contract.assert(!!elem);
-                            return `${tokens.arrayTypePrefix}${elem}`;
-                        }
-                        else if (tyre.target === this.builtinMapType) {
-                            // Produce a token of the form "map[<key>]<elem>".
-                            contract.assert(tyre.typeArguments.length === 2);
-                            let key: tokens.TypeToken | undefined =
-                                await this.resolveTypeToken(node, tyre.typeArguments[0]);
-                            contract.assert(!!key);
-                            let value: tokens.TypeToken | undefined =
-                                await this.resolveTypeToken(node, tyre.typeArguments[1]);
-                            contract.assert(!!value);
-                            return `${tokens.mapTypePrefix}${key}${tokens.mapTypeSeparator}${value}`;
-                        }
+                // For object types, we will try to produce the fully qualified symbol name.  If the type is an error,
+                // array, or a map, translate it into the appropriate simpler type token.
+                if (simple === this.builtinObjectType) {
+                    return tokens.objectType;
+                }
+                else if (!!(flags & ts.TypeFlags.Object) &&
+                            !!((<ts.ObjectType>simple).objectFlags & ts.ObjectFlags.Reference) &&
+                            !(simple.symbol.flags & ts.SymbolFlags.ObjectLiteral)) {
+                    let tyre = <ts.TypeReference>simple;
+                    if (tyre.target === this.builtinObjectType) {
+                        return tokens.objectType;
+                    }
+                    else if (tyre.target === this.builtinArrayType) {
+                        // Produce a token of the form "[]<elem>".
+                        contract.assert(tyre.typeArguments.length === 1);
+                        let elem: tokens.TypeToken | undefined =
+                            await this.resolveTypeToken(node, tyre.typeArguments[0]);
+                        contract.assert(!!elem);
+                        return `${tokens.arrayTypePrefix}${elem}`;
+                    }
+                    else if (tyre.target === this.builtinMapType) {
+                        // Produce a token of the form "map[<key>]<elem>".
+                        contract.assert(tyre.typeArguments.length === 2);
+                        let key: tokens.TypeToken | undefined =
+                            await this.resolveTypeToken(node, tyre.typeArguments[0]);
+                        contract.assert(!!key);
+                        let value: tokens.TypeToken | undefined =
+                            await this.resolveTypeToken(node, tyre.typeArguments[1]);
+                        contract.assert(!!value);
+                        return `${tokens.mapTypePrefix}${key}${tokens.mapTypeSeparator}${value}`;
                     }
                 }
 
@@ -1289,9 +1345,8 @@ export class Transformer {
                 }
             }
 
-            // Now keep track of the import itself plus the package dependency.
+            // Now keep track of the import.
             this.currentModuleImportTokens.push(importModuleToken);
-            this.currentPackageDependencies.add(this.getPackageFromModule(importModuleToken.tok));
         }
         return <ast.EmptyStatement>{ kind: ast.emptyStatementKind };
     }

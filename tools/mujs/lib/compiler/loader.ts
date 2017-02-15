@@ -112,7 +112,7 @@ export class PackageLoader {
                     triedExts.push(unmarshaler[0]);
                 }
                 for (let filebase of filebases) {
-                    diagnostics.push(dctx.newMissingMufileError(fspath.join(root, filebase), triedExts));
+                    diagnostics.push(dctx.newMissingMufileError(fspath.join(root, filebase), upwards, triedExts));
                 }
             }
         }
