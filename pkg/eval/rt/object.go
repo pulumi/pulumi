@@ -10,7 +10,6 @@ import (
 
 	"github.com/marapongo/mu/pkg/compiler/symbols"
 	"github.com/marapongo/mu/pkg/compiler/types"
-	"github.com/marapongo/mu/pkg/diag"
 	"github.com/marapongo/mu/pkg/util/contract"
 )
 
@@ -105,14 +104,6 @@ func (o *Object) PointerValue() *Pointer {
 	contract.Assertf(o.value != nil, "Expected Pointer object to carry a Value; got nil")
 	r, ok := o.value.(*Pointer)
 	contract.Assertf(ok, "Expected Pointer object's Value to be a Pointer")
-	return r
-}
-
-// ExceptionValue asserts that the target is an exception and returns its value.
-func (o *Object) ExceptionValue() ExceptionInfo {
-	contract.Assertf(o.value != nil, "Expected Exception object to carry a Value; got nil")
-	r, ok := o.value.(ExceptionInfo)
-	contract.Assertf(ok, "Expected Exception object's Value to be an ExceptionInfo")
 	return r
 }
 
@@ -213,25 +204,6 @@ func NewPointerObject(t symbols.Type, ptr *Pointer) *Object {
 	contract.Require(ptr != nil, "ptr")
 	ptrt := symbols.NewPointerType(t)
 	return NewPrimitiveObject(ptrt, ptr)
-}
-
-// NewExceptionObject creates a new exception with the given message.
-func NewExceptionObject(node diag.Diagable, stack *StackFrame, message string, args ...interface{}) *Object {
-	contract.Require(node != nil, "node")
-	contract.Require(stack != nil, "stack")
-	info := ExceptionInfo{
-		Node:    node,
-		Stack:   stack,
-		Message: fmt.Sprintf(message, args...),
-	}
-	return NewPrimitiveObject(types.Exception, info)
-}
-
-// ExceptionInfo captures information about a thrown exception (source, stack, and message).
-type ExceptionInfo struct {
-	Node    diag.Diagable // the location that the throw occurred.
-	Stack   *StackFrame   // the full linked stack trace.
-	Message string        // the optional pre-formatted error message.
 }
 
 // NewConstantObject returns a new object with the right type and value, based on some constant data.

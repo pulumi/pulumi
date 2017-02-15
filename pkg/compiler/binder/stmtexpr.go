@@ -206,8 +206,8 @@ func (a *astBinder) checkReturnStatement(node *ast.ReturnStatement) {
 }
 
 func (a *astBinder) checkThrowStatement(node *ast.ThrowStatement) {
-	// TODO: ensure the expression is a throwable expression.
-	contract.Failf("Binding of %v nodes not yet implemented", node.GetKind())
+	// It's legal to throw anything.
+	contract.Assert(node.Expression != nil)
 }
 
 func (a *astBinder) checkWhileStatement(node *ast.WhileStatement) {

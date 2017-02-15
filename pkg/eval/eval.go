@@ -438,15 +438,14 @@ func (e *evaluator) newObject(t symbols.Type) *rt.Object {
 }
 
 // issueUnhandledException issues an unhandled exception error using the given diagnostic and unwind information.
-func (e *evaluator) issueUnhandledException(uw *Unwind, err *diag.Diag, args ...interface{}) {
+func (e *evaluator) issueUnhandledException(uw *rt.Unwind, err *diag.Diag, args ...interface{}) {
 	contract.Assert(uw.Throw())
 
 	// Produce a message with the exception text plus stack trace.
 	var msg string
-	if thrown := uw.Thrown(); thrown != nil {
-		info := thrown.ExceptionValue()
-		msg = info.Message
-		msg += "\n" + info.Stack.Trace(e.Diag(), "\t", info.Node)
+	if ex := uw.Exception(); ex != nil {
+		msg = ex.Thrown.String() // convert the thrown object into a string
+		msg += "\n" + ex.Stack.Trace(e.Diag(), "\t", ex.Node)
 	} else {
 		msg = "no details available"
 	}
@@ -478,7 +477,7 @@ func (e *evaluator) popScope(frame bool) {
 // Functions
 
 func (e *evaluator) evalCall(node diag.Diagable, fnc symbols.Function,
-	this *rt.Object, args ...*rt.Object) (*rt.Object, *Unwind) {
+	this *rt.Object, args ...*rt.Object) (*rt.Object, *rt.Unwind) {
 	glog.V(7).Infof("Evaluating call to fnc %v; this=%v args=%v", fnc, this != nil, len(args))
 
 	// First check the this pointer, since it might throw before the call even happens.
@@ -566,7 +565,7 @@ func (e *evaluator) evalCall(node diag.Diagable, fnc symbols.Function,
 	if uw != nil {
 		if uw.Throw() {
 			if glog.V(7) {
-				glog.V(7).Infof("Evaluated call to fnc %v; unhandled exception: %v", uw.Thrown())
+				glog.V(7).Infof("Evaluated call to fnc %v; unhandled exception: %v", uw.Exception().Thrown)
 			}
 			return nil, uw
 		}
@@ -589,12 +588,12 @@ func (e *evaluator) evalCall(node diag.Diagable, fnc symbols.Function,
 
 // Statements
 
-func (e *evaluator) evalStatement(node ast.Statement) *Unwind {
+func (e *evaluator) evalStatement(node ast.Statement) *rt.Unwind {
 	if glog.V(7) {
 		glog.V(7).Infof("Evaluating statement: %v", reflect.TypeOf(node))
 	}
 
-	// Simply switch on the node type and dispatch to the specific function, returning the Unwind info.
+	// Simply switch on the node type and dispatch to the specific function, returning the rt.Unwind info.
 	switch n := node.(type) {
 	case *ast.Block:
 		return e.evalBlock(n)
@@ -628,7 +627,7 @@ func (e *evaluator) evalStatement(node ast.Statement) *Unwind {
 	}
 }
 
-func (e *evaluator) evalBlock(node *ast.Block) *Unwind {
+func (e *evaluator) evalBlock(node *ast.Block) *rt.Unwind {
 	// Push a scope at the start, and pop it at afterwards; both for the symbol context and local variable values.
 	e.pushScope(nil)
 	defer e.popScope(false)
@@ -642,7 +641,7 @@ func (e *evaluator) evalBlock(node *ast.Block) *Unwind {
 	return nil
 }
 
-func (e *evaluator) evalLocalVariableDeclaration(node *ast.LocalVariableDeclaration) *Unwind {
+func (e *evaluator) evalLocalVariableDeclaration(node *ast.LocalVariableDeclaration) *rt.Unwind {
 	// Populate the variable in the scope.
 	sym := e.ctx.RequireVariable(node.Local).(*symbols.LocalVariable)
 	e.ctx.Scope.Register(sym)
@@ -656,20 +655,19 @@ func (e *evaluator) evalLocalVariableDeclaration(node *ast.LocalVariableDeclarat
 	return nil
 }
 
-func (e *evaluator) evalTryCatchFinally(node *ast.TryCatchFinally) *Unwind {
+func (e *evaluator) evalTryCatchFinally(node *ast.TryCatchFinally) *rt.Unwind {
 	// First, execute the TryBlock.
 	uw := e.evalBlock(node.TryBlock)
 	if uw != nil && uw.Throw() {
 		// The try block threw something; see if there is a handler that covers this.
-		thrown := uw.Thrown()
+		thrown := uw.Exception().Thrown
 		if node.CatchBlocks != nil {
 			for _, catch := range *node.CatchBlocks {
 				ex := e.ctx.RequireVariable(catch.Exception).(*symbols.LocalVariable)
 				exty := ex.Type()
-				contract.Assert(types.CanConvert(exty, types.Exception))
 				if types.CanConvert(thrown.Type(), exty) {
 					// This type matched, so this handler will catch the exception.  Set the exception variable,
-					// evaluate the block, and swap the Unwind information (thereby "handling" the in-flight exception).
+					// evaluate the block, and swap the rt.Unwind information (thereby "handling" the in-flight exception).
 					e.pushScope(nil)
 					e.locals.SetValue(ex, thrown)
 					uw = e.evalBlock(catch.Block)
@@ -680,11 +678,11 @@ func (e *evaluator) evalTryCatchFinally(node *ast.TryCatchFinally) *Unwind {
 		}
 	}
 
-	// No matter the Unwind instructions, be sure to invoke the FinallyBlock.
+	// No matter the rt.Unwind instructions, be sure to invoke the FinallyBlock.
 	if node.FinallyBlock != nil {
 		uwf := e.evalBlock(node.FinallyBlock)
 
-		// Any Unwind information from the finally block overrides the try Unwind that was in flight.
+		// Any rt.Unwind information from the finally block overrides the try rt.Unwind that was in flight.
 		if uwf != nil {
 			uw = uwf
 		}
@@ -693,23 +691,23 @@ func (e *evaluator) evalTryCatchFinally(node *ast.TryCatchFinally) *Unwind {
 	return uw
 }
 
-func (e *evaluator) evalBreakStatement(node *ast.BreakStatement) *Unwind {
+func (e *evaluator) evalBreakStatement(node *ast.BreakStatement) *rt.Unwind {
 	var label *tokens.Name
 	if node.Label != nil {
 		label = &node.Label.Ident
 	}
-	return NewBreakUnwind(label)
+	return rt.NewBreakUnwind(label)
 }
 
-func (e *evaluator) evalContinueStatement(node *ast.ContinueStatement) *Unwind {
+func (e *evaluator) evalContinueStatement(node *ast.ContinueStatement) *rt.Unwind {
 	var label *tokens.Name
 	if node.Label != nil {
 		label = &node.Label.Ident
 	}
-	return NewContinueUnwind(label)
+	return rt.NewContinueUnwind(label)
 }
 
-func (e *evaluator) evalIfStatement(node *ast.IfStatement) *Unwind {
+func (e *evaluator) evalIfStatement(node *ast.IfStatement) *rt.Unwind {
 	// Evaluate the branches explicitly based on the result of the condition node.
 	cond, uw := e.evalExpression(node.Condition)
 	if uw != nil {
@@ -723,8 +721,8 @@ func (e *evaluator) evalIfStatement(node *ast.IfStatement) *Unwind {
 	return nil
 }
 
-func (e *evaluator) evalLabeledStatement(node *ast.LabeledStatement) *Unwind {
-	// Evaluate the underlying statement; if it is breaking or continuing to this label, stop the Unwind.
+func (e *evaluator) evalLabeledStatement(node *ast.LabeledStatement) *rt.Unwind {
+	// Evaluate the underlying statement; if it is breaking or continuing to this label, stop the rt.Unwind.
 	uw := e.evalStatement(node.Statement)
 	if uw != nil && uw.Label() != nil && *uw.Label() == node.Label.Ident {
 		contract.Assert(uw.Continue() || uw.Break())
@@ -734,31 +732,31 @@ func (e *evaluator) evalLabeledStatement(node *ast.LabeledStatement) *Unwind {
 	return uw
 }
 
-func (e *evaluator) evalReturnStatement(node *ast.ReturnStatement) *Unwind {
+func (e *evaluator) evalReturnStatement(node *ast.ReturnStatement) *rt.Unwind {
 	var ret *rt.Object
 	if node.Expression != nil {
-		var uw *Unwind
+		var uw *rt.Unwind
 		if ret, uw = e.evalExpression(*node.Expression); uw != nil {
-			// If the expression caused an Unwind, propagate that and ignore the returned object.
+			// If the expression caused an rt.Unwind, propagate that and ignore the returned object.
 			return uw
 		}
 	}
-	return NewReturnUnwind(ret)
+	return rt.NewReturnUnwind(ret)
 }
 
-func (e *evaluator) evalThrowStatement(node *ast.ThrowStatement) *Unwind {
+func (e *evaluator) evalThrowStatement(node *ast.ThrowStatement) *rt.Unwind {
 	thrown, uw := e.evalExpression(node.Expression)
 	if uw != nil {
 		// If the throw expression itself threw an exception, propagate that instead.
 		return uw
 	}
 	contract.Assert(thrown != nil)
-	return NewThrowUnwind(thrown)
+	return rt.NewThrowUnwind(thrown, node, e.stack)
 }
 
-func (e *evaluator) evalWhileStatement(node *ast.WhileStatement) *Unwind {
+func (e *evaluator) evalWhileStatement(node *ast.WhileStatement) *rt.Unwind {
 	// So long as the test evaluates to true, keep on visiting the body.
-	var uw *Unwind
+	var uw *rt.Unwind
 	for {
 		test, uw := e.evalExpression(node.Test)
 		if uw != nil {
@@ -773,7 +771,7 @@ func (e *evaluator) evalWhileStatement(node *ast.WhileStatement) *Unwind {
 					contract.Assertf(uws.Label() == nil, "Labeled break not yet supported")
 					break
 				} else {
-					// If it's not a continue or break, stash the Unwind away and return it.
+					// If it's not a continue or break, stash the rt.Unwind away and return it.
 					uw = uws
 					break
 				}
@@ -785,7 +783,7 @@ func (e *evaluator) evalWhileStatement(node *ast.WhileStatement) *Unwind {
 	return uw // usually nil, unless a body statement threw/returned.
 }
 
-func (e *evaluator) evalMultiStatement(node *ast.MultiStatement) *Unwind {
+func (e *evaluator) evalMultiStatement(node *ast.MultiStatement) *rt.Unwind {
 	for _, stmt := range node.Statements {
 		if uw := e.evalStatement(stmt); uw != nil {
 			return uw
@@ -794,21 +792,21 @@ func (e *evaluator) evalMultiStatement(node *ast.MultiStatement) *Unwind {
 	return nil
 }
 
-func (e *evaluator) evalExpressionStatement(node *ast.ExpressionStatement) *Unwind {
-	// Just evaluate the expression, drop its object on the floor, and propagate its Unwind information.
+func (e *evaluator) evalExpressionStatement(node *ast.ExpressionStatement) *rt.Unwind {
+	// Just evaluate the expression, drop its object on the floor, and propagate its rt.Unwind information.
 	_, uw := e.evalExpression(node.Expression)
 	return uw
 }
 
 // Expressions
 
-func (e *evaluator) evalExpression(node ast.Expression) (*rt.Object, *Unwind) {
+func (e *evaluator) evalExpression(node ast.Expression) (*rt.Object, *rt.Unwind) {
 	if glog.V(7) {
 		glog.V(7).Infof("Evaluating expression: %v", reflect.TypeOf(node))
 		debug.PrintStack()
 	}
 
-	// Simply switch on the node type and dispatch to the specific function, returning the object and Unwind info.
+	// Simply switch on the node type and dispatch to the specific function, returning the object and rt.Unwind info.
 	switch n := node.(type) {
 	case *ast.NullLiteral:
 		return e.evalNullLiteral(n)
@@ -855,7 +853,7 @@ func (e *evaluator) evalExpression(node ast.Expression) (*rt.Object, *Unwind) {
 // evalLValueExpression evaluates an expression for use as an l-value; in particular, this loads the target as a
 // pointer/reference object, rather than as an ordinary value, so that it can be used in an assignment.  This is only
 // valid on the subset of AST nodes that are legal l-values (very few of them, it turns out).
-func (e *evaluator) evalLValueExpression(node ast.Expression) (location, *Unwind) {
+func (e *evaluator) evalLValueExpression(node ast.Expression) (location, *rt.Unwind) {
 	switch n := node.(type) {
 	case *ast.LoadLocationExpression:
 		return e.evalLoadLocation(n, true)
@@ -871,23 +869,23 @@ func (e *evaluator) evalLValueExpression(node ast.Expression) (location, *Unwind
 	}
 }
 
-func (e *evaluator) evalNullLiteral(node *ast.NullLiteral) (*rt.Object, *Unwind) {
+func (e *evaluator) evalNullLiteral(node *ast.NullLiteral) (*rt.Object, *rt.Unwind) {
 	return e.alloc.NewNull(), nil
 }
 
-func (e *evaluator) evalBoolLiteral(node *ast.BoolLiteral) (*rt.Object, *Unwind) {
+func (e *evaluator) evalBoolLiteral(node *ast.BoolLiteral) (*rt.Object, *rt.Unwind) {
 	return e.alloc.NewBool(node.Value), nil
 }
 
-func (e *evaluator) evalNumberLiteral(node *ast.NumberLiteral) (*rt.Object, *Unwind) {
+func (e *evaluator) evalNumberLiteral(node *ast.NumberLiteral) (*rt.Object, *rt.Unwind) {
 	return e.alloc.NewNumber(node.Value), nil
 }
 
-func (e *evaluator) evalStringLiteral(node *ast.StringLiteral) (*rt.Object, *Unwind) {
+func (e *evaluator) evalStringLiteral(node *ast.StringLiteral) (*rt.Object, *rt.Unwind) {
 	return e.alloc.NewString(node.Value), nil
 }
 
-func (e *evaluator) evalArrayLiteral(node *ast.ArrayLiteral) (*rt.Object, *Unwind) {
+func (e *evaluator) evalArrayLiteral(node *ast.ArrayLiteral) (*rt.Object, *rt.Unwind) {
 	// Fetch this expression type and assert that it's an array.
 	ty := e.ctx.RequireType(node).(*symbols.ArrayType)
 
@@ -905,7 +903,7 @@ func (e *evaluator) evalArrayLiteral(node *ast.ArrayLiteral) (*rt.Object, *Unwin
 		sz := int(sze.NumberValue())
 		if sz < 0 {
 			// If the size is less than zero, raise a new error.
-			return nil, NewThrowUnwind(e.NewNegativeArrayLengthException(*node.Size))
+			return nil, e.NewNegativeArrayLengthException(*node.Size)
 		}
 		arr = make([]*rt.Pointer, sz)
 	}
@@ -922,8 +920,7 @@ func (e *evaluator) evalArrayLiteral(node *ast.ArrayLiteral) (*rt.Object, *Unwin
 			arr = make([]*rt.Pointer, 0, len(*node.Elements))
 		} else if len(*node.Elements) > *sz {
 			// The element count exceeds the size; raise an error.
-			return nil, NewThrowUnwind(
-				e.NewIncorrectArrayElementCountException(node, *sz, len(*node.Elements)))
+			return nil, e.NewIncorrectArrayElementCountException(node, *sz, len(*node.Elements))
 		}
 
 		for i, elem := range *node.Elements {
@@ -948,7 +945,7 @@ func (e *evaluator) evalArrayLiteral(node *ast.ArrayLiteral) (*rt.Object, *Unwin
 	return arrobj, nil
 }
 
-func (e *evaluator) evalObjectLiteral(node *ast.ObjectLiteral) (*rt.Object, *Unwind) {
+func (e *evaluator) evalObjectLiteral(node *ast.ObjectLiteral) (*rt.Object, *rt.Unwind) {
 	ty := e.ctx.Types[node]
 
 	// Allocate a new object of the right type, containing all of the properties pre-populated.
@@ -991,7 +988,7 @@ func (e *evaluator) evalObjectLiteral(node *ast.ObjectLiteral) (*rt.Object, *Unw
 	return obj, nil
 }
 
-func (e *evaluator) evalLoadLocationExpression(node *ast.LoadLocationExpression) (*rt.Object, *Unwind) {
+func (e *evaluator) evalLoadLocationExpression(node *ast.LoadLocationExpression) (*rt.Object, *rt.Unwind) {
 	loc, uw := e.evalLoadLocation(node, false)
 	return loc.Obj, uw
 }
@@ -1037,13 +1034,13 @@ func (e *evaluator) getObjectOrSuperProperty(
 
 // evalLoadLocation evaluates and loads information about the target.  It takes an lval bool which
 // determines whether the resulting location object is an lval (pointer) or regular object.
-func (e *evaluator) evalLoadLocation(node *ast.LoadLocationExpression, lval bool) (location, *Unwind) {
+func (e *evaluator) evalLoadLocation(node *ast.LoadLocationExpression, lval bool) (location, *rt.Unwind) {
 	// If there's a target object, evaluate it.
 	var this *rt.Object
 	var thisexpr ast.Expression
 	if node.Object != nil {
 		thisexpr = *node.Object
-		var uw *Unwind
+		var uw *rt.Unwind
 		if this, uw = e.evalExpression(thisexpr); uw != nil {
 			return location{}, uw
 		}
@@ -1132,21 +1129,21 @@ func (e *evaluator) evalLoadLocation(node *ast.LoadLocationExpression, lval bool
 }
 
 // checkThis checks a this object, raising a runtime error if it is the runtime null value.
-func (e *evaluator) checkThis(node diag.Diagable, this *rt.Object) *Unwind {
+func (e *evaluator) checkThis(node diag.Diagable, this *rt.Object) *rt.Unwind {
 	contract.Assert(this != nil) // binder should catch cases where this isn't true
 	if this.Type() == types.Null {
-		return NewThrowUnwind(e.NewNullObjectException(node))
+		return e.NewNullObjectException(node)
 	}
 	return nil
 }
 
-func (e *evaluator) evalLoadDynamicExpression(node *ast.LoadDynamicExpression) (*rt.Object, *Unwind) {
+func (e *evaluator) evalLoadDynamicExpression(node *ast.LoadDynamicExpression) (*rt.Object, *rt.Unwind) {
 	loc, uw := e.evalLoadDynamic(node, false)
 	return loc.Obj, uw
 }
 
-func (e *evaluator) evalLoadDynamic(node *ast.LoadDynamicExpression, lval bool) (location, *Unwind) {
-	var uw *Unwind
+func (e *evaluator) evalLoadDynamic(node *ast.LoadDynamicExpression, lval bool) (location, *rt.Unwind) {
+	var uw *rt.Unwind
 
 	// Evaluate the object and then the property expression.
 	var this *rt.Object
@@ -1218,7 +1215,7 @@ func (e *evaluator) evalLoadDynamic(node *ast.LoadDynamicExpression, lval bool) 
 	}, nil
 }
 
-func (e *evaluator) evalNewExpression(node *ast.NewExpression) (*rt.Object, *Unwind) {
+func (e *evaluator) evalNewExpression(node *ast.NewExpression) (*rt.Object, *rt.Unwind) {
 	// Fetch the type of this expression; that's the kind of object we are allocating.
 	ty := e.ctx.RequireType(node)
 
@@ -1263,7 +1260,7 @@ func (e *evaluator) evalNewExpression(node *ast.NewExpression) (*rt.Object, *Unw
 	return obj, nil
 }
 
-func (e *evaluator) evalInvokeFunctionExpression(node *ast.InvokeFunctionExpression) (*rt.Object, *Unwind) {
+func (e *evaluator) evalInvokeFunctionExpression(node *ast.InvokeFunctionExpression) (*rt.Object, *rt.Unwind) {
 	// Evaluate the function that we are meant to invoke.
 	fncobj, uw := e.evalExpression(node.Function)
 	if uw != nil {
@@ -1296,17 +1293,17 @@ func (e *evaluator) evalInvokeFunctionExpression(node *ast.InvokeFunctionExpress
 	return e.evalCall(node, fnc.Func, fnc.This, args...)
 }
 
-func (e *evaluator) evalLambdaExpression(node *ast.LambdaExpression) (*rt.Object, *Unwind) {
+func (e *evaluator) evalLambdaExpression(node *ast.LambdaExpression) (*rt.Object, *rt.Unwind) {
 	// TODO: create the lambda object that can be invoked at runtime.
 	contract.Failf("Evaluation of %v nodes not yet implemented", reflect.TypeOf(node))
 	return nil, nil
 }
 
-func (e *evaluator) evalUnaryOperatorExpression(node *ast.UnaryOperatorExpression) (*rt.Object, *Unwind) {
+func (e *evaluator) evalUnaryOperatorExpression(node *ast.UnaryOperatorExpression) (*rt.Object, *rt.Unwind) {
 	return e.evalUnaryOperatorExpressionFor(node, false)
 }
 
-func (e *evaluator) evalUnaryOperatorExpressionFor(node *ast.UnaryOperatorExpression, lval bool) (*rt.Object, *Unwind) {
+func (e *evaluator) evalUnaryOperatorExpressionFor(node *ast.UnaryOperatorExpression, lval bool) (*rt.Object, *rt.Unwind) {
 	contract.Assertf(!lval || node.Operator == ast.OpDereference, "Only dereference unary ops support l-values")
 
 	// Evaluate the operand and prepare to use it.
@@ -1323,7 +1320,7 @@ func (e *evaluator) evalUnaryOperatorExpressionFor(node *ast.UnaryOperatorExpres
 		opandloc = &loc
 	} else {
 		// Otherwise, we just need to evaluate the operand as usual.
-		var uw *Unwind
+		var uw *rt.Unwind
 		if opand, uw = e.evalExpression(node.Operand); uw != nil {
 			return nil, uw
 		}
@@ -1383,7 +1380,7 @@ func (e *evaluator) evalUnaryOperatorExpressionFor(node *ast.UnaryOperatorExpres
 	}
 }
 
-func (e *evaluator) evalBinaryOperatorExpression(node *ast.BinaryOperatorExpression) (*rt.Object, *Unwind) {
+func (e *evaluator) evalBinaryOperatorExpression(node *ast.BinaryOperatorExpression) (*rt.Object, *rt.Unwind) {
 	// Evaluate the operands and prepare to use them.  First left, then right.
 	var lhs *rt.Object
 	var lhsloc *location
@@ -1395,7 +1392,7 @@ func (e *evaluator) evalBinaryOperatorExpression(node *ast.BinaryOperatorExpress
 		lhs = loc.Obj
 		lhsloc = &loc
 	} else {
-		var uw *Unwind
+		var uw *rt.Unwind
 		if lhs, uw = e.evalExpression(node.Left); uw != nil {
 			return nil, uw
 		}
@@ -1612,7 +1609,7 @@ func (e *evaluator) evalBinaryOperatorEquals(lhs *rt.Object, rhs *rt.Object) boo
 	return false
 }
 
-func (e *evaluator) evalCastExpression(node *ast.CastExpression) (*rt.Object, *Unwind) {
+func (e *evaluator) evalCastExpression(node *ast.CastExpression) (*rt.Object, *rt.Unwind) {
 	// Evaluate the underlying expression.
 	obj, uw := e.evalExpression(node.Expression)
 	if uw != nil {
@@ -1623,23 +1620,23 @@ func (e *evaluator) evalCastExpression(node *ast.CastExpression) (*rt.Object, *U
 	from := obj.Type()
 	to := e.ctx.RequireType(node)
 	if !types.CanConvert(from, to) {
-		return nil, NewThrowUnwind(e.NewInvalidCastException(node, from, to))
+		return nil, e.NewInvalidCastException(node, from, to)
 	}
 
 	return obj, nil
 }
 
-func (e *evaluator) evalIsInstExpression(node *ast.IsInstExpression) (*rt.Object, *Unwind) {
+func (e *evaluator) evalIsInstExpression(node *ast.IsInstExpression) (*rt.Object, *rt.Unwind) {
 	contract.Failf("Evaluation of %v nodes not yet implemented", reflect.TypeOf(node))
 	return nil, nil
 }
 
-func (e *evaluator) evalTypeOfExpression(node *ast.TypeOfExpression) (*rt.Object, *Unwind) {
+func (e *evaluator) evalTypeOfExpression(node *ast.TypeOfExpression) (*rt.Object, *rt.Unwind) {
 	contract.Failf("Evaluation of %v nodes not yet implemented", reflect.TypeOf(node))
 	return nil, nil
 }
 
-func (e *evaluator) evalConditionalExpression(node *ast.ConditionalExpression) (*rt.Object, *Unwind) {
+func (e *evaluator) evalConditionalExpression(node *ast.ConditionalExpression) (*rt.Object, *rt.Unwind) {
 	// Evaluate the branches explicitly based on the result of the condition node.
 	cond, uw := e.evalExpression(node.Condition)
 	if uw != nil {
@@ -1651,14 +1648,14 @@ func (e *evaluator) evalConditionalExpression(node *ast.ConditionalExpression) (
 	return e.evalExpression(node.Alternate)
 }
 
-func (e *evaluator) evalSequenceExpression(node *ast.SequenceExpression) (*rt.Object, *Unwind) {
+func (e *evaluator) evalSequenceExpression(node *ast.SequenceExpression) (*rt.Object, *rt.Unwind) {
 	// Simply walk through the sequence and return the last object.
 	var obj *rt.Object
 	contract.Assert(len(node.Expressions) > 0)
 	for _, expr := range node.Expressions {
-		var uw *Unwind
+		var uw *rt.Unwind
 		if obj, uw = e.evalExpression(expr); uw != nil {
-			// If the Unwind was non-nil, stop visiting the expressions and propagate it now.
+			// If the rt.Unwind was non-nil, stop visiting the expressions and propagate it now.
 			return nil, uw
 		}
 	}
