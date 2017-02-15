@@ -30,7 +30,6 @@ type LocalVariable struct {
 var _ Symbol = (*LocalVariable)(nil)
 var _ Variable = (*LocalVariable)(nil)
 
-func (node *LocalVariable) symbol()               {}
 func (node *LocalVariable) Name() tokens.Name     { return node.Nm }
 func (node *LocalVariable) Token() tokens.Token   { return tokens.Token(node.Name()) }
 func (node *LocalVariable) Special() bool         { return node.Spec }

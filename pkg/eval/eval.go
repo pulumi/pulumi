@@ -170,7 +170,7 @@ func (e *evaluator) EvaluateFunction(fnc symbols.Function, this *rt.Object, args
 
 	// First, validate any arguments, and turn them into real runtime *rt.Objects.
 	var argos []*rt.Object
-	params := fnc.FuncNode().GetParameters()
+	params := fnc.Function().GetParameters()
 	if params == nil {
 		if len(args) != 0 {
 			e.Diag().Errorf(errors.ErrorFunctionArgMismatch.At(fnc.Tree()), 0, len(args))
@@ -180,7 +180,7 @@ func (e *evaluator) EvaluateFunction(fnc symbols.Function, this *rt.Object, args
 			e.Diag().Errorf(errors.ErrorFunctionArgMismatch.At(fnc.Tree()), 0, len(args))
 		}
 
-		ptys := fnc.FuncType().Parameters
+		ptys := fnc.Signature().Parameters
 		found := make(map[tokens.Name]bool)
 		for i, param := range *params {
 			pname := param.Name.Ident
@@ -312,8 +312,8 @@ func (e *evaluator) ensureClassInit(class *symbols.Class) {
 		// Next, run the class if it has an initializer.
 		if init := class.GetInit(); init != nil {
 			glog.V(7).Infof("Initializing class: %v", class)
-			contract.Assert(len(init.Ty.Parameters) == 0)
-			contract.Assert(init.Ty.Return == nil)
+			contract.Assert(len(init.Sig.Parameters) == 0)
+			contract.Assert(init.Sig.Return == nil)
 			ret, uw := e.evalCall(class.Tree(), init, nil)
 			contract.Assert(ret == nil)
 			if uw != nil {
@@ -356,8 +356,8 @@ func (e *evaluator) ensureModuleInit(mod *symbols.Module) {
 		// Next, run the module initializer if it has one.
 		if init := mod.GetInit(); init != nil {
 			glog.V(7).Infof("Initializing module: %v", mod)
-			contract.Assert(len(init.Type.Parameters) == 0)
-			contract.Assert(init.Type.Return == nil)
+			contract.Assert(len(init.Sig.Parameters) == 0)
+			contract.Assert(init.Sig.Return == nil)
 			ret, uw := e.evalCall(mod.Tree(), init, nil)
 			contract.Assert(ret == nil)
 			if uw != nil {
@@ -537,7 +537,7 @@ func (e *evaluator) evalCall(node diag.Diagable, fnc symbols.Function,
 	}
 
 	// Ensure that the arguments line up to the parameter slots and add them to the frame.
-	fnode := fnc.FuncNode()
+	fnode := fnc.Function()
 	params := fnode.GetParameters()
 	if params == nil {
 		contract.Assert(len(args) == 0)
@@ -552,14 +552,20 @@ func (e *evaluator) evalCall(node diag.Diagable, fnc symbols.Function,
 		}
 	}
 
-	// Now perform the invocation by visiting the body.
-	uw := e.evalBlock(fnode.GetBody())
+	// Now perform the invocation; for intrinsics, just run the code; for all others, interpret the body.
+	var uw *rt.Unwind
+	switch f := fnc.(type) {
+	case *Intrinsic:
+		uw = f.Invoke(e, this, args)
+	default:
+		uw = e.evalBlock(fnode.GetBody())
+	}
 
 	// Check that the unwind is as expected.  In particular:
 	//     1) no breaks or continues are expected;
 	//     2) any throw is treated as an unhandled exception that propagates to the caller.
 	//     3) any return is checked to be of the expected type, and returned as the result of the call.
-	retty := fnc.FuncType().Return
+	retty := fnc.Signature().Return
 	if uw != nil {
 		if uw.Throw() {
 			if glog.V(7) {
@@ -1059,7 +1065,8 @@ func (e *evaluator) evalLoadLocation(node *ast.LoadLocationExpression, lval bool
 		sym = loc
 	} else {
 		sym = e.ctx.LookupSymbol(node.Name, tok, false)
-		contract.Assert(sym != nil) // don't issue errors; we shouldn't ever get here if verification failed.
+		contract.Assert(sym != nil)     // don't issue errors; we shouldn't ever get here if verification failed.
+		sym = MaybeIntrinsic(node, sym) // replace this with an intrinsic if it's recognized as one.
 
 		// If the symbol is an export, keep chasing down the referents until we hit a real symbol.
 		for {
@@ -1225,8 +1232,8 @@ func (e *evaluator) evalNewExpression(node *ast.NewExpression) (*rt.Object, *rt.
 		ctormeth, isfunc := ctor.(*symbols.ClassMethod)
 		contract.Assertf(isfunc,
 			"Expected ctor %v to be a class method; got %v", ctor, reflect.TypeOf(ctor))
-		contract.Assertf(ctormeth.Ty.Return == nil,
-			"Expected ctor %v to have a nil return; got %v", ctor, ctormeth.Ty.Return)
+		contract.Assertf(ctormeth.Sig.Return == nil,
+			"Expected ctor %v to have a nil return; got %v", ctor, ctormeth.Sig.Return)
 
 		// Evaluate the arguments in order.
 		var args []*rt.Object

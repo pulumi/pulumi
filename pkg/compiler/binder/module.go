@@ -162,7 +162,7 @@ func (b *binder) bindModuleMethodDefinition(method *symbols.ModuleMethod) {
 	glog.V(3).Infof("Binding module method '%v' defn", method.Token())
 
 	// Make a function type out of this method and store it on the symbol.
-	method.Type = b.ctx.LookupFunctionType(method.Node)
+	method.Sig = b.ctx.LookupFunctionType(method.Node)
 
 	// Note that we don't actually bind the body of this method yet.  Until we have gone ahead and injected *all*
 	// top-level symbols into the type table, we would potentially encounter missing intra-module symbols.

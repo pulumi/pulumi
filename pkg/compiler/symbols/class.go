@@ -26,7 +26,6 @@ var _ Symbol = (*Class)(nil)
 var _ Type = (*Class)(nil)
 var _ ModuleMember = (*Class)(nil)
 
-func (node *Class) symbol()                             {}
 func (node *Class) Name() tokens.Name                   { return tokens.Name(node.Nm) }
 func (node *Class) Token() tokens.Token                 { return tokens.Token(node.Tok) }
 func (node *Class) Special() bool                       { return false }
@@ -97,7 +96,6 @@ func NewClassSym(node *ast.Class, parent *Module, extends Type, implements Types
 // ClassMember is a marker interface for things that can be module members.
 type ClassMember interface {
 	Symbol
-	classMember()
 	Optional() bool
 	Static() bool
 	Default() *interface{}
@@ -124,14 +122,12 @@ var _ Symbol = (*ClassProperty)(nil)
 var _ ClassMember = (*ClassProperty)(nil)
 var _ Variable = (*ClassProperty)(nil)
 
-func (node *ClassProperty) symbol()           {}
 func (node *ClassProperty) Name() tokens.Name { return node.Node.Name.Ident }
 func (node *ClassProperty) Token() tokens.Token {
 	return tokens.Token(tokens.NewClassMemberToken(node.Parent.Tok, node.MemberName()))
 }
 func (node *ClassProperty) Special() bool               { return false }
 func (node *ClassProperty) Tree() diag.Diagable         { return node.Node }
-func (node *ClassProperty) classMember()                {}
 func (node *ClassProperty) Optional() bool              { return node.Node.Optional != nil && *node.Node.Optional }
 func (node *ClassProperty) Readonly() bool              { return node.Node.Readonly != nil && *node.Node.Readonly }
 func (node *ClassProperty) Static() bool                { return node.Node.Static != nil && *node.Node.Static }
@@ -158,14 +154,13 @@ func NewClassPropertySym(node *ast.ClassProperty, parent *Class, ty Type) *Class
 type ClassMethod struct {
 	Node   *ast.ClassMethod
 	Parent *Class
-	Ty     *FunctionType
+	Sig    *FunctionType
 }
 
 var _ Symbol = (*ClassMethod)(nil)
 var _ ClassMember = (*ClassMethod)(nil)
 var _ Function = (*ClassMethod)(nil)
 
-func (node *ClassMethod) symbol()           {}
 func (node *ClassMethod) Name() tokens.Name { return node.Node.Name.Ident }
 func (node *ClassMethod) Token() tokens.Token {
 	return tokens.Token(tokens.NewClassMemberToken(node.Parent.Tok, node.MemberName()))
@@ -175,11 +170,10 @@ func (node *ClassMethod) Special() bool {
 	return nm == tokens.ClassInitFunction || nm == tokens.ClassConstructorFunction
 }
 func (node *ClassMethod) Tree() diag.Diagable         { return node.Node }
-func (node *ClassMethod) classMember()                {}
 func (node *ClassMethod) Optional() bool              { return false }
 func (node *ClassMethod) Static() bool                { return node.Node.Static != nil && *node.Node.Static }
 func (node *ClassMethod) Default() *interface{}       { return nil }
-func (node *ClassMethod) Type() Type                  { return node.Ty }
+func (node *ClassMethod) Type() Type                  { return node.Sig }
 func (node *ClassMethod) MemberNode() ast.ClassMember { return node.Node }
 func (node *ClassMethod) MemberName() tokens.ClassMemberName {
 	return tokens.ClassMemberName(node.Name())
@@ -188,15 +182,15 @@ func (node *ClassMethod) MemberParent() *Class { return node.Parent }
 func (node *ClassMethod) Constructor() bool {
 	return node.MemberName() == tokens.ClassConstructorFunction
 }
-func (node *ClassMethod) FuncNode() ast.Function  { return node.Node }
-func (node *ClassMethod) FuncType() *FunctionType { return node.Ty }
-func (node *ClassMethod) String() string          { return string(node.Name()) }
+func (node *ClassMethod) Function() ast.Function   { return node.Node }
+func (node *ClassMethod) Signature() *FunctionType { return node.Sig }
+func (node *ClassMethod) String() string           { return string(node.Name()) }
 
 // NewClassMethodSym returns a new ClassMethod symbol with the given node and parent.
-func NewClassMethodSym(node *ast.ClassMethod, parent *Class, ty *FunctionType) *ClassMethod {
+func NewClassMethodSym(node *ast.ClassMethod, parent *Class, sig *FunctionType) *ClassMethod {
 	return &ClassMethod{
 		Node:   node,
 		Parent: parent,
-		Ty:     ty,
+		Sig:    sig,
 	}
 }

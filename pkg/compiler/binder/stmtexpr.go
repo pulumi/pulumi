@@ -188,8 +188,8 @@ func (a *astBinder) visitLabeledStatement(node *ast.LabeledStatement) {
 
 func (a *astBinder) checkReturnStatement(node *ast.ReturnStatement) {
 	// Ensure that the return expression is correct (present or missing; and its type).
-	fncty := a.b.ctx.RequireFunction(a.fnc).FuncType()
-	if fncty.Return == nil {
+	sig := a.b.ctx.RequireFunction(a.fnc).Signature()
+	if sig.Return == nil {
 		if node.Expression != nil {
 			// The function has no return type ("void"), and yet the return had an expression.
 			a.b.Diag().Errorf(errors.ErrorUnexpectedReturnExpr.At(*node.Expression))
@@ -200,7 +200,7 @@ func (a *astBinder) checkReturnStatement(node *ast.ReturnStatement) {
 			a.b.Diag().Errorf(errors.ErrorExpectedReturnExpr.At(node))
 		} else {
 			// Ensure that the returned expression is convertible to the expected return type.
-			a.checkExprType(*node.Expression, fncty.Return)
+			a.checkExprType(*node.Expression, sig.Return)
 		}
 	}
 }
@@ -325,13 +325,13 @@ func (a *astBinder) checkLoadLocationExpression(node *ast.LoadLocationExpression
 				ty = s.Type()
 				usesThis = false
 			case *symbols.ClassMethod:
-				ty = s.FuncType()
+				ty = s.Signature()
 				usesThis = !s.Static()
 			case *symbols.ClassProperty:
 				ty = s.Type()
 				usesThis = !s.Static()
 			case *symbols.ModuleMethod:
-				ty = s.FuncType()
+				ty = s.Signature()
 				usesThis = false
 			case *symbols.ModuleProperty:
 				ty = s.Type()
@@ -397,19 +397,19 @@ func (a *astBinder) checkNewExpression(node *ast.NewExpression) {
 	if ctor, has := ty.TypeMembers()[tokens.ClassConstructorFunction]; has {
 		// The constructor should be a method.
 		if ctormeth, isfunc := ctor.(*symbols.ClassMethod); isfunc {
-			if ctormeth.Ty.Return != nil {
+			if ctormeth.Sig.Return != nil {
 				// Constructors ought not to have return types.
-				a.b.Diag().Errorf(errors.ErrorConstructorReturnType, ctormeth, ctormeth.Ty.Return)
+				a.b.Diag().Errorf(errors.ErrorConstructorReturnType, ctormeth, ctormeth.Sig.Return)
 			}
 
 			// Typecheck the arguments.
-			parc := len(ctormeth.Ty.Parameters)
+			parc := len(ctormeth.Sig.Parameters)
 			if parc != argc {
 				a.b.Diag().Errorf(errors.ErrorArgumentCountMismatch.At(node), parc, argc)
 			}
 			if argc > 0 {
 				for i := 0; i < parc && i < argc; i++ {
-					a.checkExprType((*node.Arguments)[i], ctormeth.Ty.Parameters[i])
+					a.checkExprType((*node.Arguments)[i], ctormeth.Sig.Parameters[i])
 				}
 			}
 		} else {

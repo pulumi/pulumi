@@ -10,7 +10,6 @@ import (
 // Type is a type symbol that can be used for typechecking operations.
 type Type interface {
 	Symbol
-	typesym()
 	Base() Type                  // the optional base type.
 	TypeName() tokens.TypeName   // this type's name identifier.
 	TypeToken() tokens.Type      // this type's (qualified) token.
@@ -30,12 +29,10 @@ type PrimitiveType struct {
 var _ Symbol = (*PrimitiveType)(nil)
 var _ Type = (*PrimitiveType)(nil)
 
-func (node *PrimitiveType) symbol()                     {}
 func (node *PrimitiveType) Name() tokens.Name           { return tokens.Name(node.Nm) }
 func (node *PrimitiveType) Token() tokens.Token         { return tokens.Token(node.Nm) }
 func (node *PrimitiveType) Special() bool               { return false }
 func (node *PrimitiveType) Tree() diag.Diagable         { return nil }
-func (node *PrimitiveType) typesym()                    {}
 func (node *PrimitiveType) Base() Type                  { return nil }
 func (node *PrimitiveType) TypeName() tokens.TypeName   { return node.Nm }
 func (node *PrimitiveType) TypeToken() tokens.Type      { return tokens.Type(node.Nm) }
@@ -58,12 +55,10 @@ type PointerType struct {
 var _ Symbol = (*PointerType)(nil)
 var _ Type = (*PointerType)(nil)
 
-func (node *PointerType) symbol()                     {}
 func (node *PointerType) Name() tokens.Name           { return tokens.Name(node.Nm) }
 func (node *PointerType) Token() tokens.Token         { return tokens.Token(node.Tok) }
 func (node *PointerType) Special() bool               { return false }
 func (node *PointerType) Tree() diag.Diagable         { return nil }
-func (node *PointerType) typesym()                    {}
 func (node *PointerType) Base() Type                  { return nil }
 func (node *PointerType) TypeName() tokens.TypeName   { return node.Nm }
 func (node *PointerType) TypeToken() tokens.Type      { return node.Tok }
@@ -98,12 +93,10 @@ type ArrayType struct {
 var _ Symbol = (*ArrayType)(nil)
 var _ Type = (*ArrayType)(nil)
 
-func (node *ArrayType) symbol()                     {}
 func (node *ArrayType) Name() tokens.Name           { return tokens.Name(node.Nm) }
 func (node *ArrayType) Token() tokens.Token         { return tokens.Token(node.Tok) }
 func (node *ArrayType) Special() bool               { return false }
 func (node *ArrayType) Tree() diag.Diagable         { return nil }
-func (node *ArrayType) typesym()                    {}
 func (node *ArrayType) Base() Type                  { return nil }
 func (node *ArrayType) TypeName() tokens.TypeName   { return node.Nm }
 func (node *ArrayType) TypeToken() tokens.Type      { return node.Tok }
@@ -139,12 +132,10 @@ type MapType struct {
 var _ Symbol = (*MapType)(nil)
 var _ Type = (*MapType)(nil)
 
-func (node *MapType) symbol()                     {}
 func (node *MapType) Name() tokens.Name           { return tokens.Name(node.Nm) }
 func (node *MapType) Token() tokens.Token         { return tokens.Token(node.Tok) }
 func (node *MapType) Special() bool               { return false }
 func (node *MapType) Tree() diag.Diagable         { return nil }
-func (node *MapType) typesym()                    {}
 func (node *MapType) Base() Type                  { return nil }
 func (node *MapType) TypeName() tokens.TypeName   { return node.Nm }
 func (node *MapType) TypeToken() tokens.Type      { return node.Tok }
@@ -180,12 +171,10 @@ type FunctionType struct {
 var _ Symbol = (*FunctionType)(nil)
 var _ Type = (*FunctionType)(nil)
 
-func (node *FunctionType) symbol()                     {}
 func (node *FunctionType) Name() tokens.Name           { return tokens.Name(node.Nm) }
 func (node *FunctionType) Token() tokens.Token         { return tokens.Token(node.Tok) }
 func (node *FunctionType) Special() bool               { return false }
 func (node *FunctionType) Tree() diag.Diagable         { return nil }
-func (node *FunctionType) typesym()                    {}
 func (node *FunctionType) Base() Type                  { return nil }
 func (node *FunctionType) TypeName() tokens.TypeName   { return node.Nm }
 func (node *FunctionType) TypeToken() tokens.Type      { return node.Tok }
@@ -233,12 +222,10 @@ type PrototypeType struct {
 var _ Symbol = (*PrototypeType)(nil)
 var _ Type = (*PrototypeType)(nil)
 
-func (node *PrototypeType) symbol()             {}
 func (node *PrototypeType) Name() tokens.Name   { return tokens.Name(node.TypeName()) }
 func (node *PrototypeType) Token() tokens.Token { return tokens.Token(node.TypeName()) }
 func (node *PrototypeType) Special() bool       { return false }
 func (node *PrototypeType) Tree() diag.Diagable { return nil }
-func (node *PrototypeType) typesym()            {}
 func (node *PrototypeType) Base() Type          { return nil }
 func (node *PrototypeType) TypeName() tokens.TypeName {
 	return tokens.TypeName(string(node.Type.Name())) + ".prototype"

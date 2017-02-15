@@ -32,3 +32,7 @@ func (e *evaluator) NewIncorrectArrayElementCountException(node diag.Diagable, e
 func (e *evaluator) NewInvalidCastException(node diag.Diagable, from symbols.Type, to symbols.Type) *rt.Unwind {
 	return e.NewException(node, "Cannot cast object of type '%v' to '%v'", from, to)
 }
+
+func (e *evaluator) NewIllegalInvokeTargetException(node diag.Diagable, target symbols.Type) *rt.Unwind {
+	return e.NewException(node, "Expected a function as the target of an invoke; got '%v'", target)
+}

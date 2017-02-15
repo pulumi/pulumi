@@ -17,9 +17,13 @@
     },
     "files": [
         "index.ts",
+
         "context.ts",
         "resource.ts",
-        "stack.ts"
+        "stack.ts",
+
+        "runtime/index.ts",
+        "runtime/dynamic.ts"
     ]
 }
 

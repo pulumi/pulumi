@@ -17,7 +17,6 @@ type Package struct {
 
 var _ Symbol = (*Package)(nil)
 
-func (node *Package) symbol()             {}
 func (node *Package) Name() tokens.Name   { return tokens.Name(node.Node.Name) }
 func (node *Package) Token() tokens.Token { return tokens.Token(node.Node.Name) }
 func (node *Package) Special() bool       { return false }

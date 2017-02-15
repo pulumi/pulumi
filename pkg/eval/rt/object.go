@@ -133,7 +133,7 @@ func (o *Object) String() string {
 				this = stub.This.String()
 			}
 			return "func{this=" + this +
-				",type=" + stub.Func.FuncType().String() +
+				",sig=" + stub.Func.Signature().String() +
 				",targ=" + stub.Func.Token().String() + "}"
 		}
 
@@ -190,7 +190,7 @@ func NewStringObject(v string) *Object {
 // NewFunctionObject creates a new function object that can be invoked, with the given symbol.
 func NewFunctionObject(fnc symbols.Function, this *Object) *Object {
 	stub := FuncStub{Func: fnc, This: this}
-	return NewObject(fnc.FuncType(), stub, nil, nil)
+	return NewObject(fnc.Signature(), stub, nil, nil)
 }
 
 // FuncStub is a stub that captures a symbol plus an optional instance 'this' object.

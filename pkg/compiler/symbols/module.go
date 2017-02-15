@@ -19,7 +19,6 @@ type Module struct {
 
 var _ Symbol = (*Module)(nil)
 
-func (node *Module) symbol()           {}
 func (node *Module) Name() tokens.Name { return node.Node.Name.Ident }
 func (node *Module) Token() tokens.Token {
 	return tokens.Token(
@@ -70,7 +69,6 @@ type Export struct {
 
 var _ Symbol = (*Export)(nil)
 
-func (node *Export) symbol()           {}
 func (node *Export) Name() tokens.Name { return node.Node.Name.Ident }
 func (node *Export) Token() tokens.Token {
 	return tokens.Token(
@@ -97,7 +95,6 @@ func NewExportSym(node *ast.Export, parent *Module, referent Symbol) *Export {
 // ModuleMember is a marker interface for things that can be module members.
 type ModuleMember interface {
 	Symbol
-	moduleMember()
 	MemberNode() ast.ModuleMember
 	MemberName() tokens.ModuleMemberName
 	MemberParent() *Module
@@ -109,7 +106,7 @@ type ModuleMemberMap map[tokens.ModuleMemberName]ModuleMember
 // ModuleMemberProperty is an interface that gives a module member a type, such that it can be used as a property.
 type ModuleMemberProperty interface {
 	ModuleMember
-	moduleMemberProperty()
+	ModuleMemberProperty()
 	MemberType() Type
 }
 
@@ -125,7 +122,6 @@ var _ ModuleMember = (*ModuleProperty)(nil)
 var _ ModuleMemberProperty = (*ModuleProperty)(nil)
 var _ Variable = (*ClassProperty)(nil)
 
-func (node *ModuleProperty) symbol()           {}
 func (node *ModuleProperty) Name() tokens.Name { return node.Node.Name.Ident }
 func (node *ModuleProperty) Token() tokens.Token {
 	return tokens.Token(
@@ -137,13 +133,12 @@ func (node *ModuleProperty) Token() tokens.Token {
 }
 func (node *ModuleProperty) Special() bool                { return false }
 func (node *ModuleProperty) Tree() diag.Diagable          { return node.Node }
-func (node *ModuleProperty) moduleMember()                {}
 func (node *ModuleProperty) MemberNode() ast.ModuleMember { return node.Node }
 func (node *ModuleProperty) MemberName() tokens.ModuleMemberName {
 	return tokens.ModuleMemberName(node.Name())
 }
 func (node *ModuleProperty) MemberParent() *Module { return node.Parent }
-func (node *ModuleProperty) moduleMemberProperty() {}
+func (node *ModuleProperty) ModuleMemberProperty() {}
 func (node *ModuleProperty) MemberType() Type      { return node.Ty }
 func (node *ModuleProperty) Default() *interface{} { return node.Node.Default }
 func (node *ModuleProperty) Readonly() bool        { return node.Node.Readonly != nil && *node.Node.Readonly }
@@ -164,7 +159,7 @@ func NewModulePropertySym(node *ast.ModuleProperty, parent *Module, ty Type) *Mo
 type ModuleMethod struct {
 	Node   *ast.ModuleMethod
 	Parent *Module
-	Type   *FunctionType
+	Sig    *FunctionType
 }
 
 var _ Symbol = (*ModuleMethod)(nil)
@@ -172,7 +167,6 @@ var _ ModuleMember = (*ModuleMethod)(nil)
 var _ ModuleMemberProperty = (*ModuleMethod)(nil)
 var _ Function = (*ClassMethod)(nil)
 
-func (node *ModuleMethod) symbol()           {}
 func (node *ModuleMethod) Name() tokens.Name { return node.Node.Name.Ident }
 func (node *ModuleMethod) Token() tokens.Token {
 	return tokens.Token(
@@ -184,23 +178,22 @@ func (node *ModuleMethod) Token() tokens.Token {
 }
 func (node *ModuleMethod) Special() bool                { return node.MemberName() == tokens.ModuleInitFunction }
 func (node *ModuleMethod) Tree() diag.Diagable          { return node.Node }
-func (node *ModuleMethod) moduleMember()                {}
 func (node *ModuleMethod) MemberNode() ast.ModuleMember { return node.Node }
 func (node *ModuleMethod) MemberName() tokens.ModuleMemberName {
 	return tokens.ModuleMemberName(node.Name())
 }
-func (node *ModuleMethod) MemberParent() *Module   { return node.Parent }
-func (node *ModuleMethod) moduleMemberProperty()   {}
-func (node *ModuleMethod) MemberType() Type        { return node.Type }
-func (node *ModuleMethod) FuncNode() ast.Function  { return node.Node }
-func (node *ModuleMethod) FuncType() *FunctionType { return node.Type }
-func (node *ModuleMethod) String() string          { return string(node.Name()) }
+func (node *ModuleMethod) MemberParent() *Module    { return node.Parent }
+func (node *ModuleMethod) ModuleMemberProperty()    {}
+func (node *ModuleMethod) MemberType() Type         { return node.Sig }
+func (node *ModuleMethod) Function() ast.Function   { return node.Node }
+func (node *ModuleMethod) Signature() *FunctionType { return node.Sig }
+func (node *ModuleMethod) String() string           { return string(node.Name()) }
 
 // NewModuleMethodSym returns a new ModuleMethod symbol with the given node and parent.
-func NewModuleMethodSym(node *ast.ModuleMethod, parent *Module, ty *FunctionType) *ModuleMethod {
+func NewModuleMethodSym(node *ast.ModuleMethod, parent *Module, sig *FunctionType) *ModuleMethod {
 	return &ModuleMethod{
 		Node:   node,
 		Parent: parent,
-		Type:   ty,
+		Sig:    sig,
 	}
 }

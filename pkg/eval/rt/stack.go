@@ -30,7 +30,7 @@ func (s *StackFrame) Trace(d diag.Sink, prefix string, current diag.Diagable) st
 		// where A are the argument types (if any) and R is the return type (if any).
 		trace.WriteString("at ")
 		trace.WriteString(string(s.Func.Token()))
-		trace.WriteString(string(s.Func.FuncType().Token()))
+		trace.WriteString(string(s.Func.Signature().Token()))
 
 		// Next, if there's source information about the current location inside of this function, print it.
 		if current != nil {
