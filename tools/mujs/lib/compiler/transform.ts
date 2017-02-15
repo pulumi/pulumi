@@ -174,7 +174,7 @@ function ident(id: string): ast.Identifier {
 
 // notYetImplemented simply fail-fasts, but does so in a way where we at least get Node source information.
 function notYetImplemented(node: ts.Node | undefined, label?: string): never {
-    let msg: string = "Not Yet Implemented";
+    let msg: string = `${node ? ts.SyntaxKind[node.kind] + " " : ""}Not Yet Implemented`;
     if (label) {
         msg += `[${label}]`;
     }
@@ -2370,7 +2370,7 @@ export class Transformer {
             case ts.SyntaxKind.OmittedExpression:
                 return this.transformOmittedExpression(<ts.OmittedExpression>node);
             case ts.SyntaxKind.ParenthesizedExpression:
-                return this.transformParenthesizedExpression(<ts.ParenthesizedExpression>node);
+                return await this.transformParenthesizedExpression(<ts.ParenthesizedExpression>node);
             case ts.SyntaxKind.SpreadElement:
                 return this.transformSpreadElement(<ts.SpreadElement>node);
             case ts.SyntaxKind.SuperKeyword:
@@ -2780,8 +2780,10 @@ export class Transformer {
         return notYetImplemented(node);
     }
 
-    private transformParenthesizedExpression(node: ts.ParenthesizedExpression): ast.Expression {
-        return notYetImplemented(node);
+    // transformParenthesizedExpression simply emits the underlying expression.  The TypeScript compiler has already
+    // taken care of expression precedence by the time we reach this, and the MuIL AST is blisfully unaware.
+    private async transformParenthesizedExpression(node: ts.ParenthesizedExpression): Promise<ast.Expression> {
+        return await this.transformExpression(node.expression);
     }
 
     private transformSpreadElement(node: ts.SpreadElement): ast.Expression {
