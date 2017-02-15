@@ -1035,13 +1035,15 @@ export class Transformer {
                         if (defn.kind === ast.exportKind) {
                             // This is a module export; simply add it to the list.
                             let exp = <ast.Export>defn;
-                            contract.assert(!this.currentModuleExports[id], `Unexpected duplicate export ${id}`);
+                            contract.assert(!this.currentModuleExports.hasOwnProperty(id),
+                                            `Unexpected duplicate export ${this.createModuleMemberToken(modtok, id)}`);
                             this.currentModuleExports[id] = exp;
                         }
                         else {
                             // This is a module member; simply add it to the list.
                             let member = <ast.ModuleMember>element;
-                            contract.assert(!this.currentModuleMembers[id], `Unexpected duplicate member ${id}`);
+                            contract.assert(!this.currentModuleMembers.hasOwnProperty(id),
+                                            `Unexpected duplicate member ${this.createModuleMemberToken(modtok, id)}`);
                             this.currentModuleMembers[id] = member;
                         }
                     }
