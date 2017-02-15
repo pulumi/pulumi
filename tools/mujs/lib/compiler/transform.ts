@@ -2830,8 +2830,11 @@ export class Transformer {
         });
     }
 
-    private transformTypeOfExpression(node: ts.TypeOfExpression): ast.Expression {
-        return notYetImplemented(node);
+    private async transformTypeOfExpression(node: ts.TypeOfExpression): Promise<ast.Expression> {
+        return this.withLocation(node, <ast.TypeOfExpression>{
+            kind:       ast.typeOfExpressionKind,
+            expression: await this.transformExpression(node.expression),
+        });
     }
 
     private transformVoidExpression(node: ts.VoidExpression): ast.Expression {

@@ -622,8 +622,8 @@ func (a *astBinder) checkCastExpression(node *ast.CastExpression) {
 }
 
 func (a *astBinder) checkTypeOfExpression(node *ast.TypeOfExpression) {
-	// TODO: not sure; a string?
-	contract.Failf("Binding of %v nodes not yet implemented", node.GetKind())
+	// A typeof produces a string representation of the expression's type.
+	a.b.ctx.RegisterType(node, types.String)
 }
 
 func (a *astBinder) checkConditionalExpression(node *ast.ConditionalExpression) {

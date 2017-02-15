@@ -1637,8 +1637,15 @@ func (e *evaluator) evalIsInstExpression(node *ast.IsInstExpression) (*rt.Object
 }
 
 func (e *evaluator) evalTypeOfExpression(node *ast.TypeOfExpression) (*rt.Object, *rt.Unwind) {
-	contract.Failf("Evaluation of %v nodes not yet implemented", reflect.TypeOf(node))
-	return nil, nil
+	// Evaluate the underlying expression.
+	obj, uw := e.evalExpression(node.Expression)
+	if uw != nil {
+		return nil, uw
+	}
+
+	// Now just return the underlying type token for the object as a string.
+	tok := obj.Type().Token()
+	return e.alloc.NewString(string(tok)), nil
 }
 
 func (e *evaluator) evalConditionalExpression(node *ast.ConditionalExpression) (*rt.Object, *rt.Unwind) {
