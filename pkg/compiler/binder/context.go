@@ -90,6 +90,20 @@ func (ctx *Context) LookupModule(node *ast.ModuleToken) *symbols.Module {
 	return nil
 }
 
+// LookupClassMember looks up a symbol in the target type.
+func (ctx *Context) LookupClassMember(t symbols.Type, clm tokens.ClassMemberName) symbols.ClassMember {
+	for t != nil {
+		// First look in this type's members.
+		if sym, has := t.TypeMembers()[clm]; has {
+			return sym
+		}
+
+		// If not found, we will keep looking at base classes if they exist.
+		t = t.Base()
+	}
+	return nil
+}
+
 // LookupSymbol performs a complex lookup for a complex token; if require is true, failed lookups will issue an
 // error; and in any case, the AST node is used as the context for errors (lookup, accessibility, or otherwise).
 func (ctx *Context) LookupSymbol(node ast.Node, tok tokens.Token, require bool) symbols.Symbol {
@@ -170,9 +184,9 @@ func (ctx *Context) lookupSymbolCore(node ast.Node, tok tokens.Token,
 								_, ismember := memsym.(symbols.ModuleMember)
 								contract.Assertf(ismember, "Expected a module member symbol")
 								contract.Assertf(resolveExports, "Cannot access class members when resolving shallowly")
-								if class, isclass := memsym.(*symbols.Class); isclass {
+								if class, isclass := memsym.(symbols.Type); isclass {
 									clm := tok.ClassMember().Name()
-									if clmsym := class.Members[clm]; clmsym != nil {
+									if clmsym := ctx.LookupClassMember(class, clm); clmsym != nil {
 										// Got a match: the full member was found.
 										sym = clmsym
 
@@ -182,7 +196,7 @@ func (ctx *Context) lookupSymbolCore(node ast.Node, tok tokens.Token,
 										reason = fmt.Sprintf("class member '%v' not found", clm)
 									}
 								} else {
-									reason = fmt.Sprintf("module member '%v' is not a class", mem)
+									reason = fmt.Sprintf("module member '%v' is not a type", mem)
 								}
 							} else {
 								// Got a match: the token only specified a module member and we found it.
@@ -344,7 +358,7 @@ func (ctx *Context) lookupBasicType(node ast.Node, tok tokens.Type, require bool
 	return types.Error
 }
 
-func (ctx *Context) checkClassVisibility(node ast.Node, class *symbols.Class, member symbols.ClassMember) {
+func (ctx *Context) checkClassVisibility(node ast.Node, class symbols.Type, member symbols.ClassMember) {
 	acc := member.MemberNode().GetAccess()
 	if acc == nil {
 		a := tokens.PrivateAccessibility // private is the default.
