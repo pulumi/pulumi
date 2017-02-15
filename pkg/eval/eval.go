@@ -260,7 +260,8 @@ func (e *evaluator) initProperty(properties rt.PropertyMap, sym symbols.Symbol, 
 		if this != nil && e.hooks != nil {
 			e.hooks.OnVariableAssign(this, tokens.Name(k), nil, obj)
 		}
-		return properties.InitAddr(k, e.alloc.NewFunction(m, this), true), false
+		fnc := e.alloc.NewFunction(m, this)
+		return properties.InitAddr(k, fnc, true), false
 	case symbols.Variable:
 		// A variable could have a default object; if so, use that; otherwise, null will be substituted automatically.
 		var obj *rt.Object
@@ -272,8 +273,12 @@ func (e *evaluator) initProperty(properties rt.PropertyMap, sym symbols.Symbol, 
 		}
 		ptr := properties.InitAddr(k, obj, false)
 		return ptr, m.Readonly()
+	case *symbols.Class:
+		// A class resolves to its prototype object.
+		proto := e.getPrototype(m)
+		return properties.InitAddr(k, proto, false), false
 	default:
-		contract.Failf("Unrecognized property symbol type: %v", reflect.TypeOf(sym))
+		contract.Failf("Unrecognized property '%v' symbol type: %v", k, reflect.TypeOf(sym))
 		return nil, false
 	}
 }
