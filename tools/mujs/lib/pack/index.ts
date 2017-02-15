@@ -42,7 +42,11 @@ export type Dependencies = {[pkg: string/*tokens.PackageToken*/]: string};
 
 // Package is a fully compiled package definition.
 export interface Package extends Manifest {
-    default?: tokens.ModuleToken; // the default module, if any.
-    modules?: ast.Modules;        // a collection of top-level modules.
+    modules?: ast.Modules;   // a collection of top-level modules.
+    aliases?: ModuleAliases; // an optional map of aliased module names.
 }
+
+// ModuleAliases can be used to map module names to other module names during binding.  This is useful for representing
+// "default" modules in various forms; e.g., "index" as ".default"; "lib/index" as "lib"; and so on.
+export type ModuleAliases = {[name: string/*tokens.ModuleName*/]: string/*tokens.ModuleName*/};
 

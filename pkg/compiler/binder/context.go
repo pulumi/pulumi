@@ -134,7 +134,7 @@ func (ctx *Context) lookupSymbolCore(node ast.Node, tok tokens.Token,
 		if pkgsym := ctx.LookupPackageSymbol(pkg.Name()); pkgsym != nil {
 			if tok.HasModule() {
 				mod := tok.Module().Name()
-				if modsym := ctx.LookupModuleSymbol(pkgsym, mod); modsym != nil {
+				if modsym := pkgsym.Modules[mod]; modsym != nil {
 					if tok.HasModuleMember() {
 						// We need to look up a module member.  Note that this has to respect the export table, to
 						// prevent unwanted access to internal routines.  Another subtlety worth calling out is that
@@ -228,18 +228,6 @@ func (ctx *Context) LookupPackageSymbol(name tokens.PackageName) *symbols.Packag
 		return pkg.Pkg
 	}
 	return nil
-}
-
-func (ctx *Context) LookupModuleSymbol(pkg *symbols.Package, module tokens.ModuleName) *symbols.Module {
-	if module == tokens.DefaultModule {
-		// Fetch the default module (if there is one; if not, we fall through and fail below).
-		if defmodule := pkg.Default(); defmodule != nil {
-			module = *defmodule
-			contract.Assert(module != "")
-		}
-	}
-
-	return pkg.Modules[module]
 }
 
 // LookupTypeToken binds a type token to its symbol, creating elements if needed.  The node context is used for errors.

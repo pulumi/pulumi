@@ -4,6 +4,7 @@ import {FunctionToken, ModuleToken, TypeToken, VariableToken} from "./tokens";
 
 // Special module tokens.
 export const selfModule: ModuleToken = "."; // a self-referential token for the current module.
+export const defaultModule: ModuleToken = ".default"; // the default module in a package.
 
 // Special variable tokens.
 export const thisVariable: VariableToken  = ".this";  // the current object (for class methods).

@@ -245,7 +245,7 @@ export class Transformer {
 
             // Enumerate all source files (each of which is a module in ECMAScript), and transform it.
             let modules: ast.Modules = {};
-            let defaultModule: tokens.ModuleToken | undefined;
+            let aliases: pack.ModuleAliases = {};
             for (let sourceFile of this.script.tree!.getSourceFiles()) {
                 // TODO[marapongo/mu#52]: to determine whether a SourceFile is part of the current compilation unit, we
                 // must rely on a private TypeScript API, isSourceFileFromExternalLibrary.  An alternative would be to
@@ -259,10 +259,16 @@ export class Transformer {
                                 "Expected internal Program.isSourceFileFromExternalLibrary function to be non-null");
                 if (!isSourceFileFromExternalLibrary(sourceFile) && !sourceFile.isDeclarationFile) {
                     let mod: ast.Module = await this.transformSourceFile(sourceFile);
-                    modules[mod.name.ident] = mod;
-                    if (mod.name.ident === "index") {
+                    let modname: string = mod.name.ident;
+                    modules[modname] = mod;
+                    if (modname === "index") {
+                        // The special index module is the package's main/default module.
                         // TODO[marapongo/mu#57]: respect the package.json "main" specifier, if it exists.
-                        defaultModule = mod.name.ident;
+                        aliases[tokens.defaultModule] = modname;
+                    }
+                    else if (modname.endsWith("/index")) {
+                        // Any module whose name is of the form ".../index" can also be accessed as just "...".
+                        aliases[modname.substring(0, modname.lastIndexOf("/index"))] = modname;
                     }
                 }
             }
@@ -297,7 +303,7 @@ export class Transformer {
 
             // Give a warning if this package didn't have a default module; technically, this is fine, but it is most
             // likely a mistake as it will cause complications for consumers of it.
-            if (!defaultModule) {
+            if (!aliases[tokens.defaultModule]) {
                 this.diagnostics.push(this.dctx.newNoDefaultModuleWarning());
             }
 
@@ -306,7 +312,7 @@ export class Transformer {
                 diagnostics: this.diagnostics,
                 pkg:         object.extend(this.pkg, {
                     modules: modules,
-                    default: defaultModule,
+                    aliases: aliases,
                 }),
             };
         }

@@ -144,10 +144,25 @@ func (b *binder) resolveDep(dep pack.PackageURL) *symbols.ResolvedPackage {
 // bind definitions, because those require the top-level declarations for all modules and members to be available first.
 func (b *binder) bindPackageDeclarations(pkg *symbols.Package) {
 	contract.Require(pkg != nil, "pkg")
+
+	// Bind all module names.
 	if pkg.Node.Modules != nil {
 		modules := *pkg.Node.Modules
 		for _, modtok := range ast.StableModules(modules) {
 			pkg.Modules[modtok] = b.bindModuleDeclarations(modules[modtok], pkg)
+		}
+	}
+
+	// Now see if there are aliased module names; if yes, bind to the above symbols.
+	if pkg.Node.Aliases != nil {
+		aliases := *pkg.Node.Aliases
+		for _, from := range pack.StableModuleAliases(aliases) {
+			to := aliases[from]
+			if target, has := pkg.Modules[to]; has {
+				pkg.Modules[from] = target
+			} else {
+				b.Diag().Errorf(errors.ErrorModuleAliasTargetNotFound, to, from)
+			}
 		}
 	}
 }

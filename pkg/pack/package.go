@@ -18,9 +18,9 @@ type Package struct {
 	Website     *string `json:"website,omitempty"`     // an optional website for additional info.
 	License     *string `json:"license,omitempty"`     // an optional license governing this package's usage.
 
-	Dependencies *Dependencies      `json:"dependencies,omitempty"` // all of the package dependencies.
-	Modules      *ast.Modules       `json:"modules,omitempty"`      // a collection of top-level modules.
-	Default      *tokens.ModuleName `json:"default,omitempty"`      // an optional default "entrypoint" module.
+	Dependencies *Dependencies  `json:"dependencies,omitempty"` // all of the package dependencies.
+	Modules      *ast.Modules   `json:"modules,omitempty"`      // a collection of top-level modules.
+	Aliases      *ModuleAliases `json:"aliases,omitempty"`      // an optional mapping of aliased module names.
 
 	Doc *diag.Document `json:"-"` // the document from which this package came.
 }
@@ -33,3 +33,7 @@ func (s *Package) Where() (*diag.Document, *diag.Location) {
 
 // Dependencies maps dependency names to the full URL, including version, of the package.
 type Dependencies map[tokens.PackageName]PackageURLString
+
+// ModuleAliases can be used to map module names to other module names during binding.  This is useful for representing
+// "default" modules in various forms; e.g., "index" as ".default"; "lib/index" as "lib"; and so on.
+type ModuleAliases map[tokens.ModuleName]tokens.ModuleName

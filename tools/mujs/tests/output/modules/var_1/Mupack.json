@@ -154,5 +154,7 @@
             }
         }
     },
-    "default": "index"
+    "aliases": {
+        ".default": "index"
+    }
 }

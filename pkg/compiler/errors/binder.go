@@ -37,5 +37,6 @@ var (
 		"Expected an object target for this instance member load operation")
 	ErrorUnexpectedObject = newError(527,
 		"Unexpected object target for this static or module load operation")
-	ErrorInvalidCast = newError(528, "Illegal cast from '%v' to '%v'; this can never succeed")
+	ErrorInvalidCast               = newError(528, "Illegal cast from '%v' to '%v'; this can never succeed")
+	ErrorModuleAliasTargetNotFound = newError(529, "Module alias target '%v' was not found (from '%v')")
 )

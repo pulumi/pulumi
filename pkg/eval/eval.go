@@ -105,14 +105,12 @@ func (e *evaluator) EvaluatePackage(pkg *symbols.Package, args core.Args) {
 		}
 	}
 
-	// Search the package for a default module "index" to evaluate.
+	// Search the package for a default module to evaluate.
 	defmod := pkg.Default()
 	if defmod == nil {
 		e.Diag().Errorf(errors.ErrorPackageHasNoDefaultModule.At(pkg.Tree()), pkg.Name())
 	} else {
-		mod := pkg.Modules[*defmod]
-		contract.Assert(mod != nil)
-		e.EvaluateModule(mod, args)
+		e.EvaluateModule(defmod, args)
 	}
 }
 
