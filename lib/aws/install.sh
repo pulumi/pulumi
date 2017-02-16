@@ -10,7 +10,7 @@ echo Sharing NPM links:
 yarn link                 # let NPM references resolve easily.
 
 MULIB=/usr/local/mu/lib
-THISLIB=$MULIB/mujs/
+THISLIB=$MULIB/aws/
 echo Installing Mu AWS library to $THISLIB:
 mkdir -p $MULIB           # ensure the target library directory exists
 rm -rf $THISLIB           # clean the target
