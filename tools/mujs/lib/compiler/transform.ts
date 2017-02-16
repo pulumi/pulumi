@@ -214,6 +214,7 @@ export class Transformer {
     private currentClassToken: tokens.TypeToken | undefined;
     private currentSuperClassToken: tokens.TypeToken | undefined;
     private currentPackageDependencies: Set<tokens.PackageToken>;
+    private currentTempLocalCounter: number = 0;
 
     constructor(pkg: pack.Manifest, script: Script, loader: PackageLoader) {
         contract.requires(!!pkg, "pkg", "A package manifest must be supplied");
@@ -416,6 +417,29 @@ export class Transformer {
             }
         }
         return true;
+    }
+
+    // generateTempLocal generates a name that won't conflict with user-authored names.
+    private generateTempLocal(meaningful: string): string {
+        let index: number = this.currentTempLocalCounter++;
+        // Meaningful is a meaningful part of the name, but it can't be used along.  Prefix with `.` so it doesn't
+        // conflict w/ user names; suffix it with a counter so it doesn't conflict with other similarly generated names.
+        return `.temp_${meaningful}_${index}`;
+    }
+
+    // createLoadLocal generates a load of a local variable with the given name.
+    private createLoadLocal(name: string, node?: ts.Node): ast.LoadLocationExpression {
+        let load = <ast.LoadLocationExpression>{
+            kind: ast.loadLocationExpressionKind,
+            name: <ast.Token>{
+                kind: ast.tokenKind,
+                tok:  name,
+            },
+        };
+        if (node) {
+            load = this.withLocation(node, load);
+        }
+        return load;
     }
 
     // This just carries forward an existing location from another node.
@@ -993,6 +1017,7 @@ export class Transformer {
         let priorModuleExports: ast.ModuleExports | undefined = this.currentModuleExports;
         let priorModuleImports: Map<string, ModuleReference> | undefined = this.currentModuleImports;
         let priorModuleImportTokens: ast.ModuleToken[] | undefined = this.currentModuleImportTokens;
+        let priorTempLocalCounter: number = this.currentTempLocalCounter;
         try {
             // Prepare self-referential module information.
             let modref: ModuleReference = this.createModuleReferenceFromPath(node.fileName);
@@ -1007,6 +1032,7 @@ export class Transformer {
             this.currentModuleExports = {};
             this.currentModuleImports = new Map<string, ModuleReference>();
             this.currentModuleImportTokens = []; // to track the imports, in order.
+            this.currentTempLocalCounter = 0;
 
             // Any top-level non-definition statements will pile up into the module initializer.
             let statements: ast.Statement[] = [];
@@ -1098,6 +1124,7 @@ export class Transformer {
             this.currentModuleExports = priorModuleExports;
             this.currentModuleImports = priorModuleImports;
             this.currentModuleImportTokens = priorModuleImportTokens;
+            this.currentTempLocalCounter = priorTempLocalCounter;
         }
     }
 
@@ -2254,8 +2281,182 @@ export class Transformer {
         });
     }
 
-    private transformSwitchStatement(node: ts.SwitchStatement): ast.Statement {
-        return notYetImplemented(node);
+    // transformSwitchStatement transforms a switch into a series of if/else statements.
+    private async transformSwitchStatement(node: ts.SwitchStatement): Promise<ast.Statement> {
+        // A switch expands into a block.
+        let block = this.withLocation(node, <ast.Block>{
+            kind:       ast.blockKind,
+            statements: [],
+        });
+
+        // Spill the expression an auto-generated local/ variable so that we don't execute it multiple times.
+        let exprLocal = this.generateTempLocal("expr");
+        block.statements.push(<ast.LocalVariableDeclaration>{
+            kind:  ast.localVariableDeclarationKind,
+            local: <ast.LocalVariable>{
+                kind:  ast.localVariableKind,
+                name:  ident(exprLocal),
+            },
+        });
+        block.statements.push(<ast.ExpressionStatement>{
+            kind:       ast.expressionStatementKind,
+            expression: <ast.BinaryOperatorExpression>{
+                kind:     ast.binaryOperatorExpressionKind,
+                operator: binaryOperators.get(ts.SyntaxKind.EqualsToken),
+                left:     this.createLoadLocal(exprLocal),
+                right:    await this.transformExpression(node.expression),
+            },
+        });
+
+        // Next, generate a list of clauses, including handling fallthrough and defaults; there are three cases:
+        //
+        //     1) A clause that ends with a break; this gets its own "if" statement.
+        //     2) A clause that does dynamically hit a "break"; this automatically falls through to the next case.
+        //     3) A default clause; this is executed unconditionally if no prior cases matched.
+        //
+        //  To illustrate all three cases, consider this example:
+        //
+        //      switch (<expr>) {¬
+        //          case a:¬
+        //              foo();¬
+        //              break;¬
+        //          case b:¬
+        //              bar();¬
+        //          default:¬
+        //              baz();¬
+        //              break;¬
+        //      }¬
+        //
+        // The generated code looks roughly like this:¬
+        //
+        //      let _tmp_expr = <expr>; // spilled expression.
+        //      let _tmp_match = false; // initialized to false.
+        //      let _tmp_break = true;  // initialized to true.
+        //      if (!_tmp_break || (!_tmp_match && _tmp_expr === a)) {¬
+        //          _tmp_match = true;
+        //          foo();¬
+        //          _tmp_break = true;
+        //      }¬
+        //      if (!_tmp_break || (!_tmp_match && _tmp_expr === b)) {¬
+        //          _tmp_match = true;
+        //          bar();¬
+        //          baz();¬
+        //          _tmp_break = false;
+        //      }¬
+        //      if (!_tmp_break || !tmp_match) {¬
+        //          baz();¬
+        //      }¬
+        //
+        // Notice how we track two special variables, _tmp_match and _tmp_break, to indicate whether the prior
+        // clause matched or led to a break, respectively.  This informs whether we will dynamically fallthrough.
+        let matchLocal = this.generateTempLocal("match");
+        let breakLocal = this.generateTempLocal("break");
+
+        // Place all the clauses into a big block and declare and initialize those locals.
+        block.statements.push(<ast.LocalVariableDeclaration>{
+            kind:  ast.localVariableDeclarationKind,
+            local: <ast.LocalVariable>{
+                kind:    ast.localVariableKind,
+                name:    ident(matchLocal),
+                default: false, // no match by default.
+            },
+        });
+        block.statements.push(<ast.LocalVariableDeclaration>{
+            kind:  ast.localVariableDeclarationKind,
+            local: <ast.LocalVariable>{
+                kind:    ast.localVariableKind,
+                name:    ident(breakLocal),
+                default: true, // break enabled by default (to prevent immediate fallthrough).
+            },
+        });
+
+        // Now create a proper guard and clause for every switch case.
+        for (let clause of node.caseBlock.clauses) {
+            // Produce the case body; this is what will execute if the case is taken.
+            let body: ast.Block = <ast.Block>{
+                kind:       ast.blockKind,
+                statements: [],
+            };
+
+            // First set _tmp_match to true.
+            body.statements.push(<ast.ExpressionStatement>{
+                kind:       ast.expressionStatementKind,
+                expression: <ast.BinaryOperatorExpression>{
+                    kind:     ast.binaryOperatorExpressionKind,
+                    operator: binaryOperators.get(ts.SyntaxKind.EqualsToken),
+                    left:     this.createLoadLocal(matchLocal),
+                    right:    <ast.BoolLiteral>{
+                        kind:  ast.boolLiteralKind,
+                        value: true,
+                    },
+                },
+            });
+
+            // Now just push each of the clause's transformed statements.
+            for (let stmt of clause.statements) {
+                let trans: ast.Statement = await this.transformStatement(stmt);
+                if (trans.kind === ast.breakStatementKind && !(<ast.BreakStatement>trans).label) {
+                    // This is a break; transform it into setting the variable, and skip adding it.
+                    body.statements.push(<ast.ExpressionStatement>{
+                        kind:       ast.expressionStatementKind,
+                        expression: <ast.BinaryOperatorExpression>{
+                            kind:     ast.binaryOperatorExpressionKind,
+                            operator: binaryOperators.get(ts.SyntaxKind.EqualsToken),
+                            left:     this.createLoadLocal(breakLocal),
+                            right:    <ast.BoolLiteral>{
+                                kind:  ast.boolLiteralKind,
+                                value: true,
+                            },
+                        },
+                    });
+                }
+                else {
+                    body.statements.push(trans);
+                }
+            }
+
+
+            // Next, generate the if guard; this needs to be sensitive to whether this is the default.
+            // First, the `!_tmp_match` part, which is common to all variants.
+            let guard: ast.Expression = <ast.UnaryOperatorExpression>{
+                kind:     ast.unaryOperatorExpressionKind,
+                operator: prefixUnaryOperators.get(ts.SyntaxKind.ExclamationToken),
+                operand:  this.createLoadLocal(matchLocal),
+            };
+
+            // Now, if this isn't default, we need to check === with the desired expression.  This turns the above guard
+            // into `(!_tmp_match && _tmp_expr === <caseExpr>)`.
+            if (clause.kind === ts.SyntaxKind.CaseClause) {
+                guard = <ast.BinaryOperatorExpression>{
+                    kind:     ast.binaryOperatorExpressionKind,
+                    operator: binaryOperators.get(ts.SyntaxKind.AmpersandAmpersandToken),
+                    left:     guard,
+                    right:    <ast.BinaryOperatorExpression>{
+                        kind:     ast.binaryOperatorExpressionKind,
+                        operator: binaryOperators.get(ts.SyntaxKind.EqualsEqualsEqualsToken),
+                        left:     this.createLoadLocal(exprLocal),
+                        right: await this.transformExpression((<ts.CaseClause>clause).expression),
+                    },
+                };
+            }
+
+            // Finally turn <guard> into `!tmp_break || <guard>`, which is the final form of the if guard.
+            guard = <ast.BinaryOperatorExpression>{
+                kind:     ast.binaryOperatorExpressionKind,
+                operator: binaryOperators.get(ts.SyntaxKind.BarBarToken),
+                left:     this.createLoadLocal(breakLocal),
+                right:    guard,
+            };
+
+            // Now push the overall thing as an if statement.
+            block.statements.push(this.withLocation(clause, <ast.IfStatement>{
+               kind:       ast.ifStatementKind,
+               condition:  guard,
+               consequent: body,
+            }));
+        }
+
+        return block;
     }
 
     private async transformThrowStatement(node: ts.ThrowStatement): Promise<ast.ThrowStatement> {

@@ -205,9 +205,9 @@ const LambdaExpressionKind NodeKind = "LambdaExpression"
 // UnaryOperatorExpression is the usual C-like unary operator.
 type UnaryOperatorExpression struct {
 	ExpressionNode
-	Operator UnaryOperator `json:"operator"` // the operator type.
-	Operand  Expression    `json:"operand"`  // the right hand side operand.
-	Postfix  bool          `json:"postfix"`  // whether this is a postfix operator (only legal for UnaryPfixOperators).
+	Operator UnaryOperator `json:"operator"`          // the operator type.
+	Operand  Expression    `json:"operand"`           // the right hand side operand.
+	Postfix  bool          `json:"postfix,omitempty"` // whether this is a postfix operator (just for pfix operators).
 }
 
 var _ Node = (*UnaryOperatorExpression)(nil)
