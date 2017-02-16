@@ -87,9 +87,9 @@ const ContinueStatementKind NodeKind = "ContinueStatement"
 // IfStatement is the usual C-style `if`.
 type IfStatement struct {
 	StatementNode
-	Condition  Expression `json:"condition"`             // a `bool` conditional expression.
-	Consequent Statement  `json:"consequent"`            // the statement to execute if `true`.
-	Alternate  *Statement `json:"alternative,omitempty"` // the optional statement to execute if `false`.
+	Condition  Expression `json:"condition"`           // a `bool` conditional expression.
+	Consequent Statement  `json:"consequent"`          // the statement to execute if `true`.
+	Alternate  *Statement `json:"alternate,omitempty"` // the optional statement to execute if `false`.
 }
 
 var _ Node = (*IfStatement)(nil)
