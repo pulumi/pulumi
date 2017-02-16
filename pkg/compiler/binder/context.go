@@ -294,9 +294,12 @@ func (ctx *Context) LookupFunctionType(node ast.Function) *symbols.FunctionType 
 	}
 
 	// Bind the optional return type.
-	ret := ctx.LookupType(node.GetReturnType())
+	var retty symbols.Type
+	if ret := node.GetReturnType(); ret != nil {
+		retty = ctx.LookupType(ret)
+	}
 
-	return symbols.NewFunctionType(params, ret)
+	return symbols.NewFunctionType(params, retty)
 }
 
 // lookupBasicType handles decorated types (pointers, arrays, maps, functions) and primitives.
