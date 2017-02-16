@@ -2281,194 +2281,33 @@ export class Transformer {
         });
     }
 
-    // transformSwitchStatement transforms a switch into a series of if/else statements.
-    private async transformSwitchStatement(node: ts.SwitchStatement): Promise<ast.Statement> {
-        // A switch expands into a block.
-        let block = this.withLocation(node, <ast.Block>{
-            kind:       ast.blockKind,
-            statements: [],
-        });
-
-        // Spill the expression an auto-generated local/ variable so that we don't execute it multiple times.
-        let exprLocal = this.generateTempLocal("expr");
-        block.statements.push(<ast.LocalVariableDeclaration>{
-            kind:  ast.localVariableDeclarationKind,
-            local: <ast.LocalVariable>{
-                kind: ast.localVariableKind,
-                name: ident(exprLocal),
-                type: <ast.TypeToken>{
-                    kind: ast.typeTokenKind,
-                    tok:  tokens.objectType, // we don't care about the type.
-                },
-            },
-        });
-        block.statements.push(<ast.ExpressionStatement>{
-            kind:       ast.expressionStatementKind,
-            expression: <ast.BinaryOperatorExpression>{
-                kind:     ast.binaryOperatorExpressionKind,
-                operator: binaryOperators.get(ts.SyntaxKind.EqualsToken),
-                left:     this.createLoadLocal(exprLocal),
-                right:    await this.transformExpression(node.expression),
-            },
-        });
-
-        // Next, generate a list of clauses, including handling fallthrough and defaults; there are three cases:
-        //
-        //     1) A clause that ends with a break; this gets its own "if" statement.
-        //     2) A clause that does dynamically hit a "break"; this automatically falls through to the next case.
-        //     3) A default clause; this is executed unconditionally if no prior cases matched.
-        //
-        //  To illustrate all three cases, consider this example:
-        //
-        //      switch (<expr>) {¬
-        //          case a:¬
-        //              foo();¬
-        //              break;¬
-        //          case b:¬
-        //              bar();¬
-        //          default:¬
-        //              baz();¬
-        //              break;¬
-        //      }¬
-        //
-        // The generated code looks roughly like this:¬
-        //
-        //      let _tmp_expr = <expr>; // spilled expression.
-        //      let _tmp_match = false; // initialized to false.
-        //      let _tmp_break = true;  // initialized to true.
-        //      if (!_tmp_break || (!_tmp_match && _tmp_expr === a)) {¬
-        //          _tmp_match = true;
-        //          foo();¬
-        //          _tmp_break = true;
-        //      }¬
-        //      if (!_tmp_break || (!_tmp_match && _tmp_expr === b)) {¬
-        //          _tmp_match = true;
-        //          bar();¬
-        //          baz();¬
-        //          _tmp_break = false;
-        //      }¬
-        //      if (!_tmp_break || !tmp_match) {¬
-        //          baz();¬
-        //      }¬
-        //
-        // Notice how we track two special variables, _tmp_match and _tmp_break, to indicate whether the prior
-        // clause matched or led to a break, respectively.  This informs whether we will dynamically fallthrough.
-        let matchLocal = this.generateTempLocal("match");
-        let breakLocal = this.generateTempLocal("break");
-
-        // Place all the clauses into a big block and declare and initialize those locals.
-        block.statements.push(<ast.LocalVariableDeclaration>{
-            kind:  ast.localVariableDeclarationKind,
-            local: <ast.LocalVariable>{
-                kind:    ast.localVariableKind,
-                name:    ident(matchLocal),
-                type:    <ast.TypeToken>{
-                    kind: ast.typeTokenKind,
-                    tok:  tokens.boolType,
-                },
-                default: false, // no match by default.
-            },
-        });
-        block.statements.push(<ast.LocalVariableDeclaration>{
-            kind:  ast.localVariableDeclarationKind,
-            local: <ast.LocalVariable>{
-                kind:    ast.localVariableKind,
-                name:    ident(breakLocal),
-                type:    <ast.TypeToken>{
-                    kind: ast.typeTokenKind,
-                    tok:  tokens.boolType,
-                },
-                default: true, // break enabled by default (to prevent immediate fallthrough).
-            },
-        });
-
-        // Now create a proper guard and clause for every switch case.
+    private async transformSwitchStatement(node: ts.SwitchStatement): Promise<ast.SwitchStatement> {
+        let expr: ast.Expression = await this.transformExpression(node.expression);
+        let cases: ast.SwitchCase[] = [];
         for (let clause of node.caseBlock.clauses) {
-            // Produce the case body; this is what will execute if the case is taken.
-            let body: ast.Block = <ast.Block>{
-                kind:       ast.blockKind,
+            let caseClause: ast.Expression | undefined;
+            if (clause.kind === ts.SyntaxKind.CaseClause) {
+                caseClause = await this.transformExpression((<ts.CaseClause>clause).expression);
+            }
+            let caseConsequent: ast.Block = <ast.Block>{
+                kind:        ast.blockKind,
                 statements: [],
             };
-
-            // First set _tmp_match to true.
-            body.statements.push(<ast.ExpressionStatement>{
-                kind:       ast.expressionStatementKind,
-                expression: <ast.BinaryOperatorExpression>{
-                    kind:     ast.binaryOperatorExpressionKind,
-                    operator: binaryOperators.get(ts.SyntaxKind.EqualsToken),
-                    left:     this.createLoadLocal(matchLocal),
-                    right:    <ast.BoolLiteral>{
-                        kind:  ast.boolLiteralKind,
-                        value: true,
-                    },
-                },
-            });
-
-            // Now just push each of the clause's transformed statements.
             for (let stmt of clause.statements) {
-                let trans: ast.Statement = await this.transformStatement(stmt);
-                if (trans.kind === ast.breakStatementKind && !(<ast.BreakStatement>trans).label) {
-                    // This is a break; transform it into setting the variable, and skip adding it.
-                    body.statements.push(<ast.ExpressionStatement>{
-                        kind:       ast.expressionStatementKind,
-                        expression: <ast.BinaryOperatorExpression>{
-                            kind:     ast.binaryOperatorExpressionKind,
-                            operator: binaryOperators.get(ts.SyntaxKind.EqualsToken),
-                            left:     this.createLoadLocal(breakLocal),
-                            right:    <ast.BoolLiteral>{
-                                kind:  ast.boolLiteralKind,
-                                value: true,
-                            },
-                        },
-                    });
-                }
-                else {
-                    body.statements.push(trans);
-                }
+                caseConsequent.statements.push(await this.transformStatement(stmt));
             }
 
-
-            // Next, generate the if guard; this needs to be sensitive to whether this is the default.
-            // First, the `!_tmp_match` part, which is common to all variants.
-            let guard: ast.Expression = <ast.UnaryOperatorExpression>{
-                kind:     ast.unaryOperatorExpressionKind,
-                operator: prefixUnaryOperators.get(ts.SyntaxKind.ExclamationToken),
-                operand:  this.createLoadLocal(matchLocal),
-            };
-
-            // Now, if this isn't default, we need to check === with the desired expression.  This turns the above guard
-            // into `(!_tmp_match && _tmp_expr === <caseExpr>)`.
-            if (clause.kind === ts.SyntaxKind.CaseClause) {
-                guard = <ast.BinaryOperatorExpression>{
-                    kind:     ast.binaryOperatorExpressionKind,
-                    operator: binaryOperators.get(ts.SyntaxKind.AmpersandAmpersandToken),
-                    left:     guard,
-                    right:    <ast.BinaryOperatorExpression>{
-                        kind:     ast.binaryOperatorExpressionKind,
-                        operator: binaryOperators.get(ts.SyntaxKind.EqualsEqualsEqualsToken),
-                        left:     this.createLoadLocal(exprLocal),
-                        right: await this.transformExpression((<ts.CaseClause>clause).expression),
-                    },
-                };
-            }
-
-            // Finally turn <guard> into `!tmp_break || <guard>`, which is the final form of the if guard.
-            guard = <ast.BinaryOperatorExpression>{
-                kind:     ast.binaryOperatorExpressionKind,
-                operator: binaryOperators.get(ts.SyntaxKind.BarBarToken),
-                left:     this.createLoadLocal(breakLocal),
-                right:    guard,
-            };
-
-            // Now push the overall thing as an if statement.
-            block.statements.push(this.withLocation(clause, <ast.IfStatement>{
-               kind:       ast.ifStatementKind,
-               condition:  guard,
-               consequent: body,
+            cases.push(this.withLocation(clause, <ast.SwitchCase>{
+                kind:       ast.switchCaseKind,
+                clause:     caseClause,
+                consequent: caseConsequent,
             }));
         }
-
-        return block;
+        return this.withLocation(node, <ast.SwitchStatement>{
+            kind:       ast.switchStatementKind,
+            expression: expr,
+            cases:      cases,
+        });
     }
 
     private async transformThrowStatement(node: ts.ThrowStatement): Promise<ast.ThrowStatement> {

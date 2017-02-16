@@ -37,6 +37,8 @@ func decodeStatement(m mapper.Mapper, tree mapper.Object) (ast.Statement, error)
 			return decodeContinueStatement(m, tree)
 		case ast.IfStatementKind:
 			return decodeIfStatement(m, tree)
+		case ast.SwitchStatementKind:
+			return decodeSwitchStatement(m, tree)
 		case ast.LabeledStatementKind:
 			return decodeLabeledStatement(m, tree)
 		case ast.ReturnStatementKind:
@@ -99,6 +101,14 @@ func decodeContinueStatement(m mapper.Mapper, tree mapper.Object) (*ast.Continue
 
 func decodeIfStatement(m mapper.Mapper, tree mapper.Object) (*ast.IfStatement, error) {
 	var stmt ast.IfStatement
+	if err := m.Decode(tree, &stmt); err != nil {
+		return nil, err
+	}
+	return &stmt, nil
+}
+
+func decodeSwitchStatement(m mapper.Mapper, tree mapper.Object) (*ast.SwitchStatement, error) {
+	var stmt ast.SwitchStatement
 	if err := m.Decode(tree, &stmt); err != nil {
 		return nil, err
 	}

@@ -1,8 +1,5 @@
 {
     "name": "basic/switch",
-    "dependencies": {
-        "mujs": "*"
-    },
     "modules": {
         "index": {
             "kind": "Module",
@@ -195,171 +192,58 @@
                                 }
                             },
                             {
-                                "kind": "Block",
-                                "statements": [
-                                    {
-                                        "kind": "LocalVariableDeclaration",
-                                        "local": {
-                                            "kind": "LocalVariable",
-                                            "name": {
-                                                "kind": "Identifier",
-                                                "ident": ".temp_expr_0"
+                                "kind": "SwitchStatement",
+                                "expression": {
+                                    "kind": "LoadLocationExpression",
+                                    "name": {
+                                        "kind": "Token",
+                                        "tok": "v",
+                                        "loc": {
+                                            "file": "index.ts",
+                                            "start": {
+                                                "line": 5,
+                                                "column": 13
                                             },
-                                            "type": {
-                                                "kind": "TypeToken",
-                                                "tok": "object"
+                                            "end": {
+                                                "line": 5,
+                                                "column": 14
                                             }
                                         }
                                     },
+                                    "loc": {
+                                        "file": "index.ts",
+                                        "start": {
+                                            "line": 5,
+                                            "column": 13
+                                        },
+                                        "end": {
+                                            "line": 5,
+                                            "column": 14
+                                        }
+                                    }
+                                },
+                                "cases": [
                                     {
-                                        "kind": "ExpressionStatement",
-                                        "expression": {
-                                            "kind": "BinaryOperatorExpression",
-                                            "operator": "=",
-                                            "left": {
-                                                "kind": "LoadLocationExpression",
-                                                "name": {
-                                                    "kind": "Token",
-                                                    "tok": ".temp_expr_0"
-                                                }
-                                            },
-                                            "right": {
-                                                "kind": "LoadLocationExpression",
-                                                "name": {
-                                                    "kind": "Token",
-                                                    "tok": "v",
-                                                    "loc": {
-                                                        "file": "index.ts",
-                                                        "start": {
-                                                            "line": 5,
-                                                            "column": 13
-                                                        },
-                                                        "end": {
-                                                            "line": 5,
-                                                            "column": 14
-                                                        }
-                                                    }
+                                        "kind": "SwitchCase",
+                                        "clause": {
+                                            "kind": "StringLiteral",
+                                            "raw": "a",
+                                            "value": "a",
+                                            "loc": {
+                                                "file": "index.ts",
+                                                "start": {
+                                                    "line": 6,
+                                                    "column": 14
                                                 },
-                                                "loc": {
-                                                    "file": "index.ts",
-                                                    "start": {
-                                                        "line": 5,
-                                                        "column": 13
-                                                    },
-                                                    "end": {
-                                                        "line": 5,
-                                                        "column": 14
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    },
-                                    {
-                                        "kind": "LocalVariableDeclaration",
-                                        "local": {
-                                            "kind": "LocalVariable",
-                                            "name": {
-                                                "kind": "Identifier",
-                                                "ident": ".temp_match_1"
-                                            },
-                                            "type": {
-                                                "kind": "TypeToken",
-                                                "tok": "bool"
-                                            },
-                                            "default": false
-                                        }
-                                    },
-                                    {
-                                        "kind": "LocalVariableDeclaration",
-                                        "local": {
-                                            "kind": "LocalVariable",
-                                            "name": {
-                                                "kind": "Identifier",
-                                                "ident": ".temp_break_2"
-                                            },
-                                            "type": {
-                                                "kind": "TypeToken",
-                                                "tok": "bool"
-                                            },
-                                            "default": true
-                                        }
-                                    },
-                                    {
-                                        "kind": "IfStatement",
-                                        "condition": {
-                                            "kind": "BinaryOperatorExpression",
-                                            "operator": "||",
-                                            "left": {
-                                                "kind": "LoadLocationExpression",
-                                                "name": {
-                                                    "kind": "Token",
-                                                    "tok": ".temp_break_2"
-                                                }
-                                            },
-                                            "right": {
-                                                "kind": "BinaryOperatorExpression",
-                                                "operator": "&&",
-                                                "left": {
-                                                    "kind": "UnaryOperatorExpression",
-                                                    "operator": "!",
-                                                    "operand": {
-                                                        "kind": "LoadLocationExpression",
-                                                        "name": {
-                                                            "kind": "Token",
-                                                            "tok": ".temp_match_1"
-                                                        }
-                                                    }
-                                                },
-                                                "right": {
-                                                    "kind": "BinaryOperatorExpression",
-                                                    "operator": "==",
-                                                    "left": {
-                                                        "kind": "LoadLocationExpression",
-                                                        "name": {
-                                                            "kind": "Token",
-                                                            "tok": ".temp_expr_0"
-                                                        }
-                                                    },
-                                                    "right": {
-                                                        "kind": "StringLiteral",
-                                                        "raw": "a",
-                                                        "value": "a",
-                                                        "loc": {
-                                                            "file": "index.ts",
-                                                            "start": {
-                                                                "line": 6,
-                                                                "column": 14
-                                                            },
-                                                            "end": {
-                                                                "line": 6,
-                                                                "column": 17
-                                                            }
-                                                        }
-                                                    }
+                                                "end": {
+                                                    "line": 6,
+                                                    "column": 17
                                                 }
                                             }
                                         },
                                         "consequent": {
                                             "kind": "Block",
                                             "statements": [
-                                                {
-                                                    "kind": "ExpressionStatement",
-                                                    "expression": {
-                                                        "kind": "BinaryOperatorExpression",
-                                                        "operator": "=",
-                                                        "left": {
-                                                            "kind": "LoadLocationExpression",
-                                                            "name": {
-                                                                "kind": "Token",
-                                                                "tok": ".temp_match_1"
-                                                            }
-                                                        },
-                                                        "right": {
-                                                            "kind": "BoolLiteral",
-                                                            "value": true
-                                                        }
-                                                    }
-                                                },
                                                 {
                                                     "kind": "ExpressionStatement",
                                                     "expression": {
@@ -435,20 +319,16 @@
                                                     }
                                                 },
                                                 {
-                                                    "kind": "ExpressionStatement",
-                                                    "expression": {
-                                                        "kind": "BinaryOperatorExpression",
-                                                        "operator": "=",
-                                                        "left": {
-                                                            "kind": "LoadLocationExpression",
-                                                            "name": {
-                                                                "kind": "Token",
-                                                                "tok": ".temp_break_2"
-                                                            }
+                                                    "kind": "BreakStatement",
+                                                    "loc": {
+                                                        "file": "index.ts",
+                                                        "start": {
+                                                            "line": 8,
+                                                            "column": 13
                                                         },
-                                                        "right": {
-                                                            "kind": "BoolLiteral",
-                                                            "value": true
+                                                        "end": {
+                                                            "line": 8,
+                                                            "column": 19
                                                         }
                                                     }
                                                 }
@@ -467,81 +347,26 @@
                                         }
                                     },
                                     {
-                                        "kind": "IfStatement",
-                                        "condition": {
-                                            "kind": "BinaryOperatorExpression",
-                                            "operator": "||",
-                                            "left": {
-                                                "kind": "LoadLocationExpression",
-                                                "name": {
-                                                    "kind": "Token",
-                                                    "tok": ".temp_break_2"
-                                                }
-                                            },
-                                            "right": {
-                                                "kind": "BinaryOperatorExpression",
-                                                "operator": "&&",
-                                                "left": {
-                                                    "kind": "UnaryOperatorExpression",
-                                                    "operator": "!",
-                                                    "operand": {
-                                                        "kind": "LoadLocationExpression",
-                                                        "name": {
-                                                            "kind": "Token",
-                                                            "tok": ".temp_match_1"
-                                                        }
-                                                    }
+                                        "kind": "SwitchCase",
+                                        "clause": {
+                                            "kind": "StringLiteral",
+                                            "raw": "b",
+                                            "value": "b",
+                                            "loc": {
+                                                "file": "index.ts",
+                                                "start": {
+                                                    "line": 9,
+                                                    "column": 14
                                                 },
-                                                "right": {
-                                                    "kind": "BinaryOperatorExpression",
-                                                    "operator": "==",
-                                                    "left": {
-                                                        "kind": "LoadLocationExpression",
-                                                        "name": {
-                                                            "kind": "Token",
-                                                            "tok": ".temp_expr_0"
-                                                        }
-                                                    },
-                                                    "right": {
-                                                        "kind": "StringLiteral",
-                                                        "raw": "b",
-                                                        "value": "b",
-                                                        "loc": {
-                                                            "file": "index.ts",
-                                                            "start": {
-                                                                "line": 9,
-                                                                "column": 14
-                                                            },
-                                                            "end": {
-                                                                "line": 9,
-                                                                "column": 17
-                                                            }
-                                                        }
-                                                    }
+                                                "end": {
+                                                    "line": 9,
+                                                    "column": 17
                                                 }
                                             }
                                         },
                                         "consequent": {
                                             "kind": "Block",
                                             "statements": [
-                                                {
-                                                    "kind": "ExpressionStatement",
-                                                    "expression": {
-                                                        "kind": "BinaryOperatorExpression",
-                                                        "operator": "=",
-                                                        "left": {
-                                                            "kind": "LoadLocationExpression",
-                                                            "name": {
-                                                                "kind": "Token",
-                                                                "tok": ".temp_match_1"
-                                                            }
-                                                        },
-                                                        "right": {
-                                                            "kind": "BoolLiteral",
-                                                            "value": true
-                                                        }
-                                                    }
-                                                },
                                                 {
                                                     "kind": "ExpressionStatement",
                                                     "expression": {
@@ -631,50 +456,10 @@
                                         }
                                     },
                                     {
-                                        "kind": "IfStatement",
-                                        "condition": {
-                                            "kind": "BinaryOperatorExpression",
-                                            "operator": "||",
-                                            "left": {
-                                                "kind": "LoadLocationExpression",
-                                                "name": {
-                                                    "kind": "Token",
-                                                    "tok": ".temp_break_2"
-                                                }
-                                            },
-                                            "right": {
-                                                "kind": "UnaryOperatorExpression",
-                                                "operator": "!",
-                                                "operand": {
-                                                    "kind": "LoadLocationExpression",
-                                                    "name": {
-                                                        "kind": "Token",
-                                                        "tok": ".temp_match_1"
-                                                    }
-                                                }
-                                            }
-                                        },
+                                        "kind": "SwitchCase",
                                         "consequent": {
                                             "kind": "Block",
                                             "statements": [
-                                                {
-                                                    "kind": "ExpressionStatement",
-                                                    "expression": {
-                                                        "kind": "BinaryOperatorExpression",
-                                                        "operator": "=",
-                                                        "left": {
-                                                            "kind": "LoadLocationExpression",
-                                                            "name": {
-                                                                "kind": "Token",
-                                                                "tok": ".temp_match_1"
-                                                            }
-                                                        },
-                                                        "right": {
-                                                            "kind": "BoolLiteral",
-                                                            "value": true
-                                                        }
-                                                    }
-                                                },
                                                 {
                                                     "kind": "ExpressionStatement",
                                                     "expression": {
@@ -750,20 +535,16 @@
                                                     }
                                                 },
                                                 {
-                                                    "kind": "ExpressionStatement",
-                                                    "expression": {
-                                                        "kind": "BinaryOperatorExpression",
-                                                        "operator": "=",
-                                                        "left": {
-                                                            "kind": "LoadLocationExpression",
-                                                            "name": {
-                                                                "kind": "Token",
-                                                                "tok": ".temp_break_2"
-                                                            }
+                                                    "kind": "BreakStatement",
+                                                    "loc": {
+                                                        "file": "index.ts",
+                                                        "start": {
+                                                            "line": 13,
+                                                            "column": 13
                                                         },
-                                                        "right": {
-                                                            "kind": "BoolLiteral",
-                                                            "value": true
+                                                        "end": {
+                                                            "line": 13,
+                                                            "column": 19
                                                         }
                                                     }
                                                 }
@@ -1161,40 +942,84 @@
                                         {
                                             "kind": "ThrowStatement",
                                             "expression": {
-                                                "kind": "NewExpression",
-                                                "type": {
-                                                    "kind": "TypeToken",
-                                                    "tok": "mujs:lib:Error",
-                                                    "loc": {
-                                                        "file": "index.ts",
-                                                        "start": {
-                                                            "line": 20,
-                                                            "column": 15
-                                                        },
-                                                        "end": {
-                                                            "line": 20,
-                                                            "column": 20
-                                                        }
-                                                    }
-                                                },
-                                                "arguments": [
-                                                    {
+                                                "kind": "BinaryOperatorExpression",
+                                                "operator": "+",
+                                                "left": {
+                                                    "kind": "BinaryOperatorExpression",
+                                                    "operator": "+",
+                                                    "left": {
                                                         "kind": "StringLiteral",
-                                                        "raw": "Expected 'a'",
-                                                        "value": "Expected 'a'",
+                                                        "raw": "Expected 'a'; got '",
+                                                        "value": "Expected 'a'; got '",
                                                         "loc": {
                                                             "file": "index.ts",
                                                             "start": {
                                                                 "line": 20,
-                                                                "column": 21
+                                                                "column": 11
                                                             },
                                                             "end": {
                                                                 "line": 20,
-                                                                "column": 35
+                                                                "column": 32
                                                             }
                                                         }
+                                                    },
+                                                    "right": {
+                                                        "kind": "LoadLocationExpression",
+                                                        "name": {
+                                                            "kind": "Token",
+                                                            "tok": "basic/switch:index:a",
+                                                            "loc": {
+                                                                "file": "index.ts",
+                                                                "start": {
+                                                                    "line": 20,
+                                                                    "column": 35
+                                                                },
+                                                                "end": {
+                                                                    "line": 20,
+                                                                    "column": 36
+                                                                }
+                                                            }
+                                                        },
+                                                        "loc": {
+                                                            "file": "index.ts",
+                                                            "start": {
+                                                                "line": 20,
+                                                                "column": 35
+                                                            },
+                                                            "end": {
+                                                                "line": 20,
+                                                                "column": 36
+                                                            }
+                                                        }
+                                                    },
+                                                    "loc": {
+                                                        "file": "index.ts",
+                                                        "start": {
+                                                            "line": 20,
+                                                            "column": 11
+                                                        },
+                                                        "end": {
+                                                            "line": 20,
+                                                            "column": 36
+                                                        }
                                                     }
-                                                ],
+                                                },
+                                                "right": {
+                                                    "kind": "StringLiteral",
+                                                    "raw": "'",
+                                                    "value": "'",
+                                                    "loc": {
+                                                        "file": "index.ts",
+                                                        "start": {
+                                                            "line": 20,
+                                                            "column": 39
+                                                        },
+                                                        "end": {
+                                                            "line": 20,
+                                                            "column": 42
+                                                        }
+                                                    }
+                                                },
                                                 "loc": {
                                                     "file": "index.ts",
                                                     "start": {
@@ -1203,7 +1028,7 @@
                                                     },
                                                     "end": {
                                                         "line": 20,
-                                                        "column": 36
+                                                        "column": 42
                                                     }
                                                 }
                                             },
@@ -1215,7 +1040,7 @@
                                                 },
                                                 "end": {
                                                     "line": 20,
-                                                    "column": 37
+                                                    "column": 43
                                                 }
                                             }
                                         }
@@ -1431,40 +1256,84 @@
                                         {
                                             "kind": "ThrowStatement",
                                             "expression": {
-                                                "kind": "NewExpression",
-                                                "type": {
-                                                    "kind": "TypeToken",
-                                                    "tok": "mujs:lib:Error",
-                                                    "loc": {
-                                                        "file": "index.ts",
-                                                        "start": {
-                                                            "line": 25,
-                                                            "column": 15
-                                                        },
-                                                        "end": {
-                                                            "line": 25,
-                                                            "column": 20
-                                                        }
-                                                    }
-                                                },
-                                                "arguments": [
-                                                    {
+                                                "kind": "BinaryOperatorExpression",
+                                                "operator": "+",
+                                                "left": {
+                                                    "kind": "BinaryOperatorExpression",
+                                                    "operator": "+",
+                                                    "left": {
                                                         "kind": "StringLiteral",
-                                                        "raw": "Expected 'bd'",
-                                                        "value": "Expected 'bd'",
+                                                        "raw": "Expected 'bd'; got '",
+                                                        "value": "Expected 'bd'; got '",
                                                         "loc": {
                                                             "file": "index.ts",
                                                             "start": {
                                                                 "line": 25,
-                                                                "column": 21
+                                                                "column": 11
                                                             },
                                                             "end": {
                                                                 "line": 25,
-                                                                "column": 36
+                                                                "column": 33
                                                             }
                                                         }
+                                                    },
+                                                    "right": {
+                                                        "kind": "LoadLocationExpression",
+                                                        "name": {
+                                                            "kind": "Token",
+                                                            "tok": "basic/switch:index:b",
+                                                            "loc": {
+                                                                "file": "index.ts",
+                                                                "start": {
+                                                                    "line": 25,
+                                                                    "column": 36
+                                                                },
+                                                                "end": {
+                                                                    "line": 25,
+                                                                    "column": 37
+                                                                }
+                                                            }
+                                                        },
+                                                        "loc": {
+                                                            "file": "index.ts",
+                                                            "start": {
+                                                                "line": 25,
+                                                                "column": 36
+                                                            },
+                                                            "end": {
+                                                                "line": 25,
+                                                                "column": 37
+                                                            }
+                                                        }
+                                                    },
+                                                    "loc": {
+                                                        "file": "index.ts",
+                                                        "start": {
+                                                            "line": 25,
+                                                            "column": 11
+                                                        },
+                                                        "end": {
+                                                            "line": 25,
+                                                            "column": 37
+                                                        }
                                                     }
-                                                ],
+                                                },
+                                                "right": {
+                                                    "kind": "StringLiteral",
+                                                    "raw": "'",
+                                                    "value": "'",
+                                                    "loc": {
+                                                        "file": "index.ts",
+                                                        "start": {
+                                                            "line": 25,
+                                                            "column": 40
+                                                        },
+                                                        "end": {
+                                                            "line": 25,
+                                                            "column": 43
+                                                        }
+                                                    }
+                                                },
                                                 "loc": {
                                                     "file": "index.ts",
                                                     "start": {
@@ -1473,7 +1342,7 @@
                                                     },
                                                     "end": {
                                                         "line": 25,
-                                                        "column": 37
+                                                        "column": 43
                                                     }
                                                 }
                                             },
@@ -1485,7 +1354,7 @@
                                                 },
                                                 "end": {
                                                     "line": 25,
-                                                    "column": 38
+                                                    "column": 44
                                                 }
                                             }
                                         }
@@ -1701,40 +1570,84 @@
                                         {
                                             "kind": "ThrowStatement",
                                             "expression": {
-                                                "kind": "NewExpression",
-                                                "type": {
-                                                    "kind": "TypeToken",
-                                                    "tok": "mujs:lib:Error",
-                                                    "loc": {
-                                                        "file": "index.ts",
-                                                        "start": {
-                                                            "line": 30,
-                                                            "column": 15
-                                                        },
-                                                        "end": {
-                                                            "line": 30,
-                                                            "column": 20
-                                                        }
-                                                    }
-                                                },
-                                                "arguments": [
-                                                    {
+                                                "kind": "BinaryOperatorExpression",
+                                                "operator": "+",
+                                                "left": {
+                                                    "kind": "BinaryOperatorExpression",
+                                                    "operator": "+",
+                                                    "left": {
                                                         "kind": "StringLiteral",
-                                                        "raw": "Expected 'd'",
-                                                        "value": "Expected 'd'",
+                                                        "raw": "Expected 'd'; got '",
+                                                        "value": "Expected 'd'; got '",
                                                         "loc": {
                                                             "file": "index.ts",
                                                             "start": {
                                                                 "line": 30,
-                                                                "column": 21
+                                                                "column": 11
                                                             },
                                                             "end": {
                                                                 "line": 30,
-                                                                "column": 35
+                                                                "column": 32
                                                             }
                                                         }
+                                                    },
+                                                    "right": {
+                                                        "kind": "LoadLocationExpression",
+                                                        "name": {
+                                                            "kind": "Token",
+                                                            "tok": "basic/switch:index:d",
+                                                            "loc": {
+                                                                "file": "index.ts",
+                                                                "start": {
+                                                                    "line": 30,
+                                                                    "column": 35
+                                                                },
+                                                                "end": {
+                                                                    "line": 30,
+                                                                    "column": 36
+                                                                }
+                                                            }
+                                                        },
+                                                        "loc": {
+                                                            "file": "index.ts",
+                                                            "start": {
+                                                                "line": 30,
+                                                                "column": 35
+                                                            },
+                                                            "end": {
+                                                                "line": 30,
+                                                                "column": 36
+                                                            }
+                                                        }
+                                                    },
+                                                    "loc": {
+                                                        "file": "index.ts",
+                                                        "start": {
+                                                            "line": 30,
+                                                            "column": 11
+                                                        },
+                                                        "end": {
+                                                            "line": 30,
+                                                            "column": 36
+                                                        }
                                                     }
-                                                ],
+                                                },
+                                                "right": {
+                                                    "kind": "StringLiteral",
+                                                    "raw": "'",
+                                                    "value": "'",
+                                                    "loc": {
+                                                        "file": "index.ts",
+                                                        "start": {
+                                                            "line": 30,
+                                                            "column": 39
+                                                        },
+                                                        "end": {
+                                                            "line": 30,
+                                                            "column": 42
+                                                        }
+                                                    }
+                                                },
                                                 "loc": {
                                                     "file": "index.ts",
                                                     "start": {
@@ -1743,7 +1656,7 @@
                                                     },
                                                     "end": {
                                                         "line": 30,
-                                                        "column": 36
+                                                        "column": 42
                                                     }
                                                 }
                                             },
@@ -1755,7 +1668,7 @@
                                                 },
                                                 "end": {
                                                     "line": 30,
-                                                    "column": 37
+                                                    "column": 43
                                                 }
                                             }
                                         }

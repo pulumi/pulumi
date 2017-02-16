@@ -84,8 +84,7 @@ var _ Statement = (*ContinueStatement)(nil)
 
 const ContinueStatementKind NodeKind = "ContinueStatement"
 
-// IfStatement is the usual C-style `if`.  To simplify the MuIL AST, this is the only conditional statement available.
-// All higher-level conditional constructs such as `switch`, if`/`else if`/..., etc., must be desugared into it.
+// IfStatement is the usual C-style `if`.
 type IfStatement struct {
 	StatementNode
 	Condition  Expression `json:"condition"`             // a `bool` conditional expression.
@@ -97,6 +96,29 @@ var _ Node = (*IfStatement)(nil)
 var _ Statement = (*IfStatement)(nil)
 
 const IfStatementKind NodeKind = "IfStatement"
+
+// SwitchStatement is like a typical C-style `switch`.
+type SwitchStatement struct {
+	StatementNode
+	Expression Expression    `json:"expression"` // the value being switched upon.
+	Cases      []*SwitchCase `json:"cases"`      // the list of switch cases to be matched, in order.
+}
+
+var _ Node = (*SwitchStatement)(nil)
+var _ Statement = (*SwitchStatement)(nil)
+
+const SwitchStatementKind NodeKind = "SwitchStatement"
+
+// SwitchCase is a single case of a switch to be matched.
+type SwitchCase struct {
+	NodeValue
+	Clause     *Expression `json:"clause,omitempty"` // the optional switch clause; if nil, default.
+	Consequent Statement   `json:"consequent"`       // the statement to execute if there is a match.
+}
+
+var _ Node = (*SwitchCase)(nil)
+
+const SwitchCaseKind NodeKind = "SwitchCase"
 
 // LabeledStatement associates an identifier with a statement for purposes of labeled jumps.
 type LabeledStatement struct {

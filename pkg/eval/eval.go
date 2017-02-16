@@ -610,6 +610,8 @@ func (e *evaluator) evalStatement(node ast.Statement) *rt.Unwind {
 		return e.evalContinueStatement(n)
 	case *ast.IfStatement:
 		return e.evalIfStatement(n)
+	case *ast.SwitchStatement:
+		return e.evalSwitchStatement(n)
 	case *ast.LabeledStatement:
 		return e.evalLabeledStatement(n)
 	case *ast.ReturnStatement:
@@ -724,6 +726,52 @@ func (e *evaluator) evalIfStatement(node *ast.IfStatement) *rt.Unwind {
 	} else if node.Alternate != nil {
 		return e.evalStatement(*node.Alternate)
 	}
+	return nil
+}
+
+func (e *evaluator) evalSwitchStatement(node *ast.SwitchStatement) *rt.Unwind {
+	// First evaluate the expression we are switching on.
+	expr, uw := e.evalExpression(node.Expression)
+	if uw != nil {
+		return uw
+	}
+
+	// Next try to find a match; do this by walking all cases, in order, and checking for strict equality.
+	fallen := false
+	for _, caseNode := range node.Cases {
+		match := false
+		if fallen {
+			// A fallthrough automatically executes the body without evaluating the clause.
+			match = true
+		} else if caseNode.Clause == nil {
+			// A default style clause always matches.
+			match = true
+		} else {
+			// Otherwise, evaluate the expression, and check for equality.
+			clause, uw := e.evalExpression(*caseNode.Clause)
+			if uw != nil {
+				return uw
+			}
+			match = e.evalBinaryOperatorEquals(expr, clause)
+		}
+
+		// If we got a match, execute the clause.
+		if match {
+			if uw = e.evalStatement(caseNode.Consequent); uw != nil {
+				if uw.Break() && uw.Label() == nil {
+					// A simple break from this case.
+					break
+				} else {
+					// Anything else, get out of dodge.
+					return uw
+				}
+			}
+
+			// If we didn't encounter a break, we will fall through to the next case.
+			fallen = true
+		}
+	}
+
 	return nil
 }
 
@@ -1124,6 +1172,11 @@ func (e *evaluator) evalLoadLocation(node *ast.LoadLocationExpression, lval bool
 		obj = e.alloc.NewPointer(ty, pv)
 	} else {
 		obj = pv.Obj()
+	}
+
+	if glog.V(9) {
+		glog.V(9).Infof("Loaded location of type '%v' from symbol '%v': lval=%v current=%v",
+			ty, sym, lval, pv.Obj())
 	}
 
 	return location{

@@ -61,8 +61,7 @@ export interface ContinueStatement extends Statement {
 export const continueStatementKind = "ContinueStatement";
 export type  ContinueStatementKind = "ContinueStatement";
 
-// An `if` statement.  To simplify the AST, this is the only conditional statement available.  All higher-level
-// conditional constructs such as `switch`, `if / else if / ...`, etc. must be desugared into it.
+// An `if` statement.
 export interface IfStatement extends Statement {
     kind:       IfStatementKind;
     condition:  Expression; // a `bool` condition expression.
@@ -71,6 +70,23 @@ export interface IfStatement extends Statement {
 }
 export const ifStatementKind = "IfStatement";
 export type  IfStatementKind = "IfStatement";
+
+// A `switch` statement.
+export interface SwitchStatement extends Statement {
+    kind:       SwitchStatementKind;
+    expression: Expression;   // the value being switched upon.
+    cases:      SwitchCase[]; // the list of switch cases to be matched, in order.
+}
+export const switchStatementKind = "SwitchStatement";
+export type  SwitchStatementKind = "SwitchStatement";
+
+// A single case of a `switch` to be matched.
+export interface SwitchCase extends Node {
+    clause?: Expression;   // the optional switch clause; if undefined, default.
+    consequent: Statement; // the statement to execute if there is a match.
+}
+export const switchCaseKind = "SwitchCase";
+export type  SwitchCaseKind = "SwitchCase";
 
 // A labeled statement associates an identifier with a statement for purposes of labeled jumps.
 export interface LabeledStatement extends Statement {

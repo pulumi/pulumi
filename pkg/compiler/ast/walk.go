@@ -104,6 +104,14 @@ func Walk(v Visitor, node Node) {
 		if n.Alternate != nil {
 			Walk(v, *n.Alternate)
 		}
+	case *SwitchStatement:
+		Walk(v, n.Expression)
+		for _, cas := range n.Cases {
+			if cas.Clause != nil {
+				Walk(v, *cas.Clause)
+			}
+			Walk(v, cas.Consequent)
+		}
 	case *LabeledStatement:
 		Walk(v, n.Statement)
 	case *ReturnStatement:

@@ -40,6 +40,8 @@ export type NodeKind =
     statements.BreakStatementKind |
     statements.ContinueStatementKind |
     statements.IfStatementKind |
+    statements.SwitchStatementKind |
+    statements.SwitchCaseKind |
     statements.LabeledStatementKind |
     statements.ReturnStatementKind |
     statements.ThrowStatementKind |

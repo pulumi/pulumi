@@ -17,16 +17,16 @@ function sw(v: string): string {
 
 let a = sw("a");
 if (a !== "a") {
-    throw new Error("Expected 'a'");
+    throw "Expected 'a'; got '" + a + "'";
 }
 
 let b = sw("b");
 if (b !== "bd") {
-    throw new Error("Expected 'bd'");
+    throw "Expected 'bd'; got '" + b + "'";
 }
 
 let d = sw("d");
 if (d !== "d") {
-    throw new Error("Expected 'd'");
+    throw "Expected 'd'; got '" + d + "'";
 }
 
