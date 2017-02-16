@@ -22,7 +22,7 @@ func (node *Package) Token() tokens.Token { return tokens.Token(node.Node.Name) 
 func (node *Package) Special() bool       { return false }
 func (node *Package) Tree() diag.Diagable { return node.Node }
 func (node *Package) Default() *Module    { return node.Modules[tokens.DefaultModule] }
-func (node *Package) String() string      { return string(node.Name()) }
+func (node *Package) String() string      { return string(node.Token()) }
 
 // NewPackageSym returns a new Package symbol with the given node.
 func NewPackageSym(node *pack.Package) *Package {

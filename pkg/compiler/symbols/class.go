@@ -43,7 +43,7 @@ func (node *Class) Sealed() bool                        { return node.Node.Seale
 func (node *Class) Abstract() bool                      { return node.Node.Abstract != nil && *node.Node.Abstract }
 func (node *Class) Record() bool                        { return node.Node.Record != nil && *node.Node.Record }
 func (node *Class) Interface() bool                     { return node.Node.Interface != nil && *node.Node.Interface }
-func (node *Class) String() string                      { return string(node.Name()) }
+func (node *Class) String() string                      { return string(node.Token()) }
 
 // HasInit returns true if this module has an initialzer associated with it.
 func (node *Class) HasInit() bool { return node.GetInit() != nil }
@@ -139,7 +139,7 @@ func (node *ClassProperty) MemberName() tokens.ClassMemberName {
 }
 func (node *ClassProperty) MemberParent() *Class  { return node.Parent }
 func (node *ClassProperty) VarNode() ast.Variable { return node.Node }
-func (node *ClassProperty) String() string        { return string(node.Name()) }
+func (node *ClassProperty) String() string        { return string(node.Token()) }
 
 // NewClassPropertySym returns a new ClassProperty symbol with the given node and parent.
 func NewClassPropertySym(node *ast.ClassProperty, parent *Class, ty Type) *ClassProperty {
@@ -184,7 +184,7 @@ func (node *ClassMethod) Constructor() bool {
 }
 func (node *ClassMethod) Function() ast.Function   { return node.Node }
 func (node *ClassMethod) Signature() *FunctionType { return node.Sig }
-func (node *ClassMethod) String() string           { return string(node.Name()) }
+func (node *ClassMethod) String() string           { return string(node.Token()) }
 
 // NewClassMethodSym returns a new ClassMethod symbol with the given node and parent.
 func NewClassMethodSym(node *ast.ClassMethod, parent *Class, sig *FunctionType) *ClassMethod {

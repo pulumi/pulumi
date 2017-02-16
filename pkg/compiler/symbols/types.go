@@ -39,7 +39,7 @@ func (node *PrimitiveType) TypeToken() tokens.Type      { return tokens.Type(nod
 func (node *PrimitiveType) TypeMembers() ClassMemberMap { return noClassMembers }
 func (node *PrimitiveType) Record() bool                { return false }
 func (node *PrimitiveType) Interface() bool             { return false }
-func (node *PrimitiveType) String() string              { return string(node.Name()) }
+func (node *PrimitiveType) String() string              { return string(node.Token()) }
 
 func NewPrimitiveType(nm tokens.TypeName) *PrimitiveType {
 	return &PrimitiveType{nm}
@@ -65,7 +65,7 @@ func (node *PointerType) TypeToken() tokens.Type      { return node.Tok }
 func (node *PointerType) TypeMembers() ClassMemberMap { return noClassMembers }
 func (node *PointerType) Record() bool                { return false }
 func (node *PointerType) Interface() bool             { return false }
-func (node *PointerType) String() string              { return string(node.Name()) }
+func (node *PointerType) String() string              { return string(node.Token()) }
 
 // pointerTypeCache is a cache keyed by token, helping to avoid creating superfluous symbol objects.
 var pointerTypeCache = make(map[tokens.Type]*PointerType)
@@ -103,7 +103,7 @@ func (node *ArrayType) TypeToken() tokens.Type      { return node.Tok }
 func (node *ArrayType) TypeMembers() ClassMemberMap { return noClassMembers }
 func (node *ArrayType) Record() bool                { return false }
 func (node *ArrayType) Interface() bool             { return false }
-func (node *ArrayType) String() string              { return string(node.Name()) }
+func (node *ArrayType) String() string              { return string(node.Token()) }
 
 // arrayTypeCache is a cache keyed by token, helping to avoid creating superfluous symbol objects.
 var arrayTypeCache = make(map[tokens.Type]*ArrayType)
@@ -142,7 +142,7 @@ func (node *MapType) TypeToken() tokens.Type      { return node.Tok }
 func (node *MapType) TypeMembers() ClassMemberMap { return noClassMembers }
 func (node *MapType) Record() bool                { return false }
 func (node *MapType) Interface() bool             { return false }
-func (node *MapType) String() string              { return string(node.Name()) }
+func (node *MapType) String() string              { return string(node.Token()) }
 
 // mapTypeCache is a cache keyed by token, helping to avoid creating superfluous symbol objects.
 var mapTypeCache = make(map[tokens.Type]*MapType)
@@ -181,7 +181,7 @@ func (node *FunctionType) TypeToken() tokens.Type      { return node.Tok }
 func (node *FunctionType) TypeMembers() ClassMemberMap { return noClassMembers }
 func (node *FunctionType) Record() bool                { return false }
 func (node *FunctionType) Interface() bool             { return false }
-func (node *FunctionType) String() string              { return string(node.Name()) }
+func (node *FunctionType) String() string              { return string(node.Token()) }
 
 // functionTypeCache is a cache keyed by token, helping to avoid creating superfluous symbol objects.
 var functionTypeCache = make(map[tokens.Type]*FunctionType)
@@ -223,7 +223,7 @@ var _ Symbol = (*PrototypeType)(nil)
 var _ Type = (*PrototypeType)(nil)
 
 func (node *PrototypeType) Name() tokens.Name   { return tokens.Name(node.TypeName()) }
-func (node *PrototypeType) Token() tokens.Token { return tokens.Token(node.TypeName()) }
+func (node *PrototypeType) Token() tokens.Token { return tokens.Token(node.TypeToken()) }
 func (node *PrototypeType) Special() bool       { return false }
 func (node *PrototypeType) Tree() diag.Diagable { return nil }
 func (node *PrototypeType) Base() Type          { return nil }
@@ -236,7 +236,7 @@ func (node *PrototypeType) TypeToken() tokens.Type {
 func (node *PrototypeType) TypeMembers() ClassMemberMap { return noClassMembers }
 func (node *PrototypeType) Record() bool                { return false }
 func (node *PrototypeType) Interface() bool             { return false }
-func (node *PrototypeType) String() string              { return string(node.Name()) }
+func (node *PrototypeType) String() string              { return string(node.Token()) }
 
 // prototypeTypeCache is a cache keyed by token, helping to avoid creating superfluous symbol objects.
 var prototypeTypeCache = make(map[Type]*PrototypeType)

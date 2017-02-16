@@ -38,7 +38,7 @@ func (node *LocalVariable) Readonly() bool        { return node.Node.Readonly !=
 func (node *LocalVariable) Type() Type            { return node.Ty }
 func (node *LocalVariable) Default() *interface{} { return nil }
 func (node *LocalVariable) VarNode() ast.Variable { return node.Node }
-func (node *LocalVariable) String() string        { return string(node.Name()) }
+func (node *LocalVariable) String() string        { return string(node.Token()) }
 
 // NewLocalVariableSym returns a new LocalVariable symbol associated with the given AST node.
 func NewLocalVariableSym(node *ast.LocalVariable, ty Type) *LocalVariable {
