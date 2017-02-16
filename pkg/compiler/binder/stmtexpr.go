@@ -647,10 +647,11 @@ func (a *astBinder) checkBinaryOperatorExpression(node *ast.BinaryOperatorExpres
 }
 
 func (a *astBinder) checkCastExpression(node *ast.CastExpression) {
-	// If we know statically that the cast is invalid, issue an error.  Otherwise, defer to runtime.
+	// If we know statically that the cast is invalid -- that is, the destination type could never have been converted
+	// to the source type -- issue an error.  Otherwise, defer to runtime.
 	from := a.b.ctx.RequireType(node.Expression)
 	to := a.b.ctx.LookupType(node.Type)
-	if !types.CanConvert(from, to) {
+	if !types.CanConvert(to, from) {
 		a.b.Diag().Errorf(errors.ErrorInvalidCast.At(node), from, to)
 	}
 	a.b.ctx.RegisterType(node, to)
