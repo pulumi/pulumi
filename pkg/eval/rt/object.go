@@ -254,21 +254,26 @@ func (obj *Object) FreezeReadonlyProperties() {
 // If that property is not found, and init is true, then it will be added to the object's property map.  If direct is
 // true, then this function ensures that the property is in the object's map, versus being in the prototype chain.
 func (obj *Object) GetPropertyAddr(key PropertyKey, init bool, direct bool) *Pointer {
-	// If it's in the object's property map already, just return it.
-	properties := obj.Properties()
-	if ptr := properties.GetAddr(key, false); ptr != nil {
-		if glog.V(9) {
-			glog.V(9).Infof("Object(%v).GetPropertyAddr(%v, %v, %v) found in object map",
-				obj.Type(), key, init, direct)
-		}
-		return ptr
-	}
+	return obj.GetPropertyAddrForThis(obj, key, init, direct)
+}
 
-	// Otherwise, consult the prototype chain.
-	var ptr *Pointer
-	proto := obj.Proto()
-	for ptr == nil && proto != nil {
-		if ptr = proto.Properties().GetAddr(key, false); ptr == nil {
+// GetPropertyAddr locates a property with the given key, similar to GetPropertyAddr, except that it ensures the
+// resulting pointer references the target `this` object (e.g., when loading a prototype function member).
+func (obj *Object) GetPropertyAddrForThis(this *Object, key PropertyKey, init bool, direct bool) *Pointer {
+	var ptr *Pointer  // the resulting pointer to return
+	var where *Object // the object the pointer was found on
+
+	// If it's in the object's property map already, just return it.
+	if ptr = obj.Properties().GetAddr(key, false); ptr != nil {
+		where = obj
+	} else {
+		// Otherwise, consult the prototype chain.
+		proto := obj.Proto()
+		for proto != nil {
+			if ptr = proto.Properties().GetAddr(key, false); ptr != nil {
+				where = proto
+				break
+			}
 			proto = proto.Proto()
 		}
 	}
@@ -276,24 +281,44 @@ func (obj *Object) GetPropertyAddr(key PropertyKey, init bool, direct bool) *Poi
 	if ptr == nil {
 		// If we didn't find anything, and were asked to initialize, do so now.
 		if init {
-			ptr = properties.InitAddr(key, nil, false)
+			ptr = this.Properties().InitAddr(key, nil, false)
 			if glog.V(9) {
 				glog.V(9).Infof("Object(%v).GetPropertyAddr(%v, %v, %v) not found; initialized: %v",
-					obj.Type(), key, init, direct, ptr)
+					this.Type(), key, init, direct, ptr)
 			}
 		} else if glog.V(9) {
-			glog.V(9).Infof("Object(%v).GetPropertyAddr(%v, %v, %v) not found", obj.Type(), key, init, direct)
+			glog.V(9).Infof("Object(%v).GetPropertyAddr(%v, %v, %v) not found", this.Type(), key, init, direct)
 		}
-	} else if direct {
-		// If we found the property in the prototype chain, but were asked to make it direct, copy it down.
-		ptr = properties.InitAddr(key, ptr.Obj(), ptr.Readonly())
+	} else if where == this {
+		// If found in the this object, great, nothing else needs to be done other than returning.
 		if glog.V(9) {
-			glog.V(9).Infof("Object(%v).GetPropertyAddr(%v, %v, %v) found in prototype %v; copied to object map: %v",
-				obj.Type(), key, init, direct, proto.Type(), ptr)
+			glog.V(9).Infof("Object(%v).GetPropertyAddr(%v, %v, %v) found in object map",
+				this.Type(), key, init, direct)
 		}
-	} else if glog.V(9) {
-		glog.V(9).Infof("Object(%v).GetPropertyAddr(%v, %v, %v) found in prototype %v: %v",
-			obj.Type(), key, init, direct, proto.Type(), ptr)
+	} else {
+		// Function objects will have `this` bound to the prototype; we need to rebind it to the correct object.
+		if result := ptr.Obj(); ptr != nil {
+			if _, isfunc := result.Type().(*symbols.FunctionType); isfunc {
+				contract.Assert(ptr.Readonly()) // otherwise, writes to the resulting pointer could go missing.
+				stub := result.FunctionValue()
+				contract.Assert(stub.This == where)
+				result = NewFunctionObject(stub.Func, this)
+				ptr = NewPointer(result, true)
+			}
+		}
+
+		// If we were asked to make this property directly on the object, copy it down; else return as-is.
+		if direct {
+			ptr = this.Properties().InitAddr(key, ptr.Obj(), ptr.Readonly())
+			if glog.V(9) {
+				glog.V(9).Infof(
+					"Object(%v).GetPropertyAddr(%v, %v, %v) found in prototype %v; copied to object map: %v",
+					this.Type(), key, init, direct, where.Type(), ptr)
+			}
+		} else if glog.V(9) {
+			glog.V(9).Infof("Object(%v).GetPropertyAddr(%v, %v, %v) found in prototype %v: %v",
+				this.Type(), key, init, direct, where.Type(), ptr)
+		}
 	}
 
 	return ptr

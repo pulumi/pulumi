@@ -493,9 +493,11 @@ func (e *evaluator) evalCall(node diag.Diagable, fnc symbols.Function,
 	case *symbols.ClassMethod:
 		if f.Static() {
 			contract.Assert(this == nil)
-		} else if uw := e.checkThis(node, this); uw != nil {
-			return nil, uw
 		} else {
+			contract.Assert(this != nil)
+			if uw := e.checkThis(node, this); uw != nil {
+				return nil, uw
+			}
 			thisVariable = f.Parent.This
 			superVariable = f.Parent.Super
 		}
@@ -550,7 +552,8 @@ func (e *evaluator) evalCall(node diag.Diagable, fnc symbols.Function,
 	if params == nil {
 		contract.Assert(len(args) == 0)
 	} else {
-		contract.Assert(len(args) == len(*params))
+		contract.Assertf(len(args) == len(*params),
+			"Expected argc %v == paramc %v in call to '%v'", len(args), len(*params), fnc.Token())
 		for i, param := range *params {
 			sym := e.ctx.RequireVariable(param).(*symbols.LocalVariable)
 			e.ctx.Scope.Register(sym)
@@ -1107,30 +1110,25 @@ func (e *evaluator) getObjectOrSuperProperty(
 
 	// If this member is being accessed using "super", we need to start our property search from the
 	// superclass prototype, and not the object itself, so that we find the right value.
-	super := false
+	var super *rt.Object
 	if objexpr != nil {
 		if ldloc, isldloc := objexpr.(*ast.LoadLocationExpression); isldloc {
 			if ldloc.Name.Tok == tokens.Token(tokens.SuperVariable) {
 				contract.Assert(ldloc.Object == nil)
-				super = true
+				// The super expression's type will resolve to the parent class; use that for lookups.
+				super = e.getPrototype(e.ctx.RequireType(objexpr))
 			}
 		}
 	}
 
 	// If a superclass, use the right prototype.
-	var target *rt.Object
-	if super {
-		proto := obj.Proto()
-		contract.Assertf(proto != nil, "Expected a prototype for a class object involved in `super`")
-		target = proto.Proto()
-		contract.Assertf(target != nil, "Expected a superclass prototype when accessing `super`")
-		// TODO: adjust the this object.
-	} else {
-		// Otherwise, simply fetch the property from the object directly.
-		target = obj
+	if super != nil {
+		// Make sure to call GetPropertyAddrForThis to ensure the this parameter is adjusted to the object.
+		return super.GetPropertyAddrForThis(obj, k, init, forWrite)
 	}
 
-	return target.GetPropertyAddr(k, init, forWrite)
+	// Otherwise, simply fetch the property from the object directly.
+	return obj.GetPropertyAddr(k, init, forWrite)
 }
 
 // evalLoadLocation evaluates and loads information about the target.  It takes an lval bool which
@@ -1178,7 +1176,8 @@ func (e *evaluator) evalLoadLocation(node *ast.LoadLocationExpression, lval bool
 		}
 
 		// Look up the symbol property in the right place.  Note that because this is a static load, we
-		// intentionally do not perform any lazily initialization of missing property slots; they must exist.
+		// intentionally do not perform any lazily initialization of missing property slots; they must exist.  But we
+		// still need to load from the object in case one of the properties was overwritten.
 		switch s := sym.(type) {
 		case symbols.ClassMember:
 			// Consult either the statics map or the object's property based on the kind of symbol.  Note that we do
@@ -1232,7 +1231,7 @@ func (e *evaluator) evalLoadLocation(node *ast.LoadLocationExpression, lval bool
 
 	if glog.V(9) {
 		glog.V(9).Infof("Loaded location of type '%v' from symbol '%v': lval=%v current=%v",
-			ty, sym, lval, pv.Obj())
+			ty.Token(), sym.Token(), lval, pv.Obj())
 	}
 
 	return location{
