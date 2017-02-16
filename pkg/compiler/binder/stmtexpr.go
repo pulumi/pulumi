@@ -172,6 +172,7 @@ func (a *astBinder) checkIfStatement(node *ast.IfStatement) {
 func (a *astBinder) visitLocalVariable(node *ast.LocalVariable) {
 	// Encountering a new local variable results in registering it; both to the type and symbol table.
 	ty := a.b.ctx.LookupType(node.Type)
+	contract.Assert(ty != nil)
 	sym := symbols.NewLocalVariableSym(node, ty)
 	a.b.ctx.RegisterSymbol(node, sym)
 	a.b.ctx.Scope.TryRegister(node, sym)

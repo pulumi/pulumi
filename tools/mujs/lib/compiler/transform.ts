@@ -870,7 +870,7 @@ export class Transformer {
 
     // resolveTypeTokenFromTypeLike takes a TypeScript AST node that carries possible typing information and resolves
     // it to fully qualified MuIL type token name.
-    private async resolveTypeTokenFromTypeLike(node: TypeLike): Promise<ast.TypeToken | undefined> {
+    private async resolveTypeTokenFromTypeLike(node: TypeLike): Promise<ast.TypeToken> {
         // Note that we use the getTypeAtLocation API, rather than node's type AST information, so that we can get the
         // fully bound type.  The compiler may have arranged for this to be there through various means, e.g. inference.
         let ty: ts.Type = this.checker().getTypeAtLocation(node);
@@ -2294,8 +2294,12 @@ export class Transformer {
         block.statements.push(<ast.LocalVariableDeclaration>{
             kind:  ast.localVariableDeclarationKind,
             local: <ast.LocalVariable>{
-                kind:  ast.localVariableKind,
-                name:  ident(exprLocal),
+                kind: ast.localVariableKind,
+                name: ident(exprLocal),
+                type: <ast.TypeToken>{
+                    kind: ast.typeTokenKind,
+                    tok:  tokens.objectType, // we don't care about the type.
+                },
             },
         });
         block.statements.push(<ast.ExpressionStatement>{
@@ -2358,6 +2362,10 @@ export class Transformer {
             local: <ast.LocalVariable>{
                 kind:    ast.localVariableKind,
                 name:    ident(matchLocal),
+                type:    <ast.TypeToken>{
+                    kind: ast.typeTokenKind,
+                    tok:  tokens.boolType,
+                },
                 default: false, // no match by default.
             },
         });
@@ -2366,6 +2374,10 @@ export class Transformer {
             local: <ast.LocalVariable>{
                 kind:    ast.localVariableKind,
                 name:    ident(breakLocal),
+                type:    <ast.TypeToken>{
+                    kind: ast.typeTokenKind,
+                    tok:  tokens.boolType,
+                },
                 default: true, // break enabled by default (to prevent immediate fallthrough).
             },
         });

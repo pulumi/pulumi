@@ -125,7 +125,7 @@ type Variable interface {
 
 type VariableNode struct {
 	// note that this node intentionally omits any embedded base, to avoid diamond "inheritance".
-	Type     *TypeToken   `json:"type,omitempty"`
+	Type     *TypeToken   `json:"type"`
 	Default  *interface{} `json:"default,omitempty"`
 	Readonly *bool        `json:"readonly,omitempty"`
 }

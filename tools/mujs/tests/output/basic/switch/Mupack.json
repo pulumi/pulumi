@@ -204,6 +204,10 @@
                                             "name": {
                                                 "kind": "Identifier",
                                                 "ident": ".temp_expr_0"
+                                            },
+                                            "type": {
+                                                "kind": "TypeToken",
+                                                "tok": "object"
                                             }
                                         }
                                     },
@@ -258,6 +262,10 @@
                                                 "kind": "Identifier",
                                                 "ident": ".temp_match_1"
                                             },
+                                            "type": {
+                                                "kind": "TypeToken",
+                                                "tok": "bool"
+                                            },
                                             "default": false
                                         }
                                     },
@@ -268,6 +276,10 @@
                                             "name": {
                                                 "kind": "Identifier",
                                                 "ident": ".temp_break_2"
+                                            },
+                                            "type": {
+                                                "kind": "TypeToken",
+                                                "tok": "bool"
                                             },
                                             "default": true
                                         }

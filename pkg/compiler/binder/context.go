@@ -67,18 +67,13 @@ func (ctx *Context) HasType(node ast.Expression) bool {
 
 // LookupType binds a type token AST node to a symbol.
 func (ctx *Context) LookupType(node *ast.TypeToken) symbols.Type {
-	if node == nil {
-		return nil
-	}
+	contract.Require(node != nil, "node")
 	return ctx.LookupTypeToken(node, node.Tok, true)
 }
 
 // LookupModule binds a module token AST node to a symbol.
 func (ctx *Context) LookupModule(node *ast.ModuleToken) *symbols.Module {
-	if node == nil {
-		return nil
-	}
-
+	contract.Require(node != nil, "node")
 	sym := ctx.LookupSymbol(node, tokens.Token(node.Tok), true)
 	if sym != nil {
 		if module, ok := sym.(*symbols.Module); ok {
