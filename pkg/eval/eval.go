@@ -5,7 +5,6 @@ package eval
 import (
 	"math"
 	"reflect"
-	"runtime/debug"
 	"sort"
 	"strconv"
 
@@ -569,7 +568,7 @@ func (e *evaluator) evalCall(node diag.Diagable, fnc symbols.Function,
 	if uw != nil {
 		if uw.Throw() {
 			if glog.V(7) {
-				glog.V(7).Infof("Evaluated call to fnc %v; unhandled exception: %v", uw.Exception().Thrown)
+				glog.V(7).Infof("Evaluated call to fnc %v; unhandled exception: %v", fnc, uw.Exception().Thrown)
 			}
 			return nil, uw
 		}
@@ -654,6 +653,9 @@ func (e *evaluator) evalLocalVariableDeclaration(node *ast.LocalVariableDeclarat
 	if node.Local.Default != nil {
 		obj := e.alloc.NewConstant(*node.Local.Default)
 		e.locals.SetValue(sym, obj)
+		if e.hooks != nil {
+			e.hooks.OnVariableAssign(nil, tokens.Name(sym.Name()), nil, obj)
+		}
 	}
 
 	return nil
@@ -807,7 +809,6 @@ func (e *evaluator) evalExpressionStatement(node *ast.ExpressionStatement) *rt.U
 func (e *evaluator) evalExpression(node ast.Expression) (*rt.Object, *rt.Unwind) {
 	if glog.V(7) {
 		glog.V(7).Infof("Evaluating expression: %v", reflect.TypeOf(node))
-		debug.PrintStack()
 	}
 
 	// Simply switch on the node type and dispatch to the specific function, returning the object and rt.Unwind info.
@@ -1479,7 +1480,7 @@ func (e *evaluator) evalBinaryOperatorExpression(node *ast.BinaryOperatorExpress
 	case ast.OpAssignSum:
 		var val *rt.Object
 		ptr := lhs.PointerValue()
-		if lhs.Type() == types.String {
+		if ptr.Obj().Type() == types.String {
 			// If the lhs/rhs are strings, just concatenate += and yield the new value as a result.
 			val = e.alloc.NewString(ptr.Obj().StringValue() + rhs.StringValue())
 		} else {

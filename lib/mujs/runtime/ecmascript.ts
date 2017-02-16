@@ -20,6 +20,8 @@ export function toString(argument: Object): string {
         return "false";
     }
     if (isNumber(argument)) {
+        // TODO: implement number formatting.
+        return "NaN";
     }
     if (isSymbol(argument)) {
         throw new TypeError();
