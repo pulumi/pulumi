@@ -27,3 +27,9 @@ if (c !== undefined) {
     };
 }
 
+// Define a local variable at the module's top-level within a block (should not be a module member).
+{
+    let notprop: string = "notprop";
+    let notpropcop: string = notprop;
+}
+

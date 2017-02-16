@@ -11,7 +11,7 @@ import (
 )
 
 func (b *binder) bindClassDeclaration(node *ast.Class, parent *symbols.Module) *symbols.Class {
-	glog.V(3).Infof("Binding module '%v' class '%v'", parent.Name(), node.Name.Ident)
+	glog.V(3).Infof("Binding module '%v' class '%v'", parent.Token(), node.Name.Ident)
 
 	// Now create an empty class symbol.  This is required as a parent for the members.
 	class := symbols.NewClassSym(node, parent, nil, nil)
@@ -21,6 +21,8 @@ func (b *binder) bindClassDeclaration(node *ast.Class, parent *symbols.Module) *
 }
 
 func (b *binder) bindClassDefinition(class *symbols.Class) {
+	glog.V(3).Infof("Binding class '%v' definition", class.Token())
+
 	// Bind base type tokens to actual symbols.
 	if class.Node.Extends != nil {
 		class.SetBase(b.ctx.LookupType(class.Node.Extends))
@@ -46,6 +48,7 @@ func (b *binder) bindClassMembers(class *symbols.Class) {
 	if class.Node.Members != nil {
 		members := *class.Node.Members
 		for _, memtok := range ast.StableClassMembers(members) {
+			contract.Assert(class.Members[memtok] == nil)
 			class.Members[memtok] = b.bindClassMember(members[memtok], class)
 		}
 	}
@@ -64,7 +67,7 @@ func (b *binder) bindClassMember(node ast.ClassMember, parent *symbols.Class) sy
 }
 
 func (b *binder) bindClassProperty(node *ast.ClassProperty, parent *symbols.Class) *symbols.ClassProperty {
-	glog.V(3).Infof("Binding class '%v' property '%v'", parent.Name(), node.Name.Ident)
+	glog.V(3).Infof("Binding class '%v' property '%v'", parent.Token(), node.Name.Ident)
 
 	// Look up this node's type and inject it into the type table.
 	typ := b.ctx.LookupType(node.Type)
@@ -74,7 +77,7 @@ func (b *binder) bindClassProperty(node *ast.ClassProperty, parent *symbols.Clas
 }
 
 func (b *binder) bindClassMethod(node *ast.ClassMethod, parent *symbols.Class) *symbols.ClassMethod {
-	glog.V(3).Infof("Binding class '%v' method '%v'", parent.Name(), node.Name.Ident)
+	glog.V(3).Infof("Binding class '%v' method '%v'", parent.Token(), node.Name.Ident)
 
 	// Make a function type out of this method and inject it into the type table.
 	typ := b.ctx.LookupFunctionType(node)

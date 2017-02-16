@@ -139,7 +139,7 @@
                             "kind": "ClassMethod",
                             "name": {
                                 "kind": "Identifier",
-                                "ident": ".ctor"
+                                "ident": ".init"
                             },
                             "body": {
                                 "kind": "Block",
@@ -227,6 +227,7 @@
                                 "kind": "Identifier",
                                 "ident": ".ctor"
                             },
+                            "access": "public",
                             "body": {
                                 "kind": "Block",
                                 "statements": [
@@ -311,7 +312,18 @@
                                             }
                                         }
                                     }
-                                ]
+                                ],
+                                "loc": {
+                                    "file": "index.ts",
+                                    "start": {
+                                        "line": 7,
+                                        "column": 1
+                                    },
+                                    "end": {
+                                        "line": 10,
+                                        "column": 2
+                                    }
+                                }
                             }
                         }
                     },
@@ -389,6 +401,7 @@
                                 "kind": "Identifier",
                                 "ident": ".ctor"
                             },
+                            "access": "public",
                             "body": {
                                 "kind": "Block",
                                 "statements": [
@@ -409,6 +422,17 @@
                                                     "kind": "Token",
                                                     "tok": "basic/props:index:C:.ctor"
                                                 }
+                                            }
+                                        },
+                                        "loc": {
+                                            "file": "index.ts",
+                                            "start": {
+                                                "line": 12,
+                                                "column": 1
+                                            },
+                                            "end": {
+                                                "line": 14,
+                                                "column": 2
                                             }
                                         }
                                     },
@@ -493,7 +517,18 @@
                                             }
                                         }
                                     }
-                                ]
+                                ],
+                                "loc": {
+                                    "file": "index.ts",
+                                    "start": {
+                                        "line": 12,
+                                        "column": 1
+                                    },
+                                    "end": {
+                                        "line": 14,
+                                        "column": 2
+                                    }
+                                }
                             }
                         }
                     },
@@ -1555,6 +1590,287 @@
                                         "column": 2
                                     }
                                 }
+                            },
+                            {
+                                "kind": "Block",
+                                "statements": [
+                                    {
+                                        "kind": "MultiStatement",
+                                        "statements": [
+                                            {
+                                                "kind": "LocalVariableDeclaration",
+                                                "local": {
+                                                    "kind": "LocalVariable",
+                                                    "name": {
+                                                        "kind": "Identifier",
+                                                        "ident": "notprop",
+                                                        "loc": {
+                                                            "file": "index.ts",
+                                                            "start": {
+                                                                "line": 32,
+                                                                "column": 9
+                                                            },
+                                                            "end": {
+                                                                "line": 32,
+                                                                "column": 16
+                                                            }
+                                                        }
+                                                    },
+                                                    "type": {
+                                                        "kind": "TypeToken",
+                                                        "tok": "string",
+                                                        "loc": {
+                                                            "file": "index.ts",
+                                                            "start": {
+                                                                "line": 32,
+                                                                "column": 9
+                                                            },
+                                                            "end": {
+                                                                "line": 32,
+                                                                "column": 36
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            },
+                                            {
+                                                "kind": "ExpressionStatement",
+                                                "expression": {
+                                                    "kind": "BinaryOperatorExpression",
+                                                    "left": {
+                                                        "kind": "LoadLocationExpression",
+                                                        "name": {
+                                                            "kind": "Token",
+                                                            "tok": "notprop",
+                                                            "loc": {
+                                                                "file": "index.ts",
+                                                                "start": {
+                                                                    "line": 32,
+                                                                    "column": 9
+                                                                },
+                                                                "end": {
+                                                                    "line": 32,
+                                                                    "column": 16
+                                                                }
+                                                            }
+                                                        },
+                                                        "loc": {
+                                                            "file": "index.ts",
+                                                            "start": {
+                                                                "line": 32,
+                                                                "column": 27
+                                                            },
+                                                            "end": {
+                                                                "line": 32,
+                                                                "column": 36
+                                                            }
+                                                        }
+                                                    },
+                                                    "operator": "=",
+                                                    "right": {
+                                                        "kind": "StringLiteral",
+                                                        "raw": "notprop",
+                                                        "value": "notprop",
+                                                        "loc": {
+                                                            "file": "index.ts",
+                                                            "start": {
+                                                                "line": 32,
+                                                                "column": 27
+                                                            },
+                                                            "end": {
+                                                                "line": 32,
+                                                                "column": 36
+                                                            }
+                                                        }
+                                                    },
+                                                    "loc": {
+                                                        "file": "index.ts",
+                                                        "start": {
+                                                            "line": 32,
+                                                            "column": 27
+                                                        },
+                                                        "end": {
+                                                            "line": 32,
+                                                            "column": 36
+                                                        }
+                                                    }
+                                                },
+                                                "loc": {
+                                                    "file": "index.ts",
+                                                    "start": {
+                                                        "line": 32,
+                                                        "column": 27
+                                                    },
+                                                    "end": {
+                                                        "line": 32,
+                                                        "column": 36
+                                                    }
+                                                }
+                                            }
+                                        ],
+                                        "loc": {
+                                            "file": "index.ts",
+                                            "start": {
+                                                "line": 32,
+                                                "column": 27
+                                            },
+                                            "end": {
+                                                "line": 32,
+                                                "column": 36
+                                            }
+                                        }
+                                    },
+                                    {
+                                        "kind": "MultiStatement",
+                                        "statements": [
+                                            {
+                                                "kind": "LocalVariableDeclaration",
+                                                "local": {
+                                                    "kind": "LocalVariable",
+                                                    "name": {
+                                                        "kind": "Identifier",
+                                                        "ident": "notpropcop",
+                                                        "loc": {
+                                                            "file": "index.ts",
+                                                            "start": {
+                                                                "line": 33,
+                                                                "column": 9
+                                                            },
+                                                            "end": {
+                                                                "line": 33,
+                                                                "column": 19
+                                                            }
+                                                        }
+                                                    },
+                                                    "type": {
+                                                        "kind": "TypeToken",
+                                                        "tok": "string",
+                                                        "loc": {
+                                                            "file": "index.ts",
+                                                            "start": {
+                                                                "line": 33,
+                                                                "column": 9
+                                                            },
+                                                            "end": {
+                                                                "line": 33,
+                                                                "column": 37
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            },
+                                            {
+                                                "kind": "ExpressionStatement",
+                                                "expression": {
+                                                    "kind": "BinaryOperatorExpression",
+                                                    "left": {
+                                                        "kind": "LoadLocationExpression",
+                                                        "name": {
+                                                            "kind": "Token",
+                                                            "tok": "notpropcop",
+                                                            "loc": {
+                                                                "file": "index.ts",
+                                                                "start": {
+                                                                    "line": 33,
+                                                                    "column": 9
+                                                                },
+                                                                "end": {
+                                                                    "line": 33,
+                                                                    "column": 19
+                                                                }
+                                                            }
+                                                        },
+                                                        "loc": {
+                                                            "file": "index.ts",
+                                                            "start": {
+                                                                "line": 33,
+                                                                "column": 30
+                                                            },
+                                                            "end": {
+                                                                "line": 33,
+                                                                "column": 37
+                                                            }
+                                                        }
+                                                    },
+                                                    "operator": "=",
+                                                    "right": {
+                                                        "kind": "LoadLocationExpression",
+                                                        "name": {
+                                                            "kind": "Token",
+                                                            "tok": "notprop",
+                                                            "loc": {
+                                                                "file": "index.ts",
+                                                                "start": {
+                                                                    "line": 33,
+                                                                    "column": 30
+                                                                },
+                                                                "end": {
+                                                                    "line": 33,
+                                                                    "column": 37
+                                                                }
+                                                            }
+                                                        },
+                                                        "loc": {
+                                                            "file": "index.ts",
+                                                            "start": {
+                                                                "line": 33,
+                                                                "column": 30
+                                                            },
+                                                            "end": {
+                                                                "line": 33,
+                                                                "column": 37
+                                                            }
+                                                        }
+                                                    },
+                                                    "loc": {
+                                                        "file": "index.ts",
+                                                        "start": {
+                                                            "line": 33,
+                                                            "column": 30
+                                                        },
+                                                        "end": {
+                                                            "line": 33,
+                                                            "column": 37
+                                                        }
+                                                    }
+                                                },
+                                                "loc": {
+                                                    "file": "index.ts",
+                                                    "start": {
+                                                        "line": 33,
+                                                        "column": 30
+                                                    },
+                                                    "end": {
+                                                        "line": 33,
+                                                        "column": 37
+                                                    }
+                                                }
+                                            }
+                                        ],
+                                        "loc": {
+                                            "file": "index.ts",
+                                            "start": {
+                                                "line": 33,
+                                                "column": 30
+                                            },
+                                            "end": {
+                                                "line": 33,
+                                                "column": 37
+                                            }
+                                        }
+                                    }
+                                ],
+                                "loc": {
+                                    "file": "index.ts",
+                                    "start": {
+                                        "line": 31,
+                                        "column": 1
+                                    },
+                                    "end": {
+                                        "line": 34,
+                                        "column": 2
+                                    }
+                                }
                             }
                         ]
                     }
@@ -1578,7 +1894,7 @@
                     "column": 1
                 },
                 "end": {
-                    "line": 30,
+                    "line": 36,
                     "column": 1
                 }
             }

@@ -56,6 +56,7 @@ func New(ctx *binder.Context, hooks InterpreterHooks) Interpreter {
 		alloc:      NewAllocator(hooks),
 		globals:    make(globalMap),
 		statics:    make(staticMap),
+		protos:     make(prototypeMap),
 		modinits:   make(modinitMap),
 		classinits: make(classinitMap),
 	}
@@ -289,6 +290,13 @@ func (e *evaluator) ensureClassInit(class *symbols.Class) {
 		// First ensure the module initializer has run.
 		e.ensureModuleInit(class.Parent)
 
+		// Next ensure that the base class's statics are initialized.
+		if class.Extends != nil {
+			if extends, isclass := class.Extends.(*symbols.Class); isclass {
+				e.ensureClassInit(extends)
+			}
+		}
+
 		// Now populate this class's statics with all of the static members.
 		var readonlines []*rt.Pointer
 		statics := e.getClassStatics(class)
@@ -421,6 +429,7 @@ func (e *evaluator) getPrototype(t symbols.Type) *rt.Object {
 		}
 	}
 
+	e.protos[t] = proto
 	return proto
 }
 
@@ -475,7 +484,7 @@ func (e *evaluator) popScope(frame bool) {
 
 func (e *evaluator) evalCall(node diag.Diagable, fnc symbols.Function,
 	this *rt.Object, args ...*rt.Object) (*rt.Object, *rt.Unwind) {
-	glog.V(7).Infof("Evaluating call to fnc %v; this=%v args=%v", fnc, this != nil, len(args))
+	glog.V(7).Infof("Evaluating call to fnc %v; this=%v args=%v", fnc.Token(), this != nil, len(args))
 
 	// First check the this pointer, since it might throw before the call even happens.
 	var thisVariable *symbols.LocalVariable
@@ -1089,6 +1098,13 @@ type location struct {
 // to determine whether this is a `super` load, and bind it, and will adjust the resulting pointer accordingly.
 func (e *evaluator) getObjectOrSuperProperty(
 	obj *rt.Object, objexpr ast.Expression, k rt.PropertyKey, init bool, forWrite bool) *rt.Pointer {
+	// Ensure the object's class has been initialized.
+	if obj != nil {
+		if class, isclass := obj.Type().(*symbols.Class); isclass {
+			e.ensureClassInit(class)
+		}
+	}
+
 	// If this member is being accessed using "super", we need to start our property search from the
 	// superclass prototype, and not the object itself, so that we find the right value.
 	super := false
@@ -1172,7 +1188,9 @@ func (e *evaluator) evalLoadLocation(node *ast.LoadLocationExpression, lval bool
 			k := rt.PropertyKey(sym.Name())
 			if s.Static() {
 				contract.Assert(this == nil)
-				statics := e.getClassStatics(s.MemberParent())
+				class := s.MemberParent()
+				e.ensureClassInit(class) // ensure the class is initialized.
+				statics := e.getClassStatics(class)
 				pv = statics.GetAddr(k, false)
 			} else {
 				contract.Assert(this != nil)
@@ -1181,20 +1199,26 @@ func (e *evaluator) evalLoadLocation(node *ast.LoadLocationExpression, lval bool
 				}
 				pv = e.getObjectOrSuperProperty(this, thisexpr, k, false, lval)
 			}
+			contract.Assertf(pv != nil, "Missing class member '%v' (static=%v)", s.Token(), s.Static())
 			ty = s.Type()
-			contract.Assert(pv != nil)
 			contract.Assert(ty != nil)
 		case symbols.ModuleMemberProperty:
-			// Search the globals table for this module.
+			module := s.MemberParent()
+
+			// Ensure this module has been initialized.
+			e.ensureModuleInit(module)
+
+			// Search the globals table for this module's members.
 			contract.Assert(this == nil)
 			k := rt.PropertyKey(s.Name())
-			globals := e.getModuleGlobals(s.MemberParent())
+			globals := e.getModuleGlobals(module)
 			pv = globals.GetAddr(k, false)
+			contract.Assertf(pv != nil, "Missing module member '%v'", s.Token())
 			ty = s.MemberType()
-			contract.Assert(pv != nil)
 			contract.Assert(ty != nil)
 		default:
-			contract.Failf("Unexpected symbol token kind during load expression: %v", tok)
+			contract.Failf("Unexpected symbol token '%v' kind during load expression: %v",
+				tok, reflect.TypeOf(sym))
 		}
 	}
 

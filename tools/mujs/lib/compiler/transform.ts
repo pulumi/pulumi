@@ -388,6 +388,9 @@ export class Transformer {
                 switch (parent.kind) {
                     // These are function-like and qualify as local parents.
                     case ts.SyntaxKind.Block:
+                    case ts.SyntaxKind.ForStatement:
+                    case ts.SyntaxKind.ForInStatement:
+                    case ts.SyntaxKind.ForOfStatement:
                     case ts.SyntaxKind.Constructor:
                     case ts.SyntaxKind.FunctionExpression:
                     case ts.SyntaxKind.FunctionDeclaration:
@@ -1634,7 +1637,7 @@ export class Transformer {
             if (staticPropertyInitializers.length > 0) {
                 members[tokens.initializerFunction] = <ast.ClassMethod>{
                     kind: ast.classMethodKind,
-                    name: ident(tokens.constructorFunction),
+                    name: ident(tokens.initializerFunction),
                     body: <ast.Block>{
                         kind:       ast.blockKind,
                         statements: staticPropertyInitializers,
@@ -1649,8 +1652,9 @@ export class Transformer {
                 if (!ctor) {
                     // No explicit constructor was found; create a new one.
                     ctor = <ast.ClassMethod>{
-                        kind: ast.classMethodKind,
-                        name: ident(tokens.constructorFunction),
+                        kind:   ast.classMethodKind,
+                        name:   ident(tokens.constructorFunction),
+                        access: tokens.publicAccessibility,
                     };
                     insertAt = 0; // add the initializers to the empty block.
                     members[tokens.constructorFunction] = ctor;
@@ -1672,14 +1676,15 @@ export class Transformer {
                     }
                 }
                 else {
-                    ctor.body = <ast.Block>{
+                    ctor.body = this.withLocation(node, <ast.Block>{
                         kind:       ast.blockKind,
                         statements: [],
-                    };
+                    });
                     if (extend) {
                         // Generate an automatic call to the base class.  Omitting this is only legal if the base class
                         // constructor has zero arguments, so we just generate a simple `super();` call.
-                        ctor.body.statements.push(this.createEmptySuperCall(extend.tok));
+                        ctor.body.statements.push(
+                            this.copyLocation(ctor.body, this.createEmptySuperCall(extend.tok)));
                         insertAt = 1; // insert the initializers immediately after this call.
                     }
                     else {
@@ -2238,15 +2243,7 @@ export class Transformer {
     private async transformForStatement(node: ts.ForStatement): Promise<ast.Statement> {
         let init: ast.Statement | undefined;
         if (node.initializer) {
-            if (node.initializer.kind === ts.SyntaxKind.VariableDeclarationList) {
-                init = await this.transformLocalVariableDeclarations(<ts.VariableDeclarationList>node.initializer);
-            }
-            else {
-                init = this.withLocation(node.initializer, <ast.ExpressionStatement>{
-                    kind:       ast.expressionStatementKind,
-                    expression: await this.transformExpression(<ts.Expression>node.initializer),
-                });
-            }
+            init = await this.transformForInitializer(node.initializer);
         }
         let condition: ast.Expression | undefined;
         if (node.condition) {
@@ -2268,8 +2265,16 @@ export class Transformer {
         });
     }
 
-    private transformForInitializer(node: ts.ForInitializer): ast.Statement {
-        return notYetImplemented(node);
+    private async transformForInitializer(node: ts.ForInitializer): Promise<ast.Statement> {
+        if (node.kind === ts.SyntaxKind.VariableDeclarationList) {
+            return await this.transformLocalVariableDeclarations(<ts.VariableDeclarationList>node);
+        }
+        else {
+            return this.withLocation(node, <ast.ExpressionStatement>{
+                kind:       ast.expressionStatementKind,
+                expression: await this.transformExpression(<ts.Expression>node),
+            });
+        }
     }
 
     private transformForInStatement(node: ts.ForInStatement): ast.Statement {

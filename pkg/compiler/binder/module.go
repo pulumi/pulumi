@@ -40,6 +40,7 @@ func (b *binder) bindModuleMemberDeclarations(module *symbols.Module) {
 	if module.Node.Exports != nil {
 		exports := *module.Node.Exports
 		for _, nm := range ast.StableModuleExports(exports) {
+			contract.Assert(module.Exports[nm] == nil)
 			module.Exports[nm] = b.bindExportDeclaration(exports[nm], module)
 		}
 	}
@@ -48,6 +49,7 @@ func (b *binder) bindModuleMemberDeclarations(module *symbols.Module) {
 	if module.Node.Members != nil {
 		members := *module.Node.Members
 		for _, nm := range ast.StableModuleMembers(members) {
+			contract.Assert(module.Members[nm] == nil)
 			switch m := members[nm].(type) {
 			case *ast.Class:
 				module.Members[nm] = b.bindClassDeclaration(m, module)

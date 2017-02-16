@@ -113,6 +113,8 @@ func (ctx *Context) LookupShallowSymbol(node ast.Node, tok tokens.Token, require
 
 func (ctx *Context) lookupSymbolCore(node ast.Node, tok tokens.Token,
 	require bool, resolveExports bool) symbols.Symbol {
+	contract.Require(node != nil, "Node")
+
 	var sym symbols.Symbol // the symbol, if found.
 	var reason string      // the reason reason, if a symbol could not be found.
 
