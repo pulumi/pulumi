@@ -2,5 +2,6 @@
 
 // The lib module exports the standard ECMAScript APIs.
 
-export * from "./error";
+export * from "./errors";
+export * from "./types";
 

@@ -19,7 +19,10 @@
         "index.ts",
 
         "lib/index.ts",
-        "lib/error.ts"
+        "lib/errors.ts",
+        "lib/types.ts",
+
+        "runtime/ecmascript"
     ]
 }
 

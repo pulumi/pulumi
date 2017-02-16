@@ -15,3 +15,10 @@ export class Error {
 //     SyntaxError, TypeError, etc.)  Unfortunately, unless we come up with some clever way of mapping MuIL runtime
 //     errors into their ECMAScript equivalents, we aren't going to have perfect compatibility with error path logic.
 
+export class TypeError extends Error {
+    constructor(message?: string) {
+        super(message);
+        this.name = "TypeError";
+    }
+}
+
