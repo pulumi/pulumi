@@ -3,6 +3,9 @@
 package ast
 
 import (
+	"github.com/golang/glog"
+	"reflect"
+
 	"github.com/marapongo/mu/pkg/util/contract"
 )
 
@@ -22,9 +25,17 @@ type Visitor interface {
 func Walk(v Visitor, node Node) {
 	contract.Requiref(node != nil, "node", "!= nil")
 
+	if glog.V(9) {
+		glog.V(9).Infof("AST visitor walk: pre-visit %v", reflect.TypeOf(node))
+	}
+
 	// First visit the node; only proceed if the visitor says to do so (and use its returned visitor below).
 	if v = v.Visit(node); v == nil {
 		return
+	}
+
+	if glog.V(9) {
+		glog.V(9).Infof("AST visitor walk: post-visit, pre-recurse %v", reflect.TypeOf(node))
 	}
 
 	// Switch on the node type and walk any children.  Note that we only switch on concrete AST node types and not
@@ -184,8 +195,15 @@ func Walk(v Visitor, node Node) {
 		contract.Failf("Unrecognized AST node during walk: %v", n.GetKind())
 	}
 
+	if glog.V(9) {
+		glog.V(9).Infof("AST visitor walk: post-recurse, pre-after %v", reflect.TypeOf(node))
+	}
+
 	// Finally let the visitor know that we are done processing this node.
 	v.After(node)
+	if glog.V(9) {
+		glog.V(9).Infof("AST visitor walk: post-after %v", reflect.TypeOf(node))
+	}
 }
 
 // Inspector is an anonymous visitation struct that implements the Visitor interface.
