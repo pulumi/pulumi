@@ -22,7 +22,7 @@ var Intrinsics map[tokens.Token]Invoker
 func init() {
 	Intrinsics = map[tokens.Token]Invoker{
 		"mu:runtime:isFunction":    isFunction,
-		"mu.runtime.dynamicInvoke": dynamicInvoke,
+		"mu:runtime:dynamicInvoke": dynamicInvoke,
 	}
 }
 
