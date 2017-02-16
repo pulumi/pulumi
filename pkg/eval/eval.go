@@ -1477,9 +1477,15 @@ func (e *evaluator) evalBinaryOperatorExpression(node *ast.BinaryOperatorExpress
 		e.evalAssign(node.Left, *lhsloc, rhs)
 		return rhs, nil
 	case ast.OpAssignSum:
-		// The target is a numeric l-value; just += rhs to it, and yield the new value as the result.
+		var val *rt.Object
 		ptr := lhs.PointerValue()
-		val := e.alloc.NewNumber(ptr.Obj().NumberValue() + rhs.NumberValue())
+		if lhs.Type() == types.String {
+			// If the lhs/rhs are strings, just concatenate += and yield the new value as a result.
+			val = e.alloc.NewString(ptr.Obj().StringValue() + rhs.StringValue())
+		} else {
+			// Otherwise, the target is a numeric l-value; just += to it, and yield the new value as the result.
+			val = e.alloc.NewNumber(ptr.Obj().NumberValue() + rhs.NumberValue())
+		}
 		e.evalAssign(node.Left, *lhsloc, val)
 		return val, nil
 	case ast.OpAssignDifference:

@@ -569,9 +569,32 @@ func (a *astBinder) checkBinaryOperatorExpression(node *ast.BinaryOperatorExpres
 			a.b.Diag().Errorf(errors.ErrorIllegalAssignmentTypes.At(node), rhs, lhs)
 		}
 		a.b.ctx.RegisterType(node, lhs)
-	case ast.OpAssignSum, ast.OpAssignDifference, ast.OpAssignProduct, ast.OpAssignQuotient,
+	case ast.OpAssignSum:
+		// Lhs and rhs can be numbers (for addition) or strings (for concatenation).
+		if !a.isLValue(node.Left) {
+			a.b.Diag().Errorf(errors.ErrorIllegalAssignmentLValue.At(node))
+			a.b.ctx.RegisterType(node, types.Number)
+		} else if lhs == types.Number {
+			if rhs != types.Number {
+				a.b.Diag().Errorf(errors.ErrorBinaryOperatorInvalidForType.At(node),
+					node.Operator, "RHS", rhs, types.Number)
+			}
+			a.b.ctx.RegisterType(node, types.Number)
+		} else if lhs == types.String {
+			if rhs != types.String {
+				a.b.Diag().Errorf(errors.ErrorBinaryOperatorInvalidForType.At(node),
+					node.Operator, "RHS", rhs, types.String)
+			}
+			a.b.ctx.RegisterType(node, types.String)
+		} else {
+			a.b.Diag().Errorf(errors.ErrorBinaryOperatorInvalidForType.At(node),
+				node.Operator, "LHS", lhs, "string or number")
+			a.b.ctx.RegisterType(node, types.Number)
+		}
+	case ast.OpAssignDifference, ast.OpAssignProduct, ast.OpAssignQuotient,
 		ast.OpAssignRemainder, ast.OpAssignExponentiation, ast.OpAssignBitwiseShiftLeft, ast.OpAssignBitwiseShiftRight,
 		ast.OpAssignBitwiseAnd, ast.OpAssignBitwiseOr, ast.OpAssignBitwiseXor:
+		// These operators require numeric values.
 		if !a.isLValue(node.Left) {
 			a.b.Diag().Errorf(errors.ErrorIllegalAssignmentLValue.At(node))
 		} else if lhs != types.Number {
