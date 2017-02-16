@@ -64,6 +64,8 @@ func (a *astBinder) After(node ast.Node) {
 		a.checkThrowStatement(n)
 	case *ast.WhileStatement:
 		a.checkWhileStatement(n)
+	case *ast.ForStatement:
+		a.checkForStatement(n)
 
 	// Expressions
 	case *ast.NullLiteral:
@@ -212,8 +214,17 @@ func (a *astBinder) checkThrowStatement(node *ast.ThrowStatement) {
 }
 
 func (a *astBinder) checkWhileStatement(node *ast.WhileStatement) {
-	// Ensure that the loop test is a boolean expression.
-	a.checkExprType(node.Test, types.Bool)
+	// Ensure that the loop condition is a boolean expression.
+	if node.Condition != nil {
+		a.checkExprType(*node.Condition, types.Bool)
+	}
+}
+
+func (a *astBinder) checkForStatement(node *ast.ForStatement) {
+	// Ensure that the loop condition is a boolean expression.
+	if node.Condition != nil {
+		a.checkExprType(*node.Condition, types.Bool)
+	}
 }
 
 // Expressions

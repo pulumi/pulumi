@@ -46,6 +46,7 @@ export type NodeKind =
     statements.ReturnStatementKind |
     statements.ThrowStatementKind |
     statements.WhileStatementKind |
+    statements.ForStatementKind |
     statements.EmptyStatementKind |
     statements.MultiStatementKind |
     statements.ExpressionStatementKind |

@@ -620,6 +620,8 @@ func (e *evaluator) evalStatement(node ast.Statement) *rt.Unwind {
 		return e.evalThrowStatement(n)
 	case *ast.WhileStatement:
 		return e.evalWhileStatement(n)
+	case *ast.ForStatement:
+		return e.evalForStatement(n)
 	case *ast.EmptyStatement:
 		return nil // nothing to do
 	case *ast.MultiStatement:
@@ -808,33 +810,63 @@ func (e *evaluator) evalThrowStatement(node *ast.ThrowStatement) *rt.Unwind {
 	return rt.NewThrowUnwind(thrown, node, e.stack)
 }
 
-func (e *evaluator) evalWhileStatement(node *ast.WhileStatement) *rt.Unwind {
-	// So long as the test evaluates to true, keep on visiting the body.
-	var uw *rt.Unwind
+func (e *evaluator) evalLoop(condition *ast.Expression, body ast.Statement, post *ast.Statement) *rt.Unwind {
+	// So long as the condition evaluates to true, keep on visiting the body.
 	for {
-		test, uw := e.evalExpression(node.Test)
-		if uw != nil {
-			return uw
+		var test *rt.Object
+		if condition != nil {
+			var uw *rt.Unwind
+			if test, uw = e.evalExpression(*condition); uw != nil {
+				return uw
+			}
 		}
-		if test.BoolValue() {
-			if uws := e.evalStatement(node.Body); uw != nil {
-				if uws.Continue() {
-					contract.Assertf(uws.Label() == nil, "Labeled continue not yet supported")
+		if test == nil || test.BoolValue() {
+			if uw := e.evalStatement(body); uw != nil {
+				if uw.Continue() {
+					contract.Assertf(uw.Label() == nil, "Labeled continue not yet supported")
 					continue
-				} else if uws.Break() {
-					contract.Assertf(uws.Label() == nil, "Labeled break not yet supported")
+				} else if uw.Break() {
+					contract.Assertf(uw.Label() == nil, "Labeled break not yet supported")
 					break
 				} else {
-					// If it's not a continue or break, stash the rt.Unwind away and return it.
-					uw = uws
-					break
+					// If it's not a continue or break, return it right away.
+					return uw
 				}
 			}
 		} else {
 			break
 		}
+
+		// Before looping around again, run the post statement, if there is one.
+		if post != nil {
+			if uw := e.evalStatement(*post); uw != nil {
+				return uw
+			}
+		}
 	}
-	return uw // usually nil, unless a body statement threw/returned.
+
+	return nil
+}
+
+func (e *evaluator) evalWhileStatement(node *ast.WhileStatement) *rt.Unwind {
+	// Just run the loop.
+	return e.evalLoop(node.Condition, node.Body, nil)
+}
+
+func (e *evaluator) evalForStatement(node *ast.ForStatement) *rt.Unwind {
+	// Enter into a new scope so that any new variables are inside of the for block.
+	e.pushScope(nil)
+	defer e.popScope(false)
+
+	// Now run the initialization code.
+	if node.Init != nil {
+		if uw := e.evalStatement(*node.Init); uw != nil {
+			return uw
+		}
+	}
+
+	// Now actually run the loop and post logic.
+	return e.evalLoop(node.Condition, node.Body, node.Post)
 }
 
 func (e *evaluator) evalMultiStatement(node *ast.MultiStatement) *rt.Unwind {

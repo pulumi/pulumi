@@ -47,6 +47,8 @@ func decodeStatement(m mapper.Mapper, tree mapper.Object) (ast.Statement, error)
 			return decodeThrowStatement(m, tree)
 		case ast.WhileStatementKind:
 			return decodeWhileStatement(m, tree)
+		case ast.ForStatementKind:
+			return decodeForStatement(m, tree)
 
 		// Miscellaneous
 		case ast.EmptyStatementKind:
@@ -141,6 +143,14 @@ func decodeThrowStatement(m mapper.Mapper, tree mapper.Object) (*ast.ThrowStatem
 
 func decodeWhileStatement(m mapper.Mapper, tree mapper.Object) (*ast.WhileStatement, error) {
 	var stmt ast.WhileStatement
+	if err := m.Decode(tree, &stmt); err != nil {
+		return nil, err
+	}
+	return &stmt, nil
+}
+
+func decodeForStatement(m mapper.Mapper, tree mapper.Object) (*ast.ForStatement, error) {
+	var stmt ast.ForStatement
 	if err := m.Decode(tree, &stmt); err != nil {
 		return nil, err
 	}

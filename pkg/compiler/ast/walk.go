@@ -121,7 +121,20 @@ func Walk(v Visitor, node Node) {
 	case *ThrowStatement:
 		Walk(v, n.Expression)
 	case *WhileStatement:
-		Walk(v, n.Test)
+		if n.Condition != nil {
+			Walk(v, *n.Condition)
+		}
+		Walk(v, n.Body)
+	case *ForStatement:
+		if n.Init != nil {
+			Walk(v, *n.Init)
+		}
+		if n.Condition != nil {
+			Walk(v, *n.Condition)
+		}
+		if n.Post != nil {
+			Walk(v, *n.Post)
+		}
 		Walk(v, n.Body)
 	case *MultiStatement:
 		for _, stmt := range n.Statements {

@@ -1964,31 +1964,11 @@ export class Transformer {
         });
     }
 
-    private async transformVariableStatement(node: ts.VariableStatement): Promise<VariableLikeDeclaration[]> {
-        let decls: VariableLikeDeclaration[] = [];
-        for (let decl of node.declarationList.declarations) {
-            let like: VariableLikeDeclaration = await this.transformVariableDeclaration(decl);
-
-            // If the node is marked "const", tag all variables as readonly.
-            if (!!(node.declarationList.flags & ts.NodeFlags.Const)) {
-                like.readonly = true;
-            }
-
-            // If the node isn't marked "let", we must mark all variables to use legacy "var" behavior.
-            if (!(node.declarationList.flags & ts.NodeFlags.Let)) {
-                like.legacyVar = true;
-            }
-
-            decls.push(like);
-        }
-        return decls;
-    }
-
-    private async transformLocalVariableStatement(node: ts.VariableStatement): Promise<ast.Statement> {
+    private async transformLocalVariableDeclarations(node: ts.VariableDeclarationList): Promise<ast.Statement> {
         // For variables, we need to append initializers as assignments if there are any.
         // TODO: emulate "var"-like scoping.
         let statements: ast.Statement[] = [];
-        let decls: VariableLikeDeclaration[] = await this.transformVariableStatement(node);
+        let decls: VariableLikeDeclaration[] = await this.transformVariableDeclarationList(node);
         for (let decl of decls) {
             let local = <ast.LocalVariable>{
                 kind:     ast.localVariableKind,
@@ -2026,10 +2006,14 @@ export class Transformer {
         }
     }
 
+    private async transformLocalVariableStatement(node: ts.VariableStatement): Promise<ast.Statement> {
+        return await this.transformLocalVariableDeclarations(node.declarationList);
+    }
+
     private async transformModuleVariableStatement(
             modtok: tokens.ModuleToken, node: ts.VariableStatement):
                 Promise<VariableDeclaration<ast.ModuleProperty>[]> {
-        let decls: VariableLikeDeclaration[] = await this.transformVariableStatement(node);
+        let decls: VariableLikeDeclaration[] = await this.transformVariableDeclarationList(node.declarationList);
         return decls.map((decl: VariableLikeDeclaration) =>
             new VariableDeclaration<ast.ModuleProperty>(
                 node,
@@ -2065,7 +2049,19 @@ export class Transformer {
             node: ts.VariableDeclarationList): Promise<VariableLikeDeclaration[]> {
         let decls: VariableLikeDeclaration[] = [];
         for (let decl of node.declarations) {
-            decls.push(await this.transformVariableDeclaration(decl));
+            let like: VariableLikeDeclaration = await this.transformVariableDeclaration(decl);
+
+            // If the node is marked "const", tag all variables as readonly.
+            if (!!(node.flags & ts.NodeFlags.Const)) {
+                like.readonly = true;
+            }
+
+            // If the node isn't marked "let", we must mark all variables to use legacy "var" behavior.
+            if (!(node.flags & ts.NodeFlags.Let)) {
+                like.legacyVar = true;
+            }
+
+            decls.push(like);
         }
         return decls;
     }
@@ -2230,8 +2226,8 @@ export class Transformer {
         });
 
         return this.withLocation(node, <ast.WhileStatement>{
-            kind: ast.whileStatementKind,
-            test: <ast.BoolLiteral>{
+            kind:      ast.whileStatementKind,
+            condition: <ast.BoolLiteral>{
                 kind:  ast.boolLiteralKind,
                 value: true,
             },
@@ -2239,8 +2235,37 @@ export class Transformer {
         });
     }
 
-    private transformForStatement(node: ts.ForStatement): ast.Statement {
-        return notYetImplemented(node);
+    private async transformForStatement(node: ts.ForStatement): Promise<ast.Statement> {
+        let init: ast.Statement | undefined;
+        if (node.initializer) {
+            if (node.initializer.kind === ts.SyntaxKind.VariableDeclarationList) {
+                init = await this.transformLocalVariableDeclarations(<ts.VariableDeclarationList>node.initializer);
+            }
+            else {
+                init = this.withLocation(node.initializer, <ast.ExpressionStatement>{
+                    kind:       ast.expressionStatementKind,
+                    expression: await this.transformExpression(<ts.Expression>node.initializer),
+                });
+            }
+        }
+        let condition: ast.Expression | undefined;
+        if (node.condition) {
+            condition = await this.transformExpression(node.condition);
+        }
+        let post: ast.Statement | undefined;
+        if (node.incrementor) {
+            post = this.withLocation(node.incrementor, <ast.ExpressionStatement>{
+                kind:       ast.expressionStatementKind,
+                expression: await this.transformExpression(node.incrementor),
+            });
+        }
+        return this.withLocation(node, <ast.ForStatement>{
+            kind:      ast.forStatementKind,
+            init:      init,
+            condition: condition,
+            post:      post,
+            body:      await this.transformStatement(node.statement),
+        });
     }
 
     private transformForInitializer(node: ts.ForInitializer): ast.Statement {
@@ -2323,9 +2348,9 @@ export class Transformer {
 
     private async transformWhileStatement(node: ts.WhileStatement): Promise<ast.WhileStatement> {
         return this.withLocation(node, <ast.WhileStatement>{
-            kind: ast.whileStatementKind,
-            test: await this.transformExpression(node.expression),
-            body: await this.transformStatementAsBlock(node.statement),
+            kind:      ast.whileStatementKind,
+            condition: await this.transformExpression(node.expression),
+            body:      await this.transformStatementAsBlock(node.statement),
         });
     }
 

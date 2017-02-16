@@ -113,15 +113,25 @@ export interface ThrowStatement extends Statement {
 export const throwStatementKind = "ThrowStatement";
 export type  ThrowStatementKind = "ThrowStatement";
 
-// A `while` statement.  To simplify the AST, this is the only looping statement available.  All higher-level
-// looping constructs such as `for`, `foreach`, `for in`, `for of`, `do / while`, etc. must be desugared into it.
+// A `while` statement.
 export interface WhileStatement extends Statement {
     kind: WhileStatementKind;
-    test: Expression; // a `bool` statement indicating whether to continue.
-    body: Block;      // the body to execute provided the test remains `true`.
+    condition?: Expression; // a `bool` statement indicating whether to continue.
+    body: Statement;        // the body to execute provided the test remains `true`.
 }
 export const whileStatementKind = "WhileStatement";
 export type  WhileStatementKind = "WhileStatement";
+
+// A `for` statement.
+export interface ForStatement extends Statement {
+    kind: ForStatementKind;
+    init?: Statement;       // an initialization statement.
+    condition?: Expression; // a `bool` statement indicating whether to continue.
+    post?: Statement;       // a statement to run after the body, before the next iteration.
+    body: Statement;        // the body to execute provided the test remains `true`.
+}
+export const forStatementKind = "ForStatement";
+export type  ForStatementKind = "ForStatement";
 
 /** Miscellaneous **/
 

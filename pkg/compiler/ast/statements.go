@@ -154,18 +154,31 @@ var _ Statement = (*ThrowStatement)(nil)
 
 const ThrowStatementKind NodeKind = "ThrowStatement"
 
-// WhileStatement is the usual C-style `while`.  To simplify the MuIL AST, this is the only looping statement available.
-// All higher-level looping constructs such as `for`, `foreach`, `do`/`while`, etc. must be desugared into it.
+// WhileStatement is the usual C-style `while`.
 type WhileStatement struct {
 	StatementNode
-	Test Expression `json:"test"`  // a `bool` statement indicating whether to condition.
-	Body *Block     `json:"block"` // the body to execute provided the test remains `true`.
+	Condition *Expression `json:"condition,omitempty"` // a `bool` statement indicating whether to cotinue.
+	Body      *Block      `json:"body"`                // the body to execute provided the condition remains `true`.
 }
 
 var _ Node = (*WhileStatement)(nil)
 var _ Statement = (*WhileStatement)(nil)
 
 const WhileStatementKind NodeKind = "WhileStatement"
+
+// ForStatement is the usual C-style `while`.
+type ForStatement struct {
+	StatementNode
+	Init      *Statement  `json:"init,omitempty"`      // an initialization statement.
+	Condition *Expression `json:"condition,omitempty"` // a `bool` statement indicating whether to continue.
+	Post      *Statement  `json:"post,omitempty"`      // a statement to run after the body, before the next iteration.
+	Body      *Block      `json:"body"`                // the body to execute provided the condition remains `true`.
+}
+
+var _ Node = (*ForStatement)(nil)
+var _ Statement = (*ForStatement)(nil)
+
+const ForStatementKind NodeKind = "ForStatement"
 
 /* Miscellaneous */
 
