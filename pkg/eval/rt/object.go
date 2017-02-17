@@ -39,21 +39,6 @@ func (o *Object) Value() Value            { return o.value }
 func (o *Object) Properties() PropertyMap { return o.properties }
 func (o *Object) Proto() *Object          { return o.proto }
 
-// PropertyValues returns a snapshot of the object's properties, by walking its prototype chain.  Note that mutations in
-// the map returned will not be reflected in the object state; this is a *snapshot*.
-func (o *Object) PropertyValues() PropertyMap {
-	properties := make(PropertyMap)
-	if o.proto != nil {
-		for k, v := range o.proto.PropertyValues() {
-			properties[k] = v
-		}
-	}
-	for k, v := range o.properties {
-		properties[k] = v
-	}
-	return properties
-}
-
 // ArrayValue asserts that the target is an array literal and returns its value.
 func (o *Object) ArrayValue() *[]*Pointer {
 	_, isarr := o.t.(*symbols.ArrayType)
@@ -297,15 +282,7 @@ func (obj *Object) GetPropertyAddrForThis(this *Object, key PropertyKey, init bo
 		}
 	} else {
 		// Function objects will have `this` bound to the prototype; we need to rebind it to the correct object.
-		if result := ptr.Obj(); ptr != nil {
-			if _, isfunc := result.Type().(*symbols.FunctionType); isfunc {
-				contract.Assert(ptr.Readonly()) // otherwise, writes to the resulting pointer could go missing.
-				stub := result.FunctionValue()
-				contract.Assert(stub.This == where)
-				result = NewFunctionObject(stub.Func, this)
-				ptr = NewPointer(result, true)
-			}
-		}
+		ptr = adjustPointerForThis(where, this, ptr)
 
 		// If we were asked to make this property directly on the object, copy it down; else return as-is.
 		if direct {
@@ -322,4 +299,45 @@ func (obj *Object) GetPropertyAddrForThis(this *Object, key PropertyKey, init bo
 	}
 
 	return ptr
+}
+
+// PropertyValues returns a snapshot of the object's properties, by walking its prototype chain.  Note that mutations in
+// the map returned will not be reflected in the object state; this is a *snapshot*.
+func (o *Object) PropertyValues() PropertyMap {
+	properties := make(PropertyMap)
+
+	// First add our own object properties.
+	for k, v := range o.properties {
+		properties[k] = v
+	}
+
+	// Now walk the prototype hierarchy and, for anything that doesn't already exist, adjust and add it.
+	proto := o.proto
+	for proto != nil {
+		for k, v := range proto.properties {
+			if _, has := properties[k]; !has {
+				properties[k] = adjustPointerForThis(proto, o, v)
+			}
+		}
+
+		proto = proto.proto
+	}
+
+	return properties
+}
+
+// adjustPointerForThis conditionally adjusts a property pointer for a given `this` object.
+func adjustPointerForThis(parent *Object, this *Object, prop *Pointer) *Pointer {
+	if parent != this {
+		if value := prop.Obj(); value != nil {
+			if _, isfunc := value.Type().(*symbols.FunctionType); isfunc {
+				contract.Assert(prop.Readonly()) // otherwise, writes to the resulting pointer could go missing.
+				stub := value.FunctionValue()
+				contract.Assert(stub.This == parent)
+				value = NewFunctionObject(stub.Func, this)
+				prop = NewPointer(value, true)
+			}
+		}
+	}
+	return prop
 }
