@@ -5,11 +5,14 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"strconv"
 
 	"github.com/spf13/cobra"
 
+	"github.com/marapongo/mu/pkg/compiler/symbols"
 	"github.com/marapongo/mu/pkg/compiler/types"
 	"github.com/marapongo/mu/pkg/compiler/types/predef"
+	"github.com/marapongo/mu/pkg/eval/rt"
 	"github.com/marapongo/mu/pkg/graph"
 )
 
@@ -30,28 +33,81 @@ func newPlanCmd() *cobra.Command {
 		Run: func(cmd *cobra.Command, args []string) {
 			// Perform the compilation and, if non-nil is returned, output the plan.
 			if mugl := compile(cmd, args); mugl != nil {
-				// Sort the graph output so that it's a DAG.
-				// TODO: consider pruning out all non-resources so there is less to sort.
-				sorted, err := graph.TopSort(mugl)
-				if err != nil {
-					fmt.Fprintf(os.Stderr, "fatal: %v\n", err)
-					os.Exit(-1)
-				}
-
-				// Now walk the elements and (for now), just print out which resources will be created.
-				for _, vert := range sorted {
-					o := vert.Obj()
-					t := o.Type()
-					if types.HasBaseName(t, predef.MuResourceClass) {
-						fmt.Printf("%v:\n", o.Type())
-						for key, prop := range o.PropertyValues() {
-							fmt.Printf("\t%v: %v\n", key, prop)
-						}
-					}
-				}
+				printPlan(mugl)
 			}
 		},
 	}
 
 	return cmd
+}
+
+func printPlan(mugl graph.Graph) {
+	// Sort the graph output so that it's a DAG.
+	// TODO: consider pruning out all non-resources so there is less to sort.
+	sorted, err := graph.TopSort(mugl)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "fatal: %v\n", err)
+		os.Exit(-1)
+	}
+
+	// Now walk the elements and (for now), just print out which resources will be created.
+	for _, vert := range sorted {
+		o := vert.Obj()
+		t := o.Type()
+		if types.HasBaseName(t, predef.MuResourceClass) {
+			// Print the resource type.
+			fmt.Printf("+ %v:\n", t)
+
+			// Print all of the properties associated with this resource.
+			printProperties(o, "    ")
+		}
+	}
+}
+
+func printProperties(obj *rt.Object, indent string) {
+	var keys []rt.PropertyKey
+	props := obj.PropertyValues()
+
+	// Compute the maximum with of property keys so we can justify everything.
+	maxkey := 0
+	for _, k := range rt.StablePropertyKeys(props) {
+		if isPrintableProperty(props[k]) {
+			keys = append(keys, k)
+			if len(k) > maxkey {
+				maxkey = len(k)
+			}
+		}
+	}
+
+	// Now print out the values intelligently based on the type.
+	for _, k := range keys {
+		fmt.Printf("%v%-"+strconv.Itoa(maxkey)+"s: ", indent, k)
+		printProperty(props[k].Obj(), indent)
+	}
+}
+
+func printProperty(obj *rt.Object, indent string) {
+	switch obj.Type() {
+	case types.Bool, types.Number, types.String:
+		fmt.Printf("%v\n", obj)
+	default:
+		switch obj.Type().(type) {
+		case *symbols.ArrayType:
+			fmt.Printf("[\n")
+			for i, elem := range *obj.ArrayValue() {
+				fmt.Printf("%v    [%d]: ", indent, i)
+				printProperty(elem.Obj(), fmt.Sprintf(indent+"        "))
+			}
+			fmt.Printf("%s]\n", indent)
+		default:
+			fmt.Printf("<%s> {\n", obj.Type())
+			printProperties(obj, indent+"    ")
+			fmt.Printf("%s}\n", indent)
+		}
+	}
+}
+
+func isPrintableProperty(prop *rt.Pointer) bool {
+	_, isfunc := prop.Obj().Type().(*symbols.FunctionType)
+	return !isfunc
 }
