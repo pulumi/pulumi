@@ -3,6 +3,7 @@
 package cmd
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 	"strconv"
@@ -10,10 +11,10 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/marapongo/mu/pkg/compiler/symbols"
-	"github.com/marapongo/mu/pkg/compiler/types"
-	"github.com/marapongo/mu/pkg/compiler/types/predef"
+	"github.com/marapongo/mu/pkg/diag/colors"
 	"github.com/marapongo/mu/pkg/eval/rt"
-	"github.com/marapongo/mu/pkg/graph"
+	"github.com/marapongo/mu/pkg/resource"
+	"github.com/marapongo/mu/pkg/util/contract"
 )
 
 func newPlanCmd() *cobra.Command {
@@ -31,9 +32,16 @@ func newPlanCmd() *cobra.Command {
 			"By default, a blueprint package is loaded from the current directory.  Optionally,\n" +
 			"a path to a blueprint elsewhere can be provided as the [blueprint] argument.",
 		Run: func(cmd *cobra.Command, args []string) {
-			// Perform the compilation and, if non-nil is returned, output the plan.
+			// Perform the compilation and, if non-nil is returned, create a plan and print it.
 			if mugl := compile(cmd, args); mugl != nil {
-				printPlan(mugl)
+				// TODO: fetch the old plan for purposes of diffing.
+				rs, err := resource.NewSnapshot(mugl) // create a resource snapshot from the object graph.
+				if err != nil {
+					fmt.Fprintf(os.Stderr, "fatal: %v\n", err)
+					os.Exit(-1)
+				}
+				plan := resource.NewPlan(rs, nil) // generate a plan for creating the resources from scratch.
+				printPlan(plan)
 			}
 		},
 	}
@@ -41,70 +49,115 @@ func newPlanCmd() *cobra.Command {
 	return cmd
 }
 
-func printPlan(mugl graph.Graph) {
-	// Sort the graph output so that it's a DAG.
-	// TODO: consider pruning out all non-resources so there is less to sort.
-	sorted, err := graph.TopSort(mugl)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "fatal: %v\n", err)
-		os.Exit(-1)
-	}
+func printPlan(plan resource.Plan) {
+	// Now walk the plan's steps and and pretty-print them out.
+	step := plan.Steps()
+	for step != nil {
+		var b bytes.Buffer
 
-	// Now walk the elements and (for now), just print out which resources will be created.
-	for _, vert := range sorted {
-		o := vert.Obj()
-		t := o.Type()
-		if types.HasBaseName(t, predef.MuResourceClass) {
-			// Print the resource type.
-			fmt.Printf("+ %v:\n", t)
+		// Print this step information (resource and all its properties).
+		printStep(&b, step, "")
 
-			// Print all of the properties associated with this resource.
-			printProperties(o, "    ")
-		}
+		// Now go ahead and emit the output to the console, and move on to the next step in the plan.
+		// TODO: it would be nice if, in the output, we showed the dependencies a la `git log --graph`.
+		s := colors.Colorize(b.String())
+		fmt.Printf(s)
+
+		step = step.Next()
 	}
 }
 
-func printProperties(obj *rt.Object, indent string) {
-	var keys []rt.PropertyKey
-	props := obj.PropertyValues()
+func printStep(b *bytes.Buffer, step resource.Step, indent string) {
+	// First print out the operation.
+	switch step.Op() {
+	case resource.OpCreate:
+		b.WriteString(colors.Green)
+		b.WriteString("+ ")
+	case resource.OpDelete:
+		b.WriteString(colors.Red)
+		b.WriteString("- ")
+	default:
+		b.WriteString("  ")
+	}
 
+	// Next print the resource moniker, properties, etc.
+	printResource(b, step.Resource(), indent)
+
+	// Finally make sure to reset the color.
+	b.WriteString(colors.Reset)
+}
+
+func printResource(b *bytes.Buffer, res resource.Resource, indent string) {
+	// Create a resource "banner", first using the moniker.
+	banner := string(res.Moniker())
+
+	// If there is an ID and/or type, add those to the banner too.
+	id := res.ID()
+	t := res.Type()
+	var idty string
+	if id != "" {
+		idty = "<id=" + string(id)
+	}
+	if t != "" {
+		if idty == "" {
+			idty = "<"
+		} else {
+			idty += ", "
+		}
+		idty += "type=" + string(t)
+	}
+	if idty != "" {
+		banner += " " + idty + ">"
+	}
+
+	// Print the resource moniker.
+	b.WriteString(fmt.Sprintf("%s:\n", banner))
+
+	// Print all of the properties associated with this resource.
+	printObject(b, res.Properties(), indent+"    ")
+}
+
+func printObject(b *bytes.Buffer, props resource.PropertyMap, indent string) {
 	// Compute the maximum with of property keys so we can justify everything.
+	keys := resource.StablePropertyKeys(props)
 	maxkey := 0
-	for _, k := range rt.StablePropertyKeys(props) {
-		if isPrintableProperty(props[k]) {
-			keys = append(keys, k)
-			if len(k) > maxkey {
-				maxkey = len(k)
-			}
+	for _, k := range keys {
+		if len(k) > maxkey {
+			maxkey = len(k)
 		}
 	}
 
 	// Now print out the values intelligently based on the type.
 	for _, k := range keys {
-		fmt.Printf("%v%-"+strconv.Itoa(maxkey)+"s: ", indent, k)
-		printProperty(props[k].Obj(), indent)
+		b.WriteString(fmt.Sprintf("%s%-"+strconv.Itoa(maxkey)+"s: ", indent, k))
+		printProperty(b, props[k], indent)
 	}
 }
 
-func printProperty(obj *rt.Object, indent string) {
-	switch obj.Type() {
-	case types.Bool, types.Number, types.String:
-		fmt.Printf("%v\n", obj)
-	default:
-		switch obj.Type().(type) {
-		case *symbols.ArrayType:
-			fmt.Printf("[\n")
-			for i, elem := range *obj.ArrayValue() {
-				fmt.Printf("%v    [%d]: ", indent, i)
-				printProperty(elem.Obj(), fmt.Sprintf(indent+"        "))
-			}
-			fmt.Printf("%s]\n", indent)
-		default:
-			fmt.Printf("<%s> {\n", obj.Type())
-			printProperties(obj, indent+"    ")
-			fmt.Printf("%s}\n", indent)
+func printProperty(b *bytes.Buffer, v resource.PropertyValue, indent string) {
+	if v.IsBool() {
+		b.WriteString(fmt.Sprintf("%t", v.BoolValue()))
+	} else if v.IsNumber() {
+		b.WriteString(fmt.Sprintf("%v", v.NumberValue()))
+	} else if v.IsString() {
+		b.WriteString(fmt.Sprintf("\"%s\"", v.StringValue()))
+	} else if v.IsResource() {
+		b.WriteString(fmt.Sprintf("-> *%s", v.ResourceValue()))
+	} else if v.IsArray() {
+		b.WriteString(fmt.Sprintf("[\n"))
+		for i, elem := range v.ArrayValue() {
+			prefix := fmt.Sprintf("%s    [%d]: ", indent, i)
+			b.WriteString(prefix)
+			printProperty(b, elem, fmt.Sprintf("%-"+strconv.Itoa(len(prefix))+"s", ""))
 		}
+		b.WriteString(fmt.Sprintf("%s]", indent))
+	} else {
+		contract.Assert(v.IsObject())
+		b.WriteString("{\n")
+		printObject(b, v.ObjectValue(), indent+"    ")
+		b.WriteString(fmt.Sprintf("%s}", indent))
 	}
+	b.WriteString("\n")
 }
 
 func isPrintableProperty(prop *rt.Pointer) bool {

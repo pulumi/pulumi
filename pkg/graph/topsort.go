@@ -6,9 +6,9 @@ import (
 	"errors"
 )
 
-// TopSort topologically sorts the graph, yielding an array of nodes that are in dependency order, using a simple
+// Topsort topologically sorts the graph, yielding an array of nodes that are in dependency order, using a simple
 // DFS-based algorithm.  The graph must be acyclic, otherwise this function will return an error.
-func TopSort(g Graph) ([]Vertex, error) {
+func Topsort(g Graph) ([]Vertex, error) {
 	var sorted []Vertex               // will hold the sorted vertices.
 	visiting := make(map[Vertex]bool) // temporary entries to detect cycles.
 	visited := make(map[Vertex]bool)  // entries to avoid visiting the same node twice.

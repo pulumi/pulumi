@@ -11,8 +11,8 @@ import (
 	"strconv"
 
 	"github.com/golang/glog"
-	"github.com/reconquest/loreley"
 
+	"github.com/marapongo/mu/pkg/diag/colors"
 	"github.com/marapongo/mu/pkg/util/contract"
 )
 
@@ -106,19 +106,6 @@ func (d *defaultSink) Warningf(diag *Diag, args ...interface{}) {
 	d.warnings++
 }
 
-const colorLeft = "<{%"
-const colorRight = "%}>"
-
-func init() {
-	// Change the Loreley delimiters from { and }, to something more complex, to avoid accidental collisions.
-	loreley.DelimLeft = colorLeft
-	loreley.DelimRight = colorRight
-}
-
-func colorString(s string) string {
-	return colorLeft + s + colorRight
-}
-
 func (d *defaultSink) Stringify(diag *Diag, cat Category, args ...interface{}) string {
 	var buffer bytes.Buffer
 
@@ -132,9 +119,9 @@ func (d *defaultSink) Stringify(diag *Diag, cat Category, args ...interface{}) s
 	if d.opts.Colors {
 		switch cat {
 		case Error:
-			buffer.WriteString(colorString("fg 1")) // red
+			buffer.WriteString(colors.Red)
 		case Warning:
-			buffer.WriteString(colorString("fg 11")) // bright yellow
+			buffer.WriteString(colors.BrightYellow)
 		default:
 			contract.Failf("Unrecognized diagnostic category: %v", cat)
 		}
@@ -151,18 +138,18 @@ func (d *defaultSink) Stringify(diag *Diag, cat Category, args ...interface{}) s
 	buffer.WriteString(": ")
 
 	if d.opts.Colors {
-		buffer.WriteString(colorString("reset"))
+		buffer.WriteString(colors.Reset)
 	}
 
 	// Finally, actually print the message itself.
 	if d.opts.Colors {
-		buffer.WriteString(colorString("fg 7")) // white
+		buffer.WriteString(colors.White)
 	}
 
 	buffer.WriteString(fmt.Sprintf(diag.Message, args...))
 
 	if d.opts.Colors {
-		buffer.WriteString(colorString("reset"))
+		buffer.WriteString(colors.Reset)
 	}
 
 	buffer.WriteRune('\n')
@@ -174,9 +161,7 @@ func (d *defaultSink) Stringify(diag *Diag, cat Category, args ...interface{}) s
 
 	// If colorization was requested, compile and execute the directives now.
 	if d.opts.Colors {
-		var err error
-		s, err = loreley.CompileAndExecuteToString(s, nil, nil)
-		contract.Assertf(err == nil, "Expected no errors during string format operation; str=%v, err=%v", s, err)
+		s = colors.Colorize(s)
 	}
 
 	return s
@@ -187,7 +172,7 @@ func (d *defaultSink) StringifyLocation(doc *Document, loc *Location) string {
 
 	if doc != nil {
 		if d.opts.Colors {
-			buffer.WriteString(colorString("fg 6")) // cyan
+			buffer.WriteString(colors.Cyan)
 		}
 
 		file := doc.File
@@ -212,16 +197,14 @@ func (d *defaultSink) StringifyLocation(doc *Document, loc *Location) string {
 	var s string
 	if doc != nil || loc != nil {
 		if d.opts.Colors {
-			buffer.WriteString(colorString("reset"))
+			buffer.WriteString(colors.Reset)
 		}
 
 		s = buffer.String()
 
 		// If colorization was requested, compile and execute the directives now.
 		if d.opts.Colors {
-			var err error
-			s, err = loreley.CompileAndExecuteToString(s, nil, nil)
-			contract.Assertf(err == nil, "Expected no errors during string format operation; str=%v, err=%v", s, err)
+			s = colors.Colorize(s)
 		}
 	}
 
