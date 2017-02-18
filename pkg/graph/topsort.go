@@ -16,7 +16,7 @@ func Topsort(g Graph) ([]Vertex, error) {
 	// Now enumerate the roots, topologically sorting their dependencies.
 	roots := g.Roots()
 	for _, r := range roots {
-		if err := topvisit(r, &sorted, visiting, visited); err != nil {
+		if err := topvisit(r.To(), &sorted, visiting, visited); err != nil {
 			return sorted, err
 		}
 	}

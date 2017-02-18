@@ -66,10 +66,11 @@ func (g *generator) Graph() graph.Graph {
 	glog.V(7).Infof("Generated graph with %v edges", edges)
 
 	// Finally, find all vertices that do not have any incoming edges, and consider them roots.
-	var roots []graph.Vertex
+	var roots []graph.Edge
 	for _, vert := range verts {
 		if len(vert.Ins()) == 0 {
-			roots = append(roots, vert)
+			e := newObjectEdge(nil, vert)
+			roots = append(roots, e)
 		}
 	}
 	glog.V(7).Infof("Generated graph with %v roots", len(roots))

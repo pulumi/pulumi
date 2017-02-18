@@ -8,16 +8,16 @@ import (
 )
 
 type objectGraph struct {
-	roots []graph.Vertex
+	roots []graph.Edge
 }
 
 var _ graph.Graph = (*objectGraph)(nil)
 
-func newObjectGraph(roots []graph.Vertex) *objectGraph {
+func newObjectGraph(roots []graph.Edge) *objectGraph {
 	return &objectGraph{roots: roots}
 }
 
-func (v *objectGraph) Roots() []graph.Vertex { return v.roots }
+func (v *objectGraph) Roots() []graph.Edge { return v.roots }
 
 type objectVertex struct {
 	obj  *rt.Object   // this vertex's object.
@@ -53,5 +53,10 @@ func newObjectEdge(from *objectVertex, to *objectVertex) *objectEdge {
 	return &objectEdge{from: from, to: to}
 }
 
-func (e *objectEdge) To() graph.Vertex   { return e.to }
-func (e *objectEdge) From() graph.Vertex { return e.from }
+func (e *objectEdge) To() graph.Vertex { return e.to }
+func (e *objectEdge) From() graph.Vertex {
+	if e.from == nil {
+		return nil
+	}
+	return e.from
+}

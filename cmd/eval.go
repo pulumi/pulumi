@@ -43,7 +43,7 @@ func newEvalCmd() *cobra.Command {
 					// Just print a very basic, yet (hopefully) aesthetically pleasinge, ascii-ization of the graph.
 					shown := make(map[graph.Vertex]bool)
 					for _, root := range mugl.Roots() {
-						printVertex(root, shown, "")
+						printVertex(root.To(), shown, "")
 					}
 				}
 			}

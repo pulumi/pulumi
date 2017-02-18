@@ -19,7 +19,7 @@ import (
 // Graph is an instance of a MuGL graph.  Each is associated with a single blueprint MuPackage as its input, along with
 // a set of optional arguments used to evaluate it, along with the output DAG with node types and properties.
 type Graph interface {
-	Roots() []Vertex // the root vertices in the graph.
+	Roots() []Edge // the root edges.
 }
 
 // Vertex is a single vertex within an overall MuGL graph.

@@ -29,8 +29,9 @@ func Print(g graph.Graph, w io.Writer) error {
 	queued := make(map[graph.Vertex]bool)
 	frontier := make([]graph.Vertex, 0, len(g.Roots()))
 	for _, root := range g.Roots() {
-		queued[root] = true
-		frontier = append(frontier, root)
+		to := root.To()
+		queued[to] = true
+		frontier = append(frontier, to)
 	}
 
 	// For now, we auto-generate IDs.

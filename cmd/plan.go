@@ -88,33 +88,18 @@ func printStep(b *bytes.Buffer, step resource.Step, indent string) {
 }
 
 func printResource(b *bytes.Buffer, res resource.Resource, indent string) {
-	// Create a resource "banner", first using the moniker.
-	banner := string(res.Moniker())
+	// First print out the resource type (since it is easy on the eyes).
+	b.WriteString(fmt.Sprintf("%s:\n", string(res.Type())))
 
-	// If there is an ID and/or type, add those to the banner too.
-	id := res.ID()
-	t := res.Type()
-	var idty string
-	if id != "" {
-		idty = "<id=" + string(id)
+	// Now print out the moniker and, if present, the ID, as "pseudo-properties".
+	indent += "    "
+	b.WriteString(fmt.Sprintf("%s[m=%s]\n", indent, string(res.Moniker())))
+	if id := res.ID(); id != "" {
+		b.WriteString(fmt.Sprintf("%s[id=%s]\n", indent, string(id)))
 	}
-	if t != "" {
-		if idty == "" {
-			idty = "<"
-		} else {
-			idty += ", "
-		}
-		idty += "type=" + string(t)
-	}
-	if idty != "" {
-		banner += " " + idty + ">"
-	}
-
-	// Print the resource moniker.
-	b.WriteString(fmt.Sprintf("%s:\n", banner))
 
 	// Print all of the properties associated with this resource.
-	printObject(b, res.Properties(), indent+"    ")
+	printObject(b, res.Properties(), indent)
 }
 
 func printObject(b *bytes.Buffer, props resource.PropertyMap, indent string) {

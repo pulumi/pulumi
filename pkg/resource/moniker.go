@@ -4,7 +4,6 @@ package resource
 
 import (
 	"github.com/marapongo/mu/pkg/graph"
-	"github.com/marapongo/mu/pkg/util/contract"
 )
 
 // Moniker is a friendly, but unique, name for a resource, most often auto-assigned by the Mu system.  (In theory, we
@@ -13,7 +12,7 @@ import (
 type Moniker string
 
 // NewMoniker creates a unique moniker for the given vertex v inside of the given graph g.
-func NewMoniker(g graph.Graph, v graph.Vertex) Moniker {
+func NewMoniker(v graph.Vertex, path []graph.Edge) Moniker {
 	// The algorithm for generating a moniker is quite simple at the moment.
 	//
 	// We begain by walk the in-edges to the vertex v, recursively until we hit a root node in g.  The edge path
@@ -27,6 +26,14 @@ func NewMoniker(g graph.Graph, v graph.Vertex) Moniker {
 	// changes in this path will alter the moniker.  This can introduce difficulties in diffing two resource graphs.  As
 	// a result, I suspect we will go through many iterations of this algortihm, and will need to provider facilities
 	// for developers to "rename" existing resources manually and/or even give resources IDs, monikers, etc. manually.
-	contract.Failf("Moniker creation not yet implemented")
-	return ""
+
+	s := ""
+	for _, e := range path {
+		if from := e.From(); from != nil {
+			s += string(from.Obj().Type().Token()) + "."
+		}
+	}
+
+	s += string(v.Obj().Type().Token())
+	return Moniker(s)
 }

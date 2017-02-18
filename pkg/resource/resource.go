@@ -93,21 +93,23 @@ func (r *resource) Moniker() Moniker        { return r.moniker }
 func (r *resource) Type() Type              { return r.t }
 func (r *resource) Properties() PropertyMap { return r.properties }
 
-func NewResource(g graph.Graph, v graph.Vertex) Resource {
-	obj := v.Obj()
-	t := obj.Type().Token()
+// NewResource creates a new resource object out of the runtime object provided.  The refs map is used to resolve
+// dependencies between resources and must contain all references that could be encountered.
+func NewResource(obj *rt.Object, mks objectMonikerMap) Resource {
+	t := obj.Type()
+	contract.Assert(IsResourceType(t))
 
-	// First create a moniker for this resource.
-	// TODO: use a real moniker by way of the NewMoniker(g, v) function.
-	m := Moniker(t)
+	// Extract the moniker.  This must already exist.
+	m, hasm := mks[obj]
+	contract.Assert(hasm)
 
-	// Now do a deep copy of the resource properties.  This ensures property serializability.
-	props := cloneObject(obj)
+	// Do a deep copy of the resource properties.  This ensures property serializability.
+	props := cloneObject(obj, mks)
 
 	// Finally allocate and return the resource object; note that ID is left blank until the provider assignes one.
 	return &resource{
 		moniker:    m,
-		t:          Type(t),
+		t:          Type(t.Token()),
 		properties: props,
 	}
 }
@@ -115,13 +117,13 @@ func NewResource(g graph.Graph, v graph.Vertex) Resource {
 // cloneObject creates a property map out of a runtime object.  The result is fully serializable in the sense that it
 // can be stored in a JSON or YAML file, serialized over an RPC interface, etc.  In particular, any references to other
 // resources are replaced with their moniker equivalents, which the runtime understands.
-func cloneObject(obj *rt.Object) PropertyMap {
+func cloneObject(obj *rt.Object, mks objectMonikerMap) PropertyMap {
 	contract.Assert(obj != nil)
 	src := obj.PropertyValues()
 	dest := make(PropertyMap)
 	for _, k := range rt.StablePropertyKeys(src) {
 		// TODO: detect cycles.
-		if v, ok := cloneObjectValue(src[k].Obj()); ok {
+		if v, ok := cloneObjectValue(src[k].Obj(), mks); ok {
 			dest[PropertyKey(k)] = v
 		}
 	}
@@ -130,11 +132,13 @@ func cloneObject(obj *rt.Object) PropertyMap {
 
 // cloneObjectValue creates a single property value out of a runtime object.  It returns false if the property could not
 // be stored in a property (e.g., it is a function or other unrecognized or unserializable runtime object).
-func cloneObjectValue(obj *rt.Object) (PropertyValue, bool) {
+func cloneObjectValue(obj *rt.Object, res objectMonikerMap) (PropertyValue, bool) {
 	t := obj.Type()
 	if IsResourceType(t) {
-		// TODO: we need to somehow recover a moniker for this dependency.
-		return NewPropertyResource(Moniker(t.Token())), true
+		// For resources, simply look up the moniker from the resource map.
+		m, hasm := res[obj]
+		contract.Assert(hasm)
+		return NewPropertyResource(m), true
 	}
 
 	switch t {
@@ -145,7 +149,7 @@ func cloneObjectValue(obj *rt.Object) (PropertyValue, bool) {
 	case types.String:
 		return NewPropertyString(obj.StringValue()), true
 	case types.Object, types.Dynamic:
-		obj := cloneObject(obj) // an object literal, clone it
+		obj := cloneObject(obj, res) // an object literal, clone it
 		return NewPropertyObject(obj), true
 	}
 
@@ -153,13 +157,13 @@ func cloneObjectValue(obj *rt.Object) (PropertyValue, bool) {
 	case *symbols.ArrayType:
 		var result []PropertyValue
 		for _, e := range *obj.ArrayValue() {
-			if v, ok := cloneObjectValue(e.Obj()); ok {
+			if v, ok := cloneObjectValue(e.Obj(), res); ok {
 				result = append(result, v)
 			}
 		}
 		return NewPropertyArray(result), true
 	case *symbols.Class:
-		obj := cloneObject(obj) // a class, just deep clone it
+		obj := cloneObject(obj, res) // a class, just deep clone it
 		return NewPropertyObject(obj), true
 	}
 
