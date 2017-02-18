@@ -5,6 +5,7 @@ package resource
 import (
 	"github.com/marapongo/mu/pkg/eval/rt"
 	"github.com/marapongo/mu/pkg/graph"
+	"github.com/marapongo/mu/pkg/tokens"
 	"github.com/marapongo/mu/pkg/util/contract"
 )
 
@@ -12,11 +13,11 @@ import (
 // IDs, names, and properties; their dependencies; and more.  A snapshot is a diffable entity and can be used to create
 // or apply an infrastructure deployment plan in order to make reality match the snapshot state.
 type Snapshot interface {
-	Graph() graph.Graph                       // the raw underlying object graph.
-	Topsort() []Resource                      // a topologically sorted list of resources (based on dependencies).
-	ResourceByID(id ID, t Type) Resource      // looks up a resource by ID and type.
-	ResourceByMoniker(m Moniker) Resource     // looks up a resource by its moniker.
-	ResourceByObject(obj *rt.Object) Resource // looks up a resource by its object.
+	Graph() graph.Graph                         // the raw underlying object graph.
+	Topsort() []Resource                        // a topologically sorted list of resources (based on dependencies).
+	ResourceByID(id ID, t tokens.Type) Resource // looks up a resource by ID and type.
+	ResourceByMoniker(m Moniker) Resource       // looks up a resource by its moniker.
+	ResourceByObject(obj *rt.Object) Resource   // looks up a resource by its object.
 }
 
 // NewSnapshot takes an object graph and produces a resource snapshot from it.  It understands how to name resources
@@ -55,7 +56,7 @@ type monikerResourceMap map[Moniker]Resource
 func (s *snapshot) Graph() graph.Graph  { return s.g }
 func (s *snapshot) Topsort() []Resource { return s.tops }
 
-func (s *snapshot) ResourceByID(id ID, t Type) Resource {
+func (s *snapshot) ResourceByID(id ID, t tokens.Type) Resource {
 	contract.Failf("TODO: not yet implemented")
 	return nil
 }

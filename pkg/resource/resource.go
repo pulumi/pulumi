@@ -19,16 +19,23 @@ import (
 // ID is a unique resource identifier; it is managed by the provider and is mostly opaque to Mu.
 type ID string
 
-// Type is a resource type identifier.
-type Type tokens.Type
-
 // Resource is an instance of a resource with an ID, type, and bag of state.
 type Resource interface {
 	ID() ID                  // the resource's unique ID, assigned by the resource provider (or blank if uncreated).
 	Moniker() Moniker        // the resource's object moniker, a human-friendly, unique name for the resource.
-	Type() Type              // the resource's type.
+	Type() tokens.Type       // the resource's type.
 	Properties() PropertyMap // the resource's property map.
+	SetID(id ID)             // assignes an ID to this resource, for those under creation.
 }
+
+// ResourceState is returned when an error has occurred during a resource provider operation.  It indicates whether the
+// operation could be rolled back cleanly (OK).  If not, it means the resource was left in an indeterminate state.
+type ResourceState int
+
+const (
+	StateOK ResourceState = iota
+	StateUnknown
+)
 
 type PropertyMap map[PropertyKey]PropertyValue
 
@@ -84,14 +91,19 @@ func IsResourceVertex(v graph.Vertex) bool { return IsResourceType(v.Obj().Type(
 type resource struct {
 	id         ID          // the resource's unique ID, assigned by the resource provider (or blank if uncreated).
 	moniker    Moniker     // the resource's object moniker, a human-friendly, unique name for the resource.
-	t          Type        // the resource's type.
+	t          tokens.Type // the resource's type.
 	properties PropertyMap // the resource's property map.
 }
 
 func (r *resource) ID() ID                  { return r.id }
 func (r *resource) Moniker() Moniker        { return r.moniker }
-func (r *resource) Type() Type              { return r.t }
+func (r *resource) Type() tokens.Type       { return r.t }
 func (r *resource) Properties() PropertyMap { return r.properties }
+
+func (r *resource) SetID(id ID) {
+	contract.Requiref(string(r.id) == "", "id", "empty")
+	r.id = id
+}
 
 // NewResource creates a new resource object out of the runtime object provided.  The refs map is used to resolve
 // dependencies between resources and must contain all references that could be encountered.
@@ -109,7 +121,7 @@ func NewResource(obj *rt.Object, mks objectMonikerMap) Resource {
 	// Finally allocate and return the resource object; note that ID is left blank until the provider assignes one.
 	return &resource{
 		moniker:    m,
-		t:          Type(t.Token()),
+		t:          t.TypeToken(),
 		properties: props,
 	}
 }
