@@ -18,6 +18,7 @@ import (
 )
 
 func newPlanCmd() *cobra.Command {
+	var delete bool
 	var cmd = &cobra.Command{
 		Use:   "plan [blueprint] [-- [args]]",
 		Short: "Generate a deployment plan from a Mu blueprint",
@@ -40,11 +41,21 @@ func newPlanCmd() *cobra.Command {
 					fmt.Fprintf(os.Stderr, "fatal: %v\n", err)
 					os.Exit(-1)
 				}
-				plan := resource.NewPlan(rs, nil) // generate a plan for creating the resources from scratch.
+
+				var plan resource.Plan
+				if delete {
+					plan = resource.NewDeletePlan(rs)
+				} else {
+					plan = resource.NewCreatePlan(rs) // generate a plan for creating the resources from scratch.
+				}
 				printPlan(plan)
 			}
 		},
 	}
+
+	cmd.PersistentFlags().BoolVar(
+		&delete, "delete", false,
+		"Create a plan for deleting an entire snapshot")
 
 	return cmd
 }

@@ -39,19 +39,24 @@ const (
 	OpDelete
 )
 
-// NewPlan analyzes a resource graph rg compared to an optional old resource graph oldRg, and creates a plan that will
-// carry out operations necessary to bring the old resource graph in line with the new one.  It is ok for oldRg to be
-// nil, in which case the plan will represent the steps necessary for a brand new deployment from whole cloth.
-func NewPlan(s Snapshot, old Snapshot) Plan {
+// NewCreatePlan creates a plan for instantiating a new snapshot from scratch.
+func NewCreatePlan(s Snapshot) Plan {
 	contract.Requiref(s != nil, "s", "!= nil")
-
-	// If old is non-nil, we need to diff the two snapshots to figure out the steps to take.
-	if old != nil {
-		return newUpdatePlan(s, old)
-	}
-
-	// If old is nil, on the other hand, our job is easier: we simply create all resources from scratch.
 	return newCreatePlan(s)
+}
+
+// NewDeletePlan creates a plan for deleting an entire snapshot in its entirety.
+func NewDeletePlan(s Snapshot) Plan {
+	contract.Requiref(s != nil, "s", "!= nil")
+	return newDeletePlan(s)
+}
+
+// NewUpdatePlan analyzes a a resource graph rg compared to an optional old resource graph oldRg, and creates a plan
+// that will carry out operations necessary to bring the old resource graph in line with the new one.
+func NewUpdatePlan(s Snapshot, old Snapshot) Plan {
+	contract.Requiref(s != nil, "s", "!= nil")
+	contract.Requiref(old != nil, "old", "!= nil")
+	return newUpdatePlan(s, old)
 }
 
 type plan struct {
@@ -65,6 +70,52 @@ func (p *plan) Steps() Step { return p.first }
 func (p *plan) Apply() error {
 	contract.Failf("Apply is not yet implemented")
 	return nil
+}
+
+func newCreatePlan(s Snapshot) *plan {
+	// To create the resources, we must perform the operations in dependency order.  That is, we create the leaf-most
+	// resource first, so that later resources may safely depend upon their dependencies having been created.
+	var head *step
+	var tail *step
+	for _, res := range s.Topsort() {
+		step := &step{
+			op:  OpCreate,
+			res: res,
+		}
+		if tail == nil {
+			contract.Assert(head == nil)
+			head = step
+			tail = step
+		} else {
+			tail.next = step
+			tail = step
+		}
+	}
+	return &plan{first: head}
+}
+
+func newDeletePlan(s Snapshot) *plan {
+	// To delete an entire snapshot, we must perform the operations in reverse dependency order.  That is, resources
+	// that consume others should be deleted first, so dependencies do not get deleted "out from underneath" consumers.
+	var head *step
+	var tail *step
+	tops := s.Topsort()
+	for i := len(tops) - 1; i >= 0; i-- {
+		res := tops[i]
+		step := &step{
+			op:  OpDelete,
+			res: res,
+		}
+		if tail == nil {
+			contract.Assert(head == nil)
+			head = step
+			tail = step
+		} else {
+			tail.next = step
+			tail = step
+		}
+	}
+	return &plan{first: head}
 }
 
 func newUpdatePlan(s Snapshot, old Snapshot) *plan {
@@ -83,27 +134,6 @@ func newUpdatePlan(s Snapshot, old Snapshot) *plan {
 	//
 	contract.Failf("Update plans not yet implemented")
 	return nil
-}
-
-func newCreatePlan(s Snapshot) *plan {
-	// There is no old snapshot, so we are creating a plan from scratch.  Everything is a create.
-	var head *step
-	var tail *step
-	for _, res := range s.Topsort() {
-		step := &step{
-			op:  OpCreate,
-			res: res,
-		}
-		if tail == nil {
-			contract.Assert(head == nil)
-			head = step
-			tail = step
-		} else {
-			tail.next = step
-			tail = step
-		}
-	}
-	return &plan{first: head}
 }
 
 type step struct {
