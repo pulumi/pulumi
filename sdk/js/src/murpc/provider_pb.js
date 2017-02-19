@@ -389,8 +389,7 @@ proto.murpc.ReadRequest.prototype.toObject = function(opt_includeInstance) {
 proto.murpc.ReadRequest.toObject = function(includeInstance, msg) {
   var f, obj = {
     id: jspb.Message.getFieldWithDefault(msg, 1, ""),
-    type: jspb.Message.getFieldWithDefault(msg, 2, ""),
-    properties: (f = msg.getProperties()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f)
+    type: jspb.Message.getFieldWithDefault(msg, 2, "")
   };
 
   if (includeInstance) {
@@ -435,11 +434,6 @@ proto.murpc.ReadRequest.deserializeBinaryFromReader = function(msg, reader) {
       var value = /** @type {string} */ (reader.readString());
       msg.setType(value);
       break;
-    case 3:
-      var value = new google_protobuf_struct_pb.Struct;
-      reader.readMessage(value,google_protobuf_struct_pb.Struct.deserializeBinaryFromReader);
-      msg.setProperties(value);
-      break;
     default:
       reader.skipField();
       break;
@@ -482,14 +476,6 @@ proto.murpc.ReadRequest.serializeBinaryToWriter = function(message, writer) {
       f
     );
   }
-  f = message.getProperties();
-  if (f != null) {
-    writer.writeMessage(
-      3,
-      f,
-      google_protobuf_struct_pb.Struct.serializeBinaryToWriter
-    );
-  }
 };
 
 
@@ -520,36 +506,6 @@ proto.murpc.ReadRequest.prototype.getType = function() {
 /** @param {string} value */
 proto.murpc.ReadRequest.prototype.setType = function(value) {
   jspb.Message.setField(this, 2, value);
-};
-
-
-/**
- * optional google.protobuf.Struct properties = 3;
- * @return {?proto.google.protobuf.Struct}
- */
-proto.murpc.ReadRequest.prototype.getProperties = function() {
-  return /** @type{?proto.google.protobuf.Struct} */ (
-    jspb.Message.getWrapperField(this, google_protobuf_struct_pb.Struct, 3));
-};
-
-
-/** @param {?proto.google.protobuf.Struct|undefined} value */
-proto.murpc.ReadRequest.prototype.setProperties = function(value) {
-  jspb.Message.setWrapperField(this, 3, value);
-};
-
-
-proto.murpc.ReadRequest.prototype.clearProperties = function() {
-  this.setProperties(undefined);
-};
-
-
-/**
- * Returns whether this field is set.
- * @return {!boolean}
- */
-proto.murpc.ReadRequest.prototype.hasProperties = function() {
-  return jspb.Message.getField(this, 3) != null;
 };
 
 
@@ -1151,7 +1107,8 @@ proto.murpc.DeleteRequest.prototype.toObject = function(opt_includeInstance) {
  */
 proto.murpc.DeleteRequest.toObject = function(includeInstance, msg) {
   var f, obj = {
-    id: jspb.Message.getFieldWithDefault(msg, 1, "")
+    id: jspb.Message.getFieldWithDefault(msg, 1, ""),
+    type: jspb.Message.getFieldWithDefault(msg, 2, "")
   };
 
   if (includeInstance) {
@@ -1192,6 +1149,10 @@ proto.murpc.DeleteRequest.deserializeBinaryFromReader = function(msg, reader) {
       var value = /** @type {string} */ (reader.readString());
       msg.setId(value);
       break;
+    case 2:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setType(value);
+      break;
     default:
       reader.skipField();
       break;
@@ -1227,6 +1188,13 @@ proto.murpc.DeleteRequest.serializeBinaryToWriter = function(message, writer) {
       f
     );
   }
+  f = message.getType();
+  if (f.length > 0) {
+    writer.writeString(
+      2,
+      f
+    );
+  }
 };
 
 
@@ -1242,6 +1210,21 @@ proto.murpc.DeleteRequest.prototype.getId = function() {
 /** @param {string} value */
 proto.murpc.DeleteRequest.prototype.setId = function(value) {
   jspb.Message.setField(this, 1, value);
+};
+
+
+/**
+ * optional string type = 2;
+ * @return {string}
+ */
+proto.murpc.DeleteRequest.prototype.getType = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 2, ""));
+};
+
+
+/** @param {string} value */
+proto.murpc.DeleteRequest.prototype.setType = function(value) {
+  jspb.Message.setField(this, 2, value);
 };
 
 

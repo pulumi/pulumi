@@ -42,12 +42,19 @@ func newPlanCmd() *cobra.Command {
 					os.Exit(-1)
 				}
 
+				// Create a new context for the plan operations.
+				ctx := resource.NewContext()
+
 				var plan resource.Plan
 				if delete {
-					plan = resource.NewDeletePlan(rs)
+					// Generate a plan for deleting the entire snapshot.
+					plan = resource.NewDeletePlan(ctx, rs)
 				} else {
-					plan = resource.NewCreatePlan(rs) // generate a plan for creating the resources from scratch.
+					// Generate a plan for creating the resources from scratch.
+					plan = resource.NewCreatePlan(ctx, rs)
 				}
+
+				// Finally just pretty-print out the plan.
 				printPlan(plan)
 			}
 		},

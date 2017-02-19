@@ -14,7 +14,7 @@
 # The results are checked into bin/; at this moment, they need to be copied to their final destinations manually.
 set -e
 
-GO_MURPC=../go/murpc
+GO_MURPC=../go/pkg/murpc
 GO_PROTOFLAGS="plugins=grpc"
 JS_MURPC=../js/src/murpc
 JS_PROTOFLAGS="import_style=commonjs,binary"

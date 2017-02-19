@@ -46,6 +46,7 @@ type PropertyValue struct {
 	V interface{}
 }
 
+func NewPropertyNull() PropertyValue                   { return PropertyValue{nil} }
 func NewPropertyBool(v bool) PropertyValue             { return PropertyValue{v} }
 func NewPropertyNumber(v float64) PropertyValue        { return PropertyValue{v} }
 func NewPropertyString(v string) PropertyValue         { return PropertyValue{v} }
@@ -60,6 +61,9 @@ func (v PropertyValue) ArrayValue() []PropertyValue { return v.V.([]PropertyValu
 func (v PropertyValue) ObjectValue() PropertyMap    { return v.V.(PropertyMap) }
 func (v PropertyValue) ResourceValue() Moniker      { return v.V.(Moniker) }
 
+func (b PropertyValue) IsNull() bool {
+	return b.V == nil
+}
 func (b PropertyValue) IsBool() bool {
 	_, is := b.V.(bool)
 	return is
@@ -105,9 +109,19 @@ func (r *resource) SetID(id ID) {
 	r.id = id
 }
 
-// NewResource creates a new resource object out of the runtime object provided.  The refs map is used to resolve
+// NewResource creates a new resource from the information provided.
+func NewResource(id ID, moniker Moniker, t tokens.Type, properties PropertyMap) Resource {
+	return &resource{
+		id:         id,
+		moniker:    moniker,
+		t:          t,
+		properties: properties,
+	}
+}
+
+// NewObjectResource creates a new resource object out of the runtime object provided.  The refs map is used to resolve
 // dependencies between resources and must contain all references that could be encountered.
-func NewResource(obj *rt.Object, mks objectMonikerMap) Resource {
+func NewObjectResource(obj *rt.Object, mks objectMonikerMap) Resource {
 	t := obj.Type()
 	contract.Assert(IsResourceType(t))
 

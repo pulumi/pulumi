@@ -74,7 +74,7 @@ func createResources(g graph.Graph) (objectResourceMap, monikerResourceMap) {
 	res := make(objectResourceMap)
 	mks := make(monikerResourceMap)
 	for o, m := range omks {
-		r := NewResource(o, omks)
+		r := NewObjectResource(o, omks)
 		res[o] = r
 		mks[m] = r
 	}
@@ -118,6 +118,7 @@ func createMonikersEdge(e graph.Edge, path []graph.Edge, visited map[graph.Verte
 				visit = false // the existing moniker sorts before the new one; we can stop.
 			} else {
 				mks[obj] = moniker
+				visited[v] = len(path)
 			}
 		}
 	}

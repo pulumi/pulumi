@@ -3,8 +3,9 @@
 package resource
 
 import (
+	"io"
+
 	"github.com/marapongo/mu/pkg/tokens"
-	"github.com/marapongo/mu/pkg/util/contract"
 )
 
 // Provider presents a simple interface for orchestrating resource create, reead, update, and delete operations.  Each
@@ -18,40 +19,15 @@ import (
 // best effort to ensure catastrophies do not occur.  The errors returned from mutating operations indicate both the
 // underlying error condition in addition to a bit indicating whether the operation was successfully rolled back.
 type Provider interface {
+	// Closer closes any underlying OS resources associated with this provider (like processes, RPC channels, etc).
+	io.Closer
+	// Create allocates a new instance of the provided resource and returns its unique ID afterwards.
 	Create(res Resource) (ID, error, ResourceState)
-	Read(id ID, t tokens.Type, props PropertyMap) (Resource, error)
+	// Read reads the instance state identified by id/t, and returns a bag of properties.
+	Read(id ID, t tokens.Type) (PropertyMap, error)
+	// Update updates an existing resource with new values.  Only those values in the provided property bag are updated
+	// to new values.  The resource ID is returned and may be different if the resource had to be recreated.
 	Update(old Resource, new Resource) (ID, error, ResourceState)
+	// Delete tears down an existing resource.
 	Delete(res Resource) (error, ResourceState)
-}
-
-type provider struct {
-	plugin *Plugin
-}
-
-var _ Provider = (*provider)(nil)
-
-func NewProvider(pkg tokens.Package) (Provider, error) {
-	contract.Failf("NYI")
-	return nil, nil
-}
-
-// Create allocates a new instance of the provided resource and returns its unique ID afterwards.
-func (p *provider) Create(res Resource) (ID, error, ResourceState) {
-	return "", nil, StateOK // TODO: implement this.
-}
-
-// Read reads the instance state identified by id/t, and returns resource object (or nil if not found).
-func (p *provider) Read(id ID, t tokens.Type, props PropertyMap) (Resource, error) {
-	return nil, nil // TODO: implement this.
-}
-
-// Update updates an existing resource with new values.  Only those values in the provided property bag are updated
-// to new values.  The resource ID is returned and may be different if the resource had to be recreated.
-func (p *provider) Update(old Resource, new Resource) (ID, error, ResourceState) {
-	return "", nil, StateOK // TODO: implement this.
-}
-
-// Delete tears down an existing resource.
-func (p *provider) Delete(res Resource) (error, ResourceState) {
-	return nil, StateOK // TODO: implement this.
 }

@@ -3,11 +3,9 @@
 package resource
 
 import (
-	"github.com/marapongo/mu/pkg/tokens"
 	"github.com/marapongo/mu/pkg/util/contract"
 )
 
-// TODO: cancellation.
 // TODO: progress reporting.
 // TODO: concurrency.
 // TODO: handle output dependencies
@@ -41,28 +39,28 @@ const (
 )
 
 // NewCreatePlan creates a plan for instantiating a new snapshot from scratch.
-func NewCreatePlan(s Snapshot) Plan {
+func NewCreatePlan(ctx *Context, s Snapshot) Plan {
 	contract.Requiref(s != nil, "s", "!= nil")
-	return newCreatePlan(s)
+	return newCreatePlan(ctx, s)
 }
 
 // NewDeletePlan creates a plan for deleting an entire snapshot in its entirety.
-func NewDeletePlan(s Snapshot) Plan {
+func NewDeletePlan(ctx *Context, s Snapshot) Plan {
 	contract.Requiref(s != nil, "s", "!= nil")
-	return newDeletePlan(s)
+	return newDeletePlan(ctx, s)
 }
 
 // NewUpdatePlan analyzes a a resource graph rg compared to an optional old resource graph oldRg, and creates a plan
 // that will carry out operations necessary to bring the old resource graph in line with the new one.
-func NewUpdatePlan(s Snapshot, old Snapshot) Plan {
+func NewUpdatePlan(ctx *Context, s Snapshot, old Snapshot) Plan {
 	contract.Requiref(s != nil, "s", "!= nil")
 	contract.Requiref(old != nil, "old", "!= nil")
-	return newUpdatePlan(s, old)
+	return newUpdatePlan(ctx, s, old)
 }
 
 type plan struct {
-	first     *step // the first step to take
-	providers map[tokens.Package]Provider
+	ctx   *Context // this plan's context.
+	first *step    // the first step to take.
 }
 
 var _ Plan = (*plan)(nil)
@@ -72,35 +70,26 @@ func (p *plan) Steps() Step { return p.first }
 // Provider fetches the provider for a given resource, possibly lazily allocating the plugins for it.  If a provider
 // could not be found, or an error occurred while creating it, a non-nil error is returned.
 func (p *plan) Provider(res Resource) (Provider, error) {
-	// First see if it already exists.
 	t := res.Type()
 	pkg := t.Package()
-	if prov, has := p.providers[pkg]; has {
-		return prov, nil
-	}
-
-	// If not, try to load and bind to a plugin.
-	prov, err := NewProvider(pkg)
-	if err == nil {
-		p.providers[pkg] = prov // memoize the result.
-	}
-	return prov, err
+	return p.ctx.Provider(pkg)
 }
 
 func (p *plan) Apply() (error, Step, ResourceState) {
-	step := p.first
+	var step Step = p.first
 	for step != nil {
 		if err, rst := step.Apply(); err != nil {
 			return err, step, rst
 		}
+		step = step.Next()
 	}
 	return nil, nil, StateOK
 }
 
-func newCreatePlan(s Snapshot) *plan {
+func newCreatePlan(ctx *Context, s Snapshot) *plan {
 	// To create the resources, we must perform the operations in dependency order.  That is, we create the leaf-most
 	// resource first, so that later resources may safely depend upon their dependencies having been created.
-	p := &plan{}
+	p := &plan{ctx: ctx}
 	var prev *step
 	for _, res := range s.Topsort() {
 		step := &step{
@@ -120,10 +109,10 @@ func newCreatePlan(s Snapshot) *plan {
 	return p
 }
 
-func newDeletePlan(s Snapshot) *plan {
+func newDeletePlan(ctx *Context, s Snapshot) *plan {
 	// To delete an entire snapshot, we must perform the operations in reverse dependency order.  That is, resources
 	// that consume others should be deleted first, so dependencies do not get deleted "out from underneath" consumers.
-	p := &plan{}
+	p := &plan{ctx: ctx}
 	var prev *step
 	tops := s.Topsort()
 	for i := len(tops) - 1; i >= 0; i-- {
@@ -145,7 +134,7 @@ func newDeletePlan(s Snapshot) *plan {
 	return p
 }
 
-func newUpdatePlan(s Snapshot, old Snapshot) *plan {
+func newUpdatePlan(ctx *Context, s Snapshot, old Snapshot) *plan {
 	// First diff the snapshots; in a nutshell:
 	//
 	//     - Anything in s but not old is a create
