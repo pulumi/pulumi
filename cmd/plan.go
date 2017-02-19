@@ -18,6 +18,7 @@ import (
 
 func newPlanCmd() *cobra.Command {
 	var delete bool
+	var summary bool
 	var cmd = &cobra.Command{
 		Use:   "plan [blueprint] [-- [args]]",
 		Short: "Generate a deployment plan from a Mu blueprint",
@@ -33,7 +34,7 @@ func newPlanCmd() *cobra.Command {
 			"a path to a blueprint elsewhere can be provided as the [blueprint] argument.",
 		Run: func(cmd *cobra.Command, args []string) {
 			if _, plan := plan(cmd, args, delete); plan != nil {
-				printPlan(plan)
+				printPlan(plan, summary)
 			}
 		},
 	}
@@ -41,18 +42,21 @@ func newPlanCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVar(
 		&delete, "delete", false,
 		"Create a plan for deleting an entire snapshot")
+	cmd.PersistentFlags().BoolVarP(
+		&summary, "summary", "s", false,
+		"Summarize the plan, don't show the full details")
 
 	return cmd
 }
 
-func printPlan(plan resource.Plan) {
+func printPlan(plan resource.Plan, summary bool) {
 	// Now walk the plan's steps and and pretty-print them out.
 	step := plan.Steps()
 	for step != nil {
 		var b bytes.Buffer
 
 		// Print this step information (resource and all its properties).
-		printStep(&b, step, "")
+		printStep(&b, step, summary, "")
 
 		// Now go ahead and emit the output to the console, and move on to the next step in the plan.
 		// TODO: it would be nice if, in the output, we showed the dependencies a la `git log --graph`.
@@ -63,7 +67,7 @@ func printPlan(plan resource.Plan) {
 	}
 }
 
-func printStep(b *bytes.Buffer, step resource.Step, indent string) {
+func printStep(b *bytes.Buffer, step resource.Step, summary bool, indent string) {
 	// First print out the operation.
 	switch step.Op() {
 	case resource.OpCreate:
@@ -77,13 +81,13 @@ func printStep(b *bytes.Buffer, step resource.Step, indent string) {
 	}
 
 	// Next print the resource moniker, properties, etc.
-	printResource(b, step.Resource(), indent)
+	printResource(b, step.Resource(), summary, indent)
 
 	// Finally make sure to reset the color.
 	b.WriteString(colors.Reset)
 }
 
-func printResource(b *bytes.Buffer, res resource.Resource, indent string) {
+func printResource(b *bytes.Buffer, res resource.Resource, summary bool, indent string) {
 	// First print out the resource type (since it is easy on the eyes).
 	b.WriteString(fmt.Sprintf("%s:\n", string(res.Type())))
 
@@ -94,8 +98,10 @@ func printResource(b *bytes.Buffer, res resource.Resource, indent string) {
 		b.WriteString(fmt.Sprintf("%s[id=%s]\n", indent, string(id)))
 	}
 
-	// Print all of the properties associated with this resource.
-	printObject(b, res.Properties(), indent)
+	if !summary {
+		// Print all of the properties associated with this resource.
+		printObject(b, res.Properties(), indent)
+	}
 }
 
 func printObject(b *bytes.Buffer, props resource.PropertyMap, indent string) {

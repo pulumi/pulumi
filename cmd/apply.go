@@ -33,7 +33,7 @@ func newApplyCmd() *cobra.Command {
 			"a path to a blueprint elsewhere can be provided as the [blueprint] argument.",
 		Run: func(cmd *cobra.Command, args []string) {
 			if comp, plan := plan(cmd, args, delete); plan != nil {
-				if _, err, _ := plan.Apply(&applyProgress{}); err != nil {
+				if err, _, _ := plan.Apply(&applyProgress{}); err != nil {
 					// TODO: we want richer diagnostics in the event that a plan apply fails.  For instance, we want to
 					//     know precisely what step failed, we want to know whether it was catastrophic, etc.  We also
 					//     probably want to plumb diag.Sink through apply so it can issue its own rich diagnostics.
@@ -53,26 +53,36 @@ func newApplyCmd() *cobra.Command {
 
 // applyProgress pretty-prints the plan application process as it goes.
 type applyProgress struct {
+	c int
 }
 
 func (prog *applyProgress) Before(step resource.Step) {
 	var b bytes.Buffer
-	b.WriteString("Applying step -- ")
-	printStep(&b, step, "    ")
+	prog.c++
+	b.WriteString(fmt.Sprintf("Applying step #%v\n", prog.c))
+	printStep(&b, step, true, "    ")
 	s := colors.Colorize(b.String())
 	fmt.Printf(s)
 }
 
 func (prog *applyProgress) After(step resource.Step, err error, state resource.ResourceState) {
 	if err != nil {
-		fmt.Printf("fatal: %v\n", err)
+		var b bytes.Buffer
+		// Print the state of the resource; we don't issue the error, because the apply above will do that.
+		b.WriteString(fmt.Sprintf("Step #%v failed: ", prog.c))
 		switch state {
 		case resource.StateOK:
-			fmt.Printf("\tprovider successfully recovered from this failure\n")
+			b.WriteString(colors.BrightYellow)
+			b.WriteString("provider successfully recovered from this failure")
 		case resource.StateUnknown:
-			fmt.Printf("\tthis failure was catastrophic and the provider cannot guarantee recovery\n")
+			b.WriteString(colors.BrightRed)
+			b.WriteString("this failure was catastrophic and the provider cannot guarantee recovery")
 		default:
 			contract.Failf("Unrecognized resource state: %v", state)
 		}
+		b.WriteString(colors.Reset)
+		b.WriteString("\n")
+		s := colors.Colorize(b.String())
+		fmt.Printf(s)
 	}
 }
