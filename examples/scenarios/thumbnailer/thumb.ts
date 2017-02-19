@@ -1,10 +1,10 @@
 import * as mu from "mu";
 
 export class Thumbnailer extends mu.Stack {
-    private source: mu.Bucket; // the source to monitor for images.
-    private dest: mu.Bucket;   // the destination to store thumbnails in.
+    private source: mu.x.Bucket; // the source to monitor for images.
+    private dest: mu.x.Bucket;   // the destination to store thumbnails in.
 
-    constructor(source: mu.Bucket, dest: mu.Bucket) {
+    constructor(source: mu.x.Bucket, dest: mu.x.Bucket) {
         super();
         this.source = source;
         this.dest = dest;
