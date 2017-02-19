@@ -52,8 +52,8 @@ func NewPlugin(ctx *Context, pkg tokens.Package) (*Plugin, error) {
 	srvexe := pluginPrefix + "-" + strings.Replace(string(pkg), tokens.QNameDelimiter, "_", -1)
 	if proc, procin, procout, procerr, err = execPlugin(srvexe); err != nil {
 		// If this fails, we will explicitly look in the workspace library, to see if this library has been installed.
-		if os.IsNotExist(err) {
-			libexe := filepath.Join(workspace.InstallRoot(), workspace.InstallRootLibdir, string(pkg))
+		if execerr, isexecerr := err.(*exec.Error); isexecerr && execerr.Err == exec.ErrNotFound {
+			libexe := filepath.Join(workspace.InstallRoot(), workspace.InstallRootLibdir, string(pkg), srvexe)
 			if proc, procin, procout, procerr, err = execPlugin(libexe); err != nil {
 				return nil, err
 			}
