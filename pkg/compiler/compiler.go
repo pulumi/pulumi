@@ -59,10 +59,7 @@ func New(path string, opts *core.Options) (Compiler, error) {
 	}
 	d := opts.Diag
 	if d == nil {
-		d = diag.DefaultSink(diag.FormatOptions{
-			Pwd:    path, // ensure output paths are relative to the current path.
-			Colors: true, // turn on colorization of warnings/errors.
-		})
+		d = core.DefaultSink(path)
 	}
 
 	// Now create a new context to share amongst the compiler and workspace.

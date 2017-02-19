@@ -5,7 +5,6 @@ package cmd
 import (
 	"bytes"
 	"fmt"
-	"os"
 	"strconv"
 
 	"github.com/spf13/cobra"
@@ -33,28 +32,7 @@ func newPlanCmd() *cobra.Command {
 			"By default, a blueprint package is loaded from the current directory.  Optionally,\n" +
 			"a path to a blueprint elsewhere can be provided as the [blueprint] argument.",
 		Run: func(cmd *cobra.Command, args []string) {
-			// Perform the compilation and, if non-nil is returned, create a plan and print it.
-			if mugl := compile(cmd, args); mugl != nil {
-				// TODO: fetch the old plan for purposes of diffing.
-				rs, err := resource.NewSnapshot(mugl) // create a resource snapshot from the object graph.
-				if err != nil {
-					fmt.Fprintf(os.Stderr, "fatal: %v\n", err)
-					os.Exit(-1)
-				}
-
-				// Create a new context for the plan operations.
-				ctx := resource.NewContext()
-
-				var plan resource.Plan
-				if delete {
-					// Generate a plan for deleting the entire snapshot.
-					plan = resource.NewDeletePlan(ctx, rs)
-				} else {
-					// Generate a plan for creating the resources from scratch.
-					plan = resource.NewCreatePlan(ctx, rs)
-				}
-
-				// Finally just pretty-print out the plan.
+			if _, plan := plan(cmd, args, delete); plan != nil {
 				printPlan(plan)
 			}
 		},

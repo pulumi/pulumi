@@ -20,3 +20,11 @@ type Options struct {
 func DefaultOptions() *Options {
 	return &Options{}
 }
+
+// DefaultOptionsSink returns the default preconfigured diagnostics sink.
+func DefaultSink(path string) diag.Sink {
+	return diag.DefaultSink(diag.FormatOptions{
+		Pwd:    path, // ensure output paths are relative to the current path.
+		Colors: true, // turn on colorization of warnings/errors.
+	})
+}

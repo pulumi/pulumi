@@ -31,7 +31,7 @@ func newEvalCmd() *cobra.Command {
 			"a path to a blueprint elsewhere can be provided as the [blueprint] argument.",
 		Run: func(cmd *cobra.Command, args []string) {
 			// Perform the compilation and, if non-nil is returned, output the graph.
-			if mugl := compile(cmd, args); mugl != nil {
+			if _, mugl := compile(cmd, args); mugl != nil {
 				// Serialize that MuGL graph so that it's suitable for printing/serializing.
 				if dotOutput {
 					// Convert the output to a DOT file.
