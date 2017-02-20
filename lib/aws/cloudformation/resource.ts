@@ -4,16 +4,23 @@ import * as mu from '@mu/mu';
 
 // A special service that simply emits a CloudFormation template.
 // @name: aws/x/cf
-export class Resource extends mu.Resource {
-    private args: ResourceArgs;
-    constructor(args: ResourceArgs) {
+export class Resource
+        extends mu.Resource
+        implements ResourceProperties {
+
+    public readonly resource: string;
+    public readonly properties?: any;
+    public readonly dependsOn?: mu.Stack[];
+
+    constructor(args: ResourceProperties) {
         super();
-        // TODO: encode the special translation logic as code (maybe as an overridden method).
-        this.args = args;
+        this.resource = args.resource;
+        this.properties = args.properties;
+        this.dependsOn = args.dependsOn;
     }
 }
 
-export interface ResourceArgs {
+export interface ResourceProperties {
     // The CF resource name.
     readonly resource: string;
     // An optional list of properties to map.

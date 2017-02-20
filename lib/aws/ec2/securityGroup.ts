@@ -8,16 +8,28 @@ import * as cloudformation from '../cloudformation';
 // An Amazon EC2 security group.
 // @name: aws/ec2/securityGroup
 // @website: http://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-ec2-security-group.html
-export class SecurityGroup extends cloudformation.Resource {
-    constructor(args: SecurityGroupArgs) {
+export class SecurityGroup
+        extends cloudformation.Resource
+        implements SecurityGroupProperties {
+
+    public readonly groupDescription: string;
+    public readonly vpc?: VPC;
+    public securityGroupEgress?: SecurityGroupEgressRule[];
+    public securityGroupIngress?: SecurityGroupIngressRule[];
+
+    constructor(args: SecurityGroupProperties) {
         super({
-            resource: "AWS::EC2::SecurityGroup",
+            resource:  "AWS::EC2::SecurityGroup",
             properties: args,
         });
+        this.groupDescription = args.groupDescription;
+        this.vpc = args.vpc;
+        this.securityGroupEgress = args.securityGroupEgress;
+        this.securityGroupIngress = args.securityGroupIngress;
     }
 }
 
-export interface SecurityGroupArgs extends cloudformation.TagArgs {
+export interface SecurityGroupProperties extends cloudformation.TagArgs {
     // Description of the security group.
     readonly groupDescription: string;
     // The VPC in which this security group resides.

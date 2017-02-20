@@ -7,16 +7,27 @@ import * as cloudformation from '../cloudformation';
 // An EC2 instance.
 // @name: aws/ec2/instance
 // @website: http://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-ec2-instance.html
-export class Instance extends cloudformation.Resource  {
-    constructor(args: InstanceArgs) {
+export class Instance
+        extends cloudformation.Resource
+        implements InstanceProperties {
+
+    public imageId: string;
+    public instanceType?: string;
+    public securityGroups?: SecurityGroup[];
+    public keyName?: string;
+
+    constructor(args: InstanceProperties) {
         super({
-            resource: "AWS::EC2::Instance",
-            properties: args,
+            resource:   "AWS::EC2::Instance",
         });
+        this.imageId = args.imageId;
+        this.instanceType = args.instanceType;
+        this.securityGroups = args.securityGroups;
+        this.keyName = args.keyName;
     }
 }
 
-export interface InstanceArgs extends cloudformation.TagArgs {
+export interface InstanceProperties extends cloudformation.TagArgs {
     // Provides the unique ID of the Amazon Machine Image (AMI) that was assigned during registration.
     imageId: string;
     // The instance type, such as t2.micro. The default type is "m3.medium".
