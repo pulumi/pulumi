@@ -142,17 +142,21 @@ func execPlugin(name string) (*os.Process, io.WriteCloser, io.ReadCloser, io.Rea
 // Create allocates a new instance of the provided resource and returns its unique ID afterwards.
 func (p *Plugin) Create(res Resource) (ID, error, ResourceState) {
 	t := string(res.Type())
+	props := res.Properties()
+	glog.V(7).Infof("Plugin[%v].Create(t=%v,#props=%v) executing", p.pkg, t, len(props))
 	req := &murpc.CreateRequest{
 		Type:       t,
-		Properties: MarshalProperties(res.Properties()),
+		Properties: MarshalProperties(props),
 	}
 
 	resp, err := p.client.Create(p.ctx.Request(), req)
 	if err != nil {
+		glog.V(7).Infof("Plugin[%v].Create(t=%v,...) failed: err=%v", p.pkg, err)
 		return ID(""), err, StateUnknown
 	}
 
 	id := ID(resp.GetId())
+	glog.V(7).Infof("Plugin[%v].Create(t=%v,...) success: id=%v", p.pkg, t, id)
 	if id == "" {
 		return id,
 			errors.New(fmt.Sprintf("plugin for package '%v' returned empty ID from create '%v'", p.pkg, t)),
@@ -163,6 +167,7 @@ func (p *Plugin) Create(res Resource) (ID, error, ResourceState) {
 
 // Read reads the instance state identified by id/t, and returns a bag of properties.
 func (p *Plugin) Read(id ID, t tokens.Type) (PropertyMap, error) {
+	glog.V(7).Infof("Plugin[%v].Read(id=%v,t=%v) executing", p.pkg, id, t)
 	req := &murpc.ReadRequest{
 		Id:   string(id),
 		Type: string(t),
@@ -170,9 +175,12 @@ func (p *Plugin) Read(id ID, t tokens.Type) (PropertyMap, error) {
 
 	resp, err := p.client.Read(p.ctx.Request(), req)
 	if err != nil {
+		glog.V(7).Infof("Plugin[%v].Read(id=%v,t=%v) failed: err=%v", p.pkg, id, t, err)
 		return nil, err
 	}
 
+	props := UnmarshalProperties(resp.GetProperties())
+	glog.V(7).Infof("Plugin[%v].Read(id=%v,t=%v) success: #props=%v", p.pkg, t, id, len(props))
 	return UnmarshalProperties(resp.GetProperties()), nil
 }
 
@@ -186,19 +194,27 @@ func (p *Plugin) Update(old Resource, new Resource) (ID, error, ResourceState) {
 	contract.Requiref(new.Type() != "", "new.Type", "not empty")
 	contract.Requiref(old.Type() == new.Type(), "old.Type, new.Type", "==")
 
+	id := string(old.ID())
+	t := string(old.Type())
+	olds := old.Properties()
+	news := new.Properties()
+	glog.V(7).Infof("Plugin[%v].Update(id=%v,t=%v,#olds=%v,#news=%v) executing", p.pkg, id, t, len(olds), len(news))
 	req := &murpc.UpdateRequest{
 		Id:   string(old.ID()),
 		Type: string(old.Type()),
-		Olds: MarshalProperties(old.Properties()),
-		News: MarshalProperties(new.Properties()),
+		Olds: MarshalProperties(olds),
+		News: MarshalProperties(news),
 	}
 
 	resp, err := p.client.Update(p.ctx.Request(), req)
 	if err != nil {
+		glog.V(7).Infof("Plugin[%v].Update(id=%v,t=%v,...) failed: %v", p.pkg, id, t, err)
 		return ID(""), err, StateUnknown
 	}
 
-	return ID(resp.GetId()), nil, StateOK
+	nid := resp.GetId()
+	glog.V(7).Infof("Plugin[%v].Update(id=%v,t=%v,...) success: nid=%v", p.pkg, id, t, nid)
+	return ID(nid), nil, StateOK
 }
 
 // Delete tears down an existing resource.
@@ -206,15 +222,20 @@ func (p *Plugin) Delete(res Resource) (error, ResourceState) {
 	contract.Requiref(res.ID() != "", "res.ID", "not empty")
 	contract.Requiref(res.Type() != "", "res.Type", "not empty")
 
+	id := string(res.ID())
+	t := string(res.Type())
+	glog.V(7).Infof("Plugin[%v].Delete(id=%v,t=%v) executing", p.pkg, id, t)
 	req := &murpc.DeleteRequest{
 		Id:   string(res.ID()),
 		Type: string(res.Type()),
 	}
 
 	if _, err := p.client.Delete(p.ctx.Request(), req); err != nil {
+		glog.V(7).Infof("Plugin[%v].Delete(id=%v,t=%v) failed: %v", p.pkg, id, t, err)
 		return err, StateUnknown
 	}
 
+	glog.V(7).Infof("Plugin[%v].Delete(id=%v,t=%v) success", p.pkg, id, t)
 	return nil, StateOK
 }
 

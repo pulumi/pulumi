@@ -35,7 +35,7 @@ func (err *ReqError) Error() string {
 
 // BoolOrErr checks that the given property has the type bool, issuing an error if not; req indicates if required.
 func (m PropertyMap) BoolOrErr(k PropertyKey, req bool) (*bool, error) {
-	if v, has := m[k]; has {
+	if v, has := m[k]; has && !v.IsNull() {
 		if !v.IsBool() {
 			return nil, fmt.Errorf("property '%v' is not a bool (%v)", k, reflect.TypeOf(v.V))
 		}
@@ -49,7 +49,7 @@ func (m PropertyMap) BoolOrErr(k PropertyKey, req bool) (*bool, error) {
 
 // NumberOrErr checks that the given property has the type float64, issuing an error if not; req indicates if required.
 func (m PropertyMap) NumberOrErr(k PropertyKey, req bool) (*float64, error) {
-	if v, has := m[k]; has {
+	if v, has := m[k]; has && !v.IsNull() {
 		if !v.IsNumber() {
 			return nil, fmt.Errorf("property '%v' is not a number (%v)", k, reflect.TypeOf(v.V))
 		}
@@ -63,7 +63,7 @@ func (m PropertyMap) NumberOrErr(k PropertyKey, req bool) (*float64, error) {
 
 // StringOrErr checks that the given property has the type string, issuing an error if not; req indicates if required.
 func (m PropertyMap) StringOrErr(k PropertyKey, req bool) (*string, error) {
-	if v, has := m[k]; has {
+	if v, has := m[k]; has && !v.IsNull() {
 		if !v.IsString() {
 			return nil, fmt.Errorf("property '%v' is not a string (%v)", k, reflect.TypeOf(v.V))
 		}
@@ -77,7 +77,7 @@ func (m PropertyMap) StringOrErr(k PropertyKey, req bool) (*string, error) {
 
 // ArrayOrErr checks that the given property has the type array, issuing an error if not; req indicates if required.
 func (m PropertyMap) ArrayOrErr(k PropertyKey, req bool) (*[]PropertyValue, error) {
-	if v, has := m[k]; has {
+	if v, has := m[k]; has && !v.IsNull() {
 		if !v.IsArray() {
 			return nil, fmt.Errorf("property '%v' is not an array (%v)", k, reflect.TypeOf(v.V))
 		}
@@ -91,7 +91,7 @@ func (m PropertyMap) ArrayOrErr(k PropertyKey, req bool) (*[]PropertyValue, erro
 
 // ObjectArrayOrErr ensures a property is an array of objects, issuing an error if not; req indicates if required.
 func (m PropertyMap) ObjectArrayOrErr(k PropertyKey, req bool) (*[]PropertyMap, error) {
-	if v, has := m[k]; has {
+	if v, has := m[k]; has && !v.IsNull() {
 		if !v.IsArray() {
 			return nil, fmt.Errorf("property '%v' is not an array (%v)", k, reflect.TypeOf(v.V))
 		}
@@ -114,7 +114,7 @@ func (m PropertyMap) ObjectArrayOrErr(k PropertyKey, req bool) (*[]PropertyMap, 
 
 // StringArrayOrErr ensures a property is an array of strings, issuing an error if not; req indicates if required.
 func (m PropertyMap) StringArrayOrErr(k PropertyKey, req bool) (*[]string, error) {
-	if v, has := m[k]; has {
+	if v, has := m[k]; has && !v.IsNull() {
 		if !v.IsArray() {
 			return nil, fmt.Errorf("property '%v' is not an array (%v)", k, reflect.TypeOf(v.V))
 		}
@@ -137,7 +137,7 @@ func (m PropertyMap) StringArrayOrErr(k PropertyKey, req bool) (*[]string, error
 
 // ObjectOrErr checks that the given property is an object, issuing an error if not; req indicates if required.
 func (m PropertyMap) ObjectOrErr(k PropertyKey, req bool) (*PropertyMap, error) {
-	if v, has := m[k]; has {
+	if v, has := m[k]; has && !v.IsNull() {
 		if !v.IsObject() {
 			return nil, fmt.Errorf("property '%v' is not an object (%v)", k, reflect.TypeOf(v.V))
 		}
@@ -151,7 +151,7 @@ func (m PropertyMap) ObjectOrErr(k PropertyKey, req bool) (*PropertyMap, error) 
 
 // ResourceOrErr checks that the given property is a resource, issuing an error if not; req indicates if required.
 func (m PropertyMap) ResourceOrErr(k PropertyKey, req bool) (*Moniker, error) {
-	if v, has := m[k]; has {
+	if v, has := m[k]; has && !v.IsNull() {
 		if !v.IsResource() {
 			return nil, fmt.Errorf("property '%v' is not an object (%v)", k, reflect.TypeOf(v.V))
 		}

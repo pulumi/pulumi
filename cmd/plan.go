@@ -122,7 +122,9 @@ func printObject(b *bytes.Buffer, props resource.PropertyMap, indent string) {
 }
 
 func printProperty(b *bytes.Buffer, v resource.PropertyValue, indent string) {
-	if v.IsBool() {
+	if v.IsNull() {
+		b.WriteString("<nil>")
+	} else if v.IsBool() {
 		b.WriteString(fmt.Sprintf("%t", v.BoolValue()))
 	} else if v.IsNumber() {
 		b.WriteString(fmt.Sprintf("%v", v.NumberValue()))

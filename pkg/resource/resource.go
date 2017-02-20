@@ -116,6 +116,8 @@ func cloneObjectValue(obj *rt.Object, res objectMonikerMap) (PropertyValue, bool
 	}
 
 	switch t {
+	case types.Null:
+		return NewPropertyNull(), true
 	case types.Bool:
 		return NewPropertyBool(obj.BoolValue()), true
 	case types.Number:
