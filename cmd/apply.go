@@ -16,6 +16,7 @@ import (
 
 func newApplyCmd() *cobra.Command {
 	var delete bool
+	var detailed bool
 	var cmd = &cobra.Command{
 		Use:   "apply [blueprint] [-- [args]]",
 		Short: "Apply a deployment plan from a Mu blueprint",
@@ -33,7 +34,8 @@ func newApplyCmd() *cobra.Command {
 			"a path to a blueprint elsewhere can be provided as the [blueprint] argument.",
 		Run: func(cmd *cobra.Command, args []string) {
 			if comp, plan := plan(cmd, args, delete); plan != nil {
-				if err, _, _ := plan.Apply(&applyProgress{}); err != nil {
+				progress := newProgress(detailed)
+				if err, _, _ := plan.Apply(progress); err != nil {
 					// TODO: we want richer diagnostics in the event that a plan apply fails.  For instance, we want to
 					//     know precisely what step failed, we want to know whether it was catastrophic, etc.  We also
 					//     probably want to plumb diag.Sink through apply so it can issue its own rich diagnostics.
@@ -47,20 +49,28 @@ func newApplyCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVar(
 		&delete, "delete", false,
 		"Delete the entirety of the blueprint's resources")
+	cmd.PersistentFlags().BoolVar(
+		&detailed, "detailed", false,
+		"Display detailed output during the application of changes")
 
 	return cmd
 }
 
 // applyProgress pretty-prints the plan application process as it goes.
 type applyProgress struct {
-	c int
+	c        int
+	detailed bool
+}
+
+func newProgress(detailed bool) *applyProgress {
+	return &applyProgress{detailed: detailed}
 }
 
 func (prog *applyProgress) Before(step resource.Step) {
 	var b bytes.Buffer
 	prog.c++
 	b.WriteString(fmt.Sprintf("Applying step #%v\n", prog.c))
-	printStep(&b, step, true, "    ")
+	printStep(&b, step, !prog.detailed, "    ")
 	s := colors.Colorize(b.String())
 	fmt.Printf(s)
 }

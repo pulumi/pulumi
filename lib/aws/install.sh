@@ -4,7 +4,10 @@
 set -e                    # bail on errors
 
 echo Compiling:
-mujs                      # compile the package
+mujs                      # compile the MuPackage
+pushd provider/ &&        # compile the resource provider
+    go build -o ../bin/mu-ressrv-aws &&
+    popd
 
 echo Sharing NPM links:
 yarn link                 # let NPM references resolve easily.

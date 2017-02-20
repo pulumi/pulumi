@@ -37,58 +37,6 @@ const (
 	StateUnknown
 )
 
-type PropertyMap map[PropertyKey]PropertyValue
-
-type PropertyKey tokens.Name // the name of a property.
-
-// PropertyValue is the value of a property, limited to a select few types (see below).
-type PropertyValue struct {
-	V interface{}
-}
-
-func NewPropertyNull() PropertyValue                   { return PropertyValue{nil} }
-func NewPropertyBool(v bool) PropertyValue             { return PropertyValue{v} }
-func NewPropertyNumber(v float64) PropertyValue        { return PropertyValue{v} }
-func NewPropertyString(v string) PropertyValue         { return PropertyValue{v} }
-func NewPropertyArray(v []PropertyValue) PropertyValue { return PropertyValue{v} }
-func NewPropertyObject(v PropertyMap) PropertyValue    { return PropertyValue{v} }
-func NewPropertyResource(v Moniker) PropertyValue      { return PropertyValue{v} }
-
-func (v PropertyValue) BoolValue() bool             { return v.V.(bool) }
-func (v PropertyValue) NumberValue() float64        { return v.V.(float64) }
-func (v PropertyValue) StringValue() string         { return v.V.(string) }
-func (v PropertyValue) ArrayValue() []PropertyValue { return v.V.([]PropertyValue) }
-func (v PropertyValue) ObjectValue() PropertyMap    { return v.V.(PropertyMap) }
-func (v PropertyValue) ResourceValue() Moniker      { return v.V.(Moniker) }
-
-func (b PropertyValue) IsNull() bool {
-	return b.V == nil
-}
-func (b PropertyValue) IsBool() bool {
-	_, is := b.V.(bool)
-	return is
-}
-func (b PropertyValue) IsNumber() bool {
-	_, is := b.V.(float64)
-	return is
-}
-func (b PropertyValue) IsString() bool {
-	_, is := b.V.(string)
-	return is
-}
-func (b PropertyValue) IsArray() bool {
-	_, is := b.V.([]PropertyValue)
-	return is
-}
-func (b PropertyValue) IsObject() bool {
-	_, is := b.V.(PropertyMap)
-	return is
-}
-func (b PropertyValue) IsResource() bool {
-	_, is := b.V.(Moniker)
-	return is
-}
-
 func IsResourceType(t symbols.Type) bool   { return types.HasBaseName(t, predef.MuResourceClass) }
 func IsResourceVertex(v graph.Vertex) bool { return IsResourceType(v.Obj().Type()) }
 

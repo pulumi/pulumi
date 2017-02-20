@@ -17,12 +17,12 @@ export class Instance extends cloudformation.Resource  {
 }
 
 export interface InstanceArgs extends cloudformation.TagArgs {
-    // The instance type, such as t2.micro. The default type is "m3.medium".
-    instanceType: string;
-    // A list that contains the Amazon EC2 security groups to assign to the Amazon EC2 instance.
-    securityGroups: SecurityGroup[];
-    // Provides the name of the Amazon EC2 key pair.
-    keyName: string;
     // Provides the unique ID of the Amazon Machine Image (AMI) that was assigned during registration.
     imageId: string;
+    // The instance type, such as t2.micro. The default type is "m3.medium".
+    instanceType?: string;
+    // A list that contains the Amazon EC2 security groups to assign to the Amazon EC2 instance.
+    securityGroups?: SecurityGroup[];
+    // Provides the name of the Amazon EC2 key pair.
+    keyName?: string;
 }
