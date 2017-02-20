@@ -3,6 +3,7 @@
 package resource
 
 import (
+	"bufio"
 	"errors"
 	"fmt"
 	"io"
@@ -12,6 +13,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/golang/glog"
 	"google.golang.org/grpc"
 
 	"github.com/marapongo/mu/pkg/tokens"
@@ -83,12 +85,38 @@ func NewPlugin(ctx *Context, pkg tokens.Package) (*Plugin, error) {
 				pkg, port, err))
 	}
 
+	// If debugging is on, spawn goroutines that will spew STDOUT/STDERR to the logfile.
+	// TODO: eventually we want real progress reporting, etc., which will need to be done out of band via RPC.
+	tracers := []struct {
+		v   glog.Level
+		r   io.Reader
+		lbl string
+	}{
+		{5, procout, "stdout"},
+		{3, procerr, "stderr"},
+	}
+	for _, trace := range tracers {
+		if glog.V(trace.v) {
+			v := trace.v
+			reader := bufio.NewReader(trace.r)
+			lbl := trace.lbl
+			go func() {
+				for {
+					line, err := reader.ReadString('\n')
+					if err != nil {
+						break
+					}
+					glog.V(v).Infof("plugin[%v].%v: %v", pkg, lbl, line)
+				}
+			}()
+		}
+	}
+
 	// Now that we have the port, go ahead and create a gRPC client connection to it.
 	conn, err := grpc.Dial(":"+port, grpc.WithInsecure())
 	if err != nil {
 		return nil, err
 	}
-	// TODO: consider some diagnostics that monitor STDOUT/STDERR.
 	return &Plugin{
 		pkg:    pkg,
 		proc:   proc,
