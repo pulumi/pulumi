@@ -72,15 +72,15 @@ func plan(cmd *cobra.Command, args []string, delete bool) (compiler.Compiler, re
 	// Perform the compilation and, if non-nil is returned, create a plan and print it.
 	comp, mugl := compile(cmd, args)
 	if mugl != nil {
+		// Create a new context for the plan operations.
+		ctx := resource.NewContext()
+
 		// TODO: fetch the old plan for purposes of diffing.
-		rs, err := resource.NewSnapshot(mugl) // create a resource snapshot from the object graph.
+		rs, err := resource.NewSnapshot(ctx, mugl) // create a resource snapshot from the object graph.
 		if err != nil {
 			comp.Diag().Errorf(errors.ErrorCantCreateSnapshot, err)
 			return comp, nil
 		}
-
-		// Create a new context for the plan operations.
-		ctx := resource.NewContext()
 
 		var plan resource.Plan
 		if delete {

@@ -5,6 +5,7 @@ package ec2
 import (
 	"errors"
 
+	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/ec2"
 	pbempty "github.com/golang/protobuf/ptypes/empty"
 	"github.com/marapongo/mu/pkg/resource"
@@ -20,7 +21,7 @@ const Instance = tokens.Type("aws:ec2/instance:Instance")
 
 // NewInstanceProvider creates a provider that handles EC2 instance operations.
 func NewInstanceProvider(ctx *awsctx.Context) murpc.ResourceProviderServer {
-	return &instanceProvider{}
+	return &instanceProvider{ctx}
 }
 
 type instanceProvider struct {
@@ -52,6 +53,8 @@ func (p *instanceProvider) Create(ctx context.Context, req *murpc.CreateRequest)
 		InstanceType:     inst.InstanceType,
 		SecurityGroupIds: secgrpIDs,
 		KeyName:          inst.KeyName,
+		MinCount:         aws.Int64(int64(1)),
+		MaxCount:         aws.Int64(int64(1)),
 	}
 
 	// Now go ahead and perform the action.

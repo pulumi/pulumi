@@ -13,6 +13,7 @@ import (
 // IDs, names, and properties; their dependencies; and more.  A snapshot is a diffable entity and can be used to create
 // or apply an infrastructure deployment plan in order to make reality match the snapshot state.
 type Snapshot interface {
+	Ctx() *Context                              // fetches the context for this snapshot.
 	Graph() graph.Graph                         // the raw underlying object graph.
 	Topsort() []Resource                        // a topologically sorted list of resources (based on dependencies).
 	ResourceByID(id ID, t tokens.Type) Resource // looks up a resource by ID and type.
@@ -23,36 +24,33 @@ type Snapshot interface {
 // NewSnapshot takes an object graph and produces a resource snapshot from it.  It understands how to name resources
 // based on their position within the graph and how to identify and record dependencies.  This function can fail
 // dynamically if the input graph did not satisfy the preconditions for resource graphs (like that it is a DAG).
-func NewSnapshot(g graph.Graph) (Snapshot, error) {
+func NewSnapshot(ctx *Context, g graph.Graph) (Snapshot, error) {
 	// First create the monikers, resource objects, and maps that we will use.
-	res, mks := createResources(g)
+	createResources(ctx, g)
 
 	// Next remember the topologically sorted list of resources (in dependency order).  This happens here, rather than
 	// lazily on-demand, so that we can hoist errors pertainign to DAG-ness, etc. to the snapshot creation phase.
-	tops, err := topsort(g, res)
+	tops, err := topsort(ctx, g)
 	if err != nil {
 		return nil, err
 	}
 
 	return &snapshot{
+		ctx:  ctx,
 		g:    g,
-		res:  res,
-		mks:  mks,
 		tops: tops,
 	}, nil
 }
 
 type snapshot struct {
-	g    graph.Graph        // the underlying MuGL object graph.
-	res  objectResourceMap  // the resources held inside of this snapshot.
-	mks  monikerResourceMap // a convenient lookup map for moniker to resource.
-	tops []Resource         // the topologically sorted linearized list of resources.
+	ctx  *Context    // the context shared by all operations in this snapshot.
+	g    graph.Graph // the underlying MuGL object graph.
+	tops []Resource  // the topologically sorted linearized list of resources.
 }
 
 type objectMonikerMap map[*rt.Object]Moniker
-type objectResourceMap map[*rt.Object]Resource
-type monikerResourceMap map[Moniker]Resource
 
+func (s *snapshot) Ctx() *Context       { return s.ctx }
 func (s *snapshot) Graph() graph.Graph  { return s.g }
 func (s *snapshot) Topsort() []Resource { return s.tops }
 
@@ -61,25 +59,21 @@ func (s *snapshot) ResourceByID(id ID, t tokens.Type) Resource {
 	return nil
 }
 
-func (s *snapshot) ResourceByMoniker(m Moniker) Resource     { return s.mks[m] }
-func (s *snapshot) ResourceByObject(obj *rt.Object) Resource { return s.res[obj] }
+func (s *snapshot) ResourceByMoniker(m Moniker) Resource     { return s.ctx.Mks[m] }
+func (s *snapshot) ResourceByObject(obj *rt.Object) Resource { return s.ctx.Res[obj] }
 
 // createResources uses a graph to create monikers and resource objects for every resource within.  It
 // returns two maps for further use: a map of vertex to its new resource object, and a map of vertex to its moniker.
-func createResources(g graph.Graph) (objectResourceMap, monikerResourceMap) {
+func createResources(ctx *Context, g graph.Graph) {
 	// First create all of the resource monikers within the graph.
 	omks := createMonikers(g)
 
 	// Every moniker entry represents a resource.  Make an object and reverse map entry out of it.
-	res := make(objectResourceMap)
-	mks := make(monikerResourceMap)
 	for o, m := range omks {
 		r := NewObjectResource(o, omks)
-		res[o] = r
-		mks[m] = r
+		ctx.Res[o] = r
+		ctx.Mks[m] = r
 	}
-
-	return res, mks
 }
 
 // createMonikers walks the graph creates monikers for every one using the algorithm specified in moniker.go.
@@ -132,7 +126,7 @@ func createMonikersEdge(e graph.Edge, path []graph.Edge, visited map[graph.Verte
 }
 
 // topsort actually performs a topological sort on a resource graph.
-func topsort(g graph.Graph, res objectResourceMap) ([]Resource, error) {
+func topsort(ctx *Context, g graph.Graph) ([]Resource, error) {
 	var linear []Resource
 
 	// TODO: we want this to return a *graph*, not a linearized list, so that we can parallelize.
@@ -146,7 +140,7 @@ func topsort(g graph.Graph, res objectResourceMap) ([]Resource, error) {
 	// Now walk the list and prune out anything that isn't a resource.
 	for _, v := range sorted {
 		if IsResourceVertex(v) {
-			r := res[v.Obj()]
+			r := ctx.Res[v.Obj()]
 			contract.Assert(r != nil)
 			linear = append(linear, r)
 		}

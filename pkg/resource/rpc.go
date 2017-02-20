@@ -6,24 +6,26 @@ import (
 	"reflect"
 	"sort"
 
+	"github.com/golang/glog"
 	structpb "github.com/golang/protobuf/ptypes/struct"
 
 	"github.com/marapongo/mu/pkg/util/contract"
 )
 
-// MarshalProperties marshals a resource's property map as a "JSON-like" protobuf structure.
-func MarshalProperties(props PropertyMap) *structpb.Struct {
+// MarshalProperties marshals a resource's property map as a "JSON-like" protobuf structure.  Any monikers are replaced
+// with their resource IDs during marshaling; it is an error to marshal a moniker for a resource without an ID.
+func MarshalProperties(props PropertyMap, mks monikerResourceMap) *structpb.Struct {
 	result := &structpb.Struct{
 		Fields: make(map[string]*structpb.Value),
 	}
 	for _, key := range StablePropertyKeys(props) {
-		result.Fields[string(key)] = MarshalPropertyValue(props[key])
+		result.Fields[string(key)] = MarshalPropertyValue(props[key], mks)
 	}
 	return result
 }
 
 // MarshalPropertyValue marshals a single resource property value into its "JSON-like" value representation.
-func MarshalPropertyValue(v PropertyValue) *structpb.Value {
+func MarshalPropertyValue(v PropertyValue, mks monikerResourceMap) *structpb.Value {
 	if v.IsNull() {
 		return &structpb.Value{
 			Kind: &structpb.Value_NullValue{
@@ -51,7 +53,7 @@ func MarshalPropertyValue(v PropertyValue) *structpb.Value {
 	} else if v.IsArray() {
 		var elems []*structpb.Value
 		for _, elem := range v.ArrayValue() {
-			elems = append(elems, MarshalPropertyValue(elem))
+			elems = append(elems, MarshalPropertyValue(elem, mks))
 		}
 		return &structpb.Value{
 			Kind: &structpb.Value_ListValue{
@@ -61,14 +63,19 @@ func MarshalPropertyValue(v PropertyValue) *structpb.Value {
 	} else if v.IsObject() {
 		return &structpb.Value{
 			Kind: &structpb.Value_StructValue{
-				MarshalProperties(v.ObjectValue()),
+				MarshalProperties(v.ObjectValue(), mks),
 			},
 		}
 	} else if v.IsResource() {
-		// TODO: consider a tag so that the other end knows they are monikers.  These just look like strings.
+		m := v.ResourceValue()
+		res, has := mks[m]
+		contract.Assertf(has, "Expected resource moniker '%v' to exist at marshal time", m)
+		id := res.ID()
+		contract.Assertf(id != ID(""), "Expected resource moniker '%v' to have an ID at marshal time", m)
+		glog.V(7).Infof("Serializing resource moniker '%v' as ID '%v'", m, id)
 		return &structpb.Value{
 			Kind: &structpb.Value_StringValue{
-				string(v.ResourceValue()),
+				string(id),
 			},
 		}
 	} else {
@@ -110,7 +117,7 @@ func UnmarshalPropertyValue(v *structpb.Value) PropertyValue {
 		case *structpb.Value_NumberValue:
 			return NewPropertyNumber(v.GetNumberValue())
 		case *structpb.Value_StringValue:
-			// TODO: we have no way of determining that this is a moniker; consider tagging.
+			// TODO: we have no way of determining that this is a resource ID; consider tagging.
 			return NewPropertyString(v.GetStringValue())
 		case *structpb.Value_ListValue:
 			var elems []PropertyValue

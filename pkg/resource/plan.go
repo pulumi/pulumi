@@ -207,7 +207,7 @@ func (s *step) Apply() (error, ResourceState) {
 		id, err, rst := prov.Update(s.res, s.old)
 		if err != nil {
 			return err, rst
-		} else if string(id) != "" {
+		} else if id != ID("") {
 			// An update might need to recreate the resource, in which case the ID must change.
 			// TODO: this could have an impact on subsequent dependent resources that wasn't known during planning.
 			s.res.SetID(id)

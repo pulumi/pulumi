@@ -118,6 +118,7 @@ func NewPlugin(ctx *Context, pkg tokens.Package) (*Plugin, error) {
 		return nil, err
 	}
 	return &Plugin{
+		ctx:    ctx,
 		pkg:    pkg,
 		proc:   proc,
 		stdin:  procin,
@@ -146,12 +147,12 @@ func (p *Plugin) Create(res Resource) (ID, error, ResourceState) {
 	glog.V(7).Infof("Plugin[%v].Create(t=%v,#props=%v) executing", p.pkg, t, len(props))
 	req := &murpc.CreateRequest{
 		Type:       t,
-		Properties: MarshalProperties(props),
+		Properties: MarshalProperties(props, p.ctx.Mks),
 	}
 
 	resp, err := p.client.Create(p.ctx.Request(), req)
 	if err != nil {
-		glog.V(7).Infof("Plugin[%v].Create(t=%v,...) failed: err=%v", p.pkg, err)
+		glog.V(7).Infof("Plugin[%v].Create(t=%v,...) failed: err=%v", p.pkg, t, err)
 		return ID(""), err, StateUnknown
 	}
 
@@ -202,8 +203,8 @@ func (p *Plugin) Update(old Resource, new Resource) (ID, error, ResourceState) {
 	req := &murpc.UpdateRequest{
 		Id:   string(old.ID()),
 		Type: string(old.Type()),
-		Olds: MarshalProperties(olds),
-		News: MarshalProperties(news),
+		Olds: MarshalProperties(olds, p.ctx.Mks),
+		News: MarshalProperties(news, p.ctx.Mks),
 	}
 
 	resp, err := p.client.Update(p.ctx.Request(), req)

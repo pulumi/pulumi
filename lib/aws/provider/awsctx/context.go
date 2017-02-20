@@ -24,6 +24,8 @@ func New() (*Context, error) {
 	if err != nil {
 		return nil, err
 	}
+	contract.Assert(sess != nil)
+
 	// Allocate a new global context with this session; note that all other connections are lazily allocated.
 	return &Context{
 		sess: sess,

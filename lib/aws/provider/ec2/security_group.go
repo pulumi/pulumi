@@ -113,7 +113,7 @@ func newSecurityGroup(m resource.PropertyMap, req bool) (*securityGroup, error) 
 	egressArray, err := m.OptObjectArrayOrErr("securityGroupEgress")
 	if err != nil {
 		return nil, err
-	} else {
+	} else if egressArray != nil {
 		var rules []securityGroupEgressRule
 		for _, rule := range *egressArray {
 			sger, err := newSecurityGroupEgressRule(rule, req)
@@ -129,7 +129,7 @@ func newSecurityGroup(m resource.PropertyMap, req bool) (*securityGroup, error) 
 	ingressArray, err := m.OptObjectArrayOrErr("securityGroupIngress")
 	if err != nil {
 		return nil, err
-	} else {
+	} else if ingressArray != nil {
 		var rules []securityGroupIngressRule
 		for _, rule := range *ingressArray {
 			sgir, err := newSecurityGroupIngressRule(rule, req)
