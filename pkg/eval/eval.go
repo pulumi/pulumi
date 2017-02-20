@@ -248,7 +248,7 @@ func (e *evaluator) dumpEvalState(v glog.Level) {
 
 // initProperty initializes a property entry in the given map, using an optional `this` pointer for member functions.
 // It returns the resulting pointer along with a boolean to indicate whether the property was left unfrozen.
-func (e *evaluator) initProperty(properties rt.PropertyMap, sym symbols.Symbol, this *rt.Object) (*rt.Pointer, bool) {
+func (e *evaluator) initProperty(this *rt.Object, properties rt.PropertyMap, sym symbols.Symbol) (*rt.Pointer, bool) {
 	k := rt.PropertyKey(sym.Name())
 	switch m := sym.(type) {
 	case symbols.Function:
@@ -305,7 +305,7 @@ func (e *evaluator) ensureClassInit(class *symbols.Class) {
 			members := current.TypeMembers()
 			for _, member := range symbols.StableClassMemberMap(members) {
 				if m := members[member]; m.Static() {
-					if ptr, readonly := e.initProperty(statics, m, nil); readonly {
+					if ptr, readonly := e.initProperty(nil, statics, m); readonly {
 						// Readonly properties are unfrozen during initialization; afterwards, they will be frozen.
 						readonlines = append(readonlines, ptr)
 					}
@@ -354,7 +354,7 @@ func (e *evaluator) ensureModuleInit(mod *symbols.Module) {
 		var readonlines []*rt.Pointer
 		globals := e.getModuleGlobals(mod)
 		for _, member := range symbols.StableModuleMemberMap(mod.Members) {
-			if ptr, readonly := e.initProperty(globals, mod.Members[member], nil); readonly {
+			if ptr, readonly := e.initProperty(nil, globals, mod.Members[member]); readonly {
 				// If this property was left unfrozen, be sure to remember it for freezing after we're done.
 				readonlines = append(readonlines, ptr)
 			}
@@ -420,17 +420,47 @@ func (e *evaluator) getPrototype(t symbols.Type) *rt.Object {
 	}
 
 	// Now populate the prototype object with all members.
-	members := t.TypeMembers()
 	proto := e.alloc.New(symbols.NewPrototypeType(t), nil, base)
-	properties := proto.Properties()
-	for _, member := range symbols.StableClassMemberMap(members) {
-		if m := members[member]; !m.Static() {
-			e.initProperty(properties, m, proto)
+	e.addPrototypeMembers(proto, t.TypeMembers(), true)
+
+	// For any interfaces implemented by the type, type also ensure to add these as though they were members.
+	if class, isclass := t.(*symbols.Class); isclass {
+		for _, impl := range class.Implements {
+			e.addPrototypeInterfaceMembers(proto, impl)
 		}
 	}
 
 	e.protos[t] = proto
 	return proto
+}
+
+// addPrototypeMembers adds a bag of members to a prototype (during initialization).
+func (e *evaluator) addPrototypeMembers(proto *rt.Object, members symbols.ClassMemberMap, must bool) {
+	properties := proto.Properties()
+	for _, member := range symbols.StableClassMemberMap(members) {
+		if m := members[member]; !m.Static() {
+			k := rt.PropertyKey(m.Name())
+			if must || properties.GetAddr(k, false) == nil {
+				e.initProperty(proto, properties, m)
+			}
+		}
+	}
+}
+
+// addPrototypeInterfaceMembers ensures that interface members exist on the prototype (during initialization).
+func (e *evaluator) addPrototypeInterfaceMembers(proto *rt.Object, impl symbols.Type) {
+	// Add members from this type, but only so long as they don't already exist.
+	e.addPrototypeMembers(proto, impl.TypeMembers(), false)
+
+	// Now do the same for any base classes.
+	if base := impl.Base(); base != nil {
+		e.addPrototypeInterfaceMembers(proto, base)
+	}
+	if class, isclass := impl.(*symbols.Class); isclass {
+		for _, classimpl := range class.Implements {
+			e.addPrototypeInterfaceMembers(proto, classimpl)
+		}
+	}
 }
 
 // newObject allocates a fresh object of the given type, wired up to its prototype.
@@ -1175,9 +1205,9 @@ func (e *evaluator) evalLoadLocation(node *ast.LoadLocationExpression, lval bool
 			contract.Assertf(sym != nil, "Expected export '%v' to resolve to a token", export.Node.Referent.Tok)
 		}
 
-		// Look up the symbol property in the right place.  Note that because this is a static load, we
-		// intentionally do not perform any lazily initialization of missing property slots; they must exist.  But we
-		// still need to load from the object in case one of the properties was overwritten.
+		// Look up the symbol property in the right place.  Note that because this is a static load, we intentionally
+		// do not perform any lazily initialization of missing property slots; they must exist.  But we still need to
+		// load from the object in case one of the properties was overwritten.  The sole exception is for `dynamic`.
 		switch s := sym.(type) {
 		case symbols.ClassMember:
 			// Consult either the statics map or the object's property based on the kind of symbol.  Note that we do
@@ -1196,7 +1226,8 @@ func (e *evaluator) evalLoadLocation(node *ast.LoadLocationExpression, lval bool
 				if uw := e.checkThis(node, this); uw != nil {
 					return location{}, uw
 				}
-				pv = e.getObjectOrSuperProperty(this, thisexpr, k, false, lval)
+				dynload := this.Type() == types.Dynamic
+				pv = e.getObjectOrSuperProperty(this, thisexpr, k, dynload, lval)
 			}
 			contract.Assertf(pv != nil, "Missing class member '%v' (static=%v)", s.Token(), s.Static())
 			ty = s.Type()
