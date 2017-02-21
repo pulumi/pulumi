@@ -67,18 +67,20 @@ func printPlan(plan resource.Plan, summary bool) {
 	}
 }
 
-func printStep(b *bytes.Buffer, step resource.Step, summary bool, indent string) {
-	// First print out the operation.
-	switch step.Op() {
+func opPrefix(op resource.StepOp) string {
+	switch op {
 	case resource.OpCreate:
-		b.WriteString(colors.Green)
-		b.WriteString("+ ")
+		return colors.Green + "+ "
 	case resource.OpDelete:
-		b.WriteString(colors.Red)
-		b.WriteString("- ")
+		return colors.Red + "- "
 	default:
-		b.WriteString("  ")
+		return "  "
 	}
+}
+
+func printStep(b *bytes.Buffer, step resource.Step, summary bool, indent string) {
+	// First print out the operation's prefix.
+	b.WriteString(opPrefix(step.Op()))
 
 	// Next print the resource moniker, properties, etc.
 	printResource(b, step.Resource(), summary, indent)
