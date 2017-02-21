@@ -144,8 +144,8 @@ func printPackage(pkg *pack.Package, printSymbols bool, printExports bool, print
 	fmt.Printf("%vdependencies [", tab)
 	if pkg.Dependencies != nil && len(*pkg.Dependencies) > 0 {
 		fmt.Printf("\n")
-		for _, dep := range *pkg.Dependencies {
-			fmt.Printf("%v\"%v\"\n", tab+tab, dep)
+		for _, dep := range pack.StableDependencies(*pkg.Dependencies) {
+			fmt.Printf("%v%v: \"%v\"\n", tab+tab, dep, (*pkg.Dependencies)[dep])
 		}
 		fmt.Printf("%v", tab)
 	}
