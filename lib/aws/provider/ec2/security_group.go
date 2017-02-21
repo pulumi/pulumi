@@ -5,6 +5,7 @@ package ec2
 import (
 	"errors"
 
+	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/ec2"
 	pbempty "github.com/golang/protobuf/ptypes/empty"
 	"github.com/marapongo/mu/pkg/resource"
@@ -82,7 +83,14 @@ func (p *securityGroupProvider) Update(ctx context.Context, req *murpc.UpdateReq
 // Delete tears down an existing resource with the given ID.  If it fails, the resource is assumed to still exist.
 func (p *securityGroupProvider) Delete(ctx context.Context, req *murpc.DeleteRequest) (*pbempty.Empty, error) {
 	contract.Assert(req.GetType() == string(SecurityGroup))
-	return nil, errors.New("Not yet implemented")
+	delete := &ec2.DeleteSecurityGroupInput{
+		GroupId: aws.String(req.GetId()),
+	}
+	if _, err := p.ctx.EC2().DeleteSecurityGroup(delete); err != nil {
+		return nil, err
+	}
+	// TODO: wait for termination to complete.
+	return &pbempty.Empty{}, nil
 }
 
 // securityGroup represents the state associated with a security group.

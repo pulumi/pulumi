@@ -35,6 +35,7 @@ func (p *instanceProvider) Create(ctx context.Context, req *murpc.CreateRequest)
 	props := resource.UnmarshalProperties(req.GetProperties())
 
 	// Read in the properties given by the request, validating as we go; if any fail, reject the request.
+	// TODO: validate additional properties (e.g., that AMI exists in this region).
 	// TODO: this is a good example of a "benign" (StateOK) error; handle it accordingly.
 	inst, err := newInstance(props, true)
 	if err != nil {
@@ -44,12 +45,10 @@ func (p *instanceProvider) Create(ctx context.Context, req *murpc.CreateRequest)
 	// Create the create instances request object.
 	var secgrpIDs []*string
 	if inst.SecurityGroupIDs != nil {
-		for _, sid := range *inst.SecurityGroupIDs {
-			secgrpIDs = append(secgrpIDs, &sid)
-		}
+		secgrpIDs = aws.StringSlice(*inst.SecurityGroupIDs)
 	}
 	create := &ec2.RunInstancesInput{
-		ImageId:          &inst.ImageID,
+		ImageId:          aws.String(inst.ImageID),
 		InstanceType:     inst.InstanceType,
 		SecurityGroupIds: secgrpIDs,
 		KeyName:          inst.KeyName,
@@ -91,7 +90,14 @@ func (p *instanceProvider) Update(ctx context.Context, req *murpc.UpdateRequest)
 // Delete tears down an existing resource with the given ID.  If it fails, the resource is assumed to still exist.
 func (p *instanceProvider) Delete(ctx context.Context, req *murpc.DeleteRequest) (*pbempty.Empty, error) {
 	contract.Assert(req.GetType() == string(Instance))
-	return nil, errors.New("Not yet implemented")
+	delete := &ec2.TerminateInstancesInput{
+		InstanceIds: []*string{aws.String(req.GetId())},
+	}
+	if _, err := p.ctx.EC2().TerminateInstances(delete); err != nil {
+		return nil, err
+	}
+	// TODO: wait for termination to complete.
+	return &pbempty.Empty{}, nil
 }
 
 // instance represents the state associated with an instance.

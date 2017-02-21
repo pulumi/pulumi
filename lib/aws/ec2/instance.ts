@@ -19,6 +19,7 @@ export class Instance
     constructor(args: InstanceProperties) {
         super({
             resource:   "AWS::EC2::Instance",
+            properties: args,
         });
         this.imageId = args.imageId;
         this.instanceType = args.instanceType;
