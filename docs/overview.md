@@ -137,6 +137,7 @@ More details are left to the respective design documents.  Here are some key one
 
 * [**Languages**](design/languages.md): An overview of Mu's three languages: MetaMus, MuPack/MuIL, and MuGL.
 * [**MuPack/MuIL**](design/mupack.md): A detailed description of Mu's packaging and computation formats.
+* [**MuGL**](design/mugl.md): An overview of the MuGL file format and how Mu uses graphs to do deployments.
 * [**Stacks**](design/stacks.md): An overview of how stacks are represented using the above fundamentals.
 * [**Dependencies**](design/deps.md): An overview of how package management and dependency management works.
 * [**Clouds**](design/clouds.md): A description of how Mu abstractions map to different cloud providers.
