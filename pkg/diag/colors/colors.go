@@ -27,6 +27,7 @@ func Colorize(s string) string {
 	return c
 }
 
+// Basic
 var (
 	Black         = Command("fg 0")
 	Red           = Command("fg 1")
@@ -43,4 +44,18 @@ var (
 	BrightCyan    = Command("fg 13")
 	BrightWhite   = Command("fg 14")
 	Reset         = Command("reset")
+)
+
+// Special predefined colors for logical conditions.
+var (
+	SpecError    = Red          // for errors.
+	SpecWarning  = Yellow       // for warnings.
+	SpecLocation = Cyan         // for source locations.
+	SpecFatal    = BrightRed    // for fatal errors
+	SpecInfo     = White        // for informational messages.
+	SpecNote     = BrightYellow // for particularly noteworthy messages.
+
+	SpecAdded   = Green  // for adds (in the diff sense).
+	SpecChanged = Yellow // for changes (in the diff sense).
+	SpecDeleted = Red    // for deletes (in the diff sense).
 )

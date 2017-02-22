@@ -99,9 +99,9 @@ func printPlan(plan resource.Plan, summary bool) {
 func opPrefix(op resource.StepOp) string {
 	switch op {
 	case resource.OpCreate:
-		return colors.Green + "+ "
+		return colors.SpecAdded + "+ "
 	case resource.OpDelete:
-		return colors.Red + "- "
+		return colors.SpecDeleted + "- "
 	default:
 		return "  "
 	}

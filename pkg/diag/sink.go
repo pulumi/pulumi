@@ -119,9 +119,9 @@ func (d *defaultSink) Stringify(diag *Diag, cat Category, args ...interface{}) s
 	if d.opts.Colors {
 		switch cat {
 		case Error:
-			buffer.WriteString(colors.Red)
+			buffer.WriteString(colors.SpecError)
 		case Warning:
-			buffer.WriteString(colors.BrightYellow)
+			buffer.WriteString(colors.SpecWarning)
 		default:
 			contract.Failf("Unrecognized diagnostic category: %v", cat)
 		}
@@ -143,7 +143,7 @@ func (d *defaultSink) Stringify(diag *Diag, cat Category, args ...interface{}) s
 
 	// Finally, actually print the message itself.
 	if d.opts.Colors {
-		buffer.WriteString(colors.White)
+		buffer.WriteString(colors.SpecInfo)
 	}
 
 	buffer.WriteString(fmt.Sprintf(diag.Message, args...))
@@ -172,7 +172,7 @@ func (d *defaultSink) StringifyLocation(doc *Document, loc *Location) string {
 
 	if doc != nil {
 		if d.opts.Colors {
-			buffer.WriteString(colors.Cyan)
+			buffer.WriteString(colors.SpecLocation)
 		}
 
 		file := doc.File

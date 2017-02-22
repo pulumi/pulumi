@@ -65,7 +65,7 @@ func newApplyCmd() *cobra.Command {
 				if progress.MaybeCorrupt {
 					b.WriteString(fmt.Sprintf(
 						"%vfatal: A catastrophic error occurred; resources states may be unknown%v\n",
-						colors.Red, colors.Reset))
+						colors.SpecFatal, colors.Reset))
 				}
 				s := b.String()
 				fmt.Printf(colors.Colorize(s))
@@ -122,10 +122,10 @@ func (prog *applyProgress) After(step resource.Step, err error, state resource.R
 		b.WriteString(fmt.Sprintf("Step #%v failed: ", stepnum))
 		switch state {
 		case resource.StateOK:
-			b.WriteString(colors.BrightYellow)
+			b.WriteString(colors.SpecNote)
 			b.WriteString("provider successfully recovered from this failure")
 		case resource.StateUnknown:
-			b.WriteString(colors.BrightRed)
+			b.WriteString(colors.SpecFatal)
 			b.WriteString("this failure was catastrophic and the provider cannot guarantee recovery")
 			prog.MaybeCorrupt = true
 		default:
