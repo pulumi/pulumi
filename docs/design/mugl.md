@@ -99,13 +99,13 @@ dependency resource definitions will lexically precede the dependent resource wi
 
 For example, imagine a resource snapshot involving a VPC, Subnet, SecurityGroup, and EC2 Instance:
 
-    VPC <- Subnet
-      ^        ^
-       \        \
-        \     Instance
-         \       |
-          \      v
-        SecurityGroup
+       Subnet -> VPC
+        ^         ^
+       /          |
+    Instance      |
+       \          |
+        v         |
+       SecurityGroup
 
 Assuming it was created from a `my/cluster` MuPackage, we might expect to find the following MuGL snapshot file:
 
