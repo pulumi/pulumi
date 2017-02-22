@@ -36,11 +36,12 @@ func NewMuCmd() *cobra.Command {
 	cmd.PersistentFlags().IntVarP(
 		&verbose, "verbose", "v", 0, "Enable verbose logging (e.g., v=3); anything >3 is very verbose")
 
-	cmd.AddCommand(newApplyCmd())
+	cmd.AddCommand(newCreateCmd())
+	cmd.AddCommand(newDeleteCmd())
 	cmd.AddCommand(newDescribeCmd())
 	cmd.AddCommand(newEvalCmd())
 	cmd.AddCommand(newGetCmd())
-	cmd.AddCommand(newPlanCmd())
+	cmd.AddCommand(newUpdateCmd())
 	cmd.AddCommand(newVerifyCmd())
 	cmd.AddCommand(newVersionCmd())
 

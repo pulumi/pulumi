@@ -19,6 +19,9 @@ const Mufile = "Mu"
 // Mupack is the base name of a MuPackage.
 const Mupack = "Mupack"
 
+// Mugfile is the base name of a MuGL graph file.
+const Mugfile = "Mug"
+
 // Muspace is the base name of a markup file containing settings shared amongst a workspace.
 const Muspace = "Muspace"
 
@@ -112,6 +115,12 @@ func IsMufile(path string, d diag.Sink) bool {
 // an incorrect extension -- they are logged to the provided diag.Sink (if non-nil).
 func IsMupack(path string, d diag.Sink) bool {
 	return isMarkupFile(path, Mupack, d)
+}
+
+// IsMugfile returns true if the path references what appears to be a valid MuGL file.  If problems are detected -- like
+// an incorrect extension -- they are logged to the provided diag.Sink (if non-nil).
+func IsMugfile(path string, d diag.Sink) bool {
+	return isMarkupFile(path, Mugfile, d)
 }
 
 // IsMuspace returns true if the path references what appears to be a valid Muspace file.  If problems are detected --

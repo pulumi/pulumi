@@ -9,4 +9,5 @@ var (
 	ErrorCantCreateSnapshot     = newError(2002, "Illegal MuGL structure detected; cannot create a snapshot: %v")
 	ErrorPlanApplyFailed        = newError(2003, "Plan apply failed: %v")
 	ErrorIllegalMarkupExtension = newError(2004, "Resource serialization failed; illegal markup extension '%v'")
+	ErrorCantReadSnapshot       = newError(2005, "Could not read snapshot file '%v': %v")
 )

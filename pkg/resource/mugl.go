@@ -150,7 +150,7 @@ func SerializeProperty(prop PropertyValue, reftag string) (interface{}, bool) {
 }
 
 // DeserializeSnapshot takes a serialized MuGL snapshot data structure and returns its associated snapshot.
-func DeserializeSnapshotMugl(mugl *MuglSnapshot) Snapshot {
+func DeserializeSnapshot(mugl *MuglSnapshot) Snapshot {
 	contract.Failf("MuGL deserialization not yet implemented")
 	return nil
 }
