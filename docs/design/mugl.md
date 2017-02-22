@@ -54,7 +54,7 @@ might be serialized as the following MuGL:
 In the event the graph being serialized is a DAG, the order of objects is in linear dependency order -- like the output
 of a topological sort -- as with this example.  This ensures that deserialization can be done entirely in a single pass.
 
-Any other fields are legal as peers to `mugl.vertices`, as is common with snapshots (e.g., to track the source MuPackage
+Any other fields are legal as peers to `vertices`, as is common with snapshots (e.g., to track the source MuPackage
 and arguments).  The schema for vertices is similarly open-ended, except that `#ref` objects resolve to their
 corresponding object counterparts upon deserialization into a runtime graph representation.
 
