@@ -66,12 +66,16 @@ func (p *instanceProvider) Create(ctx context.Context, req *murpc.CreateRequest)
 	contract.Assert(out.Instances[0] != nil)
 	contract.Assert(out.Instances[0].InstanceId != nil)
 
-	// TODO: memoize the ID.
-	// TODO: wait for the instance to finish spinning up.
+	// Before returning that all is okay, wait for the instance to reach the running state.
+	id := out.Instances[0].InstanceId
+	// TODO: consider a custom wait function so that we can have uniformity across all of our providers.
+	// TODO: if this fails, but the creation succeeded, we will have an orphaned resource; report this differently.
+	err = p.ctx.EC2().WaitUntilInstanceRunning(
+		&ec2.DescribeInstancesInput{InstanceIds: []*string{id}})
 
 	return &murpc.CreateResponse{
-		Id: *out.Instances[0].InstanceId,
-	}, nil
+		Id: *id,
+	}, err
 }
 
 // Read reads the instance state identified by ID, returning a populated resource object, or an error if not found.
@@ -96,8 +100,9 @@ func (p *instanceProvider) Delete(ctx context.Context, req *murpc.DeleteRequest)
 	if _, err := p.ctx.EC2().TerminateInstances(delete); err != nil {
 		return nil, err
 	}
-	// TODO: wait for termination to complete.
-	return &pbempty.Empty{}, nil
+	err = p.ctx.EC2().WaitUntilInstanceTerminated(
+		&ec2.DescribeInstancesInput{InstanceIds: []*string{id}})
+	return &pbempty.Empty{}, err
 }
 
 // instance represents the state associated with an instance.
