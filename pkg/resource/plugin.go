@@ -188,8 +188,8 @@ func (p *Plugin) Read(id ID, t tokens.Type) (PropertyMap, error) {
 // Update updates an existing resource with new values.  Only those values in the provided property bag are updated
 // to new values.  The resource ID is returned and may be different if the resource had to be recreated.
 func (p *Plugin) Update(old Resource, new Resource) (ID, error, ResourceState) {
-	contract.Requiref(old.ID() != "", "old.ID", "not empty")
-	contract.Requiref(new.ID() != "", "old.ID", "not empty")
+	contract.Requiref(old.HasID(), "old.ID", "not empty")
+	contract.Requiref(new.HasID(), "old.ID", "not empty")
 	contract.Requiref(old.ID() == new.ID(), "old.ID, new.ID", "==")
 	contract.Requiref(old.Type() != "", "old.Type", "not empty")
 	contract.Requiref(new.Type() != "", "new.Type", "not empty")
@@ -220,7 +220,7 @@ func (p *Plugin) Update(old Resource, new Resource) (ID, error, ResourceState) {
 
 // Delete tears down an existing resource.
 func (p *Plugin) Delete(res Resource) (error, ResourceState) {
-	contract.Requiref(res.ID() != "", "res.ID", "not empty")
+	contract.Requiref(res.HasID(), "res.ID", "not empty")
 	contract.Requiref(res.Type() != "", "res.Type", "not empty")
 
 	id := string(res.ID())

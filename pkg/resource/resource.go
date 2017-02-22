@@ -25,6 +25,7 @@ type Resource interface {
 	Moniker() Moniker        // the resource's object moniker, a human-friendly, unique name for the resource.
 	Type() tokens.Type       // the resource's type.
 	Properties() PropertyMap // the resource's property map.
+	HasID() bool             // returns true if the resource has been assigned an ID.
 	SetID(id ID)             // assignes an ID to this resource, for those under creation.
 }
 
@@ -52,8 +53,9 @@ func (r *resource) Moniker() Moniker        { return r.moniker }
 func (r *resource) Type() tokens.Type       { return r.t }
 func (r *resource) Properties() PropertyMap { return r.properties }
 
+func (r *resource) HasID() bool { return (string(r.id) != "") }
 func (r *resource) SetID(id ID) {
-	contract.Requiref(string(r.id) == "", "id", "empty")
+	contract.Requiref(!r.HasID(), "id", "empty")
 	r.id = id
 }
 

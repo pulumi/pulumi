@@ -172,7 +172,7 @@ func apply(cmd *cobra.Command, args []string, existing string, opts applyOptions
 				// TODO: we want richer diagnostics in the event that a plan apply fails.  For instance, we want to
 				//     know precisely what step failed, we want to know whether it was catastrophic, etc.  We also
 				//     probably want to plumb diag.Sink through apply so it can issue its own rich diagnostics.
-				result.C.Diag().Errorf(errors.ErrorPlanApplyFailed, err)
+				sink().Errorf(errors.ErrorPlanApplyFailed, err)
 			}
 
 			// Print out the total number of steps performed (and their kinds), if any succeeded.
@@ -201,6 +201,7 @@ func apply(cmd *cobra.Command, args []string, existing string, opts applyOptions
 			fmt.Printf(colors.Colorize(s))
 
 			// Now save the updated snapshot to the specified output file, if any, or the standard location otherwise.
+			// TODO: perform partial updates if we weren't able to perform the entire planned set of operations.
 			if opts.Delete {
 				contract.Assert(result.Mugfile != "")
 				deleteSnapshot(result.Mugfile)
@@ -223,7 +224,7 @@ func applyExisting(cmd *cobra.Command, args []string, opts applyOptions) {
 	// Read in the snapshot argument.
 	// TODO: if not supplied, auto-detect the current one.
 	if len(args) == 0 {
-		fmt.Fprintf(os.Stderr, "fatal: missing required snapshot argument")
+		fmt.Fprintf(os.Stderr, "fatal: missing required snapshot argument\n")
 		os.Exit(-1)
 	}
 

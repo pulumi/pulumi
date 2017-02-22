@@ -193,17 +193,19 @@ func (s *step) Apply() (error, ResourceState) {
 	// Now simply perform the operation of the right kind.
 	switch s.op {
 	case OpCreate:
+		contract.Assertf(!s.res.HasID(), "Resources being created must not have IDs already")
 		id, err, rst := prov.Create(s.res)
 		if err != nil {
 			return err, rst
 		}
 		s.res.SetID(id)
 	case OpDelete:
-		contract.Assertf(string(s.res.ID()) == "", "Expected resource to be created has no ID")
+		contract.Assertf(s.res.HasID(), "Resources being deleted must have IDs")
 		if err, rst := prov.Delete(s.res); err != nil {
 			return err, rst
 		}
 	case OpUpdate:
+		contract.Assertf(s.res.HasID(), "Resources being updated must have IDs")
 		id, err, rst := prov.Update(s.res, s.old)
 		if err != nil {
 			return err, rst
