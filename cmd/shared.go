@@ -102,7 +102,7 @@ func plan(cmd *cobra.Command, args []string, existfn string, delete bool) *planR
 	// If we are using an existing snapshot, read in that file (bailing if an IO error occurs).
 	var existing resource.Snapshot
 	if existfn != "" {
-		if existing = readSnapshot(existfn); existing == nil {
+		if existing = readSnapshot(ctx, existfn); existing == nil {
 			return nil
 		}
 	}
@@ -117,9 +117,9 @@ func plan(cmd *cobra.Command, args []string, existfn string, delete bool) *planR
 			Snap:          nil,
 			Plan:          resource.NewDeletePlan(ctx, existing),
 		}
-	} else if result := compile(cmd, args); result != nil {
+	} else if result := compile(cmd, args); result != nil && result.G != nil {
 		// Create a resource snapshot from the compiled/evaluated object graph.
-		snap, err := resource.NewSnapshot(ctx, result.Pkg.Name, result.C.Ctx().Opts.Args, result.G)
+		snap, err := resource.NewGraphSnapshot(ctx, result.Pkg.Name, result.C.Ctx().Opts.Args, result.G)
 		if err != nil {
 			result.C.Diag().Errorf(errors.ErrorCantCreateSnapshot, err)
 			return nil
@@ -246,7 +246,7 @@ func deleteSnapshot(file string) {
 }
 
 // readSnapshot reads in an existing snapshot file, issuing an error and returning nil if something goes awry.
-func readSnapshot(file string) resource.Snapshot {
+func readSnapshot(ctx *resource.Context, file string) resource.Snapshot {
 	m, ext := encoding.Detect(file)
 	if m == nil {
 		sink().Errorf(errors.ErrorIllegalMarkupExtension, ext)
@@ -264,7 +264,7 @@ func readSnapshot(file string) resource.Snapshot {
 		sink().Errorf(errors.ErrorCantReadSnapshot, file, err)
 		return nil
 	}
-	return resource.DeserializeSnapshot(&snap)
+	return resource.DeserializeSnapshot(ctx, &snap)
 }
 
 // saveSnapshot saves a new MuGL snapshot at the given location, backing up any existing ones.

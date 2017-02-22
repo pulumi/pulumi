@@ -103,7 +103,7 @@ func newCreatePlan(ctx *Context, s Snapshot) *plan {
 	// resource first, so that later resources may safely depend upon their dependencies having been created.
 	p := &plan{ctx: ctx}
 	var prev *step
-	for _, res := range s.Topsort() {
+	for _, res := range s.Resources() {
 		step := &step{
 			p:   p,
 			op:  OpCreate,
@@ -126,9 +126,9 @@ func newDeletePlan(ctx *Context, s Snapshot) *plan {
 	// that consume others should be deleted first, so dependencies do not get deleted "out from underneath" consumers.
 	p := &plan{ctx: ctx}
 	var prev *step
-	tops := s.Topsort()
-	for i := len(tops) - 1; i >= 0; i-- {
-		res := tops[i]
+	resources := s.Resources()
+	for i := len(resources) - 1; i >= 0; i-- {
+		res := resources[i]
 		step := &step{
 			p:   p,
 			op:  OpDelete,

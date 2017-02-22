@@ -3,6 +3,8 @@
 package resource
 
 import (
+	"reflect"
+
 	"github.com/marapongo/mu/pkg/compiler/core"
 	"github.com/marapongo/mu/pkg/tokens"
 	"github.com/marapongo/mu/pkg/util/contract"
@@ -11,14 +13,14 @@ import (
 // MuglSnapshot is a serializable, flattened MuGL graph structure, specifically for snapshots.   It is very similar to
 // the actual Snapshot interface, except that it flattens and rearranges a few data structures for serializability.
 type MuglSnapshot struct {
-	Package  tokens.PackageName `json:"package"`            // the package which created this graph.
-	Args     *core.Args         `json:"args,omitempty"`     // the blueprint args for graph creation.
-	Refs     *string            `json:"refs,omitempty"`     // the ref alias, if any (`#ref` by default).
-	Vertices *MuglResourceMap   `json:"vertices,omitempty"` // a map of monikers to resource vertices.
+	Package   tokens.PackageName `json:"package"`             // the package which created this graph.
+	Args      *core.Args         `json:"args,omitempty"`      // the blueprint args for graph creation.
+	Refs      *string            `json:"refs,omitempty"`      // the ref alias, if any (`#ref` by default).
+	Resources *MuglResourceMap   `json:"resources,omitempty"` // a map of monikers to resource vertices.
 }
 
-// SnapshotRefTag is the default ref tag for intra-graph edges.
-const SnapshotRefTag = "#ref"
+// DefaultSnapshotReftag is the default ref tag for intra-graph edges.
+const DefaultSnapshotReftag = "#ref"
 
 // MuglResourceMap is a map of object moniker to the resource vertex for that moniker.
 type MuglResourceMap map[Moniker]*MuglResource
@@ -31,31 +33,31 @@ type MuglResource struct {
 }
 
 // MuglPropertyMap is a property map from resource key to the underlying property value.
-type MuglPropertyMap map[PropertyKey]interface{}
+type MuglPropertyMap map[string]interface{}
 
 // SerializeSnapshot turns a snapshot into a MuGL data structure suitable for serialization.
 func SerializeSnapshot(snap Snapshot, reftag string) *MuglSnapshot {
 	contract.Assert(snap != nil)
 
-	// Set the ref to the default `#ref` if empty.  Only include it in the serialized output if non-default.
+	// Initialize the reftag if needed, and only serialize it if overridden.
 	var refp *string
 	if reftag == "" {
-		reftag = SnapshotRefTag
+		reftag = DefaultSnapshotReftag
 	} else {
 		refp = &reftag
 	}
 
 	// Serialize all vertices and only include a vertex section if non-empty.
-	var vertsp *MuglResourceMap
-	verts := make(MuglResourceMap)
-	for _, res := range snap.Topsort() {
+	var resmp *MuglResourceMap
+	resm := make(MuglResourceMap)
+	for _, res := range snap.Resources() {
 		m := res.Moniker()
 		contract.Assertf(string(m) != "", "Unexpected empty resource moniker")
-		contract.Assertf(verts[m] == nil, "Unexpected duplicate resource moniker '%v'", m)
-		verts[m] = SerializeResource(res, reftag)
+		contract.Assertf(resm[m] == nil, "Unexpected duplicate resource moniker '%v'", m)
+		resm[m] = SerializeResource(res, reftag)
 	}
-	if len(verts) > 0 {
-		vertsp = &verts
+	if len(resm) > 0 {
+		resmp = &resm
 	}
 
 	// Only include the arguments in the output if non-emtpy.
@@ -65,10 +67,10 @@ func SerializeSnapshot(snap Snapshot, reftag string) *MuglSnapshot {
 	}
 
 	return &MuglSnapshot{
-		Package:  snap.Pkg(), // TODO: eventually, this should carry version metadata too.
-		Args:     argsp,
-		Refs:     refp,
-		Vertices: vertsp,
+		Package:   snap.Pkg(), // TODO: eventually, this should carry version metadata too.
+		Args:      argsp,
+		Refs:      refp,
+		Resources: resmp,
 	}
 }
 
@@ -84,15 +86,8 @@ func SerializeResource(res Resource, reftag string) *MuglResource {
 
 	// Serialize all properties recursively, and add them if non-empty.
 	var props *MuglPropertyMap
-	srcprops := res.Properties()
-	dstprops := make(MuglPropertyMap)
-	for _, key := range StablePropertyKeys(srcprops) {
-		if v, use := SerializeProperty(srcprops[key], reftag); use {
-			dstprops[key] = v
-		}
-	}
-	if len(dstprops) > 0 {
-		props = &dstprops
+	if result, use := SerializeProperties(res.Properties(), reftag); use {
+		props = &result
 	}
 
 	return &MuglResource{
@@ -100,6 +95,20 @@ func SerializeResource(res Resource, reftag string) *MuglResource {
 		Type:       res.Type(),
 		Properties: props,
 	}
+}
+
+// SerializeProperties serializes a resource property bag so that it's suitable for serialization.
+func SerializeProperties(props PropertyMap, reftag string) (MuglPropertyMap, bool) {
+	dst := make(MuglPropertyMap)
+	for _, k := range StablePropertyKeys(props) {
+		if v, use := SerializeProperty(props[k], reftag); use {
+			dst[string(k)] = v
+		}
+	}
+	if len(dst) > 0 {
+		return dst, true
+	}
+	return nil, false
 }
 
 // SerializeProperty serializes a resource property value so that it's suitable for serialization.
@@ -125,17 +134,7 @@ func SerializeProperty(prop PropertyValue, reftag string) (interface{}, bool) {
 
 	// Also for objects, recurse and use naked properties.
 	if prop.IsObject() {
-		src := prop.ObjectValue()
-		dst := make(map[PropertyKey]interface{})
-		for _, k := range StablePropertyKeys(src) {
-			if v, use := SerializeProperty(src[k], reftag); use {
-				dst[k] = v
-			}
-		}
-		if len(dst) > 0 {
-			return dst, true
-		}
-		return nil, false
+		return SerializeProperties(prop.ObjectValue(), reftag)
 	}
 
 	// Morph resources into their equivalent `{ "#ref": "<moniker>" }` form.
@@ -150,7 +149,85 @@ func SerializeProperty(prop PropertyValue, reftag string) (interface{}, bool) {
 }
 
 // DeserializeSnapshot takes a serialized MuGL snapshot data structure and returns its associated snapshot.
-func DeserializeSnapshot(mugl *MuglSnapshot) Snapshot {
-	contract.Failf("MuGL deserialization not yet implemented")
-	return nil
+func DeserializeSnapshot(ctx *Context, mugl *MuglSnapshot) Snapshot {
+	// Determine the reftag to use.
+	var reftag string
+	if mugl.Refs == nil {
+		reftag = DefaultSnapshotReftag
+	} else {
+		reftag = *mugl.Refs
+	}
+
+	// For every serialized resource vertex, create a MuglResource out of it.
+	var resources []Resource
+	if mugl.Resources != nil {
+		// TODO: we need to enumerate resources in the specific order in which they were emitted.
+		for m, res := range *mugl.Resources {
+			// Deserialize the resources, if they exist.
+			var props PropertyMap
+			if res.Properties == nil {
+				props = make(PropertyMap)
+			} else {
+				props = DeserializeProperties(*res.Properties, reftag)
+			}
+
+			// And now just produce a resource object using the information available.
+			var id ID
+			if res.ID != nil {
+				id = *res.ID
+			}
+			resources = append(resources, NewResource(id, m, res.Type, props))
+		}
+	}
+
+	var args core.Args
+	if mugl.Args != nil {
+		args = *mugl.Args
+	}
+
+	return NewSnapshot(ctx, mugl.Package, args, resources)
+}
+
+func DeserializeProperties(props MuglPropertyMap, reftag string) PropertyMap {
+	result := make(PropertyMap)
+	for k, prop := range props {
+		result[PropertyKey(k)] = DeserializeProperty(prop, reftag)
+	}
+	return result
+}
+
+func DeserializeProperty(v interface{}, reftag string) PropertyValue {
+	if v != nil {
+		switch w := v.(type) {
+		case bool:
+			return NewPropertyBool(w)
+		case float64:
+			return NewPropertyNumber(w)
+		case string:
+			return NewPropertyString(w)
+		case []interface{}:
+			var arr []PropertyValue
+			for _, elem := range w {
+				arr = append(arr, DeserializeProperty(elem, reftag))
+			}
+			return NewPropertyArray(arr)
+		case map[string]interface{}:
+			// If the map has a single entry and it is the reftag, this is a moniker.
+			if len(w) == 1 {
+				if tag, has := w[reftag]; has {
+					if tagstr, isstring := tag.(string); isstring {
+						return NewPropertyResource(Moniker(tagstr))
+					}
+				}
+			}
+
+			// Otherwise, this is an arbitrary object value.
+			obj := DeserializeProperties(MuglPropertyMap(w), reftag)
+			return NewPropertyObject(obj)
+		default:
+			contract.Failf("Unrecognized property type: %v", reflect.ValueOf(v))
+		}
+	}
+
+	return NewPropertyNull()
 }

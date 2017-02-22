@@ -85,6 +85,8 @@ A snapshot's schema is identical to that shown above for general MuGL graphs, wi
 
 * Every object is a resource; data objects are serialized as regular JSON (and hence must be acyclic).
 
+* As such, rather than "vertices", the section is labeled "resources".
+
 * All resource objects have a fixed schema.
 
 * All resource monikers are "stable" (see below).
@@ -108,7 +110,7 @@ Assuming it was created from a `my/cluster` MuPackage, we might expect to find t
 
     {
         "package": "my/cluster:*",
-        "vertices": {
+        "resources": {
             "VPC": {
                 "id": "vpc-30629859",
                 "type": "aws:ec2/vpc:VPC",
