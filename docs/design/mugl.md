@@ -51,9 +51,6 @@ might be serialized as the following MuGL:
         }
     }
 
-In the event the graph being serialized is a DAG, the order of objects is in linear dependency order -- like the output
-of a topological sort -- as with this example.  This ensures that deserialization can be done entirely in a single pass.
-
 Any other fields are legal as peers to `vertices`, as is common with snapshots (e.g., to track the source MuPackage
 and arguments).  The schema for vertices is similarly open-ended, except that `#ref` objects resolve to their
 corresponding object counterparts upon deserialization into a runtime graph representation.
@@ -84,7 +81,7 @@ A snapshot's schema is identical to that shown above for general MuGL graphs, wi
 
 * The source MuPackage and arguments, if any, are encoded in the MuGL's header section.
 
-* All snapshot graphs are DAGs.
+* All snapshot graphs are DAGs.  As such, the objects are in topologically-sorted order.
 
 * Every object is a resource; data objects are serialized as regular JSON (and hence must be acyclic).
 
@@ -94,8 +91,8 @@ A snapshot's schema is identical to that shown above for general MuGL graphs, wi
 
 Each resource has a type token (in [the usual Mu sense](mupack.md)), an optional ID assigned by its provider, an
 optional list of moniker aliases, and a bag of properties which, themselves, are just JSON objects with optional edges
-inside.  Any edges within a resource's properties connect it to dependency resources; because snapshots are DAGs, all
-dependency resource definitions will lexically precede the dependent resource within the MuGL file.
+inside.  Edges inside properties connect one resource to another; because snapshots are DAGs, all dependency resource
+definitions will lexically precede the dependent resource within the MuGL file, ensuring single pass deserializability.
 
 For example, imagine a resource snapshot involving a VPC, Subnet, SecurityGroup, and EC2 Instance:
 

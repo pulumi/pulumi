@@ -4,6 +4,7 @@ package encoding
 
 import (
 	"encoding/json"
+	"path/filepath"
 
 	"github.com/ghodss/yaml"
 )
@@ -17,6 +18,15 @@ var Exts = []string{
 	YAMLExt,
 	// Although ".yml" is not a sanctioned YAML extension, it is used quite broadly; so we will support it.
 	".yml",
+}
+
+// Detect auto-detects a marshaler for the given path.
+func Detect(path string) (Marshaler, string) {
+	ext := filepath.Ext(path)
+	if ext == "" {
+		ext = Exts[0] // default to the first (preferred) marshaler.
+	}
+	return Marshalers[ext], ext
 }
 
 // Marshalers is a map of extension to a Marshaler object for that extension.
@@ -44,7 +54,7 @@ func (m *jsonMarshaler) IsYAMLLike() bool {
 }
 
 func (m *jsonMarshaler) Marshal(v interface{}) ([]byte, error) {
-	return json.Marshal(v)
+	return json.MarshalIndent(v, "", "    ")
 }
 
 func (m *jsonMarshaler) Unmarshal(data []byte, v interface{}) error {

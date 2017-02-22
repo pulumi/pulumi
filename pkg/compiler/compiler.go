@@ -29,9 +29,9 @@ type Compiler interface {
 	Workspace() workspace.W // the workspace that this compielr is using.
 
 	// Compile detects a package from the workspace and compiles it into a graph.
-	Compile() graph.Graph
+	Compile() (*pack.Package, graph.Graph)
 	// CompilePath compiles a package given its path into its graph form.
-	CompilePath(path string) graph.Graph
+	CompilePath(path string) (*pack.Package, graph.Graph)
 	// CompilePackage compiles a given package object into its associated graph form.
 	CompilePackage(pkg *pack.Package) graph.Graph
 	// Verify detects a package from the workspace and validates its MuIL contents.
@@ -105,19 +105,19 @@ func (c *compiler) Diag() diag.Sink        { return c.ctx.Diag }
 func (c *compiler) Workspace() workspace.W { return c.w }
 
 // Compile attempts to detect the package from the current working directory and, provided that succeeds, compiles it.
-func (c *compiler) Compile() graph.Graph {
+func (c *compiler) Compile() (*pack.Package, graph.Graph) {
 	if path := c.detectPackage(); path != "" {
 		return c.CompilePath(path)
 	}
-	return nil
+	return nil, nil
 }
 
 // CompilePath loads a package at the given path and compiles it into a graph.
-func (c *compiler) CompilePath(path string) graph.Graph {
+func (c *compiler) CompilePath(path string) (*pack.Package, graph.Graph) {
 	if pkg := c.readPackage(path); pkg != nil {
-		return c.CompilePackage(pkg)
+		return pkg, c.CompilePackage(pkg)
 	}
-	return nil
+	return nil, nil
 }
 
 // CompilePackage compiles the given package into a graph.

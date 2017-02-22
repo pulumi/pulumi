@@ -5,12 +5,15 @@ package cmd
 import (
 	"bytes"
 	"fmt"
+	"io/ioutil"
 	"strconv"
 
 	"github.com/spf13/cobra"
 
+	"github.com/marapongo/mu/pkg/compiler/errors"
 	"github.com/marapongo/mu/pkg/compiler/symbols"
 	"github.com/marapongo/mu/pkg/diag/colors"
+	"github.com/marapongo/mu/pkg/encoding"
 	"github.com/marapongo/mu/pkg/eval/rt"
 	"github.com/marapongo/mu/pkg/resource"
 	"github.com/marapongo/mu/pkg/util/contract"
@@ -18,6 +21,7 @@ import (
 
 func newPlanCmd() *cobra.Command {
 	var delete bool
+	var output string
 	var summary bool
 	var cmd = &cobra.Command{
 		Use:   "plan [blueprint] [-- [args]]",
@@ -33,8 +37,30 @@ func newPlanCmd() *cobra.Command {
 			"By default, a blueprint package is loaded from the current directory.  Optionally,\n" +
 			"a path to a blueprint elsewhere can be provided as the [blueprint] argument.",
 		Run: func(cmd *cobra.Command, args []string) {
-			if _, plan := plan(cmd, args, delete); plan != nil {
-				printPlan(plan, summary)
+			if result := plan(cmd, args, delete); plan != nil {
+				// If no output file was requested, or "-", print to stdout; else write to that file.
+				if output == "" || output == "-" {
+					printPlan(result.Plan, summary)
+				} else {
+					// Make a serializable MuGL data structure and then use the encoder to encode it.
+					m, ext := encoding.Detect(output)
+					if m == nil {
+						result.C.Diag().Errorf(errors.ErrorIllegalMarkupExtension, ext)
+						return
+					} else {
+						ser := resource.SerializeSnapshot(result.Snap, "")
+						// TODO: this won't be a stable resource ordering; we need it to be in DAG order.
+						b, err := m.Marshal(ser)
+						if err != nil {
+							result.C.Diag().Errorf(errors.ErrorIO, err)
+							return
+						}
+						if err = ioutil.WriteFile(output, b, 0644); err != nil {
+							result.C.Diag().Errorf(errors.ErrorIO, err)
+							return
+						}
+					}
+				}
 			}
 		},
 	}
@@ -42,6 +68,9 @@ func newPlanCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVar(
 		&delete, "delete", false,
 		"Create a plan for deleting an entire snapshot")
+	cmd.PersistentFlags().StringVarP(
+		&output, "output", "o", "",
+		"Serialize the resulting plan as a snapshot file to the given output")
 	cmd.PersistentFlags().BoolVarP(
 		&summary, "summary", "s", false,
 		"Summarize the plan, don't show the full details")

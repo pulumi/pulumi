@@ -34,15 +34,15 @@ func newApplyCmd() *cobra.Command {
 			"By default, a blueprint package is loaded from the current directory.  Optionally,\n" +
 			"a path to a blueprint elsewhere can be provided as the [blueprint] argument.",
 		Run: func(cmd *cobra.Command, args []string) {
-			if comp, plan := plan(cmd, args, delete); plan != nil {
+			if result := plan(cmd, args, delete); result != nil {
 				// Create an object to track progress and perform the actual operations.
 				start := time.Now()
 				progress := newProgress(detailed)
-				if err, _, _ := plan.Apply(progress); err != nil {
+				if err, _, _ := result.Plan.Apply(progress); err != nil {
 					// TODO: we want richer diagnostics in the event that a plan apply fails.  For instance, we want to
 					//     know precisely what step failed, we want to know whether it was catastrophic, etc.  We also
 					//     probably want to plumb diag.Sink through apply so it can issue its own rich diagnostics.
-					comp.Diag().Errorf(errors.ErrorPlanApplyFailed, err)
+					result.C.Diag().Errorf(errors.ErrorPlanApplyFailed, err)
 				}
 
 				// Print out the total number of steps performed (and their kinds), if any succeeded.

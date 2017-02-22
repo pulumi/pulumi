@@ -3,6 +3,7 @@
 package resource
 
 import (
+	"github.com/marapongo/mu/pkg/compiler/core"
 	"github.com/marapongo/mu/pkg/eval/rt"
 	"github.com/marapongo/mu/pkg/graph"
 	"github.com/marapongo/mu/pkg/tokens"
@@ -14,6 +15,8 @@ import (
 // or apply an infrastructure deployment plan in order to make reality match the snapshot state.
 type Snapshot interface {
 	Ctx() *Context                              // fetches the context for this snapshot.
+	Pkg() tokens.PackageName                    // the package from which this snapshot came.
+	Args() core.Args                            // the arguments used to compile this package.
 	Graph() graph.Graph                         // the raw underlying object graph.
 	Topsort() []Resource                        // a topologically sorted list of resources (based on dependencies).
 	ResourceByID(id ID, t tokens.Type) Resource // looks up a resource by ID and type.
@@ -24,12 +27,12 @@ type Snapshot interface {
 // NewSnapshot takes an object graph and produces a resource snapshot from it.  It understands how to name resources
 // based on their position within the graph and how to identify and record dependencies.  This function can fail
 // dynamically if the input graph did not satisfy the preconditions for resource graphs (like that it is a DAG).
-func NewSnapshot(ctx *Context, g graph.Graph) (Snapshot, error) {
+func NewSnapshot(ctx *Context, pkg tokens.PackageName, args core.Args, g graph.Graph) (Snapshot, error) {
 	// First create the monikers, resource objects, and maps that we will use.
 	createResources(ctx, g)
 
 	// Next remember the topologically sorted list of resources (in dependency order).  This happens here, rather than
-	// lazily on-demand, so that we can hoist errors pertainign to DAG-ness, etc. to the snapshot creation phase.
+	// lazily on-demand, so that we can hoist errors pertaining to DAG-ness, etc. to the snapshot creation phase.
 	tops, err := topsort(ctx, g)
 	if err != nil {
 		return nil, err
@@ -37,22 +40,28 @@ func NewSnapshot(ctx *Context, g graph.Graph) (Snapshot, error) {
 
 	return &snapshot{
 		ctx:  ctx,
+		pkg:  pkg,
+		args: args,
 		g:    g,
 		tops: tops,
 	}, nil
 }
 
 type snapshot struct {
-	ctx  *Context    // the context shared by all operations in this snapshot.
-	g    graph.Graph // the underlying MuGL object graph.
-	tops []Resource  // the topologically sorted linearized list of resources.
+	ctx  *Context           // the context shared by all operations in this snapshot.
+	pkg  tokens.PackageName // the package from which this snapshot came.
+	args core.Args          // the arguments used to compile this package.
+	g    graph.Graph        // the underlying MuGL object graph.
+	tops []Resource         // the topologically sorted linearized list of resources.
 }
 
 type objectMonikerMap map[*rt.Object]Moniker
 
-func (s *snapshot) Ctx() *Context       { return s.ctx }
-func (s *snapshot) Graph() graph.Graph  { return s.g }
-func (s *snapshot) Topsort() []Resource { return s.tops }
+func (s *snapshot) Ctx() *Context           { return s.ctx }
+func (s *snapshot) Pkg() tokens.PackageName { return s.pkg }
+func (s *snapshot) Args() core.Args         { return s.args }
+func (s *snapshot) Graph() graph.Graph      { return s.g }
+func (s *snapshot) Topsort() []Resource     { return s.tops }
 
 func (s *snapshot) ResourceByID(id ID, t tokens.Type) Resource {
 	contract.Failf("TODO: not yet implemented")
