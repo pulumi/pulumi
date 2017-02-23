@@ -288,8 +288,6 @@ func (props PropertyMap) AllResources() map[Moniker]bool {
 
 // DeepEquals returns true if this property map is deeply equal to the other property map; and false otherwise.
 func (props PropertyMap) DeepEquals(other PropertyMap) bool {
-	seen := make(map[PropertyKey]bool)
-
 	// If any in props either doesn't exist, or is of a different value, return false.
 	for _, k := range StablePropertyKeys(props) {
 		if p, has := other[k]; has {
@@ -299,12 +297,11 @@ func (props PropertyMap) DeepEquals(other PropertyMap) bool {
 		} else {
 			return false
 		}
-		seen[k] = true
 	}
 
 	// If the other map has properties that this map doesn't have, return false.
 	for _, k := range StablePropertyKeys(other) {
-		if !seen[k] {
+		if _, has := props[k]; !has {
 			return false
 		}
 	}
