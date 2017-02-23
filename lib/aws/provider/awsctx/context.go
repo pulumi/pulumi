@@ -3,6 +3,8 @@
 package awsctx
 
 import (
+	"context"
+
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/marapongo/mu/pkg/util/contract"
@@ -38,4 +40,10 @@ func (ctx *Context) EC2() *ec2.EC2 {
 		ctx.ec2 = ec2.New(ctx.sess)
 	}
 	return ctx.ec2
+}
+
+// Request manufactures a standard Golang context object for a request within this overall AWS context.
+func (ctx *Context) Request() context.Context {
+	// TODO: unify this with the gRPC context; this will be easier once gRPC moves to the standard Golang context.
+	return context.Background()
 }

@@ -8,6 +8,7 @@ import (
 	"os"
 
 	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/service/ec2"
 	pbempty "github.com/golang/protobuf/ptypes/empty"
 	"github.com/marapongo/mu/pkg/resource"
@@ -61,9 +62,33 @@ func (p *securityGroupProvider) Create(ctx context.Context, req *murpc.CreateReq
 	contract.Assert(result != nil)
 	id := result.GroupId
 	contract.Assert(id != nil)
-	fmt.Fprintf(os.Stdout, "EC2 security group created: %v\n", *id)
+	fmt.Fprintf(os.Stdout, "EC2 security group created: %v; waiting for it to become active\n", *id)
 
-	// TODO: wait for the group to finish spinning up.
+	// Don't proceed until the security group exists.
+	succ, err := awsctx.RetryUntil(
+		p.ctx,
+		func() (bool, error) {
+			req := &ec2.DescribeSecurityGroupsInput{GroupIds: []*string{id}}
+			res, err := p.ctx.EC2().DescribeSecurityGroups(req)
+			if err != nil {
+				if isSecurityGroupNotExistErr(err) {
+					return false, nil // keep retrying
+				}
+				return false, err // quit; propagate the error
+			}
+			if res == nil || len(res.SecurityGroups) == 0 {
+				return false, nil // keep retrying
+			}
+			contract.Assert(len(res.SecurityGroups) == 1)
+			contract.Assert(*res.SecurityGroups[0].GroupId == *id)
+			return true, nil // we are done
+		},
+	)
+	if err != nil {
+		return nil, err
+	} else if !succ {
+		return nil, fmt.Errorf("EC2 security group '%v' did not become active", *id)
+	}
 
 	// Authorize ingress rules if any exist.
 	if secgrp.Ingress != nil {
@@ -237,4 +262,20 @@ func newSecurityGroupRule(m resource.PropertyMap, req bool) (*securityGroupRule,
 		FromPort:   fromPort,
 		ToPort:     toPort,
 	}, nil
+}
+
+func isSecurityGroupNotExistErr(err error) bool {
+	if erraws, iserraws := err.(awserr.Error); iserraws {
+		if erraws.Code() == "InvalidGroup.NotFound" {
+			// The specified security group does not eixst; this error can occur because the ID of a recently created
+			// security group has not propagated through the system.
+			return true
+		}
+		if erraws.Code() == "InvalidSecurityGroupID.NotFound" {
+			// The specified security group does not exist; if you are creating a network interface, ensure that
+			// you specify a VPC security group, and not an EC2-Classic security group.
+			return true
+		}
+	}
+	return false
 }

@@ -8,9 +8,16 @@ import (
 )
 
 type Acceptor struct {
-	Accept Acceptance
-	Delay  time.Duration
+	Accept   Acceptance      // a function that determines when to proceed.
+	Progress *func(int) bool // an optional progress function.
+	Delay    *time.Duration  // an optional delay duration.
+	Backoff  *float64        // an optional backoff multiplier.
 }
+
+const (
+	DefaultDelay   time.Duration = 250 * time.Millisecond // by default, delay by 250ms
+	DefaultBackoff float64       = 2.0                    // by default, backoff by 2.0
+)
 
 type Acceptance func() (bool, error)
 
@@ -20,6 +27,20 @@ type Acceptance func() (bool, error)
 func Until(ctx context.Context, acceptor Acceptor) (bool, error) {
 	expired := false
 
+	// Prepare our delay and backoff variables.
+	var delay time.Duration
+	if acceptor.Delay == nil {
+		delay = DefaultDelay
+	} else {
+		delay = *acceptor.Delay
+	}
+	var backoff float64
+	if acceptor.Backoff == nil {
+		backoff = DefaultBackoff
+	} else {
+		backoff = *acceptor.Backoff
+	}
+
 	// If the context expires before the waiter has accepted, return.
 	go func() {
 		<-ctx.Done()
@@ -27,11 +48,17 @@ func Until(ctx context.Context, acceptor Acceptor) (bool, error) {
 	}()
 
 	// Loop until the condition is accepted, or the context expires, whichever comes first.
+	tries := 1
 	for !expired {
 		if b, err := acceptor.Accept(); b || err != nil {
 			return b, err
 		}
-		time.Sleep(acceptor.Delay)
+		if acceptor.Progress != nil && !(*acceptor.Progress)(tries) {
+			break // progress function asked to quit.
+		}
+		time.Sleep(delay)
+		delay = time.Duration(float64(delay) * backoff)
+		tries++
 	}
 
 	return false, nil
