@@ -102,11 +102,11 @@ func (p *instanceProvider) Delete(ctx context.Context, req *murpc.DeleteRequest)
 	delete := &ec2.TerminateInstancesInput{
 		InstanceIds: []*string{id},
 	}
-	fmt.Fprintf(os.Stdout, "Terminating EC2 instance '%v'...\n", *id)
+	fmt.Fprintf(os.Stdout, "Terminating EC2 instance '%v'\n", *id)
 	if _, err := p.ctx.EC2().TerminateInstances(delete); err != nil {
 		return nil, err
 	}
-	fmt.Fprintf(os.Stdout, "EC2 termination request submitted; now waiting for it to terminate...\n", *id)
+	fmt.Fprintf(os.Stdout, "EC2 instance termination request submitted; waiting for it to terminate\n", *id)
 	err := p.ctx.EC2().WaitUntilInstanceTerminated(
 		&ec2.DescribeInstancesInput{InstanceIds: []*string{id}})
 	return &pbempty.Empty{}, err

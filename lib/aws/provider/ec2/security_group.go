@@ -127,10 +127,13 @@ func (p *securityGroupProvider) Delete(ctx context.Context, req *murpc.DeleteReq
 
 	// First, perform the deletion.
 	id := aws.String(req.GetId())
+	fmt.Fprintf(os.Stdout, "Terminating EC2 SecurityGroup '%v'\n", *id)
 	delete := &ec2.DeleteSecurityGroupInput{GroupId: id}
 	if _, err := p.ctx.EC2().DeleteSecurityGroup(delete); err != nil {
 		return nil, err
 	}
+
+	fmt.Fprintf(os.Stdout, "EC2 Security Group delete request submitted; waiting for it to terminate\n")
 
 	// Don't proceed until the security group exists.
 	if err := p.waitForSecurityGroupState(id, false); err != nil {
@@ -260,7 +263,7 @@ func (p *securityGroupProvider) waitForSecurityGroupState(id *string, exist bool
 				if !isSecurityGroupNotExistErr(err) {
 					return false, err // quit and propagate the error
 				}
-			} else if res == nil || len(res.SecurityGroups) > 0 {
+			} else if res != nil && len(res.SecurityGroups) > 0 {
 				contract.Assert(len(res.SecurityGroups) == 1)
 				contract.Assert(*res.SecurityGroups[0].GroupId == *id)
 				missing = false // we found one
@@ -280,11 +283,11 @@ func (p *securityGroupProvider) waitForSecurityGroupState(id *string, exist bool
 	} else if !succ {
 		var reason string
 		if exist {
-			reason = "active"
+			reason = "become active"
 		} else {
-			reason = "inactive"
+			reason = "terminate"
 		}
-		return fmt.Errorf("EC2 security group '%v' did not become %v", *id, reason)
+		return fmt.Errorf("EC2 security group '%v' did not %v", *id, reason)
 	}
 	return nil
 }
