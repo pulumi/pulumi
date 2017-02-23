@@ -65,29 +65,8 @@ func (p *securityGroupProvider) Create(ctx context.Context, req *murpc.CreateReq
 	fmt.Fprintf(os.Stdout, "EC2 security group created: %v; waiting for it to become active\n", *id)
 
 	// Don't proceed until the security group exists.
-	succ, err := awsctx.RetryUntil(
-		p.ctx,
-		func() (bool, error) {
-			req := &ec2.DescribeSecurityGroupsInput{GroupIds: []*string{id}}
-			res, err := p.ctx.EC2().DescribeSecurityGroups(req)
-			if err != nil {
-				if isSecurityGroupNotExistErr(err) {
-					return false, nil // keep retrying
-				}
-				return false, err // quit; propagate the error
-			}
-			if res == nil || len(res.SecurityGroups) == 0 {
-				return false, nil // keep retrying
-			}
-			contract.Assert(len(res.SecurityGroups) == 1)
-			contract.Assert(*res.SecurityGroups[0].GroupId == *id)
-			return true, nil // we are done
-		},
-	)
-	if err != nil {
+	if err = p.waitForSecurityGroupState(id, true); err != nil {
 		return nil, err
-	} else if !succ {
-		return nil, fmt.Errorf("EC2 security group '%v' did not become active", *id)
 	}
 
 	// Authorize ingress rules if any exist.
@@ -145,13 +124,19 @@ func (p *securityGroupProvider) Update(ctx context.Context, req *murpc.UpdateReq
 // Delete tears down an existing resource with the given ID.  If it fails, the resource is assumed to still exist.
 func (p *securityGroupProvider) Delete(ctx context.Context, req *murpc.DeleteRequest) (*pbempty.Empty, error) {
 	contract.Assert(req.GetType() == string(SecurityGroup))
-	delete := &ec2.DeleteSecurityGroupInput{
-		GroupId: aws.String(req.GetId()),
-	}
+
+	// First, perform the deletion.
+	id := aws.String(req.GetId())
+	delete := &ec2.DeleteSecurityGroupInput{GroupId: id}
 	if _, err := p.ctx.EC2().DeleteSecurityGroup(delete); err != nil {
 		return nil, err
 	}
-	// TODO: wait for termination to complete.
+
+	// Don't proceed until the security group exists.
+	if err := p.waitForSecurityGroupState(id, false); err != nil {
+		return nil, err
+	}
+
 	return &pbempty.Empty{}, nil
 }
 
@@ -262,6 +247,46 @@ func newSecurityGroupRule(m resource.PropertyMap, req bool) (*securityGroupRule,
 		FromPort:   fromPort,
 		ToPort:     toPort,
 	}, nil
+}
+
+func (p *securityGroupProvider) waitForSecurityGroupState(id *string, exist bool) error {
+	succ, err := awsctx.RetryUntil(
+		p.ctx,
+		func() (bool, error) {
+			req := &ec2.DescribeSecurityGroupsInput{GroupIds: []*string{id}}
+			missing := true
+			res, err := p.ctx.EC2().DescribeSecurityGroups(req)
+			if err != nil {
+				if !isSecurityGroupNotExistErr(err) {
+					return false, err // quit and propagate the error
+				}
+			} else if res == nil || len(res.SecurityGroups) > 0 {
+				contract.Assert(len(res.SecurityGroups) == 1)
+				contract.Assert(*res.SecurityGroups[0].GroupId == *id)
+				missing = false // we found one
+			}
+
+			if missing {
+				// If missing and exist==true, keep retrying; else, we're good.
+				return !exist, nil
+			} else {
+				// If not missing and exist==true, we're good; else, keep retrying.
+				return exist, nil
+			}
+		},
+	)
+	if err != nil {
+		return err
+	} else if !succ {
+		var reason string
+		if exist {
+			reason = "active"
+		} else {
+			reason = "inactive"
+		}
+		return fmt.Errorf("EC2 security group '%v' did not become %v", *id, reason)
+	}
+	return nil
 }
 
 func isSecurityGroupNotExistErr(err error) bool {
