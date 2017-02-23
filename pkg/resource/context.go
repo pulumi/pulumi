@@ -5,6 +5,7 @@ package resource
 import (
 	"context"
 
+	"github.com/marapongo/mu/pkg/diag"
 	"github.com/marapongo/mu/pkg/eval/rt"
 	"github.com/marapongo/mu/pkg/tokens"
 	"github.com/marapongo/mu/pkg/util/contract"
@@ -13,6 +14,7 @@ import (
 // Context is used to group related operations together so that associated OS resources can be cached, shared, and
 // reclaimed as appropriate.
 type Context struct {
+	Diag    diag.Sink                  // the diagnostics sink to use for messages.
 	Plugins map[tokens.Package]*Plugin // a cache of plugins and their processes.
 	Res     objectResourceMap          // the resources held inside of this snapshot.
 	Mks     monikerResourceMap         // a convenient lookup map for moniker to resource.
@@ -21,8 +23,9 @@ type Context struct {
 type objectResourceMap map[*rt.Object]Resource
 type monikerResourceMap map[Moniker]Resource
 
-func NewContext() *Context {
+func NewContext(d diag.Sink) *Context {
 	return &Context{
+		Diag:    d,
 		Plugins: make(map[tokens.Package]*Plugin),
 		Res:     make(objectResourceMap),
 		Mks:     make(monikerResourceMap),

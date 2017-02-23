@@ -4,6 +4,8 @@ package ec2
 
 import (
 	"errors"
+	"fmt"
+	"os"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/ec2"
@@ -57,6 +59,7 @@ func (p *instanceProvider) Create(ctx context.Context, req *murpc.CreateRequest)
 	}
 
 	// Now go ahead and perform the action.
+	fmt.Fprintf(os.Stdout, "Creating new EC2 instance resource\n")
 	out, err := p.ctx.EC2().RunInstances(create)
 	if err != nil {
 		return nil, err
@@ -68,6 +71,7 @@ func (p *instanceProvider) Create(ctx context.Context, req *murpc.CreateRequest)
 
 	// Before returning that all is okay, wait for the instance to reach the running state.
 	id := out.Instances[0].InstanceId
+	fmt.Fprintf(os.Stdout, "EC2 instance '%v' created; now waiting for it to become 'running'\n", *id)
 	// TODO: consider a custom wait function so that we can have uniformity across all of our providers.
 	// TODO: if this fails, but the creation succeeded, we will have an orphaned resource; report this differently.
 	err = p.ctx.EC2().WaitUntilInstanceRunning(
@@ -98,9 +102,11 @@ func (p *instanceProvider) Delete(ctx context.Context, req *murpc.DeleteRequest)
 	delete := &ec2.TerminateInstancesInput{
 		InstanceIds: []*string{id},
 	}
+	fmt.Fprintf(os.Stdout, "Terminating EC2 instance '%v'...\n", *id)
 	if _, err := p.ctx.EC2().TerminateInstances(delete); err != nil {
 		return nil, err
 	}
+	fmt.Fprintf(os.Stdout, "EC2 termination request submitted; now waiting for it to terminate...\n", *id)
 	err := p.ctx.EC2().WaitUntilInstanceTerminated(
 		&ec2.DescribeInstancesInput{InstanceIds: []*string{id}})
 	return &pbempty.Empty{}, err

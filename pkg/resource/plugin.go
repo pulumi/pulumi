@@ -16,6 +16,7 @@ import (
 	"github.com/golang/glog"
 	"google.golang.org/grpc"
 
+	"github.com/marapongo/mu/pkg/diag"
 	"github.com/marapongo/mu/pkg/tokens"
 	"github.com/marapongo/mu/pkg/util/contract"
 	"github.com/marapongo/mu/pkg/workspace"
@@ -85,31 +86,29 @@ func NewPlugin(ctx *Context, pkg tokens.Package) (*Plugin, error) {
 				pkg, port, err))
 	}
 
-	// If debugging is on, spawn goroutines that will spew STDOUT/STDERR to the logfile.
-	// TODO: eventually we want real progress reporting, etc., which will need to be done out of band via RPC.
+	// For now, we will spawn goroutines that will spew STDOUT/STDERR to the relevent diag streams.
+	// TODO: eventually we want real progress reporting, etc., which will need to be done out of band via RPC.  This
+	//     will be particularly important when we parallelize the application of the resource graph.
 	tracers := []struct {
-		v   glog.Level
 		r   io.Reader
 		lbl string
+		cb  func(string)
 	}{
-		{5, procout, "stdout"},
-		{3, procerr, "stderr"},
+		{procout, "stdout", func(line string) { ctx.Diag.Infof(diag.Message(line)) }},
+		{procerr, "stderr", func(line string) { ctx.Diag.Errorf(diag.Message(line)) }},
 	}
 	for _, trace := range tracers {
-		if glog.V(trace.v) {
-			v := trace.v
-			reader := bufio.NewReader(trace.r)
-			lbl := trace.lbl
-			go func() {
-				for {
-					line, err := reader.ReadString('\n')
-					if err != nil {
-						break
-					}
-					glog.V(v).Infof("plugin[%v].%v: %v", pkg, lbl, line)
+		t := trace
+		reader := bufio.NewReader(t.r)
+		go func() {
+			for {
+				line, err := reader.ReadString('\n')
+				if err != nil {
+					break
 				}
-			}()
-		}
+				t.cb(fmt.Sprintf("plugin[%v].%v: %v", pkg, t.lbl, line[:len(line)-1]))
+			}
+		}()
 	}
 
 	// Now that we have the port, go ahead and create a gRPC client connection to it.

@@ -13,6 +13,11 @@ type Diag struct {
 	Loc     *Location // the document location at which this diagnostic occurred.
 }
 
+// Message returns an anonymous diagnostic message without any source or ID information.
+func Message(msg string) *Diag {
+	return &Diag{Message: msg}
+}
+
 // Diagable can be used to determine a diagnostic's position.
 type Diagable interface {
 	Where() (*Document, *Location)

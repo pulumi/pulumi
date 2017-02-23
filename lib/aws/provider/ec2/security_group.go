@@ -4,6 +4,8 @@ package ec2
 
 import (
 	"errors"
+	"fmt"
+	"os"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/ec2"
@@ -44,6 +46,7 @@ func (p *securityGroupProvider) Create(ctx context.Context, req *murpc.CreateReq
 	// Make the security group creation parameters.
 	// TODO: the name needs to be figured out; CloudFormation doesn't expose it, presumably due to its requirement to
 	//     be unique.  I think we can use the moniker here, but that isn't necessarily stable.  UUID?
+	fmt.Fprintf(os.Stdout, "Creating EC2 security group")
 	create := &ec2.CreateSecurityGroupInput{
 		GroupName:   &secgrp.Description,
 		Description: &secgrp.Description,
@@ -58,11 +61,13 @@ func (p *securityGroupProvider) Create(ctx context.Context, req *murpc.CreateReq
 	contract.Assert(result != nil)
 	id := result.GroupId
 	contract.Assert(id != nil)
+	fmt.Fprintf(os.Stdout, "EC2 security group created: %v\n", *id)
 
 	// TODO: wait for the group to finish spinning up.
 
 	// Authorize ingress rules if any exist.
 	if secgrp.Ingress != nil {
+		fmt.Fprintf(os.Stdout, "Authorizing %v security group ingress rules\n", len(*secgrp.Ingress))
 		for _, ingress := range *secgrp.Ingress {
 			authin := &ec2.AuthorizeSecurityGroupIngressInput{
 				GroupId:    id,
@@ -79,6 +84,7 @@ func (p *securityGroupProvider) Create(ctx context.Context, req *murpc.CreateReq
 
 	// Authorize egress rules if any exist.
 	if secgrp.Egress != nil {
+		fmt.Fprintf(os.Stdout, "Authorizing %v security group egress rules\n", len(*secgrp.Egress))
 		for _, egress := range *secgrp.Egress {
 			authout := &ec2.AuthorizeSecurityGroupEgressInput{
 				GroupId:    id,

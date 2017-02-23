@@ -97,7 +97,7 @@ type compileResult struct {
 // plan just uses the standard logic to parse arguments, options, and to create a snapshot and plan.
 func plan(cmd *cobra.Command, args []string, existfn string, delete bool) *planResult {
 	// Create a new context for the plan operations.
-	ctx := resource.NewContext()
+	ctx := resource.NewContext(sink())
 
 	// If we are using an existing snapshot, read in that file (bailing if an IO error occurs).
 	var existing resource.Snapshot

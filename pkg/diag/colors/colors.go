@@ -33,27 +33,30 @@ var (
 	Red           = Command("fg 1")
 	Green         = Command("fg 2")
 	Yellow        = Command("fg 3")
-	Magenta       = Command("fg 4")
-	Cyan          = Command("fg 5")
+	Blue          = Command("fg 4")
+	Magenta       = Command("fg 5")
+	Cyan          = Command("fg 6")
 	White         = Command("fg 7")
 	BrightBlack   = Command("fg 8")
 	BrightRed     = Command("fg 9")
 	BrightGreen   = Command("fg 10")
 	BrightYellow  = Command("fg 11")
-	BrightMagenta = Command("fg 12")
-	BrightCyan    = Command("fg 13")
-	BrightWhite   = Command("fg 14")
+	BrightBlue    = Command("fg 12")
+	BrightMagenta = Command("fg 13")
+	BrightCyan    = Command("fg 14")
+	BrightWhite   = Command("fg 15")
 	Reset         = Command("reset")
 )
 
 // Special predefined colors for logical conditions.
 var (
-	SpecError    = Red          // for errors.
-	SpecWarning  = Yellow       // for warnings.
-	SpecLocation = Cyan         // for source locations.
-	SpecFatal    = BrightRed    // for fatal errors
-	SpecInfo     = White        // for informational messages.
-	SpecNote     = BrightYellow // for particularly noteworthy messages.
+	SpecInfo      = Magenta      // for information.
+	SpecError     = Red          // for errors.
+	SpecWarning   = Yellow       // for warnings.
+	SpecLocation  = Cyan         // for source locations.
+	SpecFatal     = BrightRed    // for fatal errors
+	SpecNote      = White        // for notes
+	SpecImportant = BrightYellow // for particularly noteworthy messages.
 
 	SpecAdded   = Green  // for adds (in the diff sense).
 	SpecChanged = Yellow // for changes (in the diff sense).

@@ -20,6 +20,8 @@ import (
 type Sink interface {
 	// Count fetches the total number of diagnostics issued (errors plus warnings).
 	Count() int
+	// Infos fetches the number of informational messages issued.
+	Infos() int
 	// Errors fetches the number of errors issued.
 	Errors() int
 	// Warnings fetches the number of warnings issued.
@@ -27,9 +29,11 @@ type Sink interface {
 	// Success returns true if this sink is currently error-free.
 	Success() bool
 
-	// Error issues a new error diagnostic.
+	// Infof issues an informational message.
+	Infof(diag *Diag, args ...interface{})
+	// Errorf issues a new error diagnostic.
 	Errorf(diag *Diag, args ...interface{})
-	// Warning issues a new warning diagnostic.
+	// Warningf issues a new warning diagnostic.
 	Warningf(diag *Diag, args ...interface{})
 
 	// Stringify stringifies a diagnostic in the usual way (e.g., "error: MU123: Mu.yaml:7:39: error goes here\n").
@@ -44,6 +48,7 @@ type Category string
 const (
 	Error   Category = "error"
 	Warning          = "warning"
+	Info             = "info"
 )
 
 // FormatOptions controls the output style and content.
@@ -54,38 +59,46 @@ type FormatOptions struct {
 
 // DefaultSink returns a default sink that simply logs output to stderr/stdout.
 func DefaultSink(opts FormatOptions) Sink {
-	return newDefaultSink(opts, os.Stderr, os.Stdout)
+	return newDefaultSink(opts, map[Category]io.Writer{
+		Info:    os.Stdout,
+		Error:   os.Stderr,
+		Warning: os.Stdout,
+	})
 }
 
-func newDefaultSink(opts FormatOptions, errorW io.Writer, warningW io.Writer) *defaultSink {
-	return &defaultSink{opts: opts, errorW: errorW, warningW: warningW}
+func newDefaultSink(opts FormatOptions, writers map[Category]io.Writer) *defaultSink {
+	contract.Assert(writers[Info] != nil)
+	contract.Assert(writers[Error] != nil)
+	contract.Assert(writers[Warning] != nil)
+	return &defaultSink{
+		opts:    opts,
+		counts:  make(map[Category]int),
+		writers: writers,
+	}
 }
 
 const DefaultSinkIDPrefix = "MU"
 
 // defaultSink is the default sink which logs output to stderr/stdout.
 type defaultSink struct {
-	opts     FormatOptions // a set of options that control output style and content.
-	errors   int           // the number of errors that have been issued.
-	errorW   io.Writer     // the output stream to use for errors.
-	warnings int           // the number of warnings that have been issued.
-	warningW io.Writer     // the output stream to use for warnings.
+	opts    FormatOptions          // a set of options that control output style and content.
+	counts  map[Category]int       // the number of messages that have been issued per category.
+	writers map[Category]io.Writer // the writers to use for each kind of diagnostic category.
 }
 
-func (d *defaultSink) Count() int {
-	return d.errors + d.warnings
-}
+func (d *defaultSink) Count() int    { return d.Infos() + d.Errors() + d.Warnings() }
+func (d *defaultSink) Infos() int    { return d.counts[Info] }
+func (d *defaultSink) Errors() int   { return d.counts[Error] }
+func (d *defaultSink) Warnings() int { return d.counts[Warning] }
+func (d *defaultSink) Success() bool { return d.Errors() == 0 }
 
-func (d *defaultSink) Errors() int {
-	return d.errors
-}
-
-func (d *defaultSink) Warnings() int {
-	return d.warnings
-}
-
-func (d *defaultSink) Success() bool {
-	return d.errors == 0
+func (d *defaultSink) Infof(diag *Diag, args ...interface{}) {
+	msg := d.Stringify(diag, Info, args...)
+	if glog.V(3) {
+		glog.V(3).Infof("defaultSink::Info(%v)", msg[:len(msg)-1])
+	}
+	fmt.Fprintf(d.writers[Info], msg)
+	d.counts[Info]++
 }
 
 func (d *defaultSink) Errorf(diag *Diag, args ...interface{}) {
@@ -93,8 +106,8 @@ func (d *defaultSink) Errorf(diag *Diag, args ...interface{}) {
 	if glog.V(3) {
 		glog.V(3).Infof("defaultSink::Error(%v)", msg[:len(msg)-1])
 	}
-	fmt.Fprintf(d.errorW, msg)
-	d.errors++
+	fmt.Fprintf(d.writers[Error], msg)
+	d.counts[Error]++
 }
 
 func (d *defaultSink) Warningf(diag *Diag, args ...interface{}) {
@@ -102,8 +115,8 @@ func (d *defaultSink) Warningf(diag *Diag, args ...interface{}) {
 	if glog.V(4) {
 		glog.V(4).Infof("defaultSink::Warning(%v)", msg[:len(msg)-1])
 	}
-	fmt.Fprintf(d.warningW, msg)
-	d.warnings++
+	fmt.Fprintf(d.writers[Warning], msg)
+	d.counts[Warning]++
 }
 
 func (d *defaultSink) Stringify(diag *Diag, cat Category, args ...interface{}) string {
@@ -118,6 +131,8 @@ func (d *defaultSink) Stringify(diag *Diag, cat Category, args ...interface{}) s
 	// Now print the message category's prefix (error/warning).
 	if d.opts.Colors {
 		switch cat {
+		case Info:
+			buffer.WriteString(colors.SpecInfo)
 		case Error:
 			buffer.WriteString(colors.SpecError)
 		case Warning:
@@ -143,7 +158,7 @@ func (d *defaultSink) Stringify(diag *Diag, cat Category, args ...interface{}) s
 
 	// Finally, actually print the message itself.
 	if d.opts.Colors {
-		buffer.WriteString(colors.SpecInfo)
+		buffer.WriteString(colors.SpecNote)
 	}
 
 	buffer.WriteString(fmt.Sprintf(diag.Message, args...))
