@@ -4,6 +4,7 @@ import { InternetGateway, Instance, SecurityGroup } from '@mu/aws/ec2';
 let keyName = "lukehoban-us-east-1";
 let instanceType = "t2.micro";
 let sshLocation = "0.0.0.0";
+let sshLocationCIDR = sshLocation + "/0";
 let region = "us-east-1";
 
 let awsRegionArch2AMI: { [name: string]: { [key: string]: string; } }= {
@@ -252,7 +253,7 @@ let securityGroup = new SecurityGroup({
         ipProtocol: "tcp",
         fromPort: 22,
         toPort: 22,
-        cidrIp: sshLocation
+        cidrIp: sshLocationCIDR,
     }]
 });
 
