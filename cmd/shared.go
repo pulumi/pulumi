@@ -278,6 +278,9 @@ func saveSnapshot(snap resource.Snapshot, file string) {
 	if m == nil {
 		sink().Errorf(errors.ErrorIllegalMarkupExtension, ext)
 	} else {
+		if filepath.Ext(file) == "" {
+			file = file + ext
+		}
 		ser := resource.SerializeSnapshot(snap, "")
 		// TODO: this won't be a stable resource ordering; we need it to be in DAG order.
 		b, err := m.Marshal(ser)

@@ -56,14 +56,45 @@ func (p *securityGroupProvider) Create(ctx context.Context, req *murpc.CreateReq
 		return nil, err
 	}
 	contract.Assert(result != nil)
-	contract.Assert(result.GroupId != nil)
+	id := result.GroupId
+	contract.Assert(id != nil)
 
-	// TODO: memoize the ID.
 	// TODO: wait for the group to finish spinning up.
-	// TODO: create the ingress/egress rules.
+
+	// Authorize ingress rules if any exist.
+	if secgrp.Ingress != nil {
+		for _, ingress := range *secgrp.Ingress {
+			authin := &ec2.AuthorizeSecurityGroupIngressInput{
+				GroupId:    id,
+				IpProtocol: aws.String(ingress.IPProtocol),
+				CidrIp:     ingress.CIDRIP,
+				FromPort:   ingress.FromPort,
+				ToPort:     ingress.ToPort,
+			}
+			if _, err := p.ctx.EC2().AuthorizeSecurityGroupIngress(authin); err != nil {
+				return nil, err
+			}
+		}
+	}
+
+	// Authorize egress rules if any exist.
+	if secgrp.Egress != nil {
+		for _, egress := range *secgrp.Egress {
+			authout := &ec2.AuthorizeSecurityGroupEgressInput{
+				GroupId:    id,
+				IpProtocol: aws.String(egress.IPProtocol),
+				CidrIp:     egress.CIDRIP,
+				FromPort:   egress.FromPort,
+				ToPort:     egress.ToPort,
+			}
+			if _, err := p.ctx.EC2().AuthorizeSecurityGroupEgress(authout); err != nil {
+				return nil, err
+			}
+		}
+	}
 
 	return &murpc.CreateResponse{
-		Id: *result.GroupId,
+		Id: *id,
 	}, nil
 }
 
@@ -95,10 +126,10 @@ func (p *securityGroupProvider) Delete(ctx context.Context, req *murpc.DeleteReq
 
 // securityGroup represents the state associated with a security group.
 type securityGroup struct {
-	Description string                      // description of the security group.
-	VPCID       *string                     // the VPC in which this security group resides.
-	Egress      *[]securityGroupEgressRule  // a list of security group egress rules.
-	Ingress     *[]securityGroupIngressRule // a list of security group ingress rules.
+	Description string               // description of the security group.
+	VPCID       *string              // the VPC in which this security group resides.
+	Egress      *[]securityGroupRule // a list of security group egress rules.
+	Ingress     *[]securityGroupRule // a list of security group ingress rules.
 }
 
 // newSecurityGroup creates a new instance bag of state, validating required properties if asked to do so.
@@ -117,34 +148,34 @@ func newSecurityGroup(m resource.PropertyMap, req bool) (*securityGroup, error) 
 		return nil, err
 	}
 
-	var egress *[]securityGroupEgressRule
+	var egress *[]securityGroupRule
 	egressArray, err := m.OptObjectArrayOrErr("securityGroupEgress")
 	if err != nil {
 		return nil, err
 	} else if egressArray != nil {
-		var rules []securityGroupEgressRule
+		var rules []securityGroupRule
 		for _, rule := range *egressArray {
-			sger, err := newSecurityGroupEgressRule(rule, req)
+			secrule, err := newSecurityGroupRule(rule, req)
 			if err != nil {
 				return nil, err
 			}
-			rules = append(rules, *sger)
+			rules = append(rules, *secrule)
 		}
 		egress = &rules
 	}
 
-	var ingress *[]securityGroupIngressRule
+	var ingress *[]securityGroupRule
 	ingressArray, err := m.OptObjectArrayOrErr("securityGroupIngress")
 	if err != nil {
 		return nil, err
 	} else if ingressArray != nil {
-		var rules []securityGroupIngressRule
+		var rules []securityGroupRule
 		for _, rule := range *ingressArray {
-			sgir, err := newSecurityGroupIngressRule(rule, req)
+			secrule, err := newSecurityGroupRule(rule, req)
 			if err != nil {
 				return nil, err
 			}
-			rules = append(rules, *sgir)
+			rules = append(rules, *secrule)
 		}
 		ingress = &rules
 	}
@@ -199,67 +230,5 @@ func newSecurityGroupRule(m resource.PropertyMap, req bool) (*securityGroupRule,
 		CIDRIP:     cidrIP,
 		FromPort:   fromPort,
 		ToPort:     toPort,
-	}, nil
-}
-
-// securityGroupEgressRule represents the state associated with a security group egress rule.
-type securityGroupEgressRule struct {
-	securityGroupRule
-	DestinationPrefixListID    *string // the AWS service prefix of an Amazon VPC endpoint.
-	DestinationSecurityGroupID *string // specifies the destination Amazon VPC security group.
-}
-
-// newSecurityEgressGroupRule creates a new instance bag of state, validating required properties if asked to do so.
-func newSecurityGroupEgressRule(m resource.PropertyMap, req bool) (*securityGroupEgressRule, error) {
-	rule, err := newSecurityGroupRule(m, req)
-	if err != nil && (req || !resource.IsReqError(err)) {
-		return nil, err
-	}
-	destPrefixListID, err := m.OptStringOrErr("destinationPrefixListId")
-	if err != nil {
-		return nil, err
-	}
-	destSecurityGroupID, err := m.OptStringOrErr("destinationSecurityGroup")
-	if err != nil {
-		return nil, err
-	}
-	return &securityGroupEgressRule{
-		securityGroupRule:          *rule,
-		DestinationPrefixListID:    destPrefixListID,
-		DestinationSecurityGroupID: destSecurityGroupID,
-	}, nil
-}
-
-// securityGroupIngressRule represents the state associated with a security group ingress rule.
-type securityGroupIngressRule struct {
-	securityGroupRule
-	SourceSecurityGroupID      *string // the ID of a security group to allow access (for VPC groups only).
-	SourceSecurityGroupName    *string // the name of a security group to allow access (for non-VPC groups only).
-	SourceSecurityGroupOwnerID *string // the account ID of the owner of the group sepcified by the name, if any.
-}
-
-// newSecurityIngressGroupRule creates a new instance bag of state, validating required properties if asked to do so.
-func newSecurityGroupIngressRule(m resource.PropertyMap, req bool) (*securityGroupIngressRule, error) {
-	rule, err := newSecurityGroupRule(m, req)
-	if err != nil && (req || !resource.IsReqError(err)) {
-		return nil, err
-	}
-	srcSecurityGroupID, err := m.OptStringOrErr("sourceSecurityGroup")
-	if err != nil {
-		return nil, err
-	}
-	srcSecurityGroupName, err := m.OptStringOrErr("sourceSecurityGroupName")
-	if err != nil {
-		return nil, err
-	}
-	srcSecurityGroupOwnerID, err := m.OptStringOrErr("sourceSecurityGroupOwnerId")
-	if err != nil {
-		return nil, err
-	}
-	return &securityGroupIngressRule{
-		securityGroupRule:          *rule,
-		SourceSecurityGroupID:      srcSecurityGroupID,
-		SourceSecurityGroupName:    srcSecurityGroupName,
-		SourceSecurityGroupOwnerID: srcSecurityGroupOwnerID,
 	}, nil
 }

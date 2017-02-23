@@ -94,13 +94,14 @@ func (p *instanceProvider) Update(ctx context.Context, req *murpc.UpdateRequest)
 // Delete tears down an existing resource with the given ID.  If it fails, the resource is assumed to still exist.
 func (p *instanceProvider) Delete(ctx context.Context, req *murpc.DeleteRequest) (*pbempty.Empty, error) {
 	contract.Assert(req.GetType() == string(Instance))
+	id := aws.String(req.GetId())
 	delete := &ec2.TerminateInstancesInput{
-		InstanceIds: []*string{aws.String(req.GetId())},
+		InstanceIds: []*string{id},
 	}
 	if _, err := p.ctx.EC2().TerminateInstances(delete); err != nil {
 		return nil, err
 	}
-	err = p.ctx.EC2().WaitUntilInstanceTerminated(
+	err := p.ctx.EC2().WaitUntilInstanceTerminated(
 		&ec2.DescribeInstancesInput{InstanceIds: []*string{id}})
 	return &pbempty.Empty{}, err
 }

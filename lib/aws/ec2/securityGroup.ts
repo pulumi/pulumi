@@ -14,8 +14,8 @@ export class SecurityGroup
 
     public readonly groupDescription: string;
     public readonly vpc?: VPC;
-    public securityGroupEgress?: SecurityGroupEgressRule[];
-    public securityGroupIngress?: SecurityGroupIngressRule[];
+    public securityGroupEgress?: SecurityGroupRule[];
+    public securityGroupIngress?: SecurityGroupRule[];
 
     constructor(args: SecurityGroupProperties) {
         super({
@@ -35,9 +35,9 @@ export interface SecurityGroupProperties extends cloudformation.TagArgs {
     // The VPC in which this security group resides.
     readonly vpc?: VPC;
     // A list of Amazon EC2 security group egress rules.
-    securityGroupEgress?: SecurityGroupEgressRule[];
+    securityGroupEgress?: SecurityGroupRule[];
     // A list of Amazon EC2 security group ingress rules.
-    securityGroupIngress?: SecurityGroupIngressRule[];
+    securityGroupIngress?: SecurityGroupRule[];
 }
 
 // An EC2 Security Group Rule is an embedded property of the SecurityGroup.
@@ -52,24 +52,5 @@ export interface SecurityGroupRule {
     // The end of port range for the TCP and UDP protocols, or an ICMP code. An ICMP code of `-1` indicates a wildcard
     // (i.e., any ICMP code).
     toPort?: number;
-}
-
-// An EC2 Security Group Egress Rule is an embedded property of the SecurityGroup (different from the resource).
-export interface SecurityGroupEgressRule extends SecurityGroupRule {
-    // The AWS service prefix of an Amazon VPC endpoint.
-    destinationPrefixListId?: string;
-    // Specifies the destination Amazon VPC security group.
-    destinationSecurityGroup?: SecurityGroup;
-}
-
-// An EC2 Security Group Ingress Rule is an embedded property of the SecurityGroup (different from the resource).
-export interface SecurityGroupIngressRule extends SecurityGroupRule {
-    // For VPC security groups only. Specifies the ID of the Amazon EC2 Security Group to allow access.
-    sourceSecurityGroup?: SecurityGroup;
-    // For non-VPC security groups only. Specifies the name of the Amazon EC2 Security Group to use for access.
-    sourceSecurityGroupName?: string;
-    // Specifies the AWS Account ID of the owner of the Amazon EC2 Security Group that is specified in the
-    // SourceSecurityGroupName property.
-    sourceSecurityGroupOwnerId?: string;
 }
 
