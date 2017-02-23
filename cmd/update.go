@@ -7,7 +7,7 @@ import (
 )
 
 func newUpdateCmd() *cobra.Command {
-	var detailed bool
+	var detail bool
 	var dryRun bool
 	var output string
 	var cmd = &cobra.Command{
@@ -26,17 +26,17 @@ func newUpdateCmd() *cobra.Command {
 			"a path to a MuPackage elsewhere can be provided as the [blueprint] argument.",
 		Run: func(cmd *cobra.Command, args []string) {
 			applyExisting(cmd, args, applyOptions{
-				Delete:   false,
-				Detailed: detailed,
-				DryRun:   dryRun,
-				Output:   output,
+				Delete: false,
+				Detail: detail,
+				DryRun: dryRun,
+				Output: output,
 			})
 		},
 	}
 
-	cmd.PersistentFlags().BoolVar(
-		&detailed, "detailed", false,
-		"Display detailed output during the application of changes")
+	cmd.PersistentFlags().BoolVarP(
+		&detail, "all", "a", false,
+		"Display all detailed output during the application of changes")
 	cmd.PersistentFlags().BoolVarP(
 		&dryRun, "dry-run", "n", false,
 		"Don't actually update resources; just print out the planned updates")

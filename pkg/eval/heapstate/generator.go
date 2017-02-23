@@ -1,7 +1,7 @@
 // Copyright 2016 Marapongo, Inc. All rights reserved.
 
-// Package graphgen turns MuIL object creation, assignment, etc. events into a MuGL graph.
-package graphgen
+// Package heapstate turns MuIL object creation, assignment, etc. events into a MuGL object graph.
+package heapstate
 
 import (
 	"github.com/golang/glog"
@@ -11,7 +11,6 @@ import (
 	"github.com/marapongo/mu/pkg/compiler/types"
 	"github.com/marapongo/mu/pkg/eval"
 	"github.com/marapongo/mu/pkg/eval/rt"
-	"github.com/marapongo/mu/pkg/graph"
 	"github.com/marapongo/mu/pkg/tokens"
 	"github.com/marapongo/mu/pkg/util/contract"
 )
@@ -19,7 +18,7 @@ import (
 // Generator listens for events, records them as graph vertices and edges, and returns a DAG afterwards.
 type Generator interface {
 	eval.InterpreterHooks
-	Graph() graph.Graph
+	Graph() *ObjectGraph
 }
 
 // New allocates a fresh generator, ready to produce graphs.
@@ -46,36 +45,36 @@ type dependsSet map[*rt.Object]objectSet
 var _ Generator = (*generator)(nil)
 
 // Graph takes the information recorded thus far and produces a new MuGL graph from it.
-func (g *generator) Graph() graph.Graph {
+func (g *generator) Graph() *ObjectGraph {
 	glog.V(7).Infof("Generating graph with %v vertices", len(g.objs))
 
 	// First create vertices for all objects.
-	verts := make(map[*rt.Object]*objectVertex)
+	verts := make(map[*rt.Object]*ObjectVertex)
 	for o := range g.objs {
-		verts[o] = newObjectVertex(o)
+		verts[o] = NewObjectVertex(o)
 	}
 
 	// Now create edges connecting all vertices along dependency lines.
 	edges := int64(0)
 	for o, targets := range g.objs {
 		for target := range targets {
-			verts[o].AddEdge(verts[target])
+			verts[o].ConnectTo(verts[target])
 			edges++
 		}
 	}
 	glog.V(7).Infof("Generated graph with %v edges", edges)
 
 	// Finally, find all vertices that do not have any incoming edges, and consider them roots.
-	var roots []graph.Edge
+	var roots []*ObjectEdge
 	for _, vert := range verts {
 		if len(vert.Ins()) == 0 {
-			e := newObjectEdge(nil, vert)
+			e := NewObjectEdge(nil, vert)
 			roots = append(roots, e)
 		}
 	}
 	glog.V(7).Infof("Generated graph with %v roots", len(roots))
 
-	return newObjectGraph(roots)
+	return NewObjectGraph(roots)
 }
 
 // OnNewObject is called whenever a new object has been allocated.

@@ -7,7 +7,7 @@ import (
 )
 
 func newDeleteCmd() *cobra.Command {
-	var detailed bool
+	var detail bool
 	var dryRun bool
 	var cmd = &cobra.Command{
 		Use:   "delete [snapshot]",
@@ -18,15 +18,15 @@ func newDeleteCmd() *cobra.Command {
 			"existing snapshot file.  After running to completion, this environment will be gone.",
 		Run: func(cmd *cobra.Command, args []string) {
 			applyExisting(cmd, args, applyOptions{
-				Delete:   true,
-				Detailed: detailed,
-				DryRun:   dryRun,
+				Delete: true,
+				Detail: detail,
+				DryRun: dryRun,
 			})
 		},
 	}
 
-	cmd.PersistentFlags().BoolVar(
-		&detailed, "detailed", false,
+	cmd.PersistentFlags().BoolVarP(
+		&detail, "all", "a", false,
 		"Display detailed output during the application of changes")
 	cmd.PersistentFlags().BoolVarP(
 		&dryRun, "dry-run", "n", false,

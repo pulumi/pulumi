@@ -275,6 +275,43 @@ func (m PropertyMap) OptResourceOrErr(k PropertyKey) (*Moniker, error) {
 	return m.ResourceOrErr(k, false)
 }
 
+// AllResources finds all resource monikers, transitively throughout the property map, and returns them.
+func (props PropertyMap) AllResources() map[Moniker]bool {
+	monikers := make(map[Moniker]bool)
+	for _, k := range StablePropertyKeys(props) {
+		for m, v := range props[k].AllResources() {
+			monikers[m] = v
+		}
+	}
+	return monikers
+}
+
+// DeepEquals returns true if this property map is deeply equal to the other property map; and false otherwise.
+func (props PropertyMap) DeepEquals(other PropertyMap) bool {
+	seen := make(map[PropertyKey]bool)
+
+	// If any in props either doesn't exist, or is of a different value, return false.
+	for _, k := range StablePropertyKeys(props) {
+		if p, has := other[k]; has {
+			if !props[k].DeepEquals(p) {
+				return false
+			}
+		} else {
+			return false
+		}
+		seen[k] = true
+	}
+
+	// If the other map has properties that this map doesn't have, return false.
+	for _, k := range StablePropertyKeys(other) {
+		if !seen[k] {
+			return false
+		}
+	}
+
+	return true
+}
+
 func NewPropertyNull() PropertyValue                   { return PropertyValue{nil} }
 func NewPropertyBool(v bool) PropertyValue             { return PropertyValue{v} }
 func NewPropertyNumber(v float64) PropertyValue        { return PropertyValue{v} }
@@ -316,4 +353,57 @@ func (b PropertyValue) IsObject() bool {
 func (b PropertyValue) IsResource() bool {
 	_, is := b.V.(Moniker)
 	return is
+}
+
+// AllResources finds all resource monikers, transitively throughout the property value, and returns them.
+func (v PropertyValue) AllResources() map[Moniker]bool {
+	monikers := make(map[Moniker]bool)
+	if v.IsResource() {
+		monikers[v.ResourceValue()] = true
+	} else if v.IsArray() {
+		for _, elem := range v.ArrayValue() {
+			for m, v := range elem.AllResources() {
+				monikers[m] = v
+			}
+		}
+	} else if v.IsObject() {
+		for m, v := range v.ObjectValue().AllResources() {
+			monikers[m] = v
+		}
+	}
+	return monikers
+}
+
+// DeepEquals returns true if this property map is deeply equal to the other property map; and false otherwise.
+func (v PropertyValue) DeepEquals(other PropertyValue) bool {
+	// Arrays are equal if they are both of the same size and elements are deeply equal.
+	if v.IsArray() {
+		if !other.IsArray() {
+			return false
+		}
+		va := v.ArrayValue()
+		oa := other.ArrayValue()
+		if len(va) != len(oa) {
+			return false
+		}
+		for i, elem := range va {
+			if !elem.DeepEquals(oa[i]) {
+				return false
+			}
+		}
+		return true
+	}
+
+	// Object values are equal if their contents are deeply equal.
+	if v.IsObject() {
+		if !other.IsObject() {
+			return false
+		}
+		vo := v.ObjectValue()
+		oa := other.ObjectValue()
+		return vo.DeepEquals(oa)
+	}
+
+	// For all other cases, primitives are equal if their values are equal.
+	return v.V == other.V
 }

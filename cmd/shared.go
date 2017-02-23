@@ -20,8 +20,8 @@ import (
 	"github.com/marapongo/mu/pkg/diag"
 	"github.com/marapongo/mu/pkg/diag/colors"
 	"github.com/marapongo/mu/pkg/encoding"
+	"github.com/marapongo/mu/pkg/eval/heapstate"
 	"github.com/marapongo/mu/pkg/eval/rt"
-	"github.com/marapongo/mu/pkg/graph"
 	"github.com/marapongo/mu/pkg/pack"
 	"github.com/marapongo/mu/pkg/resource"
 	"github.com/marapongo/mu/pkg/util/cmdutil"
@@ -59,7 +59,7 @@ func compile(cmd *cobra.Command, args []string) *compileResult {
 	// Otherwise, use the default workspace and package logic (which consults the current working directory).
 	var comp compiler.Compiler
 	var pkg *pack.Package
-	var g graph.Graph
+	var g *heapstate.ObjectGraph
 	if len(args) == 0 {
 		var err error
 		comp, err = compiler.Newwd(opts)
@@ -91,7 +91,7 @@ func compile(cmd *cobra.Command, args []string) *compileResult {
 type compileResult struct {
 	C   compiler.Compiler
 	Pkg *pack.Package
-	G   graph.Graph
+	G   *heapstate.ObjectGraph
 }
 
 // plan just uses the standard logic to parse arguments, options, and to create a snapshot and plan.
@@ -160,14 +160,14 @@ func apply(cmd *cobra.Command, args []string, existing string, opts applyOptions
 		if opts.DryRun {
 			// If no output file was requested, or "-", print to stdout; else write to that file.
 			if opts.Output == "" || opts.Output == "-" {
-				printPlan(result.Plan, opts.Detailed)
+				printPlan(result.Plan, opts.Detail)
 			} else {
 				saveSnapshot(result.Snap, opts.Output)
 			}
 		} else {
 			// Create an object to track progress and perform the actual operations.
 			start := time.Now()
-			progress := newProgress(opts.Detailed)
+			progress := newProgress(opts.Detail)
 			if err, _, _ := result.Plan.Apply(progress); err != nil {
 				// TODO: we want richer diagnostics in the event that a plan apply fails.  For instance, we want to
 				//     know precisely what step failed, we want to know whether it was catastrophic, etc.  We also
@@ -299,10 +299,10 @@ func saveSnapshot(snap resource.Snapshot, file string) {
 }
 
 type applyOptions struct {
-	Delete   bool   // true if we are deleting resources.
-	DryRun   bool   // true if we should just print the plan without performing it.
-	Detailed bool   // true if we should print detailed information about resources and operations.
-	Output   string // the place to store the output, if any.
+	Delete bool   // true if we are deleting resources.
+	DryRun bool   // true if we should just print the plan without performing it.
+	Detail bool   // true if we should print detailed information about resources and operations.
+	Output string // the place to store the output, if any.
 }
 
 // applyProgress pretty-prints the plan application process as it goes.
@@ -310,14 +310,14 @@ type applyProgress struct {
 	Steps        int
 	Ops          map[resource.StepOp]int
 	MaybeCorrupt bool
-	Detailed     bool
+	Detail       bool
 }
 
 func newProgress(detailed bool) *applyProgress {
 	return &applyProgress{
-		Steps:    0,
-		Ops:      make(map[resource.StepOp]int),
-		Detailed: detailed,
+		Steps:  0,
+		Ops:    make(map[resource.StepOp]int),
+		Detail: detailed,
 	}
 }
 
@@ -326,7 +326,7 @@ func (prog *applyProgress) Before(step resource.Step) {
 	var b bytes.Buffer
 	stepnum := prog.Steps + 1
 	b.WriteString(fmt.Sprintf("Applying step #%v\n", stepnum))
-	printStep(&b, step, !prog.Detailed, "    ")
+	printStep(&b, step, !prog.Detail, "    ")
 	s := colors.Colorize(b.String())
 	fmt.Printf(s)
 }
@@ -384,7 +384,7 @@ func opPrefix(op resource.StepOp) string {
 	case resource.OpDelete:
 		return colors.SpecDeleted + "- "
 	default:
-		return "  "
+		return colors.SpecChanged + "  "
 	}
 }
 
@@ -393,13 +393,13 @@ func printStep(b *bytes.Buffer, step resource.Step, detailed bool, indent string
 	b.WriteString(opPrefix(step.Op()))
 
 	// Next print the resource moniker, properties, etc.
-	printResource(b, step.Resource(), detailed, indent)
+	printResource(b, step.Old(), step.Resource(), detailed, indent)
 
 	// Finally make sure to reset the color.
 	b.WriteString(colors.Reset)
 }
 
-func printResource(b *bytes.Buffer, res resource.Resource, detailed bool, indent string) {
+func printResource(b *bytes.Buffer, old resource.Resource, res resource.Resource, detailed bool, indent string) {
 	// First print out the resource type (since it is easy on the eyes).
 	b.WriteString(fmt.Sprintf("%s:\n", string(res.Type())))
 

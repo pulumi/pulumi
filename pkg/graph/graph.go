@@ -12,10 +12,6 @@
 // and/or carry out deployment plans.  This package therefore also exposes operations necessary for diffing graphs.
 package graph
 
-import (
-	"github.com/marapongo/mu/pkg/eval/rt"
-)
-
 // Graph is an instance of a MuGL graph.  Each is associated with a single blueprint MuPackage as its input, along with
 // a set of optional arguments used to evaluate it, along with the output DAG with node types and properties.
 type Graph interface {
@@ -24,13 +20,16 @@ type Graph interface {
 
 // Vertex is a single vertex within an overall MuGL graph.
 type Vertex interface {
-	Obj() *rt.Object // the vertex's object.
-	Ins() []Edge     // incoming edges from other vertices within the graph to this vertex.
-	Outs() []Edge    // outgoing edges from this vertex to other vertices within the graph.
+	Data() interface{} // arbitrary data associated with this vertex.
+	Label() string     // the vertex's label.
+	Ins() []Edge       // incoming edges from other vertices within the graph to this vertex.
+	Outs() []Edge      // outgoing edges from this vertex to other vertices within the graph.
 }
 
 // Edge is a directed edge from one vertex to another.
 type Edge interface {
-	To() Vertex   // the vertex this edge connects to.
-	From() Vertex // the vertex this edge connects from.
+	Data() interface{} // arbitrary data associated with this edge.
+	Label() string     // this edge's label.
+	To() Vertex        // the vertex this edge connects to.
+	From() Vertex      // the vertex this edge connects from.
 }

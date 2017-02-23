@@ -14,8 +14,7 @@ import (
 	"github.com/marapongo/mu/pkg/compiler/metadata"
 	"github.com/marapongo/mu/pkg/diag"
 	"github.com/marapongo/mu/pkg/eval"
-	"github.com/marapongo/mu/pkg/graph"
-	"github.com/marapongo/mu/pkg/graph/graphgen"
+	"github.com/marapongo/mu/pkg/eval/heapstate"
 	"github.com/marapongo/mu/pkg/pack"
 	"github.com/marapongo/mu/pkg/util/contract"
 	"github.com/marapongo/mu/pkg/workspace"
@@ -29,11 +28,11 @@ type Compiler interface {
 	Workspace() workspace.W // the workspace that this compielr is using.
 
 	// Compile detects a package from the workspace and compiles it into a graph.
-	Compile() (*pack.Package, graph.Graph)
+	Compile() (*pack.Package, *heapstate.ObjectGraph)
 	// CompilePath compiles a package given its path into its graph form.
-	CompilePath(path string) (*pack.Package, graph.Graph)
+	CompilePath(path string) (*pack.Package, *heapstate.ObjectGraph)
 	// CompilePackage compiles a given package object into its associated graph form.
-	CompilePackage(pkg *pack.Package) graph.Graph
+	CompilePackage(pkg *pack.Package) *heapstate.ObjectGraph
 	// Verify detects a package from the workspace and validates its MuIL contents.
 	Verify() bool
 	// VerifyPath verifies a package given its path, validating that its MuIL contents are correct.
@@ -105,7 +104,7 @@ func (c *compiler) Diag() diag.Sink        { return c.ctx.Diag }
 func (c *compiler) Workspace() workspace.W { return c.w }
 
 // Compile attempts to detect the package from the current working directory and, provided that succeeds, compiles it.
-func (c *compiler) Compile() (*pack.Package, graph.Graph) {
+func (c *compiler) Compile() (*pack.Package, *heapstate.ObjectGraph) {
 	if path := c.detectPackage(); path != "" {
 		return c.CompilePath(path)
 	}
@@ -113,7 +112,7 @@ func (c *compiler) Compile() (*pack.Package, graph.Graph) {
 }
 
 // CompilePath loads a package at the given path and compiles it into a graph.
-func (c *compiler) CompilePath(path string) (*pack.Package, graph.Graph) {
+func (c *compiler) CompilePath(path string) (*pack.Package, *heapstate.ObjectGraph) {
 	if pkg := c.readPackage(path); pkg != nil {
 		return pkg, c.CompilePackage(pkg)
 	}
@@ -121,7 +120,7 @@ func (c *compiler) CompilePath(path string) (*pack.Package, graph.Graph) {
 }
 
 // CompilePackage compiles the given package into a graph.
-func (c *compiler) CompilePackage(pkg *pack.Package) graph.Graph {
+func (c *compiler) CompilePackage(pkg *pack.Package) *heapstate.ObjectGraph {
 	contract.Requiref(pkg != nil, "pkg", "!= nil")
 	glog.Infof("Compiling package '%v' (w=%v)", pkg.Name, c.w.Root())
 	if glog.V(2) {
@@ -155,7 +154,7 @@ func (c *compiler) CompilePackage(pkg *pack.Package) graph.Graph {
 	}
 
 	// Now, create the machinery we need to generate a graph.
-	gg := graphgen.New(c.ctx)
+	gg := heapstate.New(c.ctx)
 
 	// Now, evaluate.
 	e := eval.New(b.Ctx(), gg)

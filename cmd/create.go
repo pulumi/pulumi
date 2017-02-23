@@ -7,7 +7,7 @@ import (
 )
 
 func newCreateCmd() *cobra.Command {
-	var detailed bool
+	var detail bool
 	var dryRun bool
 	var output string
 	var cmd = &cobra.Command{
@@ -24,16 +24,16 @@ func newCreateCmd() *cobra.Command {
 			"a path to a MuPackage elsewhere can be provided as the [blueprint] argument.",
 		Run: func(cmd *cobra.Command, args []string) {
 			apply(cmd, args, "", applyOptions{
-				Delete:   false,
-				Detailed: detailed,
-				DryRun:   dryRun,
-				Output:   output,
+				Delete: false,
+				Detail: detail,
+				DryRun: dryRun,
+				Output: output,
 			})
 		},
 	}
 
-	cmd.PersistentFlags().BoolVar(
-		&detailed, "detailed", false,
+	cmd.PersistentFlags().BoolVarP(
+		&detail, "all", "a", false,
 		"Display detailed output during the application of changes")
 	cmd.PersistentFlags().BoolVarP(
 		&dryRun, "dry-run", "n", false,

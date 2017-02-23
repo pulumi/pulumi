@@ -3,6 +3,9 @@
 package resource
 
 import (
+	"github.com/golang/glog"
+
+	"github.com/marapongo/mu/pkg/graph"
 	"github.com/marapongo/mu/pkg/util/contract"
 )
 
@@ -27,6 +30,7 @@ type Progress interface {
 // Step is a specification for a deployment operation.
 type Step interface {
 	Op() StepOp                    // the operation that will be performed.
+	Old() Resource                 // the old resource, if any, affected by performing this step.
 	Resource() Resource            // the resource affected by performing this step.
 	Next() Step                    // the next step to perform, or nil if none.
 	Apply() (error, ResourceState) // performs the operation specified by this step.
@@ -99,29 +103,26 @@ func (p *plan) Apply(prog Progress) (error, Step, ResourceState) {
 }
 
 func newCreatePlan(ctx *Context, s Snapshot) *plan {
+	if glog.V(7) {
+		glog.V(7).Infof("Creating create plan with #s=%v\n", len(s.Resources()))
+	}
+
 	// To create the resources, we must perform the operations in dependency order.  That is, we create the leaf-most
 	// resource first, so that later resources may safely depend upon their dependencies having been created.
 	p := &plan{ctx: ctx}
 	var prev *step
 	for _, res := range s.Resources() {
-		step := &step{
-			p:   p,
-			op:  OpCreate,
-			res: res,
-		}
-		if prev == nil {
-			contract.Assert(p.first == nil)
-			p.first = step
-			prev = step
-		} else {
-			prev.next = step
-			prev = step
-		}
+		step := newCreateStep(p, res)
+		insertStep(&prev, step)
 	}
 	return p
 }
 
 func newDeletePlan(ctx *Context, s Snapshot) *plan {
+	if glog.V(7) {
+		glog.V(7).Infof("Creating delete plan with #s=%v\n", len(s.Resources()))
+	}
+
 	// To delete an entire snapshot, we must perform the operations in reverse dependency order.  That is, resources
 	// that consume others should be deleted first, so dependencies do not get deleted "out from underneath" consumers.
 	p := &plan{ctx: ctx}
@@ -129,39 +130,152 @@ func newDeletePlan(ctx *Context, s Snapshot) *plan {
 	resources := s.Resources()
 	for i := len(resources) - 1; i >= 0; i-- {
 		res := resources[i]
-		step := &step{
-			p:   p,
-			op:  OpDelete,
-			res: res,
-		}
-		if prev == nil {
-			contract.Assert(p.first == nil)
-			p.first = step
-			prev = step
-		} else {
-			prev.next = step
-			prev = step
-		}
+		step := newDeleteStep(p, res)
+		insertStep(&prev, step)
 	}
 	return p
 }
 
-func newUpdatePlan(ctx *Context, s Snapshot, old Snapshot) *plan {
+func newUpdatePlan(ctx *Context, old Snapshot, new Snapshot) *plan {
+	if glog.V(7) {
+		glog.V(7).Infof("Creating update plan with #old=%v #new=%v\n", len(old.Resources()), len(new.Resources()))
+	}
+
 	// First diff the snapshots; in a nutshell:
 	//
-	//     - Anything in s but not old is a create
-	//     - Anything in old but not s is a delete
-	//     - Anything in both s and old is inspected:
-	//         . Any changed properties imply an update
-	//         . Otherwise, we may need to read the resource
+	//     - Anything in old but not new is a delete
+	//     - Anything in new but not old is a create
+	//     - For those things in both new and old, any changed properties imply an update
 	//
 	// There are some caveats:
 	//
 	//     - Any changes in dependencies are possibly interesting
 	//     - Any changes in moniker are interesting (see note on stability in monikers.go)
 	//
-	contract.Failf("Update plans not yet implemented")
-	return nil
+	olds := make(map[Moniker]Resource)
+	olddepends := make(map[Moniker][]Moniker)
+	for _, res := range old.Resources() {
+		m := res.Moniker()
+		olds[m] = res
+		// Keep track of which dependents exist for all resources.
+		for ref := range res.Properties().AllResources() {
+			olddepends[ref] = append(olddepends[ref], m)
+		}
+	}
+	news := make(map[Moniker]Resource)
+	for _, res := range new.Resources() {
+		news[res.Moniker()] = res
+	}
+
+	// Keep track of vertices for our later graph operations.
+	p := &plan{ctx: ctx}
+	vs := make(map[Moniker]*planVertex)
+
+	// Find those things in old but not new, and add them to the delete queue.
+	deletes := make(map[Resource]bool)
+	for _, res := range olds {
+		m := res.Moniker()
+		if _, has := news[m]; !has {
+			deletes[res] = true
+			step := newDeleteStep(p, res)
+			vs[m] = newPlanVertex(step)
+			glog.V(7).Infof("Update plan decided to delete '%v'", m)
+		}
+	}
+
+	// Find creates and updates: creates are those in new but not old, and updates are those in both.
+	creates := make(map[Resource]bool)
+	updates := make(map[Resource]Resource)
+	for _, res := range news {
+		m := res.Moniker()
+		if old, has := olds[m]; has {
+			contract.Assert(old.Type() == res.Type())
+			if !res.Properties().DeepEquals(old.Properties()) {
+				updates[old] = res
+				step := newUpdateStep(p, old, res)
+				vs[m] = newPlanVertex(step)
+				glog.V(7).Infof("Update plan decided to update '%v'", m)
+			} else if glog.V(7) {
+				glog.V(7).Infof("Update plan decided not to update '%v'", m)
+			}
+		} else {
+			creates[res] = true
+			step := newCreateStep(p, res)
+			vs[m] = newPlanVertex(step)
+			glog.V(7).Infof("Update plan decided to create '%v'", m)
+		}
+	}
+
+	// Finally, we need to sequence the overall set of changes to create the final plan.  To do this, we create a DAG
+	// of the above operations, so that inherent dependencies between operations are respected; specifically:
+	//
+	//     - Deleting a resource depends on deletes of dependents and updates whose olds refer to it
+	//     - Creating a resource depends on creates of dependencies
+	//     - Updating a resource depends on creates or updates of news
+	//
+	// Clearly we must prohibit cycles in this overall graph of resource operations (hence the DAG part).  To ensure
+	// this ordering, we will produce a plan graph whose vertices are operations and whose edges encode dependencies.
+	for _, res := range old.Resources() {
+		m := res.Moniker()
+		if deletes[res] {
+			// Add edges to:
+			//     - any dependents that used to refer to this
+			tov := vs[m]
+			contract.Assert(tov != nil)
+			for _, ref := range olddepends[m] {
+				fromv := vs[ref]
+				contract.Assert(fromv != nil)
+				fromv.connectTo(tov)
+				glog.V(7).Infof("Deletion '%v' depends on resource '%v'", m, ref)
+			}
+		} else if to := updates[res]; to != nil {
+			// Add edge to:
+			//     - creates news
+			//     - updates news
+			// TODO[marapongo/mu#90]: we need to track "cascading updates".
+			fromv := vs[m]
+			contract.Assert(fromv != nil)
+			for ref := range to.Properties().AllResources() {
+				tov := vs[ref]
+				contract.Assert(tov != nil)
+				fromv.connectTo(tov)
+				glog.V(7).Infof("Updating '%v' depends on resource '%v'", m, ref)
+			}
+		}
+	}
+	for _, res := range new.Resources() {
+		if creates[res] {
+			// add edge to:
+			//     - creates news
+			m := res.Moniker()
+			fromv := vs[m]
+			contract.Assert(fromv != nil)
+			for ref := range res.Properties().AllResources() {
+				tov := vs[ref]
+				contract.Assert(tov != nil)
+				fromv.connectTo(tov)
+				glog.V(7).Infof("Creating '%v' depends on resource '%v'", m, ref)
+			}
+		}
+	}
+
+	// For all vertices with no ins, make them root nodes.
+	var roots []*planEdge
+	for _, v := range vs {
+		if len(v.Ins()) == 0 {
+			roots = append(roots, &planEdge{to: v})
+		}
+	}
+
+	// Now topologically sort the steps, thread the plan together, and return it.
+	g := newPlanGraph(p, roots)
+	topdag, err := graph.Topsort(g)
+	contract.Assertf(err == nil, "Unexpected error topologically sorting update plan")
+	var prev *step
+	for _, v := range topdag {
+		insertStep(&prev, v.Data().(*step))
+	}
+	return p
 }
 
 type step struct {
@@ -175,12 +289,37 @@ type step struct {
 var _ Step = (*step)(nil)
 
 func (s *step) Op() StepOp         { return s.op }
+func (s *step) Old() Resource      { return s.old }
 func (s *step) Resource() Resource { return s.res }
 func (s *step) Next() Step {
 	if s.next == nil {
 		return nil
 	}
 	return s.next
+}
+
+func newCreateStep(p *plan, res Resource) *step {
+	return &step{p: p, op: OpCreate, res: res}
+}
+
+func newDeleteStep(p *plan, res Resource) *step {
+	return &step{p: p, op: OpDelete, res: res}
+}
+
+func newUpdateStep(p *plan, old Resource, new Resource) *step {
+	return &step{p: p, op: OpUpdate, old: old, res: new}
+}
+
+func insertStep(prev **step, step *step) {
+	contract.Assert(prev != nil)
+	if *prev == nil {
+		contract.Assert(step.p.first == nil)
+		step.p.first = step
+		*prev = step
+	} else {
+		(*prev).next = step
+		*prev = step
+	}
 }
 
 func (s *step) Apply() (error, ResourceState) {
@@ -206,7 +345,7 @@ func (s *step) Apply() (error, ResourceState) {
 		}
 	case OpUpdate:
 		contract.Assertf(s.res.HasID(), "Resources being updated must have IDs")
-		id, err, rst := prov.Update(s.res, s.old)
+		id, err, rst := prov.Update(s.old, s.res)
 		if err != nil {
 			return err, rst
 		} else if id != ID("") {

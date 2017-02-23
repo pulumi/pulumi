@@ -10,8 +10,8 @@ import (
 	"github.com/marapongo/mu/pkg/compiler/symbols"
 	"github.com/marapongo/mu/pkg/compiler/types"
 	"github.com/marapongo/mu/pkg/compiler/types/predef"
+	"github.com/marapongo/mu/pkg/eval/heapstate"
 	"github.com/marapongo/mu/pkg/eval/rt"
-	"github.com/marapongo/mu/pkg/graph"
 	"github.com/marapongo/mu/pkg/tokens"
 	"github.com/marapongo/mu/pkg/util/contract"
 )
@@ -38,8 +38,8 @@ const (
 	StateUnknown
 )
 
-func IsResourceType(t symbols.Type) bool   { return types.HasBaseName(t, predef.MuResourceClass) }
-func IsResourceVertex(v graph.Vertex) bool { return IsResourceType(v.Obj().Type()) }
+func IsResourceType(t symbols.Type) bool              { return types.HasBaseName(t, predef.MuResourceClass) }
+func IsResourceVertex(v *heapstate.ObjectVertex) bool { return IsResourceType(v.Obj().Type()) }
 
 type resource struct {
 	id         ID          // the resource's unique ID, assigned by the resource provider (or blank if uncreated).

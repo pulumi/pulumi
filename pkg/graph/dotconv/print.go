@@ -64,8 +64,8 @@ func Print(g graph.Graph, w io.Writer) error {
 		// Print this vertex; first its "label" (type) and then its direct dependencies.
 		// TODO: consider serializing properties on the node also.
 		b.WriteString(fmt.Sprintf("%v%v", indent, id))
-		if obj := v.Obj(); obj != nil {
-			b.WriteString(fmt.Sprintf(" [label=\"%v\"]", obj.Type()))
+		if label := v.Label(); label != "" {
+			b.WriteString(fmt.Sprintf(" [label=\"%v\"]", label))
 		}
 		b.WriteString(";\n")
 

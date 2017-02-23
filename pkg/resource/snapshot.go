@@ -4,6 +4,7 @@ package resource
 
 import (
 	"github.com/marapongo/mu/pkg/compiler/core"
+	"github.com/marapongo/mu/pkg/eval/heapstate"
 	"github.com/marapongo/mu/pkg/eval/rt"
 	"github.com/marapongo/mu/pkg/graph"
 	"github.com/marapongo/mu/pkg/tokens"
@@ -32,7 +33,7 @@ func NewSnapshot(ctx *Context, pkg tokens.PackageName, args core.Args, resources
 // NewGraphSnapshot takes an object graph and produces a resource snapshot from it.  It understands how to name
 // resources based on their position within the graph and how to identify and record dependencies.  This function can
 // fail dynamically if the input graph did not satisfy the preconditions for resource graphs (like that it is a DAG).
-func NewGraphSnapshot(ctx *Context, pkg tokens.PackageName, args core.Args, g graph.Graph) (Snapshot, error) {
+func NewGraphSnapshot(ctx *Context, pkg tokens.PackageName, args core.Args, g *heapstate.ObjectGraph) (Snapshot, error) {
 	// First create the monikers, resource objects, and maps that we will use.
 	createResources(ctx, g)
 
@@ -68,7 +69,7 @@ func (s *snapshot) ResourceByObject(obj *rt.Object) Resource { return s.ctx.Res[
 
 // createResources uses a graph to create monikers and resource objects for every resource within.  It
 // returns two maps for further use: a map of vertex to its new resource object, and a map of vertex to its moniker.
-func createResources(ctx *Context, g graph.Graph) {
+func createResources(ctx *Context, g *heapstate.ObjectGraph) {
 	// First create all of the resource monikers within the graph.
 	omks := createMonikers(g)
 
@@ -84,11 +85,11 @@ type objectMonikerMap map[*rt.Object]Moniker
 
 // createMonikers walks the graph creates monikers for every one using the algorithm specified in moniker.go.
 // In particular, it uses the shortest known graph reachability path to the resource to create a string name.
-func createMonikers(g graph.Graph) objectMonikerMap {
+func createMonikers(g *heapstate.ObjectGraph) objectMonikerMap {
 	visited := make(map[graph.Vertex]int)
 	mks := make(objectMonikerMap)
 
-	for _, root := range g.Roots() {
+	for _, root := range g.Objs() {
 		var path []graph.Edge
 		createMonikersEdge(root, path, visited, mks)
 	}
@@ -98,12 +99,12 @@ func createMonikers(g graph.Graph) objectMonikerMap {
 
 // createMonikersEdge inspects a single edge and produces monikers for all resource nodes.  visited keeps track of the
 // shortest path distances for vertices we've already seen, and vmks is a map from vertex to its moniker.
-func createMonikersEdge(e graph.Edge, path []graph.Edge, visited map[graph.Vertex]int, mks objectMonikerMap) {
+func createMonikersEdge(e *heapstate.ObjectEdge, path []graph.Edge, visited map[graph.Vertex]int, mks objectMonikerMap) {
 	visit := true          // if we've already visited the shortest path, we won't go further.
 	path = append(path, e) // append this edge to the path.
 
 	// If this node is a resource, pay special attention to it.
-	v := e.To()
+	v := e.ToObj()
 	if IsResourceVertex(v) {
 		shortest, exists := visited[v]
 		if exists && shortest < len(path) {
@@ -125,7 +126,7 @@ func createMonikersEdge(e graph.Edge, path []graph.Edge, visited map[graph.Verte
 
 	// For all nodes, keep chasing the out-edges; even for non-resources, we might eventually reach one.
 	if visit {
-		for _, out := range v.Outs() {
+		for _, out := range v.OutObjs() {
 			createMonikersEdge(out, path, visited, mks)
 		}
 	}
@@ -145,8 +146,9 @@ func topsort(ctx *Context, g graph.Graph) ([]Resource, error) {
 
 	// Now walk the list and prune out anything that isn't a resource.
 	for _, v := range sorted {
-		if IsResourceVertex(v) {
-			r := ctx.Res[v.Obj()]
+		ov := v.(*heapstate.ObjectVertex)
+		if IsResourceVertex(ov) {
+			r := ctx.Res[ov.Obj()]
 			contract.Assert(r != nil)
 			linear = append(linear, r)
 		}

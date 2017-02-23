@@ -30,10 +30,10 @@ func NewMoniker(v graph.Vertex, path []graph.Edge) Moniker {
 	s := ""
 	for _, e := range path {
 		if from := e.From(); from != nil {
-			s += string(from.Obj().Type().Token()) + "."
+			// TODO: use the edge label too.
+			s += from.Label() + "."
 		}
 	}
 
-	s += string(v.Obj().Type().Token())
-	return Moniker(s)
+	return Moniker(s + v.Label())
 }
