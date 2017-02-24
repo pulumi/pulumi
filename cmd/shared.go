@@ -16,14 +16,13 @@ import (
 	"github.com/marapongo/mu/pkg/compiler"
 	"github.com/marapongo/mu/pkg/compiler/core"
 	"github.com/marapongo/mu/pkg/compiler/errors"
-	"github.com/marapongo/mu/pkg/compiler/symbols"
 	"github.com/marapongo/mu/pkg/diag"
 	"github.com/marapongo/mu/pkg/diag/colors"
 	"github.com/marapongo/mu/pkg/encoding"
 	"github.com/marapongo/mu/pkg/eval/heapstate"
-	"github.com/marapongo/mu/pkg/eval/rt"
 	"github.com/marapongo/mu/pkg/pack"
 	"github.com/marapongo/mu/pkg/resource"
+	"github.com/marapongo/mu/pkg/tokens"
 	"github.com/marapongo/mu/pkg/util/cmdutil"
 	"github.com/marapongo/mu/pkg/util/contract"
 	"github.com/marapongo/mu/pkg/workspace"
@@ -383,36 +382,76 @@ func opPrefix(op resource.StepOp) string {
 		return colors.SpecAdded + "+ "
 	case resource.OpDelete:
 		return colors.SpecDeleted + "- "
-	default:
+	case resource.OpUpdate:
 		return colors.SpecChanged + "  "
+	default:
+		contract.Failf("Unrecognized resource step op: %v", op)
+		return ""
 	}
 }
 
-func printStep(b *bytes.Buffer, step resource.Step, detailed bool, indent string) {
+func opSuffix(op resource.StepOp) string {
+	if op == resource.OpUpdate {
+		return colors.Reset // updates colorize individual lines
+	}
+	return ""
+}
+
+const resourceDetailsIndent = "      " // 4 spaces, plus space for "+ ", "- ", and " " leaders
+
+func printStep(b *bytes.Buffer, step resource.Step, details bool, indent string) {
 	// First print out the operation's prefix.
 	b.WriteString(opPrefix(step.Op()))
 
 	// Next print the resource moniker, properties, etc.
-	printResource(b, step.Old(), step.Resource(), detailed, indent)
+	printResourceHeader(b, step.Old(), step.New(), indent)
+	b.WriteString(opSuffix(step.Op()))
+	printResourceProperties(b, step.Old(), step.New(), details, indent)
 
 	// Finally make sure to reset the color.
 	b.WriteString(colors.Reset)
 }
 
-func printResource(b *bytes.Buffer, old resource.Resource, res resource.Resource, detailed bool, indent string) {
-	// First print out the resource type (since it is easy on the eyes).
-	b.WriteString(fmt.Sprintf("%s:\n", string(res.Type())))
-
-	// Now print out the moniker and, if present, the ID, as "pseudo-properties".
-	indent += "    "
-	b.WriteString(fmt.Sprintf("%s[m=%s]\n", indent, string(res.Moniker())))
-	if id := res.ID(); id != "" {
-		b.WriteString(fmt.Sprintf("%s[id=%s]\n", indent, string(id)))
+func printResourceHeader(b *bytes.Buffer, old resource.Resource, new resource.Resource, indent string) {
+	var t tokens.Type
+	if old == nil {
+		t = new.Type()
+	} else {
+		t = old.Type()
 	}
 
-	if detailed {
+	// The primary header is the resource type (since it is easy on the eyes).
+	b.WriteString(fmt.Sprintf("%s:\n", string(t)))
+}
+
+func printResourceProperties(b *bytes.Buffer, old resource.Resource, new resource.Resource,
+	details bool, indent string) {
+	indent += resourceDetailsIndent
+
+	// Print out the moniker and, if present, the ID, as "pseudo-properties".
+	var id resource.ID
+	var moniker resource.Moniker
+	if old == nil {
+		id = new.ID()
+		moniker = new.Moniker()
+	} else {
+		id = old.ID()
+		moniker = old.Moniker()
+	}
+	if id != "" {
+		b.WriteString(fmt.Sprintf("%s[id=%s]\n", indent, string(id)))
+	}
+	b.WriteString(fmt.Sprintf("%s[m=%s]\n", indent, string(moniker)))
+
+	if details {
 		// Print all of the properties associated with this resource.
-		printObject(b, res.Properties(), indent)
+		if old == nil && new != nil {
+			printObject(b, new.Properties(), indent)
+		} else if new == nil && old != nil {
+			printObject(b, old.Properties(), indent)
+		} else {
+			printOldNewDiffs(b, old.Properties(), new.Properties(), indent)
+		}
 	}
 }
 
@@ -428,12 +467,16 @@ func printObject(b *bytes.Buffer, props resource.PropertyMap, indent string) {
 
 	// Now print out the values intelligently based on the type.
 	for _, k := range keys {
-		b.WriteString(fmt.Sprintf("%s%-"+strconv.Itoa(maxkey)+"s: ", indent, k))
-		printProperty(b, props[k], indent)
+		printPropertyTitle(b, k, maxkey, indent)
+		printPropertyValue(b, props[k], indent)
 	}
 }
 
-func printProperty(b *bytes.Buffer, v resource.PropertyValue, indent string) {
+func printPropertyTitle(b *bytes.Buffer, k resource.PropertyKey, align int, indent string) {
+	b.WriteString(fmt.Sprintf("%s%-"+strconv.Itoa(align)+"s: ", indent, k))
+}
+
+func printPropertyValue(b *bytes.Buffer, v resource.PropertyValue, indent string) {
 	if v.IsNull() {
 		b.WriteString("<nil>")
 	} else if v.IsBool() {
@@ -447,9 +490,8 @@ func printProperty(b *bytes.Buffer, v resource.PropertyValue, indent string) {
 	} else if v.IsArray() {
 		b.WriteString(fmt.Sprintf("[\n"))
 		for i, elem := range v.ArrayValue() {
-			prefix := fmt.Sprintf("%s    [%d]: ", indent, i)
-			b.WriteString(prefix)
-			printProperty(b, elem, fmt.Sprintf("%-"+strconv.Itoa(len(prefix))+"s", ""))
+			newIndent := printArrayElemHeader(b, i, indent)
+			printPropertyValue(b, elem, newIndent)
 		}
 		b.WriteString(fmt.Sprintf("%s]", indent))
 	} else {
@@ -461,7 +503,107 @@ func printProperty(b *bytes.Buffer, v resource.PropertyValue, indent string) {
 	b.WriteString("\n")
 }
 
-func isPrintableProperty(prop *rt.Pointer) bool {
-	_, isfunc := prop.Obj().Type().(*symbols.FunctionType)
-	return !isfunc
+func getArrayElemHeader(b *bytes.Buffer, i int, indent string) (string, string) {
+	prefix := fmt.Sprintf("%s    [%d]: ", indent, i)
+	return prefix, fmt.Sprintf("%-"+strconv.Itoa(len(prefix))+"s", "")
 }
+
+func printArrayElemHeader(b *bytes.Buffer, i int, indent string) string {
+	prefix, newIndent := getArrayElemHeader(b, i, indent)
+	b.WriteString(prefix)
+	return newIndent
+}
+
+func printOldNewDiffs(b *bytes.Buffer, olds resource.PropertyMap, news resource.PropertyMap, indent string) {
+	// Get the full diff structure between the two, and print it (recursively).
+	if diff := olds.Diff(news); diff != nil {
+		printObjectDiff(b, *diff, indent)
+	} else {
+		printObject(b, news, indent)
+	}
+}
+
+func printObjectDiff(b *bytes.Buffer, diff resource.ObjectDiff, indent string) {
+	contract.Assert(len(indent) > 2)
+
+	// Compute the maximum with of property keys so we can justify everything.
+	keys := diff.Keys()
+	maxkey := 0
+	for _, k := range keys {
+		if len(k) > maxkey {
+			maxkey = len(k)
+		}
+	}
+
+	// To print an object diff, enumerate the keys in stable order, and print each property independently.
+	for _, k := range keys {
+		title := func(id string) { printPropertyTitle(b, k, maxkey, id) }
+		if add, isadd := diff.Adds[k]; isadd {
+			b.WriteString(colors.SpecAdded)
+			title(addIndent(indent))
+			printPropertyValue(b, add, addIndent(indent))
+			b.WriteString(colors.Reset)
+		} else if delete, isdelete := diff.Deletes[k]; isdelete {
+			b.WriteString(colors.SpecDeleted)
+			title(deleteIndent(indent))
+			printPropertyValue(b, delete, deleteIndent(indent))
+			b.WriteString(colors.Reset)
+		} else if update, isupdate := diff.Updates[k]; isupdate {
+			printPropertyValueDiff(b, title, update, indent)
+		} else {
+			title(indent)
+			printPropertyValue(b, diff.Sames[k], indent)
+		}
+	}
+}
+
+func printPropertyValueDiff(b *bytes.Buffer, title func(string), diff resource.ValueDiff, indent string) {
+	contract.Assert(len(indent) > 2)
+
+	if diff.Array != nil {
+		title(indent)
+		a := diff.Array
+		b.WriteString("[\n")
+		for i := 0; i < a.Len(); i++ {
+			_, newIndent := getArrayElemHeader(b, i, indent)
+			title := func(id string) { printArrayElemHeader(b, i, indent) }
+			if add, isadd := a.Adds[i]; isadd {
+				b.WriteString(colors.SpecAdded)
+				title(addIndent(newIndent))
+				printPropertyValue(b, add, addIndent(newIndent))
+				b.WriteString(colors.Reset)
+			} else if delete, isdelete := a.Deletes[i]; isdelete {
+				b.WriteString(colors.SpecDeleted)
+				title(deleteIndent(newIndent))
+				printPropertyValue(b, delete, deleteIndent(indent))
+				b.WriteString(colors.Reset)
+			} else if update, isupdate := a.Updates[i]; isupdate {
+				printPropertyValueDiff(b, title, update, newIndent)
+			} else {
+				title(newIndent)
+				printPropertyValue(b, a.Sames[i], newIndent)
+			}
+		}
+		b.WriteString(fmt.Sprintf("%s]", indent))
+	} else if diff.Object != nil {
+		title(indent)
+		b.WriteString("{\n")
+		printObjectDiff(b, *diff.Object, indent+"    ")
+		b.WriteString(fmt.Sprintf("%s}", indent))
+	} else {
+		// If we ended up here, the two values either differ by type, or they have different primitive values.  We will
+		// simply emit a deletion line followed by an addition line.
+		b.WriteString(colors.SpecChanged)
+		title(deleteIndent(indent))
+		printPropertyValue(b, diff.Old, deleteIndent(indent))
+		b.WriteString("\n")
+		title(addIndent(indent))
+		printPropertyValue(b, diff.New, addIndent(indent))
+		b.WriteString(colors.Reset)
+	}
+
+	b.WriteString("\n")
+}
+
+func addIndent(indent string) string    { return indent[:len(indent)-2] + "+ " }
+func deleteIndent(indent string) string { return indent[:len(indent)-2] + "- " }

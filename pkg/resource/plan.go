@@ -30,8 +30,8 @@ type Progress interface {
 // Step is a specification for a deployment operation.
 type Step interface {
 	Op() StepOp                    // the operation that will be performed.
-	Old() Resource                 // the old resource, if any, affected by performing this step.
-	Resource() Resource            // the resource affected by performing this step.
+	Old() Resource                 // the old resource state, if any, before performing this step.
+	New() Resource                 // the new resource state, if any, after performing this step.
 	Next() Step                    // the next step to perform, or nil if none.
 	Apply() (error, ResourceState) // performs the operation specified by this step.
 }
@@ -281,16 +281,16 @@ func newUpdatePlan(ctx *Context, old Snapshot, new Snapshot) *plan {
 type step struct {
 	p    *plan    // this step's plan.
 	op   StepOp   // the operation to perform.
-	res  Resource // the target of the operation.
-	old  Resource // the old view of the resource (for updates only).
+	old  Resource // the state of the resource before this step.
+	new  Resource // the state of the resource after this step.
 	next *step    // the next step after this one in the plan.
 }
 
 var _ Step = (*step)(nil)
 
-func (s *step) Op() StepOp         { return s.op }
-func (s *step) Old() Resource      { return s.old }
-func (s *step) Resource() Resource { return s.res }
+func (s *step) Op() StepOp    { return s.op }
+func (s *step) Old() Resource { return s.old }
+func (s *step) New() Resource { return s.new }
 func (s *step) Next() Step {
 	if s.next == nil {
 		return nil
@@ -298,16 +298,16 @@ func (s *step) Next() Step {
 	return s.next
 }
 
-func newCreateStep(p *plan, res Resource) *step {
-	return &step{p: p, op: OpCreate, res: res}
+func newCreateStep(p *plan, new Resource) *step {
+	return &step{p: p, op: OpCreate, new: new}
 }
 
-func newDeleteStep(p *plan, res Resource) *step {
-	return &step{p: p, op: OpDelete, res: res}
+func newDeleteStep(p *plan, old Resource) *step {
+	return &step{p: p, op: OpDelete, old: old}
 }
 
 func newUpdateStep(p *plan, old Resource, new Resource) *step {
-	return &step{p: p, op: OpUpdate, old: old, res: new}
+	return &step{p: p, op: OpUpdate, old: old, new: new}
 }
 
 func insertStep(prev **step, step *step) {
@@ -323,35 +323,48 @@ func insertStep(prev **step, step *step) {
 }
 
 func (s *step) Apply() (error, ResourceState) {
-	// To apply this step, first fetch the provider for it.
-	prov, err := s.p.Provider(s.res)
-	if err != nil {
-		return err, StateOK
-	}
-
 	// Now simply perform the operation of the right kind.
 	switch s.op {
 	case OpCreate:
-		contract.Assertf(!s.res.HasID(), "Resources being created must not have IDs already")
-		id, err, rst := prov.Create(s.res)
+		contract.Assert(s.old == nil)
+		contract.Assert(s.new != nil)
+		contract.Assertf(!s.new.HasID(), "Resources being created must not have IDs already")
+		prov, err := s.p.Provider(s.new)
+		if err != nil {
+			return err, StateOK
+		}
+		id, err, rst := prov.Create(s.new)
 		if err != nil {
 			return err, rst
 		}
-		s.res.SetID(id)
+		s.new.SetID(id)
 	case OpDelete:
-		contract.Assertf(s.res.HasID(), "Resources being deleted must have IDs")
-		if err, rst := prov.Delete(s.res); err != nil {
+		contract.Assert(s.old != nil)
+		contract.Assert(s.new == nil)
+		contract.Assertf(s.old.HasID(), "Resources being deleted must have IDs")
+		prov, err := s.p.Provider(s.old)
+		if err != nil {
+			return err, StateOK
+		}
+		if err, rst := prov.Delete(s.old); err != nil {
 			return err, rst
 		}
 	case OpUpdate:
-		contract.Assertf(s.res.HasID(), "Resources being updated must have IDs")
-		id, err, rst := prov.Update(s.old, s.res)
+		contract.Assert(s.old != nil)
+		contract.Assert(s.new != nil)
+		contract.Assert(s.old.Type() == s.new.Type())
+		contract.Assertf(s.old.HasID(), "Resources being updated must have IDs")
+		prov, err := s.p.Provider(s.old)
+		if err != nil {
+			return err, StateOK
+		}
+		id, err, rst := prov.Update(s.old, s.new)
 		if err != nil {
 			return err, rst
 		} else if id != ID("") {
 			// An update might need to recreate the resource, in which case the ID must change.
 			// TODO: this could have an impact on subsequent dependent resources that wasn't known during planning.
-			s.res.SetID(id)
+			s.new.SetID(id)
 		}
 	default:
 		contract.Failf("Unexpected step operation: %v", s.op)
