@@ -17,8 +17,9 @@ export class SecurityGroup
     public securityGroupEgress?: SecurityGroupRule[];
     public securityGroupIngress?: SecurityGroupRule[];
 
-    constructor(args: SecurityGroupProperties) {
+    constructor(name: string, args: SecurityGroupProperties) {
         super({
+            name: name,
             resource:  "AWS::EC2::SecurityGroup",
             properties: args,
         });

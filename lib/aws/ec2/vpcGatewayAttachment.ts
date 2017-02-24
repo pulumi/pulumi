@@ -9,8 +9,9 @@ import * as cloudformation from '../cloudformation';
 // @name: aws/ec2/vpcGatewayAttachment
 // @website: http://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-ec2-vpc-gateway-attachment.html
 export class VPCGatewayAttachment extends cloudformation.Resource {
-    constructor(args: VPCGatewayAttachmentArgs) {
+    constructor(name: string, args: VPCGatewayAttachmentArgs) {
         super({
+            name: name,
             resource: "AWS::EC2::VPCGatewayAttachment",
             properties: args,
         });

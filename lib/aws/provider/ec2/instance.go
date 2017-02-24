@@ -30,6 +30,13 @@ type instanceProvider struct {
 	ctx *awsctx.Context
 }
 
+// Name names a given resource.  Sometimes this will be assigned by a developer, and so the provider
+// simply fetches it from the property bag; other times, the provider will assign this based on its own algorithm.
+// In any case, resources with the same name must be safe to use interchangeably with one another.
+func (p *instanceProvider) Name(ctx context.Context, req *murpc.NameRequest) (*murpc.NameResponse, error) {
+	return nil, nil // use the AWS provider default name
+}
+
 // Create allocates a new instance of the provided resource and returns its unique ID afterwards.  (The input ID
 // must be blank.)  If this call fails, the resource must not have been created (i.e., it is "transacational").
 func (p *instanceProvider) Create(ctx context.Context, req *murpc.CreateRequest) (*murpc.CreateResponse, error) {

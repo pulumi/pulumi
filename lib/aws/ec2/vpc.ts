@@ -7,8 +7,9 @@ import * as cloudformation from '../cloudformation';
 // @name: aws/ec2/vpc
 // @website: http://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-ec2-vpc.html
 export class VPC extends cloudformation.Resource {
-    constructor(args: VPCArgs) {
+    constructor(name: string, args: VPCArgs) {
         super({
+            name: name,
             resource: "AWS::EC2::VPC",
             properties: args,
         });

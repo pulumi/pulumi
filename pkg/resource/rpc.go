@@ -12,61 +12,73 @@ import (
 	"github.com/marapongo/mu/pkg/util/contract"
 )
 
+// MarshalOptions controls the marshaling of RPC structures.
+type MarshalOptions struct {
+	SkipMonikers bool // true to skip monikers (e.g., if they aren't ready yet).
+}
+
 // MarshalProperties marshals a resource's property map as a "JSON-like" protobuf structure.  Any monikers are replaced
 // with their resource IDs during marshaling; it is an error to marshal a moniker for a resource without an ID.
-func MarshalProperties(ctx *Context, props PropertyMap) *structpb.Struct {
+func MarshalProperties(ctx *Context, props PropertyMap, opts MarshalOptions) *structpb.Struct {
 	result := &structpb.Struct{
 		Fields: make(map[string]*structpb.Value),
 	}
 	for _, key := range StablePropertyKeys(props) {
-		result.Fields[string(key)] = MarshalPropertyValue(ctx, props[key])
+		if v, use := MarshalPropertyValue(ctx, props[key], opts); use {
+			result.Fields[string(key)] = v
+		}
 	}
 	return result
 }
 
 // MarshalPropertyValue marshals a single resource property value into its "JSON-like" value representation.
-func MarshalPropertyValue(ctx *Context, v PropertyValue) *structpb.Value {
+func MarshalPropertyValue(ctx *Context, v PropertyValue, opts MarshalOptions) (*structpb.Value, bool) {
 	if v.IsNull() {
 		return &structpb.Value{
 			Kind: &structpb.Value_NullValue{
 				structpb.NullValue_NULL_VALUE,
 			},
-		}
+		}, true
 	} else if v.IsBool() {
 		return &structpb.Value{
 			Kind: &structpb.Value_BoolValue{
 				v.BoolValue(),
 			},
-		}
+		}, true
 	} else if v.IsNumber() {
 		return &structpb.Value{
 			Kind: &structpb.Value_NumberValue{
 				v.NumberValue(),
 			},
-		}
+		}, true
 	} else if v.IsString() {
 		return &structpb.Value{
 			Kind: &structpb.Value_StringValue{
 				v.StringValue(),
 			},
-		}
+		}, true
 	} else if v.IsArray() {
 		var elems []*structpb.Value
 		for _, elem := range v.ArrayValue() {
-			elems = append(elems, MarshalPropertyValue(ctx, elem))
+			if elemv, use := MarshalPropertyValue(ctx, elem, opts); use {
+				elems = append(elems, elemv)
+			}
 		}
 		return &structpb.Value{
 			Kind: &structpb.Value_ListValue{
 				&structpb.ListValue{elems},
 			},
-		}
+		}, true
 	} else if v.IsObject() {
 		return &structpb.Value{
 			Kind: &structpb.Value_StructValue{
-				MarshalProperties(ctx, v.ObjectValue()),
+				MarshalProperties(ctx, v.ObjectValue(), opts),
 			},
-		}
+		}, true
 	} else if v.IsResource() {
+		if opts.SkipMonikers {
+			return nil, false
+		}
 		m := v.ResourceValue()
 		res, has := ctx.MksRes[m]
 		contract.Assertf(has, "Expected resource moniker '%v' to exist at marshal time", m)
@@ -77,10 +89,10 @@ func MarshalPropertyValue(ctx *Context, v PropertyValue) *structpb.Value {
 			Kind: &structpb.Value_StringValue{
 				string(id),
 			},
-		}
+		}, true
 	} else {
 		contract.Failf("Unrecognized property value: %v (type=%v)", v.V, reflect.TypeOf(v.V))
-		return nil
+		return nil, true
 	}
 }
 

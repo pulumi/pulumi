@@ -7,8 +7,9 @@ import * as cloudformation from '../cloudformation';
 // @name: aws/ec2/internetGateway
 // @website: http://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-ec2-internet-gateway.html 
 export class InternetGateway extends cloudformation.Resource {
-    constructor(args: InternetGatewayArgs) {
+    constructor(name: string, args: InternetGatewayArgs) {
         super({
+            name: name,
             resource: "AWS::EC2::InternetGateway",
             properties: args,
         });

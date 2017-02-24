@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	pbempty "github.com/golang/protobuf/ptypes/empty"
+	"github.com/marapongo/mu/pkg/resource"
 	"github.com/marapongo/mu/pkg/tokens"
 	"github.com/marapongo/mu/sdk/go/pkg/murpc"
 	"golang.org/x/net/context"
@@ -34,6 +35,36 @@ func NewProvider() (*Provider, error) {
 }
 
 var _ murpc.ResourceProviderServer = (*Provider)(nil)
+
+const nameProperty string = "name" // the property used for naming AWS resources.
+
+// Name names a given resource.  Sometimes this will be assigned by a developer, and so the provider
+// simply fetches it from the property bag; other times, the provider will assign this based on its own algorithm.
+// In any case, resources with the same name must be safe to use interchangeably with one another.
+func (p *Provider) Name(ctx context.Context, req *murpc.NameRequest) (*murpc.NameResponse, error) {
+	// First, see if the provider overrides the naming.
+	t := tokens.Type(req.GetType())
+	if prov, has := p.impls[t]; has {
+		if res, err := prov.Name(ctx, req); res != nil || err != nil {
+			return res, err
+		}
+	} else {
+		return nil, fmt.Errorf("Unrecognized resource type (Create): %v", t)
+	}
+
+	// If the provider didn't override, we can go ahead and default to the name property.
+	// TODO: eventually, we want to specialize some resources, like SecurityGroups, since they already have names.
+	if nameprop, has := req.GetProperties().Fields[nameProperty]; has {
+		name := resource.UnmarshalPropertyValue(nameprop)
+		if name.IsString() {
+			return &murpc.NameResponse{Name: name.StringValue()}, nil
+		} else {
+			return nil, fmt.Errorf(
+				"Resource '%v' had a name property '%v', but it wasn't a string", t, nameProperty)
+		}
+	}
+	return nil, fmt.Errorf("Resource '%v' was missing a name property '%v'", t, nameProperty)
+}
 
 // Create allocates a new instance of the provided resource and returns its unique ID afterwards.  (The input ID
 // must be blank.)  If this call fails, the resource must not have been created (i.e., it is "transacational").

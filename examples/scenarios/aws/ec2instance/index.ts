@@ -247,7 +247,7 @@ let awsInstanceType2Arch: { [name: string]: { Arch: string; } } = {
     }
 };
 
-let securityGroup = new SecurityGroup({
+let securityGroup = new SecurityGroup("group", {
     groupDescription: "Enable SSH access",
     securityGroupIngress: [{
         ipProtocol: "tcp",
@@ -257,9 +257,10 @@ let securityGroup = new SecurityGroup({
     }]
 });
 
-let instance = new Instance({
+let instance = new Instance("instance", {
     instanceType: instanceType,
     securityGroups: [securityGroup],
     keyName: keyName,
     imageId: awsRegionArch2AMI[region][awsInstanceType2Arch[instanceType].Arch]
 });
+

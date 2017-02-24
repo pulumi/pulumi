@@ -16,9 +16,10 @@ export class Instance
     public securityGroups?: SecurityGroup[];
     public keyName?: string;
 
-    constructor(args: InstanceProperties) {
+    constructor(name: string, args: InstanceProperties) {
         super({
-            resource:   "AWS::EC2::Instance",
+            name: name,
+            resource: "AWS::EC2::Instance",
             properties: args,
         });
         this.imageId = args.imageId;

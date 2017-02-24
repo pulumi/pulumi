@@ -143,8 +143,10 @@ func execPlugin(name string) (*os.Process, io.WriteCloser, io.ReadCloser, io.Rea
 func (p *Plugin) Name(t tokens.Type, props PropertyMap) (tokens.QName, error) {
 	glog.V(7).Infof("Plugin[%v].Name(t=%v,#props=%v) executing", p.pkg, t, len(props))
 	req := &murpc.NameRequest{
-		Type:       string(t),
-		Properties: MarshalProperties(p.ctx, props),
+		Type: string(t),
+		Properties: MarshalProperties(p.ctx, props, MarshalOptions{
+			SkipMonikers: true, // often used during moniker creation; IDs won't be ready.
+		}),
 	}
 
 	resp, err := p.client.Name(p.ctx.Request(), req)
@@ -163,7 +165,7 @@ func (p *Plugin) Create(t tokens.Type, props PropertyMap) (ID, error, ResourceSt
 	glog.V(7).Infof("Plugin[%v].Create(t=%v,#props=%v) executing", p.pkg, t, len(props))
 	req := &murpc.CreateRequest{
 		Type:       string(t),
-		Properties: MarshalProperties(p.ctx, props),
+		Properties: MarshalProperties(p.ctx, props, MarshalOptions{}),
 	}
 
 	resp, err := p.client.Create(p.ctx.Request(), req)
@@ -211,8 +213,8 @@ func (p *Plugin) Update(id ID, t tokens.Type, olds PropertyMap, news PropertyMap
 	req := &murpc.UpdateRequest{
 		Id:   string(id),
 		Type: string(t),
-		Olds: MarshalProperties(p.ctx, olds),
-		News: MarshalProperties(p.ctx, news),
+		Olds: MarshalProperties(p.ctx, olds, MarshalOptions{}),
+		News: MarshalProperties(p.ctx, news, MarshalOptions{}),
 	}
 
 	resp, err := p.client.Update(p.ctx.Request(), req)

@@ -8,8 +8,9 @@ import * as cloudformation from '../cloudformation';
 // @name: aws/ec2/securityGroupIngressRule
 // @website: http://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-ec2-security-group-ingress.html
 export class SecurityGroupIngress extends cloudformation.Resource {
-    constructor(args: SecurityGroupIngressArgs) {
+    constructor(name: string, args: SecurityGroupIngressArgs) {
         super({
+            name: name,
             resource: "AWS::EC2::SecurityGroupIngress",
             properties: args,
         });

@@ -8,12 +8,14 @@ export class Resource
         extends mu.Resource
         implements ResourceProperties {
 
+    public readonly name: string;
     public readonly resource: string;
     public readonly properties?: any;
     public readonly dependsOn?: mu.Stack[];
 
     constructor(args: ResourceProperties) {
         super();
+        this.name = args.name;
         this.resource = args.resource;
         this.properties = args.properties;
         this.dependsOn = args.dependsOn;
@@ -21,6 +23,8 @@ export class Resource
 }
 
 export interface ResourceProperties {
+    // The resource name.
+    readonly name: string;
     // The CF resource name.
     readonly resource: string;
     // An optional list of properties to map.
