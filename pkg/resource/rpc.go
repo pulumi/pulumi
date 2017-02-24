@@ -14,18 +14,18 @@ import (
 
 // MarshalProperties marshals a resource's property map as a "JSON-like" protobuf structure.  Any monikers are replaced
 // with their resource IDs during marshaling; it is an error to marshal a moniker for a resource without an ID.
-func MarshalProperties(props PropertyMap, mks monikerResourceMap) *structpb.Struct {
+func MarshalProperties(ctx *Context, props PropertyMap) *structpb.Struct {
 	result := &structpb.Struct{
 		Fields: make(map[string]*structpb.Value),
 	}
 	for _, key := range StablePropertyKeys(props) {
-		result.Fields[string(key)] = MarshalPropertyValue(props[key], mks)
+		result.Fields[string(key)] = MarshalPropertyValue(ctx, props[key])
 	}
 	return result
 }
 
 // MarshalPropertyValue marshals a single resource property value into its "JSON-like" value representation.
-func MarshalPropertyValue(v PropertyValue, mks monikerResourceMap) *structpb.Value {
+func MarshalPropertyValue(ctx *Context, v PropertyValue) *structpb.Value {
 	if v.IsNull() {
 		return &structpb.Value{
 			Kind: &structpb.Value_NullValue{
@@ -53,7 +53,7 @@ func MarshalPropertyValue(v PropertyValue, mks monikerResourceMap) *structpb.Val
 	} else if v.IsArray() {
 		var elems []*structpb.Value
 		for _, elem := range v.ArrayValue() {
-			elems = append(elems, MarshalPropertyValue(elem, mks))
+			elems = append(elems, MarshalPropertyValue(ctx, elem))
 		}
 		return &structpb.Value{
 			Kind: &structpb.Value_ListValue{
@@ -63,12 +63,12 @@ func MarshalPropertyValue(v PropertyValue, mks monikerResourceMap) *structpb.Val
 	} else if v.IsObject() {
 		return &structpb.Value{
 			Kind: &structpb.Value_StructValue{
-				MarshalProperties(v.ObjectValue(), mks),
+				MarshalProperties(ctx, v.ObjectValue()),
 			},
 		}
 	} else if v.IsResource() {
 		m := v.ResourceValue()
-		res, has := mks[m]
+		res, has := ctx.MksRes[m]
 		contract.Assertf(has, "Expected resource moniker '%v' to exist at marshal time", m)
 		id := res.ID()
 		contract.Assertf(id != ID(""), "Expected resource moniker '%v' to have an ID at marshal time", m)

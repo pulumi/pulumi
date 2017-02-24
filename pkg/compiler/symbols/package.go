@@ -11,6 +11,7 @@ import (
 // Package is a fully bound package symbol.
 type Package struct {
 	Node         *pack.Package
+	Tok          tokens.Package
 	Dependencies PackageMap
 	Modules      ModuleMap
 }
@@ -18,7 +19,7 @@ type Package struct {
 var _ Symbol = (*Package)(nil)
 
 func (node *Package) Name() tokens.Name   { return tokens.Name(node.Node.Name) }
-func (node *Package) Token() tokens.Token { return tokens.Token(node.Node.Name) }
+func (node *Package) Token() tokens.Token { return tokens.Token(node.Tok) }
 func (node *Package) Special() bool       { return false }
 func (node *Package) Tree() diag.Diagable { return node.Node }
 func (node *Package) Default() *Module    { return node.Modules[tokens.DefaultModule] }
@@ -28,6 +29,7 @@ func (node *Package) String() string      { return string(node.Token()) }
 func NewPackageSym(node *pack.Package) *Package {
 	return &Package{
 		Node:         node,
+		Tok:          tokens.Package(node.Name),
 		Dependencies: make(PackageMap),
 		Modules:      make(ModuleMap),
 	}

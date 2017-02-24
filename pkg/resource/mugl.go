@@ -15,6 +15,7 @@ import (
 // MuglSnapshot is a serializable, flattened MuGL graph structure, specifically for snapshots.   It is very similar to
 // the actual Snapshot interface, except that it flattens and rearranges a few data structures for serializability.
 type MuglSnapshot struct {
+	Target    Namespace          `json:"target"`              // the target environment name.
 	Package   tokens.PackageName `json:"package"`             // the package which created this graph.
 	Args      *core.Args         `json:"args,omitempty"`      // the blueprint args for graph creation.
 	Refs      *string            `json:"refs,omitempty"`      // the ref alias, if any (`#ref` by default).
@@ -65,6 +66,7 @@ func SerializeSnapshot(snap Snapshot, reftag string) *MuglSnapshot {
 	}
 
 	return &MuglSnapshot{
+		Target:    snap.Ns(),
 		Package:   snap.Pkg(), // TODO: eventually, this should carry version metadata too.
 		Args:      argsp,
 		Refs:      refp,
@@ -185,7 +187,7 @@ func DeserializeSnapshot(ctx *Context, mugl *MuglSnapshot) Snapshot {
 		args = *mugl.Args
 	}
 
-	return NewSnapshot(ctx, mugl.Package, args, resources)
+	return NewSnapshot(ctx, mugl.Target, mugl.Package, args, resources)
 }
 
 func DeserializeProperties(props MuglPropertyMap, reftag string) PropertyMap {

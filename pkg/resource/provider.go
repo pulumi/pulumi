@@ -21,13 +21,17 @@ import (
 type Provider interface {
 	// Closer closes any underlying OS resources associated with this provider (like processes, RPC channels, etc).
 	io.Closer
+	// Name names a given resource.  Sometimes this will be assigned by a developer, and so the provider
+	// simply fetches it from the property bag; other times, the provider will assign this based on its own algorithm.
+	// In any case, resources with the same name must be safe to use interchangeably with one another.
+	Name(t tokens.Type, props PropertyMap) (tokens.QName, error)
 	// Create allocates a new instance of the provided resource and returns its unique ID afterwards.
-	Create(res Resource) (ID, error, ResourceState)
+	Create(t tokens.Type, props PropertyMap) (ID, error, ResourceState)
 	// Read reads the instance state identified by id/t, and returns a bag of properties.
 	Read(id ID, t tokens.Type) (PropertyMap, error)
 	// Update updates an existing resource with new values.  Only those values in the provided property bag are updated
 	// to new values.  The resource ID is returned and may be different if the resource had to be recreated.
-	Update(old Resource, new Resource) (ID, error, ResourceState)
+	Update(id ID, t tokens.Type, olds PropertyMap, news PropertyMap) (ID, error, ResourceState)
 	// Delete tears down an existing resource.
-	Delete(res Resource) (error, ResourceState)
+	Delete(id ID, t tokens.Type) (error, ResourceState)
 }

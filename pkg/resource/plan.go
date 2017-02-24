@@ -333,7 +333,7 @@ func (s *step) Apply() (error, ResourceState) {
 		if err != nil {
 			return err, StateOK
 		}
-		id, err, rst := prov.Create(s.new)
+		id, err, rst := prov.Create(s.new.Type(), s.new.Properties())
 		if err != nil {
 			return err, rst
 		}
@@ -346,7 +346,7 @@ func (s *step) Apply() (error, ResourceState) {
 		if err != nil {
 			return err, StateOK
 		}
-		if err, rst := prov.Delete(s.old); err != nil {
+		if err, rst := prov.Delete(s.old.ID(), s.old.Type()); err != nil {
 			return err, rst
 		}
 	case OpUpdate:
@@ -358,7 +358,7 @@ func (s *step) Apply() (error, ResourceState) {
 		if err != nil {
 			return err, StateOK
 		}
-		id, err, rst := prov.Update(s.old, s.new)
+		id, err, rst := prov.Update(s.old.ID(), s.old.Type(), s.old.Properties(), s.new.Properties())
 		if err != nil {
 			return err, rst
 		} else if id != ID("") {

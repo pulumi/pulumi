@@ -58,7 +58,7 @@ func compile(cmd *cobra.Command, args []string) *compileResult {
 	// Otherwise, use the default workspace and package logic (which consults the current working directory).
 	var comp compiler.Compiler
 	var pkg *pack.Package
-	var g *heapstate.ObjectGraph
+	var heap *heapstate.Heap
 	if len(args) == 0 {
 		var err error
 		comp, err = compiler.Newwd(opts)
@@ -67,7 +67,7 @@ func compile(cmd *cobra.Command, args []string) *compileResult {
 			sink().Errorf(errors.ErrorCantCreateCompiler, err)
 			return nil
 		}
-		pkg, g = comp.Compile()
+		pkg, heap = comp.Compile()
 	} else {
 		fn := args[0]
 		if pkg = cmdutil.ReadPackageFromArg(fn); pkg != nil {
@@ -81,16 +81,16 @@ func compile(cmd *cobra.Command, args []string) *compileResult {
 				sink().Errorf(errors.ErrorCantReadPackage, fn, err)
 				return nil
 			}
-			g = comp.CompilePackage(pkg)
+			heap = comp.CompilePackage(pkg)
 		}
 	}
-	return &compileResult{comp, pkg, g}
+	return &compileResult{comp, pkg, heap}
 }
 
 type compileResult struct {
-	C   compiler.Compiler
-	Pkg *pack.Package
-	G   *heapstate.ObjectGraph
+	C    compiler.Compiler
+	Pkg  *pack.Package
+	Heap *heapstate.Heap
 }
 
 // plan just uses the standard logic to parse arguments, options, and to create a snapshot and plan.
@@ -116,9 +116,10 @@ func plan(cmd *cobra.Command, args []string, existfn string, delete bool) *planR
 			Snap:          nil,
 			Plan:          resource.NewDeletePlan(ctx, existing),
 		}
-	} else if result := compile(cmd, args); result != nil && result.G != nil {
+	} else if result := compile(cmd, args); result != nil && result.Heap != nil {
 		// Create a resource snapshot from the compiled/evaluated object graph.
-		snap, err := resource.NewGraphSnapshot(ctx, result.Pkg.Name, result.C.Ctx().Opts.Args, result.G)
+		ns := resource.Namespace("no_namespace") // TODO[marapongo/mu#94]: support for targets/namespaces.
+		snap, err := resource.NewGraphSnapshot(ctx, ns, result.Pkg.Name, result.C.Ctx().Opts.Args, result.Heap)
 		if err != nil {
 			result.C.Diag().Errorf(errors.ErrorCantCreateSnapshot, err)
 			return nil

@@ -27,6 +27,8 @@ type Resource interface {
 	Properties() PropertyMap // the resource's property map.
 	HasID() bool             // returns true if the resource has been assigned an ID.
 	SetID(id ID)             // assignes an ID to this resource, for those under creation.
+	HasMoniker() bool        // returns true if the resource has been assigned  moniker.
+	SetMoniker(m Moniker)    // assignes a moniker to this resource, for those under creation.
 }
 
 // ResourceState is returned when an error has occurred during a resource provider operation.  It indicates whether the
@@ -59,6 +61,12 @@ func (r *resource) SetID(id ID) {
 	r.id = id
 }
 
+func (r *resource) HasMoniker() bool { return (string(r.moniker) != "") }
+func (r *resource) SetMoniker(m Moniker) {
+	contract.Requiref(!r.HasMoniker(), "moniker", "empty")
+	r.moniker = m
+}
+
 // NewResource creates a new resource from the information provided.
 func NewResource(id ID, moniker Moniker, t tokens.Type, properties PropertyMap) Resource {
 	return &resource{
@@ -69,22 +77,21 @@ func NewResource(id ID, moniker Moniker, t tokens.Type, properties PropertyMap) 
 	}
 }
 
-// NewObjectResource creates a new resource object out of the runtime object provided.  The refs map is used to resolve
+// NewObjectResource creates a new resource object out of the runtime object provided.  The context is used to resolve
 // dependencies between resources and must contain all references that could be encountered.
-func NewObjectResource(obj *rt.Object, mks objectMonikerMap) Resource {
+func NewObjectResource(ctx *Context, obj *rt.Object) Resource {
 	t := obj.Type()
 	contract.Assert(IsResourceType(t))
 
 	// Extract the moniker.  This must already exist.
-	m, hasm := mks[obj]
-	contract.Assert(hasm)
+	m, hasm := ctx.ObjMks[obj]
+	contract.Assertf(!hasm, "Object already assigned a moniker '%v'; double allocation detected", m)
 
 	// Do a deep copy of the resource properties.  This ensures property serializability.
-	props := cloneObject(obj, mks)
+	props := cloneObject(ctx, obj)
 
 	// Finally allocate and return the resource object; note that ID is left blank until the provider assignes one.
 	return &resource{
-		moniker:    m,
 		t:          t.TypeToken(),
 		properties: props,
 	}
@@ -93,13 +100,13 @@ func NewObjectResource(obj *rt.Object, mks objectMonikerMap) Resource {
 // cloneObject creates a property map out of a runtime object.  The result is fully serializable in the sense that it
 // can be stored in a JSON or YAML file, serialized over an RPC interface, etc.  In particular, any references to other
 // resources are replaced with their moniker equivalents, which the runtime understands.
-func cloneObject(obj *rt.Object, mks objectMonikerMap) PropertyMap {
+func cloneObject(ctx *Context, obj *rt.Object) PropertyMap {
 	contract.Assert(obj != nil)
 	src := obj.PropertyValues()
 	dest := make(PropertyMap)
 	for _, k := range rt.StablePropertyKeys(src) {
 		// TODO: detect cycles.
-		if v, ok := cloneObjectValue(src[k].Obj(), mks); ok {
+		if v, ok := cloneObjectValue(ctx, src[k].Obj()); ok {
 			dest[PropertyKey(k)] = v
 		}
 	}
@@ -108,12 +115,12 @@ func cloneObject(obj *rt.Object, mks objectMonikerMap) PropertyMap {
 
 // cloneObjectValue creates a single property value out of a runtime object.  It returns false if the property could not
 // be stored in a property (e.g., it is a function or other unrecognized or unserializable runtime object).
-func cloneObjectValue(obj *rt.Object, res objectMonikerMap) (PropertyValue, bool) {
+func cloneObjectValue(ctx *Context, obj *rt.Object) (PropertyValue, bool) {
 	t := obj.Type()
 	if IsResourceType(t) {
 		// For resources, simply look up the moniker from the resource map.
-		m, hasm := res[obj]
-		contract.Assert(hasm)
+		m, hasm := ctx.ObjMks[obj]
+		contract.Assertf(hasm, "Missing object reference; possible out of order dependency walk")
 		return NewPropertyResource(m), true
 	}
 
@@ -127,7 +134,7 @@ func cloneObjectValue(obj *rt.Object, res objectMonikerMap) (PropertyValue, bool
 	case types.String:
 		return NewPropertyString(obj.StringValue()), true
 	case types.Object, types.Dynamic:
-		obj := cloneObject(obj, res) // an object literal, clone it
+		obj := cloneObject(ctx, obj) // an object literal, clone it
 		return NewPropertyObject(obj), true
 	}
 
@@ -135,13 +142,13 @@ func cloneObjectValue(obj *rt.Object, res objectMonikerMap) (PropertyValue, bool
 	case *symbols.ArrayType:
 		var result []PropertyValue
 		for _, e := range *obj.ArrayValue() {
-			if v, ok := cloneObjectValue(e.Obj(), res); ok {
+			if v, ok := cloneObjectValue(ctx, e.Obj()); ok {
 				result = append(result, v)
 			}
 		}
 		return NewPropertyArray(result), true
 	case *symbols.Class:
-		obj := cloneObject(obj, res) // a class, just deep clone it
+		obj := cloneObject(ctx, obj) // a class, just deep clone it
 		return NewPropertyObject(obj), true
 	}
 

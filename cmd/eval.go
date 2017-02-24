@@ -36,14 +36,14 @@ func newEvalCmd() *cobra.Command {
 				// Serialize that evaluation graph so that it's suitable for printing/serializing.
 				if dotOutput {
 					// Convert the output to a DOT file.
-					if err := dotconv.Print(result.G, os.Stdout); err != nil {
+					if err := dotconv.Print(result.Heap.G, os.Stdout); err != nil {
 						fmt.Fprintf(os.Stderr, "error: failed to write DOT file to output: %v\n", err)
 						os.Exit(-1)
 					}
 				} else {
 					// Just print a very basic, yet (hopefully) aesthetically pleasinge, ascii-ization of the graph.
 					shown := make(map[graph.Vertex]bool)
-					for _, root := range result.G.Objs() {
+					for _, root := range result.Heap.G.Objs() {
 						printVertex(root.ToObj(), shown, "")
 					}
 				}

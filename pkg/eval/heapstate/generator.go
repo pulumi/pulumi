@@ -19,30 +19,70 @@ import (
 type Generator interface {
 	eval.InterpreterHooks
 	Graph() *ObjectGraph
+	HeapSnapshot() *Heap
 }
 
 // New allocates a fresh generator, ready to produce graphs.
 func New(ctx *core.Context) Generator {
 	return &generator{
 		ctx:     ctx,
-		objs:    make(dependsSet),
-		globals: make(objectSet),
+		objs:    make(ObjectDepends),
+		globals: make(ObjectCounts),
+		allocs:  make(ObjectAllocs),
 	}
 }
 
 type generator struct {
-	ctx     *core.Context // the compiler context shared between passes.
-	objs    dependsSet    // a full set of objects and their dependencies.
-	globals objectSet     // a global set of objects (TODO: make this stack-aware).
+	ctx     *core.Context    // the compiler context shared between passes.
+	objs    ObjectDepends    // a full set of objects and their dependencies.
+	globals ObjectCounts     // a global set of objects (TODO: make this stack-aware).
+	allocs  ObjectAllocs     // the set of allocated objects and their allocation locations.
+	currPkg *symbols.Package // the current package under evaluation.
+	currMod *symbols.Module  // the current module under evaluation.
+	currFnc symbols.Function // the current function under evaluation.
 }
 
-// objectSet is a set of object pointers; each entry has a ref-count to track how many occurrences it contains.
-type objectSet map[*rt.Object]int
-
-// dependsSet is a map of object pointers to the objectSet containing the set of objects each such object depends upon.
-type dependsSet map[*rt.Object]objectSet
-
 var _ Generator = (*generator)(nil)
+
+// ObjectCounts is a set of object pointers; each entry has a ref-count to track how many occurrences it contains.
+type ObjectCounts map[*rt.Object]int
+
+// ObjectDepends is a map of object pointers to the objectSet containing the set of objects each such object depends upon.
+type ObjectDepends map[*rt.Object]ObjectCounts
+
+// ObjectAllocs is a map of object pointers to the package, module, and function where they were allocated.
+type ObjectAllocs map[*rt.Object]AllocInfo
+
+type AllocInfo struct {
+	Pkg *symbols.Package // the package being evaluated when the allocation happened.
+	Mod *symbols.Module  // the module being evaluated when the allocation happened.
+	Fnc symbols.Function // the function being evaluated when the allocation happened.
+}
+
+// Heap is a snapshot of the heap.
+type Heap struct {
+	Objs    ObjectDepends
+	Globals ObjectCounts
+	Allocs  ObjectAllocs
+	G       *ObjectGraph
+}
+
+// Alloc gets information about where an object was allocated.
+func (heap *Heap) Alloc(obj *rt.Object) AllocInfo {
+	info, has := heap.Allocs[obj]
+	contract.Assertf(has, "Expected an allocation record for this object")
+	return info
+}
+
+// HeapSnapshot takes a snapshot from the generator's heap state.
+func (g *generator) HeapSnapshot() *Heap {
+	return &Heap{
+		Objs:    g.objs,
+		Globals: g.globals,
+		Allocs:  g.allocs,
+		G:       g.Graph(),
+	}
+}
 
 // Graph takes the information recorded thus far and produces a new MuGL graph from it.
 func (g *generator) Graph() *ObjectGraph {
@@ -91,7 +131,12 @@ func (g *generator) OnNewObject(o *rt.Object) {
 	//     option would be to periodically garbage collect the heap, clearing out any objects that aren't rooted by a
 	//     resource.  This would amortize the cost of scanning, but clearly would be somewhat complex to implement.
 	if _, has := g.objs[o]; !has {
-		g.objs[o] = make(objectSet) // dependencies start out empty.
+		g.objs[o] = make(ObjectCounts) // dependencies start out empty.
+		g.allocs[o] = AllocInfo{
+			Pkg: g.currPkg,
+			Mod: g.currMod,
+			Fnc: g.currFnc,
+		}
 	}
 }
 
@@ -100,7 +145,7 @@ func (g *generator) OnVariableAssign(o *rt.Object, name tokens.Name, old *rt.Obj
 	glog.V(9).Infof("GraphGenerator OnVariableAssign %v.%v=%v (old=%v)", o, name, nw, old)
 
 	// Unconditionally track all object dependencies.
-	var deps objectSet
+	var deps ObjectCounts
 	if o == nil {
 		deps = g.globals
 	} else {
@@ -129,31 +174,34 @@ func (g *generator) OnVariableAssign(o *rt.Object, name tokens.Name, old *rt.Obj
 }
 
 // OnEnterPackage is invoked whenever we enter a new package.
-func (g *generator) OnEnterPackage(pkg *symbols.Package) {
+func (g *generator) OnEnterPackage(pkg *symbols.Package) func() {
 	glog.V(9).Infof("GraphGenerator OnEnterPackage %v", pkg)
-}
-
-// OnLeavePackage is invoked whenever we enter a new package.
-func (g *generator) OnLeavePackage(pkg *symbols.Package) {
-	glog.V(9).Infof("GraphGenerator OnLeavePackage %v", pkg)
+	priorPkg := g.currPkg
+	g.currPkg = pkg
+	return func() {
+		glog.V(9).Infof("GraphGenerator OnLeavePackage %v", pkg)
+		g.currPkg = priorPkg
+	}
 }
 
 // OnEnterModule is invoked whenever we enter a new module.
-func (g *generator) OnEnterModule(mod *symbols.Module) {
+func (g *generator) OnEnterModule(mod *symbols.Module) func() {
 	glog.V(9).Infof("GraphGenerator OnEnterModule %v", mod)
-}
-
-// OnLeaveModule is invoked whenever we enter a new module.
-func (g *generator) OnLeaveModule(mod *symbols.Module) {
-	glog.V(9).Infof("GraphGenerator OnLeaveModule %v", mod)
+	priorMod := g.currMod
+	g.currMod = mod
+	return func() {
+		glog.V(9).Infof("GraphGenerator OnLeaveModule %v", mod)
+		g.currMod = priorMod
+	}
 }
 
 // OnEnterFunction is invoked whenever we enter a new function.
-func (g *generator) OnEnterFunction(fnc symbols.Function) {
+func (g *generator) OnEnterFunction(fnc symbols.Function) func() {
 	glog.V(9).Infof("GraphGenerator OnEnterFunction %v", fnc)
-}
-
-// OnLeaveFunction is invoked whenever we enter a new function.
-func (g *generator) OnLeaveFunction(fnc symbols.Function) {
-	glog.V(9).Infof("GraphGenerator OnLeaveFunction %v", fnc)
+	priorFnc := g.currFnc
+	g.currFnc = fnc
+	return func() {
+		glog.V(9).Infof("GraphGenerator OnLeaveFunction %v", fnc)
+		g.currFnc = priorFnc
+	}
 }

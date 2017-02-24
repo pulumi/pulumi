@@ -12,6 +12,7 @@ import (
 type Module struct {
 	Node    *ast.Module
 	Parent  *Package
+	Tok     tokens.Module
 	Imports Modules
 	Exports ModuleExportMap
 	Members ModuleMemberMap
@@ -19,15 +20,8 @@ type Module struct {
 
 var _ Symbol = (*Module)(nil)
 
-func (node *Module) Name() tokens.Name { return node.Node.Name.Ident }
-func (node *Module) Token() tokens.Token {
-	return tokens.Token(
-		tokens.NewModuleToken(
-			tokens.Package(node.Parent.Token()),
-			tokens.ModuleName(node.Name()),
-		),
-	)
-}
+func (node *Module) Name() tokens.Name   { return node.Node.Name.Ident }
+func (node *Module) Token() tokens.Token { return tokens.Token(node.Tok) }
 func (node *Module) Tree() diag.Diagable { return node.Node }
 func (node *Module) Special() bool       { return false }
 func (node *Module) String() string      { return string(node.Token()) }
@@ -48,6 +42,7 @@ func NewModuleSym(node *ast.Module, parent *Package) *Module {
 	return &Module{
 		Node:    node,
 		Parent:  parent,
+		Tok:     tokens.NewModuleToken(parent.Tok, tokens.ModuleName(node.Name.Ident)),
 		Imports: make(Modules, 0),
 		Exports: make(ModuleExportMap),
 		Members: make(ModuleMemberMap),

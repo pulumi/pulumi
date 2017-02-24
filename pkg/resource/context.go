@@ -16,10 +16,12 @@ import (
 type Context struct {
 	Diag    diag.Sink                  // the diagnostics sink to use for messages.
 	Plugins map[tokens.Package]*Plugin // a cache of plugins and their processes.
-	Res     objectResourceMap          // the resources held inside of this snapshot.
-	Mks     monikerResourceMap         // a convenient lookup map for moniker to resource.
+	ObjRes  objectResourceMap          // the resources held inside of this snapshot.
+	ObjMks  objectMonikerMap           // a convenient lookup map for object to moniker.
+	MksRes  monikerResourceMap         // a convenient lookup map for moniker to resource.
 }
 
+type objectMonikerMap map[*rt.Object]Moniker
 type objectResourceMap map[*rt.Object]Resource
 type monikerResourceMap map[Moniker]Resource
 
@@ -27,8 +29,9 @@ func NewContext(d diag.Sink) *Context {
 	return &Context{
 		Diag:    d,
 		Plugins: make(map[tokens.Package]*Plugin),
-		Res:     make(objectResourceMap),
-		Mks:     make(monikerResourceMap),
+		ObjRes:  make(objectResourceMap),
+		ObjMks:  make(objectMonikerMap),
+		MksRes:  make(monikerResourceMap),
 	}
 }
 

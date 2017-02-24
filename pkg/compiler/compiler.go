@@ -28,11 +28,11 @@ type Compiler interface {
 	Workspace() workspace.W // the workspace that this compielr is using.
 
 	// Compile detects a package from the workspace and compiles it into a graph.
-	Compile() (*pack.Package, *heapstate.ObjectGraph)
+	Compile() (*pack.Package, *heapstate.Heap)
 	// CompilePath compiles a package given its path into its graph form.
-	CompilePath(path string) (*pack.Package, *heapstate.ObjectGraph)
+	CompilePath(path string) (*pack.Package, *heapstate.Heap)
 	// CompilePackage compiles a given package object into its associated graph form.
-	CompilePackage(pkg *pack.Package) *heapstate.ObjectGraph
+	CompilePackage(pkg *pack.Package) *heapstate.Heap
 	// Verify detects a package from the workspace and validates its MuIL contents.
 	Verify() bool
 	// VerifyPath verifies a package given its path, validating that its MuIL contents are correct.
@@ -104,7 +104,7 @@ func (c *compiler) Diag() diag.Sink        { return c.ctx.Diag }
 func (c *compiler) Workspace() workspace.W { return c.w }
 
 // Compile attempts to detect the package from the current working directory and, provided that succeeds, compiles it.
-func (c *compiler) Compile() (*pack.Package, *heapstate.ObjectGraph) {
+func (c *compiler) Compile() (*pack.Package, *heapstate.Heap) {
 	if path := c.detectPackage(); path != "" {
 		return c.CompilePath(path)
 	}
@@ -112,7 +112,7 @@ func (c *compiler) Compile() (*pack.Package, *heapstate.ObjectGraph) {
 }
 
 // CompilePath loads a package at the given path and compiles it into a graph.
-func (c *compiler) CompilePath(path string) (*pack.Package, *heapstate.ObjectGraph) {
+func (c *compiler) CompilePath(path string) (*pack.Package, *heapstate.Heap) {
 	if pkg := c.readPackage(path); pkg != nil {
 		return pkg, c.CompilePackage(pkg)
 	}
@@ -120,7 +120,7 @@ func (c *compiler) CompilePath(path string) (*pack.Package, *heapstate.ObjectGra
 }
 
 // CompilePackage compiles the given package into a graph.
-func (c *compiler) CompilePackage(pkg *pack.Package) *heapstate.ObjectGraph {
+func (c *compiler) CompilePackage(pkg *pack.Package) *heapstate.Heap {
 	contract.Requiref(pkg != nil, "pkg", "!= nil")
 	glog.Infof("Compiling package '%v' (w=%v)", pkg.Name, c.w.Root())
 	if glog.V(2) {
@@ -164,7 +164,7 @@ func (c *compiler) CompilePackage(pkg *pack.Package) *heapstate.ObjectGraph {
 	}
 
 	// Finally ask the graph generator to return what it has seen in graph form.
-	return gg.Graph()
+	return gg.HeapSnapshot()
 }
 
 // Verify detects a package from the workspace and validates its MuIL contents.

@@ -40,12 +40,9 @@ type Interpreter interface {
 type InterpreterHooks interface {
 	OnNewObject(o *rt.Object)                                            // invoked when an object is created.
 	OnVariableAssign(o *rt.Object, name tokens.Name, old, nw *rt.Object) // invoked when a property is (re)assigned.
-	OnEnterPackage(pkg *symbols.Package)                                 // invoked when we enter a new package.
-	OnLeavePackage(pkg *symbols.Package)                                 // invoked when we leave a package.
-	OnEnterModule(mod *symbols.Module)                                   // invoked when we enter a new module.
-	OnLeaveModule(mod *symbols.Module)                                   // invoked when we leave a module.
-	OnEnterFunction(fnc symbols.Function)                                // invoked when we enter a new function.
-	OnLeaveFunction(fnc symbols.Function)                                // invoked when we leave a function.
+	OnEnterPackage(pkg *symbols.Package) func()                          // invoked when we enter a new package.
+	OnEnterModule(mod *symbols.Module) func()                            // invoked when we enter a new module.
+	OnEnterFunction(fnc symbols.Function) func()                         // invoked when we enter a new function.
 }
 
 // New creates an interpreter that can be used to evaluate MuPackages.
@@ -94,15 +91,14 @@ func (e *evaluator) Diag() diag.Sink      { return e.ctx.Diag }
 func (e *evaluator) EvaluatePackage(pkg *symbols.Package, args core.Args) {
 	glog.Infof("Evaluating package '%v'", pkg.Name())
 	if e.hooks != nil {
-		e.hooks.OnEnterPackage(pkg)
+		if leave := e.hooks.OnEnterPackage(pkg); leave != nil {
+			defer leave()
+		}
 	}
 
 	if glog.V(2) {
 		defer glog.V(2).Infof("Evaluation of package '%v' completed w/ %v warnings and %v errors",
 			pkg.Name(), e.Diag().Warnings(), e.Diag().Errors())
-		if e.hooks != nil {
-			e.hooks.OnLeavePackage(pkg)
-		}
 	}
 
 	// Search the package for a default module to evaluate.
@@ -118,15 +114,14 @@ func (e *evaluator) EvaluatePackage(pkg *symbols.Package, args core.Args) {
 func (e *evaluator) EvaluateModule(mod *symbols.Module, args core.Args) {
 	glog.Infof("Evaluating module '%v'", mod.Token())
 	if e.hooks != nil {
-		e.hooks.OnEnterModule(mod)
+		if leave := e.hooks.OnEnterModule(mod); leave != nil {
+			defer leave()
+		}
 	}
 
 	if glog.V(2) {
 		defer glog.V(2).Infof("Evaluation of module '%v' completed w/ %v warnings and %v errors",
 			mod.Token(), e.Diag().Warnings(), e.Diag().Errors())
-		if e.hooks != nil {
-			e.hooks.OnLeaveModule(mod)
-		}
 	}
 
 	// Fetch the module's entrypoint function, erroring out if it doesn't have one.
@@ -147,15 +142,14 @@ func (e *evaluator) EvaluateModule(mod *symbols.Module, args core.Args) {
 func (e *evaluator) EvaluateFunction(fnc symbols.Function, this *rt.Object, args core.Args) {
 	glog.Infof("Evaluating function '%v'", fnc.Token())
 	if e.hooks != nil {
-		e.hooks.OnEnterFunction(fnc)
+		if leave := e.hooks.OnEnterFunction(fnc); leave != nil {
+			defer leave()
+		}
 	}
 
 	if glog.V(2) {
 		defer glog.V(2).Infof("Evaluation of function '%v' completed w/ %v warnings and %v errors",
 			fnc.Token(), e.Diag().Warnings(), e.Diag().Errors())
-		if e.hooks != nil {
-			e.hooks.OnLeaveFunction(fnc)
-		}
 	}
 
 	// Ensure that initializers have been run.
@@ -560,8 +554,9 @@ func (e *evaluator) evalCall(node diag.Diagable, fnc symbols.Function,
 
 	// Invoke the hooks if available.
 	if e.hooks != nil {
-		e.hooks.OnEnterFunction(fnc)
-		defer e.hooks.OnLeaveFunction(fnc)
+		if leave := e.hooks.OnEnterFunction(fnc); leave != nil {
+			defer leave()
+		}
 	}
 
 	// If the target is an instance method, the "this" and "super" variables must be bound to values.
