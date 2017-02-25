@@ -312,7 +312,7 @@ func saveSnapshot(husk tokens.QName, snap resource.Snapshot, file string) {
 			backupSnapshot(file)
 
 			// Ensure the directory exists.
-			if err = os.MkdirAll(filepath.Dir(file), 0744); err != nil {
+			if err = os.MkdirAll(filepath.Dir(file), 0755); err != nil {
 				sink().Errorf(errors.ErrorIO, err)
 			} else {
 				// And now write out the new snapshot file, overwriting that location.
