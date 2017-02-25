@@ -51,40 +51,48 @@ type ArrayDiff struct {
 
 // Len computes the length of this array, taking into account adds, deletes, sames, and updates.
 func (diff *ArrayDiff) Len() int {
-	max := 0
+	len := 0
 	for i := range diff.Adds {
-		if i > max {
-			max = i
+		if i+1 > len {
+			len = i + 1
 		}
 	}
 	for i := range diff.Deletes {
-		if i > max {
-			max = i
+		if i+1 > len {
+			len = i + 1
 		}
 	}
 	for i := range diff.Sames {
-		if i > max {
-			max = i
+		if i+1 > len {
+			len = i + 1
 		}
 	}
 	for i := range diff.Updates {
-		if i > max {
-			max = i
+		if i+1 > len {
+			len = i + 1
 		}
 	}
-	return max
+	return len
 }
 
 // Diff returns a diffset by comparing the property map to another; it returns nil if there are no diffs.
 func (props PropertyMap) Diff(other PropertyMap) *ObjectDiff {
-	// First find any updates or deletes.
+	adds := make(PropertyMap)
 	deletes := make(PropertyMap)
 	sames := make(PropertyMap)
 	updates := make(map[PropertyKey]ValueDiff)
+
+	// First find any updates or deletes.
 	for k, p := range props {
 		if new, has := other[k]; has {
 			if diff := p.Diff(new); diff != nil {
-				updates[k] = *diff
+				if p.IsNull() {
+					adds[k] = new
+				} else if new.IsNull() {
+					deletes[k] = p
+				} else {
+					updates[k] = *diff
+				}
 			} else {
 				sames[k] = p
 			}
@@ -94,7 +102,6 @@ func (props PropertyMap) Diff(other PropertyMap) *ObjectDiff {
 	}
 
 	// Next find any additions not in the old map.
-	adds := make(PropertyMap)
 	for k, p := range other {
 		if _, has := props[k]; !has && !p.IsNull() {
 			adds[k] = p
@@ -116,30 +123,30 @@ func (props PropertyMap) Diff(other PropertyMap) *ObjectDiff {
 // Diff returns a diff by comparing a single property value to another; it returns nil if there are no diffs.
 func (v PropertyValue) Diff(other PropertyValue) *ValueDiff {
 	if v.IsArray() && other.IsArray() {
-		va := v.ArrayValue()
-		oa := other.ArrayValue()
+		old := v.ArrayValue()
+		new := other.ArrayValue()
 		// If any elements exist in the new array but not the old, track them as adds.
 		adds := make(map[int]PropertyValue)
-		for i := len(va); i < len(oa); i++ {
-			adds[i] = oa[i]
+		for i := len(old); i < len(new); i++ {
+			adds[i] = new[i]
 		}
 		// If any elements exist in the old array but not the new, track them as adds.
 		deletes := make(map[int]PropertyValue)
-		for i := len(oa); i < len(va); i++ {
-			deletes[i] = va[i]
+		for i := len(new); i < len(old); i++ {
+			deletes[i] = old[i]
 		}
 		// Now if elements exist in both, track them as sames or updates.
 		sames := make(map[int]PropertyValue)
 		updates := make(map[int]ValueDiff)
-		for i := 0; i < len(va) && i < len(oa); i++ {
-			if diff := va[i].Diff(oa[i]); diff != nil {
+		for i := 0; i < len(old) && i < len(new); i++ {
+			if diff := old[i].Diff(new[i]); diff != nil {
 				updates[i] = *diff
 			} else {
-				sames[i] = va[i]
+				sames[i] = old[i]
 			}
 		}
 
-		if len(adds) == 0 || len(deletes) == 0 || len(updates) == 0 {
+		if len(adds) == 0 && len(deletes) == 0 && len(updates) == 0 {
 			return nil
 		}
 		return &ValueDiff{
@@ -154,9 +161,9 @@ func (v PropertyValue) Diff(other PropertyValue) *ValueDiff {
 		}
 	}
 	if v.IsObject() && other.IsObject() {
-		vo := v.ObjectValue()
-		oo := other.ObjectValue()
-		if diff := vo.Diff(oo); diff != nil {
+		old := v.ObjectValue()
+		new := other.ObjectValue()
+		if diff := old.Diff(new); diff != nil {
 			return &ValueDiff{
 				Old:    v,
 				New:    other,

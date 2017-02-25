@@ -631,13 +631,13 @@ func printPropertyValueDiff(b *bytes.Buffer, title func(string), diff resource.V
 			b.WriteString(colors.SpecChanged)
 			title(deleteIndent(indent))
 			printPropertyValue(b, diff.Old, deleteIndent(indent))
-			b.WriteString(fmt.Sprintf("%s\n", colors.Reset))
+			b.WriteString(fmt.Sprintf("%s", colors.Reset))
 		}
 		if shouldPrintPropertyValue(diff.New) {
 			b.WriteString(colors.SpecChanged)
 			title(addIndent(indent))
 			printPropertyValue(b, diff.New, addIndent(indent))
-			b.WriteString(fmt.Sprintf("%s\n", colors.Reset))
+			b.WriteString(fmt.Sprintf("%s", colors.Reset))
 		}
 	}
 }

@@ -21,7 +21,6 @@ export class SecurityGroup
         super({
             name: name,
             resource:  "AWS::EC2::SecurityGroup",
-            properties: args,
         });
         this.groupDescription = args.groupDescription;
         this.vpc = args.vpc;

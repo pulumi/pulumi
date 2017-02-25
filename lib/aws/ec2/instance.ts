@@ -20,7 +20,6 @@ export class Instance
         super({
             name: name,
             resource: "AWS::EC2::Instance",
-            properties: args,
         });
         this.imageId = args.imageId;
         this.instanceType = args.instanceType;
