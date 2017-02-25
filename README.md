@@ -59,7 +59,7 @@ This installs the `coconut` binary into `$GOPATH/bin`, which may now be run prov
 ### Installing the Runtime Libraries
 
 By default, Coconut looks for its runtime libraries underneath `/usr/local/coconut`.  `$COCOPATH` overrides this.
-Please refer to the [libraries README](libs/README.md) for details on additional installation requirements.
+Please refer to the [libraries README](lib/README.md) for details on additional installation requirements.
 
 ### Debugging
 
