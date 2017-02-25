@@ -95,14 +95,14 @@ type compileResult struct {
 }
 
 // plan just uses the standard logic to parse arguments, options, and to create a snapshot and plan.
-func plan(cmd *cobra.Command, args []string, existfn string, delete bool) *planResult {
+func plan(cmd *cobra.Command, args []string, husk tokens.QName, create bool, delete bool) *planResult {
 	// Create a new context for the plan operations.
 	ctx := resource.NewContext(sink())
 
 	// If we are using an existing snapshot, read in that file (bailing if an IO error occurs).
-	var existing resource.Snapshot
-	if existfn != "" {
-		if existing = readSnapshot(ctx, existfn); existing == nil {
+	var old resource.Snapshot
+	if !create {
+		if old = readSnapshot(ctx, husk); old == nil {
 			return nil
 		}
 	}
@@ -112,15 +112,14 @@ func plan(cmd *cobra.Command, args []string, existfn string, delete bool) *planR
 		return &planResult{
 			compileResult: nil,
 			Ctx:           ctx,
-			Nutpoint:      existfn,
-			Existing:      existing,
-			Snap:          nil,
-			Plan:          resource.NewDeletePlan(ctx, existing),
+			Husk:          husk,
+			Old:           old,
+			New:           nil,
+			Plan:          resource.NewDeletePlan(ctx, old),
 		}
 	} else if result := compile(cmd, args); result != nil && result.Heap != nil {
 		// Create a resource snapshot from the compiled/evaluated object graph.
-		ns := resource.Namespace("no_namespace") // TODO[pulumi/coconut#94]: support for targets/namespaces.
-		snap, err := resource.NewGraphSnapshot(ctx, ns, result.Pkg.Name, result.C.Ctx().Opts.Args, result.Heap)
+		snap, err := resource.NewGraphSnapshot(ctx, husk, result.Pkg.Name, result.C.Ctx().Opts.Args, result.Heap)
 		if err != nil {
 			result.C.Diag().Errorf(errors.ErrorCantCreateSnapshot, err)
 			return nil
@@ -129,19 +128,20 @@ func plan(cmd *cobra.Command, args []string, existfn string, delete bool) *planR
 		}
 
 		var plan resource.Plan
-		if existing == nil {
+		if create {
 			// Generate a plan for creating the resources from scratch.
 			plan = resource.NewCreatePlan(ctx, snap)
 		} else {
 			// Generate a plan for updating existing resources to the new snapshot.
-			plan = resource.NewUpdatePlan(ctx, existing, snap)
+			contract.Assert(old != nil)
+			plan = resource.NewUpdatePlan(ctx, old, snap)
 		}
 		return &planResult{
 			compileResult: result,
 			Ctx:           ctx,
-			Nutpoint:      existfn,
-			Existing:      existing,
-			Snap:          snap,
+			Husk:          husk,
+			Old:           old,
+			New:           snap,
 			Plan:          plan,
 		}
 	}
@@ -151,15 +151,25 @@ func plan(cmd *cobra.Command, args []string, existfn string, delete bool) *planR
 
 type planResult struct {
 	*compileResult
-	Ctx      *resource.Context
-	Nutpoint string            // the file from which the existing snapshot was loaded (if any).
-	Existing resource.Snapshot // the existing snapshot (if any).
-	Snap     resource.Snapshot // the new snapshot for this plan (if any).
-	Plan     resource.Plan
+	Ctx  *resource.Context
+	Husk tokens.QName      // the husk name.
+	Old  resource.Snapshot // the existing snapshot (if any).
+	New  resource.Snapshot // the new snapshot for this plan (if any).
+	Plan resource.Plan
 }
 
-func apply(cmd *cobra.Command, args []string, existing string, opts applyOptions) {
-	if result := plan(cmd, args, existing, opts.Delete); result != nil {
+func apply(cmd *cobra.Command, args []string, opts applyOptions) {
+	// Read in the name of the husk to use.
+	var husk tokens.QName
+	if len(args) == 0 {
+		fmt.Fprintf(os.Stderr, "fatal: missing required husk name\n")
+		os.Exit(-1)
+	} else {
+		husk = tokens.QName(args[0])
+		args = args[1:]
+	}
+
+	if result := plan(cmd, args, husk, opts.Create, opts.Delete); result != nil {
 		if result.Plan.Empty() {
 			sink().Infof(diag.Message("nothing to do -- resources are up to date"))
 		} else if opts.DryRun {
@@ -167,7 +177,7 @@ func apply(cmd *cobra.Command, args []string, existing string, opts applyOptions
 			if opts.Output == "" || opts.Output == "-" {
 				printPlan(result.Plan, opts.Summary)
 			} else {
-				saveSnapshot(result.Snap, opts.Output)
+				saveSnapshot(husk, result.New, opts.Output)
 			}
 		} else {
 			// Create an object to track progress and perform the actual operations.
@@ -206,53 +216,38 @@ func apply(cmd *cobra.Command, args []string, existing string, opts applyOptions
 			fmt.Printf(colors.Colorize(s))
 
 			// Now save the updated snapshot to the specified output file, if any, or the standard location otherwise.
-			// TODO: perform partial updates if we weren't able to perform the entire planned set of operations.
+			// TODO: save partial updates if we weren't able to perform the entire planned set of operations.
 			if opts.Delete {
-				contract.Assert(result.Nutpoint != "")
-				deleteSnapshot(result.Nutpoint)
+				deleteSnapshot(result.Husk)
 			} else {
-				out := opts.Output
-				if out == "" {
-					out = result.Nutpoint // try overwriting the existing file.
-				}
-				if out == "" {
-					out = workspace.Nutpoint // use the default file name.
-				}
-				contract.Assert(result.Snap != nil)
-				saveSnapshot(result.Snap, out)
+				contract.Assert(result.New != nil)
+				saveSnapshot(result.Husk, result.New, opts.Output)
 			}
 		}
 	}
-}
-
-func applyExisting(cmd *cobra.Command, args []string, opts applyOptions) {
-	// Read in the snapshot argument.
-	// TODO: if not supplied, auto-detect the current one.
-	if len(args) == 0 {
-		fmt.Fprintf(os.Stderr, "fatal: missing required snapshot argument\n")
-		os.Exit(-1)
-	}
-
-	apply(cmd, args[1:], args[0], opts)
 }
 
 // backupSnapshot makes a backup of an existing file, in preparation for writing a new one.  Instead of a copy, it
 // simply renames the file, which is simpler, more efficient, etc.
 func backupSnapshot(file string) {
 	contract.Require(file != "", "file")
-	// TODO: consider multiple backups (.bak.bak.bak...etc).
 	os.Rename(file, file+".bak") // ignore errors.
+	// TODO: consider multiple backups (.bak.bak.bak...etc).
 }
 
 // deleteSnapshot removes an existing snapshot file, leaving behind a backup.
-func deleteSnapshot(file string) {
-	contract.Require(file != "", "file")
+func deleteSnapshot(husk tokens.QName) {
+	contract.Require(husk != "", "husk")
 	// Just make a backup of the file and don't write out anything new.
+	file := workspace.HuskPath(husk)
 	backupSnapshot(file)
 }
 
 // readSnapshot reads in an existing snapshot file, issuing an error and returning nil if something goes awry.
-func readSnapshot(ctx *resource.Context, file string) resource.Snapshot {
+func readSnapshot(ctx *resource.Context, husk tokens.QName) resource.Snapshot {
+	contract.Require(husk != "", "husk")
+	file := workspace.HuskPath(husk)
+
 	// Detect the encoding of the file so we can do our initial unmarshaling.
 	m, ext := encoding.Detect(file)
 	if m == nil {
@@ -291,10 +286,13 @@ func readSnapshot(ctx *resource.Context, file string) resource.Snapshot {
 	return resource.DeserializeSnapshot(ctx, &snap)
 }
 
-// saveSnapshot saves a new CocoGL snapshot at the given location, backing up any existing ones.
-func saveSnapshot(snap resource.Snapshot, file string) {
+// saveSnapshot saves a new snapshot at the given location, backing up any existing ones.
+func saveSnapshot(husk tokens.QName, snap resource.Snapshot, file string) {
 	contract.Require(snap != nil, "snap")
-	contract.Require(file != "", "file")
+	contract.Require(husk != "", "husk")
+	if file == "" {
+		file = workspace.HuskPath(husk)
+	}
 
 	// Make a serializable CocoGL data structure and then use the encoder to encode it.
 	m, ext := encoding.Detect(file)
@@ -313,15 +311,21 @@ func saveSnapshot(snap resource.Snapshot, file string) {
 			// Back up the existing file if it already exists.
 			backupSnapshot(file)
 
-			// And now write out the new snapshot file, overwriting that location.
-			if err = ioutil.WriteFile(file, b, 0644); err != nil {
+			// Ensure the directory exists.
+			if err = os.MkdirAll(filepath.Dir(file), 0744); err != nil {
 				sink().Errorf(errors.ErrorIO, err)
+			} else {
+				// And now write out the new snapshot file, overwriting that location.
+				if err = ioutil.WriteFile(file, b, 0644); err != nil {
+					sink().Errorf(errors.ErrorIO, err)
+				}
 			}
 		}
 	}
 }
 
 type applyOptions struct {
+	Create  bool   // true if we are creating resources.
 	Delete  bool   // true if we are deleting resources.
 	DryRun  bool   // true if we should just print the plan without performing it.
 	Summary bool   // true if we should only summarize resources and operations.

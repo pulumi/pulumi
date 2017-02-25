@@ -4,6 +4,7 @@ package cmd
 
 import (
 	"fmt"
+	"os"
 	"strings"
 	"unicode"
 
@@ -14,6 +15,7 @@ import (
 	"github.com/pulumi/coconut/pkg/tokens"
 	"github.com/pulumi/coconut/pkg/util/cmdutil"
 	"github.com/pulumi/coconut/pkg/util/contract"
+	"github.com/pulumi/coconut/pkg/workspace"
 )
 
 func newDescribeCmd() *cobra.Command {
@@ -22,8 +24,8 @@ func newDescribeCmd() *cobra.Command {
 	var printSymbols bool
 	var printExportedSymbols bool
 	var cmd = &cobra.Command{
-		Use:   "describe [packages...]",
-		Short: "Describe a Nut",
+		Use:   "describe [nuts...]",
+		Short: "Describe one or more Nuts",
 		Long:  "Describe prints package, symbol, and IL information from one or more Nuts.",
 		Run: func(cmd *cobra.Command, args []string) {
 			// If printAll is true, flip all the flags.
@@ -33,13 +35,27 @@ func newDescribeCmd() *cobra.Command {
 				printExportedSymbols = true
 			}
 
-			// Enumerate the list of packages, deserialize them, and print information.
-			for _, arg := range args {
-				pkg := cmdutil.ReadPackageFromArg(arg)
-				if pkg == nil {
-					break
+			if len(args) == 0 {
+				// No package specified, just load from the current directory.
+				pwd, _ := os.Getwd()
+				pkgpath, err := workspace.DetectPackage(pwd, sink())
+				if err != nil {
+					fmt.Fprintf(os.Stderr, "fatal: could not find a nut: %v", err)
+					os.Exit(-1)
 				}
-				printPackage(pkg, printSymbols, printExportedSymbols, printIL)
+
+				if pkg := cmdutil.ReadPackage(pkgpath); pkg != nil {
+					printPackage(pkg, printSymbols, printExportedSymbols, printIL)
+				}
+			} else {
+				// Enumerate the list of packages, deserialize them, and print information.
+				for _, arg := range args {
+					pkg := cmdutil.ReadPackageFromArg(arg)
+					if pkg == nil {
+						break
+					}
+					printPackage(pkg, printSymbols, printExportedSymbols, printIL)
+				}
 			}
 		},
 	}

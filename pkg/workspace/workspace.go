@@ -183,6 +183,11 @@ func namePath(nm tokens.Name) string {
 	return stringNamePath(string(nm))
 }
 
+// qnamePath just cleans a name and makes sure it's appropriate to use as a path.
+func qnamePath(nm tokens.QName) string {
+	return stringNamePath(string(nm))
+}
+
 // packageNamePath just cleans a package name and makes sure it's appropriate to use as a path.
 func packageNamePath(nm tokens.PackageName) string {
 	return stringNamePath(string(nm))

@@ -15,7 +15,7 @@ import (
 // SerializedSnapshot is a serializable, flattened CocoGL graph structure, specifically for snapshots.   It is similar
 // to the actual Snapshot interface, except that it flattens and rearranges a few data structures for serializability.
 type SerializedSnapshot struct {
-	Target    Namespace              `json:"target"`              // the target environment name.
+	Husk      tokens.QName           `json:"husk"`                // the target environment name.
 	Package   tokens.PackageName     `json:"package"`             // the package which created this graph.
 	Args      *core.Args             `json:"args,omitempty"`      // the blueprint args for graph creation.
 	Refs      *string                `json:"refs,omitempty"`      // the ref alias, if any (`#ref` by default).
@@ -66,7 +66,7 @@ func SerializeSnapshot(snap Snapshot, reftag string) *SerializedSnapshot {
 	}
 
 	return &SerializedSnapshot{
-		Target:    snap.Ns(),
+		Husk:      snap.Husk(),
 		Package:   snap.Pkg(), // TODO: eventually, this should carry version metadata too.
 		Args:      argsp,
 		Refs:      refp,
@@ -149,20 +149,20 @@ func SerializeProperty(prop PropertyValue, reftag string) (interface{}, bool) {
 }
 
 // DeserializeSnapshot takes a serialized CocoGL snapshot data structure and returns its associated snapshot.
-func DeserializeSnapshot(ctx *Context, mugl *SerializedSnapshot) Snapshot {
+func DeserializeSnapshot(ctx *Context, ser *SerializedSnapshot) Snapshot {
 	// Determine the reftag to use.
 	var reftag string
-	if mugl.Refs == nil {
+	if ser.Refs == nil {
 		reftag = DefaultSnapshotReftag
 	} else {
-		reftag = *mugl.Refs
+		reftag = *ser.Refs
 	}
 
 	// For every serialized resource vertex, create a SerializedResource out of it.
 	var resources []Resource
-	if mugl.Resources != nil {
+	if ser.Resources != nil {
 		// TODO: we need to enumerate resources in the specific order in which they were emitted.
-		for _, kvp := range mugl.Resources.Iter() {
+		for _, kvp := range ser.Resources.Iter() {
 			// Deserialize the resources, if they exist.
 			res := kvp.Value
 			var props PropertyMap
@@ -183,11 +183,11 @@ func DeserializeSnapshot(ctx *Context, mugl *SerializedSnapshot) Snapshot {
 	}
 
 	var args core.Args
-	if mugl.Args != nil {
-		args = *mugl.Args
+	if ser.Args != nil {
+		args = *ser.Args
 	}
 
-	return NewSnapshot(ctx, mugl.Target, mugl.Package, args, resources)
+	return NewSnapshot(ctx, ser.Husk, ser.Package, args, resources)
 }
 
 func DeserializeProperties(props SerializedPropertyMap, reftag string) PropertyMap {

@@ -11,19 +11,20 @@ func newCreateCmd() *cobra.Command {
 	var summary bool
 	var output string
 	var cmd = &cobra.Command{
-		Use:   "create [blueprint] [-- [args]]",
-		Short: "Create a new environment and its resources",
-		Long: "Create a new environment and its resources.\n" +
+		Use:   "create husk-name [nut-file] [-- [args]]",
+		Short: "Create a new husk (target) with a given name and fresh resources",
+		Long: "Create a new husk (target) with a given name and fresh resources.\n" +
 			"\n" +
-			"This command creates a new environment and its resources.  These resources are\n" +
-			"the result of compiling and evaluating a Nut blueprint, and then extracting all\n" +
-			"resource allocations from its CocoGL graph.  This command results in a full snapshot\n" +
-			"of the environment's resource state, so that it may be updated incrementally later on.\n" +
+			"This command creates a new husk (target) and its resources, with the given name.  These\n" +
+			"resources are computed by compiling and evaluating an executable Nut, and then extracting\n" +
+			"resource allocations from its resulting object graph.  This command saves full snapshot\n" +
+			"of the husk's final resource state, so that it may be updated incrementally later on.\n" +
 			"\n" +
-			"By default, the Nut blueprint is loaded from the current directory.  Optionally,\n" +
-			"a path to a Nut elsewhere can be provided as the [blueprint] argument.",
+			"By default, the Nut to execute is loaded from the current directory.  Optionally, an\n" +
+			"explicit path can be provided using the [nut-file] argument.",
 		Run: func(cmd *cobra.Command, args []string) {
-			apply(cmd, args, "", applyOptions{
+			apply(cmd, args, applyOptions{
+				Create:  true,
 				Delete:  false,
 				DryRun:  dryRun,
 				Summary: summary,
@@ -40,7 +41,7 @@ func newCreateCmd() *cobra.Command {
 		"Only display summarization of resources and plan operations")
 	cmd.PersistentFlags().StringVarP(
 		&output, "output", "o", "",
-		"Serialize the resulting snapshot to a specific file, instead of the standard location")
+		"Serialize the resulting husk snapshot to a specific file, instead of the standard location")
 
 	return cmd
 }

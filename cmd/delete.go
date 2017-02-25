@@ -10,14 +10,19 @@ func newDeleteCmd() *cobra.Command {
 	var dryRun bool
 	var summary bool
 	var cmd = &cobra.Command{
-		Use:   "delete [snapshot]",
-		Short: "Delete an existing environment and its resources",
-		Long: "Delete an existing environment and its resources.\n" +
+		Use:   "delete husk-name",
+		Short: "Delete an existing husk (target) and its resources",
+		Long: "Delete an existing husk (target) and its resources.\n" +
 			"\n" +
-			"This command deletes an entire existing environment whose state is represented by the\n" +
-			"existing snapshot file.  After running to completion, this environment will be gone.",
+			"This command deletes an entire existing husk by name.  The current state is loaded\n" +
+			"from the associated snapshot file in the workspace.  After running to completion,\n" +
+			"this environment and all of its associated state will be gone.\n" +
+			"\n" +
+			"Warning: although old snapshots can be used to recreate an environment, this command\n" +
+			"is generally irreversable and should be used with great care.",
 		Run: func(cmd *cobra.Command, args []string) {
-			applyExisting(cmd, args, applyOptions{
+			apply(cmd, args, applyOptions{
+				Create:  false,
 				Delete:  true,
 				DryRun:  dryRun,
 				Summary: summary,

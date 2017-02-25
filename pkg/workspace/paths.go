@@ -11,40 +11,34 @@ import (
 	"github.com/pulumi/coconut/pkg/compiler/errors"
 	"github.com/pulumi/coconut/pkg/diag"
 	"github.com/pulumi/coconut/pkg/encoding"
+	"github.com/pulumi/coconut/pkg/tokens"
 )
 
-// Nutfile is the base name of a Nutfile.
-const Nutfile = "Nut"
+const Nutfile = "Nut"           // the base name of a Nutfile.
+const Nutpack = "Nutpack"       // the base name of a compiled NutPack.
+const NutpackOutDir = "nutpack" // the default name of the NutPack output directory.
+const NutpackBinDir = "bin"     // the default name of the NutPack binary output directory.
+const NutpackHusksDir = "husks" // the default name of the NutPack husks directory.
+const Nutspace = "Coconut"      // the base name of a markup file for shared settings in a workspace.
+const Nutdeps = ".Nuts"         // the directory in which dependencies exist, either local or global.
 
-// Nutpack is the base name of a compiled Nut package.
-const Nutpack = "Nutpack"
-
-// Nutpoint is the base name of a Nut's CocoGL graph file (checkpoint).
-const Nutpoint = "Nutpoint"
-
-// Nutspace is the base name of a markup file containing settings shared amongst a workspace.
-const Nutspace = "Nutspace"
-
-// Nutdeps is the directory in which dependency modules exist, either local to a workspace, or globally.
-const Nutdeps = ".Nuts"
-
-// InstallRootEnvvar is the envvar describing where Coconut has been installed.
-const InstallRootEnvvar = "COCOROOT"
-
-// InstallRootLibdir is the directory in which the Coconut standard library exists.
-const InstallRootLibdir = "lib"
-
-// DefaultInstallRoot is where Coconut is installed by default, if the envvar is missing.
-// TODO: support Windows.
-const DefaultInstallRoot = "/usr/local/coconut"
+const InstallRootEnvvar = "COCOROOT"            // the envvar describing where Coconut has been installed.
+const InstallRootLibdir = "lib"                 // the directory in which the Coconut standard library exists.
+const DefaultInstallRoot = "/usr/local/coconut" // where Coconut is installed by default.
 
 // InstallRoot returns Coconut's installation location.  This is controlled my the COCOROOT envvar.
 func InstallRoot() string {
+	// TODO: support Windows.
 	root := os.Getenv(InstallRootEnvvar)
 	if root == "" {
 		return DefaultInstallRoot
 	}
 	return root
+}
+
+// HuskPath returns a path to the given husk's default location.
+func HuskPath(husk tokens.QName) string {
+	return filepath.Join(NutpackOutDir, NutpackHusksDir, qnamePath(husk)+encoding.Exts[0])
 }
 
 // isTop returns true if the path represents the top of the filesystem.
@@ -79,6 +73,17 @@ func DetectPackage(path string, d diag.Sink) (string, error) {
 		if err != nil {
 			return "", err
 		}
+
+		// See if there's a compiled Nutpack in the expected location.
+		pack := filepath.Join(NutpackOutDir, NutpackBinDir, Nutpack)
+		for _, ext := range encoding.Exts {
+			packfile := pack + ext
+			if IsNutpack(packfile, d) {
+				return packfile, nil
+			}
+		}
+
+		// Now look for individual Nutfiles.
 		for _, file := range files {
 			name := file.Name()
 			path := filepath.Join(curr, name)
@@ -115,12 +120,6 @@ func IsNutfile(path string, d diag.Sink) bool {
 // an incorrect extension -- they are logged to the provided diag.Sink (if non-nil).
 func IsNutpack(path string, d diag.Sink) bool {
 	return isMarkupFile(path, Nutpack, d)
-}
-
-// IsNutpoint returns true if the path references what appears to be a valid CocoGL file.  If problems are detected --
-// like an incorrect extension -- they are logged to the provided diag.Sink (if non-nil).
-func IsNutpoint(path string, d diag.Sink) bool {
-	return isMarkupFile(path, Nutpoint, d)
 }
 
 // IsNutspace returns true if the path references what appears to be a valid Nutspace file.  If problems are detected --

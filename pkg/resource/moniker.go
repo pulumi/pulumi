@@ -30,7 +30,7 @@ type Moniker string
 const MonikerDelimiter = "::" // the delimiter between elements of the moniker.
 
 // NewMoniker creates a unique moniker for the given object.
-func NewMoniker(ns Namespace, alloc tokens.Module, t tokens.Type, name tokens.QName) Moniker {
+func NewMoniker(ns tokens.QName, alloc tokens.Module, t tokens.Type, name tokens.QName) Moniker {
 	return Moniker(
 		string(ns) +
 			MonikerDelimiter + string(alloc) +

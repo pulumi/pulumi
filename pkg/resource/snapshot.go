@@ -14,14 +14,12 @@ import (
 	"github.com/pulumi/coconut/pkg/util/contract"
 )
 
-type Namespace tokens.QName // a namespace is the target for a deployment.
-
 // Snapshot is a view of a collection of resources in an environment at a point in time.  It describes resources; their
 // IDs, names, and properties; their dependencies; and more.  A snapshot is a diffable entity and can be used to create
 // or apply an infrastructure deployment plan in order to make reality match the snapshot state.
 type Snapshot interface {
 	Ctx() *Context                              // fetches the context for this snapshot.
-	Ns() Namespace                              // the namespace being deployed into.
+	Husk() tokens.QName                         // the husk/namespace target being deployed into.
 	Pkg() tokens.PackageName                    // the package from which this snapshot came.
 	Args() core.Args                            // the arguments used to compile this package.
 	Resources() []Resource                      // a topologically sorted list of resources (based on dependencies).
@@ -32,14 +30,15 @@ type Snapshot interface {
 
 // NewSnapshot creates a snapshot from the given arguments.  Note that resources must be in topologically-sorted
 // dependency order, otherwise undefined behavior will result from using the resulting snapshot object.
-func NewSnapshot(ctx *Context, ns Namespace, pkg tokens.PackageName, args core.Args, resources []Resource) Snapshot {
-	return &snapshot{ctx, ns, pkg, args, resources}
+func NewSnapshot(ctx *Context, husk tokens.QName, pkg tokens.PackageName,
+	args core.Args, resources []Resource) Snapshot {
+	return &snapshot{ctx, husk, pkg, args, resources}
 }
 
 // NewGraphSnapshot takes an object graph and produces a resource snapshot from it.  It understands how to name
 // resources based on their position within the graph and how to identify and record dependencies.  This function can
 // fail dynamically if the input graph did not satisfy the preconditions for resource graphs (like that it is a DAG).
-func NewGraphSnapshot(ctx *Context, ns Namespace, pkg tokens.PackageName, args core.Args,
+func NewGraphSnapshot(ctx *Context, husk tokens.QName, pkg tokens.PackageName, args core.Args,
 	heap *heapstate.Heap) (Snapshot, error) {
 
 	// Topologically sort the entire heapstate (in dependency order) and extract just the resource objects.
@@ -50,24 +49,24 @@ func NewGraphSnapshot(ctx *Context, ns Namespace, pkg tokens.PackageName, args c
 
 	// Next, name all resources, create their monikers and objects, and maps that we will use.  Note that we must do
 	// this in DAG order (guaranteed by our topological sort above), so that referenced monikers are available.
-	resources, err := createResources(ctx, ns, heap, resobjs)
+	resources, err := createResources(ctx, husk, heap, resobjs)
 	if err != nil {
 		return nil, err
 	}
 
-	return NewSnapshot(ctx, ns, pkg, args, resources), nil
+	return NewSnapshot(ctx, husk, pkg, args, resources), nil
 }
 
 type snapshot struct {
 	ctx       *Context           // the context shared by all operations in this snapshot.
-	ns        Namespace          // the namespace being deployed into.
+	husk      tokens.QName       // the husk/namespace target being deployed into.
 	pkg       tokens.PackageName // the package from which this snapshot came.
 	args      core.Args          // the arguments used to compile this package.
 	resources []Resource         // the topologically sorted linearized list of resources.
 }
 
 func (s *snapshot) Ctx() *Context           { return s.ctx }
-func (s *snapshot) Ns() Namespace           { return s.ns }
+func (s *snapshot) Husk() tokens.QName      { return s.husk }
 func (s *snapshot) Pkg() tokens.PackageName { return s.pkg }
 func (s *snapshot) Args() core.Args         { return s.args }
 func (s *snapshot) Resources() []Resource   { return s.resources }
@@ -82,7 +81,7 @@ func (s *snapshot) ResourceByObject(obj *rt.Object) Resource { return s.ctx.ObjR
 
 // createResources uses a graph to create monikers and resource objects for every resource within.  It
 // returns two maps for further use: a map of vertex to its new resource object, and a map of vertex to its moniker.
-func createResources(ctx *Context, ns Namespace, heap *heapstate.Heap, resobjs []*rt.Object) ([]Resource, error) {
+func createResources(ctx *Context, husk tokens.QName, heap *heapstate.Heap, resobjs []*rt.Object) ([]Resource, error) {
 	var resources []Resource
 	for _, resobj := range resobjs {
 		// Create an object resource without a moniker.
@@ -101,7 +100,7 @@ func createResources(ctx *Context, ns Namespace, heap *heapstate.Heap, resobjs [
 
 		// Now compute a unique moniker for this object and ensure we haven't had any collisions.
 		alloc := heap.Alloc(resobj)
-		moniker := NewMoniker(ns, alloc.Mod.Tok, t, name)
+		moniker := NewMoniker(husk, alloc.Mod.Tok, t, name)
 		glog.V(7).Infof("Resource moniker computed: %v", moniker)
 		if _, exists := ctx.MksRes[moniker]; exists {
 			// If this moniker is already in use, issue an error, ignore this one, and break.  The break is necessary
