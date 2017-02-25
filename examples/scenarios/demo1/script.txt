@@ -5,21 +5,21 @@ The first demo of the full system in action.
 ## Part 1: Core Demo (Nov, 2016)
 
 TODO: start with the "dumb" Docker Compose / Mongo demo.
-    - then add one by one to get to Mu
+    - then add one by one to get to Coconut
     - persistence
     - multi-node/sharding
     - service discovery
     - api contracts, pluggability, reuse
 
-1. Muify an Express app plus MongoDB backend
+1. Coconutify an Express app plus MongoDB backend
     Leverage Express and MongoDB containers
-    App already exists, just add a Mu.yaml (Compose-like) file
+    App already exists, just add a Nut.yaml (Compose-like) file
     Show how adding AWS persistence to the MongoDB service is easy
     TODO: starting point?  Existing compose/cloud formation/kubernetes app?
     TODO: talk about Mongo sharding, etc. as an implementation detail of mongodb/mongodb?
     TODO: talking point on abstractions like key-value store (impl w/ Mongo, Dynamo, etc).  Maybe show?
-2. Import to my Marapongo account
-    $ mu remote add https://paxmu.com/joeduffy/demo1 && mu push
+2. Import to my Pulumi account
+    $ mu remote add https://pulumi.com/joeduffy/demo1 && mu push
     Shows up in UI sorta like a GitHub repo
     I see a "deploy" button and a "live site" tab
 3. Click the deploy button
@@ -28,8 +28,8 @@ TODO: start with the "dumb" Docker Compose / Mongo demo.
     To kill time, demonstrate running locally; talk to GCE, Kube etc.
 4. Inspect the live site tab
     Click production, see some simple "DataDog-like" analytics (requests per second, free disk space, etc)
-5. Desire deeper analytics; add a "one liner" to my app to add ELK Mu stack
-    For bonus points, show searching MuHub for ELK in the UI
+5. Desire deeper analytics; add a "one liner" to my app to add ELK Nut
+    For bonus points, show searching CoconutHub for ELK in the UI
     Click the deploy button, just deploys the delta (in <5 minutes)
     To kill time, demonstrate that an AWS CF stack was created, click around CloudWatch, etc.
     TODO: consume ES data via its API?
@@ -39,7 +39,7 @@ TODO: start with the "dumb" Docker Compose / Mongo demo.
 
 ## Part 2: GitHub Integration (TBD)
 
-1. Hook Marapongo up to my GitHub account, so I can use GitFlow for deploys
+1. Hook Pulumi up to my GitHub account, so I can use GitFlow for deploys
     Use a GitHub "workspace" (monorepo) to contain multiple services
     Link branches to environments
     Simply push a branch to trigger CI/CD workflow
@@ -61,7 +61,7 @@ TODO: start with the "dumb" Docker Compose / Mongo demo.
 
 1. Share my template with my other teammates
     TODO: carve up in half: 1/2 reusable boilerplate, 1/2 app logic (routes.js-like)?
-    Refactor to be generic "Express, MongoDB, and ELK" template, publish in Marapongo
+    Refactor to be generic "Express, MongoDB, and ELK" template, publish in Pulumi
     Show how cloning and deriving a new project off it is as easy as "base: myteam-jselk-stack"
     Now also show sharing and reuse of our "PagerDuty stack" just like others ($ mu add pagers)
 

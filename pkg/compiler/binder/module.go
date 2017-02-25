@@ -1,4 +1,4 @@
-// Copyright 2016 Marapongo, Inc. All rights reserved.
+// Copyright 2016 Pulumi, Inc. All rights reserved.
 
 package binder
 
@@ -7,9 +7,9 @@ import (
 
 	"github.com/golang/glog"
 
-	"github.com/marapongo/mu/pkg/compiler/ast"
-	"github.com/marapongo/mu/pkg/compiler/symbols"
-	"github.com/marapongo/mu/pkg/util/contract"
+	"github.com/pulumi/coconut/pkg/compiler/ast"
+	"github.com/pulumi/coconut/pkg/compiler/symbols"
+	"github.com/pulumi/coconut/pkg/util/contract"
 )
 
 func (b *binder) bindModuleDeclarations(node *ast.Module, parent *symbols.Package) *symbols.Module {

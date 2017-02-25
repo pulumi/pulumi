@@ -1,4 +1,4 @@
-// Copyright 2016 Marapongo, Inc. All rights reserved.
+// Copyright 2016 Pulumi, Inc. All rights reserved.
 
 package resource
 
@@ -9,7 +9,7 @@ import (
 	"github.com/golang/glog"
 	structpb "github.com/golang/protobuf/ptypes/struct"
 
-	"github.com/marapongo/mu/pkg/util/contract"
+	"github.com/pulumi/coconut/pkg/util/contract"
 )
 
 // MarshalOptions controls the marshaling of RPC structures.

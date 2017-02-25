@@ -1,11 +1,11 @@
-// Copyright 2016 Marapongo, Inc. All rights reserved.
+// Copyright 2016 Pulumi, Inc. All rights reserved.
 
 syntax = "proto3";
 
 import "google/protobuf/empty.proto";
 import "google/protobuf/struct.proto";
 
-package murpc;
+package cocorpc;
 
 // TODO: figure out "transactionality" and possibly "tainting".
 

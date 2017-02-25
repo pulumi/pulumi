@@ -1,4 +1,4 @@
-// Copyright 2016 Marapongo, Inc. All rights reserved.
+// Copyright 2016 Pulumi, Inc. All rights reserved.
 
 package tokens
 
@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/marapongo/mu/pkg/util/contract"
+	"github.com/pulumi/coconut/pkg/util/contract"
 )
 
 // tokenBuffer is a parseable token buffer that simply carries a position.

@@ -1,16 +1,16 @@
-// Copyright 2016 Marapongo, Inc. All rights reserved.
+// Copyright 2016 Pulumi, Inc. All rights reserved.
 
 package binder
 
 import (
 	"reflect"
 
-	"github.com/marapongo/mu/pkg/compiler/ast"
-	"github.com/marapongo/mu/pkg/compiler/errors"
-	"github.com/marapongo/mu/pkg/compiler/symbols"
-	"github.com/marapongo/mu/pkg/compiler/types"
-	"github.com/marapongo/mu/pkg/tokens"
-	"github.com/marapongo/mu/pkg/util/contract"
+	"github.com/pulumi/coconut/pkg/compiler/ast"
+	"github.com/pulumi/coconut/pkg/compiler/errors"
+	"github.com/pulumi/coconut/pkg/compiler/symbols"
+	"github.com/pulumi/coconut/pkg/compiler/types"
+	"github.com/pulumi/coconut/pkg/tokens"
+	"github.com/pulumi/coconut/pkg/util/contract"
 )
 
 // astBinder is an AST visitor implementation that understands how to deal with all sorts of node types.  It

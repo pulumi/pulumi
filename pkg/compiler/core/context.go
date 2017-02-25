@@ -1,10 +1,10 @@
-// Copyright 2016 Marapongo, Inc. All rights reserved.
+// Copyright 2016 Pulumi, Inc. All rights reserved.
 
 package core
 
 import (
-	"github.com/marapongo/mu/pkg/compiler/symbols"
-	"github.com/marapongo/mu/pkg/diag"
+	"github.com/pulumi/coconut/pkg/compiler/symbols"
+	"github.com/pulumi/coconut/pkg/diag"
 )
 
 // Context is a bag of state common throughout all compiler passes.

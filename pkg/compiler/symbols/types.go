@@ -1,10 +1,10 @@
-// Copyright 2016 Marapongo, Inc. All rights reserved.
+// Copyright 2016 Pulumi, Inc. All rights reserved.
 
 package symbols
 
 import (
-	"github.com/marapongo/mu/pkg/diag"
-	"github.com/marapongo/mu/pkg/tokens"
+	"github.com/pulumi/coconut/pkg/diag"
+	"github.com/pulumi/coconut/pkg/tokens"
 )
 
 // Type is a type symbol that can be used for typechecking operations.

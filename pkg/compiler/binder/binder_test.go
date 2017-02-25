@@ -1,4 +1,4 @@
-// Copyright 2016 Marapongo, Inc. All rights reserved.
+// Copyright 2016 Pulumi, Inc. All rights reserved.
 
 package binder
 
@@ -10,13 +10,13 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/marapongo/mu/pkg/compiler/core"
-	"github.com/marapongo/mu/pkg/compiler/errors"
-	"github.com/marapongo/mu/pkg/compiler/metadata"
-	"github.com/marapongo/mu/pkg/diag"
-	"github.com/marapongo/mu/pkg/util/contract"
-	"github.com/marapongo/mu/pkg/util/testutil"
-	"github.com/marapongo/mu/pkg/workspace"
+	"github.com/pulumi/coconut/pkg/compiler/core"
+	"github.com/pulumi/coconut/pkg/compiler/errors"
+	"github.com/pulumi/coconut/pkg/compiler/metadata"
+	"github.com/pulumi/coconut/pkg/diag"
+	"github.com/pulumi/coconut/pkg/util/contract"
+	"github.com/pulumi/coconut/pkg/util/testutil"
+	"github.com/pulumi/coconut/pkg/workspace"
 )
 
 func testBind(paths ...string) *testutil.TestDiagSink {
@@ -57,21 +57,21 @@ func TestBadDepSemVer(t *testing.T) {
 	bad0 := "dep1#badbadbad"
 	assert.Equal(t,
 		fmt.Sprintf("%v: %v %v%v: %v\n",
-			"Mu.yaml", diag.Error, diag.DefaultSinkIDPrefix, d.ID,
+			"Nut.yaml", diag.Error, diag.DefaultSinkIDPrefix, d.ID,
 			fmt.Sprintf(d.Message, bad0,
 				"Illegal version spec in '"+bad0+"': Could not get version from string: \"badbadbad\"")),
 		sink.ErrorMsgs()[0])
-	bad1 := "hub.mu.com/dep2#badbadbad"
+	bad1 := "cocohub.com/dep2#badbadbad"
 	assert.Equal(t,
 		fmt.Sprintf("%v: %v %v%v: %v\n",
-			"Mu.yaml", diag.Error, diag.DefaultSinkIDPrefix, d.ID,
+			"Nut.yaml", diag.Error, diag.DefaultSinkIDPrefix, d.ID,
 			fmt.Sprintf(d.Message, bad1,
 				"Illegal version spec in '"+bad1+"': Could not get version from string: \"badbadbad\"")),
 		sink.ErrorMsgs()[1])
-	bad2 := "https://hub.mu.com/dep3/a/b/c/d#badbadbad"
+	bad2 := "https://cocohub.com/dep3/a/b/c/d#badbadbad"
 	assert.Equal(t,
 		fmt.Sprintf("%v: %v %v%v: %v\n",
-			"Mu.yaml", diag.Error, diag.DefaultSinkIDPrefix, d.ID,
+			"Nut.yaml", diag.Error, diag.DefaultSinkIDPrefix, d.ID,
 			fmt.Sprintf(d.Message, bad2,
 				"Illegal version spec in '"+bad2+"': Could not get version from string: \"badbadbad\"")),
 		sink.ErrorMsgs()[2])

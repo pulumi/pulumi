@@ -1,4 +1,4 @@
-// Copyright 2016 Marapongo, Inc. All rights reserved.
+// Copyright 2016 Pulumi, Inc. All rights reserved.
 
 package cmd
 
@@ -13,20 +13,20 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/marapongo/mu/pkg/compiler"
-	"github.com/marapongo/mu/pkg/compiler/core"
-	"github.com/marapongo/mu/pkg/compiler/errors"
-	"github.com/marapongo/mu/pkg/diag"
-	"github.com/marapongo/mu/pkg/diag/colors"
-	"github.com/marapongo/mu/pkg/encoding"
-	"github.com/marapongo/mu/pkg/eval/heapstate"
-	"github.com/marapongo/mu/pkg/pack"
-	"github.com/marapongo/mu/pkg/resource"
-	"github.com/marapongo/mu/pkg/tokens"
-	"github.com/marapongo/mu/pkg/util/cmdutil"
-	"github.com/marapongo/mu/pkg/util/contract"
-	"github.com/marapongo/mu/pkg/util/mapper"
-	"github.com/marapongo/mu/pkg/workspace"
+	"github.com/pulumi/coconut/pkg/compiler"
+	"github.com/pulumi/coconut/pkg/compiler/core"
+	"github.com/pulumi/coconut/pkg/compiler/errors"
+	"github.com/pulumi/coconut/pkg/diag"
+	"github.com/pulumi/coconut/pkg/diag/colors"
+	"github.com/pulumi/coconut/pkg/encoding"
+	"github.com/pulumi/coconut/pkg/eval/heapstate"
+	"github.com/pulumi/coconut/pkg/pack"
+	"github.com/pulumi/coconut/pkg/resource"
+	"github.com/pulumi/coconut/pkg/tokens"
+	"github.com/pulumi/coconut/pkg/util/cmdutil"
+	"github.com/pulumi/coconut/pkg/util/contract"
+	"github.com/pulumi/coconut/pkg/util/mapper"
+	"github.com/pulumi/coconut/pkg/workspace"
 )
 
 var snk diag.Sink
@@ -40,7 +40,7 @@ func sink() diag.Sink {
 }
 
 // compile just uses the standard logic to parse arguments, options, and to locate/compile a package.  It returns the
-// MuGL graph that is produced, or nil if an error occurred (in which case, we would expect non-0 errors).
+// CocoGL graph that is produced, or nil if an error occurred (in which case, we would expect non-0 errors).
 func compile(cmd *cobra.Command, args []string) *compileResult {
 	// If there's a --, we need to separate out the command args from the stack args.
 	flags := cmd.Flags()
@@ -112,14 +112,14 @@ func plan(cmd *cobra.Command, args []string, existfn string, delete bool) *planR
 		return &planResult{
 			compileResult: nil,
 			Ctx:           ctx,
-			Mugfile:       existfn,
+			Nutpoint:      existfn,
 			Existing:      existing,
 			Snap:          nil,
 			Plan:          resource.NewDeletePlan(ctx, existing),
 		}
 	} else if result := compile(cmd, args); result != nil && result.Heap != nil {
 		// Create a resource snapshot from the compiled/evaluated object graph.
-		ns := resource.Namespace("no_namespace") // TODO[marapongo/mu#94]: support for targets/namespaces.
+		ns := resource.Namespace("no_namespace") // TODO[pulumi/coconut#94]: support for targets/namespaces.
 		snap, err := resource.NewGraphSnapshot(ctx, ns, result.Pkg.Name, result.C.Ctx().Opts.Args, result.Heap)
 		if err != nil {
 			result.C.Diag().Errorf(errors.ErrorCantCreateSnapshot, err)
@@ -139,7 +139,7 @@ func plan(cmd *cobra.Command, args []string, existfn string, delete bool) *planR
 		return &planResult{
 			compileResult: result,
 			Ctx:           ctx,
-			Mugfile:       existfn,
+			Nutpoint:      existfn,
 			Existing:      existing,
 			Snap:          snap,
 			Plan:          plan,
@@ -152,7 +152,7 @@ func plan(cmd *cobra.Command, args []string, existfn string, delete bool) *planR
 type planResult struct {
 	*compileResult
 	Ctx      *resource.Context
-	Mugfile  string            // the file from which the existing snapshot was loaded (if any).
+	Nutpoint string            // the file from which the existing snapshot was loaded (if any).
 	Existing resource.Snapshot // the existing snapshot (if any).
 	Snap     resource.Snapshot // the new snapshot for this plan (if any).
 	Plan     resource.Plan
@@ -208,15 +208,15 @@ func apply(cmd *cobra.Command, args []string, existing string, opts applyOptions
 			// Now save the updated snapshot to the specified output file, if any, or the standard location otherwise.
 			// TODO: perform partial updates if we weren't able to perform the entire planned set of operations.
 			if opts.Delete {
-				contract.Assert(result.Mugfile != "")
-				deleteSnapshot(result.Mugfile)
+				contract.Assert(result.Nutpoint != "")
+				deleteSnapshot(result.Nutpoint)
 			} else {
 				out := opts.Output
 				if out == "" {
-					out = result.Mugfile // try overwriting the existing file.
+					out = result.Nutpoint // try overwriting the existing file.
 				}
 				if out == "" {
-					out = workspace.Mugfile // use the default file name.
+					out = workspace.Nutpoint // use the default file name.
 				}
 				contract.Assert(result.Snap != nil)
 				saveSnapshot(result.Snap, out)
@@ -267,8 +267,8 @@ func readSnapshot(ctx *resource.Context, file string) resource.Snapshot {
 		return nil
 	}
 
-	// Deserialize the contents into a snapshot.
-	var snap resource.MuglSnapshot
+	// Unmarshal the contents into a snapshot.
+	var snap resource.SerializedSnapshot
 	if err = m.Unmarshal(b, &snap); err != nil {
 		sink().Errorf(errors.ErrorCantReadSnapshot, file, err)
 		return nil
@@ -291,12 +291,12 @@ func readSnapshot(ctx *resource.Context, file string) resource.Snapshot {
 	return resource.DeserializeSnapshot(ctx, &snap)
 }
 
-// saveSnapshot saves a new MuGL snapshot at the given location, backing up any existing ones.
+// saveSnapshot saves a new CocoGL snapshot at the given location, backing up any existing ones.
 func saveSnapshot(snap resource.Snapshot, file string) {
 	contract.Require(snap != nil, "snap")
 	contract.Require(file != "", "file")
 
-	// Make a serializable MuGL data structure and then use the encoder to encode it.
+	// Make a serializable CocoGL data structure and then use the encoder to encode it.
 	m, ext := encoding.Detect(file)
 	if m == nil {
 		sink().Errorf(errors.ErrorIllegalMarkupExtension, ext)

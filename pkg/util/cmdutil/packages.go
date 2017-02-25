@@ -1,4 +1,4 @@
-// Copyright 2016 Marapongo, Inc. All rights reserved.
+// Copyright 2016 Pulumi, Inc. All rights reserved.
 
 package cmdutil
 
@@ -8,8 +8,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/marapongo/mu/pkg/encoding"
-	"github.com/marapongo/mu/pkg/pack"
+	"github.com/pulumi/coconut/pkg/encoding"
+	"github.com/pulumi/coconut/pkg/pack"
 )
 
 // ReadPackage attempts to read a package from the given path; if an error occurs, it will be printed to Stderr, and

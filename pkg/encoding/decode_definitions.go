@@ -1,13 +1,13 @@
-// Copyright 2016 Marapongo, Inc. All rights reserved.
+// Copyright 2016 Pulumi, Inc. All rights reserved.
 
 package encoding
 
 import (
 	"reflect"
 
-	"github.com/marapongo/mu/pkg/compiler/ast"
-	"github.com/marapongo/mu/pkg/util/contract"
-	"github.com/marapongo/mu/pkg/util/mapper"
+	"github.com/pulumi/coconut/pkg/compiler/ast"
+	"github.com/pulumi/coconut/pkg/util/contract"
+	"github.com/pulumi/coconut/pkg/util/mapper"
 )
 
 func decodeModuleMember(m mapper.Mapper, tree mapper.Object) (ast.ModuleMember, error) {

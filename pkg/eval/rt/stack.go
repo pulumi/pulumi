@@ -1,12 +1,12 @@
-// Copyright 2016 Marapongo, Inc. All rights reserved.
+// Copyright 2016 Pulumi, Inc. All rights reserved.
 
 package rt
 
 import (
 	"bytes"
 
-	"github.com/marapongo/mu/pkg/compiler/symbols"
-	"github.com/marapongo/mu/pkg/diag"
+	"github.com/pulumi/coconut/pkg/compiler/symbols"
+	"github.com/pulumi/coconut/pkg/diag"
 )
 
 // StackFrame is a structure that helps us build up a stack trace upon failure.

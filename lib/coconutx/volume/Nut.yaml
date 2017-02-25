@@ -1,0 +1,5 @@
+name: coconutx/container
+description: A Docker container.
+intrinsic: true
+properties:
+

@@ -1,37 +1,37 @@
-# Mu Stacks
+# Coconut Stacks
 
-This document describes how Mu Stacks and Services show up in Mu's various [languages](languages.md) (MetaMus, MuPack,
-MuIL, and MuGS).  Those are the definitive resources on the low-level formats, but this document describes the overall
-programming model that a developer will encounter.  For more details on how this results in concrete resources
-provisioned in the target cloud provider, please refer to [the cloud targeting design document](clouds.md).
+This document describes how Coconut Stacks and Services show up in the various [formats](formats.md) (CocoLangs,
+NutPack, NutIL, and CocoGL).  Those are the definitive resources on the low-level formats, but this document describes
+the overall programming model that a developer will encounter.  For more details on how this results in concrete
+resources provisioned in the target cloud provider, please refer to [the cloud targeting design document](clouds.md).
 
 ## Overview
 
-The following are the basic steps to creating a new MuPackage:
+The following are the basic steps to creating a new NutPack:
 
-* Pick your favorite MetaMu language.
+* Pick your favorite CocoLang language.
 * Create a new project folder in your workspace.
-* Create a Mufile (`Mu.yaml`) containing the top-level metadata.
-* Install any dependencies using the `mu get` command line.
-* Author stacks by subclassing the `Stack` base class in the Mu SDK.
-* Build the package using `mu build`, rinse and repeat, and then publish it.
+* Create a Nutfile (`Nut.yaml`) containing the top-level metadata.
+* Install any dependencies using the `coco get` command line.
+* Author stacks by subclassing the `Stack` base class in the Coconut SDK.
+* Build the package using `coco build`, rinse and repeat, and then publish it.
 
-For illustration purposes within this document, we shall choose Mu's JavaScript subset, MuJS.  Please also note that,
-though metadata examples are in YAML, it is generally valid to use JSON instead if preferred.
+For illustration purposes within this document, we shall choose Coconut's JavaScript subset, CocoJS.  Please also note
+that, though metadata examples are in YAML, it is generally valid to use JSON instead if preferred.
 
 TODO: this document needs some good examples!
 
 ## Metadata
 
-Most MuPackages will contain a Mufile to help direct the compilation process.  It is conventionally named `Mu.yaml` and
+Most NutPacks will contain a Nutfile to help direct the compilation process.  It is conventionally named `Nut.yaml` and
 is checked into the workspace.
 
-Each Mufile contains metadata for the package that cannot be derived from the source code.  (Please refer to
-[the MuPack document](mupack.md) for a complete listing of what metadata can appear here.)  In the case that all
-metadata can be derived from the program alone -- e.g., thanks to the use of attributes/decorators -- then the Mufile
-might be omitted.  This is specific to your MetaMu compiler, so please consult its documentation.
+Each Nutfile contains metadata for the package that cannot be derived from the source code.  (Please refer to
+[the NutPack document](nutpack.md) for a complete listing of what metadata can appear here.)  In the case that all
+metadata can be derived from the program alone -- e.g., thanks to the use of attributes/decorators -- then the Nutfile
+might be omitted.  This is specific to your CocoLang compiler, so please consult its documentation.
 
-In the case of MuJS, and most MetaMu compilers, the top-level "package manager"-like metadata -- such as name,
+In the case of CocoJS, and most CocoLang compilers, the top-level "package manager"-like metadata -- such as name,
 description, and so on -- must be explicitly provided; for example:
 
     name: acmecorp/elk
@@ -48,11 +48,11 @@ In addition to basic metadata like this, any dependency packages must also be li
 Each dependency package should consist of the following elements:
 
 * An optional protocol (e.g., `https://`).
-* An optional base URL (e.g., `hub.mu.com/`, `github.com/`, etc).
+* An optional base URL (e.g., `cocohub.com/`, `github.com/`, etc).
 * A required namespace and/or name part (e.g., `acmecorp/worker`, `aws/s3/bucket`, etc).
 * An optional `#` followed by version number (e.g., `#^1.0.6`, `#6f99088`, `#latest`, etc).
 
-If protocol and base URL are absent, Mu will default to `https://hub.mu.com/`.  If the version is omitted, Mu will
+If protocol and base URL are absent, Coconut will default to `https://cocohub.com/`.  If the version is omitted, it will
 default to `latest`, which just means "tip"; in other words, the most recent version is used at compile-time.
 
 Please refer to the [dependencies design document](deps.md) for details on the format for these references in addition
@@ -62,13 +62,13 @@ TODO: it's unclear where and how [security information](security.md) should appe
 
 ## Defining Stacks
 
-As we saw above, a stack is any subclass of Mu's base `Stack` class:
+As we saw above, a stack is any subclass of Coconut's base `Stack` class:
 
-    export class Registry extends mu.Stack {
-        private table: mu.Table;
+    export class Registry extends coconut.Stack {
+        private table: coconut.Table;
 
         constructor() {
-            this.table = new mu.Table("names");
+            this.table = new coconut.Table("names");
         }
 
         @api public register(name: string): Promise<number> {
@@ -76,7 +76,7 @@ As we saw above, a stack is any subclass of Mu's base `Stack` class:
         }
     }
 
-Any additional stacks instantiated by this stack will get transformed into MuGS services at planning and deployment
+Any additional stacks instantiated by this stack will get transformed into CocoGL services at planning and deployment
 time.  The `Registry` above is very simple, since it doesn't accept any properties or constructor arguments, and doesn't
 expose any properties of its own.  But clearly each could be an interesting extension.  We will see examples shortly.
 
@@ -103,14 +103,14 @@ expressing runtime dependencies, in a way that the system can understand and lev
 The more statically typed approach of using service capabilities also eliminates some of the fragility common to weakly
 typed and dynamic approaches, which can be prone to race conditions, requiring manual sleeps, retries, etc.
 
-Capabilities can also benefit from the abstraction and encapsulation provided by Mu.  For example, imagine we want a
-key/value store.  The `mu/x` namespace offers such a `KVStore` abstraction, but it is abstract.  By declaring in a
-constructor that we require a `KVStore`, we leave open the possibility that a caller might provide an instance of etcd,
-Consul, Zookeeper, or their favorite key/value store provider.
+Capabilities can also benefit from the abstraction and encapsulation provided by Coconut.  For example, imagine we want
+a key/value store.  The `coconut/x` namespace offers such a `KVStore` abstraction, but it is abstract.  By declaring in
+a constructor that we require a `KVStore`, we leave open the possibility that a caller might provide an instance of
+etcd, Consul, Zookeeper, or their favorite key/value store provider.
 
 The references between services forms a DAG and the system topologically sorts that DAG in order to determine the order
-in which to create and destroy services, during MuGS planning time.  There must be no cycles.  Resource providers
-understand liveness and health, so that developers needn't worry about races, liveness, or retries in MetaMu code.
+in which to create and destroy services, during CocoGL planning time.  There must be no cycles.  Resource providers
+understand liveness and health, so that developers needn't worry about races, liveness, or retries in CocoLang code.
 
 ### Exporting Services
 
@@ -147,7 +147,7 @@ data-center, virtual private cloud, or physical machine size.  Although the tool
 model is that of creating a "new" object, and wiring up all of its dependencies all over again.  As a result, the
 deployment process is more delicate, and may trigger a cascading recreation of many resources.
 
-How a readonly property is expressed is MetaMu language-specific, however for languages like MuJS that support a
+How a readonly property is expressed is CocoLang language-specific, however for languages like CocoJS that support a
 `readonly` property modifier, that is how it's done.
 
 A "perturbing" property is one that can be changed after provisioning, but doing so requires perturbing the existing
@@ -164,9 +164,9 @@ TODO(joe): write this section.
 
 ## Common Stack Types
 
-Mu offers a complete set of infrastructure stacks for each cloud provider.
+Coconut offers a complete set of infrastructure stacks for each cloud provider.
 
-Mu also provides the `mu/x` package, which contains a set of logical stack types, like `Container`, `Lambda`, `Table`,
-`Volume`, and so on, offering a framework of higher-level, cloud-agnostic abstractions.  Please consult [the cross-cloud
-design document](x-cloud.md) for more details on this package and its contents.
+Coconut also provides the `coconut/x` package, which contains a set of logical stack types, like `Container`, `Lambda`,
+`Table`, `Volume`, and so on, offering a framework of higher-level, cloud-agnostic abstractions.  Please consult
+[the cross-cloud design document](x-cloud.md) for more details on this package and its contents.
 

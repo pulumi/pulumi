@@ -1,4 +1,4 @@
-// Copyright 2016 Marapongo, Inc. All rights reserved.
+// Copyright 2016 Pulumi, Inc. All rights reserved.
 
 package awsctx
 
@@ -7,7 +7,7 @@ import (
 
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/ec2"
-	"github.com/marapongo/mu/pkg/util/contract"
+	"github.com/pulumi/coconut/pkg/util/contract"
 )
 
 // Context represents state shared amongst all parties in this process.  In particular, it wraps an AWS session

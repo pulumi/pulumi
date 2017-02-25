@@ -1,4 +1,4 @@
-// Copyright 2016 Marapongo, Inc. All rights reserved.
+// Copyright 2016 Pulumi, Inc. All rights reserved.
 
 package workspace
 
@@ -8,37 +8,37 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/marapongo/mu/pkg/compiler/errors"
-	"github.com/marapongo/mu/pkg/diag"
-	"github.com/marapongo/mu/pkg/encoding"
+	"github.com/pulumi/coconut/pkg/compiler/errors"
+	"github.com/pulumi/coconut/pkg/diag"
+	"github.com/pulumi/coconut/pkg/encoding"
 )
 
-// Mufile is the base name of a Mufile.
-const Mufile = "Mu"
+// Nutfile is the base name of a Nutfile.
+const Nutfile = "Nut"
 
-// Mupack is the base name of a MuPackage.
-const Mupack = "Mupack"
+// Nutpack is the base name of a compiled Nut package.
+const Nutpack = "Nutpack"
 
-// Mugfile is the base name of a MuGL graph file.
-const Mugfile = "Mug"
+// Nutpoint is the base name of a Nut's CocoGL graph file (checkpoint).
+const Nutpoint = "Nutpoint"
 
-// Muspace is the base name of a markup file containing settings shared amongst a workspace.
-const Muspace = "Muspace"
+// Nutspace is the base name of a markup file containing settings shared amongst a workspace.
+const Nutspace = "Nutspace"
 
-// Mudeps is the directory in which dependency modules exist, either local to a workspace, or globally.
-const Mudeps = ".Mudeps"
+// Nutdeps is the directory in which dependency modules exist, either local to a workspace, or globally.
+const Nutdeps = ".Nuts"
 
-// InstallRootEnvvar is the envvar describing where Mu has been installed.
-const InstallRootEnvvar = "MUROOT"
+// InstallRootEnvvar is the envvar describing where Coconut has been installed.
+const InstallRootEnvvar = "COCOROOT"
 
-// InstallRootLibdir is the directory in which the standard Mu library exists.
+// InstallRootLibdir is the directory in which the Coconut standard library exists.
 const InstallRootLibdir = "lib"
 
-// DefaultInstallRoot is where Mu is installed by default, if the envvar is missing.
+// DefaultInstallRoot is where Coconut is installed by default, if the envvar is missing.
 // TODO: support Windows.
-const DefaultInstallRoot = "/usr/local/mu"
+const DefaultInstallRoot = "/usr/local/coconut"
 
-// InstallRoot returns Mu's installation location.  This is controlled my the MUROOT envvar.
+// InstallRoot returns Coconut's installation location.  This is controlled my the COCOROOT envvar.
 func InstallRoot() string {
 	root := os.Getenv(InstallRootEnvvar)
 	if root == "" {
@@ -54,7 +54,7 @@ func isTop(path string) bool {
 
 // pathDir returns the nearest directory to the given path (identity if a directory; parent otherwise).
 func pathDir(path string) string {
-	// It's possible that the path is a file (e.g., a Mu.yaml file); if so, we want the directory.
+	// It's possible that the path is a file (e.g., a Nut.yaml file); if so, we want the directory.
 	info, err := os.Stat(path)
 	if err != nil || info.IsDir() {
 		return path
@@ -63,10 +63,10 @@ func pathDir(path string) string {
 }
 
 // DetectPackage locates the closest package from the given path, searching "upwards" in the directory hierarchy.  If no
-// Mufile is found, an empty path is returned.  If problems are detected, they are logged to the diag.Sink.
+// Nutfile is found, an empty path is returned.  If problems are detected, they are logged to the diag.Sink.
 func DetectPackage(path string, d diag.Sink) (string, error) {
 	// It's possible the target is already the file we seek; if so, return right away.
-	if IsMufile(path, d) {
+	if IsNutfile(path, d) {
 		return path, nil
 	}
 
@@ -74,7 +74,7 @@ func DetectPackage(path string, d diag.Sink) (string, error) {
 	for {
 		stop := false
 
-		// Enumerate the current path's files, checking each to see if it's a Mufile.
+		// Enumerate the current path's files, checking each to see if it's a Nutfile.
 		files, err := ioutil.ReadDir(curr)
 		if err != nil {
 			return "", err
@@ -82,10 +82,10 @@ func DetectPackage(path string, d diag.Sink) (string, error) {
 		for _, file := range files {
 			name := file.Name()
 			path := filepath.Join(curr, name)
-			if IsMufile(path, d) {
+			if IsNutfile(path, d) {
 				return path, nil
-			} else if IsMuspace(path, d) {
-				// If we hit a Muspace file, stop looking.
+			} else if IsNutspace(path, d) {
+				// If we hit a Nutspace file, stop looking.
 				stop = true
 			}
 		}
@@ -105,28 +105,28 @@ func DetectPackage(path string, d diag.Sink) (string, error) {
 	return "", nil
 }
 
-// IsMufile returns true if the path references what appears to be a valid Mufile.  If problems are detected -- like
+// IsNutfile returns true if the path references what appears to be a valid Nutfile.  If problems are detected -- like
 // an incorrect extension -- they are logged to the provided diag.Sink (if non-nil).
-func IsMufile(path string, d diag.Sink) bool {
-	return isMarkupFile(path, Mufile, d)
+func IsNutfile(path string, d diag.Sink) bool {
+	return isMarkupFile(path, Nutfile, d)
 }
 
-// IsMupack returns true if the path references what appears to be a valid Mupack.  If problems are detected -- like
+// IsNutpack returns true if the path references what appears to be a valid Nutpack.  If problems are detected -- like
 // an incorrect extension -- they are logged to the provided diag.Sink (if non-nil).
-func IsMupack(path string, d diag.Sink) bool {
-	return isMarkupFile(path, Mupack, d)
+func IsNutpack(path string, d diag.Sink) bool {
+	return isMarkupFile(path, Nutpack, d)
 }
 
-// IsMugfile returns true if the path references what appears to be a valid MuGL file.  If problems are detected -- like
-// an incorrect extension -- they are logged to the provided diag.Sink (if non-nil).
-func IsMugfile(path string, d diag.Sink) bool {
-	return isMarkupFile(path, Mugfile, d)
-}
-
-// IsMuspace returns true if the path references what appears to be a valid Muspace file.  If problems are detected --
+// IsNutpoint returns true if the path references what appears to be a valid CocoGL file.  If problems are detected --
 // like an incorrect extension -- they are logged to the provided diag.Sink (if non-nil).
-func IsMuspace(path string, d diag.Sink) bool {
-	return isMarkupFile(path, Muspace, d)
+func IsNutpoint(path string, d diag.Sink) bool {
+	return isMarkupFile(path, Nutpoint, d)
+}
+
+// IsNutspace returns true if the path references what appears to be a valid Nutspace file.  If problems are detected --
+// like an incorrect extension -- they are logged to the provided diag.Sink (if non-nil).
+func IsNutspace(path string, d diag.Sink) bool {
+	return isMarkupFile(path, Nutspace, d)
 }
 
 func isMarkupFile(path string, expect string, d diag.Sink) bool {

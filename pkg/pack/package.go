@@ -1,12 +1,12 @@
-// Copyright 2016 Marapongo, Inc. All rights reserved.
+// Copyright 2016 Pulumi, Inc. All rights reserved.
 
-// Package pack contains the core MuPackage metadata types.
+// Package pack contains the core NutPack metadata types.
 package pack
 
 import (
-	"github.com/marapongo/mu/pkg/compiler/ast"
-	"github.com/marapongo/mu/pkg/diag"
-	"github.com/marapongo/mu/pkg/tokens"
+	"github.com/pulumi/coconut/pkg/compiler/ast"
+	"github.com/pulumi/coconut/pkg/diag"
+	"github.com/pulumi/coconut/pkg/tokens"
 )
 
 // Package is a top-level package definition.

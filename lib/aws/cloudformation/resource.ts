@@ -1,17 +1,17 @@
-// Copyright 2016 Marapongo, Inc. All rights reserved.
+// Copyright 2016 Pulumi, Inc. All rights reserved.
 
-import * as mu from '@mu/mu';
+import * as coconut from '@coconut/coconut';
 
 // A special service that simply emits a CloudFormation template.
 // @name: aws/x/cf
 export class Resource
-        extends mu.Resource
+        extends coconut.Resource
         implements ResourceProperties {
 
     public readonly name: string;
     public readonly resource: string;
     public readonly properties?: any;
-    public readonly dependsOn?: mu.Stack[];
+    public readonly dependsOn?: coconut.Stack[];
 
     constructor(args: ResourceProperties) {
         super();
@@ -30,6 +30,6 @@ export interface ResourceProperties {
     // An optional list of properties to map.
     readonly properties?: any /*actually, JSON-like*/;
     // An optional list of other CloudFormation resources that this depends on.
-    readonly dependsOn?: mu.Stack[];
+    readonly dependsOn?: coconut.Stack[];
 }
 

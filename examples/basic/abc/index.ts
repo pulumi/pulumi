@@ -1,20 +1,20 @@
-// Copyright 2016 Marapongo, Inc. All rights reserved.
+// Copyright 2016 Pulumi, Inc. All rights reserved.
 
-import * as mu from "@mu/mu";
+import * as coconut from "@coconut/coconut";
 
-class C extends mu.Resource {
+class C extends coconut.Resource {
     constructor() {
         super();
     }
 }
 
-class B extends mu.Resource {
+class B extends coconut.Resource {
     constructor() {
         super();
     }
 }
 
-class A extends mu.Resource {
+class A extends coconut.Resource {
     private b: B;
     private c: C;
 

@@ -1,5 +1,0 @@
-name: examples/minimal
-description: The minimal valid MuJS blueprint program.
-dependencies:
-    mu: "*"
-

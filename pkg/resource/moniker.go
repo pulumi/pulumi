@@ -1,12 +1,12 @@
-// Copyright 2016 Marapongo, Inc. All rights reserved.
+// Copyright 2016 Pulumi, Inc. All rights reserved.
 
 package resource
 
 import (
-	"github.com/marapongo/mu/pkg/tokens"
+	"github.com/pulumi/coconut/pkg/tokens"
 )
 
-// Moniker is a friendly, but unique, name for a resource, most often auto-assigned by the Mu system.  These monikers
+// Moniker is a friendly, but unique, name for a resource, most often auto-assigned by Coconut.  These monikers
 // are used as unique IDs for objects, and help to to perform graph diffing and resolution of resource object changes.
 //
 // In theory, we could support manually assigned monikers in the future (e.g., think UUIDs).  For the time being,

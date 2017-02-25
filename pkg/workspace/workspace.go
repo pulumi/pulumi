@@ -1,4 +1,4 @@
-// Copyright 2016 Marapongo, Inc. All rights reserved.
+// Copyright 2016 Pulumi, Inc. All rights reserved.
 
 package workspace
 
@@ -11,15 +11,15 @@ import (
 	"github.com/golang/glog"
 	homedir "github.com/mitchellh/go-homedir"
 
-	"github.com/marapongo/mu/pkg/compiler/core"
-	"github.com/marapongo/mu/pkg/diag"
-	"github.com/marapongo/mu/pkg/encoding"
-	"github.com/marapongo/mu/pkg/pack"
-	"github.com/marapongo/mu/pkg/tokens"
-	"github.com/marapongo/mu/pkg/util/contract"
+	"github.com/pulumi/coconut/pkg/compiler/core"
+	"github.com/pulumi/coconut/pkg/diag"
+	"github.com/pulumi/coconut/pkg/encoding"
+	"github.com/pulumi/coconut/pkg/pack"
+	"github.com/pulumi/coconut/pkg/tokens"
+	"github.com/pulumi/coconut/pkg/util/contract"
 )
 
-// W offers functionality for interacting with Mu workspaces.  A workspace influences Mu compilation; for example, it
+// W offers functionality for interacting with Coconut workspaces.  A workspace influences compilation; for example, it
 // can specify default versions of dependencies, easing the process of working with multiple projects.
 type W interface {
 	// Root returns the base path of the current workspace.
@@ -30,7 +30,7 @@ type W interface {
 	// ReadSettings reads in the settings file and returns it, returning nil if there is none.
 	ReadSettings() (*diag.Document, error)
 
-	// DetectPackage locates the closest Mufile from the given path, searching "upwards" in the directory hierarchy.
+	// DetectPackage locates the closest Nutfile from the given path, searching "upwards" in the directory hierarchy.
 	DetectPackage() (string, error)
 	// DepCandidates fetches all candidate locations for resolving a dependency name to its installed artifacts.
 	DepCandidates(dep pack.PackageURL) []string
@@ -70,7 +70,7 @@ type workspace struct {
 	path     string        // the path at which the workspace was constructed.
 	home     string        // the home directory to use for this workspace.
 	root     string        // the root of the workspace.
-	muspace  string        // a path to the Muspace file, if any.
+	muspace  string        // a path to the Nutspace file, if any.
 	settings Workspace     // an optional bag of workspace-wide settings.
 }
 
@@ -88,8 +88,8 @@ func (w *workspace) initRootInfo() (string, error) {
 			for _, file := range files {
 				// A muspace file delimits the root of the workspace.
 				muspace := filepath.Join(root, file.Name())
-				if IsMuspace(muspace, w.ctx.Diag) {
-					glog.V(3).Infof("Mu workspace detected; setting root to %v", w.root)
+				if IsNutspace(muspace, w.ctx.Diag) {
+					glog.V(3).Infof("Coconut workspace detected; setting root to %v", w.root)
 					w.root = root
 					w.muspace = muspace
 					break Search
@@ -100,7 +100,7 @@ func (w *workspace) initRootInfo() (string, error) {
 			root = filepath.Dir(root)
 			if isTop(root) {
 				// We reached the top of the filesystem.  Just set root back to the path and stop.
-				glog.V(3).Infof("No Mu workspace found; defaulting to current path %v", w.root)
+				glog.V(3).Infof("No Coconut workspace found; defaulting to current path %v", w.root)
 				w.root = w.path
 				break
 			}
@@ -127,29 +127,29 @@ func (w *workspace) DetectPackage() (string, error) {
 }
 
 func (w *workspace) DepCandidates(dep pack.PackageURL) []string {
-	// The search order for dependencies is specified in https://github.com/marapongo/mu/blob/master/docs/deps.md.
+	// The search order for dependencies is specified in https://github.com/pulumi/coconut/blob/master/docs/deps.md.
 	//
 	// Roughly speaking, these locations are are searched, in order:
 	//
-	// 		1. The current Workspace, for intra-Workspace but inter-Stack dependencies.
+	// 		1. The current Workspace, for intra-Workspace but inter-Nut dependencies.
 	// 		2. The current Workspace's .mu/stacks/ directory.
 	// 		3. The global Workspace's .mu/stacks/ directory.
-	// 		4. The Mu installation location's $MUROOT/lib/ directory (default /usr/local/mu/lib).
+	// 		4. The Coconut installation location's $COCOROOT/lib/ directory (default /usr/local/coconut/lib).
 	//
 	// In each location, we prefer a fully qualified hit if it exists -- containing both the base of the reference plus
 	// the name -- however, we also accept name-only hits.  This allows developers to organize their workspace without
-	// worrying about where their Mu Stacks are hosted.  Most of the Mu tools, however, prefer fully qualified paths.
+	// worrying about where their Nuts are hosted.  Most of the Coconut tools, however, prefer fully qualified paths.
 	//
-	// To be more precise, given a StackRef r and a workspace root w, we look in these locations, in order:
+	// To be more precise, given a NutRef r and a workspace root w, we look in these locations, in order:
 	//
 	//		1. w/base(r)/name(r)
 	//		2. w/name(r)
-	//		3. w/.Mudeps/base(r)/name(r)
-	//		4. w/.Mudeps/name(r)
-	//		5. ~/.Mudeps/base(r)/name(r)
-	//		6. ~/.Mudeps/name(r)
-	//		7. $MUROOT/lib/base(r)/name(r)
-	//		8. $MUROOT/lib/name(r)
+	//		3. w/.Nuts/base(r)/name(r)
+	//		4. w/.Nuts/name(r)
+	//		5. ~/.Nuts/base(r)/name(r)
+	//		6. ~/.Nuts/name(r)
+	//		7. $COCOROOT/lib/base(r)/name(r)
+	//		8. $COCOROOT/lib/name(r)
 	//
 	// A workspace may optionally have a namespace, in which case, we will also look for stacks in the workspace whose
 	// name is simplified to omit that namespace part.  For example, if a stack is named `mu/project/stack`, and the
@@ -166,14 +166,14 @@ func (w *workspace) DepCandidates(dep pack.PackageURL) []string {
 	// For each extension we support, add the same set of search locations.
 	cands := make([]string, 0, 4*len(encoding.Exts))
 	for _, ext := range encoding.Exts {
-		cands = append(cands, filepath.Join(w.root, base, name, Mupack+ext))
-		cands = append(cands, filepath.Join(w.root, wsname, Mupack+ext))
-		cands = append(cands, filepath.Join(w.root, Mudeps, base, name, Mupack+ext))
-		cands = append(cands, filepath.Join(w.root, Mudeps, name, Mupack+ext))
-		cands = append(cands, filepath.Join(w.home, Mudeps, base, name, Mupack+ext))
-		cands = append(cands, filepath.Join(w.home, Mudeps, name, Mupack+ext))
-		cands = append(cands, filepath.Join(InstallRoot(), InstallRootLibdir, base, name, Mupack+ext))
-		cands = append(cands, filepath.Join(InstallRoot(), InstallRootLibdir, name, Mupack+ext))
+		cands = append(cands, filepath.Join(w.root, base, name, Nutpack+ext))
+		cands = append(cands, filepath.Join(w.root, wsname, Nutpack+ext))
+		cands = append(cands, filepath.Join(w.root, Nutdeps, base, name, Nutpack+ext))
+		cands = append(cands, filepath.Join(w.root, Nutdeps, name, Nutpack+ext))
+		cands = append(cands, filepath.Join(w.home, Nutdeps, base, name, Nutpack+ext))
+		cands = append(cands, filepath.Join(w.home, Nutdeps, name, Nutpack+ext))
+		cands = append(cands, filepath.Join(InstallRoot(), InstallRootLibdir, base, name, Nutpack+ext))
+		cands = append(cands, filepath.Join(InstallRoot(), InstallRootLibdir, name, Nutpack+ext))
 	}
 	return cands
 }

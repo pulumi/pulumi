@@ -1,4 +1,4 @@
-// Copyright 2016 Marapongo, Inc. All rights reserved.
+// Copyright 2016 Pulumi, Inc. All rights reserved.
 
 package compiler
 
@@ -8,19 +8,19 @@ import (
 
 	"github.com/golang/glog"
 
-	"github.com/marapongo/mu/pkg/compiler/binder"
-	"github.com/marapongo/mu/pkg/compiler/core"
-	"github.com/marapongo/mu/pkg/compiler/errors"
-	"github.com/marapongo/mu/pkg/compiler/metadata"
-	"github.com/marapongo/mu/pkg/diag"
-	"github.com/marapongo/mu/pkg/eval"
-	"github.com/marapongo/mu/pkg/eval/heapstate"
-	"github.com/marapongo/mu/pkg/pack"
-	"github.com/marapongo/mu/pkg/util/contract"
-	"github.com/marapongo/mu/pkg/workspace"
+	"github.com/pulumi/coconut/pkg/compiler/binder"
+	"github.com/pulumi/coconut/pkg/compiler/core"
+	"github.com/pulumi/coconut/pkg/compiler/errors"
+	"github.com/pulumi/coconut/pkg/compiler/metadata"
+	"github.com/pulumi/coconut/pkg/diag"
+	"github.com/pulumi/coconut/pkg/eval"
+	"github.com/pulumi/coconut/pkg/eval/heapstate"
+	"github.com/pulumi/coconut/pkg/pack"
+	"github.com/pulumi/coconut/pkg/util/contract"
+	"github.com/pulumi/coconut/pkg/workspace"
 )
 
-// Compiler provides an interface into the many phases of the Mu compilation process.
+// Compiler provides an interface into the many phases of the Coconut compilation process.
 type Compiler interface {
 	core.Phase
 
@@ -33,22 +33,22 @@ type Compiler interface {
 	CompilePath(path string) (*pack.Package, *heapstate.Heap)
 	// CompilePackage compiles a given package object into its associated graph form.
 	CompilePackage(pkg *pack.Package) *heapstate.Heap
-	// Verify detects a package from the workspace and validates its MuIL contents.
+	// Verify detects a package from the workspace and validates its CocoIL contents.
 	Verify() bool
-	// VerifyPath verifies a package given its path, validating that its MuIL contents are correct.
+	// VerifyPath verifies a package given its path, validating that its CocoIL contents are correct.
 	VerifyPath(path string) bool
-	// VerifyPackage verifies a given package object, validating that its MuIL contents are correct.
+	// VerifyPackage verifies a given package object, validating that its CocoIL contents are correct.
 	VerifyPackage(pkg *pack.Package) bool
 }
 
-// compiler is the canonical implementation of the Mu compiler.
+// compiler is the canonical implementation of the Coconut compiler.
 type compiler struct {
 	w      workspace.W
 	ctx    *core.Context
 	reader metadata.Reader
 }
 
-// New creates a new instance of the Mu compiler, along with a new workspace, from the given path.  If options
+// New creates a new instance of the Coconut compiler, along with a new workspace, from the given path.  If options
 // is nil, the default compiler options will be used instead.  If any IO errors occur, they will be output in the usual
 // diagnostics ways, and the compiler return value will be nil while the error will be non-nil.
 func New(path string, opts *core.Options) (Compiler, error) {
@@ -90,7 +90,7 @@ func New(path string, opts *core.Options) (Compiler, error) {
 	}, nil
 }
 
-// Newwd creates a new instance of the Mu compiler, along with a new workspace, from the current working directory.
+// Newwd creates a new instance of the Coconut compiler, along with a new workspace, from the current working directory.
 // If options is nil, the default compiler options will be used instead.  If any IO errors occur, they will be output in
 // the usual diagnostics ways, and the compiler return value will be nil while the error will be non-nil.
 func Newwd(opts *core.Options) (Compiler, error) {
@@ -128,7 +128,7 @@ func (c *compiler) CompilePackage(pkg *pack.Package) *heapstate.Heap {
 			pkg.Name, c.Diag().Warnings(), c.Diag().Errors())
 	}
 
-	// To compile a package, we require a decoded MuPackage object; this has already been done, and is presented to us
+	// To compile a package, we require a decoded NutPack object; this has already been done, and is presented to us
 	// an argument.  Next, we must bind it's contents.  To bind its contents, we must:
 	//
 	//     * Resolve all dependency packages and inject them into a package map (just a map of names to symbols).
@@ -141,10 +141,10 @@ func (c *compiler) CompilePackage(pkg *pack.Package) *heapstate.Heap {
 	//                 . Inject a symbol of the appropriate kind into the class's associated member map.
 	//
 	// Essentially, all we are doing is mapping names to concrete symbols.  This ensures that as we compile a package,
-	// we are able to find all tokens in these maps.  If we ever cannot find a token in a map, it means the MuPackage
-	// file is invalid.  We require all MetaMu compilers to produce valid, verifiable MuIL, and this is a requriement.
+	// we are able to find all tokens in these maps.  If we ever cannot find a token in a map, it means the NutPack
+	// file is invalid.  We require that CocoLang compilers produce valid, verifiable NutIL, and this is a requriement.
 	//
-	// Afterwards, we can safely evaluate the MuIL entrypoint, using our MuIL AST interpreter.
+	// Afterwards, we can safely evaluate the CocoIL entrypoint, using our CocoIL AST interpreter.
 
 	// First, bind.
 	b := binder.New(c.w, c.ctx, c.reader)
@@ -167,7 +167,7 @@ func (c *compiler) CompilePackage(pkg *pack.Package) *heapstate.Heap {
 	return gg.HeapSnapshot()
 }
 
-// Verify detects a package from the workspace and validates its MuIL contents.
+// Verify detects a package from the workspace and validates its CocoIL contents.
 func (c *compiler) Verify() bool {
 	if path := c.detectPackage(); path != "" {
 		return c.VerifyPath(path)
@@ -175,7 +175,7 @@ func (c *compiler) Verify() bool {
 	return false
 }
 
-// VerifyPath verifies a package given its path, validating that its MuIL contents are correct.
+// VerifyPath verifies a package given its path, validating that its CocoIL contents are correct.
 func (c *compiler) VerifyPath(path string) bool {
 	if pkg := c.readPackage(path); pkg != nil {
 		return c.VerifyPackage(pkg)
@@ -183,7 +183,7 @@ func (c *compiler) VerifyPath(path string) bool {
 	return false
 }
 
-// VerifyPackage verifies a given package object, validating that its MuIL contents are correct.
+// VerifyPackage verifies a given package object, validating that its CocoIL contents are correct.
 func (c *compiler) VerifyPackage(pkg *pack.Package) bool {
 	// To verify a package, simply run the binder aspects of it.
 	b := binder.New(c.w, c.ctx, c.reader)
@@ -199,7 +199,7 @@ func (c *compiler) detectPackage() string {
 		return ""
 	}
 	if path == "" {
-		c.Diag().Errorf(errors.ErrorMissingMufile, c.ctx.Path)
+		c.Diag().Errorf(errors.ErrorMissingNutfile, c.ctx.Path)
 		return ""
 	}
 	return path
@@ -209,7 +209,7 @@ func (c *compiler) detectPackage() string {
 func (c *compiler) readPackage(path string) *pack.Package {
 	doc, err := diag.ReadDocument(path)
 	if err != nil {
-		c.Diag().Errorf(errors.ErrorCouldNotReadMufile.AtFile(path), err)
+		c.Diag().Errorf(errors.ErrorCouldNotReadNutfile.AtFile(path), err)
 		return nil
 	}
 	return c.reader.ReadPackage(doc)

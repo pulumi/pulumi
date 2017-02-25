@@ -1,11 +1,11 @@
-// Copyright 2016 Marapongo, Inc. All rights reserved.
+// Copyright 2016 Pulumi, Inc. All rights reserved.
 
 package resource
 
 import (
 	"io"
 
-	"github.com/marapongo/mu/pkg/tokens"
+	"github.com/pulumi/coconut/pkg/tokens"
 )
 
 // Provider presents a simple interface for orchestrating resource create, reead, update, and delete operations.  Each

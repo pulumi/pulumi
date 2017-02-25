@@ -1,4 +1,4 @@
-// Copyright 2016 Marapongo, Inc. All rights reserved.
+// Copyright 2016 Pulumi, Inc. All rights reserved.
 
 package main
 
@@ -6,18 +6,18 @@ import (
 	"fmt"
 
 	pbempty "github.com/golang/protobuf/ptypes/empty"
-	"github.com/marapongo/mu/pkg/resource"
-	"github.com/marapongo/mu/pkg/tokens"
-	"github.com/marapongo/mu/sdk/go/pkg/murpc"
+	"github.com/pulumi/coconut/pkg/resource"
+	"github.com/pulumi/coconut/pkg/tokens"
+	"github.com/pulumi/coconut/sdk/go/pkg/cocorpc"
 	"golang.org/x/net/context"
 
-	"github.com/marapongo/mu/lib/aws/provider/awsctx"
-	"github.com/marapongo/mu/lib/aws/provider/ec2"
+	"github.com/pulumi/coconut/lib/aws/provider/awsctx"
+	"github.com/pulumi/coconut/lib/aws/provider/ec2"
 )
 
 // provider implements the AWS resource provider's operations for all known AWS types.
 type Provider struct {
-	impls map[tokens.Type]murpc.ResourceProviderServer
+	impls map[tokens.Type]cocorpc.ResourceProviderServer
 }
 
 // NewProvider creates a new provider instance with server objects registered for every resource type.
@@ -27,21 +27,21 @@ func NewProvider() (*Provider, error) {
 		return nil, err
 	}
 	return &Provider{
-		impls: map[tokens.Type]murpc.ResourceProviderServer{
+		impls: map[tokens.Type]cocorpc.ResourceProviderServer{
 			ec2.Instance:      ec2.NewInstanceProvider(ctx),
 			ec2.SecurityGroup: ec2.NewSecurityGroupProvider(ctx),
 		},
 	}, nil
 }
 
-var _ murpc.ResourceProviderServer = (*Provider)(nil)
+var _ cocorpc.ResourceProviderServer = (*Provider)(nil)
 
 const nameProperty string = "name" // the property used for naming AWS resources.
 
 // Name names a given resource.  Sometimes this will be assigned by a developer, and so the provider
 // simply fetches it from the property bag; other times, the provider will assign this based on its own algorithm.
 // In any case, resources with the same name must be safe to use interchangeably with one another.
-func (p *Provider) Name(ctx context.Context, req *murpc.NameRequest) (*murpc.NameResponse, error) {
+func (p *Provider) Name(ctx context.Context, req *cocorpc.NameRequest) (*cocorpc.NameResponse, error) {
 	// First, see if the provider overrides the naming.
 	t := tokens.Type(req.GetType())
 	if prov, has := p.impls[t]; has {
@@ -57,7 +57,7 @@ func (p *Provider) Name(ctx context.Context, req *murpc.NameRequest) (*murpc.Nam
 	if nameprop, has := req.GetProperties().Fields[nameProperty]; has {
 		name := resource.UnmarshalPropertyValue(nameprop)
 		if name.IsString() {
-			return &murpc.NameResponse{Name: name.StringValue()}, nil
+			return &cocorpc.NameResponse{Name: name.StringValue()}, nil
 		} else {
 			return nil, fmt.Errorf(
 				"Resource '%v' had a name property '%v', but it wasn't a string", t, nameProperty)
@@ -68,7 +68,7 @@ func (p *Provider) Name(ctx context.Context, req *murpc.NameRequest) (*murpc.Nam
 
 // Create allocates a new instance of the provided resource and returns its unique ID afterwards.  (The input ID
 // must be blank.)  If this call fails, the resource must not have been created (i.e., it is "transacational").
-func (p *Provider) Create(ctx context.Context, req *murpc.CreateRequest) (*murpc.CreateResponse, error) {
+func (p *Provider) Create(ctx context.Context, req *cocorpc.CreateRequest) (*cocorpc.CreateResponse, error) {
 	t := tokens.Type(req.GetType())
 	if prov, has := p.impls[t]; has {
 		return prov.Create(ctx, req)
@@ -77,7 +77,7 @@ func (p *Provider) Create(ctx context.Context, req *murpc.CreateRequest) (*murpc
 }
 
 // Read reads the instance state identified by ID, returning a populated resource object, or an error if not found.
-func (p *Provider) Read(ctx context.Context, req *murpc.ReadRequest) (*murpc.ReadResponse, error) {
+func (p *Provider) Read(ctx context.Context, req *cocorpc.ReadRequest) (*cocorpc.ReadResponse, error) {
 	t := tokens.Type(req.GetType())
 	if prov, has := p.impls[t]; has {
 		return prov.Read(ctx, req)
@@ -87,7 +87,7 @@ func (p *Provider) Read(ctx context.Context, req *murpc.ReadRequest) (*murpc.Rea
 
 // Update updates an existing resource with new values.  Only those values in the provided property bag are updated
 // to new values.  The resource ID is returned and may be different if the resource had to be recreated.
-func (p *Provider) Update(ctx context.Context, req *murpc.UpdateRequest) (*murpc.UpdateResponse, error) {
+func (p *Provider) Update(ctx context.Context, req *cocorpc.UpdateRequest) (*cocorpc.UpdateResponse, error) {
 	t := tokens.Type(req.GetType())
 	if prov, has := p.impls[t]; has {
 		return prov.Update(ctx, req)
@@ -96,7 +96,7 @@ func (p *Provider) Update(ctx context.Context, req *murpc.UpdateRequest) (*murpc
 }
 
 // Delete tears down an existing resource with the given ID.  If it fails, the resource is assumed to still exist.
-func (p *Provider) Delete(ctx context.Context, req *murpc.DeleteRequest) (*pbempty.Empty, error) {
+func (p *Provider) Delete(ctx context.Context, req *cocorpc.DeleteRequest) (*pbempty.Empty, error) {
 	t := tokens.Type(req.GetType())
 	if prov, has := p.impls[t]; has {
 		return prov.Delete(ctx, req)

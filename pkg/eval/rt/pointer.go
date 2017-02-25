@@ -1,11 +1,11 @@
-// Copyright 2016 Marapongo, Inc. All rights reserved.
+// Copyright 2016 Pulumi, Inc. All rights reserved.
 
 package rt
 
 import (
 	"fmt"
 
-	"github.com/marapongo/mu/pkg/util/contract"
+	"github.com/pulumi/coconut/pkg/util/contract"
 )
 
 // Pointer is a slot that can be used for indirection purposes (since Go maps are not stable).

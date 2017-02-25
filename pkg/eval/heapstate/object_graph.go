@@ -1,10 +1,10 @@
-// Copyright 2016 Marapongo, Inc. All rights reserved.
+// Copyright 2016 Pulumi, Inc. All rights reserved.
 
 package heapstate
 
 import (
-	"github.com/marapongo/mu/pkg/eval/rt"
-	"github.com/marapongo/mu/pkg/graph"
+	"github.com/pulumi/coconut/pkg/eval/rt"
+	"github.com/pulumi/coconut/pkg/graph"
 )
 
 type ObjectGraph struct {

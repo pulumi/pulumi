@@ -1,9 +1,9 @@
-// Copyright 2016 Marapongo, Inc. All rights reserved.
+// Copyright 2016 Pulumi, Inc. All rights reserved.
 
 package resource
 
 import (
-	"github.com/marapongo/mu/pkg/graph"
+	"github.com/pulumi/coconut/pkg/graph"
 )
 
 type planGraph struct {

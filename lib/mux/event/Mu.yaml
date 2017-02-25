@@ -1,5 +1,0 @@
-name: mu/event
-description: An event that may be used to trigger execution of another service.
-intrinsic: true
-properties:
-

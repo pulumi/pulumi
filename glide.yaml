@@ -1,4 +1,4 @@
-package: github.com/marapongo/mu
+package: github.com/pulumi/coconut
 import:
 - package: github.com/spf13/cobra
 - package: github.com/spf13/pflag

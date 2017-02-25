@@ -1,4 +1,4 @@
-// Copyright 2016 Marapongo, Inc. All rights reserved.
+// Copyright 2016 Pulumi, Inc. All rights reserved.
 
 package diag
 
@@ -12,8 +12,8 @@ import (
 
 	"github.com/golang/glog"
 
-	"github.com/marapongo/mu/pkg/diag/colors"
-	"github.com/marapongo/mu/pkg/util/contract"
+	"github.com/pulumi/coconut/pkg/diag/colors"
+	"github.com/pulumi/coconut/pkg/util/contract"
 )
 
 // Sink facilitates pluggable diagnostics messages.
@@ -36,7 +36,7 @@ type Sink interface {
 	// Warningf issues a new warning diagnostic.
 	Warningf(diag *Diag, args ...interface{})
 
-	// Stringify stringifies a diagnostic in the usual way (e.g., "error: MU123: Mu.yaml:7:39: error goes here\n").
+	// Stringify stringifies a diagnostic in the usual way (e.g., "error: MU123: Nut.yaml:7:39: error goes here\n").
 	Stringify(diag *Diag, cat Category, args ...interface{}) string
 	// StringifyLocation stringifies a source document location.
 	StringifyLocation(doc *Document, loc *Location) string
@@ -169,7 +169,7 @@ func (d *defaultSink) Stringify(diag *Diag, cat Category, args ...interface{}) s
 
 	buffer.WriteRune('\n')
 
-	// TODO[marapongo/mu#15]: support Clang-style expressive diagnostics.  This would entail, for example, using the
+	// TODO[pulumi/coconut#15]: support Clang-style expressive diagnostics.  This would entail, for example, using the
 	//     buffer within the target document, to demonstrate the offending line/column range of code.
 
 	s := buffer.String()

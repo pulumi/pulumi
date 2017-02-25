@@ -1,11 +1,11 @@
-// Copyright 2016 Marapongo, Inc. All rights reserved.
+// Copyright 2016 Pulumi, Inc. All rights reserved.
 
 package cmd
 
 import (
 	"github.com/spf13/cobra"
 
-	"github.com/marapongo/mu/pkg/util/contract"
+	"github.com/pulumi/coconut/pkg/util/contract"
 )
 
 func newGetCmd() *cobra.Command {
@@ -13,9 +13,9 @@ func newGetCmd() *cobra.Command {
 	var save bool
 	var cmd = &cobra.Command{
 		Use:   "get [deps]",
-		Short: "Download a Mu Stack",
-		Long: "Get downloads a Mu Stack by name.  If run without arguments, get will attempt\n" +
-			"to download dependencies referenced by the current Stack.  Otherwise, if one\n" +
+		Short: "Download a Nut",
+		Long: "Get downloads a Nut by name.  If run without arguments, get will attempt\n" +
+			"to download dependencies referenced by the current Nut.  Otherwise, if one\n" +
 			"or more specific dependencies are provided, only those will be downloaded.",
 		Run: func(cmd *cobra.Command, args []string) {
 			contract.Failf("Get command is not yet implemented")
@@ -27,7 +27,7 @@ func newGetCmd() *cobra.Command {
 		"Install to a shared location on this machine")
 	cmd.PersistentFlags().BoolVarP(
 		&save, "save", "s", false,
-		"Save new dependencies in the current Mu Stack")
+		"Save new dependencies in the current Nut")
 
 	return cmd
 }

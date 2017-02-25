@@ -1,5 +1,0 @@
-name: mu/gateway
-description: An API gateway and load balancer, multiplexing requests over services.
-intrinsic: true
-properties:
-

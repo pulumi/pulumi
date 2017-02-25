@@ -1,15 +1,15 @@
-// Copyright 2016 Marapongo, Inc. All rights reserved.
+// Copyright 2016 Pulumi, Inc. All rights reserved.
 
 package symbols
 
 import (
 	"fmt"
 
-	"github.com/marapongo/mu/pkg/diag"
-	"github.com/marapongo/mu/pkg/tokens"
+	"github.com/pulumi/coconut/pkg/diag"
+	"github.com/pulumi/coconut/pkg/tokens"
 )
 
-// Symbol is the base interface for all MuIL symbol types.
+// Symbol is the base interface for all CocoIL symbol types.
 type Symbol interface {
 	Name() tokens.Name   // the simple name for this symbol.
 	Token() tokens.Token // the unique qualified name token for this symbol.

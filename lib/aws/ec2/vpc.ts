@@ -1,6 +1,5 @@
-// Copyright 2016 Marapongo, Inc. All rights reserved.
+// Copyright 2016 Pulumi, Inc. All rights reserved.
 
-import * as mu from '@mu/mu';
 import * as cloudformation from '../cloudformation';
 
 // A Virtual Private Cloud (VPC) with a specified CIDR block.

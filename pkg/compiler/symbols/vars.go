@@ -1,11 +1,11 @@
-// Copyright 2016 Marapongo, Inc. All rights reserved.
+// Copyright 2016 Pulumi, Inc. All rights reserved.
 
 package symbols
 
 import (
-	"github.com/marapongo/mu/pkg/compiler/ast"
-	"github.com/marapongo/mu/pkg/diag"
-	"github.com/marapongo/mu/pkg/tokens"
+	"github.com/pulumi/coconut/pkg/compiler/ast"
+	"github.com/pulumi/coconut/pkg/diag"
+	"github.com/pulumi/coconut/pkg/tokens"
 )
 
 // Variable is an interface common to all variables.

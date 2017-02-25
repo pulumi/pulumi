@@ -1,4 +1,4 @@
-// Copyright 2016 Marapongo, Inc. All rights reserved.
+// Copyright 2016 Pulumi, Inc. All rights reserved.
 
 package cmd
 
@@ -10,12 +10,12 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func NewMuCmd() *cobra.Command {
+func NewCoconutCmd() *cobra.Command {
 	var logToStderr bool
 	var verbose int
 	cmd := &cobra.Command{
-		Use:   "mu",
-		Short: "Mu is a framework and toolset for reusable stacks of services",
+		Use:   "coconut",
+		Short: "Coconut is a framework and toolset for reusable stacks of services",
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
 			// Ensure the glog library has been initialized, including calling flag.Parse beforehand.  Unfortunately,
 			// this is the only way to control the way glog runs.  That includes poking around at flags below.

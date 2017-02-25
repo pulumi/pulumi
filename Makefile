@@ -1,9 +1,9 @@
 .PHONY: build install lint nolint test vet
 
-PROJECT=github.com/marapongo/mu
+PROJECT=github.com/pulumi/coconut
 PROJECT_PKGS=$(shell go list ./... | grep -v /vendor/)
 
-default: build test nolint vet install
+default: test nolint vet install
 
 build:
 	@echo "\033[0;32mBUILD:\033[0m"

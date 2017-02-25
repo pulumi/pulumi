@@ -3,14 +3,14 @@
     "main": "bin/index.js",
     "typings": "bin/index.d.ts",
     "scripts": {
-        "build": "mujs"
+        "build": "cocojs"
     },
     "devDependencies": {
         "typescript": "^2.1.4"
     },
     "peerDependencies": {
-        "@mu/mu": "*",
-        "@mu/aws": "*"
+        "@coconut/mu": "*",
+        "@coconut/aws": "*"
     }
 }
 

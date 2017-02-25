@@ -1,6 +1,5 @@
-// Copyright 2016 Marapongo, Inc. All rights reserved.
+// Copyright 2016 Pulumi, Inc. All rights reserved.
 
-import * as mu from '@mu/mu';
 import {SecurityGroup} from './securityGroup';
 import * as cloudformation from '../cloudformation';
 

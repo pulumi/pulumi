@@ -1,4 +1,4 @@
-// Copyright 2016 Marapongo, Inc. All rights reserved.
+// Copyright 2016 Pulumi, Inc. All rights reserved.
 
 package compiler
 
@@ -10,11 +10,11 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/marapongo/mu/pkg/compiler/core"
-	"github.com/marapongo/mu/pkg/compiler/errors"
-	"github.com/marapongo/mu/pkg/diag"
-	"github.com/marapongo/mu/pkg/util/contract"
-	"github.com/marapongo/mu/pkg/util/testutil"
+	"github.com/pulumi/coconut/pkg/compiler/core"
+	"github.com/pulumi/coconut/pkg/compiler/errors"
+	"github.com/pulumi/coconut/pkg/diag"
+	"github.com/pulumi/coconut/pkg/util/contract"
+	"github.com/pulumi/coconut/pkg/util/testutil"
 )
 
 func testCompile(paths ...string) *testutil.TestDiagSink {
@@ -32,11 +32,11 @@ func testCompile(paths ...string) *testutil.TestDiagSink {
 	return sink
 }
 
-func TestBadMissingMufile(t *testing.T) {
-	sink := testCompile("testdata", "bad__missing_mufile")
+func TestBadMissingNutfile(t *testing.T) {
+	sink := testCompile("testdata", "bad__missing_nutfile")
 
-	// Check that the compiler complained about a missing Mufile.
-	d := errors.ErrorMissingMufile
+	// Check that the compiler complained about a missing Nutfile.
+	d := errors.ErrorMissingNutfile
 	assert.Equal(t, 1, sink.Errors(), "expected a single error")
 	assert.Equal(t,
 		fmt.Sprintf("%v %v%v: %v\n",
@@ -44,41 +44,41 @@ func TestBadMissingMufile(t *testing.T) {
 		sink.ErrorMsgs()[0])
 }
 
-func TestBadMufileCasing(t *testing.T) {
-	sink := testCompile("testdata", "bad__mufile_casing")
+func TestBadNutfileCasing(t *testing.T) {
+	sink := testCompile("testdata", "bad__nutfile_casing")
 
-	// Check that the compiler warned about a bad Mufile casing (mu.yaml).
+	// Check that the compiler warned about a bad Nutfile casing (nut.yaml).
 	d := errors.WarningIllegalMarkupFileCasing
 	assert.Equal(t, 1, sink.Warnings(), "expected a single warning")
 	assert.Equal(t,
 		fmt.Sprintf("%v: %v %v%v: %v\n",
-			"mu.yaml", diag.Warning, diag.DefaultSinkIDPrefix, d.ID, fmt.Sprintf(d.Message, "Mu")),
+			"nut.yaml", diag.Warning, diag.DefaultSinkIDPrefix, d.ID, fmt.Sprintf(d.Message, "Nut")),
 		sink.WarningMsgs()[0])
 }
 
-func TestBadMufileExt(t *testing.T) {
-	sink := testCompile("testdata", "bad__mufile_ext")
+func TestBadNutfileExt(t *testing.T) {
+	sink := testCompile("testdata", "bad__nutfile_ext")
 
-	// Check that the compiler warned about a bad Mufile extension (none).
+	// Check that the compiler warned about a bad Nutfile extension (none).
 	d := errors.WarningIllegalMarkupFileExt
 	assert.Equal(t, 1, sink.Warnings(), "expected a single warning")
 	assert.Equal(t,
 		fmt.Sprintf("%v: %v %v%v: %v\n",
-			"Mu", diag.Warning, diag.DefaultSinkIDPrefix, d.ID,
-			fmt.Sprintf(d.Message, "Mu", "")),
+			"Nut", diag.Warning, diag.DefaultSinkIDPrefix, d.ID,
+			fmt.Sprintf(d.Message, "Nut", "")),
 		sink.WarningMsgs()[0])
 }
 
-func TestBadMufileExt2(t *testing.T) {
-	sink := testCompile("testdata", "bad__mufile_ext_2")
+func TestBadNutfileExt2(t *testing.T) {
+	sink := testCompile("testdata", "bad__nutfile_ext_2")
 
-	// Check that the compiler warned about a bad Mufile extension (".txt").
+	// Check that the compiler warned about a bad Nutfile extension (".txt").
 	d := errors.WarningIllegalMarkupFileExt
 	assert.Equal(t, 1, sink.Warnings(), "expected a single warning")
 	assert.Equal(t,
 		fmt.Sprintf("%v: %v %v%v: %v\n",
-			"Mu.txt", diag.Warning, diag.DefaultSinkIDPrefix, d.ID,
-			fmt.Sprintf(d.Message, "Mu", ".txt")),
+			"Nut.txt", diag.Warning, diag.DefaultSinkIDPrefix, d.ID,
+			fmt.Sprintf(d.Message, "Nut", ".txt")),
 		sink.WarningMsgs()[0])
 }
 
@@ -86,11 +86,11 @@ func TestBadMissingPackageName(t *testing.T) {
 	sink := testCompile("testdata", "bad__missing_package_name")
 
 	// Check that the compiler complained about a missing package name.
-	d := errors.ErrorIllegalMufileSyntax
+	d := errors.ErrorIllegalNutfileSyntax
 	assert.Equal(t, 1, sink.Errors(), "expected a single error")
 	assert.Equal(t,
 		fmt.Sprintf("%v: %v %v%v: %v\n",
-			"Mu.yaml", diag.Error, diag.DefaultSinkIDPrefix, d.ID,
+			"Nut.yaml", diag.Error, diag.DefaultSinkIDPrefix, d.ID,
 			fmt.Sprintf(d.Message, "Missing required pack.Package field `name`")),
 		sink.ErrorMsgs()[0])
 }
@@ -99,11 +99,11 @@ func TestBadEmptyPackageName(t *testing.T) {
 	sink := testCompile("testdata", "bad__empty_package_name")
 
 	// Check that the compiler complained about a missing package name.
-	d := errors.ErrorIllegalMufileSyntax
+	d := errors.ErrorIllegalNutfileSyntax
 	assert.Equal(t, 1, sink.Errors(), "expected a single error")
 	assert.Equal(t,
 		fmt.Sprintf("%v: %v %v%v: %v\n",
-			"Mu.yaml", diag.Error, diag.DefaultSinkIDPrefix, d.ID,
+			"Nut.yaml", diag.Error, diag.DefaultSinkIDPrefix, d.ID,
 			fmt.Sprintf(d.Message, "Missing required pack.Package field `name`")),
 		sink.ErrorMsgs()[0])
 }
@@ -116,6 +116,6 @@ func TestBadEmptyPackageName2(t *testing.T) {
 	assert.Equal(t, 1, sink.Errors(), "expected a single error")
 	assert.Equal(t,
 		fmt.Sprintf("%v: %v %v%v: %v\n",
-			"Mu.yaml", diag.Error, diag.DefaultSinkIDPrefix, d.ID, d.Message),
+			"Nut.yaml", diag.Error, diag.DefaultSinkIDPrefix, d.ID, d.Message),
 		sink.ErrorMsgs()[0])
 }

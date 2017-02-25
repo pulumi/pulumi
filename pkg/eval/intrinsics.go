@@ -1,28 +1,28 @@
-// Copyright 2016 Marapongo, Inc. All rights reserved.
+// Copyright 2016 Pulumi, Inc. All rights reserved.
 
 package eval
 
 import (
-	"github.com/marapongo/mu/pkg/compiler/ast"
-	"github.com/marapongo/mu/pkg/compiler/symbols"
-	"github.com/marapongo/mu/pkg/diag"
-	"github.com/marapongo/mu/pkg/eval/rt"
-	"github.com/marapongo/mu/pkg/tokens"
-	"github.com/marapongo/mu/pkg/util/contract"
+	"github.com/pulumi/coconut/pkg/compiler/ast"
+	"github.com/pulumi/coconut/pkg/compiler/symbols"
+	"github.com/pulumi/coconut/pkg/diag"
+	"github.com/pulumi/coconut/pkg/eval/rt"
+	"github.com/pulumi/coconut/pkg/tokens"
+	"github.com/pulumi/coconut/pkg/util/contract"
 )
 
 // Invoker implements an intrinsic function's functionality.
 type Invoker func(intrin *Intrinsic, e *evaluator, this *rt.Object, args []*rt.Object) *rt.Unwind
 
-// Intrinsics contains the set of runtime functions that are callable by name through the Mu standard library
-// package.  Their functionality is implemented in the runtime because MuIL cannot express the concepts they require to
-// get their job done.  This includes things like dynamic introspection, invocation, and more.
+// Intrinsics contains the set of runtime functions that are callable by name through the Coconut standard library
+// package.  Their functionality is implemented in the runtime because NutIL cannot express the concepts they require
+// to get their job done.  This includes things like dynamic introspection, invocation, and more.
 var Intrinsics map[tokens.Token]Invoker
 
 func init() {
 	Intrinsics = map[tokens.Token]Invoker{
-		"mu:runtime:isFunction":    isFunction,
-		"mu:runtime:dynamicInvoke": dynamicInvoke,
+		"coconut:runtime:isFunction":    isFunction,
+		"coconut:runtime:dynamicInvoke": dynamicInvoke,
 	}
 }
 

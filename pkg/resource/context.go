@@ -1,14 +1,14 @@
-// Copyright 2016 Marapongo, Inc. All rights reserved.
+// Copyright 2016 Pulumi, Inc. All rights reserved.
 
 package resource
 
 import (
 	"context"
 
-	"github.com/marapongo/mu/pkg/diag"
-	"github.com/marapongo/mu/pkg/eval/rt"
-	"github.com/marapongo/mu/pkg/tokens"
-	"github.com/marapongo/mu/pkg/util/contract"
+	"github.com/pulumi/coconut/pkg/diag"
+	"github.com/pulumi/coconut/pkg/eval/rt"
+	"github.com/pulumi/coconut/pkg/tokens"
+	"github.com/pulumi/coconut/pkg/util/contract"
 )
 
 // Context is used to group related operations together so that associated OS resources can be cached, shared, and

@@ -1,4 +1,4 @@
-// Copyright 2016 Marapongo, Inc. All rights reserved.
+// Copyright 2016 Pulumi, Inc. All rights reserved.
 
 package resource
 
@@ -16,14 +16,14 @@ import (
 	"github.com/golang/glog"
 	"google.golang.org/grpc"
 
-	"github.com/marapongo/mu/pkg/diag"
-	"github.com/marapongo/mu/pkg/tokens"
-	"github.com/marapongo/mu/pkg/util/contract"
-	"github.com/marapongo/mu/pkg/workspace"
-	"github.com/marapongo/mu/sdk/go/pkg/murpc"
+	"github.com/pulumi/coconut/pkg/diag"
+	"github.com/pulumi/coconut/pkg/tokens"
+	"github.com/pulumi/coconut/pkg/util/contract"
+	"github.com/pulumi/coconut/pkg/workspace"
+	"github.com/pulumi/coconut/sdk/go/pkg/cocorpc"
 )
 
-const pluginPrefix = "mu-ressrv"
+const pluginPrefix = "coco-ressrv"
 
 // Plugin reflects a resource plugin, loaded dynamically for a single package.
 type Plugin struct {
@@ -34,7 +34,7 @@ type Plugin struct {
 	stdout io.ReadCloser
 	stderr io.ReadCloser
 	conn   *grpc.ClientConn
-	client murpc.ResourceProviderClient
+	client cocorpc.ResourceProviderClient
 }
 
 // NewPlugin attempts to bind to a given package's resource plugin and then creates a gRPC connection to it.  If the
@@ -45,7 +45,7 @@ func NewPlugin(ctx *Context, pkg tokens.Package) (*Plugin, error) {
 	var procout io.ReadCloser
 	var procerr io.ReadCloser
 
-	// To load a plugin, we first attempt using a well-known name "mu-ressrv-<pkg>".  Note that because <pkg> is a
+	// To load a plugin, we first attempt using a well-known name "coco-ressrv-<pkg>".  Note that because <pkg> is a
 	// qualified name, it could contain "/" characters which would obviously cause problems; so we substitute "_"s.
 	// TODO: on Windows, I suppose we will need to append a ".EXE".
 	var err error
@@ -124,7 +124,7 @@ func NewPlugin(ctx *Context, pkg tokens.Package) (*Plugin, error) {
 		stdout: procout,
 		stderr: procerr,
 		conn:   conn,
-		client: murpc.NewResourceProviderClient(conn),
+		client: cocorpc.NewResourceProviderClient(conn),
 	}, nil
 }
 
@@ -142,7 +142,7 @@ func execPlugin(name string) (*os.Process, io.WriteCloser, io.ReadCloser, io.Rea
 // Name names a given resource.
 func (p *Plugin) Name(t tokens.Type, props PropertyMap) (tokens.QName, error) {
 	glog.V(7).Infof("Plugin[%v].Name(t=%v,#props=%v) executing", p.pkg, t, len(props))
-	req := &murpc.NameRequest{
+	req := &cocorpc.NameRequest{
 		Type: string(t),
 		Properties: MarshalProperties(p.ctx, props, MarshalOptions{
 			SkipMonikers: true, // often used during moniker creation; IDs won't be ready.
@@ -163,7 +163,7 @@ func (p *Plugin) Name(t tokens.Type, props PropertyMap) (tokens.QName, error) {
 // Create allocates a new instance of the provided resource and returns its unique ID afterwards.
 func (p *Plugin) Create(t tokens.Type, props PropertyMap) (ID, error, ResourceState) {
 	glog.V(7).Infof("Plugin[%v].Create(t=%v,#props=%v) executing", p.pkg, t, len(props))
-	req := &murpc.CreateRequest{
+	req := &cocorpc.CreateRequest{
 		Type:       string(t),
 		Properties: MarshalProperties(p.ctx, props, MarshalOptions{}),
 	}
@@ -187,7 +187,7 @@ func (p *Plugin) Create(t tokens.Type, props PropertyMap) (ID, error, ResourceSt
 // Read reads the instance state identified by id/t, and returns a bag of properties.
 func (p *Plugin) Read(id ID, t tokens.Type) (PropertyMap, error) {
 	glog.V(7).Infof("Plugin[%v].Read(id=%v,t=%v) executing", p.pkg, id, t)
-	req := &murpc.ReadRequest{
+	req := &cocorpc.ReadRequest{
 		Id:   string(id),
 		Type: string(t),
 	}
@@ -210,7 +210,7 @@ func (p *Plugin) Update(id ID, t tokens.Type, olds PropertyMap, news PropertyMap
 	contract.Requiref(t != "", "t", "not empty")
 
 	glog.V(7).Infof("Plugin[%v].Update(id=%v,t=%v,#olds=%v,#news=%v) executing", p.pkg, id, t, len(olds), len(news))
-	req := &murpc.UpdateRequest{
+	req := &cocorpc.UpdateRequest{
 		Id:   string(id),
 		Type: string(t),
 		Olds: MarshalProperties(p.ctx, olds, MarshalOptions{}),
@@ -234,7 +234,7 @@ func (p *Plugin) Delete(id ID, t tokens.Type) (error, ResourceState) {
 	contract.Requiref(t != "", "t", "not empty")
 
 	glog.V(7).Infof("Plugin[%v].Delete(id=%v,t=%v) executing", p.pkg, id, t)
-	req := &murpc.DeleteRequest{
+	req := &cocorpc.DeleteRequest{
 		Id:   string(id),
 		Type: string(t),
 	}

@@ -1,24 +1,24 @@
-# Mu Cross-Cloud Targeting
+# Coconut Cross-Cloud Targeting
 
-The Mu metadata and primitives are intentionally cloud-agnostic and have been designed to support [many cloud targets](
-clouds.md).  This can be used to build, share, and reuse portable abstractions.
+The Coconut metadata and primitives are intentionally cloud-agnostic and have been designed to support [many cloud
+targets](clouds.md).  This can be used to build, share, and reuse portable abstractions.
 
 It is easy, however, to introduce a dependency on a particular cloud provider by relying on certain stacks.  For
 example, mounting an `aws/ebs/Volume` for a database volume pins it to the AWS IaaS provider; in fact, *any* such
 service in the transitive closure of dependencies pins the whole stack to AWS.
 
-On one hand, this is great, because the Mu abstractions do not get in the way of leveraging the full power of your cloud
-provider and its latest innovations.  On the other hand, it inhibits portability.
+On one hand, this is great, because the Coconut abstractions do not get in the way of leveraging the full power of your
+cloud provider and its latest innovations.  On the other hand, it inhibits portability.
 
-This document briefly describes how Mu enables developers to create portable cloud infrastructure abstractions.
+This document briefly describes how Coconut enables developers to create portable cloud infrastructure abstractions.
 
 ## Abstraction
 
-The key to Mu's ability to cross-target clouds is simple: abstraction.
+The key to Coconut's ability to cross-target clouds is simple: abstraction.
 
-Mu stacks are simply ordinary classes.  As a result, they can encapsulate details about how they work.  If a `Table`
-stack wants to provision a MongoDB database automatically behind the scenes, there is no need for a consumer to know.
-The properties, API, and so on, can safely hide these details behind a friendly logical abstraction.
+Coconut stacks are simply ordinary classes.  As a result, they can encapsulate details about how they work.  If a
+`Table` stack wants to provision a MongoDB database automatically behind the scenes, there is no need for a consumer to
+know.  The properties, API, and so on, can safely hide these details behind a friendly logical abstraction.
 
 More likely, however, such an abstraction will want to leverage a database-as-a-service (DbaaS) product in the target
 cloud, like AWS DynamoDB.  But by doing that, you would pin the `Table` abstraction to AWS, which defeats the point.
@@ -27,10 +27,10 @@ This is a problem familiar to users of platform abstractions in environments lik
 useful low-level primitive abstractions like filesystems, process models, and timer APIs -- among other things -- they
 must create an abstraction layer just above the underlying operating system.  Doing so lets 99% of the users of those
 abstractions forget about the gory details of targeting Linux vs. macOS vs. Windows.  But those low-level developers
-need to worry about `#ifdef`ing their code and bridging the gap.  And in Mu, we can achieve the same economics.
+need to worry about `#ifdef`ing their code and bridging the gap.  And in Coconut, we can achieve the same economics.
 
 To do this, the developer providing a low-level abstraction must conditionalize resource usage.  The context object
-exposed to the MetaMu programming languages tells the program information about the target environment, including
+exposed to the CocoLang programming languages tells the program information about the target environment, including
 whether the target is AWS, Google Cloud, Azure, and so on.  As such, the `Table` can pick DynamoDB in AWS, DocumentDB in
 Azure, Bigtable in Google Cloud, and perhaps even fall back to MongoDB option as a more complex default elsewhere.
 
@@ -39,25 +39,25 @@ details, and in the cloud provider of their choice.  And the low-level developer
 
 ## Cross-Cloud Abstractions Out-of-the-Box
 
-To facilitate cross-cloud abstractions, Mu offers a `mu/x` package containing a number of them.
+To facilitate cross-cloud abstractions, Coconut offers a `coconut/x` package containing a number of them.
 
-### mu/x
+### coconut/x
 
-The services offered by `mu/x` have been conditionalized internally and are guaranteed to run on all clouds,
+The services offered by `coconut/x` have been conditionalized internally and are guaranteed to run on all clouds,
 including locally for development and testing.  The differences between them have been abstracted and unified so that
 you can configure them declaratively, using a single logical set of options, and rely on the service internally mapping
 to the cloud provider's specific configuration settings.
 
-For example, `mu/x/fs/Volume` implements the `mu/Volume` abstract interface, and maps to an AWS Elastic Block Store
-(EBS), Azure Data Disk (DD), or GCP Persistent Disk (PD) volume, depending on the IaaS target.  Although the details for
-each of these differs, a standard set of options -- like capacity, filesystem type, reclaimation policy, storage class,
-and so on -- and the Mu framework handles mapping these standard options to the specific underlying ones.
+For example, `coconut/x/fs/Volume` implements the `coconut/Volume` abstract interface, and maps to an AWS Elastic Block
+Store (EBS), Azure Data Disk (DD), or GCP Persistent Disk (PD) volume, depending on the IaaS target.  Although the
+details for each of these differs, a standard set of options -- like capacity, filesystem type, reclaimation policy,
+storage class, and so on -- and `coconut/x` handles mapping these standard options to the specific underlying ones.
 
-The goal for the `mu/x` package is to facilitate a higher-level ecosystem of cloud-agnostic services and libraries.
+The goal for the `coconut/x` package is to facilitate a higher-level ecosystem of cloud-agnostic services and libraries.
 
 ### Services
 
-This section contains a full list of the `mu/x` cloud-agnostic services:
+This section contains a full list of the `coconut/x` cloud-agnostic services:
 
 * Apps
     - Containers

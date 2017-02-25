@@ -1,4 +1,4 @@
-// Copyright 2016 Marapongo, Inc. All rights reserved.
+// Copyright 2016 Pulumi, Inc. All rights reserved.
 
 package pack
 
@@ -58,6 +58,6 @@ func (v VersionSpec) Check() error {
 		return errors.New("Missing version")
 	}
 	_, err := semver.ParseRange(vs)
-	// TODO[marapongo/mu#18]: consider supporting the sugared NPM-style semvers, like tilde and caret ranges.
+	// TODO[pulumi/coconut#18]: consider supporting the sugared NPM-style semvers, like tilde and caret ranges.
 	return err
 }

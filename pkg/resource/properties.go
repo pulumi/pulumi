@@ -1,4 +1,4 @@
-// Copyright 2016 Marapongo, Inc. All rights reserved.
+// Copyright 2016 Pulumi, Inc. All rights reserved.
 
 package resource
 
@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/marapongo/mu/pkg/tokens"
+	"github.com/pulumi/coconut/pkg/tokens"
 )
 
 // PropertyKey is the name of a property.

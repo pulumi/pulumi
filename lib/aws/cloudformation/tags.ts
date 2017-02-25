@@ -1,4 +1,4 @@
-// Copyright 2016 Marapongo, Inc. All rights reserved.
+// Copyright 2016 Pulumi, Inc. All rights reserved.
 
 // Tag can be applied to a resource, helping to identify and categorize those resources.
 export interface Tag {

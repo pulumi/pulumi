@@ -1,4 +1,4 @@
-// Copyright 2016 Marapongo, Inc. All rights reserved.
+// Copyright 2016 Pulumi, Inc. All rights reserved.
 
 package ast
 
@@ -6,7 +6,7 @@ import (
 	"github.com/golang/glog"
 	"reflect"
 
-	"github.com/marapongo/mu/pkg/util/contract"
+	"github.com/pulumi/coconut/pkg/util/contract"
 )
 
 // Visitor is a pluggable interface invoked during walks of an AST.

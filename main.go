@@ -1,4 +1,4 @@
-// Copyright 2016 Marapongo, Inc. All rights reserved.
+// Copyright 2016 Pulumi, Inc. All rights reserved.
 
 package main
 
@@ -6,11 +6,11 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/marapongo/mu/cmd"
+	"github.com/pulumi/coconut/cmd"
 )
 
 func main() {
-	if err := cmd.NewMuCmd().Execute(); err != nil {
+	if err := cmd.NewCoconutCmd().Execute(); err != nil {
 		fmt.Fprintf(os.Stderr, "An error occurred: %v\n", err)
 		os.Exit(-1)
 	}

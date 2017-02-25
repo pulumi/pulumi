@@ -1,6 +1,6 @@
-// Copyright 2016 Marapongo, Inc. All rights reserved.
+// Copyright 2016 Pulumi, Inc. All rights reserved.
 
-// Package dotconv convers a MuGL graph into its DOT digraph equivalent.  This is useful for integration with various
+// Package dotconv convers a CocoGL graph into its DOT digraph equivalent.  This is useful for integration with various
 // visualization tools, like Graphviz.  Please see http://www.graphviz.org/content/dot-language for a thorough
 // specification of the DOT file format.
 package dotconv
@@ -11,8 +11,8 @@ import (
 	"io"
 	"strconv"
 
-	"github.com/marapongo/mu/pkg/graph"
-	"github.com/marapongo/mu/pkg/util/contract"
+	"github.com/pulumi/coconut/pkg/graph"
+	"github.com/pulumi/coconut/pkg/util/contract"
 )
 
 func Print(g graph.Graph, w io.Writer) error {
@@ -35,7 +35,7 @@ func Print(g graph.Graph, w io.Writer) error {
 	}
 
 	// For now, we auto-generate IDs.
-	// TODO[marapongo/mu#76]: use the object monikers instead, once we have them.
+	// TODO[pulumi/coconut#76]: use the object monikers instead, once we have them.
 	c := 0
 	ids := make(map[graph.Vertex]string)
 	getID := func(v graph.Vertex) string {

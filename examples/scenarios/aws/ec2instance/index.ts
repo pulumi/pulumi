@@ -1,4 +1,3 @@
-import * as mu from '@mu/mu';
 import { InternetGateway, Instance, SecurityGroup } from '@mu/aws/ec2';
 
 let keyName = "lukehoban-us-east-1";

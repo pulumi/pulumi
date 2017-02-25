@@ -1,4 +1,4 @@
-// Copyright 2016 Marapongo, Inc. All rights reserved.
+// Copyright 2016 Pulumi, Inc. All rights reserved.
 
 package ast
 
@@ -215,7 +215,7 @@ var _ Expression = (*UnaryOperatorExpression)(nil)
 
 const UnaryOperatorExpressionKind NodeKind = "UnaryOperatorExpression"
 
-// UnaryOperator is the full set of unary operator tokens.  Note that MuIL doesn't care about precedence.  The MetaMu
+// UnaryOperator is the full set of unary operator tokens.  Note that CocoIL doesn't care about precedence.  CocoLang
 // compilers must present expression in the order in which they should be evaluated through an in-order AST tree walk.
 type UnaryOperator string
 

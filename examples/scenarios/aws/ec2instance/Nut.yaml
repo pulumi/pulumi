@@ -1,0 +1,6 @@
+name: ec2instance
+description: Simple example of using AWS resources.
+dependencies:
+    coconut: "*"
+    aws: "*"
+

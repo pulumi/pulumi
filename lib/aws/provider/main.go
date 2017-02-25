@@ -1,4 +1,4 @@
-// Copyright 2016 Marapongo, Inc. All rights reserved.
+// Copyright 2016 Pulumi, Inc. All rights reserved.
 
 package main
 
@@ -13,7 +13,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 
-	"github.com/marapongo/mu/sdk/go/pkg/murpc"
+	"github.com/pulumi/coconut/sdk/go/pkg/cocorpc"
 )
 
 func main() {
@@ -31,7 +31,7 @@ func main() {
 		fmt.Fprintf(os.Stderr, "fatal: failed to create AWS resource provider: %v\n", err)
 		os.Exit(-1)
 	}
-	murpc.RegisterResourceProviderServer(srv, prov)
+	cocorpc.RegisterResourceProviderServer(srv, prov)
 	reflection.Register(srv)
 
 	// The resource provider protocol requires that we now write out the port we have chosen to listen on.  To do

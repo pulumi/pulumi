@@ -1,6 +1,6 @@
-// Copyright 2016 Marapongo, Inc. All rights reserved.
+// Copyright 2016 Pulumi, Inc. All rights reserved.
 
-// Package ast contains the core MuIL AST types.  These contain fully qualified tokens ready to resolve to packages.
+// Package ast contains the core CocoIL AST types.  These contain fully qualified tokens ready to resolve to packages.
 //
 // All ASTs are fully serializable.  They require custom (de)serialization, however, due to the use of discriminated
 // AST node types.  This is in contrast to the package metadata which is simple enough for trivial (de)serialization.
@@ -11,8 +11,8 @@
 package ast
 
 import (
-	"github.com/marapongo/mu/pkg/diag"
-	"github.com/marapongo/mu/pkg/tokens"
+	"github.com/pulumi/coconut/pkg/diag"
+	"github.com/pulumi/coconut/pkg/tokens"
 )
 
 // Node is a discriminated type for all serialized blocks and instructions.

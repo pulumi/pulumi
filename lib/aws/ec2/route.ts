@@ -1,6 +1,5 @@
-// Copyright 2016 Marapongo, Inc. All rights reserved.
+// Copyright 2016 Pulumi, Inc. All rights reserved.
 
-import * as mu from '@mu/mu';
 import {InternetGateway} from './internetGateway';
 import {RouteTable} from './routeTable';
 import {VPCGatewayAttachment} from './vpcGatewayAttachment';

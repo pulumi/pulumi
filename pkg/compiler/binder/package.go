@@ -1,18 +1,18 @@
-// Copyright 2016 Marapongo, Inc. All rights reserved.
+// Copyright 2016 Pulumi, Inc. All rights reserved.
 
 package binder
 
 import (
 	"github.com/golang/glog"
 
-	"github.com/marapongo/mu/pkg/compiler/ast"
-	"github.com/marapongo/mu/pkg/compiler/errors"
-	"github.com/marapongo/mu/pkg/compiler/symbols"
-	"github.com/marapongo/mu/pkg/diag"
-	"github.com/marapongo/mu/pkg/pack"
-	"github.com/marapongo/mu/pkg/tokens"
-	"github.com/marapongo/mu/pkg/util/contract"
-	"github.com/marapongo/mu/pkg/workspace"
+	"github.com/pulumi/coconut/pkg/compiler/ast"
+	"github.com/pulumi/coconut/pkg/compiler/errors"
+	"github.com/pulumi/coconut/pkg/compiler/symbols"
+	"github.com/pulumi/coconut/pkg/diag"
+	"github.com/pulumi/coconut/pkg/pack"
+	"github.com/pulumi/coconut/pkg/tokens"
+	"github.com/pulumi/coconut/pkg/util/contract"
+	"github.com/pulumi/coconut/pkg/workspace"
 )
 
 // BindPackages takes a package AST, resolves all dependencies and tokens inside of it, and returns a fully bound
@@ -107,15 +107,15 @@ func (b *binder) resolveDep(dep pack.PackageURL) *symbols.ResolvedPackage {
 	locs := b.w.DepCandidates(dep)
 	for _, loc := range locs {
 		// See if this candidate actually exists.
-		isMupack := workspace.IsMupack(loc, b.Diag())
-		glog.V(5).Infof("Probing for dependency '%v' at '%v': isMupack=%v", dep, loc, isMupack)
+		isNutpack := workspace.IsNutpack(loc, b.Diag())
+		glog.V(5).Infof("Probing for dependency '%v' at '%v': isNutpack=%v", dep, loc, isNutpack)
 
 		// If it does, go ahead and read it in, and bind it (recursively).
-		if isMupack {
+		if isNutpack {
 			// Read in the package AST.
 			doc, err := diag.ReadDocument(loc)
 			if err != nil {
-				b.Diag().Errorf(errors.ErrorCouldNotReadMufile.AtFile(loc), err)
+				b.Diag().Errorf(errors.ErrorCouldNotReadNutfile.AtFile(loc), err)
 				return nil
 			}
 			pkg := b.reader.ReadPackage(doc)

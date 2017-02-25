@@ -1,4 +1,4 @@
-// Copyright 2016 Marapongo, Inc. All rights reserved.
+// Copyright 2016 Pulumi, Inc. All rights reserved.
 
 package rt
 
@@ -8,12 +8,12 @@ import (
 
 	"github.com/golang/glog"
 
-	"github.com/marapongo/mu/pkg/compiler/symbols"
-	"github.com/marapongo/mu/pkg/compiler/types"
-	"github.com/marapongo/mu/pkg/util/contract"
+	"github.com/pulumi/coconut/pkg/compiler/symbols"
+	"github.com/pulumi/coconut/pkg/compiler/types"
+	"github.com/pulumi/coconut/pkg/util/contract"
 )
 
-// Object is a value allocated and stored on the heap.  In MuIL's interpreter, all values are heap allocated, since we
+// Object is a value allocated and stored on the heap.  In NutIL's interpreter, all values are heap allocated, since we
 // are less concerned about performance of the evaluation (compared to the cost of provisioning cloud resources).
 type Object struct {
 	t          symbols.Type // the runtime type of the object.
@@ -212,8 +212,8 @@ func NewConstantObject(v interface{}) *Object {
 
 // FreezeReadonlyProperties freezes the readonly fields of an object, possibly copying properties down from the
 // prototype chain as necessary to accomplish the freezing (since modifying the prototype chain would clearly be wrong).
-// TODO[marapongo/mu#70]: this could cause subtle compatibility issues; e.g., it's possible to write to the prototype
-//     for an inherited property postconstruction; in vanilla ECMAscript, that write would be seen; in MuJS it won't.
+// TODO[pulumi/coconut#70]: this could cause subtle compatibility issues; e.g., it's possible to write to the prototype
+//     for an inherited property postconstruction; in vanilla ECMAscript, that write would be seen; in CocoJS it won't.
 func (obj *Object) FreezeReadonlyProperties() {
 	current := obj.Type()
 	for current != nil {

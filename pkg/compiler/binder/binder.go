@@ -1,14 +1,14 @@
-// Copyright 2016 Marapongo, Inc. All rights reserved.
+// Copyright 2016 Pulumi, Inc. All rights reserved.
 
 package binder
 
 import (
-	"github.com/marapongo/mu/pkg/compiler/core"
-	"github.com/marapongo/mu/pkg/compiler/metadata"
-	"github.com/marapongo/mu/pkg/compiler/symbols"
-	"github.com/marapongo/mu/pkg/diag"
-	"github.com/marapongo/mu/pkg/pack"
-	"github.com/marapongo/mu/pkg/workspace"
+	"github.com/pulumi/coconut/pkg/compiler/core"
+	"github.com/pulumi/coconut/pkg/compiler/metadata"
+	"github.com/pulumi/coconut/pkg/compiler/symbols"
+	"github.com/pulumi/coconut/pkg/diag"
+	"github.com/pulumi/coconut/pkg/pack"
+	"github.com/pulumi/coconut/pkg/workspace"
 )
 
 // Binder annotates an existing parse tree with semantic information.

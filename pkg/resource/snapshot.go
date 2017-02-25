@@ -1,17 +1,17 @@
-// Copyright 2016 Marapongo, Inc. All rights reserved.
+// Copyright 2016 Pulumi, Inc. All rights reserved.
 
 package resource
 
 import (
 	"github.com/golang/glog"
 
-	"github.com/marapongo/mu/pkg/compiler/core"
-	"github.com/marapongo/mu/pkg/compiler/errors"
-	"github.com/marapongo/mu/pkg/eval/heapstate"
-	"github.com/marapongo/mu/pkg/eval/rt"
-	"github.com/marapongo/mu/pkg/graph"
-	"github.com/marapongo/mu/pkg/tokens"
-	"github.com/marapongo/mu/pkg/util/contract"
+	"github.com/pulumi/coconut/pkg/compiler/core"
+	"github.com/pulumi/coconut/pkg/compiler/errors"
+	"github.com/pulumi/coconut/pkg/eval/heapstate"
+	"github.com/pulumi/coconut/pkg/eval/rt"
+	"github.com/pulumi/coconut/pkg/graph"
+	"github.com/pulumi/coconut/pkg/tokens"
+	"github.com/pulumi/coconut/pkg/util/contract"
 )
 
 type Namespace tokens.QName // a namespace is the target for a deployment.

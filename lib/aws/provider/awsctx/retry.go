@@ -1,11 +1,11 @@
-// Copyright 2016 Marapongo, Inc. All rights reserved.
+// Copyright 2016 Pulumi, Inc. All rights reserved.
 
 package awsctx
 
 import (
 	"time"
 
-	"github.com/marapongo/mu/pkg/util/retry"
+	"github.com/pulumi/coconut/pkg/util/retry"
 )
 
 const DefaultTimeout time.Duration = 30 * time.Second    // by default, wait at most 30 seconds for things.

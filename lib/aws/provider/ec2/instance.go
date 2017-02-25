@@ -1,4 +1,4 @@
-// Copyright 2016 Marapongo, Inc. All rights reserved.
+// Copyright 2016 Pulumi, Inc. All rights reserved.
 
 package ec2
 
@@ -10,19 +10,19 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/ec2"
 	pbempty "github.com/golang/protobuf/ptypes/empty"
-	"github.com/marapongo/mu/pkg/resource"
-	"github.com/marapongo/mu/pkg/tokens"
-	"github.com/marapongo/mu/pkg/util/contract"
-	"github.com/marapongo/mu/sdk/go/pkg/murpc"
+	"github.com/pulumi/coconut/pkg/resource"
+	"github.com/pulumi/coconut/pkg/tokens"
+	"github.com/pulumi/coconut/pkg/util/contract"
+	"github.com/pulumi/coconut/sdk/go/pkg/cocorpc"
 	"golang.org/x/net/context"
 
-	"github.com/marapongo/mu/lib/aws/provider/awsctx"
+	"github.com/pulumi/coconut/lib/aws/provider/awsctx"
 )
 
 const Instance = tokens.Type("aws:ec2/instance:Instance")
 
 // NewInstanceProvider creates a provider that handles EC2 instance operations.
-func NewInstanceProvider(ctx *awsctx.Context) murpc.ResourceProviderServer {
+func NewInstanceProvider(ctx *awsctx.Context) cocorpc.ResourceProviderServer {
 	return &instanceProvider{ctx}
 }
 
@@ -33,13 +33,13 @@ type instanceProvider struct {
 // Name names a given resource.  Sometimes this will be assigned by a developer, and so the provider
 // simply fetches it from the property bag; other times, the provider will assign this based on its own algorithm.
 // In any case, resources with the same name must be safe to use interchangeably with one another.
-func (p *instanceProvider) Name(ctx context.Context, req *murpc.NameRequest) (*murpc.NameResponse, error) {
+func (p *instanceProvider) Name(ctx context.Context, req *cocorpc.NameRequest) (*cocorpc.NameResponse, error) {
 	return nil, nil // use the AWS provider default name
 }
 
 // Create allocates a new instance of the provided resource and returns its unique ID afterwards.  (The input ID
 // must be blank.)  If this call fails, the resource must not have been created (i.e., it is "transacational").
-func (p *instanceProvider) Create(ctx context.Context, req *murpc.CreateRequest) (*murpc.CreateResponse, error) {
+func (p *instanceProvider) Create(ctx context.Context, req *cocorpc.CreateRequest) (*cocorpc.CreateResponse, error) {
 	contract.Assert(req.GetType() == string(Instance))
 	props := resource.UnmarshalProperties(req.GetProperties())
 
@@ -84,26 +84,26 @@ func (p *instanceProvider) Create(ctx context.Context, req *murpc.CreateRequest)
 	err = p.ctx.EC2().WaitUntilInstanceRunning(
 		&ec2.DescribeInstancesInput{InstanceIds: []*string{id}})
 
-	return &murpc.CreateResponse{
+	return &cocorpc.CreateResponse{
 		Id: *id,
 	}, err
 }
 
 // Read reads the instance state identified by ID, returning a populated resource object, or an error if not found.
-func (p *instanceProvider) Read(ctx context.Context, req *murpc.ReadRequest) (*murpc.ReadResponse, error) {
+func (p *instanceProvider) Read(ctx context.Context, req *cocorpc.ReadRequest) (*cocorpc.ReadResponse, error) {
 	contract.Assert(req.GetType() == string(Instance))
 	return nil, errors.New("Not yet implemented")
 }
 
 // Update updates an existing resource with new values.  Only those values in the provided property bag are updated
 // to new values.  The resource ID is returned and may be different if the resource had to be recreated.
-func (p *instanceProvider) Update(ctx context.Context, req *murpc.UpdateRequest) (*murpc.UpdateResponse, error) {
+func (p *instanceProvider) Update(ctx context.Context, req *cocorpc.UpdateRequest) (*cocorpc.UpdateResponse, error) {
 	contract.Assert(req.GetType() == string(Instance))
 	return nil, errors.New("Not yet implemented")
 }
 
 // Delete tears down an existing resource with the given ID.  If it fails, the resource is assumed to still exist.
-func (p *instanceProvider) Delete(ctx context.Context, req *murpc.DeleteRequest) (*pbempty.Empty, error) {
+func (p *instanceProvider) Delete(ctx context.Context, req *cocorpc.DeleteRequest) (*pbempty.Empty, error) {
 	contract.Assert(req.GetType() == string(Instance))
 	id := aws.String(req.GetId())
 	delete := &ec2.TerminateInstancesInput{
@@ -113,7 +113,7 @@ func (p *instanceProvider) Delete(ctx context.Context, req *murpc.DeleteRequest)
 	if _, err := p.ctx.EC2().TerminateInstances(delete); err != nil {
 		return nil, err
 	}
-	fmt.Fprintf(os.Stdout, "EC2 instance termination request submitted; waiting for it to terminate\n", *id)
+	fmt.Fprintf(os.Stdout, "EC2 instance termination request submitted; waiting for it to terminate\n")
 	err := p.ctx.EC2().WaitUntilInstanceTerminated(
 		&ec2.DescribeInstancesInput{InstanceIds: []*string{id}})
 	return &pbempty.Empty{}, err

@@ -1,11 +1,11 @@
-// Copyright 2016 Marapongo, Inc. All rights reserved.
+// Copyright 2016 Pulumi, Inc. All rights reserved.
 
 package symbols
 
 import (
 	"sort"
 
-	"github.com/marapongo/mu/pkg/tokens"
+	"github.com/pulumi/coconut/pkg/tokens"
 )
 
 func StableClassMemberMap(cm ClassMemberMap) []tokens.ClassMemberName {

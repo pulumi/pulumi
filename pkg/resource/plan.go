@@ -1,12 +1,12 @@
-// Copyright 2016 Marapongo, Inc. All rights reserved.
+// Copyright 2016 Pulumi, Inc. All rights reserved.
 
 package resource
 
 import (
 	"github.com/golang/glog"
 
-	"github.com/marapongo/mu/pkg/graph"
-	"github.com/marapongo/mu/pkg/util/contract"
+	"github.com/pulumi/coconut/pkg/graph"
+	"github.com/pulumi/coconut/pkg/util/contract"
 )
 
 // TODO: concurrency.
@@ -240,7 +240,7 @@ func newUpdatePlan(ctx *Context, old Snapshot, new Snapshot) *plan {
 			// Add edge to:
 			//     - creates news
 			//     - updates news
-			// TODO[marapongo/mu#90]: we need to track "cascading updates".
+			// TODO[pulumi/coconut#90]: we need to track "cascading updates".
 			fromv := vs[m]
 			contract.Assert(fromv != nil)
 			for ref := range to.Properties().AllResources() {

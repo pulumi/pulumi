@@ -1,9 +1,9 @@
-// Copyright 2016 Marapongo, Inc. All rights reserved.
+// Copyright 2016 Pulumi, Inc. All rights reserved.
 
 package core
 
 import (
-	"github.com/marapongo/mu/pkg/diag"
+	"github.com/pulumi/coconut/pkg/diag"
 )
 
 // Phase represents a compiler phase.

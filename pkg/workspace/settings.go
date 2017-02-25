@@ -1,11 +1,11 @@
-// Copyright 2016 Marapongo, Inc. All rights reserved.
+// Copyright 2016 Pulumi, Inc. All rights reserved.
 
 package workspace
 
 import (
-	"github.com/marapongo/mu/pkg/config"
-	"github.com/marapongo/mu/pkg/diag"
-	"github.com/marapongo/mu/pkg/pack"
+	"github.com/pulumi/coconut/pkg/config"
+	"github.com/pulumi/coconut/pkg/diag"
+	"github.com/pulumi/coconut/pkg/pack"
 )
 
 // Workspace defines workspace settings shared amongst many related projects.

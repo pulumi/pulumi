@@ -1,14 +1,14 @@
-# Security
+# Coconut Security
 
-Mu's security concepts are inspired by [UNIX's security model](https://en.wikipedia.org/wiki/Unix_security) in addition
-to [AWS's IAM system](http://docs.aws.amazon.com/IAM/latest/UserGuide/id.html).
+Coconut's security concepts are inspired by [UNIX's security model](https://en.wikipedia.org/wiki/Unix_security) in
+addition to [AWS's IAM system](http://docs.aws.amazon.com/IAM/latest/UserGuide/id.html).
 
 ## Personas
 
-Mu's architecture is flexible enough to describe a range of scenarios -- from single- to multi-tenant -- and team sizes
--- from small developer teams doing DevOps to large Enterprise organizations with dedicated IT operations departments.
-Although the details for different points on this spectrum vary greatly, Mu attempts to choose smart defaults that
-encourage best practices like [defense in depth](
+Coconut's architecture is flexible enough to describe a range of scenarios -- from single- to multi-tenant -- and team
+sizes -- from small developer teams doing DevOps to large Enterprise organizations with dedicated IT operations
+departments. Although the details for different points on this spectrum vary greatly, Coconut attempts to choose smart
+defaults that encourage best practices like [defense in depth](
 https://en.wikipedia.org/wiki/Defense_in_depth_(computing)) and the [principle of least privilege](
 https://en.wikipedia.org/wiki/Principle_of_least_privilege).
 
@@ -69,7 +69,7 @@ TODO(joe): we still need to figure out the ACL "language" to use.  Perhaps just 
 
 TODO(joe): enforced credential rotations.
 
-TODO(joe): articulate how the mapping between Mu identity and cloud-provider identity works.
+TODO(joe): articulate how the mapping between Coconut identity and cloud-provider identity works.
 
 ## Secrets
 

@@ -1,9 +1,9 @@
-// Copyright 2016 Marapongo, Inc. All rights reserved.
+// Copyright 2016 Pulumi, Inc. All rights reserved.
 
 package symbols
 
 import (
-	"github.com/marapongo/mu/pkg/compiler/ast"
+	"github.com/pulumi/coconut/pkg/compiler/ast"
 )
 
 // Function is an interface common to all functions.

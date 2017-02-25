@@ -1,13 +1,13 @@
-// Copyright 2016 Marapongo, Inc. All rights reserved.
+// Copyright 2016 Pulumi, Inc. All rights reserved.
 
 package eval
 
 import (
-	"github.com/marapongo/mu/pkg/compiler/binder"
-	"github.com/marapongo/mu/pkg/compiler/symbols"
-	"github.com/marapongo/mu/pkg/compiler/types"
-	"github.com/marapongo/mu/pkg/eval/rt"
-	"github.com/marapongo/mu/pkg/util/contract"
+	"github.com/pulumi/coconut/pkg/compiler/binder"
+	"github.com/pulumi/coconut/pkg/compiler/symbols"
+	"github.com/pulumi/coconut/pkg/compiler/types"
+	"github.com/pulumi/coconut/pkg/eval/rt"
+	"github.com/pulumi/coconut/pkg/util/contract"
 )
 
 // localScope is a kind of scope that holds local variable values.

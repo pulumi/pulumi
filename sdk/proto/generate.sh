@@ -14,17 +14,17 @@
 # The results are checked into bin/; at this moment, they need to be copied to their final destinations manually.
 set -e
 
-GO_MURPC=../go/pkg/murpc
+GO_COCORPC=../go/pkg/cocorpc
 GO_PROTOFLAGS="plugins=grpc"
-JS_MURPC=../js/src/murpc
+JS_COCORPC=../js/src/cocorpc
 JS_PROTOFLAGS="import_style=commonjs,binary"
 
 echo Generating Protobuf/gRPC SDK files:
-echo \\tGo: $GO_MURPC [$GO_PROTOFLAGS]
-echo \\tJS: $JS_MURPC [$JS_PROTOFLAGS]
+echo \\tGo: $GO_COCORPC [$GO_PROTOFLAGS]
+echo \\tJS: $JS_COCORPC [$JS_PROTOFLAGS]
 
-mkdir -p $GO_MURPC $JS_MURPC
-protoc --go_out=$GO_PROTOFLAGS:$GO_MURPC --js_out=$JS_PROTOFLAGS:$JS_MURPC *.proto
+mkdir -p $GO_COCORPC $JS_COCORPC
+protoc --go_out=$GO_PROTOFLAGS:$GO_COCORPC --js_out=$JS_PROTOFLAGS:$JS_COCORPC *.proto
 
 echo Done.
 

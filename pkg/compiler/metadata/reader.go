@@ -1,24 +1,24 @@
-// Copyright 2016 Marapongo, Inc. All rights reserved.
+// Copyright 2016 Pulumi, Inc. All rights reserved.
 
 package metadata
 
 import (
 	"github.com/golang/glog"
 
-	"github.com/marapongo/mu/pkg/compiler/core"
-	"github.com/marapongo/mu/pkg/compiler/errors"
-	"github.com/marapongo/mu/pkg/diag"
-	"github.com/marapongo/mu/pkg/encoding"
-	"github.com/marapongo/mu/pkg/pack"
-	"github.com/marapongo/mu/pkg/util/contract"
-	"github.com/marapongo/mu/pkg/workspace"
+	"github.com/pulumi/coconut/pkg/compiler/core"
+	"github.com/pulumi/coconut/pkg/compiler/errors"
+	"github.com/pulumi/coconut/pkg/diag"
+	"github.com/pulumi/coconut/pkg/encoding"
+	"github.com/pulumi/coconut/pkg/pack"
+	"github.com/pulumi/coconut/pkg/util/contract"
+	"github.com/pulumi/coconut/pkg/workspace"
 )
 
 // Reader reads a document by decoding/parsing it into its AST form.
 type Reader interface {
 	core.Phase
 
-	// ReadPackage parses a MuPackage from the given document.  If an error occurs, the return value will be nil.  It
+	// ReadPackage parses a NutPack from the given document.  If an error occurs, the return value will be nil.  It
 	// is expected that errors are conveyed using the diag.Sink interface.
 	ReadPackage(doc *diag.Document) *pack.Package
 	// ReadWorkspace parses workspace settings from the given document.  If an error occurs, the return value will be
@@ -39,34 +39,34 @@ func (r *reader) Diag() diag.Sink {
 }
 
 func (r *reader) ReadPackage(doc *diag.Document) *pack.Package {
-	glog.Infof("Reading MuPackage: %v (len(body)=%v)", doc.File, len(doc.Body))
+	glog.Infof("Reading NutPack: %v (len(body)=%v)", doc.File, len(doc.Body))
 	contract.Assert(len(doc.Body) != 0)
 	if glog.V(2) {
-		defer glog.V(2).Infof("Reading MuPackage '%v' completed w/ %v warnings and %v errors",
+		defer glog.V(2).Infof("Reading NutPack '%v' completed w/ %v warnings and %v errors",
 			doc.File, r.Diag().Warnings(), r.Diag().Errors())
 	}
 
 	// We support many file formats.  Detect the file extension and deserialize the contents.
 	m, has := encoding.Marshalers[doc.Ext()]
-	contract.Assertf(has, "No marshaler registered for this Mufile extension: %v", doc.Ext())
+	contract.Assertf(has, "No marshaler registered for this Nutfile extension: %v", doc.Ext())
 	pkg, err := encoding.Decode(m, doc.Body)
 	if err != nil {
-		r.Diag().Errorf(errors.ErrorIllegalMufileSyntax.At(doc), err)
-		// TODO[marapongo/mu#14]: issue an error per issue found in the file with line/col numbers.
+		r.Diag().Errorf(errors.ErrorIllegalNutfileSyntax.At(doc), err)
+		// TODO[pulumi/coconut#14]: issue an error per issue found in the file with line/col numbers.
 		return nil
 	}
 
 	// Remember that this package came from this document.
 	pkg.Doc = doc
 
-	glog.V(3).Infof("MuPackage %v parsed: name=%v", doc.File, pkg.Name)
+	glog.V(3).Infof("NutPack %v parsed: name=%v", doc.File, pkg.Name)
 	return pkg
 }
 
 func (r *reader) ReadWorkspace(doc *diag.Document) *workspace.Workspace {
-	glog.Infof("Reading Muspace settings: %v (len(body)=%v)", doc.File, len(doc.Body))
+	glog.Infof("Reading Nutspace settings: %v (len(body)=%v)", doc.File, len(doc.Body))
 	if glog.V(2) {
-		defer glog.V(2).Infof("Reading Muspace settings '%v' completed w/ %v warnings and %v errors",
+		defer glog.V(2).Infof("Reading Nutspace settings '%v' completed w/ %v warnings and %v errors",
 			doc.File, r.Diag().Warnings(), r.Diag().Errors())
 	}
 
@@ -76,10 +76,10 @@ func (r *reader) ReadWorkspace(doc *diag.Document) *workspace.Workspace {
 	contract.Assertf(has, "No marshaler registered for this workspace extension: %v", doc.Ext())
 	if err := marshaler.Unmarshal(doc.Body, &w); err != nil {
 		r.Diag().Errorf(errors.ErrorIllegalWorkspaceSyntax.At(doc), err)
-		// TODO[marapongo/mu#14]: issue an error per issue found in the file with line/col numbers.
+		// TODO[pulumi/coconut#14]: issue an error per issue found in the file with line/col numbers.
 		return nil
 	}
-	glog.V(3).Infof("Muspace settings %v parsed: %v clusters; %v deps",
+	glog.V(3).Infof("Nutspace settings %v parsed: %v clusters; %v deps",
 		doc.File, len(w.Clusters), len(w.Dependencies))
 
 	// Remember that this workspace came from this document.

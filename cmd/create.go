@@ -1,4 +1,4 @@
-// Copyright 2016 Marapongo, Inc. All rights reserved.
+// Copyright 2016 Pulumi, Inc. All rights reserved.
 
 package cmd
 
@@ -16,12 +16,12 @@ func newCreateCmd() *cobra.Command {
 		Long: "Create a new environment and its resources.\n" +
 			"\n" +
 			"This command creates a new environment and its resources.  These resources are\n" +
-			"the result of compiling and evaluating a MuPackage blueprint, and then extracting\n" +
-			"all resource allocations from its MuGL graph.  This command results in a full snapshot\n" +
+			"the result of compiling and evaluating a Nut blueprint, and then extracting all\n" +
+			"resource allocations from its CocoGL graph.  This command results in a full snapshot\n" +
 			"of the environment's resource state, so that it may be updated incrementally later on.\n" +
 			"\n" +
-			"By default, the MuPackage blueprint is loaded from the current directory.  Optionally,\n" +
-			"a path to a MuPackage elsewhere can be provided as the [blueprint] argument.",
+			"By default, the Nut blueprint is loaded from the current directory.  Optionally,\n" +
+			"a path to a Nut elsewhere can be provided as the [blueprint] argument.",
 		Run: func(cmd *cobra.Command, args []string) {
 			apply(cmd, args, "", applyOptions{
 				Delete: false,

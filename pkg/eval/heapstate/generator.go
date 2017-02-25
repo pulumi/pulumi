@@ -1,19 +1,19 @@
-// Copyright 2016 Marapongo, Inc. All rights reserved.
+// Copyright 2016 Pulumi, Inc. All rights reserved.
 
-// Package heapstate turns MuIL object creation, assignment, etc. events into a MuGL object graph.
+// Package heapstate turns NutIL object creation, assignment, etc. events into a CocoGL object graph.
 package heapstate
 
 import (
 	"github.com/golang/glog"
 
-	"github.com/marapongo/mu/pkg/compiler/core"
-	"github.com/marapongo/mu/pkg/compiler/symbols"
-	"github.com/marapongo/mu/pkg/compiler/types"
-	"github.com/marapongo/mu/pkg/diag"
-	"github.com/marapongo/mu/pkg/eval"
-	"github.com/marapongo/mu/pkg/eval/rt"
-	"github.com/marapongo/mu/pkg/tokens"
-	"github.com/marapongo/mu/pkg/util/contract"
+	"github.com/pulumi/coconut/pkg/compiler/core"
+	"github.com/pulumi/coconut/pkg/compiler/symbols"
+	"github.com/pulumi/coconut/pkg/compiler/types"
+	"github.com/pulumi/coconut/pkg/diag"
+	"github.com/pulumi/coconut/pkg/eval"
+	"github.com/pulumi/coconut/pkg/eval/rt"
+	"github.com/pulumi/coconut/pkg/tokens"
+	"github.com/pulumi/coconut/pkg/util/contract"
 )
 
 // Generator listens for events, records them as graph vertices and edges, and returns a DAG afterwards.
@@ -86,7 +86,7 @@ func (g *generator) HeapSnapshot() *Heap {
 	}
 }
 
-// Graph takes the information recorded thus far and produces a new MuGL graph from it.
+// Graph takes the information recorded thus far and produces a new CocoGL graph from it.
 func (g *generator) Graph() *ObjectGraph {
 	glog.V(7).Infof("Generating graph with %v vertices", len(g.objs))
 

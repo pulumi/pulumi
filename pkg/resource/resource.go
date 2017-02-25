@@ -1,4 +1,4 @@
-// Copyright 2016 Marapongo, Inc. All rights reserved.
+// Copyright 2016 Pulumi, Inc. All rights reserved.
 
 package resource
 
@@ -7,16 +7,16 @@ import (
 
 	"github.com/golang/glog"
 
-	"github.com/marapongo/mu/pkg/compiler/symbols"
-	"github.com/marapongo/mu/pkg/compiler/types"
-	"github.com/marapongo/mu/pkg/compiler/types/predef"
-	"github.com/marapongo/mu/pkg/eval/heapstate"
-	"github.com/marapongo/mu/pkg/eval/rt"
-	"github.com/marapongo/mu/pkg/tokens"
-	"github.com/marapongo/mu/pkg/util/contract"
+	"github.com/pulumi/coconut/pkg/compiler/symbols"
+	"github.com/pulumi/coconut/pkg/compiler/types"
+	"github.com/pulumi/coconut/pkg/compiler/types/predef"
+	"github.com/pulumi/coconut/pkg/eval/heapstate"
+	"github.com/pulumi/coconut/pkg/eval/rt"
+	"github.com/pulumi/coconut/pkg/tokens"
+	"github.com/pulumi/coconut/pkg/util/contract"
 )
 
-// ID is a unique resource identifier; it is managed by the provider and is mostly opaque to Mu.
+// ID is a unique resource identifier; it is managed by the provider and is mostly opaque to Coconut.
 type ID string
 
 // Resource is an instance of a resource with an ID, type, and bag of state.
@@ -40,7 +40,7 @@ const (
 	StateUnknown
 )
 
-func IsResourceType(t symbols.Type) bool              { return types.HasBaseName(t, predef.MuResourceClass) }
+func IsResourceType(t symbols.Type) bool              { return types.HasBaseName(t, predef.CocoStdlibResourceClass) }
 func IsResourceVertex(v *heapstate.ObjectVertex) bool { return IsResourceType(v.Obj().Type()) }
 
 type resource struct {

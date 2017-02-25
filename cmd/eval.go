@@ -1,4 +1,4 @@
-// Copyright 2016 Marapongo, Inc. All rights reserved.
+// Copyright 2016 Pulumi, Inc. All rights reserved.
 
 package cmd
 
@@ -9,24 +9,24 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/marapongo/mu/pkg/compiler/core"
-	"github.com/marapongo/mu/pkg/eval/heapstate"
-	"github.com/marapongo/mu/pkg/graph"
-	"github.com/marapongo/mu/pkg/graph/dotconv"
-	"github.com/marapongo/mu/pkg/tokens"
+	"github.com/pulumi/coconut/pkg/compiler/core"
+	"github.com/pulumi/coconut/pkg/eval/heapstate"
+	"github.com/pulumi/coconut/pkg/graph"
+	"github.com/pulumi/coconut/pkg/graph/dotconv"
+	"github.com/pulumi/coconut/pkg/tokens"
 )
 
 func newEvalCmd() *cobra.Command {
 	var dotOutput bool
 	var cmd = &cobra.Command{
 		Use:   "eval [blueprint] [-- [args]]",
-		Short: "Evaluate a MuPackage and create its MuGL graph representation",
-		Long: "Evaluate a MuPackage and create its MuGL graph representation.\n" +
+		Short: "Evaluate a Nut and create its CocoGL graph representation",
+		Long: "Evaluate a Nut and create its CocoGL graph representation.\n" +
 			"\n" +
 			"A graph is a topologically sorted directed-acyclic-graph (DAG), representing a\n" +
 			"collection of resources that may be used in a deployment operation like plan or apply.\n" +
-			"This graph is produced by evaluating the contents of a Mu blueprint package, and\n" +
-			"does not actually perform any updates to the target environment.\n" +
+			"This graph is produced by evaluating the contents of a Nut blueprint, and does not\n" +
+			"actually perform any updates to the target environment.\n" +
 			"\n" +
 			"By default, a blueprint package is loaded from the current directory.  Optionally,\n" +
 			"a path to a blueprint elsewhere can be provided as the [blueprint] argument.",
@@ -75,7 +75,7 @@ func printVertex(v *heapstate.ObjectVertex, shown map[graph.Vertex]bool, indent 
 }
 
 // dashdashArgsToMap is a simple args parser that places incoming key/value pairs into a map.  These are then used
-// during MuPackage compilation as inputs to the main entrypoint function.
+// during Nut compilation as inputs to the main entrypoint function.
 // TODO: this is fairly rudimentary; we eventually want to support arrays, maps, and complex types.
 func dashdashArgsToMap(args []string) core.Args {
 	mapped := make(core.Args)

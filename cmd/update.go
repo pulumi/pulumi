@@ -1,4 +1,4 @@
-// Copyright 2016 Marapongo, Inc. All rights reserved.
+// Copyright 2016 Pulumi, Inc. All rights reserved.
 
 package cmd
 
@@ -17,13 +17,13 @@ func newUpdateCmd() *cobra.Command {
 			"\n" +
 			"This command updates an existing environment whose state is represented by the\n" +
 			"existing snapshot file.  The new desired state is computed by compiling and evaluating\n" +
-			"a MuPackage blueprint, and extracting all resource allocations from its MuGL graph.\n" +
+			"a Nut blueprint, and extracting all resource allocations from its CocoGL graph.\n" +
 			"This is then compared against the existing state to determine what operations must take\n" +
 			"place to achieve the desired state.  This command results in a full snapshot of the\n" +
 			"environment's new resource state, so that it may be updated incrementally again later.\n" +
 			"\n" +
-			"By default, the MuPackage blueprint is loaded from the current directory.  Optionally,\n" +
-			"a path to a MuPackage elsewhere can be provided as the [blueprint] argument.",
+			"By default, the Nut blueprint is loaded from the current directory.  Optionally,\n" +
+			"a path to a Nut elsewhere can be provided as the [blueprint] argument.",
 		Run: func(cmd *cobra.Command, args []string) {
 			applyExisting(cmd, args, applyOptions{
 				Delete: false,

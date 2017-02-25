@@ -1,4 +1,4 @@
-// Copyright 2016 Marapongo, Inc. All rights reserved.
+// Copyright 2016 Pulumi, Inc. All rights reserved.
 
 package cmd
 
@@ -9,11 +9,11 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/marapongo/mu/pkg/compiler/ast"
-	"github.com/marapongo/mu/pkg/pack"
-	"github.com/marapongo/mu/pkg/tokens"
-	"github.com/marapongo/mu/pkg/util/cmdutil"
-	"github.com/marapongo/mu/pkg/util/contract"
+	"github.com/pulumi/coconut/pkg/compiler/ast"
+	"github.com/pulumi/coconut/pkg/pack"
+	"github.com/pulumi/coconut/pkg/tokens"
+	"github.com/pulumi/coconut/pkg/util/cmdutil"
+	"github.com/pulumi/coconut/pkg/util/contract"
 )
 
 func newDescribeCmd() *cobra.Command {
@@ -23,8 +23,8 @@ func newDescribeCmd() *cobra.Command {
 	var printExportedSymbols bool
 	var cmd = &cobra.Command{
 		Use:   "describe [packages...]",
-		Short: "Describe a MuPackage",
-		Long:  "Describe prints package, symbol, and IL information from one or more MuPackages.",
+		Short: "Describe a Nut",
+		Long:  "Describe prints package, symbol, and IL information from one or more Nuts.",
 		Run: func(cmd *cobra.Command, args []string) {
 			// If printAll is true, flip all the flags.
 			if printAll {
@@ -46,13 +46,13 @@ func newDescribeCmd() *cobra.Command {
 
 	cmd.PersistentFlags().BoolVarP(
 		&printSymbols, "all", "a", false,
-		"Print everything: the package, symbols, and MuIL")
+		"Print everything: the package, symbols, and NutIL")
 	cmd.PersistentFlags().BoolVarP(
 		&printExportedSymbols, "exports", "e", false,
 		"Print just the exported symbols")
 	cmd.PersistentFlags().BoolVarP(
 		&printIL, "il", "i", false,
-		"Pretty-print the MuIL")
+		"Pretty-print the NutIL")
 	cmd.PersistentFlags().BoolVarP(
 		&printSymbols, "symbols", "s", false,
 		"Print a complete listing of all symbols, exported or otherwise")
