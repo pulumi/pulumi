@@ -71,7 +71,7 @@ debug-level logging, greater than 5 is going to be quite verbose, and anything b
 
 For example, the command
 
-    $ coco eval Cocopack.yaml --logtostderr -v=5
+    $ coco eval Nutpack.yaml --logtostderr -v=5
 
 is a pretty standard starting point during debugging that will show a fairly comprehensive trace log of a compilation.
 
