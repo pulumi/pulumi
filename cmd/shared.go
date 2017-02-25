@@ -25,6 +25,7 @@ import (
 	"github.com/marapongo/mu/pkg/tokens"
 	"github.com/marapongo/mu/pkg/util/cmdutil"
 	"github.com/marapongo/mu/pkg/util/contract"
+	"github.com/marapongo/mu/pkg/util/mapper"
 	"github.com/marapongo/mu/pkg/workspace"
 )
 
@@ -159,7 +160,9 @@ type planResult struct {
 
 func apply(cmd *cobra.Command, args []string, existing string, opts applyOptions) {
 	if result := plan(cmd, args, existing, opts.Delete); result != nil {
-		if opts.DryRun {
+		if result.Plan.Empty() {
+			sink().Infof(diag.Message("nothing to do -- resources are up to date"))
+		} else if opts.DryRun {
 			// If no output file was requested, or "-", print to stdout; else write to that file.
 			if opts.Output == "" || opts.Output == "-" {
 				printPlan(result.Plan, opts.Detail)
@@ -250,23 +253,41 @@ func deleteSnapshot(file string) {
 
 // readSnapshot reads in an existing snapshot file, issuing an error and returning nil if something goes awry.
 func readSnapshot(ctx *resource.Context, file string) resource.Snapshot {
+	// Detect the encoding of the file so we can do our initial unmarshaling.
 	m, ext := encoding.Detect(file)
 	if m == nil {
 		sink().Errorf(errors.ErrorIllegalMarkupExtension, ext)
 		return nil
 	}
 
+	// Now read the whole file into a byte blog.
 	b, err := ioutil.ReadFile(file)
 	if err != nil {
 		sink().Errorf(errors.ErrorIO, err)
 		return nil
 	}
 
+	// Deserialize the contents into a snapshot.
 	var snap resource.MuglSnapshot
 	if err = m.Unmarshal(b, &snap); err != nil {
 		sink().Errorf(errors.ErrorCantReadSnapshot, file, err)
 		return nil
 	}
+
+	// Next, use the mapping infrastructure to validate the contents.
+	var obj mapper.Object
+	if err = m.Unmarshal(b, &obj); err != nil {
+		sink().Errorf(errors.ErrorCantReadSnapshot, file, err)
+		return nil
+	} else {
+		delete(obj, "resources") // remove the resources, since they require custom marshaling.
+		md := mapper.New(nil)
+		if err = md.Decode(obj, &snap); err != nil {
+			sink().Errorf(errors.ErrorCantReadSnapshot, file, err)
+			return nil
+		}
+	}
+
 	return resource.DeserializeSnapshot(ctx, &snap)
 }
 
@@ -470,9 +491,15 @@ func printObject(b *bytes.Buffer, props resource.PropertyMap, indent string) {
 
 	// Now print out the values intelligently based on the type.
 	for _, k := range keys {
-		printPropertyTitle(b, k, maxkey, indent)
-		printPropertyValue(b, props[k], indent)
+		if v := props[k]; shouldPrintPropertyValue(v) {
+			printPropertyTitle(b, k, maxkey, indent)
+			printPropertyValue(b, v, indent)
+		}
 	}
+}
+
+func shouldPrintPropertyValue(v resource.PropertyValue) bool {
+	return !v.IsNull() // by default, don't print nulls (they just clutter up the output)
 }
 
 func printPropertyTitle(b *bytes.Buffer, k resource.PropertyKey, align int, indent string) {
@@ -481,7 +508,7 @@ func printPropertyTitle(b *bytes.Buffer, k resource.PropertyKey, align int, inde
 
 func printPropertyValue(b *bytes.Buffer, v resource.PropertyValue, indent string) {
 	if v.IsNull() {
-		b.WriteString("<nil>")
+		b.WriteString("<null>")
 	} else if v.IsBool() {
 		b.WriteString(fmt.Sprintf("%t", v.BoolValue()))
 	} else if v.IsNumber() {
@@ -542,18 +569,22 @@ func printObjectDiff(b *bytes.Buffer, diff resource.ObjectDiff, indent string) {
 	for _, k := range keys {
 		title := func(id string) { printPropertyTitle(b, k, maxkey, id) }
 		if add, isadd := diff.Adds[k]; isadd {
-			b.WriteString(colors.SpecAdded)
-			title(addIndent(indent))
-			printPropertyValue(b, add, addIndent(indent))
-			b.WriteString(colors.Reset)
+			if shouldPrintPropertyValue(add) {
+				b.WriteString(colors.SpecAdded)
+				title(addIndent(indent))
+				printPropertyValue(b, add, addIndent(indent))
+				b.WriteString(colors.Reset)
+			}
 		} else if delete, isdelete := diff.Deletes[k]; isdelete {
-			b.WriteString(colors.SpecDeleted)
-			title(deleteIndent(indent))
-			printPropertyValue(b, delete, deleteIndent(indent))
-			b.WriteString(colors.Reset)
+			if shouldPrintPropertyValue(delete) {
+				b.WriteString(colors.SpecDeleted)
+				title(deleteIndent(indent))
+				printPropertyValue(b, delete, deleteIndent(indent))
+				b.WriteString(colors.Reset)
+			}
 		} else if update, isupdate := diff.Updates[k]; isupdate {
 			printPropertyValueDiff(b, title, update, indent)
-		} else {
+		} else if same := diff.Sames[k]; shouldPrintPropertyValue(same) {
 			title(indent)
 			printPropertyValue(b, diff.Sames[k], indent)
 		}
@@ -587,25 +618,28 @@ func printPropertyValueDiff(b *bytes.Buffer, title func(string), diff resource.V
 				printPropertyValue(b, a.Sames[i], newIndent)
 			}
 		}
-		b.WriteString(fmt.Sprintf("%s]", indent))
+		b.WriteString(fmt.Sprintf("%s]\n", indent))
 	} else if diff.Object != nil {
 		title(indent)
 		b.WriteString("{\n")
 		printObjectDiff(b, *diff.Object, indent+"    ")
-		b.WriteString(fmt.Sprintf("%s}", indent))
+		b.WriteString(fmt.Sprintf("%s}\n", indent))
 	} else {
 		// If we ended up here, the two values either differ by type, or they have different primitive values.  We will
 		// simply emit a deletion line followed by an addition line.
-		b.WriteString(colors.SpecChanged)
-		title(deleteIndent(indent))
-		printPropertyValue(b, diff.Old, deleteIndent(indent))
-		b.WriteString("\n")
-		title(addIndent(indent))
-		printPropertyValue(b, diff.New, addIndent(indent))
-		b.WriteString(colors.Reset)
+		if shouldPrintPropertyValue(diff.Old) {
+			b.WriteString(colors.SpecChanged)
+			title(deleteIndent(indent))
+			printPropertyValue(b, diff.Old, deleteIndent(indent))
+			b.WriteString(fmt.Sprintf("%s\n", colors.Reset))
+		}
+		if shouldPrintPropertyValue(diff.New) {
+			b.WriteString(colors.SpecChanged)
+			title(addIndent(indent))
+			printPropertyValue(b, diff.New, addIndent(indent))
+			b.WriteString(fmt.Sprintf("%s\n", colors.Reset))
+		}
 	}
-
-	b.WriteString("\n")
 }
 
 func addIndent(indent string) string    { return indent[:len(indent)-2] + "+ " }

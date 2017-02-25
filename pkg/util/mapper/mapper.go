@@ -16,6 +16,9 @@ type Mapper interface {
 }
 
 func New(customDecoders map[reflect.Type]Decoder) Mapper {
+	if customDecoders == nil {
+		customDecoders = make(map[reflect.Type]Decoder)
+	}
 	return &mapper{customDecoders}
 }
 
