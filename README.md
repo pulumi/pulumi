@@ -19,6 +19,14 @@ It is common to alias the shorter command `coco` to the full binary `coconut`:
 
 At this moment, libraries must be manually installed.  See below.  Eventually we will have an installer.
 
+## Compilers
+
+The Coconut compilers are independent from the core Coconut tools.
+
+Please see the respective pages for details on how to install, build, and test each compiler:
+
+* [CoconutJS](tools/cocojs/README.md)
+
 ## Development
 
 This section is for Coconut developers.
@@ -40,11 +48,6 @@ To build Coconut, ensure `GOPATH` is set, and clone into a standard Go workspace
 
     $ git clone git@github.com:pulumi/coconut $GOPATH/src/github.com/pulumi/coconut
 
-Coconut needs to know where to look for its runtime, library, etc.  By default, it will look in `/usr/local/coconut`,
-however you can override this with the `COCOPATH` variable.  Normally it's easiest just to create a symlink:
-
-    $ ln -s $GOPATH/src/github.com/pulumi/coconut /usr/local/coconut
-
 There is one additional build-time dependency, `golint`, which can be installed using:
 
     $ go get -u github.com/golang/lint/golint
@@ -61,14 +64,16 @@ At this point you should be able to build and run tests from the root directory:
 
 This installs the `coco` binary into `$GOPATH/bin`, which may now be run provided `make` exited successfully.
 
-## Compilers
+### Installing the Runtime Libraries
 
-The Coconut compilers are built and tested independently from `coco` and its runtime written in Go.  Please see
-the respective pages for details on this process for each compiler:
+Coconut needs to know where to look for its runtime, library, etc.  By default, it will look in `/usr/local/coconut`,
+however you can override this with the `COCOPATH` variable.  Normally it's easiest just to create a symlink:
 
-* [CoconutJS](tools/cocojs/README.md)
+    $ ln -s $GOPATH/src/github.com/pulumi/coconut /usr/local/coconut
 
-## Debugging
+Please refer to the [libraries README](libs/README.md) for additional details on the development setup.
+
+### Debugging
 
 The Coconut tools have extensive logging built in.  In fact, we encourage liberal logging in new code, and addding new
 logging when debugging problems.  This helps to ensure future debugging endeavors benefit from your sleuthing.
