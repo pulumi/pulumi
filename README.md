@@ -4,10 +4,6 @@ Coconut is a framework and toolset for creating reusable stacks of services.
 
 If you are learning about Coconut for the first time, please see [the overview document](docs/overview.md).
 
-## Architecture
-
-![Architecture](docs/images/arch.png)
-
 ## Prerequisites
 
 Coconut is written in Go and uses Glide for dependency management.  They must be installed:
