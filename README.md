@@ -4,7 +4,26 @@ Coconut is a framework and toolset for creating reusable stacks of services.
 
 If you are learning about Coconut for the first time, please see [the overview document](docs/overview.md).
 
-## Prerequisites
+## Installing
+
+To install Coconut from source, simply run:
+
+    $ go get -u github.com/pulumi/coconut
+
+A `GOPATH` must be set.  A good default value is `~/go`.  In fact, [this is the default in Go 1.8](
+https://github.com/golang/go/issues/17262).
+
+It is common to alias the shorter command `coco` to the full binary `coconut`:
+
+    alias coco=coconut
+
+At this moment, libraries must be manually installed.  See below.  Eventually we will have an installer.
+
+## Development
+
+This section is for Coconut developers.
+
+### Prerequisites
 
 Coconut is written in Go and uses Glide for dependency management.  They must be installed:
 
@@ -13,16 +32,13 @@ Coconut is written in Go and uses Glide for dependency management.  They must be
 
 If you wish to use the optional `lint` make target, you'll also need to install Golint:
 
-* `go get -u github.com/golang/lint/golint`
+    $ go get -u github.com/golang/lint/golint
 
-## Building and Testing
+### Building and Testing
 
-To build Coconut, first clone it into a standard Go workspace:
+To build Coconut, ensure `GOPATH` is set, and clone into a standard Go workspace:
 
-    $ mkdir -p $GOPATH/src/github.com/pulumi
     $ git clone git@github.com:pulumi/coconut $GOPATH/src/github.com/pulumi/coconut
-
-A good default value for `GOPATH` is `~/go`.
 
 Coconut needs to know where to look for its runtime, library, etc.  By default, it will look in `/usr/local/coconut`,
 however you can override this with the `COCOPATH` variable.  Normally it's easiest just to create a symlink:
@@ -67,7 +83,7 @@ debug-level logging, greater than 5 is going to be quite verbose, and anything b
 
 For example, the command
 
-    $ coco eval Nutpack.yaml --logtostderr -v=5
+    $ coco eval --logtostderr -v=5
 
 is a pretty standard starting point during debugging that will show a fairly comprehensive trace log of a compilation.
 
