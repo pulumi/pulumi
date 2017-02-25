@@ -7,8 +7,8 @@ import (
 )
 
 func newCreateCmd() *cobra.Command {
-	var detail bool
 	var dryRun bool
+	var summary bool
 	var output string
 	var cmd = &cobra.Command{
 		Use:   "create [blueprint] [-- [args]]",
@@ -24,20 +24,20 @@ func newCreateCmd() *cobra.Command {
 			"a path to a Nut elsewhere can be provided as the [blueprint] argument.",
 		Run: func(cmd *cobra.Command, args []string) {
 			apply(cmd, args, "", applyOptions{
-				Delete: false,
-				Detail: detail,
-				DryRun: dryRun,
-				Output: output,
+				Delete:  false,
+				DryRun:  dryRun,
+				Summary: summary,
+				Output:  output,
 			})
 		},
 	}
 
 	cmd.PersistentFlags().BoolVarP(
-		&detail, "all", "a", false,
-		"Display detailed output during the application of changes")
-	cmd.PersistentFlags().BoolVarP(
 		&dryRun, "dry-run", "n", false,
 		"Don't actually create resources; just print out the planned creations")
+	cmd.PersistentFlags().BoolVarP(
+		&summary, "summary", "s", false,
+		"Only display summarization of resources and plan operations")
 	cmd.PersistentFlags().StringVarP(
 		&output, "output", "o", "",
 		"Serialize the resulting snapshot to a specific file, instead of the standard location")

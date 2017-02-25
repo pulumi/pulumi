@@ -165,14 +165,14 @@ func apply(cmd *cobra.Command, args []string, existing string, opts applyOptions
 		} else if opts.DryRun {
 			// If no output file was requested, or "-", print to stdout; else write to that file.
 			if opts.Output == "" || opts.Output == "-" {
-				printPlan(result.Plan, opts.Detail)
+				printPlan(result.Plan, opts.Summary)
 			} else {
 				saveSnapshot(result.Snap, opts.Output)
 			}
 		} else {
 			// Create an object to track progress and perform the actual operations.
 			start := time.Now()
-			progress := newProgress(opts.Detail)
+			progress := newProgress(opts.Summary)
 			if err, _, _ := result.Plan.Apply(progress); err != nil {
 				// TODO: we want richer diagnostics in the event that a plan apply fails.  For instance, we want to
 				//     know precisely what step failed, we want to know whether it was catastrophic, etc.  We also
@@ -322,10 +322,10 @@ func saveSnapshot(snap resource.Snapshot, file string) {
 }
 
 type applyOptions struct {
-	Delete bool   // true if we are deleting resources.
-	DryRun bool   // true if we should just print the plan without performing it.
-	Detail bool   // true if we should print detailed information about resources and operations.
-	Output string // the place to store the output, if any.
+	Delete  bool   // true if we are deleting resources.
+	DryRun  bool   // true if we should just print the plan without performing it.
+	Summary bool   // true if we should only summarize resources and operations.
+	Output  string // the place to store the output, if any.
 }
 
 // applyProgress pretty-prints the plan application process as it goes.
@@ -333,14 +333,14 @@ type applyProgress struct {
 	Steps        int
 	Ops          map[resource.StepOp]int
 	MaybeCorrupt bool
-	Detail       bool
+	Summary      bool
 }
 
-func newProgress(detailed bool) *applyProgress {
+func newProgress(summary bool) *applyProgress {
 	return &applyProgress{
-		Steps:  0,
-		Ops:    make(map[resource.StepOp]int),
-		Detail: detailed,
+		Steps:   0,
+		Ops:     make(map[resource.StepOp]int),
+		Summary: summary,
 	}
 }
 
@@ -349,7 +349,7 @@ func (prog *applyProgress) Before(step resource.Step) {
 	var b bytes.Buffer
 	stepnum := prog.Steps + 1
 	b.WriteString(fmt.Sprintf("Applying step #%v [%v]\n", stepnum, step.Op()))
-	printStep(&b, step, !prog.Detail, "    ")
+	printStep(&b, step, prog.Summary, "    ")
 	s := colors.Colorize(b.String())
 	fmt.Printf(s)
 }
@@ -382,14 +382,14 @@ func (prog *applyProgress) After(step resource.Step, err error, state resource.R
 	}
 }
 
-func printPlan(plan resource.Plan, detailed bool) {
+func printPlan(plan resource.Plan, summary bool) {
 	// Now walk the plan's steps and and pretty-print them out.
 	step := plan.Steps()
 	for step != nil {
 		var b bytes.Buffer
 
 		// Print this step information (resource and all its properties).
-		printStep(&b, step, detailed, "")
+		printStep(&b, step, summary, "")
 
 		// Now go ahead and emit the output to the console, and move on to the next step in the plan.
 		// TODO: it would be nice if, in the output, we showed the dependencies a la `git log --graph`.
@@ -423,14 +423,14 @@ func opSuffix(op resource.StepOp) string {
 
 const resourceDetailsIndent = "      " // 4 spaces, plus space for "+ ", "- ", and " " leaders
 
-func printStep(b *bytes.Buffer, step resource.Step, details bool, indent string) {
+func printStep(b *bytes.Buffer, step resource.Step, summary bool, indent string) {
 	// First print out the operation's prefix.
 	b.WriteString(opPrefix(step.Op()))
 
 	// Next print the resource moniker, properties, etc.
 	printResourceHeader(b, step.Old(), step.New(), indent)
 	b.WriteString(opSuffix(step.Op()))
-	printResourceProperties(b, step.Old(), step.New(), details, indent)
+	printResourceProperties(b, step.Old(), step.New(), summary, indent)
 
 	// Finally make sure to reset the color.
 	b.WriteString(colors.Reset)
@@ -449,7 +449,7 @@ func printResourceHeader(b *bytes.Buffer, old resource.Resource, new resource.Re
 }
 
 func printResourceProperties(b *bytes.Buffer, old resource.Resource, new resource.Resource,
-	details bool, indent string) {
+	summary bool, indent string) {
 	indent += resourceDetailsIndent
 
 	// Print out the moniker and, if present, the ID, as "pseudo-properties".
@@ -467,7 +467,7 @@ func printResourceProperties(b *bytes.Buffer, old resource.Resource, new resourc
 	}
 	b.WriteString(fmt.Sprintf("%s[mk=%s]\n", indent, string(moniker)))
 
-	if details {
+	if !summary {
 		// Print all of the properties associated with this resource.
 		if old == nil && new != nil {
 			printObject(b, new.Properties(), indent)
