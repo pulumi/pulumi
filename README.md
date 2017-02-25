@@ -44,7 +44,7 @@ If you wish to use the optional `lint` make target, you'll also need to install 
 
 ### Building and Testing
 
-To build Coconut, ensure `GOPATH` is set, and clone into a standard Go workspace:
+To build Coconut, ensure `$GOPATH` is set, and clone into a standard Go workspace:
 
     $ git clone git@github.com:pulumi/coconut $GOPATH/src/github.com/pulumi/coconut
 
@@ -58,12 +58,8 @@ This installs the `coconut` binary into `$GOPATH/bin`, which may now be run prov
 
 ### Installing the Runtime Libraries
 
-Coconut needs to know where to look for its runtime, library, etc.  By default, it will look in `/usr/local/coconut`,
-however you can override this with the `COCOPATH` variable.  Normally it's easiest just to create a symlink:
-
-    $ ln -s $GOPATH/src/github.com/pulumi/coconut /usr/local/coconut
-
-Please refer to the [libraries README](libs/README.md) for additional details on the development setup.
+By default, Coconut looks for its runtime libraries underneath `/usr/local/coconut`.  `$COCOPATH` overrides this.
+Please refer to the [libraries README](libs/README.md) for details on additional installation requirements.
 
 ### Debugging
 
