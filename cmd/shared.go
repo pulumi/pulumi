@@ -348,7 +348,7 @@ func (prog *applyProgress) Before(step resource.Step) {
 	// Print the step.
 	var b bytes.Buffer
 	stepnum := prog.Steps + 1
-	b.WriteString(fmt.Sprintf("Applying step #%v\n", stepnum))
+	b.WriteString(fmt.Sprintf("Applying step #%v [%v]\n", stepnum, step.Op()))
 	printStep(&b, step, !prog.Detail, "    ")
 	s := colors.Colorize(b.String())
 	fmt.Printf(s)
@@ -363,7 +363,7 @@ func (prog *applyProgress) After(step resource.Step, err error, state resource.R
 		var b bytes.Buffer
 		// Print the state of the resource; we don't issue the error, because the apply above will do that.
 		stepnum := prog.Steps + 1
-		b.WriteString(fmt.Sprintf("Step #%v failed: ", stepnum))
+		b.WriteString(fmt.Sprintf("Step #%v failed [%v]: ", stepnum, step.Op()))
 		switch state {
 		case resource.StateOK:
 			b.WriteString(colors.SpecNote)
@@ -465,7 +465,7 @@ func printResourceProperties(b *bytes.Buffer, old resource.Resource, new resourc
 	if id != "" {
 		b.WriteString(fmt.Sprintf("%s[id=%s]\n", indent, string(id)))
 	}
-	b.WriteString(fmt.Sprintf("%s[m=%s]\n", indent, string(moniker)))
+	b.WriteString(fmt.Sprintf("%s[mk=%s]\n", indent, string(moniker)))
 
 	if details {
 		// Print all of the properties associated with this resource.

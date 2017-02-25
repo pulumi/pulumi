@@ -38,13 +38,13 @@ type Step interface {
 }
 
 // StepOp represents the kind of operation performed by this step.
-type StepOp int
+type StepOp string
 
 const (
-	OpCreate StepOp = iota
-	OpRead
-	OpUpdate
-	OpDelete
+	OpCreate StepOp = "create"
+	OpRead          = "read"
+	OpUpdate        = "update"
+	OpDelete        = "delete"
 )
 
 // NewCreatePlan creates a plan for instantiating a new snapshot from scratch.
