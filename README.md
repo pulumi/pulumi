@@ -48,21 +48,13 @@ To build Coconut, ensure `GOPATH` is set, and clone into a standard Go workspace
 
     $ git clone git@github.com:pulumi/coconut $GOPATH/src/github.com/pulumi/coconut
 
-There is one additional build-time dependency, `golint`, which can be installed using:
-
-    $ go get -u github.com/golang/lint/golint
-
-And placed on your path by:
-
-    $ export PATH=$PATH:$GOPATH/bin
-
 At this point you should be able to build and run tests from the root directory:
 
     $ cd $GOPATH/src/github.com/pulumi/coconut
     $ glide update
     $ make
 
-This installs the `coco` binary into `$GOPATH/bin`, which may now be run provided `make` exited successfully.
+This installs the `coconut` binary into `$GOPATH/bin`, which may now be run provided `make` exited successfully.
 
 ### Installing the Runtime Libraries
 
