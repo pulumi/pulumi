@@ -123,6 +123,8 @@ func plan(cmd *cobra.Command, args []string, existfn string, delete bool) *planR
 		if err != nil {
 			result.C.Diag().Errorf(errors.ErrorCantCreateSnapshot, err)
 			return nil
+		} else if !ctx.Diag.Success() {
+			return nil
 		}
 
 		var plan resource.Plan

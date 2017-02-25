@@ -87,7 +87,7 @@ func isFunction(intrin *Intrinsic, e *evaluator, this *rt.Object, args []*rt.Obj
 	contract.Assert(this == nil)    // module function
 	contract.Assert(len(args) == 1) // just one arg: the object to inquire about functionness
 	_, isfunc := args[0].Type().(*symbols.FunctionType)
-	ret := e.alloc.NewBool(isfunc)
+	ret := e.alloc.NewBool(intrin.Node, isfunc)
 	return rt.NewReturnUnwind(ret)
 }
 

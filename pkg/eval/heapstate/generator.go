@@ -9,6 +9,7 @@ import (
 	"github.com/marapongo/mu/pkg/compiler/core"
 	"github.com/marapongo/mu/pkg/compiler/symbols"
 	"github.com/marapongo/mu/pkg/compiler/types"
+	"github.com/marapongo/mu/pkg/diag"
 	"github.com/marapongo/mu/pkg/eval"
 	"github.com/marapongo/mu/pkg/eval/rt"
 	"github.com/marapongo/mu/pkg/tokens"
@@ -54,6 +55,7 @@ type ObjectDepends map[*rt.Object]ObjectCounts
 type ObjectAllocs map[*rt.Object]AllocInfo
 
 type AllocInfo struct {
+	Loc diag.Diagable    // the location information for the allocation.
 	Pkg *symbols.Package // the package being evaluated when the allocation happened.
 	Mod *symbols.Module  // the module being evaluated when the allocation happened.
 	Fnc symbols.Function // the function being evaluated when the allocation happened.
@@ -118,7 +120,7 @@ func (g *generator) Graph() *ObjectGraph {
 }
 
 // OnNewObject is called whenever a new object has been allocated.
-func (g *generator) OnNewObject(o *rt.Object) {
+func (g *generator) OnNewObject(tree diag.Diagable, o *rt.Object) {
 	contract.Assert(o != nil)
 	glog.V(9).Infof("GraphGenerator OnNewObject t=%v, o=%v", o.Type(), o)
 
@@ -133,6 +135,7 @@ func (g *generator) OnNewObject(o *rt.Object) {
 	if _, has := g.objs[o]; !has {
 		g.objs[o] = make(ObjectCounts) // dependencies start out empty.
 		g.allocs[o] = AllocInfo{
+			Loc: tree,
 			Pkg: g.currPkg,
 			Mod: g.currMod,
 			Fnc: g.currFnc,
@@ -141,7 +144,8 @@ func (g *generator) OnNewObject(o *rt.Object) {
 }
 
 // OnVariableAssign is called whenever a property has been (re)assigned; it receives both the old and new values.
-func (g *generator) OnVariableAssign(o *rt.Object, name tokens.Name, old *rt.Object, nw *rt.Object) {
+func (g *generator) OnVariableAssign(tree diag.Diagable, o *rt.Object, name tokens.Name,
+	old *rt.Object, nw *rt.Object) {
 	glog.V(9).Infof("GraphGenerator OnVariableAssign %v.%v=%v (old=%v)", o, name, nw, old)
 
 	// Unconditionally track all object dependencies.

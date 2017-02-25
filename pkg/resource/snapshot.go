@@ -6,6 +6,7 @@ import (
 	"github.com/golang/glog"
 
 	"github.com/marapongo/mu/pkg/compiler/core"
+	"github.com/marapongo/mu/pkg/compiler/errors"
 	"github.com/marapongo/mu/pkg/eval/heapstate"
 	"github.com/marapongo/mu/pkg/eval/rt"
 	"github.com/marapongo/mu/pkg/graph"
@@ -99,13 +100,20 @@ func createResources(ctx *Context, ns Namespace, heap *heapstate.Heap, resobjs [
 		}
 
 		// Now compute a unique moniker for this object and ensure we haven't had any collisions.
-		moniker := NewMoniker(ns, heap.Alloc(resobj).Mod.Tok, t, name)
+		alloc := heap.Alloc(resobj)
+		moniker := NewMoniker(ns, alloc.Mod.Tok, t, name)
 		glog.V(7).Infof("Resource moniker computed: %v", moniker)
-		contract.Assertf(ctx.MksRes[moniker] == nil, "Unexpected resource moniker collision: %v", moniker)
-		res.SetMoniker(moniker)
-		ctx.ObjRes[resobj] = res
-		ctx.MksRes[moniker] = res
-		ctx.ObjMks[resobj] = moniker
+		if _, exists := ctx.MksRes[moniker]; exists {
+			// If this moniker is already in use, issue an error, ignore this one, and break.  The break is necessary
+			// because subsequent resources might contain references to this moniker and would fail to find it.
+			ctx.Diag.Errorf(errors.ErrorDuplicateMonikerNames.At(alloc.Loc), moniker)
+			break
+		} else {
+			res.SetMoniker(moniker)
+			ctx.ObjRes[resobj] = res
+			ctx.MksRes[moniker] = res
+			ctx.ObjMks[resobj] = moniker
+		}
 		resources = append(resources, res)
 	}
 	return resources, nil

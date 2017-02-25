@@ -10,4 +10,5 @@ var (
 	ErrorPlanApplyFailed        = newError(2003, "Plan apply failed: %v")
 	ErrorIllegalMarkupExtension = newError(2004, "Resource serialization failed; illegal markup extension '%v'")
 	ErrorCantReadSnapshot       = newError(2005, "Could not read snapshot file '%v': %v")
+	ErrorDuplicateMonikerNames  = newError(2006, "Duplicate objects with the same name: %v")
 )
