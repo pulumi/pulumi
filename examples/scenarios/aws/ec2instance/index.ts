@@ -1,4 +1,4 @@
-import { InternetGateway, Instance, SecurityGroup } from '@mu/aws/ec2';
+import { InternetGateway, Instance, SecurityGroup } from '@coconut/aws/ec2';
 
 let keyName = "lukehoban-us-east-1";
 let instanceType = "t2.micro";

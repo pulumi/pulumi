@@ -1,6 +1,6 @@
 // Copyright 2016 Pulumi, Inc. All rights reserved.
 
-import * as mu from "@mu/mu";
+import * as coconut from "@coconut/coconut";
 import {assert} from "./assert";
 import {Boolean, Number, String, TypeError} from "../lib";
 
@@ -204,7 +204,7 @@ export function call(f: Object, v: Object, argumentsList?: Object[]): Object {
     if (!argumentsList) {
         argumentsList = [];
     }
-    return mu.runtime.dynamicInvoke(f, v, argumentsList);
+    return coconut.runtime.dynamicInvoke(f, v, argumentsList);
 }
 
 // The abstract operation IsCallable determines if argument, which must be an ECMAScript language value, is a callable
@@ -213,6 +213,6 @@ export function isCallable(argument: Object): boolean {
     if (!isObject(argument)) {
         return false;
     }
-    return mu.runtime.isFunction(argument);
+    return coconut.runtime.isFunction(argument);
 }
 

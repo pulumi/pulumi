@@ -139,7 +139,13 @@ async function main(args: string[]): Promise<number> {
         }
     }
 
-    return 0;
+    // Ensure to return a failing return code if there were any errors (so this is script friendly).
+    if (cocojs.diag.success(result.diagnostics)) {
+        return 0;
+    }
+    else {
+        return -1;
+    }
 }
 
 // Fire off the main process, and log any errors that go unhandled.
