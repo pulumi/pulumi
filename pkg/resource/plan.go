@@ -164,6 +164,10 @@ func newPlan(ctx *Context, old Snapshot, new Snapshot) *plan {
 		m := res.Moniker()
 		if oldres, has := olds[m]; has {
 			contract.Assert(oldres.Type() == res.Type())
+
+			contract.Assert(oldres.HasID())
+			res.SetID(oldres.ID()) // propagate the ID from old to new.
+
 			if !res.Properties().DeepEquals(oldres.Properties()) {
 				updates[oldres] = res
 				step := newUpdateStep(p, oldres, res)
