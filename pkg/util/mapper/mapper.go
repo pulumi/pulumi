@@ -3,6 +3,7 @@
 package mapper
 
 import (
+	"encoding"
 	"fmt"
 	"reflect"
 	"strings"
@@ -161,6 +162,7 @@ func (md *mapper) DecodeField(tree Object, ty reflect.Type, key string, target i
 }
 
 var emptyObject map[string]interface{}
+var textUnmarshalerType = reflect.TypeOf(new(encoding.TextUnmarshaler)).Elem()
 
 // adjustValue converts if possible to produce the target type.
 func (md *mapper) adjustValue(val reflect.Value, to reflect.Type, ty reflect.Type, key string) (reflect.Value, error) {
@@ -263,6 +265,18 @@ func (md *mapper) adjustValue(val reflect.Value, to reflect.Type, ty reflect.Typ
 			} else {
 				return val, fmt.Errorf(
 					"Cannot decode Object to type %v; it isn't a struct, and no custom decoder exists", to)
+			}
+		} else if val.Type().Kind() == reflect.String {
+			// If the source is a string, see if the target implements encoding.TextUnmarshaler.
+			target := reflect.New(to)
+			if target.Type().Implements(textUnmarshalerType) {
+				um := target.Interface().(encoding.TextUnmarshaler)
+				if err := um.UnmarshalText([]byte(val.String())); err != nil {
+					return val, err
+				}
+				val = target.Elem()
+			} else {
+				break
 			}
 		} else {
 			break
