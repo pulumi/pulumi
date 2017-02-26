@@ -69,7 +69,7 @@ func create(cmd *cobra.Command, args []string) {
 		args = args[1:]
 	}
 
-	if success := saveDeployment(husk, nil, "", false); success {
+	if success := saveHusk(husk, nil, "", false); success {
 		fmt.Printf("Coconut husk '%v' initialized; ready for deployments (see `coco husk deploy`)\n", husk)
 	}
 }
@@ -135,7 +135,7 @@ func plan(cmd *cobra.Command, args []string, husk tokens.QName, delete bool) *pl
 	ctx := resource.NewContext(sink())
 
 	// Read in the deployment information, bailing if an IO error occurs.
-	dep, old := readDeployment(ctx, husk)
+	dep, old := readHusk(ctx, husk)
 	if dep == nil {
 		contract.Assert(!ctx.Diag.Success())
 		return nil // failure reading the husk information.
@@ -205,7 +205,7 @@ func apply(cmd *cobra.Command, args []string, opts applyOptions) {
 			if opts.Output == "" || opts.Output == "-" {
 				printPlan(result.Plan, opts.Summary)
 			} else {
-				saveDeployment(husk, result.New, opts.Output, true /*overwrite*/)
+				saveHusk(husk, result.New, opts.Output, true /*overwrite*/)
 			}
 		} else {
 			// Create an object to track progress and perform the actual operations.
@@ -246,34 +246,34 @@ func apply(cmd *cobra.Command, args []string, opts applyOptions) {
 			// Now save the updated snapshot to the specified output file, if any, or the standard location otherwise.
 			// TODO: save partial updates if we weren't able to perform the entire planned set of operations.
 			if opts.Delete {
-				deleteDeployment(result.Husk)
+				deleteHusk(result.Husk)
 				fmt.Printf("Coconut husk '%v' has been destroyed!\n", result.Husk)
 			} else {
 				contract.Assert(result.New != nil)
-				saveDeployment(result.Husk, result.New, opts.Output, true /*overwrite*/)
+				// saveHusk(result.Husk, result.New, opts.Output, true /*overwrite*/)
 			}
 		}
 	}
 }
 
-// backupDeployment makes a backup of an existing file, in preparation for writing a new one.  Instead of a copy, it
+// backupHusk makes a backup of an existing file, in preparation for writing a new one.  Instead of a copy, it
 // simply renames the file, which is simpler, more efficient, etc.
-func backupDeployment(file string) {
+func backupHusk(file string) {
 	contract.Require(file != "", "file")
 	os.Rename(file, file+".bak") // ignore errors.
 	// TODO: consider multiple backups (.bak.bak.bak...etc).
 }
 
-// deleteDeployment removes an existing snapshot file, leaving behind a backup.
-func deleteDeployment(husk tokens.QName) {
+// deleteHusk removes an existing snapshot file, leaving behind a backup.
+func deleteHusk(husk tokens.QName) {
 	contract.Require(husk != "", "husk")
 	// Just make a backup of the file and don't write out anything new.
 	file := workspace.HuskPath(husk)
-	backupDeployment(file)
+	backupHusk(file)
 }
 
-// readDeployment reads in an existing snapshot file, issuing an error and returning nil if something goes awry.
-func readDeployment(ctx *resource.Context, husk tokens.QName) (*resource.Deployment, resource.Snapshot) {
+// readHusk reads in an existing snapshot file, issuing an error and returning nil if something goes awry.
+func readHusk(ctx *resource.Context, husk tokens.QName) (*resource.Deployment, resource.Snapshot) {
 	contract.Require(husk != "", "husk")
 	file := workspace.HuskPath(husk)
 
@@ -303,6 +303,7 @@ func readDeployment(ctx *resource.Context, husk tokens.QName) (*resource.Deploym
 	}
 
 	// Next, use the mapping infrastructure to validate the contents.
+	// TODO: we can eliminate this redundant unmarshaling once Go supports strict unmarshaling.
 	var obj mapper.Object
 	if err = m.Unmarshal(b, &obj); err != nil {
 		sink().Errorf(errors.ErrorCantReadDeployment, file, err)
@@ -314,7 +315,8 @@ func readDeployment(ctx *resource.Context, husk tokens.QName) (*resource.Deploym
 			}
 		}
 		md := mapper.New(nil)
-		if err = md.Decode(obj, &dep); err != nil {
+		var ignore resource.Deployment // just for errors.
+		if err = md.Decode(obj, &ignore); err != nil {
 			sink().Errorf(errors.ErrorCantReadDeployment, file, err)
 			return nil, nil
 		}
@@ -323,8 +325,8 @@ func readDeployment(ctx *resource.Context, husk tokens.QName) (*resource.Deploym
 	return &dep, resource.DeserializeDeployment(ctx, &dep)
 }
 
-// saveDeployment saves a new snapshot at the given location, backing up any existing ones.
-func saveDeployment(husk tokens.QName, snap resource.Snapshot, file string, existok bool) bool {
+// saveHusk saves a new snapshot at the given location, backing up any existing ones.
+func saveHusk(husk tokens.QName, snap resource.Snapshot, file string, existok bool) bool {
 	contract.Require(husk != "", "husk")
 	if file == "" {
 		file = workspace.HuskPath(husk)
@@ -355,7 +357,7 @@ func saveDeployment(husk tokens.QName, snap resource.Snapshot, file string, exis
 	}
 
 	// Back up the existing file if it already exists.
-	backupDeployment(file)
+	backupHusk(file)
 
 	// Ensure the directory exists.
 	if err = os.MkdirAll(filepath.Dir(file), 0755); err != nil {

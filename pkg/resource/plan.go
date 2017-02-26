@@ -112,7 +112,7 @@ func newPlan(ctx *Context, old Snapshot, new Snapshot) *plan {
 	}
 
 	if glog.V(7) {
-		glog.V(7).Infof("Creating plan with #old=%v #new=%v\n", len(newres), len(oldres))
+		glog.V(7).Infof("Creating plan with #old=%v #new=%v\n", len(oldres), len(newres))
 	}
 
 	// First diff the snapshots; in a nutshell:
