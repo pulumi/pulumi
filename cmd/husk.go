@@ -43,6 +43,7 @@ func newHuskCmd() *cobra.Command {
 	cmd.AddCommand(newHuskDeployCmd())
 	cmd.AddCommand(newHuskDestroyCmd())
 	cmd.AddCommand(newHuskInitCmd())
+	cmd.AddCommand(newHuskLsCmd())
 
 	return cmd
 }
@@ -250,7 +251,7 @@ func apply(cmd *cobra.Command, args []string, opts applyOptions) {
 				fmt.Printf("Coconut husk '%v' has been destroyed!\n", result.Husk)
 			} else {
 				contract.Assert(result.New != nil)
-				// saveHusk(result.Husk, result.New, opts.Output, true /*overwrite*/)
+				saveHusk(result.Husk, result.New, opts.Output, true /*overwrite*/)
 			}
 		}
 	}

@@ -38,7 +38,11 @@ func InstallRoot() string {
 
 // HuskPath returns a path to the given husk's default location.
 func HuskPath(husk tokens.QName) string {
-	return filepath.Join(NutpackOutDir, NutpackHusksDir, qnamePath(husk)+encoding.Exts[0])
+	path := filepath.Join(NutpackOutDir, NutpackHusksDir)
+	if husk != "" {
+		path = filepath.Join(path, qnamePath(husk)+encoding.Exts[0])
+	}
+	return path
 }
 
 // isTop returns true if the path represents the top of the filesystem.
