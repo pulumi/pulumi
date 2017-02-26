@@ -137,8 +137,8 @@ func plan(cmd *cobra.Command, args []string, husk tokens.QName, delete bool) *pl
 	// Read in the deployment information, bailing if an IO error occurs.
 	dep, old := readDeployment(ctx, husk)
 	if dep == nil {
-		sink().Errorf(errors.ErrorInvalidHuskName, husk)
-		return nil
+		contract.Assert(!ctx.Diag.Success())
+		return nil // failure reading the husk information.
 	}
 
 	// If deleting, there is no need to create a new snapshot; otherwise, we will need to compile the package.
@@ -247,7 +247,7 @@ func apply(cmd *cobra.Command, args []string, opts applyOptions) {
 			// TODO: save partial updates if we weren't able to perform the entire planned set of operations.
 			if opts.Delete {
 				deleteDeployment(result.Husk)
-				fmt.Printf("Coconut husk '%v' has been destroyed\n", result.Husk)
+				fmt.Printf("Coconut husk '%v' has been destroyed!\n", result.Husk)
 			} else {
 				contract.Assert(result.New != nil)
 				saveDeployment(result.Husk, result.New, opts.Output, true /*overwrite*/)
@@ -284,10 +284,14 @@ func readDeployment(ctx *resource.Context, husk tokens.QName) (*resource.Deploym
 		return nil, nil
 	}
 
-	// Now read the whole file into a byte blog.
+	// Now read the whole file into a byte blob.
 	b, err := ioutil.ReadFile(file)
 	if err != nil {
-		sink().Errorf(errors.ErrorIO, err)
+		if os.IsNotExist(err) {
+			sink().Errorf(errors.ErrorInvalidHuskName, husk)
+		} else {
+			sink().Errorf(errors.ErrorIO, err)
+		}
 		return nil, nil
 	}
 
