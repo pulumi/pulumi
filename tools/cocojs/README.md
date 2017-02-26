@@ -31,6 +31,9 @@ Next, to test, simply run:
 
 It will be obvious if the tests passed or failed and, afterwards, code coverage data will be output to the console.
 
+After building, a typical developer setup would be to add `tools/cocojs/` to your `$PATH`; there is a `cocojs`
+executable in the root directory that conveniently wraps invocation of the compiler, passing through any arguments.
+
 ## Libraries
 
 In order to use the Coconut libraries -- including the standard library -- you will need to do a few additional steps
