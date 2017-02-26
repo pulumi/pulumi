@@ -194,10 +194,10 @@ func newPlan(ctx *Context, old Snapshot, new Snapshot) *plan {
 		if deletes[res] {
 			// Add edges to:
 			//     - any dependents that used to refer to this
-			tov := vs[m]
-			contract.Assert(tov != nil)
+			fromv := vs[m]
+			contract.Assert(fromv != nil)
 			for _, ref := range olddepends[m] {
-				fromv := vs[ref]
+				tov := vs[ref]
 				contract.Assert(fromv != nil)
 				fromv.connectTo(tov)
 				glog.V(7).Infof("Deletion '%v' depends on resource '%v'", m, ref)
