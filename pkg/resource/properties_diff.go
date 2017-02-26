@@ -179,3 +179,61 @@ func (v PropertyValue) Diff(other PropertyValue) *ValueDiff {
 	}
 	return &ValueDiff{Old: v, New: other}
 }
+
+// DeepEquals returns true if this property map is deeply equal to the other property map; and false otherwise.
+func (props PropertyMap) DeepEquals(other PropertyMap) bool {
+	// If any in props either doesn't exist, or is of a different value, return false.
+	for _, k := range StablePropertyKeys(props) {
+		v := props[k]
+		if p, has := other[k]; has {
+			if !v.DeepEquals(p) {
+				return false
+			}
+		} else if !v.IsNull() {
+			return false
+		}
+	}
+
+	// If the other map has properties that this map doesn't have, return false.
+	for _, k := range StablePropertyKeys(other) {
+		if _, has := props[k]; !has && !other[k].IsNull() {
+			return false
+		}
+	}
+
+	return true
+}
+
+// DeepEquals returns true if this property map is deeply equal to the other property map; and false otherwise.
+func (v PropertyValue) DeepEquals(other PropertyValue) bool {
+	// Arrays are equal if they are both of the same size and elements are deeply equal.
+	if v.IsArray() {
+		if !other.IsArray() {
+			return false
+		}
+		va := v.ArrayValue()
+		oa := other.ArrayValue()
+		if len(va) != len(oa) {
+			return false
+		}
+		for i, elem := range va {
+			if !elem.DeepEquals(oa[i]) {
+				return false
+			}
+		}
+		return true
+	}
+
+	// Object values are equal if their contents are deeply equal.
+	if v.IsObject() {
+		if !other.IsObject() {
+			return false
+		}
+		vo := v.ObjectValue()
+		oa := other.ObjectValue()
+		return vo.DeepEquals(oa)
+	}
+
+	// For all other cases, primitives are equal if their values are equal.
+	return v.V == other.V
+}
