@@ -205,7 +205,13 @@ func DeserializeDeployment(ctx *Context, ser *Deployment) Snapshot {
 		}
 	}
 
-	return NewSnapshot(ctx, ser.Husk, latest.Package, *latest.Args, resources)
+	// If the args are non-nil, use them.
+	var args core.Args
+	if latest.Args != nil {
+		args = *latest.Args
+	}
+
+	return NewSnapshot(ctx, ser.Husk, latest.Package, args, resources)
 }
 
 func deserializeProperties(props DeployedPropertyMap, reftag string) PropertyMap {
