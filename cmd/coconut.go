@@ -36,12 +36,10 @@ func NewCoconutCmd() *cobra.Command {
 	cmd.PersistentFlags().IntVarP(
 		&verbose, "verbose", "v", 0, "Enable verbose logging (e.g., v=3); anything >3 is very verbose")
 
-	cmd.AddCommand(newCreateCmd())
-	cmd.AddCommand(newDeleteCmd())
 	cmd.AddCommand(newDescribeCmd())
 	cmd.AddCommand(newEvalCmd())
 	cmd.AddCommand(newGetCmd())
-	cmd.AddCommand(newUpdateCmd())
+	cmd.AddCommand(newHuskCmd())
 	cmd.AddCommand(newVerifyCmd())
 	cmd.AddCommand(newVersionCmd())
 

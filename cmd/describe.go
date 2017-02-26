@@ -26,7 +26,9 @@ func newDescribeCmd() *cobra.Command {
 	var cmd = &cobra.Command{
 		Use:   "describe [nuts...]",
 		Short: "Describe one or more Nuts",
-		Long:  "Describe prints package, symbol, and IL information from one or more Nuts.",
+		Long: "Describe one or more Nuts\n" +
+			"\n" +
+			"This command prints package, symbol, and IL information from one or more Nuts.",
 		Run: func(cmd *cobra.Command, args []string) {
 			// If printAll is true, flip all the flags.
 			if printAll {

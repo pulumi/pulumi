@@ -12,6 +12,7 @@ import (
 	"github.com/pulumi/coconut/pkg/compiler/core"
 	"github.com/pulumi/coconut/pkg/compiler/errors"
 	"github.com/pulumi/coconut/pkg/compiler/metadata"
+	"github.com/pulumi/coconut/pkg/compiler/symbols"
 	"github.com/pulumi/coconut/pkg/diag"
 	"github.com/pulumi/coconut/pkg/eval"
 	"github.com/pulumi/coconut/pkg/eval/heapstate"
@@ -28,11 +29,11 @@ type Compiler interface {
 	Workspace() workspace.W // the workspace that this compielr is using.
 
 	// Compile detects a package from the workspace and compiles it into a graph.
-	Compile() (*pack.Package, *heapstate.Heap)
+	Compile() (*symbols.Package, *heapstate.Heap)
 	// CompilePath compiles a package given its path into its graph form.
-	CompilePath(path string) (*pack.Package, *heapstate.Heap)
+	CompilePath(path string) (*symbols.Package, *heapstate.Heap)
 	// CompilePackage compiles a given package object into its associated graph form.
-	CompilePackage(pkg *pack.Package) *heapstate.Heap
+	CompilePackage(pkg *pack.Package) (*symbols.Package, *heapstate.Heap)
 	// Verify detects a package from the workspace and validates its CocoIL contents.
 	Verify() bool
 	// VerifyPath verifies a package given its path, validating that its CocoIL contents are correct.
@@ -104,7 +105,7 @@ func (c *compiler) Diag() diag.Sink        { return c.ctx.Diag }
 func (c *compiler) Workspace() workspace.W { return c.w }
 
 // Compile attempts to detect the package from the current working directory and, provided that succeeds, compiles it.
-func (c *compiler) Compile() (*pack.Package, *heapstate.Heap) {
+func (c *compiler) Compile() (*symbols.Package, *heapstate.Heap) {
 	if path := c.detectPackage(); path != "" {
 		return c.CompilePath(path)
 	}
@@ -112,15 +113,15 @@ func (c *compiler) Compile() (*pack.Package, *heapstate.Heap) {
 }
 
 // CompilePath loads a package at the given path and compiles it into a graph.
-func (c *compiler) CompilePath(path string) (*pack.Package, *heapstate.Heap) {
+func (c *compiler) CompilePath(path string) (*symbols.Package, *heapstate.Heap) {
 	if pkg := c.readPackage(path); pkg != nil {
-		return pkg, c.CompilePackage(pkg)
+		return c.CompilePackage(pkg)
 	}
 	return nil, nil
 }
 
 // CompilePackage compiles the given package into a graph.
-func (c *compiler) CompilePackage(pkg *pack.Package) *heapstate.Heap {
+func (c *compiler) CompilePackage(pkg *pack.Package) (*symbols.Package, *heapstate.Heap) {
 	contract.Requiref(pkg != nil, "pkg", "!= nil")
 	glog.Infof("Compiling package '%v' (w=%v)", pkg.Name, c.w.Root())
 	if glog.V(2) {
@@ -150,7 +151,7 @@ func (c *compiler) CompilePackage(pkg *pack.Package) *heapstate.Heap {
 	b := binder.New(c.w, c.ctx, c.reader)
 	pkgsym := b.BindPackage(pkg)
 	if !c.Diag().Success() {
-		return nil
+		return nil, nil
 	}
 
 	// Now, create the machinery we need to generate a graph.
@@ -160,11 +161,11 @@ func (c *compiler) CompilePackage(pkg *pack.Package) *heapstate.Heap {
 	e := eval.New(b.Ctx(), gg)
 	e.EvaluatePackage(pkgsym, c.ctx.Opts.Args)
 	if !c.Diag().Success() {
-		return nil
+		return pkgsym, nil
 	}
 
 	// Finally ask the graph generator to return what it has seen in graph form.
-	return gg.HeapSnapshot()
+	return pkgsym, gg.HeapSnapshot()
 }
 
 // Verify detects a package from the workspace and validates its CocoIL contents.

@@ -6,14 +6,14 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func newUpdateCmd() *cobra.Command {
+func newHuskDeployCmd() *cobra.Command {
 	var dryRun bool
 	var summary bool
 	var output string
 	var cmd = &cobra.Command{
-		Use:   "update husk-name [nut-file] [-- [args]]",
-		Short: "Update an existing husk (target) and its resources",
-		Long: "Update an existing husk (target) and its resources.\n" +
+		Use:   "deploy <husk> [<nut>] [-- [<args>]]",
+		Short: "Deploy resource updates, creations, and deletions to a husk",
+		Long: "Deploy resource updates, creations, and deletions to a husk\n" +
 			"\n" +
 			"This command updates an existing husk environment whose state is represented by the\n" +
 			"existing snapshot file.  The new desired state is computed by compiling and evaluating\n" +
@@ -26,7 +26,6 @@ func newUpdateCmd() *cobra.Command {
 			"explicit path can be provided using the [nut-file] argument.",
 		Run: func(cmd *cobra.Command, args []string) {
 			apply(cmd, args, applyOptions{
-				Create:  false,
 				Delete:  false,
 				DryRun:  dryRun,
 				Summary: summary,

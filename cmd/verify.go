@@ -17,7 +17,7 @@ func newVerifyCmd() *cobra.Command {
 	var cmd = &cobra.Command{
 		Use:   "verify [package]",
 		Short: "Check that a Nut and its NutIL are correct",
-		Long: "Check that a Nut and its NutIL are correct, reporting any errors.\n" +
+		Long: "Check that a Nut and its NutIL are correct\n" +
 			"\n" +
 			"A Nut contains intermediate language (NutIL) that encodes symbols,\n" +
 			"definitions, and executable code.  This NutIL must obey a set of specific rules\n" +

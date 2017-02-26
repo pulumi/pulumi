@@ -20,8 +20,8 @@ func newEvalCmd() *cobra.Command {
 	var dotOutput bool
 	var cmd = &cobra.Command{
 		Use:   "eval [blueprint] [-- [args]]",
-		Short: "Evaluate a Nut and create its CocoGL graph representation",
-		Long: "Evaluate a Nut and create its CocoGL graph representation.\n" +
+		Short: "Evaluate a Nut and print the resulting objects",
+		Long: "Evaluate a Nut and print the resulting objects\n" +
 			"\n" +
 			"A graph is a topologically sorted directed-acyclic-graph (DAG), representing a\n" +
 			"collection of resources that may be used in a deployment operation like plan or apply.\n" +

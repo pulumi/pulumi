@@ -20,7 +20,7 @@ import (
 type Snapshot interface {
 	Ctx() *Context                              // fetches the context for this snapshot.
 	Husk() tokens.QName                         // the husk/namespace target being deployed into.
-	Pkg() tokens.PackageName                    // the package from which this snapshot came.
+	Pkg() tokens.Package                        // the package from which this snapshot came.
 	Args() core.Args                            // the arguments used to compile this package.
 	Resources() []Resource                      // a topologically sorted list of resources (based on dependencies).
 	ResourceByID(id ID, t tokens.Type) Resource // looks up a resource by ID and type.
@@ -30,7 +30,7 @@ type Snapshot interface {
 
 // NewSnapshot creates a snapshot from the given arguments.  Note that resources must be in topologically-sorted
 // dependency order, otherwise undefined behavior will result from using the resulting snapshot object.
-func NewSnapshot(ctx *Context, husk tokens.QName, pkg tokens.PackageName,
+func NewSnapshot(ctx *Context, husk tokens.QName, pkg tokens.Package,
 	args core.Args, resources []Resource) Snapshot {
 	return &snapshot{ctx, husk, pkg, args, resources}
 }
@@ -38,9 +38,8 @@ func NewSnapshot(ctx *Context, husk tokens.QName, pkg tokens.PackageName,
 // NewGraphSnapshot takes an object graph and produces a resource snapshot from it.  It understands how to name
 // resources based on their position within the graph and how to identify and record dependencies.  This function can
 // fail dynamically if the input graph did not satisfy the preconditions for resource graphs (like that it is a DAG).
-func NewGraphSnapshot(ctx *Context, husk tokens.QName, pkg tokens.PackageName, args core.Args,
-	heap *heapstate.Heap) (Snapshot, error) {
-
+func NewGraphSnapshot(ctx *Context, husk tokens.QName, pkg tokens.Package,
+	args core.Args, heap *heapstate.Heap) (Snapshot, error) {
 	// Topologically sort the entire heapstate (in dependency order) and extract just the resource objects.
 	resobjs, err := topsort(ctx, heap.G)
 	if err != nil {
@@ -58,18 +57,18 @@ func NewGraphSnapshot(ctx *Context, husk tokens.QName, pkg tokens.PackageName, a
 }
 
 type snapshot struct {
-	ctx       *Context           // the context shared by all operations in this snapshot.
-	husk      tokens.QName       // the husk/namespace target being deployed into.
-	pkg       tokens.PackageName // the package from which this snapshot came.
-	args      core.Args          // the arguments used to compile this package.
-	resources []Resource         // the topologically sorted linearized list of resources.
+	ctx       *Context       // the context shared by all operations in this snapshot.
+	husk      tokens.QName   // the husk/namespace target being deployed into.
+	pkg       tokens.Package // the package from which this snapshot came.
+	args      core.Args      // the arguments used to compile this package.
+	resources []Resource     // the topologically sorted linearized list of resources.
 }
 
-func (s *snapshot) Ctx() *Context           { return s.ctx }
-func (s *snapshot) Husk() tokens.QName      { return s.husk }
-func (s *snapshot) Pkg() tokens.PackageName { return s.pkg }
-func (s *snapshot) Args() core.Args         { return s.args }
-func (s *snapshot) Resources() []Resource   { return s.resources }
+func (s *snapshot) Ctx() *Context         { return s.ctx }
+func (s *snapshot) Husk() tokens.QName    { return s.husk }
+func (s *snapshot) Pkg() tokens.Package   { return s.pkg }
+func (s *snapshot) Args() core.Args       { return s.args }
+func (s *snapshot) Resources() []Resource { return s.resources }
 
 func (s *snapshot) ResourceByID(id ID, t tokens.Type) Resource {
 	contract.Failf("TODO: not yet implemented")

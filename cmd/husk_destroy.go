@@ -6,13 +6,13 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func newDeleteCmd() *cobra.Command {
+func newHuskDestroyCmd() *cobra.Command {
 	var dryRun bool
 	var summary bool
 	var cmd = &cobra.Command{
-		Use:   "delete husk-name",
-		Short: "Delete an existing husk (target) and its resources",
-		Long: "Delete an existing husk (target) and its resources.\n" +
+		Use:   "destroy <husk>",
+		Short: "Destroy an existing husk and its resources",
+		Long: "Destroy an existing husk and its resources\n" +
 			"\n" +
 			"This command deletes an entire existing husk by name.  The current state is loaded\n" +
 			"from the associated snapshot file in the workspace.  After running to completion,\n" +
@@ -22,7 +22,6 @@ func newDeleteCmd() *cobra.Command {
 			"is generally irreversable and should be used with great care.",
 		Run: func(cmd *cobra.Command, args []string) {
 			apply(cmd, args, applyOptions{
-				Create:  false,
 				Delete:  true,
 				DryRun:  dryRun,
 				Summary: summary,

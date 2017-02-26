@@ -47,24 +47,13 @@ const (
 	OpDelete        = "delete"
 )
 
-// NewCreatePlan creates a plan for instantiating a new snapshot from scratch.
-func NewCreatePlan(ctx *Context, s Snapshot) Plan {
-	contract.Requiref(s != nil, "s", "!= nil")
-	return newCreatePlan(ctx, s)
-}
-
-// NewDeletePlan creates a plan for deleting an entire snapshot in its entirety.
-func NewDeletePlan(ctx *Context, s Snapshot) Plan {
-	contract.Requiref(s != nil, "s", "!= nil")
-	return newDeletePlan(ctx, s)
-}
-
-// NewUpdatePlan analyzes a a resource graph rg compared to an optional old resource graph oldRg, and creates a plan
-// that will carry out operations necessary to bring the old resource graph in line with the new one.
-func NewUpdatePlan(ctx *Context, s Snapshot, old Snapshot) Plan {
-	contract.Requiref(s != nil, "s", "!= nil")
-	contract.Requiref(old != nil, "old", "!= nil")
-	return newUpdatePlan(ctx, s, old)
+// NewPlan analyzes a resource graph new compared to an optional old resource graph old, and creates a plan
+// that will carry out operations necessary to bring the old resource graph in line with the new one.  It is possible
+// for old, new, or both to be nil; combinations of these can be used to create different kinds of plans: (1) a creation
+// plan from a new snapshot when old doesn't exist (nil), (2) an update plan when both old and new exist, and (3) a
+// deletion plan when old exists, but not new, and (4) an "empty plan" when both are nil.
+func NewPlan(ctx *Context, old Snapshot, new Snapshot) Plan {
+	return newPlan(ctx, old, new)
 }
 
 type plan struct {
@@ -93,7 +82,7 @@ func (p *plan) Provider(res Resource) (Provider, error) {
 
 // Apply performs all steps in the plan, calling out to the progress reporting functions as desired.
 func (p *plan) Apply(prog Progress) (error, Step, ResourceState) {
-	var step Step = p.first
+	var step Step = p.Steps()
 	for step != nil {
 		if prog != nil {
 			prog.Before(step)
@@ -110,43 +99,20 @@ func (p *plan) Apply(prog Progress) (error, Step, ResourceState) {
 	return nil, nil, StateOK
 }
 
-func newCreatePlan(ctx *Context, s Snapshot) *plan {
+// newPlan handles all three cases: (1) a creation plan from a new snapshot when old doesn't exist (nil), (2) an update
+// plan when both old and new exist, and (3) a deletion plan when old exists, but not new.
+func newPlan(ctx *Context, old Snapshot, new Snapshot) *plan {
+	var oldres []Resource
+	if old != nil {
+		oldres = old.Resources()
+	}
+	var newres []Resource
+	if new != nil {
+		newres = new.Resources()
+	}
+
 	if glog.V(7) {
-		glog.V(7).Infof("Creating create plan with #s=%v\n", len(s.Resources()))
-	}
-
-	// To create the resources, we must perform the operations in dependency order.  That is, we create the leaf-most
-	// resource first, so that later resources may safely depend upon their dependencies having been created.
-	p := &plan{ctx: ctx}
-	var prev *step
-	for _, res := range s.Resources() {
-		step := newCreateStep(p, res)
-		insertStep(&prev, step)
-	}
-	return p
-}
-
-func newDeletePlan(ctx *Context, s Snapshot) *plan {
-	if glog.V(7) {
-		glog.V(7).Infof("Creating delete plan with #s=%v\n", len(s.Resources()))
-	}
-
-	// To delete an entire snapshot, we must perform the operations in reverse dependency order.  That is, resources
-	// that consume others should be deleted first, so dependencies do not get deleted "out from underneath" consumers.
-	p := &plan{ctx: ctx}
-	var prev *step
-	resources := s.Resources()
-	for i := len(resources) - 1; i >= 0; i-- {
-		res := resources[i]
-		step := newDeleteStep(p, res)
-		insertStep(&prev, step)
-	}
-	return p
-}
-
-func newUpdatePlan(ctx *Context, old Snapshot, new Snapshot) *plan {
-	if glog.V(7) {
-		glog.V(7).Infof("Creating update plan with #old=%v #new=%v\n", len(old.Resources()), len(new.Resources()))
+		glog.V(7).Infof("Creating plan with #old=%v #new=%v\n", len(newres), len(oldres))
 	}
 
 	// First diff the snapshots; in a nutshell:
@@ -162,7 +128,7 @@ func newUpdatePlan(ctx *Context, old Snapshot, new Snapshot) *plan {
 	//
 	olds := make(map[Moniker]Resource)
 	olddepends := make(map[Moniker][]Moniker)
-	for _, res := range old.Resources() {
+	for _, res := range oldres {
 		m := res.Moniker()
 		olds[m] = res
 		// Keep track of which dependents exist for all resources.
@@ -171,7 +137,7 @@ func newUpdatePlan(ctx *Context, old Snapshot, new Snapshot) *plan {
 		}
 	}
 	news := make(map[Moniker]Resource)
-	for _, res := range new.Resources() {
+	for _, res := range newres {
 		news[res.Moniker()] = res
 	}
 
@@ -196,11 +162,11 @@ func newUpdatePlan(ctx *Context, old Snapshot, new Snapshot) *plan {
 	updates := make(map[Resource]Resource)
 	for _, res := range news {
 		m := res.Moniker()
-		if old, has := olds[m]; has {
-			contract.Assert(old.Type() == res.Type())
-			if !res.Properties().DeepEquals(old.Properties()) {
-				updates[old] = res
-				step := newUpdateStep(p, old, res)
+		if oldres, has := olds[m]; has {
+			contract.Assert(oldres.Type() == res.Type())
+			if !res.Properties().DeepEquals(oldres.Properties()) {
+				updates[oldres] = res
+				step := newUpdateStep(p, oldres, res)
 				vs[m] = newPlanVertex(step)
 				glog.V(7).Infof("Update plan decided to update '%v'", m)
 			} else if glog.V(7) {
@@ -223,7 +189,7 @@ func newUpdatePlan(ctx *Context, old Snapshot, new Snapshot) *plan {
 	//
 	// Clearly we must prohibit cycles in this overall graph of resource operations (hence the DAG part).  To ensure
 	// this ordering, we will produce a plan graph whose vertices are operations and whose edges encode dependencies.
-	for _, res := range old.Resources() {
+	for _, res := range oldres {
 		m := res.Moniker()
 		if deletes[res] {
 			// Add edges to:
@@ -251,7 +217,7 @@ func newUpdatePlan(ctx *Context, old Snapshot, new Snapshot) *plan {
 			}
 		}
 	}
-	for _, res := range new.Resources() {
+	for _, res := range newres {
 		if creates[res] {
 			// add edge to:
 			//     - creates news

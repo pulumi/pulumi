@@ -16,11 +16,11 @@ import (
 	"github.com/pulumi/coconut/pkg/compiler"
 	"github.com/pulumi/coconut/pkg/compiler/core"
 	"github.com/pulumi/coconut/pkg/compiler/errors"
+	"github.com/pulumi/coconut/pkg/compiler/symbols"
 	"github.com/pulumi/coconut/pkg/diag"
 	"github.com/pulumi/coconut/pkg/diag/colors"
 	"github.com/pulumi/coconut/pkg/encoding"
 	"github.com/pulumi/coconut/pkg/eval/heapstate"
-	"github.com/pulumi/coconut/pkg/pack"
 	"github.com/pulumi/coconut/pkg/resource"
 	"github.com/pulumi/coconut/pkg/tokens"
 	"github.com/pulumi/coconut/pkg/util/cmdutil"
@@ -28,6 +28,24 @@ import (
 	"github.com/pulumi/coconut/pkg/util/mapper"
 	"github.com/pulumi/coconut/pkg/workspace"
 )
+
+func newHuskCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "husk",
+		Short: "Manage or deploy into husks (deployment targets)",
+		Long: "Manage or deploy into husks (deployment targets)\n" +
+			"\n" +
+			"A husk is a named deployment target, and a single nut have many of them.  Each husk\n" +
+			"has a deployment history associated with it, stored in the workspace, in addition to\n" +
+			"the last known good deployment.  A husk may also have unique configuration entries.\n",
+	}
+
+	cmd.AddCommand(newHuskDeployCmd())
+	cmd.AddCommand(newHuskDestroyCmd())
+	cmd.AddCommand(newHuskInitCmd())
+
+	return cmd
+}
 
 var snk diag.Sink
 
@@ -37,6 +55,23 @@ func sink() diag.Sink {
 		snk = core.DefaultSink("")
 	}
 	return snk
+}
+
+// create just creates a new husk without deploying anything into it.
+func create(cmd *cobra.Command, args []string) {
+	// Read in the name of the husk to use.
+	var husk tokens.QName
+	if len(args) == 0 {
+		fmt.Fprintf(os.Stderr, "fatal: missing required husk name\n")
+		os.Exit(-1)
+	} else {
+		husk = tokens.QName(args[0])
+		args = args[1:]
+	}
+
+	if success := saveDeployment(husk, nil, "", false); success {
+		fmt.Printf("Coconut husk '%v' initialized; ready for deployments (see `coco husk deploy`)\n", husk)
+	}
 }
 
 // compile just uses the standard logic to parse arguments, options, and to locate/compile a package.  It returns the
@@ -58,7 +93,7 @@ func compile(cmd *cobra.Command, args []string) *compileResult {
 	// In the case of an argument, load that specific package and new up a compiler based on its base path.
 	// Otherwise, use the default workspace and package logic (which consults the current working directory).
 	var comp compiler.Compiler
-	var pkg *pack.Package
+	var pkg *symbols.Package
 	var heap *heapstate.Heap
 	if len(args) == 0 {
 		var err error
@@ -71,7 +106,7 @@ func compile(cmd *cobra.Command, args []string) *compileResult {
 		pkg, heap = comp.Compile()
 	} else {
 		fn := args[0]
-		if pkg = cmdutil.ReadPackageFromArg(fn); pkg != nil {
+		if pkgmeta := cmdutil.ReadPackageFromArg(fn); pkgmeta != nil {
 			var err error
 			if fn == "-" {
 				comp, err = compiler.Newwd(opts)
@@ -82,7 +117,7 @@ func compile(cmd *cobra.Command, args []string) *compileResult {
 				sink().Errorf(errors.ErrorCantReadPackage, fn, err)
 				return nil
 			}
-			heap = comp.CompilePackage(pkg)
+			pkg, heap = comp.CompilePackage(pkgmeta)
 		}
 	}
 	return &compileResult{comp, pkg, heap}
@@ -90,63 +125,52 @@ func compile(cmd *cobra.Command, args []string) *compileResult {
 
 type compileResult struct {
 	C    compiler.Compiler
-	Pkg  *pack.Package
+	Pkg  *symbols.Package
 	Heap *heapstate.Heap
 }
 
 // plan just uses the standard logic to parse arguments, options, and to create a snapshot and plan.
-func plan(cmd *cobra.Command, args []string, husk tokens.QName, create bool, delete bool) *planResult {
+func plan(cmd *cobra.Command, args []string, husk tokens.QName, delete bool) *planResult {
 	// Create a new context for the plan operations.
 	ctx := resource.NewContext(sink())
 
-	// If we are using an existing snapshot, read in that file (bailing if an IO error occurs).
-	var old resource.Snapshot
-	if !create {
-		if old = readSnapshot(ctx, husk); old == nil {
-			return nil
-		}
+	// Read in the deployment information, bailing if an IO error occurs.
+	dep, old := readDeployment(ctx, husk)
+	if dep == nil {
+		sink().Errorf(errors.ErrorInvalidHuskName, husk)
+		return nil
 	}
 
 	// If deleting, there is no need to create a new snapshot; otherwise, we will need to compile the package.
-	if delete {
-		return &planResult{
-			compileResult: nil,
-			Ctx:           ctx,
-			Husk:          husk,
-			Old:           old,
-			New:           nil,
-			Plan:          resource.NewDeletePlan(ctx, old),
+	var new resource.Snapshot
+	var result *compileResult
+	if !delete {
+		// First, compile; if that yields errors or an empty heap, exit early.
+		if result = compile(cmd, args); result == nil || result.Heap == nil {
+			return nil
 		}
-	} else if result := compile(cmd, args); result != nil && result.Heap != nil {
+
 		// Create a resource snapshot from the compiled/evaluated object graph.
-		snap, err := resource.NewGraphSnapshot(ctx, husk, result.Pkg.Name, result.C.Ctx().Opts.Args, result.Heap)
+		var err error
+		new, err = resource.NewGraphSnapshot(ctx, husk, result.Pkg.Tok, result.C.Ctx().Opts.Args, result.Heap)
 		if err != nil {
 			result.C.Diag().Errorf(errors.ErrorCantCreateSnapshot, err)
 			return nil
 		} else if !ctx.Diag.Success() {
 			return nil
 		}
-
-		var plan resource.Plan
-		if create {
-			// Generate a plan for creating the resources from scratch.
-			plan = resource.NewCreatePlan(ctx, snap)
-		} else {
-			// Generate a plan for updating existing resources to the new snapshot.
-			contract.Assert(old != nil)
-			plan = resource.NewUpdatePlan(ctx, old, snap)
-		}
-		return &planResult{
-			compileResult: result,
-			Ctx:           ctx,
-			Husk:          husk,
-			Old:           old,
-			New:           snap,
-			Plan:          plan,
-		}
 	}
 
-	return nil
+	// Generate a plan; this API handles all interesting cases (create, update, delete).
+	plan := resource.NewPlan(ctx, old, new)
+	return &planResult{
+		compileResult: result,
+		Ctx:           ctx,
+		Husk:          husk,
+		Old:           old,
+		New:           new,
+		Plan:          plan,
+	}
 }
 
 type planResult struct {
@@ -169,15 +193,19 @@ func apply(cmd *cobra.Command, args []string, opts applyOptions) {
 		args = args[1:]
 	}
 
-	if result := plan(cmd, args, husk, opts.Create, opts.Delete); result != nil {
-		if result.Plan.Empty() {
+	if result := plan(cmd, args, husk, opts.Delete); result != nil {
+		// If we are doing an empty update, say so.
+		if result.Plan.Empty() && !opts.Delete {
 			sink().Infof(diag.Message("nothing to do -- resources are up to date"))
-		} else if opts.DryRun {
+		}
+
+		// Now based on whether a dry run was specified, or not, either print or perform the planned operations.
+		if opts.DryRun {
 			// If no output file was requested, or "-", print to stdout; else write to that file.
 			if opts.Output == "" || opts.Output == "-" {
 				printPlan(result.Plan, opts.Summary)
 			} else {
-				saveSnapshot(husk, result.New, opts.Output)
+				saveDeployment(husk, result.New, opts.Output, true /*overwrite*/)
 			}
 		} else {
 			// Create an object to track progress and perform the actual operations.
@@ -218,33 +246,34 @@ func apply(cmd *cobra.Command, args []string, opts applyOptions) {
 			// Now save the updated snapshot to the specified output file, if any, or the standard location otherwise.
 			// TODO: save partial updates if we weren't able to perform the entire planned set of operations.
 			if opts.Delete {
-				deleteSnapshot(result.Husk)
+				deleteDeployment(result.Husk)
+				fmt.Printf("Coconut husk '%v' has been destroyed\n", result.Husk)
 			} else {
 				contract.Assert(result.New != nil)
-				saveSnapshot(result.Husk, result.New, opts.Output)
+				saveDeployment(result.Husk, result.New, opts.Output, true /*overwrite*/)
 			}
 		}
 	}
 }
 
-// backupSnapshot makes a backup of an existing file, in preparation for writing a new one.  Instead of a copy, it
+// backupDeployment makes a backup of an existing file, in preparation for writing a new one.  Instead of a copy, it
 // simply renames the file, which is simpler, more efficient, etc.
-func backupSnapshot(file string) {
+func backupDeployment(file string) {
 	contract.Require(file != "", "file")
 	os.Rename(file, file+".bak") // ignore errors.
 	// TODO: consider multiple backups (.bak.bak.bak...etc).
 }
 
-// deleteSnapshot removes an existing snapshot file, leaving behind a backup.
-func deleteSnapshot(husk tokens.QName) {
+// deleteDeployment removes an existing snapshot file, leaving behind a backup.
+func deleteDeployment(husk tokens.QName) {
 	contract.Require(husk != "", "husk")
 	// Just make a backup of the file and don't write out anything new.
 	file := workspace.HuskPath(husk)
-	backupSnapshot(file)
+	backupDeployment(file)
 }
 
-// readSnapshot reads in an existing snapshot file, issuing an error and returning nil if something goes awry.
-func readSnapshot(ctx *resource.Context, husk tokens.QName) resource.Snapshot {
+// readDeployment reads in an existing snapshot file, issuing an error and returning nil if something goes awry.
+func readDeployment(ctx *resource.Context, husk tokens.QName) (*resource.Deployment, resource.Snapshot) {
 	contract.Require(husk != "", "husk")
 	file := workspace.HuskPath(husk)
 
@@ -252,43 +281,46 @@ func readSnapshot(ctx *resource.Context, husk tokens.QName) resource.Snapshot {
 	m, ext := encoding.Detect(file)
 	if m == nil {
 		sink().Errorf(errors.ErrorIllegalMarkupExtension, ext)
-		return nil
+		return nil, nil
 	}
 
 	// Now read the whole file into a byte blog.
 	b, err := ioutil.ReadFile(file)
 	if err != nil {
 		sink().Errorf(errors.ErrorIO, err)
-		return nil
+		return nil, nil
 	}
 
-	// Unmarshal the contents into a snapshot.
-	var snap resource.SerializedSnapshot
-	if err = m.Unmarshal(b, &snap); err != nil {
-		sink().Errorf(errors.ErrorCantReadSnapshot, file, err)
-		return nil
+	// Unmarshal the contents into a deployment structure.
+	var dep resource.Deployment
+	if err = m.Unmarshal(b, &dep); err != nil {
+		sink().Errorf(errors.ErrorCantReadDeployment, file, err)
+		return nil, nil
 	}
 
 	// Next, use the mapping infrastructure to validate the contents.
 	var obj mapper.Object
 	if err = m.Unmarshal(b, &obj); err != nil {
-		sink().Errorf(errors.ErrorCantReadSnapshot, file, err)
-		return nil
+		sink().Errorf(errors.ErrorCantReadDeployment, file, err)
+		return nil, nil
 	} else {
-		delete(obj, "resources") // remove the resources, since they require custom marshaling.
+		if obj["latest"] != nil {
+			if latest, islatest := obj["latest"].(map[string]interface{}); islatest {
+				delete(latest, "resources") // remove the resources, since they require custom marshaling.
+			}
+		}
 		md := mapper.New(nil)
-		if err = md.Decode(obj, &snap); err != nil {
-			sink().Errorf(errors.ErrorCantReadSnapshot, file, err)
-			return nil
+		if err = md.Decode(obj, &dep); err != nil {
+			sink().Errorf(errors.ErrorCantReadDeployment, file, err)
+			return nil, nil
 		}
 	}
 
-	return resource.DeserializeSnapshot(ctx, &snap)
+	return &dep, resource.DeserializeDeployment(ctx, &dep)
 }
 
-// saveSnapshot saves a new snapshot at the given location, backing up any existing ones.
-func saveSnapshot(husk tokens.QName, snap resource.Snapshot, file string) {
-	contract.Require(snap != nil, "snap")
+// saveDeployment saves a new snapshot at the given location, backing up any existing ones.
+func saveDeployment(husk tokens.QName, snap resource.Snapshot, file string, existok bool) bool {
 	contract.Require(husk != "", "husk")
 	if file == "" {
 		file = workspace.HuskPath(husk)
@@ -298,30 +330,42 @@ func saveSnapshot(husk tokens.QName, snap resource.Snapshot, file string) {
 	m, ext := encoding.Detect(file)
 	if m == nil {
 		sink().Errorf(errors.ErrorIllegalMarkupExtension, ext)
-	} else {
-		if filepath.Ext(file) == "" {
-			file = file + ext
-		}
-		ser := resource.SerializeSnapshot(snap, "")
-		// TODO: this won't be a stable resource ordering; we need it to be in DAG order.
-		b, err := m.Marshal(ser)
-		if err != nil {
-			sink().Errorf(errors.ErrorIO, err)
-		} else {
-			// Back up the existing file if it already exists.
-			backupSnapshot(file)
+		return false
+	}
+	if filepath.Ext(file) == "" {
+		file = file + ext
+	}
+	dep := resource.SerializeDeployment(husk, snap, "")
+	b, err := m.Marshal(dep)
+	if err != nil {
+		sink().Errorf(errors.ErrorIO, err)
+		return false
+	}
 
-			// Ensure the directory exists.
-			if err = os.MkdirAll(filepath.Dir(file), 0755); err != nil {
-				sink().Errorf(errors.ErrorIO, err)
-			} else {
-				// And now write out the new snapshot file, overwriting that location.
-				if err = ioutil.WriteFile(file, b, 0644); err != nil {
-					sink().Errorf(errors.ErrorIO, err)
-				}
-			}
+	// If it's not ok for the file to already exist, ensure that it doesn't.
+	if !existok {
+		if _, err := os.Stat(file); err == nil {
+			sink().Errorf(errors.ErrorIO, fmt.Errorf("file '%v' already exists", file))
+			return false
 		}
 	}
+
+	// Back up the existing file if it already exists.
+	backupDeployment(file)
+
+	// Ensure the directory exists.
+	if err = os.MkdirAll(filepath.Dir(file), 0755); err != nil {
+		sink().Errorf(errors.ErrorIO, err)
+		return false
+	}
+
+	// And now write out the new snapshot file, overwriting that location.
+	if err = ioutil.WriteFile(file, b, 0644); err != nil {
+		sink().Errorf(errors.ErrorIO, err)
+		return false
+	}
+
+	return true
 }
 
 type applyOptions struct {

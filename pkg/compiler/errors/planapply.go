@@ -9,6 +9,7 @@ var (
 	ErrorCantCreateSnapshot     = newError(2002, "A problem was encountered creating a snapshot: %v")
 	ErrorPlanApplyFailed        = newError(2003, "Plan apply failed: %v")
 	ErrorIllegalMarkupExtension = newError(2004, "Resource serialization failed; illegal markup extension '%v'")
-	ErrorCantReadSnapshot       = newError(2005, "Could not read snapshot file '%v': %v")
+	ErrorCantReadDeployment     = newError(2005, "Could not read deployment file '%v': %v")
 	ErrorDuplicateMonikerNames  = newError(2006, "Duplicate objects with the same name: %v")
+	ErrorInvalidHuskName        = newError(2007, "Invalid husk '%v'; could not be found in the workspace")
 )
