@@ -8,7 +8,7 @@ import (
 
 func newHuskDeployCmd() *cobra.Command {
 	var dryRun bool
-	var showSames bool
+	var showUnchanged bool
 	var summary bool
 	var output string
 	var cmd = &cobra.Command{
@@ -27,11 +27,11 @@ func newHuskDeployCmd() *cobra.Command {
 			"explicit path can be provided using the [nut-file] argument.",
 		Run: func(cmd *cobra.Command, args []string) {
 			apply(cmd, args, applyOptions{
-				Delete:    false,
-				DryRun:    dryRun,
-				ShowSames: showSames,
-				Summary:   summary,
-				Output:    output,
+				Delete:        false,
+				DryRun:        dryRun,
+				ShowUnchanged: showUnchanged,
+				Summary:       summary,
+				Output:        output,
 			})
 		},
 	}
@@ -40,8 +40,8 @@ func newHuskDeployCmd() *cobra.Command {
 		&dryRun, "dry-run", "n", false,
 		"Don't actually update resources; just print out the planned updates")
 	cmd.PersistentFlags().BoolVar(
-		&showSames, "show-sames", false,
-		"Show resources that do not need to be updated, alongside those that do")
+		&showUnchanged, "show-unchanged", false,
+		"Show resources that needn't be updated because they haven't changed, alongside those that do")
 	cmd.PersistentFlags().BoolVarP(
 		&summary, "summary", "s", false,
 		"Only display summarization of resources and plan operations")

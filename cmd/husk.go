@@ -204,15 +204,15 @@ func apply(cmd *cobra.Command, args []string, opts applyOptions) {
 		if opts.DryRun {
 			// If no output file was requested, or "-", print to stdout; else write to that file.
 			if opts.Output == "" || opts.Output == "-" {
-				printPlan(result.Plan, opts.ShowSames, opts.Summary)
+				printPlan(result.Plan, opts.ShowUnchanged, opts.Summary)
 			} else {
 				saveHusk(husk, result.New, opts.Output, true /*overwrite*/)
 			}
 		} else {
-			// If show-sames was requested, print them first.
-			if opts.ShowSames {
+			// If show unchanged was requested, print them first.
+			if opts.ShowUnchanged {
 				var b bytes.Buffer
-				printSames(&b, result.Plan, opts.Summary)
+				printUnchanged(&b, result.Plan, opts.Summary)
 				fmt.Printf(b.String())
 			}
 
@@ -384,12 +384,12 @@ func saveHusk(husk tokens.QName, snap resource.Snapshot, file string, existok bo
 }
 
 type applyOptions struct {
-	Create    bool   // true if we are creating resources.
-	Delete    bool   // true if we are deleting resources.
-	DryRun    bool   // true if we should just print the plan without performing it.
-	ShowSames bool   // true to show the resources that aren't updated, in addition to those that are.
-	Summary   bool   // true if we should only summarize resources and operations.
-	Output    string // the place to store the output, if any.
+	Create        bool   // true if we are creating resources.
+	Delete        bool   // true if we are deleting resources.
+	DryRun        bool   // true if we should just print the plan without performing it.
+	ShowUnchanged bool   // true to show the resources that aren't updated, in addition to those that are.
+	Summary       bool   // true if we should only summarize resources and operations.
+	Output        string // the place to store the output, if any.
 }
 
 // applyProgress pretty-prints the plan application process as it goes.
@@ -446,12 +446,12 @@ func (prog *applyProgress) After(step resource.Step, err error, state resource.R
 	}
 }
 
-func printPlan(plan resource.Plan, showSames bool, summary bool) {
+func printPlan(plan resource.Plan, showUnchanged bool, summary bool) {
 	var b bytes.Buffer
 
 	// If show-sames was requested, walk the sames and print them.
-	if showSames {
-		printSames(&b, plan, summary)
+	if showUnchanged {
+		printUnchanged(&b, plan, summary)
 	}
 
 	// Now walk the plan's steps and and pretty-print them out.
@@ -491,11 +491,11 @@ func opSuffix(op resource.StepOp) string {
 
 const resourceDetailsIndent = "      " // 4 spaces, plus space for "+ ", "- ", and " " leaders
 
-func printSames(b *bytes.Buffer, plan resource.Plan, summary bool) {
-	for _, same := range plan.Sames() {
+func printUnchanged(b *bytes.Buffer, plan resource.Plan, summary bool) {
+	for _, res := range plan.Unchanged() {
 		b.WriteString("  ")
-		printResourceHeader(b, same, nil, "")
-		printResourceProperties(b, same, nil, summary, "")
+		printResourceHeader(b, res, nil, "")
+		printResourceProperties(b, res, nil, summary, "")
 	}
 }
 

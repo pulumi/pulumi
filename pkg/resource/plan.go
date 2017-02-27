@@ -21,7 +21,7 @@ import (
 type Plan interface {
 	Empty() bool                                                // true if the plan is empty.
 	Steps() Step                                                // the first step to perform, linked to the rest.
-	Sames() []Resource                                          // the resources untouched by this plan.
+	Unchanged() []Resource                                      // the resources untouched by this plan.
 	Apply(prog Progress) (Snapshot, error, Step, ResourceState) // performs the operations specified in this plan.
 }
 
@@ -60,18 +60,18 @@ func NewPlan(ctx *Context, old Snapshot, new Snapshot) Plan {
 }
 
 type plan struct {
-	ctx   *Context       // this plan's context.
-	husk  tokens.QName   // the husk/namespace target being deployed into.
-	pkg   tokens.Package // the package from which this snapshot came.
-	args  core.Args      // the arguments used to compile this package.
-	first *step          // the first step to take.
-	sames []Resource     // the resources that are remaining the same without modification.
+	ctx       *Context       // this plan's context.
+	husk      tokens.QName   // the husk/namespace target being deployed into.
+	pkg       tokens.Package // the package from which this snapshot came.
+	args      core.Args      // the arguments used to compile this package.
+	first     *step          // the first step to take.
+	unchanged []Resource     // the resources that are remaining the same without modification.
 }
 
 var _ Plan = (*plan)(nil)
 
-func (p *plan) Sames() []Resource { return p.sames }
-func (p *plan) Empty() bool       { return p.Steps() == nil }
+func (p *plan) Unchanged() []Resource { return p.unchanged }
+func (p *plan) Empty() bool           { return p.Steps() == nil }
 
 func (p *plan) Steps() Step {
 	if p.first == nil {
@@ -128,8 +128,8 @@ func (p *plan) Apply(prog Progress) (Snapshot, error, Step, ResourceState) {
 	}
 
 	// Append all the resources that aren't getting modified.
-	for _, same := range p.sames {
-		res = append(res, same)
+	for _, unres := range p.unchanged {
+		res = append(res, unres)
 	}
 
 	// Finally, produce a new snapshot and return the resulting information.
@@ -240,7 +240,7 @@ func newPlan(ctx *Context, old Snapshot, new Snapshot) *plan {
 				glog.V(7).Infof("Update plan decided to update '%v'", m)
 			} else if glog.V(7) {
 				glog.V(7).Infof("Update plan decided not to update '%v'", m)
-				p.sames = append(p.sames, oldres)
+				p.unchanged = append(p.unchanged, oldres)
 			}
 		} else {
 			creates[res] = true
