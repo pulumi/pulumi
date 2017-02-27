@@ -97,6 +97,8 @@ func (p *plan) Apply(prog Progress) (Snapshot, error, Step, ResourceState) {
 	var err error
 	var step Step = p.Steps()
 	var rst ResourceState
+
+	stepno := 1
 	for step != nil {
 		if prog != nil {
 			prog.Before(step)
@@ -109,25 +111,35 @@ func (p *plan) Apply(prog Progress) (Snapshot, error, Step, ResourceState) {
 
 		// If an error occurred, append the old step to the list (and all subsequent steps).  Else, the new one.
 		if err != nil {
-			if old := step.Old(); old != nil {
+			old := step.Old()
+			glog.V(7).Infof("Plan step #%v failed [%v]; hasold = %v: %v", stepno, step.Op(), old != nil, err)
+			if old != nil {
 				res = append(res, old)
 			}
 			rest := step.Next()
 			for rest != nil {
-				if old := rest.Old(); old != nil {
-					res = append(res, old)
+				restres := rest.Old()
+				glog.V(7).Infof("Plan step #%v rest.old=%v", restres != nil)
+				if restres != nil {
+					res = append(res, restres)
 				}
 				rest = rest.Next()
 			}
 			break
-		} else if new := step.New(); new != nil {
-			res = append(res, new)
+		} else {
+			new := step.New()
+			glog.V(7).Infof("Plan step #%v succeeded [%v]; hasnew = %v", stepno, step.Op(), new != nil)
+			if new != nil {
+				res = append(res, new)
+			}
 		}
 
 		step = step.Next()
+		stepno++
 	}
 
 	// Append all the resources that aren't getting modified.
+	glog.V(7).Infof("Adding %v unchanged resource(s) to checkpoint", len(p.unchanged))
 	for _, unres := range p.unchanged {
 		res = append(res, unres)
 	}
@@ -146,6 +158,7 @@ func (p *plan) checkpoint(resources []Resource) Snapshot {
 	for _, topvert := range topverts {
 		tops = append(tops, topvert.Data().(Resource))
 	}
+	glog.V(7).Infof("Checkpointing plan application: %v total resources", len(tops))
 	return NewSnapshot(p.ctx, p.husk, p.pkg, p.args, tops)
 }
 
@@ -238,9 +251,9 @@ func newPlan(ctx *Context, old Snapshot, new Snapshot) *plan {
 				step := newUpdateStep(p, oldres, res)
 				vs[m] = newPlanVertex(step)
 				glog.V(7).Infof("Update plan decided to update '%v'", m)
-			} else if glog.V(7) {
-				glog.V(7).Infof("Update plan decided not to update '%v'", m)
+			} else {
 				p.unchanged = append(p.unchanged, oldres)
+				glog.V(7).Infof("Update plan decided not to update '%v'", m)
 			}
 		} else {
 			creates[res] = true

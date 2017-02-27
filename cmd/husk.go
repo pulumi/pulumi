@@ -257,7 +257,7 @@ func apply(cmd *cobra.Command, args []string, opts applyOptions) {
 			saveHusk(result.Husk, checkpoint, opts.Output, true /*overwrite*/)
 
 			// If a deletion was requested, remove the husk; but only if no error has occurred!
-			if err != nil && opts.Delete {
+			if err == nil && opts.Delete {
 				deleteHusk(result.Husk)
 				fmt.Printf("Coconut husk '%v' has been destroyed!\n", result.Husk)
 			}
@@ -610,7 +610,7 @@ func printPropertyValue(b *bytes.Buffer, v resource.PropertyValue, indent string
 }
 
 func getArrayElemHeader(b *bytes.Buffer, i int, indent string) (string, string) {
-	prefix := fmt.Sprintf("%s    [%d]: ", indent, i)
+	prefix := fmt.Sprintf("    %s[%d]: ", indent, i)
 	return prefix, fmt.Sprintf("%-"+strconv.Itoa(len(prefix))+"s", "")
 }
 
@@ -676,21 +676,21 @@ func printPropertyValueDiff(b *bytes.Buffer, title func(string), diff resource.V
 		b.WriteString("[\n")
 		for i := 0; i < a.Len(); i++ {
 			_, newIndent := getArrayElemHeader(b, i, indent)
-			title := func(id string) { printArrayElemHeader(b, i, indent) }
+			title := func(id string) { printArrayElemHeader(b, i, id) }
 			if add, isadd := a.Adds[i]; isadd {
 				b.WriteString(colors.SpecAdded)
-				title(addIndent(newIndent))
+				title(addIndent(indent))
 				printPropertyValue(b, add, addIndent(newIndent))
 				b.WriteString(colors.Reset)
 			} else if delete, isdelete := a.Deletes[i]; isdelete {
 				b.WriteString(colors.SpecDeleted)
-				title(deleteIndent(newIndent))
-				printPropertyValue(b, delete, deleteIndent(indent))
+				title(deleteIndent(indent))
+				printPropertyValue(b, delete, deleteIndent(newIndent))
 				b.WriteString(colors.Reset)
 			} else if update, isupdate := a.Updates[i]; isupdate {
 				printPropertyValueDiff(b, title, update, newIndent)
 			} else {
-				title(newIndent)
+				title(indent)
 				printPropertyValue(b, a.Sames[i], newIndent)
 			}
 		}
