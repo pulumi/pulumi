@@ -152,13 +152,27 @@ func (p *plan) checkpoint(resources []Resource) Snapshot {
 // newPlan handles all three cases: (1) a creation plan from a new snapshot when old doesn't exist (nil), (2) an update
 // plan when both old and new exist, and (3) a deletion plan when old exists, but not new.
 func newPlan(ctx *Context, old Snapshot, new Snapshot) *plan {
+	// These variables are read from either snapshot (preferred new, since it may have updated args).
+	var husk tokens.QName
+	var pkg tokens.Package
+	var args core.Args
+
+	// Now extract the resources and settings from the old and/or new snapshots.
 	var oldres []Resource
 	if old != nil {
 		oldres = old.Resources()
+		if new == nil {
+			husk = old.Husk()
+			pkg = old.Pkg()
+			args = old.Args()
+		}
 	}
 	var newres []Resource
 	if new != nil {
 		newres = new.Resources()
+		husk = new.Husk()
+		pkg = new.Pkg()
+		args = new.Args()
 	}
 
 	if glog.V(7) {
@@ -194,9 +208,9 @@ func newPlan(ctx *Context, old Snapshot, new Snapshot) *plan {
 	// Keep track of vertices for our later graph operations.
 	p := &plan{
 		ctx:  ctx,
-		husk: new.Husk(),
-		pkg:  new.Pkg(),
-		args: new.Args(),
+		husk: husk,
+		pkg:  pkg,
+		args: args,
 	}
 	vs := make(map[Moniker]*planVertex)
 
