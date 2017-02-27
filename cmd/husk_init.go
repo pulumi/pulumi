@@ -27,7 +27,7 @@ func newHuskInitCmd() *cobra.Command {
 			}
 
 			husk := tokens.QName(args[0])
-			create(cmd, args[1:], husk)
+			create(husk)
 		},
 	}
 }

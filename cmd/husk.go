@@ -58,8 +58,44 @@ func sink() diag.Sink {
 	return snk
 }
 
+func initHuskCmd(cmd *cobra.Command, args []string) *huskCmdInfo {
+	// Create a new context for the plan operations.
+	ctx := resource.NewContext(sink())
+
+	// Read in the name of the husk to use.
+	if len(args) == 0 {
+		fmt.Fprintf(os.Stderr, "fatal: missing required husk name\n")
+		os.Exit(-1)
+	}
+	husk := tokens.QName(args[0])
+
+	// Read in the deployment information, bailing if an IO error occurs.
+	dep, old := readHusk(ctx, husk)
+	if dep == nil {
+		contract.Assert(!ctx.Diag.Success())
+		return nil // failure reading the husk information.
+	}
+	return &huskCmdInfo{
+		ctx:  ctx,
+		husk: husk,
+		dep:  dep,
+		old:  old,
+		args: args[1:],
+		orig: args,
+	}
+}
+
+type huskCmdInfo struct {
+	ctx  *resource.Context    // the resulting context
+	husk tokens.QName         // the husk name
+	dep  *resource.Deployment // the husk's deployment record
+	old  resource.Snapshot    // the husk's latest deployment snapshot
+	args []string             // the rest of the args after extracting the husk name
+	orig []string             // the original args before extracting the husk name
+}
+
 // create just creates a new husk without deploying anything into it.
-func create(cmd *cobra.Command, args []string, husk tokens.QName) {
+func create(husk tokens.QName) {
 	if success := saveHusk(husk, nil, "", false); success {
 		fmt.Printf("Coconut husk '%v' initialized; ready for deployments (see `coco husk deploy`)\n", husk)
 	}
@@ -121,44 +157,35 @@ type compileResult struct {
 }
 
 // plan just uses the standard logic to parse arguments, options, and to create a snapshot and plan.
-func plan(cmd *cobra.Command, args []string, husk tokens.QName, delete bool) *planResult {
-	// Create a new context for the plan operations.
-	ctx := resource.NewContext(sink())
-
-	// Read in the deployment information, bailing if an IO error occurs.
-	dep, old := readHusk(ctx, husk)
-	if dep == nil {
-		contract.Assert(!ctx.Diag.Success())
-		return nil // failure reading the husk information.
-	}
-
+func plan(cmd *cobra.Command, info *huskCmdInfo, delete bool) *planResult {
 	// If deleting, there is no need to create a new snapshot; otherwise, we will need to compile the package.
 	var new resource.Snapshot
 	var result *compileResult
 	if !delete {
 		// First, compile; if that yields errors or an empty heap, exit early.
-		if result = compile(cmd, args); result == nil || result.Heap == nil {
+		if result = compile(cmd, info.args); result == nil || result.Heap == nil {
 			return nil
 		}
 
 		// Create a resource snapshot from the compiled/evaluated object graph.
 		var err error
-		new, err = resource.NewGraphSnapshot(ctx, husk, result.Pkg.Tok, result.C.Ctx().Opts.Args, result.Heap)
+		new, err = resource.NewGraphSnapshot(
+			info.ctx, info.husk, result.Pkg.Tok, result.C.Ctx().Opts.Args, result.Heap)
 		if err != nil {
 			result.C.Diag().Errorf(errors.ErrorCantCreateSnapshot, err)
 			return nil
-		} else if !ctx.Diag.Success() {
+		} else if !info.ctx.Diag.Success() {
 			return nil
 		}
 	}
 
 	// Generate a plan; this API handles all interesting cases (create, update, delete).
-	plan := resource.NewPlan(ctx, old, new)
+	plan := resource.NewPlan(info.ctx, info.old, new)
 	return &planResult{
 		compileResult: result,
-		Ctx:           ctx,
-		Husk:          husk,
-		Old:           old,
+		Ctx:           info.ctx,
+		Husk:          info.husk,
+		Old:           info.old,
 		New:           new,
 		Plan:          plan,
 	}
@@ -173,11 +200,11 @@ type planResult struct {
 	Plan resource.Plan
 }
 
-func apply(cmd *cobra.Command, args []string, husk tokens.QName, opts applyOptions) {
-	if result := plan(cmd, args, husk, opts.Delete); result != nil {
+func apply(cmd *cobra.Command, info *huskCmdInfo, opts applyOptions) {
+	if result := plan(cmd, info, opts.Delete); result != nil {
 		// If we are doing an empty update, say so.
 		if result.Plan.Empty() && !opts.Delete {
-			sink().Infof(diag.Message("nothing to do -- resources are up to date"))
+			info.ctx.Diag.Infof(diag.Message("nothing to do -- resources are up to date"))
 		}
 
 		// Now based on whether a dry run was specified, or not, either print or perform the planned operations.
@@ -186,7 +213,7 @@ func apply(cmd *cobra.Command, args []string, husk tokens.QName, opts applyOptio
 			if opts.Output == "" || opts.Output == "-" {
 				printPlan(result.Plan, opts.ShowUnchanged, opts.Summary)
 			} else {
-				saveHusk(husk, result.New, opts.Output, true /*overwrite*/)
+				saveHusk(info.husk, result.New, opts.Output, true /*overwrite*/)
 			}
 		} else {
 			// If show unchanged was requested, print them first.
@@ -204,7 +231,7 @@ func apply(cmd *cobra.Command, args []string, husk tokens.QName, opts applyOptio
 				// TODO: we want richer diagnostics in the event that a plan apply fails.  For instance, we want to
 				//     know precisely what step failed, we want to know whether it was catastrophic, etc.  We also
 				//     probably want to plumb diag.Sink through apply so it can issue its own rich diagnostics.
-				sink().Errorf(errors.ErrorPlanApplyFailed, err)
+				info.ctx.Diag.Errorf(errors.ErrorPlanApplyFailed, err)
 			}
 
 			// Print out the total number of steps performed (and their kinds), if any succeeded.

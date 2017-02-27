@@ -3,12 +3,7 @@
 package cmd
 
 import (
-	"fmt"
-	"os"
-
 	"github.com/spf13/cobra"
-
-	"github.com/pulumi/coconut/pkg/tokens"
 )
 
 func newHuskDeployCmd() *cobra.Command {
@@ -31,20 +26,15 @@ func newHuskDeployCmd() *cobra.Command {
 			"By default, the Nut to execute is loaded from the current directory.  Optionally, an\n" +
 			"explicit path can be provided using the [nut-file] argument.",
 		Run: func(cmd *cobra.Command, args []string) {
-			// Read in the name of the husk to use.
-			if len(args) == 0 {
-				fmt.Fprintf(os.Stderr, "fatal: missing required husk name\n")
-				os.Exit(-1)
+			if info := initHuskCmd(cmd, args); info != nil {
+				apply(cmd, info, applyOptions{
+					Delete:        false,
+					DryRun:        dryRun,
+					ShowUnchanged: showUnchanged,
+					Summary:       summary,
+					Output:        output,
+				})
 			}
-
-			husk := tokens.QName(args[0])
-			apply(cmd, args[1:], husk, applyOptions{
-				Delete:        false,
-				DryRun:        dryRun,
-				ShowUnchanged: showUnchanged,
-				Summary:       summary,
-				Output:        output,
-			})
 		},
 	}
 
