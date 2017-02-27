@@ -21,6 +21,7 @@ import (
 type Plan interface {
 	Empty() bool                                                // true if the plan is empty.
 	Steps() Step                                                // the first step to perform, linked to the rest.
+	Sames() []Resource                                          // the resources untouched by this plan.
 	Apply(prog Progress) (Snapshot, error, Step, ResourceState) // performs the operations specified in this plan.
 }
 
@@ -69,7 +70,8 @@ type plan struct {
 
 var _ Plan = (*plan)(nil)
 
-func (p *plan) Empty() bool { return p.Steps() == nil }
+func (p *plan) Sames() []Resource { return p.sames }
+func (p *plan) Empty() bool       { return p.Steps() == nil }
 
 func (p *plan) Steps() Step {
 	if p.first == nil {

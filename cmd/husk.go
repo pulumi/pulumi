@@ -204,11 +204,18 @@ func apply(cmd *cobra.Command, args []string, opts applyOptions) {
 		if opts.DryRun {
 			// If no output file was requested, or "-", print to stdout; else write to that file.
 			if opts.Output == "" || opts.Output == "-" {
-				printPlan(result.Plan, opts.Summary)
+				printPlan(result.Plan, opts.ShowSames, opts.Summary)
 			} else {
 				saveHusk(husk, result.New, opts.Output, true /*overwrite*/)
 			}
 		} else {
+			// If show-sames was requested, print them first.
+			if opts.ShowSames {
+				var b bytes.Buffer
+				printSames(&b, result.Plan, opts.Summary)
+				fmt.Printf(b.String())
+			}
+
 			// Create an object to track progress and perform the actual operations.
 			start := time.Now()
 			progress := newProgress(opts.Summary)
@@ -377,11 +384,12 @@ func saveHusk(husk tokens.QName, snap resource.Snapshot, file string, existok bo
 }
 
 type applyOptions struct {
-	Create  bool   // true if we are creating resources.
-	Delete  bool   // true if we are deleting resources.
-	DryRun  bool   // true if we should just print the plan without performing it.
-	Summary bool   // true if we should only summarize resources and operations.
-	Output  string // the place to store the output, if any.
+	Create    bool   // true if we are creating resources.
+	Delete    bool   // true if we are deleting resources.
+	DryRun    bool   // true if we should just print the plan without performing it.
+	ShowSames bool   // true to show the resources that aren't updated, in addition to those that are.
+	Summary   bool   // true if we should only summarize resources and operations.
+	Output    string // the place to store the output, if any.
 }
 
 // applyProgress pretty-prints the plan application process as it goes.
@@ -438,22 +446,26 @@ func (prog *applyProgress) After(step resource.Step, err error, state resource.R
 	}
 }
 
-func printPlan(plan resource.Plan, summary bool) {
+func printPlan(plan resource.Plan, showSames bool, summary bool) {
+	var b bytes.Buffer
+
+	// If show-sames was requested, walk the sames and print them.
+	if showSames {
+		printSames(&b, plan, summary)
+	}
+
 	// Now walk the plan's steps and and pretty-print them out.
 	step := plan.Steps()
 	for step != nil {
-		var b bytes.Buffer
-
 		// Print this step information (resource and all its properties).
-		printStep(&b, step, summary, "")
-
-		// Now go ahead and emit the output to the console, and move on to the next step in the plan.
 		// TODO: it would be nice if, in the output, we showed the dependencies a la `git log --graph`.
-		s := colors.Colorize(b.String())
-		fmt.Printf(s)
-
+		printStep(&b, step, summary, "")
 		step = step.Next()
 	}
+
+	// Now go ahead and emit the output to the console.
+	s := colors.Colorize(b.String())
+	fmt.Printf(s)
 }
 
 func opPrefix(op resource.StepOp) string {
@@ -478,6 +490,14 @@ func opSuffix(op resource.StepOp) string {
 }
 
 const resourceDetailsIndent = "      " // 4 spaces, plus space for "+ ", "- ", and " " leaders
+
+func printSames(b *bytes.Buffer, plan resource.Plan, summary bool) {
+	for _, same := range plan.Sames() {
+		b.WriteString("  ")
+		printResourceHeader(b, same, nil, "")
+		printResourceProperties(b, same, nil, summary, "")
+	}
+}
 
 func printStep(b *bytes.Buffer, step resource.Step, summary bool, indent string) {
 	// First print out the operation's prefix.
