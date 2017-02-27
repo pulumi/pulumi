@@ -14,6 +14,35 @@ type ObjectDiff struct {
 	Updates map[PropertyKey]ValueDiff // properties in this map are changed in the new.
 }
 
+// Add returns true if the property 'k' has been added in the new property set.
+func (diff *ObjectDiff) Add(k PropertyKey) bool {
+	_, has := diff.Adds[k]
+	return has
+}
+
+// Delete returns true if the property 'k' has been deleted from the new property set.
+func (diff *ObjectDiff) Delete(k PropertyKey) bool {
+	_, has := diff.Deletes[k]
+	return has
+}
+
+// Update returns true if the property 'k' has been changed between new and old property sets.
+func (diff *ObjectDiff) Update(k PropertyKey) bool {
+	_, has := diff.Updates[k]
+	return has
+}
+
+// Diff returns true if the property 'k' is known to be different between old and new.
+func (diff *ObjectDiff) Diff(k PropertyKey) bool {
+	return diff.Add(k) || diff.Delete(k) || diff.Update(k)
+}
+
+// Same returns true if the property 'k' is *not* known to be different; note that this isn't the same as looking up in
+// the Sames map, because it is possible the key is simply missing altogether (as is the case for nulls).
+func (diff *ObjectDiff) Same(k PropertyKey) bool {
+	return !diff.Diff(k)
+}
+
 // Keys returns a stable snapshot of all keys known to this object, across adds, deletes, sames, and updates.
 func (diff *ObjectDiff) Keys() []PropertyKey {
 	var ks propertyKeys
@@ -83,28 +112,28 @@ func (props PropertyMap) Diff(other PropertyMap) *ObjectDiff {
 	updates := make(map[PropertyKey]ValueDiff)
 
 	// First find any updates or deletes.
-	for k, p := range props {
+	for k, old := range props {
 		if new, has := other[k]; has {
-			if diff := p.Diff(new); diff != nil {
-				if p.IsNull() {
+			if diff := old.Diff(new); diff != nil {
+				if old.IsNull() {
 					adds[k] = new
 				} else if new.IsNull() {
-					deletes[k] = p
+					deletes[k] = old
 				} else {
 					updates[k] = *diff
 				}
 			} else {
-				sames[k] = p
+				sames[k] = old
 			}
 		} else if !new.IsNull() {
-			deletes[k] = p
+			deletes[k] = old
 		}
 	}
 
 	// Next find any additions not in the old map.
-	for k, p := range other {
-		if _, has := props[k]; !has && !p.IsNull() {
-			adds[k] = p
+	for k, new := range other {
+		if _, has := props[k]; !has && !new.IsNull() {
+			adds[k] = new
 		}
 	}
 

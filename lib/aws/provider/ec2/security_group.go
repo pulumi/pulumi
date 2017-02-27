@@ -5,7 +5,6 @@ package ec2
 import (
 	"errors"
 	"fmt"
-	"os"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
@@ -24,23 +23,23 @@ const SecurityGroup = tokens.Type("aws:ec2/securityGroup:SecurityGroup")
 
 // NewSecurityGroupProvider creates a provider that handles EC2 security group operations.
 func NewSecurityGroupProvider(ctx *awsctx.Context) cocorpc.ResourceProviderServer {
-	return &securityGroupProvider{ctx}
+	return &sgProvider{ctx}
 }
 
-type securityGroupProvider struct {
+type sgProvider struct {
 	ctx *awsctx.Context
 }
 
 // Name names a given resource.  Sometimes this will be assigned by a developer, and so the provider
 // simply fetches it from the property bag; other times, the provider will assign this based on its own algorithm.
 // In any case, resources with the same name must be safe to use interchangeably with one another.
-func (p *securityGroupProvider) Name(ctx context.Context, req *cocorpc.NameRequest) (*cocorpc.NameResponse, error) {
+func (p *sgProvider) Name(ctx context.Context, req *cocorpc.NameRequest) (*cocorpc.NameResponse, error) {
 	return nil, nil // use the AWS provider default name
 }
 
 // Create allocates a new instance of the provided resource and returns its unique ID afterwards.  (The input ID
 // must be blank.)  If this call fails, the resource must not have been created (i.e., it is "transacational").
-func (p *securityGroupProvider) Create(ctx context.Context, req *cocorpc.CreateRequest) (*cocorpc.CreateResponse, error) {
+func (p *sgProvider) Create(ctx context.Context, req *cocorpc.CreateRequest) (*cocorpc.CreateResponse, error) {
 	contract.Assert(req.GetType() == string(SecurityGroup))
 	props := resource.UnmarshalProperties(req.GetProperties())
 
@@ -54,9 +53,9 @@ func (p *securityGroupProvider) Create(ctx context.Context, req *cocorpc.CreateR
 	// Make the security group creation parameters.
 	// TODO: the name needs to be figured out; CloudFormation doesn't expose it, presumably due to its requirement to
 	//     be unique.  I think we can use the moniker here, but that isn't necessarily stable.  UUID?
-	fmt.Fprintf(os.Stdout, "Creating EC2 security group\n")
+	fmt.Printf("Creating EC2 security group\n")
 	create := &ec2.CreateSecurityGroupInput{
-		GroupName:   &secgrp.Description,
+		GroupName:   &secgrp.Name, // TODO: consider using the moniker for greater uniqueness.
 		Description: &secgrp.Description,
 		VpcId:       secgrp.VPCID,
 	}
@@ -69,7 +68,7 @@ func (p *securityGroupProvider) Create(ctx context.Context, req *cocorpc.CreateR
 	contract.Assert(result != nil)
 	id := result.GroupId
 	contract.Assert(id != nil)
-	fmt.Fprintf(os.Stdout, "EC2 security group created: %v; waiting for it to become active\n", *id)
+	fmt.Printf("EC2 security group created: %v; waiting for it to become active\n", *id)
 
 	// Don't proceed until the security group exists.
 	if err = p.waitForSecurityGroupState(id, true); err != nil {
@@ -78,16 +77,9 @@ func (p *securityGroupProvider) Create(ctx context.Context, req *cocorpc.CreateR
 
 	// Authorize ingress rules if any exist.
 	if secgrp.Ingress != nil {
-		fmt.Fprintf(os.Stdout, "Authorizing %v security group ingress rules\n", len(*secgrp.Ingress))
+		fmt.Printf("Authorizing %v security group ingress (inbound) rules\n", len(*secgrp.Ingress))
 		for _, ingress := range *secgrp.Ingress {
-			authin := &ec2.AuthorizeSecurityGroupIngressInput{
-				GroupId:    id,
-				IpProtocol: aws.String(ingress.IPProtocol),
-				CidrIp:     ingress.CIDRIP,
-				FromPort:   ingress.FromPort,
-				ToPort:     ingress.ToPort,
-			}
-			if _, err := p.ctx.EC2().AuthorizeSecurityGroupIngress(authin); err != nil {
+			if err := p.createSecurityGroupIngressRule(id, ingress); err != nil {
 				return nil, err
 			}
 		}
@@ -95,16 +87,9 @@ func (p *securityGroupProvider) Create(ctx context.Context, req *cocorpc.CreateR
 
 	// Authorize egress rules if any exist.
 	if secgrp.Egress != nil {
-		fmt.Fprintf(os.Stdout, "Authorizing %v security group egress rules\n", len(*secgrp.Egress))
+		fmt.Printf("Authorizing %v security group egress (outbound) rules\n", len(*secgrp.Egress))
 		for _, egress := range *secgrp.Egress {
-			authout := &ec2.AuthorizeSecurityGroupEgressInput{
-				GroupId:    id,
-				IpProtocol: aws.String(egress.IPProtocol),
-				CidrIp:     egress.CIDRIP,
-				FromPort:   egress.FromPort,
-				ToPort:     egress.ToPort,
-			}
-			if _, err := p.ctx.EC2().AuthorizeSecurityGroupEgress(authout); err != nil {
+			if err := p.createSecurityGroupEgressRule(id, egress); err != nil {
 				return nil, err
 			}
 		}
@@ -116,34 +101,158 @@ func (p *securityGroupProvider) Create(ctx context.Context, req *cocorpc.CreateR
 }
 
 // Read reads the instance state identified by ID, returning a populated resource object, or an error if not found.
-func (p *securityGroupProvider) Read(ctx context.Context, req *cocorpc.ReadRequest) (*cocorpc.ReadResponse, error) {
+func (p *sgProvider) Read(ctx context.Context, req *cocorpc.ReadRequest) (*cocorpc.ReadResponse, error) {
 	contract.Assert(req.GetType() == string(SecurityGroup))
 	return nil, errors.New("Not yet implemented")
 }
 
 // Update updates an existing resource with new values.  Only those values in the provided property bag are updated
 // to new values.  The resource ID is returned and may be different if the resource had to be recreated.
-func (p *securityGroupProvider) Update(ctx context.Context, req *cocorpc.UpdateRequest) (*cocorpc.UpdateResponse, error) {
+func (p *sgProvider) Update(ctx context.Context, req *cocorpc.UpdateRequest) (*cocorpc.UpdateResponse, error) {
+	// Deserialize the old/new properties and validate them before bothering to diff them.
 	contract.Assert(req.GetType() == string(SecurityGroup))
+	oldprops := resource.UnmarshalProperties(req.GetOlds())
+	newgrp, err := newSecurityGroup(oldprops, true)
+	if err != nil {
+		return nil, err
+	}
+	newprops := resource.UnmarshalProperties(req.GetNews())
+	oldgrp, err := newSecurityGroup(newprops, true)
+	if err != nil {
+		return nil, err
+	}
 
-	// TODO: the only thing that could change is the ingress/egress rules.  diff them.
+	// Now diff the properties to determine how to proceed.
+	diff := oldprops.Diff(newprops)
 
-	return nil, errors.New("Not yet implemented")
+	var id string
+	oldid := req.GetId()
+	if diff.Diff(securityGroupName) || diff.Diff(securityGroupDescription) || diff.Diff(securityGroupVPCID) {
+		// If the name, description, or VPC changed, the security group needs to be deleted and recreated.
+		fmt.Printf("Updates to EC2 SecurityGroup '%v' require deletion and recreation\n", oldid)
+		if _, err := p.Delete(ctx, &cocorpc.DeleteRequest{
+			Id:   oldid,
+			Type: req.GetType(),
+		}); err != nil {
+			return nil, err
+		}
+		resp, err := p.Create(ctx, &cocorpc.CreateRequest{
+			Type:       req.GetType(),
+			Properties: req.GetNews(),
+		})
+		if err != nil {
+			return nil, err
+		}
+		id = resp.GetId() // return the freshly allocated ID
+	} else {
+		// If only the ingress and/or egress rules changed, we can incrementally apply the updates.
+		fmt.Printf("Updates to EC2 SecurityGroup '%v' will only affect changed ingress/egress rules\n", oldid)
+		gresses := []struct {
+			key    resource.PropertyKey
+			olds   *[]securityGroupRule
+			news   *[]securityGroupRule
+			create func(*string, securityGroupRule) error
+			delete func(*string, securityGroupRule) error
+		}{
+			{
+				securityGroupIngress,
+				newgrp.Ingress,
+				oldgrp.Ingress,
+				p.createSecurityGroupIngressRule,
+				p.deleteSecurityGroupIngressRule,
+			},
+			{
+				securityGroupEgress,
+				newgrp.Egress,
+				oldgrp.Egress,
+				p.createSecurityGroupEgressRule,
+				p.deleteSecurityGroupEgressRule,
+			},
+		}
+		for _, gress := range gresses {
+			if diff.Diff(gress.key) {
+				// First accumulate the diffs.
+				var creates []securityGroupRule
+				var deletes []securityGroupRule
+				if diff.Add(gress.key) {
+					contract.Assert(gress.news != nil)
+					for _, rule := range *gress.news {
+						creates = append(creates, rule)
+					}
+				} else if diff.Delete(gress.key) {
+					contract.Assert(gress.olds != nil)
+					for _, rule := range *gress.olds {
+						deletes = append(deletes, rule)
+					}
+				} else if diff.Update(gress.key) {
+					update := diff.Updates[gress.key]
+					contract.Assert(update.Array != nil)
+					for _, add := range update.Array.Adds {
+						contract.Assert(add.IsObject())
+						rule, err := newSecurityGroupRule(add.ObjectValue(), true)
+						if err != nil {
+							return nil, err
+						}
+						creates = append(creates, *rule)
+					}
+					for _, delete := range update.Array.Deletes {
+						contract.Assert(delete.IsObject())
+						rule, err := newSecurityGroupRule(delete.ObjectValue(), true)
+						if err != nil {
+							return nil, err
+						}
+						deletes = append(deletes, *rule)
+					}
+					for _, change := range update.Array.Updates {
+						// We can't update individual fields of a rule; simply delete and recreate.
+						contract.Assert(change.Old.IsObject())
+						before, err := newSecurityGroupRule(change.Old.ObjectValue(), true)
+						if err != nil {
+							return nil, err
+						}
+						deletes = append(deletes, *before)
+						contract.Assert(change.New.IsObject())
+						after, err := newSecurityGroupRule(change.New.ObjectValue(), true)
+						if err != nil {
+							return nil, err
+						}
+						creates = append(creates, *after)
+					}
+				}
+
+				// And now actually perform the create and delete operations.
+				for _, delete := range deletes {
+					if err := p.deleteSecurityGroupIngressRule(&oldid, delete); err != nil {
+						return nil, err
+					}
+				}
+				for _, create := range creates {
+					if err := p.createSecurityGroupIngressRule(&oldid, create); err != nil {
+						return nil, err
+					}
+				}
+			}
+		}
+	}
+
+	return &cocorpc.UpdateResponse{
+		Id: id,
+	}, nil
 }
 
 // Delete tears down an existing resource with the given ID.  If it fails, the resource is assumed to still exist.
-func (p *securityGroupProvider) Delete(ctx context.Context, req *cocorpc.DeleteRequest) (*pbempty.Empty, error) {
+func (p *sgProvider) Delete(ctx context.Context, req *cocorpc.DeleteRequest) (*pbempty.Empty, error) {
 	contract.Assert(req.GetType() == string(SecurityGroup))
 
 	// First, perform the deletion.
 	id := aws.String(req.GetId())
-	fmt.Fprintf(os.Stdout, "Terminating EC2 SecurityGroup '%v'\n", *id)
+	fmt.Printf("Terminating EC2 SecurityGroup '%v'\n", *id)
 	delete := &ec2.DeleteSecurityGroupInput{GroupId: id}
 	if _, err := p.ctx.EC2().DeleteSecurityGroup(delete); err != nil {
 		return nil, err
 	}
 
-	fmt.Fprintf(os.Stdout, "EC2 Security Group delete request submitted; waiting for it to terminate\n")
+	fmt.Printf("EC2 Security Group delete request submitted; waiting for it to terminate\n")
 
 	// Don't proceed until the security group exists.
 	if err := p.waitForSecurityGroupState(id, false); err != nil {
@@ -155,15 +264,29 @@ func (p *securityGroupProvider) Delete(ctx context.Context, req *cocorpc.DeleteR
 
 // securityGroup represents the state associated with a security group.
 type securityGroup struct {
+	Name        string               // the security group's unique name.
 	Description string               // description of the security group.
 	VPCID       *string              // the VPC in which this security group resides.
 	Egress      *[]securityGroupRule // a list of security group egress rules.
 	Ingress     *[]securityGroupRule // a list of security group ingress rules.
 }
 
+const (
+	securityGroupName        resource.PropertyKey = "name"
+	securityGroupDescription                      = "groupDescription"
+	securityGroupVPCID                            = "vpc"
+	securityGroupEgress                           = "securityGroupEgress"
+	securityGroupIngress                          = "securityGroupIngress"
+)
+
 // newSecurityGroup creates a new instance bag of state, validating required properties if asked to do so.
 func newSecurityGroup(m resource.PropertyMap, req bool) (*securityGroup, error) {
-	description, err := m.ReqStringOrErr("groupDescription")
+	name, err := m.ReqStringOrErr(securityGroupName)
+	if err != nil && (req || !resource.IsReqError(err)) {
+		return nil, err
+	}
+
+	description, err := m.ReqStringOrErr(securityGroupDescription)
 	if err != nil && (req || !resource.IsReqError(err)) {
 		return nil, err
 	}
@@ -172,44 +295,31 @@ func newSecurityGroup(m resource.PropertyMap, req bool) (*securityGroup, error) 
 	//     etc.  Furthermore, consider doing this in a pass before performing *any* actions (and during planning), so
 	//     that we can hoist failures to before even trying to execute a plan (when such errors are more costly).
 
-	vpcID, err := m.OptStringOrErr("vpc")
+	vpcID, err := m.OptStringOrErr(securityGroupVPCID)
 	if err != nil {
 		return nil, err
 	}
 
-	var egress *[]securityGroupRule
-	egressArray, err := m.OptObjectArrayOrErr("securityGroupEgress")
+	egressArray, err := m.OptObjectArrayOrErr(securityGroupEgress)
 	if err != nil {
 		return nil, err
-	} else if egressArray != nil {
-		var rules []securityGroupRule
-		for _, rule := range *egressArray {
-			secrule, err := newSecurityGroupRule(rule, req)
-			if err != nil {
-				return nil, err
-			}
-			rules = append(rules, *secrule)
-		}
-		egress = &rules
+	}
+	egress, err := newSecurityGroupRules(egressArray, req)
+	if err != nil {
+		return nil, err
 	}
 
-	var ingress *[]securityGroupRule
-	ingressArray, err := m.OptObjectArrayOrErr("securityGroupIngress")
+	ingressArray, err := m.OptObjectArrayOrErr(securityGroupIngress)
 	if err != nil {
 		return nil, err
-	} else if ingressArray != nil {
-		var rules []securityGroupRule
-		for _, rule := range *ingressArray {
-			secrule, err := newSecurityGroupRule(rule, req)
-			if err != nil {
-				return nil, err
-			}
-			rules = append(rules, *secrule)
-		}
-		ingress = &rules
+	}
+	ingress, err := newSecurityGroupRules(ingressArray, req)
+	if err != nil {
+		return nil, err
 	}
 
 	return &securityGroup{
+		Name:        name,
 		Description: description,
 		VPCID:       vpcID,
 		Egress:      egress,
@@ -262,7 +372,135 @@ func newSecurityGroupRule(m resource.PropertyMap, req bool) (*securityGroupRule,
 	}, nil
 }
 
-func (p *securityGroupProvider) waitForSecurityGroupState(id *string, exist bool) error {
+func newSecurityGroupRules(arr *[]resource.PropertyMap, req bool) (*[]securityGroupRule, error) {
+	if arr == nil {
+		return nil, nil
+	}
+	var rules []securityGroupRule
+	for _, rule := range *arr {
+		secrule, err := newSecurityGroupRule(rule, req)
+		if err != nil {
+			return nil, err
+		}
+		rules = append(rules, *secrule)
+	}
+	return &rules, nil
+}
+
+func (p *sgProvider) createSecurityGroupIngressRule(groupID *string, ingress securityGroupRule) error {
+	// First print a little status to stdout.
+	fmt.Printf("Authorizing security group ingress (inbound) rule: IPProtocol=%v", ingress.IPProtocol)
+	if ingress.CIDRIP != nil {
+		fmt.Printf(", CIDRIP=%v", *ingress.CIDRIP)
+	}
+	if ingress.FromPort != nil {
+		fmt.Printf(", FromPort=%v", *ingress.FromPort)
+	}
+	if ingress.ToPort != nil {
+		fmt.Printf(", ToPort=%v", *ingress.ToPort)
+	}
+	fmt.Printf("\n")
+
+	// Now do it.
+	authin := &ec2.AuthorizeSecurityGroupIngressInput{
+		GroupId:    groupID,
+		IpProtocol: aws.String(ingress.IPProtocol),
+		CidrIp:     ingress.CIDRIP,
+		FromPort:   ingress.FromPort,
+		ToPort:     ingress.ToPort,
+	}
+	if _, err := p.ctx.EC2().AuthorizeSecurityGroupIngress(authin); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (p *sgProvider) deleteSecurityGroupIngressRule(groupID *string, ingress securityGroupRule) error {
+	// First print a little status to stdout.
+	fmt.Printf("Revoking security group ingress (inbound) rule: IPProtocol=%v", ingress.IPProtocol)
+	if ingress.CIDRIP != nil {
+		fmt.Printf(", CIDRIP=%v", *ingress.CIDRIP)
+	}
+	if ingress.FromPort != nil {
+		fmt.Printf(", FromPort=%v", *ingress.FromPort)
+	}
+	if ingress.ToPort != nil {
+		fmt.Printf(", ToPort=%v", *ingress.ToPort)
+	}
+	fmt.Printf("\n")
+
+	// Now do it.
+	revokin := &ec2.RevokeSecurityGroupIngressInput{
+		GroupId:    groupID,
+		IpProtocol: aws.String(ingress.IPProtocol),
+		CidrIp:     ingress.CIDRIP,
+		FromPort:   ingress.FromPort,
+		ToPort:     ingress.ToPort,
+	}
+	if _, err := p.ctx.EC2().RevokeSecurityGroupIngress(revokin); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (p *sgProvider) createSecurityGroupEgressRule(groupID *string, egress securityGroupRule) error {
+	// First print a little status to stdout.
+	fmt.Printf("Authorizing security group egress (outbound) rule: IPProtocol=%v", egress.IPProtocol)
+	if egress.CIDRIP != nil {
+		fmt.Printf(", CIDRIP=%v", *egress.CIDRIP)
+	}
+	if egress.FromPort != nil {
+		fmt.Printf(", FromPort=%v", *egress.FromPort)
+	}
+	if egress.ToPort != nil {
+		fmt.Printf(", ToPort=%v", *egress.ToPort)
+	}
+	fmt.Printf("\n")
+
+	// Now do it.
+	authout := &ec2.AuthorizeSecurityGroupEgressInput{
+		GroupId:    groupID,
+		IpProtocol: aws.String(egress.IPProtocol),
+		CidrIp:     egress.CIDRIP,
+		FromPort:   egress.FromPort,
+		ToPort:     egress.ToPort,
+	}
+	if _, err := p.ctx.EC2().AuthorizeSecurityGroupEgress(authout); err != nil {
+		return err
+
+	}
+	return nil
+}
+
+func (p *sgProvider) deleteSecurityGroupEgressRule(groupID *string, egress securityGroupRule) error {
+	// First print a little status to stdout.
+	fmt.Printf("Revoking security group egress (outbound) rule: IPProtocol=%v", egress.IPProtocol)
+	if egress.CIDRIP != nil {
+		fmt.Printf(", CIDRIP=%v", *egress.CIDRIP)
+	}
+	if egress.FromPort != nil {
+		fmt.Printf(", FromPort=%v", *egress.FromPort)
+	}
+	if egress.ToPort != nil {
+		fmt.Printf(", ToPort=%v", *egress.ToPort)
+	}
+	fmt.Printf("\n")
+
+	// Now do it.
+	revokout := &ec2.RevokeSecurityGroupEgressInput{
+		GroupId:    groupID,
+		IpProtocol: aws.String(egress.IPProtocol),
+		CidrIp:     egress.CIDRIP,
+		FromPort:   egress.FromPort,
+		ToPort:     egress.ToPort,
+	}
+	if _, err := p.ctx.EC2().RevokeSecurityGroupEgress(revokout); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (p *sgProvider) waitForSecurityGroupState(id *string, exist bool) error {
 	succ, err := awsctx.RetryUntil(
 		p.ctx,
 		func() (bool, error) {
