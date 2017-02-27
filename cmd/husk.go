@@ -59,17 +59,7 @@ func sink() diag.Sink {
 }
 
 // create just creates a new husk without deploying anything into it.
-func create(cmd *cobra.Command, args []string) {
-	// Read in the name of the husk to use.
-	var husk tokens.QName
-	if len(args) == 0 {
-		fmt.Fprintf(os.Stderr, "fatal: missing required husk name\n")
-		os.Exit(-1)
-	} else {
-		husk = tokens.QName(args[0])
-		args = args[1:]
-	}
-
+func create(cmd *cobra.Command, args []string, husk tokens.QName) {
 	if success := saveHusk(husk, nil, "", false); success {
 		fmt.Printf("Coconut husk '%v' initialized; ready for deployments (see `coco husk deploy`)\n", husk)
 	}
@@ -183,17 +173,7 @@ type planResult struct {
 	Plan resource.Plan
 }
 
-func apply(cmd *cobra.Command, args []string, opts applyOptions) {
-	// Read in the name of the husk to use.
-	var husk tokens.QName
-	if len(args) == 0 {
-		fmt.Fprintf(os.Stderr, "fatal: missing required husk name\n")
-		os.Exit(-1)
-	} else {
-		husk = tokens.QName(args[0])
-		args = args[1:]
-	}
-
+func apply(cmd *cobra.Command, args []string, husk tokens.QName, opts applyOptions) {
 	if result := plan(cmd, args, husk, opts.Delete); result != nil {
 		// If we are doing an empty update, say so.
 		if result.Plan.Empty() && !opts.Delete {
