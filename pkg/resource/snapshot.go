@@ -28,8 +28,7 @@ type Snapshot interface {
 	ResourceByObject(obj *rt.Object) Resource   // looks up a resource by its object.
 }
 
-// NewSnapshot creates a snapshot from the given arguments.  Note that resources must be in topologically-sorted
-// dependency order, otherwise undefined behavior will result from using the resulting snapshot object.
+// NewSnapshot creates a snapshot from the given arguments.  The resources must be in topologically sorted order.
 func NewSnapshot(ctx *Context, husk tokens.QName, pkg tokens.Package,
 	args core.Args, resources []Resource) Snapshot {
 	return &snapshot{ctx, husk, pkg, args, resources}

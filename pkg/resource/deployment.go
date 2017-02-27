@@ -184,7 +184,6 @@ func DeserializeDeployment(ctx *Context, ser *Deployment) Snapshot {
 	// For every serialized resource vertex, create a ResourceDeployment out of it.
 	var resources []Resource
 	if latest.Resources != nil {
-		// TODO: we need to enumerate resources in the specific order in which they were emitted.
 		for _, kvp := range latest.Resources.Iter() {
 			// Deserialize the resources, if they exist.
 			res := kvp.Value

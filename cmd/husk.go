@@ -212,7 +212,8 @@ func apply(cmd *cobra.Command, args []string, opts applyOptions) {
 			// Create an object to track progress and perform the actual operations.
 			start := time.Now()
 			progress := newProgress(opts.Summary)
-			if err, _, _ := result.Plan.Apply(progress); err != nil {
+			checkpoint, err, _, _ := result.Plan.Apply(progress)
+			if err != nil {
 				// TODO: we want richer diagnostics in the event that a plan apply fails.  For instance, we want to
 				//     know precisely what step failed, we want to know whether it was catastrophic, etc.  We also
 				//     probably want to plumb diag.Sink through apply so it can issue its own rich diagnostics.
@@ -245,13 +246,13 @@ func apply(cmd *cobra.Command, args []string, opts applyOptions) {
 			fmt.Printf(colors.Colorize(s))
 
 			// Now save the updated snapshot to the specified output file, if any, or the standard location otherwise.
-			// TODO: save partial updates if we weren't able to perform the entire planned set of operations.
-			if opts.Delete {
+			// Note that if a failure has occurred, the Apply routine above will have returned a safe checkpoint.
+			saveHusk(result.Husk, checkpoint, opts.Output, true /*overwrite*/)
+
+			// If a deletion was requested, remove the husk; but only if no error has occurred!
+			if err != nil && opts.Delete {
 				deleteHusk(result.Husk)
 				fmt.Printf("Coconut husk '%v' has been destroyed!\n", result.Husk)
-			} else {
-				contract.Assert(result.New != nil)
-				saveHusk(result.Husk, result.New, opts.Output, true /*overwrite*/)
 			}
 		}
 	}
@@ -281,7 +282,7 @@ func readHusk(ctx *resource.Context, husk tokens.QName) (*resource.Deployment, r
 	// Detect the encoding of the file so we can do our initial unmarshaling.
 	m, ext := encoding.Detect(file)
 	if m == nil {
-		sink().Errorf(errors.ErrorIllegalMarkupExtension, ext)
+		ctx.Diag.Errorf(errors.ErrorIllegalMarkupExtension, ext)
 		return nil, nil
 	}
 
@@ -289,9 +290,9 @@ func readHusk(ctx *resource.Context, husk tokens.QName) (*resource.Deployment, r
 	b, err := ioutil.ReadFile(file)
 	if err != nil {
 		if os.IsNotExist(err) {
-			sink().Errorf(errors.ErrorInvalidHuskName, husk)
+			ctx.Diag.Errorf(errors.ErrorInvalidHuskName, husk)
 		} else {
-			sink().Errorf(errors.ErrorIO, err)
+			ctx.Diag.Errorf(errors.ErrorIO, err)
 		}
 		return nil, nil
 	}
@@ -299,7 +300,7 @@ func readHusk(ctx *resource.Context, husk tokens.QName) (*resource.Deployment, r
 	// Unmarshal the contents into a deployment structure.
 	var dep resource.Deployment
 	if err = m.Unmarshal(b, &dep); err != nil {
-		sink().Errorf(errors.ErrorCantReadDeployment, file, err)
+		ctx.Diag.Errorf(errors.ErrorCantReadDeployment, file, err)
 		return nil, nil
 	}
 
@@ -307,7 +308,7 @@ func readHusk(ctx *resource.Context, husk tokens.QName) (*resource.Deployment, r
 	// TODO: we can eliminate this redundant unmarshaling once Go supports strict unmarshaling.
 	var obj mapper.Object
 	if err = m.Unmarshal(b, &obj); err != nil {
-		sink().Errorf(errors.ErrorCantReadDeployment, file, err)
+		ctx.Diag.Errorf(errors.ErrorCantReadDeployment, file, err)
 		return nil, nil
 	} else {
 		if obj["latest"] != nil {
@@ -318,7 +319,7 @@ func readHusk(ctx *resource.Context, husk tokens.QName) (*resource.Deployment, r
 		md := mapper.New(nil)
 		var ignore resource.Deployment // just for errors.
 		if err = md.Decode(obj, &ignore); err != nil {
-			sink().Errorf(errors.ErrorCantReadDeployment, file, err)
+			ctx.Diag.Errorf(errors.ErrorCantReadDeployment, file, err)
 			return nil, nil
 		}
 	}

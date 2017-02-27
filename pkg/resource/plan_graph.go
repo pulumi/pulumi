@@ -7,14 +7,13 @@ import (
 )
 
 type planGraph struct {
-	plan  *plan
 	objs  []*planEdge
 	roots []graph.Edge
 }
 
 var _ graph.Graph = (*planGraph)(nil)
 
-func newPlanGraph(plan *plan, objs []*planEdge) *planGraph {
+func newPlanGraph(objs []*planEdge) *planGraph {
 	roots := make([]graph.Edge, len(objs))
 	for i, root := range objs {
 		roots[i] = root
@@ -25,7 +24,6 @@ func newPlanGraph(plan *plan, objs []*planEdge) *planGraph {
 	}
 }
 
-func (v *planGraph) Plan() *plan         { return v.plan }
 func (v *planGraph) Objs() []*planEdge   { return v.objs }
 func (v *planGraph) Roots() []graph.Edge { return v.roots }
 
