@@ -4,13 +4,9 @@ package cmd
 
 import (
 	"fmt"
-	"path/filepath"
+	"os"
 
 	"github.com/spf13/cobra"
-
-	"github.com/pulumi/coconut/pkg/compiler"
-	"github.com/pulumi/coconut/pkg/util/cmdutil"
-	"github.com/pulumi/coconut/pkg/util/contract"
 )
 
 func newVerifyCmd() *cobra.Command {
@@ -27,34 +23,10 @@ func newVerifyCmd() *cobra.Command {
 			"errors anywhere it doesn't obey them.  This is generally useful for tools developers\n" +
 			"and can ensure that Nuts do not fail at runtime, when such invariants are checked.",
 		Run: func(cmd *cobra.Command, args []string) {
-			// In the case of an argument, load that specific package and new up a compiler based on its base path.
-			// Otherwise, use the default workspace and package logic (which consults the current working directory).
-			var success bool
-			if len(args) == 0 {
-				comp, err := compiler.Newwd(nil)
-				if err != nil {
-					contract.Failf("fatal: %v", err)
-				}
-				success = comp.Verify()
-			} else {
-				fn := args[0]
-				if pkg := cmdutil.ReadPackageFromArg(fn); pkg != nil {
-					var comp compiler.Compiler
-					var err error
-					if fn == "-" {
-						comp, err = compiler.Newwd(nil)
-					} else {
-						comp, err = compiler.New(filepath.Dir(fn), nil)
-					}
-					if err != nil {
-						contract.Failf("fatal: %v", err)
-					}
-					success = comp.VerifyPackage(pkg)
-				}
-			}
-
-			if !success {
+			// Create a compiler object and perform the verification.
+			if !verify(cmd, args) {
 				fmt.Printf("fatal: Nut verification failed\n")
+				os.Exit(-1)
 			}
 		},
 	}

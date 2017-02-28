@@ -1,6 +1,6 @@
 {
     "compilerOptions": {
-        "outDir": "bin",
+        "outDir": "nutpack/bin",
         "target": "es6",
         "module": "commonjs",
         "moduleResolution": "node",

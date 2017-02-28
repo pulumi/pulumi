@@ -1,7 +1,7 @@
 {
     "name": "@coconut/coconut",
-    "main": "bin/index.js",
-    "typings": "bin/index.d.ts",
+    "main": "nutpack/bin/index.js",
+    "typings": "nutpack/bin/index.d.ts",
     "scripts": {
         "build": "cocojs"
     },

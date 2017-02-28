@@ -19,7 +19,7 @@ import (
 func newEvalCmd() *cobra.Command {
 	var dotOutput bool
 	var cmd = &cobra.Command{
-		Use:   "eval [blueprint] [-- [args]]",
+		Use:   "eval [nut] [-- [args]]",
 		Short: "Evaluate a Nut and print the resulting objects",
 		Long: "Evaluate a Nut and print the resulting objects\n" +
 			"\n" +
