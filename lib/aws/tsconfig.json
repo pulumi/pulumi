@@ -18,6 +18,8 @@
     "files": [
         "index.ts",
 
+        "config/index.ts",
+
         "cloudformation/index.ts",
         "cloudformation/resource.ts",
         "cloudformation/tags.ts",
