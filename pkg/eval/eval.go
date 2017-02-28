@@ -488,7 +488,11 @@ func (e *evaluator) issueUnhandledException(uw *rt.Unwind, err *diag.Diag, args 
 	// Produce a message with the exception text plus stack trace.
 	var msg string
 	if ex := uw.Exception(); ex != nil {
-		msg = ex.Thrown.String() // convert the thrown object into a string
+		if ex.Thrown.Type() == types.String {
+			msg = ex.Thrown.StringValue() // use the basic string value.
+		} else {
+			msg = "\n" + ex.Thrown.Details(false, "\t") // convert the thrown object into a detailed string
+		}
 		msg += "\n" + ex.Stack.Trace(e.Diag(), "\t", ex.Node)
 	} else {
 		msg = "no details available"

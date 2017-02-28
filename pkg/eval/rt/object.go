@@ -92,7 +92,84 @@ func (o *Object) PointerValue() *Pointer {
 	return r
 }
 
-// String can be used to print the contents of an object; it tries to be smart about the display.
+// Details prints the contents of an object deeply, detecting cycles as it goes.
+func (o *Object) Details(funcs bool, indent string) string {
+	visited := make(map[*Object]bool)
+	return indent + o.details(funcs, visited, indent)
+}
+
+func (o *Object) details(funcs bool, visited map[*Object]bool, indent string) string {
+	if visited[o] {
+		return "<cycle>"
+	}
+	visited[o] = true
+
+	switch o.t {
+	case types.Bool:
+		if o.BoolValue() {
+			return "true"
+		}
+		return "false"
+	case types.String:
+		return "\"" + o.StringValue() + "\""
+	case types.Number:
+		// TODO: it'd be nice to format as ints if the decimal part is close enough to "nothing".
+		return strconv.FormatFloat(o.NumberValue(), 'f', -1, 64)
+	case types.Null:
+		return "<nil>"
+	default:
+		// See if it's a func; if yes, do function formatting.
+		if _, isfnc := o.t.(*symbols.FunctionType); isfnc {
+			stub := o.FunctionValue()
+			var this string
+			if stub.This == nil {
+				this = "<nil>"
+			} else {
+				this = stub.This.String()
+			}
+			return fmt.Sprintf("func{this=%v,sig=%v,target=%v}",
+				this, stub.Func.Signature(), stub.Func.Token())
+		}
+
+		// See if it's an array; if yes, do array formatting.
+		if _, isarr := o.t.(*symbols.ArrayType); isarr {
+			arr := o.ArrayValue()
+			s := "[\n"
+			if arr != nil {
+				elemindent := indent + "    "
+				for i := 0; i < len(*arr); i++ {
+					elem := (*arr)[i]
+					s += elemindent + elem.Obj().details(funcs, visited, elemindent) + "\n"
+				}
+			}
+			return s + indent + "]"
+		}
+
+		// See if it's a pointer; if yes, format the reference.
+		if _, isptr := o.t.(*symbols.PointerType); isptr {
+			return o.PointerValue().String()
+		}
+
+		// Otherwise it's an arbitrary object; just print the type (we can't recurse, due to possible cycles).
+		s := fmt.Sprintf("@%v{\n", o.t.Token())
+		propindent := indent + "    "
+		props := o.PropertyValues()
+		for _, k := range StablePropertyKeys(props) {
+			v := props[k].Obj()
+			if !funcs {
+				// If skipping funcs, check the type and, well, skip them.
+				if _, isfnc := v.t.(*symbols.FunctionType); isfnc {
+					continue
+				}
+			}
+			s += propindent + string(k) + ": " + v.details(funcs, visited, propindent) + "\n"
+		}
+		return s + indent + "}"
+	}
+}
+
+// String can be used to print the contents of an object using a condensed string.  It omits many details that the
+// Details function would contain, so that single-line displays are not egregiously lengthy.
 func (o *Object) String() string {
 	switch o.t {
 	case types.Bool:
@@ -117,9 +194,23 @@ func (o *Object) String() string {
 			} else {
 				this = stub.This.String()
 			}
-			return "func{this=" + this +
-				",sig=" + stub.Func.Signature().String() +
-				",targ=" + stub.Func.Token().String() + "}"
+			return fmt.Sprintf("func{this=%v,sig=%v,target=%v}",
+				this, stub.Func.Signature(), stub.Func.Token().String())
+		}
+
+		// See if it's an array; if yes, do array formatting.
+		if _, isarr := o.t.(*symbols.ArrayType); isarr {
+			arr := o.ArrayValue()
+			s := "["
+			if arr != nil {
+				for i := 0; i < len(*arr); i++ {
+					if i > 0 {
+						s += ","
+					}
+					s += (*arr)[i].String()
+				}
+			}
+			return s + "]"
 		}
 
 		// See if it's a pointer; if yes, format the reference.
@@ -128,7 +219,7 @@ func (o *Object) String() string {
 		}
 
 		// Otherwise it's an arbitrary object; just print the type (we can't recurse, due to possible cycles).
-		return "obj{type=" + o.t.Token().String() + ",props={...}}"
+		return fmt.Sprintf("object{type=%v,props={...}}", o.t.Token())
 	}
 }
 
