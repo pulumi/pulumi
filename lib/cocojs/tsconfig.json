@@ -20,7 +20,10 @@
 
         "lib/index.ts",
         "lib/errors.ts",
-        "lib/types.ts"
+        "lib/types.ts",
+
+        "lib.es5/index.ts",
+        "lib.es6/index.ts"
     ]
 }
 

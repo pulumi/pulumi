@@ -1,5 +1,3 @@
-name: mujs
-description: The MuJS runtime library.
-dependencies:
-    coconut: "*"
+name: cocojs
+description: The CocoJS runtime library.
 
