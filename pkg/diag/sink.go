@@ -77,7 +77,7 @@ func newDefaultSink(opts FormatOptions, writers map[Category]io.Writer) *default
 	}
 }
 
-const DefaultSinkIDPrefix = "MU"
+const DefaultSinkIDPrefix = "COCO"
 
 // defaultSink is the default sink which logs output to stderr/stdout.
 type defaultSink struct {
