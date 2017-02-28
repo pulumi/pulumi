@@ -111,7 +111,8 @@ export function ordinaryToPrimitive(o: Object, hint: string): Object {
             methodNames = [];
     }
 
-    for (let name of methodNames) {
+    for (let i = 0; i < methodNames.length; i++) {
+        let name: string = methodNames[i];
         let method: Object = get(o, name);
         if (isCallable(method)) {
             let result: Object = call(method, o);
