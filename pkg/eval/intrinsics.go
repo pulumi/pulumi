@@ -28,8 +28,8 @@ func init() {
 
 // Intrinsic is a special intrinsic function whose behavior is implemented by the runtime.
 type Intrinsic struct {
-	Node    ast.Node     // the contextual node representing the place where this intrinsic got created.
-	Func    ast.Function // the underlying function's node (before mapping to an intrinsic).
+	Node    diag.Diagable // the contextual node representing the place where this intrinsic got created.
+	Func    ast.Function  // the underlying function's node (before mapping to an intrinsic).
 	Nm      tokens.Name
 	Tok     tokens.Token
 	Sig     *symbols.FunctionType
@@ -54,10 +54,10 @@ func (node *Intrinsic) Invoke(e *evaluator, this *rt.Object, args []*rt.Object) 
 }
 
 // newIntrinsic returns a new intrinsic function symbol with the given information.
-func NewIntrinsic(node ast.Node, fnc ast.Function, tok tokens.Token, nm tokens.Name,
+func NewIntrinsic(tree diag.Diagable, fnc ast.Function, tok tokens.Token, nm tokens.Name,
 	sig *symbols.FunctionType, invoker Invoker) *Intrinsic {
 	return &Intrinsic{
-		Node:    node,
+		Node:    tree,
 		Func:    fnc,
 		Nm:      nm,
 		Tok:     tok,
@@ -68,7 +68,7 @@ func NewIntrinsic(node ast.Node, fnc ast.Function, tok tokens.Token, nm tokens.N
 
 // MaybeIntrinsic checks whether the given symbol is an intrinsic and, if so, swaps it out with the actual runtime
 // implementation of that intrinsic.  If the symbol is not an intrinsic, the original symbol is simply returned.
-func MaybeIntrinsic(node ast.Node, sym symbols.Symbol) symbols.Symbol {
+func MaybeIntrinsic(tree diag.Diagable, sym symbols.Symbol) symbols.Symbol {
 	switch s := sym.(type) {
 	case *Intrinsic:
 		// Already an intrinsic; do not swap it out.
@@ -77,7 +77,7 @@ func MaybeIntrinsic(node ast.Node, sym symbols.Symbol) symbols.Symbol {
 		// cache these symbols because of the need to associate the AST node with the resulting symbol.
 		tok := s.Token()
 		if invoker, isintrinsic := Intrinsics[tok]; isintrinsic {
-			sym = NewIntrinsic(node, s.Function(), tok, tok.Name(), s.Signature(), invoker)
+			sym = NewIntrinsic(tree, s.Function(), tok, tok.Name(), s.Signature(), invoker)
 		}
 	}
 	return sym

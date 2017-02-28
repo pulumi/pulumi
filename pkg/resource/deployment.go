@@ -16,6 +16,7 @@ import (
 // Deployment is a serialized deployment target plus a record of the latest deployment.
 type Deployment struct {
 	Husk   tokens.QName      `json:"husk"`             // the target environment name.
+	Config *ConfigMap        `json:"config,omitempty"` // optional configuration key/values.
 	Latest *DeploymentRecord `json:"latest,omitempty"` // the latest/current deployment record.
 }
 

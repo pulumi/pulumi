@@ -29,11 +29,11 @@ type Compiler interface {
 	Workspace() workspace.W // the workspace that this compielr is using.
 
 	// Compile detects a package from the workspace and compiles it into a graph.
-	Compile() (*symbols.Package, *heapstate.Heap)
+	Compile(preexec Preexec) (*symbols.Package, *heapstate.Heap)
 	// CompilePath compiles a package given its path into its graph form.
-	CompilePath(path string) (*symbols.Package, *heapstate.Heap)
+	CompilePath(path string, preexec Preexec) (*symbols.Package, *heapstate.Heap)
 	// CompilePackage compiles a given package object into its associated graph form.
-	CompilePackage(pkg *pack.Package) (*symbols.Package, *heapstate.Heap)
+	CompilePackage(pkg *pack.Package, preexec Preexec) (*symbols.Package, *heapstate.Heap)
 	// Verify detects a package from the workspace and validates its CocoIL contents.
 	Verify() bool
 	// VerifyPath verifies a package given its path, validating that its CocoIL contents are correct.
@@ -41,6 +41,9 @@ type Compiler interface {
 	// VerifyPackage verifies a given package object, validating that its CocoIL contents are correct.
 	VerifyPackage(pkg *pack.Package) bool
 }
+
+// Preexec can be used to hook compilation after binding, but before evaluation, for any pre-evaluation steps.
+type Preexec func(*binder.Context, *symbols.Package, eval.Interpreter)
 
 // compiler is the canonical implementation of the Coconut compiler.
 type compiler struct {
@@ -105,23 +108,23 @@ func (c *compiler) Diag() diag.Sink        { return c.ctx.Diag }
 func (c *compiler) Workspace() workspace.W { return c.w }
 
 // Compile attempts to detect the package from the current working directory and, provided that succeeds, compiles it.
-func (c *compiler) Compile() (*symbols.Package, *heapstate.Heap) {
+func (c *compiler) Compile(preexec Preexec) (*symbols.Package, *heapstate.Heap) {
 	if path := c.detectPackage(); path != "" {
-		return c.CompilePath(path)
+		return c.CompilePath(path, preexec)
 	}
 	return nil, nil
 }
 
 // CompilePath loads a package at the given path and compiles it into a graph.
-func (c *compiler) CompilePath(path string) (*symbols.Package, *heapstate.Heap) {
+func (c *compiler) CompilePath(path string, preexec Preexec) (*symbols.Package, *heapstate.Heap) {
 	if pkg := c.readPackage(path); pkg != nil {
-		return c.CompilePackage(pkg)
+		return c.CompilePackage(pkg, preexec)
 	}
 	return nil, nil
 }
 
 // CompilePackage compiles the given package into a graph.
-func (c *compiler) CompilePackage(pkg *pack.Package) (*symbols.Package, *heapstate.Heap) {
+func (c *compiler) CompilePackage(pkg *pack.Package, preexec Preexec) (*symbols.Package, *heapstate.Heap) {
 	contract.Requiref(pkg != nil, "pkg", "!= nil")
 	glog.Infof("Compiling package '%v' (w=%v)", pkg.Name, c.w.Root())
 	if glog.V(2) {
@@ -157,8 +160,16 @@ func (c *compiler) CompilePackage(pkg *pack.Package) (*symbols.Package, *heapsta
 	// Now, create the machinery we need to generate a graph.
 	gg := heapstate.New(c.ctx)
 
-	// Now, evaluate.
+	// Create a fresh evaluator; if there are pre-exec hooks, run them now.
 	e := eval.New(b.Ctx(), gg)
+	if preexec != nil {
+		preexec(b.Ctx(), pkgsym, e)
+	}
+	if !c.Diag().Success() {
+		return nil, nil // the preexec functions raised errors; quit.
+	}
+
+	// Go ahead and perform the evaluation.
 	e.EvaluatePackage(pkgsym, c.ctx.Opts.Args)
 	if !c.Diag().Success() {
 		return pkgsym, nil

@@ -103,7 +103,7 @@ func create(husk tokens.QName) {
 
 // compile just uses the standard logic to parse arguments, options, and to locate/compile a package.  It returns the
 // CocoGL graph that is produced, or nil if an error occurred (in which case, we would expect non-0 errors).
-func compile(cmd *cobra.Command, args []string) *compileResult {
+func compile(cmd *cobra.Command, args []string, config *resource.ConfigMap) *compileResult {
 	// If there's a --, we need to separate out the command args from the stack args.
 	flags := cmd.Flags()
 	dashdash := flags.ArgsLenAtDash()
@@ -116,6 +116,12 @@ func compile(cmd *cobra.Command, args []string) *compileResult {
 	// Create a compiler options object and map any flags and arguments to settings on it.
 	opts := core.DefaultOptions()
 	opts.Args = dashdashArgsToMap(packArgs)
+
+	// Create the preexec hook if the config map is non-nil.
+	var preexec compiler.Preexec
+	if config != nil {
+		preexec = config.ApplyConfig
+	}
 
 	// In the case of an argument, load that specific package and new up a compiler based on its base path.
 	// Otherwise, use the default workspace and package logic (which consults the current working directory).
@@ -130,7 +136,7 @@ func compile(cmd *cobra.Command, args []string) *compileResult {
 			sink().Errorf(errors.ErrorCantCreateCompiler, err)
 			return nil
 		}
-		pkg, heap = comp.Compile()
+		pkg, heap = comp.Compile(preexec)
 	} else {
 		fn := args[0]
 		if pkgmeta := cmdutil.ReadPackageFromArg(fn); pkgmeta != nil {
@@ -144,7 +150,7 @@ func compile(cmd *cobra.Command, args []string) *compileResult {
 				sink().Errorf(errors.ErrorCantReadPackage, fn, err)
 				return nil
 			}
-			pkg, heap = comp.CompilePackage(pkgmeta)
+			pkg, heap = comp.CompilePackage(pkgmeta, preexec)
 		}
 	}
 	return &compileResult{comp, pkg, heap}
@@ -163,7 +169,7 @@ func plan(cmd *cobra.Command, info *huskCmdInfo, delete bool) *planResult {
 	var result *compileResult
 	if !delete {
 		// First, compile; if that yields errors or an empty heap, exit early.
-		if result = compile(cmd, info.args); result == nil || result.Heap == nil {
+		if result = compile(cmd, info.args, info.dep.Config); result == nil || result.Heap == nil {
 			return nil
 		}
 

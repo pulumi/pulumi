@@ -34,6 +34,12 @@ type Interpreter interface {
 	EvaluateModule(mod *symbols.Module, args core.Args)
 	// EvaluateFunction performs an evaluation of the given function, using the provided arguments.
 	EvaluateFunction(fnc symbols.Function, this *rt.Object, args core.Args)
+
+	// LoadLocation loads a location by symbol; lval controls whether it is an l-value or just a value.
+	LoadLocation(tree diag.Diagable, sym symbols.Symbol, this *rt.Object, lval bool) *Location
+
+	// NewConstantObject creates a new constant object in the context of this interpreter.
+	NewConstantObject(tree diag.Diagable, v interface{}) *rt.Object
 }
 
 // InterpreterHooks is a set of callbacks that can be used to hook into interesting interpreter events.
@@ -468,6 +474,11 @@ func (e *evaluator) newObject(tree diag.Diagable, t symbols.Type) *rt.Object {
 	// Now create an empty object of the desired type.  Subsequent operations will do the right thing with it.  E.g.,
 	// overwriting a property will add a new entry to the object's map; reading will search the prototpe chain; etc.
 	return e.alloc.New(tree, t, nil, proto)
+}
+
+// NewConstantObject is a public function that allocates an object with the given state.
+func (e *evaluator) NewConstantObject(tree diag.Diagable, v interface{}) *rt.Object {
+	return e.alloc.NewConstant(tree, v)
 }
 
 // issueUnhandledException issues an unhandled exception error using the given diagnostic and unwind information.
@@ -979,7 +990,7 @@ func (e *evaluator) evalExpression(node ast.Expression) (*rt.Object, *rt.Unwind)
 // evalLValueExpression evaluates an expression for use as an l-value; in particular, this loads the target as a
 // pointer/reference object, rather than as an ordinary value, so that it can be used in an assignment.  This is only
 // valid on the subset of AST nodes that are legal l-values (very few of them, it turns out).
-func (e *evaluator) evalLValueExpression(node ast.Expression) (location, *rt.Unwind) {
+func (e *evaluator) evalLValueExpression(node ast.Expression) (*Location, *rt.Unwind) {
 	switch n := node.(type) {
 	case *ast.LoadLocationExpression:
 		return e.evalLoadLocation(n, true)
@@ -988,10 +999,10 @@ func (e *evaluator) evalLValueExpression(node ast.Expression) (location, *rt.Unw
 	case *ast.UnaryOperatorExpression:
 		contract.Assert(n.Operator == ast.OpDereference)
 		obj, uw := e.evalUnaryOperatorExpressionFor(n, true)
-		return location{Obj: obj}, uw
+		return &Location{e: e, Obj: obj}, uw
 	default:
 		contract.Failf("Unrecognized l-value expression type: %v", node.GetKind())
-		return location{}, nil
+		return nil, nil
 	}
 }
 
@@ -1114,18 +1125,6 @@ func (e *evaluator) evalObjectLiteral(node *ast.ObjectLiteral) (*rt.Object, *rt.
 	return obj, nil
 }
 
-func (e *evaluator) evalLoadLocationExpression(node *ast.LoadLocationExpression) (*rt.Object, *rt.Unwind) {
-	loc, uw := e.evalLoadLocation(node, false)
-	return loc.Obj, uw
-}
-
-type location struct {
-	This *rt.Object  // the target object, if any.
-	Name tokens.Name // the simple name of the variable.
-	Lval bool        // whether the result is an lval.
-	Obj  *rt.Object  // the resulting object (pointer if lval, object otherwise).
-}
-
 // getObjectOrSuperProperty loads a property pointer from an object using the given property key.  It understands how
 // to determine whether this is a `super` load, and bind it, and will adjust the resulting pointer accordingly.
 func (e *evaluator) getObjectOrSuperProperty(
@@ -1160,9 +1159,61 @@ func (e *evaluator) getObjectOrSuperProperty(
 	return obj.GetPropertyAddr(k, init, forWrite)
 }
 
+func (e *evaluator) evalLoadLocationExpression(node *ast.LoadLocationExpression) (*rt.Object, *rt.Unwind) {
+	loc, uw := e.evalLoadLocation(node, false)
+	return loc.Obj, uw
+}
+
+func (e *evaluator) newLocation(node diag.Diagable, sym symbols.Symbol,
+	pv *rt.Pointer, ty symbols.Type, this *rt.Object, lval bool) *Location {
+	// If this is an l-value, return a pointer to the object; otherwise, return the raw object.
+	var obj *rt.Object
+	if lval {
+		obj = e.alloc.NewPointer(node, ty, pv)
+	} else {
+		obj = pv.Obj()
+	}
+
+	if glog.V(9) {
+		glog.V(9).Infof("Loaded location of type '%v' from symbol '%v': lval=%v current=%v",
+			ty.Token(), sym.Token(), lval, pv.Obj())
+	}
+
+	return &Location{
+		e:    e,
+		This: this,
+		Name: sym.Name(),
+		Lval: lval,
+		Obj:  obj,
+	}
+}
+
+type Location struct {
+	e    *evaluator  // the evaluator that produced this location.
+	This *rt.Object  // the target object, if any.
+	Name tokens.Name // the simple name of the variable.
+	Lval bool        // whether the result is an lval.
+	Obj  *rt.Object  // the resulting object (pointer if lval, object otherwise).
+}
+
+func (loc *Location) Assign(node diag.Diagable, val *rt.Object) {
+	// Perform the assignment, but make sure to invoke the property assignment hook if necessary.
+	ptr := loc.Obj.PointerValue()
+
+	// If the pointer is readonly, however, we will disallow the assignment.
+	if ptr.Readonly() {
+		loc.e.Diag().Errorf(errors.ErrorIllegalReadonlyLValue.At(node))
+	} else {
+		if loc.e.hooks != nil {
+			loc.e.hooks.OnVariableAssign(node, loc.This, loc.Name, ptr.Obj(), val)
+		}
+		ptr.Set(val)
+	}
+}
+
 // evalLoadLocation evaluates and loads information about the target.  It takes an lval bool which
 // determines whether the resulting location object is an lval (pointer) or regular object.
-func (e *evaluator) evalLoadLocation(node *ast.LoadLocationExpression, lval bool) (location, *rt.Unwind) {
+func (e *evaluator) evalLoadLocation(node *ast.LoadLocationExpression, lval bool) (*Location, *rt.Unwind) {
 	// If there's a target object, evaluate it.
 	var this *rt.Object
 	var thisexpr ast.Expression
@@ -1170,7 +1221,7 @@ func (e *evaluator) evalLoadLocation(node *ast.LoadLocationExpression, lval bool
 		thisexpr = *node.Object
 		var uw *rt.Unwind
 		if this, uw = e.evalExpression(thisexpr); uw != nil {
-			return location{}, uw
+			return nil, uw
 		}
 	}
 
@@ -1189,87 +1240,88 @@ func (e *evaluator) evalLoadLocation(node *ast.LoadLocationExpression, lval bool
 		sym = loc
 	} else {
 		sym = e.ctx.LookupSymbol(node.Name, tok, false)
-		contract.Assert(sym != nil)     // don't issue errors; we shouldn't ever get here if verification failed.
-		sym = MaybeIntrinsic(node, sym) // replace this with an intrinsic if it's recognized as one.
-
-		// If the symbol is an export, keep chasing down the referents until we hit a real symbol.
-		for {
-			export, isexport := sym.(*symbols.Export)
-			if !isexport {
-				break
-			}
-			// Simply chase the referent symbol until we bottom out on something useful.
-			contract.Assertf(export.Referent != sym, "Unexpected self-referential export token")
-			sym = export.Referent
-			contract.Assertf(sym != nil, "Expected export '%v' to resolve to a token", export.Node.Referent.Tok)
+		var uw *rt.Unwind
+		pv, ty, uw = e.evalLoadSymbolLocation(node, sym, this, thisexpr, lval)
+		if uw != nil {
+			return nil, uw
 		}
+	}
 
-		// Look up the symbol property in the right place.  Note that because this is a static load, we intentionally
-		// do not perform any lazily initialization of missing property slots; they must exist.  But we still need to
-		// load from the object in case one of the properties was overwritten.  The sole exception is for `dynamic`.
-		switch s := sym.(type) {
-		case symbols.ClassMember:
-			// Consult either the statics map or the object's property based on the kind of symbol.  Note that we do
-			// this even for class functions so that in case they are replaced or overridden in derived types, we get
-			// the expected "virtual" dispatch behavior.  The one special case is constructors, where we intentionally
-			// return a statically resolved symbol (since they aren't stored as properties and to support `super`).
-			k := rt.PropertyKey(sym.Name())
-			if s.Static() {
-				contract.Assert(this == nil)
-				class := s.MemberParent()
-				e.ensureClassInit(class) // ensure the class is initialized.
-				statics := e.getClassStatics(class)
-				pv = statics.GetAddr(k, false)
-			} else {
-				contract.Assert(this != nil)
-				if uw := e.checkThis(node, this); uw != nil {
-					return location{}, uw
-				}
-				dynload := this.Type() == types.Dynamic
-				pv = e.getObjectOrSuperProperty(this, thisexpr, k, dynload, lval)
-			}
-			contract.Assertf(pv != nil, "Missing class member '%v' (static=%v)", s.Token(), s.Static())
-			ty = s.Type()
-			contract.Assert(ty != nil)
-		case symbols.ModuleMemberProperty:
-			module := s.MemberParent()
+	return e.newLocation(node, sym, pv, ty, this, lval), nil
+}
 
-			// Ensure this module has been initialized.
-			e.ensureModuleInit(module)
+func (e *evaluator) evalLoadSymbolLocation(node diag.Diagable, sym symbols.Symbol,
+	this *rt.Object, thisexpr ast.Expression, lval bool) (*rt.Pointer, symbols.Type, *rt.Unwind) {
+	contract.Assert(sym != nil)     // don't issue errors; we shouldn't ever get here if verification failed.
+	sym = MaybeIntrinsic(node, sym) // replace this with an intrinsic if it's recognized as one.
 
-			// Search the globals table for this module's members.
+	// If the symbol is an export, keep chasing down the referents until we hit a real symbol.
+	for {
+		export, isexport := sym.(*symbols.Export)
+		if !isexport {
+			break
+		}
+		// Simply chase the referent symbol until we bottom out on something useful.
+		contract.Assertf(export.Referent != sym, "Unexpected self-referential export token")
+		sym = export.Referent
+		contract.Assertf(sym != nil, "Expected export '%v' to resolve to a token", export.Node.Referent.Tok)
+	}
+
+	// Look up the symbol property in the right place.  Note that because this is a static load, we intentionally
+	// do not perform any lazily initialization of missing property slots; they must exist.  But we still need to
+	// load from the object in case one of the properties was overwritten.  The sole exception is for `dynamic`.
+	var pv *rt.Pointer
+	var ty symbols.Type
+	switch s := sym.(type) {
+	case symbols.ClassMember:
+		// Consult either the statics map or the object's property based on the kind of symbol.  Note that we do
+		// this even for class functions so that in case they are replaced or overridden in derived types, we get
+		// the expected "virtual" dispatch behavior.  The one special case is constructors, where we intentionally
+		// return a statically resolved symbol (since they aren't stored as properties and to support `super`).
+		k := rt.PropertyKey(sym.Name())
+		if s.Static() {
 			contract.Assert(this == nil)
-			k := rt.PropertyKey(s.Name())
-			globals := e.getModuleGlobals(module)
-			pv = globals.GetAddr(k, false)
-			contract.Assertf(pv != nil, "Missing module member '%v'", s.Token())
-			ty = s.MemberType()
-			contract.Assert(ty != nil)
-		default:
-			contract.Failf("Unexpected symbol token '%v' kind during load expression: %v",
-				tok, reflect.TypeOf(sym))
+			class := s.MemberParent()
+			e.ensureClassInit(class) // ensure the class is initialized.
+			statics := e.getClassStatics(class)
+			pv = statics.GetAddr(k, false)
+		} else {
+			contract.Assert(this != nil)
+			if uw := e.checkThis(node, this); uw != nil {
+				return nil, nil, uw
+			}
+			dynload := this.Type() == types.Dynamic
+			pv = e.getObjectOrSuperProperty(this, thisexpr, k, dynload, lval)
 		}
+		contract.Assertf(pv != nil, "Missing class member '%v' (static=%v)", s.Token(), s.Static())
+		ty = s.Type()
+		contract.Assert(ty != nil)
+	case symbols.ModuleMemberProperty:
+		module := s.MemberParent()
+
+		// Ensure this module has been initialized.
+		e.ensureModuleInit(module)
+
+		// Search the globals table for this module's members.
+		contract.Assert(this == nil)
+		k := rt.PropertyKey(s.Name())
+		globals := e.getModuleGlobals(module)
+		pv = globals.GetAddr(k, false)
+		contract.Assertf(pv != nil, "Missing module member '%v'", s.Token())
+		ty = s.MemberType()
+		contract.Assert(ty != nil)
+	default:
+		contract.Failf("Unexpected symbol token '%v' kind during load expression: %v",
+			sym.Token(), reflect.TypeOf(sym))
 	}
 
-	// If this is an l-value, return a pointer to the object; otherwise, return the raw object.
-	var obj *rt.Object
-	if lval {
-		obj = e.alloc.NewPointer(node, ty, pv)
-	} else {
-		obj = pv.Obj()
-	}
+	return pv, ty, nil
+}
 
-	if glog.V(9) {
-		glog.V(9).Infof("Loaded location of type '%v' from symbol '%v': lval=%v current=%v",
-			ty.Token(), sym.Token(), lval, pv.Obj())
-	}
-
-	return location{
-		This: this,
-		Name: sym.Name(),
-		Lval: lval,
-		Obj:  obj,
-	}, nil
+func (e *evaluator) LoadLocation(tree diag.Diagable, sym symbols.Symbol, this *rt.Object, lval bool) *Location {
+	pv, ty, uw := e.evalLoadSymbolLocation(tree, sym, this, nil, lval)
+	contract.Assertf(uw == nil, "Unexpected unwind; possible nil 'this' for instance method")
+	return e.newLocation(tree, sym, pv, ty, this, lval)
 }
 
 // checkThis checks a this object, raising a runtime error if it is the runtime null value.
@@ -1286,22 +1338,22 @@ func (e *evaluator) evalLoadDynamicExpression(node *ast.LoadDynamicExpression) (
 	return loc.Obj, uw
 }
 
-func (e *evaluator) evalLoadDynamic(node *ast.LoadDynamicExpression, lval bool) (location, *rt.Unwind) {
+func (e *evaluator) evalLoadDynamic(node *ast.LoadDynamicExpression, lval bool) (*Location, *rt.Unwind) {
 	var uw *rt.Unwind
 
 	// Evaluate the object and then the property expression.
 	var this *rt.Object
 	if this, uw = e.evalExpression(node.Object); uw != nil {
-		return location{}, uw
+		return nil, uw
 	}
 	var name *rt.Object
 	if name, uw = e.evalExpression(node.Name); uw != nil {
-		return location{}, uw
+		return nil, uw
 	}
 
 	// Check that the object isn't null; if it is, raise an exception.
 	if uw = e.checkThis(node, this); uw != nil {
-		return location{}, uw
+		return nil, uw
 	}
 
 	// Now go ahead and search the object for a property with the given name.
@@ -1351,7 +1403,8 @@ func (e *evaluator) evalLoadDynamic(node *ast.LoadDynamicExpression, lval bool) 
 	}
 	contract.Assert(obj != nil)
 
-	return location{
+	return &Location{
+		e:    e,
 		This: this,
 		Name: tokens.Name(key),
 		Lval: lval,
@@ -1452,7 +1505,7 @@ func (e *evaluator) evalUnaryOperatorExpressionFor(node *ast.UnaryOperatorExpres
 
 	// Evaluate the operand and prepare to use it.
 	var opand *rt.Object
-	var opandloc *location
+	var opandloc *Location
 	if node.Operator == ast.OpAddressof ||
 		node.Operator == ast.OpPlusPlus || node.Operator == ast.OpMinusMinus {
 		// These operators require an l-value; so we bind the expression a bit differently.
@@ -1461,7 +1514,7 @@ func (e *evaluator) evalUnaryOperatorExpressionFor(node *ast.UnaryOperatorExpres
 			return nil, uw
 		}
 		opand = loc.Obj
-		opandloc = &loc
+		opandloc = loc
 	} else {
 		// Otherwise, we just need to evaluate the operand as usual.
 		var uw *rt.Unwind
@@ -1502,7 +1555,7 @@ func (e *evaluator) evalUnaryOperatorExpressionFor(node *ast.UnaryOperatorExpres
 		old := ptr.Obj()
 		val := old.NumberValue()
 		new := e.alloc.NewNumber(node, val+1)
-		e.evalAssign(node.Operand, *opandloc, new)
+		opandloc.Assign(node.Operand, new)
 		if node.Postfix {
 			return old, nil
 		}
@@ -1513,7 +1566,7 @@ func (e *evaluator) evalUnaryOperatorExpressionFor(node *ast.UnaryOperatorExpres
 		old := ptr.Obj()
 		val := old.NumberValue()
 		new := e.alloc.NewNumber(node, val-1)
-		e.evalAssign(node.Operand, *opandloc, new)
+		opandloc.Assign(node.Operand, new)
 		if node.Postfix {
 			return old, nil
 		}
@@ -1527,14 +1580,13 @@ func (e *evaluator) evalUnaryOperatorExpressionFor(node *ast.UnaryOperatorExpres
 func (e *evaluator) evalBinaryOperatorExpression(node *ast.BinaryOperatorExpression) (*rt.Object, *rt.Unwind) {
 	// Evaluate the operands and prepare to use them.  First left, then right.
 	var lhs *rt.Object
-	var lhsloc *location
+	var lhsloc *Location
 	if isBinaryAssignmentOperator(node.Operator) {
-		loc, uw := e.evalLValueExpression(node.Left)
-		if uw != nil {
+		var uw *rt.Unwind
+		if lhsloc, uw = e.evalLValueExpression(node.Left); uw != nil {
 			return nil, uw
 		}
-		lhs = loc.Obj
-		lhsloc = &loc
+		lhs = lhsloc.Obj
 	} else {
 		var uw *rt.Unwind
 		if lhs, uw = e.evalExpression(node.Left); uw != nil {
@@ -1613,7 +1665,7 @@ func (e *evaluator) evalBinaryOperatorExpression(node *ast.BinaryOperatorExpress
 	// Assignment operators
 	case ast.OpAssign:
 		// The target is an l-value; just overwrite its value, and yield the new value as the result.
-		e.evalAssign(node.Left, *lhsloc, rhs)
+		lhsloc.Assign(node.Left, rhs)
 		return rhs, nil
 	case ast.OpAssignSum:
 		var val *rt.Object
@@ -1625,67 +1677,67 @@ func (e *evaluator) evalBinaryOperatorExpression(node *ast.BinaryOperatorExpress
 			// Otherwise, the target is a numeric l-value; just += to it, and yield the new value as the result.
 			val = e.alloc.NewNumber(node, ptr.Obj().NumberValue()+rhs.NumberValue())
 		}
-		e.evalAssign(node.Left, *lhsloc, val)
+		lhsloc.Assign(node.Left, val)
 		return val, nil
 	case ast.OpAssignDifference:
 		// The target is a numeric l-value; just -= rhs to it, and yield the new value as the result.
 		ptr := lhs.PointerValue()
 		val := e.alloc.NewNumber(node, ptr.Obj().NumberValue()-rhs.NumberValue())
-		e.evalAssign(node.Left, *lhsloc, val)
+		lhsloc.Assign(node.Left, val)
 		return val, nil
 	case ast.OpAssignProduct:
 		// The target is a numeric l-value; just *= rhs to it, and yield the new value as the result.
 		ptr := lhs.PointerValue()
 		val := e.alloc.NewNumber(node, ptr.Obj().NumberValue()*rhs.NumberValue())
-		e.evalAssign(node.Left, *lhsloc, val)
+		lhsloc.Assign(node.Left, val)
 		return val, nil
 	case ast.OpAssignQuotient:
 		// The target is a numeric l-value; just /= rhs to it, and yield the new value as the result.
 		ptr := lhs.PointerValue()
 		val := e.alloc.NewNumber(node, ptr.Obj().NumberValue()/rhs.NumberValue())
-		e.evalAssign(node.Left, *lhsloc, val)
+		lhsloc.Assign(node.Left, val)
 		return val, nil
 	case ast.OpAssignRemainder:
 		// The target is a numeric l-value; just %= rhs to it, and yield the new value as the result.
 		ptr := lhs.PointerValue()
 		val := e.alloc.NewNumber(node, float64(int64(ptr.Obj().NumberValue())%int64(rhs.NumberValue())))
-		e.evalAssign(node.Left, *lhsloc, val)
+		lhsloc.Assign(node.Left, val)
 		return val, nil
 	case ast.OpAssignExponentiation:
 		// The target is a numeric l-value; just raise to rhs as a power, and yield the new value as the result.
 		ptr := lhs.PointerValue()
 		val := e.alloc.NewNumber(node, math.Pow(ptr.Obj().NumberValue(), rhs.NumberValue()))
-		e.evalAssign(node.Left, *lhsloc, val)
+		lhsloc.Assign(node.Left, val)
 		return val, nil
 	case ast.OpAssignBitwiseShiftLeft:
 		// The target is a numeric l-value; just <<= rhs to it, and yield the new value as the result.
 		ptr := lhs.PointerValue()
 		val := e.alloc.NewNumber(node, float64(int64(ptr.Obj().NumberValue())<<uint(rhs.NumberValue())))
-		e.evalAssign(node.Left, *lhsloc, val)
+		lhsloc.Assign(node.Left, val)
 		return val, nil
 	case ast.OpAssignBitwiseShiftRight:
 		// The target is a numeric l-value; just >>= rhs to it, and yield the new value as the result.
 		ptr := lhs.PointerValue()
 		val := e.alloc.NewNumber(node, float64(int64(ptr.Obj().NumberValue())>>uint(rhs.NumberValue())))
-		e.evalAssign(node.Left, *lhsloc, val)
+		lhsloc.Assign(node.Left, val)
 		return val, nil
 	case ast.OpAssignBitwiseAnd:
 		// The target is a numeric l-value; just &= rhs to it, and yield the new value as the result.
 		ptr := lhs.PointerValue()
 		val := e.alloc.NewNumber(node, float64(int64(ptr.Obj().NumberValue())&int64(rhs.NumberValue())))
-		e.evalAssign(node.Left, *lhsloc, val)
+		lhsloc.Assign(node.Left, val)
 		return val, nil
 	case ast.OpAssignBitwiseOr:
 		// The target is a numeric l-value; just |= rhs to it, and yield the new value as the result.
 		ptr := lhs.PointerValue()
 		val := e.alloc.NewNumber(node, float64(int64(ptr.Obj().NumberValue())|int64(rhs.NumberValue())))
-		e.evalAssign(node.Left, *lhsloc, val)
+		lhsloc.Assign(node.Left, val)
 		return val, nil
 	case ast.OpAssignBitwiseXor:
 		// The target is a numeric l-value; just ^= rhs to it, and yield the new value as the result.
 		ptr := lhs.PointerValue()
 		val := e.alloc.NewNumber(node, float64(int64(ptr.Obj().NumberValue())^int64(rhs.NumberValue())))
-		e.evalAssign(node.Left, *lhsloc, val)
+		lhsloc.Assign(node.Left, val)
 		return val, nil
 
 	// Relational operators
@@ -1722,21 +1774,6 @@ func isBinaryAssignmentOperator(op ast.BinaryOperator) bool {
 		return true
 	default:
 		return false
-	}
-}
-
-func (e *evaluator) evalAssign(node ast.Node, loc location, val *rt.Object) {
-	// Perform the assignment, but make sure to invoke the property assignment hook if necessary.
-	ptr := loc.Obj.PointerValue()
-
-	// If the pointer is readonly, however, we will disallow the assignment.
-	if ptr.Readonly() {
-		e.Diag().Errorf(errors.ErrorIllegalReadonlyLValue.At(node))
-	} else {
-		if e.hooks != nil {
-			e.hooks.OnVariableAssign(node, loc.This, loc.Name, ptr.Obj(), val)
-		}
-		ptr.Set(val)
 	}
 }
 

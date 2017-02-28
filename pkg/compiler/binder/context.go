@@ -13,6 +13,7 @@ import (
 	"github.com/pulumi/coconut/pkg/compiler/errors"
 	"github.com/pulumi/coconut/pkg/compiler/symbols"
 	"github.com/pulumi/coconut/pkg/compiler/types"
+	"github.com/pulumi/coconut/pkg/diag"
 	"github.com/pulumi/coconut/pkg/tokens"
 	"github.com/pulumi/coconut/pkg/util/contract"
 )
@@ -101,17 +102,17 @@ func (ctx *Context) LookupClassMember(t symbols.Type, clm tokens.ClassMemberName
 
 // LookupSymbol performs a complex lookup for a complex token; if require is true, failed lookups will issue an
 // error; and in any case, the AST node is used as the context for errors (lookup, accessibility, or otherwise).
-func (ctx *Context) LookupSymbol(node ast.Node, tok tokens.Token, require bool) symbols.Symbol {
+func (ctx *Context) LookupSymbol(node diag.Diagable, tok tokens.Token, require bool) symbols.Symbol {
 	return ctx.lookupSymbolCore(node, tok, require, true)
 }
 
 // LookupShallowSymbol is just like LookupSymbol, except that it will not resolve exports fully.  As a result, the
 // returned symbol may not be bound to the actual underlying class member, and may return a symbols.Export instead.
-func (ctx *Context) LookupShallowSymbol(node ast.Node, tok tokens.Token, require bool) symbols.Symbol {
+func (ctx *Context) LookupShallowSymbol(node diag.Diagable, tok tokens.Token, require bool) symbols.Symbol {
 	return ctx.lookupSymbolCore(node, tok, require, false)
 }
 
-func (ctx *Context) lookupSymbolCore(node ast.Node, tok tokens.Token,
+func (ctx *Context) lookupSymbolCore(node diag.Diagable, tok tokens.Token,
 	require bool, resolveExports bool) symbols.Symbol {
 	contract.Require(node != nil, "Node")
 
@@ -242,7 +243,7 @@ func (ctx *Context) LookupPackageSymbol(name tokens.PackageName) *symbols.Packag
 }
 
 // LookupTypeToken binds a type token to its symbol, creating elements if needed.  The node context is used for errors.
-func (ctx *Context) LookupTypeToken(node ast.Node, tok tokens.Type, require bool) symbols.Type {
+func (ctx *Context) LookupTypeToken(node diag.Diagable, tok tokens.Type, require bool) symbols.Type {
 	contract.Require(node != nil, "node")
 
 	var ty symbols.Type // the type, if any.
@@ -305,7 +306,7 @@ func (ctx *Context) LookupFunctionType(node ast.Function) *symbols.FunctionType 
 }
 
 // lookupBasicType handles decorated types (pointers, arrays, maps, functions) and primitives.
-func (ctx *Context) lookupBasicType(node ast.Node, tok tokens.Type, require bool) symbols.Type {
+func (ctx *Context) lookupBasicType(node diag.Diagable, tok tokens.Type, require bool) symbols.Type {
 	contract.Require(node != nil, "node")
 	contract.Requiref(tok.Primitive() || tok.Decorated(), "tok", "Primitive() || Decorated()")
 
@@ -358,7 +359,7 @@ func (ctx *Context) lookupBasicType(node ast.Node, tok tokens.Type, require bool
 	return types.Error
 }
 
-func (ctx *Context) checkClassVisibility(node ast.Node, class symbols.Type, member symbols.ClassMember) {
+func (ctx *Context) checkClassVisibility(node diag.Diagable, class symbols.Type, member symbols.ClassMember) {
 	acc := member.MemberNode().GetAccess()
 	if acc == nil {
 		a := tokens.PrivateAccessibility // private is the default.
