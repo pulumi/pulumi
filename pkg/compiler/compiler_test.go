@@ -28,7 +28,7 @@ func testCompile(paths ...string) *testutil.TestDiagSink {
 	// Create the compiler machinery, perform the compile, and return the sink.
 	comp, err := New(testdir, &core.Options{Diag: sink})
 	contract.Assertf(err == nil, "Expected a nil error from compiler constructor; got '%v'", err)
-	comp.Compile()
+	comp.Compile(nil)
 	return sink
 }
 
