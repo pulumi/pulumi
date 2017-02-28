@@ -66,12 +66,18 @@ func Until(ctx context.Context, acceptor Acceptor) (bool, error) {
 
 // UntilDeadline creates a child context with the given deadline, and then invokes the above Until function.
 func UntilDeadline(ctx context.Context, acceptor Acceptor, deadline time.Time) (bool, error) {
-	ctx, _ = context.WithDeadline(ctx, deadline)
-	return Until(ctx, acceptor)
+	var cancel context.CancelFunc
+	ctx, cancel = context.WithDeadline(ctx, deadline)
+	b, err := Until(ctx, acceptor)
+	cancel()
+	return b, err
 }
 
 // UntilTimeout creates a child context with the given timeout, and then invokes the above Until function.
 func UntilTimeout(ctx context.Context, acceptor Acceptor, timeout time.Duration) (bool, error) {
-	ctx, _ = context.WithTimeout(ctx, timeout)
-	return Until(ctx, acceptor)
+	var cancel context.CancelFunc
+	ctx, cancel = context.WithTimeout(ctx, timeout)
+	b, err := Until(ctx, acceptor)
+	cancel()
+	return b, err
 }

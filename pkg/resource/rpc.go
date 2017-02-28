@@ -36,25 +36,25 @@ func MarshalPropertyValue(ctx *Context, v PropertyValue, opts MarshalOptions) (*
 	if v.IsNull() {
 		return &structpb.Value{
 			Kind: &structpb.Value_NullValue{
-				structpb.NullValue_NULL_VALUE,
+				NullValue: structpb.NullValue_NULL_VALUE,
 			},
 		}, true
 	} else if v.IsBool() {
 		return &structpb.Value{
 			Kind: &structpb.Value_BoolValue{
-				v.BoolValue(),
+				BoolValue: v.BoolValue(),
 			},
 		}, true
 	} else if v.IsNumber() {
 		return &structpb.Value{
 			Kind: &structpb.Value_NumberValue{
-				v.NumberValue(),
+				NumberValue: v.NumberValue(),
 			},
 		}, true
 	} else if v.IsString() {
 		return &structpb.Value{
 			Kind: &structpb.Value_StringValue{
-				v.StringValue(),
+				StringValue: v.StringValue(),
 			},
 		}, true
 	} else if v.IsArray() {
@@ -66,13 +66,13 @@ func MarshalPropertyValue(ctx *Context, v PropertyValue, opts MarshalOptions) (*
 		}
 		return &structpb.Value{
 			Kind: &structpb.Value_ListValue{
-				&structpb.ListValue{elems},
+				ListValue: &structpb.ListValue{Values: elems},
 			},
 		}, true
 	} else if v.IsObject() {
 		return &structpb.Value{
 			Kind: &structpb.Value_StructValue{
-				MarshalProperties(ctx, v.ObjectValue(), opts),
+				StructValue: MarshalProperties(ctx, v.ObjectValue(), opts),
 			},
 		}, true
 	} else if v.IsResource() {
@@ -87,7 +87,7 @@ func MarshalPropertyValue(ctx *Context, v PropertyValue, opts MarshalOptions) (*
 		glog.V(7).Infof("Serializing resource moniker '%v' as ID '%v'", m, id)
 		return &structpb.Value{
 			Kind: &structpb.Value_StringValue{
-				string(id),
+				StringValue: string(id),
 			},
 		}, true
 	} else {
