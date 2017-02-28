@@ -70,37 +70,39 @@ func initHuskCmd(cmd *cobra.Command, args []string) *huskCmdInfo {
 		fmt.Fprintf(os.Stderr, "fatal: missing required husk name\n")
 		os.Exit(-1)
 	}
-	husk := tokens.QName(args[0])
 
 	// Read in the deployment information, bailing if an IO error occurs.
-	dep, old := readHusk(ctx, husk)
-	if dep == nil {
+	name := tokens.QName(args[0])
+	huskfile, husk, old := readHusk(ctx, name)
+	if husk == nil {
 		contract.Assert(!ctx.Diag.Success())
 		return nil // failure reading the husk information.
 	}
 	return &huskCmdInfo{
-		ctx:  ctx,
-		husk: husk,
-		dep:  dep,
-		old:  old,
-		args: args[1:],
-		orig: args,
+		Ctx:      ctx,
+		Husk:     husk,
+		Huskfile: huskfile,
+		Old:      old,
+		Args:     args[1:],
+		Orig:     args,
 	}
 }
 
 type huskCmdInfo struct {
-	ctx  *resource.Context    // the resulting context
-	husk tokens.QName         // the husk name
-	dep  *resource.Deployment // the husk's deployment record
-	old  resource.Snapshot    // the husk's latest deployment snapshot
-	args []string             // the rest of the args after extracting the husk name
-	orig []string             // the original args before extracting the husk name
+	Ctx      *resource.Context  // the resulting context
+	Husk     *resource.Husk     // the husk information
+	Huskfile *resource.Huskfile // the full serialized huskfile from which this came.
+	Old      resource.Snapshot  // the husk's latest deployment snapshot
+	Args     []string           // the rest of the args after extracting the husk name
+	Orig     []string           // the original args before extracting the husk name
 }
 
-// create just creates a new husk without deploying anything into it.
-func create(husk tokens.QName) {
+// create just creates a new empty husk without deploying anything into it.
+// TODO: add the ability to configure the husk at the command line.
+func create(name tokens.QName) {
+	husk := &resource.Husk{Name: name}
 	if success := saveHusk(husk, nil, "", false); success {
-		fmt.Printf("Coconut husk '%v' initialized; ready for deployments (see `coco husk deploy`)\n", husk)
+		fmt.Printf("Coconut husk '%v' initialized; ready for deployments (see `coco husk deploy`)\n", name)
 	}
 }
 
@@ -149,7 +151,7 @@ func prepareCompiler(cmd *cobra.Command, args []string) (compiler.Compiler, *pac
 
 // compile just uses the standard logic to parse arguments, options, and to locate/compile a package.  It returns the
 // CocoGL graph that is produced, or nil if an error occurred (in which case, we would expect non-0 errors).
-func compile(cmd *cobra.Command, args []string, config *resource.ConfigMap) *compileResult {
+func compile(cmd *cobra.Command, args []string, config resource.ConfigMap) *compileResult {
 	// Prepare the compiler info and, provided it succeeds, perform the compilation.
 	if comp, pkg := prepareCompiler(cmd, args); comp != nil {
 		// Create the preexec hook if the config map is non-nil.
@@ -208,29 +210,27 @@ func plan(cmd *cobra.Command, info *huskCmdInfo, delete bool) *planResult {
 	var result *compileResult
 	if !delete {
 		// First, compile; if that yields errors or an empty heap, exit early.
-		if result = compile(cmd, info.args, info.dep.Config); result == nil || result.Heap == nil {
+		if result = compile(cmd, info.Args, info.Husk.Config); result == nil || result.Heap == nil {
 			return nil
 		}
 
 		// Create a resource snapshot from the compiled/evaluated object graph.
 		var err error
 		new, err = resource.NewGraphSnapshot(
-			info.ctx, info.husk, result.Pkg.Tok, result.C.Ctx().Opts.Args, result.Heap)
+			info.Ctx, info.Husk.Name, result.Pkg.Tok, result.C.Ctx().Opts.Args, result.Heap)
 		if err != nil {
 			result.C.Diag().Errorf(errors.ErrorCantCreateSnapshot, err)
 			return nil
-		} else if !info.ctx.Diag.Success() {
+		} else if !info.Ctx.Diag.Success() {
 			return nil
 		}
 	}
 
 	// Generate a plan; this API handles all interesting cases (create, update, delete).
-	plan := resource.NewPlan(info.ctx, info.old, new)
+	plan := resource.NewPlan(info.Ctx, info.Old, new)
 	return &planResult{
 		compileResult: result,
-		Ctx:           info.ctx,
-		Husk:          info.husk,
-		Old:           info.old,
+		Info:          info,
 		New:           new,
 		Plan:          plan,
 	}
@@ -238,18 +238,17 @@ func plan(cmd *cobra.Command, info *huskCmdInfo, delete bool) *planResult {
 
 type planResult struct {
 	*compileResult
-	Ctx  *resource.Context
-	Husk tokens.QName      // the husk name.
+	Info *huskCmdInfo      // plan command information.
 	Old  resource.Snapshot // the existing snapshot (if any).
 	New  resource.Snapshot // the new snapshot for this plan (if any).
-	Plan resource.Plan
+	Plan resource.Plan     // the plan created by this command.
 }
 
 func apply(cmd *cobra.Command, info *huskCmdInfo, opts applyOptions) {
 	if result := plan(cmd, info, opts.Delete); result != nil {
 		// If we are doing an empty update, say so.
 		if result.Plan.Empty() && !opts.Delete {
-			info.ctx.Diag.Infof(diag.Message("nothing to do -- resources are up to date"))
+			info.Ctx.Diag.Infof(diag.Message("nothing to do -- resources are up to date"))
 		}
 
 		// Now based on whether a dry run was specified, or not, either print or perform the planned operations.
@@ -258,7 +257,7 @@ func apply(cmd *cobra.Command, info *huskCmdInfo, opts applyOptions) {
 			if opts.Output == "" || opts.Output == "-" {
 				printPlan(result, opts)
 			} else {
-				saveHusk(info.husk, result.New, opts.Output, true /*overwrite*/)
+				saveHusk(info.Husk, result.New, opts.Output, true /*overwrite*/)
 			}
 		} else {
 			// If show unchanged was requested, print them first, along with a header.
@@ -275,7 +274,7 @@ func apply(cmd *cobra.Command, info *huskCmdInfo, opts applyOptions) {
 				// TODO: we want richer diagnostics in the event that a plan apply fails.  For instance, we want to
 				//     know precisely what step failed, we want to know whether it was catastrophic, etc.  We also
 				//     probably want to plumb diag.Sink through apply so it can issue its own rich diagnostics.
-				info.ctx.Diag.Errorf(errors.ErrorPlanApplyFailed, err)
+				info.Ctx.Diag.Errorf(errors.ErrorPlanApplyFailed, err)
 			}
 
 			// Print out the total number of steps performed (and their kinds), the duration, and any summary info.
@@ -291,12 +290,13 @@ func apply(cmd *cobra.Command, info *huskCmdInfo, opts applyOptions) {
 
 			// Now save the updated snapshot to the specified output file, if any, or the standard location otherwise.
 			// Note that if a failure has occurred, the Apply routine above will have returned a safe checkpoint.
-			saveHusk(result.Husk, checkpoint, opts.Output, true /*overwrite*/)
+			husk := result.Info.Husk
+			saveHusk(husk, checkpoint, opts.Output, true /*overwrite*/)
 
 			// If a deletion was requested, remove the husk; but only if no error has occurred!
 			if err == nil && opts.Delete {
-				deleteHusk(result.Husk)
-				fmt.Printf("Coconut husk '%v' has been destroyed!\n", result.Husk)
+				deleteHusk(husk)
+				fmt.Printf("Coconut husk '%v' has been destroyed!\n", husk.Name)
 			}
 		}
 	}
@@ -311,41 +311,41 @@ func backupHusk(file string) {
 }
 
 // deleteHusk removes an existing snapshot file, leaving behind a backup.
-func deleteHusk(husk tokens.QName) {
-	contract.Require(husk != "", "husk")
+func deleteHusk(husk *resource.Husk) {
+	contract.Require(husk != nil, "husk")
 	// Just make a backup of the file and don't write out anything new.
-	file := workspace.HuskPath(husk)
+	file := workspace.HuskPath(husk.Name)
 	backupHusk(file)
 }
 
 // readHusk reads in an existing snapshot file, issuing an error and returning nil if something goes awry.
-func readHusk(ctx *resource.Context, husk tokens.QName) (*resource.Deployment, resource.Snapshot) {
-	contract.Require(husk != "", "husk")
-	file := workspace.HuskPath(husk)
+func readHusk(ctx *resource.Context, name tokens.QName) (*resource.Huskfile, *resource.Husk, resource.Snapshot) {
+	contract.Require(name != "", "name")
+	file := workspace.HuskPath(name)
 
 	// Detect the encoding of the file so we can do our initial unmarshaling.
 	m, ext := encoding.Detect(file)
 	if m == nil {
 		ctx.Diag.Errorf(errors.ErrorIllegalMarkupExtension, ext)
-		return nil, nil
+		return nil, nil, nil
 	}
 
 	// Now read the whole file into a byte blob.
 	b, err := ioutil.ReadFile(file)
 	if err != nil {
 		if os.IsNotExist(err) {
-			ctx.Diag.Errorf(errors.ErrorInvalidHuskName, husk)
+			ctx.Diag.Errorf(errors.ErrorInvalidHuskName, name)
 		} else {
 			ctx.Diag.Errorf(errors.ErrorIO, err)
 		}
-		return nil, nil
+		return nil, nil, nil
 	}
 
-	// Unmarshal the contents into a deployment structure.
-	var dep resource.Deployment
-	if err = m.Unmarshal(b, &dep); err != nil {
+	// Unmarshal the contents into a huskfile deployment structure.
+	var huskfile resource.Huskfile
+	if err = m.Unmarshal(b, &huskfile); err != nil {
 		ctx.Diag.Errorf(errors.ErrorCantReadDeployment, file, err)
-		return nil, nil
+		return nil, nil, nil
 	}
 
 	// Next, use the mapping infrastructure to validate the contents.
@@ -353,7 +353,7 @@ func readHusk(ctx *resource.Context, husk tokens.QName) (*resource.Deployment, r
 	var obj mapper.Object
 	if err = m.Unmarshal(b, &obj); err != nil {
 		ctx.Diag.Errorf(errors.ErrorCantReadDeployment, file, err)
-		return nil, nil
+		return nil, nil, nil
 	} else {
 		if obj["latest"] != nil {
 			if latest, islatest := obj["latest"].(map[string]interface{}); islatest {
@@ -361,21 +361,23 @@ func readHusk(ctx *resource.Context, husk tokens.QName) (*resource.Deployment, r
 			}
 		}
 		md := mapper.New(nil)
-		var ignore resource.Deployment // just for errors.
+		var ignore resource.Huskfile // just for errors.
 		if err = md.Decode(obj, &ignore); err != nil {
 			ctx.Diag.Errorf(errors.ErrorCantReadDeployment, file, err)
-			return nil, nil
+			return nil, nil, nil
 		}
 	}
 
-	return &dep, resource.DeserializeDeployment(ctx, &dep)
+	husk, snap := resource.DeserializeHuskfile(ctx, &huskfile)
+	contract.Assert(husk != nil)
+	return &huskfile, husk, snap
 }
 
 // saveHusk saves a new snapshot at the given location, backing up any existing ones.
-func saveHusk(husk tokens.QName, snap resource.Snapshot, file string, existok bool) bool {
-	contract.Require(husk != "", "husk")
+func saveHusk(husk *resource.Husk, snap resource.Snapshot, file string, existok bool) bool {
+	contract.Require(husk != nil, "husk")
 	if file == "" {
-		file = workspace.HuskPath(husk)
+		file = workspace.HuskPath(husk.Name)
 	}
 
 	// Make a serializable CocoGL data structure and then use the encoder to encode it.
@@ -387,7 +389,7 @@ func saveHusk(husk tokens.QName, snap resource.Snapshot, file string, existok bo
 	if filepath.Ext(file) == "" {
 		file = file + ext
 	}
-	dep := resource.SerializeDeployment(husk, snap, "")
+	dep := resource.SerializeHuskfile(husk, snap, "")
 	b, err := m.Marshal(dep)
 	if err != nil {
 		sink().Errorf(errors.ErrorIO, err)

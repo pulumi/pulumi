@@ -28,7 +28,7 @@ func newHuskDestroyCmd() *cobra.Command {
 		Run: func(cmd *cobra.Command, args []string) {
 			if info := initHuskCmd(cmd, args); info != nil {
 				if !dryRun && !yes {
-					fmt.Printf("This will permanently delete all resources in the '%v' husk!\n", info.husk)
+					fmt.Printf("This will permanently delete all resources in the '%v' husk!\n", info.Husk.Name)
 					fmt.Printf("Please confirm that this is what you'd like to do by typing (\"yes\"): ")
 					reader := bufio.NewReader(os.Stdin)
 					if line, _ := reader.ReadString('\n'); line != "yes\n" {

@@ -41,7 +41,9 @@ func (cfg *ConfigMap) ConfigApplier(vars map[tokens.Token]*rt.Object) compiler.P
 // we are accessing module and class members, this routine will also trigger the relevant initialization routines.
 func (cfg *ConfigMap) ApplyConfig(ctx *binder.Context, pkg *symbols.Package,
 	e eval.Interpreter) map[tokens.Token]*rt.Object {
-	// Keep track of all variables applied:
+	glog.V(5).Infof("Applying configuration values for package '%v'", pkg)
+
+	// Track all configuration variables that get set, for diagnostics and plumbing.
 	vars := make(map[tokens.Token]*rt.Object)
 
 	if cfg != nil {

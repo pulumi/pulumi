@@ -13,13 +13,6 @@ import (
 	"github.com/pulumi/coconut/pkg/util/contract"
 )
 
-// Deployment is a serialized deployment target plus a record of the latest deployment.
-type Deployment struct {
-	Husk   tokens.QName      `json:"husk"`             // the target environment name.
-	Config *ConfigMap        `json:"config,omitempty"` // optional configuration key/values.
-	Latest *DeploymentRecord `json:"latest,omitempty"` // the latest/current deployment record.
-}
-
 // DeploymentRecord is a serializable, flattened CocoGL graph structure, representing a deployment.   It is similar
 // to the actual Snapshot interface, except that it flattens and rearranges a few data structures for serializability.
 // Over time, we also expect this to gather more information about deployments themselves.
@@ -43,19 +36,6 @@ type ResourceDeployment struct {
 
 // DeployedPropertyMap is a property map from resource key to the underlying property value.
 type DeployedPropertyMap map[string]interface{}
-
-// SerializeDeployment turns a snapshot into a CocoGL data structure suitable for serialization.
-func SerializeDeployment(husk tokens.QName, snap Snapshot, reftag string) *Deployment {
-	// If snap is nil, that's okay, we will just create an empty deployment; otherwise, serialize the whole snapshot.
-	var latest *DeploymentRecord
-	if snap != nil {
-		latest = serializeDeploymentRecord(snap, reftag)
-	}
-	return &Deployment{
-		Husk:   husk,
-		Latest: latest,
-	}
-}
 
 func serializeDeploymentRecord(snap Snapshot, reftag string) *DeploymentRecord {
 	// Initialize the reftag if needed, and only serialize if overridden.
@@ -165,53 +145,6 @@ func serializeProperty(prop PropertyValue, reftag string) (interface{}, bool) {
 
 	// All others are returned as-is.
 	return prop.V, true
-}
-
-// DeserializeDeploymentRecord takes a serialized deployment record and returns its associated snapshot.
-func DeserializeDeployment(ctx *Context, ser *Deployment) Snapshot {
-	latest := ser.Latest
-	if latest == nil {
-		return nil
-	}
-
-	// Determine the reftag to use.
-	var reftag string
-	if latest.Reftag == nil {
-		reftag = DefaultDeploymentReftag
-	} else {
-		reftag = *latest.Reftag
-	}
-
-	// For every serialized resource vertex, create a ResourceDeployment out of it.
-	var resources []Resource
-	if latest.Resources != nil {
-		for _, kvp := range latest.Resources.Iter() {
-			// Deserialize the resources, if they exist.
-			res := kvp.Value
-			var props PropertyMap
-			if res.Properties == nil {
-				props = make(PropertyMap)
-			} else {
-				props = deserializeProperties(*res.Properties, reftag)
-			}
-
-			// And now just produce a resource object using the information available.
-			var id ID
-			if res.ID != nil {
-				id = *res.ID
-			}
-
-			resources = append(resources, NewResource(id, kvp.Key, res.Type, props))
-		}
-	}
-
-	// If the args are non-nil, use them.
-	var args core.Args
-	if latest.Args != nil {
-		args = *latest.Args
-	}
-
-	return NewSnapshot(ctx, ser.Husk, latest.Package, args, resources)
 }
 
 func deserializeProperties(props DeployedPropertyMap, reftag string) PropertyMap {

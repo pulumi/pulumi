@@ -61,7 +61,7 @@ func NewPlan(ctx *Context, old Snapshot, new Snapshot) Plan {
 
 type plan struct {
 	ctx       *Context       // this plan's context.
-	husk      tokens.QName   // the husk/namespace target being deployed into.
+	ns        tokens.QName   // the husk/namespace target being deployed into.
 	pkg       tokens.Package // the package from which this snapshot came.
 	args      core.Args      // the arguments used to compile this package.
 	first     *step          // the first step to take.
@@ -159,14 +159,14 @@ func (p *plan) checkpoint(resources []Resource) Snapshot {
 		tops = append(tops, topvert.Data().(Resource))
 	}
 	glog.V(7).Infof("Checkpointing plan application: %v total resources", len(tops))
-	return NewSnapshot(p.ctx, p.husk, p.pkg, p.args, tops)
+	return NewSnapshot(p.ctx, p.ns, p.pkg, p.args, tops)
 }
 
 // newPlan handles all three cases: (1) a creation plan from a new snapshot when old doesn't exist (nil), (2) an update
 // plan when both old and new exist, and (3) a deletion plan when old exists, but not new.
 func newPlan(ctx *Context, old Snapshot, new Snapshot) *plan {
 	// These variables are read from either snapshot (preferred new, since it may have updated args).
-	var husk tokens.QName
+	var ns tokens.QName
 	var pkg tokens.Package
 	var args core.Args
 
@@ -175,7 +175,7 @@ func newPlan(ctx *Context, old Snapshot, new Snapshot) *plan {
 	if old != nil {
 		oldres = old.Resources()
 		if new == nil {
-			husk = old.Husk()
+			ns = old.Namespace()
 			pkg = old.Pkg()
 			args = old.Args()
 		}
@@ -183,7 +183,7 @@ func newPlan(ctx *Context, old Snapshot, new Snapshot) *plan {
 	var newres []Resource
 	if new != nil {
 		newres = new.Resources()
-		husk = new.Husk()
+		ns = new.Namespace()
 		pkg = new.Pkg()
 		args = new.Args()
 	}
@@ -221,7 +221,7 @@ func newPlan(ctx *Context, old Snapshot, new Snapshot) *plan {
 	// Keep track of vertices for our later graph operations.
 	p := &plan{
 		ctx:  ctx,
-		husk: husk,
+		ns:   ns,
 		pkg:  pkg,
 		args: args,
 	}

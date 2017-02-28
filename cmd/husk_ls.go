@@ -39,17 +39,17 @@ func newHuskLsCmd() *cobra.Command {
 				}
 
 				// Skip files without valid extensions (e.g., *.bak files).
-				huskfile := file.Name()
-				ext := filepath.Ext(huskfile)
+				huskfn := file.Name()
+				ext := filepath.Ext(huskfn)
 				if _, has := encoding.Marshalers[ext]; !has {
 					continue
 				}
 
 				// Create a new context and read in the husk information.
-				husk := tokens.QName(huskfile[:len(huskfile)-len(ext)])
+				name := tokens.QName(huskfn[:len(huskfn)-len(ext)])
 				ctx := resource.NewContext(sink())
-				dep, old := readHusk(ctx, husk)
-				if dep == nil {
+				huskfile, husk, old := readHusk(ctx, name)
+				if husk == nil {
 					contract.Assert(!ctx.Diag.Success())
 					continue // failure reading the husk information.
 				}
@@ -57,13 +57,13 @@ func newHuskLsCmd() *cobra.Command {
 				// Now print out the name, last deployment time (if any), and resources (if any).
 				lastDeploy := "n/a"
 				resourceCount := "n/a"
-				if dep.Latest != nil {
-					lastDeploy = dep.Latest.Time.String()
+				if huskfile.Latest != nil {
+					lastDeploy = huskfile.Latest.Time.String()
 				}
 				if old != nil {
 					resourceCount = strconv.Itoa(len(old.Resources()))
 				}
-				fmt.Printf("%-20s %-48s %-12s\n", dep.Husk, lastDeploy, resourceCount)
+				fmt.Printf("%-20s %-48s %-12s\n", husk.Name, lastDeploy, resourceCount)
 			}
 		},
 	}

@@ -163,6 +163,7 @@ func (c *compiler) CompilePackage(pkg *pack.Package, preexec Preexec) (*symbols.
 	// Create a fresh evaluator; if there are pre-exec hooks, run them now.
 	e := eval.New(b.Ctx(), gg)
 	if preexec != nil {
+		glog.V(7).Infof("Invoking compiler preexec routine")
 		preexec(b.Ctx(), pkgsym, e)
 	}
 	if !c.Diag().Success() {
