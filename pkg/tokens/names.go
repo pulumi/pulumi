@@ -18,7 +18,7 @@ func (nm Name) String() string { return string(nm) }
 func (nm Name) Q() QName { return QName(nm) }
 
 var NameRegexp = regexp.MustCompile(NameRegexpPattern)
-var NameRegexpPattern = "[A-Za-z_.][A-Za-z0-9_]*"
+var NameRegexpPattern = "[A-Za-z_.][A-Za-z0-9_.]*"
 
 // IsName checks whether a string is a legal Name.
 func IsName(s string) bool {
