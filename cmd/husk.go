@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"time"
 
@@ -21,6 +22,7 @@ import (
 	"github.com/pulumi/coconut/pkg/diag/colors"
 	"github.com/pulumi/coconut/pkg/encoding"
 	"github.com/pulumi/coconut/pkg/eval/heapstate"
+	"github.com/pulumi/coconut/pkg/eval/rt"
 	"github.com/pulumi/coconut/pkg/resource"
 	"github.com/pulumi/coconut/pkg/tokens"
 	"github.com/pulumi/coconut/pkg/util/cmdutil"
@@ -119,8 +121,9 @@ func compile(cmd *cobra.Command, args []string, config *resource.ConfigMap) *com
 
 	// Create the preexec hook if the config map is non-nil.
 	var preexec compiler.Preexec
+	configVars := make(map[tokens.Token]*rt.Object)
 	if config != nil {
-		preexec = config.ApplyConfig
+		preexec = config.ConfigApplier(configVars)
 	}
 
 	// In the case of an argument, load that specific package and new up a compiler based on its base path.
@@ -153,13 +156,19 @@ func compile(cmd *cobra.Command, args []string, config *resource.ConfigMap) *com
 			pkg, heap = comp.CompilePackage(pkgmeta, preexec)
 		}
 	}
-	return &compileResult{comp, pkg, heap}
+	return &compileResult{
+		C:          comp,
+		Pkg:        pkg,
+		Heap:       heap,
+		ConfigVars: configVars,
+	}
 }
 
 type compileResult struct {
-	C    compiler.Compiler
-	Pkg  *symbols.Package
-	Heap *heapstate.Heap
+	C          compiler.Compiler
+	Pkg        *symbols.Package
+	Heap       *heapstate.Heap
+	ConfigVars map[tokens.Token]*rt.Object
 }
 
 // plan just uses the standard logic to parse arguments, options, and to create a snapshot and plan.
@@ -217,17 +226,16 @@ func apply(cmd *cobra.Command, info *huskCmdInfo, opts applyOptions) {
 		if opts.DryRun {
 			// If no output file was requested, or "-", print to stdout; else write to that file.
 			if opts.Output == "" || opts.Output == "-" {
-				printPlan(result.Plan, opts.ShowUnchanged, opts.Summary)
+				printPlan(result, opts)
 			} else {
 				saveHusk(info.husk, result.New, opts.Output, true /*overwrite*/)
 			}
 		} else {
-			// If show unchanged was requested, print them first.
-			if opts.ShowUnchanged {
-				var b bytes.Buffer
-				printUnchanged(&b, result.Plan, opts.Summary)
-				fmt.Printf(b.String())
-			}
+			// If show unchanged was requested, print them first, along with a header.
+			var header bytes.Buffer
+			printPrelude(&header, result, opts)
+			header.WriteString(fmt.Sprintf("%vDeploying changes:%v\n", colors.SpecUnimportant, colors.Reset))
+			fmt.Printf(colors.Colorize(&header))
 
 			// Create an object to track progress and perform the actual operations.
 			start := time.Now()
@@ -240,30 +248,16 @@ func apply(cmd *cobra.Command, info *huskCmdInfo, opts applyOptions) {
 				info.ctx.Diag.Errorf(errors.ErrorPlanApplyFailed, err)
 			}
 
-			// Print out the total number of steps performed (and their kinds), if any succeeded.
-			var b bytes.Buffer
-			if progress.Steps > 0 {
-				b.WriteString(fmt.Sprintf("%v total operations in %v:\n", progress.Steps, time.Since(start)))
-				if c := progress.Ops[resource.OpCreate]; c > 0 {
-					b.WriteString(fmt.Sprintf("    %v%v resources created%v\n",
-						opPrefix(resource.OpCreate), c, colors.Reset))
-				}
-				if c := progress.Ops[resource.OpUpdate]; c > 0 {
-					b.WriteString(fmt.Sprintf("    %v%v resources updated%v\n",
-						opPrefix(resource.OpUpdate), c, colors.Reset))
-				}
-				if c := progress.Ops[resource.OpDelete]; c > 0 {
-					b.WriteString(fmt.Sprintf("    %v%v resources deleted%v\n",
-						opPrefix(resource.OpDelete), c, colors.Reset))
-				}
-			}
+			// Print out the total number of steps performed (and their kinds), the duration, and any summary info.
+			var summary bytes.Buffer
+			printSummary(&summary, progress.Ops, false)
+			summary.WriteString(fmt.Sprintf("Deployment duration: %v\n", time.Since(start)))
 			if progress.MaybeCorrupt {
-				b.WriteString(fmt.Sprintf(
+				summary.WriteString(fmt.Sprintf(
 					"%vfatal: A catastrophic error occurred; resources states may be unknown%v\n",
 					colors.SpecFatal, colors.Reset))
 			}
-			s := b.String()
-			fmt.Printf(colors.Colorize(s))
+			fmt.Printf(colors.Colorize(&summary))
 
 			// Now save the updated snapshot to the specified output file, if any, or the standard location otherwise.
 			// Note that if a failure has occurred, the Apply routine above will have returned a safe checkpoint.
@@ -400,6 +394,7 @@ type applyOptions struct {
 	Create        bool   // true if we are creating resources.
 	Delete        bool   // true if we are deleting resources.
 	DryRun        bool   // true if we should just print the plan without performing it.
+	ShowConfig    bool   // true to show the configuration variables being used.
 	ShowUnchanged bool   // true to show the resources that aren't updated, in addition to those that are.
 	Summary       bool   // true if we should only summarize resources and operations.
 	Output        string // the place to store the output, if any.
@@ -427,8 +422,7 @@ func (prog *applyProgress) Before(step resource.Step) {
 	stepnum := prog.Steps + 1
 	b.WriteString(fmt.Sprintf("Applying step #%v [%v]\n", stepnum, step.Op()))
 	printStep(&b, step, prog.Summary, "    ")
-	s := colors.Colorize(b.String())
-	fmt.Printf(s)
+	fmt.Printf(colors.Colorize(&b))
 }
 
 func (prog *applyProgress) After(step resource.Step, err error, state resource.ResourceState) {
@@ -454,31 +448,93 @@ func (prog *applyProgress) After(step resource.Step, err error, state resource.R
 		}
 		b.WriteString(colors.Reset)
 		b.WriteString("\n")
-		s := colors.Colorize(b.String())
-		fmt.Printf(s)
+		fmt.Printf(colors.Colorize(&b))
 	}
 }
 
-func printPlan(plan resource.Plan, showUnchanged bool, summary bool) {
+func printPlan(result *planResult, opts applyOptions) {
 	var b bytes.Buffer
 
-	// If show-sames was requested, walk the sames and print them.
-	if showUnchanged {
-		printUnchanged(&b, plan, summary)
-	}
+	// First print config/unchanged/etc. if necessary.
+	printPrelude(&b, result, opts)
 
 	// Now walk the plan's steps and and pretty-print them out.
-	step := plan.Steps()
+	b.WriteString(fmt.Sprintf("%vPlanned changes:%v\n", colors.SpecUnimportant, colors.Reset))
+	step := result.Plan.Steps()
+	counts := make(map[resource.StepOp]int)
 	for step != nil {
 		// Print this step information (resource and all its properties).
 		// TODO: it would be nice if, in the output, we showed the dependencies a la `git log --graph`.
-		printStep(&b, step, summary, "")
+		printStep(&b, step, opts.Summary, "")
+		counts[step.Op()]++
 		step = step.Next()
 	}
 
+	// Print a summary of operation counts.
+	printSummary(&b, counts, true)
+
 	// Now go ahead and emit the output to the console.
-	s := colors.Colorize(b.String())
-	fmt.Printf(s)
+	fmt.Printf(colors.Colorize(&b))
+}
+
+func printPrelude(b *bytes.Buffer, result *planResult, opts applyOptions) {
+	// If there are configuration variables, show them.
+	if opts.ShowConfig {
+		printConfig(b, result.compileResult)
+	}
+
+	// If show-sames was requested, walk the sames and print them.
+	if opts.ShowUnchanged {
+		printUnchanged(b, result.Plan, opts.Summary)
+	}
+}
+
+func printConfig(b *bytes.Buffer, result *compileResult) {
+	b.WriteString(fmt.Sprintf("%vConfiguration:%v\n", colors.SpecUnimportant, colors.Reset))
+	if result != nil && result.ConfigVars != nil {
+		var toks []string
+		for tok := range result.ConfigVars {
+			toks = append(toks, string(tok))
+		}
+		sort.Strings(toks)
+		for _, tok := range toks {
+			b.WriteString(fmt.Sprintf("%v%v: %v\n", detailsIndent, tok, result.ConfigVars[tokens.Token(tok)]))
+		}
+	}
+}
+
+func printSummary(b *bytes.Buffer, counts map[resource.StepOp]int, plan bool) {
+	total := 0
+	for _, c := range counts {
+		total += c
+	}
+
+	var planned string
+	if plan {
+		planned = "planned "
+	}
+	b.WriteString(fmt.Sprintf("%v total %vchanges:\n", total, planned))
+
+	var planTo string
+	var pastTense string
+	if plan {
+		planTo = "to "
+	} else {
+		pastTense = "d"
+	}
+
+	if c := counts[resource.OpCreate]; c > 0 {
+		b.WriteString(fmt.Sprintf("    %v%v resources %vcreate%v%v\n",
+			opPrefix(resource.OpCreate), c, planTo, pastTense, colors.Reset))
+	}
+	if c := counts[resource.OpUpdate]; c > 0 {
+		b.WriteString(fmt.Sprintf("    %v%v resources %vupdate%v%v\n",
+			opPrefix(resource.OpUpdate), c, planTo, pastTense, colors.Reset))
+	}
+	if c := counts[resource.OpDelete]; c > 0 {
+		b.WriteString(fmt.Sprintf("    %v%v resources %vdelete%v%v\n",
+			opPrefix(resource.OpDelete), c, planTo, pastTense, colors.Reset))
+	}
 }
 
 func opPrefix(op resource.StepOp) string {
@@ -502,11 +558,12 @@ func opSuffix(op resource.StepOp) string {
 	return ""
 }
 
-const resourceDetailsIndent = "      " // 4 spaces, plus space for "+ ", "- ", and " " leaders
+const detailsIndent = "      " // 4 spaces, plus 2 for "+ ", "- ", and " " leaders
 
 func printUnchanged(b *bytes.Buffer, plan resource.Plan, summary bool) {
+	b.WriteString(fmt.Sprintf("%vUnchanged resources:%v\n", colors.SpecUnimportant, colors.Reset))
 	for _, res := range plan.Unchanged() {
-		b.WriteString("  ")
+		b.WriteString("  ") // simulate the 2 spaces for +, -, etc.
 		printResourceHeader(b, res, nil, "")
 		printResourceProperties(b, res, nil, summary, "")
 	}
@@ -539,7 +596,7 @@ func printResourceHeader(b *bytes.Buffer, old resource.Resource, new resource.Re
 
 func printResourceProperties(b *bytes.Buffer, old resource.Resource, new resource.Resource,
 	summary bool, indent string) {
-	indent += resourceDetailsIndent
+	indent += detailsIndent
 
 	// Print out the moniker and, if present, the ID, as "pseudo-properties".
 	var id resource.ID

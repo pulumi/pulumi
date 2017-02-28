@@ -3,6 +3,8 @@
 package colors
 
 import (
+	"fmt"
+
 	"github.com/reconquest/loreley"
 
 	"github.com/pulumi/coconut/pkg/util/contract"
@@ -21,7 +23,12 @@ func Command(s string) string {
 	return colorLeft + s + colorRight
 }
 
-func Colorize(s string) string {
+func Colorize(s fmt.Stringer) string {
+	txt := s.String()
+	return ColorizeText(txt)
+}
+
+func ColorizeText(s string) string {
 	c, err := loreley.CompileAndExecuteToString(s, nil, nil)
 	contract.Assertf(err == nil, "Expected no errors during string colorization; str=%v, err=%v", s, err)
 	return c
@@ -50,13 +57,14 @@ var (
 
 // Special predefined colors for logical conditions.
 var (
-	SpecInfo      = Magenta      // for information.
-	SpecError     = Red          // for errors.
-	SpecWarning   = Yellow       // for warnings.
-	SpecLocation  = Cyan         // for source locations.
-	SpecFatal     = BrightRed    // for fatal errors
-	SpecNote      = White        // for notes
-	SpecImportant = BrightYellow // for particularly noteworthy messages.
+	SpecInfo        = Magenta      // for information.
+	SpecError       = Red          // for errors.
+	SpecWarning     = Yellow       // for warnings.
+	SpecLocation    = Cyan         // for source locations.
+	SpecFatal       = BrightRed    // for fatal errors
+	SpecNote        = White        // for notes
+	SpecImportant   = BrightYellow // for particularly noteworthy messages.
+	SpecUnimportant = BrightBlack  // for notes that can be skimmed or aren't very important.
 
 	SpecAdded   = Green  // for adds (in the diff sense).
 	SpecChanged = Yellow // for changes (in the diff sense).

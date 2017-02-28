@@ -8,6 +8,7 @@ import (
 
 func newHuskDeployCmd() *cobra.Command {
 	var dryRun bool
+	var showConfig bool
 	var showUnchanged bool
 	var summary bool
 	var output string
@@ -30,6 +31,7 @@ func newHuskDeployCmd() *cobra.Command {
 				apply(cmd, info, applyOptions{
 					Delete:        false,
 					DryRun:        dryRun,
+					ShowConfig:    showConfig,
 					ShowUnchanged: showUnchanged,
 					Summary:       summary,
 					Output:        output,
@@ -41,6 +43,9 @@ func newHuskDeployCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVarP(
 		&dryRun, "dry-run", "n", false,
 		"Don't actually update resources; just print out the planned updates")
+	cmd.PersistentFlags().BoolVar(
+		&showConfig, "show-config", false,
+		"Show configuration keys and variables")
 	cmd.PersistentFlags().BoolVar(
 		&showUnchanged, "show-unchanged", false,
 		"Show resources that needn't be updated because they haven't changed, alongside those that do")

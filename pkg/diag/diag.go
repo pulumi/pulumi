@@ -25,7 +25,11 @@ type Diagable interface {
 
 // At adds a position to an existing diagnostic, retaining its ID and message.
 func (diag *Diag) At(d Diagable) *Diag {
-	doc, loc := d.Where()
+	var doc *Document
+	var loc *Location
+	if d != nil {
+		doc, loc = d.Where()
+	}
 	return &Diag{
 		ID:      diag.ID,
 		Message: diag.Message,

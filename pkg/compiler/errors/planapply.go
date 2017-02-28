@@ -14,4 +14,5 @@ var (
 	ErrorInvalidHuskName        = newError(2007, "Invalid husk '%v'; could not be found in the workspace")
 	ErrorIllegalConfigToken     = newError(2008,
 		"Configs may only target module properties and class static properties; %v is neither")
+	ErrorConfigApplyFailure = newError(2009, "One or more errors occurred while applying '%v's configuration")
 )

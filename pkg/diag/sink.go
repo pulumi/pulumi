@@ -176,7 +176,7 @@ func (d *defaultSink) Stringify(diag *Diag, cat Category, args ...interface{}) s
 
 	// If colorization was requested, compile and execute the directives now.
 	if d.opts.Colors {
-		s = colors.Colorize(s)
+		s = colors.ColorizeText(s)
 	}
 
 	return s
@@ -219,7 +219,7 @@ func (d *defaultSink) StringifyLocation(doc *Document, loc *Location) string {
 
 		// If colorization was requested, compile and execute the directives now.
 		if d.opts.Colors {
-			s = colors.Colorize(s)
+			s = colors.ColorizeText(s)
 		}
 	}
 

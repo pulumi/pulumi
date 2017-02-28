@@ -5,54 +5,88 @@ package resource
 import (
 	"sort"
 
+	"github.com/golang/glog"
+
+	"github.com/pulumi/coconut/pkg/compiler"
 	"github.com/pulumi/coconut/pkg/compiler/binder"
 	"github.com/pulumi/coconut/pkg/compiler/errors"
 	"github.com/pulumi/coconut/pkg/compiler/symbols"
 	"github.com/pulumi/coconut/pkg/diag"
 	"github.com/pulumi/coconut/pkg/eval"
+	"github.com/pulumi/coconut/pkg/eval/rt"
 	"github.com/pulumi/coconut/pkg/tokens"
+	"github.com/pulumi/coconut/pkg/util/contract"
 )
 
 // ConfigMap contains a mapping from variable token to the value to poke into that variable.
-type ConfigMap map[tokens.ModuleMember]interface{}
+type ConfigMap map[tokens.Token]interface{}
+
+// ConfigApplier returns a compiler preexec function that applies the configuration when invoked, and copies the
+// resulting configuration variables into the supplied map (if it is non-nil).
+func (cfg *ConfigMap) ConfigApplier(vars map[tokens.Token]*rt.Object) compiler.Preexec {
+	return func(ctx *binder.Context, pkg *symbols.Package, e eval.Interpreter) {
+		configs := cfg.ApplyConfig(ctx, pkg, e)
+		contract.Assert(configs != nil)
+		if vars != nil {
+			for k, v := range configs {
+				vars[k] = v
+			}
+		}
+	}
+}
 
 // ApplyConfig applies the configuration map to an existing interpreter context.  The map is simply a map of tokens --
 // which must be globally settable variables (module properties or static class properties) -- to serializable constant
 // values.  The routine simply walks these tokens in sorted order, and assigns the constant objects.  Note that, because
 // we are accessing module and class members, this routine will also trigger the relevant initialization routines.
-func (cfg *ConfigMap) ApplyConfig(ctx *binder.Context, pkg *symbols.Package, e eval.Interpreter) {
+func (cfg *ConfigMap) ApplyConfig(ctx *binder.Context, pkg *symbols.Package,
+	e eval.Interpreter) map[tokens.Token]*rt.Object {
+	// Keep track of all variables applied:
+	vars := make(map[tokens.Token]*rt.Object)
+
 	if cfg != nil {
 		// For each config entry, bind the token to its symbol, and then attempt to assign to it.
-		for _, tok := range stableConfigKeys(*cfg) {
+		for _, tok := range StableConfigKeys(*cfg) {
+			glog.V(5).Infof("Applying configuration value for token '%v'", tok)
+
 			// Bind to the symbol; if it returns nil, this means an error has resulted, and we can skip it.
 			var tree diag.Diagable = nil // there is no source info for this; eventually we may assign one.
 			if sym := ctx.LookupSymbol(tree, tokens.Token(tok), true); sym != nil {
+				var ok bool
 				switch s := sym.(type) {
 				case *symbols.ModuleProperty:
-					// ok
+					ok = true
 				case *symbols.ClassProperty:
 					// class properties are ok, so long as they are static.
-					if !s.Static() {
-						ctx.Diag.Errorf(errors.ErrorIllegalConfigToken, tok)
-						return
-					}
+					ok = s.Static()
 				default:
+					ok = false
+				}
+				if !ok {
 					ctx.Diag.Errorf(errors.ErrorIllegalConfigToken, tok)
-					return
+					continue // skip to the next one
 				}
 
 				// Load up the location as an l-value; because we don't support instance properties, this is nil.
 				if loc := e.LoadLocation(tree, sym, nil, true); loc != nil {
 					// Allocate a new constant for the value we are about to assign, and assign it to the location.
 					v := (*cfg)[tok]
-					loc.Assign(tree, e.NewConstantObject(nil, v))
+					obj := e.NewConstantObject(nil, v)
+					loc.Assign(tree, obj)
+					vars[tok] = obj
 				}
 			}
 		}
 	}
+
+	if !ctx.Diag.Success() {
+		ctx.Diag.Errorf(errors.ErrorConfigApplyFailure, pkg)
+	}
+
+	return vars
 }
 
-func stableConfigKeys(config ConfigMap) []tokens.ModuleMember {
+func StableConfigKeys(config ConfigMap) []tokens.Token {
 	sorted := make(configKeys, 0, len(config))
 	for key := range config {
 		sorted = append(sorted, key)
@@ -61,7 +95,7 @@ func stableConfigKeys(config ConfigMap) []tokens.ModuleMember {
 	return sorted
 }
 
-type configKeys []tokens.ModuleMember
+type configKeys []tokens.Token
 
 func (s configKeys) Len() int {
 	return len(s)
