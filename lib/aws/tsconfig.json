@@ -17,6 +17,7 @@
     },
     "files": [
         "index.ts",
+        "types.ts",
 
         "config/index.ts",
 
