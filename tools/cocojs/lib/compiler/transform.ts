@@ -773,7 +773,7 @@ export class Transformer {
         let flags: ts.TypeFlags;
         [ simple, flags ] = this.simplifyTypeForToken(ty);
 
-        if (flags & ts.TypeFlags.Any) {
+        if (flags & (ts.TypeFlags.Any | ts.TypeFlags.Never)) {
             return tokens.dynamicType;
         }
         else if (flags & ts.TypeFlags.String) {
