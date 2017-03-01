@@ -3,9 +3,6 @@
 package cmd
 
 import (
-	"fmt"
-	"os"
-
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/coconut/pkg/tokens"
@@ -22,8 +19,7 @@ func newHuskInitCmd() *cobra.Command {
 		Run: func(cmd *cobra.Command, args []string) {
 			// Read in the name of the husk to use.
 			if len(args) == 0 {
-				fmt.Fprintf(os.Stderr, "fatal: missing required husk name\n")
-				os.Exit(-1)
+				exitError("missing required husk name")
 			}
 
 			husk := tokens.QName(args[0])

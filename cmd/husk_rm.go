@@ -3,8 +3,6 @@
 package cmd
 
 import (
-	"fmt"
-
 	"github.com/spf13/cobra"
 )
 
@@ -20,20 +18,16 @@ func newHuskRmCmd() *cobra.Command {
 			"`destroy` command for removing a husk's resources, as it is a distinct operation.\n" +
 			"\n" +
 			"After this command completes, the husk will no longer be available for deployments.",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			info, err := initHuskCmd(cmd, args)
-			if err != nil {
-				return err
-			}
+		Run: func(cmd *cobra.Command, args []string) {
+			info := initHuskCmd(cmd, args)
 			if !force && info.Old != nil && len(info.Old.Resources()) > 0 {
-				return fmt.Errorf(
-					"Husk '%v' still has resources; removal rejected; pass --force to override\n", info.Husk.Name)
+				exitError(
+					"'%v' still has resources; removal rejected; pass --force to override", info.Husk.Name)
 			}
 			if yes ||
 				confirmPrompt("This will permanently remove the '%v' husk!", info.Husk.Name) {
 				remove(info.Husk)
 			}
-			return nil
 		},
 	}
 

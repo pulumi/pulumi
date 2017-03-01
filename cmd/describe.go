@@ -42,8 +42,7 @@ func newDescribeCmd() *cobra.Command {
 				pwd, _ := os.Getwd()
 				pkgpath, err := workspace.DetectPackage(pwd, sink())
 				if err != nil {
-					fmt.Fprintf(os.Stderr, "fatal: could not find a nut: %v", err)
-					os.Exit(-1)
+					exitError("could not locate a nut to load: %v", err)
 				}
 
 				if pkg := cmdutil.ReadPackage(pkgpath); pkg != nil {

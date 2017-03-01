@@ -38,8 +38,7 @@ func newEvalCmd() *cobra.Command {
 				if dotOutput {
 					// Convert the output to a DOT file.
 					if err := dotconv.Print(g, os.Stdout); err != nil {
-						fmt.Fprintf(os.Stderr, "error: failed to write DOT file to output: %v\n", err)
-						os.Exit(-1)
+						exitError("failed to write DOT file to output: %v", err)
 					}
 				} else {
 					// Just print a very basic, yet (hopefully) aesthetically pleasinge, ascii-ization of the graph.

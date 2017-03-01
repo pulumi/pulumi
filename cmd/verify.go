@@ -3,9 +3,6 @@
 package cmd
 
 import (
-	"fmt"
-	"os"
-
 	"github.com/spf13/cobra"
 )
 
@@ -25,8 +22,7 @@ func newVerifyCmd() *cobra.Command {
 		Run: func(cmd *cobra.Command, args []string) {
 			// Create a compiler object and perform the verification.
 			if !verify(cmd, args) {
-				fmt.Printf("fatal: Nut verification failed\n")
-				os.Exit(-1)
+				exitError("Nut verification failed")
 			}
 		},
 	}

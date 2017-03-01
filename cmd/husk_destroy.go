@@ -21,11 +21,8 @@ func newHuskDestroyCmd() *cobra.Command {
 			"\n" +
 			"Warning: although old snapshots can be used to recreate an environment, this command\n" +
 			"is generally irreversable and should be used with great care.",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			info, err := initHuskCmd(cmd, args)
-			if err != nil {
-				return err
-			}
+		Run: func(cmd *cobra.Command, args []string) {
+			info := initHuskCmd(cmd, args)
 			if dryRun || yes ||
 				confirmPrompt("This will permanently destroy all resources in the '%v' husk!", info.Husk.Name) {
 				apply(cmd, info, applyOptions{
@@ -34,7 +31,6 @@ func newHuskDestroyCmd() *cobra.Command {
 					Summary: summary,
 				})
 			}
-			return nil
 		},
 	}
 

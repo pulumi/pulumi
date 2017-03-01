@@ -53,23 +53,13 @@ func newHuskCmd() *cobra.Command {
 	return cmd
 }
 
-var snk diag.Sink
-
-// sink lazily allocates a sink to be used if we can't create a compiler.
-func sink() diag.Sink {
-	if snk == nil {
-		snk = core.DefaultSink("")
-	}
-	return snk
-}
-
-func initHuskCmd(cmd *cobra.Command, args []string) (*huskCmdInfo, error) {
+func initHuskCmd(cmd *cobra.Command, args []string) *huskCmdInfo {
 	// Create a new context for the plan operations.
 	ctx := resource.NewContext(sink())
 
 	// Read in the name of the husk to use.
 	if len(args) == 0 {
-		return nil, fmt.Errorf("missing required husk name")
+		exitError("missing required husk name")
 	}
 
 	// Read in the deployment information, bailing if an IO error occurs.
@@ -77,7 +67,7 @@ func initHuskCmd(cmd *cobra.Command, args []string) (*huskCmdInfo, error) {
 	huskfile, husk, old := readHusk(ctx, name)
 	if husk == nil {
 		contract.Assert(!ctx.Diag.Success())
-		return nil, fmt.Errorf("failed to read huskfile") // failure reading the husk information.
+		exitError("could not read huskfile required to proceed") // failure reading the husk information.
 	}
 	return &huskCmdInfo{
 		Ctx:      ctx,
@@ -86,7 +76,7 @@ func initHuskCmd(cmd *cobra.Command, args []string) (*huskCmdInfo, error) {
 		Old:      old,
 		Args:     args[1:],
 		Orig:     args,
-	}, nil
+	}
 }
 
 type huskCmdInfo struct {

@@ -27,8 +27,7 @@ func newHuskLsCmd() *cobra.Command {
 			path := workspace.HuskPath("")
 			files, err := ioutil.ReadDir(path)
 			if err != nil && !os.IsNotExist(err) {
-				fmt.Fprintf(os.Stderr, "fatal: could not read husks: %v\n", err)
-				os.Exit(-1)
+				exitError("could not read husks: %v", err)
 			}
 
 			fmt.Printf("%-20s %-48s %-12s\n", "NAME", "LAST DEPLOYMENT", "RESOURCE COUNT")
