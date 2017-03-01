@@ -99,14 +99,28 @@ func (p *instanceProvider) Read(ctx context.Context, req *cocorpc.ReadRequest) (
 // to new values.  The resource ID is returned and may be different if the resource had to be recreated.
 func (p *instanceProvider) Update(ctx context.Context, req *cocorpc.UpdateRequest) (*cocorpc.UpdateResponse, error) {
 	contract.Assert(req.GetType() == string(Instance))
-	return nil, errors.New("Not yet implemented")
+	return nil, errors.New("No known updatable instance properties")
 }
 
 // UpdateImpact checks what impacts a hypothetical update will have on the resource's properties.
 func (p *instanceProvider) UpdateImpact(
 	ctx context.Context, req *cocorpc.UpdateRequest) (*cocorpc.UpdateImpactResponse, error) {
 	contract.Assert(req.GetType() == string(Instance))
-	return &cocorpc.UpdateImpactResponse{}, nil
+	// Unmarshal and validate the old and new properties.
+	olds := resource.UnmarshalProperties(req.GetOlds())
+	if _, err := newInstance(olds, true); err != nil {
+		return nil, err
+	}
+	news := resource.UnmarshalProperties(req.GetNews())
+	if _, err := newInstance(news, true); err != nil {
+		return nil, err
+	}
+
+	// Now check the diff for updates to any fields (none of them are updateable).
+	diff := olds.Diff(news)
+	replace := diff.Diff(instanceImageID) || diff.Diff(instanceType) ||
+		diff.Diff(instanceSecurityGroups) || diff.Diff(instanceKeyName)
+	return &cocorpc.UpdateImpactResponse{Replace: replace}, nil
 }
 
 // Delete tears down an existing resource with the given ID.  If it fails, the resource is assumed to still exist.
@@ -134,27 +148,34 @@ type instance struct {
 	KeyName          *string
 }
 
+const (
+	instanceImageID        = "imageId"
+	instanceType           = "instanceType"
+	instanceSecurityGroups = "securityGroups"
+	instanceKeyName        = "keyName"
+)
+
 // newInstance creates a new instance bag of state, validating required properties if asked to do so.
 func newInstance(m resource.PropertyMap, req bool) (*instance, error) {
-	imageID, err := m.ReqStringOrErr("imageId")
+	id, err := m.ReqStringOrErr(instanceImageID)
 	if err != nil && (req || !resource.IsReqError(err)) {
 		return nil, err
 	}
-	instanceType, err := m.OptStringOrErr("instanceType")
+	t, err := m.OptStringOrErr(instanceType)
 	if err != nil {
 		return nil, err
 	}
-	securityGroupIDs, err := m.OptStringArrayOrErr("securityGroups")
+	securityGroupIDs, err := m.OptStringArrayOrErr(instanceSecurityGroups)
 	if err != nil {
 		return nil, err
 	}
-	keyName, err := m.OptStringOrErr("keyName")
+	keyName, err := m.OptStringOrErr(instanceKeyName)
 	if err != nil {
 		return nil, err
 	}
 	return &instance{
-		ImageID:          imageID,
-		InstanceType:     instanceType,
+		ImageID:          id,
+		InstanceType:     t,
 		SecurityGroupIDs: securityGroupIDs,
 		KeyName:          keyName,
 	}, nil
