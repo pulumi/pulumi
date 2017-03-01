@@ -79,10 +79,15 @@ func MarshalPropertyValue(ctx *Context, v PropertyValue, opts MarshalOptions) (*
 		if opts.SkipMonikers {
 			return nil, false
 		}
+		var id ID
 		m := v.ResourceValue()
-		res, has := ctx.MksRes[m]
-		contract.Assertf(has, "Expected resource moniker '%v' to exist at marshal time", m)
-		id := res.ID()
+		if res, has := ctx.MksRes[m]; has {
+			id = res.ID() // found a new resource with this ID, great.
+		} else if oldid, has := ctx.MksOldIDs[m]; has {
+			id = oldid // found an old resource, maybe deleted, so use that.
+		} else {
+			contract.Failf("Expected resource moniker '%v' to exist at marshal time", m)
+		}
 		contract.Assertf(id != ID(""), "Expected resource moniker '%v' to have an ID at marshal time", m)
 		glog.V(7).Infof("Serializing resource moniker '%v' as ID '%v'", m, id)
 		return &structpb.Value{

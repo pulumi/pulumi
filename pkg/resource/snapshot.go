@@ -37,8 +37,16 @@ func NewSnapshot(ctx *Context, ns tokens.QName, pkg tokens.Package,
 // NewGraphSnapshot takes an object graph and produces a resource snapshot from it.  It understands how to name
 // resources based on their position within the graph and how to identify and record dependencies.  This function can
 // fail dynamically if the input graph did not satisfy the preconditions for resource graphs (like that it is a DAG).
-func NewGraphSnapshot(ctx *Context, ns tokens.QName, pkg tokens.Package,
-	args core.Args, heap *heapstate.Heap) (Snapshot, error) {
+func NewGraphSnapshot(ctx *Context, ns tokens.QName, pkg tokens.Package, args core.Args,
+	heap *heapstate.Heap, old Snapshot) (Snapshot, error) {
+	// If the old snapshot is non-nil, we need to register old IDs so they will be found below.
+	if old != nil {
+		for _, res := range old.Resources() {
+			contract.Assert(res.HasID())
+			ctx.MksOldIDs[res.Moniker()] = res.ID()
+		}
+	}
+
 	// Topologically sort the entire heapstate (in dependency order) and extract just the resource objects.
 	resobjs, err := topsort(ctx, heap.G)
 	if err != nil {

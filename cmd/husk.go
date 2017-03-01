@@ -217,7 +217,7 @@ func plan(cmd *cobra.Command, info *huskCmdInfo, delete bool) *planResult {
 		// Create a resource snapshot from the compiled/evaluated object graph.
 		var err error
 		new, err = resource.NewGraphSnapshot(
-			info.Ctx, info.Husk.Name, result.Pkg.Tok, result.C.Ctx().Opts.Args, result.Heap)
+			info.Ctx, info.Husk.Name, result.Pkg.Tok, result.C.Ctx().Opts.Args, result.Heap, info.Old)
 		if err != nil {
 			result.C.Diag().Errorf(errors.ErrorCantCreateSnapshot, err)
 			return nil

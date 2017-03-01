@@ -14,24 +14,27 @@ import (
 // Context is used to group related operations together so that associated OS resources can be cached, shared, and
 // reclaimed as appropriate.
 type Context struct {
-	Diag    diag.Sink                  // the diagnostics sink to use for messages.
-	Plugins map[tokens.Package]*Plugin // a cache of plugins and their processes.
-	ObjRes  objectResourceMap          // the resources held inside of this snapshot.
-	ObjMks  objectMonikerMap           // a convenient lookup map for object to moniker.
-	MksRes  monikerResourceMap         // a convenient lookup map for moniker to resource.
+	Diag      diag.Sink                  // the diagnostics sink to use for messages.
+	Plugins   map[tokens.Package]*Plugin // a cache of plugins and their processes.
+	ObjRes    objectResourceMap          // the resources held inside of this snapshot.
+	ObjMks    objectMonikerMap           // a convenient lookup map for object to moniker.
+	MksRes    monikerResourceMap         // a convenient lookup map for moniker to resource.
+	MksOldIDs monikerIDMap               // a convenient lookup map for monikers to old IDs.
 }
 
 type objectMonikerMap map[*rt.Object]Moniker
 type objectResourceMap map[*rt.Object]Resource
 type monikerResourceMap map[Moniker]Resource
+type monikerIDMap map[Moniker]ID
 
 func NewContext(d diag.Sink) *Context {
 	return &Context{
-		Diag:    d,
-		Plugins: make(map[tokens.Package]*Plugin),
-		ObjRes:  make(objectResourceMap),
-		ObjMks:  make(objectMonikerMap),
-		MksRes:  make(monikerResourceMap),
+		Diag:      d,
+		Plugins:   make(map[tokens.Package]*Plugin),
+		ObjRes:    make(objectResourceMap),
+		ObjMks:    make(objectMonikerMap),
+		MksRes:    make(monikerResourceMap),
+		MksOldIDs: make(monikerIDMap),
 	}
 }
 
