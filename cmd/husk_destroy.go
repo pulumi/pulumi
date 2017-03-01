@@ -57,8 +57,8 @@ func newHuskDestroyCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVarP(
 		&summary, "summary", "s", false,
 		"Only display summarization of resources and plan operations")
-	cmd.PersistentFlags().BoolVarP(
-		&yes, "yes", "y", false,
+	cmd.PersistentFlags().BoolVar(
+		&yes, "yes", false,
 		"Skip confirmation prompts, and proceed with operations anyway")
 
 	return cmd
