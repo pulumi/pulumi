@@ -1,10 +1,10 @@
-import { InternetGateway, Instance, SecurityGroup } from '@coconut/aws/ec2';
+import * as aws from '@coconut/aws';
 
 let keyName = "lukehoban-us-east-1";
 let instanceType = "t2.micro";
 let sshLocation = "0.0.0.0";
 let sshLocationCIDR = sshLocation + "/0";
-let region = "us-east-1";
+let region = aws.config.requireRegion();
 
 let awsRegionArch2AMI: { [name: string]: { [key: string]: string; } }= {
     "us-east-1": {
@@ -246,7 +246,7 @@ let awsInstanceType2Arch: { [name: string]: { Arch: string; } } = {
     }
 };
 
-let securityGroup = new SecurityGroup("group", {
+let securityGroup = new aws.ec2.SecurityGroup("group", {
     groupDescription: "Enable SSH access",
     securityGroupIngress: [{
         ipProtocol: "tcp",
@@ -256,9 +256,9 @@ let securityGroup = new SecurityGroup("group", {
     }]
 });
 
-let instance = new Instance("instance", {
+let instance = new aws.ec2.Instance("instance", {
     instanceType: instanceType,
-    securityGroups: [securityGroup],
+    securityGroups: [ securityGroup ],
     keyName: keyName,
     imageId: awsRegionArch2AMI[region][awsInstanceType2Arch[instanceType].Arch]
 });
