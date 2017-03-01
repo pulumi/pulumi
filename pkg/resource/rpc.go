@@ -14,7 +14,8 @@ import (
 
 // MarshalOptions controls the marshaling of RPC structures.
 type MarshalOptions struct {
-	SkipMonikers bool // true to skip monikers (e.g., if they aren't ready yet).
+	PermitOlds  bool // true to permit old monikers in the properties (e.g., for pre-update).
+	RawMonikers bool // true to marshal monikers "as-is"; often used when ID mappings aren't known yet.
 }
 
 // MarshalProperties marshals a resource's property map as a "JSON-like" protobuf structure.  Any monikers are replaced
@@ -76,23 +77,26 @@ func MarshalPropertyValue(ctx *Context, v PropertyValue, opts MarshalOptions) (*
 			},
 		}, true
 	} else if v.IsResource() {
-		if opts.SkipMonikers {
-			return nil, false
-		}
-		var id ID
+		var wire string
 		m := v.ResourceValue()
-		if res, has := ctx.MksRes[m]; has {
-			id = res.ID() // found a new resource with this ID, great.
-		} else if oldid, has := ctx.MksOldIDs[m]; has {
-			id = oldid // found an old resource, maybe deleted, so use that.
+		if opts.RawMonikers {
+			wire = string(m)
 		} else {
-			contract.Failf("Expected resource moniker '%v' to exist at marshal time", m)
+			var id ID
+			if res, has := ctx.MksRes[m]; has {
+				id = res.ID() // found a new resource with this ID, use it.
+			} else if oldid, has := ctx.MksOldIDs[m]; opts.PermitOlds && has {
+				id = oldid // found an old resource, maybe deleted, so use that.
+			} else {
+				contract.Failf("Expected resource moniker '%v' to exist at marshal time", m)
+			}
+			contract.Assertf(id != "", "Expected resource moniker '%v' to have an ID at marshal time", m)
+			wire = string(id)
 		}
-		contract.Assertf(id != ID(""), "Expected resource moniker '%v' to have an ID at marshal time", m)
-		glog.V(7).Infof("Serializing resource moniker '%v' as ID '%v'", m, id)
+		glog.V(7).Infof("Serializing resource moniker '%v' as '%v' (raw=%v)", m, wire, opts.RawMonikers)
 		return &structpb.Value{
 			Kind: &structpb.Value_StringValue{
-				StringValue: string(id),
+				StringValue: wire,
 			},
 		}, true
 	} else {

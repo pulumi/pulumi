@@ -95,6 +95,16 @@ func (p *Provider) Update(ctx context.Context, req *cocorpc.UpdateRequest) (*coc
 	return nil, fmt.Errorf("Unrecognized resource type (Update): %v", t)
 }
 
+// UpdateImpact checks what impacts a hypothetical update will have on the resource's properties.
+func (p *Provider) UpdateImpact(
+	ctx context.Context, req *cocorpc.UpdateRequest) (*cocorpc.UpdateImpactResponse, error) {
+	t := tokens.Type(req.GetType())
+	if prov, has := p.impls[t]; has {
+		return prov.UpdateImpact(ctx, req)
+	}
+	return nil, fmt.Errorf("Unrecognized resource type (UpdateImpact): %v", t)
+}
+
 // Delete tears down an existing resource with the given ID.  If it fails, the resource is assumed to still exist.
 func (p *Provider) Delete(ctx context.Context, req *cocorpc.DeleteRequest) (*pbempty.Empty, error) {
 	t := tokens.Type(req.GetType())

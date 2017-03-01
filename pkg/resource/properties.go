@@ -286,6 +286,16 @@ func (props PropertyMap) AllResources() map[Moniker]bool {
 	return monikers
 }
 
+// ReplaceResources finds all resources and lets an updater function update them if necessary.  This is often used
+// during a "replacement"-style updated, to replace all monikers of a certain value with another.
+func (props PropertyMap) ReplaceResources(updater func(Moniker) Moniker) PropertyMap {
+	result := make(PropertyMap)
+	for _, k := range StablePropertyKeys(props) {
+		result[k] = props[k].ReplaceResources(updater)
+	}
+	return result
+}
+
 func NewPropertyNull() PropertyValue                   { return PropertyValue{nil} }
 func NewPropertyBool(v bool) PropertyValue             { return PropertyValue{v} }
 func NewPropertyNumber(v float64) PropertyValue        { return PropertyValue{v} }
@@ -346,4 +356,24 @@ func (v PropertyValue) AllResources() map[Moniker]bool {
 		}
 	}
 	return monikers
+}
+
+// ReplaceResources finds all resources and lets an updater function update them if necessary.  This is often used
+// during a "replacement"-style updated, to replace all monikers of a certain value with another.
+func (v PropertyValue) ReplaceResources(updater func(Moniker) Moniker) PropertyValue {
+	if v.IsResource() {
+		m := v.ResourceValue()
+		return NewPropertyResource(updater(m))
+	} else if v.IsArray() {
+		arr := v.ArrayValue()
+		elems := make([]PropertyValue, len(arr))
+		for i, elem := range arr {
+			elems[i] = elem.ReplaceResources(updater)
+		}
+		return NewPropertyArray(arr)
+	} else if v.IsObject() {
+		rep := v.ObjectValue().ReplaceResources(updater)
+		return NewPropertyObject(rep)
+	}
+	return v
 }

@@ -32,6 +32,8 @@ type Provider interface {
 	// Update updates an existing resource with new values.  Only those values in the provided property bag are updated
 	// to new values.  The resource ID is returned and may be different if the resource had to be recreated.
 	Update(id ID, t tokens.Type, olds PropertyMap, news PropertyMap) (ID, error, ResourceState)
+	// UpdateImpact checks what impacts a hypothetical update will have on the resource's properties.
+	UpdateImpact(id ID, t tokens.Type, olds PropertyMap, news PropertyMap) (bool, PropertyMap, error)
 	// Delete tears down an existing resource.
 	Delete(id ID, t tokens.Type) (error, ResourceState)
 }

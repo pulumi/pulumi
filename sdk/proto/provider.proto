@@ -24,6 +24,8 @@ service ResourceProvider {
     // Update updates an existing resource with new values.  Only those values in the provided property bag are updated
     // to new values.  The resource ID is returned and may be different if the resource had to be recreated.
     rpc Update(UpdateRequest) returns (UpdateResponse) {}
+    // UpdateImpact checks what impacts a hypothetical update will have on the resource's properties.
+    rpc UpdateImpact(UpdateRequest) returns (UpdateImpactResponse) {}
     // Delete tears down an existing resource with the given ID.  If it fails, the resource is assumed to still exist.
     rpc Delete(DeleteRequest) returns (google.protobuf.Empty) {}
 }
@@ -64,6 +66,11 @@ message UpdateRequest {
 
 message UpdateResponse {
     string id = 1; // the new ID for the resource, if it had to be recreated.
+}
+
+message UpdateImpactResponse {
+    bool replace = 1; // true if this update triggers replacement of the resource, false otherwise.
+    google.protobuf.Struct impacts = 2; // the full set of properties that will be altered by this operation.
 }
 
 message DeleteRequest {

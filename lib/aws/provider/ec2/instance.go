@@ -102,6 +102,13 @@ func (p *instanceProvider) Update(ctx context.Context, req *cocorpc.UpdateReques
 	return nil, errors.New("Not yet implemented")
 }
 
+// UpdateImpact checks what impacts a hypothetical update will have on the resource's properties.
+func (p *instanceProvider) UpdateImpact(
+	ctx context.Context, req *cocorpc.UpdateRequest) (*cocorpc.UpdateImpactResponse, error) {
+	contract.Assert(req.GetType() == string(Instance))
+	return &cocorpc.UpdateImpactResponse{}, nil
+}
+
 // Delete tears down an existing resource with the given ID.  If it fails, the resource is assumed to still exist.
 func (p *instanceProvider) Delete(ctx context.Context, req *cocorpc.DeleteRequest) (*pbempty.Empty, error) {
 	contract.Assert(req.GetType() == string(Instance))

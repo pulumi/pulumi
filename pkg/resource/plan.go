@@ -55,7 +55,7 @@ const (
 // for old, new, or both to be nil; combinations of these can be used to create different kinds of plans: (1) a creation
 // plan from a new snapshot when old doesn't exist (nil), (2) an update plan when both old and new exist, and (3) a
 // deletion plan when old exists, but not new, and (4) an "empty plan" when both are nil.
-func NewPlan(ctx *Context, old Snapshot, new Snapshot) Plan {
+func NewPlan(ctx *Context, old Snapshot, new Snapshot) (Plan, error) {
 	return newPlan(ctx, old, new)
 }
 
@@ -171,7 +171,7 @@ func (p *plan) checkpoint(resources []Resource) Snapshot {
 
 // newPlan handles all three cases: (1) a creation plan from a new snapshot when old doesn't exist (nil), (2) an update
 // plan when both old and new exist, and (3) a deletion plan when old exists, but not new.
-func newPlan(ctx *Context, old Snapshot, new Snapshot) *plan {
+func newPlan(ctx *Context, old Snapshot, new Snapshot) (*plan, error) {
 	// These variables are read from either snapshot (preferred new, since it may have updated args).
 	var ns tokens.QName
 	var pkg tokens.Package
@@ -215,6 +215,7 @@ func newPlan(ctx *Context, old Snapshot, new Snapshot) *plan {
 	for _, res := range oldres {
 		m := res.Moniker()
 		olds[m] = res
+		contract.Assert(res.HasID())
 		// Keep track of which dependents exist for all resources.
 		for ref := range res.Properties().AllResources() {
 			olddepends[ref] = append(olddepends[ref], m)
@@ -250,20 +251,48 @@ func newPlan(ctx *Context, old Snapshot, new Snapshot) *plan {
 	// Find creates and updates: creates are those in new but not old, and updates are those in both.
 	creates := make(map[Resource]bool)
 	updates := make(map[Resource]Resource)
+	replaces := make(map[Moniker]bool)
 	for _, res := range news {
 		m := res.Moniker()
 		if oldres, has := olds[m]; has {
+			// The resource exists in both new and old; it could be an update.  This resource is an update if one of
+			// these two conditions exist: 1) either the old and new properties don't match or 2) the update impact
+			// is assessed as having to replace the resource, in which case the ID will change.  This might have a
+			// cascading impact on subsequent updates too, since those IDs must trigger recreations, etc.
 			contract.Assert(oldres.Type() == res.Type())
-			if !res.Properties().DeepEquals(oldres.Properties()) {
+			newprops := res.Properties().ReplaceResources(func(m Moniker) Moniker {
+				if replaces[m] {
+					// If the resource is being replaced, simply mangle the moniker so that it's different; this value
+					// won't actually be used for anything other than the diffing algorithms below.
+					m += Moniker("#<new-id>")
+				}
+				return m
+			})
+			if !newprops.DeepEquals(oldres.Properties()) {
 				updates[oldres] = res
 				step := newUpdateStep(p, oldres, res)
 				vs[m] = newPlanVertex(step)
 				glog.V(7).Infof("Update plan decided to update '%v'", m)
+
+				// If this update's impact will replace the resource, make sure to remember this fact.
+				// TODO[pulumi/coconut#90]: this should generalize to any property changes.
+				prov, err := p.Provider(oldres)
+				if err != nil {
+					return nil, err
+				}
+				if replace, _, err := prov.UpdateImpact(
+					oldres.ID(), oldres.Type(), oldres.Properties(), newprops); err != nil {
+					return nil, err
+				} else if replace {
+					glog.V(7).Infof("Update to resource '%v' necessitates a replacement", m)
+					replaces[m] = true
+				}
 			} else {
 				p.unchanged[oldres] = res
 				glog.V(7).Infof("Update plan decided not to update '%v'", m)
 			}
 		} else {
+			// The resource isn't in the old map, so it must be a resource creation.
 			creates[res] = true
 			step := newCreateStep(p, res)
 			vs[m] = newPlanVertex(step)
@@ -356,12 +385,14 @@ func newPlan(ctx *Context, old Snapshot, new Snapshot) *plan {
 	// Now topologically sort the steps, thread the plan together, and return it.
 	g := newPlanGraph(roots)
 	topdag, err := graph.Topsort(g)
-	contract.Assertf(err == nil, "Unexpected error topologically sorting update plan")
+	if err != nil {
+		return nil, err
+	}
 	var prev *step
 	for _, v := range topdag {
 		insertStep(&prev, v.Data().(*step))
 	}
-	return p
+	return p, nil
 }
 
 type step struct {

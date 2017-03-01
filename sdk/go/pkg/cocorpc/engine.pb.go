@@ -19,6 +19,7 @@ It has these top-level messages:
 	ReadResponse
 	UpdateRequest
 	UpdateResponse
+	UpdateImpactResponse
 	DeleteRequest
 */
 package cocorpc

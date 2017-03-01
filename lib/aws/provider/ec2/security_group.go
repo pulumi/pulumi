@@ -10,6 +10,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/service/ec2"
 	pbempty "github.com/golang/protobuf/ptypes/empty"
+	pbstruct "github.com/golang/protobuf/ptypes/struct"
 	"github.com/pulumi/coconut/pkg/resource"
 	"github.com/pulumi/coconut/pkg/tokens"
 	"github.com/pulumi/coconut/pkg/util/contract"
@@ -109,25 +110,18 @@ func (p *sgProvider) Read(ctx context.Context, req *cocorpc.ReadRequest) (*cocor
 // Update updates an existing resource with new values.  Only those values in the provided property bag are updated
 // to new values.  The resource ID is returned and may be different if the resource had to be recreated.
 func (p *sgProvider) Update(ctx context.Context, req *cocorpc.UpdateRequest) (*cocorpc.UpdateResponse, error) {
-	// Deserialize the old/new properties and validate them before bothering to diff them.
 	contract.Assert(req.GetType() == string(SecurityGroup))
-	oldprops := resource.UnmarshalProperties(req.GetOlds())
-	newgrp, err := newSecurityGroup(oldprops, true)
-	if err != nil {
-		return nil, err
-	}
-	newprops := resource.UnmarshalProperties(req.GetNews())
-	oldgrp, err := newSecurityGroup(newprops, true)
+
+	// First unmarshal and validate the properties.
+	oldgrp, newgrp, diff, replace, err := unmarshalSecurityGroupProperties(req.GetOlds(), req.GetNews())
 	if err != nil {
 		return nil, err
 	}
 
-	// Now diff the properties to determine how to proceed.
-	diff := oldprops.Diff(newprops)
-
-	var id string
+	// Now either recreate the resource, if necessary, or update it in place.
+	var newid string
 	oldid := req.GetId()
-	if diff.Diff(securityGroupName) || diff.Diff(securityGroupDescription) || diff.Diff(securityGroupVPCID) {
+	if replace {
 		// If the name, description, or VPC changed, the security group needs to be deleted and recreated.
 		fmt.Printf("Updates to EC2 SecurityGroup '%v' require deletion and recreation\n", oldid)
 		if _, err := p.Delete(ctx, &cocorpc.DeleteRequest{
@@ -143,7 +137,7 @@ func (p *sgProvider) Update(ctx context.Context, req *cocorpc.UpdateRequest) (*c
 		if err != nil {
 			return nil, err
 		}
-		id = resp.GetId() // return the freshly allocated ID
+		newid = resp.GetId() // return the freshly allocated ID
 	} else {
 		// If only the ingress and/or egress rules changed, we can incrementally apply the updates.
 		fmt.Printf("Updates to EC2 SecurityGroup '%v' will only affect changed ingress/egress rules\n", oldid)
@@ -236,8 +230,45 @@ func (p *sgProvider) Update(ctx context.Context, req *cocorpc.UpdateRequest) (*c
 	}
 
 	return &cocorpc.UpdateResponse{
-		Id: id,
+		Id: newid,
 	}, nil
+}
+
+// UpdateImpact checks what impacts a hypothetical update will have on the resource's properties.
+func (p *sgProvider) UpdateImpact(
+	ctx context.Context, req *cocorpc.UpdateRequest) (*cocorpc.UpdateImpactResponse, error) {
+	contract.Assert(req.GetType() == string(SecurityGroup))
+	// First unmarshal and validate the properties.
+	_, _, _, replace, err := unmarshalSecurityGroupProperties(req.GetOlds(), req.GetNews())
+	if err != nil {
+		return nil, err
+	}
+	return &cocorpc.UpdateImpactResponse{
+		Replace: replace,
+		// TODO: serialize the otherproperties that will be updated.
+	}, nil
+}
+
+// unmarshalSecurityGroupProperties unmarshals old and new properties, diffs them and checks whether resource
+// replacement is necessary.  If an error occurs, the returned error is non-nil.
+func unmarshalSecurityGroupProperties(olds *pbstruct.Struct,
+	news *pbstruct.Struct) (*securityGroup, *securityGroup, *resource.ObjectDiff, bool, error) {
+	// Deserialize the old/new properties and validate them before bothering to diff them.
+	oldprops := resource.UnmarshalProperties(olds)
+	oldgrp, err := newSecurityGroup(oldprops, true)
+	if err != nil {
+		return nil, nil, nil, false, err
+	}
+	newprops := resource.UnmarshalProperties(news)
+	newgrp, err := newSecurityGroup(newprops, true)
+	if err != nil {
+		return nil, nil, nil, false, err
+	}
+
+	// Now diff the properties to determine whether this must be recreated.
+	diff := oldprops.Diff(newprops)
+	replace := diff.Diff(securityGroupName) || diff.Diff(securityGroupDescription) || diff.Diff(securityGroupVPCID)
+	return oldgrp, newgrp, diff, replace, nil
 }
 
 // Delete tears down an existing resource with the given ID.  If it fails, the resource is assumed to still exist.

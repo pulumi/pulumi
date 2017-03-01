@@ -145,7 +145,8 @@ func (p *Plugin) Name(t tokens.Type, props PropertyMap) (tokens.QName, error) {
 	req := &cocorpc.NameRequest{
 		Type: string(t),
 		Properties: MarshalProperties(p.ctx, props, MarshalOptions{
-			SkipMonikers: true, // often used during moniker creation; IDs won't be ready.
+			PermitOlds:  true, // permit old monikers, since this is pre-update.
+			RawMonikers: true, // often used during moniker creation; IDs won't be ready.
 		}),
 	}
 
@@ -200,7 +201,7 @@ func (p *Plugin) Read(id ID, t tokens.Type) (PropertyMap, error) {
 
 	props := UnmarshalProperties(resp.GetProperties())
 	glog.V(7).Infof("Plugin[%v].Read(id=%v,t=%v) success: #props=%v", p.pkg, t, id, len(props))
-	return UnmarshalProperties(resp.GetProperties()), nil
+	return props, nil
 }
 
 // Update updates an existing resource with new values.  Only those values in the provided property bag are updated
@@ -209,11 +210,14 @@ func (p *Plugin) Update(id ID, t tokens.Type, olds PropertyMap, news PropertyMap
 	contract.Requiref(id != "", "id", "not empty")
 	contract.Requiref(t != "", "t", "not empty")
 
-	glog.V(7).Infof("Plugin[%v].Update(id=%v,t=%v,#olds=%v,#news=%v) executing", p.pkg, id, t, len(olds), len(news))
+	glog.V(7).Infof("Plugin[%v].Update(id=%v,t=%v,#olds=%v,#news=%v) executing",
+		p.pkg, id, t, len(olds), len(news))
 	req := &cocorpc.UpdateRequest{
 		Id:   string(id),
 		Type: string(t),
-		Olds: MarshalProperties(p.ctx, olds, MarshalOptions{}),
+		Olds: MarshalProperties(p.ctx, olds, MarshalOptions{
+			PermitOlds: true, // permit old monikers since these are the old values.
+		}),
 		News: MarshalProperties(p.ctx, news, MarshalOptions{}),
 	}
 
@@ -226,6 +230,37 @@ func (p *Plugin) Update(id ID, t tokens.Type, olds PropertyMap, news PropertyMap
 	nid := resp.GetId()
 	glog.V(7).Infof("Plugin[%v].Update(id=%v,t=%v,...) success: nid=%v", p.pkg, id, t, nid)
 	return ID(nid), nil, StateOK
+}
+
+// UpdateImpact checks what impacts a hypothetical update will have on the resource's properties.
+func (p *Plugin) UpdateImpact(id ID, t tokens.Type, olds PropertyMap, news PropertyMap) (bool, PropertyMap, error) {
+	contract.Requiref(id != "", "id", "not empty")
+	contract.Requiref(t != "", "t", "not empty")
+
+	glog.V(7).Infof("Plugin[%v].UpdateImpact(id=%v,t=%v,#olds=%v,#news=%v) executing",
+		p.pkg, id, t, len(olds), len(news))
+	req := &cocorpc.UpdateRequest{
+		Id:   string(id),
+		Type: string(t),
+		Olds: MarshalProperties(p.ctx, olds, MarshalOptions{
+			RawMonikers: true, // often used during moniker creation; IDs won't be ready.
+		}),
+		News: MarshalProperties(p.ctx, news, MarshalOptions{
+			RawMonikers: true, // often used during moniker creation; IDs won't be ready.
+		}),
+	}
+
+	resp, err := p.client.UpdateImpact(p.ctx.Request(), req)
+	if err != nil {
+		glog.V(7).Infof("Plugin[%v].UpdateImpact(id=%v,t=%v,...) failed: %v", p.pkg, id, t, err)
+		return false, nil, err
+	}
+
+	replace := resp.GetReplace()
+	impacts := UnmarshalProperties(resp.GetImpacts())
+	glog.V(7).Infof("Plugin[%v].Update(id=%v,t=%v,...) success: replace=%v #impacts=%v",
+		p.pkg, id, t, replace, len(impacts))
+	return replace, impacts, nil
 }
 
 // Delete tears down an existing resource.

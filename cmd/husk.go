@@ -227,7 +227,11 @@ func plan(cmd *cobra.Command, info *huskCmdInfo, delete bool) *planResult {
 	}
 
 	// Generate a plan; this API handles all interesting cases (create, update, delete).
-	plan := resource.NewPlan(info.Ctx, info.Old, new)
+	plan, err := resource.NewPlan(info.Ctx, info.Old, new)
+	if err != nil {
+		result.C.Diag().Errorf(errors.ErrorCantCreateSnapshot, err)
+		return nil
+	}
 	return &planResult{
 		compileResult: result,
 		Info:          info,
@@ -246,13 +250,20 @@ type planResult struct {
 
 func apply(cmd *cobra.Command, info *huskCmdInfo, opts applyOptions) {
 	if result := plan(cmd, info, opts.Delete); result != nil {
-		// If we are doing an empty update, say so.
-		if result.Plan.Empty() && !opts.Delete {
-			info.Ctx.Diag.Infof(diag.Message("nothing to do -- resources are up to date"))
+		checkEmpty := func() bool {
+			// If we are doing an empty update, say so.
+			if result.Plan.Empty() {
+				info.Ctx.Diag.Infof(diag.Message("no resources need to be updated"))
+				return true
+			}
+			return false
 		}
 
 		// Now based on whether a dry run was specified, or not, either print or perform the planned operations.
 		if opts.DryRun {
+			// Print a nice message if the update is an empty one.
+			checkEmpty()
+
 			// If no output file was requested, or "-", print to stdout; else write to that file.
 			if opts.Output == "" || opts.Output == "-" {
 				printPlan(result, opts)
@@ -266,6 +277,9 @@ func apply(cmd *cobra.Command, info *huskCmdInfo, opts applyOptions) {
 			header.WriteString(fmt.Sprintf("%vDeploying changes:%v\n", colors.SpecUnimportant, colors.Reset))
 			fmt.Printf(colors.Colorize(&header))
 
+			// Print a nice message if the update is an empty one.
+			empty := checkEmpty()
+
 			// Create an object to track progress and perform the actual operations.
 			start := time.Now()
 			progress := newProgress(opts.Summary)
@@ -277,10 +291,14 @@ func apply(cmd *cobra.Command, info *huskCmdInfo, opts applyOptions) {
 				info.Ctx.Diag.Errorf(errors.ErrorPlanApplyFailed, err)
 			}
 
-			// Print out the total number of steps performed (and their kinds), the duration, and any summary info.
 			var summary bytes.Buffer
-			printSummary(&summary, progress.Ops, false)
-			summary.WriteString(fmt.Sprintf("Deployment duration: %v\n", time.Since(start)))
+			if !empty {
+				// Print out the total number of steps performed (and their kinds), the duration, and any summary info.
+				printSummary(&summary, progress.Ops, false)
+				summary.WriteString(fmt.Sprintf("%vDeployment duration: %v%v\n",
+					colors.SpecUnimportant, time.Since(start), colors.Reset))
+			}
+
 			if progress.MaybeCorrupt {
 				summary.WriteString(fmt.Sprintf(
 					"%vfatal: A catastrophic error occurred; resources states may be unknown%v\n",
