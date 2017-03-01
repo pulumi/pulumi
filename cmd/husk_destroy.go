@@ -8,6 +8,8 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
+
+	"github.com/pulumi/coconut/pkg/diag/colors"
 )
 
 func newHuskDestroyCmd() *cobra.Command {
@@ -28,7 +30,10 @@ func newHuskDestroyCmd() *cobra.Command {
 		Run: func(cmd *cobra.Command, args []string) {
 			if info := initHuskCmd(cmd, args); info != nil {
 				if !dryRun && !yes {
-					fmt.Printf("This will permanently delete all resources in the '%v' husk!\n", info.Husk.Name)
+					fmt.Printf(
+						colors.ColorizeText(
+							fmt.Sprintf("%vThis will permanently delete all resources in the '%v' husk!%v\n",
+								colors.SpecAttention, info.Husk.Name, colors.Reset)))
 					fmt.Printf("Please confirm that this is what you'd like to do by typing (\"yes\"): ")
 					reader := bufio.NewReader(os.Stdin)
 					if line, _ := reader.ReadString('\n'); line != "yes\n" {

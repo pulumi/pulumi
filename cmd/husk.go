@@ -284,9 +284,8 @@ func apply(cmd *cobra.Command, info *huskCmdInfo, opts applyOptions) {
 			if progress.MaybeCorrupt {
 				summary.WriteString(fmt.Sprintf(
 					"%vfatal: A catastrophic error occurred; resources states may be unknown%v\n",
-					colors.SpecFatal, colors.Reset))
+					colors.SpecAttention, colors.Reset))
 			}
-			fmt.Printf(colors.Colorize(&summary))
 
 			// Now save the updated snapshot to the specified output file, if any, or the standard location otherwise.
 			// Note that if a failure has occurred, the Apply routine above will have returned a safe checkpoint.
@@ -296,8 +295,11 @@ func apply(cmd *cobra.Command, info *huskCmdInfo, opts applyOptions) {
 			// If a deletion was requested, remove the husk; but only if no error has occurred!
 			if err == nil && opts.Delete {
 				deleteHusk(husk)
-				fmt.Printf("Coconut husk '%v' has been destroyed!\n", husk.Name)
+				summary.WriteString(fmt.Sprintf("%sCoconut husk '%s' has been destroyed!%s\n",
+					colors.SpecAttention, husk.Name, colors.Reset))
 			}
+
+			fmt.Printf(colors.Colorize(&summary))
 		}
 	}
 }
@@ -472,7 +474,7 @@ func (prog *applyProgress) After(step resource.Step, err error, state resource.R
 			b.WriteString(colors.SpecNote)
 			b.WriteString("provider successfully recovered from this failure")
 		case resource.StateUnknown:
-			b.WriteString(colors.SpecFatal)
+			b.WriteString(colors.SpecAttention)
 			b.WriteString("this failure was catastrophic and the provider cannot guarantee recovery")
 			prog.MaybeCorrupt = true
 		default:
@@ -545,7 +547,15 @@ func printSummary(b *bytes.Buffer, counts map[resource.StepOp]int, plan bool) {
 	if plan {
 		planned = "planned "
 	}
-	b.WriteString(fmt.Sprintf("%v total %vchanges:\n", total, planned))
+	var plural string
+	if total != 1 {
+		plural = "s"
+	}
+	var colon string
+	if total != 0 {
+		colon = ":"
+	}
+	b.WriteString(fmt.Sprintf("%v total %vchange%v%v\n", total, planned, plural, colon))
 
 	var planTo string
 	var pastTense string

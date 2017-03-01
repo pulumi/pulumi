@@ -61,8 +61,8 @@ var (
 	SpecError       = Red          // for errors.
 	SpecWarning     = Yellow       // for warnings.
 	SpecLocation    = Cyan         // for source locations.
-	SpecFatal       = BrightRed    // for fatal errors
-	SpecNote        = White        // for notes
+	SpecAttention   = BrightRed    // for messages that are meant to grab attention.
+	SpecNote        = White        // for simple notes.
 	SpecImportant   = BrightYellow // for particularly noteworthy messages.
 	SpecUnimportant = BrightBlack  // for notes that can be skimmed or aren't very important.
 

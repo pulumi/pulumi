@@ -21,7 +21,7 @@ import (
 type Plan interface {
 	Empty() bool                                                // true if the plan is empty.
 	Steps() Step                                                // the first step to perform, linked to the rest.
-	Unchanged() []Resource                                      // the resources untouched by this plan.
+	Unchanged() map[Resource]Resource                           // the resources untouched by this plan.
 	Apply(prog Progress) (Snapshot, error, Step, ResourceState) // performs the operations specified in this plan.
 }
 
@@ -60,18 +60,18 @@ func NewPlan(ctx *Context, old Snapshot, new Snapshot) Plan {
 }
 
 type plan struct {
-	ctx       *Context       // this plan's context.
-	ns        tokens.QName   // the husk/namespace target being deployed into.
-	pkg       tokens.Package // the package from which this snapshot came.
-	args      core.Args      // the arguments used to compile this package.
-	first     *step          // the first step to take.
-	unchanged []Resource     // the resources that are remaining the same without modification.
+	ctx       *Context              // this plan's context.
+	ns        tokens.QName          // the husk/namespace target being deployed into.
+	pkg       tokens.Package        // the package from which this snapshot came.
+	args      core.Args             // the arguments used to compile this package.
+	first     *step                 // the first step to take.
+	unchanged map[Resource]Resource // the resources that are remaining the same without modification.
 }
 
 var _ Plan = (*plan)(nil)
 
-func (p *plan) Unchanged() []Resource { return p.unchanged }
-func (p *plan) Empty() bool           { return p.Steps() == nil }
+func (p *plan) Unchanged() map[Resource]Resource { return p.unchanged }
+func (p *plan) Empty() bool                      { return p.Steps() == nil }
 
 func (p *plan) Steps() Step {
 	if p.first == nil {
@@ -92,7 +92,14 @@ func (p *plan) Provider(res Resource) (Provider, error) {
 // things: the resulting Snapshot, no matter whether an error occurs or not; an error, if something went wrong; the step
 // that failed, if the error is non-nil; and finally the state of the resource modified in the failing step.
 func (p *plan) Apply(prog Progress) (Snapshot, error, Step, ResourceState) {
-	// First just walk the plan linked list and apply each step.
+	// First go ahead and propagate IDs for unchanged resources.
+	for old, new := range p.unchanged {
+		contract.Assert(old.HasID())
+		contract.Assert(!new.HasID())
+		new.SetID(old.ID())
+	}
+
+	// Next, walk the plan linked list and apply each step.
 	var res []Resource
 	var err error
 	var step Step = p.Steps()
@@ -220,10 +227,11 @@ func newPlan(ctx *Context, old Snapshot, new Snapshot) *plan {
 
 	// Keep track of vertices for our later graph operations.
 	p := &plan{
-		ctx:  ctx,
-		ns:   ns,
-		pkg:  pkg,
-		args: args,
+		ctx:       ctx,
+		ns:        ns,
+		pkg:       pkg,
+		args:      args,
+		unchanged: make(map[Resource]Resource),
 	}
 	vs := make(map[Moniker]*planVertex)
 
@@ -252,7 +260,7 @@ func newPlan(ctx *Context, old Snapshot, new Snapshot) *plan {
 				vs[m] = newPlanVertex(step)
 				glog.V(7).Infof("Update plan decided to update '%v'", m)
 			} else {
-				p.unchanged = append(p.unchanged, oldres)
+				p.unchanged[oldres] = res
 				glog.V(7).Infof("Update plan decided not to update '%v'", m)
 			}
 		} else {
@@ -280,10 +288,17 @@ func newPlan(ctx *Context, old Snapshot, new Snapshot) *plan {
 			fromv := vs[m]
 			contract.Assert(fromv != nil)
 			for _, ref := range olddepends[m] {
-				tov := vs[ref]
-				contract.Assert(fromv != nil)
-				fromv.connectTo(tov)
-				glog.V(7).Infof("Deletion '%v' depends on resource '%v'", m, ref)
+				if tov, has := vs[ref]; has {
+					contract.Assert(tov != nil)
+					fromv.connectTo(tov)
+					glog.V(7).Infof("Deletion '%v' depends on resource '%v'; edge created", m, ref)
+				} else {
+					old := olds[ref]
+					contract.Assert(old != nil)
+					contract.Assert(!deletes[old])
+					contract.Assert(updates[old] == nil)
+					glog.V(7).Infof("Deletion '%v' depends on resource '%v'; unchanged, so ignoring", m, ref)
+				}
 			}
 		} else if to := updates[res]; to != nil {
 			// Add edge to:
@@ -293,10 +308,17 @@ func newPlan(ctx *Context, old Snapshot, new Snapshot) *plan {
 			fromv := vs[m]
 			contract.Assert(fromv != nil)
 			for ref := range to.Properties().AllResources() {
-				tov := vs[ref]
-				contract.Assert(tov != nil)
-				fromv.connectTo(tov)
-				glog.V(7).Infof("Updating '%v' depends on resource '%v'", m, ref)
+				if tov, has := vs[ref]; has {
+					contract.Assert(tov != nil)
+					fromv.connectTo(tov)
+					glog.V(7).Infof("Updating '%v' depends on resource '%v'; edge created", m, ref)
+				} else {
+					old := olds[ref]
+					contract.Assert(old != nil)
+					contract.Assert(!deletes[old])
+					contract.Assert(updates[old] == nil)
+					glog.V(7).Infof("Updating '%v' depends on resource '%v'; unchanged, so ignoring", m, ref)
+				}
 			}
 		}
 	}
@@ -308,10 +330,17 @@ func newPlan(ctx *Context, old Snapshot, new Snapshot) *plan {
 			fromv := vs[m]
 			contract.Assert(fromv != nil)
 			for ref := range res.Properties().AllResources() {
-				tov := vs[ref]
-				contract.Assert(tov != nil)
-				fromv.connectTo(tov)
-				glog.V(7).Infof("Creating '%v' depends on resource '%v'", m, ref)
+				if tov, has := vs[ref]; has {
+					contract.Assert(tov != nil)
+					fromv.connectTo(tov)
+					glog.V(7).Infof("Creating '%v' depends on resource '%v'; edge created", m, ref)
+				} else {
+					old := olds[ref]
+					new := news[ref]
+					contract.Assert(new == nil || !creates[new])
+					contract.Assert(old == nil || updates[old] == nil)
+					glog.V(7).Infof("Creating '%v' depends on resource '%v'; unchanged, so ignoring", m, ref)
+				}
 			}
 		}
 	}
