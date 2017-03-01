@@ -370,7 +370,7 @@ func (v PropertyValue) ReplaceResources(updater func(Moniker) Moniker) PropertyV
 		for i, elem := range arr {
 			elems[i] = elem.ReplaceResources(updater)
 		}
-		return NewPropertyArray(arr)
+		return NewPropertyArray(elems)
 	} else if v.IsObject() {
 		rep := v.ObjectValue().ReplaceResources(updater)
 		return NewPropertyObject(rep)

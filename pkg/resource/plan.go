@@ -3,9 +3,12 @@
 package resource
 
 import (
+	"fmt"
+
 	"github.com/golang/glog"
 
 	"github.com/pulumi/coconut/pkg/compiler/core"
+	"github.com/pulumi/coconut/pkg/diag/colors"
 	"github.com/pulumi/coconut/pkg/graph"
 	"github.com/pulumi/coconut/pkg/tokens"
 	"github.com/pulumi/coconut/pkg/util/contract"
@@ -36,6 +39,7 @@ type Step interface {
 	Op() StepOp                    // the operation that will be performed.
 	Old() Resource                 // the old resource state, if any, before performing this step.
 	New() Resource                 // the new resource state, if any, after performing this step.
+	Computed() PropertyMap         // the projected new resource state, factoring in dependency updates.
 	Next() Step                    // the next step to perform, or nil if none.
 	Apply() (error, ResourceState) // performs the operation specified by this step.
 }
@@ -44,11 +48,64 @@ type Step interface {
 type StepOp string
 
 const (
-	OpCreate StepOp = "create"
-	OpRead          = "read"
-	OpUpdate        = "update"
-	OpDelete        = "delete"
+	OpCreate  StepOp = "create"
+	OpRead           = "read"
+	OpUpdate         = "update"
+	OpReplace        = "replace"
+	OpDelete         = "delete"
 )
+
+// Color returns a suggested color for lines of this op type.
+func (op StepOp) Color() string {
+	switch op {
+	case OpCreate:
+		return colors.SpecAdded
+	case OpDelete:
+		return colors.SpecDeleted
+	case OpUpdate:
+		return colors.SpecChanged
+	case OpReplace:
+		return colors.SpecReplaced
+	default:
+		contract.Failf("Unrecognized resource step op: %v", op)
+		return ""
+	}
+}
+
+// Prefix returns a suggested prefix for lines of this op type.
+func (op StepOp) Prefix() string {
+	switch op {
+	case OpCreate:
+		return op.Color() + "+ "
+	case OpDelete:
+		return op.Color() + "- "
+	case OpUpdate:
+		return op.Color() + "  "
+	case OpReplace:
+		return op.Color() + "-+"
+	default:
+		contract.Failf("Unrecognized resource step op: %v", op)
+		return ""
+	}
+}
+
+// Suffix returns a suggested suffix for lines of this op type.
+func (op StepOp) Suffix() string {
+	if op == OpUpdate || op == OpReplace {
+		return colors.Reset // updates and replacements colorize individual lines
+	}
+	return ""
+}
+
+// StepOps returns the full set of step operation types.
+func StepOps() []StepOp {
+	return []StepOp{
+		OpCreate,
+		OpUpdate,
+		OpReplace,
+		OpDelete,
+	}
+}
 
 // NewPlan analyzes a resource graph new compared to an optional old resource graph old, and creates a plan
 // that will carry out operations necessary to bring the old resource graph in line with the new one.  It is possible
@@ -205,11 +262,7 @@ func newPlan(ctx *Context, old Snapshot, new Snapshot) (*plan, error) {
 	//     - Anything in new but not old is a create
 	//     - For those things in both new and old, any changed properties imply an update
 	//
-	// There are some caveats:
-	//
-	//     - Any changes in dependencies are possibly interesting
-	//     - Any changes in moniker are interesting (see note on stability in monikers.go)
-	//
+	// Any property changes that require replacement are applied, recursively, in a cascading manner.
 	olds := make(map[Moniker]Resource)
 	olddepends := make(map[Moniker][]Moniker)
 	for _, res := range oldres {
@@ -238,7 +291,7 @@ func newPlan(ctx *Context, old Snapshot, new Snapshot) (*plan, error) {
 
 	// Find those things in old but not new, and add them to the delete queue.
 	deletes := make(map[Resource]bool)
-	for _, res := range olds {
+	for _, res := range oldres {
 		m := res.Moniker()
 		if _, has := news[m]; !has {
 			deletes[res] = true
@@ -252,7 +305,7 @@ func newPlan(ctx *Context, old Snapshot, new Snapshot) (*plan, error) {
 	creates := make(map[Resource]bool)
 	updates := make(map[Resource]Resource)
 	replaces := make(map[Moniker]bool)
-	for _, res := range news {
+	for _, res := range newres {
 		m := res.Moniker()
 		if oldres, has := olds[m]; has {
 			// The resource exists in both new and old; it could be an update.  This resource is an update if one of
@@ -260,18 +313,17 @@ func newPlan(ctx *Context, old Snapshot, new Snapshot) (*plan, error) {
 			// is assessed as having to replace the resource, in which case the ID will change.  This might have a
 			// cascading impact on subsequent updates too, since those IDs must trigger recreations, etc.
 			contract.Assert(oldres.Type() == res.Type())
-			newprops := res.Properties().ReplaceResources(func(m Moniker) Moniker {
-				if replaces[m] {
+			computed := res.Properties().ReplaceResources(func(r Moniker) Moniker {
+				if replaces[r] {
 					// If the resource is being replaced, simply mangle the moniker so that it's different; this value
 					// won't actually be used for anything other than the diffing algorithms below.
-					m += Moniker("#<new-id>")
+					r += Moniker("#<new-id(replace)>")
+					glog.V(7).Infof("Patched resource '%v's moniker property: %v", m, r)
 				}
-				return m
+				return r
 			})
-			if !newprops.DeepEquals(oldres.Properties()) {
+			if !oldres.Properties().DeepEquals(computed) {
 				updates[oldres] = res
-				step := newUpdateStep(p, oldres, res)
-				vs[m] = newPlanVertex(step)
 				glog.V(7).Infof("Update plan decided to update '%v'", m)
 
 				// If this update's impact will replace the resource, make sure to remember this fact.
@@ -280,13 +332,21 @@ func newPlan(ctx *Context, old Snapshot, new Snapshot) (*plan, error) {
 				if err != nil {
 					return nil, err
 				}
-				if replace, _, err := prov.UpdateImpact(
-					oldres.ID(), oldres.Type(), oldres.Properties(), newprops); err != nil {
+				replace, _, err := prov.UpdateImpact(oldres.ID(), oldres.Type(), oldres.Properties(), computed)
+				if err != nil {
 					return nil, err
-				} else if replace {
-					glog.V(7).Infof("Update to resource '%v' necessitates a replacement", m)
-					replaces[m] = true
 				}
+
+				// Now create a step and vertex of the right kind.
+				var step *step
+				if replace {
+					glog.V(7).Infof("Update to resource '%v' necessitates a replacement", m)
+					step = newReplaceStep(p, oldres, res, computed)
+					replaces[m] = true
+				} else {
+					step = newUpdateStep(p, oldres, res, computed)
+				}
+				vs[m] = newPlanVertex(step)
 			} else {
 				p.unchanged[oldres] = res
 				glog.V(7).Infof("Update plan decided not to update '%v'", m)
@@ -374,7 +434,7 @@ func newPlan(ctx *Context, old Snapshot, new Snapshot) (*plan, error) {
 		}
 	}
 
-	// For all vertices with no ins, make them root nodes.
+	// For all plan vertices with no ins, make them root nodes.
 	var roots []*planEdge
 	for _, v := range vs {
 		if len(v.Ins()) == 0 {
@@ -382,7 +442,7 @@ func newPlan(ctx *Context, old Snapshot, new Snapshot) (*plan, error) {
 		}
 	}
 
-	// Now topologically sort the steps, thread the plan together, and return it.
+	// Now topologically sort the steps in the order they must execute, thread the plan together, and return it.
 	g := newPlanGraph(roots)
 	topdag, err := graph.Topsort(g)
 	if err != nil {
@@ -396,18 +456,20 @@ func newPlan(ctx *Context, old Snapshot, new Snapshot) (*plan, error) {
 }
 
 type step struct {
-	p    *plan    // this step's plan.
-	op   StepOp   // the operation to perform.
-	old  Resource // the state of the resource before this step.
-	new  Resource // the state of the resource after this step.
-	next *step    // the next step after this one in the plan.
+	p        *plan       // this step's plan.
+	op       StepOp      // the operation to perform.
+	old      Resource    // the state of the resource before this step.
+	new      Resource    // the state of the resource after this step.
+	computed PropertyMap // the computed impact dependency changes will have on this resource.
+	next     *step       // the next step after this one in the plan.
 }
 
 var _ Step = (*step)(nil)
 
-func (s *step) Op() StepOp    { return s.op }
-func (s *step) Old() Resource { return s.old }
-func (s *step) New() Resource { return s.new }
+func (s *step) Op() StepOp            { return s.op }
+func (s *step) Old() Resource         { return s.old }
+func (s *step) New() Resource         { return s.new }
+func (s *step) Computed() PropertyMap { return s.computed }
 func (s *step) Next() Step {
 	if s.next == nil {
 		return nil
@@ -416,15 +478,19 @@ func (s *step) Next() Step {
 }
 
 func newCreateStep(p *plan, new Resource) *step {
-	return &step{p: p, op: OpCreate, new: new}
+	return &step{p: p, op: OpCreate, new: new, computed: new.Properties()}
 }
 
 func newDeleteStep(p *plan, old Resource) *step {
-	return &step{p: p, op: OpDelete, old: old}
+	return &step{p: p, op: OpDelete, old: old, computed: nil}
 }
 
-func newUpdateStep(p *plan, old Resource, new Resource) *step {
-	return &step{p: p, op: OpUpdate, old: old, new: new}
+func newUpdateStep(p *plan, old Resource, new Resource, computed PropertyMap) *step {
+	return &step{p: p, op: OpUpdate, old: old, new: new, computed: computed}
+}
+
+func newReplaceStep(p *plan, old Resource, new Resource, computed PropertyMap) *step {
+	return &step{p: p, op: OpReplace, old: old, new: new, computed: computed}
 }
 
 func insertStep(prev **step, step *step) {
@@ -466,7 +532,7 @@ func (s *step) Apply() (error, ResourceState) {
 		if err, rst := prov.Delete(s.old.ID(), s.old.Type()); err != nil {
 			return err, rst
 		}
-	case OpUpdate:
+	case OpUpdate, OpReplace:
 		contract.Assert(s.old != nil)
 		contract.Assert(s.new != nil)
 		contract.Assert(s.old.Type() == s.new.Type())
@@ -480,7 +546,13 @@ func (s *step) Apply() (error, ResourceState) {
 			return err, rst
 		} else if id != ID("") {
 			// An update might need to recreate the resource, in which case the ID must change.
-			// TODO: this could have an impact on subsequent dependent resources that wasn't known during planning.
+			if s.op != OpReplace {
+				// If we didn't expect to replace this resource, but the provided did so anyway, we need to halt
+				// things.  Dependent nodes aren't scheduled for updates, and so state has become out of synch.
+				// TODO: this isn't drastic enough; we need to walk and taint all dependencies (or something similar).
+				return fmt.Errorf("unexpected resource '%v' ID change (old %v, new %v)",
+					s.old.Type(), s.old.ID(), id), StateUnknown
+			}
 			s.new.SetID(id)
 		} else {
 			// Otherwise, propagate the old ID on the new resource, so that the resulting snapshot is correct.

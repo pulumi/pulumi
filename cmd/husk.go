@@ -570,15 +570,11 @@ func printSummary(b *bytes.Buffer, counts map[resource.StepOp]int, plan bool) {
 	if plan {
 		planned = "planned "
 	}
-	var plural string
-	if total != 1 {
-		plural = "s"
-	}
 	var colon string
 	if total != 0 {
 		colon = ":"
 	}
-	b.WriteString(fmt.Sprintf("%v total %vchange%v%v\n", total, planned, plural, colon))
+	b.WriteString(fmt.Sprintf("%v total %v%v%v\n", total, planned, plural("change", total), colon))
 
 	var planTo string
 	var pastTense string
@@ -588,39 +584,19 @@ func printSummary(b *bytes.Buffer, counts map[resource.StepOp]int, plan bool) {
 		pastTense = "d"
 	}
 
-	if c := counts[resource.OpCreate]; c > 0 {
-		b.WriteString(fmt.Sprintf("    %v%v resources %vcreate%v%v\n",
-			opPrefix(resource.OpCreate), c, planTo, pastTense, colors.Reset))
-	}
-	if c := counts[resource.OpUpdate]; c > 0 {
-		b.WriteString(fmt.Sprintf("    %v%v resources %vupdate%v%v\n",
-			opPrefix(resource.OpUpdate), c, planTo, pastTense, colors.Reset))
-	}
-	if c := counts[resource.OpDelete]; c > 0 {
-		b.WriteString(fmt.Sprintf("    %v%v resources %vdelete%v%v\n",
-			opPrefix(resource.OpDelete), c, planTo, pastTense, colors.Reset))
+	for _, op := range resource.StepOps() {
+		if c := counts[op]; c > 0 {
+			b.WriteString(fmt.Sprintf("    %v%v %v %v%v%v%v\n",
+				op.Prefix(), c, plural("resource", c), planTo, op, pastTense, colors.Reset))
+		}
 	}
 }
 
-func opPrefix(op resource.StepOp) string {
-	switch op {
-	case resource.OpCreate:
-		return colors.SpecAdded + "+ "
-	case resource.OpDelete:
-		return colors.SpecDeleted + "- "
-	case resource.OpUpdate:
-		return colors.SpecChanged + "  "
-	default:
-		contract.Failf("Unrecognized resource step op: %v", op)
-		return ""
+func plural(s string, c int) string {
+	if c != 1 {
+		s += "s"
 	}
-}
-
-func opSuffix(op resource.StepOp) string {
-	if op == resource.OpUpdate {
-		return colors.Reset // updates colorize individual lines
-	}
-	return ""
+	return s
 }
 
 const detailsIndent = "      " // 4 spaces, plus 2 for "+ ", "- ", and " " leaders
@@ -630,18 +606,18 @@ func printUnchanged(b *bytes.Buffer, plan resource.Plan, summary bool) {
 	for _, res := range plan.Unchanged() {
 		b.WriteString("  ") // simulate the 2 spaces for +, -, etc.
 		printResourceHeader(b, res, nil, "")
-		printResourceProperties(b, res, nil, summary, "")
+		printResourceProperties(b, res, nil, nil, summary, "")
 	}
 }
 
 func printStep(b *bytes.Buffer, step resource.Step, summary bool, indent string) {
 	// First print out the operation's prefix.
-	b.WriteString(opPrefix(step.Op()))
+	b.WriteString(step.Op().Prefix())
 
 	// Next print the resource moniker, properties, etc.
 	printResourceHeader(b, step.Old(), step.New(), indent)
-	b.WriteString(opSuffix(step.Op()))
-	printResourceProperties(b, step.Old(), step.New(), summary, indent)
+	b.WriteString(step.Op().Suffix())
+	printResourceProperties(b, step.Old(), step.New(), step.Computed(), summary, indent)
 
 	// Finally make sure to reset the color.
 	b.WriteString(colors.Reset)
@@ -660,7 +636,7 @@ func printResourceHeader(b *bytes.Buffer, old resource.Resource, new resource.Re
 }
 
 func printResourceProperties(b *bytes.Buffer, old resource.Resource, new resource.Resource,
-	summary bool, indent string) {
+	computed resource.PropertyMap, summary bool, indent string) {
 	indent += detailsIndent
 
 	// Print out the moniker and, if present, the ID, as "pseudo-properties".
@@ -685,7 +661,8 @@ func printResourceProperties(b *bytes.Buffer, old resource.Resource, new resourc
 		} else if new == nil && old != nil {
 			printObject(b, old.Properties(), indent)
 		} else {
-			printOldNewDiffs(b, old.Properties(), new.Properties(), indent)
+			contract.Assert(computed != nil) // use computed properties for diffs.
+			printOldNewDiffs(b, old.Properties(), computed, indent)
 		}
 	}
 }

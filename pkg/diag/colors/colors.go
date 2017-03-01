@@ -66,7 +66,8 @@ var (
 	SpecImportant   = BrightYellow // for particularly noteworthy messages.
 	SpecUnimportant = BrightBlack  // for notes that can be skimmed or aren't very important.
 
-	SpecAdded   = Green  // for adds (in the diff sense).
-	SpecChanged = Yellow // for changes (in the diff sense).
-	SpecDeleted = Red    // for deletes (in the diff sense).
+	SpecAdded    = Green        // for adds (in the diff sense).
+	SpecChanged  = BrightYellow // for changes (in the diff sense).
+	SpecReplaced = Yellow       // for replacements (in the diff sense).
+	SpecDeleted  = Red          // for deletes (in the diff sense).
 )
