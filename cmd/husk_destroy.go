@@ -3,13 +3,7 @@
 package cmd
 
 import (
-	"bufio"
-	"fmt"
-	"os"
-
 	"github.com/spf13/cobra"
-
-	"github.com/pulumi/coconut/pkg/diag/colors"
 )
 
 func newHuskDestroyCmd() *cobra.Command {
@@ -23,31 +17,24 @@ func newHuskDestroyCmd() *cobra.Command {
 			"\n" +
 			"This command deletes an entire existing husk by name.  The current state is loaded\n" +
 			"from the associated snapshot file in the workspace.  After running to completion,\n" +
-			"this environment and all of its associated state will be gone.\n" +
+			"all of this husk's resources and associated state will be gone.\n" +
 			"\n" +
 			"Warning: although old snapshots can be used to recreate an environment, this command\n" +
 			"is generally irreversable and should be used with great care.",
-		Run: func(cmd *cobra.Command, args []string) {
-			if info := initHuskCmd(cmd, args); info != nil {
-				if !dryRun && !yes {
-					fmt.Printf(
-						colors.ColorizeText(
-							fmt.Sprintf("%vThis will permanently delete all resources in the '%v' husk!%v\n",
-								colors.SpecAttention, info.Husk.Name, colors.Reset)))
-					fmt.Printf("Please confirm that this is what you'd like to do by typing (\"yes\"): ")
-					reader := bufio.NewReader(os.Stdin)
-					if line, _ := reader.ReadString('\n'); line != "yes\n" {
-						fmt.Fprintf(os.Stderr, "Confirmation declined -- exiting without destroying the husk\n")
-						os.Exit(-1)
-					}
-				}
-
+		RunE: func(cmd *cobra.Command, args []string) error {
+			info, err := initHuskCmd(cmd, args)
+			if err != nil {
+				return err
+			}
+			if dryRun || yes ||
+				confirmPrompt("This will permanently destroy all resources in the '%v' husk!", info.Husk.Name) {
 				apply(cmd, info, applyOptions{
 					Delete:  true,
 					DryRun:  dryRun,
 					Summary: summary,
 				})
 			}
+			return nil
 		},
 	}
 
@@ -59,7 +46,7 @@ func newHuskDestroyCmd() *cobra.Command {
 		"Only display summarization of resources and plan operations")
 	cmd.PersistentFlags().BoolVar(
 		&yes, "yes", false,
-		"Skip confirmation prompts, and proceed with operations anyway")
+		"Skip confirmation prompts, and proceed with the destruction anyway")
 
 	return cmd
 }

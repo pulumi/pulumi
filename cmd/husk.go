@@ -3,6 +3,7 @@
 package cmd
 
 import (
+	"bufio"
 	"bytes"
 	"fmt"
 	"io/ioutil"
@@ -47,6 +48,7 @@ func newHuskCmd() *cobra.Command {
 	cmd.AddCommand(newHuskDestroyCmd())
 	cmd.AddCommand(newHuskInitCmd())
 	cmd.AddCommand(newHuskLsCmd())
+	cmd.AddCommand(newHuskRmCmd())
 
 	return cmd
 }
@@ -61,14 +63,13 @@ func sink() diag.Sink {
 	return snk
 }
 
-func initHuskCmd(cmd *cobra.Command, args []string) *huskCmdInfo {
+func initHuskCmd(cmd *cobra.Command, args []string) (*huskCmdInfo, error) {
 	// Create a new context for the plan operations.
 	ctx := resource.NewContext(sink())
 
 	// Read in the name of the husk to use.
 	if len(args) == 0 {
-		fmt.Fprintf(os.Stderr, "fatal: missing required husk name\n")
-		os.Exit(-1)
+		return nil, fmt.Errorf("missing required husk name")
 	}
 
 	// Read in the deployment information, bailing if an IO error occurs.
@@ -76,7 +77,7 @@ func initHuskCmd(cmd *cobra.Command, args []string) *huskCmdInfo {
 	huskfile, husk, old := readHusk(ctx, name)
 	if husk == nil {
 		contract.Assert(!ctx.Diag.Success())
-		return nil // failure reading the husk information.
+		return nil, fmt.Errorf("failed to read huskfile") // failure reading the husk information.
 	}
 	return &huskCmdInfo{
 		Ctx:      ctx,
@@ -85,7 +86,7 @@ func initHuskCmd(cmd *cobra.Command, args []string) *huskCmdInfo {
 		Old:      old,
 		Args:     args[1:],
 		Orig:     args,
-	}
+	}, nil
 }
 
 type huskCmdInfo struct {
@@ -97,6 +98,19 @@ type huskCmdInfo struct {
 	Orig     []string           // the original args before extracting the husk name
 }
 
+func confirmPrompt(msg string, args ...interface{}) bool {
+	prompt := fmt.Sprintf(msg, args...)
+	fmt.Printf(
+		colors.ColorizeText(fmt.Sprintf("%v%v%v\n", colors.SpecAttention, prompt, colors.Reset)))
+	fmt.Printf("Please confirm that this is what you'd like to do by typing (\"yes\"): ")
+	reader := bufio.NewReader(os.Stdin)
+	if line, _ := reader.ReadString('\n'); line != "yes\n" {
+		fmt.Fprintf(os.Stderr, "Confirmation declined -- exiting without doing anything\n")
+		return false
+	}
+	return true
+}
+
 // create just creates a new empty husk without deploying anything into it.
 // TODO: add the ability to configure the husk at the command line.
 func create(name tokens.QName) {
@@ -104,6 +118,14 @@ func create(name tokens.QName) {
 	if success := saveHusk(husk, nil, "", false); success {
 		fmt.Printf("Coconut husk '%v' initialized; ready for deployments (see `coco husk deploy`)\n", name)
 	}
+}
+
+// remove permanently deletes the husk's information from the local workstation.
+func remove(husk *resource.Husk) {
+	deleteHusk(husk)
+	msg := fmt.Sprintf("%sCoconut husk '%s' has been removed!%s\n",
+		colors.SpecAttention, husk.Name, colors.Reset)
+	fmt.Printf(colors.ColorizeText(msg))
 }
 
 func prepareCompiler(cmd *cobra.Command, args []string) (compiler.Compiler, *pack.Package) {
@@ -250,23 +272,11 @@ type planResult struct {
 
 func apply(cmd *cobra.Command, info *huskCmdInfo, opts applyOptions) {
 	if result := plan(cmd, info, opts.Delete); result != nil {
-		checkEmpty := func() bool {
-			// If we are doing an empty update, say so.
-			if result.Plan.Empty() {
-				info.Ctx.Diag.Infof(diag.Message("no resources need to be updated"))
-				return true
-			}
-			return false
-		}
-
 		// Now based on whether a dry run was specified, or not, either print or perform the planned operations.
 		if opts.DryRun {
-			// Print a nice message if the update is an empty one.
-			checkEmpty()
-
 			// If no output file was requested, or "-", print to stdout; else write to that file.
 			if opts.Output == "" || opts.Output == "-" {
-				printPlan(result, opts)
+				printPlan(info.Ctx.Diag, result, opts)
 			} else {
 				saveHusk(info.Husk, result.New, opts.Output, true /*overwrite*/)
 			}
@@ -278,7 +288,7 @@ func apply(cmd *cobra.Command, info *huskCmdInfo, opts applyOptions) {
 			fmt.Printf(colors.Colorize(&header))
 
 			// Print a nice message if the update is an empty one.
-			empty := checkEmpty()
+			empty := checkEmpty(info.Ctx.Diag, result.Plan)
 
 			// Create an object to track progress and perform the actual operations.
 			start := time.Now()
@@ -310,16 +320,18 @@ func apply(cmd *cobra.Command, info *huskCmdInfo, opts applyOptions) {
 			husk := result.Info.Husk
 			saveHusk(husk, checkpoint, opts.Output, true /*overwrite*/)
 
-			// If a deletion was requested, remove the husk; but only if no error has occurred!
-			if err == nil && opts.Delete {
-				deleteHusk(husk)
-				summary.WriteString(fmt.Sprintf("%sCoconut husk '%s' has been destroyed!%s\n",
-					colors.SpecAttention, husk.Name, colors.Reset))
-			}
-
 			fmt.Printf(colors.Colorize(&summary))
 		}
 	}
+}
+
+func checkEmpty(d diag.Sink, plan resource.Plan) bool {
+	// If we are doing an empty update, say so.
+	if plan.Empty() {
+		d.Infof(diag.Message("no resources need to be updated"))
+		return true
+	}
+	return false
 }
 
 // backupHusk makes a backup of an existing file, in preparation for writing a new one.  Instead of a copy, it
@@ -504,29 +516,32 @@ func (prog *applyProgress) After(step resource.Step, err error, state resource.R
 	}
 }
 
-func printPlan(result *planResult, opts applyOptions) {
-	var b bytes.Buffer
-
+func printPlan(d diag.Sink, result *planResult, opts applyOptions) {
 	// First print config/unchanged/etc. if necessary.
-	printPrelude(&b, result, opts)
+	var prelude bytes.Buffer
+	printPrelude(&prelude, result, opts)
 
 	// Now walk the plan's steps and and pretty-print them out.
-	b.WriteString(fmt.Sprintf("%vPlanned changes:%v\n", colors.SpecUnimportant, colors.Reset))
-	step := result.Plan.Steps()
-	counts := make(map[resource.StepOp]int)
-	for step != nil {
-		// Print this step information (resource and all its properties).
-		// TODO: it would be nice if, in the output, we showed the dependencies a la `git log --graph`.
-		printStep(&b, step, opts.Summary, "")
-		counts[step.Op()]++
-		step = step.Next()
+	prelude.WriteString(fmt.Sprintf("%vPlanned changes:%v\n", colors.SpecUnimportant, colors.Reset))
+	fmt.Printf(colors.Colorize(&prelude))
+
+	// Print a nice message if the update is an empty one.
+	if empty := checkEmpty(d, result.Plan); !empty {
+		var summary bytes.Buffer
+		step := result.Plan.Steps()
+		counts := make(map[resource.StepOp]int)
+		for step != nil {
+			// Print this step information (resource and all its properties).
+			// TODO: it would be nice if, in the output, we showed the dependencies a la `git log --graph`.
+			printStep(&summary, step, opts.Summary, "")
+			counts[step.Op()]++
+			step = step.Next()
+		}
+
+		// Print a summary of operation counts.
+		printSummary(&summary, counts, true)
+		fmt.Printf(colors.Colorize(&summary))
 	}
-
-	// Print a summary of operation counts.
-	printSummary(&b, counts, true)
-
-	// Now go ahead and emit the output to the console.
-	fmt.Printf(colors.Colorize(&b))
 }
 
 func printPrelude(b *bytes.Buffer, result *planResult, opts applyOptions) {

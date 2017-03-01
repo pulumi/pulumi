@@ -26,17 +26,20 @@ func newHuskDeployCmd() *cobra.Command {
 			"\n" +
 			"By default, the Nut to execute is loaded from the current directory.  Optionally, an\n" +
 			"explicit path can be provided using the [nut-file] argument.",
-		Run: func(cmd *cobra.Command, args []string) {
-			if info := initHuskCmd(cmd, args); info != nil {
-				apply(cmd, info, applyOptions{
-					Delete:        false,
-					DryRun:        dryRun,
-					ShowConfig:    showConfig,
-					ShowUnchanged: showUnchanged,
-					Summary:       summary,
-					Output:        output,
-				})
+		RunE: func(cmd *cobra.Command, args []string) error {
+			info, err := initHuskCmd(cmd, args)
+			if err != nil {
+				return err
 			}
+			apply(cmd, info, applyOptions{
+				Delete:        false,
+				DryRun:        dryRun,
+				ShowConfig:    showConfig,
+				ShowUnchanged: showUnchanged,
+				Summary:       summary,
+				Output:        output,
+			})
+			return nil
 		},
 	}
 
