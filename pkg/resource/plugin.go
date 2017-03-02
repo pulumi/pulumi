@@ -231,7 +231,8 @@ func (p *Plugin) Update(id ID, t tokens.Type, olds PropertyMap, news PropertyMap
 }
 
 // UpdateImpact checks what impacts a hypothetical update will have on the resource's properties.
-func (p *Plugin) UpdateImpact(id ID, t tokens.Type, olds PropertyMap, news PropertyMap) (bool, PropertyMap, error) {
+func (p *Plugin) UpdateImpact(id ID, t tokens.Type,
+	olds PropertyMap, news PropertyMap) ([]string, PropertyMap, error) {
 	contract.Requiref(id != "", "id", "not empty")
 	contract.Requiref(t != "", "t", "not empty")
 
@@ -251,14 +252,14 @@ func (p *Plugin) UpdateImpact(id ID, t tokens.Type, olds PropertyMap, news Prope
 	resp, err := p.client.UpdateImpact(p.ctx.Request(), req)
 	if err != nil {
 		glog.V(7).Infof("Plugin[%v].UpdateImpact(id=%v,t=%v,...) failed: %v", p.pkg, id, t, err)
-		return false, nil, err
+		return nil, nil, err
 	}
 
-	replace := resp.GetReplace()
-	impacts := UnmarshalProperties(resp.GetImpacts())
-	glog.V(7).Infof("Plugin[%v].Update(id=%v,t=%v,...) success: replace=%v #impacts=%v",
-		p.pkg, id, t, replace, len(impacts))
-	return replace, impacts, nil
+	replaces := resp.GetReplaces()
+	changes := UnmarshalProperties(resp.GetChanges())
+	glog.V(7).Infof("Plugin[%v].Update(id=%v,t=%v,...) success: #replaces=%v #changes=%v",
+		p.pkg, id, t, len(replaces), len(changes))
+	return replaces, changes, nil
 }
 
 // Delete tears down an existing resource.

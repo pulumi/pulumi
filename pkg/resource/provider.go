@@ -32,7 +32,7 @@ type Provider interface {
 	// Update updates an existing resource with new values.
 	Update(id ID, t tokens.Type, olds PropertyMap, news PropertyMap) (error, ResourceState)
 	// UpdateImpact checks what impacts a hypothetical update will have on the resource's properties.
-	UpdateImpact(id ID, t tokens.Type, olds PropertyMap, news PropertyMap) (bool, PropertyMap, error)
+	UpdateImpact(id ID, t tokens.Type, olds PropertyMap, news PropertyMap) ([]string, PropertyMap, error)
 	// Delete tears down an existing resource.
 	Delete(id ID, t tokens.Type) (error, ResourceState)
 }

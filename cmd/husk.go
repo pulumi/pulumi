@@ -621,7 +621,7 @@ func printUnchanged(b *bytes.Buffer, plan resource.Plan, summary bool) {
 	for _, res := range plan.Unchanged() {
 		b.WriteString("  ") // simulate the 2 spaces for +, -, etc.
 		printResourceHeader(b, res, nil, "")
-		printResourceProperties(b, res, nil, nil, summary, "")
+		printResourceProperties(b, res, nil, nil, nil, summary, "")
 	}
 }
 
@@ -632,7 +632,13 @@ func printStep(b *bytes.Buffer, step resource.Step, summary bool, indent string)
 	// Next print the resource moniker, properties, etc.
 	printResourceHeader(b, step.Old(), step.New(), indent)
 	b.WriteString(step.Op().Suffix())
-	printResourceProperties(b, step.Old(), step.New(), step.NewProps(), summary, indent)
+	var replaces []resource.PropertyKey
+	if step.Old() != nil {
+		m := step.Old().Moniker()
+		replaceMap := step.Plan().Replaces()
+		replaces = replaceMap[m]
+	}
+	printResourceProperties(b, step.Old(), step.New(), step.NewProps(), replaces, summary, indent)
 
 	// Finally make sure to reset the color.
 	b.WriteString(colors.Reset)
@@ -651,7 +657,7 @@ func printResourceHeader(b *bytes.Buffer, old resource.Resource, new resource.Re
 }
 
 func printResourceProperties(b *bytes.Buffer, old resource.Resource, new resource.Resource,
-	computed resource.PropertyMap, summary bool, indent string) {
+	computed resource.PropertyMap, replaces []resource.PropertyKey, summary bool, indent string) {
 	indent += detailsIndent
 
 	// Print out the moniker and, if present, the ID, as "pseudo-properties".
@@ -677,7 +683,7 @@ func printResourceProperties(b *bytes.Buffer, old resource.Resource, new resourc
 			printObject(b, old.Properties(), indent)
 		} else {
 			contract.Assert(computed != nil) // use computed properties for diffs.
-			printOldNewDiffs(b, old.Properties(), computed, indent)
+			printOldNewDiffs(b, old.Properties(), computed, replaces, indent)
 		}
 	}
 }
@@ -747,16 +753,18 @@ func printArrayElemHeader(b *bytes.Buffer, i int, indent string) string {
 	return newIndent
 }
 
-func printOldNewDiffs(b *bytes.Buffer, olds resource.PropertyMap, news resource.PropertyMap, indent string) {
+func printOldNewDiffs(b *bytes.Buffer, olds resource.PropertyMap, news resource.PropertyMap,
+	replaces []resource.PropertyKey, indent string) {
 	// Get the full diff structure between the two, and print it (recursively).
 	if diff := olds.Diff(news); diff != nil {
-		printObjectDiff(b, *diff, indent)
+		printObjectDiff(b, *diff, replaces, false, indent)
 	} else {
 		printObject(b, news, indent)
 	}
 }
 
-func printObjectDiff(b *bytes.Buffer, diff resource.ObjectDiff, indent string) {
+func printObjectDiff(b *bytes.Buffer, diff resource.ObjectDiff,
+	replaces []resource.PropertyKey, causedReplace bool, indent string) {
 	contract.Assert(len(indent) > 2)
 
 	// Compute the maximum with of property keys so we can justify everything.
@@ -765,6 +773,15 @@ func printObjectDiff(b *bytes.Buffer, diff resource.ObjectDiff, indent string) {
 	for _, k := range keys {
 		if len(k) > maxkey {
 			maxkey = len(k)
+		}
+	}
+
+	// If a list of what causes a resource to get replaced exist, create a handy map.
+	var replaceMap map[resource.PropertyKey]bool
+	if len(replaces) > 0 {
+		replaceMap = make(map[resource.PropertyKey]bool)
+		for _, k := range replaces {
+			replaceMap[k] = true
 		}
 	}
 
@@ -786,7 +803,10 @@ func printObjectDiff(b *bytes.Buffer, diff resource.ObjectDiff, indent string) {
 				b.WriteString(colors.Reset)
 			}
 		} else if update, isupdate := diff.Updates[k]; isupdate {
-			printPropertyValueDiff(b, title, update, indent)
+			if !causedReplace && replaceMap != nil {
+				causedReplace = replaceMap[k]
+			}
+			printPropertyValueDiff(b, title, update, causedReplace, indent)
 		} else if same := diff.Sames[k]; shouldPrintPropertyValue(same) {
 			title(indent)
 			printPropertyValue(b, diff.Sames[k], indent)
@@ -794,13 +814,15 @@ func printObjectDiff(b *bytes.Buffer, diff resource.ObjectDiff, indent string) {
 	}
 }
 
-func printPropertyValueDiff(b *bytes.Buffer, title func(string), diff resource.ValueDiff, indent string) {
+func printPropertyValueDiff(b *bytes.Buffer, title func(string), diff resource.ValueDiff,
+	causedReplace bool, indent string) {
 	contract.Assert(len(indent) > 2)
 
 	if diff.Array != nil {
 		title(indent)
-		a := diff.Array
 		b.WriteString("[\n")
+
+		a := diff.Array
 		for i := 0; i < a.Len(); i++ {
 			_, newIndent := getArrayElemHeader(b, i, indent)
 			title := func(id string) { printArrayElemHeader(b, i, id) }
@@ -815,7 +837,7 @@ func printPropertyValueDiff(b *bytes.Buffer, title func(string), diff resource.V
 				printPropertyValue(b, delete, deleteIndent(newIndent))
 				b.WriteString(colors.Reset)
 			} else if update, isupdate := a.Updates[i]; isupdate {
-				printPropertyValueDiff(b, title, update, indent)
+				printPropertyValueDiff(b, title, update, causedReplace, indent)
 			} else {
 				title(indent)
 				printPropertyValue(b, a.Sames[i], newIndent)
@@ -825,7 +847,7 @@ func printPropertyValueDiff(b *bytes.Buffer, title func(string), diff resource.V
 	} else if diff.Object != nil {
 		title(indent)
 		b.WriteString("{\n")
-		printObjectDiff(b, *diff.Object, indent+"    ")
+		printObjectDiff(b, *diff.Object, nil, causedReplace, indent+"    ")
 		b.WriteString(fmt.Sprintf("%s}\n", indent))
 	} else if diff.Old.IsResource() && diff.New.IsResource() && diff.New.ResourceValue().Replacement() {
 		// If the old and new are both resources, and the new is a replacement, show this in a special way (+-).
@@ -837,13 +859,25 @@ func printPropertyValueDiff(b *bytes.Buffer, title func(string), diff resource.V
 		// If we ended up here, the two values either differ by type, or they have different primitive values.  We will
 		// simply emit a deletion line followed by an addition line.
 		if shouldPrintPropertyValue(diff.Old) {
-			b.WriteString(resource.OpUpdate.Color())
+			var color string
+			if causedReplace {
+				color = resource.OpDelete.Color() // this property triggered replacement; color as a delete
+			} else {
+				color = resource.OpUpdate.Color()
+			}
+			b.WriteString(color)
 			title(deleteIndent(indent))
 			printPropertyValue(b, diff.Old, deleteIndent(indent))
 			b.WriteString(colors.Reset)
 		}
 		if shouldPrintPropertyValue(diff.New) {
-			b.WriteString(resource.OpUpdate.Color())
+			var color string
+			if causedReplace {
+				color = resource.OpCreate.Color() // this property triggered replacement; color as a create
+			} else {
+				color = resource.OpUpdate.Color()
+			}
+			b.WriteString(color)
 			title(addIndent(indent))
 			printPropertyValue(b, diff.New, addIndent(indent))
 			b.WriteString(colors.Reset)

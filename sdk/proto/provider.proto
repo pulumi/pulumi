@@ -64,8 +64,8 @@ message UpdateRequest {
 }
 
 message UpdateImpactResponse {
-    bool replace = 1; // true if this update triggers replacement of the resource, false otherwise.
-    google.protobuf.Struct impacts = 2; // the full set of properties that will be altered by this operation.
+    repeated string replaces = 1; // if this update requires a replacement, the set of properties triggering it.
+    google.protobuf.Struct changes = 2; // the set of properties that will be changed (but don't require a replacement).
 }
 
 message DeleteRequest {

@@ -114,13 +114,13 @@ func (p *sgProvider) Update(ctx context.Context, req *cocorpc.UpdateRequest) (*p
 
 	// Provided it's okay, unmarshal, validate, and diff the properties.
 	id := req.GetId()
-	oldgrp, newgrp, diff, replace, err := unmarshalSecurityGroupProperties(req.GetOlds(), req.GetNews())
+	oldgrp, newgrp, diff, replaces, err := unmarshalSecurityGroupProperties(req.GetOlds(), req.GetNews())
 	if err != nil {
 		return nil, err
 	}
 
 	// If this was a replacement, the UpdateImpact routine should have rejected it.
-	if replace {
+	if len(replaces) > 0 {
 		return nil, errors.New("this update requires a resource replacement")
 	}
 
@@ -220,12 +220,12 @@ func (p *sgProvider) UpdateImpact(
 	ctx context.Context, req *cocorpc.UpdateRequest) (*cocorpc.UpdateImpactResponse, error) {
 	contract.Assert(req.GetType() == string(SecurityGroup))
 	// First unmarshal and validate the properties.
-	_, _, _, replace, err := unmarshalSecurityGroupProperties(req.GetOlds(), req.GetNews())
+	_, _, _, replaces, err := unmarshalSecurityGroupProperties(req.GetOlds(), req.GetNews())
 	if err != nil {
 		return nil, err
 	}
 	return &cocorpc.UpdateImpactResponse{
-		Replace: replace,
+		Replaces: replaces,
 		// TODO: serialize the otherproperties that will be updated.
 	}, nil
 }
@@ -233,23 +233,32 @@ func (p *sgProvider) UpdateImpact(
 // unmarshalSecurityGroupProperties unmarshals old and new properties, diffs them and checks whether resource
 // replacement is necessary.  If an error occurs, the returned error is non-nil.
 func unmarshalSecurityGroupProperties(olds *pbstruct.Struct,
-	news *pbstruct.Struct) (*securityGroup, *securityGroup, *resource.ObjectDiff, bool, error) {
+	news *pbstruct.Struct) (*securityGroup, *securityGroup, *resource.ObjectDiff, []string, error) {
 	// Deserialize the old/new properties and validate them before bothering to diff them.
 	oldprops := resource.UnmarshalProperties(olds)
 	oldgrp, err := newSecurityGroup(oldprops, true)
 	if err != nil {
-		return nil, nil, nil, false, err
+		return nil, nil, nil, nil, err
 	}
 	newprops := resource.UnmarshalProperties(news)
 	newgrp, err := newSecurityGroup(newprops, true)
 	if err != nil {
-		return nil, nil, nil, false, err
+		return nil, nil, nil, nil, err
 	}
 
 	// Now diff the properties to determine whether this must be recreated.
+	var replaces []string
 	diff := oldprops.Diff(newprops)
-	replace := diff.Diff(securityGroupName) || diff.Diff(securityGroupDescription) || diff.Diff(securityGroupVPCID)
-	return oldgrp, newgrp, diff, replace, nil
+	if diff.Diff(securityGroupName) {
+		replaces = append(replaces, securityGroupName)
+	}
+	if diff.Diff(securityGroupDescription) {
+		replaces = append(replaces, securityGroupDescription)
+	}
+	if diff.Diff(securityGroupVPCID) {
+		replaces = append(replaces, securityGroupVPCID)
+	}
+	return oldgrp, newgrp, diff, replaces, nil
 }
 
 // Delete tears down an existing resource with the given ID.  If it fails, the resource is assumed to still exist.
@@ -284,11 +293,11 @@ type securityGroup struct {
 }
 
 const (
-	securityGroupName        resource.PropertyKey = "name"
-	securityGroupDescription                      = "groupDescription"
-	securityGroupVPCID                            = "vpc"
-	securityGroupEgress                           = "securityGroupEgress"
-	securityGroupIngress                          = "securityGroupIngress"
+	securityGroupName        = "name"
+	securityGroupDescription = "groupDescription"
+	securityGroupVPCID       = "vpc"
+	securityGroupEgress      = "securityGroupEgress"
+	securityGroupIngress     = "securityGroupIngress"
 )
 
 // newSecurityGroup creates a new instance bag of state, validating required properties if asked to do so.

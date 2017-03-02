@@ -22,6 +22,7 @@ import (
 type Plan interface {
 	Empty() bool                                                // true if the plan is empty.
 	Steps() Step                                                // the first step to perform, linked to the rest.
+	Replaces() map[Moniker][]PropertyKey                        // resources being replaced and their properties.
 	Unchanged() map[Resource]Resource                           // the resources untouched by this plan.
 	Apply(prog Progress) (Snapshot, error, Step, ResourceState) // performs the operations specified in this plan.
 }
@@ -34,6 +35,7 @@ type Progress interface {
 
 // Step is a specification for a deployment operation.
 type Step interface {
+	Plan() Plan                    // the plan this step belongs to.
 	Op() StepOp                    // the operation that will be performed.
 	Logical() bool                 // true if this is a logical step, rather than a physical one.
 	Old() Resource                 // the old resource state, if any, before performing this step.
@@ -124,18 +126,20 @@ func NewPlan(ctx *Context, old Snapshot, new Snapshot) (Plan, error) {
 }
 
 type plan struct {
-	ctx       *Context              // this plan's context.
-	ns        tokens.QName          // the husk/namespace target being deployed into.
-	pkg       tokens.Package        // the package from which this snapshot came.
-	args      core.Args             // the arguments used to compile this package.
-	first     *step                 // the first step to take.
-	unchanged map[Resource]Resource // the resources that are remaining the same without modification.
+	ctx       *Context                  // this plan's context.
+	ns        tokens.QName              // the husk/namespace target being deployed into.
+	pkg       tokens.Package            // the package from which this snapshot came.
+	args      core.Args                 // the arguments used to compile this package.
+	first     *step                     // the first step to take.
+	replaces  map[Moniker][]PropertyKey // resources being replaced and their properties.
+	unchanged map[Resource]Resource     // the resources that are remaining the same without modification.
 }
 
 var _ Plan = (*plan)(nil)
 
-func (p *plan) Unchanged() map[Resource]Resource { return p.unchanged }
-func (p *plan) Empty() bool                      { return p.Steps() == nil }
+func (p *plan) Replaces() map[Moniker][]PropertyKey { return p.replaces }
+func (p *plan) Unchanged() map[Resource]Resource    { return p.unchanged }
+func (p *plan) Empty() bool                         { return p.Steps() == nil }
 
 func (p *plan) Steps() Step {
 	if p.first == nil {
@@ -282,7 +286,7 @@ func newPlan(ctx *Context, old Snapshot, new Snapshot) (*plan, error) {
 			// cascading impact on subsequent updates too, since those IDs must trigger recreations, etc.
 			contract.Assert(old.Type() == new.Type())
 			computed := new.Properties().ReplaceResources(func(r Moniker) Moniker {
-				if pb.Replaces[r] {
+				if pb.Replace(r) {
 					// If the resource is being replaced, simply mangle the moniker so that it's different; this value
 					// won't actually be used for anything other than the diffing algorithms below.
 					r = r.Replace()
@@ -298,13 +302,13 @@ func newPlan(ctx *Context, old Snapshot, new Snapshot) (*plan, error) {
 				if err != nil {
 					return nil, err
 				}
-				replace, _, err := prov.UpdateImpact(old.ID(), old.Type(), old.Properties(), computed)
+				replaces, _, err := prov.UpdateImpact(old.ID(), old.Type(), old.Properties(), computed)
 				if err != nil {
 					return nil, err
 				}
 
 				// Now create a step and vertex of the right kind.
-				if replace {
+				if len(replaces) > 0 {
 					// To perform a replacement, create a creation, deletion, and add the appropriate edges.  Namely:
 					//
 					//     - Replacement depends on creation
@@ -313,7 +317,11 @@ func newPlan(ctx *Context, old Snapshot, new Snapshot) (*plan, error) {
 					//     - Deletion depends on updating all existing dependencies (ensured through usual update logic)
 					//
 					// This ensures the right sequencing, with the replacement node acting as a juncture in the graph.
-					pb.Replaces[m] = true
+					replkeys := make([]PropertyKey, len(replaces))
+					for i, repl := range replaces {
+						replkeys[i] = PropertyKey(repl)
+					}
+					pb.Replaces[m] = replkeys
 					create := newReplaceCreateStep(pb.P, new)
 					pb.Creates[m] = newPlanVertex(create)
 					replace := newReplaceStep(pb.P, old, new, computed)
@@ -371,17 +379,17 @@ func newPlan(ctx *Context, old Snapshot, new Snapshot) (*plan, error) {
 
 // planBuilder records a lot of the necessary information during the creation of a plan.
 type planBuilder struct {
-	P         *plan                   // the plan under construction.
-	Olds      map[Moniker]Resource    // a map of moniker to old resource.
-	OldRes    []Resource              // a flat list of old resources (in topological order).
-	News      map[Moniker]Resource    // a map of moniker to new resource.
-	NewRes    []Resource              // a flat list of new resources (in topological order).
-	Depends   map[Moniker][]Moniker   // a map of moniker to all existing (old) dependencies.
-	Creates   map[Moniker]*planVertex // a map of pending creates to their associated vertex.
-	Updates   map[Moniker]*planVertex // a map of pending updates to their associated vertex.
-	Deletes   map[Moniker]*planVertex // a map of pending deletes to their associated vertex.
-	Replaces  map[Moniker]bool        // a set of monikers that are scheduled for replacement.
-	Unchanged map[Resource]Resource   // a map of unchanged resources to their ID-stamped state.
+	P         *plan                     // the plan under construction.
+	Olds      map[Moniker]Resource      // a map of moniker to old resource.
+	OldRes    []Resource                // a flat list of old resources (in topological order).
+	News      map[Moniker]Resource      // a map of moniker to new resource.
+	NewRes    []Resource                // a flat list of new resources (in topological order).
+	Depends   map[Moniker][]Moniker     // a map of moniker to all existing (old) dependencies.
+	Creates   map[Moniker]*planVertex   // a map of pending creates to their associated vertex.
+	Updates   map[Moniker]*planVertex   // a map of pending updates to their associated vertex.
+	Deletes   map[Moniker]*planVertex   // a map of pending deletes to their associated vertex.
+	Replaces  map[Moniker][]PropertyKey // a map of monikers scheduled for replacement to properties being replaced.
+	Unchanged map[Resource]Resource     // a map of unchanged resources to their ID-stamped state.
 }
 
 // newPlanBuilder initializes a fresh plan state instance, ready to use for planning.
@@ -427,38 +435,13 @@ func newPlanBuilder(ctx *Context, old Snapshot, new Snapshot) *planBuilder {
 		Creates:   make(map[Moniker]*planVertex),
 		Updates:   make(map[Moniker]*planVertex),
 		Deletes:   make(map[Moniker]*planVertex),
-		Replaces:  make(map[Moniker]bool),
+		Replaces:  make(map[Moniker][]PropertyKey),
 		Unchanged: make(map[Resource]Resource),
 	}
 }
 
-// Plan finishes the plan building and returns the resulting, completed plan (or non-nil error if it fails).
-func (pb *planBuilder) Plan() (*plan, error) {
-	// For all plan vertices with no ins, make them root nodes.
-	var roots []*planEdge
-	for _, vs := range []map[Moniker]*planVertex{pb.Creates, pb.Updates, pb.Deletes} {
-		for _, v := range vs {
-			if len(v.Ins()) == 0 {
-				roots = append(roots, &planEdge{to: v})
-			}
-		}
-	}
-
-	// Now topologically sort the steps in the order they must execute, thread the plan together, and return it.
-	g := newPlanGraph(roots)
-	topdag, err := graph.Topsort(g)
-	if err != nil {
-		return nil, err
-	}
-	var prev *step
-	for _, v := range topdag {
-		insertStep(&prev, v.Data().(*step))
-	}
-
-	// Remember the unchanged nodes.
-	pb.P.unchanged = pb.Unchanged
-
-	return pb.P, nil
+func (pb *planBuilder) Replace(m Moniker) bool {
+	return len(pb.Replaces[m]) > 0
 }
 
 func (pb *planBuilder) ConnectCreate(m Moniker, v *planVertex) {
@@ -514,6 +497,36 @@ func (pb *planBuilder) ConnectDelete(m Moniker, v *planVertex) {
 	}
 }
 
+// Plan finishes the plan building and returns the resulting, completed plan (or non-nil error if it fails).
+func (pb *planBuilder) Plan() (*plan, error) {
+	// For all plan vertices with no ins, make them root nodes.
+	var roots []*planEdge
+	for _, vs := range []map[Moniker]*planVertex{pb.Creates, pb.Updates, pb.Deletes} {
+		for _, v := range vs {
+			if len(v.Ins()) == 0 {
+				roots = append(roots, &planEdge{to: v})
+			}
+		}
+	}
+
+	// Now topologically sort the steps in the order they must execute, thread the plan together, and return it.
+	g := newPlanGraph(roots)
+	topdag, err := graph.Topsort(g)
+	if err != nil {
+		return nil, err
+	}
+	var prev *step
+	for _, v := range topdag {
+		insertStep(&prev, v.Data().(*step))
+	}
+
+	// Remember extra information useful for plan consumers.
+	pb.P.replaces = pb.Replaces
+	pb.P.unchanged = pb.Unchanged
+
+	return pb.P, nil
+}
+
 type step struct {
 	p        *plan       // this step's plan.
 	op       StepOp      // the operation to perform.
@@ -525,6 +538,7 @@ type step struct {
 
 var _ Step = (*step)(nil)
 
+func (s *step) Plan() Plan            { return s.p }
 func (s *step) Op() StepOp            { return s.op }
 func (s *step) Logical() bool         { return s.op == OpReplace }
 func (s *step) Old() Resource         { return s.old }

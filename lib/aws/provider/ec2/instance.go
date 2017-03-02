@@ -118,10 +118,18 @@ func (p *instanceProvider) UpdateImpact(
 
 	// Now check the diff for updates to any fields (none of them are updateable).
 	// TODO: we should permit changes to security groups for non-EC2-classic VMs that are in VPCs.
+	var replaces []string
 	diff := olds.Diff(news)
-	replace := diff.Diff(instanceImageID) || diff.Diff(instanceType) ||
-		diff.Diff(instanceSecurityGroups) || diff.Diff(instanceKeyName)
-	return &cocorpc.UpdateImpactResponse{Replace: replace}, nil
+	if diff.Diff(instanceImageID) {
+		replaces = append(replaces, instanceImageID)
+	}
+	if diff.Diff(instanceType) {
+		replaces = append(replaces, instanceType)
+	}
+	if diff.Diff(instanceKeyName) {
+		replaces = append(replaces, instanceKeyName)
+	}
+	return &cocorpc.UpdateImpactResponse{Replaces: replaces}, nil
 }
 
 // Delete tears down an existing resource with the given ID.  If it fails, the resource is assumed to still exist.

@@ -1259,12 +1259,19 @@ proto.cocorpc.UpdateRequest.prototype.hasNews = function() {
  * @constructor
  */
 proto.cocorpc.UpdateImpactResponse = function(opt_data) {
-  jspb.Message.initialize(this, opt_data, 0, -1, null, null);
+  jspb.Message.initialize(this, opt_data, 0, -1, proto.cocorpc.UpdateImpactResponse.repeatedFields_, null);
 };
 goog.inherits(proto.cocorpc.UpdateImpactResponse, jspb.Message);
 if (goog.DEBUG && !COMPILED) {
   proto.cocorpc.UpdateImpactResponse.displayName = 'proto.cocorpc.UpdateImpactResponse';
 }
+/**
+ * List of repeated fields within this message type.
+ * @private {!Array<number>}
+ * @const
+ */
+proto.cocorpc.UpdateImpactResponse.repeatedFields_ = [1];
+
 
 
 if (jspb.Message.GENERATE_TO_OBJECT) {
@@ -1293,8 +1300,8 @@ proto.cocorpc.UpdateImpactResponse.prototype.toObject = function(opt_includeInst
  */
 proto.cocorpc.UpdateImpactResponse.toObject = function(includeInstance, msg) {
   var f, obj = {
-    replace: jspb.Message.getFieldWithDefault(msg, 1, false),
-    impacts: (f = msg.getImpacts()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f)
+    replacesList: jspb.Message.getField(msg, 1),
+    changes: (f = msg.getChanges()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f)
   };
 
   if (includeInstance) {
@@ -1332,13 +1339,13 @@ proto.cocorpc.UpdateImpactResponse.deserializeBinaryFromReader = function(msg, r
     var field = reader.getFieldNumber();
     switch (field) {
     case 1:
-      var value = /** @type {boolean} */ (reader.readBool());
-      msg.setReplace(value);
+      var value = /** @type {string} */ (reader.readString());
+      msg.addReplaces(value);
       break;
     case 2:
       var value = new google_protobuf_struct_pb.Struct;
       reader.readMessage(value,google_protobuf_struct_pb.Struct.deserializeBinaryFromReader);
-      msg.setImpacts(value);
+      msg.setChanges(value);
       break;
     default:
       reader.skipField();
@@ -1368,14 +1375,14 @@ proto.cocorpc.UpdateImpactResponse.prototype.serializeBinary = function() {
  */
 proto.cocorpc.UpdateImpactResponse.serializeBinaryToWriter = function(message, writer) {
   var f = undefined;
-  f = message.getReplace();
-  if (f) {
-    writer.writeBool(
+  f = message.getReplacesList();
+  if (f.length > 0) {
+    writer.writeRepeatedString(
       1,
       f
     );
   }
-  f = message.getImpacts();
+  f = message.getChanges();
   if (f != null) {
     writer.writeMessage(
       2,
@@ -1387,40 +1394,54 @@ proto.cocorpc.UpdateImpactResponse.serializeBinaryToWriter = function(message, w
 
 
 /**
- * optional bool replace = 1;
- * Note that Boolean fields may be set to 0/1 when serialized from a Java server.
- * You should avoid comparisons like {@code val === true/false} in those cases.
- * @return {boolean}
+ * repeated string replaces = 1;
+ * If you change this array by adding, removing or replacing elements, or if you
+ * replace the array itself, then you must call the setter to update it.
+ * @return {!Array.<string>}
  */
-proto.cocorpc.UpdateImpactResponse.prototype.getReplace = function() {
-  return /** @type {boolean} */ (jspb.Message.getFieldWithDefault(this, 1, false));
+proto.cocorpc.UpdateImpactResponse.prototype.getReplacesList = function() {
+  return /** @type {!Array.<string>} */ (jspb.Message.getField(this, 1));
 };
 
 
-/** @param {boolean} value */
-proto.cocorpc.UpdateImpactResponse.prototype.setReplace = function(value) {
-  jspb.Message.setField(this, 1, value);
+/** @param {!Array.<string>} value */
+proto.cocorpc.UpdateImpactResponse.prototype.setReplacesList = function(value) {
+  jspb.Message.setField(this, 1, value || []);
 };
 
 
 /**
- * optional google.protobuf.Struct impacts = 2;
+ * @param {!string} value
+ * @param {number=} opt_index
+ */
+proto.cocorpc.UpdateImpactResponse.prototype.addReplaces = function(value, opt_index) {
+  jspb.Message.addToRepeatedField(this, 1, value, opt_index);
+};
+
+
+proto.cocorpc.UpdateImpactResponse.prototype.clearReplacesList = function() {
+  this.setReplacesList([]);
+};
+
+
+/**
+ * optional google.protobuf.Struct changes = 2;
  * @return {?proto.google.protobuf.Struct}
  */
-proto.cocorpc.UpdateImpactResponse.prototype.getImpacts = function() {
+proto.cocorpc.UpdateImpactResponse.prototype.getChanges = function() {
   return /** @type{?proto.google.protobuf.Struct} */ (
     jspb.Message.getWrapperField(this, google_protobuf_struct_pb.Struct, 2));
 };
 
 
 /** @param {?proto.google.protobuf.Struct|undefined} value */
-proto.cocorpc.UpdateImpactResponse.prototype.setImpacts = function(value) {
+proto.cocorpc.UpdateImpactResponse.prototype.setChanges = function(value) {
   jspb.Message.setWrapperField(this, 2, value);
 };
 
 
-proto.cocorpc.UpdateImpactResponse.prototype.clearImpacts = function() {
-  this.setImpacts(undefined);
+proto.cocorpc.UpdateImpactResponse.prototype.clearChanges = function() {
+  this.setChanges(undefined);
 };
 
 
@@ -1428,7 +1449,7 @@ proto.cocorpc.UpdateImpactResponse.prototype.clearImpacts = function() {
  * Returns whether this field is set.
  * @return {!boolean}
  */
-proto.cocorpc.UpdateImpactResponse.prototype.hasImpacts = function() {
+proto.cocorpc.UpdateImpactResponse.prototype.hasChanges = function() {
   return jspb.Message.getField(this, 2) != null;
 };
 
