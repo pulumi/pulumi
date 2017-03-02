@@ -14,8 +14,9 @@ func newHuskDeployCmd() *cobra.Command {
 	var summary bool
 	var output string
 	var cmd = &cobra.Command{
-		Use:   "deploy <husk> [<nut>] [-- [<args>]]",
-		Short: "Deploy resource updates, creations, and deletions to a husk",
+		Use:     "deploy <husk> [<nut>] [-- [<args>]]",
+		Aliases: []string{"up", "update"},
+		Short:   "Deploy resource updates, creations, and deletions to a husk",
 		Long: "Deploy resource updates, creations, and deletions to a husk\n" +
 			"\n" +
 			"This command updates an existing husk environment whose state is represented by the\n" +

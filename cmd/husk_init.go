@@ -10,8 +10,9 @@ import (
 
 func newHuskInitCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:   "init <husk>",
-		Short: "Create an empty husk with the given name, ready for deployments",
+		Use:     "init <husk>",
+		Aliases: []string{"create"},
+		Short:   "Create an empty husk with the given name, ready for deployments",
 		Long: "Create an empty husk with the given name, ready for deployments\n" +
 			"\n" +
 			"This command creates an empty husk with the given name.  It has no resources, but\n" +
