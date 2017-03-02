@@ -3,6 +3,7 @@
 package awsctx
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/pulumi/coconut/pkg/util/retry"
@@ -15,6 +16,10 @@ const DefaultTimeoutLong time.Duration = 5 * time.Minute // for really long oper
 func RetryUntil(ctx *Context, acc retry.Acceptance) (bool, error) {
 	return retry.UntilTimeout(ctx.Request(), retry.Acceptor{
 		Accept: acc,
+		Progress: func(int) bool {
+			fmt.Printf("...still waiting")
+			return true
+		},
 	}, DefaultTimeout)
 }
 
@@ -22,5 +27,9 @@ func RetryUntil(ctx *Context, acc retry.Acceptance) (bool, error) {
 func RetryUntilLong(ctx *Context, acc retry.Acceptance) (bool, error) {
 	return retry.UntilTimeout(ctx.Request(), retry.Acceptor{
 		Accept: acc,
+		Progress: func(int) bool {
+			fmt.Printf("...still waiting")
+			return true
+		},
 	}, DefaultTimeoutLong)
 }

@@ -8,10 +8,10 @@ import (
 )
 
 type Acceptor struct {
-	Accept   Acceptance      // a function that determines when to proceed.
-	Progress *func(int) bool // an optional progress function.
-	Delay    *time.Duration  // an optional delay duration.
-	Backoff  *float64        // an optional backoff multiplier.
+	Accept   Acceptance     // a function that determines when to proceed.
+	Progress func(int) bool // an optional progress function.
+	Delay    *time.Duration // an optional delay duration.
+	Backoff  *float64       // an optional backoff multiplier.
 }
 
 const (
@@ -53,7 +53,7 @@ func Until(ctx context.Context, acceptor Acceptor) (bool, error) {
 		if b, err := acceptor.Accept(); b || err != nil {
 			return b, err
 		}
-		if acceptor.Progress != nil && !(*acceptor.Progress)(tries) {
+		if acceptor.Progress != nil && !acceptor.Progress(tries) {
 			break // progress function asked to quit.
 		}
 		time.Sleep(delay)
