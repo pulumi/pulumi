@@ -35,6 +35,7 @@ type Progress interface {
 // Step is a specification for a deployment operation.
 type Step interface {
 	Op() StepOp                    // the operation that will be performed.
+	Logical() bool                 // true if this is a logical step, rather than a physical one.
 	Old() Resource                 // the old resource state, if any, before performing this step.
 	New() Resource                 // the new resource state, if any, after performing this step.
 	NewProps() PropertyMap         // the projected new resource state, factoring in dependency updates.
@@ -190,8 +191,8 @@ func (p *plan) Apply(prog Progress) (Snapshot, error, Step, ResourceState) {
 			for rest != nil {
 				restres := rest.Old()
 				glog.V(7).Infof("Plan step #%v rest.old=%v", restres != nil)
-				if restres != nil {
-					res = append(res, restres)
+				if restres != nil && !step.Logical() {
+					res = append(res, restres) // track all remaining physical resources
 				}
 				rest = rest.Next()
 			}
@@ -199,8 +200,8 @@ func (p *plan) Apply(prog Progress) (Snapshot, error, Step, ResourceState) {
 		} else {
 			new := step.New()
 			glog.V(7).Infof("Plan step #%v succeeded [%v]; hasnew = %v", stepno, step.Op(), new != nil)
-			if new != nil {
-				res = append(res, new)
+			if new != nil && !step.Logical() {
+				res = append(res, new) // track all new physical resources
 			}
 		}
 
@@ -525,6 +526,7 @@ type step struct {
 var _ Step = (*step)(nil)
 
 func (s *step) Op() StepOp            { return s.op }
+func (s *step) Logical() bool         { return s.op == OpReplace }
 func (s *step) Old() Resource         { return s.old }
 func (s *step) New() Resource         { return s.new }
 func (s *step) NewProps() PropertyMap { return s.newprops }
