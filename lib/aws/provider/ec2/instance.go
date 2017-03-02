@@ -117,6 +117,7 @@ func (p *instanceProvider) UpdateImpact(
 	}
 
 	// Now check the diff for updates to any fields (none of them are updateable).
+	// TODO: we should permit changes to security groups for non-EC2-classic VMs that are in VPCs.
 	diff := olds.Diff(news)
 	replace := diff.Diff(instanceImageID) || diff.Diff(instanceType) ||
 		diff.Diff(instanceSecurityGroups) || diff.Diff(instanceKeyName)

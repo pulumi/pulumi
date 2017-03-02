@@ -3,7 +3,10 @@
 package resource
 
 import (
+	"strings"
+
 	"github.com/pulumi/coconut/pkg/tokens"
+	"github.com/pulumi/coconut/pkg/util/contract"
 )
 
 // Moniker is a friendly, but unique, name for a resource, most often auto-assigned by Coconut.  These monikers
@@ -31,10 +34,32 @@ const MonikerDelimiter = "::" // the delimiter between elements of the moniker.
 
 // NewMoniker creates a unique moniker for the given object.
 func NewMoniker(ns tokens.QName, alloc tokens.Module, t tokens.Type, name tokens.QName) Moniker {
-	return Moniker(
+	m := Moniker(
 		string(ns) +
 			MonikerDelimiter + string(alloc) +
 			MonikerDelimiter + string(t) +
 			MonikerDelimiter + string(name),
 	)
+	contract.Assert(!m.Replacement())
+	return m
+}
+
+// replaceMonikerSuffix is the suffix for monikers referring to resources that are being replaced.
+const replaceMonikerSuffix = Moniker("#<new-id(replace)>")
+
+// Replace returns a new, modified replacement moniker (used to tag resources that are meant to be replaced).
+func (m Moniker) Replace() Moniker {
+	contract.Assert(!m.Replacement())
+	return m + replaceMonikerSuffix
+}
+
+// Unreplace returns the underlying replacement's moniker.
+func (m Moniker) Unreplace() Moniker {
+	contract.Assert(m.Replacement())
+	return m[:len(m)-len(replaceMonikerSuffix)]
+}
+
+// Replacement returns true if this moniker refers to a resource that is meant to be replaced.
+func (m Moniker) Replacement() bool {
+	return strings.HasSuffix(string(m), string(replaceMonikerSuffix))
 }

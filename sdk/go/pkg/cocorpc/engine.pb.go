@@ -18,7 +18,6 @@ It has these top-level messages:
 	ReadRequest
 	ReadResponse
 	UpdateRequest
-	UpdateResponse
 	UpdateImpactResponse
 	DeleteRequest
 */

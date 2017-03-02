@@ -9,6 +9,7 @@ import (
 func newHuskDeployCmd() *cobra.Command {
 	var dryRun bool
 	var showConfig bool
+	var showReplaceSteps bool
 	var showUnchanged bool
 	var summary bool
 	var output string
@@ -29,12 +30,13 @@ func newHuskDeployCmd() *cobra.Command {
 		Run: func(cmd *cobra.Command, args []string) {
 			info := initHuskCmd(cmd, args)
 			apply(cmd, info, applyOptions{
-				Delete:        false,
-				DryRun:        dryRun,
-				ShowConfig:    showConfig,
-				ShowUnchanged: showUnchanged,
-				Summary:       summary,
-				Output:        output,
+				Delete:           false,
+				DryRun:           dryRun,
+				ShowConfig:       showConfig,
+				ShowReplaceSteps: showReplaceSteps,
+				ShowUnchanged:    showUnchanged,
+				Summary:          summary,
+				Output:           output,
 			})
 		},
 	}
@@ -45,6 +47,9 @@ func newHuskDeployCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVar(
 		&showConfig, "show-config", false,
 		"Show configuration keys and variables")
+	cmd.PersistentFlags().BoolVar(
+		&showReplaceSteps, "show-replace-steps", false,
+		"Show detailed resource replacement creates and deletes; normally shows as a single step")
 	cmd.PersistentFlags().BoolVar(
 		&showUnchanged, "show-unchanged", false,
 		"Show resources that needn't be updated because they haven't changed, alongside those that do")

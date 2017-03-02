@@ -294,7 +294,7 @@ func apply(cmd *cobra.Command, info *huskCmdInfo, opts applyOptions) {
 			var summary bytes.Buffer
 			if !empty {
 				// Print out the total number of steps performed (and their kinds), the duration, and any summary info.
-				printSummary(&summary, progress.Ops, false)
+				printSummary(&summary, progress.Ops, opts.ShowReplaceSteps, false)
 				summary.WriteString(fmt.Sprintf("%vDeployment duration: %v%v\n",
 					colors.SpecUnimportant, time.Since(start), colors.Reset))
 			}
@@ -445,13 +445,14 @@ func saveHusk(husk *resource.Husk, snap resource.Snapshot, file string, existok 
 }
 
 type applyOptions struct {
-	Create        bool   // true if we are creating resources.
-	Delete        bool   // true if we are deleting resources.
-	DryRun        bool   // true if we should just print the plan without performing it.
-	ShowConfig    bool   // true to show the configuration variables being used.
-	ShowUnchanged bool   // true to show the resources that aren't updated, in addition to those that are.
-	Summary       bool   // true if we should only summarize resources and operations.
-	Output        string // the place to store the output, if any.
+	Create           bool   // true if we are creating resources.
+	Delete           bool   // true if we are deleting resources.
+	DryRun           bool   // true if we should just print the plan without performing it.
+	ShowConfig       bool   // true to show the configuration variables being used.
+	ShowReplaceSteps bool   // true to show the replacement steps in the plan.
+	ShowUnchanged    bool   // true to show the resources that aren't updated, in addition to those that are.
+	Summary          bool   // true if we should only summarize resources and operations.
+	Output           string // the place to store the output, if any.
 }
 
 // applyProgress pretty-prints the plan application process as it goes.
@@ -472,9 +473,16 @@ func newProgress(summary bool) *applyProgress {
 
 func (prog *applyProgress) Before(step resource.Step) {
 	// Print the step.
-	var b bytes.Buffer
+	stepop := step.Op()
 	stepnum := prog.Steps + 1
-	b.WriteString(fmt.Sprintf("Applying step #%v [%v]\n", stepnum, step.Op()))
+
+	var extra string
+	if stepop == resource.OpReplaceCreate || stepop == resource.OpReplaceDelete {
+		extra = " (part of a replacement step)"
+	}
+
+	var b bytes.Buffer
+	b.WriteString(fmt.Sprintf("Applying step #%v [%v]%v\n", stepnum, stepop, extra))
 	printStep(&b, step, prog.Summary, "    ")
 	fmt.Printf(colors.Colorize(&b))
 }
@@ -521,15 +529,18 @@ func printPlan(d diag.Sink, result *planResult, opts applyOptions) {
 		step := result.Plan.Steps()
 		counts := make(map[resource.StepOp]int)
 		for step != nil {
+			op := step.Op()
 			// Print this step information (resource and all its properties).
 			// TODO: it would be nice if, in the output, we showed the dependencies a la `git log --graph`.
-			printStep(&summary, step, opts.Summary, "")
+			if opts.ShowReplaceSteps || (op != resource.OpReplaceCreate && op != resource.OpReplaceDelete) {
+				printStep(&summary, step, opts.Summary, "")
+			}
 			counts[step.Op()]++
 			step = step.Next()
 		}
 
 		// Print a summary of operation counts.
-		printSummary(&summary, counts, true)
+		printSummary(&summary, counts, opts.ShowReplaceSteps, true)
 		fmt.Printf(colors.Colorize(&summary))
 	}
 }
@@ -560,7 +571,7 @@ func printConfig(b *bytes.Buffer, result *compileResult) {
 	}
 }
 
-func printSummary(b *bytes.Buffer, counts map[resource.StepOp]int, plan bool) {
+func printSummary(b *bytes.Buffer, counts map[resource.StepOp]int, showReplaceSteps bool, plan bool) {
 	total := 0
 	for _, c := range counts {
 		total += c
@@ -585,6 +596,10 @@ func printSummary(b *bytes.Buffer, counts map[resource.StepOp]int, plan bool) {
 	}
 
 	for _, op := range resource.StepOps() {
+		if !showReplaceSteps && (op == resource.OpReplaceCreate || op == resource.OpReplaceDelete) {
+			// Unless the user requested it, don't show the fine-grained replacement steps; just the logical ones.
+			continue
+		}
 		if c := counts[op]; c > 0 {
 			b.WriteString(fmt.Sprintf("    %v%v %v %v%v%v%v\n",
 				op.Prefix(), c, plural("resource", c), planTo, op, pastTense, colors.Reset))
@@ -617,7 +632,7 @@ func printStep(b *bytes.Buffer, step resource.Step, summary bool, indent string)
 	// Next print the resource moniker, properties, etc.
 	printResourceHeader(b, step.Old(), step.New(), indent)
 	b.WriteString(step.Op().Suffix())
-	printResourceProperties(b, step.Old(), step.New(), step.Computed(), summary, indent)
+	printResourceProperties(b, step.Old(), step.New(), step.NewProps(), summary, indent)
 
 	// Finally make sure to reset the color.
 	b.WriteString(colors.Reset)
@@ -790,12 +805,12 @@ func printPropertyValueDiff(b *bytes.Buffer, title func(string), diff resource.V
 			_, newIndent := getArrayElemHeader(b, i, indent)
 			title := func(id string) { printArrayElemHeader(b, i, id) }
 			if add, isadd := a.Adds[i]; isadd {
-				b.WriteString(colors.SpecAdded)
+				b.WriteString(resource.OpCreate.Color())
 				title(addIndent(indent))
 				printPropertyValue(b, add, addIndent(newIndent))
 				b.WriteString(colors.Reset)
 			} else if delete, isdelete := a.Deletes[i]; isdelete {
-				b.WriteString(colors.SpecDeleted)
+				b.WriteString(resource.OpDelete.Color())
 				title(deleteIndent(indent))
 				printPropertyValue(b, delete, deleteIndent(newIndent))
 				b.WriteString(colors.Reset)
@@ -812,23 +827,30 @@ func printPropertyValueDiff(b *bytes.Buffer, title func(string), diff resource.V
 		b.WriteString("{\n")
 		printObjectDiff(b, *diff.Object, indent+"    ")
 		b.WriteString(fmt.Sprintf("%s}\n", indent))
+	} else if diff.Old.IsResource() && diff.New.IsResource() && diff.New.ResourceValue().Replacement() {
+		// If the old and new are both resources, and the new is a replacement, show this in a special way (+-).
+		b.WriteString(resource.OpReplace.Color())
+		title(updateIndent(indent))
+		printPropertyValue(b, diff.Old, updateIndent(indent))
+		b.WriteString(colors.Reset)
 	} else {
 		// If we ended up here, the two values either differ by type, or they have different primitive values.  We will
 		// simply emit a deletion line followed by an addition line.
 		if shouldPrintPropertyValue(diff.Old) {
-			b.WriteString(colors.SpecChanged)
+			b.WriteString(resource.OpUpdate.Color())
 			title(deleteIndent(indent))
 			printPropertyValue(b, diff.Old, deleteIndent(indent))
-			b.WriteString(fmt.Sprintf("%s", colors.Reset))
+			b.WriteString(colors.Reset)
 		}
 		if shouldPrintPropertyValue(diff.New) {
-			b.WriteString(colors.SpecChanged)
+			b.WriteString(resource.OpUpdate.Color())
 			title(addIndent(indent))
 			printPropertyValue(b, diff.New, addIndent(indent))
-			b.WriteString(fmt.Sprintf("%s", colors.Reset))
+			b.WriteString(colors.Reset)
 		}
 	}
 }
 
 func addIndent(indent string) string    { return indent[:len(indent)-2] + "+ " }
 func deleteIndent(indent string) string { return indent[:len(indent)-2] + "- " }
+func updateIndent(indent string) string { return indent[:len(indent)-2] + "+-" }

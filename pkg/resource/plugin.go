@@ -204,9 +204,8 @@ func (p *Plugin) Read(id ID, t tokens.Type) (PropertyMap, error) {
 	return props, nil
 }
 
-// Update updates an existing resource with new values.  Only those values in the provided property bag are updated
-// to new values.  The resource ID is returned and may be different if the resource had to be recreated.
-func (p *Plugin) Update(id ID, t tokens.Type, olds PropertyMap, news PropertyMap) (ID, error, ResourceState) {
+// Update updates an existing resource with new values.
+func (p *Plugin) Update(id ID, t tokens.Type, olds PropertyMap, news PropertyMap) (error, ResourceState) {
 	contract.Requiref(id != "", "id", "not empty")
 	contract.Requiref(t != "", "t", "not empty")
 
@@ -221,15 +220,14 @@ func (p *Plugin) Update(id ID, t tokens.Type, olds PropertyMap, news PropertyMap
 		News: MarshalProperties(p.ctx, news, MarshalOptions{}),
 	}
 
-	resp, err := p.client.Update(p.ctx.Request(), req)
+	_, err := p.client.Update(p.ctx.Request(), req)
 	if err != nil {
 		glog.V(7).Infof("Plugin[%v].Update(id=%v,t=%v,...) failed: %v", p.pkg, id, t, err)
-		return ID(""), err, StateUnknown
+		return err, StateUnknown
 	}
 
-	nid := resp.GetId()
-	glog.V(7).Infof("Plugin[%v].Update(id=%v,t=%v,...) success: nid=%v", p.pkg, id, t, nid)
-	return ID(nid), nil, StateOK
+	glog.V(7).Infof("Plugin[%v].Update(id=%v,t=%v,...) success", p.pkg, id, t)
+	return nil, StateOK
 }
 
 // UpdateImpact checks what impacts a hypothetical update will have on the resource's properties.

@@ -29,9 +29,8 @@ type Provider interface {
 	Create(t tokens.Type, props PropertyMap) (ID, error, ResourceState)
 	// Read reads the instance state identified by id/t, and returns a bag of properties.
 	Read(id ID, t tokens.Type) (PropertyMap, error)
-	// Update updates an existing resource with new values.  Only those values in the provided property bag are updated
-	// to new values.  The resource ID is returned and may be different if the resource had to be recreated.
-	Update(id ID, t tokens.Type, olds PropertyMap, news PropertyMap) (ID, error, ResourceState)
+	// Update updates an existing resource with new values.
+	Update(id ID, t tokens.Type, olds PropertyMap, news PropertyMap) (error, ResourceState)
 	// UpdateImpact checks what impacts a hypothetical update will have on the resource's properties.
 	UpdateImpact(id ID, t tokens.Type, olds PropertyMap, news PropertyMap) (bool, PropertyMap, error)
 	// Delete tears down an existing resource.
