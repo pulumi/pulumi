@@ -282,13 +282,10 @@ func apply(cmd *cobra.Command, info *huskCmdInfo, opts applyOptions) {
 
 			// Create an object to track progress and perform the actual operations.
 			start := time.Now()
-			progress := newProgress(opts.Summary)
+			progress := newProgress(info.Ctx, opts.Summary)
 			checkpoint, err, _, _ := result.Plan.Apply(progress)
 			if err != nil {
-				// TODO: we want richer diagnostics in the event that a plan apply fails.  For instance, we want to
-				//     know precisely what step failed, we want to know whether it was catastrophic, etc.  We also
-				//     probably want to plumb diag.Sink through apply so it can issue its own rich diagnostics.
-				info.Ctx.Diag.Errorf(errors.ErrorPlanApplyFailed, err)
+				contract.Assert(!info.Ctx.Diag.Success()) // an error should have been emitted.
 			}
 
 			var summary bytes.Buffer
@@ -457,14 +454,16 @@ type applyOptions struct {
 
 // applyProgress pretty-prints the plan application process as it goes.
 type applyProgress struct {
+	Ctx          *resource.Context
 	Steps        int
 	Ops          map[resource.StepOp]int
 	MaybeCorrupt bool
 	Summary      bool
 }
 
-func newProgress(summary bool) *applyProgress {
+func newProgress(ctx *resource.Context, summary bool) *applyProgress {
 	return &applyProgress{
+		Ctx:     ctx,
 		Steps:   0,
 		Ops:     make(map[resource.StepOp]int),
 		Summary: summary,
@@ -493,8 +492,11 @@ func (prog *applyProgress) After(step resource.Step, err error, state resource.R
 		prog.Steps++
 		prog.Ops[step.Op()]++
 	} else {
-		var b bytes.Buffer
+		// Issue a true, bonafide error.
+		prog.Ctx.Diag.Errorf(errors.ErrorPlanApplyFailed, err)
+
 		// Print the state of the resource; we don't issue the error, because the apply above will do that.
+		var b bytes.Buffer
 		stepnum := prog.Steps + 1
 		b.WriteString(fmt.Sprintf("Step #%v failed [%v]: ", stepnum, step.Op()))
 		switch state {
