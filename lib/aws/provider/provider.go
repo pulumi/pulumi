@@ -87,7 +87,7 @@ func (p *Provider) Read(ctx context.Context, req *cocorpc.ReadRequest) (*cocorpc
 
 // Update updates an existing resource with new values.  Only those values in the provided property bag are updated
 // to new values.  The resource ID is returned and may be different if the resource had to be recreated.
-func (p *Provider) Update(ctx context.Context, req *cocorpc.UpdateRequest) (*cocorpc.UpdateResponse, error) {
+func (p *Provider) Update(ctx context.Context, req *cocorpc.UpdateRequest) (*pbempty.Empty, error) {
 	t := tokens.Type(req.GetType())
 	if prov, has := p.impls[t]; has {
 		return prov.Update(ctx, req)

@@ -109,129 +109,110 @@ func (p *sgProvider) Read(ctx context.Context, req *cocorpc.ReadRequest) (*cocor
 
 // Update updates an existing resource with new values.  Only those values in the provided property bag are updated
 // to new values.  The resource ID is returned and may be different if the resource had to be recreated.
-func (p *sgProvider) Update(ctx context.Context, req *cocorpc.UpdateRequest) (*cocorpc.UpdateResponse, error) {
+func (p *sgProvider) Update(ctx context.Context, req *cocorpc.UpdateRequest) (*pbempty.Empty, error) {
 	contract.Assert(req.GetType() == string(SecurityGroup))
 
-	// First unmarshal and validate the properties.
+	// Provided it's okay, unmarshal, validate, and diff the properties.
+	id := req.GetId()
 	oldgrp, newgrp, diff, replace, err := unmarshalSecurityGroupProperties(req.GetOlds(), req.GetNews())
 	if err != nil {
 		return nil, err
 	}
 
-	// Now either recreate the resource, if necessary, or update it in place.
-	var newid string
-	oldid := req.GetId()
+	// If this was a replacement, the UpdateImpact routine should have rejected it.
 	if replace {
-		// If the name, description, or VPC changed, the security group needs to be deleted and recreated.
-		fmt.Printf("Updates to EC2 SecurityGroup '%v' require deletion and recreation\n", oldid)
-		if _, err := p.Delete(ctx, &cocorpc.DeleteRequest{
-			Id:   oldid,
-			Type: req.GetType(),
-		}); err != nil {
-			return nil, err
-		}
-		resp, err := p.Create(ctx, &cocorpc.CreateRequest{
-			Type:       req.GetType(),
-			Properties: req.GetNews(),
-		})
-		if err != nil {
-			return nil, err
-		}
-		newid = resp.GetId() // return the freshly allocated ID
-	} else {
-		// If only the ingress and/or egress rules changed, we can incrementally apply the updates.
-		fmt.Printf("Updates to EC2 SecurityGroup '%v' will only affect changed ingress/egress rules\n", oldid)
-		gresses := []struct {
-			key    resource.PropertyKey
-			olds   *[]securityGroupRule
-			news   *[]securityGroupRule
-			create func(*string, securityGroupRule) error
-			delete func(*string, securityGroupRule) error
-		}{
-			{
-				securityGroupIngress,
-				newgrp.Ingress,
-				oldgrp.Ingress,
-				p.createSecurityGroupIngressRule,
-				p.deleteSecurityGroupIngressRule,
-			},
-			{
-				securityGroupEgress,
-				newgrp.Egress,
-				oldgrp.Egress,
-				p.createSecurityGroupEgressRule,
-				p.deleteSecurityGroupEgressRule,
-			},
-		}
-		for _, gress := range gresses {
-			if diff.Diff(gress.key) {
-				// First accumulate the diffs.
-				var creates []securityGroupRule
-				var deletes []securityGroupRule
-				if diff.Add(gress.key) {
-					contract.Assert(gress.news != nil)
-					for _, rule := range *gress.news {
-						creates = append(creates, rule)
-					}
-				} else if diff.Delete(gress.key) {
-					contract.Assert(gress.olds != nil)
-					for _, rule := range *gress.olds {
-						deletes = append(deletes, rule)
-					}
-				} else if diff.Update(gress.key) {
-					update := diff.Updates[gress.key]
-					contract.Assert(update.Array != nil)
-					for _, add := range update.Array.Adds {
-						contract.Assert(add.IsObject())
-						rule, err := newSecurityGroupRule(add.ObjectValue(), true)
-						if err != nil {
-							return nil, err
-						}
-						creates = append(creates, *rule)
-					}
-					for _, delete := range update.Array.Deletes {
-						contract.Assert(delete.IsObject())
-						rule, err := newSecurityGroupRule(delete.ObjectValue(), true)
-						if err != nil {
-							return nil, err
-						}
-						deletes = append(deletes, *rule)
-					}
-					for _, change := range update.Array.Updates {
-						// We can't update individual fields of a rule; simply delete and recreate.
-						contract.Assert(change.Old.IsObject())
-						before, err := newSecurityGroupRule(change.Old.ObjectValue(), true)
-						if err != nil {
-							return nil, err
-						}
-						deletes = append(deletes, *before)
-						contract.Assert(change.New.IsObject())
-						after, err := newSecurityGroupRule(change.New.ObjectValue(), true)
-						if err != nil {
-							return nil, err
-						}
-						creates = append(creates, *after)
-					}
-				}
+		return nil, errors.New("this update requires a resource replacement")
+	}
 
-				// And now actually perform the create and delete operations.
-				for _, delete := range deletes {
-					if err := p.deleteSecurityGroupIngressRule(&oldid, delete); err != nil {
-						return nil, err
-					}
+	// If only the ingress and/or egress rules changed, we can incrementally apply the updates.
+	gresses := []struct {
+		key    resource.PropertyKey
+		olds   *[]securityGroupRule
+		news   *[]securityGroupRule
+		create func(*string, securityGroupRule) error
+		delete func(*string, securityGroupRule) error
+	}{
+		{
+			securityGroupIngress,
+			newgrp.Ingress,
+			oldgrp.Ingress,
+			p.createSecurityGroupIngressRule,
+			p.deleteSecurityGroupIngressRule,
+		},
+		{
+			securityGroupEgress,
+			newgrp.Egress,
+			oldgrp.Egress,
+			p.createSecurityGroupEgressRule,
+			p.deleteSecurityGroupEgressRule,
+		},
+	}
+	for _, gress := range gresses {
+		if diff.Diff(gress.key) {
+			// First accumulate the diffs.
+			var creates []securityGroupRule
+			var deletes []securityGroupRule
+			if diff.Add(gress.key) {
+				contract.Assert(gress.news != nil)
+				for _, rule := range *gress.news {
+					creates = append(creates, rule)
 				}
-				for _, create := range creates {
-					if err := p.createSecurityGroupIngressRule(&oldid, create); err != nil {
+			} else if diff.Delete(gress.key) {
+				contract.Assert(gress.olds != nil)
+				for _, rule := range *gress.olds {
+					deletes = append(deletes, rule)
+				}
+			} else if diff.Update(gress.key) {
+				update := diff.Updates[gress.key]
+				contract.Assert(update.Array != nil)
+				for _, add := range update.Array.Adds {
+					contract.Assert(add.IsObject())
+					rule, err := newSecurityGroupRule(add.ObjectValue(), true)
+					if err != nil {
 						return nil, err
 					}
+					creates = append(creates, *rule)
+				}
+				for _, delete := range update.Array.Deletes {
+					contract.Assert(delete.IsObject())
+					rule, err := newSecurityGroupRule(delete.ObjectValue(), true)
+					if err != nil {
+						return nil, err
+					}
+					deletes = append(deletes, *rule)
+				}
+				for _, change := range update.Array.Updates {
+					// We can't update individual fields of a rule; simply delete and recreate.
+					contract.Assert(change.Old.IsObject())
+					before, err := newSecurityGroupRule(change.Old.ObjectValue(), true)
+					if err != nil {
+						return nil, err
+					}
+					deletes = append(deletes, *before)
+					contract.Assert(change.New.IsObject())
+					after, err := newSecurityGroupRule(change.New.ObjectValue(), true)
+					if err != nil {
+						return nil, err
+					}
+					creates = append(creates, *after)
+				}
+			}
+
+			// And now actually perform the create and delete operations.
+			for _, delete := range deletes {
+				if err := p.deleteSecurityGroupIngressRule(&id, delete); err != nil {
+					return nil, err
+				}
+			}
+			for _, create := range creates {
+				if err := p.createSecurityGroupIngressRule(&id, create); err != nil {
+					return nil, err
 				}
 			}
 		}
 	}
 
-	return &cocorpc.UpdateResponse{
-		Id: newid,
-	}, nil
+	return &pbempty.Empty{}, nil
 }
 
 // UpdateImpact checks what impacts a hypothetical update will have on the resource's properties.

@@ -97,7 +97,7 @@ func (p *instanceProvider) Read(ctx context.Context, req *cocorpc.ReadRequest) (
 
 // Update updates an existing resource with new values.  Only those values in the provided property bag are updated
 // to new values.  The resource ID is returned and may be different if the resource had to be recreated.
-func (p *instanceProvider) Update(ctx context.Context, req *cocorpc.UpdateRequest) (*cocorpc.UpdateResponse, error) {
+func (p *instanceProvider) Update(ctx context.Context, req *cocorpc.UpdateRequest) (*pbempty.Empty, error) {
 	contract.Assert(req.GetType() == string(Instance))
 	return nil, errors.New("No known updatable instance properties")
 }
