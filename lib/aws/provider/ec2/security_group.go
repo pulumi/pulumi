@@ -149,21 +149,21 @@ func (p *sgProvider) Update(ctx context.Context, req *cocorpc.UpdateRequest) (*p
 		},
 	}
 	for _, gress := range gresses {
-		if diff.Diff(gress.key) {
+		if diff.Changed(gress.key) {
 			// First accumulate the diffs.
 			var creates []securityGroupRule
 			var deletes []securityGroupRule
-			if diff.Add(gress.key) {
+			if diff.Added(gress.key) {
 				contract.Assert(gress.news != nil)
 				for _, rule := range *gress.news {
 					creates = append(creates, rule)
 				}
-			} else if diff.Delete(gress.key) {
+			} else if diff.Deleted(gress.key) {
 				contract.Assert(gress.olds != nil)
 				for _, rule := range *gress.olds {
 					deletes = append(deletes, rule)
 				}
-			} else if diff.Update(gress.key) {
+			} else if diff.Updated(gress.key) {
 				update := diff.Updates[gress.key]
 				contract.Assert(update.Array != nil)
 				for _, add := range update.Array.Adds {
@@ -250,13 +250,13 @@ func unmarshalSecurityGroupProperties(olds *pbstruct.Struct,
 	// Now diff the properties to determine whether this must be recreated.
 	var replaces []string
 	diff := oldprops.Diff(newprops)
-	if diff.Diff(securityGroupName) {
+	if diff.Changed(securityGroupName) {
 		replaces = append(replaces, securityGroupName)
 	}
-	if diff.Diff(securityGroupDescription) {
+	if diff.Changed(securityGroupDescription) {
 		replaces = append(replaces, securityGroupDescription)
 	}
-	if diff.Diff(securityGroupVPCID) {
+	if diff.Changed(securityGroupVPCID) {
 		replaces = append(replaces, securityGroupVPCID)
 	}
 	return oldgrp, newgrp, diff, replaces, nil

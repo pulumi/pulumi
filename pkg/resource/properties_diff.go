@@ -14,33 +14,33 @@ type ObjectDiff struct {
 	Updates map[PropertyKey]ValueDiff // properties in this map are changed in the new.
 }
 
-// Add returns true if the property 'k' has been added in the new property set.
-func (diff *ObjectDiff) Add(k PropertyKey) bool {
+// Added returns true if the property 'k' has been added in the new property set.
+func (diff *ObjectDiff) Added(k PropertyKey) bool {
 	_, has := diff.Adds[k]
 	return has
 }
 
-// Delete returns true if the property 'k' has been deleted from the new property set.
-func (diff *ObjectDiff) Delete(k PropertyKey) bool {
+// Deleted returns true if the property 'k' has been deleted from the new property set.
+func (diff *ObjectDiff) Deleted(k PropertyKey) bool {
 	_, has := diff.Deletes[k]
 	return has
 }
 
-// Update returns true if the property 'k' has been changed between new and old property sets.
-func (diff *ObjectDiff) Update(k PropertyKey) bool {
+// Updated returns true if the property 'k' has been changed between new and old property sets.
+func (diff *ObjectDiff) Updated(k PropertyKey) bool {
 	_, has := diff.Updates[k]
 	return has
 }
 
-// Diff returns true if the property 'k' is known to be different between old and new.
-func (diff *ObjectDiff) Diff(k PropertyKey) bool {
-	return diff.Add(k) || diff.Delete(k) || diff.Update(k)
+// Changed returns true if the property 'k' is known to be different between old and new.
+func (diff *ObjectDiff) Changed(k PropertyKey) bool {
+	return diff.Added(k) || diff.Deleted(k) || diff.Updated(k)
 }
 
 // Same returns true if the property 'k' is *not* known to be different; note that this isn't the same as looking up in
 // the Sames map, because it is possible the key is simply missing altogether (as is the case for nulls).
 func (diff *ObjectDiff) Same(k PropertyKey) bool {
-	return !diff.Diff(k)
+	return !diff.Changed(k)
 }
 
 // Keys returns a stable snapshot of all keys known to this object, across adds, deletes, sames, and updates.

@@ -117,17 +117,20 @@ func (p *instanceProvider) UpdateImpact(
 	}
 
 	// Now check the diff for updates to any fields (none of them are updateable).
-	// TODO: we should permit changes to security groups for non-EC2-classic VMs that are in VPCs.
 	var replaces []string
 	diff := olds.Diff(news)
-	if diff.Diff(instanceImageID) {
+	if diff.Changed(instanceImageID) {
 		replaces = append(replaces, instanceImageID)
 	}
-	if diff.Diff(instanceType) {
+	if diff.Changed(instanceType) {
 		replaces = append(replaces, instanceType)
 	}
-	if diff.Diff(instanceKeyName) {
+	if diff.Changed(instanceKeyName) {
 		replaces = append(replaces, instanceKeyName)
+	}
+	if diff.Changed(instanceSecurityGroups) {
+		// TODO: we should permit changes to security groups for non-EC2-classic VMs that are in VPCs.
+		replaces = append(replaces, instanceSecurityGroups)
 	}
 	return &cocorpc.UpdateImpactResponse{Replaces: replaces}, nil
 }
