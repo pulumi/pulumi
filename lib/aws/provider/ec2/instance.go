@@ -30,6 +30,15 @@ type instanceProvider struct {
 	ctx *awsctx.Context
 }
 
+// Check validates that the given property bag is valid for a resource of the given type.
+func (p *instanceProvider) Check(ctx context.Context, req *cocorpc.CheckRequest) (*cocorpc.CheckResponse, error) {
+	// Read in the properties, deserialize them, and verify them; return the resulting failures if any.
+	contract.Assert(req.GetType() == string(Instance))
+	props := resource.UnmarshalProperties(req.GetProperties())
+	_, failures, _ := newInstance(props, true)
+	return &cocorpc.CheckResponse{Failures: failures}, nil
+}
+
 // Name names a given resource.  Sometimes this will be assigned by a developer, and so the provider
 // simply fetches it from the property bag; other times, the provider will assign this based on its own algorithm.
 // In any case, resources with the same name must be safe to use interchangeably with one another.
@@ -46,7 +55,7 @@ func (p *instanceProvider) Create(ctx context.Context, req *cocorpc.CreateReques
 	// Read in the properties given by the request, validating as we go; if any fail, reject the request.
 	// TODO: validate additional properties (e.g., that AMI exists in this region).
 	// TODO: this is a good example of a "benign" (StateOK) error; handle it accordingly.
-	inst, err := newInstance(props, true)
+	inst, _, err := newInstance(props, true)
 	if err != nil {
 		return nil, err
 	}
@@ -108,11 +117,11 @@ func (p *instanceProvider) UpdateImpact(
 	contract.Assert(req.GetType() == string(Instance))
 	// Unmarshal and validate the old and new properties.
 	olds := resource.UnmarshalProperties(req.GetOlds())
-	if _, err := newInstance(olds, true); err != nil {
+	if _, _, err := newInstance(olds, true); err != nil {
 		return nil, err
 	}
 	news := resource.UnmarshalProperties(req.GetNews())
-	if _, err := newInstance(news, true); err != nil {
+	if _, _, err := newInstance(news, true); err != nil {
 		return nil, err
 	}
 
@@ -168,27 +177,37 @@ const (
 )
 
 // newInstance creates a new instance bag of state, validating required properties if asked to do so.
-func newInstance(m resource.PropertyMap, req bool) (*instance, error) {
+func newInstance(m resource.PropertyMap, req bool) (*instance, []*cocorpc.CheckFailure, error) {
+	var failures []*cocorpc.CheckFailure
+
 	id, err := m.ReqStringOrErr(instanceImageID)
 	if err != nil && (req || !resource.IsReqError(err)) {
-		return nil, err
+		failures = append(failures,
+			&cocorpc.CheckFailure{Property: instanceImageID, Reason: err.Error()})
 	}
+
 	t, err := m.OptStringOrErr(instanceType)
 	if err != nil {
-		return nil, err
+		failures = append(failures,
+			&cocorpc.CheckFailure{Property: instanceType, Reason: err.Error()})
 	}
+
 	securityGroupIDs, err := m.OptStringArrayOrErr(instanceSecurityGroups)
 	if err != nil {
-		return nil, err
+		failures = append(failures,
+			&cocorpc.CheckFailure{Property: instanceSecurityGroups, Reason: err.Error()})
 	}
+
 	keyName, err := m.OptStringOrErr(instanceKeyName)
 	if err != nil {
-		return nil, err
+		failures = append(failures,
+			&cocorpc.CheckFailure{Property: instanceKeyName, Reason: err.Error()})
 	}
+
 	return &instance{
 		ImageID:          id,
 		InstanceType:     t,
 		SecurityGroupIDs: securityGroupIDs,
 		KeyName:          keyName,
-	}, nil
+	}, failures, awsctx.MaybeCheckError(failures)
 }

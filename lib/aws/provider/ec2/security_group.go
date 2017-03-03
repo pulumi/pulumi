@@ -32,6 +32,15 @@ type sgProvider struct {
 	ctx *awsctx.Context
 }
 
+// Check validates that the given property bag is valid for a resource of the given type.
+func (p *sgProvider) Check(ctx context.Context, req *cocorpc.CheckRequest) (*cocorpc.CheckResponse, error) {
+	// Read in the properties, create and validate a new group, and return the failures (if any).
+	contract.Assert(req.GetType() == string(SecurityGroup))
+	props := resource.UnmarshalProperties(req.GetProperties())
+	_, failures, _ := newSecurityGroup(props, true)
+	return &cocorpc.CheckResponse{Failures: failures}, nil
+}
+
 // Name names a given resource.  Sometimes this will be assigned by a developer, and so the provider
 // simply fetches it from the property bag; other times, the provider will assign this based on its own algorithm.
 // In any case, resources with the same name must be safe to use interchangeably with one another.
@@ -47,10 +56,11 @@ func (p *sgProvider) Create(ctx context.Context, req *cocorpc.CreateRequest) (*c
 
 	// Read in the properties given by the request, validating as we go; if any fail, reject the request.
 	// TODO: this is a good example of a "benign" (StateOK) error; handle it accordingly.
-	secgrp, err := newSecurityGroup(props, true)
+	secgrp, _, err := newSecurityGroup(props, true)
 	if err != nil {
 		return nil, err
 	}
+	contract.Assert(secgrp != nil)
 
 	// Make the security group creation parameters.  The name of the group is auto-generated using a random hash so
 	// that we can avoid conflicts with existing similarly named groups.  For readability, we prefix the real name.
@@ -78,9 +88,9 @@ func (p *sgProvider) Create(ctx context.Context, req *cocorpc.CreateRequest) (*c
 	}
 
 	// Authorize ingress rules if any exist.
-	if secgrp.Ingress != nil {
-		fmt.Printf("Authorizing %v security group ingress (inbound) rules\n", len(*secgrp.Ingress))
-		for _, ingress := range *secgrp.Ingress {
+	if len(secgrp.Ingress) > 0 {
+		fmt.Printf("Authorizing %v security group ingress (inbound) rules\n", len(secgrp.Ingress))
+		for _, ingress := range secgrp.Ingress {
 			if err := p.createSecurityGroupIngressRule(id, ingress); err != nil {
 				return nil, err
 			}
@@ -88,9 +98,9 @@ func (p *sgProvider) Create(ctx context.Context, req *cocorpc.CreateRequest) (*c
 	}
 
 	// Authorize egress rules if any exist.
-	if secgrp.Egress != nil {
-		fmt.Printf("Authorizing %v security group egress (outbound) rules\n", len(*secgrp.Egress))
-		for _, egress := range *secgrp.Egress {
+	if len(secgrp.Egress) > 0 {
+		fmt.Printf("Authorizing %v security group egress (outbound) rules\n", len(secgrp.Egress))
+		for _, egress := range secgrp.Egress {
 			if err := p.createSecurityGroupEgressRule(id, egress); err != nil {
 				return nil, err
 			}
@@ -128,8 +138,8 @@ func (p *sgProvider) Update(ctx context.Context, req *cocorpc.UpdateRequest) (*p
 	// If only the ingress and/or egress rules changed, we can incrementally apply the updates.
 	gresses := []struct {
 		key    resource.PropertyKey
-		olds   *[]securityGroupRule
-		news   *[]securityGroupRule
+		olds   []securityGroupRule
+		news   []securityGroupRule
 		create func(*string, securityGroupRule) error
 		delete func(*string, securityGroupRule) error
 	}{
@@ -154,13 +164,13 @@ func (p *sgProvider) Update(ctx context.Context, req *cocorpc.UpdateRequest) (*p
 			var creates []securityGroupRule
 			var deletes []securityGroupRule
 			if diff.Added(gress.key) {
-				contract.Assert(gress.news != nil)
-				for _, rule := range *gress.news {
+				contract.Assert(len(gress.news) > 0)
+				for _, rule := range gress.news {
 					creates = append(creates, rule)
 				}
 			} else if diff.Deleted(gress.key) {
-				contract.Assert(gress.olds != nil)
-				for _, rule := range *gress.olds {
+				contract.Assert(len(gress.olds) > 0)
+				for _, rule := range gress.olds {
 					deletes = append(deletes, rule)
 				}
 			} else if diff.Updated(gress.key) {
@@ -168,7 +178,7 @@ func (p *sgProvider) Update(ctx context.Context, req *cocorpc.UpdateRequest) (*p
 				contract.Assert(update.Array != nil)
 				for _, add := range update.Array.Adds {
 					contract.Assert(add.IsObject())
-					rule, err := newSecurityGroupRule(add.ObjectValue(), true)
+					rule, _, err := newSecurityGroupRule(add.ObjectValue(), true)
 					if err != nil {
 						return nil, err
 					}
@@ -176,7 +186,7 @@ func (p *sgProvider) Update(ctx context.Context, req *cocorpc.UpdateRequest) (*p
 				}
 				for _, delete := range update.Array.Deletes {
 					contract.Assert(delete.IsObject())
-					rule, err := newSecurityGroupRule(delete.ObjectValue(), true)
+					rule, _, err := newSecurityGroupRule(delete.ObjectValue(), true)
 					if err != nil {
 						return nil, err
 					}
@@ -185,13 +195,13 @@ func (p *sgProvider) Update(ctx context.Context, req *cocorpc.UpdateRequest) (*p
 				for _, change := range update.Array.Updates {
 					// We can't update individual fields of a rule; simply delete and recreate.
 					contract.Assert(change.Old.IsObject())
-					before, err := newSecurityGroupRule(change.Old.ObjectValue(), true)
+					before, _, err := newSecurityGroupRule(change.Old.ObjectValue(), true)
 					if err != nil {
 						return nil, err
 					}
 					deletes = append(deletes, *before)
 					contract.Assert(change.New.IsObject())
-					after, err := newSecurityGroupRule(change.New.ObjectValue(), true)
+					after, _, err := newSecurityGroupRule(change.New.ObjectValue(), true)
 					if err != nil {
 						return nil, err
 					}
@@ -237,12 +247,12 @@ func unmarshalSecurityGroupProperties(olds *pbstruct.Struct,
 	news *pbstruct.Struct) (*securityGroup, *securityGroup, *resource.ObjectDiff, []string, error) {
 	// Deserialize the old/new properties and validate them before bothering to diff them.
 	oldprops := resource.UnmarshalProperties(olds)
-	oldgrp, err := newSecurityGroup(oldprops, true)
+	oldgrp, _, err := newSecurityGroup(oldprops, true)
 	if err != nil {
 		return nil, nil, nil, nil, err
 	}
 	newprops := resource.UnmarshalProperties(news)
-	newgrp, err := newSecurityGroup(newprops, true)
+	newgrp, _, err := newSecurityGroup(newprops, true)
 	if err != nil {
 		return nil, nil, nil, nil, err
 	}
@@ -286,11 +296,11 @@ func (p *sgProvider) Delete(ctx context.Context, req *cocorpc.DeleteRequest) (*p
 
 // securityGroup represents the state associated with a security group.
 type securityGroup struct {
-	Name        string               // the security group's unique name.
-	Description string               // description of the security group.
-	VPCID       *string              // the VPC in which this security group resides.
-	Egress      *[]securityGroupRule // a list of security group egress rules.
-	Ingress     *[]securityGroupRule // a list of security group ingress rules.
+	Name        string              // the security group's unique name.
+	Description string              // description of the security group.
+	VPCID       *string             // the VPC in which this security group resides.
+	Egress      []securityGroupRule // a list of security group egress rules.
+	Ingress     []securityGroupRule // a list of security group ingress rules.
 }
 
 // constants for all of the security group property names.
@@ -309,42 +319,56 @@ const (
 )
 
 // newSecurityGroup creates a new instance bag of state, validating required properties if asked to do so.
-func newSecurityGroup(m resource.PropertyMap, req bool) (*securityGroup, error) {
+func newSecurityGroup(m resource.PropertyMap, req bool) (*securityGroup, []*cocorpc.CheckFailure, error) {
+	var failures []*cocorpc.CheckFailure
+
 	name, err := m.ReqStringOrErr(securityGroupName)
 	if err != nil && (req || !resource.IsReqError(err)) {
-		return nil, err
+		failures = append(failures,
+			&cocorpc.CheckFailure{Property: securityGroupName, Reason: err.Error()})
 	}
 
 	description, err := m.ReqStringOrErr(securityGroupDescription)
 	if err != nil && (req || !resource.IsReqError(err)) {
-		return nil, err
+		failures = append(failures,
+			&cocorpc.CheckFailure{Property: securityGroupDescription, Reason: err.Error()})
+	} else if len(description) > maxSecurityGroupDescription {
+		failures = append(failures, &cocorpc.CheckFailure{
+			Property: securityGroupDescription,
+			Reason:   fmt.Sprintf("exceeded maximum length of %v", maxSecurityGroupDescription),
+		})
 	}
-
-	// TODO: validate other aspects of the parameters; for instance, ensure that the description is < 255 characters,
-	//     etc.  Furthermore, consider doing this in a pass before performing *any* actions (and during planning), so
-	//     that we can hoist failures to before even trying to execute a plan (when such errors are more costly).
 
 	vpcID, err := m.OptStringOrErr(securityGroupVPCID)
 	if err != nil {
-		return nil, err
+		failures = append(failures,
+			&cocorpc.CheckFailure{Property: securityGroupVPCID, Reason: err.Error()})
 	}
 
+	var egress []securityGroupRule
 	egressArray, err := m.OptObjectArrayOrErr(securityGroupEgress)
 	if err != nil {
-		return nil, err
-	}
-	egress, err := newSecurityGroupRules(egressArray, req)
-	if err != nil {
-		return nil, err
+		failures = append(failures,
+			&cocorpc.CheckFailure{Property: securityGroupEgress, Reason: err.Error()})
+	} else {
+		var egressFailures []*cocorpc.CheckFailure
+		egress, egressFailures, _ = newSecurityGroupRules(egressArray, req)
+		if len(egressFailures) > 0 {
+			failures = append(failures, egressFailures...)
+		}
 	}
 
+	var ingress []securityGroupRule
 	ingressArray, err := m.OptObjectArrayOrErr(securityGroupIngress)
 	if err != nil {
-		return nil, err
-	}
-	ingress, err := newSecurityGroupRules(ingressArray, req)
-	if err != nil {
-		return nil, err
+		failures = append(failures,
+			&cocorpc.CheckFailure{Property: securityGroupIngress, Reason: err.Error()})
+	} else {
+		var ingressFailures []*cocorpc.CheckFailure
+		ingress, ingressFailures, _ = newSecurityGroupRules(ingressArray, req)
+		if len(ingressFailures) > 0 {
+			failures = append(failures, ingressFailures...)
+		}
 	}
 
 	return &securityGroup{
@@ -353,7 +377,7 @@ func newSecurityGroup(m resource.PropertyMap, req bool) (*securityGroup, error) 
 		VPCID:       vpcID,
 		Egress:      egress,
 		Ingress:     ingress,
-	}, nil
+	}, failures, awsctx.MaybeCheckError(failures)
 }
 
 // securityGroupRule represents the state associated with a security group rule.
@@ -364,30 +388,45 @@ type securityGroupRule struct {
 	ToPort     *int64  // the end of port range for the TCP/UDP protocols, or an ICMP code.
 }
 
+// constants for all of the security group rule property names.
+const (
+	securityGroupRuleIPProtocol = "ipProtocol"
+	securityGroupRuleCIDRIP     = "cidrIp"
+	securityGroupRuleFromPort   = "fromPort"
+	securityGroupRuleToPort     = "toPort"
+)
+
 // newSecurityGroupRule creates a new instance bag of state, validating required properties if asked to do so.
-func newSecurityGroupRule(m resource.PropertyMap, req bool) (*securityGroupRule, error) {
-	ipProtocol, err := m.ReqStringOrErr("ipProtocol")
+func newSecurityGroupRule(m resource.PropertyMap, req bool) (*securityGroupRule, []*cocorpc.CheckFailure, error) {
+	var failures []*cocorpc.CheckFailure
+
+	ipProtocol, err := m.ReqStringOrErr(securityGroupRuleIPProtocol)
 	if err != nil && (req || !resource.IsReqError(err)) {
-		return nil, err
+		failures = append(failures,
+			&cocorpc.CheckFailure{Property: securityGroupRuleIPProtocol, Reason: err.Error()})
 	}
-	cidrIP, err := m.OptStringOrErr("cidrIp")
+
+	cidrIP, err := m.OptStringOrErr(securityGroupRuleCIDRIP)
 	if err != nil {
-		return nil, err
+		failures = append(failures,
+			&cocorpc.CheckFailure{Property: securityGroupRuleCIDRIP, Reason: err.Error()})
 	}
 
 	var fromPort *int64
-	fromPortF, err := m.OptNumberOrErr("fromPort")
+	fromPortF, err := m.OptNumberOrErr(securityGroupRuleFromPort)
 	if err != nil {
-		return nil, err
+		failures = append(failures,
+			&cocorpc.CheckFailure{Property: securityGroupRuleFromPort, Reason: err.Error()})
 	} else {
 		fromPortI := int64(*fromPortF)
 		fromPort = &fromPortI
 	}
 
 	var toPort *int64
-	toPortF, err := m.OptNumberOrErr("toPort")
+	toPortF, err := m.OptNumberOrErr(securityGroupRuleToPort)
 	if err != nil {
-		return nil, err
+		failures = append(failures,
+			&cocorpc.CheckFailure{Property: securityGroupRuleToPort, Reason: err.Error()})
 	} else {
 		toPortI := int64(*toPortF)
 		toPort = &toPortI
@@ -398,22 +437,27 @@ func newSecurityGroupRule(m resource.PropertyMap, req bool) (*securityGroupRule,
 		CIDRIP:     cidrIP,
 		FromPort:   fromPort,
 		ToPort:     toPort,
-	}, nil
+	}, failures, awsctx.MaybeCheckError(failures)
 }
 
-func newSecurityGroupRules(arr *[]resource.PropertyMap, req bool) (*[]securityGroupRule, error) {
+func newSecurityGroupRules(arr *[]resource.PropertyMap,
+	req bool) ([]securityGroupRule, []*cocorpc.CheckFailure, error) {
 	if arr == nil {
-		return nil, nil
+		return nil, nil, nil
 	}
+
 	var rules []securityGroupRule
+	var failures []*cocorpc.CheckFailure
 	for _, rule := range *arr {
-		secrule, err := newSecurityGroupRule(rule, req)
-		if err != nil {
-			return nil, err
+		secrule, secruleFailures, _ := newSecurityGroupRule(rule, req)
+		if len(secruleFailures) > 0 {
+			failures = append(failures, secruleFailures...)
+		} else {
+			rules = append(rules, *secrule)
 		}
-		rules = append(rules, *secrule)
 	}
-	return &rules, nil
+
+	return rules, failures, awsctx.MaybeCheckError(failures)
 }
 
 func (p *sgProvider) createSecurityGroupIngressRule(groupID *string, ingress securityGroupRule) error {

@@ -38,6 +38,15 @@ var _ cocorpc.ResourceProviderServer = (*Provider)(nil)
 
 const nameProperty string = "name" // the property used for naming AWS resources.
 
+// Check validates that the given property bag is valid for a resource of the given type.
+func (p *Provider) Check(ctx context.Context, req *cocorpc.CheckRequest) (*cocorpc.CheckResponse, error) {
+	t := tokens.Type(req.GetType())
+	if prov, has := p.impls[t]; has {
+		return prov.Check(ctx, req)
+	}
+	return nil, fmt.Errorf("Unrecognized resource type (Check): %v", t)
+}
+
 // Name names a given resource.  Sometimes this will be assigned by a developer, and so the provider
 // simply fetches it from the property bag; other times, the provider will assign this based on its own algorithm.
 // In any case, resources with the same name must be safe to use interchangeably with one another.
