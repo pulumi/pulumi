@@ -22,7 +22,7 @@ import (
 type Plan interface {
 	Empty() bool                                                // true if the plan is empty.
 	Steps() Step                                                // the first step to perform, linked to the rest.
-	Replaces() map[Moniker][]PropertyKey                        // resources being replaced and their properties.
+	Replaces() map[URN][]PropertyKey                            // resources being replaced and their properties.
 	Unchanged() map[Resource]Resource                           // the resources untouched by this plan.
 	Apply(prog Progress) (Snapshot, error, Step, ResourceState) // performs the operations specified in this plan.
 }
@@ -126,20 +126,20 @@ func NewPlan(ctx *Context, old Snapshot, new Snapshot) (Plan, error) {
 }
 
 type plan struct {
-	ctx       *Context                  // this plan's context.
-	ns        tokens.QName              // the husk/namespace target being deployed into.
-	pkg       tokens.Package            // the package from which this snapshot came.
-	args      core.Args                 // the arguments used to compile this package.
-	first     *step                     // the first step to take.
-	replaces  map[Moniker][]PropertyKey // resources being replaced and their properties.
-	unchanged map[Resource]Resource     // the resources that are remaining the same without modification.
+	ctx       *Context              // this plan's context.
+	ns        tokens.QName          // the husk/namespace target being deployed into.
+	pkg       tokens.Package        // the package from which this snapshot came.
+	args      core.Args             // the arguments used to compile this package.
+	first     *step                 // the first step to take.
+	replaces  map[URN][]PropertyKey // resources being replaced and their properties.
+	unchanged map[Resource]Resource // the resources that are remaining the same without modification.
 }
 
 var _ Plan = (*plan)(nil)
 
-func (p *plan) Replaces() map[Moniker][]PropertyKey { return p.replaces }
-func (p *plan) Unchanged() map[Resource]Resource    { return p.unchanged }
-func (p *plan) Empty() bool                         { return p.Steps() == nil }
+func (p *plan) Replaces() map[URN][]PropertyKey  { return p.replaces }
+func (p *plan) Unchanged() map[Resource]Resource { return p.unchanged }
+func (p *plan) Empty() bool                      { return p.Steps() == nil }
 
 func (p *plan) Steps() Step {
 	if p.first == nil {
@@ -254,7 +254,7 @@ func newPlan(ctx *Context, old Snapshot, new Snapshot) (*plan, error) {
 	//
 	// Any property changes that require replacement are applied, recursively, in a cascading manner.
 	for _, old := range pb.OldRes {
-		m := old.Moniker()
+		m := old.URN()
 		pb.Olds[m] = old
 		contract.Assert(old.HasID())
 		// Keep track of which dependents exist for all resources.
@@ -263,12 +263,12 @@ func newPlan(ctx *Context, old Snapshot, new Snapshot) (*plan, error) {
 		}
 	}
 	for _, new := range pb.NewRes {
-		pb.News[new.Moniker()] = new
+		pb.News[new.URN()] = new
 	}
 
 	// Find those things in old but not new, and add them to the delete queue.
 	for _, old := range pb.OldRes {
-		m := old.Moniker()
+		m := old.URN()
 		if _, hasnew := pb.News[m]; !hasnew {
 			step := newDeleteStep(pb.P, old)
 			pb.Deletes[m] = newPlanVertex(step)
@@ -278,19 +278,19 @@ func newPlan(ctx *Context, old Snapshot, new Snapshot) (*plan, error) {
 
 	// Find creates and updates: creates are those in new but not old, and updates are those in both.
 	for _, new := range pb.NewRes {
-		m := new.Moniker()
+		m := new.URN()
 		if old, hasold := pb.Olds[m]; hasold {
 			// The resource exists in both new and old; it could be an update.  This resource is an update if one of
 			// these two conditions exist: 1) either the old and new properties don't match or 2) the update impact
 			// is assessed as having to replace the resource, in which case the ID will change.  This might have a
 			// cascading impact on subsequent updates too, since those IDs must trigger recreations, etc.
 			contract.Assert(old.Type() == new.Type())
-			computed := new.Properties().ReplaceResources(func(r Moniker) Moniker {
+			computed := new.Properties().ReplaceResources(func(r URN) URN {
 				if pb.Replace(r) {
-					// If the resource is being replaced, simply mangle the moniker so that it's different; this value
+					// If the resource is being replaced, simply mangle the URN so that it's different; this value
 					// won't actually be used for anything other than the diffing algorithms below.
 					r = r.Replace()
-					glog.V(7).Infof("Patched resource '%v's moniker property: %v", m, r)
+					glog.V(7).Infof("Patched resource '%v's URN property: %v", m, r)
 				}
 				return r
 			})
@@ -359,7 +359,7 @@ func newPlan(ctx *Context, old Snapshot, new Snapshot) (*plan, error) {
 	// Clearly we must prohibit cycles in this overall graph of resource operations (hence the DAG part).  To ensure
 	// this ordering, we will produce a plan graph whose vertices are operations and whose edges encode dependencies.
 	for _, old := range pb.OldRes {
-		m := old.Moniker()
+		m := old.URN()
 		if delete, isdelete := pb.Deletes[m]; isdelete {
 			pb.ConnectDelete(m, delete) // connect this delete so it happens before dependencies.
 		} else if update, isupdate := pb.Updates[m]; isupdate {
@@ -367,7 +367,7 @@ func newPlan(ctx *Context, old Snapshot, new Snapshot) (*plan, error) {
 		}
 	}
 	for _, new := range pb.NewRes {
-		m := new.Moniker()
+		m := new.URN()
 		if create, iscreate := pb.Creates[m]; iscreate {
 			pb.ConnectCreate(m, create) // connect this create so it happens after dependencies are created/updated.
 		}
@@ -379,17 +379,17 @@ func newPlan(ctx *Context, old Snapshot, new Snapshot) (*plan, error) {
 
 // planBuilder records a lot of the necessary information during the creation of a plan.
 type planBuilder struct {
-	P         *plan                     // the plan under construction.
-	Olds      map[Moniker]Resource      // a map of moniker to old resource.
-	OldRes    []Resource                // a flat list of old resources (in topological order).
-	News      map[Moniker]Resource      // a map of moniker to new resource.
-	NewRes    []Resource                // a flat list of new resources (in topological order).
-	Depends   map[Moniker][]Moniker     // a map of moniker to all existing (old) dependencies.
-	Creates   map[Moniker]*planVertex   // a map of pending creates to their associated vertex.
-	Updates   map[Moniker]*planVertex   // a map of pending updates to their associated vertex.
-	Deletes   map[Moniker]*planVertex   // a map of pending deletes to their associated vertex.
-	Replaces  map[Moniker][]PropertyKey // a map of monikers scheduled for replacement to properties being replaced.
-	Unchanged map[Resource]Resource     // a map of unchanged resources to their ID-stamped state.
+	P         *plan                 // the plan under construction.
+	Olds      map[URN]Resource      // a map of URN to old resource.
+	OldRes    []Resource            // a flat list of old resources (in topological order).
+	News      map[URN]Resource      // a map of URN to new resource.
+	NewRes    []Resource            // a flat list of new resources (in topological order).
+	Depends   map[URN][]URN         // a map of URN to all existing (old) dependencies.
+	Creates   map[URN]*planVertex   // a map of pending creates to their associated vertex.
+	Updates   map[URN]*planVertex   // a map of pending updates to their associated vertex.
+	Deletes   map[URN]*planVertex   // a map of pending deletes to their associated vertex.
+	Replaces  map[URN][]PropertyKey // a map of URNs scheduled for replacement to properties being replaced.
+	Unchanged map[Resource]Resource // a map of unchanged resources to their ID-stamped state.
 }
 
 // newPlanBuilder initializes a fresh plan state instance, ready to use for planning.
@@ -427,32 +427,32 @@ func newPlanBuilder(ctx *Context, old Snapshot, new Snapshot) *planBuilder {
 
 	return &planBuilder{
 		P:         p,
-		Olds:      make(map[Moniker]Resource),
+		Olds:      make(map[URN]Resource),
 		OldRes:    oldres,
-		News:      make(map[Moniker]Resource),
+		News:      make(map[URN]Resource),
 		NewRes:    newres,
-		Depends:   make(map[Moniker][]Moniker),
-		Creates:   make(map[Moniker]*planVertex),
-		Updates:   make(map[Moniker]*planVertex),
-		Deletes:   make(map[Moniker]*planVertex),
-		Replaces:  make(map[Moniker][]PropertyKey),
+		Depends:   make(map[URN][]URN),
+		Creates:   make(map[URN]*planVertex),
+		Updates:   make(map[URN]*planVertex),
+		Deletes:   make(map[URN]*planVertex),
+		Replaces:  make(map[URN][]PropertyKey),
 		Unchanged: make(map[Resource]Resource),
 	}
 }
 
-func (pb *planBuilder) Replace(m Moniker) bool {
+func (pb *planBuilder) Replace(m URN) bool {
 	return len(pb.Replaces[m]) > 0
 }
 
-func (pb *planBuilder) ConnectCreate(m Moniker, v *planVertex) {
+func (pb *planBuilder) ConnectCreate(m URN, v *planVertex) {
 	pb.connectCreateUpdate(m, v, false)
 }
 
-func (pb *planBuilder) ConnectUpdate(m Moniker, v *planVertex) {
+func (pb *planBuilder) ConnectUpdate(m URN, v *planVertex) {
 	pb.connectCreateUpdate(m, v, true)
 }
 
-func (pb *planBuilder) connectCreateUpdate(m Moniker, v *planVertex, update bool) {
+func (pb *planBuilder) connectCreateUpdate(m URN, v *planVertex, update bool) {
 	var label string
 	if update {
 		label = "Updating"
@@ -482,7 +482,7 @@ func (pb *planBuilder) connectCreateUpdate(m Moniker, v *planVertex, update bool
 	}
 }
 
-func (pb *planBuilder) ConnectDelete(m Moniker, v *planVertex) {
+func (pb *planBuilder) ConnectDelete(m URN, v *planVertex) {
 	// Add edges to:
 	//     - any dependents that used to refer to this (and are necessarily being deleted or updated)
 	for _, dep := range pb.Depends[m] {
@@ -501,7 +501,7 @@ func (pb *planBuilder) ConnectDelete(m Moniker, v *planVertex) {
 func (pb *planBuilder) Plan() (*plan, error) {
 	// For all plan vertices with no ins, make them root nodes.
 	var roots []*planEdge
-	for _, vs := range []map[Moniker]*planVertex{pb.Creates, pb.Updates, pb.Deletes} {
+	for _, vs := range []map[URN]*planVertex{pb.Creates, pb.Updates, pb.Deletes} {
 		for _, v := range vs {
 			if len(v.Ins()) == 0 {
 				roots = append(roots, &planEdge{to: v})

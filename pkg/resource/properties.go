@@ -150,7 +150,7 @@ func (m PropertyMap) ObjectOrErr(k PropertyKey, req bool) (*PropertyMap, error) 
 }
 
 // ResourceOrErr checks that the given property is a resource, issuing an error if not; req indicates if required.
-func (m PropertyMap) ResourceOrErr(k PropertyKey, req bool) (*Moniker, error) {
+func (m PropertyMap) ResourceOrErr(k PropertyKey, req bool) (*URN, error) {
 	if v, has := m[k]; has && !v.IsNull() {
 		if !v.IsResource() {
 			return nil, fmt.Errorf("property '%v' is not an object (%v)", k, reflect.TypeOf(v.V))
@@ -226,11 +226,11 @@ func (m PropertyMap) ReqObjectOrErr(k PropertyKey) (PropertyMap, error) {
 	return *o, nil
 }
 
-// ReqResourceOrErr checks that the given property exists and has the type moniker.
-func (m PropertyMap) ReqResourceOrErr(k PropertyKey) (Moniker, error) {
+// ReqResourceOrErr checks that the given property exists and has the type URN.
+func (m PropertyMap) ReqResourceOrErr(k PropertyKey) (URN, error) {
 	r, err := m.ResourceOrErr(k, true)
 	if err != nil {
-		return Moniker(""), err
+		return URN(""), err
 	}
 	return *r, nil
 }
@@ -270,25 +270,25 @@ func (m PropertyMap) OptObjectOrErr(k PropertyKey) (*PropertyMap, error) {
 	return m.ObjectOrErr(k, false)
 }
 
-// OptResourceOrErr checks that the given property has the type moniker, if it exists.
-func (m PropertyMap) OptResourceOrErr(k PropertyKey) (*Moniker, error) {
+// OptResourceOrErr checks that the given property has the type URN, if it exists.
+func (m PropertyMap) OptResourceOrErr(k PropertyKey) (*URN, error) {
 	return m.ResourceOrErr(k, false)
 }
 
-// AllResources finds all resource monikers, transitively throughout the property map, and returns them.
-func (props PropertyMap) AllResources() map[Moniker]bool {
-	monikers := make(map[Moniker]bool)
+// AllResources finds all resource URNs, transitively throughout the property map, and returns them.
+func (props PropertyMap) AllResources() map[URN]bool {
+	URNs := make(map[URN]bool)
 	for _, k := range StablePropertyKeys(props) {
 		for m, v := range props[k].AllResources() {
-			monikers[m] = v
+			URNs[m] = v
 		}
 	}
-	return monikers
+	return URNs
 }
 
 // ReplaceResources finds all resources and lets an updater function update them if necessary.  This is often used
-// during a "replacement"-style updated, to replace all monikers of a certain value with another.
-func (props PropertyMap) ReplaceResources(updater func(Moniker) Moniker) PropertyMap {
+// during a "replacement"-style updated, to replace all URNs of a certain value with another.
+func (props PropertyMap) ReplaceResources(updater func(URN) URN) PropertyMap {
 	result := make(PropertyMap)
 	for _, k := range StablePropertyKeys(props) {
 		result[k] = props[k].ReplaceResources(updater)
@@ -302,14 +302,14 @@ func NewPropertyNumber(v float64) PropertyValue        { return PropertyValue{v}
 func NewPropertyString(v string) PropertyValue         { return PropertyValue{v} }
 func NewPropertyArray(v []PropertyValue) PropertyValue { return PropertyValue{v} }
 func NewPropertyObject(v PropertyMap) PropertyValue    { return PropertyValue{v} }
-func NewPropertyResource(v Moniker) PropertyValue      { return PropertyValue{v} }
+func NewPropertyResource(v URN) PropertyValue          { return PropertyValue{v} }
 
 func (v PropertyValue) BoolValue() bool             { return v.V.(bool) }
 func (v PropertyValue) NumberValue() float64        { return v.V.(float64) }
 func (v PropertyValue) StringValue() string         { return v.V.(string) }
 func (v PropertyValue) ArrayValue() []PropertyValue { return v.V.([]PropertyValue) }
 func (v PropertyValue) ObjectValue() PropertyMap    { return v.V.(PropertyMap) }
-func (v PropertyValue) ResourceValue() Moniker      { return v.V.(Moniker) }
+func (v PropertyValue) ResourceValue() URN          { return v.V.(URN) }
 
 func (b PropertyValue) IsNull() bool {
 	return b.V == nil
@@ -335,32 +335,32 @@ func (b PropertyValue) IsObject() bool {
 	return is
 }
 func (b PropertyValue) IsResource() bool {
-	_, is := b.V.(Moniker)
+	_, is := b.V.(URN)
 	return is
 }
 
-// AllResources finds all resource monikers, transitively throughout the property value, and returns them.
-func (v PropertyValue) AllResources() map[Moniker]bool {
-	monikers := make(map[Moniker]bool)
+// AllResources finds all resource URNs, transitively throughout the property value, and returns them.
+func (v PropertyValue) AllResources() map[URN]bool {
+	URNs := make(map[URN]bool)
 	if v.IsResource() {
-		monikers[v.ResourceValue()] = true
+		URNs[v.ResourceValue()] = true
 	} else if v.IsArray() {
 		for _, elem := range v.ArrayValue() {
 			for m, v := range elem.AllResources() {
-				monikers[m] = v
+				URNs[m] = v
 			}
 		}
 	} else if v.IsObject() {
 		for m, v := range v.ObjectValue().AllResources() {
-			monikers[m] = v
+			URNs[m] = v
 		}
 	}
-	return monikers
+	return URNs
 }
 
 // ReplaceResources finds all resources and lets an updater function update them if necessary.  This is often used
-// during a "replacement"-style updated, to replace all monikers of a certain value with another.
-func (v PropertyValue) ReplaceResources(updater func(Moniker) Moniker) PropertyValue {
+// during a "replacement"-style updated, to replace all URNs of a certain value with another.
+func (v PropertyValue) ReplaceResources(updater func(URN) URN) PropertyValue {
 	if v.IsResource() {
 		m := v.ResourceValue()
 		return NewPropertyResource(updater(m))

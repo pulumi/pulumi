@@ -14,28 +14,28 @@ type resourceGraph struct {
 
 var _ graph.Graph = (*resourceGraph)(nil)
 
-// newResourceGraph produces a DAG using the resources' properties embedded moniker information.
+// newResourceGraph produces a DAG using the resources' properties embedded URN information.
 func newResourceGraph(resources []Resource) *resourceGraph {
-	// First make two maps: one with monikers to resources, the other with resources to vertices.
-	mks := make(map[Moniker]Resource)
+	// First make two maps: one with URNs to resources, the other with resources to vertices.
+	urns := make(map[URN]Resource)
 	verts := make(map[Resource]*resourceVertex)
 	for _, res := range resources {
 		contract.Assert(res != nil)
-		m := res.Moniker()
-		contract.Assertf(mks[m] == nil, "Unexpected duplicate entry '%v' in resource list", m)
-		mks[m] = res
+		urn := res.URN()
+		contract.Assertf(urns[urn] == nil, "Unexpected duplicate entry '%v' in resource list", urn)
+		urns[urn] = res
 		verts[res] = newResourceVertex(res)
 	}
 
 	// Now walk the list of resources and connect them to their dependencies.
 	for _, res := range resources {
-		m := res.Moniker()
+		urn := res.URN()
 		fromv := verts[res]
-		for ref := range res.Properties().AllResources() {
-			to := mks[ref]
-			contract.Assertf(to != nil, "Missing resource for target; from=%v to=%v", m, ref)
+		for dep := range res.Properties().AllResources() {
+			to := urns[dep]
+			contract.Assertf(to != nil, "Missing resource for target; from=%v to=%v", urn, dep)
 			tov := verts[to]
-			contract.Assertf(tov != nil, "Missing vertex entry for target; from=%v to=%v", m, ref)
+			contract.Assertf(tov != nil, "Missing vertex entry for target; from=%v to=%v", urn, dep)
 			fromv.connectTo(tov)
 		}
 	}

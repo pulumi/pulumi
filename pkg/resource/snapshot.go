@@ -24,7 +24,7 @@ type Snapshot interface {
 	Args() core.Args                            // the arguments used to compile this package.
 	Resources() []Resource                      // a topologically sorted list of resources (based on dependencies).
 	ResourceByID(id ID, t tokens.Type) Resource // looks up a resource by ID and type.
-	ResourceByMoniker(m Moniker) Resource       // looks up a resource by its moniker.
+	ResourceByURN(urn URN) Resource             // looks up a resource by its URN.
 	ResourceByObject(obj *rt.Object) Resource   // looks up a resource by its object.
 }
 
@@ -43,7 +43,7 @@ func NewGraphSnapshot(ctx *Context, ns tokens.QName, pkg tokens.Package, args co
 	if old != nil {
 		for _, res := range old.Resources() {
 			contract.Assert(res.HasID())
-			ctx.MksOldIDs[res.Moniker()] = res.ID()
+			ctx.URNOldIDs[res.URN()] = res.ID()
 		}
 	}
 
@@ -53,8 +53,8 @@ func NewGraphSnapshot(ctx *Context, ns tokens.QName, pkg tokens.Package, args co
 		return nil, err
 	}
 
-	// Next, name all resources, create their monikers and objects, and maps that we will use.  Note that we must do
-	// this in DAG order (guaranteed by our topological sort above), so that referenced monikers are available.
+	// Next, name all resources, create their URNs and objects, and maps that we will use.  Note that we must do
+	// this in DAG order (guaranteed by our topological sort above), so that referenced URNs are available.
 	resources, err := createResources(ctx, ns, heap, resobjs)
 	if err != nil {
 		return nil, err
@@ -82,15 +82,15 @@ func (s *snapshot) ResourceByID(id ID, t tokens.Type) Resource {
 	return nil
 }
 
-func (s *snapshot) ResourceByMoniker(m Moniker) Resource     { return s.ctx.MksRes[m] }
+func (s *snapshot) ResourceByURN(urn URN) Resource           { return s.ctx.URNRes[urn] }
 func (s *snapshot) ResourceByObject(obj *rt.Object) Resource { return s.ctx.ObjRes[obj] }
 
-// createResources uses a graph to create monikers and resource objects for every resource within.  It
-// returns two maps for further use: a map of vertex to its new resource object, and a map of vertex to its moniker.
+// createResources uses a graph to create URNs and resource objects for every resource within.  It
+// returns two maps for further use: a map of vertex to its new resource object, and a map of vertex to its URN.
 func createResources(ctx *Context, husk tokens.QName, heap *heapstate.Heap, resobjs []*rt.Object) ([]Resource, error) {
 	var resources []Resource
 	for _, resobj := range resobjs {
-		// Create an object resource without a moniker.
+		// Create an object resource without a URN.
 		res := NewObjectResource(ctx, resobj)
 
 		// Now fetch this resource's name by looking up its provider and doing an RPC.
@@ -104,20 +104,20 @@ func createResources(ctx *Context, husk tokens.QName, heap *heapstate.Heap, reso
 			return nil, err
 		}
 
-		// Now compute a unique moniker for this object and ensure we haven't had any collisions.
+		// Now compute a unique URN for this object and ensure we haven't had any collisions.
 		alloc := heap.Alloc(resobj)
-		moniker := NewMoniker(husk, alloc.Mod.Tok, t, name)
-		glog.V(7).Infof("Resource moniker computed: %v", moniker)
-		if _, exists := ctx.MksRes[moniker]; exists {
-			// If this moniker is already in use, issue an error, ignore this one, and break.  The break is necessary
-			// because subsequent resources might contain references to this moniker and would fail to find it.
-			ctx.Diag.Errorf(errors.ErrorDuplicateMonikerNames.At(alloc.Loc), moniker)
+		urn := NewURN(husk, alloc.Mod.Tok, t, name)
+		glog.V(7).Infof("Resource URN computed: %v", urn)
+		if _, exists := ctx.URNRes[urn]; exists {
+			// If this URN is already in use, issue an error, ignore this one, and break.  The break is necessary
+			// because subsequent resources might contain references to this URN and would fail to find it.
+			ctx.Diag.Errorf(errors.ErrorDuplicateURNNames.At(alloc.Loc), urn)
 			break
 		} else {
-			res.SetMoniker(moniker)
+			res.SetURN(urn)
 			ctx.ObjRes[resobj] = res
-			ctx.MksRes[moniker] = res
-			ctx.ObjMks[resobj] = moniker
+			ctx.URNRes[urn] = res
+			ctx.ObjURN[resobj] = urn
 		}
 		resources = append(resources, res)
 	}

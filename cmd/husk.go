@@ -631,12 +631,12 @@ func printStep(b *bytes.Buffer, step resource.Step, summary bool, indent string)
 	// First print out the operation's prefix.
 	b.WriteString(step.Op().Prefix())
 
-	// Next print the resource moniker, properties, etc.
+	// Next print the resource URN, properties, etc.
 	printResourceHeader(b, step.Old(), step.New(), indent)
 	b.WriteString(step.Op().Suffix())
 	var replaces []resource.PropertyKey
 	if step.Old() != nil {
-		m := step.Old().Moniker()
+		m := step.Old().URN()
 		replaceMap := step.Plan().Replaces()
 		replaces = replaceMap[m]
 	}
@@ -662,20 +662,20 @@ func printResourceProperties(b *bytes.Buffer, old resource.Resource, new resourc
 	computed resource.PropertyMap, replaces []resource.PropertyKey, summary bool, indent string) {
 	indent += detailsIndent
 
-	// Print out the moniker and, if present, the ID, as "pseudo-properties".
+	// Print out the URN and, if present, the ID, as "pseudo-properties".
 	var id resource.ID
-	var moniker resource.Moniker
+	var URN resource.URN
 	if old == nil {
 		id = new.ID()
-		moniker = new.Moniker()
+		URN = new.URN()
 	} else {
 		id = old.ID()
-		moniker = old.Moniker()
+		URN = old.URN()
 	}
 	if id != "" {
 		b.WriteString(fmt.Sprintf("%s[id=%s]\n", indent, string(id)))
 	}
-	b.WriteString(fmt.Sprintf("%s[mk=%s]\n", indent, string(moniker)))
+	b.WriteString(fmt.Sprintf("%s[urn=%s]\n", indent, URN.Name()))
 
 	if !summary {
 		// Print all of the properties associated with this resource.

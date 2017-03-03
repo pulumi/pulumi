@@ -21,7 +21,7 @@ type DeploymentRecord struct {
 	Reftag    *string                `json:"reftag,omitempty"`    // the ref alias, if any (`#ref` by default).
 	Package   tokens.Package         `json:"package"`             // the nut that this husk belongs to.
 	Args      *core.Args             `json:"args,omitempty"`      // the blueprint args for graph creation.
-	Resources *ResourceDeploymentMap `json:"resources,omitempty"` // a map of monikers to resource vertices.
+	Resources *ResourceDeploymentMap `json:"resources,omitempty"` // a map of URNs to resource vertices.
 }
 
 // DefaultDeploymentReftag is the default ref tag for intra-graph edges.
@@ -51,9 +51,9 @@ func serializeDeploymentRecord(snap Snapshot, reftag string) *DeploymentRecord {
 	if snapres := snap.Resources(); len(snapres) > 0 {
 		resm = NewResourceDeploymentMap()
 		for _, res := range snap.Resources() {
-			m := res.Moniker()
-			contract.Assertf(string(m) != "", "Unexpected empty resource moniker")
-			contract.Assertf(!resm.Has(m), "Unexpected duplicate resource moniker '%v'", m)
+			m := res.URN()
+			contract.Assertf(string(m) != "", "Unexpected empty resource URN")
+			contract.Assertf(!resm.Has(m), "Unexpected duplicate resource URN '%v'", m)
 			resm.Add(m, serializeResourceDeployment(res, reftag))
 		}
 	}
@@ -136,7 +136,7 @@ func serializeProperty(prop PropertyValue, reftag string) (interface{}, bool) {
 		return serializeProperties(prop.ObjectValue(), reftag)
 	}
 
-	// Morph resources into their equivalent `{ "#ref": "<moniker>" }` form.
+	// Morph resources into their equivalent `{ "#ref": "<URN>" }` form.
 	if prop.IsResource() {
 		return map[string]string{
 			reftag: string(prop.ResourceValue()),
@@ -171,11 +171,11 @@ func deserializeProperty(v interface{}, reftag string) PropertyValue {
 			}
 			return NewPropertyArray(arr)
 		case map[string]interface{}:
-			// If the map has a single entry and it is the reftag, this is a moniker.
+			// If the map has a single entry and it is the reftag, this is a URN.
 			if len(w) == 1 {
 				if tag, has := w[reftag]; has {
 					if tagstr, isstring := tag.(string); isstring {
-						return NewPropertyResource(Moniker(tagstr))
+						return NewPropertyResource(URN(tagstr))
 					}
 				}
 			}
@@ -191,29 +191,29 @@ func deserializeProperty(v interface{}, reftag string) PropertyValue {
 	return NewPropertyNull()
 }
 
-// ResourceDeploymentMap is a map of moniker to resource, that also preserves a stable order of its keys.  This ensures
+// ResourceDeploymentMap is a map of URN to resource, that also preserves a stable order of its keys.  This ensures
 // enumerations are ordered deterministically, versus Go's built-in map type whose enumeration is randomized.
 // Additionally, because of this stable ordering, marshaling to and from JSON also preserves the order of keys.
 type ResourceDeploymentMap struct {
-	m    map[Moniker]*ResourceDeployment
-	keys []Moniker
+	m    map[URN]*ResourceDeployment
+	keys []URN
 }
 
 func NewResourceDeploymentMap() *ResourceDeploymentMap {
-	return &ResourceDeploymentMap{m: make(map[Moniker]*ResourceDeployment)}
+	return &ResourceDeploymentMap{m: make(map[URN]*ResourceDeployment)}
 }
 
-func (m *ResourceDeploymentMap) Keys() []Moniker { return m.keys }
-func (m *ResourceDeploymentMap) Len() int        { return len(m.keys) }
+func (m *ResourceDeploymentMap) Keys() []URN { return m.keys }
+func (m *ResourceDeploymentMap) Len() int    { return len(m.keys) }
 
-func (m *ResourceDeploymentMap) Add(k Moniker, v *ResourceDeployment) {
+func (m *ResourceDeploymentMap) Add(k URN, v *ResourceDeployment) {
 	_, has := m.m[k]
 	contract.Assertf(!has, "Unexpected duplicate key '%v' added to map")
 	m.m[k] = v
 	m.keys = append(m.keys, k)
 }
 
-func (m *ResourceDeploymentMap) Delete(k Moniker) {
+func (m *ResourceDeploymentMap) Delete(k URN) {
 	_, has := m.m[k]
 	contract.Assertf(has, "Unexpected delete of non-existent key key '%v'")
 	delete(m.m, k)
@@ -227,29 +227,29 @@ func (m *ResourceDeploymentMap) Delete(k Moniker) {
 	}
 }
 
-func (m *ResourceDeploymentMap) Get(k Moniker) (*ResourceDeployment, bool) {
+func (m *ResourceDeploymentMap) Get(k URN) (*ResourceDeployment, bool) {
 	v, has := m.m[k]
 	return v, has
 }
 
-func (m *ResourceDeploymentMap) Has(k Moniker) bool {
+func (m *ResourceDeploymentMap) Has(k URN) bool {
 	_, has := m.m[k]
 	return has
 }
 
-func (m *ResourceDeploymentMap) Must(k Moniker) *ResourceDeployment {
+func (m *ResourceDeploymentMap) Must(k URN) *ResourceDeployment {
 	v, has := m.m[k]
 	contract.Assertf(has, "Expected key '%v' to exist in this map", k)
 	return v
 }
 
-func (m *ResourceDeploymentMap) Set(k Moniker, v *ResourceDeployment) {
+func (m *ResourceDeploymentMap) Set(k URN, v *ResourceDeployment) {
 	_, has := m.m[k]
 	contract.Assertf(has, "Expected key '%v' to exist in this map for setting an element", k)
 	m.m[k] = v
 }
 
-func (m *ResourceDeploymentMap) SetOrAdd(k Moniker, v *ResourceDeployment) {
+func (m *ResourceDeploymentMap) SetOrAdd(k URN, v *ResourceDeployment) {
 	if _, has := m.m[k]; has {
 		m.Set(k, v)
 	} else {
@@ -258,7 +258,7 @@ func (m *ResourceDeploymentMap) SetOrAdd(k Moniker, v *ResourceDeployment) {
 }
 
 type ResourceDeploymentKeyValue struct {
-	Key   Moniker
+	Key   URN
 	Value *ResourceDeployment
 }
 
@@ -299,7 +299,7 @@ func (m *ResourceDeploymentMap) MarshalJSON() ([]byte, error) {
 
 func (m *ResourceDeploymentMap) UnmarshalJSON(b []byte) error {
 	contract.Assert(m.m == nil)
-	m.m = make(map[Moniker]*ResourceDeployment)
+	m.m = make(map[URN]*ResourceDeployment)
 
 	// Do a pass and read keys and values in the right order.
 	rdr := bytes.NewReader(b)
@@ -313,7 +313,7 @@ func (m *ResourceDeploymentMap) UnmarshalJSON(b []byte) error {
 	}
 	contract.Assert(opencurly.(json.Delim) == '{')
 
-	// Parse out every resource key (Moniker) and element (*ResourceDeployment):
+	// Parse out every resource key (URN) and element (*ResourceDeployment):
 	for dec.More() {
 		// See if we've reached the closing '}'; if yes, chew on it and break.
 		token, err := dec.Token()
@@ -325,7 +325,7 @@ func (m *ResourceDeploymentMap) UnmarshalJSON(b []byte) error {
 			break
 		}
 
-		k := Moniker(token.(string))
+		k := URN(token.(string))
 		contract.Assert(dec.More())
 		var v *ResourceDeployment
 		if err := dec.Decode(&v); err != nil {

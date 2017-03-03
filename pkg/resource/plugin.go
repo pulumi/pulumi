@@ -145,8 +145,8 @@ func (p *Plugin) Name(t tokens.Type, props PropertyMap) (tokens.QName, error) {
 	req := &cocorpc.NameRequest{
 		Type: string(t),
 		Properties: MarshalProperties(p.ctx, props, MarshalOptions{
-			PermitOlds:  true, // permit old monikers, since this is pre-update.
-			RawMonikers: true, // often used during moniker creation; IDs won't be ready.
+			PermitOlds: true, // permit old URNs, since this is pre-update.
+			RawURNs:    true, // often used during URN creation; IDs won't be ready.
 		}),
 	}
 
@@ -215,7 +215,7 @@ func (p *Plugin) Update(id ID, t tokens.Type, olds PropertyMap, news PropertyMap
 		Id:   string(id),
 		Type: string(t),
 		Olds: MarshalProperties(p.ctx, olds, MarshalOptions{
-			PermitOlds: true, // permit old monikers since these are the old values.
+			PermitOlds: true, // permit old URNs since these are the old values.
 		}),
 		News: MarshalProperties(p.ctx, news, MarshalOptions{}),
 	}
@@ -242,10 +242,10 @@ func (p *Plugin) UpdateImpact(id ID, t tokens.Type,
 		Id:   string(id),
 		Type: string(t),
 		Olds: MarshalProperties(p.ctx, olds, MarshalOptions{
-			RawMonikers: true, // often used during moniker creation; IDs won't be ready.
+			RawURNs: true, // often used during URN creation; IDs won't be ready.
 		}),
 		News: MarshalProperties(p.ctx, news, MarshalOptions{
-			RawMonikers: true, // often used during moniker creation; IDs won't be ready.
+			RawURNs: true, // often used during URN creation; IDs won't be ready.
 		}),
 	}
 

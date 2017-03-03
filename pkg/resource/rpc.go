@@ -14,12 +14,12 @@ import (
 
 // MarshalOptions controls the marshaling of RPC structures.
 type MarshalOptions struct {
-	PermitOlds  bool // true to permit old monikers in the properties (e.g., for pre-update).
-	RawMonikers bool // true to marshal monikers "as-is"; often used when ID mappings aren't known yet.
+	PermitOlds bool // true to permit old URNs in the properties (e.g., for pre-update).
+	RawURNs    bool // true to marshal URNs "as-is"; often used when ID mappings aren't known yet.
 }
 
-// MarshalProperties marshals a resource's property map as a "JSON-like" protobuf structure.  Any monikers are replaced
-// with their resource IDs during marshaling; it is an error to marshal a moniker for a resource without an ID.
+// MarshalProperties marshals a resource's property map as a "JSON-like" protobuf structure.  Any URNs are replaced
+// with their resource IDs during marshaling; it is an error to marshal a URN for a resource without an ID.
 func MarshalProperties(ctx *Context, props PropertyMap, opts MarshalOptions) *structpb.Struct {
 	result := &structpb.Struct{
 		Fields: make(map[string]*structpb.Value),
@@ -79,21 +79,21 @@ func MarshalPropertyValue(ctx *Context, v PropertyValue, opts MarshalOptions) (*
 	} else if v.IsResource() {
 		var wire string
 		m := v.ResourceValue()
-		if opts.RawMonikers {
+		if opts.RawURNs {
 			wire = string(m)
 		} else {
 			var id ID
-			if res, has := ctx.MksRes[m]; has {
+			if res, has := ctx.URNRes[m]; has {
 				id = res.ID() // found a new resource with this ID, use it.
-			} else if oldid, has := ctx.MksOldIDs[m]; opts.PermitOlds && has {
+			} else if oldid, has := ctx.URNOldIDs[m]; opts.PermitOlds && has {
 				id = oldid // found an old resource, maybe deleted, so use that.
 			} else {
-				contract.Failf("Expected resource moniker '%v' to exist at marshal time", m)
+				contract.Failf("Expected resource URN '%v' to exist at marshal time", m)
 			}
-			contract.Assertf(id != "", "Expected resource moniker '%v' to have an ID at marshal time", m)
+			contract.Assertf(id != "", "Expected resource URN '%v' to have an ID at marshal time", m)
 			wire = string(id)
 		}
-		glog.V(7).Infof("Serializing resource moniker '%v' as '%v' (raw=%v)", m, wire, opts.RawMonikers)
+		glog.V(7).Infof("Serializing resource URN '%v' as '%v' (raw=%v)", m, wire, opts.RawURNs)
 		return &structpb.Value{
 			Kind: &structpb.Value_StringValue{
 				StringValue: wire,

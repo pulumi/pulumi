@@ -24,13 +24,13 @@ type ID string
 // Resource is an instance of a resource with an ID, type, and bag of state.
 type Resource interface {
 	ID() ID                  // the resource's unique ID, assigned by the resource provider (or blank if uncreated).
-	Moniker() Moniker        // the resource's object moniker, a human-friendly, unique name for the resource.
+	URN() URN                // the resource's object urn, a human-friendly, unique name for the resource.
 	Type() tokens.Type       // the resource's type.
 	Properties() PropertyMap // the resource's property map.
 	HasID() bool             // returns true if the resource has been assigned an ID.
 	SetID(id ID)             // assignes an ID to this resource, for those under creation.
-	HasMoniker() bool        // returns true if the resource has been assigned  moniker.
-	SetMoniker(m Moniker)    // assignes a moniker to this resource, for those under creation.
+	HasURN() bool            // returns true if the resource has been assigned  urn.
+	SetURN(m URN)            // assignes a urn to this resource, for those under creation.
 }
 
 // ResourceState is returned when an error has occurred during a resource provider operation.  It indicates whether the
@@ -47,13 +47,13 @@ func IsResourceVertex(v *heapstate.ObjectVertex) bool { return IsResourceType(v.
 
 type resource struct {
 	id         ID          // the resource's unique ID, assigned by the resource provider (or blank if uncreated).
-	moniker    Moniker     // the resource's object moniker, a human-friendly, unique name for the resource.
+	urn        URN         // the resource's object urn, a human-friendly, unique name for the resource.
 	t          tokens.Type // the resource's type.
 	properties PropertyMap // the resource's property map.
 }
 
 func (r *resource) ID() ID                  { return r.id }
-func (r *resource) Moniker() Moniker        { return r.moniker }
+func (r *resource) URN() URN                { return r.urn }
 func (r *resource) Type() tokens.Type       { return r.t }
 func (r *resource) Properties() PropertyMap { return r.properties }
 
@@ -63,17 +63,17 @@ func (r *resource) SetID(id ID) {
 	r.id = id
 }
 
-func (r *resource) HasMoniker() bool { return (string(r.moniker) != "") }
-func (r *resource) SetMoniker(m Moniker) {
-	contract.Requiref(!r.HasMoniker(), "moniker", "empty")
-	r.moniker = m
+func (r *resource) HasURN() bool { return (string(r.urn) != "") }
+func (r *resource) SetURN(m URN) {
+	contract.Requiref(!r.HasURN(), "urn", "empty")
+	r.urn = m
 }
 
 // NewResource creates a new resource from the information provided.
-func NewResource(id ID, moniker Moniker, t tokens.Type, properties PropertyMap) Resource {
+func NewResource(id ID, urn URN, t tokens.Type, properties PropertyMap) Resource {
 	return &resource{
 		id:         id,
-		moniker:    moniker,
+		urn:        urn,
 		t:          t,
 		properties: properties,
 	}
@@ -85,9 +85,9 @@ func NewObjectResource(ctx *Context, obj *rt.Object) Resource {
 	t := obj.Type()
 	contract.Assert(IsResourceType(t))
 
-	// Extract the moniker.  This must already exist.
-	m, hasm := ctx.ObjMks[obj]
-	contract.Assertf(!hasm, "Object already assigned a moniker '%v'; double allocation detected", m)
+	// Extract the urn.  This must already exist.
+	urn, hasm := ctx.ObjURN[obj]
+	contract.Assertf(!hasm, "Object already assigned a urn '%v'; double allocation detected", urn)
 
 	// Do a deep copy of the resource properties.  This ensures property serializability.
 	props := cloneObject(ctx, obj)
@@ -101,7 +101,7 @@ func NewObjectResource(ctx *Context, obj *rt.Object) Resource {
 
 // cloneObject creates a property map out of a runtime object.  The result is fully serializable in the sense that it
 // can be stored in a JSON or YAML file, serialized over an RPC interface, etc.  In particular, any references to other
-// resources are replaced with their moniker equivalents, which the runtime understands.
+// resources are replaced with their urn equivalents, which the runtime understands.
 func cloneObject(ctx *Context, obj *rt.Object) PropertyMap {
 	contract.Assert(obj != nil)
 	src := obj.PropertyValues()
@@ -120,10 +120,10 @@ func cloneObject(ctx *Context, obj *rt.Object) PropertyMap {
 func cloneObjectValue(ctx *Context, obj *rt.Object) (PropertyValue, bool) {
 	t := obj.Type()
 	if IsResourceType(t) {
-		// For resources, simply look up the moniker from the resource map.
-		m, hasm := ctx.ObjMks[obj]
+		// For resources, simply look up the urn from the resource map.
+		urn, hasm := ctx.ObjURN[obj]
 		contract.Assertf(hasm, "Missing object reference; possible out of order dependency walk")
-		return NewPropertyResource(m), true
+		return NewPropertyResource(urn), true
 	}
 
 	switch t {

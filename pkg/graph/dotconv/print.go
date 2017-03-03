@@ -35,7 +35,7 @@ func Print(g graph.Graph, w io.Writer) error {
 	}
 
 	// For now, we auto-generate IDs.
-	// TODO[pulumi/coconut#76]: use the object monikers instead, once we have them.
+	// TODO[pulumi/coconut#76]: use the object URNs instead, once we have them.
 	c := 0
 	ids := make(map[graph.Vertex]string)
 	getID := func(v graph.Vertex) string {
