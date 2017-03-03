@@ -3,6 +3,8 @@
 package resource
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"reflect"
 
 	"github.com/golang/glog"
@@ -157,4 +159,19 @@ func cloneObjectValue(ctx *Context, obj *rt.Object) (PropertyValue, bool) {
 	//     kinds because objects contain things like constructors, methods, etc.  But we may want to ratchet this a bit.
 	glog.V(5).Infof("Ignoring object value of type '%v': unrecognized kind %v", t, reflect.TypeOf(t))
 	return PropertyValue{}, false
+}
+
+// NewUniqueHex generates a new "random" hex string for use by resource providers.  It has the given optional prefix and
+// the total length is capped to the maxlen.  Note that capping to maxlen necessarily increases the risk of collisions.
+func NewUniqueHex(prefix string, randlen int, maxlen int) string {
+	bs := make([]byte, randlen)
+	n, err := rand.Read(bs)
+	contract.Assert(err == nil)
+	contract.Assert(n == len(bs))
+
+	str := prefix + hex.EncodeToString(bs)
+	if len(str) > maxlen {
+		str = str[:maxlen]
+	}
+	return str
 }

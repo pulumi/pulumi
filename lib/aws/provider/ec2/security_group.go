@@ -3,6 +3,7 @@
 package ec2
 
 import (
+	"crypto/sha1"
 	"errors"
 	"fmt"
 
@@ -51,12 +52,12 @@ func (p *sgProvider) Create(ctx context.Context, req *cocorpc.CreateRequest) (*c
 		return nil, err
 	}
 
-	// Make the security group creation parameters.
-	// TODO: the name needs to be figured out; CloudFormation doesn't expose it, presumably due to its requirement to
-	//     be unique.  I think we can use the moniker here, but that isn't necessarily stable.  UUID?
-	fmt.Printf("Creating EC2 security group\n")
+	// Make the security group creation parameters.  The name of the group is auto-generated using a random hash so
+	// that we can avoid conflicts with existing similarly named groups.  For readability, we prefix the real name.
+	name := resource.NewUniqueHex(secgrp.Name+"-", maxSecurityGroupName, sha1.Size)
+	fmt.Printf("Creating EC2 security group with name '%v'\n", name)
 	create := &ec2.CreateSecurityGroupInput{
-		GroupName:   &secgrp.Name, // TODO: consider using the moniker for greater uniqueness.
+		GroupName:   aws.String(name),
 		Description: &secgrp.Description,
 		VpcId:       secgrp.VPCID,
 	}
@@ -292,12 +293,19 @@ type securityGroup struct {
 	Ingress     *[]securityGroupRule // a list of security group ingress rules.
 }
 
+// constants for all of the security group property names.
 const (
 	securityGroupName        = "name"
 	securityGroupDescription = "groupDescription"
 	securityGroupVPCID       = "vpc"
 	securityGroupEgress      = "securityGroupEgress"
 	securityGroupIngress     = "securityGroupIngress"
+)
+
+// constants for the various security group limits.
+const (
+	maxSecurityGroupName        = 255
+	maxSecurityGroupDescription = 255
 )
 
 // newSecurityGroup creates a new instance bag of state, validating required properties if asked to do so.
