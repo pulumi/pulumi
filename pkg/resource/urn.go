@@ -56,7 +56,7 @@ const replaceURNSuffix = URN("#<new-id(replace)>")
 func (urn URN) Name() string {
 	urns := string(urn)
 	contract.Assert(strings.HasPrefix(urns, URNPrefix))
-	return urns[len(URNPrefix)+1:]
+	return urns[len(URNPrefix):]
 }
 
 // Replace returns a new, modified replacement URN (used to tag resources that are meant to be replaced).
