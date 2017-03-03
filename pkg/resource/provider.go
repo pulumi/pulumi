@@ -21,6 +21,8 @@ import (
 type Provider interface {
 	// Closer closes any underlying OS resources associated with this provider (like processes, RPC channels, etc).
 	io.Closer
+	// Check validates that the given property bag is valid for a resource of the given type.
+	Check(t tokens.Type, props PropertyMap) ([]CheckFailure, error)
 	// Name names a given resource.  Sometimes this will be assigned by a developer, and so the provider
 	// simply fetches it from the property bag; other times, the provider will assign this based on its own algorithm.
 	// In any case, resources with the same name must be safe to use interchangeably with one another.
@@ -35,4 +37,10 @@ type Provider interface {
 	UpdateImpact(id ID, t tokens.Type, olds PropertyMap, news PropertyMap) ([]string, PropertyMap, error)
 	// Delete tears down an existing resource.
 	Delete(id ID, t tokens.Type) (error, ResourceState)
+}
+
+// CheckFailure indicates that a call to check failed; it contains the property and reason for the failure.
+type CheckFailure struct {
+	Property PropertyKey // the property that failed checking.
+	Reason   string      // the reason the property failed to check.
 }

@@ -244,6 +244,9 @@ func plan(cmd *cobra.Command, info *huskCmdInfo, delete bool) *planResult {
 		result.C.Diag().Errorf(errors.ErrorCantCreateSnapshot, err)
 		return nil
 	}
+	if !info.Ctx.Diag.Success() {
+		return nil
+	}
 	return &planResult{
 		compileResult: result,
 		Info:          info,

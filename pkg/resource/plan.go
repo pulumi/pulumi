@@ -6,6 +6,7 @@ import (
 	"github.com/golang/glog"
 
 	"github.com/pulumi/coconut/pkg/compiler/core"
+	"github.com/pulumi/coconut/pkg/compiler/errors"
 	"github.com/pulumi/coconut/pkg/diag/colors"
 	"github.com/pulumi/coconut/pkg/graph"
 	"github.com/pulumi/coconut/pkg/tokens"
@@ -246,13 +247,7 @@ func newPlan(ctx *Context, old Snapshot, new Snapshot) (*plan, error) {
 		glog.V(7).Infof("Creating plan with #old=%v #new=%v\n", len(pb.OldRes), len(pb.NewRes))
 	}
 
-	// First diff the snapshots; in a nutshell:
-	//
-	//     - Anything in old but not new is a delete
-	//     - Anything in new but not old is a create
-	//     - For those things in both new and old, any changed properties imply an update
-	//
-	// Any property changes that require replacement are applied, recursively, in a cascading manner.
+	// Initialize the builder's maps used by everything below (olds, news, dependencies).
 	for _, old := range pb.OldRes {
 		m := old.URN()
 		pb.Olds[m] = old
@@ -266,7 +261,31 @@ func newPlan(ctx *Context, old Snapshot, new Snapshot) (*plan, error) {
 		pb.News[new.URN()] = new
 	}
 
-	// Find those things in old but not new, and add them to the delete queue.
+	// Do a quick pass over the new resources and make sure properties pass muster.
+	for _, new := range pb.NewRes {
+		prov, err := pb.P.Provider(new)
+		if err != nil {
+			return nil, err
+		}
+		failures, err := prov.Check(new.Type(), new.Properties())
+		if err != nil {
+			return nil, err
+		}
+		for _, failure := range failures {
+			ctx.Diag.Errorf(errors.ErrorResourcePropertyValueInvalid,
+				new.URN(), failure.Property, failure.Reason)
+		}
+	}
+
+	// Here's the real meat of the process: diffing the snapshots, looking for:
+	//
+	//     - Anything in old but not new is a delete
+	//     - Anything in new but not old is a create
+	//     - For those things in both new and old, any changed properties imply an update
+	//
+	// Any property changes that require replacement are applied, recursively, in a cascading manner.
+
+	// First, those things in old but not new, and add them to the delete queue.
 	for _, old := range pb.OldRes {
 		m := old.URN()
 		if _, hasnew := pb.News[m]; !hasnew {
@@ -276,7 +295,7 @@ func newPlan(ctx *Context, old Snapshot, new Snapshot) (*plan, error) {
 		}
 	}
 
-	// Find creates and updates: creates are those in new but not old, and updates are those in both.
+	// Next, creates and updates: creates are those in new but not old, and updates are those in both.
 	for _, new := range pb.NewRes {
 		m := new.URN()
 		if old, hasold := pb.Olds[m]; hasold {

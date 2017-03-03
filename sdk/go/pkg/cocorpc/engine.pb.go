@@ -11,6 +11,9 @@ It is generated from these files:
 
 It has these top-level messages:
 	LogRequest
+	CheckRequest
+	CheckResponse
+	CheckFailure
 	NameRequest
 	NameResponse
 	CreateRequest

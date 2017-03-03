@@ -139,6 +139,31 @@ func execPlugin(name string) (*os.Process, io.WriteCloser, io.ReadCloser, io.Rea
 	return cmd.Process, in, out, err, nil
 }
 
+// Check validates that the given property bag is valid for a resource of the given type.
+func (p *Plugin) Check(t tokens.Type, props PropertyMap) ([]CheckFailure, error) {
+	glog.V(7).Infof("Plugin[%v].Check(t=%v,#props=%v) executing", p.pkg, t, len(props))
+	req := &cocorpc.CheckRequest{
+		Type: string(t),
+		Properties: MarshalProperties(p.ctx, props, MarshalOptions{
+			PermitOlds: true, // permit old URNs, since this is pre-update.
+			RawURNs:    true, // often used during URN creation; IDs won't be ready.
+		}),
+	}
+
+	resp, err := p.client.Check(p.ctx.Request(), req)
+	if err != nil {
+		glog.V(7).Infof("Plugin[%v].Check(t=%v,...) failed: err=%v", p.pkg, t)
+		return nil, err
+	}
+
+	var failures []CheckFailure
+	for _, failure := range resp.GetFailures() {
+		failures = append(failures, CheckFailure{PropertyKey(failure.Property), failure.Reason})
+	}
+	glog.V(7).Infof("Plugin[%v].Check(t=%v,...) success: failures=#%v", p.pkg, t, len(failures))
+	return failures, nil
+}
+
 // Name names a given resource.
 func (p *Plugin) Name(t tokens.Type, props PropertyMap) (tokens.QName, error) {
 	glog.V(7).Infof("Plugin[%v].Name(t=%v,#props=%v) executing", p.pkg, t, len(props))
