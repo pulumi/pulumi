@@ -15,7 +15,7 @@ func MaybeCheckError(failures []*cocorpc.CheckFailure) error {
 		return nil
 	}
 
-	str := fmt.Sprintf("%d of this security group rule's properties failed validation:")
+	str := fmt.Sprintf("%d of this security group rule's properties failed validation:", len(failures))
 	for _, failure := range failures {
 		str += fmt.Sprintf("\n\t%v: %v", failure.Property, failure.Reason)
 	}
