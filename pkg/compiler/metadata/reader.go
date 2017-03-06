@@ -18,7 +18,7 @@ import (
 type Reader interface {
 	core.Phase
 
-	// ReadPackage parses a NutPack from the given document.  If an error occurs, the return value will be nil.  It
+	// ReadPackage parses a CocoPack from the given document.  If an error occurs, the return value will be nil.  It
 	// is expected that errors are conveyed using the diag.Sink interface.
 	ReadPackage(doc *diag.Document) *pack.Package
 	// ReadWorkspace parses workspace settings from the given document.  If an error occurs, the return value will be
@@ -39,19 +39,19 @@ func (r *reader) Diag() diag.Sink {
 }
 
 func (r *reader) ReadPackage(doc *diag.Document) *pack.Package {
-	glog.Infof("Reading NutPack: %v (len(body)=%v)", doc.File, len(doc.Body))
+	glog.Infof("Reading CocoPack: %v (len(body)=%v)", doc.File, len(doc.Body))
 	contract.Assert(len(doc.Body) != 0)
 	if glog.V(2) {
-		defer glog.V(2).Infof("Reading NutPack '%v' completed w/ %v warnings and %v errors",
+		defer glog.V(2).Infof("Reading CocoPack '%v' completed w/ %v warnings and %v errors",
 			doc.File, r.Diag().Warnings(), r.Diag().Errors())
 	}
 
 	// We support many file formats.  Detect the file extension and deserialize the contents.
 	m, has := encoding.Marshalers[doc.Ext()]
-	contract.Assertf(has, "No marshaler registered for this Nutfile extension: %v", doc.Ext())
+	contract.Assertf(has, "No marshaler registered for this Cocofile extension: %v", doc.Ext())
 	pkg, err := encoding.Decode(m, doc.Body)
 	if err != nil {
-		r.Diag().Errorf(errors.ErrorIllegalNutfileSyntax.At(doc), err)
+		r.Diag().Errorf(errors.ErrorIllegalCocofileSyntax.At(doc), err)
 		// TODO[pulumi/coconut#14]: issue an error per issue found in the file with line/col numbers.
 		return nil
 	}
@@ -59,7 +59,7 @@ func (r *reader) ReadPackage(doc *diag.Document) *pack.Package {
 	// Remember that this package came from this document.
 	pkg.Doc = doc
 
-	glog.V(3).Infof("NutPack %v parsed: name=%v", doc.File, pkg.Name)
+	glog.V(3).Infof("CocoPack %v parsed: name=%v", doc.File, pkg.Name)
 	return pkg
 }
 

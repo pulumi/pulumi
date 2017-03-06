@@ -17,12 +17,12 @@ export class PackageLoader {
 
     // loadCurrent searches for the Coconut metadata for the currently compiled package in the given directory.
     public loadCurrent(root: string): Promise<PackageResult> {
-        return this.loadCore(root, [ pack.nutfileBase ], false);
+        return this.loadCore(root, [ pack.cocofileBase ], false);
     }
 
-    // loadDependency searches for the NutPackage metadata for a dependency, starting from the given directory.
+    // loadDependency searches for the CocoPackage metadata for a dependency, starting from the given directory.
     public loadDependency(root: string): Promise<PackageResult> {
-        return this.loadCore(root, [ pack.nutpackBase, pack.nutfileBase ], true);
+        return this.loadCore(root, [ pack.cocopackBase, pack.cocofileBase ], true);
     }
 
     // loadCore searches for Coconut metadata from a given root directory.  If the upwards argument is true, it will
@@ -67,7 +67,7 @@ export class PackageLoader {
                             blob = unmarshaler[1](raw);
                         }
                         catch (err) {
-                            diagnostics.push(dctx.newMalformedNutfileError(path, err));
+                            diagnostics.push(dctx.newMalformedCocofileError(path, err));
                         }
                         break outer;
                     }
@@ -99,7 +99,7 @@ export class PackageLoader {
                     pkg = <pack.Package>blob;
                 }
                 else {
-                    diagnostics.push(dctx.newMissingNutpackNameError(blobPath!));
+                    diagnostics.push(dctx.newMissingCocopackNameError(blobPath!));
                 }
 
                 // Memoize the result so we don't need to continuously search for the same packages.
@@ -112,7 +112,7 @@ export class PackageLoader {
                     triedExts.push(unmarshaler[0]);
                 }
                 for (let filebase of filebases) {
-                    diagnostics.push(dctx.newMissingNutfileError(fspath.join(root, filebase), upwards, triedExts));
+                    diagnostics.push(dctx.newMissingCocofileError(fspath.join(root, filebase), upwards, triedExts));
                 }
             }
         }

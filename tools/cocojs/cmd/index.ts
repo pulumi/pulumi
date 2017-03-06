@@ -113,7 +113,7 @@ async function main(args: string[]): Promise<number> {
             else {
                 // If no output file was specified, try to use the output specified in the target project file, if any;
                 // otherwise, simply store the output in the current directory using the standard Nut.<ext> name.
-                outfile = cocojs.pack.nutpackBase+format;
+                outfile = cocojs.pack.cocopackBase+format;
                 if (result.preferredOut) {
                     outbase = result.preferredOut;
                     await fs.mkdirp(outbase);                            // ensure the output directory exists.

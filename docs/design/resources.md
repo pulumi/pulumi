@@ -1,17 +1,17 @@
 # Coconut Resources
 
 Coconut describes cloud resources and programs for purposes of provisioning, updating, and deleting.  From most of the
-NutPack and NutIL documentation, it won't yet be clear how this happens.  The NutPack and NutIL formats are intentionally
+CocoPack and CocoIL documentation, it won't yet be clear how this happens.  The CocoPack and CocoIL formats are intentionally
 general purpose and themselves contain no specific understanding of cloud resources.  This design note fills that gap.
 
 ## Overview
 
-Each NutPack contains program logic that encodes control flow and data creation.  This data comes in the form of the
+Each CocoPack contains program logic that encodes control flow and data creation.  This data comes in the form of the
 usual programming language runtime constructs, namely primitive data (numbers, strings, etc) and objects.  For example:
 
     let bucket = new s3.Bucket({ deletionPolicy: "retain" });
 
-The evaluation of such a NutIL program, and the resulting runtime objects and data, drives the creation of a CocoGL
+The evaluation of such a CocoIL program, and the resulting runtime objects and data, drives the creation of a CocoGL
 resource graph.  This is imply a directed acyclic graph (DAG) whose nodes represent resources and whose edges represent
 resource dependencies.  From this graph, the Coconut toolchain can determine how to provision the desired resources.
 
@@ -104,8 +104,8 @@ The `coco rename <old> <new>` command can be used to explicitly help the planner
 
 ## Resource Providers and Extensibility
 
-Each resource provider plugin corresponds to a single NutPack and defines one or more resource implementations
-written in Go, for all resources within that NutPack.  This plugin is loaded by name and runs inside of the Coconut
+Each resource provider plugin corresponds to a single CocoPack and defines one or more resource implementations
+written in Go, for all resources within that CocoPack.  This plugin is loaded by name and runs inside of the Coconut
 toolchain and runtime.  Each resource is identified dynamically by its fully qualified resource name.
 
 The `pulumi/coconut/pkg/resources/Provider` interface defines the set of operations a resource provider must define.  The

@@ -66,12 +66,12 @@ func New(ctx *core.Context) (W, error) {
 }
 
 type workspace struct {
-	ctx      *core.Context // the shared compiler context object.
-	path     string        // the path at which the workspace was constructed.
-	home     string        // the home directory to use for this workspace.
-	root     string        // the root of the workspace.
-	muspace  string        // a path to the Nutspace file, if any.
-	settings Workspace     // an optional bag of workspace-wide settings.
+	ctx       *core.Context // the shared compiler context object.
+	path      string        // the path at which the workspace was constructed.
+	home      string        // the home directory to use for this workspace.
+	root      string        // the root of the workspace.
+	cocospace string        // a path to the Nutspace file, if any.
+	settings  Workspace     // an optional bag of workspace-wide settings.
 }
 
 // initRootInfo finds the root of the workspace, caches it for fast lookups, and loads up any workspace settings.
@@ -86,12 +86,12 @@ func (w *workspace) initRootInfo() (string, error) {
 				return "", err
 			}
 			for _, file := range files {
-				// A muspace file delimits the root of the workspace.
-				muspace := filepath.Join(root, file.Name())
-				if IsNutspace(muspace, w.ctx.Diag) {
+				// A cocospace file delimits the root of the workspace.
+				cocospace := filepath.Join(root, file.Name())
+				if IsCocospace(cocospace, w.ctx.Diag) {
 					glog.V(3).Infof("Coconut workspace detected; setting root to %v", w.root)
 					w.root = root
-					w.muspace = muspace
+					w.cocospace = cocospace
 					break Search
 				}
 			}
@@ -114,12 +114,12 @@ func (w *workspace) Root() string         { return w.root }
 func (w *workspace) Settings() *Workspace { return &w.settings }
 
 func (w *workspace) ReadSettings() (*diag.Document, error) {
-	if w.muspace == "" {
+	if w.cocospace == "" {
 		return nil, nil
 	}
 
 	// If there is a workspace settings file in here, load it up before returning.
-	return diag.ReadDocument(w.muspace)
+	return diag.ReadDocument(w.cocospace)
 }
 
 func (w *workspace) DetectPackage() (string, error) {
@@ -166,14 +166,14 @@ func (w *workspace) DepCandidates(dep pack.PackageURL) []string {
 	// For each extension we support, add the same set of search locations.
 	cands := make([]string, 0, 4*len(encoding.Exts))
 	for _, ext := range encoding.Exts {
-		cands = append(cands, filepath.Join(w.root, base, name, Nutpack+ext))
-		cands = append(cands, filepath.Join(w.root, wsname, Nutpack+ext))
-		cands = append(cands, filepath.Join(w.root, Nutdeps, base, name, Nutpack+ext))
-		cands = append(cands, filepath.Join(w.root, Nutdeps, name, Nutpack+ext))
-		cands = append(cands, filepath.Join(w.home, Nutdeps, base, name, Nutpack+ext))
-		cands = append(cands, filepath.Join(w.home, Nutdeps, name, Nutpack+ext))
-		cands = append(cands, filepath.Join(InstallRoot(), InstallRootLibdir, base, name, Nutpack+ext))
-		cands = append(cands, filepath.Join(InstallRoot(), InstallRootLibdir, name, Nutpack+ext))
+		cands = append(cands, filepath.Join(w.root, base, name, Cocopack+ext))
+		cands = append(cands, filepath.Join(w.root, wsname, Cocopack+ext))
+		cands = append(cands, filepath.Join(w.root, CocopackDir, CocopackDepDir, base, name, Cocopack+ext))
+		cands = append(cands, filepath.Join(w.root, CocopackDir, CocopackDepDir, name, Cocopack+ext))
+		cands = append(cands, filepath.Join(w.home, CocopackDir, CocopackDepDir, base, name, Cocopack+ext))
+		cands = append(cands, filepath.Join(w.home, CocopackDir, CocopackDepDir, name, Cocopack+ext))
+		cands = append(cands, filepath.Join(InstallRoot(), InstallRootLibdir, base, name, Cocopack+ext))
+		cands = append(cands, filepath.Join(InstallRoot(), InstallRootLibdir, name, Cocopack+ext))
 	}
 	return cands
 }

@@ -18,16 +18,16 @@ import (
 	"github.com/pulumi/coconut/pkg/workspace"
 )
 
-func newHuskLsCmd() *cobra.Command {
+func newEnvLsCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:     "ls",
 		Aliases: []string{"list"},
-		Short:   "List all known husks",
+		Short:   "List all known environments",
 		Run: func(cmd *cobra.Command, args []string) {
-			path := workspace.HuskPath("")
+			path := workspace.EnvPath("")
 			files, err := ioutil.ReadDir(path)
 			if err != nil && !os.IsNotExist(err) {
-				exitError("could not read husks: %v", err)
+				exitError("could not read environments: %v", err)
 			}
 
 			fmt.Printf("%-20s %-48s %-12s\n", "NAME", "LAST DEPLOYMENT", "RESOURCE COUNT")
@@ -38,31 +38,31 @@ func newHuskLsCmd() *cobra.Command {
 				}
 
 				// Skip files without valid extensions (e.g., *.bak files).
-				huskfn := file.Name()
-				ext := filepath.Ext(huskfn)
+				envfn := file.Name()
+				ext := filepath.Ext(envfn)
 				if _, has := encoding.Marshalers[ext]; !has {
 					continue
 				}
 
 				// Create a new context and read in the husk information.
-				name := tokens.QName(huskfn[:len(huskfn)-len(ext)])
+				name := tokens.QName(envfn[:len(envfn)-len(ext)])
 				ctx := resource.NewContext(sink())
-				huskfile, husk, old := readHusk(ctx, name)
-				if husk == nil {
+				envfile, env, old := readEnv(ctx, name)
+				if env == nil {
 					contract.Assert(!ctx.Diag.Success())
-					continue // failure reading the husk information.
+					continue // failure reading the environment information.
 				}
 
 				// Now print out the name, last deployment time (if any), and resources (if any).
 				lastDeploy := "n/a"
 				resourceCount := "n/a"
-				if huskfile.Latest != nil {
-					lastDeploy = huskfile.Latest.Time.String()
+				if envfile.Latest != nil {
+					lastDeploy = envfile.Latest.Time.String()
 				}
 				if old != nil {
 					resourceCount = strconv.Itoa(len(old.Resources()))
 				}
-				fmt.Printf("%-20s %-48s %-12s\n", husk.Name, lastDeploy, resourceCount)
+				fmt.Printf("%-20s %-48s %-12s\n", env.Name, lastDeploy, resourceCount)
 			}
 		},
 	}

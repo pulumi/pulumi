@@ -1,32 +1,32 @@
-# Coconut Package Metadata (NutPack)
+# Coconut Package Metadata (CocoPack)
 
-This document describes the overall concepts, capabilities, and serialization format for NutPack.  It also describes the
-intermediate language (IL) and type system for NutPack, something we refer to as NutIL.
+This document describes the overall concepts, capabilities, and serialization format for CocoPack.  It also describes the
+intermediate language (IL) and type system for CocoPack, something we refer to as CocoIL.
 
 ## Overview
 
-Each NutPack file is called a NutPack and contains four things:
+Each CocoPack file is called a CocoPack and contains four things:
 
 * Package metadata.
 * Symbol names and tokens.
 * Module, type, function, and variable definitions.
 * Data and computations encoded in an intermediate language (IL).
 
-The metadata section describes attributes about the overall NutPack, like its name and version.
+The metadata section describes attributes about the overall CocoPack, like its name and version.
 
 All data and computations are fully bound to types, and ready for interpretation/execution.  Higher level CocoLang
 language compilers are responsible for performing this binding, and encoding the results.  Those results are symbol
-names and tokens that are registered and available for lookup within any given NutPack.  These symbols provide a
+names and tokens that are registered and available for lookup within any given CocoPack.  These symbols provide a
 quick, and binding logic-free, way of resolving any bound node to its target abstraction (module, type, or function).
 From there, any data or computations associated with those abstractions may be retrieved thanks to the definitions.
 
 Coconut's type system was designed to be supported by a broad cross-section of modern programming languages.  That said,
-it's entirely possible that NutPack exposes a construct that a certain language doesn't support.  Because NutIL is
+it's entirely possible that CocoPack exposes a construct that a certain language doesn't support.  Because CocoIL is
 designed for interpretation, determinism, and predictability -- and not runtime speed -- all type coercions are checked
 and throw an exception if an illegal coercion is attempted.  It is obviously a better choice to verify such conversions
 where possible in the CocoLang compilers themselves, however this approach naturally accomodates dynamic languages.
 
-NutPack is serialized in JSON/YAML form, although in the future we may explore more efficient file formats.  Examples in
+CocoPack is serialized in JSON/YAML form, although in the future we may explore more efficient file formats.  Examples in
 this document will use a YAML syntax for brevity's sake.
 
 ## Metadata
@@ -51,14 +51,14 @@ hashes and tags, while packages registered with a traditional package management
 ## Names
 
 As with most metadata formats, names are central to how things reference one another.  The two key concepts to
-understand in how NutPack and NutIL encode such references are *symbols* and *tokens*.
+understand in how CocoPack and CocoIL encode such references are *symbols* and *tokens*.
 
 ### Symbols
 
 Each symbol represents one of four kinds of abstractions: module, variable, function, or a class:
 
 * A *module* represents a collection of said abstractions.  No type, function, or const can exist outside of one.  Every
-  NutPack consists of at least one top-level module, with optional nested modules inside of it.
+  CocoPack consists of at least one top-level module, with optional nested modules inside of it.
 
 * A *variable* represents a named, typed storage location.
 
@@ -81,13 +81,13 @@ For example, `https://hub.coconut.com/acmecorp#latest` refers to the latest vers
 `https://github.com/aws/s3/Bucket` refers to the `Bucket` class exported from the `aws/s3` module (itself exported from
 the `aws` package).  The URLs are present so that package managers can download dependencies appropriately.
 
-Each NutPack contains a concrete list of module dependencies.  For example:
+Each CocoPack contains a concrete list of module dependencies.  For example:
 
     dependencies:
         - https://cocohub.com/aws#^1.0.6
         - https://cocohub.com/github#~1.5.2
 
-Now, throughout the rest of the NutPack, any symbol tokens prefixed with `https://cocohub.com/aws` and
+Now, throughout the rest of the CocoPack, any symbol tokens prefixed with `https://cocohub.com/aws` and
 `https://cocohub.com/github` will be resolved to the artifacts exported by the repsective packages.  Note that
 dependencies are required to be acyclic.
 
@@ -99,7 +99,7 @@ This version number ensures that the same dependency used for compilation is use
 multiple versioning formats (semantic versioning, Git SHA1 hash versioning, and "tip" (`latest`)).  Please refer to
 [Coconut Dependencies](deps.md) for more information about token and dependency names and the resolution process.
 
-NutPacks may export other symbols in the form of modules, types, variables, and functions as members.
+CocoPacks may export other symbols in the form of modules, types, variables, and functions as members.
 
 ### Naming Conventions
 
@@ -109,13 +109,13 @@ TODO: talk about identifier naming (including `.` prefix meaning "system usage")
 
 ## Types
 
-This section describes the core aspects of NutIL's type system.
+This section describes the core aspects of CocoIL's type system.
 
 There is a single top-type that may refer to any record or class value: the `any` type.
 
-All instances of classes in NutIL are called *objects*.  They are allocated on the heap, in map-like data structures that
+All instances of classes in CocoIL are called *objects*.  They are allocated on the heap, in map-like data structures that
 have strong type identity, facilitating dynamic and structural conversions, in addition to classical RTTI and OOP
-patterns.  In a sense, this is a lot like how ECMAScript works.  Furthermore, there is no notion of a pointer in NutIL
+patterns.  In a sense, this is a lot like how ECMAScript works.  Furthermore, there is no notion of a pointer in CocoIL
 and so the exact storage location is kept hidden from CocoLang languages and their semantics.
 
 Because all instances are objects, we must talk about `null`.  By default, types do not include the special value `null`
@@ -147,14 +147,14 @@ ensures that all data structures are serializable as JSON, an important property
 
 ### Accessibility
 
-NutIL supports two levels of accessibility on all elements:
+CocoIL supports two levels of accessibility on all elements:
 
 * `public` means an element is accessible outside of its container.
 * `private` means an element is accessible only within its container (the default).
 
 In these sentences, "container" refers to either the enclosing module or class.
 
-NutIL supports one additional level of accessibility on class members:
+CocoIL supports one additional level of accessibility on class members:
 
 * `protected` means an element is accessible only within its class and subclasses.
 
@@ -189,13 +189,13 @@ specification.  Every module specification may contain up to the four kinds of m
 Modules may contain a single special function, called its "initializer", to run code at module load time.  It is denoted
 by the special name `.init`.  Any variables with complex initialization must be written to from this initializer.
 
-The sole top-level module for an executable NutPack may also contain a special entrypoint function that is used to
-perform graph evaluation.  It is denoted by the special name `.main`.  It is illegal for non-executable NutPacks to
-contain such a function, just as it is for a submodule to contain one (versus the NutPack's top-level module).
+The sole top-level module for an executable CocoPack may also contain a special entrypoint function that is used to
+perform graph evaluation.  It is denoted by the special name `.main`.  It is illegal for non-executable CocoPacks to
+contain such a function, just as it is for a submodule to contain one (versus the CocoPack's top-level module).
 
 Note that it is up to a CocoLang compiler to decide how to partition code between `.init` and `.main`.  For languages that
 allow "open-ended" coding in a module definition, it is likely that such statements would appear in the `.main` method,
-and that library-only NutPacks containing such code would be rejected outright.
+and that library-only CocoPacks containing such code would be rejected outright.
 
 ### Variables
 
@@ -281,7 +281,7 @@ containing even a single abstract method must itself be marked `abstract` (more 
 
 It is illegal to mark a `static` method as either `sealed` or `abstract`.
 
-Module functions and lambdas are required to define a `body`, which is a NutIL block.  Class methods often have one, but
+Module functions and lambdas are required to define a `body`, which is a CocoIL block.  Class methods often have one, but
 it can be omitted, in which case the method must be abstract and concrete subclasses must provide a `body` block.
 
 Any function can be marked with `intrinsic: true` to delegate execution to a runtime intrinsic.  This is used to
@@ -391,7 +391,7 @@ For example, imagine we want an `Employee` which is a special kind of `Person`:
                 type: string
                 description: The employee's current title.
 
-This facilitates implicit conversions from `Employee` to `Person`.  Because NutIL preserves RTTI for objects, recovering
+This facilitates implicit conversions from `Employee` to `Person`.  Because CocoIL preserves RTTI for objects, recovering
 the fact that such an object is an `Employee` is possible using an explicit downcast.
 
 At the moment, there is no support for redeclaration of properties, and therefore no support for covariance (i.e.,
@@ -399,11 +399,11 @@ strengthening property types).  All base-type properties are simply inherited "a
 
 ### Conversions
 
-The NutIL type system uses a combination of subtyping and structural conversions.
+The CocoIL type system uses a combination of subtyping and structural conversions.
 
-At its core, NutIL is a nominal static type system.  As such, it obeys the usual subtyping relations: upcasting from a
+At its core, CocoIL is a nominal static type system.  As such, it obeys the usual subtyping relations: upcasting from a
 subclass to its superclass can be done without any explicit action; downcasting from a superclass to a given subclass
-can be done explicitly with a NutIL instruction, and it might fail should the cast be wrong.
+can be done explicitly with a CocoIL instruction, and it might fail should the cast be wrong.
 
 Imagining that `Base` is the superclass and `Derived` is the subclass, then in pseudo-code:
 
@@ -414,9 +414,9 @@ Imagining that `Base` is the superclass and `Derived` is the subclass, then in p
     d = (D)b; // Error at runtime, Base is not an instance of Derived.
     b = d;    // OK.
 
-NutIL also supports a dynamic `isinst` operator, to check whether a given object is of a certain class.
+CocoIL also supports a dynamic `isinst` operator, to check whether a given object is of a certain class.
 
-In addition, however, NutIL supports structural "duck typed" conversions between conjurable types (records and
+In addition, however, CocoIL supports structural "duck typed" conversions between conjurable types (records and
 interfaces).  Recall that a conjurable type is one with only primary properties and no constructor.  Such types do not
 have invariants that might be violated by free coercions between such types.  So long as the source and target are
 "compatible" at compile-time, duck-type conversions between them work just fine.
@@ -433,18 +433,18 @@ A compatible function is one whose signature is structurally compatible through 
 types are contravariant (equal or relaxed), return types are covariant (equal or strengthened).  Properties, on the
 other hand, are invariant, since they are both input and output.  This is the same for lambda conversions.
 
-The above conversions are based on static types.  NutIL also supports dynamic coercion, dynamic castability checks, plus
+The above conversions are based on static types.  CocoIL also supports dynamic coercion, dynamic castability checks, plus
 dynamic property and method operations, as though the object were simply a map indexed by member names.  This is often
 used in conjunction with the untyped `any` type.  These operations may, of course, fail at runtime, as is usual in
-dynamic languages.  These operations respect accessibility.  These operations are described in the NutIL section.
+dynamic languages.  These operations respect accessibility.  These operations are described in the CocoIL section.
 
 ### Advanced Types
 
-NutIL supports some additional "advanced" type system features.
+CocoIL supports some additional "advanced" type system features.
 
 #### Constraints
 
-To support rich validation, even in the presence of representations that faciliate data interoperability, NutIL supports
+To support rich validation, even in the presence of representations that faciliate data interoperability, CocoIL supports
 additional constraints on `number`, `string`, and array types, inspired by [JSON Schema](http://json-schema.org/):
 
 * For `number`s:
@@ -498,7 +498,7 @@ For example, imaging we wish our `state` property to be confined to the 50 state
             type: [ "AL", "AK", ..., "WI", "WY" ]
 
 A compiler should check that any value for the `state` property has one of the legal string values.  If it doesn't,
-NutIL runtime validation will ensure that it is the case.
+CocoIL runtime validation will ensure that it is the case.
 
 #### Type Aliases
 
@@ -520,10 +520,10 @@ Now, given this new `State` type, we can simplify our `state` property example f
         state:
             type: State
 
-## Coconut Intermediate Language (NutIL)
+## Coconut Intermediate Language (CocoIL)
 
-NutIL is an AST-based intermediate language.  This is in contrast to some of its relatives which use lower-level stack or
-register machines.  There are three reasons NutIL chooses ASTs over these other forms:
+CocoIL is an AST-based intermediate language.  This is in contrast to some of its relatives which use lower-level stack or
+register machines.  There are three reasons CocoIL chooses ASTs over these other forms:
 
 * First, it simplifies the task of writing new CocoLang compilers, something important to the overall ecosystem.
 
@@ -531,16 +531,16 @@ register machines.  There are three reasons NutIL chooses ASTs over these other 
   backend optimizations, this matters less to an interpreted environment like Coconut than a system that compiles to
   machine code.  Especially when considering the cost of provisioning cloud infrastructure (often measured in minutes).
 
-* Third, it makes writing tools that process NutPacks easier, including CocoGL processing tools that reraise AST edits back
+* Third, it makes writing tools that process CocoPacks easier, including CocoGL processing tools that reraise AST edits back
   to the original program text.
 
-Below is an overview of the AST shapes supported by NutIL.
+Below is an overview of the AST shapes supported by CocoIL.
 
 ### AST Nodes
 
 TODO: this is just a dumb name listing; eventually we want to specify each and every node type.
 
-Every NutIL AST node derives from a common base type that includes information about its location in the source code:
+Every CocoIL AST node derives from a common base type that includes information about its location in the source code:
 
     // Node is a discriminated type for all AST subtypes.
     interface Node {
@@ -619,7 +619,7 @@ Every NutIL AST node derives from a common base type that includes information a
 
 ## Interpretation
 
-NutPack and NutIL are interpreted representations.  That means we do not compile them to assembly and, in certain cases,
+CocoPack and CocoIL are interpreted representations.  That means we do not compile them to assembly and, in certain cases,
 we have made design decisions that favor correctness over performance.  The toolchain has a built in verifier that
 enforces these design decisions at runtime.  This is unlike most runtimes that leverage an independent static
 verification step to avoid runtime penalties.  That said, the `coco verify` command will run the verifier independently.
@@ -630,52 +630,52 @@ TODO: specify how failures are conveyed (fail-fast, exception, etc).
 
 ## Possibly-Controversial Decisions
 
-It's worth describing for a moment some possibly-controversial decisions about NutPack and NutIL.
+It's worth describing for a moment some possibly-controversial decisions about CocoPack and CocoIL.
 
-These might come as a surprise to higher level programmers, however, it is worth remembering that NutIL is attempting to
+These might come as a surprise to higher level programmers, however, it is worth remembering that CocoIL is attempting to
 strike a balance between high- and low-level multi-language representations.  In doing so, some opinions had to be
 discard, while others were strengthened.  And some of them aren't set in stone and may be something we revisit later.
 
 ### Values
 
-NutIL does not support unboxed values.  This is entirely a performance and low-level interop concern.
+CocoIL does not support unboxed values.  This is entirely a performance and low-level interop concern.
 
 ### Pointers
 
-NutIL supports pointers for implementing runtime functionality.  It does not embellish them very much, however, other
-than letting the runtime (written in Go) grab ahold of them and do whatever it pleases.  For example, NutIL does not
-contain operators for indirection, arithmetic, or dereferencing.  NutIL itself is not for systems programming.
+CocoIL supports pointers for implementing runtime functionality.  It does not embellish them very much, however, other
+than letting the runtime (written in Go) grab ahold of them and do whatever it pleases.  For example, CocoIL does not
+contain operators for indirection, arithmetic, or dereferencing.  CocoIL itself is not for systems programming.
 
 TODO: this could evolve further as we look to adopting CocoGo, which, clearly, will have the concept of pointers.
 
 ### Generics
 
-NutIL does not support generics.  CocoLang languages are free to, however they must be erased at compile-time.
+CocoIL does not support generics.  CocoLang languages are free to, however they must be erased at compile-time.
 
 This admittedly sacrifices some amount of generality.  But it does so at the benefit of simplicity.  Some CocoLang
 languages simply do not support generics, and so admitting them to the core would be problematic.  Furthermore,
 languages like Go demonstrate that modern cloud programs of considerable complexity can be written without them.
 
-Perhaps the most unfortunate and apparent aspect of NutIL's lack of generics is the consequently missing composable
-collection types.  To soften the blow of this, NutIL has built-in array, map, and enumerable object types.
+Perhaps the most unfortunate and apparent aspect of CocoIL's lack of generics is the consequently missing composable
+collection types.  To soften the blow of this, CocoIL has built-in array, map, and enumerable object types.
 
 ### Operators
 
-NutIL does come with a number of built-in operators.
+CocoIL does come with a number of built-in operators.
 
-NutIL does not care about operator precedence, however.  All expressions are evaluated in the exact order in which they
+CocoIL does not care about operator precedence, however.  All expressions are evaluated in the exact order in which they
 appear in the tree.  Parenthesis nodes may be used to group expressions so that they are evaluated in a specific order.
 
-NutIL does not support operator overloading.  The set of operators is fixed and cannot be overridden, although a
-higher-level CocoLang compiler may decide to emit calls to intrinsic functions rather than depending on NutIL operators.
+CocoIL does not support operator overloading.  The set of operators is fixed and cannot be overridden, although a
+higher-level CocoLang compiler may decide to emit calls to intrinsic functions rather than depending on CocoIL operators.
 
 ### Overloading
 
-NutIL does not support function overloading.
+CocoIL does not support function overloading.
 
 ### Exceptions
 
-Most CocoLangs have exception-based error models (with the sole exception of Go).  As a result, NutIL supports exceptions.
+Most CocoLangs have exception-based error models (with the sole exception of Go).  As a result, CocoIL supports exceptions.
 
 At the moment, there are no throws annotations of any kind; if Go or Java become interesting CocoLang languages to support
 down the road, we may wish to add optional throws annotations to drive proxy generation, including the possibility of
@@ -687,12 +687,12 @@ invokes, and so on.  Though, it's worth noting, we don't support Ruby-style `mis
 
 ### Threading/Async/Await
 
-There is no multithreading in NutIL.  And there is no I/O.  As a result, there are neither multithreading facilities nor
+There is no multithreading in CocoIL.  And there is no I/O.  As a result, there are neither multithreading facilities nor
 the commonly found `async` and `await` features in modern programming languages.
 
 ### Accessibility, Dynamicism, and Secrets
 
-NutIL dynamic operations respect accessibility.  This is unconventional but allows encapsulation of sensitive
+CocoIL dynamic operations respect accessibility.  This is unconventional but allows encapsulation of sensitive
 information.  This is admittedly a risky guarantee to make -- since type systems are intricate things that can be
 subverted in [subtle ways](https://www.microsoft.com/en-us/research/wp-content/uploads/2007/01/appsem-tcs.pdf) --
 and I am honestly on the fence about it.  However, particularly given that cloud abstractions often manipulate sensitive
@@ -702,11 +702,11 @@ them to offer a `private` or `secret` annotation to protect those few fields tha
 
 ### Smaller Items
 
-NutIL doesn't currently support "attributes" (a.k.a., decorators).  This isn't for any principled reason other than the
+CocoIL doesn't currently support "attributes" (a.k.a., decorators).  This isn't for any principled reason other than the
 lack of a need for them and, as such, attributes may be something we consider adding at a later date.
 
-NutIL doesn't support varargs; instead, just use arrays.  The benefit of true varargs is twofold: usability -- something
-that doesn't matter at the NutIL level -- and runtime performance -- something NutIL is less concerned about.
+CocoIL doesn't support varargs; instead, just use arrays.  The benefit of true varargs is twofold: usability -- something
+that doesn't matter at the CocoIL level -- and runtime performance -- something CocoIL is less concerned about.
 
 ## Open Questions
 

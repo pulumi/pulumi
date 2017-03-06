@@ -8,11 +8,11 @@
 // indicating that its presence or absence is dependent on a piece of information not yet available (like an output
 // property from a resource), and/or (2) a property may either be similarly conditional or computed as an output value.
 //
-// In general, NutPacks may be evaluated to produce graphs.  These may then be compared to other graphs to produce
+// In general, CocoPacks may be evaluated to produce graphs.  These may then be compared to other graphs to produce
 // and/or carry out deployment plans.  This package therefore also exposes operations necessary for diffing graphs.
 package graph
 
-// Graph is an instance of a CocoGL digraph.  Each is associated with a single NutPack as its input, along
+// Graph is an instance of a CocoGL digraph.  Each is associated with a single CocoPack as its input, along
 // with a set of optional arguments used to evaluate it, along with the output DAG with node types and properties.
 type Graph interface {
 	Roots() []Edge // the root edges.

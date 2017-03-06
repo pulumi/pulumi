@@ -136,9 +136,9 @@ edits, and reapply those edits, just the parts that have been changed will be up
 
 More details are left to the respective design documents.  Here are some key ones:
 
-* [**Formats**](design/formats.md): An overview of Coconut's three formats: CocoLangs, NutPack/NutIL, and CocoGL.
-* [**NutPack/NutIL**](design/nutpack.md): A detailed description of Nuts and the NutPack/NuIL formats.
-* [**CocoGL**](design/cocogl.md): An overview of the CocoGL file format and how Coconut uses graphs for deployments.
+* [**Formats**](design/formats.md): An overview of Coconut's three formats: CocoLangs, CocoPack/CocoIL, and CocoGL.
+* [**CocoPack/CocoIL**](design/packages.md): A detailed description of Nuts and the CocoPack/CocoIL formats.
+* [**CocoGL**](design/graphs.md): An overview of the CocoGL file format and how Coconut uses graphs for deployments.
 * [**Stacks**](design/stacks.md): An overview of how stacks are represented using the above fundamentals.
 * [**Dependencies**](design/deps.md): An overview of how package management and dependency management works.
 * [**Clouds**](design/clouds.md): A description of how Coconut abstractions map to different cloud providers.

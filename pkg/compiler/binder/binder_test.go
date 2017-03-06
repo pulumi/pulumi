@@ -57,21 +57,21 @@ func TestBadDepSemVer(t *testing.T) {
 	bad0 := "dep1#badbadbad"
 	assert.Equal(t,
 		fmt.Sprintf("%v: %v %v%v: %v\n",
-			"Nut.yaml", diag.Error, diag.DefaultSinkIDPrefix, d.ID,
+			"Coconut.yaml", diag.Error, diag.DefaultSinkIDPrefix, d.ID,
 			fmt.Sprintf(d.Message, bad0,
 				"Illegal version spec in '"+bad0+"': Could not get version from string: \"badbadbad\"")),
 		sink.ErrorMsgs()[0])
 	bad1 := "cocohub.com/dep2#badbadbad"
 	assert.Equal(t,
 		fmt.Sprintf("%v: %v %v%v: %v\n",
-			"Nut.yaml", diag.Error, diag.DefaultSinkIDPrefix, d.ID,
+			"Coconut.yaml", diag.Error, diag.DefaultSinkIDPrefix, d.ID,
 			fmt.Sprintf(d.Message, bad1,
 				"Illegal version spec in '"+bad1+"': Could not get version from string: \"badbadbad\"")),
 		sink.ErrorMsgs()[1])
 	bad2 := "https://cocohub.com/dep3/a/b/c/d#badbadbad"
 	assert.Equal(t,
 		fmt.Sprintf("%v: %v %v%v: %v\n",
-			"Nut.yaml", diag.Error, diag.DefaultSinkIDPrefix, d.ID,
+			"Coconut.yaml", diag.Error, diag.DefaultSinkIDPrefix, d.ID,
 			fmt.Sprintf(d.Message, bad2,
 				"Illegal version spec in '"+bad2+"': Could not get version from string: \"badbadbad\"")),
 		sink.ErrorMsgs()[2])

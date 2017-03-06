@@ -18,10 +18,9 @@ translation process.
 
 Coconut inputs may include the following:
 
-* Nutfile (`Nut.yaml`): each instance of such a file describes a single outer Stack.
-* DSL snippet: a Nutfile may execute "code as infrastructure" that produce pieces of the Stack.
-* Deployment assets: a Nutfile often references assets, like binary program files, that must get deployed.
-* Clusterfile (`Nutcluster.yaml`): each instance of such a file describes one or more Cluster environments.
+* Cocofile (`Coconut.yaml`): each instance of such a file describes a single outer Stack.
+* DSL snippet: a Cocofile may execute "code as infrastructure" that produce pieces of the Stack.
+* Deployment assets: a Cocofile often references assets, like binary program files, that must get deployed.
 
 The collection of inputs effectively describe a desired state.  In many use-cases, therefore, the desired "output" of
 the compilation process is not an artifact at all, but rather a series of actions that accomplish this desired state.
@@ -31,12 +30,12 @@ perhaps a collection of CloudFormation templates are produced before applying to
 describes each such intermediate output because they can be useful for certain scenarios, although in the common case, a
 developer can safely ignore their existence.  It's entirely possible, however, to run Coconut in a mode where the
 backend operations are done outside of the purview of Coconut.  For instance, maybe a developer describes everything in
-Nutfiles, etc., however then hands off the process to IT who edits and applies the CloudFormation outputs manually.
+Cocofiles, etc., however then hands off the process to IT who edits and applies the CloudFormation outputs manually.
 
 At a high-level, the compilation process look like this:
 
 * Front-end:
-    - Parsing: inputs in the form of Nut.yaml and Nutcluster.yaml are turned into ASTs.
+    - Parsing: inputs in the form of `Coconut.yaml` files are turned into ASTs.
     - Generation: execution of any "code as infrastructure" artifacts necessary to generate additional input.
     - Expansion: expansion of templates in the artifacts, leveraging configuration and other inputs.
 * Middle-end:
@@ -52,19 +51,20 @@ TODO(joe): describe each of these in more detail.
 
 A workspace is a root directory on the filesystem that helps to organize many stacks, shared settings among them (like
 shared cluster definitions, dependencies, etc).  The root of a workspace is identified by the presence of a
-`Nutspace.yaml` (or `.json`) file, containing all of the relevant metadata.  The workspace metadata goes here because
-stack definitions are generally agnostic to it.  In addition to this, there will be an optional `.Nuts` directory
-that contains all of the downloaded dependencies.
+`Cocospace.yaml` (or `.json`) file, containing all of the relevant metadata.  The workspace metadata goes here because
+stack definitions are generally agnostic to it.  In addition to this, there will be an optional `.nuts/` directory
+underneath `.coconut/` that contains all of the downloaded dependencies.
 
 For example, let's say we have two Stacks, `db` and `webapp`; a reasonable workspace structure might be:
 
-    .Nuts/
-        ...
+    .coconut/
+        .nuts/
+            ...
     db/
-        Nut.yaml
+        Coconut.yaml
     webapp/
-        Nut.yaml
-    Nutspace.yaml
+        Coconut.yaml
+    Cocospace.yaml
 
 For convenience, the home directory `~` can also be its own workspace with identical structure, for settings and
 dependencies that are shared by all other workspaces on the machine.

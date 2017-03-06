@@ -32,11 +32,11 @@ func testCompile(paths ...string) *testutil.TestDiagSink {
 	return sink
 }
 
-func TestBadMissingNutfile(t *testing.T) {
-	sink := testCompile("testdata", "bad__missing_nutfile")
+func TestBadMissingCocofile(t *testing.T) {
+	sink := testCompile("testdata", "bad__missing_cocofile")
 
-	// Check that the compiler complained about a missing Nutfile.
-	d := errors.ErrorMissingNutfile
+	// Check that the compiler complained about a missing Cocofile.
+	d := errors.ErrorMissingCocofile
 	assert.Equal(t, 1, sink.Errors(), "expected a single error")
 	assert.Equal(t,
 		fmt.Sprintf("%v %v%v: %v\n",
@@ -44,41 +44,41 @@ func TestBadMissingNutfile(t *testing.T) {
 		sink.ErrorMsgs()[0])
 }
 
-func TestBadNutfileCasing(t *testing.T) {
-	sink := testCompile("testdata", "bad__nutfile_casing")
+func TestBadCocofileCasing(t *testing.T) {
+	sink := testCompile("testdata", "bad__cocofile_casing")
 
-	// Check that the compiler warned about a bad Nutfile casing (nut.yaml).
+	// Check that the compiler warned about a bad Cocofile casing (nut.yaml).
 	d := errors.WarningIllegalMarkupFileCasing
 	assert.Equal(t, 1, sink.Warnings(), "expected a single warning")
 	assert.Equal(t,
 		fmt.Sprintf("%v: %v %v%v: %v\n",
-			"nut.yaml", diag.Warning, diag.DefaultSinkIDPrefix, d.ID, fmt.Sprintf(d.Message, "Nut")),
+			"coconut.yaml", diag.Warning, diag.DefaultSinkIDPrefix, d.ID, fmt.Sprintf(d.Message, "Coconut")),
 		sink.WarningMsgs()[0])
 }
 
-func TestBadNutfileExt(t *testing.T) {
-	sink := testCompile("testdata", "bad__nutfile_ext")
+func TestBadCocofileExt(t *testing.T) {
+	sink := testCompile("testdata", "bad__cocofile_ext")
 
-	// Check that the compiler warned about a bad Nutfile extension (none).
+	// Check that the compiler warned about a bad Cocofile extension (none).
 	d := errors.WarningIllegalMarkupFileExt
 	assert.Equal(t, 1, sink.Warnings(), "expected a single warning")
 	assert.Equal(t,
 		fmt.Sprintf("%v: %v %v%v: %v\n",
-			"Nut", diag.Warning, diag.DefaultSinkIDPrefix, d.ID,
-			fmt.Sprintf(d.Message, "Nut", "")),
+			"Coconut", diag.Warning, diag.DefaultSinkIDPrefix, d.ID,
+			fmt.Sprintf(d.Message, "Coconut", "")),
 		sink.WarningMsgs()[0])
 }
 
-func TestBadNutfileExt2(t *testing.T) {
-	sink := testCompile("testdata", "bad__nutfile_ext_2")
+func TestBadCocofileExt2(t *testing.T) {
+	sink := testCompile("testdata", "bad__cocofile_ext_2")
 
-	// Check that the compiler warned about a bad Nutfile extension (".txt").
+	// Check that the compiler warned about a bad Cocofile extension (".txt").
 	d := errors.WarningIllegalMarkupFileExt
 	assert.Equal(t, 1, sink.Warnings(), "expected a single warning")
 	assert.Equal(t,
 		fmt.Sprintf("%v: %v %v%v: %v\n",
-			"Nut.txt", diag.Warning, diag.DefaultSinkIDPrefix, d.ID,
-			fmt.Sprintf(d.Message, "Nut", ".txt")),
+			"Coconut.txt", diag.Warning, diag.DefaultSinkIDPrefix, d.ID,
+			fmt.Sprintf(d.Message, "Coconut", ".txt")),
 		sink.WarningMsgs()[0])
 }
 
@@ -86,11 +86,11 @@ func TestBadMissingPackageName(t *testing.T) {
 	sink := testCompile("testdata", "bad__missing_package_name")
 
 	// Check that the compiler complained about a missing package name.
-	d := errors.ErrorIllegalNutfileSyntax
+	d := errors.ErrorIllegalCocofileSyntax
 	assert.Equal(t, 1, sink.Errors(), "expected a single error")
 	assert.Equal(t,
 		fmt.Sprintf("%v: %v %v%v: %v\n",
-			"Nut.yaml", diag.Error, diag.DefaultSinkIDPrefix, d.ID,
+			"Coconut.yaml", diag.Error, diag.DefaultSinkIDPrefix, d.ID,
 			fmt.Sprintf(d.Message, "Missing required pack.Package field `name`")),
 		sink.ErrorMsgs()[0])
 }
@@ -99,11 +99,11 @@ func TestBadEmptyPackageName(t *testing.T) {
 	sink := testCompile("testdata", "bad__empty_package_name")
 
 	// Check that the compiler complained about a missing package name.
-	d := errors.ErrorIllegalNutfileSyntax
+	d := errors.ErrorIllegalCocofileSyntax
 	assert.Equal(t, 1, sink.Errors(), "expected a single error")
 	assert.Equal(t,
 		fmt.Sprintf("%v: %v %v%v: %v\n",
-			"Nut.yaml", diag.Error, diag.DefaultSinkIDPrefix, d.ID,
+			"Coconut.yaml", diag.Error, diag.DefaultSinkIDPrefix, d.ID,
 			fmt.Sprintf(d.Message, "Missing required pack.Package field `name`")),
 		sink.ErrorMsgs()[0])
 }
@@ -116,6 +116,6 @@ func TestBadEmptyPackageName2(t *testing.T) {
 	assert.Equal(t, 1, sink.Errors(), "expected a single error")
 	assert.Equal(t,
 		fmt.Sprintf("%v: %v %v%v: %v\n",
-			"Nut.yaml", diag.Error, diag.DefaultSinkIDPrefix, d.ID, d.Message),
+			"Coconut.yaml", diag.Error, diag.DefaultSinkIDPrefix, d.ID, d.Message),
 		sink.ErrorMsgs()[0])
 }

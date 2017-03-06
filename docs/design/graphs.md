@@ -2,7 +2,7 @@
 
 In several cases, Coconut creates and operates on object graphs.  Sometimes these object graphs are very general
 purpose, and in other times, they are limited to subsets (such as resource-only DAGs).  These graphs are produced when
-evaluating a Nut, when determining the resource graph that represents a deployment activity, and so on.  Anytime such a
+evaluating a package, when determining the resource graph that represents a deployment activity, etc.  Anytime such a
 graph must be persisted, Coconut serializes using its own graph language (CocoGL).  This document specifies CocoGL.
 
 ## Overall Structure
@@ -51,7 +51,7 @@ might be serialized as the following CocoGL:
         }
     }
 
-Any other fields are legal as peers to `vertices`, as is common with snapshots (e.g., to track the source NutPack
+Any other fields are legal as peers to `vertices`, as is common with snapshots (e.g., to track the source CocoPack
 and arguments).  The schema for vertices is similarly open-ended, except that `#ref` objects resolve to their
 corresponding object counterparts upon deserialization into a runtime graph representation.
 
@@ -79,7 +79,7 @@ version infrastructure, to compare existing infrastructure to a set of changes, 
 
 A snapshot's schema is identical to that shown above for general CocoGL graphs, with these caveats:
 
-* The source NutPack and arguments, if any, are encoded in the CocoGL's header section.
+* The source CocoPack and arguments, if any, are encoded in the CocoGL's header section.
 
 * All snapshot graphs are DAGs.  As such, the objects are in topologically-sorted order.
 
@@ -91,7 +91,7 @@ A snapshot's schema is identical to that shown above for general CocoGL graphs, 
 
 * All resource monikers are "stable" (see below).
 
-Each resource has a type token (in [the usual NutIL sense](nutpack.md)), an optional ID assigned by its provider, an
+Each resource has a type token (in [the usual CocoIL sense](nutpack.md)), an optional ID assigned by its provider, an
 optional list of moniker aliases, and a bag of properties which, themselves, are just JSON objects with optional edges
 inside.  Edges inside properties connect one resource to another; because snapshots are DAGs, all dependency resource
 definitions will lexically precede the dependent resource within the CocoGL file, ensuring single pass deserializability.
@@ -106,7 +106,7 @@ For example, imagine a resource snapshot involving a VPC, Subnet, SecurityGroup,
         v         |
        SecurityGroup
 
-Assuming it was created from a `my/cluster` NutPack, we might expect to find the following CocoGL snapshot file:
+Assuming it was created from a `my/cluster` CocoPack, we might expect to find the following CocoGL snapshot file:
 
     {
         "package": "my/cluster:*",

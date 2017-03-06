@@ -137,14 +137,14 @@ export class Context {
 
     /** General helper methods **/
 
-    // This annotates a given NutPack/NutIL node with another TypeScript node's source position information.
+    // This annotates a given CocoPack/NutIL node with another TypeScript node's source position information.
     public withLocation<T extends ast.Node>(src: ts.Node, dst: T): T {
         dst.loc = this.locationFrom(src);
         // Despite mutating in place, we return the node to facilitate a more fluent style.
         return dst;
     }
 
-    // This annotates a given NutPack/NutIL node with a range of TypeScript node source positions.
+    // This annotates a given CocoPack/NutIL node with a range of TypeScript node source positions.
     public withLocationRange<T extends ast.Node>(start: ts.Node, end: ts.Node, dst: T): T {
         contract.assert(start.getSourceFile() === end.getSourceFile());
         // Turn the source file name into one relative to the current root path.
@@ -183,7 +183,7 @@ export class Context {
 
     /** Error factories **/
 
-    public newMissingNutfileError(path: string, dependency: boolean, exts: string[]): Diagnostic {
+    public newMissingCocofileError(path: string, dependency: boolean, exts: string[]): Diagnostic {
         let altExts: string = "";
         if (exts.length > 0) {
             path = path + exts[0];
@@ -201,23 +201,23 @@ export class Context {
         return {
             category: DiagnosticCategory.Error,
             code:     1,
-            message:  `No ${dependency ? "dependency" : "source"} Nutfile was found at '${path}'${altExts}`,
+            message:  `No ${dependency ? "dependency" : "source"} Cocofile was found at '${path}'${altExts}`,
         };
     }
 
-    public newMissingNutpackNameError(path: string): Diagnostic {
+    public newMissingCocopackNameError(path: string): Diagnostic {
         return {
             category: DiagnosticCategory.Error,
             code:     2,
-            message:  `Nutpack '${path}' is missing a name`,
+            message:  `Cocopack '${path}' is missing a name`,
         };
     }
 
-    public newMalformedNutfileError(path: string, err: Error): Diagnostic {
+    public newMalformedCocofileError(path: string, err: Error): Diagnostic {
         return {
             category: DiagnosticCategory.Error,
             code:     3,
-            message:  `Nutfile '${path}' is malformed: ${err}`,
+            message:  `Cocofile '${path}' is malformed: ${err}`,
         };
     }
 
@@ -294,7 +294,7 @@ export class Context {
             category: DiagnosticCategory.Error,
             code:     502,
             message:  `Package '${pkg}' was encountered during compilation, ` +
-                `but wasn't listed as a dependency in the Nutfile`,
+                `but wasn't listed as a dependency in the Cocofile`,
         };
     }
 }

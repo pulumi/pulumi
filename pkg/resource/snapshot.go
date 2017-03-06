@@ -19,7 +19,7 @@ import (
 // or apply an infrastructure deployment plan in order to make reality match the snapshot state.
 type Snapshot interface {
 	Ctx() *Context                              // fetches the context for this snapshot.
-	Namespace() tokens.QName                    // the husk/namespace target being deployed into.
+	Namespace() tokens.QName                    // the namespace target being deployed into.
 	Pkg() tokens.Package                        // the package from which this snapshot came.
 	Args() core.Args                            // the arguments used to compile this package.
 	Resources() []Resource                      // a topologically sorted list of resources (based on dependencies).
@@ -87,7 +87,7 @@ func (s *snapshot) ResourceByObject(obj *rt.Object) Resource { return s.ctx.ObjR
 
 // createResources uses a graph to create URNs and resource objects for every resource within.  It
 // returns two maps for further use: a map of vertex to its new resource object, and a map of vertex to its URN.
-func createResources(ctx *Context, husk tokens.QName, heap *heapstate.Heap, resobjs []*rt.Object) ([]Resource, error) {
+func createResources(ctx *Context, ns tokens.QName, heap *heapstate.Heap, resobjs []*rt.Object) ([]Resource, error) {
 	var resources []Resource
 	for _, resobj := range resobjs {
 		// Create an object resource without a URN.
@@ -106,7 +106,7 @@ func createResources(ctx *Context, husk tokens.QName, heap *heapstate.Heap, reso
 
 		// Now compute a unique URN for this object and ensure we haven't had any collisions.
 		alloc := heap.Alloc(resobj)
-		urn := NewURN(husk, alloc.Mod.Tok, t, name)
+		urn := NewURN(ns, alloc.Mod.Tok, t, name)
 		glog.V(7).Infof("Resource URN computed: %v", urn)
 		if _, exists := ctx.URNRes[urn]; exists {
 			// If this URN is already in use, issue an error, ignore this one, and break.  The break is necessary

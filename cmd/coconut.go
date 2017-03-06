@@ -44,7 +44,7 @@ func NewCoconutCmd() *cobra.Command {
 	cmd.AddCommand(newDescribeCmd())
 	cmd.AddCommand(newEvalCmd())
 	cmd.AddCommand(newGetCmd())
-	cmd.AddCommand(newHuskCmd())
+	cmd.AddCommand(newEnvCmd())
 	cmd.AddCommand(newVerifyCmd())
 	cmd.AddCommand(newVersionCmd())
 

@@ -187,7 +187,7 @@ function notYetImplemented(node: ts.Node | undefined, label?: string): never {
     return contract.fail(msg);
 }
 
-// A transpiler is responsible for transforming TypeScript program artifacts into NutPack/NutIL AST forms.
+// A transpiler is responsible for transforming TypeScript program artifacts into CocoPack/NutIL AST forms.
 export class Transformer {
     // Immutable elements of the transformer that exist throughout an entire pass:
     private readonly pkg: pack.Manifest;             // the package's manifest.
@@ -201,7 +201,7 @@ export class Transformer {
     private readonly builtinArrayType: ts.InterfaceType;           // the ECMA/TypeScript built-in array type.
     private readonly builtinMapType: ts.InterfaceType | undefined; // the ECMA/TypeScript built-in map type.
 
-    // A lookaside cache of resolved modules to their associated NutPackage metadata:
+    // A lookaside cache of resolved modules to their associated CocoPackage metadata:
     private modulePackages: Map<ModuleReference, Promise<PackageInfo>>;
 
     // Mutable elements of the transformer that are pushed/popped as we perform visitations:
@@ -219,7 +219,7 @@ export class Transformer {
     constructor(pkg: pack.Manifest, script: Script, loader: PackageLoader) {
         contract.requires(!!pkg, "pkg", "A package manifest must be supplied");
         contract.requires(!!pkg.name, "pkg.name", "A package must have a valid name");
-        contract.requires(!!script.tree, "script", "A valid CocoJS AST is required to lower to NutPack/NutIL");
+        contract.requires(!!script.tree, "script", "A valid CocoJS AST is required to lower to CocoPack/NutIL");
         this.pkg = pkg;
         this.script = script;
         this.dctx = new diag.Context(script.root);
@@ -236,7 +236,7 @@ export class Transformer {
         this.builtinMapType = this.getOptionalBuiltinType("Map", 2);
     }
 
-    // Translates a TypeScript bound tree into its equivalent NutPack/NutIL AST form, one module per file.  This method
+    // Translates a TypeScript bound tree into its equivalent CocoPack/NutIL AST form, one module per file.  This method
     // is asynchronous because it may need to perform I/O in order to fully resolve dependency packages.
     public async transform(): Promise<TransformResult> {
         let priorPackageDependencies: Set<tokens.PackageToken> | undefined = this.currentPackageDependencies;
@@ -274,7 +274,7 @@ export class Transformer {
                 }
             }
 
-            // Afterwards, ensure that all dependencies encountered were listed in the NutPackage manifest.
+            // Afterwards, ensure that all dependencies encountered were listed in the CocoPackage manifest.
             for (let dep of this.currentPackageDependencies) {
                 if (dep !== this.pkg.name) {
                     if (!this.pkg.dependencies || !this.pkg.dependencies[dep]) {
@@ -466,12 +466,12 @@ export class Transformer {
         return dst;
     }
 
-    // This annotates a given NutPack/NutIL node with another TypeScript node's source position information.
+    // This annotates a given CocoPack/NutIL node with another TypeScript node's source position information.
     private withLocation<T extends ast.Node>(src: ts.Node, dst: T): T {
         return this.dctx.withLocation<T>(src, dst);
     }
 
-    // This annotates a given NutPack/NutIL node with a range of TypeScript node source positions.
+    // This annotates a given CocoPack/NutIL node with a range of TypeScript node source positions.
     private withLocationRange<T extends ast.Node>(start: ts.Node, end: ts.Node, dst: T): T {
         return this.dctx.withLocationRange<T>(start, end, dst);
     }
@@ -831,7 +831,7 @@ export class Transformer {
                     }
                 }
 
-                // Otherwise, bottom out on resolving a fully qualified NutPackage type token out of the symbol.
+                // Otherwise, bottom out on resolving a fully qualified CocoPackage type token out of the symbol.
                 return await this.resolveTokenFromSymbol(simple.symbol);
             }
         }
@@ -3035,7 +3035,7 @@ export class Transformer {
     }
 }
 
-// Loads the metadata and transforms a TypeScript program into its equivalent NutPack/NutIL AST form.
+// Loads the metadata and transforms a TypeScript program into its equivalent CocoPack/NutIL AST form.
 export async function transform(script: Script): Promise<TransformResult> {
     let loader: PackageLoader = new PackageLoader();
     let disc: PackageResult = await loader.loadCurrent(script.root);
@@ -3059,6 +3059,6 @@ export async function transform(script: Script): Promise<TransformResult> {
 
 export interface TransformResult {
     diagnostics: diag.Diagnostic[];        // any diagnostics resulting from translation.
-    pkg:         pack.Package | undefined; // the resulting NutPack/NutIL AST.
+    pkg:         pack.Package | undefined; // the resulting CocoPack/NutIL AST.
 }
 

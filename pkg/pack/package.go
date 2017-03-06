@@ -1,6 +1,6 @@
 // Copyright 2016 Pulumi, Inc. All rights reserved.
 
-// Package pack contains the core NutPack metadata types.
+// Package pack contains the core CocoPack metadata types.
 package pack
 
 import (

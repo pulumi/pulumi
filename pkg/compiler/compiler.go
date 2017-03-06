@@ -132,7 +132,7 @@ func (c *compiler) CompilePackage(pkg *pack.Package, preexec Preexec) (*symbols.
 			pkg.Name, c.Diag().Warnings(), c.Diag().Errors())
 	}
 
-	// To compile a package, we require a decoded NutPack object; this has already been done, and is presented to us
+	// To compile a package, we require a decoded CocoPack object; this has already been done, and is presented to us
 	// an argument.  Next, we must bind it's contents.  To bind its contents, we must:
 	//
 	//     * Resolve all dependency packages and inject them into a package map (just a map of names to symbols).
@@ -145,7 +145,7 @@ func (c *compiler) CompilePackage(pkg *pack.Package, preexec Preexec) (*symbols.
 	//                 . Inject a symbol of the appropriate kind into the class's associated member map.
 	//
 	// Essentially, all we are doing is mapping names to concrete symbols.  This ensures that as we compile a package,
-	// we are able to find all tokens in these maps.  If we ever cannot find a token in a map, it means the NutPack
+	// we are able to find all tokens in these maps.  If we ever cannot find a token in a map, it means the CocoPack
 	// file is invalid.  We require that CocoLang compilers produce valid, verifiable NutIL, and this is a requriement.
 	//
 	// Afterwards, we can safely evaluate the CocoIL entrypoint, using our CocoIL AST interpreter.
@@ -212,7 +212,7 @@ func (c *compiler) detectPackage() string {
 		return ""
 	}
 	if path == "" {
-		c.Diag().Errorf(errors.ErrorMissingNutfile, c.ctx.Path)
+		c.Diag().Errorf(errors.ErrorMissingCocofile, c.ctx.Path)
 		return ""
 	}
 	return path
@@ -222,7 +222,7 @@ func (c *compiler) detectPackage() string {
 func (c *compiler) readPackage(path string) *pack.Package {
 	doc, err := diag.ReadDocument(path)
 	if err != nil {
-		c.Diag().Errorf(errors.ErrorCouldNotReadNutfile.AtFile(path), err)
+		c.Diag().Errorf(errors.ErrorCouldNotReadCocofile.AtFile(path), err)
 		return nil
 	}
 	return c.reader.ReadPackage(doc)

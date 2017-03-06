@@ -1,17 +1,17 @@
 # Coconut Stacks
 
 This document describes how Coconut Stacks and Services show up in the various [formats](formats.md) (CocoLangs,
-NutPack, NutIL, and CocoGL).  Those are the definitive resources on the low-level formats, but this document describes
+CocoPack, CocoIL, and CocoGL).  Those are the definitive resources on the low-level formats, but this document describes
 the overall programming model that a developer will encounter.  For more details on how this results in concrete
 resources provisioned in the target cloud provider, please refer to [the cloud targeting design document](clouds.md).
 
 ## Overview
 
-The following are the basic steps to creating a new NutPack:
+The following are the basic steps to creating a new CocoPack:
 
 * Pick your favorite CocoLang language.
 * Create a new project folder in your workspace.
-* Create a Nutfile (`Nut.yaml`) containing the top-level metadata.
+* Create a Cocofile (`Coconut.yaml`) containing the top-level metadata.
 * Install any dependencies using the `coco get` command line.
 * Author stacks by subclassing the `Stack` base class in the Coconut SDK.
 * Build the package using `coco build`, rinse and repeat, and then publish it.
@@ -23,12 +23,12 @@ TODO: this document needs some good examples!
 
 ## Metadata
 
-Most NutPacks will contain a Nutfile to help direct the compilation process.  It is conventionally named `Nut.yaml` and
-is checked into the workspace.
+Most CocoPacks will contain a Cocofile to help direct the compilation process.  It is conventionally named
+`Coconut.yaml` and is checked into the workspace.
 
-Each Nutfile contains metadata for the package that cannot be derived from the source code.  (Please refer to
-[the NutPack document](nutpack.md) for a complete listing of what metadata can appear here.)  In the case that all
-metadata can be derived from the program alone -- e.g., thanks to the use of attributes/decorators -- then the Nutfile
+Each Cocofile contains metadata for the package that cannot be derived from the source code.  (Please refer to
+[the CocoPack document](nutpack.md) for a complete listing of what metadata can appear here.)  In the case that all
+metadata can be derived from the program alone -- e.g., thanks to the use of attributes/decorators -- then the Cocofile
 might be omitted.  This is specific to your CocoLang compiler, so please consult its documentation.
 
 In the case of CocoJS, and most CocoLang compilers, the top-level "package manager"-like metadata -- such as name,

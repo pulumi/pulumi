@@ -14,15 +14,15 @@ import (
 	"github.com/pulumi/coconut/pkg/tokens"
 )
 
-const Nutfile = "Nut"           // the base name of a Nutfile.
-const Nutpack = "Nutpack"       // the base name of a compiled NutPack.
-const NutpackOutDir = "nutpack" // the default name of the NutPack output directory.
-const NutpackBinDir = "bin"     // the default name of the NutPack binary output directory.
-const NutpackHusksDir = "husks" // the default name of the NutPack husks directory.
-const Nutspace = "Coconut"      // the base name of a markup file for shared settings in a workspace.
-const Nutdeps = ".Nuts"         // the directory in which dependencies exist, either local or global.
+const Cocofile = "Coconut"     // the base name of a Cocofile.
+const Cocospace = "Cocospace"  // the base name of a markup file for shared settings in a workspace.
+const Cocopack = "Cocopack"    // the base name of a compiled CocoPack.
+const CocopackDir = ".coconut" // the default name of the CocoPack output directory.
+const CocopackBinDir = "bin"   // the default name of the CocoPack binary output directory.
+const CocopackEnvDir = "env"   // the default name of the CocoPack environment directory.
+const CocopackDepDir = "nuts"  // the directory in which dependencies exist, either local or global.
 
-const InstallRootEnvvar = "COCOROOT"            // the envvar describing where Coconut has been installed.
+const InstallRootEnvvar = "COCONUT"             // the envvar describing where Coconut has been installed.
 const InstallRootLibdir = "lib"                 // the directory in which the Coconut standard library exists.
 const DefaultInstallRoot = "/usr/local/coconut" // where Coconut is installed by default.
 
@@ -36,11 +36,11 @@ func InstallRoot() string {
 	return root
 }
 
-// HuskPath returns a path to the given husk's default location.
-func HuskPath(husk tokens.QName) string {
-	path := filepath.Join(NutpackOutDir, NutpackHusksDir)
-	if husk != "" {
-		path = filepath.Join(path, qnamePath(husk)+encoding.Exts[0])
+// EnvPath returns a path to the given environment's default location.
+func EnvPath(env tokens.QName) string {
+	path := filepath.Join(CocopackDir, CocopackEnvDir)
+	if env != "" {
+		path = filepath.Join(path, qnamePath(env)+encoding.Exts[0])
 	}
 	return path
 }
@@ -61,10 +61,10 @@ func pathDir(path string) string {
 }
 
 // DetectPackage locates the closest package from the given path, searching "upwards" in the directory hierarchy.  If no
-// Nutfile is found, an empty path is returned.  If problems are detected, they are logged to the diag.Sink.
+// Cocofile is found, an empty path is returned.  If problems are detected, they are logged to the diag.Sink.
 func DetectPackage(path string, d diag.Sink) (string, error) {
 	// It's possible the target is already the file we seek; if so, return right away.
-	if IsNutfile(path, d) {
+	if IsCocofile(path, d) {
 		return path, nil
 	}
 
@@ -72,29 +72,29 @@ func DetectPackage(path string, d diag.Sink) (string, error) {
 	for {
 		stop := false
 
-		// Enumerate the current path's files, checking each to see if it's a Nutfile.
+		// Enumerate the current path's files, checking each to see if it's a Cocofile.
 		files, err := ioutil.ReadDir(curr)
 		if err != nil {
 			return "", err
 		}
 
-		// See if there's a compiled Nutpack in the expected location.
-		pack := filepath.Join(NutpackOutDir, NutpackBinDir, Nutpack)
+		// See if there's a compiled Cocopack in the expected location.
+		pack := filepath.Join(CocopackDir, CocopackBinDir, Cocopack)
 		for _, ext := range encoding.Exts {
 			packfile := pack + ext
-			if IsNutpack(packfile, d) {
+			if IsCocopack(packfile, d) {
 				return packfile, nil
 			}
 		}
 
-		// Now look for individual Nutfiles.
+		// Now look for individual Cocofiles.
 		for _, file := range files {
 			name := file.Name()
 			path := filepath.Join(curr, name)
-			if IsNutfile(path, d) {
+			if IsCocofile(path, d) {
 				return path, nil
-			} else if IsNutspace(path, d) {
-				// If we hit a Nutspace file, stop looking.
+			} else if IsCocospace(path, d) {
+				// If we hit a Cocospace file, stop looking.
 				stop = true
 			}
 		}
@@ -114,22 +114,22 @@ func DetectPackage(path string, d diag.Sink) (string, error) {
 	return "", nil
 }
 
-// IsNutfile returns true if the path references what appears to be a valid Nutfile.  If problems are detected -- like
+// IsCocofile returns true if the path references what appears to be a valid Cocofile.  If problems are detected -- like
 // an incorrect extension -- they are logged to the provided diag.Sink (if non-nil).
-func IsNutfile(path string, d diag.Sink) bool {
-	return isMarkupFile(path, Nutfile, d)
+func IsCocofile(path string, d diag.Sink) bool {
+	return isMarkupFile(path, Cocofile, d)
 }
 
-// IsNutpack returns true if the path references what appears to be a valid Nutpack.  If problems are detected -- like
+// IsCocopack returns true if the path references what appears to be a valid Cocopack.  If problems are detected -- like
 // an incorrect extension -- they are logged to the provided diag.Sink (if non-nil).
-func IsNutpack(path string, d diag.Sink) bool {
-	return isMarkupFile(path, Nutpack, d)
+func IsCocopack(path string, d diag.Sink) bool {
+	return isMarkupFile(path, Cocopack, d)
 }
 
-// IsNutspace returns true if the path references what appears to be a valid Nutspace file.  If problems are detected --
+// IsCocospace returns true if the path references what appears to be a valid Cocospace file.  If problems are detected --
 // like an incorrect extension -- they are logged to the provided diag.Sink (if non-nil).
-func IsNutspace(path string, d diag.Sink) bool {
-	return isMarkupFile(path, Nutspace, d)
+func IsCocospace(path string, d diag.Sink) bool {
+	return isMarkupFile(path, Cocospace, d)
 }
 
 func isMarkupFile(path string, expect string, d diag.Sink) bool {

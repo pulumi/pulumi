@@ -128,7 +128,7 @@ func NewPlan(ctx *Context, old Snapshot, new Snapshot) (Plan, error) {
 
 type plan struct {
 	ctx       *Context              // this plan's context.
-	ns        tokens.QName          // the husk/namespace target being deployed into.
+	ns        tokens.QName          // the namespace target being deployed into.
 	pkg       tokens.Package        // the package from which this snapshot came.
 	args      core.Args             // the arguments used to compile this package.
 	first     *step                 // the first step to take.

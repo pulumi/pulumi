@@ -6,7 +6,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func newHuskDeployCmd() *cobra.Command {
+func newEnvDeployCmd() *cobra.Command {
 	var dryRun bool
 	var showConfig bool
 	var showReplaceSteps bool
@@ -14,12 +14,12 @@ func newHuskDeployCmd() *cobra.Command {
 	var summary bool
 	var output string
 	var cmd = &cobra.Command{
-		Use:     "deploy <husk> [<nut>] [-- [<args>]]",
+		Use:     "deploy <env> [<nut>] [-- [<args>]]",
 		Aliases: []string{"up", "update"},
-		Short:   "Deploy resource updates, creations, and deletions to a husk",
-		Long: "Deploy resource updates, creations, and deletions to a husk\n" +
+		Short:   "Deploy resource updates, creations, and deletions to an environment",
+		Long: "Deploy resource updates, creations, and deletions to an environment\n" +
 			"\n" +
-			"This command updates an existing husk environment whose state is represented by the\n" +
+			"This command updates an existing environment whose state is represented by the\n" +
 			"existing snapshot file.  The new desired state is computed by compiling and evaluating\n" +
 			"an executable Nut, and extracting all resource allocations from its resulting object graph.\n" +
 			"This graph is compared against the existing state to determine what operations must take\n" +
@@ -27,9 +27,9 @@ func newHuskDeployCmd() *cobra.Command {
 			"environment's new resource state, so that it may be updated incrementally again later.\n" +
 			"\n" +
 			"By default, the Nut to execute is loaded from the current directory.  Optionally, an\n" +
-			"explicit path can be provided using the [nut-file] argument.",
+			"explicit path can be provided using the [nut] argument.",
 		Run: func(cmd *cobra.Command, args []string) {
-			info := initHuskCmd(cmd, args)
+			info := initEnvCmd(cmd, args)
 			apply(cmd, info, applyOptions{
 				Delete:           false,
 				DryRun:           dryRun,
@@ -59,7 +59,7 @@ func newHuskDeployCmd() *cobra.Command {
 		"Only display summarization of resources and plan operations")
 	cmd.PersistentFlags().StringVarP(
 		&output, "output", "o", "",
-		"Serialize the resulting husk snapshot to a specific file, instead of overwriting the existing one")
+		"Serialize the resulting checkpoint to a specific file, instead of overwriting the existing one")
 
 	return cmd
 }

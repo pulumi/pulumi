@@ -19,7 +19,7 @@ import (
 type DeploymentRecord struct {
 	Time      time.Time              `json:"time"`                // the time of the deployment.
 	Reftag    *string                `json:"reftag,omitempty"`    // the ref alias, if any (`#ref` by default).
-	Package   tokens.Package         `json:"package"`             // the nut that this husk belongs to.
+	Package   tokens.Package         `json:"package"`             // the package deployed by this record.
 	Args      *core.Args             `json:"args,omitempty"`      // the blueprint args for graph creation.
 	Resources *ResourceDeploymentMap `json:"resources,omitempty"` // a map of URNs to resource vertices.
 }

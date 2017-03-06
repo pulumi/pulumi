@@ -43,7 +43,7 @@ let testCases: string[] = [
 
 describe("outputs", () => {
     const messageBaselineFile: string = "messages.txt";
-    const outputTreeBaselineFile: string = pack.nutpackBase+".json";
+    const outputTreeBaselineFile: string = pack.cocopackBase+".json";
     for (let testCase of testCases) {
         it(`${testCase} successfully produces the expected results`, asyncTest(async () => {
             let testPath: string = path.join(__dirname, testCase);

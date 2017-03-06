@@ -1,0 +1,42 @@
+// Copyright 2016 Pulumi, Inc. All rights reserved.
+
+package cmd
+
+import (
+	"github.com/spf13/cobra"
+)
+
+func newEnvRmCmd() *cobra.Command {
+	var yes bool
+	var force bool
+	var cmd = &cobra.Command{
+		Use:   "rm <env>",
+		Short: "Remove an environment and its configuration",
+		Long: "Remove an environment and its configuration\n" +
+			"\n" +
+			"This command removes an environment and its configuration state.  Please refer to the\n" +
+			"`destroy` command for removing a resources, as this is a distinct operation.\n" +
+			"\n" +
+			"After this command completes, the environment will no longer be available for deployments.",
+		Run: func(cmd *cobra.Command, args []string) {
+			info := initEnvCmd(cmd, args)
+			if !force && info.Old != nil && len(info.Old.Resources()) > 0 {
+				exitError(
+					"'%v' still has resources; removal rejected; pass --force to override", info.Env.Name)
+			}
+			if yes ||
+				confirmPrompt("This will permanently remove the '%v' environment!", info.Env.Name) {
+				remove(info.Env)
+			}
+		},
+	}
+
+	cmd.PersistentFlags().BoolVarP(
+		&force, "force", "f", false,
+		"By default, removal of a environment with resources will be rejected; this forces it")
+	cmd.PersistentFlags().BoolVar(
+		&yes, "yes", false,
+		"Skip confirmation prompts, and proceed with removal anyway")
+
+	return cmd
+}

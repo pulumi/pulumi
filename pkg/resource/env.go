@@ -8,22 +8,22 @@ import (
 	"github.com/pulumi/coconut/pkg/util/contract"
 )
 
-// Husk represents information about a deployment target.
-type Husk struct {
+// Env represents information about a deployment target.
+type Env struct {
 	Name   tokens.QName // the target environment name.
 	Config ConfigMap    // optional configuration key/values.
 }
 
-// Huskfile is a serialized deployment target plus a record of the latest deployment.
-type Huskfile struct {
-	Husk   tokens.QName      `json:"husk"`             // the target environment name.
+// Envfile is a serialized deployment target plus a record of the latest deployment.
+type Envfile struct {
+	Target tokens.QName      `json:"target"`           // the target environment name.
 	Config *ConfigMap        `json:"config,omitempty"` // optional configuration key/values.
 	Latest *DeploymentRecord `json:"latest,omitempty"` // the latest/current deployment record.
 }
 
-// SerializeHuskfile turns a snapshot into a CocoGL data structure suitable for serialization.
-func SerializeHuskfile(husk *Husk, snap Snapshot, reftag string) *Huskfile {
-	contract.Requiref(husk != nil, "husk", "!= nil")
+// SerializeEnvfile turns a snapshot into a CocoGL data structure suitable for serialization.
+func SerializeEnvfile(env *Env, snap Snapshot, reftag string) *Envfile {
+	contract.Requiref(env != nil, "env", "!= nil")
 
 	// If snap is nil, that's okay, we will just create an empty deployment; otherwise, serialize the whole snapshot.
 	var latest *DeploymentRecord
@@ -32,25 +32,25 @@ func SerializeHuskfile(husk *Husk, snap Snapshot, reftag string) *Huskfile {
 	}
 
 	var config *ConfigMap
-	if husk.Config != nil {
-		config = &husk.Config
+	if env.Config != nil {
+		config = &env.Config
 	}
 
-	return &Huskfile{
-		Husk:   husk.Name,
+	return &Envfile{
+		Target: env.Name,
 		Config: config,
 		Latest: latest,
 	}
 }
 
 // DeserializeDeployment takes a serialized deployment record and returns its associated snapshot.
-func DeserializeHuskfile(ctx *Context, huskfile *Huskfile) (*Husk, Snapshot) {
+func DeserializeEnvfile(ctx *Context, envfile *Envfile) (*Env, Snapshot) {
 	contract.Require(ctx != nil, "ctx")
-	contract.Require(huskfile != nil, "huskfile")
+	contract.Require(envfile != nil, "envfile")
 
 	var snap Snapshot
-	name := huskfile.Husk
-	if latest := huskfile.Latest; latest != nil {
+	name := envfile.Target
+	if latest := envfile.Latest; latest != nil {
 		// Determine the reftag to use.
 		var reftag string
 		if latest.Reftag == nil {
@@ -91,10 +91,10 @@ func DeserializeHuskfile(ctx *Context, huskfile *Huskfile) (*Husk, Snapshot) {
 		snap = NewSnapshot(ctx, name, latest.Package, args, resources)
 	}
 
-	// Create husk and snapshot objects to return.
-	husk := &Husk{Name: name}
-	if huskfile.Config != nil {
-		husk.Config = *huskfile.Config
+	// Create an environment and snapshot objects to return.
+	env := &Env{Name: name}
+	if envfile.Config != nil {
+		env.Config = *envfile.Config
 	}
-	return husk, snap
+	return env, snap
 }

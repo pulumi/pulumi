@@ -6,25 +6,25 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func newHuskDestroyCmd() *cobra.Command {
+func newEnvDestroyCmd() *cobra.Command {
 	var dryRun bool
 	var summary bool
 	var yes bool
 	var cmd = &cobra.Command{
-		Use:   "destroy <husk>",
-		Short: "Destroy an existing husk and its resources",
-		Long: "Destroy an existing husk and its resources\n" +
+		Use:   "destroy <env>",
+		Short: "Destroy an existing environment and its resources",
+		Long: "Destroy an existing environment and its resources\n" +
 			"\n" +
-			"This command deletes an entire existing husk by name.  The current state is loaded\n" +
-			"from the associated snapshot file in the workspace.  After running to completion,\n" +
-			"all of this husk's resources and associated state will be gone.\n" +
+			"This command deletes an entire existing environment by name.  The current state is\n" +
+			"loaded from the associated snapshot file in the workspace.  After running to completion,\n" +
+			"all of this environment's resources and associated state will be gone.\n" +
 			"\n" +
 			"Warning: although old snapshots can be used to recreate an environment, this command\n" +
 			"is generally irreversable and should be used with great care.",
 		Run: func(cmd *cobra.Command, args []string) {
-			info := initHuskCmd(cmd, args)
+			info := initEnvCmd(cmd, args)
 			if dryRun || yes ||
-				confirmPrompt("This will permanently destroy all resources in the '%v' husk!", info.Husk.Name) {
+				confirmPrompt("This will permanently destroy all resources in the '%v' environment!", info.Env.Name) {
 				apply(cmd, info, applyOptions{
 					Delete:  true,
 					DryRun:  dryRun,

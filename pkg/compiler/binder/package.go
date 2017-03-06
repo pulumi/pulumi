@@ -107,15 +107,15 @@ func (b *binder) resolveDep(dep pack.PackageURL) *symbols.ResolvedPackage {
 	locs := b.w.DepCandidates(dep)
 	for _, loc := range locs {
 		// See if this candidate actually exists.
-		isNutpack := workspace.IsNutpack(loc, b.Diag())
-		glog.V(5).Infof("Probing for dependency '%v' at '%v': isNutpack=%v", dep, loc, isNutpack)
+		isCocopack := workspace.IsCocopack(loc, b.Diag())
+		glog.V(5).Infof("Probing for dependency '%v' at '%v': isCocopack=%v", dep, loc, isCocopack)
 
 		// If it does, go ahead and read it in, and bind it (recursively).
-		if isNutpack {
+		if isCocopack {
 			// Read in the package AST.
 			doc, err := diag.ReadDocument(loc)
 			if err != nil {
-				b.Diag().Errorf(errors.ErrorCouldNotReadNutfile.AtFile(loc), err)
+				b.Diag().Errorf(errors.ErrorCouldNotReadCocofile.AtFile(loc), err)
 				return nil
 			}
 			pkg := b.reader.ReadPackage(doc)

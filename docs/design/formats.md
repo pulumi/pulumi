@@ -1,6 +1,6 @@
 # Coconut Formats
 
-Coconut cloud services are described to the toolchain with three languages: CocoLangs, NutPack/NutIL, and CocoGL.
+Coconut cloud services are described to the toolchain with three languages: CocoLangs, CocoPack/CocoIL, and CocoGL.
 
 At the highest level, developers write Coconut packages using a high-level language.  There are multiple to choose from,
 and each is a proper subset of an existing popular programming language; CocoJS is a subset of JavaScript, CocoPy is
@@ -9,22 +9,22 @@ these languages ensure static analyzability, determinism, and compilability into
 retain most of their source language's popular features, including the libraries, so that these languages feel familiar.
 To distinguish them from their ordinary counterparts, these subsetted language dialects are called CocoLangs.
 
-In the middle, NutPack is a standard metadata representation for compiled and redistributable Coconut packages.  This is
-the unit of distribution and dependency in the classical package management sense.  NutPack is multi-langauge and
-contains internal and exported modules, types, functions, variables, and code.  All code is serialized in NutIL, the
-NutPack intermediate language, that can be evaluated by the Coconut toolchain.  Because of computations, the final
-"shape" of a cloud topology is not determined until the NutPack is evaluated as part of a deployment planning step.
+In the middle, CocoPack is a standard metadata representation for compiled and redistributable Coconut packages.  This is
+the unit of distribution and dependency in the classical package management sense.  CocoPack is multi-langauge and
+contains internal and exported modules, types, functions, variables, and code.  All code is serialized in CocoIL, the
+CocoPack intermediate language, that can be evaluated by the Coconut toolchain.  Because of computations, the final
+"shape" of a cloud topology is not determined until the CocoPack is evaluated as part of a deployment planning step.
 
 The final shape, Coconut Graph Language (CocoGL), represents a cloud topology with concrete property values and
 dependencies.  A graph can be compared to another graph to compute a delta, a capability essential to incremental
 deployment and drift analysis.  Each graph is a [DAG](https://en.wikipedia.org/wiki/Directed_acyclic_graph), in which
 nodes are cloud services, edges are [directed dependencies](https://en.wikipedia.org/wiki/Dependency_graph) between
-services, and all input and output properties are values.  Any given NutPack can create many possible CocoGL graphs,
-and identical CocoGL graphs can be created by different NutPacks, because NutPack can contain parameterized logic and
+services, and all input and output properties are values.  Any given CocoPack can create many possible CocoGL graphs,
+and identical CocoGL graphs can be created by different CocoPacks, because CocoPack can contain parameterized logic and
 conditional computations.  A CocoGL graph can also be generated from a live environment.
 
 This document describes these formats, the requirements for a high-level CocoLang (although details for each language
-are specified elsehwere), the NutPack/NutIL and CocoGL formats, and the overall compilation process.
+are specified elsehwere), the CocoPack/CocoIL and CocoGL formats, and the overall compilation process.
 
 ## Coconut Metadata Languages (CocoLangs)
 
@@ -34,7 +34,7 @@ comfortable with.  For example, we currently plan to support JavaScript (CocoJS)
 Terraform.  These are called metadata languages, or CocoLangs, and we call code written in them *programs*.
 
 In principle, there is no limit to the breadth of CocoLangs that Coconut can support -- and it is indeed extensible by
-3rd parties -- although we do require that any CocoLang compiles down into NutPack.  This is admittedly a bit more
+3rd parties -- although we do require that any CocoLang compiles down into CocoPack.  This is admittedly a bit more
 difficult for fully dynamically typed languages -- for example, it requires a real compiler to analyze and emit code
 statically -- although the task is certainly not impossible (as evidenced by CocoJS, CocoPy, and CocoRu support).
 
@@ -61,7 +61,7 @@ lambda that the compiler will "shred" into a distinct asset that is bundled insi
 In any case, "language bindings" bind elements of Coconut services to executable code.  This executable code can come in
 many forms, aside from the above lambda example.  For example, a "container" service may bind to a real, physical Docker
 container image.  As another example, an "RPC" service may bind to an entire Go program, with many endpoints implemented
-as Go functions.  A NutPack is incomplete without being fully bound to the program assets that must be co-deployed.
+as Go functions.  A CocoPack is incomplete without being fully bound to the program assets that must be co-deployed.
 
 ### Restricted Subsets
 
@@ -89,30 +89,30 @@ https://github.com/WebAssembly/design/blob/master/Nondeterminism.md).
 CocoLangs may in fact consume 3rd party packages (e.g., from NPM, Pip, or elsewhere), but they must be blessed by the
 CocoLang compiler for your language of choice.  This means recompiling packages from source -- and dealing with the
 possibility that they will fail to compile if they perform illegal operations -- or, preferably, using a package that
-has already been pre-compiled using a CocoLang compiler, likely in NutPack format, in which case you are guaranteed that it
-will work without any unexpected difficulties.  The CocoHub contains precompiled NutPacks for easy consumption.
+has already been pre-compiled using a CocoLang compiler, likely in CocoPack format, in which case you are guaranteed that it
+will work without any unexpected difficulties.  The CocoHub contains precompiled CocoPacks for easy consumption.
 
-Each CocoLang program is *compiled* into a NutPack, using the NuPack and NutIL formats.
+Each CocoLang program is *compiled* into a CocoPack, using the NuPack and CocoIL formats.
 
-## Coconut Package Metadata (NutPack) and Intermediate Language (NutIL)
+## Coconut Package Metadata (CocoPack) and Intermediate Language (CocoIL)
 
-Each NutPack is encoded in NutPack and serialized in a JSON/YAML form for easy toolability.  The full NutPack and NutIL
-specifications are available in the [Coconut Package Metadata (NutPack) design doc](nutpack.md).
+Each CocoPack is encoded in CocoPack and serialized in a JSON/YAML form for easy toolability.  The full CocoPack and CocoIL
+specifications are available in the [Coconut Package Metadata (CocoPack) design doc](nutpack.md).
 
-### NutPack
+### CocoPack
 
-NutPack is the unit of sharing and reuse, and includes high-level metadata about the module's contents, in addition to
-its modules, types, functions, and variables.  Each NutPack can be either a *library* -- meant solely for sharing and
+CocoPack is the unit of sharing and reuse, and includes high-level metadata about the module's contents, in addition to
+its modules, types, functions, and variables.  Each CocoPack can be either a *library* -- meant solely for sharing and
 reuse -- or it can be an executable *blueprint* -- in which case it can create a CocoGL cloud topology all on its own.
 
-NutPack uses a "JSON-like" type system so that its type system is accessible to many CocoLangs.  This eases Internet-scale
+CocoPack uses a "JSON-like" type system so that its type system is accessible to many CocoLangs.  This eases Internet-scale
 interoperability and facilitates cross-language reuse.  This type system may be extended with custom types, including
 custom service types that encapsulate patterns of infrastructure coordination, and schema types that govern the shape of
 data and property values being exchanged.  Any of these types and functions may or may not be exported from the module.
 
-### NutIL
+### CocoIL
 
-All executable code is encoded using a simple intermediate language, NutIL, that can be evaluated by Coconut.
+All executable code is encoded using a simple intermediate language, CocoIL, that can be evaluated by Coconut.
 This captures a deterministic, bounded set of type system and execution constructs that a subset of most higher level
 languages can target and consume.  The design has been inspired by existing "minimalistic" multi-language intermediate
 formats, and is very similar to [CIL](https://www.ecma-international.org/publications/standards/Ecma-335.htm), with
@@ -123,10 +123,10 @@ performance advantages and simplifies the toolchain.  An optional verifier can c
 
 ### Planning and Applying
 
-There are two actions that can be taken against a NutPack blueprint:
+There are two actions that can be taken against a CocoPack blueprint:
 
 * `coco plan` turns a blueprint into a *plan*, which is a possibly-incomplete graph, and does not actually mutate any
-  live environment.  This is essentially a "dry run" of a deployment.  To create a plan, the NutPack's main entrypoint
+  live environment.  This is essentially a "dry run" of a deployment.  To create a plan, the CocoPack's main entrypoint
   is called, requiring that its arguments be supplied.  The graph may be incomplete if code depends on plan outputs for
   conditional execution or property values,  resulting in so-called "holes" that will be shown in the plan's output.
 
@@ -153,15 +153,15 @@ Each node in a graph carries the service's unique ID, human-friendly name, type,
 
 A service's type tells the CocoGL toolchain how to deal with physical resources that need to be created, read, updated, or
 deleted, and governs which properties are legal and their expected types.  Note that any module references within the
-CocoGL file still refer to the NutPacks that define abstractions, which are still resolved during evaluation.  All
-module references will have been "locked" to a specific version of that NutPack, however, for repeatability's sake.
+CocoGL file still refer to the CocoPacks that define abstractions, which are still resolved during evaluation.  All
+module references will have been "locked" to a specific version of that CocoPack, however, for repeatability's sake.
 
 Edges between these nodes represent dependencies, and are therefore directed, and must be explicit.  Despite property
 values potentially governing the dependencies, these are gone by the time CocoGL is created.  Therefore, the translation
-from NutPack to CocoGL is responsible for fully specifying the set of service dependencies.
+from CocoPack to CocoGL is responsible for fully specifying the set of service dependencies.
 
 The graph is complete.  That is, even though dependencies on 3rd party modules may remain, the full [transitive
-closure](https://en.wikipedia.org/wiki/Transitive_closure) of services created by all NutPacks is present.
+closure](https://en.wikipedia.org/wiki/Transitive_closure) of services created by all CocoPacks is present.
 Because the graph is a DAG, any cycles in this graph are illegal and will result in an error.  It is ideal if higher-
 level translation catches this, since each step in the translation process reduces the diagnosability of errors.
 
@@ -198,7 +198,7 @@ TODO[pulumi/coconut#30]: queryability (GraphQL?  RDF/SPARQL?  Neo4j/Cypher?  Gre
 ## Scenarios
 
 In this section, we'll walk through a few motivational scenarios beyond the usual compilation process from a high-level
-CocoLang, to NutPack, all the way to CocoGL which is deployed to an environment.  We will see how the file formats are used.
+CocoLang, to CocoPack, all the way to CocoGL which is deployed to an environment.  We will see how the file formats are used.
 
 ### Generating CocoGL from a Live Environment
 
@@ -207,7 +207,7 @@ An existing environment can be used to generate CocoGL.  This is called *graph i
 This can make adoption of Coconut easier if you already have an environment you wish to model.  It can also facilitate
 identifying "drift" between a desired and actual state; we will see more about this in a moment.
 
-Any CocoGL generated in this manner may have less information than CocoGL generated from CocoLang and NutPack, due to the
+Any CocoGL generated in this manner may have less information than CocoGL generated from CocoLang and CocoPack, due to the
 possibility of lossy representations and/or missing abstractions in an actual live environment.  For example, there
 could be "hidden" implicit dependencies between services that are not expressed in the resulting CocoGL file.
 Nevertheless, this can be a great first step towards adopting Coconut for your existing environments.
@@ -238,13 +238,13 @@ To cope with some of the potential lossiness during graph inference, Coconut imp
 to a more strict exact diff, algorithm.  The semantic diff classifies differences due to lossy inference distinct from
 ordinary semantically meaningful differences that could be impacting a live environment's behavior.
 
-### Creating or Updating CocoLang and NutPack from CocoGL
+### Creating or Updating CocoLang and CocoPack from CocoGL
 
-It is possible to raise CocoGL into NutPack and, from there, raise NutPack into your favorite CocoLang.
+It is possible to raise CocoGL into CocoPack and, from there, raise CocoPack into your favorite CocoLang.
 
-It is, however, important to note one thing before getting into the details.  There are many possible NutPacks that
+It is, however, important to note one thing before getting into the details.  There are many possible CocoPacks that
 could generate a given CocoGL, due to conditional execution of code.  There may even be many possible CocoLang programs 
-that could generate a given NutPack, since NutPack's language constructs are intentionally smaller than what might
+that could generate a given CocoPack, since CocoPack's language constructs are intentionally smaller than what might
 exist in a higher-level programming language.  In short, lowering and re-raising is not a round-trippable operation.
 
 Nevertheless, this raising can come in handy for two reasons.

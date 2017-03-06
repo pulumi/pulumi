@@ -1,25 +1,25 @@
 # Coconut Dependencies
 
-This is a short note describing how NutPack dependencies are managed and resolved.  This design has been inspired by
+This is a short note describing how CocoPack dependencies are managed and resolved.  This design has been inspired by
 many existing package managers, and is a mashup of the approaches taken in Go, NPM/Yarn, and Docker.
 
 ## Packages
 
-The unit of dependency in Coconut is a Nut, encoded in the [NutPack](nutpack.md) format.
+The unit of dependency in Coconut is a Nut, encoded in the [CocoPack](nutpack.md) format.
 
-Each has a `Nut.yaml` (or `.json`) manifest, which lists, among other things, that package's own set of dependencies.
+Each has a `Coconut.yaml` (or `.json`) manifest, which lists, among other things, that package's own set of dependencies.
 
 Each may also carry arbitrary assets, such as a `Dockerfile` and associated source code; serverless source code
 representing lambdas and API implementations; and so on.
 
 The dependency management system is opinionated about how directories are laid out, however most CocoLangs will project
-NutPack dependencies into the native package management system using proxy packages that the CocoLang compilers
+CocoPack dependencies into the native package management system using proxy packages that the CocoLang compilers
 understand how to recognize.  The details of how a language does this is outside of the scope of this document.
 
 ## References
 
 Each package is referenced using a URL-like scheme, facilitating multiple package management distribution schemes.
-For example, the URL `https://cocohub.com/aws#^1.0.6` references the `aws` package on NutHub's built-in package
+For example, the URL `https://cocohub.com/aws#^1.0.6` references the `aws` package on CocoHub's built-in package
 manager, and askes specifically for version `1.0.6` or higher using semantic versioning resolution.  Note that package
 names may have multiple parts, delimited by `/`, as part of the URL; for example `https://cocohub.com/a/b/c`.
 
@@ -46,21 +46,21 @@ not have version numbers.  These references are not strictly URLs and must be in
     MemberName = [ Protocol ] [ BaseURL ] NamePart MemberPart
     MemberPart = ":" NamePart
 
-For example, to reference the `VM` class from a NutIL token -- assuming we have a dependency declared on
+For example, to reference the `VM` class from a CocoIL token -- assuming we have a dependency declared on
 `https://cocohub.com/aws#^1.0.6` as shown above -- we would most likely say `aws:ec2/VM`.  A fully qualified, but
 versionless, reference is also permitted, as in `https://cocohub.com/aws:ec2/VM`, although this is less conventional.
 The self-referential package plus module identifier `.` can be used to reference members in the current package.
 
-The way these URLs are resolved to physical NutPacks is discussed later on in this document.
+The way these URLs are resolved to physical CocoPacks is discussed later on in this document.
 
 ## Versions
 
-Each physical NutPack can be tagged with one or more versions.  How this tagging process happens is left to the
+Each physical CocoPack can be tagged with one or more versions.  How this tagging process happens is left to the
 specific package provider.  Each version can either be a semantic version number or arbitrary string tag.
 
 For example, the Git provider allows dependency on a specific Git SHA hash.  For example,
-`https://github.com/coconut/aws/ec2#1895753f53a63c055e7cae81ebe4ea5d5805584f` depends on a NutPack published in a GitHub
-repo at commit `1895753`.  Alternatively, Git tags can be used to give NutPacks friendly names.  So, for example,
+`https://github.com/coconut/aws/ec2#1895753f53a63c055e7cae81ebe4ea5d5805584f` depends on a CocoPack published in a GitHub
+repo at commit `1895753`.  Alternatively, Git tags can be used to give CocoPacks friendly names.  So, for example,
 `https://github.com/coconut/aws/ec2#beta1` uses on the arbitrary tag `beta1`; the same scheme can be used to denote
 semantic versions simply by using Git tags, for instance `https://github.com/coconut/aws/ec2#^1.0.6`.
 
@@ -87,9 +87,9 @@ tools; in particular, generating a plan automatically first generates a so-calle
 ### Pinning
 
 A pinfile exists alongside a package's manifest to lock all versions to specific pinned versions; it is called
-`Nutdeps.yaml` (or `Nutdeps.json`).  Using a separate pinfile enables an independent pinning step without modifying the
-package manifest, which can continue using flexible versions if appropriate.  This file contains the entire transitive
-closure of a package, its dependencies, their dependencies, and so on, pinned to specific versions.
+`Cocodeps.yaml` (or `Cocodeps.json`).  Using a separate pinfile enables an independent pinning step without modifying
+the package manifest, which can continue using flexible versions if appropriate.  This file contains the entire
+transitive closure of a package, its dependencies, their dependencies, and so on, pinned to specific versions.
 
 All CLI commands respect the pinfile when it exists.  There are CLI commands to manage this pinfile too.  For example:
 
@@ -109,30 +109,30 @@ not pinned to specific versions.  If that is desired, the pinned versions belong
 
 ## Package Resolution
 
-Now let us see how references are resolved to physical NutPacks.
+Now let us see how references are resolved to physical CocoPacks.
 
-NutPacks may be found in multiple places, and, as in most dependency management schemes, some locations are preferred
+CocoPacks may be found in multiple places, and, as in most dependency management schemes, some locations are preferred
 over others.  This is to ease the task of local development while also providing rigorous dependency management.
 
 Roughly speaking, these locations are are searched, in order:
 
 1. The current workspace, for intra-workspace but inter-package dependencies.
-2. The current workspace's `.Nuts/` directory.
-3. The global Workspace's `.Nuts/` directory.
+2. The current workspace's `.coconut/nuts/` directory.
+3. The global Workspace's `.coconut/nuts/` directory.
 4. The Coconut runtime libraries: `$COCOROOT/lib/packs/` (default `/usr/local/coconut/lib/packs`).
 
 In each location, Coconut prefers a fully qualified hit if it exists -- containing both the base of the reference plus
 the name -- however, it also accept name-only hits.  This allows developers to organize their workspace without worrying
-about where their NutPacks will be published.  Most of the Coconut tools, however, prefer fully qualified paths.
+about where their CocoPacks will be published.  Most of the Coconut tools, however, prefer fully qualified paths.
 
 To be more precise, given a reference `r` and a workspace root `w`, we look in these locations, in order:
 
 1. `w/base(r)/name(r)`
 2. `w/name(r)`
-3. `w/.Nuts/base(r)/name(r)`
-4. `w/.Nuts/name(r)`
-5. `~/.Nuts/base(r)/name(r)`
-6. `~/.Nuts/name(r)`
+3. `w/.coconut/.nuts/base(r)/name(r)`
+4. `w/.coconut/.nuts/name(r)`
+5. `~/.coconut/.nuts/base(r)/name(r)`
+6. `~/.coconut/.nuts/name(r)`
 7. `$COCOROOT/bin/packs/base(r)/name(r)`
 8. `$COCOROOT/bin/packs/name(r)`
 
@@ -142,11 +142,11 @@ In the illustration, let us imagine we're the author of the package, and so it i
 organized so that it can be easily found, eliminating the need for us to frequently publish changes during development:
 
     <Workspace>
-    |   .Nuts/
+    |   .coconut/
     |   |   workspace.yaml
     |   aws/
     |   |   ec2/
-    |   |   |   Nut.yaml
+    |   |   |   Coconut.yaml
     |   |   |   ...other assets...
 
 The `workspace.yaml` file may optionally specify a "namespace" property, as in:
@@ -156,18 +156,18 @@ The `workspace.yaml` file may optionally specify a "namespace" property, as in:
 In this case, the following simpler directory structure would also do the trick:
 
     <Workspace>
-    |   .Nuts/
+    |   .coconut/
     |   |   workspace.yaml
     |   ec2/
-    |   |   Nut.yaml
+    |   |   Coconut.yaml
     |   |   ...other assets...
 
 It is possible to simplify this even further by specifying the namespace as `aws/ec2`, leading to:
 
     <Workspace>
-    |   .Nuts/
+    |   .coconut/
     |   |   workspace.yaml
-    |   Nut.yaml
+    |   Coconut.yaml
     |   ...other assets...
 
 Notice that we didn't have to mention the `cocohub.com/` part in our workspace, although we can if we choose to.
@@ -179,12 +179,13 @@ In the second illustration, let us imagine we have used `coco get` to download t
 In this case, our local workspace's package directory will have been populated with a copy of `aws/ec2`:
 
     <Workspace>
-    |   .Nuts/
-    |   |   cocohub.com/
-    |   |   |   aws/
-    |   |   |   |   ec2/
-    |   |   |   |   |   Nut.yaml
-    |   |   |   |   |   ...other assets...
+    |   .coconut/
+    |   |   .nuts/
+    |   |   |   cocohub.com/
+    |   |   |   |   aws/
+    |   |   |   |   |   ec2/
+    |   |   |   |   |   |   Coconut.yaml
+    |   |   |   |   |   |   ...other assets...
 
 Notice that in this case, the full base part `cocohub.com/` is part of the path, since we downloaded it from that URL.
 
@@ -196,12 +197,13 @@ have been thanks to use using `coco get`'s `--global` (or `-g`) flag:
 The directory structure will look identical to the second example, except that it is rooted in `~/`:
 
     ~
-    |   .Nuts/
-    |   |   cocohub.com/
-    |   |   |   aws/
-    |   |   |   |   ec2/
-    |   |   |   |   |   Nut.yaml
-    |   |   |   |   |   ...other assets...
+    |   .coconut/
+    |   |   .nuts/
+    |   |   |   cocohub.com/
+    |   |   |   |   aws/
+    |   |   |   |   |   ec2/
+    |   |   |   |   |   |   Coconut.yaml
+    |   |   |   |   |   |   ...other assets...
 
 ## Fetching
 

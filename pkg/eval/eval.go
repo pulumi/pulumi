@@ -22,7 +22,7 @@ import (
 	"github.com/pulumi/coconut/pkg/util/contract"
 )
 
-// Interpreter can evaluate compiled NutPacks.
+// Interpreter can evaluate compiled CocoPacks.
 type Interpreter interface {
 	core.Phase
 
@@ -52,7 +52,7 @@ type InterpreterHooks interface {
 	OnEnterFunction(fnc symbols.Function) func() // invoked when we enter a new function.
 }
 
-// New creates an interpreter that can be used to evaluate NutPacks.
+// New creates an interpreter that can be used to evaluate CocoPacks.
 func New(ctx *binder.Context, hooks InterpreterHooks) Interpreter {
 	e := &evaluator{
 		ctx:        ctx,

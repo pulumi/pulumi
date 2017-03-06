@@ -33,59 +33,59 @@ import (
 	"github.com/pulumi/coconut/pkg/workspace"
 )
 
-func newHuskCmd() *cobra.Command {
+func newEnvCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "husk",
-		Short: "Manage or deploy into husks (deployment targets)",
-		Long: "Manage or deploy into husks (deployment targets)\n" +
+		Use:   "env",
+		Short: "Manage or deploy into a target environment",
+		Long: "Manage or deploy into a target environment\n" +
 			"\n" +
-			"A husk is a named deployment target, and a single nut have many of them.  Each husk\n" +
-			"has a deployment history associated with it, stored in the workspace, in addition to\n" +
-			"the last known good deployment.  A husk may also have unique configuration entries.\n",
+			"An environment is a named deployment target, and a single nut have many of them.  Each\n" +
+			"environment has a configuration and deployment history associated with it, stored in the\n" +
+			"workspace, in addition to a full checkpoint of the last known good deployment.\n",
 	}
 
-	cmd.AddCommand(newHuskDeployCmd())
-	cmd.AddCommand(newHuskDestroyCmd())
-	cmd.AddCommand(newHuskInitCmd())
-	cmd.AddCommand(newHuskLsCmd())
-	cmd.AddCommand(newHuskRmCmd())
+	cmd.AddCommand(newEnvDeployCmd())
+	cmd.AddCommand(newEnvDestroyCmd())
+	cmd.AddCommand(newEnvInitCmd())
+	cmd.AddCommand(newEnvLsCmd())
+	cmd.AddCommand(newEnvRmCmd())
 
 	return cmd
 }
 
-func initHuskCmd(cmd *cobra.Command, args []string) *huskCmdInfo {
+func initEnvCmd(cmd *cobra.Command, args []string) *envCmdInfo {
 	// Create a new context for the plan operations.
 	ctx := resource.NewContext(sink())
 
-	// Read in the name of the husk to use.
+	// Read in the name of the environment to use.
 	if len(args) == 0 {
-		exitError("missing required husk name")
+		exitError("missing required environment name")
 	}
 
 	// Read in the deployment information, bailing if an IO error occurs.
 	name := tokens.QName(args[0])
-	huskfile, husk, old := readHusk(ctx, name)
-	if husk == nil {
+	envfile, env, old := readEnv(ctx, name)
+	if env == nil {
 		contract.Assert(!ctx.Diag.Success())
-		exitError("could not read huskfile required to proceed") // failure reading the husk information.
+		exitError("could not read envfile required to proceed") // failure reading the env information.
 	}
-	return &huskCmdInfo{
-		Ctx:      ctx,
-		Husk:     husk,
-		Huskfile: huskfile,
-		Old:      old,
-		Args:     args[1:],
-		Orig:     args,
+	return &envCmdInfo{
+		Ctx:     ctx,
+		Env:     env,
+		Envfile: envfile,
+		Old:     old,
+		Args:    args[1:],
+		Orig:    args,
 	}
 }
 
-type huskCmdInfo struct {
-	Ctx      *resource.Context  // the resulting context
-	Husk     *resource.Husk     // the husk information
-	Huskfile *resource.Huskfile // the full serialized huskfile from which this came.
-	Old      resource.Snapshot  // the husk's latest deployment snapshot
-	Args     []string           // the rest of the args after extracting the husk name
-	Orig     []string           // the original args before extracting the husk name
+type envCmdInfo struct {
+	Ctx     *resource.Context // the resulting context
+	Env     *resource.Env     // the environment information
+	Envfile *resource.Envfile // the full serialized envfile from which this came.
+	Old     resource.Snapshot // the environment's latest deployment snapshot
+	Args    []string          // the rest of the args after extracting the environment name
+	Orig    []string          // the original args before extracting the environment name
 }
 
 func confirmPrompt(msg string, args ...interface{}) bool {
@@ -101,20 +101,20 @@ func confirmPrompt(msg string, args ...interface{}) bool {
 	return true
 }
 
-// create just creates a new empty husk without deploying anything into it.
-// TODO: add the ability to configure the husk at the command line.
+// create just creates a new empty environment without deploying anything into it.
+// TODO: add the ability to configure the environment at the command line.
 func create(name tokens.QName) {
-	husk := &resource.Husk{Name: name}
-	if success := saveHusk(husk, nil, "", false); success {
-		fmt.Printf("Coconut husk '%v' initialized; ready for deployments (see `coco husk deploy`)\n", name)
+	env := &resource.Env{Name: name}
+	if success := saveEnv(env, nil, "", false); success {
+		fmt.Printf("Environment '%v' initialized; see `coco env deploy` to deploy into it\n", name)
 	}
 }
 
-// remove permanently deletes the husk's information from the local workstation.
-func remove(husk *resource.Husk) {
-	deleteHusk(husk)
-	msg := fmt.Sprintf("%sCoconut husk '%s' has been removed!%s\n",
-		colors.SpecAttention, husk.Name, colors.Reset)
+// remove permanently deletes the environment's information from the local workstation.
+func remove(env *resource.Env) {
+	deleteEnv(env)
+	msg := fmt.Sprintf("%sEnvironment '%s' has been removed!%s\n",
+		colors.SpecAttention, env.Name, colors.Reset)
 	fmt.Printf(colors.ColorizeText(msg))
 }
 
@@ -216,20 +216,20 @@ func verify(cmd *cobra.Command, args []string) bool {
 }
 
 // plan just uses the standard logic to parse arguments, options, and to create a snapshot and plan.
-func plan(cmd *cobra.Command, info *huskCmdInfo, delete bool) *planResult {
+func plan(cmd *cobra.Command, info *envCmdInfo, delete bool) *planResult {
 	// If deleting, there is no need to create a new snapshot; otherwise, we will need to compile the package.
 	var new resource.Snapshot
 	var result *compileResult
 	if !delete {
 		// First, compile; if that yields errors or an empty heap, exit early.
-		if result = compile(cmd, info.Args, info.Husk.Config); result == nil || result.Heap == nil {
+		if result = compile(cmd, info.Args, info.Env.Config); result == nil || result.Heap == nil {
 			return nil
 		}
 
 		// Create a resource snapshot from the compiled/evaluated object graph.
 		var err error
 		new, err = resource.NewGraphSnapshot(
-			info.Ctx, info.Husk.Name, result.Pkg.Tok, result.C.Ctx().Opts.Args, result.Heap, info.Old)
+			info.Ctx, info.Env.Name, result.Pkg.Tok, result.C.Ctx().Opts.Args, result.Heap, info.Old)
 		if err != nil {
 			result.C.Diag().Errorf(errors.ErrorCantCreateSnapshot, err)
 			return nil
@@ -257,13 +257,13 @@ func plan(cmd *cobra.Command, info *huskCmdInfo, delete bool) *planResult {
 
 type planResult struct {
 	*compileResult
-	Info *huskCmdInfo      // plan command information.
+	Info *envCmdInfo       // plan command information.
 	Old  resource.Snapshot // the existing snapshot (if any).
 	New  resource.Snapshot // the new snapshot for this plan (if any).
 	Plan resource.Plan     // the plan created by this command.
 }
 
-func apply(cmd *cobra.Command, info *huskCmdInfo, opts applyOptions) {
+func apply(cmd *cobra.Command, info *envCmdInfo, opts applyOptions) {
 	if result := plan(cmd, info, opts.Delete); result != nil {
 		// Now based on whether a dry run was specified, or not, either print or perform the planned operations.
 		if opts.DryRun {
@@ -271,7 +271,7 @@ func apply(cmd *cobra.Command, info *huskCmdInfo, opts applyOptions) {
 			if opts.Output == "" || opts.Output == "-" {
 				printPlan(info.Ctx.Diag, result, opts)
 			} else {
-				saveHusk(info.Husk, result.New, opts.Output, true /*overwrite*/)
+				saveEnv(info.Env, result.New, opts.Output, true /*overwrite*/)
 			}
 		} else {
 			// If show unchanged was requested, print them first, along with a header.
@@ -307,8 +307,8 @@ func apply(cmd *cobra.Command, info *huskCmdInfo, opts applyOptions) {
 
 			// Now save the updated snapshot to the specified output file, if any, or the standard location otherwise.
 			// Note that if a failure has occurred, the Apply routine above will have returned a safe checkpoint.
-			husk := result.Info.Husk
-			saveHusk(husk, checkpoint, opts.Output, true /*overwrite*/)
+			env := result.Info.Env
+			saveEnv(env, checkpoint, opts.Output, true /*overwrite*/)
 
 			fmt.Printf(colors.Colorize(&summary))
 		}
@@ -324,26 +324,26 @@ func checkEmpty(d diag.Sink, plan resource.Plan) bool {
 	return false
 }
 
-// backupHusk makes a backup of an existing file, in preparation for writing a new one.  Instead of a copy, it
+// backupEnv makes a backup of an existing file, in preparation for writing a new one.  Instead of a copy, it
 // simply renames the file, which is simpler, more efficient, etc.
-func backupHusk(file string) {
+func backupEnv(file string) {
 	contract.Require(file != "", "file")
 	os.Rename(file, file+".bak") // ignore errors.
 	// TODO: consider multiple backups (.bak.bak.bak...etc).
 }
 
-// deleteHusk removes an existing snapshot file, leaving behind a backup.
-func deleteHusk(husk *resource.Husk) {
-	contract.Require(husk != nil, "husk")
+// deleteEnv removes an existing snapshot file, leaving behind a backup.
+func deleteEnv(env *resource.Env) {
+	contract.Require(env != nil, "env")
 	// Just make a backup of the file and don't write out anything new.
-	file := workspace.HuskPath(husk.Name)
-	backupHusk(file)
+	file := workspace.EnvPath(env.Name)
+	backupEnv(file)
 }
 
-// readHusk reads in an existing snapshot file, issuing an error and returning nil if something goes awry.
-func readHusk(ctx *resource.Context, name tokens.QName) (*resource.Huskfile, *resource.Husk, resource.Snapshot) {
+// readEnv reads in an existing snapshot file, issuing an error and returning nil if something goes awry.
+func readEnv(ctx *resource.Context, name tokens.QName) (*resource.Envfile, *resource.Env, resource.Snapshot) {
 	contract.Require(name != "", "name")
-	file := workspace.HuskPath(name)
+	file := workspace.EnvPath(name)
 
 	// Detect the encoding of the file so we can do our initial unmarshaling.
 	m, ext := encoding.Detect(file)
@@ -356,16 +356,16 @@ func readHusk(ctx *resource.Context, name tokens.QName) (*resource.Huskfile, *re
 	b, err := ioutil.ReadFile(file)
 	if err != nil {
 		if os.IsNotExist(err) {
-			ctx.Diag.Errorf(errors.ErrorInvalidHuskName, name)
+			ctx.Diag.Errorf(errors.ErrorInvalidEnvName, name)
 		} else {
 			ctx.Diag.Errorf(errors.ErrorIO, err)
 		}
 		return nil, nil, nil
 	}
 
-	// Unmarshal the contents into a huskfile deployment structure.
-	var huskfile resource.Huskfile
-	if err = m.Unmarshal(b, &huskfile); err != nil {
+	// Unmarshal the contents into a envfile deployment structure.
+	var envfile resource.Envfile
+	if err = m.Unmarshal(b, &envfile); err != nil {
 		ctx.Diag.Errorf(errors.ErrorCantReadDeployment, file, err)
 		return nil, nil, nil
 	}
@@ -383,23 +383,23 @@ func readHusk(ctx *resource.Context, name tokens.QName) (*resource.Huskfile, *re
 			}
 		}
 		md := mapper.New(nil)
-		var ignore resource.Huskfile // just for errors.
+		var ignore resource.Envfile // just for errors.
 		if err = md.Decode(obj, &ignore); err != nil {
 			ctx.Diag.Errorf(errors.ErrorCantReadDeployment, file, err)
 			return nil, nil, nil
 		}
 	}
 
-	husk, snap := resource.DeserializeHuskfile(ctx, &huskfile)
-	contract.Assert(husk != nil)
-	return &huskfile, husk, snap
+	env, snap := resource.DeserializeEnvfile(ctx, &envfile)
+	contract.Assert(env != nil)
+	return &envfile, env, snap
 }
 
-// saveHusk saves a new snapshot at the given location, backing up any existing ones.
-func saveHusk(husk *resource.Husk, snap resource.Snapshot, file string, existok bool) bool {
-	contract.Require(husk != nil, "husk")
+// saveEnv saves a new snapshot at the given location, backing up any existing ones.
+func saveEnv(env *resource.Env, snap resource.Snapshot, file string, existok bool) bool {
+	contract.Require(env != nil, "env")
 	if file == "" {
-		file = workspace.HuskPath(husk.Name)
+		file = workspace.EnvPath(env.Name)
 	}
 
 	// Make a serializable CocoGL data structure and then use the encoder to encode it.
@@ -411,7 +411,7 @@ func saveHusk(husk *resource.Husk, snap resource.Snapshot, file string, existok 
 	if filepath.Ext(file) == "" {
 		file = file + ext
 	}
-	dep := resource.SerializeHuskfile(husk, snap, "")
+	dep := resource.SerializeEnvfile(env, snap, "")
 	b, err := m.Marshal(dep)
 	if err != nil {
 		sink().Errorf(errors.ErrorIO, err)
@@ -427,7 +427,7 @@ func saveHusk(husk *resource.Husk, snap resource.Snapshot, file string, existok 
 	}
 
 	// Back up the existing file if it already exists.
-	backupHusk(file)
+	backupEnv(file)
 
 	// Ensure the directory exists.
 	if err = os.MkdirAll(filepath.Dir(file), 0755); err != nil {
