@@ -44,6 +44,7 @@ func newEnvCmd() *cobra.Command {
 			"workspace, in addition to a full checkpoint of the last known good deployment.\n",
 	}
 
+	cmd.AddCommand(newEnvConfigCmd())
 	cmd.AddCommand(newEnvDeployCmd())
 	cmd.AddCommand(newEnvDestroyCmd())
 	cmd.AddCommand(newEnvInitCmd())
