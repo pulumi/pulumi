@@ -3,6 +3,8 @@
 package cmd
 
 import (
+	"fmt"
+
 	"github.com/spf13/cobra"
 )
 
@@ -18,17 +20,27 @@ func newEnvRmCmd() *cobra.Command {
 			"`destroy` command for removing a resources, as this is a distinct operation.\n" +
 			"\n" +
 			"After this command completes, the environment will no longer be available for deployments.",
-		Run: func(cmd *cobra.Command, args []string) {
-			info := initEnvCmd(cmd, args)
+		Run: runFunc(func(cmd *cobra.Command, args []string) error {
+			info, err := initEnvCmd(cmd, args)
+			if err != nil {
+				return err
+			}
+			defer info.Close()
+
+			// Don't remove environments that still have resources.
 			if !force && info.Old != nil && len(info.Old.Resources()) > 0 {
-				exitError(
+				return fmt.Errorf(
 					"'%v' still has resources; removal rejected; pass --force to override", info.Env.Name)
 			}
+
+			// Ensure the user really wants to do this.
 			if yes ||
 				confirmPrompt("This will permanently remove the '%v' environment!", info.Env.Name) {
 				remove(info.Env)
 			}
-		},
+
+			return nil
+		}),
 	}
 
 	cmd.PersistentFlags().BoolVarP(

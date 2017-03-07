@@ -29,7 +29,7 @@ func newDescribeCmd() *cobra.Command {
 		Long: "Describe one or more Nuts\n" +
 			"\n" +
 			"This command prints package, symbol, and IL information from one or more Nuts.",
-		Run: func(cmd *cobra.Command, args []string) {
+		Run: runFunc(func(cmd *cobra.Command, args []string) error {
 			// If printAll is true, flip all the flags.
 			if printAll {
 				printIL = true
@@ -42,7 +42,7 @@ func newDescribeCmd() *cobra.Command {
 				pwd, _ := os.Getwd()
 				pkgpath, err := workspace.DetectPackage(pwd, sink())
 				if err != nil {
-					exitError("could not locate a nut to load: %v", err)
+					return fmt.Errorf("could not locate a package to load: %v", err)
 				}
 
 				if pkg := cmdutil.ReadPackage(pkgpath); pkg != nil {
@@ -58,7 +58,9 @@ func newDescribeCmd() *cobra.Command {
 					printPackage(pkg, printSymbols, printExportedSymbols, printIL)
 				}
 			}
-		},
+
+			return nil
+		}),
 	}
 
 	cmd.PersistentFlags().BoolVarP(

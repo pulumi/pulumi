@@ -23,12 +23,17 @@ func newEnvLsCmd() *cobra.Command {
 		Use:     "ls",
 		Aliases: []string{"list"},
 		Short:   "List all known environments",
-		Run: func(cmd *cobra.Command, args []string) {
+		Run: runFunc(func(cmd *cobra.Command, args []string) error {
+			// Read the environment directory.
 			path := workspace.EnvPath("")
 			files, err := ioutil.ReadDir(path)
 			if err != nil && !os.IsNotExist(err) {
-				exitError("could not read environments: %v", err)
+				return fmt.Errorf("could not read environments: %v", err)
 			}
+
+			// Create a new context to share amongst all of the loads.
+			ctx := resource.NewContext(sink())
+			defer ctx.Close()
 
 			fmt.Printf("%-20s %-48s %-12s\n", "NAME", "LAST DEPLOYMENT", "RESOURCE COUNT")
 			for _, file := range files {
@@ -44,9 +49,8 @@ func newEnvLsCmd() *cobra.Command {
 					continue
 				}
 
-				// Create a new context and read in the husk information.
+				// Read in this environment's information.
 				name := tokens.QName(envfn[:len(envfn)-len(ext)])
-				ctx := resource.NewContext(sink())
 				envfile, env, old := readEnv(ctx, name)
 				if env == nil {
 					contract.Assert(!ctx.Diag.Success())
@@ -64,6 +68,8 @@ func newEnvLsCmd() *cobra.Command {
 				}
 				fmt.Printf("%-20s %-48s %-12s\n", env.Name, lastDeploy, resourceCount)
 			}
-		},
+
+			return nil
+		}),
 	}
 }

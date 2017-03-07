@@ -16,8 +16,13 @@ func newEnvConfigCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "config <env> [<key> [value]]",
 		Short: "Query, set, replace, or unset configuration values",
-		Run: func(cmd *cobra.Command, args []string) {
-			info := initEnvCmd(cmd, args)
+		Run: runFunc(func(cmd *cobra.Command, args []string) error {
+			info, err := initEnvCmd(cmd, args)
+			if err != nil {
+				return err
+			}
+			defer info.Close() // ensure we clean up resources before exiting.
+
 			config := info.Env.Config
 			if len(info.Args) == 0 {
 				// If no args were supplied, we are just printing out the current configuration.
@@ -49,11 +54,13 @@ func newEnvConfigCmd() *cobra.Command {
 						// TODO: print complex values.
 						fmt.Printf("%v\n", v)
 					} else {
-						exitError("configuration key '%v' not found for environment '%v'", key, info.Env.Name)
+						return fmt.Errorf("configuration key '%v' not found for environment '%v'", key, info.Env.Name)
 					}
 				}
 			}
-		},
+
+			return nil
+		}),
 	}
 	cmd.PersistentFlags().BoolVar(&unset, "unset", false, "Unset a configuration value")
 	return cmd

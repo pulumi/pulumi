@@ -14,8 +14,9 @@ func newVersionCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "version",
 		Short: "Print Coconut's version number",
-		Run: func(cmd *cobra.Command, args []string) {
+		Run: runFunc(func(cmd *cobra.Command, args []string) error {
 			fmt.Printf("Coconut version %v\n", version)
-		},
+			return nil
+		}),
 	}
 }

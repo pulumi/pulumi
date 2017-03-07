@@ -54,21 +54,20 @@ func newEnvCmd() *cobra.Command {
 	return cmd
 }
 
-func initEnvCmd(cmd *cobra.Command, args []string) *envCmdInfo {
-	// Create a new context for the plan operations.
-	ctx := resource.NewContext(sink())
-
+func initEnvCmd(cmd *cobra.Command, args []string) (*envCmdInfo, error) {
 	// Read in the name of the environment to use.
 	if len(args) == 0 {
-		exitError("missing required environment name")
+		return nil, fmt.Errorf("missing required environment name")
 	}
 
 	// Read in the deployment information, bailing if an IO error occurs.
+	ctx := resource.NewContext(sink())
 	name := tokens.QName(args[0])
 	envfile, env, old := readEnv(ctx, name)
 	if env == nil {
 		contract.Assert(!ctx.Diag.Success())
-		exitError("could not read envfile required to proceed") // failure reading the env information.
+		ctx.Close()                                                          // close now, since we are exiting.
+		return nil, fmt.Errorf("could not read envfile required to proceed") // failure reading the env information.
 	}
 	return &envCmdInfo{
 		Ctx:     ctx,
@@ -77,7 +76,7 @@ func initEnvCmd(cmd *cobra.Command, args []string) *envCmdInfo {
 		Old:     old,
 		Args:    args[1:],
 		Orig:    args,
-	}
+	}, nil
 }
 
 type envCmdInfo struct {
@@ -87,6 +86,10 @@ type envCmdInfo struct {
 	Old     resource.Snapshot // the environment's latest deployment snapshot
 	Args    []string          // the rest of the args after extracting the environment name
 	Orig    []string          // the original args before extracting the environment name
+}
+
+func (eci *envCmdInfo) Close() error {
+	return eci.Ctx.Close()
 }
 
 func confirmPrompt(msg string, args ...interface{}) bool {

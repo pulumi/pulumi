@@ -139,6 +139,8 @@ func execPlugin(name string) (*os.Process, io.WriteCloser, io.ReadCloser, io.Rea
 	return cmd.Process, in, out, err, nil
 }
 
+func (p *Plugin) Pkg() tokens.Package { return p.pkg }
+
 // Check validates that the given property bag is valid for a resource of the given type.
 func (p *Plugin) Check(t tokens.Type, props PropertyMap) ([]CheckFailure, error) {
 	glog.V(7).Infof("Plugin[%v].Check(t=%v,#props=%v) executing", p.pkg, t, len(props))

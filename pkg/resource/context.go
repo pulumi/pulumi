@@ -5,6 +5,8 @@ package resource
 import (
 	"context"
 
+	"github.com/golang/glog"
+
 	"github.com/pulumi/coconut/pkg/diag"
 	"github.com/pulumi/coconut/pkg/eval/rt"
 	"github.com/pulumi/coconut/pkg/tokens"
@@ -59,4 +61,15 @@ func (ctx *Context) Provider(pkg tokens.Package) (Provider, error) {
 func (ctx *Context) Request() context.Context {
 	// TODO: support cancellation.
 	return context.TODO()
+}
+
+// Close reclaims all resources associated with this context.
+func (ctx *Context) Close() error {
+	for _, plugin := range ctx.Plugins {
+		if err := plugin.Close(); err != nil {
+			glog.Infof("Error closing '%v' plugin during shutdown; ignoring: %v", plugin.Pkg(), err)
+		}
+	}
+	ctx.Plugins = make(map[tokens.Package]*Plugin) // empty out the plugin map
+	return nil
 }

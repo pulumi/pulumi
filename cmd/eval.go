@@ -30,7 +30,7 @@ func newEvalCmd() *cobra.Command {
 			"\n" +
 			"By default, a blueprint package is loaded from the current directory.  Optionally,\n" +
 			"a path to a blueprint elsewhere can be provided as the [blueprint] argument.",
-		Run: func(cmd *cobra.Command, args []string) {
+		Run: runFunc(func(cmd *cobra.Command, args []string) error {
 			// Perform the compilation and, if non-nil is returned, output the graph.
 			if result := compile(cmd, args, nil); result != nil {
 				// Serialize that evaluation graph so that it's suitable for printing/serializing.
@@ -38,7 +38,7 @@ func newEvalCmd() *cobra.Command {
 				if dotOutput {
 					// Convert the output to a DOT file.
 					if err := dotconv.Print(g, os.Stdout); err != nil {
-						exitError("failed to write DOT file to output: %v", err)
+						return fmt.Errorf("failed to write DOT file to output: %v", err)
 					}
 				} else {
 					// Just print a very basic, yet (hopefully) aesthetically pleasinge, ascii-ization of the graph.
@@ -48,7 +48,8 @@ func newEvalCmd() *cobra.Command {
 					}
 				}
 			}
-		},
+			return nil
+		}),
 	}
 
 	cmd.PersistentFlags().BoolVar(

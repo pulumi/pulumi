@@ -21,8 +21,12 @@ func newEnvDestroyCmd() *cobra.Command {
 			"\n" +
 			"Warning: although old snapshots can be used to recreate an environment, this command\n" +
 			"is generally irreversable and should be used with great care.",
-		Run: func(cmd *cobra.Command, args []string) {
-			info := initEnvCmd(cmd, args)
+		Run: runFunc(func(cmd *cobra.Command, args []string) error {
+			info, err := initEnvCmd(cmd, args)
+			if err != nil {
+				return err
+			}
+			defer info.Close()
 			if dryRun || yes ||
 				confirmPrompt("This will permanently destroy all resources in the '%v' environment!", info.Env.Name) {
 				apply(cmd, info, applyOptions{
@@ -31,7 +35,8 @@ func newEnvDestroyCmd() *cobra.Command {
 					Summary: summary,
 				})
 			}
-		},
+			return nil
+		}),
 	}
 
 	cmd.PersistentFlags().BoolVarP(

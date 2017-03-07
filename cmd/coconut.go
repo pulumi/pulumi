@@ -61,6 +61,18 @@ func sink() diag.Sink {
 	return snk
 }
 
+// runFunc wraps an error-returning run func with standard Coconut error handling.  All Coconut commands should wrap
+// themselves in this to ensure consistent and appropriate error behavior.  In particular, we want to avoid any calls to
+// os.Exit in the middle of a callstack which might prohibit reaping of child processes, resources, etc.  And we wish to
+// avoid the default Cobra unhandled error behavior, because it is formatted incorrectly and needlessly prints usage.
+func runFunc(run func(cmd *cobra.Command, args []string) error) func(*cobra.Command, []string) {
+	return func(cmd *cobra.Command, args []string) {
+		if err := run(cmd, args); err != nil {
+			exitError(err.Error())
+		}
+	}
+}
+
 // exitErrorPrefix is auto-appended to any abrupt command exit.
 const exitErrorPrefix = "fatal: "
 

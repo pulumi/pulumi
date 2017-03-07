@@ -3,6 +3,8 @@
 package cmd
 
 import (
+	"errors"
+
 	"github.com/spf13/cobra"
 )
 
@@ -19,12 +21,13 @@ func newVerifyCmd() *cobra.Command {
 			"The verify command thoroughly checks the NutIL against these rules, and issues\n" +
 			"errors anywhere it doesn't obey them.  This is generally useful for tools developers\n" +
 			"and can ensure that Nuts do not fail at runtime, when such invariants are checked.",
-		Run: func(cmd *cobra.Command, args []string) {
+		Run: runFunc(func(cmd *cobra.Command, args []string) error {
 			// Create a compiler object and perform the verification.
 			if !verify(cmd, args) {
-				exitError("Nut verification failed")
+				return errors.New("verification failed")
 			}
-		},
+			return nil
+		}),
 	}
 
 	return cmd

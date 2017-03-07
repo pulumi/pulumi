@@ -28,8 +28,12 @@ func newEnvDeployCmd() *cobra.Command {
 			"\n" +
 			"By default, the Nut to execute is loaded from the current directory.  Optionally, an\n" +
 			"explicit path can be provided using the [nut] argument.",
-		Run: func(cmd *cobra.Command, args []string) {
-			info := initEnvCmd(cmd, args)
+		Run: runFunc(func(cmd *cobra.Command, args []string) error {
+			info, err := initEnvCmd(cmd, args)
+			if err != nil {
+				return err
+			}
+			defer info.Close()
 			apply(cmd, info, applyOptions{
 				Delete:           false,
 				DryRun:           dryRun,
@@ -39,7 +43,8 @@ func newEnvDeployCmd() *cobra.Command {
 				Summary:          summary,
 				Output:           output,
 			})
-		},
+			return nil
+		}),
 	}
 
 	cmd.PersistentFlags().BoolVarP(
