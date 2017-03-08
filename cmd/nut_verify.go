@@ -8,7 +8,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func newVerifyCmd() *cobra.Command {
+func newNutVerifyCmd() *cobra.Command {
 	var cmd = &cobra.Command{
 		Use:   "verify [package]",
 		Short: "Check that a Nut and its NutIL are correct",

@@ -16,7 +16,7 @@ import (
 	"github.com/pulumi/coconut/pkg/tokens"
 )
 
-func newEvalCmd() *cobra.Command {
+func newNutEvalCmd() *cobra.Command {
 	var dotOutput bool
 	var cmd = &cobra.Command{
 		Use:   "eval [nut] [-- [args]]",

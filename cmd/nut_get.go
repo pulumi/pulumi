@@ -8,7 +8,7 @@ import (
 	"github.com/pulumi/coconut/pkg/util/contract"
 )
 
-func newGetCmd() *cobra.Command {
+func newNutGetCmd() *cobra.Command {
 	var global bool
 	var save bool
 	var cmd = &cobra.Command{

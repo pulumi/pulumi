@@ -18,17 +18,17 @@ import (
 	"github.com/pulumi/coconut/pkg/workspace"
 )
 
-func newDescribeCmd() *cobra.Command {
+func newNutInfoCmd() *cobra.Command {
 	var printAll bool
 	var printIL bool
 	var printSymbols bool
 	var printExportedSymbols bool
 	var cmd = &cobra.Command{
-		Use:   "describe [nuts...]",
-		Short: "Describe one or more Nuts",
-		Long: "Describe one or more Nuts\n" +
+		Use:   "info [nuts...]",
+		Short: "Print information about one or more Nuts",
+		Long: "Print information about one or more Nuts\n" +
 			"\n" +
-			"This command prints package, symbol, and IL information from one or more Nuts.",
+			"This command prints package, symbol, and IL information from one or more nuts.",
 		Run: runFunc(func(cmd *cobra.Command, args []string) error {
 			// If printAll is true, flip all the flags.
 			if printAll {
