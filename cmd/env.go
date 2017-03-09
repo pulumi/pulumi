@@ -59,10 +59,12 @@ func initEnvCmd(cmd *cobra.Command, args []string) (*envCmdInfo, error) {
 	if len(args) == 0 {
 		return nil, fmt.Errorf("missing required environment name")
 	}
+	return initEnvCmdName(tokens.QName(args[0]), args[1:])
+}
 
+func initEnvCmdName(name tokens.QName, args []string) (*envCmdInfo, error) {
 	// Read in the deployment information, bailing if an IO error occurs.
 	ctx := resource.NewContext(sink())
-	name := tokens.QName(args[0])
 	envfile, env, old := readEnv(ctx, name)
 	if env == nil {
 		contract.Assert(!ctx.Diag.Success())
@@ -74,8 +76,7 @@ func initEnvCmd(cmd *cobra.Command, args []string) (*envCmdInfo, error) {
 		Env:     env,
 		Envfile: envfile,
 		Old:     old,
-		Args:    args[1:],
-		Orig:    args,
+		Args:    args,
 	}, nil
 }
 
@@ -84,8 +85,7 @@ type envCmdInfo struct {
 	Env     *resource.Env     // the environment information
 	Envfile *resource.Envfile // the full serialized envfile from which this came.
 	Old     resource.Snapshot // the environment's latest deployment snapshot
-	Args    []string          // the rest of the args after extracting the environment name
-	Orig    []string          // the original args before extracting the environment name
+	Args    []string          // the args after extracting the environment name
 }
 
 func (eci *envCmdInfo) Close() error {

@@ -13,10 +13,12 @@ import (
 	"github.com/pulumi/coconut/pkg/eval/heapstate"
 	"github.com/pulumi/coconut/pkg/graph"
 	"github.com/pulumi/coconut/pkg/graph/dotconv"
+	"github.com/pulumi/coconut/pkg/resource"
 	"github.com/pulumi/coconut/pkg/tokens"
 )
 
 func newPackEvalCmd() *cobra.Command {
+	var configEnv string
 	var dotOutput bool
 	var cmd = &cobra.Command{
 		Use:   "eval [package] [-- [args]]",
@@ -31,8 +33,18 @@ func newPackEvalCmd() *cobra.Command {
 			"By default, a blueprint package is loaded from the current directory.  Optionally,\n" +
 			"a path to a package elsewhere can be provided as the [package] argument.",
 		Run: runFunc(func(cmd *cobra.Command, args []string) error {
+			// If a configuration environment was requested, load it.
+			var config resource.ConfigMap
+			if configEnv != "" {
+				envInfo, err := initEnvCmdName(tokens.QName(configEnv), args)
+				if err != nil {
+					return err
+				}
+				config = envInfo.Env.Config
+			}
+
 			// Perform the compilation and, if non-nil is returned, output the graph.
-			if result := compile(cmd, args, nil); result != nil && result.Heap != nil && result.Heap.G != nil {
+			if result := compile(cmd, args, config); result != nil && result.Heap != nil && result.Heap.G != nil {
 				// Serialize that evaluation graph so that it's suitable for printing/serializing.
 				if dotOutput {
 					// Convert the output to a DOT file.
@@ -51,6 +63,9 @@ func newPackEvalCmd() *cobra.Command {
 		}),
 	}
 
+	cmd.PersistentFlags().StringVar(
+		&configEnv, "config-env", "",
+		"Apply configuration from the specified environment before evaluating the package")
 	cmd.PersistentFlags().BoolVar(
 		&dotOutput, "dot", false,
 		"Output the graph as a DOT digraph (graph description language)")
