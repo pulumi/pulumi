@@ -32,18 +32,17 @@ func newPackEvalCmd() *cobra.Command {
 			"a path to a package elsewhere can be provided as the [package] argument.",
 		Run: runFunc(func(cmd *cobra.Command, args []string) error {
 			// Perform the compilation and, if non-nil is returned, output the graph.
-			if result := compile(cmd, args, nil); result != nil {
+			if result := compile(cmd, args, nil); result != nil && result.Heap != nil && result.Heap.G != nil {
 				// Serialize that evaluation graph so that it's suitable for printing/serializing.
-				g := result.Heap.G
 				if dotOutput {
 					// Convert the output to a DOT file.
-					if err := dotconv.Print(g, os.Stdout); err != nil {
+					if err := dotconv.Print(result.Heap.G, os.Stdout); err != nil {
 						return fmt.Errorf("failed to write DOT file to output: %v", err)
 					}
 				} else {
 					// Just print a very basic, yet (hopefully) aesthetically pleasinge, ascii-ization of the graph.
 					shown := make(map[graph.Vertex]bool)
-					for _, root := range g.Objs() {
+					for _, root := range result.Heap.G.Objs() {
 						printVertex(root.ToObj(), shown, "")
 					}
 				}
