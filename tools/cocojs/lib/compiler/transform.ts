@@ -2439,6 +2439,8 @@ export class Transformer {
                 return this.transformFunctionExpression(<ts.FunctionExpression>node);
             case ts.SyntaxKind.Identifier:
                 return await this.transformIdentifierExpression(<ts.Identifier>node);
+            case ts.SyntaxKind.NonNullExpression:
+                return await this.transformNonNullExpression(<ts.NonNullExpression>node);
             case ts.SyntaxKind.ObjectLiteralExpression:
                 return this.transformObjectLiteralExpression(<ts.ObjectLiteralExpression>node);
             case ts.SyntaxKind.PostfixUnaryExpression:
@@ -2730,6 +2732,10 @@ export class Transformer {
     private transformFunctionExpression(node: ts.FunctionExpression): ast.Expression {
         // TODO[pulumi/mu#62]: implement lambdas.
         return notYetImplemented(node);
+    }
+
+    private async transformNonNullExpression(node: ts.NonNullExpression): Promise<ast.Expression> {
+        return await this.transformExpression(node.expression);
     }
 
     private async transformObjectLiteralExpression(node: ts.ObjectLiteralExpression): Promise<ast.ObjectLiteral> {
