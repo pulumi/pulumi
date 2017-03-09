@@ -8,14 +8,14 @@ import (
 	"github.com/pulumi/coconut/pkg/util/contract"
 )
 
-func newNutGetCmd() *cobra.Command {
+func newPackGetCmd() *cobra.Command {
 	var global bool
 	var save bool
 	var cmd = &cobra.Command{
 		Use:   "get [deps]",
-		Short: "Download a Nut",
-		Long: "Get downloads a Nut by name.  If run without arguments, get will attempt\n" +
-			"to download dependencies referenced by the current Nut.  Otherwise, if one\n" +
+		Short: "Download a package",
+		Long: "Get downloads a package by name.  If run without arguments, get will attempt\n" +
+			"to download dependencies referenced by the current package.  Otherwise, if one\n" +
 			"or more specific dependencies are provided, only those will be downloaded.",
 		Run: runFunc(func(cmd *cobra.Command, args []string) error {
 			contract.Failf("Get command is not yet implemented")
@@ -28,7 +28,7 @@ func newNutGetCmd() *cobra.Command {
 		"Install to a shared location on this machine")
 	cmd.PersistentFlags().BoolVarP(
 		&save, "save", "s", false,
-		"Save new dependencies in the current Nut")
+		"Save new dependencies in the current package")
 
 	return cmd
 }

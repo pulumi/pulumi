@@ -16,20 +16,20 @@ import (
 	"github.com/pulumi/coconut/pkg/tokens"
 )
 
-func newNutEvalCmd() *cobra.Command {
+func newPackEvalCmd() *cobra.Command {
 	var dotOutput bool
 	var cmd = &cobra.Command{
-		Use:   "eval [nut] [-- [args]]",
-		Short: "Evaluate a Nut and print the resulting objects",
-		Long: "Evaluate a Nut and print the resulting objects\n" +
+		Use:   "eval [package] [-- [args]]",
+		Short: "Evaluate a package and print the resulting objects",
+		Long: "Evaluate a package and print the resulting objects\n" +
 			"\n" +
 			"A graph is a topologically sorted directed-acyclic-graph (DAG), representing a\n" +
 			"collection of resources that may be used in a deployment operation like plan or apply.\n" +
-			"This graph is produced by evaluating the contents of a Nut blueprint, and does not\n" +
+			"This graph is produced by evaluating the contents of a blueprint package, and does not\n" +
 			"actually perform any updates to the target environment.\n" +
 			"\n" +
 			"By default, a blueprint package is loaded from the current directory.  Optionally,\n" +
-			"a path to a blueprint elsewhere can be provided as the [blueprint] argument.",
+			"a path to a package elsewhere can be provided as the [package] argument.",
 		Run: runFunc(func(cmd *cobra.Command, args []string) error {
 			// Perform the compilation and, if non-nil is returned, output the graph.
 			if result := compile(cmd, args, nil); result != nil {
@@ -76,7 +76,7 @@ func printVertex(v *heapstate.ObjectVertex, shown map[graph.Vertex]bool, indent 
 }
 
 // dashdashArgsToMap is a simple args parser that places incoming key/value pairs into a map.  These are then used
-// during Nut compilation as inputs to the main entrypoint function.
+// during package compilation as inputs to the main entrypoint function.
 // TODO: this is fairly rudimentary; we eventually want to support arrays, maps, and complex types.
 func dashdashArgsToMap(args []string) core.Args {
 	mapped := make(core.Args)

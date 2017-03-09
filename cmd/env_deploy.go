@@ -14,20 +14,20 @@ func newEnvDeployCmd() *cobra.Command {
 	var summary bool
 	var output string
 	var cmd = &cobra.Command{
-		Use:     "deploy <env> [<nut>] [-- [<args>]]",
+		Use:     "deploy <env> [<package>] [-- [<args>]]",
 		Aliases: []string{"up", "update"},
 		Short:   "Deploy resource updates, creations, and deletions to an environment",
 		Long: "Deploy resource updates, creations, and deletions to an environment\n" +
 			"\n" +
 			"This command updates an existing environment whose state is represented by the\n" +
-			"existing snapshot file.  The new desired state is computed by compiling and evaluating\n" +
-			"an executable Nut, and extracting all resource allocations from its resulting object graph.\n" +
+			"existing snapshot file.  The new desired state is computed by compiling and evaluating an\n" +
+			"executable package, and extracting all resource allocations from its resulting object graph.\n" +
 			"This graph is compared against the existing state to determine what operations must take\n" +
 			"place to achieve the desired state.  This command results in a full snapshot of the\n" +
 			"environment's new resource state, so that it may be updated incrementally again later.\n" +
 			"\n" +
-			"By default, the Nut to execute is loaded from the current directory.  Optionally, an\n" +
-			"explicit path can be provided using the [nut] argument.",
+			"By default, the package to execute is loaded from the current directory.  Optionally, an\n" +
+			"explicit path can be provided using the [package] argument.",
 		Run: runFunc(func(cmd *cobra.Command, args []string) error {
 			info, err := initEnvCmd(cmd, args)
 			if err != nil {

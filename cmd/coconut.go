@@ -42,7 +42,7 @@ func NewCoconutCmd() *cobra.Command {
 		&verbose, "verbose", "v", 0, "Enable verbose logging (e.g., v=3); anything >3 is very verbose")
 
 	cmd.AddCommand(newEnvCmd())
-	cmd.AddCommand(newNutCmd())
+	cmd.AddCommand(newPackCmd())
 	cmd.AddCommand(newVersionCmd())
 
 	return cmd
