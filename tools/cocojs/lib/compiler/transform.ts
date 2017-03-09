@@ -971,9 +971,9 @@ export class Transformer {
             }
         }
         else {
-            // This is a module property load from the current ambient module.
-            contract.assert(!!this.currentModuleToken);
-            tok = this.createModuleMemberToken(this.currentModuleToken!, id.ident);
+            // This is a module property load; it could be from an import (e.g., `foo` as in `import {foo} from "bar"`)
+            // or it could be a reference to an ambiently acessible property in the current module.  Figure this out.
+            tok = await this.resolveTokenFromSymbol(idsym);
             // note that we intentionally leave object blank, since the token is fully qualified.
         }
 

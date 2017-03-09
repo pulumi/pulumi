@@ -138,10 +138,25 @@
                         "file": "index.ts",
                         "start": {
                             "line": 1,
-                            "column": 24
+                            "column": 19
                         },
                         "end": {
                             "line": 1,
+                            "column": 28
+                        }
+                    }
+                },
+                {
+                    "kind": "ModuleToken",
+                    "tok": "modules/func_cross_call:other",
+                    "loc": {
+                        "file": "index.ts",
+                        "start": {
+                            "line": 2,
+                            "column": 24
+                        },
+                        "end": {
+                            "line": 2,
                             "column": 33
                         }
                     }
@@ -170,11 +185,69 @@
                                             "loc": {
                                                 "file": "index.ts",
                                                 "start": {
-                                                    "line": 2,
+                                                    "line": 3,
+                                                    "column": 1
+                                                },
+                                                "end": {
+                                                    "line": 3,
+                                                    "column": 4
+                                                }
+                                            }
+                                        },
+                                        "loc": {
+                                            "file": "index.ts",
+                                            "start": {
+                                                "line": 3,
+                                                "column": 1
+                                            },
+                                            "end": {
+                                                "line": 3,
+                                                "column": 4
+                                            }
+                                        }
+                                    },
+                                    "arguments": [],
+                                    "loc": {
+                                        "file": "index.ts",
+                                        "start": {
+                                            "line": 3,
+                                            "column": 1
+                                        },
+                                        "end": {
+                                            "line": 3,
+                                            "column": 6
+                                        }
+                                    }
+                                },
+                                "loc": {
+                                    "file": "index.ts",
+                                    "start": {
+                                        "line": 3,
+                                        "column": 1
+                                    },
+                                    "end": {
+                                        "line": 3,
+                                        "column": 7
+                                    }
+                                }
+                            },
+                            {
+                                "kind": "ExpressionStatement",
+                                "expression": {
+                                    "kind": "InvokeFunctionExpression",
+                                    "function": {
+                                        "kind": "LoadLocationExpression",
+                                        "name": {
+                                            "kind": "Token",
+                                            "tok": "modules/func_cross_call:other:foo",
+                                            "loc": {
+                                                "file": "index.ts",
+                                                "start": {
+                                                    "line": 4,
                                                     "column": 7
                                                 },
                                                 "end": {
-                                                    "line": 2,
+                                                    "line": 4,
                                                     "column": 10
                                                 }
                                             }
@@ -182,11 +255,11 @@
                                         "loc": {
                                             "file": "index.ts",
                                             "start": {
-                                                "line": 2,
+                                                "line": 4,
                                                 "column": 1
                                             },
                                             "end": {
-                                                "line": 2,
+                                                "line": 4,
                                                 "column": 10
                                             }
                                         }
@@ -195,11 +268,11 @@
                                     "loc": {
                                         "file": "index.ts",
                                         "start": {
-                                            "line": 2,
+                                            "line": 4,
                                             "column": 1
                                         },
                                         "end": {
-                                            "line": 2,
+                                            "line": 4,
                                             "column": 12
                                         }
                                     }
@@ -207,11 +280,11 @@
                                 "loc": {
                                     "file": "index.ts",
                                     "start": {
-                                        "line": 2,
+                                        "line": 4,
                                         "column": 1
                                     },
                                     "end": {
-                                        "line": 2,
+                                        "line": 4,
                                         "column": 13
                                     }
                                 }
@@ -238,7 +311,7 @@
                     "column": 1
                 },
                 "end": {
-                    "line": 4,
+                    "line": 6,
                     "column": 1
                 }
             }
