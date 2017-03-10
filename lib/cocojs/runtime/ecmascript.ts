@@ -24,7 +24,7 @@ export function toString(argument: Object): string {
         return "NaN";
     }
     if (isSymbol(argument)) {
-        throw new TypeError();
+        throw new TypeError("toString invalid on symbols");
     }
     if (isString(argument)) {
         return <string>argument;
@@ -61,6 +61,23 @@ export function isSymbol(input: Object): boolean {
     return false;
 }
 
+export function isFalsey(input: Object | undefined | null): boolean {
+    // TODO: implement this based on the spec.
+    if (input === false) {
+        return true;
+    }
+    if (input === undefined) {
+        return true;
+    }
+    if (input === null) {
+        return true;
+    }
+    if (input === "") {
+        return true;
+    }
+    return false;
+}
+
 // The abstract operation toPrimitive takes an input argument and an optional argument preferredType.  The abstract
 // operation toPrimitive converts its input argument to a non-Object type.  If an object is capable of converting to
 // more than one primitive type, it may use the optional hint preferredType to favor that type.  Conversion occurs
@@ -71,16 +88,16 @@ export function toPrimitive(input: Object, preferredType: string): Object {
     }
 
     let hint: string;
-    if (preferredType) {
-        hint = preferredType;
+    if (isFalsey(preferredType)) {
+        hint = "default";
     }
     else {
-        hint = "default";
+        hint = preferredType;
     }
 
     let exoticToPrim: Object | undefined = getMethod(input, "@@toPrimitive");
-    if (exoticToPrim) {
-        let result: Object = call(exoticToPrim, input, [ hint ]);
+    if (!isFalsey(exoticToPrim)) {
+        let result: Object = call(exoticToPrim!, input, [ hint ]);
         if (isObject(result)) {
             throw new TypeError("");
         }
@@ -115,21 +132,21 @@ export function ordinaryToPrimitive(o: Object, hint: string): Object {
         let name: string = methodNames[i];
         let method: Object = get(o, name);
         if (isCallable(method)) {
-            let result: Object = call(method, o);
+            let result: Object = call(method, o, undefined);
             if (isPrimitive(result)) {
                 return result;
             }
         }
     }
 
-    throw new TypeError();
+    throw new TypeError("invalid ordinaryToPrimitive type");
 }
 
 // The abstract operation ToObject converts argument to a value of type Object according to the table in
 // https://tc39.github.io/ecma262/#sec-toobject.
 export function toObject(argument: Object): Object {
     if (argument === undefined || argument === null) {
-        throw new TypeError();
+        throw new TypeError("toObject called on undefined or null value");
     }
     if (isBoolean(argument)) {
         return new Boolean(<boolean>argument);
@@ -176,7 +193,7 @@ export function getMethod(v: Object, p: Object): Object | undefined {
         return undefined;
     }
     if (!isCallable(func)) {
-        throw new TypeError();
+        throw new TypeError("expected a callable function");
     }
     return func;
 }
@@ -200,12 +217,12 @@ export function isPropertyKey(argument: Object): boolean {
 // performs the steps outlined in https://tc39.github.io/ecma262/#sec-call.
 export function call(f: Object, v: Object, argumentsList?: Object[]): Object {
     if (!isCallable(f)) {
-        throw new TypeError();
+        throw new TypeError("function is not callable");
     }
-    if (!argumentsList) {
+    if (isFalsey(argumentsList)) {
         argumentsList = [];
     }
-    return coconut.runtime.dynamicInvoke(f, v, argumentsList);
+    return coconut.runtime.dynamicInvoke(f, v, argumentsList!);
 }
 
 // The abstract operation IsCallable determines if argument, which must be an ECMAScript language value, is a callable
