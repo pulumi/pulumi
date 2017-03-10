@@ -36,16 +36,15 @@ import (
 func newEnvCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "env",
-		Short: "Manage or deploy into a target environment",
-		Long: "Manage or deploy into a target environment\n" +
+		Short: "Manage target environments",
+		Long: "Manage target environments\n" +
 			"\n" +
-			"An environment is a named deployment target, and a single nut have many of them.  Each\n" +
-			"environment has a configuration and deployment history associated with it, stored in the\n" +
-			"workspace, in addition to a full checkpoint of the last known good deployment.\n",
+			"An environment is a named deployment target, and a single project may have many of them.\n" +
+			"Each environment has a configuration and deployment history associated with it, stored in\n" +
+			"the workspace, in addition to a full checkpoint of the last known good deployment.\n",
 	}
 
 	cmd.AddCommand(newEnvConfigCmd())
-	cmd.AddCommand(newEnvDeployCmd())
 	cmd.AddCommand(newEnvDestroyCmd())
 	cmd.AddCommand(newEnvInitCmd())
 	cmd.AddCommand(newEnvLsCmd())

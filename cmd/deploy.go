@@ -6,7 +6,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func newEnvDeployCmd() *cobra.Command {
+func newDeployCmd() *cobra.Command {
 	var dryRun bool
 	var showConfig bool
 	var showReplaceSteps bool
