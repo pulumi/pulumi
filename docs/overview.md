@@ -9,7 +9,7 @@ This document provides an overview of the Coconut system, its goals, primary con
 ## Problem
 
 Cloud services are difficult to build, deploy, and manage.  The current trend to use increasingly fine-grained
-microservices increases the complexity, transforming most modern cloud applications into complex distributed systems,
+microservices increases complexity, transforming most modern cloud applications into complex distributed systems,
 without much of the supporting language, library, and tooling support you'd expect in a distributed programming model.
 
 There are many aspects to building distributed systems that aren't evident to the newcomer: configuration, RPC,
@@ -177,7 +177,7 @@ The primary concepts in Coconut are:
 * **Stack**: An instantiation of a package, paired with an environment, and fully specified with arguments.
 * **Resource URN**: An ID that is auto-assigned to each resource object, unique within the overall environment.
 
-In an analogy with programming languages, a stack is essentially a collection of instantiated resource objects.  Many
+Analagous to programming languages, a stack is essentially a collection of instantiated resource objects.  Many
 concepts that are "distinct" in other systems, like gateways, controllers, functions, triggers, and so on, are expressed
 as classes in Coconut.  They are essentially "subclasses" -- or specializations -- of the more general concept of a
 resource object, unifying the creation, configuration, provisioning, discovery, and overall management of them.
