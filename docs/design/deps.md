@@ -5,7 +5,7 @@ many existing package managers, and is a mashup of the approaches taken in Go, N
 
 ## Packages
 
-The unit of dependency in Coconut is a Nut, encoded in the [CocoPack](nutpack.md) format.
+The unit of dependency in Coconut is a package, encoded in the [CocoPack](nutpack.md) format.
 
 Each has a `Coconut.yaml` (or `.json`) manifest, which lists, among other things, that package's own set of dependencies.
 
@@ -117,8 +117,8 @@ over others.  This is to ease the task of local development while also providing
 Roughly speaking, these locations are are searched, in order:
 
 1. The current workspace, for intra-workspace but inter-package dependencies.
-2. The current workspace's `.coconut/nuts/` directory.
-3. The global Workspace's `.coconut/nuts/` directory.
+2. The current workspace's `.coconut/packs/` directory.
+3. The global Workspace's `.coconut/packs/` directory.
 4. The Coconut runtime libraries: `$COCOROOT/lib/packs/` (default `/usr/local/coconut/lib/packs`).
 
 In each location, Coconut prefers a fully qualified hit if it exists -- containing both the base of the reference plus
@@ -129,12 +129,12 @@ To be more precise, given a reference `r` and a workspace root `w`, we look in t
 
 1. `w/base(r)/name(r)`
 2. `w/name(r)`
-3. `w/.coconut/.nuts/base(r)/name(r)`
-4. `w/.coconut/.nuts/name(r)`
-5. `~/.coconut/.nuts/base(r)/name(r)`
-6. `~/.coconut/.nuts/name(r)`
-7. `$COCOROOT/bin/packs/base(r)/name(r)`
-8. `$COCOROOT/bin/packs/name(r)`
+3. `w/.coconut/packs/base(r)/name(r)`
+4. `w/.coconut/packs/name(r)`
+5. `~/.coconut/packs/base(r)/name(r)`
+6. `~/.coconut/packs/name(r)`
+7. `$COCOROOT/lib/base(r)/name(r)`
+8. `$COCOROOT/lib/name(r)`
 
 To illustrate this process, let us imagine we are looking up the package `https://cocohub.com/aws/ec2`.
 
@@ -180,7 +180,7 @@ In this case, our local workspace's package directory will have been populated w
 
     <Workspace>
     |   .coconut/
-    |   |   .nuts/
+    |   |   packs/
     |   |   |   cocohub.com/
     |   |   |   |   aws/
     |   |   |   |   |   ec2/
@@ -198,7 +198,7 @@ The directory structure will look identical to the second example, except that i
 
     ~
     |   .coconut/
-    |   |   .nuts/
+    |   |   packs/
     |   |   |   cocohub.com/
     |   |   |   |   aws/
     |   |   |   |   |   ec2/

@@ -52,13 +52,13 @@ TODO(joe): describe each of these in more detail.
 A workspace is a root directory on the filesystem that helps to organize many stacks, shared settings among them (like
 shared cluster definitions, dependencies, etc).  The root of a workspace is identified by the presence of a
 `Cocospace.yaml` (or `.json`) file, containing all of the relevant metadata.  The workspace metadata goes here because
-stack definitions are generally agnostic to it.  In addition to this, there will be an optional `.nuts/` directory
+stack definitions are generally agnostic to it.  In addition to this, there will be an optional `packs/` directory
 underneath `.coconut/` that contains all of the downloaded dependencies.
 
 For example, let's say we have two Stacks, `db` and `webapp`; a reasonable workspace structure might be:
 
     .coconut/
-        .nuts/
+        packs/
             ...
     db/
         Coconut.yaml

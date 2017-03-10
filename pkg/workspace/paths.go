@@ -20,7 +20,7 @@ const Cocopack = "Cocopack"    // the base name of a compiled CocoPack.
 const CocopackDir = ".coconut" // the default name of the CocoPack output directory.
 const CocopackBinDir = "bin"   // the default name of the CocoPack binary output directory.
 const CocopackEnvDir = "env"   // the default name of the CocoPack environment directory.
-const CocopackDepDir = "nuts"  // the directory in which dependencies exist, either local or global.
+const CocopackDepDir = "packs" // the directory in which dependencies exist, either local or global.
 
 const InstallRootEnvvar = "COCONUT"             // the envvar describing where Coconut has been installed.
 const InstallRootLibdir = "lib"                 // the directory in which the Coconut standard library exists.
@@ -52,7 +52,7 @@ func isTop(path string) bool {
 
 // pathDir returns the nearest directory to the given path (identity if a directory; parent otherwise).
 func pathDir(path string) string {
-	// It's possible that the path is a file (e.g., a Nut.yaml file); if so, we want the directory.
+	// It's possible that the path is a file (e.g., a Coconut.yaml file); if so, we want the directory.
 	info, err := os.Stat(path)
 	if err != nil || info.IsDir() {
 		return path

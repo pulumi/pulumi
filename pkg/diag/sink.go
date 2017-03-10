@@ -36,7 +36,7 @@ type Sink interface {
 	// Warningf issues a new warning diagnostic.
 	Warningf(diag *Diag, args ...interface{})
 
-	// Stringify stringifies a diagnostic in the usual way (e.g., "error: MU123: Nut.yaml:7:39: error goes here\n").
+	// Stringify stringifies a diagnostic in the usual way (e.g., "error: MU123: Coconut.yaml:7:39: error goes here\n").
 	Stringify(diag *Diag, cat Category, args ...interface{}) string
 	// StringifyLocation stringifies a source document location.
 	StringifyLocation(doc *Document, loc *Location) string

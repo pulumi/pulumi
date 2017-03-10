@@ -13,7 +13,7 @@ TODO: start with the "dumb" Docker Compose / Mongo demo.
 
 1. Coconutify an Express app plus MongoDB backend
     Leverage Express and MongoDB containers
-    App already exists, just add a Nut.yaml (Compose-like) file
+    App already exists, just add a Coconut.yaml (Compose-like) file
     Show how adding AWS persistence to the MongoDB service is easy
     TODO: starting point?  Existing compose/cloud formation/kubernetes app?
     TODO: talk about Mongo sharding, etc. as an implementation detail of mongodb/mongodb?
@@ -28,7 +28,7 @@ TODO: start with the "dumb" Docker Compose / Mongo demo.
     To kill time, demonstrate running locally; talk to GCE, Kube etc.
 4. Inspect the live site tab
     Click production, see some simple "DataDog-like" analytics (requests per second, free disk space, etc)
-5. Desire deeper analytics; add a "one liner" to my app to add ELK Nut
+5. Desire deeper analytics; add a "one liner" to my app to add ELK package
     For bonus points, show searching CoconutHub for ELK in the UI
     Click the deploy button, just deploys the delta (in <5 minutes)
     To kill time, demonstrate that an AWS CF stack was created, click around CloudWatch, etc.

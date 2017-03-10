@@ -27,7 +27,7 @@ Most CocoPacks will contain a Cocofile to help direct the compilation process.  
 `Coconut.yaml` and is checked into the workspace.
 
 Each Cocofile contains metadata for the package that cannot be derived from the source code.  (Please refer to
-[the CocoPack document](nutpack.md) for a complete listing of what metadata can appear here.)  In the case that all
+[the CocoPack document](packages.md) for a complete listing of what metadata can appear here.)  In the case that all
 metadata can be derived from the program alone -- e.g., thanks to the use of attributes/decorators -- then the Cocofile
 might be omitted.  This is specific to your CocoLang compiler, so please consult its documentation.
 

@@ -64,9 +64,9 @@ func (r *reader) ReadPackage(doc *diag.Document) *pack.Package {
 }
 
 func (r *reader) ReadWorkspace(doc *diag.Document) *workspace.Workspace {
-	glog.Infof("Reading Nutspace settings: %v (len(body)=%v)", doc.File, len(doc.Body))
+	glog.Infof("Reading Cocospace settings: %v (len(body)=%v)", doc.File, len(doc.Body))
 	if glog.V(2) {
-		defer glog.V(2).Infof("Reading Nutspace settings '%v' completed w/ %v warnings and %v errors",
+		defer glog.V(2).Infof("Reading Cocospace settings '%v' completed w/ %v warnings and %v errors",
 			doc.File, r.Diag().Warnings(), r.Diag().Errors())
 	}
 
@@ -79,7 +79,7 @@ func (r *reader) ReadWorkspace(doc *diag.Document) *workspace.Workspace {
 		// TODO[pulumi/coconut#14]: issue an error per issue found in the file with line/col numbers.
 		return nil
 	}
-	glog.V(3).Infof("Nutspace settings %v parsed: %v clusters; %v deps",
+	glog.V(3).Infof("Cocospace settings %v parsed: %v clusters; %v deps",
 		doc.File, len(w.Clusters), len(w.Dependencies))
 
 	// Remember that this workspace came from this document.

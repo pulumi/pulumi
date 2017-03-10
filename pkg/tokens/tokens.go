@@ -1,6 +1,6 @@
 // Copyright 2016 Pulumi, Inc. All rights reserved.
 
-// Package tokens contains the core NutIL symbol and token types.
+// Package tokens contains the core CocoIL symbol and token types.
 package tokens
 
 import (

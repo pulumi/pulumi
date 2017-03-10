@@ -146,7 +146,7 @@ func (c *compiler) CompilePackage(pkg *pack.Package, preexec Preexec) (*symbols.
 	//
 	// Essentially, all we are doing is mapping names to concrete symbols.  This ensures that as we compile a package,
 	// we are able to find all tokens in these maps.  If we ever cannot find a token in a map, it means the CocoPack
-	// file is invalid.  We require that CocoLang compilers produce valid, verifiable NutIL, and this is a requriement.
+	// file is invalid.  We require that CocoLang compilers produce valid, verifiable CocoIL, and this is a requriement.
 	//
 	// Afterwards, we can safely evaluate the CocoIL entrypoint, using our CocoIL AST interpreter.
 

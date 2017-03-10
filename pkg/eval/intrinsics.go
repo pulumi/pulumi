@@ -15,7 +15,7 @@ import (
 type Invoker func(intrin *Intrinsic, e *evaluator, this *rt.Object, args []*rt.Object) *rt.Unwind
 
 // Intrinsics contains the set of runtime functions that are callable by name through the Coconut standard library
-// package.  Their functionality is implemented in the runtime because NutIL cannot express the concepts they require
+// package.  Their functionality is implemented in the runtime because CocoIL cannot express the concepts they require
 // to get their job done.  This includes things like dynamic introspection, invocation, and more.
 var Intrinsics map[tokens.Token]Invoker
 

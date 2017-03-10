@@ -1,6 +1,6 @@
 // Copyright 2016 Pulumi, Inc. All rights reserved.
 
-// Package heapstate turns NutIL object creation, assignment, etc. events into a CocoGL object graph.
+// Package heapstate turns CocoIL object creation, assignment, etc. events into a CocoGL object graph.
 package heapstate
 
 import (

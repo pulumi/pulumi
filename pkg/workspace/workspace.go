@@ -30,7 +30,7 @@ type W interface {
 	// ReadSettings reads in the settings file and returns it, returning nil if there is none.
 	ReadSettings() (*diag.Document, error)
 
-	// DetectPackage locates the closest Nutfile from the given path, searching "upwards" in the directory hierarchy.
+	// DetectPackage locates the closest Cocofile from the given path, searching "upwards" in the directory hierarchy.
 	DetectPackage() (string, error)
 	// DepCandidates fetches all candidate locations for resolving a dependency name to its installed artifacts.
 	DepCandidates(dep pack.PackageURL) []string
@@ -70,7 +70,7 @@ type workspace struct {
 	path      string        // the path at which the workspace was constructed.
 	home      string        // the home directory to use for this workspace.
 	root      string        // the root of the workspace.
-	cocospace string        // a path to the Nutspace file, if any.
+	cocospace string        // a path to the Cocospace file, if any.
 	settings  Workspace     // an optional bag of workspace-wide settings.
 }
 
@@ -131,23 +131,23 @@ func (w *workspace) DepCandidates(dep pack.PackageURL) []string {
 	//
 	// Roughly speaking, these locations are are searched, in order:
 	//
-	// 		1. The current Workspace, for intra-Workspace but inter-Nut dependencies.
-	// 		2. The current Workspace's .mu/stacks/ directory.
-	// 		3. The global Workspace's .mu/stacks/ directory.
+	// 		1. The current workspace, for intra-workspace but inter-package dependencies.
+	// 		2. The current workspace's .coconut/packs/ directory.
+	// 		3. The global workspace's .coconut/packs/ directory.
 	// 		4. The Coconut installation location's $COCOROOT/lib/ directory (default /usr/local/coconut/lib).
 	//
 	// In each location, we prefer a fully qualified hit if it exists -- containing both the base of the reference plus
 	// the name -- however, we also accept name-only hits.  This allows developers to organize their workspace without
-	// worrying about where their Nuts are hosted.  Most of the Coconut tools, however, prefer fully qualified paths.
+	// worrying about where packages are hosted.  Most of the Coconut tools, however, prefer fully qualified paths.
 	//
-	// To be more precise, given a NutRef r and a workspace root w, we look in these locations, in order:
+	// To be more precise, given a PackageRef r and a workspace root w, we look in these locations, in order:
 	//
 	//		1. w/base(r)/name(r)
 	//		2. w/name(r)
-	//		3. w/.Nuts/base(r)/name(r)
-	//		4. w/.Nuts/name(r)
-	//		5. ~/.Nuts/base(r)/name(r)
-	//		6. ~/.Nuts/name(r)
+	//		3. w/.coconut/packs/base(r)/name(r)
+	//		4. w/.coconut/packs/name(r)
+	//		5. ~/.coconut/packs/base(r)/name(r)
+	//		6. ~/.coconut/packs/name(r)
 	//		7. $COCOROOT/lib/base(r)/name(r)
 	//		8. $COCOROOT/lib/name(r)
 	//

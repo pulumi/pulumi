@@ -91,7 +91,7 @@ A snapshot's schema is identical to that shown above for general CocoGL graphs, 
 
 * All resource monikers are "stable" (see below).
 
-Each resource has a type token (in [the usual CocoIL sense](nutpack.md)), an optional ID assigned by its provider, an
+Each resource has a type token (in [the usual CocoIL sense](packages.md)), an optional ID assigned by its provider, an
 optional list of moniker aliases, and a bag of properties which, themselves, are just JSON objects with optional edges
 inside.  Edges inside properties connect one resource to another; because snapshots are DAGs, all dependency resource
 definitions will lexically precede the dependent resource within the CocoGL file, ensuring single pass deserializability.

@@ -47,7 +47,7 @@ func TestBadMissingCocofile(t *testing.T) {
 func TestBadCocofileCasing(t *testing.T) {
 	sink := testCompile("testdata", "bad__cocofile_casing")
 
-	// Check that the compiler warned about a bad Cocofile casing (nut.yaml).
+	// Check that the compiler warned about a bad Cocofile casing (coconut.yaml).
 	d := errors.WarningIllegalMarkupFileCasing
 	assert.Equal(t, 1, sink.Warnings(), "expected a single warning")
 	assert.Equal(t,

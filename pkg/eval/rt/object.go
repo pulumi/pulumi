@@ -13,7 +13,7 @@ import (
 	"github.com/pulumi/coconut/pkg/util/contract"
 )
 
-// Object is a value allocated and stored on the heap.  In NutIL's interpreter, all values are heap allocated, since we
+// Object is a value allocated and stored on the heap.  In CocoIL's interpreter, all values are heap allocated, since we
 // are less concerned about performance of the evaluation (compared to the cost of provisioning cloud resources).
 type Object struct {
 	t          symbols.Type // the runtime type of the object.

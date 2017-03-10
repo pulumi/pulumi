@@ -1617,8 +1617,8 @@ func (e *evaluator) evalBinaryOperatorExpression(node *ast.BinaryOperatorExpress
 	//     type system is float64-based -- i.e., "JSON-like" -- we often find ourselves doing operations on floats that
 	//     honestly don't make sense (like shifting, masking, and whatnot).  If there is a type coercion, Golang
 	//     (rightfully) doesn't support an operator on numbers of that type.  I suspect we will eventually want to
-	//     consider integer types in NutIL, and/or verify that numbers aren't outside of the legal range as part of
-	//     verification, and then push the responsibility for presenting valid NutIL with any required conversions back
+	//     consider integer types in CocoIL, and/or verify that numbers aren't outside of the legal range as part of
+	//     verification, and then push the responsibility for presenting valid CocoIL with any required conversions back
 	//     up to the CocoLang compilers (compile-time, runtime, or othwerwise, per the language semantics).
 	switch node.Operator {
 	// Arithmetic operators
