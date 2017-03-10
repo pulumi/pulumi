@@ -10,7 +10,7 @@ pushd provider/ &&        # compile the resource provider
     popd
 
 echo Verifying:
-coconut verify            # ensure the package verifies
+coconut pack verify       # ensure the package verifies
 
 echo Sharing NPM links:
 yarn link                 # let NPM references resolve easily.
