@@ -1,116 +1,154 @@
 # Coconut Overview
 
-Coconut is a toolset and runtime for creating reusable cloud services.  It lets you author packages that can be shared
-and consumed just like your favorite programming language's libraries.  Coconut is inherently multi-language and
+Coconut is a toolset and runtime for creating reusable cloud services.  The resulting packages can be shared and
+consumed similar to your favorite programming language's package manager.  Coconut is inherently multi-language and
 multi-cloud, and lets you build abstractions that span different cloud environments and topologies, if you desire.
 
 This document provides an overview of the Coconut system, its goals, primary concepts, and the system architecture.
 
 ## Problem
 
-Cloud services are complex.  They are complex to build, complex to deploy, and complex to manage.  The current trend to
-use increasingly fine-grained microservices simply exacerbates this complexity, transforming most modern cloud
-applications into complex distributed systems.
+Cloud services are difficult to build, deploy, and manage.  The current trend to use increasingly fine-grained
+microservices increases the complexity, transforming most modern cloud applications into complex distributed systems,
+without much of the supporting language, library, and tooling support you'd expect in a distributed programming model.
 
-There are many aspects to building distributed systems that aren't evident to the newcomer -- like RPC, logging,
-fault tolerance, and zero-downtime deployments -- and even the experienced practitioner will quickly find that the
-developer and operations tools do not guide us down the golden path.  Indeed, it is common to need to master a dozen
-tools before even getting an application up and running in production.
+There are many aspects to building distributed systems that aren't evident to the newcomer: configuration, RPC,
+dependency management, logging, fault tolerance, and zero-downtime deployments, to name a few.  Even the experienced
+practitioner will quickly find that today's developer and operations tools do not guide us down the golden path.  It's
+common to need to master a dozen tools before even getting an application up and running in production.  Worse, these
+tools are closer to ad-hoc scripts, markup files, and unfamiliar templating systems, than real programming languages.
 
 On top of that complexity, it is difficult to share knowledge.  Most modern programming languages have component models
-that allow you to bundle up complex functionality underneath simple abstractions, and package managers that allow you
-to share these components with others, and consume components shared by others, in the form of libraries.  The current
-way that cloud architectures are built and deployed is simply not amenable to this kind of sharing.
+that allow you to encapsulate complex functionality underneath simple, easy-to-use abstractions, and package managers
+that allow you to share these components with others, and consume components shared by others, in the form of libraries.
+The current way that cloud architectures are built and deployed has no such componentization, sharing, or reuse.
+Instead, "sharing" happens through copy-and-paste, resulting in all the standard manageability woes you would expect.
 
-Even if there was a way to share components, the cloud platforms are divergent in the configuration languages they
-accept, infrastructure abstractions that they provide, and the specific knobs used to configure those abstractions.  It
-is as though every Node.js programmer out there needs to understand the intricate details of the Linux scheduler, versus
-macOS, versus Windows, just to deliver a simple web application.
+The cloud platforms are also divergent in the configuration formats that they accept, infrastructure abstractions that
+they provide, and the specific knobs used to configure those abstractions.  It is as though every web application
+developer needs to use a different programming language, while understanding the intricate details of the underlying
+thread scheduler, filesystem, and networking stack, just to target Linux, macOS, or Windows.  This is not how things are
+done: instead, most programmers use a language like Node.js, Python, Go, Java, or Ruby, to hide these details.
 
 Finally, once such an application is up and running, managing and evolving it requires similarly ad-hoc and
-individualized tools and practices.  Applying changes to a running environment is often done manually, in a
-hard-to-audit way, and patches are applied unevenly and inconsistently, often leaving security problems open to attack.
+individualized tools and practices.  Applying changes to a running environment is often done manually, in an unauditable
+way, and patches are applied unevenly and inconsistently, incurring security and reliability hazards.
 
-All of the above is a big productivity drain, negatively impacting the agility of organizations that need to innovate
-in service of their businesses.  It means that improvements are more costly to deliver.  Containers have delivered a
-great improvement to the management of single nodes in a cluster, but has not yet expanded that same simplicity to
-managing entire applications or entire clusters.  Thankfully by adopting concepts and ideas that have worked in the
-overall landscape of languages and runtimes, we can make considerable improvements in all of these dimensions.
+All of the above is a big productivity drain, negatively impacting the agility of organizations moving to and innovating
+in the cloud.  Containers have delivered a great improvement to productivity and management of single nodes in a
+cluster, but have yet to simplify entire applications or entire clusters.  By adopting concepts and ideas that have
+been proven in the overall landscape of languages and runtimes, however, Coconut significantly improves this situation.
 
 ## Solution
 
-Coconut lets developers author components in their language of choice (JavaScript, Python, Ruby, Go, etc).  This is in
-contrast to most cloud programming models today which require the use of often-obscure configuration languages or DSLs.
-This unified view is particularly helpful when building serverless applications where you want to focus on code.
+Coconut lets developers author cloud components in their language of choice (JavaScript, Python, Ruby, Go, etc).  These
+components include infrastructure, service and application-level components, serverless, and entire fabrics of
+topologies.  Coconut embraces an [immutable infrastructure](http://chadfowler.com/2013/06/23/immutable-deployments.html)
+philosophy, improving analysis, automation, auditing, and repeatability.  In [cattle versus pets](
+https://blog.engineyard.com/2014/pets-vs-cattle) terminology, Coconut prefers cattle, but can cater to pets.
 
-At the same time, Coconut is polyglot, allowing composition of components authored in many different languages.
+Coconut's approach to using a real language and package manager is in contrast to most approaches to cloud configuration
+today which typically use obscure configuration markups, DSLs, and, occasionally, templating functionality for
+conditional logic.  This unified view is particularly helpful when building serverless applications where you want to
+focus on code.  In such applications, the infrastructure management pieces increasingly fade into the background.
 
-These components can be built by reusing existing components shared by others, and published to the Coconut package
-manager for others to use.  Cloud services are simply instances of these components, with property values configured
-appropriately, and change management is done automatically by Coconut's understanding of the overall graph of
-dependencies between those services.  Think of each service as an "object" that is running in the cloud.
+At the same time, Coconut is polyglot, allowing composition of components authored in many different languages.  Cloud
+components can be built by reusing existing components shared by others, and published to the Coconut package manager
+for others to use.  A common intermediate format and runtime is used to stitch these components together.  Cloud
+services are in fact simply instances of these components, with property values configured appropriately.  Change
+management leverages existing source control workflows and is performed by Coconut's understanding of the overall graph
+of dependencies between those services.  Think of each service as an "object" that is running in the cloud.
 
-Coconut runs on any public or private cloud.  Although you are free to program directly to your cloud provider's
-specific abstractions, using the full power of your native cloud, Coconut also facilitates building higher-level
-cloud-neutral components that can run anywhere. This includes compute services, storage services, and even more logical
-domain-specific services like AI, ML, and recognition.
-
-## Concepts
-
-The primary concepts in Coconut are:
-
-* **Stack**: A static description of a topology of cloud services with optional APIs.
-* **Package**: A collection of exports stacks for consumption by others.
-* **Service**: An instantiation of a stack, grouping zero to many services, together.
-* **Cluster**: A hosting environment that stacks can be deployed into, reifying them as services.
-* **Workspace**: A static collection of zero to many stacks managed together in a single source repository.
-
-In an analogy with programming languages, a stack is like a *class* and a service is like an *object*.  Many concepts
-that are "distinct" in other systems, like the notion of gateways, controllers, functions, triggers, and so on, are
-expressed as stacks and services in the Coconut system.  They are essentially "subclasses" -- or specializations -- of
-this more general concept, unifying the configuration, provisioning, discovery, and overall management of them.
-
-In addition to those core abstractions, there are some supporting ones:
-
-* **Identity**: A unit of authentication and authorization, governing access to protected resources.
-* **Configuration**: A bag of key/value settings used either at build, runtime, or a combination.
-* **Secret**: A special kind of key/value configuration bag that is encrypted and protected by identity.
-
-Because Coconut is a tool for interacting with existing clouds -- including targets like AWS, Kubernetes, and Docker
-Swarm -- one of the toolchain's most important jobs is faithfully mapping these abstractions onto "lower level"
-infrastructure abstractions, and vice versa.  Much of Coconut's ability to deliver on its promise of better
-productivity, sharing, and reuse relies on its ability to robustly and intuitively perform these translations.  There
-is an extensible provider model for creating new providers, which amounts to implementing create, read, update, and
-delete (CRUD) methods per resource type.
+Coconut may target any public or private cloud, and may be used in an unopinionated way (programmatic IaaS), or fully
+opinionated (more PaaS, FaaS, or BaaS-like), depending on your preference.  Although you are free to program directly to
+your cloud provider's specific abstractions, using the full power of your native cloud, Coconut also facilitates
+building higher-level cloud-neutral components that can run anywhere.  This includes compute services, storage services,
+and even more logical domain-specific services like AI, ML, and recognition.  This is done using the standard techniques
+all programmers are familiar with: interface-based abstraction, class-based encapsulation, sharing, and reuse.
 
 ## Example
 
-Let us look at an example stack written in Coconut's flavor of JavaScript, CocoJS:
+Let us look at two brief examples in Coconut's flavor of JavaScript, CocoJS.
+
+### Basic Infrastructure
+
+The first example is an unopinionated description of infrastructure that projects onto AWS in a straightforward way.
+It creates a virtual private cloud (VPC) and a subnet per availability zone, the foundation for most new private clouds:
+
+    import * as aws from "@coconut/aws";
+    
+    export let vpcCidrBlock = "10.0.0.0/16";
+    
+    let vpc = new aws.ec2.VPC("acmecorp-cloud", {
+        cidrBlock: vpcCidrBlock,
+    });
+    let subnets = [];
+    for (let zone of aws.util.availabilityZones()) {
+        subnets.push(new aws.ec2.Subnet("acmecorp-subnet-" + zone, {
+            vpc: vpc,
+            availabilityZone: zone,
+            cidrBlock: aws.util.computeSubnetCidr(vpcCidrBlock, zone),
+        });
+    }
+
+Although this is a simple example, it shows off some of the underlying power of the Coconut model:
+
+* Full configuration of AWS resources is available to us.
+* Resources are created and configured using standard language constructors and parameters.
+* The full power of a language is available to us: classes, loops, branches, function calls, etc.
+* The AWS resources themselves, in fact, are just classes exported from an imported library.
+* Passing resource arguments -- like `vpc` to `Subnet` -- is capability-based instead of weak string IDs.
+* The `vpcCidrBlock` export is configurable and can be changed if the default `10.0.0.0/16` isn't right.
+* This library can also export helpful functions, like `aws.util.availabilityZones`, avoiding hard-coding.
+
+This alone is a significant step forward compared to what IT and developers are accustomed to.
+
+### Advanced Abstractions
+
+This next example demonstrates how higher-level opinionated abstractions may be built out of these fundamental
+building blocks.  Note that there is nothing "special" per-se about these higher level abstractions.  These capabilities
+fall out as a natural consequence from our choice of using a real programming language and real component model.
+
+Let us now look at a cloud-neutral serverless component that creates thumbnails from images uploaded to a bucket:
 
     import * as coconut from "@coconut/coconut";
 
-    export class Thumbnailer extends coconut.Stack {
-        private source: coconut.Bucket; // the source to monitor for images.
-        private dest: coconut.Bucket;   // the destination to store thumbnails in.
+    export class Thumbnailer {
+        // onNewThumbnail is an event that is raised for each new thumbnail.
+        public readonly onNewThumbnail: coconut.x.Event;
 
-        constructor(source: coconut.Bucket, dest: coconut.Bucket) {
-            this.source = source;
-            this.dest = dest;
-            this.source.onObjectCreated(async (event) => {
-                let obj = await event.GetObject();
-                let thumb = await gm(obj.Data).thumbnail();
-                await this.dest.PutObject(thumb);
+        private readonly src: coconut.x.Bucket; // the source to monitor for images.
+        private readonly coconut.x.Bucket; // the destination to store thumbnails in.
+
+        constructor(src: coconut.x.Bucket, dst: coconut.x.Bucket) {
+            this.src = src;
+            this.dst = dst;
+            this.onNewThumbnail = new coconut.x.Event();
+            this.src.onNewObject(async (ev: coconut.x.NewObjectEvent) => {
+                // Generate a thumbnail from the object payload.
+                let thumb = await generateThumbnail(ev.getObject().data);
+                // Now store the new thumbnail and raise our event.
+                await this.dst.putObject(thumb);
+                this.onNewThumbnail.raise(thumb);
             });
         }
     }
 
-This `Thumbnailer` stack simply accepts two `coconut.Bucket`s in its constructor, stores them, and wires up a lambda to
-run on the source's `onObjectCreated` event.  This program describes a reusable cloud service that can be instantiated
-any number of times in any environment.  It is important to note that the body of this lambda is real JavaScript, while
-the configuration outside of it is the CocoJS subset.  Note how we can mix what would have been classically expressed
-using a combination of configuration and real programming languages in one consistent and idiomatic programming model.
+`Thumbnailer` accepts two `coconut.x.Bucket`s in its constructor, subscribes to the source's `onNewObject` event,
+creates new thumbnails in the resulting lambda, and stores them in the other bucket.
 
-Let us now look at an instantiation of `Thumbnailer`.  This happens elsewhere in something we call a *blueprint*:
+It is important to note that the body of this lambda is real JavaScript -- and can use libraries from NPM, perform IO
+and `await`s, etc. -- while the configuration outside of it is the CocoJS subset.  Notice how we can mix what
+would have been classically expressed using a combination of configuration and real programming languages in one
+consistent and idiomatic programming model.  This illustrates why Coconut's multi-language capabilities are important.
+
+Also notice that `Thumbnailer` exposes its own event, `onNewThumbnail`, that can be subscribed just as it
+subscribes to bucket events.  This enables an extensible ecosystem of events and handlers.  These events and handlers
+are enlightened when targeting clouds that support first class events and handlers (such as S3 buckets and AWS Lambdas).
+
+The result is a reusable cloud component that can be instantiated any number of times in any number of environments.
+
+In fact, let us now look at code that uses `Thumbnailer`:
 
     import * as aws from "@coconut/aws";
     import {Thumbnailer} from "...";
@@ -119,32 +157,156 @@ Let us now look at an instantiation of `Thumbnailer`.  This happens elsewhere in
     let thumbnails = new aws.s3.Bucket("thumbnails");
     let thumbnailer = new Thumbnailer(images, thumbnails);
 
-Many Coconut programs are libraries, while blueprints are akin to executables in your favorite language.
+This package is an executable because it is meant to be run directly to create a new cloud topology.  Many Coconut
+programs are libraries (like `Thumbnailer` itself), while blueprints are akin to executables in your favorite language.
 
-The `aws.s3.Bucket` class is a subclass of `coconut.Bucket`, and so can be passed to `Thumbnailer`'s constructor just
-fine.  Notice how `Thumbnailer` is itself a cloud-neutral abstraction.  Of course, if it had wanted to access specific
-AWS S3 features, it could have accepted a concrete `aws.s3.Bucket`; as with ordinary object-oriented languages, the
-abstraction's author decides (e.g., this is similar to accepting a concrete "list" versus "enumerable" interface).
+The `aws.s3.Bucket` class is a subclass of `coconut.x.Bucket`, and so can be passed to `Thumbnailer`'s constructor just
+fine.  We could have passed an `azure.blob.Container`, `google.storage.Bucket`, or a custom subclass, instead.  Notice
+how `Thumbnailer` is itself a cloud-neutral abstraction.  Of course, if it had wanted to access specific AWS S3
+features, it could have requested a concrete `aws.s3.Bucket` instead; or it can enlighten itself and use advanced
+features simply by using a runtime type check; etc.  As with ordinary object-oriented languages, the class author
+decides.  In fact, this example is remarkably similar to accepting a concrete "list" versus "enumerable" interface.
 
-The Coconut toolchain analyzes this program and understands its components.  The program isn't run directly; instead, it
-is fed into a command like `coco compile`, `coco plan`, and `coco apply`, to determine how to create, update, or delete
-resources in a target cluster environment, using resource providers.  For instance, running `coco apply` on the above
-program, in a new cluster, will create two S3 buckets and a single AWS lambda wired up to the source bucket.  If we make
-edits, and reapply those edits, just the parts that have been changed will be updated in the target environment.
+## Architecture
+
+The primary concepts in Coconut are:
+
+* **Package**: A static library or executable containing modules, classes, functions, and variables.
+* **Resource**: A special kind of class that represents a cloud resource (VM, VPC, subnet, bucket, etc).
+* **Environment**: A target environment with a name and optional configuration (e.g., production, staging, etc).
+* **Stack**: An instantiation of a package, paired with an environment, and fully specified with arguments.
+* **Resource URN**: An ID that is auto-assigned to each resource object, unique within the overall environment.
+
+In an analogy with programming languages, a stack is essentially a collection of instantiated resource objects.  Many
+concepts that are "distinct" in other systems, like gateways, controllers, functions, triggers, and so on, are expressed
+as classes in Coconut.  They are essentially "subclasses" -- or specializations -- of the more general concept of a
+resource object, unifying the creation, configuration, provisioning, discovery, and overall management of them.
+
+There are some different kinds of stacks we will encounter:
+
+* **Plan**: A hypothetical stack created for purposes of inspection but that has not been deployed yet.
+* **Deployment**: A stack that has actually been deployed into an environment.
+* **Snapshot**: A stack generated by inspecting a live environment, not necessarily deployed using Coconut.
+
+Notice that Coconut has the ability to generate programs and stacks from an existing environment.  This can be useful
+during the initial adoption of Coconut.  It can also be useful for ongoing drift analysis, such as ensuring resources in
+production don't differ from staging, that resources in different regions are equivalent, and/or verifying that changes
+to an environment haven't been made without corresponding changes being made and checked into the Coconut metadata.
+
+In addition to those core abstractions, there are some supporting ones:
+
+* **Identity**: A unit of authentication and authorization, governing access to protected resources.
+* **Configuration**: A bag of key/value settings used either at build, runtime, or a combination.
+* **Secret**: A special kind of key/value configuration bag that is encrypted and protected by identity.
+
+There are some other "internal" concepts that most users can safely ignore:
+
+* **CocoLang**: A language subet for the Coconut configuration system (e.g., CocoJS, CocoPy, CocoGo, etc).
+* **CocoPack**: The intermediate package format used as metadata for packages, common to all languages.
+* **CocoIL**: The intermediate language (IL) used to represent code and data within a CocoPack package.
+* **CocoGL**: The graph language (GL) describing a stack's resource topology with dependencies as edges.
+
+Because Coconut is a tool for interacting with existing clouds -- including AWS, Azure, Google Cloud, Kubernetes, and
+Docker Swarm -- one of the toolchain's most important jobs is faithfully mapping abstractions onto "lower level"
+infrastructure.  Much of Coconut's ability to deliver on its promise of better productivity, sharing, and reuse relies
+on its ability to robustly and intuitively perform these translations.  There is an extensible provider model for
+creating new providers, which amounts to implementing create, read, update, and delete (CRUD) methods per resource type.
+
+## Toolchain
+
+The Coconut toolchain analyzes programs and understands them fully.  An important thing to realize is that a Coconut
+program isn't "run" directly in the usual way; instead, the process is as follows:
+
+* The source program is compiled (by a CocoLang compiler) into a package (a CocoPack containing CocoIL).
+* The package itself may depend on any number of other library packages (themselves just CocoPacks).
+* The executable package (and its CocoIL) is evaluated by the Coconut runtime to produce a graph (in CocoGL).
+* This graph is then used to generate a plan, deployment, or simply output that can be inspected by a tool.
+
+In particular, deployments are performed by the tool diffing the current state of an environment with the proposed new
+state, to come up with a series of edits to make the new state reality.  This results in a series of invocations to
+the necessary resource providers that perform side-effects that yield the necessary physical changes.
+
+For instance, a standard workflow for creating a new project might look like this.
+
+First, we initialize the project.  This isn't special, other than a `Coconut.json` or `.yaml` file:
+
+    $ mkdir acmecorp-infra && cd acmecorp-infra   # create a project directory
+    $ ...                                         # create a Coconut.* file, edit code, etc.
+
+Next, we might choose to compile the project without performing a deployment.  This is used for inner loop development,
+and reports any compile-time errors, while producing a package that we can distribute or inspect.
+
+    $ coco compile                                # compile the project
+
+Now we are ready to do a deployment.  First, we will initialize a target environment.  Let's call it `test`:
+    
+    $ coco env init test                          # initialize a test environment
+    $ coco env config test ...                    # configure the target environment
+
+The configuration steps are optional, but may be used to configure the target region, credentials, and so on.
+
+Next, we might choose to do a dry-run of a deployment first (a.k.a., create a "plan"):
+
+    $ coco deploy test -n                         # do a dry-run (plan) of the changes
+	Planned step #1 [create]
+	+ aws:ec2/instance:Instance:
+          [urn=coconut:test::ec2instance:index::aws:ec2/instance:Instance::instance]
+          imageId       : "ami-f6035893"
+          instanceType  : "t2.micro"
+          name          : "instance"
+          resource      : "AWS::EC2::Instance"
+          securityGroups: [
+              [0]: -> *urn:coconut:test::ec2instance:index::aws:ec2/securityGroup:SecurityGroup::group
+          ]
+	1 planned changes:
+		+ 1 resource created
+
+This shows a colorized view of the series of changes that will be carried out.  The output is meant to resemble a
+familiar Git-like diff view.  This will include adds (green), deletes (red), and modifications (yellow).
+
+Finally, we would presumably perform the deployment.  This is done simply by omitting the `-n` flag:
+
+    $ coco deploy test                            # actually perform the deployment
+
+The output of an actual deployment will look a lot like the plan output above, except that it contains more incremental
+information about the status of steps as they are taken.  For example:
+
+	Applying step #1 [create]
+	+ aws:ec2/instance:Instance:
+			  [urn=test::ec2instance:index::aws:ec2/instance:Instance::instance]
+			  imageId       : "ami-f6035893"
+			  instanceType  : "t2.micro"
+			  name          : "instance"
+			  resource      : "AWS::EC2::Instance"
+			  securityGroups: [
+				  [0]: -> *urn:coconut:test::ec2instance:index::aws:ec2/securityGroup:SecurityGroup::group
+			  ]
+	info: plugin[aws].stdout: Creating new EC2 instance resource
+	info: plugin[aws].stdout: EC2 instance 'i-0c5192a1d67810e1a' created; now waiting for it to become 'running'
+	1 total changes:
+		+ 1 resource created
+
+Subsequent changes may be made in the expected way:
+
+    $ ...                                         # more code edits, etc.
+    $ coco deploy test                            # re-deploy (automatically recompiles)
+
+Coconut calculates the minimal set of incremental edits, compared to the previous deployment, so that just the changed
+parts will be modified in the target environment.
 
 ## Further Reading
 
 More details are left to the respective design documents.  Here are some key ones:
 
 * [**Formats**](design/formats.md): An overview of Coconut's three formats: CocoLangs, CocoPack/CocoIL, and CocoGL.
-* [**CocoPack/CocoIL**](design/packages.md): A detailed description of Nuts and the CocoPack/CocoIL formats.
+* [**CocoPack/CocoIL**](design/packages.md): A detailed description of packages and the CocoPack/CocoIL formats.
+* [**Dependencies**](design/deps.md): An overview of how package management and dependency management works.
+* [**Resources**](design/resources.md): A description of how extensible resource providers are authored and registered.
 * [**CocoGL**](design/graphs.md): An overview of the CocoGL file format and how Coconut uses graphs for deployments.
 * [**Stacks**](design/stacks.md): An overview of how stacks are represented using the above fundamentals.
-* [**Dependencies**](design/deps.md): An overview of how package management and dependency management works.
 * [**Clouds**](design/clouds.md): A description of how Coconut abstractions map to different cloud providers.
 * [**Runtime**](design/runtime.md): An overview of Coconut's runtime footprint and services common to all clouds.
 * [**Cross-Cloud**](design/x-cloud.md): An overview of how Coconut can be used to create cloud-neutral abstractions.
 * [**Security**](design/security.md): An overview of Coconut's security model, including identity and group management.
-* [**Resources**](design/resources.md): A description of how extensible resource providers are authored and registered.
 * [**FAQ**](faq.md): Frequently asked questions, including how Coconut differs from its primary competition.
 
