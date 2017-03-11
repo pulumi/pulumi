@@ -7,11 +7,11 @@ graph must be persisted, Coconut serializes using its own graph language (CocoGL
 
 ## Overall Structure
 
-The overall structure of the CocoGL file format is straightforward; it consists of a linear list of objects, keyed by a
-so-called *moniker*, which is a unique identifier within a single CocoGL.  Each object contains a simple key/value bag of
-properties, possibly deeply nested for complex structures.  These objects may reference each other using their monikers.
+The overall structure of the CocoGL file format is straightforward; it consists of a linear list of objects, each keyed
+by an ID which is unique within the file.  Each object contains a simple key/value bag of properties, possibly deeply
+nested for complex structures.  These objects may reference each other using their IDs.
 
-For example, this directed graph
+For example, assuming that `#ref` is the means of a property referencing other vertices, this directed graph
 
        B
       ^ \
@@ -79,24 +79,25 @@ version infrastructure, to compare existing infrastructure to a set of changes, 
 
 A snapshot's schema is identical to that shown above for general CocoGL graphs, with these caveats:
 
-* The source CocoPack and arguments, if any, are encoded in the CocoGL's header section.
+* The source CocoPack and arguments, if any, are encoded in the CocoGL's header.
 
-* All snapshot graphs are DAGs.  As such, the objects are in topologically-sorted order.
-
-* Every object is a resource; data objects are serialized as regular JSON (and hence must be acyclic).
+* Every object is a resource; property values are serialized as flattened JSON values.
 
 * As such, rather than "vertices", the section is labeled "resources".
 
-* All resource objects have a fixed schema.
+* All resource objects have a fixed schema (see below).
 
-* All resource monikers are "stable" (see below).
+* All resource IDs correspond to the auto-generated resource URNs (see [resources](resources.md)).
 
-Each resource has a type token (in [the usual CocoIL sense](packages.md)), an optional ID assigned by its provider, an
-optional list of moniker aliases, and a bag of properties which, themselves, are just JSON objects with optional edges
-inside.  Edges inside properties connect one resource to another; because snapshots are DAGs, all dependency resource
-definitions will lexically precede the dependent resource within the CocoGL file, ensuring single pass deserializability.
+* All snapshot graphs are DAGs.  As such, resources are conventially listed in topologically-sorted order.
 
-For example, imagine a resource snapshot involving a VPC, Subnet, SecurityGroup, and EC2 Instance:
+In addition to its URN, which is also its key, each resource has a type token (in [the usual CocoIL sense](
+packages.md)), an optional ID assigned by its provider, and a bag of properties which, themselves, are just JSON objects
+with optional edges inside (encoded with `#ref`s).  Edges inside properties connect one resource to another; because
+snapshots are DAGs, and in topologically-sorted order, all dependency resource definitions will lexically precede the
+dependent resource within the CocoGL file, allowing for simple, single-pass deserialization.
+
+For example, imagine a resource snapshot involving an AWS EC2 VPC, Subnet, SecurityGroup, and Instance:
 
        Subnet -> VPC
         ^         ^
@@ -109,24 +110,24 @@ For example, imagine a resource snapshot involving a VPC, Subnet, SecurityGroup,
 Assuming it was created from a `my/cluster` CocoPack, we might expect to find the following CocoGL snapshot file:
 
     {
-        "package": "my/cluster:*",
+        "package": "my/cluster#*",
         "resources": {
-            "VPC": {
+            "urn:coconut:prod::my/cluster:index::aws:ec2/vpc:VPC::cloud-vpc": {
                 "id": "vpc-30629859",
                 "type": "aws:ec2/vpc:VPC",
                 "properties": {
                     "cidrBlock": "172.31.0.0/16"
                 }
             },
-            "Subnet": {
+            "urn:coconut:prod::my/cluster:index::aws:ec2/subnet:Subnet::cloud-subnet": {
                 "id": "subnet-925087fb",
                 "type": "aws:ec2/subnet:Subnet",
                 "properties": {
                     "cidrBlock": "172.31.0.0/16",
-                    "vpcId": { "#ref": "VPC" }
+                    "vpcId": { "#ref": "urn:coconut:prod::my/cluster:index::aws:ec2/vpc:VPC::cloud-vpc" }
                 }
             },
-            "SecurityGroup": {
+            "urn:coconut:prod::my/cluster:index::aws:ec2/securityGroup:SecurityGroup::admin": {
                 "id": "sg-151cd67c",
                 "type": "aws:ec2/securityGroup:SecurityGroup",
                 "properties": {
@@ -140,39 +141,40 @@ Assuming it was created from a `my/cluster` CocoPack, we might expect to find th
                             "toPort": 22
                         }
                     ]
-                    "vpc": { "#ref": "VPC" }
+                    "vpcId": { "#ref": "urn:coconut:prod::my/cluster:index::aws:ec2/vpc:VPC::cloud-vpc" }
                 }
             },
-            "Instance": {
+            "urn:coconut:prod::my/cluster:index::aws:ec2/instance:Instance::master": {
                 "id": "i-0cd6974f17a414343",
                 "type": "aws:ec2/instance:Instance",
                 "properties": {
                     "imageId": "ami-f6035893",
                     "instanceType": "t2.micro",
                     "securityGroupIds": [
-                        { "#ref": "SecurityGroup" }
+                        { "#ref": "urn:coconut:prod::my/cluster:index::aws:ec2/securityGroup:SecurityGroup::admin" }
                     ],
-                    "subnetId": { "#ref": "Subnet" }
+                    "subnetId": {
+                        "#ref": "urn:coconut:prod::my/cluster:index::aws:ec2/subnet/Subnet::cloud-subnet"
+                    }
                 }
             }
         }
     }
 
-### Resource Monikers
-
 A goal of snapshots is that, in addition to being unique, they are diffable and resources in one graph may be easily
 compared to like-resources in another graph to produce a structured delta.  This ensures that snapshots are versionable
-and, in fact, will version quite nicely in a source control management system like Git.  Due to this, plus the
-uniqueness requirement, clearly the simple names shown above -- `VPC`, `Subnet`, etc. -- won't do.
+and, in fact, will version quite nicely in a source control management system like Git.
 
-At the moment, these monikers are automatically generated by the system.  This is opposed to an alternative design in
-which end-users specify them explicitly.  Manually assigning monikers would be problematic because we want every unique
-environment, and indeed multiple deployments within the same environment, to have unique, yet diffable, names.
+Due to this, plus the uniqueness requirement, clearly simple names -- like `VPC`, `Subnet`, etc. -- won't do.  That's
+why the URNs in the example above are rather lengthy, and include so much of the associated resource object context.
 
-The algorithm for generating monikers is likely to evolve over time as we gain experience with them.  For now, they
-encode the path from root to resource vertex within the original CocoGL graph from which the resources were extracted.
+Please refer to the [resources design note](resources.md) for additional details on the URN generation process.
 
-It is possible there are multiple paths to the same resource, in which case, the shortest one is chosen as the primary
-moniker; if all monikers are of equal length, the first lexicographically ordered one is chosen.  In any case, the
-aliase monikers are available on the resource definition in case it helps resolve comparison ambiguities.
+TODO[pulumi/coconut#30]: queryability (GraphQL?  RDF/SPARQL?  Neo4j/Cypher?  Gremlin?  Etc.)
+
+TODO[pulumi/coconut#109]: dynamic linking versus the default of static linking.
+
+TODO[pulumi/coconut#90]: specify how "holes" show up during planning ("<computed>").  E.g., control flow simulation.
+
+TODO: describe what happens in the face of partial application failure.  Do graphs become tainted?
 
