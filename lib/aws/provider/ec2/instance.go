@@ -35,7 +35,24 @@ func (p *instanceProvider) Check(ctx context.Context, req *cocorpc.CheckRequest)
 	// Read in the properties, deserialize them, and verify them; return the resulting failures if any.
 	contract.Assert(req.GetType() == string(Instance))
 	props := resource.UnmarshalProperties(req.GetProperties())
-	_, failures, _ := newInstance(props, true)
+	instance, failures, _ := newInstance(props, true)
+
+	if instance.ImageID != "" {
+		// Check that the AMI exists; this catches misspellings, AMI region mismatches, accessibility problems, etc.
+		result, err := p.ctx.EC2().DescribeImages(&ec2.DescribeImagesInput{
+			ImageIds: []*string{aws.String(instance.ImageID)},
+		})
+		if err != nil {
+			return nil, err
+		}
+		if len(result.Images) == 0 {
+			return nil, fmt.Errorf("missing image: %v", instance.ImageID)
+		}
+		contract.Assertf(len(result.Images) == 1, "Did not expect multiple instance matches")
+		contract.Assertf(result.Images[0].ImageId != nil, "Expected a non-nil matched instance ID")
+		contract.Assertf(*result.Images[0].ImageId == instance.ImageID, "Expected instance IDs to match")
+	}
+
 	return &cocorpc.CheckResponse{Failures: failures}, nil
 }
 
