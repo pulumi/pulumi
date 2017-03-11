@@ -78,7 +78,7 @@ aspects of the scope in which a resource object is allocated.  As you can see ab
 
 * The standard URN prefix with Coconut namespace: `urn:coconut`.
 * A series of tokens in the URN name, delimited by the `::` sequence of characters:
-    - The stack name: `prod/acemcorp`.
+    - The stack name: `prod/acmecorp`.
     - The executable package responsible for creating this stack: `acmeinfra`.
     - The module within this package that created the resource: `index`.
     - The type of resource: `aws:ec2/instance:Instance`.
