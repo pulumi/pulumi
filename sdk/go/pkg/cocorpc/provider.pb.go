@@ -7,8 +7,8 @@ package cocorpc
 import proto "github.com/golang/protobuf/proto"
 import fmt "fmt"
 import math "math"
-import google_protobuf "github.com/golang/protobuf/ptypes/empty"
-import google_protobuf1 "github.com/golang/protobuf/ptypes/struct"
+import google_protobuf1 "github.com/golang/protobuf/ptypes/empty"
+import google_protobuf "github.com/golang/protobuf/ptypes/struct"
 
 import (
 	context "golang.org/x/net/context"
@@ -21,14 +21,14 @@ var _ = fmt.Errorf
 var _ = math.Inf
 
 type CheckRequest struct {
-	Type       string                   `protobuf:"bytes,1,opt,name=type" json:"type,omitempty"`
-	Properties *google_protobuf1.Struct `protobuf:"bytes,2,opt,name=properties" json:"properties,omitempty"`
+	Type       string                  `protobuf:"bytes,1,opt,name=type" json:"type,omitempty"`
+	Properties *google_protobuf.Struct `protobuf:"bytes,2,opt,name=properties" json:"properties,omitempty"`
 }
 
 func (m *CheckRequest) Reset()                    { *m = CheckRequest{} }
 func (m *CheckRequest) String() string            { return proto.CompactTextString(m) }
 func (*CheckRequest) ProtoMessage()               {}
-func (*CheckRequest) Descriptor() ([]byte, []int) { return fileDescriptor1, []int{0} }
+func (*CheckRequest) Descriptor() ([]byte, []int) { return fileDescriptor2, []int{0} }
 
 func (m *CheckRequest) GetType() string {
 	if m != nil {
@@ -37,7 +37,7 @@ func (m *CheckRequest) GetType() string {
 	return ""
 }
 
-func (m *CheckRequest) GetProperties() *google_protobuf1.Struct {
+func (m *CheckRequest) GetProperties() *google_protobuf.Struct {
 	if m != nil {
 		return m.Properties
 	}
@@ -51,7 +51,7 @@ type CheckResponse struct {
 func (m *CheckResponse) Reset()                    { *m = CheckResponse{} }
 func (m *CheckResponse) String() string            { return proto.CompactTextString(m) }
 func (*CheckResponse) ProtoMessage()               {}
-func (*CheckResponse) Descriptor() ([]byte, []int) { return fileDescriptor1, []int{1} }
+func (*CheckResponse) Descriptor() ([]byte, []int) { return fileDescriptor2, []int{1} }
 
 func (m *CheckResponse) GetFailures() []*CheckFailure {
 	if m != nil {
@@ -68,7 +68,7 @@ type CheckFailure struct {
 func (m *CheckFailure) Reset()                    { *m = CheckFailure{} }
 func (m *CheckFailure) String() string            { return proto.CompactTextString(m) }
 func (*CheckFailure) ProtoMessage()               {}
-func (*CheckFailure) Descriptor() ([]byte, []int) { return fileDescriptor1, []int{2} }
+func (*CheckFailure) Descriptor() ([]byte, []int) { return fileDescriptor2, []int{2} }
 
 func (m *CheckFailure) GetProperty() string {
 	if m != nil {
@@ -85,14 +85,14 @@ func (m *CheckFailure) GetReason() string {
 }
 
 type NameRequest struct {
-	Type       string                   `protobuf:"bytes,1,opt,name=type" json:"type,omitempty"`
-	Properties *google_protobuf1.Struct `protobuf:"bytes,2,opt,name=properties" json:"properties,omitempty"`
+	Type       string                  `protobuf:"bytes,1,opt,name=type" json:"type,omitempty"`
+	Properties *google_protobuf.Struct `protobuf:"bytes,2,opt,name=properties" json:"properties,omitempty"`
 }
 
 func (m *NameRequest) Reset()                    { *m = NameRequest{} }
 func (m *NameRequest) String() string            { return proto.CompactTextString(m) }
 func (*NameRequest) ProtoMessage()               {}
-func (*NameRequest) Descriptor() ([]byte, []int) { return fileDescriptor1, []int{3} }
+func (*NameRequest) Descriptor() ([]byte, []int) { return fileDescriptor2, []int{3} }
 
 func (m *NameRequest) GetType() string {
 	if m != nil {
@@ -101,7 +101,7 @@ func (m *NameRequest) GetType() string {
 	return ""
 }
 
-func (m *NameRequest) GetProperties() *google_protobuf1.Struct {
+func (m *NameRequest) GetProperties() *google_protobuf.Struct {
 	if m != nil {
 		return m.Properties
 	}
@@ -115,7 +115,7 @@ type NameResponse struct {
 func (m *NameResponse) Reset()                    { *m = NameResponse{} }
 func (m *NameResponse) String() string            { return proto.CompactTextString(m) }
 func (*NameResponse) ProtoMessage()               {}
-func (*NameResponse) Descriptor() ([]byte, []int) { return fileDescriptor1, []int{4} }
+func (*NameResponse) Descriptor() ([]byte, []int) { return fileDescriptor2, []int{4} }
 
 func (m *NameResponse) GetName() string {
 	if m != nil {
@@ -125,14 +125,14 @@ func (m *NameResponse) GetName() string {
 }
 
 type CreateRequest struct {
-	Type       string                   `protobuf:"bytes,1,opt,name=type" json:"type,omitempty"`
-	Properties *google_protobuf1.Struct `protobuf:"bytes,2,opt,name=properties" json:"properties,omitempty"`
+	Type       string                  `protobuf:"bytes,1,opt,name=type" json:"type,omitempty"`
+	Properties *google_protobuf.Struct `protobuf:"bytes,2,opt,name=properties" json:"properties,omitempty"`
 }
 
 func (m *CreateRequest) Reset()                    { *m = CreateRequest{} }
 func (m *CreateRequest) String() string            { return proto.CompactTextString(m) }
 func (*CreateRequest) ProtoMessage()               {}
-func (*CreateRequest) Descriptor() ([]byte, []int) { return fileDescriptor1, []int{5} }
+func (*CreateRequest) Descriptor() ([]byte, []int) { return fileDescriptor2, []int{5} }
 
 func (m *CreateRequest) GetType() string {
 	if m != nil {
@@ -141,7 +141,7 @@ func (m *CreateRequest) GetType() string {
 	return ""
 }
 
-func (m *CreateRequest) GetProperties() *google_protobuf1.Struct {
+func (m *CreateRequest) GetProperties() *google_protobuf.Struct {
 	if m != nil {
 		return m.Properties
 	}
@@ -155,7 +155,7 @@ type CreateResponse struct {
 func (m *CreateResponse) Reset()                    { *m = CreateResponse{} }
 func (m *CreateResponse) String() string            { return proto.CompactTextString(m) }
 func (*CreateResponse) ProtoMessage()               {}
-func (*CreateResponse) Descriptor() ([]byte, []int) { return fileDescriptor1, []int{6} }
+func (*CreateResponse) Descriptor() ([]byte, []int) { return fileDescriptor2, []int{6} }
 
 func (m *CreateResponse) GetId() string {
 	if m != nil {
@@ -172,7 +172,7 @@ type ReadRequest struct {
 func (m *ReadRequest) Reset()                    { *m = ReadRequest{} }
 func (m *ReadRequest) String() string            { return proto.CompactTextString(m) }
 func (*ReadRequest) ProtoMessage()               {}
-func (*ReadRequest) Descriptor() ([]byte, []int) { return fileDescriptor1, []int{7} }
+func (*ReadRequest) Descriptor() ([]byte, []int) { return fileDescriptor2, []int{7} }
 
 func (m *ReadRequest) GetId() string {
 	if m != nil {
@@ -189,15 +189,15 @@ func (m *ReadRequest) GetType() string {
 }
 
 type ReadResponse struct {
-	Properties *google_protobuf1.Struct `protobuf:"bytes,1,opt,name=properties" json:"properties,omitempty"`
+	Properties *google_protobuf.Struct `protobuf:"bytes,1,opt,name=properties" json:"properties,omitempty"`
 }
 
 func (m *ReadResponse) Reset()                    { *m = ReadResponse{} }
 func (m *ReadResponse) String() string            { return proto.CompactTextString(m) }
 func (*ReadResponse) ProtoMessage()               {}
-func (*ReadResponse) Descriptor() ([]byte, []int) { return fileDescriptor1, []int{8} }
+func (*ReadResponse) Descriptor() ([]byte, []int) { return fileDescriptor2, []int{8} }
 
-func (m *ReadResponse) GetProperties() *google_protobuf1.Struct {
+func (m *ReadResponse) GetProperties() *google_protobuf.Struct {
 	if m != nil {
 		return m.Properties
 	}
@@ -205,16 +205,16 @@ func (m *ReadResponse) GetProperties() *google_protobuf1.Struct {
 }
 
 type UpdateRequest struct {
-	Id   string                   `protobuf:"bytes,1,opt,name=id" json:"id,omitempty"`
-	Type string                   `protobuf:"bytes,2,opt,name=type" json:"type,omitempty"`
-	Olds *google_protobuf1.Struct `protobuf:"bytes,3,opt,name=olds" json:"olds,omitempty"`
-	News *google_protobuf1.Struct `protobuf:"bytes,4,opt,name=news" json:"news,omitempty"`
+	Id   string                  `protobuf:"bytes,1,opt,name=id" json:"id,omitempty"`
+	Type string                  `protobuf:"bytes,2,opt,name=type" json:"type,omitempty"`
+	Olds *google_protobuf.Struct `protobuf:"bytes,3,opt,name=olds" json:"olds,omitempty"`
+	News *google_protobuf.Struct `protobuf:"bytes,4,opt,name=news" json:"news,omitempty"`
 }
 
 func (m *UpdateRequest) Reset()                    { *m = UpdateRequest{} }
 func (m *UpdateRequest) String() string            { return proto.CompactTextString(m) }
 func (*UpdateRequest) ProtoMessage()               {}
-func (*UpdateRequest) Descriptor() ([]byte, []int) { return fileDescriptor1, []int{9} }
+func (*UpdateRequest) Descriptor() ([]byte, []int) { return fileDescriptor2, []int{9} }
 
 func (m *UpdateRequest) GetId() string {
 	if m != nil {
@@ -230,14 +230,14 @@ func (m *UpdateRequest) GetType() string {
 	return ""
 }
 
-func (m *UpdateRequest) GetOlds() *google_protobuf1.Struct {
+func (m *UpdateRequest) GetOlds() *google_protobuf.Struct {
 	if m != nil {
 		return m.Olds
 	}
 	return nil
 }
 
-func (m *UpdateRequest) GetNews() *google_protobuf1.Struct {
+func (m *UpdateRequest) GetNews() *google_protobuf.Struct {
 	if m != nil {
 		return m.News
 	}
@@ -245,14 +245,14 @@ func (m *UpdateRequest) GetNews() *google_protobuf1.Struct {
 }
 
 type UpdateImpactResponse struct {
-	Replaces []string                 `protobuf:"bytes,1,rep,name=replaces" json:"replaces,omitempty"`
-	Changes  *google_protobuf1.Struct `protobuf:"bytes,2,opt,name=changes" json:"changes,omitempty"`
+	Replaces []string                `protobuf:"bytes,1,rep,name=replaces" json:"replaces,omitempty"`
+	Changes  *google_protobuf.Struct `protobuf:"bytes,2,opt,name=changes" json:"changes,omitempty"`
 }
 
 func (m *UpdateImpactResponse) Reset()                    { *m = UpdateImpactResponse{} }
 func (m *UpdateImpactResponse) String() string            { return proto.CompactTextString(m) }
 func (*UpdateImpactResponse) ProtoMessage()               {}
-func (*UpdateImpactResponse) Descriptor() ([]byte, []int) { return fileDescriptor1, []int{10} }
+func (*UpdateImpactResponse) Descriptor() ([]byte, []int) { return fileDescriptor2, []int{10} }
 
 func (m *UpdateImpactResponse) GetReplaces() []string {
 	if m != nil {
@@ -261,7 +261,7 @@ func (m *UpdateImpactResponse) GetReplaces() []string {
 	return nil
 }
 
-func (m *UpdateImpactResponse) GetChanges() *google_protobuf1.Struct {
+func (m *UpdateImpactResponse) GetChanges() *google_protobuf.Struct {
 	if m != nil {
 		return m.Changes
 	}
@@ -276,7 +276,7 @@ type DeleteRequest struct {
 func (m *DeleteRequest) Reset()                    { *m = DeleteRequest{} }
 func (m *DeleteRequest) String() string            { return proto.CompactTextString(m) }
 func (*DeleteRequest) ProtoMessage()               {}
-func (*DeleteRequest) Descriptor() ([]byte, []int) { return fileDescriptor1, []int{11} }
+func (*DeleteRequest) Descriptor() ([]byte, []int) { return fileDescriptor2, []int{11} }
 
 func (m *DeleteRequest) GetId() string {
 	if m != nil {
@@ -330,11 +330,11 @@ type ResourceProviderClient interface {
 	// Read reads the instance state identified by ID, returning a populated resource object, or an error if not found.
 	Read(ctx context.Context, in *ReadRequest, opts ...grpc.CallOption) (*ReadResponse, error)
 	// Update updates an existing resource with new values.
-	Update(ctx context.Context, in *UpdateRequest, opts ...grpc.CallOption) (*google_protobuf.Empty, error)
+	Update(ctx context.Context, in *UpdateRequest, opts ...grpc.CallOption) (*google_protobuf1.Empty, error)
 	// UpdateImpact checks what impacts a hypothetical update will have on the resource's properties.
 	UpdateImpact(ctx context.Context, in *UpdateRequest, opts ...grpc.CallOption) (*UpdateImpactResponse, error)
 	// Delete tears down an existing resource with the given ID.  If it fails, the resource is assumed to still exist.
-	Delete(ctx context.Context, in *DeleteRequest, opts ...grpc.CallOption) (*google_protobuf.Empty, error)
+	Delete(ctx context.Context, in *DeleteRequest, opts ...grpc.CallOption) (*google_protobuf1.Empty, error)
 }
 
 type resourceProviderClient struct {
@@ -381,8 +381,8 @@ func (c *resourceProviderClient) Read(ctx context.Context, in *ReadRequest, opts
 	return out, nil
 }
 
-func (c *resourceProviderClient) Update(ctx context.Context, in *UpdateRequest, opts ...grpc.CallOption) (*google_protobuf.Empty, error) {
-	out := new(google_protobuf.Empty)
+func (c *resourceProviderClient) Update(ctx context.Context, in *UpdateRequest, opts ...grpc.CallOption) (*google_protobuf1.Empty, error) {
+	out := new(google_protobuf1.Empty)
 	err := grpc.Invoke(ctx, "/cocorpc.ResourceProvider/Update", in, out, c.cc, opts...)
 	if err != nil {
 		return nil, err
@@ -399,8 +399,8 @@ func (c *resourceProviderClient) UpdateImpact(ctx context.Context, in *UpdateReq
 	return out, nil
 }
 
-func (c *resourceProviderClient) Delete(ctx context.Context, in *DeleteRequest, opts ...grpc.CallOption) (*google_protobuf.Empty, error) {
-	out := new(google_protobuf.Empty)
+func (c *resourceProviderClient) Delete(ctx context.Context, in *DeleteRequest, opts ...grpc.CallOption) (*google_protobuf1.Empty, error) {
+	out := new(google_protobuf1.Empty)
 	err := grpc.Invoke(ctx, "/cocorpc.ResourceProvider/Delete", in, out, c.cc, opts...)
 	if err != nil {
 		return nil, err
@@ -423,11 +423,11 @@ type ResourceProviderServer interface {
 	// Read reads the instance state identified by ID, returning a populated resource object, or an error if not found.
 	Read(context.Context, *ReadRequest) (*ReadResponse, error)
 	// Update updates an existing resource with new values.
-	Update(context.Context, *UpdateRequest) (*google_protobuf.Empty, error)
+	Update(context.Context, *UpdateRequest) (*google_protobuf1.Empty, error)
 	// UpdateImpact checks what impacts a hypothetical update will have on the resource's properties.
 	UpdateImpact(context.Context, *UpdateRequest) (*UpdateImpactResponse, error)
 	// Delete tears down an existing resource with the given ID.  If it fails, the resource is assumed to still exist.
-	Delete(context.Context, *DeleteRequest) (*google_protobuf.Empty, error)
+	Delete(context.Context, *DeleteRequest) (*google_protobuf1.Empty, error)
 }
 
 func RegisterResourceProviderServer(s *grpc.Server, srv ResourceProviderServer) {
@@ -597,9 +597,9 @@ var _ResourceProvider_serviceDesc = grpc.ServiceDesc{
 	Metadata: "provider.proto",
 }
 
-func init() { proto.RegisterFile("provider.proto", fileDescriptor1) }
+func init() { proto.RegisterFile("provider.proto", fileDescriptor2) }
 
-var fileDescriptor1 = []byte{
+var fileDescriptor2 = []byte{
 	// 511 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0xb4, 0x54, 0x5d, 0x6f, 0xd3, 0x30,
 	0x14, 0x5d, 0xda, 0xd0, 0xb5, 0xb7, 0x1f, 0x42, 0xd6, 0xd6, 0x45, 0x01, 0xa4, 0xca, 0x4f, 0x95,

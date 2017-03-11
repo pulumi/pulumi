@@ -1,0 +1,43 @@
+// Copyright 2016 Pulumi, Inc. All rights reserved.
+
+syntax = "proto3";
+
+import "google/protobuf/struct.proto";
+
+package cocorpc;
+
+// ResourceAnalyzer is a pluggable service that checks entire projects/stacks/snapshots, and/or individual resources,
+// for arbitrary issues.  These might be style, policy, correctness, security, or performance related.
+service ResourceAnalyzer {
+    // Analyze analyzes an entire project/stack/snapshot, and returns any errors that it finds.
+    rpc Analyze(AnalyzeRequest) returns (AnalyzeResponse) {}
+    // AnalyzeResource analyzes a single resource object, and returns any errors that it finds.
+    rpc AnalyzeResource(AnalyzeResourceRequest) returns (AnalyzeResourceResponse) {}
+}
+
+message AnalyzeRequest {
+    string pkg = 1; // the fully resolved package URL being deployed.
+}
+
+message AnalyzeResponse {
+    repeated AnalyzeFailure failures = 1; // the failures (or empty if none).
+}
+
+message AnalyzeFailure {
+    string reason = 1; // the reason that the analyzer rejected the request.
+}
+
+message AnalyzeResourceRequest {
+    string type = 1;                       // the type token of the resource.
+    google.protobuf.Struct properties = 2; // the full properties to use for validation.
+}
+
+message AnalyzeResourceResponse {
+    repeated AnalyzeResourceFailure failures = 1; // the failures (or empty if none).
+}
+
+message AnalyzeResourceFailure {
+    string property = 1; // the property that the analyzer rejected (or "" if general).
+    string reason = 2;   // the reason that the analyzer rejected the request.
+}
+

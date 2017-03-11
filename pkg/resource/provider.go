@@ -21,6 +21,8 @@ import (
 type Provider interface {
 	// Closer closes any underlying OS resources associated with this provider (like processes, RPC channels, etc).
 	io.Closer
+	// Pkg fetches this provider's package.
+	Pkg() tokens.Package
 	// Check validates that the given property bag is valid for a resource of the given type.
 	Check(t tokens.Type, props PropertyMap) ([]CheckFailure, error)
 	// Name names a given resource.  Sometimes this will be assigned by a developer, and so the provider

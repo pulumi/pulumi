@@ -16,4 +16,7 @@ var (
 		"Configs may only target module properties and class static properties; %v is neither")
 	ErrorConfigApplyFailure           = newError(2009, "One or more errors occurred while applying '%v's configuration")
 	ErrorResourcePropertyValueInvalid = newError(2010, "Resource '%v's property '%v' value is invalid: %v")
+	ErrorAnalyzeFailure               = newError(2011, "Analyzer '%v' reported an error: %v")
+	ErrorAnalyzeResourceFailure       = newError(2012,
+		"Analyzer '%v' reported a resource error with '%v's property '%v': %v")
 )

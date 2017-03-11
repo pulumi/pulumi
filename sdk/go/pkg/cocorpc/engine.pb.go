@@ -2,34 +2,12 @@
 // source: engine.proto
 // DO NOT EDIT!
 
-/*
-Package cocorpc is a generated protocol buffer package.
-
-It is generated from these files:
-	engine.proto
-	provider.proto
-
-It has these top-level messages:
-	LogRequest
-	CheckRequest
-	CheckResponse
-	CheckFailure
-	NameRequest
-	NameResponse
-	CreateRequest
-	CreateResponse
-	ReadRequest
-	ReadResponse
-	UpdateRequest
-	UpdateImpactResponse
-	DeleteRequest
-*/
 package cocorpc
 
 import proto "github.com/golang/protobuf/proto"
 import fmt "fmt"
 import math "math"
-import google_protobuf "github.com/golang/protobuf/ptypes/empty"
+import google_protobuf1 "github.com/golang/protobuf/ptypes/empty"
 
 import (
 	context "golang.org/x/net/context"
@@ -40,12 +18,6 @@ import (
 var _ = proto.Marshal
 var _ = fmt.Errorf
 var _ = math.Inf
-
-// This is a compile-time assertion to ensure that this generated file
-// is compatible with the proto package it is being compiled against.
-// A compilation error at this line likely means your copy of the
-// proto package needs to be updated.
-const _ = proto.ProtoPackageIsVersion2 // please upgrade the proto package
 
 // LogSeverity is the severity level of a log message.  Errors are fatal; all others are informational.
 type LogSeverity int32
@@ -73,7 +45,7 @@ var LogSeverity_value = map[string]int32{
 func (x LogSeverity) String() string {
 	return proto.EnumName(LogSeverity_name, int32(x))
 }
-func (LogSeverity) EnumDescriptor() ([]byte, []int) { return fileDescriptor0, []int{0} }
+func (LogSeverity) EnumDescriptor() ([]byte, []int) { return fileDescriptor1, []int{0} }
 
 type LogRequest struct {
 	Severity LogSeverity `protobuf:"varint,1,opt,name=severity,enum=cocorpc.LogSeverity" json:"severity,omitempty"`
@@ -83,7 +55,7 @@ type LogRequest struct {
 func (m *LogRequest) Reset()                    { *m = LogRequest{} }
 func (m *LogRequest) String() string            { return proto.CompactTextString(m) }
 func (*LogRequest) ProtoMessage()               {}
-func (*LogRequest) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{0} }
+func (*LogRequest) Descriptor() ([]byte, []int) { return fileDescriptor1, []int{0} }
 
 func (m *LogRequest) GetSeverity() LogSeverity {
 	if m != nil {
@@ -116,7 +88,7 @@ const _ = grpc.SupportPackageIsVersion4
 
 type EngineClient interface {
 	// Log logs a global message in the engine, including errors and warnings.
-	Log(ctx context.Context, in *LogRequest, opts ...grpc.CallOption) (*google_protobuf.Empty, error)
+	Log(ctx context.Context, in *LogRequest, opts ...grpc.CallOption) (*google_protobuf1.Empty, error)
 }
 
 type engineClient struct {
@@ -127,8 +99,8 @@ func NewEngineClient(cc *grpc.ClientConn) EngineClient {
 	return &engineClient{cc}
 }
 
-func (c *engineClient) Log(ctx context.Context, in *LogRequest, opts ...grpc.CallOption) (*google_protobuf.Empty, error) {
-	out := new(google_protobuf.Empty)
+func (c *engineClient) Log(ctx context.Context, in *LogRequest, opts ...grpc.CallOption) (*google_protobuf1.Empty, error) {
+	out := new(google_protobuf1.Empty)
 	err := grpc.Invoke(ctx, "/cocorpc.Engine/Log", in, out, c.cc, opts...)
 	if err != nil {
 		return nil, err
@@ -140,7 +112,7 @@ func (c *engineClient) Log(ctx context.Context, in *LogRequest, opts ...grpc.Cal
 
 type EngineServer interface {
 	// Log logs a global message in the engine, including errors and warnings.
-	Log(context.Context, *LogRequest) (*google_protobuf.Empty, error)
+	Log(context.Context, *LogRequest) (*google_protobuf1.Empty, error)
 }
 
 func RegisterEngineServer(s *grpc.Server, srv EngineServer) {
@@ -178,9 +150,9 @@ var _Engine_serviceDesc = grpc.ServiceDesc{
 	Metadata: "engine.proto",
 }
 
-func init() { proto.RegisterFile("engine.proto", fileDescriptor0) }
+func init() { proto.RegisterFile("engine.proto", fileDescriptor1) }
 
-var fileDescriptor0 = []byte{
+var fileDescriptor1 = []byte{
 	// 225 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0xe2, 0xe2, 0x49, 0xcd, 0x4b, 0xcf,
 	0xcc, 0x4b, 0xd5, 0x2b, 0x28, 0xca, 0x2f, 0xc9, 0x17, 0x62, 0x4f, 0xce, 0x4f, 0xce, 0x2f, 0x2a,

@@ -242,7 +242,8 @@ func plan(cmd *cobra.Command, info *envCmdInfo, delete bool) *planResult {
 	}
 
 	// Generate a plan; this API handles all interesting cases (create, update, delete).
-	plan, err := resource.NewPlan(info.Ctx, info.Old, new)
+	// TODO: take analyzers from the project and/or the command line.
+	plan, err := resource.NewPlan(info.Ctx, info.Old, new, nil)
 	if err != nil {
 		result.C.Diag().Errorf(errors.ErrorCantCreateSnapshot, err)
 		return nil

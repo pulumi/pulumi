@@ -9,6 +9,7 @@ import (
 	"github.com/pulumi/coconut/pkg/compiler/errors"
 	"github.com/pulumi/coconut/pkg/diag/colors"
 	"github.com/pulumi/coconut/pkg/graph"
+	"github.com/pulumi/coconut/pkg/pack"
 	"github.com/pulumi/coconut/pkg/tokens"
 	"github.com/pulumi/coconut/pkg/util/contract"
 )
@@ -122,8 +123,8 @@ func StepOps() []StepOp {
 // for old, new, or both to be nil; combinations of these can be used to create different kinds of plans: (1) a creation
 // plan from a new snapshot when old doesn't exist (nil), (2) an update plan when both old and new exist, and (3) a
 // deletion plan when old exists, but not new, and (4) an "empty plan" when both are nil.
-func NewPlan(ctx *Context, old Snapshot, new Snapshot) (Plan, error) {
-	return newPlan(ctx, old, new)
+func NewPlan(ctx *Context, old Snapshot, new Snapshot, analyzers []tokens.QName) (Plan, error) {
+	return newPlan(ctx, old, new, analyzers)
 }
 
 type plan struct {
@@ -240,11 +241,28 @@ func (p *plan) checkpoint(resources []Resource) Snapshot {
 
 // newPlan handles all three cases: (1) a creation plan from a new snapshot when old doesn't exist (nil), (2) an update
 // plan when both old and new exist, and (3) a deletion plan when old exists, but not new.
-func newPlan(ctx *Context, old Snapshot, new Snapshot) (*plan, error) {
+func newPlan(ctx *Context, old Snapshot, new Snapshot, analyzers []tokens.QName) (*plan, error) {
 	// Create a new plan builder and then proceed to do some building.
 	pb := newPlanBuilder(ctx, old, new)
 	if glog.V(7) {
-		glog.V(7).Infof("Creating plan with #old=%v #new=%v\n", len(pb.OldRes), len(pb.NewRes))
+		glog.V(7).Infof("Creating plan with #old=%v #new=%v #analyzers=%v\n",
+			len(pb.OldRes), len(pb.NewRes), len(analyzers))
+	}
+
+	// Give analyzers a chance to inspect the overall deployment.
+	for _, aname := range analyzers {
+		analyzer, err := ctx.Analyzer(aname)
+		if err != nil {
+			return nil, err
+		}
+		// TODO: we want to use the full package URL, including its SHA1 hash/version/etc.
+		failures, err := analyzer.Analyze(pack.PackageURL{Name: new.Pkg().Name()})
+		if err != nil {
+			return nil, err
+		}
+		for _, failure := range failures {
+			ctx.Diag.Errorf(errors.ErrorAnalyzeFailure, aname, failure.Reason)
+		}
 	}
 
 	// Initialize the builder's maps used by everything below (olds, news, dependencies).
@@ -263,17 +281,36 @@ func newPlan(ctx *Context, old Snapshot, new Snapshot) (*plan, error) {
 
 	// Do a quick pass over the new resources and make sure properties pass muster.
 	for _, new := range pb.NewRes {
+		t := new.Type()
+		props := new.Properties()
+		urn := new.URN()
+
+		// First ensure that the provider is okay with this resource.
 		prov, err := pb.P.Provider(new)
 		if err != nil {
 			return nil, err
 		}
-		failures, err := prov.Check(new.Type(), new.Properties())
+		failures, err := prov.Check(t, props)
 		if err != nil {
 			return nil, err
 		}
 		for _, failure := range failures {
-			ctx.Diag.Errorf(errors.ErrorResourcePropertyValueInvalid,
-				new.URN(), failure.Property, failure.Reason)
+			ctx.Diag.Errorf(errors.ErrorResourcePropertyValueInvalid, urn, failure.Property, failure.Reason)
+		}
+
+		// Next, give each analyzer -- if any -- a chance to inspect the reosurce too.
+		for _, aname := range analyzers {
+			analyzer, err := ctx.Analyzer(aname)
+			if err != nil {
+				return nil, err
+			}
+			failures, err := analyzer.AnalyzeResource(t, props)
+			if err != nil {
+				return nil, err
+			}
+			for _, failure := range failures {
+				ctx.Diag.Errorf(errors.ErrorAnalyzeResourceFailure, aname, urn, failure.Property, failure.Reason)
+			}
 		}
 	}
 
@@ -569,6 +606,7 @@ func (s *step) Next() Step {
 	}
 	return s.next
 }
+
 func (s *step) Provider() (Provider, error) {
 	contract.Assert(s.old == nil || s.new == nil || s.old.Type() == s.new.Type())
 	if s.old != nil {
