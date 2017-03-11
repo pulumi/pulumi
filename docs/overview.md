@@ -87,7 +87,7 @@ It creates a virtual private cloud (VPC) and a subnet per availability zone, the
         subnets.push(new aws.ec2.Subnet("acmecorp-subnet-" + zone, {
             vpc: vpc,
             availabilityZone: zone,
-            cidrBlock: aws.util.computeSubnetCidr(vpcCidrBlock, zone),
+            cidrBlock: aws.util.suggestSubnetCidr(vpcCidrBlock, zone),
         });
     }
 
@@ -103,7 +103,162 @@ Although this is a simple example, it shows off some of the underlying power of 
 
 This alone is a significant step forward compared to what IT and developers are accustomed to.
 
-### Advanced Abstractions
+### A Little Abstraction
+
+The above example demonstrates an executable package that creates a VPC and its subnets.  It is a small step to package
+up this code into a reusable library that others can use.
+
+Packaging up abstractions is useful for many reasons.  Perhaps it just saves you from typing the same boilerplate
+resource configuration logic over and over again, as is common in today's infrastructure markup.  Or maybe you just
+want to share common patterns within your organization, to enforce some degree of consistency.  Finally, perhaps you
+wish to share your creation with the overall community, so that others can leverage your hard work.
+
+No matter the reason, doing this is as simple as exporting your infrastructure logic as a class that others can use:
+
+    import * as aws from "@coconut/aws";
+
+    export class AWSInfraFoundation {
+        public readonly vpc: aws.ec2.VPC;
+        public readonly subnets: aws.ec2.Subnet[];
+
+        constructor(name: string, args?: AWSInfraFoundationArgs) {
+            this.vpc = new aws.ec2.VPC(name + "-cloud", {
+                cidrBlock: args.vpcCidrBlock || "10.0.0.0/16",
+            });
+            this.subnets = [];
+            for (let zone of aws.util.availabilityZones()) {
+                this.subnets.push(new aws.ec2.Subnet("acmecorp-subnet-" + zone, {
+                    vpc: this.vpc,
+                    availabilityZone: zone,
+                    cidrBlock: aws.util.suggestSubnetCidr(vpcCidrBlock, zone),
+                });
+            }
+        }
+    }
+
+    export interface AWSInfraFoundationArgs {
+        vpcCidrBlock?: string; // an optional CIDR block for the VPC (default: 10.0.0.0/16).
+    }
+
+Now, given this definition exported from a library `acmecorp/infra`, another executable package can instantiate it:
+
+    import {AWSInfraFoundation} from "...";
+    let infra = new AWSInfraFoundation("acmecorp");
+
+This small program essentially has the same effect as the original example.  And the VPC and Subnet resource objects are
+trivially accessible, and useable in the same ways, simply by accessing the properties `infra.vpc` and `infra.subnets`.
+
+### A Little Syntactic Sugar
+
+At the bottom of the overall ecosystem of libraries are the basic resource libraries for cloud resources like AWS,
+Azure, Google Cloud, Kubernetes, VMWare, and so on.  These resources project the core capabilities of these low-level
+resources in their full glory, typically with very little on top (except for some types and schema for convenience).
+
+As we will soon see in the section immediately following this one, at the top of this ecosystem are cloud-neutral,
+high-level abstractions.
+
+In the middle, however, there are some abstractions that still deliver the full power of the underlying abstractions,
+but add a modest amount of convenience.  The most notable example is in the serverless domain, where cloud functions --
+such as AWS Lambda -- can be expressed using ordinary lambdas.
+
+Let's take an example.
+
+To create an AWS Lambda using the lowest level, raw projection of the resources, we either need to express the code
+using inline code embedded in a string, or we need to upload that code to S3 and reference it by bucket name.  Either
+way, the expression of this is unnatural to say the least.  For example:
+
+    import * as aws from "@coconut/aws";
+
+    let dst = new aws.s3.Bucket("thumbnails");
+
+    let thumbnailer = new aws.lambda.Lambda("thumbnailer", {
+        handler: "index.handler",
+        runtime: "nodejs",
+        code: {
+            zipFile:
+                "var config = require('config');\n" +
+                "var request = require('request');\n" +
+                "var AWS = require('aws-sdk');\n" +
+                "var S3 = new AWS.S3();\n" +
+                "exports.handler = function(event, context) {\n" +
+                "   var src = event.Records[0].s3.bucket.name;\n" +
+                "   var key = event.Records[0].s3.object.key;\n" +
+                "   s3.getObject(\n" +
+                "       {\n" +
+                "           Bucket: srcBucket,\n" +
+                "           Key: srcKey,\n" +
+                "       },\n" +
+                "       (data, err) => {\n" +
+                "           if (err) {\n" +
+                "               console.error(`Unable to resize: ${err}`);\n" +
+                "               context.done();\n" +
+                "           }\n" +
+                "           else {\n" +
+                "               let thumb = generateThumbnail(data);\n" +
+                "               let dstBuck = config.buckets[" + dst.id + "];\n" +
+                "               request.post(dstBuck.host + '/' + key,\n" +
+                "                   {\n" +
+                "                       form: {\n" +
+                "                           bucket: dstBuck.bucket,\n" +
+                "                           secret: dstBuck.secret,\n" +
+                "                       }\n" +
+                "                   },\n" +
+                "                   (err, response) {\n" +
+                "                       if (err) {\n" +
+                "                           console.error(`Unable to post thumbnail: ${err});\n" +
+                "                       }\n" +
+                "                       context.done();\n" +
+                "                   }\n" +
+                "               );\n" +
+                "           }\n" +
+                "       }\n" +
+                "   );\n" +
+                "};\n",
+        },
+        memory: 1024,
+    });
+
+    let src = new aws.s3.Bucket("images", {
+        notificationConfiguration: {
+            lambdaConfigurations: [{
+                event: "s3:ObjectCreated:*",
+                function: thumbnailer,
+            }],
+        },
+    });
+
+Although a direct translation of the underlying AWS APIs -- and remarkably similar to the AWS CloudFormation expression
+of such a topology -- this example suffers from many obvious problems.  Embedding source as text leads to a poor tooling
+experience overall.  The subscription to the S3 bucket event source is awkward.  And wiring up the destination bucket
+requires that we dynamically inject code as text into the lambda, and fetch configuration through awkward API calls that
+make the inner code feel completely and utterly disconnected from the outer code, which of course, it actually is.
+
+The Coconut high-level abstractions alleviate this problem, as we will see soon.  But even without eschewing the
+AWS-specific nature of lambdas and S3 subscriptions, we can use the `aws.x` package for considerable convenience:
+
+    import * as aws from "@coconut/aws";
+
+    let src = new aws.s3.Bucket("images");
+    let dst = new aws.s3.Bucket("thumbnails", {
+        onNewObject: new aws.x.lambda.Lambda("thumbnailer", {
+            code: async (event, context) => {
+                // Generate a thumbnail from the object payload.
+                let thumb = generateThumbnail(event.getObject().data);
+                // Now store the new thumbnail and raise our event.
+                await dst.putObject(event.key, thumb);
+            },
+            memory: 1024,
+        })
+    });
+
+Notice how concise this code is in comparison.  This is for numerous reasons.  First, we can use a real lambda in the
+source language to represent the lambda's code.  Next, the lambda can simply close over variables like `src` and `dst`,
+as capabilities, rather than awkwardly marshaling IDs as strings statically at compile-time.  Next, we have first class
+APIs on the various context objects, so that we can simply call `getObject` and `putObject` on those capabilities,
+versus marshaling everything in a very dynamically typed way.  And yet, notice we can still set the underlying
+properties that we care about, like the memory size.  We have not lost any power with this gain in expressiveness.
+
+### Advanced High-Level Abstractions
 
 This next example demonstrates how higher-level opinionated abstractions may be built out of these fundamental
 building blocks.  Note that there is nothing "special" per-se about these higher level abstractions.  These capabilities
@@ -124,12 +279,12 @@ Let us now look at a cloud-neutral serverless component that creates thumbnails 
             this.src = src;
             this.dst = dst;
             this.onNewThumbnail = new coconut.x.Event();
-            this.src.onNewObject(async (ev: coconut.x.NewObjectEvent) => {
+            this.src.onNewObject(async (event: coconut.x.NewObjectEvent) => {
                 // Generate a thumbnail from the object payload.
-                let thumb = await generateThumbnail(ev.getObject().data);
+                let thumb = generateThumbnail(event.getObject().data);
                 // Now store the new thumbnail and raise our event.
-                await this.dst.putObject(thumb);
-                this.onNewThumbnail.raise(thumb);
+                await this.dst.putObject(event.key, thumb);
+                this.onNewThumbnail.raise({ key: event.key, thumb: thumb });
             });
         }
     }
