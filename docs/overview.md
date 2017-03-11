@@ -238,8 +238,8 @@ AWS-specific nature of lambdas and S3 subscriptions, we can use the `aws.x` pack
 
     import * as aws from "@coconut/aws";
 
-    let src = new aws.s3.Bucket("images");
-    let dst = new aws.s3.Bucket("thumbnails", {
+    let dst = new aws.s3.Bucket("thumbnails");
+    let src = new aws.s3.Bucket("images", {
         onNewObject: new aws.x.lambda.Lambda("thumbnailer", {
             code: async (event, context) => {
                 // Generate a thumbnail from the object payload.
