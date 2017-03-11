@@ -68,7 +68,7 @@ all programmers are familiar with: interface-based abstraction, class-based enca
 
 ## Example
 
-Let us look at two brief examples in Coconut's flavor of JavaScript, CocoJS.
+Let us look at a handful of brief examples in Coconut's flavor of JavaScript, CocoJS.
 
 ### Basic Infrastructure
 
