@@ -1,5 +1,7 @@
 ## Coconut System Services
 
+*WARNING: this document is thin, mostly TODOs, and pretty useless at the moment.*
+
 TODO(joe): describe package manager, artifact repository, CI/CD, the relationship between them, etc.
 
 ## Runtime Services

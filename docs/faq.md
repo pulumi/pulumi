@@ -1,5 +1,7 @@
 # Frequently Asked Questions
 
+*WARNING: this document is a placeholder.*
+
 ## How is this different from ...?
 
 # Helm Go Templates

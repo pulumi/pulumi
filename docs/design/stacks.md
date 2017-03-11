@@ -1,5 +1,8 @@
 # Coconut Stacks
 
+*WARNING: this document is out-of-date.  In particular, it refers to a time when we had special "blessed" base classes
+for so-called stacks (different from the new meaning of stacks).  It's not terrible, but certainly not very good.*
+
 This document describes how Coconut Stacks and Services show up in the various [formats](formats.md) (CocoLangs,
 CocoPack, CocoIL, and CocoGL).  Those are the definitive resources on the low-level formats, but this document describes
 the overall programming model that a developer will encounter.  For more details on how this results in concrete

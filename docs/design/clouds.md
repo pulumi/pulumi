@@ -1,5 +1,9 @@
 # Coconut Clouds
 
+*WARNING: this document is out-of-date.  At some point, we will do cross-cloud abstractions (see [x-cloud](x-cloud.md)),
+at which point all of this will become relevant in a big way.  For now, however, we're focused on the underlying
+"unopinionated" resource models which are prerequisites to doing any of the below.*
+
 This document describes how Coconut metadata is compiled and deployed to various cloud targets.  Please refer to [the
 companion metadata specification](metadata.md) to understand the source input in more detail.
 

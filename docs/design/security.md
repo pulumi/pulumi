@@ -1,5 +1,10 @@
 # Coconut Security
 
+*WARNING: this document is out-of-date.  Most of the thinking here will apply as we move to a thicker [x-cloud](
+x-cloud.md) abstraction layer.  Some of it may very well matter for the resource provider model, although I think not,
+as we seem to be leaning towards thin configuration management for those layers.  Clearly all of these topics will also
+matter when authenticating with a hosted Coconut service, but we are a ways away from thinking about that.*
+
 Coconut's security concepts are inspired by [UNIX's security model](https://en.wikipedia.org/wiki/Unix_security) in
 addition to [AWS's IAM system](http://docs.aws.amazon.com/IAM/latest/UserGuide/id.html).
 

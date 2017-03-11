@@ -1,5 +1,7 @@
 # Coconut Cross-Cloud Targeting
 
+*WARNING: this document is a little out-of-date.  The details are incorrect, but overall idea is still relevant.*
+
 The Coconut metadata and primitives are intentionally cloud-agnostic and have been designed to support [many cloud
 targets](clouds.md).  This can be used to build, share, and reuse portable abstractions.
 
