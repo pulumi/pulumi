@@ -1,23 +1,23 @@
 # Coconut Package Metadata (CocoPack)
 
-This document describes the overall concepts, capabilities, and serialization format for CocoPack.  It also describes the
-intermediate language (IL) and type system for CocoPack, something we refer to as CocoIL.
+This document describes the overall concepts, capabilities, and serialization format for CocoPack.  It also describes
+the intermediate language (IL) and type system for CocoPack, something we refer to as CocoIL.
 
 ## Overview
 
-Each CocoPack file is called a CocoPack and contains four things:
+Each package is serialized using the CocoPack format and contains four things:
 
 * Package metadata.
 * Symbol names and tokens.
 * Module, type, function, and variable definitions.
 * Data and computations encoded in an intermediate language (IL).
 
-The metadata section describes attributes about the overall CocoPack, like its name and version.
+The metadata section describes attributes about the overall CocoPack, like its name and dependencies.
 
 All data and computations are fully bound to types, and ready for interpretation/execution.  Higher level CocoLang
 language compilers are responsible for performing this binding, and encoding the results.  Those results are symbol
 names and tokens that are registered and available for lookup within any given CocoPack.  These symbols provide a
-quick, and binding logic-free, way of resolving any bound node to its target abstraction (module, type, or function).
+quick, and binding-logic-free, way of resolving any bound node to its target abstraction (module, type, or function).
 From there, any data or computations associated with those abstractions may be retrieved thanks to the definitions.
 
 Coconut's type system was designed to be supported by a broad cross-section of modern programming languages.  That said,
@@ -26,108 +26,120 @@ designed for interpretation, determinism, and predictability -- and not runtime 
 and throw an exception if an illegal coercion is attempted.  It is obviously a better choice to verify such conversions
 where possible in the CocoLang compilers themselves, however this approach naturally accomodates dynamic languages.
 
-CocoPack is serialized in JSON/YAML form, although in the future we may explore more efficient file formats.  Examples in
-this document will use a YAML syntax for brevity's sake.
+CocoPack is serialized in JSON/YAML form, although in the future we may explore more efficient file formats.  (Markup is
+rather verbose, yet pleasantly human-readable.)  Examples in this document will use a YAML syntax for brevity's sake.
 
 ## Metadata
 
 Each package may contain self-describing metadata, such as a name, and optional attributes that are common in package
-managers, like a description, author, website, license, and so on.  For example:
+managers, like a description, author, website, license, and so on, for example:
 
     name: acmecorp/elk
     description: A fully functioning ELK stack (Elasticsearch, Logstash, Kibana).
     author: Joe Smith <joesmith@acmecorp.com>
     website: https://acmecorp.github.io/elk
     keywords: [ elasticsearch, logstash, kibana ]
+    dependencies:
+        coconut: "*"
+        aws: ^1.0.7
 
 TODO(joe): describe the full informational attributes available.
 
-Most of this information is taken from the source CocoLang program and carried forward during compilation.
+Most of this information resides in the source program's `Coconut.yaml` (or `.json`) file.  It is possible for a
+CocoLang compiler to generate some of this information, however, based on decorators, comments, and so on.
 
 Note that a version number is *not* part of the metadata prelude.  The version number is managed by a version management
 system outside of the purview of the package contents.  For example, packages checked into Git are managed by SHA1
 hashes and tags, while packages registered with a traditional package management system might be versioned manually.
+Please refer to [the dependencies design document](deps.md) for additional information on package version management.
 
-## Names
+## Symbols
 
 As with most metadata formats, names are central to how things reference one another.  The two key concepts to
 understand in how CocoPack and CocoIL encode such references are *symbols* and *tokens*.
 
-### Symbols
+### Abstractions
 
 Each symbol represents one of four kinds of abstractions: module, variable, function, or a class:
 
-* A *module* represents a collection of said abstractions.  No type, function, or const can exist outside of one.  Every
-  CocoPack consists of at least one top-level module, with optional nested modules inside of it.
+* A *module* represents a collection of abstractions.  No type, function, or const can exist outside of one.
 
-* A *variable* represents a named, typed storage location.
+* A *variable* represents a named and optionally typed storage location.
 
-* A *function* represents a named computation with typed parameters and an optional typed return value.
+* A *function* represents a named computation with optionally typed parameters and an optional typed return value.
 
 * A *class* is a named abstraction that contains properties (variables) and methods (functions).  Classes have been
   designed to support both nominal and structural typing, catering to a subset of most dynamic and static languages.
+
+Each package may denote a special "default" module, by virtue of an alias with the special name `.default`.
 
 ### Tokens
 
 Each symbol is keyed by a token, which is a unique identifier used to reference the symbol from elsewhere inside and/or
 outside of the defining module.  Each token is just a string name that encodes the entire context necessary to resolve
-it to a concrete module and, within that module, its corresponding definition:
+the associated symbol, beginning with a package name that either matches the current package or a declared dependency.
 
-* A protocol (e.g., `https://`).
-* A base URL (e.g., `cocohub.com/`, `github.com/`, etc).
-* A fully qualified name (e.g., `acmecorp`, `aws/s3/Bucket`, etc).
+Each part of a token is delimited by a `:` character.  For example:
 
-For example, `https://hub.coconut.com/acmecorp#latest` refers to the latest version of the `acmecorp` module, while
-`https://github.com/aws/s3/Bucket` refers to the `Bucket` class exported from the `aws/s3` module (itself exported from
-the `aws` package).  The URLs are present so that package managers can download dependencies appropriately.
+    aws                             # the AWS package token
+    aws:ec2                         # the AWS EC2 module (inside the `aws` package)
+    aws:ec2/instance:Instance       # the AWS EC2 `Instance` resource (inside the `aws:ec2/instance` package/module)
+    aws:ec2/instance:Instance:image # the AWS EC2 Instance `image` property (or method)
 
-Each CocoPack contains a concrete list of module dependencies.  For example:
+Note that tokens are very different from package references.  A package reference, as described in [this document](
+deps.md), contains a URL, version number, and so on.  A token inside of a package simply matches an existing dependency.
 
-    dependencies:
-        - https://cocohub.com/aws#^1.0.6
-        - https://cocohub.com/github#~1.5.2
+## Accessibility
 
-Now, throughout the rest of the CocoPack, any symbol tokens prefixed with `https://cocohub.com/aws` and
-`https://cocohub.com/github` will be resolved to the artifacts exported by the repsective packages.  Note that
-dependencies are required to be acyclic.
+CocoIL supports two levels of accessibility on all elements:
 
-Notice that dependency names are like ordinary token names, but must also carry a version number:
+* `public` means an element is accessible outside of its container.
+* `private` means an element is accessible only within its container (the default).
 
-* An `#` followed by version number (e.g., `#^1.0.6`, `#6f99088`, `#latest`, etc).
+In these sentences, "container" refers to either the enclosing module or class.
 
-This version number ensures that the same dependency used for compilation is used during evaluation.  Coconut supports
-multiple versioning formats (semantic versioning, Git SHA1 hash versioning, and "tip" (`latest`)).  Please refer to
-[Coconut Dependencies](deps.md) for more information about token and dependency names and the resolution process.
+CocoIL supports one additional level of accessibility on class members:
 
-CocoPacks may export other symbols in the form of modules, types, variables, and functions as members.
+* `protected` means an element is accessible only within its class and subclasses.
 
-### Naming Conventions
-
-TODO: talk about casing.
-
-TODO: talk about identifier naming (including `.` prefix meaning "system usage").
+Accessibility determines whether elements are exported outside of the package.  For an element to be exported, it, and
+all of its ancestor containers, must be marked `public`.  By default, elements are *not* exported, which is useful for
+internal functionality that is invoked within the package but not meant for public consumption.
 
 ## Types
 
 This section describes the core aspects of CocoIL's type system.
 
-There is a single top-type that may refer to any record or class value: the `any` type.
+TODO: a warning to the reader; it is likely that, over time, we will move more in the direction of an ECMAScript-like
+    type system, with optional/gradual typing on top.  We are straddling a line between, on one hand, source
+    compatibility with ECMAScript, Python, Ruby, etc., and, on the other hand, as much static compile-time verification
+    as possible.  This is obviously heavily inspired by TypeScript.  At the moment, I fear we have gone too far down the
+    static typing rabbit's hole.  This unfortunately means each CocoLang's "runtime layer" will be thicker than we want.
 
-All instances of classes in CocoIL are called *objects*.  They are allocated on the heap, in map-like data structures that
-have strong type identity, facilitating dynamic and structural conversions, in addition to classical RTTI and OOP
-patterns.  In a sense, this is a lot like how ECMAScript works.  Furthermore, there is no notion of a pointer in CocoIL
-and so the exact storage location is kept hidden from CocoLang languages and their semantics.
+All instances of classes in CocoIL are called *objects*.  They are allocated on the heap, in map-like data structures
+that have strong type identity, facilitating dynamic and structural conversions, in addition to classical RTTI and OOP
+patterns.  In a sense, this is a lot like how ECMAScript works, and indeed the runtime emulates [ECMAScript prototypes](
+https://developer.mozilla.org/en-US/docs/Web/JavaScript/Inheritance_and_the_prototype_chain) in many aspects.
+
+There are two special "top-types" that may refer to any type: `object` and `any`.  The `object` type is a standard
+statically typed top-type, that any type may coercere to implicitly.  Regaining specific typing from that type, however,
+must be done through explicit downcasts; it alone has no operations.  The `any` type, in contrast, enjoys dynamically
+typed operations by default.  It may therefore be cast freely between types, which may lead to runtime failures at the
+point of attempting to access members that are missing (versus `object` which inspects runtime type identity).
 
 Because all instances are objects, we must talk about `null`.  By default, types do not include the special value `null`
 in their domain.  To include it in a type's domain, suffix athat type `T` with a question mark, as in `T?`.
 
+TODO[pulumi/coconut#64]: at the moment, we have not yet implemented non-null types.  Instead, all types include `null`
+    in the legal domain of values.  It remains to be seen whether we'll actually go forward with non-nullability.
+
 ### Primitives
 
-At the core, all types are built out of the primitives:
+At the core, all types are built out of the primitives, which represent a "JSON-like" simplistic type system:
 
 * The basic primitive types: `bool`, `number`, and `string`.
 
-* Any record `S` can be modified by appending `[]` to make an array type `S[]`: e.g., `number[]` and `string[]`.
+* Any type `T` can be modified by appending `[]` to make an array type `T[]`: e.g., `number[]` and `string[]`.
 
 * Similarly, two types can be paired up to make a map type using `map[K]V`, where `K` is the type of keys used to
   index into the map and `V` is the type of value inside: e.g., `map[string]number` and `map[string]record`, and so on.
@@ -145,67 +157,36 @@ comma-delimited list of parameter types with an optional return type: `func(PT0,
 unique in that they can only appear in module properties, arguments, local variables, but not class properties.  This
 ensures that all data structures are serializable as JSON, an important property to the interoperability of data.
 
-### Accessibility
+## Modules
 
-CocoIL supports two levels of accessibility on all elements:
+Each package contains a flat list of modules, keyed by name, at the top-level:
 
-* `public` means an element is accessible outside of its container.
-* `private` means an element is accessible only within its container (the default).
-
-In these sentences, "container" refers to either the enclosing module or class.
-
-CocoIL supports one additional level of accessibility on class members:
-
-* `protected` means an element is accessible only within its class and subclasses.
-
-Accessibility determines whether elements are exported outside of the package.  For an element to be exported, it, and
-all of its ancestor containers, must be marked `public`.  By default, elements are *not* exported, which is useful for
-internal functionality that is invoked within the package but not meant for public consumption.
-
-## Definitions
-
-Each package contains a definitions map containing all modules, variables, functions, and classes:
-
-    definitions:
-
-This map is laid out in a hierarchical manner, so that any types belonging to a module are nested underneath it, etc.,
-making the name resolution process straightforward.  It contains both internal and exported members.
-
-### Modules
-
-Because each package has an implicit top-level module, the `definitions:` element itself is actually a module
-specification.  Every module specification may contain up to the four kinds of members underneath it listed earlier:
-
-    definitions:
-        modules:
-            # submodules, keyed by name
-        variables:
-            # variables, keyed by name
-        functions:
-            # functions, keyed by name
-        classes:
-            # classes, keyed by name
+    modules:
+        moduleA: ...
+        moduleB: ...
 
 Modules may contain a single special function, called its "initializer", to run code at module load time.  It is denoted
 by the special name `.init`.  Any variables with complex initialization must be written to from this initializer.
 
-The sole top-level module for an executable CocoPack may also contain a special entrypoint function that is used to
-perform graph evaluation.  It is denoted by the special name `.main`.  It is illegal for non-executable CocoPacks to
-contain such a function, just as it is for a submodule to contain one (versus the CocoPack's top-level module).
+The default module for an executable package may also contain a special entrypoint function that is invoked during graph
+evaluation.  This special function is denoted by the special name `.main`.  It is illegal for non-executable packages
+to contain such a function, just as it is for a non-default module to contain one.
 
-Note that it is up to a CocoLang compiler to decide how to partition code between `.init` and `.main`.  For languages that
-allow "open-ended" coding in a module definition, it is likely that such statements would appear in the `.main` method,
-and that library-only CocoPacks containing such code would be rejected outright.
+It is entirely up to a CocoLang compiler to decide how to partition code between `.init` and `.main`.  For languages
+that have explicit `main` functions, for example, presumably that would be the key to trigger generation of an
+executable package with an entrypoint; and all other packages would be libraries without one.  For languages like
+ECMAScript, on the other hand, which permit "open-coding" anywhere in a module's definition, every module would
+presumably be a potential executable *and* library, and each one would contain an entrypoint function with this code.
 
 ### Variables
 
-A variable is a typed, named storage location.  As we will see, variables show up in several places: as module
-properties, struct and class properties, function parameters, and function local variables.
+A variable is a named, optionally typed storage location.  As we will see, variables show up in several places: as
+module properties, struct and class properties, function parameters, and function local variables.
 
 Each variable definition, no matter which of the above places it appears, shares the following attributes:
 
 * A `name` (its key).
-* An required `type` token.
+* A optional `type` token.
 * An accessibility modifier (default: `private`).
 * An optional `default` value.
 * An optional `readonly` indicator.
@@ -242,9 +223,9 @@ By default, variables are mutable.  The `readonly` attribute indicates that a va
         readonly: true
         # ...
 
-Note that module properties are `readonly` by default.  As with most uses of `readonly` in other programming languages,
-this is a shallow indication; that is, the property value cannot be changed but properties on the object to which the
-property refers can be mutated freely, unless that object is immutable or a constant value.
+This is enforced at runtime.  As with most uses of `readonly` in other programming languages, this is a shallow
+indication; that is, the property value cannot be changed but properties on the object to which the property refers can
+be mutated freely, unless that object is immutable or a constant value.
 
 All variables are initialized to `null` by default.  Problems may arise if the type is not nullable (more on this
 later).  All loads guard against this possibility, however loading a `null` value from a non-null location will lead to
@@ -254,12 +235,14 @@ Finally, class properties can be marked as `primary`, to make it both publicly a
 initialization.  Any properties that will be initialized as pure data should be marked primary.  This has special
 meaning with respect to construction that is described later in the section on classes.
 
+TODO: the notion of primary constructors hasn't really manifest itself yet; perhaps we should nix them.
+
 ### Functions
 
 A function is a named executable computation, with typed parameters, and an optional typed return value.  As we will
 see, functions show up in a few places: as module functions, class methods, and lambdas.
 
-All function definitions have two following common attributes:
+All function definitions have the following common attributes:
 
 * An accessibility modifier (default: `private`).
 * An optional list of parameters, each of which is a variable.
@@ -391,8 +374,8 @@ For example, imagine we want an `Employee` which is a special kind of `Person`:
                 type: string
                 description: The employee's current title.
 
-This facilitates implicit conversions from `Employee` to `Person`.  Because CocoIL preserves RTTI for objects, recovering
-the fact that such an object is an `Employee` is possible using an explicit downcast.
+This facilitates implicit conversions from `Employee` to `Person`.  Because CocoIL preserves RTTI for objects,
+recovering the fact that such an object is an `Employee` is possible using an explicit downcast later on.
 
 At the moment, there is no support for redeclaration of properties, and therefore no support for covariance (i.e.,
 strengthening property types).  All base-type properties are simply inherited "as-is".
@@ -441,6 +424,10 @@ dynamic languages.  These operations respect accessibility.  These operations ar
 ### Advanced Types
 
 CocoIL supports some additional "advanced" type system features.
+
+TODO[pulumi/coconut#64]: at the moment, we don't support any of these.  It's unclear if we will pursue adding these to
+    the type system.  It's unfortunate that CloudFormation supports them, and we do not, at the moment, so we will need
+    to do something.  Enums, for sure.  But perhaps constraint types rely on library verification instead.
 
 #### Constraints
 
@@ -522,8 +509,8 @@ Now, given this new `State` type, we can simplify our `state` property example f
 
 ## Coconut Intermediate Language (CocoIL)
 
-CocoIL is an AST-based intermediate language.  This is in contrast to some of its relatives which use lower-level stack or
-register machines.  There are three reasons CocoIL chooses ASTs over these other forms:
+CocoIL is an AST-based intermediate language.  This is in contrast to some of its relatives which use lower-level stack
+or register machines.  There are three reasons CocoIL chooses ASTs over these other forms:
 
 * First, it simplifies the task of writing new CocoLang compilers, something important to the overall ecosystem.
 
@@ -531,12 +518,13 @@ register machines.  There are three reasons CocoIL chooses ASTs over these other
   backend optimizations, this matters less to an interpreted environment like Coconut than a system that compiles to
   machine code.  Especially when considering the cost of provisioning cloud infrastructure (often measured in minutes).
 
-* Third, it makes writing tools that process CocoPacks easier, including CocoGL processing tools that reraise AST edits back
-  to the original program text.
-
-Below is an overview of the AST shapes supported by CocoIL.
+* Third, it makes writing tools that process CocoPacks easier, including CocoGL processing tools that reraise AST edits
+  back to the original program text.
 
 ### AST Nodes
+
+Below is an overview of CocoIL's AST types.  For the latest, please [refer to the source code](
+https://github.com/pulumi/coconut/tree/master/pkg/compiler/ast).
 
 TODO: this is just a dumb name listing; eventually we want to specify each and every node type.
 
@@ -558,56 +546,62 @@ Every CocoIL AST node derives from a common base type that includes information 
         end?:  Position; // an optional end position (if empty, just a point, not a range).
     }
 
-    // Position consists of a 1-indexed `line` and a 0-indexed `column`.
+    // Position consists of a 1-indexed `line` and `column`.
     interface Position {
         line:   number; // >= 1
-        column: number; // >= 0
+        column: number; // >= 1
     }
 
 #### Definitions
 
     interface Definition extends Node {...}
         interface Module extends Definition {...}
+        interface ModuleMember extends Definition {...}
+        interface Class extends ModuleMember {...}
+        interface ClassMember extends Definition {...}
         interface Variable extends Definition {...}
-            interface Parameter extends Variable {...}
-            interface ModuleProperty extends Variable {...}
+            interface LocalVariable extends Variable {...}
+            interface ModuleProperty extends Variable, ModuleMember {...}
             interface ClassProperty extends Variable, ClassMember {...}
         interface Function extends Definition {...}
             interface ModuleMethod extends Function {...}
             interface ClassMethod extends Function, ClassMember {...}
-        interface Class extends Definition {...}
-        interface ClassMember extends Definition {...}
 
 #### Statements
 
     interface Statement extends Node {...}
         interface Block extends Statement {...}
+        interface LocalVariableDeclaration extends Statement {...}
         interface TryCatchFinally extends Statement {...}
         interface BreakStatement extends Statement {...}
         interface ContinueStatement extends Statement {...}
         interface IfStatement extends Statement {...}
+        interface SwitchStatement extends Statement {...}
         interface LabeledStatement extends Statement {...}
         interface ReturnStatement extends Statement {...}
         interface ThrowStatement extends Statement {...}
         interface WhileStatement extends Statement {...}
+        interface ForStatement extends Statement {...}
         interface EmptyStatement extends Statement {...}
+        interface MultiStatement extends Statement {...}
         interface ExpressionStatement extends Statement {...}
-
-    interface LocalVariableDeclaration
 
 #### Expressions
 
     interface Expression extends Node {...}
-        interface LiteralExpression extends Expression {...}
-            interface NullLiteralExpression extends LiteralExpression {...}
-            interface BoolLiteralExpression extends LiteralExpression {...}
-            interface NumberLiteralExpression extends LiteralExpression {...}
-            interface StringLiteralExpression extends LiteralExpression {...}
-            interface ObjectLiteralLiteralExpression extends LiteralExpression {...}
-        interface LoadVariableExpression extends Expression {...}
-        interface LoadFunctionExpression extends Expression {...}
-        interface LoadDynamicExpression extends Expression {...}
-        interface InvokeFunctionExpression extends Expression {...}
+        interface Literal extends Expression {...}
+            interface NullLiteral extends Literal {...}
+            interface BoolLiteral extends Literal {...}
+            interface NumberLiteral extends Literal {...}
+            interface StringLiteral extends Literal {...}
+            interface ArrayLiteral extends Literal {...}
+            interface ObjectLiteral extends Literal {...}
+        interface LoadExpression extends Expression {...}
+            interface LoadLocationExpression extends LoadExpression {...}
+            interface LoadDynamicExpression extends Expression {...}
+        interface CallExpression extends Expression {...}
+            interface NewExpression extends Expression {...}
+            interface InvokeFunctionExpression extends Expression {...}
         interface LambdaExpression extends Expression {...}
         interface UnaryOperatorExpression extends Expression {...}
         interface BinaryOperatorExpression extends Expression {...}
@@ -619,22 +613,26 @@ Every CocoIL AST node derives from a common base type that includes information 
 
 ## Interpretation
 
-CocoPack and CocoIL are interpreted representations.  That means we do not compile them to assembly and, in certain cases,
-we have made design decisions that favor correctness over performance.  The toolchain has a built in verifier that
-enforces these design decisions at runtime.  This is unlike most runtimes that leverage an independent static
-verification step to avoid runtime penalties.  That said, the `coco verify` command will run the verifier independently.
+CocoPack and CocoIL are interpreted formats.
+
+That means we do not compile them to assembly and, in certain cases, we have made design decisions that favor
+correctness over performance.  The toolchain has a built in verifier that enforces these design decisions at runtime
+(which can be run explicitly with `coco pack verify`).  This is unlike most runtimes that leverage an independent static
+verification step, often at the time of machine translation, to avoid runtime penalties.
 
 TODO: specify more information about the runtime context in which evaluation is performed.
 
-TODO: specify how failures are conveyed (fail-fast, exception, etc).
+Any failures during interpretation are conveyed in the most friendly manner.  For example, unhandled exceptions carry
+with them a full stack trace, complete with line number information.  In general, the Coconut interpreted environment
+should nut fundamentally carry with it any inherent disadvantages, other than the obvious one: it is a new runtime.
 
 ## Possibly-Controversial Decisions
 
 It's worth describing for a moment some possibly-controversial decisions about CocoPack and CocoIL.
 
-These might come as a surprise to higher level programmers, however, it is worth remembering that CocoIL is attempting to
-strike a balance between high- and low-level multi-language representations.  In doing so, some opinions had to be
-discard, while others were strengthened.  And some of them aren't set in stone and may be something we revisit later.
+These might come as a surprise to higher level programmers, however, it is worth remembering that CocoIL is attempting
+to strike a balance between high- and low-level multi-language representations.  In doing so, some opinions had to be
+discarded, while others were strengthened.  And some of them aren't set in stone and may be something we revisit later.
 
 ### Values
 
@@ -659,27 +657,29 @@ languages like Go demonstrate that modern cloud programs of considerable complex
 Perhaps the most unfortunate and apparent aspect of CocoIL's lack of generics is the consequently missing composable
 collection types.  To soften the blow of this, CocoIL has built-in array, map, and enumerable object types.
 
+I suspect we will eventually need/want to go here.
+
 ### Operators
 
 CocoIL does come with a number of built-in operators.
 
 CocoIL does not care about operator precedence, however.  All expressions are evaluated in the exact order in which they
-appear in the tree.  Parenthesis nodes may be used to group expressions so that they are evaluated in a specific order.
-
-CocoIL does not support operator overloading.  The set of operators is fixed and cannot be overridden, although a
-higher-level CocoLang compiler may decide to emit calls to intrinsic functions rather than depending on CocoIL operators.
+appear in the tree.  In fact, this is true of all of CocoIL's AST nodes: evaluation happens in tree-walk order.
 
 ### Overloading
 
 CocoIL does not support function overloading.
 
+CocoIL does not support operator overloading.  The set of operators is fixed and cannot be overridden, although a
+higher-level CocoLang compiler may choose to emit calls to intrinsic functions rather than using CocoIL operators.
+
 ### Exceptions
 
-Most CocoLangs have exception-based error models (with the sole exception of Go).  As a result, CocoIL supports exceptions.
+Most CocoLangs have exception-based error models (with the exception of Go).  As a result, CocoIL supports exceptions.
 
-At the moment, there are no throws annotations of any kind; if Go or Java become interesting CocoLang languages to support
-down the road, we may wish to add optional throws annotations to drive proxy generation, including the possibility of
-flowing return and exception types to Go and Java, respectively, or fail-fasting at the boundary.
+At the moment, there are no throws annotations of any kind; if Go or Java become interesting CocoLang languages to
+support down the road, we may wish to add optional throws annotations to drive proxy generation, including the
+possibility of flowing return and exception types to Go and Java, respectively, or fail-fasting at the boundary.
 
 It is a possibly unpopular decision, and possibly missing an opportunity to help debuggability, however we choose to
 preserve the common semantic in dynamic languages of using exceptions in response to failed casts, dynamic lookups and
@@ -687,28 +687,22 @@ invokes, and so on.  Though, it's worth noting, we don't support Ruby-style `mis
 
 ### Threading/Async/Await
 
-There is no multithreading in CocoIL.  And there is no I/O.  As a result, there are neither multithreading facilities nor
-the commonly found `async` and `await` features in modern programming languages.
+There is no multithreading in CocoIL.  And there is no I/O.  As a result, there are neither multithreading facilities
+nor the commonly found `async` and `await` features in modern programming languages.  C'est la vie.
 
-### Accessibility, Dynamicism, and Secrets
-
-CocoIL dynamic operations respect accessibility.  This is unconventional but allows encapsulation of sensitive
-information.  This is admittedly a risky guarantee to make -- since type systems are intricate things that can be
-subverted in [subtle ways](https://www.microsoft.com/en-us/research/wp-content/uploads/2007/01/appsem-tcs.pdf) --
-and I am honestly on the fence about it.  However, particularly given that cloud abstractions often manipulate sensitive
-secrets, this seems like an important line in the sand to draw, until we are forced to do otherwise.  In practice, it
-does mean that most dynamic languages will simply mark all properties as `public`, although it leaves open the door for
-them to offer a `private` or `secret` annotation to protect those few fields that may deal with secret information.
-
-### Smaller Items
+### Attributes
 
 CocoIL doesn't currently support "attributes" (a.k.a., decorators).  This isn't for any principled reason other than the
-lack of a need for them and, as such, attributes may be something we consider adding at a later date.
+lack of a need for them and, as such, attributes may be something we consider adding at a later date.  Of course, a
+CocoLang compiler may very well make decisions based on the presence or absence of attributes; but they must be erased.
 
-CocoIL doesn't support varargs; instead, just use arrays.  The benefit of true varargs is twofold: usability -- something
+### Varargs
+
+CocoIL doesn't support varargs; instead just use arrays.  The benefit of true varargs is twofold: usability -- something
 that doesn't matter at the CocoIL level -- and runtime performance -- something CocoIL is less concerned about.
 
 ## Open Questions
 
-Numeric types (long, int, etc)
+It's unclear whether we want to stick to the simple JSON subset of numeric types, namely IEEE754 64-bit floats.  This is
+particularly unfortunate for 64-bit integers, since you only get 53 bits of precision.
 
