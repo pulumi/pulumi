@@ -7,6 +7,7 @@ import (
 )
 
 func newDeployCmd() *cobra.Command {
+	var analyzers []string
 	var dryRun bool
 	var showConfig bool
 	var showReplaceSteps bool
@@ -37,6 +38,7 @@ func newDeployCmd() *cobra.Command {
 			apply(cmd, info, applyOptions{
 				Delete:           false,
 				DryRun:           dryRun,
+				Analyzers:        analyzers,
 				ShowConfig:       showConfig,
 				ShowReplaceSteps: showReplaceSteps,
 				ShowUnchanged:    showUnchanged,
@@ -47,6 +49,9 @@ func newDeployCmd() *cobra.Command {
 		}),
 	}
 
+	cmd.PersistentFlags().StringSliceVar(
+		&analyzers, "analyzer", []string{},
+		"Run one or more analyzers as part of this deployment")
 	cmd.PersistentFlags().BoolVarP(
 		&dryRun, "dry-run", "n", false,
 		"Don't actually update resources; just print out the planned updates")

@@ -6,9 +6,9 @@ import "google/protobuf/struct.proto";
 
 package cocorpc;
 
-// ResourceAnalyzer is a pluggable service that checks entire projects/stacks/snapshots, and/or individual resources,
+// Analyzer is a pluggable service that checks entire projects/stacks/snapshots, and/or individual resources,
 // for arbitrary issues.  These might be style, policy, correctness, security, or performance related.
-service ResourceAnalyzer {
+service Analyzer {
     // Analyze analyzes an entire project/stack/snapshot, and returns any errors that it finds.
     rpc Analyze(AnalyzeRequest) returns (AnalyzeResponse) {}
     // AnalyzeResource analyzes a single resource object, and returns any errors that it finds.

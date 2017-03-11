@@ -29,7 +29,7 @@ func main() {
 	}
 
 	// The resource provider protocol requires that we now write out the port we have chosen to listen on.
-	fmt.Printf("%n\n", port)
+	fmt.Printf("%d\n", port)
 
 	// Finally, wait for the server to stop serving.
 	if err := <-done; err != nil {

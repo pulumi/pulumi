@@ -18,5 +18,8 @@ var (
 	ErrorResourcePropertyValueInvalid = newError(2010, "Resource '%v's property '%v' value is invalid: %v")
 	ErrorAnalyzeFailure               = newError(2011, "Analyzer '%v' reported an error: %v")
 	ErrorAnalyzeResourceFailure       = newError(2012,
-		"Analyzer '%v' reported a resource error with '%v's property '%v': %v")
+		"Analyzer '%v' reported a resource error:\n"+
+			"\tResource: %v\n"+
+			"\tProperty: %v\n"+
+			"\tReason: %v")
 )

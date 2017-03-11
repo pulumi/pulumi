@@ -219,11 +219,11 @@ func verify(cmd *cobra.Command, args []string) bool {
 }
 
 // plan just uses the standard logic to parse arguments, options, and to create a snapshot and plan.
-func plan(cmd *cobra.Command, info *envCmdInfo, delete bool) *planResult {
+func plan(cmd *cobra.Command, info *envCmdInfo, opts applyOptions) *planResult {
 	// If deleting, there is no need to create a new snapshot; otherwise, we will need to compile the package.
 	var new resource.Snapshot
 	var result *compileResult
-	if !delete {
+	if !opts.Delete {
 		// First, compile; if that yields errors or an empty heap, exit early.
 		if result = compile(cmd, info.Args, info.Env.Config); result == nil || result.Heap == nil {
 			return nil
@@ -241,9 +241,19 @@ func plan(cmd *cobra.Command, info *envCmdInfo, delete bool) *planResult {
 		}
 	}
 
+	// If there are any analyzers to run, queue them up.
+	var analyzers []tokens.QName
+	for _, a := range opts.Analyzers {
+		analyzers = append(analyzers, tokens.QName(a)) // from the command line.
+	}
+	if as := result.Pkg.Node.Analyzers; as != nil {
+		for _, a := range *as {
+			analyzers = append(analyzers, a) // from the project file.
+		}
+	}
+
 	// Generate a plan; this API handles all interesting cases (create, update, delete).
-	// TODO: take analyzers from the project and/or the command line.
-	plan, err := resource.NewPlan(info.Ctx, info.Old, new, nil)
+	plan, err := resource.NewPlan(info.Ctx, info.Old, new, analyzers)
 	if err != nil {
 		result.C.Diag().Errorf(errors.ErrorCantCreateSnapshot, err)
 		return nil
@@ -268,7 +278,7 @@ type planResult struct {
 }
 
 func apply(cmd *cobra.Command, info *envCmdInfo, opts applyOptions) {
-	if result := plan(cmd, info, opts.Delete); result != nil {
+	if result := plan(cmd, info, opts); result != nil {
 		// Now based on whether a dry run was specified, or not, either print or perform the planned operations.
 		if opts.DryRun {
 			// If no output file was requested, or "-", print to stdout; else write to that file.
@@ -449,14 +459,15 @@ func saveEnv(env *resource.Env, snap resource.Snapshot, file string, existok boo
 }
 
 type applyOptions struct {
-	Create           bool   // true if we are creating resources.
-	Delete           bool   // true if we are deleting resources.
-	DryRun           bool   // true if we should just print the plan without performing it.
-	ShowConfig       bool   // true to show the configuration variables being used.
-	ShowReplaceSteps bool   // true to show the replacement steps in the plan.
-	ShowUnchanged    bool   // true to show the resources that aren't updated, in addition to those that are.
-	Summary          bool   // true if we should only summarize resources and operations.
-	Output           string // the place to store the output, if any.
+	Create           bool     // true if we are creating resources.
+	Delete           bool     // true if we are deleting resources.
+	DryRun           bool     // true if we should just print the plan without performing it.
+	Analyzers        []string // an optional set of analyzers to run as part of this deployment.
+	ShowConfig       bool     // true to show the configuration variables being used.
+	ShowReplaceSteps bool     // true to show the replacement steps in the plan.
+	ShowUnchanged    bool     // true to show the resources that aren't updated, in addition to those that are.
+	Summary          bool     // true if we should only summarize resources and operations.
+	Output           string   // the place to store the output, if any.
 }
 
 // applyProgress pretty-prints the plan application process as it goes.

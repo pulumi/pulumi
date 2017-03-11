@@ -33,6 +33,7 @@ type urnIDMap map[URN]ID
 func NewContext(d diag.Sink) *Context {
 	return &Context{
 		Diag:      d,
+		Analyzers: make(map[tokens.QName]Analyzer),
 		Providers: make(map[tokens.Package]Provider),
 		ObjRes:    make(objectResourceMap),
 		ObjURN:    make(objectURNMap),

@@ -18,6 +18,7 @@ type Package struct {
 	Website     *string `json:"website,omitempty"`     // an optional website for additional info.
 	License     *string `json:"license,omitempty"`     // an optional license governing this package's usage.
 
+	Analyzers    *Analyzers     `json:"analyzers,omitempty"`    // any analyzers enabled for this project.
 	Dependencies *Dependencies  `json:"dependencies,omitempty"` // all of the package dependencies.
 	Modules      *ast.Modules   `json:"modules,omitempty"`      // a collection of top-level modules.
 	Aliases      *ModuleAliases `json:"aliases,omitempty"`      // an optional mapping of aliased module names.
@@ -30,6 +31,9 @@ var _ diag.Diagable = (*Package)(nil)
 func (s *Package) Where() (*diag.Document, *diag.Location) {
 	return s.Doc, nil
 }
+
+// Analyzers is a list of analyzers to run on this project.
+type Analyzers []tokens.QName
 
 // Dependencies maps dependency names to the full URL, including version, of the package.
 type Dependencies map[tokens.PackageName]PackageURLString

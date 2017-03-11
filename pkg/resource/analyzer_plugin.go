@@ -20,7 +20,7 @@ type analyzer struct {
 	ctx    *Context
 	name   tokens.QName
 	plug   *plugin
-	client cocorpc.ResourceAnalyzerClient
+	client cocorpc.AnalyzerClient
 }
 
 // NewAnalyzer binds to a given analyzer's plugin by name and creates a gRPC connection to it.  If the associated plugin
@@ -39,7 +39,7 @@ func NewAnalyzer(ctx *Context, name tokens.QName) (Analyzer, error) {
 		ctx:    ctx,
 		name:   name,
 		plug:   plug,
-		client: cocorpc.NewResourceAnalyzerClient(plug.Conn),
+		client: cocorpc.NewAnalyzerClient(plug.Conn),
 	}, nil
 }
 
@@ -54,7 +54,7 @@ func (a *analyzer) Analyze(url pack.PackageURL) ([]AnalyzeFailure, error) {
 
 	resp, err := a.client.Analyze(a.ctx.Request(), req)
 	if err != nil {
-		glog.V(7).Infof("analyzer[%v].Analyze(url=%v) failed: err=%v", a.name, url)
+		glog.V(7).Infof("analyzer[%v].Analyze(url=%v) failed: err=%v", a.name, url, err)
 		return nil, err
 	}
 
@@ -79,7 +79,7 @@ func (a *analyzer) AnalyzeResource(t tokens.Type, props PropertyMap) ([]AnalyzeR
 
 	resp, err := a.client.AnalyzeResource(a.ctx.Request(), req)
 	if err != nil {
-		glog.V(7).Infof("analyzer[%v].AnalyzeResource(t=%v,...) failed: err=%v", a.name, t)
+		glog.V(7).Infof("analyzer[%v].AnalyzeResource(t=%v,...) failed: err=%v", a.name, t, err)
 		return nil, err
 	}
 
