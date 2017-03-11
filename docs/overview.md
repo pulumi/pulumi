@@ -205,7 +205,7 @@ way, the expression of this is unnatural to say the least.  For example:
                 "                   },\n" +
                 "                   (err, response) {\n" +
                 "                       if (err) {\n" +
-                "                           console.error(`Unable to post thumbnail: ${err});\n" +
+                "                           console.error(`Unable to post thumbnail: ${err}`);\n" +
                 "                       }\n" +
                 "                       context.done();\n" +
                 "                   }\n" +
