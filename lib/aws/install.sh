@@ -6,7 +6,7 @@ set -e                    # bail on errors
 echo Compiling:
 cocojs                    # compile the Nut
 pushd provider/ &&        # compile the resource provider
-    go build -o ../.coconut/bin/coco-ressrv-aws &&
+    go build -o ../.coconut/bin/coco-resource-aws &&
     popd
 
 echo Verifying:

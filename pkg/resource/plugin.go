@@ -23,7 +23,7 @@ import (
 	"github.com/pulumi/coconut/sdk/go/pkg/cocorpc"
 )
 
-const pluginPrefix = "coco-ressrv"
+const pluginPrefix = "coco-resource"
 
 // Plugin reflects a resource plugin, loaded dynamically for a single package.
 type Plugin struct {
