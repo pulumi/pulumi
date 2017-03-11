@@ -120,6 +120,11 @@ https://github.com/pulumi/coconut/blob/master/sdk/proto/provider.proto).  In par
         rpc Delete(DeleteRequest) returns (google.protobuf.Empty) {}
     }
 
+TODO[pulumi/coconut#54]: eventually we will add operational APIs to resource providers.  This will allow them to report
+    logging and performance counters, for example.  This will permit easy inspection from the command line (e.g.,
+    `coco resource perf cpu <resource-id>` could print out the current CPU perf-counter history for a resource).  It
+    will also permit handy resource monitoring from our hosted service, possibly in conjunction with workflows.
+
 Describing the full RPC interface here is outside of the scope of this document.  However, all existing resources are
 addressed by the resource type token plus a provider ID.  All properties are encoded as dynamically typed bags.
 
