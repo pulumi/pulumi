@@ -78,14 +78,14 @@ func TestFieldMapper(t *testing.T) {
 	s.String = "x"
 	err = md.DecodeField(tree, reflect.TypeOf(bag{}), "b", &s.String, false)
 	assert.NotNil(t, err)
-	assert.Equal(t, "mapper.bag `b` must be a `string`, got `bool`", err.Error())
+	assert.Equal(t, "Field 'b' on 'mapper.bag' must be a 'string'; got 'bool' instead", err.Error())
 	assert.Equal(t, "x", s.String)
 
 	// Next, missing required field:
 	s.String = "x"
 	err = md.DecodeField(tree, reflect.TypeOf(bag{}), "missing", &s.String, false)
 	assert.NotNil(t, err)
-	assert.Equal(t, "Missing required mapper.bag field `missing`", err.Error())
+	assert.Equal(t, "Missing required field 'missing' on 'mapper.bag'", err.Error())
 	assert.Equal(t, "x", s.String)
 }
 
@@ -133,14 +133,14 @@ func TestMapper(t *testing.T) {
 		"sc": "",
 	}, &b3)
 	assert.NotNil(t, err)
-	assert.Equal(t, "mapper.bagtag `s` must be a `string`, got `bool`", err.Error())
+	assert.Equal(t, "Field 's' on 'mapper.bagtag' must be a 'string'; got 'bool' instead", err.Error())
 	assert.Equal(t, "", b3.String)
 
 	// Next, missing required field:
 	var b4 bagtag
 	err = md.Decode(Object{}, &b4)
 	assert.NotNil(t, err)
-	assert.Equal(t, "Missing required mapper.bagtag field `s`", err.Error())
+	assert.Equal(t, "Missing required field 's' on 'mapper.bagtag'", err.Error())
 	assert.Equal(t, "", b4.String)
 }
 

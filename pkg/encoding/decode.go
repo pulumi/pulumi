@@ -22,7 +22,7 @@ func Decode(m Marshaler, b []byte) (*pack.Package, error) {
 	}
 
 	// Now decode the top-level Package metadata; this will automatically recurse throughout the whole structure.
-	md := mapper.New(customDecoders())
+	md := mapper.New(&mapper.Opts{CustomDecoders: customDecoders()})
 	var pack pack.Package
 	if err := md.Decode(tree, &pack); err != nil {
 		return nil, err

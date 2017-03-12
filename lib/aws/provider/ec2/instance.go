@@ -13,6 +13,7 @@ import (
 	"github.com/pulumi/coconut/pkg/resource"
 	"github.com/pulumi/coconut/pkg/tokens"
 	"github.com/pulumi/coconut/pkg/util/contract"
+	"github.com/pulumi/coconut/pkg/util/mapper"
 	"github.com/pulumi/coconut/sdk/go/pkg/cocorpc"
 	"golang.org/x/net/context"
 
@@ -34,9 +35,10 @@ type instanceProvider struct {
 func (p *instanceProvider) Check(ctx context.Context, req *cocorpc.CheckRequest) (*cocorpc.CheckResponse, error) {
 	// Read in the properties, deserialize them, and verify them; return the resulting failures if any.
 	contract.Assert(req.GetType() == string(Instance))
-	props := resource.UnmarshalProperties(req.GetProperties())
-	instance, failures, _ := newInstance(props, true)
 
+	var instance instance
+	props := resource.UnmarshalProperties(req.GetProperties())
+	result := mapper.MapIU(props.Mappable(), &instance)
 	if instance.ImageID != "" {
 		// Check that the AMI exists; this catches misspellings, AMI region mismatches, accessibility problems, etc.
 		result, err := p.ctx.EC2().DescribeImages(&ec2.DescribeImagesInput{
@@ -53,7 +55,7 @@ func (p *instanceProvider) Check(ctx context.Context, req *cocorpc.CheckRequest)
 		contract.Assertf(*result.Images[0].ImageId == instance.ImageID, "Expected instance IDs to match")
 	}
 
-	return &cocorpc.CheckResponse{Failures: failures}, nil
+	return awsctx.NewCheckResponse(result), nil
 }
 
 // Name names a given resource.  Sometimes this will be assigned by a developer, and so the provider
@@ -70,23 +72,22 @@ func (p *instanceProvider) Create(ctx context.Context, req *cocorpc.CreateReques
 	props := resource.UnmarshalProperties(req.GetProperties())
 
 	// Read in the properties given by the request, validating as we go; if any fail, reject the request.
-	// TODO: validate additional properties (e.g., that AMI exists in this region).
-	// TODO: this is a good example of a "benign" (StateOK) error; handle it accordingly.
-	inst, _, err := newInstance(props, true)
-	if err != nil {
+	var instance instance
+	if err := mapper.MapIU(props.Mappable(), &instance); err != nil {
+		// TODO: this is a good example of a "benign" (StateOK) error; handle it accordingly.
 		return nil, err
 	}
 
 	// Create the create instances request object.
 	var secgrpIDs []*string
-	if inst.SecurityGroupIDs != nil {
-		secgrpIDs = aws.StringSlice(*inst.SecurityGroupIDs)
+	if instance.SecurityGroupIDs != nil {
+		secgrpIDs = aws.StringSlice(*instance.SecurityGroupIDs)
 	}
 	create := &ec2.RunInstancesInput{
-		ImageId:          aws.String(inst.ImageID),
-		InstanceType:     inst.InstanceType,
+		ImageId:          aws.String(instance.ImageID),
+		InstanceType:     instance.InstanceType,
 		SecurityGroupIds: secgrpIDs,
-		KeyName:          inst.KeyName,
+		KeyName:          instance.KeyName,
 		MinCount:         aws.Int64(int64(1)),
 		MaxCount:         aws.Int64(int64(1)),
 	}
@@ -105,14 +106,11 @@ func (p *instanceProvider) Create(ctx context.Context, req *cocorpc.CreateReques
 	// Before returning that all is okay, wait for the instance to reach the running state.
 	id := out.Instances[0].InstanceId
 	fmt.Fprintf(os.Stdout, "EC2 instance '%v' created; now waiting for it to become 'running'\n", *id)
-	// TODO: consider a custom wait function so that we can have uniformity across all of our providers.
 	// TODO: if this fails, but the creation succeeded, we will have an orphaned resource; report this differently.
 	err = p.ctx.EC2().WaitUntilInstanceRunning(
 		&ec2.DescribeInstancesInput{InstanceIds: []*string{id}})
 
-	return &cocorpc.CreateResponse{
-		Id: *id,
-	}, err
+	return &cocorpc.CreateResponse{Id: *id}, err
 }
 
 // Read reads the instance state identified by ID, returning a populated resource object, or an error if not found.
@@ -132,19 +130,13 @@ func (p *instanceProvider) Update(ctx context.Context, req *cocorpc.UpdateReques
 func (p *instanceProvider) UpdateImpact(
 	ctx context.Context, req *cocorpc.UpdateRequest) (*cocorpc.UpdateImpactResponse, error) {
 	contract.Assert(req.GetType() == string(Instance))
-	// Unmarshal and validate the old and new properties.
-	olds := resource.UnmarshalProperties(req.GetOlds())
-	if _, _, err := newInstance(olds, true); err != nil {
-		return nil, err
-	}
-	news := resource.UnmarshalProperties(req.GetNews())
-	if _, _, err := newInstance(news, true); err != nil {
-		return nil, err
-	}
 
-	// Now check the diff for updates to any fields (none of them are updateable).
-	var replaces []string
+	// Unmarshal properties and check the diff for updates to any fields (none of them are updateable).
+	olds := resource.UnmarshalProperties(req.GetOlds())
+	news := resource.UnmarshalProperties(req.GetNews())
 	diff := olds.Diff(news)
+
+	var replaces []string
 	if diff.Changed(instanceImageID) {
 		replaces = append(replaces, instanceImageID)
 	}
@@ -158,32 +150,35 @@ func (p *instanceProvider) UpdateImpact(
 		// TODO: we should permit changes to security groups for non-EC2-classic VMs that are in VPCs.
 		replaces = append(replaces, instanceSecurityGroups)
 	}
+
 	return &cocorpc.UpdateImpactResponse{Replaces: replaces}, nil
 }
 
 // Delete tears down an existing resource with the given ID.  If it fails, the resource is assumed to still exist.
 func (p *instanceProvider) Delete(ctx context.Context, req *cocorpc.DeleteRequest) (*pbempty.Empty, error) {
 	contract.Assert(req.GetType() == string(Instance))
+
 	id := aws.String(req.GetId())
-	delete := &ec2.TerminateInstancesInput{
-		InstanceIds: []*string{id},
-	}
+	delete := &ec2.TerminateInstancesInput{InstanceIds: []*string{id}}
+
 	fmt.Fprintf(os.Stdout, "Terminating EC2 instance '%v'\n", *id)
 	if _, err := p.ctx.EC2().TerminateInstances(delete); err != nil {
 		return nil, err
 	}
+
 	fmt.Fprintf(os.Stdout, "EC2 instance termination request submitted; waiting for it to terminate\n")
 	err := p.ctx.EC2().WaitUntilInstanceTerminated(
 		&ec2.DescribeInstancesInput{InstanceIds: []*string{id}})
+
 	return &pbempty.Empty{}, err
 }
 
 // instance represents the state associated with an instance.
 type instance struct {
-	ImageID          string
-	InstanceType     *string
-	SecurityGroupIDs *[]string
-	KeyName          *string
+	ImageID          string    `json:"imageId"`
+	InstanceType     *string   `json:"instanceType,omitempty"`
+	SecurityGroupIDs *[]string `json:"securityGroups,omitempty"`
+	KeyName          *string   `json:"keyName,omitempty"`
 }
 
 const (
@@ -192,39 +187,3 @@ const (
 	instanceSecurityGroups = "securityGroups"
 	instanceKeyName        = "keyName"
 )
-
-// newInstance creates a new instance bag of state, validating required properties if asked to do so.
-func newInstance(m resource.PropertyMap, req bool) (*instance, []*cocorpc.CheckFailure, error) {
-	var failures []*cocorpc.CheckFailure
-
-	id, err := m.ReqStringOrErr(instanceImageID)
-	if err != nil && (req || !resource.IsReqError(err)) {
-		failures = append(failures,
-			&cocorpc.CheckFailure{Property: instanceImageID, Reason: err.Error()})
-	}
-
-	t, err := m.OptStringOrErr(instanceType)
-	if err != nil {
-		failures = append(failures,
-			&cocorpc.CheckFailure{Property: instanceType, Reason: err.Error()})
-	}
-
-	securityGroupIDs, err := m.OptStringArrayOrErr(instanceSecurityGroups)
-	if err != nil {
-		failures = append(failures,
-			&cocorpc.CheckFailure{Property: instanceSecurityGroups, Reason: err.Error()})
-	}
-
-	keyName, err := m.OptStringOrErr(instanceKeyName)
-	if err != nil {
-		failures = append(failures,
-			&cocorpc.CheckFailure{Property: instanceKeyName, Reason: err.Error()})
-	}
-
-	return &instance{
-		ImageID:          id,
-		InstanceType:     t,
-		SecurityGroupIDs: securityGroupIDs,
-		KeyName:          keyName,
-	}, failures, awsctx.MaybeCheckError(failures)
-}

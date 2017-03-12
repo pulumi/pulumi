@@ -3,21 +3,20 @@
 package awsctx
 
 import (
-	"errors"
-	"fmt"
-
+	"github.com/pulumi/coconut/pkg/util/mapper"
 	"github.com/pulumi/coconut/sdk/go/pkg/cocorpc"
 )
 
-// MaybeCheckError produces a non-nil error if the given array contains 1 or more failures; nil otherwise.
-func MaybeCheckError(failures []*cocorpc.CheckFailure) error {
-	if len(failures) == 0 {
-		return nil
+// NewCheckResponse produces a response with property validation failures from the given array of mapper failures.
+func NewCheckResponse(err mapper.DecodeError) *cocorpc.CheckResponse {
+	var checkFailures []*cocorpc.CheckFailure
+	if err != nil {
+		for _, failure := range err.Failures() {
+			checkFailures = append(checkFailures, &cocorpc.CheckFailure{
+				Property: failure.Field(),
+				Reason:   failure.Reason(),
+			})
+		}
 	}
-
-	str := fmt.Sprintf("%d of this security group rule's properties failed validation:", len(failures))
-	for _, failure := range failures {
-		str += fmt.Sprintf("\n\t%v: %v", failure.Property, failure.Reason)
-	}
-	return errors.New(str)
+	return &cocorpc.CheckResponse{Failures: checkFailures}
 }

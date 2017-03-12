@@ -7,6 +7,8 @@ import (
 	"reflect"
 
 	"github.com/pulumi/coconut/pkg/tokens"
+	"github.com/pulumi/coconut/pkg/util/contract"
+	"github.com/pulumi/coconut/pkg/util/mapper"
 )
 
 // PropertyKey is the name of a property.
@@ -275,6 +277,15 @@ func (m PropertyMap) OptResourceOrErr(k PropertyKey) (*URN, error) {
 	return m.ResourceOrErr(k, false)
 }
 
+// Mappable returns a mapper-compatible object map, suitable for deserialization into structures.
+func (props PropertyMap) Mappable() mapper.Object {
+	obj := make(mapper.Object)
+	for _, k := range StablePropertyKeys(props) {
+		obj[string(k)] = props[k].Mappable()
+	}
+	return obj
+}
+
 // AllResources finds all resource URNs, transitively throughout the property map, and returns them.
 func (props PropertyMap) AllResources() map[URN]bool {
 	URNs := make(map[URN]bool)
@@ -337,6 +348,28 @@ func (b PropertyValue) IsObject() bool {
 func (b PropertyValue) IsResource() bool {
 	_, is := b.V.(URN)
 	return is
+}
+
+// Mappable returns a mapper-compatible value, suitable for deserialization into structures.
+func (v PropertyValue) Mappable() mapper.Value {
+	if v.IsNull() {
+		return nil
+	} else if v.IsBool() {
+		return v.BoolValue()
+	} else if v.IsNumber() {
+		return v.NumberValue()
+	} else if v.IsString() {
+		return v.StringValue()
+	} else if v.IsArray() {
+		var arr []mapper.Value
+		for _, e := range v.ArrayValue() {
+			arr = append(arr, e.Mappable())
+		}
+		return arr
+	} else {
+		contract.Assert(v.IsObject())
+		return v.ObjectValue().Mappable()
+	}
 }
 
 // AllResources finds all resource URNs, transitively throughout the property value, and returns them.

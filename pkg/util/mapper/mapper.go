@@ -12,19 +12,29 @@ import (
 )
 
 type Mapper interface {
-	Decode(tree Object, target interface{}) error
-	DecodeField(tree Object, ty reflect.Type, key string, target interface{}, optional bool) error
+	Decode(tree Object, target interface{}) DecodeError
+	DecodeField(tree Object, ty reflect.Type, key string, target interface{}, optional bool) FieldError
 }
 
-func New(customDecoders map[reflect.Type]Decoder) Mapper {
-	if customDecoders == nil {
-		customDecoders = make(map[reflect.Type]Decoder)
+func New(opts *Opts) Mapper {
+	var initOpts Opts
+	if opts != nil {
+		initOpts = *opts
 	}
-	return &mapper{customDecoders}
+	if initOpts.CustomDecoders == nil {
+		initOpts.CustomDecoders = make(Decoders)
+	}
+	return &mapper{opts: initOpts}
+}
+
+type Opts struct {
+	CustomDecoders     Decoders // custom decoders.
+	IgnoreMissing      bool     // ignore missing required fields.
+	IgnoreUnrecognized bool     // ignore unrecognized fields.
 }
 
 type mapper struct {
-	customDecoders Decoders
+	opts Opts
 }
 
 // Decoder is a func that knows how to decode into particular type.
@@ -34,13 +44,17 @@ type Decoder func(m Mapper, tree Object) (interface{}, error)
 type Decoders map[reflect.Type]Decoder
 
 // Decode decodes an entire map into a target object, using tag-directed mappings.
-func (md *mapper) Decode(tree Object, target interface{}) error {
+func (md *mapper) Decode(tree Object, target interface{}) DecodeError {
+	// Fetch the destination types and validate that we can store into the target (i.e., a valid lval).
 	vdst := reflect.ValueOf(target)
 	contract.Assertf(vdst.Kind() == reflect.Ptr && !vdst.IsNil() && vdst.Elem().CanSet(),
 		"Target %v must be a non-nil, settable pointer", vdst.Type())
 	vdstType := vdst.Type().Elem()
 	contract.Assertf(vdstType.Kind() == reflect.Struct && !vdst.IsNil(),
 		"Target %v must be a struct type with `json:\"x\"` tags to direct decoding", vdstType)
+
+	// Keep track of any errors that result.
+	var errs []FieldError
 
 	// For each field in the struct that has a `json:"name"`, look it up in the map by that `name`, issuing an error if
 	// it is missing or of the wrong type.  For each field that has a tag with omitempty specified, i.e.,
@@ -95,7 +109,7 @@ func (md *mapper) Decode(tree Object, target interface{}) error {
 			fld := vdst.Elem().FieldByName(fldinfo.Name)
 			if !skip {
 				if err := md.DecodeField(tree, vdstType, key, fld.Addr().Interface(), optional); err != nil {
-					return err
+					errs = append(errs, err)
 				}
 			}
 
@@ -105,17 +119,26 @@ func (md *mapper) Decode(tree Object, target interface{}) error {
 	}
 
 	// Afterwards, if there are any unrecognized fields, issue an error.
-	for k := range tree {
-		if !flds[k] {
-			return fmt.Errorf("Unrecognized %v field `%v`", vdstType.Name(), k)
+	if !md.opts.IgnoreUnrecognized {
+		for k := range tree {
+			if !flds[k] {
+				err := NewUnrecognizedErr(vdstType, k)
+				errs = append(errs, err)
+			}
 		}
 	}
 
-	return nil
+	// If there are no errors, return nil; else manufacture a decode error object.
+	if len(errs) == 0 {
+		return nil
+	}
+
+	return NewDecodeErr(errs)
 }
 
-// decodeField decodes primitive fields.  For fields of complex types, we use custom deserialization.
-func (md *mapper) DecodeField(tree Object, ty reflect.Type, key string, target interface{}, optional bool) error {
+// DecodeField decodes primitive type fields.  For fields of complex types, we use custom deserialization.
+func (md *mapper) DecodeField(tree Object, ty reflect.Type, key string,
+	target interface{}, optional bool) FieldError {
 	vdst := reflect.ValueOf(target)
 	contract.Assertf(vdst.Kind() == reflect.Ptr && !vdst.IsNil() && vdst.Elem().CanSet(),
 		"Target %v must be a non-nil, settable pointer", vdst.Type())
@@ -140,7 +163,7 @@ func (md *mapper) DecodeField(tree Object, ty reflect.Type, key string, target i
 			}
 
 			// Adjust the value if necessary; this handles recursive struct marshaling, interface unboxing, and more.
-			var err error
+			var err FieldError
 			if vsrc, err = md.adjustValue(vsrc, vdstType, ty, key); err != nil {
 				return err
 			}
@@ -151,13 +174,15 @@ func (md *mapper) DecodeField(tree Object, ty reflect.Type, key string, target i
 				return nil
 			}
 
-			return ErrWrongType(ty, key, vdstType, vsrc.Type())
+			return NewWrongTypeErr(ty, key, vdstType, vsrc.Type())
 		}
 	}
-	if !optional {
+
+	if !optional && !md.opts.IgnoreMissing {
 		// The field doesn't exist and yet it is required; issue an error.
-		return ErrMissing(ty, key)
+		return NewMissingErr(ty, key)
 	}
+
 	return nil
 }
 
@@ -165,7 +190,8 @@ var emptyObject map[string]interface{}
 var textUnmarshalerType = reflect.TypeOf(new(encoding.TextUnmarshaler)).Elem()
 
 // adjustValue converts if possible to produce the target type.
-func (md *mapper) adjustValue(val reflect.Value, to reflect.Type, ty reflect.Type, key string) (reflect.Value, error) {
+func (md *mapper) adjustValue(val reflect.Value,
+	to reflect.Type, ty reflect.Type, key string) (reflect.Value, FieldError) {
 	for !val.Type().AssignableTo(to) {
 		// The source cannot be assigned directly to the destination.  Go through all known conversions.
 
@@ -194,12 +220,12 @@ func (md *mapper) adjustValue(val reflect.Value, to reflect.Type, ty reflect.Typ
 				elem := val.Index(i)
 				if !elem.Type().AssignableTo(to.Elem()) {
 					ekey := fmt.Sprintf("%v[%v]", key, i)
-					var err error
+					var err FieldError
 					if elem, err = md.adjustValue(elem, to.Elem(), ty, ekey); err != nil {
 						return val, err
 					}
 					if !elem.Type().AssignableTo(to.Elem()) {
-						return val, ErrWrongType(ty, ekey, to.Elem(), elem.Type())
+						return val, NewWrongTypeErr(ty, ekey, to.Elem(), elem.Type())
 					}
 				}
 				arr = reflect.Append(arr, elem)
@@ -212,22 +238,22 @@ func (md *mapper) adjustValue(val reflect.Value, to reflect.Type, ty reflect.Typ
 				entry := val.MapIndex(k)
 				if !k.Type().AssignableTo(to.Key()) {
 					kkey := fmt.Sprintf("%v[%v] key", key, k.Interface())
-					var err error
+					var err FieldError
 					if k, err = md.adjustValue(k, to.Key(), ty, kkey); err != nil {
 						return val, err
 					}
 					if !k.Type().AssignableTo(to.Key()) {
-						return val, ErrWrongType(ty, kkey, to.Key(), k.Type())
+						return val, NewWrongTypeErr(ty, kkey, to.Key(), k.Type())
 					}
 				}
 				if !entry.Type().AssignableTo(to.Elem()) {
 					ekey := fmt.Sprintf("%v[%v] value", key, k.Interface())
-					var err error
+					var err FieldError
 					if entry, err = md.adjustValue(entry, to.Elem(), ty, ekey); err != nil {
 						return val, err
 					}
 					if !entry.Type().AssignableTo(to.Elem()) {
-						return val, ErrWrongType(ty, ekey, to.Elem(), entry.Type())
+						return val, NewWrongTypeErr(ty, ekey, to.Elem(), entry.Type())
 					}
 				}
 				m.SetMapIndex(k, entry)
@@ -243,11 +269,11 @@ func (md *mapper) adjustValue(val reflect.Value, to reflect.Type, ty reflect.Typ
 				tree = mi.(map[string]interface{})
 			}
 
-			if decode, has := md.customDecoders[to]; has {
+			if decode, has := md.opts.CustomDecoders[to]; has {
 				// A custom decoder exists; use it to unmarshal the type.
 				target, err := decode(md, tree)
 				if err != nil {
-					return val, err
+					return val, NewFieldErr(ty, key, err)
 				}
 				val = reflect.ValueOf(target)
 			} else if to.Kind() == reflect.Struct || (to.Kind() == reflect.Ptr && to.Elem().Kind() == reflect.Struct) {
@@ -259,12 +285,13 @@ func (md *mapper) adjustValue(val reflect.Value, to reflect.Type, ty reflect.Typ
 					target = reflect.New(to).Interface()
 				}
 				if err := md.Decode(tree, target); err != nil {
-					return val, err
+					return val, NewFieldErr(ty, key, err)
 				}
 				val = reflect.ValueOf(target).Elem()
 			} else {
-				return val, fmt.Errorf(
-					"Cannot decode Object to type %v; it isn't a struct, and no custom decoder exists", to)
+				return val, NewFieldErr(ty, key,
+					fmt.Errorf(
+						"Cannot decode Object to type %v; it isn't a struct, and no custom decoder exists", to))
 			}
 		} else if val.Type().Kind() == reflect.String {
 			// If the source is a string, see if the target implements encoding.TextUnmarshaler.
@@ -272,7 +299,7 @@ func (md *mapper) adjustValue(val reflect.Value, to reflect.Type, ty reflect.Typ
 			if target.Type().Implements(textUnmarshalerType) {
 				um := target.Interface().(encoding.TextUnmarshaler)
 				if err := um.UnmarshalText([]byte(val.String())); err != nil {
-					return val, err
+					return val, NewFieldErr(ty, key, err)
 				}
 				val = target.Elem()
 			} else {
@@ -283,4 +310,30 @@ func (md *mapper) adjustValue(val reflect.Value, to reflect.Type, ty reflect.Typ
 		}
 	}
 	return val, nil
+}
+
+// Map decodes an entire map into a target object, using an anonymous decoder and tag-directed mappings.
+func Map(tree Object, target interface{}) DecodeError {
+	return New(nil).Decode(tree, target)
+}
+
+// MapI decodes an entire map into a target object, using an anonymous decoder and tag-directed mappings.  This variant
+// ignores any missing required fields in the payload in addition to any unrecognized fields.
+func MapI(tree Object, target interface{}) DecodeError {
+	return New(&Opts{
+		IgnoreMissing:      true,
+		IgnoreUnrecognized: true,
+	}).Decode(tree, target)
+}
+
+// MapIM decodes an entire map into a target object, using an anonymous decoder and tag-directed mappings.  This variant
+// ignores any missing required fields in the payload.
+func MapIM(tree Object, target interface{}) DecodeError {
+	return New(&Opts{IgnoreMissing: true}).Decode(tree, target)
+}
+
+// MapIU decodes an entire map into a target object, using an anonymous decoder and tag-directed mappings.  This variant
+// ignores any unrecognized fields in the payload.
+func MapIU(tree Object, target interface{}) DecodeError {
+	return New(&Opts{IgnoreUnrecognized: true}).Decode(tree, target)
 }
