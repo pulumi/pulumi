@@ -89,7 +89,7 @@ A snapshot's schema is identical to that shown above for general CocoGL graphs, 
 
 * All resource IDs correspond to the auto-generated resource URNs (see [resources](resources.md)).
 
-* All snapshot graphs are DAGs.  As such, resources are conventially listed in topologically-sorted order.
+* All snapshot graphs are DAGs.  As such, resources are conventionally listed in topologically-sorted order.
 
 In addition to its URN, which is also its key, each resource has a type token (in [the usual CocoIL sense](
 packages.md)), an optional ID assigned by its provider, and a bag of properties which, themselves, are just JSON objects

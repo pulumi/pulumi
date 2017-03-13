@@ -24,7 +24,7 @@ Coconut's type system was designed to be supported by a broad cross-section of m
 it's entirely possible that CocoPack exposes a construct that a certain language doesn't support.  Because CocoIL is
 designed for interpretation, determinism, and predictability -- and not runtime speed -- all type coercions are checked
 and throw an exception if an illegal coercion is attempted.  It is obviously a better choice to verify such conversions
-where possible in the CocoLang compilers themselves, however this approach naturally accomodates dynamic languages.
+where possible in the CocoLang compilers themselves, however this approach naturally accommodates dynamic languages.
 
 CocoPack is serialized in JSON/YAML form, although in the future we may explore more efficient file formats.  (Markup is
 rather verbose, yet pleasantly human-readable.)  Examples in this document will use a YAML syntax for brevity's sake.
@@ -122,13 +122,13 @@ patterns.  In a sense, this is a lot like how ECMAScript works, and indeed the r
 https://developer.mozilla.org/en-US/docs/Web/JavaScript/Inheritance_and_the_prototype_chain) in many aspects.
 
 There are two special "top-types" that may refer to any type: `object` and `any`.  The `object` type is a standard
-statically typed top-type, that any type may coercere to implicitly.  Regaining specific typing from that type, however,
+statically typed top-type, that any type may coerce to implicitly.  Regaining specific typing from that type, however,
 must be done through explicit downcasts; it alone has no operations.  The `any` type, in contrast, enjoys dynamically
 typed operations by default.  It may therefore be cast freely between types, which may lead to runtime failures at the
 point of attempting to access members that are missing (versus `object` which inspects runtime type identity).
 
 Because all instances are objects, we must talk about `null`.  By default, types do not include the special value `null`
-in their domain.  To include it in a type's domain, suffix athat type `T` with a question mark, as in `T?`.
+in their domain.  To include it in a type's domain, suffix that type `T` with a question mark, as in `T?`.
 
 TODO[pulumi/coconut#64]: at the moment, we have not yet implemented non-null types.  Instead, all types include `null`
     in the legal domain of values.  It remains to be seen whether we'll actually go forward with non-nullability.
@@ -143,7 +143,7 @@ At the core, all types are built out of the primitives, which represent a "JSON-
 
 * Similarly, two types can be paired up to make a map type using `map[K]V`, where `K` is the type of keys used to
   index into the map and `V` is the type of value inside: e.g., `map[string]number` and `map[string]record`, and so on.
-  Note that only the primtive types `bool`, `number`, and `string` can be used as keys for a map type.  A map type with
+  Note that only the primitive types `bool`, `number`, and `string` can be used as keys for a map type.  A map type with
   a value type `V` that belongs to the `record` subset of types is also a `record`; otherwise, it is a `class`.
 
 As with JSON, all numbers are [IEEE 754 64-bit floating point numbers](
@@ -214,7 +214,7 @@ The following is an example variable that demonstrates several of these attribut
 
 A variable can be given a `default` value if it can be represented using a simple serialized literal value.  For more
 complex cases, such as using arbitrary expressions, initialization must happen in a function somewhere.  For module
-properties, for instance, this occurs in the module initialzer; for class properties, in its constructor; and so on.
+properties, for instance, this occurs in the module initializer; for class properties, in its constructor; and so on.
 
 By default, variables are mutable.  The `readonly` attribute indicates that a variable cannot be written to:
 
@@ -358,7 +358,7 @@ Classes may subclass other types using `extends` and `implements`:
 * A class may subclass any number of conjurable classes using `implements`.
 
 The distinction between these is that `extends` is used to inherit properties, methods, and possibly a constructor from
-one other concrete class, while `implements` marks a particular type as explicitly convertable to certain conjurable
+one other concrete class, while `implements` marks a particular type as explicitly convertible to certain conjurable
 types.  This can be used to declare that a particular conjurable type is convertible even when duck-typing handles it.
 
 For example, imagine we want an `Employee` which is a special kind of `Person`:
@@ -431,7 +431,7 @@ TODO[pulumi/coconut#64]: at the moment, we don't support any of these.  It's unc
 
 #### Constraints
 
-To support rich validation, even in the presence of representations that faciliate data interoperability, CocoIL supports
+To support rich validation, even in the presence of representations that facilitate data interoperability, CocoIL supports
 additional constraints on `number`, `string`, and array types, inspired by [JSON Schema](http://json-schema.org/):
 
 * For `number`s:
@@ -641,7 +641,7 @@ CocoIL does not support unboxed values.  This is entirely a performance and low-
 ### Pointers
 
 CocoIL supports pointers for implementing runtime functionality.  It does not embellish them very much, however, other
-than letting the runtime (written in Go) grab ahold of them and do whatever it pleases.  For example, CocoIL does not
+than letting the runtime (written in Go) grab a hold of them and do whatever it pleases.  For example, CocoIL does not
 contain operators for indirection, arithmetic, or dereferencing.  CocoIL itself is not for systems programming.
 
 TODO: this could evolve further as we look to adopting CocoGo, which, clearly, will have the concept of pointers.

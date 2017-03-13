@@ -146,7 +146,7 @@ Now, given this definition exported from a library `acmecorp/infra`, another exe
     let infra = new AWSInfraFoundation("acmecorp");
 
 This small program essentially has the same effect as the original example.  And the VPC and Subnet resource objects are
-trivially accessible, and useable in the same ways, simply by accessing the properties `infra.vpc` and `infra.subnets`.
+trivially accessible, and usable in the same ways, simply by accessing the properties `infra.vpc` and `infra.subnets`.
 
 ### A Little Syntactic Sugar
 
@@ -273,7 +273,7 @@ Let us now look at a cloud-neutral serverless component that creates thumbnails 
         public readonly onNewThumbnail: coconut.x.Event;
 
         private readonly src: coconut.x.Bucket; // the source to monitor for images.
-        private readonly coconut.x.Bucket; // the destination to store thumbnails in.
+        private readonly dst: coconut.x.Bucket; // the destination to store thumbnails in.
 
         constructor(src: coconut.x.Bucket, dst: coconut.x.Bucket) {
             this.src = src;
@@ -332,7 +332,7 @@ The primary concepts in Coconut are:
 * **Stack**: An instantiation of a package, paired with an environment, and fully specified with arguments.
 * **Resource URN**: An ID that is auto-assigned to each resource object, unique within the overall environment.
 
-Analagous to programming languages, a stack is essentially a collection of instantiated resource objects.  Many
+Analogous to programming languages, a stack is essentially a collection of instantiated resource objects.  Many
 concepts that are "distinct" in other systems, like gateways, controllers, functions, triggers, and so on, are expressed
 as classes in Coconut.  They are essentially "subclasses" -- or specializations -- of the more general concept of a
 resource object, unifying the creation, configuration, provisioning, discovery, and overall management of them.
@@ -356,7 +356,7 @@ In addition to those core abstractions, there are some supporting ones:
 
 There are some other "internal" concepts that most users can safely ignore:
 
-* **CocoLang**: A language subet for the Coconut configuration system (e.g., CocoJS, CocoPy, CocoGo, etc).
+* **CocoLang**: A language subset for the Coconut configuration system (e.g., CocoJS, CocoPy, CocoGo, etc).
 * **CocoPack**: The intermediate package format used as metadata for packages, common to all languages.
 * **CocoIL**: The intermediate language (IL) used to represent code and data within a CocoPack package.
 * **CocoGL**: The graph language (GL) describing a stack's resource topology with dependencies as edges.

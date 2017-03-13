@@ -16,7 +16,7 @@ There are two primary dimensions to any given target:
 
 * The second dimension is the system used for container orchestration, or what we will call, Containers-as-a-Service
   (CaaS).  Examples of this include AWS ECS, Docker Swarm, and Kubernetes.  Note that the system can handle the
-  siituation where there is no container orchestration framework available, in which case raw VMs are utilized.
+  situation where there is no container orchestration framework available, in which case raw VMs are utilized.
 
 Not all combinations of IaaS and CaaS fall out naturally, although it is a goal of the system to target them
 orthogonally such that the incremental cost of creating new pairings is as low as possible (minimizing combinatorics).

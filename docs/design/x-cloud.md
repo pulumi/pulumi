@@ -52,7 +52,7 @@ to the cloud provider's specific configuration settings.
 
 For example, `coconut/x/fs/Volume` implements the `coconut/Volume` abstract interface, and maps to an AWS Elastic Block
 Store (EBS), Azure Data Disk (DD), or GCP Persistent Disk (PD) volume, depending on the IaaS target.  Although the
-details for each of these differs, a standard set of options -- like capacity, filesystem type, reclaimation policy,
+details for each of these differs, a standard set of options -- like capacity, filesystem type, reclamation policy,
 storage class, and so on -- and `coconut/x` handles mapping these standard options to the specific underlying ones.
 
 The goal for the `coconut/x` package is to facilitate a higher-level ecosystem of cloud-agnostic services and libraries.

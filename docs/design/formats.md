@@ -10,7 +10,7 @@ retain most of their source language's popular features, including the libraries
 To distinguish them from their ordinary counterparts, these subsetted language dialects are called CocoLangs.
 
 In the middle, CocoPack is a standard metadata representation for compiled and redistributable Coconut packages.  This
-is the unit of distribution and dependency in the classical package management sense.  CocoPack is multi-langauge and
+is the unit of distribution and dependency in the classical package management sense.  CocoPack is multi-language and
 contains internal and exported modules, types, functions, variables, and code.  All code is serialized into CocoIL, the
 CocoPack intermediate language, that can be evaluated by the Coconut toolchain.  Because of computations, the final
 "shape" of a cloud topology is not determined until the CocoPack is evaluated as part of a deployment planning step.
@@ -24,7 +24,7 @@ and identical CocoGL graphs can be created by different CocoPacks, because CocoP
 conditional computations.  A CocoGL graph can also be generated from a live environment, something we call a snapshot.
 
 This document describes these formats, the requirements for a high-level CocoLang (although details for each language
-are specified elsehwere), the CocoPack/CocoIL and CocoGL formats, and the overall compilation process.
+are specified elsewhere), the CocoPack/CocoIL and CocoGL formats, and the overall compilation process.
 
 ## Coconut Languages (CocoLangs)
 
@@ -78,15 +78,15 @@ as Go functions.  A CocoPack is incomplete without being fully bound to the prog
 
 The restrictions placed on CocoLangs streamline the task of producing cloud topology graphs, and ensure that programs
 are deterministic.  Determinism is important, otherwise two deployments from the exact same source programs might
-result in two graphs that differ in surprising and unwanted ways.  Evaluation of the the same program must be
+result in two graphs that differ in surprising and unwanted ways.  Evaluation of the same program must be
 idempotent so that graphs and target environments can easily converge and so that failures can be dealt with reliably.
 
 In general, this means CocoLangs may not perform these actions:
 
 * I/O of any kind (network, file, etc).
-* Syscalls (except for those excplicitly blessed as being deterministic).
+* Syscalls (except for those explicitly blessed as being deterministic).
 * Invocation of non-CocoLang code (including 3rd party packages).
-* Any action that is not transitively analyable through global analysis (like C FFIs).
+* Any action that is not transitively analyzable through global analysis (like C FFIs).
 
 Examples of existing efforts to define such a subset in JavaScript, simply as an illustration, include: [Gatekeeper](
 https://www.microsoft.com/en-us/research/wp-content/uploads/2016/02/gatekeeper_tr.pdf), [ADsafe](
@@ -188,7 +188,7 @@ In its most general form, CocoGL is just a graph of objects, their properties, a
 another.  However, CocoGL is used in a very specific way when it comes to Coconut packages, plans, and deployments.
 
 Specifically, when it comes to deployments, each vertex represents a resource object, complete with properties, and each
-edge is a dependeny between resources.  Such a graph is required to be a DAG so that resource ordering is well-defined.
+edge is a dependency between resources.  Such a graph is required to be a DAG so that resource ordering is well-defined.
 Each such graph represents the outcome of some deployment activity, either planned or actually having taken place.
 
 Subtly, the graph is never considered the "source of truth"; only the corresponding live running environment can be the
@@ -239,7 +239,7 @@ and are indicated to the Coconut runtime by subclassing from a well-known base c
 The extensibility mechanism used to define this logic is part of the Coconut SDK and is called a *resource provider*.
 Each package that defines a resource must also carry with it a corresponding resource provider plugin.  These plugins
 are loaded dynamically by the Coconut runtime anytime it needs to interact with a resource in a given package.  These
-plugins implement a simple inteface consisting primarily of create, read, update, and delete (CRUD) operations.
+plugins implement a simple interface consisting primarily of create, read, update, and delete (CRUD) operations.
 
 Please refer to the [resources design document](resources.md) for more details on resources and resource providers.
 
