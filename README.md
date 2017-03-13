@@ -1,6 +1,6 @@
 # Coconut
 
-Coconut is a framework and toolset for creating reusable stacks of services.
+Coconut is a framework and toolset for creating reusable cloud services.
 
 If you are learning about Coconut for the first time, please see [the overview document](docs/overview.md).
 
