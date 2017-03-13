@@ -25,6 +25,9 @@
         "cloudformation/resource.ts",
         "cloudformation/tags.ts",
 
+        "cloudwatch/index.ts",
+        "cloudwatch/alarm.ts",
+
         "ec2/index.ts",
         "ec2/internetGateway.ts",
         "ec2/route.ts",
@@ -35,7 +38,10 @@
         "ec2/subnet.ts",
         "ec2/vpc.ts",
         "ec2/vpcGatewayAttachment.ts",
-        "ec2/vpcPeeringConnection.ts"
+        "ec2/vpcPeeringConnection.ts",
+
+        "sns/index.ts",
+        "sns/topic.ts"
     ]
 }
 
