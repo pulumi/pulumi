@@ -9,18 +9,12 @@ let sshLocationCIDR = sshLocation + "/0";
 let region = aws.config.requireRegion();
 
 let securityGroup = new aws.ec2.SecurityGroup("group", {
-    groupDescription: "Enable SSH access and WWW",
+    groupDescription: "Enable SSH access",
     securityGroupIngress: [
         {
             ipProtocol: "tcp",
             fromPort: 22,
             toPort: 22,
-            cidrIp: sshLocationCIDR,
-        },
-        {
-            ipProtocol: "tcp",
-            fromPort: 80,
-            toPort: 80,
             cidrIp: sshLocationCIDR,
         },
     ]
