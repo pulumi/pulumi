@@ -223,6 +223,7 @@ func plan(cmd *cobra.Command, info *envCmdInfo, opts applyOptions) *planResult {
 	// If deleting, there is no need to create a new snapshot; otherwise, we will need to compile the package.
 	var new resource.Snapshot
 	var result *compileResult
+	var analyzers []tokens.QName
 	if !opts.Delete {
 		// First, compile; if that yields errors or an empty heap, exit early.
 		if result = compile(cmd, info.Args, info.Env.Config); result == nil || result.Heap == nil {
@@ -239,16 +240,15 @@ func plan(cmd *cobra.Command, info *envCmdInfo, opts applyOptions) *planResult {
 		} else if !info.Ctx.Diag.Success() {
 			return nil
 		}
-	}
 
-	// If there are any analyzers to run, queue them up.
-	var analyzers []tokens.QName
-	for _, a := range opts.Analyzers {
-		analyzers = append(analyzers, tokens.QName(a)) // from the command line.
-	}
-	if as := result.Pkg.Node.Analyzers; as != nil {
-		for _, a := range *as {
-			analyzers = append(analyzers, a) // from the project file.
+		// If there are any analyzers to run, queue them up.
+		for _, a := range opts.Analyzers {
+			analyzers = append(analyzers, tokens.QName(a)) // from the command line.
+		}
+		if as := result.Pkg.Node.Analyzers; as != nil {
+			for _, a := range *as {
+				analyzers = append(analyzers, a) // from the project file.
+			}
 		}
 	}
 
