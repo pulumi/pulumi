@@ -3,28 +3,18 @@
 import * as aws from "@coconut/aws";
 import * as amimap from "./amimap";
 
-let instanceType = "t2.micro";
-let sshLocation = "0.0.0.0";
-let sshLocationCIDR = sshLocation + "/0";
-let region = aws.config.requireRegion();
+export let instanceType = "t2.micro"; // a configurable kind of instance.
 
-let securityGroup = new aws.ec2.SecurityGroup("group", {
-    groupDescription: "Enable SSH access",
+let securityGroup = new aws.ec2.SecurityGroup("web-secgrp", {
+    groupDescription: "Enable HTTP access",
     securityGroupIngress: [
-        {
-            ipProtocol: "tcp",
-            fromPort: 22,
-            toPort: 22,
-            cidrIp: sshLocationCIDR,
-        },
+        { ipProtocol: "tcp", fromPort: 80, toPort: 80, cidrIp: "0.0.0.0/0" },
     ]
 });
 
-let arch = amimap.awsInstanceType2Arch[instanceType].Arch;
-let image = amimap.awsRegionArch2AMI[region][arch];
-let instance = new aws.ec2.Instance("instance", {
+let instance = new aws.ec2.Instance("web-server", {
     instanceType: instanceType,
     securityGroups: [ securityGroup ],
-    imageId: image,
+    imageId: amimap.getLinuxAMI(instanceType),
 });
 
