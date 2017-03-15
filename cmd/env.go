@@ -45,7 +45,6 @@ func newEnvCmd() *cobra.Command {
 	}
 
 	cmd.AddCommand(newEnvConfigCmd())
-	cmd.AddCommand(newEnvDestroyCmd())
 	cmd.AddCommand(newEnvInitCmd())
 	cmd.AddCommand(newEnvLsCmd())
 	cmd.AddCommand(newEnvRmCmd())

@@ -6,7 +6,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func newEnvDestroyCmd() *cobra.Command {
+func newDestroyCmd() *cobra.Command {
 	var dryRun bool
 	var summary bool
 	var yes bool

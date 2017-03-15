@@ -6,26 +6,24 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func newDeployCmd() *cobra.Command {
+func newPlanCmd() *cobra.Command {
 	var analyzers []string
-	var dryRun bool
 	var showConfig bool
 	var showReplaceSteps bool
 	var showUnchanged bool
 	var summary bool
 	var output string
 	var cmd = &cobra.Command{
-		Use:     "deploy <env> [<package>] [-- [<args>]]",
-		Aliases: []string{"up", "update"},
-		Short:   "Deploy resource updates, creations, and deletions to an environment",
-		Long: "Deploy resource updates, creations, and deletions to an environment\n" +
+		Use:     "plan <env> [<package>] [-- [<args>]]",
+		Aliases: []string{"dryrun"},
+		Short:   "Show a plan to update, create, and delete an environment's resources",
+		Long: "Show a plan to update, create, and delete an environment's resources\n" +
 			"\n" +
-			"This command updates an existing environment whose state is represented by the\n" +
-			"existing snapshot file.  The new desired state is computed by compiling and evaluating an\n" +
+			"This command displays a plan to update an existing environment whose state is represented by\n" +
+			"an existing snapshot file.  The new desired state is computed by compiling and evaluating an\n" +
 			"executable package, and extracting all resource allocations from its resulting object graph.\n" +
 			"This graph is compared against the existing state to determine what operations must take\n" +
-			"place to achieve the desired state.  This command results in a full snapshot of the\n" +
-			"environment's new resource state, so that it may be updated incrementally again later.\n" +
+			"place to achieve the desired state.  No changes to the environment will actually take place.\n" +
 			"\n" +
 			"By default, the package to execute is loaded from the current directory.  Optionally, an\n" +
 			"explicit path can be provided using the [package] argument.",
@@ -37,7 +35,7 @@ func newDeployCmd() *cobra.Command {
 			defer info.Close()
 			apply(cmd, info, applyOptions{
 				Delete:           false,
-				DryRun:           dryRun,
+				DryRun:           true,
 				Analyzers:        analyzers,
 				ShowConfig:       showConfig,
 				ShowReplaceSteps: showReplaceSteps,
@@ -52,9 +50,6 @@ func newDeployCmd() *cobra.Command {
 	cmd.PersistentFlags().StringSliceVar(
 		&analyzers, "analyzer", []string{},
 		"Run one or more analyzers as part of this deployment")
-	cmd.PersistentFlags().BoolVarP(
-		&dryRun, "dry-run", "n", false,
-		"Don't actually update resources, just print out the planned updates (synonym for plan)")
 	cmd.PersistentFlags().BoolVar(
 		&showConfig, "show-config", false,
 		"Show configuration keys and variables")
@@ -69,7 +64,7 @@ func newDeployCmd() *cobra.Command {
 		"Only display summarization of resources and plan operations")
 	cmd.PersistentFlags().StringVarP(
 		&output, "output", "o", "",
-		"Serialize the resulting checkpoint to a specific file, instead of overwriting the existing one")
+		"Serialize the resulting plan to a file instead of simply printing it")
 
 	return cmd
 }
