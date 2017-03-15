@@ -315,7 +315,7 @@ func apply(cmd *cobra.Command, info *envCmdInfo, opts applyOptions) {
 
 			if progress.MaybeCorrupt {
 				summary.WriteString(fmt.Sprintf(
-					"%vfatal: A catastrophic error occurred; resources states may be unknown%v\n",
+					"%vA catastrophic error occurred; resources states may be unknown%v\n",
 					colors.SpecAttention, colors.Reset))
 			}
 

@@ -71,9 +71,6 @@ func runFunc(run func(cmd *cobra.Command, args []string) error) func(*cobra.Comm
 	}
 }
 
-// exitErrorPrefix is auto-appended to any abrupt command exit.
-const exitErrorPrefix = "fatal: "
-
 // exitError issues an error and exits with a standard error exit code.
 func exitError(msg string, args ...interface{}) {
 	exitErrorCode(-1, msg, args...)
@@ -81,6 +78,6 @@ func exitError(msg string, args ...interface{}) {
 
 // exitErrorCode issues an error and exists with the given error exit code.
 func exitErrorCode(code int, msg string, args ...interface{}) {
-	sink().Errorf(diag.Message(exitErrorPrefix + fmt.Sprintf(msg, args...)))
+	sink().Errorf(diag.Message(fmt.Sprintf(msg, args...)))
 	os.Exit(code)
 }
