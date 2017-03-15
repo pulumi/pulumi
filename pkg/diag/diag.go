@@ -2,6 +2,10 @@
 
 package diag
 
+import (
+	"fmt"
+)
+
 // ID is a unique diagnostics identifier.
 type ID int
 
@@ -14,8 +18,8 @@ type Diag struct {
 }
 
 // Message returns an anonymous diagnostic message without any source or ID information.
-func Message(msg string) *Diag {
-	return &Diag{Message: msg}
+func Message(msg string, args ...interface{}) *Diag {
+	return &Diag{Message: fmt.Sprintf(msg, args...)}
 }
 
 // Diagable can be used to determine a diagnostic's position.
