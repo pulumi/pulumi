@@ -494,7 +494,7 @@ func (prog *applyProgress) Before(step resource.Step) {
 
 	var extra string
 	if stepop == resource.OpReplaceCreate || stepop == resource.OpReplaceDelete {
-		extra = " (part of a replacement step)"
+		extra = " (part of a replacement change)"
 	}
 
 	var b bytes.Buffer
@@ -592,7 +592,10 @@ func printConfig(b *bytes.Buffer, result *compileResult) {
 
 func printSummary(b *bytes.Buffer, counts map[resource.StepOp]int, showReplaceSteps bool, plan bool) {
 	total := 0
-	for _, c := range counts {
+	for op, c := range counts {
+		if !showReplaceSteps && (op == resource.OpReplaceCreate || op == resource.OpReplaceDelete) {
+			continue // skip counting replacement steps unless explicitly requested.
+		}
 		total += c
 	}
 
