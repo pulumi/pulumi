@@ -531,8 +531,9 @@ func (pb *planBuilder) connectCreateUpdate(m URN, v *planVertex, update bool) {
 			glog.V(7).Infof("%v '%v' depends on resource '%v'; edge created", label, m, dep)
 		} else {
 			// A missing entry is ok; it means the resource isn't changing.
-			contract.Assert(pb.Unchanged[new] != nil)
-			contract.Assert(update == (pb.Olds[dep] != nil))
+			old := pb.Olds[dep]
+			contract.Assertf(old != nil, "Expected '%v' to be an existing resource", dep)
+			contract.Assertf(pb.Unchanged[old] != nil, "Expected '%v' to be unchanged", dep)
 			glog.V(7).Infof("%v '%v' depends on resource '%v'; unchanged, so ignoring", label, m, dep)
 		}
 	}
