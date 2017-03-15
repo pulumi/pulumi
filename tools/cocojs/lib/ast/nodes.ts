@@ -1,4 +1,4 @@
-// Copyright 2016 Pulumi, Inc. All rights reserved.
+// Copyright 2017 Pulumi, Inc. All rights reserved.
 
 import * as definitions from "./definitions";
 import * as expressions from "./expressions";

@@ -1,4 +1,4 @@
-// Copyright 2016 Pulumi, Inc. All rights reserved.
+// Copyright 2017 Pulumi, Inc. All rights reserved.
 
 // Package dotconv convers a CocoGL graph into its DOT digraph equivalent.  This is useful for integration with various
 // visualization tools, like Graphviz.  Please see http://www.graphviz.org/content/dot-language for a thorough

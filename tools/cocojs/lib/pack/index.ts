@@ -1,4 +1,4 @@
-// Copyright 2016 Pulumi, Inc. All rights reserved.
+// Copyright 2017 Pulumi, Inc. All rights reserved.
 
 import * as yaml from "js-yaml";
 import * as ast from "../ast";

@@ -1,4 +1,4 @@
-// Copyright 2016 Pulumi, Inc. All rights reserved.
+// Copyright 2017 Pulumi, Inc. All rights reserved.
 
 // Package ast contains the core CocoIL AST types.  These contain fully qualified tokens ready to resolve to packages.
 //

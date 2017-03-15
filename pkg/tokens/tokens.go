@@ -1,4 +1,4 @@
-// Copyright 2016 Pulumi, Inc. All rights reserved.
+// Copyright 2017 Pulumi, Inc. All rights reserved.
 
 // Package tokens contains the core CocoIL symbol and token types.
 package tokens

@@ -1,4 +1,4 @@
-// Copyright 2016 Pulumi, Inc. All rights reserved.
+// Copyright 2017 Pulumi, Inc. All rights reserved.
 
 // Package graph defines CocoGL graphs.  Each graph is directed and acyclic, and the nodes have been topologically
 // sorted based on dependencies (edges) between them.  Each node in the graph has a type and a set of properties.

@@ -1,4 +1,4 @@
-// Copyright 2016 Pulumi. All rights reserved.
+// Copyright 2017 Pulumi. All rights reserved.
 
 "use strict";
 

@@ -1,4 +1,4 @@
-// Copyright 2016 Pulumi, Inc. All rights reserved.
+// Copyright 2017 Pulumi, Inc. All rights reserved.
 
 // Package encoding can unmarshal CocoPack and CocoIL metadata formats.  Because of their complex structure, we cannot
 // rely on the standard JSON  marshaling and unmarshaling routines.  Instead, we will need to do it mostly "by hand".

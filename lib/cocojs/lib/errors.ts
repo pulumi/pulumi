@@ -1,4 +1,4 @@
-// Copyright 2016 Pulumi, Inc. All rights reserved.
+// Copyright 2017 Pulumi, Inc. All rights reserved.
 
 // Error objects are thrown when ECMAScript runtime errors occur. The Error class can also be used as a base for user-
 // defined exceptions. See https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Error/.

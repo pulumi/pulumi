@@ -1,4 +1,4 @@
-// Copyright 2016 Pulumi, Inc. All rights reserved.
+// Copyright 2017 Pulumi, Inc. All rights reserved.
 
 export let arrayTypePrefix = "[]";           // the prefix for array type tokens.
 export let mapTypePrefix = "map[";           // the prefix for map type tokens.

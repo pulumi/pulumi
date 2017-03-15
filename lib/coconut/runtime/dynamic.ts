@@ -1,4 +1,4 @@
-// Copyright 2016 Pulumi, Inc. All rights reserved.
+// Copyright 2017 Pulumi, Inc. All rights reserved.
 
 // isFunction checks whether the given object is a function (and hence invocable).
 export function isFunction(obj: Object): boolean {

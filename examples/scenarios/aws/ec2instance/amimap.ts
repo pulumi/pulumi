@@ -1,4 +1,4 @@
-// Copyright 2016 Pulumi, Inc. All rights reserved.
+// Copyright 2017 Pulumi, Inc. All rights reserved.
 
 // This file defines some maps that correspond to the recommended AWS Marketplace values:
 //     http://docs.aws.amazon.com/servicecatalog/latest/adminguide/catalogs_marketplace-products.html

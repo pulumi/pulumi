@@ -1,4 +1,4 @@
-// Copyright 2016 Pulumi, Inc. All rights reserved.
+// Copyright 2017 Pulumi, Inc. All rights reserved.
 
 // An architecture is a combination of cloud plus optionally a scheduler that we're targeting.
 export interface Arch {
