@@ -11,7 +11,7 @@ let securityGroup = new aws.ec2.SecurityGroup("web-secgrp", {
     ]
 });
 
-let instance = new aws.ec2.Instance("web-server", {
+let wwwTierServer = new aws.ec2.Instance("web-server-www", {
     instanceType: instanceType,
     securityGroups: [ securityGroup ],
     imageId: aws.ec2.getLinuxAMI(instanceType),

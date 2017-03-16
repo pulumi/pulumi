@@ -2,7 +2,7 @@
 
 import * as aws from "@coconut/aws";
 
-let securityGroup = new aws.ec2.SecurityGroup("web-secgrp", {
+let webGroup = new aws.ec2.SecurityGroup("web-secgrp", {
     groupDescription: "Enable HTTP access",
     securityGroupIngress: [
         { ipProtocol: "tcp", fromPort: 80, toPort: 80, cidrIp: "0.0.0.0/0" },
