@@ -1,0 +1,5 @@
+name: webserver-comp
+description: Example of an AWS web server accessible over HTTP, nicely componentized.
+dependencies:
+    aws: "*"
+

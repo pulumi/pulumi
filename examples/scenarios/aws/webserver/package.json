@@ -1,0 +1,16 @@
+{
+    "name": "webserver",
+    "main": "bin/index.js",
+    "typings": "bin/index.d.ts",
+    "scripts": {
+        "build": "cocojs"
+    },
+    "devDependencies": {
+        "typescript": "^2.1.4"
+    },
+    "peerDependencies": {
+        "@coconut/mu": "*",
+        "@coconut/aws": "*"
+    }
+}
+

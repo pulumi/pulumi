@@ -1,9 +1,8 @@
 // Copyright 2017 Pulumi, Inc. All rights reserved.
 
 import * as aws from "@coconut/aws";
-import * as amimap from "./amimap";
 
-export let instanceType = "t2.micro"; // a configurable kind of instance.
+export let instanceType: aws.ec2.InstanceType = "t2.micro";
 
 let securityGroup = new aws.ec2.SecurityGroup("web-secgrp", {
     groupDescription: "Enable HTTP access",
@@ -15,6 +14,6 @@ let securityGroup = new aws.ec2.SecurityGroup("web-secgrp", {
 let instance = new aws.ec2.Instance("web-server", {
     instanceType: instanceType,
     securityGroups: [ securityGroup ],
-    imageId: amimap.getLinuxAMI(instanceType),
+    imageId: aws.ec2.getLinuxAMI(instanceType),
 });
 
