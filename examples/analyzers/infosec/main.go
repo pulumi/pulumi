@@ -36,7 +36,7 @@ func main() {
 	}
 }
 
-// analyzer implements the suite of ACMECorp security checks.
+// analyzer implements the suite of infosec checks.
 type analyzer struct {
 }
 

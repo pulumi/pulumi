@@ -1,13 +1,13 @@
-# examples/analyzers/acmecorp-security
+# examples/analyzers/infosec
 
-This is an example analyzer that enforces ACMECorp's corporate security policy.
+This is an example analyzer that enforces corporate security policy.
 
 To use it, run the `build.sh` script, ensure the output is on your `PATH`, and add it to your project file:
 
     analyzers:
-        - acmecorp/security
+        - infosec/basic
 
 Or, alternatively, simply run a deployment with it listed explicitly:
 
-    coco deploy <env> --analyzer=acmecorp/security
+    coco deploy <env> --analyzer=infosec/basic
 
