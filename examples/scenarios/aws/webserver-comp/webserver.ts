@@ -15,7 +15,7 @@ export class Server {
     constructor(name: string, instanceType: aws.ec2.InstanceType) {
         this.instance = new aws.ec2.Instance("web-server-" + name, {
             instanceType: instanceType,
-            securityGroups: [ securityGroup ],
+            securityGroups: [ webGroup ],
             imageId: aws.ec2.getLinuxAMI(instanceType),
         });
     }
