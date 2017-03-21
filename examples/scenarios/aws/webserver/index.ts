@@ -2,18 +2,18 @@
 
 import * as aws from "@coconut/aws";
 
-export let instanceType: aws.ec2.InstanceType = "t2.micro";
+export let size: aws.ec2.InstanceType = "t2.micro";
 
-let securityGroup = new aws.ec2.SecurityGroup("web-secgrp", {
+let group = new aws.ec2.SecurityGroup("web-secgrp", {
     groupDescription: "Enable HTTP access",
     securityGroupIngress: [
         { ipProtocol: "tcp", fromPort: 80, toPort: 80, cidrIp: "0.0.0.0/0" },
     ]
 });
 
-let wwwTierServer = new aws.ec2.Instance("web-server-www", {
-    instanceType: instanceType,
-    securityGroups: [ securityGroup ],
-    imageId: aws.ec2.getLinuxAMI(instanceType),
+let server = new aws.ec2.Instance("web-server-www", {
+    instanceType: size,
+    securityGroups: [ group ],
+    imageId: aws.ec2.getLinuxAMI(size),
 });
 
