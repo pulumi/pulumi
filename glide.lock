@@ -1,12 +1,42 @@
-hash: 0b7799d9dd5f5f3ee86204521fddadc031b0f7eed01535e6c51816fee392b67f
-updated: 2017-02-10T09:07:28.955492616-08:00
+hash: 2a5701e0d4b15c48902ba7aeb350215f03504d321cf7144a05f53dff8318d5bb
+updated: 2017-03-19T20:09:55.873297537-07:00
 imports:
 - name: github.com/aokoli/goutils
   version: 9c37978a95bd5c709a15883b6242714ea6709e64
+- name: github.com/aws/aws-sdk-go
+  version: 5b99715ae2945a2434a2371f4e6c5542e839a32d
+  subpackages:
+  - aws
+  - aws/awserr
+  - aws/awsutil
+  - aws/client
+  - aws/client/metadata
+  - aws/corehandlers
+  - aws/credentials
+  - aws/credentials/ec2rolecreds
+  - aws/credentials/endpointcreds
+  - aws/credentials/stscreds
+  - aws/defaults
+  - aws/ec2metadata
+  - aws/endpoints
+  - aws/request
+  - aws/session
+  - aws/signer/v4
+  - private/protocol
+  - private/protocol/ec2query
+  - private/protocol/query
+  - private/protocol/query/queryutil
+  - private/protocol/rest
+  - private/protocol/xml/xmlutil
+  - private/waiter
+  - service/ec2
+  - service/sts
 - name: github.com/blang/semver
   version: 3a37c301dda64cbe17f16f661b4c976803c0e2d2
 - name: github.com/ghodss/yaml
   version: 04f313413ffd65ce25f2541bfd2b2ceec5c0908c
+- name: github.com/go-ini/ini
+  version: 1730955e3146956d6a087861380f9b4667ed5071
 - name: github.com/golang/glog
   version: 23def4e6c14b4da8ac2ed8007337bc5eb5007998
 - name: github.com/golang/lint
@@ -17,10 +47,13 @@ imports:
   version: 8ee79997227bf9b34611aee7946ae64735e6fd93
   subpackages:
   - proto
+  - protoc-gen-go/descriptor
   - ptypes/empty
   - ptypes/struct
 - name: github.com/inconshreveable/mousetrap
   version: 76626ae9c91c4f2a10f34cad8ce83ea42c93bb75
+- name: github.com/jmespath/go-jmespath
+  version: bd40a432e4c76585ef6b72d3fd96fb9b6dc7b68d
 - name: github.com/Masterminds/sprig
   version: 1e60e4ce482a1e2c7b9c9be667535ef152e04300
 - name: github.com/mitchellh/go-homedir
@@ -35,6 +68,8 @@ imports:
   version: 5ccb023bc27df288a957c5e994cd44fd19619465
 - name: github.com/stretchr/testify
   version: 18a02ba4a312f95da08ff4cfc0055750ce50ae9e
+  subpackages:
+  - assert
 - name: golang.org/x/crypto
   version: 453249f01cfeb54c3d549ddb75ff152ca243f9d8
   subpackages:
@@ -44,11 +79,11 @@ imports:
   subpackages:
   - context
   - http2
-  - trace
   - http2/hpack
   - idna
-  - lex/httplex
   - internal/timeseries
+  - lex/httplex
+  - trace
 - name: golang.org/x/sys
   version: aaabbdc969c3935a2a7f61efac801e7163c73a2a
   subpackages:
@@ -63,9 +98,19 @@ imports:
   - metadata
   - naming
   - peer
+  - reflection
+  - reflection/grpc_reflection_v1alpha
   - stats
   - tap
   - transport
 - name: gopkg.in/yaml.v2
   version: a5b47d31c556af34a302ce5d659e6fea44d90de0
-devImports: []
+testImports:
+- name: github.com/davecgh/go-spew
+  version: 04cdfd42973bb9c8589fd6a731800cf222fde1a9
+  subpackages:
+  - spew
+- name: github.com/pmezard/go-difflib
+  version: d8ed2627bdf02c080bf22230dbb337003b7aba2d
+  subpackages:
+  - difflib
