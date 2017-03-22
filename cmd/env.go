@@ -44,23 +44,31 @@ func newEnvCmd() *cobra.Command {
 			"the workspace, in addition to a full checkpoint of the last known good deployment.\n",
 	}
 
-	cmd.AddCommand(newEnvConfigCmd())
 	cmd.AddCommand(newEnvInitCmd())
 	cmd.AddCommand(newEnvLsCmd())
 	cmd.AddCommand(newEnvRmCmd())
+	cmd.AddCommand(newEnvSelectCmd())
 
 	return cmd
 }
 
 func initEnvCmd(cmd *cobra.Command, args []string) (*envCmdInfo, error) {
 	// Read in the name of the environment to use.
-	if len(args) == 0 {
+	if len(args) == 0 || args[0] == "" {
 		return nil, fmt.Errorf("missing required environment name")
 	}
 	return initEnvCmdName(tokens.QName(args[0]), args[1:])
 }
 
 func initEnvCmdName(name tokens.QName, args []string) (*envCmdInfo, error) {
+	// If the name is blank, use the default.
+	if name == "" {
+		name = getCurrentEnv()
+	}
+	if name == "" {
+		return nil, fmt.Errorf("missing environment name (and no default found)")
+	}
+
 	// Read in the deployment information, bailing if an IO error occurs.
 	ctx := resource.NewContext(sink())
 	envfile, env, old := readEnv(ctx, name)
@@ -103,17 +111,60 @@ func confirmPrompt(msg string, args ...interface{}) bool {
 	return true
 }
 
-// create just creates a new empty environment without deploying anything into it.
-// TODO: add the ability to configure the environment at the command line.
-func create(name tokens.QName) {
+// createEnv just creates a new empty environment without deploying anything into it.
+func createEnv(name tokens.QName) {
 	env := &resource.Env{Name: name}
 	if success := saveEnv(env, nil, "", false); success {
 		fmt.Printf("Environment '%v' initialized; see `coco env deploy` to deploy into it\n", name)
+		setCurrentEnv(name, false)
 	}
 }
 
-// remove permanently deletes the environment's information from the local workstation.
-func remove(env *resource.Env) {
+// newWorkspace creates a new workspace using the current working directory.
+func newWorkspace() (workspace.W, error) {
+	pwd, err := os.Getwd()
+	if err != nil {
+		return nil, err
+	}
+	ctx := core.NewContext(pwd, nil, &core.Options{})
+	return workspace.New(ctx)
+}
+
+// getCurrentEnv reads the current environment.
+func getCurrentEnv() tokens.QName {
+	var name tokens.QName
+	w, err := newWorkspace()
+	if err == nil {
+		name = w.Settings().Env
+	}
+	if err != nil {
+		sink().Errorf(errors.ErrorIO, err)
+	}
+	return name
+}
+
+// setCurrentEnv changes the current environment to the given environment name, issuing an error if it doesn't exist.
+func setCurrentEnv(name tokens.QName, verify bool) {
+	if verify {
+		ctx := resource.NewContext(sink())
+		if _, env, _ := readEnv(ctx, name); env == nil {
+			return // no environment by this name exists, bail out.
+		}
+	}
+
+	// Switch the current workspace to that environment.
+	w, err := newWorkspace()
+	if err == nil {
+		w.Settings().Env = name
+		err = w.Save()
+	}
+	if err != nil {
+		sink().Errorf(errors.ErrorIO, err)
+	}
+}
+
+// removeEnv permanently deletes the environment's information from the local workstation.
+func removeEnv(env *resource.Env) {
 	deleteEnv(env)
 	msg := fmt.Sprintf("%sEnvironment '%s' has been removed!%s\n",
 		colors.SpecAttention, env.Name, colors.Reset)

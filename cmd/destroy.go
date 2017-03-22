@@ -4,14 +4,17 @@ package cmd
 
 import (
 	"github.com/spf13/cobra"
+
+	"github.com/pulumi/coconut/pkg/tokens"
 )
 
 func newDestroyCmd() *cobra.Command {
 	var dryRun bool
+	var env string
 	var summary bool
 	var yes bool
 	var cmd = &cobra.Command{
-		Use:   "destroy <env>",
+		Use:   "destroy",
 		Short: "Destroy an existing environment and its resources",
 		Long: "Destroy an existing environment and its resources\n" +
 			"\n" +
@@ -22,7 +25,7 @@ func newDestroyCmd() *cobra.Command {
 			"Warning: although old snapshots can be used to recreate an environment, this command\n" +
 			"is generally irreversable and should be used with great care.",
 		Run: runFunc(func(cmd *cobra.Command, args []string) error {
-			info, err := initEnvCmd(cmd, args)
+			info, err := initEnvCmdName(tokens.QName(env), args)
 			if err != nil {
 				return err
 			}
@@ -42,6 +45,9 @@ func newDestroyCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVarP(
 		&dryRun, "dry-run", "n", false,
 		"Don't actually delete resources; just print out the planned deletions")
+	cmd.PersistentFlags().StringVarP(
+		&env, "env", "e", "",
+		"Choose an environment other than the currently selected one")
 	cmd.PersistentFlags().BoolVarP(
 		&summary, "summary", "s", false,
 		"Only display summarization of resources and plan operations")

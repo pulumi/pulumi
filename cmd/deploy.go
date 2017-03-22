@@ -4,18 +4,21 @@ package cmd
 
 import (
 	"github.com/spf13/cobra"
+
+	"github.com/pulumi/coconut/pkg/tokens"
 )
 
 func newDeployCmd() *cobra.Command {
 	var analyzers []string
 	var dryRun bool
+	var env string
 	var showConfig bool
 	var showReplaceSteps bool
 	var showUnchanged bool
 	var summary bool
 	var output string
 	var cmd = &cobra.Command{
-		Use:     "deploy <env> [<package>] [-- [<args>]]",
+		Use:     "deploy [<package>] [-- [<args>]]",
 		Aliases: []string{"up", "update"},
 		Short:   "Deploy resource updates, creations, and deletions to an environment",
 		Long: "Deploy resource updates, creations, and deletions to an environment\n" +
@@ -30,7 +33,7 @@ func newDeployCmd() *cobra.Command {
 			"By default, the package to execute is loaded from the current directory.  Optionally, an\n" +
 			"explicit path can be provided using the [package] argument.",
 		Run: runFunc(func(cmd *cobra.Command, args []string) error {
-			info, err := initEnvCmd(cmd, args)
+			info, err := initEnvCmdName(tokens.QName(env), args)
 			if err != nil {
 				return err
 			}
@@ -55,6 +58,9 @@ func newDeployCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVarP(
 		&dryRun, "dry-run", "n", false,
 		"Don't actually update resources, just print out the planned updates (synonym for plan)")
+	cmd.PersistentFlags().StringVarP(
+		&env, "env", "e", "",
+		"Choose an environment other than the currently selected one")
 	cmd.PersistentFlags().BoolVar(
 		&showConfig, "show-config", false,
 		"Show configuration keys and variables")

@@ -36,6 +36,7 @@ func newEnvLsCmd() *cobra.Command {
 			defer ctx.Close()
 
 			fmt.Printf("%-20s %-48s %-12s\n", "NAME", "LAST DEPLOYMENT", "RESOURCE COUNT")
+			curr := getCurrentEnv()
 			for _, file := range files {
 				// Ignore directories.
 				if file.IsDir() {
@@ -66,7 +67,11 @@ func newEnvLsCmd() *cobra.Command {
 				if old != nil {
 					resourceCount = strconv.Itoa(len(old.Resources()))
 				}
-				fmt.Printf("%-20s %-48s %-12s\n", env.Name, lastDeploy, resourceCount)
+				display := env.Name
+				if display == curr {
+					display += "*" // fancify the current environment.
+				}
+				fmt.Printf("%-20s %-48s %-12s\n", display, lastDeploy, resourceCount)
 			}
 
 			return nil

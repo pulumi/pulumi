@@ -26,7 +26,7 @@ func newEnvInitCmd() *cobra.Command {
 			}
 
 			name := tokens.QName(args[0])
-			create(name)
+			createEnv(name)
 			return nil
 		}),
 	}

@@ -14,13 +14,13 @@ import (
 	"github.com/pulumi/coconut/pkg/tokens"
 )
 
-const Cocofile = "Coconut"     // the base name of a Cocofile.
-const Cocospace = "Cocospace"  // the base name of a markup file for shared settings in a workspace.
-const Cocopack = "Cocopack"    // the base name of a compiled CocoPack.
-const CocopackDir = ".coconut" // the default name of the CocoPack output directory.
-const CocopackBinDir = "bin"   // the default name of the CocoPack binary output directory.
-const CocopackEnvDir = "env"   // the default name of the CocoPack environment directory.
-const CocopackDepDir = "packs" // the directory in which dependencies exist, either local or global.
+const ProjectFile = "Coconut"    // the base name of a Project.
+const Dir = ".coconut"           // the default name of the CocoPack output directory.
+const PackFile = "Cocopack"      // the base name of a compiled CocoPack.
+const BinDir = "bin"             // the default name of the CocoPack binary output directory.
+const EnvDir = "env"             // the default name of the CocoPack environment directory.
+const DepDir = "packs"           // the directory in which dependencies exist, either local or global.
+const SettingsFile = "workspace" // the base name of a markup file for shared settings in a workspace.
 
 const InstallRootEnvvar = "COCONUT"             // the envvar describing where Coconut has been installed.
 const InstallRootLibdir = "lib"                 // the directory in which the Coconut standard library exists.
@@ -38,7 +38,7 @@ func InstallRoot() string {
 
 // EnvPath returns a path to the given environment's default location.
 func EnvPath(env tokens.QName) string {
-	path := filepath.Join(CocopackDir, CocopackEnvDir)
+	path := filepath.Join(Dir, EnvDir)
 	if env != "" {
 		path = filepath.Join(path, qnamePath(env)+encoding.Exts[0])
 	}
@@ -61,10 +61,10 @@ func pathDir(path string) string {
 }
 
 // DetectPackage locates the closest package from the given path, searching "upwards" in the directory hierarchy.  If no
-// Cocofile is found, an empty path is returned.  If problems are detected, they are logged to the diag.Sink.
+// Project is found, an empty path is returned.  If problems are detected, they are logged to the diag.Sink.
 func DetectPackage(path string, d diag.Sink) (string, error) {
 	// It's possible the target is already the file we seek; if so, return right away.
-	if IsCocofile(path, d) {
+	if IsProject(path, d) {
 		return path, nil
 	}
 
@@ -72,29 +72,29 @@ func DetectPackage(path string, d diag.Sink) (string, error) {
 	for {
 		stop := false
 
-		// Enumerate the current path's files, checking each to see if it's a Cocofile.
+		// Enumerate the current path's files, checking each to see if it's a Project.
 		files, err := ioutil.ReadDir(curr)
 		if err != nil {
 			return "", err
 		}
 
-		// See if there's a compiled Cocopack in the expected location.
-		pack := filepath.Join(CocopackDir, CocopackBinDir, Cocopack)
+		// See if there's a compiled package in the expected location.
+		pack := filepath.Join(Dir, BinDir, PackFile)
 		for _, ext := range encoding.Exts {
 			packfile := pack + ext
-			if IsCocopack(packfile, d) {
+			if IsPack(packfile, d) {
 				return packfile, nil
 			}
 		}
 
-		// Now look for individual Cocofiles.
+		// Now look for individual projects.
 		for _, file := range files {
 			name := file.Name()
 			path := filepath.Join(curr, name)
-			if IsCocofile(path, d) {
+			if IsProject(path, d) {
 				return path, nil
-			} else if IsCocospace(path, d) {
-				// If we hit a Cocospace file, stop looking.
+			} else if IsCocoDir(path) {
+				// If we hit a workspace, stop looking.
 				stop = true
 			}
 		}
@@ -114,22 +114,28 @@ func DetectPackage(path string, d diag.Sink) (string, error) {
 	return "", nil
 }
 
-// IsCocofile returns true if the path references what appears to be a valid Cocofile.  If problems are detected -- like
-// an incorrect extension -- they are logged to the provided diag.Sink (if non-nil).
-func IsCocofile(path string, d diag.Sink) bool {
-	return isMarkupFile(path, Cocofile, d)
+// IsCocoDir returns true if the target is a Coconut directory.
+func IsCocoDir(path string) bool {
+	info, err := os.Stat(path)
+	return err == nil && info.IsDir() && info.Name() == Dir
 }
 
-// IsCocopack returns true if the path references what appears to be a valid Cocopack.  If problems are detected -- like
+// IsProject returns true if the path references what appears to be a valid project.  If problems are detected -- like
 // an incorrect extension -- they are logged to the provided diag.Sink (if non-nil).
-func IsCocopack(path string, d diag.Sink) bool {
-	return isMarkupFile(path, Cocopack, d)
+func IsProject(path string, d diag.Sink) bool {
+	return isMarkupFile(path, ProjectFile, d)
 }
 
-// IsCocospace returns true if the path references what appears to be a valid Cocospace file.  If problems are detected --
+// IsPack returns true if the path references what appears to be a valid package.  If problems are detected -- like
+// an incorrect extension -- they are logged to the provided diag.Sink (if non-nil).
+func IsPack(path string, d diag.Sink) bool {
+	return isMarkupFile(path, PackFile, d)
+}
+
+// IsSettings returns true if the path references what appears to be a valid settings file.  If problems are detected --
 // like an incorrect extension -- they are logged to the provided diag.Sink (if non-nil).
-func IsCocospace(path string, d diag.Sink) bool {
-	return isMarkupFile(path, Cocospace, d)
+func IsSettings(path string, d diag.Sink) bool {
+	return isMarkupFile(path, SettingsFile, d)
 }
 
 func isMarkupFile(path string, expect string, d diag.Sink) bool {

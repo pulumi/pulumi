@@ -4,17 +4,20 @@ package cmd
 
 import (
 	"github.com/spf13/cobra"
+
+	"github.com/pulumi/coconut/pkg/tokens"
 )
 
 func newPlanCmd() *cobra.Command {
 	var analyzers []string
+	var env string
 	var showConfig bool
 	var showReplaceSteps bool
 	var showUnchanged bool
 	var summary bool
 	var output string
 	var cmd = &cobra.Command{
-		Use:     "plan <env> [<package>] [-- [<args>]]",
+		Use:     "plan [<package>] [-- [<args>]]",
 		Aliases: []string{"dryrun"},
 		Short:   "Show a plan to update, create, and delete an environment's resources",
 		Long: "Show a plan to update, create, and delete an environment's resources\n" +
@@ -28,7 +31,7 @@ func newPlanCmd() *cobra.Command {
 			"By default, the package to execute is loaded from the current directory.  Optionally, an\n" +
 			"explicit path can be provided using the [package] argument.",
 		Run: runFunc(func(cmd *cobra.Command, args []string) error {
-			info, err := initEnvCmd(cmd, args)
+			info, err := initEnvCmdName(tokens.QName(env), args)
 			if err != nil {
 				return err
 			}
@@ -50,6 +53,9 @@ func newPlanCmd() *cobra.Command {
 	cmd.PersistentFlags().StringSliceVar(
 		&analyzers, "analyzer", []string{},
 		"Run one or more analyzers as part of this deployment")
+	cmd.PersistentFlags().StringVarP(
+		&env, "env", "e", "",
+		"Choose an environment other than the currently selected one")
 	cmd.PersistentFlags().BoolVar(
 		&showConfig, "show-config", false,
 		"Show configuration keys and variables")

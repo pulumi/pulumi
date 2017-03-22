@@ -11,13 +11,14 @@ import (
 	"github.com/pulumi/coconut/pkg/tokens"
 )
 
-func newEnvConfigCmd() *cobra.Command {
+func newConfigCmd() *cobra.Command {
+	var env string
 	var unset bool
 	cmd := &cobra.Command{
-		Use:   "config <env> [<key> [value]]",
+		Use:   "config [<key> [value]]",
 		Short: "Query, set, replace, or unset configuration values",
 		Run: runFunc(func(cmd *cobra.Command, args []string) error {
-			info, err := initEnvCmd(cmd, args)
+			info, err := initEnvCmdName(tokens.QName(env), args)
 			if err != nil {
 				return err
 			}
@@ -62,6 +63,13 @@ func newEnvConfigCmd() *cobra.Command {
 			return nil
 		}),
 	}
-	cmd.PersistentFlags().BoolVar(&unset, "unset", false, "Unset a configuration value")
+
+	cmd.PersistentFlags().StringVarP(
+		&env, "env", "e", "",
+		"Choose an environment other than the currently selected one")
+	cmd.PersistentFlags().BoolVar(
+		&unset, "unset", false,
+		"Unset a configuration value")
+
 	return cmd
 }

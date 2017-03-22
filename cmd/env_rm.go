@@ -36,7 +36,7 @@ func newEnvRmCmd() *cobra.Command {
 			// Ensure the user really wants to do this.
 			if yes ||
 				confirmPrompt("This will permanently remove the '%v' environment!", info.Env.Name) {
-				remove(info.Env)
+				removeEnv(info.Env)
 			}
 
 			return nil
