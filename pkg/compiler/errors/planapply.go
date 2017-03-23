@@ -6,7 +6,7 @@ package errors
 var (
 	ErrorCantCreateCompiler     = newError(2000, "An error occurred during compiler construction: %v")
 	ErrorCantReadPackage        = newError(2001, "An error occurred while reading the package '%v': %v")
-	ErrorCantCreateSnapshot     = newError(2002, "A problem was encountered creating a snapshot: %v")
+	ErrorCantCreateSnapshot     = newError(2002, "A problem was found during planning: %v")
 	ErrorPlanApplyFailed        = newError(2003, "Plan apply failed: %v")
 	ErrorIllegalMarkupExtension = newError(2004, "Resource serialization failed; illegal markup extension '%v'")
 	ErrorCantReadDeployment     = newError(2005, "Could not read deployment file '%v': %v")
