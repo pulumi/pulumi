@@ -98,13 +98,13 @@ func (eci *envCmdInfo) Close() error {
 	return eci.Ctx.Close()
 }
 
-func confirmPrompt(msg string, args ...interface{}) bool {
-	prompt := fmt.Sprintf(msg, args...)
+func confirmPrompt(msg string, name tokens.QName) bool {
+	prompt := fmt.Sprintf(msg, name)
 	fmt.Printf(
 		colors.ColorizeText(fmt.Sprintf("%v%v%v\n", colors.SpecAttention, prompt, colors.Reset)))
-	fmt.Printf("Please confirm that this is what you'd like to do by typing (\"yes\"): ")
+	fmt.Printf("Please confirm that this is what you'd like to do by typing (\"%v\"): ", name)
 	reader := bufio.NewReader(os.Stdin)
-	if line, _ := reader.ReadString('\n'); line != "yes\n" {
+	if line, _ := reader.ReadString('\n'); line != string(name)+"\n" {
 		fmt.Fprintf(os.Stderr, "Confirmation declined -- exiting without doing anything\n")
 		return false
 	}
