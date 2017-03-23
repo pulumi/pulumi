@@ -24,6 +24,7 @@ import (
 	"github.com/pulumi/coconut/pkg/encoding"
 	"github.com/pulumi/coconut/pkg/eval/heapstate"
 	"github.com/pulumi/coconut/pkg/eval/rt"
+	"github.com/pulumi/coconut/pkg/graph/dotconv"
 	"github.com/pulumi/coconut/pkg/pack"
 	"github.com/pulumi/coconut/pkg/resource"
 	"github.com/pulumi/coconut/pkg/tokens"
@@ -280,6 +281,17 @@ func plan(cmd *cobra.Command, info *envCmdInfo, opts applyOptions) *planResult {
 			return nil
 		}
 
+		// Next, if a DOT output is requested, generate it and quite right now.
+		// TODO: generate this DOT from the snapshot/diff, not the raw object graph.
+		if opts.DOT {
+			// Convert the output to a DOT file.
+			if err := dotconv.Print(result.Heap.G, os.Stdout); err != nil {
+				sink().Errorf(errors.ErrorIO,
+					fmt.Errorf("failed to write DOT file to output: %v", err))
+			}
+			return nil
+		}
+
 		// Create a resource snapshot from the compiled/evaluated object graph.
 		var err error
 		new, err = resource.NewGraphSnapshot(
@@ -517,6 +529,7 @@ type applyOptions struct {
 	ShowReplaceSteps bool     // true to show the replacement steps in the plan.
 	ShowUnchanged    bool     // true to show the resources that aren't updated, in addition to those that are.
 	Summary          bool     // true if we should only summarize resources and operations.
+	DOT              bool     // true if we should print the DOT file for this plan.
 	Output           string   // the place to store the output, if any.
 }
 

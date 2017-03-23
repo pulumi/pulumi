@@ -52,7 +52,7 @@ func newPackEvalCmd() *cobra.Command {
 						return fmt.Errorf("failed to write DOT file to output: %v", err)
 					}
 				} else {
-					// Just print a very basic, yet (hopefully) aesthetically pleasinge, ascii-ization of the graph.
+					// Just print a very basic, yet (hopefully) aesthetically pleasing, ascii-ization of the graph.
 					shown := make(map[graph.Vertex]bool)
 					for _, root := range result.Heap.G.Objs() {
 						printVertex(root.ToObj(), shown, "")

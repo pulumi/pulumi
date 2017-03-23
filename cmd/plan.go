@@ -10,6 +10,7 @@ import (
 
 func newPlanCmd() *cobra.Command {
 	var analyzers []string
+	var dotOutput bool
 	var env string
 	var showConfig bool
 	var showReplaceSteps bool
@@ -44,6 +45,7 @@ func newPlanCmd() *cobra.Command {
 				ShowReplaceSteps: showReplaceSteps,
 				ShowUnchanged:    showUnchanged,
 				Summary:          summary,
+				DOT:              dotOutput,
 				Output:           output,
 			})
 			return nil
@@ -53,6 +55,9 @@ func newPlanCmd() *cobra.Command {
 	cmd.PersistentFlags().StringSliceVar(
 		&analyzers, "analyzer", []string{},
 		"Run one or more analyzers as part of this deployment")
+	cmd.PersistentFlags().BoolVar(
+		&dotOutput, "dot", false,
+		"Output the plan as a DOT digraph (graph description language)")
 	cmd.PersistentFlags().StringVarP(
 		&env, "env", "e", "",
 		"Choose an environment other than the currently selected one")
