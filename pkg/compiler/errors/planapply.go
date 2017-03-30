@@ -13,7 +13,7 @@ var (
 	ErrorDuplicateURNNames      = newError(2006, "Duplicate objects with the same URN: %v")
 	ErrorInvalidEnvName         = newError(2007, "Environment '%v' could not be found in the current workspace")
 	ErrorIllegalConfigToken     = newError(2008,
-		"Configs may only target module properties and class static properties; %v is neither")
+		"Configs may only target module properties and class static properties; '%v' is neither")
 	ErrorConfigApplyFailure           = newError(2009, "One or more errors occurred while applying '%v's configuration")
 	ErrorResourcePropertyValueInvalid = newError(2010, "Resource '%v's property '%v' has a problem: %v")
 	ErrorAnalyzeFailure               = newError(2011, "Analyzer '%v' reported an error: %v")
