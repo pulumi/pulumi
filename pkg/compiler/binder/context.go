@@ -305,7 +305,6 @@ func (ctx *Context) LookupFunctionType(node ast.Function) *symbols.FunctionType 
 
 // lookupBasicType handles decorated types (pointers, arrays, maps, functions) and primitives.
 func (ctx *Context) lookupBasicType(node diag.Diagable, tok tokens.Type, require bool) symbols.Type {
-	contract.Require(node != nil, "node")
 	contract.Requiref(tok.Primitive() || tok.Decorated(), "tok", "Primitive() || Decorated()")
 
 	// If a pointer, parse it, bind the element type, and create a new pointer type.
