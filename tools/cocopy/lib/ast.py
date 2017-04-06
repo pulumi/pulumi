@@ -1,7 +1,7 @@
 # Copyright 2017 Pulumi, Inc. All rights reserved.
 
 class Node:
-    """A discriminated union type for all serialized blocks and instructions."""
+    """An ancestor discriminated union type for all AST nodes."""
     def __init__(self, kind, loc=None):
         self.kind = kind # the string discriminator for the node type (mostly for serialization/deserialization).
         self.loc = loc   # the optional program debugging location information.
@@ -16,16 +16,33 @@ class Node:
 
 class Location:
     """A location, possibly a region, in the source code."""
-    def __init__(self, file=None, start=None, end=None):
+    def __init__(self, file, start, end=None):
         self.file = file   # the source filename this location refers to.
         self.start = start # the starting position.
         self.end = end     # the ending position (if a range, None otherwise).
+
+    def __str__(self):
+        if self.start == self.end or self.end == None:
+            return "{}:{}".format(self.file, self.start)
+        else:
+            return "{}:{}-{}".format(self.file, self.start, self.end)
+
+    def __eq__(self, other):
+        return (type(self) == type(other) and
+            self.file == other.file and self.start == other.start and self.end == other.end)
 
 class Position:
     """A 1-indexed line and column number."""
     def __init__(self, line, column):
         self.line = line
         self.column = column
+
+    def __str__(self):
+        return "{}:{}".format(self.line, self.column)
+
+    def __eq__(self, other):
+        return (type(self) == type(other) and
+            self.line == other.line and self.column == other.column)
 
 #
 # Generic nodes
@@ -63,6 +80,7 @@ class TypeToken(Node):
 class Definition(Node):
     """A definition is something that is possibly exported for external usage."""
     def __init__(self, kind, name, description=None, loc=None):
+        assert isinstance(name, Identifier)
         super(Definition, self).__init__(kind, loc)
         self.name = name
         self.description = description
@@ -73,22 +91,22 @@ class Definition(Node):
 
 class Module(Definition):
     """A module contains members, including variables, functions, and/or classes."""
-    def __init__(self, imports=None, exports=None, members=None, loc=None):
-        super(Module, self).__init__("Module", loc)
+    def __init__(self, name, imports=None, exports=None, members=None, loc=None):
+        super(Module, self).__init__("Module", name, loc=loc)
         self.imports = imports
         self.exports = exports
         self.members = members
 
 class Export(Definition):
     """An export definition re-exports a definition from another module, possibly under a different name."""
-    def __init__(self, referent, loc=None):
-        super(Export, self).__init__("Export", loc)
+    def __init__(self, name, referent, loc=None):
+        super(Export, self).__init__("Export", name, loc=loc)
         self.referent = referent
 
 class ModuleMember(Definition):
     """A module member is a definition that belongs to a module."""
-    def __init__(self, kind, loc=None):
-        super(ModuleMember, self).__init__(kind, loc)
+    def __init__(self, kind, name, loc=None):
+        super(ModuleMember, self).__init__(kind, name, loc=loc)
 
 # ...Classes
 
@@ -107,8 +125,8 @@ class Class(ModuleMember):
 
 class ClassMember(Definition):
     """A class member is a definition that belongs to a class."""
-    def __init__(self, kind, access=None, static=None, loc=None):
-        super(ClassMember, self).__init__(kind, loc)
+    def __init__(self, kind, name, access=None, static=None, loc=None):
+        super(ClassMember, self).__init__(kind, name, loc=loc)
         self.access = access
         self.static = static
 
@@ -116,25 +134,25 @@ class ClassMember(Definition):
 
 class Variable(Definition):
     """A variable is an optionally typed storage location."""
-    def __init__(self, kind, type=None, default=None, readonly=None, loc=None):
-        super(Variable, self).__init__(kind, loc)
+    def __init__(self, kind, name, type, default=None, readonly=None, loc=None):
+        super(Variable, self).__init__(kind, name, loc=loc)
         self.type = type
         self.default = default
         self.readonly = readonly
 
 class LocalVariable(Variable):
     """A variable that is lexically scoped within a function (either a parameter or local)."""
-    def __init__(self, type=None, default=None, readonly=None, loc=None):
+    def __init__(self, type, default=None, readonly=None, loc=None):
         super(LocalVariable, self).__init__("LocalVariable", type, default, readonly, loc)
 
 class ModuleProperty(Variable, ModuleMember):
     """A module property is like a variable but belongs to a module."""
-    def __init__(self, type=None, default=None, readonly=None, loc=None):
+    def __init__(self, type, default=None, readonly=None, loc=None):
         super(ModuleProperty, self).__init__("ModuleProperty", type, default, readonly, loc)
 
 class ClassProperty(Variable, ClassMember):
     """A class property is just like a module property with some extra attributes."""
-    def __init__(self, type=None, default=None, readonly=None,
+    def __init__(self, type, default=None, readonly=None,
             access=None, static=None, primary=None, optional=None, loc=None):
         super(ClassProperty, self).__init__("ClassProperty", type, default, readonly, loc)
         self.access = access
@@ -146,9 +164,9 @@ class ClassProperty(Variable, ClassMember):
 
 class Function(Definition):
     """A function is an executable bit of code: a class function, class method, or lambda."""
-    def __init__(self, kind, parameters=None, return_type=None, body=None, loc=None):
-        assert(body is None or body.is_statement())
-        super(Function, self).__init__(kind, loc)
+    def __init__(self, kind, name, parameters=None, return_type=None, body=None, loc=None):
+        assert body is None or body.is_statement()
+        super(Function, self).__init__(kind, name, loc=loc)
         self.parameters = parameters
         self.return_type = return_type
         self.body = body
@@ -182,7 +200,7 @@ class Statement(Node):
 
 class Block(Statement):
     def __init__(self, statements, loc=None):
-        assert(all(stmt.is_stmt() for stmt in statements))
+        assert all(stmt.is_stmt() for stmt in statements)
         super(Block, self).__init__("Block", loc)
         self.statements = statements
 
@@ -225,9 +243,9 @@ class ContinueStatement(Statement):
 class IfStatement(Statement):
     """An `if` statement."""
     def __init__(self, condition, consequent, alternate=None, loc=None):
-        assert(condition.is_expression())
-        assert(consequent.is_statement())
-        assert(alternate is None or alternate.is_statement())
+        assert condition.is_expression()
+        assert consequent.is_statement()
+        assert alternate is None or alternate.is_statement()
         super(IfStatement, self).__init__("IfStatement", loc)
         self.condition = condition   # a `bool` condition expression.
         self.consequent = consequent # the statement to execute if `true`.
@@ -236,7 +254,7 @@ class IfStatement(Statement):
 class SwitchStatement(Statement):
     """A `switch` statement."""
     def __init__(self, expression, cases, loc=None):
-        assert(expression.is_expression())
+        assert expression.is_expression()
         super(SwitchStatement, self).__init__("SwitchStatement", loc)
         self.expression = expression # the value being switched upon.
         self.cases = cases           # the list of switch cases to be matched, in order.
@@ -244,7 +262,7 @@ class SwitchStatement(Statement):
 class SwitchCase(Node):
     """A single case of a `switch` to be matched."""
     def __init__(self, consequent, clause=None, loc=None):
-        assert(consequent.is_statement())
+        assert consequent.is_statement()
         super(SwitchCase, self).__init__("SwitchCase", loc)
         self.consequent = consequent # the statement to execute if there is a match.
         self.clause = clause         # the optional switch clause; if undefined, default.
@@ -252,7 +270,7 @@ class SwitchCase(Node):
 class LabeledStatement(Statement):
     """A labeled statement associates an identifier with a statement for purposes of labeled jumps."""
     def __init__(self, label, statement, loc=None):
-        assert(statement.is_statement())
+        assert statement.is_statement()
         super(LabeledStatement, self).__init__("LabeledStatement", loc)
         self.label = label
         self.statement = statement
@@ -266,15 +284,15 @@ class ReturnStatement(Statement):
 class ThrowStatement(Statement):
     """A `throw` statement to throw an exception object."""
     def __init__(self, expression, loc=None):
-        assert(expression.is_expression())
+        assert expression.is_expression()
         super(ThrowStatement, self).__init__("ThrowStatement", loc)
         self.expression = expression
 
 class WhileStatement(Statement):
     """A `while` statement."""
     def __init__(self, body, condition=None, loc=None):
-        assert(body.is_statement())
-        assert(condition is None or condition.is_expression())
+        assert body.is_statement()
+        assert condition is None or condition.is_expression()
         super(WhileStatement, self).__init__("WhileStatement", loc)
         self.body = body           # the body to execute provided the condition remains `true`.
         self.condition = condition # a `bool` expression indicating whether to continue.
@@ -282,10 +300,10 @@ class WhileStatement(Statement):
 class ForStatement(Statement):
     """A `for` statement."""
     def __init__(self, body, init=None, condition=None, post=None, loc=None):
-        assert(body.is_statement())
-        assert(init is None or init.is_statement())
-        assert(condition is None or condition.is_expression())
-        assert(post is None or post.is_statement())
+        assert body.is_statement()
+        assert init is None or init.is_statement()
+        assert condition is None or condition.is_expression()
+        assert post is None or post.is_statement()
         super(ForStatement, self).__init__("ForStatement", loc)
         self.body = body           # the body to execute provided the condition remains `true`.
         self.init = init           # an initialization statement.
@@ -302,14 +320,14 @@ class EmptyStatement(Statement):
 class MultiStatement(Statement):
     """Multiple statements in one (unlike a block, this doesn't introduce a new scope)."""
     def __init__(self, statements, loc=None):
-        assert(all(stmt.is_stmt() for stmt in statements))
+        assert all(stmt.is_stmt() for stmt in statements)
         super(MultiStatement, self).__init__("MultiStatement", loc)
         self.statements = statements
 
 class ExpressionStatement(Statement):
     """A statement that performs an expression, but ignores its result."""
     def __init__(self, expression, loc=None):
-        assert(expression.is_expression())
+        assert expression.is_expression()
         super(ExpressionStatement, self).__init__("ExpressionStatement", loc)
         self.expression = expression
 
@@ -371,7 +389,7 @@ class ObjectLiteral(Literal):
 class ObjectLiteralProperty(Node):
     """An object literal property initializer."""
     def __init__(self, property, value, loc=None):
-        assert(value.is_expression())
+        assert value.is_expression()
         super(ObjectLiteralProperty, self).__init__("ObjectLiteralProperty", loc)
         self.property = property
         self.value = value
@@ -413,7 +431,7 @@ class InvokeFunctionExpression(CallExpression):
     """Invokes a function."""
     def __init__(self, function, arguments=None, loc=None):
         super(InvokeFunctionExpression, self).__init__("InvokeFunctionExpression", arguments, loc)
-        assert(function.is_expression())
+        assert function.is_expression()
         self.function = function # a function to invoke (of a func type).
 
 class LambdaExpression(Expression):
@@ -450,9 +468,9 @@ def is_unary_operator(op):
 class UnaryOperatorExpression(Expression):
     """A unary operator expression."""
     def __init__(self, operator, operand, postfix=None, loc=None):
-        assert(is_unary_operator(operator))
-        assert(operand.is_expression())
-        assert(not postfix or operator is unary_pfix_ops)
+        assert is_unary_operator(operator)
+        assert operand.is_expression()
+        assert not postfix or operator is unary_pfix_ops
         super(UnaryOperatorExpression, self).__init__("UnaryOperatorExpression", loc)
         self.operator = operator # the operator type.
         self.operand = operand   # the right hand side operand.
@@ -526,9 +544,9 @@ def is_binary_operator(op):
 class BinaryOperatorExpression(Expression):
     """A binary operator expression (assignment, logical, operator, or relational)."""
     def __init__(self, left, operator, right, loc=None):
-        assert(left.is_expression())
-        assert(is_binary_operator(operator))
-        assert(right.is_expression())
+        assert left.is_expression()
+        assert is_binary_operator(operator)
+        assert right.is_expression()
         super(BinaryOperatorExpression, self).__init__("BinaryOperatorExpression", loc)
         self.left = left         # the left hand side.
         self.operator = operator # the operator type.
@@ -539,7 +557,7 @@ class BinaryOperatorExpression(Expression):
 class CastExpression(Expression):
     """A cast handles both nominal and structural casts, and will throw an exception upon failure."""
     def __init__(self, expression, type, loc=None):
-        assert(expression.is_expression())
+        assert expression.is_expression()
         super(CastExpression, self).__init__("CastExpression", loc)
         self.expression = expression # the source expression.
         self.type = type             # the target type token.
@@ -547,7 +565,7 @@ class CastExpression(Expression):
 class IsInstExpression(Expression):
     """An isinst checks an expression for compatibility with a given type, evaluating to a boolean."""
     def __init__(self, expression, type, loc=None):
-        assert(expression.is_expression())
+        assert expression.is_expression()
         super(IsInstExpression, self).__init__("IsInstExpression", loc)
         self.expression = expression # the source expression.
         self.type = type             # the target type token.
@@ -555,7 +573,7 @@ class IsInstExpression(Expression):
 class TypeOfExpression(Expression):
     """A typeof instruction gets the type token -- just a string -- of a particular expression at runtime."""
     def __init__(self, expression, loc=None):
-        assert(expression.is_expression())
+        assert expression.is_expression()
         super(TypeOfExpression, self).__init__("TypeOfExpression", loc)
         self.expression = expression # the source expression.
 
@@ -564,9 +582,9 @@ class TypeOfExpression(Expression):
 class ConditionalExpression(Expression):
     """A conditional expression."""
     def __init__(self, condition, consequent, alternate, loc=None):
-        assert(condition.is_expression())
-        assert(consequent.is_expression())
-        assert(alternate.is_expression())
+        assert condition.is_expression()
+        assert consequent.is_expression()
+        assert alternate.is_expression()
         super(ConditionalExpression, self).__init__("ConditionalExpression", loc)
         self.condition = condition   # a `bool` condition expression.
         self.consequent = consequent # the expression to evaluate if `true`.
@@ -575,7 +593,7 @@ class ConditionalExpression(Expression):
 class SequenceExpression(Expression):
     """A expression allows composition of multiple expressions into one.  It evaluates to the last one's value."""
     def __init__(self, expressions, loc=None):
-        assert(all(expr.is_expression() for expr in expressions))
+        assert all(expr.is_expression() for expr in expressions)
         super(SequenceExpression, self).__init__("SequenceExpression", loc)
         self.expressions = expressions
 
