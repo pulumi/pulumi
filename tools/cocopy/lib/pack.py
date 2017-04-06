@@ -16,13 +16,13 @@ unmarshalers = {
 class Package:
     """A fully compiled Coconut package definition."""
     def __init__(self, name, description=None, author=None, website=None, license=None,
-            dependencies=None, modules=None, aliases=None):
-        self.name = name                                              # a required fully qualified name.
-        if description is not None: self.description = description    # an optional informational description.
-        if author is not None: self.author = author                   # an optional author email address.
-        if website is not None: self.website = website                # an optional website for additional information.
-        if license is not None: self.license = license                # an optional license governing usage.
-        if dependencies is not None: self.dependencies = dependencies # all of the package's dependencies.
-        if modules is not None: self.modules = modules                # a collection of top-level modules.
-        if aliases is not None: self.aliases = aliases                # an optional map of aliased module names.
+            dependencies=dict(), modules=dict(), aliases=dict()):
+        self.name = name                 # a required fully qualified name.
+        self.description = description   # an optional informational description.
+        self.author = author             # an optional author email address.
+        self.website = website           # an optional website for additional information.
+        self.license = license           # an optional license governing usage.
+        self.dependencies = dependencies # all of the package's dependencies.
+        self.modules = modules           # a collection of top-level modules.
+        self.aliases = aliases           # an optional map of aliased module names.
 

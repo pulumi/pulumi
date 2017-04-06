@@ -36,10 +36,6 @@ class Transformer:
     """A transformer is responsible for transpiling Python program ASTs into Coconut packages and ASTs."""
     def __init__(self, loader, pkg):
         self.loader = loader
-        # Initialize the various maps to empty if they aren't defined yet.
-        if not pkg.dependencies: pkg.dependencies = dict()
-        if not pkg.modules: pkg.modules = dict()
-        if not pkg.aliases: pkg.aliases = dict()
         self.pkg = pkg
 
     def transform(self, modules):
@@ -97,12 +93,12 @@ class Loader:
                         d = pack.unmarshalers[ext](raw)
                         if not d.get("name"):
                             raise Exception("Missing name in package '{}'".format(pkgpath))
-                        pkg = pack.Package(d["name"])
-                        pkg.description = d.get("description")
-                        pkg.author = d.get("author")
-                        pkg.website = d.get("website")
-                        pkg.license = d.get("license")
-                        pkg.dependencies = d.get("dependencies")
+                        pkg = pack.Package(d["name"],
+                                description = d.get("description"),
+                                author = d.get("author"),
+                                website = d.get("website"),
+                                license = d.get("license"),
+                                dependencies = d.get("dependencies"))
                         break
                     except IOError:
                         # Ignore this error and we will keep searching.
