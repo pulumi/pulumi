@@ -8,7 +8,7 @@ import * as pack from "../pack";
 import {compileScript, Script, ScriptOutputs} from "./script";
 import {transform, TransformResult} from "./transform";
 
-// Compiles a TypeScript program, translates it into CocoPack/NutIL, and returns the output.
+// Compiles a TypeScript program, translates it into CocoPack/CocoIL, and returns the output.
 //
 // The path can be one of three things: 1) a single TypeScript file (`*.ts`), 2) a TypeScript project file
 // (`tsconfig.json`), or 3) a directory containing a TypeScript project file.  An optional set of compiler options may
@@ -23,7 +23,7 @@ export async function compile(path: string): Promise<CompileResult> {
     let script: Script = await compileScript(path);
     let diagnostics: diag.Diagnostic[] = script.diagnostics;
 
-    // Next, if there is a tree to transpile into CocoPack/NutIL, then do it.
+    // Next, if there is a tree to transpile into CocoPack/CocoIL, then do it.
     let pkg: pack.Package | undefined;
     if (script.tree && diag.success(diagnostics)) {
         let result: TransformResult = await transform(script);
@@ -53,7 +53,7 @@ export class CompileResult {
 
     constructor(public readonly root:          string,                    // the root path for the compilation.
                 public readonly diagnostics:   diag.Diagnostic[],         // any diagnostics resulting from translation.
-                public readonly pkg:           pack.Package | undefined,  // the resulting CocoPack/NutIL AST.
+                public readonly pkg:           pack.Package | undefined,  // the resulting CocoPack/CocoIL AST.
                 public readonly definitions:   ScriptOutputs | undefined, // the resulting TypeScript definition files.
                 public readonly preferredOut?: string,                    // an optional preferred output location.
     ) {

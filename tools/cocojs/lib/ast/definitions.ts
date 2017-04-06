@@ -19,7 +19,6 @@ export interface Definition extends Node {
 // A module contains members, including variables, functions, and/or classes.
 export interface Module extends Definition {
     kind:     ModuleKind;
-    default?: boolean;       // true if this is the package entrypoint (just one).
     imports?: ModuleToken[]; // an ordered list of import modules to initialize.
     exports?: ModuleExports; // a list of exported members, keyed by name.
     members?: ModuleMembers; // a list of members, keyed by their simple name.
@@ -107,7 +106,7 @@ export interface Function extends Definition {
     body?:       statements.Block;
 }
 
-// A module method is just a function with an accessibility.
+// A module method is just a function defined at the module scope.
 export interface ModuleMethod extends Function, ModuleMember {
     kind: ModuleMethodKind;
 }

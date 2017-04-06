@@ -8,7 +8,7 @@ import {compiler, pack} from "../../lib";
 import {asyncTest} from "../util";
 
 // This test suite loops through a list of programs and compiles each one.  For each, the expected set of diagnostics
-// are compared and, if successful, the lowered NutPack/NutIL AST is compared to the expected final output.
+// are compared and, if successful, the lowered NutPack/CocoIL AST is compared to the expected final output.
 
 let testCases: string[] = [
     // Basic language constructs.

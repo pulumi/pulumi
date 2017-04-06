@@ -14,7 +14,7 @@ import {Script} from "./script";
 
 const defaultExport: string = "default"; // the ES6 default export name.
 
-// A mapping from TypeScript binary operator to NutIL AST operator.
+// A mapping from TypeScript binary operator to CocoIL AST operator.
 let binaryOperators = new Map<ts.SyntaxKind, ast.BinaryOperator>([
     // Arithmetic
     [ ts.SyntaxKind.PlusToken,                                    "+"   ],
@@ -66,7 +66,7 @@ let binaryOperators = new Map<ts.SyntaxKind, ast.BinaryOperator>([
     // TODO: [ ts.SyntaxKind.InstanceOfKeyword,                   "instanceof" ],
 ]);
 
-// A mapping from TypeScript unary prefix operator to NutIL AST operator.
+// A mapping from TypeScript unary prefix operator to CocoIL AST operator.
 let prefixUnaryOperators = new Map<ts.SyntaxKind, ast.UnaryOperator>([
     [ ts.SyntaxKind.PlusPlusToken,    "++" ],
     [ ts.SyntaxKind.MinusMinusToken,  "--" ],
@@ -76,19 +76,19 @@ let prefixUnaryOperators = new Map<ts.SyntaxKind, ast.UnaryOperator>([
     [ ts.SyntaxKind.ExclamationToken, "!"  ],
 ]);
 
-// A mapping from TypeScript unary postfix operator to NutIL AST operator.
+// A mapping from TypeScript unary postfix operator to CocoIL AST operator.
 let postfixUnaryOperators = new Map<ts.SyntaxKind, ast.UnaryOperator>([
     [ ts.SyntaxKind.PlusPlusToken,    "++" ],
     [ ts.SyntaxKind.MinusMinusToken,  "--" ],
 ]);
 
-// A variable is a NutIL variable with an optional initializer expression.  This is required because NutIL doesn't
+// A variable is a CocoIL variable with an optional initializer expression.  This is required because CocoIL doesn't
 // support complex initializers on the Variable AST node -- they must be explicitly placed into an initializer section.
 class VariableDeclaration<TVariable extends ast.Variable> {
     constructor(
         public node:         ts.Node,        // the source node.
         public tok:          tokens.Token,   // the qualified token name for this variable.
-        public variable:     TVariable,      // the NutIL variable information.
+        public variable:     TVariable,      // the CocoIL variable information.
         public legacyVar?:   boolean,        // true to mimick legacy ECMAScript "var" behavior; false for "let".
         public initializer?: ast.Expression, // an optional initialization expression.
     ) { }
@@ -187,7 +187,7 @@ function notYetImplemented(node: ts.Node | undefined, label?: string): never {
     return contract.fail(msg);
 }
 
-// A transpiler is responsible for transforming TypeScript program artifacts into CocoPack/NutIL AST forms.
+// A transpiler is responsible for transforming TypeScript program artifacts into CocoPack/CocoIL AST forms.
 export class Transformer {
     // Immutable elements of the transformer that exist throughout an entire pass:
     private readonly pkg: pack.Manifest;             // the package's manifest.
@@ -219,7 +219,7 @@ export class Transformer {
     constructor(pkg: pack.Manifest, script: Script, loader: PackageLoader) {
         contract.requires(!!pkg, "pkg", "A package manifest must be supplied");
         contract.requires(!!pkg.name, "pkg.name", "A package must have a valid name");
-        contract.requires(!!script.tree, "script", "A valid CocoJS AST is required to lower to CocoPack/NutIL");
+        contract.requires(!!script.tree, "script", "A valid CocoJS AST is required to lower to CocoPack/CocoIL");
         this.pkg = pkg;
         this.script = script;
         this.dctx = new diag.Context(script.root);
@@ -236,8 +236,8 @@ export class Transformer {
         this.builtinMapType = this.getOptionalBuiltinType("Map", 2);
     }
 
-    // Translates a TypeScript bound tree into its equivalent CocoPack/NutIL AST form, one module per file.  This method
-    // is asynchronous because it may need to perform I/O in order to fully resolve dependency packages.
+    // Translates a TypeScript bound tree into its equivalent CocoPack/CocoIL AST form, one module per file.  This
+    // method is asynchronous because it may need to perform I/O in order to fully resolve dependency packages.
     public async transform(): Promise<TransformResult> {
         let priorPackageDependencies: Set<tokens.PackageToken> | undefined = this.currentPackageDependencies;
         try {
@@ -466,12 +466,12 @@ export class Transformer {
         return dst;
     }
 
-    // This annotates a given CocoPack/NutIL node with another TypeScript node's source position information.
+    // This annotates a given CocoPack/CocoIL node with another TypeScript node's source position information.
     private withLocation<T extends ast.Node>(src: ts.Node, dst: T): T {
         return this.dctx.withLocation<T>(src, dst);
     }
 
-    // This annotates a given CocoPack/NutIL node with a range of TypeScript node source positions.
+    // This annotates a given CocoPack/CocoIL node with a range of TypeScript node source positions.
     private withLocationRange<T extends ast.Node>(start: ts.Node, end: ts.Node, dst: T): T {
         return this.dctx.withLocationRange<T>(start, end, dst);
     }
@@ -594,14 +594,14 @@ export class Transformer {
         return `${classtok}${tokens.tokenDelimiter}${member}`;
     }
 
-    // createModuleReference turns a ECMAScript import path into a NutIL module token.
+    // createModuleReference turns a ECMAScript import path into a CocoIL module token.
     private createModuleReference(sym: ts.Symbol): ModuleReference {
         contract.assert(!!(sym.flags & (ts.SymbolFlags.ValueModule | ts.SymbolFlags.NamespaceModule)),
                         `Symbol is not a module: ${ts.SymbolFlags[sym.flags]}`);
         return this.createModuleReferenceFromPath(sym.name);
     }
 
-    // createModuleReferenceFromPath turns a ECMAScript import path into a NutIL module reference.
+    // createModuleReferenceFromPath turns a ECMAScript import path into a CocoIL module reference.
     private createModuleReferenceFromPath(path: string): ModuleReference {
         // Module paths can be enclosed in quotes; eliminate them.
         if (path && path[0] === "\"") {
@@ -727,7 +727,7 @@ export class Transformer {
             //        which can safely compress to Strings) can be compressed just to the shared root type.
             //        TODO[pulumi/mu#82]: eventually, we will support union and literal types natively.
             //
-            //     2) Any `undefined` or `null` types can be stripped out.  The reason is that everything in NutIL is
+            //     2) Any `undefined` or `null` types can be stripped out.  The reason is that everything in CocoIL is
             //        nullable at the moment.  (Note that the special case of `T?` as an interface property is encoded
             //        as `T|undefined`.)  The result is that we just yield just the underlying naked type.
             //        TODO[pulumi/mu#64]: eventually we want to consider supporting nullability in a first class way.
@@ -766,7 +766,7 @@ export class Transformer {
         return [ ty, ty.flags ];
     }
 
-    // resolveTypeToken takes a concrete TypeScript Type resolves it to a fully qualified NutIL type token name.
+    // resolveTypeToken takes a concrete TypeScript Type resolves it to a fully qualified CocoIL type token name.
     private async resolveTypeToken(node: ts.Node, ty: ts.Type): Promise<tokens.TypeToken | undefined> {
         // First, simplify the type, if possible, before emitting it.
         let simple: ts.Type;
@@ -872,7 +872,7 @@ export class Transformer {
     }
 
     // resolveTypeTokenFromTypeLike takes a TypeScript AST node that carries possible typing information and resolves
-    // it to fully qualified NutIL type token name.
+    // it to fully qualified CocoIL type token name.
     private async resolveTypeTokenFromTypeLike(node: TypeLike): Promise<ast.TypeToken> {
         // Note that we use the getTypeAtLocation API, rather than node's type AST information, so that we can get the
         // fully bound type.  The compiler may have arranged for this to be there through various means, e.g. inference.
@@ -884,7 +884,7 @@ export class Transformer {
         });
     }
 
-    // transformIdentifier takes a TypeScript identifier node and yields a true NutIL identifier.
+    // transformIdentifier takes a TypeScript identifier node and yields a true CocoIL identifier.
     private transformIdentifier(node: ts.Identifier): ast.Identifier {
         return this.withLocation(node, ident(node.text));
     }
@@ -1005,7 +1005,7 @@ export class Transformer {
     /** Modules **/
 
     // This transforms top-level TypeScript module elements into their corresponding nodes.  This transformation
-    // is largely evident in how it works, except that "loose code" (arbitrary statements) is not permitted in NutIL.
+    // is largely evident in how it works, except that "loose code" (arbitrary statements) is not permitted in CocoIL.
     // As such, the appropriate top-level definitions (variables, functions, and classes) are returned as
     // definitions, while any loose code (including variable initializers) is bundled into module inits and entrypoints.
     private async transformSourceFile(node: ts.SourceFile): Promise<ast.Module> {
@@ -1243,7 +1243,7 @@ export class Transformer {
             //
             //     export { a as x, b as y, c as z }[ from "module"];
             //
-            // For every export clause, we will issue a top-level NutIL re-export AST node.
+            // For every export clause, we will issue a top-level CocoIL re-export AST node.
             for (let exportClause of node.exportClause.elements) {
                 let srcname: ast.Identifier = this.transformIdentifier(exportClause.name);
                 let dstname: ast.Identifier = srcname;
@@ -1457,8 +1457,8 @@ export class Transformer {
         }
     }
 
-    // This routine transforms a declaration statement in TypeScript to a NutIL definition.  Note that definitions in
-    // NutIL aren't statements, hence the partitioning between transformDeclaration and transformStatement.  Note that
+    // This routine transforms a declaration statement in TypeScript to a CocoIL definition.  Note that definitions in
+    // CocoIL aren't statements, hence the partitioning between transformDeclaration and transformStatement.  Note that
     // variables do not result in Definitions because they may require higher-level processing to deal with initializer.
     private async transformModuleDeclarationStatement(
             modtok: tokens.ModuleToken, node: ts.Statement): Promise<ModuleElement[]> {
@@ -1845,14 +1845,14 @@ export class Transformer {
         });
     }
 
-    // transformInterfaceDeclaration turns a TypeScript interface into a NutIL interface class.
+    // transformInterfaceDeclaration turns a TypeScript interface into a CocoIL interface class.
     private async transformInterfaceDeclaration(
             modtok: tokens.ModuleToken, node: ts.InterfaceDeclaration): Promise<ast.Class> {
         // TODO(joe): generics.
         // TODO(joe): decorators.
         // TODO(joe): extends/implements.
 
-        // Create a name and token for the NutIL class representing this.
+        // Create a name and token for the CocoIL class representing this.
         let name: ast.Identifier = this.transformIdentifier(node.name);
 
         if (log.v(7)) {
@@ -1938,7 +1938,7 @@ export class Transformer {
         };
     }
 
-    // transformTypeAliasDeclaration emits a type whose base is the aliased type.  The NutIL type system permits
+    // transformTypeAliasDeclaration emits a type whose base is the aliased type.  The CocoIL type system permits
     // conversions between such types in a way that is roughly compatible with TypeScript's notion of type aliases.
     private async transformTypeAliasDeclaration(node: ts.TypeAliasDeclaration): Promise<ast.Class> {
         return this.withLocation(node, <ast.Class>{
@@ -2098,7 +2098,7 @@ export class Transformer {
         }
     }
 
-    // transformTypeElement turns a TypeScript type element, typically an interface member, into a NutIL class member.
+    // transformTypeElement turns a TypeScript type element, typically an interface member, into a CocoIL class member.
     private async transformTypeElement(
             classtok: tokens.ModuleMemberToken, node: ts.TypeElement): Promise<ClassElement> {
         switch (node.kind) {
@@ -2375,7 +2375,7 @@ export class Transformer {
 
     private transformDebuggerStatement(node: ts.DebuggerStatement): ast.Statement {
         // The debugger statement in ECMAScript can be used to trip a breakpoint.  We don't have the equivalent in
-        // NutIL at the moment, so we simply produce an empty statement in its place.
+        // CocoIL at the moment, so we simply produce an empty statement in its place.
         return this.withLocation(node, <ast.Statement>{
             kind: ast.emptyStatementKind,
         });
@@ -2699,7 +2699,7 @@ export class Transformer {
                 `until pulumi/mu#50 is implemented, be careful about subtle behavioral differences`,
             );
         }
-        // TODO[pulumi/mu#50]: we need to decide how to map `delete` into a runtime NutIL operator.  It's possible
+        // TODO[pulumi/mu#50]: we need to decide how to map `delete` into a runtime CocoIL operator.  It's possible
         //     this can leverage some dynamic trickery to delete an entry from a map.  But for strong typing reasons,
         //     this is dubious (at best); for now, we will simply `null` the target out, however, this will cause
         //     problems down the road once we properly support nullable types.
@@ -2739,9 +2739,9 @@ export class Transformer {
     }
 
     private async transformObjectLiteralExpression(node: ts.ObjectLiteralExpression): Promise<ast.ObjectLiteral> {
-        // TODO[pulumi/mu#46]: because TypeScript object literals are untyped, it's not clear what NutIL type this
+        // TODO[pulumi/mu#46]: because TypeScript object literals are untyped, it's not clear what CocoIL type this
         //     expression should produce.  It's common for a TypeScript literal to be enclosed in a cast, for example,
-        //     `<SomeType>{ literal }`, in which case, perhaps we could detect `<SomeType>`.  Alternatively, NutIL could
+        //     `<SomeType>{ literal }`, in which case, perhaps we could detect `<SomeType>`.  Alternatively CocoIL could
         //     just automatically dynamically coerce `any` to the target type, similar to TypeScript, when necessary.
         //     I had envisioned requiring explicit dynamic casts for this, in which case, perhaps this expression should
         //     always be encased in something that prepares it for dynamic cast in the consuming expression.
@@ -2869,7 +2869,7 @@ export class Transformer {
     }
 
     // transformParenthesizedExpression simply emits the underlying expression.  The TypeScript compiler has already
-    // taken care of expression precedence by the time we reach this, and the NutIL AST is blisfully unaware.
+    // taken care of expression precedence by the time we reach this, and the CocoIL AST is blisfully unaware.
     private async transformParenthesizedExpression(node: ts.ParenthesizedExpression): Promise<ast.Expression> {
         return await this.transformExpression(node.expression);
     }
@@ -3006,8 +3006,8 @@ export class Transformer {
         return notYetImplemented(node);
     }
 
-    // transformIdentifierExpression takes a TypeScript identifier node and yields a NutIL expression.  This expression,
-    // when evaluated, will load the value of the target identifier, so that it's suitable as an expression node.
+    // transformIdentifierExpression takes a TypeScript identifier node and yields a CocoIL expression.  This
+    // expression, when evaluated, will load the value of the target so that it's suitable as an expression node.
     private async transformIdentifierExpression(node: ts.Identifier): Promise<ast.Expression> {
         if (node.text === "null" || node.text === "undefined") {
             // For null and undefined, load a null literal.
@@ -3041,7 +3041,7 @@ export class Transformer {
     }
 }
 
-// Loads the metadata and transforms a TypeScript program into its equivalent CocoPack/NutIL AST form.
+// Loads the metadata and transforms a TypeScript program into its equivalent CocoPack/CocoIL AST form.
 export async function transform(script: Script): Promise<TransformResult> {
     let loader: PackageLoader = new PackageLoader();
     let disc: PackageResult = await loader.loadCurrent(script.root);
@@ -3065,6 +3065,6 @@ export async function transform(script: Script): Promise<TransformResult> {
 
 export interface TransformResult {
     diagnostics: diag.Diagnostic[];        // any diagnostics resulting from translation.
-    pkg:         pack.Package | undefined; // the resulting CocoPack/NutIL AST.
+    pkg:         pack.Package | undefined; // the resulting CocoPack/CocoIL AST.
 }
 

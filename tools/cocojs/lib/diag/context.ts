@@ -137,14 +137,14 @@ export class Context {
 
     /** General helper methods **/
 
-    // This annotates a given CocoPack/NutIL node with another TypeScript node's source position information.
+    // This annotates a given CocoPack/CocoIL node with another TypeScript node's source position information.
     public withLocation<T extends ast.Node>(src: ts.Node, dst: T): T {
         dst.loc = this.locationFrom(src);
         // Despite mutating in place, we return the node to facilitate a more fluent style.
         return dst;
     }
 
-    // This annotates a given CocoPack/NutIL node with a range of TypeScript node source positions.
+    // This annotates a given CocoPack/CocoIL node with a range of TypeScript node source positions.
     public withLocationRange<T extends ast.Node>(start: ts.Node, end: ts.Node, dst: T): T {
         contract.assert(start.getSourceFile() === end.getSourceFile());
         // Turn the source file name into one relative to the current root path.
@@ -160,7 +160,7 @@ export class Context {
         return dst;
     }
 
-    // Translates a TypeScript location into a NutIL location.
+    // Translates a TypeScript location into a CocoIL location.
     private locationFrom(src: ts.Node): ast.Location {
         // Turn the source file name into one relative to the current root path.
         let s: ts.SourceFile = src.getSourceFile();
@@ -172,7 +172,7 @@ export class Context {
         };
     }
 
-    // Translates a TypeScript position into a NutIL position (0 to 1 based).
+    // Translates a TypeScript position into a CocoIL position (0 to 1 based).
     private positionFrom(s: ts.SourceFile, p: number): ast.Position {
         let lc = s.getLineAndCharacterOfPosition(p);
         return <ast.Position>{

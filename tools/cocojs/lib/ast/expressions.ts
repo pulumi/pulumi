@@ -45,7 +45,7 @@ export interface StringLiteral extends Literal {
 export const stringLiteralKind = "StringLiteral";
 export type  StringLiteralKind = "StringLiteral";
 
-// A array literal plus optional initialization.
+// An array literal plus optional initialization.
 export interface ArrayLiteral extends Literal {
     kind:      ArrayLiteralKind;
     elemType?: TypeToken;    // the type of the array's elements.
@@ -146,7 +146,7 @@ export type  UnaryOperatorExpressionKind = "UnaryOperatorExpression";
 // A unary prefix/postfix operator token.
 export type UnaryPfixOperator = "++" | "--";
 
-// A unary operator token.  Note that NutIL doesn't care about precedence.  The CocoLang compilers must present the
+// A unary operator token.  Note that CocoIL doesn't care about precedence.  The CocoLang compilers must present the
 // expressions in the order in which they should be evaluated through an in-order AST tree walk.
 export type UnaryOperator = UnaryPfixOperator |
                             "*" | "&"         | // dereference and addressof.
@@ -193,7 +193,7 @@ export type BinaryRelationalOperator  = "<"   | "<="  | // relational operators 
                                         ">"   | ">="  | // relational operators greater-than and greater-than-or-equals.
                                         "=="  | "!="  ; // relational operators equals and not-equals.
 
-// A binary operator token.  Note that NutIL doesn't care about precedence.  The CocoLang compilers must present the
+// A binary operator token.  Note that CocoIL doesn't care about precedence.  The CocoLang compilers must present the
 // expressions in the order in which they should be evaluated through an in-order AST tree walk.
 export type BinaryOperator = BinaryArithmeticOperator  |
                              BinaryAssignmentOperator  |
@@ -221,7 +221,7 @@ export interface IsInstExpression extends Expression {
 export const isInstExpressionKind = "IsInstExpression";
 export type  IsInstExpressionKind = "IsInstExpression";
 
-// An typeof instruction gets the type token -- just a string -- of a particular expression at runtime.
+// A typeof instruction gets the type token -- just a string -- of a particular expression at runtime.
 export interface TypeOfExpression extends Expression {
     kind:       TypeOfExpressionKind;
     expression: Expression;        // the source expression.
