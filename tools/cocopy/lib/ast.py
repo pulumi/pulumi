@@ -1,17 +1,17 @@
 # Copyright 2017 Pulumi, Inc. All rights reserved.
 
-class Node:
+class Node(object):
     """An ancestor discriminated union type for all AST nodes."""
     def __init__(self, kind, loc=None):
         self.kind = kind # the string discriminator for the node type (mostly for serialization/deserialization).
         self.loc = loc   # the optional program debugging location information.
     def is_node():
         return True
-    def is_definition():
+    def is_definition(self):
         return False
-    def is_expression():
+    def is_expression(self):
         return False
-    def is_statement():
+    def is_statement(self):
         return False
 
 class Location:
@@ -84,7 +84,7 @@ class Definition(Node):
         super(Definition, self).__init__(kind, loc)
         self.name = name
         self.description = description
-    def is_definition():
+    def is_definition(self):
         return True
 
 # ...Modules
@@ -112,9 +112,9 @@ class ModuleMember(Definition):
 
 class Class(ModuleMember):
     """A class can be constructed to create an object, and exports properties, methods, and several attributes."""
-    def __init__(self, extends=None, implements=None,
+    def __init__(self, name, extends=None, implements=None,
             sealed=None, abstract=None, record=None, interface=None, members=None, loc=None):
-        super(Class, self).__init__("Class", loc)
+        super(Class, self).__init__("Class", name, loc=loc)
         self.extends = extends
         self.implements = implements
         self.sealed = sealed
@@ -142,19 +142,19 @@ class Variable(Definition):
 
 class LocalVariable(Variable):
     """A variable that is lexically scoped within a function (either a parameter or local)."""
-    def __init__(self, type, default=None, readonly=None, loc=None):
-        super(LocalVariable, self).__init__("LocalVariable", type, default, readonly, loc)
+    def __init__(self, name, type, default=None, readonly=None, loc=None):
+        super(LocalVariable, self).__init__("LocalVariable", name, type, default, readonly, loc)
 
 class ModuleProperty(Variable, ModuleMember):
     """A module property is like a variable but belongs to a module."""
-    def __init__(self, type, default=None, readonly=None, loc=None):
-        super(ModuleProperty, self).__init__("ModuleProperty", type, default, readonly, loc)
+    def __init__(self, name, type, default=None, readonly=None, loc=None):
+        super(ModuleProperty, self).__init__("ModuleProperty", name, type, default, readonly, loc)
 
 class ClassProperty(Variable, ClassMember):
     """A class property is just like a module property with some extra attributes."""
-    def __init__(self, type, default=None, readonly=None,
+    def __init__(self, name, type, default=None, readonly=None,
             access=None, static=None, primary=None, optional=None, loc=None):
-        super(ClassProperty, self).__init__("ClassProperty", type, default, readonly, loc)
+        super(ClassProperty, self).__init__("ClassProperty", name, type, default, readonly, loc)
         self.access = access
         self.static = static
         self.primary = primary
@@ -173,14 +173,14 @@ class Function(Definition):
 
 class ModuleMethod(Function, ModuleMember):
     """A module method is just a function defined at the module scope."""
-    def __init__(self, parameters=None, return_type=None, body=None, loc=None):
-        super(ModuleMethod, self).__init__("ModuleMethod", parameters, return_type, body, loc)
+    def __init__(self, name, parameters=None, return_type=None, body=None, loc=None):
+        super(ModuleMethod, self).__init__("ModuleMethod", name, parameters, return_type, body, loc)
 
 class ClassMethod(Function, ClassMember):
     """A class method is just like a module method with some extra attributes."""
-    def __init__(self, parameters=None, return_type=None, body=None,
+    def __init__(self, name, parameters=None, return_type=None, body=None,
             access=None, static=None, sealed=None, abstract=None, loc=None):
-        super(ClassMethod, self).__init__("ClassMethod", parameters, return_type, body, loc)
+        super(ClassMethod, self).__init__("ClassMethod", name, parameters, return_type, body, loc)
         self.access = access
         self.static = static
         self.sealed = sealed
@@ -193,14 +193,14 @@ class ClassMethod(Function, ClassMember):
 class Statement(Node):
     def __init__(self, kind, loc=None):
         super(Statement, self).__init__(kind, loc)
-    def is_statement():
+    def is_statement(self):
         return True
 
 # ...Blocks
 
 class Block(Statement):
     def __init__(self, statements, loc=None):
-        assert all(stmt.is_stmt() for stmt in statements)
+        assert all(stmt.is_statement() for stmt in statements)
         super(Block, self).__init__("Block", loc)
         self.statements = statements
 
@@ -320,7 +320,7 @@ class EmptyStatement(Statement):
 class MultiStatement(Statement):
     """Multiple statements in one (unlike a block, this doesn't introduce a new scope)."""
     def __init__(self, statements, loc=None):
-        assert all(stmt.is_stmt() for stmt in statements)
+        assert all(stmt.is_statement() for stmt in statements)
         super(MultiStatement, self).__init__("MultiStatement", loc)
         self.statements = statements
 
@@ -338,7 +338,7 @@ class ExpressionStatement(Statement):
 class Expression(Node):
     def __init__(self, kind, loc=None):
         super(Expression, self).__init__(kind, loc)
-    def is_expression():
+    def is_expression(self):
         return True
 
 # ...Literals
@@ -397,8 +397,8 @@ class ObjectLiteralProperty(Node):
 # ...Loads
 
 class LoadExpression(Expression):
-    def __init__(self, loc=None):
-        super(LoadExpression, self).__init__("LoadExpression", loc)
+    def __init__(self, kind, loc=None):
+        super(LoadExpression, self).__init__(kind, loc)
 
 class LoadLocationExpression(LoadExpression):
     """Loads a location's address, producing a pointer that can be dereferenced."""
@@ -445,107 +445,107 @@ class LambdaExpression(Expression):
 # ...Operators
 
 # prefix/postfix operators:
-unary_op_increment   = "++"
-unary_op_decrement   = "--"
-unary_pfix_ops = set([ unary_op_increment, unary_op_decrement ])
+unop_increment   = "++"
+unop_decrement   = "--"
+pfix_unops = set([ unop_increment, unop_decrement ])
 
 # regular unary operators (always prefix):
-unary_op_dereference = "*"
-unary_op_addressof   = "&"
-unary_op_plus        = "+"
-unary_op_minus       = "-"
-unary_op_logical_not = "!"
-unary_op_bitwise_not = "~"
-unary_ops = unary_pfix_ops | set([
-    unary_op_dereference, unary_op_addressof,
-    unary_op_plus, unary_op_minus,
-    unary_op_logical_not, unary_op_bitwise_not
+unop_dereference = "*"
+unop_addressof   = "&"
+unop_plus        = "+"
+unop_minus       = "-"
+unop_logical_not = "!"
+unop_bitwise_not = "~"
+unops = pfix_unops | set([
+    unop_dereference, unop_addressof,
+    unop_plus, unop_minus,
+    unop_logical_not, unop_bitwise_not
 ])
 
 def is_unary_operator(op):
-    return op is unary_ops
+    return op in unops
 
 class UnaryOperatorExpression(Expression):
     """A unary operator expression."""
     def __init__(self, operator, operand, postfix=None, loc=None):
         assert is_unary_operator(operator)
         assert operand.is_expression()
-        assert not postfix or operator is unary_pfix_ops
+        assert not postfix or operator in unary_pfix_ops
         super(UnaryOperatorExpression, self).__init__("UnaryOperatorExpression", loc)
         self.operator = operator # the operator type.
         self.operand = operand   # the right hand side operand.
         self.postfix = postfix   # whether this is a postfix operator (only legal for some).
 
 # arithmetic operators:
-binary_op_add                    = "+"
-binary_op_subtract               = "-"
-binary_op_multiply               = "*"
-binary_op_divide                 = "/"
-binary_op_remainder              = "%"
-binary_op_exponent               = "**"
-binary_arith_ops = set([
-    binary_op_add, binary_op_subtract, binary_op_multiply, binary_op_divide,
-    binary_op_remainder, binary_op_exponent
+binop_add                    = "+"
+binop_subtract               = "-"
+binop_multiply               = "*"
+binop_divide                 = "/"
+binop_remainder              = "%"
+binop_exponent               = "**"
+arith_binops = set([
+    binop_add, binop_subtract, binop_multiply, binop_divide,
+    binop_remainder, binop_exponent
 ])
 
 # assignment operators:
-binary_op_assign                 = "="
-binary_op_assign_sum             = "+="
-binary_op_assign_difference      = "-="
-binary_op_assign_product         = "*="
-binary_op_assign_quotient        = "/="
-binary_op_assign_remainder       = "%="
-binary_op_assign_exponent        = "**="
-binary_op_assign_bitwise_shleft  = "<<="
-binary_op_assign_bitwise_shright = ">>="
-binary_op_assign_bitwise_and     = "&="
-binary_op_assign_bitwise_or      = "|="
-binary_op_assign_bitwise_xor     = "^="
-binary_assign_ops = set([
-    binary_op_assign, binary_op_assign_sum, binary_op_assign_difference, binary_op_assign_product,
-    binary_op_assign_quotient, binary_op_assign_remainder, binary_op_assign_exponent,
-    binary_op_assign_bitwise_shleft, binary_op_assign_bitwise_shright,
-    binary_op_assign_bitwise_and, binary_op_assign_bitwise_or, binary_op_assign_bitwise_xor
+binop_assign                 = "="
+binop_assign_sum             = "+="
+binop_assign_difference      = "-="
+binop_assign_product         = "*="
+binop_assign_quotient        = "/="
+binop_assign_remainder       = "%="
+binop_assign_exponent        = "**="
+binop_assign_bitwise_shleft  = "<<="
+binop_assign_bitwise_shright = ">>="
+binop_assign_bitwise_and     = "&="
+binop_assign_bitwise_or      = "|="
+binop_assign_bitwise_xor     = "^="
+assign_binops = set([
+    binop_assign, binop_assign_sum, binop_assign_difference, binop_assign_product,
+    binop_assign_quotient, binop_assign_remainder, binop_assign_exponent,
+    binop_assign_bitwise_shleft, binop_assign_bitwise_shright,
+    binop_assign_bitwise_and, binop_assign_bitwise_or, binop_assign_bitwise_xor
 ])
 
 # bitwise operators:
-binary_op_bitwise_shleft         = "<<"
-binary_op_bitwise_shright        = ">>"
-binary_op_bitwise_and            = "&"
-binary_op_bitwise_or             = "or"
-binary_op_bitwise_xor            = "xor"
-binary_bitwise_ops = set([
-    binary_op_bitwise_shleft, binary_op_bitwise_shright,
-    binary_op_bitwise_and, binary_op_bitwise_or, binary_op_bitwise_xor
+binop_bitwise_shleft         = "<<"
+binop_bitwise_shright        = ">>"
+binop_bitwise_and            = "&"
+binop_bitwise_or             = "or"
+binop_bitwise_xor            = "xor"
+bitwise_binops = set([
+    binop_bitwise_shleft, binop_bitwise_shright,
+    binop_bitwise_and, binop_bitwise_or, binop_bitwise_xor
 ])
 
 # conditional operators:
-binary_op_logical_and            = "&&"
-binary_op_logical_or             = "||"
-binary_conditional_ops = set([ binary_op_logical_and, binary_op_logical_or ])
+binop_logical_and            = "&&"
+binop_logical_or             = "||"
+conditional_binops = set([ binop_logical_and, binop_logical_or ])
 
 # relational operators:
-binary_op_lt                     = "<"
-binary_op_lteq                   = "<="
-binary_op_gt                     = ">"
-binary_op_gteq                   = ">="
-binary_op_eqeq                   = "=="
-binary_op_noteq                  = "!="
-binary_relational_ops = set([
-    binary_op_lt, binary_op_lteq, binary_op_gt, binary_op_gteq,
-    binary_op_eqeq, binary_op_noteq
+binop_lt                     = "<"
+binop_lteq                   = "<="
+binop_gt                     = ">"
+binop_gteq                   = ">="
+binop_eqeq                   = "=="
+binop_noteq                  = "!="
+relational_binops = set([
+    binop_lt, binop_lteq, binop_gt, binop_gteq,
+    binop_eqeq, binop_noteq
 ])
 
-binary_op = binary_arith_ops | binary_assign_ops | binary_bitwise_ops | binary_conditional_ops | binary_relational_ops
+binops = arith_binops | assign_binops | bitwise_binops | conditional_binops | relational_binops
 
 def is_binary_operator(op):
-    return op is binary_ops
+    return op in binops
 
 class BinaryOperatorExpression(Expression):
     """A binary operator expression (assignment, logical, operator, or relational)."""
     def __init__(self, left, operator, right, loc=None):
         assert left.is_expression()
-        assert is_binary_operator(operator)
+        assert is_binary_operator(operator), "{} is not a binop".format(operator)
         assert right.is_expression()
         super(BinaryOperatorExpression, self).__init__("BinaryOperatorExpression", loc)
         self.left = left         # the left hand side.

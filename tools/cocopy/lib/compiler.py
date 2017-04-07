@@ -34,13 +34,19 @@ class ModuleSpec:
         self.file = file
         self.py_module = py_module
 
+class Context:
+    """A context holding state associated with a single transform pass."""
+    def __init__(self, mod):
+        self.mod = mod       # the current module (spec) being transformed.
+        self.globals = set() # an accumulation of all global properties in the module.
+        self.func = None     # the function we are currently inside of (or None if top-level).
+
 class Transformer:
     """A transformer is responsible for transpiling Python program ASTs into Coconut packages and ASTs."""
     def __init__(self, loader, pkg):
         self.loader = loader # to resolve dependencies.
         self.pkg = pkg       # the package being transformed.
-        self.mod = None      # the current module being transformed.
-        self.props = set()   # an accumulation of all properties implicitly "declared".
+        self.ctx = None      # the transform context used during a single pass.
 
     #
     # Utility functions
@@ -48,11 +54,18 @@ class Transformer:
 
     def loc_from(self, node):
         """Creates a Coconut AST location from a Python AST node."""
-        loc, locend = node.loc, node.loc.end()
-        start = ast.Position(loc.line(), loc.column()+1)
-        end = ast.Position(locend.line(), locend.column()+1)
-        return ast.Location(file=self.mod.file, start=start, end=end)
+        assert self.ctx, "loc_from only callable during a transform pass"
+        if node:
+            loc, locend = node.loc, node.loc.end()
+            start = ast.Position(loc.line(), loc.column()+1)
+            end = ast.Position(locend.line(), locend.column()+1)
+            return ast.Location(file=self.ctx.mod.file, start=start, end=end)
+        else:
+            return None
 
+    def ident(self, name, node=None):
+        return ast.Identifier(name, loc=self.loc_from(node))
+    
     def not_yet_implemented(self, node):
         raise Exception("Not yet implemented: {}".format(type(node).__name__))
 
@@ -62,121 +75,182 @@ class Transformer:
 
     def transform(self, modules):
         """Transforms a list of modules into a Coconut package."""
-        oldmod = self.mod
+        oldctx = self.ctx
         try:
             for module in modules:
-                self.mod = module
-                mod = self.transform_Module(module.py_module)
+                self.ctx = Context(module)
+                mod = self.transform_Module(module.name, module.py_module)
                 assert module.name not in self.pkg.modules, "Module {} already exists".format(module.name)
                 self.pkg.modules[module.name] = mod
         finally:
-            self.mod = oldmod
+            self.ctx = oldctx
         return self.pkg
 
     # ...Definitions
 
-    def transform_Module(self, node):
+    def transform_Module(self, name, node):
+        assert self.ctx, "Transform passes require a context object"
+        members = dict()
+        initstmts = list()
+        imports = set()
+
+        # Auto-generate the special __name__ variable and populate it in the initializer.
+        # TODO: once we support multi-module projects, we will need something other than __main__.
+        var_modname = "__name__"
+        members[var_modname] = ast.ModuleProperty(self.ident(var_modname), tokens.type_dynamic)
+        modname_init_expr = ast.BinaryOperatorExpression(
+                ast.LoadLocationExpression(var_modname), ast.binop_assign, ast.StringLiteral("__main__"))
+        initstmts.append(ast.ExpressionStatement(modname_init_expr))
+
         # Enumerate the top-level statements and put them in the right place.  This transformation is subtle because
         # loose code (arbitrary statements) aren't supported in CocoIL.  Instead, we must elevate top-level definitions
         # (variables, functions, and classes) into first class exported elements, and place all other statements into
         # the generated module initializer routine (including any variable initializers).
-        members = dict()
-        initstmts = list()
         for stmt in node.body:
-            # Recognize definition nodes and treat them uniquely.
-            if isinstance(stmt, py_ast.Import):
-                self.not_yet_implemented(stmt)
-            elif isinstance(stmt, py_ast.ImportFrom):
-                self.not_yet_implemented(stmt)
-            elif isinstance(stmt, py_ast.FunctionDef):
-                self.not_yet_implemented(stmt)
+            # Top-level definitions are handled specially so that they can be exported correctly.
+            if isinstance(stmt, py_ast.FunctionDef):
+                func = self.transform_FunctionDef(stmt)
+                members[func.name.ident] = func
+            elif isinstance(stmt, py_ast.ClassDef):
+                clazz = self.transform_ClassDef(stmt)
+                members[clazz.name.ident] = clazz
+            elif isinstance(stmt, py_ast.Import):
+                imports |= self.transform_Import(stmt)
             else:
                 # For all other statement nodes, simply accumulate them for the module initializer.
                 initstmt = self.transform_stmt(stmt)
+                assert initstmt.is_statement()
                 initstmts.append(initstmt)
 
         # If any top-level statements spilled over, add them to the initializer.
         if len(initstmts) > 0:
             initbody = ast.Block(initstmts)
-            members[tokens.func_init] = ast.ModuleMethod(tokens.func_init, body=initbody)
+            members[tokens.func_init] = ast.ModuleMethod(self.ident(tokens.func_init), body=initbody)
 
         # All Python scripts are executable, so ensure that an entrypoint exists.  It consists of an empty block
         # because it exists solely to trigger the module initializer routine (if it exists).
-        members[tokens.func_entrypoint] = ast.ModuleMethod(tokens.func_entrypoint, body=ast.Block(list()))
+        members[tokens.func_entrypoint] = ast.ModuleMethod(
+            self.ident(tokens.func_entrypoint), body=ast.Block(list()))
 
         # For every property "declaration" encountered during the transformation, add a module property.
-        for prop in self.props:
-            assert prop not in members, \
-                "Module property '{}' unexpectedly clashes with a prior declaration".format(prop)
-            members[prop] = ast.ModuleProperty(tokens.type_dynamic)
+        for propname in self.ctx.globals:
+            assert propname not in members, \
+                "Module property '{}' unexpectedly clashes with a prior declaration".format(propname)
+            members[propname] = ast.ModuleProperty(self.ident(propname), tokens.type_dynamic)
 
         # By default, Python exports everything, so add all declarations to the list.
         exports = dict()
         for name in members:
             exports[name] = name # TODO: this needs to be a full qualified token.
 
-        imports = list() # TODO: track imports.
-        return ast.Module(imports, exports, members)
+        return ast.Module(self.ident(name), list(imports), exports, members)
 
     # ...Statements
 
     def transform_stmt(self, node):
+        stmt = None
         if isinstance(node, py_ast.Assert):
-            return self.transform_Assert(node)
+            stmt = self.transform_Assert(node)
         elif isinstance(node, py_ast.Assign):
-            return self.transform_Assign(node)
+            stmt = self.transform_Assign(node)
         elif isinstance(node, py_ast.AugAssign):
-            return self.transform_AugAssign(node)
+            stmt = self.transform_AugAssign(node)
         elif isinstance(node, py_ast.Break):
-            return self.transform_Break(node)
+            stmt = self.transform_Break(node)
+        elif isinstance(node, py_ast.ClassDef):
+            assert False, "TODO: classes in non-top-level positions not yet supported"
         elif isinstance(node, py_ast.Continue):
-            return self.transform_Continue(node)
+            stmt = self.transform_Continue(node)
         elif isinstance(node, py_ast.Delete):
-            return self.transform_Delete(node)
+            stmt = self.transform_Delete(node)
         elif isinstance(node, py_ast.Exec):
-            return self.transform_Exec(node)
+            stmt = self.transform_Exec(node)
+        elif isinstance(node, py_ast.Expr):
+            stmt = self.transform_Expr(node)
         elif isinstance(node, py_ast.For):
-            return self.transform_For(node)
+            stmt = self.transform_For(node)
         elif isinstance(node, py_ast.FunctionDef):
-            return self.transform_FunctionDef(node)
+            assert False, "TODO: functions in non-top-level positions not yet supported"
         elif isinstance(node, py_ast.Global):
-            return self.transform_Global(node)
+            stmt = self.transform_Global(node)
         elif isinstance(node, py_ast.If):
-            return self.transform_If(node)
+            stmt = self.transform_If(node)
         elif isinstance(node, py_ast.Import):
-            return self.transform_Import(node)
+            assert False, "TODO: imports in non-top-level positions not yet supported"
         elif isinstance(node, py_ast.ImportFrom):
-            return self.transform_ImportFrom(node)
+            assert False, "TODO: imports in non-top-level positions not yet supported"
         elif isinstance(node, py_ast.Nonlocal):
-            return self.transform_Nonlocal(node)
+            stmt = self.transform_Nonlocal(node)
         elif isinstance(node, py_ast.Pass):
-            return self.transform_Pass(node)
+            stmt = self.transform_Pass(node)
         elif isinstance(node, py_ast.Print):
-            return self.transform_Print(node)
+            stmt = self.transform_Print(node)
         elif isinstance(node, py_ast.Raise):
-            return self.transform_Raise(node)
+            stmt = self.transform_Raise(node)
         elif isinstance(node, py_ast.Return):
-            return self.transform_Return(node)
+            stmt = self.transform_Return(node)
         elif isinstance(node, py_ast.Try):
-            return self.transform_Try(node)
+            stmt = self.transform_Try(node)
         elif isinstance(node, py_ast.While):
-            return self.transform_While(node)
+            stmt = self.transform_While(node)
         elif isinstance(node, py_ast.With):
-            return self.transform_With(node)
+            stmt = self.transform_With(node)
         else:
             assert False, "Unrecognized statement node: {}".format(type(node).__name__)
+
+        # Check that the return is good and then return it.
+        assert isinstance(stmt, ast.Node) and stmt.is_statement(), \
+                "Expected PyAST node {} to produce a statement; got {}".format(
+                    type(node).__name__, type(stmt).__name__)
+        return stmt
+
+    def transform_block_stmts(self, nodes):
+        # To produce a block, first visit all the statement nodes.
+        stmts = list()
+        for node in nodes:
+            stmts.append(self.transform_stmt(node))
+
+        # Propagate location information based on the inner statements.
+        if len(stmts) > 0:
+            file = None
+            start = None
+            end = None
+            if stmts[0].loc:
+                file = stmts[0].loc.file
+                start = stmts[0].loc.start
+            if stmts[len(stmts)-1].loc:
+                if not start:
+                    file = stmts[len(stmts)-1].file
+                    start = stmts[len(stmts)-1].loc.start
+                end = stmts[len(stmts)-1].loc.end
+            loc = ast.Location(file, start, end)
+
+        return ast.Block(stmts, loc)
 
     def transform_Assert(self, node):
         self.not_yet_implemented(node) # test, msg
 
+    def track_assign(self, lhs):
+        if isinstance(lhs, py_ast.Name) and self.ctx.func == None:
+            # Add simple names at the top-level scope to the global module namespace.
+            self.ctx.globals.add(lhs.id)
+
     def transform_Assign(self, node):
-        self.not_yet_implemented(node) # targets, value
+        assert len(node.targets) == 1, "TODO: multi-assignments not yet supported"
+        lhs = self.transform_expr(node.targets[0])
+        self.track_assign(lhs)
+        rhs = self.transform_expr(node.value)
+        assgop = ast.BinaryOperatorExpression(lhs, ast.binop_assign, rhs, loc=self.loc_from(node))
+        return ast.ExpressionStatement(assgop)
 
     def transform_AugAssign(self, node):
         self.not_yet_implemented(node) # targets, op, value
 
     def transform_Break(self, node):
         return ast.Break(loc=self.loc_from(node))
+
+    def transform_ClassDef(self, node):
+        self.not_yet_implemented(node) # name, bases, keywords, starargs, kwargs, body, decorator_list
 
     def transform_Continue(self, node):
         return ast.Continue(loc=self.loc_from(node))
@@ -195,22 +269,48 @@ class Transformer:
         self.not_yet_implemented(node) # target, iter, body, orelse
 
     def transform_FunctionDef(self, node):
-        self.not_yet_implemented(node) # name, args, returns, body, decorator_list
+        oldfunc = self.ctx.func
+        try:
+            self.ctx.func = node
+
+            # Generate the argument list, visit the body, and then return the AST node.
+            # TODO: class methods.
+            # TODO: varargs, kwargs, defaults, decorators, type annotations.
+            id = self.ident(node.name)
+
+            args = list()
+            for arg in node.args.args:
+                arg_var = ast.LocalVariable(self.ident(arg), tokens.type_dynamic, loc=self.loc_from(node.args))
+                args.append(arg_var)
+
+            body = self.transform_block_stmts(node.body)
+
+            return ast.ModuleMethod(id, args, tokens.type_dynamic, loc=self.loc_from(node))
+        finally:
+            self.ctx.func = oldfunc
 
     def transform_Global(self, node):
         self.not_yet_implemented(node) # names
 
     def transform_If(self, node):
         cond = self.transform_expr(node.test)
-        cons = self.transform_stmt(node.body)
+        cons = self.transform_block_stmts(node.body)
+        alt = None
         if node.orelse:
             alt = self.transform_stmt(node.orelse)
         return ast.IfStatement(cond, cons, alt, loc=self.loc_from(node))
 
     def transform_Import(self, node):
-        self.not_yet_implemented(node) # names
+        # TODO: support imports inside of non-top-level scopes.
+        # TODO: come up with a way to determine intra-project references.
+        imports = set()
+        for name in node.names:
+            imports.add(name)
+        return imports
 
     def transform_ImportFrom(self, node):
+        # TODO: to support this, we will need a way of binding names back to the imported names.  Furthermore, we
+        #     need a way of figuring out that an import actually refers to something in the same "project".
         self.not_yet_implemented(node) # names, module, level
 
     def transform_Nonlocal(self, node):
@@ -242,63 +342,72 @@ class Transformer:
     # ...Expressions
 
     def transform_expr(self, node):
+        expr = None
         if isinstance(node, py_ast.Attribute):
-            return self.transform_Attribute(node)
+            expr = self.transform_Attribute(node)
         elif isinstance(node, py_ast.BinOp):
-            return self.transform_BinOp(node)
+            expr = self.transform_BinOp(node)
         elif isinstance(node, py_ast.BoolOp):
-            return self.transform_BoolOp(node)
+            expr = self.transform_BoolOp(node)
         elif isinstance(node, py_ast.Call):
-            return self.transform_Call(node)
+            expr = self.transform_Call(node)
         elif isinstance(node, py_ast.Compare):
-            return self.transform_Compare(node)
+            expr = self.transform_Compare(node)
         elif isinstance(node, py_ast.Dict):
-            return self.transform_Dict(node)
+            expr = self.transform_Dict(node)
         elif isinstance(node, py_ast.DictComp):
-            return self.transform_DictComp(node)
+            expr = self.transform_DictComp(node)
         elif isinstance(node, py_ast.Ellipsis):
-            return self.transform_Ellipsis(node)
+            expr = self.transform_Ellipsis(node)
         elif isinstance(node, py_ast.GeneratorExp):
-            return self.transform_GeneratorExp(node)
+            expr = self.transform_GeneratorExp(node)
         elif isinstance(node, py_ast.IfExp):
-            return self.transform_IfExp(node)
+            expr = self.transform_IfExp(node)
         elif isinstance(node, py_ast.Lambda):
-            return self.transform_Lambda(node)
+            expr = self.transform_Lambda(node)
         elif isinstance(node, py_ast.List):
-            return self.transform_List(node)
+            expr = self.transform_List(node)
         elif isinstance(node, py_ast.ListComp):
-            return self.transform_ListComp(node)
+            expr = self.transform_ListComp(node)
         elif isinstance(node, py_ast.Name):
-            return self.transform_Name(node)
+            expr = self.transform_Name(node)
         elif isinstance(node, py_ast.NameConstant):
-            return self.transform_NameConstant(node)
+            expr = self.transform_NameConstant(node)
         elif isinstance(node, py_ast.Num):
-            return self.transform_Num(node)
+            expr = self.transform_Num(node)
         elif isinstance(node, py_ast.Repr):
-            return self.transform_Repr(node)
+            expr = self.transform_Repr(node)
         elif isinstance(node, py_ast.Set):
-            return self.transform_Set(node)
+            expr = self.transform_Set(node)
         elif isinstance(node, py_ast.SetComp):
-            return self.transform_SetComp(node)
+            expr = self.transform_SetComp(node)
         elif isinstance(node, py_ast.Str):
-            return self.transform_Str(node)
+            expr = self.transform_Str(node)
         elif isinstance(node, py_ast.Starred):
-            return self.transform_Starred(node)
+            expr = self.transform_Starred(node)
         elif isinstance(node, py_ast.Subscript):
-            return self.transform_Subscript(node)
+            expr = self.transform_Subscript(node)
         elif isinstance(node, py_ast.Tuple):
-            return self.transform_Tuple(node)
+            expr = self.transform_Tuple(node)
         elif isinstance(node, py_ast.UnaryOp):
-            return self.transform_UnaryOp(node)
+            expr = self.transform_UnaryOp(node)
         elif isinstance(node, py_ast.Yield):
-            return self.transform_Yield(node)
+            expr = self.transform_Yield(node)
         elif isinstance(node, py_ast.YieldFrom):
-            return self.transform_YieldFrom(node)
+            expr = self.transform_YieldFrom(node)
         else:
             assert False, "Unrecognized statement node: {}".format(type(node).__name__)
 
+        # Check that the return is good and then return it.
+        assert isinstance(expr, ast.Node) and expr.is_expression(), \
+                "Expected PyAST node {} to produce an expression; got {}".format(
+                    type(node).__name__, type(expr).__name__)
+        return expr
+
     def transform_Attribute(self, node):
-        self.not_yet_implemented(node) # value, attr, ctx
+        assert not node.ctx
+        obj = self.transform_expr(node.value)
+        return ast.LoadDynamicExpression(node.attr, obj, loc=self.loc_from(node))
 
     def transform_BinOp(self, node):
         self.not_yet_implemented(node) # left, op, right
@@ -307,10 +416,35 @@ class Transformer:
         self.not_yet_implemented(node) # op, values
 
     def transform_Call(self, node):
-        self.not_yet_implemented(node) # func, args, keywords, starargs, kwargs
+        # TODO: support named arguments, starargs, etc.
+        func = self.transform_expr(node.func)
+        args = list()
+        for arg in args:
+            args.append(self.transform_expr(arg))
+        return ast.InvokeFunctionExpression(func, args, loc=self.loc_from(node))
 
     def transform_Compare(self, node):
-        self.not_yet_implemented(node) # left, ops, comparators
+        assert len(node.ops) == 1 and len(node.comparators) == 1, "Multi-comparison operators not yet supported"
+        lhs = self.transform_expr(node.left)
+        pyop = node.ops[0]
+        if isinstance(pyop, py_ast.Eq) or isinstance(pyop, py_ast.Is):
+            # TODO: support precise semantics of Eq versus Is.
+            op = ast.binop_eqeq
+        elif isinstance(pyop, py_ast.NotEq) or isinstance(pyop, py_ast.IsNot):
+            # TODO: support precise semantics of Eq versus Is.
+            op = ast.binop_noteq
+        elif isinstance(pyop, py_ast.Gt):
+            op = ast.binop_gt
+        elif isinstance(pyop, py_ast.GtE):
+            op = ast.binop_gteq
+        elif isinstance(pyop, py_ast.Lt):
+            op = ast.binop_lt
+        elif isinstance(pyop, py_ast.LtE):
+            op = ast.binop_lteq
+        else:
+            assert False, "Compare operator {} is not supported".format(type(pyop).__name__)
+        rhs = self.transform_expr(node.comparators[0])
+        return ast.BinaryOperatorExpression(lhs, op, rhs, loc=self.loc_from(node))
 
     def transform_Dict(self, node):
         self.not_yet_implemented(node) # keys, values
@@ -340,7 +474,12 @@ class Transformer:
         self.not_yet_implemented(node) # elt, generators
 
     def transform_Name(self, node):
-        self.not_yet_implemented(node) # id, ctx
+        assert not node.ctx
+        return ast.LoadLocationExpression(node.id, loc=self.loc_from(node))
+
+    def transform_NameID(self, node):
+        assert not node.ctx
+        return self.ident(node.id, node)
 
     def transform_NameConstant(self, node):
         loc = self.loc_from(node)
