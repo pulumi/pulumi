@@ -6,7 +6,7 @@
 """Coconut's Python compiler."""
 
 import argparse
-from cocopy.lib import compiler
+from cocopy.lib import compiler, encoding
 import json
 import pythonparser
 import sys
@@ -16,7 +16,9 @@ parser.add_argument("file", help="CocoPy filename")
 
 def main(args):
     pkg = compiler.compile(args.file)
-    print(json.dumps(pkg.__dict__))
+    jsonobj = encoding.to_serializable(
+        pkg, skip_nones=True, key_mangler=encoding.underscore_to_camel_case)
+    print(json.dumps(jsonobj, indent=4))
 
 if __name__ == "__main__":
     sys.exit(main(parser.parse_args()))
