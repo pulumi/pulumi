@@ -216,7 +216,7 @@ class Function(Definition):
     def __init__(self, kind, name, parameters=None, return_type=None, body=None, loc=None):
         assert isinstance(kind, basestring)
         assert isinstance(name, Identifier)
-        assert (parameters is none or
+        assert (parameters is None or
             (isinstance(parameters, list) and all(isinstance(node, LocalVariable) for node in parameters)))
         assert return_type is None or isinstance(return_type, TypeToken)
         assert body is None or isinstance(body, Block)
@@ -229,7 +229,7 @@ class ModuleMethod(Function, ModuleMember):
     """A module method is just a function defined at the module scope."""
     def __init__(self, name, parameters=None, return_type=None, body=None, loc=None):
         assert isinstance(name, Identifier)
-        assert (parameters is none or
+        assert (parameters is None or
             (isinstance(parameters, list) and all(isinstance(node, LocalVariable) for node in parameters)))
         assert return_type is None or isinstance(return_type, TypeToken)
         assert body is None or isinstance(body, Block)
@@ -240,7 +240,7 @@ class ClassMethod(Function, ClassMember):
     def __init__(self, name, parameters=None, return_type=None, body=None,
             access=None, static=None, sealed=None, abstract=None, loc=None):
         assert isinstance(name, Identifier)
-        assert (parameters is none or
+        assert (parameters is None or
             (isinstance(parameters, list) and all(isinstance(node, LocalVariable) for node in parameters)))
         assert return_type is None or isinstance(return_type, TypeToken)
         assert body is None or isinstance(body, Block)
@@ -438,21 +438,21 @@ class BoolLiteral(Literal):
     """A `bool`-typed literal (`true` or `false`)."""
     def __init__(self, value, loc=None):
         assert isinstance(value, bool)
-        super(BoolLiteral, self).__init__("BoolLiteral", loc)
+        super(BoolLiteral, self).__init__("BoolLiteral", loc=loc)
         self.value = value
 
 class NumberLiteral(Literal):
     """A `number`-typed literal (floating point IEEE 754)."""
     def __init__(self, value, loc=None):
         assert isinstance(value, int) or isinstance(value, long) or isinstance(value, float)
-        super(NumberLiteral, self).__init__("NumberLiteral", loc)
+        super(NumberLiteral, self).__init__("NumberLiteral", loc=loc)
         self.value = value
 
 class StringLiteral(Literal):
     """A `string`-typed literal."""
     def __init__(self, value, loc=None):
         assert isinstance(value, basestring)
-        super(StringLiteral, self).__init__("StringLiteral", loc)
+        super(StringLiteral, self).__init__("StringLiteral", loc=loc)
         self.value = value
 
 class ArrayLiteral(Literal):

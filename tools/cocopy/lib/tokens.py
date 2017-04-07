@@ -34,4 +34,5 @@ typemod_func_sep       = ")"    # the separator between parameters and return of
 acc_public    = "public"
 acc_private   = "private"
 acc_protected = "protected"
+accs = set([ acc_public, acc_private, acc_protected ])
 

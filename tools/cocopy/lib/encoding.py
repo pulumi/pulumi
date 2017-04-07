@@ -51,7 +51,7 @@ def to_serializable_dict(m, opts=None):
 
 def to_serializable_value(v, opts=None):
     """This routine converts a singular value into its JSON-serializable equivalent."""
-    if (isinstance(v, str) or isinstance(v, unicode) or
+    if (isinstance(v, basestring) or
             isinstance(v, int) or isinstance(v, long) or isinstance(v, float) or
             isinstance(v, bool) or v is None):
         # Simple serializable values can be stored without any translation.

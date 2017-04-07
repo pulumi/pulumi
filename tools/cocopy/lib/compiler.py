@@ -104,9 +104,11 @@ class Transformer:
         var_modname = "__name__"
         members[var_modname] = ast.ModuleProperty(
             self.ident(var_modname), self.type_token(tokens.type_dynamic))
-        modname_init_expr = ast.BinaryOperatorExpression(
-                ast.LoadLocationExpression(var_modname), ast.binop_assign, ast.StringLiteral("__main__"))
-        initstmts.append(ast.ExpressionStatement(modname_init_expr))
+        modname_init = ast.BinaryOperatorExpression(
+            ast.LoadLocationExpression(ast.Token(var_modname)),
+            ast.binop_assign,
+            ast.StringLiteral("__main__"))
+        initstmts.append(ast.ExpressionStatement(modname_init))
 
         # Enumerate the top-level statements and put them in the right place.  This transformation is subtle because
         # loose code (arbitrary statements) aren't supported in CocoIL.  Instead, we must elevate top-level definitions
@@ -125,7 +127,7 @@ class Transformer:
             else:
                 # For all other statement nodes, simply accumulate them for the module initializer.
                 initstmt = self.transform_stmt(stmt)
-                assert initstmt.is_statement()
+                assert isinstance(initstmt, ast.Statement)
                 initstmts.append(initstmt)
 
         # If any top-level statements spilled over, add them to the initializer.
@@ -148,7 +150,8 @@ class Transformer:
         # By default, Python exports everything, so add all declarations to the list.
         exports = dict()
         for name in members:
-            exports[name] = name # TODO: this needs to be a full qualified token.
+            # TODO: this needs to be a full qualified token.
+            exports[name] = ast.Export(self.ident(name), ast.Token(name))
 
         return ast.Module(self.ident(name), list(imports), exports, members)
 
@@ -206,7 +209,7 @@ class Transformer:
             assert False, "Unrecognized statement node: {}".format(type(node).__name__)
 
         # Check that the return is good and then return it.
-        assert isinstance(stmt, ast.Node) and stmt.is_statement(), \
+        assert isinstance(stmt, ast.Statement), \
                 "Expected PyAST node {} to produce a statement; got {}".format(
                     type(node).__name__, type(stmt).__name__)
         return stmt
@@ -218,19 +221,21 @@ class Transformer:
             stmts.append(self.transform_stmt(node))
 
         # Propagate location information based on the inner statements.
+        loc = None
         if len(stmts) > 0:
-            file = None
-            start = None
-            end = None
-            if stmts[0].loc:
-                file = stmts[0].loc.file
-                start = stmts[0].loc.start
-            if stmts[len(stmts)-1].loc:
-                if not start:
-                    file = stmts[len(stmts)-1].file
-                    start = stmts[len(stmts)-1].loc.start
-                end = stmts[len(stmts)-1].loc.end
-            loc = ast.Location(file, start, end)
+            firstloc = stmts[0].loc
+            lastloc = stmts[len(stmts)-1].loc
+            file, start, end = None, None, None
+            if firstloc:
+                file = firstloc.file
+                start = firstloc.start
+            if lastloc:
+                if not firstloc:
+                    file = lastloc.file
+                    start = loastloc.start
+                end = lastloc.end
+            if file and start:
+                loc = ast.Location(file, start, end)
 
         return ast.Block(stmts, loc)
 
@@ -411,7 +416,7 @@ class Transformer:
             assert False, "Unrecognized statement node: {}".format(type(node).__name__)
 
         # Check that the return is good and then return it.
-        assert isinstance(expr, ast.Node) and expr.is_expression(), \
+        assert isinstance(expr, ast.Expression), \
                 "Expected PyAST node {} to produce an expression; got {}".format(
                     type(node).__name__, type(expr).__name__)
         return expr
@@ -419,7 +424,7 @@ class Transformer:
     def transform_Attribute(self, node):
         assert not node.ctx
         obj = self.transform_expr(node.value)
-        return ast.LoadDynamicExpression(node.attr, obj, loc=self.loc_from(node))
+        return ast.LoadDynamicExpression(ast.StringLiteral(node.attr), obj, loc=self.loc_from(node))
 
     def transform_BinOp(self, node):
         self.not_yet_implemented(node) # left, op, right
@@ -487,7 +492,7 @@ class Transformer:
 
     def transform_Name(self, node):
         assert not node.ctx
-        return ast.LoadLocationExpression(node.id, loc=self.loc_from(node))
+        return ast.LoadLocationExpression(ast.Token(node.id), loc=self.loc_from(node))
 
     def transform_NameID(self, node):
         assert not node.ctx
