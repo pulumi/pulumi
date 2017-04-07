@@ -16,8 +16,8 @@ parser.add_argument("file", help="CocoPy filename")
 
 def main(args):
     pkg = compiler.compile(args.file)
-    jsonobj = encoding.to_serializable(
-        pkg, skip_nones=True, key_mangler=encoding.underscore_to_camel_case)
+    opts = encoding.Options(skip_nones=True, key_encoder=encoding.underscore_to_camel_case)
+    jsonobj = encoding.to_serializable(pkg, opts)
     print(json.dumps(jsonobj, indent=4))
 
 if __name__ == "__main__":

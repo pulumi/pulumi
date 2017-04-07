@@ -64,7 +64,12 @@ class Transformer:
             return None
 
     def ident(self, name, node=None):
+        """Creates an identifier AST node from the given name."""
         return ast.Identifier(name, loc=self.loc_from(node))
+
+    def type_token(self, tok, node=None):
+        """Creates a type token AST node from the given token."""
+        return ast.TypeToken(tok, loc=self.loc_from(node))
     
     def not_yet_implemented(self, node):
         raise Exception("Not yet implemented: {}".format(type(node).__name__))
@@ -97,7 +102,8 @@ class Transformer:
         # Auto-generate the special __name__ variable and populate it in the initializer.
         # TODO: once we support multi-module projects, we will need something other than __main__.
         var_modname = "__name__"
-        members[var_modname] = ast.ModuleProperty(self.ident(var_modname), tokens.type_dynamic)
+        members[var_modname] = ast.ModuleProperty(
+            self.ident(var_modname), self.type_token(tokens.type_dynamic))
         modname_init_expr = ast.BinaryOperatorExpression(
                 ast.LoadLocationExpression(var_modname), ast.binop_assign, ast.StringLiteral("__main__"))
         initstmts.append(ast.ExpressionStatement(modname_init_expr))
@@ -136,7 +142,8 @@ class Transformer:
         for propname in self.ctx.globals:
             assert propname not in members, \
                 "Module property '{}' unexpectedly clashes with a prior declaration".format(propname)
-            members[propname] = ast.ModuleProperty(self.ident(propname), tokens.type_dynamic)
+            members[propname] = ast.ModuleProperty(
+                self.ident(propname), self.type_token(tokens.type_dynamic))
 
         # By default, Python exports everything, so add all declarations to the list.
         exports = dict()
@@ -280,12 +287,14 @@ class Transformer:
 
             args = list()
             for arg in node.args.args:
-                arg_var = ast.LocalVariable(self.ident(arg), tokens.type_dynamic, loc=self.loc_from(node.args))
+                arg_var = ast.LocalVariable(
+                    self.ident(arg), self.type_token(tokens.type_dynamic), loc=self.loc_from(node.args))
                 args.append(arg_var)
 
             body = self.transform_block_stmts(node.body)
 
-            return ast.ModuleMethod(id, args, tokens.type_dynamic, loc=self.loc_from(node))
+            return ast.ModuleMethod(
+                id, args, self.type_token(tokens.type_dynamic), loc=self.loc_from(node))
         finally:
             self.ctx.func = oldfunc
 
@@ -301,11 +310,14 @@ class Transformer:
         return ast.IfStatement(cond, cons, alt, loc=self.loc_from(node))
 
     def transform_Import(self, node):
+        """Transforms an import clause into a set of AST nodes representing the imported module tokens."""
         # TODO: support imports inside of non-top-level scopes.
         # TODO: come up with a way to determine intra-project references.
         imports = set()
-        for name in node.names:
-            imports.add(name)
+        for namenode in node.names:
+            # Python module names are dot-delimited; we need to translate into "/" delimited names.
+            name = namenode.name.replace(".", tokens.mod_name_delim)
+            imports.add(ast.ModuleToken(name, loc=self.loc_from(namenode)))
         return imports
 
     def transform_ImportFrom(self, node):

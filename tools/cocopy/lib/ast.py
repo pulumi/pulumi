@@ -200,6 +200,7 @@ class Statement(Node):
 
 class Block(Statement):
     def __init__(self, statements, loc=None):
+        assert statements is not None
         assert all(stmt.is_statement() for stmt in statements)
         super(Block, self).__init__("Block", loc)
         self.statements = statements

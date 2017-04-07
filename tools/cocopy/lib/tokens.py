@@ -1,6 +1,7 @@
 # Copyright 2017 Pulumi, Inc. All rights reserved.
 
-token_delim = ":" # the character used to delimit parts of a token (module, member, etc).
+token_delim    = ":" # the character used to delimit parts of a token (module, member, etc).
+mod_name_delim = "/" # the character used to delimit parts of a module name (i.e., sub-modules).
 
 # special module tokens:
 mod_default = ".default" # the default module in a package.

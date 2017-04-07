@@ -23,27 +23,33 @@ def underscore_to_camel_case(key):
             new += c
     return new
 
-def to_serializable(obj, skip_nones=False, key_mangler=None):
+class Options:
+    """Options to control serialization."""
+    def __init__(self, skip_nones=False, key_encoder=None):
+        self.skip_nones = skip_nones
+        self.key_encoder = key_encoder
+
+def to_serializable(obj, opts=None):
     """
     This routine converts an acyclic object graph into a dictionary of serializable attributes.  This avoids needing to
     do custom serialization.  During this translation, name conversion can be performed, to ensure that, for instance,
     `underscore_cased` names are transformed into `camelCased` names, if appropriate.
     """
-    return to_serializable_dict(obj.__dict__, skip_nones, key_mangler)
+    return to_serializable_dict(obj.__dict__, opts)
 
-def to_serializable_dict(m, skip_nones=False, key_mangler=None):
+def to_serializable_dict(m, opts=None):
     """This routine converts a simple dictionary into a JSON-serializable map."""
     d = dict()
     for attr in m:
-        v = to_serializable_value(m[attr], skip_nones)
-        if v is not None or not skip_nones:
+        v = to_serializable_value(m[attr], opts)
+        if v is not None or opts is None or not opts.skip_nones:
             key = attr
-            if key_mangler is not None:
-                key = key_mangler(key)
+            if opts and opts.key_encoder:
+                key = opts.key_encoder(key)
             d[key] = v
     return d
 
-def to_serializable_value(v, skip_nones=False, key_mangler=None):
+def to_serializable_value(v, opts=None):
     """This routine converts a singular value into its JSON-serializable equivalent."""
     if (isinstance(v, str) or isinstance(v, unicode) or
             isinstance(v, int) or isinstance(v, long) or isinstance(v, float) or
@@ -56,12 +62,12 @@ def to_serializable_value(v, skip_nones=False, key_mangler=None):
             v = list(v) # convert the set to a list.
         a = list()
         for e in v:
-            a.append(to_serializable_value(e, skip_nones))
+            a.append(to_serializable_value(e, opts))
         return a
     elif isinstance(v, dict):
         # For a map, just recurse into the map routing above, which copies all key/values.
-        return to_serializable_dict(v, skip_nones)
+        return to_serializable_dict(v, opts)
     else:
         # For all others, assume it is an object, and serialize its keys directly.
-        return to_serializable(v, skip_nones)
+        return to_serializable(v, opts)
 
