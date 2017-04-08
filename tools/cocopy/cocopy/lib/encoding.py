@@ -32,22 +32,26 @@ class Options:
 def to_serializable(obj, opts=None):
     """
     This routine converts an acyclic object graph into a dictionary of serializable attributes.  This avoids needing to
-    do custom serialization.  During this translation, name conversion can be performed, to ensure that, for instance,
-    `underscore_cased` names are transformed into `camelCased` names, if appropriate.
+    do custom serialization.  During this translation, name conversion can be performed on object attributes, to ensure
+    that, for instance, `underscore_cased` names are transformed into `camelCased` names, if appropriate.
     """
-    return to_serializable_dict(obj.__dict__, opts)
+    return to_serializable_dictobj(obj.__dict__, True, opts)
 
-def to_serializable_dict(m, opts=None):
+def to_serializable_dict(d, opts=None):
     """This routine converts a simple dictionary into a JSON-serializable map."""
-    d = dict()
-    for attr in m:
-        v = to_serializable_value(m[attr], opts)
+    return to_serializable_dictobj(d, False, opts)
+
+def to_serializable_dictobj(d, isobj, opts=None):
+    """This routine is used by both object and dictionary serialization routines to produce a map."""
+    result = dict()
+    for attr in d:
+        v = to_serializable_value(d[attr], opts)
         if v is not None or opts is None or not opts.skip_nones:
             key = attr
-            if opts and opts.key_encoder:
+            if isobj and opts and opts.key_encoder:
                 key = opts.key_encoder(key)
-            d[key] = v
-    return d
+            result[key] = v
+    return result
 
 def to_serializable_value(v, opts=None):
     """This routine converts a singular value into its JSON-serializable equivalent."""
