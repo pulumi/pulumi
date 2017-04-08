@@ -10,11 +10,11 @@ import (
 
 var (
 	// CocoStdlib is the predefined Coconut standard library.
-	CocoStdlib tokens.Package = tokens.NewPackageToken("coconut")
+	CocoStdlib = tokens.NewPackageToken("coconut")
 	// CocoStdlibMainModule is the predefined Coconut standard library's main module.
-	CocoStdlibMainModule tokens.Module = tokens.NewModuleToken(CocoStdlib, tokens.DefaultModule)
-	// CocoStdlibResouceModule is the predefined Coconut standard library's resource module.
-	CocoStdlibResourceModule tokens.Module = tokens.NewModuleToken(CocoStdlib, "resource")
+	CocoStdlibMainModule = tokens.NewModuleToken(CocoStdlib, tokens.DefaultModule)
+	// CocoStdlibResourceModule is the predefined Coconut standard library's resource module.
+	CocoStdlibResourceModule = tokens.NewModuleToken(CocoStdlib, "resource")
 	// CocoStdlibResourceClass is the penultimate resource base class, from which all resources derive.
-	CocoStdlibResourceClass tokens.Type = tokens.NewTypeToken(CocoStdlibResourceModule, "Resource")
+	CocoStdlibResourceClass = tokens.NewTypeToken(CocoStdlibResourceModule, "Resource")
 )

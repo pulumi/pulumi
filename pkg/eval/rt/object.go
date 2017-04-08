@@ -235,8 +235,8 @@ func NewArrayObject(elem symbols.Type, arr *[]*Pointer) *Object {
 	return NewPrimitiveObject(arrt, arr)
 }
 
-var trueObj *Object = NewPrimitiveObject(types.Bool, true)
-var falseObj *Object = NewPrimitiveObject(types.Bool, false)
+var trueObj = NewPrimitiveObject(types.Bool, true)
+var falseObj = NewPrimitiveObject(types.Bool, false)
 
 // NewBoolObject creates a new primitive number object.
 func NewBoolObject(v bool) *Object {
@@ -251,7 +251,7 @@ func NewNumberObject(v float64) *Object {
 	return NewPrimitiveObject(types.Number, v)
 }
 
-var nullObj *Object = NewPrimitiveObject(types.Null, nil)
+var nullObj = NewPrimitiveObject(types.Null, nil)
 
 // NewNullObject creates a new null object; null objects are not expected to have distinct identity.
 func NewNullObject() *Object {
@@ -305,14 +305,14 @@ func NewConstantObject(v interface{}) *Object {
 // prototype chain as necessary to accomplish the freezing (since modifying the prototype chain would clearly be wrong).
 // TODO[pulumi/coconut#70]: this could cause subtle compatibility issues; e.g., it's possible to write to the prototype
 //     for an inherited property postconstruction; in vanilla ECMAscript, that write would be seen; in CocoJS it won't.
-func (obj *Object) FreezeReadonlyProperties() {
-	current := obj.Type()
+func (o *Object) FreezeReadonlyProperties() {
+	current := o.Type()
 	for current != nil {
 		members := current.TypeMembers()
 		for _, member := range symbols.StableClassMemberMap(members) {
 			if m := members[member]; !m.Static() {
 				if prop, isprop := m.(*symbols.ClassProperty); isprop && prop.Readonly() {
-					ptr := obj.GetPropertyAddr(PropertyKey(member), true, true)
+					ptr := o.GetPropertyAddr(PropertyKey(member), true, true)
 					if !ptr.Readonly() {
 						ptr.Freeze() // ensure we cannot write to this any longer.
 					}
@@ -329,22 +329,22 @@ func (obj *Object) FreezeReadonlyProperties() {
 // GetPropertyAddr locates a property with the given key in an object's property map and/or prototype chain.
 // If that property is not found, and init is true, then it will be added to the object's property map.  If direct is
 // true, then this function ensures that the property is in the object's map, versus being in the prototype chain.
-func (obj *Object) GetPropertyAddr(key PropertyKey, init bool, direct bool) *Pointer {
-	return obj.GetPropertyAddrForThis(obj, key, init, direct)
+func (o *Object) GetPropertyAddr(key PropertyKey, init bool, direct bool) *Pointer {
+	return o.GetPropertyAddrForThis(o, key, init, direct)
 }
 
-// GetPropertyAddr locates a property with the given key, similar to GetPropertyAddr, except that it ensures the
+// GetPropertyAddrForThis locates a property with the given key, similar to GetPropertyAddr, except that it ensures the
 // resulting pointer references the target `this` object (e.g., when loading a prototype function member).
-func (obj *Object) GetPropertyAddrForThis(this *Object, key PropertyKey, init bool, direct bool) *Pointer {
+func (o *Object) GetPropertyAddrForThis(this *Object, key PropertyKey, init bool, direct bool) *Pointer {
 	var ptr *Pointer  // the resulting pointer to return
 	var where *Object // the object the pointer was found on
 
 	// If it's in the object's property map already, just return it.
-	if ptr = obj.Properties().GetAddr(key, false); ptr != nil {
-		where = obj
+	if ptr = o.Properties().GetAddr(key, false); ptr != nil {
+		where = o
 	} else {
 		// Otherwise, consult the prototype chain.
-		proto := obj.Proto()
+		proto := o.Proto()
 		for proto != nil {
 			if ptr = proto.Properties().GetAddr(key, false); ptr != nil {
 				where = proto

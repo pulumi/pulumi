@@ -55,7 +55,7 @@ func (a *analyzer) AnalyzeResource(ctx context.Context,
 	case "aws:ec2/instance:Instance":
 		failures = a.analyzeAWSEC2Instance(req.GetProperties())
 	}
-	return &cocorpc.AnalyzeResourceResponse{failures}, nil
+	return &cocorpc.AnalyzeResourceResponse{Failures: failures}, nil
 }
 
 func (a *analyzer) analyzeAWSEC2Instance(bag *pbstruct.Struct) []*cocorpc.AnalyzeResourceFailure {

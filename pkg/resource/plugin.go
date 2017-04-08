@@ -4,7 +4,6 @@ package resource
 
 import (
 	"bufio"
-	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -70,9 +69,8 @@ func newPlugin(ctx *Context, bins []string, prefix string) (*plugin, error) {
 	// Parse the output line (minus the '\n') to ensure it's a numeric port.
 	if _, err = strconv.Atoi(port); err != nil {
 		plug.Proc.Kill()
-		return nil, errors.New(
-			fmt.Sprintf("%v plugin '%v' wrote a non-numeric port to stdout ('%v'): %v",
-				prefix, foundbin, port, err))
+		return nil, fmt.Errorf("%v plugin '%v' wrote a non-numeric port to stdout ('%v'): %v",
+			prefix, foundbin, port, err)
 	}
 
 	// For now, we will spawn goroutines that will spew STDOUT/STDERR to the relevent diag streams.

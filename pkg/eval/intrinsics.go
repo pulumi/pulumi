@@ -53,7 +53,7 @@ func (node *Intrinsic) Invoke(e *evaluator, this *rt.Object, args []*rt.Object) 
 
 }
 
-// newIntrinsic returns a new intrinsic function symbol with the given information.
+// NewIntrinsic returns a new intrinsic function symbol with the given information.
 func NewIntrinsic(tree diag.Diagable, fnc ast.Function, tok tokens.Token, nm tokens.Name,
 	sig *symbols.FunctionType, invoker Invoker) *Intrinsic {
 	return &Intrinsic{

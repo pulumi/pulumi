@@ -33,12 +33,12 @@ type Resource interface {
 	SetURN(m URN)            // assignes a urn to this resource, for those under creation.
 }
 
-// ResourceState is returned when an error has occurred during a resource provider operation.  It indicates whether the
+// State is returned when an error has occurred during a resource provider operation.  It indicates whether the
 // operation could be rolled back cleanly (OK).  If not, it means the resource was left in an indeterminate state.
-type ResourceState int
+type State int
 
 const (
-	StateOK ResourceState = iota
+	StateOK State = iota
 	StateUnknown
 )
 

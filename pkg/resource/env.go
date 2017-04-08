@@ -43,7 +43,7 @@ func SerializeEnvfile(env *Env, snap Snapshot, reftag string) *Envfile {
 	}
 }
 
-// DeserializeDeployment takes a serialized deployment record and returns its associated snapshot.
+// DeserializeEnvfile takes a serialized deployment record and returns its associated snapshot.
 func DeserializeEnvfile(ctx *Context, envfile *Envfile) (*Env, Snapshot) {
 	contract.Require(ctx != nil, "ctx")
 	contract.Require(envfile != nil, "envfile")

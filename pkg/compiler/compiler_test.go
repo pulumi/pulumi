@@ -32,11 +32,11 @@ func testCompile(paths ...string) *testutil.TestDiagSink {
 	return sink
 }
 
-func TestBadMissingCocofile(t *testing.T) {
+func TestBadMissingProject(t *testing.T) {
 	sink := testCompile("testdata", "bad__missing_cocofile")
 
-	// Check that the compiler complained about a missing Cocofile.
-	d := errors.ErrorMissingCocofile
+	// Check that the compiler complained about a missing Project.
+	d := errors.ErrorMissingProject
 	assert.Equal(t, 1, sink.Errors(), "expected a single error")
 	assert.Equal(t,
 		fmt.Sprintf("%v %v%v: %v\n",
@@ -44,10 +44,10 @@ func TestBadMissingCocofile(t *testing.T) {
 		sink.ErrorMsgs()[0])
 }
 
-func TestBadCocofileCasing(t *testing.T) {
+func TestBadProjectCasing(t *testing.T) {
 	sink := testCompile("testdata", "bad__cocofile_casing")
 
-	// Check that the compiler warned about a bad Cocofile casing (coconut.yaml).
+	// Check that the compiler warned about a bad Project casing (coconut.yaml).
 	d := errors.WarningIllegalMarkupFileCasing
 	assert.Equal(t, 1, sink.Warnings(), "expected a single warning")
 	assert.Equal(t,
@@ -56,10 +56,10 @@ func TestBadCocofileCasing(t *testing.T) {
 		sink.WarningMsgs()[0])
 }
 
-func TestBadCocofileExt(t *testing.T) {
+func TestBadProjectExt(t *testing.T) {
 	sink := testCompile("testdata", "bad__cocofile_ext")
 
-	// Check that the compiler warned about a bad Cocofile extension (none).
+	// Check that the compiler warned about a bad Project extension (none).
 	d := errors.WarningIllegalMarkupFileExt
 	assert.Equal(t, 1, sink.Warnings(), "expected a single warning")
 	assert.Equal(t,
@@ -69,10 +69,10 @@ func TestBadCocofileExt(t *testing.T) {
 		sink.WarningMsgs()[0])
 }
 
-func TestBadCocofileExt2(t *testing.T) {
+func TestBadProjectExt2(t *testing.T) {
 	sink := testCompile("testdata", "bad__cocofile_ext_2")
 
-	// Check that the compiler warned about a bad Cocofile extension (".txt").
+	// Check that the compiler warned about a bad Project extension (".txt").
 	d := errors.WarningIllegalMarkupFileExt
 	assert.Equal(t, 1, sink.Warnings(), "expected a single warning")
 	assert.Equal(t,
@@ -86,12 +86,13 @@ func TestBadMissingPackageName(t *testing.T) {
 	sink := testCompile("testdata", "bad__missing_package_name")
 
 	// Check that the compiler complained about a missing package name.
-	d := errors.ErrorIllegalCocofileSyntax
+	d := errors.ErrorIllegalProjectSyntax
 	assert.Equal(t, 1, sink.Errors(), "expected a single error")
 	assert.Equal(t,
 		fmt.Sprintf("%v: %v %v%v: %v\n",
 			"Coconut.yaml", diag.Error, diag.DefaultSinkIDPrefix, d.ID,
-			fmt.Sprintf(d.Message, "Missing required field 'name' on 'pack.Package'")),
+			fmt.Sprintf(d.Message, "1 fields failed to decode:\n"+
+				"\tname: Missing required field 'name' on 'pack.Package'")),
 		sink.ErrorMsgs()[0])
 }
 
@@ -99,12 +100,13 @@ func TestBadEmptyPackageName(t *testing.T) {
 	sink := testCompile("testdata", "bad__empty_package_name")
 
 	// Check that the compiler complained about a missing package name.
-	d := errors.ErrorIllegalCocofileSyntax
+	d := errors.ErrorIllegalProjectSyntax
 	assert.Equal(t, 1, sink.Errors(), "expected a single error")
 	assert.Equal(t,
 		fmt.Sprintf("%v: %v %v%v: %v\n",
 			"Coconut.yaml", diag.Error, diag.DefaultSinkIDPrefix, d.ID,
-			fmt.Sprintf(d.Message, "Missing required field 'name' on 'pack.Package'")),
+			fmt.Sprintf(d.Message, "1 fields failed to decode:\n"+
+				"\tname: Missing required field 'name' on 'pack.Package'")),
 		sink.ErrorMsgs()[0])
 }
 

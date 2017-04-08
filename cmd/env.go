@@ -452,18 +452,18 @@ func readEnv(ctx *resource.Context, name tokens.QName) (*resource.Envfile, *reso
 	if err = m.Unmarshal(b, &obj); err != nil {
 		ctx.Diag.Errorf(errors.ErrorCantReadDeployment, file, err)
 		return nil, nil, nil
-	} else {
-		if obj["latest"] != nil {
-			if latest, islatest := obj["latest"].(map[string]interface{}); islatest {
-				delete(latest, "resources") // remove the resources, since they require custom marshaling.
-			}
+	}
+
+	if obj["latest"] != nil {
+		if latest, islatest := obj["latest"].(map[string]interface{}); islatest {
+			delete(latest, "resources") // remove the resources, since they require custom marshaling.
 		}
-		md := mapper.New(nil)
-		var ignore resource.Envfile // just for errors.
-		if err = md.Decode(obj, &ignore); err != nil {
-			ctx.Diag.Errorf(errors.ErrorCantReadDeployment, file, err)
-			return nil, nil, nil
-		}
+	}
+	md := mapper.New(nil)
+	var ignore resource.Envfile // just for errors.
+	if err = md.Decode(obj, &ignore); err != nil {
+		ctx.Diag.Errorf(errors.ErrorCantReadDeployment, file, err)
+		return nil, nil, nil
 	}
 
 	env, snap := resource.DeserializeEnvfile(ctx, &envfile)
@@ -567,7 +567,7 @@ func (prog *applyProgress) Before(step resource.Step) {
 	fmt.Printf(colors.Colorize(&b))
 }
 
-func (prog *applyProgress) After(step resource.Step, err error, state resource.ResourceState) {
+func (prog *applyProgress) After(step resource.Step, state resource.State, err error) {
 	if err == nil {
 		// Increment the counters.
 		prog.Steps++
