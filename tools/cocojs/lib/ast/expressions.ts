@@ -89,12 +89,12 @@ export interface LoadLocationExpression extends LoadExpression {
 export const loadLocationExpressionKind = "LoadLocationExpression";
 export type  LoadLocationExpressionKind = "LoadLocationExpression";
 
-// Dynamically loads either a variable or function, by name, from an object.
+// Dynamically loads either a variable or function, by name, from an object or scope.
 // TODO(joe): I'm unsure if we should permit assigning to functions by name; I think we'll need to for Python/Ruby/etc.
 export interface LoadDynamicExpression extends LoadExpression {
-    kind:   LoadDynamicExpressionKind;
-    object: Expression; // the object to load a property from.
-    name:   Expression; // the name of the property to load.
+    kind:    LoadDynamicExpressionKind;
+    object?: Expression; // the object to load a property from.
+    name:    Expression; // the name of the property to load.
 }
 export const loadDynamicExpressionKind = "LoadDynamicExpression";
 export type  LoadDynamicExpressionKind = "LoadDynamicExpression";

@@ -109,6 +109,7 @@ class Transformer:
         members = dict()
         initstmts = list()
         imports = set()
+        modtok = self.current_module_token()
 
         # Auto-generate the special __name__ variable and populate it in the initializer.
         # TODO: once we support multi-module projects, we will need something other than __main__.
@@ -116,7 +117,7 @@ class Transformer:
         members[var_modname] = ast.ModuleProperty(
             self.ident(var_modname), self.type_token(tokens.type_dynamic))
         modname_init = ast.BinaryOperatorExpression(
-            ast.LoadLocationExpression(ast.Token(var_modname)),
+            ast.LoadLocationExpression(ast.Token(modtok + tokens.delim + var_modname)),
             ast.binop_assign,
             ast.StringLiteral("__main__"))
         initstmts.append(ast.ExpressionStatement(modname_init))
@@ -160,7 +161,6 @@ class Transformer:
 
         # By default, Python exports everything, so add all declarations to the list.
         exports = dict()
-        modtok = self.current_module_token()
         for name in members:
             tok = modtok + tokens.delim + name
             exports[name] = ast.Export(self.ident(name), ast.Token(tok))
@@ -504,7 +504,7 @@ class Transformer:
 
     def transform_Name(self, node):
         assert not node.ctx
-        return ast.LoadLocationExpression(ast.Token(node.id), loc=self.loc_from(node))
+        return ast.LoadDynamicExpression(ast.StringLiteral(node.id), loc=self.loc_from(node))
 
     def transform_NameID(self, node):
         assert not node.ctx

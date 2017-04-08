@@ -171,7 +171,7 @@ func Walk(v Visitor, node Node) {
 		Walk(v, n.Name)
 	case *LoadDynamicExpression:
 		if n.Object != nil {
-			Walk(v, n.Object)
+			Walk(v, *n.Object)
 		}
 		Walk(v, n.Name)
 	case *NewExpression:

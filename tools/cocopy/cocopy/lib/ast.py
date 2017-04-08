@@ -503,10 +503,10 @@ class LoadLocationExpression(LoadExpression):
         self.object = object # the `this` object, in case of object properties.
 
 class LoadDynamicExpression(LoadExpression):
-    """Dynamically loads either a variable or function, by name, from an object."""
-    def __init__(self, name, object, loc=None):
+    """Dynamically loads either a variable or function, by name, from an object or scope."""
+    def __init__(self, name, object=None, loc=None):
         assert isinstance(name, Expression)
-        assert isinstance(object, Expression)
+        assert object is None or isinstance(object, Expression)
         super(LoadDynamicExpression, self).__init__("LoadDynamicExpression", loc)
         self.name = name     # the name of the property to load.
         self.object = object # the object to load a property from.
