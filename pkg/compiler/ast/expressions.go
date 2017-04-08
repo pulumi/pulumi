@@ -141,8 +141,8 @@ const LoadLocationExpressionKind NodeKind = "LoadLocationExpression"
 // LoadDynamicExpression dynamically loads either a variable or a function, by name, from an object or scope.
 type LoadDynamicExpression struct {
 	loadExpressionNode
-	Object *Expression `json:"object"` // the object from which to load the property.
-	Name   Expression  `json:"name"`   // the dynamically evaluated name of the property to load.
+	Object *Expression `json:"object,omitempty"` // the object from which to load the property.
+	Name   Expression  `json:"name"`             // the dynamically evaluated name of the property to load.
 }
 
 var _ Node = (*LoadDynamicExpression)(nil)

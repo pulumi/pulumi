@@ -169,6 +169,7 @@ func (node *ClassMethod) Special() bool {
 	nm := node.MemberName()
 	return nm == tokens.ClassInitFunction || nm == tokens.ClassConstructorFunction
 }
+func (node *ClassMethod) SpecialModInit() bool        { return false }
 func (node *ClassMethod) Tree() diag.Diagable         { return node.Node }
 func (node *ClassMethod) Optional() bool              { return false }
 func (node *ClassMethod) Static() bool                { return node.Node.Static != nil && *node.Node.Static }

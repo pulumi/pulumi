@@ -10,7 +10,7 @@ import (
 	"github.com/pulumi/coconut/pkg/util/contract"
 )
 
-// localScope is a kind of scope that holds local variable values.
+// localScope holds variable values that correspond to a specific lexical scope.
 type localScope struct {
 	Slot    **localScope
 	Parent  *localScope   // the parent to restore when popping this scope.
@@ -19,7 +19,7 @@ type localScope struct {
 	Values  valueMap      // the values map contains the value for a variable so long as it exists.
 }
 
-// valueMap maps local variables to their current known object value (if any).
+// valueMap maps variables to their current known object value in this scope (if any).
 type valueMap map[*symbols.LocalVariable]*rt.Pointer
 
 func newLocalScope(slot **localScope, frame bool, lex *binder.Scope) *localScope {
@@ -59,7 +59,7 @@ func (s *localScope) GetValueAddr(sym *symbols.LocalVariable, init bool) *rt.Poi
 	return s.lookupValueAddr(sym, nil, init)
 }
 
-// InitValue registers a reference for a local variable, and asserts that none previously existed.
+// InitValue registers a reference for a variable, and asserts that none previously existed.
 func (s *localScope) InitValueAddr(sym *symbols.LocalVariable, ref *rt.Pointer) {
 	s.lookupValueAddr(sym, ref, false)
 }
@@ -67,7 +67,7 @@ func (s *localScope) InitValueAddr(sym *symbols.LocalVariable, ref *rt.Pointer) 
 // lookupValueAddr is used to lookup and initialize references using a single, shared routine.
 func (s *localScope) lookupValueAddr(sym *symbols.LocalVariable, place *rt.Pointer, init bool) *rt.Pointer {
 	// To get a value's reference, we must first find the position in the shadowed frames, so that its lifetime equals
-	// the actual local variable symbol's lifetime.  This ensures that once that frame is popped, so too is any value
+	// the actual variable symbol's lifetime.  This ensures that once that frame is popped, so too is any value
 	// associated with it; and similarly, that its value won't be popped until the frame containing the variable is.
 	lex := s.Lexical
 outer:

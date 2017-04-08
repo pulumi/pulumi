@@ -177,62 +177,64 @@ func printPackage(pkg *pack.Package, printSymbols bool, printExports bool, print
 }
 
 func printModules(pkg *pack.Package, printSymbols bool, printExports bool, printIL bool, indent string) {
-	pkgtok := tokens.NewPackageToken(pkg.Name)
-	for _, name := range ast.StableModules(*pkg.Modules) {
-		mod := (*pkg.Modules)[name]
-		modtok := tokens.NewModuleToken(pkgtok, name)
+	if pkg.Modules != nil {
+		pkgtok := tokens.NewPackageToken(pkg.Name)
+		for _, name := range ast.StableModules(*pkg.Modules) {
+			mod := (*pkg.Modules)[name]
+			modtok := tokens.NewModuleToken(pkgtok, name)
 
-		// Print the name.
-		fmt.Printf("%vmodule \"%v\" {", indent, name)
+			// Print the name.
+			fmt.Printf("%vmodule \"%v\" {", indent, name)
 
-		// Now, if requested, print the tokens.
-		if printSymbols || printExports {
-			if mod.Imports != nil || mod.Members != nil {
-				fmt.Printf("\n")
+			// Now, if requested, print the tokens.
+			if printSymbols || printExports {
+				if mod.Imports != nil || mod.Members != nil {
+					fmt.Printf("\n")
 
-				if mod.Imports != nil {
-					// Print the imports.
-					fmt.Printf("%vimports [", indent+tab)
-					if mod.Imports != nil && len(*mod.Imports) > 0 {
-						fmt.Printf("\n")
-						for _, imp := range *mod.Imports {
-							fmt.Printf("%v\"%v\"\n", indent+tab+tab, imp.Tok)
+					if mod.Imports != nil {
+						// Print the imports.
+						fmt.Printf("%vimports [", indent+tab)
+						if mod.Imports != nil && len(*mod.Imports) > 0 {
+							fmt.Printf("\n")
+							for _, imp := range *mod.Imports {
+								fmt.Printf("%v\"%v\"\n", indent+tab+tab, imp.Tok)
+							}
+							fmt.Printf("%v", indent+tab)
 						}
-						fmt.Printf("%v", indent+tab)
+						fmt.Printf("]\n")
 					}
-					fmt.Printf("]\n")
-				}
 
-				exports := make(map[tokens.Token]bool)
-				if mod.Exports != nil {
-					// Print the exports.
-					fmt.Printf("%vexports [", indent+tab)
-					if mod.Exports != nil && len(*mod.Exports) > 0 {
-						fmt.Printf("\n")
-						for _, exp := range ast.StableModuleExports(*mod.Exports) {
-							ref := (*mod.Exports)[exp].Referent.Tok
-							fmt.Printf("%v\"%v\" -> \"%v\"\n", indent+tab+tab, exp, ref)
-							exports[ref] = true
+					exports := make(map[tokens.Token]bool)
+					if mod.Exports != nil {
+						// Print the exports.
+						fmt.Printf("%vexports [", indent+tab)
+						if mod.Exports != nil && len(*mod.Exports) > 0 {
+							fmt.Printf("\n")
+							for _, exp := range ast.StableModuleExports(*mod.Exports) {
+								ref := (*mod.Exports)[exp].Referent.Tok
+								fmt.Printf("%v\"%v\" -> \"%v\"\n", indent+tab+tab, exp, ref)
+								exports[ref] = true
+							}
+							fmt.Printf("%v", indent+tab)
 						}
-						fmt.Printf("%v", indent+tab)
+						fmt.Printf("]\n")
 					}
-					fmt.Printf("]\n")
-				}
 
-				if mod.Members != nil {
-					// Print the members.
-					for _, member := range ast.StableModuleMembers(*mod.Members) {
-						memtok := tokens.NewModuleMemberToken(modtok, member)
-						printModuleMember(memtok, (*mod.Members)[member], printExports, exports, indent+tab)
+					if mod.Members != nil {
+						// Print the members.
+						for _, member := range ast.StableModuleMembers(*mod.Members) {
+							memtok := tokens.NewModuleMemberToken(modtok, member)
+							printModuleMember(memtok, (*mod.Members)[member], printExports, exports, indent+tab)
+						}
+						fmt.Printf("%v", indent)
 					}
-					fmt.Printf("%v", indent)
 				}
+			} else {
+				// Print a "..." so that it's clear we're omitting information, versus the module being empty.
+				fmt.Printf("...")
 			}
-		} else {
-			// Print a "..." so that it's clear we're omitting information, versus the module being empty.
-			fmt.Printf("...")
+			fmt.Printf("}\n")
 		}
-		fmt.Printf("}\n")
 	}
 }
 

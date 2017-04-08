@@ -171,7 +171,8 @@ func (node *ModuleMethod) Token() tokens.Token {
 		),
 	)
 }
-func (node *ModuleMethod) Special() bool                { return node.MemberName() == tokens.ModuleInitFunction }
+func (node *ModuleMethod) Special() bool                { return node.SpecialModInit() }
+func (node *ModuleMethod) SpecialModInit() bool         { return node.MemberName() == tokens.ModuleInitFunction }
 func (node *ModuleMethod) Tree() diag.Diagable          { return node.Node }
 func (node *ModuleMethod) MemberNode() ast.ModuleMember { return node.Node }
 func (node *ModuleMethod) MemberName() tokens.ModuleMemberName {

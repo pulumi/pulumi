@@ -7,6 +7,7 @@ import (
 	"github.com/pulumi/coconut/pkg/compiler/symbols"
 	"github.com/pulumi/coconut/pkg/diag"
 	"github.com/pulumi/coconut/pkg/eval/rt"
+	"github.com/pulumi/coconut/pkg/tokens"
 	"github.com/pulumi/coconut/pkg/util/contract"
 )
 
@@ -19,6 +20,10 @@ func (e *evaluator) NewException(node diag.Diagable, msg string, args ...interfa
 
 func (e *evaluator) NewNullObjectException(node diag.Diagable) *rt.Unwind {
 	return e.NewException(node, "Target object is null")
+}
+
+func (e *evaluator) NewNameNotDefinedException(node diag.Diagable, name tokens.Name) *rt.Unwind {
+	return e.NewException(node, "Name '%v' is not defined", name)
 }
 
 func (e *evaluator) NewNegativeArrayLengthException(node diag.Diagable) *rt.Unwind {

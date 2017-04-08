@@ -371,16 +371,8 @@ func (a *astBinder) checkLoadLocationExpression(node *ast.LoadLocationExpression
 }
 
 func (a *astBinder) checkLoadDynamicExpression(node *ast.LoadDynamicExpression) {
-	// Ensure the object is non-nil.
-	if node.Object == nil {
-		a.b.Diag().Errorf(errors.ErrorExpectedObject.At(node))
-	}
-
-	// Now ensure that the right hand side is either a string or a dynamic.
-	name := a.b.ctx.RequireType(node.Name)
-	if name != types.Dynamic && !types.CanConvert(name, types.String) {
-
-	}
+	// Ensure that the name is either a string or a dynamic.
+	a.checkExprType(node.Name, types.String)
 
 	// No matter the outcome, a load dynamic always produces a dynamically typed thing.
 	a.b.ctx.RegisterType(node, types.Dynamic)
@@ -456,6 +448,9 @@ func (a *astBinder) checkInvokeFunctionExpression(node *ast.InvokeFunctionExpres
 		// The resulting type of this expression is the same as the function's return type.  Note that if the return is
 		// nil ("void"-returning), we still register it; a nil entry is distinctly different from a missing entry.
 		a.b.ctx.RegisterType(node, funty.Return)
+	} else if ty == types.Dynamic {
+		// It's ok to invoke a dynamically typed object; we simply might fail at runtime.
+		a.b.ctx.RegisterType(node, types.Dynamic)
 	} else {
 		a.b.Diag().Errorf(errors.ErrorCannotInvokeNonFunction.At(node), ty)
 		a.b.ctx.RegisterType(node, types.Error)

@@ -78,7 +78,7 @@ type evaluator struct {
 	statics    staticMap        // the object values for all static variable symbols.
 	protos     prototypeMap     // the current "prototypes" for all classes.
 	stack      *rt.StackFrame   // a stack of frames to keep track of calls.
-	locals     *localScope      // local variable values scoped by the lexical structure.
+	locals     *localScope      // variable values corresponding to the current lexical scope.
 	modinits   modinitMap       // a map of which modules have been initialized already.
 	classinits classinitMap     // a map of which classes have been initialized already.
 }
@@ -503,6 +503,18 @@ func (e *evaluator) issueUnhandledException(uw *rt.Unwind, err *diag.Diag, args 
 	e.Diag().Errorf(err, args...)
 }
 
+// pushModuleScope establishes a new module-wide scope.  It returns a function that restores the prior value.
+func (e *evaluator) pushModuleScope(m *symbols.Module) func() {
+	return e.ctx.PushModule(m)
+}
+
+// pushClassScope establishes a new class-wide scope.  This also establishes the right module context.  If the object
+// argument is non-nil, instance methods are also populated.  It returns a function that restores the prior value.
+func (e *evaluator) pushClassScope(c *symbols.Class, obj *rt.Object) func() {
+	contract.Assert(obj == nil || obj.Type() == c)
+	return e.ctx.PushClass(c)
+}
+
 // pushScope pushes a new local and context scope.  The frame argument indicates whether this is an activation frame,
 // meaning that searches for local variables will not probe into parent scopes (since they are inaccessible).
 func (e *evaluator) pushScope(frame *rt.StackFrame) {
@@ -550,13 +562,13 @@ func (e *evaluator) evalCall(node diag.Diagable, fnc symbols.Function,
 	// Ensure that we enter the right module/class context, otherwise module-sensitive binding won't work.
 	switch f := fnc.(type) {
 	case *symbols.ClassMethod:
-		popm := e.ctx.PushModule(f.Parent.Parent)
-		defer popm()
-		popc := e.ctx.PushClass(f.Parent)
-		defer popc()
+		popModule := e.pushModuleScope(f.Parent.Parent)
+		defer popModule()
+		popClass := e.pushClassScope(f.Parent, this)
+		defer popClass()
 	case *symbols.ModuleMethod:
-		popm := e.ctx.PushModule(f.Parent)
-		defer popm()
+		popModule := e.pushModuleScope(f.Parent)
+		defer popModule()
 	default:
 		contract.Failf("Unrecognized function type during call: %v", reflect.TypeOf(fnc))
 	}
@@ -1236,6 +1248,7 @@ func (e *evaluator) evalLoadLocation(node *ast.LoadLocationExpression, lval bool
 	tok := node.Name.Tok
 	if tok.Simple() {
 		// If there is no object and the name is simple, it refers to a local variable in the current scope.
+		// For more "sophisticated" lookups, in the hierarchy of scopes, a load dynamic operation must be utilized.
 		contract.Assert(this == nil)
 		loc := e.ctx.Scope.Lookup(tok.Name())
 		contract.Assert(loc != nil)
@@ -1347,16 +1360,21 @@ func (e *evaluator) evalLoadDynamic(node *ast.LoadDynamicExpression, lval bool) 
 
 	// Evaluate the object and then the property expression.
 	var this *rt.Object
-	if this, uw = e.evalExpression(node.Object); uw != nil {
-		return nil, uw
+	var thisexpr ast.Expression
+	if node.Object != nil {
+		thisexpr = *node.Object
+		if this, uw = e.evalExpression(thisexpr); uw != nil {
+			return nil, uw
+		}
+
+		// Check that the object isn't null; if it is, raise an exception.
+		if uw = e.checkThis(node, this); uw != nil {
+			return nil, uw
+		}
+
 	}
 	var name *rt.Object
 	if name, uw = e.evalExpression(node.Name); uw != nil {
-		return nil, uw
-	}
-
-	// Check that the object isn't null; if it is, raise an exception.
-	if uw = e.checkThis(node, this); uw != nil {
 		return nil, uw
 	}
 
@@ -1368,8 +1386,8 @@ func (e *evaluator) evalLoadDynamic(node *ast.LoadDynamicExpression, lval bool) 
 		contract.Assertf(isarr, "Expected an array for numeric dynamic load index")
 		ix := int(name.NumberValue())
 		arrv := this.ArrayValue()
-		// TODO[pulumi/coconut#70]: Although storing arrays as arrays is fine for many circumstances, there are two cases
-		//     particular that could cause us troubles with ECMAScript compliance.  First, negative indices are fine in
+		// TODO[pulumi/coconut#70]: Although storing arrays as arrays is fine for many circumstances, there are two
+		//     situations that could cause us troubles with ECMAScript compliance.  First, negative indices are fine in
 		//     ECMAScript.  Second, sparse arrays can be represented more efficiently as a "bag of properties" than as a
 		//     true array that needs to be resized (possibly growing to become enormous in memory usage).
 		// TODO[pulumi/coconut#70]: We are emulating "ECMAScript-like" array accesses, where -- just like ordinary
@@ -1391,7 +1409,34 @@ func (e *evaluator) evalLoadDynamic(node *ast.LoadDynamicExpression, lval bool) 
 	} else {
 		contract.Assertf(name.Type() == types.String, "Expected dynamic load name to be a string")
 		key = tokens.Name(name.StringValue())
-		pv = e.getObjectOrSuperProperty(this, node.Object, rt.PropertyKey(key), false, lval)
+		if thisexpr == nil {
+			// If there's no object, look in the current localsment.
+			pkey := rt.PropertyKey(key)
+			globals := e.getModuleGlobals(e.ctx.Currmodule)
+			if loc := e.ctx.Scope.Lookup(key); loc != nil {
+				pv = e.locals.GetValueAddr(loc, true) // create a slot, we know the declaration exists.
+			} else {
+				// If it didn't exist in the lexical scope, check the module's globals.
+				pv = globals.GetAddr(pkey, false) // look for a global by this name, but don't allocate one.
+			}
+
+			// Finally, if neither of those existed, and this is the target of a load, allocate a slot.
+			if pv == nil && lval {
+				if e.fnc.SpecialModInit() {
+					pv = globals.GetAddr(pkey, true)
+				} else {
+					loc := symbols.NewSpecialVariableSym(key, types.Dynamic)
+					pv = e.locals.GetValueAddr(loc, true)
+				}
+			}
+		} else {
+			pv = e.getObjectOrSuperProperty(this, thisexpr, rt.PropertyKey(key), lval, lval)
+		}
+
+		if pv == nil {
+			// If the result is nil, then the name is not defined.  Raise an error.
+			return nil, e.NewNameNotDefinedException(node, key)
+		}
 	}
 
 	// If this isn't for an l-value, return the raw object.  Otherwise, make sure it's not readonly, and return it.
@@ -1410,7 +1455,7 @@ func (e *evaluator) evalLoadDynamic(node *ast.LoadDynamicExpression, lval bool) 
 	return &Location{
 		e:    e,
 		This: this,
-		Name: tokens.Name(key),
+		Name: key,
 		Lval: lval,
 		Obj:  obj,
 	}, nil
@@ -1470,11 +1515,15 @@ func (e *evaluator) evalInvokeFunctionExpression(node *ast.InvokeFunctionExpress
 
 	// Ensure that this actually led to a function; this is guaranteed by the binder.
 	var fnc rt.FuncStub
-	switch fncobj.Type().(type) {
+	switch t := fncobj.Type().(type) {
 	case *symbols.FunctionType:
 		fnc = fncobj.FunctionValue()
 		contract.Assert(fnc.Func != nil)
 	default:
+		if e.ctx.RequireType(node.Function) == types.Dynamic {
+			// If a dynamic expression, raise an exception rather than asserting (else the IL was malformed).
+			return nil, e.NewIllegalInvokeTargetException(node.Function, t)
+		}
 		contract.Failf("Expected function expression to yield a function type")
 	}
 

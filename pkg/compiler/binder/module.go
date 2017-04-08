@@ -8,7 +8,9 @@ import (
 	"github.com/golang/glog"
 
 	"github.com/pulumi/coconut/pkg/compiler/ast"
+	"github.com/pulumi/coconut/pkg/compiler/errors"
 	"github.com/pulumi/coconut/pkg/compiler/symbols"
+	"github.com/pulumi/coconut/pkg/tokens"
 	"github.com/pulumi/coconut/pkg/util/contract"
 )
 
@@ -123,7 +125,10 @@ func (b *binder) bindModuleImports(module *symbols.Module) {
 	// Now bind all imports to concrete symbols: these are simple token bindings.
 	if module.Node.Imports != nil {
 		for _, imptok := range *module.Node.Imports {
-			if imp := b.ctx.LookupModule(imptok); imp != nil {
+			if !tokens.Token(imptok.Tok).HasModule() {
+				b.Diag().Errorf(errors.ErrorMalformedToken.At(imptok),
+					"Module", imptok.Tok, "missing module part")
+			} else if imp := b.ctx.LookupModule(imptok); imp != nil {
 				module.Imports = append(module.Imports, imp)
 			}
 		}

@@ -98,6 +98,9 @@ class Transformer:
                 mod = self.transform_Module(module.name, module.py_module)
                 assert module.name not in self.pkg.modules, "Module {} already exists".format(module.name)
                 self.pkg.modules[module.name] = mod
+            if len(modules) > 0:
+                # Mark the first module supplied as the default.
+                self.pkg.aliases[tokens.mod_default] = modules[0].name
         finally:
             self.ctx = oldctx
         return self.pkg
@@ -334,6 +337,18 @@ class Transformer:
         for namenode in node.names:
             # Python module names are dot-delimited; we need to translate into "/" delimited names.
             name = namenode.name.replace(".", tokens.name_delim)
+
+            # Now transform the module name into a qualified package/module token.
+            # TODO: this heuristic isn't perfect; I think we should load up the target package and read its manifest
+            #     to figure out the precise package naming, etc. (since packages can be multi-part too).
+            delimix = name.find(tokens.name_delim)
+            if delimix == -1:
+                # If just the package, we will use the default module.
+                name = name + tokens.delim + tokens.mod_default
+            else:
+                # Otherwise, use the first part as the package, and the remainder as the module.
+                name = name[:delimix] + tokens.delim + name[delimix+1:]
+
             imports.add(ast.ModuleToken(name, loc=self.loc_from(namenode)))
         return imports
 
