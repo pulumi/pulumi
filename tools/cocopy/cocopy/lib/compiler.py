@@ -9,8 +9,9 @@ def compile(filename):
     """Compiles a Python module into a Coconut package."""
 
     # Load the target's pkg.
-    loader = Loader()
+    filename = path.normpath(filename)
     projbase = path.dirname(filename)
+    loader = Loader()
     pkg = loader.loadProject(projbase)
 
     # Now parse the Python program into an AST that we can party on.
@@ -22,9 +23,15 @@ def compile(filename):
         print >> sys.stderr, "{}: {}: invalid syntax: {}".format(e.filename, e.lineno, e.text)
         return -1
 
+    # To create a module name, make the path relative to the project, and eliminate any extensions.
+    name = path.relpath(filename, projbase)
+    extix = name.rfind(".")
+    if extix != -1:
+        name = name[:extix]
+
     # Finally perform the transformation to create a Coconut package and its associated IL/AST, and return it.
     t = Transformer(loader, pkg)
-    mod = ModuleSpec(filename, path.normpath(filename), py_module)
+    mod = ModuleSpec(name, filename, py_module)
     return t.transform([ mod ])
 
 class ModuleSpec:
@@ -70,7 +77,11 @@ class Transformer:
     def type_token(self, tok, node=None):
         """Creates a type token AST node from the given token."""
         return ast.TypeToken(tok, loc=self.loc_from(node))
-    
+
+    def current_module_token(self):
+        """Creates a module token for the current package and module pair."""
+        return self.pkg.name + tokens.delim + self.ctx.mod.name
+
     def not_yet_implemented(self, node):
         raise Exception("Not yet implemented: {}".format(type(node).__name__))
 
@@ -149,9 +160,10 @@ class Transformer:
 
         # By default, Python exports everything, so add all declarations to the list.
         exports = dict()
+        modtok = self.current_module_token()
         for name in members:
-            # TODO: this needs to be a full qualified token.
-            exports[name] = ast.Export(self.ident(name), ast.Token(name))
+            tok = modtok + tokens.delim + name
+            exports[name] = ast.Export(self.ident(name), ast.Token(tok))
 
         return ast.Module(self.ident(name), list(imports), exports, members)
 
@@ -321,7 +333,7 @@ class Transformer:
         imports = set()
         for namenode in node.names:
             # Python module names are dot-delimited; we need to translate into "/" delimited names.
-            name = namenode.name.replace(".", tokens.mod_name_delim)
+            name = namenode.name.replace(".", tokens.name_delim)
             imports.add(ast.ModuleToken(name, loc=self.loc_from(namenode)))
         return imports
 
