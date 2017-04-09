@@ -1542,12 +1542,17 @@ func (e *evaluator) getDynamicNameAddr(key tokens.Name, lval bool) *rt.Pointer {
 func (e *evaluator) evalNewExpression(node *ast.NewExpression) (*rt.Object, *rt.Unwind) {
 	// Fetch the type of this expression; that's the kind of object we are allocating.
 	ty := e.ctx.RequireType(node)
+	// Now actually perform the new operation.
+	return e.evalNew(node, ty, node.Arguments)
+}
 
+// evalNew performs a new operation on the given type with the given arguments.
+func (e *evaluator) evalNew(node diag.Diagable, t symbols.Type, args *[]ast.Expression) (*rt.Object, *rt.Unwind) {
 	// Create a object of the right type, containing all of the properties pre-populated.
-	obj := e.newObject(node, ty)
+	obj := e.newObject(node, t)
 
 	// See if there is a constructor method.  If there isn't, we just return the fresh object.
-	if ctor, has := ty.TypeMembers()[tokens.ClassConstructorFunction]; has {
+	if ctor, has := t.TypeMembers()[tokens.ClassConstructorFunction]; has {
 		ctormeth, isfunc := ctor.(*symbols.ClassMethod)
 		contract.Assertf(isfunc,
 			"Expected ctor %v to be a class method; got %v", ctor, reflect.TypeOf(ctor))
@@ -1555,27 +1560,27 @@ func (e *evaluator) evalNewExpression(node *ast.NewExpression) (*rt.Object, *rt.
 			"Expected ctor %v to have a nil return; got %v", ctor, ctormeth.Sig.Return)
 
 		// Evaluate the arguments in order.
-		var args []*rt.Object
-		if node.Arguments != nil {
-			for _, arg := range *node.Arguments {
+		var argobjs []*rt.Object
+		if args != nil {
+			for _, arg := range *args {
 				argobj, uw := e.evalExpression(arg)
 				if uw != nil {
 					return nil, uw
 				}
-				args = append(args, argobj)
+				argobjs = append(argobjs, argobj)
 			}
 		}
 
 		// Now dispatch the function call using the fresh object as the constructor's `this` argument.
-		if _, uw := e.evalCall(node, ctormeth, obj, args...); uw != nil {
+		if _, uw := e.evalCall(node, ctormeth, obj, argobjs...); uw != nil {
 			return nil, uw
 		}
 	} else {
-		contract.Assertf(node.Arguments == nil || len(*node.Arguments) == 0,
-			"No constructor found for %v, yet the new expression had %v args", ty, len(*node.Arguments))
-		class, isclass := ty.(*symbols.Class)
+		contract.Assertf(args == nil || len(*args) == 0,
+			"No constructor found for %v, yet the new expression had %v args", t, len(*args))
+		class, isclass := t.(*symbols.Class)
 		contract.Assertf(!isclass || class.Extends == nil,
-			"No constructor found for %v, yet there is a base class; chaining must be done manually", ty)
+			"No constructor found for %v, yet there is a base class; chaining must be done manually", t)
 	}
 
 	// Finally, ensure that all readonly properties are frozen now.
@@ -1591,15 +1596,24 @@ func (e *evaluator) evalInvokeFunctionExpression(node *ast.InvokeFunctionExpress
 		return nil, uw
 	}
 
+	// See if this is a dynamic invocation -- these are validated differently.
+	dynamic := (e.ctx.RequireType(node.Function) == types.Dynamic)
+
 	// Ensure that this actually led to a function; this is guaranteed by the binder.
 	var fnc rt.FuncStub
 	switch t := fncobj.Type().(type) {
 	case *symbols.FunctionType:
 		fnc = fncobj.FunctionValue()
 		contract.Assert(fnc.Func != nil)
+	case *symbols.PrototypeType:
+		contract.Assertf(dynamic, "Prototype invocation is only valid for dynamic invokes")
+		// For dynamic invokes, we permit invocation of class prototypes (a "new").
+		ot := t.Type // this is the type of object to create.
+		return e.evalNew(node, ot, node.Arguments)
 	default:
-		if e.ctx.RequireType(node.Function) == types.Dynamic {
-			// If a dynamic expression, raise an exception rather than asserting (else the IL was malformed).
+		// If dynamic, raise an exception; otherwise, assert, since the IL was malformed and should have been caught
+		// during binding/verification time.
+		if dynamic {
 			return nil, e.NewIllegalInvokeTargetException(node.Function, t)
 		}
 		contract.Failf("Expected function expression to yield a function type")
