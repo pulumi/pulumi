@@ -58,7 +58,7 @@ func New(ctx *binder.Context, hooks InterpreterHooks) Interpreter {
 		ctx:        ctx,
 		hooks:      hooks,
 		alloc:      NewAllocator(hooks),
-		globals:    make(globalMap),
+		modules:    make(moduleMap),
 		statics:    make(staticMap),
 		protos:     make(prototypeMap),
 		modinits:   make(modinitMap),
@@ -74,16 +74,16 @@ type evaluator struct {
 	ctx        *binder.Context  // the binding context with type and symbol information.
 	hooks      InterpreterHooks // callbacks that hook into interpreter events.
 	alloc      *Allocator       // the object allocator.
-	globals    globalMap        // the object values for global variable symbols.
+	modules    moduleMap        // the current module objects for all modules.
 	statics    staticMap        // the object values for all static variable symbols.
-	protos     prototypeMap     // the current "prototypes" for all classes.
+	protos     prototypeMap     // the current "prototype" objects for all classes.
 	stack      *rt.StackFrame   // a stack of frames to keep track of calls.
 	locals     *localScope      // variable values corresponding to the current lexical scope.
 	modinits   modinitMap       // a map of which modules have been initialized already.
 	classinits classinitMap     // a map of which classes have been initialized already.
 }
 
-type globalMap map[*symbols.Module]rt.PropertyMap
+type moduleMap map[*symbols.Module]*rt.Object
 type staticMap map[*symbols.Class]rt.PropertyMap
 type prototypeMap map[symbols.Type]*rt.Object
 type modinitMap map[*symbols.Module]bool
@@ -276,7 +276,7 @@ func (e *evaluator) initProperty(this *rt.Object, properties rt.PropertyMap, sym
 		return ptr, m.Readonly()
 	case *symbols.Class:
 		// A class resolves to its prototype object.
-		proto := e.getPrototype(m)
+		proto := e.getPrototypeObject(m)
 		return properties.InitAddr(k, proto, false), false
 	default:
 		contract.Failf("Unrecognized property '%v' symbol type: %v", k, reflect.TypeOf(sym))
@@ -352,7 +352,7 @@ func (e *evaluator) ensureModuleInit(mod *symbols.Module) {
 		var readonlines []*rt.Pointer
 		globals := e.getModuleGlobals(mod)
 		for _, member := range symbols.StableModuleMemberMap(mod.Members) {
-			if ptr, readonly := e.initProperty(nil, globals, mod.Members[member]); readonly {
+			if ptr, readonly := e.initProperty(nil, globals.Properties(), mod.Members[member]); readonly {
 				// If this property was left unfrozen, be sure to remember it for freezing after we're done.
 				readonlines = append(readonlines, ptr)
 			}
@@ -380,32 +380,63 @@ func (e *evaluator) ensureModuleInit(mod *symbols.Module) {
 	}
 }
 
-// getModuleGlobals returns a module's globals, lazily initializing if needed.
-func (e *evaluator) getModuleGlobals(module *symbols.Module) rt.PropertyMap {
-	globals, has := e.globals[module]
-	if !has {
-		globals = make(rt.PropertyMap)
-		e.globals[module] = globals
+// getModuleGlobals returns a globals table for the given module, lazily initializing if needed.
+func (e *evaluator) getModuleGlobals(module *symbols.Module) *rt.Object {
+	// If there's an existing globals object, return it.
+	if globals, has := e.modules[module]; has {
+		return globals
 	}
+
+	// Otherwise, we need to create a fresh module object.  This is laid out in a very specific way to facilitate
+	// information hiding.  There are two objects: 1) the super (prototype) object, containing the full set of exported
+	// variables, facilitating dynamic access; and 2) the child object, whose map contains all the globals, etc. that
+	// are not exported for use outside of the module itself.  We access one or the other as appropriate.
+
+	// First, create the super object, with all of the exports.
+	proto := e.alloc.New(module.Tree(), symbols.NewModuleType(module), nil, nil)
+	props := proto.Properties()
+	for _, name := range symbols.StableModuleMemberMap(module.Members) {
+		if props.GetAddr(rt.PropertyKey(name), false) == nil {
+			e.initProperty(proto, props, module.Members[name])
+		}
+	}
+
+	// Next, create the childmost object and link its parent to the proto.
+	globals := e.alloc.New(module.Tree(), symbols.NewModuleType(module), nil, proto)
+
+	// Memoize the result and return it.
+	e.modules[module] = globals
 	return globals
 }
 
-// getClassStatics returns a statics table, lazily initializing if needed.
+// getClassStatics returns a statics table for the given class, lazily initializing if needed.
 func (e *evaluator) getClassStatics(class *symbols.Class) rt.PropertyMap {
 	statics, has := e.statics[class]
 	if !has {
+		// TODO: consider merging the class statics representation with the prototype object representation.
 		statics = make(rt.PropertyMap)
 		e.statics[class] = statics
 	}
 	return statics
 }
 
-// getPrototype returns the prototype for a given type.  The prototype is a mutable object, and so it is cached, and
-// reused for subsequent lookups.  This means that mutations in the prototype are lasting and visible for all later
+// getModuleObject returns a module object for the given module.  This object contains all exported members through
+// properties.  This is a mutable object, and so is cached and reused for subsequent lookups.
+func (e *evaluator) getModuleObject(m *symbols.Module) *rt.Object {
+	// To get the module object, simply fetch the globals.  The super proto class of the globals will contain only the
+	// exported variables, which is suitable for returning to code on the import side.
+	globals := e.getModuleGlobals(m)
+	contract.Assert(globals != nil)
+	contract.Assert(globals.Proto() != nil)
+	return globals.Proto()
+}
+
+// getPrototypeObject returns the prototype for a given type.  The prototype is a mutable object, and so it is cached,
+// and reused for subsequent lookups.  This means that mutations in the prototype are lasting and visible for all later
 // uses.  This is similar to ECMAScript behavior; see http://www.ecma-international.org/ecma-262/6.0/#sec-objects.
 // TODO[pulumi/coconut#70]: technically this should be gotten from the constructor function object; we will need to
 //     rewire things a bit, depending on how serious we are about ECMAScript compliance, especially dynamic scenarios.
-func (e *evaluator) getPrototype(t symbols.Type) *rt.Object {
+func (e *evaluator) getPrototypeObject(t symbols.Type) *rt.Object {
 	// If there is already a proto for this type, use it.
 	if proto, has := e.protos[t]; has {
 		return proto
@@ -414,17 +445,17 @@ func (e *evaluator) getPrototype(t symbols.Type) *rt.Object {
 	// If not, we need to create a new one.  First, fetch the base if there is one.
 	var base *rt.Object
 	if t.Base() != nil {
-		base = e.getPrototype(t.Base())
+		base = e.getPrototypeObject(t.Base())
 	}
 
 	// Now populate the prototype object with all members.
 	proto := e.alloc.New(t.Tree(), symbols.NewPrototypeType(t), nil, base)
-	e.addPrototypeMembers(proto, t.TypeMembers(), true)
+	e.addPrototypeObjectMembers(proto, t.TypeMembers(), true)
 
 	// For any interfaces implemented by the type, type also ensure to add these as though they were members.
 	if class, isclass := t.(*symbols.Class); isclass {
 		for _, impl := range class.Implements {
-			e.addPrototypeInterfaceMembers(proto, impl)
+			e.addPrototypeObjectInterfaceMembers(proto, impl)
 		}
 	}
 
@@ -432,8 +463,8 @@ func (e *evaluator) getPrototype(t symbols.Type) *rt.Object {
 	return proto
 }
 
-// addPrototypeMembers adds a bag of members to a prototype (during initialization).
-func (e *evaluator) addPrototypeMembers(proto *rt.Object, members symbols.ClassMemberMap, must bool) {
+// addPrototypeObjectMembers adds a bag of members to a prototype (during initialization).
+func (e *evaluator) addPrototypeObjectMembers(proto *rt.Object, members symbols.ClassMemberMap, must bool) {
 	properties := proto.Properties()
 	for _, member := range symbols.StableClassMemberMap(members) {
 		if m := members[member]; !m.Static() {
@@ -445,18 +476,18 @@ func (e *evaluator) addPrototypeMembers(proto *rt.Object, members symbols.ClassM
 	}
 }
 
-// addPrototypeInterfaceMembers ensures that interface members exist on the prototype (during initialization).
-func (e *evaluator) addPrototypeInterfaceMembers(proto *rt.Object, impl symbols.Type) {
+// addPrototypeObjectInterfaceMembers ensures that interface members exist on the prototype (during initialization).
+func (e *evaluator) addPrototypeObjectInterfaceMembers(proto *rt.Object, impl symbols.Type) {
 	// Add members from this type, but only so long as they don't already exist.
-	e.addPrototypeMembers(proto, impl.TypeMembers(), false)
+	e.addPrototypeObjectMembers(proto, impl.TypeMembers(), false)
 
 	// Now do the same for any base classes.
 	if base := impl.Base(); base != nil {
-		e.addPrototypeInterfaceMembers(proto, base)
+		e.addPrototypeObjectInterfaceMembers(proto, base)
 	}
 	if class, isclass := impl.(*symbols.Class); isclass {
 		for _, classimpl := range class.Implements {
-			e.addPrototypeInterfaceMembers(proto, classimpl)
+			e.addPrototypeObjectInterfaceMembers(proto, classimpl)
 		}
 	}
 }
@@ -464,7 +495,7 @@ func (e *evaluator) addPrototypeInterfaceMembers(proto *rt.Object, impl symbols.
 // newObject allocates a fresh object of the given type, wired up to its prototype.
 func (e *evaluator) newObject(tree diag.Diagable, t symbols.Type) *rt.Object {
 	// First, fetch the prototype chain for this object.  This is required to implement property chaining.
-	proto := e.getPrototype(t)
+	proto := e.getPrototypeObject(t)
 
 	// Now create an empty object of the desired type.  Subsequent operations will do the right thing with it.  E.g.,
 	// overwriting a property will add a new entry to the object's map; reading will search the prototpe chain; etc.
@@ -700,18 +731,31 @@ func (e *evaluator) evalStatement(node ast.Statement) *rt.Unwind {
 
 func (e *evaluator) evalImport(node *ast.Import) *rt.Unwind {
 	// Ensure the target module has been initialized.
-	contract.Assertf(node.Name == nil, "Dynamically bound import names not yet supported")
 	imptok := node.Referent
 	sym := e.ctx.LookupSymbol(imptok, imptok.Tok, true)
 	contract.Assert(sym != nil)
+
+	var mod *symbols.Module
 	switch s := sym.(type) {
 	case *symbols.Module:
-		e.ensureModuleInit(s)
+		mod = s
 	case symbols.ModuleMember:
-		e.ensureModuleInit(s.MemberParent())
+		mod = s.MemberParent()
 	default:
 		contract.Failf("Unrecognized import symbol: %v", reflect.TypeOf(sym))
 	}
+	e.ensureModuleInit(mod)
+
+	// If a name was requested, bind it dynamically to an object with this import's exports.
+	// TODO: a more elegant way to do this might be to bind it statically, however that's more complicated because
+	//     then it would potentially require a module property versus local variable distinction.
+	if node.Name != nil {
+		key := tokens.Name(node.Name.Ident)
+		addr := e.getDynamicNameAddr(key, true)
+		modobj := e.getModuleObject(mod)
+		addr.Set(modobj)
+	}
+
 	return nil
 }
 
@@ -1174,7 +1218,7 @@ func (e *evaluator) getObjectOrSuperProperty(
 			if ldloc.Name.Tok == tokens.Token(tokens.SuperVariable) {
 				contract.Assert(ldloc.Object == nil)
 				// The super expression's type will resolve to the parent class; use that for lookups.
-				super = e.getPrototype(e.ctx.RequireType(objexpr))
+				super = e.getPrototypeObject(e.ctx.RequireType(objexpr))
 			}
 		}
 	}
@@ -1337,7 +1381,7 @@ func (e *evaluator) evalLoadSymbolLocation(node diag.Diagable, sym symbols.Symbo
 		contract.Assert(this == nil)
 		k := rt.PropertyKey(s.Name())
 		globals := e.getModuleGlobals(module)
-		pv = globals.GetAddr(k, false)
+		pv = globals.Properties().GetAddr(k, false)
 		contract.Assertf(pv != nil, "Missing module member '%v'", s.Token())
 		ty = s.MemberType()
 		contract.Assert(ty != nil)
@@ -1427,25 +1471,7 @@ func (e *evaluator) evalLoadDynamic(node *ast.LoadDynamicExpression, lval bool) 
 		contract.Assertf(name.Type() == types.String, "Expected dynamic load name to be a string")
 		key = tokens.Name(name.StringValue())
 		if thisexpr == nil {
-			// If there's no object, look in the current localsment.
-			pkey := rt.PropertyKey(key)
-			globals := e.getModuleGlobals(e.ctx.Currmodule)
-			if loc := e.ctx.Scope.Lookup(key); loc != nil {
-				pv = e.locals.GetValueAddr(loc, true) // create a slot, we know the declaration exists.
-			} else {
-				// If it didn't exist in the lexical scope, check the module's globals.
-				pv = globals.GetAddr(pkey, false) // look for a global by this name, but don't allocate one.
-			}
-
-			// Finally, if neither of those existed, and this is the target of a load, allocate a slot.
-			if pv == nil && lval {
-				if e.fnc.SpecialModInit() {
-					pv = globals.GetAddr(pkey, true)
-				} else {
-					loc := symbols.NewSpecialVariableSym(key, types.Dynamic)
-					pv = e.locals.GetValueAddr(loc, true)
-				}
-			}
+			pv = e.getDynamicNameAddr(key, lval)
 		} else {
 			pv = e.getObjectOrSuperProperty(this, thisexpr, rt.PropertyKey(key), lval, lval)
 		}
@@ -1476,6 +1502,32 @@ func (e *evaluator) evalLoadDynamic(node *ast.LoadDynamicExpression, lval bool) 
 		Lval: lval,
 		Obj:  obj,
 	}, nil
+}
+
+func (e *evaluator) getDynamicNameAddr(key tokens.Name, lval bool) *rt.Pointer {
+	var pv *rt.Pointer
+
+	// If there's no object, look in the current localsment.
+	pkey := rt.PropertyKey(key)
+	globals := e.getModuleGlobals(e.ctx.Currmodule)
+	if loc := e.ctx.Scope.Lookup(key); loc != nil {
+		pv = e.locals.GetValueAddr(loc, true) // create a slot, we know the declaration exists.
+	} else {
+		// If it didn't exist in the lexical scope, check the module's globals.
+		pv = globals.Properties().GetAddr(pkey, false) // look for a global by this name, but don't allocate one.
+	}
+
+	// Finally, if neither of those existed, and this is the target of a load, allocate a slot.
+	if pv == nil && lval {
+		if e.fnc.SpecialModInit() {
+			pv = globals.Properties().GetAddr(pkey, true)
+		} else {
+			loc := symbols.NewSpecialVariableSym(key, types.Dynamic)
+			pv = e.locals.GetValueAddr(loc, true)
+		}
+	}
+
+	return pv
 }
 
 func (e *evaluator) evalNewExpression(node *ast.NewExpression) (*rt.Object, *rt.Unwind) {

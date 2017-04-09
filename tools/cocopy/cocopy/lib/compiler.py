@@ -332,7 +332,8 @@ class Transformer:
         imports = list()
         for namenode in node.names:
             # Python module names are dot-delimited; we need to translate into "/" delimited names.
-            tok = namenode.name.replace(".", tokens.name_delim)
+            name = namenode.name
+            tok = name.replace(".", tokens.name_delim)
 
             # Now transform the module name into a qualified package/module token.
             # TODO: this heuristic isn't perfect; I think we should load up the target package and read its manifest
@@ -346,7 +347,7 @@ class Transformer:
                 tok = tok[:delimix] + tokens.delim + tok[delimix+1:]
 
             toknode = ast.Token(tok, loc=self.loc_from(namenode))
-            imports.append(ast.Import(toknode, loc=self.loc_from(node)))
+            imports.append(ast.Import(toknode, self.ident(name), loc=self.loc_from(node)))
 
         if len(imports) > 0:
             return ast.MultiStatement(imports)

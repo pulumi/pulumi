@@ -214,6 +214,42 @@ func NewFunctionType(params []Type, ret Type) *FunctionType {
 	return fnc
 }
 
+// ModuleType is a runtime representation of a module as an object.
+type ModuleType struct {
+	Module *Module // the module this object covers.
+}
+
+var _ Symbol = (*ModuleType)(nil)
+var _ Type = (*ModuleType)(nil)
+
+func (node *ModuleType) Name() tokens.Name   { return tokens.Name(node.TypeName()) }
+func (node *ModuleType) Token() tokens.Token { return tokens.Token(node.TypeToken()) }
+func (node *ModuleType) Special() bool       { return false }
+func (node *ModuleType) Tree() diag.Diagable { return nil }
+func (node *ModuleType) Base() Type          { return nil }
+func (node *ModuleType) TypeName() tokens.TypeName {
+	return tokens.TypeName(string(node.Module.Name())) + ".modtype"
+}
+func (node *ModuleType) TypeToken() tokens.Type {
+	return tokens.Type(string(node.Module.Token()) + ".modtype")
+}
+func (node *ModuleType) TypeMembers() ClassMemberMap { return noClassMembers }
+func (node *ModuleType) Record() bool                { return false }
+func (node *ModuleType) Interface() bool             { return false }
+func (node *ModuleType) String() string              { return string(node.Token()) }
+
+// moduleTypeCache is a cache keyed by module, helping to avoid creating superfluous symbol objects.
+var moduleTypeCache = make(map[*Module]*ModuleType)
+
+func NewModuleType(m *Module) *ModuleType {
+	if mtype, has := moduleTypeCache[m]; has {
+		return mtype
+	}
+	mtype := &ModuleType{m}
+	moduleTypeCache[m] = mtype
+	return mtype
+}
+
 // PrototypeType is the type for "prototypes" (blueprints for object construction).
 type PrototypeType struct {
 	Type Type // the type this prototype constructs.

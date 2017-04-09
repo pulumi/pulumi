@@ -20,8 +20,8 @@ func (node *StatementNode) statement() {}
 // or module member names available in the context of the importing module or function.
 type Import struct {
 	StatementNode
-	Referent *Token      `json:"referent"`             // the module or member token to import.
-	Name     *Identifier `json:"identifier,omitempty"` // the name that token is bound to (if any).
+	Referent *Token      `json:"referent"`       // the module or member token to import.
+	Name     *Identifier `json:"name,omitempty"` // the name that token is bound to (if any).
 }
 
 var _ Node = (*Import)(nil)
