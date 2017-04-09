@@ -314,7 +314,7 @@ class Transformer:
             body = self.transform_block_stmts(node.body)
 
             return ast.ModuleMethod(
-                id, args, self.type_token(tokens.type_dynamic), loc=self.loc_from(node))
+                id, args, self.type_token(tokens.type_dynamic), body, loc=self.loc_from(node))
         finally:
             self.ctx.func = oldfunc
 
