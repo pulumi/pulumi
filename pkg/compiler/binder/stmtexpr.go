@@ -136,6 +136,17 @@ func (a *astBinder) isLValue(expr ast.Expression) bool {
 
 // Statements
 
+func (a *astBinder) checkImport(node *ast.Import) {
+	imptok := node.Referent
+	if !tokens.Token(imptok.Tok).HasModule() {
+		a.b.Diag().Errorf(errors.ErrorMalformedToken.At(imptok),
+			"Module", imptok.Tok, "missing module part")
+	} else {
+		// Just perform a lookup to ensure the symbol exists (and error out if not).
+		a.b.ctx.LookupSymbol(imptok, imptok.Tok, true)
+	}
+}
+
 func (a *astBinder) visitBlock(node *ast.Block) {
 	// Entering a new block requires a fresh lexical scope.
 	a.b.ctx.Scope.Push(false)

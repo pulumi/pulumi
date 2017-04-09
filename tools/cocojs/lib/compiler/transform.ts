@@ -210,7 +210,6 @@ export class Transformer {
     private currentModuleMembers: ast.ModuleMembers | undefined;
     private currentModuleExports: ast.ModuleExports | undefined;
     private currentModuleImports: Map<string, ModuleReference>;
-    private currentModuleImportTokens: ast.ModuleToken[];
     private currentClassToken: tokens.TypeToken | undefined;
     private currentSuperClassToken: tokens.TypeToken | undefined;
     private currentPackageDependencies: Set<tokens.PackageToken>;
@@ -1019,7 +1018,6 @@ export class Transformer {
         let priorModuleMembers: ast.ModuleMembers | undefined = this.currentModuleMembers;
         let priorModuleExports: ast.ModuleExports | undefined = this.currentModuleExports;
         let priorModuleImports: Map<string, ModuleReference> | undefined = this.currentModuleImports;
-        let priorModuleImportTokens: ast.ModuleToken[] | undefined = this.currentModuleImportTokens;
         let priorTempLocalCounter: number = this.currentTempLocalCounter;
         try {
             // Prepare self-referential module information.
@@ -1034,7 +1032,6 @@ export class Transformer {
             this.currentModuleMembers = {};
             this.currentModuleExports = {};
             this.currentModuleImports = new Map<string, ModuleReference>();
-            this.currentModuleImportTokens = []; // to track the imports, in order.
             this.currentTempLocalCounter = 0;
 
             // Any top-level non-definition statements will pile up into the module initializer.
@@ -1115,7 +1112,6 @@ export class Transformer {
             return this.withLocation(node, <ast.Module>{
                 kind:    ast.moduleKind,
                 name:    ident(this.getModuleName(modtok)),
-                imports: this.currentModuleImportTokens,
                 exports: this.currentModuleExports,
                 members: this.currentModuleMembers,
             });
@@ -1126,7 +1122,6 @@ export class Transformer {
             this.currentModuleMembers = priorModuleMembers;
             this.currentModuleExports = priorModuleExports;
             this.currentModuleImports = priorModuleImports;
-            this.currentModuleImportTokens = priorModuleImportTokens;
             this.currentTempLocalCounter = priorTempLocalCounter;
         }
     }
@@ -1145,8 +1140,6 @@ export class Transformer {
                     return [ this.transformExportAssignment(<ts.ExportAssignment>node) ];
                 case ts.SyntaxKind.ExportDeclaration:
                     return this.transformExportDeclaration(<ts.ExportDeclaration>node);
-                case ts.SyntaxKind.ImportDeclaration:
-                    return [ await this.transformImportDeclaration(<ts.ImportDeclaration>node) ];
 
                 // Handle declarations; each of these results in a definition.
                 case ts.SyntaxKind.ClassDeclaration:
@@ -1320,7 +1313,7 @@ export class Transformer {
         return exports;
     }
 
-    private async transformImportDeclaration(node: ts.ImportDeclaration): Promise<ModuleElement> {
+    private async transformImportDeclaration(node: ts.ImportDeclaration): Promise<ast.Statement> {
         // An import declaration is erased in the output AST, however, we must keep track of the set of known import
         // names so that we can easily look them up by name later on (e.g., in the case of reexporting whole modules).
         if (node.importClause) {
@@ -1329,10 +1322,6 @@ export class Transformer {
             contract.assert(node.moduleSpecifier.kind === ts.SyntaxKind.StringLiteral);
             let importModule: ModuleReference =
                 this.resolveModuleReferenceByName((<ts.StringLiteral>node.moduleSpecifier).text);
-            let importModuleToken: ast.ModuleToken = this.withLocation(node.moduleSpecifier, <ast.ModuleToken>{
-                kind: ast.moduleTokenKind,
-                tok:  await this.createModuleToken(importModule),
-            });
 
             // Figure out what kind of import statement this is (there are many, see below).
             let name: ts.Identifier | undefined;
@@ -1384,8 +1373,15 @@ export class Transformer {
             }
 
             // Now keep track of the import.
-            this.currentModuleImportTokens.push(importModuleToken);
+            return <ast.Import>{
+                kind:     ast.importKind,
+                referent: this.withLocation(node.moduleSpecifier, <ast.Token>{
+                    kind: ast.tokenKind,
+                    tok:  await this.createModuleToken(importModule),
+                }),
+            };
         }
+
         return <ast.EmptyStatement>{ kind: ast.emptyStatementKind };
     }
 
@@ -1436,6 +1432,8 @@ export class Transformer {
                 return this.transformWhileStatement(<ts.WhileStatement>node);
 
             // Miscellaneous statements:
+            case ts.SyntaxKind.ImportDeclaration:
+                return this.transformImportDeclaration(<ts.ImportDeclaration>node);
             case ts.SyntaxKind.Block:
                 return this.transformBlock(<ts.Block>node);
             case ts.SyntaxKind.DebuggerStatement:

@@ -118,10 +118,12 @@ func (b *binder) resolveDep(dep pack.PackageURL) *symbols.ResolvedPackage {
 				b.Diag().Errorf(errors.ErrorCouldNotReadPackage.AtFile(loc), err)
 				return nil
 			}
-			pkg := b.reader.ReadPackage(doc)
-
-			// Now perform the binding and return it.
-			return b.resolveBindPackage(pkg, dep)
+			if pkg := b.reader.ReadPackage(doc); pkg != nil {
+				// Now perform the binding and return it.
+				return b.resolveBindPackage(pkg, dep)
+			}
+			contract.Assert(!b.Diag().Success())
+			return nil
 		}
 	}
 

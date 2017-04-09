@@ -188,21 +188,8 @@ func printModules(pkg *pack.Package, printSymbols bool, printExports bool, print
 
 			// Now, if requested, print the tokens.
 			if printSymbols || printExports {
-				if mod.Imports != nil || mod.Members != nil {
+				if mod.Exports != nil || mod.Members != nil {
 					fmt.Printf("\n")
-
-					if mod.Imports != nil {
-						// Print the imports.
-						fmt.Printf("%vimports [", indent+tab)
-						if mod.Imports != nil && len(*mod.Imports) > 0 {
-							fmt.Printf("\n")
-							for _, imp := range *mod.Imports {
-								fmt.Printf("%v\"%v\"\n", indent+tab+tab, imp.Tok)
-							}
-							fmt.Printf("%v", indent+tab)
-						}
-						fmt.Printf("]\n")
-					}
 
 					exports := make(map[tokens.Token]bool)
 					if mod.Exports != nil {

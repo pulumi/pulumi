@@ -7,7 +7,6 @@
                 "kind": "Identifier",
                 "ident": "other"
             },
-            "imports": [],
             "exports": {
                 "D": {
                     "kind": "Export",
@@ -354,23 +353,6 @@
                 "kind": "Identifier",
                 "ident": "index"
             },
-            "imports": [
-                {
-                    "kind": "ModuleToken",
-                    "tok": "export:other",
-                    "loc": {
-                        "file": "index.ts",
-                        "start": {
-                            "line": 2,
-                            "column": 24
-                        },
-                        "end": {
-                            "line": 2,
-                            "column": 33
-                        }
-                    }
-                }
-            ],
             "exports": {
                 "other": {
                     "kind": "Export",
@@ -654,6 +636,24 @@
                     "body": {
                         "kind": "Block",
                         "statements": [
+                            {
+                                "kind": "Import",
+                                "referent": {
+                                    "kind": "Token",
+                                    "tok": "export:other",
+                                    "loc": {
+                                        "file": "index.ts",
+                                        "start": {
+                                            "line": 2,
+                                            "column": 24
+                                        },
+                                        "end": {
+                                            "line": 2,
+                                            "column": 33
+                                        }
+                                    }
+                                }
+                            },
                             {
                                 "kind": "ExpressionStatement",
                                 "expression": {

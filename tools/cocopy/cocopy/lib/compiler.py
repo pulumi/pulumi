@@ -111,7 +111,6 @@ class Transformer:
         assert self.ctx, "Transform passes require a context object"
         members = dict()
         initstmts = list()
-        imports = set()
         modtok = self.current_module_token()
 
         # Auto-generate the special __name__ variable and populate it in the initializer.
@@ -137,8 +136,6 @@ class Transformer:
             elif isinstance(stmt, py_ast.ClassDef):
                 clazz = self.transform_ClassDef(stmt)
                 members[clazz.name.ident] = clazz
-            elif isinstance(stmt, py_ast.Import):
-                imports |= self.transform_Import(stmt)
             else:
                 # For all other statement nodes, simply accumulate them for the module initializer.
                 initstmt = self.transform_stmt(stmt)
@@ -168,7 +165,7 @@ class Transformer:
             tok = modtok + tokens.delim + name
             exports[name] = ast.Export(self.ident(name), ast.Token(tok))
 
-        return ast.Module(self.ident(self.ctx.mod.name), list(imports), exports, members)
+        return ast.Module(self.ident(self.ctx.mod.name), exports, members)
 
     # ...Statements
 
@@ -201,9 +198,9 @@ class Transformer:
         elif isinstance(node, py_ast.If):
             stmt = self.transform_If(node)
         elif isinstance(node, py_ast.Import):
-            assert False, "TODO: imports in non-top-level positions not yet supported"
+            stmt = self.transform_Import(node)
         elif isinstance(node, py_ast.ImportFrom):
-            assert False, "TODO: imports in non-top-level positions not yet supported"
+            stmt = self.transform_ImportFrom(node)
         elif isinstance(node, py_ast.Nonlocal):
             stmt = self.transform_Nonlocal(node)
         elif isinstance(node, py_ast.Pass):
@@ -331,26 +328,29 @@ class Transformer:
 
     def transform_Import(self, node):
         """Transforms an import clause into a set of AST nodes representing the imported module tokens."""
-        # TODO: support imports inside of non-top-level scopes.
         # TODO: come up with a way to determine intra-project references.
-        imports = set()
+        imports = list()
         for namenode in node.names:
             # Python module names are dot-delimited; we need to translate into "/" delimited names.
-            name = namenode.name.replace(".", tokens.name_delim)
+            tok = namenode.name.replace(".", tokens.name_delim)
 
             # Now transform the module name into a qualified package/module token.
             # TODO: this heuristic isn't perfect; I think we should load up the target package and read its manifest
             #     to figure out the precise package naming, etc. (since packages can be multi-part too).
-            delimix = name.find(tokens.name_delim)
+            delimix = tok.find(tokens.name_delim)
             if delimix == -1:
                 # If just the package, we will use the default module.
-                name = name + tokens.delim + tokens.mod_default
+                tok = tok + tokens.delim + tokens.mod_default
             else:
                 # Otherwise, use the first part as the package, and the remainder as the module.
-                name = name[:delimix] + tokens.delim + name[delimix+1:]
+                tok = tok[:delimix] + tokens.delim + tok[delimix+1:]
 
-            imports.add(ast.ModuleToken(name, loc=self.loc_from(namenode)))
-        return imports
+            toknode = ast.Token(tok, loc=self.loc_from(namenode))
+            imports.append(ast.Import(toknode, loc=self.loc_from(node)))
+
+        if len(imports) > 0:
+            return ast.MultiStatement(imports)
+        return imports[0]
 
     def transform_ImportFrom(self, node):
         # TODO: to support this, we will need a way of binding names back to the imported names.  Furthermore, we

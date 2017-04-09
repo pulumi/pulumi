@@ -31,9 +31,8 @@ func (node *DefinitionNode) GetDescription() *string { return node.Description }
 // Module contains members, including variables, functions, and/or classes.
 type Module struct {
 	DefinitionNode
-	Imports *[]*ModuleToken `json:"imports,omitempty"` // the imported modules consumed by this module.
-	Exports *ModuleExports  `json:"exports,omitempty"` // the exported symbols available for use by consuming modules.
-	Members *ModuleMembers  `json:"members,omitempty"` // the inner members of this module, private for its own use.
+	Exports *ModuleExports `json:"exports,omitempty"` // the exported symbols available for use by consuming modules.
+	Members *ModuleMembers `json:"members,omitempty"` // the inner members of this module, private for its own use.
 }
 
 var _ Node = (*Module)(nil)

@@ -2,9 +2,19 @@
 
 import {LocalVariable} from "./definitions";
 import {Expression} from "./expressions";
-import {Identifier, Node} from "./nodes";
+import {Identifier, Node, Token} from "./nodes";
 
 export interface Statement extends Node {}
+
+/** Imports **/
+
+export interface Import extends Statement {
+    kind:     ImportKind;
+    referent: Token;
+    name?:    Identifier;
+}
+export const importKind = "Import";
+export type  ImportKind = "Import";
 
 /** Blocks **/
 

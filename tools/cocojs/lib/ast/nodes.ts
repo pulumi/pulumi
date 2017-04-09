@@ -33,6 +33,7 @@ export type NodeKind =
     definitions.ClassMethodKind |
     definitions.ModuleMethodKind |
 
+    statements.ImportKind |
     statements.BlockKind |
     statements.LocalVariableDeclarationKind |
     statements.TryCatchFinallyKind |

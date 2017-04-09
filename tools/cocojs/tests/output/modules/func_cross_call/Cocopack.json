@@ -7,7 +7,6 @@
                 "kind": "Identifier",
                 "ident": "other"
             },
-            "imports": [],
             "exports": {
                 "foo": {
                     "kind": "Export",
@@ -130,38 +129,6 @@
                 "kind": "Identifier",
                 "ident": "index"
             },
-            "imports": [
-                {
-                    "kind": "ModuleToken",
-                    "tok": "modules/func_cross_call:other",
-                    "loc": {
-                        "file": "index.ts",
-                        "start": {
-                            "line": 1,
-                            "column": 19
-                        },
-                        "end": {
-                            "line": 1,
-                            "column": 28
-                        }
-                    }
-                },
-                {
-                    "kind": "ModuleToken",
-                    "tok": "modules/func_cross_call:other",
-                    "loc": {
-                        "file": "index.ts",
-                        "start": {
-                            "line": 2,
-                            "column": 24
-                        },
-                        "end": {
-                            "line": 2,
-                            "column": 33
-                        }
-                    }
-                }
-            ],
             "exports": {},
             "members": {
                 ".init": {
@@ -173,6 +140,42 @@
                     "body": {
                         "kind": "Block",
                         "statements": [
+                            {
+                                "kind": "Import",
+                                "referent": {
+                                    "kind": "Token",
+                                    "tok": "modules/func_cross_call:other",
+                                    "loc": {
+                                        "file": "index.ts",
+                                        "start": {
+                                            "line": 1,
+                                            "column": 19
+                                        },
+                                        "end": {
+                                            "line": 1,
+                                            "column": 28
+                                        }
+                                    }
+                                }
+                            },
+                            {
+                                "kind": "Import",
+                                "referent": {
+                                    "kind": "Token",
+                                    "tok": "modules/func_cross_call:other",
+                                    "loc": {
+                                        "file": "index.ts",
+                                        "start": {
+                                            "line": 2,
+                                            "column": 24
+                                        },
+                                        "end": {
+                                            "line": 2,
+                                            "column": 33
+                                        }
+                                    }
+                                }
+                            },
                             {
                                 "kind": "ExpressionStatement",
                                 "expression": {

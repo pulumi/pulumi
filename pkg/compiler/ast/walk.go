@@ -79,6 +79,11 @@ func Walk(v Visitor, node Node) {
 		// No children, nothing to do.
 
 	// Statements
+	case *Import:
+		Walk(v, n.Referent)
+		if n.Name != nil {
+			Walk(v, n.Name)
+		}
 	case *Block:
 		for _, stmt := range n.Statements {
 			Walk(v, stmt)

@@ -10,7 +10,6 @@
                 "kind": "Identifier",
                 "ident": "index"
             },
-            "imports": [],
             "exports": {},
             "members": {
                 "B": {

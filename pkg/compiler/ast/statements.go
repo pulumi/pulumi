@@ -14,6 +14,21 @@ type StatementNode struct {
 
 func (node *StatementNode) statement() {}
 
+/* Imports */
+
+// Import is mostly used to trigger the side-effect of importing another module.  It is also used to make bound modules
+// or module member names available in the context of the importing module or function.
+type Import struct {
+	StatementNode
+	Referent *Token      `json:"referent"`             // the module or member token to import.
+	Name     *Identifier `json:"identifier,omitempty"` // the name that token is bound to (if any).
+}
+
+var _ Node = (*Import)(nil)
+var _ Statement = (*Import)(nil)
+
+const ImportKind NodeKind = "Import"
+
 /* Blocks */
 
 type Block struct {

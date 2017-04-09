@@ -13,7 +13,6 @@ type Module struct {
 	Node    *ast.Module
 	Parent  *Package
 	Tok     tokens.Module
-	Imports Modules
 	Exports ModuleExportMap
 	Members ModuleMemberMap
 }
@@ -43,7 +42,6 @@ func NewModuleSym(node *ast.Module, parent *Package) *Module {
 		Node:    node,
 		Parent:  parent,
 		Tok:     tokens.NewModuleToken(parent.Tok, tokens.ModuleName(node.Name.Ident)),
-		Imports: make(Modules, 0),
 		Exports: make(ModuleExportMap),
 		Members: make(ModuleMemberMap),
 	}

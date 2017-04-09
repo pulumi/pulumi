@@ -348,11 +348,6 @@ func (e *evaluator) ensureModuleInit(mod *symbols.Module) {
 	e.modinits[mod] = true // set true before running, in case of cycles.
 
 	if !already {
-		// First ensure all imported module initializers are run, in the order in which they were given.
-		for _, imp := range mod.Imports {
-			e.ensureModuleInit(imp)
-		}
-
 		// Populate all properties in this module, even if they will be empty for now.
 		var readonlines []*rt.Pointer
 		globals := e.getModuleGlobals(mod)
@@ -665,6 +660,8 @@ func (e *evaluator) evalStatement(node ast.Statement) *rt.Unwind {
 
 	// Simply switch on the node type and dispatch to the specific function, returning the rt.Unwind info.
 	switch n := node.(type) {
+	case *ast.Import:
+		return e.evalImport(n)
 	case *ast.Block:
 		return e.evalBlock(n)
 	case *ast.LocalVariableDeclaration:
@@ -699,6 +696,23 @@ func (e *evaluator) evalStatement(node ast.Statement) *rt.Unwind {
 		contract.Failf("Unrecognized statement node kind: %v", node.GetKind())
 		return nil
 	}
+}
+
+func (e *evaluator) evalImport(node *ast.Import) *rt.Unwind {
+	// Ensure the target module has been initialized.
+	contract.Assertf(node.Name == nil, "Dynamically bound import names not yet supported")
+	imptok := node.Referent
+	sym := e.ctx.LookupSymbol(imptok, imptok.Tok, true)
+	contract.Assert(sym != nil)
+	switch s := sym.(type) {
+	case *symbols.Module:
+		e.ensureModuleInit(s)
+	case symbols.ModuleMember:
+		e.ensureModuleInit(s.MemberParent())
+	default:
+		contract.Failf("Unrecognized import symbol: %v", reflect.TypeOf(sym))
+	}
+	return nil
 }
 
 func (e *evaluator) evalBlock(node *ast.Block) *rt.Unwind {

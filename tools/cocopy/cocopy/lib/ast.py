@@ -94,10 +94,8 @@ class Definition(Node):
 
 class Module(Definition):
     """A module contains members, including variables, functions, and/or classes."""
-    def __init__(self, name, imports=None, exports=None, members=None, loc=None):
+    def __init__(self, name, exports=None, members=None, loc=None):
         assert isinstance(name, Identifier)
-        assert (imports is None or
-            (isinstance(imports, list) and all(isinstance(node, ModuleToken) for node in imports)))
         assert (exports is None or
             (isinstance(exports, dict) and
                 all(isinstance(key, basestring) for key in exports.keys()) and
@@ -107,7 +105,6 @@ class Module(Definition):
                 all(isinstance(key, basestring) for key in members.keys()) and
                 all(isinstance(value, ModuleMember) for value in members.values())))
         super(Module, self).__init__("Module", name, loc=loc)
-        self.imports = imports
         self.exports = exports
         self.members = members
 
@@ -262,6 +259,16 @@ class Statement(Node):
     def __init__(self, kind, loc=None):
         assert isinstance(kind, basestring)
         super(Statement, self).__init__(kind, loc)
+
+# ...Imports
+
+class Import(Statement):
+    def __init__(self, referent, name=None, loc=None):
+        assert isinstance(referent, Token)
+        assert name is None or isinstance(name, Identifier)
+        super(Import, self).__init__("Import", loc)
+        self.referent = referent
+        self.name = name
 
 # ...Blocks
 

@@ -7,7 +7,6 @@
                 "kind": "Identifier",
                 "ident": "other"
             },
-            "imports": [],
             "exports": {
                 "C": {
                     "kind": "Export",
@@ -354,7 +353,6 @@
                 "kind": "Identifier",
                 "ident": "index"
             },
-            "imports": [],
             "exports": {
                 "C": {
                     "kind": "Export",
