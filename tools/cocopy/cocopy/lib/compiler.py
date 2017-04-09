@@ -168,7 +168,7 @@ class Transformer:
             tok = modtok + tokens.delim + name
             exports[name] = ast.Export(self.ident(name), ast.Token(tok))
 
-        return ast.Module(self.ident(name), list(imports), exports, members)
+        return ast.Module(self.ident(self.ctx.mod.name), list(imports), exports, members)
 
     # ...Statements
 
