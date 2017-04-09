@@ -1352,7 +1352,10 @@ func (e *evaluator) checkThis(node diag.Diagable, this *rt.Object) *rt.Unwind {
 
 func (e *evaluator) evalLoadDynamicExpression(node *ast.LoadDynamicExpression) (*rt.Object, *rt.Unwind) {
 	loc, uw := e.evalLoadDynamic(node, false)
-	return loc.Obj, uw
+	if uw != nil {
+		return nil, uw
+	}
+	return loc.Obj, nil
 }
 
 func (e *evaluator) evalLoadDynamic(node *ast.LoadDynamicExpression, lval bool) (*Location, *rt.Unwind) {
