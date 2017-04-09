@@ -249,8 +249,8 @@ func (e *evaluator) dumpEvalState(v glog.Level) {
 
 // initProperty initializes a property entry in the given map, using an optional `this` pointer for member functions.
 // It returns the resulting pointer along with a boolean to indicate whether the property was left unfrozen.
-func (e *evaluator) initProperty(this *rt.Object, properties rt.PropertyMap, sym symbols.Symbol) (*rt.Pointer, bool) {
-	k := rt.PropertyKey(sym.Name())
+func (e *evaluator) initProperty(this *rt.Object, properties rt.PropertyMap,
+	key rt.PropertyKey, sym symbols.Symbol) (*rt.Pointer, bool) {
 	switch m := sym.(type) {
 	case symbols.Function:
 		// A function results in a closure object referring to `this`, if any.
@@ -258,10 +258,10 @@ func (e *evaluator) initProperty(this *rt.Object, properties rt.PropertyMap, sym
 		decl := m.Tree()
 		obj := e.alloc.NewFunction(decl, m, this)
 		if this != nil && e.hooks != nil {
-			e.hooks.OnVariableAssign(decl, this, tokens.Name(k), nil, obj)
+			e.hooks.OnVariableAssign(decl, this, tokens.Name(key), nil, obj)
 		}
 		fnc := e.alloc.NewFunction(decl, m, this)
-		return properties.InitAddr(k, fnc, true), false
+		return properties.InitAddr(key, fnc, true), false
 	case symbols.Variable:
 		// A variable could have a default object; if so, use that; otherwise, null will be substituted automatically.
 		var obj *rt.Object
@@ -269,17 +269,17 @@ func (e *evaluator) initProperty(this *rt.Object, properties rt.PropertyMap, sym
 			decl := m.Tree()
 			obj = e.alloc.NewConstant(decl, *m.Default())
 			if this != nil && e.hooks != nil {
-				e.hooks.OnVariableAssign(decl, this, tokens.Name(k), nil, obj)
+				e.hooks.OnVariableAssign(decl, this, tokens.Name(key), nil, obj)
 			}
 		}
-		ptr := properties.InitAddr(k, obj, false)
+		ptr := properties.InitAddr(key, obj, false)
 		return ptr, m.Readonly()
 	case *symbols.Class:
 		// A class resolves to its prototype object.
 		proto := e.getPrototypeObject(m)
-		return properties.InitAddr(k, proto, false), false
+		return properties.InitAddr(key, proto, false), false
 	default:
-		contract.Failf("Unrecognized property '%v' symbol type: %v", k, reflect.TypeOf(sym))
+		contract.Failf("Unrecognized property '%v' symbol type: %v", key, reflect.TypeOf(sym))
 		return nil, false
 	}
 }
@@ -306,9 +306,10 @@ func (e *evaluator) ensureClassInit(class *symbols.Class) {
 		var current symbols.Type = class
 		for current != nil {
 			members := current.TypeMembers()
-			for _, member := range symbols.StableClassMemberMap(members) {
-				if m := members[member]; m.Static() {
-					if ptr, readonly := e.initProperty(nil, statics, m); readonly {
+			for _, name := range symbols.StableClassMemberMap(members) {
+				if member := members[name]; member.Static() {
+					key := rt.PropertyKey(name)
+					if ptr, readonly := e.initProperty(nil, statics, key, member); readonly {
 						// Readonly properties are unfrozen during initialization; afterwards, they will be frozen.
 						readonlines = append(readonlines, ptr)
 					}
@@ -351,8 +352,10 @@ func (e *evaluator) ensureModuleInit(mod *symbols.Module) {
 		// Populate all properties in this module, even if they will be empty for now.
 		var readonlines []*rt.Pointer
 		globals := e.getModuleGlobals(mod)
-		for _, member := range symbols.StableModuleMemberMap(mod.Members) {
-			if ptr, readonly := e.initProperty(nil, globals.Properties(), mod.Members[member]); readonly {
+		for _, name := range symbols.StableModuleMemberMap(mod.Members) {
+			key := rt.PropertyKey(name)
+			member := mod.Members[name]
+			if ptr, readonly := e.initProperty(nil, globals.Properties(), key, member); readonly {
 				// If this property was left unfrozen, be sure to remember it for freezing after we're done.
 				readonlines = append(readonlines, ptr)
 			}
@@ -395,9 +398,11 @@ func (e *evaluator) getModuleGlobals(module *symbols.Module) *rt.Object {
 	// First, create the super object, with all of the exports.
 	proto := e.alloc.New(module.Tree(), symbols.NewModuleType(module), nil, nil)
 	props := proto.Properties()
-	for _, name := range symbols.StableModuleMemberMap(module.Members) {
-		if props.GetAddr(rt.PropertyKey(name), false) == nil {
-			e.initProperty(proto, props, module.Members[name])
+	for _, name := range symbols.StableModuleExportMap(module.Exports) {
+		key := rt.PropertyKey(name)
+		if props.GetAddr(key, false) == nil {
+			exp := module.Exports[name]
+			e.initProperty(proto, props, key, e.chaseExports(exp))
 		}
 	}
 
@@ -466,11 +471,11 @@ func (e *evaluator) getPrototypeObject(t symbols.Type) *rt.Object {
 // addPrototypeObjectMembers adds a bag of members to a prototype (during initialization).
 func (e *evaluator) addPrototypeObjectMembers(proto *rt.Object, members symbols.ClassMemberMap, must bool) {
 	properties := proto.Properties()
-	for _, member := range symbols.StableClassMemberMap(members) {
-		if m := members[member]; !m.Static() {
-			k := rt.PropertyKey(m.Name())
-			if must || properties.GetAddr(k, false) == nil {
-				e.initProperty(proto, properties, m)
+	for _, name := range symbols.StableClassMemberMap(members) {
+		if member := members[name]; !member.Static() {
+			key := rt.PropertyKey(name)
+			if must || properties.GetAddr(key, false) == nil {
+				e.initProperty(proto, properties, key, member)
 			}
 		}
 	}
@@ -1325,12 +1330,8 @@ func (e *evaluator) evalLoadLocation(node *ast.LoadLocationExpression, lval bool
 	return e.newLocation(node, sym, pv, ty, this, lval), nil
 }
 
-func (e *evaluator) evalLoadSymbolLocation(node diag.Diagable, sym symbols.Symbol,
-	this *rt.Object, thisexpr ast.Expression, lval bool) (*rt.Pointer, symbols.Type, *rt.Unwind) {
-	contract.Assert(sym != nil)     // don't issue errors; we shouldn't ever get here if verification failed.
-	sym = MaybeIntrinsic(node, sym) // replace this with an intrinsic if it's recognized as one.
-
-	// If the symbol is an export, keep chasing down the referents until we hit a real symbol.
+// chaseExports walks the referent chain of an export until it hits a real symbol, and then returns that.
+func (e *evaluator) chaseExports(sym symbols.Symbol) symbols.Symbol {
 	for {
 		export, isexport := sym.(*symbols.Export)
 		if !isexport {
@@ -1341,6 +1342,14 @@ func (e *evaluator) evalLoadSymbolLocation(node diag.Diagable, sym symbols.Symbo
 		sym = export.Referent
 		contract.Assertf(sym != nil, "Expected export '%v' to resolve to a token", export.Node.Referent.Tok)
 	}
+	return sym
+}
+
+func (e *evaluator) evalLoadSymbolLocation(node diag.Diagable, sym symbols.Symbol,
+	this *rt.Object, thisexpr ast.Expression, lval bool) (*rt.Pointer, symbols.Type, *rt.Unwind) {
+	contract.Assert(sym != nil)     // don't issue errors; we shouldn't ever get here if verification failed.
+	sym = MaybeIntrinsic(node, sym) // replace this with an intrinsic if it's recognized as one.
+	sym = e.chaseExports(sym)       // chase the export down until we get a real symbol.
 
 	// Look up the symbol property in the right place.  Note that because this is a static load, we intentionally
 	// do not perform any lazily initialization of missing property slots; they must exist.  But we still need to
