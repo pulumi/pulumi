@@ -326,37 +326,49 @@ class Transformer:
             alt = self.transform_stmt(node.orelse)
         return ast.IfStatement(cond, cons, alt, loc=self.loc_from(node))
 
+    def module_name_to_token(self, name):
+        # Python module names are dot-delimited; we need to translate into "/" delimited names.
+        tok = name.replace(".", tokens.name_delim)
+        # Now transform the module name into a qualified package/module token.
+        # TODO: this heuristic isn't perfect; I think we should load up the target package and read its manifest
+        #     to figure out the precise package naming, etc. (since packages can be multi-part too).
+        delimix = tok.find(tokens.name_delim)
+        if delimix == -1:
+            # If just the package, we will use the default module.
+            tok = tok + tokens.delim + tokens.mod_default
+        else:
+            # Otherwise, use the first part as the package, and the remainder as the module.
+            tok = tok[:delimix] + tokens.delim + tok[delimix+1:]
+        return tok
+
     def transform_Import(self, node):
         """Transforms an import clause into a set of AST nodes representing the imported module tokens."""
         # TODO: come up with a way to determine intra-project references.
         imports = list()
         for namenode in node.names:
-            # Python module names are dot-delimited; we need to translate into "/" delimited names.
             name = namenode.name
-            tok = name.replace(".", tokens.name_delim)
-
-            # Now transform the module name into a qualified package/module token.
-            # TODO: this heuristic isn't perfect; I think we should load up the target package and read its manifest
-            #     to figure out the precise package naming, etc. (since packages can be multi-part too).
-            delimix = tok.find(tokens.name_delim)
-            if delimix == -1:
-                # If just the package, we will use the default module.
-                tok = tok + tokens.delim + tokens.mod_default
-            else:
-                # Otherwise, use the first part as the package, and the remainder as the module.
-                tok = tok[:delimix] + tokens.delim + tok[delimix+1:]
-
+            tok = self.module_name_to_token(name)
             toknode = ast.Token(tok, loc=self.loc_from(namenode))
             imports.append(ast.Import(toknode, self.ident(name), loc=self.loc_from(node)))
 
-        if len(imports) > 0:
+        if len(imports) > 1:
             return ast.MultiStatement(imports)
         return imports[0]
 
     def transform_ImportFrom(self, node):
-        # TODO: to support this, we will need a way of binding names back to the imported names.  Furthermore, we
-        #     need a way of figuring out that an import actually refers to something in the same "project".
-        self.not_yet_implemented(node) # names, module, level
+        """Transforms an import of one or more module members into a set of AST import and name binding nodes."""
+        imports = list()
+        tok = self.module_name_to_token(node.module)
+
+        for namenode in node.names:
+            name = namenode.name
+            imptok = tok + tokens.delim + name
+            toknode = ast.Token(imptok, loc=self.loc_from(namenode))
+            imports.append(ast.Import(toknode, self.ident(name), loc=self.loc_from(node)))
+
+        if len(imports) > 1:
+            return ast.MultiStatement(imports)
+        return imports[0]
 
     def transform_Nonlocal(self, node):
         self.not_yet_implemented(node) # names
