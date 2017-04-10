@@ -274,6 +274,10 @@ func (e *evaluator) initProperty(this *rt.Object, properties rt.PropertyMap,
 		}
 		ptr := properties.InitAddr(key, obj, false)
 		return ptr, m.Readonly()
+	case *symbols.Module:
+		// A module resolves to its module object.
+		modobj := e.getModuleObject(m)
+		return properties.InitAddr(key, modobj, false), false
 	case *symbols.Class:
 		// A class resolves to its prototype object.
 		proto := e.getPrototypeObject(m)
@@ -808,7 +812,7 @@ func (e *evaluator) evalTryCatchFinally(node *ast.TryCatchFinally) *rt.Unwind {
 				exty := ex.Type()
 				if types.CanConvert(thrown.Type(), exty) {
 					// This type matched, so this handler will catch the exception.  Set the exception variable,
-					// evaluate the block, and swap the rt.Unwind information (thereby "handling" the in-flight exception).
+					// evaluate the block, and swap the rt.Unwind information ("handling" the in-flight exception).
 					e.pushScope(nil)
 					e.locals.SetValue(ex, thrown)
 					uw = e.evalBlock(catch.Block)
@@ -1528,10 +1532,11 @@ func (e *evaluator) getDynamicNameAddr(key tokens.Name, lval bool) *rt.Pointer {
 
 	// Finally, if neither of those existed, and this is the target of a load, allocate a slot.
 	if pv == nil && lval {
-		if e.fnc.SpecialModInit() {
+		if e.fnc.SpecialModInit() && e.locals.Frame {
 			pv = globals.Properties().GetAddr(pkey, true)
 		} else {
 			loc := symbols.NewSpecialVariableSym(key, types.Dynamic)
+			e.ctx.Scope.MustRegister(loc)
 			pv = e.locals.GetValueAddr(loc, true)
 		}
 	}
@@ -1552,13 +1557,7 @@ func (e *evaluator) evalNew(node diag.Diagable, t symbols.Type, args *[]ast.Expr
 	obj := e.newObject(node, t)
 
 	// See if there is a constructor method.  If there isn't, we just return the fresh object.
-	if ctor, has := t.TypeMembers()[tokens.ClassConstructorFunction]; has {
-		ctormeth, isfunc := ctor.(*symbols.ClassMethod)
-		contract.Assertf(isfunc,
-			"Expected ctor %v to be a class method; got %v", ctor, reflect.TypeOf(ctor))
-		contract.Assertf(ctormeth.Sig.Return == nil,
-			"Expected ctor %v to have a nil return; got %v", ctor, ctormeth.Sig.Return)
-
+	if ctor := t.Ctor(); ctor != nil {
 		// Evaluate the arguments in order.
 		var argobjs []*rt.Object
 		if args != nil {
@@ -1572,15 +1571,12 @@ func (e *evaluator) evalNew(node diag.Diagable, t symbols.Type, args *[]ast.Expr
 		}
 
 		// Now dispatch the function call using the fresh object as the constructor's `this` argument.
-		if _, uw := e.evalCall(node, ctormeth, obj, argobjs...); uw != nil {
+		if _, uw := e.evalCall(node, ctor, obj, argobjs...); uw != nil {
 			return nil, uw
 		}
 	} else {
 		contract.Assertf(args == nil || len(*args) == 0,
 			"No constructor found for %v, yet the new expression had %v args", t, len(*args))
-		class, isclass := t.(*symbols.Class)
-		contract.Assertf(!isclass || class.Extends == nil,
-			"No constructor found for %v, yet there is a base class; chaining must be done manually", t)
 	}
 
 	// Finally, ensure that all readonly properties are frozen now.

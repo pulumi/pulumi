@@ -474,10 +474,14 @@ class Transformer:
 
     def transform_Call(self, node):
         # TODO: support named arguments, starargs, etc.
+        assert node.keywords is None or len(node.keywords) == 0, "Named args not yet supported"
+        assert node.starargs is None or len(node.starargs) == 0, "Star args not yet supported"
+        assert node.kwargs is None or len(node.kwargs) == 0, "KW args not yet supported"
         func = self.transform_expr(node.func)
         args = list()
-        for arg in args:
-            args.append(self.transform_expr(arg))
+        if node.args:
+            for arg in node.args:
+                args.append(self.transform_expr(arg))
         return ast.InvokeFunctionExpression(func, args, loc=self.loc_from(node))
 
     def transform_Compare(self, node):
