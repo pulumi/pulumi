@@ -177,19 +177,19 @@ type Function interface {
 	Definition
 	GetParameters() *[]*LocalVariable
 	GetReturnType() *TypeToken
-	GetBody() *Block
+	GetBody() Statement
 }
 
 type FunctionNode struct {
 	// note that this node intentionally omits any embedded base, to avoid diamond "inheritance".
 	Parameters *[]*LocalVariable `json:"parameters,omitempty"`
 	ReturnType *TypeToken        `json:"returnType,omitempty"`
-	Body       *Block            `json:"body,omitempty"`
+	Body       Statement         `json:"body,omitempty"`
 }
 
 func (node *FunctionNode) GetParameters() *[]*LocalVariable { return node.Parameters }
 func (node *FunctionNode) GetReturnType() *TypeToken        { return node.ReturnType }
-func (node *FunctionNode) GetBody() *Block                  { return node.Body }
+func (node *FunctionNode) GetBody() Statement               { return node.Body }
 
 // ModuleMethod is just a function with an accessibility modifier.
 type ModuleMethod struct {

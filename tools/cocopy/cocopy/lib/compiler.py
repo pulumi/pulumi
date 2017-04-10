@@ -144,13 +144,13 @@ class Transformer:
 
         # If any top-level statements spilled over, add them to the initializer.
         if len(initstmts) > 0:
-            initbody = ast.Block(initstmts)
+            initbody = ast.MultiStatement(initstmts)
             members[tokens.func_init] = ast.ModuleMethod(self.ident(tokens.func_init), body=initbody)
 
         # All Python scripts are executable, so ensure that an entrypoint exists.  It consists of an empty block
         # because it exists solely to trigger the module initializer routine (if it exists).
         members[tokens.func_entrypoint] = ast.ModuleMethod(
-            self.ident(tokens.func_entrypoint), body=ast.Block(list()))
+            self.ident(tokens.func_entrypoint), body=ast.MultiStatement(list()))
 
         # For every property "declaration" encountered during the transformation, add a module property.
         for propname in self.ctx.globals:
@@ -249,7 +249,8 @@ class Transformer:
             if file and start:
                 loc = ast.Location(file, start, end)
 
-        return ast.Block(stmts, loc)
+        # Note that, to emulate Python's more "dynamic" scoping rules, we do not emit a true block.
+        return ast.MultiStatement(stmts, loc)
 
     def transform_Assert(self, node):
         self.not_yet_implemented(node) # test, msg

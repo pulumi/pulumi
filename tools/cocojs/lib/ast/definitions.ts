@@ -102,7 +102,7 @@ export type  ClassPropertyKind = "ClassProperty";
 export interface Function extends Definition {
     parameters?: LocalVariable[];
     returnType?: TypeToken;
-    body?:       statements.Block;
+    body?:       statements.Statement;
 }
 
 // A module method is just a function defined at the module scope.

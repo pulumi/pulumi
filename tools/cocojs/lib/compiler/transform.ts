@@ -1089,7 +1089,7 @@ export class Transformer {
                 let initializer: ast.ModuleMethod = {
                     kind:   ast.moduleMethodKind,
                     name:   ident(tokens.initializerFunction),
-                    body:   {
+                    body:   <ast.Block>{
                         kind:       ast.blockKind,
                         statements: statements,
                     },
@@ -1657,12 +1657,15 @@ export class Transformer {
                     insertAt = 0; // add the initializers to the empty block.
                     members[tokens.constructorFunction] = ctor;
                 }
+
+                let bodyBlock: ast.Block;
                 if (ctor.body) {
+                    bodyBlock = <ast.Block>ctor.body;
                     if (extend) {
                         // If there is a superclass, find the insertion point right *after* the explicit call to
                         // `super()`, to achieve the expected initialization order.
-                        for (let i = 0; i < ctor.body.statements.length; i++) {
-                            if (this.isSuperCall(ctor.body.statements[i], extend.tok)) {
+                        for (let i = 0; i < bodyBlock.statements.length; i++) {
+                            if (this.isSuperCall(bodyBlock.statements[i], extend.tok)) {
                                 insertAt = i+1; // place the initializers right after this call.
                                 break;
                             }
@@ -1674,14 +1677,15 @@ export class Transformer {
                     }
                 }
                 else {
-                    ctor.body = this.withLocation(node, <ast.Block>{
+                    bodyBlock = this.withLocation(node, <ast.Block>{
                         kind:       ast.blockKind,
                         statements: [],
                     });
+                    ctor.body = bodyBlock;
                     if (extend) {
                         // Generate an automatic call to the base class.  Omitting this is only legal if the base class
                         // constructor has zero arguments, so we just generate a simple `super();` call.
-                        ctor.body.statements.push(
+                        bodyBlock.statements.push(
                             this.copyLocation(ctor.body, this.createEmptySuperCall(extend.tok)));
                         insertAt = 1; // insert the initializers immediately after this call.
                     }
@@ -1690,10 +1694,10 @@ export class Transformer {
                     }
                 }
 
-                ctor.body.statements =
-                    ctor.body.statements.slice(0, insertAt).concat(
+                bodyBlock.statements =
+                    bodyBlock.statements.slice(0, insertAt).concat(
                         instancePropertyInitializers).concat(
-                            ctor.body.statements.slice(insertAt, ctor.body.statements.length));
+                            bodyBlock.statements.slice(insertAt, bodyBlock.statements.length));
             }
 
             let mods: ts.ModifierFlags = ts.getCombinedModifierFlags(node);
@@ -2254,13 +2258,21 @@ export class Transformer {
                 expression: await this.transformExpression(node.incrementor),
             });
         }
-        return this.withLocation(node, <ast.ForStatement>{
+
+        let forStmt: ast.ForStatement = this.withLocation(node, <ast.ForStatement>{
             kind:      ast.forStatementKind,
             init:      init,
             condition: condition,
             post:      post,
             body:      await this.transformStatement(node.statement),
         });
+
+        // Place the for statement into a block so that any new variables introduced inside of the init are lexically
+        // scoped to the for loop, rather than outside of it.
+        return <ast.Block>{
+            kind:       ast.blockKind,
+            statements: [ forStmt ],
+        };
     }
 
     private async transformForInitializer(node: ts.ForInitializer): Promise<ast.Statement> {

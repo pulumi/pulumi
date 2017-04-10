@@ -216,7 +216,7 @@ class Function(Definition):
         assert (parameters is None or
             (isinstance(parameters, list) and all(isinstance(node, LocalVariable) for node in parameters)))
         assert return_type is None or isinstance(return_type, TypeToken)
-        assert body is None or isinstance(body, Block)
+        assert body is None or isinstance(body, Statement)
         super(Function, self).__init__(kind, name, loc=loc)
         self.parameters = parameters
         self.return_type = return_type
@@ -229,7 +229,7 @@ class ModuleMethod(Function, ModuleMember):
         assert (parameters is None or
             (isinstance(parameters, list) and all(isinstance(node, LocalVariable) for node in parameters)))
         assert return_type is None or isinstance(return_type, TypeToken)
-        assert body is None or isinstance(body, Block)
+        assert body is None or isinstance(body, Statement)
         super(ModuleMethod, self).__init__("ModuleMethod", name, parameters, return_type, body, loc)
 
 class ClassMethod(Function, ClassMember):
@@ -240,7 +240,7 @@ class ClassMethod(Function, ClassMember):
         assert (parameters is None or
             (isinstance(parameters, list) and all(isinstance(node, LocalVariable) for node in parameters)))
         assert return_type is None or isinstance(return_type, TypeToken)
-        assert body is None or isinstance(body, Block)
+        assert body is None or isinstance(body, Statement)
         assert access is None or access in tokens.accs
         assert static is None or isinstance(bool, static)
         assert sealed is None or isinstance(bool, sealed)
@@ -289,22 +289,22 @@ class LocalVariableDeclaration(Statement):
 # ...Try/Catch/Finally
 
 class TryCatchFinally(Statement):
-    def __init__(self, try_block, catch_blocks=None, finally_block=None, loc=None):
-        assert isinstance(try_block, Block)
-        assert (catch_blocks is None or
-            (isinstance(catch_blocks, list) and all(isinstance(node, TryCatchBlock) for node in catch_blocks)))
-        assert finally_block is None or isinstance(finally_block, Block)
+    def __init__(self, try_clause, catch_clauses=None, finally_clause=None, loc=None):
+        assert isinstance(try_clause, Statement)
+        assert (catch_clauses is None or
+            (isinstance(catch_blocks, list) and all(isinstance(node, TryCatchClause) for node in catch_clauses)))
+        assert finally_clause is None or isinstance(finally_clause, Statement)
         super(TryCatchFinally, self).__init__("TryCatchFinally", loc)
-        self.try_block = try_block
-        self.catch_blocks = catch_blocks
-        self.finally_block = finally_block
+        self.try_clause = try_clause
+        self.catch_clauses = catch_clauses
+        self.finally_clause = finally_clause
 
-class TryCatchBlock(Node):
-    def __init__(self, block, exception=None, loc=None):
-        assert isinstance(block, Block)
+class TryCatchClause(Node):
+    def __init__(self, body, exception=None, loc=None):
+        assert isinstance(body, Statement)
         assert exception is None or isinstance(exception, LocalVariable)
-        super(TryCatchBlock, self).__init__("TryCatchBlock", loc)
-        self.block = block
+        super(TryCatchClause, self).__init__("TryCatchClause", loc)
+        self.body = body
         self.exception = exception
 
 # ...Branches

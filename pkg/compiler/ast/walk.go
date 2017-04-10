@@ -91,18 +91,18 @@ func Walk(v Visitor, node Node) {
 	case *LocalVariableDeclaration:
 		Walk(v, n.Local)
 	case *TryCatchFinally:
-		Walk(v, n.TryBlock)
-		if n.CatchBlocks != nil {
-			for _, catch := range *n.CatchBlocks {
+		Walk(v, n.TryClause)
+		if n.CatchClauses != nil {
+			for _, catch := range *n.CatchClauses {
 				Walk(v, catch)
 			}
 		}
-		if n.FinallyBlock != nil {
-			Walk(v, n.FinallyBlock)
+		if n.FinallyClause != nil {
+			Walk(v, n.FinallyClause)
 		}
-	case *TryCatchBlock:
+	case *TryCatchClause:
 		Walk(v, n.Exception)
-		Walk(v, n.Block)
+		Walk(v, n.Body)
 	case *IfStatement:
 		Walk(v, n.Condition)
 		Walk(v, n.Consequent)

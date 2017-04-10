@@ -37,7 +37,7 @@ export type NodeKind =
     statements.BlockKind |
     statements.LocalVariableDeclarationKind |
     statements.TryCatchFinallyKind |
-    statements.TryCatchBlockKind |
+    statements.TryCatchClauseKind |
     statements.BreakStatementKind |
     statements.ContinueStatementKind |
     statements.IfStatementKind |

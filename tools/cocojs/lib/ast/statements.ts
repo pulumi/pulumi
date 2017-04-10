@@ -18,6 +18,7 @@ export type  ImportKind = "Import";
 
 /** Blocks **/
 
+// Block is a grouping of statements that enjoy their own lexical scope.
 export interface Block extends Statement {
     kind:       BlockKind;
     statements: Statement[];
@@ -37,21 +38,21 @@ export type  LocalVariableDeclarationKind = "LocalVariableDeclaration";
 /** Try/Catch/Finally **/
 
 export interface TryCatchFinally extends Statement {
-    kind:          TryCatchFinallyKind;
-    tryBlock:      Block;
-    catchBlocks?:  TryCatchBlock[];
-    finallyBlock?: Block;
+    kind:           TryCatchFinallyKind;
+    tryClause:      Statement;
+    catchClauses?:  TryCatchClause[];
+    finallyClause?: Statement;
 }
 export const tryCatchFinallyKind = "TryCatchFinally";
 export type  TryCatchFinallyKind = "TryCatchFinally";
 
-export interface TryCatchBlock extends Node {
-    kind:       TryCatchBlockKind;
-    block:      Block;
+export interface TryCatchClause extends Node {
+    kind:       TryCatchClauseKind;
+    body:       Statement;
     exception?: LocalVariable;
 }
-export const tryCatchBlockKind = "TryCatchBlock";
-export type  TryCatchBlockKind = "TryCatchBlock";
+export const tryCatchClauseKind = "TryCatchClause";
+export type  TryCatchClauseKind = "TryCatchClause";
 
 /** Branches **/
 

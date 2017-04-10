@@ -659,7 +659,7 @@ func (e *evaluator) evalCall(node diag.Diagable, fnc symbols.Function,
 	case *Intrinsic:
 		uw = f.Invoke(e, this, args)
 	default:
-		uw = e.evalBlock(fnode.GetBody())
+		uw = e.evalStatement(fnode.GetBody())
 	}
 
 	// Check that the unwind is as expected.  In particular:
@@ -801,13 +801,13 @@ func (e *evaluator) evalLocalVariableDeclaration(node *ast.LocalVariableDeclarat
 }
 
 func (e *evaluator) evalTryCatchFinally(node *ast.TryCatchFinally) *rt.Unwind {
-	// First, execute the TryBlock.
-	uw := e.evalBlock(node.TryBlock)
+	// First, execute the try part.
+	uw := e.evalStatement(node.TryClause)
 	if uw != nil && uw.Throw() {
 		// The try block threw something; see if there is a handler that covers this.
 		thrown := uw.Exception().Thrown
-		if node.CatchBlocks != nil {
-			for _, catch := range *node.CatchBlocks {
+		if node.CatchClauses != nil {
+			for _, catch := range *node.CatchClauses {
 				ex := e.ctx.RequireVariable(catch.Exception).(*symbols.LocalVariable)
 				exty := ex.Type()
 				if types.CanConvert(thrown.Type(), exty) {
@@ -815,7 +815,7 @@ func (e *evaluator) evalTryCatchFinally(node *ast.TryCatchFinally) *rt.Unwind {
 					// evaluate the block, and swap the rt.Unwind information ("handling" the in-flight exception).
 					e.pushScope(nil)
 					e.locals.SetValue(ex, thrown)
-					uw = e.evalBlock(catch.Block)
+					uw = e.evalStatement(catch.Body)
 					e.popScope(false)
 					break
 				}
@@ -823,9 +823,9 @@ func (e *evaluator) evalTryCatchFinally(node *ast.TryCatchFinally) *rt.Unwind {
 		}
 	}
 
-	// No matter the rt.Unwind instructions, be sure to invoke the FinallyBlock.
-	if node.FinallyBlock != nil {
-		uwf := e.evalBlock(node.FinallyBlock)
+	// No matter the rt.Unwind instructions, be sure to invoke the finally part.
+	if node.FinallyClause != nil {
+		uwf := e.evalStatement(node.FinallyClause)
 
 		// Any rt.Unwind information from the finally block overrides the try rt.Unwind that was in flight.
 		if uwf != nil {
@@ -989,10 +989,6 @@ func (e *evaluator) evalWhileStatement(node *ast.WhileStatement) *rt.Unwind {
 }
 
 func (e *evaluator) evalForStatement(node *ast.ForStatement) *rt.Unwind {
-	// Enter into a new scope so that any new variables are inside of the for block.
-	e.pushScope(nil)
-	defer e.popScope(false)
-
 	// Now run the initialization code.
 	if node.Init != nil {
 		if uw := e.evalStatement(*node.Init); uw != nil {
