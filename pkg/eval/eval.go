@@ -546,7 +546,7 @@ func (e *evaluator) pushModuleScope(m *symbols.Module) func() {
 // pushClassScope establishes a new class-wide scope.  This also establishes the right module context.  If the object
 // argument is non-nil, instance methods are also populated.  It returns a function that restores the prior value.
 func (e *evaluator) pushClassScope(c *symbols.Class, obj *rt.Object) func() {
-	contract.Assert(obj == nil || obj.Type() == c)
+	contract.Assert(obj == nil || types.CanConvert(obj.Type(), c))
 	return e.ctx.PushClass(c)
 }
 
@@ -685,8 +685,8 @@ func (e *evaluator) evalCall(node diag.Diagable, fnc symbols.Function,
 		return ret, nil
 	}
 
-	// An absence of a return is okay for void-returning functions.
-	contract.Assert(retty == nil)
+	// An absence of a return is okay for void- or dynamic-returning functions.
+	contract.Assert(retty == nil || retty == types.Dynamic)
 	glog.V(7).Infof("Evaluated call to fnc %v; return=<nil>", fnc)
 	return nil, nil
 }
@@ -1494,10 +1494,6 @@ func (e *evaluator) evalLoadDynamic(node *ast.LoadDynamicExpression, lval bool) 
 	// If this isn't for an l-value, return the raw object.  Otherwise, make sure it's not readonly, and return it.
 	var obj *rt.Object
 	if lval {
-		// A readonly reference cannot be used as an l-value.
-		if pv.Readonly() {
-			e.Diag().Errorf(errors.ErrorIllegalReadonlyLValue.At(node))
-		}
 		obj = e.alloc.NewPointer(node, types.Dynamic, pv)
 	} else {
 		obj = pv.Obj()
