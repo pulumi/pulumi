@@ -269,7 +269,39 @@ class Transformer:
         return ast.ExpressionStatement(assgop)
 
     def transform_AugAssign(self, node):
-        self.not_yet_implemented(node) # targets, op, value
+        assert len(node.targets) == 1, "TODO: multi-assignments not yet supported"
+        lhs = self.transform_expr(node.targets[0])
+        self.track_assign(lhs)
+
+        pyop = node.op
+        if isinstance(pyop, py_ast.Add):
+            op = ast.binop_assign_sum
+        elif isinstance(pyop, py_ast.BitAnd):
+            op = ast.binop_assign_bitwise_and
+        elif isinstance(pyop, py_ast.BitOr):
+            op = ast.binop_assign_bitwise_or
+        elif isinstance(pyop, py_ast.BitXor):
+            op = ast.binop_assign_bitwise_xor
+        elif isinstance(pyop, py_ast.Div):
+            op = ast.binop_assign_quotient
+        elif isinstance(pyop, py_ast.LShift):
+            op = ast.binop_assign_bitwise_shleft
+        elif isinstance(pyop, py_ast.Mod):
+            op = ast.binop_assign_remainder
+        elif isinstance(pyop, py_ast.Mult):
+            op = ast.binop_assign_product
+        elif isinstance(pyop, py_ast.Pow):
+            op = ast.binop_assign_exponent
+        elif isinstance(pyop, py_ast.RShift):
+            op = ast.binop_assign_bitwise_shright
+        elif isinstance(pyop, py_ast.Sub):
+            op = ast.binop_assign_difference
+        else:
+            assert False, "Unsupported assignment operator type: {}".format(type(pyop).__name__)
+
+        rhs = self.transform_expr(node.value)
+        assgop = ast.BinaryOperatorExpression(lhs, op, rhs, loc=self.loc_from(node))
+        return ast.ExpressionStatement(assgop)
 
     def transform_Break(self, node):
         return ast.Break(loc=self.loc_from(node))
@@ -584,7 +616,7 @@ class Transformer:
         if isinstance(node.slice, py_ast.Index):
             idx = self.transform_expr(node.slice.value)
         else:
-            assert false, "Unsupported slicing type: {}".format(type(node.slice).__name__)
+            assert False, "Unsupported slicing type: {}".format(type(node.slice).__name__)
         return ast.LoadDynamicExpression(idx, obj, loc=self.loc_from(node))
 
     def transform_Tuple(self, node):
