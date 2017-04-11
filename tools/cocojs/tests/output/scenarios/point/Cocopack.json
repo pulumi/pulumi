@@ -486,15 +486,29 @@
                                             },
                                             "arguments": [
                                                 {
-                                                    "kind": "BinaryOperatorExpression",
-                                                    "operator": "+",
-                                                    "left": {
-                                                        "kind": "LoadLocationExpression",
-                                                        "object": {
+                                                    "kind": "CallArgument",
+                                                    "expr": {
+                                                        "kind": "BinaryOperatorExpression",
+                                                        "operator": "+",
+                                                        "left": {
                                                             "kind": "LoadLocationExpression",
-                                                            "name": {
-                                                                "kind": "Token",
-                                                                "tok": ".this",
+                                                            "object": {
+                                                                "kind": "LoadLocationExpression",
+                                                                "name": {
+                                                                    "kind": "Token",
+                                                                    "tok": ".this",
+                                                                    "loc": {
+                                                                        "file": "index.ts",
+                                                                        "start": {
+                                                                            "line": 14,
+                                                                            "column": 26
+                                                                        },
+                                                                        "end": {
+                                                                            "line": 14,
+                                                                            "column": 30
+                                                                        }
+                                                                    }
+                                                                },
                                                                 "loc": {
                                                                     "file": "index.ts",
                                                                     "start": {
@@ -507,6 +521,21 @@
                                                                     }
                                                                 }
                                                             },
+                                                            "name": {
+                                                                "kind": "Token",
+                                                                "tok": "scenarios/point:index:Point:x",
+                                                                "loc": {
+                                                                    "file": "index.ts",
+                                                                    "start": {
+                                                                        "line": 14,
+                                                                        "column": 31
+                                                                    },
+                                                                    "end": {
+                                                                        "line": 14,
+                                                                        "column": 32
+                                                                    }
+                                                                }
+                                                            },
                                                             "loc": {
                                                                 "file": "index.ts",
                                                                 "start": {
@@ -515,44 +544,29 @@
                                                                 },
                                                                 "end": {
                                                                     "line": 14,
-                                                                    "column": 30
-                                                                }
-                                                            }
-                                                        },
-                                                        "name": {
-                                                            "kind": "Token",
-                                                            "tok": "scenarios/point:index:Point:x",
-                                                            "loc": {
-                                                                "file": "index.ts",
-                                                                "start": {
-                                                                    "line": 14,
-                                                                    "column": 31
-                                                                },
-                                                                "end": {
-                                                                    "line": 14,
                                                                     "column": 32
                                                                 }
                                                             }
                                                         },
-                                                        "loc": {
-                                                            "file": "index.ts",
-                                                            "start": {
-                                                                "line": 14,
-                                                                "column": 26
-                                                            },
-                                                            "end": {
-                                                                "line": 14,
-                                                                "column": 32
-                                                            }
-                                                        }
-                                                    },
-                                                    "right": {
-                                                        "kind": "LoadLocationExpression",
-                                                        "object": {
+                                                        "right": {
                                                             "kind": "LoadLocationExpression",
-                                                            "name": {
-                                                                "kind": "Token",
-                                                                "tok": "other",
+                                                            "object": {
+                                                                "kind": "LoadLocationExpression",
+                                                                "name": {
+                                                                    "kind": "Token",
+                                                                    "tok": "other",
+                                                                    "loc": {
+                                                                        "file": "index.ts",
+                                                                        "start": {
+                                                                            "line": 14,
+                                                                            "column": 35
+                                                                        },
+                                                                        "end": {
+                                                                            "line": 14,
+                                                                            "column": 40
+                                                                        }
+                                                                    }
+                                                                },
                                                                 "loc": {
                                                                     "file": "index.ts",
                                                                     "start": {
@@ -565,26 +579,26 @@
                                                                     }
                                                                 }
                                                             },
+                                                            "name": {
+                                                                "kind": "Token",
+                                                                "tok": "scenarios/point:index:Point:x",
+                                                                "loc": {
+                                                                    "file": "index.ts",
+                                                                    "start": {
+                                                                        "line": 14,
+                                                                        "column": 41
+                                                                    },
+                                                                    "end": {
+                                                                        "line": 14,
+                                                                        "column": 42
+                                                                    }
+                                                                }
+                                                            },
                                                             "loc": {
                                                                 "file": "index.ts",
                                                                 "start": {
                                                                     "line": 14,
                                                                     "column": 35
-                                                                },
-                                                                "end": {
-                                                                    "line": 14,
-                                                                    "column": 40
-                                                                }
-                                                            }
-                                                        },
-                                                        "name": {
-                                                            "kind": "Token",
-                                                            "tok": "scenarios/point:index:Point:x",
-                                                            "loc": {
-                                                                "file": "index.ts",
-                                                                "start": {
-                                                                    "line": 14,
-                                                                    "column": 41
                                                                 },
                                                                 "end": {
                                                                     "line": 14,
@@ -596,36 +610,39 @@
                                                             "file": "index.ts",
                                                             "start": {
                                                                 "line": 14,
-                                                                "column": 35
+                                                                "column": 26
                                                             },
                                                             "end": {
                                                                 "line": 14,
                                                                 "column": 42
                                                             }
                                                         }
-                                                    },
-                                                    "loc": {
-                                                        "file": "index.ts",
-                                                        "start": {
-                                                            "line": 14,
-                                                            "column": 26
-                                                        },
-                                                        "end": {
-                                                            "line": 14,
-                                                            "column": 42
-                                                        }
                                                     }
                                                 },
                                                 {
-                                                    "kind": "BinaryOperatorExpression",
-                                                    "operator": "+",
-                                                    "left": {
-                                                        "kind": "LoadLocationExpression",
-                                                        "object": {
+                                                    "kind": "CallArgument",
+                                                    "expr": {
+                                                        "kind": "BinaryOperatorExpression",
+                                                        "operator": "+",
+                                                        "left": {
                                                             "kind": "LoadLocationExpression",
-                                                            "name": {
-                                                                "kind": "Token",
-                                                                "tok": ".this",
+                                                            "object": {
+                                                                "kind": "LoadLocationExpression",
+                                                                "name": {
+                                                                    "kind": "Token",
+                                                                    "tok": ".this",
+                                                                    "loc": {
+                                                                        "file": "index.ts",
+                                                                        "start": {
+                                                                            "line": 14,
+                                                                            "column": 44
+                                                                        },
+                                                                        "end": {
+                                                                            "line": 14,
+                                                                            "column": 48
+                                                                        }
+                                                                    }
+                                                                },
                                                                 "loc": {
                                                                     "file": "index.ts",
                                                                     "start": {
@@ -638,6 +655,21 @@
                                                                     }
                                                                 }
                                                             },
+                                                            "name": {
+                                                                "kind": "Token",
+                                                                "tok": "scenarios/point:index:Point:y",
+                                                                "loc": {
+                                                                    "file": "index.ts",
+                                                                    "start": {
+                                                                        "line": 14,
+                                                                        "column": 49
+                                                                    },
+                                                                    "end": {
+                                                                        "line": 14,
+                                                                        "column": 50
+                                                                    }
+                                                                }
+                                                            },
                                                             "loc": {
                                                                 "file": "index.ts",
                                                                 "start": {
@@ -646,44 +678,29 @@
                                                                 },
                                                                 "end": {
                                                                     "line": 14,
-                                                                    "column": 48
-                                                                }
-                                                            }
-                                                        },
-                                                        "name": {
-                                                            "kind": "Token",
-                                                            "tok": "scenarios/point:index:Point:y",
-                                                            "loc": {
-                                                                "file": "index.ts",
-                                                                "start": {
-                                                                    "line": 14,
-                                                                    "column": 49
-                                                                },
-                                                                "end": {
-                                                                    "line": 14,
                                                                     "column": 50
                                                                 }
                                                             }
                                                         },
-                                                        "loc": {
-                                                            "file": "index.ts",
-                                                            "start": {
-                                                                "line": 14,
-                                                                "column": 44
-                                                            },
-                                                            "end": {
-                                                                "line": 14,
-                                                                "column": 50
-                                                            }
-                                                        }
-                                                    },
-                                                    "right": {
-                                                        "kind": "LoadLocationExpression",
-                                                        "object": {
+                                                        "right": {
                                                             "kind": "LoadLocationExpression",
-                                                            "name": {
-                                                                "kind": "Token",
-                                                                "tok": "other",
+                                                            "object": {
+                                                                "kind": "LoadLocationExpression",
+                                                                "name": {
+                                                                    "kind": "Token",
+                                                                    "tok": "other",
+                                                                    "loc": {
+                                                                        "file": "index.ts",
+                                                                        "start": {
+                                                                            "line": 14,
+                                                                            "column": 53
+                                                                        },
+                                                                        "end": {
+                                                                            "line": 14,
+                                                                            "column": 58
+                                                                        }
+                                                                    }
+                                                                },
                                                                 "loc": {
                                                                     "file": "index.ts",
                                                                     "start": {
@@ -696,26 +713,26 @@
                                                                     }
                                                                 }
                                                             },
+                                                            "name": {
+                                                                "kind": "Token",
+                                                                "tok": "scenarios/point:index:Point:y",
+                                                                "loc": {
+                                                                    "file": "index.ts",
+                                                                    "start": {
+                                                                        "line": 14,
+                                                                        "column": 59
+                                                                    },
+                                                                    "end": {
+                                                                        "line": 14,
+                                                                        "column": 60
+                                                                    }
+                                                                }
+                                                            },
                                                             "loc": {
                                                                 "file": "index.ts",
                                                                 "start": {
                                                                     "line": 14,
                                                                     "column": 53
-                                                                },
-                                                                "end": {
-                                                                    "line": 14,
-                                                                    "column": 58
-                                                                }
-                                                            }
-                                                        },
-                                                        "name": {
-                                                            "kind": "Token",
-                                                            "tok": "scenarios/point:index:Point:y",
-                                                            "loc": {
-                                                                "file": "index.ts",
-                                                                "start": {
-                                                                    "line": 14,
-                                                                    "column": 59
                                                                 },
                                                                 "end": {
                                                                     "line": 14,
@@ -727,23 +744,12 @@
                                                             "file": "index.ts",
                                                             "start": {
                                                                 "line": 14,
-                                                                "column": 53
+                                                                "column": 44
                                                             },
                                                             "end": {
                                                                 "line": 14,
                                                                 "column": 60
                                                             }
-                                                        }
-                                                    },
-                                                    "loc": {
-                                                        "file": "index.ts",
-                                                        "start": {
-                                                            "line": 14,
-                                                            "column": 44
-                                                        },
-                                                        "end": {
-                                                            "line": 14,
-                                                            "column": 60
                                                         }
                                                     }
                                                 }

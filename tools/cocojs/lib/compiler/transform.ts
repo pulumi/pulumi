@@ -1890,7 +1890,7 @@ export class Transformer {
                     else {
                         decl = <ast.ClassMember>element;
                     }
-
+                    decl.primary = true; // all interface members are "primary".
                     members[decl.name.ident] = decl;
                 }
             }
@@ -1899,7 +1899,8 @@ export class Transformer {
                 kind:       ast.classKind,
                 name:       name,
                 members:    members,
-                interface:  true,
+                interface:  true, // permit multi-inheritance.
+                record:     true, // enable on-the-fly creation.
                 extends:    extend,
                 implements: implement,
             });
@@ -2678,9 +2679,12 @@ export class Transformer {
             });
         }
 
-        let args: ast.Expression[] = [];
+        let args: ast.CallArgument[] = [];
         for (let argument of node.arguments) {
-            args.push(await this.transformExpression(argument));
+            args.push({
+                kind: ast.callArgumentKind,
+                expr: await this.transformExpression(argument),
+            });
         }
         return this.withLocation(node, <ast.InvokeFunctionExpression>{
             kind:      ast.invokeFunctionExpressionKind,
@@ -2860,9 +2864,12 @@ export class Transformer {
         contract.assert(!!signature);
         let typeToken: tokens.TypeToken | undefined = await this.resolveTypeToken(node, signature.getReturnType());
         contract.assert(!!typeToken);
-        let args: ast.Expression[] = [];
+        let args: ast.CallArgument[] = [];
         for (let expr of node.arguments) {
-            args.push(await this.transformExpression(expr));
+            args.push({
+                kind: ast.callArgumentKind,
+                expr: await this.transformExpression(expr),
+            });
         }
         return this.withLocation(node, <ast.NewExpression>{
             kind:      ast.newExpressionKind,

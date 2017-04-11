@@ -972,16 +972,19 @@
                                     },
                                     "arguments": [
                                         {
-                                            "kind": "NullLiteral",
-                                            "loc": {
-                                                "file": "index.ts",
-                                                "start": {
-                                                    "line": 11,
-                                                    "column": 3
-                                                },
-                                                "end": {
-                                                    "line": 11,
-                                                    "column": 12
+                                            "kind": "CallArgument",
+                                            "expr": {
+                                                "kind": "NullLiteral",
+                                                "loc": {
+                                                    "file": "index.ts",
+                                                    "start": {
+                                                        "line": 11,
+                                                        "column": 3
+                                                    },
+                                                    "end": {
+                                                        "line": 11,
+                                                        "column": 12
+                                                    }
                                                 }
                                             }
                                         }
@@ -1264,17 +1267,20 @@
                                     },
                                     "arguments": [
                                         {
-                                            "kind": "NullLiteral",
-                                            "raw": "null",
-                                            "loc": {
-                                                "file": "index.ts",
-                                                "start": {
-                                                    "line": 21,
-                                                    "column": 3
-                                                },
-                                                "end": {
-                                                    "line": 21,
-                                                    "column": 7
+                                            "kind": "CallArgument",
+                                            "expr": {
+                                                "kind": "NullLiteral",
+                                                "raw": "null",
+                                                "loc": {
+                                                    "file": "index.ts",
+                                                    "start": {
+                                                        "line": 21,
+                                                        "column": 3
+                                                    },
+                                                    "end": {
+                                                        "line": 21,
+                                                        "column": 7
+                                                    }
                                                 }
                                             }
                                         }

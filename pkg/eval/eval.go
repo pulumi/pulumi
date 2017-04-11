@@ -1544,31 +1544,50 @@ func (e *evaluator) evalNewExpression(node *ast.NewExpression) (*rt.Object, *rt.
 }
 
 // evalNew performs a new operation on the given type with the given arguments.
-func (e *evaluator) evalNew(node diag.Diagable, t symbols.Type, args *[]ast.Expression) (*rt.Object, *rt.Unwind) {
+func (e *evaluator) evalNew(node diag.Diagable, t symbols.Type, args *[]*ast.CallArgument) (*rt.Object, *rt.Unwind) {
+	// TODO: if a dynamic invoke, we want a runtime exceptions, not assertions, for most failure modes below.
+
 	// Create a object of the right type, containing all of the properties pre-populated.
 	obj := e.newObject(node, t)
 
-	// See if there is a constructor method.  If there isn't, we just return the fresh object.
-	if ctor := t.Ctor(); ctor != nil {
-		// Evaluate the arguments in order.
-		var argobjs []*rt.Object
-		if args != nil {
-			for _, arg := range *args {
-				argobj, uw := e.evalExpression(arg)
-				if uw != nil {
-					return nil, uw
-				}
-				argobjs = append(argobjs, argobj)
+	// Evaluate the arguments in order.
+	var argobjs []*rt.Object
+	if args != nil {
+		for _, arg := range *args {
+			argobj, uw := e.evalExpression(arg.Expr)
+			if uw != nil {
+				return nil, uw
 			}
+			argobjs = append(argobjs, argobj)
 		}
+	}
 
+	// See if there is a constructor or if this is a record.  If not, just return a fresh object.
+	if ctor := t.Ctor(); ctor != nil {
 		// Now dispatch the function call using the fresh object as the constructor's `this` argument.
 		if _, uw := e.evalCall(node, ctor, obj, argobjs...); uw != nil {
 			return nil, uw
 		}
+	} else if args != nil && t.Record() {
+		// If this is a record type, we can still initialize it much like an object literal, using named properties.
+		// This only works provided the arguments are named and each one maps to a primary property on the type.
+		for i, arg := range *args {
+			contract.Assertf(arg.Name != nil, "Expected only named args for new of a record type")
+			id := tokens.ClassMemberName(arg.Name.Ident)
+			contract.Assertf(t.TypeMembers()[id] != nil, "Expected named arg to match a type member")
+			contract.Assertf(t.TypeMembers()[id].Primary(), "Expected named arg to match a primary member")
+			val := argobjs[i]
+			prop := rt.PropertyKey(id)
+			addr := obj.GetPropertyAddr(prop, true, true)
+			addr.Set(val)
+			// Track all assignments.
+			if e.hooks != nil {
+				e.hooks.OnVariableAssign(arg, obj, tokens.Name(prop), nil, val)
+			}
+		}
 	} else {
 		contract.Assertf(args == nil || len(*args) == 0,
-			"No constructor found for %v, yet the new expression had %v args", t, len(*args))
+			"No constructor found for non-record type %v, yet the new expression had %v args", t, len(*args))
 	}
 
 	// Finally, ensure that all readonly properties are frozen now.
@@ -1611,7 +1630,7 @@ func (e *evaluator) evalInvokeFunctionExpression(node *ast.InvokeFunctionExpress
 	var args []*rt.Object
 	if node.Arguments != nil {
 		for _, arg := range *node.Arguments {
-			argobj, uw := e.evalExpression(arg)
+			argobj, uw := e.evalExpression(arg.Expr)
 			if uw != nil {
 				return nil, uw
 			}

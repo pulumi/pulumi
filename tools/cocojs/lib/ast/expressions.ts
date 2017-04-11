@@ -1,7 +1,7 @@
 // Copyright 2017 Pulumi, Inc. All rights reserved.
 
 import {LocalVariable} from "./definitions";
-import {Node, Token, TypeToken} from "./nodes";
+import {Identifier, Node, Token, TypeToken} from "./nodes";
 import * as statements from "./statements";
 
 import * as tokens from "../tokens";
@@ -102,8 +102,15 @@ export type  LoadDynamicExpressionKind = "LoadDynamicExpression";
 /** Functions **/
 
 export interface CallExpression extends Expression {
-    arguments?: Expression[]; // the list of arguments in sequential order.
+    arguments?: CallArgument[]; // the list of arguments in sequential order.
 }
+
+export interface CallArgument extends Node {
+    name?: Identifier; // a name if using named arguments.
+    expr: Expression;  // the argument expression.
+}
+export const callArgumentKind = "CallArgument";
+export type  CallArgumentKind = "CallArgument";
 
 // Allocates a new object and calls its constructor.
 export interface NewExpression extends CallExpression {

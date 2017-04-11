@@ -45,6 +45,11 @@ func Walk(v Visitor, node Node) {
 	// Nodes
 	case *Identifier, *Token, *ClassMemberToken, *ModuleToken, *TypeToken:
 		// No children, nothing to do.
+	case *CallArgument:
+		if n.Name != nil {
+			Walk(v, n.Name)
+		}
+		Walk(v, n.Expr)
 
 	// Definitions
 	case *Module:

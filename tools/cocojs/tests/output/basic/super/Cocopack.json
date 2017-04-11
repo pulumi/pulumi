@@ -476,18 +476,21 @@
                                             },
                                             "arguments": [
                                                 {
-                                                    "kind": "NumberLiteral",
-                                                    "raw": "42",
-                                                    "value": 42,
-                                                    "loc": {
-                                                        "file": "index.ts",
-                                                        "start": {
-                                                            "line": 18,
-                                                            "column": 15
-                                                        },
-                                                        "end": {
-                                                            "line": 18,
-                                                            "column": 17
+                                                    "kind": "CallArgument",
+                                                    "expr": {
+                                                        "kind": "NumberLiteral",
+                                                        "raw": "42",
+                                                        "value": 42,
+                                                        "loc": {
+                                                            "file": "index.ts",
+                                                            "start": {
+                                                                "line": 18,
+                                                                "column": 15
+                                                            },
+                                                            "end": {
+                                                                "line": 18,
+                                                                "column": 17
+                                                            }
                                                         }
                                                     }
                                                 }
@@ -1067,18 +1070,21 @@
                                         },
                                         "arguments": [
                                             {
-                                                "kind": "NumberLiteral",
-                                                "raw": "18",
-                                                "value": 18,
-                                                "loc": {
-                                                    "file": "index.ts",
-                                                    "start": {
-                                                        "line": 28,
-                                                        "column": 15
-                                                    },
-                                                    "end": {
-                                                        "line": 28,
-                                                        "column": 17
+                                                "kind": "CallArgument",
+                                                "expr": {
+                                                    "kind": "NumberLiteral",
+                                                    "raw": "18",
+                                                    "value": 18,
+                                                    "loc": {
+                                                        "file": "index.ts",
+                                                        "start": {
+                                                            "line": 28,
+                                                            "column": 15
+                                                        },
+                                                        "end": {
+                                                            "line": 28,
+                                                            "column": 17
+                                                        }
                                                     }
                                                 }
                                             }
@@ -1336,29 +1342,43 @@
                                                 },
                                                 "arguments": [
                                                     {
-                                                        "kind": "BinaryOperatorExpression",
-                                                        "operator": "+",
-                                                        "left": {
-                                                            "kind": "StringLiteral",
-                                                            "raw": "Expected b.gx == 18; got ",
-                                                            "value": "Expected b.gx == 18; got ",
-                                                            "loc": {
-                                                                "file": "index.ts",
-                                                                "start": {
-                                                                    "line": 31,
-                                                                    "column": 21
-                                                                },
-                                                                "end": {
-                                                                    "line": 31,
-                                                                    "column": 48
+                                                        "kind": "CallArgument",
+                                                        "expr": {
+                                                            "kind": "BinaryOperatorExpression",
+                                                            "operator": "+",
+                                                            "left": {
+                                                                "kind": "StringLiteral",
+                                                                "raw": "Expected b.gx == 18; got ",
+                                                                "value": "Expected b.gx == 18; got ",
+                                                                "loc": {
+                                                                    "file": "index.ts",
+                                                                    "start": {
+                                                                        "line": 31,
+                                                                        "column": 21
+                                                                    },
+                                                                    "end": {
+                                                                        "line": 31,
+                                                                        "column": 48
+                                                                    }
                                                                 }
-                                                            }
-                                                        },
-                                                        "right": {
-                                                            "kind": "LoadLocationExpression",
-                                                            "name": {
-                                                                "kind": "Token",
-                                                                "tok": "basic/super:index:bgx",
+                                                            },
+                                                            "right": {
+                                                                "kind": "LoadLocationExpression",
+                                                                "name": {
+                                                                    "kind": "Token",
+                                                                    "tok": "basic/super:index:bgx",
+                                                                    "loc": {
+                                                                        "file": "index.ts",
+                                                                        "start": {
+                                                                            "line": 31,
+                                                                            "column": 51
+                                                                        },
+                                                                        "end": {
+                                                                            "line": 31,
+                                                                            "column": 54
+                                                                        }
+                                                                    }
+                                                                },
                                                                 "loc": {
                                                                     "file": "index.ts",
                                                                     "start": {
@@ -1375,23 +1395,12 @@
                                                                 "file": "index.ts",
                                                                 "start": {
                                                                     "line": 31,
-                                                                    "column": 51
+                                                                    "column": 21
                                                                 },
                                                                 "end": {
                                                                     "line": 31,
                                                                     "column": 54
                                                                 }
-                                                            }
-                                                        },
-                                                        "loc": {
-                                                            "file": "index.ts",
-                                                            "start": {
-                                                                "line": 31,
-                                                                "column": 21
-                                                            },
-                                                            "end": {
-                                                                "line": 31,
-                                                                "column": 54
                                                             }
                                                         }
                                                     }
@@ -1750,29 +1759,43 @@
                                                 },
                                                 "arguments": [
                                                     {
-                                                        "kind": "BinaryOperatorExpression",
-                                                        "operator": "+",
-                                                        "left": {
-                                                            "kind": "StringLiteral",
-                                                            "raw": "Expected c.gx == 42; got ",
-                                                            "value": "Expected c.gx == 42; got ",
-                                                            "loc": {
-                                                                "file": "index.ts",
-                                                                "start": {
-                                                                    "line": 37,
-                                                                    "column": 21
-                                                                },
-                                                                "end": {
-                                                                    "line": 37,
-                                                                    "column": 48
+                                                        "kind": "CallArgument",
+                                                        "expr": {
+                                                            "kind": "BinaryOperatorExpression",
+                                                            "operator": "+",
+                                                            "left": {
+                                                                "kind": "StringLiteral",
+                                                                "raw": "Expected c.gx == 42; got ",
+                                                                "value": "Expected c.gx == 42; got ",
+                                                                "loc": {
+                                                                    "file": "index.ts",
+                                                                    "start": {
+                                                                        "line": 37,
+                                                                        "column": 21
+                                                                    },
+                                                                    "end": {
+                                                                        "line": 37,
+                                                                        "column": 48
+                                                                    }
                                                                 }
-                                                            }
-                                                        },
-                                                        "right": {
-                                                            "kind": "LoadLocationExpression",
-                                                            "name": {
-                                                                "kind": "Token",
-                                                                "tok": "basic/super:index:cgx",
+                                                            },
+                                                            "right": {
+                                                                "kind": "LoadLocationExpression",
+                                                                "name": {
+                                                                    "kind": "Token",
+                                                                    "tok": "basic/super:index:cgx",
+                                                                    "loc": {
+                                                                        "file": "index.ts",
+                                                                        "start": {
+                                                                            "line": 37,
+                                                                            "column": 51
+                                                                        },
+                                                                        "end": {
+                                                                            "line": 37,
+                                                                            "column": 54
+                                                                        }
+                                                                    }
+                                                                },
                                                                 "loc": {
                                                                     "file": "index.ts",
                                                                     "start": {
@@ -1789,23 +1812,12 @@
                                                                 "file": "index.ts",
                                                                 "start": {
                                                                     "line": 37,
-                                                                    "column": 51
+                                                                    "column": 21
                                                                 },
                                                                 "end": {
                                                                     "line": 37,
                                                                     "column": 54
                                                                 }
-                                                            }
-                                                        },
-                                                        "loc": {
-                                                            "file": "index.ts",
-                                                            "start": {
-                                                                "line": 37,
-                                                                "column": 21
-                                                            },
-                                                            "end": {
-                                                                "line": 37,
-                                                                "column": 54
                                                             }
                                                         }
                                                     }
@@ -2076,29 +2088,43 @@
                                                 },
                                                 "arguments": [
                                                     {
-                                                        "kind": "BinaryOperatorExpression",
-                                                        "operator": "+",
-                                                        "left": {
-                                                            "kind": "StringLiteral",
-                                                            "raw": "Expecred c.gy == 42; got ",
-                                                            "value": "Expecred c.gy == 42; got ",
-                                                            "loc": {
-                                                                "file": "index.ts",
-                                                                "start": {
-                                                                    "line": 41,
-                                                                    "column": 21
-                                                                },
-                                                                "end": {
-                                                                    "line": 41,
-                                                                    "column": 48
+                                                        "kind": "CallArgument",
+                                                        "expr": {
+                                                            "kind": "BinaryOperatorExpression",
+                                                            "operator": "+",
+                                                            "left": {
+                                                                "kind": "StringLiteral",
+                                                                "raw": "Expecred c.gy == 42; got ",
+                                                                "value": "Expecred c.gy == 42; got ",
+                                                                "loc": {
+                                                                    "file": "index.ts",
+                                                                    "start": {
+                                                                        "line": 41,
+                                                                        "column": 21
+                                                                    },
+                                                                    "end": {
+                                                                        "line": 41,
+                                                                        "column": 48
+                                                                    }
                                                                 }
-                                                            }
-                                                        },
-                                                        "right": {
-                                                            "kind": "LoadLocationExpression",
-                                                            "name": {
-                                                                "kind": "Token",
-                                                                "tok": "basic/super:index:cgy",
+                                                            },
+                                                            "right": {
+                                                                "kind": "LoadLocationExpression",
+                                                                "name": {
+                                                                    "kind": "Token",
+                                                                    "tok": "basic/super:index:cgy",
+                                                                    "loc": {
+                                                                        "file": "index.ts",
+                                                                        "start": {
+                                                                            "line": 41,
+                                                                            "column": 51
+                                                                        },
+                                                                        "end": {
+                                                                            "line": 41,
+                                                                            "column": 54
+                                                                        }
+                                                                    }
+                                                                },
                                                                 "loc": {
                                                                     "file": "index.ts",
                                                                     "start": {
@@ -2115,23 +2141,12 @@
                                                                 "file": "index.ts",
                                                                 "start": {
                                                                     "line": 41,
-                                                                    "column": 51
+                                                                    "column": 21
                                                                 },
                                                                 "end": {
                                                                     "line": 41,
                                                                     "column": 54
                                                                 }
-                                                            }
-                                                        },
-                                                        "loc": {
-                                                            "file": "index.ts",
-                                                            "start": {
-                                                                "line": 41,
-                                                                "column": 21
-                                                            },
-                                                            "end": {
-                                                                "line": 41,
-                                                                "column": 54
                                                             }
                                                         }
                                                     }

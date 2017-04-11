@@ -97,17 +97,20 @@ type ClassMember interface {
 	Definition
 	GetAccess() *tokens.Accessibility
 	GetStatic() *bool
+	GetPrimary() *bool
 }
 
 type ClassMemberNode struct {
 	DefinitionNode
-	Access *tokens.Accessibility `json:"access,omitempty"`
-	Static *bool                 `json:"static,omitempty"`
+	Access  *tokens.Accessibility `json:"access,omitempty"`
+	Static  *bool                 `json:"static,omitempty"`
+	Primary *bool                 `json:"primary,omitempty"`
 }
 
 func (node *ClassMemberNode) classMember()                     {}
 func (node *ClassMemberNode) GetAccess() *tokens.Accessibility { return node.Access }
 func (node *ClassMemberNode) GetStatic() *bool                 { return node.Static }
+func (node *ClassMemberNode) GetPrimary() *bool                { return node.Primary }
 
 // ClassMembers is a map of class member name to ClassMember symbol.
 type ClassMembers map[tokens.ClassMemberName]ClassMember
@@ -160,7 +163,6 @@ const ModulePropertyKind NodeKind = "ModuleProperty"
 type ClassProperty struct {
 	VariableNode
 	ClassMemberNode
-	Primary  *bool `json:"primary,omitempty"`
 	Optional *bool `json:"optional,omitempty"`
 }
 

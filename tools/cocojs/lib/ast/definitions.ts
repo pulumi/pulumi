@@ -59,8 +59,9 @@ export type  ClassKind = "Class";
 
 // A class member is a definition that belongs to a class.
 export interface ClassMember extends Definition {
-    access?: tokens.Accessibility;
-    static?: boolean;
+    access?:  tokens.Accessibility;
+    static?:  boolean;
+    primary?: boolean;
 }
 export type ClassMembers = { [token: string /*tokens.Token*/]: ClassMember };
 
@@ -90,7 +91,6 @@ export type  ModulePropertyKind = "ModuleProperty";
 // A class property is just like a module property with some extra attributes.
 export interface ClassProperty extends Variable, ClassMember {
     kind:      ClassPropertyKind;
-    primary?:  boolean;
     optional?: boolean;
 }
 export const classPropertyKind = "ClassProperty";

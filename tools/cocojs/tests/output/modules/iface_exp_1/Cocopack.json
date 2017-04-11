@@ -73,6 +73,7 @@
                     },
                     "members": {},
                     "interface": true,
+                    "record": true,
                     "loc": {
                         "file": "index.ts",
                         "start": {

@@ -76,6 +76,8 @@ type TryCatchClause struct {
 
 var _ Node = (*TryCatchClause)(nil)
 
+const TryCatchClauseKind NodeKind = "TryCatchClause"
+
 /* Branches */
 
 // BreakStatement is the usual C-style `break` (only valid within loops).

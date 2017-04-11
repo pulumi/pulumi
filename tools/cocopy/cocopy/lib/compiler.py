@@ -475,14 +475,17 @@ class Transformer:
 
     def transform_Call(self, node):
         # TODO: support named arguments, starargs, etc.
-        assert node.keywords is None or len(node.keywords) == 0, "Named args not yet supported"
         assert node.starargs is None or len(node.starargs) == 0, "Star args not yet supported"
-        assert node.kwargs is None or len(node.kwargs) == 0, "KW args not yet supported"
+        assert node.kwargs is None or len(node.kwargs) == 0, "KW (splat) args not yet supported"
         func = self.transform_expr(node.func)
         args = list()
         if node.args:
             for arg in node.args:
-                args.append(self.transform_expr(arg))
+                args.append(ast.CallArgument(self.transform_expr(arg), loc=self.loc_from(arg)))
+        if node.keywords:
+            for keyword in node.keywords:
+                args.append(ast.CallArgument(
+                    self.transform_expr(keyword.value), name=self.ident(keyword.arg), loc=self.loc_from(keyword)))
         return ast.InvokeFunctionExpression(func, args, loc=self.loc_from(node))
 
     def transform_Compare(self, node):
@@ -530,7 +533,11 @@ class Transformer:
         self.not_yet_implemented(node) # args, body
 
     def transform_List(self, node):
-        self.not_yet_implemented(node) # elts, ctx
+        assert node.ctx is None
+        elems = list()
+        for elem in node.elts:
+            elems.append(self.transform_expr(elem))
+        return ast.ArrayLiteral(elements=elems, loc=self.loc_from(node))
 
     def transform_ListComp(self, node):
         self.not_yet_implemented(node) # elt, generators
@@ -555,7 +562,7 @@ class Transformer:
             assert False, "Unexpected name constant value: '{}'".format(node.value)
 
     def transform_Num(self, node):
-        return ast.NumberLiteral(self.value, loc=self.loc_from(node))
+        return ast.NumberLiteral(node.n, loc=self.loc_from(node))
 
     def transform_Repr(self, node):
         self.not_yet_implemented(node) # value

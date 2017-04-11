@@ -152,12 +152,13 @@ class Class(ModuleMember):
 
 class ClassMember(Definition):
     """A class member is a definition that belongs to a class."""
-    def __init__(self, kind, name, access=None, static=None, loc=None):
+    def __init__(self, kind, name, access=None, static=None, primary=None, loc=None):
         assert isinstance(kind, basestring)
         assert isinstance(name, Identifier)
         super(ClassMember, self).__init__(kind, name, loc=loc)
         self.access = access
         self.static = static
+        self.primary = primary
 
 # ...Variables
 
@@ -235,7 +236,7 @@ class ModuleMethod(Function, ModuleMember):
 class ClassMethod(Function, ClassMember):
     """A class method is just like a module method with some extra attributes."""
     def __init__(self, name, parameters=None, return_type=None, body=None,
-            access=None, static=None, sealed=None, abstract=None, loc=None):
+            access=None, static=None, primary=None, sealed=None, abstract=None, loc=None):
         assert isinstance(name, Identifier)
         assert (parameters is None or
             (isinstance(parameters, list) and all(isinstance(node, LocalVariable) for node in parameters)))
@@ -243,11 +244,13 @@ class ClassMethod(Function, ClassMember):
         assert body is None or isinstance(body, Statement)
         assert access is None or access in tokens.accs
         assert static is None or isinstance(bool, static)
+        assert primary is None or isinstance(bool, primary)
         assert sealed is None or isinstance(bool, sealed)
         assert abstract is None or isinstance(bool, abstract)
         super(ClassMethod, self).__init__("ClassMethod", name, parameters, return_type, body, loc)
         self.access = access
         self.static = static
+        self.primary = primary
         self.sealed = sealed
         self.abstract = abstract
 
@@ -439,7 +442,7 @@ class Literal(Expression):
 class NullLiteral(Literal):
     """A `null` literal."""
     def __init__(self, loc=None):
-        super(NullLiteral, self).__init__("NullLiteral", loc)
+        super(NullLiteral, self).__init__("NullLiteral", loc=loc)
 
 class BoolLiteral(Literal):
     """A `bool`-typed literal (`true` or `false`)."""
@@ -469,7 +472,7 @@ class ArrayLiteral(Literal):
         assert size is None or isinstance(size, Expression)
         assert (elements is None or
             (isinstance(elements, list) and all(isinstance(node, Expression) for node in elements)))
-        super(ArrayLiteral, self).__init__("ArrayLiteral", loc)
+        super(ArrayLiteral, self).__init__("ArrayLiteral", loc=loc)
         self.elem_type = elem_type
         self.size = size
         self.elements = elements
@@ -524,16 +527,24 @@ class CallExpression(Expression):
     def __init__(self, kind, arguments=None, loc=None):
         assert isinstance(kind, basestring)
         assert (arguments is None or
-            (isinstance(arguments, list) and all(isinstance(node, Expression) for node in arguments)))
+            (isinstance(arguments, list) and all(isinstance(node, CallArgument) for node in arguments)))
         super(CallExpression, self).__init__(kind, loc)
         self.arguments = arguments
+
+class CallArgument(Node):
+    def __init__(self, expr, name=None, loc=None):
+        assert isinstance(expr, Expression)
+        assert name is None or isinstance(name, Identifier)
+        super(CallArgument, self).__init__("CallArgument", loc)
+        self.expr = expr # a name if using named arguments.
+        self.name = name # the argument expression.
 
 class NewExpression(CallExpression):
     """Allocates a new object and calls its constructor."""
     def __init__(self, type, arguments=None, loc=None):
         assert isinstance(type, TypeToken)
         assert (arguments is None or
-            (isinstance(arguments, list) and all(isinstance(node, Expression) for node in arguments)))
+            (isinstance(arguments, list) and all(isinstance(node, CallArgument) for node in arguments)))
         super(NewExpression, self).__init__("NewExpression", arguments, loc)
         self.type = type # the object type to allocate.
 
@@ -542,7 +553,7 @@ class InvokeFunctionExpression(CallExpression):
     def __init__(self, function, arguments=None, loc=None):
         assert isinstance(function, Expression)
         assert (arguments is None or
-            (isinstance(arguments, list) and all(isinstance(node, Expression) for node in arguments)))
+            (isinstance(arguments, list) and all(isinstance(node, CallArgument) for node in arguments)))
         super(InvokeFunctionExpression, self).__init__("InvokeFunctionExpression", arguments, loc)
         self.function = function # a function to invoke (of a func type).
 

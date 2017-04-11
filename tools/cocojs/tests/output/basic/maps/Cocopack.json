@@ -1587,126 +1587,129 @@
                                         },
                                         "arguments": [
                                             {
-                                                "kind": "ArrayLiteral",
-                                                "elemType": {
-                                                    "kind": "TypeToken",
-                                                    "tok": "object"
-                                                },
-                                                "elements": [
-                                                    {
-                                                        "kind": "ArrayLiteral",
-                                                        "elemType": {
-                                                            "kind": "TypeToken",
-                                                            "tok": "dynamic"
-                                                        },
-                                                        "elements": [
-                                                            {
-                                                                "kind": "StringLiteral",
-                                                                "raw": "foo",
-                                                                "value": "foo",
-                                                                "loc": {
-                                                                    "file": "index.ts",
-                                                                    "start": {
-                                                                        "line": 21,
-                                                                        "column": 7
-                                                                    },
-                                                                    "end": {
-                                                                        "line": 21,
-                                                                        "column": 12
+                                                "kind": "CallArgument",
+                                                "expr": {
+                                                    "kind": "ArrayLiteral",
+                                                    "elemType": {
+                                                        "kind": "TypeToken",
+                                                        "tok": "object"
+                                                    },
+                                                    "elements": [
+                                                        {
+                                                            "kind": "ArrayLiteral",
+                                                            "elemType": {
+                                                                "kind": "TypeToken",
+                                                                "tok": "dynamic"
+                                                            },
+                                                            "elements": [
+                                                                {
+                                                                    "kind": "StringLiteral",
+                                                                    "raw": "foo",
+                                                                    "value": "foo",
+                                                                    "loc": {
+                                                                        "file": "index.ts",
+                                                                        "start": {
+                                                                            "line": 21,
+                                                                            "column": 7
+                                                                        },
+                                                                        "end": {
+                                                                            "line": 21,
+                                                                            "column": 12
+                                                                        }
+                                                                    }
+                                                                },
+                                                                {
+                                                                    "kind": "StringLiteral",
+                                                                    "raw": "bar",
+                                                                    "value": "bar",
+                                                                    "loc": {
+                                                                        "file": "index.ts",
+                                                                        "start": {
+                                                                            "line": 21,
+                                                                            "column": 14
+                                                                        },
+                                                                        "end": {
+                                                                            "line": 21,
+                                                                            "column": 19
+                                                                        }
                                                                     }
                                                                 }
-                                                            },
-                                                            {
-                                                                "kind": "StringLiteral",
-                                                                "raw": "bar",
-                                                                "value": "bar",
-                                                                "loc": {
-                                                                    "file": "index.ts",
-                                                                    "start": {
-                                                                        "line": 21,
-                                                                        "column": 14
-                                                                    },
-                                                                    "end": {
-                                                                        "line": 21,
-                                                                        "column": 19
-                                                                    }
+                                                            ],
+                                                            "loc": {
+                                                                "file": "index.ts",
+                                                                "start": {
+                                                                    "line": 21,
+                                                                    "column": 5
+                                                                },
+                                                                "end": {
+                                                                    "line": 21,
+                                                                    "column": 21
                                                                 }
                                                             }
-                                                        ],
-                                                        "loc": {
-                                                            "file": "index.ts",
-                                                            "start": {
-                                                                "line": 21,
-                                                                "column": 5
+                                                        },
+                                                        {
+                                                            "kind": "ArrayLiteral",
+                                                            "elemType": {
+                                                                "kind": "TypeToken",
+                                                                "tok": "dynamic"
                                                             },
-                                                            "end": {
-                                                                "line": 21,
-                                                                "column": 21
+                                                            "elements": [
+                                                                {
+                                                                    "kind": "StringLiteral",
+                                                                    "raw": "baz",
+                                                                    "value": "baz",
+                                                                    "loc": {
+                                                                        "file": "index.ts",
+                                                                        "start": {
+                                                                            "line": 22,
+                                                                            "column": 7
+                                                                        },
+                                                                        "end": {
+                                                                            "line": 22,
+                                                                            "column": 12
+                                                                        }
+                                                                    }
+                                                                },
+                                                                {
+                                                                    "kind": "StringLiteral",
+                                                                    "raw": "buz",
+                                                                    "value": "buz",
+                                                                    "loc": {
+                                                                        "file": "index.ts",
+                                                                        "start": {
+                                                                            "line": 22,
+                                                                            "column": 14
+                                                                        },
+                                                                        "end": {
+                                                                            "line": 22,
+                                                                            "column": 19
+                                                                        }
+                                                                    }
+                                                                }
+                                                            ],
+                                                            "loc": {
+                                                                "file": "index.ts",
+                                                                "start": {
+                                                                    "line": 22,
+                                                                    "column": 5
+                                                                },
+                                                                "end": {
+                                                                    "line": 22,
+                                                                    "column": 21
+                                                                }
                                                             }
                                                         }
-                                                    },
-                                                    {
-                                                        "kind": "ArrayLiteral",
-                                                        "elemType": {
-                                                            "kind": "TypeToken",
-                                                            "tok": "dynamic"
+                                                    ],
+                                                    "loc": {
+                                                        "file": "index.ts",
+                                                        "start": {
+                                                            "line": 20,
+                                                            "column": 34
                                                         },
-                                                        "elements": [
-                                                            {
-                                                                "kind": "StringLiteral",
-                                                                "raw": "baz",
-                                                                "value": "baz",
-                                                                "loc": {
-                                                                    "file": "index.ts",
-                                                                    "start": {
-                                                                        "line": 22,
-                                                                        "column": 7
-                                                                    },
-                                                                    "end": {
-                                                                        "line": 22,
-                                                                        "column": 12
-                                                                    }
-                                                                }
-                                                            },
-                                                            {
-                                                                "kind": "StringLiteral",
-                                                                "raw": "buz",
-                                                                "value": "buz",
-                                                                "loc": {
-                                                                    "file": "index.ts",
-                                                                    "start": {
-                                                                        "line": 22,
-                                                                        "column": 14
-                                                                    },
-                                                                    "end": {
-                                                                        "line": 22,
-                                                                        "column": 19
-                                                                    }
-                                                                }
-                                                            }
-                                                        ],
-                                                        "loc": {
-                                                            "file": "index.ts",
-                                                            "start": {
-                                                                "line": 22,
-                                                                "column": 5
-                                                            },
-                                                            "end": {
-                                                                "line": 22,
-                                                                "column": 21
-                                                            }
+                                                        "end": {
+                                                            "line": 23,
+                                                            "column": 2
                                                         }
-                                                    }
-                                                ],
-                                                "loc": {
-                                                    "file": "index.ts",
-                                                    "start": {
-                                                        "line": 20,
-                                                        "column": 34
-                                                    },
-                                                    "end": {
-                                                        "line": 23,
-                                                        "column": 2
                                                     }
                                                 }
                                             }

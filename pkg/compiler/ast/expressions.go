@@ -155,15 +155,25 @@ const LoadDynamicExpressionKind NodeKind = "LoadDynamicExpression"
 
 type CallExpression interface {
 	Expression
-	GetArguments() *[]Expression // the list of arguments in sequential order.
+	GetArguments() *[]*CallArgument // the list of arguments in sequential order.
 }
+
+type CallArgument struct {
+	NodeValue
+	Name *Identifier `json:"name,omitempty"` // a name if using named arguments.
+	Expr Expression  `json:"expr"`           // the argument expression.
+}
+
+var _ Node = (*CallArgument)(nil)
+
+const CallArgumentKind NodeKind = "CallArgument"
 
 type callExpressionNode struct {
 	ExpressionNode
-	Arguments *[]Expression `json:"arguments,omitempty"`
+	Arguments *[]*CallArgument `json:"arguments,omitempty"`
 }
 
-func (node *callExpressionNode) GetArguments() *[]Expression { return node.Arguments }
+func (node *callExpressionNode) GetArguments() *[]*CallArgument { return node.Arguments }
 
 // NewExpression allocates a new object and calls its constructor.
 type NewExpression struct {

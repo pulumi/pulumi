@@ -424,7 +424,7 @@ func (a *astBinder) checkNewExpression(node *ast.NewExpression) {
 			}
 			if argc > 0 {
 				for i := 0; i < parc && i < argc; i++ {
-					a.checkExprType((*node.Arguments)[i], ctormeth.Sig.Parameters[i])
+					a.checkExprType((*node.Arguments)[i].Expr, ctormeth.Sig.Parameters[i])
 				}
 			}
 		} else {
@@ -452,7 +452,7 @@ func (a *astBinder) checkInvokeFunctionExpression(node *ast.InvokeFunctionExpres
 		}
 		if argc > 0 {
 			for i := 0; i < parc && i < argc; i++ {
-				a.checkExprType((*node.Arguments)[i], funty.Parameters[i])
+				a.checkExprType((*node.Arguments)[i].Expr, funty.Parameters[i])
 			}
 		}
 
