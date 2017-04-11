@@ -3,6 +3,7 @@
 package binder
 
 import (
+	"fmt"
 	"reflect"
 
 	"github.com/pulumi/coconut/pkg/compiler/ast"
@@ -240,10 +241,25 @@ func (a *astBinder) checkForStatement(node *ast.ForStatement) {
 
 // Expressions
 
-func (a *astBinder) checkExprType(expr ast.Expression, expect symbols.Type) bool {
+func (a *astBinder) checkExprType(expr ast.Expression, expect symbols.Type, alts ...symbols.Type) bool {
 	actual := a.b.ctx.RequireType(expr)
-	if !types.CanConvert(actual, expect) {
-		a.b.Diag().Errorf(errors.ErrorIncorrectExprType.At(expr), expect, actual)
+	conv := false
+	if conv = types.CanConvert(actual, expect); !conv {
+		// If the primary didn't convert, check the alternatives.
+		for _, alt := range alts {
+			if conv = types.CanConvert(actual, alt); conv {
+				break
+			}
+		}
+	}
+	if !conv {
+		expects := expect.Token().String()
+		if len(alts) > 0 {
+			for _, alt := range alts {
+				expects += fmt.Sprintf(" or %v", alt.Token())
+			}
+		}
+		a.b.Diag().Errorf(errors.ErrorIncorrectExprType.At(expr), expects, actual)
 		return false
 	}
 	return true
@@ -382,8 +398,8 @@ func (a *astBinder) checkLoadLocationExpression(node *ast.LoadLocationExpression
 }
 
 func (a *astBinder) checkLoadDynamicExpression(node *ast.LoadDynamicExpression) {
-	// Ensure that the name is either a string or a dynamic.
-	a.checkExprType(node.Name, types.String)
+	// Ensure that the name is either a string, number, or a dynamic.
+	a.checkExprType(node.Name, types.String, types.Number)
 
 	// No matter the outcome, a load dynamic always produces a dynamically typed thing.
 	a.b.ctx.RegisterType(node, types.Dynamic)

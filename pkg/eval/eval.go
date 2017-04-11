@@ -1586,8 +1586,8 @@ func (e *evaluator) evalNew(node diag.Diagable, t symbols.Type, args *[]*ast.Cal
 		for i, arg := range *args {
 			contract.Assertf(arg.Name != nil, "Expected only named args for new of a record type")
 			id := tokens.ClassMemberName(arg.Name.Ident)
-			contract.Assertf(t.TypeMembers()[id] != nil, "Expected named arg to match a type member")
-			contract.Assertf(t.TypeMembers()[id].Primary(), "Expected named arg to match a primary member")
+			contract.Assertf(t.TypeMembers()[id] != nil, "Expected named arg %v to match a type member", id)
+			contract.Assertf(t.TypeMembers()[id].Primary(), "Expected named arg %v to match a primary member", id)
 			val := argobjs[i]
 			prop := rt.PropertyKey(id)
 			addr := obj.GetPropertyAddr(prop, true, true)

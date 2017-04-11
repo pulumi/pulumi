@@ -580,7 +580,12 @@ class Transformer:
         self.not_yet_implemented(node) # value, ctx
 
     def transform_Subscript(self, node):
-        self.not_yet_implemented(node) # value, slice, ctx
+        obj = self.transform_expr(node.value)
+        if isinstance(node.slice, py_ast.Index):
+            idx = self.transform_expr(node.slice.value)
+        else:
+            assert false, "Unsupported slicing type: {}".format(type(node.slice).__name__)
+        return ast.LoadDynamicExpression(idx, obj, loc=self.loc_from(node))
 
     def transform_Tuple(self, node):
         self.not_yet_implemented(node) # elts, ctx
