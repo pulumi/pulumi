@@ -34,7 +34,7 @@ let binaryOperators = new Map<ts.SyntaxKind, ast.BinaryOperator>([
     [ ts.SyntaxKind.AsteriskAsteriskEqualsToken,                  "**=" ],
     [ ts.SyntaxKind.LessThanLessThanEqualsToken,                  "<<=" ],
     [ ts.SyntaxKind.GreaterThanGreaterThanEqualsToken,            ">>=" ],
-    [ ts.SyntaxKind.GreaterThanGreaterThanGreaterThanEqualsToken, ">>=" ], // TODO[pulumi/mu#50]: emulate >>>=.
+    [ ts.SyntaxKind.GreaterThanGreaterThanGreaterThanEqualsToken, ">>=" ], // TODO[pulumi/coconut#50]: emulate >>>=.
     [ ts.SyntaxKind.AmpersandEqualsToken,                         "&="  ],
     [ ts.SyntaxKind.BarEqualsToken,                               "|="  ],
     [ ts.SyntaxKind.CaretEqualsToken,                             "^="  ],
@@ -42,7 +42,7 @@ let binaryOperators = new Map<ts.SyntaxKind, ast.BinaryOperator>([
     // Bitwise
     [ ts.SyntaxKind.LessThanLessThanToken,                        "<<"  ],
     [ ts.SyntaxKind.GreaterThanGreaterThanToken,                  ">>"  ],
-    [ ts.SyntaxKind.GreaterThanGreaterThanGreaterThanToken,       ">>"  ], // TODO[pulumi/mu#50]: emulate >>>.
+    [ ts.SyntaxKind.GreaterThanGreaterThanGreaterThanToken,       ">>"  ], // TODO[pulumi/coconut#50]: emulate >>>.
     [ ts.SyntaxKind.BarToken,                                     "|"   ],
     [ ts.SyntaxKind.CaretToken,                                   "^"   ],
     [ ts.SyntaxKind.AmpersandToken,                               "&"   ],
@@ -57,9 +57,9 @@ let binaryOperators = new Map<ts.SyntaxKind, ast.BinaryOperator>([
     [ ts.SyntaxKind.GreaterThanToken,                             ">"   ],
     [ ts.SyntaxKind.GreaterThanEqualsToken,                       ">="  ],
     [ ts.SyntaxKind.EqualsEqualsToken,                            "=="  ],
-    [ ts.SyntaxKind.EqualsEqualsEqualsToken,                      "=="  ], // TODO[pulumi/mu#50]: emulate ===.
+    [ ts.SyntaxKind.EqualsEqualsEqualsToken,                      "=="  ], // TODO[pulumi/coconut#50]: emulate ===.
     [ ts.SyntaxKind.ExclamationEqualsToken,                       "!="  ],
-    [ ts.SyntaxKind.ExclamationEqualsEqualsToken,                 "!="  ], // TODO[pulumi/mu#50]: emulate !==.
+    [ ts.SyntaxKind.ExclamationEqualsEqualsToken,                 "!="  ], // TODO[pulumi/coconut#50]: emulate !==.
 
     // Intrinsics
     // TODO: [ ts.SyntaxKind.InKeyword,                           "in" ],
@@ -247,8 +247,8 @@ export class Transformer {
             let modules: ast.Modules = {};
             let aliases: pack.ModuleAliases = {};
             for (let sourceFile of this.script.tree!.getSourceFiles()) {
-                // TODO[pulumi/mu#52]: to determine whether a SourceFile is part of the current compilation unit, we
-                // must rely on a private TypeScript API, isSourceFileFromExternalLibrary.  An alternative would be to
+                // TODO[pulumi/coconut#52]: to determine whether a SourceFile is part of the current compilation unit,
+                // we rely on a private TypeScript API, isSourceFileFromExternalLibrary.  An alternative would be to
                 // check to see if the file was loaded from the node_modules/ directory, which is essentially what the
                 // TypeScript compiler does (except that it has logic for nesting and symbolic links that'd be hard to
                 // emulate).  Neither approach is great, however, I prefer to use the API and assert that it exists so
@@ -263,7 +263,7 @@ export class Transformer {
                     modules[modname] = mod;
                     if (modname === "index") {
                         // The special index module is the package's main/default module.
-                        // TODO[pulumi/mu#57]: respect the package.json "main" specifier, if it exists.
+                        // TODO[pulumi/coconut#57]: respect the package.json "main" specifier, if it exists.
                         aliases[tokens.defaultModule] = modname;
                     }
                     else if (modname.endsWith("/index")) {
@@ -331,7 +331,7 @@ export class Transformer {
 
     // globals returns the TypeScript globals symbol table.
     private globals(flags: ts.SymbolFlags): Map<string, ts.Symbol> {
-        // TODO[pulumi/mu#52]: we are abusing getSymbolsInScope to access the global symbol table, because TypeScript
+        // TODO[pulumi/coconut#52]: we abuse getSymbolsInScope to access the global symbol table, because TypeScript
         //     doesn't expose it.  It is conceivable that the undefined 1st parameter will cause troubles some day.
         let globals = new Map<string, ts.Symbol>();
         for (let sym of this.checker().getSymbolsInScope(<ts.Node><any>undefined, flags)) {
@@ -488,7 +488,7 @@ export class Transformer {
         if (!pkginfo) {
             // For references to the TypeScript library, hijack and redirect them to the CocoJS runtime library.
             if (isTypeScriptStdlib(ref)) {
-                // TODO[pulumi/mu#87]: at the moment, we unconditionally rewrite references.  This leads to silent
+                // TODO[pulumi/coconut#87]: at the moment, we unconditionally rewrite references.  This leads to silent
                 //     compilation of things that could be missing (either intentional, like `eval`, or simply because
                 //     we haven't gotten around to implementing them yet).  Ideally we would reject the CocoJS
                 //     compilation later on during type token binding so that developers get a better experience.
@@ -623,7 +623,7 @@ export class Transformer {
 
     // getResolvedModules returns the current SourceFile's known modules inside of a map.
     private getResolvedModules(): ts.Map<ts.ResolvedModuleFull> {
-        // TODO[pulumi/mu#52]: we are grabbing the sourceContext's resolvedModules property directly, because
+        // TODO[pulumi/coconut#52]: we are grabbing the sourceContext's resolvedModules property directly, because
         //     TypeScript doesn't currently offer a convenient way of accessing this information.  The (unexported)
         //     getResolvedModule function almost does this, but not quite, because it doesn't allow us to look up
         //     based on path.  Ideally we can remove this as soon as the tsserverlibrary is consumable as a module.
@@ -724,12 +724,12 @@ export class Transformer {
             //
             //     1) All members of the union that are literal types of the same root type (e.g., all StringLiterals
             //        which can safely compress to Strings) can be compressed just to the shared root type.
-            //        TODO[pulumi/mu#82]: eventually, we will support union and literal types natively.
+            //        TODO[pulumi/coconut#82]: eventually, we will support union and literal types natively.
             //
             //     2) Any `undefined` or `null` types can be stripped out.  The reason is that everything in CocoIL is
             //        nullable at the moment.  (Note that the special case of `T?` as an interface property is encoded
             //        as `T|undefined`.)  The result is that we just yield just the underlying naked type.
-            //        TODO[pulumi/mu#64]: eventually we want to consider supporting nullability in a first class way.
+            //        TODO[pulumi/coconut#64]: eventually we want to consider supporting 1st-class nullability.
             //
             let union = <ts.UnionOrIntersectionType>ty;
             let result: ts.Type | undefined;
@@ -1921,7 +1921,7 @@ export class Transformer {
             this.diagnostics.push(this.dctx.newRestParamsNotSupportedError(node.dotDotDotToken));
         }
 
-        // TODO[pulumi/mu#43]: parameters can be any binding name, including destructuring patterns.  For now,
+        // TODO[pulumi/coconut#43]: parameters can be any binding name, including destructuring patterns.  For now,
         //     however, we only support the identifier forms.
         let name: ast.Identifier = this.transformBindingIdentifier(node.name);
         let initializer: ast.Expression | undefined;
@@ -2038,7 +2038,7 @@ export class Transformer {
     }
 
     private async transformVariableDeclaration(node: ts.VariableDeclaration): Promise<VariableLikeDeclaration> {
-        // TODO[pulumi/mu#43]: parameters can be any binding name, including destructuring patterns.  For now,
+        // TODO[pulumi/coconut#43]: parameters can be any binding name, including destructuring patterns.  For now,
         //     however, we only support the identifier forms.
         let name: ast.Identifier = this.transformDeclarationIdentifier(node.name);
         let initializer: ast.Expression | undefined;
@@ -2566,7 +2566,7 @@ export class Transformer {
                 case ts.SyntaxKind.ExclamationEqualsEqualsToken:
                     log.out(3).info(
                         `ECMAScript operator '${ts.SyntaxKind[node.operatorToken.kind]}' not supported; ` +
-                        `until pulumi/mu#50 is implemented, be careful about subtle behavioral differences`,
+                        `until pulumi/coconut#50 is implemented, be careful about subtle behavioral differences`,
                     );
                     break;
                 default:
@@ -2706,10 +2706,10 @@ export class Transformer {
         if (log.v(3)) {
             log.out(3).info(
                 `ECMAScript operator 'delete' not supported; ` +
-                `until pulumi/mu#50 is implemented, be careful about subtle behavioral differences`,
+                `until pulumi/coconut#50 is implemented, be careful about subtle behavioral differences`,
             );
         }
-        // TODO[pulumi/mu#50]: we need to decide how to map `delete` into a runtime CocoIL operator.  It's possible
+        // TODO[pulumi/coconut#50]: we need to decide how to map `delete` into a runtime CocoIL operator.  It's possible
         //     this can leverage some dynamic trickery to delete an entry from a map.  But for strong typing reasons,
         //     this is dubious (at best); for now, we will simply `null` the target out, however, this will cause
         //     problems down the road once we properly support nullable types.
@@ -2740,7 +2740,7 @@ export class Transformer {
     }
 
     private transformFunctionExpression(node: ts.FunctionExpression): ast.Expression {
-        // TODO[pulumi/mu#62]: implement lambdas.
+        // TODO[pulumi/coconut#62]: implement lambdas.
         return notYetImplemented(node);
     }
 
@@ -2749,7 +2749,7 @@ export class Transformer {
     }
 
     private async transformObjectLiteralExpression(node: ts.ObjectLiteralExpression): Promise<ast.ObjectLiteral> {
-        // TODO[pulumi/mu#46]: because TypeScript object literals are untyped, it's not clear what CocoIL type this
+        // TODO[pulumi/coconut#46]: because TypeScript object literals are untyped, it's not clear what CocoIL type this
         //     expression should produce.  It's common for a TypeScript literal to be enclosed in a cast, for example,
         //     `<SomeType>{ literal }`, in which case, perhaps we could detect `<SomeType>`.  Alternatively CocoIL could
         //     just automatically dynamically coerce `any` to the target type, similar to TypeScript, when necessary.
@@ -2821,7 +2821,7 @@ export class Transformer {
     }
 
     private transformObjectLiteralFunctionLikeElement(node: ts.FunctionLikeDeclaration): ast.ObjectLiteralProperty {
-        // TODO[pulumi/mu#62]: implement lambdas.
+        // TODO[pulumi/coconut#62]: implement lambdas.
         return notYetImplemented(node);
     }
 
@@ -3004,7 +3004,7 @@ export class Transformer {
 
     private transformBindingIdentifier(node: ts.BindingName): ast.Identifier {
         contract.assert(node.kind === ts.SyntaxKind.Identifier,
-                        "Binding name must be an identifier (TODO[pulumi/mu#34])");
+                        "Binding name must be an identifier (TODO[pulumi/coconut#34])");
         return this.transformIdentifier(<ts.Identifier>node);
     }
 
