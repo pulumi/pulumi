@@ -581,7 +581,12 @@ func (e *evaluator) evalCall(node diag.Diagable, fnc symbols.Function,
 	switch f := fnc.(type) {
 	case *symbols.ClassMethod:
 		if f.Static() {
-			contract.Assert(this == nil)
+			if this != nil {
+				// A non-nil `this` is okay if we loaded this function from a prototype object.
+				prototy, isproto := this.Type().(*symbols.PrototypeType)
+				contract.Assert(isproto)
+				contract.Assert(prototy.Type == f.Parent)
+			}
 		} else {
 			contract.Assert(this != nil)
 			if uw := e.checkThis(node, this); uw != nil {
@@ -589,6 +594,13 @@ func (e *evaluator) evalCall(node diag.Diagable, fnc symbols.Function,
 			}
 			thisVariable = f.Parent.This
 			superVariable = f.Parent.Super
+		}
+	case *symbols.ModuleMethod:
+		if this != nil {
+			// A non-nil `this` is okay if we loaded this function from a module object.  Note that because modules can
+			// re-export members from other modules, we cannot require that the type's parent matches.
+			_, ismod := this.Type().(*symbols.ModuleType)
+			contract.Assert(ismod)
 		}
 	default:
 		contract.Assert(this == nil)
