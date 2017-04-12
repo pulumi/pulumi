@@ -1,6 +1,6 @@
 // Copyright 2017 Pulumi, Inc. All rights reserved.
 
-package cmd
+package main
 
 import (
 	"github.com/spf13/cobra"

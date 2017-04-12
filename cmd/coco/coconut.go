@@ -1,6 +1,6 @@
 // Copyright 2017 Pulumi, Inc. All rights reserved.
 
-package cmd
+package main
 
 import (
 	"flag"
@@ -19,7 +19,7 @@ func NewCoconutCmd() *cobra.Command {
 	var logToStderr bool
 	var verbose int
 	cmd := &cobra.Command{
-		Use:   "coconut",
+		Use:   "coco",
 		Short: "Coconut is a framework and toolset for reusable stacks of services",
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
 			// Ensure the glog library has been initialized, including calling flag.Parse beforehand.  Unfortunately,

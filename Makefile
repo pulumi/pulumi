@@ -7,11 +7,11 @@ default: test nolint vet install
 
 build:
 	@echo "\033[0;32mBUILD:\033[0m"
-	@go build ${PROJECT}
+	@go build ${PROJECT}/cmd/coco
 
 install:
 	@echo "\033[0;32mINSTALL:\033[0m"
-	@go install ${PROJECT}
+	@go install ${PROJECT}/cmd/coco
 
 lint:
 	@echo "\033[0;32mLINT:\033[0m"
