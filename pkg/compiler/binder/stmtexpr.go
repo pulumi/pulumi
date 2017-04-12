@@ -533,13 +533,13 @@ func (a *astBinder) checkUnaryOperatorExpression(node *ast.UnaryOperatorExpressi
 		a.b.ctx.RegisterType(node, symbols.NewPointerType(opty))
 	case ast.OpUnaryPlus, ast.OpUnaryMinus, ast.OpBitwiseNot:
 		// The target must be a number:
-		if opty != types.Number {
+		if !types.CanConvert(opty, types.Number) {
 			a.b.Diag().Errorf(errors.ErrorUnaryOperatorInvalidForType.At(node), node.Operator, opty, types.Number)
 		}
 		a.b.ctx.RegisterType(node, types.Number)
 	case ast.OpLogicalNot:
 		// The target must be a boolean:
-		if opty != types.Bool {
+		if !types.CanConvert(opty, types.Bool) {
 			a.b.Diag().Errorf(errors.ErrorUnaryOperatorInvalidForType.At(node), node.Operator, opty, types.Bool)
 		}
 		a.b.ctx.RegisterType(node, types.Bool)
@@ -547,7 +547,7 @@ func (a *astBinder) checkUnaryOperatorExpression(node *ast.UnaryOperatorExpressi
 		// The target must be a numeric l-value.
 		if !a.isLValue(node.Operand) {
 			a.b.Diag().Errorf(errors.ErrorIllegalAssignmentLValue.At(node))
-		} else if opty != types.Number {
+		} else if !types.CanConvert(opty, types.Number) {
 			a.b.Diag().Errorf(errors.ErrorUnaryOperatorInvalidForType.At(node), node.Operator, opty, types.Number)
 		}
 		a.b.ctx.RegisterType(node, types.Number)
@@ -565,13 +565,13 @@ func (a *astBinder) checkBinaryOperatorExpression(node *ast.BinaryOperatorExpres
 	case ast.OpAdd:
 		// Lhs and rhs can be numbers (for addition) or strings (for concatenation).
 		if lhs == types.Number {
-			if rhs != types.Number {
+			if !types.CanConvert(rhs, types.Number) {
 				a.b.Diag().Errorf(errors.ErrorBinaryOperatorInvalidForType.At(node),
 					node.Operator, "RHS", rhs, types.Number)
 			}
 			a.b.ctx.RegisterType(node, types.Number)
 		} else if lhs == types.String {
-			if rhs != types.String {
+			if !types.CanConvert(rhs, types.String) {
 				a.b.Diag().Errorf(errors.ErrorBinaryOperatorInvalidForType.At(node),
 					node.Operator, "RHS", rhs, types.String)
 			}
@@ -584,11 +584,11 @@ func (a *astBinder) checkBinaryOperatorExpression(node *ast.BinaryOperatorExpres
 	case ast.OpSubtract, ast.OpMultiply, ast.OpDivide, ast.OpRemainder, ast.OpExponentiate,
 		ast.OpBitwiseShiftLeft, ast.OpBitwiseShiftRight, ast.OpBitwiseAnd, ast.OpBitwiseOr, ast.OpBitwiseXor:
 		// Both lhs and rhs must be numbers:
-		if lhs != types.Number {
+		if !types.CanConvert(lhs, types.Number) {
 			a.b.Diag().Errorf(errors.ErrorBinaryOperatorInvalidForType.At(node),
 				node.Operator, "LHS", lhs, types.Number)
 		}
-		if rhs != types.Number {
+		if !types.CanConvert(rhs, types.Number) {
 			a.b.Diag().Errorf(errors.ErrorBinaryOperatorInvalidForType.At(node),
 				node.Operator, "RHS", rhs, types.Number)
 		}
@@ -608,13 +608,13 @@ func (a *astBinder) checkBinaryOperatorExpression(node *ast.BinaryOperatorExpres
 			a.b.Diag().Errorf(errors.ErrorIllegalAssignmentLValue.At(node))
 			a.b.ctx.RegisterType(node, types.Number)
 		} else if lhs == types.Number {
-			if rhs != types.Number {
+			if !types.CanConvert(rhs, types.Number) {
 				a.b.Diag().Errorf(errors.ErrorBinaryOperatorInvalidForType.At(node),
 					node.Operator, "RHS", rhs, types.Number)
 			}
 			a.b.ctx.RegisterType(node, types.Number)
 		} else if lhs == types.String {
-			if rhs != types.String {
+			if !types.CanConvert(rhs, types.String) {
 				a.b.Diag().Errorf(errors.ErrorBinaryOperatorInvalidForType.At(node),
 					node.Operator, "RHS", rhs, types.String)
 			}
@@ -630,7 +630,7 @@ func (a *astBinder) checkBinaryOperatorExpression(node *ast.BinaryOperatorExpres
 		// These operators require numeric values.
 		if !a.isLValue(node.Left) {
 			a.b.Diag().Errorf(errors.ErrorIllegalAssignmentLValue.At(node))
-		} else if lhs != types.Number {
+		} else if !types.CanConvert(lhs, types.Number) {
 			a.b.Diag().Errorf(errors.ErrorIllegalNumericAssignmentLValue.At(node), node.Operator)
 		} else if !types.CanConvert(rhs, lhs) {
 			a.b.Diag().Errorf(errors.ErrorIllegalAssignmentTypes.At(node), rhs, lhs)
@@ -640,11 +640,11 @@ func (a *astBinder) checkBinaryOperatorExpression(node *ast.BinaryOperatorExpres
 	// Conditional operators:
 	case ast.OpLogicalAnd, ast.OpLogicalOr:
 		// Both lhs and rhs must be booleans.
-		if lhs != types.Bool {
+		if !types.CanConvert(lhs, types.Bool) {
 			a.b.Diag().Errorf(errors.ErrorBinaryOperatorInvalidForType.At(node),
 				node.Operator, "LHS", lhs, types.Bool)
 		}
-		if rhs != types.Bool {
+		if !types.CanConvert(rhs, types.Bool) {
 			a.b.Diag().Errorf(errors.ErrorBinaryOperatorInvalidForType.At(node),
 				node.Operator, "RHS", rhs, types.Bool)
 		}
@@ -653,11 +653,11 @@ func (a *astBinder) checkBinaryOperatorExpression(node *ast.BinaryOperatorExpres
 	// Relational operators:
 	case ast.OpLt, ast.OpLtEquals, ast.OpGt, ast.OpGtEquals:
 		// Both lhs and rhs must be numbers, and it produces a boolean.
-		if lhs != types.Number {
+		if !types.CanConvert(lhs, types.Number) {
 			a.b.Diag().Errorf(errors.ErrorBinaryOperatorInvalidForType.At(node),
 				node.Operator, "LHS", lhs, types.Number)
 		}
-		if rhs != types.Number {
+		if !types.CanConvert(rhs, types.Number) {
 			a.b.Diag().Errorf(errors.ErrorBinaryOperatorInvalidForType.At(node),
 				node.Operator, "RHS", rhs, types.Number)
 		}

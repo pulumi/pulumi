@@ -44,10 +44,7 @@ func (node *Class) TypeMembers() ClassMemberMap         { return node.Members }
 func (node *Class) Ctor() Function {
 	if ctor, has := node.TypeMembers()[tokens.ClassConstructorFunction]; has {
 		ctormeth, ismeth := ctor.(*ClassMethod)
-		contract.Assertf(ismeth,
-			"Expected ctor %v to be a class method; got %v", ctor, reflect.TypeOf(ctor))
-		contract.Assertf(ctormeth.Sig.Return == nil,
-			"Expected ctor %v to have a nil return; got %v", ctor, ctormeth.Sig.Return)
+		contract.Assertf(ismeth, "Expected ctor %v to be a class method; got %v", ctor, reflect.TypeOf(ctor))
 		return ctormeth
 	}
 	return nil

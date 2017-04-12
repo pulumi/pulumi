@@ -1576,6 +1576,8 @@ func (e *evaluator) evalNew(node diag.Diagable, t symbols.Type, args *[]*ast.Cal
 
 	// See if there is a constructor or if this is a record.  If not, just return a fresh object.
 	if ctor := t.Ctor(); ctor != nil {
+		contract.Assertf(ctor.Signature().Return == nil || ctor.Signature().Return == types.Dynamic,
+			"Expected ctor %v to have a nil (or dynamic) return; got %v", ctor, ctor.Signature().Return)
 		// Now dispatch the function call using the fresh object as the constructor's `this` argument.
 		if _, uw := e.evalCall(node, ctor, obj, argobjs...); uw != nil {
 			return nil, uw
