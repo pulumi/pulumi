@@ -9,6 +9,7 @@ import (
 
 	"github.com/pulumi/coconut/pkg/resource"
 	"github.com/pulumi/coconut/pkg/tokens"
+	"github.com/pulumi/coconut/pkg/util/cmdutil"
 )
 
 func newConfigCmd() *cobra.Command {
@@ -17,7 +18,7 @@ func newConfigCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "config [<key> [value]]",
 		Short: "Query, set, replace, or unset configuration values",
-		Run: runFunc(func(cmd *cobra.Command, args []string) error {
+		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			info, err := initEnvCmdName(tokens.QName(env), args)
 			if err != nil {
 				return err

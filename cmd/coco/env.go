@@ -71,7 +71,7 @@ func initEnvCmdName(name tokens.QName, args []string) (*envCmdInfo, error) {
 	}
 
 	// Read in the deployment information, bailing if an IO error occurs.
-	ctx := resource.NewContext(sink())
+	ctx := resource.NewContext(cmdutil.Sink())
 	envfile, env, old := readEnv(ctx, name)
 	if env == nil {
 		contract.Assert(!ctx.Diag.Success())
@@ -139,7 +139,7 @@ func getCurrentEnv() tokens.QName {
 		name = w.Settings().Env
 	}
 	if err != nil {
-		sink().Errorf(errors.ErrorIO, err)
+		cmdutil.Sink().Errorf(errors.ErrorIO, err)
 	}
 	return name
 }
@@ -147,7 +147,7 @@ func getCurrentEnv() tokens.QName {
 // setCurrentEnv changes the current environment to the given environment name, issuing an error if it doesn't exist.
 func setCurrentEnv(name tokens.QName, verify bool) {
 	if verify {
-		ctx := resource.NewContext(sink())
+		ctx := resource.NewContext(cmdutil.Sink())
 		if _, env, _ := readEnv(ctx, name); env == nil {
 			return // no environment by this name exists, bail out.
 		}
@@ -160,7 +160,7 @@ func setCurrentEnv(name tokens.QName, verify bool) {
 		err = w.Save()
 	}
 	if err != nil {
-		sink().Errorf(errors.ErrorIO, err)
+		cmdutil.Sink().Errorf(errors.ErrorIO, err)
 	}
 }
 
@@ -195,7 +195,7 @@ func prepareCompiler(cmd *cobra.Command, args []string) (compiler.Compiler, *pac
 		comp, err = compiler.Newwd(opts)
 		if err != nil {
 			// Create a temporary diagnostics sink so that we can issue an error and bail out.
-			sink().Errorf(errors.ErrorCantCreateCompiler, err)
+			cmdutil.Sink().Errorf(errors.ErrorCantCreateCompiler, err)
 		}
 	} else {
 		fn := args[0]
@@ -207,7 +207,7 @@ func prepareCompiler(cmd *cobra.Command, args []string) (compiler.Compiler, *pac
 				comp, err = compiler.New(filepath.Dir(fn), opts)
 			}
 			if err != nil {
-				sink().Errorf(errors.ErrorCantReadPackage, fn, err)
+				cmdutil.Sink().Errorf(errors.ErrorCantReadPackage, fn, err)
 			}
 		}
 	}
@@ -286,7 +286,7 @@ func plan(cmd *cobra.Command, info *envCmdInfo, opts applyOptions) *planResult {
 		if opts.DOT {
 			// Convert the output to a DOT file.
 			if err := dotconv.Print(result.Heap.G, os.Stdout); err != nil {
-				sink().Errorf(errors.ErrorIO,
+				cmdutil.Sink().Errorf(errors.ErrorIO,
 					fmt.Errorf("failed to write DOT file to output: %v", err))
 			}
 			return nil
@@ -481,7 +481,7 @@ func saveEnv(env *resource.Env, snap resource.Snapshot, file string, existok boo
 	// Make a serializable CocoGL data structure and then use the encoder to encode it.
 	m, ext := encoding.Detect(file)
 	if m == nil {
-		sink().Errorf(errors.ErrorIllegalMarkupExtension, ext)
+		cmdutil.Sink().Errorf(errors.ErrorIllegalMarkupExtension, ext)
 		return false
 	}
 	if filepath.Ext(file) == "" {
@@ -490,14 +490,14 @@ func saveEnv(env *resource.Env, snap resource.Snapshot, file string, existok boo
 	dep := resource.SerializeEnvfile(env, snap, "")
 	b, err := m.Marshal(dep)
 	if err != nil {
-		sink().Errorf(errors.ErrorIO, err)
+		cmdutil.Sink().Errorf(errors.ErrorIO, err)
 		return false
 	}
 
 	// If it's not ok for the file to already exist, ensure that it doesn't.
 	if !existok {
 		if _, err := os.Stat(file); err == nil {
-			sink().Errorf(errors.ErrorIO, fmt.Errorf("file '%v' already exists", file))
+			cmdutil.Sink().Errorf(errors.ErrorIO, fmt.Errorf("file '%v' already exists", file))
 			return false
 		}
 	}
@@ -507,13 +507,13 @@ func saveEnv(env *resource.Env, snap resource.Snapshot, file string, existok boo
 
 	// Ensure the directory exists.
 	if err = os.MkdirAll(filepath.Dir(file), 0755); err != nil {
-		sink().Errorf(errors.ErrorIO, err)
+		cmdutil.Sink().Errorf(errors.ErrorIO, err)
 		return false
 	}
 
 	// And now write out the new snapshot file, overwriting that location.
 	if err = ioutil.WriteFile(file, b, 0644); err != nil {
-		sink().Errorf(errors.ErrorIO, err)
+		cmdutil.Sink().Errorf(errors.ErrorIO, err)
 		return false
 	}
 

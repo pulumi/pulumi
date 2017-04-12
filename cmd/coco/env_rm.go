@@ -5,6 +5,7 @@ package main
 import (
 	"fmt"
 
+	"github.com/pulumi/coconut/pkg/util/cmdutil"
 	"github.com/spf13/cobra"
 )
 
@@ -20,7 +21,7 @@ func newEnvRmCmd() *cobra.Command {
 			"`destroy` command for removing a resources, as this is a distinct operation.\n" +
 			"\n" +
 			"After this command completes, the environment will no longer be available for deployments.",
-		Run: runFunc(func(cmd *cobra.Command, args []string) error {
+		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			info, err := initEnvCmd(cmd, args)
 			if err != nil {
 				return err

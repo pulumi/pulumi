@@ -5,6 +5,7 @@ package main
 import (
 	"github.com/spf13/cobra"
 
+	"github.com/pulumi/coconut/pkg/util/cmdutil"
 	"github.com/pulumi/coconut/pkg/util/contract"
 )
 
@@ -17,7 +18,7 @@ func newPackGetCmd() *cobra.Command {
 		Long: "Get downloads a package by name.  If run without arguments, get will attempt\n" +
 			"to download dependencies referenced by the current package.  Otherwise, if one\n" +
 			"or more specific dependencies are provided, only those will be downloaded.",
-		Run: runFunc(func(cmd *cobra.Command, args []string) error {
+		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			contract.Failf("Get command is not yet implemented")
 			return nil
 		}),

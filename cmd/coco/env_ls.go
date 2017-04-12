@@ -14,6 +14,7 @@ import (
 	"github.com/pulumi/coconut/pkg/encoding"
 	"github.com/pulumi/coconut/pkg/resource"
 	"github.com/pulumi/coconut/pkg/tokens"
+	"github.com/pulumi/coconut/pkg/util/cmdutil"
 	"github.com/pulumi/coconut/pkg/util/contract"
 	"github.com/pulumi/coconut/pkg/workspace"
 )
@@ -23,7 +24,7 @@ func newEnvLsCmd() *cobra.Command {
 		Use:     "ls",
 		Aliases: []string{"list"},
 		Short:   "List all known environments",
-		Run: runFunc(func(cmd *cobra.Command, args []string) error {
+		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			// Read the environment directory.
 			path := workspace.EnvPath("")
 			files, err := ioutil.ReadDir(path)
@@ -32,7 +33,7 @@ func newEnvLsCmd() *cobra.Command {
 			}
 
 			// Create a new context to share amongst all of the loads.
-			ctx := resource.NewContext(sink())
+			ctx := resource.NewContext(cmdutil.Sink())
 			defer ctx.Close()
 
 			fmt.Printf("%-20s %-48s %-12s\n", "NAME", "LAST DEPLOYMENT", "RESOURCE COUNT")

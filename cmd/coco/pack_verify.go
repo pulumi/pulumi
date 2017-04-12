@@ -5,6 +5,7 @@ package main
 import (
 	"errors"
 
+	"github.com/pulumi/coconut/pkg/util/cmdutil"
 	"github.com/spf13/cobra"
 )
 
@@ -21,7 +22,7 @@ func newPackVerifyCmd() *cobra.Command {
 			"The verify command thoroughly checks the package's IL against these rules, and issues\n" +
 			"errors anywhere it doesn't obey them.  This is generally useful for tools developers\n" +
 			"and can ensure that code does not fail at runtime, when such invariants are checked.",
-		Run: runFunc(func(cmd *cobra.Command, args []string) error {
+		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			// Create a compiler object and perform the verification.
 			if !verify(cmd, args) {
 				return errors.New("verification failed")

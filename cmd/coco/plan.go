@@ -6,6 +6,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/coconut/pkg/tokens"
+	"github.com/pulumi/coconut/pkg/util/cmdutil"
 )
 
 func newPlanCmd() *cobra.Command {
@@ -31,7 +32,7 @@ func newPlanCmd() *cobra.Command {
 			"\n" +
 			"By default, the package to execute is loaded from the current directory.  Optionally, an\n" +
 			"explicit path can be provided using the [package] argument.",
-		Run: runFunc(func(cmd *cobra.Command, args []string) error {
+		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			info, err := initEnvCmdName(tokens.QName(env), args)
 			if err != nil {
 				return err

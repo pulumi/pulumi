@@ -15,6 +15,7 @@ import (
 	"github.com/pulumi/coconut/pkg/graph/dotconv"
 	"github.com/pulumi/coconut/pkg/resource"
 	"github.com/pulumi/coconut/pkg/tokens"
+	"github.com/pulumi/coconut/pkg/util/cmdutil"
 )
 
 func newPackEvalCmd() *cobra.Command {
@@ -32,7 +33,7 @@ func newPackEvalCmd() *cobra.Command {
 			"\n" +
 			"By default, a blueprint package is loaded from the current directory.  Optionally,\n" +
 			"a path to a package elsewhere can be provided as the [package] argument.",
-		Run: runFunc(func(cmd *cobra.Command, args []string) error {
+		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			// If a configuration environment was requested, load it.
 			var config resource.ConfigMap
 			if configEnv != "" {

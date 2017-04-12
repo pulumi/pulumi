@@ -6,6 +6,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/coconut/pkg/tokens"
+	"github.com/pulumi/coconut/pkg/util/cmdutil"
 )
 
 func newDestroyCmd() *cobra.Command {
@@ -24,7 +25,7 @@ func newDestroyCmd() *cobra.Command {
 			"\n" +
 			"Warning: although old snapshots can be used to recreate an environment, this command\n" +
 			"is generally irreversable and should be used with great care.",
-		Run: runFunc(func(cmd *cobra.Command, args []string) error {
+		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			info, err := initEnvCmdName(tokens.QName(env), args)
 			if err != nil {
 				return err

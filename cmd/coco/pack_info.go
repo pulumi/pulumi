@@ -29,7 +29,7 @@ func newPackInfoCmd() *cobra.Command {
 		Long: "Print information about one or more packages\n" +
 			"\n" +
 			"This command prints metadata, symbol, and/or IL from one or more packages.",
-		Run: runFunc(func(cmd *cobra.Command, args []string) error {
+		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			// If printAll is true, flip all the flags.
 			if printAll {
 				printIL = true
@@ -40,7 +40,7 @@ func newPackInfoCmd() *cobra.Command {
 			if len(args) == 0 {
 				// No package specified, just load from the current directory.
 				pwd, _ := os.Getwd()
-				pkgpath, err := workspace.DetectPackage(pwd, sink())
+				pkgpath, err := workspace.DetectPackage(pwd, cmdutil.Sink())
 				if err != nil {
 					return fmt.Errorf("could not locate a package to load: %v", err)
 				}

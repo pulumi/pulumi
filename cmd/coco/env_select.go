@@ -8,6 +8,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/coconut/pkg/tokens"
+	"github.com/pulumi/coconut/pkg/util/cmdutil"
 )
 
 func newEnvSelectCmd() *cobra.Command {
@@ -20,7 +21,7 @@ func newEnvSelectCmd() *cobra.Command {
 			"environment name each and every time.\n" +
 			"\n" +
 			"If no <env> argument is supplied, the current environment is printed.",
-		Run: runFunc(func(cmd *cobra.Command, args []string) error {
+		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			// Read in the name of the environment to switch to.
 			if len(args) == 0 {
 				if name := getCurrentEnv(); name != "" {

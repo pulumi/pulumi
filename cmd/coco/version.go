@@ -5,6 +5,7 @@ package main
 import (
 	"fmt"
 
+	"github.com/pulumi/coconut/pkg/util/cmdutil"
 	"github.com/spf13/cobra"
 )
 
@@ -14,7 +15,7 @@ func newVersionCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "version",
 		Short: "Print Coconut's version number",
-		Run: runFunc(func(cmd *cobra.Command, args []string) error {
+		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			fmt.Printf("Coconut version %v\n", version)
 			return nil
 		}),
