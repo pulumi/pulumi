@@ -356,8 +356,8 @@ class Transformer:
 
             # Generate the argument list, visit the body, and then return the AST node.
             # TODO: varargs, kwargs, defaults, decorators, type annotations.
-            if node.name == "__init__":
-                id = self.ident(tokens.func_init)
+            if is_class_method and node.name == "__init__":
+                id = self.ident(tokens.func_ctor)
             else:
                 id = self.ident(node.name)
 
