@@ -1,5 +1,7 @@
 # Copyright 2017 Pulumi, Inc. All rights reserved.
 
+from cocopy.lib import tokens
+
 class Node(object):
     """An ancestor discriminated union type for all AST nodes."""
     def __init__(self, kind, loc=None):

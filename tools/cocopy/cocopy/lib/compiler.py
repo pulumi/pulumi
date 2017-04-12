@@ -307,7 +307,31 @@ class Transformer:
         return ast.Break(loc=self.loc_from(node))
 
     def transform_ClassDef(self, node):
-        self.not_yet_implemented(node) # name, bases, keywords, starargs, kwargs, body, decorator_list
+        assert node.bases is None or len(node.bases) == 0, "Class base classes not yet supported"
+        assert node.keywords is None or len(node.keywords) == 0, "Class keywords not yet supported"
+        assert node.starargs is None or len(node.starargs) == 0, "Class star arguments not yet supported"
+        assert node.decorator_list is None or len(node.decorator_list) == 0, "Class decorators not yet supported"
+
+        # Python classes simply have a body rather than a concrete set of well-defined members.  To map this to the
+        # equivalent Coconut IL, we need to walk the statements and translate them one by one.
+        members = dict()
+        initstmts = list()
+        for stmt in node.body:
+            if isinstance(stmt, py_ast.FunctionDef):
+                func = self.transform_FunctionDef(stmt, True)
+                members[func.name.ident] = func
+            else:
+                initstmt = self.transform_stmt(stmt)
+                assert isinstance(initstmt, ast.Statement)
+                initstmts.append(initstmt)
+
+        # If any top-level statements spilled over, add them to the initializer.
+        if len(initstmts) > 0:
+            initbody = ast.MultiStatement(initstmts)
+            members[tokens.func_init] = ast.ModuleMethod(self.ident(tokens.func_init), body=initbody)
+
+        name = self.ident(node.name)
+        return ast.Class(name, members=members, loc=self.loc_from(node))
 
     def transform_Continue(self, node):
         return ast.Continue(loc=self.loc_from(node))
@@ -325,26 +349,33 @@ class Transformer:
     def transform_For(self, node):
         self.not_yet_implemented(node) # target, iter, body, orelse
 
-    def transform_FunctionDef(self, node):
+    def transform_FunctionDef(self, node, is_class_method=False):
         oldfunc = self.ctx.func
         try:
             self.ctx.func = node
 
             # Generate the argument list, visit the body, and then return the AST node.
-            # TODO: class methods.
             # TODO: varargs, kwargs, defaults, decorators, type annotations.
-            id = self.ident(node.name)
+            if node.name == "__init__":
+                id = self.ident(tokens.func_init)
+            else:
+                id = self.ident(node.name)
 
             args = list()
             for arg in node.args.args:
                 arg_var = ast.LocalVariable(
-                    self.ident(arg), self.type_token(tokens.type_dynamic), loc=self.loc_from(node.args))
+                    self.ident(arg.arg), self.type_token(tokens.type_dynamic), loc=self.loc_from(node.args))
                 args.append(arg_var)
 
             body = self.transform_block_stmts(node.body)
 
-            return ast.ModuleMethod(
-                id, args, self.type_token(tokens.type_dynamic), body, loc=self.loc_from(node))
+            if is_class_method:
+                return ast.ClassMethod(
+                    id, args, self.type_token(tokens.type_dynamic), body,
+                    access=tokens.acc_public, loc=self.loc_from(node))
+            else:
+                return ast.ModuleMethod(
+                    id, args, self.type_token(tokens.type_dynamic), body, loc=self.loc_from(node))
         finally:
             self.ctx.func = oldfunc
 
@@ -500,7 +531,36 @@ class Transformer:
         return ast.LoadDynamicExpression(ast.StringLiteral(node.attr), obj, loc=self.loc_from(node))
 
     def transform_BinOp(self, node):
-        self.not_yet_implemented(node) # left, op, right
+        lhs = self.transform_expr(node.left)
+
+        pyop = node.op
+        if isinstance(pyop, py_ast.Add):
+            op = ast.binop_add
+        elif isinstance(pyop, py_ast.BitAnd):
+            op = ast.binop_bitwise_and
+        elif isinstance(pyop, py_ast.BitOr):
+            op = ast.binop_bitwise_or
+        elif isinstance(pyop, py_ast.BitXor):
+            op = ast.binop_bitwise_xor
+        elif isinstance(pyop, py_ast.Div):
+            op = ast.binop_divide
+        elif isinstance(pyop, py_ast.LShift):
+            op = ast.binop_bitwise_shleft
+        elif isinstance(pyop, py_ast.Mod):
+            op = ast.binop_remainder
+        elif isinstance(pyop, py_ast.Mult):
+            op = ast.binop_multiply
+        elif isinstance(pyop, py_ast.Pow):
+            op = ast.binop_exponent
+        elif isinstance(pyop, py_ast.RShift):
+            op = ast.binop_bitwise_shright
+        elif isinstance(pyop, py_ast.Sub):
+            op = ast.binop_subtract
+        else:
+            assert False, "Unsupported assignment operator type: {}".format(type(pyop).__name__)
+
+        rhs = self.transform_expr(node.right)
+        return ast.BinaryOperatorExpression(lhs, op, rhs, loc=self.loc_from(node))
 
     def transform_BoolOp(self, node):
         self.not_yet_implemented(node) # op, values
