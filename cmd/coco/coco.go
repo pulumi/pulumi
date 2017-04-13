@@ -3,11 +3,10 @@
 package main
 
 import (
-	"flag"
-	"strconv"
-
 	"github.com/golang/glog"
 	"github.com/spf13/cobra"
+
+	"github.com/pulumi/coconut/pkg/util/cmdutil"
 )
 
 func NewCocoCmd() *cobra.Command {
@@ -17,15 +16,7 @@ func NewCocoCmd() *cobra.Command {
 		Use:   "coco",
 		Short: "Coconut is a framework and toolset for reusable stacks of services",
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
-			// Ensure the glog library has been initialized, including calling flag.Parse beforehand.  Unfortunately,
-			// this is the only way to control the way glog runs.  That includes poking around at flags below.
-			flag.Parse()
-			if logToStderr {
-				flag.Lookup("logtostderr").Value.Set("true")
-			}
-			if verbose > 0 {
-				flag.Lookup("v").Value.Set(strconv.Itoa(verbose))
-			}
+			cmdutil.InitLogging(logToStderr, verbose)
 		},
 		PersistentPostRun: func(cmd *cobra.Command, args []string) {
 			glog.Flush()
