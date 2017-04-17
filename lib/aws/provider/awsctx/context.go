@@ -7,6 +7,7 @@ import (
 
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/ec2"
+	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/pulumi/coconut/pkg/util/contract"
 )
 
@@ -15,6 +16,7 @@ import (
 type Context struct {
 	sess *session.Session
 	ec2  *ec2.EC2
+	s3   *s3.S3
 }
 
 func New() (*Context, error) {
@@ -40,6 +42,14 @@ func (ctx *Context) EC2() *ec2.EC2 {
 		ctx.ec2 = ec2.New(ctx.sess)
 	}
 	return ctx.ec2
+}
+
+func (ctx *Context) S3() *s3.S3 {
+	contract.Assert(ctx.sess != nil)
+	if ctx.s3 == nil {
+		ctx.s3 = s3.New(ctx.sess)
+	}
+	return ctx.s3
 }
 
 // Request manufactures a standard Golang context object for a request within this overall AWS context.

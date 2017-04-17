@@ -13,6 +13,7 @@ import (
 
 	"github.com/pulumi/coconut/lib/aws/provider/awsctx"
 	"github.com/pulumi/coconut/lib/aws/provider/ec2"
+	"github.com/pulumi/coconut/lib/aws/provider/s3"
 )
 
 // provider implements the AWS resource provider's operations for all known AWS types.
@@ -30,6 +31,7 @@ func NewProvider() (*Provider, error) {
 		impls: map[tokens.Type]cocorpc.ResourceProviderServer{
 			ec2.Instance:      ec2.NewInstanceProvider(ctx),
 			ec2.SecurityGroup: ec2.NewSecurityGroupProvider(ctx),
+			s3.Bucket:         s3.NewBucketProvider(ctx),
 		},
 	}, nil
 }
