@@ -7,7 +7,7 @@ echo Compiling:
 cocojs                   # compile the package
 
 echo Verifying:
-coconut pack verify      # ensure the package verifies
+coco pack verify         # ensure the package verifies
 
 echo Sharing NPM links:
 yarn link                # let NPM references resolve easily.
