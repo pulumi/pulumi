@@ -40,12 +40,27 @@
         "ec2/vpcGatewayAttachment.ts",
         "ec2/vpcPeeringConnection.ts",
 
+        "iam/index.ts",
+        "iam/group.ts",
+        "iam/policy.ts",
+        "iam/role.ts",
+        "iam/user.ts",
+
+        "kms/index.ts",
+        "kms/key.ts",
+
+        "lambda/index.ts",
+        "lambda/function.ts",
+
         "s3/index.ts",
         "s3/bucket.ts",
         "s3/object.ts",
 
         "sns/index.ts",
-        "sns/topic.ts"
+        "sns/topic.ts",
+
+        "sqs/index.ts",
+        "sqs/queue.ts"
     ]
 }
 
