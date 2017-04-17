@@ -809,7 +809,7 @@ func printPropertyValue(b *bytes.Buffer, v resource.PropertyValue, indent string
 	} else if v.IsNumber() {
 		b.WriteString(fmt.Sprintf("%v", v.NumberValue()))
 	} else if v.IsString() {
-		b.WriteString(fmt.Sprintf("\"%s\"", v.StringValue()))
+		b.WriteString(fmt.Sprintf("%q", v.StringValue()))
 	} else if v.IsResource() {
 		b.WriteString(fmt.Sprintf("-> *%s", v.ResourceValue()))
 	} else if v.IsArray() {
