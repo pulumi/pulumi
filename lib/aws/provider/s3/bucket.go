@@ -119,8 +119,8 @@ func (p *buckProvider) Delete(ctx context.Context, req *cocorpc.DeleteRequest) (
 	id := aws.String(req.GetId())
 	fmt.Printf("Deleting S3 Bucket '%v'\n", *id)
 	if _, err := p.ctx.S3().DeleteBucket(&s3.DeleteBucketInput{
-		Bucket: id},
-	); err != nil {
+		Bucket: id,
+	}); err != nil {
 		return nil, err
 	}
 

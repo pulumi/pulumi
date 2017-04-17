@@ -2,4 +2,5 @@
 
 export * from "./acl";
 export * from "./bucket";
+export * from "./object";
 

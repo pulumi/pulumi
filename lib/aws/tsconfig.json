@@ -42,6 +42,7 @@
 
         "s3/index.ts",
         "s3/bucket.ts",
+        "s3/object.ts",
 
         "sns/index.ts",
         "sns/topic.ts"

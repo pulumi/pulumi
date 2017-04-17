@@ -32,6 +32,7 @@ func NewProvider() (*Provider, error) {
 			ec2.Instance:      ec2.NewInstanceProvider(ctx),
 			ec2.SecurityGroup: ec2.NewSecurityGroupProvider(ctx),
 			s3.Bucket:         s3.NewBucketProvider(ctx),
+			s3.Object:         s3.NewObjectProvider(ctx),
 		},
 	}, nil
 }
@@ -60,7 +61,7 @@ func (p *Provider) Name(ctx context.Context, req *cocorpc.NameRequest) (*cocorpc
 			return res, err
 		}
 	} else {
-		return nil, fmt.Errorf("Unrecognized resource type (Create): %v", t)
+		return nil, fmt.Errorf("Unrecognized resource type (Name): %v", t)
 	}
 
 	// If the provider didn't override, we can go ahead and default to the name property.
