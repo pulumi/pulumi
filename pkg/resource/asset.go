@@ -47,19 +47,31 @@ func (a Asset) GetURI() (string, bool) {
 	return "", false
 }
 
+// GetURIURL returns the underlying URI as a parsed URL, provided it is one.  If there was an error parsing the URI, it
+// will be returned as a non-nil error object.
+func (a Asset) GetURIURL() (*url.URL, bool, error) {
+	if uri, isuri := a.GetURI(); isuri {
+		url, err := url.Parse(uri)
+		if err != nil {
+			return nil, true, err
+		}
+		return url, true, nil
+	}
+	return nil, false, nil
+}
+
 func (a Asset) Read() (AssetReader, error) {
 	if text, istext := a.GetText(); istext {
 		return newBytesReader([]byte(text)), nil
 	} else if path, ispath := a.GetPath(); ispath {
 		return os.Open(path)
-	} else if uri, isuri := a.GetURI(); isuri {
-		url, err := url.Parse(uri)
+	} else if url, isurl, err := a.GetURIURL(); isurl {
 		if err != nil {
 			return nil, err
 		}
 		switch s := url.Scheme; s {
 		case "http", "https":
-			resp, err := http.Get(uri)
+			resp, err := http.Get(url.String())
 			if err != nil {
 				return nil, err
 			}

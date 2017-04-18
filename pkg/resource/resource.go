@@ -21,6 +21,22 @@ import (
 // ID is a unique resource identifier; it is managed by the provider and is mostly opaque to Coconut.
 type ID string
 
+func (id ID) String() string { return string(id) }
+func (id *ID) StringPtr() *string {
+	if id == nil {
+		return nil
+	}
+	ids := (*id).String()
+	return &ids
+}
+func IDStrings(ids []ID) []string {
+	ss := make([]string, len(ids))
+	for i, id := range ids {
+		ss[i] = id.String()
+	}
+	return ss
+}
+
 // Resource is an instance of a resource with an ID, type, and bag of state.
 type Resource interface {
 	ID() ID                  // the resource's unique ID, assigned by the resource provider (or blank if uncreated).

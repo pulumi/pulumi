@@ -81,7 +81,9 @@ func (p *instanceProvider) Create(ctx context.Context, req *cocorpc.CreateReques
 	// Create the create instances request object.
 	var secgrpIDs []*string
 	if instance.SecurityGroupIDs != nil {
-		secgrpIDs = aws.StringSlice(*instance.SecurityGroupIDs)
+		for _, id := range *instance.SecurityGroupIDs {
+			secgrpIDs = append(secgrpIDs, id.StringPtr())
+		}
 	}
 	create := &ec2.RunInstancesInput{
 		ImageId:          aws.String(instance.ImageID),
@@ -175,10 +177,10 @@ func (p *instanceProvider) Delete(ctx context.Context, req *cocorpc.DeleteReques
 
 // instance represents the state associated with an instance.
 type instance struct {
-	ImageID          string    `json:"imageId"`
-	InstanceType     *string   `json:"instanceType,omitempty"`
-	SecurityGroupIDs *[]string `json:"securityGroups,omitempty"`
-	KeyName          *string   `json:"keyName,omitempty"`
+	ImageID          string         `json:"imageId"`
+	InstanceType     *string        `json:"instanceType,omitempty"`
+	SecurityGroupIDs *[]resource.ID `json:"securityGroups,omitempty"`
+	KeyName          *string        `json:"keyName,omitempty"`
 }
 
 const (

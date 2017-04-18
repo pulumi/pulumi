@@ -68,7 +68,7 @@ func (p *sgProvider) Create(ctx context.Context, req *cocorpc.CreateRequest) (*c
 	create := &ec2.CreateSecurityGroupInput{
 		GroupName:   aws.String(name),
 		Description: &secgrp.Description,
-		VpcId:       secgrp.VPCID,
+		VpcId:       secgrp.VPCID.StringPtr(),
 	}
 
 	// Now go ahead and perform the action.
@@ -266,7 +266,7 @@ func (p *sgProvider) Delete(ctx context.Context, req *cocorpc.DeleteRequest) (*p
 type securityGroup struct {
 	Name        string              `json:"name"`                           // the security group's unique name.
 	Description string              `json:"groupDescription"`               // description of the security group.
-	VPCID       *string             `json:"vpc,omitempty"`                  // the security group's VPC..
+	VPCID       *resource.ID        `json:"vpc,omitempty"`                  // the security group's VPC..
 	Egress      []securityGroupRule `json:"securityGroupEgress,omitempty"`  // a list of security group egress rules.
 	Ingress     []securityGroupRule `json:"securityGroupIngress,omitempty"` // a list of security group ingress rules.
 }

@@ -14,6 +14,7 @@ import (
 	"github.com/pulumi/coconut/lib/aws/provider/awsctx"
 	"github.com/pulumi/coconut/lib/aws/provider/ec2"
 	"github.com/pulumi/coconut/lib/aws/provider/iam"
+	"github.com/pulumi/coconut/lib/aws/provider/lambda"
 	"github.com/pulumi/coconut/lib/aws/provider/s3"
 )
 
@@ -32,6 +33,7 @@ func NewProvider() (*Provider, error) {
 		impls: map[tokens.Type]cocorpc.ResourceProviderServer{
 			ec2.Instance:      ec2.NewInstanceProvider(ctx),
 			ec2.SecurityGroup: ec2.NewSecurityGroupProvider(ctx),
+			lambda.Function:   lambda.NewFunctionProvider(ctx),
 			iam.Role:          iam.NewRoleProvider(ctx),
 			s3.Bucket:         s3.NewBucketProvider(ctx),
 			s3.Object:         s3.NewObjectProvider(ctx),
