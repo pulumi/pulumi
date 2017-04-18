@@ -24,6 +24,7 @@ export type NodeKind =
     ModuleTokenKind |
     TypeTokenKind |
 
+    definitions.AttributeKind |
     definitions.ModuleKind |
     definitions.ClassKind |
     definitions.ExportKind |

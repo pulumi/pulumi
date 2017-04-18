@@ -1912,11 +1912,33 @@ export class Transformer {
         return notYetImplemented(node);
     }
 
+    private getDecoratorSymbol(decorator: ts.Decorator): ts.Symbol {
+        contract.assert(decorator.expression.kind === ts.SyntaxKind.Identifier,
+                        "Only simple @decorator annotations are currently supported");
+        return this.checker().getSymbolAtLocation(decorator.expression);
+    }
+
     private async transformParameterDeclaration(
             node: ts.ParameterDeclaration): Promise<VariableDeclaration<ast.LocalVariable>> {
         // Validate that we're dealing with the supported subset.
         if (!!node.dotDotDotToken) {
             this.diagnostics.push(this.dctx.newRestParamsNotSupportedError(node.dotDotDotToken));
+        }
+
+        // Pluck out any decorators and store them in the metadata as attributes.
+        let attributes: ast.Attribute[] | undefined;
+        if (node.decorators) {
+            attributes = [];
+            for (let decorator of node.decorators) {
+                let sym: ts.Symbol = this.getDecoratorSymbol(decorator);
+                attributes.push({
+                    kind: ast.attributeKind,
+                    decorator: {
+                        kind: ast.tokenKind,
+                        tok:  await this.resolveTokenFromSymbol(sym),
+                    },
+                });
+            }
         }
 
         // TODO[pulumi/coconut#43]: parameters can be any binding name, including destructuring patterns.  For now,
@@ -1930,9 +1952,10 @@ export class Transformer {
             node:     node,
             tok:      name.ident,
             variable: {
-                kind: ast.localVariableKind,
-                name: name,
-                type: await this.resolveTypeTokenFromTypeLike(node),
+                kind:       ast.localVariableKind,
+                name:       name,
+                type:       await this.resolveTypeTokenFromTypeLike(node),
+                attributes: attributes,
             },
             initializer: initializer,
         };

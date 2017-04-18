@@ -18,13 +18,24 @@ type Definition interface {
 
 type DefinitionNode struct {
 	NodeValue
-	Name        *Identifier `json:"name"`
-	Description *string     `json:"description,omitempty"`
+	Name        *Identifier  `json:"name"`                  // a required name, unique amongst siblings.
+	Description *string      `json:"description,omitempty"` // an optional informative description.
+	Attributes  *[]Attribute `json:"attributes,omitempty"`  // an optional list of metadata decorators.
 }
 
 func (node *DefinitionNode) definition()             {}
 func (node *DefinitionNode) GetName() *Identifier    { return node.Name }
 func (node *DefinitionNode) GetDescription() *string { return node.Description }
+
+// Attribute is a simple decorator token that acts as a metadata annotation.
+type Attribute struct {
+	NodeValue
+	Decorator *Token `json:"decorator"`
+}
+
+var _ Node = (*Attribute)(nil)
+
+const AttributeKind NodeKind = "Attribute"
 
 /* Modules */
 

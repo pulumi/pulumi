@@ -85,12 +85,23 @@ class TypeToken(Node):
 
 class Definition(Node):
     """A definition is something that is possibly exported for external usage."""
-    def __init__(self, kind, name, description=None, loc=None):
+    def __init__(self, kind, name, description=None, attributes=None, loc=None):
         assert isinstance(name, Identifier)
         assert description is None or isinstance(description, basestring)
+        assert (attributes is None or
+            (isinstance(attributes, list) and
+                all(isinstance(attribute, Attribute) for attribute in attributes)))
         super(Definition, self).__init__(kind, loc)
         self.name = name
         self.description = description
+        self.attributes = attributes
+
+class Attribute(Node):
+    """An attribute is a simple decorator token that acts as a metadata annotation."""
+    def __init__(self, kind, decorator, loc=None):
+        assert isinstance(decorator, Token)
+        super(Attribute, self).__init__(kind, loc)
+        self.decorator = decorator
 
 # ...Modules
 

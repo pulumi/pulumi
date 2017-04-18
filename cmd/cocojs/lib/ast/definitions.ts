@@ -10,9 +10,18 @@ import * as statements from "./statements";
 
 // A definition is something that possibly exported for external usage.
 export interface Definition extends Node {
-    name:         Identifier; // a required name, unique amongst definitions with a common parent.
-    description?: string;     // an optional informative description.
+    name:         Identifier;  // a required name, unique amongst definitions with a common parent.
+    description?: string;      // an optional informative description.
+    attributes?:  Attribute[]; // an optional list of metadata attributes.
 }
+
+// An attribute is a simple decorator token that acts as a metadata annotation.
+export interface Attribute extends Node {
+    kind:      AttributeKind;
+    decorator: Token;
+}
+export const attributeKind = "Attribute";
+export type  AttributeKind = "Attribute";
 
 /* Modules */
 
