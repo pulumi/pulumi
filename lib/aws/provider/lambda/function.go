@@ -14,6 +14,7 @@ import (
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
+	"github.com/aws/aws-sdk-go/service/iam"
 	"github.com/aws/aws-sdk-go/service/lambda"
 	pbempty "github.com/golang/protobuf/ptypes/empty"
 	pbstruct "github.com/golang/protobuf/ptypes/struct"
@@ -75,6 +76,13 @@ func (p *funcProvider) Create(ctx context.Context, req *cocorpc.CreateRequest) (
 		id = resource.NewUniqueHex(fun.Name+"-", maxFunctionName, sha1.Size)
 	}
 
+	// Fetch the IAM role's ARN.
+	// TODO[coconut/pulumi#90]: as soon as we can read output properties, this shouldn't be necessary.
+	role, err := p.ctx.IAM().GetRole(&iam.GetRoleInput{RoleName: fun.Role.StringPtr()})
+	if err != nil {
+		return nil, err
+	}
+
 	// Figure out the kind of asset.  In addition to the usual suspects, we permit s3:// references.
 	var code *lambda.FunctionCode
 	uri, isuri, err := fun.Code.GetURIURL()
@@ -124,7 +132,7 @@ func (p *funcProvider) Create(ctx context.Context, req *cocorpc.CreateRequest) (
 		KMSKeyArn:        fun.KMSKeyID.StringPtr(),
 		MemorySize:       memsize,
 		Publish:          nil, // ???
-		Role:             aws.String(fun.Role.String()),
+		Role:             role.Role.Arn,
 		Runtime:          aws.String(fun.Runtime),
 		Timeout:          timeout,
 		VpcConfig:        vpccfg,
