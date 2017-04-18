@@ -1,5 +1,7 @@
 # lib/coconutx
 
+**NOTE:** This package is deprecated; please see lib/mantle for its replacement.
+
 This is an experimental cross-platform library of stacks.
 
 Please refer to the [Cross-Cloud Targeting](https://github.com/pulumi/coconut/blob/master/docs/x-cloud.md) design
