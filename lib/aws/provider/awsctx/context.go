@@ -7,6 +7,7 @@ import (
 
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/ec2"
+	"github.com/aws/aws-sdk-go/service/iam"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/pulumi/coconut/pkg/util/contract"
 )
@@ -16,6 +17,7 @@ import (
 type Context struct {
 	sess *session.Session
 	ec2  *ec2.EC2
+	iam  *iam.IAM
 	s3   *s3.S3
 }
 
@@ -42,6 +44,14 @@ func (ctx *Context) EC2() *ec2.EC2 {
 		ctx.ec2 = ec2.New(ctx.sess)
 	}
 	return ctx.ec2
+}
+
+func (ctx *Context) IAM() *iam.IAM {
+	contract.Assert(ctx.sess != nil)
+	if ctx.iam == nil {
+		ctx.iam = iam.New(ctx.sess)
+	}
+	return ctx.iam
 }
 
 func (ctx *Context) S3() *s3.S3 {
