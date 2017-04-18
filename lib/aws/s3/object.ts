@@ -1,16 +1,16 @@
 // Copyright 2017 Pulumi, Inc. All rights reserved.
 
 import {Bucket} from "./bucket";
-import * as coconut from "@coconut/coconut";
+import {asset, Resource} from "@coconut/coconut";
 
 // Object represents an Amazon Simple Storage Service (S3) object (key/value blob).
 export class Object
-        extends coconut.Resource
+        extends Resource
         implements ObjectProperties {
-    public readonly key: string;           // the object's unique key.
-    public readonly bucket: Bucket;        // the bucket this object belongs to.
-    public readonly source: coconut.Asset; // the source of this object's contents.
-    public readonly uri: string;           // the s3:// URI for this object.
+    public readonly key: string;         // the object's unique key.
+    public readonly bucket: Bucket;      // the bucket this object belongs to.
+    public readonly source: asset.Asset; // the source of this object's contents.
+    public readonly uri: string;         // the s3:// URI for this object.
 
     constructor(key: string, args: ObjectProperties) {
         super();
@@ -23,7 +23,7 @@ export class Object
     public static fromFile(key: string, bucket: Bucket, path: string): Object {
         return new Object(key, {
             bucket: bucket,
-            source: new coconut.FileAsset(path),
+            source: new asset.File(path),
         });
     }
 
@@ -32,7 +32,7 @@ export class Object
         // TODO: support reading properties.
         return new Object(key, {
             bucket: bucket,
-            source: new coconut.URIAsset(other.uri),
+            source: new asset.Remote(other.uri),
         });
     }
 
@@ -41,7 +41,7 @@ export class Object
     public static fromString(key: string, bucket: Bucket, text: string): Object {
         return new Object(key, {
             bucket: bucket,
-            source: new coconut.StringAsset(text),
+            source: new asset.String(text),
         });
     }
 
@@ -52,13 +52,13 @@ export class Object
         // TODO: the URI is going to be blank until pulumi/coconut#90 is addressed.
         return new Object(key, {
             bucket: bucket,
-            source: new coconut.URIAsset(uri),
+            source: new asset.Remote(uri),
         });
     }
 }
 
 export interface ObjectProperties {
-    readonly bucket: Bucket;        // the bucket this object belongs to.
-    readonly source: coconut.Asset; // the source of content for this object.
+    readonly bucket: Bucket;      // the bucket this object belongs to.
+    readonly source: asset.Asset; // the source of content for this object.
 }
 

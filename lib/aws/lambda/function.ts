@@ -6,11 +6,11 @@ import * as iam from "../iam";
 import * as kms from "../kms";
 import * as sns from "../sns";
 import * as sqs from "../sqs";
-import * as coconut from "@coconut/coconut";
+import {asset} from "@coconut/coconut";
 
 // The Function resource creates an AWS Lambda function that can run code in response to events.
 export class Function extends cloudformation.Resource implements FunctionProperties {
-    public code: coconut.Asset;
+    public code: asset.Asset;
     public handler: string;
     public role: iam.Role;
     public runtime: Runtime;
@@ -46,7 +46,7 @@ export class Function extends cloudformation.Resource implements FunctionPropert
 export interface FunctionProperties extends cloudformation.TagArgs {
     // code is the source code of your Lambda function.  This supports all the usual Coconut asset schemes, in addition
     // to Amazon Simple Storage Service (S3) bucket locations, indicating with a URI scheme of s3://<bucket>/<object>.
-    code: coconut.Asset;
+    code: asset.Asset;
     // handler is the name of the function (within your source code) that Lambda calls to start running your code.
     handler: string;
     // role is the AWS Identity and Access Management (IAM) execution role that Lambda assumes when it runs your code
@@ -103,7 +103,7 @@ export interface DeadLetterConfig {
     // target is the target resource where Lambda delivers unprocessed events.  It may be an Amazon SNS topic or Amazon
     // Simple Queue Service (SQS) queue.  For the Lambda function-execution role, you must explicitly provide the
     // relevant permissions so that access to your DLQ resource is part of the execution role for your Lambda function.
-    target: sns.Topic | sqs.Queue;
+    target: any; // TODO: sns.Topic | sqs.Queue;
 }
 
 // Environment is a property of an AWS Lambda Function resource that specifies key-value pairs that the function can
