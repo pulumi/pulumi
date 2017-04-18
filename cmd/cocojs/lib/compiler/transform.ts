@@ -645,17 +645,14 @@ export class Transformer {
         // Resolve the module name to a real symbol.
         // TODO(joe): ensure that this dependency exists, to avoid "accidentally" satisfyied name resolution in the
         //     TypeScript compiler; for example, if the package just happens to exist in `node_modules`, etc.
-        let candidates: ts.Map<ts.ResolvedModuleFull> = this.getResolvedModules();
         let resolvedModule: ts.ResolvedModuleFull | undefined;
-        for (let candidateName of Object.keys(candidates)) {
-            let candidate: ts.ResolvedModuleFull = candidates[candidateName];
+        this.getResolvedModules().forEach((candidate: ts.ResolvedModuleFull, candidateName: string) => {
             if ((name && candidateName === name) ||
                     (path && (candidate.resolvedFileName === path || candidate.resolvedFileName === path+".ts"))) {
                 resolvedModule = candidate;
-                break;
             }
-        }
-        contract.assert(!!resolvedModule, `Expected '${name}|${path}' to resolve to a module`);
+        });
+        contract.assert(!!resolvedModule, `Expected mod='${name}' path='${path}' to resolve to a module`);
         return this.getResolvedModuleSymbol(resolvedModule!);
     }
 

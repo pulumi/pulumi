@@ -97,13 +97,13 @@ export class PackageLoader {
                 // Ensure the project has the correct fields, coerce it, and return a metadata object.
                 if (blob.name && typeof blob.name === "string") {
                     pkg = <pack.Package>blob;
+
+                    // Memoize the result so we don't need to continuously search for the same packages.
+                    this.cache.set(blobPath!, pkg);
                 }
                 else {
                     diagnostics.push(dctx.newMissingCocopackNameError(blobPath!));
                 }
-
-                // Memoize the result so we don't need to continuously search for the same packages.
-                this.cache.set(blobPath!, pkg);
             }
             else {
                 // The file was missing; issue an error, and make sure to include the set of extensions we tried.
