@@ -82,6 +82,7 @@ func (p *funcProvider) Create(ctx context.Context, req *cocorpc.CreateRequest) (
 	if err != nil {
 		return nil, err
 	}
+	roleARN := role.Role.Arn
 
 	// Figure out the kind of asset.  In addition to the usual suspects, we permit s3:// references.
 	var code *lambda.FunctionCode
@@ -120,9 +121,10 @@ func (p *funcProvider) Create(ctx context.Context, req *cocorpc.CreateRequest) (
 		timeout = &to
 	}
 
-	// Now go ahead and create the resource.
+	// Now go ahead and create the resource.  Note that IAM profiles can take several seconds to propagate; see
+	// http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/iam-roles-for-amazon-ec2.html#launch-instance-with-role.
 	fmt.Printf("Creating Lambda Function '%v' with name '%v'\n", fun.Name, id)
-	result, err := p.ctx.Lambda().CreateFunction(&lambda.CreateFunctionInput{
+	create := &lambda.CreateFunctionInput{
 		Code:             code,
 		DeadLetterConfig: dlqcfg,
 		Description:      fun.Description,
@@ -136,19 +138,39 @@ func (p *funcProvider) Create(ctx context.Context, req *cocorpc.CreateRequest) (
 		Runtime:          aws.String(fun.Runtime),
 		Timeout:          timeout,
 		VpcConfig:        vpccfg,
-	})
+	}
+	succ, err := awsctx.RetryProgUntil(
+		p.ctx,
+		func() (bool, error) {
+			if _, err := p.ctx.Lambda().CreateFunction(create); err != nil {
+				if erraws, iserraws := err.(awserr.Error); iserraws {
+					if erraws.Code() == "InvalidParameterValueException" &&
+						erraws.Message() == "The role defined for the function cannot be assumed by Lambda." {
+						return false, nil // retry the condition.
+					}
+				}
+				return false, err
+			}
+			return true, nil
+		},
+		func(n int) bool {
+			fmt.Printf("Lambda IAM role '%v' not yet ready; waiting for it to become usable...\n", *roleARN)
+			return true
+		},
+	)
 	if err != nil {
 		return nil, err
 	}
-	contract.Assert(result != nil)
-	fmt.Printf("Lambda Function created: %v; waiting for it to become active\n", id)
+	if !succ {
+		return nil, fmt.Errorf("Lambda IAM role '%v' did not become useable", *roleARN)
+	}
 
-	// Wait for the function to be ready and then return the function's ARN as its ID.
-	arn := result.FunctionArn
-	if err = p.waitForFunctionState(arn, true); err != nil {
+	// Wait for the function to be ready and then return the function name as the ID.
+	fmt.Printf("Lambda Function created: %v; waiting for it to become active\n", id)
+	if err = p.waitForFunctionState(id, true); err != nil {
 		return nil, err
 	}
-	return &cocorpc.CreateResponse{Id: *arn}, nil
+	return &cocorpc.CreateResponse{Id: id}, nil
 }
 
 // Read reads the instance state identified by ID, returning a populated resource object, or an error if not found.
@@ -176,17 +198,16 @@ func (p *funcProvider) Delete(ctx context.Context, req *cocorpc.DeleteRequest) (
 	contract.Assert(req.GetType() == string(Function))
 
 	// First, perform the deletion.
-	id := aws.String(req.GetId())
-	fmt.Printf("Deleting Lambda Function '%v'\n", *id)
+	id := req.GetId()
+	fmt.Printf("Deleting Lambda Function '%v'\n", id)
 	if _, err := p.ctx.Lambda().DeleteFunction(&lambda.DeleteFunctionInput{
-		FunctionName: id,
+		FunctionName: aws.String(id),
 	}); err != nil {
 		return nil, err
 	}
 
-	fmt.Printf("Lambda Function delete request submitted; waiting for it to delete\n")
-
 	// Wait for the function to actually become deleted before returning.
+	fmt.Printf("Lambda Function delete request submitted; waiting for it to delete\n")
 	if err := p.waitForFunctionState(id, false); err != nil {
 		return nil, err
 	}
@@ -279,12 +300,12 @@ func unmarshalFunction(v *pbstruct.Struct) (function, resource.PropertyMap, mapp
 	return fun, props, result
 }
 
-func (p *funcProvider) waitForFunctionState(funcARN *string, exist bool) error {
+func (p *funcProvider) waitForFunctionState(id string, exist bool) error {
 	succ, err := awsctx.RetryUntil(
 		p.ctx,
 		func() (bool, error) {
 			if _, err := p.ctx.Lambda().GetFunction(&lambda.GetFunctionInput{
-				FunctionName: funcARN,
+				FunctionName: aws.String(id),
 			}); err != nil {
 				if erraws, iserraws := err.(awserr.Error); iserraws {
 					if erraws.Code() == "NotFound" || erraws.Code() == "ResourceNotFoundException" {
@@ -308,7 +329,7 @@ func (p *funcProvider) waitForFunctionState(funcARN *string, exist bool) error {
 		} else {
 			reason = "deleted"
 		}
-		return fmt.Errorf("Lambda Function '%v' did not become %v", *funcARN, reason)
+		return fmt.Errorf("Lambda Function '%v' did not become %v", id, reason)
 	}
 	return nil
 }

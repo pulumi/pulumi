@@ -9,10 +9,12 @@ import (
 
 type Acceptor struct {
 	Accept   Acceptance     // a function that determines when to proceed.
-	Progress func(int) bool // an optional progress function.
+	Progress Progress       // an optional progress function.
 	Delay    *time.Duration // an optional delay duration.
 	Backoff  *float64       // an optional backoff multiplier.
 }
+
+type Progress func(int) bool
 
 const (
 	DefaultDelay   time.Duration = 250 * time.Millisecond // by default, delay by 250ms
