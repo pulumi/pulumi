@@ -65,7 +65,7 @@ func (p *provider) Check(t tokens.Type, props PropertyMap) ([]CheckFailure, erro
 
 	resp, err := p.client.Check(p.ctx.Request(), req)
 	if err != nil {
-		glog.V(7).Infof("resource[%v].Check(t=%v,...) failed: err=%v", p.pkg, t)
+		glog.V(7).Infof("resource[%v].Check(t=%v,...) failed: err=%v", p.pkg, t, err)
 		return nil, err
 	}
 
@@ -90,7 +90,7 @@ func (p *provider) Name(t tokens.Type, props PropertyMap) (tokens.QName, error) 
 
 	resp, err := p.client.Name(p.ctx.Request(), req)
 	if err != nil {
-		glog.V(7).Infof("resource[%v].Name(t=%v,...) failed: err=%v", p.pkg, t)
+		glog.V(7).Infof("resource[%v].Name(t=%v,...) failed: err=%v", p.pkg, t, err)
 		return "", err
 	}
 
