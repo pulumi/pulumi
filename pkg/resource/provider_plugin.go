@@ -3,7 +3,6 @@
 package resource
 
 import (
-	"errors"
 	"fmt"
 	"path/filepath"
 	"strings"
@@ -101,7 +100,7 @@ func (p *provider) Name(t tokens.Type, props PropertyMap) (tokens.QName, error) 
 }
 
 // Create allocates a new instance of the provided resource and returns its unique ID afterwards.
-func (p *provider) Create(t tokens.Type, props PropertyMap) (ID, error, ResourceState) {
+func (p *provider) Create(t tokens.Type, props PropertyMap) (ID, State, error) {
 	glog.V(7).Infof("resource[%v].Create(t=%v,#props=%v) executing", p.pkg, t, len(props))
 	req := &cocorpc.CreateRequest{
 		Type:       string(t),
@@ -111,17 +110,17 @@ func (p *provider) Create(t tokens.Type, props PropertyMap) (ID, error, Resource
 	resp, err := p.client.Create(p.ctx.Request(), req)
 	if err != nil {
 		glog.V(7).Infof("resource[%v].Create(t=%v,...) failed: err=%v", p.pkg, t, err)
-		return ID(""), err, StateUnknown
+		return ID(""), StateUnknown, err
 	}
 
 	id := ID(resp.GetId())
 	glog.V(7).Infof("resource[%v].Create(t=%v,...) success: id=%v", p.pkg, t, id)
 	if id == "" {
 		return id,
-			errors.New(fmt.Sprintf("plugin for package '%v' returned empty ID from create '%v'", p.pkg, t)),
-			StateUnknown
+			StateUnknown,
+			fmt.Errorf("plugin for package '%v' returned empty ID from create '%v'", p.pkg, t)
 	}
-	return id, nil, StateOK
+	return id, StateOK, nil
 }
 
 // Read reads the instance state identified by id/t, and returns a bag of properties.
@@ -144,7 +143,7 @@ func (p *provider) Read(id ID, t tokens.Type) (PropertyMap, error) {
 }
 
 // Update updates an existing resource with new values.
-func (p *provider) Update(id ID, t tokens.Type, olds PropertyMap, news PropertyMap) (error, ResourceState) {
+func (p *provider) Update(id ID, t tokens.Type, olds PropertyMap, news PropertyMap) (State, error) {
 	contract.Requiref(id != "", "id", "not empty")
 	contract.Requiref(t != "", "t", "not empty")
 
@@ -162,11 +161,11 @@ func (p *provider) Update(id ID, t tokens.Type, olds PropertyMap, news PropertyM
 	_, err := p.client.Update(p.ctx.Request(), req)
 	if err != nil {
 		glog.V(7).Infof("resource[%v].Update(id=%v,t=%v,...) failed: %v", p.pkg, id, t, err)
-		return err, StateUnknown
+		return StateUnknown, err
 	}
 
 	glog.V(7).Infof("resource[%v].Update(id=%v,t=%v,...) success", p.pkg, id, t)
-	return nil, StateOK
+	return StateOK, nil
 }
 
 // UpdateImpact checks what impacts a hypothetical update will have on the resource's properties.
@@ -202,7 +201,7 @@ func (p *provider) UpdateImpact(id ID, t tokens.Type,
 }
 
 // Delete tears down an existing resource.
-func (p *provider) Delete(id ID, t tokens.Type) (error, ResourceState) {
+func (p *provider) Delete(id ID, t tokens.Type) (State, error) {
 	contract.Requiref(id != "", "id", "not empty")
 	contract.Requiref(t != "", "t", "not empty")
 
@@ -214,11 +213,11 @@ func (p *provider) Delete(id ID, t tokens.Type) (error, ResourceState) {
 
 	if _, err := p.client.Delete(p.ctx.Request(), req); err != nil {
 		glog.V(7).Infof("resource[%v].Delete(id=%v,t=%v) failed: %v", p.pkg, id, t, err)
-		return err, StateUnknown
+		return StateUnknown, err
 	}
 
 	glog.V(7).Infof("resource[%v].Delete(id=%v,t=%v) success", p.pkg, id, t)
-	return nil, StateOK
+	return StateOK, nil
 }
 
 // Close tears down the underlying plugin RPC connection and process.

@@ -12,7 +12,6 @@ import (
 	homedir "github.com/mitchellh/go-homedir"
 
 	"github.com/pulumi/coconut/pkg/compiler/core"
-	"github.com/pulumi/coconut/pkg/diag"
 	"github.com/pulumi/coconut/pkg/encoding"
 	"github.com/pulumi/coconut/pkg/pack"
 	"github.com/pulumi/coconut/pkg/tokens"
@@ -22,18 +21,13 @@ import (
 // W offers functionality for interacting with Coconut workspaces.  A workspace influences compilation; for example, it
 // can specify default versions of dependencies, easing the process of working with multiple projects.
 type W interface {
-	// Root returns the base path of the current workspace.
-	Root() string
-	// Settings returns a mutable pointer to the optional workspace settings info.
-	Settings() *Workspace
+	Path() string        // the base path of the current workspace.
+	Root() string        // the root path of the current workspace.
+	Settings() *Settings // returns a mutable pointer to the optional workspace settings info.
 
-	// ReadSettings reads in the settings file and returns it, returning nil if there is none.
-	ReadSettings() (*diag.Document, error)
-
-	// DetectPackage locates the closest Cocofile from the given path, searching "upwards" in the directory hierarchy.
-	DetectPackage() (string, error)
-	// DepCandidates fetches all candidate locations for resolving a dependency name to its installed artifacts.
-	DepCandidates(dep pack.PackageURL) []string
+	DetectPackage() (string, error)             // locates the nearest project file in the directory hierarchy.
+	DepCandidates(dep pack.PackageURL) []string // fetches all candidate locations for a dependency's artifacts.
+	Save() error                                // saves any modifications to the workspace.
 }
 
 // New creates a new workspace from the given starting path.
@@ -57,8 +51,8 @@ func New(ctx *core.Context) (W, error) {
 		home: home,
 	}
 
-	// Memoize the root directory before returning.
-	if _, err := ws.initRootInfo(); err != nil {
+	// Perform our I/O: memoize the root directory and load up any settings before returning.
+	if err := ws.init(); err != nil {
 		return nil, err
 	}
 
@@ -66,16 +60,15 @@ func New(ctx *core.Context) (W, error) {
 }
 
 type workspace struct {
-	ctx       *core.Context // the shared compiler context object.
-	path      string        // the path at which the workspace was constructed.
-	home      string        // the home directory to use for this workspace.
-	root      string        // the root of the workspace.
-	cocospace string        // a path to the Cocospace file, if any.
-	settings  Workspace     // an optional bag of workspace-wide settings.
+	ctx      *core.Context // the shared compiler context object.
+	path     string        // the path at which the workspace was constructed.
+	home     string        // the home directory to use for this workspace.
+	root     string        // the root of the workspace.
+	settings Settings      // an optional bag of workspace-wide settings.
 }
 
-// initRootInfo finds the root of the workspace, caches it for fast lookups, and loads up any workspace settings.
-func (w *workspace) initRootInfo() (string, error) {
+// init finds the root of the workspace, caches it for fast lookups, and loads up any workspace settings.
+func (w *workspace) init() error {
 	if w.root == "" {
 		// Detect the root of the workspace and cache it.
 		root := pathDir(w.path)
@@ -83,22 +76,24 @@ func (w *workspace) initRootInfo() (string, error) {
 		for {
 			files, err := ioutil.ReadDir(root)
 			if err != nil {
-				return "", err
+				return err
 			}
 			for _, file := range files {
-				// A cocospace file delimits the root of the workspace.
-				cocospace := filepath.Join(root, file.Name())
-				if IsCocospace(cocospace, w.ctx.Diag) {
+				// A coconut directory delimits the root of the workspace.
+				cocodir := filepath.Join(root, file.Name())
+				if IsCocoDir(cocodir) {
 					glog.V(3).Infof("Coconut workspace detected; setting root to %v", w.root)
-					w.root = root
-					w.cocospace = cocospace
+					w.root = root                      // remember the root.
+					w.settings, err = w.readSettings() // load up optional settings.
+					if err != nil {
+						return err
+					}
 					break Search
 				}
 			}
 
 			// If neither succeeded, keep looking in our parent directory.
-			root = filepath.Dir(root)
-			if isTop(root) {
+			if root = filepath.Dir(root); isTop(root) {
 				// We reached the top of the filesystem.  Just set root back to the path and stop.
 				glog.V(3).Infof("No Coconut workspace found; defaulting to current path %v", w.root)
 				w.root = w.path
@@ -107,20 +102,12 @@ func (w *workspace) initRootInfo() (string, error) {
 		}
 	}
 
-	return w.root, nil
+	return nil
 }
 
-func (w *workspace) Root() string         { return w.root }
-func (w *workspace) Settings() *Workspace { return &w.settings }
-
-func (w *workspace) ReadSettings() (*diag.Document, error) {
-	if w.cocospace == "" {
-		return nil, nil
-	}
-
-	// If there is a workspace settings file in here, load it up before returning.
-	return diag.ReadDocument(w.cocospace)
-}
+func (w *workspace) Path() string        { return w.path }
+func (w *workspace) Root() string        { return w.root }
+func (w *workspace) Settings() *Settings { return &w.settings }
 
 func (w *workspace) DetectPackage() (string, error) {
 	return DetectPackage(w.path, w.ctx.Diag)
@@ -166,14 +153,14 @@ func (w *workspace) DepCandidates(dep pack.PackageURL) []string {
 	// For each extension we support, add the same set of search locations.
 	cands := make([]string, 0, 4*len(encoding.Exts))
 	for _, ext := range encoding.Exts {
-		cands = append(cands, filepath.Join(w.root, base, name, Cocopack+ext))
-		cands = append(cands, filepath.Join(w.root, wsname, Cocopack+ext))
-		cands = append(cands, filepath.Join(w.root, CocopackDir, CocopackDepDir, base, name, Cocopack+ext))
-		cands = append(cands, filepath.Join(w.root, CocopackDir, CocopackDepDir, name, Cocopack+ext))
-		cands = append(cands, filepath.Join(w.home, CocopackDir, CocopackDepDir, base, name, Cocopack+ext))
-		cands = append(cands, filepath.Join(w.home, CocopackDir, CocopackDepDir, name, Cocopack+ext))
-		cands = append(cands, filepath.Join(InstallRoot(), InstallRootLibdir, base, name, Cocopack+ext))
-		cands = append(cands, filepath.Join(InstallRoot(), InstallRootLibdir, name, Cocopack+ext))
+		cands = append(cands, filepath.Join(w.root, base, name, PackFile+ext))
+		cands = append(cands, filepath.Join(w.root, wsname, PackFile+ext))
+		cands = append(cands, filepath.Join(w.root, Dir, DepDir, base, name, PackFile+ext))
+		cands = append(cands, filepath.Join(w.root, Dir, DepDir, name, PackFile+ext))
+		cands = append(cands, filepath.Join(w.home, Dir, DepDir, base, name, PackFile+ext))
+		cands = append(cands, filepath.Join(w.home, Dir, DepDir, name, PackFile+ext))
+		cands = append(cands, filepath.Join(InstallRoot(), InstallRootLibdir, base, name, PackFile+ext))
+		cands = append(cands, filepath.Join(InstallRoot(), InstallRootLibdir, name, PackFile+ext))
 	}
 	return cands
 }
@@ -208,4 +195,52 @@ func workspacePath(w *workspace, nm tokens.PackageName) string {
 		}
 	}
 	return packageNamePath(nm)
+}
+
+// Save persists any in-memory changes made to the workspace.
+func (w *workspace) Save() error {
+	// For now, the only changes to commit are the settings file changes.
+	return w.saveSettings()
+}
+
+// settingsFile returns the settings file location for this workspace.
+func (w *workspace) settingsFile(ext string) string {
+	return filepath.Join(w.root, Dir, SettingsFile+ext)
+}
+
+// readSettings loads a settings file from the workspace, probing for all available extensions.
+func (w *workspace) readSettings() (Settings, error) {
+	// Attempt to load the raw bytes from all available extensions.
+	var settings Settings
+	for _, ext := range encoding.Exts {
+		// See if the file exists.
+		path := w.settingsFile(ext)
+		b, err := ioutil.ReadFile(path)
+		if err != nil {
+			if os.IsNotExist(err) {
+				continue // try the next extension
+			}
+			return settings, err
+		}
+
+		// If it does, go ahead and decode it.
+		m := encoding.Marshalers[ext]
+		if err := m.Unmarshal(b, &settings); err != nil {
+			return settings, err
+		}
+	}
+	return settings, nil
+}
+
+// saveSettings saves the settings into a file for this workspace, committing any in-memory changes that have been made.
+// TODO: right now, we only support JSON.  It'd be ideal if we supported YAML too (and it would be quite easy).
+func (w *workspace) saveSettings() error {
+	m := encoding.Default()
+	settings := w.Settings()
+	b, err := m.Marshal(settings)
+	if err != nil {
+		return err
+	}
+	path := w.settingsFile(encoding.DefaultExt())
+	return ioutil.WriteFile(path, b, 0644)
 }

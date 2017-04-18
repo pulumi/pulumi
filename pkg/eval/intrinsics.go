@@ -42,6 +42,7 @@ func (node *Intrinsic) Symbol()                          {}
 func (node *Intrinsic) Name() tokens.Name                { return node.Nm }
 func (node *Intrinsic) Token() tokens.Token              { return node.Tok }
 func (node *Intrinsic) Special() bool                    { return false }
+func (node *Intrinsic) SpecialModInit() bool             { return false }
 func (node *Intrinsic) Tree() diag.Diagable              { return node.Func }
 func (node *Intrinsic) Function() ast.Function           { return node.Func }
 func (node *Intrinsic) Signature() *symbols.FunctionType { return node.Sig }
@@ -53,7 +54,7 @@ func (node *Intrinsic) Invoke(e *evaluator, this *rt.Object, args []*rt.Object) 
 
 }
 
-// newIntrinsic returns a new intrinsic function symbol with the given information.
+// NewIntrinsic returns a new intrinsic function symbol with the given information.
 func NewIntrinsic(tree diag.Diagable, fnc ast.Function, tok tokens.Token, nm tokens.Name,
 	sig *symbols.FunctionType, invoker Invoker) *Intrinsic {
 	return &Intrinsic{

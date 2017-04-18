@@ -18,6 +18,10 @@ func decodeStatement(m mapper.Mapper, tree mapper.Object) (ast.Statement, error)
 	if k != nil {
 		kind := ast.NodeKind(*k)
 		switch kind {
+		// Imports
+		case ast.ImportKind:
+			return decodeImport(m, tree)
+
 		// Blocks
 		case ast.BlockKind:
 			return decodeBlock(m, tree)
@@ -63,6 +67,14 @@ func decodeStatement(m mapper.Mapper, tree mapper.Object) (ast.Statement, error)
 		}
 	}
 	return nil, nil
+}
+
+func decodeImport(m mapper.Mapper, tree mapper.Object) (*ast.Import, error) {
+	var imp ast.Import
+	if err := m.Decode(tree, &imp); err != nil {
+		return nil, err
+	}
+	return &imp, nil
 }
 
 func decodeBlock(m mapper.Mapper, tree mapper.Object) (*ast.Block, error) {

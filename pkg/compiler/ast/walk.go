@@ -45,6 +45,11 @@ func Walk(v Visitor, node Node) {
 	// Nodes
 	case *Identifier, *Token, *ClassMemberToken, *ModuleToken, *TypeToken:
 		// No children, nothing to do.
+	case *CallArgument:
+		if n.Name != nil {
+			Walk(v, n.Name)
+		}
+		Walk(v, n.Expr)
 
 	// Definitions
 	case *Module:
@@ -79,6 +84,11 @@ func Walk(v Visitor, node Node) {
 		// No children, nothing to do.
 
 	// Statements
+	case *Import:
+		Walk(v, n.Referent)
+		if n.Name != nil {
+			Walk(v, n.Name)
+		}
 	case *Block:
 		for _, stmt := range n.Statements {
 			Walk(v, stmt)
@@ -86,18 +96,18 @@ func Walk(v Visitor, node Node) {
 	case *LocalVariableDeclaration:
 		Walk(v, n.Local)
 	case *TryCatchFinally:
-		Walk(v, n.TryBlock)
-		if n.CatchBlocks != nil {
-			for _, catch := range *n.CatchBlocks {
+		Walk(v, n.TryClause)
+		if n.CatchClauses != nil {
+			for _, catch := range *n.CatchClauses {
 				Walk(v, catch)
 			}
 		}
-		if n.FinallyBlock != nil {
-			Walk(v, n.FinallyBlock)
+		if n.FinallyClause != nil {
+			Walk(v, n.FinallyClause)
 		}
-	case *TryCatchBlock:
+	case *TryCatchClause:
 		Walk(v, n.Exception)
-		Walk(v, n.Block)
+		Walk(v, n.Body)
 	case *IfStatement:
 		Walk(v, n.Condition)
 		Walk(v, n.Consequent)
@@ -171,7 +181,7 @@ func Walk(v Visitor, node Node) {
 		Walk(v, n.Name)
 	case *LoadDynamicExpression:
 		if n.Object != nil {
-			Walk(v, n.Object)
+			Walk(v, *n.Object)
 		}
 		Walk(v, n.Name)
 	case *NewExpression:

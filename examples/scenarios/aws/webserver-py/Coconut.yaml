@@ -1,0 +1,5 @@
+name: webserver
+description: Basic example of an AWS web server accessible over HTTP.
+dependencies:
+    aws: "*"
+

@@ -52,7 +52,7 @@ func (cfg *ConfigMap) ApplyConfig(ctx *binder.Context, pkg *symbols.Package,
 			glog.V(5).Infof("Applying configuration value for token '%v'", tok)
 
 			// Bind to the symbol; if it returns nil, this means an error has resulted, and we can skip it.
-			var tree diag.Diagable = nil // there is no source info for this; eventually we may assign one.
+			var tree diag.Diagable // there is no source info for this; eventually we may assign one.
 			if sym := ctx.LookupSymbol(tree, tokens.Token(tok), true); sym != nil {
 				var ok bool
 				switch s := sym.(type) {

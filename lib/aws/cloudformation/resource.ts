@@ -11,7 +11,7 @@ export class Resource
     public readonly name: string;
     public readonly resource: string;
     public readonly properties?: any;
-    public readonly dependsOn?: coconut.Stack[];
+    public readonly dependsOn?: coconut.Resource[];
 
     constructor(args: ResourceProperties) {
         super();
@@ -30,6 +30,6 @@ export interface ResourceProperties {
     // An optional list of properties to map.
     readonly properties?: any /*actually, JSON-like*/;
     // An optional list of other CloudFormation resources that this depends on.
-    readonly dependsOn?: coconut.Stack[];
+    readonly dependsOn?: coconut.Resource[];
 }
 

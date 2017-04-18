@@ -14,6 +14,7 @@ type Type interface {
 	TypeName() tokens.TypeName   // this type's name identifier.
 	TypeToken() tokens.Type      // this type's (qualified) token.
 	TypeMembers() ClassMemberMap // this type's members.
+	Ctor() Function              // this type's constructor (or nil if none).
 	Record() bool                // true if this is a record type.
 	Interface() bool             // true if this is an interface type.
 }
@@ -37,6 +38,7 @@ func (node *PrimitiveType) Base() Type                  { return nil }
 func (node *PrimitiveType) TypeName() tokens.TypeName   { return node.Nm }
 func (node *PrimitiveType) TypeToken() tokens.Type      { return tokens.Type(node.Nm) }
 func (node *PrimitiveType) TypeMembers() ClassMemberMap { return noClassMembers }
+func (node *PrimitiveType) Ctor() Function              { return nil }
 func (node *PrimitiveType) Record() bool                { return false }
 func (node *PrimitiveType) Interface() bool             { return false }
 func (node *PrimitiveType) String() string              { return string(node.Token()) }
@@ -63,6 +65,7 @@ func (node *PointerType) Base() Type                  { return nil }
 func (node *PointerType) TypeName() tokens.TypeName   { return node.Nm }
 func (node *PointerType) TypeToken() tokens.Type      { return node.Tok }
 func (node *PointerType) TypeMembers() ClassMemberMap { return noClassMembers }
+func (node *PointerType) Ctor() Function              { return nil }
 func (node *PointerType) Record() bool                { return false }
 func (node *PointerType) Interface() bool             { return false }
 func (node *PointerType) String() string              { return string(node.Token()) }
@@ -101,6 +104,7 @@ func (node *ArrayType) Base() Type                  { return nil }
 func (node *ArrayType) TypeName() tokens.TypeName   { return node.Nm }
 func (node *ArrayType) TypeToken() tokens.Type      { return node.Tok }
 func (node *ArrayType) TypeMembers() ClassMemberMap { return noClassMembers }
+func (node *ArrayType) Ctor() Function              { return nil }
 func (node *ArrayType) Record() bool                { return false }
 func (node *ArrayType) Interface() bool             { return false }
 func (node *ArrayType) String() string              { return string(node.Token()) }
@@ -140,6 +144,7 @@ func (node *MapType) Base() Type                  { return nil }
 func (node *MapType) TypeName() tokens.TypeName   { return node.Nm }
 func (node *MapType) TypeToken() tokens.Type      { return node.Tok }
 func (node *MapType) TypeMembers() ClassMemberMap { return noClassMembers }
+func (node *MapType) Ctor() Function              { return nil }
 func (node *MapType) Record() bool                { return false }
 func (node *MapType) Interface() bool             { return false }
 func (node *MapType) String() string              { return string(node.Token()) }
@@ -179,6 +184,7 @@ func (node *FunctionType) Base() Type                  { return nil }
 func (node *FunctionType) TypeName() tokens.TypeName   { return node.Nm }
 func (node *FunctionType) TypeToken() tokens.Type      { return node.Tok }
 func (node *FunctionType) TypeMembers() ClassMemberMap { return noClassMembers }
+func (node *FunctionType) Ctor() Function              { return nil }
 func (node *FunctionType) Record() bool                { return false }
 func (node *FunctionType) Interface() bool             { return false }
 func (node *FunctionType) String() string              { return string(node.Token()) }
@@ -214,6 +220,43 @@ func NewFunctionType(params []Type, ret Type) *FunctionType {
 	return fnc
 }
 
+// ModuleType is a runtime representation of a module as an object.
+type ModuleType struct {
+	Module *Module // the module this object covers.
+}
+
+var _ Symbol = (*ModuleType)(nil)
+var _ Type = (*ModuleType)(nil)
+
+func (node *ModuleType) Name() tokens.Name   { return tokens.Name(node.TypeName()) }
+func (node *ModuleType) Token() tokens.Token { return tokens.Token(node.TypeToken()) }
+func (node *ModuleType) Special() bool       { return false }
+func (node *ModuleType) Tree() diag.Diagable { return nil }
+func (node *ModuleType) Base() Type          { return nil }
+func (node *ModuleType) TypeName() tokens.TypeName {
+	return tokens.TypeName(string(node.Module.Name())) + ".modtype"
+}
+func (node *ModuleType) TypeToken() tokens.Type {
+	return tokens.Type(string(node.Module.Token()) + ".modtype")
+}
+func (node *ModuleType) TypeMembers() ClassMemberMap { return noClassMembers }
+func (node *ModuleType) Ctor() Function              { return nil }
+func (node *ModuleType) Record() bool                { return false }
+func (node *ModuleType) Interface() bool             { return false }
+func (node *ModuleType) String() string              { return string(node.Token()) }
+
+// moduleTypeCache is a cache keyed by module, helping to avoid creating superfluous symbol objects.
+var moduleTypeCache = make(map[*Module]*ModuleType)
+
+func NewModuleType(m *Module) *ModuleType {
+	if mtype, has := moduleTypeCache[m]; has {
+		return mtype
+	}
+	mtype := &ModuleType{m}
+	moduleTypeCache[m] = mtype
+	return mtype
+}
+
 // PrototypeType is the type for "prototypes" (blueprints for object construction).
 type PrototypeType struct {
 	Type Type // the type this prototype constructs.
@@ -234,6 +277,7 @@ func (node *PrototypeType) TypeToken() tokens.Type {
 	return tokens.Type(string(node.Type.Token()) + ".prototype")
 }
 func (node *PrototypeType) TypeMembers() ClassMemberMap { return noClassMembers }
+func (node *PrototypeType) Ctor() Function              { return nil }
 func (node *PrototypeType) Record() bool                { return false }
 func (node *PrototypeType) Interface() bool             { return false }
 func (node *PrototypeType) String() string              { return string(node.Token()) }

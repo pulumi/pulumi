@@ -31,9 +31,8 @@ func (node *DefinitionNode) GetDescription() *string { return node.Description }
 // Module contains members, including variables, functions, and/or classes.
 type Module struct {
 	DefinitionNode
-	Imports *[]*ModuleToken `json:"imports,omitempty"` // the imported modules consumed by this module.
-	Exports *ModuleExports  `json:"exports,omitempty"` // the exported symbols available for use by consuming modules.
-	Members *ModuleMembers  `json:"members,omitempty"` // the inner members of this module, private for its own use.
+	Exports *ModuleExports `json:"exports,omitempty"` // the exported symbols available for use by consuming modules.
+	Members *ModuleMembers `json:"members,omitempty"` // the inner members of this module, private for its own use.
 }
 
 var _ Node = (*Module)(nil)
@@ -98,17 +97,20 @@ type ClassMember interface {
 	Definition
 	GetAccess() *tokens.Accessibility
 	GetStatic() *bool
+	GetPrimary() *bool
 }
 
 type ClassMemberNode struct {
 	DefinitionNode
-	Access *tokens.Accessibility `json:"access,omitempty"`
-	Static *bool                 `json:"static,omitempty"`
+	Access  *tokens.Accessibility `json:"access,omitempty"`
+	Static  *bool                 `json:"static,omitempty"`
+	Primary *bool                 `json:"primary,omitempty"`
 }
 
 func (node *ClassMemberNode) classMember()                     {}
 func (node *ClassMemberNode) GetAccess() *tokens.Accessibility { return node.Access }
 func (node *ClassMemberNode) GetStatic() *bool                 { return node.Static }
+func (node *ClassMemberNode) GetPrimary() *bool                { return node.Primary }
 
 // ClassMembers is a map of class member name to ClassMember symbol.
 type ClassMembers map[tokens.ClassMemberName]ClassMember
@@ -161,7 +163,6 @@ const ModulePropertyKind NodeKind = "ModuleProperty"
 type ClassProperty struct {
 	VariableNode
 	ClassMemberNode
-	Primary  *bool `json:"primary,omitempty"`
 	Optional *bool `json:"optional,omitempty"`
 }
 
@@ -178,19 +179,19 @@ type Function interface {
 	Definition
 	GetParameters() *[]*LocalVariable
 	GetReturnType() *TypeToken
-	GetBody() *Block
+	GetBody() Statement
 }
 
 type FunctionNode struct {
 	// note that this node intentionally omits any embedded base, to avoid diamond "inheritance".
 	Parameters *[]*LocalVariable `json:"parameters,omitempty"`
 	ReturnType *TypeToken        `json:"returnType,omitempty"`
-	Body       *Block            `json:"body,omitempty"`
+	Body       Statement         `json:"body,omitempty"`
 }
 
 func (node *FunctionNode) GetParameters() *[]*LocalVariable { return node.Parameters }
 func (node *FunctionNode) GetReturnType() *TypeToken        { return node.ReturnType }
-func (node *FunctionNode) GetBody() *Block                  { return node.Body }
+func (node *FunctionNode) GetBody() Statement               { return node.Body }
 
 // ModuleMethod is just a function with an accessibility modifier.
 type ModuleMethod struct {

@@ -57,7 +57,7 @@ type fieldError struct {
 var _ error = (*fieldError)(nil)      // ensure this implements the error interface.
 var _ FieldError = (*fieldError)(nil) // ensure this implements the fieldError interface.
 
-func NewFieldErr(ty reflect.Type, fld string, err error) *fieldError {
+func NewFieldErr(ty reflect.Type, fld string, err error) FieldError {
 	return &fieldError{
 		Type:    ty,
 		Fld:     fld,

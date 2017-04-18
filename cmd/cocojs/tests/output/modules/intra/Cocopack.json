@@ -1,0 +1,239 @@
+{
+    "name": "modules/intra",
+    "modules": {
+        "index": {
+            "kind": "Module",
+            "name": {
+                "kind": "Identifier",
+                "ident": "index"
+            },
+            "exports": {},
+            "members": {
+                "A": {
+                    "kind": "Class",
+                    "name": {
+                        "kind": "Identifier",
+                        "ident": "A",
+                        "loc": {
+                            "file": "index.ts",
+                            "start": {
+                                "line": 4,
+                                "column": 11
+                            },
+                            "end": {
+                                "line": 4,
+                                "column": 12
+                            }
+                        }
+                    },
+                    "members": {},
+                    "interface": true,
+                    "record": true,
+                    "loc": {
+                        "file": "index.ts",
+                        "start": {
+                            "line": 4,
+                            "column": 1
+                        },
+                        "end": {
+                            "line": 4,
+                            "column": 16
+                        }
+                    }
+                },
+                "B": {
+                    "kind": "Class",
+                    "name": {
+                        "kind": "Identifier",
+                        "ident": "B",
+                        "loc": {
+                            "file": "index.ts",
+                            "start": {
+                                "line": 5,
+                                "column": 7
+                            },
+                            "end": {
+                                "line": 5,
+                                "column": 8
+                            }
+                        }
+                    },
+                    "members": {},
+                    "abstract": false,
+                    "loc": {
+                        "file": "index.ts",
+                        "start": {
+                            "line": 5,
+                            "column": 1
+                        },
+                        "end": {
+                            "line": 5,
+                            "column": 12
+                        }
+                    }
+                },
+                "C": {
+                    "kind": "Class",
+                    "name": {
+                        "kind": "Identifier",
+                        "ident": "C",
+                        "loc": {
+                            "file": "index.ts",
+                            "start": {
+                                "line": 7,
+                                "column": 7
+                            },
+                            "end": {
+                                "line": 7,
+                                "column": 8
+                            }
+                        }
+                    },
+                    "members": {
+                        ".ctor": {
+                            "kind": "ClassMethod",
+                            "name": {
+                                "kind": "Identifier",
+                                "ident": ".ctor"
+                            },
+                            "access": "public",
+                            "parameters": [
+                                {
+                                    "kind": "LocalVariable",
+                                    "name": {
+                                        "kind": "Identifier",
+                                        "ident": "a",
+                                        "loc": {
+                                            "file": "index.ts",
+                                            "start": {
+                                                "line": 8,
+                                                "column": 17
+                                            },
+                                            "end": {
+                                                "line": 8,
+                                                "column": 18
+                                            }
+                                        }
+                                    },
+                                    "type": {
+                                        "kind": "TypeToken",
+                                        "tok": "modules/intra:index:A",
+                                        "loc": {
+                                            "file": "index.ts",
+                                            "start": {
+                                                "line": 8,
+                                                "column": 17
+                                            },
+                                            "end": {
+                                                "line": 8,
+                                                "column": 21
+                                            }
+                                        }
+                                    }
+                                },
+                                {
+                                    "kind": "LocalVariable",
+                                    "name": {
+                                        "kind": "Identifier",
+                                        "ident": "b",
+                                        "loc": {
+                                            "file": "index.ts",
+                                            "start": {
+                                                "line": 8,
+                                                "column": 23
+                                            },
+                                            "end": {
+                                                "line": 8,
+                                                "column": 24
+                                            }
+                                        }
+                                    },
+                                    "type": {
+                                        "kind": "TypeToken",
+                                        "tok": "modules/intra:index:B",
+                                        "loc": {
+                                            "file": "index.ts",
+                                            "start": {
+                                                "line": 8,
+                                                "column": 23
+                                            },
+                                            "end": {
+                                                "line": 8,
+                                                "column": 27
+                                            }
+                                        }
+                                    }
+                                }
+                            ],
+                            "body": {
+                                "kind": "Block",
+                                "statements": [],
+                                "loc": {
+                                    "file": "index.ts",
+                                    "start": {
+                                        "line": 8,
+                                        "column": 29
+                                    },
+                                    "end": {
+                                        "line": 10,
+                                        "column": 6
+                                    }
+                                }
+                            },
+                            "static": false,
+                            "abstract": false,
+                            "loc": {
+                                "file": "index.ts",
+                                "start": {
+                                    "line": 8,
+                                    "column": 5
+                                },
+                                "end": {
+                                    "line": 10,
+                                    "column": 6
+                                }
+                            }
+                        }
+                    },
+                    "abstract": false,
+                    "loc": {
+                        "file": "index.ts",
+                        "start": {
+                            "line": 7,
+                            "column": 1
+                        },
+                        "end": {
+                            "line": 11,
+                            "column": 2
+                        }
+                    }
+                },
+                ".main": {
+                    "kind": "ModuleMethod",
+                    "name": {
+                        "kind": "Identifier",
+                        "ident": ".main"
+                    },
+                    "body": {
+                        "kind": "Block",
+                        "statements": []
+                    }
+                }
+            },
+            "loc": {
+                "file": "index.ts",
+                "start": {
+                    "line": 4,
+                    "column": 1
+                },
+                "end": {
+                    "line": 13,
+                    "column": 1
+                }
+            }
+        }
+    },
+    "aliases": {
+        ".default": "index"
+    }
+}

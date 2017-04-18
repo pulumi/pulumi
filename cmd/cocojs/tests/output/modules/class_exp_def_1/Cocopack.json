@@ -1,0 +1,83 @@
+{
+    "name": "class_exp_def_1",
+    "modules": {
+        "index": {
+            "kind": "Module",
+            "name": {
+                "kind": "Identifier",
+                "ident": "index"
+            },
+            "exports": {
+                "default": {
+                    "kind": "Export",
+                    "name": {
+                        "kind": "Identifier",
+                        "ident": "default"
+                    },
+                    "referent": {
+                        "kind": "Token",
+                        "tok": "class_exp_def_1:index:default"
+                    },
+                    "loc": {
+                        "file": "index.ts",
+                        "start": {
+                            "line": 1,
+                            "column": 1
+                        },
+                        "end": {
+                            "line": 2,
+                            "column": 2
+                        }
+                    }
+                }
+            },
+            "members": {
+                "default": {
+                    "kind": "Class",
+                    "name": {
+                        "kind": "Identifier",
+                        "ident": "default"
+                    },
+                    "members": {},
+                    "abstract": false,
+                    "loc": {
+                        "file": "index.ts",
+                        "start": {
+                            "line": 1,
+                            "column": 1
+                        },
+                        "end": {
+                            "line": 2,
+                            "column": 2
+                        }
+                    }
+                },
+                ".main": {
+                    "kind": "ModuleMethod",
+                    "name": {
+                        "kind": "Identifier",
+                        "ident": ".main"
+                    },
+                    "body": {
+                        "kind": "Block",
+                        "statements": []
+                    }
+                }
+            },
+            "loc": {
+                "file": "index.ts",
+                "start": {
+                    "line": 1,
+                    "column": 1
+                },
+                "end": {
+                    "line": 4,
+                    "column": 1
+                }
+            }
+        }
+    },
+    "aliases": {
+        ".default": "index"
+    }
+}

@@ -17,18 +17,18 @@ import (
 // to the actual Snapshot interface, except that it flattens and rearranges a few data structures for serializability.
 // Over time, we also expect this to gather more information about deployments themselves.
 type DeploymentRecord struct {
-	Time      time.Time              `json:"time"`                // the time of the deployment.
-	Reftag    *string                `json:"reftag,omitempty"`    // the ref alias, if any (`#ref` by default).
-	Package   tokens.Package         `json:"package"`             // the package deployed by this record.
-	Args      *core.Args             `json:"args,omitempty"`      // the blueprint args for graph creation.
-	Resources *ResourceDeploymentMap `json:"resources,omitempty"` // a map of URNs to resource vertices.
+	Time      time.Time      `json:"time"`                // the time of the deployment.
+	Reftag    *string        `json:"reftag,omitempty"`    // the ref alias, if any (`#ref` by default).
+	Package   tokens.Package `json:"package"`             // the package deployed by this record.
+	Args      *core.Args     `json:"args,omitempty"`      // the blueprint args for graph creation.
+	Resources *DeploymentMap `json:"resources,omitempty"` // a map of URNs to resource vertices.
 }
 
 // DefaultDeploymentReftag is the default ref tag for intra-graph edges.
 const DefaultDeploymentReftag = "#ref"
 
-// ResourceDeployment is a serializable vertex within a CocoGL graph, specifically for resource snapshots.
-type ResourceDeployment struct {
+// Deployment is a serializable vertex within a CocoGL graph, specifically for resource snapshots.
+type Deployment struct {
 	ID         *ID                  `json:"id,omitempty"`         // the provider ID for this resource, if any.
 	Type       tokens.Type          `json:"type"`                 // this resource's full type token.
 	Properties *DeployedPropertyMap `json:"properties,omitempty"` // an untyped bag of properties.
@@ -47,14 +47,14 @@ func serializeDeploymentRecord(snap Snapshot, reftag string) *DeploymentRecord {
 	}
 
 	// Serialize all vertices and only include a vertex section if non-empty.
-	var resm *ResourceDeploymentMap
+	var resm *DeploymentMap
 	if snapres := snap.Resources(); len(snapres) > 0 {
-		resm = NewResourceDeploymentMap()
+		resm = NewDeploymentMap()
 		for _, res := range snap.Resources() {
 			m := res.URN()
 			contract.Assertf(string(m) != "", "Unexpected empty resource URN")
 			contract.Assertf(!resm.Has(m), "Unexpected duplicate resource URN '%v'", m)
-			resm.Add(m, serializeResourceDeployment(res, reftag))
+			resm.Add(m, serializeDeployment(res, reftag))
 		}
 	}
 
@@ -73,8 +73,8 @@ func serializeDeploymentRecord(snap Snapshot, reftag string) *DeploymentRecord {
 	}
 }
 
-// serializeResourceDeployment turns a resource into a CocoGL data structure suitable for serialization.
-func serializeResourceDeployment(res Resource, reftag string) *ResourceDeployment {
+// serializeDeployment turns a resource into a CocoGL data structure suitable for serialization.
+func serializeDeployment(res Resource, reftag string) *Deployment {
 	contract.Assert(res != nil)
 
 	// Only serialize the ID if it is non-empty.
@@ -89,7 +89,7 @@ func serializeResourceDeployment(res Resource, reftag string) *ResourceDeploymen
 		props = &result
 	}
 
-	return &ResourceDeployment{
+	return &Deployment{
 		ID:         idp,
 		Type:       res.Type(),
 		Properties: props,
@@ -191,29 +191,29 @@ func deserializeProperty(v interface{}, reftag string) PropertyValue {
 	return NewPropertyNull()
 }
 
-// ResourceDeploymentMap is a map of URN to resource, that also preserves a stable order of its keys.  This ensures
+// DeploymentMap is a map of URN to resource, that also preserves a stable order of its keys.  This ensures
 // enumerations are ordered deterministically, versus Go's built-in map type whose enumeration is randomized.
 // Additionally, because of this stable ordering, marshaling to and from JSON also preserves the order of keys.
-type ResourceDeploymentMap struct {
-	m    map[URN]*ResourceDeployment
+type DeploymentMap struct {
+	m    map[URN]*Deployment
 	keys []URN
 }
 
-func NewResourceDeploymentMap() *ResourceDeploymentMap {
-	return &ResourceDeploymentMap{m: make(map[URN]*ResourceDeployment)}
+func NewDeploymentMap() *DeploymentMap {
+	return &DeploymentMap{m: make(map[URN]*Deployment)}
 }
 
-func (m *ResourceDeploymentMap) Keys() []URN { return m.keys }
-func (m *ResourceDeploymentMap) Len() int    { return len(m.keys) }
+func (m *DeploymentMap) Keys() []URN { return m.keys }
+func (m *DeploymentMap) Len() int    { return len(m.keys) }
 
-func (m *ResourceDeploymentMap) Add(k URN, v *ResourceDeployment) {
+func (m *DeploymentMap) Add(k URN, v *Deployment) {
 	_, has := m.m[k]
 	contract.Assertf(!has, "Unexpected duplicate key '%v' added to map")
 	m.m[k] = v
 	m.keys = append(m.keys, k)
 }
 
-func (m *ResourceDeploymentMap) Delete(k URN) {
+func (m *DeploymentMap) Delete(k URN) {
 	_, has := m.m[k]
 	contract.Assertf(has, "Unexpected delete of non-existent key key '%v'")
 	delete(m.m, k)
@@ -227,29 +227,29 @@ func (m *ResourceDeploymentMap) Delete(k URN) {
 	}
 }
 
-func (m *ResourceDeploymentMap) Get(k URN) (*ResourceDeployment, bool) {
+func (m *DeploymentMap) Get(k URN) (*Deployment, bool) {
 	v, has := m.m[k]
 	return v, has
 }
 
-func (m *ResourceDeploymentMap) Has(k URN) bool {
+func (m *DeploymentMap) Has(k URN) bool {
 	_, has := m.m[k]
 	return has
 }
 
-func (m *ResourceDeploymentMap) Must(k URN) *ResourceDeployment {
+func (m *DeploymentMap) Must(k URN) *Deployment {
 	v, has := m.m[k]
 	contract.Assertf(has, "Expected key '%v' to exist in this map", k)
 	return v
 }
 
-func (m *ResourceDeploymentMap) Set(k URN, v *ResourceDeployment) {
+func (m *DeploymentMap) Set(k URN, v *Deployment) {
 	_, has := m.m[k]
 	contract.Assertf(has, "Expected key '%v' to exist in this map for setting an element", k)
 	m.m[k] = v
 }
 
-func (m *ResourceDeploymentMap) SetOrAdd(k URN, v *ResourceDeployment) {
+func (m *DeploymentMap) SetOrAdd(k URN, v *Deployment) {
 	if _, has := m.m[k]; has {
 		m.Set(k, v)
 	} else {
@@ -257,21 +257,21 @@ func (m *ResourceDeploymentMap) SetOrAdd(k URN, v *ResourceDeployment) {
 	}
 }
 
-type ResourceDeploymentKeyValue struct {
+type DeploymentKeyValue struct {
 	Key   URN
-	Value *ResourceDeployment
+	Value *Deployment
 }
 
 // Iter can be used to conveniently range over a map's contents stably.
-func (m *ResourceDeploymentMap) Iter() []ResourceDeploymentKeyValue {
-	var kvps []ResourceDeploymentKeyValue
+func (m *DeploymentMap) Iter() []DeploymentKeyValue {
+	var kvps []DeploymentKeyValue
 	for _, k := range m.Keys() {
-		kvps = append(kvps, ResourceDeploymentKeyValue{k, m.Must(k)})
+		kvps = append(kvps, DeploymentKeyValue{k, m.Must(k)})
 	}
 	return kvps
 }
 
-func (m *ResourceDeploymentMap) MarshalJSON() ([]byte, error) {
+func (m *DeploymentMap) MarshalJSON() ([]byte, error) {
 	var b bytes.Buffer
 	b.WriteString("{")
 	for i, k := range m.Keys() {
@@ -297,9 +297,9 @@ func (m *ResourceDeploymentMap) MarshalJSON() ([]byte, error) {
 	return b.Bytes(), nil
 }
 
-func (m *ResourceDeploymentMap) UnmarshalJSON(b []byte) error {
+func (m *DeploymentMap) UnmarshalJSON(b []byte) error {
 	contract.Assert(m.m == nil)
-	m.m = make(map[URN]*ResourceDeployment)
+	m.m = make(map[URN]*Deployment)
 
 	// Do a pass and read keys and values in the right order.
 	rdr := bytes.NewReader(b)
@@ -313,7 +313,7 @@ func (m *ResourceDeploymentMap) UnmarshalJSON(b []byte) error {
 	}
 	contract.Assert(opencurly.(json.Delim) == '{')
 
-	// Parse out every resource key (URN) and element (*ResourceDeployment):
+	// Parse out every resource key (URN) and element (*Deployment):
 	for dec.More() {
 		// See if we've reached the closing '}'; if yes, chew on it and break.
 		token, err := dec.Token()
@@ -327,7 +327,7 @@ func (m *ResourceDeploymentMap) UnmarshalJSON(b []byte) error {
 
 		k := URN(token.(string))
 		contract.Assert(dec.More())
-		var v *ResourceDeployment
+		var v *Deployment
 		if err := dec.Decode(&v); err != nil {
 			return err
 		}

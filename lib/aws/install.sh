@@ -4,13 +4,13 @@
 set -e                    # bail on errors
 
 echo Compiling:
-cocojs                    # compile the Nut
+cocojs                    # compile the package
 pushd provider/ &&        # compile the resource provider
     go build -o ../.coconut/bin/coco-resource-aws &&
     popd
 
 echo Verifying:
-coconut pack verify       # ensure the package verifies
+coco pack verify          # ensure the package verifies
 
 echo Sharing NPM links:
 yarn link                 # let NPM references resolve easily.

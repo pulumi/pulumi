@@ -1,0 +1,520 @@
+{
+    "name": "reexport",
+    "modules": {
+        "other": {
+            "kind": "Module",
+            "name": {
+                "kind": "Identifier",
+                "ident": "other"
+            },
+            "exports": {
+                "C": {
+                    "kind": "Export",
+                    "name": {
+                        "kind": "Identifier",
+                        "ident": "C",
+                        "loc": {
+                            "file": "other.ts",
+                            "start": {
+                                "line": 1,
+                                "column": 14
+                            },
+                            "end": {
+                                "line": 1,
+                                "column": 15
+                            }
+                        }
+                    },
+                    "referent": {
+                        "kind": "Token",
+                        "tok": "reexport:other:C",
+                        "loc": {
+                            "file": "other.ts",
+                            "start": {
+                                "line": 1,
+                                "column": 14
+                            },
+                            "end": {
+                                "line": 1,
+                                "column": 15
+                            }
+                        }
+                    },
+                    "loc": {
+                        "file": "other.ts",
+                        "start": {
+                            "line": 1,
+                            "column": 1
+                        },
+                        "end": {
+                            "line": 1,
+                            "column": 18
+                        }
+                    }
+                },
+                "I": {
+                    "kind": "Export",
+                    "name": {
+                        "kind": "Identifier",
+                        "ident": "I",
+                        "loc": {
+                            "file": "other.ts",
+                            "start": {
+                                "line": 2,
+                                "column": 18
+                            },
+                            "end": {
+                                "line": 2,
+                                "column": 19
+                            }
+                        }
+                    },
+                    "referent": {
+                        "kind": "Token",
+                        "tok": "reexport:other:I",
+                        "loc": {
+                            "file": "other.ts",
+                            "start": {
+                                "line": 2,
+                                "column": 18
+                            },
+                            "end": {
+                                "line": 2,
+                                "column": 19
+                            }
+                        }
+                    },
+                    "loc": {
+                        "file": "other.ts",
+                        "start": {
+                            "line": 2,
+                            "column": 1
+                        },
+                        "end": {
+                            "line": 2,
+                            "column": 22
+                        }
+                    }
+                },
+                "v": {
+                    "kind": "Export",
+                    "name": {
+                        "kind": "Identifier",
+                        "ident": "v",
+                        "loc": {
+                            "file": "other.ts",
+                            "start": {
+                                "line": 3,
+                                "column": 12
+                            },
+                            "end": {
+                                "line": 3,
+                                "column": 13
+                            }
+                        }
+                    },
+                    "referent": {
+                        "kind": "Token",
+                        "tok": "reexport:other:v",
+                        "loc": {
+                            "file": "other.ts",
+                            "start": {
+                                "line": 3,
+                                "column": 12
+                            },
+                            "end": {
+                                "line": 3,
+                                "column": 13
+                            }
+                        }
+                    },
+                    "loc": {
+                        "file": "other.ts",
+                        "start": {
+                            "line": 3,
+                            "column": 1
+                        },
+                        "end": {
+                            "line": 3,
+                            "column": 19
+                        }
+                    }
+                }
+            },
+            "members": {
+                "C": {
+                    "kind": "Class",
+                    "name": {
+                        "kind": "Identifier",
+                        "ident": "C",
+                        "loc": {
+                            "file": "other.ts",
+                            "start": {
+                                "line": 1,
+                                "column": 14
+                            },
+                            "end": {
+                                "line": 1,
+                                "column": 15
+                            }
+                        }
+                    },
+                    "members": {},
+                    "abstract": false,
+                    "loc": {
+                        "file": "other.ts",
+                        "start": {
+                            "line": 1,
+                            "column": 1
+                        },
+                        "end": {
+                            "line": 1,
+                            "column": 18
+                        }
+                    }
+                },
+                "I": {
+                    "kind": "Class",
+                    "name": {
+                        "kind": "Identifier",
+                        "ident": "I",
+                        "loc": {
+                            "file": "other.ts",
+                            "start": {
+                                "line": 2,
+                                "column": 18
+                            },
+                            "end": {
+                                "line": 2,
+                                "column": 19
+                            }
+                        }
+                    },
+                    "members": {},
+                    "interface": true,
+                    "record": true,
+                    "loc": {
+                        "file": "other.ts",
+                        "start": {
+                            "line": 2,
+                            "column": 1
+                        },
+                        "end": {
+                            "line": 2,
+                            "column": 22
+                        }
+                    }
+                },
+                "v": {
+                    "kind": "ModuleProperty",
+                    "name": {
+                        "kind": "Identifier",
+                        "ident": "v",
+                        "loc": {
+                            "file": "other.ts",
+                            "start": {
+                                "line": 3,
+                                "column": 12
+                            },
+                            "end": {
+                                "line": 3,
+                                "column": 13
+                            }
+                        }
+                    },
+                    "type": {
+                        "kind": "TypeToken",
+                        "tok": "number",
+                        "loc": {
+                            "file": "other.ts",
+                            "start": {
+                                "line": 3,
+                                "column": 12
+                            },
+                            "end": {
+                                "line": 3,
+                                "column": 18
+                            }
+                        }
+                    }
+                },
+                ".init": {
+                    "kind": "ModuleMethod",
+                    "name": {
+                        "kind": "Identifier",
+                        "ident": ".init"
+                    },
+                    "body": {
+                        "kind": "Block",
+                        "statements": [
+                            {
+                                "kind": "ExpressionStatement",
+                                "expression": {
+                                    "kind": "BinaryOperatorExpression",
+                                    "left": {
+                                        "kind": "LoadLocationExpression",
+                                        "name": {
+                                            "kind": "Token",
+                                            "tok": "reexport:other:v",
+                                            "loc": {
+                                                "file": "other.ts",
+                                                "start": {
+                                                    "line": 3,
+                                                    "column": 12
+                                                },
+                                                "end": {
+                                                    "line": 3,
+                                                    "column": 13
+                                                }
+                                            }
+                                        },
+                                        "loc": {
+                                            "file": "other.ts",
+                                            "start": {
+                                                "line": 3,
+                                                "column": 16
+                                            },
+                                            "end": {
+                                                "line": 3,
+                                                "column": 18
+                                            }
+                                        }
+                                    },
+                                    "operator": "=",
+                                    "right": {
+                                        "kind": "NumberLiteral",
+                                        "raw": "42",
+                                        "value": 42,
+                                        "loc": {
+                                            "file": "other.ts",
+                                            "start": {
+                                                "line": 3,
+                                                "column": 16
+                                            },
+                                            "end": {
+                                                "line": 3,
+                                                "column": 18
+                                            }
+                                        }
+                                    },
+                                    "loc": {
+                                        "file": "other.ts",
+                                        "start": {
+                                            "line": 3,
+                                            "column": 16
+                                        },
+                                        "end": {
+                                            "line": 3,
+                                            "column": 18
+                                        }
+                                    }
+                                },
+                                "loc": {
+                                    "file": "other.ts",
+                                    "start": {
+                                        "line": 3,
+                                        "column": 16
+                                    },
+                                    "end": {
+                                        "line": 3,
+                                        "column": 18
+                                    }
+                                }
+                            }
+                        ]
+                    }
+                },
+                ".main": {
+                    "kind": "ModuleMethod",
+                    "name": {
+                        "kind": "Identifier",
+                        "ident": ".main"
+                    },
+                    "body": {
+                        "kind": "Block",
+                        "statements": []
+                    }
+                }
+            },
+            "loc": {
+                "file": "other.ts",
+                "start": {
+                    "line": 1,
+                    "column": 1
+                },
+                "end": {
+                    "line": 5,
+                    "column": 1
+                }
+            }
+        },
+        "index": {
+            "kind": "Module",
+            "name": {
+                "kind": "Identifier",
+                "ident": "index"
+            },
+            "exports": {
+                "C": {
+                    "kind": "Export",
+                    "name": {
+                        "kind": "Identifier",
+                        "ident": "C",
+                        "loc": {
+                            "file": "index.ts",
+                            "start": {
+                                "line": 1,
+                                "column": 9
+                            },
+                            "end": {
+                                "line": 1,
+                                "column": 10
+                            }
+                        }
+                    },
+                    "referent": {
+                        "kind": "Token",
+                        "tok": "reexport:other:C",
+                        "loc": {
+                            "file": "index.ts",
+                            "start": {
+                                "line": 1,
+                                "column": 9
+                            },
+                            "end": {
+                                "line": 1,
+                                "column": 10
+                            }
+                        }
+                    },
+                    "loc": {
+                        "file": "index.ts",
+                        "start": {
+                            "line": 1,
+                            "column": 9
+                        },
+                        "end": {
+                            "line": 1,
+                            "column": 10
+                        }
+                    }
+                },
+                "I": {
+                    "kind": "Export",
+                    "name": {
+                        "kind": "Identifier",
+                        "ident": "I",
+                        "loc": {
+                            "file": "index.ts",
+                            "start": {
+                                "line": 1,
+                                "column": 12
+                            },
+                            "end": {
+                                "line": 1,
+                                "column": 13
+                            }
+                        }
+                    },
+                    "referent": {
+                        "kind": "Token",
+                        "tok": "reexport:other:I",
+                        "loc": {
+                            "file": "index.ts",
+                            "start": {
+                                "line": 1,
+                                "column": 12
+                            },
+                            "end": {
+                                "line": 1,
+                                "column": 13
+                            }
+                        }
+                    },
+                    "loc": {
+                        "file": "index.ts",
+                        "start": {
+                            "line": 1,
+                            "column": 12
+                        },
+                        "end": {
+                            "line": 1,
+                            "column": 13
+                        }
+                    }
+                },
+                "v": {
+                    "kind": "Export",
+                    "name": {
+                        "kind": "Identifier",
+                        "ident": "v",
+                        "loc": {
+                            "file": "index.ts",
+                            "start": {
+                                "line": 1,
+                                "column": 15
+                            },
+                            "end": {
+                                "line": 1,
+                                "column": 16
+                            }
+                        }
+                    },
+                    "referent": {
+                        "kind": "Token",
+                        "tok": "reexport:other:v",
+                        "loc": {
+                            "file": "index.ts",
+                            "start": {
+                                "line": 1,
+                                "column": 15
+                            },
+                            "end": {
+                                "line": 1,
+                                "column": 16
+                            }
+                        }
+                    },
+                    "loc": {
+                        "file": "index.ts",
+                        "start": {
+                            "line": 1,
+                            "column": 15
+                        },
+                        "end": {
+                            "line": 1,
+                            "column": 16
+                        }
+                    }
+                }
+            },
+            "members": {
+                ".main": {
+                    "kind": "ModuleMethod",
+                    "name": {
+                        "kind": "Identifier",
+                        "ident": ".main"
+                    },
+                    "body": {
+                        "kind": "Block",
+                        "statements": []
+                    }
+                }
+            },
+            "loc": {
+                "file": "index.ts",
+                "start": {
+                    "line": 1,
+                    "column": 1
+                },
+                "end": {
+                    "line": 3,
+                    "column": 1
+                }
+            }
+        }
+    },
+    "aliases": {
+        ".default": "index"
+    }
+}

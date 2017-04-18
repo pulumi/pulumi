@@ -2,7 +2,7 @@
 
 import * as aws from "@coconut/aws";
 
-let webGroup = new aws.ec2.SecurityGroup("web-secgrp", {
+let group = new aws.ec2.SecurityGroup("web-secgrp", {
     groupDescription: "Enable HTTP access",
     securityGroupIngress: [
         { ipProtocol: "tcp", fromPort: 80, toPort: 80, cidrIp: "0.0.0.0/0" },
@@ -12,11 +12,11 @@ let webGroup = new aws.ec2.SecurityGroup("web-secgrp", {
 export class Server {
     public readonly instance: aws.ec2.Instance;
 
-    constructor(name: string, instanceType: aws.ec2.InstanceType) {
+    constructor(name: string, size: aws.ec2.InstanceType) {
         this.instance = new aws.ec2.Instance("web-server-" + name, {
-            instanceType: instanceType,
-            securityGroups: [ webGroup ],
-            imageId: aws.ec2.getLinuxAMI(instanceType),
+            instanceType: size,
+            securityGroups: [ group ],
+            imageId: aws.ec2.getLinuxAMI(size),
         });
     }
 }

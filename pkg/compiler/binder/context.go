@@ -305,7 +305,6 @@ func (ctx *Context) LookupFunctionType(node ast.Function) *symbols.FunctionType 
 
 // lookupBasicType handles decorated types (pointers, arrays, maps, functions) and primitives.
 func (ctx *Context) lookupBasicType(node diag.Diagable, tok tokens.Type, require bool) symbols.Type {
-	contract.Require(node != nil, "node")
 	contract.Requiref(tok.Primitive() || tok.Decorated(), "tok", "Primitive() || Decorated()")
 
 	// If a pointer, parse it, bind the element type, and create a new pointer type.
@@ -401,7 +400,7 @@ func (ctx *Context) RequireToken(node ast.Node, tok tokens.Token) symbols.Symbol
 	return nil
 }
 
-// LookupClassMember takes a class member token and binds it to a member of the class symbol.  The type of the class
+// RequireClassMember takes a class member token and binds it to a member of the class symbol.  The type of the class
 // must match the class part of the token expression and the member must be found.  If not, a verification error occurs.
 func (ctx *Context) RequireClassMember(node ast.Node,
 	class symbols.Type, tok tokens.ClassMember) symbols.ClassMember {
@@ -441,7 +440,7 @@ func (ctx *Context) RequireDefinition(node ast.Definition) symbols.Symbol {
 	return sym
 }
 
-// RegisterDefinition registers a definition's symbol.
+// RegisterSymbol registers a definition's symbol.
 func (ctx *Context) RegisterSymbol(node ast.Definition, sym symbols.Symbol) {
 	contract.Require(node != nil, "node")
 	contract.Require(sym != nil, "sym")

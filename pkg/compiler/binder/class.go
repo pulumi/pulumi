@@ -6,6 +6,7 @@ import (
 	"github.com/golang/glog"
 
 	"github.com/pulumi/coconut/pkg/compiler/ast"
+	"github.com/pulumi/coconut/pkg/compiler/errors"
 	"github.com/pulumi/coconut/pkg/compiler/symbols"
 	"github.com/pulumi/coconut/pkg/util/contract"
 )
@@ -37,6 +38,17 @@ func (b *binder) bindClassDefinition(class *symbols.Class) {
 	}
 
 	b.bindClassMembers(class)
+
+	if class.Ctor() == nil {
+		// If there is no ctor defined, ensure that all base classes have no ctor also.
+		ext := class.Extends
+		for ext != nil {
+			if ext.Ctor() != nil {
+				b.Diag().Errorf(errors.ErrorDerivedClassHasNoCtor.At(class.Node), class, ext)
+			}
+			ext = ext.Base()
+		}
+	}
 }
 
 func (b *binder) bindClassMembers(class *symbols.Class) {

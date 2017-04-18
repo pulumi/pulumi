@@ -106,22 +106,24 @@ func (b *binder) resolveDep(dep pack.PackageURL) *symbols.ResolvedPackage {
 	// return a number of them, in preferred order, and we simply probe each one until we find something.
 	locs := b.w.DepCandidates(dep)
 	for _, loc := range locs {
-		// See if this candidate actually exists.
-		isCocopack := workspace.IsCocopack(loc, b.Diag())
-		glog.V(5).Infof("Probing for dependency '%v' at '%v': isCocopack=%v", dep, loc, isCocopack)
+		// See if this candidate package actually exists.
+		isPack := workspace.IsPack(loc, b.Diag())
+		glog.V(5).Infof("Probing for dependency '%v' at '%v': isPack=%v", dep, loc, isPack)
 
 		// If it does, go ahead and read it in, and bind it (recursively).
-		if isCocopack {
+		if isPack {
 			// Read in the package AST.
 			doc, err := diag.ReadDocument(loc)
 			if err != nil {
-				b.Diag().Errorf(errors.ErrorCouldNotReadCocofile.AtFile(loc), err)
+				b.Diag().Errorf(errors.ErrorCouldNotReadPackage.AtFile(loc), err)
 				return nil
 			}
-			pkg := b.reader.ReadPackage(doc)
-
-			// Now perform the binding and return it.
-			return b.resolveBindPackage(pkg, dep)
+			if pkg := b.reader.ReadPackage(doc); pkg != nil {
+				// Now perform the binding and return it.
+				return b.resolveBindPackage(pkg, dep)
+			}
+			contract.Assert(!b.Diag().Success())
+			return nil
 		}
 	}
 

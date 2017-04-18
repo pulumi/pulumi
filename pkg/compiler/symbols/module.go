@@ -13,7 +13,6 @@ type Module struct {
 	Node    *ast.Module
 	Parent  *Package
 	Tok     tokens.Module
-	Imports Modules
 	Exports ModuleExportMap
 	Members ModuleMemberMap
 }
@@ -43,7 +42,6 @@ func NewModuleSym(node *ast.Module, parent *Package) *Module {
 		Node:    node,
 		Parent:  parent,
 		Tok:     tokens.NewModuleToken(parent.Tok, tokens.ModuleName(node.Name.Ident)),
-		Imports: make(Modules, 0),
 		Exports: make(ModuleExportMap),
 		Members: make(ModuleMemberMap),
 	}
@@ -171,7 +169,8 @@ func (node *ModuleMethod) Token() tokens.Token {
 		),
 	)
 }
-func (node *ModuleMethod) Special() bool                { return node.MemberName() == tokens.ModuleInitFunction }
+func (node *ModuleMethod) Special() bool                { return node.SpecialModInit() }
+func (node *ModuleMethod) SpecialModInit() bool         { return node.MemberName() == tokens.ModuleInitFunction }
 func (node *ModuleMethod) Tree() diag.Diagable          { return node.Node }
 func (node *ModuleMethod) MemberNode() ast.ModuleMember { return node.Node }
 func (node *ModuleMethod) MemberName() tokens.ModuleMemberName {

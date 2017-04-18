@@ -110,24 +110,8 @@ func (b *binder) bindModuleExports(module *symbols.Module) {
 }
 
 func (b *binder) bindModuleDefinitions(module *symbols.Module) {
-	// Now we can bind module imports.
-	b.bindModuleImports(module)
-
 	// And finish binding the members themselves.
 	b.bindModuleMemberDefinitions(module)
-}
-
-// bindModuleImports binds module import tokens to their symbols.  This is done as a second pass just in case there are
-// inter-module dependencies.
-func (b *binder) bindModuleImports(module *symbols.Module) {
-	// Now bind all imports to concrete symbols: these are simple token bindings.
-	if module.Node.Imports != nil {
-		for _, imptok := range *module.Node.Imports {
-			if imp := b.ctx.LookupModule(imptok); imp != nil {
-				module.Imports = append(module.Imports, imp)
-			}
-		}
-	}
 }
 
 // bindModuleMemberDefinitions finishes binding module members, by doing lookups sensitive to the definition pass.

@@ -78,14 +78,6 @@ func New(path string, opts *core.Options) (Compiler, error) {
 		return nil, fmt.Errorf("cannot proceed without a workspace")
 	}
 
-	// If there's a workspace-wide settings file available, load it and parse it.
-	wdoc, err := w.ReadSettings()
-	if err != nil {
-		d.Errorf(errors.ErrorIO, err)
-	} else if wdoc != nil {
-		*w.Settings() = *reader.ReadWorkspace(wdoc)
-	}
-
 	// And finally return the freshly allocated compiler object.
 	return &compiler{
 		w:      w,
@@ -212,7 +204,7 @@ func (c *compiler) detectPackage() string {
 		return ""
 	}
 	if path == "" {
-		c.Diag().Errorf(errors.ErrorMissingCocofile, c.ctx.Path)
+		c.Diag().Errorf(errors.ErrorMissingProject, c.ctx.Path)
 		return ""
 	}
 	return path
@@ -222,7 +214,7 @@ func (c *compiler) detectPackage() string {
 func (c *compiler) readPackage(path string) *pack.Package {
 	doc, err := diag.ReadDocument(path)
 	if err != nil {
-		c.Diag().Errorf(errors.ErrorCouldNotReadCocofile.AtFile(path), err)
+		c.Diag().Errorf(errors.ErrorCouldNotReadProject.AtFile(path), err)
 		return nil
 	}
 	return c.reader.ReadPackage(doc)

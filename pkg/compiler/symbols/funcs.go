@@ -11,6 +11,7 @@ type Function interface {
 	Symbol
 	Function() ast.Function
 	Signature() *FunctionType
+	SpecialModInit() bool // true if this is a module initializer.
 }
 
 var _ Symbol = (Function)(nil)

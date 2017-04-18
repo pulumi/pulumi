@@ -30,15 +30,15 @@ type Provider interface {
 	// In any case, resources with the same name must be safe to use interchangeably with one another.
 	Name(t tokens.Type, props PropertyMap) (tokens.QName, error)
 	// Create allocates a new instance of the provided resource and returns its unique ID afterwards.
-	Create(t tokens.Type, props PropertyMap) (ID, error, ResourceState)
+	Create(t tokens.Type, props PropertyMap) (ID, State, error)
 	// Read reads the instance state identified by id/t, and returns a bag of properties.
 	Read(id ID, t tokens.Type) (PropertyMap, error)
 	// Update updates an existing resource with new values.
-	Update(id ID, t tokens.Type, olds PropertyMap, news PropertyMap) (error, ResourceState)
+	Update(id ID, t tokens.Type, olds PropertyMap, news PropertyMap) (State, error)
 	// UpdateImpact checks what impacts a hypothetical update will have on the resource's properties.
 	UpdateImpact(id ID, t tokens.Type, olds PropertyMap, news PropertyMap) ([]string, PropertyMap, error)
 	// Delete tears down an existing resource.
-	Delete(id ID, t tokens.Type) (error, ResourceState)
+	Delete(id ID, t tokens.Type) (State, error)
 }
 
 // CheckFailure indicates that a call to check failed; it contains the property and reason for the failure.

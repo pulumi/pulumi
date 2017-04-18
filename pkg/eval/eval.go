@@ -58,7 +58,7 @@ func New(ctx *binder.Context, hooks InterpreterHooks) Interpreter {
 		ctx:        ctx,
 		hooks:      hooks,
 		alloc:      NewAllocator(hooks),
-		globals:    make(globalMap),
+		modules:    make(moduleMap),
 		statics:    make(staticMap),
 		protos:     make(prototypeMap),
 		modinits:   make(modinitMap),
@@ -74,16 +74,16 @@ type evaluator struct {
 	ctx        *binder.Context  // the binding context with type and symbol information.
 	hooks      InterpreterHooks // callbacks that hook into interpreter events.
 	alloc      *Allocator       // the object allocator.
-	globals    globalMap        // the object values for global variable symbols.
+	modules    moduleMap        // the current module objects for all modules.
 	statics    staticMap        // the object values for all static variable symbols.
-	protos     prototypeMap     // the current "prototypes" for all classes.
+	protos     prototypeMap     // the current "prototype" objects for all classes.
 	stack      *rt.StackFrame   // a stack of frames to keep track of calls.
-	locals     *localScope      // local variable values scoped by the lexical structure.
+	locals     *localScope      // variable values corresponding to the current lexical scope.
 	modinits   modinitMap       // a map of which modules have been initialized already.
 	classinits classinitMap     // a map of which classes have been initialized already.
 }
 
-type globalMap map[*symbols.Module]rt.PropertyMap
+type moduleMap map[*symbols.Module]*rt.Object
 type staticMap map[*symbols.Class]rt.PropertyMap
 type prototypeMap map[symbols.Type]*rt.Object
 type modinitMap map[*symbols.Module]bool
@@ -249,8 +249,8 @@ func (e *evaluator) dumpEvalState(v glog.Level) {
 
 // initProperty initializes a property entry in the given map, using an optional `this` pointer for member functions.
 // It returns the resulting pointer along with a boolean to indicate whether the property was left unfrozen.
-func (e *evaluator) initProperty(this *rt.Object, properties rt.PropertyMap, sym symbols.Symbol) (*rt.Pointer, bool) {
-	k := rt.PropertyKey(sym.Name())
+func (e *evaluator) initProperty(this *rt.Object, properties rt.PropertyMap,
+	key rt.PropertyKey, sym symbols.Symbol) (*rt.Pointer, bool) {
 	switch m := sym.(type) {
 	case symbols.Function:
 		// A function results in a closure object referring to `this`, if any.
@@ -258,10 +258,10 @@ func (e *evaluator) initProperty(this *rt.Object, properties rt.PropertyMap, sym
 		decl := m.Tree()
 		obj := e.alloc.NewFunction(decl, m, this)
 		if this != nil && e.hooks != nil {
-			e.hooks.OnVariableAssign(decl, this, tokens.Name(k), nil, obj)
+			e.hooks.OnVariableAssign(decl, this, tokens.Name(key), nil, obj)
 		}
 		fnc := e.alloc.NewFunction(decl, m, this)
-		return properties.InitAddr(k, fnc, true), false
+		return properties.InitAddr(key, fnc, true), false
 	case symbols.Variable:
 		// A variable could have a default object; if so, use that; otherwise, null will be substituted automatically.
 		var obj *rt.Object
@@ -269,17 +269,21 @@ func (e *evaluator) initProperty(this *rt.Object, properties rt.PropertyMap, sym
 			decl := m.Tree()
 			obj = e.alloc.NewConstant(decl, *m.Default())
 			if this != nil && e.hooks != nil {
-				e.hooks.OnVariableAssign(decl, this, tokens.Name(k), nil, obj)
+				e.hooks.OnVariableAssign(decl, this, tokens.Name(key), nil, obj)
 			}
 		}
-		ptr := properties.InitAddr(k, obj, false)
+		ptr := properties.InitAddr(key, obj, false)
 		return ptr, m.Readonly()
+	case *symbols.Module:
+		// A module resolves to its module object.
+		modobj := e.getModuleObject(m)
+		return properties.InitAddr(key, modobj, false), false
 	case *symbols.Class:
 		// A class resolves to its prototype object.
-		proto := e.getPrototype(m)
-		return properties.InitAddr(k, proto, false), false
+		proto := e.getPrototypeObject(m)
+		return properties.InitAddr(key, proto, false), false
 	default:
-		contract.Failf("Unrecognized property '%v' symbol type: %v", k, reflect.TypeOf(sym))
+		contract.Failf("Unrecognized property '%v' symbol type: %v", key, reflect.TypeOf(sym))
 		return nil, false
 	}
 }
@@ -306,9 +310,10 @@ func (e *evaluator) ensureClassInit(class *symbols.Class) {
 		var current symbols.Type = class
 		for current != nil {
 			members := current.TypeMembers()
-			for _, member := range symbols.StableClassMemberMap(members) {
-				if m := members[member]; m.Static() {
-					if ptr, readonly := e.initProperty(nil, statics, m); readonly {
+			for _, name := range symbols.StableClassMemberMap(members) {
+				if member := members[name]; member.Static() {
+					key := rt.PropertyKey(name)
+					if ptr, readonly := e.initProperty(nil, statics, key, member); readonly {
 						// Readonly properties are unfrozen during initialization; afterwards, they will be frozen.
 						readonlines = append(readonlines, ptr)
 					}
@@ -348,16 +353,13 @@ func (e *evaluator) ensureModuleInit(mod *symbols.Module) {
 	e.modinits[mod] = true // set true before running, in case of cycles.
 
 	if !already {
-		// First ensure all imported module initializers are run, in the order in which they were given.
-		for _, imp := range mod.Imports {
-			e.ensureModuleInit(imp)
-		}
-
 		// Populate all properties in this module, even if they will be empty for now.
 		var readonlines []*rt.Pointer
 		globals := e.getModuleGlobals(mod)
-		for _, member := range symbols.StableModuleMemberMap(mod.Members) {
-			if ptr, readonly := e.initProperty(nil, globals, mod.Members[member]); readonly {
+		for _, name := range symbols.StableModuleMemberMap(mod.Members) {
+			key := rt.PropertyKey(name)
+			member := mod.Members[name]
+			if ptr, readonly := e.initProperty(nil, globals.Properties(), key, member); readonly {
 				// If this property was left unfrozen, be sure to remember it for freezing after we're done.
 				readonlines = append(readonlines, ptr)
 			}
@@ -385,32 +387,65 @@ func (e *evaluator) ensureModuleInit(mod *symbols.Module) {
 	}
 }
 
-// getModuleGlobals returns a module's globals, lazily initializing if needed.
-func (e *evaluator) getModuleGlobals(module *symbols.Module) rt.PropertyMap {
-	globals, has := e.globals[module]
-	if !has {
-		globals = make(rt.PropertyMap)
-		e.globals[module] = globals
+// getModuleGlobals returns a globals table for the given module, lazily initializing if needed.
+func (e *evaluator) getModuleGlobals(module *symbols.Module) *rt.Object {
+	// If there's an existing globals object, return it.
+	if globals, has := e.modules[module]; has {
+		return globals
 	}
+
+	// Otherwise, we need to create a fresh module object.  This is laid out in a very specific way to facilitate
+	// information hiding.  There are two objects: 1) the super (prototype) object, containing the full set of exported
+	// variables, facilitating dynamic access; and 2) the child object, whose map contains all the globals, etc. that
+	// are not exported for use outside of the module itself.  We access one or the other as appropriate.
+
+	// First, create the super object, with all of the exports.
+	proto := e.alloc.New(module.Tree(), symbols.NewModuleType(module), nil, nil)
+	props := proto.Properties()
+	for _, name := range symbols.StableModuleExportMap(module.Exports) {
+		key := rt.PropertyKey(name)
+		if props.GetAddr(key, false) == nil {
+			exp := module.Exports[name]
+			e.initProperty(proto, props, key, e.chaseExports(exp))
+		}
+	}
+
+	// Next, create the childmost object and link its parent to the proto.
+	globals := e.alloc.New(module.Tree(), symbols.NewModuleType(module), nil, proto)
+
+	// Memoize the result and return it.
+	e.modules[module] = globals
 	return globals
 }
 
-// getClassStatics returns a statics table, lazily initializing if needed.
+// getClassStatics returns a statics table for the given class, lazily initializing if needed.
 func (e *evaluator) getClassStatics(class *symbols.Class) rt.PropertyMap {
 	statics, has := e.statics[class]
 	if !has {
+		// TODO: consider merging the class statics representation with the prototype object representation.
 		statics = make(rt.PropertyMap)
 		e.statics[class] = statics
 	}
 	return statics
 }
 
-// getPrototype returns the prototype for a given type.  The prototype is a mutable object, and so it is cached, and
-// reused for subsequent lookups.  This means that mutations in the prototype are lasting and visible for all later
+// getModuleObject returns a module object for the given module.  This object contains all exported members through
+// properties.  This is a mutable object, and so is cached and reused for subsequent lookups.
+func (e *evaluator) getModuleObject(m *symbols.Module) *rt.Object {
+	// To get the module object, simply fetch the globals.  The super proto class of the globals will contain only the
+	// exported variables, which is suitable for returning to code on the import side.
+	globals := e.getModuleGlobals(m)
+	contract.Assert(globals != nil)
+	contract.Assert(globals.Proto() != nil)
+	return globals.Proto()
+}
+
+// getPrototypeObject returns the prototype for a given type.  The prototype is a mutable object, and so it is cached,
+// and reused for subsequent lookups.  This means that mutations in the prototype are lasting and visible for all later
 // uses.  This is similar to ECMAScript behavior; see http://www.ecma-international.org/ecma-262/6.0/#sec-objects.
 // TODO[pulumi/coconut#70]: technically this should be gotten from the constructor function object; we will need to
 //     rewire things a bit, depending on how serious we are about ECMAScript compliance, especially dynamic scenarios.
-func (e *evaluator) getPrototype(t symbols.Type) *rt.Object {
+func (e *evaluator) getPrototypeObject(t symbols.Type) *rt.Object {
 	// If there is already a proto for this type, use it.
 	if proto, has := e.protos[t]; has {
 		return proto
@@ -419,17 +454,17 @@ func (e *evaluator) getPrototype(t symbols.Type) *rt.Object {
 	// If not, we need to create a new one.  First, fetch the base if there is one.
 	var base *rt.Object
 	if t.Base() != nil {
-		base = e.getPrototype(t.Base())
+		base = e.getPrototypeObject(t.Base())
 	}
 
 	// Now populate the prototype object with all members.
 	proto := e.alloc.New(t.Tree(), symbols.NewPrototypeType(t), nil, base)
-	e.addPrototypeMembers(proto, t.TypeMembers(), true)
+	e.addPrototypeObjectMembers(proto, t.TypeMembers(), true)
 
 	// For any interfaces implemented by the type, type also ensure to add these as though they were members.
 	if class, isclass := t.(*symbols.Class); isclass {
 		for _, impl := range class.Implements {
-			e.addPrototypeInterfaceMembers(proto, impl)
+			e.addPrototypeObjectInterfaceMembers(proto, impl)
 		}
 	}
 
@@ -437,31 +472,31 @@ func (e *evaluator) getPrototype(t symbols.Type) *rt.Object {
 	return proto
 }
 
-// addPrototypeMembers adds a bag of members to a prototype (during initialization).
-func (e *evaluator) addPrototypeMembers(proto *rt.Object, members symbols.ClassMemberMap, must bool) {
+// addPrototypeObjectMembers adds a bag of members to a prototype (during initialization).
+func (e *evaluator) addPrototypeObjectMembers(proto *rt.Object, members symbols.ClassMemberMap, must bool) {
 	properties := proto.Properties()
-	for _, member := range symbols.StableClassMemberMap(members) {
-		if m := members[member]; !m.Static() {
-			k := rt.PropertyKey(m.Name())
-			if must || properties.GetAddr(k, false) == nil {
-				e.initProperty(proto, properties, m)
+	for _, name := range symbols.StableClassMemberMap(members) {
+		if member := members[name]; !member.Static() {
+			key := rt.PropertyKey(name)
+			if must || properties.GetAddr(key, false) == nil {
+				e.initProperty(proto, properties, key, member)
 			}
 		}
 	}
 }
 
-// addPrototypeInterfaceMembers ensures that interface members exist on the prototype (during initialization).
-func (e *evaluator) addPrototypeInterfaceMembers(proto *rt.Object, impl symbols.Type) {
+// addPrototypeObjectInterfaceMembers ensures that interface members exist on the prototype (during initialization).
+func (e *evaluator) addPrototypeObjectInterfaceMembers(proto *rt.Object, impl symbols.Type) {
 	// Add members from this type, but only so long as they don't already exist.
-	e.addPrototypeMembers(proto, impl.TypeMembers(), false)
+	e.addPrototypeObjectMembers(proto, impl.TypeMembers(), false)
 
 	// Now do the same for any base classes.
 	if base := impl.Base(); base != nil {
-		e.addPrototypeInterfaceMembers(proto, base)
+		e.addPrototypeObjectInterfaceMembers(proto, base)
 	}
 	if class, isclass := impl.(*symbols.Class); isclass {
 		for _, classimpl := range class.Implements {
-			e.addPrototypeInterfaceMembers(proto, classimpl)
+			e.addPrototypeObjectInterfaceMembers(proto, classimpl)
 		}
 	}
 }
@@ -469,7 +504,7 @@ func (e *evaluator) addPrototypeInterfaceMembers(proto *rt.Object, impl symbols.
 // newObject allocates a fresh object of the given type, wired up to its prototype.
 func (e *evaluator) newObject(tree diag.Diagable, t symbols.Type) *rt.Object {
 	// First, fetch the prototype chain for this object.  This is required to implement property chaining.
-	proto := e.getPrototype(t)
+	proto := e.getPrototypeObject(t)
 
 	// Now create an empty object of the desired type.  Subsequent operations will do the right thing with it.  E.g.,
 	// overwriting a property will add a new entry to the object's map; reading will search the prototpe chain; etc.
@@ -503,6 +538,18 @@ func (e *evaluator) issueUnhandledException(uw *rt.Unwind, err *diag.Diag, args 
 	e.Diag().Errorf(err, args...)
 }
 
+// pushModuleScope establishes a new module-wide scope.  It returns a function that restores the prior value.
+func (e *evaluator) pushModuleScope(m *symbols.Module) func() {
+	return e.ctx.PushModule(m)
+}
+
+// pushClassScope establishes a new class-wide scope.  This also establishes the right module context.  If the object
+// argument is non-nil, instance methods are also populated.  It returns a function that restores the prior value.
+func (e *evaluator) pushClassScope(c *symbols.Class, obj *rt.Object) func() {
+	contract.Assert(obj == nil || types.CanConvert(obj.Type(), c))
+	return e.ctx.PushClass(c)
+}
+
 // pushScope pushes a new local and context scope.  The frame argument indicates whether this is an activation frame,
 // meaning that searches for local variables will not probe into parent scopes (since they are inaccessible).
 func (e *evaluator) pushScope(frame *rt.StackFrame) {
@@ -534,7 +581,12 @@ func (e *evaluator) evalCall(node diag.Diagable, fnc symbols.Function,
 	switch f := fnc.(type) {
 	case *symbols.ClassMethod:
 		if f.Static() {
-			contract.Assert(this == nil)
+			if this != nil {
+				// A non-nil `this` is okay if we loaded this function from a prototype object.
+				prototy, isproto := this.Type().(*symbols.PrototypeType)
+				contract.Assert(isproto)
+				contract.Assert(prototy.Type == f.Parent)
+			}
 		} else {
 			contract.Assert(this != nil)
 			if uw := e.checkThis(node, this); uw != nil {
@@ -543,6 +595,13 @@ func (e *evaluator) evalCall(node diag.Diagable, fnc symbols.Function,
 			thisVariable = f.Parent.This
 			superVariable = f.Parent.Super
 		}
+	case *symbols.ModuleMethod:
+		if this != nil {
+			// A non-nil `this` is okay if we loaded this function from a module object.  Note that because modules can
+			// re-export members from other modules, we cannot require that the type's parent matches.
+			_, ismod := this.Type().(*symbols.ModuleType)
+			contract.Assert(ismod)
+		}
 	default:
 		contract.Assert(this == nil)
 	}
@@ -550,13 +609,13 @@ func (e *evaluator) evalCall(node diag.Diagable, fnc symbols.Function,
 	// Ensure that we enter the right module/class context, otherwise module-sensitive binding won't work.
 	switch f := fnc.(type) {
 	case *symbols.ClassMethod:
-		popm := e.ctx.PushModule(f.Parent.Parent)
-		defer popm()
-		popc := e.ctx.PushClass(f.Parent)
-		defer popc()
+		popModule := e.pushModuleScope(f.Parent.Parent)
+		defer popModule()
+		popClass := e.pushClassScope(f.Parent, this)
+		defer popClass()
 	case *symbols.ModuleMethod:
-		popm := e.ctx.PushModule(f.Parent)
-		defer popm()
+		popModule := e.pushModuleScope(f.Parent)
+		defer popModule()
 	default:
 		contract.Failf("Unrecognized function type during call: %v", reflect.TypeOf(fnc))
 	}
@@ -612,7 +671,7 @@ func (e *evaluator) evalCall(node diag.Diagable, fnc symbols.Function,
 	case *Intrinsic:
 		uw = f.Invoke(e, this, args)
 	default:
-		uw = e.evalBlock(fnode.GetBody())
+		uw = e.evalStatement(fnode.GetBody())
 	}
 
 	// Check that the unwind is as expected.  In particular:
@@ -638,8 +697,8 @@ func (e *evaluator) evalCall(node diag.Diagable, fnc symbols.Function,
 		return ret, nil
 	}
 
-	// An absence of a return is okay for void-returning functions.
-	contract.Assert(retty == nil)
+	// An absence of a return is okay for void- or dynamic-returning functions.
+	contract.Assert(retty == nil || retty == types.Dynamic)
 	glog.V(7).Infof("Evaluated call to fnc %v; return=<nil>", fnc)
 	return nil, nil
 }
@@ -653,6 +712,8 @@ func (e *evaluator) evalStatement(node ast.Statement) *rt.Unwind {
 
 	// Simply switch on the node type and dispatch to the specific function, returning the rt.Unwind info.
 	switch n := node.(type) {
+	case *ast.Import:
+		return e.evalImport(n)
 	case *ast.Block:
 		return e.evalBlock(n)
 	case *ast.LocalVariableDeclaration:
@@ -689,6 +750,36 @@ func (e *evaluator) evalStatement(node ast.Statement) *rt.Unwind {
 	}
 }
 
+func (e *evaluator) evalImport(node *ast.Import) *rt.Unwind {
+	// Ensure the target module has been initialized.
+	imptok := node.Referent
+	sym := e.ctx.LookupSymbol(imptok, imptok.Tok, true)
+	contract.Assert(sym != nil)
+
+	var mod *symbols.Module
+	switch s := sym.(type) {
+	case *symbols.Module:
+		mod = s
+	case symbols.ModuleMember:
+		mod = s.MemberParent()
+	default:
+		contract.Failf("Unrecognized import symbol: %v", reflect.TypeOf(sym))
+	}
+	e.ensureModuleInit(mod)
+
+	// If a name was requested, bind it dynamically to an object with this import's exports.
+	// TODO: a more elegant way to do this might be to bind it statically, however that's more complicated because
+	//     then it would potentially require a module property versus local variable distinction.
+	if node.Name != nil {
+		key := tokens.Name(node.Name.Ident)
+		addr := e.getDynamicNameAddr(key, true)
+		modobj := e.getModuleObject(mod)
+		addr.Set(modobj)
+	}
+
+	return nil
+}
+
 func (e *evaluator) evalBlock(node *ast.Block) *rt.Unwind {
 	// Push a scope at the start, and pop it at afterwards; both for the symbol context and local variable values.
 	e.pushScope(nil)
@@ -722,21 +813,21 @@ func (e *evaluator) evalLocalVariableDeclaration(node *ast.LocalVariableDeclarat
 }
 
 func (e *evaluator) evalTryCatchFinally(node *ast.TryCatchFinally) *rt.Unwind {
-	// First, execute the TryBlock.
-	uw := e.evalBlock(node.TryBlock)
+	// First, execute the try part.
+	uw := e.evalStatement(node.TryClause)
 	if uw != nil && uw.Throw() {
 		// The try block threw something; see if there is a handler that covers this.
 		thrown := uw.Exception().Thrown
-		if node.CatchBlocks != nil {
-			for _, catch := range *node.CatchBlocks {
+		if node.CatchClauses != nil {
+			for _, catch := range *node.CatchClauses {
 				ex := e.ctx.RequireVariable(catch.Exception).(*symbols.LocalVariable)
 				exty := ex.Type()
 				if types.CanConvert(thrown.Type(), exty) {
 					// This type matched, so this handler will catch the exception.  Set the exception variable,
-					// evaluate the block, and swap the rt.Unwind information (thereby "handling" the in-flight exception).
+					// evaluate the block, and swap the rt.Unwind information ("handling" the in-flight exception).
 					e.pushScope(nil)
 					e.locals.SetValue(ex, thrown)
-					uw = e.evalBlock(catch.Block)
+					uw = e.evalStatement(catch.Body)
 					e.popScope(false)
 					break
 				}
@@ -744,9 +835,9 @@ func (e *evaluator) evalTryCatchFinally(node *ast.TryCatchFinally) *rt.Unwind {
 		}
 	}
 
-	// No matter the rt.Unwind instructions, be sure to invoke the FinallyBlock.
-	if node.FinallyBlock != nil {
-		uwf := e.evalBlock(node.FinallyBlock)
+	// No matter the rt.Unwind instructions, be sure to invoke the finally part.
+	if node.FinallyClause != nil {
+		uwf := e.evalStatement(node.FinallyClause)
 
 		// Any rt.Unwind information from the finally block overrides the try rt.Unwind that was in flight.
 		if uwf != nil {
@@ -910,10 +1001,6 @@ func (e *evaluator) evalWhileStatement(node *ast.WhileStatement) *rt.Unwind {
 }
 
 func (e *evaluator) evalForStatement(node *ast.ForStatement) *rt.Unwind {
-	// Enter into a new scope so that any new variables are inside of the for block.
-	e.pushScope(nil)
-	defer e.popScope(false)
-
 	// Now run the initialization code.
 	if node.Init != nil {
 		if uw := e.evalStatement(*node.Init); uw != nil {
@@ -1148,7 +1235,7 @@ func (e *evaluator) getObjectOrSuperProperty(
 			if ldloc.Name.Tok == tokens.Token(tokens.SuperVariable) {
 				contract.Assert(ldloc.Object == nil)
 				// The super expression's type will resolve to the parent class; use that for lookups.
-				super = e.getPrototype(e.ctx.RequireType(objexpr))
+				super = e.getPrototypeObject(e.ctx.RequireType(objexpr))
 			}
 		}
 	}
@@ -1236,6 +1323,7 @@ func (e *evaluator) evalLoadLocation(node *ast.LoadLocationExpression, lval bool
 	tok := node.Name.Tok
 	if tok.Simple() {
 		// If there is no object and the name is simple, it refers to a local variable in the current scope.
+		// For more "sophisticated" lookups, in the hierarchy of scopes, a load dynamic operation must be utilized.
 		contract.Assert(this == nil)
 		loc := e.ctx.Scope.Lookup(tok.Name())
 		contract.Assert(loc != nil)
@@ -1254,12 +1342,8 @@ func (e *evaluator) evalLoadLocation(node *ast.LoadLocationExpression, lval bool
 	return e.newLocation(node, sym, pv, ty, this, lval), nil
 }
 
-func (e *evaluator) evalLoadSymbolLocation(node diag.Diagable, sym symbols.Symbol,
-	this *rt.Object, thisexpr ast.Expression, lval bool) (*rt.Pointer, symbols.Type, *rt.Unwind) {
-	contract.Assert(sym != nil)     // don't issue errors; we shouldn't ever get here if verification failed.
-	sym = MaybeIntrinsic(node, sym) // replace this with an intrinsic if it's recognized as one.
-
-	// If the symbol is an export, keep chasing down the referents until we hit a real symbol.
+// chaseExports walks the referent chain of an export until it hits a real symbol, and then returns that.
+func (e *evaluator) chaseExports(sym symbols.Symbol) symbols.Symbol {
 	for {
 		export, isexport := sym.(*symbols.Export)
 		if !isexport {
@@ -1270,6 +1354,14 @@ func (e *evaluator) evalLoadSymbolLocation(node diag.Diagable, sym symbols.Symbo
 		sym = export.Referent
 		contract.Assertf(sym != nil, "Expected export '%v' to resolve to a token", export.Node.Referent.Tok)
 	}
+	return sym
+}
+
+func (e *evaluator) evalLoadSymbolLocation(node diag.Diagable, sym symbols.Symbol,
+	this *rt.Object, thisexpr ast.Expression, lval bool) (*rt.Pointer, symbols.Type, *rt.Unwind) {
+	contract.Assert(sym != nil)     // don't issue errors; we shouldn't ever get here if verification failed.
+	sym = MaybeIntrinsic(node, sym) // replace this with an intrinsic if it's recognized as one.
+	sym = e.chaseExports(sym)       // chase the export down until we get a real symbol.
 
 	// Look up the symbol property in the right place.  Note that because this is a static load, we intentionally
 	// do not perform any lazily initialization of missing property slots; they must exist.  But we still need to
@@ -1310,7 +1402,7 @@ func (e *evaluator) evalLoadSymbolLocation(node diag.Diagable, sym symbols.Symbo
 		contract.Assert(this == nil)
 		k := rt.PropertyKey(s.Name())
 		globals := e.getModuleGlobals(module)
-		pv = globals.GetAddr(k, false)
+		pv = globals.Properties().GetAddr(k, false)
 		contract.Assertf(pv != nil, "Missing module member '%v'", s.Token())
 		ty = s.MemberType()
 		contract.Assert(ty != nil)
@@ -1339,7 +1431,10 @@ func (e *evaluator) checkThis(node diag.Diagable, this *rt.Object) *rt.Unwind {
 
 func (e *evaluator) evalLoadDynamicExpression(node *ast.LoadDynamicExpression) (*rt.Object, *rt.Unwind) {
 	loc, uw := e.evalLoadDynamic(node, false)
-	return loc.Obj, uw
+	if uw != nil {
+		return nil, uw
+	}
+	return loc.Obj, nil
 }
 
 func (e *evaluator) evalLoadDynamic(node *ast.LoadDynamicExpression, lval bool) (*Location, *rt.Unwind) {
@@ -1347,16 +1442,21 @@ func (e *evaluator) evalLoadDynamic(node *ast.LoadDynamicExpression, lval bool) 
 
 	// Evaluate the object and then the property expression.
 	var this *rt.Object
-	if this, uw = e.evalExpression(node.Object); uw != nil {
-		return nil, uw
+	var thisexpr ast.Expression
+	if node.Object != nil {
+		thisexpr = *node.Object
+		if this, uw = e.evalExpression(thisexpr); uw != nil {
+			return nil, uw
+		}
+
+		// Check that the object isn't null; if it is, raise an exception.
+		if uw = e.checkThis(node, this); uw != nil {
+			return nil, uw
+		}
+
 	}
 	var name *rt.Object
 	if name, uw = e.evalExpression(node.Name); uw != nil {
-		return nil, uw
-	}
-
-	// Check that the object isn't null; if it is, raise an exception.
-	if uw = e.checkThis(node, this); uw != nil {
 		return nil, uw
 	}
 
@@ -1368,8 +1468,8 @@ func (e *evaluator) evalLoadDynamic(node *ast.LoadDynamicExpression, lval bool) 
 		contract.Assertf(isarr, "Expected an array for numeric dynamic load index")
 		ix := int(name.NumberValue())
 		arrv := this.ArrayValue()
-		// TODO[pulumi/coconut#70]: Although storing arrays as arrays is fine for many circumstances, there are two cases
-		//     particular that could cause us troubles with ECMAScript compliance.  First, negative indices are fine in
+		// TODO[pulumi/coconut#70]: Although storing arrays as arrays is fine for many circumstances, there are two
+		//     situations that could cause us troubles with ECMAScript compliance.  First, negative indices are fine in
 		//     ECMAScript.  Second, sparse arrays can be represented more efficiently as a "bag of properties" than as a
 		//     true array that needs to be resized (possibly growing to become enormous in memory usage).
 		// TODO[pulumi/coconut#70]: We are emulating "ECMAScript-like" array accesses, where -- just like ordinary
@@ -1391,16 +1491,21 @@ func (e *evaluator) evalLoadDynamic(node *ast.LoadDynamicExpression, lval bool) 
 	} else {
 		contract.Assertf(name.Type() == types.String, "Expected dynamic load name to be a string")
 		key = tokens.Name(name.StringValue())
-		pv = e.getObjectOrSuperProperty(this, node.Object, rt.PropertyKey(key), false, lval)
+		if thisexpr == nil {
+			pv = e.getDynamicNameAddr(key, lval)
+		} else {
+			pv = e.getObjectOrSuperProperty(this, thisexpr, rt.PropertyKey(key), lval, lval)
+		}
+
+		if pv == nil {
+			// If the result is nil, then the name is not defined.  Raise an error.
+			return nil, e.NewNameNotDefinedException(node, key)
+		}
 	}
 
 	// If this isn't for an l-value, return the raw object.  Otherwise, make sure it's not readonly, and return it.
 	var obj *rt.Object
 	if lval {
-		// A readonly reference cannot be used as an l-value.
-		if pv.Readonly() {
-			e.Diag().Errorf(errors.ErrorIllegalReadonlyLValue.At(node))
-		}
 		obj = e.alloc.NewPointer(node, types.Dynamic, pv)
 	} else {
 		obj = pv.Obj()
@@ -1410,49 +1515,93 @@ func (e *evaluator) evalLoadDynamic(node *ast.LoadDynamicExpression, lval bool) 
 	return &Location{
 		e:    e,
 		This: this,
-		Name: tokens.Name(key),
+		Name: key,
 		Lval: lval,
 		Obj:  obj,
 	}, nil
 }
 
+func (e *evaluator) getDynamicNameAddr(key tokens.Name, lval bool) *rt.Pointer {
+	var pv *rt.Pointer
+
+	// If there's no object, look in the current localsment.
+	pkey := rt.PropertyKey(key)
+	globals := e.getModuleGlobals(e.ctx.Currmodule)
+	if loc := e.ctx.Scope.Lookup(key); loc != nil {
+		pv = e.locals.GetValueAddr(loc, true) // create a slot, we know the declaration exists.
+	} else {
+		// If it didn't exist in the lexical scope, check the module's globals.
+		pv = globals.Properties().GetAddr(pkey, false) // look for a global by this name, but don't allocate one.
+	}
+
+	// Finally, if neither of those existed, and this is the target of a load, allocate a slot.
+	if pv == nil && lval {
+		if e.fnc.SpecialModInit() && e.locals.Frame {
+			pv = globals.Properties().GetAddr(pkey, true)
+		} else {
+			loc := symbols.NewSpecialVariableSym(key, types.Dynamic)
+			e.ctx.Scope.MustRegister(loc)
+			pv = e.locals.GetValueAddr(loc, true)
+		}
+	}
+
+	return pv
+}
+
 func (e *evaluator) evalNewExpression(node *ast.NewExpression) (*rt.Object, *rt.Unwind) {
 	// Fetch the type of this expression; that's the kind of object we are allocating.
 	ty := e.ctx.RequireType(node)
+	// Now actually perform the new operation.
+	return e.evalNew(node, ty, node.Arguments)
+}
+
+// evalNew performs a new operation on the given type with the given arguments.
+func (e *evaluator) evalNew(node diag.Diagable, t symbols.Type, args *[]*ast.CallArgument) (*rt.Object, *rt.Unwind) {
+	// TODO: if a dynamic invoke, we want a runtime exceptions, not assertions, for most failure modes below.
 
 	// Create a object of the right type, containing all of the properties pre-populated.
-	obj := e.newObject(node, ty)
+	obj := e.newObject(node, t)
 
-	// See if there is a constructor method.  If there isn't, we just return the fresh object.
-	if ctor, has := ty.TypeMembers()[tokens.ClassConstructorFunction]; has {
-		ctormeth, isfunc := ctor.(*symbols.ClassMethod)
-		contract.Assertf(isfunc,
-			"Expected ctor %v to be a class method; got %v", ctor, reflect.TypeOf(ctor))
-		contract.Assertf(ctormeth.Sig.Return == nil,
-			"Expected ctor %v to have a nil return; got %v", ctor, ctormeth.Sig.Return)
-
-		// Evaluate the arguments in order.
-		var args []*rt.Object
-		if node.Arguments != nil {
-			for _, arg := range *node.Arguments {
-				argobj, uw := e.evalExpression(arg)
-				if uw != nil {
-					return nil, uw
-				}
-				args = append(args, argobj)
+	// Evaluate the arguments in order.
+	var argobjs []*rt.Object
+	if args != nil {
+		for _, arg := range *args {
+			argobj, uw := e.evalExpression(arg.Expr)
+			if uw != nil {
+				return nil, uw
 			}
+			argobjs = append(argobjs, argobj)
 		}
+	}
 
+	// See if there is a constructor or if this is a record.  If not, just return a fresh object.
+	if ctor := t.Ctor(); ctor != nil {
+		contract.Assertf(ctor.Signature().Return == nil || ctor.Signature().Return == types.Dynamic,
+			"Expected ctor %v to have a nil (or dynamic) return; got %v", ctor, ctor.Signature().Return)
 		// Now dispatch the function call using the fresh object as the constructor's `this` argument.
-		if _, uw := e.evalCall(node, ctormeth, obj, args...); uw != nil {
+		if _, uw := e.evalCall(node, ctor, obj, argobjs...); uw != nil {
 			return nil, uw
 		}
+	} else if args != nil && t.Record() {
+		// If this is a record type, we can still initialize it much like an object literal, using named properties.
+		// This only works provided the arguments are named and each one maps to a primary property on the type.
+		for i, arg := range *args {
+			contract.Assertf(arg.Name != nil, "Expected only named args for new of a record type")
+			id := tokens.ClassMemberName(arg.Name.Ident)
+			contract.Assertf(t.TypeMembers()[id] != nil, "Expected named arg %v to match a type member", id)
+			contract.Assertf(t.TypeMembers()[id].Primary(), "Expected named arg %v to match a primary member", id)
+			val := argobjs[i]
+			prop := rt.PropertyKey(id)
+			addr := obj.GetPropertyAddr(prop, true, true)
+			addr.Set(val)
+			// Track all assignments.
+			if e.hooks != nil {
+				e.hooks.OnVariableAssign(arg, obj, tokens.Name(prop), nil, val)
+			}
+		}
 	} else {
-		contract.Assertf(node.Arguments == nil || len(*node.Arguments) == 0,
-			"No constructor found for %v, yet the new expression had %v args", ty, len(*node.Arguments))
-		class, isclass := ty.(*symbols.Class)
-		contract.Assertf(!isclass || class.Extends == nil,
-			"No constructor found for %v, yet there is a base class; chaining must be done manually", ty)
+		contract.Assertf(args == nil || len(*args) == 0,
+			"No constructor found for non-record type %v, yet the new expression had %v args", t, len(*args))
 	}
 
 	// Finally, ensure that all readonly properties are frozen now.
@@ -1468,13 +1617,26 @@ func (e *evaluator) evalInvokeFunctionExpression(node *ast.InvokeFunctionExpress
 		return nil, uw
 	}
 
+	// See if this is a dynamic invocation -- these are validated differently.
+	dynamic := (e.ctx.RequireType(node.Function) == types.Dynamic)
+
 	// Ensure that this actually led to a function; this is guaranteed by the binder.
 	var fnc rt.FuncStub
-	switch fncobj.Type().(type) {
+	switch t := fncobj.Type().(type) {
 	case *symbols.FunctionType:
 		fnc = fncobj.FunctionValue()
 		contract.Assert(fnc.Func != nil)
+	case *symbols.PrototypeType:
+		contract.Assertf(dynamic, "Prototype invocation is only valid for dynamic invokes")
+		// For dynamic invokes, we permit invocation of class prototypes (a "new").
+		ot := t.Type // this is the type of object to create.
+		return e.evalNew(node, ot, node.Arguments)
 	default:
+		// If dynamic, raise an exception; otherwise, assert, since the IL was malformed and should have been caught
+		// during binding/verification time.
+		if dynamic {
+			return nil, e.NewIllegalInvokeTargetException(node.Function, t)
+		}
 		contract.Failf("Expected function expression to yield a function type")
 	}
 
@@ -1482,7 +1644,7 @@ func (e *evaluator) evalInvokeFunctionExpression(node *ast.InvokeFunctionExpress
 	var args []*rt.Object
 	if node.Arguments != nil {
 		for _, arg := range *node.Arguments {
-			argobj, uw := e.evalExpression(arg)
+			argobj, uw := e.evalExpression(arg.Expr)
 			if uw != nil {
 				return nil, uw
 			}

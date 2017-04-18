@@ -18,9 +18,9 @@
     "files": [
         "index.ts",
 
+        "asset.ts",
         "context.ts",
         "resource.ts",
-        "stack.ts",
 
         "runtime/index.ts",
         "runtime/dynamic.ts"

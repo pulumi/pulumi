@@ -1,0 +1,25 @@
+#!/usr/bin/env python
+# coding=utf-8
+
+# Copyright 2017 Pulumi, Inc. All rights reserved.
+
+"""Coconut's Python compiler."""
+
+import argparse
+from cocopy.lib import compiler, encoding
+import json
+import pythonparser
+import sys
+
+parser = argparse.ArgumentParser()
+parser.add_argument("file", help="CocoPy filename")
+
+def main(args):
+    pkg = compiler.compile(args.file)
+    opts = encoding.Options(skip_nones=True, key_encoder=encoding.underscore_to_camel_case)
+    jsonobj = encoding.to_serializable(pkg, opts)
+    print(json.dumps(jsonobj, indent=4))
+
+if __name__ == "__main__":
+    sys.exit(main(parser.parse_args()))
+

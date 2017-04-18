@@ -3,6 +3,8 @@
 package symbols
 
 import (
+	"reflect"
+
 	"github.com/pulumi/coconut/pkg/compiler/ast"
 	"github.com/pulumi/coconut/pkg/diag"
 	"github.com/pulumi/coconut/pkg/tokens"
@@ -39,11 +41,19 @@ func (node *Class) Base() Type                          { return node.Extends }
 func (node *Class) TypeName() tokens.TypeName           { return node.Nm }
 func (node *Class) TypeToken() tokens.Type              { return node.Tok }
 func (node *Class) TypeMembers() ClassMemberMap         { return node.Members }
-func (node *Class) Sealed() bool                        { return node.Node.Sealed != nil && *node.Node.Sealed }
-func (node *Class) Abstract() bool                      { return node.Node.Abstract != nil && *node.Node.Abstract }
-func (node *Class) Record() bool                        { return node.Node.Record != nil && *node.Node.Record }
-func (node *Class) Interface() bool                     { return node.Node.Interface != nil && *node.Node.Interface }
-func (node *Class) String() string                      { return string(node.Token()) }
+func (node *Class) Ctor() Function {
+	if ctor, has := node.TypeMembers()[tokens.ClassConstructorFunction]; has {
+		ctormeth, ismeth := ctor.(*ClassMethod)
+		contract.Assertf(ismeth, "Expected ctor %v to be a class method; got %v", ctor, reflect.TypeOf(ctor))
+		return ctormeth
+	}
+	return nil
+}
+func (node *Class) Sealed() bool    { return node.Node.Sealed != nil && *node.Node.Sealed }
+func (node *Class) Abstract() bool  { return node.Node.Abstract != nil && *node.Node.Abstract }
+func (node *Class) Record() bool    { return node.Node.Record != nil && *node.Node.Record }
+func (node *Class) Interface() bool { return node.Node.Interface != nil && *node.Node.Interface }
+func (node *Class) String() string  { return string(node.Token()) }
 
 // HasInit returns true if this module has an initialzer associated with it.
 func (node *Class) HasInit() bool { return node.GetInit() != nil }
@@ -98,6 +108,7 @@ type ClassMember interface {
 	Symbol
 	Optional() bool
 	Static() bool
+	Primary() bool
 	Default() *interface{}
 	Type() Type
 	MemberNode() ast.ClassMember
@@ -131,6 +142,7 @@ func (node *ClassProperty) Tree() diag.Diagable         { return node.Node }
 func (node *ClassProperty) Optional() bool              { return node.Node.Optional != nil && *node.Node.Optional }
 func (node *ClassProperty) Readonly() bool              { return node.Node.Readonly != nil && *node.Node.Readonly }
 func (node *ClassProperty) Static() bool                { return node.Node.Static != nil && *node.Node.Static }
+func (node *ClassProperty) Primary() bool               { return node.Node.Primary != nil && *node.Node.Primary }
 func (node *ClassProperty) Default() *interface{}       { return node.Node.Default }
 func (node *ClassProperty) Type() Type                  { return node.Ty }
 func (node *ClassProperty) MemberNode() ast.ClassMember { return node.Node }
@@ -169,9 +181,11 @@ func (node *ClassMethod) Special() bool {
 	nm := node.MemberName()
 	return nm == tokens.ClassInitFunction || nm == tokens.ClassConstructorFunction
 }
+func (node *ClassMethod) SpecialModInit() bool        { return false }
 func (node *ClassMethod) Tree() diag.Diagable         { return node.Node }
 func (node *ClassMethod) Optional() bool              { return false }
 func (node *ClassMethod) Static() bool                { return node.Node.Static != nil && *node.Node.Static }
+func (node *ClassMethod) Primary() bool               { return node.Node.Primary != nil && *node.Node.Primary }
 func (node *ClassMethod) Default() *interface{}       { return nil }
 func (node *ClassMethod) Type() Type                  { return node.Sig }
 func (node *ClassMethod) MemberNode() ast.ClassMember { return node.Node }

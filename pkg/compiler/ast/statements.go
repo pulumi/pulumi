@@ -14,8 +14,24 @@ type StatementNode struct {
 
 func (node *StatementNode) statement() {}
 
+/* Imports */
+
+// Import is mostly used to trigger the side-effect of importing another module.  It is also used to make bound modules
+// or module member names available in the context of the importing module or function.
+type Import struct {
+	StatementNode
+	Referent *Token      `json:"referent"`       // the module or member token to import.
+	Name     *Identifier `json:"name,omitempty"` // the name that token is bound to (if any).
+}
+
+var _ Node = (*Import)(nil)
+var _ Statement = (*Import)(nil)
+
+const ImportKind NodeKind = "Import"
+
 /* Blocks */
 
+// Block is a grouping of statements that enjoy their own lexical scope.
 type Block struct {
 	StatementNode
 	Statements []Statement `json:"statements"`
@@ -42,9 +58,9 @@ const LocalVariableDeclarationKind NodeKind = "LocalVariableDeclaration"
 
 type TryCatchFinally struct {
 	StatementNode
-	TryBlock     *Block            `json:"tryBlock"`
-	CatchBlocks  *[]*TryCatchBlock `json:"catchBlocks,omitempty"`
-	FinallyBlock *Block            `json:"finallyBlock"`
+	TryClause     Statement          `json:"tryClause"`
+	CatchClauses  *[]*TryCatchClause `json:"catchClauses,omitempty"`
+	FinallyClause Statement          `json:"finallyClause"`
 }
 
 var _ Node = (*TryCatchFinally)(nil)
@@ -52,13 +68,15 @@ var _ Statement = (*TryCatchFinally)(nil)
 
 const TryCatchFinallyKind NodeKind = "TryCatchFinally"
 
-type TryCatchBlock struct {
+type TryCatchClause struct {
 	NodeValue
 	Exception *LocalVariable `json:"exception,omitempty"`
-	Block     *Block         `json:"block"`
+	Body      Statement      `json:"body"`
 }
 
-var _ Node = (*TryCatchBlock)(nil)
+var _ Node = (*TryCatchClause)(nil)
+
+const TryCatchClauseKind NodeKind = "TryCatchClause"
 
 /* Branches */
 
@@ -158,7 +176,7 @@ const ThrowStatementKind NodeKind = "ThrowStatement"
 type WhileStatement struct {
 	StatementNode
 	Condition *Expression `json:"condition,omitempty"` // a `bool` statement indicating whether to cotinue.
-	Body      *Block      `json:"body"`                // the body to execute provided the condition remains `true`.
+	Body      Statement   `json:"body"`                // the body to execute provided the condition remains `true`.
 }
 
 var _ Node = (*WhileStatement)(nil)
@@ -172,7 +190,7 @@ type ForStatement struct {
 	Init      *Statement  `json:"init,omitempty"`      // an initialization statement.
 	Condition *Expression `json:"condition,omitempty"` // a `bool` statement indicating whether to continue.
 	Post      *Statement  `json:"post,omitempty"`      // a statement to run after the body, before the next iteration.
-	Body      *Block      `json:"body"`                // the body to execute provided the condition remains `true`.
+	Body      Statement   `json:"body"`                // the body to execute provided the condition remains `true`.
 }
 
 var _ Node = (*ForStatement)(nil)

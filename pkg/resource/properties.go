@@ -278,19 +278,19 @@ func (m PropertyMap) OptResourceOrErr(k PropertyKey) (*URN, error) {
 }
 
 // Mappable returns a mapper-compatible object map, suitable for deserialization into structures.
-func (props PropertyMap) Mappable() mapper.Object {
+func (m PropertyMap) Mappable() mapper.Object {
 	obj := make(mapper.Object)
-	for _, k := range StablePropertyKeys(props) {
-		obj[string(k)] = props[k].Mappable()
+	for _, k := range StablePropertyKeys(m) {
+		obj[string(k)] = m[k].Mappable()
 	}
 	return obj
 }
 
 // AllResources finds all resource URNs, transitively throughout the property map, and returns them.
-func (props PropertyMap) AllResources() map[URN]bool {
+func (m PropertyMap) AllResources() map[URN]bool {
 	URNs := make(map[URN]bool)
-	for _, k := range StablePropertyKeys(props) {
-		for m, v := range props[k].AllResources() {
+	for _, k := range StablePropertyKeys(m) {
+		for m, v := range m[k].AllResources() {
 			URNs[m] = v
 		}
 	}
@@ -299,10 +299,10 @@ func (props PropertyMap) AllResources() map[URN]bool {
 
 // ReplaceResources finds all resources and lets an updater function update them if necessary.  This is often used
 // during a "replacement"-style updated, to replace all URNs of a certain value with another.
-func (props PropertyMap) ReplaceResources(updater func(URN) URN) PropertyMap {
+func (m PropertyMap) ReplaceResources(updater func(URN) URN) PropertyMap {
 	result := make(PropertyMap)
-	for _, k := range StablePropertyKeys(props) {
-		result[k] = props[k].ReplaceResources(updater)
+	for _, k := range StablePropertyKeys(m) {
+		result[k] = m[k].ReplaceResources(updater)
 	}
 	return result
 }
@@ -322,31 +322,31 @@ func (v PropertyValue) ArrayValue() []PropertyValue { return v.V.([]PropertyValu
 func (v PropertyValue) ObjectValue() PropertyMap    { return v.V.(PropertyMap) }
 func (v PropertyValue) ResourceValue() URN          { return v.V.(URN) }
 
-func (b PropertyValue) IsNull() bool {
-	return b.V == nil
+func (v PropertyValue) IsNull() bool {
+	return v.V == nil
 }
-func (b PropertyValue) IsBool() bool {
-	_, is := b.V.(bool)
+func (v PropertyValue) IsBool() bool {
+	_, is := v.V.(bool)
 	return is
 }
-func (b PropertyValue) IsNumber() bool {
-	_, is := b.V.(float64)
+func (v PropertyValue) IsNumber() bool {
+	_, is := v.V.(float64)
 	return is
 }
-func (b PropertyValue) IsString() bool {
-	_, is := b.V.(string)
+func (v PropertyValue) IsString() bool {
+	_, is := v.V.(string)
 	return is
 }
-func (b PropertyValue) IsArray() bool {
-	_, is := b.V.([]PropertyValue)
+func (v PropertyValue) IsArray() bool {
+	_, is := v.V.([]PropertyValue)
 	return is
 }
-func (b PropertyValue) IsObject() bool {
-	_, is := b.V.(PropertyMap)
+func (v PropertyValue) IsObject() bool {
+	_, is := v.V.(PropertyMap)
 	return is
 }
-func (b PropertyValue) IsResource() bool {
-	_, is := b.V.(URN)
+func (v PropertyValue) IsResource() bool {
+	_, is := v.V.(URN)
 	return is
 }
 
@@ -366,10 +366,9 @@ func (v PropertyValue) Mappable() mapper.Value {
 			arr = append(arr, e.Mappable())
 		}
 		return arr
-	} else {
-		contract.Assert(v.IsObject())
-		return v.ObjectValue().Mappable()
 	}
+	contract.Assert(v.IsObject())
+	return v.ObjectValue().Mappable()
 }
 
 // AllResources finds all resource URNs, transitively throughout the property value, and returns them.

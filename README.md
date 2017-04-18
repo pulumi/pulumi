@@ -8,14 +8,12 @@ If you are learning about Coconut for the first time, please see [the overview d
 
 To install Coconut from source, simply run:
 
-    $ go get -u github.com/pulumi/coconut
+    $ go get -u github.com/pulumi/coconut/cmd/coco
 
 A `GOPATH` must be set.  A good default value is `~/go`.  In fact, [this is the default in Go 1.8](
 https://github.com/golang/go/issues/17262).
 
-It is common to alias the shorter command `coco` to the full binary `coconut`:
-
-    alias coco=coconut
+This installs the `coco` binary to `$GOPATH/bin`.
 
 At this moment, libraries must be manually installed.  See below.  Eventually we will have an installer.
 

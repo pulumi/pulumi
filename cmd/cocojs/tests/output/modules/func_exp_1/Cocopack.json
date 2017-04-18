@@ -1,0 +1,197 @@
+{
+    "name": "func_exp_1",
+    "modules": {
+        "index": {
+            "kind": "Module",
+            "name": {
+                "kind": "Identifier",
+                "ident": "index"
+            },
+            "exports": {
+                "foo": {
+                    "kind": "Export",
+                    "name": {
+                        "kind": "Identifier",
+                        "ident": "foo",
+                        "loc": {
+                            "file": "index.ts",
+                            "start": {
+                                "line": 1,
+                                "column": 17
+                            },
+                            "end": {
+                                "line": 1,
+                                "column": 20
+                            }
+                        }
+                    },
+                    "referent": {
+                        "kind": "Token",
+                        "tok": "func_exp_1:index:foo",
+                        "loc": {
+                            "file": "index.ts",
+                            "start": {
+                                "line": 1,
+                                "column": 17
+                            },
+                            "end": {
+                                "line": 1,
+                                "column": 20
+                            }
+                        }
+                    },
+                    "loc": {
+                        "file": "index.ts",
+                        "start": {
+                            "line": 1,
+                            "column": 1
+                        },
+                        "end": {
+                            "line": 3,
+                            "column": 2
+                        }
+                    }
+                }
+            },
+            "members": {
+                "foo": {
+                    "kind": "ModuleMethod",
+                    "name": {
+                        "kind": "Identifier",
+                        "ident": "foo",
+                        "loc": {
+                            "file": "index.ts",
+                            "start": {
+                                "line": 1,
+                                "column": 17
+                            },
+                            "end": {
+                                "line": 1,
+                                "column": 20
+                            }
+                        }
+                    },
+                    "parameters": [
+                        {
+                            "kind": "LocalVariable",
+                            "name": {
+                                "kind": "Identifier",
+                                "ident": "x",
+                                "loc": {
+                                    "file": "index.ts",
+                                    "start": {
+                                        "line": 1,
+                                        "column": 21
+                                    },
+                                    "end": {
+                                        "line": 1,
+                                        "column": 22
+                                    }
+                                }
+                            },
+                            "type": {
+                                "kind": "TypeToken",
+                                "tok": "number",
+                                "loc": {
+                                    "file": "index.ts",
+                                    "start": {
+                                        "line": 1,
+                                        "column": 21
+                                    },
+                                    "end": {
+                                        "line": 1,
+                                        "column": 30
+                                    }
+                                }
+                            }
+                        },
+                        {
+                            "kind": "LocalVariable",
+                            "name": {
+                                "kind": "Identifier",
+                                "ident": "y",
+                                "loc": {
+                                    "file": "index.ts",
+                                    "start": {
+                                        "line": 1,
+                                        "column": 32
+                                    },
+                                    "end": {
+                                        "line": 1,
+                                        "column": 33
+                                    }
+                                }
+                            },
+                            "type": {
+                                "kind": "TypeToken",
+                                "tok": "string",
+                                "loc": {
+                                    "file": "index.ts",
+                                    "start": {
+                                        "line": 1,
+                                        "column": 32
+                                    },
+                                    "end": {
+                                        "line": 1,
+                                        "column": 41
+                                    }
+                                }
+                            }
+                        }
+                    ],
+                    "body": {
+                        "kind": "Block",
+                        "statements": [],
+                        "loc": {
+                            "file": "index.ts",
+                            "start": {
+                                "line": 1,
+                                "column": 49
+                            },
+                            "end": {
+                                "line": 3,
+                                "column": 2
+                            }
+                        }
+                    },
+                    "loc": {
+                        "file": "index.ts",
+                        "start": {
+                            "line": 1,
+                            "column": 1
+                        },
+                        "end": {
+                            "line": 3,
+                            "column": 2
+                        }
+                    }
+                },
+                ".main": {
+                    "kind": "ModuleMethod",
+                    "name": {
+                        "kind": "Identifier",
+                        "ident": ".main"
+                    },
+                    "body": {
+                        "kind": "Block",
+                        "statements": []
+                    }
+                }
+            },
+            "loc": {
+                "file": "index.ts",
+                "start": {
+                    "line": 1,
+                    "column": 1
+                },
+                "end": {
+                    "line": 5,
+                    "column": 1
+                }
+            }
+        }
+    },
+    "aliases": {
+        ".default": "index"
+    }
+}

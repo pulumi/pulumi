@@ -30,11 +30,13 @@ type LocalVariable struct {
 var _ Symbol = (*LocalVariable)(nil)
 var _ Variable = (*LocalVariable)(nil)
 
-func (node *LocalVariable) Name() tokens.Name     { return node.Nm }
-func (node *LocalVariable) Token() tokens.Token   { return tokens.Token(node.Name()) }
-func (node *LocalVariable) Special() bool         { return node.Spec }
-func (node *LocalVariable) Tree() diag.Diagable   { return node.Node }
-func (node *LocalVariable) Readonly() bool        { return node.Node.Readonly != nil && *node.Node.Readonly }
+func (node *LocalVariable) Name() tokens.Name   { return node.Nm }
+func (node *LocalVariable) Token() tokens.Token { return tokens.Token(node.Name()) }
+func (node *LocalVariable) Special() bool       { return node.Spec }
+func (node *LocalVariable) Tree() diag.Diagable { return node.Node }
+func (node *LocalVariable) Readonly() bool {
+	return node.Node != nil && node.Node.Readonly != nil && *node.Node.Readonly
+}
 func (node *LocalVariable) Type() Type            { return node.Ty }
 func (node *LocalVariable) Default() *interface{} { return nil }
 func (node *LocalVariable) VarNode() ast.Variable { return node.Node }

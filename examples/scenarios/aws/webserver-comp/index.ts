@@ -2,6 +2,6 @@
 
 import * as webserver from "./webserver";
 
-let wwwTierServer = new webserver.Micro("www");
-let appTierServer = new webserver.Large("app");
+let webServer = new webserver.Micro("www");
+let appServer = new webserver.Large("app");
 

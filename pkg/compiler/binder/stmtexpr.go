@@ -3,6 +3,7 @@
 package binder
 
 import (
+	"fmt"
 	"reflect"
 
 	"github.com/pulumi/coconut/pkg/compiler/ast"
@@ -136,6 +137,17 @@ func (a *astBinder) isLValue(expr ast.Expression) bool {
 
 // Statements
 
+func (a *astBinder) checkImport(node *ast.Import) {
+	imptok := node.Referent
+	if !tokens.Token(imptok.Tok).HasModule() {
+		a.b.Diag().Errorf(errors.ErrorMalformedToken.At(imptok),
+			"Module", imptok.Tok, "missing module part")
+	} else {
+		// Just perform a lookup to ensure the symbol exists (and error out if not).
+		a.b.ctx.LookupSymbol(imptok, imptok.Tok, true)
+	}
+}
+
 func (a *astBinder) visitBlock(node *ast.Block) {
 	// Entering a new block requires a fresh lexical scope.
 	a.b.ctx.Scope.Push(false)
@@ -229,10 +241,25 @@ func (a *astBinder) checkForStatement(node *ast.ForStatement) {
 
 // Expressions
 
-func (a *astBinder) checkExprType(expr ast.Expression, expect symbols.Type) bool {
+func (a *astBinder) checkExprType(expr ast.Expression, expect symbols.Type, alts ...symbols.Type) bool {
 	actual := a.b.ctx.RequireType(expr)
-	if !types.CanConvert(actual, expect) {
-		a.b.Diag().Errorf(errors.ErrorIncorrectExprType.At(expr), expect, actual)
+	conv := false
+	if conv = types.CanConvert(actual, expect); !conv {
+		// If the primary didn't convert, check the alternatives.
+		for _, alt := range alts {
+			if conv = types.CanConvert(actual, alt); conv {
+				break
+			}
+		}
+	}
+	if !conv {
+		expects := expect.Token().String()
+		if len(alts) > 0 {
+			for _, alt := range alts {
+				expects += fmt.Sprintf(" or %v", alt.Token())
+			}
+		}
+		a.b.Diag().Errorf(errors.ErrorIncorrectExprType.At(expr), expects, actual)
 		return false
 	}
 	return true
@@ -371,16 +398,8 @@ func (a *astBinder) checkLoadLocationExpression(node *ast.LoadLocationExpression
 }
 
 func (a *astBinder) checkLoadDynamicExpression(node *ast.LoadDynamicExpression) {
-	// Ensure the object is non-nil.
-	if node.Object == nil {
-		a.b.Diag().Errorf(errors.ErrorExpectedObject.At(node))
-	}
-
-	// Now ensure that the right hand side is either a string or a dynamic.
-	name := a.b.ctx.RequireType(node.Name)
-	if name != types.Dynamic && !types.CanConvert(name, types.String) {
-
-	}
+	// Ensure that the name is either a string, number, or a dynamic.
+	a.checkExprType(node.Name, types.String, types.Number)
 
 	// No matter the outcome, a load dynamic always produces a dynamically typed thing.
 	a.b.ctx.RegisterType(node, types.Dynamic)
@@ -421,7 +440,7 @@ func (a *astBinder) checkNewExpression(node *ast.NewExpression) {
 			}
 			if argc > 0 {
 				for i := 0; i < parc && i < argc; i++ {
-					a.checkExprType((*node.Arguments)[i], ctormeth.Sig.Parameters[i])
+					a.checkExprType((*node.Arguments)[i].Expr, ctormeth.Sig.Parameters[i])
 				}
 			}
 		} else {
@@ -449,13 +468,16 @@ func (a *astBinder) checkInvokeFunctionExpression(node *ast.InvokeFunctionExpres
 		}
 		if argc > 0 {
 			for i := 0; i < parc && i < argc; i++ {
-				a.checkExprType((*node.Arguments)[i], funty.Parameters[i])
+				a.checkExprType((*node.Arguments)[i].Expr, funty.Parameters[i])
 			}
 		}
 
 		// The resulting type of this expression is the same as the function's return type.  Note that if the return is
 		// nil ("void"-returning), we still register it; a nil entry is distinctly different from a missing entry.
 		a.b.ctx.RegisterType(node, funty.Return)
+	} else if ty == types.Dynamic {
+		// It's ok to invoke a dynamically typed object; we simply might fail at runtime.
+		a.b.ctx.RegisterType(node, types.Dynamic)
 	} else {
 		a.b.Diag().Errorf(errors.ErrorCannotInvokeNonFunction.At(node), ty)
 		a.b.ctx.RegisterType(node, types.Error)
@@ -511,13 +533,13 @@ func (a *astBinder) checkUnaryOperatorExpression(node *ast.UnaryOperatorExpressi
 		a.b.ctx.RegisterType(node, symbols.NewPointerType(opty))
 	case ast.OpUnaryPlus, ast.OpUnaryMinus, ast.OpBitwiseNot:
 		// The target must be a number:
-		if opty != types.Number {
+		if !types.CanConvert(opty, types.Number) {
 			a.b.Diag().Errorf(errors.ErrorUnaryOperatorInvalidForType.At(node), node.Operator, opty, types.Number)
 		}
 		a.b.ctx.RegisterType(node, types.Number)
 	case ast.OpLogicalNot:
 		// The target must be a boolean:
-		if opty != types.Bool {
+		if !types.CanConvert(opty, types.Bool) {
 			a.b.Diag().Errorf(errors.ErrorUnaryOperatorInvalidForType.At(node), node.Operator, opty, types.Bool)
 		}
 		a.b.ctx.RegisterType(node, types.Bool)
@@ -525,7 +547,7 @@ func (a *astBinder) checkUnaryOperatorExpression(node *ast.UnaryOperatorExpressi
 		// The target must be a numeric l-value.
 		if !a.isLValue(node.Operand) {
 			a.b.Diag().Errorf(errors.ErrorIllegalAssignmentLValue.At(node))
-		} else if opty != types.Number {
+		} else if !types.CanConvert(opty, types.Number) {
 			a.b.Diag().Errorf(errors.ErrorUnaryOperatorInvalidForType.At(node), node.Operator, opty, types.Number)
 		}
 		a.b.ctx.RegisterType(node, types.Number)
@@ -543,13 +565,13 @@ func (a *astBinder) checkBinaryOperatorExpression(node *ast.BinaryOperatorExpres
 	case ast.OpAdd:
 		// Lhs and rhs can be numbers (for addition) or strings (for concatenation).
 		if lhs == types.Number {
-			if rhs != types.Number {
+			if !types.CanConvert(rhs, types.Number) {
 				a.b.Diag().Errorf(errors.ErrorBinaryOperatorInvalidForType.At(node),
 					node.Operator, "RHS", rhs, types.Number)
 			}
 			a.b.ctx.RegisterType(node, types.Number)
 		} else if lhs == types.String {
-			if rhs != types.String {
+			if !types.CanConvert(rhs, types.String) {
 				a.b.Diag().Errorf(errors.ErrorBinaryOperatorInvalidForType.At(node),
 					node.Operator, "RHS", rhs, types.String)
 			}
@@ -562,11 +584,11 @@ func (a *astBinder) checkBinaryOperatorExpression(node *ast.BinaryOperatorExpres
 	case ast.OpSubtract, ast.OpMultiply, ast.OpDivide, ast.OpRemainder, ast.OpExponentiate,
 		ast.OpBitwiseShiftLeft, ast.OpBitwiseShiftRight, ast.OpBitwiseAnd, ast.OpBitwiseOr, ast.OpBitwiseXor:
 		// Both lhs and rhs must be numbers:
-		if lhs != types.Number {
+		if !types.CanConvert(lhs, types.Number) {
 			a.b.Diag().Errorf(errors.ErrorBinaryOperatorInvalidForType.At(node),
 				node.Operator, "LHS", lhs, types.Number)
 		}
-		if rhs != types.Number {
+		if !types.CanConvert(rhs, types.Number) {
 			a.b.Diag().Errorf(errors.ErrorBinaryOperatorInvalidForType.At(node),
 				node.Operator, "RHS", rhs, types.Number)
 		}
@@ -586,13 +608,13 @@ func (a *astBinder) checkBinaryOperatorExpression(node *ast.BinaryOperatorExpres
 			a.b.Diag().Errorf(errors.ErrorIllegalAssignmentLValue.At(node))
 			a.b.ctx.RegisterType(node, types.Number)
 		} else if lhs == types.Number {
-			if rhs != types.Number {
+			if !types.CanConvert(rhs, types.Number) {
 				a.b.Diag().Errorf(errors.ErrorBinaryOperatorInvalidForType.At(node),
 					node.Operator, "RHS", rhs, types.Number)
 			}
 			a.b.ctx.RegisterType(node, types.Number)
 		} else if lhs == types.String {
-			if rhs != types.String {
+			if !types.CanConvert(rhs, types.String) {
 				a.b.Diag().Errorf(errors.ErrorBinaryOperatorInvalidForType.At(node),
 					node.Operator, "RHS", rhs, types.String)
 			}
@@ -608,7 +630,7 @@ func (a *astBinder) checkBinaryOperatorExpression(node *ast.BinaryOperatorExpres
 		// These operators require numeric values.
 		if !a.isLValue(node.Left) {
 			a.b.Diag().Errorf(errors.ErrorIllegalAssignmentLValue.At(node))
-		} else if lhs != types.Number {
+		} else if !types.CanConvert(lhs, types.Number) {
 			a.b.Diag().Errorf(errors.ErrorIllegalNumericAssignmentLValue.At(node), node.Operator)
 		} else if !types.CanConvert(rhs, lhs) {
 			a.b.Diag().Errorf(errors.ErrorIllegalAssignmentTypes.At(node), rhs, lhs)
@@ -618,11 +640,11 @@ func (a *astBinder) checkBinaryOperatorExpression(node *ast.BinaryOperatorExpres
 	// Conditional operators:
 	case ast.OpLogicalAnd, ast.OpLogicalOr:
 		// Both lhs and rhs must be booleans.
-		if lhs != types.Bool {
+		if !types.CanConvert(lhs, types.Bool) {
 			a.b.Diag().Errorf(errors.ErrorBinaryOperatorInvalidForType.At(node),
 				node.Operator, "LHS", lhs, types.Bool)
 		}
-		if rhs != types.Bool {
+		if !types.CanConvert(rhs, types.Bool) {
 			a.b.Diag().Errorf(errors.ErrorBinaryOperatorInvalidForType.At(node),
 				node.Operator, "RHS", rhs, types.Bool)
 		}
@@ -631,11 +653,11 @@ func (a *astBinder) checkBinaryOperatorExpression(node *ast.BinaryOperatorExpres
 	// Relational operators:
 	case ast.OpLt, ast.OpLtEquals, ast.OpGt, ast.OpGtEquals:
 		// Both lhs and rhs must be numbers, and it produces a boolean.
-		if lhs != types.Number {
+		if !types.CanConvert(lhs, types.Number) {
 			a.b.Diag().Errorf(errors.ErrorBinaryOperatorInvalidForType.At(node),
 				node.Operator, "LHS", lhs, types.Number)
 		}
-		if rhs != types.Number {
+		if !types.CanConvert(rhs, types.Number) {
 			a.b.Diag().Errorf(errors.ErrorBinaryOperatorInvalidForType.At(node),
 				node.Operator, "RHS", rhs, types.Number)
 		}

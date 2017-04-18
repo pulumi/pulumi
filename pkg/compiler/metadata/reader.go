@@ -11,7 +11,6 @@ import (
 	"github.com/pulumi/coconut/pkg/encoding"
 	"github.com/pulumi/coconut/pkg/pack"
 	"github.com/pulumi/coconut/pkg/util/contract"
-	"github.com/pulumi/coconut/pkg/workspace"
 )
 
 // Reader reads a document by decoding/parsing it into its AST form.
@@ -21,9 +20,6 @@ type Reader interface {
 	// ReadPackage parses a CocoPack from the given document.  If an error occurs, the return value will be nil.  It
 	// is expected that errors are conveyed using the diag.Sink interface.
 	ReadPackage(doc *diag.Document) *pack.Package
-	// ReadWorkspace parses workspace settings from the given document.  If an error occurs, the return value will be
-	// nil.  It is expected that errors are conveyed using the diag.Sink interface.
-	ReadWorkspace(doc *diag.Document) *workspace.Workspace
 }
 
 func NewReader(ctx *core.Context) Reader {
@@ -51,7 +47,7 @@ func (r *reader) ReadPackage(doc *diag.Document) *pack.Package {
 	contract.Assertf(has, "No marshaler registered for this Cocofile extension: %v", doc.Ext())
 	pkg, err := encoding.Decode(m, doc.Body)
 	if err != nil {
-		r.Diag().Errorf(errors.ErrorIllegalCocofileSyntax.At(doc), err)
+		r.Diag().Errorf(errors.ErrorIllegalProjectSyntax.At(doc), err)
 		// TODO[pulumi/coconut#14]: issue an error per issue found in the file with line/col numbers.
 		return nil
 	}
@@ -61,29 +57,4 @@ func (r *reader) ReadPackage(doc *diag.Document) *pack.Package {
 
 	glog.V(3).Infof("CocoPack %v parsed: name=%v", doc.File, pkg.Name)
 	return pkg
-}
-
-func (r *reader) ReadWorkspace(doc *diag.Document) *workspace.Workspace {
-	glog.Infof("Reading Cocospace settings: %v (len(body)=%v)", doc.File, len(doc.Body))
-	if glog.V(2) {
-		defer glog.V(2).Infof("Reading Cocospace settings '%v' completed w/ %v warnings and %v errors",
-			doc.File, r.Diag().Warnings(), r.Diag().Errors())
-	}
-
-	// We support many file formats.  Detect the file extension and deserialize the contents.
-	var w workspace.Workspace
-	marshaler, has := encoding.Marshalers[doc.Ext()]
-	contract.Assertf(has, "No marshaler registered for this workspace extension: %v", doc.Ext())
-	if err := marshaler.Unmarshal(doc.Body, &w); err != nil {
-		r.Diag().Errorf(errors.ErrorIllegalWorkspaceSyntax.At(doc), err)
-		// TODO[pulumi/coconut#14]: issue an error per issue found in the file with line/col numbers.
-		return nil
-	}
-	glog.V(3).Infof("Cocospace settings %v parsed: %v clusters; %v deps",
-		doc.File, len(w.Clusters), len(w.Dependencies))
-
-	// Remember that this workspace came from this document.
-	w.Doc = doc
-
-	return &w
 }

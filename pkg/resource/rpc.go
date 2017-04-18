@@ -99,10 +99,10 @@ func MarshalPropertyValue(ctx *Context, v PropertyValue, opts MarshalOptions) (*
 				StringValue: wire,
 			},
 		}, true
-	} else {
-		contract.Failf("Unrecognized property value: %v (type=%v)", v.V, reflect.TypeOf(v.V))
-		return nil, true
 	}
+
+	contract.Failf("Unrecognized property value: %v (type=%v)", v.V, reflect.TypeOf(v.V))
+	return nil, true
 }
 
 // UnmarshalProperties unmarshals a "JSON-like" protobuf structure into a resource property map.

@@ -133,14 +133,16 @@ func TestMapper(t *testing.T) {
 		"sc": "",
 	}, &b3)
 	assert.NotNil(t, err)
-	assert.Equal(t, "Field 's' on 'mapper.bagtag' must be a 'string'; got 'bool' instead", err.Error())
+	assert.Equal(t, "1 fields failed to decode:\n"+
+		"\ts: Field 's' on 'mapper.bagtag' must be a 'string'; got 'bool' instead", err.Error())
 	assert.Equal(t, "", b3.String)
 
 	// Next, missing required field:
 	var b4 bagtag
 	err = md.Decode(Object{}, &b4)
 	assert.NotNil(t, err)
-	assert.Equal(t, "Missing required field 's' on 'mapper.bagtag'", err.Error())
+	assert.Equal(t, "1 fields failed to decode:\n"+
+		"\ts: Missing required field 's' on 'mapper.bagtag'", err.Error())
 	assert.Equal(t, "", b4.String)
 }
 
@@ -332,9 +334,11 @@ func (s *customStruct) GetY() float64 { return s.Y }
 
 func TestCustomMapper(t *testing.T) {
 	var md Mapper
-	md = New(Decoders{
-		reflect.TypeOf((*customInterface)(nil)).Elem(): decodeCustomInterface,
-		reflect.TypeOf(customStruct{}):                 decodeCustomStruct,
+	md = New(&Opts{
+		CustomDecoders: Decoders{
+			reflect.TypeOf((*customInterface)(nil)).Elem(): decodeCustomInterface,
+			reflect.TypeOf(customStruct{}):                 decodeCustomStruct,
+		},
 	})
 
 	var w wrap
