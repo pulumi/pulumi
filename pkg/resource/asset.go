@@ -18,7 +18,7 @@ import (
 // routines exist as members in order to easily interact with the assets referenced by an instance of this type.
 type Asset struct {
 	Text *string `json:"text,omitempty"` // a textual asset.
-	Path *string `json:"text,omitempty"` // a file on the current filesystem.
+	Path *string `json:"path,omitempty"` // a file on the current filesystem.
 	URI  *string `json:"uri,omitempty"`  // a URI to a reference fetched (file://, http://, https://, or custom).
 }
 
@@ -78,8 +78,6 @@ func (a Asset) Read() (AssetReader, error) {
 		default:
 			return nil, fmt.Errorf("Unrecognized or unsupported URI scheme: %v", s)
 		}
-
-		return nil, nil
 	}
 	contract.Failf("Invalid asset; one of Text, Path, or URI must be non-nil")
 	return nil, nil

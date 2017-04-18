@@ -1,12 +1,43 @@
-hash: 0b7799d9dd5f5f3ee86204521fddadc031b0f7eed01535e6c51816fee392b67f
-updated: 2017-02-10T09:07:28.955492616-08:00
+hash: 2a5701e0d4b15c48902ba7aeb350215f03504d321cf7144a05f53dff8318d5bb
+updated: 2017-04-17T17:01:55.940091787-07:00
 imports:
 - name: github.com/aokoli/goutils
   version: 9c37978a95bd5c709a15883b6242714ea6709e64
+- name: github.com/aws/aws-sdk-go
+  version: baba9e786eae5ba978f2007f8e718557b29157c8
+  subpackages:
+  - aws/session
+  - service/ec2
+  - service/s3
+  - aws
+  - aws/awserr
+  - aws/awsutil
+  - aws/client
+  - aws/client/metadata
+  - aws/endpoints
+  - aws/request
+  - aws/signer/v4
+  - private/protocol
+  - private/protocol/ec2query
+  - private/protocol/restxml
+  - aws/credentials
+  - aws/corehandlers
+  - aws/credentials/stscreds
+  - aws/defaults
+  - private/protocol/rest
+  - private/protocol/query/queryutil
+  - private/protocol/xml/xmlutil
+  - private/protocol/query
+  - service/sts
+  - aws/credentials/ec2rolecreds
+  - aws/credentials/endpointcreds
+  - aws/ec2metadata
 - name: github.com/blang/semver
   version: 3a37c301dda64cbe17f16f661b4c976803c0e2d2
 - name: github.com/ghodss/yaml
   version: 04f313413ffd65ce25f2541bfd2b2ceec5c0908c
+- name: github.com/go-ini/ini
+  version: e7fea39b01aea8d5671f6858f0532f56e8bff3a5
 - name: github.com/golang/glog
   version: 23def4e6c14b4da8ac2ed8007337bc5eb5007998
 - name: github.com/golang/lint
@@ -16,11 +47,14 @@ imports:
 - name: github.com/golang/protobuf
   version: 8ee79997227bf9b34611aee7946ae64735e6fd93
   subpackages:
-  - proto
-  - ptypes/empty
   - ptypes/struct
+  - ptypes/empty
+  - proto
+  - protoc-gen-go/descriptor
 - name: github.com/inconshreveable/mousetrap
   version: 76626ae9c91c4f2a10f34cad8ce83ea42c93bb75
+- name: github.com/jmespath/go-jmespath
+  version: bd40a432e4c76585ef6b72d3fd96fb9b6dc7b68d
 - name: github.com/Masterminds/sprig
   version: 1e60e4ce482a1e2c7b9c9be667535ef152e04300
 - name: github.com/mitchellh/go-homedir
@@ -53,9 +87,16 @@ imports:
   version: aaabbdc969c3935a2a7f61efac801e7163c73a2a
   subpackages:
   - unix
+- name: golang.org/x/tools
+  version: 663269851cdddc898f963782f74ea574bcd5c814
+  subpackages:
+  - go/loader
+  - go/ast/astutil
+  - go/buildutil
 - name: google.golang.org/grpc
   version: 0ed6d0346777982c7d8f56c64f963f61a10e3f31
   subpackages:
+  - reflection
   - codes
   - credentials
   - grpclog
@@ -66,6 +107,7 @@ imports:
   - stats
   - tap
   - transport
+  - reflection/grpc_reflection_v1alpha
 - name: gopkg.in/yaml.v2
   version: a5b47d31c556af34a302ce5d659e6fea44d90de0
 devImports: []
