@@ -6,12 +6,17 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/pulumi/coconut/pkg/util/cmdutil"
 	"github.com/pulumi/coconut/pkg/util/rpcutil"
 	"github.com/pulumi/coconut/sdk/go/pkg/cocorpc"
 	"google.golang.org/grpc"
 )
 
 func main() {
+	// Initialize loggers before going any further.
+	// TODO: consider parsing flags and letting the Coconut harness propagate them.
+	cmdutil.InitLogging(false, 0)
+
 	// Fire up a gRPC server, letting the kernel choose a free port for us.
 	port, done, err := rpcutil.Serve(0, []func(*grpc.Server) error{
 		func(srv *grpc.Server) error {
