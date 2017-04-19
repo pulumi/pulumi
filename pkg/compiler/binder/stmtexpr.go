@@ -85,6 +85,8 @@ func (a *astBinder) After(node ast.Node) {
 		a.checkLoadLocationExpression(n)
 	case *ast.LoadDynamicExpression:
 		a.checkLoadDynamicExpression(n)
+	case *ast.TryLoadDynamicExpression:
+		a.checkTryLoadDynamicExpression(n)
 	case *ast.NewExpression:
 		a.checkNewExpression(n)
 	case *ast.InvokeFunctionExpression:
@@ -114,14 +116,10 @@ func (a *astBinder) After(node ast.Node) {
 
 // isLValue checks whether the target is a valid l-value.
 func (a *astBinder) isLValue(expr ast.Expression) bool {
-	// If the target is the result of a load location, it is okay.
-	// TODO: ensure the target isn't a readonly location; if it is, issue an error.
-	if _, isload := expr.(*ast.LoadLocationExpression); isload {
-		return true
-	}
-
-	// If the target is a dynamic load, permit that too.
-	if _, isdload := expr.(*ast.LoadDynamicExpression); isdload {
+	// If the target is the result of a load operation, it is okay.
+	switch expr.(type) {
+	case *ast.LoadLocationExpression, *ast.LoadDynamicExpression, *ast.TryLoadDynamicExpression:
+		// TODO: ensure the target isn't a readonly location; if it is, issue an error.
 		return true
 	}
 
@@ -398,6 +396,14 @@ func (a *astBinder) checkLoadLocationExpression(node *ast.LoadLocationExpression
 }
 
 func (a *astBinder) checkLoadDynamicExpression(node *ast.LoadDynamicExpression) {
+	// Ensure that the name is either a string, number, or a dynamic.
+	a.checkExprType(node.Name, types.String, types.Number)
+
+	// No matter the outcome, a load dynamic always produces a dynamically typed thing.
+	a.b.ctx.RegisterType(node, types.Dynamic)
+}
+
+func (a *astBinder) checkTryLoadDynamicExpression(node *ast.TryLoadDynamicExpression) {
 	// Ensure that the name is either a string, number, or a dynamic.
 	a.checkExprType(node.Name, types.String, types.Number)
 

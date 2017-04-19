@@ -976,8 +976,8 @@ export class Transformer {
         if (isDynamic) {
             // If the target type is `dynamic`, we cannot perform static lookups; devolve into a dynamic load.
             contract.assert(!!object);
-            return this.withLocation(node, <ast.LoadDynamicExpression>{
-                kind:   ast.loadDynamicExpressionKind,
+            return this.withLocation(node, <ast.TryLoadDynamicExpression>{
+                kind:   ast.tryLoadDynamicExpressionKind,
                 object: object,
                 name:   this.withLocation(name, <ast.StringLiteral>{
                     kind:  ast.stringLiteralKind,
@@ -2752,8 +2752,8 @@ export class Transformer {
         // TODO: detect array, string constant property loads, and module member loads.
         let object: ast.Expression = await this.transformExpression(node.expression);
         if (node.argumentExpression) {
-            return this.withLocation(node, <ast.LoadDynamicExpression>{
-                kind:   ast.loadDynamicExpressionKind,
+            return this.withLocation(node, <ast.TryLoadDynamicExpression>{
+                kind:   ast.tryLoadDynamicExpressionKind,
                 object: object,
                 name:   await this.transformExpression(node.argumentExpression),
             });

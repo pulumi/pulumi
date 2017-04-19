@@ -37,6 +37,8 @@ func decodeExpression(m mapper.Mapper, tree mapper.Object) (ast.Expression, erro
 			return decodeLoadLocationExpression(m, tree)
 		case ast.LoadDynamicExpressionKind:
 			return decodeLoadDynamicExpression(m, tree)
+		case ast.TryLoadDynamicExpressionKind:
+			return decodeTryLoadDynamicExpression(m, tree)
 
 		// Functions
 		case ast.NewExpressionKind:
@@ -131,6 +133,14 @@ func decodeLoadLocationExpression(m mapper.Mapper, tree mapper.Object) (*ast.Loa
 
 func decodeLoadDynamicExpression(m mapper.Mapper, tree mapper.Object) (*ast.LoadDynamicExpression, error) {
 	var expr ast.LoadDynamicExpression
+	if err := m.Decode(tree, &expr); err != nil {
+		return nil, err
+	}
+	return &expr, nil
+}
+
+func decodeTryLoadDynamicExpression(m mapper.Mapper, tree mapper.Object) (*ast.TryLoadDynamicExpression, error) {
+	var expr ast.TryLoadDynamicExpression
 	if err := m.Decode(tree, &expr); err != nil {
 		return nil, err
 	}

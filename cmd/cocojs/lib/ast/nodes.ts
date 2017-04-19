@@ -62,6 +62,7 @@ export type NodeKind =
     expressions.ObjectLiteralPropertyKind |
     expressions.LoadLocationExpressionKind |
     expressions.LoadDynamicExpressionKind |
+    expressions.TryLoadDynamicExpressionKind |
     expressions.CallArgumentKind |
     expressions.NewExpressionKind |
     expressions.InvokeFunctionExpressionKind |

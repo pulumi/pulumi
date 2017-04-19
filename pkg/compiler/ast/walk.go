@@ -184,6 +184,11 @@ func Walk(v Visitor, node Node) {
 			Walk(v, *n.Object)
 		}
 		Walk(v, n.Name)
+	case *TryLoadDynamicExpression:
+		if n.Object != nil {
+			Walk(v, *n.Object)
+		}
+		Walk(v, n.Name)
 	case *NewExpression:
 		Walk(v, n.Type)
 		if n.Arguments != nil {

@@ -1052,6 +1052,8 @@ func (e *evaluator) evalExpression(node ast.Expression) (*rt.Object, *rt.Unwind)
 		return e.evalLoadLocationExpression(n)
 	case *ast.LoadDynamicExpression:
 		return e.evalLoadDynamicExpression(n)
+	case *ast.TryLoadDynamicExpression:
+		return e.evalTryLoadDynamicExpression(n)
 	case *ast.NewExpression:
 		return e.evalNewExpression(n)
 	case *ast.InvokeFunctionExpression:
@@ -1087,6 +1089,8 @@ func (e *evaluator) evalLValueExpression(node ast.Expression) (*Location, *rt.Un
 		return e.evalLoadLocation(n, true)
 	case *ast.LoadDynamicExpression:
 		return e.evalLoadDynamic(n, true)
+	case *ast.TryLoadDynamicExpression:
+		return e.evalTryLoadDynamic(n, true)
 	case *ast.UnaryOperatorExpression:
 		contract.Assert(n.Operator == ast.OpDereference)
 		obj, uw := e.evalUnaryOperatorExpressionFor(n, true)
@@ -1438,13 +1442,29 @@ func (e *evaluator) evalLoadDynamicExpression(node *ast.LoadDynamicExpression) (
 }
 
 func (e *evaluator) evalLoadDynamic(node *ast.LoadDynamicExpression, lval bool) (*Location, *rt.Unwind) {
-	var uw *rt.Unwind
+	return e.evalLoadDynamicCore(node, node.Object, node.Name, false, lval)
+}
 
+func (e *evaluator) evalTryLoadDynamicExpression(node *ast.TryLoadDynamicExpression) (*rt.Object, *rt.Unwind) {
+	loc, uw := e.evalTryLoadDynamic(node, false)
+	if uw != nil {
+		return nil, uw
+	}
+	return loc.Obj, nil
+}
+
+func (e *evaluator) evalTryLoadDynamic(node *ast.TryLoadDynamicExpression, lval bool) (*Location, *rt.Unwind) {
+	return e.evalLoadDynamicCore(node, node.Object, node.Name, true, lval)
+}
+
+func (e *evaluator) evalLoadDynamicCore(node ast.Node, objexpr *ast.Expression, nameexpr ast.Expression,
+	try bool, lval bool) (*Location, *rt.Unwind) {
 	// Evaluate the object and then the property expression.
+	var uw *rt.Unwind
 	var this *rt.Object
 	var thisexpr ast.Expression
-	if node.Object != nil {
-		thisexpr = *node.Object
+	if objexpr != nil {
+		thisexpr = *objexpr
 		if this, uw = e.evalExpression(thisexpr); uw != nil {
 			return nil, uw
 		}
@@ -1456,7 +1476,7 @@ func (e *evaluator) evalLoadDynamic(node *ast.LoadDynamicExpression, lval bool) 
 
 	}
 	var name *rt.Object
-	if name, uw = e.evalExpression(node.Name); uw != nil {
+	if name, uw = e.evalExpression(nameexpr); uw != nil {
 		return nil, uw
 	}
 
@@ -1478,15 +1498,17 @@ func (e *evaluator) evalLoadDynamic(node *ast.LoadDynamicExpression, lval bool) 
 		//     assignments are to be permitted.  This will cause troubles down the road when we do other languages that
 		//     reject out of bounds accesses e.g. Python.  An alternative approach would be to require ECMAScript to
 		//     use a runtime library anytime an array is accessed, translating exceptions like this into `undefined`s.
-		if ix > len(*arrv) {
+		if ix >= len(*arrv) && (lval || try) {
 			newarr := make([]*rt.Pointer, ix+1)
 			copy(*arrv, newarr)
 			*arrv = newarr
 		}
-		pv = (*arrv)[ix]
-		if pv == nil {
-			pv = rt.NewPointer(e.alloc.NewNull(node), false)
-			(*arrv)[ix] = pv
+		if ix < len(*arrv) {
+			pv = (*arrv)[ix]
+			if pv == nil && (lval || try) {
+				pv = rt.NewPointer(e.alloc.NewNull(node), false)
+				(*arrv)[ix] = pv
+			}
 		}
 	} else {
 		contract.Assertf(name.Type() == types.String, "Expected dynamic load name to be a string")
@@ -1494,13 +1516,17 @@ func (e *evaluator) evalLoadDynamic(node *ast.LoadDynamicExpression, lval bool) 
 		if thisexpr == nil {
 			pv = e.getDynamicNameAddr(key, lval)
 		} else {
-			pv = e.getObjectOrSuperProperty(this, thisexpr, rt.PropertyKey(key), lval, lval)
+			pv = e.getObjectOrSuperProperty(this, thisexpr, rt.PropertyKey(key), lval || try, lval)
 		}
 
-		if pv == nil {
-			// If the result is nil, then the name is not defined.  Raise an error.
-			return nil, e.NewNameNotDefinedException(node, key)
-		}
+	}
+
+	if pv == nil {
+		// If the result is nil, then the name is not defined.  In the event of a try load, we will have substituted a
+		// null already above, so if we got here, we need to propagate an exception.
+		contract.Assert(!try)
+		contract.Assert(!lval)
+		return nil, e.NewNameNotDefinedException(node, key)
 	}
 
 	// If this isn't for an l-value, return the raw object.  Otherwise, make sure it's not readonly, and return it.

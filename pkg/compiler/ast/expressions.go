@@ -151,6 +151,20 @@ var _ LoadExpression = (*LoadDynamicExpression)(nil)
 
 const LoadDynamicExpressionKind NodeKind = "LoadDynamicExpression"
 
+// TryLoadDynamicExpression dynamically loads either a variable or a function, by name, from an object or scope; it is
+// like LoadDynamicExpression, except that if the load fails, a null is produced instead of an exception.
+type TryLoadDynamicExpression struct {
+	loadExpressionNode
+	Object *Expression `json:"object,omitempty"` // the object from which to load the property.
+	Name   Expression  `json:"name"`             // the dynamically evaluated name of the property to load.
+}
+
+var _ Node = (*TryLoadDynamicExpression)(nil)
+var _ Expression = (*TryLoadDynamicExpression)(nil)
+var _ LoadExpression = (*TryLoadDynamicExpression)(nil)
+
+const TryLoadDynamicExpressionKind NodeKind = "TryLoadDynamicExpression"
+
 /* Functions */
 
 type CallExpression interface {
