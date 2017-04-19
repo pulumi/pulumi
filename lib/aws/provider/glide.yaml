@@ -1,0 +1,9 @@
+package: github.com/pulumi/coconut/lib/aws/provider
+import:
+- package: github.com/aws/aws-sdk-go
+- package: github.com/golang/protobuf
+- package: github.com/pulumi/coconut
+- package: golang.org/x/net
+  subpackages:
+  - context
+- package: google.golang.org/grpc

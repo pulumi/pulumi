@@ -1,0 +1,141 @@
+hash: b58aa860b1a3ea6cf617df670fe415af131cfb911bf165458d24b28d854a4e4c
+updated: 2017-04-19T12:01:32.783364781-07:00
+imports:
+- name: github.com/aws/aws-sdk-go
+  version: a4ca736aa0ba3bece406555eeecf5346e1a173dd
+  subpackages:
+  - aws
+  - aws/awserr
+  - aws/session
+  - service/ec2
+  - service/iam
+  - service/lambda
+  - service/s3
+  - aws/client
+  - aws/corehandlers
+  - aws/credentials
+  - aws/credentials/stscreds
+  - aws/defaults
+  - aws/endpoints
+  - aws/request
+  - aws/awsutil
+  - aws/client/metadata
+  - aws/signer/v4
+  - private/protocol
+  - private/protocol/ec2query
+  - private/protocol/query
+  - private/protocol/restjson
+  - private/protocol/restxml
+  - service/sts
+  - aws/credentials/ec2rolecreds
+  - aws/credentials/endpointcreds
+  - aws/ec2metadata
+  - private/protocol/rest
+  - private/protocol/query/queryutil
+  - private/protocol/xml/xmlutil
+  - private/protocol/jsonrpc
+  - private/protocol/json/jsonutil
+- name: github.com/blang/semver
+  version: 4a1e882c79dcf4ec00d2e29fac74b9c8938d5052
+- name: github.com/ghodss/yaml
+  version: 0ca9ea5df5451ffdf184b4428c902747c2c11cd7
+- name: github.com/go-ini/ini
+  version: e7fea39b01aea8d5671f6858f0532f56e8bff3a5
+- name: github.com/golang/glog
+  version: 23def4e6c14b4da8ac2ed8007337bc5eb5007998
+- name: github.com/golang/protobuf
+  version: 2bba0603135d7d7f5cb73b2125beeda19c09f4ef
+  subpackages:
+  - ptypes/empty
+  - ptypes/struct
+  - proto
+  - protoc-gen-go/descriptor
+  - ptypes/any
+- name: github.com/jmespath/go-jmespath
+  version: bd40a432e4c76585ef6b72d3fd96fb9b6dc7b68d
+- name: github.com/mitchellh/go-homedir
+  version: b8bc1bf767474819792c23f32d8286a45736f1c6
+- name: github.com/pulumi/coconut
+  version: ad870066111ec454c9d784de262bf5c3f59ea913
+  subpackages:
+  - pkg/resource
+  - pkg/tokens
+  - pkg/util/contract
+  - pkg/util/mapper
+  - pkg/util/retry
+  - pkg/util/rpcutil
+  - sdk/go/pkg/cocorpc
+  - lib/aws/provider/awsctx
+  - lib/aws/provider/ec2
+  - lib/aws/provider/iam
+  - lib/aws/provider/lambda
+  - lib/aws/provider/s3
+  - pkg/compiler
+  - pkg/compiler/binder
+  - pkg/compiler/core
+  - pkg/compiler/errors
+  - pkg/compiler/symbols
+  - pkg/compiler/types
+  - pkg/compiler/types/predef
+  - pkg/diag
+  - pkg/diag/colors
+  - pkg/eval
+  - pkg/eval/heapstate
+  - pkg/eval/rt
+  - pkg/graph
+  - pkg/pack
+  - pkg/workspace
+  - pkg/compiler/metadata
+  - pkg/compiler/ast
+  - pkg/encoding
+- name: github.com/reconquest/loreley
+  version: 2ab6b7470a54bfa9b5b0289f9b4e8fc4839838f7
+- name: golang.org/x/crypto
+  version: 12c985af8526c1f6f0c463bbfd9d69623d13b323
+  subpackages:
+  - ssh/terminal
+- name: golang.org/x/net
+  version: 5602c733f70afc6dcec6766be0d5034d4c4f14de
+  subpackages:
+  - context
+  - http2
+  - trace
+  - http2/hpack
+  - idna
+  - lex/httplex
+  - internal/timeseries
+- name: golang.org/x/sys
+  version: f3918c30c5c2cb527c0b071a27c35120a6c0719a
+  subpackages:
+  - unix
+- name: golang.org/x/text
+  version: f4b4367115ec2de254587813edaa901bc1c723a8
+  subpackages:
+  - secure/bidirule
+  - unicode/norm
+  - transform
+  - unicode/bidi
+- name: google.golang.org/genproto
+  version: 411e09b969b1170a9f0c467558eb4c4c110d9c77
+  subpackages:
+  - googleapis/rpc/status
+- name: google.golang.org/grpc
+  version: 6914ab1e338c92da4218a23d27fcd03d0ad78d46
+  subpackages:
+  - reflection
+  - codes
+  - credentials
+  - grpclog
+  - internal
+  - keepalive
+  - metadata
+  - naming
+  - peer
+  - stats
+  - status
+  - tap
+  - transport
+  - reflection/grpc_reflection_v1alpha
+- name: gopkg.in/yaml.v2
+  version: cd8b52f8269e0feb286dfeef29f8fe4d5b397e0b
+devImports: []
