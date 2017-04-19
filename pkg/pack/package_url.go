@@ -62,7 +62,7 @@ func (u PackageURLString) Parse(pkg tokens.PackageName) (PackageURL, error) {
 	if s == "" {
 		return parsed, fmt.Errorf("Expected a name in '%v'", u)
 	}
-	if !tokens.IsQName(s) {
+	if !tokens.IsPackageName(s) {
 		return parsed, fmt.Errorf("Expected a qualified package name in '%v': %v", u, s)
 	}
 

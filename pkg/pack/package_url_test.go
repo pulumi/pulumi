@@ -153,18 +153,18 @@ func TestPackageURLStringParse(t *testing.T) {
 		assert.Equal(t, DefaultPackageURLVersion, p.Version)
 	}
 	{
-		s := "_/_/_/_/a0/c0Mpl3x_"
+		s := "_/_/_/_a-b/a0/c0Mpl3x_"
 		p, err := PackageURLString(s).Parse(tokens.PackageName(s))
 		assert.Nil(t, err)
 		assert.Equal(t, s, p.String())
 		assert.Equal(t, "", p.Proto)
 		assert.Equal(t, "", p.Base)
-		assert.Equal(t, "_/_/_/_/a0/c0Mpl3x_", string(p.Name))
+		assert.Equal(t, "_/_/_/_a-b/a0/c0Mpl3x_", string(p.Name))
 		assert.Equal(t, "", string(p.Version))
 		p = p.Defaults()
 		assert.Equal(t, DefaultPackageURLProto, p.Proto)
 		assert.Equal(t, DefaultPackageURLBase, p.Base)
-		assert.Equal(t, "_/_/_/_/a0/c0Mpl3x_", string(p.Name))
+		assert.Equal(t, "_/_/_/_a-b/a0/c0Mpl3x_", string(p.Name))
 		assert.Equal(t, DefaultPackageURLVersion, p.Version)
 	}
 	{
