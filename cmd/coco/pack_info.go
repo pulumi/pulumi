@@ -8,6 +8,7 @@ import (
 	"strings"
 	"unicode"
 
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/coconut/pkg/compiler/ast"
@@ -42,7 +43,7 @@ func newPackInfoCmd() *cobra.Command {
 				pwd, _ := os.Getwd()
 				pkgpath, err := workspace.DetectPackage(pwd, cmdutil.Sink())
 				if err != nil {
-					return fmt.Errorf("could not locate a package to load: %v", err)
+					return errors.Errorf("could not locate a package to load: %v", err)
 				}
 
 				if pkg := cmdutil.ReadPackage(pkgpath); pkg != nil {

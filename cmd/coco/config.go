@@ -5,6 +5,7 @@ package main
 import (
 	"fmt"
 
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/coconut/pkg/resource"
@@ -56,7 +57,8 @@ func newConfigCmd() *cobra.Command {
 						// TODO: print complex values.
 						fmt.Printf("%v\n", v)
 					} else {
-						return fmt.Errorf("configuration key '%v' not found for environment '%v'", key, info.Env.Name)
+						return errors.Errorf(
+							"configuration key '%v' not found for environment '%v'", key, info.Env.Name)
 					}
 				}
 			}

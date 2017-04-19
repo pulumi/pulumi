@@ -3,10 +3,10 @@
 package main
 
 import (
-	"fmt"
+	"github.com/pkg/errors"
+	"github.com/spf13/cobra"
 
 	"github.com/pulumi/coconut/pkg/util/cmdutil"
-	"github.com/spf13/cobra"
 )
 
 func newEnvRmCmd() *cobra.Command {
@@ -30,7 +30,7 @@ func newEnvRmCmd() *cobra.Command {
 
 			// Don't remove environments that still have resources.
 			if !force && info.Old != nil && len(info.Old.Resources()) > 0 {
-				return fmt.Errorf(
+				return errors.Errorf(
 					"'%v' still has resources; removal rejected; pass --force to override", info.Env.Name)
 			}
 

@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/golang/glog"
+	"github.com/pkg/errors"
 
 	"github.com/pulumi/coconut/pkg/tokens"
 	"github.com/pulumi/coconut/pkg/util/contract"
@@ -118,7 +119,7 @@ func (p *provider) Create(t tokens.Type, props PropertyMap) (ID, State, error) {
 	if id == "" {
 		return id,
 			StateUnknown,
-			fmt.Errorf("plugin for package '%v' returned empty ID from create '%v'", p.pkg, t)
+			errors.Errorf("plugin for package '%v' returned empty ID from create '%v'", p.pkg, t)
 	}
 	return id, StateOK, nil
 }

@@ -8,6 +8,8 @@ import (
 	"reflect"
 	"strings"
 
+	"github.com/pkg/errors"
+
 	"github.com/pulumi/coconut/pkg/util/contract"
 )
 
@@ -290,7 +292,7 @@ func (md *mapper) adjustValue(val reflect.Value,
 				val = reflect.ValueOf(target).Elem()
 			} else {
 				return val, NewFieldErr(ty, key,
-					fmt.Errorf(
+					errors.Errorf(
 						"Cannot decode Object to type %v; it isn't a struct, and no custom decoder exists", to))
 			}
 		} else if val.Type().Kind() == reflect.String {

@@ -7,6 +7,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/coconut/pkg/compiler/core"
@@ -50,7 +51,7 @@ func newPackEvalCmd() *cobra.Command {
 				if dotOutput {
 					// Convert the output to a DOT file.
 					if err := dotconv.Print(result.Heap.G, os.Stdout); err != nil {
-						return fmt.Errorf("failed to write DOT file to output: %v", err)
+						return errors.Errorf("failed to write DOT file to output: %v", err)
 					}
 				} else {
 					// Just print a very basic, yet (hopefully) aesthetically pleasing, ascii-ization of the graph.

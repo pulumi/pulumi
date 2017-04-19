@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"strconv"
 
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/coconut/pkg/encoding"
@@ -29,7 +30,7 @@ func newEnvLsCmd() *cobra.Command {
 			path := workspace.EnvPath("")
 			files, err := ioutil.ReadDir(path)
 			if err != nil && !os.IsNotExist(err) {
-				return fmt.Errorf("could not read environments: %v", err)
+				return errors.Errorf("could not read environments: %v", err)
 			}
 
 			// Create a new context to share amongst all of the loads.

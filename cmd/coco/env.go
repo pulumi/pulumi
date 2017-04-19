@@ -13,6 +13,7 @@ import (
 	"strconv"
 	"time"
 
+	goerr "github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/coconut/pkg/compiler"
@@ -56,7 +57,7 @@ func newEnvCmd() *cobra.Command {
 func initEnvCmd(cmd *cobra.Command, args []string) (*envCmdInfo, error) {
 	// Read in the name of the environment to use.
 	if len(args) == 0 || args[0] == "" {
-		return nil, fmt.Errorf("missing required environment name")
+		return nil, goerr.Errorf("missing required environment name")
 	}
 	return initEnvCmdName(tokens.QName(args[0]), args[1:])
 }
@@ -67,7 +68,7 @@ func initEnvCmdName(name tokens.QName, args []string) (*envCmdInfo, error) {
 		name = getCurrentEnv()
 	}
 	if name == "" {
-		return nil, fmt.Errorf("missing environment name (and no default found)")
+		return nil, goerr.Errorf("missing environment name (and no default found)")
 	}
 
 	// Read in the deployment information, bailing if an IO error occurs.
@@ -75,8 +76,8 @@ func initEnvCmdName(name tokens.QName, args []string) (*envCmdInfo, error) {
 	envfile, env, old := readEnv(ctx, name)
 	if env == nil {
 		contract.Assert(!ctx.Diag.Success())
-		ctx.Close()                                                          // close now, since we are exiting.
-		return nil, fmt.Errorf("could not read envfile required to proceed") // failure reading the env information.
+		ctx.Close()                                                            // close now, since we are exiting.
+		return nil, goerr.Errorf("could not read envfile required to proceed") // failure reading the env information.
 	}
 	return &envCmdInfo{
 		Ctx:     ctx,
@@ -287,7 +288,7 @@ func plan(cmd *cobra.Command, info *envCmdInfo, opts applyOptions) *planResult {
 			// Convert the output to a DOT file.
 			if err := dotconv.Print(result.Heap.G, os.Stdout); err != nil {
 				cmdutil.Sink().Errorf(errors.ErrorIO,
-					fmt.Errorf("failed to write DOT file to output: %v", err))
+					goerr.Errorf("failed to write DOT file to output: %v", err))
 			}
 			return nil
 		}
@@ -497,7 +498,7 @@ func saveEnv(env *resource.Env, snap resource.Snapshot, file string, existok boo
 	// If it's not ok for the file to already exist, ensure that it doesn't.
 	if !existok {
 		if _, err := os.Stat(file); err == nil {
-			cmdutil.Sink().Errorf(errors.ErrorIO, fmt.Errorf("file '%v' already exists", file))
+			cmdutil.Sink().Errorf(errors.ErrorIO, goerr.Errorf("file '%v' already exists", file))
 			return false
 		}
 	}

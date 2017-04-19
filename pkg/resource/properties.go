@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"reflect"
 
+	"github.com/pkg/errors"
+
 	"github.com/pulumi/coconut/pkg/tokens"
 	"github.com/pulumi/coconut/pkg/util/contract"
 	"github.com/pulumi/coconut/pkg/util/mapper"
@@ -39,7 +41,7 @@ func (err *ReqError) Error() string {
 func (m PropertyMap) BoolOrErr(k PropertyKey, req bool) (*bool, error) {
 	if v, has := m[k]; has && !v.IsNull() {
 		if !v.IsBool() {
-			return nil, fmt.Errorf("property '%v' is not a bool (%v)", k, reflect.TypeOf(v.V))
+			return nil, errors.Errorf("property '%v' is not a bool (%v)", k, reflect.TypeOf(v.V))
 		}
 		b := v.BoolValue()
 		return &b, nil
@@ -53,7 +55,7 @@ func (m PropertyMap) BoolOrErr(k PropertyKey, req bool) (*bool, error) {
 func (m PropertyMap) NumberOrErr(k PropertyKey, req bool) (*float64, error) {
 	if v, has := m[k]; has && !v.IsNull() {
 		if !v.IsNumber() {
-			return nil, fmt.Errorf("property '%v' is not a number (%v)", k, reflect.TypeOf(v.V))
+			return nil, errors.Errorf("property '%v' is not a number (%v)", k, reflect.TypeOf(v.V))
 		}
 		n := v.NumberValue()
 		return &n, nil
@@ -67,7 +69,7 @@ func (m PropertyMap) NumberOrErr(k PropertyKey, req bool) (*float64, error) {
 func (m PropertyMap) StringOrErr(k PropertyKey, req bool) (*string, error) {
 	if v, has := m[k]; has && !v.IsNull() {
 		if !v.IsString() {
-			return nil, fmt.Errorf("property '%v' is not a string (%v)", k, reflect.TypeOf(v.V))
+			return nil, errors.Errorf("property '%v' is not a string (%v)", k, reflect.TypeOf(v.V))
 		}
 		s := v.StringValue()
 		return &s, nil
@@ -81,7 +83,7 @@ func (m PropertyMap) StringOrErr(k PropertyKey, req bool) (*string, error) {
 func (m PropertyMap) ArrayOrErr(k PropertyKey, req bool) (*[]PropertyValue, error) {
 	if v, has := m[k]; has && !v.IsNull() {
 		if !v.IsArray() {
-			return nil, fmt.Errorf("property '%v' is not an array (%v)", k, reflect.TypeOf(v.V))
+			return nil, errors.Errorf("property '%v' is not an array (%v)", k, reflect.TypeOf(v.V))
 		}
 		a := v.ArrayValue()
 		return &a, nil
@@ -95,7 +97,7 @@ func (m PropertyMap) ArrayOrErr(k PropertyKey, req bool) (*[]PropertyValue, erro
 func (m PropertyMap) ObjectArrayOrErr(k PropertyKey, req bool) (*[]PropertyMap, error) {
 	if v, has := m[k]; has && !v.IsNull() {
 		if !v.IsArray() {
-			return nil, fmt.Errorf("property '%v' is not an array (%v)", k, reflect.TypeOf(v.V))
+			return nil, errors.Errorf("property '%v' is not an array (%v)", k, reflect.TypeOf(v.V))
 		}
 		a := v.ArrayValue()
 		var objs []PropertyMap
@@ -103,7 +105,7 @@ func (m PropertyMap) ObjectArrayOrErr(k PropertyKey, req bool) (*[]PropertyMap, 
 			if e.IsObject() {
 				objs = append(objs, e.ObjectValue())
 			} else {
-				return nil, fmt.Errorf(
+				return nil, errors.Errorf(
 					"property '%v' array element %v is not an object (%v)", k, i, reflect.TypeOf(e))
 			}
 		}
@@ -118,7 +120,7 @@ func (m PropertyMap) ObjectArrayOrErr(k PropertyKey, req bool) (*[]PropertyMap, 
 func (m PropertyMap) StringArrayOrErr(k PropertyKey, req bool) (*[]string, error) {
 	if v, has := m[k]; has && !v.IsNull() {
 		if !v.IsArray() {
-			return nil, fmt.Errorf("property '%v' is not an array (%v)", k, reflect.TypeOf(v.V))
+			return nil, errors.Errorf("property '%v' is not an array (%v)", k, reflect.TypeOf(v.V))
 		}
 		a := v.ArrayValue()
 		var strs []string
@@ -126,7 +128,7 @@ func (m PropertyMap) StringArrayOrErr(k PropertyKey, req bool) (*[]string, error
 			if e.IsString() {
 				strs = append(strs, e.StringValue())
 			} else {
-				return nil, fmt.Errorf(
+				return nil, errors.Errorf(
 					"property '%v' array element %v is not a string (%v)", k, i, reflect.TypeOf(e))
 			}
 		}
@@ -141,7 +143,7 @@ func (m PropertyMap) StringArrayOrErr(k PropertyKey, req bool) (*[]string, error
 func (m PropertyMap) ObjectOrErr(k PropertyKey, req bool) (*PropertyMap, error) {
 	if v, has := m[k]; has && !v.IsNull() {
 		if !v.IsObject() {
-			return nil, fmt.Errorf("property '%v' is not an object (%v)", k, reflect.TypeOf(v.V))
+			return nil, errors.Errorf("property '%v' is not an object (%v)", k, reflect.TypeOf(v.V))
 		}
 		o := v.ObjectValue()
 		return &o, nil
@@ -155,7 +157,7 @@ func (m PropertyMap) ObjectOrErr(k PropertyKey, req bool) (*PropertyMap, error) 
 func (m PropertyMap) ResourceOrErr(k PropertyKey, req bool) (*URN, error) {
 	if v, has := m[k]; has && !v.IsNull() {
 		if !v.IsResource() {
-			return nil, fmt.Errorf("property '%v' is not an object (%v)", k, reflect.TypeOf(v.V))
+			return nil, errors.Errorf("property '%v' is not an object (%v)", k, reflect.TypeOf(v.V))
 		}
 		m := v.ResourceValue()
 		return &m, nil

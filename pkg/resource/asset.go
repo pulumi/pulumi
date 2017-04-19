@@ -4,12 +4,13 @@ package resource
 
 import (
 	"bytes"
-	"fmt"
 	"io"
 	"io/ioutil"
 	"net/http"
 	"net/url"
 	"os"
+
+	"github.com/pkg/errors"
 
 	"github.com/pulumi/coconut/pkg/util/contract"
 )
@@ -88,7 +89,7 @@ func (a Asset) Read() (AssetReader, error) {
 			contract.Assert(url.Fragment == "")
 			return os.Open(url.Path)
 		default:
-			return nil, fmt.Errorf("Unrecognized or unsupported URI scheme: %v", s)
+			return nil, errors.Errorf("Unrecognized or unsupported URI scheme: %v", s)
 		}
 	}
 	contract.Failf("Invalid asset; one of Text, Path, or URI must be non-nil")

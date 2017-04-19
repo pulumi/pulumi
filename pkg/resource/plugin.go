@@ -10,6 +10,7 @@ import (
 	"os/exec"
 	"strconv"
 
+	"github.com/pkg/errors"
 	"google.golang.org/grpc"
 
 	"github.com/pulumi/coconut/pkg/diag"
@@ -39,7 +40,7 @@ func newPlugin(ctx *Context, bins []string, prefix string) (*plugin, error) {
 		} else {
 			// If that failed, and it was simply a missing file error, keep searching the paths.
 			if execerr, isexecerr := err.(*exec.Error); !isexecerr || execerr.Err != exec.ErrNotFound {
-				return nil, err
+				return nil, errors.Wrapf(err, "plugin [%v] failed to load", bin)
 			}
 		}
 	}
@@ -58,7 +59,7 @@ func newPlugin(ctx *Context, bins []string, prefix string) (*plugin, error) {
 		n, err := plug.Stdout.Read(b)
 		if err != nil {
 			plug.Proc.Kill()
-			return nil, err
+			return nil, errors.Wrapf(err, "could not read plugin [%v] STDOUT", foundbin)
 		}
 		if n > 0 && b[0] == '\n' {
 			break
@@ -69,8 +70,8 @@ func newPlugin(ctx *Context, bins []string, prefix string) (*plugin, error) {
 	// Parse the output line (minus the '\n') to ensure it's a numeric port.
 	if _, err = strconv.Atoi(port); err != nil {
 		plug.Proc.Kill()
-		return nil, fmt.Errorf("%v plugin '%v' wrote a non-numeric port to stdout ('%v'): %v",
-			prefix, foundbin, port, err)
+		return nil, errors.Wrapf(
+			err, "%v plugin [%v] wrote a non-numeric port to stdout ('%v')", prefix, foundbin, port)
 	}
 
 	// For now, we will spawn goroutines that will spew STDOUT/STDERR to the relevent diag streams.
@@ -101,7 +102,7 @@ func newPlugin(ctx *Context, bins []string, prefix string) (*plugin, error) {
 	// Now that we have the port, go ahead and create a gRPC client connection to it.
 	conn, err := grpc.Dial(":"+port, grpc.WithInsecure())
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrapf(err, "could not dial plugin [%v] over RPC", foundbin)
 	}
 	plug.Conn = conn
 	return plug, nil

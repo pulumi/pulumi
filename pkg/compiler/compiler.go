@@ -3,10 +3,10 @@
 package compiler
 
 import (
-	"fmt"
 	"os"
 
 	"github.com/golang/glog"
+	goerr "github.com/pkg/errors"
 
 	"github.com/pulumi/coconut/pkg/compiler/binder"
 	"github.com/pulumi/coconut/pkg/compiler/core"
@@ -75,7 +75,7 @@ func New(path string, opts *core.Options) (Compiler, error) {
 	w, err := workspace.New(ctx)
 	if err != nil {
 		d.Errorf(errors.ErrorIO.AtFile(path), err)
-		return nil, fmt.Errorf("cannot proceed without a workspace")
+		return nil, goerr.Errorf("cannot proceed without a workspace")
 	}
 
 	// And finally return the freshly allocated compiler object.

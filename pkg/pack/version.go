@@ -3,10 +3,10 @@
 package pack
 
 import (
-	"errors"
 	"regexp"
 
 	"github.com/blang/semver"
+	"github.com/pkg/errors"
 )
 
 // Version represents a precise version number.  It may be either a Git SHA hash or a semantic version (not a range).

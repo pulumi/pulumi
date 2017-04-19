@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/pkg/errors"
+
 	"github.com/pulumi/coconut/pkg/tokens"
 	"github.com/pulumi/coconut/pkg/util/contract"
 )
@@ -39,7 +41,7 @@ func (u PackageURLString) Parse(pkg tokens.PackageName) (PackageURL, error) {
 	if verIndex != -1 {
 		parsed.Version = VersionSpec(s[verIndex+1:])
 		if err := parsed.Version.Check(); err != nil {
-			return parsed, fmt.Errorf("Illegal version spec in '%v': %v", u, err)
+			return parsed, errors.Errorf("Illegal version spec in '%v': %v", u, err)
 		}
 		s = s[:verIndex]
 	}
@@ -51,7 +53,7 @@ func (u PackageURLString) Parse(pkg tokens.PackageName) (PackageURL, error) {
 		// TODO(joe): this might be questionable; e.g., domain-less hosts will require a trailing period.
 		slashIndex := strings.Index(s, tokens.QNameDelimiter)
 		if slashIndex == -1 {
-			return parsed, fmt.Errorf("Expected a name to follow the base URL in '%v'", u)
+			return parsed, errors.Errorf("Expected a name to follow the base URL in '%v'", u)
 		}
 
 		parsed.Base = s[:slashIndex+1]
@@ -60,10 +62,10 @@ func (u PackageURLString) Parse(pkg tokens.PackageName) (PackageURL, error) {
 
 	// Anything remaining at this point represents the name.
 	if s == "" {
-		return parsed, fmt.Errorf("Expected a name in '%v'", u)
+		return parsed, errors.Errorf("Expected a name in '%v'", u)
 	}
 	if !tokens.IsPackageName(s) {
-		return parsed, fmt.Errorf("Expected a qualified package name in '%v': %v", u, s)
+		return parsed, errors.Errorf("Expected a qualified package name in '%v': %v", u, s)
 	}
 
 	parsed.Name = tokens.PackageName(s)
