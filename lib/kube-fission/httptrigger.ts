@@ -1,5 +1,6 @@
 // Copyright 2017 Pulumi, Inc. All rights reserved.
 
+import {Function} from "./function";
 import {Metadata} from "./metadata";
 import * as coconut from "@coconut/coconut";
 
@@ -9,7 +10,7 @@ export class HTTPTrigger extends coconut.Resource implements HTTPTriggerProperti
     public readonly metadata: Metadata;
     public readonly urlPattern: string;
     public readonly method: string;
-    public readonly function: Metadata;
+    public readonly function: Function;
 
     constructor(args: HTTPTriggerProperties) {
         super();
@@ -24,6 +25,6 @@ export interface HTTPTriggerProperties {
     metadata: Metadata;
     urlPattern: string;
     method: string;
-    function: Metadata;
+    function: Function;
 }
 

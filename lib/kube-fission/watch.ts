@@ -1,5 +1,6 @@
 // Copyright 2017 Pulumi, Inc. All rights reserved.
 
+import {Function} from "./function";
 import {Metadata} from "./metadata";
 import * as coconut from "@coconut/coconut";
 
@@ -10,7 +11,7 @@ export class Watch extends coconut.Resource implements WatchProperties {
     public readonly objType: string;
     public readonly labelSelector: string;
     public readonly fieldSelector: string;
-    public readonly function: Metadata;
+    public readonly function: Function;
     public readonly target: string;
 
     constructor(args: WatchProperties) {
@@ -31,7 +32,7 @@ export interface WatchProperties {
     objType: string;
     labelSelector: string;
     fieldSelector: string;
-    function: Metadata;
+    function: Function;
     target: string; // watch publish target (URL, NATS stream, etc)
 }
 
