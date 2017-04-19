@@ -22,7 +22,7 @@ import (
 //							  <DecoratedType>
 //		Identifier			= <Name>
 //		QualifiedToken		= <PackageName> [ ":" <ModuleName> [ ":" <ModuleMemberName> [ ":" <ClassMemberName> ] ] ]
-//		PackageName			= <QName>
+//		PackageName			= ... similar to <QName>, except dashes permitted ...
 //		ModuleName			= <QName>
 //		ModuleMemberName	= <Name>
 //		ClassMemberName		= <Name>
@@ -129,7 +129,7 @@ func (tok Token) ClassMember() ClassMember {
 type Package Token
 
 func NewPackageToken(nm PackageName) Package {
-	contract.Assertf(IsQName(string(nm)), "Package name '%v' is not a legal qualified name")
+	contract.Assertf(IsPackageName(string(nm)), "Package name '%v' is not a legal qualified name", nm)
 	return Package(nm)
 }
 
@@ -138,11 +138,6 @@ func (tok Package) Name() PackageName {
 }
 
 func (tok Package) String() string { return string(tok) }
-
-// PackageName is a qualified name referring to an imported package.
-type PackageName QName
-
-func (nm PackageName) String() string { return string(nm) }
 
 // Module is a token representing a module.  It uses the following subset of the token grammar:
 //		Module = <Package> ":" <ModuleName>
@@ -167,11 +162,6 @@ func (tok Module) Name() ModuleName {
 }
 
 func (tok Module) String() string { return string(tok) }
-
-// ModuleName is a qualified name referring to an imported module from a package.
-type ModuleName QName
-
-func (nm ModuleName) String() string { return string(nm) }
 
 // ModuleMember is a token representing a module's member.  It uses the following grammar.  Note that this is not
 // ambiguous because member names cannot contain slashes, and so the "last" slash in a name delimits the member:
@@ -200,11 +190,6 @@ func (tok ModuleMember) Name() ModuleMemberName {
 }
 
 func (tok ModuleMember) String() string { return string(tok) }
-
-// ModuleMemberName is a simple name representing the module member's identifier.
-type ModuleMemberName Name
-
-func (nm ModuleMemberName) String() string { return string(nm) }
 
 // ClassMember is a token representing a class's member.  It uses the following grammar.  Unlike ModuleMember, this
 // cannot use a slash for delimiting names, because we use often ClassMember and ModuleMember interchangably:
@@ -237,12 +222,6 @@ func (tok ClassMember) Name() ClassMemberName {
 }
 
 func (tok ClassMember) String() string { return string(tok) }
-
-// ClassMemberName is a simple name representing the class member's identifier.
-type ClassMemberName Name
-
-func (nm ClassMemberName) Name() Name     { return Name(nm) }
-func (nm ClassMemberName) String() string { return string(nm) }
 
 // Type is a token representing a type.  It is either a primitive type name, reference to a module class, or decorated:
 //		Type = <Name> | <ModuleMember> | <DecoratedType>
@@ -294,11 +273,6 @@ func (tok Type) Primitive() bool {
 }
 
 func (tok Type) String() string { return string(tok) }
-
-// TypeName is a simple name representing the type's name, without any package/module qualifiers.
-type TypeName Name
-
-func (nm TypeName) String() string { return string(nm) }
 
 // Variable is a token representing a variable (module property, class property, or local variable (including
 // parameters)).  It can be a simple name for the local cases, or a true token for others:

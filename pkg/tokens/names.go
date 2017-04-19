@@ -79,3 +79,39 @@ func (nm QName) Namespace() QName {
 	contract.Assert(IsQName(qn))
 	return QName(qn)
 }
+
+// PackageName is a qualified name referring to an imported package.  It is similar to a QName, except that it permits
+// dashes "-" as is commonplace with packages of various kinds.
+type PackageName string
+
+func (nm PackageName) String() string { return string(nm) }
+
+var PackageNameRegexp = regexp.MustCompile(PackageNameRegexpPattern)
+var PackagePartRegexpPattern = "[A-Za-z_.][A-Za-z0-9_.-]*"
+var PackageNameRegexpPattern = "(" + PackagePartRegexpPattern + "\\" + QNameDelimiter + ")*" + PackagePartRegexpPattern
+
+// IsPackageName checks whether a string is a legal Name.
+func IsPackageName(s string) bool {
+	return s != "" && PackageNameRegexp.FindString(s) == s
+}
+
+// ModuleName is a qualified name referring to an imported module from a package.
+type ModuleName QName
+
+func (nm ModuleName) String() string { return string(nm) }
+
+// ModuleMemberName is a simple name representing the module member's identifier.
+type ModuleMemberName Name
+
+func (nm ModuleMemberName) String() string { return string(nm) }
+
+// ClassMemberName is a simple name representing the class member's identifier.
+type ClassMemberName Name
+
+func (nm ClassMemberName) Name() Name     { return Name(nm) }
+func (nm ClassMemberName) String() string { return string(nm) }
+
+// TypeName is a simple name representing the type's name, without any package/module qualifiers.
+type TypeName Name
+
+func (nm TypeName) String() string { return string(nm) }
