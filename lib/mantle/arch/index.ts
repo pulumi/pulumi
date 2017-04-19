@@ -4,5 +4,6 @@ export * from "./arch";
 
 import * as clouds from "./clouds";
 import * as schedulers from "./schedulers";
-export { clouds, schedulers };
+import * as runtimes from "./runtimes";
+export {clouds, schedulers, runtimes};
 

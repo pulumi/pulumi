@@ -2,7 +2,9 @@
 
 import * as arch from "../arch";
 import * as config from "../config";
+import * as runtime from "../runtime";
 import * as aws from "@coconut/aws";
+import * as kubefission from "@coconut/kube-fission";
 import {asset} from "@coconut/coconut";
 
 // Function is a cross-cloud function abstraction whose source code is taken from a string, file, or network asset.
@@ -10,12 +12,14 @@ import {asset} from "@coconut/coconut";
 // while `file://./hello.js` will load the code from a file named hello.js in the current working directory.  The
 // default protocol is file://, so `hello.js` alone will likewise load a file named hello.js at deployment time.
 export class Function {
-    private readonly name: string;      // the function name.
-    private readonly code: asset.Asset; // the function's code asset.
+    private readonly name: string;          // the function name.
+    private readonly runtime: arch.Runtime; // the function's language runtime.
+    private readonly code: asset.Asset;     // the function's code asset.
 
-    constructor(name: string, code: asset.Asset) {
+    constructor(name: string, code: asset.Asset, runtime: arch.Runtime) {
         this.name = name;
         this.code = code;
+        this.runtime = runtime;
         this.initCloudResources();
     }
 
@@ -43,16 +47,21 @@ export class Function {
     }
 
     private initKubernetesResources(): void {
-        throw new Error("Kubernetes FaaS not yet implemented");
+        new kubefission.Function({
+            metadata: {
+                name: this.name,
+            },
+            code: this.code,
+            environment: runtime.kubernetes.getFissionEnvironment(this.runtime),
+        });
     }
 
     private initAWSResources(): void {
-        // TODO: don't hardcode the handler and runtime names.
         new aws.lambda.Function(this.name, {
             code:    this.code,
             handler: "index.handler",
-            runtime: "nodejs6.10",
-            role:    config.getAWSLambdaRole(),
+            runtime: runtime.aws.getLambdaRuntime(this.runtime),
+            role:    runtime.aws.getLambdaRole(),
         });
     }
 

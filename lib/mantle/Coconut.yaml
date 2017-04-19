@@ -3,4 +3,5 @@ description: Mantle helps you build great cross-cloud services and applications.
 dependencies:
     aws: "*"
     coconut: "*"
+    kube-fission: "*"
 

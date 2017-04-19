@@ -21,14 +21,17 @@
         "arch/index.ts",
         "arch/arch.ts",
         "arch/clouds/index.ts",
+        "arch/runtimes/index.ts",
         "arch/schedulers/index.ts",
 
         "config/index.ts",
-        "config/iam.ts",
-        "config/vars.ts",
 
         "func/index.ts",
-        "func/function.ts"
+        "func/function.ts",
+
+        "runtime/index.ts",
+        "runtime/aws/index.ts",
+        "runtime/kubernetes/index.ts"
     ]
 }
 

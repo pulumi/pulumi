@@ -14,3 +14,8 @@ export type Scheduler =
     "kubernetes" | "mesos" | "swarm" | // cloud-neutral schedulers.
     "ecs" | "gke" | "acs";             // cloud-specific schedulers.
 
+// Runtime represents a supported application runtime to target.
+// TODO: this should eventually probably involve a version number.
+// TODO: eventually we want many more platforms: Ruby, Java, C#, and so on.
+export type Runtime = "nodejs" | "python";
+

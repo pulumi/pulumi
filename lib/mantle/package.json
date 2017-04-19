@@ -10,7 +10,8 @@
     },
     "peerDependencies": {
         "@coconut/aws": "*",
-        "@coconut/coconut": "*"
+        "@coconut/coconut": "*",
+        "@coconut/kube-fission": "*"
     }
 }
 
