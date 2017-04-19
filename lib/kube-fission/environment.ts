@@ -7,18 +7,19 @@ import * as coconut from "@coconut/coconut";
 // only the function run container image.  Later, this will also include build containers, as well as support tools
 // like debuggers, profilers, etc.
 export class Environment extends coconut.Resource implements EnvironmentProperties {
-    public readonly metadata: Metadata;
+    public readonly name: string;
+    public readonly uid?: string;
     public readonly runContainerImageURL: string;
 
     constructor(args: EnvironmentProperties) {
         super();
-        this.metadata = args.metadata;
+        this.name = args.name;
+        this.uid = args.uid;
         this.runContainerImageURL = args.runContainerImageURL;
     }
 }
 
-export interface EnvironmentProperties {
-    metadata: Metadata;
+export interface EnvironmentProperties extends Metadata {
     runContainerImageURL: string;
 }
 

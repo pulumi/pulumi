@@ -48,9 +48,7 @@ export class Function {
 
     private initKubernetesResources(): void {
         new kubefission.Function({
-            metadata: {
-                name: this.name,
-            },
+            name: this.name,
             code: this.code,
             environment: runtime.kubernetes.getFissionEnvironment(this.runtime),
         });

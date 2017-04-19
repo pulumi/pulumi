@@ -59,20 +59,18 @@ func (p *Provider) Name(ctx context.Context, req *cocorpc.NameRequest) (*cocorpc
 	//             "name": "<NAME GOES HERE>"
 	//
 	// So, no need to ask the individual resource providers to do this; we can do it once and for all here.
-	var record struct {
-		Metadata fission.Metadata `json:"metadata"`
-	}
+	var meta fission.Metadata
 
 	// Unmarshal the property bag into our struct.
 	props := req.GetProperties()
 	uprops := resource.UnmarshalProperties(props)
-	if err := mapper.MapIU(uprops.Mappable(), &record); err != nil {
+	if err := mapper.MapIU(uprops.Mappable(), &meta); err != nil {
 		return nil, err
 	}
 
 	// If we got here, the name is valid; return it.
-	contract.Assert(record.Metadata.Name != "")
-	return &cocorpc.NameResponse{Name: record.Metadata.Name}, nil
+	contract.Assert(meta.Name != "")
+	return &cocorpc.NameResponse{Name: meta.Name}, nil
 }
 
 // Create allocates a new instance of the provided resource and returns its unique ID afterwards.  (The input ID

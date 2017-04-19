@@ -27,9 +27,7 @@ export function getFissionEnvironment(langrt: arch.Runtime): kubefission.Environ
     }
 
     env = new kubefission.Environment({
-        metadata: {
-            name: langrt,
-        },
+        name: langrt,
         runContainerImageURL: image,
     });
     fissionEnvs[langrt] = env;

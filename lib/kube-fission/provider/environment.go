@@ -100,10 +100,19 @@ func (p *envProvider) Delete(ctx context.Context, req *cocorpc.DeleteRequest) (*
 	return &pbempty.Empty{}, nil
 }
 
+// environment is the shape of the resource on the wire when communicating with the Coconut host.
+type environment struct {
+	Name                 string `json:"name"`
+	RunContainerImageURL string `json:"runContainerImageURL"`
+}
+
 // unmarshalEnvironment decodes and validates an environment property bag.
 func unmarshalEnvironment(v *pbstruct.Struct) (fission.Environment, resource.PropertyMap, mapper.DecodeError) {
-	var env fission.Environment
+	var env environment
 	props := resource.UnmarshalProperties(v)
 	err := mapper.MapIU(props.Mappable(), &env)
-	return env, props, err
+	return fission.Environment{
+		Metadata:             fission.Metadata{Name: env.Name},
+		RunContainerImageUrl: env.RunContainerImageURL,
+	}, props, err
 }

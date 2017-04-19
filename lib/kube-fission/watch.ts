@@ -6,7 +6,8 @@ import * as coconut from "@coconut/coconut";
 
 // Watch is a specification of a Kubernetes watch along with a URL to post events to.
 export class Watch extends coconut.Resource implements WatchProperties {
-    public readonly metadata: Metadata;
+    public readonly name: string;
+    public readonly uid?: string;
     public readonly namespace: string;
     public readonly objType: string;
     public readonly labelSelector: string;
@@ -16,7 +17,8 @@ export class Watch extends coconut.Resource implements WatchProperties {
 
     constructor(args: WatchProperties) {
         super();
-        this.metadata = args.metadata;
+        this.name = args.name;
+        this.uid = args.uid;
         this.namespace = args.namespace;
         this.objType = args.objType;
         this.labelSelector = args.labelSelector;
@@ -26,8 +28,7 @@ export class Watch extends coconut.Resource implements WatchProperties {
     }
 }
 
-export interface WatchProperties {
-    metadata: Metadata;
+export interface WatchProperties extends Metadata {
     namespace: string;
     objType: string;
     labelSelector: string;

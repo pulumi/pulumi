@@ -66,7 +66,9 @@ func (p *funcProvider) Create(ctx context.Context, req *cocorpc.CreateRequest) (
 
 	// Now manufacture a real fission function data type that will get marshaled to the controller.
 	fissfun := &fission.Function{
-		Metadata: fun.Metadata,
+		Metadata: fission.Metadata{
+			Name: fun.Name,
+		},
 		Environment: fission.Metadata{
 			Name: string(fun.Environment),
 		},
@@ -74,7 +76,7 @@ func (p *funcProvider) Create(ctx context.Context, req *cocorpc.CreateRequest) (
 	}
 
 	// Perform the operation by contacting the controller.
-	fmt.Printf("Creating Fission function '%v'\n", fun.Metadata.Name)
+	fmt.Printf("Creating Fission function '%v'\n", fun.Name)
 	meta, err := p.ctx.Fission.FunctionCreate(fissfun)
 	if err != nil {
 		return nil, err
@@ -122,9 +124,9 @@ func (p *funcProvider) Delete(ctx context.Context, req *cocorpc.DeleteRequest) (
 // instead of the metadata payload, and assets for code.  It is used to marshal gRPC property bags in and out.
 // TODO: eventually we want a way to reference specific versions (using the URI).
 type function struct {
-	fission.Metadata `json:"metadata"`
-	Environment      resource.ID    `json:"environment"`
-	Code             resource.Asset `json:"code"`
+	Name        string         `json:"name"`
+	Environment resource.ID    `json:"environment"`
+	Code        resource.Asset `json:"code"`
 }
 
 // unmarshalFunction decodes and validates an function property bag.
