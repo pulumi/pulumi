@@ -19,7 +19,7 @@ import (
 
 const Environment = tokens.Type("kube-fission:environment:Environment")
 
-// NewEnvironmentProvider creates a provider that handles S3 environment operations.
+// NewEnvironmentProvider creates a provider that handles Fission environment operations.
 func NewEnvironmentProvider(ctx *Context) cocorpc.ResourceProviderServer {
 	return &envProvider{ctx}
 }
@@ -50,16 +50,16 @@ func (p *envProvider) Create(ctx context.Context, req *cocorpc.CreateRequest) (*
 	contract.Assert(req.GetType() == string(Environment))
 
 	// Read in the properties given by the request, validating as we go; if any fail, reject the request.
-	env, _, err := unmarshalEnvironment(req.GetProperties())
-	if err != nil {
-		return nil, err
+	env, _, decerr := unmarshalEnvironment(req.GetProperties())
+	if decerr != nil {
+		return nil, decerr
 	}
 
 	// Perform the operation by contacting the controller.
 	fmt.Printf("Creating Fission environment '%v'\n", env.Metadata.Name)
-	meta, decerr := p.ctx.Fission.EnvironmentCreate(&env)
-	if decerr != nil {
-		return nil, decerr
+	meta, err := p.ctx.Fission.EnvironmentCreate(&env)
+	if err != nil {
+		return nil, err
 	}
 	fmt.Printf("Fission Environment '%v' created: version=%v\n", meta.Name, meta.Uid)
 	return &cocorpc.CreateResponse{Id: meta.Name}, nil

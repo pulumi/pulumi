@@ -3,7 +3,7 @@
 import * as arch from "../../arch";
 import * as kubefission from "@coconut/kube-fission";
 
-let fissionEnvs: {[langrt: string]: kubefission.Environment};
+let fissionEnvs: {[langrt: string]: kubefission.Environment} = {};
 
 // getFissionEnvironment returns the Kubernetes Fission environment for the given language runtime.
 export function getFissionEnvironment(langrt: arch.Runtime): kubefission.Environment {
