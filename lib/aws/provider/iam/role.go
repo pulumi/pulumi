@@ -40,7 +40,7 @@ func (p *roleProvider) Check(ctx context.Context, req *cocorpc.CheckRequest) (*c
 	// Read in the properties, create and validate a new group, and return the failures (if any).
 	contract.Assert(req.GetType() == string(Role))
 	_, _, result := unmarshalRole(req.GetProperties())
-	return awsctx.NewCheckResponse(result), nil
+	return resource.NewCheckResponse(result), nil
 }
 
 // Name names a given resource.  Sometimes this will be assigned by a developer, and so the provider

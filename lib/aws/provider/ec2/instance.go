@@ -55,7 +55,7 @@ func (p *instanceProvider) Check(ctx context.Context, req *cocorpc.CheckRequest)
 		contract.Assertf(*result.Images[0].ImageId == instance.ImageID, "Expected instance IDs to match")
 	}
 
-	return awsctx.NewCheckResponse(result), nil
+	return resource.NewCheckResponse(result), nil
 }
 
 // Name names a given resource.  Sometimes this will be assigned by a developer, and so the provider

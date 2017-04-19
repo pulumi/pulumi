@@ -1,6 +1,6 @@
 // Copyright 2017 Pulumi, Inc. All rights reserved.
 
-package awsctx
+package resource
 
 import (
 	"github.com/pulumi/coconut/pkg/util/mapper"
