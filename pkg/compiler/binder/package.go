@@ -26,7 +26,7 @@ func (b *binder) BindPackage(pkg *pack.Package) *symbols.Package {
 
 func (b *binder) resolveBindPackage(pkg *pack.Package, pkgurl pack.PackageURL) *symbols.ResolvedPackage {
 	// If the package name isn't a legal identifier, say so.
-	if !tokens.IsQName(string(pkg.Name)) {
+	if !tokens.IsPackageName(string(pkg.Name)) {
 		b.Diag().Errorf(errors.ErrorInvalidPackageName.At(pkg.Doc))
 	}
 
