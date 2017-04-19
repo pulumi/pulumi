@@ -894,7 +894,7 @@ export class Transformer {
 
         // Fetch the symbol that this name refers to.
         let idsym: ts.Symbol = this.checker().getSymbolAtLocation(name);
-        contract.assert(!!idsym);
+        contract.assert(!!idsym, `Expected a symbol for ID ${id.ident}`);
 
         // Fetch information about the object we are loading from, if any.
         let objty: ts.Type | undefined;
