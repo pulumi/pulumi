@@ -51,6 +51,31 @@ func newPlugin(ctx *Context, bins []string, prefix string) (*plugin, error) {
 		return nil, err
 	}
 
+	// For now, we will spawn goroutines that will spew STDOUT/STDERR to the relevent diag streams.
+	// TODO: eventually we want real progress reporting, etc., which will need to be done out of band via RPC.  This
+	//     will be particularly important when we parallelize the application of the resource graph.
+	tracers := map[io.Reader]struct {
+		lbl string
+		cb  func(string)
+	}{
+		plug.Stderr: {"stderr", func(line string) { ctx.Diag.Errorf(diag.Message(line)) }},
+		plug.Stdout: {"stdout", func(line string) { ctx.Diag.Infof(diag.Message(line)) }},
+	}
+	runtrace := func(t io.Reader) {
+		ts := tracers[t]
+		reader := bufio.NewReader(t)
+		for {
+			line, err := reader.ReadString('\n')
+			if err != nil {
+				break
+			}
+			ts.cb(fmt.Sprintf("%v.%v: %v", prefix, ts.lbl, line[:len(line)-1]))
+		}
+	}
+
+	// Set up a tracer on stderr before going any further, since important errors might get communicated this way.
+	go runtrace(plug.Stderr)
+
 	// Now that we have a process, we expect it to write a single line to STDOUT: the port it's listening on.  We only
 	// read a byte at a time so that STDOUT contains everything after the first newline.
 	var port string
@@ -59,7 +84,10 @@ func newPlugin(ctx *Context, bins []string, prefix string) (*plugin, error) {
 		n, err := plug.Stdout.Read(b)
 		if err != nil {
 			plug.Proc.Kill()
-			return nil, errors.Wrapf(err, "could not read plugin [%v] STDOUT", foundbin)
+			if port == "" {
+				return nil, errors.Wrapf(err, "could not read plugin [%v] stdout", foundbin)
+			}
+			return nil, errors.Wrapf(err, "failure reading plugin [%v] stdout (read '%v')", foundbin, port)
 		}
 		if n > 0 && b[0] == '\n' {
 			break
@@ -74,30 +102,8 @@ func newPlugin(ctx *Context, bins []string, prefix string) (*plugin, error) {
 			err, "%v plugin [%v] wrote a non-numeric port to stdout ('%v')", prefix, foundbin, port)
 	}
 
-	// For now, we will spawn goroutines that will spew STDOUT/STDERR to the relevent diag streams.
-	// TODO: eventually we want real progress reporting, etc., which will need to be done out of band via RPC.  This
-	//     will be particularly important when we parallelize the application of the resource graph.
-	tracers := []struct {
-		r   io.Reader
-		lbl string
-		cb  func(string)
-	}{
-		{plug.Stdout, "stdout", func(line string) { ctx.Diag.Infof(diag.Message(line)) }},
-		{plug.Stderr, "stderr", func(line string) { ctx.Diag.Errorf(diag.Message(line)) }},
-	}
-	for _, trace := range tracers {
-		t := trace
-		reader := bufio.NewReader(t.r)
-		go func() {
-			for {
-				line, err := reader.ReadString('\n')
-				if err != nil {
-					break
-				}
-				t.cb(fmt.Sprintf("%v.%v: %v", prefix, t.lbl, line[:len(line)-1]))
-			}
-		}()
-	}
+	// After reading the port number, set up a tracer on stdout just so other output doesn't disappear.
+	go runtrace(plug.Stdout)
 
 	// Now that we have the port, go ahead and create a gRPC client connection to it.
 	conn, err := grpc.Dial(":"+port, grpc.WithInsecure())
