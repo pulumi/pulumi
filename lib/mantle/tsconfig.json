@@ -29,6 +29,9 @@
         "func/index.ts",
         "func/function.ts",
 
+        "http/index.ts",
+        "http/api.ts",
+
         "runtime/index.ts",
         "runtime/aws/index.ts",
         "runtime/kubernetes/index.ts"

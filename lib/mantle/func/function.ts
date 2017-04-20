@@ -15,47 +15,50 @@ export class Function {
     private readonly name: string;          // the function name.
     private readonly runtime: arch.Runtime; // the function's language runtime.
     private readonly code: asset.Asset;     // the function's code asset.
+    private readonly resource: any;         // the cloud-specific function object.
 
     constructor(name: string, code: asset.Asset, runtime: arch.Runtime) {
         this.name = name;
         this.code = code;
         this.runtime = runtime;
-        this.initCloudResources();
+        this.resource = this.initCloudResources();
+    }
+
+    // getResource returns the underlying cloud resource.
+    public getResource(): any {
+        return this.resource;
     }
 
     // initCloudResources sets up the right resources for the given cloud and scheduler target.
-    private initCloudResources(): void {
+    private initCloudResources(): any {
         let target: arch.Arch = config.requireArch();
         if (target.scheduler === arch.schedulers.Kubernetes) {
-            this.initKubernetesResources();
+            return this.initKubernetesResources();
         }
         else {
             switch (target.cloud) {
                 case arch.clouds.AWS:
-                    this.initAWSResources();
-                    break;
+                    return this.initAWSResources();
                 case arch.clouds.GCP:
-                    this.initGCPResources();
-                    break;
+                    return this.initGCPResources();
                 case arch.clouds.Azure:
-                    this.initAzureResources();
-                    break;
+                    return this.initAzureResources();
                 default:
                     throw new Error("Unsupported target cloud: " + target.cloud);
             }
         }
     }
 
-    private initKubernetesResources(): void {
-        new kubefission.Function({
+    private initKubernetesResources(): any {
+        return new kubefission.Function({
             name: this.name,
             code: this.code,
             environment: runtime.kubernetes.getFissionEnvironment(this.runtime),
         });
     }
 
-    private initAWSResources(): void {
-        new aws.lambda.Function(this.name, {
+    private initAWSResources(): any {
+        return new aws.lambda.Function(this.name, {
             code:    this.code,
             handler: "index.handler",
             runtime: runtime.aws.getLambdaRuntime(this.runtime),
