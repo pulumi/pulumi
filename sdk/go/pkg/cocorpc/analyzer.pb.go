@@ -25,10 +25,10 @@ It has these top-level messages:
 	NameResponse
 	CreateRequest
 	CreateResponse
-	ReadRequest
-	ReadResponse
+	GetRequest
+	GetResponse
 	UpdateRequest
-	UpdateImpactResponse
+	PreviewUpdateResponse
 	DeleteRequest
 */
 package cocorpc

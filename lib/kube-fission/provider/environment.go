@@ -30,7 +30,7 @@ type envProvider struct {
 
 // Check validates that the given property bag is valid for a resource of the given type.
 func (p *envProvider) Check(ctx context.Context, req *cocorpc.CheckRequest) (*cocorpc.CheckResponse, error) {
-	// Read in the properties, create and validate a new group, and return the failures (if any).
+	// Get in the properties, create and validate a new group, and return the failures (if any).
 	contract.Assert(req.GetType() == string(Environment))
 	_, _, result := unmarshalEnvironment(req.GetProperties())
 	return resource.NewCheckResponse(result), nil
@@ -49,7 +49,7 @@ func (p *envProvider) Name(ctx context.Context, req *cocorpc.NameRequest) (*coco
 func (p *envProvider) Create(ctx context.Context, req *cocorpc.CreateRequest) (*cocorpc.CreateResponse, error) {
 	contract.Assert(req.GetType() == string(Environment))
 
-	// Read in the properties given by the request, validating as we go; if any fail, reject the request.
+	// Get in the properties given by the request, validating as we go; if any fail, reject the request.
 	env, _, decerr := unmarshalEnvironment(req.GetProperties())
 	if decerr != nil {
 		return nil, decerr
@@ -65,8 +65,15 @@ func (p *envProvider) Create(ctx context.Context, req *cocorpc.CreateRequest) (*
 	return &cocorpc.CreateResponse{Id: meta.Name}, nil
 }
 
-// Read reads the instance state identified by ID, returning a populated resource object, or an error if not found.
-func (p *envProvider) Read(ctx context.Context, req *cocorpc.ReadRequest) (*cocorpc.ReadResponse, error) {
+// Get reads the instance state identified by ID, returning a populated resource object, or an error if not found.
+func (p *envProvider) Get(ctx context.Context, req *cocorpc.GetRequest) (*cocorpc.GetResponse, error) {
+	contract.Assert(req.GetType() == string(Environment))
+	return nil, errors.New("Not yet implemented")
+}
+
+// PreviewUpdate checks what impacts a hypothetical update will have on the resource's properties.
+func (p *envProvider) PreviewUpdate(
+	ctx context.Context, req *cocorpc.UpdateRequest) (*cocorpc.PreviewUpdateResponse, error) {
 	contract.Assert(req.GetType() == string(Environment))
 	return nil, errors.New("Not yet implemented")
 }
@@ -74,13 +81,6 @@ func (p *envProvider) Read(ctx context.Context, req *cocorpc.ReadRequest) (*coco
 // Update updates an existing resource with new values.  Only those values in the provided property bag are updated
 // to new values.  The resource ID is returned and may be different if the resource had to be recreated.
 func (p *envProvider) Update(ctx context.Context, req *cocorpc.UpdateRequest) (*pbempty.Empty, error) {
-	contract.Assert(req.GetType() == string(Environment))
-	return nil, errors.New("Not yet implemented")
-}
-
-// UpdateImpact checks what impacts a hypothetical update will have on the resource's properties.
-func (p *envProvider) UpdateImpact(
-	ctx context.Context, req *cocorpc.UpdateRequest) (*cocorpc.UpdateImpactResponse, error) {
 	contract.Assert(req.GetType() == string(Environment))
 	return nil, errors.New("Not yet implemented")
 }

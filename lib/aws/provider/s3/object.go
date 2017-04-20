@@ -40,7 +40,7 @@ type objProvider struct {
 
 // Check validates that the given property bag is valid for a resource of the given type.
 func (p *objProvider) Check(ctx context.Context, req *cocorpc.CheckRequest) (*cocorpc.CheckResponse, error) {
-	// Read in the properties, create and validate a new group, and return the failures (if any).
+	// Get in the properties, create and validate a new group, and return the failures (if any).
 	contract.Assert(req.GetType() == string(Object))
 	_, _, result := unmarshalObject(req.GetProperties())
 	return resource.NewCheckResponse(result), nil
@@ -68,7 +68,7 @@ func (p *objProvider) Name(ctx context.Context, req *cocorpc.NameRequest) (*coco
 func (p *objProvider) Create(ctx context.Context, req *cocorpc.CreateRequest) (*cocorpc.CreateResponse, error) {
 	contract.Assert(req.GetType() == string(Object))
 
-	// Read in the properties given by the request, validating as we go; if any fail, reject the request.
+	// Get in the properties given by the request, validating as we go; if any fail, reject the request.
 	obj, _, decerr := unmarshalObject(req.GetProperties())
 	if decerr != nil {
 		// TODO: this is a good example of a "benign" (StateOK) error; handle it accordingly.
@@ -102,8 +102,15 @@ func (p *objProvider) Create(ctx context.Context, req *cocorpc.CreateRequest) (*
 	return &cocorpc.CreateResponse{Id: obj.Bucket + ObjectIDDelim + obj.Key}, nil
 }
 
-// Read reads the instance state identified by ID, returning a populated resource object, or an error if not found.
-func (p *objProvider) Read(ctx context.Context, req *cocorpc.ReadRequest) (*cocorpc.ReadResponse, error) {
+// Get reads the instance state identified by ID, returning a populated resource object, or an error if not found.
+func (p *objProvider) Get(ctx context.Context, req *cocorpc.GetRequest) (*cocorpc.GetResponse, error) {
+	contract.Assert(req.GetType() == string(Object))
+	return nil, errors.New("Not yet implemented")
+}
+
+// PreviewUpdate checks what impacts a hypothetical update will have on the resource's properties.
+func (p *objProvider) PreviewUpdate(
+	ctx context.Context, req *cocorpc.UpdateRequest) (*cocorpc.PreviewUpdateResponse, error) {
 	contract.Assert(req.GetType() == string(Object))
 	return nil, errors.New("Not yet implemented")
 }
@@ -111,13 +118,6 @@ func (p *objProvider) Read(ctx context.Context, req *cocorpc.ReadRequest) (*coco
 // Update updates an existing resource with new values.  Only those values in the provided property bag are updated
 // to new values.  The resource ID is returned and may be different if the resource had to be recreated.
 func (p *objProvider) Update(ctx context.Context, req *cocorpc.UpdateRequest) (*pbempty.Empty, error) {
-	contract.Assert(req.GetType() == string(Object))
-	return nil, errors.New("Not yet implemented")
-}
-
-// UpdateImpact checks what impacts a hypothetical update will have on the resource's properties.
-func (p *objProvider) UpdateImpact(
-	ctx context.Context, req *cocorpc.UpdateRequest) (*cocorpc.UpdateImpactResponse, error) {
 	contract.Assert(req.GetType() == string(Object))
 	return nil, errors.New("Not yet implemented")
 }

@@ -36,7 +36,7 @@ type sgProvider struct {
 
 // Check validates that the given property bag is valid for a resource of the given type.
 func (p *sgProvider) Check(ctx context.Context, req *cocorpc.CheckRequest) (*cocorpc.CheckResponse, error) {
-	// Read in the properties, create and validate a new group, and return the failures (if any).
+	// Get in the properties, create and validate a new group, and return the failures (if any).
 	contract.Assert(req.GetType() == string(SecurityGroup))
 	_, _, result := unmarshalSecurityGroup(req.GetProperties())
 	return resource.NewCheckResponse(result), nil
@@ -54,7 +54,7 @@ func (p *sgProvider) Name(ctx context.Context, req *cocorpc.NameRequest) (*cocor
 func (p *sgProvider) Create(ctx context.Context, req *cocorpc.CreateRequest) (*cocorpc.CreateResponse, error) {
 	contract.Assert(req.GetType() == string(SecurityGroup))
 
-	// Read in the properties given by the request, validating as we go; if any fail, reject the request.
+	// Get in the properties given by the request, validating as we go; if any fail, reject the request.
 	secgrp, _, decerr := unmarshalSecurityGroup(req.GetProperties())
 	if decerr != nil {
 		// TODO: this is a good example of a "benign" (StateOK) error; handle it accordingly.
@@ -111,10 +111,25 @@ func (p *sgProvider) Create(ctx context.Context, req *cocorpc.CreateRequest) (*c
 	}, nil
 }
 
-// Read reads the instance state identified by ID, returning a populated resource object, or an error if not found.
-func (p *sgProvider) Read(ctx context.Context, req *cocorpc.ReadRequest) (*cocorpc.ReadResponse, error) {
+// Get reads the instance state identified by ID, returning a populated resource object, or an error if not found.
+func (p *sgProvider) Get(ctx context.Context, req *cocorpc.GetRequest) (*cocorpc.GetResponse, error) {
 	contract.Assert(req.GetType() == string(SecurityGroup))
 	return nil, errors.New("Not yet implemented")
+}
+
+// PreviewUpdate checks what impacts a hypothetical update will have on the resource's properties.
+func (p *sgProvider) PreviewUpdate(
+	ctx context.Context, req *cocorpc.UpdateRequest) (*cocorpc.PreviewUpdateResponse, error) {
+	contract.Assert(req.GetType() == string(SecurityGroup))
+	// First unmarshal and validate the properties.
+	_, _, _, replaces, err := unmarshalSecurityGroupChange(req.GetOlds(), req.GetNews())
+	if err != nil {
+		return nil, err
+	}
+	return &cocorpc.PreviewUpdateResponse{
+		Replaces: replaces,
+		// TODO: serialize the other properties that will be updated.
+	}, nil
 }
 
 // Update updates an existing resource with new values.  Only those values in the provided property bag are updated
@@ -129,7 +144,7 @@ func (p *sgProvider) Update(ctx context.Context, req *cocorpc.UpdateRequest) (*p
 		return nil, err
 	}
 
-	// If this was a replacement, the UpdateImpact routine should have rejected it.
+	// If this was a replacement, the PreviewUpdate routine should have rejected it.
 	if len(replaces) > 0 {
 		return nil, errors.New("this update requires a resource replacement")
 	}
@@ -223,21 +238,6 @@ func (p *sgProvider) Update(ctx context.Context, req *cocorpc.UpdateRequest) (*p
 	}
 
 	return &pbempty.Empty{}, nil
-}
-
-// UpdateImpact checks what impacts a hypothetical update will have on the resource's properties.
-func (p *sgProvider) UpdateImpact(
-	ctx context.Context, req *cocorpc.UpdateRequest) (*cocorpc.UpdateImpactResponse, error) {
-	contract.Assert(req.GetType() == string(SecurityGroup))
-	// First unmarshal and validate the properties.
-	_, _, _, replaces, err := unmarshalSecurityGroupChange(req.GetOlds(), req.GetNews())
-	if err != nil {
-		return nil, err
-	}
-	return &cocorpc.UpdateImpactResponse{
-		Replaces: replaces,
-		// TODO: serialize the other properties that will be updated.
-	}, nil
 }
 
 // Delete tears down an existing resource with the given ID.  If it fails, the resource is assumed to still exist.

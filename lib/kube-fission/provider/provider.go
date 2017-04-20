@@ -83,13 +83,23 @@ func (p *Provider) Create(ctx context.Context, req *cocorpc.CreateRequest) (*coc
 	return nil, fmt.Errorf("Unrecognized resource type (Create): %v", t)
 }
 
-// Read reads the instance state identified by ID, returning a populated resource object, or an error if not found.
-func (p *Provider) Read(ctx context.Context, req *cocorpc.ReadRequest) (*cocorpc.ReadResponse, error) {
+// Get reads the instance state identified by ID, returning a populated resource object, or an error if not found.
+func (p *Provider) Get(ctx context.Context, req *cocorpc.GetRequest) (*cocorpc.GetResponse, error) {
 	t := tokens.Type(req.GetType())
 	if prov, has := p.impls[t]; has {
-		return prov.Read(ctx, req)
+		return prov.Get(ctx, req)
 	}
-	return nil, fmt.Errorf("Unrecognized resource type (Read): %v", t)
+	return nil, fmt.Errorf("Unrecognized resource type (Get): %v", t)
+}
+
+// PreviewUpdate checks what impacts a hypothetical update will have on the resource's properties.
+func (p *Provider) PreviewUpdate(
+	ctx context.Context, req *cocorpc.UpdateRequest) (*cocorpc.PreviewUpdateResponse, error) {
+	t := tokens.Type(req.GetType())
+	if prov, has := p.impls[t]; has {
+		return prov.PreviewUpdate(ctx, req)
+	}
+	return nil, fmt.Errorf("Unrecognized resource type (PreviewUpdate): %v", t)
 }
 
 // Update updates an existing resource with new values.  Only those values in the provided property bag are updated
@@ -100,16 +110,6 @@ func (p *Provider) Update(ctx context.Context, req *cocorpc.UpdateRequest) (*pbe
 		return prov.Update(ctx, req)
 	}
 	return nil, fmt.Errorf("Unrecognized resource type (Update): %v", t)
-}
-
-// UpdateImpact checks what impacts a hypothetical update will have on the resource's properties.
-func (p *Provider) UpdateImpact(
-	ctx context.Context, req *cocorpc.UpdateRequest) (*cocorpc.UpdateImpactResponse, error) {
-	t := tokens.Type(req.GetType())
-	if prov, has := p.impls[t]; has {
-		return prov.UpdateImpact(ctx, req)
-	}
-	return nil, fmt.Errorf("Unrecognized resource type (UpdateImpact): %v", t)
 }
 
 // Delete tears down an existing resource with the given ID.  If it fails, the resource is assumed to still exist.

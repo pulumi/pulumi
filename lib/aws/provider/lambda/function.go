@@ -174,7 +174,14 @@ func (p *funcProvider) Create(ctx context.Context, req *cocorpc.CreateRequest) (
 }
 
 // Read reads the instance state identified by ID, returning a populated resource object, or an error if not found.
-func (p *funcProvider) Read(ctx context.Context, req *cocorpc.ReadRequest) (*cocorpc.ReadResponse, error) {
+func (p *funcProvider) Get(ctx context.Context, req *cocorpc.GetRequest) (*cocorpc.GetResponse, error) {
+	contract.Assert(req.GetType() == string(Function))
+	return nil, errors.New("Not yet implemented")
+}
+
+// PreviewUpdate checks what impacts a hypothetical update will have on the resource's properties.
+func (p *funcProvider) PreviewUpdate(
+	ctx context.Context, req *cocorpc.UpdateRequest) (*cocorpc.PreviewUpdateResponse, error) {
 	contract.Assert(req.GetType() == string(Function))
 	return nil, errors.New("Not yet implemented")
 }
@@ -182,13 +189,6 @@ func (p *funcProvider) Read(ctx context.Context, req *cocorpc.ReadRequest) (*coc
 // Update updates an existing resource with new values.  Only those values in the provided property bag are updated
 // to new values.  The resource ID is returned and may be different if the resource had to be recreated.
 func (p *funcProvider) Update(ctx context.Context, req *cocorpc.UpdateRequest) (*pbempty.Empty, error) {
-	contract.Assert(req.GetType() == string(Function))
-	return nil, errors.New("Not yet implemented")
-}
-
-// UpdateImpact checks what impacts a hypothetical update will have on the resource's properties.
-func (p *funcProvider) UpdateImpact(
-	ctx context.Context, req *cocorpc.UpdateRequest) (*cocorpc.UpdateImpactResponse, error) {
 	contract.Assert(req.GetType() == string(Function))
 	return nil, errors.New("Not yet implemented")
 }

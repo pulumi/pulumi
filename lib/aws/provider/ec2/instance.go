@@ -33,7 +33,7 @@ type instanceProvider struct {
 
 // Check validates that the given property bag is valid for a resource of the given type.
 func (p *instanceProvider) Check(ctx context.Context, req *cocorpc.CheckRequest) (*cocorpc.CheckResponse, error) {
-	// Read in the properties, deserialize them, and verify them; return the resulting failures if any.
+	// Get in the properties, deserialize them, and verify them; return the resulting failures if any.
 	contract.Assert(req.GetType() == string(Instance))
 
 	var instance instance
@@ -71,7 +71,7 @@ func (p *instanceProvider) Create(ctx context.Context, req *cocorpc.CreateReques
 	contract.Assert(req.GetType() == string(Instance))
 	props := resource.UnmarshalProperties(req.GetProperties())
 
-	// Read in the properties given by the request, validating as we go; if any fail, reject the request.
+	// Get in the properties given by the request, validating as we go; if any fail, reject the request.
 	var instance instance
 	if err := mapper.MapIU(props.Mappable(), &instance); err != nil {
 		// TODO: this is a good example of a "benign" (StateOK) error; handle it accordingly.
@@ -115,22 +115,15 @@ func (p *instanceProvider) Create(ctx context.Context, req *cocorpc.CreateReques
 	return &cocorpc.CreateResponse{Id: *id}, err
 }
 
-// Read reads the instance state identified by ID, returning a populated resource object, or an error if not found.
-func (p *instanceProvider) Read(ctx context.Context, req *cocorpc.ReadRequest) (*cocorpc.ReadResponse, error) {
+// Get reads the instance state identified by ID, returning a populated resource object, or an error if not found.
+func (p *instanceProvider) Get(ctx context.Context, req *cocorpc.GetRequest) (*cocorpc.GetResponse, error) {
 	contract.Assert(req.GetType() == string(Instance))
 	return nil, errors.New("Not yet implemented")
 }
 
-// Update updates an existing resource with new values.  Only those values in the provided property bag are updated
-// to new values.  The resource ID is returned and may be different if the resource had to be recreated.
-func (p *instanceProvider) Update(ctx context.Context, req *cocorpc.UpdateRequest) (*pbempty.Empty, error) {
-	contract.Assert(req.GetType() == string(Instance))
-	return nil, errors.New("No known updatable instance properties")
-}
-
-// UpdateImpact checks what impacts a hypothetical update will have on the resource's properties.
-func (p *instanceProvider) UpdateImpact(
-	ctx context.Context, req *cocorpc.UpdateRequest) (*cocorpc.UpdateImpactResponse, error) {
+// PreviewUpdate checks what impacts a hypothetical update will have on the resource's properties.
+func (p *instanceProvider) PreviewUpdate(
+	ctx context.Context, req *cocorpc.UpdateRequest) (*cocorpc.PreviewUpdateResponse, error) {
 	contract.Assert(req.GetType() == string(Instance))
 
 	// Unmarshal properties and check the diff for updates to any fields (none of them are updateable).
@@ -153,7 +146,14 @@ func (p *instanceProvider) UpdateImpact(
 		replaces = append(replaces, instanceSecurityGroups)
 	}
 
-	return &cocorpc.UpdateImpactResponse{Replaces: replaces}, nil
+	return &cocorpc.PreviewUpdateResponse{Replaces: replaces}, nil
+}
+
+// Update updates an existing resource with new values.  Only those values in the provided property bag are updated
+// to new values.  The resource ID is returned and may be different if the resource had to be recreated.
+func (p *instanceProvider) Update(ctx context.Context, req *cocorpc.UpdateRequest) (*pbempty.Empty, error) {
+	contract.Assert(req.GetType() == string(Instance))
+	return nil, errors.New("No known updatable instance properties")
 }
 
 // Delete tears down an existing resource with the given ID.  If it fails, the resource is assumed to still exist.

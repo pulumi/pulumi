@@ -358,7 +358,7 @@ func newPlan(ctx *Context, old Snapshot, new Snapshot, analyzers []tokens.QName)
 				if err != nil {
 					return nil, err
 				}
-				replaces, _, err := prov.UpdateImpact(old.ID(), old.Type(), old.Properties(), computed)
+				replaces, _, err := prov.PreviewUpdate(old.ID(), old.Type(), old.Properties(), computed)
 				if err != nil {
 					return nil, err
 				}

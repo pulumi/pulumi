@@ -21,12 +21,12 @@ service ResourceProvider {
     // Create allocates a new instance of the provided resource and returns its unique ID afterwards.  (The input ID
     // must be blank.)  If this call fails, the resource must not have been created (i.e., it is "transacational").
     rpc Create(CreateRequest) returns (CreateResponse) {}
-    // Read reads the instance state identified by ID, returning a populated resource object, or an error if not found.
-    rpc Read(ReadRequest) returns (ReadResponse) {}
+    // Get reads the instance state identified by ID, returning a populated resource object, or an error if not found.
+    rpc Get(GetRequest) returns (GetResponse) {}
+    // PreviewUpdate checks what impacts a hypothetical update will have on the resource's properties.
+    rpc PreviewUpdate(UpdateRequest) returns (PreviewUpdateResponse) {}
     // Update updates an existing resource with new values.
     rpc Update(UpdateRequest) returns (google.protobuf.Empty) {}
-    // UpdateImpact checks what impacts a hypothetical update will have on the resource's properties.
-    rpc UpdateImpact(UpdateRequest) returns (UpdateImpactResponse) {}
     // Delete tears down an existing resource with the given ID.  If it fails, the resource is assumed to still exist.
     rpc Delete(DeleteRequest) returns (google.protobuf.Empty) {}
 }
@@ -63,12 +63,12 @@ message CreateResponse {
     string id = 1; // the ID of the resource created.
 }
 
-message ReadRequest {
+message GetRequest {
     string id = 1;   // the ID of the resource to read.
     string type = 2; // the type token of the resource.
 }
 
-message ReadResponse {
+message GetResponse {
     google.protobuf.Struct properties = 1; // the properties read from the resource.
 }
 
@@ -79,8 +79,8 @@ message UpdateRequest {
     google.protobuf.Struct news = 4; // the new values of properties to update.
 }
 
-message UpdateImpactResponse {
-    repeated string replaces = 1; // if this update requires a replacement, the set of properties triggering it.
+message PreviewUpdateResponse {
+    repeated string replaces = 1;       // if this update requires a replacement, the set of properties triggering it.
     google.protobuf.Struct changes = 2; // the set of properties that will be changed (but don't require a replacement).
 }
 

@@ -17,11 +17,11 @@ goog.exportSymbol('proto.cocorpc.CheckResponse', null, global);
 goog.exportSymbol('proto.cocorpc.CreateRequest', null, global);
 goog.exportSymbol('proto.cocorpc.CreateResponse', null, global);
 goog.exportSymbol('proto.cocorpc.DeleteRequest', null, global);
+goog.exportSymbol('proto.cocorpc.GetRequest', null, global);
+goog.exportSymbol('proto.cocorpc.GetResponse', null, global);
 goog.exportSymbol('proto.cocorpc.NameRequest', null, global);
 goog.exportSymbol('proto.cocorpc.NameResponse', null, global);
-goog.exportSymbol('proto.cocorpc.ReadRequest', null, global);
-goog.exportSymbol('proto.cocorpc.ReadResponse', null, global);
-goog.exportSymbol('proto.cocorpc.UpdateImpactResponse', null, global);
+goog.exportSymbol('proto.cocorpc.PreviewUpdateResponse', null, global);
 goog.exportSymbol('proto.cocorpc.UpdateRequest', null, global);
 
 /**
@@ -1201,12 +1201,12 @@ proto.cocorpc.CreateResponse.prototype.setId = function(value) {
  * @extends {jspb.Message}
  * @constructor
  */
-proto.cocorpc.ReadRequest = function(opt_data) {
+proto.cocorpc.GetRequest = function(opt_data) {
   jspb.Message.initialize(this, opt_data, 0, -1, null, null);
 };
-goog.inherits(proto.cocorpc.ReadRequest, jspb.Message);
+goog.inherits(proto.cocorpc.GetRequest, jspb.Message);
 if (goog.DEBUG && !COMPILED) {
-  proto.cocorpc.ReadRequest.displayName = 'proto.cocorpc.ReadRequest';
+  proto.cocorpc.GetRequest.displayName = 'proto.cocorpc.GetRequest';
 }
 
 
@@ -1221,8 +1221,8 @@ if (jspb.Message.GENERATE_TO_OBJECT) {
  *     for transitional soy proto support: http://goto/soy-param-migration
  * @return {!Object}
  */
-proto.cocorpc.ReadRequest.prototype.toObject = function(opt_includeInstance) {
-  return proto.cocorpc.ReadRequest.toObject(opt_includeInstance, this);
+proto.cocorpc.GetRequest.prototype.toObject = function(opt_includeInstance) {
+  return proto.cocorpc.GetRequest.toObject(opt_includeInstance, this);
 };
 
 
@@ -1231,10 +1231,10 @@ proto.cocorpc.ReadRequest.prototype.toObject = function(opt_includeInstance) {
  * @param {boolean|undefined} includeInstance Whether to include the JSPB
  *     instance for transitional soy proto support:
  *     http://goto/soy-param-migration
- * @param {!proto.cocorpc.ReadRequest} msg The msg instance to transform.
+ * @param {!proto.cocorpc.GetRequest} msg The msg instance to transform.
  * @return {!Object}
  */
-proto.cocorpc.ReadRequest.toObject = function(includeInstance, msg) {
+proto.cocorpc.GetRequest.toObject = function(includeInstance, msg) {
   var f, obj = {
     id: jspb.Message.getFieldWithDefault(msg, 1, ""),
     type: jspb.Message.getFieldWithDefault(msg, 2, "")
@@ -1251,23 +1251,23 @@ proto.cocorpc.ReadRequest.toObject = function(includeInstance, msg) {
 /**
  * Deserializes binary data (in protobuf wire format).
  * @param {jspb.ByteSource} bytes The bytes to deserialize.
- * @return {!proto.cocorpc.ReadRequest}
+ * @return {!proto.cocorpc.GetRequest}
  */
-proto.cocorpc.ReadRequest.deserializeBinary = function(bytes) {
+proto.cocorpc.GetRequest.deserializeBinary = function(bytes) {
   var reader = new jspb.BinaryReader(bytes);
-  var msg = new proto.cocorpc.ReadRequest;
-  return proto.cocorpc.ReadRequest.deserializeBinaryFromReader(msg, reader);
+  var msg = new proto.cocorpc.GetRequest;
+  return proto.cocorpc.GetRequest.deserializeBinaryFromReader(msg, reader);
 };
 
 
 /**
  * Deserializes binary data (in protobuf wire format) from the
  * given reader into the given message object.
- * @param {!proto.cocorpc.ReadRequest} msg The message object to deserialize into.
+ * @param {!proto.cocorpc.GetRequest} msg The message object to deserialize into.
  * @param {!jspb.BinaryReader} reader The BinaryReader to use.
- * @return {!proto.cocorpc.ReadRequest}
+ * @return {!proto.cocorpc.GetRequest}
  */
-proto.cocorpc.ReadRequest.deserializeBinaryFromReader = function(msg, reader) {
+proto.cocorpc.GetRequest.deserializeBinaryFromReader = function(msg, reader) {
   while (reader.nextField()) {
     if (reader.isEndGroup()) {
       break;
@@ -1295,9 +1295,9 @@ proto.cocorpc.ReadRequest.deserializeBinaryFromReader = function(msg, reader) {
  * Serializes the message to binary data (in protobuf wire format).
  * @return {!Uint8Array}
  */
-proto.cocorpc.ReadRequest.prototype.serializeBinary = function() {
+proto.cocorpc.GetRequest.prototype.serializeBinary = function() {
   var writer = new jspb.BinaryWriter();
-  proto.cocorpc.ReadRequest.serializeBinaryToWriter(this, writer);
+  proto.cocorpc.GetRequest.serializeBinaryToWriter(this, writer);
   return writer.getResultBuffer();
 };
 
@@ -1305,10 +1305,10 @@ proto.cocorpc.ReadRequest.prototype.serializeBinary = function() {
 /**
  * Serializes the given message to binary data (in protobuf wire
  * format), writing to the given BinaryWriter.
- * @param {!proto.cocorpc.ReadRequest} message
+ * @param {!proto.cocorpc.GetRequest} message
  * @param {!jspb.BinaryWriter} writer
  */
-proto.cocorpc.ReadRequest.serializeBinaryToWriter = function(message, writer) {
+proto.cocorpc.GetRequest.serializeBinaryToWriter = function(message, writer) {
   var f = undefined;
   f = message.getId();
   if (f.length > 0) {
@@ -1331,13 +1331,13 @@ proto.cocorpc.ReadRequest.serializeBinaryToWriter = function(message, writer) {
  * optional string id = 1;
  * @return {string}
  */
-proto.cocorpc.ReadRequest.prototype.getId = function() {
+proto.cocorpc.GetRequest.prototype.getId = function() {
   return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 1, ""));
 };
 
 
 /** @param {string} value */
-proto.cocorpc.ReadRequest.prototype.setId = function(value) {
+proto.cocorpc.GetRequest.prototype.setId = function(value) {
   jspb.Message.setField(this, 1, value);
 };
 
@@ -1346,13 +1346,13 @@ proto.cocorpc.ReadRequest.prototype.setId = function(value) {
  * optional string type = 2;
  * @return {string}
  */
-proto.cocorpc.ReadRequest.prototype.getType = function() {
+proto.cocorpc.GetRequest.prototype.getType = function() {
   return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 2, ""));
 };
 
 
 /** @param {string} value */
-proto.cocorpc.ReadRequest.prototype.setType = function(value) {
+proto.cocorpc.GetRequest.prototype.setType = function(value) {
   jspb.Message.setField(this, 2, value);
 };
 
@@ -1368,12 +1368,12 @@ proto.cocorpc.ReadRequest.prototype.setType = function(value) {
  * @extends {jspb.Message}
  * @constructor
  */
-proto.cocorpc.ReadResponse = function(opt_data) {
+proto.cocorpc.GetResponse = function(opt_data) {
   jspb.Message.initialize(this, opt_data, 0, -1, null, null);
 };
-goog.inherits(proto.cocorpc.ReadResponse, jspb.Message);
+goog.inherits(proto.cocorpc.GetResponse, jspb.Message);
 if (goog.DEBUG && !COMPILED) {
-  proto.cocorpc.ReadResponse.displayName = 'proto.cocorpc.ReadResponse';
+  proto.cocorpc.GetResponse.displayName = 'proto.cocorpc.GetResponse';
 }
 
 
@@ -1388,8 +1388,8 @@ if (jspb.Message.GENERATE_TO_OBJECT) {
  *     for transitional soy proto support: http://goto/soy-param-migration
  * @return {!Object}
  */
-proto.cocorpc.ReadResponse.prototype.toObject = function(opt_includeInstance) {
-  return proto.cocorpc.ReadResponse.toObject(opt_includeInstance, this);
+proto.cocorpc.GetResponse.prototype.toObject = function(opt_includeInstance) {
+  return proto.cocorpc.GetResponse.toObject(opt_includeInstance, this);
 };
 
 
@@ -1398,10 +1398,10 @@ proto.cocorpc.ReadResponse.prototype.toObject = function(opt_includeInstance) {
  * @param {boolean|undefined} includeInstance Whether to include the JSPB
  *     instance for transitional soy proto support:
  *     http://goto/soy-param-migration
- * @param {!proto.cocorpc.ReadResponse} msg The msg instance to transform.
+ * @param {!proto.cocorpc.GetResponse} msg The msg instance to transform.
  * @return {!Object}
  */
-proto.cocorpc.ReadResponse.toObject = function(includeInstance, msg) {
+proto.cocorpc.GetResponse.toObject = function(includeInstance, msg) {
   var f, obj = {
     properties: (f = msg.getProperties()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f)
   };
@@ -1417,23 +1417,23 @@ proto.cocorpc.ReadResponse.toObject = function(includeInstance, msg) {
 /**
  * Deserializes binary data (in protobuf wire format).
  * @param {jspb.ByteSource} bytes The bytes to deserialize.
- * @return {!proto.cocorpc.ReadResponse}
+ * @return {!proto.cocorpc.GetResponse}
  */
-proto.cocorpc.ReadResponse.deserializeBinary = function(bytes) {
+proto.cocorpc.GetResponse.deserializeBinary = function(bytes) {
   var reader = new jspb.BinaryReader(bytes);
-  var msg = new proto.cocorpc.ReadResponse;
-  return proto.cocorpc.ReadResponse.deserializeBinaryFromReader(msg, reader);
+  var msg = new proto.cocorpc.GetResponse;
+  return proto.cocorpc.GetResponse.deserializeBinaryFromReader(msg, reader);
 };
 
 
 /**
  * Deserializes binary data (in protobuf wire format) from the
  * given reader into the given message object.
- * @param {!proto.cocorpc.ReadResponse} msg The message object to deserialize into.
+ * @param {!proto.cocorpc.GetResponse} msg The message object to deserialize into.
  * @param {!jspb.BinaryReader} reader The BinaryReader to use.
- * @return {!proto.cocorpc.ReadResponse}
+ * @return {!proto.cocorpc.GetResponse}
  */
-proto.cocorpc.ReadResponse.deserializeBinaryFromReader = function(msg, reader) {
+proto.cocorpc.GetResponse.deserializeBinaryFromReader = function(msg, reader) {
   while (reader.nextField()) {
     if (reader.isEndGroup()) {
       break;
@@ -1458,9 +1458,9 @@ proto.cocorpc.ReadResponse.deserializeBinaryFromReader = function(msg, reader) {
  * Serializes the message to binary data (in protobuf wire format).
  * @return {!Uint8Array}
  */
-proto.cocorpc.ReadResponse.prototype.serializeBinary = function() {
+proto.cocorpc.GetResponse.prototype.serializeBinary = function() {
   var writer = new jspb.BinaryWriter();
-  proto.cocorpc.ReadResponse.serializeBinaryToWriter(this, writer);
+  proto.cocorpc.GetResponse.serializeBinaryToWriter(this, writer);
   return writer.getResultBuffer();
 };
 
@@ -1468,10 +1468,10 @@ proto.cocorpc.ReadResponse.prototype.serializeBinary = function() {
 /**
  * Serializes the given message to binary data (in protobuf wire
  * format), writing to the given BinaryWriter.
- * @param {!proto.cocorpc.ReadResponse} message
+ * @param {!proto.cocorpc.GetResponse} message
  * @param {!jspb.BinaryWriter} writer
  */
-proto.cocorpc.ReadResponse.serializeBinaryToWriter = function(message, writer) {
+proto.cocorpc.GetResponse.serializeBinaryToWriter = function(message, writer) {
   var f = undefined;
   f = message.getProperties();
   if (f != null) {
@@ -1488,19 +1488,19 @@ proto.cocorpc.ReadResponse.serializeBinaryToWriter = function(message, writer) {
  * optional google.protobuf.Struct properties = 1;
  * @return {?proto.google.protobuf.Struct}
  */
-proto.cocorpc.ReadResponse.prototype.getProperties = function() {
+proto.cocorpc.GetResponse.prototype.getProperties = function() {
   return /** @type{?proto.google.protobuf.Struct} */ (
     jspb.Message.getWrapperField(this, google_protobuf_struct_pb.Struct, 1));
 };
 
 
 /** @param {?proto.google.protobuf.Struct|undefined} value */
-proto.cocorpc.ReadResponse.prototype.setProperties = function(value) {
+proto.cocorpc.GetResponse.prototype.setProperties = function(value) {
   jspb.Message.setWrapperField(this, 1, value);
 };
 
 
-proto.cocorpc.ReadResponse.prototype.clearProperties = function() {
+proto.cocorpc.GetResponse.prototype.clearProperties = function() {
   this.setProperties(undefined);
 };
 
@@ -1509,7 +1509,7 @@ proto.cocorpc.ReadResponse.prototype.clearProperties = function() {
  * Returns whether this field is set.
  * @return {!boolean}
  */
-proto.cocorpc.ReadResponse.prototype.hasProperties = function() {
+proto.cocorpc.GetResponse.prototype.hasProperties = function() {
   return jspb.Message.getField(this, 1) != null;
 };
 
@@ -1780,19 +1780,19 @@ proto.cocorpc.UpdateRequest.prototype.hasNews = function() {
  * @extends {jspb.Message}
  * @constructor
  */
-proto.cocorpc.UpdateImpactResponse = function(opt_data) {
-  jspb.Message.initialize(this, opt_data, 0, -1, proto.cocorpc.UpdateImpactResponse.repeatedFields_, null);
+proto.cocorpc.PreviewUpdateResponse = function(opt_data) {
+  jspb.Message.initialize(this, opt_data, 0, -1, proto.cocorpc.PreviewUpdateResponse.repeatedFields_, null);
 };
-goog.inherits(proto.cocorpc.UpdateImpactResponse, jspb.Message);
+goog.inherits(proto.cocorpc.PreviewUpdateResponse, jspb.Message);
 if (goog.DEBUG && !COMPILED) {
-  proto.cocorpc.UpdateImpactResponse.displayName = 'proto.cocorpc.UpdateImpactResponse';
+  proto.cocorpc.PreviewUpdateResponse.displayName = 'proto.cocorpc.PreviewUpdateResponse';
 }
 /**
  * List of repeated fields within this message type.
  * @private {!Array<number>}
  * @const
  */
-proto.cocorpc.UpdateImpactResponse.repeatedFields_ = [1];
+proto.cocorpc.PreviewUpdateResponse.repeatedFields_ = [1];
 
 
 
@@ -1807,8 +1807,8 @@ if (jspb.Message.GENERATE_TO_OBJECT) {
  *     for transitional soy proto support: http://goto/soy-param-migration
  * @return {!Object}
  */
-proto.cocorpc.UpdateImpactResponse.prototype.toObject = function(opt_includeInstance) {
-  return proto.cocorpc.UpdateImpactResponse.toObject(opt_includeInstance, this);
+proto.cocorpc.PreviewUpdateResponse.prototype.toObject = function(opt_includeInstance) {
+  return proto.cocorpc.PreviewUpdateResponse.toObject(opt_includeInstance, this);
 };
 
 
@@ -1817,10 +1817,10 @@ proto.cocorpc.UpdateImpactResponse.prototype.toObject = function(opt_includeInst
  * @param {boolean|undefined} includeInstance Whether to include the JSPB
  *     instance for transitional soy proto support:
  *     http://goto/soy-param-migration
- * @param {!proto.cocorpc.UpdateImpactResponse} msg The msg instance to transform.
+ * @param {!proto.cocorpc.PreviewUpdateResponse} msg The msg instance to transform.
  * @return {!Object}
  */
-proto.cocorpc.UpdateImpactResponse.toObject = function(includeInstance, msg) {
+proto.cocorpc.PreviewUpdateResponse.toObject = function(includeInstance, msg) {
   var f, obj = {
     replacesList: jspb.Message.getField(msg, 1),
     changes: (f = msg.getChanges()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f)
@@ -1837,23 +1837,23 @@ proto.cocorpc.UpdateImpactResponse.toObject = function(includeInstance, msg) {
 /**
  * Deserializes binary data (in protobuf wire format).
  * @param {jspb.ByteSource} bytes The bytes to deserialize.
- * @return {!proto.cocorpc.UpdateImpactResponse}
+ * @return {!proto.cocorpc.PreviewUpdateResponse}
  */
-proto.cocorpc.UpdateImpactResponse.deserializeBinary = function(bytes) {
+proto.cocorpc.PreviewUpdateResponse.deserializeBinary = function(bytes) {
   var reader = new jspb.BinaryReader(bytes);
-  var msg = new proto.cocorpc.UpdateImpactResponse;
-  return proto.cocorpc.UpdateImpactResponse.deserializeBinaryFromReader(msg, reader);
+  var msg = new proto.cocorpc.PreviewUpdateResponse;
+  return proto.cocorpc.PreviewUpdateResponse.deserializeBinaryFromReader(msg, reader);
 };
 
 
 /**
  * Deserializes binary data (in protobuf wire format) from the
  * given reader into the given message object.
- * @param {!proto.cocorpc.UpdateImpactResponse} msg The message object to deserialize into.
+ * @param {!proto.cocorpc.PreviewUpdateResponse} msg The message object to deserialize into.
  * @param {!jspb.BinaryReader} reader The BinaryReader to use.
- * @return {!proto.cocorpc.UpdateImpactResponse}
+ * @return {!proto.cocorpc.PreviewUpdateResponse}
  */
-proto.cocorpc.UpdateImpactResponse.deserializeBinaryFromReader = function(msg, reader) {
+proto.cocorpc.PreviewUpdateResponse.deserializeBinaryFromReader = function(msg, reader) {
   while (reader.nextField()) {
     if (reader.isEndGroup()) {
       break;
@@ -1882,9 +1882,9 @@ proto.cocorpc.UpdateImpactResponse.deserializeBinaryFromReader = function(msg, r
  * Serializes the message to binary data (in protobuf wire format).
  * @return {!Uint8Array}
  */
-proto.cocorpc.UpdateImpactResponse.prototype.serializeBinary = function() {
+proto.cocorpc.PreviewUpdateResponse.prototype.serializeBinary = function() {
   var writer = new jspb.BinaryWriter();
-  proto.cocorpc.UpdateImpactResponse.serializeBinaryToWriter(this, writer);
+  proto.cocorpc.PreviewUpdateResponse.serializeBinaryToWriter(this, writer);
   return writer.getResultBuffer();
 };
 
@@ -1892,10 +1892,10 @@ proto.cocorpc.UpdateImpactResponse.prototype.serializeBinary = function() {
 /**
  * Serializes the given message to binary data (in protobuf wire
  * format), writing to the given BinaryWriter.
- * @param {!proto.cocorpc.UpdateImpactResponse} message
+ * @param {!proto.cocorpc.PreviewUpdateResponse} message
  * @param {!jspb.BinaryWriter} writer
  */
-proto.cocorpc.UpdateImpactResponse.serializeBinaryToWriter = function(message, writer) {
+proto.cocorpc.PreviewUpdateResponse.serializeBinaryToWriter = function(message, writer) {
   var f = undefined;
   f = message.getReplacesList();
   if (f.length > 0) {
@@ -1921,13 +1921,13 @@ proto.cocorpc.UpdateImpactResponse.serializeBinaryToWriter = function(message, w
  * replace the array itself, then you must call the setter to update it.
  * @return {!Array.<string>}
  */
-proto.cocorpc.UpdateImpactResponse.prototype.getReplacesList = function() {
+proto.cocorpc.PreviewUpdateResponse.prototype.getReplacesList = function() {
   return /** @type {!Array.<string>} */ (jspb.Message.getField(this, 1));
 };
 
 
 /** @param {!Array.<string>} value */
-proto.cocorpc.UpdateImpactResponse.prototype.setReplacesList = function(value) {
+proto.cocorpc.PreviewUpdateResponse.prototype.setReplacesList = function(value) {
   jspb.Message.setField(this, 1, value || []);
 };
 
@@ -1936,12 +1936,12 @@ proto.cocorpc.UpdateImpactResponse.prototype.setReplacesList = function(value) {
  * @param {!string} value
  * @param {number=} opt_index
  */
-proto.cocorpc.UpdateImpactResponse.prototype.addReplaces = function(value, opt_index) {
+proto.cocorpc.PreviewUpdateResponse.prototype.addReplaces = function(value, opt_index) {
   jspb.Message.addToRepeatedField(this, 1, value, opt_index);
 };
 
 
-proto.cocorpc.UpdateImpactResponse.prototype.clearReplacesList = function() {
+proto.cocorpc.PreviewUpdateResponse.prototype.clearReplacesList = function() {
   this.setReplacesList([]);
 };
 
@@ -1950,19 +1950,19 @@ proto.cocorpc.UpdateImpactResponse.prototype.clearReplacesList = function() {
  * optional google.protobuf.Struct changes = 2;
  * @return {?proto.google.protobuf.Struct}
  */
-proto.cocorpc.UpdateImpactResponse.prototype.getChanges = function() {
+proto.cocorpc.PreviewUpdateResponse.prototype.getChanges = function() {
   return /** @type{?proto.google.protobuf.Struct} */ (
     jspb.Message.getWrapperField(this, google_protobuf_struct_pb.Struct, 2));
 };
 
 
 /** @param {?proto.google.protobuf.Struct|undefined} value */
-proto.cocorpc.UpdateImpactResponse.prototype.setChanges = function(value) {
+proto.cocorpc.PreviewUpdateResponse.prototype.setChanges = function(value) {
   jspb.Message.setWrapperField(this, 2, value);
 };
 
 
-proto.cocorpc.UpdateImpactResponse.prototype.clearChanges = function() {
+proto.cocorpc.PreviewUpdateResponse.prototype.clearChanges = function() {
   this.setChanges(undefined);
 };
 
@@ -1971,7 +1971,7 @@ proto.cocorpc.UpdateImpactResponse.prototype.clearChanges = function() {
  * Returns whether this field is set.
  * @return {!boolean}
  */
-proto.cocorpc.UpdateImpactResponse.prototype.hasChanges = function() {
+proto.cocorpc.PreviewUpdateResponse.prototype.hasChanges = function() {
   return jspb.Message.getField(this, 2) != null;
 };
 

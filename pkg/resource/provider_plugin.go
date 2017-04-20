@@ -124,23 +124,55 @@ func (p *provider) Create(t tokens.Type, props PropertyMap) (ID, State, error) {
 	return id, StateOK, nil
 }
 
-// Read reads the instance state identified by id/t, and returns a bag of properties.
-func (p *provider) Read(id ID, t tokens.Type) (PropertyMap, error) {
-	glog.V(7).Infof("resource[%v].Read(id=%v,t=%v) executing", p.pkg, id, t)
-	req := &cocorpc.ReadRequest{
+// Get reads the instance state identified by id/t, and returns a bag of properties.
+func (p *provider) Get(id ID, t tokens.Type) (PropertyMap, error) {
+	glog.V(7).Infof("resource[%v].Get(id=%v,t=%v) executing", p.pkg, id, t)
+	req := &cocorpc.GetRequest{
 		Id:   string(id),
 		Type: string(t),
 	}
 
-	resp, err := p.client.Read(p.ctx.Request(), req)
+	resp, err := p.client.Get(p.ctx.Request(), req)
 	if err != nil {
-		glog.V(7).Infof("resource[%v].Read(id=%v,t=%v) failed: err=%v", p.pkg, id, t, err)
+		glog.V(7).Infof("resource[%v].Get(id=%v,t=%v) failed: err=%v", p.pkg, id, t, err)
 		return nil, err
 	}
 
 	props := UnmarshalProperties(resp.GetProperties())
-	glog.V(7).Infof("resource[%v].Read(id=%v,t=%v) success: #props=%v", p.pkg, t, id, len(props))
+	glog.V(7).Infof("resource[%v].Get(id=%v,t=%v) success: #props=%v", p.pkg, t, id, len(props))
 	return props, nil
+}
+
+// PreviewUpdate checks what impacts a hypothetical update will have on the resource's properties.
+func (p *provider) PreviewUpdate(id ID, t tokens.Type,
+	olds PropertyMap, news PropertyMap) ([]string, PropertyMap, error) {
+	contract.Requiref(id != "", "id", "not empty")
+	contract.Requiref(t != "", "t", "not empty")
+
+	glog.V(7).Infof("resource[%v].PreviewUpdate(id=%v,t=%v,#olds=%v,#news=%v) executing",
+		p.pkg, id, t, len(olds), len(news))
+	req := &cocorpc.UpdateRequest{
+		Id:   string(id),
+		Type: string(t),
+		Olds: MarshalProperties(p.ctx, olds, MarshalOptions{
+			RawURNs: true, // often used during URN creation; IDs won't be ready.
+		}),
+		News: MarshalProperties(p.ctx, news, MarshalOptions{
+			RawURNs: true, // often used during URN creation; IDs won't be ready.
+		}),
+	}
+
+	resp, err := p.client.PreviewUpdate(p.ctx.Request(), req)
+	if err != nil {
+		glog.V(7).Infof("resource[%v].PreviewUpdate(id=%v,t=%v,...) failed: %v", p.pkg, id, t, err)
+		return nil, nil, err
+	}
+
+	replaces := resp.GetReplaces()
+	changes := UnmarshalProperties(resp.GetChanges())
+	glog.V(7).Infof("resource[%v].Update(id=%v,t=%v,...) success: #replaces=%v #changes=%v",
+		p.pkg, id, t, len(replaces), len(changes))
+	return replaces, changes, nil
 }
 
 // Update updates an existing resource with new values.
@@ -167,38 +199,6 @@ func (p *provider) Update(id ID, t tokens.Type, olds PropertyMap, news PropertyM
 
 	glog.V(7).Infof("resource[%v].Update(id=%v,t=%v,...) success", p.pkg, id, t)
 	return StateOK, nil
-}
-
-// UpdateImpact checks what impacts a hypothetical update will have on the resource's properties.
-func (p *provider) UpdateImpact(id ID, t tokens.Type,
-	olds PropertyMap, news PropertyMap) ([]string, PropertyMap, error) {
-	contract.Requiref(id != "", "id", "not empty")
-	contract.Requiref(t != "", "t", "not empty")
-
-	glog.V(7).Infof("resource[%v].UpdateImpact(id=%v,t=%v,#olds=%v,#news=%v) executing",
-		p.pkg, id, t, len(olds), len(news))
-	req := &cocorpc.UpdateRequest{
-		Id:   string(id),
-		Type: string(t),
-		Olds: MarshalProperties(p.ctx, olds, MarshalOptions{
-			RawURNs: true, // often used during URN creation; IDs won't be ready.
-		}),
-		News: MarshalProperties(p.ctx, news, MarshalOptions{
-			RawURNs: true, // often used during URN creation; IDs won't be ready.
-		}),
-	}
-
-	resp, err := p.client.UpdateImpact(p.ctx.Request(), req)
-	if err != nil {
-		glog.V(7).Infof("resource[%v].UpdateImpact(id=%v,t=%v,...) failed: %v", p.pkg, id, t, err)
-		return nil, nil, err
-	}
-
-	replaces := resp.GetReplaces()
-	changes := UnmarshalProperties(resp.GetChanges())
-	glog.V(7).Infof("resource[%v].Update(id=%v,t=%v,...) success: #replaces=%v #changes=%v",
-		p.pkg, id, t, len(replaces), len(changes))
-	return replaces, changes, nil
 }
 
 // Delete tears down an existing resource.
