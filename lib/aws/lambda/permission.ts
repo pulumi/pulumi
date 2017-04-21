@@ -2,6 +2,7 @@
 
 import {Function} from "./function";
 import * as cloudformation from "../cloudformation";
+import {ARN} from "../types";
 
 // The Permission resource associates a policy statement with a specific AWS Lambda function's access policy.  The
 // function policy grants a specific AWS service or application permission to invoke the function.  For more
@@ -11,7 +12,7 @@ export class Permission extends cloudformation.Resource implements PermissionPro
     public readonly function: Function;
     public readonly principal: string;
     public readonly sourceAccount?: string;
-    public readonly sourceARN?: string;
+    public readonly sourceARN?: ARN;
 
     constructor(name: string, args: PermissionProperties) {
         super({

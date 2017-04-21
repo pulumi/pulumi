@@ -2,6 +2,7 @@
 
 import {InlinePolicy, Policy} from "./policy";
 import * as cloudformation from "../cloudformation";
+import {ARN} from "../types";
 
 // Role is an AWS Identity and Access Management (IAM) role.  Use an IAM role to enable applications running on an EC2
 // instance to securely access your AWS resources.  For more information about IAM roles, see
@@ -10,7 +11,7 @@ export class Role extends cloudformation.Resource implements RoleProperties {
     public assumeRolePolicyDocument: any;
     public readonly path?: string;
     public readonly roleName?: string;
-    public managedPolicyARNs?: string[];
+    public managedPolicyARNs?: ARN[];
     public policies?: InlinePolicy[];
 
     constructor(name: string, args: RoleProperties) {
@@ -43,7 +44,7 @@ export interface RoleProperties extends cloudformation.TagArgs {
     // To prevent this, create a name that includes the region name itself, to create a region-specific name.
     readonly roleName?: string;
     // managedPolicies is one or more managed policies to attach to this role.
-    managedPolicyARNs?: string[];
+    managedPolicyARNs?: ARN[];
     // policies are the policies to associate with this role.
     policies?: InlinePolicy[];
 }
