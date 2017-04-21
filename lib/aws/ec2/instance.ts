@@ -15,6 +15,19 @@ export class Instance
     public securityGroups?: SecurityGroup[];
     public keyName?: string;
 
+    // Output properties:
+
+    // The Availability Zone where the specified instance is launched.  For example: `us-east-1b`.
+    public availabilityZone?: string;
+    // The private DNS name of the specified instance.  For example: `ip-10-24-34-0.ec2.internal`.
+    public privateDNSName?: string;
+    // The public DNS name of the specified instance.  For example: `ec2-107-20-50-45.compute-1.amazonaws.com`.
+    public publicDNSName?: string;
+    // The private IP address of the specified instance.  For example: `10.24.34.0`.
+    public privateIP?: string;
+    // The public IP address of the specified instance.  For example: `192.0.2.0`.
+    public publicIP?: string;
+
     constructor(name: string, args: InstanceProperties) {
         super({
             name: name,

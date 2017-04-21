@@ -67,11 +67,11 @@ func (p *roleProvider) Create(ctx context.Context, req *cocorpc.CreateRequest) (
 	// If an explicit name is given, use it.  Otherwise, auto-generate a name in part based on the resource name.
 	// TODO: use the URN, not just the name, to enhance global uniqueness.
 	// TODO: even for explicit names, we should consider mangling it somehow, to reduce multi-instancing conflicts.
-	var id string
+	var name string
 	if r.RoleName != nil {
-		id = *r.RoleName
+		name = *r.RoleName
 	} else {
-		id = resource.NewUniqueHex(r.Name+"-", maxRoleName, sha1.Size)
+		name = resource.NewUniqueHex(r.Name+"-", maxRoleName, sha1.Size)
 	}
 
 	// Serialize the policy document into a JSON blob.
@@ -81,23 +81,34 @@ func (p *roleProvider) Create(ctx context.Context, req *cocorpc.CreateRequest) (
 	}
 
 	// Now go ahead and perform the action.
-	fmt.Printf("Creating IAM Role '%v' with name '%v'\n", r.Name, id)
+	fmt.Printf("Creating IAM Role '%v' with name '%v'\n", r.Name, name)
 	result, err := p.ctx.IAM().CreateRole(&iam.CreateRoleInput{
 		AssumeRolePolicyDocument: aws.String(string(policyDocument)),
 		Path:     r.Path,
-		RoleName: aws.String(id),
+		RoleName: aws.String(name),
 	})
 	if err != nil {
 		return nil, err
 	}
 	contract.Assert(result != nil)
-	fmt.Printf("IAM Role created: %v; waiting for it to become active\n", id)
+	fmt.Printf("IAM Role created: %v; waiting for it to become active\n", name)
 
 	// Wait for the role to be ready and then return the ID (just its name).
-	if err = p.waitForRoleState(&id, true); err != nil {
+	if err = p.waitForRoleState(&name, true); err != nil {
 		return nil, err
 	}
-	return &cocorpc.CreateResponse{Id: id}, nil
+	return &cocorpc.CreateResponse{
+		Id: name,
+		Outputs: resource.MarshalProperties(
+			nil,
+			resource.NewPropertyMap(
+				roleOutput{
+					ARN: *result.Role.Arn,
+				},
+			),
+			resource.MarshalOptions{},
+		),
+	}, nil
 }
 
 // Get reads the instance state identified by ID, returning a populated resource object, or an error if not found.
@@ -162,6 +173,11 @@ const (
 const (
 	maxRoleName = 64 // TODO: to use Switch Role, Path+RoleName cannot exceed 64 characters.  Warn?
 )
+
+// roleOutput contains the properties set as output by the creation operation.
+type roleOutput struct {
+	ARN string `json:"arn"`
+}
 
 // unmarshalRole decodes and validates a role property bag.
 func unmarshalRole(v *pbstruct.Struct) (role, resource.PropertyMap, mapper.DecodeError) {

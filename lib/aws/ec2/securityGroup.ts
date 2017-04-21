@@ -16,6 +16,11 @@ export class SecurityGroup
     public securityGroupEgress?: SecurityGroupRule[];
     public securityGroupIngress?: SecurityGroupRule[];
 
+    // Output properties:
+
+    // The group ID of the specified security group, such as `sg-94b3a1f6`.
+    public groupID?: string;
+
     constructor(name: string, args: SecurityGroupProperties) {
         super({
             name: name,

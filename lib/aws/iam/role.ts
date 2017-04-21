@@ -14,6 +14,12 @@ export class Role extends cloudformation.Resource implements RoleProperties {
     public managedPolicyARNs?: ARN[];
     public policies?: InlinePolicy[];
 
+    // Output properties:
+
+    // The Amazon Resource Name (ARN) for the instance profile.  For example,
+    // `arn:aws:iam::1234567890:role/MyRole-AJJHDSKSDF`.
+    public arn?: ARN;
+
     constructor(name: string, args: RoleProperties) {
         super({
             name: name,

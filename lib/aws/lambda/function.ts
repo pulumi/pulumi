@@ -6,6 +6,7 @@ import * as iam from "../iam";
 import * as kms from "../kms";
 import * as sns from "../sns";
 import * as sqs from "../sqs";
+import {ARN} from "../types";
 import {asset} from "@coconut/coconut";
 
 // The Function resource creates an AWS Lambda function that can run code in response to events.
@@ -22,6 +23,11 @@ export class Function extends cloudformation.Resource implements FunctionPropert
     public memorySize?: number;
     public timeout?: number;
     public vpcConfig?: VPCConfig;
+
+    // Output properties:
+
+    // The ARN of the Lambda function, such as `arn:aws:lambda:us-west-2:123456789012:MyStack-AMILookUp-NT5EUXTNTXXD`.
+    public arn?: ARN;
 
     constructor(name: string, args: FunctionProperties) {
         super({

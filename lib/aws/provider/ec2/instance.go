@@ -96,23 +96,50 @@ func (p *instanceProvider) Create(ctx context.Context, req *cocorpc.CreateReques
 
 	// Now go ahead and perform the action.
 	fmt.Fprintf(os.Stdout, "Creating new EC2 instance resource\n")
-	out, err := p.ctx.EC2().RunInstances(create)
+	result, err := p.ctx.EC2().RunInstances(create)
 	if err != nil {
 		return nil, err
 	}
-	contract.Assert(out != nil)
-	contract.Assert(len(out.Instances) == 1)
-	contract.Assert(out.Instances[0] != nil)
-	contract.Assert(out.Instances[0].InstanceId != nil)
+	contract.Assert(result != nil)
+	contract.Assert(len(result.Instances) == 1)
+	inst := result.Instances[0]
+	contract.Assert(inst != nil)
+	id := inst.InstanceId
+	contract.Assert(inst.InstanceId != nil)
 
 	// Before returning that all is okay, wait for the instance to reach the running state.
-	id := out.Instances[0].InstanceId
 	fmt.Fprintf(os.Stdout, "EC2 instance '%v' created; now waiting for it to become 'running'\n", *id)
 	// TODO: if this fails, but the creation succeeded, we will have an orphaned resource; report this differently.
-	err = p.ctx.EC2().WaitUntilInstanceRunning(
-		&ec2.DescribeInstancesInput{InstanceIds: []*string{id}})
+	if err = p.ctx.EC2().WaitUntilInstanceRunning(
+		&ec2.DescribeInstancesInput{InstanceIds: []*string{id}}); err != nil {
+		return nil, err
+	}
 
-	return &cocorpc.CreateResponse{Id: *id}, err
+	// Fetch the availability zone for the instance.
+	status, err := p.ctx.EC2().DescribeInstanceStatus(
+		&ec2.DescribeInstanceStatusInput{InstanceIds: []*string{id}})
+	if err != nil {
+		return nil, err
+	}
+	contract.Assert(status != nil)
+	contract.Assert(len(status.InstanceStatuses) == 1)
+
+	return &cocorpc.CreateResponse{
+		Id: *id,
+		Outputs: resource.MarshalProperties(
+			nil,
+			resource.NewPropertyMap(
+				instanceOutput{
+					AvailabilityZone: *status.InstanceStatuses[0].AvailabilityZone,
+					PrivateDNSName:   *inst.PrivateDnsName,
+					PublicDNSName:    *inst.PublicDnsName,
+					PrivateIP:        *inst.PrivateIpAddress,
+					PublicIP:         *inst.PublicIpAddress,
+				},
+			),
+			resource.MarshalOptions{},
+		),
+	}, nil
 }
 
 // Get reads the instance state identified by ID, returning a populated resource object, or an error if not found.
@@ -189,3 +216,12 @@ const (
 	instanceSecurityGroups = "securityGroups"
 	instanceKeyName        = "keyName"
 )
+
+// instanceOutput represents the output properties yielded by this provider.
+type instanceOutput struct {
+	AvailabilityZone string `json:"availabilityZone"`
+	PrivateDNSName   string `json:"privateDNSName"`
+	PublicDNSName    string `json:"publicDNSName"`
+	PrivateIP        string `json:"privateIP"`
+	PublicIP         string `json:"publicIP"`
+}

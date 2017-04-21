@@ -77,7 +77,14 @@ func (p *sgProvider) Create(ctx context.Context, req *cocorpc.CreateRequest) (*c
 		return nil, err
 	}
 	contract.Assert(result != nil)
-	id := result.GroupId
+
+	// For security groups in a default VPC, we return the ID; otherwise, the name.
+	var id *string
+	if secgrp.VPCID == nil {
+		id = result.GroupId
+	} else {
+		id = &name
+	}
 	contract.Assert(id != nil)
 	fmt.Printf("EC2 security group created: %v; waiting for it to become active\n", *id)
 
@@ -108,6 +115,15 @@ func (p *sgProvider) Create(ctx context.Context, req *cocorpc.CreateRequest) (*c
 
 	return &cocorpc.CreateResponse{
 		Id: *id,
+		Outputs: resource.MarshalProperties(
+			nil,
+			resource.NewPropertyMap(
+				securityGroupOutput{
+					GroupID: *result.GroupId,
+				},
+			),
+			resource.MarshalOptions{},
+		),
 	}, nil
 }
 
@@ -285,6 +301,11 @@ const (
 	maxSecurityGroupName        = 255
 	maxSecurityGroupDescription = 255
 )
+
+// securityGroupOutput contains all of the output properties from creating a new security group.
+type securityGroupOutput struct {
+	GroupID string `json:"groupID"`
+}
 
 // unmarshalSecurityGroup decodes and validates a security group.
 func unmarshalSecurityGroup(v *pbstruct.Struct) (securityGroup, resource.PropertyMap, mapper.DecodeError) {

@@ -69,11 +69,11 @@ func (p *funcProvider) Create(ctx context.Context, req *cocorpc.CreateRequest) (
 	// If an explicit name is given, use it.  Otherwise, auto-generate a name in part based on the resource name.
 	// TODO: use the URN, not just the name, to enhance global uniqueness.
 	// TODO: even for explicit names, we should consider mangling it somehow, to reduce multi-instancing conflicts.
-	var id string
+	var name string
 	if fun.FunctionName != nil {
-		id = *fun.FunctionName
+		name = *fun.FunctionName
 	} else {
-		id = resource.NewUniqueHex(fun.Name+"-", maxFunctionName, sha1.Size)
+		name = resource.NewUniqueHex(fun.Name+"-", maxFunctionName, sha1.Size)
 	}
 
 	// Fetch the IAM role's ARN.
@@ -123,13 +123,13 @@ func (p *funcProvider) Create(ctx context.Context, req *cocorpc.CreateRequest) (
 
 	// Now go ahead and create the resource.  Note that IAM profiles can take several seconds to propagate; see
 	// http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/iam-roles-for-amazon-ec2.html#launch-instance-with-role.
-	fmt.Printf("Creating Lambda Function '%v' with name '%v'\n", fun.Name, id)
+	fmt.Printf("Creating Lambda Function '%v' with name '%v'\n", fun.Name, name)
 	create := &lambda.CreateFunctionInput{
 		Code:             code,
 		DeadLetterConfig: dlqcfg,
 		Description:      fun.Description,
 		Environment:      env,
-		FunctionName:     aws.String(id),
+		FunctionName:     aws.String(name),
 		Handler:          aws.String(fun.Handler),
 		KMSKeyArn:        fun.KMSKeyID.StringPtr(),
 		MemorySize:       memsize,
@@ -139,10 +139,13 @@ func (p *funcProvider) Create(ctx context.Context, req *cocorpc.CreateRequest) (
 		Timeout:          timeout,
 		VpcConfig:        vpccfg,
 	}
+	var result *lambda.FunctionConfiguration
 	succ, err := awsctx.RetryProgUntil(
 		p.ctx,
 		func() (bool, error) {
-			if _, err := p.ctx.Lambda().CreateFunction(create); err != nil {
+			var err error
+			result, err = p.ctx.Lambda().CreateFunction(create)
+			if err != nil {
 				if erraws, iserraws := err.(awserr.Error); iserraws {
 					if erraws.Code() == "InvalidParameterValueException" &&
 						erraws.Message() == "The role defined for the function cannot be assumed by Lambda." {
@@ -166,11 +169,22 @@ func (p *funcProvider) Create(ctx context.Context, req *cocorpc.CreateRequest) (
 	}
 
 	// Wait for the function to be ready and then return the function name as the ID.
-	fmt.Printf("Lambda Function created: %v; waiting for it to become active\n", id)
-	if err = p.waitForFunctionState(id, true); err != nil {
+	fmt.Printf("Lambda Function created: %v; waiting for it to become active\n", name)
+	if err = p.waitForFunctionState(name, true); err != nil {
 		return nil, err
 	}
-	return &cocorpc.CreateResponse{Id: id}, nil
+	return &cocorpc.CreateResponse{
+		Id: name,
+		Outputs: resource.MarshalProperties(
+			nil,
+			resource.NewPropertyMap(
+				functionOutput{
+					ARN: *result.FunctionArn,
+				},
+			),
+			resource.MarshalOptions{},
+		),
+	}, nil
 }
 
 // Read reads the instance state identified by ID, returning a populated resource object, or an error if not found.
@@ -255,6 +269,10 @@ const (
 	maxFunctionNameARN    = 140
 	functionNameARNPrefix = "arn:aws:lambda:"
 )
+
+type functionOutput struct {
+	ARN string `json:"arn"`
+}
 
 var functionRuntimes = map[string]bool{
 	"nodejs":         true,
