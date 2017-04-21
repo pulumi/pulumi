@@ -3,8 +3,29 @@
 import * as arch from "../../arch";
 import * as aws from "@coconut/aws";
 
-// This file contents various Identity and Access Management (IAM) variables.  Eventually we want it to be highly
-// customizable and configurable, but for now it is enormously naive and straightforward.
+// This file contains various AWS "runtime" helper methods, including various URIs, ARN management utilities, and
+// Identity and Access Management (IAM) variables.  Eventually we want it to be highly customizable and configurable,
+// but for now it is enormously naive and straightforward, and acts as a placeholder for boilerplate accumulation.
+
+// getAccountID fetches the current AWS account ID.
+function getAccountID(): string {
+    throw new Error("TODO: getAccountID not yet implemented");
+}
+
+// getAPIExecuteSourceURI retrieves the source URI for a given API, stage name, and path combination.
+export function getAPIExecuteSourceURI(
+        api: aws.apigateway.RestAPI, stage: aws.apigateway.Stage, path: string): string {
+    let region: aws.Region = aws.config.requireRegion();
+    return "arn:aws:execute-api:" +
+        region + ":" + getAccountID() + ":" +
+        api.name + "/" + stage.stageName + "/ANY/" + path;
+}
+
+// getLambdaAPIInvokeURI returns the standard API Gateway invocation URI for a lambda.
+export function getLambdaAPIInvokeURI(lambda: aws.lambda.Function): string {
+    let region: aws.Region = aws.config.requireRegion();
+    return "arn:aws:apigateway:" + region + ":lambda:path/2015-03-31/functions/" + lambda.arn + "/invocations";
+}
 
 let lambdaRole: aws.iam.Role | undefined;
 
@@ -26,6 +47,9 @@ export function getLambdaRole(): aws.iam.Role {
                     ],
                 }],
             },
+            managedPolicyARNs: [
+                "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole",
+            ],
         });
     }
     return lambdaRole;

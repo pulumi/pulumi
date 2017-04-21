@@ -44,28 +44,82 @@ export class API {
 
     private initKubernetesResources(): any {
         // Ensure that we're dealing with a Kubernetes Fission function.
-        let fnc: any = this.function.getResource();
-        if (!(fnc instanceof kubefission.Function)) {
-            throw new Error("Kubernetes API Gateway cannot target a non-Kubernetes function object");
+        let funcres: any = this.function.getResource();
+        if (!(funcres instanceof kubefission.Function)) {
+            throw new Error("Kubernetes API Gateway can only use Kubernetes Fission functions");
         }
+        let kubeFunc = <kubefission.Function>funcres;
 
+        // Simply wire up the function to an HTTP trigger.
+        // TODO: think about multi-instancing routers, rather than assuming there is a global one.  Ideally we would
+        //     be able to instance a parallel Fission provider, rather than relying on a single shared global instance.
         return new kubefission.HTTPTrigger({
             name: this.path, // TODO: replace("/", "_")
             urlPattern: this.path,
             method: this.method,
-            function: <kubefission.Function>fnc,
+            function: kubeFunc,
         });
     }
 
-    private initAWSResources(): void {
-        throw new Error("AWS API Gateways not yet implemented");
+    private initAWSResources(): any {
+        let funcres: any = this.function.getResource();
+        if (!(funcres instanceof aws.lambda.Function)) {
+            throw new Error("AWS API Gateway can only use AWS Lambda functions");
+        }
+        let lambdaFunc = <aws.lambda.Function>funcres;
+
+        // Create a prefix that all resources will use.
+        // TODO: replace(this.path, "/", "_") and use it as part of the name (else multi-subscription won't work).
+        let prefix: string = lambdaFunc.name + "-api";
+
+        // Create a Rest API at the desired path with a single deployment / stage.
+        let restAPI = new aws.apigateway.RestAPI(prefix, {
+            // The body is an OpenAPI specification for the API that we're creating.
+            body: {
+                info: {
+                    title: prefix,
+                    version: "1.0",
+                },
+                paths: {
+                    [this.path]: {
+                        "x-amazon-apigateway-any-method": {
+                            responses: {},
+                            "x-amazon-apigateway-integration": {
+                                httpMethod: "POST",
+                                type: "aws_proxy",
+                                uri: runtime.aws.getLambdaAPIInvokeURI(lambdaFunc),
+                            },
+                        },
+                    },
+                },
+            },
+        });
+        let deployment = new aws.apigateway.Deployment(prefix + "-deployment", {
+            restAPI: restAPI,
+            stageName: "Stage",
+        });
+        let stage = new aws.apigateway.Stage(prefix + "-primary-stage", {
+            deployment: deployment,
+            restAPI: restAPI,
+            stageName: "Primary", // TODO: consider using the Coconut environment name.
+        });
+
+        // Grant permissions for the API gateway to invoke the target function.
+        let invokePermission = new aws.lambda.Permission(prefix + "-invoke-perm", {
+            action: "lambda:invokeFunction",
+            function: lambdaFunc,
+            principal: "apigateway.amazonaws.com",
+            sourceARN: runtime.aws.getAPIExecuteSourceURI(restAPI, stage, this.path),
+        });
+
+        return restAPI;
     }
 
-    private initGCPResources(): void {
+    private initGCPResources(): any {
         throw new Error("Google Cloud API Gateways not yet implemented");
     }
 
-    private initAzureResources(): void {
+    private initAzureResources(): any {
         throw new Error("Azure API Gateways not yet implemented");
     }
 }
