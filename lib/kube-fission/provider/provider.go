@@ -27,6 +27,7 @@ func NewProvider() (*Provider, error) {
 		impls: map[tokens.Type]cocorpc.ResourceProviderServer{
 			Environment: NewEnvironmentProvider(ctx),
 			Function:    NewFunctionProvider(ctx),
+			HTTPTrigger: NewHTTPTriggerProvider(ctx),
 		},
 	}, nil
 }
