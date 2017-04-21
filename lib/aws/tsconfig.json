@@ -19,6 +19,21 @@
         "index.ts",
         "types.ts",
 
+        "apigateway/index.ts",
+        "apigateway/account.ts",
+        "apigateway/apiKey.ts",
+        "apigateway/authorizer.ts",
+        "apigateway/basePathMapping.ts",
+        "apigateway/clientCertificate.ts",
+        "apigateway/deployment.ts",
+        "apigateway/method.ts",
+        "apigateway/model.ts",
+        "apigateway/resource.ts",
+        "apigateway/restAPI.ts",
+        "apigateway/stage.ts",
+        "apigateway/usagePlan.ts",
+        "apigateway/usagePlanKey.ts",
+
         "config/index.ts",
 
         "cloudformation/index.ts",

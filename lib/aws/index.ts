@@ -2,6 +2,7 @@
 
 export * from "./types";
 
+import * as apigateway from "./apigateway";
 import * as cloudwatch from "./cloudwatch";
 import * as config from "./config";
 import * as ec2 from "./ec2";
@@ -11,5 +12,5 @@ import * as lambda from "./lambda";
 import * as s3 from "./s3";
 import * as sns from "./sns";
 import * as sqs from "./sqs";
-export { cloudwatch, config, ec2, iam, kms, lambda, s3, sns, sqs };
+export {apigateway, cloudwatch, config, ec2, iam, kms, lambda, s3, sns, sqs};
 
