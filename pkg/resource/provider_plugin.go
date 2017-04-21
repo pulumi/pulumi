@@ -101,7 +101,7 @@ func (p *provider) Name(t tokens.Type, props PropertyMap) (tokens.QName, error) 
 }
 
 // Create allocates a new instance of the provided resource and returns its unique ID afterwards.
-func (p *provider) Create(t tokens.Type, props PropertyMap) (ID, State, error) {
+func (p *provider) Create(t tokens.Type, props PropertyMap) (ID, PropertyMap, State, error) {
 	glog.V(7).Infof("resource[%v].Create(t=%v,#props=%v) executing", p.pkg, t, len(props))
 	req := &cocorpc.CreateRequest{
 		Type:       string(t),
@@ -111,17 +111,18 @@ func (p *provider) Create(t tokens.Type, props PropertyMap) (ID, State, error) {
 	resp, err := p.client.Create(p.ctx.Request(), req)
 	if err != nil {
 		glog.V(7).Infof("resource[%v].Create(t=%v,...) failed: err=%v", p.pkg, t, err)
-		return ID(""), StateUnknown, err
+		return ID(""), nil, StateUnknown, err
 	}
 
 	id := ID(resp.GetId())
-	glog.V(7).Infof("resource[%v].Create(t=%v,...) success: id=%v", p.pkg, t, id)
+	outs := resp.GetOutputs()
+	outprops := UnmarshalProperties(outs)
+	glog.V(7).Infof("resource[%v].Create(t=%v,...) success: id=%v,#outs=%v", p.pkg, t, id, len(outprops))
 	if id == "" {
-		return id,
-			StateUnknown,
+		return id, outprops, StateUnknown,
 			errors.Errorf("plugin for package '%v' returned empty ID from create '%v'", p.pkg, t)
 	}
-	return id, StateOK, nil
+	return id, outprops, StateOK, nil
 }
 
 // Get reads the instance state identified by id/t, and returns a bag of properties.

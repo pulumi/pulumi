@@ -30,7 +30,7 @@ type Provider interface {
 	// In any case, resources with the same name must be safe to use interchangeably with one another.
 	Name(t tokens.Type, props PropertyMap) (tokens.QName, error)
 	// Create allocates a new instance of the provided resource and returns its unique ID afterwards.
-	Create(t tokens.Type, props PropertyMap) (ID, State, error)
+	Create(t tokens.Type, props PropertyMap) (ID, PropertyMap, State, error)
 	// Get reads the instance state identified by id/t, and returns a bag of properties.
 	Get(id ID, t tokens.Type) (PropertyMap, error)
 	// PreviewUpdate checks what impacts a hypothetical update will have on the resource's properties.

@@ -60,7 +60,8 @@ message CreateRequest {
 }
 
 message CreateResponse {
-    string id = 1; // the ID of the resource created.
+    string id = 1;                      // the ID of the resource created.
+    google.protobuf.Struct outputs = 2; // any properties populated at creation time.
 }
 
 message GetRequest {
