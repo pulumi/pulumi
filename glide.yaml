@@ -17,3 +17,4 @@ import:
   subpackages:
   - context
 - package: github.com/pkg/errors
+- package: github.com/fatih/structs

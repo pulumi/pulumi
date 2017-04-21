@@ -82,6 +82,7 @@ func MarshalPropertyValue(ctx *Context, v PropertyValue, opts MarshalOptions) (*
 		if opts.RawURNs {
 			wire = string(m)
 		} else {
+			contract.Assertf(ctx != nil, "Resource encountered with a nil context; URN not recoverable")
 			var id ID
 			if res, has := ctx.URNRes[m]; has {
 				id = res.ID() // found a new resource with this ID, use it.

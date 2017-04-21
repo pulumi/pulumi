@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"reflect"
 
+	"github.com/fatih/structs"
 	"github.com/pkg/errors"
 
 	"github.com/pulumi/coconut/pkg/tokens"
@@ -18,6 +19,16 @@ type PropertyKey tokens.Name
 
 // PropertyMap is a simple map keyed by property name with "JSON-like" values.
 type PropertyMap map[PropertyKey]PropertyValue
+
+// NewPropertyMap turns a struct into a property map, using any JSON tags inside to determine naming.
+func NewPropertyMap(s interface{}) PropertyMap {
+	m := structs.Map(s)
+	result := make(PropertyMap)
+	for k, v := range m {
+		result[PropertyKey(k)] = NewPropertyValue(v)
+	}
+	return result
+}
 
 // PropertyValue is the value of a property, limited to a select few types (see below).
 type PropertyValue struct {
@@ -316,6 +327,49 @@ func NewPropertyString(v string) PropertyValue         { return PropertyValue{v}
 func NewPropertyArray(v []PropertyValue) PropertyValue { return PropertyValue{v} }
 func NewPropertyObject(v PropertyMap) PropertyValue    { return PropertyValue{v} }
 func NewPropertyResource(v URN) PropertyValue          { return PropertyValue{v} }
+
+// NewPropertyValue turns a value into a property value, provided it is of a legal "JSON-like" kind.
+func NewPropertyValue(v interface{}) PropertyValue {
+	// If nil, easy peasy, just return a null.
+	if v == nil {
+		return NewPropertyNull()
+	}
+
+	// Else, check for some known primitive types.
+	switch t := v.(type) {
+	case bool:
+		return NewPropertyBool(t)
+	case float64:
+		return NewPropertyNumber(t)
+	case string:
+		return NewPropertyString(t)
+	case URN:
+		return NewPropertyResource(t)
+	}
+
+	// Next, see if it's an array, slice, pointer or struct, and handle each accordingly.
+	rv := reflect.ValueOf(v)
+	switch rk := rv.Type().Kind(); rk {
+	case reflect.Array, reflect.Slice:
+		// If an array or slice, just create an array out of it.
+		var arr []PropertyValue
+		for i := 0; i < rv.Len(); i++ {
+			elem := rv.Index(i)
+			arr = append(arr, NewPropertyValue(elem.Interface()))
+		}
+		return NewPropertyArray(arr)
+	case reflect.Ptr:
+		// If a pointer, recurse and return the underlying value.
+		return NewPropertyValue(rv.Elem().Interface())
+	case reflect.Struct:
+		obj := NewPropertyMap(rv.Interface())
+		return NewPropertyObject(obj)
+	default:
+		contract.Failf("Unrecognized value type: %v", rk)
+	}
+
+	return NewPropertyNull()
+}
 
 func (v PropertyValue) BoolValue() bool             { return v.V.(bool) }
 func (v PropertyValue) NumberValue() float64        { return v.V.(float64) }

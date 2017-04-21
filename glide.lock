@@ -1,5 +1,5 @@
-hash: fb64820d72da139d981262db31154bf4e822cd193174723bc3792a46decde7f1
-updated: 2017-04-19T14:33:31.671135271-07:00
+hash: 0bc68769f719a2cd4f87bd8e7790805c624b68209a37f64a7584b5b5773cbebe
+updated: 2017-04-21T15:07:40.313853351-07:00
 imports:
 - name: github.com/aokoli/goutils
   version: 9c37978a95bd5c709a15883b6242714ea6709e64
@@ -39,6 +39,8 @@ imports:
   - private/protocol/json/jsonutil
 - name: github.com/blang/semver
   version: 3a37c301dda64cbe17f16f661b4c976803c0e2d2
+- name: github.com/fatih/structs
+  version: a720dfa8df582c51dee1b36feabb906bde1588bd
 - name: github.com/fission/fission
   version: 01b399187ef018454769f351c110f05956646482
   subpackages:
