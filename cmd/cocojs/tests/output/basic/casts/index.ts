@@ -9,3 +9,7 @@ let b: any = <any>a; // ok.
 // TODO: a way to baseline expected runtime failures.
 // let d: number = <number>b; // dynamically rejected.
 
+class C {}
+let c: any = new C();
+let isc: boolean = (c instanceof C);
+

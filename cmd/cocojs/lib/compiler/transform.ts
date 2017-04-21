@@ -14,7 +14,8 @@ import {Script} from "./script";
 
 const defaultExport: string = "default"; // the ES6 default export name.
 
-// A mapping from TypeScript binary operator to CocoIL AST operator.
+// A mapping from TypeScript binary operator to CocoIL AST operator.  Note that InstanceOf is not a binary operator;
+// it is instead lowered to a specific CocoIL IsInstExpression.
 let binaryOperators = new Map<ts.SyntaxKind, ast.BinaryOperator>([
     // Arithmetic
     [ ts.SyntaxKind.PlusToken,                                    "+"   ],
@@ -63,7 +64,6 @@ let binaryOperators = new Map<ts.SyntaxKind, ast.BinaryOperator>([
 
     // Intrinsics
     // TODO: [ ts.SyntaxKind.InKeyword,                           "in" ],
-    // TODO: [ ts.SyntaxKind.InstanceOfKeyword,                   "instanceof" ],
 ]);
 
 // A mapping from TypeScript unary prefix operator to CocoIL AST operator.
@@ -2577,32 +2577,50 @@ export class Transformer {
         }
     }
 
-    private async transformBinaryOperatorExpression(node: ts.BinaryExpression): Promise<ast.BinaryOperatorExpression> {
-        // A few operators aren't faithfully emulated; in those cases, log warnings.
-        if (log.v(3)) {
-            switch (node.operatorToken.kind) {
-                case ts.SyntaxKind.GreaterThanGreaterThanGreaterThanEqualsToken:
-                case ts.SyntaxKind.GreaterThanGreaterThanGreaterThanToken:
-                case ts.SyntaxKind.EqualsEqualsEqualsToken:
-                case ts.SyntaxKind.ExclamationEqualsEqualsToken:
-                    log.out(3).info(
-                        `ECMAScript operator '${ts.SyntaxKind[node.operatorToken.kind]}' not supported; ` +
-                        `until pulumi/coconut#50 is implemented, be careful about subtle behavioral differences`,
-                    );
-                    break;
-                default:
-                    break;
-            }
+    private async transformBinaryOperatorExpression(node: ts.BinaryExpression): Promise<ast.Expression> {
+        if (node.operatorToken.kind === ts.SyntaxKind.InstanceOfKeyword) {
+            // If this is an instanceof operator, the RHS is going to be a constructor for a type.  The
+            // IsInstExpression that this lowers to needs a type token, so fetch that out.
+            let rhsSym: ts.Symbol = this.checker().getSymbolAtLocation(node.right);
+            contract.assert(!!rhsSym);
+            let rhsType: tokens.TypeToken | undefined = await this.resolveTokenFromSymbol(rhsSym);
+            contract.assert(!!rhsType);
+            return <ast.IsInstExpression>{
+                kind:       ast.isInstExpressionKind,
+                expression: await this.transformExpression(node.left),
+                type:       <ast.TypeToken>{
+                    kind: ast.typeTokenKind,
+                    tok:  rhsType!,
+                },
+            };
         }
+        else {
+            // A few operators aren't faithfully emulated; in those cases, log warnings.
+            if (log.v(3)) {
+                switch (node.operatorToken.kind) {
+                    case ts.SyntaxKind.GreaterThanGreaterThanGreaterThanEqualsToken:
+                    case ts.SyntaxKind.GreaterThanGreaterThanGreaterThanToken:
+                    case ts.SyntaxKind.EqualsEqualsEqualsToken:
+                    case ts.SyntaxKind.ExclamationEqualsEqualsToken:
+                        log.out(3).info(
+                            `ECMAScript operator '${ts.SyntaxKind[node.operatorToken.kind]}' not supported; ` +
+                            `until pulumi/coconut#50 is implemented, be careful about subtle behavioral differences`,
+                        );
+                        break;
+                    default:
+                        break;
+                }
+            }
 
-        let operator: ast.BinaryOperator | undefined = binaryOperators.get(node.operatorToken.kind);
-        contract.assert(!!operator, `Expected binary operator for: ${ts.SyntaxKind[node.operatorToken.kind]}`);
-        return this.withLocation(node, <ast.BinaryOperatorExpression>{
-            kind:     ast.binaryOperatorExpressionKind,
-            operator: operator,
-            left:     await this.transformExpression(node.left),
-            right:    await this.transformExpression(node.right),
-        });
+            let operator: ast.BinaryOperator | undefined = binaryOperators.get(node.operatorToken.kind);
+            contract.assert(!!operator, `Expected binary operator for: ${ts.SyntaxKind[node.operatorToken.kind]}`);
+            return this.withLocation(node, <ast.BinaryOperatorExpression>{
+                kind:     ast.binaryOperatorExpressionKind,
+                operator: operator,
+                left:     await this.transformExpression(node.left),
+                right:    await this.transformExpression(node.right),
+            });
+        }
     }
 
     private async transformBinarySequenceExpression(node: ts.BinaryExpression): Promise<ast.SequenceExpression> {

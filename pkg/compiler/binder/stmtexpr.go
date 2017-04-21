@@ -99,6 +99,8 @@ func (a *astBinder) After(node ast.Node) {
 		a.checkBinaryOperatorExpression(n)
 	case *ast.CastExpression:
 		a.checkCastExpression(n)
+	case *ast.IsInstExpression:
+		a.checkIsInstExpression(n)
 	case *ast.TypeOfExpression:
 		a.checkTypeOfExpression(n)
 	case *ast.ConditionalExpression:
@@ -683,6 +685,11 @@ func (a *astBinder) checkCastExpression(node *ast.CastExpression) {
 		a.b.Diag().Errorf(errors.ErrorInvalidCast.At(node), from, to)
 	}
 	a.b.ctx.RegisterType(node, to)
+}
+
+func (a *astBinder) checkIsInstExpression(node *ast.IsInstExpression) {
+	// An isinst produces a bool indicating whether the expression is of the target type.
+	a.b.ctx.RegisterType(node, types.Bool)
 }
 
 func (a *astBinder) checkTypeOfExpression(node *ast.TypeOfExpression) {

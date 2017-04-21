@@ -2006,8 +2006,17 @@ func (e *evaluator) evalCastExpression(node *ast.CastExpression) (*rt.Object, *r
 }
 
 func (e *evaluator) evalIsInstExpression(node *ast.IsInstExpression) (*rt.Object, *rt.Unwind) {
-	contract.Failf("Evaluation of %v nodes not yet implemented", reflect.TypeOf(node))
-	return nil, nil
+	// Evaluate the underlying expression.
+	obj, uw := e.evalExpression(node.Expression)
+	if uw != nil {
+		return nil, uw
+	}
+
+	// Now check the type and produce a bool object indicating whether the type is good.
+	from := obj.Type()
+	to := e.ctx.LookupType(node.Type)
+	isinst := types.CanConvert(from, to)
+	return e.alloc.NewBool(node, isinst), nil
 }
 
 func (e *evaluator) evalTypeOfExpression(node *ast.TypeOfExpression) (*rt.Object, *rt.Unwind) {
