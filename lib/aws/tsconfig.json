@@ -66,6 +66,7 @@
 
         "lambda/index.ts",
         "lambda/function.ts",
+        "lambda/permission.ts",
 
         "s3/index.ts",
         "s3/bucket.ts",

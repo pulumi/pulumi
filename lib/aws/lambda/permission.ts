@@ -10,8 +10,8 @@ export class Permission extends cloudformation.Resource implements PermissionPro
     public readonly action: string;
     public readonly function: Function;
     public readonly principal: string;
-    public readonly sourceAccount: string;
-    public readonly sourceARN: string;
+    public readonly sourceAccount?: string;
+    public readonly sourceARN?: string;
 
     constructor(name: string, args: PermissionProperties) {
         super({
@@ -41,11 +41,11 @@ export interface PermissionProperties extends cloudformation.TagArgs {
     // The AWS account ID (without hyphens) of the source owner.  For example, if you specify an S3 bucket in the
     // sourceARN property, this value is the bucket owner's account ID.  You can use this property to ensure that all
     // source principals are owned by a specific account.
-    readonly sourceAccount: string;
+    readonly sourceAccount?: string;
     // The ARN of a resource that is invoking your function.  When granting Amazon Simple Storage Service (Amazon S3)
     // permission to invoke your function, specify this property with the bucket ARN as its value.  This ensures that
     // events generated only from the specified bucket, not just any bucket from any AWS account that creates a mapping
     // to your function, can invoke the function.
-    readonly sourceARN: string;
+    readonly sourceARN?: string;
 }
 
