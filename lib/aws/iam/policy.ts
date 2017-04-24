@@ -41,7 +41,7 @@ export interface PolicyProperties extends cloudformation.TagArgs {
     users?: User[];
 }
 
-// InlinePolicies are attached to Policis, Groups, and User resources, to describe what actions are allowed on them.
+// InlinePolicies are attached to Policies, Groups, and User resources, to describe what actions are allowed on them.
 // For more information on policies, please see http://docs.aws.amazon.com/IAM/latest/UserGuide/access_policies.html.
 export interface InlinePolicy {
     // policyDocument is a policy document that describes what actions are allowed on which resources.
