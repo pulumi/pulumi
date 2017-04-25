@@ -22,8 +22,8 @@ The overall idea is that every resource package contains three sub-directories:
 The IDL compiler is named `cidlc`.  In general, the workflow will be:
 
 * Author the IDL files in a Go subset
-* Regenerate the Coconut type definitions: `$ cidlc idl/ --pack-out=pack/`
-* Regenerate the Coconut resource provider RPC stubs: `$ cidlc idl/ --provider-out=provider/`
+* Regenerate the Coconut type definitions: `$ cidlc idl/ --out-pack=pack/`
+* Regenerate the Coconut resource provider RPC stubs: `$ cidlc idl/ --out-provider=provider/`
 
 For now, just like our gRPC files, we will check in the resulting generated code.
 
@@ -43,7 +43,7 @@ are specifically focused on IDL-only.
 The only top-level elements supported at the moment are:
 
 * Struct definitions
-* Type aliases
+* Type aliases (for enums)
 * Constants
 
 Note that, in particular, interfaces, functions, and variables, are not supported.  This essentially means the IDL is
@@ -90,25 +90,26 @@ In fact, there are three other options supported by the `coco` tag, to control c
 
 * `optional`: this is an optional property (required is the default)
 * `out`: this property is set post-creation by the resource provider, rather than set by the client
-* `replace`: changing this property implies a replacement of a resource (valid only on resource types); for conditional
-    replacements, custom logic will be required
+* `replaces`: changing this property implies a replacement of a resource (valid only on resource types); for
+    conditional replacements, custom logic will be required
 
 The resulting package and provider will perform client- and server-side validation automatically for each of these.
 
 Eventually we envision additional annotations, like min/max values for numbers, regexes for strings, and so on
 (see [pulumi/coconut#64](https://github.com/pulumi/coconut/issues/64) for details).
 
-Enums are supported using semi-idiomatic Go enums: associate an enum type name with the `idl.Enum` type, and then
-declare the full set of constants that the enum may take on.  The IDL compiler will treat this like an enum type:
+Enums are supported using semi-idiomatic Go enums, by just using a `string`-backed type alias, and by declaring the
+entire set of constants that the enum may take on.  The IDL compiler will treat this like an enum type:
 
-    type Baz idl.Enum
+    type Baz string
     const (
         A Baz = "a"
         B Baz = "b"
         Z Baz = "z"
     )
 
-Note that enums are string-based, due to the "JSON-like" type system.
+Note that all enums are `string`-based at the moment, due to the "JSON-like" type system.  Furthermore, non-enum type
+aliases are not supported at the moment in the IDL subset.
 
 ## Packages
 

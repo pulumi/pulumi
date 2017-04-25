@@ -8,7 +8,7 @@ import (
 )
 
 func main() {
-	if err := NewCocogoCmd().Execute(); err != nil {
+	if err := NewCIDLCCmd().Execute(); err != nil {
 		fmt.Fprintf(os.Stderr, "An error occurred: %v\n", err)
 		os.Exit(-1)
 	}
