@@ -131,10 +131,10 @@ func (p *instanceProvider) Create(ctx context.Context, req *cocorpc.CreateReques
 			resource.NewPropertyMap(
 				instanceOutput{
 					AvailabilityZone: *status.InstanceStatuses[0].AvailabilityZone,
-					PrivateDNSName:   *inst.PrivateDnsName,
-					PublicDNSName:    *inst.PublicDnsName,
-					PrivateIP:        *inst.PrivateIpAddress,
-					PublicIP:         *inst.PublicIpAddress,
+					PrivateDNSName:   inst.PrivateDnsName,
+					PublicDNSName:    inst.PublicDnsName,
+					PrivateIP:        inst.PrivateIpAddress,
+					PublicIP:         inst.PublicIpAddress,
 				},
 			),
 			resource.MarshalOptions{},
@@ -219,9 +219,9 @@ const (
 
 // instanceOutput represents the output properties yielded by this provider.
 type instanceOutput struct {
-	AvailabilityZone string `json:"availabilityZone"`
-	PrivateDNSName   string `json:"privateDNSName"`
-	PublicDNSName    string `json:"publicDNSName"`
-	PrivateIP        string `json:"privateIP"`
-	PublicIP         string `json:"publicIP"`
+	AvailabilityZone string  `json:"availabilityZone"`
+	PrivateDNSName   *string `json:"privateDNSName,omitempty"`
+	PublicDNSName    *string `json:"publicDNSName,omitempty"`
+	PrivateIP        *string `json:"privateIP,omitempty"`
+	PublicIP         *string `json:"publicIP,omitempty"`
 }
