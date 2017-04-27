@@ -112,8 +112,8 @@ func (p *sgProvider) Get(ctx context.Context, id string) (*rpc.SecurityGroup, er
 	return nil, errors.New("Not yet implemented")
 }
 
-// PreviewUpdate checks what impacts a hypothetical update will have on the resource's properties.
-func (p *sgProvider) PreviewUpdate(ctx context.Context, id string,
+// InspectChange checks what impacts a hypothetical update will have on the resource's properties.
+func (p *sgProvider) InspectChange(ctx context.Context, id string,
 	old *rpc.SecurityGroup, new *rpc.SecurityGroup, diff *resource.ObjectDiff) ([]string, error) {
 	return nil, nil
 }

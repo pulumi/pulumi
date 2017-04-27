@@ -102,19 +102,19 @@ func (p *Provider) Get(ctx context.Context, req *cocorpc.GetRequest) (*cocorpc.G
 	return nil, fmt.Errorf("Unrecognized resource type (Get): %v", t)
 }
 
-// PreviewUpdate checks what impacts a hypothetical update will have on the resource's properties.
-func (p *Provider) PreviewUpdate(
-	ctx context.Context, req *cocorpc.UpdateRequest) (*cocorpc.PreviewUpdateResponse, error) {
+// InspectChange checks what impacts a hypothetical update will have on the resource's properties.
+func (p *Provider) InspectChange(
+	ctx context.Context, req *cocorpc.ChangeRequest) (*cocorpc.InspectChangeResponse, error) {
 	t := tokens.Type(req.GetType())
 	if prov, has := p.impls[t]; has {
-		return prov.PreviewUpdate(ctx, req)
+		return prov.InspectChange(ctx, req)
 	}
-	return nil, fmt.Errorf("Unrecognized resource type (PreviewUpdate): %v", t)
+	return nil, fmt.Errorf("Unrecognized resource type (InspectChange): %v", t)
 }
 
 // Update updates an existing resource with new values.  Only those values in the provided property bag are updated
 // to new values.  The resource ID is returned and may be different if the resource had to be recreated.
-func (p *Provider) Update(ctx context.Context, req *cocorpc.UpdateRequest) (*pbempty.Empty, error) {
+func (p *Provider) Update(ctx context.Context, req *cocorpc.ChangeRequest) (*pbempty.Empty, error) {
 	t := tokens.Type(req.GetType())
 	if prov, has := p.impls[t]; has {
 		return prov.Update(ctx, req)

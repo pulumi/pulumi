@@ -71,16 +71,16 @@ func (p *envProvider) Get(ctx context.Context, req *cocorpc.GetRequest) (*cocorp
 	return nil, errors.New("Not yet implemented")
 }
 
-// PreviewUpdate checks what impacts a hypothetical update will have on the resource's properties.
-func (p *envProvider) PreviewUpdate(
-	ctx context.Context, req *cocorpc.UpdateRequest) (*cocorpc.PreviewUpdateResponse, error) {
+// InspectChange checks what impacts a hypothetical update will have on the resource's properties.
+func (p *envProvider) InspectChange(
+	ctx context.Context, req *cocorpc.ChangeRequest) (*cocorpc.InspectChangeResponse, error) {
 	contract.Assert(req.GetType() == string(Environment))
 	return nil, errors.New("Not yet implemented")
 }
 
 // Update updates an existing resource with new values.  Only those values in the provided property bag are updated
 // to new values.  The resource ID is returned and may be different if the resource had to be recreated.
-func (p *envProvider) Update(ctx context.Context, req *cocorpc.UpdateRequest) (*pbempty.Empty, error) {
+func (p *envProvider) Update(ctx context.Context, req *cocorpc.ChangeRequest) (*pbempty.Empty, error) {
 	contract.Assert(req.GetType() == string(Environment))
 	return nil, errors.New("Not yet implemented")
 }

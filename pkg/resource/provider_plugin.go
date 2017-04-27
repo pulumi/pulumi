@@ -144,15 +144,15 @@ func (p *provider) Get(id ID, t tokens.Type) (PropertyMap, error) {
 	return props, nil
 }
 
-// PreviewUpdate checks what impacts a hypothetical update will have on the resource's properties.
-func (p *provider) PreviewUpdate(id ID, t tokens.Type,
+// InspectChange checks what impacts a hypothetical update will have on the resource's properties.
+func (p *provider) InspectChange(id ID, t tokens.Type,
 	olds PropertyMap, news PropertyMap) ([]string, PropertyMap, error) {
 	contract.Requiref(id != "", "id", "not empty")
 	contract.Requiref(t != "", "t", "not empty")
 
-	glog.V(7).Infof("resource[%v].PreviewUpdate(id=%v,t=%v,#olds=%v,#news=%v) executing",
+	glog.V(7).Infof("resource[%v].InspectChange(id=%v,t=%v,#olds=%v,#news=%v) executing",
 		p.pkg, id, t, len(olds), len(news))
-	req := &cocorpc.UpdateRequest{
+	req := &cocorpc.ChangeRequest{
 		Id:   string(id),
 		Type: string(t),
 		Olds: MarshalProperties(p.ctx, olds, MarshalOptions{
@@ -163,9 +163,9 @@ func (p *provider) PreviewUpdate(id ID, t tokens.Type,
 		}),
 	}
 
-	resp, err := p.client.PreviewUpdate(p.ctx.Request(), req)
+	resp, err := p.client.InspectChange(p.ctx.Request(), req)
 	if err != nil {
-		glog.V(7).Infof("resource[%v].PreviewUpdate(id=%v,t=%v,...) failed: %v", p.pkg, id, t, err)
+		glog.V(7).Infof("resource[%v].InspectChange(id=%v,t=%v,...) failed: %v", p.pkg, id, t, err)
 		return nil, nil, err
 	}
 
@@ -183,7 +183,7 @@ func (p *provider) Update(id ID, t tokens.Type, olds PropertyMap, news PropertyM
 
 	glog.V(7).Infof("resource[%v].Update(id=%v,t=%v,#olds=%v,#news=%v) executing",
 		p.pkg, id, t, len(olds), len(news))
-	req := &cocorpc.UpdateRequest{
+	req := &cocorpc.ChangeRequest{
 		Id:   string(id),
 		Type: string(t),
 		Olds: MarshalProperties(p.ctx, olds, MarshalOptions{

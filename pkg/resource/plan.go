@@ -358,13 +358,13 @@ func newPlan(ctx *Context, old Snapshot, new Snapshot, analyzers []tokens.QName)
 				if err != nil {
 					return nil, err
 				}
-				replaces, _, err := prov.PreviewUpdate(old.ID(), old.Type(), old.Properties(), computed)
+				replacements, _, err := prov.InspectChange(old.ID(), old.Type(), old.Properties(), computed)
 				if err != nil {
 					return nil, err
 				}
 
 				// Now create a step and vertex of the right kind.
-				if len(replaces) > 0 {
+				if len(replacements) > 0 {
 					// To perform a replacement, create a creation, deletion, and add the appropriate edges.  Namely:
 					//
 					//     - Replacement depends on creation
@@ -373,8 +373,8 @@ func newPlan(ctx *Context, old Snapshot, new Snapshot, analyzers []tokens.QName)
 					//     - Deletion depends on updating all existing dependencies (ensured through usual update logic)
 					//
 					// This ensures the right sequencing, with the replacement node acting as a juncture in the graph.
-					replkeys := make([]PropertyKey, len(replaces))
-					for i, repl := range replaces {
+					replkeys := make([]PropertyKey, len(replacements))
+					for i, repl := range replacements {
 						replkeys[i] = PropertyKey(repl)
 					}
 					pb.Replaces[m] = replkeys

@@ -123,8 +123,8 @@ func (p *instanceProvider) Get(ctx context.Context, id string) (*rpc.Instance, e
 	return nil, errors.New("Not yet implemented")
 }
 
-// PreviewUpdate checks what impacts a hypothetical update will have on the resource's properties.
-func (p *instanceProvider) PreviewUpdate(ctx context.Context, id string,
+// InspectChange checks what impacts a hypothetical update will have on the resource's properties.
+func (p *instanceProvider) InspectChange(ctx context.Context, id string,
 	old *rpc.Instance, new *rpc.Instance, diff *resource.ObjectDiff) ([]string, error) {
 	// TODO: we should permit changes to security groups for non-EC2-classic VMs that are in VPCs.
 	return nil, nil

@@ -33,8 +33,8 @@ type Provider interface {
 	Create(t tokens.Type, props PropertyMap) (ID, PropertyMap, State, error)
 	// Get reads the instance state identified by id/t, and returns a bag of properties.
 	Get(id ID, t tokens.Type) (PropertyMap, error)
-	// PreviewUpdate checks what impacts a hypothetical update will have on the resource's properties.
-	PreviewUpdate(id ID, t tokens.Type, olds PropertyMap, news PropertyMap) ([]string, PropertyMap, error)
+	// InspectChange checks what impacts a hypothetical update will have on the resource's properties.
+	InspectChange(id ID, t tokens.Type, olds PropertyMap, news PropertyMap) ([]string, PropertyMap, error)
 	// Update updates an existing resource with new values.
 	Update(id ID, t tokens.Type, olds PropertyMap, news PropertyMap) (State, error)
 	// Delete tears down an existing resource.

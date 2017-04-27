@@ -27,8 +27,8 @@ It has these top-level messages:
 	CreateResponse
 	GetRequest
 	GetResponse
-	UpdateRequest
-	PreviewUpdateResponse
+	ChangeRequest
+	InspectChangeResponse
 	DeleteRequest
 */
 package cocorpc
