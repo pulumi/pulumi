@@ -276,13 +276,19 @@ func (chk *Checker) CheckStructFields(t *types.TypeName, s *types.Struct,
 			if opts.Out && !isres {
 				ok = false
 				cmdutil.Sink().Errorf(
-					diag.Message("fidl %v.%v is marked `out` but is not a resource property",
+					diag.Message("field %v.%v is marked `out` but is not a resource property",
 						t.Name(), fld.Name()))
 			}
 			if opts.Replaces && !isres {
 				ok = false
 				cmdutil.Sink().Errorf(
-					diag.Message("fidl %v.%v is marked `replaces` but is not a resource property",
+					diag.Message("field %v.%v is marked `replaces` but is not a resource property",
+						t.Name(), fld.Name()))
+			}
+			if _, isptr := fld.Type().(*types.Pointer); !isptr && opts.Optional {
+				ok = false
+				cmdutil.Sink().Errorf(
+					diag.Message("field %v.%v is marked `optional` but is not a pointer in the IDL",
 						t.Name(), fld.Name()))
 			}
 
