@@ -291,62 +291,60 @@ func (chk *Checker) CheckStructFields(t *types.TypeName, s *types.Struct,
 					diag.Message("field %v.%v is marked `optional` but is not a pointer in the IDL",
 						t.Name(), fld.Name()))
 			}
-
-			// Only these types are legal:
-			//     - Primitives: bool, float64, string
-			//     - Other structs
-			//     - Pointers to any of the above (if-and-only-if an optional property)
-			//     - Pointers to other resource types (capabilities)
-			//     - Arrays of the above things
-			//     - Maps with string keys and any of the above as values
-			switch ft := fld.Type().(type) {
-			case *types.Basic:
-				if !IsPrimitive(ft) {
-					ok = false
-					cmdutil.Sink().Errorf(
-						diag.Message("field %v.%v is an illegal primitive type %v; must be bool, float64, or string",
-							t.Name(), fld.Name(), ft))
-				}
-			case *types.Named:
-				// TODO: check recursively?
-				switch ut := ft.Underlying().(type) {
-				case *types.Basic:
-					// A named type alias of a primitive type.  Ensure it is legal.
-					if !IsPrimitive(ut) {
-						ok = false
-						cmdutil.Sink().Errorf(
-							diag.Message("field %v.%v of type %v is backed by an illegal primitive type %v; "+
-								"must be bool, float64, or string", t.Name(), fld.Name(), ft, ut))
-					}
-				case *types.Struct:
-					// OK so long as it's not a resource (these are required to be pointers).
-					if isres, _ := IsResource(ft.Obj(), ut); isres {
-						ok = false
-						cmdutil.Sink().Errorf(
-							diag.Message("field %v.%v refers to a resource type %v by-value; field must be a pointer",
-								t.Name(), fld.Name(), ft))
-					}
-				default:
-					ok = false
-					cmdutil.Sink().Errorf(
-						diag.Message("field %v.%v is an illegal named field type: %v",
-							t.Name(), fld.Name(), reflect.TypeOf(ut)))
-				}
-			case *types.Pointer:
-				// A pointer is OK so long as the field is either optional or a resource type.
-				if !opts.Optional {
-					if isres, _ := IsResource(nil, ft.Elem()); !isres {
-						ok = false
-						cmdutil.Sink().Errorf(
-							diag.Message("field %v.%v is an illegal pointer; must be optional or of a resource type",
-								t.Name(), fld.Name()))
-					}
-				}
-			default:
-				contract.Failf("Unrecognized field type: %v (type=%v typetype=%v)",
-					fld.Name(), fld.Type(), reflect.TypeOf(fld.Type()))
+			if err := chk.CheckIDLType(fld.Type(), opts); err != nil {
+				ok = false
+				cmdutil.Sink().Errorf(
+					diag.Message("field %v.%v is an not a legal IDL type: %v", t.Name(), fld.Name(), err))
 			}
 		}
 	}
 	return ok, allprops, allopts
+}
+
+func (chk *Checker) CheckIDLType(t types.Type, opts PropertyOptions) error {
+	// Only these types are legal:
+	//     - Primitives: bool, float64, string
+	//     - Other structs
+	//     - Pointers to any of the above (if-and-only-if an optional property)
+	//     - Pointers to other resource types (capabilities)
+	//     - Arrays of the above things
+	//     - Maps with string keys and any of the above as values
+	switch ft := t.(type) {
+	case *types.Basic:
+		if !IsPrimitive(ft) {
+			return errors.Errorf("bad primitive type %v; must be bool, float64, or string", ft)
+		}
+	case *types.Interface:
+		// interface{} is fine and is interpreted as a weakly typed map.
+		return nil
+	case *types.Named:
+		switch ut := ft.Underlying().(type) {
+		case *types.Basic:
+			// A named type alias of a primitive type.  Ensure it is legal.
+			if !IsPrimitive(ut) {
+				return errors.Errorf(
+					"typedef %v backed by bad primitive type %v; must be bool, float64, or string", ft, ut)
+			}
+		case *types.Struct:
+			// Struct types are okay so long as they aren't resources (these are required to be pointers).
+			if isres, _ := IsResource(ft.Obj(), ut); isres {
+				return errors.Errorf("resource type %v cannot be referenced by-value; must be a pointer", ft)
+			}
+		default:
+			return errors.Errorf("bad named field type: %v", reflect.TypeOf(ut))
+		}
+	case *types.Pointer:
+		// A pointer is OK so long as the field is either optional or a resource type.
+		if !opts.Optional {
+			if isres, _ := IsResource(nil, ft.Elem()); !isres {
+				return errors.New("bad pointer; must be optional or a resource type")
+			}
+		}
+	case *types.Slice:
+		// A slice is OK so long as its element type is also OK.
+		return chk.CheckIDLType(ft.Elem(), PropertyOptions{})
+	default:
+		contract.Failf("Unrecognized field type %v: %v", t, reflect.TypeOf(t))
+	}
+	return nil
 }

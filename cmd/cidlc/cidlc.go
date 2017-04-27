@@ -20,6 +20,7 @@ func NewCIDLCCmd() *cobra.Command {
 	var name string
 	var outPack string
 	var outRPC string
+	var pkgBase string
 	var root string
 	var verbose int
 	cmd := &cobra.Command{
@@ -31,6 +32,8 @@ func NewCIDLCCmd() *cobra.Command {
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			if name == "" {
 				return errors.New("missing required package name (--name or -n)")
+			} else if pkgBase == "" {
+				return errors.New("missing required package base (--pkg-base or -p)")
 			}
 			if root == "" {
 				root, _ = os.Getwd() // default to the current working directory.
@@ -64,6 +67,8 @@ func NewCIDLCCmd() *cobra.Command {
 		&outPack, "out-pack", "", "Save generated package metadata to this directory")
 	cmd.PersistentFlags().StringVar(
 		&outRPC, "out-rpc", "", "Save generated RPC provider stubs to this directory")
+	cmd.PersistentFlags().StringVarP(
+		&pkgBase, "pkg-base", "p", "", "Specify the package base where this will be published")
 	cmd.PersistentFlags().StringVarP(
 		&root, "root", "r", "", "Pick a different root directory than `pwd` (the default)")
 	cmd.PersistentFlags().IntVarP(

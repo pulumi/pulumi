@@ -308,6 +308,8 @@ func (g *PackGenerator) GenTypeName(t types.Type) string {
 		default:
 			contract.Failf("Unrecognized GenTypeName basic type: %v", k)
 		}
+	case *types.Interface:
+		return "any"
 	case *types.Named:
 		// If this came from the same package; the imports will have arranged for it to be available by name.
 		obj := u.Obj()

@@ -12,7 +12,8 @@ import (
 
 type CompileOptions struct {
 	Name    tokens.PackageName // the package name.
-	Root    string             // the root package.
+	Root    string             // the package root on the filesystem.
+	PkgBase string             // the base package name.
 	OutPack string             // the package output location.
 	OutRPC  string             // the RPC output location.
 }
@@ -40,7 +41,7 @@ func Compile(opts CompileOptions, paths ...string) error {
 	}
 	var rpcgen *RPCGenerator
 	if out := opts.OutRPC; out != "" {
-		rpcgen = NewRPCGenerator(opts.Root, out)
+		rpcgen = NewRPCGenerator(opts.Root, opts.PkgBase, out)
 	}
 	for _, pkginfo := range prog.Created {
 		pkg, err := chk.Check(opts.Name, pkginfo)

@@ -17,14 +17,16 @@ import (
 
 type RPCGenerator struct {
 	Root    string
+	PkgBase string
 	Out     string
 	Currpkg *Package // the package currently being visited.
 }
 
-func NewRPCGenerator(root string, out string) *RPCGenerator {
+func NewRPCGenerator(root string, pkgbase string, out string) *RPCGenerator {
 	return &RPCGenerator{
-		Root: root,
-		Out:  out,
+		Root:    root,
+		PkgBase: pkgbase,
+		Out:     out,
 	}
 }
 
@@ -397,6 +399,8 @@ func (g *RPCGenerator) GenTypeName(t types.Type) string {
 		default:
 			contract.Failf("Unrecognized GenTypeName basic type: %v", k)
 		}
+	case *types.Interface:
+		return "resource.PropertyMap"
 	case *types.Named:
 		obj := u.Obj()
 		// For resource types, simply emit an ID, since that is what will have been serialized.
@@ -415,7 +419,7 @@ func (g *RPCGenerator) GenTypeName(t types.Type) string {
 
 		// Otherwise, we will need to refer to a qualified import name.
 		// TODO: we will need to generate the right imports before we can emit such names.
-		contract.Failf("Cross-package IDL references not yet supported")
+		contract.Failf("Cross-package IDL references not yet supported: pkg=%v name=%v", pkg, name)
 	case *types.Map:
 		return fmt.Sprintf("map[%v]%v", g.GenTypeName(u.Key()), g.GenTypeName(u.Elem()))
 	case *types.Pointer:
