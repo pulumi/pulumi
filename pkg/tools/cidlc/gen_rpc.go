@@ -400,7 +400,7 @@ func (g *RPCGenerator) GenTypeName(t types.Type) string {
 	case *types.Named:
 		obj := u.Obj()
 		// For resource types, simply emit an ID, since that is what will have been serialized.
-		if isres, _ := IsResource(obj, u.Underlying()); isres {
+		if isres, _ := IsResource(obj, u); isres {
 			return "resource.ID"
 		}
 
