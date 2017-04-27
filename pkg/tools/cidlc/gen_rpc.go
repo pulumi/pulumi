@@ -69,7 +69,7 @@ func (g *RPCGenerator) EmitFile(file string, pkg *Package, members []Member) err
 	emitHeaderWarning(w)
 
 	// Now emit the package name at the top-level.
-	writefmtln(w, "package %v", pkg.Name)
+	writefmtln(w, "package %vrpc", pkg.Name)
 	writefmtln(w, "")
 
 	// And all of the imports that we're going to need.
@@ -135,11 +135,12 @@ func (g *RPCGenerator) getFileModule(file string) tokens.Module {
 
 func (g *RPCGenerator) EmitResource(w *bufio.Writer, module tokens.Module, pkg *Package, res *Resource) {
 	name := res.Name()
-	writefmtln(w, "/* RPC %v resource provider */", name)
+	writefmtln(w, "/* RPC stubs for %v resource provider */", name)
 	writefmtln(w, "")
 
 	hasouts := false
-	for _, opts := range res.PropertyOptions() {
+	propopts := res.PropertyOptions()
+	for _, opts := range propopts {
 		if opts.Out {
 			hasouts = true
 			break
@@ -155,7 +156,7 @@ func (g *RPCGenerator) EmitResource(w *bufio.Writer, module tokens.Module, pkg *
 	// Now, generate an ops interface that the real provider will implement.
 	writefmtln(w, "// %[1]vProviderOps is a pluggable interface for %[1]v-related management functionality.", name)
 	writefmtln(w, "type %vProviderOps interface {", name)
-	writefmtln(w, "    Check(ctx context.Context, obj *%v) (mapper.DecodeError, error)", name)
+	writefmtln(w, "    Check(ctx context.Context, obj *%v) ([]mapper.FieldError, error)", name)
 	if !res.Named {
 		writefmtln(w, "    Name(ctx context.Context, obj *%v) (string, error)", name)
 	}
@@ -166,9 +167,9 @@ func (g *RPCGenerator) EmitResource(w *bufio.Writer, module tokens.Module, pkg *
 	writefmtln(w, "error)")
 	writefmtln(w, "    Get(ctx context.Context, id string) (*%v, error)", name)
 	writefmtln(w, "    PreviewUpdate(ctx context.Context,")
-	writefmtln(w, "        id string, old *%[1]v, new *%[1]v, diffs *resource.ObjectDiff) ([]string, error)", name)
+	writefmtln(w, "        id string, old *%[1]v, new *%[1]v, diff *resource.ObjectDiff) ([]string, error)", name)
 	writefmtln(w, "    Update(ctx context.Context,")
-	writefmtln(w, "        id string, old *%[1]v, new *%[1]v, diffs *resource.ObjectDiff) error", name)
+	writefmtln(w, "        id string, old *%[1]v, new *%[1]v, diff *resource.ObjectDiff) error", name)
 	writefmtln(w, "    Delete(ctx context.Context, id string) error")
 	writefmtln(w, "}")
 	writefmtln(w, "")
@@ -190,10 +191,12 @@ func (g *RPCGenerator) EmitResource(w *bufio.Writer, module tokens.Module, pkg *
 	writefmtln(w, "    contract.Assert(req.GetType() == string(%vToken))", name)
 	writefmtln(w, "    obj, _, decerr := p.Unmarshal(req.GetProperties())")
 	writefmtln(w, "    if decerr == nil || len(decerr.Failures()) == 0 {")
-	writefmtln(w, "        var err error")
-	writefmtln(w, "        decerr, err = p.ops.Check(ctx, obj)")
+	writefmtln(w, "        failures, err := p.ops.Check(ctx, obj)")
 	writefmtln(w, "        if err != nil {")
 	writefmtln(w, "            return nil, err")
+	writefmtln(w, "        }")
+	writefmtln(w, "        if len(failures) > 0 {")
+	writefmtln(w, "            decerr = mapper.NewDecodeErr(failures)")
 	writefmtln(w, "        }")
 	writefmtln(w, "    }")
 	writefmtln(w, "    return resource.NewCheckResponse(decerr), nil")
@@ -270,13 +273,21 @@ func (g *RPCGenerator) EmitResource(w *bufio.Writer, module tokens.Module, pkg *
 	writefmtln(w, "    if decerr != nil {")
 	writefmtln(w, "        return nil, decerr")
 	writefmtln(w, "    }")
-	writefmtln(w, "    diffs := oldprops.Diff(newprops)")
-	writefmtln(w, "    replaces, err := p.ops.PreviewUpdate(ctx, req.GetId(), old, new, diffs)")
+	writefmtln(w, "    diff := oldprops.Diff(newprops)")
+	writefmtln(w, "    var replaces []string")
+	for _, opts := range propopts {
+		if opts.Replaces {
+			writefmtln(w, "    if diff.Changed(\"%v\") {", opts.Name)
+			writefmtln(w, "        replaces = append(replaces, \"%v\")", opts.Name)
+			writefmtln(w, "    }")
+		}
+	}
+	writefmtln(w, "    more, err := p.ops.PreviewUpdate(ctx, req.GetId(), old, new, diff)")
 	writefmtln(w, "    if err != nil {")
 	writefmtln(w, "        return nil, err")
 	writefmtln(w, "    }")
 	writefmtln(w, "    return &cocorpc.PreviewUpdateResponse{")
-	writefmtln(w, "        Replaces: replaces,")
+	writefmtln(w, "        Replaces: append(replaces, more...),")
 	writefmtln(w, "    }, err")
 	writefmtln(w, "}")
 	writefmtln(w, "")
@@ -291,8 +302,8 @@ func (g *RPCGenerator) EmitResource(w *bufio.Writer, module tokens.Module, pkg *
 	writefmtln(w, "    if err != nil {")
 	writefmtln(w, "        return nil, err")
 	writefmtln(w, "    }")
-	writefmtln(w, "    diffs := oldprops.Diff(newprops)")
-	writefmtln(w, "    if err := p.ops.Update(ctx, req.GetId(), old, new, diffs); err != nil {")
+	writefmtln(w, "    diff := oldprops.Diff(newprops)")
+	writefmtln(w, "    if err := p.ops.Update(ctx, req.GetId(), old, new, diff); err != nil {")
 	writefmtln(w, "        return nil, err")
 	writefmtln(w, "    }")
 	writefmtln(w, "    return &pbempty.Empty{}, nil")
@@ -325,6 +336,7 @@ func (g *RPCGenerator) EmitStructType(w *bufio.Writer, module tokens.Module, pkg
 	var outs []int
 	props := t.Properties()
 	propopts := t.PropertyOptions()
+	writefmtln(w, "// %v is a marshalable representation of its corresponding IDL type.", name)
 	writefmtln(w, "type %v struct {", name)
 	for i, prop := range props {
 		opts := propopts[i]
@@ -339,6 +351,7 @@ func (g *RPCGenerator) EmitStructType(w *bufio.Writer, module tokens.Module, pkg
 	writefmtln(w, "")
 
 	if len(outs) > 0 {
+		writefmtln(w, "// %vOuts is a marshalable representation of its IDL type's output properties.", name)
 		writefmtln(w, "type %vOuts struct {", name)
 		for _, out := range outs {
 			prop := props[out]
@@ -347,6 +360,17 @@ func (g *RPCGenerator) EmitStructType(w *bufio.Writer, module tokens.Module, pkg
 			writefmtln(w, "    %v %v %v", prop.Name(), g.GenTypeName(prop.Type()), jsontag)
 		}
 		writefmtln(w, "}")
+		writefmtln(w, "")
+	}
+
+	if len(props) > 0 {
+		writefmtln(w, "// %v's properties have constants to make dealing with diffs and property bags easier.", name)
+		writefmtln(w, "const (")
+		for i, prop := range props {
+			opts := propopts[i]
+			writefmtln(w, "    %v_%v = \"%v\"", name, prop.Name(), opts.Name)
+		}
+		writefmtln(w, ")")
 		writefmtln(w, "")
 	}
 }
@@ -376,7 +400,7 @@ func (g *RPCGenerator) GenTypeName(t types.Type) string {
 	case *types.Named:
 		obj := u.Obj()
 		// For resource types, simply emit an ID, since that is what will have been serialized.
-		if isres, _ := IsResource(obj, u); isres {
+		if isres, _ := IsResource(obj, u.Underlying()); isres {
 			return "resource.ID"
 		}
 
