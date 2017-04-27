@@ -16,6 +16,7 @@ import (
 	"github.com/pulumi/coconut/lib/aws/provider/iam"
 	"github.com/pulumi/coconut/lib/aws/provider/lambda"
 	"github.com/pulumi/coconut/lib/aws/provider/s3"
+	ec2rpc "github.com/pulumi/coconut/lib/aws/rpc/ec2"
 )
 
 // provider implements the AWS resource provider's operations for all known AWS types.
@@ -31,12 +32,12 @@ func NewProvider() (*Provider, error) {
 	}
 	return &Provider{
 		impls: map[tokens.Type]cocorpc.ResourceProviderServer{
-			ec2.Instance:      ec2.NewInstanceProvider(ctx),
-			ec2.SecurityGroup: ec2.NewSecurityGroupProvider(ctx),
-			lambda.Function:   lambda.NewFunctionProvider(ctx),
-			iam.Role:          iam.NewRoleProvider(ctx),
-			s3.Bucket:         s3.NewBucketProvider(ctx),
-			s3.Object:         s3.NewObjectProvider(ctx),
+			ec2rpc.InstanceToken:      ec2.NewInstanceProvider(ctx),
+			ec2rpc.SecurityGroupToken: ec2.NewSecurityGroupProvider(ctx),
+			lambda.Function:           lambda.NewFunctionProvider(ctx),
+			iam.Role:                  iam.NewRoleProvider(ctx),
+			s3.Bucket:                 s3.NewBucketProvider(ctx),
+			s3.Object:                 s3.NewObjectProvider(ctx),
 		},
 	}, nil
 }
