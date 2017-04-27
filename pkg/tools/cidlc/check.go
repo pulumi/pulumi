@@ -12,6 +12,7 @@ import (
 	"golang.org/x/tools/go/loader"
 
 	"github.com/pulumi/coconut/pkg/diag"
+	"github.com/pulumi/coconut/pkg/tokens"
 	"github.com/pulumi/coconut/pkg/util/cmdutil"
 	"github.com/pulumi/coconut/pkg/util/contract"
 )
@@ -42,7 +43,7 @@ func NewChecker(root string, prog *loader.Program) *Checker {
 // Check analyzes a Go program, ensures that it is valid as an IDL, and classifies all of the types that it
 // encounters.  These classifications are returned.  If problems are encountered, diagnostic messages will be output
 // and the returned error will be non-nil.
-func (chk *Checker) Check(name string, pkginfo *loader.PackageInfo) (*Package, error) {
+func (chk *Checker) Check(name tokens.PackageName, pkginfo *loader.PackageInfo) (*Package, error) {
 	ok := true
 
 	// First just create a list of the constants and types so we can visit them in the right order.  Also maintain a
@@ -122,7 +123,8 @@ func (chk *Checker) Check(name string, pkginfo *loader.PackageInfo) (*Package, e
 		file := getfile(path)
 		decl := getdecl(file, goconst)
 		if c, cok := chk.CheckConst(goconst, file, decl); cok {
-			pkg.AddMember(file, goconst.Name(), c)
+			nm := tokens.Name(goconst.Name())
+			pkg.AddMember(file, nm, c)
 		} else {
 			ok = false
 		}
@@ -134,7 +136,8 @@ func (chk *Checker) Check(name string, pkginfo *loader.PackageInfo) (*Package, e
 		file := getfile(path)
 		decl := getdecl(file, gotype)
 		if t, tok := chk.CheckType(gotype, file, decl); tok {
-			pkg.AddMember(file, gotype.Name(), t)
+			nm := tokens.Name(gotype.Name())
+			pkg.AddMember(file, nm, t)
 		} else {
 			ok = false
 		}
@@ -171,7 +174,7 @@ func (chk *Checker) CheckConst(c *types.Const, file *File, decl ast.Decl) (*Cons
 	if t != nil {
 		return &Const{
 			member: member{
-				name:     c.Name(),
+				name:     tokens.Name(c.Name()),
 				exported: c.Exported(),
 				pos:      c.Pos(),
 			},
@@ -185,7 +188,7 @@ func (chk *Checker) CheckConst(c *types.Const, file *File, decl ast.Decl) (*Cons
 
 func (chk *Checker) CheckType(t *types.TypeName, file *File, decl ast.Decl) (Member, bool) {
 	memb := member{
-		name:     t.Name(),
+		name:     tokens.Name(t.Name()),
 		exported: t.Exported(),
 		pos:      t.Pos(),
 	}
@@ -205,7 +208,7 @@ func (chk *Checker) CheckType(t *types.TypeName, file *File, decl ast.Decl) (Mem
 					// Otherwise, this is a simple type alias.
 					return &Alias{
 						member: memb,
-						Target: s,
+						target: s,
 					}, true
 				}
 			}
@@ -215,13 +218,14 @@ func (chk *Checker) CheckType(t *types.TypeName, file *File, decl ast.Decl) (Mem
 		case *types.Struct:
 			// A struct definition, possibly a resource.  First, check that all the fields are supported types.
 			isres, isnamed := IsResource(t, s)
-			if ok, opts := chk.CheckStructFields(typ.Obj(), s, isres); ok {
+			if ok, props, opts := chk.CheckStructFields(typ.Obj(), s, isres); ok {
 				// If a resource, return additional information.
 				if isres {
 					return &Resource{
 						member: memb,
 						Named:  isnamed,
 						s:      s,
+						props:  props,
 						popts:  opts,
 					}, true
 				}
@@ -229,6 +233,7 @@ func (chk *Checker) CheckType(t *types.TypeName, file *File, decl ast.Decl) (Mem
 				return &Struct{
 					member: memb,
 					s:      s,
+					props:  props,
 					popts:  opts,
 				}, true
 			}
@@ -240,8 +245,10 @@ func (chk *Checker) CheckType(t *types.TypeName, file *File, decl ast.Decl) (Mem
 }
 
 // CheckStructFields ensures that a struct only contains valid "JSON-like" fields
-func (chk *Checker) CheckStructFields(t *types.TypeName, s *types.Struct, isres bool) (bool, []PropertyOptions) {
+func (chk *Checker) CheckStructFields(t *types.TypeName, s *types.Struct,
+	isres bool) (bool, []*types.Var, []PropertyOptions) {
 	ok := true
+	var allprops []*types.Var
 	var allopts []PropertyOptions
 	for i := 0; i < s.NumFields(); i++ {
 		fld := s.Field(i)
@@ -250,12 +257,14 @@ func (chk *Checker) CheckStructFields(t *types.TypeName, s *types.Struct, isres 
 			anon := fld.Type().(*types.Named)
 			embedded := anon.Underlying().(*types.Struct)
 			isembres, _ := IsResource(anon.Obj(), embedded)
-			isok, opts := chk.CheckStructFields(anon.Obj(), embedded, isembres)
+			isok, props, opts := chk.CheckStructFields(anon.Obj(), embedded, isembres)
 			if !isok {
 				ok = false
 			}
+			allprops = append(allprops, props...)
 			allopts = append(allopts, opts...)
 		} else {
+			allprops = append(allprops, fld)
 			opts := ParsePropertyOptions(s.Tag(i))
 			allopts = append(allopts, opts)
 			if opts.Name == "" {
@@ -333,5 +342,5 @@ func (chk *Checker) CheckStructFields(t *types.TypeName, s *types.Struct, isres 
 			}
 		}
 	}
-	return ok, allopts
+	return ok, allprops, allopts
 }

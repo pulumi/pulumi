@@ -3,14 +3,18 @@
 package cidlc
 
 import (
+	"go/parser"
+
 	"golang.org/x/tools/go/loader"
+
+	"github.com/pulumi/coconut/pkg/tokens"
 )
 
 type CompileOptions struct {
-	Name        string // the package name.
-	Root        string // the root package.
-	OutPack     string // the package output location.
-	OutProvider string // the provider output location.
+	Name    tokens.PackageName // the package name.
+	Root    string             // the root package.
+	OutPack string             // the package output location.
+	OutRPC  string             // the RPC output location.
 }
 
 // Compile runs the Go compiler against an IDL project and then generates code for the resulting program.
@@ -21,6 +25,7 @@ func Compile(opts CompileOptions, paths ...string) error {
 	if _, err := conf.FromArgs(paths, false); err != nil {
 		return err
 	}
+	conf.ParserMode |= parser.ParseComments // ensure doc comments are retained.
 	prog, err := conf.Load()
 	if err != nil {
 		return err
@@ -33,9 +38,9 @@ func Compile(opts CompileOptions, paths ...string) error {
 	if out := opts.OutPack; out != "" {
 		packgen = NewPackGenerator(opts.Root, out)
 	}
-	var rpcgen *ProviderGenerator
-	if out := opts.OutProvider; out != "" {
-		rpcgen = NewProviderGenerator(opts.Root, out)
+	var rpcgen *RPCGenerator
+	if out := opts.OutRPC; out != "" {
+		rpcgen = NewRPCGenerator(opts.Root, out)
 	}
 	for _, pkginfo := range prog.Created {
 		pkg, err := chk.Check(opts.Name, pkginfo)
