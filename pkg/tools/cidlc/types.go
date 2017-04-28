@@ -20,10 +20,14 @@ func IsPrimitive(t types.Type) bool {
 	return false
 }
 
-var (
-	idlResourceType      = reflect.TypeOf(idl.Resource{})
-	idlNamedResourceType = reflect.TypeOf(idl.NamedResource{})
-)
+// IsEntity checks whether a type is an entity that can be used by-reference (asset, resource, etc).
+func IsEntity(obj *types.TypeName, t types.Type) bool {
+	if res, _ := IsResource(obj, t); res {
+		return true
+	}
+	spec, _ := IsSpecial(obj)
+	return spec
+}
 
 // IsResource checks whether a type is a special IDL resource.  If yes, it returns true for the first boolean, and the
 // second boolean indicates whether the resource is named or not.
@@ -31,7 +35,7 @@ func IsResource(obj *types.TypeName, t types.Type) (bool, bool) {
 	contract.Assert(obj != nil)
 
 	// If this is a resource type itself, then we're done.
-	if isres, isname := isResourceObj(obj); isres {
+	if isres, isname := IsSpecialResource(obj); isres {
 		return isres, isname
 	}
 
@@ -46,7 +50,7 @@ func IsResource(obj *types.TypeName, t types.Type) (bool, bool) {
 			fld := s.Field(i)
 			if fld.Anonymous() {
 				if named, ok := fld.Type().(*types.Named); ok {
-					if isres, isname := isResourceObj(named.Obj()); isres {
+					if isres, isname := IsSpecialResource(named.Obj()); isres {
 						return isres, isname
 					}
 				}
@@ -56,14 +60,38 @@ func IsResource(obj *types.TypeName, t types.Type) (bool, bool) {
 	return false, false
 }
 
-func isResourceObj(obj *types.TypeName) (bool, bool) {
+type SpecialType int
+
+const (
+	NotSpecialType = iota
+	SpecialResourceType
+	SpecialNamedResourceType
+	SpecialAssetType
+)
+
+var (
+	idlAssetType         = reflect.TypeOf(idl.Asset{})
+	idlResourceType      = reflect.TypeOf(idl.Resource{})
+	idlNamedResourceType = reflect.TypeOf(idl.NamedResource{})
+)
+
+func IsSpecial(obj *types.TypeName) (bool, SpecialType) {
 	if obj != nil && obj.Pkg().Path() == idlResourceType.PkgPath() {
 		switch obj.Name() {
+		case idlAssetType.Name():
+			return true, SpecialAssetType
 		case idlResourceType.Name():
-			return true, false
+			return true, SpecialResourceType
 		case idlNamedResourceType.Name():
-			return true, true
+			return true, SpecialNamedResourceType
 		}
 	}
-	return false, false
+	return false, NotSpecialType
+}
+
+func IsSpecialResource(obj *types.TypeName) (bool, bool) {
+	spec, kind := IsSpecial(obj)
+	isres := (spec && kind == SpecialResourceType)
+	isnamed := (spec && kind == SpecialNamedResourceType)
+	return isres || isnamed, isnamed
 }

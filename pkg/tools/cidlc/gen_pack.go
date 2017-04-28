@@ -331,9 +331,20 @@ func (g *PackGenerator) GenTypeName(t types.Type) string {
 	case *types.Interface:
 		return "any"
 	case *types.Named:
+		obj := u.Obj()
+		if spec, kind := IsSpecial(obj); spec {
+			switch kind {
+			case SpecialAssetType:
+				return "coconut.asset.Asset"
+			case SpecialResourceType, SpecialNamedResourceType:
+				return "coconut.Resource"
+			default:
+				contract.Failf("Unrecognized special type: %v", kind)
+			}
+		}
+
 		// Our import logic will have arranged for the type name to be available.
 		// TODO: consider auto-generated import names to avoid conflicts between imported and local names.
-		obj := u.Obj()
 		g.trackNameReference(obj)
 		return obj.Name()
 	case *types.Map:

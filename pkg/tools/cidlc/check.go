@@ -126,6 +126,7 @@ func (chk *Checker) Check(name tokens.PackageName, pkginfo *loader.PackageInfo) 
 			nm := tokens.Name(goconst.Name())
 			pkg.AddMember(file, nm, c)
 		} else {
+			contract.Assert(!cmdutil.Sink().Success())
 			ok = false
 		}
 	}
@@ -139,6 +140,7 @@ func (chk *Checker) Check(name tokens.PackageName, pkginfo *loader.PackageInfo) 
 			nm := tokens.Name(gotype.Name())
 			pkg.AddMember(file, nm, t)
 		} else {
+			contract.Assert(!cmdutil.Sink().Success())
 			ok = false
 		}
 	}
@@ -215,6 +217,11 @@ func (chk *Checker) CheckType(t *types.TypeName, file *File, decl ast.Decl) (Mem
 
 			cmdutil.Sink().Errorf(diag.Message(
 				"type alias %v is not a valid IDL alias type (must be bool, float64, or string)", t.Name()))
+		case *types.Map, *types.Slice:
+			return &Alias{
+				member: memb,
+				target: s,
+			}, true
 		case *types.Struct:
 			// A struct definition, possibly a resource.  First, check that all the fields are supported types.
 			isres, isnamed := IsResource(t, s)
@@ -236,7 +243,11 @@ func (chk *Checker) CheckType(t *types.TypeName, file *File, decl ast.Decl) (Mem
 					props:  props,
 					popts:  opts,
 				}, true
+			} else {
+				contract.Assert(!cmdutil.Sink().Success())
 			}
+		default:
+			cmdutil.Sink().Errorf(diag.Message("%v is an illegal underlying type: %v", s, reflect.TypeOf(s)))
 		}
 	default:
 		cmdutil.Sink().Errorf(diag.Message("%v is an illegal Go type kind: %v", t.Name(), reflect.TypeOf(typ)))
@@ -326,22 +337,22 @@ func (chk *Checker) CheckIDLType(t types.Type, opts PropertyOptions) error {
 					"typedef %v backed by bad primitive type %v; must be bool, float64, or string", ft, ut)
 			}
 		case *types.Struct:
-			// Struct types are okay so long as they aren't resources (these are required to be pointers).
-			if isres, _ := IsResource(ft.Obj(), ut); isres {
-				return errors.Errorf("resource type %v cannot be referenced by-value; must be a pointer", ft)
+			// Struct types are okay so long as they aren't entities (these are required to be pointers).
+			if isent := IsEntity(ft.Obj(), ut); isent {
+				return errors.Errorf("type %v cannot be referenced by-value; must be a pointer", ft)
 			}
 		default:
 			return errors.Errorf("bad named field type: %v", reflect.TypeOf(ut))
 		}
 	case *types.Pointer:
-		// A pointer is OK so long as the field is either optional or a resource type.
+		// A pointer is OK so long as the field is either optional or an entity type (asset, resource, etc).
 		if !opts.Optional {
 			elem := ft.Elem()
-			isres := false
+			var ok bool
 			if named, isnamed := elem.(*types.Named); isnamed {
-				isres, _ = IsResource(named.Obj(), named)
+				ok = IsEntity(named.Obj(), named)
 			}
-			if !isres {
+			if !ok {
 				return errors.New("bad pointer; must be optional or a resource type")
 			}
 		}

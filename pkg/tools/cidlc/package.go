@@ -103,22 +103,22 @@ func (r *Struct) PropertyOptions() []PropertyOptions { return r.popts }
 
 type Typedef interface {
 	Member
-	Target() *types.Basic
+	Target() types.Type
 }
 
 type Alias struct {
 	member
-	target *types.Basic
+	target types.Type
 }
 
-func (a *Alias) Target() *types.Basic { return a.target }
+func (a *Alias) Target() types.Type { return a.target }
 
 type Enum struct {
 	member
 	Values []string
 }
 
-func (a *Enum) Target() *types.Basic { return types.Typ[types.String] }
+func (a *Enum) Target() types.Type { return types.Typ[types.String] }
 
 type Const struct {
 	member
