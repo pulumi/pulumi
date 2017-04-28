@@ -468,8 +468,7 @@ func (g *RPCGenerator) GenTypeName(t types.Type) string {
 			contract.Failf("Unrecognized GenTypeName basic type: %v", k)
 		}
 	case *types.Interface:
-		// interface{} properties become "JSON-like" maps.
-		return "map[string]interface{}"
+		return "interface{}"
 	case *types.Named:
 		obj := u.Obj()
 		// For resource types, simply emit an ID, since that is what will have been serialized.
