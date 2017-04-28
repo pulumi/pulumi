@@ -19,7 +19,7 @@ func NewCIDLCCmd() *cobra.Command {
 	var pkgBaseIDL string
 	var pkgBaseRPC string
 	var quiet bool
-	var recurse bool
+	var recursive bool
 	var verbose int
 	cmd := &cobra.Command{
 		Use:   "cidlc [pkg-name] [idl-path]",
@@ -53,7 +53,7 @@ func NewCIDLCCmd() *cobra.Command {
 				OutPack:    outPack,
 				OutRPC:     outRPC,
 				Quiet:      quiet,
-				Recurse:    recurse,
+				Recursive:  recursive,
 			}, path)
 		}),
 		PersistentPostRun: func(cmd *cobra.Command, args []string) {
@@ -64,7 +64,7 @@ func NewCIDLCCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVar(
 		&logToStderr, "logtostderr", false, "Log to stderr instead of to files")
 	cmd.PersistentFlags().BoolVarP(
-		&recurse, "recurse", "r", false, "Recursively generate code for all sub-packages in the target")
+		&recursive, "recursive", "r", false, "Recursively generate code for all sub-packages in the target")
 	cmd.PersistentFlags().StringVar(
 		&outPack, "out-pack", "", "Save generated package metadata to this directory")
 	cmd.PersistentFlags().StringVar(

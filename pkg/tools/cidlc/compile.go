@@ -25,7 +25,7 @@ type CompileOptions struct {
 	OutPack    string             // the package output location.
 	OutRPC     string             // the RPC output location.
 	Quiet      bool               // true to suppress innocuous output messages.
-	Recurse    bool               // true to generate code for all sub-packages.
+	Recursive  bool               // true to generate code for all sub-packages.
 }
 
 // Compile runs the Go compiler against an IDL project and then generates code for the resulting program.
@@ -67,7 +67,7 @@ func Compile(opts CompileOptions, path string) error {
 	}
 
 	var inputs []string
-	if opts.Recurse {
+	if opts.Recursive {
 		if inp, err := gatherGoPackages(path); err != nil {
 			return err
 		} else {
