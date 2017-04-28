@@ -1,0 +1,81 @@
+{
+    "compilerOptions": {
+        "outDir": ".coconut/bin",
+        "target": "es6",
+        "module": "commonjs",
+        "moduleResolution": "node",
+        "declaration": true,
+        "sourceMap": true,
+        "stripInternal": true,
+        "experimentalDecorators": true,
+        "pretty": true,
+        "noFallthroughCasesInSwitch": true,
+        "noImplicitAny": true,
+        "noImplicitReturns": true,
+        "forceConsistentCasingInFileNames": true,
+        "strictNullChecks": true
+    },
+    "files": [
+        "index.ts",
+        "types.ts",
+
+        "apigateway/index.ts",
+        "apigateway/account.ts",
+        "apigateway/apiKey.ts",
+        "apigateway/authorizer.ts",
+        "apigateway/basePathMapping.ts",
+        "apigateway/clientCertificate.ts",
+        "apigateway/deployment.ts",
+        "apigateway/method.ts",
+        "apigateway/model.ts",
+        "apigateway/resource.ts",
+        "apigateway/restAPI.ts",
+        "apigateway/stage.ts",
+        "apigateway/usagePlan.ts",
+        "apigateway/usagePlanKey.ts",
+
+        "config/index.ts",
+
+        "cloudwatch/index.ts",
+        "cloudwatch/alarm.ts",
+
+        "ec2/index.ts",
+        "ec2/internetGateway.ts",
+        "ec2/route.ts",
+        "ec2/routeTable.ts",
+        "ec2/securityGroup.ts",
+        "ec2/securityGroupEgress.ts",
+        "ec2/securityGroupIngress.ts",
+        "ec2/subnet.ts",
+        "ec2/vpc.ts",
+        "ec2/vpcGatewayAttachment.ts",
+        "ec2/vpcPeeringConnection.ts",
+
+        "iam/index.ts",
+        "iam/group.ts",
+        "iam/policy.ts",
+        "iam/role.ts",
+        "iam/user.ts",
+
+        "kms/index.ts",
+        "kms/key.ts",
+
+        "lambda/index.ts",
+        "lambda/function.ts",
+        "lambda/permission.ts",
+
+        "s3/index.ts",
+        "s3/bucket.ts",
+        "s3/object.ts",
+
+        "sns/index.ts",
+        "sns/topic.ts",
+
+        "sqs/index.ts",
+        "sqs/queue.ts",
+
+        "utils/index.ts",
+        "utils/instanceMaps.ts"
+    ]
+}
+

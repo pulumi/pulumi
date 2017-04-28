@@ -1,0 +1,5 @@
+name: aws
+description: A collection of AWS resources as Coconut stacks.
+dependencies:
+    coconut: "*"
+

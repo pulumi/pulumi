@@ -4,23 +4,22 @@
 set -e                    # bail on errors
 
 echo Compiling:
-cocojs                    # compile the package
-pushd provider/ &&        # compile the resource provider
-    go build -o ../.coconut/bin/coco-resource-aws &&
-    popd
-
-echo Verifying:
-coco pack verify          # ensure the package verifies
-
-echo Sharing NPM links:
-yarn link                 # let NPM references resolve easily.
+pushd pack/ > /dev/null &&     # compile the package
+    cocojs &&
+    coco pack verify &&        # ensure the package verifies.
+    yarn link &&               # let NPM references resolve easily.
+    cp -R ./.coconut/bin/ ../bin &&
+    popd > /dev/null
+pushd provider/ > /dev/null && # compile the resource provider
+    go build -o ../bin/coco-resource-aws &&
+    popd > /dev/null
 
 COCOLIB=/usr/local/coconut/lib
 THISLIB=$COCOLIB/aws/
 echo Installing Coconut AWS library to $THISLIB:
-mkdir -p $COCOLIB               # ensure the target library directory exists
-rm -rf $THISLIB                 # clean the target
-cp -Rv ./.coconut/bin/ $THISLIB # copy to the standard library location
+mkdir -p $COCOLIB              # ensure the target library directory exists
+rm -rf $THISLIB                # clean the target
+cp -R ./bin/ $THISLIB          # copy to the standard library location
 
 echo Done.
 
