@@ -7,6 +7,7 @@ import (
 	"reflect"
 
 	"github.com/pulumi/coconut/pkg/resource/idl"
+	"github.com/pulumi/coconut/pkg/util/contract"
 )
 
 func IsPrimitive(t types.Type) bool {
@@ -27,14 +28,16 @@ var (
 // IsResource checks whether a type is a special IDL resource.  If yes, it returns true for the first boolean, and the
 // second boolean indicates whether the resource is named or not.
 func IsResource(obj *types.TypeName, t types.Type) (bool, bool) {
-	// If a named type, fetch the underlying.
-	if n, is := t.(*types.Named); is {
-		t = n.Underlying()
-	}
+	contract.Assert(obj != nil)
 
 	// If this is a resource type itself, then we're done.
 	if isres, isname := isResourceObj(obj); isres {
 		return isres, isname
+	}
+
+	// If a named type, fetch the underlying.
+	if n, is := t.(*types.Named); is {
+		t = n.Underlying()
 	}
 
 	if s, is := t.(*types.Struct); is {

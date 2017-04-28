@@ -336,7 +336,12 @@ func (chk *Checker) CheckIDLType(t types.Type, opts PropertyOptions) error {
 	case *types.Pointer:
 		// A pointer is OK so long as the field is either optional or a resource type.
 		if !opts.Optional {
-			if isres, _ := IsResource(nil, ft.Elem()); !isres {
+			elem := ft.Elem()
+			isres := false
+			if named, isnamed := elem.(*types.Named); isnamed {
+				isres, _ = IsResource(named.Obj(), named)
+			}
+			if !isres {
 				return errors.New("bad pointer; must be optional or a resource type")
 			}
 		}
