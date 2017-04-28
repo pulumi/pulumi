@@ -3,7 +3,6 @@
 package s3
 
 import (
-	"errors"
 	"fmt"
 	"reflect"
 	"regexp"
@@ -11,156 +10,21 @@ import (
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
-	"github.com/aws/aws-sdk-go/service/s3"
-	pbempty "github.com/golang/protobuf/ptypes/empty"
-	pbstruct "github.com/golang/protobuf/ptypes/struct"
+	awss3 "github.com/aws/aws-sdk-go/service/s3"
+	"github.com/pkg/errors"
 	"github.com/pulumi/coconut/pkg/resource"
-	"github.com/pulumi/coconut/pkg/tokens"
 	"github.com/pulumi/coconut/pkg/util/contract"
 	"github.com/pulumi/coconut/pkg/util/mapper"
 	"github.com/pulumi/coconut/sdk/go/pkg/cocorpc"
 	"golang.org/x/net/context"
 
 	"github.com/pulumi/coconut/lib/aws/provider/awsctx"
+	"github.com/pulumi/coconut/lib/aws/rpc/s3"
 )
 
 const (
-	Object        = tokens.Type("aws:s3/object:Object")
+	ObjectToken   = s3.ObjectToken
 	ObjectIDDelim = "/" // the delimiter between bucket and key name.
-)
-
-// NewObjectProvider creates a provider that handles S3 Object operations.
-func NewObjectProvider(ctx *awsctx.Context) cocorpc.ResourceProviderServer {
-	return &objProvider{ctx}
-}
-
-type objProvider struct {
-	ctx *awsctx.Context
-}
-
-// Check validates that the given property bag is valid for a resource of the given type.
-func (p *objProvider) Check(ctx context.Context, req *cocorpc.CheckRequest) (*cocorpc.CheckResponse, error) {
-	// Get in the properties, create and validate a new group, and return the failures (if any).
-	contract.Assert(req.GetType() == string(Object))
-	_, _, result := unmarshalObject(req.GetProperties())
-	return resource.NewCheckResponse(result), nil
-}
-
-// Name names a given resource.  Sometimes this will be assigned by a developer, and so the provider
-// simply fetches it from the property bag; other times, the provider will assign this based on its own algorithm.
-// In any case, resources with the same name must be safe to use interchangeably with one another.
-func (p *objProvider) Name(ctx context.Context, req *cocorpc.NameRequest) (*cocorpc.NameResponse, error) {
-	contract.Assert(req.GetType() == string(Object))
-	if keyprop, has := req.GetProperties().Fields[ObjectKey]; has {
-		key := resource.UnmarshalPropertyValue(keyprop)
-		if key.IsString() {
-			return &cocorpc.NameResponse{Name: key.StringValue()}, nil
-		} else {
-			return nil, fmt.Errorf(
-				"Resource '%v' had a key property '%v', but it wasn't a string", Object, ObjectKey)
-		}
-	}
-	return nil, fmt.Errorf("Resource '%v' was missing a key property '%v'", Object, ObjectKey)
-}
-
-// Create allocates a new instance of the provided resource and returns its unique ID afterwards.  (The input ID
-// must be blank.)  If this call fails, the resource must not have been created (i.e., it is "transacational").
-func (p *objProvider) Create(ctx context.Context, req *cocorpc.CreateRequest) (*cocorpc.CreateResponse, error) {
-	contract.Assert(req.GetType() == string(Object))
-
-	// Get in the properties given by the request, validating as we go; if any fail, reject the request.
-	obj, _, decerr := unmarshalObject(req.GetProperties())
-	if decerr != nil {
-		// TODO: this is a good example of a "benign" (StateOK) error; handle it accordingly.
-		return nil, decerr
-	}
-
-	// Fetch the contents of the body by way of the source asset.
-	body, err := obj.Source.Read()
-	if err != nil {
-		return nil, err
-	}
-	defer body.Close()
-
-	// Now go ahead and perform the creation.
-	fmt.Printf("Creating S3 Object '%v' in bucket '%v'\n", obj.Key, obj.Bucket)
-	result, err := p.ctx.S3().PutObject(&s3.PutObjectInput{
-		Bucket: aws.String(obj.Bucket),
-		Key:    aws.String(obj.Key),
-		Body:   body,
-	})
-	if err != nil {
-		return nil, err
-	}
-	contract.Assert(result != nil)
-	fmt.Printf("S3 Object created: %v; waiting for it to become active\n", obj.Key)
-
-	// Wait for the object to be ready and then return the ID (just its name).
-	if err = p.waitForObjectState(obj.Bucket, obj.Key, true); err != nil {
-		return nil, err
-	}
-	return &cocorpc.CreateResponse{Id: obj.Bucket + ObjectIDDelim + obj.Key}, nil
-}
-
-// Get reads the instance state identified by ID, returning a populated resource object, or an error if not found.
-func (p *objProvider) Get(ctx context.Context, req *cocorpc.GetRequest) (*cocorpc.GetResponse, error) {
-	contract.Assert(req.GetType() == string(Object))
-	return nil, errors.New("Not yet implemented")
-}
-
-// InspectChange checks what impacts a hypothetical update will have on the resource's properties.
-func (p *objProvider) InspectChange(
-	ctx context.Context, req *cocorpc.ChangeRequest) (*cocorpc.InspectChangeResponse, error) {
-	contract.Assert(req.GetType() == string(Object))
-	return nil, errors.New("Not yet implemented")
-}
-
-// Update updates an existing resource with new values.  Only those values in the provided property bag are updated
-// to new values.  The resource ID is returned and may be different if the resource had to be recreated.
-func (p *objProvider) Update(ctx context.Context, req *cocorpc.ChangeRequest) (*pbempty.Empty, error) {
-	contract.Assert(req.GetType() == string(Object))
-	return nil, errors.New("Not yet implemented")
-}
-
-// Delete tears down an existing resource with the given ID.  If it fails, the resource is assumed to still exist.
-func (p *objProvider) Delete(ctx context.Context, req *cocorpc.DeleteRequest) (*pbempty.Empty, error) {
-	contract.Assert(req.GetType() == string(Object))
-
-	// First, perform the deletion.
-	id := req.GetId()
-	fmt.Printf("Deleting S3 Object '%v'\n", id)
-	delim := strings.Index(id, ObjectIDDelim)
-	contract.Assertf(delim != -1, "Missing object ID delimiter (`<bucket>%v<key>`)", ObjectIDDelim)
-	bucket := id[:delim]
-	key := id[delim+1:]
-	if _, err := p.ctx.S3().DeleteObject(&s3.DeleteObjectInput{
-		Bucket: aws.String(bucket),
-		Key:    aws.String(key),
-	}); err != nil {
-		return nil, err
-	}
-
-	fmt.Printf("S3 Object delete request submitted; waiting for it to delete\n")
-
-	// Wait for the bucket to actually become deleted before returning.
-	if err := p.waitForObjectState(bucket, key, false); err != nil {
-		return nil, err
-	}
-	return &pbempty.Empty{}, nil
-}
-
-// object represents the state associated with an S3 Object.
-type object struct {
-	Key    string         `json:"key"`    // the object resource's name.
-	Bucket string         `json:"bucket"` // the object's bucket ID (name).
-	Source resource.Asset `json:"source"` // the source asset for the bucket's contents.
-}
-
-// constants for object property names.
-const (
-	ObjectKey    = "key"
-	ObjectBucket = "bucket"
-	ObjectSource = "source"
 )
 
 // constants for the various object constraints.
@@ -169,36 +33,114 @@ const (
 	objectKeyRegexp = "[0-9a-zA-Z!-_.*'()]"
 )
 
-// unmarshalObject decodes and validates a object property bag.
-func unmarshalObject(v *pbstruct.Struct) (object, resource.PropertyMap, mapper.DecodeError) {
-	var obj object
-	props := resource.UnmarshalProperties(v)
-	result := mapper.MapIU(props.Mappable(), &obj)
+// NewObjectProvider creates a provider that handles S3 Object operations.
+func NewObjectProvider(ctx *awsctx.Context) cocorpc.ResourceProviderServer {
+	ops := &objProvider{ctx}
+	return s3.NewObjectProvider(ops)
+}
+
+type objProvider struct {
+	ctx *awsctx.Context
+}
+
+// Check validates that the given property bag is valid for a resource of the given type.
+func (p *objProvider) Check(ctx context.Context, obj *s3.Object) ([]mapper.FieldError, error) {
+	var failures []mapper.FieldError
 	if len(obj.Key) > maxObjectKey {
-		if result == nil {
-			result = mapper.NewDecodeErr(nil)
-		}
-		result.AddFailure(
-			mapper.NewFieldErr(reflect.TypeOf(obj), ObjectKey,
-				fmt.Errorf("exceeded maximum length of %v", maxObjectKey)),
-		)
+		failures = append(failures,
+			mapper.NewFieldErr(reflect.TypeOf(obj), s3.Object_Key,
+				fmt.Errorf("exceeded maximum length of %v", maxObjectKey)))
 	}
 	if match, _ := regexp.MatchString(objectKeyRegexp, obj.Key); !match {
-		if result == nil {
-			result = mapper.NewDecodeErr(nil)
-		}
-		result.AddFailure(
-			mapper.NewFieldErr(reflect.TypeOf(obj), ObjectKey,
+		failures = append(failures,
+			mapper.NewFieldErr(reflect.TypeOf(obj), s3.Object_Key,
 				fmt.Errorf("contains invalid characters (must match '%v')", objectKeyRegexp)))
 	}
-	return obj, props, result
+	return failures, nil
+}
+
+// Name names a given resource.  Sometimes this will be assigned by a developer, and so the provider
+// simply fetches it from the property bag; other times, the provider will assign this based on its own algorithm.
+// In any case, resources with the same name must be safe to use interchangeably with one another.
+func (p *objProvider) Name(ctx context.Context, obj *s3.Object) (string, error) {
+	if obj.Key == "" {
+		return "", errors.New("S3 Object's key was empty")
+	}
+	return obj.Key, nil
+}
+
+// Create allocates a new instance of the provided resource and returns its unique ID afterwards.  (The input ID
+// must be blank.)  If this call fails, the resource must not have been created (i.e., it is "transacational").
+func (p *objProvider) Create(ctx context.Context, obj *s3.Object) (string, error) {
+	// Fetch the contents of the body by way of the source asset.
+	body, err := obj.Source.Read()
+	if err != nil {
+		return "", err
+	}
+	defer body.Close()
+
+	// Now go ahead and perform the creation.
+	buck := obj.Bucket.String()
+	fmt.Printf("Creating S3 Object '%v' in bucket '%v'\n", obj.Key, buck)
+	if _, err := p.ctx.S3().PutObject(&awss3.PutObjectInput{
+		Bucket: aws.String(buck),
+		Key:    aws.String(obj.Key),
+		Body:   body,
+	}); err != nil {
+		return "", err
+	}
+
+	// Wait for the object to be ready and then return the ID (just its name).
+	fmt.Printf("S3 Object created: %v; waiting for it to become active\n", obj.Key)
+	if err := p.waitForObjectState(buck, obj.Key, true); err != nil {
+		return "", err
+	}
+	return buck + ObjectIDDelim + obj.Key, nil
+}
+
+// Get reads the instance state identified by ID, returning a populated resource object, or an error if not found.
+func (p *objProvider) Get(ctx context.Context, id string) (*s3.Object, error) {
+	return nil, errors.New("Not yet implemented")
+}
+
+// InspectChange checks what impacts a hypothetical update will have on the resource's properties.
+func (p *objProvider) InspectChange(ctx context.Context, id string,
+	old *s3.Object, new *s3.Object, diff *resource.ObjectDiff) ([]string, error) {
+	return nil, errors.New("Not yet implemented")
+}
+
+// Update updates an existing resource with new values.  Only those values in the provided property bag are updated
+// to new values.  The resource ID is returned and may be different if the resource had to be recreated.
+func (p *objProvider) Update(ctx context.Context, id string,
+	old *s3.Object, new *s3.Object, diff *resource.ObjectDiff) error {
+	return errors.New("Not yet implemented")
+}
+
+// Delete tears down an existing resource with the given ID.  If it fails, the resource is assumed to still exist.
+func (p *objProvider) Delete(ctx context.Context, id string) error {
+	// First, perform the deletion.
+	fmt.Printf("Deleting S3 Object '%v'\n", id)
+	delim := strings.Index(id, ObjectIDDelim)
+	contract.Assertf(delim != -1, "Missing object ID delimiter (`<bucket>%v<key>`)", ObjectIDDelim)
+	bucket := id[:delim]
+	key := id[delim+1:]
+	if _, err := p.ctx.S3().DeleteObject(&awss3.DeleteObjectInput{
+		Bucket: aws.String(bucket),
+		Key:    aws.String(key),
+	}); err != nil {
+		return err
+	}
+
+	// Wait for the bucket to actually become deleted before returning.
+	fmt.Printf("S3 Object delete request submitted; waiting for it to delete\n")
+	return p.waitForObjectState(bucket, key, false)
 }
 
 func (p *objProvider) waitForObjectState(bucket string, key string, exist bool) error {
 	succ, err := awsctx.RetryUntil(
 		p.ctx,
 		func() (bool, error) {
-			if _, err := p.ctx.S3().GetObject(&s3.GetObjectInput{
+			if _, err := p.ctx.S3().GetObject(&awss3.GetObjectInput{
 				Bucket: aws.String(bucket),
 				Key:    aws.String(key),
 			}); err != nil {

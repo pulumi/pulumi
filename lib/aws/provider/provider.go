@@ -35,8 +35,8 @@ func NewProvider() (*Provider, error) {
 			ec2.SecurityGroupToken: ec2.NewSecurityGroupProvider(ctx),
 			lambda.FunctionToken:   lambda.NewFunctionProvider(ctx),
 			iam.RoleToken:          iam.NewRoleProvider(ctx),
-			s3.Bucket:              s3.NewBucketProvider(ctx),
-			s3.Object:              s3.NewObjectProvider(ctx),
+			s3.BucketToken:         s3.NewBucketProvider(ctx),
+			s3.ObjectToken:         s3.NewObjectProvider(ctx),
 		},
 	}, nil
 }
