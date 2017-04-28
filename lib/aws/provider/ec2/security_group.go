@@ -21,6 +21,8 @@ import (
 	rpc "github.com/pulumi/coconut/lib/aws/rpc/ec2"
 )
 
+const SecurityGroupToken = rpc.SecurityGroupToken
+
 // constants for the various security group limits.
 const (
 	maxSecurityGroupName        = 255

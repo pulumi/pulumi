@@ -472,14 +472,17 @@ func (g *RPCGenerator) GenTypeName(t types.Type) string {
 	case *types.Named:
 		obj := u.Obj()
 		// For resource types, simply emit an ID, since that is what will have been serialized.
+		if res, _ := IsResource(obj, u); res {
+			return "resource.ID"
+		}
+
+		// For references to the special predefined types, use the runtime provider representation.
 		if spec, kind := IsSpecial(obj); spec {
 			switch kind {
 			case SpecialAssetType:
 				return "resource.Asset"
-			case SpecialResourceType, SpecialNamedResourceType:
-				return "resource.ID"
 			default:
-				contract.Failf("Unrecognized special kind: %v", kind)
+				contract.Failf("Unexpected special kind: %v", kind)
 			}
 		}
 

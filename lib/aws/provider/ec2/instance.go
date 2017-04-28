@@ -20,6 +20,8 @@ import (
 	rpc "github.com/pulumi/coconut/lib/aws/rpc/ec2"
 )
 
+const InstanceToken = rpc.InstanceToken
+
 // NewInstanceProvider creates a provider that handles EC2 instance operations.
 func NewInstanceProvider(ctx *awsctx.Context) cocorpc.ResourceProviderServer {
 	ops := &instanceProvider{ctx}

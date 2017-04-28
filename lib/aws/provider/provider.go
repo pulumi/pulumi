@@ -33,7 +33,7 @@ func NewProvider() (*Provider, error) {
 		impls: map[tokens.Type]cocorpc.ResourceProviderServer{
 			ec2.InstanceToken:      ec2.NewInstanceProvider(ctx),
 			ec2.SecurityGroupToken: ec2.NewSecurityGroupProvider(ctx),
-			lambda.Function:        lambda.NewFunctionProvider(ctx),
+			lambda.FunctionToken:   lambda.NewFunctionProvider(ctx),
 			iam.RoleToken:          iam.NewRoleProvider(ctx),
 			s3.Bucket:              s3.NewBucketProvider(ctx),
 			s3.Object:              s3.NewObjectProvider(ctx),
