@@ -18,14 +18,15 @@ import (
 )
 
 type RPCGenerator struct {
-	IDLRoot     string            // the root where IDL is loaded from.
-	IDLPkgBase  string            // the IDL's base package path.
-	RPCPkgBase  string            // the RPC's base package path.
-	Out         string            // where RPC stub outputs will be saved.
-	CurrPkg     *Package          // the package currently being visited.
-	CurrFile    string            // the file currently being visited.
-	FileHadRes  bool              // true if the file had at least one resource.
-	FileImports map[string]string // a map of foreign packages used in a file.
+	IDLRoot         string            // the root where IDL is loaded from.
+	IDLPkgBase      string            // the IDL's base package path.
+	RPCPkgBase      string            // the RPC's base package path.
+	Out             string            // where RPC stub outputs will be saved.
+	CurrPkg         *Package          // the package currently being visited.
+	CurrFile        string            // the file currently being visited.
+	FileHadRes      bool              // true if the file had at least one resource.
+	FileHadNamedRes bool              // true if the file had at least one named resource.
+	FileImports     map[string]string // a map of foreign packages used in a file.
 }
 
 func NewRPCGenerator(root, idlPkgBase, rpcPkgBase, out string) *RPCGenerator {
@@ -68,10 +69,11 @@ func (g *RPCGenerator) Generate(pkg *Package) error {
 }
 
 func (g *RPCGenerator) EmitFile(file string, pkg *Package, members []Member) error {
-	oldHadRes, oldImports := g.FileHadRes, g.FileImports
-	g.FileHadRes, g.FileImports = false, make(map[string]string)
+	oldHadRes, oldHadNamedRes, oldImports := g.FileHadRes, g.FileHadNamedRes, g.FileImports
+	g.FileHadRes, g.FileHadNamedRes, g.FileImports = false, false, make(map[string]string)
 	defer (func() {
 		g.FileHadRes = oldHadRes
+		g.FileHadNamedRes = oldHadNamedRes
 		g.FileImports = oldImports
 	})()
 
@@ -98,8 +100,10 @@ func (g *RPCGenerator) EmitFile(file string, pkg *Package, members []Member) err
 		writefmtln(w, "import (")
 
 		if g.FileHadRes {
-			writefmtln(w, `    "errors"`)
-			writefmtln(w, "")
+			if g.FileHadNamedRes {
+				writefmtln(w, `    "errors"`)
+				writefmtln(w, "")
+			}
 			writefmtln(w, `    pbempty "github.com/golang/protobuf/ptypes/empty"`)
 			writefmtln(w, `    pbstruct "github.com/golang/protobuf/ptypes/struct"`)
 			writefmtln(w, `    "golang.org/x/net/context"`)
@@ -202,11 +206,15 @@ func (g *RPCGenerator) getFileModule(file string) tokens.Module {
 }
 
 func (g *RPCGenerator) EmitResource(w *bufio.Writer, module tokens.Module, pkg *Package, res *Resource) {
-	g.FileHadRes = true // remember we had a resource so we import the right things.
-
 	name := res.Name()
 	writefmtln(w, "/* RPC stubs for %v resource provider */", name)
 	writefmtln(w, "")
+
+	// Remember when we encounter resources so we can import the right packages.
+	g.FileHadRes = true
+	if res.Named {
+		g.FileHadNamedRes = true
+	}
 
 	hasouts := false
 	propopts := res.PropertyOptions()
@@ -275,9 +283,9 @@ func (g *RPCGenerator) EmitResource(w *bufio.Writer, module tokens.Module, pkg *
 	writefmtln(w, "func (p *%vProvider) Name(", name)
 	writefmtln(w, "    ctx context.Context, req *cocorpc.NameRequest) (*cocorpc.NameResponse, error) {")
 	writefmtln(w, "    contract.Assert(req.GetType() == string(%vToken))", name)
-	writefmtln(w, "    obj, _, err := p.Unmarshal(req.GetProperties())")
-	writefmtln(w, "    if err != nil {")
-	writefmtln(w, "        return nil, err")
+	writefmtln(w, "    obj, _, decerr := p.Unmarshal(req.GetProperties())")
+	writefmtln(w, "    if decerr != nil {")
+	writefmtln(w, "        return nil, decerr")
 	writefmtln(w, "    }")
 	if res.Named {
 		// For named resources, we have a canonical way of fetching the name.
