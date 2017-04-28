@@ -6,7 +6,6 @@ import (
 	"fmt"
 
 	pbempty "github.com/golang/protobuf/ptypes/empty"
-	"github.com/pulumi/coconut/pkg/resource"
 	"github.com/pulumi/coconut/pkg/tokens"
 	"github.com/pulumi/coconut/sdk/go/pkg/cocorpc"
 	"golang.org/x/net/context"
@@ -43,8 +42,6 @@ func NewProvider() (*Provider, error) {
 
 var _ cocorpc.ResourceProviderServer = (*Provider)(nil)
 
-const nameProperty string = "name" // the property used for naming AWS resources.
-
 // Check validates that the given property bag is valid for a resource of the given type.
 func (p *Provider) Check(ctx context.Context, req *cocorpc.CheckRequest) (*cocorpc.CheckResponse, error) {
 	t := tokens.Type(req.GetType())
@@ -58,28 +55,11 @@ func (p *Provider) Check(ctx context.Context, req *cocorpc.CheckRequest) (*cocor
 // simply fetches it from the property bag; other times, the provider will assign this based on its own algorithm.
 // In any case, resources with the same name must be safe to use interchangeably with one another.
 func (p *Provider) Name(ctx context.Context, req *cocorpc.NameRequest) (*cocorpc.NameResponse, error) {
-	// First, see if the provider overrides the naming.
 	t := tokens.Type(req.GetType())
 	if prov, has := p.impls[t]; has {
-		if res, err := prov.Name(ctx, req); res != nil || err != nil {
-			return res, err
-		}
-	} else {
-		return nil, fmt.Errorf("Unrecognized resource type (Name): %v", t)
+		return prov.Name(ctx, req)
 	}
-
-	// If the provider didn't override, we can go ahead and default to the name property.
-	// TODO: eventually, we want to specialize some resources, like SecurityGroups, since they already have names.
-	if nameprop, has := req.GetProperties().Fields[nameProperty]; has {
-		name := resource.UnmarshalPropertyValue(nameprop)
-		if name.IsString() {
-			return &cocorpc.NameResponse{Name: name.StringValue()}, nil
-		} else {
-			return nil, fmt.Errorf(
-				"Resource '%v' had a name property '%v', but it wasn't a string", t, nameProperty)
-		}
-	}
-	return nil, fmt.Errorf("Resource '%v' was missing a name property '%v'", t, nameProperty)
+	return nil, fmt.Errorf("Unrecognized resource type (Name): %v", t)
 }
 
 // Create allocates a new instance of the provided resource and returns its unique ID afterwards.  (The input ID
