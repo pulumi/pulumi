@@ -356,6 +356,22 @@ func (chk *Checker) CheckIDLType(t types.Type, opts PropertyOptions) error {
 				return errors.New("bad pointer; must be optional or a resource type")
 			}
 		}
+	case *types.Map:
+		// A map is OK so long as its key is a string (or string-backed type) and its element type is okay.
+		isstr := false
+		switch kt := ft.Key().(type) {
+		case *types.Basic:
+			isstr = (kt.Kind() == types.String)
+		case *types.Named:
+			if bt, isbt := kt.Underlying().(*types.Basic); isbt {
+				isstr = (bt.Kind() == types.String)
+			}
+		}
+		if !isstr {
+			return errors.Errorf("map index type %v must be a string (or string-backed typedef)", ft.Key())
+		}
+		return chk.CheckIDLType(ft.Elem(), PropertyOptions{})
+
 	case *types.Slice:
 		// A slice is OK so long as its element type is also OK.
 		return chk.CheckIDLType(ft.Elem(), PropertyOptions{})
