@@ -4,11 +4,13 @@ package cidlc
 
 import (
 	"bufio"
+	"bytes"
 	"fmt"
 	"go/types"
 	"os"
 	"path/filepath"
 	"reflect"
+	"sort"
 	"strings"
 
 	"github.com/pulumi/coconut/pkg/tokens"
@@ -16,17 +18,21 @@ import (
 )
 
 type RPCGenerator struct {
-	Root    string
-	PkgBase string
-	Out     string
-	Currpkg *Package // the package currently being visited.
+	IDLRoot     string            // the root where IDL is loaded from.
+	IDLPkgBase  string            // the IDL's base package path.
+	RPCPkgBase  string            // the RPC's base package path.
+	Out         string            // where RPC stub outputs will be saved.
+	CurrPkg     *Package          // the package currently being visited.
+	CurrFile    string            // the file currently being visited.
+	FileImports map[string]string // a map of foreign packages used in a file.
 }
 
-func NewRPCGenerator(root string, pkgbase string, out string) *RPCGenerator {
+func NewRPCGenerator(root, idlPkgBase, rpcPkgBase, out string) *RPCGenerator {
 	return &RPCGenerator{
-		Root:    root,
-		PkgBase: pkgbase,
-		Out:     out,
+		IDLRoot:    root,
+		IDLPkgBase: idlPkgBase,
+		RPCPkgBase: rpcPkgBase,
+		Out:        out,
 	}
 }
 
@@ -37,14 +43,16 @@ func (g *RPCGenerator) Generate(pkg *Package) error {
 	}
 
 	// Install context about the current entity being visited.
-	oldpkg := g.Currpkg
-	g.Currpkg = pkg
+	oldpkg, oldfile := g.CurrPkg, g.CurrFile
+	g.CurrPkg = pkg
 	defer (func() {
-		g.Currpkg = oldpkg
+		g.CurrPkg = oldpkg
+		g.CurrFile = oldfile
 	})()
 
 	// Now walk through the package, file by file, and generate the contents.
 	for relpath, file := range pkg.Files {
+		g.CurrFile = relpath
 		var members []Member
 		for _, nm := range file.MemberNames {
 			members = append(members, file.Members[nm])
@@ -59,6 +67,13 @@ func (g *RPCGenerator) Generate(pkg *Package) error {
 }
 
 func (g *RPCGenerator) EmitFile(file string, pkg *Package, members []Member) error {
+	oldimports := g.FileImports
+	g.FileImports = make(map[string]string)
+	defer (func() { g.FileImports = oldimports })()
+
+	// First, generate the body.  This is required first so we know which imports to emit.
+	body := g.genFileBody(file, pkg, members)
+
 	// Open up a writer that overwrites whatever file contents already exist.
 	f, err := os.OpenFile(file, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0644)
 	if err != nil {
@@ -78,16 +93,54 @@ func (g *RPCGenerator) EmitFile(file string, pkg *Package, members []Member) err
 	// TODO: what about imports for cross-package references.
 	writefmtln(w, "import (")
 	writefmtln(w, `    "errors"`)
+	writefmtln(w, "")
 	writefmtln(w, `    pbempty "github.com/golang/protobuf/ptypes/empty"`)
 	writefmtln(w, `    pbstruct "github.com/golang/protobuf/ptypes/struct"`)
+	writefmtln(w, `    "golang.org/x/net/context"`)
+	writefmtln(w, "")
 	writefmtln(w, `    "github.com/pulumi/coconut/pkg/resource"`)
 	writefmtln(w, `    "github.com/pulumi/coconut/pkg/tokens"`)
 	writefmtln(w, `    "github.com/pulumi/coconut/pkg/util/contract"`)
 	writefmtln(w, `    "github.com/pulumi/coconut/pkg/util/mapper"`)
 	writefmtln(w, `    "github.com/pulumi/coconut/sdk/go/pkg/cocorpc"`)
-	writefmtln(w, `    "golang.org/x/net/context"`)
+	if len(g.FileImports) > 0 {
+		writefmtln(w, "")
+		// Sort the imports so they are in a correct, deterministic order.
+		var imports []string
+		for imp := range g.FileImports {
+			imports = append(imports, imp)
+		}
+		sort.Strings(imports)
+
+		// Now just emit a list of imports with their given names.
+		for _, imp := range imports {
+			name := g.FileImports[imp]
+
+			// If the import referenced one of the IDL packages, we must rewrite it to an RPC package.
+			contract.Assertf(strings.HasPrefix(imp, g.IDLPkgBase),
+				"Inter-IDL package references not yet supported (%v is not part of %v)", imp, g.IDLPkgBase)
+			var imppath string
+			if imp == g.IDLPkgBase {
+				imppath = g.RPCPkgBase
+			} else {
+				relimp := imp[len(g.IDLPkgBase)+1:]
+				imppath = g.RPCPkgBase + "/" + relimp
+			}
+
+			writefmtln(w, `    %v "%v"`, name, imppath)
+		}
+	}
 	writefmtln(w, ")")
 	writefmtln(w, "")
+
+	// Now finally emit the actual body and close out the file.
+	writefmtln(w, "%v", body)
+	return w.Flush()
+}
+
+func (g *RPCGenerator) genFileBody(file string, pkg *Package, members []Member) string {
+	var buffer bytes.Buffer
+	w := bufio.NewWriter(&buffer)
 
 	// First, for each RPC struct/resource member, emit its appropriate generated code.
 	var typedefs []Typedef
@@ -121,7 +174,8 @@ func (g *RPCGenerator) EmitFile(file string, pkg *Package, members []Member) err
 		g.EmitConstants(w, consts)
 	}
 
-	return w.Flush()
+	w.Flush()
+	return buffer.String()
 }
 
 // getFileModule generates a module name from a filename.  To do so, we simply find the path part after the root and
@@ -413,13 +467,13 @@ func (g *RPCGenerator) GenTypeName(t types.Type) string {
 		name := obj.Name()
 
 		// If this came from the same package, Go can access it without qualification.
-		if pkg == g.Currpkg.Pkginfo.Pkg {
+		if pkg == g.CurrPkg.Pkginfo.Pkg {
 			return name
 		}
 
 		// Otherwise, we will need to refer to a qualified import name.
-		// TODO: we will need to generate the right imports before we can emit such names.
-		contract.Failf("Cross-package IDL references not yet supported: pkg=%v name=%v", pkg, name)
+		impname := g.registerImport(pkg)
+		return fmt.Sprintf("%v.%v", impname, name)
 	case *types.Map:
 		return fmt.Sprintf("map[%v]%v", g.GenTypeName(u.Key()), g.GenTypeName(u.Elem()))
 	case *types.Pointer:
@@ -430,6 +484,20 @@ func (g *RPCGenerator) GenTypeName(t types.Type) string {
 		contract.Failf("Unrecognized GenTypeName type: %v", reflect.TypeOf(u))
 	}
 	return ""
+}
+
+// registerImport registers that we have seen a foreign package and requests that the imports be emitted for it.
+func (g *RPCGenerator) registerImport(pkg *types.Package) string {
+	path := pkg.Path()
+	if impname, has := g.FileImports[path]; has {
+		return impname
+	}
+
+	// If we haven't seen this yet, allocate an import name for it.  For now, we just use the package name with two
+	// leading underscores, to avoid accidental collisions with other names in the file.
+	name := "__" + pkg.Name()
+	g.FileImports[path] = name
+	return name
 }
 
 func (g *RPCGenerator) EmitTypedefs(w *bufio.Writer, typedefs []Typedef) {

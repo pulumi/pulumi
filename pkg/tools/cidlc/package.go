@@ -15,16 +15,16 @@ import (
 )
 
 type Package struct {
-	Name        tokens.PackageName    // the name of the package.
+	Name        tokens.PackageName    // the package name.
 	Program     *loader.Program       // the fully parsed/analyzed Go program.
 	Pkginfo     *loader.PackageInfo   // the Go package information.
 	Files       map[string]*File      // the files inside of this package.
 	MemberFiles map[tokens.Name]*File // a map from member to the file containing it.
 }
 
-func NewPackage(nm tokens.PackageName, prog *loader.Program, pkginfo *loader.PackageInfo) *Package {
+func NewPackage(name tokens.PackageName, prog *loader.Program, pkginfo *loader.PackageInfo) *Package {
 	return &Package{
-		Name:        nm,
+		Name:        name,
 		Program:     prog,
 		Pkginfo:     pkginfo,
 		Files:       make(map[string]*File),

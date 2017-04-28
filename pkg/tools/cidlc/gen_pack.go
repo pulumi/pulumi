@@ -10,7 +10,10 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"sort"
 	"strings"
+
+	"golang.org/x/tools/go/loader"
 
 	"github.com/pulumi/coconut/pkg/tokens"
 	"github.com/pulumi/coconut/pkg/util/contract"
@@ -19,35 +22,32 @@ import (
 // TODO: preserve GoDocs.
 
 type PackGenerator struct {
-	Root     string
-	Out      string
-	Currpkg  *Package             // the package currently being visited.
-	Currfile string               // the file currently being visited.
-	Fhadres  bool                 // true if the file had at least one resource.
-	Ffimp    map[string]string    // a map of foreign packages used in a file.
-	Flimp    map[tokens.Name]bool // a map of imported members from modules within this package.
+	Program     *loader.Program          // the compiled Go program.
+	IDLRoot     string                   // the path to the IDL on disk.
+	IDLPkgBase  string                   // the IDL's base package path.
+	Out         string                   // where to store the output package.
+	CurrPkg     *Package                 // the package currently being visited.
+	CurrFile    string                   // the file currently being visited.
+	FileHadRes  bool                     // true if the file had at least one resource.
+	FileImports map[string]MemberImports // a map of imported package paths and members.
 }
 
-func NewPackGenerator(root string, out string) *PackGenerator {
+type MemberImports map[tokens.Name]string
+
+func NewPackGenerator(prog *loader.Program, root string, pkgBase string, out string) *PackGenerator {
 	return &PackGenerator{
-		Root: root,
-		Out:  out,
+		Program:    prog,
+		IDLRoot:    root,
+		IDLPkgBase: pkgBase,
+		Out:        out,
 	}
 }
 
-func (g *PackGenerator) Relpath(s string) (string, error) {
-	return filepath.Rel(g.Root, s)
-}
-
-// Filename gets the target filename for any given member.
-func (g *PackGenerator) Filename(pkg *Package, m Member) (string, error) {
-	prog := pkg.Program
-	source := prog.Fset.Position(m.Pos()).Filename // the source filename.`
-	rel, err := g.Relpath(source)
-	if err != nil {
-		return "", err
-	}
-	return filepath.Join(g.Out, rel), nil
+// Filename gets the source filename for a given Go element.
+func (g *PackGenerator) Filename(elem goPos) string {
+	pos := elem.Pos()
+	fset := g.Program.Fset
+	return fset.Position(pos).Filename
 }
 
 // Generate generates a Coconut package's source code from a given compiled IDL program.
@@ -58,10 +58,10 @@ func (g *PackGenerator) Generate(pkg *Package) error {
 	}
 
 	// Install context about the current entity being visited.
-	oldpkg, oldfile := g.Currpkg, g.Currfile
-	g.Currpkg = pkg
+	oldpkg, oldfile := g.CurrPkg, g.CurrFile
+	g.CurrPkg = pkg
 	defer (func() {
-		g.Currpkg, g.Currfile = oldpkg, oldfile
+		g.CurrPkg, g.CurrFile = oldpkg, oldfile
 	})()
 
 	// Now walk through the package, file by file, and generate the contents.
@@ -70,7 +70,7 @@ func (g *PackGenerator) Generate(pkg *Package) error {
 		for _, nm := range file.MemberNames {
 			members = append(members, file.Members[nm])
 		}
-		g.Currfile = relpath
+		g.CurrFile = relpath
 		path := filepath.Join(g.Out, relpath)
 		if err := g.EmitFile(path, members); err != nil {
 			return err
@@ -82,12 +82,11 @@ func (g *PackGenerator) Generate(pkg *Package) error {
 
 func (g *PackGenerator) EmitFile(file string, members []Member) error {
 	// Set up context.
-	oldhadres, oldffimp, oldflimp := g.Fhadres, g.Ffimp, g.Flimp
-	g.Fhadres, g.Ffimp, g.Flimp = false, make(map[string]string), make(map[tokens.Name]bool)
+	oldHadRes, oldImports := g.FileHadRes, g.FileImports
+	g.FileHadRes, g.FileImports = false, make(map[string]MemberImports)
 	defer (func() {
-		g.Fhadres = oldhadres
-		g.Ffimp = oldffimp
-		g.Flimp = oldflimp
+		g.FileHadRes = oldHadRes
+		g.FileImports = oldImports
 	})()
 
 	// First, generate the body.  This is required first so we know which imports to emit.
@@ -116,34 +115,68 @@ func (g *PackGenerator) emitFileContents(file string, body string) error {
 	emitHeaderWarning(w)
 
 	// If there are any resources, import the Coconut package.
-	if g.Fhadres {
+	if g.FileHadRes {
 		writefmtln(w, "import * as coconut from \"@coconut/coconut\";")
 		writefmtln(w, "")
 	}
-	if len(g.Flimp) > 0 {
-		for local := range g.Flimp {
-			// For a local import, make sure to manufacture a correct relative import of the members.
-			dir := filepath.Dir(file)
-			module := g.Currpkg.MemberFiles[local].Path
-			relimp, err := filepath.Rel(dir, filepath.Join(g.Out, module))
-			contract.Assert(err == nil)
-			var impname string
-			if strings.HasPrefix(relimp, ".") {
-				impname = relimp
-			} else {
-				impname = "./" + relimp
-			}
-			if filepath.Ext(impname) != "" {
-				lastdot := strings.LastIndex(impname, ".")
-				impname = impname[:lastdot]
-			}
-			writefmtln(w, "import {%v} from \"%v\";", local, impname)
+	if len(g.FileImports) > 0 {
+		// First, sort the imported package names, to ensure determinism.
+		var ipkgs []string
+		for ipkg := range g.FileImports {
+			ipkgs = append(ipkgs, ipkg)
 		}
-		writefmtln(w, "")
-	}
-	if len(g.Ffimp) > 0 {
-		for impname, pkg := range g.Ffimp {
-			contract.Failf("Foreign imports not yet supported: import=%v pkg=%v", impname, pkg)
+		sort.Strings(ipkgs)
+
+		for _, ipkg := range ipkgs {
+			// Produce a map of filename to the members in that file that have been imported.
+			importMap := make(map[string][]tokens.Name)
+			for member, file := range g.FileImports[ipkg] {
+				importMap[file] = append(importMap[file], member)
+			}
+
+			// Now sort them to ensure determinism.
+			var importFiles []string
+			for file := range importMap {
+				importFiles = append(importFiles, file)
+			}
+			sort.Strings(importFiles)
+
+			// Next, walk each imported file and import all members from within it.
+			for _, file := range importFiles {
+				// Make a relative import path from the current file.
+				contract.Assertf(strings.HasPrefix(file, g.IDLRoot),
+					"Inter-IDL package references not yet supported (%v is not part of %v)", file, g.IDLRoot)
+				dir := filepath.Dir(g.CurrFile)
+				relimp, err := filepath.Rel(dir, file[len(g.IDLRoot)+1:])
+				contract.Assertf(err == nil, "Unexpected filepath.Rel error: %v", err)
+				var impname string
+				if strings.HasPrefix(relimp, ".") {
+					impname = relimp
+				} else {
+					impname = "./" + relimp
+				}
+				if filepath.Ext(impname) != "" {
+					lastdot := strings.LastIndex(impname, ".")
+					impname = impname[:lastdot]
+				}
+
+				// Now produce a sorted list of imported members, again to ensure determinism.
+				members := importMap[file]
+				contract.Assert(len(members) > 0)
+				sort.Slice(members, func(i, j int) bool {
+					return string(members[i]) < string(members[j])
+				})
+
+				// Finally, go through and produce the import clause.
+				writefmt(w, "import {")
+				for i, member := range members {
+					if i > 0 {
+						writefmt(w, ", ")
+					}
+					writefmt(w, string(member))
+				}
+				writefmtln(w, "} from \"%v\";", impname)
+			}
 		}
 		writefmtln(w, "")
 	}
@@ -217,7 +250,7 @@ func (g *PackGenerator) EmitResource(w *bufio.Writer, res *Resource) {
 	g.emitStructType(w, res, res.Name()+tokens.Name("Args"))
 
 	// Remember we had a resource in this file so we can import the right stuff.
-	g.Fhadres = true
+	g.FileHadRes = true
 }
 
 func (g *PackGenerator) emitResourceClass(w *bufio.Writer, res *Resource) {
@@ -282,19 +315,6 @@ func (g *PackGenerator) emitField(w *bufio.Writer, fld *types.Var, opt PropertyO
 	writefmtln(w, "%v%v%v%v: %v;", prefix, readonly, opt.Name, optional, typ)
 }
 
-// registerForeign registers that we have seen a foreign package and requests that the imports be emitted for it.
-func (g *PackGenerator) registerForeign(pkg *types.Package) string {
-	path := pkg.Path()
-	if impname, has := g.Ffimp[path]; has {
-		return impname
-	}
-
-	// If we haven't seen this yet, allocate an import name for it.  For now, just use the package name.
-	name := pkg.Name()
-	g.Ffimp[path] = name
-	return name
-}
-
 func (g *PackGenerator) GenTypeName(t types.Type) string {
 	switch u := t.(type) {
 	case *types.Basic:
@@ -311,22 +331,11 @@ func (g *PackGenerator) GenTypeName(t types.Type) string {
 	case *types.Interface:
 		return "any"
 	case *types.Named:
-		// If this came from the same package; the imports will have arranged for it to be available by name.
+		// Our import logic will have arranged for the type name to be available.
+		// TODO: consider auto-generated import names to avoid conflicts between imported and local names.
 		obj := u.Obj()
-		pkg := obj.Pkg()
-		name := obj.Name()
-		if pkg == g.Currpkg.Pkginfo.Pkg {
-			// If this wasn't in the same file, we still need a relative module import to get the name in scope.
-			nm := tokens.Name(name)
-			if g.Currpkg.MemberFiles[nm].Path != g.Currfile {
-				g.Flimp[nm] = true
-			}
-			return name
-		}
-
-		// Otherwise, we will need to refer to a qualified import name.
-		impname := g.registerForeign(pkg)
-		return fmt.Sprintf("%v.%v", impname, name)
+		g.trackNameReference(obj)
+		return obj.Name()
 	case *types.Map:
 		return fmt.Sprintf("{[key: %v]: %v}", g.GenTypeName(u.Key()), g.GenTypeName(u.Elem()))
 	case *types.Pointer:
@@ -337,4 +346,25 @@ func (g *PackGenerator) GenTypeName(t types.Type) string {
 		contract.Failf("Unrecognized GenTypeName type: %v", reflect.TypeOf(u))
 	}
 	return ""
+}
+
+// trackNameReference registers that we have seen a foreign package and requests that the imports be emitted for it.
+func (g *PackGenerator) trackNameReference(obj *types.TypeName) {
+	// If a reference to a type within the same package and file, there is no need to register anything.
+	pkg := obj.Pkg()
+	member := tokens.Name(obj.Name())
+	if pkg == g.CurrPkg.Pkginfo.Pkg &&
+		g.CurrPkg.MemberFiles[member].Path == g.CurrFile {
+		return
+	}
+
+	// Otherwise, we need to track the member so that we can import it later on.  Make sure not to add duplicates
+	// because we want to ensure we don't import the same thing twice.
+	path := pkg.Path()
+	members, has := g.FileImports[path]
+	if !has {
+		members = make(MemberImports)
+		g.FileImports[path] = members
+	}
+	members[member] = g.Filename(obj)
 }
