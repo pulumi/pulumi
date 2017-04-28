@@ -1,5 +1,5 @@
 {
-    "name": "@coconut/kube-fission",
+    "name": "@coconut/kubefission",
     "main": ".coconut/bin/index.js",
     "typings": ".coconut/bin/index.d.ts",
     "scripts": {

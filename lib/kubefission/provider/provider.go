@@ -5,12 +5,8 @@ package main
 import (
 	"fmt"
 
-	"github.com/fission/fission"
 	pbempty "github.com/golang/protobuf/ptypes/empty"
-	"github.com/pulumi/coconut/pkg/resource"
 	"github.com/pulumi/coconut/pkg/tokens"
-	"github.com/pulumi/coconut/pkg/util/contract"
-	"github.com/pulumi/coconut/pkg/util/mapper"
 	"github.com/pulumi/coconut/sdk/go/pkg/cocorpc"
 	"golang.org/x/net/context"
 )
@@ -25,9 +21,9 @@ func NewProvider() (*Provider, error) {
 	ctx := NewContext()
 	return &Provider{
 		impls: map[tokens.Type]cocorpc.ResourceProviderServer{
-			Environment: NewEnvironmentProvider(ctx),
-			Function:    NewFunctionProvider(ctx),
-			HTTPTrigger: NewHTTPTriggerProvider(ctx),
+			EnvironmentToken: NewEnvironmentProvider(ctx),
+			FunctionToken:    NewFunctionProvider(ctx),
+			HTTPTriggerToken: NewHTTPTriggerProvider(ctx),
 		},
 	}, nil
 }
@@ -47,31 +43,11 @@ func (p *Provider) Check(ctx context.Context, req *cocorpc.CheckRequest) (*cocor
 // simply fetches it from the property bag; other times, the provider will assign this based on its own algorithm.
 // In any case, resources with the same name must be safe to use interchangeably with one another.
 func (p *Provider) Name(ctx context.Context, req *cocorpc.NameRequest) (*cocorpc.NameResponse, error) {
-	// First, validate that this is a type we understand.
 	t := tokens.Type(req.GetType())
-	if _, has := p.impls[t]; !has {
-		return nil, fmt.Errorf("Unrecognized resource type (Name): %v", t)
+	if prov, has := p.impls[t]; !has {
+		return prov.Name(ctx, req)
 	}
-
-	// All Fission names are taken from the Metadata header:
-	//
-	//     {
-	//         "metadata": {
-	//             "name": "<NAME GOES HERE>"
-	//
-	// So, no need to ask the individual resource providers to do this; we can do it once and for all here.
-	var meta fission.Metadata
-
-	// Unmarshal the property bag into our struct.
-	props := req.GetProperties()
-	uprops := resource.UnmarshalProperties(props)
-	if err := mapper.MapIU(uprops.Mappable(), &meta); err != nil {
-		return nil, err
-	}
-
-	// If we got here, the name is valid; return it.
-	contract.Assert(meta.Name != "")
-	return &cocorpc.NameResponse{Name: meta.Name}, nil
+	return nil, fmt.Errorf("Unrecognized resource type (Name): %v", t)
 }
 
 // Create allocates a new instance of the provided resource and returns its unique ID afterwards.  (The input ID

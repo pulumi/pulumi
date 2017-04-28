@@ -3,6 +3,5 @@
 export * from "./environment";
 export * from "./function";
 export * from "./httptrigger";
-export * from "./metadata";
 export * from "./watch";
 

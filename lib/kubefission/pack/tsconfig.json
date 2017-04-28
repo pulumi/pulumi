@@ -21,7 +21,6 @@
         "environment.ts",
         "function.ts",
         "httptrigger.ts",
-        "metadata.ts",
         "watch.ts",
 
         "config/index.ts"
