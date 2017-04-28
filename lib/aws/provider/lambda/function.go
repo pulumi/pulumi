@@ -13,8 +13,8 @@ import (
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
-	"github.com/aws/aws-sdk-go/service/iam"
-	"github.com/aws/aws-sdk-go/service/lambda"
+	awsiam "github.com/aws/aws-sdk-go/service/iam"
+	awslambda "github.com/aws/aws-sdk-go/service/lambda"
 	"github.com/pkg/errors"
 	"github.com/pulumi/coconut/pkg/resource"
 	"github.com/pulumi/coconut/pkg/util/mapper"
@@ -22,11 +22,11 @@ import (
 	"golang.org/x/net/context"
 
 	"github.com/pulumi/coconut/lib/aws/provider/awsctx"
-	awsrpc "github.com/pulumi/coconut/lib/aws/rpc"
-	rpc "github.com/pulumi/coconut/lib/aws/rpc/lambda"
+	awscommon "github.com/pulumi/coconut/lib/aws/rpc"
+	"github.com/pulumi/coconut/lib/aws/rpc/lambda"
 )
 
-const FunctionToken = rpc.FunctionToken
+const FunctionToken = lambda.FunctionToken
 
 // constants for the various function limits.
 const (
@@ -35,20 +35,20 @@ const (
 	functionNameARNPrefix = "arn:aws:lambda:"
 )
 
-var functionRuntimes = map[rpc.Runtime]bool{
-	rpc.NodeJSRuntime:        true,
-	rpc.NodeJS4d3Runtime:     true,
-	rpc.NodeJS4d3EdgeRuntime: true,
-	rpc.NodeJS6d10Runtime:    true,
-	rpc.Java8Runtime:         true,
-	rpc.Python2d7Runtime:     true,
-	rpc.DotnetCore1d0Runtime: true,
+var functionRuntimes = map[lambda.Runtime]bool{
+	lambda.NodeJSRuntime:        true,
+	lambda.NodeJS4d3Runtime:     true,
+	lambda.NodeJS4d3EdgeRuntime: true,
+	lambda.NodeJS6d10Runtime:    true,
+	lambda.Java8Runtime:         true,
+	lambda.Python2d7Runtime:     true,
+	lambda.DotnetCore1d0Runtime: true,
 }
 
 // NewFunctionProvider creates a provider that handles Lambda function operations.
 func NewFunctionProvider(ctx *awsctx.Context) cocorpc.ResourceProviderServer {
 	ops := &funcProvider{ctx}
-	return rpc.NewFunctionProvider(ops)
+	return lambda.NewFunctionProvider(ops)
 }
 
 type funcProvider struct {
@@ -56,11 +56,11 @@ type funcProvider struct {
 }
 
 // Check validates that the given property bag is valid for a resource of the given type.
-func (p *funcProvider) Check(ctx context.Context, obj *rpc.Function) ([]mapper.FieldError, error) {
+func (p *funcProvider) Check(ctx context.Context, obj *lambda.Function) ([]mapper.FieldError, error) {
 	var failures []mapper.FieldError
 	if _, has := functionRuntimes[obj.Runtime]; !has {
 		failures = append(failures,
-			mapper.NewFieldErr(reflect.TypeOf(obj), rpc.Function_Runtime,
+			mapper.NewFieldErr(reflect.TypeOf(obj), lambda.Function_Runtime,
 				fmt.Errorf("%v is not a valid runtime", obj.Runtime)))
 	}
 	if name := obj.FunctionName; name != nil {
@@ -72,7 +72,7 @@ func (p *funcProvider) Check(ctx context.Context, obj *rpc.Function) ([]mapper.F
 		}
 		if len(*name) > maxName {
 			failures = append(failures,
-				mapper.NewFieldErr(reflect.TypeOf(obj), rpc.Function_FunctionName,
+				mapper.NewFieldErr(reflect.TypeOf(obj), lambda.Function_FunctionName,
 					fmt.Errorf("exceeded maximum length of %v", maxName)))
 		}
 	}
@@ -81,7 +81,7 @@ func (p *funcProvider) Check(ctx context.Context, obj *rpc.Function) ([]mapper.F
 
 // Create allocates a new instance of the provided resource and returns its unique ID afterwards.  (The input ID
 // must be blank.)  If this call fails, the resource must not have been created (i.e., it is "transacational").
-func (p *funcProvider) Create(ctx context.Context, obj *rpc.Function) (string, *rpc.FunctionOuts, error) {
+func (p *funcProvider) Create(ctx context.Context, obj *lambda.Function) (string, *lambda.FunctionOuts, error) {
 	// If an explicit name is given, use it.  Otherwise, auto-generate a name in part based on the resource name.
 	// TODO: use the URN, not just the name, to enhance global uniqueness.
 	// TODO: even for explicit names, we should consider mangling it somehow, to reduce multi-instancing conflicts.
@@ -95,19 +95,19 @@ func (p *funcProvider) Create(ctx context.Context, obj *rpc.Function) (string, *
 	// Fetch the IAM role's ARN.
 	// TODO[coconut/pulumi#90]: as soon as we can read output properties, this shouldn't be necessary.
 	var roleARN *string
-	if role, err := p.ctx.IAM().GetRole(&iam.GetRoleInput{RoleName: obj.Role.StringPtr()}); err != nil {
+	if role, err := p.ctx.IAM().GetRole(&awsiam.GetRoleInput{RoleName: obj.Role.StringPtr()}); err != nil {
 		return "", nil, err
 	} else {
 		roleARN = role.Role.Arn
 	}
 
 	// Figure out the kind of asset.  In addition to the usual suspects, we permit s3:// references.
-	var code *lambda.FunctionCode
+	var code *awslambda.FunctionCode
 	if uri, isuri, err := obj.Code.GetURIURL(); err != nil {
 		return "", nil, err
 	} else if isuri && uri.Scheme == "s3" {
 		// TODO: it's odd that an S3 reference must *already* be a zipfile, whereas others are zipped on the fly.
-		code = &lambda.FunctionCode{
+		code = &awslambda.FunctionCode{
 			S3Bucket: aws.String(uri.Host),
 			S3Key:    aws.String(uri.Path),
 			// TODO: S3ObjectVersion; encode as the #?
@@ -117,13 +117,13 @@ func (p *funcProvider) Create(ctx context.Context, obj *rpc.Function) (string, *
 		if zip, err := zipCodeAsset(*obj.Code, "index.js"); err != nil {
 			return "", nil, err
 		} else {
-			code = &lambda.FunctionCode{ZipFile: zip}
+			code = &awslambda.FunctionCode{ZipFile: zip}
 		}
 	}
 
-	var dlqcfg *lambda.DeadLetterConfig
-	var env *lambda.Environment
-	var vpccfg *lambda.VpcConfig
+	var dlqcfg *awslambda.DeadLetterConfig
+	var env *awslambda.Environment
+	var vpccfg *awslambda.VpcConfig
 
 	// Convert float fields to in64 if they are non-nil.
 	var memsize *int64
@@ -140,7 +140,7 @@ func (p *funcProvider) Create(ctx context.Context, obj *rpc.Function) (string, *
 	// Now go ahead and create the resource.  Note that IAM profiles can take several seconds to propagate; see
 	// http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/iam-roles-for-amazon-ec2.html#launch-instance-with-role.
 	fmt.Printf("Creating Lambda Function '%v' with name '%v'\n", obj.Name, name)
-	create := &lambda.CreateFunctionInput{
+	create := &awslambda.CreateFunctionInput{
 		Code:             code,
 		DeadLetterConfig: dlqcfg,
 		Description:      obj.Description,
@@ -155,7 +155,7 @@ func (p *funcProvider) Create(ctx context.Context, obj *rpc.Function) (string, *
 		Timeout:          timeout,
 		VpcConfig:        vpccfg,
 	}
-	var out *rpc.FunctionOuts
+	var out *lambda.FunctionOuts
 	if succ, err := awsctx.RetryProgUntil(
 		p.ctx,
 		func() (bool, error) {
@@ -169,7 +169,7 @@ func (p *funcProvider) Create(ctx context.Context, obj *rpc.Function) (string, *
 				}
 				return false, err
 			}
-			out = &rpc.FunctionOuts{ARN: awsrpc.ARN(*result.FunctionArn)}
+			out = &lambda.FunctionOuts{ARN: awscommon.ARN(*result.FunctionArn)}
 			return true, nil
 		},
 		func(n int) bool {
@@ -191,20 +191,20 @@ func (p *funcProvider) Create(ctx context.Context, obj *rpc.Function) (string, *
 }
 
 // Read reads the instance state identified by ID, returning a populated resource object, or an error if not found.
-func (p *funcProvider) Get(ctx context.Context, id string) (*rpc.Function, error) {
+func (p *funcProvider) Get(ctx context.Context, id string) (*lambda.Function, error) {
 	return nil, nil
 }
 
 // InspectChange checks what impacts a hypothetical update will have on the resource's properties.
 func (p *funcProvider) InspectChange(ctx context.Context, id string,
-	old *rpc.Function, new *rpc.Function, diff *resource.ObjectDiff) ([]string, error) {
+	old *lambda.Function, new *lambda.Function, diff *resource.ObjectDiff) ([]string, error) {
 	return nil, errors.New("Not yet implemented")
 }
 
 // Update updates an existing resource with new values.  Only those values in the provided property bag are updated
 // to new values.  The resource ID is returned and may be different if the resource had to be recreated.
 func (p *funcProvider) Update(ctx context.Context, id string,
-	old *rpc.Function, new *rpc.Function, diff *resource.ObjectDiff) error {
+	old *lambda.Function, new *lambda.Function, diff *resource.ObjectDiff) error {
 	return errors.New("Not yet implemented")
 }
 
@@ -212,7 +212,7 @@ func (p *funcProvider) Update(ctx context.Context, id string,
 func (p *funcProvider) Delete(ctx context.Context, id string) error {
 	// First, perform the deletion.
 	fmt.Printf("Deleting Lambda Function '%v'\n", id)
-	if _, err := p.ctx.Lambda().DeleteFunction(&lambda.DeleteFunctionInput{
+	if _, err := p.ctx.Lambda().DeleteFunction(&awslambda.DeleteFunctionInput{
 		FunctionName: aws.String(id),
 	}); err != nil {
 		return err
@@ -227,7 +227,7 @@ func (p *funcProvider) waitForFunctionState(id string, exist bool) error {
 	succ, err := awsctx.RetryUntil(
 		p.ctx,
 		func() (bool, error) {
-			if _, err := p.ctx.Lambda().GetFunction(&lambda.GetFunctionInput{
+			if _, err := p.ctx.Lambda().GetFunction(&awslambda.GetFunctionInput{
 				FunctionName: aws.String(id),
 			}); err != nil {
 				if erraws, iserraws := err.(awserr.Error); iserraws {
