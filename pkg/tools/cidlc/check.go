@@ -4,7 +4,6 @@ package cidlc
 
 import (
 	"go/ast"
-	"go/token"
 	"go/types"
 	"reflect"
 
@@ -17,16 +16,6 @@ import (
 	"github.com/pulumi/coconut/pkg/util/contract"
 )
 
-type goPos interface {
-	Pos() token.Pos
-}
-
-// goDiag produces a diagnostics object out of a Go type artifact.
-func goDiag(pos goPos) diag.Diagable {
-	// TODO: implement this.
-	return nil
-}
-
 type Checker struct {
 	Root       string
 	Program    *loader.Program
@@ -38,6 +27,12 @@ func NewChecker(root string, prog *loader.Program) *Checker {
 		Root:    root,
 		Program: prog,
 	}
+}
+
+// diag produces a nice diagnostic location (document+position) from a Go element.  It should be used for all output
+// messages to enable easy correlation with the source IDL artifact that triggered an error.
+func (chk *Checker) diag(elem goPos) diag.Diagable {
+	return goDiag(chk.Program, elem, chk.Root)
 }
 
 // Check analyzes a Go program, ensures that it is valid as an IDL, and classifies all of the types that it
@@ -64,7 +59,7 @@ func (chk *Checker) Check(name tokens.PackageName, pkginfo *loader.PackageInfo) 
 			ok = false
 			cmdutil.Sink().Errorf(
 				diag.Message("%v is an unrecognized Go declaration type: %v",
-					objname, reflect.TypeOf(obj)).At(goDiag(obj)))
+					objname, reflect.TypeOf(obj)).At(chk.diag(obj)))
 		}
 	}
 
@@ -166,11 +161,13 @@ func (chk *Checker) CheckConst(c *types.Const, file *File, decl ast.Decl) (*Cons
 			t = pt
 			chk.EnumValues[t] = append(chk.EnumValues[t], c.Val().String())
 		} else {
-			cmdutil.Sink().Errorf(diag.Message("enums must be string-backed; %v has type %v", c, named))
+			cmdutil.Sink().Errorf(
+				diag.Message("enums must be string-backed; %v has type %v", c, named).At(chk.diag(decl)))
 		}
 	} else {
-		cmdutil.Sink().Errorf(diag.Message(
-			"only constants of valid primitive types (bool, float64, number, or aliases) supported"))
+		cmdutil.Sink().Errorf(
+			diag.Message("only constants of valid primitive types (bool, float64, number, or aliases) supported").At(
+				chk.diag(decl)))
 	}
 
 	if t != nil {
@@ -215,8 +212,9 @@ func (chk *Checker) CheckType(t *types.TypeName, file *File, decl ast.Decl) (Mem
 				}
 			}
 
-			cmdutil.Sink().Errorf(diag.Message(
-				"type alias %v is not a valid IDL alias type (must be bool, float64, or string)", t.Name()))
+			cmdutil.Sink().Errorf(
+				diag.Message("type alias %v is not a valid IDL alias type (must be bool, float64, or string)",
+					t.Name()).At(chk.diag(decl)))
 		case *types.Map, *types.Slice:
 			return &Alias{
 				member: memb,
@@ -247,10 +245,12 @@ func (chk *Checker) CheckType(t *types.TypeName, file *File, decl ast.Decl) (Mem
 				contract.Assert(!cmdutil.Sink().Success())
 			}
 		default:
-			cmdutil.Sink().Errorf(diag.Message("%v is an illegal underlying type: %v", s, reflect.TypeOf(s)))
+			cmdutil.Sink().Errorf(
+				diag.Message("%v is an illegal underlying type: %v", s, reflect.TypeOf(s)).At(chk.diag(decl)))
 		}
 	default:
-		cmdutil.Sink().Errorf(diag.Message("%v is an illegal Go type kind: %v", t.Name(), reflect.TypeOf(typ)))
+		cmdutil.Sink().Errorf(
+			diag.Message("%v is an illegal Go type kind: %v", t.Name(), reflect.TypeOf(typ)).At(chk.diag(decl)))
 	}
 	return nil, false
 }
@@ -282,30 +282,31 @@ func (chk *Checker) CheckStructFields(t *types.TypeName, s *types.Struct,
 				ok = false
 				cmdutil.Sink().Errorf(
 					diag.Message("field %v.%v is missing a `coco:\"<name>\"` tag directive",
-						t.Name(), fld.Name()))
+						t.Name(), fld.Name()).At(chk.diag(fld)))
 			}
 			if opts.Out && !isres {
 				ok = false
 				cmdutil.Sink().Errorf(
 					diag.Message("field %v.%v is marked `out` but is not a resource property",
-						t.Name(), fld.Name()))
+						t.Name(), fld.Name()).At(chk.diag(fld)))
 			}
 			if opts.Replaces && !isres {
 				ok = false
 				cmdutil.Sink().Errorf(
 					diag.Message("field %v.%v is marked `replaces` but is not a resource property",
-						t.Name(), fld.Name()))
+						t.Name(), fld.Name()).At(chk.diag(fld)))
 			}
 			if _, isptr := fld.Type().(*types.Pointer); !isptr && opts.Optional {
 				ok = false
 				cmdutil.Sink().Errorf(
 					diag.Message("field %v.%v is marked `optional` but is not a pointer in the IDL",
-						t.Name(), fld.Name()))
+						t.Name(), fld.Name()).At(chk.diag(fld)))
 			}
 			if err := chk.CheckIDLType(fld.Type(), opts); err != nil {
 				ok = false
 				cmdutil.Sink().Errorf(
-					diag.Message("field %v.%v is an not a legal IDL type: %v", t.Name(), fld.Name(), err))
+					diag.Message("field %v.%v is an not a legal IDL type: %v",
+						t.Name(), fld.Name(), err).At(chk.diag(fld)))
 			}
 		}
 	}
