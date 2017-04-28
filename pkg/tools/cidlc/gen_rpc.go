@@ -24,6 +24,7 @@ type RPCGenerator struct {
 	Out         string            // where RPC stub outputs will be saved.
 	CurrPkg     *Package          // the package currently being visited.
 	CurrFile    string            // the file currently being visited.
+	FileHadRes  bool              // true if the file had at least one resource.
 	FileImports map[string]string // a map of foreign packages used in a file.
 }
 
@@ -67,9 +68,12 @@ func (g *RPCGenerator) Generate(pkg *Package) error {
 }
 
 func (g *RPCGenerator) EmitFile(file string, pkg *Package, members []Member) error {
-	oldimports := g.FileImports
-	g.FileImports = make(map[string]string)
-	defer (func() { g.FileImports = oldimports })()
+	oldHadRes, oldImports := g.FileHadRes, g.FileImports
+	g.FileHadRes, g.FileImports = false, make(map[string]string)
+	defer (func() {
+		g.FileHadRes = oldHadRes
+		g.FileImports = oldImports
+	})()
 
 	// First, generate the body.  This is required first so we know which imports to emit.
 	body := g.genFileBody(file, pkg, members)
@@ -90,48 +94,56 @@ func (g *RPCGenerator) EmitFile(file string, pkg *Package, members []Member) err
 	writefmtln(w, "")
 
 	// And all of the imports that we're going to need.
-	// TODO: what about imports for cross-package references.
-	writefmtln(w, "import (")
-	writefmtln(w, `    "errors"`)
-	writefmtln(w, "")
-	writefmtln(w, `    pbempty "github.com/golang/protobuf/ptypes/empty"`)
-	writefmtln(w, `    pbstruct "github.com/golang/protobuf/ptypes/struct"`)
-	writefmtln(w, `    "golang.org/x/net/context"`)
-	writefmtln(w, "")
-	writefmtln(w, `    "github.com/pulumi/coconut/pkg/resource"`)
-	writefmtln(w, `    "github.com/pulumi/coconut/pkg/tokens"`)
-	writefmtln(w, `    "github.com/pulumi/coconut/pkg/util/contract"`)
-	writefmtln(w, `    "github.com/pulumi/coconut/pkg/util/mapper"`)
-	writefmtln(w, `    "github.com/pulumi/coconut/sdk/go/pkg/cocorpc"`)
-	if len(g.FileImports) > 0 {
-		writefmtln(w, "")
-		// Sort the imports so they are in a correct, deterministic order.
-		var imports []string
-		for imp := range g.FileImports {
-			imports = append(imports, imp)
+	if g.FileHadRes || len(g.FileImports) > 0 {
+		writefmtln(w, "import (")
+
+		if g.FileHadRes {
+			writefmtln(w, `    "errors"`)
+			writefmtln(w, "")
+			writefmtln(w, `    pbempty "github.com/golang/protobuf/ptypes/empty"`)
+			writefmtln(w, `    pbstruct "github.com/golang/protobuf/ptypes/struct"`)
+			writefmtln(w, `    "golang.org/x/net/context"`)
+			writefmtln(w, "")
+			writefmtln(w, `    "github.com/pulumi/coconut/pkg/resource"`)
+			writefmtln(w, `    "github.com/pulumi/coconut/pkg/tokens"`)
+			writefmtln(w, `    "github.com/pulumi/coconut/pkg/util/contract"`)
+			writefmtln(w, `    "github.com/pulumi/coconut/pkg/util/mapper"`)
+			writefmtln(w, `    "github.com/pulumi/coconut/sdk/go/pkg/cocorpc"`)
 		}
-		sort.Strings(imports)
 
-		// Now just emit a list of imports with their given names.
-		for _, imp := range imports {
-			name := g.FileImports[imp]
-
-			// If the import referenced one of the IDL packages, we must rewrite it to an RPC package.
-			contract.Assertf(strings.HasPrefix(imp, g.IDLPkgBase),
-				"Inter-IDL package references not yet supported (%v is not part of %v)", imp, g.IDLPkgBase)
-			var imppath string
-			if imp == g.IDLPkgBase {
-				imppath = g.RPCPkgBase
-			} else {
-				relimp := imp[len(g.IDLPkgBase)+1:]
-				imppath = g.RPCPkgBase + "/" + relimp
+		if len(g.FileImports) > 0 {
+			if g.FileHadRes {
+				writefmtln(w, "")
 			}
+			// Sort the imports so they are in a correct, deterministic order.
+			var imports []string
+			for imp := range g.FileImports {
+				imports = append(imports, imp)
+			}
+			sort.Strings(imports)
 
-			writefmtln(w, `    %v "%v"`, name, imppath)
+			// Now just emit a list of imports with their given names.
+			for _, imp := range imports {
+				name := g.FileImports[imp]
+
+				// If the import referenced one of the IDL packages, we must rewrite it to an RPC package.
+				contract.Assertf(strings.HasPrefix(imp, g.IDLPkgBase),
+					"Inter-IDL package references not yet supported (%v is not part of %v)", imp, g.IDLPkgBase)
+				var imppath string
+				if imp == g.IDLPkgBase {
+					imppath = g.RPCPkgBase
+				} else {
+					relimp := imp[len(g.IDLPkgBase)+1:]
+					imppath = g.RPCPkgBase + "/" + relimp
+				}
+
+				writefmtln(w, `    %v "%v"`, name, imppath)
+			}
 		}
+
+		writefmtln(w, ")")
+		writefmtln(w, "")
 	}
-	writefmtln(w, ")")
-	writefmtln(w, "")
 
 	// Now finally emit the actual body and close out the file.
 	writefmtln(w, "%v", body)
@@ -190,6 +202,8 @@ func (g *RPCGenerator) getFileModule(file string) tokens.Module {
 }
 
 func (g *RPCGenerator) EmitResource(w *bufio.Writer, module tokens.Module, pkg *Package, res *Resource) {
+	g.FileHadRes = true // remember we had a resource so we import the right things.
+
 	name := res.Name()
 	writefmtln(w, "/* RPC stubs for %v resource provider */", name)
 	writefmtln(w, "")
