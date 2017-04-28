@@ -90,7 +90,7 @@ func (g *RPCGenerator) EmitFile(file string, pkg *Package, members []Member) err
 	emitHeaderWarning(w)
 
 	// Now emit the package name at the top-level.
-	writefmtln(w, "package %vrpc", pkg.Name)
+	writefmtln(w, "package %v", pkg.Pkginfo.Pkg.Name())
 	writefmtln(w, "")
 
 	// And all of the imports that we're going to need.
