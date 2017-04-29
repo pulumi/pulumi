@@ -25,13 +25,13 @@ const StageToken = tokens.Type("aws:apigateway/stage:Stage")
 // StageProviderOps is a pluggable interface for Stage-related management functionality.
 type StageProviderOps interface {
     Check(ctx context.Context, obj *Stage) ([]mapper.FieldError, error)
-    Create(ctx context.Context, obj *Stage) (string, error)
-    Get(ctx context.Context, id string) (*Stage, error)
+    Create(ctx context.Context, obj *Stage) (resource.ID, error)
+    Get(ctx context.Context, id resource.ID) (*Stage, error)
     InspectChange(ctx context.Context,
-        id string, old *Stage, new *Stage, diff *resource.ObjectDiff) ([]string, error)
+        id resource.ID, old *Stage, new *Stage, diff *resource.ObjectDiff) ([]string, error)
     Update(ctx context.Context,
-        id string, old *Stage, new *Stage, diff *resource.ObjectDiff) error
-    Delete(ctx context.Context, id string) error
+        id resource.ID, old *Stage, new *Stage, diff *resource.ObjectDiff) error
+    Delete(ctx context.Context, id resource.ID) error
 }
 
 // StageProvider is a dynamic gRPC-based plugin for managing Stage resources.
@@ -86,14 +86,14 @@ func (p *StageProvider) Create(
         return nil, err
     }
     return &cocorpc.CreateResponse{
-        Id:   id,
+        Id:   string(id),
     }, nil
 }
 
 func (p *StageProvider) Get(
     ctx context.Context, req *cocorpc.GetRequest) (*cocorpc.GetResponse, error) {
     contract.Assert(req.GetType() == string(StageToken))
-    id := req.GetId()
+    id := resource.ID(req.GetId())
     obj, err := p.ops.Get(ctx, id)
     if err != nil {
         return nil, err
@@ -126,7 +126,8 @@ func (p *StageProvider) InspectChange(
     if diff.Changed("stageName") {
         replaces = append(replaces, "stageName")
     }
-    more, err := p.ops.InspectChange(ctx, req.GetId(), old, new, diff)
+    id := resource.ID(req.GetId())
+    more, err := p.ops.InspectChange(ctx, id, old, new, diff)
     if err != nil {
         return nil, err
     }
@@ -138,6 +139,7 @@ func (p *StageProvider) InspectChange(
 func (p *StageProvider) Update(
     ctx context.Context, req *cocorpc.ChangeRequest) (*pbempty.Empty, error) {
     contract.Assert(req.GetType() == string(StageToken))
+    id := resource.ID(req.GetId())
     old, oldprops, err := p.Unmarshal(req.GetOlds())
     if err != nil {
         return nil, err
@@ -147,7 +149,7 @@ func (p *StageProvider) Update(
         return nil, err
     }
     diff := oldprops.Diff(newprops)
-    if err := p.ops.Update(ctx, req.GetId(), old, new, diff); err != nil {
+    if err := p.ops.Update(ctx, id, old, new, diff); err != nil {
         return nil, err
     }
     return &pbempty.Empty{}, nil
@@ -156,7 +158,8 @@ func (p *StageProvider) Update(
 func (p *StageProvider) Delete(
     ctx context.Context, req *cocorpc.DeleteRequest) (*pbempty.Empty, error) {
     contract.Assert(req.GetType() == string(StageToken))
-    if err := p.ops.Delete(ctx, req.GetId()); err != nil {
+    id := resource.ID(req.GetId())
+    if err := p.ops.Delete(ctx, id); err != nil {
         return nil, err
     }
     return &pbempty.Empty{}, nil

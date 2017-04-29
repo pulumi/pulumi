@@ -27,13 +27,13 @@ const ActionTargetToken = tokens.Type("aws:cloudwatch/alarm:ActionTarget")
 // ActionTargetProviderOps is a pluggable interface for ActionTarget-related management functionality.
 type ActionTargetProviderOps interface {
     Check(ctx context.Context, obj *ActionTarget) ([]mapper.FieldError, error)
-    Create(ctx context.Context, obj *ActionTarget) (string, error)
-    Get(ctx context.Context, id string) (*ActionTarget, error)
+    Create(ctx context.Context, obj *ActionTarget) (resource.ID, error)
+    Get(ctx context.Context, id resource.ID) (*ActionTarget, error)
     InspectChange(ctx context.Context,
-        id string, old *ActionTarget, new *ActionTarget, diff *resource.ObjectDiff) ([]string, error)
+        id resource.ID, old *ActionTarget, new *ActionTarget, diff *resource.ObjectDiff) ([]string, error)
     Update(ctx context.Context,
-        id string, old *ActionTarget, new *ActionTarget, diff *resource.ObjectDiff) error
-    Delete(ctx context.Context, id string) error
+        id resource.ID, old *ActionTarget, new *ActionTarget, diff *resource.ObjectDiff) error
+    Delete(ctx context.Context, id resource.ID) error
 }
 
 // ActionTargetProvider is a dynamic gRPC-based plugin for managing ActionTarget resources.
@@ -88,14 +88,14 @@ func (p *ActionTargetProvider) Create(
         return nil, err
     }
     return &cocorpc.CreateResponse{
-        Id:   id,
+        Id:   string(id),
     }, nil
 }
 
 func (p *ActionTargetProvider) Get(
     ctx context.Context, req *cocorpc.GetRequest) (*cocorpc.GetResponse, error) {
     contract.Assert(req.GetType() == string(ActionTargetToken))
-    id := req.GetId()
+    id := resource.ID(req.GetId())
     obj, err := p.ops.Get(ctx, id)
     if err != nil {
         return nil, err
@@ -125,7 +125,8 @@ func (p *ActionTargetProvider) InspectChange(
     if diff.Changed("topicName") {
         replaces = append(replaces, "topicName")
     }
-    more, err := p.ops.InspectChange(ctx, req.GetId(), old, new, diff)
+    id := resource.ID(req.GetId())
+    more, err := p.ops.InspectChange(ctx, id, old, new, diff)
     if err != nil {
         return nil, err
     }
@@ -137,6 +138,7 @@ func (p *ActionTargetProvider) InspectChange(
 func (p *ActionTargetProvider) Update(
     ctx context.Context, req *cocorpc.ChangeRequest) (*pbempty.Empty, error) {
     contract.Assert(req.GetType() == string(ActionTargetToken))
+    id := resource.ID(req.GetId())
     old, oldprops, err := p.Unmarshal(req.GetOlds())
     if err != nil {
         return nil, err
@@ -146,7 +148,7 @@ func (p *ActionTargetProvider) Update(
         return nil, err
     }
     diff := oldprops.Diff(newprops)
-    if err := p.ops.Update(ctx, req.GetId(), old, new, diff); err != nil {
+    if err := p.ops.Update(ctx, id, old, new, diff); err != nil {
         return nil, err
     }
     return &pbempty.Empty{}, nil
@@ -155,7 +157,8 @@ func (p *ActionTargetProvider) Update(
 func (p *ActionTargetProvider) Delete(
     ctx context.Context, req *cocorpc.DeleteRequest) (*pbempty.Empty, error) {
     contract.Assert(req.GetType() == string(ActionTargetToken))
-    if err := p.ops.Delete(ctx, req.GetId()); err != nil {
+    id := resource.ID(req.GetId())
+    if err := p.ops.Delete(ctx, id); err != nil {
         return nil, err
     }
     return &pbempty.Empty{}, nil
@@ -195,13 +198,13 @@ const AlarmToken = tokens.Type("aws:cloudwatch/alarm:Alarm")
 // AlarmProviderOps is a pluggable interface for Alarm-related management functionality.
 type AlarmProviderOps interface {
     Check(ctx context.Context, obj *Alarm) ([]mapper.FieldError, error)
-    Create(ctx context.Context, obj *Alarm) (string, error)
-    Get(ctx context.Context, id string) (*Alarm, error)
+    Create(ctx context.Context, obj *Alarm) (resource.ID, error)
+    Get(ctx context.Context, id resource.ID) (*Alarm, error)
     InspectChange(ctx context.Context,
-        id string, old *Alarm, new *Alarm, diff *resource.ObjectDiff) ([]string, error)
+        id resource.ID, old *Alarm, new *Alarm, diff *resource.ObjectDiff) ([]string, error)
     Update(ctx context.Context,
-        id string, old *Alarm, new *Alarm, diff *resource.ObjectDiff) error
-    Delete(ctx context.Context, id string) error
+        id resource.ID, old *Alarm, new *Alarm, diff *resource.ObjectDiff) error
+    Delete(ctx context.Context, id resource.ID) error
 }
 
 // AlarmProvider is a dynamic gRPC-based plugin for managing Alarm resources.
@@ -256,14 +259,14 @@ func (p *AlarmProvider) Create(
         return nil, err
     }
     return &cocorpc.CreateResponse{
-        Id:   id,
+        Id:   string(id),
     }, nil
 }
 
 func (p *AlarmProvider) Get(
     ctx context.Context, req *cocorpc.GetRequest) (*cocorpc.GetResponse, error) {
     contract.Assert(req.GetType() == string(AlarmToken))
-    id := req.GetId()
+    id := resource.ID(req.GetId())
     obj, err := p.ops.Get(ctx, id)
     if err != nil {
         return nil, err
@@ -293,7 +296,8 @@ func (p *AlarmProvider) InspectChange(
     if diff.Changed("alarmName") {
         replaces = append(replaces, "alarmName")
     }
-    more, err := p.ops.InspectChange(ctx, req.GetId(), old, new, diff)
+    id := resource.ID(req.GetId())
+    more, err := p.ops.InspectChange(ctx, id, old, new, diff)
     if err != nil {
         return nil, err
     }
@@ -305,6 +309,7 @@ func (p *AlarmProvider) InspectChange(
 func (p *AlarmProvider) Update(
     ctx context.Context, req *cocorpc.ChangeRequest) (*pbempty.Empty, error) {
     contract.Assert(req.GetType() == string(AlarmToken))
+    id := resource.ID(req.GetId())
     old, oldprops, err := p.Unmarshal(req.GetOlds())
     if err != nil {
         return nil, err
@@ -314,7 +319,7 @@ func (p *AlarmProvider) Update(
         return nil, err
     }
     diff := oldprops.Diff(newprops)
-    if err := p.ops.Update(ctx, req.GetId(), old, new, diff); err != nil {
+    if err := p.ops.Update(ctx, id, old, new, diff); err != nil {
         return nil, err
     }
     return &pbempty.Empty{}, nil
@@ -323,7 +328,8 @@ func (p *AlarmProvider) Update(
 func (p *AlarmProvider) Delete(
     ctx context.Context, req *cocorpc.DeleteRequest) (*pbempty.Empty, error) {
     contract.Assert(req.GetType() == string(AlarmToken))
-    if err := p.ops.Delete(ctx, req.GetId()); err != nil {
+    id := resource.ID(req.GetId())
+    if err := p.ops.Delete(ctx, id); err != nil {
         return nil, err
     }
     return &pbempty.Empty{}, nil

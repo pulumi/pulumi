@@ -39,13 +39,13 @@ const FunctionToken = tokens.Type("aws:lambda/function:Function")
 // FunctionProviderOps is a pluggable interface for Function-related management functionality.
 type FunctionProviderOps interface {
     Check(ctx context.Context, obj *Function) ([]mapper.FieldError, error)
-    Create(ctx context.Context, obj *Function) (string, *FunctionOuts, error)
-    Get(ctx context.Context, id string) (*Function, error)
+    Create(ctx context.Context, obj *Function) (resource.ID, *FunctionOuts, error)
+    Get(ctx context.Context, id resource.ID) (*Function, error)
     InspectChange(ctx context.Context,
-        id string, old *Function, new *Function, diff *resource.ObjectDiff) ([]string, error)
+        id resource.ID, old *Function, new *Function, diff *resource.ObjectDiff) ([]string, error)
     Update(ctx context.Context,
-        id string, old *Function, new *Function, diff *resource.ObjectDiff) error
-    Delete(ctx context.Context, id string) error
+        id resource.ID, old *Function, new *Function, diff *resource.ObjectDiff) error
+    Delete(ctx context.Context, id resource.ID) error
 }
 
 // FunctionProvider is a dynamic gRPC-based plugin for managing Function resources.
@@ -100,7 +100,7 @@ func (p *FunctionProvider) Create(
         return nil, err
     }
     return &cocorpc.CreateResponse{
-        Id:   id,
+        Id:   string(id),
         Outputs: resource.MarshalProperties(
             nil, resource.NewPropertyMap(outs), resource.MarshalOptions{},
         ),
@@ -110,7 +110,7 @@ func (p *FunctionProvider) Create(
 func (p *FunctionProvider) Get(
     ctx context.Context, req *cocorpc.GetRequest) (*cocorpc.GetResponse, error) {
     contract.Assert(req.GetType() == string(FunctionToken))
-    id := req.GetId()
+    id := resource.ID(req.GetId())
     obj, err := p.ops.Get(ctx, id)
     if err != nil {
         return nil, err
@@ -137,7 +137,8 @@ func (p *FunctionProvider) InspectChange(
     if diff.Changed("name") {
         replaces = append(replaces, "name")
     }
-    more, err := p.ops.InspectChange(ctx, req.GetId(), old, new, diff)
+    id := resource.ID(req.GetId())
+    more, err := p.ops.InspectChange(ctx, id, old, new, diff)
     if err != nil {
         return nil, err
     }
@@ -149,6 +150,7 @@ func (p *FunctionProvider) InspectChange(
 func (p *FunctionProvider) Update(
     ctx context.Context, req *cocorpc.ChangeRequest) (*pbempty.Empty, error) {
     contract.Assert(req.GetType() == string(FunctionToken))
+    id := resource.ID(req.GetId())
     old, oldprops, err := p.Unmarshal(req.GetOlds())
     if err != nil {
         return nil, err
@@ -158,7 +160,7 @@ func (p *FunctionProvider) Update(
         return nil, err
     }
     diff := oldprops.Diff(newprops)
-    if err := p.ops.Update(ctx, req.GetId(), old, new, diff); err != nil {
+    if err := p.ops.Update(ctx, id, old, new, diff); err != nil {
         return nil, err
     }
     return &pbempty.Empty{}, nil
@@ -167,7 +169,8 @@ func (p *FunctionProvider) Update(
 func (p *FunctionProvider) Delete(
     ctx context.Context, req *cocorpc.DeleteRequest) (*pbempty.Empty, error) {
     contract.Assert(req.GetType() == string(FunctionToken))
-    if err := p.ops.Delete(ctx, req.GetId()); err != nil {
+    id := resource.ID(req.GetId())
+    if err := p.ops.Delete(ctx, id); err != nil {
         return nil, err
     }
     return &pbempty.Empty{}, nil

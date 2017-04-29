@@ -25,13 +25,13 @@ const SecurityGroupIngressToken = tokens.Type("aws:ec2/securityGroupIngress:Secu
 // SecurityGroupIngressProviderOps is a pluggable interface for SecurityGroupIngress-related management functionality.
 type SecurityGroupIngressProviderOps interface {
     Check(ctx context.Context, obj *SecurityGroupIngress) ([]mapper.FieldError, error)
-    Create(ctx context.Context, obj *SecurityGroupIngress) (string, error)
-    Get(ctx context.Context, id string) (*SecurityGroupIngress, error)
+    Create(ctx context.Context, obj *SecurityGroupIngress) (resource.ID, error)
+    Get(ctx context.Context, id resource.ID) (*SecurityGroupIngress, error)
     InspectChange(ctx context.Context,
-        id string, old *SecurityGroupIngress, new *SecurityGroupIngress, diff *resource.ObjectDiff) ([]string, error)
+        id resource.ID, old *SecurityGroupIngress, new *SecurityGroupIngress, diff *resource.ObjectDiff) ([]string, error)
     Update(ctx context.Context,
-        id string, old *SecurityGroupIngress, new *SecurityGroupIngress, diff *resource.ObjectDiff) error
-    Delete(ctx context.Context, id string) error
+        id resource.ID, old *SecurityGroupIngress, new *SecurityGroupIngress, diff *resource.ObjectDiff) error
+    Delete(ctx context.Context, id resource.ID) error
 }
 
 // SecurityGroupIngressProvider is a dynamic gRPC-based plugin for managing SecurityGroupIngress resources.
@@ -86,14 +86,14 @@ func (p *SecurityGroupIngressProvider) Create(
         return nil, err
     }
     return &cocorpc.CreateResponse{
-        Id:   id,
+        Id:   string(id),
     }, nil
 }
 
 func (p *SecurityGroupIngressProvider) Get(
     ctx context.Context, req *cocorpc.GetRequest) (*cocorpc.GetResponse, error) {
     contract.Assert(req.GetType() == string(SecurityGroupIngressToken))
-    id := req.GetId()
+    id := resource.ID(req.GetId())
     obj, err := p.ops.Get(ctx, id)
     if err != nil {
         return nil, err
@@ -150,7 +150,8 @@ func (p *SecurityGroupIngressProvider) InspectChange(
     if diff.Changed("toPort") {
         replaces = append(replaces, "toPort")
     }
-    more, err := p.ops.InspectChange(ctx, req.GetId(), old, new, diff)
+    id := resource.ID(req.GetId())
+    more, err := p.ops.InspectChange(ctx, id, old, new, diff)
     if err != nil {
         return nil, err
     }
@@ -162,6 +163,7 @@ func (p *SecurityGroupIngressProvider) InspectChange(
 func (p *SecurityGroupIngressProvider) Update(
     ctx context.Context, req *cocorpc.ChangeRequest) (*pbempty.Empty, error) {
     contract.Assert(req.GetType() == string(SecurityGroupIngressToken))
+    id := resource.ID(req.GetId())
     old, oldprops, err := p.Unmarshal(req.GetOlds())
     if err != nil {
         return nil, err
@@ -171,7 +173,7 @@ func (p *SecurityGroupIngressProvider) Update(
         return nil, err
     }
     diff := oldprops.Diff(newprops)
-    if err := p.ops.Update(ctx, req.GetId(), old, new, diff); err != nil {
+    if err := p.ops.Update(ctx, id, old, new, diff); err != nil {
         return nil, err
     }
     return &pbempty.Empty{}, nil
@@ -180,7 +182,8 @@ func (p *SecurityGroupIngressProvider) Update(
 func (p *SecurityGroupIngressProvider) Delete(
     ctx context.Context, req *cocorpc.DeleteRequest) (*pbempty.Empty, error) {
     contract.Assert(req.GetType() == string(SecurityGroupIngressToken))
-    if err := p.ops.Delete(ctx, req.GetId()); err != nil {
+    id := resource.ID(req.GetId())
+    if err := p.ops.Delete(ctx, id); err != nil {
         return nil, err
     }
     return &pbempty.Empty{}, nil

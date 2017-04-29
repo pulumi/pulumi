@@ -238,17 +238,17 @@ func (g *RPCGenerator) EmitResource(w *bufio.Writer, module tokens.Module, pkg *
 	if !res.Named {
 		writefmtln(w, "    Name(ctx context.Context, obj *%v) (string, error)", name)
 	}
-	writefmt(w, "    Create(ctx context.Context, obj *%v) (string, ", name)
+	writefmt(w, "    Create(ctx context.Context, obj *%v) (resource.ID, ", name)
 	if hasouts {
 		writefmt(w, "*%vOuts, ", name)
 	}
 	writefmtln(w, "error)")
-	writefmtln(w, "    Get(ctx context.Context, id string) (*%v, error)", name)
+	writefmtln(w, "    Get(ctx context.Context, id resource.ID) (*%v, error)", name)
 	writefmtln(w, "    InspectChange(ctx context.Context,")
-	writefmtln(w, "        id string, old *%[1]v, new *%[1]v, diff *resource.ObjectDiff) ([]string, error)", name)
+	writefmtln(w, "        id resource.ID, old *%[1]v, new *%[1]v, diff *resource.ObjectDiff) ([]string, error)", name)
 	writefmtln(w, "    Update(ctx context.Context,")
-	writefmtln(w, "        id string, old *%[1]v, new *%[1]v, diff *resource.ObjectDiff) error", name)
-	writefmtln(w, "    Delete(ctx context.Context, id string) error")
+	writefmtln(w, "        id resource.ID, old *%[1]v, new *%[1]v, diff *resource.ObjectDiff) error", name)
+	writefmtln(w, "    Delete(ctx context.Context, id resource.ID) error")
 	writefmtln(w, "}")
 	writefmtln(w, "")
 
@@ -317,7 +317,7 @@ func (g *RPCGenerator) EmitResource(w *bufio.Writer, module tokens.Module, pkg *
 	writefmtln(w, "    }")
 	// TODO: validate the output (e.g., required ones are non-nil, etc).
 	writefmtln(w, "    return &cocorpc.CreateResponse{")
-	writefmtln(w, "        Id:   id,")
+	writefmtln(w, "        Id:   string(id),")
 	if hasouts {
 		writefmtln(w, "        Outputs: resource.MarshalProperties(")
 		writefmtln(w, "            nil, resource.NewPropertyMap(outs), resource.MarshalOptions{},")
@@ -329,7 +329,7 @@ func (g *RPCGenerator) EmitResource(w *bufio.Writer, module tokens.Module, pkg *
 	writefmtln(w, "func (p *%vProvider) Get(", name)
 	writefmtln(w, "    ctx context.Context, req *cocorpc.GetRequest) (*cocorpc.GetResponse, error) {")
 	writefmtln(w, "    contract.Assert(req.GetType() == string(%vToken))", name)
-	writefmtln(w, "    id := req.GetId()")
+	writefmtln(w, "    id := resource.ID(req.GetId())")
 	writefmtln(w, "    obj, err := p.ops.Get(ctx, id)")
 	writefmtln(w, "    if err != nil {")
 	writefmtln(w, "        return nil, err")
@@ -360,7 +360,8 @@ func (g *RPCGenerator) EmitResource(w *bufio.Writer, module tokens.Module, pkg *
 			writefmtln(w, "    }")
 		}
 	}
-	writefmtln(w, "    more, err := p.ops.InspectChange(ctx, req.GetId(), old, new, diff)")
+	writefmtln(w, "    id := resource.ID(req.GetId())")
+	writefmtln(w, "    more, err := p.ops.InspectChange(ctx, id, old, new, diff)")
 	writefmtln(w, "    if err != nil {")
 	writefmtln(w, "        return nil, err")
 	writefmtln(w, "    }")
@@ -372,6 +373,7 @@ func (g *RPCGenerator) EmitResource(w *bufio.Writer, module tokens.Module, pkg *
 	writefmtln(w, "func (p *%vProvider) Update(", name)
 	writefmtln(w, "    ctx context.Context, req *cocorpc.ChangeRequest) (*pbempty.Empty, error) {")
 	writefmtln(w, "    contract.Assert(req.GetType() == string(%vToken))", name)
+	writefmtln(w, "    id := resource.ID(req.GetId())")
 	writefmtln(w, "    old, oldprops, err := p.Unmarshal(req.GetOlds())")
 	writefmtln(w, "    if err != nil {")
 	writefmtln(w, "        return nil, err")
@@ -381,7 +383,7 @@ func (g *RPCGenerator) EmitResource(w *bufio.Writer, module tokens.Module, pkg *
 	writefmtln(w, "        return nil, err")
 	writefmtln(w, "    }")
 	writefmtln(w, "    diff := oldprops.Diff(newprops)")
-	writefmtln(w, "    if err := p.ops.Update(ctx, req.GetId(), old, new, diff); err != nil {")
+	writefmtln(w, "    if err := p.ops.Update(ctx, id, old, new, diff); err != nil {")
 	writefmtln(w, "        return nil, err")
 	writefmtln(w, "    }")
 	writefmtln(w, "    return &pbempty.Empty{}, nil")
@@ -390,7 +392,8 @@ func (g *RPCGenerator) EmitResource(w *bufio.Writer, module tokens.Module, pkg *
 	writefmtln(w, "func (p *%vProvider) Delete(", name)
 	writefmtln(w, "    ctx context.Context, req *cocorpc.DeleteRequest) (*pbempty.Empty, error) {")
 	writefmtln(w, "    contract.Assert(req.GetType() == string(%vToken))", name)
-	writefmtln(w, "    if err := p.ops.Delete(ctx, req.GetId()); err != nil {")
+	writefmtln(w, "    id := resource.ID(req.GetId())")
+	writefmtln(w, "    if err := p.ops.Delete(ctx, id); err != nil {")
 	writefmtln(w, "        return nil, err")
 	writefmtln(w, "    }")
 	writefmtln(w, "    return &pbempty.Empty{}, nil")

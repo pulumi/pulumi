@@ -27,13 +27,13 @@ const RoleToken = tokens.Type("aws:iam/role:Role")
 // RoleProviderOps is a pluggable interface for Role-related management functionality.
 type RoleProviderOps interface {
     Check(ctx context.Context, obj *Role) ([]mapper.FieldError, error)
-    Create(ctx context.Context, obj *Role) (string, *RoleOuts, error)
-    Get(ctx context.Context, id string) (*Role, error)
+    Create(ctx context.Context, obj *Role) (resource.ID, *RoleOuts, error)
+    Get(ctx context.Context, id resource.ID) (*Role, error)
     InspectChange(ctx context.Context,
-        id string, old *Role, new *Role, diff *resource.ObjectDiff) ([]string, error)
+        id resource.ID, old *Role, new *Role, diff *resource.ObjectDiff) ([]string, error)
     Update(ctx context.Context,
-        id string, old *Role, new *Role, diff *resource.ObjectDiff) error
-    Delete(ctx context.Context, id string) error
+        id resource.ID, old *Role, new *Role, diff *resource.ObjectDiff) error
+    Delete(ctx context.Context, id resource.ID) error
 }
 
 // RoleProvider is a dynamic gRPC-based plugin for managing Role resources.
@@ -88,7 +88,7 @@ func (p *RoleProvider) Create(
         return nil, err
     }
     return &cocorpc.CreateResponse{
-        Id:   id,
+        Id:   string(id),
         Outputs: resource.MarshalProperties(
             nil, resource.NewPropertyMap(outs), resource.MarshalOptions{},
         ),
@@ -98,7 +98,7 @@ func (p *RoleProvider) Create(
 func (p *RoleProvider) Get(
     ctx context.Context, req *cocorpc.GetRequest) (*cocorpc.GetResponse, error) {
     contract.Assert(req.GetType() == string(RoleToken))
-    id := req.GetId()
+    id := resource.ID(req.GetId())
     obj, err := p.ops.Get(ctx, id)
     if err != nil {
         return nil, err
@@ -131,7 +131,8 @@ func (p *RoleProvider) InspectChange(
     if diff.Changed("roleName") {
         replaces = append(replaces, "roleName")
     }
-    more, err := p.ops.InspectChange(ctx, req.GetId(), old, new, diff)
+    id := resource.ID(req.GetId())
+    more, err := p.ops.InspectChange(ctx, id, old, new, diff)
     if err != nil {
         return nil, err
     }
@@ -143,6 +144,7 @@ func (p *RoleProvider) InspectChange(
 func (p *RoleProvider) Update(
     ctx context.Context, req *cocorpc.ChangeRequest) (*pbempty.Empty, error) {
     contract.Assert(req.GetType() == string(RoleToken))
+    id := resource.ID(req.GetId())
     old, oldprops, err := p.Unmarshal(req.GetOlds())
     if err != nil {
         return nil, err
@@ -152,7 +154,7 @@ func (p *RoleProvider) Update(
         return nil, err
     }
     diff := oldprops.Diff(newprops)
-    if err := p.ops.Update(ctx, req.GetId(), old, new, diff); err != nil {
+    if err := p.ops.Update(ctx, id, old, new, diff); err != nil {
         return nil, err
     }
     return &pbempty.Empty{}, nil
@@ -161,7 +163,8 @@ func (p *RoleProvider) Update(
 func (p *RoleProvider) Delete(
     ctx context.Context, req *cocorpc.DeleteRequest) (*pbempty.Empty, error) {
     contract.Assert(req.GetType() == string(RoleToken))
-    if err := p.ops.Delete(ctx, req.GetId()); err != nil {
+    id := resource.ID(req.GetId())
+    if err := p.ops.Delete(ctx, id); err != nil {
         return nil, err
     }
     return &pbempty.Empty{}, nil

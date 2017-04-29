@@ -71,7 +71,7 @@ func (p *objProvider) Name(ctx context.Context, obj *s3.Object) (string, error) 
 
 // Create allocates a new instance of the provided resource and returns its unique ID afterwards.  (The input ID
 // must be blank.)  If this call fails, the resource must not have been created (i.e., it is "transacational").
-func (p *objProvider) Create(ctx context.Context, obj *s3.Object) (string, error) {
+func (p *objProvider) Create(ctx context.Context, obj *s3.Object) (resource.ID, error) {
 	// Fetch the contents of the body by way of the source asset.
 	body, err := obj.Source.Read()
 	if err != nil {
@@ -95,35 +95,36 @@ func (p *objProvider) Create(ctx context.Context, obj *s3.Object) (string, error
 	if err := p.waitForObjectState(buck, obj.Key, true); err != nil {
 		return "", err
 	}
-	return buck + ObjectIDDelim + obj.Key, nil
+	return resource.ID(buck + ObjectIDDelim + obj.Key), nil
 }
 
 // Get reads the instance state identified by ID, returning a populated resource object, or an error if not found.
-func (p *objProvider) Get(ctx context.Context, id string) (*s3.Object, error) {
+func (p *objProvider) Get(ctx context.Context, id resource.ID) (*s3.Object, error) {
 	return nil, errors.New("Not yet implemented")
 }
 
 // InspectChange checks what impacts a hypothetical update will have on the resource's properties.
-func (p *objProvider) InspectChange(ctx context.Context, id string,
+func (p *objProvider) InspectChange(ctx context.Context, id resource.ID,
 	old *s3.Object, new *s3.Object, diff *resource.ObjectDiff) ([]string, error) {
 	return nil, errors.New("Not yet implemented")
 }
 
 // Update updates an existing resource with new values.  Only those values in the provided property bag are updated
 // to new values.  The resource ID is returned and may be different if the resource had to be recreated.
-func (p *objProvider) Update(ctx context.Context, id string,
+func (p *objProvider) Update(ctx context.Context, id resource.ID,
 	old *s3.Object, new *s3.Object, diff *resource.ObjectDiff) error {
 	return errors.New("Not yet implemented")
 }
 
 // Delete tears down an existing resource with the given ID.  If it fails, the resource is assumed to still exist.
-func (p *objProvider) Delete(ctx context.Context, id string) error {
+func (p *objProvider) Delete(ctx context.Context, id resource.ID) error {
 	// First, perform the deletion.
 	fmt.Printf("Deleting S3 Object '%v'\n", id)
-	delim := strings.Index(id, ObjectIDDelim)
+	ids := string(id)
+	delim := strings.Index(ids, ObjectIDDelim)
 	contract.Assertf(delim != -1, "Missing object ID delimiter (`<bucket>%v<key>`)", ObjectIDDelim)
-	bucket := id[:delim]
-	key := id[delim+1:]
+	bucket := ids[:delim]
+	key := ids[delim+1:]
 	if _, err := p.ctx.S3().DeleteObject(&awss3.DeleteObjectInput{
 		Bucket: aws.String(bucket),
 		Key:    aws.String(key),

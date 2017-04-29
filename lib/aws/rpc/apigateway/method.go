@@ -73,13 +73,13 @@ const MethodToken = tokens.Type("aws:apigateway/method:Method")
 // MethodProviderOps is a pluggable interface for Method-related management functionality.
 type MethodProviderOps interface {
     Check(ctx context.Context, obj *Method) ([]mapper.FieldError, error)
-    Create(ctx context.Context, obj *Method) (string, error)
-    Get(ctx context.Context, id string) (*Method, error)
+    Create(ctx context.Context, obj *Method) (resource.ID, error)
+    Get(ctx context.Context, id resource.ID) (*Method, error)
     InspectChange(ctx context.Context,
-        id string, old *Method, new *Method, diff *resource.ObjectDiff) ([]string, error)
+        id resource.ID, old *Method, new *Method, diff *resource.ObjectDiff) ([]string, error)
     Update(ctx context.Context,
-        id string, old *Method, new *Method, diff *resource.ObjectDiff) error
-    Delete(ctx context.Context, id string) error
+        id resource.ID, old *Method, new *Method, diff *resource.ObjectDiff) error
+    Delete(ctx context.Context, id resource.ID) error
 }
 
 // MethodProvider is a dynamic gRPC-based plugin for managing Method resources.
@@ -134,14 +134,14 @@ func (p *MethodProvider) Create(
         return nil, err
     }
     return &cocorpc.CreateResponse{
-        Id:   id,
+        Id:   string(id),
     }, nil
 }
 
 func (p *MethodProvider) Get(
     ctx context.Context, req *cocorpc.GetRequest) (*cocorpc.GetResponse, error) {
     contract.Assert(req.GetType() == string(MethodToken))
-    id := req.GetId()
+    id := resource.ID(req.GetId())
     obj, err := p.ops.Get(ctx, id)
     if err != nil {
         return nil, err
@@ -168,7 +168,8 @@ func (p *MethodProvider) InspectChange(
     if diff.Changed("name") {
         replaces = append(replaces, "name")
     }
-    more, err := p.ops.InspectChange(ctx, req.GetId(), old, new, diff)
+    id := resource.ID(req.GetId())
+    more, err := p.ops.InspectChange(ctx, id, old, new, diff)
     if err != nil {
         return nil, err
     }
@@ -180,6 +181,7 @@ func (p *MethodProvider) InspectChange(
 func (p *MethodProvider) Update(
     ctx context.Context, req *cocorpc.ChangeRequest) (*pbempty.Empty, error) {
     contract.Assert(req.GetType() == string(MethodToken))
+    id := resource.ID(req.GetId())
     old, oldprops, err := p.Unmarshal(req.GetOlds())
     if err != nil {
         return nil, err
@@ -189,7 +191,7 @@ func (p *MethodProvider) Update(
         return nil, err
     }
     diff := oldprops.Diff(newprops)
-    if err := p.ops.Update(ctx, req.GetId(), old, new, diff); err != nil {
+    if err := p.ops.Update(ctx, id, old, new, diff); err != nil {
         return nil, err
     }
     return &pbempty.Empty{}, nil
@@ -198,7 +200,8 @@ func (p *MethodProvider) Update(
 func (p *MethodProvider) Delete(
     ctx context.Context, req *cocorpc.DeleteRequest) (*pbempty.Empty, error) {
     contract.Assert(req.GetType() == string(MethodToken))
-    if err := p.ops.Delete(ctx, req.GetId()); err != nil {
+    id := resource.ID(req.GetId())
+    if err := p.ops.Delete(ctx, id); err != nil {
         return nil, err
     }
     return &pbempty.Empty{}, nil

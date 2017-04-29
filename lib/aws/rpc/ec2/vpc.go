@@ -25,13 +25,13 @@ const VPCToken = tokens.Type("aws:ec2/vpc:VPC")
 // VPCProviderOps is a pluggable interface for VPC-related management functionality.
 type VPCProviderOps interface {
     Check(ctx context.Context, obj *VPC) ([]mapper.FieldError, error)
-    Create(ctx context.Context, obj *VPC) (string, error)
-    Get(ctx context.Context, id string) (*VPC, error)
+    Create(ctx context.Context, obj *VPC) (resource.ID, error)
+    Get(ctx context.Context, id resource.ID) (*VPC, error)
     InspectChange(ctx context.Context,
-        id string, old *VPC, new *VPC, diff *resource.ObjectDiff) ([]string, error)
+        id resource.ID, old *VPC, new *VPC, diff *resource.ObjectDiff) ([]string, error)
     Update(ctx context.Context,
-        id string, old *VPC, new *VPC, diff *resource.ObjectDiff) error
-    Delete(ctx context.Context, id string) error
+        id resource.ID, old *VPC, new *VPC, diff *resource.ObjectDiff) error
+    Delete(ctx context.Context, id resource.ID) error
 }
 
 // VPCProvider is a dynamic gRPC-based plugin for managing VPC resources.
@@ -86,14 +86,14 @@ func (p *VPCProvider) Create(
         return nil, err
     }
     return &cocorpc.CreateResponse{
-        Id:   id,
+        Id:   string(id),
     }, nil
 }
 
 func (p *VPCProvider) Get(
     ctx context.Context, req *cocorpc.GetRequest) (*cocorpc.GetResponse, error) {
     contract.Assert(req.GetType() == string(VPCToken))
-    id := req.GetId()
+    id := resource.ID(req.GetId())
     obj, err := p.ops.Get(ctx, id)
     if err != nil {
         return nil, err
@@ -126,7 +126,8 @@ func (p *VPCProvider) InspectChange(
     if diff.Changed("instanceTenancy") {
         replaces = append(replaces, "instanceTenancy")
     }
-    more, err := p.ops.InspectChange(ctx, req.GetId(), old, new, diff)
+    id := resource.ID(req.GetId())
+    more, err := p.ops.InspectChange(ctx, id, old, new, diff)
     if err != nil {
         return nil, err
     }
@@ -138,6 +139,7 @@ func (p *VPCProvider) InspectChange(
 func (p *VPCProvider) Update(
     ctx context.Context, req *cocorpc.ChangeRequest) (*pbempty.Empty, error) {
     contract.Assert(req.GetType() == string(VPCToken))
+    id := resource.ID(req.GetId())
     old, oldprops, err := p.Unmarshal(req.GetOlds())
     if err != nil {
         return nil, err
@@ -147,7 +149,7 @@ func (p *VPCProvider) Update(
         return nil, err
     }
     diff := oldprops.Diff(newprops)
-    if err := p.ops.Update(ctx, req.GetId(), old, new, diff); err != nil {
+    if err := p.ops.Update(ctx, id, old, new, diff); err != nil {
         return nil, err
     }
     return &pbempty.Empty{}, nil
@@ -156,7 +158,8 @@ func (p *VPCProvider) Update(
 func (p *VPCProvider) Delete(
     ctx context.Context, req *cocorpc.DeleteRequest) (*pbempty.Empty, error) {
     contract.Assert(req.GetType() == string(VPCToken))
-    if err := p.ops.Delete(ctx, req.GetId()); err != nil {
+    id := resource.ID(req.GetId())
+    if err := p.ops.Delete(ctx, id); err != nil {
         return nil, err
     }
     return &pbempty.Empty{}, nil

@@ -25,13 +25,13 @@ const ClientCertificateToken = tokens.Type("aws:apigateway/clientCertificate:Cli
 // ClientCertificateProviderOps is a pluggable interface for ClientCertificate-related management functionality.
 type ClientCertificateProviderOps interface {
     Check(ctx context.Context, obj *ClientCertificate) ([]mapper.FieldError, error)
-    Create(ctx context.Context, obj *ClientCertificate) (string, error)
-    Get(ctx context.Context, id string) (*ClientCertificate, error)
+    Create(ctx context.Context, obj *ClientCertificate) (resource.ID, error)
+    Get(ctx context.Context, id resource.ID) (*ClientCertificate, error)
     InspectChange(ctx context.Context,
-        id string, old *ClientCertificate, new *ClientCertificate, diff *resource.ObjectDiff) ([]string, error)
+        id resource.ID, old *ClientCertificate, new *ClientCertificate, diff *resource.ObjectDiff) ([]string, error)
     Update(ctx context.Context,
-        id string, old *ClientCertificate, new *ClientCertificate, diff *resource.ObjectDiff) error
-    Delete(ctx context.Context, id string) error
+        id resource.ID, old *ClientCertificate, new *ClientCertificate, diff *resource.ObjectDiff) error
+    Delete(ctx context.Context, id resource.ID) error
 }
 
 // ClientCertificateProvider is a dynamic gRPC-based plugin for managing ClientCertificate resources.
@@ -86,14 +86,14 @@ func (p *ClientCertificateProvider) Create(
         return nil, err
     }
     return &cocorpc.CreateResponse{
-        Id:   id,
+        Id:   string(id),
     }, nil
 }
 
 func (p *ClientCertificateProvider) Get(
     ctx context.Context, req *cocorpc.GetRequest) (*cocorpc.GetResponse, error) {
     contract.Assert(req.GetType() == string(ClientCertificateToken))
-    id := req.GetId()
+    id := resource.ID(req.GetId())
     obj, err := p.ops.Get(ctx, id)
     if err != nil {
         return nil, err
@@ -120,7 +120,8 @@ func (p *ClientCertificateProvider) InspectChange(
     if diff.Changed("name") {
         replaces = append(replaces, "name")
     }
-    more, err := p.ops.InspectChange(ctx, req.GetId(), old, new, diff)
+    id := resource.ID(req.GetId())
+    more, err := p.ops.InspectChange(ctx, id, old, new, diff)
     if err != nil {
         return nil, err
     }
@@ -132,6 +133,7 @@ func (p *ClientCertificateProvider) InspectChange(
 func (p *ClientCertificateProvider) Update(
     ctx context.Context, req *cocorpc.ChangeRequest) (*pbempty.Empty, error) {
     contract.Assert(req.GetType() == string(ClientCertificateToken))
+    id := resource.ID(req.GetId())
     old, oldprops, err := p.Unmarshal(req.GetOlds())
     if err != nil {
         return nil, err
@@ -141,7 +143,7 @@ func (p *ClientCertificateProvider) Update(
         return nil, err
     }
     diff := oldprops.Diff(newprops)
-    if err := p.ops.Update(ctx, req.GetId(), old, new, diff); err != nil {
+    if err := p.ops.Update(ctx, id, old, new, diff); err != nil {
         return nil, err
     }
     return &pbempty.Empty{}, nil
@@ -150,7 +152,8 @@ func (p *ClientCertificateProvider) Update(
 func (p *ClientCertificateProvider) Delete(
     ctx context.Context, req *cocorpc.DeleteRequest) (*pbempty.Empty, error) {
     contract.Assert(req.GetType() == string(ClientCertificateToken))
-    if err := p.ops.Delete(ctx, req.GetId()); err != nil {
+    id := resource.ID(req.GetId())
+    if err := p.ops.Delete(ctx, id); err != nil {
         return nil, err
     }
     return &pbempty.Empty{}, nil

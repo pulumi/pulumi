@@ -39,13 +39,13 @@ const PolicyToken = tokens.Type("aws:iam/policy:Policy")
 // PolicyProviderOps is a pluggable interface for Policy-related management functionality.
 type PolicyProviderOps interface {
     Check(ctx context.Context, obj *Policy) ([]mapper.FieldError, error)
-    Create(ctx context.Context, obj *Policy) (string, error)
-    Get(ctx context.Context, id string) (*Policy, error)
+    Create(ctx context.Context, obj *Policy) (resource.ID, error)
+    Get(ctx context.Context, id resource.ID) (*Policy, error)
     InspectChange(ctx context.Context,
-        id string, old *Policy, new *Policy, diff *resource.ObjectDiff) ([]string, error)
+        id resource.ID, old *Policy, new *Policy, diff *resource.ObjectDiff) ([]string, error)
     Update(ctx context.Context,
-        id string, old *Policy, new *Policy, diff *resource.ObjectDiff) error
-    Delete(ctx context.Context, id string) error
+        id resource.ID, old *Policy, new *Policy, diff *resource.ObjectDiff) error
+    Delete(ctx context.Context, id resource.ID) error
 }
 
 // PolicyProvider is a dynamic gRPC-based plugin for managing Policy resources.
@@ -100,14 +100,14 @@ func (p *PolicyProvider) Create(
         return nil, err
     }
     return &cocorpc.CreateResponse{
-        Id:   id,
+        Id:   string(id),
     }, nil
 }
 
 func (p *PolicyProvider) Get(
     ctx context.Context, req *cocorpc.GetRequest) (*cocorpc.GetResponse, error) {
     contract.Assert(req.GetType() == string(PolicyToken))
-    id := req.GetId()
+    id := resource.ID(req.GetId())
     obj, err := p.ops.Get(ctx, id)
     if err != nil {
         return nil, err
@@ -134,7 +134,8 @@ func (p *PolicyProvider) InspectChange(
     if diff.Changed("name") {
         replaces = append(replaces, "name")
     }
-    more, err := p.ops.InspectChange(ctx, req.GetId(), old, new, diff)
+    id := resource.ID(req.GetId())
+    more, err := p.ops.InspectChange(ctx, id, old, new, diff)
     if err != nil {
         return nil, err
     }
@@ -146,6 +147,7 @@ func (p *PolicyProvider) InspectChange(
 func (p *PolicyProvider) Update(
     ctx context.Context, req *cocorpc.ChangeRequest) (*pbempty.Empty, error) {
     contract.Assert(req.GetType() == string(PolicyToken))
+    id := resource.ID(req.GetId())
     old, oldprops, err := p.Unmarshal(req.GetOlds())
     if err != nil {
         return nil, err
@@ -155,7 +157,7 @@ func (p *PolicyProvider) Update(
         return nil, err
     }
     diff := oldprops.Diff(newprops)
-    if err := p.ops.Update(ctx, req.GetId(), old, new, diff); err != nil {
+    if err := p.ops.Update(ctx, id, old, new, diff); err != nil {
         return nil, err
     }
     return &pbempty.Empty{}, nil
@@ -164,7 +166,8 @@ func (p *PolicyProvider) Update(
 func (p *PolicyProvider) Delete(
     ctx context.Context, req *cocorpc.DeleteRequest) (*pbempty.Empty, error) {
     contract.Assert(req.GetType() == string(PolicyToken))
-    if err := p.ops.Delete(ctx, req.GetId()); err != nil {
+    id := resource.ID(req.GetId())
+    if err := p.ops.Delete(ctx, id); err != nil {
         return nil, err
     }
     return &pbempty.Empty{}, nil

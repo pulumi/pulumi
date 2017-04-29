@@ -25,13 +25,13 @@ const InternetGatewayToken = tokens.Type("aws:ec2/internetGateway:InternetGatewa
 // InternetGatewayProviderOps is a pluggable interface for InternetGateway-related management functionality.
 type InternetGatewayProviderOps interface {
     Check(ctx context.Context, obj *InternetGateway) ([]mapper.FieldError, error)
-    Create(ctx context.Context, obj *InternetGateway) (string, error)
-    Get(ctx context.Context, id string) (*InternetGateway, error)
+    Create(ctx context.Context, obj *InternetGateway) (resource.ID, error)
+    Get(ctx context.Context, id resource.ID) (*InternetGateway, error)
     InspectChange(ctx context.Context,
-        id string, old *InternetGateway, new *InternetGateway, diff *resource.ObjectDiff) ([]string, error)
+        id resource.ID, old *InternetGateway, new *InternetGateway, diff *resource.ObjectDiff) ([]string, error)
     Update(ctx context.Context,
-        id string, old *InternetGateway, new *InternetGateway, diff *resource.ObjectDiff) error
-    Delete(ctx context.Context, id string) error
+        id resource.ID, old *InternetGateway, new *InternetGateway, diff *resource.ObjectDiff) error
+    Delete(ctx context.Context, id resource.ID) error
 }
 
 // InternetGatewayProvider is a dynamic gRPC-based plugin for managing InternetGateway resources.
@@ -86,14 +86,14 @@ func (p *InternetGatewayProvider) Create(
         return nil, err
     }
     return &cocorpc.CreateResponse{
-        Id:   id,
+        Id:   string(id),
     }, nil
 }
 
 func (p *InternetGatewayProvider) Get(
     ctx context.Context, req *cocorpc.GetRequest) (*cocorpc.GetResponse, error) {
     contract.Assert(req.GetType() == string(InternetGatewayToken))
-    id := req.GetId()
+    id := resource.ID(req.GetId())
     obj, err := p.ops.Get(ctx, id)
     if err != nil {
         return nil, err
@@ -120,7 +120,8 @@ func (p *InternetGatewayProvider) InspectChange(
     if diff.Changed("name") {
         replaces = append(replaces, "name")
     }
-    more, err := p.ops.InspectChange(ctx, req.GetId(), old, new, diff)
+    id := resource.ID(req.GetId())
+    more, err := p.ops.InspectChange(ctx, id, old, new, diff)
     if err != nil {
         return nil, err
     }
@@ -132,6 +133,7 @@ func (p *InternetGatewayProvider) InspectChange(
 func (p *InternetGatewayProvider) Update(
     ctx context.Context, req *cocorpc.ChangeRequest) (*pbempty.Empty, error) {
     contract.Assert(req.GetType() == string(InternetGatewayToken))
+    id := resource.ID(req.GetId())
     old, oldprops, err := p.Unmarshal(req.GetOlds())
     if err != nil {
         return nil, err
@@ -141,7 +143,7 @@ func (p *InternetGatewayProvider) Update(
         return nil, err
     }
     diff := oldprops.Diff(newprops)
-    if err := p.ops.Update(ctx, req.GetId(), old, new, diff); err != nil {
+    if err := p.ops.Update(ctx, id, old, new, diff); err != nil {
         return nil, err
     }
     return &pbempty.Empty{}, nil
@@ -150,7 +152,8 @@ func (p *InternetGatewayProvider) Update(
 func (p *InternetGatewayProvider) Delete(
     ctx context.Context, req *cocorpc.DeleteRequest) (*pbempty.Empty, error) {
     contract.Assert(req.GetType() == string(InternetGatewayToken))
-    if err := p.ops.Delete(ctx, req.GetId()); err != nil {
+    id := resource.ID(req.GetId())
+    if err := p.ops.Delete(ctx, id); err != nil {
         return nil, err
     }
     return &pbempty.Empty{}, nil

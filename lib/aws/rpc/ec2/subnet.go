@@ -25,13 +25,13 @@ const SubnetToken = tokens.Type("aws:ec2/subnet:Subnet")
 // SubnetProviderOps is a pluggable interface for Subnet-related management functionality.
 type SubnetProviderOps interface {
     Check(ctx context.Context, obj *Subnet) ([]mapper.FieldError, error)
-    Create(ctx context.Context, obj *Subnet) (string, error)
-    Get(ctx context.Context, id string) (*Subnet, error)
+    Create(ctx context.Context, obj *Subnet) (resource.ID, error)
+    Get(ctx context.Context, id resource.ID) (*Subnet, error)
     InspectChange(ctx context.Context,
-        id string, old *Subnet, new *Subnet, diff *resource.ObjectDiff) ([]string, error)
+        id resource.ID, old *Subnet, new *Subnet, diff *resource.ObjectDiff) ([]string, error)
     Update(ctx context.Context,
-        id string, old *Subnet, new *Subnet, diff *resource.ObjectDiff) error
-    Delete(ctx context.Context, id string) error
+        id resource.ID, old *Subnet, new *Subnet, diff *resource.ObjectDiff) error
+    Delete(ctx context.Context, id resource.ID) error
 }
 
 // SubnetProvider is a dynamic gRPC-based plugin for managing Subnet resources.
@@ -86,14 +86,14 @@ func (p *SubnetProvider) Create(
         return nil, err
     }
     return &cocorpc.CreateResponse{
-        Id:   id,
+        Id:   string(id),
     }, nil
 }
 
 func (p *SubnetProvider) Get(
     ctx context.Context, req *cocorpc.GetRequest) (*cocorpc.GetResponse, error) {
     contract.Assert(req.GetType() == string(SubnetToken))
-    id := req.GetId()
+    id := resource.ID(req.GetId())
     obj, err := p.ops.Get(ctx, id)
     if err != nil {
         return nil, err
@@ -129,7 +129,8 @@ func (p *SubnetProvider) InspectChange(
     if diff.Changed("availabilityZone") {
         replaces = append(replaces, "availabilityZone")
     }
-    more, err := p.ops.InspectChange(ctx, req.GetId(), old, new, diff)
+    id := resource.ID(req.GetId())
+    more, err := p.ops.InspectChange(ctx, id, old, new, diff)
     if err != nil {
         return nil, err
     }
@@ -141,6 +142,7 @@ func (p *SubnetProvider) InspectChange(
 func (p *SubnetProvider) Update(
     ctx context.Context, req *cocorpc.ChangeRequest) (*pbempty.Empty, error) {
     contract.Assert(req.GetType() == string(SubnetToken))
+    id := resource.ID(req.GetId())
     old, oldprops, err := p.Unmarshal(req.GetOlds())
     if err != nil {
         return nil, err
@@ -150,7 +152,7 @@ func (p *SubnetProvider) Update(
         return nil, err
     }
     diff := oldprops.Diff(newprops)
-    if err := p.ops.Update(ctx, req.GetId(), old, new, diff); err != nil {
+    if err := p.ops.Update(ctx, id, old, new, diff); err != nil {
         return nil, err
     }
     return &pbempty.Empty{}, nil
@@ -159,7 +161,8 @@ func (p *SubnetProvider) Update(
 func (p *SubnetProvider) Delete(
     ctx context.Context, req *cocorpc.DeleteRequest) (*pbempty.Empty, error) {
     contract.Assert(req.GetType() == string(SubnetToken))
-    if err := p.ops.Delete(ctx, req.GetId()); err != nil {
+    id := resource.ID(req.GetId())
+    if err := p.ops.Delete(ctx, id); err != nil {
         return nil, err
     }
     return &pbempty.Empty{}, nil

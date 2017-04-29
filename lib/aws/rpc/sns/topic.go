@@ -25,13 +25,13 @@ const TopicToken = tokens.Type("aws:sns/topic:Topic")
 // TopicProviderOps is a pluggable interface for Topic-related management functionality.
 type TopicProviderOps interface {
     Check(ctx context.Context, obj *Topic) ([]mapper.FieldError, error)
-    Create(ctx context.Context, obj *Topic) (string, error)
-    Get(ctx context.Context, id string) (*Topic, error)
+    Create(ctx context.Context, obj *Topic) (resource.ID, error)
+    Get(ctx context.Context, id resource.ID) (*Topic, error)
     InspectChange(ctx context.Context,
-        id string, old *Topic, new *Topic, diff *resource.ObjectDiff) ([]string, error)
+        id resource.ID, old *Topic, new *Topic, diff *resource.ObjectDiff) ([]string, error)
     Update(ctx context.Context,
-        id string, old *Topic, new *Topic, diff *resource.ObjectDiff) error
-    Delete(ctx context.Context, id string) error
+        id resource.ID, old *Topic, new *Topic, diff *resource.ObjectDiff) error
+    Delete(ctx context.Context, id resource.ID) error
 }
 
 // TopicProvider is a dynamic gRPC-based plugin for managing Topic resources.
@@ -86,14 +86,14 @@ func (p *TopicProvider) Create(
         return nil, err
     }
     return &cocorpc.CreateResponse{
-        Id:   id,
+        Id:   string(id),
     }, nil
 }
 
 func (p *TopicProvider) Get(
     ctx context.Context, req *cocorpc.GetRequest) (*cocorpc.GetResponse, error) {
     contract.Assert(req.GetType() == string(TopicToken))
-    id := req.GetId()
+    id := resource.ID(req.GetId())
     obj, err := p.ops.Get(ctx, id)
     if err != nil {
         return nil, err
@@ -123,7 +123,8 @@ func (p *TopicProvider) InspectChange(
     if diff.Changed("topicName") {
         replaces = append(replaces, "topicName")
     }
-    more, err := p.ops.InspectChange(ctx, req.GetId(), old, new, diff)
+    id := resource.ID(req.GetId())
+    more, err := p.ops.InspectChange(ctx, id, old, new, diff)
     if err != nil {
         return nil, err
     }
@@ -135,6 +136,7 @@ func (p *TopicProvider) InspectChange(
 func (p *TopicProvider) Update(
     ctx context.Context, req *cocorpc.ChangeRequest) (*pbempty.Empty, error) {
     contract.Assert(req.GetType() == string(TopicToken))
+    id := resource.ID(req.GetId())
     old, oldprops, err := p.Unmarshal(req.GetOlds())
     if err != nil {
         return nil, err
@@ -144,7 +146,7 @@ func (p *TopicProvider) Update(
         return nil, err
     }
     diff := oldprops.Diff(newprops)
-    if err := p.ops.Update(ctx, req.GetId(), old, new, diff); err != nil {
+    if err := p.ops.Update(ctx, id, old, new, diff); err != nil {
         return nil, err
     }
     return &pbempty.Empty{}, nil
@@ -153,7 +155,8 @@ func (p *TopicProvider) Update(
 func (p *TopicProvider) Delete(
     ctx context.Context, req *cocorpc.DeleteRequest) (*pbempty.Empty, error) {
     contract.Assert(req.GetType() == string(TopicToken))
-    if err := p.ops.Delete(ctx, req.GetId()); err != nil {
+    id := resource.ID(req.GetId())
+    if err := p.ops.Delete(ctx, id); err != nil {
         return nil, err
     }
     return &pbempty.Empty{}, nil

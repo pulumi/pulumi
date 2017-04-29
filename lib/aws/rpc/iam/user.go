@@ -39,13 +39,13 @@ const UserToken = tokens.Type("aws:iam/user:User")
 // UserProviderOps is a pluggable interface for User-related management functionality.
 type UserProviderOps interface {
     Check(ctx context.Context, obj *User) ([]mapper.FieldError, error)
-    Create(ctx context.Context, obj *User) (string, error)
-    Get(ctx context.Context, id string) (*User, error)
+    Create(ctx context.Context, obj *User) (resource.ID, error)
+    Get(ctx context.Context, id resource.ID) (*User, error)
     InspectChange(ctx context.Context,
-        id string, old *User, new *User, diff *resource.ObjectDiff) ([]string, error)
+        id resource.ID, old *User, new *User, diff *resource.ObjectDiff) ([]string, error)
     Update(ctx context.Context,
-        id string, old *User, new *User, diff *resource.ObjectDiff) error
-    Delete(ctx context.Context, id string) error
+        id resource.ID, old *User, new *User, diff *resource.ObjectDiff) error
+    Delete(ctx context.Context, id resource.ID) error
 }
 
 // UserProvider is a dynamic gRPC-based plugin for managing User resources.
@@ -100,14 +100,14 @@ func (p *UserProvider) Create(
         return nil, err
     }
     return &cocorpc.CreateResponse{
-        Id:   id,
+        Id:   string(id),
     }, nil
 }
 
 func (p *UserProvider) Get(
     ctx context.Context, req *cocorpc.GetRequest) (*cocorpc.GetResponse, error) {
     contract.Assert(req.GetType() == string(UserToken))
-    id := req.GetId()
+    id := resource.ID(req.GetId())
     obj, err := p.ops.Get(ctx, id)
     if err != nil {
         return nil, err
@@ -137,7 +137,8 @@ func (p *UserProvider) InspectChange(
     if diff.Changed("userName") {
         replaces = append(replaces, "userName")
     }
-    more, err := p.ops.InspectChange(ctx, req.GetId(), old, new, diff)
+    id := resource.ID(req.GetId())
+    more, err := p.ops.InspectChange(ctx, id, old, new, diff)
     if err != nil {
         return nil, err
     }
@@ -149,6 +150,7 @@ func (p *UserProvider) InspectChange(
 func (p *UserProvider) Update(
     ctx context.Context, req *cocorpc.ChangeRequest) (*pbempty.Empty, error) {
     contract.Assert(req.GetType() == string(UserToken))
+    id := resource.ID(req.GetId())
     old, oldprops, err := p.Unmarshal(req.GetOlds())
     if err != nil {
         return nil, err
@@ -158,7 +160,7 @@ func (p *UserProvider) Update(
         return nil, err
     }
     diff := oldprops.Diff(newprops)
-    if err := p.ops.Update(ctx, req.GetId(), old, new, diff); err != nil {
+    if err := p.ops.Update(ctx, id, old, new, diff); err != nil {
         return nil, err
     }
     return &pbempty.Empty{}, nil
@@ -167,7 +169,8 @@ func (p *UserProvider) Update(
 func (p *UserProvider) Delete(
     ctx context.Context, req *cocorpc.DeleteRequest) (*pbempty.Empty, error) {
     contract.Assert(req.GetType() == string(UserToken))
-    if err := p.ops.Delete(ctx, req.GetId()); err != nil {
+    id := resource.ID(req.GetId())
+    if err := p.ops.Delete(ctx, id); err != nil {
         return nil, err
     }
     return &pbempty.Empty{}, nil

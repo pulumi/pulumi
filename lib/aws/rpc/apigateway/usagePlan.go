@@ -69,13 +69,13 @@ const UsagePlanToken = tokens.Type("aws:apigateway/usagePlan:UsagePlan")
 // UsagePlanProviderOps is a pluggable interface for UsagePlan-related management functionality.
 type UsagePlanProviderOps interface {
     Check(ctx context.Context, obj *UsagePlan) ([]mapper.FieldError, error)
-    Create(ctx context.Context, obj *UsagePlan) (string, error)
-    Get(ctx context.Context, id string) (*UsagePlan, error)
+    Create(ctx context.Context, obj *UsagePlan) (resource.ID, error)
+    Get(ctx context.Context, id resource.ID) (*UsagePlan, error)
     InspectChange(ctx context.Context,
-        id string, old *UsagePlan, new *UsagePlan, diff *resource.ObjectDiff) ([]string, error)
+        id resource.ID, old *UsagePlan, new *UsagePlan, diff *resource.ObjectDiff) ([]string, error)
     Update(ctx context.Context,
-        id string, old *UsagePlan, new *UsagePlan, diff *resource.ObjectDiff) error
-    Delete(ctx context.Context, id string) error
+        id resource.ID, old *UsagePlan, new *UsagePlan, diff *resource.ObjectDiff) error
+    Delete(ctx context.Context, id resource.ID) error
 }
 
 // UsagePlanProvider is a dynamic gRPC-based plugin for managing UsagePlan resources.
@@ -130,14 +130,14 @@ func (p *UsagePlanProvider) Create(
         return nil, err
     }
     return &cocorpc.CreateResponse{
-        Id:   id,
+        Id:   string(id),
     }, nil
 }
 
 func (p *UsagePlanProvider) Get(
     ctx context.Context, req *cocorpc.GetRequest) (*cocorpc.GetResponse, error) {
     contract.Assert(req.GetType() == string(UsagePlanToken))
-    id := req.GetId()
+    id := resource.ID(req.GetId())
     obj, err := p.ops.Get(ctx, id)
     if err != nil {
         return nil, err
@@ -164,7 +164,8 @@ func (p *UsagePlanProvider) InspectChange(
     if diff.Changed("name") {
         replaces = append(replaces, "name")
     }
-    more, err := p.ops.InspectChange(ctx, req.GetId(), old, new, diff)
+    id := resource.ID(req.GetId())
+    more, err := p.ops.InspectChange(ctx, id, old, new, diff)
     if err != nil {
         return nil, err
     }
@@ -176,6 +177,7 @@ func (p *UsagePlanProvider) InspectChange(
 func (p *UsagePlanProvider) Update(
     ctx context.Context, req *cocorpc.ChangeRequest) (*pbempty.Empty, error) {
     contract.Assert(req.GetType() == string(UsagePlanToken))
+    id := resource.ID(req.GetId())
     old, oldprops, err := p.Unmarshal(req.GetOlds())
     if err != nil {
         return nil, err
@@ -185,7 +187,7 @@ func (p *UsagePlanProvider) Update(
         return nil, err
     }
     diff := oldprops.Diff(newprops)
-    if err := p.ops.Update(ctx, req.GetId(), old, new, diff); err != nil {
+    if err := p.ops.Update(ctx, id, old, new, diff); err != nil {
         return nil, err
     }
     return &pbempty.Empty{}, nil
@@ -194,7 +196,8 @@ func (p *UsagePlanProvider) Update(
 func (p *UsagePlanProvider) Delete(
     ctx context.Context, req *cocorpc.DeleteRequest) (*pbempty.Empty, error) {
     contract.Assert(req.GetType() == string(UsagePlanToken))
-    if err := p.ops.Delete(ctx, req.GetId()); err != nil {
+    id := resource.ID(req.GetId())
+    if err := p.ops.Delete(ctx, id); err != nil {
         return nil, err
     }
     return &pbempty.Empty{}, nil

@@ -81,15 +81,15 @@ func (p *funcProvider) Check(ctx context.Context, obj *lambda.Function) ([]mappe
 
 // Create allocates a new instance of the provided resource and returns its unique ID afterwards.  (The input ID
 // must be blank.)  If this call fails, the resource must not have been created (i.e., it is "transacational").
-func (p *funcProvider) Create(ctx context.Context, obj *lambda.Function) (string, *lambda.FunctionOuts, error) {
+func (p *funcProvider) Create(ctx context.Context, obj *lambda.Function) (resource.ID, *lambda.FunctionOuts, error) {
 	// If an explicit name is given, use it.  Otherwise, auto-generate a name in part based on the resource name.
 	// TODO: use the URN, not just the name, to enhance global uniqueness.
 	// TODO: even for explicit names, we should consider mangling it somehow, to reduce multi-instancing conflicts.
-	var name string
+	var id resource.ID
 	if obj.FunctionName != nil {
-		name = *obj.FunctionName
+		id = resource.ID(*obj.FunctionName)
 	} else {
-		name = resource.NewUniqueHex(obj.Name+"-", maxFunctionName, sha1.Size)
+		id = resource.NewUniqueHexID(obj.Name+"-", maxFunctionName, sha1.Size)
 	}
 
 	// Fetch the IAM role's ARN.
@@ -139,13 +139,13 @@ func (p *funcProvider) Create(ctx context.Context, obj *lambda.Function) (string
 
 	// Now go ahead and create the resource.  Note that IAM profiles can take several seconds to propagate; see
 	// http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/iam-roles-for-amazon-ec2.html#launch-instance-with-role.
-	fmt.Printf("Creating Lambda Function '%v' with name '%v'\n", obj.Name, name)
+	fmt.Printf("Creating Lambda Function '%v' with name '%v'\n", obj.Name, id)
 	create := &awslambda.CreateFunctionInput{
 		Code:             code,
 		DeadLetterConfig: dlqcfg,
 		Description:      obj.Description,
 		Environment:      env,
-		FunctionName:     aws.String(name),
+		FunctionName:     id.StringPtr(),
 		Handler:          aws.String(obj.Handler),
 		KMSKeyArn:        obj.KMSKey.StringPtr(),
 		MemorySize:       memsize,
@@ -183,37 +183,37 @@ func (p *funcProvider) Create(ctx context.Context, obj *lambda.Function) (string
 	}
 
 	// Wait for the function to be ready and then return the function name as the ID.
-	fmt.Printf("Lambda Function created: %v; waiting for it to become active\n", name)
-	if err := p.waitForFunctionState(name, true); err != nil {
+	fmt.Printf("Lambda Function created: %v; waiting for it to become active\n", id)
+	if err := p.waitForFunctionState(id, true); err != nil {
 		return "", nil, err
 	}
-	return name, out, nil
+	return id, out, nil
 }
 
 // Read reads the instance state identified by ID, returning a populated resource object, or an error if not found.
-func (p *funcProvider) Get(ctx context.Context, id string) (*lambda.Function, error) {
+func (p *funcProvider) Get(ctx context.Context, id resource.ID) (*lambda.Function, error) {
 	return nil, nil
 }
 
 // InspectChange checks what impacts a hypothetical update will have on the resource's properties.
-func (p *funcProvider) InspectChange(ctx context.Context, id string,
+func (p *funcProvider) InspectChange(ctx context.Context, id resource.ID,
 	old *lambda.Function, new *lambda.Function, diff *resource.ObjectDiff) ([]string, error) {
 	return nil, errors.New("Not yet implemented")
 }
 
 // Update updates an existing resource with new values.  Only those values in the provided property bag are updated
 // to new values.  The resource ID is returned and may be different if the resource had to be recreated.
-func (p *funcProvider) Update(ctx context.Context, id string,
+func (p *funcProvider) Update(ctx context.Context, id resource.ID,
 	old *lambda.Function, new *lambda.Function, diff *resource.ObjectDiff) error {
 	return errors.New("Not yet implemented")
 }
 
 // Delete tears down an existing resource with the given ID.  If it fails, the resource is assumed to still exist.
-func (p *funcProvider) Delete(ctx context.Context, id string) error {
+func (p *funcProvider) Delete(ctx context.Context, id resource.ID) error {
 	// First, perform the deletion.
 	fmt.Printf("Deleting Lambda Function '%v'\n", id)
 	if _, err := p.ctx.Lambda().DeleteFunction(&awslambda.DeleteFunctionInput{
-		FunctionName: aws.String(id),
+		FunctionName: id.StringPtr(),
 	}); err != nil {
 		return err
 	}
@@ -223,12 +223,12 @@ func (p *funcProvider) Delete(ctx context.Context, id string) error {
 	return p.waitForFunctionState(id, false)
 }
 
-func (p *funcProvider) waitForFunctionState(id string, exist bool) error {
+func (p *funcProvider) waitForFunctionState(id resource.ID, exist bool) error {
 	succ, err := awsctx.RetryUntil(
 		p.ctx,
 		func() (bool, error) {
 			if _, err := p.ctx.Lambda().GetFunction(&awslambda.GetFunctionInput{
-				FunctionName: aws.String(id),
+				FunctionName: id.StringPtr(),
 			}); err != nil {
 				if erraws, iserraws := err.(awserr.Error); iserraws {
 					if erraws.Code() == "NotFound" || erraws.Code() == "ResourceNotFoundException" {

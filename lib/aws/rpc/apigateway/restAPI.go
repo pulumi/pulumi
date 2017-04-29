@@ -25,13 +25,13 @@ const RestAPIToken = tokens.Type("aws:apigateway/restAPI:RestAPI")
 // RestAPIProviderOps is a pluggable interface for RestAPI-related management functionality.
 type RestAPIProviderOps interface {
     Check(ctx context.Context, obj *RestAPI) ([]mapper.FieldError, error)
-    Create(ctx context.Context, obj *RestAPI) (string, error)
-    Get(ctx context.Context, id string) (*RestAPI, error)
+    Create(ctx context.Context, obj *RestAPI) (resource.ID, error)
+    Get(ctx context.Context, id resource.ID) (*RestAPI, error)
     InspectChange(ctx context.Context,
-        id string, old *RestAPI, new *RestAPI, diff *resource.ObjectDiff) ([]string, error)
+        id resource.ID, old *RestAPI, new *RestAPI, diff *resource.ObjectDiff) ([]string, error)
     Update(ctx context.Context,
-        id string, old *RestAPI, new *RestAPI, diff *resource.ObjectDiff) error
-    Delete(ctx context.Context, id string) error
+        id resource.ID, old *RestAPI, new *RestAPI, diff *resource.ObjectDiff) error
+    Delete(ctx context.Context, id resource.ID) error
 }
 
 // RestAPIProvider is a dynamic gRPC-based plugin for managing RestAPI resources.
@@ -86,14 +86,14 @@ func (p *RestAPIProvider) Create(
         return nil, err
     }
     return &cocorpc.CreateResponse{
-        Id:   id,
+        Id:   string(id),
     }, nil
 }
 
 func (p *RestAPIProvider) Get(
     ctx context.Context, req *cocorpc.GetRequest) (*cocorpc.GetResponse, error) {
     contract.Assert(req.GetType() == string(RestAPIToken))
-    id := req.GetId()
+    id := resource.ID(req.GetId())
     obj, err := p.ops.Get(ctx, id)
     if err != nil {
         return nil, err
@@ -120,7 +120,8 @@ func (p *RestAPIProvider) InspectChange(
     if diff.Changed("name") {
         replaces = append(replaces, "name")
     }
-    more, err := p.ops.InspectChange(ctx, req.GetId(), old, new, diff)
+    id := resource.ID(req.GetId())
+    more, err := p.ops.InspectChange(ctx, id, old, new, diff)
     if err != nil {
         return nil, err
     }
@@ -132,6 +133,7 @@ func (p *RestAPIProvider) InspectChange(
 func (p *RestAPIProvider) Update(
     ctx context.Context, req *cocorpc.ChangeRequest) (*pbempty.Empty, error) {
     contract.Assert(req.GetType() == string(RestAPIToken))
+    id := resource.ID(req.GetId())
     old, oldprops, err := p.Unmarshal(req.GetOlds())
     if err != nil {
         return nil, err
@@ -141,7 +143,7 @@ func (p *RestAPIProvider) Update(
         return nil, err
     }
     diff := oldprops.Diff(newprops)
-    if err := p.ops.Update(ctx, req.GetId(), old, new, diff); err != nil {
+    if err := p.ops.Update(ctx, id, old, new, diff); err != nil {
         return nil, err
     }
     return &pbempty.Empty{}, nil
@@ -150,7 +152,8 @@ func (p *RestAPIProvider) Update(
 func (p *RestAPIProvider) Delete(
     ctx context.Context, req *cocorpc.DeleteRequest) (*pbempty.Empty, error) {
     contract.Assert(req.GetType() == string(RestAPIToken))
-    if err := p.ops.Delete(ctx, req.GetId()); err != nil {
+    id := resource.ID(req.GetId())
+    if err := p.ops.Delete(ctx, id); err != nil {
         return nil, err
     }
     return &pbempty.Empty{}, nil

@@ -25,13 +25,13 @@ const HTTPTriggerToken = tokens.Type("kubefission:httptrigger:HTTPTrigger")
 // HTTPTriggerProviderOps is a pluggable interface for HTTPTrigger-related management functionality.
 type HTTPTriggerProviderOps interface {
     Check(ctx context.Context, obj *HTTPTrigger) ([]mapper.FieldError, error)
-    Create(ctx context.Context, obj *HTTPTrigger) (string, error)
-    Get(ctx context.Context, id string) (*HTTPTrigger, error)
+    Create(ctx context.Context, obj *HTTPTrigger) (resource.ID, error)
+    Get(ctx context.Context, id resource.ID) (*HTTPTrigger, error)
     InspectChange(ctx context.Context,
-        id string, old *HTTPTrigger, new *HTTPTrigger, diff *resource.ObjectDiff) ([]string, error)
+        id resource.ID, old *HTTPTrigger, new *HTTPTrigger, diff *resource.ObjectDiff) ([]string, error)
     Update(ctx context.Context,
-        id string, old *HTTPTrigger, new *HTTPTrigger, diff *resource.ObjectDiff) error
-    Delete(ctx context.Context, id string) error
+        id resource.ID, old *HTTPTrigger, new *HTTPTrigger, diff *resource.ObjectDiff) error
+    Delete(ctx context.Context, id resource.ID) error
 }
 
 // HTTPTriggerProvider is a dynamic gRPC-based plugin for managing HTTPTrigger resources.
@@ -86,14 +86,14 @@ func (p *HTTPTriggerProvider) Create(
         return nil, err
     }
     return &cocorpc.CreateResponse{
-        Id:   id,
+        Id:   string(id),
     }, nil
 }
 
 func (p *HTTPTriggerProvider) Get(
     ctx context.Context, req *cocorpc.GetRequest) (*cocorpc.GetResponse, error) {
     contract.Assert(req.GetType() == string(HTTPTriggerToken))
-    id := req.GetId()
+    id := resource.ID(req.GetId())
     obj, err := p.ops.Get(ctx, id)
     if err != nil {
         return nil, err
@@ -120,7 +120,8 @@ func (p *HTTPTriggerProvider) InspectChange(
     if diff.Changed("name") {
         replaces = append(replaces, "name")
     }
-    more, err := p.ops.InspectChange(ctx, req.GetId(), old, new, diff)
+    id := resource.ID(req.GetId())
+    more, err := p.ops.InspectChange(ctx, id, old, new, diff)
     if err != nil {
         return nil, err
     }
@@ -132,6 +133,7 @@ func (p *HTTPTriggerProvider) InspectChange(
 func (p *HTTPTriggerProvider) Update(
     ctx context.Context, req *cocorpc.ChangeRequest) (*pbempty.Empty, error) {
     contract.Assert(req.GetType() == string(HTTPTriggerToken))
+    id := resource.ID(req.GetId())
     old, oldprops, err := p.Unmarshal(req.GetOlds())
     if err != nil {
         return nil, err
@@ -141,7 +143,7 @@ func (p *HTTPTriggerProvider) Update(
         return nil, err
     }
     diff := oldprops.Diff(newprops)
-    if err := p.ops.Update(ctx, req.GetId(), old, new, diff); err != nil {
+    if err := p.ops.Update(ctx, id, old, new, diff); err != nil {
         return nil, err
     }
     return &pbempty.Empty{}, nil
@@ -150,7 +152,8 @@ func (p *HTTPTriggerProvider) Update(
 func (p *HTTPTriggerProvider) Delete(
     ctx context.Context, req *cocorpc.DeleteRequest) (*pbempty.Empty, error) {
     contract.Assert(req.GetType() == string(HTTPTriggerToken))
-    if err := p.ops.Delete(ctx, req.GetId()); err != nil {
+    id := resource.ID(req.GetId())
+    if err := p.ops.Delete(ctx, id); err != nil {
         return nil, err
     }
     return &pbempty.Empty{}, nil

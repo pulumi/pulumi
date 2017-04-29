@@ -25,13 +25,13 @@ const ModelToken = tokens.Type("aws:apigateway/model:Model")
 // ModelProviderOps is a pluggable interface for Model-related management functionality.
 type ModelProviderOps interface {
     Check(ctx context.Context, obj *Model) ([]mapper.FieldError, error)
-    Create(ctx context.Context, obj *Model) (string, error)
-    Get(ctx context.Context, id string) (*Model, error)
+    Create(ctx context.Context, obj *Model) (resource.ID, error)
+    Get(ctx context.Context, id resource.ID) (*Model, error)
     InspectChange(ctx context.Context,
-        id string, old *Model, new *Model, diff *resource.ObjectDiff) ([]string, error)
+        id resource.ID, old *Model, new *Model, diff *resource.ObjectDiff) ([]string, error)
     Update(ctx context.Context,
-        id string, old *Model, new *Model, diff *resource.ObjectDiff) error
-    Delete(ctx context.Context, id string) error
+        id resource.ID, old *Model, new *Model, diff *resource.ObjectDiff) error
+    Delete(ctx context.Context, id resource.ID) error
 }
 
 // ModelProvider is a dynamic gRPC-based plugin for managing Model resources.
@@ -86,14 +86,14 @@ func (p *ModelProvider) Create(
         return nil, err
     }
     return &cocorpc.CreateResponse{
-        Id:   id,
+        Id:   string(id),
     }, nil
 }
 
 func (p *ModelProvider) Get(
     ctx context.Context, req *cocorpc.GetRequest) (*cocorpc.GetResponse, error) {
     contract.Assert(req.GetType() == string(ModelToken))
-    id := req.GetId()
+    id := resource.ID(req.GetId())
     obj, err := p.ops.Get(ctx, id)
     if err != nil {
         return nil, err
@@ -129,7 +129,8 @@ func (p *ModelProvider) InspectChange(
     if diff.Changed("modelName") {
         replaces = append(replaces, "modelName")
     }
-    more, err := p.ops.InspectChange(ctx, req.GetId(), old, new, diff)
+    id := resource.ID(req.GetId())
+    more, err := p.ops.InspectChange(ctx, id, old, new, diff)
     if err != nil {
         return nil, err
     }
@@ -141,6 +142,7 @@ func (p *ModelProvider) InspectChange(
 func (p *ModelProvider) Update(
     ctx context.Context, req *cocorpc.ChangeRequest) (*pbempty.Empty, error) {
     contract.Assert(req.GetType() == string(ModelToken))
+    id := resource.ID(req.GetId())
     old, oldprops, err := p.Unmarshal(req.GetOlds())
     if err != nil {
         return nil, err
@@ -150,7 +152,7 @@ func (p *ModelProvider) Update(
         return nil, err
     }
     diff := oldprops.Diff(newprops)
-    if err := p.ops.Update(ctx, req.GetId(), old, new, diff); err != nil {
+    if err := p.ops.Update(ctx, id, old, new, diff); err != nil {
         return nil, err
     }
     return &pbempty.Empty{}, nil
@@ -159,7 +161,8 @@ func (p *ModelProvider) Update(
 func (p *ModelProvider) Delete(
     ctx context.Context, req *cocorpc.DeleteRequest) (*pbempty.Empty, error) {
     contract.Assert(req.GetType() == string(ModelToken))
-    if err := p.ops.Delete(ctx, req.GetId()); err != nil {
+    id := resource.ID(req.GetId())
+    if err := p.ops.Delete(ctx, id); err != nil {
         return nil, err
     }
     return &pbempty.Empty{}, nil

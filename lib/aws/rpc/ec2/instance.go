@@ -25,13 +25,13 @@ const InstanceToken = tokens.Type("aws:ec2/instance:Instance")
 // InstanceProviderOps is a pluggable interface for Instance-related management functionality.
 type InstanceProviderOps interface {
     Check(ctx context.Context, obj *Instance) ([]mapper.FieldError, error)
-    Create(ctx context.Context, obj *Instance) (string, *InstanceOuts, error)
-    Get(ctx context.Context, id string) (*Instance, error)
+    Create(ctx context.Context, obj *Instance) (resource.ID, *InstanceOuts, error)
+    Get(ctx context.Context, id resource.ID) (*Instance, error)
     InspectChange(ctx context.Context,
-        id string, old *Instance, new *Instance, diff *resource.ObjectDiff) ([]string, error)
+        id resource.ID, old *Instance, new *Instance, diff *resource.ObjectDiff) ([]string, error)
     Update(ctx context.Context,
-        id string, old *Instance, new *Instance, diff *resource.ObjectDiff) error
-    Delete(ctx context.Context, id string) error
+        id resource.ID, old *Instance, new *Instance, diff *resource.ObjectDiff) error
+    Delete(ctx context.Context, id resource.ID) error
 }
 
 // InstanceProvider is a dynamic gRPC-based plugin for managing Instance resources.
@@ -86,7 +86,7 @@ func (p *InstanceProvider) Create(
         return nil, err
     }
     return &cocorpc.CreateResponse{
-        Id:   id,
+        Id:   string(id),
         Outputs: resource.MarshalProperties(
             nil, resource.NewPropertyMap(outs), resource.MarshalOptions{},
         ),
@@ -96,7 +96,7 @@ func (p *InstanceProvider) Create(
 func (p *InstanceProvider) Get(
     ctx context.Context, req *cocorpc.GetRequest) (*cocorpc.GetResponse, error) {
     contract.Assert(req.GetType() == string(InstanceToken))
-    id := req.GetId()
+    id := resource.ID(req.GetId())
     obj, err := p.ops.Get(ctx, id)
     if err != nil {
         return nil, err
@@ -123,7 +123,8 @@ func (p *InstanceProvider) InspectChange(
     if diff.Changed("name") {
         replaces = append(replaces, "name")
     }
-    more, err := p.ops.InspectChange(ctx, req.GetId(), old, new, diff)
+    id := resource.ID(req.GetId())
+    more, err := p.ops.InspectChange(ctx, id, old, new, diff)
     if err != nil {
         return nil, err
     }
@@ -135,6 +136,7 @@ func (p *InstanceProvider) InspectChange(
 func (p *InstanceProvider) Update(
     ctx context.Context, req *cocorpc.ChangeRequest) (*pbempty.Empty, error) {
     contract.Assert(req.GetType() == string(InstanceToken))
+    id := resource.ID(req.GetId())
     old, oldprops, err := p.Unmarshal(req.GetOlds())
     if err != nil {
         return nil, err
@@ -144,7 +146,7 @@ func (p *InstanceProvider) Update(
         return nil, err
     }
     diff := oldprops.Diff(newprops)
-    if err := p.ops.Update(ctx, req.GetId(), old, new, diff); err != nil {
+    if err := p.ops.Update(ctx, id, old, new, diff); err != nil {
         return nil, err
     }
     return &pbempty.Empty{}, nil
@@ -153,7 +155,8 @@ func (p *InstanceProvider) Update(
 func (p *InstanceProvider) Delete(
     ctx context.Context, req *cocorpc.DeleteRequest) (*pbempty.Empty, error) {
     contract.Assert(req.GetType() == string(InstanceToken))
-    if err := p.ops.Delete(ctx, req.GetId()); err != nil {
+    id := resource.ID(req.GetId())
+    if err := p.ops.Delete(ctx, id); err != nil {
         return nil, err
     }
     return &pbempty.Empty{}, nil

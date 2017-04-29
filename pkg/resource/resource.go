@@ -186,7 +186,7 @@ func cloneObjectValue(ctx *Context, obj *rt.Object) (PropertyValue, bool) {
 
 // NewUniqueHex generates a new "random" hex string for use by resource providers.  It has the given optional prefix and
 // the total length is capped to the maxlen.  Note that capping to maxlen necessarily increases the risk of collisions.
-func NewUniqueHex(prefix string, randlen int, maxlen int) string {
+func NewUniqueHex(prefix string, randlen, maxlen int) string {
 	bs := make([]byte, randlen)
 	n, err := rand.Read(bs)
 	contract.Assert(err == nil)
@@ -197,4 +197,10 @@ func NewUniqueHex(prefix string, randlen int, maxlen int) string {
 		str = str[:maxlen]
 	}
 	return str
+}
+
+// NewUniqueHexID generates a new "random" hex ID for use by resource providers.  It has the given optional prefix and
+// the total length is capped to the maxlen.  Note that capping to maxlen necessarily increases the risk of collisions.
+func NewUniqueHexID(prefix string, randlen, maxlen int) ID {
+	return ID(NewUniqueHex(prefix, randlen, maxlen))
 }

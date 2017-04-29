@@ -60,15 +60,15 @@ func (p *buckProvider) Check(ctx context.Context, obj *s3.Bucket) ([]mapper.Fiel
 
 // Create allocates a new instance of the provided resource and returns its unique ID afterwards.  (The input ID
 // must be blank.)  If this call fails, the resource must not have been created (i.e., it is "transacational").
-func (p *buckProvider) Create(ctx context.Context, obj *s3.Bucket) (string, error) {
+func (p *buckProvider) Create(ctx context.Context, obj *s3.Bucket) (resource.ID, error) {
 	// If an explicit name is given, use it.  Otherwise, auto-generate a name in part based on the resource name.
 	// TODO: use the URN, not just the name, to enhance global uniqueness.
 	// TODO: even for explicit names, we should consider mangling it somehow, to reduce multi-instancing conflicts.
-	var id string
+	var id resource.ID
 	if obj.BucketName != nil {
-		id = *obj.BucketName
+		id = resource.ID(*obj.BucketName)
 	} else {
-		id = resource.NewUniqueHex(obj.Name+"-", maxBucketName, sha1.Size)
+		id = resource.NewUniqueHexID(obj.Name+"-", maxBucketName, sha1.Size)
 	}
 	var acl *string
 	if obj.AccessControl != nil {
@@ -76,7 +76,7 @@ func (p *buckProvider) Create(ctx context.Context, obj *s3.Bucket) (string, erro
 	}
 	fmt.Printf("Creating S3 Bucket '%v' with name '%v'\n", obj.Name, id)
 	create := &awss3.CreateBucketInput{
-		Bucket: aws.String(id),
+		Bucket: id.StringPtr(),
 		ACL:    acl,
 	}
 
@@ -94,29 +94,29 @@ func (p *buckProvider) Create(ctx context.Context, obj *s3.Bucket) (string, erro
 }
 
 // Get reads the instance state identified by ID, returning a populated resource object, or an error if not found.
-func (p *buckProvider) Get(ctx context.Context, id string) (*s3.Bucket, error) {
+func (p *buckProvider) Get(ctx context.Context, id resource.ID) (*s3.Bucket, error) {
 	return nil, errors.New("Not yet implemented")
 }
 
 // InspectChange checks what impacts a hypothetical update will have on the resource's properties.
-func (p *buckProvider) InspectChange(ctx context.Context, id string,
+func (p *buckProvider) InspectChange(ctx context.Context, id resource.ID,
 	new *s3.Bucket, old *s3.Bucket, diff *resource.ObjectDiff) ([]string, error) {
 	return nil, errors.New("Not yet implemented")
 }
 
 // Update updates an existing resource with new values.  Only those values in the provided property bag are updated
 // to new values.  The resource ID is returned and may be different if the resource had to be recreated.
-func (p *buckProvider) Update(ctx context.Context, id string,
+func (p *buckProvider) Update(ctx context.Context, id resource.ID,
 	new *s3.Bucket, old *s3.Bucket, diff *resource.ObjectDiff) error {
 	return errors.New("Not yet implemented")
 }
 
 // Delete tears down an existing resource with the given ID.  If it fails, the resource is assumed to still exist.
-func (p *buckProvider) Delete(ctx context.Context, id string) error {
+func (p *buckProvider) Delete(ctx context.Context, id resource.ID) error {
 	// First, perform the deletion.
 	fmt.Printf("Deleting S3 Bucket '%v'\n", id)
 	if _, err := p.ctx.S3().DeleteBucket(&awss3.DeleteBucketInput{
-		Bucket: aws.String(id),
+		Bucket: id.StringPtr(),
 	}); err != nil {
 		return err
 	}
@@ -126,12 +126,12 @@ func (p *buckProvider) Delete(ctx context.Context, id string) error {
 	return p.waitForBucketState(id, false)
 }
 
-func (p *buckProvider) waitForBucketState(name string, exist bool) error {
+func (p *buckProvider) waitForBucketState(id resource.ID, exist bool) error {
 	succ, err := awsctx.RetryUntil(
 		p.ctx,
 		func() (bool, error) {
 			if _, err := p.ctx.S3().HeadBucket(&awss3.HeadBucketInput{
-				Bucket: aws.String(name),
+				Bucket: id.StringPtr(),
 			}); err != nil {
 				if erraws, iserraws := err.(awserr.Error); iserraws {
 					if erraws.Code() == "NotFound" || erraws.Code() == "NoSuchBucket" {
@@ -155,7 +155,7 @@ func (p *buckProvider) waitForBucketState(name string, exist bool) error {
 		} else {
 			reason = "deleted"
 		}
-		return fmt.Errorf("S3 bucket '%v' did not become %v", name, reason)
+		return fmt.Errorf("S3 bucket '%v' did not become %v", id, reason)
 	}
 	return nil
 }
