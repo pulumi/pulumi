@@ -23,7 +23,7 @@ import (
 
 // DeadLetterConfig is a marshalable representation of its corresponding IDL type.
 type DeadLetterConfig struct {
-    Target *resource.ID `json:"target"`
+    Target resource.ID `json:"target"`
 }
 
 // DeadLetterConfig's properties have constants to make dealing with diffs and property bags easier.
@@ -189,9 +189,9 @@ func (p *FunctionProvider) Unmarshal(
 // Function is a marshalable representation of its corresponding IDL type.
 type Function struct {
     Name string `json:"name"`
-    Code *resource.Asset `json:"code"`
+    Code resource.Asset `json:"code"`
     Handler string `json:"handler"`
-    Role *resource.ID `json:"role"`
+    Role resource.ID `json:"role"`
     Runtime Runtime `json:"runtime"`
     FunctionName *string `json:"functionName,omitempty"`
     DeadLetterConfig *DeadLetterConfig `json:"deadLetterConfig,omitempty"`
@@ -231,8 +231,8 @@ const (
 
 // VPCConfig is a marshalable representation of its corresponding IDL type.
 type VPCConfig struct {
-    SecurityGroups []*resource.ID `json:"securityGroups"`
-    Subnets []*resource.ID `json:"subnets"`
+    SecurityGroups []resource.ID `json:"securityGroups"`
+    Subnets []resource.ID `json:"subnets"`
 }
 
 // VPCConfig's properties have constants to make dealing with diffs and property bags easier.

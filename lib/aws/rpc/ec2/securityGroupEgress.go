@@ -197,7 +197,7 @@ func (p *SecurityGroupEgressProvider) Unmarshal(
 type SecurityGroupEgress struct {
     Name string `json:"name"`
     FromPort float64 `json:"fromPort"`
-    Group *resource.ID `json:"group"`
+    Group resource.ID `json:"group"`
     IPProtocol string `json:"ipProtocol"`
     ToPort float64 `json:"toPort"`
     CIDRIP *string `json:"cidrIp,omitempty"`

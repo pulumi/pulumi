@@ -178,8 +178,8 @@ func (p *UsagePlanKeyProvider) Unmarshal(
 // UsagePlanKey is a marshalable representation of its corresponding IDL type.
 type UsagePlanKey struct {
     Name string `json:"name"`
-    Key *resource.ID `json:"key"`
-    UsagePlan *resource.ID `json:"usagePlan"`
+    Key resource.ID `json:"key"`
+    UsagePlan resource.ID `json:"usagePlan"`
 }
 
 // UsagePlanKey's properties have constants to make dealing with diffs and property bags easier.

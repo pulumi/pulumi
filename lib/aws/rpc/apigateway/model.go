@@ -182,7 +182,7 @@ func (p *ModelProvider) Unmarshal(
 type Model struct {
     Name string `json:"name"`
     ContentType string `json:"contentType"`
-    RestAPI *resource.ID `json:"restAPI"`
+    RestAPI resource.ID `json:"restAPI"`
     Schema interface{} `json:"schema"`
     ModelName *string `json:"modelName,omitempty"`
     Description *string `json:"description,omitempty"`

@@ -178,9 +178,9 @@ func (p *StageProvider) Unmarshal(
 // Stage is a marshalable representation of its corresponding IDL type.
 type Stage struct {
     Name string `json:"name"`
-    RestAPI *resource.ID `json:"restAPI"`
+    RestAPI resource.ID `json:"restAPI"`
     StageName string `json:"stageName"`
-    Deployment *resource.ID `json:"deployment"`
+    Deployment resource.ID `json:"deployment"`
     CacheClusterEnabled *bool `json:"cacheClusterEnabled,omitempty"`
     CacheClusterSize *string `json:"cacheClusterSize,omitempty"`
     ClientCertificate *resource.ID `json:"clientCertificate,omitempty"`

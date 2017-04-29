@@ -41,7 +41,7 @@ func (p *httProvider) Create(ctx context.Context, obj *idl.HTTPTrigger) (resourc
 		Metadata:   fission.Metadata{Name: obj.Name},
 		UrlPattern: obj.URLPattern,
 		Method:     obj.Method,
-		Function:   fission.Metadata{Name: string(*obj.Function)},
+		Function:   fission.Metadata{Name: string(obj.Function)},
 	}); err != nil {
 		return "", err
 	} else {

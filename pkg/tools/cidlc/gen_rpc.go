@@ -426,7 +426,7 @@ func (g *RPCGenerator) EmitStructType(w *bufio.Writer, module tokens.Module, pkg
 		}
 		// Make a JSON tag for this so we can serialize; note that outputs are always optional in this position.
 		jsontag := makeJSONTag(opts, opts.Out)
-		writefmtln(w, "    %v %v %v", prop.Name(), g.GenTypeName(prop.Type()), jsontag)
+		writefmtln(w, "    %v %v %v", prop.Name(), g.GenTypeName(prop.Type(), opts.Optional), jsontag)
 	}
 	writefmtln(w, "}")
 	writefmtln(w, "")
@@ -438,7 +438,7 @@ func (g *RPCGenerator) EmitStructType(w *bufio.Writer, module tokens.Module, pkg
 			prop := props[out]
 			opts := propopts[out]
 			jsontag := makeJSONTag(opts, false)
-			writefmtln(w, "    %v %v %v", prop.Name(), g.GenTypeName(prop.Type()), jsontag)
+			writefmtln(w, "    %v %v %v", prop.Name(), g.GenTypeName(prop.Type(), opts.Optional), jsontag)
 		}
 		writefmtln(w, "}")
 		writefmtln(w, "")
@@ -465,7 +465,7 @@ func makeJSONTag(opts PropertyOptions, forceopt bool) string {
 	return fmt.Sprintf("`json:\"%v%v\"`", opts.Name, flags)
 }
 
-func (g *RPCGenerator) GenTypeName(t types.Type) string {
+func (g *RPCGenerator) GenTypeName(t types.Type, opt bool) string {
 	switch u := t.(type) {
 	case *types.Basic:
 		switch k := u.Kind(); k {
@@ -510,11 +510,26 @@ func (g *RPCGenerator) GenTypeName(t types.Type) string {
 		impname := g.registerImport(pkg)
 		return fmt.Sprintf("%v.%v", impname, name)
 	case *types.Map:
-		return fmt.Sprintf("map[%v]%v", g.GenTypeName(u.Key()), g.GenTypeName(u.Elem()))
+		return fmt.Sprintf("map[%v]%v", g.GenTypeName(u.Key(), false), g.GenTypeName(u.Elem(), false))
 	case *types.Pointer:
-		return fmt.Sprintf("*%v", g.GenTypeName(u.Elem()))
+		// If this isn't an optional property, and the underlying type is a resource or special type, unpointerize it.
+		elem := u.Elem()
+		unptr := false
+		if !opt {
+			if elnm, iselnm := elem.(*types.Named); iselnm {
+				if res, _ := IsResource(elnm.Obj(), elnm); res {
+					unptr = true
+				} else if spec, _ := IsSpecial(elnm.Obj()); spec {
+					unptr = true
+				}
+			}
+		}
+		if unptr {
+			return g.GenTypeName(elem, false)
+		}
+		return fmt.Sprintf("*%v", g.GenTypeName(u.Elem(), false))
 	case *types.Slice:
-		return fmt.Sprintf("[]%v", g.GenTypeName(u.Elem())) // postfix syntax for arrays.
+		return fmt.Sprintf("[]%v", g.GenTypeName(u.Elem(), false)) // postfix syntax for arrays.
 	default:
 		contract.Failf("Unrecognized GenTypeName type: %v", reflect.TypeOf(u))
 	}
@@ -554,7 +569,7 @@ func (g *RPCGenerator) EmitConstants(w *bufio.Writer, consts []*Const) {
 
 	writefmtln(w, "const (")
 	for _, konst := range consts {
-		writefmtln(w, "    %v %v = %v", konst.Name(), g.GenTypeName(konst.Type), konst.Value)
+		writefmtln(w, "    %v %v = %v", konst.Name(), g.GenTypeName(konst.Type, false), konst.Value)
 	}
 	writefmtln(w, ")")
 

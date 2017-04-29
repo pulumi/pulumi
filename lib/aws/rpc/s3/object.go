@@ -175,8 +175,8 @@ func (p *ObjectProvider) Unmarshal(
 // Object is a marshalable representation of its corresponding IDL type.
 type Object struct {
     Key string `json:"key"`
-    Bucket *resource.ID `json:"bucket"`
-    Source *resource.Asset `json:"source"`
+    Bucket resource.ID `json:"bucket"`
+    Source resource.Asset `json:"source"`
 }
 
 // Object's properties have constants to make dealing with diffs and property bags easier.

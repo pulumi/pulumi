@@ -182,7 +182,7 @@ func (p *SubnetProvider) Unmarshal(
 type Subnet struct {
     Name string `json:"name"`
     CIDRBlock string `json:"cidrBlock"`
-    VPC *resource.ID `json:"vpc"`
+    VPC resource.ID `json:"vpc"`
     AvailabilityZone *string `json:"availabilityZone,omitempty"`
     MapPublicIpOnLaunch *bool `json:"mapPublicIpOnLaunch,omitempty"`
 }

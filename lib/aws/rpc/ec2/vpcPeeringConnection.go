@@ -178,8 +178,8 @@ func (p *VPCPeeringConnectionProvider) Unmarshal(
 // VPCPeeringConnection is a marshalable representation of its corresponding IDL type.
 type VPCPeeringConnection struct {
     Name string `json:"name"`
-    PeerVPC *resource.ID `json:"peerVpc"`
-    VPC *resource.ID `json:"vpc"`
+    PeerVPC resource.ID `json:"peerVpc"`
+    VPC resource.ID `json:"vpc"`
 }
 
 // VPCPeeringConnection's properties have constants to make dealing with diffs and property bags easier.

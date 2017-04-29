@@ -172,8 +172,8 @@ func (p *FunctionProvider) Unmarshal(
 // Function is a marshalable representation of its corresponding IDL type.
 type Function struct {
     Name string `json:"name"`
-    Environment *resource.ID `json:"environment"`
-    Code *resource.Asset `json:"code"`
+    Environment resource.ID `json:"environment"`
+    Code resource.Asset `json:"code"`
 }
 
 // Function's properties have constants to make dealing with diffs and property bags easier.

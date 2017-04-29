@@ -175,7 +175,7 @@ func (p *RouteTableProvider) Unmarshal(
 // RouteTable is a marshalable representation of its corresponding IDL type.
 type RouteTable struct {
     Name string `json:"name"`
-    VPC *resource.ID `json:"vpc"`
+    VPC resource.ID `json:"vpc"`
 }
 
 // RouteTable's properties have constants to make dealing with diffs and property bags easier.

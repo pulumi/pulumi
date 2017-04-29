@@ -51,7 +51,7 @@ func (p *funcProvider) Create(ctx context.Context, obj *idl.Function) (resource.
 			Name: obj.Name,
 		},
 		Environment: fission.Metadata{
-			Name: string(*obj.Environment),
+			Name: string(obj.Environment),
 		},
 		Code: code.String(),
 	}

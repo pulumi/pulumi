@@ -207,7 +207,7 @@ const (
 
 // RedrivePolicy is a marshalable representation of its corresponding IDL type.
 type RedrivePolicy struct {
-    DeadLetterTarget *resource.ID `json:"deadLetterTarget"`
+    DeadLetterTarget resource.ID `json:"deadLetterTarget"`
     MaxReceiveCount float64 `json:"maxReceiveCount"`
 }
 

@@ -221,14 +221,14 @@ func (p *MethodProvider) Unmarshal(
 type Method struct {
     Name string `json:"name"`
     HTTPMethod string `json:"httpMethod"`
-    APIResource *resource.ID `json:"apiResource"`
-    RestAPI *resource.ID `json:"restAPI"`
+    APIResource resource.ID `json:"apiResource"`
+    RestAPI resource.ID `json:"restAPI"`
     APIKeyRequired *bool `json:"apiKeyRequired,omitempty"`
     AuthorizationType *AuthorizationType `json:"authorizationType,omitempty"`
     Authorizer *resource.ID `json:"authorizer,omitempty"`
     Integration *Integration `json:"integration,omitempty"`
     MethodResponses *[]MethodResponse `json:"methodResponses,omitempty"`
-    RequestModels *map[string]*resource.ID `json:"requestModels,omitempty"`
+    RequestModels *map[string]resource.ID `json:"requestModels,omitempty"`
     RequestParameters *map[string]bool `json:"requestParameters,omitempty"`
 }
 
@@ -252,7 +252,7 @@ const (
 // MethodResponse is a marshalable representation of its corresponding IDL type.
 type MethodResponse struct {
     StatusCode string `json:"statusCode"`
-    ResponseModels *map[string]*resource.ID `json:"responseModels,omitempty"`
+    ResponseModels *map[string]resource.ID `json:"responseModels,omitempty"`
     ResponseParameters *map[string]bool `json:"responseParameters,omitempty"`
 }
 

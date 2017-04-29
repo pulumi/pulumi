@@ -181,9 +181,9 @@ func (p *ResourceProvider) Unmarshal(
 // Resource is a marshalable representation of its corresponding IDL type.
 type Resource struct {
     Name string `json:"name"`
-    Parent *resource.ID `json:"parent"`
+    Parent resource.ID `json:"parent"`
     PathPart string `json:"pathPart"`
-    RestAPI *resource.ID `json:"restAPI"`
+    RestAPI resource.ID `json:"restAPI"`
 }
 
 // Resource's properties have constants to make dealing with diffs and property bags easier.

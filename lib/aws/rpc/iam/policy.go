@@ -188,9 +188,9 @@ type Policy struct {
     Name string `json:"name"`
     PolicyDocument interface{} `json:"policyDocument"`
     PolicyName string `json:"policyName"`
-    Groups *[]*resource.ID `json:"groups,omitempty"`
-    Roles *[]*resource.ID `json:"roles,omitempty"`
-    Users *[]*resource.ID `json:"users,omitempty"`
+    Groups *[]resource.ID `json:"groups,omitempty"`
+    Roles *[]resource.ID `json:"roles,omitempty"`
+    Users *[]resource.ID `json:"users,omitempty"`
 }
 
 // Policy's properties have constants to make dealing with diffs and property bags easier.

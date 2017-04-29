@@ -172,7 +172,7 @@ func (p *DeploymentProvider) Unmarshal(
 // Deployment is a marshalable representation of its corresponding IDL type.
 type Deployment struct {
     Name string `json:"name"`
-    RestAPI *resource.ID `json:"restAPI"`
+    RestAPI resource.ID `json:"restAPI"`
     Description *string `json:"description,omitempty"`
     StageDescription *StageDescription `json:"stageDescription,omitempty"`
     StageName *string `json:"stageName,omitempty"`

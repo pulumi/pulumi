@@ -174,7 +174,7 @@ type HTTPTrigger struct {
     Name string `json:"name"`
     URLPattern string `json:"urlPattern"`
     Method string `json:"method"`
-    Function *resource.ID `json:"function"`
+    Function resource.ID `json:"function"`
 }
 
 // HTTPTrigger's properties have constants to make dealing with diffs and property bags easier.

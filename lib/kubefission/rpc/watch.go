@@ -176,7 +176,7 @@ type Watch struct {
     ObjType string `json:"objType"`
     LabelSelector string `json:"labelSelector"`
     FieldSelector string `json:"fieldSelector"`
-    Function *resource.ID `json:"function"`
+    Function resource.ID `json:"function"`
     Target string `json:"target"`
 }
 

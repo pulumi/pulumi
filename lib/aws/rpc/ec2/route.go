@@ -185,9 +185,9 @@ func (p *RouteProvider) Unmarshal(
 type Route struct {
     Name string `json:"name"`
     DestinationCidrBlock string `json:"destinationCidrBlock"`
-    RouteTable *resource.ID `json:"routeTable"`
-    InternetGateway *resource.ID `json:"internetGateway"`
-    VPCGatewayAttachment *resource.ID `json:"vpcGatewayAttachment"`
+    RouteTable resource.ID `json:"routeTable"`
+    InternetGateway resource.ID `json:"internetGateway"`
+    VPCGatewayAttachment resource.ID `json:"vpcGatewayAttachment"`
 }
 
 // Route's properties have constants to make dealing with diffs and property bags easier.

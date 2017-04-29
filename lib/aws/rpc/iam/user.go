@@ -190,9 +190,9 @@ func (p *UserProvider) Unmarshal(
 type User struct {
     Name string `json:"name"`
     UserName *string `json:"userName,omitempty"`
-    Groups *[]*resource.ID `json:"groups,omitempty"`
+    Groups *[]resource.ID `json:"groups,omitempty"`
     LoginProfile *LoginProfile `json:"loginProfile,omitempty"`
-    ManagedPolicies *[]*resource.ID `json:"managedPolicies,omitempty"`
+    ManagedPolicies *[]resource.ID `json:"managedPolicies,omitempty"`
     Path *string `json:"path,omitempty"`
     Policies *[]InlinePolicy `json:"policies,omitempty"`
 }

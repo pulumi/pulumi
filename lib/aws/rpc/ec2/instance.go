@@ -177,7 +177,7 @@ type Instance struct {
     Name string `json:"name"`
     ImageID string `json:"imageId"`
     InstanceType *InstanceType `json:"instanceType,omitempty"`
-    SecurityGroups *[]*resource.ID `json:"securityGroups,omitempty"`
+    SecurityGroups *[]resource.ID `json:"securityGroups,omitempty"`
     KeyName *string `json:"keyName,omitempty"`
     AvailabilityZone string `json:"availabilityZone,omitempty"`
     PrivateDNSName *string `json:"privateDNSName,omitempty"`

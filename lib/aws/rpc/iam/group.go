@@ -176,7 +176,7 @@ func (p *GroupProvider) Unmarshal(
 type Group struct {
     Name string `json:"name"`
     GroupName *string `json:"groupName,omitempty"`
-    ManagedPolicies *[]*resource.ID `json:"managedPolicies,omitempty"`
+    ManagedPolicies *[]resource.ID `json:"managedPolicies,omitempty"`
     Path *string `json:"path,omitempty"`
     Policies *InlinePolicy `json:"policies,omitempty"`
 }

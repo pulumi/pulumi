@@ -178,8 +178,8 @@ func (p *VPCGatewayAttachmentProvider) Unmarshal(
 // VPCGatewayAttachment is a marshalable representation of its corresponding IDL type.
 type VPCGatewayAttachment struct {
     Name string `json:"name"`
-    VPC *resource.ID `json:"vpc"`
-    InternetGateway *resource.ID `json:"internetGateway"`
+    VPC resource.ID `json:"vpc"`
+    InternetGateway resource.ID `json:"internetGateway"`
 }
 
 // VPCGatewayAttachment's properties have constants to make dealing with diffs and property bags easier.

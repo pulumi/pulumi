@@ -197,7 +197,7 @@ const (
 
 // S3Location is a marshalable representation of its corresponding IDL type.
 type S3Location struct {
-    Object *resource.ID `json:"object"`
+    Object resource.ID `json:"object"`
     ETag *string `json:"etag,omitempty"`
     Version *string `json:"version,omitempty"`
 }

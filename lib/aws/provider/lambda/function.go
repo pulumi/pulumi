@@ -114,7 +114,7 @@ func (p *funcProvider) Create(ctx context.Context, obj *lambda.Function) (resour
 		}
 	} else {
 		// TODO: assets need filenames; don't hard code it.
-		if zip, err := zipCodeAsset(*obj.Code, "index.js"); err != nil {
+		if zip, err := zipCodeAsset(obj.Code, "index.js"); err != nil {
 			return "", nil, err
 		} else {
 			code = &awslambda.FunctionCode{ZipFile: zip}

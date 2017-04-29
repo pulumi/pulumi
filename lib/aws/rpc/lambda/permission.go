@@ -190,7 +190,7 @@ func (p *PermissionProvider) Unmarshal(
 type Permission struct {
     Name string `json:"name"`
     Action string `json:"action"`
-    Function *resource.ID `json:"function"`
+    Function resource.ID `json:"function"`
     Principal string `json:"principal"`
     SourceAccount *string `json:"sourceAccount,omitempty"`
     SourceARN *__aws.ARN `json:"sourceARN,omitempty"`

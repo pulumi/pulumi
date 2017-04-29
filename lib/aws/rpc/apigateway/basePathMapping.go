@@ -173,7 +173,7 @@ func (p *BasePathMappingProvider) Unmarshal(
 type BasePathMapping struct {
     Name string `json:"name"`
     DomainName string `json:"domainName"`
-    RestAPI *resource.ID `json:"restAPI"`
+    RestAPI resource.ID `json:"restAPI"`
     BasePath *string `json:"basePath,omitempty"`
     Stage *resource.ID `json:"stage,omitempty"`
 }
