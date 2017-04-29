@@ -40,6 +40,8 @@
         "cloudwatch/alarm.ts",
 
         "ec2/index.ts",
+        "ec2/instance.ts",
+        "ec2/instanceMaps.ts",
         "ec2/internetGateway.ts",
         "ec2/route.ts",
         "ec2/routeTable.ts",
@@ -72,10 +74,7 @@
         "sns/topic.ts",
 
         "sqs/index.ts",
-        "sqs/queue.ts",
-
-        "utils/index.ts",
-        "utils/instanceMaps.ts"
+        "sqs/queue.ts"
     ]
 }
 
