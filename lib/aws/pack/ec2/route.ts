@@ -14,12 +14,12 @@ export class Route extends coconut.Resource implements RouteArgs {
     public readonly internetGateway: InternetGateway;
     public readonly vpcGatewayAttachment: VPCGatewayAttachment;
 
-    constructor(args: RouteArgs) {
+    constructor(name: string, args: RouteArgs) {
         super();
-        if (args.name === undefined) {
-            throw new Error("Missing required argument 'name'");
+        if (name === undefined) {
+            throw new Error("Missing required resource name");
         }
-        this.name = args.name;
+        this.name = name;
         if (args.destinationCidrBlock === undefined) {
             throw new Error("Missing required argument 'destinationCidrBlock'");
         }
@@ -40,7 +40,6 @@ export class Route extends coconut.Resource implements RouteArgs {
 }
 
 export interface RouteArgs {
-    readonly name: string;
     readonly destinationCidrBlock: string;
     readonly routeTable: RouteTable;
     readonly internetGateway: InternetGateway;

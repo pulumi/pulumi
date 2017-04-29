@@ -11,12 +11,12 @@ export class UsagePlanKey extends coconut.Resource implements UsagePlanKeyArgs {
     public readonly key: APIKey;
     public readonly usagePlan: UsagePlan;
 
-    constructor(args: UsagePlanKeyArgs) {
+    constructor(name: string, args: UsagePlanKeyArgs) {
         super();
-        if (args.name === undefined) {
-            throw new Error("Missing required argument 'name'");
+        if (name === undefined) {
+            throw new Error("Missing required resource name");
         }
-        this.name = args.name;
+        this.name = name;
         if (args.key === undefined) {
             throw new Error("Missing required argument 'key'");
         }
@@ -29,7 +29,6 @@ export class UsagePlanKey extends coconut.Resource implements UsagePlanKeyArgs {
 }
 
 export interface UsagePlanKeyArgs {
-    readonly name: string;
     readonly key: APIKey;
     readonly usagePlan: UsagePlan;
 }

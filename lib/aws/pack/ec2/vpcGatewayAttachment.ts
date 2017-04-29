@@ -11,12 +11,12 @@ export class VPCGatewayAttachment extends coconut.Resource implements VPCGateway
     public readonly vpc: VPC;
     public readonly internetGateway: InternetGateway;
 
-    constructor(args: VPCGatewayAttachmentArgs) {
+    constructor(name: string, args: VPCGatewayAttachmentArgs) {
         super();
-        if (args.name === undefined) {
-            throw new Error("Missing required argument 'name'");
+        if (name === undefined) {
+            throw new Error("Missing required resource name");
         }
-        this.name = args.name;
+        this.name = name;
         if (args.vpc === undefined) {
             throw new Error("Missing required argument 'vpc'");
         }
@@ -29,7 +29,6 @@ export class VPCGatewayAttachment extends coconut.Resource implements VPCGateway
 }
 
 export interface VPCGatewayAttachmentArgs {
-    readonly name: string;
     readonly vpc: VPC;
     readonly internetGateway: InternetGateway;
 }

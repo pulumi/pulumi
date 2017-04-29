@@ -20,12 +20,12 @@ export class Policy extends coconut.Resource implements PolicyArgs {
     public roles?: Role[];
     public users?: User[];
 
-    constructor(args: PolicyArgs) {
+    constructor(name: string, args: PolicyArgs) {
         super();
-        if (args.name === undefined) {
-            throw new Error("Missing required argument 'name'");
+        if (name === undefined) {
+            throw new Error("Missing required resource name");
         }
-        this.name = args.name;
+        this.name = name;
         if (args.policyDocument === undefined) {
             throw new Error("Missing required argument 'policyDocument'");
         }
@@ -41,7 +41,6 @@ export class Policy extends coconut.Resource implements PolicyArgs {
 }
 
 export interface PolicyArgs {
-    readonly name: string;
     policyDocument: any;
     policyName: string;
     groups?: Group[];

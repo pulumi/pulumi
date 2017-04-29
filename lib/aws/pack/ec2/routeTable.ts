@@ -9,12 +9,12 @@ export class RouteTable extends coconut.Resource implements RouteTableArgs {
     public readonly name: string;
     public readonly vpc: VPC;
 
-    constructor(args: RouteTableArgs) {
+    constructor(name: string, args: RouteTableArgs) {
         super();
-        if (args.name === undefined) {
-            throw new Error("Missing required argument 'name'");
+        if (name === undefined) {
+            throw new Error("Missing required resource name");
         }
-        this.name = args.name;
+        this.name = name;
         if (args.vpc === undefined) {
             throw new Error("Missing required argument 'vpc'");
         }
@@ -23,7 +23,6 @@ export class RouteTable extends coconut.Resource implements RouteTableArgs {
 }
 
 export interface RouteTableArgs {
-    readonly name: string;
     readonly vpc: VPC;
 }
 

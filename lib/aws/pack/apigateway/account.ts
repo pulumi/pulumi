@@ -9,18 +9,17 @@ export class Account extends coconut.Resource implements AccountArgs {
     public readonly name: string;
     public cloudWatchRole?: Role;
 
-    constructor(args: AccountArgs) {
+    constructor(name: string, args: AccountArgs) {
         super();
-        if (args.name === undefined) {
-            throw new Error("Missing required argument 'name'");
+        if (name === undefined) {
+            throw new Error("Missing required resource name");
         }
-        this.name = args.name;
+        this.name = name;
         this.cloudWatchRole = args.cloudWatchRole;
     }
 }
 
 export interface AccountArgs {
-    readonly name: string;
     cloudWatchRole?: Role;
 }
 

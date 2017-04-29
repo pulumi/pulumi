@@ -12,12 +12,12 @@ export class Subnet extends coconut.Resource implements SubnetArgs {
     public readonly availabilityZone?: string;
     public mapPublicIpOnLaunch?: boolean;
 
-    constructor(args: SubnetArgs) {
+    constructor(name: string, args: SubnetArgs) {
         super();
-        if (args.name === undefined) {
-            throw new Error("Missing required argument 'name'");
+        if (name === undefined) {
+            throw new Error("Missing required resource name");
         }
-        this.name = args.name;
+        this.name = name;
         if (args.cidrBlock === undefined) {
             throw new Error("Missing required argument 'cidrBlock'");
         }
@@ -32,7 +32,6 @@ export class Subnet extends coconut.Resource implements SubnetArgs {
 }
 
 export interface SubnetArgs {
-    readonly name: string;
     readonly cidrBlock: string;
     readonly vpc: VPC;
     readonly availabilityZone?: string;

@@ -13,12 +13,12 @@ export class BasePathMapping extends coconut.Resource implements BasePathMapping
     public basePath?: string;
     public stage?: Stage;
 
-    constructor(args: BasePathMappingArgs) {
+    constructor(name: string, args: BasePathMappingArgs) {
         super();
-        if (args.name === undefined) {
-            throw new Error("Missing required argument 'name'");
+        if (name === undefined) {
+            throw new Error("Missing required resource name");
         }
-        this.name = args.name;
+        this.name = name;
         if (args.domainName === undefined) {
             throw new Error("Missing required argument 'domainName'");
         }
@@ -33,7 +33,6 @@ export class BasePathMapping extends coconut.Resource implements BasePathMapping
 }
 
 export interface BasePathMappingArgs {
-    readonly name: string;
     domainName: string;
     restAPI: RestAPI;
     basePath?: string;

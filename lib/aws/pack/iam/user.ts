@@ -20,12 +20,12 @@ export class User extends coconut.Resource implements UserArgs {
     public path?: string;
     public policies?: InlinePolicy[];
 
-    constructor(args: UserArgs) {
+    constructor(name: string, args: UserArgs) {
         super();
-        if (args.name === undefined) {
-            throw new Error("Missing required argument 'name'");
+        if (name === undefined) {
+            throw new Error("Missing required resource name");
         }
-        this.name = args.name;
+        this.name = name;
         this.userName = args.userName;
         this.groups = args.groups;
         this.loginProfile = args.loginProfile;
@@ -36,7 +36,6 @@ export class User extends coconut.Resource implements UserArgs {
 }
 
 export interface UserArgs {
-    readonly name: string;
     readonly userName?: string;
     groups?: Group[];
     loginProfile?: LoginProfile;

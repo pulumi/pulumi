@@ -20,12 +20,12 @@ export class Authorizer extends coconut.Resource implements AuthorizerArgs {
     public providers?: coconut.Resource[];
     public restAPI?: RestAPI;
 
-    constructor(args: AuthorizerArgs) {
+    constructor(name: string, args: AuthorizerArgs) {
         super();
-        if (args.name === undefined) {
-            throw new Error("Missing required argument 'name'");
+        if (name === undefined) {
+            throw new Error("Missing required resource name");
         }
-        this.name = args.name;
+        this.name = name;
         if (args.type === undefined) {
             throw new Error("Missing required argument 'type'");
         }
@@ -41,7 +41,6 @@ export class Authorizer extends coconut.Resource implements AuthorizerArgs {
 }
 
 export interface AuthorizerArgs {
-    readonly name: string;
     type: AuthorizerType;
     authorizerCredentials?: Role;
     authorizerResultTTLInSeconds?: number;

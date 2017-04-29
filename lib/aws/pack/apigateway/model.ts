@@ -13,12 +13,12 @@ export class Model extends coconut.Resource implements ModelArgs {
     public readonly modelName?: string;
     public description?: string;
 
-    constructor(args: ModelArgs) {
+    constructor(name: string, args: ModelArgs) {
         super();
-        if (args.name === undefined) {
-            throw new Error("Missing required argument 'name'");
+        if (name === undefined) {
+            throw new Error("Missing required resource name");
         }
-        this.name = args.name;
+        this.name = name;
         if (args.contentType === undefined) {
             throw new Error("Missing required argument 'contentType'");
         }
@@ -37,7 +37,6 @@ export class Model extends coconut.Resource implements ModelArgs {
 }
 
 export interface ModelArgs {
-    readonly name: string;
     readonly contentType: string;
     readonly restAPI: RestAPI;
     schema: any;

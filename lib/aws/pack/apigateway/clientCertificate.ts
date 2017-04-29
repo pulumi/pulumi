@@ -7,18 +7,17 @@ export class ClientCertificate extends coconut.Resource implements ClientCertifi
     public readonly name: string;
     public description?: string;
 
-    constructor(args: ClientCertificateArgs) {
+    constructor(name: string, args: ClientCertificateArgs) {
         super();
-        if (args.name === undefined) {
-            throw new Error("Missing required argument 'name'");
+        if (name === undefined) {
+            throw new Error("Missing required resource name");
         }
-        this.name = args.name;
+        this.name = name;
         this.description = args.description;
     }
 }
 
 export interface ClientCertificateArgs {
-    readonly name: string;
     description?: string;
 }
 

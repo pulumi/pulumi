@@ -14,12 +14,12 @@ export class Deployment extends coconut.Resource implements DeploymentArgs {
     public stageDescription?: StageDescription;
     public stageName?: string;
 
-    constructor(args: DeploymentArgs) {
+    constructor(name: string, args: DeploymentArgs) {
         super();
-        if (args.name === undefined) {
-            throw new Error("Missing required argument 'name'");
+        if (name === undefined) {
+            throw new Error("Missing required resource name");
         }
-        this.name = args.name;
+        this.name = name;
         if (args.restAPI === undefined) {
             throw new Error("Missing required argument 'restAPI'");
         }
@@ -31,7 +31,6 @@ export class Deployment extends coconut.Resource implements DeploymentArgs {
 }
 
 export interface DeploymentArgs {
-    readonly name: string;
     restAPI: RestAPI;
     description?: string;
     stageDescription?: StageDescription;

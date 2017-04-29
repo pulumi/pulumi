@@ -75,12 +75,12 @@ export class Method extends coconut.Resource implements MethodArgs {
     public requestModels?: {[key: string]: Model};
     public requestParameters?: {[key: string]: boolean};
 
-    constructor(args: MethodArgs) {
+    constructor(name: string, args: MethodArgs) {
         super();
-        if (args.name === undefined) {
-            throw new Error("Missing required argument 'name'");
+        if (name === undefined) {
+            throw new Error("Missing required resource name");
         }
-        this.name = args.name;
+        this.name = name;
         if (args.httpMethod === undefined) {
             throw new Error("Missing required argument 'httpMethod'");
         }
@@ -104,7 +104,6 @@ export class Method extends coconut.Resource implements MethodArgs {
 }
 
 export interface MethodArgs {
-    readonly name: string;
     httpMethod: string;
     apiResource: Resource;
     restAPI: RestAPI;

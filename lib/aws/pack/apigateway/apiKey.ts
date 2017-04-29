@@ -13,12 +13,12 @@ export class APIKey extends coconut.Resource implements APIKeyArgs {
     public enabled?: boolean;
     public stageKeys?: StageKey;
 
-    constructor(args: APIKeyArgs) {
+    constructor(name: string, args: APIKeyArgs) {
         super();
-        if (args.name === undefined) {
-            throw new Error("Missing required argument 'name'");
+        if (name === undefined) {
+            throw new Error("Missing required resource name");
         }
-        this.name = args.name;
+        this.name = name;
         this.keyName = args.keyName;
         this.description = args.description;
         this.enabled = args.enabled;
@@ -27,7 +27,6 @@ export class APIKey extends coconut.Resource implements APIKeyArgs {
 }
 
 export interface APIKeyArgs {
-    readonly name: string;
     readonly keyName?: string;
     description?: string;
     enabled?: boolean;

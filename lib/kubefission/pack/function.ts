@@ -10,12 +10,12 @@ export class Function extends coconut.Resource implements FunctionArgs {
     public environment: Environment;
     public code: coconut.asset.Asset;
 
-    constructor(args: FunctionArgs) {
+    constructor(name: string, args: FunctionArgs) {
         super();
         if (args.name === undefined) {
             throw new Error("Missing required argument 'name'");
         }
-        this.name = args.name;
+        this.name = name;
         if (args.environment === undefined) {
             throw new Error("Missing required argument 'environment'");
         }

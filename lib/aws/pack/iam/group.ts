@@ -12,12 +12,12 @@ export class Group extends coconut.Resource implements GroupArgs {
     public path?: string;
     public policies?: InlinePolicy;
 
-    constructor(args: GroupArgs) {
+    constructor(name: string, args: GroupArgs) {
         super();
-        if (args.name === undefined) {
-            throw new Error("Missing required argument 'name'");
+        if (name === undefined) {
+            throw new Error("Missing required resource name");
         }
-        this.name = args.name;
+        this.name = name;
         this.groupName = args.groupName;
         this.managedPolicies = args.managedPolicies;
         this.path = args.path;
@@ -26,7 +26,6 @@ export class Group extends coconut.Resource implements GroupArgs {
 }
 
 export interface GroupArgs {
-    readonly name: string;
     readonly groupName?: string;
     managedPolicies?: Policy[];
     path?: string;

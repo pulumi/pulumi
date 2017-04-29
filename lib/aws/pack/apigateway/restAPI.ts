@@ -15,12 +15,12 @@ export class RestAPI extends coconut.Resource implements RestAPIArgs {
     public apiName?: string;
     public parameters?: string[];
 
-    constructor(args: RestAPIArgs) {
+    constructor(name: string, args: RestAPIArgs) {
         super();
-        if (args.name === undefined) {
-            throw new Error("Missing required argument 'name'");
+        if (name === undefined) {
+            throw new Error("Missing required resource name");
         }
-        this.name = args.name;
+        this.name = name;
         this.body = args.body;
         this.bodyS3Location = args.bodyS3Location;
         this.cloneFrom = args.cloneFrom;
@@ -32,7 +32,6 @@ export class RestAPI extends coconut.Resource implements RestAPIArgs {
 }
 
 export interface RestAPIArgs {
-    readonly name: string;
     body?: any;
     bodyS3Location?: S3Location;
     cloneFrom?: RestAPI;

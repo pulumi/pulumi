@@ -15,12 +15,12 @@ export class Queue extends coconut.Resource implements QueueArgs {
     public redrivePolicy?: RedrivePolicy;
     public visibilityTimeout?: number;
 
-    constructor(args: QueueArgs) {
+    constructor(name: string, args: QueueArgs) {
         super();
-        if (args.name === undefined) {
-            throw new Error("Missing required argument 'name'");
+        if (name === undefined) {
+            throw new Error("Missing required resource name");
         }
-        this.name = args.name;
+        this.name = name;
         this.fifoQueue = args.fifoQueue;
         this.queueName = args.queueName;
         this.contentBasedDeduplication = args.contentBasedDeduplication;
@@ -34,7 +34,6 @@ export class Queue extends coconut.Resource implements QueueArgs {
 }
 
 export interface QueueArgs {
-    readonly name: string;
     readonly fifoQueue?: boolean;
     readonly queueName?: string;
     contentBasedDeduplication?: boolean;

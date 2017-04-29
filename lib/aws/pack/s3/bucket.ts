@@ -10,19 +10,18 @@ export class Bucket extends coconut.Resource implements BucketArgs {
     public readonly bucketName?: string;
     public accessControl?: CannedACL;
 
-    constructor(args: BucketArgs) {
+    constructor(name: string, args: BucketArgs) {
         super();
-        if (args.name === undefined) {
-            throw new Error("Missing required argument 'name'");
+        if (name === undefined) {
+            throw new Error("Missing required resource name");
         }
-        this.name = args.name;
+        this.name = name;
         this.bucketName = args.bucketName;
         this.accessControl = args.accessControl;
     }
 }
 
 export interface BucketArgs {
-    readonly name: string;
     readonly bucketName?: string;
     accessControl?: CannedACL;
 }

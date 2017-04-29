@@ -19,12 +19,12 @@ export class VPC extends coconut.Resource implements VPCArgs {
     public enableDnsSupport?: boolean;
     public enableDnsHostnames?: boolean;
 
-    constructor(args: VPCArgs) {
+    constructor(name: string, args: VPCArgs) {
         super();
-        if (args.name === undefined) {
-            throw new Error("Missing required argument 'name'");
+        if (name === undefined) {
+            throw new Error("Missing required resource name");
         }
-        this.name = args.name;
+        this.name = name;
         if (args.cidrBlock === undefined) {
             throw new Error("Missing required argument 'cidrBlock'");
         }
@@ -36,7 +36,6 @@ export class VPC extends coconut.Resource implements VPCArgs {
 }
 
 export interface VPCArgs {
-    readonly name: string;
     readonly cidrBlock: string;
     readonly instanceTenancy?: InstanceTenancy;
     enableDnsSupport?: boolean;

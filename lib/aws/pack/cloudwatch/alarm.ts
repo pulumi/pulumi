@@ -48,12 +48,12 @@ export class ActionTarget extends coconut.Resource implements ActionTargetArgs {
     public displayName?: string;
     public subscription?: TopicSubscription[];
 
-    constructor(args: ActionTargetArgs) {
+    constructor(name: string, args: ActionTargetArgs) {
         super();
-        if (args.name === undefined) {
-            throw new Error("Missing required argument 'name'");
+        if (name === undefined) {
+            throw new Error("Missing required resource name");
         }
-        this.name = args.name;
+        this.name = name;
         this.topicName = args.topicName;
         this.displayName = args.displayName;
         this.subscription = args.subscription;
@@ -61,7 +61,6 @@ export class ActionTarget extends coconut.Resource implements ActionTargetArgs {
 }
 
 export interface ActionTargetArgs {
-    readonly name: string;
     readonly topicName?: string;
     displayName?: string;
     subscription?: TopicSubscription[];
@@ -85,12 +84,12 @@ export class Alarm extends coconut.Resource implements AlarmArgs {
     public okActions?: ActionTarget[];
     public unit?: AlarmMetric;
 
-    constructor(args: AlarmArgs) {
+    constructor(name: string, args: AlarmArgs) {
         super();
-        if (args.name === undefined) {
-            throw new Error("Missing required argument 'name'");
+        if (name === undefined) {
+            throw new Error("Missing required resource name");
         }
-        this.name = args.name;
+        this.name = name;
         if (args.comparisonOperator === undefined) {
             throw new Error("Missing required argument 'comparisonOperator'");
         }
@@ -131,7 +130,6 @@ export class Alarm extends coconut.Resource implements AlarmArgs {
 }
 
 export interface AlarmArgs {
-    readonly name: string;
     comparisonOperator: AlarmComparisonOperator;
     evaluationPerids: number;
     metricName: string;

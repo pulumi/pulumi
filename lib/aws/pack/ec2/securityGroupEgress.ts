@@ -16,12 +16,12 @@ export class SecurityGroupEgress extends coconut.Resource implements SecurityGro
     public readonly destinationPrefixListId?: string;
     public readonly destinationSecurityGroup?: SecurityGroup;
 
-    constructor(args: SecurityGroupEgressArgs) {
+    constructor(name: string, args: SecurityGroupEgressArgs) {
         super();
-        if (args.name === undefined) {
-            throw new Error("Missing required argument 'name'");
+        if (name === undefined) {
+            throw new Error("Missing required resource name");
         }
-        this.name = args.name;
+        this.name = name;
         if (args.fromPort === undefined) {
             throw new Error("Missing required argument 'fromPort'");
         }
@@ -46,7 +46,6 @@ export class SecurityGroupEgress extends coconut.Resource implements SecurityGro
 }
 
 export interface SecurityGroupEgressArgs {
-    readonly name: string;
     readonly fromPort: number;
     readonly group: SecurityGroup;
     readonly ipProtocol: string;

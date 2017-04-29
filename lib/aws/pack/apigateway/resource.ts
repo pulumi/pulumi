@@ -11,12 +11,12 @@ export class Resource extends coconut.Resource implements ResourceArgs {
     public readonly pathPart: string;
     public readonly restAPI: RestAPI;
 
-    constructor(args: ResourceArgs) {
+    constructor(name: string, args: ResourceArgs) {
         super();
-        if (args.name === undefined) {
-            throw new Error("Missing required argument 'name'");
+        if (name === undefined) {
+            throw new Error("Missing required resource name");
         }
-        this.name = args.name;
+        this.name = name;
         if (args.parent === undefined) {
             throw new Error("Missing required argument 'parent'");
         }
@@ -33,7 +33,6 @@ export class Resource extends coconut.Resource implements ResourceArgs {
 }
 
 export interface ResourceArgs {
-    readonly name: string;
     readonly parent: Resource;
     readonly pathPart: string;
     readonly restAPI: RestAPI;

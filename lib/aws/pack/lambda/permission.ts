@@ -14,12 +14,12 @@ export class Permission extends coconut.Resource implements PermissionArgs {
     public readonly sourceAccount?: string;
     public readonly sourceARN?: ARN;
 
-    constructor(args: PermissionArgs) {
+    constructor(name: string, args: PermissionArgs) {
         super();
-        if (args.name === undefined) {
-            throw new Error("Missing required argument 'name'");
+        if (name === undefined) {
+            throw new Error("Missing required resource name");
         }
-        this.name = args.name;
+        this.name = name;
         if (args.action === undefined) {
             throw new Error("Missing required argument 'action'");
         }
@@ -38,7 +38,6 @@ export class Permission extends coconut.Resource implements PermissionArgs {
 }
 
 export interface PermissionArgs {
-    readonly name: string;
     readonly action: string;
     readonly function: Function;
     readonly principal: string;

@@ -10,12 +10,12 @@ export class Key extends coconut.Resource implements KeyArgs {
     public enabled?: boolean;
     public enableKeyRotation?: boolean;
 
-    constructor(args: KeyArgs) {
+    constructor(name: string, args: KeyArgs) {
         super();
-        if (args.name === undefined) {
-            throw new Error("Missing required argument 'name'");
+        if (name === undefined) {
+            throw new Error("Missing required resource name");
         }
-        this.name = args.name;
+        this.name = name;
         if (args.keyPolicy === undefined) {
             throw new Error("Missing required argument 'keyPolicy'");
         }
@@ -27,7 +27,6 @@ export class Key extends coconut.Resource implements KeyArgs {
 }
 
 export interface KeyArgs {
-    readonly name: string;
     keyPolicy: any;
     description?: string;
     enabled?: boolean;

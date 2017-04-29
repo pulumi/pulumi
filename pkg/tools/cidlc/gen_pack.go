@@ -267,11 +267,22 @@ func (g *PackGenerator) emitResourceClass(w *bufio.Writer, res *Resource) {
 	}
 
 	// Next, a constructor that validates arguments and self-assigns them.
-	writefmtln(w, "    constructor(args: %vArgs) {", name)
+	writefmt(w, "    constructor(")
+	if res.Named {
+		writefmt(w, "name: string, ")
+	}
+	writefmtln(w, "args: %vArgs) {", name)
 	writefmtln(w, "        super();")
 	forEachField(res, func(fld *types.Var, opt PropertyOptions) {
-		// Skip output properties because they won't exist on the arguments.
-		if !opt.Out {
+		if opt.Out {
+			return // skip output properties because they won't exist on the arguments.
+		} else if isResourceNameProperty(res, opt) {
+			// Named properties are passed as the constructor's first argument.
+			writefmtln(w, "        if (name === undefined) {")
+			writefmtln(w, "            throw new Error(\"Missing required resource name\");")
+			writefmtln(w, "        }")
+			writefmtln(w, "        this.name = name;")
+		} else {
 			if !opt.Optional {
 				// Validate that required parameters exist.
 				writefmtln(w, "        if (args.%v === undefined) {", opt.Name)
@@ -286,6 +297,10 @@ func (g *PackGenerator) emitResourceClass(w *bufio.Writer, res *Resource) {
 	writefmtln(w, "}")
 }
 
+func isResourceNameProperty(res *Resource, prop PropertyOptions) bool {
+	return res.Named && prop.Name == "name"
+}
+
 func (g *PackGenerator) EmitStruct(w *bufio.Writer, s *Struct) {
 	g.emitStructType(w, s, s.Name())
 }
@@ -293,10 +308,12 @@ func (g *PackGenerator) EmitStruct(w *bufio.Writer, s *Struct) {
 func (g *PackGenerator) emitStructType(w *bufio.Writer, t TypeMember, name tokens.Name) {
 	writefmtln(w, fmt.Sprintf("export interface %v {", name))
 	forEachField(t, func(fld *types.Var, opt PropertyOptions) {
-		// Skip output properties, since those exist solely on the resource class.
-		if !opt.Out {
-			g.emitField(w, fld, opt, "    ")
+		if opt.Out {
+			return // skip output properties, since those exist solely on the resource class.
+		} else if res, isres := t.(*Resource); isres && isResourceNameProperty(res, opt) {
+			return // skip resource names, since those are part of the resource but not its property object.
 		}
+		g.emitField(w, fld, opt, "    ")
 	})
 	writefmtln(w, "}")
 }

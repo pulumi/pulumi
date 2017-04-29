@@ -18,12 +18,12 @@ export class SecurityGroupIngress extends coconut.Resource implements SecurityGr
     public readonly sourceSecurityGroupOwnerId?: string;
     public readonly toPort?: number;
 
-    constructor(args: SecurityGroupIngressArgs) {
+    constructor(name: string, args: SecurityGroupIngressArgs) {
         super();
-        if (args.name === undefined) {
-            throw new Error("Missing required argument 'name'");
+        if (name === undefined) {
+            throw new Error("Missing required resource name");
         }
-        this.name = args.name;
+        this.name = name;
         if (args.ipProtocol === undefined) {
             throw new Error("Missing required argument 'ipProtocol'");
         }
@@ -41,7 +41,6 @@ export class SecurityGroupIngress extends coconut.Resource implements SecurityGr
 }
 
 export interface SecurityGroupIngressArgs {
-    readonly name: string;
     readonly ipProtocol: string;
     readonly cidrIp?: string;
     readonly cidrIpv6?: string;

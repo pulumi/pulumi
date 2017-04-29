@@ -75,12 +75,12 @@ export class Instance extends coconut.Resource implements InstanceArgs {
     public privateIP?: string;
     public publicIP?: string;
 
-    constructor(args: InstanceArgs) {
+    constructor(name: string, args: InstanceArgs) {
         super();
-        if (args.name === undefined) {
-            throw new Error("Missing required argument 'name'");
+        if (name === undefined) {
+            throw new Error("Missing required resource name");
         }
-        this.name = args.name;
+        this.name = name;
         if (args.imageId === undefined) {
             throw new Error("Missing required argument 'imageId'");
         }
@@ -92,7 +92,6 @@ export class Instance extends coconut.Resource implements InstanceArgs {
 }
 
 export interface InstanceArgs {
-    readonly name: string;
     imageId: string;
     instanceType?: InstanceType;
     securityGroups?: SecurityGroup[];

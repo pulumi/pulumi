@@ -11,12 +11,12 @@ export class HTTPTrigger extends coconut.Resource implements HTTPTriggerArgs {
     public method: string;
     public function: Function;
 
-    constructor(args: HTTPTriggerArgs) {
+    constructor(name: string, args: HTTPTriggerArgs) {
         super();
         if (args.name === undefined) {
             throw new Error("Missing required argument 'name'");
         }
-        this.name = args.name;
+        this.name = name;
         if (args.urlPattern === undefined) {
             throw new Error("Missing required argument 'urlPattern'");
         }

@@ -18,12 +18,12 @@ export class Topic extends coconut.Resource implements TopicArgs {
     public displayName?: string;
     public subscription?: TopicSubscription[];
 
-    constructor(args: TopicArgs) {
+    constructor(name: string, args: TopicArgs) {
         super();
-        if (args.name === undefined) {
-            throw new Error("Missing required argument 'name'");
+        if (name === undefined) {
+            throw new Error("Missing required resource name");
         }
-        this.name = args.name;
+        this.name = name;
         this.topicName = args.topicName;
         this.displayName = args.displayName;
         this.subscription = args.subscription;
@@ -31,7 +31,6 @@ export class Topic extends coconut.Resource implements TopicArgs {
 }
 
 export interface TopicArgs {
-    readonly name: string;
     readonly topicName?: string;
     displayName?: string;
     subscription?: TopicSubscription[];

@@ -6,17 +6,16 @@ import * as coconut from "@coconut/coconut";
 export class InternetGateway extends coconut.Resource implements InternetGatewayArgs {
     public readonly name: string;
 
-    constructor(args: InternetGatewayArgs) {
+    constructor(name: string, args: InternetGatewayArgs) {
         super();
-        if (args.name === undefined) {
-            throw new Error("Missing required argument 'name'");
+        if (name === undefined) {
+            throw new Error("Missing required resource name");
         }
-        this.name = args.name;
+        this.name = name;
     }
 }
 
 export interface InternetGatewayArgs {
-    readonly name: string;
 }
 
 

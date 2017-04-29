@@ -39,12 +39,12 @@ export class UsagePlan extends coconut.Resource implements UsagePlanArgs {
     public throttle?: ThrottleSettings;
     public usagePlanName?: string;
 
-    constructor(args: UsagePlanArgs) {
+    constructor(name: string, args: UsagePlanArgs) {
         super();
-        if (args.name === undefined) {
-            throw new Error("Missing required argument 'name'");
+        if (name === undefined) {
+            throw new Error("Missing required resource name");
         }
-        this.name = args.name;
+        this.name = name;
         this.apiStages = args.apiStages;
         this.description = args.description;
         this.quota = args.quota;
@@ -54,7 +54,6 @@ export class UsagePlan extends coconut.Resource implements UsagePlanArgs {
 }
 
 export interface UsagePlanArgs {
-    readonly name: string;
     apiStages?: APIStage[];
     description?: string;
     quota?: QuotaSettings;

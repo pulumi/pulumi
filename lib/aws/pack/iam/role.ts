@@ -15,12 +15,12 @@ export class Role extends coconut.Resource implements RoleArgs {
     public policies?: InlinePolicy[];
     public arn: ARN;
 
-    constructor(args: RoleArgs) {
+    constructor(name: string, args: RoleArgs) {
         super();
-        if (args.name === undefined) {
-            throw new Error("Missing required argument 'name'");
+        if (name === undefined) {
+            throw new Error("Missing required resource name");
         }
-        this.name = args.name;
+        this.name = name;
         if (args.assumeRolePolicyDocument === undefined) {
             throw new Error("Missing required argument 'assumeRolePolicyDocument'");
         }
@@ -33,7 +33,6 @@ export class Role extends coconut.Resource implements RoleArgs {
 }
 
 export interface RoleArgs {
-    readonly name: string;
     assumeRolePolicyDocument: any;
     readonly path?: string;
     readonly roleName?: string;

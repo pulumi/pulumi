@@ -10,12 +10,12 @@ export class VPCPeeringConnection extends coconut.Resource implements VPCPeering
     public readonly peerVpc: VPC;
     public readonly vpc: VPC;
 
-    constructor(args: VPCPeeringConnectionArgs) {
+    constructor(name: string, args: VPCPeeringConnectionArgs) {
         super();
-        if (args.name === undefined) {
-            throw new Error("Missing required argument 'name'");
+        if (name === undefined) {
+            throw new Error("Missing required resource name");
         }
-        this.name = args.name;
+        this.name = name;
         if (args.peerVpc === undefined) {
             throw new Error("Missing required argument 'peerVpc'");
         }
@@ -28,7 +28,6 @@ export class VPCPeeringConnection extends coconut.Resource implements VPCPeering
 }
 
 export interface VPCPeeringConnectionArgs {
-    readonly name: string;
     readonly peerVpc: VPC;
     readonly vpc: VPC;
 }

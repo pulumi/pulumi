@@ -39,12 +39,12 @@ export class Function extends coconut.Resource implements FunctionArgs {
     public vpcConfig?: VPCConfig;
     public arn: ARN;
 
-    constructor(args: FunctionArgs) {
+    constructor(name: string, args: FunctionArgs) {
         super();
-        if (args.name === undefined) {
-            throw new Error("Missing required argument 'name'");
+        if (name === undefined) {
+            throw new Error("Missing required resource name");
         }
-        this.name = args.name;
+        this.name = name;
         if (args.code === undefined) {
             throw new Error("Missing required argument 'code'");
         }
@@ -73,7 +73,6 @@ export class Function extends coconut.Resource implements FunctionArgs {
 }
 
 export interface FunctionArgs {
-    readonly name: string;
     code: coconut.asset.Asset;
     handler: string;
     role: Role;

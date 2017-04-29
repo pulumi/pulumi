@@ -13,12 +13,12 @@ export class SecurityGroup extends coconut.Resource implements SecurityGroupArgs
     public securityGroupIngress?: SecurityGroupRule[];
     public groupID: string;
 
-    constructor(args: SecurityGroupArgs) {
+    constructor(name: string, args: SecurityGroupArgs) {
         super();
-        if (args.name === undefined) {
-            throw new Error("Missing required argument 'name'");
+        if (name === undefined) {
+            throw new Error("Missing required resource name");
         }
-        this.name = args.name;
+        this.name = name;
         if (args.groupDescription === undefined) {
             throw new Error("Missing required argument 'groupDescription'");
         }
@@ -30,7 +30,6 @@ export class SecurityGroup extends coconut.Resource implements SecurityGroupArgs
 }
 
 export interface SecurityGroupArgs {
-    readonly name: string;
     readonly groupDescription: string;
     readonly vpc?: VPC;
     securityGroupEgress?: SecurityGroupRule[];

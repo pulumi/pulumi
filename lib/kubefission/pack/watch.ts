@@ -14,12 +14,12 @@ export class Watch extends coconut.Resource implements WatchArgs {
     public function: Function;
     public target: string;
 
-    constructor(args: WatchArgs) {
+    constructor(name: string, args: WatchArgs) {
         super();
         if (args.name === undefined) {
             throw new Error("Missing required argument 'name'");
         }
-        this.name = args.name;
+        this.name = name;
         if (args.namespace === undefined) {
             throw new Error("Missing required argument 'namespace'");
         }
