@@ -351,6 +351,8 @@ func (g *PackGenerator) GenTypeName(t types.Type) string {
 		obj := u.Obj()
 		if spec, kind := IsSpecial(obj); spec {
 			switch kind {
+			case SpecialArchiveType:
+				return "coconut.asset.Archive"
 			case SpecialAssetType:
 				return "coconut.asset.Asset"
 			case SpecialResourceType, SpecialNamedResourceType:

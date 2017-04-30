@@ -67,9 +67,11 @@ const (
 	SpecialResourceType
 	SpecialNamedResourceType
 	SpecialAssetType
+	SpecialArchiveType
 )
 
 var (
+	idlArchiveType       = reflect.TypeOf(idl.Archive{})
 	idlAssetType         = reflect.TypeOf(idl.Asset{})
 	idlResourceType      = reflect.TypeOf(idl.Resource{})
 	idlNamedResourceType = reflect.TypeOf(idl.NamedResource{})
@@ -78,6 +80,8 @@ var (
 func IsSpecial(obj *types.TypeName) (bool, SpecialType) {
 	if obj != nil && obj.Pkg().Path() == idlResourceType.PkgPath() {
 		switch obj.Name() {
+		case idlArchiveType.Name():
+			return true, SpecialArchiveType
 		case idlAssetType.Name():
 			return true, SpecialAssetType
 		case idlResourceType.Name():

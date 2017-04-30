@@ -22,6 +22,9 @@
         "resource.ts",
 
         "asset/index.ts",
+        "asset/asset.ts",
+        "asset/archive.ts",
+        "asset/decors.ts",
 
         "runtime/index.ts",
         "runtime/dynamic.ts"

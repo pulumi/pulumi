@@ -490,6 +490,8 @@ func (g *RPCGenerator) GenTypeName(t types.Type, opt bool) string {
 		// For references to the special predefined types, use the runtime provider representation.
 		if spec, kind := IsSpecial(obj); spec {
 			switch kind {
+			case SpecialArchiveType:
+				return "resource.Archive"
 			case SpecialAssetType:
 				return "resource.Asset"
 			default:
