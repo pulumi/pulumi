@@ -22,13 +22,13 @@ func NewCIDLCCmd() *cobra.Command {
 	var recursive bool
 	var verbose int
 	cmd := &cobra.Command{
-		Use:   "cidlc [pkg-name] [idl-path]",
+		Use:   "cidlc pkg-name idl-path",
 		Short: "CIDLC generates Coconut metadata and RPC stubs from IDL written in Go",
 		Long: "CIDLC generates Coconut metadata and RPC stubs from IDL written in Go.\n" +
 			"\n" +
 			"The tool accepts a subset of Go types and produces packages that can be consumed by\n" +
-			"ordinary Coconut programs and libraries in any language.  The [pkg-name] argument\n" +
-			"controls the output package name and [idl-path] is the path to the IDL sourcecode.\n" +
+			"ordinary Coconut programs and libraries in any language.  The pkg-name argument\n" +
+			"controls the output package name and idl-path is the path to the IDL source code.\n" +
 			"\n" +
 			"The --out-pack and --out-rpc flags indicate where generated code is to be saved,\n" +
 			"and pkg-base-idl and --pkg-base-rpc may be used to override the default inferred Go\n" +
