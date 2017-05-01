@@ -16,8 +16,8 @@ export class Watch extends coconut.Resource implements WatchArgs {
 
     constructor(name: string, args: WatchArgs) {
         super();
-        if (args.name === undefined) {
-            throw new Error("Missing required argument 'name'");
+        if (name === undefined) {
+            throw new Error("Missing required resource name");
         }
         this.name = name;
         if (args.namespace === undefined) {
@@ -48,7 +48,6 @@ export class Watch extends coconut.Resource implements WatchArgs {
 }
 
 export interface WatchArgs {
-    readonly name: string;
     namespace: string;
     objType: string;
     labelSelector: string;

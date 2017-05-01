@@ -9,8 +9,8 @@ export class Environment extends coconut.Resource implements EnvironmentArgs {
 
     constructor(name: string, args: EnvironmentArgs) {
         super();
-        if (args.name === undefined) {
-            throw new Error("Missing required argument 'name'");
+        if (name === undefined) {
+            throw new Error("Missing required resource name");
         }
         this.name = name;
         if (args.runContainerImageURL === undefined) {
@@ -21,7 +21,6 @@ export class Environment extends coconut.Resource implements EnvironmentArgs {
 }
 
 export interface EnvironmentArgs {
-    readonly name: string;
     runContainerImageURL: string;
 }
 

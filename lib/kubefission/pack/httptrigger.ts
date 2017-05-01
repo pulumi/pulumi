@@ -13,8 +13,8 @@ export class HTTPTrigger extends coconut.Resource implements HTTPTriggerArgs {
 
     constructor(name: string, args: HTTPTriggerArgs) {
         super();
-        if (args.name === undefined) {
-            throw new Error("Missing required argument 'name'");
+        if (name === undefined) {
+            throw new Error("Missing required resource name");
         }
         this.name = name;
         if (args.urlPattern === undefined) {
@@ -33,7 +33,6 @@ export class HTTPTrigger extends coconut.Resource implements HTTPTriggerArgs {
 }
 
 export interface HTTPTriggerArgs {
-    readonly name: string;
     urlPattern: string;
     method: string;
     function: Function;
