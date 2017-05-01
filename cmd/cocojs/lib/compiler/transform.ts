@@ -892,18 +892,17 @@ export class Transformer {
         // Make an identifier out of the name.
         let id: ast.Identifier = this.transformIdentifier(name);
 
-        // Fetch the symbol that this name refers to.
+        // Fetch the symbol that this name refers to.  Note that in some dynamic cases, this might be missing.
         let idsym: ts.Symbol = this.checker().getSymbolAtLocation(name);
-        contract.assert(!!idsym, `Expected a symbol for ID ${id.ident}`);
 
-        // Fetch information about the object we are loading from, if any.
+        // Fetch information about the object we are loading from, if any.  Like the ID symbol, this might be missing
+        // in certain dynamic situations.
         let objty: ts.Type | undefined;
         let objsym: ts.Symbol | undefined;
         if (objex) {
             objty = this.checker().getTypeAtLocation(objex);
             contract.assert(!!objty);
             objsym = objty.getSymbol();
-            contract.assert(!!objsym);
         }
 
         // These properties will be initialized and used for the return.
@@ -925,7 +924,7 @@ export class Transformer {
             tok = this.createModuleMemberToken(modtok, id.ident);
             // note that we intentionally leave object blank, since the token is fully qualified.
         }
-        else if (this.isLocalVariableOrFunction(idsym)) {
+        else if (idsym && this.isLocalVariableOrFunction(idsym)) {
             // For local variables, just use a simple name load.
             contract.assert(!objex, "Local variables must not have 'this' expressions");
             tok = id.ident;
@@ -933,11 +932,13 @@ export class Transformer {
         else if (objex) {
             // Otherwise, this is a property access, either on an object, or a static through a class.  Create as
             // qualfiied a token we can based on the node's type and symbol; worst case, devolve into a dynamic load.
-            let allowed: ts.SymbolFlags =
-                ts.SymbolFlags.BlockScopedVariable | ts.SymbolFlags.FunctionScopedVariable |
-                ts.SymbolFlags.Function | ts.SymbolFlags.Property | ts.SymbolFlags.Method;
-            contract.assert(!!(idsym.flags & allowed),
-                            `Unexpected object access symbol: ${ts.SymbolFlags[idsym.flags]}`);
+            if (idsym) {
+                let allowed: ts.SymbolFlags =
+                    ts.SymbolFlags.BlockScopedVariable | ts.SymbolFlags.FunctionScopedVariable |
+                    ts.SymbolFlags.Function | ts.SymbolFlags.Property | ts.SymbolFlags.Method;
+                contract.assert(!!(idsym.flags & allowed),
+                                `Unexpected object access symbol: ${ts.SymbolFlags[idsym.flags]}`);
+            }
             let ty: ts.Type | undefined = this.checker().getTypeAtLocation(objex);
             contract.assert(!!ty);
             let tytok: tokens.TypeToken | undefined = await this.resolveTypeToken(objex, ty);
@@ -952,7 +953,7 @@ export class Transformer {
 
                 // If the property is static, object must be left blank, since the type token will be fully qualified.
                 let propIsStatic: boolean = false;
-                if (idsym.declarations) {
+                if (idsym && idsym.declarations) {
                     for (let decl of idsym.declarations) {
                         if (ts.getCombinedModifierFlags(decl) & ts.ModifierFlags.Static) {
                             propIsStatic = true;
@@ -969,6 +970,7 @@ export class Transformer {
         else {
             // This is a module property load; it could be from an import (e.g., `foo` as in `import {foo} from "bar"`)
             // or it could be a reference to an ambiently acessible property in the current module.  Figure this out.
+            contract.assert(!!idsym, `Expected an ID symbol for '${id.ident}', but it is missing`);
             tok = await this.resolveTokenFromSymbol(idsym);
             // note that we intentionally leave object blank, since the token is fully qualified.
         }
