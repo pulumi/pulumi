@@ -1005,8 +1005,8 @@ export class Transformer {
     // As such, the appropriate top-level definitions (variables, functions, and classes) are returned as
     // definitions, while any loose code (including variable initializers) is bundled into module inits and entrypoints.
     private async transformSourceFile(node: ts.SourceFile): Promise<ast.Module> {
-        if (log.v(7)) {
-            log.out(7).info(`Transforming source file: ${node.fileName}`);
+        if (log.v(5)) {
+            log.out(5).info(`Transforming source file: ${node.fileName}`);
         }
 
         // Each source file is a separate module, and we maintain some amount of context about it.  Push some state.
