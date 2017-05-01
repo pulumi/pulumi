@@ -1,7 +1,7 @@
 // Copyright 2017 Pulumi, Inc. All rights reserved.
 
 import * as arch from "../../arch";
-import * as kubefission from "@coconut/kube-fission";
+import * as kubefission from "@coconut/kubefission";
 
 let fissionEnvs: {[langrt: string]: kubefission.Environment} = {};
 
@@ -26,8 +26,7 @@ export function getFissionEnvironment(langrt: arch.Runtime): kubefission.Environ
             throw new Error("Unsupported Kubernetes Fission language runtime: " + langrt);
     }
 
-    env = new kubefission.Environment({
-        name: langrt,
+    env = new kubefission.Environment(langrt, {
         runContainerImageURL: image,
     });
     fissionEnvs[langrt] = env;

@@ -5,7 +5,7 @@ import * as config from "../config";
 import * as func from "../func";
 import * as runtime from "../runtime";
 import * as aws from "@coconut/aws";
-import * as kubefission from "@coconut/kube-fission";
+import * as kubefission from "@coconut/kubefission";
 import {asset} from "@coconut/coconut";
 
 // API is a cross-cloud API gateway endpoint.
@@ -53,8 +53,8 @@ export class API {
         // Simply wire up the function to an HTTP trigger.
         // TODO: think about multi-instancing routers, rather than assuming there is a global one.  Ideally we would
         //     be able to instance a parallel Fission provider, rather than relying on a single shared global instance.
-        return new kubefission.HTTPTrigger({
-            name: this.path, // TODO: replace("/", "_")
+        let name = this.path; // TODO: replace("/", "_")
+        return new kubefission.HTTPTrigger(name, {
             urlPattern: this.path,
             method: this.method,
             function: kubeFunc,
@@ -72,28 +72,30 @@ export class API {
         // TODO: replace(this.path, "/", "_") and use it as part of the name (else multi-subscription won't work).
         let prefix: string = lambdaFunc.name + "-api";
 
-        // Create a Rest API at the desired path with a single deployment / stage.
-        let restAPI = new aws.apigateway.RestAPI(prefix, {
-            // The body is an OpenAPI specification for the API that we're creating.
-            body: {
-                info: {
-                    title: prefix,
-                    version: "1.0",
-                },
-                paths: {
-                    [this.path]: {
-                        "x-amazon-apigateway-any-method": {
-                            responses: {},
-                            "x-amazon-apigateway-integration": {
-                                httpMethod: "POST",
-                                type: "aws_proxy",
-                                uri: runtime.aws.getLambdaAPIInvokeURI(lambdaFunc),
-                            },
-                        },
-                    },
+        // The body is an OpenAPI specification for the API that we're creating.
+        let body: any = {
+            info: {
+                title: prefix,
+                version: "1.0",
+            },
+            paths: {
+            },
+        };
+        // BUGBUG[pulumi/coconut#141]: this property assignment should become part of the above object literal when
+        //     we support computed properties.
+        body.paths[this.path] = {
+            "x-amazon-apigateway-any-method": {
+                responses: {},
+                "x-amazon-apigateway-integration": {
+                    httpMethod: "POST",
+                    type: "aws_proxy",
+                    uri: runtime.aws.getLambdaAPIInvokeURI(lambdaFunc),
                 },
             },
-        });
+        };
+
+        // Create a Rest API at the desired path with a single deployment / stage.
+        let restAPI = new aws.apigateway.RestAPI(prefix, { body: body });
         let deployment = new aws.apigateway.Deployment(prefix + "-deployment", {
             restAPI: restAPI,
             stageName: "Stage",

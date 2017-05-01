@@ -4,7 +4,7 @@ import * as arch from "../arch";
 import * as config from "../config";
 import * as runtime from "../runtime";
 import * as aws from "@coconut/aws";
-import * as kubefission from "@coconut/kube-fission";
+import * as kubefission from "@coconut/kubefission";
 import {asset} from "@coconut/coconut";
 
 // Function is a cross-cloud function abstraction whose source code is taken from a string, file, or network asset.
@@ -14,10 +14,10 @@ import {asset} from "@coconut/coconut";
 export class Function {
     private readonly name: string;          // the function name.
     private readonly runtime: arch.Runtime; // the function's language runtime.
-    private readonly code: asset.Asset;     // the function's code asset.
+    private readonly code: asset.Archive;   // the function's code archive.
     private readonly resource: any;         // the cloud-specific function object.
 
-    constructor(name: string, code: asset.Asset, runtime: arch.Runtime) {
+    constructor(name: string, code: asset.Archive, runtime: arch.Runtime) {
         this.name = name;
         this.code = code;
         this.runtime = runtime;
@@ -50,8 +50,7 @@ export class Function {
     }
 
     private initKubernetesResources(): any {
-        return new kubefission.Function({
-            name: this.name,
+        return new kubefission.Function(this.name, {
             code: this.code,
             environment: runtime.kubernetes.getFissionEnvironment(this.runtime),
         });
