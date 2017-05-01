@@ -17,7 +17,7 @@ type Function struct {
 
 	// code is the source code of your Lambda function.  This supports all the usual Coconut asset schemes, in addition
 	// to Amazon Simple Storage Service (S3) bucket locations, indicating with a URI scheme of s3//<bucket>/<object>.
-	Code *idl.Asset `coco:"code"`
+	Code *idl.Archive `coco:"code"`
 	// handler is the name of the function (within your source code) that Lambda calls to start running your code.
 	Handler string `coco:"handler"`
 	// role is the AWS Identity and Access Management (IAM) execution role that Lambda assumes when it runs your code

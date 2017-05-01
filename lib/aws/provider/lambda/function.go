@@ -3,11 +3,8 @@
 package lambda
 
 import (
-	"archive/zip"
-	"bytes"
 	"crypto/sha1"
 	"fmt"
-	"io"
 	"reflect"
 	"strings"
 
@@ -113,12 +110,8 @@ func (p *funcProvider) Create(ctx context.Context, obj *lambda.Function) (resour
 			// TODO: S3ObjectVersion; encode as the #?
 		}
 	} else {
-		// TODO: assets need filenames; don't hard code it.
-		if zip, err := zipCodeAsset(obj.Code, "index.js"); err != nil {
-			return "", nil, err
-		} else {
-			code = &awslambda.FunctionCode{ZipFile: zip}
-		}
+		zip := obj.Code.Bytes(resource.ZIPArchive)
+		code = &awslambda.FunctionCode{ZipFile: zip}
 	}
 
 	var dlqcfg *awslambda.DeadLetterConfig
@@ -255,23 +248,4 @@ func (p *funcProvider) waitForFunctionState(id resource.ID, exist bool) error {
 		return fmt.Errorf("Lambda Function '%v' did not become %v", id, reason)
 	}
 	return nil
-}
-
-// zipCodeAsset zips up a single code asset using the given filename.
-func zipCodeAsset(code resource.Asset, filename string) ([]byte, error) {
-	var buf bytes.Buffer
-	w := zip.NewWriter(&buf)
-	file, err := w.Create(filename)
-	if err != nil {
-		return nil, err
-	}
-	r, err := code.Read()
-	if err != nil {
-		return nil, err
-	}
-	if _, err = io.Copy(file, r); err != nil {
-		return nil, err
-	}
-	err = w.Close()
-	return buf.Bytes(), err
 }

@@ -25,7 +25,7 @@ export type Environment = {[key: string]: string};
 
 export class Function extends coconut.Resource implements FunctionArgs {
     public readonly name: string;
-    public code: coconut.asset.Asset;
+    public code: coconut.asset.Archive;
     public handler: string;
     public role: Role;
     public runtime: Runtime;
@@ -73,7 +73,7 @@ export class Function extends coconut.Resource implements FunctionArgs {
 }
 
 export interface FunctionArgs {
-    code: coconut.asset.Asset;
+    code: coconut.asset.Archive;
     handler: string;
     role: Role;
     runtime: Runtime;
