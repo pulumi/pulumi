@@ -11,7 +11,7 @@ export class Role extends coconut.Resource implements RoleArgs {
     public assumeRolePolicyDocument: any;
     public readonly path?: string;
     public readonly roleName?: string;
-    public managedPolicyArns?: ARN[];
+    public managedPolicyARNs?: ARN[];
     public policies?: InlinePolicy[];
     public arn: ARN;
 
@@ -27,7 +27,7 @@ export class Role extends coconut.Resource implements RoleArgs {
         this.assumeRolePolicyDocument = args.assumeRolePolicyDocument;
         this.path = args.path;
         this.roleName = args.roleName;
-        this.managedPolicyArns = args.managedPolicyArns;
+        this.managedPolicyARNs = args.managedPolicyARNs;
         this.policies = args.policies;
     }
 }
@@ -36,7 +36,7 @@ export interface RoleArgs {
     assumeRolePolicyDocument: any;
     readonly path?: string;
     readonly roleName?: string;
-    managedPolicyArns?: ARN[];
+    managedPolicyARNs?: ARN[];
     policies?: InlinePolicy[];
 }
 

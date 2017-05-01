@@ -186,7 +186,7 @@ type Role struct {
     AssumeRolePolicyDocument interface{} `json:"assumeRolePolicyDocument"`
     Path *string `json:"path,omitempty"`
     RoleName *string `json:"roleName,omitempty"`
-    ManagedPolicyARNs *[]__aws.ARN `json:"managedPolicyArns,omitempty"`
+    ManagedPolicyARNs *[]__aws.ARN `json:"managedPolicyARNs,omitempty"`
     Policies *[]InlinePolicy `json:"policies,omitempty"`
     ARN __aws.ARN `json:"arn,omitempty"`
 }
@@ -202,7 +202,7 @@ const (
     Role_AssumeRolePolicyDocument = "assumeRolePolicyDocument"
     Role_Path = "path"
     Role_RoleName = "roleName"
-    Role_ManagedPolicyARNs = "managedPolicyArns"
+    Role_ManagedPolicyARNs = "managedPolicyARNs"
     Role_Policies = "policies"
     Role_ARN = "arn"
 )

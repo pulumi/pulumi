@@ -28,7 +28,7 @@ type Role struct {
 	// To prevent this, create a name that includes the region name itself, to create a region-specific name.
 	RoleName *string `coco:"roleName,replaces,optional"`
 	// managedPolicies is one or more managed policies to attach to this role.
-	ManagedPolicyARNs *[]aws.ARN `coco:"managedPolicyArns,optional"`
+	ManagedPolicyARNs *[]aws.ARN `coco:"managedPolicyARNs,optional"`
 	// Policies are the policies to associate with this role.
 	Policies *[]InlinePolicy `coco:"policies,optional"`
 	// The Amazon Resource Name (ARN) for the instance profile.  For example,
