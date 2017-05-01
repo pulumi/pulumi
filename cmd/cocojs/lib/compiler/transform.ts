@@ -3091,7 +3091,8 @@ export class Transformer {
             case ts.SyntaxKind.StringLiteral:
                 return this.withLocation(node, ident((<ts.StringLiteral>node).text));
             default:
-                return contract.fail("Property names other than identifiers and string literals not yet supported");
+                return contract.fail(
+                    `Only identifiers and string literal property names supported; got '${ts.SyntaxKind[node.kind]}'`);
         }
     }
 }
