@@ -66,12 +66,24 @@ export type  ObjectLiteralKind = "ObjectLiteral";
 
 // An object literal property initializer.
 export interface ObjectLiteralProperty extends Node {
-    kind:     ObjectLiteralPropertyKind;
-    property: Token;      // the property being initialized.
     value:    Expression; // the expression value to store into the property.
 }
-export const objectLiteralPropertyKind = "ObjectLiteralProperty";
-export type  ObjectLiteralPropertyKind = "ObjectLiteralProperty";
+
+// An named object literal property initializer.
+export interface ObjectLiteralNamedProperty extends ObjectLiteralProperty {
+    kind:     ObjectLiteralNamedPropertyKind;
+    property: Token; // the name of the property being initialized.
+}
+export const objectLiteralNamedPropertyKind = "ObjectLiteralNamedProperty";
+export type  ObjectLiteralNamedPropertyKind = "ObjectLiteralNamedProperty";
+
+// A computed object literal property initializer.
+export interface ObjectLiteralComputedProperty extends ObjectLiteralProperty {
+    kind:     ObjectLiteralComputedPropertyKind;
+    property: Expression; // the expression that evaluates to the property name being initialized.
+}
+export const objectLiteralComputedPropertyKind = "ObjectLiteralComputedProperty";
+export type  ObjectLiteralComputedPropertyKind = "ObjectLiteralComputedProperty";
 
 /** Loads **/
 

@@ -305,18 +305,26 @@ func (a *astBinder) checkObjectLiteral(node *ast.ObjectLiteral) {
 				props := make(map[tokens.ClassMemberName]bool)
 				if node.Properties != nil {
 					for _, init := range *node.Properties {
-						if init.Property.Tok.HasClassMember() {
-							clm := tokens.ClassMember(init.Property.Tok)
-							sym := a.b.ctx.RequireClassMember(init.Property, ty, clm)
-							if sym != nil {
-								switch s := sym.(type) {
-								case *symbols.ClassProperty, *symbols.ClassMethod:
-									a.checkExprType(init.Value, s.Type())
-								default:
-									contract.Failf("Unrecognized class member symbol: %v", sym)
+						switch p := init.(type) {
+						case *ast.ObjectLiteralNamedProperty:
+							// Ensure this property is known to exist.
+							prop := p.Property
+							if prop.Tok.HasClassMember() {
+								clm := tokens.ClassMember(prop.Tok)
+								sym := a.b.ctx.RequireClassMember(prop, ty, clm)
+								if sym != nil {
+									switch s := sym.(type) {
+									case *symbols.ClassProperty, *symbols.ClassMethod:
+										a.checkExprType(p.Value, s.Type())
+									default:
+										contract.Failf("Unrecognized class member symbol: %v", sym)
+									}
+									props[clm.Name()] = true // record that we've seen this one.
 								}
-								props[clm.Name()] = true // record that we've seen this one.
 							}
+						case *ast.ObjectLiteralComputedProperty:
+							// A computed property is required to be a string.
+							a.checkExprType(p.Property, types.String)
 						}
 					}
 				}

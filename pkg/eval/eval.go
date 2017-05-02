@@ -1186,25 +1186,38 @@ func (e *evaluator) evalObjectLiteral(node *ast.ObjectLiteral) (*rt.Object, *rt.
 	if node.Properties != nil {
 		// The binder already checked that the properties are legal, so we will simply store them as values.
 		for _, init := range *node.Properties {
-			val, uw := e.evalExpression(init.Value)
+			// For dynamic types, we simply store the values in the bag of properties.  For all other types, we actually
+			// require that the token be a class member token that references a valid property.  Note that we evaluate
+			// the LHS before the RHS, so that evaluation order for computed properties is correct.
+			var addr *rt.Pointer
+			var property rt.PropertyKey
+			switch p := init.(type) {
+			case *ast.ObjectLiteralNamedProperty:
+				id := p.Property.Tok
+				if ty == types.Dynamic {
+					property = rt.PropertyKey(id)
+					addr = obj.GetPropertyAddr(property, true, true)
+				} else {
+					contract.Assert(id.HasClassMember())
+					member := tokens.ClassMember(id).Name()
+					property = rt.PropertyKey(member.Name())
+					addr = obj.GetPropertyAddr(property, true, true)
+				}
+			case *ast.ObjectLiteralComputedProperty:
+				name, uw := e.evalExpression(p.Property)
+				if uw != nil {
+					return nil, uw
+				}
+				property = rt.PropertyKey(name.StringValue())
+				addr = obj.GetPropertyAddr(property, true, true)
+			}
+
+			// Evaluate and set the property.
+			val, uw := e.evalExpression(init.Val())
 			if uw != nil {
 				return nil, uw
 			}
-
-			// For dynamic types, we simply store the values in the bag of properties.  For all other types, we actually
-			// require that the token be a class member token that references a valid property.
-			id := init.Property.Tok
-			var addr *rt.Pointer
-			var property rt.PropertyKey
-			if ty == types.Dynamic {
-				property = rt.PropertyKey(id)
-				addr = obj.GetPropertyAddr(property, true, true)
-			} else {
-				contract.Assert(id.HasClassMember())
-				member := tokens.ClassMember(id).Name()
-				property = rt.PropertyKey(member.Name())
-				addr = obj.GetPropertyAddr(property, true, true)
-			}
+			contract.Assert(val != nil)
 			addr.Set(val)
 
 			// Track all assignments.

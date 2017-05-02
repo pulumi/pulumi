@@ -36,10 +36,11 @@ func Decode(m Marshaler, b []byte) (*pack.Package, error) {
 // Note that interfaces that are used as "markers" and don't show up in fields are okay and don't require a decoder.
 func customDecoders() mapper.Decoders {
 	return mapper.Decoders{
-		reflect.TypeOf((*ast.ModuleMember)(nil)).Elem(): moduleMemberDecoder,
-		reflect.TypeOf((*ast.ClassMember)(nil)).Elem():  classMemberDecoder,
-		reflect.TypeOf((*ast.Statement)(nil)).Elem():    statementDecoder,
-		reflect.TypeOf((*ast.Expression)(nil)).Elem():   expressionDecoder,
+		reflect.TypeOf((*ast.ModuleMember)(nil)).Elem():          moduleMemberDecoder,
+		reflect.TypeOf((*ast.ClassMember)(nil)).Elem():           classMemberDecoder,
+		reflect.TypeOf((*ast.Statement)(nil)).Elem():             statementDecoder,
+		reflect.TypeOf((*ast.Expression)(nil)).Elem():            expressionDecoder,
+		reflect.TypeOf((*ast.ObjectLiteralProperty)(nil)).Elem(): objectLiteralPropertyDecoder,
 	}
 }
 
@@ -57,4 +58,7 @@ var statementDecoder = func(m mapper.Mapper, tree mapper.Object) (interface{}, e
 }
 var expressionDecoder = func(m mapper.Mapper, tree mapper.Object) (interface{}, error) {
 	return decodeExpression(m, tree)
+}
+var objectLiteralPropertyDecoder = func(m mapper.Mapper, tree mapper.Object) (interface{}, error) {
+	return decodeObjectLiteralProperty(m, tree)
 }

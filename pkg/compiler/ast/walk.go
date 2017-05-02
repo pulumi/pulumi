@@ -171,7 +171,10 @@ func Walk(v Visitor, node Node) {
 				Walk(v, prop)
 			}
 		}
-	case *ObjectLiteralProperty:
+	case *ObjectLiteralNamedProperty:
+		Walk(v, n.Property)
+		Walk(v, n.Value)
+	case *ObjectLiteralComputedProperty:
 		Walk(v, n.Property)
 		Walk(v, n.Value)
 	case *LoadLocationExpression:

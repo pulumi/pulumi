@@ -502,12 +502,26 @@ class ObjectLiteral(Literal):
 
 class ObjectLiteralProperty(Node):
     """An object literal property initializer."""
+    def __init__(self, kind, value, loc=None):
+        assert isinstance(value, Expression)
+        super(ObjectLiteralProperty, self).__init__(kind, loc)
+        self.value = value
+
+class ObjectLiteralNamedProperty(Node):
+    """A named object literal property initializer."""
     def __init__(self, property, value, loc=None):
         assert isinstance(property, Token)
         assert isinstance(value, Expression)
-        super(ObjectLiteralProperty, self).__init__("ObjectLiteralProperty", loc)
+        super(ObjectLiteralNamedProperty, self).__init__("ObjectLiteralNamedProperty", value, loc)
         self.property = property
-        self.value = value
+
+class ObjectLiteralComputedProperty(Node):
+    """A computed object literal property initializer."""
+    def __init__(self, property, value, loc=None):
+        assert isinstance(property, Expression)
+        assert isinstance(value, Expression)
+        super(ObjectLiteralComputedProperty, self).__init__("ObjectLiteralComputedProperty", value, loc)
+        self.property = property
 
 # ...Loads
 

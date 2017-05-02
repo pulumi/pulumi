@@ -2834,22 +2834,36 @@ export class Transformer {
 
     private async transformObjectLiteralPropertyAssignment(
             node: ts.PropertyAssignment): Promise<ast.ObjectLiteralProperty> {
-        let pname: ast.Identifier = this.transformPropertyName(node.name);
-        return this.withLocation(node, <ast.ObjectLiteralProperty>{
-            kind:     ast.objectLiteralPropertyKind,
-            property: <ast.Token>{
-                kind: ast.tokenKind,
-                tok:  pname.ident /*simple name, since this is dynamic*/,
-            },
-            value:    await this.transformExpression(node.initializer),
-        });
+        let value: ast.Expression = await this.transformExpression(node.initializer);
+        switch (node.name.kind) {
+            case ts.SyntaxKind.ComputedPropertyName:
+                // For computed properties, names are expressions, not identifiers.
+                let comp = <ts.ComputedPropertyName>node.name;
+                return this.withLocation(node, <ast.ObjectLiteralComputedProperty>{
+                    kind:     ast.objectLiteralComputedPropertyKind,
+                    property: await this.transformExpression(comp.expression),
+                    value:    value,
+                });
+            default: {
+                // For all others, create an identifier, and emit that as a simple name.
+                let name: ast.Identifier = this.transformPropertyName(node.name);
+                return this.withLocation(node, <ast.ObjectLiteralNamedProperty>{
+                    kind:     ast.objectLiteralNamedPropertyKind,
+                    property: <ast.Token>{
+                        kind: ast.tokenKind,
+                        tok:  name.ident /*simple name, since this is dynamic*/,
+                    },
+                    value:    value,
+                });
+            }
+        }
     }
 
     private transformObjectLiteralShorthandPropertyAssignment(
             node: ts.ShorthandPropertyAssignment): ast.ObjectLiteralProperty {
         let name: ast.Identifier = this.transformIdentifier(node.name);
-        return this.withLocation(node, <ast.ObjectLiteralProperty>{
-            kind:     ast.objectLiteralPropertyKind,
+        return this.withLocation(node, <ast.ObjectLiteralNamedProperty>{
+            kind:     ast.objectLiteralNamedPropertyKind,
             property: <ast.Token>{
                 kind: ast.tokenKind,
                 tok:  name.ident /*simple name, since this is dynamic*/,

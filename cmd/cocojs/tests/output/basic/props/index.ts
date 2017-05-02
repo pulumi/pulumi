@@ -24,8 +24,12 @@ if (c !== undefined) {
         f: modprop,
         g: C.clastaprop,
         h: c.claprop,
+        "i": "i",
+        [j()]: "j",
     };
 }
+
+function j(): string { return "j"; }
 
 // Define a local variable at the module's top-level within a block (should not be a module member).
 {

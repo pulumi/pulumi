@@ -91,8 +91,8 @@ const ArrayLiteralKind NodeKind = "ArrayLiteral"
 // ObjectLiteral evaluates to a new object, with optional property initializers for primary properties.
 type ObjectLiteral struct {
 	LiteralNode
-	Type       *TypeToken                `json:"type,omitempty"`       // the optional type of object to produce.
-	Properties *[]*ObjectLiteralProperty `json:"properties,omitempty"` // an optional array of property initializers.
+	Type       *TypeToken               `json:"type,omitempty"`       // the optional type of object to produce.
+	Properties *[]ObjectLiteralProperty `json:"properties,omitempty"` // an optional array of property initializers.
 }
 
 var _ Node = (*ObjectLiteral)(nil)
@@ -102,15 +102,38 @@ var _ Literal = (*ObjectLiteral)(nil)
 const ObjectLiteralKind NodeKind = "ObjectLiteral"
 
 // ObjectLiteralProperty initializes a single object literal property.
-type ObjectLiteralProperty struct {
+type ObjectLiteralProperty interface {
+	Node
+	Val() Expression
+}
+
+// ObjectLiteralProperty initializes a single object literal property by name.
+type ObjectLiteralNamedProperty struct {
 	NodeValue
 	Property *Token     `json:"property"` // the property (simple name if dynamic; member token otherwise).
 	Value    Expression `json:"value"`    // the expression whose value to store into the property.
 }
 
-var _ Node = (*ObjectLiteralProperty)(nil)
+var _ Node = (*ObjectLiteralNamedProperty)(nil)
+var _ ObjectLiteralProperty = (*ObjectLiteralNamedProperty)(nil)
 
-const ObjectLiteralPropertyKind NodeKind = "ObjectLiteralProperty"
+const ObjectLiteralNamedPropertyKind NodeKind = "ObjectLiteralNamedProperty"
+
+func (p *ObjectLiteralNamedProperty) Val() Expression { return p.Value }
+
+// ObjectLiteralProperty initializes a single object literal property, dynamically, through a computed name.
+type ObjectLiteralComputedProperty struct {
+	NodeValue
+	Property Expression `json:"property"` // the property (simple name if dynamic; member token otherwise).
+	Value    Expression `json:"value"`    // the expression whose value to store into the property.
+}
+
+var _ Node = (*ObjectLiteralComputedProperty)(nil)
+var _ ObjectLiteralProperty = (*ObjectLiteralComputedProperty)(nil)
+
+const ObjectLiteralComputedPropertyKind NodeKind = "ObjectLiteralComputedProperty"
+
+func (p *ObjectLiteralComputedProperty) Val() Expression { return p.Value }
 
 /* Loads */
 
