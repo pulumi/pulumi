@@ -79,17 +79,15 @@ export class API {
                 version: "1.0",
             },
             paths: {
-            },
-        };
-        // BUGBUG[pulumi/coconut#141]: this property assignment should become part of the above object literal when
-        //     we support computed properties.
-        body.paths[this.path] = {
-            "x-amazon-apigateway-any-method": {
-                responses: {},
-                "x-amazon-apigateway-integration": {
-                    httpMethod: "POST",
-                    type: "aws_proxy",
-                    uri: runtime.aws.getLambdaAPIInvokeURI(lambdaFunc),
+                [this.path]: {
+                    "x-amazon-apigateway-any-method": {
+                        responses: {},
+                        "x-amazon-apigateway-integration": {
+                            httpMethod: "POST",
+                            type: "aws_proxy",
+                            uri: runtime.aws.getLambdaAPIInvokeURI(lambdaFunc),
+                        },
+                    },
                 },
             },
         };
