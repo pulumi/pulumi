@@ -797,26 +797,7 @@ export class Transformer {
                 // For functions, we need to generate a special function type, of the form "(args)return".
                 let sigs: ts.Signature[] = this.checker().getSignaturesOfType(simple, ts.SignatureKind.Call);
                 contract.assert(sigs.length === 1);
-                let sig: ts.Signature = sigs[0];
-                contract.assert(!sig.typeParameters || sig.typeParameters.length === 0, "Generics not yet supported");
-                let params: string = "";
-                for (let param of sig.parameters) {
-                    if (params !== "") {
-                        params += tokens.functionTypeParamSeparator;
-                    }
-                    let paramty: ts.Type = this.checker().getDeclaredTypeOfSymbol(param);
-                    let paramtok: tokens.TypeToken | undefined = await this.resolveTypeToken(node, paramty);
-                    contract.assert(!!paramtok);
-                    params += paramtok;
-                }
-                let ret: string = "";
-                let retty: ts.Type | undefined = sig.getReturnType();
-                if (retty && !(retty.flags & ts.TypeFlags.Void)) {
-                    let rettok: tokens.TypeToken | undefined = await this.resolveTypeToken(node, retty);
-                    contract.assert(!!rettok);
-                    ret = rettok!;
-                }
-                return `${tokens.functionTypePrefix}${params}${tokens.functionTypeSeparator}${ret}`;
+                return this.resolveSignatureToken(node, sigs[0]);
             }
             else {
                 // For object types, we will try to produce the fully qualified symbol name.  If the type is an error,
@@ -863,6 +844,29 @@ export class Transformer {
         // Finally, if we got here, it's not a type we support yet; issue an error and return `dynamic`.
         this.diagnostics.push(this.dctx.newInvalidTypeError(node, simple));
         return tokens.dynamicType;
+    }
+
+    // resolveSignatureToken resolves the function signature token for a given TypeScript signature object.
+    private async resolveSignatureToken(node: ts.Node, sig: ts.Signature): Promise<tokens.TypeToken> {
+        contract.assert(!sig.typeParameters || sig.typeParameters.length === 0, "Generics not yet supported");
+        let params: string = "";
+        for (let param of sig.parameters) {
+            if (params !== "") {
+                params += tokens.functionTypeParamSeparator;
+            }
+            let paramty: ts.Type = this.checker().getDeclaredTypeOfSymbol(param);
+            let paramtok: tokens.TypeToken | undefined = await this.resolveTypeToken(node, paramty);
+            contract.assert(!!paramtok);
+            params += paramtok;
+        }
+        let ret: string = "";
+        let retty: ts.Type | undefined = sig.getReturnType();
+        if (retty && !(retty.flags & ts.TypeFlags.Void)) {
+            let rettok: tokens.TypeToken | undefined = await this.resolveTypeToken(node, retty);
+            contract.assert(!!rettok);
+            ret = rettok!;
+        }
+        return `${tokens.functionTypePrefix}${params}${tokens.functionTypeSeparator}${ret}`;
     }
 
     // resolveTokenFromSymbol resolves a symbol to a fully qualified TypeToken that can be used to reference it.
@@ -1023,6 +1027,58 @@ export class Transformer {
                 }),
             });
         }
+    }
+
+    // createLocalFunction generates a new local function declaration by using lambdas.  If the function has a name, it
+    // will have been bound to a local variable that contains a reference to the lambda.  In any case, the resulting
+    // expression evaluates to the lambda value itself (which is useful for local functions used as expressions).
+    private async createLocalFunction(node: ts.FunctionLikeDeclaration): Promise<ast.Expression> {
+        let decl: FunctionLikeDeclaration = await this.transformFunctionLikeCommon(node);
+        let expr: ast.Expression = this.withLocation(node, <ast.LambdaExpression>{
+            kind:       ast.lambdaExpressionKind,
+            parameters: decl.parameters,
+            body:       decl.body,
+            returnType: decl.returnType,
+        });
+
+        // If there's a name, assign it to the variable; otherwise, simply yield the expression.
+        if (decl.name) {
+            let sig: ts.Signature = await this.checker().getSignatureFromDeclaration(node);
+            let localFunc = this.copyLocation(decl.name, <ast.LocalVariable>{
+                kind:     ast.localVariableKind,
+                name:     decl.name,
+                type:     <ast.TypeToken>{
+                    kind: ast.typeTokenKind,
+                    tok:  await this.resolveSignatureToken(node, sig),
+                },
+                readonly: true,
+            });
+
+            // Now swap out the expression with a sequence that declares, stores, and returns the lambda.
+            expr = this.withLocation(node, <ast.SequenceExpression>{
+                kind:    ast.sequenceExpressionKind,
+                prelude: [
+                    this.withLocation(node, <ast.LocalVariableDeclaration>{
+                        kind:  ast.localVariableDeclarationKind,
+                        local: localFunc,
+                    }),
+                ],
+                value:    <ast.BinaryOperatorExpression>{
+                    kind: ast.binaryOperatorExpressionKind,
+                    left: this.withLocation(node, <ast.LoadLocationExpression>{
+                        kind: ast.loadLocationExpressionKind,
+                        name: this.copyLocation(localFunc.name, <ast.Token>{
+                            kind: ast.tokenKind,
+                            tok:  localFunc.name.ident,
+                        }),
+                    }),
+                    operator: "=",
+                    right:    expr,
+                },
+            });
+        }
+
+        return expr;
     }
 
     /** Modules **/
@@ -1419,7 +1475,6 @@ export class Transformer {
         switch (node.kind) {
             // Declaration statements:
             case ts.SyntaxKind.ClassDeclaration:
-            case ts.SyntaxKind.FunctionDeclaration:
             case ts.SyntaxKind.InterfaceDeclaration:
             case ts.SyntaxKind.ModuleDeclaration:
             case ts.SyntaxKind.TypeAliasDeclaration:
@@ -1466,6 +1521,8 @@ export class Transformer {
                 return this.transformEmptyStatement(<ts.EmptyStatement>node);
             case ts.SyntaxKind.ExpressionStatement:
                 return await this.transformExpressionStatement(<ts.ExpressionStatement>node);
+            case ts.SyntaxKind.FunctionDeclaration:
+                return await this.transformFunctionStatement(<ts.FunctionDeclaration>node);
             case ts.SyntaxKind.LabeledStatement:
                 return this.transformLabeledStatement(<ts.LabeledStatement>node);
             case ts.SyntaxKind.ModuleBlock:
@@ -2457,6 +2514,16 @@ export class Transformer {
         });
     }
 
+    // transformFunctionStatement simply binds a function declaration to a local variable, and populates it with a
+    // lambda object, so that it can be used like a function locally.
+    private async transformFunctionStatement(node: ts.FunctionDeclaration): Promise<ast.Statement> {
+        let lambda: ast.Expression = await this.createLocalFunction(node);
+        return <ast.ExpressionStatement>{
+            kind:       ast.expressionStatementKind,
+            expression: lambda,
+        };
+    }
+
     private async transformLabeledStatement(node: ts.LabeledStatement): Promise<ast.LabeledStatement> {
         return this.withLocation(node, <ast.LabeledStatement>{
             kind:      ast.labeledStatementKind,
@@ -2668,21 +2735,22 @@ export class Transformer {
         // Pile up the expressions in the right order.
         let curr: ts.Expression = node;
         let binary: ts.BinaryExpression = node;
-        let expressions: ast.Expression[] = [];
+        let prelude: ast.Expression[] = [];
         while (curr.kind === ts.SyntaxKind.BinaryExpression &&
                 (binary = <ts.BinaryExpression>curr).operatorToken.kind === ts.SyntaxKind.CommaToken) {
-            expressions.unshift(await this.transformExpression(binary.right));
+            prelude.unshift(await this.transformExpression(binary.right));
             curr = binary.left;
         }
-        expressions.unshift(await this.transformExpression(curr));
+        contract.assert(prelude.length > 0);
 
-        contract.assert(expressions.length > 0);
+        let value: ast.Expression = await this.transformExpression(curr);
         return this.copyLocationRange(
-            expressions[0],
-            expressions[expressions.length-1],
+            prelude[0],
+            value,
             <ast.SequenceExpression>{
-                kind:        ast.sequenceExpressionKind,
-                expressions: expressions,
+                kind:    ast.sequenceExpressionKind,
+                prelude: prelude,
+                value:   value,
             },
         );
     }
@@ -2822,22 +2890,8 @@ export class Transformer {
 
     // transformFunctionExpress turns a function expression, essentially a function declared within another function,
     // into a lambda.  If the expression declares a name, we also declare a variable to hold the result.
-    private async transformFunctionExpression(node: ts.FunctionExpression): Promise<ast.Expression> {
-        let decl: FunctionLikeDeclaration = await this.transformFunctionLikeCommon(node);
-        let expr: ast.LambdaExpression = this.withLocation(node, <ast.LambdaExpression>{
-            kind:       ast.lambdaExpressionKind,
-            parameters: decl.parameters,
-            body:       decl.body,
-            returnType: decl.returnType,
-        });
-
-        // If there's a name, assign it to the variable; otherwise, simply yield the expression.
-        if (decl.name) {
-            // TODO: need to declare a variable within an expression context; requires spill rewriting.
-            contract.fail("Named local functions not yet supported");
-        }
-
-        return expr;
+    private transformFunctionExpression(node: ts.FunctionExpression): Promise<ast.Expression> {
+        return this.createLocalFunction(node);
     }
 
     private async transformNonNullExpression(node: ts.NonNullExpression): Promise<ast.Expression> {
