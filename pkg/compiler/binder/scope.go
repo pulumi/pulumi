@@ -12,8 +12,8 @@ import (
 
 // Scope facilitates storing information that obeys lexically nested scoping rules.
 type Scope struct {
+	Root       **Scope  // the slot rooting the tree of current scopes for pushing/popping.
 	Ctx        *Context // the shared context object for errors, etc.
-	Slot       **Scope  // the slot rooting the tree of current scopes for pushing/popping.
 	Activation bool     // if this scope represents the top of an activation frame.
 	Parent     *Scope   // the parent scope to restore upon pop, or nil if this is the top.
 	Locals     LocalMap // the current scope's locals map (name to local symbol).
@@ -24,27 +24,27 @@ type LocalMap map[tokens.Name]*symbols.LocalVariable
 
 // NewScope allocates and returns a fresh scope using the given slot, populating it.
 func NewScope(ctx *Context, activation bool) *Scope {
-	slot := &ctx.Scope
+	root := &ctx.Scope
 	scope := &Scope{
+		Root:       root,
 		Ctx:        ctx,
-		Slot:       slot,
 		Activation: activation,
-		Parent:     *slot,
+		Parent:     *root,
 		Locals:     make(LocalMap),
 	}
-	*slot = scope
+	*root = scope
 	return scope
 }
 
 // Push creates a new scope with an empty symbol table parented to the existing one.
-func (s *Scope) Push(frame bool) *Scope {
-	return NewScope(s.Ctx, frame)
+func (s *Scope) Push(activation bool) *Scope {
+	return NewScope(s.Ctx, activation)
 }
 
 // Pop restores the prior scope into the underlying slot, tossing away the current symbol table.
 func (s *Scope) Pop() {
-	contract.Assert(*s.Slot == s)
-	*s.Slot = s.Parent
+	contract.Assert(*s.Root == s)
+	*s.Root = s.Parent
 }
 
 // Lookup finds a variable underneath the given name, issuing an error and returning nil if not found.
@@ -57,10 +57,10 @@ func (s *Scope) Lookup(nm tokens.Name) *symbols.LocalVariable {
 
 		// If not in this scope, keep looking at the ancestral chain, if one exists.
 		if s.Activation {
-			s = nil
-		} else {
-			s = s.Parent
+			break
 		}
+
+		s = s.Parent
 	}
 	return nil
 }

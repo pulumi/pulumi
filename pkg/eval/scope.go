@@ -7,46 +7,72 @@ import (
 	"github.com/pulumi/coconut/pkg/compiler/symbols"
 	"github.com/pulumi/coconut/pkg/compiler/types"
 	"github.com/pulumi/coconut/pkg/eval/rt"
+	"github.com/pulumi/coconut/pkg/tokens"
 	"github.com/pulumi/coconut/pkg/util/contract"
 )
 
 // localScope holds variable values that correspond to a specific lexical scope.
 type localScope struct {
-	slot       *rt.Environment
-	parent     rt.Environment // the parent to restore when popping this scope.
-	activation bool           // if a top-level frame, searches won't reach beyond this scope.
-	lexical    *binder.Scope  // the binding scope tells us at what level, lexically, a local resides.
-	values     rt.Slots       // the values map contains the value for a variable so long as it exists.
+	root       *rt.Environment // a pointer to the root of all scopes.
+	parent     rt.Environment  // the parent to restore when popping this scope.
+	activation bool            // if a top-level frame, searches won't reach beyond this scope.
+	lexical    *binder.Scope   // the binding scope tells us at what level, lexically, a local resides.
+	slots      rt.Slots        // the values map contains the value for a variable so long as it exists.
 }
 
 var _ rt.Environment = (*localScope)(nil)
 
-func newLocalScope(slot *rt.Environment, activation bool, lex *binder.Scope) *localScope {
+func newLocalScope(root *rt.Environment, activation bool, lex *binder.Scope) *localScope {
 	s := &localScope{
-		slot:       slot,
-		parent:     *slot,
+		root:       root,
+		parent:     *root,
 		activation: activation,
 		lexical:    lex,
-		values:     make(rt.Slots),
+		slots:      make(rt.Slots),
 	}
-	*slot = s
+	*root = s
 	return s
 }
 
 func (s *localScope) Parent() rt.Environment { return s.parent }
 func (s *localScope) Activation() bool       { return s.activation }
 func (s *localScope) Lexical() *binder.Scope { return s.lexical }
-func (s *localScope) Values() rt.Slots       { return s.values }
+func (s *localScope) Slots() rt.Slots        { return s.slots }
 
-func (s *localScope) Push(frame bool) rt.Environment {
-	lex := s.lexical.Push(frame)
-	return newLocalScope(s.slot, frame, lex)
+func (s *localScope) Push(activation bool) rt.Environment {
+	lex := s.lexical.Push(activation)
+	return newLocalScope(s.root, activation, lex)
 }
 
 func (s *localScope) Pop() {
-	contract.Assert(*s.slot == s)
+	contract.Assert(*s.root == s)
 	s.lexical.Pop()
-	*s.slot = s.parent
+	*s.root = s.parent
+}
+
+// Swap replaces a current scope with a new run, returning a popper function.
+func (s *localScope) Swap(other rt.Environment) func() {
+	*s.root = other
+	*s.lexical.Root = other.Lexical()
+	return func() {
+		*s.root = s
+		*s.lexical.Root = s.Lexical()
+	}
+}
+
+// Lookup locates an existing variable by name in the current scope.
+func (s *localScope) Lookup(nm tokens.Name) *symbols.LocalVariable {
+	return s.lexical.Lookup(nm)
+}
+
+// Register registers a new variable in the scope.
+func (s *localScope) Register(sym *symbols.LocalVariable) bool {
+	return s.lexical.Register(sym)
+}
+
+// MustRegister registers a new variable in the scope, failing if it collides with an existing one.
+func (s *localScope) MustRegister(sym *symbols.LocalVariable) {
+	s.lexical.MustRegister(sym)
 }
 
 // GetValue returns the object value for the given symbol.
@@ -102,7 +128,7 @@ outer:
 	contract.Assert(env != nil)
 	contract.Assert(lex != nil)
 
-	slots := env.Values()
+	slots := env.Slots()
 	if ref, has := slots[sym]; has {
 		contract.Assertf(place == nil, "Expected an empty value slot, given init usage; it was non-nil: %v", sym)
 		return ref

@@ -5,6 +5,7 @@ package rt
 import (
 	"github.com/pulumi/coconut/pkg/compiler/binder"
 	"github.com/pulumi/coconut/pkg/compiler/symbols"
+	"github.com/pulumi/coconut/pkg/tokens"
 )
 
 // Environment represents a current chained collection of frames, forming an environment of variables.
@@ -15,13 +16,22 @@ type Environment interface {
 	Activation() bool
 	// Lexical is the corresponding binding scope for this object, telling us at what level a local is, lexically.
 	Lexical() *binder.Scope
-	// Values is a map of variable to slot.
-	Values() Slots
+	// Slots is a map of variable to slot.
+	Slots() Slots
 
 	// Push creates a new frame chained to the current one.  If activation is true, it is the top of a record.
 	Push(activation bool) Environment
 	// Pop restores the previous frame.
 	Pop()
+	// Swap replaces a current scope with a new run, returning a popper function.
+	Swap(other Environment) func()
+
+	// Lookup locates an existing variable by name in the current scope.
+	Lookup(nm tokens.Name) *symbols.LocalVariable
+	// Register registers a new variable in the scope.
+	Register(sym *symbols.LocalVariable) bool
+	// MustRegister registers a new variable in the scope, failing if it collides with an existing one.
+	MustRegister(sym *symbols.LocalVariable)
 
 	// GetValue fetches the runtime object for the given variable.
 	GetValue(sym *symbols.LocalVariable) *Object

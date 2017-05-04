@@ -549,20 +549,20 @@ func (e *evaluator) pushClassScope(c *symbols.Class, obj *rt.Object) func() {
 	return e.ctx.PushClass(c)
 }
 
-// pushScope pushes a new local and context scope.  The frame argument indicates whether this is an activation frame,
-// meaning that searches for local variables will not probe into parent scopes (since they are inaccessible).
-func (e *evaluator) pushScope(frame *rt.StackFrame) {
+// pushScope pushes a new local and context scope.  The activation argument indicates whether this is an activation
+// frame, meaning that searches for local variables will not probe into parent scopes (since they are inaccessible).
+func (e *evaluator) pushScope(frame *rt.StackFrame, activation bool) {
 	if frame != nil {
 		frame.Parent = e.stack // remember the parent so we can pop.
 		e.stack = frame        // install this as the current frame.
 	}
-	e.locals.Push(frame != nil) // pushing the local scope also updates the context scope.
+	e.locals.Push(activation) // pushing the local scope also updates the context scope.
 }
 
 // popScope pops the current local and context scopes.
-func (e *evaluator) popScope(frame bool) {
-	if frame {
-		contract.Assert(e.stack != nil)
+func (e *evaluator) popScope(frame *rt.StackFrame) {
+	if frame != nil {
+		contract.Assert(e.stack == frame)
 		e.stack = e.stack.Parent
 	}
 	e.locals.Pop() // popping the local scope also updates the context scope.
@@ -570,7 +570,8 @@ func (e *evaluator) popScope(frame bool) {
 
 // Functions
 
-func (e *evaluator) evalCall(node diag.Diagable, fnc ast.Function, sym symbols.Function, sig *symbols.FunctionType,
+func (e *evaluator) evalCall(node diag.Diagable,
+	fnc ast.Function, sym symbols.Function, sig *symbols.FunctionType, shareActivation bool,
 	this *rt.Object, args ...*rt.Object) (*rt.Object, *rt.Unwind) {
 	var label string
 	if sym == nil {
@@ -636,8 +637,9 @@ func (e *evaluator) evalCall(node diag.Diagable, fnc ast.Function, sym symbols.F
 	defer func() { e.fnc = prior }()
 
 	// Set up a new lexical scope "activation frame" in which we can bind the parameters; restore it upon exit.
-	e.pushScope(&rt.StackFrame{Node: fnc, Func: sym, Caller: node})
-	defer e.popScope(true)
+	frame := &rt.StackFrame{Node: fnc, Func: sym, Caller: node}
+	e.pushScope(frame, !shareActivation)
+	defer e.popScope(frame)
 
 	// Invoke the hooks if available.
 	if e.hooks != nil && sym != nil {
@@ -649,12 +651,12 @@ func (e *evaluator) evalCall(node diag.Diagable, fnc ast.Function, sym symbols.F
 	// If the target is an instance method, the "this" and "super" variables must be bound to values.
 	if thisVariable != nil {
 		contract.Assert(this != nil)
-		e.ctx.Scope.Register(thisVariable)
+		e.locals.Register(thisVariable)
 		e.locals.InitValueAddr(thisVariable, rt.NewPointer(this, true))
 	}
 	if superVariable != nil {
 		contract.Assert(this != nil)
-		e.ctx.Scope.Register(superVariable)
+		e.locals.Register(superVariable)
 		e.locals.InitValueAddr(superVariable, rt.NewPointer(this, true))
 	}
 
@@ -667,7 +669,7 @@ func (e *evaluator) evalCall(node diag.Diagable, fnc ast.Function, sym symbols.F
 			"Expected argc %v == paramc %v in call to '%v'", len(args), len(*params), label)
 		for i, param := range *params {
 			sym := e.ctx.RequireVariable(param).(*symbols.LocalVariable)
-			e.ctx.Scope.Register(sym)
+			e.locals.Register(sym)
 			arg := args[i]
 			contract.Assert(types.CanConvert(arg.Type(), sym.Type()))
 			e.locals.SetValue(sym, arg)
@@ -700,31 +702,32 @@ func (e *evaluator) evalCall(node diag.Diagable, fnc ast.Function, sym symbols.F
 		contract.Assert((retty == nil) == (ret == nil))
 		contract.Assert(ret == nil || types.CanConvert(ret.Type(), retty))
 		if glog.V(7) {
-			glog.V(7).Infof("Evaluated call to fnc %v; return=%v", fnc, ret)
+			glog.V(7).Infof("Evaluated call to fnc %v; return=%v", label, ret)
 		}
 		return ret, nil
 	}
 
 	// An absence of a return is okay for void- or dynamic-returning functions.
 	contract.Assert(retty == nil || retty == types.Dynamic)
-	glog.V(7).Infof("Evaluated call to fnc %v; return=<nil>", fnc)
+	glog.V(7).Infof("Evaluated call to fnc %v; return=<nil>", label)
 	return nil, nil
 }
 
 func (e *evaluator) evalCallSymbol(node diag.Diagable, fnc symbols.Function,
 	this *rt.Object, args ...*rt.Object) (*rt.Object, *rt.Unwind) {
-	return e.evalCall(node, fnc.Function(), fnc, fnc.Signature(), this, args...)
+	return e.evalCall(node, fnc.Function(), fnc, fnc.Signature(), false, this, args...)
 }
 
 func (e *evaluator) evalCallFuncStub(node diag.Diagable,
 	fnc rt.FuncStub, args ...*rt.Object) (*rt.Object, *rt.Unwind) {
 	// If there is an environment for the call stub, restore it before invoking and then put it back.
+	var shareActivation bool
 	if fnc.Env != nil {
-		oldenv := e.locals
-		e.locals = fnc.Env
-		defer (func() { e.locals = oldenv })()
+		restore := e.locals.Swap(fnc.Env)
+		defer restore()
+		shareActivation = true
 	}
-	return e.evalCall(node, fnc.Func, fnc.Sym, fnc.Sig, fnc.This, args...)
+	return e.evalCall(node, fnc.Func, fnc.Sym, fnc.Sig, shareActivation, fnc.This, args...)
 }
 
 // Statements
@@ -806,8 +809,8 @@ func (e *evaluator) evalImport(node *ast.Import) *rt.Unwind {
 
 func (e *evaluator) evalBlock(node *ast.Block) *rt.Unwind {
 	// Push a scope at the start, and pop it at afterwards; both for the symbol context and local variable values.
-	e.pushScope(nil)
-	defer e.popScope(false)
+	e.pushScope(nil, false)
+	defer e.popScope(nil)
 
 	for _, stmt := range node.Statements {
 		if uw := e.evalStatement(stmt); uw != nil {
@@ -822,7 +825,7 @@ func (e *evaluator) evalLocalVariableDeclaration(node *ast.LocalVariableDeclarat
 	// Populate the variable in the scope.
 	loc := node.Local
 	sym := e.ctx.RequireVariable(loc).(*symbols.LocalVariable)
-	e.ctx.Scope.Register(sym)
+	e.locals.Register(sym)
 
 	// If there is a default value, set it now.
 	if loc.Default != nil {
@@ -849,10 +852,10 @@ func (e *evaluator) evalTryCatchFinally(node *ast.TryCatchFinally) *rt.Unwind {
 				if types.CanConvert(thrown.Type(), exty) {
 					// This type matched, so this handler will catch the exception.  Set the exception variable,
 					// evaluate the block, and swap the rt.Unwind information ("handling" the in-flight exception).
-					e.pushScope(nil)
+					e.pushScope(nil, false)
 					e.locals.SetValue(ex, thrown)
 					uw = e.evalStatement(catch.Body)
-					e.popScope(false)
+					e.popScope(nil)
 					break
 				}
 			}
@@ -1366,7 +1369,7 @@ func (e *evaluator) evalLoadLocation(node *ast.LoadLocationExpression, lval bool
 		// If there is no object and the name is simple, it refers to a local variable in the current scope.
 		// For more "sophisticated" lookups, in the hierarchy of scopes, a load dynamic operation must be utilized.
 		contract.Assert(this == nil)
-		loc := e.ctx.Scope.Lookup(tok.Name())
+		loc := e.locals.Lookup(tok.Name())
 		contract.Assert(loc != nil)
 		pv = e.locals.GetValueAddr(loc, true)
 		ty = loc.Type()
@@ -1590,7 +1593,7 @@ func (e *evaluator) getDynamicNameAddr(key tokens.Name, lval bool) *rt.Pointer {
 	// If there's no object, look in the current localsment.
 	pkey := rt.PropertyKey(key)
 	globals := e.getModuleGlobals(e.ctx.Currmodule)
-	if loc := e.ctx.Scope.Lookup(key); loc != nil {
+	if loc := e.locals.Lookup(key); loc != nil {
 		pv = e.locals.GetValueAddr(loc, true) // create a slot, we know the declaration exists.
 	} else {
 		// If it didn't exist in the lexical scope, check the module's globals.
@@ -1603,7 +1606,7 @@ func (e *evaluator) getDynamicNameAddr(key tokens.Name, lval bool) *rt.Pointer {
 			pv = globals.Properties().GetAddr(pkey, true)
 		} else {
 			loc := symbols.NewSpecialVariableSym(key, types.Dynamic)
-			e.ctx.Scope.MustRegister(loc)
+			e.locals.MustRegister(loc)
 			pv = e.locals.GetValueAddr(loc, true)
 		}
 	}
