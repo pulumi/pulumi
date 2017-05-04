@@ -243,6 +243,7 @@ type LambdaExpression struct {
 }
 
 var _ Node = (*LambdaExpression)(nil)
+var _ Function = (*LambdaExpression)(nil)
 var _ Expression = (*LambdaExpression)(nil)
 
 const LambdaExpressionKind NodeKind = "LambdaExpression"

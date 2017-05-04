@@ -12,6 +12,7 @@ import (
 // StackFrame is a structure that helps us build up a stack trace upon failure.
 type StackFrame struct {
 	Parent *StackFrame      // the parent frame.
+	Node   diag.Diagable    // the current frame's location.
 	Func   symbols.Function // the current function.
 	Caller diag.Diagable    // the location inside of our caller.
 }
@@ -29,8 +30,19 @@ func (s *StackFrame) Trace(d diag.Sink, prefix string, current diag.Diagable) st
 		//     at package:module:function(A, .., Z)R
 		// where A are the argument types (if any) and R is the return type (if any).
 		trace.WriteString("at ")
-		trace.WriteString(string(s.Func.Token()))
-		trace.WriteString(string(s.Func.Signature().Token()))
+		if s.Func == nil {
+			trace.WriteString("lambda")
+			if s.Node != nil {
+				if doc, loc := s.Node.Where(); doc != nil || loc != nil {
+					trace.WriteString(" (")
+					trace.WriteString(d.StringifyLocation(doc, loc))
+					trace.WriteString(")")
+				}
+			}
+		} else {
+			trace.WriteString(string(s.Func.Token()))
+			trace.WriteString(string(s.Func.Signature().Token()))
+		}
 
 		// Next, if there's source information about the current location inside of this function, print it.
 		if current != nil {

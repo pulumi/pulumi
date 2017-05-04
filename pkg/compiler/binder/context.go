@@ -452,7 +452,9 @@ func (ctx *Context) RegisterSymbol(node ast.Definition, sym symbols.Symbol) {
 }
 
 func (ctx *Context) RequireFunction(fnc ast.Function) symbols.Function {
-	return ctx.RequireDefinition(fnc).(symbols.Function)
+	n, isdef := fnc.(ast.Definition)
+	contract.Assertf(isdef, "Only function definitions may be registered in the symbol table (not lambdas)")
+	return ctx.RequireDefinition(n).(symbols.Function)
 }
 
 func (ctx *Context) RequireVariable(fnc ast.Variable) symbols.Variable {

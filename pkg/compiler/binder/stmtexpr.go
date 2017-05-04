@@ -20,13 +20,15 @@ import (
 type astBinder struct {
 	b      *binder
 	fnc    ast.Function                  // the current function.
+	sig    *symbols.FunctionType         // the signature type for the current function.
 	labels map[tokens.Name]ast.Statement // a map of known labels (for validation of jumps).
 }
 
-func newASTBinder(b *binder, fnc ast.Function) ast.Visitor {
+func newASTBinder(b *binder, fnc ast.Function, sig *symbols.FunctionType) ast.Visitor {
 	return &astBinder{
 		b:      b,
 		fnc:    fnc,
+		sig:    sig,
 		labels: make(map[tokens.Name]ast.Statement),
 	}
 }
@@ -34,8 +36,14 @@ func newASTBinder(b *binder, fnc ast.Function) ast.Visitor {
 var _ ast.Visitor = (*astBinder)(nil)
 
 func (a *astBinder) Visit(node ast.Node) ast.Visitor {
+	// Lambdas are special because we want to visit in an entirely fresh context.
+	if n, islambda := node.(*ast.LambdaExpression); islambda {
+		a.visitLambdaExpression(n)
+		return nil // don't trigger the automatic visitation.
+	}
+
+	// Otherwise, do some pre-validation if necessary, and then return the current visitor to keep on visiting.
 	switch n := node.(type) {
-	// Statements
 	case *ast.Block:
 		a.visitBlock(n)
 	case *ast.LocalVariable:
@@ -43,8 +51,6 @@ func (a *astBinder) Visit(node ast.Node) ast.Visitor {
 	case *ast.LabeledStatement:
 		a.visitLabeledStatement(n)
 	}
-
-	// Return the current visitor to keep on visitin'.
 	return a
 }
 
@@ -91,8 +97,6 @@ func (a *astBinder) After(node ast.Node) {
 		a.checkNewExpression(n)
 	case *ast.InvokeFunctionExpression:
 		a.checkInvokeFunctionExpression(n)
-	case *ast.LambdaExpression:
-		a.checkLambdaExpression(n)
 	case *ast.UnaryOperatorExpression:
 		a.checkUnaryOperatorExpression(n)
 	case *ast.BinaryOperatorExpression:
@@ -203,8 +207,7 @@ func (a *astBinder) visitLabeledStatement(node *ast.LabeledStatement) {
 
 func (a *astBinder) checkReturnStatement(node *ast.ReturnStatement) {
 	// Ensure that the return expression is correct (present or missing; and its type).
-	sig := a.b.ctx.RequireFunction(a.fnc).Signature()
-	if sig.Return == nil {
+	if ret := a.sig.Return; ret == nil {
 		if node.Expression != nil {
 			// The function has no return type ("void"), and yet the return had an expression.
 			a.b.Diag().Errorf(errors.ErrorUnexpectedReturnExpr.At(*node.Expression))
@@ -215,7 +218,7 @@ func (a *astBinder) checkReturnStatement(node *ast.ReturnStatement) {
 			a.b.Diag().Errorf(errors.ErrorExpectedReturnExpr.At(node))
 		} else {
 			// Ensure that the returned expression is convertible to the expected return type.
-			a.checkExprType(*node.Expression, sig.Return)
+			a.checkExprType(*node.Expression, ret)
 		}
 	}
 }
@@ -240,6 +243,11 @@ func (a *astBinder) checkForStatement(node *ast.ForStatement) {
 }
 
 // Expressions
+
+func (a *astBinder) visitLambdaExpression(node *ast.LambdaExpression) {
+	lambdaType := a.b.bindLambdaExpression(node)
+	a.b.ctx.RegisterType(node, lambdaType)
+}
 
 func (a *astBinder) checkExprType(expr ast.Expression, expect symbols.Type, alts ...symbols.Type) bool {
 	actual := a.b.ctx.RequireType(expr)
@@ -498,20 +506,6 @@ func (a *astBinder) checkInvokeFunctionExpression(node *ast.InvokeFunctionExpres
 		a.b.Diag().Errorf(errors.ErrorCannotInvokeNonFunction.At(node), ty)
 		a.b.ctx.RegisterType(node, types.Error)
 	}
-}
-
-func (a *astBinder) checkLambdaExpression(node *ast.LambdaExpression) {
-	var params []symbols.Type
-	if pparams := node.GetParameters(); pparams != nil {
-		for _, param := range *pparams {
-			params = append(params, a.b.ctx.RequireVariable(param).Type())
-		}
-	}
-	var ret symbols.Type
-	if pret := node.GetReturnType(); pret != nil {
-		ret = a.b.ctx.LookupType(pret)
-	}
-	a.b.ctx.RegisterType(node, symbols.NewFunctionType(params, ret))
 }
 
 func (a *astBinder) checkUnaryOperatorExpression(node *ast.UnaryOperatorExpression) {

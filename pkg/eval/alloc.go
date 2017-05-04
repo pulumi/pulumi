@@ -76,7 +76,7 @@ func (a *Allocator) NewString(tree diag.Diagable, v string) *rt.Object {
 
 // NewFunction creates a new function object that can be invoked, with the given symbol.
 func (a *Allocator) NewFunction(tree diag.Diagable, fnc symbols.Function, this *rt.Object) *rt.Object {
-	obj := rt.NewFunctionObject(fnc, this)
+	obj := rt.NewFunctionObjectFromSymbol(fnc, this)
 	a.onNewObject(tree, obj)
 	return obj
 }

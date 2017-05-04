@@ -106,7 +106,8 @@ func dynamicInvoke(intrin *Intrinsic, e *evaluator, this *rt.Object, args []*rt.
 	stub := args[0].FunctionValue()
 
 	// Next, simply call through to the evalCall function, which will do all additional verification.
-	obj, uw := e.evalCall(intrin.Node, stub.Func, this, args...)
+	stub.This = this // adjust this before the call (note this doesn't mutate the source stub; it's by-value).
+	obj, uw := e.evalCallFuncStub(intrin.Node, stub, args...)
 	if uw != nil {
 		return uw
 	}

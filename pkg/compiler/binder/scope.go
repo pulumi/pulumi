@@ -12,25 +12,25 @@ import (
 
 // Scope facilitates storing information that obeys lexically nested scoping rules.
 type Scope struct {
-	Ctx    *Context // the shared context object for errors, etc.
-	Slot   **Scope  // the slot rooting the tree of current scopes for pushing/popping.
-	Frame  bool     // if this scope represents the top of an activation frame.
-	Parent *Scope   // the parent scope to restore upon pop, or nil if this is the top.
-	Locals LocalMap // the current scope's locals map (name to local symbol).
+	Ctx        *Context // the shared context object for errors, etc.
+	Slot       **Scope  // the slot rooting the tree of current scopes for pushing/popping.
+	Activation bool     // if this scope represents the top of an activation frame.
+	Parent     *Scope   // the parent scope to restore upon pop, or nil if this is the top.
+	Locals     LocalMap // the current scope's locals map (name to local symbol).
 }
 
 // LocalMap maps the name of locals to their corresponding symbols, for the few places we need name-based lookup.
 type LocalMap map[tokens.Name]*symbols.LocalVariable
 
 // NewScope allocates and returns a fresh scope using the given slot, populating it.
-func NewScope(ctx *Context, frame bool) *Scope {
+func NewScope(ctx *Context, activation bool) *Scope {
 	slot := &ctx.Scope
 	scope := &Scope{
-		Ctx:    ctx,
-		Slot:   slot,
-		Frame:  frame,
-		Parent: *slot,
-		Locals: make(LocalMap),
+		Ctx:        ctx,
+		Slot:       slot,
+		Activation: activation,
+		Parent:     *slot,
+		Locals:     make(LocalMap),
 	}
 	*slot = scope
 	return scope
@@ -56,7 +56,7 @@ func (s *Scope) Lookup(nm tokens.Name) *symbols.LocalVariable {
 		}
 
 		// If not in this scope, keep looking at the ancestral chain, if one exists.
-		if s.Frame {
+		if s.Activation {
 			s = nil
 		} else {
 			s = s.Parent

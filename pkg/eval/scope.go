@@ -12,37 +12,41 @@ import (
 
 // localScope holds variable values that correspond to a specific lexical scope.
 type localScope struct {
-	Slot    **localScope
-	Parent  *localScope   // the parent to restore when popping this scope.
-	Frame   bool          // if a top-level frame, searches won't reach beyond this scope.
-	Lexical *binder.Scope // the binding scope tells us at what level, lexically, a local resides.
-	Values  valueMap      // the values map contains the value for a variable so long as it exists.
+	slot       *rt.Environment
+	parent     rt.Environment // the parent to restore when popping this scope.
+	activation bool           // if a top-level frame, searches won't reach beyond this scope.
+	lexical    *binder.Scope  // the binding scope tells us at what level, lexically, a local resides.
+	values     rt.Slots       // the values map contains the value for a variable so long as it exists.
 }
 
-// valueMap maps variables to their current known object value in this scope (if any).
-type valueMap map[*symbols.LocalVariable]*rt.Pointer
+var _ rt.Environment = (*localScope)(nil)
 
-func newLocalScope(slot **localScope, frame bool, lex *binder.Scope) *localScope {
+func newLocalScope(slot *rt.Environment, activation bool, lex *binder.Scope) *localScope {
 	s := &localScope{
-		Slot:    slot,
-		Parent:  *slot,
-		Frame:   frame,
-		Lexical: lex,
-		Values:  make(valueMap),
+		slot:       slot,
+		parent:     *slot,
+		activation: activation,
+		lexical:    lex,
+		values:     make(rt.Slots),
 	}
 	*slot = s
 	return s
 }
 
-func (s *localScope) Push(frame bool) *localScope {
-	lex := s.Lexical.Push(frame)
-	return newLocalScope(s.Slot, frame, lex)
+func (s *localScope) Parent() rt.Environment { return s.parent }
+func (s *localScope) Activation() bool       { return s.activation }
+func (s *localScope) Lexical() *binder.Scope { return s.lexical }
+func (s *localScope) Values() rt.Slots       { return s.values }
+
+func (s *localScope) Push(frame bool) rt.Environment {
+	lex := s.lexical.Push(frame)
+	return newLocalScope(s.slot, frame, lex)
 }
 
 func (s *localScope) Pop() {
-	contract.Assert(*s.Slot == s)
-	s.Lexical.Pop()
-	*s.Slot = s.Parent
+	contract.Assert(*s.slot == s)
+	s.lexical.Pop()
+	*s.slot = s.parent
 }
 
 // GetValue returns the object value for the given symbol.
@@ -74,7 +78,8 @@ func (s *localScope) lookupValueAddr(sym *symbols.LocalVariable, place *rt.Point
 	// To get a value's reference, we must first find the position in the shadowed frames, so that its lifetime equals
 	// the actual variable symbol's lifetime.  This ensures that once that frame is popped, so too is any value
 	// associated with it; and similarly, that its value won't be popped until the frame containing the variable is.
-	lex := s.Lexical
+	lex := s.lexical
+	var env rt.Environment = s
 outer:
 	for {
 		// Search this frame for a match.
@@ -85,29 +90,30 @@ outer:
 		}
 
 		// If we hit the top of the activation records, quit looking.
-		if s.Frame {
+		if env.Activation() {
 			break
 		}
 
-		s = s.Parent
+		env = env.Parent()
 		lex = lex.Parent
-		contract.Assert(s.Lexical == lex)
-		contract.Assert(s.Frame == lex.Frame)
+		contract.Assert(env.Lexical() == lex)
+		contract.Assert(env.Activation() == lex.Activation)
 	}
-	contract.Assert(s != nil)
+	contract.Assert(env != nil)
 	contract.Assert(lex != nil)
 
-	if ref, has := s.Values[sym]; has {
+	slots := env.Values()
+	if ref, has := slots[sym]; has {
 		contract.Assertf(place == nil, "Expected an empty value slot, given init usage; it was non-nil: %v", sym)
 		return ref
 	}
 	if place != nil {
-		s.Values[sym] = place
+		slots[sym] = place
 		return place
 	}
 	if init {
 		ref := rt.NewPointer(nil, sym.Readonly())
-		s.Values[sym] = ref
+		slots[sym] = ref
 		return ref
 	}
 	return nil

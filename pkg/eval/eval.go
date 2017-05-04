@@ -78,7 +78,7 @@ type evaluator struct {
 	statics    staticMap        // the object values for all static variable symbols.
 	protos     prototypeMap     // the current "prototype" objects for all classes.
 	stack      *rt.StackFrame   // a stack of frames to keep track of calls.
-	locals     *localScope      // variable values corresponding to the current lexical scope.
+	locals     rt.Environment   // variable values corresponding to the current lexical scope.
 	modinits   modinitMap       // a map of which modules have been initialized already.
 	classinits classinitMap     // a map of which classes have been initialized already.
 }
@@ -206,8 +206,7 @@ func (e *evaluator) EvaluateFunction(fnc symbols.Function, this *rt.Object, args
 
 	if e.Diag().Success() {
 		// If the arguments bound correctly, make the call.
-		_, uw := e.evalCall(fnc.Tree(), fnc, this, argos...)
-		if uw != nil {
+		if _, uw := e.evalCallSymbol(fnc.Tree(), fnc, this, argos...); uw != nil {
 			// If the call had an unwind out of it, then presumably we have an unhandled exception.
 			e.issueUnhandledException(uw, errors.ErrorUnhandledException.At(fnc.Tree()))
 		}
@@ -329,7 +328,7 @@ func (e *evaluator) ensureClassInit(class *symbols.Class) {
 			glog.V(7).Infof("Initializing class: %v", class)
 			contract.Assert(len(init.Sig.Parameters) == 0)
 			contract.Assert(init.Sig.Return == nil)
-			ret, uw := e.evalCall(class.Tree(), init, nil)
+			ret, uw := e.evalCallSymbol(class.Tree(), init, nil)
 			contract.Assert(ret == nil)
 			if uw != nil {
 				// Must be an unhandled exception; spew it as an error (but keep going).
@@ -370,7 +369,7 @@ func (e *evaluator) ensureModuleInit(mod *symbols.Module) {
 			glog.V(7).Infof("Initializing module: %v", mod)
 			contract.Assert(len(init.Sig.Parameters) == 0)
 			contract.Assert(init.Sig.Return == nil)
-			ret, uw := e.evalCall(mod.Tree(), init, nil)
+			ret, uw := e.evalCallSymbol(mod.Tree(), init, nil)
 			contract.Assert(ret == nil)
 			if uw != nil {
 				// Must be an unhandled exception; spew it as an error (but keep going).
@@ -571,67 +570,78 @@ func (e *evaluator) popScope(frame bool) {
 
 // Functions
 
-func (e *evaluator) evalCall(node diag.Diagable, fnc symbols.Function,
+func (e *evaluator) evalCall(node diag.Diagable, fnc ast.Function, sym symbols.Function, sig *symbols.FunctionType,
 	this *rt.Object, args ...*rt.Object) (*rt.Object, *rt.Unwind) {
-	glog.V(7).Infof("Evaluating call to fnc %v; this=%v args=%v", fnc.Token(), this != nil, len(args))
+	var label string
+	if sym == nil {
+		label = "lambda"
+	} else {
+		label = string(sym.Token())
+	}
+	glog.V(7).Infof("Evaluating call to fnc %v; this=%v args=%v", label, this != nil, len(args))
 
 	// First check the this pointer, since it might throw before the call even happens.
+	intrinsic := false
 	var thisVariable *symbols.LocalVariable
 	var superVariable *symbols.LocalVariable
-	switch f := fnc.(type) {
-	case *symbols.ClassMethod:
-		if f.Static() {
+	if sym != nil {
+		// Set up the appropriate this/super variables, and also ensure that we enter the right module/class context
+		// (otherwise module-sensitive binding won't work).
+		switch f := sym.(type) {
+		case *symbols.ClassMethod:
+			if f.Static() {
+				if this != nil {
+					// A non-nil `this` is okay if we loaded this function from a prototype object.
+					prototy, isproto := this.Type().(*symbols.PrototypeType)
+					contract.Assert(isproto)
+					contract.Assert(prototy.Type == f.Parent)
+				}
+			} else {
+				contract.Assert(this != nil)
+				if uw := e.checkThis(node, this); uw != nil {
+					return nil, uw
+				}
+				thisVariable = f.Parent.This
+				superVariable = f.Parent.Super
+			}
+
+			popModule := e.pushModuleScope(f.Parent.Parent)
+			defer popModule()
+			popClass := e.pushClassScope(f.Parent, this)
+			defer popClass()
+
+		case *symbols.ModuleMethod:
 			if this != nil {
-				// A non-nil `this` is okay if we loaded this function from a prototype object.
-				prototy, isproto := this.Type().(*symbols.PrototypeType)
-				contract.Assert(isproto)
-				contract.Assert(prototy.Type == f.Parent)
+				// A non-nil `this` is okay if we loaded this function from a module object.  Note that because modules
+				// can re-export members from other modules, we cannot require that the type's parent matches.
+				_, ismod := this.Type().(*symbols.ModuleType)
+				contract.Assert(ismod)
 			}
-		} else {
-			contract.Assert(this != nil)
-			if uw := e.checkThis(node, this); uw != nil {
-				return nil, uw
-			}
-			thisVariable = f.Parent.This
-			superVariable = f.Parent.Super
+
+			popModule := e.pushModuleScope(f.Parent)
+			defer popModule()
+
+		case *Intrinsic:
+			contract.Assert(this == nil)
+			intrinsic = true
+
+		default:
+			contract.Failf("Unrecognized function type during call: %v", reflect.TypeOf(fnc))
 		}
-	case *symbols.ModuleMethod:
-		if this != nil {
-			// A non-nil `this` is okay if we loaded this function from a module object.  Note that because modules can
-			// re-export members from other modules, we cannot require that the type's parent matches.
-			_, ismod := this.Type().(*symbols.ModuleType)
-			contract.Assert(ismod)
-		}
-	default:
-		contract.Assert(this == nil)
 	}
 
-	// Ensure that we enter the right module/class context, otherwise module-sensitive binding won't work.
-	switch f := fnc.(type) {
-	case *symbols.ClassMethod:
-		popModule := e.pushModuleScope(f.Parent.Parent)
-		defer popModule()
-		popClass := e.pushClassScope(f.Parent, this)
-		defer popClass()
-	case *symbols.ModuleMethod:
-		popModule := e.pushModuleScope(f.Parent)
-		defer popModule()
-	default:
-		contract.Failf("Unrecognized function type during call: %v", reflect.TypeOf(fnc))
-	}
-
-	// Save the prior func, set the new one, and restore upon exit.
-	prior := fnc
-	e.fnc = fnc
+	// Save the prior func symbol, set the new one, and restore upon exit.
+	prior := sym
+	e.fnc = sym
 	defer func() { e.fnc = prior }()
 
 	// Set up a new lexical scope "activation frame" in which we can bind the parameters; restore it upon exit.
-	e.pushScope(&rt.StackFrame{Func: fnc, Caller: node})
+	e.pushScope(&rt.StackFrame{Node: fnc, Func: sym, Caller: node})
 	defer e.popScope(true)
 
 	// Invoke the hooks if available.
-	if e.hooks != nil {
-		if leave := e.hooks.OnEnterFunction(fnc); leave != nil {
+	if e.hooks != nil && sym != nil {
+		if leave := e.hooks.OnEnterFunction(sym); leave != nil {
 			defer leave()
 		}
 	}
@@ -649,13 +659,12 @@ func (e *evaluator) evalCall(node diag.Diagable, fnc symbols.Function,
 	}
 
 	// Ensure that the arguments line up to the parameter slots and add them to the frame.
-	fnode := fnc.Function()
-	params := fnode.GetParameters()
+	params := fnc.GetParameters()
 	if params == nil {
 		contract.Assert(len(args) == 0)
 	} else {
 		contract.Assertf(len(args) == len(*params),
-			"Expected argc %v == paramc %v in call to '%v'", len(args), len(*params), fnc.Token())
+			"Expected argc %v == paramc %v in call to '%v'", len(args), len(*params), label)
 		for i, param := range *params {
 			sym := e.ctx.RequireVariable(param).(*symbols.LocalVariable)
 			e.ctx.Scope.Register(sym)
@@ -667,18 +676,17 @@ func (e *evaluator) evalCall(node diag.Diagable, fnc symbols.Function,
 
 	// Now perform the invocation; for intrinsics, just run the code; for all others, interpret the body.
 	var uw *rt.Unwind
-	switch f := fnc.(type) {
-	case *Intrinsic:
-		uw = f.Invoke(e, this, args)
-	default:
-		uw = e.evalStatement(fnode.GetBody())
+	if intrinsic {
+		uw = sym.(*Intrinsic).Invoke(e, this, args)
+	} else {
+		uw = e.evalStatement(fnc.GetBody())
 	}
 
 	// Check that the unwind is as expected.  In particular:
 	//     1) no breaks or continues are expected;
 	//     2) any throw is treated as an unhandled exception that propagates to the caller.
 	//     3) any return is checked to be of the expected type, and returned as the result of the call.
-	retty := fnc.Signature().Return
+	retty := sig.Return
 	if uw != nil {
 		if uw.Throw() {
 			if glog.V(7) {
@@ -701,6 +709,22 @@ func (e *evaluator) evalCall(node diag.Diagable, fnc symbols.Function,
 	contract.Assert(retty == nil || retty == types.Dynamic)
 	glog.V(7).Infof("Evaluated call to fnc %v; return=<nil>", fnc)
 	return nil, nil
+}
+
+func (e *evaluator) evalCallSymbol(node diag.Diagable, fnc symbols.Function,
+	this *rt.Object, args ...*rt.Object) (*rt.Object, *rt.Unwind) {
+	return e.evalCall(node, fnc.Function(), fnc, fnc.Signature(), this, args...)
+}
+
+func (e *evaluator) evalCallFuncStub(node diag.Diagable,
+	fnc rt.FuncStub, args ...*rt.Object) (*rt.Object, *rt.Unwind) {
+	// If there is an environment for the call stub, restore it before invoking and then put it back.
+	if fnc.Env != nil {
+		oldenv := e.locals
+		e.locals = fnc.Env
+		defer (func() { e.locals = oldenv })()
+	}
+	return e.evalCall(node, fnc.Func, fnc.Sym, fnc.Sig, fnc.This, args...)
 }
 
 // Statements
@@ -1575,7 +1599,7 @@ func (e *evaluator) getDynamicNameAddr(key tokens.Name, lval bool) *rt.Pointer {
 
 	// Finally, if neither of those existed, and this is the target of a load, allocate a slot.
 	if pv == nil && lval {
-		if e.fnc.SpecialModInit() && e.locals.Frame {
+		if e.fnc != nil && e.fnc.SpecialModInit() && e.locals.Activation() {
 			pv = globals.Properties().GetAddr(pkey, true)
 		} else {
 			loc := symbols.NewSpecialVariableSym(key, types.Dynamic)
@@ -1618,7 +1642,7 @@ func (e *evaluator) evalNew(node diag.Diagable, t symbols.Type, args *[]*ast.Cal
 		contract.Assertf(ctor.Signature().Return == nil || ctor.Signature().Return == types.Dynamic,
 			"Expected ctor %v to have a nil (or dynamic) return; got %v", ctor, ctor.Signature().Return)
 		// Now dispatch the function call using the fresh object as the constructor's `this` argument.
-		if _, uw := e.evalCall(node, ctor, obj, argobjs...); uw != nil {
+		if _, uw := e.evalCallSymbol(node, ctor, obj, argobjs...); uw != nil {
 			return nil, uw
 		}
 	} else if args != nil && t.Record() {
@@ -1692,13 +1716,15 @@ func (e *evaluator) evalInvokeFunctionExpression(node *ast.InvokeFunctionExpress
 	}
 
 	// Finally, actually dispatch the call; this will create the activation frame, etc. for us.
-	return e.evalCall(node, fnc.Func, fnc.This, args...)
+	return e.evalCallFuncStub(node, fnc, args...)
 }
 
 func (e *evaluator) evalLambdaExpression(node *ast.LambdaExpression) (*rt.Object, *rt.Unwind) {
-	// TODO: create the lambda object that can be invoked at runtime.
-	contract.Failf("Evaluation of %v nodes not yet implemented", reflect.TypeOf(node))
-	return nil, nil
+	// To create a lambda object we will simply produce a function object that can invoke it.  Lambdas also uniquely
+	// capture the current environment, including the this variable.
+	sig := e.ctx.RequireType(node).(*symbols.FunctionType)
+	obj := rt.NewFunctionObjectFromLambda(node, sig, e.locals)
+	return obj, nil
 }
 
 func (e *evaluator) evalUnaryOperatorExpression(node *ast.UnaryOperatorExpression) (*rt.Object, *rt.Unwind) {

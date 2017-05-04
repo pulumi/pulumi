@@ -187,7 +187,7 @@ const ClassPropertyKind NodeKind = "ClassProperty"
 
 // Function is an executable bit of code: a class function, class method, or a lambda (see IL module).
 type Function interface {
-	Definition
+	Node
 	GetParameters() *[]*LocalVariable
 	GetReturnType() *TypeToken
 	GetBody() Statement
@@ -211,6 +211,7 @@ type ModuleMethod struct {
 }
 
 var _ Node = (*ModuleMethod)(nil)
+var _ Function = (*ModuleMethod)(nil)
 var _ Definition = (*ModuleMethod)(nil)
 var _ ModuleMember = (*ModuleMethod)(nil)
 
@@ -225,6 +226,7 @@ type ClassMethod struct {
 }
 
 var _ Node = (*ClassMethod)(nil)
+var _ Function = (*ClassMethod)(nil)
 var _ Definition = (*ClassMethod)(nil)
 var _ ClassMember = (*ClassMethod)(nil)
 

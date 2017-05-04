@@ -8,6 +8,7 @@ import (
 
 	"github.com/golang/glog"
 
+	"github.com/pulumi/coconut/pkg/compiler/ast"
 	"github.com/pulumi/coconut/pkg/compiler/symbols"
 	"github.com/pulumi/coconut/pkg/compiler/types"
 	"github.com/pulumi/coconut/pkg/util/contract"
@@ -127,8 +128,11 @@ func (o *Object) details(funcs bool, visited map[*Object]bool, indent string) st
 			} else {
 				this = stub.This.String()
 			}
-			return fmt.Sprintf("func{this=%v,sig=%v,target=%v}",
-				this, stub.Func.Signature(), stub.Func.Token())
+			s := fmt.Sprintf("func{this=%v,sig=%v", this, stub.Sig)
+			if stub.Sym != nil {
+				s = fmt.Sprintf("%v,target=%v", s, stub.Sym.Token().String())
+			}
+			return s + "}"
 		}
 
 		// See if it's an array; if yes, do array formatting.
@@ -194,8 +198,11 @@ func (o *Object) String() string {
 			} else {
 				this = stub.This.String()
 			}
-			return fmt.Sprintf("func{this=%v,sig=%v,target=%v}",
-				this, stub.Func.Signature(), stub.Func.Token().String())
+			s := fmt.Sprintf("func{this=%v,sig=%v", this, stub.Sig)
+			if stub.Sym != nil {
+				s = fmt.Sprintf("%v,target=%v", s, stub.Sym.Token().String())
+			}
+			return s + "}"
 		}
 
 		// See if it's an array; if yes, do array formatting.
@@ -263,16 +270,39 @@ func NewStringObject(v string) *Object {
 	return NewPrimitiveObject(types.String, v)
 }
 
-// NewFunctionObject creates a new function object that can be invoked, with the given symbol.
-func NewFunctionObject(fnc symbols.Function, this *Object) *Object {
-	stub := FuncStub{Func: fnc, This: this}
-	return NewObject(fnc.Signature(), stub, nil, nil)
+// NewFunctionObject creates a new function object out of consistuent parts.
+func NewFunctionObject(stub FuncStub) *Object {
+	contract.Assert(stub.Func != nil)
+	contract.Assert(stub.Sig != nil)
+	return NewObject(stub.Sig, stub, nil, nil)
+}
+
+// NewFunctionObjectFromSymbol creates a new function object for a given function symbol.
+func NewFunctionObjectFromSymbol(fnc symbols.Function, this *Object) *Object {
+	return NewFunctionObject(FuncStub{
+		Func: fnc.Function(),
+		Sym:  fnc,
+		Sig:  fnc.Signature(),
+		This: this,
+	})
+}
+
+// NewFunctionObjectFromLambda creates a new function object with very specific underlying parts.
+func NewFunctionObjectFromLambda(fnc ast.Function, sig *symbols.FunctionType, env Environment) *Object {
+	return NewFunctionObject(FuncStub{
+		Func: fnc,
+		Sig:  sig,
+		Env:  env,
+	})
 }
 
 // FuncStub is a stub that captures a symbol plus an optional instance 'this' object.
 type FuncStub struct {
-	Func symbols.Function
-	This *Object
+	Func ast.Function          // the function whose body AST to evaluate.
+	Sym  symbols.Function      // an optional function symbol that this AST belongs to.
+	Sig  *symbols.FunctionType // the function type representing this function's signature.
+	This *Object               // an optional "this" pointer to bind when invoking this function.
+	Env  Environment           // an optional environment to evaluate this function inside.
 }
 
 // NewPointerObject allocates a new pointer-like object that wraps the given reference.
@@ -425,7 +455,13 @@ func adjustPointerForThis(parent *Object, this *Object, prop *Pointer) *Pointer 
 				contract.Assert(prop.Readonly()) // otherwise, writes to the resulting pointer could go missing.
 				stub := value.FunctionValue()
 				contract.Assert(stub.This == parent)
-				value = NewFunctionObject(stub.Func, this)
+				value = NewFunctionObject(FuncStub{
+					Func: stub.Func,
+					Sym:  stub.Sym,
+					Sig:  stub.Sig,
+					This: this,
+					Env:  stub.Env,
+				})
 				prop = NewPointer(value, true)
 			}
 		}
