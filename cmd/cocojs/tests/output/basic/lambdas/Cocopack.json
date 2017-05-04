@@ -695,7 +695,7 @@
                                 "column": 5
                             },
                             "end": {
-                                "line": 86,
+                                "line": 89,
                                 "column": 2
                             }
                         }
@@ -6837,7 +6837,7 @@
                                                 "column": 14
                                             },
                                             "end": {
-                                                "line": 86,
+                                                "line": 89,
                                                 "column": 2
                                             }
                                         }
@@ -7039,6 +7039,126 @@
                                                             }
                                                         }
                                                     },
+                                                    "alternate": {
+                                                        "kind": "IfStatement",
+                                                        "condition": {
+                                                            "kind": "BinaryOperatorExpression",
+                                                            "operator": "<",
+                                                            "left": {
+                                                                "kind": "LoadLocationExpression",
+                                                                "name": {
+                                                                    "kind": "Token",
+                                                                    "tok": "x",
+                                                                    "loc": {
+                                                                        "file": "lambdas.ts",
+                                                                        "start": {
+                                                                            "line": 85,
+                                                                            "column": 14
+                                                                        },
+                                                                        "end": {
+                                                                            "line": 85,
+                                                                            "column": 15
+                                                                        }
+                                                                    }
+                                                                },
+                                                                "loc": {
+                                                                    "file": "lambdas.ts",
+                                                                    "start": {
+                                                                        "line": 85,
+                                                                        "column": 14
+                                                                    },
+                                                                    "end": {
+                                                                        "line": 85,
+                                                                        "column": 15
+                                                                    }
+                                                                }
+                                                            },
+                                                            "right": {
+                                                                "kind": "NumberLiteral",
+                                                                "raw": "42",
+                                                                "value": 42,
+                                                                "loc": {
+                                                                    "file": "lambdas.ts",
+                                                                    "start": {
+                                                                        "line": 85,
+                                                                        "column": 18
+                                                                    },
+                                                                    "end": {
+                                                                        "line": 85,
+                                                                        "column": 20
+                                                                    }
+                                                                }
+                                                            },
+                                                            "loc": {
+                                                                "file": "lambdas.ts",
+                                                                "start": {
+                                                                    "line": 85,
+                                                                    "column": 14
+                                                                },
+                                                                "end": {
+                                                                    "line": 85,
+                                                                    "column": 20
+                                                                }
+                                                            }
+                                                        },
+                                                        "consequent": {
+                                                            "kind": "Block",
+                                                            "statements": [
+                                                                {
+                                                                    "kind": "ReturnStatement",
+                                                                    "expression": {
+                                                                        "kind": "StringLiteral",
+                                                                        "raw": "foo",
+                                                                        "value": "foo",
+                                                                        "loc": {
+                                                                            "file": "lambdas.ts",
+                                                                            "start": {
+                                                                                "line": 86,
+                                                                                "column": 16
+                                                                            },
+                                                                            "end": {
+                                                                                "line": 86,
+                                                                                "column": 21
+                                                                            }
+                                                                        }
+                                                                    },
+                                                                    "loc": {
+                                                                        "file": "lambdas.ts",
+                                                                        "start": {
+                                                                            "line": 86,
+                                                                            "column": 9
+                                                                        },
+                                                                        "end": {
+                                                                            "line": 86,
+                                                                            "column": 22
+                                                                        }
+                                                                    }
+                                                                }
+                                                            ],
+                                                            "loc": {
+                                                                "file": "lambdas.ts",
+                                                                "start": {
+                                                                    "line": 85,
+                                                                    "column": 22
+                                                                },
+                                                                "end": {
+                                                                    "line": 87,
+                                                                    "column": 6
+                                                                }
+                                                            }
+                                                        },
+                                                        "loc": {
+                                                            "file": "lambdas.ts",
+                                                            "start": {
+                                                                "line": 85,
+                                                                "column": 10
+                                                            },
+                                                            "end": {
+                                                                "line": 87,
+                                                                "column": 6
+                                                            }
+                                                        }
+                                                    },
                                                     "loc": {
                                                         "file": "lambdas.ts",
                                                         "start": {
@@ -7046,7 +7166,7 @@
                                                             "column": 5
                                                         },
                                                         "end": {
-                                                            "line": 84,
+                                                            "line": 87,
                                                             "column": 6
                                                         }
                                                     }
@@ -7055,16 +7175,16 @@
                                                     "kind": "ReturnStatement",
                                                     "expression": {
                                                         "kind": "StringLiteral",
-                                                        "raw": "foo",
-                                                        "value": "foo",
+                                                        "raw": "bar",
+                                                        "value": "bar",
                                                         "loc": {
                                                             "file": "lambdas.ts",
                                                             "start": {
-                                                                "line": 85,
+                                                                "line": 88,
                                                                 "column": 12
                                                             },
                                                             "end": {
-                                                                "line": 85,
+                                                                "line": 88,
                                                                 "column": 17
                                                             }
                                                         }
@@ -7072,11 +7192,11 @@
                                                     "loc": {
                                                         "file": "lambdas.ts",
                                                         "start": {
-                                                            "line": 85,
+                                                            "line": 88,
                                                             "column": 5
                                                         },
                                                         "end": {
-                                                            "line": 85,
+                                                            "line": 88,
                                                             "column": 18
                                                         }
                                                     }
@@ -7089,7 +7209,7 @@
                                                     "column": 60
                                                 },
                                                 "end": {
-                                                    "line": 86,
+                                                    "line": 89,
                                                     "column": 2
                                                 }
                                             }
@@ -7105,7 +7225,7 @@
                                                 "column": 14
                                             },
                                             "end": {
-                                                "line": 86,
+                                                "line": 89,
                                                 "column": 2
                                             }
                                         }
@@ -7117,7 +7237,7 @@
                                             "column": 14
                                         },
                                         "end": {
-                                            "line": 86,
+                                            "line": 89,
                                             "column": 2
                                         }
                                     }
@@ -7129,7 +7249,7 @@
                                         "column": 14
                                     },
                                     "end": {
-                                        "line": 86,
+                                        "line": 89,
                                         "column": 2
                                     }
                                 }
@@ -7156,7 +7276,7 @@
                     "column": 1
                 },
                 "end": {
-                    "line": 88,
+                    "line": 91,
                     "column": 1
                 }
             }

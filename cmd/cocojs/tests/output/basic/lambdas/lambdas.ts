@@ -82,6 +82,9 @@ let lamb35 = (x: number, y: string, z: boolean): string => {
     if (z) {
         return y;
     }
-    return "foo";
+    else if (x < 42) {
+        return "foo";
+    }
+    return "bar";
 };
 
