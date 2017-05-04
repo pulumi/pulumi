@@ -398,10 +398,12 @@ var _ Expression = (*ConditionalExpression)(nil)
 
 const ConditionalExpressionKind NodeKind = "ConditionalExpression"
 
-// SequenceExpression allows composition of multiple expressions into one.  It evaluates to the last one.
+// SequenceExpression allows evaluation of multiple "prelude" statements and/or expressions as though they were a
+// single expression.  The overall sequence evaluates to the final "value" expression.
 type SequenceExpression struct {
 	ExpressionNode
-	Expressions []Expression `json:"expressions"`
+	Prelude []Node     `json:"prelude"`
+	Value   Expression `json:"value"`
 }
 
 var _ Node = (*SequenceExpression)(nil)

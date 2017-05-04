@@ -224,9 +224,10 @@ func Walk(v Visitor, node Node) {
 		Walk(v, n.Consequent)
 		Walk(v, n.Alternate)
 	case *SequenceExpression:
-		for _, expr := range n.Expressions {
-			Walk(v, expr)
+		for _, node := range n.Prelude {
+			Walk(v, node)
 		}
+		Walk(v, n.Value)
 	case *NullLiteral, *BoolLiteral, *NumberLiteral, *StringLiteral:
 		// No children, nothing to do.
 

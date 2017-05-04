@@ -711,7 +711,16 @@ func (a *astBinder) checkConditionalExpression(node *ast.ConditionalExpression) 
 }
 
 func (a *astBinder) checkSequenceExpression(node *ast.SequenceExpression) {
+	// Ensure that all prelude nodes are statements or expressions.
+	for _, prelnode := range node.Prelude {
+		switch prelnode.(type) {
+		case ast.Expression, ast.Statement:
+			// good
+		default:
+			a.b.Diag().Errorf(errors.ErrorSequencePreludeExprStmt.At(prelnode))
+		}
+	}
+
 	// The type of a sequence expression is just the type of the last expression in the sequence.
-	// TODO: check that there's at least one!
-	a.b.ctx.RegisterType(node, a.b.ctx.RequireType(node.Expressions[len(node.Expressions)-1]))
+	a.b.ctx.RegisterType(node, a.b.ctx.RequireType(node.Value))
 }

@@ -41,4 +41,5 @@ var (
 	ErrorInvalidCast               = newError(529, "Illegal cast from '%v' to '%v'; this can never succeed")
 	ErrorModuleAliasTargetNotFound = newError(530, "Module alias target '%v' was not found (from '%v')")
 	ErrorDerivedClassHasNoCtor     = newError(531, "Class '%v' has no constructor, but its base class '%v' does")
+	ErrorSequencePreludeExprStmt   = newError(532, "Sequence preludes must consist of expressions and/or statements")
 )

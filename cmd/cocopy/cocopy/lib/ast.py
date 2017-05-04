@@ -757,9 +757,14 @@ class ConditionalExpression(Expression):
         self.alternate = alternate   # the expression to evaluate if `false`.
 
 class SequenceExpression(Expression):
-    """A expression allows composition of multiple expressions into one.  It evaluates to the last one's value."""
-    def __init__(self, expressions, loc=None):
-        assert isinstance(expressions, list) and all(isinstance(expr, Expression) for expr in expressions)
+    """A sequence expression allows evaluation of multiple prelude statements and/or expressions as though they were
+    a single expression.  The overall sequence evaluates to the final value expression."""
+    def __init__(self, prelude, value, loc=None):
+        assert(
+            isinstance(prelude, list) and
+                (all(isinstance(expr, Expression) or isinstance(expr, Statement) for expr in expressions)))
+        assert isinstance(value, Expression)
         super(SequenceExpression, self).__init__("SequenceExpression", loc)
-        self.expressions = expressions
+        self.prelude = prelude
+        self.value = value
 

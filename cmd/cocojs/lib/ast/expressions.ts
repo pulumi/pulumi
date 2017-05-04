@@ -268,10 +268,12 @@ export interface ConditionalExpression extends Expression {
 export const conditionalExpressionKind = "ConditionalExpression";
 export type  ConditionalExpressionKind = "ConditionalExpression";
 
-// A sequence expression allows composition of multiple expressions into one.  It evaluates to the last one.
+// A sequence expression allows evaluation of multiple "prelude" statements and/or expressions as though they were a
+// single expression.  The overall sequence evaluates to the final "value" expression.
 export interface SequenceExpression extends Expression {
-    kind:        SequenceExpressionKind;
-    expressions: Expression[];
+    kind:    SequenceExpressionKind;
+    prelude: (Expression | statements.Statement)[];
+    value:   Expression;
 }
 export const sequenceExpressionKind = "SequenceExpression";
 export type  SequenceExpressionKind = "SequenceExpression";

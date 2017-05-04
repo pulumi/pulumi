@@ -2057,16 +2057,19 @@ func (e *evaluator) evalConditionalExpression(node *ast.ConditionalExpression) (
 }
 
 func (e *evaluator) evalSequenceExpression(node *ast.SequenceExpression) (*rt.Object, *rt.Unwind) {
-	// Simply walk through the sequence and return the last object.
-	var obj *rt.Object
-	contract.Assert(len(node.Expressions) > 0)
-	for _, expr := range node.Expressions {
-		var uw *rt.Unwind
-		if obj, uw = e.evalExpression(expr); uw != nil {
-			// If the rt.Unwind was non-nil, stop visiting the expressions and propagate it now.
-			return nil, uw
+	// Evaluate the sequence's prelude and then, afterwards, evaluate to its value.  If an unwind happens anywhere
+	// during the prelude, we will abruptly terminate the sequence and return it.
+	for _, prelnode := range node.Prelude {
+		switch n := prelnode.(type) {
+		case ast.Expression:
+			if _, uw := e.evalExpression(n); uw != nil {
+				return nil, uw
+			}
+		case ast.Statement:
+			if uw := e.evalStatement(n); uw != nil {
+				return nil, uw
+			}
 		}
 	}
-	// Return the last expression's object.
-	return obj, nil
+	return e.evalExpression(node.Value)
 }
