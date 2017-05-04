@@ -154,7 +154,7 @@ interface VariableLikeDeclaration {
 // A function declaration isn't yet known to be a module or class method, and so it just contains the subset that is
 // common between them.  This facilitates code reuse in the translation passes.
 interface FunctionLikeDeclaration {
-    name:        ast.Identifier;
+    name?:       ast.Identifier;
     parameters:  ast.LocalVariable[];
     body?:       ast.Block;
     returnType?: ast.TypeToken;
@@ -793,6 +793,31 @@ export class Transformer {
                 // TODO: consider emitting strong types for these and using them anonymously.
                 return tokens.objectType;
             }
+            else if (simple.symbol.flags & ts.SymbolFlags.Function) {
+                // For functions, we need to generate a special function type, of the form "(args)return".
+                let sigs: ts.Signature[] = this.checker().getSignaturesOfType(simple, ts.SignatureKind.Call);
+                contract.assert(sigs.length === 1);
+                let sig: ts.Signature = sigs[0];
+                contract.assert(!sig.typeParameters || sig.typeParameters.length === 0, "Generics not yet supported");
+                let params: string = "";
+                for (let param of sig.parameters) {
+                    if (params !== "") {
+                        params += tokens.functionTypeParamSeparator;
+                    }
+                    let paramty: ts.Type = this.checker().getDeclaredTypeOfSymbol(param);
+                    let paramtok: tokens.TypeToken | undefined = await this.resolveTypeToken(node, paramty);
+                    contract.assert(!!paramtok);
+                    params += paramtok;
+                }
+                let ret: string = "";
+                let retty: ts.Type | undefined = sig.getReturnType();
+                if (retty && !(retty.flags & ts.TypeFlags.Void)) {
+                    let rettok: tokens.TypeToken | undefined = await this.resolveTypeToken(node, retty);
+                    contract.assert(!!rettok);
+                    ret = rettok!;
+                }
+                return `${tokens.functionTypePrefix}${params}${tokens.functionTypeSeparator}${ret}`;
+            }
             else {
                 // For object types, we will try to produce the fully qualified symbol name.  If the type is an error,
                 // array, or a map, translate it into the appropriate simpler type token.
@@ -913,7 +938,7 @@ export class Transformer {
         // In the special case that the object is a value module, we need to perform a special translation.
         if (objsym && !!(objsym.flags & ts.SymbolFlags.ValueModule)) {
             // This is a module property; for instance:
-            // 
+            //
             //      import * as foo from "foo";
             //      foo.bar();
             //
@@ -1536,7 +1561,7 @@ export class Transformer {
                         }
                         break;
                     default:
-                        contract.fail(`Unrecognized heritage token kind: ${ts.SyntaxKind[heritage.token]}`);
+                        continue; // can't happen.
                 }
             }
         }
@@ -1768,13 +1793,18 @@ export class Transformer {
                     break;
             }
         }
-        return await this.transformFunctionLikeOrSignatureCommon(node, body);
+
+        // Next visit the common parts of a function signature, specializing on whether it's a local function or not.
+        let isLocal: boolean =
+            (node.kind === ts.SyntaxKind.FunctionExpression || node.kind === ts.SyntaxKind.ArrowFunction);
+        return await this.transformFunctionLikeOrSignatureCommon(node, isLocal, body);
     }
 
     // A common routine for transforming FunctionLikeDeclarations and MethodSignatures.  The return is specialized per
     // callsite, since differs slightly between module methods, class and interface methods, lambdas, and so on.
     private async transformFunctionLikeOrSignatureCommon(
-            node: ts.FunctionLikeDeclaration | ts.MethodSignature, body?: ast.Block): Promise<FunctionLikeDeclaration> {
+            node: ts.FunctionLikeDeclaration | ts.MethodSignature,
+            isLocal: boolean, body?: ast.Block): Promise<FunctionLikeDeclaration> {
         // Ensure we are dealing with the supported subset of functions.
         if (ts.getCombinedModifierFlags(node) & ts.ModifierFlags.Async) {
             this.diagnostics.push(this.dctx.newAsyncNotSupportedError(node));
@@ -1782,7 +1812,7 @@ export class Transformer {
 
         // First transform the name into an identifier.  In the absence of a name, we will proceed under the assumption
         // that it is the default export.  This should be verified later on.
-        let name: ast.Identifier;
+        let name: ast.Identifier | undefined;
         if (node.name) {
             name = this.transformPropertyName(node.name);
         }
@@ -1790,8 +1820,8 @@ export class Transformer {
             // Constructors have a special name.
             name = ident(tokens.constructorFunction);
         }
-        else {
-            // All others are assumed to be default exports.
+        else if (!isLocal) {
+            // All other non-local functions are assumed to be default exports; local function may simply have no name.
             name = ident(defaultExport);
         }
 
@@ -2199,7 +2229,7 @@ export class Transformer {
     }
 
     private async transformMethodSignature(node: ts.MethodSignature): Promise<ast.ClassMethod> {
-        let decl: FunctionLikeDeclaration = await this.transformFunctionLikeOrSignatureCommon(node);
+        let decl: FunctionLikeDeclaration = await this.transformFunctionLikeOrSignatureCommon(node, false);
         return this.withLocation(node, <ast.ClassMethod>{
             kind:       ast.classMethodKind,
             name:       decl.name,
@@ -2455,7 +2485,7 @@ export class Transformer {
             case ts.SyntaxKind.ArrayLiteralExpression:
                 return this.transformArrayLiteralExpression(<ts.ArrayLiteralExpression>node);
             case ts.SyntaxKind.ArrowFunction:
-                return this.transformArrowFunction(<ts.ArrowFunction>node);
+                return await this.transformArrowFunction(<ts.ArrowFunction>node);
             case ts.SyntaxKind.BinaryExpression:
                 return this.transformBinaryExpression(<ts.BinaryExpression>node);
             case ts.SyntaxKind.CallExpression:
@@ -2469,7 +2499,7 @@ export class Transformer {
             case ts.SyntaxKind.ElementAccessExpression:
                 return this.transformElementAccessExpression(<ts.ElementAccessExpression>node);
             case ts.SyntaxKind.FunctionExpression:
-                return this.transformFunctionExpression(<ts.FunctionExpression>node);
+                return await this.transformFunctionExpression(<ts.FunctionExpression>node);
             case ts.SyntaxKind.Identifier:
                 return await this.transformIdentifierExpression(<ts.Identifier>node);
             case ts.SyntaxKind.NonNullExpression:
@@ -2563,8 +2593,15 @@ export class Transformer {
         });
     }
 
-    private transformArrowFunction(node: ts.ArrowFunction): ast.Expression {
-        return notYetImplemented(node);
+    private async transformArrowFunction(node: ts.ArrowFunction): Promise<ast.Expression> {
+        let decl: FunctionLikeDeclaration = await this.transformFunctionLikeCommon(node);
+        contract.assert(!decl.name);
+        return this.withLocation(node, <ast.LambdaExpression>{
+            kind:       ast.lambdaExpressionKind,
+            parameters: decl.parameters,
+            body:       decl.body,
+            returnType: decl.returnType,
+        });
     }
 
     private async transformBinaryExpression(node: ts.BinaryExpression): Promise<ast.Expression> {
@@ -2783,9 +2820,24 @@ export class Transformer {
         }
     }
 
-    private transformFunctionExpression(node: ts.FunctionExpression): ast.Expression {
-        // TODO[pulumi/coconut#62]: implement lambdas.
-        return notYetImplemented(node);
+    // transformFunctionExpress turns a function expression, essentially a function declared within another function,
+    // into a lambda.  If the expression declares a name, we also declare a variable to hold the result.
+    private async transformFunctionExpression(node: ts.FunctionExpression): Promise<ast.Expression> {
+        let decl: FunctionLikeDeclaration = await this.transformFunctionLikeCommon(node);
+        let expr: ast.LambdaExpression = this.withLocation(node, <ast.LambdaExpression>{
+            kind:       ast.lambdaExpressionKind,
+            parameters: decl.parameters,
+            body:       decl.body,
+            returnType: decl.returnType,
+        });
+
+        // If there's a name, assign it to the variable; otherwise, simply yield the expression.
+        if (decl.name) {
+            // TODO: need to declare a variable within an expression context; requires spill rewriting.
+            contract.fail("Named local functions not yet supported");
+        }
+
+        return expr;
     }
 
     private async transformNonNullExpression(node: ts.NonNullExpression): Promise<ast.Expression> {
@@ -2919,11 +2971,13 @@ export class Transformer {
         let typeToken: tokens.TypeToken | undefined = await this.resolveTypeToken(node, signature.getReturnType());
         contract.assert(!!typeToken);
         let args: ast.CallArgument[] = [];
-        for (let expr of node.arguments) {
-            args.push({
-                kind: ast.callArgumentKind,
-                expr: await this.transformExpression(expr),
-            });
+        if (node.arguments) {
+            for (let expr of node.arguments) {
+                args.push({
+                    kind: ast.callArgumentKind,
+                    expr: await this.transformExpression(expr),
+                });
+            }
         }
         return this.withLocation(node, <ast.NewExpression>{
             kind:      ast.newExpressionKind,

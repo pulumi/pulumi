@@ -60,7 +60,7 @@ export class CompileResult {
         this.dctx = new diag.Context(root);
     }
 
-    // Formats a specific diagnostic 
+    // Formats a specific diagnostic.
     public formatDiagnostic(index: number, opts?: diag.FormatOptions): string {
         contract.assert(index >= 0 && index < this.diagnostics.length);
         return this.dctx.formatDiagnostic(this.diagnostics[index], opts);

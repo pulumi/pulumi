@@ -19,7 +19,7 @@ export class Context {
 
     /** Formatting **/
 
-    // Formats a specific diagnostic 
+    // Formats a specific diagnostic.
     public formatDiagnostic(d: Diagnostic, opts?: FormatOptions): string {
         // If the message is already formatted, return it as-is.
         // TODO: unify this formatting w/ TypeScript so they are uniform.
