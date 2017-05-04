@@ -44,7 +44,7 @@ func (p *Provider) Check(ctx context.Context, req *cocorpc.CheckRequest) (*cocor
 // In any case, resources with the same name must be safe to use interchangeably with one another.
 func (p *Provider) Name(ctx context.Context, req *cocorpc.NameRequest) (*cocorpc.NameResponse, error) {
 	t := tokens.Type(req.GetType())
-	if prov, has := p.impls[t]; !has {
+	if prov, has := p.impls[t]; has {
 		return prov.Name(ctx, req)
 	}
 	return nil, fmt.Errorf("Unrecognized resource type (Name): %v", t)
