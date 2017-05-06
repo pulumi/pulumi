@@ -4,6 +4,7 @@ package eval
 
 import (
 	"github.com/pulumi/coconut/pkg/compiler/symbols"
+	"github.com/pulumi/coconut/pkg/compiler/types"
 	"github.com/pulumi/coconut/pkg/diag"
 	"github.com/pulumi/coconut/pkg/eval/rt"
 )
@@ -35,6 +36,13 @@ func (a *Allocator) New(tree diag.Diagable, t symbols.Type, properties rt.Proper
 // NewArray creates a new array object of the given element type.
 func (a *Allocator) NewArray(tree diag.Diagable, elem symbols.Type, arr *[]*rt.Pointer) *rt.Object {
 	obj := rt.NewArrayObject(elem, arr)
+	a.onNewObject(tree, obj)
+	return obj
+}
+
+// NewDynamic creates a new dynamic object, optionally using a set of existing properties.
+func (a *Allocator) NewDynamic(tree diag.Diagable, properties rt.PropertyMap) *rt.Object {
+	obj := rt.NewObject(types.Dynamic, nil, properties, nil)
 	a.onNewObject(tree, obj)
 	return obj
 }
