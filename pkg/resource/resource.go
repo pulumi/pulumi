@@ -129,9 +129,10 @@ func cloneObject(ctx *Context, obj *rt.Object) PropertyMap {
 	contract.Assert(obj != nil)
 	src := obj.PropertyValues()
 	dest := make(PropertyMap)
-	for _, k := range rt.StablePropertyKeys(src) {
+	for _, k := range src.Stable() {
 		// TODO: detect cycles.
-		if v, ok := cloneObjectValue(ctx, src[k].Obj()); ok {
+		obj := src.Get(k)
+		if v, ok := cloneObjectValue(ctx, obj); ok {
 			dest[PropertyKey(k)] = v
 		}
 	}

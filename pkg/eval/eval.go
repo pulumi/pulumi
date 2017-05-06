@@ -84,7 +84,7 @@ type evaluator struct {
 }
 
 type moduleMap map[*symbols.Module]*rt.Object
-type staticMap map[*symbols.Class]rt.PropertyMap
+type staticMap map[*symbols.Class]*rt.PropertyMap
 type prototypeMap map[symbols.Type]*rt.Object
 type modinitMap map[*symbols.Module]bool
 type classinitMap map[*symbols.Class]bool
@@ -248,7 +248,7 @@ func (e *evaluator) dumpEvalState(v glog.Level) {
 
 // initProperty initializes a property entry in the given map, using an optional `this` pointer for member functions.
 // It returns the resulting pointer along with a boolean to indicate whether the property was left unfrozen.
-func (e *evaluator) initProperty(this *rt.Object, properties rt.PropertyMap,
+func (e *evaluator) initProperty(this *rt.Object, properties *rt.PropertyMap,
 	key rt.PropertyKey, sym symbols.Symbol) (*rt.Pointer, bool) {
 	switch m := sym.(type) {
 	case symbols.Function:
@@ -403,7 +403,7 @@ func (e *evaluator) getModuleGlobals(module *symbols.Module) *rt.Object {
 	props := proto.Properties()
 	for _, name := range symbols.StableModuleExportMap(module.Exports) {
 		key := rt.PropertyKey(name)
-		if props.GetAddr(key, false) == nil {
+		if props.GetAddr(key) == nil {
 			exp := module.Exports[name]
 			e.initProperty(proto, props, key, e.chaseExports(exp))
 		}
@@ -418,11 +418,11 @@ func (e *evaluator) getModuleGlobals(module *symbols.Module) *rt.Object {
 }
 
 // getClassStatics returns a statics table for the given class, lazily initializing if needed.
-func (e *evaluator) getClassStatics(class *symbols.Class) rt.PropertyMap {
+func (e *evaluator) getClassStatics(class *symbols.Class) *rt.PropertyMap {
 	statics, has := e.statics[class]
 	if !has {
 		// TODO: consider merging the class statics representation with the prototype object representation.
-		statics = make(rt.PropertyMap)
+		statics = rt.NewPropertyMap()
 		e.statics[class] = statics
 	}
 	return statics
@@ -477,7 +477,7 @@ func (e *evaluator) addPrototypeObjectMembers(proto *rt.Object, members symbols.
 	for _, name := range symbols.StableClassMemberMap(members) {
 		if member := members[name]; !member.Static() {
 			key := rt.PropertyKey(name)
-			if must || properties.GetAddr(key, false) == nil {
+			if must || properties.GetAddr(key) == nil {
 				e.initProperty(proto, properties, key, member)
 			}
 		}
@@ -1424,7 +1424,7 @@ func (e *evaluator) evalLoadSymbolLocation(node diag.Diagable, sym symbols.Symbo
 			class := s.MemberParent()
 			e.ensureClassInit(class) // ensure the class is initialized.
 			statics := e.getClassStatics(class)
-			pv = statics.GetAddr(k, false)
+			pv = statics.GetAddr(k)
 		} else {
 			contract.Assert(this != nil)
 			if uw := e.checkThis(node, this); uw != nil {
@@ -1446,7 +1446,7 @@ func (e *evaluator) evalLoadSymbolLocation(node diag.Diagable, sym symbols.Symbo
 		contract.Assert(this == nil)
 		k := rt.PropertyKey(s.Name())
 		globals := e.getModuleGlobals(module)
-		pv = globals.Properties().GetAddr(k, false)
+		pv = globals.Properties().GetAddr(k)
 		contract.Assertf(pv != nil, "Missing module member '%v'", s.Token())
 		ty = s.MemberType()
 		contract.Assert(ty != nil)
@@ -1597,13 +1597,13 @@ func (e *evaluator) getDynamicNameAddr(key tokens.Name, lval bool) *rt.Pointer {
 		pv = e.locals.GetValueAddr(loc, true) // create a slot, we know the declaration exists.
 	} else {
 		// If it didn't exist in the lexical scope, check the module's globals.
-		pv = globals.Properties().GetAddr(pkey, false) // look for a global by this name, but don't allocate one.
+		pv = globals.Properties().GetAddr(pkey) // look for a global by this name, but don't allocate one.
 	}
 
 	// Finally, if neither of those existed, and this is the target of a load, allocate a slot.
 	if pv == nil && lval {
 		if e.fnc != nil && e.fnc.SpecialModInit() && e.locals.Activation() {
-			pv = globals.Properties().GetAddr(pkey, true)
+			pv = globals.Properties().GetInitAddr(pkey)
 		} else {
 			loc := symbols.NewSpecialVariableSym(key, types.Dynamic)
 			e.locals.MustRegister(loc)

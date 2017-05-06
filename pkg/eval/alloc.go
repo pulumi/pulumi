@@ -27,7 +27,7 @@ func (a *Allocator) onNewObject(tree diag.Diagable, o *rt.Object) {
 }
 
 // New creates a new empty object of the given type.
-func (a *Allocator) New(tree diag.Diagable, t symbols.Type, properties rt.PropertyMap, super *rt.Object) *rt.Object {
+func (a *Allocator) New(tree diag.Diagable, t symbols.Type, properties *rt.PropertyMap, super *rt.Object) *rt.Object {
 	obj := rt.NewObject(t, nil, properties, super)
 	a.onNewObject(tree, obj)
 	return obj
@@ -41,7 +41,7 @@ func (a *Allocator) NewArray(tree diag.Diagable, elem symbols.Type, arr *[]*rt.P
 }
 
 // NewDynamic creates a new dynamic object, optionally using a set of existing properties.
-func (a *Allocator) NewDynamic(tree diag.Diagable, properties rt.PropertyMap) *rt.Object {
+func (a *Allocator) NewDynamic(tree diag.Diagable, properties *rt.PropertyMap) *rt.Object {
 	obj := rt.NewObject(types.Dynamic, nil, properties, nil)
 	a.onNewObject(tree, obj)
 	return obj

@@ -19,7 +19,7 @@ import (
 type Object struct {
 	t          symbols.Type // the runtime type of the object.
 	value      Value        // any constant data associated with this object.
-	properties PropertyMap  // the full set of known properties and their values.
+	properties *PropertyMap // the full set of known properties and their values.
 	proto      *Object      // the super (prototype) object if the object has a base class.
 }
 
@@ -28,17 +28,17 @@ var _ fmt.Stringer = (*Object)(nil)
 type Value interface{} // a literal object value.
 
 // NewObject allocates a new object with the given type, primitive value, properties, and prototype object.
-func NewObject(t symbols.Type, value Value, properties PropertyMap, proto *Object) *Object {
+func NewObject(t symbols.Type, value Value, properties *PropertyMap, proto *Object) *Object {
 	if properties == nil {
-		properties = make(PropertyMap)
+		properties = NewPropertyMap()
 	}
 	return &Object{t: t, value: value, properties: properties, proto: proto}
 }
 
-func (o *Object) Type() symbols.Type      { return o.t }
-func (o *Object) Value() Value            { return o.value }
-func (o *Object) Properties() PropertyMap { return o.properties }
-func (o *Object) Proto() *Object          { return o.proto }
+func (o *Object) Type() symbols.Type       { return o.t }
+func (o *Object) Value() Value             { return o.value }
+func (o *Object) Properties() *PropertyMap { return o.properties }
+func (o *Object) Proto() *Object           { return o.proto }
 
 // ArrayValue asserts that the target is an array literal and returns its value.
 func (o *Object) ArrayValue() *[]*Pointer {
@@ -158,8 +158,8 @@ func (o *Object) details(funcs bool, visited map[*Object]bool, indent string) st
 		s := fmt.Sprintf("@%v{\n", o.t.Token())
 		propindent := indent + "    "
 		props := o.PropertyValues()
-		for _, k := range StablePropertyKeys(props) {
-			v := props[k].Obj()
+		for _, k := range props.Stable() {
+			v := props.Get(k)
 			if !funcs {
 				// If skipping funcs, check the type and, well, skip them.
 				if _, isfnc := v.t.(*symbols.FunctionType); isfnc {
@@ -370,13 +370,13 @@ func (o *Object) GetPropertyAddrForThis(this *Object, key PropertyKey, init bool
 	var where *Object // the object the pointer was found on
 
 	// If it's in the object's property map already, just return it.
-	if ptr = o.Properties().GetAddr(key, false); ptr != nil {
+	if ptr = o.Properties().GetAddr(key); ptr != nil {
 		where = o
 	} else {
 		// Otherwise, consult the prototype chain.
 		proto := o.Proto()
 		for proto != nil {
-			if ptr = proto.Properties().GetAddr(key, false); ptr != nil {
+			if ptr = proto.Properties().GetAddr(key); ptr != nil {
 				where = proto
 				break
 			}
@@ -424,20 +424,22 @@ func (o *Object) GetPropertyAddrForThis(this *Object, key PropertyKey, init bool
 
 // PropertyValues returns a snapshot of the object's properties, by walking its prototype chain.  Note that mutations in
 // the map returned will not be reflected in the object state; this is a *snapshot*.
-func (o *Object) PropertyValues() PropertyMap {
-	properties := make(PropertyMap)
+func (o *Object) PropertyValues() *PropertyMap {
+	properties := NewPropertyMap()
 
 	// First add our own object properties.
-	for k, v := range o.properties {
-		properties[k] = v
+	for _, k := range o.properties.Stable() {
+		properties.SetFrom(k, o.properties.GetAddr(k))
 	}
 
 	// Now walk the prototype hierarchy and, for anything that doesn't already exist, adjust and add it.
 	proto := o.proto
 	for proto != nil {
-		for k, v := range proto.properties {
-			if _, has := properties[k]; !has {
-				properties[k] = adjustPointerForThis(proto, o, v)
+		for _, k := range proto.properties.Stable() {
+			if _, has := properties.TryGetAddr(k); !has {
+				v := proto.properties.GetAddr(k)
+				v = adjustPointerForThis(proto, o, v)
+				properties.SetFrom(k, v)
 			}
 		}
 
