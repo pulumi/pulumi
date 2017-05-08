@@ -107,6 +107,7 @@ func (p *SubnetProvider) Get(
 func (p *SubnetProvider) InspectChange(
     ctx context.Context, req *cocorpc.ChangeRequest) (*cocorpc.InspectChangeResponse, error) {
     contract.Assert(req.GetType() == string(SubnetToken))
+    id := resource.ID(req.GetId())
     old, oldprops, decerr := p.Unmarshal(req.GetOlds())
     if decerr != nil {
         return nil, decerr
@@ -115,21 +116,22 @@ func (p *SubnetProvider) InspectChange(
     if decerr != nil {
         return nil, decerr
     }
-    diff := oldprops.Diff(newprops)
     var replaces []string
-    if diff.Changed("name") {
-        replaces = append(replaces, "name")
+    diff := oldprops.Diff(newprops)
+    if diff != nil {
+        if diff.Changed("name") {
+            replaces = append(replaces, "name")
+        }
+        if diff.Changed("cidrBlock") {
+            replaces = append(replaces, "cidrBlock")
+        }
+        if diff.Changed("vpc") {
+            replaces = append(replaces, "vpc")
+        }
+        if diff.Changed("availabilityZone") {
+            replaces = append(replaces, "availabilityZone")
+        }
     }
-    if diff.Changed("cidrBlock") {
-        replaces = append(replaces, "cidrBlock")
-    }
-    if diff.Changed("vpc") {
-        replaces = append(replaces, "vpc")
-    }
-    if diff.Changed("availabilityZone") {
-        replaces = append(replaces, "availabilityZone")
-    }
-    id := resource.ID(req.GetId())
     more, err := p.ops.InspectChange(ctx, id, old, new, diff)
     if err != nil {
         return nil, err

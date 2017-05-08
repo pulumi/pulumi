@@ -343,6 +343,7 @@ func (g *RPCGenerator) EmitResource(w *bufio.Writer, module tokens.Module, pkg *
 	writefmtln(w, "func (p *%vProvider) InspectChange(", name)
 	writefmtln(w, "    ctx context.Context, req *cocorpc.ChangeRequest) (*cocorpc.InspectChangeResponse, error) {")
 	writefmtln(w, "    contract.Assert(req.GetType() == string(%vToken))", name)
+	writefmtln(w, "    id := resource.ID(req.GetId())")
 	writefmtln(w, "    old, oldprops, decerr := p.Unmarshal(req.GetOlds())")
 	writefmtln(w, "    if decerr != nil {")
 	writefmtln(w, "        return nil, decerr")
@@ -351,16 +352,17 @@ func (g *RPCGenerator) EmitResource(w *bufio.Writer, module tokens.Module, pkg *
 	writefmtln(w, "    if decerr != nil {")
 	writefmtln(w, "        return nil, decerr")
 	writefmtln(w, "    }")
-	writefmtln(w, "    diff := oldprops.Diff(newprops)")
 	writefmtln(w, "    var replaces []string")
+	writefmtln(w, "    diff := oldprops.Diff(newprops)")
+	writefmtln(w, "    if diff != nil {")
 	for _, opts := range propopts {
 		if opts.Replaces {
-			writefmtln(w, "    if diff.Changed(\"%v\") {", opts.Name)
-			writefmtln(w, "        replaces = append(replaces, \"%v\")", opts.Name)
-			writefmtln(w, "    }")
+			writefmtln(w, "        if diff.Changed(\"%v\") {", opts.Name)
+			writefmtln(w, "            replaces = append(replaces, \"%v\")", opts.Name)
+			writefmtln(w, "        }")
 		}
 	}
-	writefmtln(w, "    id := resource.ID(req.GetId())")
+	writefmtln(w, "    }")
 	writefmtln(w, "    more, err := p.ops.InspectChange(ctx, id, old, new, diff)")
 	writefmtln(w, "    if err != nil {")
 	writefmtln(w, "        return nil, err")

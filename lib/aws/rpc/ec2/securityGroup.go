@@ -110,6 +110,7 @@ func (p *SecurityGroupProvider) Get(
 func (p *SecurityGroupProvider) InspectChange(
     ctx context.Context, req *cocorpc.ChangeRequest) (*cocorpc.InspectChangeResponse, error) {
     contract.Assert(req.GetType() == string(SecurityGroupToken))
+    id := resource.ID(req.GetId())
     old, oldprops, decerr := p.Unmarshal(req.GetOlds())
     if decerr != nil {
         return nil, decerr
@@ -118,18 +119,19 @@ func (p *SecurityGroupProvider) InspectChange(
     if decerr != nil {
         return nil, decerr
     }
-    diff := oldprops.Diff(newprops)
     var replaces []string
-    if diff.Changed("name") {
-        replaces = append(replaces, "name")
+    diff := oldprops.Diff(newprops)
+    if diff != nil {
+        if diff.Changed("name") {
+            replaces = append(replaces, "name")
+        }
+        if diff.Changed("groupDescription") {
+            replaces = append(replaces, "groupDescription")
+        }
+        if diff.Changed("vpc") {
+            replaces = append(replaces, "vpc")
+        }
     }
-    if diff.Changed("groupDescription") {
-        replaces = append(replaces, "groupDescription")
-    }
-    if diff.Changed("vpc") {
-        replaces = append(replaces, "vpc")
-    }
-    id := resource.ID(req.GetId())
     more, err := p.ops.InspectChange(ctx, id, old, new, diff)
     if err != nil {
         return nil, err

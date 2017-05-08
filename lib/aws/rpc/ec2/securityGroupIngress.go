@@ -107,6 +107,7 @@ func (p *SecurityGroupIngressProvider) Get(
 func (p *SecurityGroupIngressProvider) InspectChange(
     ctx context.Context, req *cocorpc.ChangeRequest) (*cocorpc.InspectChangeResponse, error) {
     contract.Assert(req.GetType() == string(SecurityGroupIngressToken))
+    id := resource.ID(req.GetId())
     old, oldprops, decerr := p.Unmarshal(req.GetOlds())
     if decerr != nil {
         return nil, decerr
@@ -115,42 +116,43 @@ func (p *SecurityGroupIngressProvider) InspectChange(
     if decerr != nil {
         return nil, decerr
     }
-    diff := oldprops.Diff(newprops)
     var replaces []string
-    if diff.Changed("name") {
-        replaces = append(replaces, "name")
+    diff := oldprops.Diff(newprops)
+    if diff != nil {
+        if diff.Changed("name") {
+            replaces = append(replaces, "name")
+        }
+        if diff.Changed("ipProtocol") {
+            replaces = append(replaces, "ipProtocol")
+        }
+        if diff.Changed("cidrIp") {
+            replaces = append(replaces, "cidrIp")
+        }
+        if diff.Changed("cidrIpv6") {
+            replaces = append(replaces, "cidrIpv6")
+        }
+        if diff.Changed("fromPort") {
+            replaces = append(replaces, "fromPort")
+        }
+        if diff.Changed("group") {
+            replaces = append(replaces, "group")
+        }
+        if diff.Changed("groupName") {
+            replaces = append(replaces, "groupName")
+        }
+        if diff.Changed("sourceSecurityGroup") {
+            replaces = append(replaces, "sourceSecurityGroup")
+        }
+        if diff.Changed("sourceSecurityGroupName") {
+            replaces = append(replaces, "sourceSecurityGroupName")
+        }
+        if diff.Changed("sourceSecurityGroupOwnerId") {
+            replaces = append(replaces, "sourceSecurityGroupOwnerId")
+        }
+        if diff.Changed("toPort") {
+            replaces = append(replaces, "toPort")
+        }
     }
-    if diff.Changed("ipProtocol") {
-        replaces = append(replaces, "ipProtocol")
-    }
-    if diff.Changed("cidrIp") {
-        replaces = append(replaces, "cidrIp")
-    }
-    if diff.Changed("cidrIpv6") {
-        replaces = append(replaces, "cidrIpv6")
-    }
-    if diff.Changed("fromPort") {
-        replaces = append(replaces, "fromPort")
-    }
-    if diff.Changed("group") {
-        replaces = append(replaces, "group")
-    }
-    if diff.Changed("groupName") {
-        replaces = append(replaces, "groupName")
-    }
-    if diff.Changed("sourceSecurityGroup") {
-        replaces = append(replaces, "sourceSecurityGroup")
-    }
-    if diff.Changed("sourceSecurityGroupName") {
-        replaces = append(replaces, "sourceSecurityGroupName")
-    }
-    if diff.Changed("sourceSecurityGroupOwnerId") {
-        replaces = append(replaces, "sourceSecurityGroupOwnerId")
-    }
-    if diff.Changed("toPort") {
-        replaces = append(replaces, "toPort")
-    }
-    id := resource.ID(req.GetId())
     more, err := p.ops.InspectChange(ctx, id, old, new, diff)
     if err != nil {
         return nil, err

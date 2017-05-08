@@ -109,6 +109,7 @@ func (p *PermissionProvider) Get(
 func (p *PermissionProvider) InspectChange(
     ctx context.Context, req *cocorpc.ChangeRequest) (*cocorpc.InspectChangeResponse, error) {
     contract.Assert(req.GetType() == string(PermissionToken))
+    id := resource.ID(req.GetId())
     old, oldprops, decerr := p.Unmarshal(req.GetOlds())
     if decerr != nil {
         return nil, decerr
@@ -117,27 +118,28 @@ func (p *PermissionProvider) InspectChange(
     if decerr != nil {
         return nil, decerr
     }
-    diff := oldprops.Diff(newprops)
     var replaces []string
-    if diff.Changed("name") {
-        replaces = append(replaces, "name")
+    diff := oldprops.Diff(newprops)
+    if diff != nil {
+        if diff.Changed("name") {
+            replaces = append(replaces, "name")
+        }
+        if diff.Changed("action") {
+            replaces = append(replaces, "action")
+        }
+        if diff.Changed("function") {
+            replaces = append(replaces, "function")
+        }
+        if diff.Changed("principal") {
+            replaces = append(replaces, "principal")
+        }
+        if diff.Changed("sourceAccount") {
+            replaces = append(replaces, "sourceAccount")
+        }
+        if diff.Changed("sourceARN") {
+            replaces = append(replaces, "sourceARN")
+        }
     }
-    if diff.Changed("action") {
-        replaces = append(replaces, "action")
-    }
-    if diff.Changed("function") {
-        replaces = append(replaces, "function")
-    }
-    if diff.Changed("principal") {
-        replaces = append(replaces, "principal")
-    }
-    if diff.Changed("sourceAccount") {
-        replaces = append(replaces, "sourceAccount")
-    }
-    if diff.Changed("sourceARN") {
-        replaces = append(replaces, "sourceARN")
-    }
-    id := resource.ID(req.GetId())
     more, err := p.ops.InspectChange(ctx, id, old, new, diff)
     if err != nil {
         return nil, err

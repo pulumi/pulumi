@@ -1,0 +1,143 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: fission
+  labels:
+    name: fission
+
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: fission-function
+  labels:
+    name: fission-function
+
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: controller
+  namespace: fission
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        svc: controller
+    spec:
+      containers:
+      - name: controller
+        image: fission/fission-bundle:alpha20170328
+        command: ["/fission-bundle"]
+        args: ["--controllerPort", "8888", "--filepath", "/filestore"]
+
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: router
+  namespace: fission
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        svc: router
+    spec:
+      containers:
+      - name: router
+        image: fission/fission-bundle:alpha20170328
+        command: ["/fission-bundle"]
+        args: ["--routerPort", "8888"]
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: poolmgr
+  namespace: fission
+  labels:
+    svc: poolmgr
+spec:
+  ports:
+  - port: 80
+    targetPort: 8888
+  selector:
+    svc: poolmgr
+
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: poolmgr
+  namespace: fission
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        svc: poolmgr
+    spec:
+      containers:
+      - name: poolmgr
+        image: fission/fission-bundle:alpha20170328
+        command: ["/fission-bundle"]
+        args: ["--poolmgrPort", "8888"]
+
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: kubewatcher
+  namespace: fission
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        svc: kubewatcher
+    spec:
+      containers:
+      - name: kubewatcher
+        image: fission/fission-bundle:alpha20170328
+        command: ["/fission-bundle"]
+        args: ["--kubewatcher"]
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: etcd
+  namespace: fission
+  labels:
+    svc: etcd
+spec:
+  ports:
+  - port: 2379
+    targetPort: 2379
+  selector:
+    svc: etcd
+
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: etcd
+  namespace: fission
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        svc: etcd
+    spec:
+      containers:
+      - name: etcd
+        image: quay.io/coreos/etcd
+        imagePullPolicy: IfNotPresent
+        env:
+        - name: ETCD_LISTEN_CLIENT_URLS
+          value: http://0.0.0.0:2379
+        - name: ETCD_ADVERTISE_CLIENT_URLS
+          value: http://etcd:2379
