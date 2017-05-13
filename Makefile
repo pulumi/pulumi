@@ -20,8 +20,8 @@ lint:
 
 lint_quiet:
 	@echo "\033[0;32mLINT (quiet):\033[0m"
-	@$(shell golint cmd/... | grep -v "or be unexported")
-	@$(shell golint pkg/... | grep -v "or be unexported")
+	@echo "`golint cmd/... | grep -v "or be unexported"`"
+	@echo "`golint pkg/... | grep -v "or be unexported"`"
 	@echo "\033[0;33mgolint was run quietly; to run with noisy errors, run 'make lint'\033[0m"
 
 test:
