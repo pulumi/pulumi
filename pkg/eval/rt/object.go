@@ -40,6 +40,12 @@ func (o *Object) Value() Value             { return o.value }
 func (o *Object) Properties() *PropertyMap { return o.properties }
 func (o *Object) Proto() *Object           { return o.proto }
 
+// IsArray returns true if the target object is a runtime array.
+func (o *Object) IsArray() bool {
+	_, is := o.t.(*symbols.ArrayType)
+	return is
+}
+
 // ArrayValue asserts that the target is an array literal and returns its value.
 func (o *Object) ArrayValue() *[]*Pointer {
 	_, isarr := o.t.(*symbols.ArrayType)
@@ -48,6 +54,19 @@ func (o *Object) ArrayValue() *[]*Pointer {
 	arr, ok := o.value.(*[]*Pointer)
 	contract.Assertf(ok, "Expected Array object's Value to be a *[]interface{}")
 	return arr
+}
+
+// TryArrayValue tests the target for an array literal value and, if it is one, returns its value.
+func (o *Object) TryArrayValue() (*[]*Pointer, bool) {
+	if o.IsArray() {
+		return o.ArrayValue(), true
+	}
+	return nil, false
+}
+
+// IsBool returns true if the target object is a runtime boolean.
+func (o *Object) IsBool() bool {
+	return o.t == types.Bool
 }
 
 // BoolValue asserts that the target is a boolean literal and returns its value.
@@ -59,6 +78,19 @@ func (o *Object) BoolValue() bool {
 	return b
 }
 
+// TryBoolValue tests the target for an boolean literal value and, if it is one, returns its value.
+func (o *Object) TryBoolValue() (bool, bool) {
+	if o.IsBool() {
+		return o.BoolValue(), true
+	}
+	return false, false
+}
+
+// IsNumber returns true if the target object is a runtime number.
+func (o *Object) IsNumber() bool {
+	return o.t == types.Number
+}
+
 // NumberValue asserts that the target is a numeric literal and returns its value.
 func (o *Object) NumberValue() float64 {
 	contract.Assertf(o.t == types.Number, "Expected object type to be Number; got %v", o.t)
@@ -66,6 +98,19 @@ func (o *Object) NumberValue() float64 {
 	n, ok := o.value.(float64)
 	contract.Assertf(ok, "Expected Number object's Value to be numeric literal")
 	return n
+}
+
+// TryNumberValue tests the target for a number literal value and, if it is one, returns its value.
+func (o *Object) TryNumberValue() (float64, bool) {
+	if o.IsNumber() {
+		return o.NumberValue(), true
+	}
+	return 0.0, false
+}
+
+// IsString returns true if the target object is a runtime string.
+func (o *Object) IsString() bool {
+	return o.t == types.String
 }
 
 // StringValue asserts that the target is a string and returns its value.
@@ -77,7 +122,21 @@ func (o *Object) StringValue() string {
 	return s
 }
 
-// FunctionValue asserts that the target is a function and returns its value.
+// TryStringValue tests the target for a string literal value and, if it is one, returns its value.
+func (o *Object) TryStringValue() (string, bool) {
+	if o.IsString() {
+		return o.StringValue(), true
+	}
+	return "", false
+}
+
+// IsFunction returns true if the target object is a runtime function.
+func (o *Object) IsFunction() bool {
+	_, is := o.t.(*symbols.FunctionType)
+	return is
+}
+
+/// FunctionValue asserts that the target is a function and returns its value.
 func (o *Object) FunctionValue() FuncStub {
 	contract.Assertf(o.value != nil, "Expected Function object to carry a Value; got nil")
 	r, ok := o.value.(FuncStub)
@@ -85,12 +144,39 @@ func (o *Object) FunctionValue() FuncStub {
 	return r
 }
 
-// PointerValue asserts that the target is a pointer and returns its value.
+// TryFunctionValue tests the target for a function literal value and, if it is one, returns its value.
+func (o *Object) TryFunctionValue() (FuncStub, bool) {
+	if o.IsFunction() {
+		return o.FunctionValue(), true
+	}
+	return FuncStub{}, false
+}
+
+// IsPointer returns true if the target object is a runtime pointer.
+func (o *Object) IsPointer() bool {
+	_, is := o.t.(*symbols.PointerType)
+	return is
+}
+
+/// PointerValue asserts that the target is a pointer and returns its value.
 func (o *Object) PointerValue() *Pointer {
 	contract.Assertf(o.value != nil, "Expected Pointer object to carry a Value; got nil")
 	r, ok := o.value.(*Pointer)
 	contract.Assertf(ok, "Expected Pointer object's Value to be a Pointer")
 	return r
+}
+
+// TryPointerValue tests the target for a pointer literal value and, if it is one, returns its value.
+func (o *Object) TryPointerValue() (*Pointer, bool) {
+	if o.IsPointer() {
+		return o.PointerValue(), true
+	}
+	return nil, false
+}
+
+// IsNull returns true if the target object is a runtime null value.
+func (o *Object) IsNull() bool {
+	return o.t == types.Null
 }
 
 // Details prints the contents of an object deeply, detecting cycles as it goes.
