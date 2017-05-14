@@ -32,7 +32,7 @@ type CompileOptions struct {
 func Compile(opts CompileOptions, path string) error {
 	// Ensure we are generating *something*.
 	if opts.OutPack == "" && opts.OutRPC == "" {
-		return errors.New("Neither --out-pack nor --out-rpc specified; no code to generate...")
+		return errors.New("neither --out-pack nor --out-rpc specified; no code to generate")
 	}
 
 	// Adjust settings to their defaults and adjust any paths to be absolute.
@@ -43,11 +43,11 @@ func Compile(opts CompileOptions, path string) error {
 	}
 	if opts.PkgBaseIDL == "" {
 		// The default IDL package base is just the GOPATH package path for the target IDL path.
-		if pkgpath, err := goPackagePath(path); err != nil {
+		pkgpath, err := goPackagePath(path)
+		if err != nil {
 			return err
-		} else {
-			opts.PkgBaseIDL = pkgpath
 		}
+		opts.PkgBaseIDL = pkgpath
 	}
 	if opts.OutPack != "" {
 		opts.OutPack, _ = filepath.Abs(opts.OutPack)
@@ -58,21 +58,21 @@ func Compile(opts CompileOptions, path string) error {
 		// If there is no package base, pick a default based on GOPATH.
 		if opts.PkgBaseRPC == "" {
 			// The default RPC package base, like the IDL package base, defaults to the GOPATH package path.
-			if pkgpath, err := goPackagePath(opts.OutRPC); err != nil {
+			pkgpath, err := goPackagePath(opts.OutRPC)
+			if err != nil {
 				return err
-			} else {
-				opts.PkgBaseRPC = pkgpath
 			}
+			opts.PkgBaseRPC = pkgpath
 		}
 	}
 
 	var inputs []string
 	if opts.Recursive {
-		if inp, err := gatherGoPackages(path); err != nil {
+		inp, err := gatherGoPackages(path)
+		if err != nil {
 			return err
-		} else {
-			inputs = inp
 		}
+		inputs = inp
 	} else {
 		inputs = []string{opts.PkgBaseIDL}
 	}
@@ -171,32 +171,32 @@ func gatherGoPackages(path string) ([]string, error) {
 	// First, if this path contains Go files, append it.
 	var dirs []string
 	hasGoFiles := false
-	if files, err := ioutil.ReadDir(path); err != nil {
+	files, err := ioutil.ReadDir(path)
+	if err != nil {
 		return nil, err
-	} else {
-		for _, file := range files {
-			if file.IsDir() {
-				dirs = append(dirs, file.Name())
-			} else if filepath.Ext(file.Name()) == ".go" {
-				hasGoFiles = true
-			}
+	}
+	for _, file := range files {
+		if file.IsDir() {
+			dirs = append(dirs, file.Name())
+		} else if filepath.Ext(file.Name()) == ".go" {
+			hasGoFiles = true
 		}
 	}
 	if hasGoFiles {
-		if pkg, err := goPackagePath(path); err != nil {
+		pkg, err := goPackagePath(path)
+		if err != nil {
 			return nil, err
-		} else {
-			pkgs = append(pkgs, pkg)
 		}
+		pkgs = append(pkgs, pkg)
 	}
 
 	// Next, enumerate all directories recursively, to find all Go sub-packages.
 	for _, dir := range dirs {
-		if subpkgs, err := gatherGoPackages(filepath.Join(path, dir)); err != nil {
+		subpkgs, err := gatherGoPackages(filepath.Join(path, dir))
+		if err != nil {
 			return nil, err
-		} else {
-			pkgs = append(pkgs, subpkgs...)
 		}
+		pkgs = append(pkgs, subpkgs...)
 	}
 
 	return pkgs, nil

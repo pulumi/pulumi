@@ -362,9 +362,8 @@ func NewPropertyValue(v interface{}) PropertyValue {
 		// If a pointer, recurse and return the underlying value.
 		if rv.IsNil() {
 			return NewPropertyNull()
-		} else {
-			return NewPropertyValue(rv.Elem().Interface())
 		}
+		return NewPropertyValue(rv.Elem().Interface())
 	case reflect.Struct:
 		obj := NewPropertyMap(rv.Interface())
 		return NewPropertyObject(obj)

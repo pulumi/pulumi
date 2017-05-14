@@ -107,7 +107,7 @@ type ObjectLiteralProperty interface {
 	Val() Expression
 }
 
-// ObjectLiteralProperty initializes a single object literal property by name.
+// ObjectLiteralNamedProperty initializes a single object literal property by name.
 type ObjectLiteralNamedProperty struct {
 	NodeValue
 	Property *Token     `json:"property"` // the property (simple name if dynamic; member token otherwise).
@@ -121,7 +121,7 @@ const ObjectLiteralNamedPropertyKind NodeKind = "ObjectLiteralNamedProperty"
 
 func (p *ObjectLiteralNamedProperty) Val() Expression { return p.Value }
 
-// ObjectLiteralProperty initializes a single object literal property, dynamically, through a computed name.
+// ObjectLiteralComputedProperty initializes a single object literal property, dynamically, through a computed name.
 type ObjectLiteralComputedProperty struct {
 	NodeValue
 	Property Expression `json:"property"` // the property (simple name if dynamic; member token otherwise).

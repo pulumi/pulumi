@@ -20,7 +20,7 @@ func NewPropertyMap() *PropertyMap {
 	}
 }
 
-// StableKeys returns the keys for the target map in a stable order.
+// Stable returns the keys for the target map in a stable order.
 func (props *PropertyMap) Stable() []PropertyKey {
 	return props.chrono // chronological order is already stable, so just return that.
 }
@@ -31,7 +31,7 @@ func (props *PropertyMap) Has(key PropertyKey) bool {
 	return has
 }
 
-// Get returns a reference to a map's property.  If no entry is found, the return value is nil.
+// GetAddr returns a reference to a map's property.  If no entry is found, the return value is nil.
 func (props *PropertyMap) GetAddr(key PropertyKey) *Pointer {
 	ptr, _ := props.m[key]
 	return ptr
@@ -41,12 +41,11 @@ func (props *PropertyMap) GetAddr(key PropertyKey) *Pointer {
 func (props *PropertyMap) Get(key PropertyKey) *Object {
 	if ptr := props.GetAddr(key); ptr != nil {
 		return ptr.Obj()
-	} else {
-		return nil
 	}
+	return nil
 }
 
-// TryGet returns a reference to a map's property.  If no entry is found, the return value is nil, and the second
+// TryGetAddr returns a reference to a map's property.  If no entry is found, the return value is nil, and the second
 // boolean return value will be set to false.  Otherwise, the boolean will be true.
 func (props *PropertyMap) TryGetAddr(key PropertyKey) (*Pointer, bool) {
 	ptr, has := props.m[key]
@@ -58,12 +57,11 @@ func (props *PropertyMap) TryGetAddr(key PropertyKey) (*Pointer, bool) {
 func (props *PropertyMap) TryGet(key PropertyKey) (*Object, bool) {
 	if ptr, has := props.m[key]; has {
 		return ptr.Obj(), true
-	} else {
-		return nil, false
 	}
+	return nil, false
 }
 
-// GetInit returns a reference to a map's property.  If no entry is found, the location will be
+// GetInitAddr returns a reference to a map's property.  If no entry is found, the location will be
 // auto-initialized to an empty value.  Otherwise, nil is simply returned.
 func (props *PropertyMap) GetInitAddr(key PropertyKey) *Pointer {
 	ptr, has := props.m[key]
@@ -73,7 +71,7 @@ func (props *PropertyMap) GetInitAddr(key PropertyKey) *Pointer {
 	return ptr
 }
 
-// Init initializes a map's property slot with the given default value, substituting null if that's empty.
+// InitAddr initializes a map's property slot with the given default value, substituting null if that's empty.
 func (props *PropertyMap) InitAddr(key PropertyKey, obj *Object, readonly bool) *Pointer {
 	contract.Assertf(props.m[key] == nil, "Cannot initialize an existing slot: %v", key)
 

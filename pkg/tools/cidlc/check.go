@@ -203,13 +203,12 @@ func (chk *Checker) CheckType(t *types.TypeName, file *File, decl ast.Decl) (Mem
 						member: memb,
 						Values: vals,
 					}, true
-				} else {
-					// Otherwise, this is a simple type alias.
-					return &Alias{
-						member: memb,
-						target: s,
-					}, true
 				}
+				// Otherwise, this is a simple type alias.
+				return &Alias{
+					member: memb,
+					target: s,
+				}, true
 			}
 
 			cmdutil.Sink().Errorf(
@@ -241,9 +240,8 @@ func (chk *Checker) CheckType(t *types.TypeName, file *File, decl ast.Decl) (Mem
 					props:  props,
 					popts:  opts,
 				}, true
-			} else {
-				contract.Assert(!cmdutil.Sink().Success())
 			}
+			contract.Assert(!cmdutil.Sink().Success())
 		default:
 			cmdutil.Sink().Errorf(
 				diag.Message("%v is an illegal underlying type: %v", s, reflect.TypeOf(s)).At(chk.diag(decl)))

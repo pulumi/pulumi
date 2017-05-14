@@ -103,11 +103,11 @@ func (a Asset) readURI() (*Blob, error) {
 	contract.Assertf(isurl, "Expected a URI-based asset")
 	switch s := url.Scheme; s {
 	case "http", "https":
-		if resp, err := http.Get(url.String()); err != nil {
+		resp, err := http.Get(url.String())
+		if err != nil {
 			return nil, err
-		} else {
-			return NewReadCloserBlob(resp.Body)
 		}
+		return NewReadCloserBlob(resp.Body)
 	case "file":
 		contract.Assert(url.Host == "")
 		contract.Assert(url.User == nil)
@@ -151,14 +151,14 @@ func NewByteBlob(data []byte) *Blob {
 
 // NewFileBlob creates a new asset blob whose size is known thanks to stat.
 func NewFileBlob(f *os.File) (*Blob, error) {
-	if stat, err := f.Stat(); err != nil {
+	stat, err := f.Stat()
+	if err != nil {
 		return nil, err
-	} else {
-		return &Blob{
-			rd: f,
-			sz: stat.Size(),
-		}, nil
 	}
+	return &Blob{
+		rd: f,
+		sz: stat.Size(),
+	}, nil
 }
 
 // NewReadCloserBlob turn any old ReadCloser into an Blob, usually by making a copy.
@@ -169,11 +169,11 @@ func NewReadCloserBlob(r io.ReadCloser) (*Blob, error) {
 	}
 	// Otherwise, read it all in, and create a blob out of that.
 	defer r.Close()
-	if data, err := ioutil.ReadAll(r); err != nil {
+	data, err := ioutil.ReadAll(r)
+	if err != nil {
 		return nil, err
-	} else {
-		return NewByteBlob(data), nil
 	}
+	return NewByteBlob(data), nil
 }
 
 // bytesReader turns a *bytes.Reader into a SeekableReadCloser by adding an empty Close method.
@@ -306,11 +306,11 @@ func (a Archive) readURI() (map[string]*Blob, error) {
 func (a Archive) openURLStream(url *url.URL) (io.ReadCloser, error) {
 	switch s := url.Scheme; s {
 	case "http", "https":
-		if resp, err := http.Get(url.String()); err != nil {
+		resp, err := http.Get(url.String())
+		if err != nil {
 			return nil, err
-		} else {
-			return resp.Body, nil
 		}
+		return resp.Body, nil
 	case "file":
 		contract.Assert(url.Host == "")
 		contract.Assert(url.User == nil)
@@ -382,11 +382,11 @@ func (a Archive) archiveTar(w io.Writer) error {
 		}); err != nil {
 			return err
 		}
-		if n, err := io.Copy(tw, data); err != nil {
+		n, err := io.Copy(tw, data)
+		if err != nil {
 			return err
-		} else {
-			contract.Assert(int64(n) == sz)
 		}
+		contract.Assert(int64(n) == sz)
 	}
 
 	return tw.Close()
@@ -489,12 +489,12 @@ func readArchive(ar io.ReadCloser, format ArchiveFormat) (map[string]*Blob, erro
 		var ra io.ReaderAt
 		var sz int64
 		if f, isf := ar.(*os.File); isf {
-			if stat, err := f.Stat(); err != nil {
+			stat, err := f.Stat()
+			if err != nil {
 				return nil, err
-			} else {
-				ra = f
-				sz = stat.Size()
 			}
+			ra = f
+			sz = stat.Size()
 		} else if data, err := ioutil.ReadAll(ar); err != nil {
 			return nil, err
 		} else {
@@ -527,12 +527,12 @@ func readTarArchive(ar io.ReadCloser) (map[string]*Blob, error) {
 			continue // skip directories
 		case tar.TypeReg:
 			data := make([]byte, file.Size)
-			if n, err := tr.Read(data); err != nil {
+			n, err := tr.Read(data)
+			if err != nil {
 				return nil, err
-			} else {
-				contract.Assert(int64(n) == file.Size)
-				assets[file.Name] = NewByteBlob(data)
 			}
+			contract.Assert(int64(n) == file.Size)
+			assets[file.Name] = NewByteBlob(data)
 		default:
 			contract.Failf("Unrecognized tar header typeflag: %v", file.Typeflag)
 		}
@@ -568,12 +568,12 @@ func readZIPArchive(ar io.ReaderAt, size int64) (map[string]*Blob, error) {
 		}
 		size := file.UncompressedSize64
 		data := make([]byte, size)
-		if n, err := body.Read(data); err != nil {
+		n, err := body.Read(data)
+		if err != nil {
 			return nil, err
-		} else {
-			contract.Assert(uint64(n) == size)
-			assets[file.Name] = NewByteBlob(data)
 		}
+		contract.Assert(uint64(n) == size)
+		assets[file.Name] = NewByteBlob(data)
 	}
 	return assets, nil
 }
