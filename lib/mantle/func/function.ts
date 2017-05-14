@@ -14,10 +14,11 @@ import {asset} from "@coconut/coconut";
 export class Function {
     private readonly name: string;          // the function name.
     private readonly runtime: arch.Runtime; // the function's language runtime.
-    private readonly code: asset.Archive;   // the function's code archive.
+    private readonly code: asset.Asset;     // the function's code.
+    private readonly handler: string;       // the function's entrypoint/handler.
     private readonly resource: any;         // the cloud-specific function object.
 
-    constructor(name: string, code: asset.Archive, runtime: arch.Runtime) {
+    constructor(name: string, code: asset.Asset, runtime: arch.Runtime) {
         this.name = name;
         this.code = code;
         this.runtime = runtime;
@@ -57,8 +58,11 @@ export class Function {
     }
 
     private initAWSResources(): any {
+        // Generate a thunk that invokes the callback with the right arguments.
         return new aws.lambda.Function(this.name, {
-            code:    this.code,
+            code: new asset.AssetArchive({
+                ["index" + arch.runtimes.ext[this.runtime]]: this.code,
+            }),
             handler: "index.handler",
             runtime: runtime.aws.getLambdaRuntime(this.runtime),
             role:    runtime.aws.getLambdaRole(),

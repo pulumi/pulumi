@@ -5,3 +5,8 @@
 export const NodeJS = "nodejs";
 export const Python = "python";
 
+export let ext: {[lang: string]: string} = {
+    NodeJS: ".js",
+    Python: ".py",
+};
+
