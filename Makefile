@@ -26,7 +26,7 @@ lint_quiet:
 
 test:
 	@echo "\033[0;32mTEST:\033[0m"
-	@go test ${PROJECT_PKGS}
+	@go test -cover ${PROJECT_PKGS}
 
 vet:
 	@echo "\033[0;32mVET:\033[0m"
