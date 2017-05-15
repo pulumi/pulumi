@@ -1,4 +1,4 @@
 # examples/conversions
 
-This directory contains some hand-converted Mu projects from other container orchestration frameworks.
+This directory contains some hand-converted projects from other container orchestration frameworks.
 

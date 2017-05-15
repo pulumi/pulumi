@@ -1,9 +1,0 @@
-[submodule "examples/conversions/docker-compose/elk"]
-	path = examples/conversions/docker-compose/elk
-	url = git@github.com:pulumi/example-elk-compose
-[submodule "examples/conversions/kubernetes/elasticsearch"]
-	path = examples/conversions/kubernetes/elasticsearch
-	url = git@github.com:pulumi/example-elasticsearch-kubernetes
-[submodule "examples/conversions/kubernetes/elk"]
-	path = examples/conversions/kubernetes/elk
-	url = git@github.com:pulumi/example-elk-kubernetes
