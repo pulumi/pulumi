@@ -136,7 +136,7 @@ func (o *Object) IsFunction() bool {
 	return is
 }
 
-/// FunctionValue asserts that the target is a function and returns its value.
+// FunctionValue asserts that the target is a function and returns its value.
 func (o *Object) FunctionValue() FuncStub {
 	contract.Assertf(o.value != nil, "Expected Function object to carry a Value; got nil")
 	r, ok := o.value.(FuncStub)
@@ -158,7 +158,7 @@ func (o *Object) IsPointer() bool {
 	return is
 }
 
-/// PointerValue asserts that the target is a pointer and returns its value.
+// PointerValue asserts that the target is a pointer and returns its value.
 func (o *Object) PointerValue() *Pointer {
 	contract.Assertf(o.value != nil, "Expected Pointer object to carry a Value; got nil")
 	r, ok := o.value.(*Pointer)
