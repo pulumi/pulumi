@@ -57,11 +57,11 @@ func TestObjectRTTI(t *testing.T) {
 
 	// an array of all of the above
 	elems := []*Pointer{
-		NewPointer(nul, false),
-		NewPointer(boTrue, false),
-		NewPointer(boFalse, false),
-		NewPointer(num, false),
-		NewPointer(str, false),
+		NewPointer(nul, false, nil, nil),
+		NewPointer(boTrue, false, nil, nil),
+		NewPointer(boFalse, false, nil, nil),
+		NewPointer(num, false, nil, nil),
+		NewPointer(str, false, nil, nil),
 	}
 	arr := NewArrayObject(types.Object, &elems)
 	assert.True(t, arr.IsArray())
