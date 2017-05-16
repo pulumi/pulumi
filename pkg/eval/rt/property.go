@@ -3,6 +3,7 @@
 package rt
 
 import (
+	"github.com/pulumi/coconut/pkg/compiler/symbols"
 	"github.com/pulumi/coconut/pkg/util/contract"
 )
 
@@ -66,13 +67,14 @@ func (props *PropertyMap) TryGet(key PropertyKey) (*Object, bool) {
 func (props *PropertyMap) GetInitAddr(key PropertyKey) *Pointer {
 	ptr, has := props.m[key]
 	if !has {
-		ptr = props.InitAddr(key, nil, false)
+		ptr = props.InitAddr(key, nil, false, nil, nil)
 	}
 	return ptr
 }
 
 // InitAddr initializes a map's property slot with the given default value, substituting null if that's empty.
-func (props *PropertyMap) InitAddr(key PropertyKey, obj *Object, readonly bool) *Pointer {
+func (props *PropertyMap) InitAddr(key PropertyKey, obj *Object,
+	readonly bool, get symbols.Function, set symbols.Function) *Pointer {
 	contract.Assertf(props.m[key] == nil, "Cannot initialize an existing slot: %v", key)
 
 	// If no object was provided, initialize the slot to null.
@@ -80,7 +82,7 @@ func (props *PropertyMap) InitAddr(key PropertyKey, obj *Object, readonly bool) 
 		obj = NewNullObject()
 	}
 
-	ptr := NewPointer(obj, readonly)
+	ptr := NewPointer(obj, readonly, get, set)
 	props.m[key] = ptr
 	props.chrono = append(props.chrono, key)
 	return ptr

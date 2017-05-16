@@ -80,7 +80,14 @@ func Walk(v Visitor, node Node) {
 		if n.Body != nil {
 			Walk(v, n.Body)
 		}
-	case *Export, *LocalVariable, *ModuleProperty, *ClassProperty:
+	case *ClassProperty:
+		if n.Getter != nil {
+			Walk(v, n.Getter)
+		}
+		if n.Setter != nil {
+			Walk(v, n.Setter)
+		}
+	case *Export, *LocalVariable, *ModuleProperty:
 		// No children, nothing to do.
 
 	// Statements

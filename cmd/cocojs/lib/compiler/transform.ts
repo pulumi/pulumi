@@ -97,11 +97,28 @@ class VariableDeclaration<TVariable extends ast.Variable> {
 // A top-level module element is an export, module member (definition), or statement (initializer).
 type ModuleElement = ast.ModuleMember | ast.Export | VariableDeclaration<ast.ModuleProperty> | ast.Statement;
 
+// A property accessor declaration ultimately leads to a single property with both get/set accessors.
+class PropertyAccessorDeclaration {
+    constructor(
+        public node: ts.Node,           // the source node.
+        public method: ast.ClassMethod, // the transformed method definition.
+        public isSetter: boolean,       // true if a setter; false if a getter.
+    ) { }
+}
+
 // A top-level class element is either a class member (definition) or a statement (initializer).
-type ClassElement = ast.ClassMember | VariableDeclaration<ast.ClassProperty>;
+type ClassElement = ast.ClassMember | VariableDeclaration<ast.ClassProperty> | PropertyAccessorDeclaration;
 
 function isVariableDeclaration(element: ModuleElement | ClassElement): boolean {
     return !!(element instanceof VariableDeclaration);
+}
+
+function isPropertyAccessorDeclaration(element: ClassElement): boolean {
+    return !!(element instanceof PropertyAccessorDeclaration);
+}
+
+function isNormalClassElement(element: ClassElement): boolean {
+    return !isVariableDeclaration(element) && !isPropertyAccessorDeclaration(element);
 }
 
 // PackageInfo contains information about a module's package: both its token and its base path.
@@ -964,9 +981,10 @@ export class Transformer {
             if (idsym) {
                 let allowed: ts.SymbolFlags =
                     ts.SymbolFlags.BlockScopedVariable | ts.SymbolFlags.FunctionScopedVariable |
-                    ts.SymbolFlags.Function | ts.SymbolFlags.Property | ts.SymbolFlags.Method;
+                    ts.SymbolFlags.Function | ts.SymbolFlags.Property | ts.SymbolFlags.Method |
+                    ts.SymbolFlags.GetAccessor | ts.SymbolFlags.SetAccessor;
                 contract.assert(!!(idsym.flags & allowed),
-                                `Unexpected object access symbol: ${ts.SymbolFlags[idsym.flags]}`);
+                                `Unexpected object access symbol for '${idsym.name}': ${ts.SymbolFlags[idsym.flags]}`);
             }
             let ty: ts.Type | undefined = this.checker().getTypeAtLocation(objex);
             contract.assert(!!ty);
@@ -1672,9 +1690,49 @@ export class Transformer {
 
             // First do a pass over all methods (including constructor methods).
             for (let element of elements) {
-                if (!isVariableDeclaration(element)) {
+                if (isNormalClassElement(element)) {
                     let method = <ast.ClassMethod>element;
                     members[method.name.ident] = method;
+                }
+            }
+
+            // Next, generate properties with their attached property accessors.
+            for (let element of elements) {
+                if (isPropertyAccessorDeclaration(element)) {
+                    let acc = <PropertyAccessorDeclaration>element;
+                    let id: string = acc.method.name.ident;
+
+                    // For setters, we take the 1st parameter's type.  For getters, the return.
+                    let tytok: ast.TypeToken;
+                    if (acc.isSetter) {
+                        tytok = acc.method.parameters![0].type;
+                    }
+                    else {
+                        tytok = acc.method.returnType!;
+                    }
+
+                    // Look up the property; if it doesn't yet exist, populate it.
+                    let prop: ast.ClassProperty | undefined = <ast.ClassProperty>members[id];
+                    if (!prop) {
+                        prop = this.withLocation(acc.node, <ast.ClassProperty>{
+                            kind:   ast.classPropertyKind,
+                            name:   acc.method.name,
+                            type:   tytok,
+                            access: acc.method.access,
+                        });
+                        members[id] = prop;
+                    }
+                    contract.assert(prop.type.tok === tytok.tok);
+
+                    // Now stash away the getter/setter as appropriate, mangling the method name.
+                    if (acc.isSetter) {
+                        prop.setter = acc.method;
+                        acc.method.name = ident("set_" + acc.method.name.ident);
+                    }
+                    else {
+                        prop.getter = acc.method;
+                        acc.method.name = ident("get_" + acc.method.name.ident);
+                    }
                 }
             }
 
@@ -1715,9 +1773,10 @@ export class Transformer {
             // Create an .init method if there were any static initializers.
             if (staticPropertyInitializers.length > 0) {
                 members[tokens.initializerFunction] = <ast.ClassMethod>{
-                    kind: ast.classMethodKind,
-                    name: ident(tokens.initializerFunction),
-                    body: <ast.Block>{
+                    kind:   ast.classMethodKind,
+                    name:   ident(tokens.initializerFunction),
+                    static: true,
+                    body:   <ast.Block>{
                         kind:       ast.blockKind,
                         statements: staticPropertyInitializers,
                     },
@@ -2194,9 +2253,9 @@ export class Transformer {
             case ts.SyntaxKind.MethodDeclaration:
                 return this.transformFunctionLikeDeclaration(<ts.MethodDeclaration>node);
             case ts.SyntaxKind.GetAccessor:
-                return this.transformFunctionLikeDeclaration(<ts.GetAccessorDeclaration>node);
+                return this.transformPropertyAccessorDeclaration(<ts.GetAccessorDeclaration>node);
             case ts.SyntaxKind.SetAccessor:
-                return this.transformFunctionLikeDeclaration(<ts.SetAccessorDeclaration>node);
+                return this.transformPropertyAccessorDeclaration(<ts.SetAccessorDeclaration>node);
 
             // Properties are not function-like, so we translate them differently.
             case ts.SyntaxKind.PropertyDeclaration:
@@ -2239,11 +2298,16 @@ export class Transformer {
         }
     }
 
-    private async transformFunctionLikeDeclaration(node: ts.FunctionLikeDeclaration): Promise<ast.ClassMethod> {
-        // Get/Set accessors aren't yet supported.
-        contract.assert(node.kind !== ts.SyntaxKind.GetAccessor, "GetAccessor NYI");
-        contract.assert(node.kind !== ts.SyntaxKind.SetAccessor, "SetAccessor NYI");
+    private async transformPropertyAccessorDeclaration(node: ts.FunctionLikeDeclaration): Promise<ClassElement> {
+        contract.assert(node.kind === ts.SyntaxKind.GetAccessor || node.kind === ts.SyntaxKind.SetAccessor);
+        return new PropertyAccessorDeclaration(
+            node,
+            await this.transformFunctionLikeDeclaration(node),
+            (node.kind === ts.SyntaxKind.SetAccessor)
+        );
+    }
 
+    private async transformFunctionLikeDeclaration(node: ts.FunctionLikeDeclaration): Promise<ast.ClassMethod> {
         let mods: ts.ModifierFlags = ts.getCombinedModifierFlags(node);
         let decl: FunctionLikeDeclaration = await this.transformFunctionLikeCommon(node);
         return this.withLocation(node, <ast.ClassMethod>{

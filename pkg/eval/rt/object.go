@@ -473,7 +473,7 @@ func (o *Object) GetPropertyAddrForThis(this *Object, key PropertyKey, init bool
 	if ptr == nil {
 		// If we didn't find anything, and were asked to initialize, do so now.
 		if init {
-			ptr = this.Properties().InitAddr(key, nil, false)
+			ptr = this.Properties().InitAddr(key, nil, false, nil, nil)
 			if glog.V(9) {
 				glog.V(9).Infof("Object(%v).GetPropertyAddr(%v, %v, %v) not found; initialized: %v",
 					this.Type(), key, init, direct, ptr)
@@ -493,7 +493,7 @@ func (o *Object) GetPropertyAddrForThis(this *Object, key PropertyKey, init bool
 
 		// If we were asked to make this property directly on the object, copy it down; else return as-is.
 		if direct {
-			ptr = this.Properties().InitAddr(key, ptr.Obj(), ptr.Readonly())
+			ptr = this.Properties().InitAddr(key, ptr.Obj(), ptr.Readonly(), ptr.Getter(), ptr.Setter())
 			if glog.V(9) {
 				glog.V(9).Infof(
 					"Object(%v).GetPropertyAddr(%v, %v, %v) found in prototype %v; copied to object map: %v",
@@ -550,7 +550,7 @@ func adjustPointerForThis(parent *Object, this *Object, prop *Pointer) *Pointer 
 					This: this,
 					Env:  stub.Env,
 				})
-				prop = NewPointer(value, true)
+				prop = NewPointer(value, true, prop.Getter(), prop.Setter())
 			}
 		}
 	}

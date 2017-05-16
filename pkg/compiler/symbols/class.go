@@ -127,6 +127,8 @@ type ClassProperty struct {
 	Node   *ast.ClassProperty
 	Parent *Class
 	Ty     Type
+	Get    *ClassMethod
+	Set    *ClassMethod
 }
 
 var _ Symbol = (*ClassProperty)(nil)
@@ -137,8 +139,20 @@ func (node *ClassProperty) Name() tokens.Name { return node.Node.Name.Ident }
 func (node *ClassProperty) Token() tokens.Token {
 	return tokens.Token(tokens.NewClassMemberToken(node.Parent.Tok, node.MemberName()))
 }
-func (node *ClassProperty) Special() bool               { return false }
-func (node *ClassProperty) Tree() diag.Diagable         { return node.Node }
+func (node *ClassProperty) Special() bool       { return false }
+func (node *ClassProperty) Tree() diag.Diagable { return node.Node }
+func (node *ClassProperty) Getter() Function {
+	if node.Get == nil {
+		return nil
+	}
+	return node.Get
+}
+func (node *ClassProperty) Setter() Function {
+	if node.Set == nil {
+		return nil
+	}
+	return node.Set
+}
 func (node *ClassProperty) Optional() bool              { return node.Node.Optional != nil && *node.Node.Optional }
 func (node *ClassProperty) Readonly() bool              { return node.Node.Readonly != nil && *node.Node.Readonly }
 func (node *ClassProperty) Static() bool                { return node.Node.Static != nil && *node.Node.Static }
@@ -154,11 +168,14 @@ func (node *ClassProperty) VarNode() ast.Variable { return node.Node }
 func (node *ClassProperty) String() string        { return string(node.Token()) }
 
 // NewClassPropertySym returns a new ClassProperty symbol with the given node and parent.
-func NewClassPropertySym(node *ast.ClassProperty, parent *Class, ty Type) *ClassProperty {
+func NewClassPropertySym(node *ast.ClassProperty, parent *Class, ty Type,
+	get *ClassMethod, set *ClassMethod) *ClassProperty {
 	return &ClassProperty{
 		Node:   node,
 		Parent: parent,
 		Ty:     ty,
+		Get:    get,
+		Set:    set,
 	}
 }
 

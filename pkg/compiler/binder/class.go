@@ -81,9 +81,41 @@ func (b *binder) bindClassMember(node ast.ClassMember, parent *symbols.Class) sy
 func (b *binder) bindClassProperty(node *ast.ClassProperty, parent *symbols.Class) *symbols.ClassProperty {
 	glog.V(3).Infof("Binding class '%v' property '%v'", parent.Token(), node.Name.Ident)
 
-	// Look up this node's type and inject it into the type table.
+	// Look up this node's type.
 	typ := b.ctx.LookupType(node.Type)
-	sym := symbols.NewClassPropertySym(node, parent, typ)
+
+	// If there is a getter and/or setter, verify that it has the correct parameter/return types.
+	var get *symbols.ClassMethod
+	if getter := node.Getter; getter != nil {
+		get = b.bindClassMethod(getter, parent)
+		contract.Assert(get != nil)
+
+		sig := get.Signature()
+		if pc := len(sig.Parameters); pc != 0 {
+			b.Diag().Errorf(errors.ErrorPropertyGetterParamCount.At(node.Getter), pc)
+		}
+		if ret := sig.Return; ret != typ {
+			b.Diag().Errorf(errors.ErrorPropertyGetterReturnType.At(node.Getter), ret, typ)
+		}
+	}
+	var set *symbols.ClassMethod
+	if setter := node.Setter; setter != nil {
+		set = b.bindClassMethod(setter, parent)
+		contract.Assert(set != nil)
+
+		sig := set.Signature()
+		if params := sig.Parameters; len(params) != 1 {
+			b.Diag().Errorf(errors.ErrorPropertySetterParamCount.At(node.Setter), len(params))
+		} else if ptype := params[0]; ptype != typ {
+			b.Diag().Errorf(errors.ErrorPropertySetterParamType.At(node.Setter), ptype, typ)
+		}
+		if ret := sig.Return; ret != nil {
+			b.Diag().Errorf(errors.ErrorPropertySetterReturnType.At(node.Getter), ret)
+		}
+	}
+
+	// Now inject this into the symbol table and return it.
+	sym := symbols.NewClassPropertySym(node, parent, typ, get, set)
 	b.ctx.RegisterSymbol(node, sym)
 	return sym
 }
@@ -106,6 +138,13 @@ func (b *binder) bindClassBodies(class *symbols.Class) {
 		switch m := class.Members[member].(type) {
 		case *symbols.ClassMethod:
 			b.bindClassMethodBody(m)
+		case *symbols.ClassProperty:
+			if m.Get != nil {
+				b.bindClassMethodBody(m.Get)
+			}
+			if m.Set != nil {
+				b.bindClassMethodBody(m.Set)
+			}
 		}
 	}
 }

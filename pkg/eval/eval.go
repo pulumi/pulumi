@@ -253,14 +253,14 @@ func (e *evaluator) initProperty(this *rt.Object, properties *rt.PropertyMap,
 	switch m := sym.(type) {
 	case symbols.Function:
 		// A function results in a closure object referring to `this`, if any.
-		// TODO[pulumi/coconut#56]: all methods are readonly; consider permitting JS-style overwriting of them.
 		decl := m.Tree()
 		obj := e.alloc.NewFunction(decl, m, this)
 		if this != nil && e.hooks != nil {
 			e.hooks.OnVariableAssign(decl, this, tokens.Name(key), nil, obj)
 		}
 		fnc := e.alloc.NewFunction(decl, m, this)
-		return properties.InitAddr(key, fnc, true), false
+		// TODO[pulumi/coconut#56]: all methods are readonly; consider permitting JS-style overwriting of them.
+		return properties.InitAddr(key, fnc, true, nil, nil), false
 	case symbols.Variable:
 		// A variable could have a default object; if so, use that; otherwise, null will be substituted automatically.
 		var obj *rt.Object
@@ -271,16 +271,22 @@ func (e *evaluator) initProperty(this *rt.Object, properties *rt.PropertyMap,
 				e.hooks.OnVariableAssign(decl, this, tokens.Name(key), nil, obj)
 			}
 		}
-		ptr := properties.InitAddr(key, obj, false)
+		var get symbols.Function
+		var set symbols.Function
+		if prop, isprop := m.(*symbols.ClassProperty); isprop {
+			get = prop.Getter()
+			set = prop.Setter()
+		}
+		ptr := properties.InitAddr(key, obj, false, get, set)
 		return ptr, m.Readonly()
 	case *symbols.Module:
 		// A module resolves to its module object.
 		modobj := e.getModuleObject(m)
-		return properties.InitAddr(key, modobj, false), false
+		return properties.InitAddr(key, modobj, false, nil, nil), false
 	case *symbols.Class:
 		// A class resolves to its prototype object.
 		proto := e.getPrototypeObject(m)
-		return properties.InitAddr(key, proto, false), false
+		return properties.InitAddr(key, proto, false, nil, nil), false
 	default:
 		contract.Failf("Unrecognized property '%v' symbol type: %v", key, reflect.TypeOf(sym))
 		return nil, false
@@ -598,7 +604,7 @@ func (e *evaluator) evalCall(node diag.Diagable,
 					contract.Assert(prototy.Type == f.Parent)
 				}
 			} else {
-				contract.Assert(this != nil)
+				contract.Assertf(this != nil, "Expect non-nil this to invoke '%v'", f)
 				if uw := e.checkThis(node, this); uw != nil {
 					return nil, uw
 				}
@@ -652,12 +658,12 @@ func (e *evaluator) evalCall(node diag.Diagable,
 	if thisVariable != nil {
 		contract.Assert(this != nil)
 		e.locals.Register(thisVariable)
-		e.locals.InitValueAddr(thisVariable, rt.NewPointer(this, true))
+		e.locals.InitValueAddr(thisVariable, rt.NewPointer(this, true, nil, nil))
 	}
 	if superVariable != nil {
 		contract.Assert(this != nil)
 		e.locals.Register(superVariable)
-		e.locals.InitValueAddr(superVariable, rt.NewPointer(this, true))
+		e.locals.InitValueAddr(superVariable, rt.NewPointer(this, true, nil, nil))
 	}
 
 	// Ensure that the arguments line up to the parameter slots and add them to the frame.
@@ -1187,7 +1193,7 @@ func (e *evaluator) evalArrayLiteral(node *ast.ArrayLiteral) (*rt.Object, *rt.Un
 			if uw != nil {
 				return nil, uw
 			}
-			elemptr := rt.NewPointer(elemobj, false)
+			elemptr := rt.NewPointer(elemobj, false, nil, nil)
 			if sz == nil {
 				arr = append(arr, elemptr)
 			} else {
@@ -1296,7 +1302,19 @@ func (e *evaluator) getObjectOrSuperProperty(
 
 func (e *evaluator) evalLoadLocationExpression(node *ast.LoadLocationExpression) (*rt.Object, *rt.Unwind) {
 	loc, uw := e.evalLoadLocation(node, false)
-	return loc.Obj, uw
+	if uw != nil {
+		return nil, uw
+	}
+	var obj *rt.Object
+	if loc.Getter != nil {
+		// If there is a getter, invoke it.
+		contract.Assert(loc.This != nil)
+		obj, uw = e.evalCallSymbol(node, loc.Getter, loc.This)
+	} else {
+		// Otherwise, just return the object directly.
+		obj = loc.Obj
+	}
+	return obj, uw
 }
 
 func (e *evaluator) newLocation(node diag.Diagable, sym symbols.Symbol,
@@ -1315,35 +1333,47 @@ func (e *evaluator) newLocation(node diag.Diagable, sym symbols.Symbol,
 	}
 
 	return &Location{
-		e:    e,
-		This: this,
-		Name: sym.Name(),
-		Lval: lval,
-		Obj:  obj,
+		e:      e,
+		This:   this,
+		Name:   sym.Name(),
+		Lval:   lval,
+		Obj:    obj,
+		Getter: pv.Getter(),
+		Setter: pv.Setter(),
 	}
 }
 
 type Location struct {
-	e    *evaluator  // the evaluator that produced this location.
-	This *rt.Object  // the target object, if any.
-	Name tokens.Name // the simple name of the variable.
-	Lval bool        // whether the result is an lval.
-	Obj  *rt.Object  // the resulting object (pointer if lval, object otherwise).
+	e      *evaluator       // the evaluator that produced this location.
+	This   *rt.Object       // the target object, if any.
+	Name   tokens.Name      // the simple name of the variable.
+	Lval   bool             // whether the result is an lval.
+	Obj    *rt.Object       // the resulting object (pointer if lval, object otherwise).
+	Getter symbols.Function // the getter function, if any.
+	Setter symbols.Function // the setter function, if any.
 }
 
-func (loc *Location) Assign(node diag.Diagable, val *rt.Object) {
-	// Perform the assignment, but make sure to invoke the property assignment hook if necessary.
-	ptr := loc.Obj.PointerValue()
-
-	// If the pointer is readonly, however, we will disallow the assignment.
-	if ptr.Readonly() {
-		loc.e.Diag().Errorf(errors.ErrorIllegalReadonlyLValue.At(node))
-	} else {
-		if loc.e.hooks != nil {
-			loc.e.hooks.OnVariableAssign(node, loc.This, loc.Name, ptr.Obj(), val)
+func (loc *Location) Assign(node diag.Diagable, val *rt.Object) *rt.Unwind {
+	if loc.Setter != nil {
+		// If the location has a setter, use that for the assignment.
+		contract.Assert(loc.This != nil)
+		if _, uw := loc.e.evalCallSymbol(node, loc.Setter, loc.This, val); uw != nil {
+			return uw
 		}
-		ptr.Set(val)
+	} else {
+		// Otherwise, perform a straightforward assignment, invoking the variable assignment if necessary.
+		ptr := loc.Obj.PointerValue()
+		if ptr.Readonly() {
+			// If the pointer is readonly, however, we will disallow the assignment.
+			loc.e.Diag().Errorf(errors.ErrorIllegalReadonlyLValue.At(node))
+		} else {
+			if loc.e.hooks != nil {
+				loc.e.hooks.OnVariableAssign(node, loc.This, loc.Name, ptr.Obj(), val)
+			}
+			ptr.Set(val)
+		}
 	}
+	return nil
 }
 
 // evalLoadLocation evaluates and loads information about the target.  It takes an lval bool which
@@ -1425,6 +1455,9 @@ func (e *evaluator) evalLoadSymbolLocation(node diag.Diagable, sym symbols.Symbo
 			e.ensureClassInit(class) // ensure the class is initialized.
 			statics := e.getClassStatics(class)
 			pv = statics.GetAddr(k)
+			contract.Assertf(pv != nil, "Missing static class member '%v'", s.Token())
+			contract.Assertf(pv.Getter() == nil, "Static class property getters unexpected (%v)", s)
+			contract.Assertf(pv.Setter() == nil, "Static class property setters unexpected (%v)", s)
 		} else {
 			contract.Assert(this != nil)
 			if uw := e.checkThis(node, this); uw != nil {
@@ -1432,8 +1465,8 @@ func (e *evaluator) evalLoadSymbolLocation(node diag.Diagable, sym symbols.Symbo
 			}
 			dynload := this.Type() == types.Dynamic
 			pv = e.getObjectOrSuperProperty(this, thisexpr, k, dynload, lval)
+			contract.Assertf(pv != nil, "Missing instance class member '%v'", s.Token())
 		}
-		contract.Assertf(pv != nil, "Missing class member '%v' (static=%v)", s.Token(), s.Static())
 		ty = s.Type()
 		contract.Assert(ty != nil)
 	case symbols.ModuleMemberProperty:
@@ -1448,6 +1481,8 @@ func (e *evaluator) evalLoadSymbolLocation(node diag.Diagable, sym symbols.Symbo
 		globals := e.getModuleGlobals(module)
 		pv = globals.Properties().GetAddr(k)
 		contract.Assertf(pv != nil, "Missing module member '%v'", s.Token())
+		contract.Assertf(pv.Getter() == nil, "Module property getters unexpected (%v)", s)
+		contract.Assertf(pv.Setter() == nil, "Module property setters unexpected (%v)", s)
 		ty = s.MemberType()
 		contract.Assert(ty != nil)
 	default:
@@ -1546,7 +1581,7 @@ func (e *evaluator) evalLoadDynamicCore(node ast.Node, objexpr *ast.Expression, 
 		if ix < len(*arrv) {
 			pv = (*arrv)[ix]
 			if pv == nil && (lval || try) {
-				pv = rt.NewPointer(e.alloc.NewNull(node), false)
+				pv = rt.NewPointer(e.alloc.NewNull(node), false, nil, nil)
 				(*arrv)[ix] = pv
 			}
 		}
@@ -1558,7 +1593,6 @@ func (e *evaluator) evalLoadDynamicCore(node ast.Node, objexpr *ast.Expression, 
 		} else {
 			pv = e.getObjectOrSuperProperty(this, thisexpr, rt.PropertyKey(key), lval || try, lval)
 		}
-
 	}
 
 	if pv == nil {
@@ -1789,7 +1823,9 @@ func (e *evaluator) evalUnaryOperatorExpressionFor(node *ast.UnaryOperatorExpres
 		old := ptr.Obj()
 		val := old.NumberValue()
 		new := e.alloc.NewNumber(node, val+1)
-		opandloc.Assign(node.Operand, new)
+		if uw := opandloc.Assign(node.Operand, new); uw != nil {
+			return nil, uw
+		}
 		if node.Postfix {
 			return old, nil
 		}
@@ -1800,7 +1836,9 @@ func (e *evaluator) evalUnaryOperatorExpressionFor(node *ast.UnaryOperatorExpres
 		old := ptr.Obj()
 		val := old.NumberValue()
 		new := e.alloc.NewNumber(node, val-1)
-		opandloc.Assign(node.Operand, new)
+		if uw := opandloc.Assign(node.Operand, new); uw != nil {
+			return nil, uw
+		}
 		if node.Postfix {
 			return old, nil
 		}
@@ -1899,7 +1937,9 @@ func (e *evaluator) evalBinaryOperatorExpression(node *ast.BinaryOperatorExpress
 	// Assignment operators
 	case ast.OpAssign:
 		// The target is an l-value; just overwrite its value, and yield the new value as the result.
-		lhsloc.Assign(node.Left, rhs)
+		if uw := lhsloc.Assign(node.Left, rhs); uw != nil {
+			return nil, uw
+		}
 		return rhs, nil
 	case ast.OpAssignSum:
 		var val *rt.Object
@@ -1911,67 +1951,89 @@ func (e *evaluator) evalBinaryOperatorExpression(node *ast.BinaryOperatorExpress
 			// Otherwise, the target is a numeric l-value; just += to it, and yield the new value as the result.
 			val = e.alloc.NewNumber(node, ptr.Obj().NumberValue()+rhs.NumberValue())
 		}
-		lhsloc.Assign(node.Left, val)
+		if uw := lhsloc.Assign(node.Left, val); uw != nil {
+			return nil, uw
+		}
 		return val, nil
 	case ast.OpAssignDifference:
 		// The target is a numeric l-value; just -= rhs to it, and yield the new value as the result.
 		ptr := lhs.PointerValue()
 		val := e.alloc.NewNumber(node, ptr.Obj().NumberValue()-rhs.NumberValue())
-		lhsloc.Assign(node.Left, val)
+		if uw := lhsloc.Assign(node.Left, val); uw != nil {
+			return nil, uw
+		}
 		return val, nil
 	case ast.OpAssignProduct:
 		// The target is a numeric l-value; just *= rhs to it, and yield the new value as the result.
 		ptr := lhs.PointerValue()
 		val := e.alloc.NewNumber(node, ptr.Obj().NumberValue()*rhs.NumberValue())
-		lhsloc.Assign(node.Left, val)
+		if uw := lhsloc.Assign(node.Left, val); uw != nil {
+			return nil, uw
+		}
 		return val, nil
 	case ast.OpAssignQuotient:
 		// The target is a numeric l-value; just /= rhs to it, and yield the new value as the result.
 		ptr := lhs.PointerValue()
 		val := e.alloc.NewNumber(node, ptr.Obj().NumberValue()/rhs.NumberValue())
-		lhsloc.Assign(node.Left, val)
+		if uw := lhsloc.Assign(node.Left, val); uw != nil {
+			return nil, uw
+		}
 		return val, nil
 	case ast.OpAssignRemainder:
 		// The target is a numeric l-value; just %= rhs to it, and yield the new value as the result.
 		ptr := lhs.PointerValue()
 		val := e.alloc.NewNumber(node, float64(int64(ptr.Obj().NumberValue())%int64(rhs.NumberValue())))
-		lhsloc.Assign(node.Left, val)
+		if uw := lhsloc.Assign(node.Left, val); uw != nil {
+			return nil, uw
+		}
 		return val, nil
 	case ast.OpAssignExponentiation:
 		// The target is a numeric l-value; just raise to rhs as a power, and yield the new value as the result.
 		ptr := lhs.PointerValue()
 		val := e.alloc.NewNumber(node, math.Pow(ptr.Obj().NumberValue(), rhs.NumberValue()))
-		lhsloc.Assign(node.Left, val)
+		if uw := lhsloc.Assign(node.Left, val); uw != nil {
+			return nil, uw
+		}
 		return val, nil
 	case ast.OpAssignBitwiseShiftLeft:
 		// The target is a numeric l-value; just <<= rhs to it, and yield the new value as the result.
 		ptr := lhs.PointerValue()
 		val := e.alloc.NewNumber(node, float64(int64(ptr.Obj().NumberValue())<<uint(rhs.NumberValue())))
-		lhsloc.Assign(node.Left, val)
+		if uw := lhsloc.Assign(node.Left, val); uw != nil {
+			return nil, uw
+		}
 		return val, nil
 	case ast.OpAssignBitwiseShiftRight:
 		// The target is a numeric l-value; just >>= rhs to it, and yield the new value as the result.
 		ptr := lhs.PointerValue()
 		val := e.alloc.NewNumber(node, float64(int64(ptr.Obj().NumberValue())>>uint(rhs.NumberValue())))
-		lhsloc.Assign(node.Left, val)
+		if uw := lhsloc.Assign(node.Left, val); uw != nil {
+			return nil, uw
+		}
 		return val, nil
 	case ast.OpAssignBitwiseAnd:
 		// The target is a numeric l-value; just &= rhs to it, and yield the new value as the result.
 		ptr := lhs.PointerValue()
 		val := e.alloc.NewNumber(node, float64(int64(ptr.Obj().NumberValue())&int64(rhs.NumberValue())))
-		lhsloc.Assign(node.Left, val)
+		if uw := lhsloc.Assign(node.Left, val); uw != nil {
+			return nil, uw
+		}
 		return val, nil
 	case ast.OpAssignBitwiseOr:
 		// The target is a numeric l-value; just |= rhs to it, and yield the new value as the result.
 		ptr := lhs.PointerValue()
 		val := e.alloc.NewNumber(node, float64(int64(ptr.Obj().NumberValue())|int64(rhs.NumberValue())))
-		lhsloc.Assign(node.Left, val)
+		if uw := lhsloc.Assign(node.Left, val); uw != nil {
+			return nil, uw
+		}
 		return val, nil
 	case ast.OpAssignBitwiseXor:
 		// The target is a numeric l-value; just ^= rhs to it, and yield the new value as the result.
 		ptr := lhs.PointerValue()
 		val := e.alloc.NewNumber(node, float64(int64(ptr.Obj().NumberValue())^int64(rhs.NumberValue())))
-		lhsloc.Assign(node.Left, val)
+		if uw := lhsloc.Assign(node.Left, val); uw != nil {
+			return nil, uw
+		}
 		return val, nil
 
 	// Relational operators

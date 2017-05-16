@@ -436,7 +436,7 @@ func (ctx *Context) RegisterType(node ast.Expression, tysym symbols.Type) {
 func (ctx *Context) RequireDefinition(node ast.Definition) symbols.Symbol {
 	contract.Require(node != nil, "node")
 	sym := ctx.Symbols[node]
-	contract.Assertf(sym != nil, "Expected a symbol entry for %v node", node.GetKind())
+	contract.Assertf(sym != nil, "Expected a symbol entry for %v node '%v'", node.GetKind(), node.GetName().Ident)
 	return sym
 }
 

@@ -170,11 +170,14 @@ var _ ModuleMember = (*ModuleProperty)(nil)
 
 const ModulePropertyKind NodeKind = "ModuleProperty"
 
-// ClassProperty is like a module property with some extra attributes.
+// ClassProperty is like a module property with some extra attributes.  By default, it is a data descriptor that simply
+// manipulates the underlying property value, although a custom getter and/or setter may be provided.
 type ClassProperty struct {
 	VariableNode
 	ClassMemberNode
-	Optional *bool `json:"optional,omitempty"`
+	Getter   *ClassMethod `json:"getter,omitempty"`
+	Setter   *ClassMethod `json:"setter,omitempty"`
+	Optional *bool        `json:"optional,omitempty"`
 }
 
 var _ Node = (*ClassProperty)(nil)

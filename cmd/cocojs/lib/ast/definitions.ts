@@ -101,6 +101,8 @@ export type  ModulePropertyKind = "ModuleProperty";
 export interface ClassProperty extends Variable, ClassMember {
     kind:      ClassPropertyKind;
     optional?: boolean;
+    getter?:   ClassMethod;
+    setter?:   ClassMethod;
 }
 export const classPropertyKind = "ClassProperty";
 export type  ClassPropertyKind = "ClassProperty";

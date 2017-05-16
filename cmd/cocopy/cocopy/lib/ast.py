@@ -206,18 +206,22 @@ class ModuleProperty(Variable, ModuleMember):
 class ClassProperty(Variable, ClassMember):
     """A class property is just like a module property with some extra attributes."""
     def __init__(self, name, type, default=None, readonly=None,
-            access=None, static=None, primary=None, optional=None, loc=None):
+            access=None, static=None, primary=None, getter=None, setter=None, optional=None, loc=None):
         assert isinstance(name, Identifier)
         assert isinstance(type, TypeToken)
         assert readonly is None or isinstance(bool, readonly)
         assert access is None or access in tokens.accs
         assert static is None or isinstance(bool, static)
         assert primary is None or isinstance(bool, primary)
+        assert getter is None or isinstance(ClassMethod, getter)
+        assert setter is None or isinstance(ClassMethod, setter)
         assert optional is None or isinstance(bool, optional)
         super(ClassProperty, self).__init__("ClassProperty", name, type, default, readonly, loc)
         self.access = access
         self.static = static
         self.primary = primary
+        self.getter = getter
+        self.setter = setter
         self.optional = optional
 
 # ...Functions

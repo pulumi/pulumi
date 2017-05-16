@@ -138,7 +138,7 @@ outer:
 		return place
 	}
 	if init {
-		ref := rt.NewPointer(nil, sym.Readonly())
+		ref := rt.NewPointer(nil, sym.Readonly(), nil, nil)
 		slots[sym] = ref
 		return ref
 	}

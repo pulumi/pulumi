@@ -7,6 +7,11 @@ let modprop: string = "Foo";
 class C {
     public static clastaprop: number = 42;
     public claprop: boolean = true;
+    public get custprop(): string {
+        return "getting a custom property";
+    }
+    public set custprop(v: string) {
+    }
 }
 
 class D extends C {
@@ -17,7 +22,7 @@ class D extends C {
 
 let a: string = modprop;
 let b: number = C.clastaprop;
-let c: C = <C><any>undefined;
+let c = new C();
 if (c !== undefined) {
     let d: boolean = c.claprop;
     let e = {
@@ -27,6 +32,8 @@ if (c !== undefined) {
         "i": "i",
         [j()]: "j",
     };
+    let cust: string = c.custprop;
+    c.custprop = "setting a custom property";
 }
 
 function j(): string { return "j"; }
