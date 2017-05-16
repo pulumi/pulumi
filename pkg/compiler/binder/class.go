@@ -110,7 +110,7 @@ func (b *binder) bindClassProperty(node *ast.ClassProperty, parent *symbols.Clas
 			b.Diag().Errorf(errors.ErrorPropertySetterParamType.At(node.Setter), ptype, typ)
 		}
 		if ret := sig.Return; ret != nil {
-			b.Diag().Errorf(errors.ErrorPropertySetterReturnType.At(node.Getter), ret)
+			b.Diag().Errorf(errors.ErrorPropertySetterReturnType.At(node.Setter), ret)
 		}
 	}
 
