@@ -8,20 +8,20 @@ import (
 	"github.com/golang/glog"
 	goerr "github.com/pkg/errors"
 
-	"github.com/pulumi/coconut/pkg/compiler/binder"
-	"github.com/pulumi/coconut/pkg/compiler/core"
-	"github.com/pulumi/coconut/pkg/compiler/errors"
-	"github.com/pulumi/coconut/pkg/compiler/metadata"
-	"github.com/pulumi/coconut/pkg/compiler/symbols"
-	"github.com/pulumi/coconut/pkg/diag"
-	"github.com/pulumi/coconut/pkg/eval"
-	"github.com/pulumi/coconut/pkg/eval/heapstate"
-	"github.com/pulumi/coconut/pkg/pack"
-	"github.com/pulumi/coconut/pkg/util/contract"
-	"github.com/pulumi/coconut/pkg/workspace"
+	"github.com/pulumi/lumi/pkg/compiler/binder"
+	"github.com/pulumi/lumi/pkg/compiler/core"
+	"github.com/pulumi/lumi/pkg/compiler/errors"
+	"github.com/pulumi/lumi/pkg/compiler/metadata"
+	"github.com/pulumi/lumi/pkg/compiler/symbols"
+	"github.com/pulumi/lumi/pkg/diag"
+	"github.com/pulumi/lumi/pkg/eval"
+	"github.com/pulumi/lumi/pkg/eval/heapstate"
+	"github.com/pulumi/lumi/pkg/pack"
+	"github.com/pulumi/lumi/pkg/util/contract"
+	"github.com/pulumi/lumi/pkg/workspace"
 )
 
-// Compiler provides an interface into the many phases of the Coconut compilation process.
+// Compiler provides an interface into the many phases of the Lumi compilation process.
 type Compiler interface {
 	core.Phase
 
@@ -34,25 +34,25 @@ type Compiler interface {
 	CompilePath(path string, preexec Preexec) (*symbols.Package, *heapstate.Heap)
 	// CompilePackage compiles a given package object into its associated graph form.
 	CompilePackage(pkg *pack.Package, preexec Preexec) (*symbols.Package, *heapstate.Heap)
-	// Verify detects a package from the workspace and validates its CocoIL contents.
+	// Verify detects a package from the workspace and validates its LumiIL contents.
 	Verify() bool
-	// VerifyPath verifies a package given its path, validating that its CocoIL contents are correct.
+	// VerifyPath verifies a package given its path, validating that its LumiIL contents are correct.
 	VerifyPath(path string) bool
-	// VerifyPackage verifies a given package object, validating that its CocoIL contents are correct.
+	// VerifyPackage verifies a given package object, validating that its LumiIL contents are correct.
 	VerifyPackage(pkg *pack.Package) bool
 }
 
 // Preexec can be used to hook compilation after binding, but before evaluation, for any pre-evaluation steps.
 type Preexec func(*binder.Context, *symbols.Package, eval.Interpreter)
 
-// compiler is the canonical implementation of the Coconut compiler.
+// compiler is the canonical implementation of the Lumi compiler.
 type compiler struct {
 	w      workspace.W
 	ctx    *core.Context
 	reader metadata.Reader
 }
 
-// New creates a new instance of the Coconut compiler, along with a new workspace, from the given path.  If options
+// New creates a new instance of the Lumi compiler, along with a new workspace, from the given path.  If options
 // is nil, the default compiler options will be used instead.  If any IO errors occur, they will be output in the usual
 // diagnostics ways, and the compiler return value will be nil while the error will be non-nil.
 func New(path string, opts *core.Options) (Compiler, error) {
@@ -86,7 +86,7 @@ func New(path string, opts *core.Options) (Compiler, error) {
 	}, nil
 }
 
-// Newwd creates a new instance of the Coconut compiler, along with a new workspace, from the current working directory.
+// Newwd creates a new instance of the Lumi compiler, along with a new workspace, from the current working directory.
 // If options is nil, the default compiler options will be used instead.  If any IO errors occur, they will be output in
 // the usual diagnostics ways, and the compiler return value will be nil while the error will be non-nil.
 func Newwd(opts *core.Options) (Compiler, error) {
@@ -124,7 +124,7 @@ func (c *compiler) CompilePackage(pkg *pack.Package, preexec Preexec) (*symbols.
 			pkg.Name, c.Diag().Warnings(), c.Diag().Errors())
 	}
 
-	// To compile a package, we require a decoded CocoPack object; this has already been done, and is presented to us
+	// To compile a package, we require a decoded LumiPack object; this has already been done, and is presented to us
 	// an argument.  Next, we must bind it's contents.  To bind its contents, we must:
 	//
 	//     * Resolve all dependency packages and inject them into a package map (just a map of names to symbols).
@@ -137,10 +137,10 @@ func (c *compiler) CompilePackage(pkg *pack.Package, preexec Preexec) (*symbols.
 	//                 . Inject a symbol of the appropriate kind into the class's associated member map.
 	//
 	// Essentially, all we are doing is mapping names to concrete symbols.  This ensures that as we compile a package,
-	// we are able to find all tokens in these maps.  If we ever cannot find a token in a map, it means the CocoPack
-	// file is invalid.  We require that CocoLang compilers produce valid, verifiable CocoIL, and this is a requriement.
+	// we are able to find all tokens in these maps.  If we ever cannot find a token in a map, it means the LumiPack
+	// file is invalid.  We require that LumiLang compilers produce valid, verifiable LumiIL, and this is a requriement.
 	//
-	// Afterwards, we can safely evaluate the CocoIL entrypoint, using our CocoIL AST interpreter.
+	// Afterwards, we can safely evaluate the LumiIL entrypoint, using our LumiIL AST interpreter.
 
 	// First, bind.
 	b := binder.New(c.w, c.ctx, c.reader)
@@ -172,7 +172,7 @@ func (c *compiler) CompilePackage(pkg *pack.Package, preexec Preexec) (*symbols.
 	return pkgsym, gg.HeapSnapshot()
 }
 
-// Verify detects a package from the workspace and validates its CocoIL contents.
+// Verify detects a package from the workspace and validates its LumiIL contents.
 func (c *compiler) Verify() bool {
 	if path := c.detectPackage(); path != "" {
 		return c.VerifyPath(path)
@@ -180,7 +180,7 @@ func (c *compiler) Verify() bool {
 	return false
 }
 
-// VerifyPath verifies a package given its path, validating that its CocoIL contents are correct.
+// VerifyPath verifies a package given its path, validating that its LumiIL contents are correct.
 func (c *compiler) VerifyPath(path string) bool {
 	if pkg := c.readPackage(path); pkg != nil {
 		return c.VerifyPackage(pkg)
@@ -188,7 +188,7 @@ func (c *compiler) VerifyPath(path string) bool {
 	return false
 }
 
-// VerifyPackage verifies a given package object, validating that its CocoIL contents are correct.
+// VerifyPackage verifies a given package object, validating that its LumiIL contents are correct.
 func (c *compiler) VerifyPackage(pkg *pack.Package) bool {
 	// To verify a package, simply run the binder aspects of it.
 	b := binder.New(c.w, c.ctx, c.reader)

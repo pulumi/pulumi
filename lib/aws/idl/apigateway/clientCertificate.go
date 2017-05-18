@@ -3,7 +3,7 @@
 package apigateway
 
 import (
-	"github.com/pulumi/coconut/pkg/resource/idl"
+	"github.com/pulumi/lumi/pkg/resource/idl"
 )
 
 // The ClientCertificate resource creates a client certificate that Amazon API Gateway (API Gateway)
@@ -11,5 +11,5 @@ import (
 type ClientCertificate struct {
 	idl.NamedResource
 	// Description is a description of the client certificate.
-	Description *string `coco:"description,optional"`
+	Description *string `lumi:"description,optional"`
 }

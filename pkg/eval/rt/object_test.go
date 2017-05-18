@@ -7,7 +7,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/pulumi/coconut/pkg/compiler/types"
+	"github.com/pulumi/lumi/pkg/compiler/types"
 )
 
 // TestObjectRTTI tests that objects that have been created maintain correct type identities.

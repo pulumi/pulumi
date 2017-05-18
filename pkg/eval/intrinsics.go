@@ -3,25 +3,25 @@
 package eval
 
 import (
-	"github.com/pulumi/coconut/pkg/compiler/ast"
-	"github.com/pulumi/coconut/pkg/compiler/symbols"
-	"github.com/pulumi/coconut/pkg/diag"
-	"github.com/pulumi/coconut/pkg/eval/rt"
-	"github.com/pulumi/coconut/pkg/tokens"
+	"github.com/pulumi/lumi/pkg/compiler/ast"
+	"github.com/pulumi/lumi/pkg/compiler/symbols"
+	"github.com/pulumi/lumi/pkg/diag"
+	"github.com/pulumi/lumi/pkg/eval/rt"
+	"github.com/pulumi/lumi/pkg/tokens"
 )
 
 // Invoker implements an intrinsic function's functionality.
 type Invoker func(intrin *Intrinsic, e *evaluator, this *rt.Object, args []*rt.Object) *rt.Unwind
 
-// Intrinsics contains the set of runtime functions that are callable by name through the Coconut standard library
-// package.  Their functionality is implemented in the runtime because CocoIL cannot express the concepts they require
+// Intrinsics contains the set of runtime functions that are callable by name through the Lumi standard library
+// package.  Their functionality is implemented in the runtime because LumiIL cannot express the concepts they require
 // to get their job done.  This includes things like dynamic introspection, invocation, and more.
 var Intrinsics map[tokens.Token]Invoker
 
 func init() {
 	Intrinsics = map[tokens.Token]Invoker{
-		"coconut:runtime:isFunction":    isFunction,
-		"coconut:runtime:dynamicInvoke": dynamicInvoke,
+		"lumi:runtime:isFunction":    isFunction,
+		"lumi:runtime:dynamicInvoke": dynamicInvoke,
 	}
 }
 

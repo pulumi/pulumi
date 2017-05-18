@@ -11,14 +11,14 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	awsec2 "github.com/aws/aws-sdk-go/service/ec2"
-	"github.com/pulumi/coconut/pkg/resource"
-	"github.com/pulumi/coconut/pkg/util/contract"
-	"github.com/pulumi/coconut/pkg/util/mapper"
-	"github.com/pulumi/coconut/sdk/go/pkg/cocorpc"
+	"github.com/pulumi/lumi/pkg/resource"
+	"github.com/pulumi/lumi/pkg/util/contract"
+	"github.com/pulumi/lumi/pkg/util/mapper"
+	"github.com/pulumi/lumi/sdk/go/pkg/lumirpc"
 	"golang.org/x/net/context"
 
-	"github.com/pulumi/coconut/lib/aws/provider/awsctx"
-	"github.com/pulumi/coconut/lib/aws/rpc/ec2"
+	"github.com/pulumi/lumi/lib/aws/provider/awsctx"
+	"github.com/pulumi/lumi/lib/aws/rpc/ec2"
 )
 
 const SecurityGroupToken = ec2.SecurityGroupToken
@@ -30,7 +30,7 @@ const (
 )
 
 // NewSecurityGroupProvider creates a provider that handles EC2 security group operations.
-func NewSecurityGroupProvider(ctx *awsctx.Context) cocorpc.ResourceProviderServer {
+func NewSecurityGroupProvider(ctx *awsctx.Context) lumirpc.ResourceProviderServer {
 	ops := &sgProvider{ctx}
 	return ec2.NewSecurityGroupProvider(ops)
 }

@@ -5,14 +5,14 @@ package binder
 import (
 	"github.com/golang/glog"
 
-	"github.com/pulumi/coconut/pkg/compiler/ast"
-	"github.com/pulumi/coconut/pkg/compiler/errors"
-	"github.com/pulumi/coconut/pkg/compiler/symbols"
-	"github.com/pulumi/coconut/pkg/diag"
-	"github.com/pulumi/coconut/pkg/pack"
-	"github.com/pulumi/coconut/pkg/tokens"
-	"github.com/pulumi/coconut/pkg/util/contract"
-	"github.com/pulumi/coconut/pkg/workspace"
+	"github.com/pulumi/lumi/pkg/compiler/ast"
+	"github.com/pulumi/lumi/pkg/compiler/errors"
+	"github.com/pulumi/lumi/pkg/compiler/symbols"
+	"github.com/pulumi/lumi/pkg/diag"
+	"github.com/pulumi/lumi/pkg/pack"
+	"github.com/pulumi/lumi/pkg/tokens"
+	"github.com/pulumi/lumi/pkg/util/contract"
+	"github.com/pulumi/lumi/pkg/workspace"
 )
 
 // BindPackages takes a package AST, resolves all dependencies and tokens inside of it, and returns a fully bound

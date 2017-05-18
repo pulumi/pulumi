@@ -3,8 +3,8 @@
 package cmdutil
 
 import (
-	"github.com/pulumi/coconut/pkg/compiler/core"
-	"github.com/pulumi/coconut/pkg/diag"
+	"github.com/pulumi/lumi/pkg/compiler/core"
+	"github.com/pulumi/lumi/pkg/diag"
 )
 
 var snk diag.Sink

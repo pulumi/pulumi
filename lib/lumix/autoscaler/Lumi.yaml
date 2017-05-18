@@ -1,0 +1,5 @@
+name: lumix/autoscaler
+description: A service that can automatically scale other services based on policy.
+intrinsic: true
+properties:
+

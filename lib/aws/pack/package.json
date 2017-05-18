@@ -1,7 +1,7 @@
 {
-    "name": "@coconut/aws",
-    "main": ".coconut/bin/index.js",
-    "typings": ".coconut/bin/index.d.ts",
+    "name": "@lumi/aws",
+    "main": ".lumi/bin/index.js",
+    "typings": ".lumi/bin/index.d.ts",
     "scripts": {
         "build": "tsc"
     },
@@ -9,7 +9,7 @@
         "typescript": "^2.1.4"
     },
     "peerDependencies": {
-        "@coconut/coconut": "*"
+        "@lumi/lumi": "*"
     }
 }
 

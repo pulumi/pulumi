@@ -1,5 +1,0 @@
-name: examples/minimal
-description: The minimal valid CocoJS blueprint program.
-dependencies:
-    coconut: "*"
-

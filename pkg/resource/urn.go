@@ -5,11 +5,11 @@ package resource
 import (
 	"strings"
 
-	"github.com/pulumi/coconut/pkg/tokens"
-	"github.com/pulumi/coconut/pkg/util/contract"
+	"github.com/pulumi/lumi/pkg/tokens"
+	"github.com/pulumi/lumi/pkg/util/contract"
 )
 
-// URN is a friendly, but unique, URN for a resource, most often auto-assigned by Coconut.  These are
+// URN is a friendly, but unique, URN for a resource, most often auto-assigned by Lumi.  These are
 // used as unique IDs for objects, and help us to perform graph diffing and resolution of resource objects.
 //
 // In theory, we could support manually assigned URIs in the future.  For the time being, however, we have opted to
@@ -18,7 +18,7 @@ import (
 //
 // Each resource URN is of the form:
 //
-//     urn:coconut:<Namespace>::<AllocModule>::<Type>::<Name>
+//     urn:lumi:<Namespace>::<AllocModule>::<Type>::<Name>
 //
 // wherein each element is the following:
 //
@@ -32,7 +32,7 @@ type URN string
 
 const (
 	URNPrefix        = "urn:" + URNNamespaceID + ":" // the standard URN prefix
-	URNNamespaceID   = "coconut"                     // the URN namespace
+	URNNamespaceID   = "lumi"                        // the URN namespace
 	URNNameDelimiter = "::"                          // the delimiter between URN name elements
 )
 

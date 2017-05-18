@@ -5,7 +5,7 @@ package resource
 import (
 	"io"
 
-	"github.com/pulumi/coconut/pkg/tokens"
+	"github.com/pulumi/lumi/pkg/tokens"
 )
 
 // Provider presents a simple interface for orchestrating resource create, reead, update, and delete operations.  Each

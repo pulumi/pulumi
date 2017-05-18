@@ -11,15 +11,15 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	awsiam "github.com/aws/aws-sdk-go/service/iam"
-	"github.com/pulumi/coconut/pkg/resource"
-	"github.com/pulumi/coconut/pkg/util/contract"
-	"github.com/pulumi/coconut/pkg/util/mapper"
-	"github.com/pulumi/coconut/sdk/go/pkg/cocorpc"
+	"github.com/pulumi/lumi/pkg/resource"
+	"github.com/pulumi/lumi/pkg/util/contract"
+	"github.com/pulumi/lumi/pkg/util/mapper"
+	"github.com/pulumi/lumi/sdk/go/pkg/lumirpc"
 	"golang.org/x/net/context"
 
-	"github.com/pulumi/coconut/lib/aws/provider/awsctx"
-	awscommon "github.com/pulumi/coconut/lib/aws/rpc"
-	"github.com/pulumi/coconut/lib/aws/rpc/iam"
+	"github.com/pulumi/lumi/lib/aws/provider/awsctx"
+	awscommon "github.com/pulumi/lumi/lib/aws/rpc"
+	"github.com/pulumi/lumi/lib/aws/rpc/iam"
 )
 
 const RoleToken = iam.RoleToken
@@ -30,7 +30,7 @@ const (
 )
 
 // NewRoleProvider creates a provider that handles IAM role operations.
-func NewRoleProvider(ctx *awsctx.Context) cocorpc.ResourceProviderServer {
+func NewRoleProvider(ctx *awsctx.Context) lumirpc.ResourceProviderServer {
 	ops := &roleProvider{ctx}
 	return iam.NewRoleProvider(ops)
 }

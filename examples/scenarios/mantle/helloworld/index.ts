@@ -1,11 +1,11 @@
 // Copyright 2017 Pulumi, Inc. All rights reserved.
 
-import * as coconut from "@coconut/coconut";
-import * as mantle from "@coconut/mantle";
+import * as lumi from "@lumi/lumi";
+import * as mantle from "@lumi/mantle";
 
 let func = new mantle.func.Function(
     "hellofunc",
-    new coconut.asset.String(
+    new lumi.asset.String(
         "exports.handler = function(e, ctx, cb) {\n" +
         "    cb(null, 'Hello, world!');\n" +
         "}\n",

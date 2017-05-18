@@ -5,7 +5,7 @@ package pack
 import (
 	"sort"
 
-	"github.com/pulumi/coconut/pkg/tokens"
+	"github.com/pulumi/lumi/pkg/tokens"
 )
 
 func StableDependencies(deps Dependencies) []tokens.PackageName {

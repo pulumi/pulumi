@@ -3,20 +3,20 @@
 package resource
 
 import (
-	"github.com/pulumi/coconut/pkg/util/mapper"
-	"github.com/pulumi/coconut/sdk/go/pkg/cocorpc"
+	"github.com/pulumi/lumi/pkg/util/mapper"
+	"github.com/pulumi/lumi/sdk/go/pkg/lumirpc"
 )
 
 // NewCheckResponse produces a response with property validation failures from the given array of mapper failures.
-func NewCheckResponse(err mapper.DecodeError) *cocorpc.CheckResponse {
-	var checkFailures []*cocorpc.CheckFailure
+func NewCheckResponse(err mapper.DecodeError) *lumirpc.CheckResponse {
+	var checkFailures []*lumirpc.CheckFailure
 	if err != nil {
 		for _, failure := range err.Failures() {
-			checkFailures = append(checkFailures, &cocorpc.CheckFailure{
+			checkFailures = append(checkFailures, &lumirpc.CheckFailure{
 				Property: failure.Field(),
 				Reason:   failure.Reason(),
 			})
 		}
 	}
-	return &cocorpc.CheckResponse{Failures: checkFailures}
+	return &lumirpc.CheckResponse{Failures: checkFailures}
 }

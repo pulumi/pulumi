@@ -1,7 +1,7 @@
 # Resource IDL
 
 As we write more resource provider packages, we have begun to encounter shortcomings.  Properties must currently be
-defined both in the CocoLang type definitions and in the Go provider implementation, requiring edits to many files just
+defined both in the LumiLang type definitions and in the Go provider implementation, requiring edits to many files just
 to add, change, or remove a property (or fix a bug).  Additionally, there is considerable boilerplate in the provider
 code, particularly around marshaling the same types defined in TypeScript, validation, and the like, due to the use
 of an RPC boundary between the engine and dynamically loaded resource provider plugins.
@@ -22,22 +22,22 @@ The overall idea is that every resource package contains three sub-directories:
 The IDL compiler is named `cidlc`.  In general, the workflow will be:
 
 * Author the IDL files in a Go subset
-* Regenerate the Coconut type definitions: `$ cidlc idl/ --out-pack=pack/`
-* Regenerate the Coconut resource provider RPC stubs: `$ cidlc idl/ --out-provider=provider/`
+* Regenerate the Lumi type definitions: `$ cidlc idl/ --out-pack=pack/`
+* Regenerate the Lumi resource provider RPC stubs: `$ cidlc idl/ --out-provider=provider/`
 
 For now, just like our gRPC files, we will check in the resulting generated code.
 
-The Coconut type definitions are in TypeScript for the time being (as with our current hand-coded ones).  So,
-`cidlc` actually generates TypeScript, not a CocoPack directly.  (Eventually, `cidlc` can have a pluggable
-language target.)  `cocojs` is then used to compile that TypeScript in the usual ways.  This allows interesting things
+The Lumi type definitions are in TypeScript for the time being (as with our current hand-coded ones).  So,
+`cidlc` actually generates TypeScript, not a LumiPack directly.  (Eventually, `cidlc` can have a pluggable
+language target.)  `lumijs` is then used to compile that TypeScript in the usual ways.  This allows interesting things
 like augmenting the type definitions with functions (like `aws.getLinuxAMI`).
 
-The RPC stubs are simply variations of our existing gRPC `cocorpc.ResourceProvider` base type, with some boilerplate
+The RPC stubs are simply variations of our existing gRPC `lumirpc.ResourceProvider` base type, with some boilerplate
 around standard marshaling and validation, so the real providers can focus on important resource-specific logic.
 
 ## IDL
 
-The IDL is authored in a subset of Go.  Eventually, we may choose to elevate this to full-blown CocoGo, but for now, we
+The IDL is authored in a subset of Go.  Eventually, we may choose to elevate this to full-blown LumiGo, but for now, we
 are specifically focused on IDL-only.
 
 The only top-level elements supported at the moment are:
@@ -49,7 +49,7 @@ The only top-level elements supported at the moment are:
 Note that, in particular, interfaces, functions, and variables, are not supported.  This essentially means the IDL is
 capable only of defining type shapes and values, not logic, by design.
 
-The only types that can be used are limited to the "JSON-like" type system that Coconut uses:
+The only types that can be used are limited to the "JSON-like" type system that Lumi uses:
 
 * Primitives: `bool`, `float64`, `string`
 * Other structs
@@ -58,11 +58,11 @@ The only types that can be used are limited to the "JSON-like" type system that 
 * Arrays of the above things
 * Maps with `string` keys and any of the above as values
 
-A type is a resource if it embeds one of the standard Coconut IDL resource types: either `pkg/resource/idl/Resource` or
+A type is a resource if it embeds one of the standard Lumi IDL resource types: either `pkg/resource/idl/Resource` or
 `pkg/resource/idl/NamedResource`, the latter having a `Name` property.  For example:
 
     import (
-        "github.com/pulumi/coconut/pkg/resource/idl"
+        "github.com/pulumi/lumi/pkg/resource/idl"
     )
     type FooResource struct {
         idl.Resource
@@ -70,23 +70,23 @@ A type is a resource if it embeds one of the standard Coconut IDL resource types
 
 Because the standard Go import/export system is used, visibility is chosen based on Go's casing rules (e.g.,
 `CapitalCase` is exported, while `lowerCase` is not).  As a result, just as with marshaling JSON in Go, casing will
-need to be altered during translation into a Coconut package, to achieve the desired idiomatic Coconut casing.
+need to be altered during translation into a Lumi package, to achieve the desired idiomatic Lumi casing.
 
 Rather than requiring explicit management of name translation -- say, using tags, as with JSON marshaling -- the IDL
-compiler automatically turns `CapitalCase` fields into idiomatic Coconut `lowerCase` properties.  For example:
+compiler automatically turns `CapitalCase` fields into idiomatic Lumi `lowerCase` properties.  For example:
 
     type Foo struct {
         Bar string
     }
 
 The resulting `Foo` type's property will be named `bar`, not `Bar`.  This is almost always what you want, however,
-you may explicitly specify an alternative name to use using the `coco` tag's `name=<name>` option:
+you may explicitly specify an alternative name to use using the `lumi` tag's `name=<name>` option:
 
     type Foo struct {
-        Bar string `coco:"name=Bar"`
+        Bar string `lumi:"name=Bar"`
     }
 
-In fact, there are three other options supported by the `coco` tag, to control code generation:
+In fact, there are three other options supported by the `lumi` tag, to control code generation:
 
 * `optional`: this is an optional property (required is the default)
 * `out`: this property is set post-creation by the resource provider, rather than set by the client
@@ -96,7 +96,7 @@ In fact, there are three other options supported by the `coco` tag, to control c
 The resulting package and provider will perform client- and server-side validation automatically for each of these.
 
 Eventually we envision additional annotations, like min/max values for numbers, regexes for strings, and so on
-(see [pulumi/coconut#64](https://github.com/pulumi/coconut/issues/64) for details).
+(see [pulumi/lumi#64](https://github.com/pulumi/lumi/issues/64) for details).
 
 Enums are supported using semi-idiomatic Go enums, by just using a `string`-backed type alias, and by declaring the
 entire set of constants that the enum may take on.  The IDL compiler will treat this like an enum type:
@@ -144,12 +144,12 @@ The output generated package code will look like this:
 For every struct definition in the IDL, a corresponding interface is created with the properties with the appropriate
 casing, optionality, etc., as described above.
 
-For every resource in the IDL, a subclass of the appropriate coconut CocoPack resource base class is created (from the
-`coconut` package).  Each such class will have a constructor that accepts an arguments object containing all of its
+For every resource in the IDL, a subclass of the appropriate lumi LumiPack resource base class is created (from the
+`lumi` package).  Each such class will have a constructor that accepts an arguments object containing all of its
 properties and simply validates and self-assigns them, in the straightforward way.
 
 At the moment, custom logic for resource constructors is not supported.  Eventually, when `cidlc` is generalized to
-supporting a more full-blown CocoGo dialect, as a first class CocoLang, this will be possible.
+supporting a more full-blown LumiGo dialect, as a first class LumiLang, this will be possible.
 
 ## RPC Stubs
 
@@ -157,7 +157,7 @@ The generated RPC code (usually underneath `provider/`), provides simple wrapper
 interfaces.  Because the IDL types are marshaled in a way that may not match the definitions precisely -- for example,
 any capabilities are translated into string URNs on the wire -- there are also distinct marshaled structs.
 
-The generated directory structure, like with the CocoPack output, mirrors the IDL module structure.  But the expectation
+The generated directory structure, like with the LumiPack output, mirrors the IDL module structure.  But the expectation
 is that the provider will require aggressive customization, and so the files are generated with suffixes:
 
     provider/
@@ -172,7 +172,7 @@ is that the provider will require aggressive customization, and so the files are
 For every resource type `T`, `cidlc` will generate:
 
 * All the marshaling structs, using lower-cased variants of their IDL names (`t`, etc).
-* A constant `T tokens.Type` containing the full CocoIL token for the resource type (e.g., `aws:ec2:SecurityGroup`).
+* A constant `T tokens.Type` containing the full LumiIL token for the resource type (e.g., `aws:ec2:SecurityGroup`).
 * A base provider implementation `TProvider` that performs some helpful functions:
     - Unmarshals property bags into the typed marshaling structs (for operations like `Create` and `Update`).
     - Marshals typed marshaling structs into the property bags (for operations like `Get`).
@@ -192,7 +192,7 @@ This is an example of the IDL definition for the aws/ec2/SecurityGroup resource 
 package ec2
 
 import (
-    "github.com/pulumi/coconut/pkg/resource/idl"
+    "github.com/pulumi/lumi/pkg/resource/idl"
 )
 
 // A SecurityGroup is an Amazon EC2 Security Group.  For more information, see
@@ -200,15 +200,15 @@ import (
 type SecurityGroup struct {
     idl.NamedResource
     // A required description about the security group.
-    GroupDescription string `coco:"replace"`
+    GroupDescription string `lumi:"replace"`
     // The VPC in which this security group resides (or blank if the default VPC).
-    VPC *VPC `coco:"optional,replace"`
+    VPC *VPC `lumi:"optional,replace"`
     // A list of Amazon EC2 security group egress rules.
-    SecurityGroupEgress *[]SecurityGroupRule `coco:"optional"`
+    SecurityGroupEgress *[]SecurityGroupRule `lumi:"optional"`
     // A list of Amazon EC2 security group ingress rules.
-    SecurityGroupIngress *[]SecurityGroupRule `coco:"optional"`
+    SecurityGroupIngress *[]SecurityGroupRule `lumi:"optional"`
     // The group ID of the specified security group, such as `sg-94b3a1f6`.
-    GroupID *string `coco:"out"`
+    GroupID *string `lumi:"out"`
 }
 
 // A SecurityGroupRule describes an EC2 security group rule embedded within a SecurityGroup.
@@ -216,13 +216,13 @@ type SecurityGroupRule struct {
     // The IP name or number.
     IPProtocol string
     // Specifies a CIDR range.
-    CIDRIP *string `coco:"optional"`
+    CIDRIP *string `lumi:"optional"`
     // The start of port range for the TCP and UDP protocols, or an ICMP type number.  An ICMP type number of `-1`
     // indicates a wildcard (i.e., any ICMP type number).
-    FromPort *float64 `coco:"optional"`
+    FromPort *float64 `lumi:"optional"`
     // The end of port range for the TCP and UDP protocols, or an ICMP code.  An ICMP code of `-1` indicates a
     // wildcard (i.e., any ICMP code).
-    ToPort *float64 `coco:"optional"`
+    ToPort *float64 `lumi:"optional"`
 }
 ```
 

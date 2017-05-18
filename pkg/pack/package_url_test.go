@@ -7,7 +7,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/pulumi/coconut/pkg/tokens"
+	"github.com/pulumi/lumi/pkg/tokens"
 )
 
 func TestPackageURLStringParse(t *testing.T) {

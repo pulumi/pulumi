@@ -5,8 +5,8 @@ package resource
 import (
 	"io"
 
-	"github.com/pulumi/coconut/pkg/pack"
-	"github.com/pulumi/coconut/pkg/tokens"
+	"github.com/pulumi/lumi/pkg/pack"
+	"github.com/pulumi/lumi/pkg/tokens"
 )
 
 // Analyzer provides a pluggable interface for performing arbitrary analysis of entire projects/stacks/snapshots, and/or

@@ -3,8 +3,8 @@
 package core
 
 import (
-	"github.com/pulumi/coconut/pkg/diag"
-	"github.com/pulumi/coconut/pkg/tokens"
+	"github.com/pulumi/lumi/pkg/diag"
+	"github.com/pulumi/lumi/pkg/tokens"
 )
 
 // Args are a set of command line arguments supplied to a blueprint.

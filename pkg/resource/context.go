@@ -7,10 +7,10 @@ import (
 
 	"github.com/golang/glog"
 
-	"github.com/pulumi/coconut/pkg/diag"
-	"github.com/pulumi/coconut/pkg/eval/rt"
-	"github.com/pulumi/coconut/pkg/tokens"
-	"github.com/pulumi/coconut/pkg/util/contract"
+	"github.com/pulumi/lumi/pkg/diag"
+	"github.com/pulumi/lumi/pkg/eval/rt"
+	"github.com/pulumi/lumi/pkg/tokens"
+	"github.com/pulumi/lumi/pkg/util/contract"
 )
 
 // Context is used to group related operations together so that associated OS resources can be cached, shared, and

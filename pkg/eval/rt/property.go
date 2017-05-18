@@ -3,8 +3,8 @@
 package rt
 
 import (
-	"github.com/pulumi/coconut/pkg/compiler/symbols"
-	"github.com/pulumi/coconut/pkg/util/contract"
+	"github.com/pulumi/lumi/pkg/compiler/symbols"
+	"github.com/pulumi/lumi/pkg/util/contract"
 )
 
 type PropertyKey string // property keys are strings (incl. invalid identifiers for dynamic).

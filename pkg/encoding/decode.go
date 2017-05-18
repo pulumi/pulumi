@@ -1,15 +1,15 @@
 // Copyright 2017 Pulumi, Inc. All rights reserved.
 
-// Package encoding can unmarshal CocoPack and CocoIL metadata formats.  Because of their complex structure, we cannot
+// Package encoding can unmarshal LumiPack and LumiIL metadata formats.  Because of their complex structure, we cannot
 // rely on the standard JSON  marshaling and unmarshaling routines.  Instead, we will need to do it mostly "by hand".
 package encoding
 
 import (
 	"reflect"
 
-	"github.com/pulumi/coconut/pkg/compiler/ast"
-	"github.com/pulumi/coconut/pkg/pack"
-	"github.com/pulumi/coconut/pkg/util/mapper"
+	"github.com/pulumi/lumi/pkg/compiler/ast"
+	"github.com/pulumi/lumi/pkg/pack"
+	"github.com/pulumi/lumi/pkg/util/mapper"
 )
 
 // Decode unmarshals the entire contents of the given byte array into a Package object.

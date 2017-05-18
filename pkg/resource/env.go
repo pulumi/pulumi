@@ -3,9 +3,9 @@
 package resource
 
 import (
-	"github.com/pulumi/coconut/pkg/compiler/core"
-	"github.com/pulumi/coconut/pkg/tokens"
-	"github.com/pulumi/coconut/pkg/util/contract"
+	"github.com/pulumi/lumi/pkg/compiler/core"
+	"github.com/pulumi/lumi/pkg/tokens"
+	"github.com/pulumi/lumi/pkg/util/contract"
 )
 
 // Env represents information about a deployment target.
@@ -21,7 +21,7 @@ type Envfile struct {
 	Latest *DeploymentRecord `json:"latest,omitempty"` // the latest/current deployment record.
 }
 
-// SerializeEnvfile turns a snapshot into a CocoGL data structure suitable for serialization.
+// SerializeEnvfile turns a snapshot into a LumiGL data structure suitable for serialization.
 func SerializeEnvfile(env *Env, snap Snapshot, reftag string) *Envfile {
 	contract.Requiref(env != nil, "env", "!= nil")
 

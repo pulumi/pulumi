@@ -3,8 +3,8 @@
 package iam
 
 import (
-	aws "github.com/pulumi/coconut/lib/aws/idl"
-	"github.com/pulumi/coconut/pkg/resource/idl"
+	aws "github.com/pulumi/lumi/lib/aws/idl"
+	"github.com/pulumi/lumi/pkg/resource/idl"
 )
 
 // Role is an AWS Identity and Access Management (IAM) role.  Use an IAM role to enable applications running on an EC2
@@ -13,10 +13,10 @@ import (
 type Role struct {
 	idl.NamedResource
 	// AssumeRolePolicyDocument is the trust policy associated with this role.
-	AssumeRolePolicyDocument interface{} `coco:"assumeRolePolicyDocument"` // TODO: schematize this.
+	AssumeRolePolicyDocument interface{} `lumi:"assumeRolePolicyDocument"` // TODO: schematize this.
 	// Path is the path associated with this role.  For more information about paths, see
 	// http://docs.aws.amazon.com/IAM/latest/UserGuide/Using_Identifiers.html#Identifiers_FriendlyNames.
-	Path *string `coco:"path,replaces,optional"`
+	Path *string `lumi:"path,replaces,optional"`
 	// RoleName is a name for the IAM role.  If you don't specify a name, a unique physical ID will be generated.
 	//
 	// Important: If you specify a name, you cannot perform updates that require replacement of this resource.  You can
@@ -26,12 +26,12 @@ type Role struct {
 	//
 	// Warning: Naming an IAM resource can cause an unrecoverable error if you reuse the same code in multiple regions.
 	// To prevent this, create a name that includes the region name itself, to create a region-specific name.
-	RoleName *string `coco:"roleName,replaces,optional"`
+	RoleName *string `lumi:"roleName,replaces,optional"`
 	// managedPolicies is one or more managed policies to attach to this role.
-	ManagedPolicyARNs *[]aws.ARN `coco:"managedPolicyARNs,optional"`
+	ManagedPolicyARNs *[]aws.ARN `lumi:"managedPolicyARNs,optional"`
 	// Policies are the policies to associate with this role.
-	Policies *[]InlinePolicy `coco:"policies,optional"`
+	Policies *[]InlinePolicy `lumi:"policies,optional"`
 	// The Amazon Resource Name (ARN) for the instance profile.  For example,
 	// `arn:aws:iam::1234567890:role/MyRole-AJJHDSKSDF`.
-	ARN aws.ARN `coco:"arn,out"`
+	ARN aws.ARN `lumi:"arn,out"`
 }

@@ -5,9 +5,9 @@ package encoding
 import (
 	"reflect"
 
-	"github.com/pulumi/coconut/pkg/compiler/ast"
-	"github.com/pulumi/coconut/pkg/util/contract"
-	"github.com/pulumi/coconut/pkg/util/mapper"
+	"github.com/pulumi/lumi/pkg/compiler/ast"
+	"github.com/pulumi/lumi/pkg/util/contract"
+	"github.com/pulumi/lumi/pkg/util/mapper"
 )
 
 func decodeObjectLiteralProperty(m mapper.Mapper, tree mapper.Object) (ast.ObjectLiteralProperty, error) {

@@ -10,20 +10,20 @@ import (
 	"github.com/golang/glog"
 	"github.com/pkg/errors"
 
-	"github.com/pulumi/coconut/pkg/tokens"
-	"github.com/pulumi/coconut/pkg/util/contract"
-	"github.com/pulumi/coconut/pkg/workspace"
-	"github.com/pulumi/coconut/sdk/go/pkg/cocorpc"
+	"github.com/pulumi/lumi/pkg/tokens"
+	"github.com/pulumi/lumi/pkg/util/contract"
+	"github.com/pulumi/lumi/pkg/workspace"
+	"github.com/pulumi/lumi/sdk/go/pkg/lumirpc"
 )
 
-const providerPrefix = "coco-resource"
+const providerPrefix = "lumi-resource"
 
 // provider reflects a resource plugin, loaded dynamically for a single package.
 type provider struct {
 	ctx    *Context
 	pkg    tokens.Package
 	plug   *plugin
-	client cocorpc.ResourceProviderClient
+	client lumirpc.ResourceProviderClient
 }
 
 // NewProvider attempts to bind to a given package's resource plugin and then creates a gRPC connection to it.  If the
@@ -47,7 +47,7 @@ func NewProvider(ctx *Context, pkg tokens.Package) (Provider, error) {
 		ctx:    ctx,
 		pkg:    pkg,
 		plug:   plug,
-		client: cocorpc.NewResourceProviderClient(plug.Conn),
+		client: lumirpc.NewResourceProviderClient(plug.Conn),
 	}, nil
 }
 
@@ -56,7 +56,7 @@ func (p *provider) Pkg() tokens.Package { return p.pkg }
 // Check validates that the given property bag is valid for a resource of the given type.
 func (p *provider) Check(t tokens.Type, props PropertyMap) ([]CheckFailure, error) {
 	glog.V(7).Infof("resource[%v].Check(t=%v,#props=%v) executing", p.pkg, t, len(props))
-	req := &cocorpc.CheckRequest{
+	req := &lumirpc.CheckRequest{
 		Type: string(t),
 		Properties: MarshalProperties(p.ctx, props, MarshalOptions{
 			PermitOlds: true, // permit old URNs, since this is pre-update.
@@ -81,7 +81,7 @@ func (p *provider) Check(t tokens.Type, props PropertyMap) ([]CheckFailure, erro
 // Name names a given resource.
 func (p *provider) Name(t tokens.Type, props PropertyMap) (tokens.QName, error) {
 	glog.V(7).Infof("resource[%v].Name(t=%v,#props=%v) executing", p.pkg, t, len(props))
-	req := &cocorpc.NameRequest{
+	req := &lumirpc.NameRequest{
 		Type: string(t),
 		Properties: MarshalProperties(p.ctx, props, MarshalOptions{
 			PermitOlds: true, // permit old URNs, since this is pre-update.
@@ -103,7 +103,7 @@ func (p *provider) Name(t tokens.Type, props PropertyMap) (tokens.QName, error) 
 // Create allocates a new instance of the provided resource and returns its unique ID afterwards.
 func (p *provider) Create(t tokens.Type, props PropertyMap) (ID, PropertyMap, State, error) {
 	glog.V(7).Infof("resource[%v].Create(t=%v,#props=%v) executing", p.pkg, t, len(props))
-	req := &cocorpc.CreateRequest{
+	req := &lumirpc.CreateRequest{
 		Type:       string(t),
 		Properties: MarshalProperties(p.ctx, props, MarshalOptions{}),
 	}
@@ -128,7 +128,7 @@ func (p *provider) Create(t tokens.Type, props PropertyMap) (ID, PropertyMap, St
 // Get reads the instance state identified by id/t, and returns a bag of properties.
 func (p *provider) Get(id ID, t tokens.Type) (PropertyMap, error) {
 	glog.V(7).Infof("resource[%v].Get(id=%v,t=%v) executing", p.pkg, id, t)
-	req := &cocorpc.GetRequest{
+	req := &lumirpc.GetRequest{
 		Id:   string(id),
 		Type: string(t),
 	}
@@ -152,7 +152,7 @@ func (p *provider) InspectChange(id ID, t tokens.Type,
 
 	glog.V(7).Infof("resource[%v].InspectChange(id=%v,t=%v,#olds=%v,#news=%v) executing",
 		p.pkg, id, t, len(olds), len(news))
-	req := &cocorpc.ChangeRequest{
+	req := &lumirpc.ChangeRequest{
 		Id:   string(id),
 		Type: string(t),
 		Olds: MarshalProperties(p.ctx, olds, MarshalOptions{
@@ -183,7 +183,7 @@ func (p *provider) Update(id ID, t tokens.Type, olds PropertyMap, news PropertyM
 
 	glog.V(7).Infof("resource[%v].Update(id=%v,t=%v,#olds=%v,#news=%v) executing",
 		p.pkg, id, t, len(olds), len(news))
-	req := &cocorpc.ChangeRequest{
+	req := &lumirpc.ChangeRequest{
 		Id:   string(id),
 		Type: string(t),
 		Olds: MarshalProperties(p.ctx, olds, MarshalOptions{
@@ -208,7 +208,7 @@ func (p *provider) Delete(id ID, t tokens.Type) (State, error) {
 	contract.Requiref(t != "", "t", "not empty")
 
 	glog.V(7).Infof("resource[%v].Delete(id=%v,t=%v) executing", p.pkg, id, t)
-	req := &cocorpc.DeleteRequest{
+	req := &lumirpc.DeleteRequest{
 		Id:   string(id),
 		Type: string(t),
 	}

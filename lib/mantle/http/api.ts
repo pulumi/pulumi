@@ -4,9 +4,9 @@ import * as arch from "../arch";
 import * as config from "../config";
 import * as func from "../func";
 import * as runtime from "../runtime";
-import * as aws from "@coconut/aws";
-import * as kubefission from "@coconut/kubefission";
-import {asset} from "@coconut/coconut";
+import * as aws from "@lumi/aws";
+import * as kubefission from "@lumi/kubefission";
+import {asset} from "@lumi/lumi";
 
 // API is a cross-cloud API gateway endpoint.
 export class API {
@@ -101,7 +101,7 @@ export class API {
         let stage = new aws.apigateway.Stage(prefix + "-primary-stage", {
             deployment: deployment,
             restAPI: restAPI,
-            stageName: "Primary", // TODO: consider using the Coconut environment name.
+            stageName: "Primary", // TODO: consider using the Lumi environment name.
         });
 
         // Grant permissions for the API gateway to invoke the target function.

@@ -1,6 +1,0 @@
-name: aws/riffmart
-description: A full-blown sample AWS cluster.
-dependencies:
-    coconut: "*"
-    aws: "*"
-

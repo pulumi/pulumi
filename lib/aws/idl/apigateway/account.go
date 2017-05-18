@@ -3,9 +3,9 @@
 package apigateway
 
 import (
-	"github.com/pulumi/coconut/pkg/resource/idl"
+	"github.com/pulumi/lumi/pkg/resource/idl"
 
-	"github.com/pulumi/coconut/lib/aws/idl/iam"
+	"github.com/pulumi/lumi/lib/aws/idl/iam"
 )
 
 // The Account resource specifies the AWS Identity and Access Management (IAM) role that Amazon API
@@ -13,5 +13,5 @@ import (
 type Account struct {
 	idl.NamedResource
 	// CloudWatchRole is the IAM role that has write access to CloudWatch Logs in your account.
-	CloudWatchRole *iam.Role `coco:"cloudWatchRole,optional"`
+	CloudWatchRole *iam.Role `lumi:"cloudWatchRole,optional"`
 }

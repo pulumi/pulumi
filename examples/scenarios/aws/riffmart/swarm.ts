@@ -1,7 +1,7 @@
 // Copyright 2017 Pulumi, Inc. All rights reserved.
 
-import * as cmd from "@coconut/cmd";
-import * as docker from "@coconut/docker";
+import * as cmd from "@lumi/cmd";
+import * as docker from "@lumi/docker";
 
 export let agentCount: number | undefined;
 export let dns: string | undefined;

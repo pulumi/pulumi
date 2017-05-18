@@ -10,20 +10,20 @@ import (
 
 	"github.com/aws/aws-sdk-go/aws"
 	awsec2 "github.com/aws/aws-sdk-go/service/ec2"
-	"github.com/pulumi/coconut/pkg/resource"
-	"github.com/pulumi/coconut/pkg/util/contract"
-	"github.com/pulumi/coconut/pkg/util/mapper"
-	"github.com/pulumi/coconut/sdk/go/pkg/cocorpc"
+	"github.com/pulumi/lumi/pkg/resource"
+	"github.com/pulumi/lumi/pkg/util/contract"
+	"github.com/pulumi/lumi/pkg/util/mapper"
+	"github.com/pulumi/lumi/sdk/go/pkg/lumirpc"
 	"golang.org/x/net/context"
 
-	"github.com/pulumi/coconut/lib/aws/provider/awsctx"
-	"github.com/pulumi/coconut/lib/aws/rpc/ec2"
+	"github.com/pulumi/lumi/lib/aws/provider/awsctx"
+	"github.com/pulumi/lumi/lib/aws/rpc/ec2"
 )
 
 const InstanceToken = ec2.InstanceToken
 
 // NewInstanceProvider creates a provider that handles EC2 instance operations.
-func NewInstanceProvider(ctx *awsctx.Context) cocorpc.ResourceProviderServer {
+func NewInstanceProvider(ctx *awsctx.Context) lumirpc.ResourceProviderServer {
 	ops := &instanceProvider{ctx}
 	return ec2.NewInstanceProvider(ops)
 }

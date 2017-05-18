@@ -3,8 +3,8 @@
 package resource
 
 import (
-	"github.com/pulumi/coconut/pkg/graph"
-	"github.com/pulumi/coconut/pkg/util/contract"
+	"github.com/pulumi/lumi/pkg/graph"
+	"github.com/pulumi/lumi/pkg/util/contract"
 )
 
 type resourceGraph struct {

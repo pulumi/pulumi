@@ -9,9 +9,9 @@ import (
 	"github.com/fatih/structs"
 	"github.com/pkg/errors"
 
-	"github.com/pulumi/coconut/pkg/tokens"
-	"github.com/pulumi/coconut/pkg/util/contract"
-	"github.com/pulumi/coconut/pkg/util/mapper"
+	"github.com/pulumi/lumi/pkg/tokens"
+	"github.com/pulumi/lumi/pkg/util/contract"
+	"github.com/pulumi/lumi/pkg/util/mapper"
 )
 
 // PropertyKey is the name of a property.

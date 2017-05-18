@@ -1,20 +1,20 @@
 // Copyright 2017 Pulumi, Inc. All rights reserved.
 
 // Package predef contains a set of tokens and/or symbols that are so-called "predefined"; they map to real abstractions
-// defined elsewhere, like the Coconut standard library, but don't actually define them.
+// defined elsewhere, like the Lumi standard library, but don't actually define them.
 package predef
 
 import (
-	"github.com/pulumi/coconut/pkg/tokens"
+	"github.com/pulumi/lumi/pkg/tokens"
 )
 
 var (
-	// CocoStdlib is the predefined Coconut standard library.
-	CocoStdlib = tokens.NewPackageToken("coconut")
-	// CocoStdlibMainModule is the predefined Coconut standard library's main module.
-	CocoStdlibMainModule = tokens.NewModuleToken(CocoStdlib, tokens.DefaultModule)
-	// CocoStdlibResourceModule is the predefined Coconut standard library's resource module.
-	CocoStdlibResourceModule = tokens.NewModuleToken(CocoStdlib, "resource")
-	// CocoStdlibResourceClass is the penultimate resource base class, from which all resources derive.
-	CocoStdlibResourceClass = tokens.NewTypeToken(CocoStdlibResourceModule, "Resource")
+	// LumiStdlib is the predefined Lumi standard library.
+	LumiStdlib = tokens.NewPackageToken("lumi")
+	// LumiStdlibMainModule is the predefined Lumi standard library's main module.
+	LumiStdlibMainModule = tokens.NewModuleToken(LumiStdlib, tokens.DefaultModule)
+	// LumiStdlibResourceModule is the predefined Lumi standard library's resource module.
+	LumiStdlibResourceModule = tokens.NewModuleToken(LumiStdlib, "resource")
+	// LumiStdlibResourceClass is the penultimate resource base class, from which all resources derive.
+	LumiStdlibResourceClass = tokens.NewTypeToken(LumiStdlibResourceModule, "Resource")
 )

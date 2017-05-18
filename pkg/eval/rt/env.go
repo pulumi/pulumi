@@ -3,9 +3,9 @@
 package rt
 
 import (
-	"github.com/pulumi/coconut/pkg/compiler/binder"
-	"github.com/pulumi/coconut/pkg/compiler/symbols"
-	"github.com/pulumi/coconut/pkg/tokens"
+	"github.com/pulumi/lumi/pkg/compiler/binder"
+	"github.com/pulumi/lumi/pkg/compiler/symbols"
+	"github.com/pulumi/lumi/pkg/tokens"
 )
 
 // Environment represents a current chained collection of frames, forming an environment of variables.

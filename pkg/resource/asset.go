@@ -18,7 +18,7 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/pulumi/coconut/pkg/util/contract"
+	"github.com/pulumi/lumi/pkg/util/contract"
 )
 
 // Asset is a serialized asset reference.  It is a union: thus, only one of its fields will be non-nil.  Several helper

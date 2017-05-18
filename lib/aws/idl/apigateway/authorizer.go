@@ -3,9 +3,9 @@
 package apigateway
 
 import (
-	"github.com/pulumi/coconut/pkg/resource/idl"
+	"github.com/pulumi/lumi/pkg/resource/idl"
 
-	"github.com/pulumi/coconut/lib/aws/idl/iam"
+	"github.com/pulumi/lumi/lib/aws/idl/iam"
 )
 
 // The Authorizer resource creates an authorization layer that Amazon API Gateway (API Gateway) activates for
@@ -13,33 +13,33 @@ import (
 type Authorizer struct {
 	idl.NamedResource
 	// Type is the type of authorizer.
-	Type AuthorizerType `coco:"type"`
+	Type AuthorizerType `lumi:"type"`
 	// AuthorizerCredentials are the credentials required for the authorizer. To specify an AWS Identity and Access
 	// Management (IAM) role that API Gateway assumes, specify the role. To use resource-based permissions on the AWS
 	// Lambda (Lambda) function, specify null.
-	AuthorizerCredentials *iam.Role `coco:"authorizerCredentials,optional"`
+	AuthorizerCredentials *iam.Role `lumi:"authorizerCredentials,optional"`
 	// AuthorizerResultTTLInSeconds is the time-to-live (TTL) period, in seconds, that specifies how long API Gateway
 	// caches authorizer results.  If you specify a value greater than `0`, API Gateway caches the authorizer responses.
 	// By default, API Gateway sets this property to `300`.  The maximum value is `3600`, or 1 hour.
-	AuthorizerResultTTLInSeconds *float64 `coco:"authorizerResultTTLInSeconds,optional"`
+	AuthorizerResultTTLInSeconds *float64 `lumi:"authorizerResultTTLInSeconds,optional"`
 	// AuthorizerURI is the authorizer's Uniform Resource Identifier (URI).  If you specify `TOKEN` for the authorizer's
 	// type property, specify a Lambda function URI, which has the form `arn:aws:apigateway:region:lambda:path/path`.
 	// The path usually has the form `/2015-03-31/functions/LambdaFunctionARN/invocations`.
-	AuthorizerURI *string `coco:"authorizerURI,optional"`
+	AuthorizerURI *string `lumi:"authorizerURI,optional"`
 	// IdentitySource is the source of the identity in an incoming request.  If you specify `TOKEN` for the authorizer's
 	// type property, specify a mapping expression.  The custom header mapping expression has the form
 	// `method.request.header.name`, where name is the name of a custom authorization header that clients submit as part
 	// of their requests.
-	IdentitySource *string `coco:"identitySource,optional"`
+	IdentitySource *string `lumi:"identitySource,optional"`
 	// IdentityValidationExpression is a validation expression for the incoming identity.  If you specify `TOKEN` for
 	// the authorizer's type property, specify a regular expression.  API Gateway uses the expression to attempt to
 	// match the incoming client token, and proceeds if the token matches.  If the token doesn't match, API Gateway
 	// responds with a 401 (unauthorized request) error code.
-	IdentityValidationExpression *string `coco:"identityValidationExpression,optional"`
+	IdentityValidationExpression *string `lumi:"identityValidationExpression,optional"`
 	// providers is a list of the Amazon Cognito user pools to associate with this authorizer.
-	Providers *[]idl.Resource/*TODO: cognito.UserPool*/ `coco:"providers,optional"`
+	Providers *[]idl.Resource/*TODO: cognito.UserPool*/ `lumi:"providers,optional"`
 	// RestAPI is the resource in which API Gateway creates the authorizer.
-	RestAPI *RestAPI `coco:"restAPI,optional"`
+	RestAPI *RestAPI `lumi:"restAPI,optional"`
 }
 
 type AuthorizerType string

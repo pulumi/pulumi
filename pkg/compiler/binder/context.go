@@ -8,14 +8,14 @@ import (
 
 	"github.com/golang/glog"
 
-	"github.com/pulumi/coconut/pkg/compiler/ast"
-	"github.com/pulumi/coconut/pkg/compiler/core"
-	"github.com/pulumi/coconut/pkg/compiler/errors"
-	"github.com/pulumi/coconut/pkg/compiler/symbols"
-	"github.com/pulumi/coconut/pkg/compiler/types"
-	"github.com/pulumi/coconut/pkg/diag"
-	"github.com/pulumi/coconut/pkg/tokens"
-	"github.com/pulumi/coconut/pkg/util/contract"
+	"github.com/pulumi/lumi/pkg/compiler/ast"
+	"github.com/pulumi/lumi/pkg/compiler/core"
+	"github.com/pulumi/lumi/pkg/compiler/errors"
+	"github.com/pulumi/lumi/pkg/compiler/symbols"
+	"github.com/pulumi/lumi/pkg/compiler/types"
+	"github.com/pulumi/lumi/pkg/diag"
+	"github.com/pulumi/lumi/pkg/tokens"
+	"github.com/pulumi/lumi/pkg/util/contract"
 )
 
 // Context holds binder-specific context information, like symbol and type binding information.

@@ -3,7 +3,7 @@
 package ec2
 
 import (
-	"github.com/pulumi/coconut/pkg/resource/idl"
+	"github.com/pulumi/lumi/pkg/resource/idl"
 )
 
 // An Internet gateway enables your instances to connect to the Internet through the Amazon EC2 edge network.  See

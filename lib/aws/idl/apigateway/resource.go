@@ -3,7 +3,7 @@
 package apigateway
 
 import (
-	"github.com/pulumi/coconut/pkg/resource/idl"
+	"github.com/pulumi/lumi/pkg/resource/idl"
 )
 
 // An Amazon API Gateway (API Gateway) API resource.
@@ -11,9 +11,9 @@ type Resource struct {
 	idl.NamedResource
 	// If you want to create a child resource, the parent resource.  For resources without a parent, specify
 	// the RestAPI's root resource.
-	Parent *Resource `coco:"parent,replaces"`
+	Parent *Resource `lumi:"parent,replaces"`
 	// A path name for the resource.
-	PathPart string `coco:"pathPart,replaces"`
+	PathPart string `lumi:"pathPart,replaces"`
 	// The RestAPI resource in which you want to create this resource.
-	RestAPI *RestAPI `coco:"restAPI,replaces"`
+	RestAPI *RestAPI `lumi:"restAPI,replaces"`
 }

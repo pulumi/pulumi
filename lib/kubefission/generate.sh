@@ -1,5 +1,5 @@
 #!/bin/sh
-cidlc \
+clidl \
     kubefission idl/ \
     --recursive \
     --out-pack=pack/ \

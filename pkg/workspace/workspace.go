@@ -11,14 +11,14 @@ import (
 	"github.com/golang/glog"
 	homedir "github.com/mitchellh/go-homedir"
 
-	"github.com/pulumi/coconut/pkg/compiler/core"
-	"github.com/pulumi/coconut/pkg/encoding"
-	"github.com/pulumi/coconut/pkg/pack"
-	"github.com/pulumi/coconut/pkg/tokens"
-	"github.com/pulumi/coconut/pkg/util/contract"
+	"github.com/pulumi/lumi/pkg/compiler/core"
+	"github.com/pulumi/lumi/pkg/encoding"
+	"github.com/pulumi/lumi/pkg/pack"
+	"github.com/pulumi/lumi/pkg/tokens"
+	"github.com/pulumi/lumi/pkg/util/contract"
 )
 
-// W offers functionality for interacting with Coconut workspaces.  A workspace influences compilation; for example, it
+// W offers functionality for interacting with Lumi workspaces.  A workspace influences compilation; for example, it
 // can specify default versions of dependencies, easing the process of working with multiple projects.
 type W interface {
 	Path() string        // the base path of the current workspace.
@@ -79,10 +79,10 @@ func (w *workspace) init() error {
 				return err
 			}
 			for _, file := range files {
-				// A coconut directory delimits the root of the workspace.
-				cocodir := filepath.Join(root, file.Name())
-				if IsCocoDir(cocodir) {
-					glog.V(3).Infof("Coconut workspace detected; setting root to %v", w.root)
+				// A lumi directory delimits the root of the workspace.
+				lumidir := filepath.Join(root, file.Name())
+				if IsLumiDir(lumidir) {
+					glog.V(3).Infof("Lumi workspace detected; setting root to %v", w.root)
 					w.root = root                      // remember the root.
 					w.settings, err = w.readSettings() // load up optional settings.
 					if err != nil {
@@ -95,7 +95,7 @@ func (w *workspace) init() error {
 			// If neither succeeded, keep looking in our parent directory.
 			if root = filepath.Dir(root); isTop(root) {
 				// We reached the top of the filesystem.  Just set root back to the path and stop.
-				glog.V(3).Infof("No Coconut workspace found; defaulting to current path %v", w.root)
+				glog.V(3).Infof("No Lumi workspace found; defaulting to current path %v", w.root)
 				w.root = w.path
 				break
 			}
@@ -114,29 +114,29 @@ func (w *workspace) DetectPackage() (string, error) {
 }
 
 func (w *workspace) DepCandidates(dep pack.PackageURL) []string {
-	// The search order for dependencies is specified in https://github.com/pulumi/coconut/blob/master/docs/deps.md.
+	// The search order for dependencies is specified in https://github.com/pulumi/lumi/blob/master/docs/deps.md.
 	//
 	// Roughly speaking, these locations are are searched, in order:
 	//
 	// 		1. The current workspace, for intra-workspace but inter-package dependencies.
-	// 		2. The current workspace's .coconut/packs/ directory.
-	// 		3. The global workspace's .coconut/packs/ directory.
-	// 		4. The Coconut installation location's $COCOROOT/lib/ directory (default /usr/local/coconut/lib).
+	// 		2. The current workspace's .lumi/packs/ directory.
+	// 		3. The global workspace's .lumi/packs/ directory.
+	// 		4. The Lumi installation location's $LUMIROOT/lib/ directory (default /usr/local/lumi/lib).
 	//
 	// In each location, we prefer a fully qualified hit if it exists -- containing both the base of the reference plus
 	// the name -- however, we also accept name-only hits.  This allows developers to organize their workspace without
-	// worrying about where packages are hosted.  Most of the Coconut tools, however, prefer fully qualified paths.
+	// worrying about where packages are hosted.  Most of the Lumi tools, however, prefer fully qualified paths.
 	//
 	// To be more precise, given a PackageRef r and a workspace root w, we look in these locations, in order:
 	//
 	//		1. w/base(r)/name(r)
 	//		2. w/name(r)
-	//		3. w/.coconut/packs/base(r)/name(r)
-	//		4. w/.coconut/packs/name(r)
-	//		5. ~/.coconut/packs/base(r)/name(r)
-	//		6. ~/.coconut/packs/name(r)
-	//		7. $COCOROOT/lib/base(r)/name(r)
-	//		8. $COCOROOT/lib/name(r)
+	//		3. w/.lumi/packs/base(r)/name(r)
+	//		4. w/.lumi/packs/name(r)
+	//		5. ~/.lumi/packs/base(r)/name(r)
+	//		6. ~/.lumi/packs/name(r)
+	//		7. $LUMIROOT/lib/base(r)/name(r)
+	//		8. $LUMIROOT/lib/name(r)
 	//
 	// A workspace may optionally have a namespace, in which case, we will also look for stacks in the workspace whose
 	// name is simplified to omit that namespace part.  For example, if a stack is named `mu/project/stack`, and the

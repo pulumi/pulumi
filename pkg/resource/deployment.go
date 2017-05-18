@@ -8,12 +8,12 @@ import (
 	"reflect"
 	"time"
 
-	"github.com/pulumi/coconut/pkg/compiler/core"
-	"github.com/pulumi/coconut/pkg/tokens"
-	"github.com/pulumi/coconut/pkg/util/contract"
+	"github.com/pulumi/lumi/pkg/compiler/core"
+	"github.com/pulumi/lumi/pkg/tokens"
+	"github.com/pulumi/lumi/pkg/util/contract"
 )
 
-// DeploymentRecord is a serializable, flattened CocoGL graph structure, representing a deployment.   It is similar
+// DeploymentRecord is a serializable, flattened LumiGL graph structure, representing a deployment.   It is similar
 // to the actual Snapshot interface, except that it flattens and rearranges a few data structures for serializability.
 // Over time, we also expect this to gather more information about deployments themselves.
 type DeploymentRecord struct {
@@ -27,7 +27,7 @@ type DeploymentRecord struct {
 // DefaultDeploymentReftag is the default ref tag for intra-graph edges.
 const DefaultDeploymentReftag = "#ref"
 
-// Deployment is a serializable vertex within a CocoGL graph, specifically for resource snapshots.
+// Deployment is a serializable vertex within a LumiGL graph, specifically for resource snapshots.
 type Deployment struct {
 	ID         *ID                  `json:"id,omitempty"`         // the provider ID for this resource, if any.
 	Type       tokens.Type          `json:"type"`                 // this resource's full type token.
@@ -73,7 +73,7 @@ func serializeDeploymentRecord(snap Snapshot, reftag string) *DeploymentRecord {
 	}
 }
 
-// serializeDeployment turns a resource into a CocoGL data structure suitable for serialization.
+// serializeDeployment turns a resource into a LumiGL data structure suitable for serialization.
 func serializeDeployment(res Resource, reftag string) *Deployment {
 	contract.Assert(res != nil)
 

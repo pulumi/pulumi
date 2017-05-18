@@ -1,20 +1,20 @@
 // Copyright 2017 Pulumi, Inc. All rights reserved.
 
-import * as coconut from "@coconut/coconut";
+import * as lumi from "@lumi/lumi";
 
-class C extends coconut.Resource {
+class C extends lumi.Resource {
     constructor() {
         super();
     }
 }
 
-class B extends coconut.Resource {
+class B extends lumi.Resource {
     constructor() {
         super();
     }
 }
 
-class A extends coconut.Resource {
+class A extends lumi.Resource {
     private b: B;
     private c: C;
 

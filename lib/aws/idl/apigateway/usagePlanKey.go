@@ -3,7 +3,7 @@
 package apigateway
 
 import (
-	"github.com/pulumi/coconut/pkg/resource/idl"
+	"github.com/pulumi/lumi/pkg/resource/idl"
 )
 
 // The UsagePlanKey resource associates an Amazon API Gateway API key with an API Gateway usage plan.  This association
@@ -11,7 +11,7 @@ import (
 type UsagePlanKey struct {
 	idl.NamedResource
 	// The API key for the API resource to associate with a usage plan.
-	Key *APIKey `coco:"key,replaces"`
+	Key *APIKey `lumi:"key,replaces"`
 	// The usage plan.
-	UsagePlan *UsagePlan `coco:"usagePlan,replaces"`
+	UsagePlan *UsagePlan `lumi:"usagePlan,replaces"`
 }

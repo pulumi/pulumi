@@ -3,13 +3,13 @@
     "main": "bin/index.js",
     "typings": "bin/index.d.ts",
     "scripts": {
-        "build": "cocojs"
+        "build": "lumijs"
     },
     "devDependencies": {
         "typescript": "^2.1.4"
     },
     "peerDependencies": {
-        "@coconut/coconut": "*"
+        "@lumi/lumi": "*"
     }
 }
 

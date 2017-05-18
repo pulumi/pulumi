@@ -9,16 +9,16 @@ import (
 
 	"github.com/golang/glog"
 
-	"github.com/pulumi/coconut/pkg/compiler/symbols"
-	"github.com/pulumi/coconut/pkg/compiler/types"
-	"github.com/pulumi/coconut/pkg/compiler/types/predef"
-	"github.com/pulumi/coconut/pkg/eval/heapstate"
-	"github.com/pulumi/coconut/pkg/eval/rt"
-	"github.com/pulumi/coconut/pkg/tokens"
-	"github.com/pulumi/coconut/pkg/util/contract"
+	"github.com/pulumi/lumi/pkg/compiler/symbols"
+	"github.com/pulumi/lumi/pkg/compiler/types"
+	"github.com/pulumi/lumi/pkg/compiler/types/predef"
+	"github.com/pulumi/lumi/pkg/eval/heapstate"
+	"github.com/pulumi/lumi/pkg/eval/rt"
+	"github.com/pulumi/lumi/pkg/tokens"
+	"github.com/pulumi/lumi/pkg/util/contract"
 )
 
-// ID is a unique resource identifier; it is managed by the provider and is mostly opaque to Coconut.
+// ID is a unique resource identifier; it is managed by the provider and is mostly opaque to Lumi.
 type ID string
 
 func (id ID) String() string { return string(id) }
@@ -59,7 +59,7 @@ const (
 	StateUnknown
 )
 
-func IsResourceType(t symbols.Type) bool              { return types.HasBaseName(t, predef.CocoStdlibResourceClass) }
+func IsResourceType(t symbols.Type) bool              { return types.HasBaseName(t, predef.LumiStdlibResourceClass) }
 func IsResourceVertex(v *heapstate.ObjectVertex) bool { return IsResourceType(v.Obj().Type()) }
 
 type resource struct {

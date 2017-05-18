@@ -5,10 +5,10 @@ package binder
 import (
 	"github.com/golang/glog"
 
-	"github.com/pulumi/coconut/pkg/compiler/ast"
-	"github.com/pulumi/coconut/pkg/compiler/errors"
-	"github.com/pulumi/coconut/pkg/compiler/symbols"
-	"github.com/pulumi/coconut/pkg/util/contract"
+	"github.com/pulumi/lumi/pkg/compiler/ast"
+	"github.com/pulumi/lumi/pkg/compiler/errors"
+	"github.com/pulumi/lumi/pkg/compiler/symbols"
+	"github.com/pulumi/lumi/pkg/util/contract"
 )
 
 func (b *binder) bindClassDeclaration(node *ast.Class, parent *symbols.Module) *symbols.Class {

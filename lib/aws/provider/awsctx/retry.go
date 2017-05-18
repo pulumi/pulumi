@@ -5,7 +5,7 @@ package awsctx
 import (
 	"time"
 
-	"github.com/pulumi/coconut/pkg/util/retry"
+	"github.com/pulumi/lumi/pkg/util/retry"
 )
 
 const DefaultTimeout time.Duration = 30 * time.Second    // by default, wait at most 30 seconds for things.

@@ -4,6 +4,6 @@
 set -e                    # bail on errors
 
 echo Compiling:
-go build -o coco-analyzer-contoso_infosec
+go build -o lumi-analyzer-contoso_infosec
 echo Done.
 

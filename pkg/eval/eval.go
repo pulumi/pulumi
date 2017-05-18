@@ -10,19 +10,19 @@ import (
 
 	"github.com/golang/glog"
 
-	"github.com/pulumi/coconut/pkg/compiler/ast"
-	"github.com/pulumi/coconut/pkg/compiler/binder"
-	"github.com/pulumi/coconut/pkg/compiler/core"
-	"github.com/pulumi/coconut/pkg/compiler/errors"
-	"github.com/pulumi/coconut/pkg/compiler/symbols"
-	"github.com/pulumi/coconut/pkg/compiler/types"
-	"github.com/pulumi/coconut/pkg/diag"
-	"github.com/pulumi/coconut/pkg/eval/rt"
-	"github.com/pulumi/coconut/pkg/tokens"
-	"github.com/pulumi/coconut/pkg/util/contract"
+	"github.com/pulumi/lumi/pkg/compiler/ast"
+	"github.com/pulumi/lumi/pkg/compiler/binder"
+	"github.com/pulumi/lumi/pkg/compiler/core"
+	"github.com/pulumi/lumi/pkg/compiler/errors"
+	"github.com/pulumi/lumi/pkg/compiler/symbols"
+	"github.com/pulumi/lumi/pkg/compiler/types"
+	"github.com/pulumi/lumi/pkg/diag"
+	"github.com/pulumi/lumi/pkg/eval/rt"
+	"github.com/pulumi/lumi/pkg/tokens"
+	"github.com/pulumi/lumi/pkg/util/contract"
 )
 
-// Interpreter can evaluate compiled CocoPacks.
+// Interpreter can evaluate compiled LumiPacks.
 type Interpreter interface {
 	core.Phase
 
@@ -52,7 +52,7 @@ type InterpreterHooks interface {
 	OnEnterFunction(fnc symbols.Function) func() // invoked when we enter a new function.
 }
 
-// New creates an interpreter that can be used to evaluate CocoPacks.
+// New creates an interpreter that can be used to evaluate LumiPacks.
 func New(ctx *binder.Context, hooks InterpreterHooks) Interpreter {
 	e := &evaluator{
 		ctx:        ctx,
@@ -259,7 +259,7 @@ func (e *evaluator) initProperty(this *rt.Object, properties *rt.PropertyMap,
 			e.hooks.OnVariableAssign(decl, this, tokens.Name(key), nil, obj)
 		}
 		fnc := e.alloc.NewFunction(decl, m, this)
-		// TODO[pulumi/coconut#56]: all methods are readonly; consider permitting JS-style overwriting of them.
+		// TODO[pulumi/lumi#56]: all methods are readonly; consider permitting JS-style overwriting of them.
 		return properties.InitAddr(key, fnc, true, nil, nil), false
 	case symbols.Variable:
 		// A variable could have a default object; if so, use that; otherwise, null will be substituted automatically.
@@ -448,7 +448,7 @@ func (e *evaluator) getModuleObject(m *symbols.Module) *rt.Object {
 // getPrototypeObject returns the prototype for a given type.  The prototype is a mutable object, and so it is cached,
 // and reused for subsequent lookups.  This means that mutations in the prototype are lasting and visible for all later
 // uses.  This is similar to ECMAScript behavior; see http://www.ecma-international.org/ecma-262/6.0/#sec-objects.
-// TODO[pulumi/coconut#70]: technically this should be gotten from the constructor function object; we will need to
+// TODO[pulumi/lumi#70]: technically this should be gotten from the constructor function object; we will need to
 //     rewire things a bit, depending on how serious we are about ECMAScript compliance, especially dynamic scenarios.
 func (e *evaluator) getPrototypeObject(t symbols.Type) *rt.Object {
 	// If there is already a proto for this type, use it.
@@ -1563,11 +1563,11 @@ func (e *evaluator) evalLoadDynamicCore(node ast.Node, objexpr *ast.Expression, 
 		contract.Assertf(isarr, "Expected an array for numeric dynamic load index")
 		ix := int(name.NumberValue())
 		arrv := this.ArrayValue()
-		// TODO[pulumi/coconut#70]: Although storing arrays as arrays is fine for many circumstances, there are two
+		// TODO[pulumi/lumi#70]: Although storing arrays as arrays is fine for many circumstances, there are two
 		//     situations that could cause us troubles with ECMAScript compliance.  First, negative indices are fine in
 		//     ECMAScript.  Second, sparse arrays can be represented more efficiently as a "bag of properties" than as a
 		//     true array that needs to be resized (possibly growing to become enormous in memory usage).
-		// TODO[pulumi/coconut#70]: We are emulating "ECMAScript-like" array accesses, where -- just like ordinary
+		// TODO[pulumi/lumi#70]: We are emulating "ECMAScript-like" array accesses, where -- just like ordinary
 		//     property accesses below -- we will permit indexes that we've never seen before.  Out of bounds should
 		//     yield `undefined`, rather than the usual case of throwing an exception, for example.  And such
 		//     assignments are to be permitted.  This will cause troubles down the road when we do other languages that
@@ -1885,9 +1885,9 @@ func (e *evaluator) evalBinaryOperatorExpression(node *ast.BinaryOperatorExpress
 	//     type system is float64-based -- i.e., "JSON-like" -- we often find ourselves doing operations on floats that
 	//     honestly don't make sense (like shifting, masking, and whatnot).  If there is a type coercion, Golang
 	//     (rightfully) doesn't support an operator on numbers of that type.  I suspect we will eventually want to
-	//     consider integer types in CocoIL, and/or verify that numbers aren't outside of the legal range as part of
-	//     verification, and then push the responsibility for presenting valid CocoIL with any required conversions back
-	//     up to the CocoLang compilers (compile-time, runtime, or othwerwise, per the language semantics).
+	//     consider integer types in LumiIL, and/or verify that numbers aren't outside of the legal range as part of
+	//     verification, and then push the responsibility for presenting valid LumiIL with any required conversions back
+	//     up to the LumiLang compilers (compile-time, runtime, or othwerwise, per the language semantics).
 	switch node.Operator {
 	// Arithmetic operators
 	case ast.OpAdd:
@@ -1914,7 +1914,7 @@ func (e *evaluator) evalBinaryOperatorExpression(node *ast.BinaryOperatorExpress
 
 	// Bitwise operators
 	// TODO: the ECMAScript specification for bitwise operators is a fair bit more complicated than these; for instance,
-	//     shifts mask out all but the least significant 5 bits of the rhs.  If we don't do it here, CocoJS should; e.g.
+	//     shifts mask out all but the least significant 5 bits of the rhs.  If we don't do it here, LumiJS should; e.g.
 	//     see https://www.ecma-international.org/ecma-262/7.0/#sec-left-shift-operator.
 	case ast.OpBitwiseShiftLeft:
 		// Both targets are numbers; fetch them (asserting their types), and << them.

@@ -5,11 +5,11 @@ package symbols
 import (
 	"fmt"
 
-	"github.com/pulumi/coconut/pkg/diag"
-	"github.com/pulumi/coconut/pkg/tokens"
+	"github.com/pulumi/lumi/pkg/diag"
+	"github.com/pulumi/lumi/pkg/tokens"
 )
 
-// Symbol is the base interface for all CocoIL symbol types.
+// Symbol is the base interface for all LumiIL symbol types.
 type Symbol interface {
 	Name() tokens.Name   // the simple name for this symbol.
 	Token() tokens.Token // the unique qualified name token for this symbol.

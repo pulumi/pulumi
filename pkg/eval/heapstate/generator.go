@@ -1,19 +1,19 @@
 // Copyright 2017 Pulumi, Inc. All rights reserved.
 
-// Package heapstate turns CocoIL object creation, assignment, etc. events into a CocoGL object graph.
+// Package heapstate turns LumiIL object creation, assignment, etc. events into a LumiGL object graph.
 package heapstate
 
 import (
 	"github.com/golang/glog"
 
-	"github.com/pulumi/coconut/pkg/compiler/core"
-	"github.com/pulumi/coconut/pkg/compiler/symbols"
-	"github.com/pulumi/coconut/pkg/compiler/types"
-	"github.com/pulumi/coconut/pkg/diag"
-	"github.com/pulumi/coconut/pkg/eval"
-	"github.com/pulumi/coconut/pkg/eval/rt"
-	"github.com/pulumi/coconut/pkg/tokens"
-	"github.com/pulumi/coconut/pkg/util/contract"
+	"github.com/pulumi/lumi/pkg/compiler/core"
+	"github.com/pulumi/lumi/pkg/compiler/symbols"
+	"github.com/pulumi/lumi/pkg/compiler/types"
+	"github.com/pulumi/lumi/pkg/diag"
+	"github.com/pulumi/lumi/pkg/eval"
+	"github.com/pulumi/lumi/pkg/eval/rt"
+	"github.com/pulumi/lumi/pkg/tokens"
+	"github.com/pulumi/lumi/pkg/util/contract"
 )
 
 // Generator listens for events, records them as graph vertices and edges, and returns a DAG afterwards.
@@ -86,7 +86,7 @@ func (g *generator) HeapSnapshot() *Heap {
 	}
 }
 
-// Graph takes the information recorded thus far and produces a new CocoGL graph from it.
+// Graph takes the information recorded thus far and produces a new LumiGL graph from it.
 func (g *generator) Graph() *ObjectGraph {
 	glog.V(7).Infof("Generating graph with %v vertices", len(g.objs))
 

@@ -1,0 +1,5 @@
+name: kubefission
+description: A projection of the Fission Kubernetes functions-as-a-service project.
+dependencies:
+    lumi: "*"
+

@@ -1,7 +1,7 @@
 // Copyright 2017 Pulumi, Inc. All rights reserved.
 
-import * as aws from "@coconut/aws";
-import * as coconut from "@coconut/coconut";
+import * as aws from "@lumi/aws";
+import * as lumi from "@lumi/lumi";
 
 // Export some variables that can be configured externally.
 export let ssl: boolean | undefined;

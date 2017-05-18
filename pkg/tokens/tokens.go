@@ -1,12 +1,12 @@
 // Copyright 2017 Pulumi, Inc. All rights reserved.
 
-// Package tokens contains the core CocoIL symbol and token types.
+// Package tokens contains the core LumiIL symbol and token types.
 package tokens
 
 import (
 	"strings"
 
-	"github.com/pulumi/coconut/pkg/util/contract"
+	"github.com/pulumi/lumi/pkg/util/contract"
 )
 
 // Token is a qualified name that is capable of resolving to a symbol entirely on its own.  Most uses of tokens are

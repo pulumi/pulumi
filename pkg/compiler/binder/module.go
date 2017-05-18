@@ -7,9 +7,9 @@ import (
 
 	"github.com/golang/glog"
 
-	"github.com/pulumi/coconut/pkg/compiler/ast"
-	"github.com/pulumi/coconut/pkg/compiler/symbols"
-	"github.com/pulumi/coconut/pkg/util/contract"
+	"github.com/pulumi/lumi/pkg/compiler/ast"
+	"github.com/pulumi/lumi/pkg/compiler/symbols"
+	"github.com/pulumi/lumi/pkg/util/contract"
 )
 
 func (b *binder) bindModuleDeclarations(node *ast.Module, parent *symbols.Package) *symbols.Module {

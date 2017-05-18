@@ -3,7 +3,7 @@
 package resource
 
 import (
-	"github.com/pulumi/coconut/pkg/graph"
+	"github.com/pulumi/lumi/pkg/graph"
 )
 
 type planGraph struct {

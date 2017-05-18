@@ -3,8 +3,8 @@
 package types
 
 import (
-	"github.com/pulumi/coconut/pkg/compiler/symbols"
-	"github.com/pulumi/coconut/pkg/tokens"
+	"github.com/pulumi/lumi/pkg/compiler/symbols"
+	"github.com/pulumi/lumi/pkg/tokens"
 )
 
 // Conversion represents the kind of conversion required to convert from a value of one type to another.

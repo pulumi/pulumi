@@ -1,10 +1,10 @@
-# Coconut Overview
+# Lumi Overview
 
-Coconut is a toolset and runtime for creating reusable cloud services.  The resulting packages can be shared and
-consumed similar to your favorite programming language's package manager.  Coconut is inherently multi-language and
+Lumi is a toolset and runtime for creating reusable cloud services.  The resulting packages can be shared and
+consumed similar to your favorite programming language's package manager.  Lumi is inherently multi-language and
 multi-cloud, and lets you build abstractions that span different cloud environments and topologies, if you desire.
 
-This document provides an overview of the Coconut system, its goals, primary concepts, and the system architecture.
+This document provides an overview of the Lumi system, its goals, primary concepts, and the system architecture.
 
 ## Problem
 
@@ -37,45 +37,45 @@ way, and patches are applied unevenly and inconsistently, incurring security and
 All of the above is a big productivity drain, negatively impacting the agility of organizations moving to and innovating
 in the cloud.  Containers have delivered a great improvement to productivity and management of single nodes in a
 cluster, but have yet to simplify entire applications or entire clusters.  By adopting concepts and ideas that have
-been proven in the overall landscape of languages and runtimes, however, Coconut significantly improves this situation.
+been proven in the overall landscape of languages and runtimes, however, Lumi significantly improves this situation.
 
 ## Solution
 
-Coconut lets developers author cloud components in their language of choice (JavaScript, Python, Ruby, Go, etc).  These
+Lumi lets developers author cloud components in their language of choice (JavaScript, Python, Ruby, Go, etc).  These
 components include infrastructure, service and application-level components, serverless, and entire fabrics of
-topologies.  Coconut embraces an [immutable infrastructure](http://chadfowler.com/2013/06/23/immutable-deployments.html)
+topologies.  Lumi embraces an [immutable infrastructure](http://chadfowler.com/2013/06/23/immutable-deployments.html)
 philosophy, improving analysis, automation, auditing, and repeatability.  In [cattle versus pets](
-https://blog.engineyard.com/2014/pets-vs-cattle) terminology, Coconut prefers cattle, but can cater to pets.
+https://blog.engineyard.com/2014/pets-vs-cattle) terminology, Lumi prefers cattle, but can cater to pets.
 
-Coconut's approach to using a real language and package manager is in contrast to most approaches to cloud configuration
+Lumi's approach to using a real language and package manager is in contrast to most approaches to cloud configuration
 today which typically use obscure configuration markups, DSLs, and, occasionally, templating functionality for
 conditional logic.  This unified view is particularly helpful when building serverless applications where you want to
 focus on code.  In such applications, the infrastructure management pieces increasingly fade into the background.
 
-At the same time, Coconut is polyglot, allowing composition of components authored in many different languages.  Cloud
-components can be built by reusing existing components shared by others, and published to the Coconut package manager
+At the same time, Lumi is polyglot, allowing composition of components authored in many different languages.  Cloud
+components can be built by reusing existing components shared by others, and published to the Lumi package manager
 for others to use.  A common intermediate format and runtime is used to stitch these components together.  Cloud
 services are in fact simply instances of these components, with property values configured appropriately.  Change
-management leverages existing source control workflows and is performed by Coconut's understanding of the overall graph
+management leverages existing source control workflows and is performed by Lumi's understanding of the overall graph
 of dependencies between those services.  Think of each service as an "object" that is running in the cloud.
 
-Coconut may target any public or private cloud, and may be used in an unopinionated way (programmatic IaaS), or fully
+Lumi may target any public or private cloud, and may be used in an unopinionated way (programmatic IaaS), or fully
 opinionated (more PaaS, FaaS, or BaaS-like), depending on your preference.  Although you are free to program directly to
-your cloud provider's specific abstractions, using the full power of your native cloud, Coconut also facilitates
+your cloud provider's specific abstractions, using the full power of your native cloud, Lumi also facilitates
 building higher-level cloud-neutral components that can run anywhere.  This includes compute services, storage services,
 and even more logical domain-specific services like AI, ML, and recognition.  This is done using the standard techniques
 all programmers are familiar with: interface-based abstraction, class-based encapsulation, sharing, and reuse.
 
 ## Example
 
-Let us look at a handful of brief examples in Coconut's flavor of JavaScript, CocoJS.
+Let us look at a handful of brief examples in Lumi's flavor of JavaScript, LumiJS.
 
 ### Basic Infrastructure
 
 The first example is an unopinionated description of infrastructure that projects onto AWS in a straightforward way.
 It creates a virtual private cloud (VPC) and a subnet per availability zone, the foundation for most new private clouds:
 
-    import * as aws from "@coconut/aws";
+    import * as aws from "@lumi/aws";
     
     export let vpcCidrBlock = "10.0.0.0/16";
     
@@ -91,7 +91,7 @@ It creates a virtual private cloud (VPC) and a subnet per availability zone, the
         });
     }
 
-Although this is a simple example, it shows off some of the underlying power of the Coconut model:
+Although this is a simple example, it shows off some of the underlying power of the Lumi model:
 
 * Full configuration of AWS resources is available to us.
 * Resources are created and configured using standard language constructors and parameters.
@@ -115,7 +115,7 @@ wish to share your creation with the overall community, so that others can lever
 
 No matter the reason, doing this is as simple as exporting your infrastructure logic as a class that others can use:
 
-    import * as aws from "@coconut/aws";
+    import * as aws from "@lumi/aws";
 
     export class AWSInfraFoundation {
         public readonly vpc: aws.ec2.VPC;
@@ -167,7 +167,7 @@ To create an AWS Lambda using the lowest level, raw projection of the resources,
 using inline code embedded in a string, or we need to upload that code to S3 and reference it by bucket name.  Either
 way, the expression of this is unnatural to say the least.  For example:
 
-    import * as aws from "@coconut/aws";
+    import * as aws from "@lumi/aws";
 
     let dst = new aws.s3.Bucket("thumbnails");
 
@@ -233,10 +233,10 @@ experience overall.  The subscription to the S3 bucket event source is awkward. 
 requires that we dynamically inject code as text into the lambda, and fetch configuration through awkward API calls that
 make the inner code feel completely and utterly disconnected from the outer code, which of course, it actually is.
 
-The Coconut high-level abstractions alleviate this problem, as we will see soon.  But even without eschewing the
+The Lumi high-level abstractions alleviate this problem, as we will see soon.  But even without eschewing the
 AWS-specific nature of lambdas and S3 subscriptions, we can use the `aws.x` package for considerable convenience:
 
-    import * as aws from "@coconut/aws";
+    import * as aws from "@lumi/aws";
 
     let dst = new aws.s3.Bucket("thumbnails");
     let src = new aws.s3.Bucket("images", {
@@ -266,20 +266,20 @@ fall out as a natural consequence from our choice of using a real programming la
 
 Let us now look at a cloud-neutral serverless component that creates thumbnails from images uploaded to a bucket:
 
-    import * as coconut from "@coconut/coconut";
+    import * as lumi from "@lumi/lumi";
 
     export class Thumbnailer {
         // onNewThumbnail is an event that is raised for each new thumbnail.
-        public readonly onNewThumbnail: coconut.x.Event;
+        public readonly onNewThumbnail: lumi.x.Event;
 
-        private readonly src: coconut.x.Bucket; // the source to monitor for images.
-        private readonly dst: coconut.x.Bucket; // the destination to store thumbnails in.
+        private readonly src: lumi.x.Bucket; // the source to monitor for images.
+        private readonly dst: lumi.x.Bucket; // the destination to store thumbnails in.
 
-        constructor(src: coconut.x.Bucket, dst: coconut.x.Bucket) {
+        constructor(src: lumi.x.Bucket, dst: lumi.x.Bucket) {
             this.src = src;
             this.dst = dst;
-            this.onNewThumbnail = new coconut.x.Event();
-            this.src.onNewObject(async (event: coconut.x.NewObjectEvent) => {
+            this.onNewThumbnail = new lumi.x.Event();
+            this.src.onNewObject(async (event: lumi.x.NewObjectEvent) => {
                 // Generate a thumbnail from the object payload.
                 let thumb = generateThumbnail(event.getObject().data);
                 // Now store the new thumbnail and raise our event.
@@ -289,13 +289,13 @@ Let us now look at a cloud-neutral serverless component that creates thumbnails 
         }
     }
 
-`Thumbnailer` accepts two `coconut.x.Bucket`s in its constructor, subscribes to the source's `onNewObject` event,
+`Thumbnailer` accepts two `lumi.x.Bucket`s in its constructor, subscribes to the source's `onNewObject` event,
 creates new thumbnails in the resulting lambda, and stores them in the other bucket.
 
 It is important to note that the body of this lambda is real JavaScript -- and can use libraries from NPM, perform IO
-and `await`s, etc. -- while the configuration outside of it is the CocoJS subset.  Notice how we can mix what
+and `await`s, etc. -- while the configuration outside of it is the LumiJS subset.  Notice how we can mix what
 would have been classically expressed using a combination of configuration and real programming languages in one
-consistent and idiomatic programming model.  This illustrates why Coconut's multi-language capabilities are important.
+consistent and idiomatic programming model.  This illustrates why Lumi's multi-language capabilities are important.
 
 Also notice that `Thumbnailer` exposes its own event, `onNewThumbnail`, that can be subscribed just as it
 subscribes to bucket events.  This enables an extensible ecosystem of events and handlers.  These events and handlers
@@ -305,17 +305,17 @@ The result is a reusable cloud component that can be instantiated any number of 
 
 In fact, let us now look at code that uses `Thumbnailer`:
 
-    import * as aws from "@coconut/aws";
+    import * as aws from "@lumi/aws";
     import {Thumbnailer} from "...";
 
     let images = new aws.s3.Bucket("images");
     let thumbnails = new aws.s3.Bucket("thumbnails");
     let thumbnailer = new Thumbnailer(images, thumbnails);
 
-This package is an executable because it is meant to be run directly to create a new cloud topology.  Many Coconut
+This package is an executable because it is meant to be run directly to create a new cloud topology.  Many Lumi
 programs are libraries (like `Thumbnailer` itself), while blueprints are akin to executables in your favorite language.
 
-The `aws.s3.Bucket` class is a subclass of `coconut.x.Bucket`, and so can be passed to `Thumbnailer`'s constructor just
+The `aws.s3.Bucket` class is a subclass of `lumi.x.Bucket`, and so can be passed to `Thumbnailer`'s constructor just
 fine.  We could have passed an `azure.blob.Container`, `google.storage.Bucket`, or a custom subclass, instead.  Notice
 how `Thumbnailer` is itself a cloud-neutral abstraction.  Of course, if it had wanted to access specific AWS S3
 features, it could have requested a concrete `aws.s3.Bucket` instead; or it can enlighten itself and use advanced
@@ -324,7 +324,7 @@ decides.  In fact, this example is remarkably similar to accepting a concrete "l
 
 ## Architecture
 
-The primary concepts in Coconut are:
+The primary concepts in Lumi are:
 
 * **Package**: A static library or executable containing modules, classes, functions, and variables.
 * **Resource**: A special kind of class that represents a cloud resource (VM, VPC, subnet, bucket, etc).
@@ -334,19 +334,19 @@ The primary concepts in Coconut are:
 
 Analogous to programming languages, a stack is essentially a collection of instantiated resource objects.  Many
 concepts that are "distinct" in other systems, like gateways, controllers, functions, triggers, and so on, are expressed
-as classes in Coconut.  They are essentially "subclasses" -- or specializations -- of the more general concept of a
+as classes in Lumi.  They are essentially "subclasses" -- or specializations -- of the more general concept of a
 resource object, unifying the creation, configuration, provisioning, discovery, and overall management of them.
 
 There are some different kinds of stacks we will encounter:
 
 * **Plan**: A hypothetical stack created for purposes of inspection but that has not been deployed yet.
 * **Deployment**: A stack that has actually been deployed into an environment.
-* **Snapshot**: A stack generated by inspecting a live environment, not necessarily deployed using Coconut.
+* **Snapshot**: A stack generated by inspecting a live environment, not necessarily deployed using Lumi.
 
-Notice that Coconut has the ability to generate programs and stacks from an existing environment.  This can be useful
-during the initial adoption of Coconut.  It can also be useful for ongoing drift analysis, such as ensuring resources in
+Notice that Lumi has the ability to generate programs and stacks from an existing environment.  This can be useful
+during the initial adoption of Lumi.  It can also be useful for ongoing drift analysis, such as ensuring resources in
 production don't differ from staging, that resources in different regions are equivalent, and/or verifying that changes
-to an environment haven't been made without corresponding changes being made and checked into the Coconut metadata.
+to an environment haven't been made without corresponding changes being made and checked into the Lumi metadata.
 
 In addition to those core abstractions, there are some supporting ones:
 
@@ -356,25 +356,25 @@ In addition to those core abstractions, there are some supporting ones:
 
 There are some other "internal" concepts that most users can safely ignore:
 
-* **CocoLang**: A language subset for the Coconut configuration system (e.g., CocoJS, CocoPy, CocoGo, etc).
-* **CocoPack**: The intermediate package format used as metadata for packages, common to all languages.
-* **CocoIL**: The intermediate language (IL) used to represent code and data within a CocoPack package.
-* **CocoGL**: The graph language (GL) describing a stack's resource topology with dependencies as edges.
+* **LumiLang**: A language subset for the Lumi configuration system (e.g., LumiJS, LumiPy, LumiGo, etc).
+* **LumiPack**: The intermediate package format used as metadata for packages, common to all languages.
+* **LumiIL**: The intermediate language (IL) used to represent code and data within a LumiPack package.
+* **LumiGL**: The graph language (GL) describing a stack's resource topology with dependencies as edges.
 
-Because Coconut is a tool for interacting with existing clouds -- including AWS, Azure, Google Cloud, Kubernetes, and
+Because Lumi is a tool for interacting with existing clouds -- including AWS, Azure, Google Cloud, Kubernetes, and
 Docker Swarm -- one of the toolchain's most important jobs is faithfully mapping abstractions onto "lower level"
-infrastructure.  Much of Coconut's ability to deliver on its promise of better productivity, sharing, and reuse relies
+infrastructure.  Much of Lumi's ability to deliver on its promise of better productivity, sharing, and reuse relies
 on its ability to robustly and intuitively perform these translations.  There is an extensible provider model for
 creating new providers, which amounts to implementing create, read, update, and delete (CRUD) methods per resource type.
 
 ## Toolchain
 
-The Coconut toolchain analyzes programs and understands them fully.  An important thing to realize is that a Coconut
+The Lumi toolchain analyzes programs and understands them fully.  An important thing to realize is that a Lumi
 program isn't "run" directly in the usual way; instead, the process is as follows:
 
-* The source program is compiled (by a CocoLang compiler) into a package (a CocoPack containing CocoIL).
-* The package itself may depend on any number of other library packages (themselves just CocoPacks).
-* The executable package (and its CocoIL) is evaluated by the Coconut runtime to produce a graph (in CocoGL).
+* The source program is compiled (by a LumiLang compiler) into a package (a LumiPack containing LumiIL).
+* The package itself may depend on any number of other library packages (themselves just LumiPacks).
+* The executable package (and its LumiIL) is evaluated by the Lumi runtime to produce a graph (in LumiGL).
 * This graph is then used to generate a plan, deployment, or simply output that can be inspected by a tool.
 
 In particular, deployments are performed by the tool diffing the current state of an environment with the proposed new
@@ -383,35 +383,35 @@ the necessary resource providers that perform side-effects that yield the necess
 
 For instance, a standard workflow for creating a new project might look like this.
 
-First, we initialize the project.  This isn't special, other than a `Coconut.json` or `.yaml` file:
+First, we initialize the project.  This isn't special, other than a `Lumi.json` or `.yaml` file:
 
     $ mkdir acmecorp-infra && cd acmecorp-infra   # create a project directory
-    $ ...                                         # create a Coconut.* file, edit code, etc.
+    $ ...                                         # create a Lumi.* file, edit code, etc.
 
 Next, we might choose to compile the project without performing a deployment.  This is used for inner loop development,
 and reports any compile-time errors, while producing a package that we can distribute or inspect.
 
-    $ coco compile                                # compile the project
+    $ lumi compile                                # compile the project
 
 Now we are ready to do a deployment.  First, we will initialize a target environment.  Let's call it `test`:
     
-    $ coco env init test                          # initialize a test environment
-    $ coco env config test ...                    # configure the target environment
+    $ lumi env init test                          # initialize a test environment
+    $ lumi env config test ...                    # configure the target environment
 
 The configuration steps are optional, but may be used to configure the target region, credentials, and so on.
 
 Next, we might choose to do a dry-run of a deployment first (a.k.a., create a "plan"):
 
-    $ coco deploy test -n                         # do a dry-run (plan) of the changes
+    $ lumi deploy test -n                         # do a dry-run (plan) of the changes
 	Planned step #1 [create]
 	+ aws:ec2/instance:Instance:
-          [urn=coconut:test::ec2instance:index::aws:ec2/instance:Instance::instance]
+          [urn=lumi:test::ec2instance:index::aws:ec2/instance:Instance::instance]
           imageId       : "ami-f6035893"
           instanceType  : "t2.micro"
           name          : "instance"
           resource      : "AWS::EC2::Instance"
           securityGroups: [
-              [0]: -> *urn:coconut:test::ec2instance:index::aws:ec2/securityGroup:SecurityGroup::group
+              [0]: -> *urn:lumi:test::ec2instance:index::aws:ec2/securityGroup:SecurityGroup::group
           ]
 	1 planned changes:
 		+ 1 resource created
@@ -421,7 +421,7 @@ familiar Git-like diff view.  This will include adds (green), deletes (red), and
 
 Finally, we would presumably perform the deployment.  This is done simply by omitting the `-n` flag:
 
-    $ coco deploy test                            # actually perform the deployment
+    $ lumi deploy test                            # actually perform the deployment
 
 The output of an actual deployment will look a lot like the plan output above, except that it contains more incremental
 information about the status of steps as they are taken.  For example:
@@ -434,7 +434,7 @@ information about the status of steps as they are taken.  For example:
 			  name          : "instance"
 			  resource      : "AWS::EC2::Instance"
 			  securityGroups: [
-				  [0]: -> *urn:coconut:test::ec2instance:index::aws:ec2/securityGroup:SecurityGroup::group
+				  [0]: -> *urn:lumi:test::ec2instance:index::aws:ec2/securityGroup:SecurityGroup::group
 			  ]
 	info: plugin[aws].stdout: Creating new EC2 instance resource
 	info: plugin[aws].stdout: EC2 instance 'i-0c5192a1d67810e1a' created; now waiting for it to become 'running'
@@ -444,24 +444,24 @@ information about the status of steps as they are taken.  For example:
 Subsequent changes may be made in the expected way:
 
     $ ...                                         # more code edits, etc.
-    $ coco deploy test                            # re-deploy (automatically recompiles)
+    $ lumi deploy test                            # re-deploy (automatically recompiles)
 
-Coconut calculates the minimal set of incremental edits, compared to the previous deployment, so that just the changed
+Lumi calculates the minimal set of incremental edits, compared to the previous deployment, so that just the changed
 parts will be modified in the target environment.
 
 ## Further Reading
 
 More details are left to the respective design documents.  Here are some key ones:
 
-* [**Formats**](design/formats.md): An overview of Coconut's three formats: CocoLangs, CocoPack/CocoIL, and CocoGL.
-* [**CocoPack/CocoIL**](design/packages.md): A detailed description of packages and the CocoPack/CocoIL formats.
+* [**Formats**](design/formats.md): An overview of Lumi's three formats: LumiLangs, LumiPack/LumiIL, and LumiGL.
+* [**LumiPack/LumiIL**](design/packages.md): A detailed description of packages and the LumiPack/LumiIL formats.
 * [**Dependencies**](design/deps.md): An overview of how package management and dependency management works.
 * [**Resources**](design/resources.md): A description of how extensible resource providers are authored and registered.
-* [**CocoGL**](design/graphs.md): An overview of the CocoGL file format and how Coconut uses graphs for deployments.
+* [**LumiGL**](design/graphs.md): An overview of the LumiGL file format and how Lumi uses graphs for deployments.
 * [**Stacks**](design/stacks.md): An overview of how stacks are represented using the above fundamentals.
-* [**Clouds**](design/clouds.md): A description of how Coconut abstractions map to different cloud providers.
-* [**Runtime**](design/runtime.md): An overview of Coconut's runtime footprint and services common to all clouds.
-* [**Cross-Cloud**](design/x-cloud.md): An overview of how Coconut can be used to create cloud-neutral abstractions.
-* [**Security**](design/security.md): An overview of Coconut's security model, including identity and group management.
-* [**FAQ**](faq.md): Frequently asked questions, including how Coconut differs from its primary competition.
+* [**Clouds**](design/clouds.md): A description of how Lumi abstractions map to different cloud providers.
+* [**Runtime**](design/runtime.md): An overview of Lumi's runtime footprint and services common to all clouds.
+* [**Cross-Cloud**](design/x-cloud.md): An overview of how Lumi can be used to create cloud-neutral abstractions.
+* [**Security**](design/security.md): An overview of Lumi's security model, including identity and group management.
+* [**FAQ**](faq.md): Frequently asked questions, including how Lumi differs from its primary competition.
 

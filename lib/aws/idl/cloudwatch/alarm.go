@@ -3,9 +3,9 @@
 package cloudwatch
 
 import (
-	"github.com/pulumi/coconut/pkg/resource/idl"
+	"github.com/pulumi/lumi/pkg/resource/idl"
 
-	"github.com/pulumi/coconut/lib/aws/idl/sns"
+	"github.com/pulumi/lumi/lib/aws/idl/sns"
 )
 
 // Alarm is a CloudWatch alarm.  For more information, see
@@ -14,44 +14,44 @@ type Alarm struct {
 	idl.NamedResource
 	// The arithmetic operator to use when comparing the specified statistic and threshold.  The specified statistic
 	// value is used as the first operand (so, "<statistic> <op> <threshold>").
-	ComparisonOperator AlarmComparisonOperator `coco:"comparisonOperator"`
+	ComparisonOperator AlarmComparisonOperator `lumi:"comparisonOperator"`
 	// The number of periods over which data is compared to the specific threshold.
-	EvaluationPeriods float64 `coco:"evaluationPerids"`
+	EvaluationPeriods float64 `lumi:"evaluationPerids"`
 	// The name for the alarm's associated metric.
-	MetricName string `coco:"metricName"`
+	MetricName string `lumi:"metricName"`
 	// The namespace for the alarm's associated metric.
-	Namespace string `coco:"namespace"`
+	Namespace string `lumi:"namespace"`
 	// The time over which the specified statistic is applied; it is a time in second that is a multiple of 60.
-	Period float64 `coco:"period"`
+	Period float64 `lumi:"period"`
 	// The statistic to apply to the alarm's associated metric.
-	Statistic AlarmStatistic `coco:"statistic"`
+	Statistic AlarmStatistic `lumi:"statistic"`
 	// The value against which the specified statistic is compared.
-	Threshold float64 `coco:"threshold"`
+	Threshold float64 `lumi:"threshold"`
 	// Indicates whether or not actions should be executed during any changes to the alarm's state.
-	ActionsEnabled *bool `coco:"actionsEnabled,optional"`
+	ActionsEnabled *bool `lumi:"actionsEnabled,optional"`
 	// The list of actions to execute hen this alarm transitions into an ALARM state from any other state.  Each action
 	// is specified as an Amazon Resource Number (ARN).
-	AlarmActions *[]ActionTarget `coco:"alarmActions,optional"`
+	AlarmActions *[]ActionTarget `lumi:"alarmActions,optional"`
 	// The description for the alarm.
-	AlarmDescription *string `coco:"alarmDescription,optional"`
+	AlarmDescription *string `lumi:"alarmDescription,optional"`
 	// A name for the alarm.  If you don't specify one, an auto-generated physical ID will be assigned.
-	AlarmName *string `coco:"alarmName,replaces,optional"`
+	AlarmName *string `lumi:"alarmName,replaces,optional"`
 	// The dimension for the alarm's associated metric.
-	Dimensions *[]AlarmDimension `coco:"dimensions,optional"`
+	Dimensions *[]AlarmDimension `lumi:"dimensions,optional"`
 	// The list of actions to execute when this alarm transitions into an INSUFFICIENT_DATA state from any other state.
 	// Each action is specified as an Amazon Resource Number (ARN).  Currently the only action supported is publishing
 	// to an Amazon SNS topic or an Amazon Auto Scaling policy.
-	InsufficientDataActions *[]ActionTarget `coco:"insufficientDataActions,optional"`
+	InsufficientDataActions *[]ActionTarget `lumi:"insufficientDataActions,optional"`
 	// The list of actions to execute when this alarm transitions into an OK state from any other state.  Each action is
 	// specified as an Amazon Resource Number (ARN).  Currently the only action supported is publishing to an Amazon SNS
 	// topic of an Amazon Auto Scaling policy.
-	OKActions *[]ActionTarget `coco:"okActions,optional"`
+	OKActions *[]ActionTarget `lumi:"okActions,optional"`
 	// The unit for the alarm's associated metric.
-	Unit *AlarmMetric `coco:"unit,optional"`
+	Unit *AlarmMetric `lumi:"unit,optional"`
 }
 
 // ActionTarget is a strongly typed capability for an action target to avoid string-based ARNs.
-// TODO[pulumi/coconut#90]: once we support more resource types, we need to support Auto Scaling policies, etc.  It's
+// TODO[pulumi/lumi#90]: once we support more resource types, we need to support Auto Scaling policies, etc.  It's
 //     not yet clear whether we should do this using ARNs, or something else.
 type ActionTarget sns.Topic
 
@@ -79,9 +79,9 @@ const (
 // AlarmDimension is an embedded property of the alarm type.  Dimensions are arbitrary name/value pairs that can be
 // associated with a CloudWatch metric.  You can specify a maximum of 10 dimensions for a given metric.
 type AlarmDimension struct {
-	Name string `coco:"name"` // the name of the dimension, from 1-255 characters in length.
-	// TODO[pulumi/coconut#90]: strongly type this.
-	Value interface{} `coco:"value"` // the value representing the dimension measurement, from 1-255 characters in length.
+	Name string `lumi:"name"` // the name of the dimension, from 1-255 characters in length.
+	// TODO[pulumi/lumi#90]: strongly type this.
+	Value interface{} `lumi:"value"` // the value representing the dimension measurement, from 1-255 characters in length.
 }
 
 // AlarmMetric represents the legal values for an alarm's associated metric.

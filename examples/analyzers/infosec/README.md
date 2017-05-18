@@ -9,5 +9,5 @@ To use it, run the `build.sh` script, ensure the output is on your `PATH`, and a
 
 Or, alternatively, simply run a deployment with it listed explicitly:
 
-    coco deploy <env> --analyzer=infosec/basic
+    lumi deploy <env> --analyzer=infosec/basic
 

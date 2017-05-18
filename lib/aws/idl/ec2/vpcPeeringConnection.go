@@ -3,7 +3,7 @@
 package ec2
 
 import (
-	"github.com/pulumi/coconut/pkg/resource/idl"
+	"github.com/pulumi/lumi/pkg/resource/idl"
 )
 
 // VPCPeeringConnection enables a network connection between two virtual private clouds (VPCs) so that you can route
@@ -12,7 +12,7 @@ import (
 type VPCPeeringConnection struct {
 	idl.NamedResource
 	// The VPC with which you are creating the peering connection.
-	PeerVPC *VPC `coco:"peerVpc,replaces"`
+	PeerVPC *VPC `lumi:"peerVpc,replaces"`
 	// The VPC that is requesting a peering connection.
-	VPC *VPC `coco:"vpc,replaces"`
+	VPC *VPC `lumi:"vpc,replaces"`
 }

@@ -6,20 +6,20 @@ import (
 	"fmt"
 
 	pbempty "github.com/golang/protobuf/ptypes/empty"
-	"github.com/pulumi/coconut/pkg/tokens"
-	"github.com/pulumi/coconut/sdk/go/pkg/cocorpc"
+	"github.com/pulumi/lumi/pkg/tokens"
+	"github.com/pulumi/lumi/sdk/go/pkg/lumirpc"
 	"golang.org/x/net/context"
 
-	"github.com/pulumi/coconut/lib/aws/provider/awsctx"
-	"github.com/pulumi/coconut/lib/aws/provider/ec2"
-	"github.com/pulumi/coconut/lib/aws/provider/iam"
-	"github.com/pulumi/coconut/lib/aws/provider/lambda"
-	"github.com/pulumi/coconut/lib/aws/provider/s3"
+	"github.com/pulumi/lumi/lib/aws/provider/awsctx"
+	"github.com/pulumi/lumi/lib/aws/provider/ec2"
+	"github.com/pulumi/lumi/lib/aws/provider/iam"
+	"github.com/pulumi/lumi/lib/aws/provider/lambda"
+	"github.com/pulumi/lumi/lib/aws/provider/s3"
 )
 
 // provider implements the AWS resource provider's operations for all known AWS types.
 type Provider struct {
-	impls map[tokens.Type]cocorpc.ResourceProviderServer
+	impls map[tokens.Type]lumirpc.ResourceProviderServer
 }
 
 // NewProvider creates a new provider instance with server objects registered for every resource type.
@@ -29,7 +29,7 @@ func NewProvider() (*Provider, error) {
 		return nil, err
 	}
 	return &Provider{
-		impls: map[tokens.Type]cocorpc.ResourceProviderServer{
+		impls: map[tokens.Type]lumirpc.ResourceProviderServer{
 			ec2.InstanceToken:      ec2.NewInstanceProvider(ctx),
 			ec2.SecurityGroupToken: ec2.NewSecurityGroupProvider(ctx),
 			lambda.FunctionToken:   lambda.NewFunctionProvider(ctx),
@@ -40,10 +40,10 @@ func NewProvider() (*Provider, error) {
 	}, nil
 }
 
-var _ cocorpc.ResourceProviderServer = (*Provider)(nil)
+var _ lumirpc.ResourceProviderServer = (*Provider)(nil)
 
 // Check validates that the given property bag is valid for a resource of the given type.
-func (p *Provider) Check(ctx context.Context, req *cocorpc.CheckRequest) (*cocorpc.CheckResponse, error) {
+func (p *Provider) Check(ctx context.Context, req *lumirpc.CheckRequest) (*lumirpc.CheckResponse, error) {
 	t := tokens.Type(req.GetType())
 	if prov, has := p.impls[t]; has {
 		return prov.Check(ctx, req)
@@ -54,7 +54,7 @@ func (p *Provider) Check(ctx context.Context, req *cocorpc.CheckRequest) (*cocor
 // Name names a given resource.  Sometimes this will be assigned by a developer, and so the provider
 // simply fetches it from the property bag; other times, the provider will assign this based on its own algorithm.
 // In any case, resources with the same name must be safe to use interchangeably with one another.
-func (p *Provider) Name(ctx context.Context, req *cocorpc.NameRequest) (*cocorpc.NameResponse, error) {
+func (p *Provider) Name(ctx context.Context, req *lumirpc.NameRequest) (*lumirpc.NameResponse, error) {
 	t := tokens.Type(req.GetType())
 	if prov, has := p.impls[t]; has {
 		return prov.Name(ctx, req)
@@ -64,7 +64,7 @@ func (p *Provider) Name(ctx context.Context, req *cocorpc.NameRequest) (*cocorpc
 
 // Create allocates a new instance of the provided resource and returns its unique ID afterwards.  (The input ID
 // must be blank.)  If this call fails, the resource must not have been created (i.e., it is "transacational").
-func (p *Provider) Create(ctx context.Context, req *cocorpc.CreateRequest) (*cocorpc.CreateResponse, error) {
+func (p *Provider) Create(ctx context.Context, req *lumirpc.CreateRequest) (*lumirpc.CreateResponse, error) {
 	t := tokens.Type(req.GetType())
 	if prov, has := p.impls[t]; has {
 		return prov.Create(ctx, req)
@@ -73,7 +73,7 @@ func (p *Provider) Create(ctx context.Context, req *cocorpc.CreateRequest) (*coc
 }
 
 // Get reads the instance state identified by ID, returning a populated resource object, or an error if not found.
-func (p *Provider) Get(ctx context.Context, req *cocorpc.GetRequest) (*cocorpc.GetResponse, error) {
+func (p *Provider) Get(ctx context.Context, req *lumirpc.GetRequest) (*lumirpc.GetResponse, error) {
 	t := tokens.Type(req.GetType())
 	if prov, has := p.impls[t]; has {
 		return prov.Get(ctx, req)
@@ -83,7 +83,7 @@ func (p *Provider) Get(ctx context.Context, req *cocorpc.GetRequest) (*cocorpc.G
 
 // InspectChange checks what impacts a hypothetical update will have on the resource's properties.
 func (p *Provider) InspectChange(
-	ctx context.Context, req *cocorpc.ChangeRequest) (*cocorpc.InspectChangeResponse, error) {
+	ctx context.Context, req *lumirpc.ChangeRequest) (*lumirpc.InspectChangeResponse, error) {
 	t := tokens.Type(req.GetType())
 	if prov, has := p.impls[t]; has {
 		return prov.InspectChange(ctx, req)
@@ -93,7 +93,7 @@ func (p *Provider) InspectChange(
 
 // Update updates an existing resource with new values.  Only those values in the provided property bag are updated
 // to new values.  The resource ID is returned and may be different if the resource had to be recreated.
-func (p *Provider) Update(ctx context.Context, req *cocorpc.ChangeRequest) (*pbempty.Empty, error) {
+func (p *Provider) Update(ctx context.Context, req *lumirpc.ChangeRequest) (*pbempty.Empty, error) {
 	t := tokens.Type(req.GetType())
 	if prov, has := p.impls[t]; has {
 		return prov.Update(ctx, req)
@@ -102,7 +102,7 @@ func (p *Provider) Update(ctx context.Context, req *cocorpc.ChangeRequest) (*pbe
 }
 
 // Delete tears down an existing resource with the given ID.  If it fails, the resource is assumed to still exist.
-func (p *Provider) Delete(ctx context.Context, req *cocorpc.DeleteRequest) (*pbempty.Empty, error) {
+func (p *Provider) Delete(ctx context.Context, req *lumirpc.DeleteRequest) (*pbempty.Empty, error) {
 	t := tokens.Type(req.GetType())
 	if prov, has := p.impls[t]; has {
 		return prov.Delete(ctx, req)
