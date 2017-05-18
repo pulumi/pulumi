@@ -1,6 +1,6 @@
 // Copyright 2017 Pulumi, Inc. All rights reserved.
 
-package clidl
+package lumidl
 
 import (
 	"go/ast"

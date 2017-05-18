@@ -3,7 +3,7 @@
     "main": "bin/index.js",
     "typings": "bin/index.d.ts",
     "scripts": {
-        "build": "cljs"
+        "build": "lumijs"
     },
     "devDependencies": {
         "typescript": "^2.1.4"

@@ -8,7 +8,7 @@ import (
 )
 
 func main() {
-	if err := NewCLIDLCmd().Execute(); err != nil {
+	if err := NewIDLCCmd().Execute(); err != nil {
 		fmt.Fprintf(os.Stderr, "An error occurred: %v\n", err)
 		os.Exit(-1)
 	}

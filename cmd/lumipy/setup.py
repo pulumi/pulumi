@@ -2,10 +2,10 @@
 
 from setuptools import setup
 
-setup(name="clpy",
+setup(name="lumipy",
       version="0.1",
       description="The Lumi Python compiler",
-      url="http://github.com/pulumi/lumi/cmd/clpy",
+      url="http://github.com/pulumi/lumi/cmd/lumipy",
       packages=["lumipy"],
       zip_safe=False)
 

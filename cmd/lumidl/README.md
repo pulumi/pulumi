@@ -1,10 +1,10 @@
-# CLIDL
+# Lumi IDL
 
-CLIDL compiles an Go-based IDL into Lumi metadata and packages.
+The Lumi IDL compiler (LumIDL) compiles an Go-based IDL into Lumi metadata and packages.
 
 ## IDL
 
-The compiler, `clidl`, accepts a subset of Go.  Please refer to [the IDL design document](/docs/idl.md) for details.
+The compiler, `lumidl`, accepts a subset of Go.  Please refer to [the IDL design document](/docs/idl.md) for details.
 
 ## Providers
 
@@ -18,7 +18,7 @@ The CLIDL toolset cuts down on boilerplate and makes it easy to author new resou
 
 To build the Lumi IDL compiler, run
 
-    $ go install github.com/pulumi/lumi/cmd/clidl
+    $ go install github.com/pulumi/lumi/cmd/lumidl
 
 from an enlistment with a proper `GOPATH` set.
 
@@ -26,7 +26,7 @@ from an enlistment with a proper `GOPATH` set.
 
 To generate code, run:
 
-    $ clidl pkg-name idl-path [flags]
+    $ lumidl pkg-name idl-path [flags]
 
 where the `pkg-name` is the name of the target Lumi package, `idl-path` is a path to a directory containing IDL, and
 `flags` are an optional set of flags.  All `*.go` files in the target directory are parsed and processed as IDL.  To

@@ -4,7 +4,7 @@
 set -e                       # bail on errors
 
 echo Compiling:
-cljs                         # compile the package
+lumijs                       # compile the package
 
 echo Verifying:
 lumi pack verify             # ensure the package verifies

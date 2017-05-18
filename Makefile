@@ -13,7 +13,7 @@ build:
 install:
 	@echo "\033[0;32mINSTALL:\033[0m"
 	@go install ${PROJECT}/cmd/lumi
-	@go install ${PROJECT}/cmd/clidl
+	@go install ${PROJECT}/cmd/lumidl
 
 lint:
 	@echo "\033[0;32mLINT:\033[0m"

@@ -5,7 +5,7 @@ set -e                    # bail on errors
 
 echo Compiling:
 pushd pack/ > /dev/null &&     # compile the package
-    cljs &&
+    lumijs &&
     lumi pack verify &&        # ensure the package verifies.
     yarn link &&               # let NPM references resolve easily.
     cp -R ./.lumi/bin/ ../bin &&

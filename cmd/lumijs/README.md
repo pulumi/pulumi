@@ -31,7 +31,7 @@ Next, to test, simply run:
 
 It will be obvious if the tests passed or failed and, afterwards, code coverage data will be output to the console.
 
-After building, a typical developer setup would be to add `cmd/cljs/` to your `$PATH`; there is a `cljs`
+After building, a typical developer setup would be to add `cmd/lumijs/` to your `$PATH`; there is a `lumijs`
 executable in the root directory that conveniently wraps invocation of the compiler, passing through any arguments.
 
 ## Libraries

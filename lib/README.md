@@ -7,7 +7,7 @@ This directory contains some libraries that Lumi programs may depend upon.
 The Lumi standard library underneath `lumi/` is special in that every program will ultimately use it directly or
 indirectly to create resources.
 
-Similarly, `cljs/` is the LumiJS compiler's runtime library, and so most LumiJS programs will on it.
+Similarly, `lumijs/` is the LumiJS compiler's runtime library, and so most LumiJS programs will on it.
 
 Note that these are written in the Lumi subsets of the languages and therefore cannot perform I/O, etc.
 

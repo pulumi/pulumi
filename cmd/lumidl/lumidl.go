@@ -8,11 +8,11 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/lumi/pkg/tokens"
-	"github.com/pulumi/lumi/pkg/tools/clidl"
+	"github.com/pulumi/lumi/pkg/tools/lumidl"
 	"github.com/pulumi/lumi/pkg/util/cmdutil"
 )
 
-func NewCLIDLCmd() *cobra.Command {
+func NewIDLCCmd() *cobra.Command {
 	var logToStderr bool
 	var outPack string
 	var outRPC string
@@ -22,9 +22,9 @@ func NewCLIDLCmd() *cobra.Command {
 	var recursive bool
 	var verbose int
 	cmd := &cobra.Command{
-		Use:   "lidl pkg-name idl-path",
-		Short: "CLIDL generates Lumi metadata and RPC stubs from IDL written in Go",
-		Long: "CLIDL generates Lumi metadata and RPC stubs from IDL written in Go.\n" +
+		Use:   "lumidl pkg-name idl-path",
+		Short: "The Lumi IDL compiler generates Lumi metadata and RPC stubs from IDL written in Go",
+		Long: "The Lumi IDL compiler generates Lumi metadata and RPC stubs from IDL written in Go.\n" +
 			"\n" +
 			"The tool accepts a subset of Go types and produces packages that can be consumed by\n" +
 			"ordinary Lumi programs and libraries in any language.  The pkg-name argument\n" +
@@ -46,7 +46,7 @@ func NewCLIDLCmd() *cobra.Command {
 			// Now pass the arguments and compile the package.
 			name := args[0] // the name of the Lumi package.
 			path := args[1] // the path to the IDL directory that is compiled recursively.
-			return clidl.Compile(clidl.CompileOptions{
+			return lumidl.Compile(lumidl.CompileOptions{
 				Name:       tokens.PackageName(name),
 				PkgBaseIDL: pkgBaseIDL,
 				PkgBaseRPC: pkgBaseRPC,
