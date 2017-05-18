@@ -130,7 +130,7 @@ func confirmPrompt(msg string, name tokens.QName) bool {
 func createEnv(name tokens.QName) {
 	env := &resource.Env{Name: name}
 	if success := saveEnv(env, nil, "", false); success {
-		fmt.Printf("Environment '%v' initialized; see `lumi env deploy` to deploy into it\n", name)
+		fmt.Printf("Environment '%v' initialized; see `lumi deploy` to deploy into it\n", name)
 		setCurrentEnv(name, false)
 	}
 }
