@@ -12,7 +12,7 @@ The primary use case for Lumi IDL is to author resource packages and providers. 
 Lumi package with metadata associated with a set of resource type definitions.  Its associated provider is a dynamic
 plugin that implements the behavior associated with those resources, their CRUD functions, and operational semantics.
 
-The CLIDL toolset cuts down on boilerplate and makes it easy to author new resource packages and providers.
+The LumIDL toolset cuts down on boilerplate and makes it easy to author new resource packages and providers.
 
 ## Building
 
