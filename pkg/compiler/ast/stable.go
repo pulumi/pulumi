@@ -5,7 +5,7 @@ package ast
 import (
 	"sort"
 
-	"github.com/pulumi/coconut/pkg/tokens"
+	"github.com/pulumi/lumi/pkg/tokens"
 )
 
 func StableClassMembers(cm ClassMembers) []tokens.ClassMemberName {

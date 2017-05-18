@@ -3,7 +3,7 @@
 package ec2
 
 import (
-	"github.com/pulumi/coconut/pkg/resource/idl"
+	"github.com/pulumi/lumi/pkg/resource/idl"
 )
 
 // SecurityGroupEgress adds an egress (outbound) rule to an Amazon VPC security group.  For more information, see
@@ -12,20 +12,20 @@ type SecurityGroupEgress struct {
 	idl.NamedResource
 	// Start of port range for the TCP and UDP protocols, or an ICMP type number. If you specify `icmp` for the
 	// `ipProtocol` property, you can specify `-1` as a wildcard (i.e., any ICMP type number).
-	FromPort float64 `coco:"fromPort,replaces"`
+	FromPort float64 `lumi:"fromPort,replaces"`
 	// The Amazon VPC security group to modify.
-	Group *SecurityGroup `coco:"group,replaces"`
+	Group *SecurityGroup `lumi:"group,replaces"`
 	// IP protocol name or number.
-	IPProtocol string `coco:"ipProtocol,replaces"`
+	IPProtocol string `lumi:"ipProtocol,replaces"`
 	// End of port range for the TCP and UDP protocols, or an ICMP code. If you specify `icmp` for the `ipProtocol`
 	// property, you can specify `-1` as a wildcard (i.e., any ICMP code).
-	ToPort float64 `coco:"toPort,replaces"`
+	ToPort float64 `lumi:"toPort,replaces"`
 	// An IPv4 CIDR range.
-	CIDRIP *string `coco:"cidrIp,replaces,optional"`
+	CIDRIP *string `lumi:"cidrIp,replaces,optional"`
 	// An IPv6 CIDR range.
-	CIDRIPv6 *string `coco:"cidrIpv6,replaces,optional"`
+	CIDRIPv6 *string `lumi:"cidrIpv6,replaces,optional"`
 	// The AWS service prefix of an Amazon VPC endpoint.
-	DestinationPrefixListId *string `coco:"destinationPrefixListId,replaces,optional"`
+	DestinationPrefixListId *string `lumi:"destinationPrefixListId,replaces,optional"`
 	// Specifies the group ID of the destination Amazon VPC security group.
-	DestinationSecurityGroup *SecurityGroup `coco:"destinationSecurityGroup,replaces,optional"`
+	DestinationSecurityGroup *SecurityGroup `lumi:"destinationSecurityGroup,replaces,optional"`
 }

@@ -13,14 +13,14 @@ import (
 	awsiam "github.com/aws/aws-sdk-go/service/iam"
 	awslambda "github.com/aws/aws-sdk-go/service/lambda"
 	"github.com/pkg/errors"
-	"github.com/pulumi/coconut/pkg/resource"
-	"github.com/pulumi/coconut/pkg/util/mapper"
-	"github.com/pulumi/coconut/sdk/go/pkg/cocorpc"
+	"github.com/pulumi/lumi/pkg/resource"
+	"github.com/pulumi/lumi/pkg/util/mapper"
+	"github.com/pulumi/lumi/sdk/go/pkg/lumirpc"
 	"golang.org/x/net/context"
 
-	"github.com/pulumi/coconut/lib/aws/provider/awsctx"
-	awscommon "github.com/pulumi/coconut/lib/aws/rpc"
-	"github.com/pulumi/coconut/lib/aws/rpc/lambda"
+	"github.com/pulumi/lumi/lib/aws/provider/awsctx"
+	awscommon "github.com/pulumi/lumi/lib/aws/rpc"
+	"github.com/pulumi/lumi/lib/aws/rpc/lambda"
 )
 
 const FunctionToken = lambda.FunctionToken
@@ -43,7 +43,7 @@ var functionRuntimes = map[lambda.Runtime]bool{
 }
 
 // NewFunctionProvider creates a provider that handles Lambda function operations.
-func NewFunctionProvider(ctx *awsctx.Context) cocorpc.ResourceProviderServer {
+func NewFunctionProvider(ctx *awsctx.Context) lumirpc.ResourceProviderServer {
 	ops := &funcProvider{ctx}
 	return lambda.NewFunctionProvider(ops)
 }
@@ -90,7 +90,7 @@ func (p *funcProvider) Create(ctx context.Context, obj *lambda.Function) (resour
 	}
 
 	// Fetch the IAM role's ARN.
-	// TODO[coconut/pulumi#90]: as soon as we can read output properties, this shouldn't be necessary.
+	// TODO[lumi/pulumi#90]: as soon as we can read output properties, this shouldn't be necessary.
 	var roleARN *string
 	if role, err := p.ctx.IAM().GetRole(&awsiam.GetRoleInput{RoleName: obj.Role.StringPtr()}); err != nil {
 		return "", nil, err

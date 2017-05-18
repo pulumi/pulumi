@@ -3,7 +3,7 @@
 package kubefission
 
 import (
-	"github.com/pulumi/coconut/pkg/resource/idl"
+	"github.com/pulumi/lumi/pkg/resource/idl"
 )
 
 // Environment identifies the language and OS specific resources that a function depends on.  For now this includes
@@ -11,5 +11,5 @@ import (
 // like debuggers, profilers, etc.
 type Environment struct {
 	idl.NamedResource
-	RunContainerImageURL string `coco:"runContainerImageURL"`
+	RunContainerImageURL string `lumi:"runContainerImageURL"`
 }

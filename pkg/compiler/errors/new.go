@@ -3,8 +3,8 @@
 package errors
 
 import (
-	"github.com/pulumi/coconut/pkg/diag"
-	"github.com/pulumi/coconut/pkg/util/contract"
+	"github.com/pulumi/lumi/pkg/diag"
+	"github.com/pulumi/lumi/pkg/util/contract"
 )
 
 // errors tracks all existing errors, keyed by their unique ID.

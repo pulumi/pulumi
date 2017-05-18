@@ -1,15 +1,15 @@
-# coconut/lib
+# lumi/lib
 
-This directory contains some libraries that Coconut programs may depend upon.
+This directory contains some libraries that Lumi programs may depend upon.
 
 ## Overview
 
-The Coconut standard library underneath `coconut/` is special in that every program will ultimately use it directly or
+The Lumi standard library underneath `lumi/` is special in that every program will ultimately use it directly or
 indirectly to create resources.
 
-Similarly, `cocojs/` is the CocoJS compiler's runtime library, and so most CocoJS programs will on it.
+Similarly, `cljs/` is the LumiJS compiler's runtime library, and so most LumiJS programs will on it.
 
-Note that these are written in the Coconut subsets of the languages and therefore cannot perform I/O, etc.
+Note that these are written in the Lumi subsets of the languages and therefore cannot perform I/O, etc.
 
 ## Installation and Usage
 
@@ -23,5 +23,5 @@ We currently use NPM/Yarn symlinks to ease the developer workspace flow.  As suc
 
 * `yarn link <lib>`
 
-In a project that intends to consume `<lib>` before actually using it.  For example, `yarn link @coconut/coconut`.
+In a project that intends to consume `<lib>` before actually using it.  For example, `yarn link @lumi/lumi`.
 

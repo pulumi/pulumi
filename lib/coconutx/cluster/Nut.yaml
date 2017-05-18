@@ -1,9 +1,0 @@
-name: coconutx/cluster
-description: A base Coconut cluster, ready to host stacks.
-services:
-    {{if eq .Arch.Cloud "aws"}}
-        {{include "Nut_aws.yaml" | indent 4}}
-    {{else}}
-        {{panic "Unrecognized cloud target: %v" .Arch.Cloud}}
-    {{end}}
-

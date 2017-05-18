@@ -3,7 +3,7 @@
 package sns
 
 import (
-	"github.com/pulumi/coconut/pkg/resource/idl"
+	"github.com/pulumi/lumi/pkg/resource/idl"
 )
 
 // An Amazon Simple Notification Service (Amazon SNS) topic.  For more information, see
@@ -11,18 +11,18 @@ import (
 type Topic struct {
 	idl.NamedResource
 	// A name for the topic.  If you don't specify a name, a unique physical ID will be generated.
-	TopicName *string `coco:"topicName,replaces,optional"`
+	TopicName *string `lumi:"topicName,replaces,optional"`
 	// A developer-defined string that can be used to identify this SNS topic.
-	DisplayName *string `coco:"displayName,optional"`
+	DisplayName *string `lumi:"displayName,optional"`
 	// The SNS subscriptions (endpoints) for this topic.
-	Subscription *[]TopicSubscription `coco:"subscription,optional"`
+	Subscription *[]TopicSubscription `lumi:"subscription,optional"`
 }
 
 type TopicSubscription struct {
 	// The subscription's protocol.
-	Protocol TopicProtocol `coco:"protocol"`
+	Protocol TopicProtocol `lumi:"protocol"`
 	// The subscription's endpoint (format depends on the protocol).
-	Endpoint string `coco:"endpoint"`
+	Endpoint string `lumi:"endpoint"`
 }
 
 // The protocols supported by the Amazon Simple Notification Service (Amazon SNS).

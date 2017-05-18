@@ -1,7 +1,7 @@
 {
-    "name": "@coconut/mantle",
-    "main": ".coconut/bin/index.js",
-    "typings": ".coconut/bin/index.d.ts",
+    "name": "@lumi/mantle",
+    "main": ".lumi/bin/index.js",
+    "typings": ".lumi/bin/index.d.ts",
     "scripts": {
         "build": "tsc"
     },
@@ -9,9 +9,9 @@
         "typescript": "^2.1.4"
     },
     "peerDependencies": {
-        "@coconut/aws": "*",
-        "@coconut/coconut": "*",
-        "@coconut/kubefission": "*"
+        "@lumi/aws": "*",
+        "@lumi/lumi": "*",
+        "@lumi/kubefission": "*"
     }
 }
 

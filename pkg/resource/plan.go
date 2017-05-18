@@ -5,13 +5,13 @@ package resource
 import (
 	"github.com/golang/glog"
 
-	"github.com/pulumi/coconut/pkg/compiler/core"
-	"github.com/pulumi/coconut/pkg/compiler/errors"
-	"github.com/pulumi/coconut/pkg/diag/colors"
-	"github.com/pulumi/coconut/pkg/graph"
-	"github.com/pulumi/coconut/pkg/pack"
-	"github.com/pulumi/coconut/pkg/tokens"
-	"github.com/pulumi/coconut/pkg/util/contract"
+	"github.com/pulumi/lumi/pkg/compiler/core"
+	"github.com/pulumi/lumi/pkg/compiler/errors"
+	"github.com/pulumi/lumi/pkg/diag/colors"
+	"github.com/pulumi/lumi/pkg/graph"
+	"github.com/pulumi/lumi/pkg/pack"
+	"github.com/pulumi/lumi/pkg/tokens"
+	"github.com/pulumi/lumi/pkg/util/contract"
 )
 
 // TODO: concurrency.
@@ -353,7 +353,7 @@ func newPlan(ctx *Context, old Snapshot, new Snapshot, analyzers []tokens.QName)
 			if !old.Properties().DeepEquals(computed) {
 				// See if this update has the effect of deleting and recreating the resource.  If so, we need to make
 				// sure to insert the right replacement steps into the graph (a create, replace, and delete).
-				// TODO[pulumi/coconut#90]: this should generalize to any property changes.
+				// TODO[pulumi/lumi#90]: this should generalize to any property changes.
 				prov, err := pb.P.Provider(old)
 				if err != nil {
 					return nil, err

@@ -1,5 +1,5 @@
 #!/bin/sh
-cidlc \
+clidl \
     aws idl/ \
     --recursive \
     --out-pack=pack/ \

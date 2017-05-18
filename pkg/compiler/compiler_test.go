@@ -10,11 +10,11 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/pulumi/coconut/pkg/compiler/core"
-	"github.com/pulumi/coconut/pkg/compiler/errors"
-	"github.com/pulumi/coconut/pkg/diag"
-	"github.com/pulumi/coconut/pkg/util/contract"
-	"github.com/pulumi/coconut/pkg/util/testutil"
+	"github.com/pulumi/lumi/pkg/compiler/core"
+	"github.com/pulumi/lumi/pkg/compiler/errors"
+	"github.com/pulumi/lumi/pkg/diag"
+	"github.com/pulumi/lumi/pkg/util/contract"
+	"github.com/pulumi/lumi/pkg/util/testutil"
 )
 
 func testCompile(paths ...string) *testutil.TestDiagSink {
@@ -33,7 +33,7 @@ func testCompile(paths ...string) *testutil.TestDiagSink {
 }
 
 func TestBadMissingProject(t *testing.T) {
-	sink := testCompile("testdata", "bad__missing_cocofile")
+	sink := testCompile("testdata", "bad__missing_lumifile")
 
 	// Check that the compiler complained about a missing Project.
 	d := errors.ErrorMissingProject
@@ -45,40 +45,40 @@ func TestBadMissingProject(t *testing.T) {
 }
 
 func TestBadProjectCasing(t *testing.T) {
-	sink := testCompile("testdata", "bad__cocofile_casing")
+	sink := testCompile("testdata", "bad__lumifile_casing")
 
-	// Check that the compiler warned about a bad Project casing (coconut.yaml).
+	// Check that the compiler warned about a bad Project casing (lumi.yaml).
 	d := errors.WarningIllegalMarkupFileCasing
 	assert.Equal(t, 1, sink.Warnings(), "expected a single warning")
 	assert.Equal(t,
 		fmt.Sprintf("%v: %v %v%v: %v\n",
-			"coconut.yaml", diag.Warning, diag.DefaultSinkIDPrefix, d.ID, fmt.Sprintf(d.Message, "Coconut")),
+			"lumi.yaml", diag.Warning, diag.DefaultSinkIDPrefix, d.ID, fmt.Sprintf(d.Message, "Lumi")),
 		sink.WarningMsgs()[0])
 }
 
 func TestBadProjectExt(t *testing.T) {
-	sink := testCompile("testdata", "bad__cocofile_ext")
+	sink := testCompile("testdata", "bad__lumifile_ext")
 
 	// Check that the compiler warned about a bad Project extension (none).
 	d := errors.WarningIllegalMarkupFileExt
 	assert.Equal(t, 1, sink.Warnings(), "expected a single warning")
 	assert.Equal(t,
 		fmt.Sprintf("%v: %v %v%v: %v\n",
-			"Coconut", diag.Warning, diag.DefaultSinkIDPrefix, d.ID,
-			fmt.Sprintf(d.Message, "Coconut", "")),
+			"Lumi", diag.Warning, diag.DefaultSinkIDPrefix, d.ID,
+			fmt.Sprintf(d.Message, "Lumi", "")),
 		sink.WarningMsgs()[0])
 }
 
 func TestBadProjectExt2(t *testing.T) {
-	sink := testCompile("testdata", "bad__cocofile_ext_2")
+	sink := testCompile("testdata", "bad__lumifile_ext_2")
 
 	// Check that the compiler warned about a bad Project extension (".txt").
 	d := errors.WarningIllegalMarkupFileExt
 	assert.Equal(t, 1, sink.Warnings(), "expected a single warning")
 	assert.Equal(t,
 		fmt.Sprintf("%v: %v %v%v: %v\n",
-			"Coconut.txt", diag.Warning, diag.DefaultSinkIDPrefix, d.ID,
-			fmt.Sprintf(d.Message, "Coconut", ".txt")),
+			"Lumi.txt", diag.Warning, diag.DefaultSinkIDPrefix, d.ID,
+			fmt.Sprintf(d.Message, "Lumi", ".txt")),
 		sink.WarningMsgs()[0])
 }
 
@@ -90,7 +90,7 @@ func TestBadMissingPackageName(t *testing.T) {
 	assert.Equal(t, 1, sink.Errors(), "expected a single error")
 	assert.Equal(t,
 		fmt.Sprintf("%v: %v %v%v: %v\n",
-			"Coconut.yaml", diag.Error, diag.DefaultSinkIDPrefix, d.ID,
+			"Lumi.yaml", diag.Error, diag.DefaultSinkIDPrefix, d.ID,
 			fmt.Sprintf(d.Message, "1 fields failed to decode:\n"+
 				"\tname: Missing required field 'name' on 'pack.Package'")),
 		sink.ErrorMsgs()[0])
@@ -104,7 +104,7 @@ func TestBadEmptyPackageName(t *testing.T) {
 	assert.Equal(t, 1, sink.Errors(), "expected a single error")
 	assert.Equal(t,
 		fmt.Sprintf("%v: %v %v%v: %v\n",
-			"Coconut.yaml", diag.Error, diag.DefaultSinkIDPrefix, d.ID,
+			"Lumi.yaml", diag.Error, diag.DefaultSinkIDPrefix, d.ID,
 			fmt.Sprintf(d.Message, "1 fields failed to decode:\n"+
 				"\tname: Missing required field 'name' on 'pack.Package'")),
 		sink.ErrorMsgs()[0])
@@ -118,6 +118,6 @@ func TestBadEmptyPackageName2(t *testing.T) {
 	assert.Equal(t, 1, sink.Errors(), "expected a single error")
 	assert.Equal(t,
 		fmt.Sprintf("%v: %v %v%v: %v\n",
-			"Coconut.yaml", diag.Error, diag.DefaultSinkIDPrefix, d.ID, d.Message),
+			"Lumi.yaml", diag.Error, diag.DefaultSinkIDPrefix, d.ID, d.Message),
 		sink.ErrorMsgs()[0])
 }

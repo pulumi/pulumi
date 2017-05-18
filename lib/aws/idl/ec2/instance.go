@@ -3,7 +3,7 @@
 package ec2
 
 import (
-	"github.com/pulumi/coconut/pkg/resource/idl"
+	"github.com/pulumi/lumi/pkg/resource/idl"
 )
 
 // Instance ia an EC2 VM instance.  For more information, see
@@ -11,26 +11,26 @@ import (
 type Instance struct {
 	idl.NamedResource
 	// Provides the unique ID of the Amazon Machine Image (AMI) that was assigned during registration.
-	ImageID string `coco:"imageId"`
+	ImageID string `lumi:"imageId"`
 	// The instance type, such as t2.micro. The default type is "m3.medium".
-	InstanceType *InstanceType `coco:"instanceType,optional"`
+	InstanceType *InstanceType `lumi:"instanceType,optional"`
 	// A list that contains the Amazon EC2 security groups to assign to the Amazon EC2 instance.
-	SecurityGroups *[]*SecurityGroup `coco:"securityGroups,optional"`
+	SecurityGroups *[]*SecurityGroup `lumi:"securityGroups,optional"`
 	// Provides the name of the Amazon EC2 key pair.
-	KeyName *string `coco:"keyName,optional"`
+	KeyName *string `lumi:"keyName,optional"`
 
 	// Output properties:
 
 	// The Availability Zone where the specified instance is launched.  For example: `us-east-1b`.
-	AvailabilityZone string `coco:"availabilityZone,out"`
+	AvailabilityZone string `lumi:"availabilityZone,out"`
 	// The private DNS name of the specified instance.  For example: `ip-10-24-34-0.ec2.internal`.
-	PrivateDNSName *string `coco:"privateDNSName,out,optional"`
+	PrivateDNSName *string `lumi:"privateDNSName,out,optional"`
 	// The public DNS name of the specified instance.  For example: `ec2-107-20-50-45.compute-1.amazonaws.com`.
-	PublicDNSName *string `coco:"publicDNSName,out,optional"`
+	PublicDNSName *string `lumi:"publicDNSName,out,optional"`
 	// The private IP address of the specified instance.  For example: `10.24.34.0`.
-	PrivateIP *string `coco:"privateIP,out,optional"`
+	PrivateIP *string `lumi:"privateIP,out,optional"`
 	// The public IP address of the specified instance.  For example: `192.0.2.0`.
-	PublicIP *string `coco:"publicIP,out,optional"`
+	PublicIP *string `lumi:"publicIP,out,optional"`
 }
 
 // InstanceType is an enum type with all the names of instance types available in EC2.

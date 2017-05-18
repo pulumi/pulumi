@@ -263,7 +263,7 @@ var _ Expression = (*UnaryOperatorExpression)(nil)
 
 const UnaryOperatorExpressionKind NodeKind = "UnaryOperatorExpression"
 
-// UnaryOperator is the full set of unary operator tokens.  Note that CocoIL doesn't care about precedence.  CocoLang
+// UnaryOperator is the full set of unary operator tokens.  Note that LumiIL doesn't care about precedence.  LumiLang
 // compilers must present expression in the order in which they should be evaluated through an in-order AST tree walk.
 type UnaryOperator string
 

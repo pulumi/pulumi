@@ -5,7 +5,7 @@ package symbols
 import (
 	"sort"
 
-	"github.com/pulumi/coconut/pkg/tokens"
+	"github.com/pulumi/lumi/pkg/tokens"
 )
 
 func StableClassMemberMap(cm ClassMemberMap) []tokens.ClassMemberName {

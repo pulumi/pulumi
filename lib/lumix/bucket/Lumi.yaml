@@ -1,0 +1,23 @@
+name: lumix/bucket
+description: A cloud-neutral bucket of objects.
+properties:
+    name:
+        type: string
+        description: A unique bucket name.
+services:
+    private:
+        {{if isAWS .Target}}
+            aws/s3/bucket:
+                bucketName: {{.Args.Name}}
+        {{else}}
+            {{fail "Unsupported cloud target"}}
+        {{end}}
+    public:
+        mu/app:
+            api:
+                provider: protobuf3
+                source: ./api.proto
+            arguments:
+                bucket: bucket
+            runtime: golang
+

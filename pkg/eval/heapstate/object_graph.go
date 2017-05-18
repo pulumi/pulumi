@@ -3,8 +3,8 @@
 package heapstate
 
 import (
-	"github.com/pulumi/coconut/pkg/eval/rt"
-	"github.com/pulumi/coconut/pkg/graph"
+	"github.com/pulumi/lumi/pkg/eval/rt"
+	"github.com/pulumi/lumi/pkg/graph"
 )
 
 type ObjectGraph struct {

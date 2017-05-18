@@ -3,7 +3,7 @@
 package ec2
 
 import (
-	"github.com/pulumi/coconut/pkg/resource/idl"
+	"github.com/pulumi/lumi/pkg/resource/idl"
 )
 
 // VPC is a Virtual Private Cloud with a specified CIDR block.  For more information, see
@@ -11,18 +11,18 @@ import (
 type VPC struct {
 	idl.NamedResource
 	// The CIDR block you want the VPC to cover.  For example, "10.0.0.0/16".
-	CIDRBlock string `coco:"cidrBlock,replaces"`
+	CIDRBlock string `lumi:"cidrBlock,replaces"`
 	// The allowed tenancy of instances launched into the VPC.  "default" indicates that instances can be launched with
 	// any tenancy, while "dedicated" indicates that any instance launched into the VPC automatically has dedicated
 	// tenancy, unless you launch it with the default tenancy.
-	InstanceTenancy *InstanceTenancy `coco:"instanceTenancy,optional,replaces"`
+	InstanceTenancy *InstanceTenancy `lumi:"instanceTenancy,optional,replaces"`
 	// Specifies whether DNS resolution is supported for the VPC.  If true, the Amazon DNS server resolves DNS hostnames
 	// for your instances to their corresponding IP addresses; otherwise, it does not.  By default, the value is true.
-	EnableDNSSupport *bool `coco:"enableDnsSupport,optional"`
+	EnableDNSSupport *bool `lumi:"enableDnsSupport,optional"`
 	// Specifies whether the instances launched in the VPC get DNS hostnames.  If this attribute is true, instances in
 	// the VPC get DNS hostnames; otherwise, they do not.  You can only set enableDnsHostnames to true if you also set
 	// the enableDnsSupport property to true.  By default, the value is set to false.
-	EnableDNSHostnames *bool `coco:"enableDnsHostnames,optional"`
+	EnableDNSHostnames *bool `lumi:"enableDnsHostnames,optional"`
 }
 
 type InstanceTenancy string

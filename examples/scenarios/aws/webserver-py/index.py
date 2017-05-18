@@ -1,6 +1,6 @@
 # Copyright 2017 Pulumi, Inc. All rights reserved.
 
-import coconut.aws
+import lumi.aws
 
 size = "t2.micro"
 

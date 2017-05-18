@@ -8,25 +8,25 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/pulumi/coconut/pkg/compiler/errors"
-	"github.com/pulumi/coconut/pkg/diag"
-	"github.com/pulumi/coconut/pkg/encoding"
-	"github.com/pulumi/coconut/pkg/tokens"
+	"github.com/pulumi/lumi/pkg/compiler/errors"
+	"github.com/pulumi/lumi/pkg/diag"
+	"github.com/pulumi/lumi/pkg/encoding"
+	"github.com/pulumi/lumi/pkg/tokens"
 )
 
-const ProjectFile = "Coconut"    // the base name of a Project.
-const Dir = ".coconut"           // the default name of the CocoPack output directory.
-const PackFile = "Cocopack"      // the base name of a compiled CocoPack.
-const BinDir = "bin"             // the default name of the CocoPack binary output directory.
-const EnvDir = "env"             // the default name of the CocoPack environment directory.
+const ProjectFile = "Lumi"       // the base name of a Project.
+const Dir = ".lumi"              // the default name of the LumiPack output directory.
+const PackFile = "Lumipack"      // the base name of a compiled LumiPack.
+const BinDir = "bin"             // the default name of the LumiPack binary output directory.
+const EnvDir = "env"             // the default name of the LumiPack environment directory.
 const DepDir = "packs"           // the directory in which dependencies exist, either local or global.
 const SettingsFile = "workspace" // the base name of a markup file for shared settings in a workspace.
 
-const InstallRootEnvvar = "COCONUT"             // the envvar describing where Coconut has been installed.
-const InstallRootLibdir = "lib"                 // the directory in which the Coconut standard library exists.
-const DefaultInstallRoot = "/usr/local/coconut" // where Coconut is installed by default.
+const InstallRootEnvvar = "LUMIROOT"         // the envvar describing where Lumi has been installed.
+const InstallRootLibdir = "lib"              // the directory in which the Lumi standard library exists.
+const DefaultInstallRoot = "/usr/local/lumi" // where Lumi is installed by default.
 
-// InstallRoot returns Coconut's installation location.  This is controlled my the COCOROOT envvar.
+// InstallRoot returns Lumi's installation location.  This is controlled my the LUMIROOT envvar.
 func InstallRoot() string {
 	// TODO: support Windows.
 	root := os.Getenv(InstallRootEnvvar)
@@ -52,7 +52,7 @@ func isTop(path string) bool {
 
 // pathDir returns the nearest directory to the given path (identity if a directory; parent otherwise).
 func pathDir(path string) string {
-	// It's possible that the path is a file (e.g., a Coconut.yaml file); if so, we want the directory.
+	// It's possible that the path is a file (e.g., a Lumi.yaml file); if so, we want the directory.
 	info, err := os.Stat(path)
 	if err != nil || info.IsDir() {
 		return path
@@ -93,7 +93,7 @@ func DetectPackage(path string, d diag.Sink) (string, error) {
 			path := filepath.Join(curr, name)
 			if IsProject(path, d) {
 				return path, nil
-			} else if IsCocoDir(path) {
+			} else if IsLumiDir(path) {
 				// If we hit a workspace, stop looking.
 				stop = true
 			}
@@ -114,8 +114,8 @@ func DetectPackage(path string, d diag.Sink) (string, error) {
 	return "", nil
 }
 
-// IsCocoDir returns true if the target is a Coconut directory.
-func IsCocoDir(path string) bool {
+// IsLumiDir returns true if the target is a Lumi directory.
+func IsLumiDir(path string) bool {
 	info, err := os.Stat(path)
 	return err == nil && info.IsDir() && info.Name() == Dir
 }

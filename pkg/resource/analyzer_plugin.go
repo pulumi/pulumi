@@ -8,19 +8,19 @@ import (
 
 	"github.com/golang/glog"
 
-	"github.com/pulumi/coconut/pkg/pack"
-	"github.com/pulumi/coconut/pkg/tokens"
-	"github.com/pulumi/coconut/sdk/go/pkg/cocorpc"
+	"github.com/pulumi/lumi/pkg/pack"
+	"github.com/pulumi/lumi/pkg/tokens"
+	"github.com/pulumi/lumi/sdk/go/pkg/lumirpc"
 )
 
-const analyzerPrefix = "coco-analyzer"
+const analyzerPrefix = "lumi-analyzer"
 
 // analyzer reflects an analyzer plugin, loaded dynamically for a single suite of checks.
 type analyzer struct {
 	ctx    *Context
 	name   tokens.QName
 	plug   *plugin
-	client cocorpc.AnalyzerClient
+	client lumirpc.AnalyzerClient
 }
 
 // NewAnalyzer binds to a given analyzer's plugin by name and creates a gRPC connection to it.  If the associated plugin
@@ -39,7 +39,7 @@ func NewAnalyzer(ctx *Context, name tokens.QName) (Analyzer, error) {
 		ctx:    ctx,
 		name:   name,
 		plug:   plug,
-		client: cocorpc.NewAnalyzerClient(plug.Conn),
+		client: lumirpc.NewAnalyzerClient(plug.Conn),
 	}, nil
 }
 
@@ -48,7 +48,7 @@ func (a *analyzer) Name() tokens.QName { return a.name }
 // Analyze analyzes an entire project/stack/snapshot, and returns any errors that it finds.
 func (a *analyzer) Analyze(url pack.PackageURL) ([]AnalyzeFailure, error) {
 	glog.V(7).Infof("analyzer[%v].Analyze(url=%v) executing", a.name, url)
-	req := &cocorpc.AnalyzeRequest{
+	req := &lumirpc.AnalyzeRequest{
 		Pkg: url.String(),
 	}
 
@@ -69,7 +69,7 @@ func (a *analyzer) Analyze(url pack.PackageURL) ([]AnalyzeFailure, error) {
 // AnalyzeResource analyzes a single resource object, and returns any errors that it finds.
 func (a *analyzer) AnalyzeResource(t tokens.Type, props PropertyMap) ([]AnalyzeResourceFailure, error) {
 	glog.V(7).Infof("analyzer[%v].AnalyzeResource(t=%v,#props=%v) executing", a.name, t, len(props))
-	req := &cocorpc.AnalyzeResourceRequest{
+	req := &lumirpc.AnalyzeResourceRequest{
 		Type: string(t),
 		Properties: MarshalProperties(a.ctx, props, MarshalOptions{
 			PermitOlds: true, // permit old URNs, since this is pre-update.

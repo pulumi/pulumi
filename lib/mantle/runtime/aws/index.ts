@@ -1,7 +1,7 @@
 // Copyright 2017 Pulumi, Inc. All rights reserved.
 
 import * as arch from "../../arch";
-import * as aws from "@coconut/aws";
+import * as aws from "@lumi/aws";
 
 // This file contains various AWS "runtime" helper methods, including various URIs, ARN management utilities, and
 // Identity and Access Management (IAM) variables.  Eventually we want it to be highly customizable and configurable,

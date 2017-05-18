@@ -1,12 +1,12 @@
 // Copyright 2017 Pulumi, Inc. All rights reserved.
 
-// Package pack contains the core CocoPack metadata types.
+// Package pack contains the core LumiPack metadata types.
 package pack
 
 import (
-	"github.com/pulumi/coconut/pkg/compiler/ast"
-	"github.com/pulumi/coconut/pkg/diag"
-	"github.com/pulumi/coconut/pkg/tokens"
+	"github.com/pulumi/lumi/pkg/compiler/ast"
+	"github.com/pulumi/lumi/pkg/diag"
+	"github.com/pulumi/lumi/pkg/tokens"
 )
 
 // Package is a top-level package definition.

@@ -3,9 +3,9 @@
 package binder
 
 import (
-	"github.com/pulumi/coconut/pkg/compiler/ast"
-	"github.com/pulumi/coconut/pkg/compiler/symbols"
-	"github.com/pulumi/coconut/pkg/util/contract"
+	"github.com/pulumi/lumi/pkg/compiler/ast"
+	"github.com/pulumi/lumi/pkg/compiler/symbols"
+	"github.com/pulumi/lumi/pkg/util/contract"
 )
 
 // bindFunctionBody binds a function body, including a scope, its parameters, and its expressions and statements.

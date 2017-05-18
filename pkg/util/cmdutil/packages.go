@@ -8,8 +8,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/pulumi/coconut/pkg/encoding"
-	"github.com/pulumi/coconut/pkg/pack"
+	"github.com/pulumi/lumi/pkg/encoding"
+	"github.com/pulumi/lumi/pkg/pack"
 )
 
 // ReadPackage attempts to read a package from the given path; if an error occurs, it will be printed to Stderr, and

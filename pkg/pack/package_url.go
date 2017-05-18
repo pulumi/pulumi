@@ -8,8 +8,8 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/pulumi/coconut/pkg/tokens"
-	"github.com/pulumi/coconut/pkg/util/contract"
+	"github.com/pulumi/lumi/pkg/tokens"
+	"github.com/pulumi/lumi/pkg/util/contract"
 )
 
 // PackageURLString represents a fully qualified "URL-like" reference to an entity, usually another package.  This
@@ -82,8 +82,8 @@ func (u PackageURLString) MustParse(pkg tokens.PackageName) PackageURL {
 // PackageURL represents a parsed PackageURLString.
 type PackageURL struct {
 	Proto   string             // the protocol (e.g., "https://").
-	Base    string             // the base part of the URL (e.g., "cocohub.com/").
-	Name    tokens.PackageName // the name part of the URL (e.g., "coconut/container").
+	Base    string             // the base part of the URL (e.g., "lumihub.com/").
+	Name    tokens.PackageName // the name part of the URL (e.g., "lumi/container").
 	Version VersionSpec        // the version part of the URL (e.g., "#1.0.6").
 }
 
@@ -93,7 +93,7 @@ var _ fmt.Stringer = PackageURL{} // compile-time assertion that PackageURL impl
 const DefaultPackageURLProto = "https://"
 
 // DefaultPackageURLBase is the base part used if a URL doesn't specify one explicitly.
-const DefaultPackageURLBase = "cocohub.com/"
+const DefaultPackageURLBase = "lumihub.com/"
 
 // DefaultPackageURLVersion is the default URL version if none is specified.
 const DefaultPackageURLVersion = LatestVersion

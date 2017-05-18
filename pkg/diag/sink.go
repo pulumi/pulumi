@@ -12,8 +12,8 @@ import (
 
 	"github.com/golang/glog"
 
-	"github.com/pulumi/coconut/pkg/diag/colors"
-	"github.com/pulumi/coconut/pkg/util/contract"
+	"github.com/pulumi/lumi/pkg/diag/colors"
+	"github.com/pulumi/lumi/pkg/util/contract"
 )
 
 // Sink facilitates pluggable diagnostics messages.
@@ -36,7 +36,7 @@ type Sink interface {
 	// Warningf issues a new warning diagnostic.
 	Warningf(diag *Diag, args ...interface{})
 
-	// Stringify stringifies a diagnostic in the usual way (e.g., "error: MU123: Coconut.yaml:7:39: error goes here\n").
+	// Stringify stringifies a diagnostic in the usual way (e.g., "error: MU123: Lumi.yaml:7:39: error goes here\n").
 	Stringify(diag *Diag, cat Category, args ...interface{}) string
 	// StringifyLocation stringifies a source document location.
 	StringifyLocation(doc *Document, loc *Location) string
@@ -77,7 +77,7 @@ func newDefaultSink(opts FormatOptions, writers map[Category]io.Writer) *default
 	}
 }
 
-const DefaultSinkIDPrefix = "COCO"
+const DefaultSinkIDPrefix = "LUMI"
 
 // defaultSink is the default sink which logs output to stderr/stdout.
 type defaultSink struct {
@@ -169,7 +169,7 @@ func (d *defaultSink) Stringify(diag *Diag, cat Category, args ...interface{}) s
 
 	buffer.WriteRune('\n')
 
-	// TODO[pulumi/coconut#15]: support Clang-style expressive diagnostics.  This would entail, for example, using the
+	// TODO[pulumi/lumi#15]: support Clang-style expressive diagnostics.  This would entail, for example, using the
 	//     buffer within the target document, to demonstrate the offending line/column range of code.
 
 	s := buffer.String()

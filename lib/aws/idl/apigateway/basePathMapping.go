@@ -3,7 +3,7 @@
 package apigateway
 
 import (
-	"github.com/pulumi/coconut/pkg/resource/idl"
+	"github.com/pulumi/lumi/pkg/resource/idl"
 )
 
 // The BasePathMapping resource creates a base path that clients who call your Amazon API Gateway API
@@ -11,11 +11,11 @@ import (
 type BasePathMapping struct {
 	idl.NamedResource
 	// DomainName is the domain name for the base path mapping.
-	DomainName string `coco:"domainName"`
+	DomainName string `lumi:"domainName"`
 	// RestAPI is the API to map.
-	RestAPI *RestAPI `coco:"restAPI"`
+	RestAPI *RestAPI `lumi:"restAPI"`
 	// BasePath is the base path that callers of the API must provider in the URL after the domain name.
-	BasePath *string `coco:"basePath,optional"`
+	BasePath *string `lumi:"basePath,optional"`
 	// Stage is the mapping's API stage.
-	Stage *Stage `coco:"stage,optional"`
+	Stage *Stage `lumi:"stage,optional"`
 }

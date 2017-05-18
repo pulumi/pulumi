@@ -3,7 +3,7 @@
 package core
 
 import (
-	"github.com/pulumi/coconut/pkg/diag"
+	"github.com/pulumi/lumi/pkg/diag"
 )
 
 // Phase represents a compiler phase.

@@ -1,19 +1,19 @@
 .PHONY: build install lint lint_quiet test vet
 
-PROJECT=github.com/pulumi/coconut
+PROJECT=github.com/pulumi/lumi
 PROJECT_PKGS=$(shell go list ./... | grep -v /vendor/)
 
 default: test lint_quiet vet install
 
 build:
 	@echo "\033[0;32mBUILD:\033[0m"
-	@go build ${PROJECT}/cmd/coco
-	@go build ${PROJECT}/cmd/cidlc
+	@go build ${PROJECT}/cmd/lumi
+	@go build ${PROJECT}/cmd/clidl
 
 install:
 	@echo "\033[0;32mINSTALL:\033[0m"
-	@go install ${PROJECT}/cmd/coco
-	@go install ${PROJECT}/cmd/cidlc
+	@go install ${PROJECT}/cmd/lumi
+	@go install ${PROJECT}/cmd/clidl
 
 lint:
 	@echo "\033[0;32mLINT:\033[0m"

@@ -8,13 +8,13 @@ import (
 
 	"github.com/golang/glog"
 
-	"github.com/pulumi/coconut/pkg/compiler/ast"
-	"github.com/pulumi/coconut/pkg/compiler/symbols"
-	"github.com/pulumi/coconut/pkg/compiler/types"
-	"github.com/pulumi/coconut/pkg/util/contract"
+	"github.com/pulumi/lumi/pkg/compiler/ast"
+	"github.com/pulumi/lumi/pkg/compiler/symbols"
+	"github.com/pulumi/lumi/pkg/compiler/types"
+	"github.com/pulumi/lumi/pkg/util/contract"
 )
 
-// Object is a value allocated and stored on the heap.  In CocoIL's interpreter, all values are heap allocated, since we
+// Object is a value allocated and stored on the heap.  In LumiIL's interpreter, all values are heap allocated, since we
 // are less concerned about performance of the evaluation (compared to the cost of provisioning cloud resources).
 type Object struct {
 	t          symbols.Type // the runtime type of the object.
@@ -419,8 +419,8 @@ func NewConstantObject(v interface{}) *Object {
 
 // FreezeReadonlyProperties freezes the readonly fields of an object, possibly copying properties down from the
 // prototype chain as necessary to accomplish the freezing (since modifying the prototype chain would clearly be wrong).
-// TODO[pulumi/coconut#70]: this could cause subtle compatibility issues; e.g., it's possible to write to the prototype
-//     for an inherited property postconstruction; in vanilla ECMAscript, that write would be seen; in CocoJS it won't.
+// TODO[pulumi/lumi#70]: this could cause subtle compatibility issues; e.g., it's possible to write to the prototype
+//     for an inherited property postconstruction; in vanilla ECMAscript, that write would be seen; in LumiJS it won't.
 func (o *Object) FreezeReadonlyProperties() {
 	current := o.Type()
 	for current != nil {

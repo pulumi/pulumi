@@ -3,7 +3,7 @@
 package testutil
 
 import (
-	"github.com/pulumi/coconut/pkg/diag"
+	"github.com/pulumi/lumi/pkg/diag"
 )
 
 // TestDiagSink suppresses message output, but captures them, so that they can be compared to expected results.

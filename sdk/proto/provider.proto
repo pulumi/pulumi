@@ -5,7 +5,7 @@ syntax = "proto3";
 import "google/protobuf/empty.proto";
 import "google/protobuf/struct.proto";
 
-package cocorpc;
+package lumirpc;
 
 // TODO: figure out "transactionality" and possibly "tainting".
 

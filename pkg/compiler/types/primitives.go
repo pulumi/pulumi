@@ -3,8 +3,8 @@
 package types
 
 import (
-	"github.com/pulumi/coconut/pkg/compiler/symbols"
-	"github.com/pulumi/coconut/pkg/tokens"
+	"github.com/pulumi/lumi/pkg/compiler/symbols"
+	"github.com/pulumi/lumi/pkg/tokens"
 )
 
 // All of the primitive types.

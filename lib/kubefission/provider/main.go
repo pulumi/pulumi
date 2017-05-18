@@ -6,15 +6,15 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/pulumi/coconut/pkg/util/cmdutil"
-	"github.com/pulumi/coconut/pkg/util/rpcutil"
-	"github.com/pulumi/coconut/sdk/go/pkg/cocorpc"
+	"github.com/pulumi/lumi/pkg/util/cmdutil"
+	"github.com/pulumi/lumi/pkg/util/rpcutil"
+	"github.com/pulumi/lumi/sdk/go/pkg/lumirpc"
 	"google.golang.org/grpc"
 )
 
 func main() {
 	// Initialize loggers before going any further.
-	// TODO: consider parsing flags and letting the Coconut harness propagate them.
+	// TODO: consider parsing flags and letting the Lumi harness propagate them.
 	cmdutil.InitLogging(false, 0)
 
 	// Fire up a gRPC server, letting the kernel choose a free port for us.
@@ -24,7 +24,7 @@ func main() {
 			if err != nil {
 				return fmt.Errorf("failed to create Kube-Fission resource provider: %v", err)
 			}
-			cocorpc.RegisterResourceProviderServer(srv, prov)
+			lumirpc.RegisterResourceProviderServer(srv, prov)
 			return nil
 		},
 	})

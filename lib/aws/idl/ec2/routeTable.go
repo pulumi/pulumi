@@ -3,7 +3,7 @@
 package ec2
 
 import (
-	"github.com/pulumi/coconut/pkg/resource/idl"
+	"github.com/pulumi/lumi/pkg/resource/idl"
 )
 
 // RouteTable is a route table within your VPC.  After creating a route table, you can add routes and associate the
@@ -12,5 +12,5 @@ import (
 type RouteTable struct {
 	idl.NamedResource
 	// The VPC where the route table will be created.
-	VPC *VPC `coco:"vpc,replaces"`
+	VPC *VPC `lumi:"vpc,replaces"`
 }

@@ -1,32 +1,32 @@
-# Coconut Package Metadata (CocoPack)
+# Lumi Package Metadata (LumiPack)
 
-This document describes the overall concepts, capabilities, and serialization format for CocoPack.  It also describes
-the intermediate language (IL) and type system for CocoPack, something we refer to as CocoIL.
+This document describes the overall concepts, capabilities, and serialization format for LumiPack.  It also describes
+the intermediate language (IL) and type system for LumiPack, something we refer to as LumiIL.
 
 ## Overview
 
-Each package is serialized using the CocoPack format and contains four things:
+Each package is serialized using the LumiPack format and contains four things:
 
 * Package metadata.
 * Symbol names and tokens.
 * Module, type, function, and variable definitions.
 * Data and computations encoded in an intermediate language (IL).
 
-The metadata section describes attributes about the overall CocoPack, like its name and dependencies.
+The metadata section describes attributes about the overall LumiPack, like its name and dependencies.
 
-All data and computations are fully bound to types, and ready for interpretation/execution.  Higher level CocoLang
+All data and computations are fully bound to types, and ready for interpretation/execution.  Higher level LumiLang
 language compilers are responsible for performing this binding, and encoding the results.  Those results are symbol
-names and tokens that are registered and available for lookup within any given CocoPack.  These symbols provide a
+names and tokens that are registered and available for lookup within any given LumiPack.  These symbols provide a
 quick, and binding-logic-free, way of resolving any bound node to its target abstraction (module, type, or function).
 From there, any data or computations associated with those abstractions may be retrieved thanks to the definitions.
 
-Coconut's type system was designed to be supported by a broad cross-section of modern programming languages.  That said,
-it's entirely possible that CocoPack exposes a construct that a certain language doesn't support.  Because CocoIL is
+Lumi's type system was designed to be supported by a broad cross-section of modern programming languages.  That said,
+it's entirely possible that LumiPack exposes a construct that a certain language doesn't support.  Because LumiIL is
 designed for interpretation, determinism, and predictability -- and not runtime speed -- all type coercions are checked
 and throw an exception if an illegal coercion is attempted.  It is obviously a better choice to verify such conversions
-where possible in the CocoLang compilers themselves, however this approach naturally accommodates dynamic languages.
+where possible in the LumiLang compilers themselves, however this approach naturally accommodates dynamic languages.
 
-CocoPack is serialized in JSON/YAML form, although in the future we may explore more efficient file formats.  (Markup is
+LumiPack is serialized in JSON/YAML form, although in the future we may explore more efficient file formats.  (Markup is
 rather verbose, yet pleasantly human-readable.)  Examples in this document will use a YAML syntax for brevity's sake.
 
 ## Metadata
@@ -40,13 +40,13 @@ managers, like a description, author, website, license, and so on, for example:
     website: https://acmecorp.github.io/elk
     keywords: [ elasticsearch, logstash, kibana ]
     dependencies:
-        coconut: "*"
+        lumi: "*"
         aws: ^1.0.7
 
 TODO(joe): describe the full informational attributes available.
 
-Most of this information resides in the source program's `Coconut.yaml` (or `.json`) file.  It is possible for a
-CocoLang compiler to generate some of this information, however, based on decorators, comments, and so on.
+Most of this information resides in the source program's `Lumi.yaml` (or `.json`) file.  It is possible for a
+LumiLang compiler to generate some of this information, however, based on decorators, comments, and so on.
 
 Note that a version number is *not* part of the metadata prelude.  The version number is managed by a version management
 system outside of the purview of the package contents.  For example, packages checked into Git are managed by SHA1
@@ -56,7 +56,7 @@ Please refer to [the dependencies design document](deps.md) for additional infor
 ## Symbols
 
 As with most metadata formats, names are central to how things reference one another.  The two key concepts to
-understand in how CocoPack and CocoIL encode such references are *symbols* and *tokens*.
+understand in how LumiPack and LumiIL encode such references are *symbols* and *tokens*.
 
 ### Abstractions
 
@@ -91,14 +91,14 @@ deps.md), contains a URL, version number, and so on.  A token inside of a packag
 
 ## Accessibility
 
-CocoIL supports two levels of accessibility on all elements:
+LumiIL supports two levels of accessibility on all elements:
 
 * `public` means an element is accessible outside of its container.
 * `private` means an element is accessible only within its container (the default).
 
 In these sentences, "container" refers to either the enclosing module or class.
 
-CocoIL supports one additional level of accessibility on class members:
+LumiIL supports one additional level of accessibility on class members:
 
 * `protected` means an element is accessible only within its class and subclasses.
 
@@ -108,15 +108,15 @@ internal functionality that is invoked within the package but not meant for publ
 
 ## Types
 
-This section describes the core aspects of CocoIL's type system.
+This section describes the core aspects of LumiIL's type system.
 
 TODO: a warning to the reader; it is likely that, over time, we will move more in the direction of an ECMAScript-like
     type system, with optional/gradual typing on top.  We are straddling a line between, on one hand, source
     compatibility with ECMAScript, Python, Ruby, etc., and, on the other hand, as much static compile-time verification
     as possible.  This is obviously heavily inspired by TypeScript.  At the moment, I fear we have gone too far down the
-    static typing rabbit's hole.  This unfortunately means each CocoLang's "runtime layer" will be thicker than we want.
+    static typing rabbit's hole.  This unfortunately means each LumiLang's "runtime layer" will be thicker than we want.
 
-All instances of classes in CocoIL are called *objects*.  They are allocated on the heap, in map-like data structures
+All instances of classes in LumiIL are called *objects*.  They are allocated on the heap, in map-like data structures
 that have strong type identity, facilitating dynamic and structural conversions, in addition to classical RTTI and OOP
 patterns.  In a sense, this is a lot like how ECMAScript works, and indeed the runtime emulates [ECMAScript prototypes](
 https://developer.mozilla.org/en-US/docs/Web/JavaScript/Inheritance_and_the_prototype_chain) in many aspects.
@@ -130,7 +130,7 @@ point of attempting to access members that are missing (versus `object` which in
 Because all instances are objects, we must talk about `null`.  By default, types do not include the special value `null`
 in their domain.  To include it in a type's domain, suffix that type `T` with a question mark, as in `T?`.
 
-TODO[pulumi/coconut#64]: at the moment, we have not yet implemented non-null types.  Instead, all types include `null`
+TODO[pulumi/lumi#64]: at the moment, we have not yet implemented non-null types.  Instead, all types include `null`
     in the legal domain of values.  It remains to be seen whether we'll actually go forward with non-nullability.
 
 ### Primitives
@@ -172,7 +172,7 @@ The default module for an executable package may also contain a special entrypoi
 evaluation.  This special function is denoted by the special name `.main`.  It is illegal for non-executable packages
 to contain such a function, just as it is for a non-default module to contain one.
 
-It is entirely up to a CocoLang compiler to decide how to partition code between `.init` and `.main`.  For languages
+It is entirely up to a LumiLang compiler to decide how to partition code between `.init` and `.main`.  For languages
 that have explicit `main` functions, for example, presumably that would be the key to trigger generation of an
 executable package with an entrypoint; and all other packages would be libraries without one.  For languages like
 ECMAScript, on the other hand, which permit "open-coding" anywhere in a module's definition, every module would
@@ -229,7 +229,7 @@ be mutated freely, unless that object is immutable or a constant value.
 
 All variables are initialized to `null` by default.  Problems may arise if the type is not nullable (more on this
 later).  All loads guard against this possibility, however loading a `null` value from a non-null location will lead to
-runtime failure (which can be difficult to diagnose).  It is better if CocoLang compilers ensure this cannot happen.
+runtime failure (which can be difficult to diagnose).  It is better if LumiLang compilers ensure this cannot happen.
 
 Finally, class properties can be marked as `primary`, to make it both publicly accessible and facilitate easy
 initialization.  Any properties that will be initialized as pure data should be marked primary.  This has special
@@ -264,11 +264,11 @@ containing even a single abstract method must itself be marked `abstract` (more 
 
 It is illegal to mark a `static` method as either `sealed` or `abstract`.
 
-Module functions and lambdas are required to define a `body`, which is a CocoIL block.  Class methods often have one, but
+Module functions and lambdas are required to define a `body`, which is a LumiIL block.  Class methods often have one, but
 it can be omitted, in which case the method must be abstract and concrete subclasses must provide a `body` block.
 
 Any function can be marked with `intrinsic: true` to delegate execution to a runtime intrinsic.  This is used to
-express custom resource types, but is seldom used in everyday Coconut development.  Please refer to the section on
+express custom resource types, but is seldom used in everyday Lumi development.  Please refer to the section on
 Runtime Intrinsics later in this document for details on how this extensibility model works.
 
 ### Classes
@@ -276,7 +276,7 @@ Runtime Intrinsics later in this document for details on how this extensibility 
 New named `class` types can be created by composing primitives and other `class` types.  Classes are capable of
 representing a multitude of constructs, from data-only, to pure interfaces, and everything in between.
 
-Because Coconut's primitive type system is restricted to JSON-like types, all instances can be serialized as [JSON](
+Because Lumi's primitive type system is restricted to JSON-like types, all instances can be serialized as [JSON](
 https://tools.ietf.org/html/rfc7159), ensuring interoperability with languages and Internet protocols.  There may be
 additional constraints placed on classes to enforce contracts, but this does not alter their runtime representation.
 
@@ -320,7 +320,7 @@ A class may have a class initializer that runs code to initialize static variabl
 As noted earlier, class properties that are pure data should be marked as `primary`, to make initialization easier.
 Although classes can have constructors, they are not required to, and primary properties are set by the calling object
 initializer *before* invoking that constructor.  In fact, a primary property's value *must* be provided at
-initialization time (unless it is marked nullable).  This feature helps to reinforce Coconut's data-oriented viewpoint.
+initialization time (unless it is marked nullable).  This feature helps to reinforce Lumi's data-oriented viewpoint.
  
 In pseudo-code, it is as though constructing a `Person` object is done as thus:
 
@@ -374,7 +374,7 @@ For example, imagine we want an `Employee` which is a special kind of `Person`:
                 type: string
                 description: The employee's current title.
 
-This facilitates implicit conversions from `Employee` to `Person`.  Because CocoIL preserves RTTI for objects,
+This facilitates implicit conversions from `Employee` to `Person`.  Because LumiIL preserves RTTI for objects,
 recovering the fact that such an object is an `Employee` is possible using an explicit downcast later on.
 
 At the moment, there is no support for redeclaration of properties, and therefore no support for covariance (i.e.,
@@ -382,11 +382,11 @@ strengthening property types).  All base-type properties are simply inherited "a
 
 ### Conversions
 
-The CocoIL type system uses a combination of subtyping and structural conversions.
+The LumiIL type system uses a combination of subtyping and structural conversions.
 
-At its core, CocoIL is a nominal static type system.  As such, it obeys the usual subtyping relations: upcasting from a
+At its core, LumiIL is a nominal static type system.  As such, it obeys the usual subtyping relations: upcasting from a
 subclass to its superclass can be done without any explicit action; downcasting from a superclass to a given subclass
-can be done explicitly with a CocoIL instruction, and it might fail should the cast be wrong.
+can be done explicitly with a LumiIL instruction, and it might fail should the cast be wrong.
 
 Imagining that `Base` is the superclass and `Derived` is the subclass, then in pseudo-code:
 
@@ -397,9 +397,9 @@ Imagining that `Base` is the superclass and `Derived` is the subclass, then in p
     d = (D)b; // Error at runtime, Base is not an instance of Derived.
     b = d;    // OK.
 
-CocoIL also supports a dynamic `isinst` operator, to check whether a given object is of a certain class.
+LumiIL also supports a dynamic `isinst` operator, to check whether a given object is of a certain class.
 
-In addition, however, CocoIL supports structural "duck typed" conversions between conjurable types (records and
+In addition, however, LumiIL supports structural "duck typed" conversions between conjurable types (records and
 interfaces).  Recall that a conjurable type is one with only primary properties and no constructor.  Such types do not
 have invariants that might be violated by free coercions between such types.  So long as the source and target are
 "compatible" at compile-time, duck-type conversions between them work just fine.
@@ -416,22 +416,22 @@ A compatible function is one whose signature is structurally compatible through 
 types are contravariant (equal or relaxed), return types are covariant (equal or strengthened).  Properties, on the
 other hand, are invariant, since they are both input and output.  This is the same for lambda conversions.
 
-The above conversions are based on static types.  CocoIL also supports dynamic coercion, dynamic castability checks, plus
+The above conversions are based on static types.  LumiIL also supports dynamic coercion, dynamic castability checks, plus
 dynamic property and method operations, as though the object were simply a map indexed by member names.  This is often
 used in conjunction with the untyped `any` type.  These operations may, of course, fail at runtime, as is usual in
-dynamic languages.  These operations respect accessibility.  These operations are described in the CocoIL section.
+dynamic languages.  These operations respect accessibility.  These operations are described in the LumiIL section.
 
 ### Advanced Types
 
-CocoIL supports some additional "advanced" type system features.
+LumiIL supports some additional "advanced" type system features.
 
-TODO[pulumi/coconut#64]: at the moment, we don't support any of these.  It's unclear if we will pursue adding these to
+TODO[pulumi/lumi#64]: at the moment, we don't support any of these.  It's unclear if we will pursue adding these to
     the type system.  It's unfortunate that CloudFormation supports them, and we do not, at the moment, so we will need
     to do something.  Enums, for sure.  But perhaps constraint types rely on library verification instead.
 
 #### Constraints
 
-To support rich validation, even in the presence of representations that facilitate data interoperability, CocoIL supports
+To support rich validation, even in the presence of representations that facilitate data interoperability, LumiIL supports
 additional constraints on `number`, `string`, and array types, inspired by [JSON Schema](http://json-schema.org/):
 
 * For `number`s:
@@ -485,7 +485,7 @@ For example, imaging we wish our `state` property to be confined to the 50 state
             type: [ "AL", "AK", ..., "WI", "WY" ]
 
 A compiler should check that any value for the `state` property has one of the legal string values.  If it doesn't,
-CocoIL runtime validation will ensure that it is the case.
+LumiIL runtime validation will ensure that it is the case.
 
 #### Type Aliases
 
@@ -507,28 +507,28 @@ Now, given this new `State` type, we can simplify our `state` property example f
         state:
             type: State
 
-## Coconut Intermediate Language (CocoIL)
+## Lumi Intermediate Language (LumiIL)
 
-CocoIL is an AST-based intermediate language.  This is in contrast to some of its relatives which use lower-level stack
-or register machines.  There are three reasons CocoIL chooses ASTs over these other forms:
+LumiIL is an AST-based intermediate language.  This is in contrast to some of its relatives which use lower-level stack
+or register machines.  There are three reasons LumiIL chooses ASTs over these other forms:
 
-* First, it simplifies the task of writing new CocoLang compilers, something important to the overall ecosystem.
+* First, it simplifies the task of writing new LumiLang compilers, something important to the overall ecosystem.
 
 * Second, performance is less important than simplicity; so, although the AST model most likely complicates certain
-  backend optimizations, this matters less to an interpreted environment like Coconut than a system that compiles to
+  backend optimizations, this matters less to an interpreted environment like Lumi than a system that compiles to
   machine code.  Especially when considering the cost of provisioning cloud infrastructure (often measured in minutes).
 
-* Third, it makes writing tools that process CocoPacks easier, including CocoGL processing tools that reraise AST edits
+* Third, it makes writing tools that process LumiPacks easier, including LumiGL processing tools that reraise AST edits
   back to the original program text.
 
 ### AST Nodes
 
-Below is an overview of CocoIL's AST types.  For the latest, please [refer to the source code](
-https://github.com/pulumi/coconut/tree/master/pkg/compiler/ast).
+Below is an overview of LumiIL's AST types.  For the latest, please [refer to the source code](
+https://github.com/pulumi/lumi/tree/master/pkg/compiler/ast).
 
 TODO: this is just a dumb name listing; eventually we want to specify each and every node type.
 
-Every CocoIL AST node derives from a common base type that includes information about its location in the source code:
+Every LumiIL AST node derives from a common base type that includes information about its location in the source code:
 
     // Node is a discriminated type for all AST subtypes.
     interface Node {
@@ -613,71 +613,71 @@ Every CocoIL AST node derives from a common base type that includes information 
 
 ## Interpretation
 
-CocoPack and CocoIL are interpreted formats.
+LumiPack and LumiIL are interpreted formats.
 
 That means we do not compile them to assembly and, in certain cases, we have made design decisions that favor
 correctness over performance.  The toolchain has a built in verifier that enforces these design decisions at runtime
-(which can be run explicitly with `coco pack verify`).  This is unlike most runtimes that leverage an independent static
+(which can be run explicitly with `lumi pack verify`).  This is unlike most runtimes that leverage an independent static
 verification step, often at the time of machine translation, to avoid runtime penalties.
 
 TODO: specify more information about the runtime context in which evaluation is performed.
 
 Any failures during interpretation are conveyed in the most friendly manner.  For example, unhandled exceptions carry
-with them a full stack trace, complete with line number information.  In general, the Coconut interpreted environment
+with them a full stack trace, complete with line number information.  In general, the Lumi interpreted environment
 should nut fundamentally carry with it any inherent disadvantages, other than the obvious one: it is a new runtime.
 
 ## Possibly-Controversial Decisions
 
-It's worth describing for a moment some possibly-controversial decisions about CocoPack and CocoIL.
+It's worth describing for a moment some possibly-controversial decisions about LumiPack and LumiIL.
 
-These might come as a surprise to higher level programmers, however, it is worth remembering that CocoIL is attempting
+These might come as a surprise to higher level programmers, however, it is worth remembering that LumiIL is attempting
 to strike a balance between high- and low-level multi-language representations.  In doing so, some opinions had to be
 discarded, while others were strengthened.  And some of them aren't set in stone and may be something we revisit later.
 
 ### Values
 
-CocoIL does not support unboxed values.  This is entirely a performance and low-level interop concern.
+LumiIL does not support unboxed values.  This is entirely a performance and low-level interop concern.
 
 ### Pointers
 
-CocoIL supports pointers for implementing runtime functionality.  It does not embellish them very much, however, other
-than letting the runtime (written in Go) grab a hold of them and do whatever it pleases.  For example, CocoIL does not
-contain operators for indirection, arithmetic, or dereferencing.  CocoIL itself is not for systems programming.
+LumiIL supports pointers for implementing runtime functionality.  It does not embellish them very much, however, other
+than letting the runtime (written in Go) grab a hold of them and do whatever it pleases.  For example, LumiIL does not
+contain operators for indirection, arithmetic, or dereferencing.  LumiIL itself is not for systems programming.
 
-TODO: this could evolve further as we look to adopting CocoGo, which, clearly, will have the concept of pointers.
+TODO: this could evolve further as we look to adopting LumiGo, which, clearly, will have the concept of pointers.
 
 ### Generics
 
-CocoIL does not support generics.  CocoLang languages are free to, however they must be erased at compile-time.
+LumiIL does not support generics.  LumiLang languages are free to, however they must be erased at compile-time.
 
-This admittedly sacrifices some amount of generality.  But it does so at the benefit of simplicity.  Some CocoLang
+This admittedly sacrifices some amount of generality.  But it does so at the benefit of simplicity.  Some LumiLang
 languages simply do not support generics, and so admitting them to the core would be problematic.  Furthermore,
 languages like Go demonstrate that modern cloud programs of considerable complexity can be written without them.
 
-Perhaps the most unfortunate and apparent aspect of CocoIL's lack of generics is the consequently missing composable
-collection types.  To soften the blow of this, CocoIL has built-in array, map, and enumerable object types.
+Perhaps the most unfortunate and apparent aspect of LumiIL's lack of generics is the consequently missing composable
+collection types.  To soften the blow of this, LumiIL has built-in array, map, and enumerable object types.
 
 I suspect we will eventually need/want to go here.
 
 ### Operators
 
-CocoIL does come with a number of built-in operators.
+LumiIL does come with a number of built-in operators.
 
-CocoIL does not care about operator precedence, however.  All expressions are evaluated in the exact order in which they
-appear in the tree.  In fact, this is true of all of CocoIL's AST nodes: evaluation happens in tree-walk order.
+LumiIL does not care about operator precedence, however.  All expressions are evaluated in the exact order in which they
+appear in the tree.  In fact, this is true of all of LumiIL's AST nodes: evaluation happens in tree-walk order.
 
 ### Overloading
 
-CocoIL does not support function overloading.
+LumiIL does not support function overloading.
 
-CocoIL does not support operator overloading.  The set of operators is fixed and cannot be overridden, although a
-higher-level CocoLang compiler may choose to emit calls to intrinsic functions rather than using CocoIL operators.
+LumiIL does not support operator overloading.  The set of operators is fixed and cannot be overridden, although a
+higher-level LumiLang compiler may choose to emit calls to intrinsic functions rather than using LumiIL operators.
 
 ### Exceptions
 
-Most CocoLangs have exception-based error models (with the exception of Go).  As a result, CocoIL supports exceptions.
+Most LumiLangs have exception-based error models (with the exception of Go).  As a result, LumiIL supports exceptions.
 
-At the moment, there are no throws annotations of any kind; if Go or Java become interesting CocoLang languages to
+At the moment, there are no throws annotations of any kind; if Go or Java become interesting LumiLang languages to
 support down the road, we may wish to add optional throws annotations to drive proxy generation, including the
 possibility of flowing return and exception types to Go and Java, respectively, or fail-fasting at the boundary.
 
@@ -687,19 +687,19 @@ invokes, and so on.  Though, it's worth noting, we don't support Ruby-style `mis
 
 ### Threading/Async/Await
 
-There is no multithreading in CocoIL.  And there is no I/O.  As a result, there are neither multithreading facilities
+There is no multithreading in LumiIL.  And there is no I/O.  As a result, there are neither multithreading facilities
 nor the commonly found `async` and `await` features in modern programming languages.  C'est la vie.
 
 ### Attributes
 
-CocoIL doesn't currently support "attributes" (a.k.a., decorators).  This isn't for any principled reason other than the
+LumiIL doesn't currently support "attributes" (a.k.a., decorators).  This isn't for any principled reason other than the
 lack of a need for them and, as such, attributes may be something we consider adding at a later date.  Of course, a
-CocoLang compiler may very well make decisions based on the presence or absence of attributes; but they must be erased.
+LumiLang compiler may very well make decisions based on the presence or absence of attributes; but they must be erased.
 
 ### Varargs
 
-CocoIL doesn't support varargs; instead just use arrays.  The benefit of true varargs is twofold: usability -- something
-that doesn't matter at the CocoIL level -- and runtime performance -- something CocoIL is less concerned about.
+LumiIL doesn't support varargs; instead just use arrays.  The benefit of true varargs is twofold: usability -- something
+that doesn't matter at the LumiIL level -- and runtime performance -- something LumiIL is less concerned about.
 
 ## Open Questions
 

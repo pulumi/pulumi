@@ -1,6 +1,6 @@
 // Copyright 2017 Pulumi, Inc. All rights reserved.
 
-import * as aws from "@coconut/aws";
+import * as aws from "@lumi/aws";
 
 let group = new aws.ec2.SecurityGroup("web-secgrp", {
     groupDescription: "Enable HTTP access",

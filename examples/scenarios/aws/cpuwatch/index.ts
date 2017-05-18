@@ -1,6 +1,6 @@
 // Copyright 2017 Pulumi, Inc. All rights reserved.
 
-import * as aws from "@coconut/aws";
+import * as aws from "@lumi/aws";
 import {emailAddress} from "./config";
 
 // enableAlarm turns on a CPU alarm for the given instance; if the CPU utilization exceeds the given threshold, an

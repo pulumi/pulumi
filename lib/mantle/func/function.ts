@@ -3,9 +3,9 @@
 import * as arch from "../arch";
 import * as config from "../config";
 import * as runtime from "../runtime";
-import * as aws from "@coconut/aws";
-import * as kubefission from "@coconut/kubefission";
-import {asset} from "@coconut/coconut";
+import * as aws from "@lumi/aws";
+import * as kubefission from "@lumi/kubefission";
+import {asset} from "@lumi/lumi";
 
 // Function is a cross-cloud function abstraction whose source code is taken from a string, file, or network asset.
 // For example, `https://gist.github.com/pulumi/fe8a5ae322ffe63fac90535eb554237f` will use a Gist published on GitHub,

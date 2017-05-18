@@ -1,7 +1,7 @@
 // Copyright 2017 Pulumi, Inc. All rights reserved.
 
 import * as arch from "../../arch";
-import * as kubefission from "@coconut/kubefission";
+import * as kubefission from "@lumi/kubefission";
 
 let fissionEnvs: {[langrt: string]: kubefission.Environment} = {};
 

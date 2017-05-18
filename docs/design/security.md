@@ -1,18 +1,18 @@
-# Coconut Security
+# Lumi Security
 
 *WARNING: this document is out-of-date.  Most of the thinking here will apply as we move to a thicker [x-cloud](
 x-cloud.md) abstraction layer.  Some of it may very well matter for the resource provider model, although I think not,
 as we seem to be leaning towards thin configuration management for those layers.  Clearly all of these topics will also
-matter when authenticating with a hosted Coconut service, but we are a ways away from thinking about that.*
+matter when authenticating with a hosted Lumi service, but we are a ways away from thinking about that.*
 
-Coconut's security concepts are inspired by [UNIX's security model](https://en.wikipedia.org/wiki/Unix_security) in
+Lumi's security concepts are inspired by [UNIX's security model](https://en.wikipedia.org/wiki/Unix_security) in
 addition to [AWS's IAM system](http://docs.aws.amazon.com/IAM/latest/UserGuide/id.html).
 
 ## Personas
 
-Coconut's architecture is flexible enough to describe a range of scenarios -- from single- to multi-tenant -- and team
+Lumi's architecture is flexible enough to describe a range of scenarios -- from single- to multi-tenant -- and team
 sizes -- from small developer teams doing DevOps to large Enterprise organizations with dedicated IT operations
-departments. Although the details for different points on this spectrum vary greatly, Coconut attempts to choose smart
+departments. Although the details for different points on this spectrum vary greatly, Lumi attempts to choose smart
 defaults that encourage best practices like [defense in depth](
 https://en.wikipedia.org/wiki/Defense_in_depth_(computing)) and the [principle of least privilege](
 https://en.wikipedia.org/wiki/Principle_of_least_privilege).
@@ -74,7 +74,7 @@ TODO(joe): we still need to figure out the ACL "language" to use.  Perhaps just 
 
 TODO(joe): enforced credential rotations.
 
-TODO(joe): articulate how the mapping between Coconut identity and cloud-provider identity works.
+TODO(joe): articulate how the mapping between Lumi identity and cloud-provider identity works.
 
 ## Secrets
 

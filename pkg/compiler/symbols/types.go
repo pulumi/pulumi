@@ -3,8 +3,8 @@
 package symbols
 
 import (
-	"github.com/pulumi/coconut/pkg/diag"
-	"github.com/pulumi/coconut/pkg/tokens"
+	"github.com/pulumi/lumi/pkg/diag"
+	"github.com/pulumi/lumi/pkg/tokens"
 )
 
 // Type is a type symbol that can be used for typechecking operations.

@@ -6,7 +6,7 @@ import (
 	"github.com/golang/glog"
 	"reflect"
 
-	"github.com/pulumi/coconut/pkg/util/contract"
+	"github.com/pulumi/lumi/pkg/util/contract"
 )
 
 // Visitor is a pluggable interface invoked during walks of an AST.

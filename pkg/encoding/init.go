@@ -3,11 +3,11 @@
 package encoding
 
 import (
-	"github.com/pulumi/coconut/pkg/util/contract"
+	"github.com/pulumi/lumi/pkg/util/contract"
 )
 
 func init() {
-	// Ensure a marshaler is available for every possible Cocofile extension
+	// Ensure a marshaler is available for every possible Lumifile extension
 	Marshalers = make(map[string]Marshaler)
 	for _, ext := range Exts {
 		switch ext {
@@ -18,7 +18,7 @@ func init() {
 		case ".yaml":
 			Marshalers[ext] = YAML
 		default:
-			contract.Failf("No Marshaler available for CocofileExt %v", ext)
+			contract.Failf("No Marshaler available for LumifileExt %v", ext)
 		}
 	}
 }

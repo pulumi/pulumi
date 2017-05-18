@@ -7,18 +7,18 @@ import (
 	"fmt"
 
 	"github.com/fission/fission"
-	"github.com/pulumi/coconut/pkg/resource"
-	"github.com/pulumi/coconut/pkg/util/mapper"
-	"github.com/pulumi/coconut/sdk/go/pkg/cocorpc"
+	"github.com/pulumi/lumi/pkg/resource"
+	"github.com/pulumi/lumi/pkg/util/mapper"
+	"github.com/pulumi/lumi/sdk/go/pkg/lumirpc"
 	"golang.org/x/net/context"
 
-	idl "github.com/pulumi/coconut/lib/kubefission/rpc"
+	idl "github.com/pulumi/lumi/lib/kubefission/rpc"
 )
 
 const EnvironmentToken = idl.EnvironmentToken
 
 // NewEnvironmentProvider creates a provider that handles Fission environment operations.
-func NewEnvironmentProvider(ctx *Context) cocorpc.ResourceProviderServer {
+func NewEnvironmentProvider(ctx *Context) lumirpc.ResourceProviderServer {
 	ops := &envProvider{ctx}
 	return idl.NewEnvironmentProvider(ops)
 }

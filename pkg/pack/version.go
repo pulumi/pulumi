@@ -58,6 +58,6 @@ func (v VersionSpec) Check() error {
 		return errors.New("Missing version")
 	}
 	_, err := semver.ParseRange(vs)
-	// TODO[pulumi/coconut#18]: consider supporting the sugared NPM-style semvers, like tilde and caret ranges.
+	// TODO[pulumi/lumi#18]: consider supporting the sugared NPM-style semvers, like tilde and caret ranges.
 	return err
 }

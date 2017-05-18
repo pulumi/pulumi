@@ -3,7 +3,7 @@
 package ec2
 
 import (
-	"github.com/pulumi/coconut/pkg/resource/idl"
+	"github.com/pulumi/lumi/pkg/resource/idl"
 )
 
 // VPCGatewayAttachment attaches a gateway to a VPC.  For more information, see
@@ -11,7 +11,7 @@ import (
 type VPCGatewayAttachment struct {
 	idl.NamedResource
 	// The VPC to associate with this gateway.
-	VPC *VPC `coco:"vpc,replaces"`
+	VPC *VPC `lumi:"vpc,replaces"`
 	// The Internet gateway to attach to the VPC.
-	InternetGateway *InternetGateway `coco:"internetGateway,replaces"`
+	InternetGateway *InternetGateway `lumi:"internetGateway,replaces"`
 }

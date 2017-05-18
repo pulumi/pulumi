@@ -3,7 +3,7 @@
 package ast
 
 import (
-	"github.com/pulumi/coconut/pkg/tokens"
+	"github.com/pulumi/lumi/pkg/tokens"
 )
 
 /* Definitions */

@@ -1,0 +1,12 @@
+{
+    "name": "@lumi/lumijs",
+    "main": ".lumi/bin/index.js",
+    "typings": ".lumi/bin/index.d.ts",
+    "scripts": {
+        "build": "cljs"
+    },
+    "devDependencies": {
+        "typescript": "^2.1.4"
+    }
+}
+

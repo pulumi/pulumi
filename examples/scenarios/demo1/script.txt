@@ -5,15 +5,15 @@ The first demo of the full system in action.
 ## Part 1: Core Demo (Nov, 2016)
 
 TODO: start with the "dumb" Docker Compose / Mongo demo.
-    - then add one by one to get to Coconut
+    - then add one by one to get to Lumi
     - persistence
     - multi-node/sharding
     - service discovery
     - api contracts, pluggability, reuse
 
-1. Coconutify an Express app plus MongoDB backend
+1. Lumify an Express app plus MongoDB backend
     Leverage Express and MongoDB containers
-    App already exists, just add a Coconut.yaml (Compose-like) file
+    App already exists, just add a Lumi.yaml (Compose-like) file
     Show how adding AWS persistence to the MongoDB service is easy
     TODO: starting point?  Existing compose/cloud formation/kubernetes app?
     TODO: talk about Mongo sharding, etc. as an implementation detail of mongodb/mongodb?
@@ -29,7 +29,7 @@ TODO: start with the "dumb" Docker Compose / Mongo demo.
 4. Inspect the live site tab
     Click production, see some simple "DataDog-like" analytics (requests per second, free disk space, etc)
 5. Desire deeper analytics; add a "one liner" to my app to add ELK package
-    For bonus points, show searching CoconutHub for ELK in the UI
+    For bonus points, show searching LumiHub for ELK in the UI
     Click the deploy button, just deploys the delta (in <5 minutes)
     To kill time, demonstrate that an AWS CF stack was created, click around CloudWatch, etc.
     TODO: consume ES data via its API?

@@ -3,7 +3,7 @@
 package ec2
 
 import (
-	"github.com/pulumi/coconut/pkg/resource/idl"
+	"github.com/pulumi/lumi/pkg/resource/idl"
 )
 
 // A SecurityGroup is an Amazon EC2 Security Group.  For more information, see
@@ -11,27 +11,27 @@ import (
 type SecurityGroup struct {
 	idl.NamedResource
 	// A required description about the security group.
-	GroupDescription string `coco:"groupDescription,replaces"`
+	GroupDescription string `lumi:"groupDescription,replaces"`
 	// The VPC in which this security group resides (or blank if the default VPC).
-	VPC *VPC `coco:"vpc,optional,replaces"`
+	VPC *VPC `lumi:"vpc,optional,replaces"`
 	// A list of Amazon EC2 security group egress rules.
-	SecurityGroupEgress *[]SecurityGroupRule `coco:"securityGroupEgress,optional"`
+	SecurityGroupEgress *[]SecurityGroupRule `lumi:"securityGroupEgress,optional"`
 	// A list of Amazon EC2 security group ingress rules.
-	SecurityGroupIngress *[]SecurityGroupRule `coco:"securityGroupIngress,optional"`
+	SecurityGroupIngress *[]SecurityGroupRule `lumi:"securityGroupIngress,optional"`
 	// The group ID of the specified security group, such as `sg-94b3a1f6`.
-	GroupID string `coco:"groupID,out"`
+	GroupID string `lumi:"groupID,out"`
 }
 
 // A SecurityGroupRule describes an EC2 security group rule embedded within a SecurityGroup.
 type SecurityGroupRule struct {
 	// The IP name or number.
-	IPProtocol string `coco:"ipProtocol"`
+	IPProtocol string `lumi:"ipProtocol"`
 	// Specifies a CIDR range.
-	CIDRIP *string `coco:"cidrIp,optional"`
+	CIDRIP *string `lumi:"cidrIp,optional"`
 	// The start of port range for the TCP and UDP protocols, or an ICMP type number.  An ICMP type number of `-1`
 	// indicates a wildcard (i.e., any ICMP type number).
-	FromPort *float64 `coco:"fromPort,optional"`
+	FromPort *float64 `lumi:"fromPort,optional"`
 	// The end of port range for the TCP and UDP protocols, or an ICMP code.  An ICMP code of `-1` indicates a
 	// wildcard (i.e., any ICMP code).
-	ToPort *float64 `coco:"toPort,optional"`
+	ToPort *float64 `lumi:"toPort,optional"`
 }

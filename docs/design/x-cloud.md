@@ -1,24 +1,24 @@
-# Coconut Cross-Cloud Targeting
+# Lumi Cross-Cloud Targeting
 
 *WARNING: this document is a little out-of-date.  The details are incorrect, but overall idea is still relevant.*
 
-The Coconut metadata and primitives are intentionally cloud-agnostic and have been designed to support [many cloud
+The Lumi metadata and primitives are intentionally cloud-agnostic and have been designed to support [many cloud
 targets](clouds.md).  This can be used to build, share, and reuse portable abstractions.
 
 It is easy, however, to introduce a dependency on a particular cloud provider by relying on certain stacks.  For
 example, mounting an `aws/ebs/Volume` for a database volume pins it to the AWS IaaS provider; in fact, *any* such
 service in the transitive closure of dependencies pins the whole stack to AWS.
 
-On one hand, this is great, because the Coconut abstractions do not get in the way of leveraging the full power of your
+On one hand, this is great, because the Lumi abstractions do not get in the way of leveraging the full power of your
 cloud provider and its latest innovations.  On the other hand, it inhibits portability.
 
-This document briefly describes how Coconut enables developers to create portable cloud infrastructure abstractions.
+This document briefly describes how Lumi enables developers to create portable cloud infrastructure abstractions.
 
 ## Abstraction
 
-The key to Coconut's ability to cross-target clouds is simple: abstraction.
+The key to Lumi's ability to cross-target clouds is simple: abstraction.
 
-Coconut stacks are simply ordinary classes.  As a result, they can encapsulate details about how they work.  If a
+Lumi stacks are simply ordinary classes.  As a result, they can encapsulate details about how they work.  If a
 `Table` stack wants to provision a MongoDB database automatically behind the scenes, there is no need for a consumer to
 know.  The properties, API, and so on, can safely hide these details behind a friendly logical abstraction.
 
@@ -29,10 +29,10 @@ This is a problem familiar to users of platform abstractions in environments lik
 useful low-level primitive abstractions like filesystems, process models, and timer APIs -- among other things -- they
 must create an abstraction layer just above the underlying operating system.  Doing so lets 99% of the users of those
 abstractions forget about the gory details of targeting Linux vs. macOS vs. Windows.  But those low-level developers
-need to worry about `#ifdef`ing their code and bridging the gap.  And in Coconut, we can achieve the same economics.
+need to worry about `#ifdef`ing their code and bridging the gap.  And in Lumi, we can achieve the same economics.
 
 To do this, the developer providing a low-level abstraction must conditionalize resource usage.  The context object
-exposed to the CocoLang programming languages tells the program information about the target environment, including
+exposed to the LumiLang programming languages tells the program information about the target environment, including
 whether the target is AWS, Google Cloud, Azure, and so on.  As such, the `Table` can pick DynamoDB in AWS, DocumentDB in
 Azure, Bigtable in Google Cloud, and perhaps even fall back to MongoDB option as a more complex default elsewhere.
 
@@ -41,25 +41,25 @@ details, and in the cloud provider of their choice.  And the low-level developer
 
 ## Cross-Cloud Abstractions Out-of-the-Box
 
-To facilitate cross-cloud abstractions, Coconut offers a `coconut/x` package containing a number of them.
+To facilitate cross-cloud abstractions, Lumi offers a `lumi/x` package containing a number of them.
 
-### coconut/x
+### lumi/x
 
-The services offered by `coconut/x` have been conditionalized internally and are guaranteed to run on all clouds,
+The services offered by `lumi/x` have been conditionalized internally and are guaranteed to run on all clouds,
 including locally for development and testing.  The differences between them have been abstracted and unified so that
 you can configure them declaratively, using a single logical set of options, and rely on the service internally mapping
 to the cloud provider's specific configuration settings.
 
-For example, `coconut/x/fs/Volume` implements the `coconut/Volume` abstract interface, and maps to an AWS Elastic Block
+For example, `lumi/x/fs/Volume` implements the `lumi/Volume` abstract interface, and maps to an AWS Elastic Block
 Store (EBS), Azure Data Disk (DD), or GCP Persistent Disk (PD) volume, depending on the IaaS target.  Although the
 details for each of these differs, a standard set of options -- like capacity, filesystem type, reclamation policy,
-storage class, and so on -- and `coconut/x` handles mapping these standard options to the specific underlying ones.
+storage class, and so on -- and `lumi/x` handles mapping these standard options to the specific underlying ones.
 
-The goal for the `coconut/x` package is to facilitate a higher-level ecosystem of cloud-agnostic services and libraries.
+The goal for the `lumi/x` package is to facilitate a higher-level ecosystem of cloud-agnostic services and libraries.
 
 ### Services
 
-This section contains a full list of the `coconut/x` cloud-agnostic services:
+This section contains a full list of the `lumi/x` cloud-agnostic services:
 
 * Apps
     - Containers

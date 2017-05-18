@@ -11,13 +11,13 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	awss3 "github.com/aws/aws-sdk-go/service/s3"
-	"github.com/pulumi/coconut/pkg/resource"
-	"github.com/pulumi/coconut/pkg/util/mapper"
-	"github.com/pulumi/coconut/sdk/go/pkg/cocorpc"
+	"github.com/pulumi/lumi/pkg/resource"
+	"github.com/pulumi/lumi/pkg/util/mapper"
+	"github.com/pulumi/lumi/sdk/go/pkg/lumirpc"
 	"golang.org/x/net/context"
 
-	"github.com/pulumi/coconut/lib/aws/provider/awsctx"
-	"github.com/pulumi/coconut/lib/aws/rpc/s3"
+	"github.com/pulumi/lumi/lib/aws/provider/awsctx"
+	"github.com/pulumi/lumi/lib/aws/rpc/s3"
 )
 
 const BucketToken = s3.BucketToken
@@ -29,7 +29,7 @@ const (
 )
 
 // NewBucketProvider creates a provider that handles S3 bucket operations.
-func NewBucketProvider(ctx *awsctx.Context) cocorpc.ResourceProviderServer {
+func NewBucketProvider(ctx *awsctx.Context) lumirpc.ResourceProviderServer {
 	ops := &buckProvider{ctx}
 	return s3.NewBucketProvider(ops)
 }

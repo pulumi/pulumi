@@ -1,6 +1,6 @@
 // Copyright 2017 Pulumi, Inc. All rights reserved.
 
-import * as kubernetes from "@coconut/kubernetes";
+import * as kubernetes from "@lumi/kubernetes";
 
 export class Gateway {
     constructor() {
