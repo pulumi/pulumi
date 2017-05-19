@@ -39,6 +39,9 @@
         "cloudwatch/index.ts",
         "cloudwatch/alarm.ts",
 
+        "dynamodb/index.ts",
+        "dynamodb/table.ts",
+
         "ec2/index.ts",
         "ec2/instance.ts",
         "ec2/instanceMaps.ts",
