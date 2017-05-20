@@ -53,6 +53,11 @@
         "ec2/vpcGatewayAttachment.ts",
         "ec2/vpcPeeringConnection.ts",
 
+        "elasticbeanstalk/index.ts",
+        "elasticbeanstalk/application.ts",
+        "elasticbeanstalk/applicationVersion.ts",
+        "elasticbeanstalk/environment.ts",
+
         "iam/index.ts",
         "iam/group.ts",
         "iam/policy.ts",
