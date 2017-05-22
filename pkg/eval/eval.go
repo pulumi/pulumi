@@ -263,6 +263,10 @@ func (e *evaluator) dumpEvalState(v glog.Level) {
 // It returns the resulting pointer along with a boolean to indicate whether the property was left unfrozen.
 func (e *evaluator) initProperty(this *rt.Object, properties *rt.PropertyMap,
 	key rt.PropertyKey, sym symbols.Symbol) (*rt.Pointer, bool) {
+	// First, ensure we've swapped in an intrinsic if available.
+	contract.Assert(sym != nil)
+	sym = MaybeIntrinsic(sym.Tree(), sym)
+
 	switch m := sym.(type) {
 	case symbols.Function:
 		// A function results in a closure object referring to `this`, if any.
@@ -1446,9 +1450,8 @@ func (e *evaluator) chaseExports(sym symbols.Symbol) symbols.Symbol {
 
 func (e *evaluator) evalLoadSymbolLocation(node diag.Diagable, sym symbols.Symbol,
 	this *rt.Object, thisexpr ast.Expression, lval bool) (*rt.Pointer, symbols.Type, *rt.Unwind) {
-	contract.Assert(sym != nil)     // don't issue errors; we shouldn't ever get here if verification failed.
-	sym = MaybeIntrinsic(node, sym) // replace this with an intrinsic if it's recognized as one.
-	sym = e.chaseExports(sym)       // chase the export down until we get a real symbol.
+	contract.Assert(sym != nil) // don't issue errors; we shouldn't ever get here if verification failed.
+	sym = e.chaseExports(sym)   // chase the export down until we get a real symbol.
 
 	// Look up the symbol property in the right place.  Note that because this is a static load, we intentionally
 	// do not perform any lazily initialization of missing property slots; they must exist.  But we still need to

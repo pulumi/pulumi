@@ -21,6 +21,7 @@ import (
 	"github.com/pulumi/lumi/pkg/diag"
 	"github.com/pulumi/lumi/pkg/eval/rt"
 	"github.com/pulumi/lumi/pkg/tokens"
+	"github.com/pulumi/lumi/pkg/util/contract"
 )
 
 // Invoker implements an intrinsic function's functionality.
@@ -33,8 +34,8 @@ var Intrinsics map[tokens.Token]Invoker
 
 func init() {
 	Intrinsics = map[tokens.Token]Invoker{
-		"lumi:runtime:isFunction":    isFunction,
-		"lumi:runtime:dynamicInvoke": dynamicInvoke,
+		"lumi:runtime/dynamic:isFunction":    isFunction,
+		"lumi:runtime/dynamic:dynamicInvoke": dynamicInvoke,
 	}
 }
 
@@ -90,7 +91,9 @@ func MaybeIntrinsic(tree diag.Diagable, sym symbols.Symbol) symbols.Symbol {
 		// cache these symbols because of the need to associate the AST node with the resulting symbol.
 		tok := s.Token()
 		if invoker, isintrinsic := Intrinsics[tok]; isintrinsic {
-			sym = NewIntrinsic(tree, s.Function(), tok, tok.Name(), s.Signature(), invoker)
+			contract.Assertf(tok.HasModuleMember(), "only module member intrinsics currently supported")
+			name := tokens.Name(tokens.ModuleMember(tok).Name())
+			sym = NewIntrinsic(tree, s.Function(), tok, name, s.Signature(), invoker)
 		}
 	}
 	return sym
