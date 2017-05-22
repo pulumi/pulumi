@@ -113,14 +113,14 @@ func (p *buckProvider) Get(ctx context.Context, id resource.ID) (*s3.Bucket, err
 
 // InspectChange checks what impacts a hypothetical update will have on the resource's properties.
 func (p *buckProvider) InspectChange(ctx context.Context, id resource.ID,
-	new *s3.Bucket, old *s3.Bucket, diff *resource.ObjectDiff) ([]string, error) {
+	old *s3.Bucket, new *s3.Bucket, diff *resource.ObjectDiff) ([]string, error) {
 	return nil, errors.New("Not yet implemented")
 }
 
 // Update updates an existing resource with new values.  Only those values in the provided property bag are updated
 // to new values.  The resource ID is returned and may be different if the resource had to be recreated.
 func (p *buckProvider) Update(ctx context.Context, id resource.ID,
-	new *s3.Bucket, old *s3.Bucket, diff *resource.ObjectDiff) error {
+	old *s3.Bucket, new *s3.Bucket, diff *resource.ObjectDiff) error {
 	return errors.New("Not yet implemented")
 }
 
