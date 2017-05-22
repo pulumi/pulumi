@@ -36,7 +36,7 @@ export class Blob extends Asset {
 export class Code extends Asset {
     public readonly code: any; // the code, serialized at runtime into an asset.
 
-    constructor(@asset code: any) {
+    constructor(code: any) {
         super();
         this.code = code;
     }
