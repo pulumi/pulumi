@@ -1,0 +1,6 @@
+name: beanstalk
+description: Basic Elastic Beanstalk application.
+dependencies:
+    lumi: "*"
+    aws: "*"
+

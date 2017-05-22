@@ -20,6 +20,7 @@ import (
 
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/ec2"
+	"github.com/aws/aws-sdk-go/service/elasticbeanstalk"
 	"github.com/aws/aws-sdk-go/service/iam"
 	"github.com/aws/aws-sdk-go/service/lambda"
 	"github.com/aws/aws-sdk-go/service/s3"
@@ -29,11 +30,12 @@ import (
 // Context represents state shared amongst all parties in this process.  In particular, it wraps an AWS session
 // object and offers convenient wrappers for creating connections to the various sub-services (EC2, S3, etc).
 type Context struct {
-	sess   *session.Session
-	ec2    *ec2.EC2
-	iam    *iam.IAM
-	lambda *lambda.Lambda
-	s3     *s3.S3
+	sess             *session.Session
+	ec2              *ec2.EC2
+	elasticbeanstalk *elasticbeanstalk.ElasticBeanstalk
+	iam              *iam.IAM
+	lambda           *lambda.Lambda
+	s3               *s3.S3
 }
 
 func New() (*Context, error) {
@@ -59,6 +61,14 @@ func (ctx *Context) EC2() *ec2.EC2 {
 		ctx.ec2 = ec2.New(ctx.sess)
 	}
 	return ctx.ec2
+}
+
+func (ctx *Context) ElasticBeanstalk() *elasticbeanstalk.ElasticBeanstalk {
+	contract.Assert(ctx.sess != nil)
+	if ctx.elasticbeanstalk == nil {
+		ctx.elasticbeanstalk = elasticbeanstalk.New(ctx.sess)
+	}
+	return ctx.elasticbeanstalk
 }
 
 func (ctx *Context) IAM() *iam.IAM {

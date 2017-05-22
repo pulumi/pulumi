@@ -148,7 +148,7 @@ type Blob struct {
 	sz int64              // the size of the blob.
 }
 
-func (blob *Blob) Close() error                                 { return blob.Close() }
+func (blob *Blob) Close() error                                 { return blob.rd.Close() }
 func (blob *Blob) Read(p []byte) (int, error)                   { return blob.rd.Read(p) }
 func (blob *Blob) Reader() SeekableReadCloser                   { return blob.rd }
 func (blob *Blob) Seek(offset int64, whence int) (int64, error) { return blob.rd.Seek(offset, whence) }

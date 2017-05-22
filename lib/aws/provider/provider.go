@@ -25,6 +25,7 @@ import (
 
 	"github.com/pulumi/lumi/lib/aws/provider/awsctx"
 	"github.com/pulumi/lumi/lib/aws/provider/ec2"
+	"github.com/pulumi/lumi/lib/aws/provider/elasticbeanstalk"
 	"github.com/pulumi/lumi/lib/aws/provider/iam"
 	"github.com/pulumi/lumi/lib/aws/provider/lambda"
 	"github.com/pulumi/lumi/lib/aws/provider/s3"
@@ -43,12 +44,15 @@ func NewProvider() (*Provider, error) {
 	}
 	return &Provider{
 		impls: map[tokens.Type]lumirpc.ResourceProviderServer{
-			ec2.InstanceToken:      ec2.NewInstanceProvider(ctx),
-			ec2.SecurityGroupToken: ec2.NewSecurityGroupProvider(ctx),
-			lambda.FunctionToken:   lambda.NewFunctionProvider(ctx),
-			iam.RoleToken:          iam.NewRoleProvider(ctx),
-			s3.BucketToken:         s3.NewBucketProvider(ctx),
-			s3.ObjectToken:         s3.NewObjectProvider(ctx),
+			ec2.InstanceToken:                        ec2.NewInstanceProvider(ctx),
+			ec2.SecurityGroupToken:                   ec2.NewSecurityGroupProvider(ctx),
+			elasticbeanstalk.ApplicationToken:        elasticbeanstalk.NewApplicationProvider(ctx),
+			elasticbeanstalk.ApplicationVersionToken: elasticbeanstalk.NewApplicationVersionProvider(ctx),
+			elasticbeanstalk.EnvironmentToken:        elasticbeanstalk.NewEnvironmentProvider(ctx),
+			lambda.FunctionToken:                     lambda.NewFunctionProvider(ctx),
+			iam.RoleToken:                            iam.NewRoleProvider(ctx),
+			s3.BucketToken:                           s3.NewBucketProvider(ctx),
+			s3.ObjectToken:                           s3.NewObjectProvider(ctx),
 		},
 	}, nil
 }
