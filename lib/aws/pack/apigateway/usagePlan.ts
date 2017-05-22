@@ -39,17 +39,19 @@ export class UsagePlan extends lumi.Resource implements UsagePlanArgs {
     public throttle?: ThrottleSettings;
     public usagePlanName?: string;
 
-    constructor(name: string, args: UsagePlanArgs) {
+    constructor(name: string, args?: UsagePlanArgs) {
         super();
         if (name === undefined) {
             throw new Error("Missing required resource name");
         }
         this.name = name;
-        this.apiStages = args.apiStages;
-        this.description = args.description;
-        this.quota = args.quota;
-        this.throttle = args.throttle;
-        this.usagePlanName = args.usagePlanName;
+        if (args !== undefined) {
+            this.apiStages = args.apiStages;
+            this.description = args.description;
+            this.quota = args.quota;
+            this.throttle = args.throttle;
+            this.usagePlanName = args.usagePlanName;
+        }
     }
 }
 

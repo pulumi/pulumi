@@ -8,14 +8,16 @@ export class Application extends lumi.Resource implements ApplicationArgs {
     public readonly applicationName?: string;
     public description?: string;
 
-    constructor(name: string, args: ApplicationArgs) {
+    constructor(name: string, args?: ApplicationArgs) {
         super();
         if (name === undefined) {
             throw new Error("Missing required resource name");
         }
         this.name = name;
-        this.applicationName = args.applicationName;
-        this.description = args.description;
+        if (args !== undefined) {
+            this.applicationName = args.applicationName;
+            this.description = args.description;
+        }
     }
 }
 

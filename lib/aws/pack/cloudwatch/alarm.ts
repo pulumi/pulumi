@@ -48,15 +48,17 @@ export class ActionTarget extends lumi.Resource implements ActionTargetArgs {
     public displayName?: string;
     public subscription?: TopicSubscription[];
 
-    constructor(name: string, args: ActionTargetArgs) {
+    constructor(name: string, args?: ActionTargetArgs) {
         super();
         if (name === undefined) {
             throw new Error("Missing required resource name");
         }
         this.name = name;
-        this.topicName = args.topicName;
-        this.displayName = args.displayName;
-        this.subscription = args.subscription;
+        if (args !== undefined) {
+            this.topicName = args.topicName;
+            this.displayName = args.displayName;
+            this.subscription = args.subscription;
+        }
     }
 }
 

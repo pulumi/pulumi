@@ -9,13 +9,15 @@ export class Account extends lumi.Resource implements AccountArgs {
     public readonly name: string;
     public cloudWatchRole?: Role;
 
-    constructor(name: string, args: AccountArgs) {
+    constructor(name: string, args?: AccountArgs) {
         super();
         if (name === undefined) {
             throw new Error("Missing required resource name");
         }
         this.name = name;
-        this.cloudWatchRole = args.cloudWatchRole;
+        if (args !== undefined) {
+            this.cloudWatchRole = args.cloudWatchRole;
+        }
     }
 }
 

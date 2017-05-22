@@ -7,13 +7,15 @@ export class ClientCertificate extends lumi.Resource implements ClientCertificat
     public readonly name: string;
     public description?: string;
 
-    constructor(name: string, args: ClientCertificateArgs) {
+    constructor(name: string, args?: ClientCertificateArgs) {
         super();
         if (name === undefined) {
             throw new Error("Missing required resource name");
         }
         this.name = name;
-        this.description = args.description;
+        if (args !== undefined) {
+            this.description = args.description;
+        }
     }
 }
 

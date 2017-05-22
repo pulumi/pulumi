@@ -272,8 +272,21 @@ func (g *PackGenerator) emitResourceClass(w *bufio.Writer, res *Resource) {
 	writefmtln(w, "export class %v extends lumi.Resource implements %vArgs {", name, name)
 
 	// Now all fields definitions.
+	hasArgs := false
+	hasName := false
+	hasRequiredArgs := false
 	fn := forEachField(res, func(fld *types.Var, opt PropertyOptions) {
 		g.emitField(w, fld, opt, "    public ")
+		if !opt.Out {
+			if isResourceNameProperty(res, opt) {
+				hasName = true
+			} else {
+				hasArgs = true
+				if !opt.Optional {
+					hasRequiredArgs = true
+				}
+			}
+		}
 	})
 	if fn > 0 {
 		writefmtln(w, "")
@@ -284,29 +297,43 @@ func (g *PackGenerator) emitResourceClass(w *bufio.Writer, res *Resource) {
 	if res.Named {
 		writefmt(w, "name: string, ")
 	}
-	writefmtln(w, "args: %vArgs) {", name)
+	writefmt(w, "args")
+	if !hasRequiredArgs {
+		writefmt(w, "?")
+	}
+	writefmtln(w, ": %vArgs) {", name)
 	writefmtln(w, "        super();")
+
+	// Named properties are passed as the constructor's first argument.
+	if hasName {
+		writefmtln(w, "        if (name === undefined) {")
+		writefmtln(w, "            throw new Error(\"Missing required resource name\");")
+		writefmtln(w, "        }")
+		writefmtln(w, "        this.name = name;")
+	}
+
+	// Next, validate that required parameters exist, and store all arguments on the object.
+	argLinePrefix := "        "
+	needsArgsCheck := hasArgs && !hasRequiredArgs
+	if needsArgsCheck {
+		writefmtln(w, "        if (args !== undefined) {")
+		argLinePrefix += "    "
+	}
 	forEachField(res, func(fld *types.Var, opt PropertyOptions) {
-		if opt.Out {
-			return // skip output properties because they won't exist on the arguments.
-		} else if isResourceNameProperty(res, opt) {
-			// Named properties are passed as the constructor's first argument.
-			writefmtln(w, "        if (name === undefined) {")
-			writefmtln(w, "            throw new Error(\"Missing required resource name\");")
-			writefmtln(w, "        }")
-			writefmtln(w, "        this.name = name;")
-		} else {
+		if !opt.Out && !isResourceNameProperty(res, opt) {
 			if !opt.Optional {
-				// Validate that required parameters exist.
-				writefmtln(w, "        if (args.%v === undefined) {", opt.Name)
-				writefmtln(w, "            throw new Error(\"Missing required argument '%v'\");", opt.Name)
-				writefmtln(w, "        }")
+				writefmtln(w, "%vif (args.%v === undefined) {", argLinePrefix, opt.Name)
+				writefmtln(w, "%v    throw new Error(\"Missing required argument '%v'\");", argLinePrefix, opt.Name)
+				writefmtln(w, "%v}", argLinePrefix)
 			}
-			writefmtln(w, "        this.%v = args.%v;", opt.Name, opt.Name)
+			writefmtln(w, "%vthis.%v = args.%v;", argLinePrefix, opt.Name, opt.Name)
 		}
 	})
-	writefmtln(w, "    }")
+	if needsArgsCheck {
+		writefmtln(w, "        }")
+	}
 
+	writefmtln(w, "    }")
 	writefmtln(w, "}")
 }
 

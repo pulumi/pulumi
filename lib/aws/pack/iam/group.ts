@@ -12,16 +12,18 @@ export class Group extends lumi.Resource implements GroupArgs {
     public path?: string;
     public policies?: InlinePolicy;
 
-    constructor(name: string, args: GroupArgs) {
+    constructor(name: string, args?: GroupArgs) {
         super();
         if (name === undefined) {
             throw new Error("Missing required resource name");
         }
         this.name = name;
-        this.groupName = args.groupName;
-        this.managedPolicies = args.managedPolicies;
-        this.path = args.path;
-        this.policies = args.policies;
+        if (args !== undefined) {
+            this.groupName = args.groupName;
+            this.managedPolicies = args.managedPolicies;
+            this.path = args.path;
+            this.policies = args.policies;
+        }
     }
 }
 

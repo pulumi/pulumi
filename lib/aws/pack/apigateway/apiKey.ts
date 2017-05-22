@@ -13,16 +13,18 @@ export class APIKey extends lumi.Resource implements APIKeyArgs {
     public enabled?: boolean;
     public stageKeys?: StageKey;
 
-    constructor(name: string, args: APIKeyArgs) {
+    constructor(name: string, args?: APIKeyArgs) {
         super();
         if (name === undefined) {
             throw new Error("Missing required resource name");
         }
         this.name = name;
-        this.keyName = args.keyName;
-        this.description = args.description;
-        this.enabled = args.enabled;
-        this.stageKeys = args.stageKeys;
+        if (args !== undefined) {
+            this.keyName = args.keyName;
+            this.description = args.description;
+            this.enabled = args.enabled;
+            this.stageKeys = args.stageKeys;
+        }
     }
 }
 

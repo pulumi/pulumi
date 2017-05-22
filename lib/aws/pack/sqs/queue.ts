@@ -15,21 +15,23 @@ export class Queue extends lumi.Resource implements QueueArgs {
     public redrivePolicy?: RedrivePolicy;
     public visibilityTimeout?: number;
 
-    constructor(name: string, args: QueueArgs) {
+    constructor(name: string, args?: QueueArgs) {
         super();
         if (name === undefined) {
             throw new Error("Missing required resource name");
         }
         this.name = name;
-        this.fifoQueue = args.fifoQueue;
-        this.queueName = args.queueName;
-        this.contentBasedDeduplication = args.contentBasedDeduplication;
-        this.delaySeconds = args.delaySeconds;
-        this.maximumMessageSize = args.maximumMessageSize;
-        this.messageRetentionPeriod = args.messageRetentionPeriod;
-        this.receiveMessageWaitTimeSeconds = args.receiveMessageWaitTimeSeconds;
-        this.redrivePolicy = args.redrivePolicy;
-        this.visibilityTimeout = args.visibilityTimeout;
+        if (args !== undefined) {
+            this.fifoQueue = args.fifoQueue;
+            this.queueName = args.queueName;
+            this.contentBasedDeduplication = args.contentBasedDeduplication;
+            this.delaySeconds = args.delaySeconds;
+            this.maximumMessageSize = args.maximumMessageSize;
+            this.messageRetentionPeriod = args.messageRetentionPeriod;
+            this.receiveMessageWaitTimeSeconds = args.receiveMessageWaitTimeSeconds;
+            this.redrivePolicy = args.redrivePolicy;
+            this.visibilityTimeout = args.visibilityTimeout;
+        }
     }
 }
 

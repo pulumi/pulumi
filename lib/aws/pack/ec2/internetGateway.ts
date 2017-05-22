@@ -6,7 +6,7 @@ import * as lumi from "@lumi/lumi";
 export class InternetGateway extends lumi.Resource implements InternetGatewayArgs {
     public readonly name: string;
 
-    constructor(name: string, args: InternetGatewayArgs) {
+    constructor(name: string, args?: InternetGatewayArgs) {
         super();
         if (name === undefined) {
             throw new Error("Missing required resource name");

@@ -10,14 +10,16 @@ export class Bucket extends lumi.Resource implements BucketArgs {
     public readonly bucketName?: string;
     public accessControl?: CannedACL;
 
-    constructor(name: string, args: BucketArgs) {
+    constructor(name: string, args?: BucketArgs) {
         super();
         if (name === undefined) {
             throw new Error("Missing required resource name");
         }
         this.name = name;
-        this.bucketName = args.bucketName;
-        this.accessControl = args.accessControl;
+        if (args !== undefined) {
+            this.bucketName = args.bucketName;
+            this.accessControl = args.accessControl;
+        }
     }
 }
 

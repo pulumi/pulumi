@@ -15,19 +15,21 @@ export class RestAPI extends lumi.Resource implements RestAPIArgs {
     public apiName?: string;
     public parameters?: string[];
 
-    constructor(name: string, args: RestAPIArgs) {
+    constructor(name: string, args?: RestAPIArgs) {
         super();
         if (name === undefined) {
             throw new Error("Missing required resource name");
         }
         this.name = name;
-        this.body = args.body;
-        this.bodyS3Location = args.bodyS3Location;
-        this.cloneFrom = args.cloneFrom;
-        this.description = args.description;
-        this.failOnWarnings = args.failOnWarnings;
-        this.apiName = args.apiName;
-        this.parameters = args.parameters;
+        if (args !== undefined) {
+            this.body = args.body;
+            this.bodyS3Location = args.bodyS3Location;
+            this.cloneFrom = args.cloneFrom;
+            this.description = args.description;
+            this.failOnWarnings = args.failOnWarnings;
+            this.apiName = args.apiName;
+            this.parameters = args.parameters;
+        }
     }
 }
 

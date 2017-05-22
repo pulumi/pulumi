@@ -20,18 +20,20 @@ export class User extends lumi.Resource implements UserArgs {
     public path?: string;
     public policies?: InlinePolicy[];
 
-    constructor(name: string, args: UserArgs) {
+    constructor(name: string, args?: UserArgs) {
         super();
         if (name === undefined) {
             throw new Error("Missing required resource name");
         }
         this.name = name;
-        this.userName = args.userName;
-        this.groups = args.groups;
-        this.loginProfile = args.loginProfile;
-        this.managedPolicies = args.managedPolicies;
-        this.path = args.path;
-        this.policies = args.policies;
+        if (args !== undefined) {
+            this.userName = args.userName;
+            this.groups = args.groups;
+            this.loginProfile = args.loginProfile;
+            this.managedPolicies = args.managedPolicies;
+            this.path = args.path;
+            this.policies = args.policies;
+        }
     }
 }
 
