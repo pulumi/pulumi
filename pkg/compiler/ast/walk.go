@@ -36,6 +36,7 @@ type Visitor interface {
 // Walk visits an AST node and all of its children.  It walks the AST in depth-first order.  A pre- and/or
 // post-visitation Visitor object may be supplied in order to hook into this walk at the right moments.
 func Walk(v Visitor, node Node) {
+	contract.Requiref(v != nil, "v", "!= nil")
 	contract.Requiref(node != nil, "node", "!= nil")
 
 	if glog.V(9) {
@@ -43,9 +44,16 @@ func Walk(v Visitor, node Node) {
 	}
 
 	// First visit the node; only proceed if the visitor says to do so (and use its returned visitor below).
-	if v = v.Visit(node); v == nil {
-		return
+	if v = v.Visit(node); v != nil {
+		WalkChildren(v, node)
 	}
+}
+
+// WalkChildren visits an AST node's children, skipping the node itself.  It walks the AST in depth-first order.  A pre-
+// and/or post-visitation Visitor object may be supplied in order to hook into this walk at the right moments.
+func WalkChildren(v Visitor, node Node) {
+	contract.Requiref(v != nil, "v", "!= nil")
+	contract.Requiref(node != nil, "node", "!= nil")
 
 	if glog.V(9) {
 		glog.V(9).Infof("AST visitor walk: post-visit, pre-recurse %v", reflect.TypeOf(node))
