@@ -680,12 +680,13 @@ func (s *step) Apply() (State, error) {
 		contract.Assert(s.old == nil)
 		contract.Assert(s.new != nil)
 		contract.Assertf(!s.new.HasID(), "Resources being created must not have IDs already")
-		id, outs, rst, err := prov.Create(s.new.Type(), s.new.Properties())
+		id, _, rst, err := prov.Create(s.new.Type(), s.new.Properties())
 		if err != nil {
 			return rst, err
 		}
 		s.new.SetID(id)
-		s.new.SetPropertiesFrom(outs)
+		// TODO[pulumi/lumi#90]: reenable setting outputs when this is fully functional.
+		// s.new.SetPropertiesFrom(outs)
 
 	case OpDelete, OpReplaceDelete:
 		// Invoke the Delete RPC function for this provider:
