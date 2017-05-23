@@ -41,8 +41,8 @@ func init() {
 
 // Intrinsic is a special intrinsic function whose behavior is implemented by the runtime.
 type Intrinsic struct {
-	Node    diag.Diagable // the contextual node representing the place where this intrinsic got created.
-	Func    ast.Function  // the underlying function's node (before mapping to an intrinsic).
+	Node    diag.Diagable    // the contextual node representing the place where this intrinsic got created.
+	Func    symbols.Function // the underlying function symbol (before mapping to an intrinsic).
 	Nm      tokens.Name
 	Tok     tokens.Token
 	Sig     *symbols.FunctionType
@@ -56,8 +56,8 @@ func (node *Intrinsic) Name() tokens.Name                { return node.Nm }
 func (node *Intrinsic) Token() tokens.Token              { return node.Tok }
 func (node *Intrinsic) Special() bool                    { return false }
 func (node *Intrinsic) SpecialModInit() bool             { return false }
-func (node *Intrinsic) Tree() diag.Diagable              { return node.Func }
-func (node *Intrinsic) Function() ast.Function           { return node.Func }
+func (node *Intrinsic) Tree() diag.Diagable              { return node.Func.Function() }
+func (node *Intrinsic) Function() ast.Function           { return node.Func.Function() }
 func (node *Intrinsic) Signature() *symbols.FunctionType { return node.Sig }
 func (node *Intrinsic) String() string                   { return string(node.Name()) }
 
@@ -68,7 +68,7 @@ func (node *Intrinsic) Invoke(e *evaluator, this *rt.Object, args []*rt.Object) 
 }
 
 // NewIntrinsic returns a new intrinsic function symbol with the given information.
-func NewIntrinsic(tree diag.Diagable, fnc ast.Function, tok tokens.Token, nm tokens.Name,
+func NewIntrinsic(tree diag.Diagable, fnc symbols.Function, tok tokens.Token, nm tokens.Name,
 	sig *symbols.FunctionType, invoker Invoker) *Intrinsic {
 	return &Intrinsic{
 		Node:    tree,
@@ -93,7 +93,7 @@ func MaybeIntrinsic(tree diag.Diagable, sym symbols.Symbol) symbols.Symbol {
 		if invoker, isintrinsic := Intrinsics[tok]; isintrinsic {
 			contract.Assertf(tok.HasModuleMember(), "only module member intrinsics currently supported")
 			name := tokens.Name(tokens.ModuleMember(tok).Name())
-			sym = NewIntrinsic(tree, s.Function(), tok, name, s.Signature(), invoker)
+			sym = NewIntrinsic(tree, s, tok, name, s.Signature(), invoker)
 		}
 	}
 	return sym
