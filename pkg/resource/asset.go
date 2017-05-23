@@ -267,7 +267,7 @@ func (a Archive) readMap() (map[string]*Blob, error) {
 	// To read a map-based archive, just produce a map from each asset to its associated reader.
 	m, ismap := a.GetMap()
 	contract.Assertf(ismap, "Expected a map-based archive")
-	var result map[string]*Blob
+	result := map[string]*Blob{}
 	for name, asset := range m {
 		var err error
 		if result[name], err = asset.Read(); err != nil {

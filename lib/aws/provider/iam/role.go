@@ -82,16 +82,16 @@ func (p *roleProvider) Create(ctx context.Context, obj *iam.Role) (resource.ID, 
 	// Now go ahead and perform the action.
 	fmt.Printf("Creating IAM Role '%v' with name '%v'\n", obj.Name, id)
 	var out *iam.RoleOuts
-	if result, err := p.ctx.IAM().CreateRole(&awsiam.CreateRoleInput{
+	result, err := p.ctx.IAM().CreateRole(&awsiam.CreateRoleInput{
 		AssumeRolePolicyDocument: aws.String(string(policyDocument)),
 		Path:     obj.Path,
 		RoleName: id.StringPtr(),
-	}); err != nil {
+	})
+	if err != nil {
 		return "", nil, err
-	} else {
-		contract.Assert(result != nil)
-		out.ARN = awscommon.ARN(*result.Role.Arn)
 	}
+	contract.Assert(result != nil)
+	out = &iam.RoleOuts{ARN: awscommon.ARN(*result.Role.Arn)}
 
 	// Wait for the role to be ready and then return the ID (just its name).
 	fmt.Printf("IAM Role created: %v; waiting for it to become active\n", id)
@@ -109,14 +109,35 @@ func (p *roleProvider) Get(ctx context.Context, id resource.ID) (*iam.Role, erro
 // InspectChange checks what impacts a hypothetical update will have on the resource's properties.
 func (p *roleProvider) InspectChange(ctx context.Context, id resource.ID,
 	old *iam.Role, new *iam.Role, diff *resource.ObjectDiff) ([]string, error) {
-	return nil, errors.New("Not yet implemented")
+	return nil, nil
 }
 
 // Update updates an existing resource with new values.  Only those values in the provided property bag are updated
 // to new values.  The resource ID is returned and may be different if the resource had to be recreated.
 func (p *roleProvider) Update(ctx context.Context, id resource.ID,
 	old *iam.Role, new *iam.Role, diff *resource.ObjectDiff) error {
-	return errors.New("Not yet implemented")
+	contract.Assertf(new.ManagedPolicyARNs == nil, "Managed policies not yet supported")
+	contract.Assertf(new.Policies == nil, "Inline policies not yet supported")
+
+	if diff.Changed(iam.Role_AssumeRolePolicyDocument) {
+		// Serialize the policy document into a JSON blob.
+		policyDocument, err := json.Marshal(new.AssumeRolePolicyDocument)
+		if err != nil {
+			return err
+		}
+
+		// Now go ahead and perform the action.
+		fmt.Printf("Creating IAM Role '%v' with name '%v'\n", new.Name, id)
+		_, err = p.ctx.IAM().UpdateAssumeRolePolicy(&awsiam.UpdateAssumeRolePolicyInput{
+			PolicyDocument: aws.String(string(policyDocument)),
+			RoleName:       id.StringPtr(),
+		})
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 // Delete tears down an existing resource with the given ID.  If it fails, the resource is assumed to still exist.
