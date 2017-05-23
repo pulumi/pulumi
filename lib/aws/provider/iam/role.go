@@ -60,7 +60,6 @@ func (p *roleProvider) Check(ctx context.Context, obj *iam.Role) ([]mapper.Field
 // Create allocates a new instance of the provided resource and returns its unique ID afterwards.  (The input ID
 // must be blank.)  If this call fails, the resource must not have been created (i.e., it is "transacational").
 func (p *roleProvider) Create(ctx context.Context, obj *iam.Role) (resource.ID, *iam.RoleOuts, error) {
-	contract.Assertf(obj.ManagedPolicyARNs == nil, "Managed policies not yet supported")
 	contract.Assertf(obj.Policies == nil, "Inline policies not yet supported")
 
 	// If an explicit name is given, use it.  Otherwise, auto-generate a name in part based on the resource name.
@@ -93,6 +92,18 @@ func (p *roleProvider) Create(ctx context.Context, obj *iam.Role) (resource.ID, 
 	contract.Assert(result != nil)
 	out = &iam.RoleOuts{ARN: awscommon.ARN(*result.Role.Arn)}
 
+	if obj.ManagedPolicyARNs != nil {
+		for _, policyARN := range *obj.ManagedPolicyARNs {
+			_, err := p.ctx.IAM().AttachRolePolicy(&awsiam.AttachRolePolicyInput{
+				RoleName:  id.StringPtr(),
+				PolicyArn: aws.String(string(policyARN)),
+			})
+			if err != nil {
+				return "", nil, err
+			}
+		}
+	}
+
 	// Wait for the role to be ready and then return the ID (just its name).
 	fmt.Printf("IAM Role created: %v; waiting for it to become active\n", id)
 	if err = p.waitForRoleState(id, true); err != nil {
@@ -116,7 +127,6 @@ func (p *roleProvider) InspectChange(ctx context.Context, id resource.ID,
 // to new values.  The resource ID is returned and may be different if the resource had to be recreated.
 func (p *roleProvider) Update(ctx context.Context, id resource.ID,
 	old *iam.Role, new *iam.Role, diff *resource.ObjectDiff) error {
-	contract.Assertf(new.ManagedPolicyARNs == nil, "Managed policies not yet supported")
 	contract.Assertf(new.Policies == nil, "Inline policies not yet supported")
 
 	if diff.Changed(iam.Role_AssumeRolePolicyDocument) {
@@ -127,7 +137,7 @@ func (p *roleProvider) Update(ctx context.Context, id resource.ID,
 		}
 
 		// Now go ahead and perform the action.
-		fmt.Printf("Creating IAM Role '%v' with name '%v'\n", new.Name, id)
+		fmt.Printf("Updating IAM Role '%v' with name '%v'\n", new.Name, id)
 		_, err = p.ctx.IAM().UpdateAssumeRolePolicy(&awsiam.UpdateAssumeRolePolicyInput{
 			PolicyDocument: aws.String(string(policyDocument)),
 			RoleName:       id.StringPtr(),
@@ -137,12 +147,77 @@ func (p *roleProvider) Update(ctx context.Context, id resource.ID,
 		}
 	}
 
+	if diff.Changed(iam.Role_ManagedPolicyARNs) {
+		var detaches []awscommon.ARN
+		var attaches []awscommon.ARN
+		if diff.Added(iam.Role_ManagedPolicyARNs) {
+			for _, policy := range *new.ManagedPolicyARNs {
+				attaches = append(attaches, policy)
+			}
+		}
+		if diff.Deleted(iam.Role_ManagedPolicyARNs) {
+			for _, policy := range *old.ManagedPolicyARNs {
+				detaches = append(detaches, policy)
+			}
+		}
+		if diff.Updated(iam.Role_ManagedPolicyARNs) {
+			arrayDiff := diff.Updates[iam.Role_ManagedPolicyARNs].Array
+			for i := range arrayDiff.Adds {
+				attaches = append(attaches, (*new.ManagedPolicyARNs)[i])
+			}
+			for i := range arrayDiff.Deletes {
+				detaches = append(detaches, (*old.ManagedPolicyARNs)[i])
+			}
+			for i := range arrayDiff.Updates {
+				attaches = append(attaches, (*new.ManagedPolicyARNs)[i])
+				detaches = append(detaches, (*old.ManagedPolicyARNs)[i])
+			}
+		}
+		for _, policy := range detaches {
+			_, err := p.ctx.IAM().DetachRolePolicy(&awsiam.DetachRolePolicyInput{
+				PolicyArn: aws.String(string(policy)),
+				RoleName:  id.StringPtr(),
+			})
+			if err != nil {
+				return err
+			}
+		}
+		for _, policy := range attaches {
+			_, err := p.ctx.IAM().AttachRolePolicy(&awsiam.AttachRolePolicyInput{
+				PolicyArn: aws.String(string(policy)),
+				RoleName:  id.StringPtr(),
+			})
+			if err != nil {
+				return err
+			}
+		}
+	}
+
 	return nil
 }
 
 // Delete tears down an existing resource with the given ID.  If it fails, the resource is assumed to still exist.
 func (p *roleProvider) Delete(ctx context.Context, id resource.ID) error {
-	// First, perform the deletion.
+
+	// Get and detach all attached policies before deleteing
+	attachedRolePolicies, err := p.ctx.IAM().ListAttachedRolePolicies(&awsiam.ListAttachedRolePoliciesInput{
+		RoleName: id.StringPtr(),
+	})
+	if err != nil {
+		return err
+	}
+	if attachedRolePolicies != nil {
+		for _, policy := range attachedRolePolicies.AttachedPolicies {
+			if _, err := p.ctx.IAM().DetachRolePolicy(&awsiam.DetachRolePolicyInput{
+				RoleName:  id.StringPtr(),
+				PolicyArn: policy.PolicyArn,
+			}); err != nil {
+				return err
+			}
+		}
+	}
+
+	// Perform the deletion.
 	fmt.Printf("Deleting IAM Role '%v'\n", id)
 	if _, err := p.ctx.IAM().DeleteRole(&awsiam.DeleteRoleInput{RoleName: id.StringPtr()}); err != nil {
 		return err

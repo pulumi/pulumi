@@ -13,6 +13,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+export * from "./awsmanagedpolicies";
 export * from "./group";
 export * from "./policy";
 export * from "./role";
