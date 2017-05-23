@@ -218,16 +218,16 @@ var _ Node = (*CallArgument)(nil)
 
 const CallArgumentKind NodeKind = "CallArgument"
 
-type callExpressionNode struct {
+type CallExpressionNode struct {
 	ExpressionNode
 	Arguments *[]*CallArgument `json:"arguments,omitempty"`
 }
 
-func (node *callExpressionNode) GetArguments() *[]*CallArgument { return node.Arguments }
+func (node *CallExpressionNode) GetArguments() *[]*CallArgument { return node.Arguments }
 
 // NewExpression allocates a new object and calls its constructor.
 type NewExpression struct {
-	callExpressionNode
+	CallExpressionNode
 	Type *TypeToken `json:"type"` // the object type to allocate.
 }
 
@@ -239,7 +239,7 @@ const NewExpressionKind NodeKind = "NewExpression"
 
 // InvokeFunctionExpression invokes a target expression that must evaluate to a function.
 type InvokeFunctionExpression struct {
-	callExpressionNode
+	CallExpressionNode
 	Function Expression `json:"function"` // a function to invoke (of a function type).
 }
 

@@ -42,11 +42,11 @@ type Interpreter interface {
 	Ctx() *binder.Context // the binding context object.
 
 	// EvaluatePackage performs evaluation on the given blueprint package.
-	EvaluatePackage(pkg *symbols.Package, args core.Args)
+	EvaluatePackage(pkg *symbols.Package, args core.Args) (*rt.Object, *rt.Unwind)
 	// EvaluateModule performs evaluation on the given module's entrypoint function.
-	EvaluateModule(mod *symbols.Module, args core.Args)
+	EvaluateModule(mod *symbols.Module, args core.Args) (*rt.Object, *rt.Unwind)
 	// EvaluateFunction performs an evaluation of the given function, using the provided arguments.
-	EvaluateFunction(fnc symbols.Function, this *rt.Object, args core.Args)
+	EvaluateFunction(fnc symbols.Function, this *rt.Object, args core.Args) (*rt.Object, *rt.Unwind)
 
 	// LoadLocation loads a location by symbol; lval controls whether it is an l-value or just a value.
 	LoadLocation(tree diag.Diagable, sym symbols.Symbol, this *rt.Object, lval bool) *Location
@@ -108,7 +108,7 @@ func (e *evaluator) Ctx() *binder.Context { return e.ctx }
 func (e *evaluator) Diag() diag.Sink      { return e.ctx.Diag }
 
 // EvaluatePackage performs evaluation on the given blueprint package.
-func (e *evaluator) EvaluatePackage(pkg *symbols.Package, args core.Args) {
+func (e *evaluator) EvaluatePackage(pkg *symbols.Package, args core.Args) (*rt.Object, *rt.Unwind) {
 	glog.Infof("Evaluating package '%v'", pkg.Name())
 	if e.hooks != nil {
 		if leave := e.hooks.OnEnterPackage(pkg); leave != nil {
@@ -122,16 +122,19 @@ func (e *evaluator) EvaluatePackage(pkg *symbols.Package, args core.Args) {
 	}
 
 	// Search the package for a default module to evaluate.
+	var ret *rt.Object
+	var uw *rt.Unwind
 	defmod := pkg.Default()
 	if defmod == nil {
 		e.Diag().Errorf(errors.ErrorPackageHasNoDefaultModule.At(pkg.Tree()), pkg.Name())
 	} else {
-		e.EvaluateModule(defmod, args)
+		ret, uw = e.EvaluateModule(defmod, args)
 	}
+	return ret, uw
 }
 
 // EvaluateModule performs evaluation on the given module's entrypoint function.
-func (e *evaluator) EvaluateModule(mod *symbols.Module, args core.Args) {
+func (e *evaluator) EvaluateModule(mod *symbols.Module, args core.Args) (*rt.Object, *rt.Unwind) {
 	glog.Infof("Evaluating module '%v'", mod.Token())
 	if e.hooks != nil {
 		if leave := e.hooks.OnEnterModule(mod); leave != nil {
@@ -145,10 +148,12 @@ func (e *evaluator) EvaluateModule(mod *symbols.Module, args core.Args) {
 	}
 
 	// Fetch the module's entrypoint function, erroring out if it doesn't have one.
+	var ret *rt.Object
+	var uw *rt.Unwind
 	hadEntry := false
 	if entry, has := mod.Members[tokens.EntryPointFunction]; has {
 		if entryfnc, ok := entry.(symbols.Function); ok {
-			e.EvaluateFunction(entryfnc, nil, args)
+			ret, uw = e.EvaluateFunction(entryfnc, nil, args)
 			hadEntry = true
 		}
 	}
@@ -156,10 +161,12 @@ func (e *evaluator) EvaluateModule(mod *symbols.Module, args core.Args) {
 	if !hadEntry {
 		e.Diag().Errorf(errors.ErrorModuleHasNoEntryPoint.At(mod.Tree()), mod.Name())
 	}
+
+	return ret, uw
 }
 
 // EvaluateFunction performs an evaluation of the given function, using the provided arguments, returning its graph.
-func (e *evaluator) EvaluateFunction(fnc symbols.Function, this *rt.Object, args core.Args) {
+func (e *evaluator) EvaluateFunction(fnc symbols.Function, this *rt.Object, args core.Args) (*rt.Object, *rt.Unwind) {
 	glog.Infof("Evaluating function '%v'", fnc.Token())
 	if e.hooks != nil {
 		if leave := e.hooks.OnEnterFunction(fnc); leave != nil {
@@ -217,9 +224,11 @@ func (e *evaluator) EvaluateFunction(fnc symbols.Function, this *rt.Object, args
 		}
 	}
 
+	var ret *rt.Object
+	var uw *rt.Unwind
 	if e.Diag().Success() {
 		// If the arguments bound correctly, make the call.
-		if _, uw := e.evalCallSymbol(fnc.Tree(), fnc, this, argos...); uw != nil {
+		if ret, uw = e.evalCallSymbol(fnc.Tree(), fnc, this, argos...); uw != nil {
 			// If the call had an unwind out of it, then presumably we have an unhandled exception.
 			e.issueUnhandledException(uw, errors.ErrorUnhandledException.At(fnc.Tree()))
 		}
@@ -227,6 +236,8 @@ func (e *evaluator) EvaluateFunction(fnc symbols.Function, this *rt.Object, args
 
 	// Dump the evaluation state at log-level 5, if it is enabled.
 	e.dumpEvalState(5)
+
+	return ret, uw
 }
 
 // Utility functions
@@ -263,6 +274,10 @@ func (e *evaluator) dumpEvalState(v glog.Level) {
 // It returns the resulting pointer along with a boolean to indicate whether the property was left unfrozen.
 func (e *evaluator) initProperty(this *rt.Object, properties *rt.PropertyMap,
 	key rt.PropertyKey, sym symbols.Symbol) (*rt.Pointer, bool) {
+	// First, ensure we've swapped in an intrinsic if available.
+	contract.Assert(sym != nil)
+	sym = MaybeIntrinsic(sym.Tree(), sym)
+
 	switch m := sym.(type) {
 	case symbols.Function:
 		// A function results in a closure object referring to `this`, if any.
@@ -605,48 +620,54 @@ func (e *evaluator) evalCall(node diag.Diagable,
 	var thisVariable *symbols.LocalVariable
 	var superVariable *symbols.LocalVariable
 	if sym != nil {
-		// Set up the appropriate this/super variables, and also ensure that we enter the right module/class context
-		// (otherwise module-sensitive binding won't work).
-		switch f := sym.(type) {
-		case *symbols.ClassMethod:
-			if f.Static() {
+		for fsym, done := sym, false; !done; {
+			contract.Assert(fsym != nil)
+			// Set up the appropriate this/super variables, and also ensure that we enter the right module/class
+			// context (otherwise module-sensitive binding won't work).
+			switch f := fsym.(type) {
+			case *symbols.ClassMethod:
+				if f.Static() {
+					if this != nil {
+						// A non-nil `this` is okay if we loaded this function from a prototype object.
+						prototy, isproto := this.Type().(*symbols.PrototypeType)
+						contract.Assert(isproto)
+						contract.Assert(prototy.Type == f.Parent)
+					}
+				} else {
+					contract.Assertf(this != nil, "Expect non-nil this to invoke '%v'", f)
+					if uw := e.checkThis(node, this); uw != nil {
+						return nil, uw
+					}
+					thisVariable = f.Parent.This
+					superVariable = f.Parent.Super
+				}
+
+				popModule := e.pushModuleScope(f.Parent.Parent)
+				defer popModule()
+				popClass := e.pushClassScope(f.Parent, this)
+				defer popClass()
+				done = true
+
+			case *symbols.ModuleMethod:
 				if this != nil {
-					// A non-nil `this` is okay if we loaded this function from a prototype object.
-					prototy, isproto := this.Type().(*symbols.PrototypeType)
-					contract.Assert(isproto)
-					contract.Assert(prototy.Type == f.Parent)
+					// A non-nil `this` is okay if we loaded this function from a module object.  Because modules can
+					// re-export members from other modules, we cannot require that the type's parent matches.
+					_, ismod := this.Type().(*symbols.ModuleType)
+					contract.Assert(ismod)
+					this = nil // the this parameter isn't required during invocation.
 				}
-			} else {
-				contract.Assertf(this != nil, "Expect non-nil this to invoke '%v'", f)
-				if uw := e.checkThis(node, this); uw != nil {
-					return nil, uw
-				}
-				thisVariable = f.Parent.This
-				superVariable = f.Parent.Super
+
+				popModule := e.pushModuleScope(f.Parent)
+				defer popModule()
+				done = true
+
+			case *Intrinsic:
+				intrinsic = true
+				fsym = f.Func // swap in the underlying symbol for purposes of this/super/scoping.
+
+			default:
+				contract.Failf("Unrecognized function type during call: %v", reflect.TypeOf(fnc))
 			}
-
-			popModule := e.pushModuleScope(f.Parent.Parent)
-			defer popModule()
-			popClass := e.pushClassScope(f.Parent, this)
-			defer popClass()
-
-		case *symbols.ModuleMethod:
-			if this != nil {
-				// A non-nil `this` is okay if we loaded this function from a module object.  Note that because modules
-				// can re-export members from other modules, we cannot require that the type's parent matches.
-				_, ismod := this.Type().(*symbols.ModuleType)
-				contract.Assert(ismod)
-			}
-
-			popModule := e.pushModuleScope(f.Parent)
-			defer popModule()
-
-		case *Intrinsic:
-			contract.Assert(this == nil)
-			intrinsic = true
-
-		default:
-			contract.Failf("Unrecognized function type during call: %v", reflect.TypeOf(fnc))
 		}
 	}
 
@@ -1446,9 +1467,8 @@ func (e *evaluator) chaseExports(sym symbols.Symbol) symbols.Symbol {
 
 func (e *evaluator) evalLoadSymbolLocation(node diag.Diagable, sym symbols.Symbol,
 	this *rt.Object, thisexpr ast.Expression, lval bool) (*rt.Pointer, symbols.Type, *rt.Unwind) {
-	contract.Assert(sym != nil)     // don't issue errors; we shouldn't ever get here if verification failed.
-	sym = MaybeIntrinsic(node, sym) // replace this with an intrinsic if it's recognized as one.
-	sym = e.chaseExports(sym)       // chase the export down until we get a real symbol.
+	contract.Assert(sym != nil) // don't issue errors; we shouldn't ever get here if verification failed.
+	sym = e.chaseExports(sym)   // chase the export down until we get a real symbol.
 
 	// Look up the symbol property in the right place.  Note that because this is a static load, we intentionally
 	// do not perform any lazily initialization of missing property slots; they must exist.  But we still need to

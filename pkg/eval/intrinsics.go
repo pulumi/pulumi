@@ -21,6 +21,7 @@ import (
 	"github.com/pulumi/lumi/pkg/diag"
 	"github.com/pulumi/lumi/pkg/eval/rt"
 	"github.com/pulumi/lumi/pkg/tokens"
+	"github.com/pulumi/lumi/pkg/util/contract"
 )
 
 // Invoker implements an intrinsic function's functionality.
@@ -33,15 +34,15 @@ var Intrinsics map[tokens.Token]Invoker
 
 func init() {
 	Intrinsics = map[tokens.Token]Invoker{
-		"lumi:runtime:isFunction":    isFunction,
-		"lumi:runtime:dynamicInvoke": dynamicInvoke,
+		"lumi:runtime/dynamic:isFunction":    isFunction,
+		"lumi:runtime/dynamic:dynamicInvoke": dynamicInvoke,
 	}
 }
 
 // Intrinsic is a special intrinsic function whose behavior is implemented by the runtime.
 type Intrinsic struct {
-	Node    diag.Diagable // the contextual node representing the place where this intrinsic got created.
-	Func    ast.Function  // the underlying function's node (before mapping to an intrinsic).
+	Node    diag.Diagable    // the contextual node representing the place where this intrinsic got created.
+	Func    symbols.Function // the underlying function symbol (before mapping to an intrinsic).
 	Nm      tokens.Name
 	Tok     tokens.Token
 	Sig     *symbols.FunctionType
@@ -55,8 +56,8 @@ func (node *Intrinsic) Name() tokens.Name                { return node.Nm }
 func (node *Intrinsic) Token() tokens.Token              { return node.Tok }
 func (node *Intrinsic) Special() bool                    { return false }
 func (node *Intrinsic) SpecialModInit() bool             { return false }
-func (node *Intrinsic) Tree() diag.Diagable              { return node.Func }
-func (node *Intrinsic) Function() ast.Function           { return node.Func }
+func (node *Intrinsic) Tree() diag.Diagable              { return node.Func.Function() }
+func (node *Intrinsic) Function() ast.Function           { return node.Func.Function() }
 func (node *Intrinsic) Signature() *symbols.FunctionType { return node.Sig }
 func (node *Intrinsic) String() string                   { return string(node.Name()) }
 
@@ -67,7 +68,7 @@ func (node *Intrinsic) Invoke(e *evaluator, this *rt.Object, args []*rt.Object) 
 }
 
 // NewIntrinsic returns a new intrinsic function symbol with the given information.
-func NewIntrinsic(tree diag.Diagable, fnc ast.Function, tok tokens.Token, nm tokens.Name,
+func NewIntrinsic(tree diag.Diagable, fnc symbols.Function, tok tokens.Token, nm tokens.Name,
 	sig *symbols.FunctionType, invoker Invoker) *Intrinsic {
 	return &Intrinsic{
 		Node:    tree,
@@ -90,7 +91,9 @@ func MaybeIntrinsic(tree diag.Diagable, sym symbols.Symbol) symbols.Symbol {
 		// cache these symbols because of the need to associate the AST node with the resulting symbol.
 		tok := s.Token()
 		if invoker, isintrinsic := Intrinsics[tok]; isintrinsic {
-			sym = NewIntrinsic(tree, s.Function(), tok, tok.Name(), s.Signature(), invoker)
+			contract.Assertf(tok.HasModuleMember(), "only module member intrinsics currently supported")
+			name := tokens.Name(tokens.ModuleMember(tok).Name())
+			sym = NewIntrinsic(tree, s, tok, name, s.Signature(), invoker)
 		}
 	}
 	return sym

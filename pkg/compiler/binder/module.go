@@ -26,6 +26,8 @@ import (
 )
 
 func (b *binder) bindModuleDeclarations(node *ast.Module, parent *symbols.Package) *symbols.Module {
+	contract.Assert(node != nil)
+	contract.Assert(parent != nil)
 	glog.V(3).Infof("Binding package '%v' module '%v' decls", parent.Name(), node.Name.Ident)
 
 	// Create the module symbol and register it.
