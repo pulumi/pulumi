@@ -258,6 +258,8 @@ const InvokeFunctionExpressionKind NodeKind = "InvokeFunctionExpression"
 type LambdaExpression struct {
 	ExpressionNode
 	FunctionNode
+	SourceText     string `json:"sourceText"`
+	SourceLanguage string `json:"sourceLanguage"`
 }
 
 var _ Node = (*LambdaExpression)(nil)

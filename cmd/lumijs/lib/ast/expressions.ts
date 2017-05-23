@@ -163,10 +163,12 @@ export type  InvokeFunctionExpressionKind = "InvokeFunctionExpression";
 
 // Creates a lambda, a sort of "anonymous" function.
 export interface LambdaExpression extends Expression {
-    kind:        LambdaExpressionKind;
-    parameters?: LocalVariable[];   // the parameters.
-    returnType?: tokens.TypeToken; // the optional return type.
-    body:        statements.Block;  // the lambda's body block.
+    kind:           LambdaExpressionKind;
+    parameters?:    LocalVariable[];  // the parameters.
+    returnType?:    tokens.TypeToken; // the optional return type.
+    body:           statements.Block; // the lambda's body block.
+    sourceText:     string;           // the lambda's JavaScript source text. 
+    sourceLanguage: string;           // the lambda's source language: ".js".
 }
 export const lambdaExpressionKind = "LambdaExpression";
 export type  LambdaExpressionKind = "LambdaExpression";

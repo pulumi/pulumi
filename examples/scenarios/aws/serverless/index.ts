@@ -17,17 +17,24 @@ import * as lumi from "@lumi/lumi";
 import * as aws from "@lumi/aws";
 
 let music = new aws.dynamodb.Table("music", {
-    attributes: [
-        { name: "Album", type: "S"},
-        { name: "Artist", type: "S"},
-    ],
-    hashKey: "Album",
-    rangeKey: "Artist",
-    readCapacity: 1,
-    writeCapacity: 1
+  attributes: [
+    { name: "Album", type: "S" },
+    { name: "Artist", type: "S" },
+  ],
+  hashKey: "Album",
+  rangeKey: "Artist",
+  readCapacity: 1,
+  writeCapacity: 1
 })
 
-lumi.runtime.printf("Length is: ")
-lumi.runtime.printf((<any>[1,2,3]).length)
-lumi.runtime.printf("\n")
- 
+// [Workaround] Declare variables that should be available on the global scope of the lambda
+let console: any
+
+let lambda = new aws.lambda.FunctionX(
+  "mylambda",
+  [aws.iam.AWSLambdaFullAccess],
+  (event: any, context: aws.lambda.Context) => {
+    console.log("Invoked function: " + context.invokedFunctionArn);
+    console.log("Time remaining: " + context.getRemainingTimeInMillis());
+  }
+);

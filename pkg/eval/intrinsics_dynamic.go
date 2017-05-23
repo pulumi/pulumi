@@ -16,8 +16,11 @@
 package eval
 
 import (
+
 	"fmt"
 
+
+	"github.com/pulumi/lumi/pkg/compiler/ast"
 	"github.com/pulumi/lumi/pkg/compiler/symbols"
 	"github.com/pulumi/lumi/pkg/eval/rt"
 	"github.com/pulumi/lumi/pkg/util/contract"
@@ -109,4 +112,31 @@ func arraySetLength(intrin *rt.Intrinsic, e *evaluator, this *rt.Object, args []
 	*arr = newArr
 
 	return rt.NewReturnUnwind(nil)
+
+func serializeClosure(intrin *Intrinsic, e *evaluator, this *rt.Object, args []*rt.Object) *rt.Unwind {
+	contract.Assert(this == nil)    // module function
+	contract.Assert(len(args) == 1) // one arg: func
+
+	stub, ok := args[0].TryFunctionValue()
+	if !ok {
+		return e.NewException(intrin.Node, "Expected argument 'func' to be a function value.")
+	}
+	lambda, ok := stub.Func.(*ast.LambdaExpression)
+	if !ok {
+		return e.NewException(intrin.Node, "Expected argument 'func' to be a lambda expression.")
+	}
+
+	// Build up the properties for the returned Closure object
+	// code: any;                          // a serialization of the function's source code as text.
+	// signature: string;                  // the function signature type token.
+	// language: string;                   // the language runtime required to execute the serialized code.
+	// environment?: {[key: string]: any}; // the captured lexical environment of variables to values, if any.
+	props := rt.NewPropertyMap()
+	props.Set("code", rt.NewStringObject(lambda.SourceText))
+	props.Set("signature", rt.NewStringObject(string(stub.Sig.Token())))
+	props.Set("language", rt.NewStringObject(lambda.SourceLanguage))
+	// TODO: environment
+	closure := e.alloc.New(intrin.Node, intrin.Sig.Return, props, nil)
+
+	return rt.NewReturnUnwind(closure)
 }

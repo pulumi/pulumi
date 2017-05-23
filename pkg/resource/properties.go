@@ -363,6 +363,8 @@ func NewPropertyValue(v interface{}) PropertyValue {
 	// Next, see if it's an array, slice, pointer or struct, and handle each accordingly.
 	rv := reflect.ValueOf(v)
 	switch rk := rv.Type().Kind(); rk {
+	case reflect.String:
+		return NewPropertyString(rv.String())
 	case reflect.Array, reflect.Slice:
 		// If an array or slice, just create an array out of it.
 		var arr []PropertyValue
