@@ -1,0 +1,9 @@
+language: go
+go:
+    - 1.8.2
+before_install:
+    - go get -v github.com/tools/godep
+    - go get -v github.com/golang/lint/golint
+install:
+    - godep restore -v
+

@@ -27,6 +27,11 @@ type ExpressionNode struct {
 
 func (node *ExpressionNode) expression() {}
 
+// OptExpression exists simply to turn an Expression into an *Expression.
+func OptExpression(e Expression) *Expression {
+	return &e
+}
+
 /* Literals */
 
 type Literal interface {
