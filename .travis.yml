@@ -3,6 +3,7 @@ go:
     - 1.8.x
     - master
 before_install:
+    - mkdir -p $GOPATH/bin
     - curl https://glide.sh/get | sh
     - go get -v github.com/golang/lint/golint
 install:
