@@ -6,5 +6,5 @@ before_install:
     - go get -v github.com/tools/godep
     - go get -v github.com/golang/lint/golint
 install:
-    - godep restore
+    - godep restore -v
 
