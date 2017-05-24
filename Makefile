@@ -1,9 +1,12 @@
-.PHONY: build install lint lint_quiet test vet
+.PHONY: banner build install lint lint_quiet test vet
 
 PROJECT=github.com/pulumi/lumi
 PROJECT_PKGS=$(shell go list ./... | grep -v /vendor/)
 
-default: test lint_quiet vet install
+default: banner test lint_quiet vet install
+
+banner:
+	@go version
 
 build:
 	@echo "\033[0;32mBUILD:\033[0m"
