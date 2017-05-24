@@ -249,6 +249,10 @@ func (p *funcProvider) Update(ctx context.Context, id resource.ID,
 				update.Environment = &awslambda.Environment{
 					Variables: aws.StringMap(*new.Environment),
 				}
+			} else {
+				update.Environment = &awslambda.Environment{
+					Variables: map[string]*string{},
+				}
 			}
 		}
 
