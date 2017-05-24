@@ -58,15 +58,27 @@ export class FunctionX {
             case ".js":
                 this.lambda = new LambdaFunction(name, {
                     code: new AssetArchive({
-                        "index.js": new String("exports.handler = " + closure.code)
+                        "index.js": new String(
+                            "exports.handler = (__event, __context, __callback) => {\n" +
+                            // TODO: We need to deserialize these variables, so it can't be as simple as `with`
+                            "   with(process.env) {\n" +
+                            "       let __f = " + closure.code +
+                            "       __f(__event, __context, __callback);\n" +
+                            "   }\n" +
+                            "}\n"
+                        )
                     }),
                     handler: "index.handler",
                     runtime: "nodejs6.10",
                     role: this.role,
+                    // TODO: We probably want to put the whole closure environment into a single Lambda
+                    // environment variable so that it's easier to extract and deserialize safely.
+                    // That will require being able to JSON.stringify.
+                    environment: closure.environment,
                 });
                 break;
             default:
-                throw new Error("Language '" + closure.language+ "' not yet supported (currently only JavaScript).");
+                throw new Error("Language '" + closure.language + "' not yet supported (currently only JavaScript).");
         }
     }
 }

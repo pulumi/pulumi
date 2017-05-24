@@ -16,12 +16,14 @@
 package eval
 
 import (
-
 	"fmt"
 
+	"encoding/json"
 
 	"github.com/pulumi/lumi/pkg/compiler/ast"
 	"github.com/pulumi/lumi/pkg/compiler/symbols"
+	"github.com/pulumi/lumi/pkg/compiler/types"
+	"github.com/pulumi/lumi/pkg/diag"
 	"github.com/pulumi/lumi/pkg/eval/rt"
 	"github.com/pulumi/lumi/pkg/util/contract"
 )
@@ -112,31 +114,70 @@ func arraySetLength(intrin *rt.Intrinsic, e *evaluator, this *rt.Object, args []
 	*arr = newArr
 
 	return rt.NewReturnUnwind(nil)
+}
 
-func serializeClosure(intrin *Intrinsic, e *evaluator, this *rt.Object, args []*rt.Object) *rt.Unwind {
+func serializeClosure(intrin *rt.Intrinsic, e *evaluator, this *rt.Object, args []*rt.Object) *rt.Unwind {
 	contract.Assert(this == nil)    // module function
 	contract.Assert(len(args) == 1) // one arg: func
 
 	stub, ok := args[0].TryFunctionValue()
 	if !ok {
-		return e.NewException(intrin.Node, "Expected argument 'func' to be a function value.")
+		return e.NewException(intrin.Tree(), "Expected argument 'func' to be a function value.")
 	}
 	lambda, ok := stub.Func.(*ast.LambdaExpression)
 	if !ok {
-		return e.NewException(intrin.Node, "Expected argument 'func' to be a lambda expression.")
+		return e.NewException(intrin.Tree(), "Expected argument 'func' to be a lambda expression.")
 	}
 
+	// TODO: We are using the full environment available at execution time here, we should
+	// instead capture only the free variables referenced in the function itself.
+	envPropMap := rt.NewPropertyMap()
+	for key, val := range stub.Env.Slots() {
+		serializedValue := serializeValue(e, intrin.Tree(), val.Obj())
+		if serializedValue != nil {
+			// TODO: Instead of skipping unserializable properties, should report a runtime error to the user.
+			// However, we cannot do this until we address the TODO above.
+			envPropMap.Set(rt.PropertyKey(key.Name()), rt.NewStringObject(*serializedValue))
+		}
+	}
+	envObj := e.alloc.New(intrin.Tree(), types.Dynamic, envPropMap, nil)
+
 	// Build up the properties for the returned Closure object
-	// code: any;                          // a serialization of the function's source code as text.
-	// signature: string;                  // the function signature type token.
-	// language: string;                   // the language runtime required to execute the serialized code.
-	// environment?: {[key: string]: any}; // the captured lexical environment of variables to values, if any.
 	props := rt.NewPropertyMap()
 	props.Set("code", rt.NewStringObject(lambda.SourceText))
 	props.Set("signature", rt.NewStringObject(string(stub.Sig.Token())))
 	props.Set("language", rt.NewStringObject(lambda.SourceLanguage))
-	// TODO: environment
-	closure := e.alloc.New(intrin.Node, intrin.Sig.Return, props, nil)
+	props.Set("environment", envObj)
+	closure := e.alloc.New(intrin.Tree(), intrin.Signature().Return, props, nil)
 
 	return rt.NewReturnUnwind(closure)
+}
+
+func serializeValue(e *evaluator, tree diag.Diagable, val *rt.Object) *string {
+	if val == nil {
+		return nil
+	}
+	switch val.Type().TypeToken() {
+	case "string", "number", "bool":
+		str := val.String()
+		return &str
+	case "dynamic":
+		o := map[string]string{}
+		props := val.PropertyValues()
+		for _, key := range props.Stable() {
+			propVal := props.Get(key)
+			serializedPropVal := serializeValue(e, tree, propVal)
+			if serializedPropVal != nil {
+				o[string(key)] = *serializedPropVal
+			}
+		}
+		bytes, err := json.Marshal(o)
+		if err != nil {
+			return nil
+		}
+		str := string(bytes)
+		return &str
+	default:
+		return nil
+	}
 }

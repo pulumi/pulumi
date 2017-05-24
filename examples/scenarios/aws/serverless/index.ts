@@ -30,11 +30,21 @@ let music = new aws.dynamodb.Table("music", {
 // [Workaround] Declare variables that should be available on the global scope of the lambda
 let console: any
 
-let lambda = new aws.lambda.FunctionX(
-  "mylambda",
-  [aws.iam.AWSLambdaFullAccess],
-  (event: any, context: aws.lambda.Context) => {
-    console.log("Invoked function: " + context.invokedFunctionArn);
-    console.log("Time remaining: " + context.getRemainingTimeInMillis());
-  }
-);
+function createLambda() {
+  let hello = "Hello, world!"
+  let num = 3
+  let obj = { x: 42 }
+  let mus = music
+
+  let lambda = new aws.lambda.FunctionX(
+    "mylambda",
+    [aws.iam.AWSLambdaFullAccess],
+    (event: any, context: aws.lambda.Context) => {
+      console.log(hello);
+      console.log("Invoked function: " + context.invokedFunctionArn);
+      console.log("Time remaining : " + context.getRemainingTimeInMillis());
+    }
+  );
+}
+
+createLambda();
