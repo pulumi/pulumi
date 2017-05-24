@@ -3,6 +3,7 @@ go:
     - 1.8.x
     - master
 before_install:
+    - go get -v github.com/tools/godep
     - go get -v github.com/golang/lint/golint
 install:
     - godep restore
