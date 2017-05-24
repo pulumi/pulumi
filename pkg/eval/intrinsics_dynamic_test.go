@@ -68,7 +68,6 @@ func makeIsFunctionExprAST(dynamic bool) ast.Expression {
 }
 
 func makeTestIsFunctionAST(dynamic bool, realFunc bool) *pack.Package {
-
 	// Make the function body.
 	var body []ast.Statement
 
@@ -109,12 +108,11 @@ func makeTestIsFunctionAST(dynamic bool, realFunc bool) *pack.Package {
 		Expression: &invokeExpr,
 	})
 
-	// Now return a package with a default module and single entrypoint main function.
+	// Now return a package with a default module and single entrypoint main function.  Note that we must call this
+	// package "lumi" and indeed have a fake implementation of the very isFunction intrinsic we are testing, to avoid
+	// depending on the Lumi standard library as an external package; this ensures tests are self-contained.
 	return &pack.Package{
-		Name: "testIsFunction",
-		Dependencies: &pack.Dependencies{
-			"lumi": "*",
-		},
+		Name: "lumi",
 		Modules: &ast.Modules{
 			tokens.ModuleName(".default"): &ast.Module{
 				DefinitionNode: ast.DefinitionNode{
@@ -136,6 +134,66 @@ func makeTestIsFunctionAST(dynamic bool, realFunc bool) *pack.Package {
 							DefinitionNode: ast.DefinitionNode{
 								Name: &ast.Identifier{
 									Ident: tokens.Name(".main"),
+								},
+							},
+						},
+					},
+				},
+			},
+			tokens.ModuleName("runtime/dynamic"): &ast.Module{
+				DefinitionNode: ast.DefinitionNode{
+					Name: &ast.Identifier{
+						Ident: tokens.Name("runtime/dynamic"),
+					},
+				},
+				Exports: &ast.ModuleExports{
+					tokens.ModuleMemberName("isFunction"): &ast.Export{
+						DefinitionNode: ast.DefinitionNode{
+							Name: &ast.Identifier{
+								Ident: tokens.Name("isFunction"),
+							},
+						},
+						Referent: &ast.Token{
+							Tok: tokens.Token("lumi:runtime/dynamic:isFunction"),
+						},
+					},
+				},
+				Members: &ast.ModuleMembers{
+					tokens.ModuleMemberName("isFunction"): &ast.ModuleMethod{
+						FunctionNode: ast.FunctionNode{
+							Parameters: &[]*ast.LocalVariable{
+								{
+									DefinitionNode: ast.DefinitionNode{
+										Name: &ast.Identifier{
+											Ident: tokens.Name("isFunction"),
+										},
+									},
+									VariableNode: ast.VariableNode{
+										Type: &ast.TypeToken{
+											Tok: types.Object.TypeToken(),
+										},
+									},
+								},
+							},
+							ReturnType: &ast.TypeToken{
+								Tok: types.Bool.TypeToken(),
+							},
+							Body: &ast.Block{
+								Statements: []ast.Statement{
+									&ast.ReturnStatement{
+										Expression: ast.OptExpression(
+											&ast.BoolLiteral{
+												Value: false,
+											},
+										),
+									},
+								},
+							},
+						},
+						ModuleMemberNode: ast.ModuleMemberNode{
+							DefinitionNode: ast.DefinitionNode{
+								Name: &ast.Identifier{
+									Ident: tokens.Name("isFunction"),
 								},
 							},
 						},
