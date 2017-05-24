@@ -35,5 +35,5 @@ test:
 
 vet:
 	@echo "\033[0;32mVET:\033[0m"
-	@go vet ${PROJECT_PKGS}
+	@go tool vet -printf=false cmd/ lib/ pkg/
 
