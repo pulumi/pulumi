@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.com/pulumi/lumi.svg?token=cTUUEgrxaTEGyecqJpDn&branch=master)](https://travis-ci.com/pulumi/lumi)
+
 # Lumi
 
 Lumi is a framework and toolset for creating reusable cloud services.
