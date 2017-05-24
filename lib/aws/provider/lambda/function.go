@@ -93,7 +93,6 @@ func (p *funcProvider) Check(ctx context.Context, obj *lambda.Function) ([]mappe
 // Create allocates a new instance of the provided resource and returns its unique ID afterwards.  (The input ID
 // must be blank.)  If this call fails, the resource must not have been created (i.e., it is "transacational").
 func (p *funcProvider) Create(ctx context.Context, obj *lambda.Function) (resource.ID, *lambda.FunctionOuts, error) {
-	contract.Assertf(obj.Environment == nil, "Environment not yet supported")
 	contract.Assertf(obj.DeadLetterConfig == nil, "Dead letter config not yet supported")
 	contract.Assertf(obj.VPCConfig == nil, "VPC config not yet supported")
 
@@ -118,7 +117,6 @@ func (p *funcProvider) Create(ctx context.Context, obj *lambda.Function) (resour
 	}
 
 	var dlqcfg *awslambda.DeadLetterConfig
-	var env *awslambda.Environment
 	var vpccfg *awslambda.VpcConfig
 
 	// Convert float fields to in64 if they are non-nil.
@@ -131,6 +129,12 @@ func (p *funcProvider) Create(ctx context.Context, obj *lambda.Function) (resour
 	if obj.Timeout != nil {
 		to := int64(*obj.Timeout)
 		timeout = &to
+	}
+	var env *awslambda.Environment
+	if obj.Environment != nil {
+		env = &awslambda.Environment{
+			Variables: aws.StringMap(*obj.Environment),
+		}
 	}
 
 	// Now go ahead and create the resource.  Note that IAM profiles can take several seconds to propagate; see
@@ -201,13 +205,13 @@ func (p *funcProvider) InspectChange(ctx context.Context, id resource.ID,
 // to new values.  The resource ID is returned and may be different if the resource had to be recreated.
 func (p *funcProvider) Update(ctx context.Context, id resource.ID,
 	old *lambda.Function, new *lambda.Function, diff *resource.ObjectDiff) error {
-	contract.Assertf(new.Environment == nil, "Environment not yet supported")
 	contract.Assertf(new.DeadLetterConfig == nil, "Dead letter config not yet supported")
 	contract.Assertf(new.VPCConfig == nil, "VPC config not yet supported")
 
 	if diff.Changed(lambda.Function_Description) || diff.Changed(lambda.Function_Environment) ||
 		diff.Changed(lambda.Function_Runtime) || diff.Changed(lambda.Function_Role) ||
-		diff.Changed(lambda.Function_MemorySize) || diff.Changed(lambda.Function_Timeout) {
+		diff.Changed(lambda.Function_MemorySize) || diff.Changed(lambda.Function_Timeout) ||
+		diff.Changed(lambda.Function_Environment) {
 
 		update := &awslambda.UpdateFunctionConfigurationInput{
 			FunctionName: id.StringPtr(), // Okay to use the ARN as the FunctionName
@@ -238,6 +242,13 @@ func (p *funcProvider) Update(ctx context.Context, id resource.ID,
 			if new.Timeout != nil {
 				to := int64(*new.Timeout)
 				update.Timeout = &to
+			}
+		}
+		if diff.Changed(lambda.Function_Environment) {
+			if new.Environment != nil {
+				update.Environment = &awslambda.Environment{
+					Variables: aws.StringMap(*new.Environment),
+				}
 			}
 		}
 
