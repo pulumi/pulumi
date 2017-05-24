@@ -45,14 +45,20 @@ Lumi is written in Go, uses Godep for dependency management, and Golint for lint
 To build Lumi, ensure `$GOPATH` is set, and clone into a standard Go workspace:
 
     $ git clone git@github.com:pulumi/lumi $GOPATH/src/github.com/pulumi/lumi
-
-At this point you should be able to build and run tests from the root directory:
-
     $ cd $GOPATH/src/github.com/pulumi/lumi
-    $ glide update
+
+Before building, you will need to ensure dependencies have been restored to your enlistment:
+
+    $ godep restore
+
+At this point you can run `make` to build and run tests:
+
     $ make
 
 This installs the `lumi` binary into `$GOPATH/bin`, which may now be run provided `make` exited successfully.
+
+The Makefile also supports just running tests (`make test`), just running the linter (`make lint`), just running Govet
+(`make vet`), and so on.  Please just refer to the Makefile for the full list of targets.
 
 ### Installing the Runtime Libraries
 
