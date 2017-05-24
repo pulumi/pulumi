@@ -71,6 +71,9 @@ func (p *ActionTargetProvider) Name(
         return nil, decerr
     }
     if obj.Name == "" {
+        if req.Unknowns[ActionTarget_Name] {
+            return nil, errors.New("Name property cannot be computed from unknown outputs")
+        }
         return nil, errors.New("Name property cannot be empty")
     }
     return &lumirpc.NameResponse{Name: obj.Name}, nil
@@ -107,7 +110,7 @@ func (p *ActionTargetProvider) Get(
 }
 
 func (p *ActionTargetProvider) InspectChange(
-    ctx context.Context, req *lumirpc.ChangeRequest) (*lumirpc.InspectChangeResponse, error) {
+    ctx context.Context, req *lumirpc.InspectChangeRequest) (*lumirpc.InspectChangeResponse, error) {
     contract.Assert(req.GetType() == string(ActionTargetToken))
     id := resource.ID(req.GetId())
     old, oldprops, decerr := p.Unmarshal(req.GetOlds())
@@ -138,7 +141,7 @@ func (p *ActionTargetProvider) InspectChange(
 }
 
 func (p *ActionTargetProvider) Update(
-    ctx context.Context, req *lumirpc.ChangeRequest) (*pbempty.Empty, error) {
+    ctx context.Context, req *lumirpc.UpdateRequest) (*pbempty.Empty, error) {
     contract.Assert(req.GetType() == string(ActionTargetToken))
     id := resource.ID(req.GetId())
     old, oldprops, err := p.Unmarshal(req.GetOlds())
@@ -244,6 +247,9 @@ func (p *AlarmProvider) Name(
         return nil, decerr
     }
     if obj.Name == "" {
+        if req.Unknowns[Alarm_Name] {
+            return nil, errors.New("Name property cannot be computed from unknown outputs")
+        }
         return nil, errors.New("Name property cannot be empty")
     }
     return &lumirpc.NameResponse{Name: obj.Name}, nil
@@ -280,7 +286,7 @@ func (p *AlarmProvider) Get(
 }
 
 func (p *AlarmProvider) InspectChange(
-    ctx context.Context, req *lumirpc.ChangeRequest) (*lumirpc.InspectChangeResponse, error) {
+    ctx context.Context, req *lumirpc.InspectChangeRequest) (*lumirpc.InspectChangeResponse, error) {
     contract.Assert(req.GetType() == string(AlarmToken))
     id := resource.ID(req.GetId())
     old, oldprops, decerr := p.Unmarshal(req.GetOlds())
@@ -311,7 +317,7 @@ func (p *AlarmProvider) InspectChange(
 }
 
 func (p *AlarmProvider) Update(
-    ctx context.Context, req *lumirpc.ChangeRequest) (*pbempty.Empty, error) {
+    ctx context.Context, req *lumirpc.UpdateRequest) (*pbempty.Empty, error) {
     contract.Assert(req.GetType() == string(AlarmToken))
     id := resource.ID(req.GetId())
     old, oldprops, err := p.Unmarshal(req.GetOlds())

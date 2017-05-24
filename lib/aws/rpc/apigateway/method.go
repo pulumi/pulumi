@@ -117,6 +117,9 @@ func (p *MethodProvider) Name(
         return nil, decerr
     }
     if obj.Name == "" {
+        if req.Unknowns[Method_Name] {
+            return nil, errors.New("Name property cannot be computed from unknown outputs")
+        }
         return nil, errors.New("Name property cannot be empty")
     }
     return &lumirpc.NameResponse{Name: obj.Name}, nil
@@ -153,7 +156,7 @@ func (p *MethodProvider) Get(
 }
 
 func (p *MethodProvider) InspectChange(
-    ctx context.Context, req *lumirpc.ChangeRequest) (*lumirpc.InspectChangeResponse, error) {
+    ctx context.Context, req *lumirpc.InspectChangeRequest) (*lumirpc.InspectChangeResponse, error) {
     contract.Assert(req.GetType() == string(MethodToken))
     id := resource.ID(req.GetId())
     old, oldprops, decerr := p.Unmarshal(req.GetOlds())
@@ -181,7 +184,7 @@ func (p *MethodProvider) InspectChange(
 }
 
 func (p *MethodProvider) Update(
-    ctx context.Context, req *lumirpc.ChangeRequest) (*pbempty.Empty, error) {
+    ctx context.Context, req *lumirpc.UpdateRequest) (*pbempty.Empty, error) {
     contract.Assert(req.GetType() == string(MethodToken))
     id := resource.ID(req.GetId())
     old, oldprops, err := p.Unmarshal(req.GetOlds())

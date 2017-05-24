@@ -71,6 +71,9 @@ func (p *RoleProvider) Name(
         return nil, decerr
     }
     if obj.Name == "" {
+        if req.Unknowns[Role_Name] {
+            return nil, errors.New("Name property cannot be computed from unknown outputs")
+        }
         return nil, errors.New("Name property cannot be empty")
     }
     return &lumirpc.NameResponse{Name: obj.Name}, nil
@@ -110,7 +113,7 @@ func (p *RoleProvider) Get(
 }
 
 func (p *RoleProvider) InspectChange(
-    ctx context.Context, req *lumirpc.ChangeRequest) (*lumirpc.InspectChangeResponse, error) {
+    ctx context.Context, req *lumirpc.InspectChangeRequest) (*lumirpc.InspectChangeResponse, error) {
     contract.Assert(req.GetType() == string(RoleToken))
     id := resource.ID(req.GetId())
     old, oldprops, decerr := p.Unmarshal(req.GetOlds())
@@ -144,7 +147,7 @@ func (p *RoleProvider) InspectChange(
 }
 
 func (p *RoleProvider) Update(
-    ctx context.Context, req *lumirpc.ChangeRequest) (*pbempty.Empty, error) {
+    ctx context.Context, req *lumirpc.UpdateRequest) (*pbempty.Empty, error) {
     contract.Assert(req.GetType() == string(RoleToken))
     id := resource.ID(req.GetId())
     old, oldprops, err := p.Unmarshal(req.GetOlds())

@@ -30,6 +30,9 @@ import (
 // PropertyKey is the name of a property.
 type PropertyKey tokens.Name
 
+// PropertySet is a simple set keyed by property name.
+type PropertySet map[PropertyKey]bool
+
 // PropertyMap is a simple map keyed by property name with "JSON-like" values.
 type PropertyMap map[PropertyKey]PropertyValue
 
@@ -50,6 +53,14 @@ func NewPropertyMapFromMap(m map[string]interface{}) PropertyMap {
 // PropertyValue is the value of a property, limited to a select few types (see below).
 type PropertyValue struct {
 	V interface{}
+}
+
+// Unknown represents the absence of a property.  It contains a property value which represents the underlying expected
+// type of the property value if and when, at some point in the future, it becomes known.
+type Unknown PropertyValue
+
+func (uk Unknown) Future() PropertyValue {
+	return PropertyValue(uk)
 }
 
 type ReqError struct {
@@ -195,6 +206,20 @@ func (m PropertyMap) ResourceOrErr(k PropertyKey, req bool) (*URN, error) {
 	return nil, nil
 }
 
+// UnknownOrErr checks that the given property is an unknown, issuing an error if not; req indicates if required.
+func (m PropertyMap) UnknownOrErr(k PropertyKey, req bool) (*Unknown, error) {
+	if v, has := m[k]; has && !v.IsNull() {
+		if !v.IsUnknown() {
+			return nil, errors.Errorf("property '%v' is not an object (%v)", k, reflect.TypeOf(v.V))
+		}
+		m := v.UnknownValue()
+		return &m, nil
+	} else if req {
+		return nil, &ReqError{k}
+	}
+	return nil, nil
+}
+
 // ReqBoolOrErr checks that the given property exists and has the type bool.
 func (m PropertyMap) ReqBoolOrErr(k PropertyKey) (bool, error) {
 	b, err := m.BoolOrErr(k, true)
@@ -267,6 +292,15 @@ func (m PropertyMap) ReqResourceOrErr(k PropertyKey) (URN, error) {
 	return *r, nil
 }
 
+// ReqUnknownOrErr checks that the given property exists and has the unknown type.
+func (m PropertyMap) ReqUnknownOrErr(k PropertyKey) (Unknown, error) {
+	u, err := m.UnknownOrErr(k, true)
+	if err != nil {
+		return Unknown{}, err
+	}
+	return *u, nil
+}
+
 // OptBoolOrErr checks that the given property has the type bool, if it exists.
 func (m PropertyMap) OptBoolOrErr(k PropertyKey) (*bool, error) {
 	return m.BoolOrErr(k, false)
@@ -307,6 +341,11 @@ func (m PropertyMap) OptResourceOrErr(k PropertyKey) (*URN, error) {
 	return m.ResourceOrErr(k, false)
 }
 
+// OptUnknownOrErr checks that the given property is an unknown, if it exists.
+func (m PropertyMap) OptUnknownOrErr(k PropertyKey) (*Unknown, error) {
+	return m.UnknownOrErr(k, false)
+}
+
 // Mappable returns a mapper-compatible object map, suitable for deserialization into structures.
 func (m PropertyMap) Mappable() mapper.Object {
 	obj := make(mapper.Object)
@@ -344,6 +383,7 @@ func NewPropertyString(v string) PropertyValue         { return PropertyValue{v}
 func NewPropertyArray(v []PropertyValue) PropertyValue { return PropertyValue{v} }
 func NewPropertyObject(v PropertyMap) PropertyValue    { return PropertyValue{v} }
 func NewPropertyResource(v URN) PropertyValue          { return PropertyValue{v} }
+func NewPropertyUnknown(v Unknown) PropertyValue       { return PropertyValue{v} }
 
 // NewPropertyValue turns a value into a property value, provided it is of a legal "JSON-like" kind.
 func NewPropertyValue(v interface{}) PropertyValue {
@@ -362,6 +402,8 @@ func NewPropertyValue(v interface{}) PropertyValue {
 		return NewPropertyString(t)
 	case URN:
 		return NewPropertyResource(t)
+	case Unknown:
+		return NewPropertyUnknown(t)
 	}
 
 	// Next, see if it's an array, slice, pointer or struct, and handle each accordingly.
@@ -406,6 +448,7 @@ func (v PropertyValue) StringValue() string         { return v.V.(string) }
 func (v PropertyValue) ArrayValue() []PropertyValue { return v.V.([]PropertyValue) }
 func (v PropertyValue) ObjectValue() PropertyMap    { return v.V.(PropertyMap) }
 func (v PropertyValue) ResourceValue() URN          { return v.V.(URN) }
+func (v PropertyValue) UnknownValue() Unknown       { return v.V.(Unknown) }
 
 func (v PropertyValue) IsNull() bool {
 	return v.V == nil
@@ -433,6 +476,32 @@ func (v PropertyValue) IsObject() bool {
 func (v PropertyValue) IsResource() bool {
 	_, is := v.V.(URN)
 	return is
+}
+func (v PropertyValue) IsUnknown() bool {
+	_, is := v.V.(Unknown)
+	return is
+}
+
+func (v PropertyValue) TypeString() string {
+	if v.IsNull() {
+		return "null"
+	} else if v.IsBool() {
+		return "bool"
+	} else if v.IsNumber() {
+		return "number"
+	} else if v.IsString() {
+		return "string"
+	} else if v.IsArray() {
+		return "[]"
+	} else if v.IsObject() {
+		return "object"
+	} else if v.IsResource() {
+		return "resource"
+	} else if v.IsUnknown() {
+		return "unknown<" + v.UnknownValue().Future().TypeString() + ">"
+	}
+	contract.Failf("Unrecognized PropertyValue type")
+	return ""
 }
 
 // Mappable returns a mapper-compatible value, suitable for deserialization into structures.

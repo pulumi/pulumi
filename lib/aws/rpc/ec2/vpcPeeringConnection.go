@@ -69,6 +69,9 @@ func (p *VPCPeeringConnectionProvider) Name(
         return nil, decerr
     }
     if obj.Name == "" {
+        if req.Unknowns[VPCPeeringConnection_Name] {
+            return nil, errors.New("Name property cannot be computed from unknown outputs")
+        }
         return nil, errors.New("Name property cannot be empty")
     }
     return &lumirpc.NameResponse{Name: obj.Name}, nil
@@ -105,7 +108,7 @@ func (p *VPCPeeringConnectionProvider) Get(
 }
 
 func (p *VPCPeeringConnectionProvider) InspectChange(
-    ctx context.Context, req *lumirpc.ChangeRequest) (*lumirpc.InspectChangeResponse, error) {
+    ctx context.Context, req *lumirpc.InspectChangeRequest) (*lumirpc.InspectChangeResponse, error) {
     contract.Assert(req.GetType() == string(VPCPeeringConnectionToken))
     id := resource.ID(req.GetId())
     old, oldprops, decerr := p.Unmarshal(req.GetOlds())
@@ -139,7 +142,7 @@ func (p *VPCPeeringConnectionProvider) InspectChange(
 }
 
 func (p *VPCPeeringConnectionProvider) Update(
-    ctx context.Context, req *lumirpc.ChangeRequest) (*pbempty.Empty, error) {
+    ctx context.Context, req *lumirpc.UpdateRequest) (*pbempty.Empty, error) {
     contract.Assert(req.GetType() == string(VPCPeeringConnectionToken))
     id := resource.ID(req.GetId())
     old, oldprops, err := p.Unmarshal(req.GetOlds())

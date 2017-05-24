@@ -82,12 +82,14 @@ func (a *analyzer) Analyze(url pack.PackageURL) ([]AnalyzeFailure, error) {
 // AnalyzeResource analyzes a single resource object, and returns any errors that it finds.
 func (a *analyzer) AnalyzeResource(t tokens.Type, props PropertyMap) ([]AnalyzeResourceFailure, error) {
 	glog.V(7).Infof("analyzer[%v].AnalyzeResource(t=%v,#props=%v) executing", a.name, t, len(props))
+	pstr, unks := MarshalPropertiesWithUnknowns(a.ctx, props, MarshalOptions{
+		PermitOlds: true, // permit old URNs, since this is pre-update.
+		RawURNs:    true, // often used during URN creation; IDs won't be ready.
+	})
 	req := &lumirpc.AnalyzeResourceRequest{
-		Type: string(t),
-		Properties: MarshalProperties(a.ctx, props, MarshalOptions{
-			PermitOlds: true, // permit old URNs, since this is pre-update.
-			RawURNs:    true, // often used during URN creation; IDs won't be ready.
-		}),
+		Type:       string(t),
+		Properties: pstr,
+		Unknowns:   unks,
 	}
 
 	resp, err := a.client.AnalyzeResource(a.ctx.Request(), req)

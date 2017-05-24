@@ -303,6 +303,9 @@ func (g *RPCGenerator) EmitResource(w *bufio.Writer, module tokens.Module, pkg *
 	if res.Named {
 		// For named resources, we have a canonical way of fetching the name.
 		writefmtln(w, `    if obj.Name == "" {`)
+		writefmtln(w, `        if req.Unknowns[%v_Name] {`, name)
+		writefmtln(w, `            return nil, errors.New("Name property cannot be computed from unknown outputs")`)
+		writefmtln(w, "        }")
 		writefmtln(w, `        return nil, errors.New("Name property cannot be empty")`)
 		writefmtln(w, "    }")
 		writefmtln(w, "    return &lumirpc.NameResponse{Name: obj.Name}, nil")
@@ -354,7 +357,7 @@ func (g *RPCGenerator) EmitResource(w *bufio.Writer, module tokens.Module, pkg *
 	writefmtln(w, "}")
 	writefmtln(w, "")
 	writefmtln(w, "func (p *%vProvider) InspectChange(", name)
-	writefmtln(w, "    ctx context.Context, req *lumirpc.ChangeRequest) (*lumirpc.InspectChangeResponse, error) {")
+	writefmtln(w, "    ctx context.Context, req *lumirpc.InspectChangeRequest) (*lumirpc.InspectChangeResponse, error) {")
 	writefmtln(w, "    contract.Assert(req.GetType() == string(%vToken))", name)
 	writefmtln(w, "    id := resource.ID(req.GetId())")
 	writefmtln(w, "    old, oldprops, decerr := p.Unmarshal(req.GetOlds())")
@@ -386,7 +389,7 @@ func (g *RPCGenerator) EmitResource(w *bufio.Writer, module tokens.Module, pkg *
 	writefmtln(w, "}")
 	writefmtln(w, "")
 	writefmtln(w, "func (p *%vProvider) Update(", name)
-	writefmtln(w, "    ctx context.Context, req *lumirpc.ChangeRequest) (*pbempty.Empty, error) {")
+	writefmtln(w, "    ctx context.Context, req *lumirpc.UpdateRequest) (*pbempty.Empty, error) {")
 	writefmtln(w, "    contract.Assert(req.GetType() == string(%vToken))", name)
 	writefmtln(w, "    id := resource.ID(req.GetId())")
 	writefmtln(w, "    old, oldprops, err := p.Unmarshal(req.GetOlds())")

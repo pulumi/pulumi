@@ -20,8 +20,6 @@ import (
 	"encoding/hex"
 	"reflect"
 
-	"github.com/golang/glog"
-
 	"github.com/pulumi/lumi/pkg/compiler/symbols"
 	"github.com/pulumi/lumi/pkg/compiler/types"
 	"github.com/pulumi/lumi/pkg/compiler/types/predef"
@@ -72,8 +70,10 @@ const (
 	StateUnknown
 )
 
-func IsResourceType(t symbols.Type) bool              { return types.HasBaseName(t, predef.LumiStdlibResourceClass) }
-func IsResourceVertex(v *heapstate.ObjectVertex) bool { return IsResourceType(v.Obj().Type()) }
+// IsResourceVertex returns true if the heap graph vertex has an object whose type is the standard resource class.
+func IsResourceVertex(v *heapstate.ObjectVertex) bool {
+	return predef.IsResourceType(v.Obj().Type())
+}
 
 type resource struct {
 	id         ID          // the resource's unique ID, assigned by the resource provider (or blank if uncreated).
@@ -119,7 +119,7 @@ func NewResource(id ID, urn URN, t tokens.Type, properties PropertyMap) Resource
 // dependencies between resources and must contain all references that could be encountered.
 func NewObjectResource(ctx *Context, obj *rt.Object) Resource {
 	t := obj.Type()
-	contract.Assert(IsResourceType(t))
+	contract.Assert(predef.IsResourceType(t))
 
 	// Extract the urn.  This must already exist.
 	urn, hasm := ctx.ObjURN[obj]
@@ -156,13 +156,16 @@ func cloneObject(ctx *Context, obj *rt.Object) PropertyMap {
 // be stored in a property (e.g., it is a function or other unrecognized or unserializable runtime object).
 func cloneObjectValue(ctx *Context, obj *rt.Object) (PropertyValue, bool) {
 	t := obj.Type()
-	if IsResourceType(t) {
+
+	// Serialize resource references as URNs.
+	if predef.IsResourceType(t) {
 		// For resources, simply look up the urn from the resource map.
 		urn, hasm := ctx.ObjURN[obj]
 		contract.Assertf(hasm, "Missing object reference; possible out of order dependency walk")
 		return NewPropertyResource(urn), true
 	}
 
+	// Serialize simple primitive types with their primitive equivalents.
 	switch t {
 	case types.Null:
 		return NewPropertyNull(), true
@@ -177,6 +180,8 @@ func cloneObjectValue(ctx *Context, obj *rt.Object) (PropertyValue, bool) {
 		return NewPropertyObject(obj), true
 	}
 
+	// Serialize arrays, maps, and object instances in the obvious way.
+	// TODO: handle symbols.MapType.
 	switch t.(type) {
 	case *symbols.ArrayType:
 		var result []PropertyValue
@@ -191,10 +196,32 @@ func cloneObjectValue(ctx *Context, obj *rt.Object) (PropertyValue, bool) {
 		return NewPropertyObject(obj), true
 	}
 
-	// TODO: handle symbols.MapType.
-	// TODO: it's unclear if we should do something more drastic here.  There will always be unrecognized property
-	//     kinds because objects contain things like constructors, methods, etc.  But we may want to ratchet this a bit.
-	glog.V(5).Infof("Ignoring object value of type '%v': unrecognized kind %v", t, reflect.TypeOf(t))
+	// If a latent value, we can propagate an unknown value, but only for certain cases.
+	if t.Latent() {
+		future := t.(*symbols.LatentType).Element
+		switch future {
+		case types.Null:
+			return NewPropertyUnknown(Unknown(NewPropertyNull())), true
+		case types.Bool:
+			return NewPropertyUnknown(Unknown(NewPropertyBool(false))), true
+		case types.Number:
+			return NewPropertyUnknown(Unknown(NewPropertyNumber(0))), true
+		case types.String:
+			return NewPropertyUnknown(Unknown(NewPropertyString(""))), true
+		case types.Object, types.Dynamic:
+			return NewPropertyUnknown(Unknown(NewPropertyObject(make(PropertyMap)))), true
+		}
+		switch future.(type) {
+		case *symbols.ArrayType:
+			return NewPropertyUnknown(Unknown(NewPropertyArray(nil))), true
+		case *symbols.Class:
+			return NewPropertyUnknown(Unknown(NewPropertyObject(make(PropertyMap)))), true
+		}
+	}
+
+	// We can safely skip serializing functions, however, anything else is unexpected at this point.
+	_, isfunc := t.(*symbols.FunctionType)
+	contract.Assertf(isfunc, "Unrecognized resource property object type '%v' (%v)", t, reflect.TypeOf(t))
 	return PropertyValue{}, false
 }
 

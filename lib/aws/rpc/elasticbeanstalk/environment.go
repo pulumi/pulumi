@@ -69,6 +69,9 @@ func (p *EnvironmentProvider) Name(
         return nil, decerr
     }
     if obj.Name == "" {
+        if req.Unknowns[Environment_Name] {
+            return nil, errors.New("Name property cannot be computed from unknown outputs")
+        }
         return nil, errors.New("Name property cannot be empty")
     }
     return &lumirpc.NameResponse{Name: obj.Name}, nil
@@ -108,7 +111,7 @@ func (p *EnvironmentProvider) Get(
 }
 
 func (p *EnvironmentProvider) InspectChange(
-    ctx context.Context, req *lumirpc.ChangeRequest) (*lumirpc.InspectChangeResponse, error) {
+    ctx context.Context, req *lumirpc.InspectChangeRequest) (*lumirpc.InspectChangeResponse, error) {
     contract.Assert(req.GetType() == string(EnvironmentToken))
     id := resource.ID(req.GetId())
     old, oldprops, decerr := p.Unmarshal(req.GetOlds())
@@ -154,7 +157,7 @@ func (p *EnvironmentProvider) InspectChange(
 }
 
 func (p *EnvironmentProvider) Update(
-    ctx context.Context, req *lumirpc.ChangeRequest) (*pbempty.Empty, error) {
+    ctx context.Context, req *lumirpc.UpdateRequest) (*pbempty.Empty, error) {
     contract.Assert(req.GetType() == string(EnvironmentToken))
     id := resource.ID(req.GetId())
     old, oldprops, err := p.Unmarshal(req.GetOlds())

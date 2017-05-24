@@ -293,18 +293,29 @@ func (e *evaluator) initProperty(this *rt.Object, properties *rt.PropertyMap,
 		// A variable could have a default object; if so, use that; otherwise, null will be substituted automatically.
 		var obj *rt.Object
 		if m.Default() != nil {
-			decl := m.Tree()
-			obj = e.alloc.NewConstant(decl, *m.Default())
-			if this != nil && e.hooks != nil {
-				e.hooks.OnVariableAssign(decl, this, tokens.Name(key), nil, obj)
-			}
+			// If the variable has a default object, substitute it.
+			obj = e.alloc.NewConstant(m.Tree(), *m.Default())
+		} else if this != nil && m.Latent() {
+			// If the variable is a latent variable -- that is, assignments may come from outside the system at a later
+			// date and we want to be able to speculate beyond it -- then stick a latent object in the slot.
+			obj = e.alloc.NewLatent(m.Tree(), m.Type())
 		}
+
+		// Ensure the initialized value is advertised to the heap hooks, if any.
+		if this != nil && obj != nil && e.hooks != nil {
+			e.hooks.OnVariableAssign(m.Tree(), this, tokens.Name(key), nil, obj)
+		}
+
+		// If this is a class property, it may have a getter and/or setter; flow them.
 		var get symbols.Function
 		var set symbols.Function
 		if prop, isprop := m.(*symbols.ClassProperty); isprop {
 			get = prop.Getter()
 			set = prop.Setter()
 		}
+		contract.Assertf(obj == nil || (get == nil && set == nil), "Inits, getters, and setters cannot be mixed")
+
+		// Finally allocate the slot and return the resulting pointer to that slot.
 		ptr := properties.InitAddr(key, obj, false, get, set)
 		return ptr, m.Readonly()
 	case *symbols.Module:
@@ -569,6 +580,15 @@ func (e *evaluator) issueUnhandledException(uw *rt.Unwind, err *diag.Diag, args 
 	// Now simply output the error with the message plus stack trace.
 	args = append(args, msg)
 	e.Diag().Errorf(err, args...)
+}
+
+// rejectLatent checks an object's value and, if it latent (not apparent), returns an exception unwind.
+func (e *evaluator) rejectLatent(tree diag.Diagable, obj *rt.Object) *rt.Unwind {
+	if obj != nil && obj.Type().Latent() {
+		// TODO[pulumi/lumi#90]: support multi-stage planning that speculates beyond conditionals.
+		return e.NewUnexpectedLatentValueException(tree, obj)
+	}
+	return nil
 }
 
 // pushModuleScope establishes a new module-wide scope.  It returns a function that restores the prior value.
@@ -940,7 +960,7 @@ func (e *evaluator) evalContinueStatement(node *ast.ContinueStatement) *rt.Unwin
 
 func (e *evaluator) evalIfStatement(node *ast.IfStatement) *rt.Unwind {
 	// Evaluate the branches explicitly based on the result of the condition node.
-	cond, uw := e.evalExpression(node.Condition)
+	cond, uw := e.requireExpressionValue(node.Condition)
 	if uw != nil {
 		return uw
 	}
@@ -1037,7 +1057,7 @@ func (e *evaluator) evalLoop(condition *ast.Expression, body ast.Statement, post
 		var test *rt.Object
 		if condition != nil {
 			var uw *rt.Unwind
-			if test, uw = e.evalExpression(*condition); uw != nil {
+			if test, uw = e.requireExpressionValue(*condition); uw != nil {
 				return uw
 			}
 		}
@@ -1152,6 +1172,18 @@ func (e *evaluator) evalExpression(node ast.Expression) (*rt.Object, *rt.Unwind)
 		contract.Failf("Unrecognized expression node kind: %v", node.GetKind())
 		return nil, nil
 	}
+}
+
+// requireExpressionValue evaluates an expression and ensures that it isn't latent; that is, it has a concrete value.
+// If it is latent, the function returns a non-nil exception unwind object.
+func (e *evaluator) requireExpressionValue(node ast.Expression) (*rt.Object, *rt.Unwind) {
+	obj, uw := e.evalExpression(node)
+	if uw != nil {
+		return nil, uw
+	} else if e.rejectLatent(node, obj); uw != nil {
+		return nil, uw
+	}
+	return obj, nil
 }
 
 // evalLValueExpression evaluates an expression for use as an l-value; in particular, this loads the target as a
@@ -1385,7 +1417,18 @@ type Location struct {
 	Setter symbols.Function // the setter function, if any.
 }
 
-func (loc *Location) Assign(node diag.Diagable, val *rt.Object) *rt.Unwind {
+func (loc *Location) Get(node diag.Diagable) (*rt.Object, *rt.Unwind) {
+	if loc.Getter != nil {
+		// If there is a getter, invoke it.
+		contract.Assert(loc.This != nil)
+		return loc.e.evalCallSymbol(node, loc.Getter, loc.This)
+	}
+
+	// Otherwise, just return the object directly.
+	return loc.Obj, nil
+}
+
+func (loc *Location) Set(node diag.Diagable, val *rt.Object) *rt.Unwind {
 	if loc.Setter != nil {
 		// If the location has a setter, use that for the assignment.
 		contract.Assert(loc.This != nil)
@@ -1869,7 +1912,7 @@ func (e *evaluator) evalUnaryOperatorExpressionFor(node *ast.UnaryOperatorExpres
 		old := ptr.Obj()
 		val := old.NumberValue()
 		new := e.alloc.NewNumber(node, val+1)
-		if uw := opandloc.Assign(node.Operand, new); uw != nil {
+		if uw := opandloc.Set(node.Operand, new); uw != nil {
 			return nil, uw
 		}
 		if node.Postfix {
@@ -1882,7 +1925,7 @@ func (e *evaluator) evalUnaryOperatorExpressionFor(node *ast.UnaryOperatorExpres
 		old := ptr.Obj()
 		val := old.NumberValue()
 		new := e.alloc.NewNumber(node, val-1)
-		if uw := opandloc.Assign(node.Operand, new); uw != nil {
+		if uw := opandloc.Set(node.Operand, new); uw != nil {
 			return nil, uw
 		}
 		if node.Postfix {
@@ -1917,6 +1960,9 @@ func (e *evaluator) evalBinaryOperatorExpression(node *ast.BinaryOperatorExpress
 
 	// For the logical && and ||, we will only evaluate the rhs it if the lhs was true.
 	if node.Operator == ast.OpLogicalAnd || node.Operator == ast.OpLogicalOr {
+		if uw := e.rejectLatent(node.Left, lhs); uw != nil {
+			return nil, uw
+		}
 		if lhs.BoolValue() {
 			return e.evalExpression(node.Right)
 		}
@@ -1941,9 +1987,13 @@ func (e *evaluator) evalBinaryOperatorExpression(node *ast.BinaryOperatorExpress
 	// Arithmetic operators
 	case ast.OpAdd:
 		// If the lhs/rhs are strings, concatenate them; if numbers, + them.
-		if lhs.Type() == types.String {
+		if types.CanConvert(lhs.Type(), types.String) {
+			if lhs.Type().Latent() || rhs.Type().Latent() {
+				return e.alloc.NewLatent(node, types.String), nil
+			}
 			return e.alloc.NewString(node, lhs.StringValue()+rhs.StringValue()), nil
 		}
+		contract.Assert(types.CanConvert(lhs.Type(), types.Number))
 		return e.alloc.NewNumber(node, lhs.NumberValue()+rhs.NumberValue()), nil
 	case ast.OpSubtract:
 		// Both targets are numbers; fetch them (asserting their types), and - them.
@@ -1986,7 +2036,7 @@ func (e *evaluator) evalBinaryOperatorExpression(node *ast.BinaryOperatorExpress
 	// Assignment operators
 	case ast.OpAssign:
 		// The target is an l-value; just overwrite its value, and yield the new value as the result.
-		if uw := lhsloc.Assign(node.Left, rhs); uw != nil {
+		if uw := lhsloc.Set(node.Left, rhs); uw != nil {
 			return nil, uw
 		}
 		return rhs, nil
@@ -2000,7 +2050,7 @@ func (e *evaluator) evalBinaryOperatorExpression(node *ast.BinaryOperatorExpress
 			// Otherwise, the target is a numeric l-value; just += to it, and yield the new value as the result.
 			val = e.alloc.NewNumber(node, ptr.Obj().NumberValue()+rhs.NumberValue())
 		}
-		if uw := lhsloc.Assign(node.Left, val); uw != nil {
+		if uw := lhsloc.Set(node.Left, val); uw != nil {
 			return nil, uw
 		}
 		return val, nil
@@ -2008,7 +2058,7 @@ func (e *evaluator) evalBinaryOperatorExpression(node *ast.BinaryOperatorExpress
 		// The target is a numeric l-value; just -= rhs to it, and yield the new value as the result.
 		ptr := lhs.PointerValue()
 		val := e.alloc.NewNumber(node, ptr.Obj().NumberValue()-rhs.NumberValue())
-		if uw := lhsloc.Assign(node.Left, val); uw != nil {
+		if uw := lhsloc.Set(node.Left, val); uw != nil {
 			return nil, uw
 		}
 		return val, nil
@@ -2016,7 +2066,7 @@ func (e *evaluator) evalBinaryOperatorExpression(node *ast.BinaryOperatorExpress
 		// The target is a numeric l-value; just *= rhs to it, and yield the new value as the result.
 		ptr := lhs.PointerValue()
 		val := e.alloc.NewNumber(node, ptr.Obj().NumberValue()*rhs.NumberValue())
-		if uw := lhsloc.Assign(node.Left, val); uw != nil {
+		if uw := lhsloc.Set(node.Left, val); uw != nil {
 			return nil, uw
 		}
 		return val, nil
@@ -2024,7 +2074,7 @@ func (e *evaluator) evalBinaryOperatorExpression(node *ast.BinaryOperatorExpress
 		// The target is a numeric l-value; just /= rhs to it, and yield the new value as the result.
 		ptr := lhs.PointerValue()
 		val := e.alloc.NewNumber(node, ptr.Obj().NumberValue()/rhs.NumberValue())
-		if uw := lhsloc.Assign(node.Left, val); uw != nil {
+		if uw := lhsloc.Set(node.Left, val); uw != nil {
 			return nil, uw
 		}
 		return val, nil
@@ -2032,7 +2082,7 @@ func (e *evaluator) evalBinaryOperatorExpression(node *ast.BinaryOperatorExpress
 		// The target is a numeric l-value; just %= rhs to it, and yield the new value as the result.
 		ptr := lhs.PointerValue()
 		val := e.alloc.NewNumber(node, float64(int64(ptr.Obj().NumberValue())%int64(rhs.NumberValue())))
-		if uw := lhsloc.Assign(node.Left, val); uw != nil {
+		if uw := lhsloc.Set(node.Left, val); uw != nil {
 			return nil, uw
 		}
 		return val, nil
@@ -2040,7 +2090,7 @@ func (e *evaluator) evalBinaryOperatorExpression(node *ast.BinaryOperatorExpress
 		// The target is a numeric l-value; just raise to rhs as a power, and yield the new value as the result.
 		ptr := lhs.PointerValue()
 		val := e.alloc.NewNumber(node, math.Pow(ptr.Obj().NumberValue(), rhs.NumberValue()))
-		if uw := lhsloc.Assign(node.Left, val); uw != nil {
+		if uw := lhsloc.Set(node.Left, val); uw != nil {
 			return nil, uw
 		}
 		return val, nil
@@ -2048,7 +2098,7 @@ func (e *evaluator) evalBinaryOperatorExpression(node *ast.BinaryOperatorExpress
 		// The target is a numeric l-value; just <<= rhs to it, and yield the new value as the result.
 		ptr := lhs.PointerValue()
 		val := e.alloc.NewNumber(node, float64(int64(ptr.Obj().NumberValue())<<uint(rhs.NumberValue())))
-		if uw := lhsloc.Assign(node.Left, val); uw != nil {
+		if uw := lhsloc.Set(node.Left, val); uw != nil {
 			return nil, uw
 		}
 		return val, nil
@@ -2056,7 +2106,7 @@ func (e *evaluator) evalBinaryOperatorExpression(node *ast.BinaryOperatorExpress
 		// The target is a numeric l-value; just >>= rhs to it, and yield the new value as the result.
 		ptr := lhs.PointerValue()
 		val := e.alloc.NewNumber(node, float64(int64(ptr.Obj().NumberValue())>>uint(rhs.NumberValue())))
-		if uw := lhsloc.Assign(node.Left, val); uw != nil {
+		if uw := lhsloc.Set(node.Left, val); uw != nil {
 			return nil, uw
 		}
 		return val, nil
@@ -2064,7 +2114,7 @@ func (e *evaluator) evalBinaryOperatorExpression(node *ast.BinaryOperatorExpress
 		// The target is a numeric l-value; just &= rhs to it, and yield the new value as the result.
 		ptr := lhs.PointerValue()
 		val := e.alloc.NewNumber(node, float64(int64(ptr.Obj().NumberValue())&int64(rhs.NumberValue())))
-		if uw := lhsloc.Assign(node.Left, val); uw != nil {
+		if uw := lhsloc.Set(node.Left, val); uw != nil {
 			return nil, uw
 		}
 		return val, nil
@@ -2072,7 +2122,7 @@ func (e *evaluator) evalBinaryOperatorExpression(node *ast.BinaryOperatorExpress
 		// The target is a numeric l-value; just |= rhs to it, and yield the new value as the result.
 		ptr := lhs.PointerValue()
 		val := e.alloc.NewNumber(node, float64(int64(ptr.Obj().NumberValue())|int64(rhs.NumberValue())))
-		if uw := lhsloc.Assign(node.Left, val); uw != nil {
+		if uw := lhsloc.Set(node.Left, val); uw != nil {
 			return nil, uw
 		}
 		return val, nil
@@ -2080,7 +2130,7 @@ func (e *evaluator) evalBinaryOperatorExpression(node *ast.BinaryOperatorExpress
 		// The target is a numeric l-value; just ^= rhs to it, and yield the new value as the result.
 		ptr := lhs.PointerValue()
 		val := e.alloc.NewNumber(node, float64(int64(ptr.Obj().NumberValue())^int64(rhs.NumberValue())))
-		if uw := lhsloc.Assign(node.Left, val); uw != nil {
+		if uw := lhsloc.Set(node.Left, val); uw != nil {
 			return nil, uw
 		}
 		return val, nil

@@ -69,12 +69,14 @@ func (p *provider) Pkg() tokens.Package { return p.pkg }
 // Check validates that the given property bag is valid for a resource of the given type.
 func (p *provider) Check(t tokens.Type, props PropertyMap) ([]CheckFailure, error) {
 	glog.V(7).Infof("resource[%v].Check(t=%v,#props=%v) executing", p.pkg, t, len(props))
+	pstr, unks := MarshalPropertiesWithUnknowns(p.ctx, props, MarshalOptions{
+		PermitOlds: true, // permit old URNs, since this is pre-update.
+		RawURNs:    true, // often used during URN creation; IDs won't be ready.
+	})
 	req := &lumirpc.CheckRequest{
-		Type: string(t),
-		Properties: MarshalProperties(p.ctx, props, MarshalOptions{
-			PermitOlds: true, // permit old URNs, since this is pre-update.
-			RawURNs:    true, // often used during URN creation; IDs won't be ready.
-		}),
+		Type:       string(t),
+		Properties: pstr,
+		Unknowns:   unks,
 	}
 
 	resp, err := p.client.Check(p.ctx.Request(), req)
@@ -94,12 +96,14 @@ func (p *provider) Check(t tokens.Type, props PropertyMap) ([]CheckFailure, erro
 // Name names a given resource.
 func (p *provider) Name(t tokens.Type, props PropertyMap) (tokens.QName, error) {
 	glog.V(7).Infof("resource[%v].Name(t=%v,#props=%v) executing", p.pkg, t, len(props))
+	pstr, unks := MarshalPropertiesWithUnknowns(p.ctx, props, MarshalOptions{
+		PermitOlds: true, // permit old URNs, since this is pre-update.
+		RawURNs:    true, // often used during URN creation; IDs won't be ready.
+	})
 	req := &lumirpc.NameRequest{
-		Type: string(t),
-		Properties: MarshalProperties(p.ctx, props, MarshalOptions{
-			PermitOlds: true, // permit old URNs, since this is pre-update.
-			RawURNs:    true, // often used during URN creation; IDs won't be ready.
-		}),
+		Type:       string(t),
+		Properties: pstr,
+		Unknowns:   unks,
 	}
 
 	resp, err := p.client.Name(p.ctx.Request(), req)
@@ -165,15 +169,17 @@ func (p *provider) InspectChange(id ID, t tokens.Type,
 
 	glog.V(7).Infof("resource[%v].InspectChange(id=%v,t=%v,#olds=%v,#news=%v) executing",
 		p.pkg, id, t, len(olds), len(news))
-	req := &lumirpc.ChangeRequest{
+	newpstr, newunks := MarshalPropertiesWithUnknowns(p.ctx, news, MarshalOptions{
+		RawURNs: true, // often used during URN creation; IDs won't be ready.
+	})
+	req := &lumirpc.InspectChangeRequest{
 		Id:   string(id),
 		Type: string(t),
 		Olds: MarshalProperties(p.ctx, olds, MarshalOptions{
 			RawURNs: true, // often used during URN creation; IDs won't be ready.
 		}),
-		News: MarshalProperties(p.ctx, news, MarshalOptions{
-			RawURNs: true, // often used during URN creation; IDs won't be ready.
-		}),
+		News:     newpstr,
+		Unknowns: newunks,
 	}
 
 	resp, err := p.client.InspectChange(p.ctx.Request(), req)
@@ -196,7 +202,7 @@ func (p *provider) Update(id ID, t tokens.Type, olds PropertyMap, news PropertyM
 
 	glog.V(7).Infof("resource[%v].Update(id=%v,t=%v,#olds=%v,#news=%v) executing",
 		p.pkg, id, t, len(olds), len(news))
-	req := &lumirpc.ChangeRequest{
+	req := &lumirpc.UpdateRequest{
 		Id:   string(id),
 		Type: string(t),
 		Olds: MarshalProperties(p.ctx, olds, MarshalOptions{

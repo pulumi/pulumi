@@ -825,7 +825,7 @@ func printPropertyValue(b *bytes.Buffer, v resource.PropertyValue, indent string
 	} else if v.IsString() {
 		b.WriteString(fmt.Sprintf("%q", v.StringValue()))
 	} else if v.IsResource() {
-		b.WriteString(fmt.Sprintf("-> *%s", v.ResourceValue()))
+		b.WriteString(fmt.Sprintf("&%s", v.ResourceValue()))
 	} else if v.IsArray() {
 		b.WriteString(fmt.Sprintf("[\n"))
 		for i, elem := range v.ArrayValue() {
@@ -833,6 +833,8 @@ func printPropertyValue(b *bytes.Buffer, v resource.PropertyValue, indent string
 			printPropertyValue(b, elem, newIndent)
 		}
 		b.WriteString(fmt.Sprintf("%s]", indent))
+	} else if v.IsUnknown() {
+		b.WriteString(v.TypeString())
 	} else {
 		contract.Assert(v.IsObject())
 		b.WriteString("{\n")
