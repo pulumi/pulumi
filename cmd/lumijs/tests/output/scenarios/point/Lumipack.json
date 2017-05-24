@@ -1,5 +1,8 @@
 {
     "name": "scenarios/point",
+    "files": [
+        "index.ts"
+    ],
     "modules": {
         "index": {
             "kind": "Module",

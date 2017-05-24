@@ -1,9 +1,0 @@
-{
-    "compilerOptions": {
-        "target": "es6"
-    },
-    "files": [
-        "index.ts"
-    ]
-}
-

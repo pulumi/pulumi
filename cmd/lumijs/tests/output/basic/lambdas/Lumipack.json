@@ -1,5 +1,10 @@
 {
     "name": "basic/lambdas",
+    "files": [
+        "index.ts",
+        "lambdas.ts",
+        "localfuncs.ts"
+    ],
     "modules": {
         "index": {
             "kind": "Module",

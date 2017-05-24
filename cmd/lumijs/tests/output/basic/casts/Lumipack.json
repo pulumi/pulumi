@@ -1,5 +1,8 @@
 {
     "name": "basic/casts",
+    "files": [
+        "index.ts"
+    ],
     "modules": {
         "index": {
             "kind": "Module",

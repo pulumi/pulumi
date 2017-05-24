@@ -7,42 +7,27 @@ import * as os from "os";
 import * as fspath from "path";
 import * as ts from "typescript";
 import * as diag from "../diag";
+import * as pack from "../pack";
 
-const TS_PROJECT_FILE = "tsconfig.json";
-
-// Compiles a TypeScript program and returns its output.  The path can be one of three things: 1) a single TypeScript
-// file (`*.ts`), 2) a TypeScript project file (`tsconfig.json`), or 3) a directory containing a TypeScript project
-// file.  An optional set of compiler options may also be supplied.  In the project file cases, both options and files
-// are read in the from the project file, and will override any options passed in the argument form.
-export async function compileScript(path: string, options?: ts.CompilerOptions): Promise<Script> {
-    // See if we"re dealing with a tsproject.json file.  This happens when path directly points to one, or when
-    // path refers to a directory, in which case we will assume we"re searching for a config file underneath it.
-    let root: string | undefined;
-    let configPath: string | undefined;
-    if (fspath.basename(path) === TS_PROJECT_FILE) {
-        configPath = path;
-        root = fspath.dirname(path);
-    }
-    else if ((await fs.lstat(path)).isDirectory()) {
-        configPath = fspath.join(path, TS_PROJECT_FILE);
-        root = path;
-    }
-    else {
-        root = fspath.dirname(path);
-    }
-
+// Compiles a TypeScript program and returns its output.  The compiler settings are taken from the project file.
+export async function compileScript(proj: pack.Manifest, root: string, path: string): Promise<Script> {
     let files: string[] = [];
     let diagnostics: ts.Diagnostic[] = [];
-    if (configPath) {
-        // A config file is suspected; try to load it up and parse its contents.
-        let config: any = JSON.parse(await fs.readFile(configPath));
-        if (!config) {
-            throw new Error(`No ${TS_PROJECT_FILE} found underneath the path ${path}`);
+
+    // If there are custom language settings, use them.
+    let options: ts.CompilerOptions | undefined;
+    if ((proj.language && proj.language.settings) || proj.files) {
+        let compilerConfig: any = {};
+        if (proj.language && proj.language.settings) {
+            compilerConfig["compilerOptions"] = proj.language.settings;
+        }
+        if (proj.files) {
+            compilerConfig["files"] = proj.files;
         }
 
         const parseConfigHost: ts.ParseConfigHost = new ParseConfigHost();
         const parsedConfig: ts.ParsedCommandLine = ts.parseJsonConfigFileContent(
-            config, parseConfigHost, root, options);
+            compilerConfig, parseConfigHost, root, options);
         if (parsedConfig.errors.length > 0) {
             diagnostics = diagnostics.concat(parsedConfig.errors);
         }
@@ -112,6 +97,7 @@ export async function compileScript(path: string, options?: ts.CompilerOptions):
     }
 
     return <Script>{
+        proj:        proj,
         root:        root,
         files:       files,
         options:     options,
@@ -139,6 +125,7 @@ function transformDiagnostics(root: string, diagnostics: ts.Diagnostic[]): diag.
 
 // The result of script compilation.
 export interface Script {
+    proj:        pack.Manifest;             // the project manifest.
     root:        string;                    // the root directory for the compilation.
     files:       string[];                  // the files that are considered part of this script's package.
     options:     ts.CompilerOptions;        // the compiler options used to compile this project.

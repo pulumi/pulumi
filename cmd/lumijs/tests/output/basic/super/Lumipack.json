@@ -1,5 +1,8 @@
 {
     "name": "basic/super",
+    "files": [
+        "index.ts"
+    ],
     "dependencies": {
         "lumijs": "*"
     },

@@ -1,4 +1,7 @@
 {
-    "name": "class_1"
+    "name": "class_1",
+    "files": [
+        "index.ts"
+    ]
 }
 

@@ -2,50 +2,76 @@
 
 "use strict";
 
-import {contract} from "nodejs-ts";
+import {contract, fs} from "nodejs-ts";
+import * as fspath from "path";
 import * as diag from "../diag";
 import * as pack from "../pack";
+import {PackageLoader, PackageResult} from "./loader";
 import {compileScript, Script, ScriptOutputs} from "./script";
 import {transform, TransformResult} from "./transform";
 
 // Compiles a TypeScript program, translates it into LumiPack/LumiIL, and returns the output.
 //
-// The path can be one of three things: 1) a single TypeScript file (`*.ts`), 2) a TypeScript project file
-// (`tsconfig.json`), or 3) a directory containing a TypeScript project file.  An optional set of compiler options may
-// also be supplied.  In the project file cases, both options and files are read in the from the project file, and will
+// The path can be one of three things: 1) a single TypeScript file (`*.ts`), 2) a Lumi project file (`Lumi.json` or
+// `Lumi.yaml`), or 3) a directory containing a Lumi project file.  An optional set of compiler options may also be
+// supplied.  In the project file cases, both options and files are read in the from the project file, and will
 // override any options passed in the argument form.
 //
 // If any errors occur, they will be returned in the form of diagnostics.  Unhandled exceptions should not occur unless
 // something dramatic has gone wrong.  The resulting tree and pack objects may or may not be undefined, depending on
 // what errors occur and during which phase of compilation they happen.
 export async function compile(path: string): Promise<CompileResult> {
-    // First perform the script compilation and analysis.
-    let script: Script = await compileScript(path);
-    let diagnostics: diag.Diagnostic[] = script.diagnostics;
-
-    // Next, if there is a tree to transpile into LumiPack/LumiIL, then do it.
     let pkg: pack.Package | undefined;
-    if (script.tree && diag.success(diagnostics)) {
-        let result: TransformResult = await transform(script);
-        pkg = result.pkg;
-        diagnostics = diagnostics.concat(result.diagnostics);
-    }
-
-    // Collect up all of the definition files produced by the compiler, and bring them along.
     let definitions: ScriptOutputs | undefined;
-    if (script.outputs) {
-        for (let output of script.outputs) {
-            if (output[0].endsWith(".d.ts")) {
-                if (!definitions) {
-                    definitions = new Map<string, string>();
+    let preferredOut: string | undefined;
+
+    // Detect the project root and load up the project manifest file.
+    let loader = new PackageLoader();
+    let proj: PackageResult = await detectProject(loader, path);
+    let diagnostics: diag.Diagnostic[] = proj.diagnostics;
+
+    // Now go ahead and perform the script compilation and analysis.
+    if (proj.pkg && diag.success(diagnostics)) {
+        let script: Script = await compileScript(proj.pkg, proj.root, path);
+        diagnostics = diagnostics.concat(script.diagnostics);
+        preferredOut = script.options.outDir;
+
+        // Next, if there is a tree to transpile into LumiPack/LumiIL, then do it.
+        if (script.tree && diag.success(diagnostics)) {
+            let result: TransformResult = await transform(proj.pkg, script, loader);
+            pkg = result.pkg;
+            diagnostics = diagnostics.concat(result.diagnostics);
+        }
+
+        // Collect up all of the definition files produced by the compiler, and bring them along.
+        if (script.outputs) {
+            for (let output of script.outputs) {
+                if (output[0].endsWith(".d.ts")) {
+                    if (!definitions) {
+                        definitions = new Map<string, string>();
+                    }
+                    definitions.set(output[0], output[1]);
                 }
-                definitions.set(output[0], output[1]);
             }
         }
     }
 
     // Finally, return the overall result of the compilation.
-    return new CompileResult(script.root, diagnostics, pkg, definitions, script.options.outDir);
+    return new CompileResult(proj.root, diagnostics, pkg, definitions, preferredOut);
+}
+
+// detectProject discovers aproject root given a path.  The path can be one of three things: 1) a single TypeScript
+// file (`*.ts`), 2) a Lumi project file (`Lumi.json` or `Lumi.yaml`), or 3) a directory containing a Lumi project.
+async function detectProject(loader: PackageLoader, path: string): Promise<PackageResult> {
+    // If the path refers to a directory, assume we're searching for a project file underneath it.
+    let root: string | undefined;
+    if ((await fs.lstat(path)).isDirectory()) {
+        root = path;
+    }
+    else {
+        root = fspath.dirname(path);
+    }
+    return await loader.loadCurrent(root);
 }
 
 export class CompileResult {

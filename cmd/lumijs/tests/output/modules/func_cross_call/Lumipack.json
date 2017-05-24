@@ -1,5 +1,9 @@
 {
     "name": "modules/func_cross_call",
+    "files": [
+        "index.ts",
+        "other.ts"
+    ],
     "modules": {
         "other": {
             "kind": "Module",

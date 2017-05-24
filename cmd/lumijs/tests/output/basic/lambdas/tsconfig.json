@@ -1,8 +1,0 @@
-{
-    "files": [
-        "index.ts",
-        "lambdas.ts",
-        "localfuncs.ts"
-    ]
-}
-

@@ -1,4 +1,7 @@
 {
-    "name": "var_1"
+    "name": "var_1",
+    "files": [
+        "index.ts"
+    ]
 }
 

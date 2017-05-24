@@ -1,4 +1,7 @@
 {
-    "name": "basic/loops"
+    "name": "basic/loops",
+    "files": [
+        "index.ts"
+    ]
 }
 

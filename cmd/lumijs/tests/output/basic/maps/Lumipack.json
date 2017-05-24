@@ -1,5 +1,13 @@
 {
     "name": "basic/maps",
+    "language": {
+        "settings": {
+            "target": "es6"
+        }
+    },
+    "files": [
+        "index.ts"
+    ],
     "modules": {
         "index": {
             "kind": "Module",

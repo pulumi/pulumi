@@ -1,4 +1,7 @@
 {
-    "name": "func_1"
+    "name": "func_1",
+    "files": [
+        "index.ts"
+    ]
 }
 
