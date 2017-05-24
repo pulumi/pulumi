@@ -32,14 +32,11 @@ This section is for Lumi developers.
 
 ### Prerequisites
 
-Lumi is written in Go and uses Glide for dependency management.  They must be installed:
+Lumi is written in Go, uses Godep for dependency management, and Golint for linting:
 
-* [Go](https://golang.org/doc/install)
-* [Glide](https://github.com/Masterminds/glide)
-
-If you wish to use the optional `lint` make target, you'll also need to install Golint:
-
-    $ go get -u github.com/golang/lint/golint
+* [Go](https://golang.org/doc/install): [download it](https://golang.org/dl)
+* [Godep](https://github.com/tools/godep): `$ go get github.com/tools/godep`
+* [Golint](https://github.com/golang/lint): `$ go get github.com/golang/lint/golint`
 
 ### Building and Testing
 
