@@ -291,17 +291,27 @@ const (
 	// Prefix-only operators:
 
 	OpDereference UnaryOperator = "*"
-	OpAddressof                 = "&"
-	OpUnaryPlus                 = "+"
-	OpUnaryMinus                = "-"
-	OpLogicalNot                = "!"
-	OpBitwiseNot                = "~"
+	OpAddressof   UnaryOperator = "&"
+	OpUnaryPlus   UnaryOperator = "+"
+	OpUnaryMinus  UnaryOperator = "-"
+	OpLogicalNot  UnaryOperator = "!"
+	OpBitwiseNot  UnaryOperator = "~"
 
 	// These are permitted to be prefix or postfix:
 
-	OpPlusPlus   = "++"
-	OpMinusMinus = "--"
+	OpPlusPlus   UnaryOperator = "++"
+	OpMinusMinus UnaryOperator = "--"
 )
+
+func IsPrefixUnaryOperator(op UnaryOperator) bool {
+	return op == OpDereference || op == OpAddressof ||
+		op == OpUnaryPlus || op == OpUnaryMinus ||
+		op == OpLogicalNot || op == OpBitwiseNot
+}
+
+func IsPreOrPostfixUnaryOperator(op UnaryOperator) bool {
+	return op == OpPlusPlus || op == OpMinusMinus
+}
 
 // BinaryOperatorExpression is the usual C-like binary operator (assignment, logical, operator, or relational).
 type BinaryOperatorExpression struct {
@@ -323,49 +333,78 @@ const (
 	// Arithmetic operators:
 
 	OpAdd          BinaryOperator = "+"
-	OpSubtract                    = "-"
-	OpMultiply                    = "*"
-	OpDivide                      = "/"
-	OpRemainder                   = "%"
-	OpExponentiate                = "**"
+	OpSubtract     BinaryOperator = "-"
+	OpMultiply     BinaryOperator = "*"
+	OpDivide       BinaryOperator = "/"
+	OpRemainder    BinaryOperator = "%"
+	OpExponentiate BinaryOperator = "**"
 
 	// Bitwise operators:
 
-	OpBitwiseShiftLeft  = "<<"
-	OpBitwiseShiftRight = ">>"
-	OpBitwiseAnd        = "&"
-	OpBitwiseOr         = "|"
-	OpBitwiseXor        = "^"
+	OpBitwiseShiftLeft  BinaryOperator = "<<"
+	OpBitwiseShiftRight BinaryOperator = ">>"
+	OpBitwiseAnd        BinaryOperator = "&"
+	OpBitwiseOr         BinaryOperator = "|"
+	OpBitwiseXor        BinaryOperator = "^"
 
 	// Assignment operators:
 
-	OpAssign                  = "="
-	OpAssignSum               = "+="
-	OpAssignDifference        = "-="
-	OpAssignProduct           = "*="
-	OpAssignQuotient          = "/="
-	OpAssignRemainder         = "%="
-	OpAssignExponentiation    = "**="
-	OpAssignBitwiseShiftLeft  = "<<="
-	OpAssignBitwiseShiftRight = ">>="
-	OpAssignBitwiseAnd        = "&="
-	OpAssignBitwiseOr         = "|="
-	OpAssignBitwiseXor        = "^="
+	OpAssign                  BinaryOperator = "="
+	OpAssignSum               BinaryOperator = "+="
+	OpAssignDifference        BinaryOperator = "-="
+	OpAssignProduct           BinaryOperator = "*="
+	OpAssignQuotient          BinaryOperator = "/="
+	OpAssignRemainder         BinaryOperator = "%="
+	OpAssignExponentiation    BinaryOperator = "**="
+	OpAssignBitwiseShiftLeft  BinaryOperator = "<<="
+	OpAssignBitwiseShiftRight BinaryOperator = ">>="
+	OpAssignBitwiseAnd        BinaryOperator = "&="
+	OpAssignBitwiseOr         BinaryOperator = "|="
+	OpAssignBitwiseXor        BinaryOperator = "^="
 
 	// Conditional operators:
 
-	OpLogicalAnd = "&&"
-	OpLogicalOr  = "||"
+	OpLogicalAnd BinaryOperator = "&&"
+	OpLogicalOr  BinaryOperator = "||"
 
 	// Relational operators:
 
-	OpLt        = "<"
-	OpLtEquals  = "<="
-	OpGt        = ">"
-	OpGtEquals  = ">="
-	OpEquals    = "=="
-	OpNotEquals = "!="
+	OpLt        BinaryOperator = "<"
+	OpLtEquals  BinaryOperator = "<="
+	OpGt        BinaryOperator = ">"
+	OpGtEquals  BinaryOperator = ">="
+	OpEquals    BinaryOperator = "=="
+	OpNotEquals BinaryOperator = "!="
 )
+
+func IsArithmeticBinaryOperator(op BinaryOperator) bool {
+	return op == OpAdd || op == OpSubtract ||
+		op == OpMultiply || op == OpDivide ||
+		op == OpRemainder || op == OpExponentiate
+}
+
+func IsBitwiseBinaryOperator(op BinaryOperator) bool {
+	return op == OpBitwiseShiftLeft || op == OpBitwiseShiftRight ||
+		op == OpBitwiseAnd || op == OpBitwiseOr || op == OpBitwiseXor
+}
+
+func IsAssignmentBinaryOperator(op BinaryOperator) bool {
+	return op == OpAssign || op == OpAssignSum ||
+		op == OpAssignDifference || op == OpAssignProduct ||
+		op == OpAssignQuotient || op == OpAssignRemainder || op == OpAssignExponentiation ||
+		op == OpAssignBitwiseShiftLeft || op == OpAssignBitwiseShiftRight ||
+		op == OpAssignBitwiseAnd || op == OpAssignBitwiseOr || op == OpAssignBitwiseXor
+}
+
+func IsConditionalBinaryOperator(op BinaryOperator) bool {
+	return op == OpLogicalAnd || op == OpLogicalOr
+}
+
+func IsRelationalBinaryOperator(op BinaryOperator) bool {
+	return op == OpLt || op == OpLtEquals ||
+		op == OpGt || op == OpGtEquals ||
+		op == OpEquals || op == OpNotEquals
+}
 
 /* Type Testing */
 
