@@ -11,7 +11,7 @@ export class SecurityGroup extends lumi.Resource implements SecurityGroupArgs {
     public readonly vpc?: VPC;
     public securityGroupEgress?: SecurityGroupRule[];
     public securityGroupIngress?: SecurityGroupRule[];
-    public groupID: string;
+    @lumi.out public groupID: string;
 
     constructor(name: string, args: SecurityGroupArgs) {
         super();

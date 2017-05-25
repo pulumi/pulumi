@@ -69,11 +69,11 @@ export class Instance extends lumi.Resource implements InstanceArgs {
     public instanceType?: InstanceType;
     public securityGroups?: SecurityGroup[];
     public keyName?: string;
-    public availabilityZone: string;
-    public privateDNSName?: string;
-    public publicDNSName?: string;
-    public privateIP?: string;
-    public publicIP?: string;
+    @lumi.out public availabilityZone: string;
+    @lumi.out public privateDNSName?: string;
+    @lumi.out public publicDNSName?: string;
+    @lumi.out public privateIP?: string;
+    @lumi.out public publicIP?: string;
 
     constructor(name: string, args: InstanceArgs) {
         super();

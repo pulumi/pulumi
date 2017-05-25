@@ -13,7 +13,7 @@ export class Role extends lumi.Resource implements RoleArgs {
     public readonly roleName?: string;
     public managedPolicyARNs?: ARN[];
     public policies?: InlinePolicy[];
-    public arn: ARN;
+    @lumi.out public arn: ARN;
 
     constructor(name: string, args: RoleArgs) {
         super();
