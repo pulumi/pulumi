@@ -325,7 +325,7 @@
                     },
                     "type": {
                         "kind": "TypeToken",
-                        "tok": "[]object",
+                        "tok": "[]dynamic",
                         "loc": {
                             "file": "index.ts",
                             "start": {
@@ -1013,7 +1013,7 @@
                                         "kind": "ArrayLiteral",
                                         "elemType": {
                                             "kind": "TypeToken",
-                                            "tok": "object"
+                                            "tok": "dynamic"
                                         },
                                         "elements": [],
                                         "loc": {
@@ -2356,7 +2356,7 @@
                                         "kind": "ArrayLiteral",
                                         "elemType": {
                                             "kind": "TypeToken",
-                                            "tok": "object"
+                                            "tok": "dynamic"
                                         },
                                         "elements": [
                                             {
@@ -2501,7 +2501,7 @@
                                         "kind": "ArrayLiteral",
                                         "elemType": {
                                             "kind": "TypeToken",
-                                            "tok": "object"
+                                            "tok": "dynamic"
                                         },
                                         "elements": [
                                             {

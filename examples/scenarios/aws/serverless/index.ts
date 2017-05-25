@@ -17,17 +17,40 @@ import * as lumi from "@lumi/lumi";
 import * as aws from "@lumi/aws";
 
 let music = new aws.dynamodb.Table("music", {
-    attributes: [
-        { name: "Album", type: "S"},
-        { name: "Artist", type: "S"},
-    ],
-    hashKey: "Album",
-    rangeKey: "Artist",
-    readCapacity: 1,
-    writeCapacity: 1
+  attributes: [
+    { name: "Album", type: "S" },
+    { name: "Artist", type: "S" },
+  ],
+  hashKey: "Album",
+  rangeKey: "Artist",
+  readCapacity: 1,
+  writeCapacity: 1
 })
 
-lumi.runtime.printf("Length is: ")
-lumi.runtime.printf((<any>[1,2,3]).length)
-lumi.runtime.printf("\n")
- 
+// TODO[pulumi/lumi#174] Until we have global definitions available in Lumi for these APIs that are expected 
+// by runtime code, we'll declare variables that should be available on the global scope of the lambda to keep
+// TypeScript type checking happy.
+let console: any
+
+function createLambda() {
+  // TODO[pulumi/lumi#175] Currently, we can only capture local variables, not module scope variables,
+  // so we keep this inside a helper function.
+  let hello = "Hello, world!"
+  let num = 3
+  let obj = { x: 42 }
+  let mus = music
+
+  let lambda = new aws.lambda.FunctionX(
+    "mylambda",
+    [aws.iam.AWSLambdaFullAccess],
+    (event, context, callback) => {
+      console.log(hello);
+      console.log(obj.x);
+      console.log("Music table hash key is: " + mus.hashKey);
+      console.log("Invoked function: " + context.invokedFunctionArn);
+      callback(null, "Succeeed with " + context.getRemainingTimeInMillis() + "ms remaining.");
+    }
+  );
+}
+
+createLambda();

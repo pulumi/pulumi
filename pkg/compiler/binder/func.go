@@ -37,7 +37,11 @@ func (b *binder) bindLambdaExpression(node *ast.LambdaExpression) symbols.Type {
 	var params []symbols.Type
 	if pparams := node.GetParameters(); pparams != nil {
 		for _, param := range *pparams {
-			params = append(params, b.ctx.RequireVariable(param).Type())
+			var paramTypeToken *ast.TypeToken
+			if param != nil {
+				paramTypeToken = param.GetType()
+			}
+			params = append(params, b.ctx.LookupType(paramTypeToken))
 		}
 	}
 	var ret symbols.Type

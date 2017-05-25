@@ -212,6 +212,7 @@ export class Transformer {
     private readonly dctx: diag.Context;             // the diagnostics context.
     private readonly diagnostics: diag.Diagnostic[]; // any diagnostics encountered during translation.
     private readonly loader: PackageLoader;          // a loader for resolving dependency packages.
+    private readonly printer: ts.Printer;            // a printer for serializing function bodies in the AST.
 
     // Cached symbols required during type checking:
     private readonly builtinObjectType: ts.InterfaceType;          // the ECMA/TypeScript built-in object type.
@@ -241,6 +242,7 @@ export class Transformer {
         this.dctx = new diag.Context(script.root);
         this.diagnostics = [];
         this.loader = loader;
+        this.printer = ts.createPrinter();
         this.modulePackages = new Map<ModuleReference, Promise<PackageInfo>>();
 
         // Cache references to some important global symbols.
@@ -802,13 +804,13 @@ export class Transformer {
             return undefined; // void is represented as the absence of a type.
         }
         else if (flags & ts.TypeFlags.Null || flags & ts.TypeFlags.Undefined) {
-            return tokens.objectType;
+            return tokens.dynamicType;
         }
         else if (simple.symbol) {
             if (simple.symbol.flags & (ts.SymbolFlags.ObjectLiteral | ts.SymbolFlags.TypeLiteral)) {
                 // For object and type literals, simply return the dynamic type.
                 // TODO: consider emitting strong types for these and using them anonymously.
-                return tokens.objectType;
+                return tokens.dynamicType;
             }
             else if (simple.symbol.flags & ts.SymbolFlags.Function) {
                 // For functions, we need to generate a special function type, of the form "(args)return".
@@ -2727,11 +2729,22 @@ export class Transformer {
     private async transformArrowFunction(node: ts.ArrowFunction): Promise<ast.Expression> {
         let decl: FunctionLikeDeclaration = await this.transformFunctionLikeCommon(node);
         contract.assert(!decl.name);
+
+        // Transpile the arrow function to get it's JavaScript source text to store on the AST
+        let arrowText = this.printer.printNode(ts.EmitHint.Expression, node, this.currentSourceFile!);
+        let result = ts.transpileModule(arrowText, {
+            compilerOptions: {
+                module: ts.ModuleKind.ES2015,
+            },
+        });
+
         return this.withLocation(node, <ast.LambdaExpression>{
-            kind:       ast.lambdaExpressionKind,
-            parameters: decl.parameters,
-            body:       decl.body,
-            returnType: decl.returnType,
+            kind:           ast.lambdaExpressionKind,
+            parameters:     decl.parameters,
+            body:           decl.body,
+            returnType:     decl.returnType,
+            sourceText:     result.outputText,
+            sourceLanguage: ".js",
         });
     }
 
