@@ -13,6 +13,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-export * from "./dynamic";
-export * from "./json";
+// jsonStringify converts a Lumi value into a JSON string.
+export function jsonStringify(val: any): string {
+    // functionality provided by the runtime
+    return "";
+}
 
+// jsonParse converts a JSON string into a Lumi value.
+export function jsonParse(json: string): any {
+    // functionality provided by the runtime
+    return undefined;
+}

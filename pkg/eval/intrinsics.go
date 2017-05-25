@@ -36,6 +36,8 @@ func init() {
 		"lumi:runtime/dynamic:isFunction":    isFunction,
 		"lumi:runtime/dynamic:dynamicInvoke": dynamicInvoke,
 		"lumi:runtime/dynamic:printf":        printf,
+		"lumi:runtime/json:jsonStringify":    jsonStringify,
+		"lumi:runtime/json:jsonParse":        jsonParse,
 
 		// These intrinsics are built-ins with no Lumi function exposed to users.
 		// They are used as the implementation of core object APIs in the runtime.
