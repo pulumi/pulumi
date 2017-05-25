@@ -343,11 +343,11 @@ func NewArrayObject(elem symbols.Type, arr *[]*Pointer) *Object {
 
 	// Add a `length` property to the object
 	arrayProps := NewPropertyMap()
-	lengthGetter := NewBuiltinFunction(
+	lengthGetter := NewBuiltinIntrinsic(
 		tokens.Token("lumi:builtin/array:getLength"),
 		symbols.NewFunctionType([]symbols.Type{}, types.Number),
 	)
-	lengthSetter := NewBuiltinFunction(
+	lengthSetter := NewBuiltinIntrinsic(
 		tokens.Token("lumi:builtin/array:setLength"),
 		symbols.NewFunctionType([]symbols.Type{types.Number}, nil),
 	)
@@ -585,25 +585,44 @@ func adjustPointerForThis(parent *Object, this *Object, prop *Pointer) *Pointer 
 	return prop
 }
 
-// A BuiltinFunction is a symbol which references an intrinsic defined in the evaluator, which will be looked
-// up based on the provided Token and replaced with an Intrinsic symbol for the implementation.
-type BuiltinFunction struct {
-	tok tokens.Token
-	sig *symbols.FunctionType
+// Intrinsic is a special intrinsic function whose behavior is implemented by the runtime.
+type Intrinsic struct {
+	tok  tokens.Token
+	sig  *symbols.FunctionType
+	fnc  symbols.Function // the underlying function AST (before mapping to an intrinsic).
+	node ast.Function
 }
 
-var _ symbols.Function = (*BuiltinFunction)(nil)
+var _ symbols.Function = (*Intrinsic)(nil)
 
-func (node *BuiltinFunction) Symbol()                          {}
-func (node *BuiltinFunction) Name() tokens.Name                { return tokens.Name(node.Token()) }
-func (node *BuiltinFunction) Token() tokens.Token              { return node.tok }
-func (node *BuiltinFunction) Special() bool                    { return false }
-func (node *BuiltinFunction) SpecialModInit() bool             { return false }
-func (node *BuiltinFunction) Tree() diag.Diagable              { return nil }
-func (node *BuiltinFunction) Function() ast.Function           { return nil }
-func (node *BuiltinFunction) Signature() *symbols.FunctionType { return node.sig }
-func (node *BuiltinFunction) String() string                   { return string(node.Name()) }
+func (intrin *Intrinsic) Name() tokens.Name                { return tokens.Name(intrin.tok.Name()) }
+func (intrin *Intrinsic) Token() tokens.Token              { return intrin.tok }
+func (intrin *Intrinsic) Special() bool                    { return false }
+func (intrin *Intrinsic) SpecialModInit() bool             { return false }
+func (intrin *Intrinsic) Tree() diag.Diagable              { return intrin.node }
+func (intrin *Intrinsic) Function() ast.Function           { return intrin.node }
+func (intrin *Intrinsic) Signature() *symbols.FunctionType { return intrin.sig }
+func (intrin *Intrinsic) String() string                   { return string(intrin.Name()) }
 
-func NewBuiltinFunction(token tokens.Token, signature *symbols.FunctionType) *BuiltinFunction {
-	return &BuiltinFunction{token, signature}
+func (intrin *Intrinsic) UnderlyingSymbol() symbols.Function { return intrin.fnc }
+
+// NewIntrinsic returns a new intrinsic function symbol with the given information.
+func NewIntrinsic(fnc symbols.Function) *Intrinsic {
+	return &Intrinsic{
+		tok:  fnc.Token(),
+		sig:  fnc.Signature(),
+		fnc:  fnc,
+		node: fnc.Function(),
+	}
+}
+
+// NewBuiltinIntrinsic returns a new intrinsic function symbol for an intrinsic
+// defined within the runtime with no corresponding AST.
+func NewBuiltinIntrinsic(token tokens.Token, signature *symbols.FunctionType) *Intrinsic {
+	return &Intrinsic{
+		tok:  token,
+		sig:  signature,
+		fnc:  nil,
+		node: nil,
+	}
 }

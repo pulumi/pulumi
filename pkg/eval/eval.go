@@ -276,7 +276,7 @@ func (e *evaluator) initProperty(this *rt.Object, properties *rt.PropertyMap,
 	key rt.PropertyKey, sym symbols.Symbol) (*rt.Pointer, bool) {
 	// First, ensure we've swapped in an intrinsic if available.
 	contract.Assert(sym != nil)
-	sym = MaybeIntrinsic(sym.Tree(), sym)
+	sym = MaybeIntrinsic(sym)
 
 	switch m := sym.(type) {
 	case symbols.Function:
@@ -661,15 +661,12 @@ func (e *evaluator) evalCall(node diag.Diagable,
 				defer popModule()
 				done = true
 
-			case *rt.BuiltinFunction:
-				// Swap in the intrinsic for this function
-				sym = MaybeIntrinsic(node, sym).(symbols.Function)
+			case *rt.Intrinsic:
 				intrinsic = true
-				done = true
-
-			case *Intrinsic:
-				intrinsic = true
-				fsym = f.Func // swap in the underlying symbol for purposes of this/super/scoping.
+				fsym = f.UnderlyingSymbol() // swap in the underlying symbol for purposes of this/super/scoping.
+				if fsym == nil {            // Builtin intrinsics may not have an underlying symbol.
+					done = true
+				}
 
 			default:
 				contract.Failf("Unrecognized function type during call: %v", reflect.TypeOf(fsym))
@@ -727,7 +724,9 @@ func (e *evaluator) evalCall(node diag.Diagable,
 	// Now perform the invocation; for intrinsics, just run the code; for all others, interpret the body.
 	var uw *rt.Unwind
 	if intrinsic {
-		uw = sym.(*Intrinsic).Invoke(e, this, args)
+		isym := sym.(*rt.Intrinsic)
+		invoker := GetIntrinsicInvoker(isym)
+		uw = invoker(isym, e, this, args)
 	} else {
 		uw = e.evalStatement(fnc.GetBody())
 	}
