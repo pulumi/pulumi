@@ -76,6 +76,7 @@ These are some language-agnostic rules we apply across our codebase:
 
 * The top of each file MUST contain the standard Lumi licensing information:
 
+    ```
     // Licensed to Pulumi Corporation ("Pulumi") under one or more
     // contributor license agreements.  See the NOTICE file distributed with
     // this work for additional information regarding copyright ownership.
@@ -90,6 +91,7 @@ These are some language-agnostic rules we apply across our codebase:
     // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
     // See the License for the specific language governing permissions and
     // limitations under the License.
+    ```
 
 * There are two special kinds of comments, each of which MUST have a corresponding work item `xx`:
 
@@ -120,7 +122,7 @@ bug, please [file an issue](https://github.com/pulumi/lumi/issues/new).  We are 
 If you're new to the project and want to help, but don't know where to start, we do classify certain issues as "job
 jar" to indicate that they are fairly bite-sized, independent, and shouldn't require deep knowledge of the system.
 [Please have a look and see if anything sounds interesting!](
-https://github.com/pulumi/lumi/issues?q=is%3Aissue+is%3Aopen+label%3Astatus%2Fjob-jar).
+https://github.com/pulumi/lumi/issues?q=is%3Aissue+is%3Aopen+label%3Astatus%2Fjob-jar)
 
 Alternatively, you may want to peruse the [many design documents](/docs), and see if something piques your interest.
 The best way to learn is to hack, so please feel free to experiment!  There is always code that can be clarified, better
