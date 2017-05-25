@@ -585,7 +585,7 @@ func (e *evaluator) issueUnhandledException(uw *rt.Unwind, err *diag.Diag, args 
 // rejectLatent checks an object's value and, if it latent (not apparent), returns an exception unwind.
 func (e *evaluator) rejectLatent(tree diag.Diagable, obj *rt.Object) *rt.Unwind {
 	if obj != nil && obj.Type().Latent() {
-		// TODO[pulumi/lumi#90]: support multi-stage planning that speculates beyond conditionals.
+		// TODO[pulumi/lumi#170]: support multi-stage planning that speculates beyond conditionals.
 		return e.NewUnexpectedLatentValueException(tree, obj)
 	}
 	return nil
@@ -1182,7 +1182,7 @@ func (e *evaluator) requireExpressionValue(node ast.Expression) (*rt.Object, *rt
 	obj, uw := e.evalExpression(node)
 	if uw != nil {
 		return nil, uw
-	} else if e.rejectLatent(node, obj); uw != nil {
+	} else if uw = e.rejectLatent(node, obj); uw != nil {
 		return nil, uw
 	}
 	return obj, nil

@@ -55,12 +55,23 @@ type PropertyValue struct {
 	V interface{}
 }
 
-// Unknown represents the absence of a property.  It contains a property value which represents the underlying expected
-// type of the property value if and when, at some point in the future, it becomes known.
-type Unknown PropertyValue
+// Computed represents the absence of a property value, because it will be computed at some point in the future.  It
+// contains a property value which represents the underlying expected type of the eventual property value.
+type Computed PropertyValue
 
-func (uk Unknown) Future() PropertyValue {
-	return PropertyValue(uk)
+// Eventual reflects the eventual type of property value that a computed property will contain.
+func (v Computed) Eventual() PropertyValue {
+	return PropertyValue(v)
+}
+
+// Output is a property value that will eventually be computed by the resource provider.  If an output property is
+// encountered, it means the resource has not yet been created, and so the output value is unavailable.  Note that an
+// output property is a special case of computed, but carries additional semantic meaning.
+type Output PropertyValue
+
+// Eventual reflects the eventual type of property value that an output property will contain.
+func (v Output) Eventual() PropertyValue {
+	return PropertyValue(v)
 }
 
 type ReqError struct {
@@ -206,13 +217,27 @@ func (m PropertyMap) ResourceOrErr(k PropertyKey, req bool) (*URN, error) {
 	return nil, nil
 }
 
-// UnknownOrErr checks that the given property is an unknown, issuing an error if not; req indicates if required.
-func (m PropertyMap) UnknownOrErr(k PropertyKey, req bool) (*Unknown, error) {
+// ComputedOrErr checks that the given property is computed, issuing an error if not; req indicates if required.
+func (m PropertyMap) ComputedOrErr(k PropertyKey, req bool) (*Computed, error) {
 	if v, has := m[k]; has && !v.IsNull() {
-		if !v.IsUnknown() {
+		if !v.IsComputed() {
 			return nil, errors.Errorf("property '%v' is not an object (%v)", k, reflect.TypeOf(v.V))
 		}
-		m := v.UnknownValue()
+		m := v.ComputedValue()
+		return &m, nil
+	} else if req {
+		return nil, &ReqError{k}
+	}
+	return nil, nil
+}
+
+// OutputOrErr checks that the given property is an output, issuing an error if not; req indicates if required.
+func (m PropertyMap) OutputOrErr(k PropertyKey, req bool) (*Output, error) {
+	if v, has := m[k]; has && !v.IsNull() {
+		if !v.IsOutput() {
+			return nil, errors.Errorf("property '%v' is not an object (%v)", k, reflect.TypeOf(v.V))
+		}
+		m := v.OutputValue()
 		return &m, nil
 	} else if req {
 		return nil, &ReqError{k}
@@ -292,13 +317,22 @@ func (m PropertyMap) ReqResourceOrErr(k PropertyKey) (URN, error) {
 	return *r, nil
 }
 
-// ReqUnknownOrErr checks that the given property exists and has the unknown type.
-func (m PropertyMap) ReqUnknownOrErr(k PropertyKey) (Unknown, error) {
-	u, err := m.UnknownOrErr(k, true)
+// ReqComputedOrErr checks that the given property exists and is computed.
+func (m PropertyMap) ReqComputedOrErr(k PropertyKey) (Computed, error) {
+	v, err := m.ComputedOrErr(k, true)
 	if err != nil {
-		return Unknown{}, err
+		return Computed{}, err
 	}
-	return *u, nil
+	return *v, nil
+}
+
+// ReqOutputOrErr checks that the given property exists and is an output property.
+func (m PropertyMap) ReqOutputOrErr(k PropertyKey) (Output, error) {
+	v, err := m.OutputOrErr(k, true)
+	if err != nil {
+		return Output{}, err
+	}
+	return *v, nil
 }
 
 // OptBoolOrErr checks that the given property has the type bool, if it exists.
@@ -341,9 +375,14 @@ func (m PropertyMap) OptResourceOrErr(k PropertyKey) (*URN, error) {
 	return m.ResourceOrErr(k, false)
 }
 
-// OptUnknownOrErr checks that the given property is an unknown, if it exists.
-func (m PropertyMap) OptUnknownOrErr(k PropertyKey) (*Unknown, error) {
-	return m.UnknownOrErr(k, false)
+// OptComputedOrErr checks that the given property is computed, if it exists.
+func (m PropertyMap) OptComputedOrErr(k PropertyKey) (*Computed, error) {
+	return m.ComputedOrErr(k, false)
+}
+
+// OptOutputOrErr checks that the given property is an output property, if it exists.
+func (m PropertyMap) OptOutputOrErr(k PropertyKey) (*Output, error) {
+	return m.OutputOrErr(k, false)
 }
 
 // Mappable returns a mapper-compatible object map, suitable for deserialization into structures.
@@ -376,41 +415,43 @@ func (m PropertyMap) ReplaceResources(updater func(URN) URN) PropertyMap {
 	return result
 }
 
-func NewPropertyNull() PropertyValue                   { return PropertyValue{nil} }
-func NewPropertyBool(v bool) PropertyValue             { return PropertyValue{v} }
-func NewPropertyNumber(v float64) PropertyValue        { return PropertyValue{v} }
-func NewPropertyString(v string) PropertyValue         { return PropertyValue{v} }
-func NewPropertyArray(v []PropertyValue) PropertyValue { return PropertyValue{v} }
-func NewPropertyObject(v PropertyMap) PropertyValue    { return PropertyValue{v} }
-func NewPropertyResource(v URN) PropertyValue          { return PropertyValue{v} }
-func NewPropertyUnknown(v Unknown) PropertyValue       { return PropertyValue{v} }
+func NewNullProperty() PropertyValue                   { return PropertyValue{nil} }
+func NewBoolProperty(v bool) PropertyValue             { return PropertyValue{v} }
+func NewNumberProperty(v float64) PropertyValue        { return PropertyValue{v} }
+func NewStringProperty(v string) PropertyValue         { return PropertyValue{v} }
+func NewArrayProperty(v []PropertyValue) PropertyValue { return PropertyValue{v} }
+func NewObjectProperty(v PropertyMap) PropertyValue    { return PropertyValue{v} }
+func NewResourceProperty(v URN) PropertyValue          { return PropertyValue{v} }
+func NewComputedProperty(v Computed) PropertyValue     { return PropertyValue{v} }
+func NewOutputProperty(v Output) PropertyValue         { return PropertyValue{v} }
+
+func MakeComputed(v PropertyValue) PropertyValue { return NewComputedProperty(Computed(v)) }
+func MakeOutput(v PropertyValue) PropertyValue   { return NewOutputProperty(Output(v)) }
 
 // NewPropertyValue turns a value into a property value, provided it is of a legal "JSON-like" kind.
 func NewPropertyValue(v interface{}) PropertyValue {
 	// If nil, easy peasy, just return a null.
 	if v == nil {
-		return NewPropertyNull()
+		return NewNullProperty()
 	}
 
 	// Else, check for some known primitive types.
 	switch t := v.(type) {
 	case bool:
-		return NewPropertyBool(t)
+		return NewBoolProperty(t)
 	case float64:
-		return NewPropertyNumber(t)
+		return NewNumberProperty(t)
 	case string:
-		return NewPropertyString(t)
+		return NewStringProperty(t)
 	case URN:
-		return NewPropertyResource(t)
-	case Unknown:
-		return NewPropertyUnknown(t)
+		return NewResourceProperty(t)
+	case Computed:
+		return NewComputedProperty(t)
 	}
 
 	// Next, see if it's an array, slice, pointer or struct, and handle each accordingly.
 	rv := reflect.ValueOf(v)
 	switch rk := rv.Type().Kind(); rk {
-	case reflect.String:
-		return NewPropertyString(rv.String())
 	case reflect.Array, reflect.Slice:
 		// If an array or slice, just create an array out of it.
 		var arr []PropertyValue
@@ -418,16 +459,13 @@ func NewPropertyValue(v interface{}) PropertyValue {
 			elem := rv.Index(i)
 			arr = append(arr, NewPropertyValue(elem.Interface()))
 		}
-		return NewPropertyArray(arr)
+		return NewArrayProperty(arr)
 	case reflect.Ptr:
 		// If a pointer, recurse and return the underlying value.
 		if rv.IsNil() {
-			return NewPropertyNull()
+			return NewNullProperty()
 		}
 		return NewPropertyValue(rv.Elem().Interface())
-	case reflect.Struct:
-		obj := NewPropertyMap(rv.Interface())
-		return NewPropertyObject(obj)
 	case reflect.Map:
 		m := map[string]interface{}{}
 		for _, kv := range rv.MapKeys() {
@@ -435,11 +473,14 @@ func NewPropertyValue(v interface{}) PropertyValue {
 		}
 		obj := NewPropertyMapFromMap(m)
 		return NewPropertyObject(obj)
+	case reflect.Struct:
+		obj := NewPropertyMap(rv.Interface())
+		return NewPropertyObject(obj)
 	default:
 		contract.Failf("Unrecognized value type: %v", rk)
 	}
 
-	return NewPropertyNull()
+	return NewNullProperty()
 }
 
 func (v PropertyValue) BoolValue() bool             { return v.V.(bool) }
@@ -448,7 +489,8 @@ func (v PropertyValue) StringValue() string         { return v.V.(string) }
 func (v PropertyValue) ArrayValue() []PropertyValue { return v.V.([]PropertyValue) }
 func (v PropertyValue) ObjectValue() PropertyMap    { return v.V.(PropertyMap) }
 func (v PropertyValue) ResourceValue() URN          { return v.V.(URN) }
-func (v PropertyValue) UnknownValue() Unknown       { return v.V.(Unknown) }
+func (v PropertyValue) ComputedValue() Computed     { return v.V.(Computed) }
+func (v PropertyValue) OutputValue() Output         { return v.V.(Output) }
 
 func (v PropertyValue) IsNull() bool {
 	return v.V == nil
@@ -477,8 +519,12 @@ func (v PropertyValue) IsResource() bool {
 	_, is := v.V.(URN)
 	return is
 }
-func (v PropertyValue) IsUnknown() bool {
-	_, is := v.V.(Unknown)
+func (v PropertyValue) IsComputed() bool {
+	_, is := v.V.(Computed)
+	return is
+}
+func (v PropertyValue) IsOutput() bool {
+	_, is := v.V.(Output)
 	return is
 }
 
@@ -497,8 +543,10 @@ func (v PropertyValue) TypeString() string {
 		return "object"
 	} else if v.IsResource() {
 		return "resource"
-	} else if v.IsUnknown() {
-		return "unknown<" + v.UnknownValue().Future().TypeString() + ">"
+	} else if v.IsComputed() {
+		return "computed<" + v.ComputedValue().Eventual().TypeString() + ">"
+	} else if v.IsOutput() {
+		return "output<" + v.OutputValue().Eventual().TypeString() + ">"
 	}
 	contract.Failf("Unrecognized PropertyValue type")
 	return ""
@@ -549,17 +597,17 @@ func (v PropertyValue) AllResources() map[URN]bool {
 func (v PropertyValue) ReplaceResources(updater func(URN) URN) PropertyValue {
 	if v.IsResource() {
 		m := v.ResourceValue()
-		return NewPropertyResource(updater(m))
+		return NewResourceProperty(updater(m))
 	} else if v.IsArray() {
 		arr := v.ArrayValue()
 		elems := make([]PropertyValue, len(arr))
 		for i, elem := range arr {
 			elems[i] = elem.ReplaceResources(updater)
 		}
-		return NewPropertyArray(elems)
+		return NewArrayProperty(elems)
 	} else if v.IsObject() {
 		rep := v.ObjectValue().ReplaceResources(updater)
-		return NewPropertyObject(rep)
+		return NewObjectProperty(rep)
 	}
 	return v
 }

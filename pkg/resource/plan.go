@@ -28,7 +28,6 @@ import (
 )
 
 // TODO: concurrency.
-// TODO: handle output dependencies
 
 // Plan is the output of analyzing resource graphs and contains the steps necessary to perform an infrastructure
 // deployment.  A plan can be generated out of whole cloth from a resource graph -- in the case of new deployments --
@@ -680,13 +679,12 @@ func (s *step) Apply() (State, error) {
 		contract.Assert(s.old == nil)
 		contract.Assert(s.new != nil)
 		contract.Assertf(!s.new.HasID(), "Resources being created must not have IDs already")
-		id, _, rst, err := prov.Create(s.new.Type(), s.new.Properties())
+		id, outs, rst, err := prov.Create(s.new.Type(), s.new.Properties())
 		if err != nil {
 			return rst, err
 		}
 		s.new.SetID(id)
-		// TODO[pulumi/lumi#90]: reenable setting outputs when this is fully functional.
-		// s.new.SetPropertiesFrom(outs)
+		s.new.SetPropertiesFrom(outs)
 
 	case OpDelete, OpReplaceDelete:
 		// Invoke the Delete RPC function for this provider:

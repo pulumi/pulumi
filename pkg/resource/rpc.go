@@ -42,13 +42,16 @@ func MarshalPropertiesWithUnknowns(
 		Fields: make(map[string]*structpb.Value),
 	}
 	for _, key := range StablePropertyKeys(props) {
-		v, known := MarshalPropertyValue(ctx, props[key], opts)
-		result.Fields[string(key)] = v
-		if !known {
-			if unk == nil {
-				unk = make(map[string]bool)
+		v := props[key]
+		if !v.IsOutput() { // always skip output properties.
+			mv, known := MarshalPropertyValue(ctx, props[key], opts)
+			result.Fields[string(key)] = mv
+			if !known {
+				if unk == nil {
+					unk = make(map[string]bool)
+				}
+				unk[string(key)] = true // remember that this property was unknown, tainting this whole object.
 			}
-			unk[string(key)] = true // remember that this property was unknown, tainting this whole object.
 		}
 	}
 	return result, unk
@@ -133,8 +136,11 @@ func MarshalPropertyValue(ctx *Context, v PropertyValue, opts MarshalOptions) (*
 				StringValue: wire,
 			},
 		}, true
-	} else if v.IsUnknown() {
-		v, _ := MarshalPropertyValue(ctx, v.UnknownValue().Future(), opts)
+	} else if v.IsComputed() {
+		v, _ := MarshalPropertyValue(ctx, v.ComputedValue().Eventual(), opts)
+		return v, false
+	} else if v.IsOutput() {
+		v, _ := MarshalPropertyValue(ctx, v.OutputValue().Eventual(), opts)
 		return v, false
 	}
 
@@ -169,27 +175,27 @@ func UnmarshalPropertyValue(v *structpb.Value) PropertyValue {
 	if v != nil {
 		switch v.Kind.(type) {
 		case *structpb.Value_NullValue:
-			return NewPropertyNull()
+			return NewNullProperty()
 		case *structpb.Value_BoolValue:
-			return NewPropertyBool(v.GetBoolValue())
+			return NewBoolProperty(v.GetBoolValue())
 		case *structpb.Value_NumberValue:
-			return NewPropertyNumber(v.GetNumberValue())
+			return NewNumberProperty(v.GetNumberValue())
 		case *structpb.Value_StringValue:
 			// TODO: we have no way of determining that this is a resource ID; consider tagging.
-			return NewPropertyString(v.GetStringValue())
+			return NewStringProperty(v.GetStringValue())
 		case *structpb.Value_ListValue:
 			var elems []PropertyValue
 			lst := v.GetListValue()
 			for _, elem := range lst.GetValues() {
 				elems = append(elems, UnmarshalPropertyValue(elem))
 			}
-			return NewPropertyArray(elems)
+			return NewArrayProperty(elems)
 		case *structpb.Value_StructValue:
 			props := UnmarshalProperties(v.GetStructValue())
-			return NewPropertyObject(props)
+			return NewObjectProperty(props)
 		default:
 			contract.Failf("Unrecognized structpb value kind: %v", reflect.TypeOf(v.Kind))
 		}
 	}
-	return NewPropertyNull()
+	return NewNullProperty()
 }

@@ -833,7 +833,7 @@ func printPropertyValue(b *bytes.Buffer, v resource.PropertyValue, indent string
 			printPropertyValue(b, elem, newIndent)
 		}
 		b.WriteString(fmt.Sprintf("%s]", indent))
-	} else if v.IsUnknown() {
+	} else if v.IsComputed() || v.IsOutput() {
 		b.WriteString(v.TypeString())
 	} else {
 		contract.Assert(v.IsObject())

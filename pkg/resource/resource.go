@@ -135,26 +135,57 @@ func NewObjectResource(ctx *Context, obj *rt.Object) Resource {
 	}
 }
 
+const resourceOutPropertyToken = tokens.Token("lumi:resource:out")
+
 // cloneObject creates a property map out of a runtime object.  The result is fully serializable in the sense that it
 // can be stored in a JSON or YAML file, serialized over an RPC interface, etc.  In particular, any references to other
 // resources are replaced with their urn equivalents, which the runtime understands.
 func cloneObject(ctx *Context, obj *rt.Object) PropertyMap {
 	contract.Assert(obj != nil)
+
+	// First accumulate a list of properties that are known to be outputs.
+	var outs map[PropertyKey]bool
+	t := obj.Type()
+	for t != nil {
+		for name, member := range t.TypeMembers() {
+			if prop, isprop := member.(*symbols.ClassProperty); isprop {
+				if attrs := prop.Node.Attributes; attrs != nil {
+					for _, attr := range *attrs {
+						if attr.Decorator.Tok == resourceOutPropertyToken {
+							if outs == nil {
+								outs = make(map[PropertyKey]bool)
+							}
+							outs[PropertyKey(name)] = true
+							break
+						}
+					}
+				}
+			}
+		}
+		t = t.Base()
+	}
+
+	// Next walk the object's properties and serialize them in a stable order.
 	src := obj.PropertyValues()
 	dest := make(PropertyMap)
 	for _, k := range src.Stable() {
 		// TODO: detect cycles.
 		obj := src.Get(k)
-		if v, ok := cloneObjectValue(ctx, obj); ok {
-			dest[PropertyKey(k)] = v
+		pky := PropertyKey(k)
+		var out bool
+		if outs != nil {
+			out = outs[pky]
+		}
+		if v, ok := cloneObjectProperty(ctx, obj, out); ok {
+			dest[pky] = v
 		}
 	}
 	return dest
 }
 
-// cloneObjectValue creates a single property value out of a runtime object.  It returns false if the property could not
-// be stored in a property (e.g., it is a function or other unrecognized or unserializable runtime object).
-func cloneObjectValue(ctx *Context, obj *rt.Object) (PropertyValue, bool) {
+// cloneObjectProperty creates a single property value out of a runtime object.  It returns false if the property could
+// not be stored in a property (e.g., it is a function or other unrecognized or unserializable runtime object).
+func cloneObjectProperty(ctx *Context, obj *rt.Object, out bool) (PropertyValue, bool) {
 	t := obj.Type()
 
 	// Serialize resource references as URNs.
@@ -162,22 +193,22 @@ func cloneObjectValue(ctx *Context, obj *rt.Object) (PropertyValue, bool) {
 		// For resources, simply look up the urn from the resource map.
 		urn, hasm := ctx.ObjURN[obj]
 		contract.Assertf(hasm, "Missing object reference; possible out of order dependency walk")
-		return NewPropertyResource(urn), true
+		return NewResourceProperty(urn), true
 	}
 
 	// Serialize simple primitive types with their primitive equivalents.
 	switch t {
 	case types.Null:
-		return NewPropertyNull(), true
+		return NewNullProperty(), true
 	case types.Bool:
-		return NewPropertyBool(obj.BoolValue()), true
+		return NewBoolProperty(obj.BoolValue()), true
 	case types.Number:
-		return NewPropertyNumber(obj.NumberValue()), true
+		return NewNumberProperty(obj.NumberValue()), true
 	case types.String:
-		return NewPropertyString(obj.StringValue()), true
+		return NewStringProperty(obj.StringValue()), true
 	case types.Object, types.Dynamic:
 		obj := cloneObject(ctx, obj) // an object literal, clone it
-		return NewPropertyObject(obj), true
+		return NewObjectProperty(obj), true
 	}
 
 	// Serialize arrays, maps, and object instances in the obvious way.
@@ -186,36 +217,46 @@ func cloneObjectValue(ctx *Context, obj *rt.Object) (PropertyValue, bool) {
 	case *symbols.ArrayType:
 		var result []PropertyValue
 		for _, e := range *obj.ArrayValue() {
-			if v, ok := cloneObjectValue(ctx, e.Obj()); ok {
+			if v, ok := cloneObjectProperty(ctx, e.Obj(), false); ok {
 				result = append(result, v)
 			}
 		}
-		return NewPropertyArray(result), true
+		return NewArrayProperty(result), true
 	case *symbols.Class:
 		obj := cloneObject(ctx, obj) // a class, just deep clone it
-		return NewPropertyObject(obj), true
+		return NewObjectProperty(obj), true
 	}
 
 	// If a latent value, we can propagate an unknown value, but only for certain cases.
 	if t.Latent() {
+		// If this is an output property, then this property will turn into an output.  Otherwise, it will be marked
+		// completed.  An output property is permitted in more places by virtue of the fact that it is expected not to
+		// exist during resource create operations, whereas all computed properties should have been resolved by then.
+		var makeProperty func(PropertyValue) PropertyValue
+		if out {
+			makeProperty = MakeOutput
+		} else {
+			makeProperty = MakeComputed
+		}
+
 		future := t.(*symbols.LatentType).Element
 		switch future {
 		case types.Null:
-			return NewPropertyUnknown(Unknown(NewPropertyNull())), true
+			return makeProperty(NewNullProperty()), true
 		case types.Bool:
-			return NewPropertyUnknown(Unknown(NewPropertyBool(false))), true
+			return makeProperty(NewBoolProperty(false)), true
 		case types.Number:
-			return NewPropertyUnknown(Unknown(NewPropertyNumber(0))), true
+			return makeProperty(NewNumberProperty(0)), true
 		case types.String:
-			return NewPropertyUnknown(Unknown(NewPropertyString(""))), true
+			return makeProperty(NewStringProperty("")), true
 		case types.Object, types.Dynamic:
-			return NewPropertyUnknown(Unknown(NewPropertyObject(make(PropertyMap)))), true
+			return makeProperty(NewObjectProperty(make(PropertyMap))), true
 		}
 		switch future.(type) {
 		case *symbols.ArrayType:
-			return NewPropertyUnknown(Unknown(NewPropertyArray(nil))), true
+			return makeProperty(NewArrayProperty(nil)), true
 		case *symbols.Class:
-			return NewPropertyUnknown(Unknown(NewPropertyObject(make(PropertyMap)))), true
+			return makeProperty(NewObjectProperty(make(PropertyMap))), true
 		}
 	}
 

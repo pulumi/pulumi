@@ -172,36 +172,36 @@ func deserializeProperty(v interface{}, reftag string) PropertyValue {
 	if v != nil {
 		switch w := v.(type) {
 		case bool:
-			return NewPropertyBool(w)
+			return NewBoolProperty(w)
 		case float64:
-			return NewPropertyNumber(w)
+			return NewNumberProperty(w)
 		case string:
-			return NewPropertyString(w)
+			return NewStringProperty(w)
 		case []interface{}:
 			var arr []PropertyValue
 			for _, elem := range w {
 				arr = append(arr, deserializeProperty(elem, reftag))
 			}
-			return NewPropertyArray(arr)
+			return NewArrayProperty(arr)
 		case map[string]interface{}:
 			// If the map has a single entry and it is the reftag, this is a URN.
 			if len(w) == 1 {
 				if tag, has := w[reftag]; has {
 					if tagstr, isstring := tag.(string); isstring {
-						return NewPropertyResource(URN(tagstr))
+						return NewResourceProperty(URN(tagstr))
 					}
 				}
 			}
 
 			// Otherwise, this is an arbitrary object value.
 			obj := deserializeProperties(DeployedPropertyMap(w), reftag)
-			return NewPropertyObject(obj)
+			return NewObjectProperty(obj)
 		default:
 			contract.Failf("Unrecognized property type: %v", reflect.ValueOf(v))
 		}
 	}
 
-	return NewPropertyNull()
+	return NewNullProperty()
 }
 
 // DeploymentMap is a map of URN to resource, that also preserves a stable order of its keys.  This ensures
