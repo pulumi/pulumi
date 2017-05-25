@@ -24,7 +24,7 @@ export function dynamicInvoke(obj: Object, thisArg: Object, args: Object[]): Obj
 }
 
 // log prints the provided message to standard out.  
-export function log(message: any): void {
+export function printf(message: any): void {
     // functionality provided by the runtime.
 }
 

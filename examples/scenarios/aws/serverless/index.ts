@@ -27,5 +27,7 @@ let music = new aws.dynamodb.Table("music", {
     writeCapacity: 1
 })
 
-lumi.runtime.log("Length is:")
-lumi.runtime.log((<any>[1,2,3]).length)
+lumi.runtime.printf("Length is: ")
+lumi.runtime.printf((<any>[1,2,3]).length)
+lumi.runtime.printf("\n")
+ 

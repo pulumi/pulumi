@@ -23,22 +23,22 @@ import (
 	"github.com/pulumi/lumi/pkg/util/contract"
 )
 
-func isFunction(intrin *Intrinsic, e *evaluator, this *rt.Object, args []*rt.Object) *rt.Unwind {
+func isFunction(intrin *rt.Intrinsic, e *evaluator, this *rt.Object, args []*rt.Object) *rt.Unwind {
 	contract.Assert(this == nil)    // module function
 	contract.Assert(len(args) == 1) // just one arg: the object to inquire about functionness
 	_, isfunc := args[0].Type().(*symbols.FunctionType)
-	ret := e.alloc.NewBool(intrin.Node, isfunc)
+	ret := e.alloc.NewBool(intrin.Tree(), isfunc)
 	return rt.NewReturnUnwind(ret)
 }
 
-func dynamicInvoke(intrin *Intrinsic, e *evaluator, this *rt.Object, args []*rt.Object) *rt.Unwind {
+func dynamicInvoke(intrin *rt.Intrinsic, e *evaluator, this *rt.Object, args []*rt.Object) *rt.Unwind {
 	contract.Assert(this == nil)    // module function
 	contract.Assert(len(args) == 3) // three args: obj, thisArg, and args
 
 	// First ensure the target is a function.
 	t := args[0].Type()
 	if _, isfunc := t.(*symbols.FunctionType); !isfunc {
-		return e.NewIllegalInvokeTargetException(intrin.Node, t)
+		return e.NewIllegalInvokeTargetException(intrin.Tree(), t)
 	}
 
 	// Fetch the function stub information (ignoring `this`, since we will pass our own).
@@ -46,19 +46,19 @@ func dynamicInvoke(intrin *Intrinsic, e *evaluator, this *rt.Object, args []*rt.
 
 	// Next, simply call through to the evalCall function, which will do all additional verification.
 	stub.This = this // adjust this before the call (note this doesn't mutate the source stub; it's by-value).
-	obj, uw := e.evalCallFuncStub(intrin.Node, stub, args...)
+	obj, uw := e.evalCallFuncStub(intrin.Tree(), stub, args...)
 	if uw != nil {
 		return uw
 	}
 	return rt.NewReturnUnwind(obj)
 }
 
-func printf(intrin *Intrinsic, e *evaluator, this *rt.Object, args []*rt.Object) *rt.Unwind {
+func printf(intrin *rt.Intrinsic, e *evaluator, this *rt.Object, args []*rt.Object) *rt.Unwind {
 	var message *rt.Object
 	if len(args) >= 1 {
 		message = args[0]
 	} else {
-		message = e.alloc.NewNull(intrin.Node)
+		message = e.alloc.NewNull(intrin.Tree())
 	}
 
 	// TODO[pulumi/lumi#169]: Move this to use a proper ToString() conversion.
@@ -67,40 +67,40 @@ func printf(intrin *Intrinsic, e *evaluator, this *rt.Object, args []*rt.Object)
 	return rt.NewReturnUnwind(nil)
 }
 
-func arrayGetLength(intrin *Intrinsic, e *evaluator, this *rt.Object, args []*rt.Object) *rt.Unwind {
+func arrayGetLength(intrin *rt.Intrinsic, e *evaluator, this *rt.Object, args []*rt.Object) *rt.Unwind {
 	if this == nil {
-		return e.NewException(intrin.Node, "Expected receiver to be non-null")
+		return e.NewException(intrin.Tree(), "Expected receiver to be non-null")
 	}
 	if !this.IsArray() {
-		return e.NewException(intrin.Node, "Expected receiver to be an array value")
+		return e.NewException(intrin.Tree(), "Expected receiver to be an array value")
 	}
 	arr := this.ArrayValue()
 	if arr == nil {
-		return e.NewException(intrin.Node, "Expected receiver to be non-null array value")
+		return e.NewException(intrin.Tree(), "Expected receiver to be non-null array value")
 	}
-	return rt.NewReturnUnwind(e.alloc.NewNumber(intrin.Node, float64(len(*arr))))
+	return rt.NewReturnUnwind(e.alloc.NewNumber(intrin.Tree(), float64(len(*arr))))
 }
 
-func arraySetLength(intrin *Intrinsic, e *evaluator, this *rt.Object, args []*rt.Object) *rt.Unwind {
+func arraySetLength(intrin *rt.Intrinsic, e *evaluator, this *rt.Object, args []*rt.Object) *rt.Unwind {
 	if this == nil {
-		return e.NewException(intrin.Node, "Expected receiver to be non-null")
+		return e.NewException(intrin.Tree(), "Expected receiver to be non-null")
 	}
 	if !this.IsArray() {
-		return e.NewException(intrin.Node, "Expected receiver to be an array value")
+		return e.NewException(intrin.Tree(), "Expected receiver to be an array value")
 	}
 	arr := this.ArrayValue()
 	if arr == nil {
-		return e.NewException(intrin.Node, "Expected receiver to be non-null array value")
+		return e.NewException(intrin.Tree(), "Expected receiver to be non-null array value")
 	}
 	if len(args) < 1 {
 	}
 	lengthFloat, ok := args[0].TryNumberValue()
 	if !ok {
-		return e.NewException(intrin.Node, "Expected length argument to be a number value")
+		return e.NewException(intrin.Tree(), "Expected length argument to be a number value")
 	}
 	length := int(lengthFloat)
 	if length < 0 {
-		return e.NewException(intrin.Node, "Expected length argument to be a positive number value")
+		return e.NewException(intrin.Tree(), "Expected length argument to be a positive number value")
 	}
 
 	// Update the size of the array to the requested length
