@@ -46,7 +46,7 @@ func newDestroyCmd() *cobra.Command {
 			defer info.Close()
 			if dryRun || yes ||
 				confirmPrompt("This will permanently destroy all resources in the '%v' environment!", info.Env.Name) {
-				apply(cmd, info, applyOptions{
+				deploy(cmd, info, deployOptions{
 					Delete:  true,
 					DryRun:  dryRun,
 					Summary: summary,
