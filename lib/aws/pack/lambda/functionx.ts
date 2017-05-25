@@ -61,10 +61,8 @@ export class FunctionX {
                         "index.js": new String(
                             "exports.handler = (__event, __context, __callback) => {\n" +
                             "  let env = JSON.parse(process.env.LUMI_ENV)\n" +
-                            // TODO: We need to deserialize these variables
-                            // "  for(let key of Object.getOwnPropertyNames(env)) {\n" +
-                            // "    env[key] = \n" +
-                            // "  }\n" +
+                            // TODO[pulumi/lumi#173]: Once we decide how to deserialize Lumi Resources, we 
+                            // likely will need to add additional deserialization behaviour here. 
                             "   with(env) {\n" +
                             "       let __f = " + closure.code +
                             "       __f(__event, __context, __callback);\n" +

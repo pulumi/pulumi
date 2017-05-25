@@ -27,10 +27,14 @@ let music = new aws.dynamodb.Table("music", {
   writeCapacity: 1
 })
 
-// [Workaround] Declare variables that should be available on the global scope of the lambda
+// TODO[pulumi/lumi#174] Until we have global definitions available in Lumi for these APIs that are expected 
+// by runtime code, we'll declare variables that should be available on the global scope of the lambda to keep
+// TypeScript type checking happy.
 let console: any
 
 function createLambda() {
+  // TODO[pulumi/lumi#175] Currently, we can only capture local variables, not module scope variables,
+  // so we keep this inside a helper function.
   let hello = "Hello, world!"
   let num = 3
   let obj = { x: 42 }
@@ -41,6 +45,8 @@ function createLambda() {
     [aws.iam.AWSLambdaFullAccess],
     (event: any, context: aws.lambda.Context) => {
       console.log(hello);
+      console.log(obj.x);
+      console.log("Music table hash key is: " + mus.hashKey);
       console.log("Invoked function: " + context.invokedFunctionArn);
       console.log("Time remaining : " + context.getRemainingTimeInMillis());
     }
