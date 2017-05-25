@@ -37,7 +37,9 @@ export class FunctionX {
     private lambda: LambdaFunction;
     private role: Role;
 
-    constructor(name: string, policies: ARN[], func: (event: any, context: Context) => any) {
+    constructor(name: string, policies: ARN[],
+        func: (event: any, context: Context, callback: (error: any, result: any) => void) => any) {
+            
         if (name === undefined) {
             throw new Error("Missing required resource name");
         }

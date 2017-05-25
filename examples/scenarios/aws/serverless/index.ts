@@ -43,12 +43,12 @@ function createLambda() {
   let lambda = new aws.lambda.FunctionX(
     "mylambda",
     [aws.iam.AWSLambdaFullAccess],
-    (event: any, context: aws.lambda.Context) => {
+    (event, context, callback) => {
       console.log(hello);
       console.log(obj.x);
       console.log("Music table hash key is: " + mus.hashKey);
       console.log("Invoked function: " + context.invokedFunctionArn);
-      console.log("Time remaining : " + context.getRemainingTimeInMillis());
+      callback(null, "Succeeed with " + context.getRemainingTimeInMillis() + "ms remaining.");
     }
   );
 }
