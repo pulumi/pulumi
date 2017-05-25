@@ -126,7 +126,7 @@ func serializeClosure(intrin *rt.Intrinsic, e *evaluator, this *rt.Object, args 
 		return e.NewException(intrin.Tree(), "Expected argument 'func' to be a lambda expression.")
 	}
 
-	// TODO: We are using the full environment available at execution time here, we should
+	// TODO[pulumi/lumi#177]: We are using the full environment available at execution time here, we should
 	// instead capture only the free variables referenced in the function itself.
 	envPropMap := rt.NewPropertyMap()
 	for key, val := range stub.Env.Slots() {

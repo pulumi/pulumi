@@ -33,13 +33,15 @@ let policy = {
     ]
 }
 
+// FunctionX is a higher-level API for creating and managing AWS Lambda Function resources implemented
+// by a Lumi lambda expression and with a set of attached policies.
 export class FunctionX {
     private lambda: LambdaFunction;
     private role: Role;
 
     constructor(name: string, policies: ARN[],
         func: (event: any, context: Context, callback: (error: any, result: any) => void) => any) {
-            
+
         if (name === undefined) {
             throw new Error("Missing required resource name");
         }

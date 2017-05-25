@@ -21,9 +21,9 @@ export function serializeClosure(func: any): Closure | undefined {
     return undefined; 
 }
 
-// TODO: pull in more of the CocoJS library here (for enum language, token signature, etc).
+// Closure represents the serialized form of a Lumi function.
 export interface Closure {
-    code: any;                          // a serialization of the function's source code as text.
+    code: string;                       // a serialization of the function's source code as text.
     language: string;                   // the language runtime required to execute the serialized code.
     signature: string;                  // the function signature type token.
     environment?: {[key: string]: any}; // the captured lexical environment of variables to values, if any.
