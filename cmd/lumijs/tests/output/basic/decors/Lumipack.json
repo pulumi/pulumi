@@ -1,0 +1,1888 @@
+{
+    "name": "basic/decorators",
+    "modules": {
+        "index": {
+            "kind": "Module",
+            "name": {
+                "kind": "Identifier",
+                "ident": "index"
+            },
+            "exports": {},
+            "members": {
+                "classDecorate": {
+                    "kind": "ModuleMethod",
+                    "name": {
+                        "kind": "Identifier",
+                        "ident": "classDecorate",
+                        "loc": {
+                            "file": "index.ts",
+                            "start": {
+                                "line": 2,
+                                "column": 10
+                            },
+                            "end": {
+                                "line": 2,
+                                "column": 23
+                            }
+                        }
+                    },
+                    "parameters": [
+                        {
+                            "kind": "LocalVariable",
+                            "name": {
+                                "kind": "Identifier",
+                                "ident": "target",
+                                "loc": {
+                                    "file": "index.ts",
+                                    "start": {
+                                        "line": 2,
+                                        "column": 24
+                                    },
+                                    "end": {
+                                        "line": 2,
+                                        "column": 30
+                                    }
+                                }
+                            },
+                            "type": {
+                                "kind": "TypeToken",
+                                "tok": "object",
+                                "loc": {
+                                    "file": "index.ts",
+                                    "start": {
+                                        "line": 2,
+                                        "column": 24
+                                    },
+                                    "end": {
+                                        "line": 2,
+                                        "column": 38
+                                    }
+                                }
+                            }
+                        }
+                    ],
+                    "body": {
+                        "kind": "Block",
+                        "statements": [],
+                        "loc": {
+                            "file": "index.ts",
+                            "start": {
+                                "line": 2,
+                                "column": 40
+                            },
+                            "end": {
+                                "line": 2,
+                                "column": 42
+                            }
+                        }
+                    },
+                    "loc": {
+                        "file": "index.ts",
+                        "start": {
+                            "line": 2,
+                            "column": 1
+                        },
+                        "end": {
+                            "line": 2,
+                            "column": 42
+                        }
+                    }
+                },
+                "propertyDecorate": {
+                    "kind": "ModuleMethod",
+                    "name": {
+                        "kind": "Identifier",
+                        "ident": "propertyDecorate",
+                        "loc": {
+                            "file": "index.ts",
+                            "start": {
+                                "line": 3,
+                                "column": 10
+                            },
+                            "end": {
+                                "line": 3,
+                                "column": 26
+                            }
+                        }
+                    },
+                    "parameters": [
+                        {
+                            "kind": "LocalVariable",
+                            "name": {
+                                "kind": "Identifier",
+                                "ident": "target",
+                                "loc": {
+                                    "file": "index.ts",
+                                    "start": {
+                                        "line": 3,
+                                        "column": 27
+                                    },
+                                    "end": {
+                                        "line": 3,
+                                        "column": 33
+                                    }
+                                }
+                            },
+                            "type": {
+                                "kind": "TypeToken",
+                                "tok": "object",
+                                "loc": {
+                                    "file": "index.ts",
+                                    "start": {
+                                        "line": 3,
+                                        "column": 27
+                                    },
+                                    "end": {
+                                        "line": 3,
+                                        "column": 41
+                                    }
+                                }
+                            }
+                        },
+                        {
+                            "kind": "LocalVariable",
+                            "name": {
+                                "kind": "Identifier",
+                                "ident": "propertyKey",
+                                "loc": {
+                                    "file": "index.ts",
+                                    "start": {
+                                        "line": 3,
+                                        "column": 43
+                                    },
+                                    "end": {
+                                        "line": 3,
+                                        "column": 54
+                                    }
+                                }
+                            },
+                            "type": {
+                                "kind": "TypeToken",
+                                "tok": "string",
+                                "loc": {
+                                    "file": "index.ts",
+                                    "start": {
+                                        "line": 3,
+                                        "column": 43
+                                    },
+                                    "end": {
+                                        "line": 3,
+                                        "column": 62
+                                    }
+                                }
+                            }
+                        }
+                    ],
+                    "body": {
+                        "kind": "Block",
+                        "statements": [],
+                        "loc": {
+                            "file": "index.ts",
+                            "start": {
+                                "line": 3,
+                                "column": 64
+                            },
+                            "end": {
+                                "line": 3,
+                                "column": 66
+                            }
+                        }
+                    },
+                    "loc": {
+                        "file": "index.ts",
+                        "start": {
+                            "line": 3,
+                            "column": 1
+                        },
+                        "end": {
+                            "line": 3,
+                            "column": 66
+                        }
+                    }
+                },
+                "methodDecorate": {
+                    "kind": "ModuleMethod",
+                    "name": {
+                        "kind": "Identifier",
+                        "ident": "methodDecorate",
+                        "loc": {
+                            "file": "index.ts",
+                            "start": {
+                                "line": 4,
+                                "column": 10
+                            },
+                            "end": {
+                                "line": 4,
+                                "column": 24
+                            }
+                        }
+                    },
+                    "parameters": [
+                        {
+                            "kind": "LocalVariable",
+                            "name": {
+                                "kind": "Identifier",
+                                "ident": "target",
+                                "loc": {
+                                    "file": "index.ts",
+                                    "start": {
+                                        "line": 4,
+                                        "column": 25
+                                    },
+                                    "end": {
+                                        "line": 4,
+                                        "column": 31
+                                    }
+                                }
+                            },
+                            "type": {
+                                "kind": "TypeToken",
+                                "tok": "object",
+                                "loc": {
+                                    "file": "index.ts",
+                                    "start": {
+                                        "line": 4,
+                                        "column": 25
+                                    },
+                                    "end": {
+                                        "line": 4,
+                                        "column": 39
+                                    }
+                                }
+                            }
+                        },
+                        {
+                            "kind": "LocalVariable",
+                            "name": {
+                                "kind": "Identifier",
+                                "ident": "propertyKey",
+                                "loc": {
+                                    "file": "index.ts",
+                                    "start": {
+                                        "line": 4,
+                                        "column": 41
+                                    },
+                                    "end": {
+                                        "line": 4,
+                                        "column": 52
+                                    }
+                                }
+                            },
+                            "type": {
+                                "kind": "TypeToken",
+                                "tok": "dynamic",
+                                "loc": {
+                                    "file": "index.ts",
+                                    "start": {
+                                        "line": 4,
+                                        "column": 41
+                                    },
+                                    "end": {
+                                        "line": 4,
+                                        "column": 57
+                                    }
+                                }
+                            }
+                        },
+                        {
+                            "kind": "LocalVariable",
+                            "name": {
+                                "kind": "Identifier",
+                                "ident": "descriptor",
+                                "loc": {
+                                    "file": "index.ts",
+                                    "start": {
+                                        "line": 4,
+                                        "column": 59
+                                    },
+                                    "end": {
+                                        "line": 4,
+                                        "column": 69
+                                    }
+                                }
+                            },
+                            "type": {
+                                "kind": "TypeToken",
+                                "tok": "dynamic",
+                                "loc": {
+                                    "file": "index.ts",
+                                    "start": {
+                                        "line": 4,
+                                        "column": 59
+                                    },
+                                    "end": {
+                                        "line": 4,
+                                        "column": 74
+                                    }
+                                }
+                            }
+                        }
+                    ],
+                    "body": {
+                        "kind": "Block",
+                        "statements": [],
+                        "loc": {
+                            "file": "index.ts",
+                            "start": {
+                                "line": 4,
+                                "column": 76
+                            },
+                            "end": {
+                                "line": 4,
+                                "column": 78
+                            }
+                        }
+                    },
+                    "loc": {
+                        "file": "index.ts",
+                        "start": {
+                            "line": 4,
+                            "column": 1
+                        },
+                        "end": {
+                            "line": 4,
+                            "column": 78
+                        }
+                    }
+                },
+                "parameterDecorate": {
+                    "kind": "ModuleMethod",
+                    "name": {
+                        "kind": "Identifier",
+                        "ident": "parameterDecorate",
+                        "loc": {
+                            "file": "index.ts",
+                            "start": {
+                                "line": 5,
+                                "column": 10
+                            },
+                            "end": {
+                                "line": 5,
+                                "column": 27
+                            }
+                        }
+                    },
+                    "parameters": [
+                        {
+                            "kind": "LocalVariable",
+                            "name": {
+                                "kind": "Identifier",
+                                "ident": "target",
+                                "loc": {
+                                    "file": "index.ts",
+                                    "start": {
+                                        "line": 5,
+                                        "column": 28
+                                    },
+                                    "end": {
+                                        "line": 5,
+                                        "column": 34
+                                    }
+                                }
+                            },
+                            "type": {
+                                "kind": "TypeToken",
+                                "tok": "object",
+                                "loc": {
+                                    "file": "index.ts",
+                                    "start": {
+                                        "line": 5,
+                                        "column": 28
+                                    },
+                                    "end": {
+                                        "line": 5,
+                                        "column": 42
+                                    }
+                                }
+                            }
+                        },
+                        {
+                            "kind": "LocalVariable",
+                            "name": {
+                                "kind": "Identifier",
+                                "ident": "propertyKey",
+                                "loc": {
+                                    "file": "index.ts",
+                                    "start": {
+                                        "line": 5,
+                                        "column": 44
+                                    },
+                                    "end": {
+                                        "line": 5,
+                                        "column": 55
+                                    }
+                                }
+                            },
+                            "type": {
+                                "kind": "TypeToken",
+                                "tok": "string",
+                                "loc": {
+                                    "file": "index.ts",
+                                    "start": {
+                                        "line": 5,
+                                        "column": 44
+                                    },
+                                    "end": {
+                                        "line": 5,
+                                        "column": 63
+                                    }
+                                }
+                            }
+                        },
+                        {
+                            "kind": "LocalVariable",
+                            "name": {
+                                "kind": "Identifier",
+                                "ident": "parameterIndex",
+                                "loc": {
+                                    "file": "index.ts",
+                                    "start": {
+                                        "line": 5,
+                                        "column": 65
+                                    },
+                                    "end": {
+                                        "line": 5,
+                                        "column": 79
+                                    }
+                                }
+                            },
+                            "type": {
+                                "kind": "TypeToken",
+                                "tok": "number",
+                                "loc": {
+                                    "file": "index.ts",
+                                    "start": {
+                                        "line": 5,
+                                        "column": 65
+                                    },
+                                    "end": {
+                                        "line": 5,
+                                        "column": 87
+                                    }
+                                }
+                            }
+                        }
+                    ],
+                    "body": {
+                        "kind": "Block",
+                        "statements": [],
+                        "loc": {
+                            "file": "index.ts",
+                            "start": {
+                                "line": 5,
+                                "column": 89
+                            },
+                            "end": {
+                                "line": 5,
+                                "column": 91
+                            }
+                        }
+                    },
+                    "loc": {
+                        "file": "index.ts",
+                        "start": {
+                            "line": 5,
+                            "column": 1
+                        },
+                        "end": {
+                            "line": 5,
+                            "column": 91
+                        }
+                    }
+                },
+                "TestDecorators": {
+                    "kind": "Class",
+                    "name": {
+                        "kind": "Identifier",
+                        "ident": "TestDecorators",
+                        "loc": {
+                            "file": "index.ts",
+                            "start": {
+                                "line": 9,
+                                "column": 7
+                            },
+                            "end": {
+                                "line": 9,
+                                "column": 21
+                            }
+                        }
+                    },
+                    "attributes": [
+                        {
+                            "kind": "Attribute",
+                            "decorator": {
+                                "kind": "Token",
+                                "tok": "basic/decorators:index:classDecorate"
+                            }
+                        }
+                    ],
+                    "members": {
+                        "m1": {
+                            "kind": "ClassMethod",
+                            "name": {
+                                "kind": "Identifier",
+                                "ident": "m1",
+                                "loc": {
+                                    "file": "index.ts",
+                                    "start": {
+                                        "line": 15,
+                                        "column": 5
+                                    },
+                                    "end": {
+                                        "line": 15,
+                                        "column": 7
+                                    }
+                                }
+                            },
+                            "attributes": [
+                                {
+                                    "kind": "Attribute",
+                                    "decorator": {
+                                        "kind": "Token",
+                                        "tok": "basic/decorators:index:methodDecorate"
+                                    }
+                                }
+                            ],
+                            "access": "public",
+                            "parameters": [],
+                            "body": {
+                                "kind": "Block",
+                                "statements": [
+                                    {
+                                        "kind": "ReturnStatement",
+                                        "expression": {
+                                            "kind": "StringLiteral",
+                                            "raw": "",
+                                            "value": "",
+                                            "loc": {
+                                                "file": "index.ts",
+                                                "start": {
+                                                    "line": 15,
+                                                    "column": 27
+                                                },
+                                                "end": {
+                                                    "line": 15,
+                                                    "column": 29
+                                                }
+                                            }
+                                        },
+                                        "loc": {
+                                            "file": "index.ts",
+                                            "start": {
+                                                "line": 15,
+                                                "column": 20
+                                            },
+                                            "end": {
+                                                "line": 15,
+                                                "column": 30
+                                            }
+                                        }
+                                    }
+                                ],
+                                "loc": {
+                                    "file": "index.ts",
+                                    "start": {
+                                        "line": 15,
+                                        "column": 18
+                                    },
+                                    "end": {
+                                        "line": 15,
+                                        "column": 32
+                                    }
+                                }
+                            },
+                            "returnType": {
+                                "kind": "TypeToken",
+                                "tok": "string"
+                            },
+                            "static": false,
+                            "abstract": false,
+                            "loc": {
+                                "file": "index.ts",
+                                "start": {
+                                    "line": 14,
+                                    "column": 5
+                                },
+                                "end": {
+                                    "line": 15,
+                                    "column": 32
+                                }
+                            }
+                        },
+                        "m2": {
+                            "kind": "ClassMethod",
+                            "name": {
+                                "kind": "Identifier",
+                                "ident": "m2",
+                                "loc": {
+                                    "file": "index.ts",
+                                    "start": {
+                                        "line": 17,
+                                        "column": 12
+                                    },
+                                    "end": {
+                                        "line": 17,
+                                        "column": 14
+                                    }
+                                }
+                            },
+                            "attributes": [
+                                {
+                                    "kind": "Attribute",
+                                    "decorator": {
+                                        "kind": "Token",
+                                        "tok": "basic/decorators:index:methodDecorate"
+                                    }
+                                }
+                            ],
+                            "access": "public",
+                            "parameters": [],
+                            "body": {
+                                "kind": "Block",
+                                "statements": [
+                                    {
+                                        "kind": "ReturnStatement",
+                                        "expression": {
+                                            "kind": "StringLiteral",
+                                            "raw": "",
+                                            "value": "",
+                                            "loc": {
+                                                "file": "index.ts",
+                                                "start": {
+                                                    "line": 17,
+                                                    "column": 34
+                                                },
+                                                "end": {
+                                                    "line": 17,
+                                                    "column": 36
+                                                }
+                                            }
+                                        },
+                                        "loc": {
+                                            "file": "index.ts",
+                                            "start": {
+                                                "line": 17,
+                                                "column": 27
+                                            },
+                                            "end": {
+                                                "line": 17,
+                                                "column": 37
+                                            }
+                                        }
+                                    }
+                                ],
+                                "loc": {
+                                    "file": "index.ts",
+                                    "start": {
+                                        "line": 17,
+                                        "column": 25
+                                    },
+                                    "end": {
+                                        "line": 17,
+                                        "column": 39
+                                    }
+                                }
+                            },
+                            "returnType": {
+                                "kind": "TypeToken",
+                                "tok": "string"
+                            },
+                            "static": false,
+                            "abstract": false,
+                            "loc": {
+                                "file": "index.ts",
+                                "start": {
+                                    "line": 16,
+                                    "column": 5
+                                },
+                                "end": {
+                                    "line": 17,
+                                    "column": 39
+                                }
+                            }
+                        },
+                        "mparam1": {
+                            "kind": "ClassMethod",
+                            "name": {
+                                "kind": "Identifier",
+                                "ident": "mparam1",
+                                "loc": {
+                                    "file": "index.ts",
+                                    "start": {
+                                        "line": 28,
+                                        "column": 5
+                                    },
+                                    "end": {
+                                        "line": 28,
+                                        "column": 12
+                                    }
+                                }
+                            },
+                            "access": "public",
+                            "parameters": [
+                                {
+                                    "kind": "LocalVariable",
+                                    "name": {
+                                        "kind": "Identifier",
+                                        "ident": "x",
+                                        "loc": {
+                                            "file": "index.ts",
+                                            "start": {
+                                                "line": 28,
+                                                "column": 32
+                                            },
+                                            "end": {
+                                                "line": 28,
+                                                "column": 33
+                                            }
+                                        }
+                                    },
+                                    "type": {
+                                        "kind": "TypeToken",
+                                        "tok": "dynamic",
+                                        "loc": {
+                                            "file": "index.ts",
+                                            "start": {
+                                                "line": 28,
+                                                "column": 13
+                                            },
+                                            "end": {
+                                                "line": 28,
+                                                "column": 33
+                                            }
+                                        }
+                                    },
+                                    "attributes": [
+                                        {
+                                            "kind": "Attribute",
+                                            "decorator": {
+                                                "kind": "Token",
+                                                "tok": "basic/decorators:index:parameterDecorate"
+                                            }
+                                        }
+                                    ]
+                                },
+                                {
+                                    "kind": "LocalVariable",
+                                    "name": {
+                                        "kind": "Identifier",
+                                        "ident": "y",
+                                        "loc": {
+                                            "file": "index.ts",
+                                            "start": {
+                                                "line": 28,
+                                                "column": 35
+                                            },
+                                            "end": {
+                                                "line": 28,
+                                                "column": 36
+                                            }
+                                        }
+                                    },
+                                    "type": {
+                                        "kind": "TypeToken",
+                                        "tok": "dynamic",
+                                        "loc": {
+                                            "file": "index.ts",
+                                            "start": {
+                                                "line": 28,
+                                                "column": 35
+                                            },
+                                            "end": {
+                                                "line": 28,
+                                                "column": 36
+                                            }
+                                        }
+                                    }
+                                },
+                                {
+                                    "kind": "LocalVariable",
+                                    "name": {
+                                        "kind": "Identifier",
+                                        "ident": "z",
+                                        "loc": {
+                                            "file": "index.ts",
+                                            "start": {
+                                                "line": 28,
+                                                "column": 57
+                                            },
+                                            "end": {
+                                                "line": 28,
+                                                "column": 58
+                                            }
+                                        }
+                                    },
+                                    "type": {
+                                        "kind": "TypeToken",
+                                        "tok": "dynamic",
+                                        "loc": {
+                                            "file": "index.ts",
+                                            "start": {
+                                                "line": 28,
+                                                "column": 38
+                                            },
+                                            "end": {
+                                                "line": 28,
+                                                "column": 58
+                                            }
+                                        }
+                                    },
+                                    "attributes": [
+                                        {
+                                            "kind": "Attribute",
+                                            "decorator": {
+                                                "kind": "Token",
+                                                "tok": "basic/decorators:index:parameterDecorate"
+                                            }
+                                        }
+                                    ]
+                                }
+                            ],
+                            "body": {
+                                "kind": "Block",
+                                "statements": [],
+                                "loc": {
+                                    "file": "index.ts",
+                                    "start": {
+                                        "line": 28,
+                                        "column": 66
+                                    },
+                                    "end": {
+                                        "line": 28,
+                                        "column": 69
+                                    }
+                                }
+                            },
+                            "static": false,
+                            "abstract": false,
+                            "loc": {
+                                "file": "index.ts",
+                                "start": {
+                                    "line": 28,
+                                    "column": 5
+                                },
+                                "end": {
+                                    "line": 28,
+                                    "column": 69
+                                }
+                            }
+                        },
+                        "mparam2": {
+                            "kind": "ClassMethod",
+                            "name": {
+                                "kind": "Identifier",
+                                "ident": "mparam2",
+                                "loc": {
+                                    "file": "index.ts",
+                                    "start": {
+                                        "line": 30,
+                                        "column": 5
+                                    },
+                                    "end": {
+                                        "line": 30,
+                                        "column": 12
+                                    }
+                                }
+                            },
+                            "attributes": [
+                                {
+                                    "kind": "Attribute",
+                                    "decorator": {
+                                        "kind": "Token",
+                                        "tok": "basic/decorators:index:methodDecorate"
+                                    }
+                                }
+                            ],
+                            "access": "public",
+                            "parameters": [
+                                {
+                                    "kind": "LocalVariable",
+                                    "name": {
+                                        "kind": "Identifier",
+                                        "ident": "x",
+                                        "loc": {
+                                            "file": "index.ts",
+                                            "start": {
+                                                "line": 30,
+                                                "column": 32
+                                            },
+                                            "end": {
+                                                "line": 30,
+                                                "column": 33
+                                            }
+                                        }
+                                    },
+                                    "type": {
+                                        "kind": "TypeToken",
+                                        "tok": "dynamic",
+                                        "loc": {
+                                            "file": "index.ts",
+                                            "start": {
+                                                "line": 30,
+                                                "column": 13
+                                            },
+                                            "end": {
+                                                "line": 30,
+                                                "column": 33
+                                            }
+                                        }
+                                    },
+                                    "attributes": [
+                                        {
+                                            "kind": "Attribute",
+                                            "decorator": {
+                                                "kind": "Token",
+                                                "tok": "basic/decorators:index:parameterDecorate"
+                                            }
+                                        }
+                                    ]
+                                },
+                                {
+                                    "kind": "LocalVariable",
+                                    "name": {
+                                        "kind": "Identifier",
+                                        "ident": "y",
+                                        "loc": {
+                                            "file": "index.ts",
+                                            "start": {
+                                                "line": 30,
+                                                "column": 35
+                                            },
+                                            "end": {
+                                                "line": 30,
+                                                "column": 36
+                                            }
+                                        }
+                                    },
+                                    "type": {
+                                        "kind": "TypeToken",
+                                        "tok": "dynamic",
+                                        "loc": {
+                                            "file": "index.ts",
+                                            "start": {
+                                                "line": 30,
+                                                "column": 35
+                                            },
+                                            "end": {
+                                                "line": 30,
+                                                "column": 36
+                                            }
+                                        }
+                                    }
+                                },
+                                {
+                                    "kind": "LocalVariable",
+                                    "name": {
+                                        "kind": "Identifier",
+                                        "ident": "z",
+                                        "loc": {
+                                            "file": "index.ts",
+                                            "start": {
+                                                "line": 30,
+                                                "column": 57
+                                            },
+                                            "end": {
+                                                "line": 30,
+                                                "column": 58
+                                            }
+                                        }
+                                    },
+                                    "type": {
+                                        "kind": "TypeToken",
+                                        "tok": "dynamic",
+                                        "loc": {
+                                            "file": "index.ts",
+                                            "start": {
+                                                "line": 30,
+                                                "column": 38
+                                            },
+                                            "end": {
+                                                "line": 30,
+                                                "column": 58
+                                            }
+                                        }
+                                    },
+                                    "attributes": [
+                                        {
+                                            "kind": "Attribute",
+                                            "decorator": {
+                                                "kind": "Token",
+                                                "tok": "basic/decorators:index:parameterDecorate"
+                                            }
+                                        }
+                                    ]
+                                }
+                            ],
+                            "body": {
+                                "kind": "Block",
+                                "statements": [],
+                                "loc": {
+                                    "file": "index.ts",
+                                    "start": {
+                                        "line": 30,
+                                        "column": 66
+                                    },
+                                    "end": {
+                                        "line": 30,
+                                        "column": 69
+                                    }
+                                }
+                            },
+                            "static": false,
+                            "abstract": false,
+                            "loc": {
+                                "file": "index.ts",
+                                "start": {
+                                    "line": 29,
+                                    "column": 5
+                                },
+                                "end": {
+                                    "line": 30,
+                                    "column": 69
+                                }
+                            }
+                        },
+                        "p1": {
+                            "kind": "ClassProperty",
+                            "name": {
+                                "kind": "Identifier",
+                                "ident": "p1",
+                                "loc": {
+                                    "file": "index.ts",
+                                    "start": {
+                                        "line": 19,
+                                        "column": 9
+                                    },
+                                    "end": {
+                                        "line": 19,
+                                        "column": 11
+                                    }
+                                }
+                            },
+                            "type": {
+                                "kind": "TypeToken",
+                                "tok": "string"
+                            },
+                            "access": "public",
+                            "loc": {
+                                "file": "index.ts",
+                                "start": {
+                                    "line": 18,
+                                    "column": 5
+                                },
+                                "end": {
+                                    "line": 19,
+                                    "column": 36
+                                }
+                            },
+                            "getter": {
+                                "kind": "ClassMethod",
+                                "name": {
+                                    "kind": "Identifier",
+                                    "ident": "get_p1"
+                                },
+                                "attributes": [
+                                    {
+                                        "kind": "Attribute",
+                                        "decorator": {
+                                            "kind": "Token",
+                                            "tok": "basic/decorators:index:methodDecorate"
+                                        }
+                                    }
+                                ],
+                                "access": "public",
+                                "parameters": [],
+                                "body": {
+                                    "kind": "Block",
+                                    "statements": [
+                                        {
+                                            "kind": "ReturnStatement",
+                                            "expression": {
+                                                "kind": "StringLiteral",
+                                                "raw": "",
+                                                "value": "",
+                                                "loc": {
+                                                    "file": "index.ts",
+                                                    "start": {
+                                                        "line": 19,
+                                                        "column": 31
+                                                    },
+                                                    "end": {
+                                                        "line": 19,
+                                                        "column": 33
+                                                    }
+                                                }
+                                            },
+                                            "loc": {
+                                                "file": "index.ts",
+                                                "start": {
+                                                    "line": 19,
+                                                    "column": 24
+                                                },
+                                                "end": {
+                                                    "line": 19,
+                                                    "column": 34
+                                                }
+                                            }
+                                        }
+                                    ],
+                                    "loc": {
+                                        "file": "index.ts",
+                                        "start": {
+                                            "line": 19,
+                                            "column": 22
+                                        },
+                                        "end": {
+                                            "line": 19,
+                                            "column": 36
+                                        }
+                                    }
+                                },
+                                "returnType": {
+                                    "kind": "TypeToken",
+                                    "tok": "string"
+                                },
+                                "static": false,
+                                "abstract": false,
+                                "loc": {
+                                    "file": "index.ts",
+                                    "start": {
+                                        "line": 18,
+                                        "column": 5
+                                    },
+                                    "end": {
+                                        "line": 19,
+                                        "column": 36
+                                    }
+                                }
+                            },
+                            "setter": {
+                                "kind": "ClassMethod",
+                                "name": {
+                                    "kind": "Identifier",
+                                    "ident": "set_p1"
+                                },
+                                "access": "public",
+                                "parameters": [
+                                    {
+                                        "kind": "LocalVariable",
+                                        "name": {
+                                            "kind": "Identifier",
+                                            "ident": "v",
+                                            "loc": {
+                                                "file": "index.ts",
+                                                "start": {
+                                                    "line": 20,
+                                                    "column": 12
+                                                },
+                                                "end": {
+                                                    "line": 20,
+                                                    "column": 13
+                                                }
+                                            }
+                                        },
+                                        "type": {
+                                            "kind": "TypeToken",
+                                            "tok": "string",
+                                            "loc": {
+                                                "file": "index.ts",
+                                                "start": {
+                                                    "line": 20,
+                                                    "column": 12
+                                                },
+                                                "end": {
+                                                    "line": 20,
+                                                    "column": 21
+                                                }
+                                            }
+                                        }
+                                    }
+                                ],
+                                "body": {
+                                    "kind": "Block",
+                                    "statements": [],
+                                    "loc": {
+                                        "file": "index.ts",
+                                        "start": {
+                                            "line": 20,
+                                            "column": 23
+                                        },
+                                        "end": {
+                                            "line": 20,
+                                            "column": 25
+                                        }
+                                    }
+                                },
+                                "static": false,
+                                "abstract": false,
+                                "loc": {
+                                    "file": "index.ts",
+                                    "start": {
+                                        "line": 20,
+                                        "column": 5
+                                    },
+                                    "end": {
+                                        "line": 20,
+                                        "column": 25
+                                    }
+                                }
+                            }
+                        },
+                        "p2": {
+                            "kind": "ClassProperty",
+                            "name": {
+                                "kind": "Identifier",
+                                "ident": "p2",
+                                "loc": {
+                                    "file": "index.ts",
+                                    "start": {
+                                        "line": 21,
+                                        "column": 9
+                                    },
+                                    "end": {
+                                        "line": 21,
+                                        "column": 11
+                                    }
+                                }
+                            },
+                            "type": {
+                                "kind": "TypeToken",
+                                "tok": "string"
+                            },
+                            "access": "public",
+                            "loc": {
+                                "file": "index.ts",
+                                "start": {
+                                    "line": 21,
+                                    "column": 5
+                                },
+                                "end": {
+                                    "line": 21,
+                                    "column": 36
+                                }
+                            },
+                            "getter": {
+                                "kind": "ClassMethod",
+                                "name": {
+                                    "kind": "Identifier",
+                                    "ident": "get_p2"
+                                },
+                                "access": "public",
+                                "parameters": [],
+                                "body": {
+                                    "kind": "Block",
+                                    "statements": [
+                                        {
+                                            "kind": "ReturnStatement",
+                                            "expression": {
+                                                "kind": "StringLiteral",
+                                                "raw": "",
+                                                "value": "",
+                                                "loc": {
+                                                    "file": "index.ts",
+                                                    "start": {
+                                                        "line": 21,
+                                                        "column": 31
+                                                    },
+                                                    "end": {
+                                                        "line": 21,
+                                                        "column": 33
+                                                    }
+                                                }
+                                            },
+                                            "loc": {
+                                                "file": "index.ts",
+                                                "start": {
+                                                    "line": 21,
+                                                    "column": 24
+                                                },
+                                                "end": {
+                                                    "line": 21,
+                                                    "column": 34
+                                                }
+                                            }
+                                        }
+                                    ],
+                                    "loc": {
+                                        "file": "index.ts",
+                                        "start": {
+                                            "line": 21,
+                                            "column": 22
+                                        },
+                                        "end": {
+                                            "line": 21,
+                                            "column": 36
+                                        }
+                                    }
+                                },
+                                "returnType": {
+                                    "kind": "TypeToken",
+                                    "tok": "string"
+                                },
+                                "static": false,
+                                "abstract": false,
+                                "loc": {
+                                    "file": "index.ts",
+                                    "start": {
+                                        "line": 21,
+                                        "column": 5
+                                    },
+                                    "end": {
+                                        "line": 21,
+                                        "column": 36
+                                    }
+                                }
+                            },
+                            "setter": {
+                                "kind": "ClassMethod",
+                                "name": {
+                                    "kind": "Identifier",
+                                    "ident": "set_p2"
+                                },
+                                "attributes": [
+                                    {
+                                        "kind": "Attribute",
+                                        "decorator": {
+                                            "kind": "Token",
+                                            "tok": "basic/decorators:index:methodDecorate"
+                                        }
+                                    }
+                                ],
+                                "access": "public",
+                                "parameters": [
+                                    {
+                                        "kind": "LocalVariable",
+                                        "name": {
+                                            "kind": "Identifier",
+                                            "ident": "v",
+                                            "loc": {
+                                                "file": "index.ts",
+                                                "start": {
+                                                    "line": 23,
+                                                    "column": 12
+                                                },
+                                                "end": {
+                                                    "line": 23,
+                                                    "column": 13
+                                                }
+                                            }
+                                        },
+                                        "type": {
+                                            "kind": "TypeToken",
+                                            "tok": "string",
+                                            "loc": {
+                                                "file": "index.ts",
+                                                "start": {
+                                                    "line": 23,
+                                                    "column": 12
+                                                },
+                                                "end": {
+                                                    "line": 23,
+                                                    "column": 21
+                                                }
+                                            }
+                                        }
+                                    }
+                                ],
+                                "body": {
+                                    "kind": "Block",
+                                    "statements": [],
+                                    "loc": {
+                                        "file": "index.ts",
+                                        "start": {
+                                            "line": 23,
+                                            "column": 23
+                                        },
+                                        "end": {
+                                            "line": 23,
+                                            "column": 25
+                                        }
+                                    }
+                                },
+                                "static": false,
+                                "abstract": false,
+                                "loc": {
+                                    "file": "index.ts",
+                                    "start": {
+                                        "line": 22,
+                                        "column": 5
+                                    },
+                                    "end": {
+                                        "line": 23,
+                                        "column": 25
+                                    }
+                                }
+                            }
+                        },
+                        "p3": {
+                            "kind": "ClassProperty",
+                            "name": {
+                                "kind": "Identifier",
+                                "ident": "p3",
+                                "loc": {
+                                    "file": "index.ts",
+                                    "start": {
+                                        "line": 25,
+                                        "column": 16
+                                    },
+                                    "end": {
+                                        "line": 25,
+                                        "column": 18
+                                    }
+                                }
+                            },
+                            "type": {
+                                "kind": "TypeToken",
+                                "tok": "string"
+                            },
+                            "access": "public",
+                            "loc": {
+                                "file": "index.ts",
+                                "start": {
+                                    "line": 24,
+                                    "column": 5
+                                },
+                                "end": {
+                                    "line": 25,
+                                    "column": 34
+                                }
+                            },
+                            "getter": {
+                                "kind": "ClassMethod",
+                                "name": {
+                                    "kind": "Identifier",
+                                    "ident": "get_p3"
+                                },
+                                "attributes": [
+                                    {
+                                        "kind": "Attribute",
+                                        "decorator": {
+                                            "kind": "Token",
+                                            "tok": "basic/decorators:index:methodDecorate"
+                                        }
+                                    }
+                                ],
+                                "access": "public",
+                                "parameters": [],
+                                "body": {
+                                    "kind": "Block",
+                                    "statements": [
+                                        {
+                                            "kind": "ReturnStatement",
+                                            "expression": {
+                                                "kind": "StringLiteral",
+                                                "raw": "",
+                                                "value": "",
+                                                "loc": {
+                                                    "file": "index.ts",
+                                                    "start": {
+                                                        "line": 25,
+                                                        "column": 30
+                                                    },
+                                                    "end": {
+                                                        "line": 25,
+                                                        "column": 32
+                                                    }
+                                                }
+                                            },
+                                            "loc": {
+                                                "file": "index.ts",
+                                                "start": {
+                                                    "line": 25,
+                                                    "column": 23
+                                                },
+                                                "end": {
+                                                    "line": 25,
+                                                    "column": 32
+                                                }
+                                            }
+                                        }
+                                    ],
+                                    "loc": {
+                                        "file": "index.ts",
+                                        "start": {
+                                            "line": 25,
+                                            "column": 21
+                                        },
+                                        "end": {
+                                            "line": 25,
+                                            "column": 34
+                                        }
+                                    }
+                                },
+                                "returnType": {
+                                    "kind": "TypeToken",
+                                    "tok": "string"
+                                },
+                                "static": false,
+                                "abstract": false,
+                                "loc": {
+                                    "file": "index.ts",
+                                    "start": {
+                                        "line": 24,
+                                        "column": 5
+                                    },
+                                    "end": {
+                                        "line": 25,
+                                        "column": 34
+                                    }
+                                }
+                            },
+                            "setter": {
+                                "kind": "ClassMethod",
+                                "name": {
+                                    "kind": "Identifier",
+                                    "ident": "set_p3"
+                                },
+                                "access": "public",
+                                "parameters": [
+                                    {
+                                        "kind": "LocalVariable",
+                                        "name": {
+                                            "kind": "Identifier",
+                                            "ident": "v",
+                                            "loc": {
+                                                "file": "index.ts",
+                                                "start": {
+                                                    "line": 26,
+                                                    "column": 19
+                                                },
+                                                "end": {
+                                                    "line": 26,
+                                                    "column": 20
+                                                }
+                                            }
+                                        },
+                                        "type": {
+                                            "kind": "TypeToken",
+                                            "tok": "string",
+                                            "loc": {
+                                                "file": "index.ts",
+                                                "start": {
+                                                    "line": 26,
+                                                    "column": 19
+                                                },
+                                                "end": {
+                                                    "line": 26,
+                                                    "column": 28
+                                                }
+                                            }
+                                        }
+                                    }
+                                ],
+                                "body": {
+                                    "kind": "Block",
+                                    "statements": [],
+                                    "loc": {
+                                        "file": "index.ts",
+                                        "start": {
+                                            "line": 26,
+                                            "column": 30
+                                        },
+                                        "end": {
+                                            "line": 26,
+                                            "column": 32
+                                        }
+                                    }
+                                },
+                                "static": false,
+                                "abstract": false,
+                                "loc": {
+                                    "file": "index.ts",
+                                    "start": {
+                                        "line": 26,
+                                        "column": 5
+                                    },
+                                    "end": {
+                                        "line": 26,
+                                        "column": 32
+                                    }
+                                }
+                            }
+                        },
+                        "a": {
+                            "kind": "ClassProperty",
+                            "name": {
+                                "kind": "Identifier",
+                                "ident": "a",
+                                "loc": {
+                                    "file": "index.ts",
+                                    "start": {
+                                        "line": 10,
+                                        "column": 23
+                                    },
+                                    "end": {
+                                        "line": 10,
+                                        "column": 24
+                                    }
+                                }
+                            },
+                            "attributes": [
+                                {
+                                    "kind": "Attribute",
+                                    "decorator": {
+                                        "kind": "Token",
+                                        "tok": "basic/decorators:index:propertyDecorate"
+                                    }
+                                }
+                            ],
+                            "access": "public",
+                            "readonly": false,
+                            "optional": false,
+                            "static": false,
+                            "type": {
+                                "kind": "TypeToken",
+                                "tok": "string",
+                                "loc": {
+                                    "file": "index.ts",
+                                    "start": {
+                                        "line": 10,
+                                        "column": 5
+                                    },
+                                    "end": {
+                                        "line": 10,
+                                        "column": 33
+                                    }
+                                }
+                            }
+                        },
+                        "b": {
+                            "kind": "ClassProperty",
+                            "name": {
+                                "kind": "Identifier",
+                                "ident": "b",
+                                "loc": {
+                                    "file": "index.ts",
+                                    "start": {
+                                        "line": 11,
+                                        "column": 30
+                                    },
+                                    "end": {
+                                        "line": 11,
+                                        "column": 31
+                                    }
+                                }
+                            },
+                            "attributes": [
+                                {
+                                    "kind": "Attribute",
+                                    "decorator": {
+                                        "kind": "Token",
+                                        "tok": "basic/decorators:index:propertyDecorate"
+                                    }
+                                }
+                            ],
+                            "access": "public",
+                            "readonly": false,
+                            "optional": false,
+                            "static": false,
+                            "type": {
+                                "kind": "TypeToken",
+                                "tok": "string",
+                                "loc": {
+                                    "file": "index.ts",
+                                    "start": {
+                                        "line": 11,
+                                        "column": 5
+                                    },
+                                    "end": {
+                                        "line": 11,
+                                        "column": 40
+                                    }
+                                }
+                            }
+                        },
+                        "c": {
+                            "kind": "ClassProperty",
+                            "name": {
+                                "kind": "Identifier",
+                                "ident": "c",
+                                "loc": {
+                                    "file": "index.ts",
+                                    "start": {
+                                        "line": 12,
+                                        "column": 30
+                                    },
+                                    "end": {
+                                        "line": 12,
+                                        "column": 31
+                                    }
+                                }
+                            },
+                            "attributes": [
+                                {
+                                    "kind": "Attribute",
+                                    "decorator": {
+                                        "kind": "Token",
+                                        "tok": "basic/decorators:index:propertyDecorate"
+                                    }
+                                }
+                            ],
+                            "access": "public",
+                            "readonly": false,
+                            "optional": false,
+                            "static": false,
+                            "type": {
+                                "kind": "TypeToken",
+                                "tok": "string",
+                                "loc": {
+                                    "file": "index.ts",
+                                    "start": {
+                                        "line": 12,
+                                        "column": 5
+                                    },
+                                    "end": {
+                                        "line": 12,
+                                        "column": 49
+                                    }
+                                }
+                            }
+                        },
+                        ".ctor": {
+                            "kind": "ClassMethod",
+                            "name": {
+                                "kind": "Identifier",
+                                "ident": ".ctor"
+                            },
+                            "access": "public",
+                            "body": {
+                                "kind": "Block",
+                                "statements": [
+                                    {
+                                        "kind": "ExpressionStatement",
+                                        "expression": {
+                                            "kind": "BinaryOperatorExpression",
+                                            "left": {
+                                                "kind": "LoadLocationExpression",
+                                                "object": {
+                                                    "kind": "LoadLocationExpression",
+                                                    "name": {
+                                                        "kind": "Token",
+                                                        "tok": ".this"
+                                                    }
+                                                },
+                                                "name": {
+                                                    "kind": "Token",
+                                                    "tok": "basic/decorators:index:TestDecorators:c",
+                                                    "loc": {
+                                                        "file": "index.ts",
+                                                        "start": {
+                                                            "line": 12,
+                                                            "column": 30
+                                                        },
+                                                        "end": {
+                                                            "line": 12,
+                                                            "column": 31
+                                                        }
+                                                    }
+                                                },
+                                                "loc": {
+                                                    "file": "index.ts",
+                                                    "start": {
+                                                        "line": 12,
+                                                        "column": 42
+                                                    },
+                                                    "end": {
+                                                        "line": 12,
+                                                        "column": 48
+                                                    }
+                                                }
+                                            },
+                                            "operator": "=",
+                                            "right": {
+                                                "kind": "StringLiteral",
+                                                "raw": "test",
+                                                "value": "test",
+                                                "loc": {
+                                                    "file": "index.ts",
+                                                    "start": {
+                                                        "line": 12,
+                                                        "column": 42
+                                                    },
+                                                    "end": {
+                                                        "line": 12,
+                                                        "column": 48
+                                                    }
+                                                }
+                                            },
+                                            "loc": {
+                                                "file": "index.ts",
+                                                "start": {
+                                                    "line": 12,
+                                                    "column": 42
+                                                },
+                                                "end": {
+                                                    "line": 12,
+                                                    "column": 48
+                                                }
+                                            }
+                                        },
+                                        "loc": {
+                                            "file": "index.ts",
+                                            "start": {
+                                                "line": 12,
+                                                "column": 42
+                                            },
+                                            "end": {
+                                                "line": 12,
+                                                "column": 48
+                                            }
+                                        }
+                                    }
+                                ],
+                                "loc": {
+                                    "file": "index.ts",
+                                    "start": {
+                                        "line": 8,
+                                        "column": 1
+                                    },
+                                    "end": {
+                                        "line": 31,
+                                        "column": 2
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "abstract": false,
+                    "loc": {
+                        "file": "index.ts",
+                        "start": {
+                            "line": 8,
+                            "column": 1
+                        },
+                        "end": {
+                            "line": 31,
+                            "column": 2
+                        }
+                    }
+                },
+                ".main": {
+                    "kind": "ModuleMethod",
+                    "name": {
+                        "kind": "Identifier",
+                        "ident": ".main"
+                    },
+                    "body": {
+                        "kind": "Block",
+                        "statements": []
+                    }
+                }
+            },
+            "loc": {
+                "file": "index.ts",
+                "start": {
+                    "line": 2,
+                    "column": 1
+                },
+                "end": {
+                    "line": 34,
+                    "column": 1
+                }
+            }
+        }
+    },
+    "aliases": {
+        ".default": "index"
+    }
+}
