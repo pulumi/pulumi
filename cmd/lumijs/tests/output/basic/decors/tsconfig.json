@@ -4,7 +4,8 @@
         "target": "es5"
     },
     "files": [
-        "index.ts"
+        "index.ts",
+        "decors.ts"
     ]
 }
 

@@ -2069,8 +2069,6 @@ export class Transformer {
     }
 
     private getDecoratorSymbol(decorator: ts.Decorator): ts.Symbol {
-        contract.assert(decorator.expression.kind === ts.SyntaxKind.Identifier,
-                        "Only simple @decorator annotations are currently supported");
         return this.checker().getSymbolAtLocation(decorator.expression);
     }
 

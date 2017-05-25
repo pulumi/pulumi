@@ -1,12 +1,11 @@
-// First, define a bunch of no-op decorators.
-function classDecorate(target: Object) {}
-function propertyDecorate(target: Object, propertyKey: string) {}
-function methodDecorate(target: Object, propertyKey: any, descriptor: any) {}
-function parameterDecorate(target: Object, propertyKey: string, parameterIndex: number) {}
+import {classDecorate, propertyDecorate, methodDecorate, parameterDecorate} from "./decors";
+import * as decors from "./decors";
 
-// Now test that each of the cases works and leads to the right attributes in the resulting metadata.
+// Test that each of the cases works and leads to the right attributes in the resulting metadata.
+
+// First, using "simple" names.
 @classDecorate
-class TestDecorators {
+class TestSimpleDecorators {
     @propertyDecorate a: string;
     @propertyDecorate public b: string;
     @propertyDecorate public c: string = "test";
@@ -30,4 +29,29 @@ class TestDecorators {
     mparam2(@parameterDecorate x, y, @parameterDecorate z): void { }
 }
 
+// Next, using "qualified" names.
+@decors.classDecorate
+class TestQualifiedDecorators {
+    @decors.propertyDecorate a: string;
+    @decors.propertyDecorate public b: string;
+    @decors.propertyDecorate public c: string = "test";
+
+    @decors.methodDecorate
+    m1(): string { return ""; }
+    @decors.methodDecorate
+    public m2(): string { return ""; }
+    @decors.methodDecorate
+    get p1(): string { return ""; }
+    set p1(v: string) {}
+    get p2(): string { return ""; }
+    @decors.methodDecorate
+    set p2(v: string) {}
+    @decors.methodDecorate
+    public get p3() { return "" }
+    public set p3(v: string) {}
+
+    mparam1(@decors.parameterDecorate x, y, @decors.parameterDecorate z): void { }
+    @decors.methodDecorate
+    mparam2(@decors.parameterDecorate x, y, @decors.parameterDecorate z): void { }
+}
 
