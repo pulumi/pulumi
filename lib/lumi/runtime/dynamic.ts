@@ -23,3 +23,8 @@ export function dynamicInvoke(obj: Object, thisArg: Object, args: Object[]): Obj
     return <any>undefined; // functionality provided by the runtime.
 }
 
+// log prints the provided message to standard out.  
+export function log(message: any): void {
+    // functionality provided by the runtime.
+}
+

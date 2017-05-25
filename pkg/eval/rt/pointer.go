@@ -59,6 +59,9 @@ func (ptr *Pointer) String() string {
 	} else {
 		prefix = "*"
 	}
+	if ptr.get != nil {
+		return prefix + "{<not invoking getter>}"
+	}
 	if ptr.obj == nil {
 		return prefix + "{<nil>}"
 	}

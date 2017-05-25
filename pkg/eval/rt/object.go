@@ -24,6 +24,8 @@ import (
 	"github.com/pulumi/lumi/pkg/compiler/ast"
 	"github.com/pulumi/lumi/pkg/compiler/symbols"
 	"github.com/pulumi/lumi/pkg/compiler/types"
+	"github.com/pulumi/lumi/pkg/diag"
+	"github.com/pulumi/lumi/pkg/tokens"
 	"github.com/pulumi/lumi/pkg/util/contract"
 )
 
@@ -338,7 +340,20 @@ func NewPrimitiveObject(t symbols.Type, v interface{}) *Object {
 func NewArrayObject(elem symbols.Type, arr *[]*Pointer) *Object {
 	contract.Require(elem != nil, "elem")
 	arrt := symbols.NewArrayType(elem)
-	return NewPrimitiveObject(arrt, arr)
+
+	// Add a `length` property to the object
+	arrayProps := NewPropertyMap()
+	lengthGetter := NewBuiltinFunction(
+		tokens.Token("lumi:builtin/array:getLength"),
+		symbols.NewFunctionType([]symbols.Type{}, types.Number),
+	)
+	lengthSetter := NewBuiltinFunction(
+		tokens.Token("lumi:builtin/array:setLength"),
+		symbols.NewFunctionType([]symbols.Type{types.Number}, nil),
+	)
+	arrayProps.InitAddr(PropertyKey("length"), nil, false, lengthGetter, lengthSetter)
+
+	return NewObject(arrt, arr, arrayProps, nil)
 }
 
 var trueObj = NewPrimitiveObject(types.Bool, true)
@@ -568,4 +583,27 @@ func adjustPointerForThis(parent *Object, this *Object, prop *Pointer) *Pointer 
 		}
 	}
 	return prop
+}
+
+// A BuiltinFunction is a symbol which references an intrinsic defined in the evaluator, which will be looked
+// up based on the provided Token and replaced with an Intrinsic symbol for the implementation.
+type BuiltinFunction struct {
+	tok tokens.Token
+	sig *symbols.FunctionType
+}
+
+var _ symbols.Function = (*BuiltinFunction)(nil)
+
+func (node *BuiltinFunction) Symbol()                          {}
+func (node *BuiltinFunction) Name() tokens.Name                { return tokens.Name(node.Token()) }
+func (node *BuiltinFunction) Token() tokens.Token              { return node.tok }
+func (node *BuiltinFunction) Special() bool                    { return false }
+func (node *BuiltinFunction) SpecialModInit() bool             { return false }
+func (node *BuiltinFunction) Tree() diag.Diagable              { return nil }
+func (node *BuiltinFunction) Function() ast.Function           { return nil }
+func (node *BuiltinFunction) Signature() *symbols.FunctionType { return node.sig }
+func (node *BuiltinFunction) String() string                   { return string(node.Name()) }
+
+func NewBuiltinFunction(token tokens.Token, signature *symbols.FunctionType) *BuiltinFunction {
+	return &BuiltinFunction{token, signature}
 }

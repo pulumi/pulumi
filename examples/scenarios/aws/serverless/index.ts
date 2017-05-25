@@ -13,6 +13,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+import * as lumi from "@lumi/lumi";
 import * as aws from "@lumi/aws";
 
 let music = new aws.dynamodb.Table("music", {
@@ -25,3 +26,6 @@ let music = new aws.dynamodb.Table("music", {
     readCapacity: 1,
     writeCapacity: 1
 })
+
+lumi.runtime.log("Length is:")
+lumi.runtime.log((<any>[1,2,3]).length)
