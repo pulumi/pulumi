@@ -18,12 +18,9 @@ package eval
 import (
 	"fmt"
 
-	"encoding/json"
-
 	"github.com/pulumi/lumi/pkg/compiler/ast"
 	"github.com/pulumi/lumi/pkg/compiler/symbols"
 	"github.com/pulumi/lumi/pkg/compiler/types"
-	"github.com/pulumi/lumi/pkg/diag"
 	"github.com/pulumi/lumi/pkg/eval/rt"
 	"github.com/pulumi/lumi/pkg/util/contract"
 )
@@ -133,12 +130,7 @@ func serializeClosure(intrin *rt.Intrinsic, e *evaluator, this *rt.Object, args 
 	// instead capture only the free variables referenced in the function itself.
 	envPropMap := rt.NewPropertyMap()
 	for key, val := range stub.Env.Slots() {
-		serializedValue := serializeValue(e, intrin.Tree(), val.Obj())
-		if serializedValue != nil {
-			// TODO: Instead of skipping unserializable properties, should report a runtime error to the user.
-			// However, we cannot do this until we address the TODO above.
-			envPropMap.Set(rt.PropertyKey(key.Name()), rt.NewStringObject(*serializedValue))
-		}
+		envPropMap.Set(rt.PropertyKey(key.Name()), val.Obj())
 	}
 	envObj := e.alloc.New(intrin.Tree(), types.Dynamic, envPropMap, nil)
 
@@ -151,33 +143,4 @@ func serializeClosure(intrin *rt.Intrinsic, e *evaluator, this *rt.Object, args 
 	closure := e.alloc.New(intrin.Tree(), intrin.Signature().Return, props, nil)
 
 	return rt.NewReturnUnwind(closure)
-}
-
-func serializeValue(e *evaluator, tree diag.Diagable, val *rt.Object) *string {
-	if val == nil {
-		return nil
-	}
-	switch val.Type().TypeToken() {
-	case "string", "number", "bool":
-		str := val.String()
-		return &str
-	case "dynamic":
-		o := map[string]string{}
-		props := val.PropertyValues()
-		for _, key := range props.Stable() {
-			propVal := props.Get(key)
-			serializedPropVal := serializeValue(e, tree, propVal)
-			if serializedPropVal != nil {
-				o[string(key)] = *serializedPropVal
-			}
-		}
-		bytes, err := json.Marshal(o)
-		if err != nil {
-			return nil
-		}
-		str := string(bytes)
-		return &str
-	default:
-		return nil
-	}
 }

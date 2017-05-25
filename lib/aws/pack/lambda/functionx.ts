@@ -1,5 +1,5 @@
 import { AssetArchive, String } from "@lumi/lumi/asset"
-import { serializeClosure } from "@lumi/lumi/runtime"
+import { serializeClosure, jsonStringify } from "@lumi/lumi/runtime"
 import { Function as LambdaFunction } from "./function"
 import { ARN } from "../types"
 import { Role } from "../iam/role";
@@ -60,8 +60,12 @@ export class FunctionX {
                     code: new AssetArchive({
                         "index.js": new String(
                             "exports.handler = (__event, __context, __callback) => {\n" +
-                            // TODO: We need to deserialize these variables, so it can't be as simple as `with`
-                            "   with(process.env) {\n" +
+                            "  let env = JSON.parse(process.env.LUMI_ENV)\n" +
+                            // TODO: We need to deserialize these variables
+                            // "  for(let key of Object.getOwnPropertyNames(env)) {\n" +
+                            // "    env[key] = \n" +
+                            // "  }\n" +
+                            "   with(env) {\n" +
                             "       let __f = " + closure.code +
                             "       __f(__event, __context, __callback);\n" +
                             "   }\n" +
@@ -71,10 +75,9 @@ export class FunctionX {
                     handler: "index.handler",
                     runtime: "nodejs6.10",
                     role: this.role,
-                    // TODO: We probably want to put the whole closure environment into a single Lambda
-                    // environment variable so that it's easier to extract and deserialize safely.
-                    // That will require being able to JSON.stringify.
-                    environment: closure.environment,
+                    environment: {
+                        LUMI_ENV: jsonStringify(closure.environment)
+                    },
                 });
                 break;
             default:
