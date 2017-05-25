@@ -34,8 +34,15 @@ var Intrinsics map[tokens.Token]Invoker
 
 func init() {
 	Intrinsics = map[tokens.Token]Invoker{
+		// These intrinsics are exposed directly to users in the `lumi.runtime` package.
 		"lumi:runtime/dynamic:isFunction":    isFunction,
 		"lumi:runtime/dynamic:dynamicInvoke": dynamicInvoke,
+		"lumi:runtime/dynamic:log":           log,
+
+		// These intrinsics are built-ins with no Lumi function exposed to users.
+		// They are used as the implementation of core object APIs in the runtime.
+		"lumi:builtin/array:getLength": arrayGetLength,
+		"lumi:builtin/array:setLength": arraySetLength,
 	}
 }
 

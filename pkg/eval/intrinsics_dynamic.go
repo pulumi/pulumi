@@ -16,6 +16,8 @@
 package eval
 
 import (
+	"fmt"
+
 	"github.com/pulumi/lumi/pkg/compiler/symbols"
 	"github.com/pulumi/lumi/pkg/eval/rt"
 	"github.com/pulumi/lumi/pkg/util/contract"
@@ -49,4 +51,62 @@ func dynamicInvoke(intrin *Intrinsic, e *evaluator, this *rt.Object, args []*rt.
 		return uw
 	}
 	return rt.NewReturnUnwind(obj)
+}
+
+func printf(intrin *Intrinsic, e *evaluator, this *rt.Object, args []*rt.Object) *rt.Unwind {
+	var message *rt.Object
+	if len(args) >= 1 {
+		message = args[0]
+	} else {
+		message = e.alloc.NewNull(intrin.Node)
+	}
+
+	// TODO[pulumi/lumi#169]: Move this to use a proper ToString() conversion.
+	fmt.Printf(message.String())
+
+	return rt.NewReturnUnwind(nil)
+}
+
+func arrayGetLength(intrin *Intrinsic, e *evaluator, this *rt.Object, args []*rt.Object) *rt.Unwind {
+	if this == nil {
+		return e.NewException(intrin.Node, "Expected receiver to be non-null")
+	}
+	if !this.IsArray() {
+		return e.NewException(intrin.Node, "Expected receiver to be an array value")
+	}
+	arr := this.ArrayValue()
+	if arr == nil {
+		return e.NewException(intrin.Node, "Expected receiver to be non-null array value")
+	}
+	return rt.NewReturnUnwind(e.alloc.NewNumber(intrin.Node, float64(len(*arr))))
+}
+
+func arraySetLength(intrin *Intrinsic, e *evaluator, this *rt.Object, args []*rt.Object) *rt.Unwind {
+	if this == nil {
+		return e.NewException(intrin.Node, "Expected receiver to be non-null")
+	}
+	if !this.IsArray() {
+		return e.NewException(intrin.Node, "Expected receiver to be an array value")
+	}
+	arr := this.ArrayValue()
+	if arr == nil {
+		return e.NewException(intrin.Node, "Expected receiver to be non-null array value")
+	}
+	if len(args) < 1 {
+	}
+	lengthFloat, ok := args[0].TryNumberValue()
+	if !ok {
+		return e.NewException(intrin.Node, "Expected length argument to be a number value")
+	}
+	length := int(lengthFloat)
+	if length < 0 {
+		return e.NewException(intrin.Node, "Expected length argument to be a positive number value")
+	}
+
+	// Update the size of the array to the requested length
+	newArr := make([]*rt.Pointer, length)
+	copy(*arr, newArr)
+	*arr = newArr
+
+	return rt.NewReturnUnwind(nil)
 }

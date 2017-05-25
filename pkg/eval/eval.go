@@ -661,12 +661,18 @@ func (e *evaluator) evalCall(node diag.Diagable,
 				defer popModule()
 				done = true
 
+			case *rt.BuiltinFunction:
+				// Swap in the intrinsic for this function
+				sym = MaybeIntrinsic(node, sym).(symbols.Function)
+				intrinsic = true
+				done = true
+
 			case *Intrinsic:
 				intrinsic = true
 				fsym = f.Func // swap in the underlying symbol for purposes of this/super/scoping.
 
 			default:
-				contract.Failf("Unrecognized function type during call: %v", reflect.TypeOf(fnc))
+				contract.Failf("Unrecognized function type during call: %v", reflect.TypeOf(fsym))
 			}
 		}
 	}
@@ -701,18 +707,20 @@ func (e *evaluator) evalCall(node diag.Diagable,
 	}
 
 	// Ensure that the arguments line up to the parameter slots and add them to the frame.
-	params := fnc.GetParameters()
-	if params == nil {
-		contract.Assert(len(args) == 0)
-	} else {
-		contract.Assertf(len(args) == len(*params),
-			"Expected argc %v == paramc %v in call to '%v'", len(args), len(*params), label)
-		for i, param := range *params {
-			sym := e.ctx.RequireVariable(param).(*symbols.LocalVariable)
-			e.locals.Register(sym)
-			arg := args[i]
-			contract.Assert(types.CanConvert(arg.Type(), sym.Type()))
-			e.locals.SetValue(sym, arg)
+	if fnc != nil {
+		params := fnc.GetParameters()
+		if params == nil {
+			contract.Assert(len(args) == 0)
+		} else {
+			contract.Assertf(len(args) == len(*params),
+				"Expected argc %v == paramc %v in call to '%v'", len(args), len(*params), label)
+			for i, param := range *params {
+				sym := e.ctx.RequireVariable(param).(*symbols.LocalVariable)
+				e.locals.Register(sym)
+				arg := args[i]
+				contract.Assert(types.CanConvert(arg.Type(), sym.Type()))
+				e.locals.SetValue(sym, arg)
+			}
 		}
 	}
 
@@ -1339,16 +1347,7 @@ func (e *evaluator) evalLoadLocationExpression(node *ast.LoadLocationExpression)
 	if uw != nil {
 		return nil, uw
 	}
-	var obj *rt.Object
-	if loc.Getter != nil {
-		// If there is a getter, invoke it.
-		contract.Assert(loc.This != nil)
-		obj, uw = e.evalCallSymbol(node, loc.Getter, loc.This)
-	} else {
-		// Otherwise, just return the object directly.
-		obj = loc.Obj
-	}
-	return obj, uw
+	return loc.Read(node)
 }
 
 func (e *evaluator) newLocation(node diag.Diagable, sym symbols.Symbol,
@@ -1408,6 +1407,16 @@ func (loc *Location) Assign(node diag.Diagable, val *rt.Object) *rt.Unwind {
 		}
 	}
 	return nil
+}
+
+func (loc *Location) Read(node diag.Diagable) (*rt.Object, *rt.Unwind) {
+	if loc.Getter != nil {
+		// If the location has a getter, use that for the assignment.
+		contract.Assert(loc.This != nil)
+		return loc.e.evalCallSymbol(node, loc.Getter, loc.This)
+	}
+	// Otherwise, just return the object directly.
+	return loc.Obj, nil
 }
 
 // evalLoadLocation evaluates and loads information about the target.  It takes an lval bool which
@@ -1546,7 +1555,7 @@ func (e *evaluator) evalLoadDynamicExpression(node *ast.LoadDynamicExpression) (
 	if uw != nil {
 		return nil, uw
 	}
-	return loc.Obj, nil
+	return loc.Read(node)
 }
 
 func (e *evaluator) evalLoadDynamic(node *ast.LoadDynamicExpression, lval bool) (*Location, *rt.Unwind) {
@@ -1558,7 +1567,7 @@ func (e *evaluator) evalTryLoadDynamicExpression(node *ast.TryLoadDynamicExpress
 	if uw != nil {
 		return nil, uw
 	}
-	return loc.Obj, nil
+	return loc.Read(node)
 }
 
 func (e *evaluator) evalTryLoadDynamic(node *ast.TryLoadDynamicExpression, lval bool) (*Location, *rt.Unwind) {
@@ -1646,11 +1655,13 @@ func (e *evaluator) evalLoadDynamicCore(node ast.Node, objexpr *ast.Expression, 
 	contract.Assert(obj != nil)
 
 	return &Location{
-		e:    e,
-		This: this,
-		Name: key,
-		Lval: lval,
-		Obj:  obj,
+		e:      e,
+		This:   this,
+		Name:   key,
+		Lval:   lval,
+		Obj:    obj,
+		Getter: pv.Getter(),
+		Setter: pv.Setter(),
 	}, nil
 }
 
@@ -1814,7 +1825,10 @@ func (e *evaluator) evalUnaryOperatorExpressionFor(node *ast.UnaryOperatorExpres
 		if uw != nil {
 			return nil, uw
 		}
-		opand = loc.Obj
+		opand, uw = loc.Read(node)
+		if uw != nil {
+			return nil, uw
+		}
 		opandloc = loc
 	} else {
 		// Otherwise, we just need to evaluate the operand as usual.
@@ -1891,7 +1905,10 @@ func (e *evaluator) evalBinaryOperatorExpression(node *ast.BinaryOperatorExpress
 		if lhsloc, uw = e.evalLValueExpression(node.Left); uw != nil {
 			return nil, uw
 		}
-		lhs = lhsloc.Obj
+		lhs, uw = lhsloc.Read(node)
+		if uw != nil {
+			return nil, uw
+		}
 	} else {
 		var uw *rt.Unwind
 		if lhs, uw = e.evalExpression(node.Left); uw != nil {
