@@ -3,7 +3,10 @@
 
 import * as lumi from "@lumi/lumi";
 
+export let AllProjection: ProjectionType = "ALL";
 export let BinaryAttribute: AttributeType = "B";
+export let IncludeProjection: ProjectionType = "INCLUDE";
+export let KeysOnlyProjection: ProjectionType = "KEYS_ONLY";
 export let NumberAttribute: AttributeType = "N";
 export let StringAttribute: AttributeType = "S";
 
@@ -17,6 +20,21 @@ export type AttributeType =
     "N" |
     "S";
 
+export interface GlobalSecondaryIndex {
+    indexName: string;
+    hashKey: string;
+    rangeKey?: string;
+    readCapacity: number;
+    writeCapacity: number;
+    nonKeyAttributes: string[];
+    projectionType: ProjectionType;
+}
+
+export type ProjectionType =
+    "ALL" |
+    "INCLUDE" |
+    "KEYS_ONLY";
+
 export class Table extends lumi.Resource implements TableArgs {
     public readonly name: string;
     public readonly hashKey: string;
@@ -25,6 +43,7 @@ export class Table extends lumi.Resource implements TableArgs {
     public writeCapacity: number;
     public readonly rangeKey?: string;
     public readonly tableName?: string;
+    public globalSecondaryIndexes?: GlobalSecondaryIndex[];
 
     constructor(name: string, args: TableArgs) {
         super();
@@ -50,6 +69,7 @@ export class Table extends lumi.Resource implements TableArgs {
         this.writeCapacity = args.writeCapacity;
         this.rangeKey = args.rangeKey;
         this.tableName = args.tableName;
+        this.globalSecondaryIndexes = args.globalSecondaryIndexes;
     }
 }
 
@@ -60,6 +80,7 @@ export interface TableArgs {
     writeCapacity: number;
     readonly rangeKey?: string;
     readonly tableName?: string;
+    globalSecondaryIndexes?: GlobalSecondaryIndex[];
 }
 
 

@@ -286,7 +286,7 @@ export class Context {
         };
     }
 
-    public newInvalidTypeError(node: ts.Node, ty: ts.Type): Diagnostic {
+    public newInvalidTypeWarning(node: ts.Node, ty: ts.Type): Diagnostic {
         let name: string;
         if (ty.symbol) {
             name = `'${ty.symbol.name}' `;
@@ -295,9 +295,9 @@ export class Context {
             name = "";
         }
         return {
-            category: DiagnosticCategory.Error,
+            category: DiagnosticCategory.Warning,
             code:     501,
-            message:  `Type ${name}(kind ${ts.TypeFlags[ty.flags]}) is not supported in LumiJS`,
+            message:  `Type ${name}(kind ${ts.TypeFlags[ty.flags]}) is not supported in LumiJS, emitting 'dynamic'`,
             loc:      this.locationFrom(node),
         };
     }

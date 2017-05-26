@@ -861,7 +861,7 @@ export class Transformer {
         }
 
         // Finally, if we got here, it's not a type we support yet; issue an error and return `dynamic`.
-        this.diagnostics.push(this.dctx.newInvalidTypeError(node, simple));
+        this.diagnostics.push(this.dctx.newInvalidTypeWarning(node, simple));
         return tokens.dynamicType;
     }
 

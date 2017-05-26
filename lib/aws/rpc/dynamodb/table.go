@@ -31,6 +31,30 @@ const (
     Attribute_Type = "type"
 )
 
+/* Marshalable GlobalSecondaryIndex structure(s) */
+
+// GlobalSecondaryIndex is a marshalable representation of its corresponding IDL type.
+type GlobalSecondaryIndex struct {
+    IndexName string `json:"indexName"`
+    HashKey string `json:"hashKey"`
+    RangeKey *string `json:"rangeKey,omitempty"`
+    ReadCapacity float64 `json:"readCapacity"`
+    WriteCapacity float64 `json:"writeCapacity"`
+    NonKeyAttributes []string `json:"nonKeyAttributes"`
+    ProjectionType ProjectionType `json:"projectionType"`
+}
+
+// GlobalSecondaryIndex's properties have constants to make dealing with diffs and property bags easier.
+const (
+    GlobalSecondaryIndex_IndexName = "indexName"
+    GlobalSecondaryIndex_HashKey = "hashKey"
+    GlobalSecondaryIndex_RangeKey = "rangeKey"
+    GlobalSecondaryIndex_ReadCapacity = "readCapacity"
+    GlobalSecondaryIndex_WriteCapacity = "writeCapacity"
+    GlobalSecondaryIndex_NonKeyAttributes = "nonKeyAttributes"
+    GlobalSecondaryIndex_ProjectionType = "projectionType"
+)
+
 /* RPC stubs for Table resource provider */
 
 // TableToken is the type token corresponding to the Table package type.
@@ -203,6 +227,7 @@ type Table struct {
     WriteCapacity float64 `json:"writeCapacity"`
     RangeKey *string `json:"rangeKey,omitempty"`
     TableName *string `json:"tableName,omitempty"`
+    GlobalSecondaryIndexes *[]GlobalSecondaryIndex `json:"globalSecondaryIndexes,omitempty"`
 }
 
 // Table's properties have constants to make dealing with diffs and property bags easier.
@@ -214,18 +239,23 @@ const (
     Table_WriteCapacity = "writeCapacity"
     Table_RangeKey = "rangeKey"
     Table_TableName = "tableName"
+    Table_GlobalSecondaryIndexes = "globalSecondaryIndexes"
 )
 
 /* Typedefs */
 
 type (
     AttributeType string
+    ProjectionType string
 )
 
 /* Constants */
 
 const (
+    AllProjection ProjectionType = "ALL"
     BinaryAttribute AttributeType = "B"
+    IncludeProjection ProjectionType = "INCLUDE"
+    KeysOnlyProjection ProjectionType = "KEYS_ONLY"
     NumberAttribute AttributeType = "N"
     StringAttribute AttributeType = "S"
 )

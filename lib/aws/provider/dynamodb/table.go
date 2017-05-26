@@ -37,12 +37,13 @@ const TableToken = dynamodb.TableToken
 
 // constants for the various table limits.
 const (
-	minTableName          = 3
-	maxTableName          = 255
-	minTableAttributeName = 1
-	maxTableAttributeName = 255
-	minReadCapacity       = 1
-	minWriteCapacity      = 1
+	minTableName              = 3
+	maxTableName              = 255
+	minTableAttributeName     = 1
+	maxTableAttributeName     = 255
+	minReadCapacity           = 1
+	minWriteCapacity          = 1
+	maxGlobalSecondaryIndexes = 5
 )
 
 // NewTableProvider creates a provider that handles DynamoDB Table operations.
@@ -105,6 +106,38 @@ func (p *tableProvider) Check(ctx context.Context, obj *dynamodb.Table) ([]mappe
 		}
 	}
 
+	if obj.GlobalSecondaryIndexes != nil {
+		gsis := *obj.GlobalSecondaryIndexes
+		if len(gsis) > maxGlobalSecondaryIndexes {
+			failures = append(failures,
+				mapper.NewFieldErr(reflect.TypeOf(obj), dynamodb.Table_GlobalSecondaryIndexes,
+					fmt.Errorf("more than %v global secondary indexes requested", maxGlobalSecondaryIndexes)))
+		}
+		for _, gsi := range gsis {
+			name := gsi.IndexName
+			if len(name) < minTableName {
+				failures = append(failures,
+					mapper.NewFieldErr(reflect.TypeOf(gsi), dynamodb.GlobalSecondaryIndex_IndexName,
+						fmt.Errorf("less than minimum length of %v", minTableName)))
+			}
+			if len(name) > maxTableName {
+				failures = append(failures,
+					mapper.NewFieldErr(reflect.TypeOf(gsi), dynamodb.GlobalSecondaryIndex_IndexName,
+						fmt.Errorf("exceeded maximum length of %v", maxTableName)))
+			}
+			if gsi.ReadCapacity < minReadCapacity {
+				failures = append(failures,
+					mapper.NewFieldErr(reflect.TypeOf(gsi), dynamodb.GlobalSecondaryIndex_ReadCapacity,
+						fmt.Errorf("less than minimum of %v", minReadCapacity)))
+			}
+			if gsi.WriteCapacity < minWriteCapacity {
+				failures = append(failures,
+					mapper.NewFieldErr(reflect.TypeOf(gsi), dynamodb.GlobalSecondaryIndex_WriteCapacity,
+						fmt.Errorf("less than minimum of %v", minWriteCapacity)))
+			}
+		}
+	}
+
 	return failures, nil
 }
 
@@ -151,6 +184,36 @@ func (p *tableProvider) Create(ctx context.Context, obj *dynamodb.Table) (resour
 			WriteCapacityUnits: aws.Int64(int64(obj.WriteCapacity)),
 		},
 	}
+	if obj.GlobalSecondaryIndexes != nil {
+		var gsis []*awsdynamodb.GlobalSecondaryIndex
+		for _, gsi := range *obj.GlobalSecondaryIndexes {
+			keySchema := []*awsdynamodb.KeySchemaElement{
+				{
+					AttributeName: aws.String(gsi.HashKey),
+					KeyType:       aws.String("HASH"),
+				},
+			}
+			if gsi.RangeKey != nil {
+				keySchema = append(keySchema, &awsdynamodb.KeySchemaElement{
+					AttributeName: gsi.RangeKey,
+					KeyType:       aws.String("RANGE"),
+				})
+			}
+			gsis = append(gsis, &awsdynamodb.GlobalSecondaryIndex{
+				IndexName: aws.String(gsi.IndexName),
+				KeySchema: keySchema,
+				ProvisionedThroughput: &awsdynamodb.ProvisionedThroughput{
+					ReadCapacityUnits:  aws.Int64(int64(gsi.ReadCapacity)),
+					WriteCapacityUnits: aws.Int64(int64(gsi.WriteCapacity)),
+				},
+				Projection: &awsdynamodb.Projection{
+					NonKeyAttributes: aws.StringSlice(gsi.NonKeyAttributes),
+					ProjectionType:   aws.String(string(gsi.ProjectionType)),
+				},
+			})
+		}
+		create.GlobalSecondaryIndexes = gsis
+	}
 
 	// Now go ahead and perform the action.
 	if _, err := p.ctx.DynamoDB().CreateTable(create); err != nil {
@@ -180,9 +243,23 @@ func (p *tableProvider) InspectChange(ctx context.Context, id resource.ID,
 // to new values.  The resource ID is returned and may be different if the resource had to be recreated.
 func (p *tableProvider) Update(ctx context.Context, id resource.ID,
 	old *dynamodb.Table, new *dynamodb.Table, diff *resource.ObjectDiff) error {
-	if diff.Changed(dynamodb.Table_Attributes) {
-		return errors.New("Not yet implemented - update of Attributes property")
-	}
+
+	// Note: Changing dynamodb.Table_Attributes alone does not trigger an update on the resource, it must be changed
+	// along with using the new attributes in an index.  The latter will process the update.
+
+	// Per DynamoDB documention at http://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_UpdateTable.html:
+
+	// You can only perform one of the following operations at once:
+	// * Modify the provisioned throughput settings of the table.
+	// * Enable or disable Streams on the table.
+	// * Remove a global secondary index from the table.
+	// * Create a new global secondary index on the table. Once the index begins backfilling, you can use
+	//   UpdateTable to perform other operations.
+
+	// So we have to serialize each of the requested updates and potentially make multiple calls to UpdateTable, waiting
+	// for the Table to reach the ready state between calls.
+
+	// First modify provisioned throughput if needed.
 	if diff.Changed(dynamodb.Table_ReadCapacity) || diff.Changed(dynamodb.Table_WriteCapacity) {
 		fmt.Printf("Updating provisioned capacity for DynamoDB Table %v\n", id.String())
 		update := &awsdynamodb.UpdateTableInput{
@@ -192,11 +269,106 @@ func (p *tableProvider) Update(ctx context.Context, id resource.ID,
 				WriteCapacityUnits: aws.Int64(int64(new.WriteCapacity)),
 			},
 		}
-		if _, err := p.ctx.DynamoDB().UpdateTable(update); err != nil {
+		err := p.updateTable(id, update)
+		if err != nil {
 			return err
 		}
-		if err := p.waitForTableState(id, true); err != nil {
-			return err
+	}
+
+	// Next, delete and create global secondary indexes.
+	if diff.Changed(dynamodb.Table_GlobalSecondaryIndexes) {
+		newGlobalSecondaryIndexes := newGlobalSecondaryIndexHashSet(new.GlobalSecondaryIndexes)
+		oldGlobalSecondaryIndexes := newGlobalSecondaryIndexHashSet(old.GlobalSecondaryIndexes)
+		d := oldGlobalSecondaryIndexes.Changes(newGlobalSecondaryIndexes)
+		// First, add any new indexes
+		for _, o := range d.Adds() {
+			gsi := o.(globalSecondaryIndexHash).item
+			fmt.Printf("Adding new global secondary index %v for DynamoDB Table %v\n", gsi.IndexName, id.String())
+			keySchema := []*awsdynamodb.KeySchemaElement{
+				{
+					AttributeName: aws.String(gsi.HashKey),
+					KeyType:       aws.String("HASH"),
+				},
+			}
+			if gsi.RangeKey != nil {
+				keySchema = append(keySchema, &awsdynamodb.KeySchemaElement{
+					AttributeName: gsi.RangeKey,
+					KeyType:       aws.String("RANGE"),
+				})
+			}
+			var attributeDefinitions []*awsdynamodb.AttributeDefinition
+			for _, attr := range new.Attributes {
+				attributeDefinitions = append(attributeDefinitions, &awsdynamodb.AttributeDefinition{
+					AttributeName: aws.String(attr.Name),
+					AttributeType: aws.String(string(attr.Type)),
+				})
+			}
+			update := &awsdynamodb.UpdateTableInput{
+				TableName:            aws.String(id.String()),
+				AttributeDefinitions: attributeDefinitions,
+				GlobalSecondaryIndexUpdates: []*awsdynamodb.GlobalSecondaryIndexUpdate{
+					{
+						Create: &awsdynamodb.CreateGlobalSecondaryIndexAction{
+							IndexName: aws.String(gsi.IndexName),
+							KeySchema: keySchema,
+							ProvisionedThroughput: &awsdynamodb.ProvisionedThroughput{
+								ReadCapacityUnits:  aws.Int64(int64(gsi.ReadCapacity)),
+								WriteCapacityUnits: aws.Int64(int64(gsi.WriteCapacity)),
+							},
+							Projection: &awsdynamodb.Projection{
+								NonKeyAttributes: aws.StringSlice(gsi.NonKeyAttributes),
+								ProjectionType:   aws.String(string(gsi.ProjectionType)),
+							},
+						},
+					},
+				},
+			}
+			err := p.updateTable(id, update)
+			if err != nil {
+				return err
+			}
+		}
+		// Next, modify provisioned throughput on any updated indexes
+		for _, o := range d.Updates() {
+			gsi := o.(globalSecondaryIndexHash).item
+			fmt.Printf("Updating capacity for global secondary index %v for DynamoDB Table %v\n", gsi.IndexName, id.String())
+			update := &awsdynamodb.UpdateTableInput{
+				TableName: aws.String(id.String()),
+				GlobalSecondaryIndexUpdates: []*awsdynamodb.GlobalSecondaryIndexUpdate{
+					{
+						Update: &awsdynamodb.UpdateGlobalSecondaryIndexAction{
+							IndexName: aws.String(gsi.IndexName),
+							ProvisionedThroughput: &awsdynamodb.ProvisionedThroughput{
+								ReadCapacityUnits:  aws.Int64(int64(gsi.ReadCapacity)),
+								WriteCapacityUnits: aws.Int64(int64(gsi.WriteCapacity)),
+							},
+						},
+					},
+				},
+			}
+			err := p.updateTable(id, update)
+			if err != nil {
+				return err
+			}
+		}
+		// Finally, delete and removed indexes
+		for _, o := range d.Deletes() {
+			gsi := o.(globalSecondaryIndexHash).item
+			fmt.Printf("Deleting global secondary index %v for DynamoDB Table %v\n", gsi.IndexName, id.String())
+			update := &awsdynamodb.UpdateTableInput{
+				TableName: aws.String(id.String()),
+				GlobalSecondaryIndexUpdates: []*awsdynamodb.GlobalSecondaryIndexUpdate{
+					{
+						Delete: &awsdynamodb.DeleteGlobalSecondaryIndexAction{
+							IndexName: aws.String(gsi.IndexName),
+						},
+					},
+				},
+			}
+			err := p.updateTable(id, update)
+			if err != nil {
+				return err
+			}
 		}
 	}
 	return nil
@@ -238,6 +410,35 @@ func (p *tableProvider) Delete(ctx context.Context, id resource.ID) error {
 	return p.waitForTableState(id, false)
 }
 
+func (p *tableProvider) updateTable(id resource.ID, update *awsdynamodb.UpdateTableInput) error {
+	succ, err := awsctx.RetryUntil(
+		p.ctx,
+		func() (bool, error) {
+			_, err := p.ctx.DynamoDB().UpdateTable(update)
+			if err != nil {
+				if erraws, iserraws := err.(awserr.Error); iserraws {
+					if erraws.Code() == "ResourceNotFoundException" || erraws.Code() == "ResourceInUseException" {
+						fmt.Printf("Waiting to update resource '%v': %v", id, erraws.Message())
+						return false, nil
+					}
+				}
+				return false, err // anything else is a real error; propagate it.
+			}
+			return true, nil
+		},
+	)
+	if err != nil {
+		return err
+	}
+	if !succ {
+		return fmt.Errorf("DynamoDB table '%v' could not be updated", id)
+	}
+	if err := p.waitForTableState(id, true); err != nil {
+		return err
+	}
+	return nil
+}
+
 func (p *tableProvider) waitForTableState(id resource.ID, exist bool) error {
 	succ, err := awsctx.RetryUntilLong(
 		p.ctx,
@@ -276,4 +477,27 @@ func (p *tableProvider) waitForTableState(id resource.ID, exist bool) error {
 		return fmt.Errorf("DynamoDB table '%v' did not become %v", id, reason)
 	}
 	return nil
+}
+
+type globalSecondaryIndexHash struct {
+	item dynamodb.GlobalSecondaryIndex
+}
+
+var _ awsctx.Hashable = globalSecondaryIndexHash{}
+
+func (option globalSecondaryIndexHash) HashKey() awsctx.Hash {
+	return awsctx.Hash(option.item.IndexName)
+}
+func (option globalSecondaryIndexHash) HashValue() awsctx.Hash {
+	return awsctx.Hash(string(int(option.item.ReadCapacity)) + ":" + string(int(option.item.WriteCapacity)))
+}
+func newGlobalSecondaryIndexHashSet(options *[]dynamodb.GlobalSecondaryIndex) *awsctx.HashSet {
+	set := awsctx.NewHashSet()
+	if options == nil {
+		return set
+	}
+	for _, option := range *options {
+		set.Add(globalSecondaryIndexHash{option})
+	}
+	return set
 }

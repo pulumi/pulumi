@@ -20,11 +20,33 @@ let music = new aws.dynamodb.Table("music", {
   attributes: [
     { name: "Album", type: "S" },
     { name: "Artist", type: "S" },
+    { name: "NumberOfSongs", type: "N" },
+    { name: "Sales", type: "N" },
   ],
   hashKey: "Album",
   rangeKey: "Artist",
   readCapacity: 1,
-  writeCapacity: 1
+  writeCapacity: 1,
+  globalSecondaryIndexes: [
+    {
+      indexName: "myGSI",
+      hashKey: "Sales",
+      rangeKey: "Artist",
+      readCapacity: 1,
+      writeCapacity: 1,
+      nonKeyAttributes: ["Album", "NumberOfSongs"],
+      projectionType: "INCLUDE",
+    },
+    {
+      indexName: "myGSI2",
+      hashKey: "NumberOfSongs",
+      rangeKey: "Sales",
+      nonKeyAttributes: ["Album", "Artist"],
+      projectionType: "INCLUDE",
+      readCapacity: 2,
+      writeCapacity: 2,
+    },
+  ],
 })
 
 // TODO[pulumi/lumi#174] Until we have global definitions available in Lumi for these APIs that are expected 

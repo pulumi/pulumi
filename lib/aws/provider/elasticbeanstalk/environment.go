@@ -153,41 +153,19 @@ func (p *environmentProvider) Update(ctx context.Context, id resource.ID,
 		envUpdate.SolutionStackName = new.SolutionStackName
 	}
 	if diff.Changed(elasticbeanstalk.Environment_OptionSettings) {
-		newOptions := []elasticbeanstalk.OptionSetting{}
-		if new.OptionSettings != nil {
-			newOptions = *new.OptionSettings
-		}
-		oldOptions := []elasticbeanstalk.OptionSetting{}
-		if old.OptionSettings != nil {
-			oldOptions = *old.OptionSettings
-		}
-		optionSettingAddOrUpdates := map[string]*elasticbeanstalk.OptionSetting{}
-		optionSettingDeletes := map[string]*elasticbeanstalk.OptionSetting{}
-		for _, newOption := range newOptions {
-			key := newOption.Namespace + ":" + newOption.OptionName
-			// This setting appears in the new so is a candidate for add/update
-			optionSettingAddOrUpdates[key] = &newOption
-		}
-		for _, oldOption := range oldOptions {
-			key := oldOption.Namespace + ":" + oldOption.OptionName
-			if update, ok := optionSettingAddOrUpdates[key]; !ok {
-				// This setting appears in old but not new, it should be deleted
-				optionSettingDeletes[key] = &oldOption
-			} else {
-				if update.Value == oldOption.Value {
-					// This setting appears in old and new and has the same value, remove from candidates for add/update
-					delete(optionSettingAddOrUpdates, key)
-				}
-			}
-		}
-		for _, option := range optionSettingAddOrUpdates {
+		newOptionsSet := newOptionSettingHashSet(new.OptionSettings)
+		oldOptionsSet := newOptionSettingHashSet(old.OptionSettings)
+		d := oldOptionsSet.Changes(newOptionsSet)
+		for _, o := range d.AddOrUpdates() {
+			option := o.(optionSettingHash).item
 			envUpdate.OptionSettings = append(envUpdate.OptionSettings, &awselasticbeanstalk.ConfigurationOptionSetting{
 				Namespace:  aws.String(option.Namespace),
 				OptionName: aws.String(option.OptionName),
 				Value:      aws.String(option.Value),
 			})
 		}
-		for _, option := range optionSettingDeletes {
+		for _, o := range d.Deletes() {
+			option := o.(optionSettingHash).item
 			envUpdate.OptionsToRemove = append(envUpdate.OptionsToRemove, &awselasticbeanstalk.OptionSpecification{
 				Namespace:  aws.String(option.Namespace),
 				OptionName: aws.String(option.OptionName),
@@ -264,4 +242,27 @@ func (p *environmentProvider) getEnvironment(name *string) (*awselasticbeanstalk
 	}
 	environment := environments[0]
 	return environment, nil
+}
+
+type optionSettingHash struct {
+	item elasticbeanstalk.OptionSetting
+}
+
+var _ awsctx.Hashable = optionSettingHash{}
+
+func (option optionSettingHash) HashKey() awsctx.Hash {
+	return awsctx.Hash(option.item.Namespace + ":" + option.item.OptionName)
+}
+func (option optionSettingHash) HashValue() awsctx.Hash {
+	return awsctx.Hash(option.item.Namespace + ":" + option.item.OptionName + ":" + option.item.Value)
+}
+func newOptionSettingHashSet(options *[]elasticbeanstalk.OptionSetting) *awsctx.HashSet {
+	set := awsctx.NewHashSet()
+	if options == nil {
+		return set
+	}
+	for _, option := range *options {
+		set.Add(optionSettingHash{option})
+	}
+	return set
 }
