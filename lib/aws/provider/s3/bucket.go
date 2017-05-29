@@ -22,7 +22,6 @@ import (
 	"reflect"
 
 	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/awserr"
 	awss3 "github.com/aws/aws-sdk-go/service/s3"
 	"github.com/pulumi/lumi/pkg/resource"
 	"github.com/pulumi/lumi/pkg/util/mapper"
@@ -146,11 +145,9 @@ func (p *buckProvider) waitForBucketState(id resource.ID, exist bool) error {
 			if _, err := p.ctx.S3().HeadBucket(&awss3.HeadBucketInput{
 				Bucket: id.StringPtr(),
 			}); err != nil {
-				if erraws, iserraws := err.(awserr.Error); iserraws {
-					if erraws.Code() == "NotFound" || erraws.Code() == "NoSuchBucket" {
-						// The bucket is missing; if exist==false, we're good, otherwise keep retrying.
-						return !exist, nil
-					}
+				if awsctx.IsAWSError(err, "NotFound", "NoSuchBucket") {
+					// The bucket is missing; if exist==false, we're good, otherwise keep retrying.
+					return !exist, nil
 				}
 				return false, err // anything other than "bucket missing" is a real error; propagate it.
 			}

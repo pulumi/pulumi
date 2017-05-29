@@ -22,7 +22,6 @@ import (
 	"reflect"
 
 	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/awserr"
 	awsdynamodb "github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/pulumi/lumi/pkg/resource"
 	"github.com/pulumi/lumi/pkg/util/mapper"
@@ -381,15 +380,12 @@ func (p *tableProvider) Delete(ctx context.Context, id resource.ID) error {
 				TableName: id.StringPtr(),
 			})
 			if err != nil {
-				if erraws, iserraws := err.(awserr.Error); iserraws {
-					if erraws.Code() == "ResourceNotFoundException" {
-						return true, nil
-					}
-					if erraws.Code() == "ResourceInUseException" {
-						return false, nil
-					}
+				if awsctx.IsAWSError(err, "ResourceNotFoundException") {
+					return true, nil
+				} else if awsctx.IsAWSError(err, "ResourceInUseException") {
+					return false, nil
 				}
-				return false, err // anything other than "ResourceNotFoundException" is a real error; propagate it.
+				return false, err // anything else is a real error; propagate it.
 			}
 			return true, nil
 		},
@@ -444,11 +440,9 @@ func (p *tableProvider) waitForTableState(id resource.ID, exist bool) error {
 			})
 
 			if err != nil {
-				if erraws, iserraws := err.(awserr.Error); iserraws {
-					if erraws.Code() == "ResourceNotFoundException" {
-						// The table is missing; if exist==false, we're good, otherwise keep retrying.
-						return !exist, nil
-					}
+				if awsctx.IsAWSError(err, "ResourceNotFoundException") {
+					// The table is missing; if exist==false, we're good, otherwise keep retrying.
+					return !exist, nil
 				}
 				return false, err // anything other than "ResourceNotFoundException" is a real error; propagate it.
 			}

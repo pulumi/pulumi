@@ -306,7 +306,7 @@ func (md *mapper) adjustValue(val reflect.Value,
 			} else {
 				return val, NewFieldErr(ty, key,
 					errors.Errorf(
-						"Cannot decode Object to type %v; it isn't a struct, and no custom decoder exists", to))
+						"Cannot decode Object{} to type %v; it isn't a struct, and no custom decoder exists", to))
 			}
 		} else if val.Type().Kind() == reflect.String {
 			// If the source is a string, see if the target implements encoding.TextUnmarshaler.

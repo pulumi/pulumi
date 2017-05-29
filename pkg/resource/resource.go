@@ -32,6 +32,15 @@ import (
 // ID is a unique resource identifier; it is managed by the provider and is mostly opaque to Lumi.
 type ID string
 
+func MaybeID(s *string) *ID {
+	var ret *ID
+	if s != nil {
+		id := ID(*s)
+		ret = &id
+	}
+	return ret
+}
+
 func (id ID) String() string { return string(id) }
 func (id *ID) StringPtr() *string {
 	if id == nil {

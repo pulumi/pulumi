@@ -25,7 +25,7 @@ const InstanceToken = tokens.Type("aws:ec2/instance:Instance")
 // InstanceProviderOps is a pluggable interface for Instance-related management functionality.
 type InstanceProviderOps interface {
     Check(ctx context.Context, obj *Instance) ([]mapper.FieldError, error)
-    Create(ctx context.Context, obj *Instance) (resource.ID, *InstanceOuts, error)
+    Create(ctx context.Context, obj *Instance) (resource.ID, error)
     Get(ctx context.Context, id resource.ID) (*Instance, error)
     InspectChange(ctx context.Context,
         id resource.ID, old *Instance, new *Instance, diff *resource.ObjectDiff) ([]string, error)
@@ -84,16 +84,11 @@ func (p *InstanceProvider) Create(
     if decerr != nil {
         return nil, decerr
     }
-    id, outs, err := p.ops.Create(ctx, obj)
+    id, err := p.ops.Create(ctx, obj)
     if err != nil {
         return nil, err
     }
-    return &lumirpc.CreateResponse{
-        Id:   string(id),
-        Outputs: resource.MarshalProperties(
-            nil, resource.NewPropertyMap(outs), resource.MarshalOptions{},
-        ),
-    }, nil
+    return &lumirpc.CreateResponse{Id: string(id)}, nil
 }
 
 func (p *InstanceProvider) Get(
@@ -185,15 +180,6 @@ type Instance struct {
     SecurityGroups *[]resource.ID `json:"securityGroups,omitempty"`
     KeyName *string `json:"keyName,omitempty"`
     AvailabilityZone string `json:"availabilityZone,omitempty"`
-    PrivateDNSName *string `json:"privateDNSName,omitempty"`
-    PublicDNSName *string `json:"publicDNSName,omitempty"`
-    PrivateIP *string `json:"privateIP,omitempty"`
-    PublicIP *string `json:"publicIP,omitempty"`
-}
-
-// InstanceOuts is a marshalable representation of its IDL type's output properties.
-type InstanceOuts struct {
-    AvailabilityZone string `json:"availabilityZone"`
     PrivateDNSName *string `json:"privateDNSName,omitempty"`
     PublicDNSName *string `json:"publicDNSName,omitempty"`
     PrivateIP *string `json:"privateIP,omitempty"`

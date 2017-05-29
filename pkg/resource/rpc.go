@@ -42,8 +42,7 @@ func MarshalPropertiesWithUnknowns(
 		Fields: make(map[string]*structpb.Value),
 	}
 	for _, key := range StablePropertyKeys(props) {
-		v := props[key]
-		if !v.IsOutput() { // always skip output properties.
+		if v := props[key]; !v.IsOutput() { // always skip output properties.
 			mv, known := MarshalPropertyValue(ctx, props[key], opts)
 			result.Fields[string(key)] = mv
 			if !known {
@@ -137,11 +136,17 @@ func MarshalPropertyValue(ctx *Context, v PropertyValue, opts MarshalOptions) (*
 			},
 		}, true
 	} else if v.IsComputed() {
-		v, _ := MarshalPropertyValue(ctx, v.ComputedValue().Eventual(), opts)
-		return v, false
+		e := v.ComputedValue().Eventual()
+		contract.Assert(!e.IsComputed() && !e.IsOutput())
+		w, known := MarshalPropertyValue(ctx, e, opts)
+		contract.Assert(known)
+		return w, false
 	} else if v.IsOutput() {
-		v, _ := MarshalPropertyValue(ctx, v.OutputValue().Eventual(), opts)
-		return v, false
+		e := v.OutputValue().Eventual()
+		contract.Assert(!e.IsComputed() && !e.IsOutput())
+		w, known := MarshalPropertyValue(ctx, e, opts)
+		contract.Assert(known)
+		return w, false
 	}
 
 	contract.Failf("Unrecognized property value: %v (type=%v)", v.V, reflect.TypeOf(v.V))
@@ -164,7 +169,9 @@ func UnmarshalProperties(props *structpb.Struct) PropertyMap {
 
 	// And now unmarshal every field it into the map.
 	for _, k := range keys {
-		result[PropertyKey(k)] = UnmarshalPropertyValue(props.Fields[k])
+		v := UnmarshalPropertyValue(props.Fields[k])
+		contract.Assert(!v.IsComputed() && !v.IsOutput())
+		result[PropertyKey(k)] = v
 	}
 
 	return result

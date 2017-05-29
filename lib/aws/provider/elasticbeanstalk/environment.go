@@ -21,8 +21,8 @@ import (
 
 	"github.com/aws/aws-sdk-go/aws"
 	awselasticbeanstalk "github.com/aws/aws-sdk-go/service/elasticbeanstalk"
-	"github.com/pkg/errors"
 	"github.com/pulumi/lumi/pkg/resource"
+	"github.com/pulumi/lumi/pkg/util/contract"
 	"github.com/pulumi/lumi/pkg/util/mapper"
 	"github.com/pulumi/lumi/sdk/go/pkg/lumirpc"
 	"golang.org/x/net/context"
@@ -60,13 +60,11 @@ func (p *environmentProvider) Check(ctx context.Context, obj *elasticbeanstalk.E
 
 // Create allocates a new instance of the provided resource and returns its unique ID afterwards.  (The input ID
 // must be blank.)  If this call fails, the resource must not have been created (i.e., it is "transacational").
-func (p *environmentProvider) Create(ctx context.Context, obj *elasticbeanstalk.Environment) (resource.ID, *elasticbeanstalk.EnvironmentOuts, error) {
+func (p *environmentProvider) Create(ctx context.Context, obj *elasticbeanstalk.Environment) (resource.ID, error) {
 	if obj.CNAMEPrefix != nil || obj.Tags != nil || obj.TemplateName != nil || obj.Tier != nil {
-		return "", nil, fmt.Errorf("Properties not yet supported: CNAMEPrefix, Tags, TemplateName, Tier")
+		return "", fmt.Errorf("Properties not yet supported: CNAMEPrefix, Tags, TemplateName, Tier")
 	}
 	// If an explicit name is given, use it.  Otherwise, auto-generate a name in part based on the resource name.
-	// TODO: use the URN, not just the name, to enhance global uniqueness.
-	// TODO: even for explicit names, we should consider mangling it somehow, to reduce multi-instancing conflicts.
 	var name string
 	if obj.EnvironmentName != nil {
 		name = *obj.EnvironmentName
@@ -93,7 +91,7 @@ func (p *environmentProvider) Create(ctx context.Context, obj *elasticbeanstalk.
 		SolutionStackName: obj.SolutionStackName,
 	}
 	if _, err := p.ctx.ElasticBeanstalk().CreateEnvironment(create); err != nil {
-		return "", nil, err
+		return "", err
 	}
 	var endpointURL *string
 	succ, err := awsctx.RetryUntilLong(p.ctx, func() (bool, error) {
@@ -112,21 +110,60 @@ func (p *environmentProvider) Create(ctx context.Context, obj *elasticbeanstalk.
 		return false, nil
 	})
 	if err != nil {
-		return "", nil, err
-	}
-	if !succ {
-		return "", nil, fmt.Errorf("Timed out waiting for environment to become ready")
-	}
-	outs := &elasticbeanstalk.EnvironmentOuts{
-		EndpointURL: *endpointURL,
+		return "", err
+	} else if !succ {
+		return "", fmt.Errorf("Timed out waiting for environment to become ready")
 	}
 	fmt.Printf("Created ElasticBeanstalk Environment '%v' with EndpointURL: %v\n", name, *endpointURL)
-	return resource.ID(name), outs, nil
+	return resource.ID(name), nil
 }
 
 // Read reads the instance state identified by ID, returning a populated resource object, or an error if not found.
 func (p *environmentProvider) Get(ctx context.Context, id resource.ID) (*elasticbeanstalk.Environment, error) {
-	return nil, errors.New("Not yet implemented")
+	envresp, err := p.ctx.ElasticBeanstalk().DescribeEnvironments(
+		&awselasticbeanstalk.DescribeEnvironmentsInput{EnvironmentNames: []*string{id.StringPtr()}})
+	if err != nil {
+		return nil, err
+	} else if envresp.Environments == nil || len(envresp.Environments) == 0 {
+		return nil, nil
+	}
+	contract.Assert(len(envresp.Environments) == 1)
+
+	// Successfully found the environment, now map all of its properties onto the struct.
+	env := envresp.Environments[0]
+	if env.CNAME != nil || env.TemplateName != nil || env.Tier != nil {
+		return nil, fmt.Errorf("Properties not yet supported: CNAMEPrefix, TemplateName, Tier")
+	}
+	envobj := &elasticbeanstalk.Environment{
+		Application:       resource.ID(*env.ApplicationName),
+		Description:       env.Description,
+		EnvironmentName:   env.EnvironmentName,
+		SolutionStackName: env.SolutionStackName,
+		Version:           resource.MaybeID(env.VersionLabel),
+		EndpointURL:       *env.EndpointURL,
+	}
+
+	// Next see if there are any configuration option settings and, if so, set them on the return.
+	confresp, err := p.ctx.ElasticBeanstalk().DescribeConfigurationSettings(
+		&awselasticbeanstalk.DescribeConfigurationSettingsInput{EnvironmentName: id.StringPtr()})
+	if err != nil {
+		return nil, err
+	}
+	if confresp != nil && len(confresp.ConfigurationSettings) > 0 {
+		var options []elasticbeanstalk.OptionSetting
+		for _, setting := range confresp.ConfigurationSettings {
+			for _, option := range setting.OptionSettings {
+				options = append(options, elasticbeanstalk.OptionSetting{
+					Namespace:  *option.Namespace,
+					OptionName: *option.OptionName,
+					Value:      *option.Value,
+				})
+			}
+		}
+		envobj.OptionSettings = &options
+	}
+
+	return envobj, nil
 }
 
 // InspectChange checks what impacts a hypothetical update will have on the resource's properties.

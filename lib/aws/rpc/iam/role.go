@@ -27,7 +27,7 @@ const RoleToken = tokens.Type("aws:iam/role:Role")
 // RoleProviderOps is a pluggable interface for Role-related management functionality.
 type RoleProviderOps interface {
     Check(ctx context.Context, obj *Role) ([]mapper.FieldError, error)
-    Create(ctx context.Context, obj *Role) (resource.ID, *RoleOuts, error)
+    Create(ctx context.Context, obj *Role) (resource.ID, error)
     Get(ctx context.Context, id resource.ID) (*Role, error)
     InspectChange(ctx context.Context,
         id resource.ID, old *Role, new *Role, diff *resource.ObjectDiff) ([]string, error)
@@ -86,16 +86,11 @@ func (p *RoleProvider) Create(
     if decerr != nil {
         return nil, decerr
     }
-    id, outs, err := p.ops.Create(ctx, obj)
+    id, err := p.ops.Create(ctx, obj)
     if err != nil {
         return nil, err
     }
-    return &lumirpc.CreateResponse{
-        Id:   string(id),
-        Outputs: resource.MarshalProperties(
-            nil, resource.NewPropertyMap(outs), resource.MarshalOptions{},
-        ),
-    }, nil
+    return &lumirpc.CreateResponse{Id: string(id)}, nil
 }
 
 func (p *RoleProvider) Get(
@@ -194,11 +189,6 @@ type Role struct {
     ManagedPolicyARNs *[]__aws.ARN `json:"managedPolicyARNs,omitempty"`
     Policies *[]InlinePolicy `json:"policies,omitempty"`
     ARN __aws.ARN `json:"arn,omitempty"`
-}
-
-// RoleOuts is a marshalable representation of its IDL type's output properties.
-type RoleOuts struct {
-    ARN __aws.ARN `json:"arn"`
 }
 
 // Role's properties have constants to make dealing with diffs and property bags easier.

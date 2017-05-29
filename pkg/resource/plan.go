@@ -679,11 +679,17 @@ func (s *step) Apply() (State, error) {
 		contract.Assert(s.old == nil)
 		contract.Assert(s.new != nil)
 		contract.Assertf(!s.new.HasID(), "Resources being created must not have IDs already")
-		id, outs, rst, err := prov.Create(s.new.Type(), s.new.Properties())
+		id, rst, err := prov.Create(s.new.Type(), s.new.Properties())
 		if err != nil {
 			return rst, err
 		}
+
+		// Set the ID, read the resource state back (to fetch outputs), and store them.
 		s.new.SetID(id)
+		outs, err := prov.Get(id, s.new.Type())
+		if err != nil {
+			return rst, err
+		}
 		s.new.SetPropertiesFrom(outs)
 
 	case OpDelete, OpReplaceDelete:

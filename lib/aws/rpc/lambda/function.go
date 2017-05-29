@@ -39,7 +39,7 @@ const FunctionToken = tokens.Type("aws:lambda/function:Function")
 // FunctionProviderOps is a pluggable interface for Function-related management functionality.
 type FunctionProviderOps interface {
     Check(ctx context.Context, obj *Function) ([]mapper.FieldError, error)
-    Create(ctx context.Context, obj *Function) (resource.ID, *FunctionOuts, error)
+    Create(ctx context.Context, obj *Function) (resource.ID, error)
     Get(ctx context.Context, id resource.ID) (*Function, error)
     InspectChange(ctx context.Context,
         id resource.ID, old *Function, new *Function, diff *resource.ObjectDiff) ([]string, error)
@@ -98,16 +98,11 @@ func (p *FunctionProvider) Create(
     if decerr != nil {
         return nil, decerr
     }
-    id, outs, err := p.ops.Create(ctx, obj)
+    id, err := p.ops.Create(ctx, obj)
     if err != nil {
         return nil, err
     }
-    return &lumirpc.CreateResponse{
-        Id:   string(id),
-        Outputs: resource.MarshalProperties(
-            nil, resource.NewPropertyMap(outs), resource.MarshalOptions{},
-        ),
-    }, nil
+    return &lumirpc.CreateResponse{Id: string(id)}, nil
 }
 
 func (p *FunctionProvider) Get(
@@ -207,11 +202,6 @@ type Function struct {
     Timeout *float64 `json:"timeout,omitempty"`
     VPCConfig *VPCConfig `json:"vpcConfig,omitempty"`
     ARN __aws.ARN `json:"arn,omitempty"`
-}
-
-// FunctionOuts is a marshalable representation of its IDL type's output properties.
-type FunctionOuts struct {
-    ARN __aws.ARN `json:"arn"`
 }
 
 // Function's properties have constants to make dealing with diffs and property bags easier.

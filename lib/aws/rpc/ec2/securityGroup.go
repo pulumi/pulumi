@@ -25,7 +25,7 @@ const SecurityGroupToken = tokens.Type("aws:ec2/securityGroup:SecurityGroup")
 // SecurityGroupProviderOps is a pluggable interface for SecurityGroup-related management functionality.
 type SecurityGroupProviderOps interface {
     Check(ctx context.Context, obj *SecurityGroup) ([]mapper.FieldError, error)
-    Create(ctx context.Context, obj *SecurityGroup) (resource.ID, *SecurityGroupOuts, error)
+    Create(ctx context.Context, obj *SecurityGroup) (resource.ID, error)
     Get(ctx context.Context, id resource.ID) (*SecurityGroup, error)
     InspectChange(ctx context.Context,
         id resource.ID, old *SecurityGroup, new *SecurityGroup, diff *resource.ObjectDiff) ([]string, error)
@@ -84,16 +84,11 @@ func (p *SecurityGroupProvider) Create(
     if decerr != nil {
         return nil, decerr
     }
-    id, outs, err := p.ops.Create(ctx, obj)
+    id, err := p.ops.Create(ctx, obj)
     if err != nil {
         return nil, err
     }
-    return &lumirpc.CreateResponse{
-        Id:   string(id),
-        Outputs: resource.MarshalProperties(
-            nil, resource.NewPropertyMap(outs), resource.MarshalOptions{},
-        ),
-    }, nil
+    return &lumirpc.CreateResponse{Id: string(id)}, nil
 }
 
 func (p *SecurityGroupProvider) Get(
@@ -130,6 +125,9 @@ func (p *SecurityGroupProvider) InspectChange(
         }
         if diff.Changed("groupDescription") {
             replaces = append(replaces, "groupDescription")
+        }
+        if diff.Changed("groupName") {
+            replaces = append(replaces, "groupName")
         }
         if diff.Changed("vpc") {
             replaces = append(replaces, "vpc")
@@ -187,21 +185,18 @@ func (p *SecurityGroupProvider) Unmarshal(
 type SecurityGroup struct {
     Name string `json:"name"`
     GroupDescription string `json:"groupDescription"`
+    GroupName *string `json:"groupName,omitempty"`
     VPC *resource.ID `json:"vpc,omitempty"`
     SecurityGroupEgress *[]SecurityGroupRule `json:"securityGroupEgress,omitempty"`
     SecurityGroupIngress *[]SecurityGroupRule `json:"securityGroupIngress,omitempty"`
     GroupID string `json:"groupID,omitempty"`
 }
 
-// SecurityGroupOuts is a marshalable representation of its IDL type's output properties.
-type SecurityGroupOuts struct {
-    GroupID string `json:"groupID"`
-}
-
 // SecurityGroup's properties have constants to make dealing with diffs and property bags easier.
 const (
     SecurityGroup_Name = "name"
     SecurityGroup_GroupDescription = "groupDescription"
+    SecurityGroup_GroupName = "groupName"
     SecurityGroup_VPC = "vpc"
     SecurityGroup_SecurityGroupEgress = "securityGroupEgress"
     SecurityGroup_SecurityGroupIngress = "securityGroupIngress"

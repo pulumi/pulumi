@@ -229,14 +229,7 @@ func (g *RPCGenerator) EmitResource(w *bufio.Writer, module tokens.Module, pkg *
 		g.FileHadNamedRes = true
 	}
 
-	hasouts := false
 	propopts := res.PropertyOptions()
-	for _, opts := range propopts {
-		if opts.Out {
-			hasouts = true
-			break
-		}
-	}
 
 	// Emit a type token.
 	token := fmt.Sprintf("%v:%v:%v", pkg.Name, module, name)
@@ -251,11 +244,7 @@ func (g *RPCGenerator) EmitResource(w *bufio.Writer, module tokens.Module, pkg *
 	if !res.Named {
 		writefmtln(w, "    Name(ctx context.Context, obj *%v) (string, error)", name)
 	}
-	writefmt(w, "    Create(ctx context.Context, obj *%v) (resource.ID, ", name)
-	if hasouts {
-		writefmt(w, "*%vOuts, ", name)
-	}
-	writefmtln(w, "error)")
+	writefmtln(w, "    Create(ctx context.Context, obj *%v) (resource.ID, error)", name)
 	writefmtln(w, "    Get(ctx context.Context, id resource.ID) (*%v, error)", name)
 	writefmtln(w, "    InspectChange(ctx context.Context,")
 	writefmtln(w, "        id resource.ID, old *%[1]v, new *%[1]v, diff *resource.ObjectDiff) ([]string, error)", name)
@@ -323,23 +312,11 @@ func (g *RPCGenerator) EmitResource(w *bufio.Writer, module tokens.Module, pkg *
 	writefmtln(w, "    if decerr != nil {")
 	writefmtln(w, "        return nil, decerr")
 	writefmtln(w, "    }")
-	writefmt(w, "    id, ")
-	if hasouts {
-		writefmt(w, "outs, ")
-	}
-	writefmtln(w, "err := p.ops.Create(ctx, obj)")
+	writefmtln(w, "    id, err := p.ops.Create(ctx, obj)")
 	writefmtln(w, "    if err != nil {")
 	writefmtln(w, "        return nil, err")
 	writefmtln(w, "    }")
-	// TODO: validate the output (e.g., required ones are non-nil, etc).
-	writefmtln(w, "    return &lumirpc.CreateResponse{")
-	writefmtln(w, "        Id:   string(id),")
-	if hasouts {
-		writefmtln(w, "        Outputs: resource.MarshalProperties(")
-		writefmtln(w, "            nil, resource.NewPropertyMap(outs), resource.MarshalOptions{},")
-		writefmtln(w, "        ),")
-	}
-	writefmtln(w, "    }, nil")
+	writefmtln(w, "    return &lumirpc.CreateResponse{Id: string(id)}, nil")
 	writefmtln(w, "}")
 	writefmtln(w, "")
 	writefmtln(w, "func (p *%vProvider) Get(", name)
@@ -432,35 +409,18 @@ func (g *RPCGenerator) EmitStructType(w *bufio.Writer, module tokens.Module, pkg
 	writefmtln(w, "/* Marshalable %v structure(s) */", name)
 	writefmtln(w, "")
 
-	var outs []int
 	props := t.Properties()
 	propopts := t.PropertyOptions()
 	writefmtln(w, "// %v is a marshalable representation of its corresponding IDL type.", name)
 	writefmtln(w, "type %v struct {", name)
 	for i, prop := range props {
 		opts := propopts[i]
-		if opts.Out {
-			outs = append(outs, i) // remember this so we can generate an out struct.
-		}
 		// Make a JSON tag for this so we can serialize; note that outputs are always optional in this position.
-		jsontag := makeJSONTag(opts, opts.Out)
-		writefmtln(w, "    %v %v %v", prop.Name(), g.GenTypeName(prop.Type(), opts.Optional), jsontag)
+		jsontag := makeJSONTag(opts)
+		writefmtln(w, "    %v %v %v", prop.Name(), g.GenTypeName(prop.Type(), opts.Optional || opts.Out), jsontag)
 	}
 	writefmtln(w, "}")
 	writefmtln(w, "")
-
-	if len(outs) > 0 {
-		writefmtln(w, "// %vOuts is a marshalable representation of its IDL type's output properties.", name)
-		writefmtln(w, "type %vOuts struct {", name)
-		for _, out := range outs {
-			prop := props[out]
-			opts := propopts[out]
-			jsontag := makeJSONTag(opts, false)
-			writefmtln(w, "    %v %v %v", prop.Name(), g.GenTypeName(prop.Type(), opts.Optional), jsontag)
-		}
-		writefmtln(w, "}")
-		writefmtln(w, "")
-	}
 
 	if len(props) > 0 {
 		writefmtln(w, "// %v's properties have constants to make dealing with diffs and property bags easier.", name)
@@ -475,9 +435,9 @@ func (g *RPCGenerator) EmitStructType(w *bufio.Writer, module tokens.Module, pkg
 }
 
 // makeJSONTag turns a set of property options into a serializable JSON tag.
-func makeJSONTag(opts PropertyOptions, forceopt bool) string {
+func makeJSONTag(opts PropertyOptions) string {
 	var flags string
-	if forceopt || opts.Optional {
+	if opts.Optional || opts.Out {
 		flags = ",omitempty"
 	}
 	return fmt.Sprintf("`json:\"%v%v\"`", opts.Name, flags)

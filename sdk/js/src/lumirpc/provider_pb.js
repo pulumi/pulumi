@@ -1155,8 +1155,7 @@ proto.lumirpc.CreateResponse.prototype.toObject = function(opt_includeInstance) 
  */
 proto.lumirpc.CreateResponse.toObject = function(includeInstance, msg) {
   var f, obj = {
-    id: jspb.Message.getFieldWithDefault(msg, 1, ""),
-    outputs: (f = msg.getOutputs()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f)
+    id: jspb.Message.getFieldWithDefault(msg, 1, "")
   };
 
   if (includeInstance) {
@@ -1197,11 +1196,6 @@ proto.lumirpc.CreateResponse.deserializeBinaryFromReader = function(msg, reader)
       var value = /** @type {string} */ (reader.readString());
       msg.setId(value);
       break;
-    case 2:
-      var value = new google_protobuf_struct_pb.Struct;
-      reader.readMessage(value,google_protobuf_struct_pb.Struct.deserializeBinaryFromReader);
-      msg.setOutputs(value);
-      break;
     default:
       reader.skipField();
       break;
@@ -1237,14 +1231,6 @@ proto.lumirpc.CreateResponse.serializeBinaryToWriter = function(message, writer)
       f
     );
   }
-  f = message.getOutputs();
-  if (f != null) {
-    writer.writeMessage(
-      2,
-      f,
-      google_protobuf_struct_pb.Struct.serializeBinaryToWriter
-    );
-  }
 };
 
 
@@ -1260,36 +1246,6 @@ proto.lumirpc.CreateResponse.prototype.getId = function() {
 /** @param {string} value */
 proto.lumirpc.CreateResponse.prototype.setId = function(value) {
   jspb.Message.setField(this, 1, value);
-};
-
-
-/**
- * optional google.protobuf.Struct outputs = 2;
- * @return {?proto.google.protobuf.Struct}
- */
-proto.lumirpc.CreateResponse.prototype.getOutputs = function() {
-  return /** @type{?proto.google.protobuf.Struct} */ (
-    jspb.Message.getWrapperField(this, google_protobuf_struct_pb.Struct, 2));
-};
-
-
-/** @param {?proto.google.protobuf.Struct|undefined} value */
-proto.lumirpc.CreateResponse.prototype.setOutputs = function(value) {
-  jspb.Message.setWrapperField(this, 2, value);
-};
-
-
-proto.lumirpc.CreateResponse.prototype.clearOutputs = function() {
-  this.setOutputs(undefined);
-};
-
-
-/**
- * Returns whether this field is set.
- * @return {!boolean}
- */
-proto.lumirpc.CreateResponse.prototype.hasOutputs = function() {
-  return jspb.Message.getField(this, 2) != null;
 };
 
 

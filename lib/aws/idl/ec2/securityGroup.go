@@ -25,6 +25,10 @@ type SecurityGroup struct {
 	idl.NamedResource
 	// A required description about the security group.
 	GroupDescription string `lumi:"groupDescription,replaces"`
+	// An optional name for the security group.  If you don't specify one, a unique physical ID will be generated and
+	// used instead.  If you specify a name, you cannot perform updates that require replacement of this resource.  You
+	// can perform updates that require no or some interruption.  If you must replace the resource, specify a new name.
+	GroupName *string `lumi:"groupName,optional,replaces"`
 	// The VPC in which this security group resides (or blank if the default VPC).
 	VPC *VPC `lumi:"vpc,optional,replaces"`
 	// A list of Amazon EC2 security group egress rules.

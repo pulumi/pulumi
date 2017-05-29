@@ -25,7 +25,7 @@ const EnvironmentToken = tokens.Type("aws:elasticbeanstalk/environment:Environme
 // EnvironmentProviderOps is a pluggable interface for Environment-related management functionality.
 type EnvironmentProviderOps interface {
     Check(ctx context.Context, obj *Environment) ([]mapper.FieldError, error)
-    Create(ctx context.Context, obj *Environment) (resource.ID, *EnvironmentOuts, error)
+    Create(ctx context.Context, obj *Environment) (resource.ID, error)
     Get(ctx context.Context, id resource.ID) (*Environment, error)
     InspectChange(ctx context.Context,
         id resource.ID, old *Environment, new *Environment, diff *resource.ObjectDiff) ([]string, error)
@@ -84,16 +84,11 @@ func (p *EnvironmentProvider) Create(
     if decerr != nil {
         return nil, decerr
     }
-    id, outs, err := p.ops.Create(ctx, obj)
+    id, err := p.ops.Create(ctx, obj)
     if err != nil {
         return nil, err
     }
-    return &lumirpc.CreateResponse{
-        Id:   string(id),
-        Outputs: resource.MarshalProperties(
-            nil, resource.NewPropertyMap(outs), resource.MarshalOptions{},
-        ),
-    }, nil
+    return &lumirpc.CreateResponse{Id: string(id)}, nil
 }
 
 func (p *EnvironmentProvider) Get(
@@ -209,11 +204,6 @@ type Environment struct {
     Tier *Tier `json:"tier,omitempty"`
     Version *resource.ID `json:"version,omitempty"`
     EndpointURL string `json:"endpointURL,omitempty"`
-}
-
-// EnvironmentOuts is a marshalable representation of its IDL type's output properties.
-type EnvironmentOuts struct {
-    EndpointURL string `json:"endpointURL"`
 }
 
 // Environment's properties have constants to make dealing with diffs and property bags easier.

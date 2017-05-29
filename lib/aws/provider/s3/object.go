@@ -22,7 +22,6 @@ import (
 	"strings"
 
 	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/awserr"
 	awss3 "github.com/aws/aws-sdk-go/service/s3"
 	"github.com/pkg/errors"
 	"github.com/pulumi/lumi/pkg/resource"
@@ -158,11 +157,9 @@ func (p *objProvider) waitForObjectState(bucket string, key string, exist bool) 
 				Bucket: aws.String(bucket),
 				Key:    aws.String(key),
 			}); err != nil {
-				if erraws, iserraws := err.(awserr.Error); iserraws {
-					if erraws.Code() == "NotFound" || erraws.Code() == "NoSuchKey" {
-						// The object is missing; if exist==false, we're good, otherwise keep retrying.
-						return !exist, nil
-					}
+				if awsctx.IsAWSError(err, "NotFound", "NoSuchKey") {
+					// The object is missing; if exist==false, we're good, otherwise keep retrying.
+					return !exist, nil
 				}
 				return false, err // anything other than "object missing" is a real error; propagate it.
 			}

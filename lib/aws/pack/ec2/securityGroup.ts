@@ -8,6 +8,7 @@ import {VPC} from "./vpc";
 export class SecurityGroup extends lumi.Resource implements SecurityGroupArgs {
     public readonly name: string;
     public readonly groupDescription: string;
+    public readonly groupName?: string;
     public readonly vpc?: VPC;
     public securityGroupEgress?: SecurityGroupRule[];
     public securityGroupIngress?: SecurityGroupRule[];
@@ -23,6 +24,7 @@ export class SecurityGroup extends lumi.Resource implements SecurityGroupArgs {
             throw new Error("Missing required argument 'groupDescription'");
         }
         this.groupDescription = args.groupDescription;
+        this.groupName = args.groupName;
         this.vpc = args.vpc;
         this.securityGroupEgress = args.securityGroupEgress;
         this.securityGroupIngress = args.securityGroupIngress;
@@ -31,6 +33,7 @@ export class SecurityGroup extends lumi.Resource implements SecurityGroupArgs {
 
 export interface SecurityGroupArgs {
     readonly groupDescription: string;
+    readonly groupName?: string;
     readonly vpc?: VPC;
     securityGroupEgress?: SecurityGroupRule[];
     securityGroupIngress?: SecurityGroupRule[];

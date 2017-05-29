@@ -17,15 +17,14 @@ package ec2
 
 import (
 	"crypto/sha1"
-	"errors"
 	"fmt"
 	"reflect"
 
 	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/awserr"
 	awsec2 "github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/pulumi/lumi/pkg/resource"
 	"github.com/pulumi/lumi/pkg/util/contract"
+	"github.com/pulumi/lumi/pkg/util/convutil"
 	"github.com/pulumi/lumi/pkg/util/mapper"
 	"github.com/pulumi/lumi/sdk/go/pkg/lumirpc"
 	"golang.org/x/net/context"
@@ -65,10 +64,16 @@ func (p *sgProvider) Check(ctx context.Context, obj *ec2.SecurityGroup) ([]mappe
 
 // Create allocates a new instance of the provided resource and returns its unique ID afterwards.  (The input ID
 // must be blank.)  If this call fails, the resource must not have been created (i.e., it is "transacational").
-func (p *sgProvider) Create(ctx context.Context, obj *ec2.SecurityGroup) (resource.ID, *ec2.SecurityGroupOuts, error) {
-	// Make the security group creation parameters.  The name of the group is auto-generated using a random hash so
-	// that we can avoid conflicts with existing similarly named groups.  For readability, we prefix the real name.
-	name := resource.NewUniqueHex(obj.Name+"-", maxSecurityGroupName, sha1.Size)
+func (p *sgProvider) Create(ctx context.Context, obj *ec2.SecurityGroup) (resource.ID, error) {
+	// Make the security group creation parameters.  If the developer specified a name, we will honor it, although we
+	// prefer to auto-generate it from the Lumi resource name, suffixed with a hash, to avoid collisions.
+	var name string
+	if obj.GroupName == nil {
+		name = resource.NewUniqueHex(obj.Name+"-", maxSecurityGroupName, sha1.Size)
+	} else {
+		name = *obj.GroupName
+	}
+
 	fmt.Printf("Creating EC2 security group with name '%v'\n", name)
 	create := &awsec2.CreateSecurityGroupInput{
 		GroupName:   aws.String(name),
@@ -79,24 +84,16 @@ func (p *sgProvider) Create(ctx context.Context, obj *ec2.SecurityGroup) (resour
 	// Now go ahead and perform the action.
 	result, err := p.ctx.EC2().CreateSecurityGroup(create)
 	if err != nil {
-		return "", nil, err
+		return "", err
 	}
 	contract.Assert(result != nil)
 	contract.Assert(result.GroupId != nil)
-	out := &ec2.SecurityGroupOuts{GroupID: *result.GroupId}
-
-	// For security groups in a default VPC, we return the ID; otherwise, the name.
-	var id resource.ID
-	if obj.VPC == nil {
-		id = resource.ID(out.GroupID)
-	} else {
-		id = resource.ID(name)
-	}
-	fmt.Printf("EC2 security group created: %v; waiting for it to become active\n", id)
+	id := resource.ID(*result.GroupId)
 
 	// Don't proceed until the security group exists.
+	fmt.Printf("EC2 security group created: %v; waiting for it to become active\n", id)
 	if err = p.waitForSecurityGroupState(id, true); err != nil {
-		return "", nil, err
+		return "", err
 	}
 
 	// Authorize ingress rules if any exist.
@@ -104,7 +101,7 @@ func (p *sgProvider) Create(ctx context.Context, obj *ec2.SecurityGroup) (resour
 		fmt.Printf("Authorizing %v security group ingress (inbound) rules\n", len(*ingress))
 		for _, rule := range *ingress {
 			if err := p.createSecurityGroupIngressRule(id, rule); err != nil {
-				return "", nil, err
+				return "", err
 			}
 		}
 	}
@@ -114,17 +111,67 @@ func (p *sgProvider) Create(ctx context.Context, obj *ec2.SecurityGroup) (resour
 		fmt.Printf("Authorizing %v security group egress (outbound) rules\n", len(*egress))
 		for _, rule := range *egress {
 			if err := p.createSecurityGroupEgressRule(id, rule); err != nil {
-				return "", nil, err
+				return "", err
 			}
 		}
 	}
 
-	return id, out, nil
+	return id, nil
+}
+
+func createSecurityGroupRulesFromIPPermissions(perms []*awsec2.IpPermission) *[]ec2.SecurityGroupRule {
+	var ret *[]ec2.SecurityGroupRule
+	if len(perms) > 0 {
+		var rules []ec2.SecurityGroupRule
+		for _, perm := range perms {
+			rule := ec2.SecurityGroupRule{
+				IPProtocol: *perm.IpProtocol,
+				FromPort:   convutil.Int64PToFloat64P(perm.FromPort),
+				ToPort:     convutil.Int64PToFloat64P(perm.FromPort),
+			}
+
+			// Although each unique entry is authorized individually, describe groups them together.  We must ungroup
+			// them here in order for the output and input sets to match (i.e., one entry per IP address).
+			contract.Assertf(len(perm.Ipv6Ranges) == 0, "IPv6 ranges not yet supported")
+			if len(perm.IpRanges) > 0 {
+				for _, rang := range perm.IpRanges {
+					rule.CIDRIP = rang.CidrIp
+					rules = append(rules, rule)
+				}
+			} else {
+				rules = append(rules, rule)
+			}
+		}
+		ret = &rules
+	}
+	return ret
 }
 
 // Get reads the instance state identified by ID, returning a populated resource object, or an error if not found.
 func (p *sgProvider) Get(ctx context.Context, id resource.ID) (*ec2.SecurityGroup, error) {
-	return nil, errors.New("Not yet implemented")
+	resp, err := p.ctx.EC2().DescribeSecurityGroups(&awsec2.DescribeSecurityGroupsInput{
+		GroupIds: []*string{id.StringPtr()},
+	})
+	if err != nil {
+		if awsctx.IsAWSError(err, "InvalidSecurityGroupID.NotFound") {
+			return nil, nil
+		}
+		return nil, err
+	} else if resp == nil || len(resp.SecurityGroups) == 0 {
+		return nil, nil
+	}
+
+	// If we found one, fetch all the requisite properties and store them on the output.
+	contract.Assert(len(resp.SecurityGroups) == 1)
+	grp := resp.SecurityGroups[0]
+	return &ec2.SecurityGroup{
+		GroupID:              *grp.GroupId,
+		GroupName:            grp.GroupName,
+		GroupDescription:     *grp.Description,
+		VPC:                  resource.MaybeID(grp.VpcId),
+		SecurityGroupEgress:  createSecurityGroupRulesFromIPPermissions(grp.IpPermissionsEgress),
+		SecurityGroupIngress: createSecurityGroupRulesFromIPPermissions(grp.IpPermissions),
+	}, nil
 }
 
 // InspectChange checks what impacts a hypothetical update will have on the resource's properties.
@@ -250,22 +297,18 @@ func (p *sgProvider) crudSecurityGroupRule(prefix, kind string, rule ec2.Securit
 	if rule.CIDRIP != nil {
 		fmt.Printf(", CIDRIP=%v", *rule.CIDRIP)
 	}
-	var from *int64
-	if rule.FromPort != nil {
-		fromPort := int64(*rule.FromPort)
+	fromPort := convutil.Float64PToInt64P(rule.FromPort)
+	if fromPort != nil {
 		fmt.Printf(", FromPort=%v", fromPort)
-		from = &fromPort
 	}
-	var to *int64
-	if rule.ToPort != nil {
-		toPort := int64(*rule.ToPort)
+	toPort := convutil.Float64PToInt64P(rule.ToPort)
+	if toPort != nil {
 		fmt.Printf(", ToPort=%v", toPort)
-		to = &toPort
 	}
 	fmt.Printf("\n")
 
 	// Now perform the action and return its error (or nil) as our result.
-	return action(from, to)
+	return action(fromPort, toPort)
 }
 
 func (p *sgProvider) createSecurityGroupIngressRule(groupID resource.ID, rule ec2.SecurityGroupRule) error {
@@ -361,17 +404,12 @@ func (p *sgProvider) waitForSecurityGroupState(id resource.ID, exist bool) error
 }
 
 func isSecurityGroupNotExistErr(err error) bool {
-	if erraws, iserraws := err.(awserr.Error); iserraws {
-		if erraws.Code() == "InvalidGroup.NotFound" {
-			// The specified security group does not eixst; this error can occur because the ID of a recently created
-			// security group has not propagated through the system.
-			return true
-		}
-		if erraws.Code() == "InvalidSecurityGroupID.NotFound" {
-			// The specified security group does not exist; if you are creating a network interface, ensure that
-			// you specify a VPC security group, and not an EC2-Classic security group.
-			return true
-		}
-	}
-	return false
+	return awsctx.IsAWSError(err,
+		// The specified security group does not eixst; this error can occur because the ID of a recently created
+		// security group has not propagated through the system.
+		"InvalidGroup.NotFound",
+		// The specified security group does not exist; if you are creating a network interface, ensure that
+		// you specify a VPC security group, and not an EC2-Classic security group.
+		"InvalidSecurityGroupID.NotFound",
+	)
 }
