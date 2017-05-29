@@ -19,6 +19,7 @@ import (
 	"context"
 
 	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/apigateway"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/aws/aws-sdk-go/service/elasticbeanstalk"
@@ -32,6 +33,7 @@ import (
 // object and offers convenient wrappers for creating connections to the various sub-services (EC2, S3, etc).
 type Context struct {
 	sess             *session.Session
+	apigateway       *apigateway.APIGateway
 	dynamodb         *dynamodb.DynamoDB
 	ec2              *ec2.EC2
 	elasticbeanstalk *elasticbeanstalk.ElasticBeanstalk
@@ -55,6 +57,14 @@ func New() (*Context, error) {
 	return &Context{
 		sess: sess,
 	}, nil
+}
+
+func (ctx *Context) APIGateway() *apigateway.APIGateway {
+	contract.Assert(ctx.sess != nil)
+	if ctx.apigateway == nil {
+		ctx.apigateway = apigateway.New(ctx.sess)
+	}
+	return ctx.apigateway
 }
 
 func (ctx *Context) DynamoDB() *dynamodb.DynamoDB {

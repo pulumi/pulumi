@@ -73,6 +73,59 @@ function createLambda() {
       callback(null, "Succeeed with " + context.getRemainingTimeInMillis() + "ms remaining.");
     }
   );
+  return lambda;
 }
 
-createLambda();
+let lambda = createLambda();
+
+let swaggerSpec = {
+    swagger: "2.0",
+    info: { title: "webapi" },
+    schemes: ["https"],
+    paths: {
+        "/bar": {
+            "x-amazon-apigateway-any-method": {
+                "produces": [
+                    "application/json"
+                ],
+                "parameters": [
+                    {
+                        "name": "proxy",
+                        "in": "path",
+                        "required": true,
+                        "type": "string"
+                    }
+                ],
+                "x-amazon-apigateway-integration": {
+                    "responses": {
+                        "default": {
+                            "statusCode": "200"
+                        }
+                    },
+                    // TODO[pulumi/lumi#90]: Once we suport output properties, we can use `lambda.ARN` as input 
+                    // to constructing this apigateway lambda invocation uri.
+                    "uri": "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/arn:aws:lambda:us-east-1:490047557317:function:webapi-test-func/invocations",
+                    "passthroughBehavior": "when_no_match",
+                    "httpMethod": "POST",
+                    "contentHandling": "CONVERT_TO_TEXT",
+                    "type": "aws_proxy"
+                }
+            }
+        }
+    }
+}
+
+let api = new aws.apigateway.RestAPI("web", {
+    body: swaggerSpec
+})
+
+let deployment = new aws.apigateway.Deployment("v1", {
+    restAPI: api,
+})
+
+let stage = new aws.apigateway.Stage("prod", {
+    stageName: "prod",
+    description: "The production deployment of the API.",
+    restAPI: api,
+    deployment: deployment
+})
