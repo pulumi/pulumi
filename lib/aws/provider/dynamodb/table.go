@@ -269,8 +269,7 @@ func (p *tableProvider) Update(ctx context.Context, id resource.ID,
 				WriteCapacityUnits: aws.Int64(int64(new.WriteCapacity)),
 			},
 		}
-		err := p.updateTable(id, update)
-		if err != nil {
+		if err := p.updateTable(id, update); err != nil {
 			return err
 		}
 	}
@@ -279,7 +278,7 @@ func (p *tableProvider) Update(ctx context.Context, id resource.ID,
 	if diff.Changed(dynamodb.Table_GlobalSecondaryIndexes) {
 		newGlobalSecondaryIndexes := newGlobalSecondaryIndexHashSet(new.GlobalSecondaryIndexes)
 		oldGlobalSecondaryIndexes := newGlobalSecondaryIndexHashSet(old.GlobalSecondaryIndexes)
-		d := oldGlobalSecondaryIndexes.Changes(newGlobalSecondaryIndexes)
+		d := oldGlobalSecondaryIndexes.Diff(newGlobalSecondaryIndexes)
 		// First, add any new indexes
 		for _, o := range d.Adds() {
 			gsi := o.(globalSecondaryIndexHash).item
@@ -323,8 +322,7 @@ func (p *tableProvider) Update(ctx context.Context, id resource.ID,
 					},
 				},
 			}
-			err := p.updateTable(id, update)
-			if err != nil {
+			if err := p.updateTable(id, update); err != nil {
 				return err
 			}
 		}
@@ -346,8 +344,7 @@ func (p *tableProvider) Update(ctx context.Context, id resource.ID,
 					},
 				},
 			}
-			err := p.updateTable(id, update)
-			if err != nil {
+			if err := p.updateTable(id, update); err != nil {
 				return err
 			}
 		}
@@ -365,8 +362,7 @@ func (p *tableProvider) Update(ctx context.Context, id resource.ID,
 					},
 				},
 			}
-			err := p.updateTable(id, update)
-			if err != nil {
+			if err := p.updateTable(id, update); err != nil {
 				return err
 			}
 		}
@@ -467,7 +463,8 @@ func (p *tableProvider) waitForTableState(id resource.ID, exist bool) error {
 	)
 	if err != nil {
 		return err
-	} else if !succ {
+	}
+	if !succ {
 		var reason string
 		if exist {
 			reason = "active"

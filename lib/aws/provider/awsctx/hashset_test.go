@@ -110,7 +110,7 @@ func TestHashSetDiffReorder(t *testing.T) {
 
 	oldSet := NewSettingHashSet(itemsOld)
 	newSet := NewSettingHashSet(itemsNew)
-	d := oldSet.Changes(newSet)
+	d := oldSet.Diff(newSet)
 	assert.Equal(t, 0, len(d.Deletes()), "expected no deletes")
 	assert.Equal(t, 0, len(d.Adds()), "expected no adds")
 	assert.Equal(t, 0, len(d.Updates()), "expected no updates")
@@ -144,7 +144,7 @@ func TestHashSetDiffUpdate(t *testing.T) {
 
 	oldSet := NewSettingHashSet(itemsOld)
 	newSet := NewSettingHashSet(itemsNew)
-	d := oldSet.Changes(newSet)
+	d := oldSet.Diff(newSet)
 	assert.Equal(t, 0, len(d.Deletes()), "expected no deletes")
 	assert.Equal(t, 0, len(d.Adds()), "expected no adds")
 	assert.Equal(t, 1, len(d.Updates()), "expected 1 update")
@@ -178,7 +178,7 @@ func TestHashSetDiffUpdateDeleteAndAdd(t *testing.T) {
 
 	oldSet := NewSettingHashSet(itemsOld)
 	newSet := NewSettingHashSet(itemsNew)
-	d := oldSet.Changes(newSet)
+	d := oldSet.Diff(newSet)
 	assert.Equal(t, 1, len(d.Deletes()), "expected 1 delete")
 	assert.Equal(t, 1, len(d.Adds()), "expected 1 add1")
 	assert.Equal(t, 1, len(d.Updates()), "expected 1 update")

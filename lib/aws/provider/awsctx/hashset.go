@@ -15,17 +15,28 @@
 
 package awsctx
 
-type Hash string
-
-type Hashable interface {
-	HashKey() Hash
-	HashValue() Hash
-}
-
+// HashSet is a set of items with set identity determined by a key hash, and with the ability to compute the
+// set-based add/delete/update diff based on a value hash.
+//
+// For many AWS resources, array-valued properties are actually logically treated as sets key'd by some subset of the
+// element object properties.  See TODO[pulumi/lumi#178] for additional work to support this pattern in Lumi.
 type HashSet struct {
 	items map[Hash]Hashable
 }
 
+// Hash represents a hash value for use in a HashSet
+type Hash string
+
+// Hashable is the element type for HashSets
+type Hashable interface {
+	// Compute a key hash used to track identity in a HashSet
+	HashKey() Hash
+	// Compute a value hash used to track updates of items with the same key hash across HashSets
+	HashValue() Hash
+}
+
+// Add an item to a HashSet.  If an item with the same key hash was already present, it is overwritten and the
+// conflicting Hash is returned.  If there was no item with the same key has already present, nil is returned.
 func (set *HashSet) Add(item Hashable) *Hash {
 	key := item.HashKey()
 	_, existed := set.items[key]
@@ -35,21 +46,33 @@ func (set *HashSet) Add(item Hashable) *Hash {
 	}
 	return nil
 }
-func (set *HashSet) Length() int                       { return len(set.items) }
-func (old *HashSet) Changes(new *HashSet) *HashSetDiff { return newHashSetDiff(old, new) }
 
+// Length returns the size of the set
+func (set *HashSet) Length() int { return len(set.items) }
+
+// Diff computes the add/update/delete changes from an old to a new HashSet
+func (set *HashSet) Diff(new *HashSet) *HashSetDiff { return newHashSetDiff(set, new) }
+
+// NewHashSet creates a new empty HashSet
 func NewHashSet() *HashSet { return &HashSet{map[Hash]Hashable{}} }
 
+// HashSetDiff represents the add/update/delete diff between two HashSets
 type HashSetDiff struct {
 	adds    []Hashable
 	updates []Hashable
 	deletes []Hashable
 }
 
-// Adds returns the items added b
-func (diff *HashSetDiff) Adds() []Hashable    { return diff.adds }
+// Adds returns the items from the new HashSet whose key hash was not in the old HashSet
+func (diff *HashSetDiff) Adds() []Hashable { return diff.adds }
+
+// Updates returns the items with the same key hash, but different value hashs in the old and new HashSet
 func (diff *HashSetDiff) Updates() []Hashable { return diff.updates }
+
+// Deletes returns the items from the old HashSet whose key hash was not in the new HashSet
 func (diff *HashSetDiff) Deletes() []Hashable { return diff.deletes }
+
+// AddOrUpdates returns all items tht were added or updates in the new HashSet
 func (diff *HashSetDiff) AddOrUpdates() []Hashable {
 	newArr := []Hashable{}
 	for _, update := range diff.updates {

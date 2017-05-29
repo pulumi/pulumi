@@ -92,8 +92,7 @@ func (p *environmentProvider) Create(ctx context.Context, obj *elasticbeanstalk.
 		VersionLabel:      obj.Version.StringPtr(),
 		SolutionStackName: obj.SolutionStackName,
 	}
-	_, err := p.ctx.ElasticBeanstalk().CreateEnvironment(create)
-	if err != nil {
+	if _, err := p.ctx.ElasticBeanstalk().CreateEnvironment(create); err != nil {
 		return "", nil, err
 	}
 	var endpointURL *string
@@ -155,7 +154,7 @@ func (p *environmentProvider) Update(ctx context.Context, id resource.ID,
 	if diff.Changed(elasticbeanstalk.Environment_OptionSettings) {
 		newOptionsSet := newOptionSettingHashSet(new.OptionSettings)
 		oldOptionsSet := newOptionSettingHashSet(old.OptionSettings)
-		d := oldOptionsSet.Changes(newOptionsSet)
+		d := oldOptionsSet.Diff(newOptionsSet)
 		for _, o := range d.AddOrUpdates() {
 			option := o.(optionSettingHash).item
 			envUpdate.OptionSettings = append(envUpdate.OptionSettings, &awselasticbeanstalk.ConfigurationOptionSetting{
