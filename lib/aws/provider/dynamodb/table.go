@@ -374,7 +374,7 @@ func (p *tableProvider) Update(ctx context.Context, id resource.ID,
 func (p *tableProvider) Delete(ctx context.Context, id resource.ID) error {
 	// First, perform the deletion.
 	fmt.Printf("Deleting DynamoDB Table '%v'\n", id)
-	succ, err := awsctx.RetryUntil(
+	succ, err := awsctx.RetryUntilLong(
 		p.ctx,
 		func() (bool, error) {
 			_, err := p.ctx.DynamoDB().DeleteTable(&awsdynamodb.DeleteTableInput{
