@@ -28,6 +28,7 @@ import (
 	"github.com/pulumi/lumi/sdk/go/pkg/lumirpc"
 	"golang.org/x/net/context"
 
+	"github.com/pulumi/lumi/lib/aws/provider/arn"
 	"github.com/pulumi/lumi/lib/aws/provider/awsctx"
 	"github.com/pulumi/lumi/lib/aws/rpc/s3"
 )
@@ -74,21 +75,19 @@ func (p *buckProvider) Check(ctx context.Context, obj *s3.Bucket) ([]mapper.Fiel
 // must be blank.)  If this call fails, the resource must not have been created (i.e., it is "transacational").
 func (p *buckProvider) Create(ctx context.Context, obj *s3.Bucket) (resource.ID, error) {
 	// If an explicit name is given, use it.  Otherwise, auto-generate a name in part based on the resource name.
-	// TODO: use the URN, not just the name, to enhance global uniqueness.
-	// TODO: even for explicit names, we should consider mangling it somehow, to reduce multi-instancing conflicts.
-	var id resource.ID
+	var name string
 	if obj.BucketName != nil {
-		id = resource.ID(*obj.BucketName)
+		name = *obj.BucketName
 	} else {
-		id = resource.NewUniqueHexID(obj.Name+"-", maxBucketName, sha1.Size)
+		name = resource.NewUniqueHex(obj.Name+"-", maxBucketName, sha1.Size)
 	}
 	var acl *string
 	if obj.AccessControl != nil {
 		acl = aws.String(string(*obj.AccessControl))
 	}
-	fmt.Printf("Creating S3 Bucket '%v' with name '%v'\n", obj.Name, id)
+	fmt.Printf("Creating S3 Bucket '%v' with name '%v'\n", obj.Name, name)
 	create := &awss3.CreateBucketInput{
-		Bucket: id.StringPtr(),
+		Bucket: aws.String(name),
 		ACL:    acl,
 	}
 
@@ -98,11 +97,11 @@ func (p *buckProvider) Create(ctx context.Context, obj *s3.Bucket) (resource.ID,
 	}
 
 	// Wait for the bucket to be ready and then return the ID (just its name).
-	fmt.Printf("S3 Bucket created: %v; waiting for it to become active\n", id)
-	if err := p.waitForBucketState(id, true); err != nil {
+	fmt.Printf("S3 Bucket created: %v; waiting for it to become active\n", name)
+	if err := p.waitForBucketState(name, true); err != nil {
 		return "", err
 	}
-	return id, nil
+	return arn.NewS3BucketID(name), nil
 }
 
 // Get reads the instance state identified by ID, returning a populated resource object, or an error if not found.
@@ -125,25 +124,30 @@ func (p *buckProvider) Update(ctx context.Context, id resource.ID,
 
 // Delete tears down an existing resource with the given ID.  If it fails, the resource is assumed to still exist.
 func (p *buckProvider) Delete(ctx context.Context, id resource.ID) error {
+	name, err := arn.ParseResourceName(id)
+	if err != nil {
+		return err
+	}
+
 	// First, perform the deletion.
-	fmt.Printf("Deleting S3 Bucket '%v'\n", id)
+	fmt.Printf("Deleting S3 Bucket '%v'\n", name)
 	if _, err := p.ctx.S3().DeleteBucket(&awss3.DeleteBucketInput{
-		Bucket: id.StringPtr(),
+		Bucket: aws.String(name),
 	}); err != nil {
 		return err
 	}
 
 	// Wait for the bucket to actually become deleted before returning.
 	fmt.Printf("S3 Bucket delete request submitted; waiting for it to delete\n")
-	return p.waitForBucketState(id, false)
+	return p.waitForBucketState(name, false)
 }
 
-func (p *buckProvider) waitForBucketState(id resource.ID, exist bool) error {
+func (p *buckProvider) waitForBucketState(name string, exist bool) error {
 	succ, err := awsctx.RetryUntil(
 		p.ctx,
 		func() (bool, error) {
 			if _, err := p.ctx.S3().HeadBucket(&awss3.HeadBucketInput{
-				Bucket: id.StringPtr(),
+				Bucket: aws.String(name),
 			}); err != nil {
 				if awsctx.IsAWSError(err, "NotFound", "NoSuchBucket") {
 					// The bucket is missing; if exist==false, we're good, otherwise keep retrying.
@@ -165,7 +169,7 @@ func (p *buckProvider) waitForBucketState(id resource.ID, exist bool) error {
 		} else {
 			reason = "deleted"
 		}
-		return fmt.Errorf("S3 bucket '%v' did not become %v", id, reason)
+		return fmt.Errorf("S3 bucket '%v' did not become %v", name, reason)
 	}
 	return nil
 }

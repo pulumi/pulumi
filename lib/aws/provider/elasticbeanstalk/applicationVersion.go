@@ -19,6 +19,7 @@ import (
 	"crypto/sha1"
 	"fmt"
 	"reflect"
+	"strings"
 
 	"github.com/aws/aws-sdk-go/aws"
 	awselasticbeanstalk "github.com/aws/aws-sdk-go/service/elasticbeanstalk"
@@ -29,8 +30,7 @@ import (
 	"github.com/pulumi/lumi/sdk/go/pkg/lumirpc"
 	"golang.org/x/net/context"
 
-	"strings"
-
+	"github.com/pulumi/lumi/lib/aws/provider/arn"
 	"github.com/pulumi/lumi/lib/aws/provider/awsctx"
 	"github.com/pulumi/lumi/lib/aws/rpc/elasticbeanstalk"
 )
@@ -48,7 +48,8 @@ type applicationVersionProvider struct {
 }
 
 // Check validates that the given property bag is valid for a resource of the given type.
-func (p *applicationVersionProvider) Check(ctx context.Context, obj *elasticbeanstalk.ApplicationVersion) ([]mapper.FieldError, error) {
+func (p *applicationVersionProvider) Check(ctx context.Context,
+	obj *elasticbeanstalk.ApplicationVersion) ([]mapper.FieldError, error) {
 	var failures []mapper.FieldError
 	if description := obj.Description; description != nil {
 		if len(*description) > maxDescription {
@@ -63,15 +64,19 @@ func (p *applicationVersionProvider) Check(ctx context.Context, obj *elasticbean
 
 // Create allocates a new instance of the provided resource and returns its unique ID afterwards.  (The input ID
 // must be blank.)  If this call fails, the resource must not have been created (i.e., it is "transacational").
-func (p *applicationVersionProvider) Create(ctx context.Context, obj *elasticbeanstalk.ApplicationVersion) (resource.ID, error) {
-	// TODO: use the URN, not just the name, to enhance global uniqueness.
+func (p *applicationVersionProvider) Create(ctx context.Context,
+	obj *elasticbeanstalk.ApplicationVersion) (resource.ID, error) {
+	appname, err := arn.ParseResourceName(obj.Application)
+	if err != nil {
+		return "", err
+	}
 	versionLabel := resource.NewUniqueHex(obj.Name+"-", maxApplicationName, sha1.Size)
 
 	s3ObjectID := obj.SourceBundle.String()
 	s3Parts := strings.SplitN(s3ObjectID, "/", 2)
 	contract.Assertf(len(s3Parts) == 2, "Expected S3 Object resource ID to be of the form <bucket>/<key>")
 	create := &awselasticbeanstalk.CreateApplicationVersionInput{
-		ApplicationName: obj.Application.StringPtr(),
+		ApplicationName: aws.String(appname),
 		Description:     obj.Description,
 		SourceBundle: &awselasticbeanstalk.S3Location{
 			S3Bucket: aws.String(s3Parts[0]),
@@ -80,15 +85,15 @@ func (p *applicationVersionProvider) Create(ctx context.Context, obj *elasticbea
 		VersionLabel: aws.String(versionLabel),
 	}
 	fmt.Printf("Creating ElasticBeanstalk ApplicationVersion '%v' with version label '%v'\n", obj.Name, versionLabel)
-	_, err := p.ctx.ElasticBeanstalk().CreateApplicationVersion(create)
-	if err != nil {
+	if _, err := p.ctx.ElasticBeanstalk().CreateApplicationVersion(create); err != nil {
 		return "", err
 	}
-	return resource.ID(versionLabel), nil
+	return arn.NewElasticBeanstalkApplicationVersionID(p.ctx.Region(), p.ctx.AccountID(), appname, versionLabel), nil
 }
 
 // Read reads the instance state identified by ID, returning a populated resource object, or an error if not found.
-func (p *applicationVersionProvider) Get(ctx context.Context, id resource.ID) (*elasticbeanstalk.ApplicationVersion, error) {
+func (p *applicationVersionProvider) Get(ctx context.Context,
+	id resource.ID) (*elasticbeanstalk.ApplicationVersion, error) {
 	// TODO: Can almost just use p.getApplicationVersion to implement this, but there is no way to get the `resource.ID`
 	// for the SourceBundle S3 object returned from the AWS API.
 	return nil, errors.New("Not yet implemented")
@@ -96,23 +101,29 @@ func (p *applicationVersionProvider) Get(ctx context.Context, id resource.ID) (*
 
 // InspectChange checks what impacts a hypothetical update will have on the resource's properties.
 func (p *applicationVersionProvider) InspectChange(ctx context.Context, id resource.ID,
-	old *elasticbeanstalk.ApplicationVersion, new *elasticbeanstalk.ApplicationVersion, diff *resource.ObjectDiff) ([]string, error) {
+	old *elasticbeanstalk.ApplicationVersion, new *elasticbeanstalk.ApplicationVersion,
+	diff *resource.ObjectDiff) ([]string, error) {
 	return nil, nil
 }
 
 // Update updates an existing resource with new values.  Only those values in the provided property bag are updated
 // to new values.  The resource ID is returned and may be different if the resource had to be recreated.
 func (p *applicationVersionProvider) Update(ctx context.Context, id resource.ID,
-	old *elasticbeanstalk.ApplicationVersion, new *elasticbeanstalk.ApplicationVersion, diff *resource.ObjectDiff) error {
+	old *elasticbeanstalk.ApplicationVersion, new *elasticbeanstalk.ApplicationVersion,
+	diff *resource.ObjectDiff) error {
+	appname, version, err := arn.ParseResourceNamePair(id)
+	if err != nil {
+		return err
+	}
 	if new.Description != old.Description {
 		description := new.Description
 		if description == nil {
 			description = aws.String("")
 		}
 		_, err := p.ctx.ElasticBeanstalk().UpdateApplicationVersion(&awselasticbeanstalk.UpdateApplicationVersionInput{
-			ApplicationName: new.Application.StringPtr(),
+			ApplicationName: aws.String(appname),
 			Description:     description,
-			VersionLabel:    id.StringPtr(),
+			VersionLabel:    aws.String(version),
 		})
 		return err
 	}
@@ -121,31 +132,16 @@ func (p *applicationVersionProvider) Update(ctx context.Context, id resource.ID,
 
 // Delete tears down an existing resource with the given ID.  If it fails, the resource is assumed to still exist.
 func (p *applicationVersionProvider) Delete(ctx context.Context, id resource.ID) error {
-	applicationVersion, err := p.getApplicationVersion(id)
+	appname, version, err := arn.ParseResourceNamePair(id)
 	if err != nil {
 		return err
 	}
 	fmt.Printf("Deleting ElasticBeanstalk ApplicationVersion '%v'\n", id)
-	_, err = p.ctx.ElasticBeanstalk().DeleteApplicationVersion(&awselasticbeanstalk.DeleteApplicationVersionInput{
-		ApplicationName: applicationVersion.ApplicationName,
-		VersionLabel:    id.StringPtr(),
-	})
+	_, err = p.ctx.ElasticBeanstalk().DeleteApplicationVersion(
+		&awselasticbeanstalk.DeleteApplicationVersionInput{
+			ApplicationName: aws.String(appname),
+			VersionLabel:    aws.String(version),
+		},
+	)
 	return err
-}
-
-func (p *applicationVersionProvider) getApplicationVersion(id resource.ID) (*awselasticbeanstalk.ApplicationVersionDescription, error) {
-	resp, err := p.ctx.ElasticBeanstalk().DescribeApplicationVersions(&awselasticbeanstalk.DescribeApplicationVersionsInput{
-		VersionLabels: []*string{id.StringPtr()},
-	})
-	if err != nil {
-		return nil, err
-	}
-	applicationVersions := resp.ApplicationVersions
-	if len(applicationVersions) > 1 {
-		return nil, fmt.Errorf("More than one application version found with version label %v", id.String())
-	} else if len(applicationVersions) == 0 {
-		return nil, fmt.Errorf("No application version found with version label %v", id.String())
-	}
-	applicationVersion := applicationVersions[0]
-	return applicationVersion, nil
 }

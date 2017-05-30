@@ -19,25 +19,21 @@ import (
 	"fmt"
 	"reflect"
 	"regexp"
-	"strings"
 
 	"github.com/aws/aws-sdk-go/aws"
 	awss3 "github.com/aws/aws-sdk-go/service/s3"
 	"github.com/pkg/errors"
 	"github.com/pulumi/lumi/pkg/resource"
-	"github.com/pulumi/lumi/pkg/util/contract"
 	"github.com/pulumi/lumi/pkg/util/mapper"
 	"github.com/pulumi/lumi/sdk/go/pkg/lumirpc"
 	"golang.org/x/net/context"
 
+	"github.com/pulumi/lumi/lib/aws/provider/arn"
 	"github.com/pulumi/lumi/lib/aws/provider/awsctx"
 	"github.com/pulumi/lumi/lib/aws/rpc/s3"
 )
 
-const (
-	ObjectToken   = s3.ObjectToken
-	ObjectIDDelim = "/" // the delimiter between bucket and key name.
-)
+const ObjectToken = s3.ObjectToken
 
 // constants for the various object constraints.
 const (
@@ -92,7 +88,10 @@ func (p *objProvider) Create(ctx context.Context, obj *s3.Object) (resource.ID, 
 	defer body.Close()
 
 	// Now go ahead and perform the creation.
-	buck := obj.Bucket.String()
+	buck, err := arn.ParseResourceName(obj.Bucket)
+	if err != nil {
+		return "", err
+	}
 	fmt.Printf("Creating S3 Object '%v' in bucket '%v'\n", obj.Key, buck)
 	if _, err := p.ctx.S3().PutObject(&awss3.PutObjectInput{
 		Bucket: aws.String(buck),
@@ -107,7 +106,7 @@ func (p *objProvider) Create(ctx context.Context, obj *s3.Object) (resource.ID, 
 	if err := p.waitForObjectState(buck, obj.Key, true); err != nil {
 		return "", err
 	}
-	return resource.ID(buck + ObjectIDDelim + obj.Key), nil
+	return arn.NewS3ObjectID(buck, obj.Key), nil
 }
 
 // Get reads the instance state identified by ID, returning a populated resource object, or an error if not found.
@@ -130,15 +129,15 @@ func (p *objProvider) Update(ctx context.Context, id resource.ID,
 
 // Delete tears down an existing resource with the given ID.  If it fails, the resource is assumed to still exist.
 func (p *objProvider) Delete(ctx context.Context, id resource.ID) error {
+	buck, key, err := arn.ParseResourceNamePair(id)
+	if err != nil {
+		return err
+	}
+
 	// First, perform the deletion.
 	fmt.Printf("Deleting S3 Object '%v'\n", id)
-	ids := string(id)
-	delim := strings.Index(ids, ObjectIDDelim)
-	contract.Assertf(delim != -1, "Missing object ID delimiter (`<bucket>%v<key>`)", ObjectIDDelim)
-	bucket := ids[:delim]
-	key := ids[delim+1:]
 	if _, err := p.ctx.S3().DeleteObject(&awss3.DeleteObjectInput{
-		Bucket: aws.String(bucket),
+		Bucket: aws.String(buck),
 		Key:    aws.String(key),
 	}); err != nil {
 		return err
@@ -146,7 +145,7 @@ func (p *objProvider) Delete(ctx context.Context, id resource.ID) error {
 
 	// Wait for the bucket to actually become deleted before returning.
 	fmt.Printf("S3 Object delete request submitted; waiting for it to delete\n")
-	return p.waitForObjectState(bucket, key, false)
+	return p.waitForObjectState(buck, key, false)
 }
 
 func (p *objProvider) waitForObjectState(bucket string, key string, exist bool) error {

@@ -27,6 +27,7 @@ import (
 	"github.com/pulumi/lumi/sdk/go/pkg/lumirpc"
 	"golang.org/x/net/context"
 
+	"github.com/pulumi/lumi/lib/aws/provider/arn"
 	"github.com/pulumi/lumi/lib/aws/provider/awsctx"
 	"github.com/pulumi/lumi/lib/aws/rpc/elasticbeanstalk"
 )
@@ -64,6 +65,7 @@ func (p *environmentProvider) Create(ctx context.Context, obj *elasticbeanstalk.
 	if obj.CNAMEPrefix != nil || obj.Tags != nil || obj.TemplateName != nil || obj.Tier != nil {
 		return "", fmt.Errorf("Properties not yet supported: CNAMEPrefix, Tags, TemplateName, Tier")
 	}
+
 	// If an explicit name is given, use it.  Otherwise, auto-generate a name in part based on the resource name.
 	var name string
 	if obj.EnvironmentName != nil {
@@ -71,6 +73,7 @@ func (p *environmentProvider) Create(ctx context.Context, obj *elasticbeanstalk.
 	} else {
 		name = resource.NewUniqueHex(obj.Name+"-", maxEnvironmentName, sha1.Size)
 	}
+
 	var optionSettings []*awselasticbeanstalk.ConfigurationOptionSetting
 	if obj.OptionSettings != nil {
 		for _, setting := range *obj.OptionSettings {
@@ -81,13 +84,27 @@ func (p *environmentProvider) Create(ctx context.Context, obj *elasticbeanstalk.
 			})
 		}
 	}
+
+	appname, err := arn.ParseResourceName(obj.Application)
+	if err != nil {
+		return "", err
+	}
+	var versionLabel *string
+	if obj.Version != nil {
+		version, err := arn.ParseResourceName(*obj.Version)
+		if err != nil {
+			return "", err
+		}
+		versionLabel = &version
+	}
+
 	fmt.Printf("Creating ElasticBeanstalk Environment '%v' with name '%v'\n", obj.Name, name)
 	create := &awselasticbeanstalk.CreateEnvironmentInput{
 		EnvironmentName:   aws.String(name),
-		ApplicationName:   obj.Application.StringPtr(),
+		ApplicationName:   aws.String(appname),
 		Description:       obj.Description,
 		OptionSettings:    optionSettings,
-		VersionLabel:      obj.Version.StringPtr(),
+		VersionLabel:      versionLabel,
 		SolutionStackName: obj.SolutionStackName,
 	}
 	if _, err := p.ctx.ElasticBeanstalk().CreateEnvironment(create); err != nil {
@@ -96,7 +113,7 @@ func (p *environmentProvider) Create(ctx context.Context, obj *elasticbeanstalk.
 	var endpointURL *string
 	succ, err := awsctx.RetryUntilLong(p.ctx, func() (bool, error) {
 		fmt.Printf("Waiting for environment %v to become Ready\n", name)
-		resp, err := p.getEnvironment(&name)
+		resp, err := p.getEnvironment(appname, name)
 		if err != nil {
 			return false, err
 		}
@@ -114,14 +131,23 @@ func (p *environmentProvider) Create(ctx context.Context, obj *elasticbeanstalk.
 	} else if !succ {
 		return "", fmt.Errorf("Timed out waiting for environment to become ready")
 	}
+
 	fmt.Printf("Created ElasticBeanstalk Environment '%v' with EndpointURL: %v\n", name, *endpointURL)
-	return resource.ID(name), nil
+	return arn.NewElasticBeanstalkEnvironmentID(p.ctx.Region(), p.ctx.AccountID(), appname, name), nil
 }
 
 // Read reads the instance state identified by ID, returning a populated resource object, or an error if not found.
 func (p *environmentProvider) Get(ctx context.Context, id resource.ID) (*elasticbeanstalk.Environment, error) {
+	appname, envname, err := arn.ParseResourceNamePair(id)
+	if err != nil {
+		return nil, err
+	}
 	envresp, err := p.ctx.ElasticBeanstalk().DescribeEnvironments(
-		&awselasticbeanstalk.DescribeEnvironmentsInput{EnvironmentNames: []*string{id.StringPtr()}})
+		&awselasticbeanstalk.DescribeEnvironmentsInput{
+			ApplicationName:  aws.String(appname),
+			EnvironmentNames: []*string{aws.String(envname)},
+		},
+	)
 	if err != nil {
 		return nil, err
 	} else if envresp.Environments == nil || len(envresp.Environments) == 0 {
@@ -134,18 +160,24 @@ func (p *environmentProvider) Get(ctx context.Context, id resource.ID) (*elastic
 	if env.CNAME != nil || env.TemplateName != nil || env.Tier != nil {
 		return nil, fmt.Errorf("Properties not yet supported: CNAMEPrefix, TemplateName, Tier")
 	}
+	var versionLabel *resource.ID
+	if env.VersionLabel != nil {
+		version := arn.NewElasticBeanstalkApplicationVersionID(
+			p.ctx.Region(), p.ctx.AccountID(), appname, *env.VersionLabel)
+		versionLabel = &version
+	}
 	envobj := &elasticbeanstalk.Environment{
-		Application:       resource.ID(*env.ApplicationName),
+		Application:       arn.NewElasticBeanstalkApplicationID(p.ctx.Region(), p.ctx.AccountID(), appname),
 		Description:       env.Description,
 		EnvironmentName:   env.EnvironmentName,
 		SolutionStackName: env.SolutionStackName,
-		Version:           resource.MaybeID(env.VersionLabel),
+		Version:           versionLabel,
 		EndpointURL:       *env.EndpointURL,
 	}
 
 	// Next see if there are any configuration option settings and, if so, set them on the return.
 	confresp, err := p.ctx.ElasticBeanstalk().DescribeConfigurationSettings(
-		&awselasticbeanstalk.DescribeConfigurationSettingsInput{EnvironmentName: id.StringPtr()})
+		&awselasticbeanstalk.DescribeConfigurationSettingsInput{EnvironmentName: aws.String(envname)})
 	if err != nil {
 		return nil, err
 	}
@@ -179,8 +211,13 @@ func (p *environmentProvider) Update(ctx context.Context, id resource.ID,
 	if new.CNAMEPrefix != nil || new.Tags != nil || new.TemplateName != nil || new.Tier != nil {
 		return fmt.Errorf("Properties not yet supported: CNAMEPrefix, Tags, TemplateName, Tier")
 	}
+	appname, envname, err := arn.ParseResourceNamePair(id)
+	if err != nil {
+		return err
+	}
 	envUpdate := awselasticbeanstalk.UpdateEnvironmentInput{
-		EnvironmentName: id.StringPtr(),
+		ApplicationName: aws.String(appname),
+		EnvironmentName: aws.String(envname),
 	}
 	if diff.Changed(elasticbeanstalk.Environment_Description) {
 		envUpdate.Description = new.Description
@@ -213,7 +250,7 @@ func (p *environmentProvider) Update(ctx context.Context, id resource.ID,
 	}
 	succ, err := awsctx.RetryUntilLong(p.ctx, func() (bool, error) {
 		fmt.Printf("Waiting for environment %v to become Ready\n", id.String())
-		resp, err := p.getEnvironment(id.StringPtr())
+		resp, err := p.getEnvironment(appname, envname)
 		if err != nil {
 			return false, err
 		}
@@ -237,14 +274,18 @@ func (p *environmentProvider) Update(ctx context.Context, id resource.ID,
 // Delete tears down an existing resource with the given ID.  If it fails, the resource is assumed to still exist.
 func (p *environmentProvider) Delete(ctx context.Context, id resource.ID) error {
 	fmt.Printf("Deleting ElasticBeanstalk Environment '%v'\n", id)
+	appname, envname, err := arn.ParseResourceNamePair(id)
+	if err != nil {
+		return err
+	}
 	if _, err := p.ctx.ElasticBeanstalk().TerminateEnvironment(&awselasticbeanstalk.TerminateEnvironmentInput{
-		EnvironmentName: id.StringPtr(),
+		EnvironmentName: aws.String(envname),
 	}); err != nil {
 		return err
 	}
 	succ, err := awsctx.RetryUntilLong(p.ctx, func() (bool, error) {
 		fmt.Printf("Waiting for environment %v to become Terminated\n", id.String())
-		resp, err := p.getEnvironment(id.StringPtr())
+		resp, err := p.getEnvironment(appname, envname)
 		if err != nil {
 			return false, err
 		}
@@ -262,9 +303,11 @@ func (p *environmentProvider) Delete(ctx context.Context, id resource.ID) error 
 	return nil
 }
 
-func (p *environmentProvider) getEnvironment(name *string) (*awselasticbeanstalk.EnvironmentDescription, error) {
+func (p *environmentProvider) getEnvironment(
+	appname, name string) (*awselasticbeanstalk.EnvironmentDescription, error) {
 	resp, err := p.ctx.ElasticBeanstalk().DescribeEnvironments(&awselasticbeanstalk.DescribeEnvironmentsInput{
-		EnvironmentNames: []*string{name},
+		ApplicationName:  aws.String(appname),
+		EnvironmentNames: []*string{aws.String(name)},
 	})
 	if err != nil {
 		return nil, err

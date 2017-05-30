@@ -29,6 +29,7 @@ import (
 	"github.com/pulumi/lumi/sdk/go/pkg/lumirpc"
 	"golang.org/x/net/context"
 
+	"github.com/pulumi/lumi/lib/aws/provider/arn"
 	"github.com/pulumi/lumi/lib/aws/provider/awsctx"
 	"github.com/pulumi/lumi/lib/aws/rpc/ec2"
 )
@@ -73,12 +74,20 @@ func (p *sgProvider) Create(ctx context.Context, obj *ec2.SecurityGroup) (resour
 	} else {
 		name = *obj.GroupName
 	}
+	var vpcID *string
+	if obj.VPC != nil {
+		vpc, err := arn.ParseResourceName(*obj.VPC)
+		if err != nil {
+			return "", err
+		}
+		vpcID = &vpc
+	}
 
 	fmt.Printf("Creating EC2 security group with name '%v'\n", name)
 	create := &awsec2.CreateSecurityGroupInput{
 		GroupName:   aws.String(name),
 		Description: &obj.GroupDescription,
-		VpcId:       obj.VPC.StringPtr(),
+		VpcId:       vpcID,
 	}
 
 	// Now go ahead and perform the action.
@@ -88,7 +97,7 @@ func (p *sgProvider) Create(ctx context.Context, obj *ec2.SecurityGroup) (resour
 	}
 	contract.Assert(result != nil)
 	contract.Assert(result.GroupId != nil)
-	id := resource.ID(*result.GroupId)
+	id := *result.GroupId
 
 	// Don't proceed until the security group exists.
 	fmt.Printf("EC2 security group created: %v; waiting for it to become active\n", id)
@@ -116,7 +125,7 @@ func (p *sgProvider) Create(ctx context.Context, obj *ec2.SecurityGroup) (resour
 		}
 	}
 
-	return id, nil
+	return arn.NewEC2SecurityGroupID(p.ctx.Region(), p.ctx.AccountID(), id), nil
 }
 
 func createSecurityGroupRulesFromIPPermissions(perms []*awsec2.IpPermission) *[]ec2.SecurityGroupRule {
@@ -149,8 +158,12 @@ func createSecurityGroupRulesFromIPPermissions(perms []*awsec2.IpPermission) *[]
 
 // Get reads the instance state identified by ID, returning a populated resource object, or an error if not found.
 func (p *sgProvider) Get(ctx context.Context, id resource.ID) (*ec2.SecurityGroup, error) {
+	gid, err := arn.ParseResourceName(id)
+	if err != nil {
+		return nil, err
+	}
 	resp, err := p.ctx.EC2().DescribeSecurityGroups(&awsec2.DescribeSecurityGroupsInput{
-		GroupIds: []*string{id.StringPtr()},
+		GroupIds: []*string{aws.String(gid)},
 	})
 	if err != nil {
 		if awsctx.IsAWSError(err, "InvalidSecurityGroupID.NotFound") {
@@ -164,11 +177,18 @@ func (p *sgProvider) Get(ctx context.Context, id resource.ID) (*ec2.SecurityGrou
 	// If we found one, fetch all the requisite properties and store them on the output.
 	contract.Assert(len(resp.SecurityGroups) == 1)
 	grp := resp.SecurityGroups[0]
+
+	var vpcID *resource.ID
+	if grp.VpcId != nil {
+		vpc := arn.NewEC2VPCID(p.ctx.Region(), p.ctx.AccountID(), *grp.VpcId)
+		vpcID = &vpc
+	}
+
 	return &ec2.SecurityGroup{
 		GroupID:              *grp.GroupId,
 		GroupName:            grp.GroupName,
 		GroupDescription:     *grp.Description,
-		VPC:                  resource.MaybeID(grp.VpcId),
+		VPC:                  vpcID,
 		SecurityGroupEgress:  createSecurityGroupRulesFromIPPermissions(grp.IpPermissionsEgress),
 		SecurityGroupIngress: createSecurityGroupRulesFromIPPermissions(grp.IpPermissions),
 	}, nil
@@ -184,13 +204,18 @@ func (p *sgProvider) InspectChange(ctx context.Context, id resource.ID,
 // to new values.  The resource ID is returned and may be different if the resource had to be recreated.
 func (p *sgProvider) Update(ctx context.Context, id resource.ID,
 	old *ec2.SecurityGroup, new *ec2.SecurityGroup, diff *resource.ObjectDiff) error {
+	gid, err := arn.ParseResourceName(id)
+	if err != nil {
+		return err
+	}
+
 	// If only the ingress and/or egress rules changed, we can incrementally apply the updates.
 	gresses := []struct {
 		key    resource.PropertyKey
 		olds   *[]ec2.SecurityGroupRule
 		news   *[]ec2.SecurityGroupRule
-		create func(resource.ID, ec2.SecurityGroupRule) error
-		delete func(resource.ID, ec2.SecurityGroupRule) error
+		create func(string, ec2.SecurityGroupRule) error
+		delete func(string, ec2.SecurityGroupRule) error
 	}{
 		{
 			ec2.SecurityGroup_SecurityGroupIngress,
@@ -260,12 +285,12 @@ func (p *sgProvider) Update(ctx context.Context, id resource.ID,
 
 			// And now actually perform the create and delete operations.
 			for _, delete := range deletes {
-				if err := p.deleteSecurityGroupIngressRule(id, delete); err != nil {
+				if err := p.deleteSecurityGroupIngressRule(gid, delete); err != nil {
 					return err
 				}
 			}
 			for _, create := range creates {
-				if err := p.createSecurityGroupIngressRule(id, create); err != nil {
+				if err := p.createSecurityGroupIngressRule(gid, create); err != nil {
 					return err
 				}
 			}
@@ -277,9 +302,14 @@ func (p *sgProvider) Update(ctx context.Context, id resource.ID,
 
 // Delete tears down an existing resource with the given ID.  If it fails, the resource is assumed to still exist.
 func (p *sgProvider) Delete(ctx context.Context, id resource.ID) error {
+	gid, err := arn.ParseResourceName(id)
+	if err != nil {
+		return err
+	}
+
 	// First, perform the deletion.
 	fmt.Printf("Terminating EC2 SecurityGroup '%v'\n", id)
-	delete := &awsec2.DeleteSecurityGroupInput{GroupId: id.StringPtr()}
+	delete := &awsec2.DeleteSecurityGroupInput{GroupId: aws.String(gid)}
 	if _, err := p.ctx.EC2().DeleteSecurityGroup(delete); err != nil {
 		return err
 	}
@@ -287,7 +317,7 @@ func (p *sgProvider) Delete(ctx context.Context, id resource.ID) error {
 	fmt.Printf("EC2 Security Group delete request submitted; waiting for it to terminate\n")
 
 	// Don't finish the operation until the security group exists.
-	return p.waitForSecurityGroupState(id, false)
+	return p.waitForSecurityGroupState(gid, false)
 }
 
 func (p *sgProvider) crudSecurityGroupRule(prefix, kind string, rule ec2.SecurityGroupRule,
@@ -311,10 +341,10 @@ func (p *sgProvider) crudSecurityGroupRule(prefix, kind string, rule ec2.Securit
 	return action(fromPort, toPort)
 }
 
-func (p *sgProvider) createSecurityGroupIngressRule(groupID resource.ID, rule ec2.SecurityGroupRule) error {
+func (p *sgProvider) createSecurityGroupIngressRule(groupID string, rule ec2.SecurityGroupRule) error {
 	return p.crudSecurityGroupRule("Authorizing", "ingress (inbound)", rule, func(from *int64, to *int64) error {
 		_, err := p.ctx.EC2().AuthorizeSecurityGroupIngress(&awsec2.AuthorizeSecurityGroupIngressInput{
-			GroupId:    groupID.StringPtr(),
+			GroupId:    aws.String(groupID),
 			IpProtocol: aws.String(rule.IPProtocol),
 			CidrIp:     rule.CIDRIP,
 			FromPort:   from,
@@ -324,10 +354,10 @@ func (p *sgProvider) createSecurityGroupIngressRule(groupID resource.ID, rule ec
 	})
 }
 
-func (p *sgProvider) deleteSecurityGroupIngressRule(groupID resource.ID, rule ec2.SecurityGroupRule) error {
+func (p *sgProvider) deleteSecurityGroupIngressRule(groupID string, rule ec2.SecurityGroupRule) error {
 	return p.crudSecurityGroupRule("Revoking", "ingress (inbound)", rule, func(from *int64, to *int64) error {
 		_, err := p.ctx.EC2().RevokeSecurityGroupIngress(&awsec2.RevokeSecurityGroupIngressInput{
-			GroupId:    groupID.StringPtr(),
+			GroupId:    aws.String(groupID),
 			IpProtocol: aws.String(rule.IPProtocol),
 			CidrIp:     rule.CIDRIP,
 			FromPort:   from,
@@ -337,10 +367,10 @@ func (p *sgProvider) deleteSecurityGroupIngressRule(groupID resource.ID, rule ec
 	})
 }
 
-func (p *sgProvider) createSecurityGroupEgressRule(groupID resource.ID, rule ec2.SecurityGroupRule) error {
+func (p *sgProvider) createSecurityGroupEgressRule(groupID string, rule ec2.SecurityGroupRule) error {
 	return p.crudSecurityGroupRule("Authorizing", "egress (outbound)", rule, func(from *int64, to *int64) error {
 		_, err := p.ctx.EC2().AuthorizeSecurityGroupEgress(&awsec2.AuthorizeSecurityGroupEgressInput{
-			GroupId:    groupID.StringPtr(),
+			GroupId:    aws.String(groupID),
 			IpProtocol: aws.String(rule.IPProtocol),
 			CidrIp:     rule.CIDRIP,
 			FromPort:   from,
@@ -350,10 +380,10 @@ func (p *sgProvider) createSecurityGroupEgressRule(groupID resource.ID, rule ec2
 	})
 }
 
-func (p *sgProvider) deleteSecurityGroupEgressRule(groupID resource.ID, rule ec2.SecurityGroupRule) error {
+func (p *sgProvider) deleteSecurityGroupEgressRule(groupID string, rule ec2.SecurityGroupRule) error {
 	return p.crudSecurityGroupRule("Revoking", "egress (outbound)", rule, func(from *int64, to *int64) error {
 		_, err := p.ctx.EC2().RevokeSecurityGroupEgress(&awsec2.RevokeSecurityGroupEgressInput{
-			GroupId:    groupID.StringPtr(),
+			GroupId:    aws.String(groupID),
 			IpProtocol: aws.String(rule.IPProtocol),
 			CidrIp:     rule.CIDRIP,
 			FromPort:   from,
@@ -363,11 +393,11 @@ func (p *sgProvider) deleteSecurityGroupEgressRule(groupID resource.ID, rule ec2
 	})
 }
 
-func (p *sgProvider) waitForSecurityGroupState(id resource.ID, exist bool) error {
+func (p *sgProvider) waitForSecurityGroupState(id string, exist bool) error {
 	succ, err := awsctx.RetryUntil(
 		p.ctx,
 		func() (bool, error) {
-			req := &awsec2.DescribeSecurityGroupsInput{GroupIds: []*string{id.StringPtr()}}
+			req := &awsec2.DescribeSecurityGroupsInput{GroupIds: []*string{aws.String(id)}}
 			missing := true
 			res, err := p.ctx.EC2().DescribeSecurityGroups(req)
 			if err != nil {
