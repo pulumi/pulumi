@@ -16,5 +16,3 @@
 export * from "./function";
 export * from "./permission";
 
-export * from "./functionx";
-
