@@ -36,6 +36,10 @@ type PropertyMap map[PropertyKey]PropertyValue
 // NewPropertyMap turns a struct into a property map, using any JSON tags inside to determine naming.
 func NewPropertyMap(s interface{}) PropertyMap {
 	m := structs.Map(s)
+	return NewPropertyMapFromMap(m)
+}
+
+func NewPropertyMapFromMap(m map[string]interface{}) PropertyMap {
 	result := make(PropertyMap)
 	for k, v := range m {
 		result[PropertyKey(k)] = NewPropertyValue(v)
@@ -381,6 +385,13 @@ func NewPropertyValue(v interface{}) PropertyValue {
 		return NewPropertyValue(rv.Elem().Interface())
 	case reflect.Struct:
 		obj := NewPropertyMap(rv.Interface())
+		return NewPropertyObject(obj)
+	case reflect.Map:
+		m := map[string]interface{}{}
+		for _, kv := range rv.MapKeys() {
+			m[kv.String()] = rv.MapIndex(kv).Interface()
+		}
+		obj := NewPropertyMapFromMap(m)
 		return NewPropertyObject(obj)
 	default:
 		contract.Failf("Unrecognized value type: %v", rk)
