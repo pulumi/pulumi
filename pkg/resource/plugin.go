@@ -27,6 +27,7 @@ import (
 	"google.golang.org/grpc"
 
 	"github.com/pulumi/lumi/pkg/diag"
+	"github.com/pulumi/lumi/pkg/util/cmdutil"
 	"github.com/pulumi/lumi/pkg/util/contract"
 )
 
@@ -128,7 +129,16 @@ func newPlugin(ctx *Context, bins []string, prefix string) (*plugin, error) {
 }
 
 func execPlugin(bin string) (*plugin, error) {
-	cmd := exec.Command(bin)
+	// Flow the logging information if set.
+	var args []string
+	if cmdutil.LogToStderr {
+		args = append(args, "--logtostderr")
+	}
+	if cmdutil.Verbose > 0 {
+		args = append(args, "-v="+strconv.Itoa(cmdutil.Verbose))
+	}
+
+	cmd := exec.Command(bin, args...)
 	in, _ := cmd.StdinPipe()
 	out, _ := cmd.StdoutPipe()
 	err, _ := cmd.StderrPipe()

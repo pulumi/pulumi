@@ -20,8 +20,15 @@ import (
 	"strconv"
 )
 
+var LogToStderr = false // true if logging is being redirected to stderr.
+var Verbose = 0         // >0 if verbose logging is enabled at a particular level.
+
 // InitLogging ensures the glog library has been initialized with the given settings.
 func InitLogging(logToStderr bool, verbose int) {
+	// Remember the settings in case someone inquires.
+	LogToStderr = logToStderr
+	Verbose = verbose
+
 	// Ensure the glog library has been initialized, including calling flag.Parse beforehand.  Unfortunately,
 	// this is the only way to control the way glog runs.  That includes poking around at flags below.
 	flag.Parse()
