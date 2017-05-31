@@ -27,8 +27,7 @@ import (
 
 func main() {
 	// Initialize loggers before going any further.
-	// TODO: consider parsing flags and letting the Lumi harness propagate them.
-	cmdutil.InitLogging(false, 0)
+	cmdutil.InitLogging(false, 0, false)
 
 	// Fire up a gRPC server, letting the kernel choose a free port for us.
 	port, done, err := rpcutil.Serve(0, []func(*grpc.Server) error{

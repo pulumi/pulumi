@@ -411,6 +411,7 @@ func printStep(b *bytes.Buffer, step resource.Step, summary bool, indent string)
 	// Next print the resource URN, properties, etc.
 	printResourceHeader(b, step.Old(), step.New(), indent)
 	b.WriteString(step.Op().Suffix())
+
 	var replaces []resource.PropertyKey
 	if step.Old() != nil {
 		m := step.Old().URN()
@@ -467,27 +468,59 @@ func printResourceProperties(b *bytes.Buffer, old resource.Resource, new resourc
 	}
 }
 
-func printObject(b *bytes.Buffer, props resource.PropertyMap, indent string) {
-	// Compute the maximum with of property keys so we can justify everything.
-	keys := resource.StablePropertyKeys(props)
+func maxKey(keys []resource.PropertyKey) int {
 	maxkey := 0
 	for _, k := range keys {
 		if len(k) > maxkey {
 			maxkey = len(k)
 		}
 	}
+	return maxkey
+}
+
+func printObject(b *bytes.Buffer, props resource.PropertyMap, indent string) {
+	// Compute the maximum with of property keys so we can justify everything.
+	keys := resource.StablePropertyKeys(props)
+	maxkey := maxKey(keys)
 
 	// Now print out the values intelligently based on the type.
 	for _, k := range keys {
-		if v := props[k]; shouldPrintPropertyValue(v) {
+		if v := props[k]; shouldPrintPropertyValue(v, false) {
 			printPropertyTitle(b, k, maxkey, indent)
 			printPropertyValue(b, v, indent)
 		}
 	}
 }
 
-func shouldPrintPropertyValue(v resource.PropertyValue) bool {
-	return !v.IsNull() // by default, don't print nulls (they just clutter up the output)
+func printResourceOutputProperties(b *bytes.Buffer, step resource.Step, indent string) {
+	indent += detailsIndent
+	b.WriteString(step.Op().Color())
+	b.WriteString(step.Op().Suffix())
+
+	olds := step.Old().Properties()
+	news := step.New().Properties()
+	keys := resource.StablePropertyKeys(olds)
+	maxkey := maxKey(keys)
+	for _, k := range keys {
+		if v := olds[k]; v.IsOutput() && shouldPrintPropertyValue(v, true) {
+			printPropertyTitle(b, k, maxkey, indent)
+			printPropertyValue(b, news[k], indent)
+		}
+	}
+
+	b.WriteString(colors.Reset)
+}
+
+func shouldPrintPropertyValue(v resource.PropertyValue, outs bool) bool {
+	if v.IsNull() {
+		// by default, don't print nulls (they just clutter up the output)
+		return false
+	}
+	if v.IsOutput() && !outs {
+		// also don't show output properties until the outs parameter tells us to.
+		return false
+	}
+	return true
 }
 
 func printPropertyTitle(b *bytes.Buffer, k resource.PropertyKey, align int, indent string) {
@@ -550,12 +583,7 @@ func printObjectDiff(b *bytes.Buffer, diff resource.ObjectDiff,
 
 	// Compute the maximum with of property keys so we can justify everything.
 	keys := diff.Keys()
-	maxkey := 0
-	for _, k := range keys {
-		if len(k) > maxkey {
-			maxkey = len(k)
-		}
-	}
+	maxkey := maxKey(keys)
 
 	// If a list of what causes a resource to get replaced exist, create a handy map.
 	var replaceMap map[resource.PropertyKey]bool
@@ -570,14 +598,14 @@ func printObjectDiff(b *bytes.Buffer, diff resource.ObjectDiff,
 	for _, k := range keys {
 		title := func(id string) { printPropertyTitle(b, k, maxkey, id) }
 		if add, isadd := diff.Adds[k]; isadd {
-			if shouldPrintPropertyValue(add) {
+			if shouldPrintPropertyValue(add, false) {
 				b.WriteString(colors.SpecAdded)
 				title(addIndent(indent))
 				printPropertyValue(b, add, addIndent(indent))
 				b.WriteString(colors.Reset)
 			}
 		} else if delete, isdelete := diff.Deletes[k]; isdelete {
-			if shouldPrintPropertyValue(delete) {
+			if shouldPrintPropertyValue(delete, false) {
 				b.WriteString(colors.SpecDeleted)
 				title(deleteIndent(indent))
 				printPropertyValue(b, delete, deleteIndent(indent))
@@ -588,7 +616,7 @@ func printObjectDiff(b *bytes.Buffer, diff resource.ObjectDiff,
 				causedReplace = replaceMap[k]
 			}
 			printPropertyValueDiff(b, title, update, causedReplace, indent)
-		} else if same := diff.Sames[k]; shouldPrintPropertyValue(same) {
+		} else if same := diff.Sames[k]; shouldPrintPropertyValue(same, false) {
 			title(indent)
 			printPropertyValue(b, diff.Sames[k], indent)
 		}
@@ -640,7 +668,7 @@ func printPropertyValueDiff(b *bytes.Buffer, title func(string), diff resource.V
 	} else {
 		// If we ended up here, the two values either differ by type, or they have different primitive values.  We will
 		// simply emit a deletion line followed by an addition line.
-		if shouldPrintPropertyValue(diff.Old) {
+		if shouldPrintPropertyValue(diff.Old, false) {
 			var color string
 			if causedReplace {
 				color = resource.OpDelete.Color() // this property triggered replacement; color as a delete
@@ -652,7 +680,7 @@ func printPropertyValueDiff(b *bytes.Buffer, title func(string), diff resource.V
 			printPropertyValue(b, diff.Old, deleteIndent(indent))
 			b.WriteString(colors.Reset)
 		}
-		if shouldPrintPropertyValue(diff.New) {
+		if shouldPrintPropertyValue(diff.New, false) {
 			var color string
 			if causedReplace {
 				color = resource.OpCreate.Color() // this property triggered replacement; color as a create

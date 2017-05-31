@@ -206,6 +206,13 @@ func (prog *deployProgress) After(step resource.Step, state resource.State, err 
 		// Increment the counters.
 		prog.Steps++
 		prog.Ops[step.Op()]++
+
+		// Print out any output properties that got created as a result of this operation.
+		if step.Op() == resource.OpCreate {
+			var b bytes.Buffer
+			printResourceOutputProperties(&b, step, "")
+			fmt.Printf(colors.Colorize(&b))
+		}
 	} else {
 		// Issue a true, bonafide error.
 		prog.Ctx.Diag.Errorf(errors.ErrorPlanApplyFailed, err)

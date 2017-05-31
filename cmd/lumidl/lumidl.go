@@ -47,7 +47,7 @@ func NewIDLCCmd() *cobra.Command {
 			"and pkg-base-idl and --pkg-base-rpc may be used to override the default inferred Go\n" +
 			"package names (which, by default, are based on your GOPATH).",
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
-			cmdutil.InitLogging(logToStderr, verbose)
+			cmdutil.InitLogging(logToStderr, verbose, true)
 		},
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			if len(args) == 0 {
