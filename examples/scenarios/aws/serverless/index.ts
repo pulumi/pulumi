@@ -85,5 +85,3 @@ let api = new aws.serverless.API("frontend", "prod", [
         lambda: lambda,
     },
 ]) 
-
-lumi.runtime.printf(aws.config.region)

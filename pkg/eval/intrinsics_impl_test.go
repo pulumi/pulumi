@@ -44,7 +44,7 @@ func newTestEval() (binder.Binder, Interpreter) {
 	return b, New(b.Ctx(), nil)
 }
 
-var isFunctionIntrin = tokens.ModuleMember("lumi:runtime/dynamic:isFunction")
+var isFunctionIntrin = tokens.ModuleMember("lumi:runtime/index:isFunction")
 
 func makeIsFunctionExprAST(dynamic bool) ast.Expression {
 	if dynamic {
@@ -140,10 +140,10 @@ func makeTestIsFunctionAST(dynamic bool, realFunc bool) *pack.Package {
 					},
 				},
 			},
-			tokens.ModuleName("runtime/dynamic"): &ast.Module{
+			tokens.ModuleName("runtime/index"): &ast.Module{
 				DefinitionNode: ast.DefinitionNode{
 					Name: &ast.Identifier{
-						Ident: tokens.Name("runtime/dynamic"),
+						Ident: tokens.Name("runtime/index"),
 					},
 				},
 				Exports: &ast.ModuleExports{
@@ -154,7 +154,7 @@ func makeTestIsFunctionAST(dynamic bool, realFunc bool) *pack.Package {
 							},
 						},
 						Referent: &ast.Token{
-							Tok: tokens.Token("lumi:runtime/dynamic:isFunction"),
+							Tok: tokens.Token("lumi:runtime/index:isFunction"),
 						},
 					},
 				},
@@ -204,7 +204,7 @@ func makeTestIsFunctionAST(dynamic bool, realFunc bool) *pack.Package {
 	}
 }
 
-// TestIsFunction verifies the `lumi:runtime/dynamic:isFunction` intrinsic.
+// TestIsFunction verifies the `lumi:runtime/index:isFunction` intrinsic.
 func TestIsFunction(t *testing.T) {
 	// variant #1: invoke the function statically, passing a null literal; expect a false return.
 	{

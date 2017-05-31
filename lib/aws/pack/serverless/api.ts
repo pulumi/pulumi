@@ -11,23 +11,21 @@ export interface Route {
 
 interface SwaggerSpec {
     swagger: string;
-    info: {title: string; };
-    schemes: string[];
-    paths: { [path: string]: SwaggerRoute; }
+    info: SwaggerInfo;
+    paths: { [path: string]: { [method: string]: SwaggerOperation; }; };
 }
 
-interface SwaggerRoute {
-    "x-amazon-apigateway-any-method": {
-        produces: string[];
-        parameters: SwaggerParameter[];
-        "x-amazon-apigateway-integration": {
-            responses: { [name: string]: SwaggerResponse; };
-            uri: string;
-            passthroughBehavior: string;
-            httpMethod: string;
-            contentHandling: string;
-            type: string;
-        }
+interface SwaggerInfo {
+    title: string;
+    version: string;
+}
+
+interface SwaggerOperation {
+    "x-amazon-apigateway-integration": {
+        uri: string;
+        passthroughBehavior?: string;
+        httpMethod: string;
+        type: string;
     }
 }
 
@@ -45,39 +43,18 @@ interface SwaggerResponse {
 function createBaseSpec(apiName: string): SwaggerSpec {
     return {
         swagger: "2.0",
-        info: { title: apiName },
-        schemes: ["https"],
+        info: { title: apiName, version: "1.0" },
         paths: {}
     }
 }
 
-function createPathSpec(lambdaARN: string): SwaggerRoute {
+function createPathSpec(lambdaARN: string): SwaggerOperation {
     return {
-        "x-amazon-apigateway-any-method": {
-            "produces": [
-                "application/json"
-            ],
-            "parameters": [
-                {
-                    "name": "proxy",
-                    "in": "path",
-                    "required": true,
-                    "type": "string"
-                }
-            ],
-            "x-amazon-apigateway-integration": {
-                "responses": {
-                    "default": {
-                        "statusCode": "200"
-                    }
-                },
-                // TODO: Pass `region`
-                "uri": "arn:aws:apigateway:" + "us-east-1" + ":lambda:path/2015-03-31/functions/" + lambdaARN + "/invocations",
-                "passthroughBehavior": "when_no_match",
-                "httpMethod": "POST",
-                "contentHandling": "CONVERT_TO_TEXT",
-                "type": "aws_proxy"
-            }
+        "x-amazon-apigateway-integration": {
+            uri: "arn:aws:apigateway:" + region + ":lambda:path/2015-03-31/functions/" + lambdaARN + "/invocations",
+            passthroughBehavior: "when_no_match",
+            httpMethod: "POST",
+            type: "aws_proxy"
         }
     }
 }
@@ -97,8 +74,31 @@ export class API {
         }
 
         let swaggerSpec = createBaseSpec(apiName);
-        for(let i = 0; i < (<any>routes).length; i++) {
-            swaggerSpec.paths[routes[i].path] = createPathSpec(/*routes[i].lambda.lambda.arn*/ "arn:aws:lambda:us-east-1:490047557317:function:webapi-test-func");
+        for (let i = 0; i < (<any>routes).length; i++) {
+            let route = routes[i];
+            if (swaggerSpec.paths[route.path] === undefined) {
+                swaggerSpec.paths[route.path] = {}
+            }
+            let swaggerMethod: string;
+            switch ((<any>route.method).toLowerCase()) {
+                case "get":
+                case "put":
+                case "post":
+                case "delete":
+                case "options":
+                case "head":
+                case "patch":
+                    swaggerMethod = (<any>route.method).toLowerCase()
+                    break;
+                case "any":
+                    swaggerMethod = "x-amazon-apigateway-any-method"
+                    break;
+                default:
+                    throw new Error("Method not supported: " + route.method);
+            }
+            // TODO[pulumi/lumi#90]: Once we suport output properties, we can use `route.lambda.lambda.arn` as input 
+            // to constructing this apigateway lambda invocation uri.
+            swaggerSpec.paths[route.path][swaggerMethod] = createPathSpec("arn:aws:lambda:us-east-1:490047557317:function:webapi-test-func");
         }
 
         this.api = new RestAPI(apiName, {
@@ -107,7 +107,7 @@ export class API {
 
         let deploymentId = sha1hash(jsonStringify(swaggerSpec));
 
-        this.deployment = new Deployment(apiName+ "_" + deploymentId, {
+        this.deployment = new Deployment(apiName + "_" + deploymentId, {
             restAPI: this.api,
         });
 

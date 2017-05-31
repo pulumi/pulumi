@@ -43,8 +43,10 @@ func init() {
 
 		// These intrinsics are built-ins with no Lumi function exposed to users.
 		// They are used as the implementation of core object APIs in the runtime.
-		"lumi:builtin/array:getLength": arrayGetLength,
-		"lumi:builtin/array:setLength": arraySetLength,
+		"lumi:builtin/array:getLength":    arrayGetLength,
+		"lumi:builtin/array:setLength":    arraySetLength,
+		"lumi:builtin/string:getLength":   stringGetLength,
+		"lumi:builtin/string:toLowerCase": stringToLowerCase,
 	}
 }
 

@@ -22,6 +22,8 @@ import (
 	"sort"
 	"strconv"
 
+	"strings"
+
 	"github.com/pulumi/lumi/pkg/compiler/ast"
 	"github.com/pulumi/lumi/pkg/compiler/symbols"
 	"github.com/pulumi/lumi/pkg/compiler/types"
@@ -177,6 +179,31 @@ func arraySetLength(intrin *rt.Intrinsic, e *evaluator, this *rt.Object, args []
 	*arr = newArr
 
 	return rt.NewReturnUnwind(nil)
+}
+
+func stringGetLength(intrin *rt.Intrinsic, e *evaluator, this *rt.Object, args []*rt.Object) *rt.Unwind {
+	if this == nil {
+		return e.NewException(intrin.Tree(), "Expected receiver to be non-null")
+	}
+	if !this.IsString() {
+		return e.NewException(intrin.Tree(), "Expected receiver to be an string value")
+	}
+	str := this.StringValue()
+
+	return rt.NewReturnUnwind(e.alloc.NewNumber(intrin.Tree(), float64(len(str))))
+}
+
+func stringToLowerCase(intrin *rt.Intrinsic, e *evaluator, this *rt.Object, args []*rt.Object) *rt.Unwind {
+	if this == nil {
+		return e.NewException(intrin.Tree(), "Expected receiver to be non-null")
+	}
+	if !this.IsString() {
+		return e.NewException(intrin.Tree(), "Expected receiver to be a string value")
+	}
+	str := this.StringValue()
+	out := strings.ToLower(str)
+
+	return rt.NewReturnUnwind(e.alloc.NewString(intrin.Tree(), out))
 }
 
 type jsonSerializer struct {
