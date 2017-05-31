@@ -126,10 +126,11 @@ func (p *instanceProvider) Create(ctx context.Context, obj *ec2.Instance) (resou
 
 // Get reads the instance state identified by ID, returning a populated resource object, or an nil if not found.
 func (p *instanceProvider) Get(ctx context.Context, id resource.ID) (*ec2.Instance, error) {
-	iid, err := arn.ParseResourceName(id)
+	idarn, err := arn.ARN(id).Parse()
 	if err != nil {
 		return nil, err
 	}
+	iid := idarn.ResourceName()
 	resp, err := p.ctx.EC2().DescribeInstances(
 		&awsec2.DescribeInstancesInput{InstanceIds: []*string{aws.String(iid)}})
 	if err != nil {
@@ -151,8 +152,7 @@ func (p *instanceProvider) Get(ctx context.Context, id resource.ID) (*ec2.Instan
 	if len(inst.SecurityGroups) > 0 {
 		var ids []resource.ID
 		for _, group := range inst.SecurityGroups {
-			// TODO: security groups in a custom VPC should get the GroupName, not the GroupId.
-			ids = append(ids, resource.ID(*group.GroupId))
+			ids = append(ids, arn.NewEC2SecurityGroupID(idarn.Region, idarn.AccountID, *group.GroupId))
 		}
 		secgrpIDs = &ids
 	}

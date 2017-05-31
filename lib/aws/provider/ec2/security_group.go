@@ -329,11 +329,11 @@ func (p *sgProvider) crudSecurityGroupRule(prefix, kind string, rule ec2.Securit
 	}
 	fromPort := convutil.Float64PToInt64P(rule.FromPort)
 	if fromPort != nil {
-		fmt.Printf(", FromPort=%v", fromPort)
+		fmt.Printf(", FromPort=%v", *fromPort)
 	}
 	toPort := convutil.Float64PToInt64P(rule.ToPort)
 	if toPort != nil {
-		fmt.Printf(", ToPort=%v", toPort)
+		fmt.Printf(", ToPort=%v", *toPort)
 	}
 	fmt.Printf("\n")
 
