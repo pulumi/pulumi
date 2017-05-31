@@ -171,7 +171,7 @@ func (p *QueueProvider) Delete(
 func (p *QueueProvider) Unmarshal(
     v *pbstruct.Struct) (*Queue, resource.PropertyMap, mapper.DecodeError) {
     var obj Queue
-    props := resource.UnmarshalProperties(nil, v, resource.MarshalOptions{})
+    props := resource.UnmarshalProperties(nil, v, resource.MarshalOptions{RawResources: true})
     result := mapper.MapIU(props.Mappable(), &obj)
     return &obj, props, result
 }

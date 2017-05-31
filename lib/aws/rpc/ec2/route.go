@@ -177,7 +177,7 @@ func (p *RouteProvider) Delete(
 func (p *RouteProvider) Unmarshal(
     v *pbstruct.Struct) (*Route, resource.PropertyMap, mapper.DecodeError) {
     var obj Route
-    props := resource.UnmarshalProperties(nil, v, resource.MarshalOptions{})
+    props := resource.UnmarshalProperties(nil, v, resource.MarshalOptions{RawResources: true})
     result := mapper.MapIU(props.Mappable(), &obj)
     return &obj, props, result
 }

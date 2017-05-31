@@ -126,6 +126,9 @@ func (p *ApplicationVersionProvider) InspectChange(
         if diff.Changed("application") {
             replaces = append(replaces, "application")
         }
+        if diff.Changed("versionLabel") {
+            replaces = append(replaces, "versionLabel")
+        }
         if diff.Changed("sourceBundle") {
             replaces = append(replaces, "sourceBundle")
         }
@@ -171,7 +174,7 @@ func (p *ApplicationVersionProvider) Delete(
 func (p *ApplicationVersionProvider) Unmarshal(
     v *pbstruct.Struct) (*ApplicationVersion, resource.PropertyMap, mapper.DecodeError) {
     var obj ApplicationVersion
-    props := resource.UnmarshalProperties(nil, v, resource.MarshalOptions{})
+    props := resource.UnmarshalProperties(nil, v, resource.MarshalOptions{RawResources: true})
     result := mapper.MapIU(props.Mappable(), &obj)
     return &obj, props, result
 }
@@ -182,6 +185,7 @@ func (p *ApplicationVersionProvider) Unmarshal(
 type ApplicationVersion struct {
     Name string `json:"name"`
     Application resource.ID `json:"application"`
+    VersionLabel *string `json:"versionLabel,omitempty"`
     Description *string `json:"description,omitempty"`
     SourceBundle resource.ID `json:"sourceBundle"`
 }
@@ -190,6 +194,7 @@ type ApplicationVersion struct {
 const (
     ApplicationVersion_Name = "name"
     ApplicationVersion_Application = "application"
+    ApplicationVersion_VersionLabel = "versionLabel"
     ApplicationVersion_Description = "description"
     ApplicationVersion_SourceBundle = "sourceBundle"
 )

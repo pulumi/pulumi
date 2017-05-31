@@ -174,7 +174,7 @@ func (p *SecurityGroupProvider) Delete(
 func (p *SecurityGroupProvider) Unmarshal(
     v *pbstruct.Struct) (*SecurityGroup, resource.PropertyMap, mapper.DecodeError) {
     var obj SecurityGroup
-    props := resource.UnmarshalProperties(nil, v, resource.MarshalOptions{})
+    props := resource.UnmarshalProperties(nil, v, resource.MarshalOptions{RawResources: true})
     result := mapper.MapIU(props.Mappable(), &obj)
     return &obj, props, result
 }

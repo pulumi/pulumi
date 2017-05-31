@@ -165,7 +165,7 @@ func (p *InternetGatewayProvider) Delete(
 func (p *InternetGatewayProvider) Unmarshal(
     v *pbstruct.Struct) (*InternetGateway, resource.PropertyMap, mapper.DecodeError) {
     var obj InternetGateway
-    props := resource.UnmarshalProperties(nil, v, resource.MarshalOptions{})
+    props := resource.UnmarshalProperties(nil, v, resource.MarshalOptions{RawResources: true})
     result := mapper.MapIU(props.Mappable(), &obj)
     return &obj, props, result
 }

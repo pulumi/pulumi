@@ -165,7 +165,7 @@ func (p *AccountProvider) Delete(
 func (p *AccountProvider) Unmarshal(
     v *pbstruct.Struct) (*Account, resource.PropertyMap, mapper.DecodeError) {
     var obj Account
-    props := resource.UnmarshalProperties(nil, v, resource.MarshalOptions{})
+    props := resource.UnmarshalProperties(nil, v, resource.MarshalOptions{RawResources: true})
     result := mapper.MapIU(props.Mappable(), &obj)
     return &obj, props, result
 }

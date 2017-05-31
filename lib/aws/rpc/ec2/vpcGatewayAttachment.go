@@ -171,7 +171,7 @@ func (p *VPCGatewayAttachmentProvider) Delete(
 func (p *VPCGatewayAttachmentProvider) Unmarshal(
     v *pbstruct.Struct) (*VPCGatewayAttachment, resource.PropertyMap, mapper.DecodeError) {
     var obj VPCGatewayAttachment
-    props := resource.UnmarshalProperties(nil, v, resource.MarshalOptions{})
+    props := resource.UnmarshalProperties(nil, v, resource.MarshalOptions{RawResources: true})
     result := mapper.MapIU(props.Mappable(), &obj)
     return &obj, props, result
 }

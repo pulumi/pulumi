@@ -106,7 +106,23 @@ func (p *buckProvider) Create(ctx context.Context, obj *s3.Bucket) (resource.ID,
 
 // Get reads the instance state identified by ID, returning a populated resource object, or an error if not found.
 func (p *buckProvider) Get(ctx context.Context, id resource.ID) (*s3.Bucket, error) {
-	return nil, errors.New("Not yet implemented")
+	name, err := arn.ParseResourceName(id)
+	if err != nil {
+		return nil, err
+	}
+
+	if _, err := p.ctx.S3().GetBucketAcl(&awss3.GetBucketAclInput{Bucket: aws.String(name)}); err != nil {
+		if awsctx.IsAWSError(err, "NotFound", "NoSuchBucket") {
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	// Note that the canned ACL cannot be recreated from the GetBucketAclInput call, because it will have been expanded
+	// out into its constituent grants/owner parts; so we just retain the existing value on the receiver's side.
+	return &s3.Bucket{
+		BucketName: &name,
+	}, nil
 }
 
 // InspectChange checks what impacts a hypothetical update will have on the resource's properties.

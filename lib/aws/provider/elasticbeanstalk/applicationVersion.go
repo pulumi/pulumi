@@ -19,11 +19,9 @@ import (
 	"crypto/sha1"
 	"fmt"
 	"reflect"
-	"strings"
 
 	"github.com/aws/aws-sdk-go/aws"
 	awselasticbeanstalk "github.com/aws/aws-sdk-go/service/elasticbeanstalk"
-	"github.com/pkg/errors"
 	"github.com/pulumi/lumi/pkg/resource"
 	"github.com/pulumi/lumi/pkg/util/contract"
 	"github.com/pulumi/lumi/pkg/util/mapper"
@@ -70,33 +68,70 @@ func (p *applicationVersionProvider) Create(ctx context.Context,
 	if err != nil {
 		return "", err
 	}
-	versionLabel := resource.NewUniqueHex(obj.Name+"-", maxApplicationName, sha1.Size)
 
-	s3ObjectID := obj.SourceBundle.String()
-	s3Parts := strings.SplitN(s3ObjectID, "/", 2)
-	contract.Assertf(len(s3Parts) == 2, "Expected S3 Object resource ID to be of the form <bucket>/<key>")
-	create := &awselasticbeanstalk.CreateApplicationVersionInput{
-		ApplicationName: aws.String(appname),
-		Description:     obj.Description,
-		SourceBundle: &awselasticbeanstalk.S3Location{
-			S3Bucket: aws.String(s3Parts[0]),
-			S3Key:    aws.String(s3Parts[1]),
-		},
-		VersionLabel: aws.String(versionLabel),
+	// Autogenerate a version label that is unique.
+	var versionLabel string
+	if obj.VersionLabel != nil {
+		versionLabel = *obj.VersionLabel
+	} else {
+		versionLabel = resource.NewUniqueHex(obj.Name+"-", maxApplicationName, sha1.Size)
 	}
-	fmt.Printf("Creating ElasticBeanstalk ApplicationVersion '%v' with version label '%v'\n", obj.Name, versionLabel)
-	if _, err := p.ctx.ElasticBeanstalk().CreateApplicationVersion(create); err != nil {
+
+	// Parse out the S3 bucket and key components so we can create the source bundle.
+	s3buck, s3key, err := arn.ParseResourceNamePair(obj.SourceBundle)
+	if err != nil {
 		return "", err
 	}
+
+	fmt.Printf("Creating ElasticBeanstalk ApplicationVersion '%v' with version label '%v'\n", obj.Name, versionLabel)
+	if _, err := p.ctx.ElasticBeanstalk().CreateApplicationVersion(
+		&awselasticbeanstalk.CreateApplicationVersionInput{
+			ApplicationName: aws.String(appname),
+			Description:     obj.Description,
+			SourceBundle: &awselasticbeanstalk.S3Location{
+				S3Bucket: aws.String(s3buck),
+				S3Key:    aws.String(s3key),
+			},
+			VersionLabel: aws.String(versionLabel),
+		},
+	); err != nil {
+		return "", err
+	}
+
 	return arn.NewElasticBeanstalkApplicationVersionID(p.ctx.Region(), p.ctx.AccountID(), appname, versionLabel), nil
 }
 
 // Read reads the instance state identified by ID, returning a populated resource object, or an error if not found.
 func (p *applicationVersionProvider) Get(ctx context.Context,
 	id resource.ID) (*elasticbeanstalk.ApplicationVersion, error) {
-	// TODO: Can almost just use p.getApplicationVersion to implement this, but there is no way to get the `resource.ID`
-	// for the SourceBundle S3 object returned from the AWS API.
-	return nil, errors.New("Not yet implemented")
+	idarn, err := arn.ARN(id).Parse()
+	if err != nil {
+		return nil, err
+	}
+	appname, version := idarn.ResourceNamePair()
+	resp, err := p.ctx.ElasticBeanstalk().DescribeApplicationVersions(
+		&awselasticbeanstalk.DescribeApplicationVersionsInput{
+			ApplicationName: aws.String(appname),
+			VersionLabels:   []*string{aws.String(version)},
+		},
+	)
+	if err != nil {
+		return nil, err
+	} else if len(resp.ApplicationVersions) == 0 {
+		return nil, nil
+	}
+	contract.Assert(len(resp.ApplicationVersions) == 1)
+	vers := resp.ApplicationVersions[0]
+	contract.Assert(*vers.ApplicationName == appname)
+	appid := arn.NewElasticBeanstalkApplication(idarn.Region, idarn.AccountID, appname)
+	contract.Assert(*vers.VersionLabel == version)
+
+	return &elasticbeanstalk.ApplicationVersion{
+		VersionLabel: vers.VersionLabel,
+		Application:  resource.ID(appid),
+		Description:  vers.Description,
+		SourceBundle: arn.NewS3ObjectID(*vers.SourceBundle.S3Bucket, *vers.SourceBundle.S3Key),
+	}, nil
 }
 
 // InspectChange checks what impacts a hypothetical update will have on the resource's properties.

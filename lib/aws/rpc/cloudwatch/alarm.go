@@ -170,7 +170,7 @@ func (p *ActionTargetProvider) Delete(
 func (p *ActionTargetProvider) Unmarshal(
     v *pbstruct.Struct) (*ActionTarget, resource.PropertyMap, mapper.DecodeError) {
     var obj ActionTarget
-    props := resource.UnmarshalProperties(nil, v, resource.MarshalOptions{})
+    props := resource.UnmarshalProperties(nil, v, resource.MarshalOptions{RawResources: true})
     result := mapper.MapIU(props.Mappable(), &obj)
     return &obj, props, result
 }
@@ -344,7 +344,7 @@ func (p *AlarmProvider) Delete(
 func (p *AlarmProvider) Unmarshal(
     v *pbstruct.Struct) (*Alarm, resource.PropertyMap, mapper.DecodeError) {
     var obj Alarm
-    props := resource.UnmarshalProperties(nil, v, resource.MarshalOptions{})
+    props := resource.UnmarshalProperties(nil, v, resource.MarshalOptions{RawResources: true})
     result := mapper.MapIU(props.Mappable(), &obj)
     return &obj, props, result
 }

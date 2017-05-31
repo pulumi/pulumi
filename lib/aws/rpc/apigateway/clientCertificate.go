@@ -165,7 +165,7 @@ func (p *ClientCertificateProvider) Delete(
 func (p *ClientCertificateProvider) Unmarshal(
     v *pbstruct.Struct) (*ClientCertificate, resource.PropertyMap, mapper.DecodeError) {
     var obj ClientCertificate
-    props := resource.UnmarshalProperties(nil, v, resource.MarshalOptions{})
+    props := resource.UnmarshalProperties(nil, v, resource.MarshalOptions{RawResources: true})
     result := mapper.MapIU(props.Mappable(), &obj)
     return &obj, props, result
 }

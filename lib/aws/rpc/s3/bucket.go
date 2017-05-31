@@ -168,7 +168,7 @@ func (p *BucketProvider) Delete(
 func (p *BucketProvider) Unmarshal(
     v *pbstruct.Struct) (*Bucket, resource.PropertyMap, mapper.DecodeError) {
     var obj Bucket
-    props := resource.UnmarshalProperties(nil, v, resource.MarshalOptions{})
+    props := resource.UnmarshalProperties(nil, v, resource.MarshalOptions{RawResources: true})
     result := mapper.MapIU(props.Mappable(), &obj)
     return &obj, props, result
 }

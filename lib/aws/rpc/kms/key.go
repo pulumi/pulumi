@@ -165,7 +165,7 @@ func (p *KeyProvider) Delete(
 func (p *KeyProvider) Unmarshal(
     v *pbstruct.Struct) (*Key, resource.PropertyMap, mapper.DecodeError) {
     var obj Key
-    props := resource.UnmarshalProperties(nil, v, resource.MarshalOptions{})
+    props := resource.UnmarshalProperties(nil, v, resource.MarshalOptions{RawResources: true})
     result := mapper.MapIU(props.Mappable(), &obj)
     return &obj, props, result
 }

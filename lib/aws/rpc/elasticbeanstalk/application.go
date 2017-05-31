@@ -168,7 +168,7 @@ func (p *ApplicationProvider) Delete(
 func (p *ApplicationProvider) Unmarshal(
     v *pbstruct.Struct) (*Application, resource.PropertyMap, mapper.DecodeError) {
     var obj Application
-    props := resource.UnmarshalProperties(nil, v, resource.MarshalOptions{})
+    props := resource.UnmarshalProperties(nil, v, resource.MarshalOptions{RawResources: true})
     result := mapper.MapIU(props.Mappable(), &obj)
     return &obj, props, result
 }

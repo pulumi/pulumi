@@ -22,8 +22,8 @@ import (
 
 	"github.com/aws/aws-sdk-go/aws"
 	awselasticbeanstalk "github.com/aws/aws-sdk-go/service/elasticbeanstalk"
-	"github.com/pkg/errors"
 	"github.com/pulumi/lumi/pkg/resource"
+	"github.com/pulumi/lumi/pkg/util/contract"
 	"github.com/pulumi/lumi/pkg/util/mapper"
 	"github.com/pulumi/lumi/sdk/go/pkg/lumirpc"
 	"golang.org/x/net/context"
@@ -101,7 +101,25 @@ func (p *applicationProvider) Create(ctx context.Context, obj *elasticbeanstalk.
 
 // Read reads the instance state identified by ID, returning a populated resource object, or an error if not found.
 func (p *applicationProvider) Get(ctx context.Context, id resource.ID) (*elasticbeanstalk.Application, error) {
-	return nil, errors.New("Not yet implemented")
+	name, err := arn.ParseResourceName(id)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := p.ctx.ElasticBeanstalk().DescribeApplications(&awselasticbeanstalk.DescribeApplicationsInput{
+		ApplicationNames: []*string{aws.String(name)},
+	})
+	if err != nil {
+		return nil, err
+	} else if len(resp.Applications) == 0 {
+		return nil, nil
+	}
+	contract.Assert(len(resp.Applications) == 1)
+	app := resp.Applications[0]
+	contract.Assert(*app.ApplicationName == name)
+	return &elasticbeanstalk.Application{
+		ApplicationName: app.ApplicationName,
+		Description:     app.Description,
+	}, nil
 }
 
 // InspectChange checks what impacts a hypothetical update will have on the resource's properties.

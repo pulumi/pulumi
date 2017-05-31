@@ -17,7 +17,6 @@ package dynamodb
 
 import (
 	"crypto/sha1"
-	"errors"
 	"fmt"
 	"reflect"
 
@@ -46,6 +45,16 @@ const (
 	minReadCapacity           = 1
 	minWriteCapacity          = 1
 	maxGlobalSecondaryIndexes = 5
+)
+
+const (
+	// hashKeyAttribute is a partition key, also known as its hash attribute.  The term "hash attribute" derives from
+	// DynamoDB's usage of an internal hash function to evenly distribute data items across partitions based on their
+	// partition key values.
+	hashKeyAttribute = "HASH"
+	// rangeKeyType is a sort key, also known as its range attribute.  The term "range attribute" derives from the way
+	// DynamoDB stores items with the same partition key physically close together, sorted by the sort key value.
+	rangeKeyAttribute = "RANGE"
 )
 
 // NewTableProvider creates a provider that handles DynamoDB Table operations.
@@ -166,13 +175,13 @@ func (p *tableProvider) Create(ctx context.Context, obj *dynamodb.Table) (resour
 	keySchema := []*awsdynamodb.KeySchemaElement{
 		{
 			AttributeName: aws.String(obj.HashKey),
-			KeyType:       aws.String("HASH"),
+			KeyType:       aws.String(hashKeyAttribute),
 		},
 	}
 	if obj.RangeKey != nil {
 		keySchema = append(keySchema, &awsdynamodb.KeySchemaElement{
 			AttributeName: obj.RangeKey,
-			KeyType:       aws.String("RANGE"),
+			KeyType:       aws.String(rangeKeyAttribute),
 		})
 	}
 	create := &awsdynamodb.CreateTableInput{
@@ -190,13 +199,13 @@ func (p *tableProvider) Create(ctx context.Context, obj *dynamodb.Table) (resour
 			keySchema := []*awsdynamodb.KeySchemaElement{
 				{
 					AttributeName: aws.String(gsi.HashKey),
-					KeyType:       aws.String("HASH"),
+					KeyType:       aws.String(hashKeyAttribute),
 				},
 			}
 			if gsi.RangeKey != nil {
 				keySchema = append(keySchema, &awsdynamodb.KeySchemaElement{
 					AttributeName: gsi.RangeKey,
-					KeyType:       aws.String("RANGE"),
+					KeyType:       aws.String(rangeKeyAttribute),
 				})
 			}
 			gsis = append(gsis, &awsdynamodb.GlobalSecondaryIndex{
@@ -236,7 +245,77 @@ func (p *tableProvider) Create(ctx context.Context, obj *dynamodb.Table) (resour
 
 // Get reads the instance state identified by ID, returning a populated resource object, or an error if not found.
 func (p *tableProvider) Get(ctx context.Context, id resource.ID) (*dynamodb.Table, error) {
-	return nil, errors.New("Not yet implemented")
+	name, err := arn.ParseResourceName(id)
+	if err != nil {
+		if awsctx.IsAWSError(err, "ResourceNotFoundException") {
+			return nil, nil
+		}
+		return nil, err
+	}
+	resp, err := p.ctx.DynamoDB().DescribeTable(&awsdynamodb.DescribeTableInput{TableName: aws.String(name)})
+	if err != nil {
+		return nil, err
+	}
+
+	// The object was found, we need to reverse map a bunch of properties into the structure form.
+	contract.Assert(resp != nil)
+	contract.Assert(resp.Table != nil)
+	tab := resp.Table
+
+	var attributes []dynamodb.Attribute
+	for _, attr := range tab.AttributeDefinitions {
+		attributes = append(attributes, dynamodb.Attribute{
+			Name: *attr.AttributeName,
+			Type: dynamodb.AttributeType(*attr.AttributeType),
+		})
+	}
+
+	hashKey, rangeKey := getHashRangeKeys(tab.KeySchema)
+
+	var gsis *[]dynamodb.GlobalSecondaryIndex
+	if len(tab.GlobalSecondaryIndexes) > 0 {
+		var gis []dynamodb.GlobalSecondaryIndex
+		for _, gsid := range tab.GlobalSecondaryIndexes {
+			hk, rk := getHashRangeKeys(gsid.KeySchema)
+			gis = append(gis, dynamodb.GlobalSecondaryIndex{
+				IndexName:        *gsid.IndexName,
+				HashKey:          hk,
+				ReadCapacity:     float64(*gsid.ProvisionedThroughput.ReadCapacityUnits),
+				WriteCapacity:    float64(*gsid.ProvisionedThroughput.WriteCapacityUnits),
+				RangeKey:         rk,
+				NonKeyAttributes: aws.StringValueSlice(gsid.Projection.NonKeyAttributes),
+				ProjectionType:   dynamodb.ProjectionType(*gsid.Projection.ProjectionType),
+			})
+		}
+		gsis = &gis
+	}
+
+	return &dynamodb.Table{
+		HashKey:                hashKey,
+		Attributes:             attributes,
+		ReadCapacity:           float64(*tab.ProvisionedThroughput.ReadCapacityUnits),
+		WriteCapacity:          float64(*tab.ProvisionedThroughput.WriteCapacityUnits),
+		RangeKey:               rangeKey,
+		TableName:              tab.TableName,
+		GlobalSecondaryIndexes: gsis,
+	}, nil
+}
+
+func getHashRangeKeys(schema []*awsdynamodb.KeySchemaElement) (string, *string) {
+	var hashKey *string
+	var rangeKey *string
+	for _, elem := range schema {
+		switch *elem.KeyType {
+		case hashKeyAttribute:
+			hashKey = elem.AttributeName
+		case rangeKeyAttribute:
+			rangeKey = elem.AttributeName
+		default:
+			contract.Failf("Unexpected key schema attribute type: %v", *elem.KeyType)
+		}
+	}
+	contract.Assertf(hashKey != nil, "Expected to discover a hash partition key")
+	return *hashKey, rangeKey
 }
 
 // InspectChange checks what impacts a hypothetical update will have on the resource's properties.
@@ -296,13 +375,13 @@ func (p *tableProvider) Update(ctx context.Context, id resource.ID,
 			keySchema := []*awsdynamodb.KeySchemaElement{
 				{
 					AttributeName: aws.String(gsi.HashKey),
-					KeyType:       aws.String("HASH"),
+					KeyType:       aws.String(hashKeyAttribute),
 				},
 			}
 			if gsi.RangeKey != nil {
 				keySchema = append(keySchema, &awsdynamodb.KeySchemaElement{
 					AttributeName: gsi.RangeKey,
-					KeyType:       aws.String("RANGE"),
+					KeyType:       aws.String(rangeKeyAttribute),
 				})
 			}
 			var attributeDefinitions []*awsdynamodb.AttributeDefinition
@@ -400,9 +479,9 @@ func (p *tableProvider) Delete(ctx context.Context, id resource.ID) error {
 				TableName: aws.String(name),
 			})
 			if err != nil {
-				if awsctx.IsAWSError(err, "ResourceNotFoundException") {
+				if awsctx.IsAWSError(err, awsdynamodb.ErrCodeResourceNotFoundException) {
 					return true, nil
-				} else if awsctx.IsAWSError(err, "ResourceInUseException") {
+				} else if awsctx.IsAWSError(err, awsdynamodb.ErrCodeResourceInUseException) {
 					return false, nil
 				}
 				return false, err // anything else is a real error; propagate it.

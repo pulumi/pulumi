@@ -111,7 +111,24 @@ func (p *objProvider) Create(ctx context.Context, obj *s3.Object) (resource.ID, 
 
 // Get reads the instance state identified by ID, returning a populated resource object, or an error if not found.
 func (p *objProvider) Get(ctx context.Context, id resource.ID) (*s3.Object, error) {
-	return nil, errors.New("Not yet implemented")
+	buck, key, err := arn.ParseResourceNamePair(id)
+	if err != nil {
+		return nil, err
+	}
+	if _, err := p.ctx.S3().GetObject(&awss3.GetObjectInput{
+		Bucket: aws.String(buck),
+		Key:    aws.String(key),
+	}); err != nil {
+		if awsctx.IsAWSError(err, "NotFound", "NoSuchKey") {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &s3.Object{
+		Bucket: resource.ID(arn.NewS3Bucket(buck)),
+		Key:    key,
+		Source: resource.NewURIAsset(fmt.Sprintf("s3://%v/%v", buck, key)),
+	}, nil
 }
 
 // InspectChange checks what impacts a hypothetical update will have on the resource's properties.

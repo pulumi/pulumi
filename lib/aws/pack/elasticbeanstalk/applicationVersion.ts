@@ -9,6 +9,7 @@ import {Object} from "../s3/object";
 export class ApplicationVersion extends lumi.Resource implements ApplicationVersionArgs {
     public readonly name: string;
     public readonly application: Application;
+    public readonly versionLabel?: string;
     public description?: string;
     public readonly sourceBundle: Object;
 
@@ -22,6 +23,7 @@ export class ApplicationVersion extends lumi.Resource implements ApplicationVers
             throw new Error("Missing required argument 'application'");
         }
         this.application = args.application;
+        this.versionLabel = args.versionLabel;
         this.description = args.description;
         if (args.sourceBundle === undefined) {
             throw new Error("Missing required argument 'sourceBundle'");
@@ -32,6 +34,7 @@ export class ApplicationVersion extends lumi.Resource implements ApplicationVers
 
 export interface ApplicationVersionArgs {
     readonly application: Application;
+    readonly versionLabel?: string;
     description?: string;
     readonly sourceBundle: Object;
 }

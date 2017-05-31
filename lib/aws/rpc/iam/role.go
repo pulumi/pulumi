@@ -173,7 +173,7 @@ func (p *RoleProvider) Delete(
 func (p *RoleProvider) Unmarshal(
     v *pbstruct.Struct) (*Role, resource.PropertyMap, mapper.DecodeError) {
     var obj Role
-    props := resource.UnmarshalProperties(nil, v, resource.MarshalOptions{})
+    props := resource.UnmarshalProperties(nil, v, resource.MarshalOptions{RawResources: true})
     result := mapper.MapIU(props.Mappable(), &obj)
     return &obj, props, result
 }
