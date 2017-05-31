@@ -72,7 +72,7 @@ func (a *analyzer) AnalyzeResource(ctx context.Context,
 }
 
 func (a *analyzer) analyzeAWSEC2Instance(bag *pbstruct.Struct) []*lumirpc.AnalyzeResourceFailure {
-	props := resource.UnmarshalProperties(bag)
+	props := resource.UnmarshalProperties(nil, bag, resource.MarshalOptions{RawResources: true})
 	image := props["imageId"]
 	// TODO: do a real check.  For now, we make something up.
 	return []*lumirpc.AnalyzeResourceFailure{
