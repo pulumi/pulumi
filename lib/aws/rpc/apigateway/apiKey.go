@@ -168,7 +168,7 @@ func (p *APIKeyProvider) Delete(
 func (p *APIKeyProvider) Unmarshal(
     v *pbstruct.Struct) (*APIKey, resource.PropertyMap, mapper.DecodeError) {
     var obj APIKey
-    props := resource.UnmarshalProperties(v)
+    props := resource.UnmarshalProperties(nil, v, resource.MarshalOptions{})
     result := mapper.MapIU(props.Mappable(), &obj)
     return &obj, props, result
 }

@@ -165,7 +165,7 @@ func (p *DeploymentProvider) Delete(
 func (p *DeploymentProvider) Unmarshal(
     v *pbstruct.Struct) (*Deployment, resource.PropertyMap, mapper.DecodeError) {
     var obj Deployment
-    props := resource.UnmarshalProperties(v)
+    props := resource.UnmarshalProperties(nil, v, resource.MarshalOptions{})
     result := mapper.MapIU(props.Mappable(), &obj)
     return &obj, props, result
 }

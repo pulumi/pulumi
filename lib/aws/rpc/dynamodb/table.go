@@ -212,7 +212,7 @@ func (p *TableProvider) Delete(
 func (p *TableProvider) Unmarshal(
     v *pbstruct.Struct) (*Table, resource.PropertyMap, mapper.DecodeError) {
     var obj Table
-    props := resource.UnmarshalProperties(v)
+    props := resource.UnmarshalProperties(nil, v, resource.MarshalOptions{})
     result := mapper.MapIU(props.Mappable(), &obj)
     return &obj, props, result
 }

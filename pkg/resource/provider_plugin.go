@@ -70,8 +70,8 @@ func (p *provider) Pkg() tokens.Package { return p.pkg }
 func (p *provider) Check(t tokens.Type, props PropertyMap) ([]CheckFailure, error) {
 	glog.V(7).Infof("resource[%v].Check(t=%v,#props=%v) executing", p.pkg, t, len(props))
 	pstr, unks := MarshalPropertiesWithUnknowns(p.ctx, props, MarshalOptions{
-		PermitOlds: true, // permit old URNs, since this is pre-update.
-		RawURNs:    true, // often used during URN creation; IDs won't be ready.
+		OldURNs:      true, // permit old URNs, since this is pre-update.
+		RawResources: true, // pre-create, IDs won't be ready, just ship over the URNs.
 	})
 	req := &lumirpc.CheckRequest{
 		Type:       string(t),
@@ -97,8 +97,8 @@ func (p *provider) Check(t tokens.Type, props PropertyMap) ([]CheckFailure, erro
 func (p *provider) Name(t tokens.Type, props PropertyMap) (tokens.QName, error) {
 	glog.V(7).Infof("resource[%v].Name(t=%v,#props=%v) executing", p.pkg, t, len(props))
 	pstr, unks := MarshalPropertiesWithUnknowns(p.ctx, props, MarshalOptions{
-		PermitOlds: true, // permit old URNs, since this is pre-update.
-		RawURNs:    true, // often used during URN creation; IDs won't be ready.
+		OldURNs:      true, // permit old URNs, since this is pre-update.
+		RawResources: true, // pre-create, IDs won't be ready, just ship over the URNs.
 	})
 	req := &lumirpc.NameRequest{
 		Type:       string(t),
@@ -140,8 +140,8 @@ func (p *provider) Create(t tokens.Type, props PropertyMap) (ID, State, error) {
 	return id, StateOK, nil
 }
 
-// Get reads the instance state identified by id/t, and returns a bag of properties.
-func (p *provider) Get(id ID, t tokens.Type) (PropertyMap, error) {
+// Get reads the instance state identified by id/t, and copies into a bag of properties props.
+func (p *provider) Get(id ID, t tokens.Type, props PropertyMap) error {
 	glog.V(7).Infof("resource[%v].Get(id=%v,t=%v) executing", p.pkg, id, t)
 	req := &lumirpc.GetRequest{
 		Id:   string(id),
@@ -151,12 +151,12 @@ func (p *provider) Get(id ID, t tokens.Type) (PropertyMap, error) {
 	resp, err := p.client.Get(p.ctx.Request(), req)
 	if err != nil {
 		glog.V(7).Infof("resource[%v].Get(id=%v,t=%v) failed: err=%v", p.pkg, id, t, err)
-		return nil, err
+		return err
 	}
 
-	props := UnmarshalProperties(resp.GetProperties())
+	UnmarshalPropertiesInto(p.ctx, resp.GetProperties(), props, MarshalOptions{})
 	glog.V(7).Infof("resource[%v].Get(id=%v,t=%v) success: #props=%v", p.pkg, t, id, len(props))
-	return props, nil
+	return nil
 }
 
 // InspectChange checks what impacts a hypothetical update will have on the resource's properties.
@@ -168,13 +168,13 @@ func (p *provider) InspectChange(id ID, t tokens.Type,
 	glog.V(7).Infof("resource[%v].InspectChange(id=%v,t=%v,#olds=%v,#news=%v) executing",
 		p.pkg, id, t, len(olds), len(news))
 	newpstr, newunks := MarshalPropertiesWithUnknowns(p.ctx, news, MarshalOptions{
-		RawURNs: true, // often used during URN creation; IDs won't be ready.
+		RawResources: true, // pre-change, IDs won't be ready, ship over URNs.
 	})
 	req := &lumirpc.InspectChangeRequest{
 		Id:   string(id),
 		Type: string(t),
 		Olds: MarshalProperties(p.ctx, olds, MarshalOptions{
-			RawURNs: true, // often used during URN creation; IDs won't be ready.
+			RawResources: true, // just leave these as-is, so they match the news.
 		}),
 		News:     newpstr,
 		Unknowns: newunks,
@@ -187,7 +187,7 @@ func (p *provider) InspectChange(id ID, t tokens.Type,
 	}
 
 	replaces := resp.GetReplaces()
-	changes := UnmarshalProperties(resp.GetChanges())
+	changes := UnmarshalProperties(p.ctx, resp.GetChanges(), MarshalOptions{RawResources: true})
 	glog.V(7).Infof("resource[%v].Update(id=%v,t=%v,...) success: #replaces=%v #changes=%v",
 		p.pkg, id, t, len(replaces), len(changes))
 	return replaces, changes, nil
@@ -204,7 +204,7 @@ func (p *provider) Update(id ID, t tokens.Type, olds PropertyMap, news PropertyM
 		Id:   string(id),
 		Type: string(t),
 		Olds: MarshalProperties(p.ctx, olds, MarshalOptions{
-			PermitOlds: true, // permit old URNs since these are the old values.
+			OldURNs: true, // permit old URNs since these are the old values.
 		}),
 		News: MarshalProperties(p.ctx, news, MarshalOptions{}),
 	}

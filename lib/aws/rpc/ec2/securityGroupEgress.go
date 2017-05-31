@@ -189,7 +189,7 @@ func (p *SecurityGroupEgressProvider) Delete(
 func (p *SecurityGroupEgressProvider) Unmarshal(
     v *pbstruct.Struct) (*SecurityGroupEgress, resource.PropertyMap, mapper.DecodeError) {
     var obj SecurityGroupEgress
-    props := resource.UnmarshalProperties(v)
+    props := resource.UnmarshalProperties(nil, v, resource.MarshalOptions{})
     result := mapper.MapIU(props.Mappable(), &obj)
     return &obj, props, result
 }

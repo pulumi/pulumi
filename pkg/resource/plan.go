@@ -178,7 +178,9 @@ func (p *plan) Apply(prog Progress) (Snapshot, Step, State, error) {
 	for old, new := range p.unchanged {
 		contract.Assert(old.HasID())
 		contract.Assert(!new.HasID())
-		new.SetID(old.ID())
+		id := old.ID()
+		new.SetID(id)
+		p.ctx.IDURN[id] = new.URN()
 	}
 
 	// Next, walk the plan linked list and apply each step.
@@ -684,13 +686,13 @@ func (s *step) Apply() (State, error) {
 			return rst, err
 		}
 
-		// Set the ID, read the resource state back (to fetch outputs), and store them.
+		// Copy the old resource, set the new ID, read the resource state back (to fetch outputs), and store them.
+		s.old = s.new.ShallowClone()
 		s.new.SetID(id)
-		outs, err := prov.Get(id, s.new.Type())
-		if err != nil {
+		s.p.ctx.IDURN[id] = s.new.URN()
+		if err := prov.Get(id, s.new.Type(), s.new.Properties()); err != nil {
 			return rst, err
 		}
-		s.new.SetPropertiesFrom(outs)
 
 	case OpDelete, OpReplaceDelete:
 		// Invoke the Delete RPC function for this provider:

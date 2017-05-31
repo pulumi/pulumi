@@ -171,7 +171,7 @@ func (p *VPCProvider) Delete(
 func (p *VPCProvider) Unmarshal(
     v *pbstruct.Struct) (*VPC, resource.PropertyMap, mapper.DecodeError) {
     var obj VPC
-    props := resource.UnmarshalProperties(v)
+    props := resource.UnmarshalProperties(nil, v, resource.MarshalOptions{})
     result := mapper.MapIU(props.Mappable(), &obj)
     return &obj, props, result
 }

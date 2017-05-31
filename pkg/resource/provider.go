@@ -44,8 +44,8 @@ type Provider interface {
 	Name(t tokens.Type, props PropertyMap) (tokens.QName, error)
 	// Create allocates a new instance of the provided resource and returns its unique ID afterwards.
 	Create(t tokens.Type, props PropertyMap) (ID, State, error)
-	// Get reads the instance state identified by id/t, and returns a bag of properties.
-	Get(id ID, t tokens.Type) (PropertyMap, error)
+	// Get reads the instance state identified by id/t, and copies it into the target bag of properties props.
+	Get(id ID, t tokens.Type, props PropertyMap) error
 	// InspectChange checks what impacts a hypothetical update will have on the resource's properties.
 	InspectChange(id ID, t tokens.Type, olds PropertyMap, news PropertyMap) ([]string, PropertyMap, error)
 	// Update updates an existing resource with new values.

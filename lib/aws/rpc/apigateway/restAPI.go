@@ -165,7 +165,7 @@ func (p *RestAPIProvider) Delete(
 func (p *RestAPIProvider) Unmarshal(
     v *pbstruct.Struct) (*RestAPI, resource.PropertyMap, mapper.DecodeError) {
     var obj RestAPI
-    props := resource.UnmarshalProperties(v)
+    props := resource.UnmarshalProperties(nil, v, resource.MarshalOptions{})
     result := mapper.MapIU(props.Mappable(), &obj)
     return &obj, props, result
 }

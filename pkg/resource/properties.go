@@ -19,7 +19,6 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/fatih/structs"
 	"github.com/pkg/errors"
 
 	"github.com/pulumi/lumi/pkg/tokens"
@@ -38,7 +37,7 @@ type PropertyMap map[PropertyKey]PropertyValue
 
 // NewPropertyMap turns a struct into a property map, using any JSON tags inside to determine naming.
 func NewPropertyMap(s interface{}) PropertyMap {
-	m := structs.Map(s)
+	m := mapper.Unmap(s)
 	return NewPropertyMapFromMap(m)
 }
 
@@ -467,67 +466,200 @@ func NewPropertyValue(v interface{}) PropertyValue {
 		}
 		return NewPropertyValue(rv.Elem().Interface())
 	case reflect.Map:
-		m := map[string]interface{}{}
-		for _, kv := range rv.MapKeys() {
-			m[kv.String()] = rv.MapIndex(kv).Interface()
+		// If a map, create a new property map, provided the keys and values are okay.
+		obj := PropertyMap{}
+		for _, key := range rv.MapKeys() {
+			var pk PropertyKey
+			switch k := key.Interface().(type) {
+			case string:
+				pk = PropertyKey(k)
+			case PropertyKey:
+				pk = k
+			default:
+				contract.Failf("Unrecognized PropertyMap key type: %v", reflect.TypeOf(key))
+			}
+			val := rv.MapIndex(key)
+			pv := NewPropertyValue(val.Interface())
+			obj[pk] = pv
 		}
-		obj := NewPropertyMapFromMap(m)
-		return NewPropertyObject(obj)
+		return NewObjectProperty(obj)
 	case reflect.Struct:
-		obj := NewPropertyMap(rv.Interface())
+		obj := NewPropertyMap(v)
 		return NewPropertyObject(obj)
 	default:
-		contract.Failf("Unrecognized value type: %v", rk)
+		contract.Failf("Unrecognized value type: type=%v kind=%v", rv.Type(), rk)
 	}
 
 	return NewNullProperty()
 }
 
-func (v PropertyValue) BoolValue() bool             { return v.V.(bool) }
-func (v PropertyValue) NumberValue() float64        { return v.V.(float64) }
-func (v PropertyValue) StringValue() string         { return v.V.(string) }
-func (v PropertyValue) ArrayValue() []PropertyValue { return v.V.([]PropertyValue) }
-func (v PropertyValue) ObjectValue() PropertyMap    { return v.V.(PropertyMap) }
-func (v PropertyValue) ResourceValue() URN          { return v.V.(URN) }
-func (v PropertyValue) ComputedValue() Computed     { return v.V.(Computed) }
-func (v PropertyValue) OutputValue() Output         { return v.V.(Output) }
+// BoolValue fetches the underlying bool value (panicking if it isn't a bool).
+func (v PropertyValue) BoolValue() bool { return v.V.(bool) }
 
+// NumberValue fetches the underlying number value (panicking if it isn't a number).
+func (v PropertyValue) NumberValue() float64 { return v.V.(float64) }
+
+// StringValue fetches the underlying string value (panicking if it isn't a string).
+func (v PropertyValue) StringValue() string { return v.V.(string) }
+
+// ArrayValue fetches the underlying array value (panicking if it isn't a array).
+func (v PropertyValue) ArrayValue() []PropertyValue { return v.V.([]PropertyValue) }
+
+// ObjectValue fetches the underlying object value (panicking if it isn't a object).
+func (v PropertyValue) ObjectValue() PropertyMap { return v.V.(PropertyMap) }
+
+// ResourceValue fetches the underlying resource value (panicking if it isn't a resource).
+func (v PropertyValue) ResourceValue() URN { return v.V.(URN) }
+
+// ComputedValue fetches the underlying computed value (panicking if it isn't a computed).
+func (v PropertyValue) ComputedValue() Computed { return v.V.(Computed) }
+
+// OutputValue fetches the underlying output value (panicking if it isn't a output).
+func (v PropertyValue) OutputValue() Output { return v.V.(Output) }
+
+// IsNull returns true if the underlying value is a null.
 func (v PropertyValue) IsNull() bool {
 	return v.V == nil
 }
+
+// IsBool returns true if the underlying value is a bool.
 func (v PropertyValue) IsBool() bool {
 	_, is := v.V.(bool)
 	return is
 }
+
+// IsNumber returns true if the underlying value is a number.
 func (v PropertyValue) IsNumber() bool {
 	_, is := v.V.(float64)
 	return is
 }
+
+// IsString returns true if the underlying value is a string.
 func (v PropertyValue) IsString() bool {
 	_, is := v.V.(string)
 	return is
 }
+
+// IsArray returns true if the underlying value is an array.
 func (v PropertyValue) IsArray() bool {
 	_, is := v.V.([]PropertyValue)
 	return is
 }
+
+// IsObject returns true if the underlying value is an object.
 func (v PropertyValue) IsObject() bool {
 	_, is := v.V.(PropertyMap)
 	return is
 }
+
+// IsResource returns true if the underlying value is a resource.
 func (v PropertyValue) IsResource() bool {
 	_, is := v.V.(URN)
 	return is
 }
+
+// IsComputed returns true if the underlying value is a computed value.
 func (v PropertyValue) IsComputed() bool {
 	_, is := v.V.(Computed)
 	return is
 }
+
+// IsOutput returns true if the underlying value is an output value.
 func (v PropertyValue) IsOutput() bool {
 	_, is := v.V.(Output)
 	return is
 }
 
+// CanNull returns true if the target property is capable of holding a null value.
+func (v PropertyValue) CanNull() bool {
+	return true // all properties can be null
+}
+
+// CanBool returns true if the target property is capable of holding a bool value.
+func (v PropertyValue) CanBool() bool {
+	if v.IsNull() || v.IsBool() {
+		return true
+	}
+	if v.IsComputed() {
+		return v.ComputedValue().Eventual().CanBool()
+	}
+	if v.IsOutput() {
+		return v.OutputValue().Eventual().CanBool()
+	}
+	return false
+}
+
+// CanNumber returns true if the target property is capable of holding a number value.
+func (v PropertyValue) CanNumber() bool {
+	if v.IsNull() || v.IsNumber() {
+		return true
+	}
+	if v.IsComputed() {
+		return v.ComputedValue().Eventual().CanNumber()
+	}
+	if v.IsOutput() {
+		return v.OutputValue().Eventual().CanNumber()
+	}
+	return false
+}
+
+// CanString returns true if the target property is capable of holding a string value.
+func (v PropertyValue) CanString() bool {
+	if v.IsNull() || v.IsString() {
+		return true
+	}
+	if v.IsComputed() {
+		return v.ComputedValue().Eventual().CanString()
+	}
+	if v.IsOutput() {
+		return v.OutputValue().Eventual().CanString()
+	}
+	return false
+}
+
+// CanArray returns true if the target property is capable of holding an array value.
+func (v PropertyValue) CanArray() bool {
+	if v.IsNull() || v.IsArray() {
+		return true
+	}
+	if v.IsComputed() {
+		return v.ComputedValue().Eventual().CanArray()
+	}
+	if v.IsOutput() {
+		return v.OutputValue().Eventual().CanArray()
+	}
+	return false
+}
+
+// CanObject returns true if the target property is capable of holding an object value.
+func (v PropertyValue) CanObject() bool {
+	if v.IsNull() || v.IsObject() {
+		return true
+	}
+	if v.IsComputed() {
+		return v.ComputedValue().Eventual().CanObject()
+	}
+	if v.IsOutput() {
+		return v.OutputValue().Eventual().CanObject()
+	}
+	return false
+}
+
+// CanResource returns true if the target property is capable of holding a resource value.
+func (v PropertyValue) CanResource() bool {
+	if v.IsNull() || v.IsResource() {
+		return true
+	}
+	if v.IsComputed() {
+		return v.ComputedValue().Eventual().CanResource()
+	}
+	if v.IsOutput() {
+		return v.OutputValue().Eventual().CanResource()
+	}
+	return false
+}
+
+// TypeString returns a type representation of the property value's holder type.
 func (v PropertyValue) TypeString() string {
 	if v.IsNull() {
 		return "null"

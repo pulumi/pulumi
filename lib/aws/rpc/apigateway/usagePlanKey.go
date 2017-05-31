@@ -171,7 +171,7 @@ func (p *UsagePlanKeyProvider) Delete(
 func (p *UsagePlanKeyProvider) Unmarshal(
     v *pbstruct.Struct) (*UsagePlanKey, resource.PropertyMap, mapper.DecodeError) {
     var obj UsagePlanKey
-    props := resource.UnmarshalProperties(v)
+    props := resource.UnmarshalProperties(nil, v, resource.MarshalOptions{})
     result := mapper.MapIU(props.Mappable(), &obj)
     return &obj, props, result
 }

@@ -20,6 +20,8 @@ import (
 	"encoding/hex"
 	"reflect"
 
+	"github.com/golang/glog"
+
 	"github.com/pulumi/lumi/pkg/compiler/symbols"
 	"github.com/pulumi/lumi/pkg/compiler/types"
 	"github.com/pulumi/lumi/pkg/compiler/types/predef"
@@ -59,15 +61,15 @@ func IDStrings(ids []ID) []string {
 
 // Resource is an instance of a resource with an ID, type, and bag of state.
 type Resource interface {
-	ID() ID                          // the resource's unique ID assigned by the provider (or blank if uncreated).
-	URN() URN                        // the resource's object urn, a human-friendly, unique name for the resource.
-	Type() tokens.Type               // the resource's type.
-	Properties() PropertyMap         // the resource's property map.
-	HasID() bool                     // returns true if the resource has been assigned an ID.
-	SetID(id ID)                     // assignes an ID to this resource, for those under creation.
-	SetPropertiesFrom(m PropertyMap) // copies properties from the given map to the resource.
-	HasURN() bool                    // returns true if the resource has been assigned URN.
-	SetURN(m URN)                    // assignes a URN to this resource, for those under creation.
+	ID() ID                  // the resource's unique ID assigned by the provider (or blank if uncreated).
+	URN() URN                // the resource's object urn, a human-friendly, unique name for the resource.
+	Type() tokens.Type       // the resource's type.
+	Properties() PropertyMap // the resource's property map.
+	HasID() bool             // returns true if the resource has been assigned an ID.
+	SetID(id ID)             // assignes an ID to this resource, for those under creation.
+	HasURN() bool            // returns true if the resource has been assigned URN.
+	SetURN(m URN)            // assignes a URN to this resource, for those under creation.
+	ShallowClone() Resource  // make a shallow clone of the resource.
 }
 
 // State is returned when an error has occurred during a resource provider operation.  It indicates whether the
@@ -99,11 +101,13 @@ func (r *resource) Properties() PropertyMap { return r.properties }
 func (r *resource) HasID() bool { return (string(r.id) != "") }
 func (r *resource) SetID(id ID) {
 	contract.Requiref(!r.HasID(), "id", "empty")
+	glog.V(9).Infof("Assigning ID=%v to resource w/ URN=%v", id, r.urn)
 	r.id = id
 }
 
-func (r *resource) SetPropertiesFrom(m PropertyMap) {
+func (r *resource) CopyPropertiesFrom(m PropertyMap) {
 	for k, v := range m {
+		glog.V(9).Infof("Assigning property %v=%v to resource w/ URN=%v", k, v, r.urn)
 		r.properties[k] = v
 	}
 }
@@ -112,6 +116,21 @@ func (r *resource) HasURN() bool { return (string(r.urn) != "") }
 func (r *resource) SetURN(m URN) {
 	contract.Requiref(!r.HasURN(), "urn", "empty")
 	r.urn = m
+}
+
+// ShallowClone clones a resource object so that any modifications to it are not reflected in the original.  Note that
+// the property map is only shallowly cloned so any mutations deep within it may get reflected in the original.
+func (r *resource) ShallowClone() Resource {
+	propcopies := make(PropertyMap)
+	for k, v := range r.properties {
+		propcopies[k] = v
+	}
+	return &resource{
+		id:         r.id,
+		urn:        r.urn,
+		t:          r.t,
+		properties: propcopies,
+	}
 }
 
 // NewResource creates a new resource from the information provided.

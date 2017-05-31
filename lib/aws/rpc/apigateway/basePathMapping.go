@@ -165,7 +165,7 @@ func (p *BasePathMappingProvider) Delete(
 func (p *BasePathMappingProvider) Unmarshal(
     v *pbstruct.Struct) (*BasePathMapping, resource.PropertyMap, mapper.DecodeError) {
     var obj BasePathMapping
-    props := resource.UnmarshalProperties(v)
+    props := resource.UnmarshalProperties(nil, v, resource.MarshalOptions{})
     result := mapper.MapIU(props.Mappable(), &obj)
     return &obj, props, result
 }

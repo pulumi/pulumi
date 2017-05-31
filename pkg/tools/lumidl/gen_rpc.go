@@ -397,7 +397,7 @@ func (g *RPCGenerator) EmitResource(w *bufio.Writer, module tokens.Module, pkg *
 	writefmtln(w, "func (p *%vProvider) Unmarshal(", name)
 	writefmtln(w, "    v *pbstruct.Struct) (*%v, resource.PropertyMap, mapper.DecodeError) {", name)
 	writefmtln(w, "    var obj %v", name)
-	writefmtln(w, "    props := resource.UnmarshalProperties(v)")
+	writefmtln(w, "    props := resource.UnmarshalProperties(nil, v, resource.MarshalOptions{})")
 	writefmtln(w, "    result := mapper.MapIU(props.Mappable(), &obj)")
 	writefmtln(w, "    return &obj, props, result")
 	writefmtln(w, "}")

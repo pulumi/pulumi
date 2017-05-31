@@ -33,13 +33,15 @@ type Context struct {
 	Analyzers map[tokens.QName]Analyzer   // a cache of analyzer plugins and their processes.
 	Providers map[tokens.Package]Provider // a cache of provider plugins and their processes.
 	ObjRes    objectResourceMap           // the resources held inside of this snapshot.
-	ObjURN    objectURNMap                // a convenient lookup map for object to urn.
-	URNRes    urnResourceMap              // a convenient lookup map for urn to resource.
-	URNOldIDs urnIDMap                    // a convenient lookup map for urns to old IDs.
+	ObjURN    objectURNMap                // a convenient lookup map for object to URN.
+	IDURN     idURNMap                    // a convenient lookup map for ID to URN.
+	URNRes    urnResourceMap              // a convenient lookup map for URN to resource.
+	URNOldIDs urnIDMap                    // a convenient lookup map for URNs to old IDs.
 }
 
 type objectURNMap map[*rt.Object]URN
 type objectResourceMap map[*rt.Object]Resource
+type idURNMap map[ID]URN
 type urnResourceMap map[URN]Resource
 type urnIDMap map[URN]ID
 
@@ -50,6 +52,7 @@ func NewContext(d diag.Sink) *Context {
 		Providers: make(map[tokens.Package]Provider),
 		ObjRes:    make(objectResourceMap),
 		ObjURN:    make(objectURNMap),
+		IDURN:     make(idURNMap),
 		URNRes:    make(urnResourceMap),
 		URNOldIDs: make(urnIDMap),
 	}

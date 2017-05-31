@@ -171,7 +171,7 @@ func (p *VPCPeeringConnectionProvider) Delete(
 func (p *VPCPeeringConnectionProvider) Unmarshal(
     v *pbstruct.Struct) (*VPCPeeringConnection, resource.PropertyMap, mapper.DecodeError) {
     var obj VPCPeeringConnection
-    props := resource.UnmarshalProperties(v)
+    props := resource.UnmarshalProperties(nil, v, resource.MarshalOptions{})
     result := mapper.MapIU(props.Mappable(), &obj)
     return &obj, props, result
 }

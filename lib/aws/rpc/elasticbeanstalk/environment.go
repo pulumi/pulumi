@@ -183,7 +183,7 @@ func (p *EnvironmentProvider) Delete(
 func (p *EnvironmentProvider) Unmarshal(
     v *pbstruct.Struct) (*Environment, resource.PropertyMap, mapper.DecodeError) {
     var obj Environment
-    props := resource.UnmarshalProperties(v)
+    props := resource.UnmarshalProperties(nil, v, resource.MarshalOptions{})
     result := mapper.MapIU(props.Mappable(), &obj)
     return &obj, props, result
 }

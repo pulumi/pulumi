@@ -182,7 +182,7 @@ func (p *PermissionProvider) Delete(
 func (p *PermissionProvider) Unmarshal(
     v *pbstruct.Struct) (*Permission, resource.PropertyMap, mapper.DecodeError) {
     var obj Permission
-    props := resource.UnmarshalProperties(v)
+    props := resource.UnmarshalProperties(nil, v, resource.MarshalOptions{})
     result := mapper.MapIU(props.Mappable(), &obj)
     return &obj, props, result
 }

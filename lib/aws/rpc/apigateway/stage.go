@@ -171,7 +171,7 @@ func (p *StageProvider) Delete(
 func (p *StageProvider) Unmarshal(
     v *pbstruct.Struct) (*Stage, resource.PropertyMap, mapper.DecodeError) {
     var obj Stage
-    props := resource.UnmarshalProperties(v)
+    props := resource.UnmarshalProperties(nil, v, resource.MarshalOptions{})
     result := mapper.MapIU(props.Mappable(), &obj)
     return &obj, props, result
 }

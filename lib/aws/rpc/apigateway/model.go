@@ -174,7 +174,7 @@ func (p *ModelProvider) Delete(
 func (p *ModelProvider) Unmarshal(
     v *pbstruct.Struct) (*Model, resource.PropertyMap, mapper.DecodeError) {
     var obj Model
-    props := resource.UnmarshalProperties(v)
+    props := resource.UnmarshalProperties(nil, v, resource.MarshalOptions{})
     result := mapper.MapIU(props.Mappable(), &obj)
     return &obj, props, result
 }

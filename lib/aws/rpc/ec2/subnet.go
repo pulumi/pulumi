@@ -174,7 +174,7 @@ func (p *SubnetProvider) Delete(
 func (p *SubnetProvider) Unmarshal(
     v *pbstruct.Struct) (*Subnet, resource.PropertyMap, mapper.DecodeError) {
     var obj Subnet
-    props := resource.UnmarshalProperties(v)
+    props := resource.UnmarshalProperties(nil, v, resource.MarshalOptions{})
     result := mapper.MapIU(props.Mappable(), &obj)
     return &obj, props, result
 }

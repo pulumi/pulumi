@@ -83,8 +83,8 @@ func (a *analyzer) Analyze(url pack.PackageURL) ([]AnalyzeFailure, error) {
 func (a *analyzer) AnalyzeResource(t tokens.Type, props PropertyMap) ([]AnalyzeResourceFailure, error) {
 	glog.V(7).Infof("analyzer[%v].AnalyzeResource(t=%v,#props=%v) executing", a.name, t, len(props))
 	pstr, unks := MarshalPropertiesWithUnknowns(a.ctx, props, MarshalOptions{
-		PermitOlds: true, // permit old URNs, since this is pre-update.
-		RawURNs:    true, // often used during URN creation; IDs won't be ready.
+		OldURNs:      true, // permit old URNs, since this is pre-update.
+		RawResources: true, // often used during URN creation; IDs won't be ready.
 	})
 	req := &lumirpc.AnalyzeResourceRequest{
 		Type:       string(t),

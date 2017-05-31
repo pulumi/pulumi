@@ -165,7 +165,7 @@ func (p *AuthorizerProvider) Delete(
 func (p *AuthorizerProvider) Unmarshal(
     v *pbstruct.Struct) (*Authorizer, resource.PropertyMap, mapper.DecodeError) {
     var obj Authorizer
-    props := resource.UnmarshalProperties(v)
+    props := resource.UnmarshalProperties(nil, v, resource.MarshalOptions{})
     result := mapper.MapIU(props.Mappable(), &obj)
     return &obj, props, result
 }

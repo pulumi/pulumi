@@ -171,7 +171,7 @@ func (p *ApplicationVersionProvider) Delete(
 func (p *ApplicationVersionProvider) Unmarshal(
     v *pbstruct.Struct) (*ApplicationVersion, resource.PropertyMap, mapper.DecodeError) {
     var obj ApplicationVersion
-    props := resource.UnmarshalProperties(v)
+    props := resource.UnmarshalProperties(nil, v, resource.MarshalOptions{})
     result := mapper.MapIU(props.Mappable(), &obj)
     return &obj, props, result
 }

@@ -168,7 +168,7 @@ func (p *GroupProvider) Delete(
 func (p *GroupProvider) Unmarshal(
     v *pbstruct.Struct) (*Group, resource.PropertyMap, mapper.DecodeError) {
     var obj Group
-    props := resource.UnmarshalProperties(v)
+    props := resource.UnmarshalProperties(nil, v, resource.MarshalOptions{})
     result := mapper.MapIU(props.Mappable(), &obj)
     return &obj, props, result
 }
