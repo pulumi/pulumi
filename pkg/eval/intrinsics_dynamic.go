@@ -17,6 +17,7 @@ package eval
 
 import (
 	"fmt"
+	"sort"
 
 	"github.com/pulumi/lumi/pkg/compiler/ast"
 	"github.com/pulumi/lumi/pkg/compiler/symbols"
@@ -128,9 +129,19 @@ func serializeClosure(intrin *rt.Intrinsic, e *evaluator, this *rt.Object, args 
 
 	// TODO[pulumi/lumi#177]: We are using the full environment available at execution time here, we should
 	// instead capture only the free variables referenced in the function itself.
+
+	// Insert environment variables into a PropertyMap with stable ordering
 	envPropMap := rt.NewPropertyMap()
-	for key, val := range stub.Env.Slots() {
-		envPropMap.Set(rt.PropertyKey(key.Name()), val.Obj())
+	slots := stub.Env.Slots()
+	var keys []*symbols.LocalVariable
+	for key := range slots {
+		keys = append(keys, key)
+	}
+	sort.SliceStable(keys, func(i, j int) bool {
+		return keys[i].Name() < keys[j].Name()
+	})
+	for _, key := range keys {
+		envPropMap.Set(rt.PropertyKey(key.Name()), slots[key].Obj())
 	}
 	envObj := e.alloc.New(intrin.Tree(), types.Dynamic, envPropMap, nil)
 
