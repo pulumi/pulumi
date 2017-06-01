@@ -68,13 +68,13 @@ func (p *AccountProvider) Name(
     if decerr != nil {
         return nil, decerr
     }
-    if obj.Name == "" {
+    if obj.Name == nil || *obj.Name == "" {
         if req.Unknowns[Account_Name] {
             return nil, errors.New("Name property cannot be computed from unknown outputs")
         }
         return nil, errors.New("Name property cannot be empty")
     }
-    return &lumirpc.NameResponse{Name: obj.Name}, nil
+    return &lumirpc.NameResponse{Name: *obj.Name}, nil
 }
 
 func (p *AccountProvider) Create(
@@ -174,7 +174,7 @@ func (p *AccountProvider) Unmarshal(
 
 // Account is a marshalable representation of its corresponding IDL type.
 type Account struct {
-    Name string `json:"name"`
+    Name *string `json:"name,omitempty"`
     CloudWatchRole *resource.ID `json:"cloudWatchRole,omitempty"`
 }
 

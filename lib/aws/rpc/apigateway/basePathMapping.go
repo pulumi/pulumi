@@ -68,13 +68,13 @@ func (p *BasePathMappingProvider) Name(
     if decerr != nil {
         return nil, decerr
     }
-    if obj.Name == "" {
+    if obj.Name == nil || *obj.Name == "" {
         if req.Unknowns[BasePathMapping_Name] {
             return nil, errors.New("Name property cannot be computed from unknown outputs")
         }
         return nil, errors.New("Name property cannot be empty")
     }
-    return &lumirpc.NameResponse{Name: obj.Name}, nil
+    return &lumirpc.NameResponse{Name: *obj.Name}, nil
 }
 
 func (p *BasePathMappingProvider) Create(
@@ -174,7 +174,7 @@ func (p *BasePathMappingProvider) Unmarshal(
 
 // BasePathMapping is a marshalable representation of its corresponding IDL type.
 type BasePathMapping struct {
-    Name string `json:"name"`
+    Name *string `json:"name,omitempty"`
     DomainName string `json:"domainName"`
     RestAPI resource.ID `json:"restAPI"`
     BasePath *string `json:"basePath,omitempty"`

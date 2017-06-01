@@ -47,7 +47,7 @@ type Provider interface {
 	// Get reads the instance state identified by res, and copies it into the target resource object.
 	Get(res Resource) error
 	// InspectChange checks what impacts a hypothetical update will have on the resource's properties.
-	InspectChange(old Resource, new Resource) ([]string, PropertyMap, error)
+	InspectChange(old Resource, new Resource, computed PropertyMap) ([]string, PropertyMap, error)
 	// Update updates an existing resource with new values.
 	Update(ols Resource, new Resource) (State, error)
 	// Delete tears down an existing resource.

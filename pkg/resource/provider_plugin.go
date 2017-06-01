@@ -165,7 +165,6 @@ func (p *provider) Get(res Resource) error {
 		return err
 	}
 
-	res.ClearOutputs()
 	if outs := UnmarshalPropertiesInto(p.ctx, resp.GetProperties(), props, MarshalOptions{}); outs != nil {
 		for out := range outs {
 			res.MarkOutput(out)
@@ -177,14 +176,21 @@ func (p *provider) Get(res Resource) error {
 }
 
 // InspectChange checks what impacts a hypothetical update will have on the resource's properties.
-func (p *provider) InspectChange(old Resource, new Resource) ([]string, PropertyMap, error) {
+func (p *provider) InspectChange(old Resource, new Resource, computed PropertyMap) ([]string, PropertyMap, error) {
 	id := old.ID()
 	contract.Assert(id != "")
 	t := old.Type()
 	contract.Assert(t != "")
 	contract.Assert(t == new.Type())
 	olds := old.Properties()
-	news := new.Properties()
+	var news PropertyMap
+	if computed != nil {
+		// If a computed map has been supplied, use that for purposes of diffing.
+		news = computed
+	} else {
+		// Otherwise, simply use the raw properties from the new resource itself.
+		news = new.Properties()
+	}
 
 	glog.V(7).Infof("resource[%v].InspectChange(id=%v,t=%v,#olds=%v,#news=%v) executing",
 		p.pkg, id, t, len(olds), len(news))
@@ -211,6 +217,11 @@ func (p *provider) InspectChange(old Resource, new Resource) ([]string, Property
 	changes := UnmarshalProperties(p.ctx, resp.GetChanges(), MarshalOptions{RawResources: true})
 	glog.V(7).Infof("resource[%v].Update(id=%v,t=%v,...) success: #replaces=%v #changes=%v",
 		p.pkg, id, t, len(replaces), len(changes))
+	if glog.V(9) {
+		for i, repl := range replaces {
+			glog.V(9).Infof("resource[%v].Update(id=%v,t=%v,...) repace #%v: %v", p.pkg, id, t, i, repl)
+		}
+	}
 	return replaces, changes, nil
 }
 
@@ -242,6 +253,7 @@ func (p *provider) Update(old Resource, new Resource) (State, error) {
 	}
 
 	glog.V(7).Infof("resource[%v].Update(id=%v,t=%v,...) success", p.pkg, id, t)
+	new.SetID(id)
 	return StateOK, nil
 }
 

@@ -79,7 +79,7 @@ func (p *buckProvider) Create(ctx context.Context, obj *s3.Bucket) (resource.ID,
 	if obj.BucketName != nil {
 		name = *obj.BucketName
 	} else {
-		name = resource.NewUniqueHex(obj.Name+"-", maxBucketName, sha1.Size)
+		name = resource.NewUniqueHex(*obj.Name+"-", maxBucketName, sha1.Size)
 	}
 	var acl *string
 	if obj.AccessControl != nil {

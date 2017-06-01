@@ -67,7 +67,7 @@ func (p *roleProvider) Create(ctx context.Context, obj *iam.Role) (resource.ID, 
 	if obj.RoleName != nil {
 		name = *obj.RoleName
 	} else {
-		name = resource.NewUniqueHex(obj.Name+"-", maxRoleName, sha1.Size)
+		name = resource.NewUniqueHex(*obj.Name+"-", maxRoleName, sha1.Size)
 	}
 
 	// Serialize the policy document into a JSON blob.

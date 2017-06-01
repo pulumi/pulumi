@@ -181,6 +181,7 @@ func (p *plan) Apply(prog Progress) (Snapshot, Step, State, error) {
 		id := old.ID()
 		new.SetID(id)
 		p.ctx.IDURN[id] = new.URN()
+		old.PropagateOutputs(new)
 	}
 
 	// Next, walk the plan linked list and apply each step.
@@ -367,6 +368,14 @@ func newPlan(ctx *Context, old Snapshot, new Snapshot, analyzers []tokens.QName)
 				return r
 			})
 
+			// Propagate old outputs, provided they aren't overwritten in new, for purposes of the diff.
+			olds := old.Properties()
+			for k := range old.Outputs() {
+				if computed.NeedsValue(k) {
+					computed[k] = olds[k]
+				}
+			}
+
 			if !old.Properties().DeepEquals(computed) {
 				// See if this update has the effect of deleting and recreating the resource.  If so, we need to make
 				// sure to insert the right replacement steps into the graph (a create, replace, and delete).
@@ -375,7 +384,7 @@ func newPlan(ctx *Context, old Snapshot, new Snapshot, analyzers []tokens.QName)
 				if err != nil {
 					return nil, err
 				}
-				replacements, _, err := prov.InspectChange(old, new)
+				replacements, _, err := prov.InspectChange(old, new, computed)
 				if err != nil {
 					return nil, err
 				}
@@ -695,7 +704,7 @@ func (s *step) Apply() (State, error) {
 		s.old = s.new.ShallowClone()
 		s.p.ctx.IDURN[id] = s.new.URN()
 		if err := prov.Get(s.new); err != nil {
-			return rst, err
+			return StateUnknown, err
 		}
 
 	case OpDelete, OpReplaceDelete:
@@ -708,6 +717,9 @@ func (s *step) Apply() (State, error) {
 		}
 
 	case OpUpdate:
+		// First copy over any old properties that should carry over.
+		s.old.PropagateOutputs(s.new)
+
 		// Invoke the Update RPC function for this provider:
 		contract.Assert(s.old != nil)
 		contract.Assert(s.new != nil)
@@ -717,9 +729,12 @@ func (s *step) Apply() (State, error) {
 		if rst, err := prov.Update(s.old, s.new); err != nil {
 			return rst, err
 		}
+		contract.Assert(s.new.ID() == id)
 
-		// Propagate the old ID on the new resource, so that the resulting snapshot is correct.
-		s.new.SetID(id)
+		// Now read the resource state back in case the update triggered cascading updates to other properties.
+		if err := prov.Get(s.new); err != nil {
+			return StateUnknown, err
+		}
 
 	case OpReplace:
 		contract.Assert(s.old != nil)

@@ -68,13 +68,13 @@ func (p *RestAPIProvider) Name(
     if decerr != nil {
         return nil, decerr
     }
-    if obj.Name == "" {
+    if obj.Name == nil || *obj.Name == "" {
         if req.Unknowns[RestAPI_Name] {
             return nil, errors.New("Name property cannot be computed from unknown outputs")
         }
         return nil, errors.New("Name property cannot be empty")
     }
-    return &lumirpc.NameResponse{Name: obj.Name}, nil
+    return &lumirpc.NameResponse{Name: *obj.Name}, nil
 }
 
 func (p *RestAPIProvider) Create(
@@ -174,7 +174,7 @@ func (p *RestAPIProvider) Unmarshal(
 
 // RestAPI is a marshalable representation of its corresponding IDL type.
 type RestAPI struct {
-    Name string `json:"name"`
+    Name *string `json:"name,omitempty"`
     Body *interface{} `json:"body,omitempty"`
     BodyS3Location *S3Location `json:"bodyS3Location,omitempty"`
     CloneFrom *resource.ID `json:"cloneFrom,omitempty"`

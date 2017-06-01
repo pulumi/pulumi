@@ -82,13 +82,13 @@ func (p *UserProvider) Name(
     if decerr != nil {
         return nil, decerr
     }
-    if obj.Name == "" {
+    if obj.Name == nil || *obj.Name == "" {
         if req.Unknowns[User_Name] {
             return nil, errors.New("Name property cannot be computed from unknown outputs")
         }
         return nil, errors.New("Name property cannot be empty")
     }
-    return &lumirpc.NameResponse{Name: obj.Name}, nil
+    return &lumirpc.NameResponse{Name: *obj.Name}, nil
 }
 
 func (p *UserProvider) Create(
@@ -191,7 +191,7 @@ func (p *UserProvider) Unmarshal(
 
 // User is a marshalable representation of its corresponding IDL type.
 type User struct {
-    Name string `json:"name"`
+    Name *string `json:"name,omitempty"`
     UserName *string `json:"userName,omitempty"`
     Groups *[]resource.ID `json:"groups,omitempty"`
     LoginProfile *LoginProfile `json:"loginProfile,omitempty"`

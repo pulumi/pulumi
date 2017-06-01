@@ -85,7 +85,7 @@ func (p *applicationProvider) Create(ctx context.Context, obj *elasticbeanstalk.
 	if obj.ApplicationName != nil {
 		name = *obj.ApplicationName
 	} else {
-		name = resource.NewUniqueHex(obj.Name+"-", maxApplicationName, sha1.Size)
+		name = resource.NewUniqueHex(*obj.Name+"-", maxApplicationName, sha1.Size)
 	}
 	fmt.Printf("Creating ElasticBeanstalk Application '%v' with name '%v'\n", obj.Name, name)
 	create := &awselasticbeanstalk.CreateApplicationInput{

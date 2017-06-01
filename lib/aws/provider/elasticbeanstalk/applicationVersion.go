@@ -74,7 +74,7 @@ func (p *applicationVersionProvider) Create(ctx context.Context,
 	if obj.VersionLabel != nil {
 		versionLabel = *obj.VersionLabel
 	} else {
-		versionLabel = resource.NewUniqueHex(obj.Name+"-", maxApplicationName, sha1.Size)
+		versionLabel = resource.NewUniqueHex(*obj.Name+"-", maxApplicationName, sha1.Size)
 	}
 
 	// Parse out the S3 bucket and key components so we can create the source bundle.

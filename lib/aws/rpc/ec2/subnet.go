@@ -68,13 +68,13 @@ func (p *SubnetProvider) Name(
     if decerr != nil {
         return nil, decerr
     }
-    if obj.Name == "" {
+    if obj.Name == nil || *obj.Name == "" {
         if req.Unknowns[Subnet_Name] {
             return nil, errors.New("Name property cannot be computed from unknown outputs")
         }
         return nil, errors.New("Name property cannot be empty")
     }
-    return &lumirpc.NameResponse{Name: obj.Name}, nil
+    return &lumirpc.NameResponse{Name: *obj.Name}, nil
 }
 
 func (p *SubnetProvider) Create(
@@ -183,7 +183,7 @@ func (p *SubnetProvider) Unmarshal(
 
 // Subnet is a marshalable representation of its corresponding IDL type.
 type Subnet struct {
-    Name string `json:"name"`
+    Name *string `json:"name,omitempty"`
     CIDRBlock string `json:"cidrBlock"`
     VPC resource.ID `json:"vpc"`
     AvailabilityZone *string `json:"availabilityZone,omitempty"`

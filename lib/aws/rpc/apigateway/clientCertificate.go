@@ -68,13 +68,13 @@ func (p *ClientCertificateProvider) Name(
     if decerr != nil {
         return nil, decerr
     }
-    if obj.Name == "" {
+    if obj.Name == nil || *obj.Name == "" {
         if req.Unknowns[ClientCertificate_Name] {
             return nil, errors.New("Name property cannot be computed from unknown outputs")
         }
         return nil, errors.New("Name property cannot be empty")
     }
-    return &lumirpc.NameResponse{Name: obj.Name}, nil
+    return &lumirpc.NameResponse{Name: *obj.Name}, nil
 }
 
 func (p *ClientCertificateProvider) Create(
@@ -174,7 +174,7 @@ func (p *ClientCertificateProvider) Unmarshal(
 
 // ClientCertificate is a marshalable representation of its corresponding IDL type.
 type ClientCertificate struct {
-    Name string `json:"name"`
+    Name *string `json:"name,omitempty"`
     Description *string `json:"description,omitempty"`
 }
 

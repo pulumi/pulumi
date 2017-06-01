@@ -61,18 +61,19 @@ func IDStrings(ids []ID) []string {
 
 // Resource is an instance of a resource with an ID, type, and bag of state.
 type Resource interface {
-	ID() ID                   // the resource's unique ID assigned by the provider (or blank if uncreated).
-	URN() URN                 // the resource's object urn, a human-friendly, unique name for the resource.
-	Type() tokens.Type        // the resource's type.
-	Properties() PropertyMap  // the resource's property map.
-	Outputs() PropertySet     // the set of properties that were set via outputs from the provider.
-	ClearOutputs()            // clears the outputs set in preparation for an operation that marks them.
-	MarkOutput(k PropertyKey) // marks a property as an output from the provider.
-	HasID() bool              // returns true if the resource has been assigned an ID.
-	SetID(id ID)              // assignes an ID to this resource, for those under creation.
-	HasURN() bool             // returns true if the resource has been assigned URN.
-	SetURN(m URN)             // assignes a URN to this resource, for those under creation.
-	ShallowClone() Resource   // make a shallow clone of the resource.
+	ID() ID                          // the resource's unique ID assigned by the provider (or blank if uncreated).
+	URN() URN                        // the resource's object urn, a human-friendly, unique name for the resource.
+	Type() tokens.Type               // the resource's type.
+	Properties() PropertyMap         // the resource's property map.
+	Outputs() PropertySet            // the set of properties that were set via outputs from the provider.
+	ClearOutputs()                   // clears the outputs set in preparation for an operation that marks them.
+	MarkOutput(k PropertyKey)        // marks a property as an output from the provider.
+	HasID() bool                     // returns true if the resource has been assigned an ID.
+	SetID(id ID)                     // assignes an ID to this resource, for those under creation.
+	HasURN() bool                    // returns true if the resource has been assigned URN.
+	SetURN(m URN)                    // assignes a URN to this resource, for those under creation.
+	ShallowClone() Resource          // make a shallow clone of the resource.
+	PropagateOutputs(other Resource) // copy any required output properties onto the target object.
 }
 
 // State is returned when an error has occurred during a resource provider operation.  It indicates whether the
@@ -135,6 +136,18 @@ func (r *resource) ShallowClone() Resource {
 		t:          r.t,
 		properties: r.properties.ShallowClone(),
 		outs:       r.outs.ShallowClone(),
+	}
+}
+
+// PropagateOutputs copies any required output properties onto the target object.
+func (r *resource) PropagateOutputs(other Resource) {
+	rs := r.Properties()
+	others := other.Properties()
+	for k := range r.Outputs() {
+		if others.NeedsValue(k) {
+			others[k] = rs[k]
+			other.MarkOutput(k)
+		}
 	}
 }
 

@@ -68,13 +68,13 @@ func (p *SecurityGroupIngressProvider) Name(
     if decerr != nil {
         return nil, decerr
     }
-    if obj.Name == "" {
+    if obj.Name == nil || *obj.Name == "" {
         if req.Unknowns[SecurityGroupIngress_Name] {
             return nil, errors.New("Name property cannot be computed from unknown outputs")
         }
         return nil, errors.New("Name property cannot be empty")
     }
-    return &lumirpc.NameResponse{Name: obj.Name}, nil
+    return &lumirpc.NameResponse{Name: *obj.Name}, nil
 }
 
 func (p *SecurityGroupIngressProvider) Create(
@@ -204,7 +204,7 @@ func (p *SecurityGroupIngressProvider) Unmarshal(
 
 // SecurityGroupIngress is a marshalable representation of its corresponding IDL type.
 type SecurityGroupIngress struct {
-    Name string `json:"name"`
+    Name *string `json:"name,omitempty"`
     IPProtocol string `json:"ipProtocol"`
     CIDRIP *string `json:"cidrIp,omitempty"`
     CIDRIPv6 *string `json:"cidrIpv6,omitempty"`

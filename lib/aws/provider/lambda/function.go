@@ -100,7 +100,7 @@ func (p *funcProvider) Create(ctx context.Context, obj *lambda.Function) (resour
 	if obj.FunctionName != nil {
 		name = *obj.FunctionName
 	} else {
-		name = resource.NewUniqueHex(obj.Name+"-", maxFunctionName, sha1.Size)
+		name = resource.NewUniqueHex(*obj.Name+"-", maxFunctionName, sha1.Size)
 	}
 
 	code, err := p.getCode(obj.Code)

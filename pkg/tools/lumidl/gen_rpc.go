@@ -291,13 +291,13 @@ func (g *RPCGenerator) EmitResource(w *bufio.Writer, module tokens.Module, pkg *
 	writefmtln(w, "    }")
 	if res.Named {
 		// For named resources, we have a canonical way of fetching the name.
-		writefmtln(w, `    if obj.Name == "" {`)
+		writefmtln(w, `    if obj.Name == nil || *obj.Name == "" {`)
 		writefmtln(w, `        if req.Unknowns[%v_Name] {`, name)
 		writefmtln(w, `            return nil, errors.New("Name property cannot be computed from unknown outputs")`)
 		writefmtln(w, "        }")
 		writefmtln(w, `        return nil, errors.New("Name property cannot be empty")`)
 		writefmtln(w, "    }")
-		writefmtln(w, "    return &lumirpc.NameResponse{Name: obj.Name}, nil")
+		writefmtln(w, "    return &lumirpc.NameResponse{Name: *obj.Name}, nil")
 	} else {
 		// For all other resources, delegate to the underlying provider to perform the naming operation.
 		writefmtln(w, "    name, err := p.ops.Name(ctx, obj)")
@@ -417,7 +417,8 @@ func (g *RPCGenerator) EmitStructType(w *bufio.Writer, module tokens.Module, pkg
 		opts := propopts[i]
 		// Make a JSON tag for this so we can serialize; note that outputs are always optional in this position.
 		jsontag := makeJSONTag(opts)
-		writefmtln(w, "    %v %v %v", prop.Name(), g.GenTypeName(prop.Type(), opts.Optional || opts.Out), jsontag)
+		writefmtln(w, "    %v %v %v",
+			prop.Name(), g.GenTypeName(prop.Type(), opts.Optional || opts.In || opts.Out), jsontag)
 	}
 	writefmtln(w, "}")
 	writefmtln(w, "")
@@ -437,7 +438,7 @@ func (g *RPCGenerator) EmitStructType(w *bufio.Writer, module tokens.Module, pkg
 // makeJSONTag turns a set of property options into a serializable JSON tag.
 func makeJSONTag(opts PropertyOptions) string {
 	var flags string
-	if opts.Optional || opts.Out {
+	if opts.Optional || opts.In || opts.Out {
 		flags = ",omitempty"
 	}
 	return fmt.Sprintf("`json:\"%v%v\"`", opts.Name, flags)

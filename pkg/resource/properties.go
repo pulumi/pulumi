@@ -384,6 +384,14 @@ func (m PropertyMap) OptOutputOrErr(k PropertyKey) (*Output, error) {
 	return m.OutputOrErr(k, false)
 }
 
+// NeedsValue returns true if the slot associated with the given property key is missing, contains a null, or is an
+// output property that is eagerly awaiting a value to be assigned.  That is to say, NeedsValue indicates a semantically
+// meaningful value is present (even if it's a computed one whose concrete value isn't yet evaluated).
+func (m PropertyMap) NeedsValue(k PropertyKey) bool {
+	v, has := m[k]
+	return !has || v.IsNull() || v.IsOutput()
+}
+
 // Mappable returns a mapper-compatible object map, suitable for deserialization into structures.
 func (m PropertyMap) Mappable() mapper.Object {
 	obj := make(mapper.Object)

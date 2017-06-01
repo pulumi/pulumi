@@ -71,7 +71,7 @@ func (p *environmentProvider) Create(ctx context.Context, obj *elasticbeanstalk.
 	if obj.EnvironmentName != nil {
 		name = *obj.EnvironmentName
 	} else {
-		name = resource.NewUniqueHex(obj.Name+"-", maxEnvironmentName, sha1.Size)
+		name = resource.NewUniqueHex(*obj.Name+"-", maxEnvironmentName, sha1.Size)
 	}
 
 	var optionSettings []*awselasticbeanstalk.ConfigurationOptionSetting

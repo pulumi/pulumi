@@ -61,8 +61,9 @@ func Test(t *testing.T) {
 	defer cleanup(ctx)
 
 	// Table to create
+	tablename := TABLENAMEPREFIX
 	table := dynamodb.Table{
-		Name: TABLENAMEPREFIX,
+		Name: &tablename,
 		Attributes: []dynamodb.Attribute{
 			{Name: "Album", Type: "S"},
 			{Name: "Artist", Type: "S"},
@@ -113,8 +114,9 @@ func Test(t *testing.T) {
 	assert.Contains(t, id, "lumitest", "expected resource ID to contain `lumitest`")
 
 	// Table for update
+	tablename2 := "lumitest"
 	table2 := dynamodb.Table{
-		Name: "lumitest",
+		Name: &tablename2,
 		Attributes: []dynamodb.Attribute{
 			{Name: "Album", Type: "S"},
 			{Name: "Artist", Type: "S"},

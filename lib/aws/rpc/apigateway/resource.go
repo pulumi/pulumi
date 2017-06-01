@@ -68,13 +68,13 @@ func (p *ResourceProvider) Name(
     if decerr != nil {
         return nil, decerr
     }
-    if obj.Name == "" {
+    if obj.Name == nil || *obj.Name == "" {
         if req.Unknowns[Resource_Name] {
             return nil, errors.New("Name property cannot be computed from unknown outputs")
         }
         return nil, errors.New("Name property cannot be empty")
     }
-    return &lumirpc.NameResponse{Name: obj.Name}, nil
+    return &lumirpc.NameResponse{Name: *obj.Name}, nil
 }
 
 func (p *ResourceProvider) Create(
@@ -183,7 +183,7 @@ func (p *ResourceProvider) Unmarshal(
 
 // Resource is a marshalable representation of its corresponding IDL type.
 type Resource struct {
-    Name string `json:"name"`
+    Name *string `json:"name,omitempty"`
     Parent resource.ID `json:"parent"`
     PathPart string `json:"pathPart"`
     RestAPI resource.ID `json:"restAPI"`

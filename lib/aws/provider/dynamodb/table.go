@@ -160,7 +160,7 @@ func (p *tableProvider) Create(ctx context.Context, obj *dynamodb.Table) (resour
 	if obj.TableName != nil {
 		name = *obj.TableName
 	} else {
-		name = resource.NewUniqueHex(obj.Name+"-", maxTableName, sha1.Size)
+		name = resource.NewUniqueHex(*obj.Name+"-", maxTableName, sha1.Size)
 	}
 
 	var attributeDefinitions []*awsdynamodb.AttributeDefinition

@@ -68,13 +68,13 @@ func (p *StageProvider) Name(
     if decerr != nil {
         return nil, decerr
     }
-    if obj.Name == "" {
+    if obj.Name == nil || *obj.Name == "" {
         if req.Unknowns[Stage_Name] {
             return nil, errors.New("Name property cannot be computed from unknown outputs")
         }
         return nil, errors.New("Name property cannot be empty")
     }
-    return &lumirpc.NameResponse{Name: obj.Name}, nil
+    return &lumirpc.NameResponse{Name: *obj.Name}, nil
 }
 
 func (p *StageProvider) Create(
@@ -180,7 +180,7 @@ func (p *StageProvider) Unmarshal(
 
 // Stage is a marshalable representation of its corresponding IDL type.
 type Stage struct {
-    Name string `json:"name"`
+    Name *string `json:"name,omitempty"`
     RestAPI resource.ID `json:"restAPI"`
     StageName string `json:"stageName"`
     Deployment resource.ID `json:"deployment"`

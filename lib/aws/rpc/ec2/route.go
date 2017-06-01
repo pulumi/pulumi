@@ -68,13 +68,13 @@ func (p *RouteProvider) Name(
     if decerr != nil {
         return nil, decerr
     }
-    if obj.Name == "" {
+    if obj.Name == nil || *obj.Name == "" {
         if req.Unknowns[Route_Name] {
             return nil, errors.New("Name property cannot be computed from unknown outputs")
         }
         return nil, errors.New("Name property cannot be empty")
     }
-    return &lumirpc.NameResponse{Name: obj.Name}, nil
+    return &lumirpc.NameResponse{Name: *obj.Name}, nil
 }
 
 func (p *RouteProvider) Create(
@@ -186,7 +186,7 @@ func (p *RouteProvider) Unmarshal(
 
 // Route is a marshalable representation of its corresponding IDL type.
 type Route struct {
-    Name string `json:"name"`
+    Name *string `json:"name,omitempty"`
     DestinationCidrBlock string `json:"destinationCidrBlock"`
     RouteTable resource.ID `json:"routeTable"`
     InternetGateway resource.ID `json:"internetGateway"`

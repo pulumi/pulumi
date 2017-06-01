@@ -68,13 +68,13 @@ func (p *InstanceProvider) Name(
     if decerr != nil {
         return nil, decerr
     }
-    if obj.Name == "" {
+    if obj.Name == nil || *obj.Name == "" {
         if req.Unknowns[Instance_Name] {
             return nil, errors.New("Name property cannot be computed from unknown outputs")
         }
         return nil, errors.New("Name property cannot be empty")
     }
-    return &lumirpc.NameResponse{Name: obj.Name}, nil
+    return &lumirpc.NameResponse{Name: *obj.Name}, nil
 }
 
 func (p *InstanceProvider) Create(
@@ -174,7 +174,7 @@ func (p *InstanceProvider) Unmarshal(
 
 // Instance is a marshalable representation of its corresponding IDL type.
 type Instance struct {
-    Name string `json:"name"`
+    Name *string `json:"name,omitempty"`
     ImageID string `json:"imageId"`
     InstanceType *InstanceType `json:"instanceType,omitempty"`
     SecurityGroups *[]resource.ID `json:"securityGroups,omitempty"`

@@ -68,13 +68,13 @@ func (p *ApplicationVersionProvider) Name(
     if decerr != nil {
         return nil, decerr
     }
-    if obj.Name == "" {
+    if obj.Name == nil || *obj.Name == "" {
         if req.Unknowns[ApplicationVersion_Name] {
             return nil, errors.New("Name property cannot be computed from unknown outputs")
         }
         return nil, errors.New("Name property cannot be empty")
     }
-    return &lumirpc.NameResponse{Name: obj.Name}, nil
+    return &lumirpc.NameResponse{Name: *obj.Name}, nil
 }
 
 func (p *ApplicationVersionProvider) Create(
@@ -183,7 +183,7 @@ func (p *ApplicationVersionProvider) Unmarshal(
 
 // ApplicationVersion is a marshalable representation of its corresponding IDL type.
 type ApplicationVersion struct {
-    Name string `json:"name"`
+    Name *string `json:"name,omitempty"`
     Application resource.ID `json:"application"`
     VersionLabel *string `json:"versionLabel,omitempty"`
     Description *string `json:"description,omitempty"`

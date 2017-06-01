@@ -70,7 +70,7 @@ func (p *sgProvider) Create(ctx context.Context, obj *ec2.SecurityGroup) (resour
 	// prefer to auto-generate it from the Lumi resource name, suffixed with a hash, to avoid collisions.
 	var name string
 	if obj.GroupName == nil {
-		name = resource.NewUniqueHex(obj.Name+"-", maxSecurityGroupName, sha1.Size)
+		name = resource.NewUniqueHex(*obj.Name+"-", maxSecurityGroupName, sha1.Size)
 	} else {
 		name = *obj.GroupName
 	}

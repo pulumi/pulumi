@@ -82,13 +82,13 @@ func (p *FunctionProvider) Name(
     if decerr != nil {
         return nil, decerr
     }
-    if obj.Name == "" {
+    if obj.Name == nil || *obj.Name == "" {
         if req.Unknowns[Function_Name] {
             return nil, errors.New("Name property cannot be computed from unknown outputs")
         }
         return nil, errors.New("Name property cannot be empty")
     }
-    return &lumirpc.NameResponse{Name: obj.Name}, nil
+    return &lumirpc.NameResponse{Name: *obj.Name}, nil
 }
 
 func (p *FunctionProvider) Create(
@@ -188,7 +188,7 @@ func (p *FunctionProvider) Unmarshal(
 
 // Function is a marshalable representation of its corresponding IDL type.
 type Function struct {
-    Name string `json:"name"`
+    Name *string `json:"name,omitempty"`
     Code resource.Archive `json:"code"`
     Handler string `json:"handler"`
     Role resource.ID `json:"role"`

@@ -68,13 +68,13 @@ func (p *APIKeyProvider) Name(
     if decerr != nil {
         return nil, decerr
     }
-    if obj.Name == "" {
+    if obj.Name == nil || *obj.Name == "" {
         if req.Unknowns[APIKey_Name] {
             return nil, errors.New("Name property cannot be computed from unknown outputs")
         }
         return nil, errors.New("Name property cannot be empty")
     }
-    return &lumirpc.NameResponse{Name: obj.Name}, nil
+    return &lumirpc.NameResponse{Name: *obj.Name}, nil
 }
 
 func (p *APIKeyProvider) Create(
@@ -177,7 +177,7 @@ func (p *APIKeyProvider) Unmarshal(
 
 // APIKey is a marshalable representation of its corresponding IDL type.
 type APIKey struct {
-    Name string `json:"name"`
+    Name *string `json:"name,omitempty"`
     KeyName *string `json:"keyName,omitempty"`
     Description *string `json:"description,omitempty"`
     Enabled *bool `json:"enabled,omitempty"`

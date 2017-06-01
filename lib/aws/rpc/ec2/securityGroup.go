@@ -68,13 +68,13 @@ func (p *SecurityGroupProvider) Name(
     if decerr != nil {
         return nil, decerr
     }
-    if obj.Name == "" {
+    if obj.Name == nil || *obj.Name == "" {
         if req.Unknowns[SecurityGroup_Name] {
             return nil, errors.New("Name property cannot be computed from unknown outputs")
         }
         return nil, errors.New("Name property cannot be empty")
     }
-    return &lumirpc.NameResponse{Name: obj.Name}, nil
+    return &lumirpc.NameResponse{Name: *obj.Name}, nil
 }
 
 func (p *SecurityGroupProvider) Create(
@@ -183,7 +183,7 @@ func (p *SecurityGroupProvider) Unmarshal(
 
 // SecurityGroup is a marshalable representation of its corresponding IDL type.
 type SecurityGroup struct {
-    Name string `json:"name"`
+    Name *string `json:"name,omitempty"`
     GroupDescription string `json:"groupDescription"`
     GroupName *string `json:"groupName,omitempty"`
     VPC *resource.ID `json:"vpc,omitempty"`

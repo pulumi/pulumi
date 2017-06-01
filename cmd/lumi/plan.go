@@ -502,9 +502,10 @@ func printResourceOutputProperties(b *bytes.Buffer, step resource.Step, indent s
 	keys := resource.StablePropertyKeys(olds)
 	maxkey := maxKey(keys)
 	for _, k := range keys {
-		if v := olds[k]; v.IsOutput() && shouldPrintPropertyValue(v, true) {
+		v := news[k]
+		if olds.NeedsValue(k) && shouldPrintPropertyValue(v, true) {
 			printPropertyTitle(b, k, maxkey, indent)
-			printPropertyValue(b, news[k], indent)
+			printPropertyValue(b, v, indent)
 		}
 	}
 

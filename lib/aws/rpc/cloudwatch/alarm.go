@@ -70,13 +70,13 @@ func (p *ActionTargetProvider) Name(
     if decerr != nil {
         return nil, decerr
     }
-    if obj.Name == "" {
+    if obj.Name == nil || *obj.Name == "" {
         if req.Unknowns[ActionTarget_Name] {
             return nil, errors.New("Name property cannot be computed from unknown outputs")
         }
         return nil, errors.New("Name property cannot be empty")
     }
-    return &lumirpc.NameResponse{Name: obj.Name}, nil
+    return &lumirpc.NameResponse{Name: *obj.Name}, nil
 }
 
 func (p *ActionTargetProvider) Create(
@@ -179,7 +179,7 @@ func (p *ActionTargetProvider) Unmarshal(
 
 // ActionTarget is a marshalable representation of its corresponding IDL type.
 type ActionTarget struct {
-    Name string `json:"name"`
+    Name *string `json:"name,omitempty"`
     TopicName *string `json:"topicName,omitempty"`
     DisplayName *string `json:"displayName,omitempty"`
     Subscription *[]__sns.TopicSubscription `json:"subscription,omitempty"`
@@ -244,13 +244,13 @@ func (p *AlarmProvider) Name(
     if decerr != nil {
         return nil, decerr
     }
-    if obj.Name == "" {
+    if obj.Name == nil || *obj.Name == "" {
         if req.Unknowns[Alarm_Name] {
             return nil, errors.New("Name property cannot be computed from unknown outputs")
         }
         return nil, errors.New("Name property cannot be empty")
     }
-    return &lumirpc.NameResponse{Name: obj.Name}, nil
+    return &lumirpc.NameResponse{Name: *obj.Name}, nil
 }
 
 func (p *AlarmProvider) Create(
@@ -353,7 +353,7 @@ func (p *AlarmProvider) Unmarshal(
 
 // Alarm is a marshalable representation of its corresponding IDL type.
 type Alarm struct {
-    Name string `json:"name"`
+    Name *string `json:"name,omitempty"`
     ComparisonOperator AlarmComparisonOperator `json:"comparisonOperator"`
     EvaluationPeriods float64 `json:"evaluationPerids"`
     MetricName string `json:"metricName"`
