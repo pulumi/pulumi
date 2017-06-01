@@ -68,10 +68,13 @@ func (p *SecurityGroupEgressProvider) Name(
     if decerr != nil {
         return nil, decerr
     }
-    if obj.Name == "" {
+    if obj.Name == nil || *obj.Name == "" {
+        if req.Unknowns[SecurityGroupEgress_Name] {
+            return nil, errors.New("Name property cannot be computed from unknown outputs")
+        }
         return nil, errors.New("Name property cannot be empty")
     }
-    return &lumirpc.NameResponse{Name: obj.Name}, nil
+    return &lumirpc.NameResponse{Name: *obj.Name}, nil
 }
 
 func (p *SecurityGroupEgressProvider) Create(
@@ -85,9 +88,7 @@ func (p *SecurityGroupEgressProvider) Create(
     if err != nil {
         return nil, err
     }
-    return &lumirpc.CreateResponse{
-        Id:   string(id),
-    }, nil
+    return &lumirpc.CreateResponse{Id: string(id)}, nil
 }
 
 func (p *SecurityGroupEgressProvider) Get(
@@ -105,7 +106,7 @@ func (p *SecurityGroupEgressProvider) Get(
 }
 
 func (p *SecurityGroupEgressProvider) InspectChange(
-    ctx context.Context, req *lumirpc.ChangeRequest) (*lumirpc.InspectChangeResponse, error) {
+    ctx context.Context, req *lumirpc.InspectChangeRequest) (*lumirpc.InspectChangeResponse, error) {
     contract.Assert(req.GetType() == string(SecurityGroupEgressToken))
     id := resource.ID(req.GetId())
     old, oldprops, decerr := p.Unmarshal(req.GetOlds())
@@ -157,7 +158,7 @@ func (p *SecurityGroupEgressProvider) InspectChange(
 }
 
 func (p *SecurityGroupEgressProvider) Update(
-    ctx context.Context, req *lumirpc.ChangeRequest) (*pbempty.Empty, error) {
+    ctx context.Context, req *lumirpc.UpdateRequest) (*pbempty.Empty, error) {
     contract.Assert(req.GetType() == string(SecurityGroupEgressToken))
     id := resource.ID(req.GetId())
     old, oldprops, err := p.Unmarshal(req.GetOlds())
@@ -188,7 +189,7 @@ func (p *SecurityGroupEgressProvider) Delete(
 func (p *SecurityGroupEgressProvider) Unmarshal(
     v *pbstruct.Struct) (*SecurityGroupEgress, resource.PropertyMap, mapper.DecodeError) {
     var obj SecurityGroupEgress
-    props := resource.UnmarshalProperties(v)
+    props := resource.UnmarshalProperties(nil, v, resource.MarshalOptions{RawResources: true})
     result := mapper.MapIU(props.Mappable(), &obj)
     return &obj, props, result
 }
@@ -197,7 +198,7 @@ func (p *SecurityGroupEgressProvider) Unmarshal(
 
 // SecurityGroupEgress is a marshalable representation of its corresponding IDL type.
 type SecurityGroupEgress struct {
-    Name string `json:"name"`
+    Name *string `json:"name,omitempty"`
     FromPort float64 `json:"fromPort"`
     Group resource.ID `json:"group"`
     IPProtocol string `json:"ipProtocol"`

@@ -37,21 +37,21 @@ type Provider interface {
 	// Pkg fetches this provider's package.
 	Pkg() tokens.Package
 	// Check validates that the given property bag is valid for a resource of the given type.
-	Check(t tokens.Type, props PropertyMap) ([]CheckFailure, error)
+	Check(res Resource) ([]CheckFailure, error)
 	// Name names a given resource.  Sometimes this will be assigned by a developer, and so the provider
 	// simply fetches it from the property bag; other times, the provider will assign this based on its own algorithm.
 	// In any case, resources with the same name must be safe to use interchangeably with one another.
-	Name(t tokens.Type, props PropertyMap) (tokens.QName, error)
-	// Create allocates a new instance of the provided resource and returns its unique ID afterwards.
-	Create(t tokens.Type, props PropertyMap) (ID, PropertyMap, State, error)
-	// Get reads the instance state identified by id/t, and returns a bag of properties.
-	Get(id ID, t tokens.Type) (PropertyMap, error)
+	Name(res Resource) (tokens.QName, error)
+	// Create allocates a new instance of the provided resource and assigns its unique ID afterwards.
+	Create(res Resource) (State, error)
+	// Get reads the instance state identified by res, and copies it into the target resource object.
+	Get(res Resource) error
 	// InspectChange checks what impacts a hypothetical update will have on the resource's properties.
-	InspectChange(id ID, t tokens.Type, olds PropertyMap, news PropertyMap) ([]string, PropertyMap, error)
+	InspectChange(old Resource, new Resource, computed PropertyMap) ([]string, PropertyMap, error)
 	// Update updates an existing resource with new values.
-	Update(id ID, t tokens.Type, olds PropertyMap, news PropertyMap) (State, error)
+	Update(ols Resource, new Resource) (State, error)
 	// Delete tears down an existing resource.
-	Delete(id ID, t tokens.Type) (State, error)
+	Delete(res Resource) (State, error)
 }
 
 // CheckFailure indicates that a call to check failed; it contains the property and reason for the failure.

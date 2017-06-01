@@ -25,7 +25,7 @@ const InstanceToken = tokens.Type("aws:ec2/instance:Instance")
 // InstanceProviderOps is a pluggable interface for Instance-related management functionality.
 type InstanceProviderOps interface {
     Check(ctx context.Context, obj *Instance) ([]mapper.FieldError, error)
-    Create(ctx context.Context, obj *Instance) (resource.ID, *InstanceOuts, error)
+    Create(ctx context.Context, obj *Instance) (resource.ID, error)
     Get(ctx context.Context, id resource.ID) (*Instance, error)
     InspectChange(ctx context.Context,
         id resource.ID, old *Instance, new *Instance, diff *resource.ObjectDiff) ([]string, error)
@@ -68,10 +68,13 @@ func (p *InstanceProvider) Name(
     if decerr != nil {
         return nil, decerr
     }
-    if obj.Name == "" {
+    if obj.Name == nil || *obj.Name == "" {
+        if req.Unknowns[Instance_Name] {
+            return nil, errors.New("Name property cannot be computed from unknown outputs")
+        }
         return nil, errors.New("Name property cannot be empty")
     }
-    return &lumirpc.NameResponse{Name: obj.Name}, nil
+    return &lumirpc.NameResponse{Name: *obj.Name}, nil
 }
 
 func (p *InstanceProvider) Create(
@@ -81,16 +84,11 @@ func (p *InstanceProvider) Create(
     if decerr != nil {
         return nil, decerr
     }
-    id, outs, err := p.ops.Create(ctx, obj)
+    id, err := p.ops.Create(ctx, obj)
     if err != nil {
         return nil, err
     }
-    return &lumirpc.CreateResponse{
-        Id:   string(id),
-        Outputs: resource.MarshalProperties(
-            nil, resource.NewPropertyMap(outs), resource.MarshalOptions{},
-        ),
-    }, nil
+    return &lumirpc.CreateResponse{Id: string(id)}, nil
 }
 
 func (p *InstanceProvider) Get(
@@ -108,7 +106,7 @@ func (p *InstanceProvider) Get(
 }
 
 func (p *InstanceProvider) InspectChange(
-    ctx context.Context, req *lumirpc.ChangeRequest) (*lumirpc.InspectChangeResponse, error) {
+    ctx context.Context, req *lumirpc.InspectChangeRequest) (*lumirpc.InspectChangeResponse, error) {
     contract.Assert(req.GetType() == string(InstanceToken))
     id := resource.ID(req.GetId())
     old, oldprops, decerr := p.Unmarshal(req.GetOlds())
@@ -136,7 +134,7 @@ func (p *InstanceProvider) InspectChange(
 }
 
 func (p *InstanceProvider) Update(
-    ctx context.Context, req *lumirpc.ChangeRequest) (*pbempty.Empty, error) {
+    ctx context.Context, req *lumirpc.UpdateRequest) (*pbempty.Empty, error) {
     contract.Assert(req.GetType() == string(InstanceToken))
     id := resource.ID(req.GetId())
     old, oldprops, err := p.Unmarshal(req.GetOlds())
@@ -167,7 +165,7 @@ func (p *InstanceProvider) Delete(
 func (p *InstanceProvider) Unmarshal(
     v *pbstruct.Struct) (*Instance, resource.PropertyMap, mapper.DecodeError) {
     var obj Instance
-    props := resource.UnmarshalProperties(v)
+    props := resource.UnmarshalProperties(nil, v, resource.MarshalOptions{RawResources: true})
     result := mapper.MapIU(props.Mappable(), &obj)
     return &obj, props, result
 }
@@ -176,21 +174,12 @@ func (p *InstanceProvider) Unmarshal(
 
 // Instance is a marshalable representation of its corresponding IDL type.
 type Instance struct {
-    Name string `json:"name"`
+    Name *string `json:"name,omitempty"`
     ImageID string `json:"imageId"`
     InstanceType *InstanceType `json:"instanceType,omitempty"`
     SecurityGroups *[]resource.ID `json:"securityGroups,omitempty"`
     KeyName *string `json:"keyName,omitempty"`
     AvailabilityZone string `json:"availabilityZone,omitempty"`
-    PrivateDNSName *string `json:"privateDNSName,omitempty"`
-    PublicDNSName *string `json:"publicDNSName,omitempty"`
-    PrivateIP *string `json:"privateIP,omitempty"`
-    PublicIP *string `json:"publicIP,omitempty"`
-}
-
-// InstanceOuts is a marshalable representation of its IDL type's output properties.
-type InstanceOuts struct {
-    AvailabilityZone string `json:"availabilityZone"`
     PrivateDNSName *string `json:"privateDNSName,omitempty"`
     PublicDNSName *string `json:"publicDNSName,omitempty"`
     PrivateIP *string `json:"privateIP,omitempty"`

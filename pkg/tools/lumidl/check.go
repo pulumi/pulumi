@@ -358,7 +358,7 @@ func (chk *Checker) CheckIDLType(t types.Type, opts PropertyOptions) error {
 		}
 	case *types.Pointer:
 		// A pointer is OK so long as the field is either optional or an entity type (asset, resource, etc).
-		if !opts.Optional {
+		if !opts.Optional && !opts.In && !opts.Out {
 			elem := ft.Elem()
 			var ok bool
 			if named, isnamed := elem.(*types.Named); isnamed {

@@ -68,10 +68,13 @@ func (p *RouteTableProvider) Name(
     if decerr != nil {
         return nil, decerr
     }
-    if obj.Name == "" {
+    if obj.Name == nil || *obj.Name == "" {
+        if req.Unknowns[RouteTable_Name] {
+            return nil, errors.New("Name property cannot be computed from unknown outputs")
+        }
         return nil, errors.New("Name property cannot be empty")
     }
-    return &lumirpc.NameResponse{Name: obj.Name}, nil
+    return &lumirpc.NameResponse{Name: *obj.Name}, nil
 }
 
 func (p *RouteTableProvider) Create(
@@ -85,9 +88,7 @@ func (p *RouteTableProvider) Create(
     if err != nil {
         return nil, err
     }
-    return &lumirpc.CreateResponse{
-        Id:   string(id),
-    }, nil
+    return &lumirpc.CreateResponse{Id: string(id)}, nil
 }
 
 func (p *RouteTableProvider) Get(
@@ -105,7 +106,7 @@ func (p *RouteTableProvider) Get(
 }
 
 func (p *RouteTableProvider) InspectChange(
-    ctx context.Context, req *lumirpc.ChangeRequest) (*lumirpc.InspectChangeResponse, error) {
+    ctx context.Context, req *lumirpc.InspectChangeRequest) (*lumirpc.InspectChangeResponse, error) {
     contract.Assert(req.GetType() == string(RouteTableToken))
     id := resource.ID(req.GetId())
     old, oldprops, decerr := p.Unmarshal(req.GetOlds())
@@ -136,7 +137,7 @@ func (p *RouteTableProvider) InspectChange(
 }
 
 func (p *RouteTableProvider) Update(
-    ctx context.Context, req *lumirpc.ChangeRequest) (*pbempty.Empty, error) {
+    ctx context.Context, req *lumirpc.UpdateRequest) (*pbempty.Empty, error) {
     contract.Assert(req.GetType() == string(RouteTableToken))
     id := resource.ID(req.GetId())
     old, oldprops, err := p.Unmarshal(req.GetOlds())
@@ -167,7 +168,7 @@ func (p *RouteTableProvider) Delete(
 func (p *RouteTableProvider) Unmarshal(
     v *pbstruct.Struct) (*RouteTable, resource.PropertyMap, mapper.DecodeError) {
     var obj RouteTable
-    props := resource.UnmarshalProperties(v)
+    props := resource.UnmarshalProperties(nil, v, resource.MarshalOptions{RawResources: true})
     result := mapper.MapIU(props.Mappable(), &obj)
     return &obj, props, result
 }
@@ -176,7 +177,7 @@ func (p *RouteTableProvider) Unmarshal(
 
 // RouteTable is a marshalable representation of its corresponding IDL type.
 type RouteTable struct {
-    Name string `json:"name"`
+    Name *string `json:"name,omitempty"`
     VPC resource.ID `json:"vpc"`
 }
 

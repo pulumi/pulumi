@@ -103,8 +103,15 @@ func (a *Allocator) NewFunction(tree diag.Diagable, fnc symbols.Function, this *
 }
 
 // NewPointer allocates a new pointer-like object that wraps the given reference.
-func (a *Allocator) NewPointer(tree diag.Diagable, t symbols.Type, ptr *rt.Pointer) *rt.Object {
-	obj := rt.NewPointerObject(t, ptr)
+func (a *Allocator) NewPointer(tree diag.Diagable, elem symbols.Type, ptr *rt.Pointer) *rt.Object {
+	obj := rt.NewPointerObject(elem, ptr)
+	a.onNewObject(tree, obj)
+	return obj
+}
+
+// NewLatent creates a new latent object; that is, one whose value is not yet known.
+func (a *Allocator) NewLatent(tree diag.Diagable, elem symbols.Type) *rt.Object {
+	obj := rt.NewLatentObject(elem)
 	a.onNewObject(tree, obj)
 	return obj
 }

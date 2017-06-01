@@ -13,11 +13,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { Context } from './context';
-
 // Resource represents a class whose CRUD operations are implemented by a provider plugin.
 export abstract class Resource {
     constructor() {
     }
+}
+
+// out indicates that a property is an output from the resource provider.  Such properties are treated differently by
+// the runtime because their values come from outside of the Lumi type system.  Furthermore, the runtime permits
+// speculative evaluation of code that depends upon them, in some circumstances, before the real value is known.
+export function out(target: Object, propertyKey: string) {
+    // nothing to do here; this is purely a decorative metadata token.
 }
 

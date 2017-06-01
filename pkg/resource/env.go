@@ -90,8 +90,16 @@ func DeserializeEnvfile(ctx *Context, envfile *Envfile) (*Env, Snapshot) {
 				if res.ID != nil {
 					id = *res.ID
 				}
+				resobj := NewResource(id, kvp.Key, res.Type, props)
 
-				resources = append(resources, NewResource(id, kvp.Key, res.Type, props))
+				// Mark any inferred properties so we know how and when to diff them appropriately.
+				if res.Outputs != nil {
+					for _, k := range *res.Outputs {
+						resobj.MarkOutput(PropertyKey(k))
+					}
+				}
+
+				resources = append(resources, resobj)
 			}
 		}
 

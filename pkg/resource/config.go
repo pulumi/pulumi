@@ -87,7 +87,7 @@ func (cfg *ConfigMap) ApplyConfig(ctx *binder.Context, pkg *symbols.Package,
 					// Allocate a new constant for the value we are about to assign, and assign it to the location.
 					v := (*cfg)[tok]
 					obj := e.NewConstantObject(nil, v)
-					loc.Assign(tree, obj)
+					loc.Set(tree, obj)
 					vars[tok] = obj
 				}
 			}

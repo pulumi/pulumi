@@ -19,7 +19,6 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/fatih/structs"
 	"github.com/pkg/errors"
 
 	"github.com/pulumi/lumi/pkg/tokens"
@@ -30,12 +29,15 @@ import (
 // PropertyKey is the name of a property.
 type PropertyKey tokens.Name
 
+// PropertySet is a simple set keyed by property name.
+type PropertySet map[PropertyKey]bool
+
 // PropertyMap is a simple map keyed by property name with "JSON-like" values.
 type PropertyMap map[PropertyKey]PropertyValue
 
 // NewPropertyMap turns a struct into a property map, using any JSON tags inside to determine naming.
 func NewPropertyMap(s interface{}) PropertyMap {
-	m := structs.Map(s)
+	m := mapper.Unmap(s)
 	return NewPropertyMapFromMap(m)
 }
 
@@ -50,6 +52,25 @@ func NewPropertyMapFromMap(m map[string]interface{}) PropertyMap {
 // PropertyValue is the value of a property, limited to a select few types (see below).
 type PropertyValue struct {
 	V interface{}
+}
+
+// Computed represents the absence of a property value, because it will be computed at some point in the future.  It
+// contains a property value which represents the underlying expected type of the eventual property value.
+type Computed PropertyValue
+
+// Eventual reflects the eventual type of property value that a computed property will contain.
+func (v Computed) Eventual() PropertyValue {
+	return PropertyValue(v)
+}
+
+// Output is a property value that will eventually be computed by the resource provider.  If an output property is
+// encountered, it means the resource has not yet been created, and so the output value is unavailable.  Note that an
+// output property is a special case of computed, but carries additional semantic meaning.
+type Output PropertyValue
+
+// Eventual reflects the eventual type of property value that an output property will contain.
+func (v Output) Eventual() PropertyValue {
+	return PropertyValue(v)
 }
 
 type ReqError struct {
@@ -195,6 +216,34 @@ func (m PropertyMap) ResourceOrErr(k PropertyKey, req bool) (*URN, error) {
 	return nil, nil
 }
 
+// ComputedOrErr checks that the given property is computed, issuing an error if not; req indicates if required.
+func (m PropertyMap) ComputedOrErr(k PropertyKey, req bool) (*Computed, error) {
+	if v, has := m[k]; has && !v.IsNull() {
+		if !v.IsComputed() {
+			return nil, errors.Errorf("property '%v' is not an object (%v)", k, reflect.TypeOf(v.V))
+		}
+		m := v.ComputedValue()
+		return &m, nil
+	} else if req {
+		return nil, &ReqError{k}
+	}
+	return nil, nil
+}
+
+// OutputOrErr checks that the given property is an output, issuing an error if not; req indicates if required.
+func (m PropertyMap) OutputOrErr(k PropertyKey, req bool) (*Output, error) {
+	if v, has := m[k]; has && !v.IsNull() {
+		if !v.IsOutput() {
+			return nil, errors.Errorf("property '%v' is not an object (%v)", k, reflect.TypeOf(v.V))
+		}
+		m := v.OutputValue()
+		return &m, nil
+	} else if req {
+		return nil, &ReqError{k}
+	}
+	return nil, nil
+}
+
 // ReqBoolOrErr checks that the given property exists and has the type bool.
 func (m PropertyMap) ReqBoolOrErr(k PropertyKey) (bool, error) {
 	b, err := m.BoolOrErr(k, true)
@@ -267,6 +316,24 @@ func (m PropertyMap) ReqResourceOrErr(k PropertyKey) (URN, error) {
 	return *r, nil
 }
 
+// ReqComputedOrErr checks that the given property exists and is computed.
+func (m PropertyMap) ReqComputedOrErr(k PropertyKey) (Computed, error) {
+	v, err := m.ComputedOrErr(k, true)
+	if err != nil {
+		return Computed{}, err
+	}
+	return *v, nil
+}
+
+// ReqOutputOrErr checks that the given property exists and is an output property.
+func (m PropertyMap) ReqOutputOrErr(k PropertyKey) (Output, error) {
+	v, err := m.OutputOrErr(k, true)
+	if err != nil {
+		return Output{}, err
+	}
+	return *v, nil
+}
+
 // OptBoolOrErr checks that the given property has the type bool, if it exists.
 func (m PropertyMap) OptBoolOrErr(k PropertyKey) (*bool, error) {
 	return m.BoolOrErr(k, false)
@@ -307,6 +374,24 @@ func (m PropertyMap) OptResourceOrErr(k PropertyKey) (*URN, error) {
 	return m.ResourceOrErr(k, false)
 }
 
+// OptComputedOrErr checks that the given property is computed, if it exists.
+func (m PropertyMap) OptComputedOrErr(k PropertyKey) (*Computed, error) {
+	return m.ComputedOrErr(k, false)
+}
+
+// OptOutputOrErr checks that the given property is an output property, if it exists.
+func (m PropertyMap) OptOutputOrErr(k PropertyKey) (*Output, error) {
+	return m.OutputOrErr(k, false)
+}
+
+// NeedsValue returns true if the slot associated with the given property key is missing, contains a null, or is an
+// output property that is eagerly awaiting a value to be assigned.  That is to say, NeedsValue indicates a semantically
+// meaningful value is present (even if it's a computed one whose concrete value isn't yet evaluated).
+func (m PropertyMap) NeedsValue(k PropertyKey) bool {
+	v, has := m[k]
+	return !has || v.IsNull() || v.IsOutput()
+}
+
 // Mappable returns a mapper-compatible object map, suitable for deserialization into structures.
 func (m PropertyMap) Mappable() mapper.Object {
 	obj := make(mapper.Object)
@@ -337,38 +422,59 @@ func (m PropertyMap) ReplaceResources(updater func(URN) URN) PropertyMap {
 	return result
 }
 
-func NewPropertyNull() PropertyValue                   { return PropertyValue{nil} }
-func NewPropertyBool(v bool) PropertyValue             { return PropertyValue{v} }
-func NewPropertyNumber(v float64) PropertyValue        { return PropertyValue{v} }
-func NewPropertyString(v string) PropertyValue         { return PropertyValue{v} }
-func NewPropertyArray(v []PropertyValue) PropertyValue { return PropertyValue{v} }
-func NewPropertyObject(v PropertyMap) PropertyValue    { return PropertyValue{v} }
-func NewPropertyResource(v URN) PropertyValue          { return PropertyValue{v} }
+func (m PropertyMap) ShallowClone() PropertyMap {
+	copy := make(PropertyMap)
+	for k, v := range m {
+		copy[k] = v
+	}
+	return copy
+}
+
+func (s PropertySet) ShallowClone() PropertySet {
+	copy := make(PropertySet)
+	for k, v := range s {
+		copy[k] = v
+	}
+	return copy
+}
+
+func NewNullProperty() PropertyValue                   { return PropertyValue{nil} }
+func NewBoolProperty(v bool) PropertyValue             { return PropertyValue{v} }
+func NewNumberProperty(v float64) PropertyValue        { return PropertyValue{v} }
+func NewStringProperty(v string) PropertyValue         { return PropertyValue{v} }
+func NewArrayProperty(v []PropertyValue) PropertyValue { return PropertyValue{v} }
+func NewObjectProperty(v PropertyMap) PropertyValue    { return PropertyValue{v} }
+func NewResourceProperty(v URN) PropertyValue          { return PropertyValue{v} }
+func NewComputedProperty(v Computed) PropertyValue     { return PropertyValue{v} }
+func NewOutputProperty(v Output) PropertyValue         { return PropertyValue{v} }
+
+func MakeComputed(v PropertyValue) PropertyValue { return NewComputedProperty(Computed(v)) }
+func MakeOutput(v PropertyValue) PropertyValue   { return NewOutputProperty(Output(v)) }
 
 // NewPropertyValue turns a value into a property value, provided it is of a legal "JSON-like" kind.
 func NewPropertyValue(v interface{}) PropertyValue {
 	// If nil, easy peasy, just return a null.
 	if v == nil {
-		return NewPropertyNull()
+		return NewNullProperty()
 	}
 
 	// Else, check for some known primitive types.
 	switch t := v.(type) {
 	case bool:
-		return NewPropertyBool(t)
+		return NewBoolProperty(t)
 	case float64:
-		return NewPropertyNumber(t)
+		return NewNumberProperty(t)
 	case string:
-		return NewPropertyString(t)
+		return NewStringProperty(t)
 	case URN:
-		return NewPropertyResource(t)
+		return NewResourceProperty(t)
+	case Computed:
+		return NewComputedProperty(t)
 	}
 
 	// Next, see if it's an array, slice, pointer or struct, and handle each accordingly.
 	rv := reflect.ValueOf(v)
 	switch rk := rv.Type().Kind(); rk {
-	case reflect.String:
-		return NewPropertyString(rv.String())
 	case reflect.Array, reflect.Slice:
 		// If an array or slice, just create an array out of it.
 		var arr []PropertyValue
@@ -376,63 +482,230 @@ func NewPropertyValue(v interface{}) PropertyValue {
 			elem := rv.Index(i)
 			arr = append(arr, NewPropertyValue(elem.Interface()))
 		}
-		return NewPropertyArray(arr)
+		return NewArrayProperty(arr)
 	case reflect.Ptr:
 		// If a pointer, recurse and return the underlying value.
 		if rv.IsNil() {
-			return NewPropertyNull()
+			return NewNullProperty()
 		}
 		return NewPropertyValue(rv.Elem().Interface())
-	case reflect.Struct:
-		obj := NewPropertyMap(rv.Interface())
-		return NewPropertyObject(obj)
 	case reflect.Map:
-		m := map[string]interface{}{}
-		for _, kv := range rv.MapKeys() {
-			m[kv.String()] = rv.MapIndex(kv).Interface()
+		// If a map, create a new property map, provided the keys and values are okay.
+		obj := PropertyMap{}
+		for _, key := range rv.MapKeys() {
+			var pk PropertyKey
+			switch k := key.Interface().(type) {
+			case string:
+				pk = PropertyKey(k)
+			case PropertyKey:
+				pk = k
+			default:
+				contract.Failf("Unrecognized PropertyMap key type: %v", reflect.TypeOf(key))
+			}
+			val := rv.MapIndex(key)
+			pv := NewPropertyValue(val.Interface())
+			obj[pk] = pv
 		}
-		obj := NewPropertyMapFromMap(m)
-		return NewPropertyObject(obj)
+		return NewObjectProperty(obj)
+	case reflect.Struct:
+		obj := NewPropertyMap(v)
+		return NewObjectProperty(obj)
 	default:
-		contract.Failf("Unrecognized value type: %v", rk)
+		contract.Failf("Unrecognized value type: type=%v kind=%v", rv.Type(), rk)
 	}
 
-	return NewPropertyNull()
+	return NewNullProperty()
 }
 
-func (v PropertyValue) BoolValue() bool             { return v.V.(bool) }
-func (v PropertyValue) NumberValue() float64        { return v.V.(float64) }
-func (v PropertyValue) StringValue() string         { return v.V.(string) }
-func (v PropertyValue) ArrayValue() []PropertyValue { return v.V.([]PropertyValue) }
-func (v PropertyValue) ObjectValue() PropertyMap    { return v.V.(PropertyMap) }
-func (v PropertyValue) ResourceValue() URN          { return v.V.(URN) }
+// BoolValue fetches the underlying bool value (panicking if it isn't a bool).
+func (v PropertyValue) BoolValue() bool { return v.V.(bool) }
 
+// NumberValue fetches the underlying number value (panicking if it isn't a number).
+func (v PropertyValue) NumberValue() float64 { return v.V.(float64) }
+
+// StringValue fetches the underlying string value (panicking if it isn't a string).
+func (v PropertyValue) StringValue() string { return v.V.(string) }
+
+// ArrayValue fetches the underlying array value (panicking if it isn't a array).
+func (v PropertyValue) ArrayValue() []PropertyValue { return v.V.([]PropertyValue) }
+
+// ObjectValue fetches the underlying object value (panicking if it isn't a object).
+func (v PropertyValue) ObjectValue() PropertyMap { return v.V.(PropertyMap) }
+
+// ResourceValue fetches the underlying resource value (panicking if it isn't a resource).
+func (v PropertyValue) ResourceValue() URN { return v.V.(URN) }
+
+// ComputedValue fetches the underlying computed value (panicking if it isn't a computed).
+func (v PropertyValue) ComputedValue() Computed { return v.V.(Computed) }
+
+// OutputValue fetches the underlying output value (panicking if it isn't a output).
+func (v PropertyValue) OutputValue() Output { return v.V.(Output) }
+
+// IsNull returns true if the underlying value is a null.
 func (v PropertyValue) IsNull() bool {
 	return v.V == nil
 }
+
+// IsBool returns true if the underlying value is a bool.
 func (v PropertyValue) IsBool() bool {
 	_, is := v.V.(bool)
 	return is
 }
+
+// IsNumber returns true if the underlying value is a number.
 func (v PropertyValue) IsNumber() bool {
 	_, is := v.V.(float64)
 	return is
 }
+
+// IsString returns true if the underlying value is a string.
 func (v PropertyValue) IsString() bool {
 	_, is := v.V.(string)
 	return is
 }
+
+// IsArray returns true if the underlying value is an array.
 func (v PropertyValue) IsArray() bool {
 	_, is := v.V.([]PropertyValue)
 	return is
 }
+
+// IsObject returns true if the underlying value is an object.
 func (v PropertyValue) IsObject() bool {
 	_, is := v.V.(PropertyMap)
 	return is
 }
+
+// IsResource returns true if the underlying value is a resource.
 func (v PropertyValue) IsResource() bool {
 	_, is := v.V.(URN)
 	return is
+}
+
+// IsComputed returns true if the underlying value is a computed value.
+func (v PropertyValue) IsComputed() bool {
+	_, is := v.V.(Computed)
+	return is
+}
+
+// IsOutput returns true if the underlying value is an output value.
+func (v PropertyValue) IsOutput() bool {
+	_, is := v.V.(Output)
+	return is
+}
+
+// CanNull returns true if the target property is capable of holding a null value.
+func (v PropertyValue) CanNull() bool {
+	return true // all properties can be null
+}
+
+// CanBool returns true if the target property is capable of holding a bool value.
+func (v PropertyValue) CanBool() bool {
+	if v.IsNull() || v.IsBool() {
+		return true
+	}
+	if v.IsComputed() {
+		return v.ComputedValue().Eventual().CanBool()
+	}
+	if v.IsOutput() {
+		return v.OutputValue().Eventual().CanBool()
+	}
+	return false
+}
+
+// CanNumber returns true if the target property is capable of holding a number value.
+func (v PropertyValue) CanNumber() bool {
+	if v.IsNull() || v.IsNumber() {
+		return true
+	}
+	if v.IsComputed() {
+		return v.ComputedValue().Eventual().CanNumber()
+	}
+	if v.IsOutput() {
+		return v.OutputValue().Eventual().CanNumber()
+	}
+	return false
+}
+
+// CanString returns true if the target property is capable of holding a string value.
+func (v PropertyValue) CanString() bool {
+	if v.IsNull() || v.IsString() {
+		return true
+	}
+	if v.IsComputed() {
+		return v.ComputedValue().Eventual().CanString()
+	}
+	if v.IsOutput() {
+		return v.OutputValue().Eventual().CanString()
+	}
+	return false
+}
+
+// CanArray returns true if the target property is capable of holding an array value.
+func (v PropertyValue) CanArray() bool {
+	if v.IsNull() || v.IsArray() {
+		return true
+	}
+	if v.IsComputed() {
+		return v.ComputedValue().Eventual().CanArray()
+	}
+	if v.IsOutput() {
+		return v.OutputValue().Eventual().CanArray()
+	}
+	return false
+}
+
+// CanObject returns true if the target property is capable of holding an object value.
+func (v PropertyValue) CanObject() bool {
+	if v.IsNull() || v.IsObject() {
+		return true
+	}
+	if v.IsComputed() {
+		return v.ComputedValue().Eventual().CanObject()
+	}
+	if v.IsOutput() {
+		return v.OutputValue().Eventual().CanObject()
+	}
+	return false
+}
+
+// CanResource returns true if the target property is capable of holding a resource value.
+func (v PropertyValue) CanResource() bool {
+	if v.IsNull() || v.IsResource() {
+		return true
+	}
+	if v.IsComputed() {
+		return v.ComputedValue().Eventual().CanResource()
+	}
+	if v.IsOutput() {
+		return v.OutputValue().Eventual().CanResource()
+	}
+	return false
+}
+
+// TypeString returns a type representation of the property value's holder type.
+func (v PropertyValue) TypeString() string {
+	if v.IsNull() {
+		return "null"
+	} else if v.IsBool() {
+		return "bool"
+	} else if v.IsNumber() {
+		return "number"
+	} else if v.IsString() {
+		return "string"
+	} else if v.IsArray() {
+		return "[]"
+	} else if v.IsObject() {
+		return "object"
+	} else if v.IsResource() {
+		return "resource"
+	} else if v.IsComputed() {
+		return "computed<" + v.ComputedValue().Eventual().TypeString() + ">"
+	} else if v.IsOutput() {
+		return "output<" + v.OutputValue().Eventual().TypeString() + ">"
+	}
+	contract.Failf("Unrecognized PropertyValue type")
+	return ""
 }
 
 // Mappable returns a mapper-compatible value, suitable for deserialization into structures.
@@ -454,6 +727,16 @@ func (v PropertyValue) Mappable() mapper.Value {
 	}
 	contract.Assert(v.IsObject())
 	return v.ObjectValue().Mappable()
+}
+
+// String implements the fmt.Stringer interface to add slightly more information to the output.
+func (v PropertyValue) String() string {
+	if v.IsComputed() || v.IsOutput() {
+		// For computed and output properties, show their type followed by an empty object string.
+		return fmt.Sprintf("%v{}", v.TypeString())
+	}
+	// For all others, just display the underlying property value.
+	return fmt.Sprintf("{%v}", v.V)
 }
 
 // AllResources finds all resource URNs, transitively throughout the property value, and returns them.
@@ -480,17 +763,17 @@ func (v PropertyValue) AllResources() map[URN]bool {
 func (v PropertyValue) ReplaceResources(updater func(URN) URN) PropertyValue {
 	if v.IsResource() {
 		m := v.ResourceValue()
-		return NewPropertyResource(updater(m))
+		return NewResourceProperty(updater(m))
 	} else if v.IsArray() {
 		arr := v.ArrayValue()
 		elems := make([]PropertyValue, len(arr))
 		for i, elem := range arr {
 			elems[i] = elem.ReplaceResources(updater)
 		}
-		return NewPropertyArray(elems)
+		return NewArrayProperty(elems)
 	} else if v.IsObject() {
 		rep := v.ObjectValue().ReplaceResources(updater)
-		return NewPropertyObject(rep)
+		return NewObjectProperty(rep)
 	}
 	return v
 }

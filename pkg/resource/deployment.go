@@ -45,6 +45,7 @@ type Deployment struct {
 	ID         *ID                  `json:"id,omitempty"`         // the provider ID for this resource, if any.
 	Type       tokens.Type          `json:"type"`                 // this resource's full type token.
 	Properties *DeployedPropertyMap `json:"properties,omitempty"` // an untyped bag of properties.
+	Outputs    *[]string            `json:"outputs,omitempty"`    // an array of properties output by the provider.
 }
 
 // DeployedPropertyMap is a property map from resource key to the underlying property value.
@@ -98,66 +99,86 @@ func serializeDeployment(res Resource, reftag string) *Deployment {
 
 	// Serialize all properties recursively, and add them if non-empty.
 	var props *DeployedPropertyMap
-	if result, use := serializeProperties(res.Properties(), reftag); use {
-		props = &result
+	var outs *[]string
+	if pmap, pout := serializeProperties(res.Properties(), res.Outputs(), reftag); pmap != nil {
+		props = &pmap
+		outs = pout
 	}
 
 	return &Deployment{
 		ID:         idp,
 		Type:       res.Type(),
 		Properties: props,
+		Outputs:    outs,
 	}
 }
 
 // serializeProperties serializes a resource property bag so that it's suitable for serialization.
-func serializeProperties(props PropertyMap, reftag string) (DeployedPropertyMap, bool) {
-	dst := make(DeployedPropertyMap)
+func serializeProperties(props PropertyMap, inferred map[PropertyKey]bool,
+	reftag string) (DeployedPropertyMap, *[]string) {
+	var dst DeployedPropertyMap
+	var inf []string
 	for _, k := range StablePropertyKeys(props) {
-		if v, use := serializeProperty(props[k], reftag); use {
-			dst[string(k)] = v
+		if v := serializeProperty(props[k], reftag); v != nil {
+			ks := string(k)
+			if dst == nil {
+				dst = make(DeployedPropertyMap)
+			}
+			dst[ks] = v
+			if inferred != nil && inferred[k] {
+				inf = append(inf, ks)
+			}
 		}
 	}
-	if len(dst) > 0 {
-		return dst, true
+
+	var pinf *[]string
+	if len(inf) > 0 {
+		pinf = &inf
 	}
-	return nil, false
+
+	return dst, pinf
 }
 
 // serializeProperty serializes a resource property value so that it's suitable for serialization.
-func serializeProperty(prop PropertyValue, reftag string) (interface{}, bool) {
+func serializeProperty(prop PropertyValue, reftag string) interface{} {
+	contract.Assert(!prop.IsComputed())
+	contract.Assert(!prop.IsOutput())
+
 	// Skip nulls.
 	if prop.IsNull() {
-		return nil, false
+		return nil
 	}
 
 	// For arrays, make sure to recurse.
 	if prop.IsArray() {
 		var arr []interface{}
 		for _, elem := range prop.ArrayValue() {
-			if v, use := serializeProperty(elem, reftag); use {
+			if v := serializeProperty(elem, reftag); v != nil {
 				arr = append(arr, v)
 			}
 		}
 		if len(arr) > 0 {
-			return arr, true
+			return arr
 		}
-		return nil, false
+		return nil
 	}
 
 	// Also for objects, recurse and use naked properties.
 	if prop.IsObject() {
-		return serializeProperties(prop.ObjectValue(), reftag)
+		ps, pinf := serializeProperties(prop.ObjectValue(), nil, reftag)
+		contract.Assert(pinf == nil)
+		return ps
 	}
 
 	// Morph resources into their equivalent `{ "#ref": "<URN>" }` form.
 	if prop.IsResource() {
 		return map[string]string{
 			reftag: string(prop.ResourceValue()),
-		}, true
+		}
 	}
 
 	// All others are returned as-is.
-	return prop.V, true
+	return prop.V
 }
 
 func deserializeProperties(props DeployedPropertyMap, reftag string) PropertyMap {
@@ -172,36 +193,36 @@ func deserializeProperty(v interface{}, reftag string) PropertyValue {
 	if v != nil {
 		switch w := v.(type) {
 		case bool:
-			return NewPropertyBool(w)
+			return NewBoolProperty(w)
 		case float64:
-			return NewPropertyNumber(w)
+			return NewNumberProperty(w)
 		case string:
-			return NewPropertyString(w)
+			return NewStringProperty(w)
 		case []interface{}:
 			var arr []PropertyValue
 			for _, elem := range w {
 				arr = append(arr, deserializeProperty(elem, reftag))
 			}
-			return NewPropertyArray(arr)
+			return NewArrayProperty(arr)
 		case map[string]interface{}:
 			// If the map has a single entry and it is the reftag, this is a URN.
 			if len(w) == 1 {
 				if tag, has := w[reftag]; has {
 					if tagstr, isstring := tag.(string); isstring {
-						return NewPropertyResource(URN(tagstr))
+						return NewResourceProperty(URN(tagstr))
 					}
 				}
 			}
 
 			// Otherwise, this is an arbitrary object value.
 			obj := deserializeProperties(DeployedPropertyMap(w), reftag)
-			return NewPropertyObject(obj)
+			return NewObjectProperty(obj)
 		default:
 			contract.Failf("Unrecognized property type: %v", reflect.ValueOf(v))
 		}
 	}
 
-	return NewPropertyNull()
+	return NewNullProperty()
 }
 
 // DeploymentMap is a map of URN to resource, that also preserves a stable order of its keys.  This ensures

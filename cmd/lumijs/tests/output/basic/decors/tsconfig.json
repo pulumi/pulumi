@@ -1,0 +1,11 @@
+{
+    "compilerOptions": {
+        "experimentalDecorators": true,
+        "target": "es5"
+    },
+    "files": [
+        "index.ts",
+        "decors.ts"
+    ]
+}
+

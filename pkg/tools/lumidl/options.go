@@ -31,6 +31,7 @@ type PropertyOptions struct {
 	Name     string // the property name to emit into the package.
 	Optional bool   // true if this is an optional property.
 	Replaces bool   // true if changing this property triggers a replacement of this resource.
+	In       bool   // true if this is part of the resource's input, but not its output, properties.
 	Out      bool   // true if the property is part of the resource's output, rather than input, properties.
 }
 
@@ -47,6 +48,8 @@ func ParsePropertyOptions(tag string) PropertyOptions {
 					opts.Optional = true
 				case "replaces":
 					opts.Replaces = true
+				case "in":
+					opts.In = true
 				case "out":
 					opts.Out = true
 				default:

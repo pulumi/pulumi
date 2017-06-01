@@ -27,7 +27,7 @@ const RoleToken = tokens.Type("aws:iam/role:Role")
 // RoleProviderOps is a pluggable interface for Role-related management functionality.
 type RoleProviderOps interface {
     Check(ctx context.Context, obj *Role) ([]mapper.FieldError, error)
-    Create(ctx context.Context, obj *Role) (resource.ID, *RoleOuts, error)
+    Create(ctx context.Context, obj *Role) (resource.ID, error)
     Get(ctx context.Context, id resource.ID) (*Role, error)
     InspectChange(ctx context.Context,
         id resource.ID, old *Role, new *Role, diff *resource.ObjectDiff) ([]string, error)
@@ -70,10 +70,13 @@ func (p *RoleProvider) Name(
     if decerr != nil {
         return nil, decerr
     }
-    if obj.Name == "" {
+    if obj.Name == nil || *obj.Name == "" {
+        if req.Unknowns[Role_Name] {
+            return nil, errors.New("Name property cannot be computed from unknown outputs")
+        }
         return nil, errors.New("Name property cannot be empty")
     }
-    return &lumirpc.NameResponse{Name: obj.Name}, nil
+    return &lumirpc.NameResponse{Name: *obj.Name}, nil
 }
 
 func (p *RoleProvider) Create(
@@ -83,16 +86,11 @@ func (p *RoleProvider) Create(
     if decerr != nil {
         return nil, decerr
     }
-    id, outs, err := p.ops.Create(ctx, obj)
+    id, err := p.ops.Create(ctx, obj)
     if err != nil {
         return nil, err
     }
-    return &lumirpc.CreateResponse{
-        Id:   string(id),
-        Outputs: resource.MarshalProperties(
-            nil, resource.NewPropertyMap(outs), resource.MarshalOptions{},
-        ),
-    }, nil
+    return &lumirpc.CreateResponse{Id: string(id)}, nil
 }
 
 func (p *RoleProvider) Get(
@@ -110,7 +108,7 @@ func (p *RoleProvider) Get(
 }
 
 func (p *RoleProvider) InspectChange(
-    ctx context.Context, req *lumirpc.ChangeRequest) (*lumirpc.InspectChangeResponse, error) {
+    ctx context.Context, req *lumirpc.InspectChangeRequest) (*lumirpc.InspectChangeResponse, error) {
     contract.Assert(req.GetType() == string(RoleToken))
     id := resource.ID(req.GetId())
     old, oldprops, decerr := p.Unmarshal(req.GetOlds())
@@ -144,7 +142,7 @@ func (p *RoleProvider) InspectChange(
 }
 
 func (p *RoleProvider) Update(
-    ctx context.Context, req *lumirpc.ChangeRequest) (*pbempty.Empty, error) {
+    ctx context.Context, req *lumirpc.UpdateRequest) (*pbempty.Empty, error) {
     contract.Assert(req.GetType() == string(RoleToken))
     id := resource.ID(req.GetId())
     old, oldprops, err := p.Unmarshal(req.GetOlds())
@@ -175,7 +173,7 @@ func (p *RoleProvider) Delete(
 func (p *RoleProvider) Unmarshal(
     v *pbstruct.Struct) (*Role, resource.PropertyMap, mapper.DecodeError) {
     var obj Role
-    props := resource.UnmarshalProperties(v)
+    props := resource.UnmarshalProperties(nil, v, resource.MarshalOptions{RawResources: true})
     result := mapper.MapIU(props.Mappable(), &obj)
     return &obj, props, result
 }
@@ -184,18 +182,13 @@ func (p *RoleProvider) Unmarshal(
 
 // Role is a marshalable representation of its corresponding IDL type.
 type Role struct {
-    Name string `json:"name"`
+    Name *string `json:"name,omitempty"`
     AssumeRolePolicyDocument interface{} `json:"assumeRolePolicyDocument"`
     Path *string `json:"path,omitempty"`
     RoleName *string `json:"roleName,omitempty"`
     ManagedPolicyARNs *[]__aws.ARN `json:"managedPolicyARNs,omitempty"`
     Policies *[]InlinePolicy `json:"policies,omitempty"`
     ARN __aws.ARN `json:"arn,omitempty"`
-}
-
-// RoleOuts is a marshalable representation of its IDL type's output properties.
-type RoleOuts struct {
-    ARN __aws.ARN `json:"arn"`
 }
 
 // Role's properties have constants to make dealing with diffs and property bags easier.

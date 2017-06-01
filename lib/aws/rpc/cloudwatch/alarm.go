@@ -70,10 +70,13 @@ func (p *ActionTargetProvider) Name(
     if decerr != nil {
         return nil, decerr
     }
-    if obj.Name == "" {
+    if obj.Name == nil || *obj.Name == "" {
+        if req.Unknowns[ActionTarget_Name] {
+            return nil, errors.New("Name property cannot be computed from unknown outputs")
+        }
         return nil, errors.New("Name property cannot be empty")
     }
-    return &lumirpc.NameResponse{Name: obj.Name}, nil
+    return &lumirpc.NameResponse{Name: *obj.Name}, nil
 }
 
 func (p *ActionTargetProvider) Create(
@@ -87,9 +90,7 @@ func (p *ActionTargetProvider) Create(
     if err != nil {
         return nil, err
     }
-    return &lumirpc.CreateResponse{
-        Id:   string(id),
-    }, nil
+    return &lumirpc.CreateResponse{Id: string(id)}, nil
 }
 
 func (p *ActionTargetProvider) Get(
@@ -107,7 +108,7 @@ func (p *ActionTargetProvider) Get(
 }
 
 func (p *ActionTargetProvider) InspectChange(
-    ctx context.Context, req *lumirpc.ChangeRequest) (*lumirpc.InspectChangeResponse, error) {
+    ctx context.Context, req *lumirpc.InspectChangeRequest) (*lumirpc.InspectChangeResponse, error) {
     contract.Assert(req.GetType() == string(ActionTargetToken))
     id := resource.ID(req.GetId())
     old, oldprops, decerr := p.Unmarshal(req.GetOlds())
@@ -138,7 +139,7 @@ func (p *ActionTargetProvider) InspectChange(
 }
 
 func (p *ActionTargetProvider) Update(
-    ctx context.Context, req *lumirpc.ChangeRequest) (*pbempty.Empty, error) {
+    ctx context.Context, req *lumirpc.UpdateRequest) (*pbempty.Empty, error) {
     contract.Assert(req.GetType() == string(ActionTargetToken))
     id := resource.ID(req.GetId())
     old, oldprops, err := p.Unmarshal(req.GetOlds())
@@ -169,7 +170,7 @@ func (p *ActionTargetProvider) Delete(
 func (p *ActionTargetProvider) Unmarshal(
     v *pbstruct.Struct) (*ActionTarget, resource.PropertyMap, mapper.DecodeError) {
     var obj ActionTarget
-    props := resource.UnmarshalProperties(v)
+    props := resource.UnmarshalProperties(nil, v, resource.MarshalOptions{RawResources: true})
     result := mapper.MapIU(props.Mappable(), &obj)
     return &obj, props, result
 }
@@ -178,7 +179,7 @@ func (p *ActionTargetProvider) Unmarshal(
 
 // ActionTarget is a marshalable representation of its corresponding IDL type.
 type ActionTarget struct {
-    Name string `json:"name"`
+    Name *string `json:"name,omitempty"`
     TopicName *string `json:"topicName,omitempty"`
     DisplayName *string `json:"displayName,omitempty"`
     Subscription *[]__sns.TopicSubscription `json:"subscription,omitempty"`
@@ -243,10 +244,13 @@ func (p *AlarmProvider) Name(
     if decerr != nil {
         return nil, decerr
     }
-    if obj.Name == "" {
+    if obj.Name == nil || *obj.Name == "" {
+        if req.Unknowns[Alarm_Name] {
+            return nil, errors.New("Name property cannot be computed from unknown outputs")
+        }
         return nil, errors.New("Name property cannot be empty")
     }
-    return &lumirpc.NameResponse{Name: obj.Name}, nil
+    return &lumirpc.NameResponse{Name: *obj.Name}, nil
 }
 
 func (p *AlarmProvider) Create(
@@ -260,9 +264,7 @@ func (p *AlarmProvider) Create(
     if err != nil {
         return nil, err
     }
-    return &lumirpc.CreateResponse{
-        Id:   string(id),
-    }, nil
+    return &lumirpc.CreateResponse{Id: string(id)}, nil
 }
 
 func (p *AlarmProvider) Get(
@@ -280,7 +282,7 @@ func (p *AlarmProvider) Get(
 }
 
 func (p *AlarmProvider) InspectChange(
-    ctx context.Context, req *lumirpc.ChangeRequest) (*lumirpc.InspectChangeResponse, error) {
+    ctx context.Context, req *lumirpc.InspectChangeRequest) (*lumirpc.InspectChangeResponse, error) {
     contract.Assert(req.GetType() == string(AlarmToken))
     id := resource.ID(req.GetId())
     old, oldprops, decerr := p.Unmarshal(req.GetOlds())
@@ -311,7 +313,7 @@ func (p *AlarmProvider) InspectChange(
 }
 
 func (p *AlarmProvider) Update(
-    ctx context.Context, req *lumirpc.ChangeRequest) (*pbempty.Empty, error) {
+    ctx context.Context, req *lumirpc.UpdateRequest) (*pbempty.Empty, error) {
     contract.Assert(req.GetType() == string(AlarmToken))
     id := resource.ID(req.GetId())
     old, oldprops, err := p.Unmarshal(req.GetOlds())
@@ -342,7 +344,7 @@ func (p *AlarmProvider) Delete(
 func (p *AlarmProvider) Unmarshal(
     v *pbstruct.Struct) (*Alarm, resource.PropertyMap, mapper.DecodeError) {
     var obj Alarm
-    props := resource.UnmarshalProperties(v)
+    props := resource.UnmarshalProperties(nil, v, resource.MarshalOptions{RawResources: true})
     result := mapper.MapIU(props.Mappable(), &obj)
     return &obj, props, result
 }
@@ -351,7 +353,7 @@ func (p *AlarmProvider) Unmarshal(
 
 // Alarm is a marshalable representation of its corresponding IDL type.
 type Alarm struct {
-    Name string `json:"name"`
+    Name *string `json:"name,omitempty"`
     ComparisonOperator AlarmComparisonOperator `json:"comparisonOperator"`
     EvaluationPeriods float64 `json:"evaluationPerids"`
     MetricName string `json:"metricName"`

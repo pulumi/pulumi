@@ -420,10 +420,17 @@ type FuncStub struct {
 }
 
 // NewPointerObject allocates a new pointer-like object that wraps the given reference.
-func NewPointerObject(t symbols.Type, ptr *Pointer) *Object {
+func NewPointerObject(elem symbols.Type, ptr *Pointer) *Object {
+	contract.Require(elem != nil, "elem")
 	contract.Require(ptr != nil, "ptr")
-	ptrt := symbols.NewPointerType(t)
+	ptrt := symbols.NewPointerType(elem)
 	return NewPrimitiveObject(ptrt, ptr)
+}
+
+// NewLatentObject allocates a new pointer-like object that wraps the given reference.
+func NewLatentObject(elem symbols.Type) *Object {
+	contract.Require(elem != nil, "elem")
+	return NewObject(symbols.NewLatentType(elem), nil, nil, nil)
 }
 
 // NewConstantObject returns a new object with the right type and value, based on some constant data.

@@ -67,14 +67,18 @@ func NewProvider(ctx *Context, pkg tokens.Package) (Provider, error) {
 func (p *provider) Pkg() tokens.Package { return p.pkg }
 
 // Check validates that the given property bag is valid for a resource of the given type.
-func (p *provider) Check(t tokens.Type, props PropertyMap) ([]CheckFailure, error) {
+func (p *provider) Check(res Resource) ([]CheckFailure, error) {
+	t := res.Type()
+	props := res.Properties()
 	glog.V(7).Infof("resource[%v].Check(t=%v,#props=%v) executing", p.pkg, t, len(props))
+	pstr, unks := MarshalPropertiesWithUnknowns(p.ctx, props, MarshalOptions{
+		OldURNs:      true, // permit old URNs, since this is pre-update.
+		RawResources: true, // pre-create, IDs won't be ready, just ship over the URNs.
+	})
 	req := &lumirpc.CheckRequest{
-		Type: string(t),
-		Properties: MarshalProperties(p.ctx, props, MarshalOptions{
-			PermitOlds: true, // permit old URNs, since this is pre-update.
-			RawURNs:    true, // often used during URN creation; IDs won't be ready.
-		}),
+		Type:       string(t),
+		Properties: pstr,
+		Unknowns:   unks,
 	}
 
 	resp, err := p.client.Check(p.ctx.Request(), req)
@@ -92,14 +96,18 @@ func (p *provider) Check(t tokens.Type, props PropertyMap) ([]CheckFailure, erro
 }
 
 // Name names a given resource.
-func (p *provider) Name(t tokens.Type, props PropertyMap) (tokens.QName, error) {
+func (p *provider) Name(res Resource) (tokens.QName, error) {
+	t := res.Type()
+	props := res.Properties()
 	glog.V(7).Infof("resource[%v].Name(t=%v,#props=%v) executing", p.pkg, t, len(props))
+	pstr, unks := MarshalPropertiesWithUnknowns(p.ctx, props, MarshalOptions{
+		OldURNs:      true, // permit old URNs, since this is pre-update.
+		RawResources: true, // pre-create, IDs won't be ready, just ship over the URNs.
+	})
 	req := &lumirpc.NameRequest{
-		Type: string(t),
-		Properties: MarshalProperties(p.ctx, props, MarshalOptions{
-			PermitOlds: true, // permit old URNs, since this is pre-update.
-			RawURNs:    true, // often used during URN creation; IDs won't be ready.
-		}),
+		Type:       string(t),
+		Properties: pstr,
+		Unknowns:   unks,
 	}
 
 	resp, err := p.client.Name(p.ctx.Request(), req)
@@ -113,8 +121,10 @@ func (p *provider) Name(t tokens.Type, props PropertyMap) (tokens.QName, error) 
 	return name, nil
 }
 
-// Create allocates a new instance of the provided resource and returns its unique ID afterwards.
-func (p *provider) Create(t tokens.Type, props PropertyMap) (ID, PropertyMap, State, error) {
+// Create allocates a new instance of the provided resource and assigns its unique ID afterwards.
+func (p *provider) Create(res Resource) (State, error) {
+	t := res.Type()
+	props := res.Properties()
 	glog.V(7).Infof("resource[%v].Create(t=%v,#props=%v) executing", p.pkg, t, len(props))
 	req := &lumirpc.CreateRequest{
 		Type:       string(t),
@@ -124,22 +134,25 @@ func (p *provider) Create(t tokens.Type, props PropertyMap) (ID, PropertyMap, St
 	resp, err := p.client.Create(p.ctx.Request(), req)
 	if err != nil {
 		glog.V(7).Infof("resource[%v].Create(t=%v,...) failed: err=%v", p.pkg, t, err)
-		return ID(""), nil, StateUnknown, err
+		return StateUnknown, err
 	}
 
 	id := ID(resp.GetId())
-	outs := resp.GetOutputs()
-	outprops := UnmarshalProperties(outs)
-	glog.V(7).Infof("resource[%v].Create(t=%v,...) success: id=%v,#outs=%v", p.pkg, t, id, len(outprops))
+	glog.V(7).Infof("resource[%v].Create(t=%v,...) success: id=%v", p.pkg, t, id)
 	if id == "" {
-		return id, outprops, StateUnknown,
+		return StateUnknown,
 			errors.Errorf("plugin for package '%v' returned empty ID from create '%v'", p.pkg, t)
 	}
-	return id, outprops, StateOK, nil
+	res.SetID(id)
+	return StateOK, nil
 }
 
-// Get reads the instance state identified by id/t, and returns a bag of properties.
-func (p *provider) Get(id ID, t tokens.Type) (PropertyMap, error) {
+// Get reads the instance state identified by res, and copies into the resource object.
+func (p *provider) Get(res Resource) error {
+	id := res.ID()
+	contract.Assert(id != "")
+	t := res.Type()
+	props := res.Properties()
 	glog.V(7).Infof("resource[%v].Get(id=%v,t=%v) executing", p.pkg, id, t)
 	req := &lumirpc.GetRequest{
 		Id:   string(id),
@@ -149,31 +162,49 @@ func (p *provider) Get(id ID, t tokens.Type) (PropertyMap, error) {
 	resp, err := p.client.Get(p.ctx.Request(), req)
 	if err != nil {
 		glog.V(7).Infof("resource[%v].Get(id=%v,t=%v) failed: err=%v", p.pkg, id, t, err)
-		return nil, err
+		return err
 	}
 
-	props := UnmarshalProperties(resp.GetProperties())
+	if outs := UnmarshalPropertiesInto(p.ctx, resp.GetProperties(), props, MarshalOptions{}); outs != nil {
+		for out := range outs {
+			res.MarkOutput(out)
+		}
+	}
+
 	glog.V(7).Infof("resource[%v].Get(id=%v,t=%v) success: #props=%v", p.pkg, t, id, len(props))
-	return props, nil
+	return nil
 }
 
 // InspectChange checks what impacts a hypothetical update will have on the resource's properties.
-func (p *provider) InspectChange(id ID, t tokens.Type,
-	olds PropertyMap, news PropertyMap) ([]string, PropertyMap, error) {
-	contract.Requiref(id != "", "id", "not empty")
-	contract.Requiref(t != "", "t", "not empty")
+func (p *provider) InspectChange(old Resource, new Resource, computed PropertyMap) ([]string, PropertyMap, error) {
+	id := old.ID()
+	contract.Assert(id != "")
+	t := old.Type()
+	contract.Assert(t != "")
+	contract.Assert(t == new.Type())
+	olds := old.Properties()
+	var news PropertyMap
+	if computed != nil {
+		// If a computed map has been supplied, use that for purposes of diffing.
+		news = computed
+	} else {
+		// Otherwise, simply use the raw properties from the new resource itself.
+		news = new.Properties()
+	}
 
 	glog.V(7).Infof("resource[%v].InspectChange(id=%v,t=%v,#olds=%v,#news=%v) executing",
 		p.pkg, id, t, len(olds), len(news))
-	req := &lumirpc.ChangeRequest{
+	newpstr, newunks := MarshalPropertiesWithUnknowns(p.ctx, news, MarshalOptions{
+		RawResources: true, // pre-change, IDs won't be ready, ship over URNs.
+	})
+	req := &lumirpc.InspectChangeRequest{
 		Id:   string(id),
 		Type: string(t),
 		Olds: MarshalProperties(p.ctx, olds, MarshalOptions{
-			RawURNs: true, // often used during URN creation; IDs won't be ready.
+			RawResources: true, // just leave these as-is, so they match the news.
 		}),
-		News: MarshalProperties(p.ctx, news, MarshalOptions{
-			RawURNs: true, // often used during URN creation; IDs won't be ready.
-		}),
+		News:     newpstr,
+		Unknowns: newunks,
 	}
 
 	resp, err := p.client.InspectChange(p.ctx.Request(), req)
@@ -183,24 +214,34 @@ func (p *provider) InspectChange(id ID, t tokens.Type,
 	}
 
 	replaces := resp.GetReplaces()
-	changes := UnmarshalProperties(resp.GetChanges())
+	changes := UnmarshalProperties(p.ctx, resp.GetChanges(), MarshalOptions{RawResources: true})
 	glog.V(7).Infof("resource[%v].Update(id=%v,t=%v,...) success: #replaces=%v #changes=%v",
 		p.pkg, id, t, len(replaces), len(changes))
+	if glog.V(9) {
+		for i, repl := range replaces {
+			glog.V(9).Infof("resource[%v].Update(id=%v,t=%v,...) repace #%v: %v", p.pkg, id, t, i, repl)
+		}
+	}
 	return replaces, changes, nil
 }
 
 // Update updates an existing resource with new values.
-func (p *provider) Update(id ID, t tokens.Type, olds PropertyMap, news PropertyMap) (State, error) {
-	contract.Requiref(id != "", "id", "not empty")
-	contract.Requiref(t != "", "t", "not empty")
+func (p *provider) Update(old Resource, new Resource) (State, error) {
+	id := old.ID()
+	contract.Assert(id != "")
+	t := old.Type()
+	contract.Assert(t != "")
+	contract.Assert(t == new.Type())
+	olds := old.Properties()
+	news := new.Properties()
 
 	glog.V(7).Infof("resource[%v].Update(id=%v,t=%v,#olds=%v,#news=%v) executing",
 		p.pkg, id, t, len(olds), len(news))
-	req := &lumirpc.ChangeRequest{
+	req := &lumirpc.UpdateRequest{
 		Id:   string(id),
 		Type: string(t),
 		Olds: MarshalProperties(p.ctx, olds, MarshalOptions{
-			PermitOlds: true, // permit old URNs since these are the old values.
+			OldURNs: true, // permit old URNs since these are the old values.
 		}),
 		News: MarshalProperties(p.ctx, news, MarshalOptions{}),
 	}
@@ -212,13 +253,16 @@ func (p *provider) Update(id ID, t tokens.Type, olds PropertyMap, news PropertyM
 	}
 
 	glog.V(7).Infof("resource[%v].Update(id=%v,t=%v,...) success", p.pkg, id, t)
+	new.SetID(id)
 	return StateOK, nil
 }
 
 // Delete tears down an existing resource.
-func (p *provider) Delete(id ID, t tokens.Type) (State, error) {
-	contract.Requiref(id != "", "id", "not empty")
-	contract.Requiref(t != "", "t", "not empty")
+func (p *provider) Delete(res Resource) (State, error) {
+	id := res.ID()
+	contract.Assert(id != "")
+	t := res.Type()
+	contract.Assert(t != "")
 
 	glog.V(7).Infof("resource[%v].Delete(id=%v,t=%v) executing", p.pkg, id, t)
 	req := &lumirpc.DeleteRequest{

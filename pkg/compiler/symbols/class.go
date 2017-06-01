@@ -66,6 +66,8 @@ func (node *Class) Sealed() bool    { return node.Node.Sealed != nil && *node.No
 func (node *Class) Abstract() bool  { return node.Node.Abstract != nil && *node.Node.Abstract }
 func (node *Class) Record() bool    { return node.Node.Record != nil && *node.Node.Record }
 func (node *Class) Interface() bool { return node.Node.Interface != nil && *node.Node.Interface }
+func (node *Class) Latent() bool    { return false }
+func (node *Class) HasValue() bool  { return true }
 func (node *Class) String() string  { return string(node.Token()) }
 
 // HasInit returns true if this module has an initialzer associated with it.
@@ -142,6 +144,7 @@ type ClassProperty struct {
 	Ty     Type
 	Get    *ClassMethod
 	Set    *ClassMethod
+	Lat    bool
 }
 
 var _ Symbol = (*ClassProperty)(nil)
@@ -171,6 +174,7 @@ func (node *ClassProperty) Readonly() bool              { return node.Node.Reado
 func (node *ClassProperty) Static() bool                { return node.Node.Static != nil && *node.Node.Static }
 func (node *ClassProperty) Primary() bool               { return node.Node.Primary != nil && *node.Node.Primary }
 func (node *ClassProperty) Default() *interface{}       { return node.Node.Default }
+func (node *ClassProperty) Latent() bool                { return node.Lat }
 func (node *ClassProperty) Type() Type                  { return node.Ty }
 func (node *ClassProperty) MemberNode() ast.ClassMember { return node.Node }
 func (node *ClassProperty) MemberName() tokens.ClassMemberName {
@@ -182,13 +186,14 @@ func (node *ClassProperty) String() string        { return string(node.Token()) 
 
 // NewClassPropertySym returns a new ClassProperty symbol with the given node and parent.
 func NewClassPropertySym(node *ast.ClassProperty, parent *Class, ty Type,
-	get *ClassMethod, set *ClassMethod) *ClassProperty {
+	get *ClassMethod, set *ClassMethod, latent bool) *ClassProperty {
 	return &ClassProperty{
 		Node:   node,
 		Parent: parent,
 		Ty:     ty,
 		Get:    get,
 		Set:    set,
+		Lat:    latent,
 	}
 }
 
