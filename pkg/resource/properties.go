@@ -414,6 +414,22 @@ func (m PropertyMap) ReplaceResources(updater func(URN) URN) PropertyMap {
 	return result
 }
 
+func (m PropertyMap) ShallowClone() PropertyMap {
+	copy := make(PropertyMap)
+	for k, v := range m {
+		copy[k] = v
+	}
+	return copy
+}
+
+func (s PropertySet) ShallowClone() PropertySet {
+	copy := make(PropertySet)
+	for k, v := range s {
+		copy[k] = v
+	}
+	return copy
+}
+
 func NewNullProperty() PropertyValue                   { return PropertyValue{nil} }
 func NewBoolProperty(v bool) PropertyValue             { return PropertyValue{v} }
 func NewNumberProperty(v float64) PropertyValue        { return PropertyValue{v} }
@@ -703,6 +719,16 @@ func (v PropertyValue) Mappable() mapper.Value {
 	}
 	contract.Assert(v.IsObject())
 	return v.ObjectValue().Mappable()
+}
+
+// String implements the fmt.Stringer interface to add slightly more information to the output.
+func (v PropertyValue) String() string {
+	if v.IsComputed() || v.IsOutput() {
+		// For computed and output properties, show their type followed by an empty object string.
+		return fmt.Sprintf("%v{}", v.TypeString())
+	}
+	// For all others, just display the underlying property value.
+	return fmt.Sprintf("{%v}", v.V)
 }
 
 // AllResources finds all resource URNs, transitively throughout the property value, and returns them.

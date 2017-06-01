@@ -112,7 +112,7 @@ func createResources(ctx *Context, ns tokens.QName, heap *heapstate.Heap, resobj
 		if err != nil {
 			return nil, err
 		}
-		name, err := prov.Name(t, res.Properties())
+		name, err := prov.Name(res)
 		if err != nil {
 			return nil, err
 		}

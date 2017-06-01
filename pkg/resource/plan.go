@@ -304,7 +304,7 @@ func newPlan(ctx *Context, old Snapshot, new Snapshot, analyzers []tokens.QName)
 		if err != nil {
 			return nil, err
 		}
-		failures, err := prov.Check(t, props)
+		failures, err := prov.Check(new)
 		if err != nil {
 			return nil, err
 		}
@@ -350,20 +350,23 @@ func newPlan(ctx *Context, old Snapshot, new Snapshot, analyzers []tokens.QName)
 	for _, new := range pb.NewRes {
 		m := new.URN()
 		if old, hasold := pb.Olds[m]; hasold {
+			contract.Assert(old.Type() == new.Type())
+
 			// The resource exists in both new and old; it could be an update.  This resource is an update if one of
 			// these two conditions exist: 1) either the old and new properties don't match or 2) the update impact
 			// is assessed as having to replace the resource, in which case the ID will change.  This might have a
 			// cascading impact on subsequent updates too, since those IDs must trigger recreations, etc.
-			contract.Assert(old.Type() == new.Type())
 			computed := new.Properties().ReplaceResources(func(r URN) URN {
 				if pb.Replace(r) {
 					// If the resource is being replaced, simply mangle the URN so that it's different; this value
 					// won't actually be used for anything other than the diffing algorithms below.
+					// TODO[pulumi/lumi#90]: replace this entirely by computed properties and corresponding diffing.
 					r = r.Replace()
 					glog.V(7).Infof("Patched resource '%v's URN property: %v", m, r)
 				}
 				return r
 			})
+
 			if !old.Properties().DeepEquals(computed) {
 				// See if this update has the effect of deleting and recreating the resource.  If so, we need to make
 				// sure to insert the right replacement steps into the graph (a create, replace, and delete).
@@ -372,7 +375,7 @@ func newPlan(ctx *Context, old Snapshot, new Snapshot, analyzers []tokens.QName)
 				if err != nil {
 					return nil, err
 				}
-				replacements, _, err := prov.InspectChange(old.ID(), old.Type(), old.Properties(), computed)
+				replacements, _, err := prov.InspectChange(old, new)
 				if err != nil {
 					return nil, err
 				}
@@ -681,16 +684,17 @@ func (s *step) Apply() (State, error) {
 		contract.Assert(s.old == nil)
 		contract.Assert(s.new != nil)
 		contract.Assertf(!s.new.HasID(), "Resources being created must not have IDs already")
-		id, rst, err := prov.Create(s.new.Type(), s.new.Properties())
+		rst, err := prov.Create(s.new)
 		if err != nil {
 			return rst, err
 		}
+		id := s.new.ID()
+		contract.Assert(id != "")
 
 		// Copy the old resource, set the new ID, read the resource state back (to fetch outputs), and store them.
 		s.old = s.new.ShallowClone()
-		s.new.SetID(id)
 		s.p.ctx.IDURN[id] = s.new.URN()
-		if err := prov.Get(id, s.new.Type(), s.new.Properties()); err != nil {
+		if err := prov.Get(s.new); err != nil {
 			return rst, err
 		}
 
@@ -699,7 +703,7 @@ func (s *step) Apply() (State, error) {
 		contract.Assert(s.old != nil)
 		contract.Assert(s.new == nil)
 		contract.Assertf(s.old.HasID(), "Resources being deleted must have IDs")
-		if rst, err := prov.Delete(s.old.ID(), s.old.Type()); err != nil {
+		if rst, err := prov.Delete(s.old); err != nil {
 			return rst, err
 		}
 
@@ -710,7 +714,7 @@ func (s *step) Apply() (State, error) {
 		contract.Assert(s.old.Type() == s.new.Type())
 		contract.Assertf(s.old.HasID(), "Resources being updated must have IDs")
 		id := s.old.ID()
-		if rst, err := prov.Update(id, s.old.Type(), s.old.Properties(), s.new.Properties()); err != nil {
+		if rst, err := prov.Update(s.old, s.new); err != nil {
 			return rst, err
 		}
 

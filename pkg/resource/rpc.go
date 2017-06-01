@@ -159,12 +159,16 @@ func MarshalPropertyValue(ctx *Context, v PropertyValue, opts MarshalOptions) (*
 // UnmarshalProperties unmarshals a "JSON-like" protobuf structure into a new resource property map.
 func UnmarshalProperties(ctx *Context, props *structpb.Struct, opts MarshalOptions) PropertyMap {
 	result := make(PropertyMap)
-	UnmarshalPropertiesInto(ctx, props, result, opts)
+	if props != nil {
+		UnmarshalPropertiesInto(ctx, props, result, opts)
+	}
 	return result
 }
 
-// UnmarshalPropertiesInto unmarshals a "JSON-like" protobuf structure into an existing resource property map.
-func UnmarshalPropertiesInto(ctx *Context, props *structpb.Struct, t PropertyMap, opts MarshalOptions) {
+// UnmarshalPropertiesInto unmarshals a "JSON-like" protobuf structure into an existing resource property map.  It
+// returns a set of properties that were present in the source but not the destination (or nil if none).
+func UnmarshalPropertiesInto(ctx *Context, props *structpb.Struct, t PropertyMap,
+	opts MarshalOptions) map[PropertyKey]bool {
 	contract.Assert(props != nil)
 
 	// First sort the keys so we enumerate them in order (in case errors happen, we want determinism).
@@ -175,13 +179,22 @@ func UnmarshalPropertiesInto(ctx *Context, props *structpb.Struct, t PropertyMap
 	sort.Strings(keys)
 
 	// And now unmarshal every field it into the map.
+	var added map[PropertyKey]bool
 	for _, k := range keys {
 		pk := PropertyKey(k)
-		v := t[pk]
+		v, has := t[pk]
+		add := !has || v.IsNull()
 		UnmarshalPropertyValueInto(ctx, props.Fields[k], &v, opts)
 		contract.Assert(!v.IsComputed() && !v.IsOutput())
 		t[pk] = v
+		if add && !v.IsNull() {
+			if added == nil {
+				added = make(map[PropertyKey]bool)
+			}
+			added[pk] = true
+		}
 	}
+	return added
 }
 
 // UnmarshalPropertyValue unmarshals a single "JSON-like" value into a new property value.

@@ -61,15 +61,18 @@ func IDStrings(ids []ID) []string {
 
 // Resource is an instance of a resource with an ID, type, and bag of state.
 type Resource interface {
-	ID() ID                  // the resource's unique ID assigned by the provider (or blank if uncreated).
-	URN() URN                // the resource's object urn, a human-friendly, unique name for the resource.
-	Type() tokens.Type       // the resource's type.
-	Properties() PropertyMap // the resource's property map.
-	HasID() bool             // returns true if the resource has been assigned an ID.
-	SetID(id ID)             // assignes an ID to this resource, for those under creation.
-	HasURN() bool            // returns true if the resource has been assigned URN.
-	SetURN(m URN)            // assignes a URN to this resource, for those under creation.
-	ShallowClone() Resource  // make a shallow clone of the resource.
+	ID() ID                   // the resource's unique ID assigned by the provider (or blank if uncreated).
+	URN() URN                 // the resource's object urn, a human-friendly, unique name for the resource.
+	Type() tokens.Type        // the resource's type.
+	Properties() PropertyMap  // the resource's property map.
+	Outputs() PropertySet     // the set of properties that were set via outputs from the provider.
+	ClearOutputs()            // clears the outputs set in preparation for an operation that marks them.
+	MarkOutput(k PropertyKey) // marks a property as an output from the provider.
+	HasID() bool              // returns true if the resource has been assigned an ID.
+	SetID(id ID)              // assignes an ID to this resource, for those under creation.
+	HasURN() bool             // returns true if the resource has been assigned URN.
+	SetURN(m URN)             // assignes a URN to this resource, for those under creation.
+	ShallowClone() Resource   // make a shallow clone of the resource.
 }
 
 // State is returned when an error has occurred during a resource provider operation.  It indicates whether the
@@ -91,25 +94,30 @@ type resource struct {
 	urn        URN         // the resource's object urn, a human-friendly, unique name for the resource.
 	t          tokens.Type // the resource's type.
 	properties PropertyMap // the resource's property map.
+	outs       PropertySet // the set of properties that were set via outputs from the provider.
 }
 
 func (r *resource) ID() ID                  { return r.id }
 func (r *resource) URN() URN                { return r.urn }
 func (r *resource) Type() tokens.Type       { return r.t }
 func (r *resource) Properties() PropertyMap { return r.properties }
+func (r *resource) Outputs() PropertySet    { return r.outs }
+
+func (r *resource) ClearOutputs() {
+	r.outs = nil
+}
+func (r *resource) MarkOutput(k PropertyKey) {
+	if r.outs == nil {
+		r.outs = make(PropertySet)
+	}
+	r.outs[k] = true
+}
 
 func (r *resource) HasID() bool { return (string(r.id) != "") }
 func (r *resource) SetID(id ID) {
 	contract.Requiref(!r.HasID(), "id", "empty")
 	glog.V(9).Infof("Assigning ID=%v to resource w/ URN=%v", id, r.urn)
 	r.id = id
-}
-
-func (r *resource) CopyPropertiesFrom(m PropertyMap) {
-	for k, v := range m {
-		glog.V(9).Infof("Assigning property %v=%v to resource w/ URN=%v", k, v, r.urn)
-		r.properties[k] = v
-	}
 }
 
 func (r *resource) HasURN() bool { return (string(r.urn) != "") }
@@ -121,15 +129,12 @@ func (r *resource) SetURN(m URN) {
 // ShallowClone clones a resource object so that any modifications to it are not reflected in the original.  Note that
 // the property map is only shallowly cloned so any mutations deep within it may get reflected in the original.
 func (r *resource) ShallowClone() Resource {
-	propcopies := make(PropertyMap)
-	for k, v := range r.properties {
-		propcopies[k] = v
-	}
 	return &resource{
 		id:         r.id,
 		urn:        r.urn,
 		t:          r.t,
-		properties: propcopies,
+		properties: r.properties.ShallowClone(),
+		outs:       r.outs.ShallowClone(),
 	}
 }
 
@@ -140,6 +145,7 @@ func NewResource(id ID, urn URN, t tokens.Type, properties PropertyMap) Resource
 		urn:        urn,
 		t:          t,
 		properties: properties,
+		outs:       nil, // lazily allocated when provider operations occur.
 	}
 }
 
