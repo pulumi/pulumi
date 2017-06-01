@@ -115,7 +115,7 @@ func deploy(cmd *cobra.Command, info *envCmdInfo, opts deployOptions) {
 		} else {
 			// If show unchanged was requested, print them first, along with a header.
 			var header bytes.Buffer
-			printPrelude(&header, result, opts)
+			printPrelude(&header, result, opts, false)
 			header.WriteString(fmt.Sprintf("%vDeploying changes:%v\n", colors.SpecUnimportant, colors.Reset))
 			fmt.Printf(colors.Colorize(&header))
 
@@ -197,7 +197,7 @@ func (prog *deployProgress) Before(step resource.Step) {
 
 	var b bytes.Buffer
 	b.WriteString(fmt.Sprintf("Applying step #%v [%v]%v\n", stepnum, stepop, extra))
-	printStep(&b, step, prog.Summary, "")
+	printStep(&b, step, prog.Summary, false, "")
 	fmt.Printf(colors.Colorize(&b))
 }
 
