@@ -143,7 +143,6 @@ func (props PropertyMap) Diff(other PropertyMap) *ObjectDiff {
 			}
 		} else if !old.IsNull() {
 			// If there was no new property, it has been deleted.
-			// TODO: differentiate between real deletions.
 			deletes[k] = old
 		}
 	}
