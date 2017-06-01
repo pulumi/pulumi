@@ -28,6 +28,8 @@ import (
 type Analyzer interface {
 	// Closer closes any underlying OS resources associated with this provider (like processes, RPC channels, etc).
 	io.Closer
+	// Name fetches an analyzer's qualified name.
+	Name() tokens.QName
 	// Analyze analyzes an entire project/stack/snapshot, and returns any errors that it finds.
 	Analyze(url pack.PackageURL) ([]AnalyzeFailure, error)
 	// AnalyzeResource analyzes a single resource object, and returns any errors that it finds.

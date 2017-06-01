@@ -167,7 +167,7 @@ func (p *plan) Steps() Step {
 func (p *plan) Provider(res Resource) (Provider, error) {
 	t := res.Type()
 	pkg := t.Package()
-	return p.ctx.Provider(pkg)
+	return p.ctx.Host.Provider(pkg)
 }
 
 // Apply performs all steps in the plan, calling out to the progress reporting functions as desired.  It returns four
@@ -266,7 +266,7 @@ func newPlan(ctx *Context, old Snapshot, new Snapshot, analyzers []tokens.QName)
 
 	// Give analyzers a chance to inspect the overall deployment.
 	for _, aname := range analyzers {
-		analyzer, err := ctx.Analyzer(aname)
+		analyzer, err := ctx.Host.Analyzer(aname)
 		if err != nil {
 			return nil, err
 		}
@@ -315,7 +315,7 @@ func newPlan(ctx *Context, old Snapshot, new Snapshot, analyzers []tokens.QName)
 
 		// Next, give each analyzer -- if any -- a chance to inspect the reosurce too.
 		for _, aname := range analyzers {
-			analyzer, err := ctx.Analyzer(aname)
+			analyzer, err := ctx.Host.Analyzer(aname)
 			if err != nil {
 				return nil, err
 			}

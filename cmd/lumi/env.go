@@ -74,7 +74,7 @@ func initEnvCmdName(name tokens.QName, args []string) (*envCmdInfo, error) {
 	}
 
 	// Read in the deployment information, bailing if an IO error occurs.
-	ctx := resource.NewContext(cmdutil.Sink())
+	ctx := resource.NewContext(cmdutil.Sink(), nil)
 	envfile, env, old := readEnv(ctx, name)
 	if env == nil {
 		contract.Assert(!ctx.Diag.Success())
@@ -150,7 +150,7 @@ func getCurrentEnv() tokens.QName {
 // setCurrentEnv changes the current environment to the given environment name, issuing an error if it doesn't exist.
 func setCurrentEnv(name tokens.QName, verify bool) {
 	if verify {
-		ctx := resource.NewContext(cmdutil.Sink())
+		ctx := resource.NewContext(cmdutil.Sink(), nil)
 		if _, env, _ := readEnv(ctx, name); env == nil {
 			return // no environment by this name exists, bail out.
 		}
