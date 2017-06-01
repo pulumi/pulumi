@@ -123,6 +123,9 @@ func (p *InstanceProvider) InspectChange(
         if diff.Changed("name") {
             replaces = append(replaces, "name")
         }
+        if diff.Changed("securityGroups") {
+            replaces = append(replaces, "securityGroups")
+        }
     }
     more, err := p.ops.InspectChange(ctx, id, old, new, diff)
     if err != nil {

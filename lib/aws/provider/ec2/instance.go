@@ -174,7 +174,7 @@ func (p *instanceProvider) Get(ctx context.Context, id resource.ID) (*ec2.Instan
 // InspectChange checks what impacts a hypothetical update will have on the resource's properties.
 func (p *instanceProvider) InspectChange(ctx context.Context, id resource.ID,
 	old *ec2.Instance, new *ec2.Instance, diff *resource.ObjectDiff) ([]string, error) {
-	// TODO: we should permit changes to security groups for non-EC2-classic VMs that are in VPCs.
+	// TODO[pulumi/lumi#187]: we should permit changes to security groups for non-EC2-classic VMs that are in VPCs.
 	return nil, nil
 }
 

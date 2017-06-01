@@ -28,7 +28,7 @@ type Instance struct {
 	// The instance type, such as t2.micro. The default type is "m3.medium".
 	InstanceType *InstanceType `lumi:"instanceType,optional"`
 	// A list that contains the Amazon EC2 security groups to assign to the Amazon EC2 instance.
-	SecurityGroups *[]*SecurityGroup `lumi:"securityGroups,optional"`
+	SecurityGroups *[]*SecurityGroup `lumi:"securityGroups,optional,replaces"`
 	// Provides the name of the Amazon EC2 key pair.
 	KeyName *string `lumi:"keyName,optional"`
 

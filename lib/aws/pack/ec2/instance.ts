@@ -67,7 +67,7 @@ export class Instance extends lumi.Resource implements InstanceArgs {
     public readonly name: string;
     public imageId: string;
     public instanceType?: InstanceType;
-    public securityGroups?: SecurityGroup[];
+    public readonly securityGroups?: SecurityGroup[];
     public keyName?: string;
     @lumi.out public availabilityZone: string;
     @lumi.out public privateDNSName?: string;
@@ -94,7 +94,7 @@ export class Instance extends lumi.Resource implements InstanceArgs {
 export interface InstanceArgs {
     imageId: string;
     instanceType?: InstanceType;
-    securityGroups?: SecurityGroup[];
+    readonly securityGroups?: SecurityGroup[];
     keyName?: string;
 }
 
