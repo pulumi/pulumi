@@ -2,6 +2,8 @@
 
 PROJECT=github.com/pulumi/lumi
 PROJECT_PKGS=$(shell go list ./... | grep -v /vendor/)
+CORE_PROJECT_PKGS=$(shell go list ./cmd/... ./pkg/...)
+PROCCNT=$(shell nproc --all)
 
 default: banner test lint_quiet vet install
 
@@ -31,7 +33,11 @@ lint_quiet:
 
 test:
 	@echo "\033[0;32mTEST:\033[0m"
-	@go test -cover ${PROJECT_PKGS}
+	@go test -parallel ${PROCCNT} -cover ${PROJECT_PKGS}
+
+test_core:
+	@echo "\033[0;32mTEST (core):\033[0m"
+	@go test -parallel ${PROCCNT} -cover ${CORE_PROJECT_PKGS}
 
 vet:
 	@echo "\033[0;32mVET:\033[0m"

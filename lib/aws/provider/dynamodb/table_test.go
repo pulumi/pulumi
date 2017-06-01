@@ -53,6 +53,8 @@ func cleanup(ctx *awsctx.Context) {
 }
 
 func Test(t *testing.T) {
+	t.Parallel()
+
 	// Create a TableProvider
 	ctx, err := awsctx.New()
 	assert.Nil(t, err, "expected no error getting AWS context")

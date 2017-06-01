@@ -24,6 +24,8 @@ import (
 )
 
 func TestCounts(t *testing.T) {
+	t.Parallel()
+
 	// Create a new default sink with /dev/null writers to avoid spamming the test log.
 	sink := newDefaultSink(FormatOptions{}, map[Category]io.Writer{
 		Info:    ioutil.Discard,

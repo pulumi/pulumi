@@ -34,6 +34,8 @@ type bag struct {
 }
 
 func TestFieldMapper(t *testing.T) {
+	t.Parallel()
+
 	md := New(nil)
 	tree := Object{
 		"b":  true,
@@ -110,6 +112,8 @@ type bagtag struct {
 }
 
 func TestMapper(t *testing.T) {
+	t.Parallel()
+
 	var err error
 	md := New(nil)
 
@@ -171,6 +175,8 @@ type bogger struct {
 }
 
 func TestNestedMapper(t *testing.T) {
+	t.Parallel()
+
 	md := New(nil)
 
 	// Test one level deep nesting (fields, arrays, pointers).
@@ -302,6 +308,8 @@ type mapentry struct {
 }
 
 func TestMapMapper(t *testing.T) {
+	t.Parallel()
+
 	md := New(nil)
 
 	// Ensure we can decode both maps of structs and maps of pointers to structs.
@@ -346,6 +354,8 @@ func (s *customStruct) GetX() float64 { return s.X }
 func (s *customStruct) GetY() float64 { return s.Y }
 
 func TestCustomMapper(t *testing.T) {
+	t.Parallel()
+
 	var md Mapper
 	md = New(&Opts{
 		CustomDecoders: Decoders{
@@ -411,6 +421,8 @@ type inner struct {
 }
 
 func TestBasicUnmap(t *testing.T) {
+	t.Parallel()
+
 	v2 := "v2"
 	v5 := float64(5)
 	i1v2 := "i1v2"

@@ -62,6 +62,8 @@ func testBind(paths ...string) *testutil.TestDiagSink {
 }
 
 func TestBadDepSemVer(t *testing.T) {
+	t.Parallel()
+
 	sink := testBind("testdata", "bad__dep_semver")
 
 	// Check that the compiler complained about an illegal semantic version.
@@ -91,6 +93,8 @@ func TestBadDepSemVer(t *testing.T) {
 }
 
 func TestBadTypeNotFound(t *testing.T) {
+	t.Parallel()
+
 	sink := testBind("testdata", "bad__type_not_found")
 
 	// Check that the compiler complained about the type missisng.
@@ -110,6 +114,8 @@ func TestBadTypeNotFound(t *testing.T) {
 }
 
 func TestGoodPrimitiveTypes(t *testing.T) {
+	t.Parallel()
+
 	sink := testBind("testdata", "good__primitive_types")
 
 	// Check that no errors are found when using primitive types.

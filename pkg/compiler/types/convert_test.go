@@ -56,6 +56,8 @@ func assertCannotConvert(t *testing.T, from symbols.Type, to symbols.Type) {
 
 // TestIdentityConversions tests converting types to themselves.
 func TestIdentityConversions(t *testing.T) {
+	t.Parallel()
+
 	for _, prim := range Primitives {
 		assertCanConvert(t, prim, prim)
 	}
@@ -69,6 +71,8 @@ func TestIdentityConversions(t *testing.T) {
 
 // TestObjectConversions tests converting a bunch of different types to "any".
 func TestObjectConversions(t *testing.T) {
+	t.Parallel()
+
 	for _, prim := range Primitives {
 		assertCanConvert(t, prim, Object)
 	}
@@ -82,6 +86,8 @@ func TestObjectConversions(t *testing.T) {
 
 // TestNullConversions tests converting to and from "null".
 func TestNullConversions(t *testing.T) {
+	t.Parallel()
+
 	for _, prim := range Primitives {
 		assertCanConvert(t, prim, Null)
 		assertCanConvert(t, Null, prim)
@@ -99,6 +105,8 @@ func TestNullConversions(t *testing.T) {
 
 // TestClassConversions tests converting classes to their base types.
 func TestClassConversions(t *testing.T) {
+	t.Parallel()
+
 	base := newTestClass("base", nil, nil)
 
 	// A simple extends case.
@@ -140,6 +148,8 @@ func TestClassConversions(t *testing.T) {
 
 // TestPointerConversions tests pointers converting to their element types.
 func TestPointerConversions(t *testing.T) {
+	t.Parallel()
+
 	for _, prim := range Primitives {
 		ptr := symbols.NewPointerType(prim)
 		for i := 0; i < 3; i++ { // test that multiple levels of pointers convert.
@@ -161,6 +171,8 @@ func TestPointerConversions(t *testing.T) {
 
 // TestArrayConversions tests converting between structurally identical array types.
 func TestArrayConversions(t *testing.T) {
+	t.Parallel()
+
 	// Simple primitive cases:
 	for _, prim := range Primitives {
 		arr1 := symbols.NewArrayType(prim)
@@ -187,6 +199,8 @@ func TestArrayConversions(t *testing.T) {
 
 // TestMapConversions tests converting between structurally identical map types.
 func TestMapConversions(t *testing.T) {
+	t.Parallel()
+
 	// Map types with the same key and element types can convert.
 	for _, prim := range Primitives {
 		map1 := symbols.NewMapType(String, prim)
@@ -213,6 +227,8 @@ func TestMapConversions(t *testing.T) {
 
 // TestFuncConversions tests converting between structurally identical or safely variant function types.
 func TestFuncConversions(t *testing.T) {
+	t.Parallel()
+
 	// Empty functions convert to each other.
 	{
 		func1 := symbols.NewFunctionType(nil, nil)

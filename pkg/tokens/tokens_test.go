@@ -22,6 +22,8 @@ import (
 )
 
 func TestTokens(t *testing.T) {
+	t.Parallel()
+
 	// Package tokens/names.
 	p := "test/package"
 	assert.False(t, IsName(p))
