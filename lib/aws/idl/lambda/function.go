@@ -71,6 +71,12 @@ type Function struct {
 
 	// The ARN of the Lambda function, such as `arn:aws:lambda:us-west-2:123456789012:MyStack-AMILookUp-NT5EUXTNTXXD`.
 	ARN aws.ARN `lumi:"arn,out"`
+	// version is the latest published version of the Lambda function.
+	Version string `lumi:"version,out"`
+	// codeSHA256 is the base64-encoded SHA-256 hash of the source code zip file for the Lambda function.
+	CodeSHA256 string `lumi:"codeSHA256,out"`
+	// lastModified is the date the Lambda function was last modified.
+	LastModified string `lumi:"lastModified,out"`
 }
 
 // Runtime represents the legal runtime environments for Lambdas.

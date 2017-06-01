@@ -192,13 +192,12 @@ func (p *funcProvider) Get(ctx context.Context, id resource.ID) (*lambda.Functio
 		return nil, err
 	}
 
-	// Deserialize the code URL into an archive/asset that the system can use.
-	contract.Assert(funcresp != nil)
-	contract.Assert(funcresp.Code != nil)
-	// TODO: unclear if we need to consult RepositoryType.
-	code := resource.NewURIArchive(aws.StringValue(funcresp.Code.Location))
+	// Note: We do not extract the funcresp.Code property, as this is a pre-signed S3
+	// URL at which we could download the function source code, but is not stable across
+	// calls to GetFunction.
 
 	// Deserialize all configuration properties into prompt objects.
+	contract.Assert(funcresp != nil)
 	config := funcresp.Configuration
 	contract.Assert(config != nil)
 	var env *lambda.Environment
@@ -209,7 +208,9 @@ func (p *funcProvider) Get(ctx context.Context, id resource.ID) (*lambda.Functio
 
 	return &lambda.Function{
 		ARN:          awscommon.ARN(aws.StringValue(config.FunctionArn)),
-		Code:         code,
+		Version:      aws.StringValue(config.Version),
+		CodeSHA256:   aws.StringValue(config.CodeSha256),
+		LastModified: aws.StringValue(config.LastModified),
 		Handler:      aws.StringValue(config.Handler),
 		Role:         resource.ID(aws.StringValue(config.Role)),
 		Runtime:      lambda.Runtime(aws.StringValue(config.Runtime)),

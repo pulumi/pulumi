@@ -202,6 +202,9 @@ type Function struct {
     Timeout *float64 `json:"timeout,omitempty"`
     VPCConfig *VPCConfig `json:"vpcConfig,omitempty"`
     ARN __aws.ARN `json:"arn,omitempty"`
+    Version string `json:"version,omitempty"`
+    CodeSHA256 string `json:"codeSHA256,omitempty"`
+    LastModified string `json:"lastModified,omitempty"`
 }
 
 // Function's properties have constants to make dealing with diffs and property bags easier.
@@ -220,6 +223,9 @@ const (
     Function_Timeout = "timeout"
     Function_VPCConfig = "vpcConfig"
     Function_ARN = "arn"
+    Function_Version = "version"
+    Function_CodeSHA256 = "codeSHA256"
+    Function_LastModified = "lastModified"
 )
 
 /* Marshalable VPCConfig structure(s) */

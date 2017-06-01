@@ -19,6 +19,7 @@ import (
 	"crypto/sha1"
 	"encoding/json"
 	"fmt"
+	"net/url"
 
 	"github.com/aws/aws-sdk-go/aws"
 	awsiam "github.com/aws/aws-sdk-go/service/iam"
@@ -129,9 +130,13 @@ func (p *roleProvider) Get(ctx context.Context, id resource.ID) (*iam.Role, erro
 	// If we got here, we found the role; populate the data structure accordingly.
 	role := getrole.Role
 
-	// Policy is a JSON blob, parse it.
+	// Policy is a URL-encoded JSON blob, parse it.
 	var policyDocument map[string]interface{}
-	if err := json.Unmarshal([]byte(*role.AssumeRolePolicyDocument), &policyDocument); err != nil {
+	assumePolicyDocumentJSON, err := url.QueryUnescape(*role.AssumeRolePolicyDocument)
+	if err != nil {
+		return nil, err
+	}
+	if err := json.Unmarshal([]byte(assumePolicyDocumentJSON), &policyDocument); err != nil {
 		return nil, err
 	}
 
@@ -152,7 +157,7 @@ func (p *roleProvider) Get(ctx context.Context, id resource.ID) (*iam.Role, erro
 	}
 
 	return &iam.Role{
-		AssumeRolePolicyDocument: role.AssumeRolePolicyDocument,
+		AssumeRolePolicyDocument: policyDocument,
 		Path:              role.Path,
 		RoleName:          role.RoleName,
 		ManagedPolicyARNs: managedPolicies,
