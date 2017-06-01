@@ -501,7 +501,7 @@ func NewPropertyValue(v interface{}) PropertyValue {
 		return NewObjectProperty(obj)
 	case reflect.Struct:
 		obj := NewPropertyMap(v)
-		return NewPropertyObject(obj)
+		return NewObjectProperty(obj)
 	default:
 		contract.Failf("Unrecognized value type: type=%v kind=%v", rv.Type(), rk)
 	}

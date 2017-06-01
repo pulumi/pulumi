@@ -160,7 +160,7 @@ func Test(t *testing.T) {
 	assert.Equal(t, 0, len(checkResp.Failures), "expected no check failures")
 
 	// Invoke Update request
-	_, err = tableProvider.Update(nil, &lumirpc.ChangeRequest{
+	_, err = tableProvider.Update(nil, &lumirpc.UpdateRequest{
 		Type: string(TableToken),
 		Id:   id,
 		Olds: props,
