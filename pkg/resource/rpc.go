@@ -183,7 +183,7 @@ func UnmarshalPropertiesInto(ctx *Context, props *structpb.Struct, t PropertyMap
 	for _, k := range keys {
 		pk := PropertyKey(k)
 		v, has := t[pk]
-		add := !has || v.IsNull()
+		add := !has || v.IsNull() || v.IsOutput()
 		UnmarshalPropertyValueInto(ctx, props.Fields[k], &v, opts)
 		contract.Assert(!v.IsComputed() && !v.IsOutput())
 		t[pk] = v
