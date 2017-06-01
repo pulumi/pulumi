@@ -23,6 +23,7 @@ import (
 
 	"github.com/aws/aws-sdk-go/aws"
 	awslambda "github.com/aws/aws-sdk-go/service/lambda"
+	"github.com/pkg/errors"
 	"github.com/pulumi/lumi/pkg/resource"
 	"github.com/pulumi/lumi/pkg/util/contract"
 	"github.com/pulumi/lumi/pkg/util/convutil"
@@ -153,9 +154,9 @@ func (p *funcProvider) Create(ctx context.Context, obj *lambda.Function) (resour
 					return false, nil // retry the condition.
 				}
 				return false, err
+			} else if resp == nil || resp.FunctionArn == nil {
+				return false, errors.New("Lambda Function created, but AWS did not respond with an ARN")
 			}
-			contract.Assert(resp != nil)
-			contract.Assert(resp.FunctionArn != nil)
 			arn = resource.ID(*resp.FunctionArn)
 			return true, nil
 		},
@@ -177,7 +178,7 @@ func (p *funcProvider) Create(ctx context.Context, obj *lambda.Function) (resour
 	return arn, nil
 }
 
-// Read reads the instance state identified by ID, returning a populated resource object, or an error if not found.
+// Get reads the instance state identified by ID, returning a populated resource object, or an error if not found.
 func (p *funcProvider) Get(ctx context.Context, id resource.ID) (*lambda.Function, error) {
 	name, err := arn.ParseResourceName(id)
 	if err != nil {
@@ -195,7 +196,7 @@ func (p *funcProvider) Get(ctx context.Context, id resource.ID) (*lambda.Functio
 	contract.Assert(funcresp != nil)
 	contract.Assert(funcresp.Code != nil)
 	// TODO: unclear if we need to consult RepositoryType.
-	code := resource.NewURIArchive(*funcresp.Code.Location)
+	code := resource.NewURIArchive(aws.StringValue(funcresp.Code.Location))
 
 	// Deserialize all configuration properties into prompt objects.
 	config := funcresp.Configuration
@@ -207,11 +208,11 @@ func (p *funcProvider) Get(ctx context.Context, id resource.ID) (*lambda.Functio
 	}
 
 	return &lambda.Function{
-		ARN:          awscommon.ARN(*config.FunctionArn),
+		ARN:          awscommon.ARN(aws.StringValue(config.FunctionArn)),
 		Code:         code,
-		Handler:      *config.Handler,
-		Role:         resource.ID(*config.Role),
-		Runtime:      lambda.Runtime(*config.Runtime),
+		Handler:      aws.StringValue(config.Handler),
+		Role:         resource.ID(aws.StringValue(config.Role)),
+		Runtime:      lambda.Runtime(aws.StringValue(config.Runtime)),
 		FunctionName: config.FunctionName,
 		Description:  config.Description,
 		Environment:  env,

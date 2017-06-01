@@ -136,7 +136,7 @@ func (p *environmentProvider) Create(ctx context.Context, obj *elasticbeanstalk.
 	return arn.NewElasticBeanstalkEnvironmentID(p.ctx.Region(), p.ctx.AccountID(), appname, name), nil
 }
 
-// Read reads the instance state identified by ID, returning a populated resource object, or an error if not found.
+// Get reads the instance state identified by ID, returning a populated resource object, or an error if not found.
 func (p *environmentProvider) Get(ctx context.Context, id resource.ID) (*elasticbeanstalk.Environment, error) {
 	appname, envname, err := arn.ParseResourceNamePair(id)
 	if err != nil {
@@ -153,9 +153,9 @@ func (p *environmentProvider) Get(ctx context.Context, id resource.ID) (*elastic
 	} else if envresp.Environments == nil || len(envresp.Environments) == 0 {
 		return nil, nil
 	}
-	contract.Assert(len(envresp.Environments) == 1)
 
 	// Successfully found the environment, now map all of its properties onto the struct.
+	contract.Assert(len(envresp.Environments) == 1)
 	env := envresp.Environments[0]
 	if env.CNAME != nil || env.TemplateName != nil || env.Tier != nil {
 		return nil, fmt.Errorf("Properties not yet supported: CNAMEPrefix, TemplateName, Tier")
@@ -163,7 +163,7 @@ func (p *environmentProvider) Get(ctx context.Context, id resource.ID) (*elastic
 	var versionLabel *resource.ID
 	if env.VersionLabel != nil {
 		version := arn.NewElasticBeanstalkApplicationVersionID(
-			p.ctx.Region(), p.ctx.AccountID(), appname, *env.VersionLabel)
+			p.ctx.Region(), p.ctx.AccountID(), appname, aws.StringValue(env.VersionLabel))
 		versionLabel = &version
 	}
 	envobj := &elasticbeanstalk.Environment{
@@ -172,7 +172,7 @@ func (p *environmentProvider) Get(ctx context.Context, id resource.ID) (*elastic
 		EnvironmentName:   env.EnvironmentName,
 		SolutionStackName: env.SolutionStackName,
 		Version:           versionLabel,
-		EndpointURL:       *env.EndpointURL,
+		EndpointURL:       aws.StringValue(env.EndpointURL),
 	}
 
 	// Next see if there are any configuration option settings and, if so, set them on the return.
@@ -186,9 +186,9 @@ func (p *environmentProvider) Get(ctx context.Context, id resource.ID) (*elastic
 		for _, setting := range confresp.ConfigurationSettings {
 			for _, option := range setting.OptionSettings {
 				options = append(options, elasticbeanstalk.OptionSetting{
-					Namespace:  *option.Namespace,
-					OptionName: *option.OptionName,
-					Value:      *option.Value,
+					Namespace:  aws.StringValue(option.Namespace),
+					OptionName: aws.StringValue(option.OptionName),
+					Value:      aws.StringValue(option.Value),
 				})
 			}
 		}

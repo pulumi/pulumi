@@ -22,6 +22,7 @@ import (
 
 	"github.com/aws/aws-sdk-go/aws"
 	awsec2 "github.com/aws/aws-sdk-go/service/ec2"
+	"github.com/pkg/errors"
 	"github.com/pulumi/lumi/pkg/resource"
 	"github.com/pulumi/lumi/pkg/util/contract"
 	"github.com/pulumi/lumi/pkg/util/convutil"
@@ -94,10 +95,11 @@ func (p *sgProvider) Create(ctx context.Context, obj *ec2.SecurityGroup) (resour
 	result, err := p.ctx.EC2().CreateSecurityGroup(create)
 	if err != nil {
 		return "", err
+	} else if result == nil || result.GroupId == nil {
+		return "", errors.New("EC2 security group created, but AWS did not return an ID for it")
 	}
-	contract.Assert(result != nil)
-	contract.Assert(result.GroupId != nil)
-	id := *result.GroupId
+
+	id := aws.StringValue(result.GroupId)
 
 	// Don't proceed until the security group exists.
 	fmt.Printf("EC2 security group created: %v; waiting for it to become active\n", id)
@@ -175,19 +177,18 @@ func (p *sgProvider) Get(ctx context.Context, id resource.ID) (*ec2.SecurityGrou
 	}
 
 	// If we found one, fetch all the requisite properties and store them on the output.
-	contract.Assert(len(resp.SecurityGroups) == 1)
 	grp := resp.SecurityGroups[0]
 
 	var vpcID *resource.ID
 	if grp.VpcId != nil {
-		vpc := arn.NewEC2VPCID(p.ctx.Region(), p.ctx.AccountID(), *grp.VpcId)
+		vpc := arn.NewEC2VPCID(p.ctx.Region(), p.ctx.AccountID(), aws.StringValue(grp.VpcId))
 		vpcID = &vpc
 	}
 
 	return &ec2.SecurityGroup{
-		GroupID:              *grp.GroupId,
+		GroupID:              aws.StringValue(grp.GroupId),
 		GroupName:            grp.GroupName,
-		GroupDescription:     *grp.Description,
+		GroupDescription:     aws.StringValue(grp.Description),
 		VPC:                  vpcID,
 		SecurityGroupEgress:  createSecurityGroupRulesFromIPPermissions(grp.IpPermissionsEgress),
 		SecurityGroupIngress: createSecurityGroupRulesFromIPPermissions(grp.IpPermissions),

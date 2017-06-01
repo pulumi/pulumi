@@ -103,15 +103,15 @@ func (p *instanceProvider) Create(ctx context.Context, obj *ec2.Instance) (resou
 	result, err := p.ctx.EC2().RunInstances(create)
 	if err != nil {
 		return "", err
+	} else if result == nil || len(result.Instances) == 0 {
+		return "", errors.New("EC2 instance created, but AWS did not return an instance ID for it")
 	}
 
 	// Get the unique ID from the created instance.
-	contract.Assert(result != nil)
 	contract.Assert(len(result.Instances) == 1)
-	inst := result.Instances[0]
-	contract.Assert(inst != nil)
-	contract.Assert(inst.InstanceId != nil)
-	id := *inst.InstanceId
+	contract.Assert(result.Instances[0] != nil)
+	contract.Assert(result.Instances[0].InstanceId != nil)
+	id := aws.StringValue(result.Instances[0].InstanceId)
 
 	// Before returning that all is okay, wait for the instance to reach the running state.
 	fmt.Fprintf(os.Stdout, "EC2 instance '%v' created; now waiting for it to become 'running'\n", id)
@@ -144,26 +144,28 @@ func (p *instanceProvider) Get(ctx context.Context, id resource.ID) (*ec2.Instan
 
 	// If we are here, we know that there is a reservation that matched; read its fields and populate the object.
 	contract.Assert(len(resp.Reservations) == 1)
-	resv := resp.Reservations[0]
+	contract.Assert(resp.Reservations[0] != nil)
+	contract.Assert(resp.Reservations[0].Instances != nil)
 	contract.Assert(len(resp.Reservations[0].Instances) == 1)
-	inst := resv.Instances[0]
+	inst := resp.Reservations[0].Instances[0]
 
 	var secgrpIDs *[]resource.ID
 	if len(inst.SecurityGroups) > 0 {
 		var ids []resource.ID
 		for _, group := range inst.SecurityGroups {
-			ids = append(ids, arn.NewEC2SecurityGroupID(idarn.Region, idarn.AccountID, *group.GroupId))
+			ids = append(ids,
+				arn.NewEC2SecurityGroupID(idarn.Region, idarn.AccountID, aws.StringValue(group.GroupId)))
 		}
 		secgrpIDs = &ids
 	}
 
-	instanceType := ec2.InstanceType(*inst.InstanceType)
+	instanceType := ec2.InstanceType(aws.StringValue(inst.InstanceType))
 	return &ec2.Instance{
-		ImageID:          *inst.ImageId,
+		ImageID:          aws.StringValue(inst.ImageId),
 		InstanceType:     &instanceType,
 		SecurityGroups:   secgrpIDs,
 		KeyName:          inst.KeyName,
-		AvailabilityZone: *inst.Placement.AvailabilityZone,
+		AvailabilityZone: aws.StringValue(inst.Placement.AvailabilityZone),
 		PrivateDNSName:   inst.PrivateDnsName,
 		PublicDNSName:    inst.PublicDnsName,
 		PrivateIP:        inst.PrivateIpAddress,

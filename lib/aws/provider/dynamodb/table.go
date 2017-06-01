@@ -23,6 +23,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	awsdynamodb "github.com/aws/aws-sdk-go/service/dynamodb"
+	"github.com/pkg/errors"
 	"github.com/pulumi/lumi/pkg/resource"
 	"github.com/pulumi/lumi/pkg/util/contract"
 	"github.com/pulumi/lumi/pkg/util/mapper"
@@ -228,10 +229,9 @@ func (p *tableProvider) Create(ctx context.Context, obj *dynamodb.Table) (resour
 	var arn string
 	if resp, err := p.ctx.DynamoDB().CreateTable(create); err != nil {
 		return "", err
+	} else if resp == nil || resp.TableDescription == nil || resp.TableDescription.TableArn == nil {
+		return "", errors.New("DynamoDB table created, but AWS did not return an ARN for it")
 	} else {
-		contract.Assert(resp != nil)
-		contract.Assert(resp.TableDescription != nil)
-		contract.Assert(resp.TableDescription.TableArn != nil)
 		arn = *resp.TableDescription.TableArn
 	}
 
@@ -255,33 +255,39 @@ func (p *tableProvider) Get(ctx context.Context, id resource.ID) (*dynamodb.Tabl
 	resp, err := p.ctx.DynamoDB().DescribeTable(&awsdynamodb.DescribeTableInput{TableName: aws.String(name)})
 	if err != nil {
 		return nil, err
+	} else if resp == nil || resp.Table == nil {
+		return nil, errors.New("DynamoDB query returned an empty response or table")
 	}
 
 	// The object was found, we need to reverse map a bunch of properties into the structure form.
-	contract.Assert(resp != nil)
-	contract.Assert(resp.Table != nil)
 	tab := resp.Table
 
 	var attributes []dynamodb.Attribute
 	for _, attr := range tab.AttributeDefinitions {
 		attributes = append(attributes, dynamodb.Attribute{
-			Name: *attr.AttributeName,
-			Type: dynamodb.AttributeType(*attr.AttributeType),
+			Name: aws.StringValue(attr.AttributeName),
+			Type: dynamodb.AttributeType(aws.StringValue(attr.AttributeType)),
 		})
 	}
 
 	hashKey, rangeKey := getHashRangeKeys(tab.KeySchema)
+	if hashKey == nil {
+		return nil, errors.New("Missing hash key in table schema")
+	}
 
 	var gsis *[]dynamodb.GlobalSecondaryIndex
 	if len(tab.GlobalSecondaryIndexes) > 0 {
 		var gis []dynamodb.GlobalSecondaryIndex
 		for _, gsid := range tab.GlobalSecondaryIndexes {
 			hk, rk := getHashRangeKeys(gsid.KeySchema)
+			if hk == nil {
+				return nil, errors.New("Missing hash key in table global secondary index")
+			}
 			gis = append(gis, dynamodb.GlobalSecondaryIndex{
-				IndexName:        *gsid.IndexName,
-				HashKey:          hk,
-				ReadCapacity:     float64(*gsid.ProvisionedThroughput.ReadCapacityUnits),
-				WriteCapacity:    float64(*gsid.ProvisionedThroughput.WriteCapacityUnits),
+				IndexName:        aws.StringValue(gsid.IndexName),
+				HashKey:          *hk,
+				ReadCapacity:     float64(aws.Int64Value(gsid.ProvisionedThroughput.ReadCapacityUnits)),
+				WriteCapacity:    float64(aws.Int64Value(gsid.ProvisionedThroughput.WriteCapacityUnits)),
 				RangeKey:         rk,
 				NonKeyAttributes: aws.StringValueSlice(gsid.Projection.NonKeyAttributes),
 				ProjectionType:   dynamodb.ProjectionType(*gsid.Projection.ProjectionType),
@@ -291,21 +297,21 @@ func (p *tableProvider) Get(ctx context.Context, id resource.ID) (*dynamodb.Tabl
 	}
 
 	return &dynamodb.Table{
-		HashKey:                hashKey,
+		HashKey:                *hashKey,
 		Attributes:             attributes,
-		ReadCapacity:           float64(*tab.ProvisionedThroughput.ReadCapacityUnits),
-		WriteCapacity:          float64(*tab.ProvisionedThroughput.WriteCapacityUnits),
+		ReadCapacity:           float64(aws.Int64Value(tab.ProvisionedThroughput.ReadCapacityUnits)),
+		WriteCapacity:          float64(aws.Int64Value(tab.ProvisionedThroughput.WriteCapacityUnits)),
 		RangeKey:               rangeKey,
 		TableName:              tab.TableName,
 		GlobalSecondaryIndexes: gsis,
 	}, nil
 }
 
-func getHashRangeKeys(schema []*awsdynamodb.KeySchemaElement) (string, *string) {
+func getHashRangeKeys(schema []*awsdynamodb.KeySchemaElement) (*string, *string) {
 	var hashKey *string
 	var rangeKey *string
 	for _, elem := range schema {
-		switch *elem.KeyType {
+		switch aws.StringValue(elem.KeyType) {
 		case hashKeyAttribute:
 			hashKey = elem.AttributeName
 		case rangeKeyAttribute:
@@ -314,8 +320,7 @@ func getHashRangeKeys(schema []*awsdynamodb.KeySchemaElement) (string, *string) 
 			contract.Failf("Unexpected key schema attribute type: %v", *elem.KeyType)
 		}
 	}
-	contract.Assertf(hashKey != nil, "Expected to discover a hash partition key")
-	return *hashKey, rangeKey
+	return hashKey, rangeKey
 }
 
 // InspectChange checks what impacts a hypothetical update will have on the resource's properties.
@@ -454,10 +459,6 @@ func (p *tableProvider) Update(ctx context.Context, id resource.ID,
 			if err := p.updateTable(name, update); err != nil {
 				return err
 			}
-		}
-
-		if err := p.waitForTableState(name, true); err != nil {
-			return err
 		}
 	}
 	return nil

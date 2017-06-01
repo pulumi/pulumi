@@ -146,7 +146,7 @@ func (p *roleProvider) Get(ctx context.Context, id resource.ID) (*iam.Role, erro
 	if len(getpols.AttachedPolicies) > 0 {
 		var policies []awscommon.ARN
 		for _, policy := range getpols.AttachedPolicies {
-			policies = append(policies, awscommon.ARN(*policy.PolicyArn))
+			policies = append(policies, awscommon.ARN(aws.StringValue(policy.PolicyArn)))
 		}
 		managedPolicies = &policies
 	}
@@ -156,7 +156,7 @@ func (p *roleProvider) Get(ctx context.Context, id resource.ID) (*iam.Role, erro
 		Path:              role.Path,
 		RoleName:          role.RoleName,
 		ManagedPolicyARNs: managedPolicies,
-		ARN:               awscommon.ARN(*role.Arn),
+		ARN:               awscommon.ARN(aws.StringValue(role.Arn)),
 	}, nil
 }
 

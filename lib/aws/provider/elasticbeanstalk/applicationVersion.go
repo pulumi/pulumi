@@ -101,7 +101,7 @@ func (p *applicationVersionProvider) Create(ctx context.Context,
 	return arn.NewElasticBeanstalkApplicationVersionID(p.ctx.Region(), p.ctx.AccountID(), appname, versionLabel), nil
 }
 
-// Read reads the instance state identified by ID, returning a populated resource object, or an error if not found.
+// Get reads the instance state identified by ID, returning a populated resource object, or an error if not found.
 func (p *applicationVersionProvider) Get(ctx context.Context,
 	id resource.ID) (*elasticbeanstalk.ApplicationVersion, error) {
 	idarn, err := arn.ARN(id).Parse()
@@ -122,15 +122,17 @@ func (p *applicationVersionProvider) Get(ctx context.Context,
 	}
 	contract.Assert(len(resp.ApplicationVersions) == 1)
 	vers := resp.ApplicationVersions[0]
-	contract.Assert(*vers.ApplicationName == appname)
+	contract.Assert(aws.StringValue(vers.ApplicationName) == appname)
 	appid := arn.NewElasticBeanstalkApplication(idarn.Region, idarn.AccountID, appname)
-	contract.Assert(*vers.VersionLabel == version)
+	contract.Assert(aws.StringValue(vers.VersionLabel) == version)
 
+	s3buck := aws.StringValue(vers.SourceBundle.S3Bucket)
+	s3key := aws.StringValue(vers.SourceBundle.S3Key)
 	return &elasticbeanstalk.ApplicationVersion{
 		VersionLabel: vers.VersionLabel,
 		Application:  resource.ID(appid),
 		Description:  vers.Description,
-		SourceBundle: arn.NewS3ObjectID(*vers.SourceBundle.S3Bucket, *vers.SourceBundle.S3Key),
+		SourceBundle: arn.NewS3ObjectID(s3buck, s3key),
 	}, nil
 }
 

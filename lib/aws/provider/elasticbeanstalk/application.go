@@ -53,7 +53,8 @@ type applicationProvider struct {
 }
 
 // Check validates that the given property bag is valid for a resource of the given type.
-func (p *applicationProvider) Check(ctx context.Context, obj *elasticbeanstalk.Application) ([]mapper.FieldError, error) {
+func (p *applicationProvider) Check(ctx context.Context,
+	obj *elasticbeanstalk.Application) ([]mapper.FieldError, error) {
 	var failures []mapper.FieldError
 	if name := obj.ApplicationName; name != nil {
 		if len(*name) < minApplicationName {
@@ -99,7 +100,7 @@ func (p *applicationProvider) Create(ctx context.Context, obj *elasticbeanstalk.
 	return arn.NewElasticBeanstalkApplicationID(p.ctx.Region(), p.ctx.AccountID(), name), nil
 }
 
-// Read reads the instance state identified by ID, returning a populated resource object, or an error if not found.
+// Get reads the instance state identified by ID, returning a populated resource object, or an error if not found.
 func (p *applicationProvider) Get(ctx context.Context, id resource.ID) (*elasticbeanstalk.Application, error) {
 	name, err := arn.ParseResourceName(id)
 	if err != nil {
@@ -115,7 +116,7 @@ func (p *applicationProvider) Get(ctx context.Context, id resource.ID) (*elastic
 	}
 	contract.Assert(len(resp.Applications) == 1)
 	app := resp.Applications[0]
-	contract.Assert(*app.ApplicationName == name)
+	contract.Assert(aws.StringValue(app.ApplicationName) == name)
 	return &elasticbeanstalk.Application{
 		ApplicationName: app.ApplicationName,
 		Description:     app.Description,
