@@ -17,7 +17,7 @@ package eval
 
 import (
 	"crypto/sha1"
-	"encoding/base64"
+	"encoding/hex"
 	"fmt"
 	"sort"
 	"strconv"
@@ -90,7 +90,7 @@ func sha1hash(intrin *rt.Intrinsic, e *evaluator, this *rt.Object, args []*rt.Ob
 	byts := []byte(str.StringValue())
 	hasher.Write(byts)
 	sum := hasher.Sum(nil)
-	hash := base64.URLEncoding.EncodeToString(sum)
+	hash := hex.EncodeToString(sum)
 
 	hashObj := e.alloc.NewString(intrin.Tree(), hash)
 	return rt.NewReturnUnwind(hashObj)

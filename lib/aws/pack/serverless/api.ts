@@ -62,61 +62,60 @@ function createPathSpec(lambdaARN: string): SwaggerOperation {
 // API is a higher level abstraction for working with AWS APIGateway reources.
 export class API {
     public api: RestAPI
-    public stage: Stage
     public deployment: Deployment
+    private swaggerSpec: SwaggerSpec
+    private apiName: string
 
-    constructor(apiName: string, stageName: string, routes?: Route[]) {
-        if (stageName === undefined) {
-            throw new Error("Missing required stage name");
-        }
-        if (routes === undefined) {
-            routes = [];
-        }
-
-        let swaggerSpec = createBaseSpec(apiName);
-        for (let i = 0; i < (<any>routes).length; i++) {
-            let route = routes[i];
-            if (swaggerSpec.paths[route.path] === undefined) {
-                swaggerSpec.paths[route.path] = {}
-            }
-            let swaggerMethod: string;
-            switch ((<any>route.method).toLowerCase()) {
-                case "get":
-                case "put":
-                case "post":
-                case "delete":
-                case "options":
-                case "head":
-                case "patch":
-                    swaggerMethod = (<any>route.method).toLowerCase()
-                    break;
-                case "any":
-                    swaggerMethod = "x-amazon-apigateway-any-method"
-                    break;
-                default:
-                    throw new Error("Method not supported: " + route.method);
-            }
-            // TODO[pulumi/lumi#90]: Once we suport output properties, we can use `route.lambda.lambda.arn` as input 
-            // to constructing this apigateway lambda invocation uri.
-            swaggerSpec.paths[route.path][swaggerMethod] = createPathSpec("arn:aws:lambda:us-east-1:490047557317:function:webapi-test-func");
-        }
-
+    constructor(apiName: string) {
+        this.apiName = apiName
+        this.swaggerSpec = createBaseSpec(apiName);
         this.api = new RestAPI(apiName, {
-            body: swaggerSpec
+            body: this.swaggerSpec
         });
+    }
 
-        let deploymentId = sha1hash(jsonStringify(swaggerSpec));
+    public route(method: string, path: string, lambda: Function) {
+        if (this.swaggerSpec.paths[path] === undefined) {
+            this.swaggerSpec.paths[path] = {}
+        }
+        let swaggerMethod: string;
+        switch ((<any>method).toLowerCase()) {
+            case "get":
+            case "put":
+            case "post":
+            case "delete":
+            case "options":
+            case "head":
+            case "patch":
+                swaggerMethod = (<any>method).toLowerCase()
+                break;
+            case "any":
+                swaggerMethod = "x-amazon-apigateway-any-method"
+                break;
+            default:
+                throw new Error("Method not supported: " + method);
+        }
+        // TODO[pulumi/lumi#90]: Once we suport output properties, we can use `lambda.lambda.arn` as input 
+        // to constructing this apigateway lambda invocation uri.
+        this.swaggerSpec.paths[path][swaggerMethod] = createPathSpec("arn:aws:lambda:us-east-1:490047557317:function:webapi-test-func");
+    }
 
-        this.deployment = new Deployment(apiName + "_" + deploymentId, {
+    public publish(stageName?: string): Stage {
+        if (stageName === undefined) {
+            stageName = "prod"
+        }
+        let deploymentId = sha1hash(jsonStringify(this.swaggerSpec));
+        this.deployment = new Deployment(this.apiName + "_" + deploymentId, {
             restAPI: this.api,
+            description: "Deployment of version " + deploymentId,
         });
-
-        this.stage = new Stage(apiName + "_prod", {
-            stageName: "prod",
+        let stage = new Stage(this.apiName + "_" + stageName, {
+            stageName: stageName,
             description: "The production deployment of the API.",
             restAPI: this.api,
-            deployment: this.deployment
+            deployment: this.deployment,
         });
+        return stage;
     }
 }
 

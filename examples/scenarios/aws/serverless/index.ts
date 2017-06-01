@@ -78,10 +78,8 @@ function createLambda() {
 
 let lambda = createLambda();
 
-let api = new aws.serverless.API("frontend", "prod", [
-    {
-        method: "GET",
-        path: "/bambam",
-        lambda: lambda,
-    },
-]) 
+let api = new aws.serverless.API("frontend")
+api.route("GET", "/bambam", lambda)
+api.route("PUT", "/bambam", lambda)
+let stage = api.publish("prod")
+
