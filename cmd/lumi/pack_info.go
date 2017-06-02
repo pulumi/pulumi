@@ -21,7 +21,6 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/lumi/pkg/compiler/ast"
@@ -29,7 +28,6 @@ import (
 	"github.com/pulumi/lumi/pkg/tokens"
 	"github.com/pulumi/lumi/pkg/util/cmdutil"
 	"github.com/pulumi/lumi/pkg/util/contract"
-	"github.com/pulumi/lumi/pkg/workspace"
 )
 
 func newPackInfoCmd() *cobra.Command {
@@ -51,25 +49,26 @@ func newPackInfoCmd() *cobra.Command {
 				printExportedSymbols = true
 			}
 
+			var pkg *pack.Package
+			var err error
 			if len(args) == 0 {
 				// No package specified, just load from the current directory.
 				pwd, _ := os.Getwd()
-				pkgpath, err := workspace.DetectPackage(pwd, cmdutil.Sink())
-				if err != nil {
-					return errors.Errorf("could not locate a package to load: %v", err)
+				if pkg, err = detectPackage(pwd); err != nil {
+					return err
 				}
-
-				if pkg := cmdutil.ReadPackage(pkgpath); pkg != nil {
-					printPackage(pkg, printSymbols, printExportedSymbols, printIL)
-				}
+				printPackage(pkg, printSymbols, printExportedSymbols, printIL)
 			} else {
 				// Enumerate the list of packages, deserialize them, and print information.
+				var path string
 				for _, arg := range args {
-					pkg := cmdutil.ReadPackageFromArg(arg)
+					pkg, path = readPackageFromArg(arg)
 					if pkg == nil {
-						break
+						if pkg, err = detectPackage(path); err != nil {
+							return err
+						}
+						printPackage(pkg, printSymbols, printExportedSymbols, printIL)
 					}
-					printPackage(pkg, printSymbols, printExportedSymbols, printIL)
 				}
 			}
 

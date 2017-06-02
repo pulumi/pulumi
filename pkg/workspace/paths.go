@@ -92,7 +92,7 @@ func DetectPackage(path string, d diag.Sink) (string, error) {
 		}
 
 		// See if there's a compiled package in the expected location.
-		pack := filepath.Join(Dir, BinDir, PackFile)
+		pack := filepath.Join(curr, Dir, BinDir, PackFile)
 		for _, ext := range encoding.Exts {
 			packfile := pack + ext
 			if IsPack(packfile, d) {
@@ -100,7 +100,7 @@ func DetectPackage(path string, d diag.Sink) (string, error) {
 			}
 		}
 
-		// Now look for individual projects.
+		// Now look for uncompiled project files.
 		for _, file := range files {
 			name := file.Name()
 			path := filepath.Join(curr, name)
