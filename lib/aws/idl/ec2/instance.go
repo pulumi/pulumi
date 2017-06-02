@@ -31,6 +31,8 @@ type Instance struct {
 	SecurityGroups *[]*SecurityGroup `lumi:"securityGroups,optional,replaces"`
 	// Provides the name of the Amazon EC2 key pair.
 	KeyName *string `lumi:"keyName,optional"`
+	// Provides a list of tags to attach to the instance.
+	Tags *[]Tag `lumi:"tags,optional"`
 
 	// Output properties:
 
@@ -44,6 +46,12 @@ type Instance struct {
 	PrivateIP *string `lumi:"privateIP,out,optional"`
 	// The public IP address of the specified instance.  For example: `192.0.2.0`.
 	PublicIP *string `lumi:"publicIP,out,optional"`
+}
+
+// A Tag applied to an EC2 instance.
+type Tag struct {
+	Key   string `lumi:"key"`
+	Value string `lumi:"value"`
 }
 
 // InstanceType is an enum type with all the names of instance types available in EC2.

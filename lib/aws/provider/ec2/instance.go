@@ -89,13 +89,28 @@ func (p *instanceProvider) Create(ctx context.Context, obj *ec2.Instance) (resou
 		its := string(*obj.InstanceType)
 		instanceType = &its
 	}
+	var tagSpecifications []*awsec2.TagSpecification
+	if obj.Tags != nil {
+		var tags []*awsec2.Tag
+		for _, tag := range *obj.Tags {
+			tags = append(tags, &awsec2.Tag{
+				Key:   aws.String(tag.Key),
+				Value: aws.String(tag.Value),
+			})
+		}
+		tagSpecifications = []*awsec2.TagSpecification{{
+			ResourceType: aws.String("instance"),
+			Tags:         tags,
+		}}
+	}
 	create := &awsec2.RunInstancesInput{
-		ImageId:          aws.String(obj.ImageID),
-		InstanceType:     instanceType,
-		SecurityGroupIds: secgrpIDs,
-		KeyName:          obj.KeyName,
-		MinCount:         aws.Int64(int64(1)),
-		MaxCount:         aws.Int64(int64(1)),
+		ImageId:           aws.String(obj.ImageID),
+		InstanceType:      instanceType,
+		SecurityGroupIds:  secgrpIDs,
+		KeyName:           obj.KeyName,
+		MinCount:          aws.Int64(int64(1)),
+		MaxCount:          aws.Int64(int64(1)),
+		TagSpecifications: tagSpecifications,
 	}
 
 	// Now go ahead and perform the action.
@@ -159,6 +174,14 @@ func (p *instanceProvider) Get(ctx context.Context, id resource.ID) (*ec2.Instan
 		secgrpIDs = &ids
 	}
 
+	var tags []ec2.Tag
+	for _, tag := range inst.Tags {
+		tags = append(tags, ec2.Tag{
+			Key:   aws.StringValue(tag.Key),
+			Value: aws.StringValue(tag.Value),
+		})
+	}
+
 	instanceType := ec2.InstanceType(aws.StringValue(inst.InstanceType))
 	return &ec2.Instance{
 		ImageID:          aws.StringValue(inst.ImageId),
@@ -170,6 +193,7 @@ func (p *instanceProvider) Get(ctx context.Context, id resource.ID) (*ec2.Instan
 		PublicDNSName:    inst.PublicDnsName,
 		PrivateIP:        inst.PrivateIpAddress,
 		PublicIP:         inst.PublicIpAddress,
+		Tags:             &tags,
 	}, nil
 }
 
@@ -184,7 +208,50 @@ func (p *instanceProvider) InspectChange(ctx context.Context, id resource.ID,
 // to new values.  The resource ID is returned and may be different if the resource had to be recreated.
 func (p *instanceProvider) Update(ctx context.Context, id resource.ID,
 	old *ec2.Instance, new *ec2.Instance, diff *resource.ObjectDiff) error {
-	return errors.New("No known updatable instance properties")
+	iid, err := arn.ParseResourceName(id)
+	if err != nil {
+		return err
+	}
+	if diff.Changed(ec2.Instance_Tags) {
+		newTagSet := newTagHashSet(new.Tags)
+		oldTagSet := newTagHashSet(old.Tags)
+		d := oldTagSet.Diff(newTagSet)
+		var addOrUpdateTags []*awsec2.Tag
+		for _, o := range d.AddOrUpdates() {
+			option := o.(tagHash).item
+			addOrUpdateTags = append(addOrUpdateTags, &awsec2.Tag{
+				Key:   aws.String(option.Key),
+				Value: aws.String(option.Value),
+			})
+		}
+		if len(addOrUpdateTags) > 0 {
+			_, err := p.ctx.EC2().CreateTags(&awsec2.CreateTagsInput{
+				Resources: []*string{aws.String(iid)},
+				Tags:      addOrUpdateTags,
+			})
+			if err != nil {
+				return err
+			}
+		}
+		var deleteTags []*awsec2.Tag
+		for _, o := range d.Deletes() {
+			option := o.(tagHash).item
+			deleteTags = append(deleteTags, &awsec2.Tag{
+				Key:   aws.String(option.Key),
+				Value: nil,
+			})
+		}
+		if len(deleteTags) > 0 {
+			_, err = p.ctx.EC2().DeleteTags(&awsec2.DeleteTagsInput{
+				Resources: []*string{aws.String(iid)},
+				Tags:      deleteTags,
+			})
+			if err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }
 
 // Delete tears down an existing resource with the given ID.  If it fails, the resource is assumed to still exist.
@@ -202,4 +269,27 @@ func (p *instanceProvider) Delete(ctx context.Context, id resource.ID) error {
 	fmt.Fprintf(os.Stdout, "EC2 instance termination request submitted; waiting for it to terminate\n")
 	return p.ctx.EC2().WaitUntilInstanceTerminated(
 		&awsec2.DescribeInstancesInput{InstanceIds: []*string{aws.String(iid)}})
+}
+
+type tagHash struct {
+	item ec2.Tag
+}
+
+var _ awsctx.Hashable = tagHash{}
+
+func (option tagHash) HashKey() awsctx.Hash {
+	return awsctx.Hash(option.item.Key)
+}
+func (option tagHash) HashValue() awsctx.Hash {
+	return awsctx.Hash(option.item.Key + ":" + option.item.Value)
+}
+func newTagHashSet(options *[]ec2.Tag) *awsctx.HashSet {
+	set := awsctx.NewHashSet()
+	if options == nil {
+		return set
+	}
+	for _, option := range *options {
+		set.Add(tagHash{option})
+	}
+	return set
 }
