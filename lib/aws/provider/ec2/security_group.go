@@ -61,6 +61,11 @@ func (p *sgProvider) Check(ctx context.Context, obj *ec2.SecurityGroup) ([]mappe
 			mapper.NewFieldErr(reflect.TypeOf(obj), ec2.SecurityGroup_GroupDescription,
 				fmt.Errorf("exceeded maximum length of %v", maxSecurityGroupDescription)))
 	}
+	if obj.VPC == nil && obj.SecurityGroupEgress != nil && len(*obj.SecurityGroupEgress) > 0 {
+		failures = append(failures,
+			mapper.NewFieldErr(reflect.TypeOf(obj), ec2.SecurityGroup_SecurityGroupEgress,
+				fmt.Errorf("custom egress rules are not supported on EC2-Classic groups (those without a VPC)")))
+	}
 	return failures, nil
 }
 
