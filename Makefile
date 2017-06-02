@@ -6,7 +6,7 @@ PROCCNT=$(shell nproc --all)
 default: banner lint_quiet vet test install
 
 .PHONY: all
-all: banner_all lint_quiet vet test install lumijs aws_pkg
+all: banner_all lint_quiet vet test install lumijs lumipkg lumijspkg awspkg
 
 .PHONY: banner
 banner:
@@ -28,9 +28,6 @@ build:
 	@go version
 	@go build ${PROJECT}/cmd/lumi
 	@go build ${PROJECT}/cmd/lumidl
-
-.PHONY: full_build
-full_build: build lumijs_build aws_pkg_build
 
 .PHONY: install
 install:
@@ -67,8 +64,16 @@ test:
 lumijs:
 	@cd ./cmd/lumijs && $(MAKE)
 
-.PHONY: aws_pkg
-aws_pkg:
+.PHONY: lumipkg
+lumipkg:
+	@cd ./lib/lumi && $(MAKE)
+
+.PHONY: lumijspkg
+lumijspkg:
+	@cd ./lib/lumijs && $(MAKE)
+
+.PHONY: awspkg
+awspkg:
 	@cd ./lib/aws && $(MAKE)
 
 .PHONY: verify

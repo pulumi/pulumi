@@ -1,4 +1,4 @@
 #!/bin/bash
-DIR="$(dirname "$(readlink "$0")" )"
+DIR="$(dirname "$(realpath "$0")" )"
 node ${DIR}/bin/cmd "$@"
 

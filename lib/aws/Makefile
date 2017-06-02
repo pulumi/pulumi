@@ -1,10 +1,11 @@
-GOPKGS=$(shell go list ./provider/... | grep -v /vendor/)
-PROCCNT=$(shell nproc --all)
-LUMILIB=/usr/local/lumi/lib
-THISLIB=${LUMILIB}/aws
+GOPKGS    = $(shell go list ./provider/... | grep -v /vendor/)
+PROCCNT   = $(shell nproc --all)
+LUMIROOT ?= /usr/local/lumi
+LUMILIB   = ${LUMIROOT}/packs
+THISLIB   = ${LUMILIB}/aws
 
 .PHONY: default
-default: banner lint_quiet vet test
+default: banner lint_quiet vet build test install
 
 .PHONY: banner
 banner:
@@ -29,6 +30,7 @@ clean:
 .PHONY: build
 build:
 	@echo "\033[0;32mBUILD:\033[0m"
+	@cd pack/ && yarn link @lumi/lumi && yarn link @lumi/lumijs # ensure we resolve to Lumi's stdlib.
 	@cd pack/ && lumijs # compile the LumiPack
 	@cd pack/ && lumi pack verify # ensure the pack verifies
 	@cp -R pack/.lumi/bin/ bin/ # copy the pack to our bin dir
@@ -38,8 +40,8 @@ build:
 .PHONY: install
 install:
 	@echo "\033[0;32mINSTALL:\033[0m"
-	@cd ./pack && yarn link  # ensure NPM references resolve locally
-	@mkdir -p ${LUMILIB}     # ensure the machine-wide library dir exists.
+	@cd pack/ && yarn link  # ensure NPM references resolve locally.
+	@mkdir -p ${LUMILIB} # ensure the machine-wide library dir exists.
 	@cp -R ./bin/ ${THISLIB} # copy to the standard library location.
 
 .PHONY: lint
