@@ -32,7 +32,7 @@ import (
 	"github.com/pulumi/lumi/lib/aws/provider/s3"
 )
 
-// provider implements the AWS resource provider's operations for all known AWS types.
+// Provider implements the AWS resource provider's operations for all known AWS types.
 type Provider struct {
 	impls map[tokens.Type]lumirpc.ResourceProviderServer
 }

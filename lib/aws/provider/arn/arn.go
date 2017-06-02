@@ -39,7 +39,7 @@ type ARN string
 // New creates a new AWS ARN string from the given account and service information.  For more information about the ARN
 // format, see http://docs.aws.amazon.com/general/latest/gr/aws-arns-and-namespaces.html.
 func New(service string, region string, accountID string, res string) ARN {
-	parts := ARNParts{
+	parts := Parts{
 		Partition: arnDefaultPartition,
 		Service:   service,
 		Region:    region,
@@ -80,8 +80,8 @@ func NewResourceAltID(service string, region string, accountID string, restype s
 func (arn ARN) RPC() aws.ARN { return aws.ARN(arn) }
 
 // Parse turns a string formatted ARN into the consistuent ARN parts for inspection purposes.
-func (arn ARN) Parse() (ARNParts, error) {
-	var parts ARNParts
+func (arn ARN) Parse() (Parts, error) {
+	var parts Parts
 	ps := strings.Split(string(arn), ":")
 	if len(ps) == 0 {
 		return parts, errors.Errorf("Missing ARN prefix of '%v:'", arnPrefix)
@@ -137,10 +137,10 @@ func (arn ARN) ParseResourceNamePair() (string, string, error) {
 	return name1, name2, nil
 }
 
-// ARNParts is a structure containing an ARN's distinct parts.  Normally ARNs flow around as strings in the format
+// Parts is a structure containing an ARN's distinct parts.  Normally ARNs flow around as strings in the format
 // described at http://docs.aws.amazon.com/general/latest/gr/aws-arns-and-namespaces.html, however, when it comes time
 // to creating or inspecting them, this first class structure can come in handy.
-type ARNParts struct {
+type Parts struct {
 	Partition string
 	Service   string
 	Region    string
@@ -149,14 +149,14 @@ type ARNParts struct {
 }
 
 // ARN turns the ARN parts into a single string in the canonical ARN format.  Some or all parts may be missing.
-func (a ARNParts) ARN() ARN {
+func (a Parts) ARN() ARN {
 	return ARN(fmt.Sprintf("%v:%v:%v:%v:%v:%v",
 		arnPrefix, a.Partition, a.Service, a.Region, a.AccountID, a.Resource))
 }
 
 // ResourceType parses an ARN and returns the resource type.  This detects both kinds of resource delimiters (":" and
 // "/"), although, if called on an ARN not formatted as type, delimiter, and then ID, this may return the wrong thing.
-func (a ARNParts) ResourceType() string {
+func (a Parts) ResourceType() string {
 	res := a.Resource
 	if idx := strings.Index(res, arnDefaultResourceSeparator); idx != -1 {
 		return res[:idx]
@@ -169,7 +169,7 @@ func (a ARNParts) ResourceType() string {
 
 // ResourceName parses an ARN and returns the resource name.  This detects both kinds of resource delimiters (":" and
 // "/"); if called on an ARN not formatted as type, delimiter, followed by ID, this may return the wrong thing.
-func (a ARNParts) ResourceName() string {
+func (a Parts) ResourceName() string {
 	res := a.Resource
 	if idx := strings.Index(res, arnDefaultResourceSeparator); idx != -1 {
 		return res[idx+1:]
@@ -183,7 +183,7 @@ func (a ARNParts) ResourceName() string {
 // ResourceNamePair parses an ARN in the format of a name pair delimited by "/".  An example is an S3 object, whose
 // whose ARN is of the form "arn:aws:s3:::bucket_name/key_name".  This function will return the "bucket_name" and
 // "key_name" parts as independent parts, for convenient parsing as a single atomic operation.
-func (a ARNParts) ResourceNamePair() (string, string) {
+func (a Parts) ResourceNamePair() (string, string) {
 	name := a.ResourceName()
 	if ix := strings.Index(name, "/"); ix != -1 {
 		return name[:ix], name[ix+1:]
