@@ -24,7 +24,7 @@ func Test(t *testing.T) {
 
 	cleanup(ctx)
 
-	testutil.ProviderTest(t, NewTableProvider(ctx), TableToken, []interface{}{
+	testutil.ProviderTestSimple(t, NewTableProvider(ctx), TableToken, []interface{}{
 		&dynamodb.Table{
 			Name: aws.String(RESOURCEPREFIX),
 			Attributes: []dynamodb.Attribute{
@@ -82,7 +82,6 @@ func Test(t *testing.T) {
 			},
 		},
 	})
-
 }
 
 func cleanup(ctx *awsctx.Context) {

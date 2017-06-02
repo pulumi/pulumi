@@ -42,7 +42,7 @@ func Test(t *testing.T) {
 
 	instanceType := ec2.InstanceType("t2.nano")
 
-	testutil.ProviderTest(t, NewInstanceProvider(ctx), InstanceToken, []interface{}{
+	testutil.ProviderTestSimple(t, NewInstanceProvider(ctx), InstanceToken, []interface{}{
 		&ec2.Instance{
 			Name:         aws.String(RESOURCEPREFIX),
 			InstanceType: &instanceType,
