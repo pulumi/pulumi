@@ -37,7 +37,7 @@ type Plan interface {
 	Empty() bool                                        // true if the plan is empty.
 	Steps() Step                                        // the first step to perform, linked to the rest.
 	Replaces() map[URN][]PropertyKey                    // resources being replaced and their properties.
-	Unchanged() map[Resource]Resource                   // the resources untouched by this plan.
+	Unchanged() map[Resource]Resource                   // the resources untouched by this plan (map from old to new).
 	Apply(prog Progress) (Snapshot, Step, State, error) // performs the operations specified in this plan.
 }
 
