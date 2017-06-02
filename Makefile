@@ -5,9 +5,15 @@ PROJECT_PKGS=$(shell go list ./... | grep -v /vendor/)
 CORE_PROJECT_PKGS=$(shell go list ./cmd/... ./pkg/...)
 PROCCNT=$(shell nproc --all)
 
-default: banner test lint_quiet vet install
+default: banner test_core lint_quiet vet install
+full: banner_full test lint_quiet vet install
 
 banner:
+	@echo "\033[0;33mRunning quick build; to run full tests, run 'make full'\033[0m"
+	@echo "\033[0;33mRemember to do this before checkin, otherwise your CI will fail\033[0m"
+	@go version
+
+banner_full:
 	@go version
 
 build:
