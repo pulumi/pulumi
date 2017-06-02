@@ -167,7 +167,7 @@ export interface LambdaExpression extends Expression {
     parameters?:    LocalVariable[];  // the parameters.
     returnType?:    tokens.TypeToken; // the optional return type.
     body:           statements.Block; // the lambda's body block.
-    sourceText:     string;           // the lambda's JavaScript source text. 
+    sourceText:     string;           // the lambda's JavaScript source text.
     sourceLanguage: string;           // the lambda's source language: ".js".
 }
 export const lambdaExpressionKind = "LambdaExpression";

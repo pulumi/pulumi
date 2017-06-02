@@ -419,10 +419,10 @@ func (p *sgProvider) waitForSecurityGroupState(id string, exist bool) error {
 			if missing {
 				// If missing and exist==true, keep retrying; else, we're good.
 				return !exist, nil
-			} else {
-				// If not missing and exist==true, we're good; else, keep retrying.
-				return exist, nil
 			}
+
+			// If not missing and exist==true, we're good; else, keep retrying.
+			return exist, nil
 		},
 	)
 	if err != nil {
