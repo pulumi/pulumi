@@ -15,6 +15,8 @@ cache:
 install:
     - godep restore -v
     - pushd cmd/lumijs && yarn install && popd
+before_script:
+    - export PATH=$TRAVIS_BUILD_DIR/cmd/lumijs:$PATH
 script: make all
 notifications:
   slack:

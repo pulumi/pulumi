@@ -2,7 +2,7 @@ BASE=$(realpath ./)
 INSTALL=/usr/local/bin
 
 .PHONY: default
-default: banner build test install
+default: banner build test
 
 .PHONY: banner
 banner:

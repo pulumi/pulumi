@@ -4,7 +4,7 @@ LUMILIB=/usr/local/lumi/lib
 THISLIB=${LUMILIB}/aws
 
 .PHONY: default
-default: banner lint_quiet vet test install
+default: banner lint_quiet vet test
 
 .PHONY: banner
 banner:
