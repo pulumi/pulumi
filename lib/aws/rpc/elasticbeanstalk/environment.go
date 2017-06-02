@@ -204,6 +204,7 @@ type Environment struct {
     Tier *Tier `json:"tier,omitempty"`
     Version *resource.ID `json:"version,omitempty"`
     EndpointURL string `json:"endpointURL,omitempty"`
+    AllOptionSettings *[]OptionSetting `json:"allOptionSettings,omitempty"`
 }
 
 // Environment's properties have constants to make dealing with diffs and property bags easier.
@@ -220,6 +221,7 @@ const (
     Environment_Tier = "tier"
     Environment_Version = "version"
     Environment_EndpointURL = "endpointURL"
+    Environment_AllOptionSettings = "allOptionSettings"
 )
 
 /* Marshalable OptionSetting structure(s) */

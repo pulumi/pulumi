@@ -22,6 +22,7 @@ export class Environment extends lumi.Resource implements EnvironmentArgs {
     public readonly tier?: Tier;
     public version?: ApplicationVersion;
     @lumi.out public endpointURL: string;
+    @lumi.out public allOptionSettings: OptionSetting[];
 
     constructor(name: string, args: EnvironmentArgs) {
         super();

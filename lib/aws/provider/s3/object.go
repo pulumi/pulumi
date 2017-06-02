@@ -127,14 +127,13 @@ func (p *objProvider) Get(ctx context.Context, id resource.ID) (*s3.Object, erro
 	return &s3.Object{
 		Bucket: resource.ID(arn.NewS3Bucket(buck)),
 		Key:    key,
-		Source: resource.NewURIAsset(fmt.Sprintf("s3://%v/%v", buck, key)),
 	}, nil
 }
 
 // InspectChange checks what impacts a hypothetical update will have on the resource's properties.
 func (p *objProvider) InspectChange(ctx context.Context, id resource.ID,
 	old *s3.Object, new *s3.Object, diff *resource.ObjectDiff) ([]string, error) {
-	return nil, errors.New("Not yet implemented")
+	return nil, nil
 }
 
 // Update updates an existing resource with new values.  Only those values in the provided property bag are updated

@@ -186,7 +186,7 @@ func (a ARNParts) ResourceName() string {
 func (a ARNParts) ResourceNamePair() (string, string) {
 	name := a.ResourceName()
 	if ix := strings.Index(name, "/"); ix != -1 {
-		return name[:ix], name[ix:]
+		return name[:ix], name[ix+1:]
 	}
 	return name, ""
 }

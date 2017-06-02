@@ -91,7 +91,7 @@ func (p *environmentProvider) Create(ctx context.Context, obj *elasticbeanstalk.
 	}
 	var versionLabel *string
 	if obj.Version != nil {
-		version, err := arn.ParseResourceName(*obj.Version)
+		_, version, err := arn.ParseResourceNamePair(*obj.Version)
 		if err != nil {
 			return "", err
 		}
@@ -132,7 +132,6 @@ func (p *environmentProvider) Create(ctx context.Context, obj *elasticbeanstalk.
 		return "", fmt.Errorf("Timed out waiting for environment to become ready")
 	}
 
-	fmt.Printf("Created ElasticBeanstalk Environment '%v' with EndpointURL: %v\n", name, *endpointURL)
 	return arn.NewElasticBeanstalkEnvironmentID(p.ctx.Region(), p.ctx.AccountID(), appname, name), nil
 }
 
@@ -157,9 +156,7 @@ func (p *environmentProvider) Get(ctx context.Context, id resource.ID) (*elastic
 	// Successfully found the environment, now map all of its properties onto the struct.
 	contract.Assert(len(envresp.Environments) == 1)
 	env := envresp.Environments[0]
-	if env.CNAME != nil || env.TemplateName != nil || env.Tier != nil {
-		return nil, fmt.Errorf("Properties not yet supported: CNAMEPrefix, TemplateName, Tier")
-	}
+
 	var versionLabel *resource.ID
 	if env.VersionLabel != nil {
 		version := arn.NewElasticBeanstalkApplicationVersionID(
@@ -175,9 +172,18 @@ func (p *environmentProvider) Get(ctx context.Context, id resource.ID) (*elastic
 		EndpointURL:       aws.StringValue(env.EndpointURL),
 	}
 
+	// TODO[pulumi/lumi#189] We may want to call `DecribeConfigurationSettings` to populate all of
+	// the option settings onto the returned object.  However, this returns all of the settings with
+	// their default values, not just those provided as input.  This leads to signalling deletions
+	// on future updates.  For now, we will populate a seperate output property with the full set
+	// of settings, but we should revisist this once we've resolved #189.
+
 	// Next see if there are any configuration option settings and, if so, set them on the return.
 	confresp, err := p.ctx.ElasticBeanstalk().DescribeConfigurationSettings(
-		&awselasticbeanstalk.DescribeConfigurationSettingsInput{EnvironmentName: aws.String(envname)})
+		&awselasticbeanstalk.DescribeConfigurationSettingsInput{
+			ApplicationName: aws.String(appname),
+			EnvironmentName: aws.String(envname),
+		})
 	if err != nil {
 		return nil, err
 	}
@@ -192,7 +198,7 @@ func (p *environmentProvider) Get(ctx context.Context, id resource.ID) (*elastic
 				})
 			}
 		}
-		envobj.OptionSettings = &options
+		envobj.AllOptionSettings = &options
 	}
 
 	return envobj, nil
@@ -249,7 +255,7 @@ func (p *environmentProvider) Update(ctx context.Context, id resource.ID,
 		return err
 	}
 	succ, err := awsctx.RetryUntilLong(p.ctx, func() (bool, error) {
-		fmt.Printf("Waiting for environment %v to become Ready\n", id.String())
+		fmt.Printf("Waiting for environment %v to become Ready\n", envname)
 		resp, err := p.getEnvironment(appname, envname)
 		if err != nil {
 			return false, err
@@ -284,7 +290,7 @@ func (p *environmentProvider) Delete(ctx context.Context, id resource.ID) error 
 		return err
 	}
 	succ, err := awsctx.RetryUntilLong(p.ctx, func() (bool, error) {
-		fmt.Printf("Waiting for environment %v to become Terminated\n", id.String())
+		fmt.Printf("Waiting for environment %v to become Terminated\n", envname)
 		resp, err := p.getEnvironment(appname, envname)
 		if err != nil {
 			return false, err

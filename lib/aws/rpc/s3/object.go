@@ -176,7 +176,7 @@ func (p *ObjectProvider) Unmarshal(
 type Object struct {
     Key string `json:"key"`
     Bucket resource.ID `json:"bucket"`
-    Source resource.Asset `json:"source"`
+    Source *resource.Asset `json:"source,omitempty"`
 }
 
 // Object's properties have constants to make dealing with diffs and property bags easier.
