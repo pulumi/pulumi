@@ -1,12 +1,20 @@
 language: go
-go:
-    - 1.8.2
+go: 1.8.2
 before_install:
+    # GoDep for Go dependency management.
     - go get -v github.com/tools/godep
+    # Golint for good Go hygiene.
     - go get -v github.com/golang/lint/golint
+    # Node.js 7.x for LumiJS and associated JS code.
+    - nvm install v7
+    # Install Yarn as per https://yarnpkg.com/lang/en/docs/install-ci/#travis-tab.
+    - curl -o- -L https://yarnpkg.com/install.sh | bash -s -- --version 0.24.6
+    - export PATH=$HOME/.yarn/bin:$PATH
+cache:
+    yarn: true
 install:
     - godep restore -v
-    - cd cmd/lumijs && yarn install
+    - pushd cmd/lumijs && yarn install && popd
 script: make all
 notifications:
   slack:
