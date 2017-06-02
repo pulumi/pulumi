@@ -36,7 +36,7 @@ const DepDir = "packs"           // the directory in which dependencies exist, e
 const SettingsFile = "workspace" // the base name of a markup file for shared settings in a workspace.
 
 const InstallRootEnvvar = "LUMIROOT"         // the envvar describing where Lumi has been installed.
-const InstallRootLibdir = "lib"              // the directory in which the Lumi standard library exists.
+const InstallRootLibdir = "packs"            // the directory in which the Lumi standard library exists.
 const DefaultInstallRoot = "/usr/local/lumi" // where Lumi is installed by default.
 
 // InstallRoot returns Lumi's installation location.  This is controlled my the LUMIROOT envvar.

@@ -1,5 +1,9 @@
 language: go
 go: 1.8.2
+addons:
+    apt:
+        packages:
+            - realpath
 before_install:
     # GoDep for Go dependency management.
     - go get -v github.com/tools/godep
@@ -14,9 +18,12 @@ cache:
     yarn: true
 install:
     - godep restore -v
-    - pushd cmd/lumijs && yarn install && popd
+    - pushd cmd/lumijs/ && yarn install && popd
+    - pushd lib/lumi/ && yarn install && popd
+    - pushd lib/aws/pack/ && yarn install && popd
 before_script:
     - export PATH=$TRAVIS_BUILD_DIR/cmd/lumijs:$PATH
+    - export LUMIROOT=~/.lumi
 script: make all
 notifications:
   slack:
