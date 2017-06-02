@@ -148,7 +148,7 @@ type testProviderHost struct {
 	provider func(pkg tokens.Package) (Provider, error)
 }
 
-func (prov *testProviderHost) Close() error {
+func (host *testProviderHost) Close() error {
 	return nil
 }
 func (host *testProviderHost) Analyzer(nm tokens.QName) (Analyzer, error) {

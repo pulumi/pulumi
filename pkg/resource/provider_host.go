@@ -36,7 +36,7 @@ type ProviderHost interface {
 	Close() error
 }
 
-// defaultProviderHost implements the standard plugin logic, using the standard installation root to find them.
+// NewDefaultProviderHost implements the standard plugin logic, using the standard installation root to find them.
 func NewDefaultProviderHost(ctx *Context) ProviderHost {
 	return &defaultProviderHost{
 		ctx:       ctx,
