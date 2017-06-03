@@ -53,7 +53,7 @@ func ParsePropertyOptions(tag string) PropertyOptions {
 				case "out":
 					opts.Out = true
 				default:
-					cmdutil.Sink().Errorf(diag.Message("unrecognized tag `lumi:\"%v\"`", key))
+					cmdutil.Sink().Errorf(diag.Message("unrecognized tag `lumi:\"%v\"`"), key)
 				}
 			}
 		}

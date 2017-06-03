@@ -72,8 +72,8 @@ func newPlugin(ctx *Context, bins []string, prefix string) (*plugin, error) {
 		lbl string
 		cb  func(string)
 	}{
-		plug.Stderr: {"stderr", func(line string) { ctx.Diag.Errorf(diag.Message(line)) }},
-		plug.Stdout: {"stdout", func(line string) { ctx.Diag.Infof(diag.Message(line)) }},
+		plug.Stderr: {"stderr", func(line string) { ctx.Diag.Errorf(diag.Message("%s"), line) }},
+		plug.Stdout: {"stdout", func(line string) { ctx.Diag.Infof(diag.Message("%s"), line) }},
 	}
 	runtrace := func(t io.Reader) {
 		ts := tracers[t]

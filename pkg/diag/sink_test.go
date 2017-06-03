@@ -23,15 +23,19 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestCounts(t *testing.T) {
-	t.Parallel()
-
+func discardSink() Sink {
 	// Create a new default sink with /dev/null writers to avoid spamming the test log.
-	sink := newDefaultSink(FormatOptions{}, map[Category]io.Writer{
+	return newDefaultSink(FormatOptions{}, map[Category]io.Writer{
 		Info:    ioutil.Discard,
 		Error:   ioutil.Discard,
 		Warning: ioutil.Discard,
 	})
+}
+
+func TestCounts(t *testing.T) {
+	t.Parallel()
+
+	sink := discardSink()
 
 	const numEach = 10
 
@@ -54,4 +58,19 @@ func TestCounts(t *testing.T) {
 		assert.Equal(t, sink.Errors(), i+1, "expected errors post to be at iteration count+1")
 		assert.Equal(t, sink.Warnings(), numEach, "expected warnings post to stay at numEach")
 	}
+}
+
+// TestEscape ensures that arguments containing format-like characters aren't interpreted as such.
+func TestEscape(t *testing.T) {
+	t.Parallel()
+
+	sink := discardSink()
+
+	// Passing % chars in the argument should not yield %!(MISSING)s.
+	s := sink.Stringify(Message("%s"), Error, "lots of %v %s %d chars")
+	assert.Equal(t, "error: lots of %v %s %d chars\n", s)
+
+	// Passing % chars in the format string, on the other hand, should.
+	smiss := sink.Stringify(Message("lots of %v %s %d chars"), Error)
+	assert.Equal(t, "error: lots of %!v(MISSING) %!s(MISSING) %!d(MISSING) chars\n", smiss)
 }
