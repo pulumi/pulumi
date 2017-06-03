@@ -21,7 +21,6 @@ import (
 	"fmt"
 	"sort"
 	"strconv"
-
 	"strings"
 
 	"github.com/pulumi/lumi/pkg/compiler/ast"

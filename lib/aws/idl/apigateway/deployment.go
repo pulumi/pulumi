@@ -32,6 +32,11 @@ type Deployment struct {
 	// stageName is a name for the stage that API Gateway creates with this deployment.  Use only alphanumeric
 	// characters.
 	StageName *string `lumi:"stageName,optional"`
+
+	// The identifier for the deployment resource.
+	ID string `lumi:"id,out"`
+	// The date and time that the deployment resource was created.
+	CreatedDate string `lumi:"createdDate,out"`
 }
 
 type StageDescription struct {

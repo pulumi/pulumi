@@ -46,11 +46,12 @@ func (p *restAPIProvider) Check(ctx context.Context, obj *apigateway.RestAPI) ([
 // Create allocates a new instance of the provided resource and returns its unique ID afterwards.  (The input ID
 // must be blank.)  If this call fails, the resource must not have been created (i.e., it is "transacational").
 func (p *restAPIProvider) Create(ctx context.Context, obj *apigateway.RestAPI) (resource.ID, error) {
+	// If an explicit name is given, use it.  Otherwise, auto-generate a name in part based on the resource name.
 	var apiName string
 	if obj.APIName != nil {
 		apiName = *obj.APIName
 	} else {
-		apiName = resource.NewUniqueHex(obj.Name+"-", maxRestAPIName, sha1.Size)
+		apiName = resource.NewUniqueHex(*obj.Name+"-", maxRestAPIName, sha1.Size)
 	}
 
 	// First create the API Gateway
@@ -87,7 +88,29 @@ func (p *restAPIProvider) Create(ctx context.Context, obj *apigateway.RestAPI) (
 
 // Get reads the instance state identified by ID, returning a populated resource object, or an error if not found.
 func (p *restAPIProvider) Get(ctx context.Context, id resource.ID) (*apigateway.RestAPI, error) {
-	return nil, errors.New("Not yet implemented - Get")
+	resp, err := p.ctx.APIGateway().GetRestApi(&awsapigateway.GetRestApiInput{
+		RestApiId: aws.String(string(id)),
+	})
+	if err != nil {
+		return nil, err
+	}
+	if resp == nil || resp.Id == nil {
+		return nil, nil
+	}
+
+	return &apigateway.RestAPI{
+		ID:          aws.StringValue(resp.Id),
+		APIName:     resp.Name,
+		Description: resp.Description,
+		CreatedDate: resp.CreatedDate.String(),
+		Version:     aws.StringValue(resp.Version),
+
+		// TODO[pulumi/lumi#198] Exposing array-valued output properties
+		// currently triggers failures serializing resource state, so
+		// supressing these properties.
+		// Warnings:         aws.StringValueSlice(resp.Warnings),
+		// BinaryMediaTypes: aws.StringValueSlice(resp.BinaryMediaTypes),
+	}, nil
 }
 
 // InspectChange checks what impacts a hypothetical update will have on the resource's properties.

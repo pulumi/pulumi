@@ -179,6 +179,8 @@ type Deployment struct {
     Description *string `json:"description,omitempty"`
     StageDescription *StageDescription `json:"stageDescription,omitempty"`
     StageName *string `json:"stageName,omitempty"`
+    ID string `json:"id,omitempty"`
+    CreatedDate string `json:"createdDate,omitempty"`
 }
 
 // Deployment's properties have constants to make dealing with diffs and property bags easier.
@@ -188,6 +190,8 @@ const (
     Deployment_Description = "description"
     Deployment_StageDescription = "stageDescription"
     Deployment_StageName = "stageName"
+    Deployment_ID = "id"
+    Deployment_CreatedDate = "createdDate"
 )
 
 /* Marshalable StageDescription structure(s) */

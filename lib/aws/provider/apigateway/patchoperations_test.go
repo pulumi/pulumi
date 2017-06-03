@@ -11,7 +11,7 @@ import (
 
 type TestStruct struct {
 	Number         float64       `json:"number"`
-	OptionalString *string       `json:"string,omitempty"`
+	OptionalString *string       `json:"optionalString,omitempty"`
 	OptionalNumber *float64      `json:"optionalNumber,omitempty"`
 	OptionalBool   *bool         `json:"optionalBool,omitempty"`
 	OptionalArray  *[]TestStruct `json:"optionalArray,omitempty"`
@@ -45,31 +45,31 @@ func Test(t *testing.T) {
 	expectedPatchOps := []*apigateway.PatchOperation{
 		&apigateway.PatchOperation{
 			Op:    aws.String("add"),
-			Path:  aws.String("/OptionalArray/1"),
-			Value: aws.String("{\"Number\": 1}"),
+			Path:  aws.String("/optionalArray/1"),
+			Value: aws.String("{\"number\": 1}"),
 		},
 		&apigateway.PatchOperation{
 			Op:    aws.String("replace"),
-			Path:  aws.String("/OptionalArray/0/Number"),
+			Path:  aws.String("/optionalArray/0/number"),
 			Value: aws.String("3"),
 		},
 		&apigateway.PatchOperation{
 			Op:    aws.String("add"),
-			Path:  aws.String("/OptionalArray/0/OptionalBool"),
+			Path:  aws.String("/optionalArray/0/optionalBool"),
 			Value: aws.String("true"),
 		},
 		&apigateway.PatchOperation{
 			Op:   aws.String("remove"),
-			Path: aws.String("/OptionalBool"),
+			Path: aws.String("/optionalBool"),
 		},
 		&apigateway.PatchOperation{
 			Op:    aws.String("add"),
-			Path:  aws.String("/OptionalNumber"),
+			Path:  aws.String("/optionalNumber"),
 			Value: aws.String("3"),
 		},
 		&apigateway.PatchOperation{
 			Op:    aws.String("replace"),
-			Path:  aws.String("/OptionalString"),
+			Path:  aws.String("/optionalString"),
 			Value: aws.String("goodbye"),
 		},
 	}

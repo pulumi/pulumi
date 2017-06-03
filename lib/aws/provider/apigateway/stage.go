@@ -3,7 +3,6 @@
 package apigateway
 
 import (
-	"errors"
 	"fmt"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -52,7 +51,7 @@ func (p *stageProvider) Create(ctx context.Context, obj *apigateway.Stage) (reso
 	}
 	fmt.Printf("Creating APIGateway Stage '%v' with stage name '%v'\n", obj.Name, obj.StageName)
 	parts := strings.Split(string(obj.Deployment), ":")
-	contract.Assertf(len(parts) == 3, "expected deployment ID to be of the form <restAPIID>:<deploymentid>:<stagename>")
+	contract.Assertf(len(parts) == 2, "expected deployment ID to be of the form <restAPIID>:<deploymentid>")
 	deploymentID := parts[1]
 	create := &awsapigateway.CreateStageInput{
 		StageName:           aws.String(obj.StageName),
@@ -75,7 +74,35 @@ func (p *stageProvider) Create(ctx context.Context, obj *apigateway.Stage) (reso
 
 // Get reads the instance state identified by ID, returning a populated resource object, or an error if not found.
 func (p *stageProvider) Get(ctx context.Context, id resource.ID) (*apigateway.Stage, error) {
-	return nil, errors.New("Not yet implemented - Get")
+	parts := strings.Split(id.String(), ":")
+	contract.Assertf(len(parts) == 2, "expected stage ID to be of the form <restAPIID>:<stagename>")
+	restAPIID := parts[0]
+	stageName := parts[1]
+
+	resp, err := p.ctx.APIGateway().GetStage(&awsapigateway.GetStageInput{
+		RestApiId: aws.String(restAPIID),
+		StageName: aws.String(stageName),
+	})
+	if err != nil {
+		return nil, err
+	}
+	if resp == nil || resp.DeploymentId == nil {
+		return nil, nil
+	}
+	deploymentID := resource.ID(restAPIID + ":" + aws.StringValue(resp.DeploymentId))
+	variables := aws.StringValueMap(resp.Variables)
+
+	return &apigateway.Stage{
+		RestAPI:             resource.ID(restAPIID),
+		Deployment:          deploymentID,
+		CacheClusterEnabled: resp.CacheClusterEnabled,
+		CacheClusterSize:    resp.CacheClusterSize,
+		StageName:           aws.StringValue(resp.StageName),
+		Variables:           &variables,
+		Description:         resp.Description,
+		CreatedDate:         resp.CreatedDate.String(),
+		LastUpdatedDate:     resp.LastUpdatedDate.String(),
+	}, nil
 }
 
 // InspectChange checks what impacts a hypothetical update will have on the resource's properties.
@@ -95,7 +122,7 @@ func (p *stageProvider) Update(ctx context.Context, id resource.ID,
 
 	if diff.Updated(apigateway.Stage_Deployment) {
 		parts := strings.Split(string(new.Deployment), ":")
-		contract.Assertf(len(parts) == 3, "expected deployment ID to be of the form <restAPIID>:<deploymentid>:<stagename>")
+		contract.Assertf(len(parts) == 2, "expected deployment ID to be of the form <restAPIID>:<deploymentid>")
 		deploymentID := parts[1]
 		ops = append(ops, &awsapigateway.PatchOperation{
 			Op:    aws.String("replace"),

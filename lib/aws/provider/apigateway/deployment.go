@@ -4,7 +4,6 @@ package apigateway
 
 import (
 	"crypto/sha1"
-	"errors"
 	"fmt"
 	"strings"
 
@@ -47,11 +46,12 @@ func (p *deploymentProvider) Check(ctx context.Context, obj *apigateway.Deployme
 // Create allocates a new instance of the provided resource and returns its unique ID afterwards.  (The input ID
 // must be blank.)  If this call fails, the resource must not have been created (i.e., it is "transacational").
 func (p *deploymentProvider) Create(ctx context.Context, obj *apigateway.Deployment) (resource.ID, error) {
+	// If an explicit name is given, use it.  Otherwise, auto-generate a name in part based on the resource name.
 	var stageName string
 	if obj.StageName != nil {
 		stageName = *obj.StageName
 	} else {
-		stageName = resource.NewUniqueHex(obj.Name+"_", maxDeploymentName, sha1.Size)
+		stageName = resource.NewUniqueHex(*obj.Name+"_", maxDeploymentName, sha1.Size)
 	}
 	fmt.Printf("Creating APIGateway Deployment '%v'\n", obj.Name)
 	create := &awsapigateway.CreateDeploymentInput{
@@ -63,13 +63,34 @@ func (p *deploymentProvider) Create(ctx context.Context, obj *apigateway.Deploym
 	if err != nil {
 		return "", err
 	}
-	id := resource.ID(string(obj.RestAPI) + ":" + *deployment.Id + ":" + stageName)
+	id := resource.ID(string(obj.RestAPI) + ":" + *deployment.Id)
 	return id, nil
 }
 
 // Get reads the instance state identified by ID, returning a populated resource object, or an error if not found.
 func (p *deploymentProvider) Get(ctx context.Context, id resource.ID) (*apigateway.Deployment, error) {
-	return nil, errors.New("Not yet implemented - Get")
+	parts := strings.Split(id.String(), ":")
+	contract.Assertf(len(parts) == 2, "expected deployment ID to be of the form <restAPIID>:<deploymentId>")
+	restAPIID := parts[0]
+	deploymentID := parts[1]
+
+	resp, err := p.ctx.APIGateway().GetDeployment(&awsapigateway.GetDeploymentInput{
+		RestApiId:    aws.String(restAPIID),
+		DeploymentId: aws.String(deploymentID),
+	})
+	if err != nil {
+		return nil, err
+	}
+	if resp == nil || resp.Id == nil {
+		return nil, nil
+	}
+
+	return &apigateway.Deployment{
+		RestAPI:     resource.ID(restAPIID),
+		ID:          aws.StringValue(resp.Id),
+		Description: resp.Description,
+		CreatedDate: resp.CreatedDate.String(),
+	}, nil
 }
 
 // InspectChange checks what impacts a hypothetical update will have on the resource's properties.
@@ -88,7 +109,7 @@ func (p *deploymentProvider) Update(ctx context.Context, id resource.ID,
 	}
 	if len(ops) > 0 {
 		parts := strings.Split(id.String(), ":")
-		contract.Assertf(len(parts) == 3, "expected stage ID to be of the form <restAPIID>:<deploymentId>")
+		contract.Assertf(len(parts) == 2, "expected deployment ID to be of the form <restAPIID>:<deploymentId>")
 		deploymentID := parts[1]
 		update := &awsapigateway.UpdateDeploymentInput{
 			RestApiId:       aws.String(string(new.RestAPI)),
@@ -107,14 +128,27 @@ func (p *deploymentProvider) Update(ctx context.Context, id resource.ID,
 func (p *deploymentProvider) Delete(ctx context.Context, id resource.ID) error {
 	fmt.Printf("Deleting APIGateway Deployment '%v'\n", id)
 	parts := strings.Split(id.String(), ":")
-	contract.Assertf(len(parts) == 3, "expected stage ID to be of the form <restAPIID>:<deploymentId>")
+	contract.Assertf(len(parts) == 2, "expected deployment ID to be of the form <restAPIID>:<deploymentId>")
 	restAPIID := parts[0]
 	deploymentID := parts[1]
-	stageName := parts[2]
-	_, err := p.ctx.APIGateway().DeleteStage(&awsapigateway.DeleteStageInput{
-		RestApiId: aws.String(restAPIID),
-		StageName: aws.String(stageName),
+	resp, err := p.ctx.APIGateway().GetStages(&awsapigateway.GetStagesInput{
+		RestApiId:    aws.String(restAPIID),
+		DeploymentId: aws.String(deploymentID),
 	})
+	if err != nil || resp == nil {
+		return err
+	}
+	if len(resp.Item) == 1 {
+		// Assume that the single stage associated with this deployment
+		// is the stage that was automatically created along with the deployment.
+		_, err := p.ctx.APIGateway().DeleteStage(&awsapigateway.DeleteStageInput{
+			RestApiId: aws.String(restAPIID),
+			StageName: resp.Item[0].StageName,
+		})
+		if err != nil {
+			return err
+		}
+	}
 	_, err = p.ctx.APIGateway().DeleteDeployment(&awsapigateway.DeleteDeploymentInput{
 		RestApiId:    aws.String(restAPIID),
 		DeploymentId: aws.String(deploymentID),
