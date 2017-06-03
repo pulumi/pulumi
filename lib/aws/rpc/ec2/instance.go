@@ -182,6 +182,7 @@ type Instance struct {
     InstanceType *InstanceType `json:"instanceType,omitempty"`
     SecurityGroups *[]resource.ID `json:"securityGroups,omitempty"`
     KeyName *string `json:"keyName,omitempty"`
+    Tags *[]Tag `json:"tags,omitempty"`
     AvailabilityZone string `json:"availabilityZone,omitempty"`
     PrivateDNSName *string `json:"privateDNSName,omitempty"`
     PublicDNSName *string `json:"publicDNSName,omitempty"`
@@ -196,11 +197,26 @@ const (
     Instance_InstanceType = "instanceType"
     Instance_SecurityGroups = "securityGroups"
     Instance_KeyName = "keyName"
+    Instance_Tags = "tags"
     Instance_AvailabilityZone = "availabilityZone"
     Instance_PrivateDNSName = "privateDNSName"
     Instance_PublicDNSName = "publicDNSName"
     Instance_PrivateIP = "privateIP"
     Instance_PublicIP = "publicIP"
+)
+
+/* Marshalable Tag structure(s) */
+
+// Tag is a marshalable representation of its corresponding IDL type.
+type Tag struct {
+    Key string `json:"key"`
+    Value string `json:"value"`
+}
+
+// Tag's properties have constants to make dealing with diffs and property bags easier.
+const (
+    Tag_Key = "key"
+    Tag_Value = "value"
 )
 
 /* Typedefs */
