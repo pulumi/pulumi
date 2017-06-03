@@ -1,6 +1,5 @@
 PROJECT=github.com/pulumi/lumi
 PROJECT_PKGS=$(shell go list ./cmd/... ./pkg/... | grep -v /vendor/)
-PROCCNT=$(shell nproc --all)
 
 .PHONY: default
 default: banner lint_quiet vet test install
@@ -58,7 +57,7 @@ vet:
 .PHONY: test
 test:
 	@echo "\033[0;32mTEST:\033[0m"
-	@go test -parallel ${PROCCNT} -cover ${PROJECT_PKGS}
+	@go test -cover ${PROJECT_PKGS}
 
 .PHONY: lumijs
 lumijs:

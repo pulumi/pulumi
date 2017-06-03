@@ -1,4 +1,3 @@
-BASE=$(realpath ./)
 INSTALL=/usr/local/bin
 
 .PHONY: default
@@ -23,7 +22,7 @@ build:
 .PHONY: install
 install:
 	@echo "\033[0;32mINSTALL:\033[0m"
-	@ln -sf ${BASE}/lumijs ${INSTALL}/lumijs
+	@ln -sf ${shell pwd}/lumijs ${INSTALL}/lumijs
 
 .PHONY: test
 test:

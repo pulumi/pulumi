@@ -1,4 +1,3 @@
-#!/bin/bash
-DIR="$(dirname "$(realpath "$0")" )"
-node ${DIR}/bin/cmd "$@"
+#!/usr/bin/env node
+require("./bin/cmd");
 
