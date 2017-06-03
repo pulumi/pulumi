@@ -21,7 +21,6 @@ import (
 
 	"github.com/pulumi/lumi/pkg/compiler/core"
 	"github.com/pulumi/lumi/pkg/compiler/symbols"
-	"github.com/pulumi/lumi/pkg/compiler/types"
 	"github.com/pulumi/lumi/pkg/diag"
 	"github.com/pulumi/lumi/pkg/eval"
 	"github.com/pulumi/lumi/pkg/eval/rt"
@@ -171,16 +170,16 @@ func (g *generator) OnVariableAssign(tree diag.Diagable, o *rt.Object, name toke
 	}
 	contract.Assert(deps != nil)
 
-	// If the old object is a resource, drop a ref-count.
-	if old != nil && old.Type() != types.Null {
+	// If there was an old value, drop the ref-count.
+	if old != nil && old.Type().HasValue() {
 		c, has := deps[old]
 		contract.Assertf(has, "Expected old resource property to exist in dependency map")
 		contract.Assertf(c > 0, "Expected old resource property ref-count to be > 0 in dependency map")
 		deps[old] = c - 1
 	}
 
-	// If the new object is non-nil, add a ref-count (or a whole new entry if needed).
-	if nw != nil && nw.Type() != types.Null {
+	// Add a ref-count for the new value (or a whole new entry if needed).
+	if nw != nil {
 		if c, has := deps[nw]; has {
 			contract.Assertf(c >= 0, "Expected old resource property ref-count to be >= 0 in dependency map")
 			deps[nw] = c + 1

@@ -67,13 +67,14 @@ export class Instance extends lumi.Resource implements InstanceArgs {
     public readonly name: string;
     public imageId: string;
     public instanceType?: InstanceType;
-    public securityGroups?: SecurityGroup[];
+    public readonly securityGroups?: SecurityGroup[];
     public keyName?: string;
-    public availabilityZone: string;
-    public privateDNSName?: string;
-    public publicDNSName?: string;
-    public privateIP?: string;
-    public publicIP?: string;
+    public tags?: Tag[];
+    @lumi.out public availabilityZone: string;
+    @lumi.out public privateDNSName?: string;
+    @lumi.out public publicDNSName?: string;
+    @lumi.out public privateIP?: string;
+    @lumi.out public publicIP?: string;
 
     constructor(name: string, args: InstanceArgs) {
         super();
@@ -88,14 +89,16 @@ export class Instance extends lumi.Resource implements InstanceArgs {
         this.instanceType = args.instanceType;
         this.securityGroups = args.securityGroups;
         this.keyName = args.keyName;
+        this.tags = args.tags;
     }
 }
 
 export interface InstanceArgs {
     imageId: string;
     instanceType?: InstanceType;
-    securityGroups?: SecurityGroup[];
+    readonly securityGroups?: SecurityGroup[];
     keyName?: string;
+    tags?: Tag[];
 }
 
 export type InstanceType =
@@ -156,5 +159,10 @@ export type InstanceType =
     "t2.xlarge" |
     "x1.16xlarge" |
     "x1.32xlarge";
+
+export interface Tag {
+    key: string;
+    value: string;
+}
 
 

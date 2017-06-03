@@ -127,7 +127,10 @@ func (props PropertyMap) Diff(other PropertyMap) *ObjectDiff {
 	// First find any updates or deletes.
 	for k, old := range props {
 		if new, has := other[k]; has {
-			if diff := old.Diff(new); diff != nil {
+			// If a new exists, use it; for output properties, however, ignore differences.
+			if new.IsOutput() {
+				sames[k] = old
+			} else if diff := old.Diff(new); diff != nil {
 				if old.IsNull() {
 					adds[k] = new
 				} else if new.IsNull() {
@@ -138,7 +141,8 @@ func (props PropertyMap) Diff(other PropertyMap) *ObjectDiff {
 			} else {
 				sames[k] = old
 			}
-		} else if !new.IsNull() {
+		} else if !old.IsNull() {
+			// If there was no new property, it has been deleted.
 			deletes[k] = old
 		}
 	}

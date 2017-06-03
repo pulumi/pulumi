@@ -51,9 +51,11 @@ type Environment struct {
 	Tier *Tier `lumi:"tier,optional,replaces"`
 	// The version to associate with the environment.
 	Version *ApplicationVersion `lumi:"version,optional"`
-
 	// The URL to the load balancer for this environment.
 	EndpointURL string `lumi:"endpointURL,out"`
+	// Key-value pairs defining all of the configuration options for this environment, including both values provided
+	// in the OptionSettings input, as well as settings with default values.
+	AllOptionSettings *[]OptionSetting `lumi:"allOptionSettings,out"`
 }
 
 // OptionSetting specifies options for an Elastic Beanstalk environment.

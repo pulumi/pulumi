@@ -42,6 +42,10 @@ type Asset struct {
 	URI  *string `json:"uri,omitempty"`  // a URI to a reference fetched (file://, http://, https://, or custom).
 }
 
+func NewTextAsset(text string) Asset { return Asset{Text: &text} }
+func NewPathAsset(path string) Asset { return Asset{Path: &path} }
+func NewURIAsset(uri string) Asset   { return Asset{URI: &uri} }
+
 func (a Asset) IsText() bool { return a.Text != nil }
 func (a Asset) IsPath() bool { return a.Path != nil }
 func (a Asset) IsURI() bool  { return a.URI != nil }
@@ -211,6 +215,10 @@ type Archive struct {
 	Path   *string            `json:"path,omitempty"`   // a file on the current filesystem.
 	URI    *string            `json:"uri,omitempty"`    // a URI to a remote archive (file://, http://, https://, etc).
 }
+
+func NewAssetArchive(assets map[string]*Asset) Archive { return Archive{Assets: &assets} }
+func NewPathArchive(path string) Archive               { return Archive{Path: &path} }
+func NewURIArchive(uri string) Archive                 { return Archive{URI: &uri} }
 
 func (a Archive) IsMap() bool  { return a.Assets != nil }
 func (a Archive) IsPath() bool { return a.Path != nil }

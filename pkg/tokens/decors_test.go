@@ -28,6 +28,8 @@ func newTestTypeToken(nm string) Type {
 }
 
 func TestArrayTypes(t *testing.T) {
+	t.Parallel()
+
 	// Test simple primitives.
 	for _, prim := range []string{"any", "bool", "string", "number"} {
 		ptr := NewArrayTypeToken(Type(prim))
@@ -45,6 +47,8 @@ func TestArrayTypes(t *testing.T) {
 }
 
 func TestPointerTypes(t *testing.T) {
+	t.Parallel()
+
 	// Test simple primitives.
 	for _, prim := range []string{"any", "bool", "string", "number"} {
 		ptr := NewPointerTypeToken(Type(prim))
@@ -62,6 +66,8 @@ func TestPointerTypes(t *testing.T) {
 }
 
 func TestMapTypes(t *testing.T) {
+	t.Parallel()
+
 	// Test simple primitives.
 	for _, key := range []string{"string", "bool", "number"} {
 		for _, elem := range []string{"any", "bool", "string", "number"} {
@@ -85,6 +91,8 @@ func TestMapTypes(t *testing.T) {
 }
 
 func TestFunctionTypes(t *testing.T) {
+	t.Parallel()
+
 	class := newTestTypeToken("FuncTest")
 	types := []string{"any", "bool", "string", "number", string(class)}
 	rtypes := append([]string{""}, types...)
@@ -146,6 +154,8 @@ func TestFunctionTypes(t *testing.T) {
 }
 
 func TestComplexTypes(t *testing.T) {
+	t.Parallel()
+
 	// Create a crazy nested type and make sure they parse correctly; essentially:
 	//		*[]map[string]map[()*(bool,string,Crazy)number][][]Crazy
 	// or, in the fully qualified form:

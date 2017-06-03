@@ -21,6 +21,7 @@ import (
 	"github.com/pulumi/lumi/pkg/compiler/ast"
 	"github.com/pulumi/lumi/pkg/compiler/errors"
 	"github.com/pulumi/lumi/pkg/compiler/symbols"
+	"github.com/pulumi/lumi/pkg/compiler/types/predef"
 	"github.com/pulumi/lumi/pkg/util/contract"
 )
 
@@ -127,8 +128,11 @@ func (b *binder) bindClassProperty(node *ast.ClassProperty, parent *symbols.Clas
 		}
 	}
 
+	// If this is a resource property, mark it as latent so that we can speculate before true evaluation.
+	latent := predef.IsLatentResourceProperty(parent, typ)
+
 	// Now inject this into the symbol table and return it.
-	sym := symbols.NewClassPropertySym(node, parent, typ, get, set)
+	sym := symbols.NewClassPropertySym(node, parent, typ, get, set, latent)
 	b.ctx.RegisterSymbol(node, sym)
 	return sym
 }

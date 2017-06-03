@@ -22,6 +22,8 @@ import (
 )
 
 func TestVersionCheck(t *testing.T) {
+	t.Parallel()
+
 	// Legal versions:
 	assert.Nil(t, Version("1.0.6").Check())
 	assert.Nil(t, Version("1.0.6-beta").Check())
@@ -41,6 +43,8 @@ func TestVersionCheck(t *testing.T) {
 }
 
 func TestVersionSpecCheck(t *testing.T) {
+	t.Parallel()
+
 	// Legal versions:
 	//	- Latest
 	assert.Nil(t, VersionSpec(LatestVersion).Check())

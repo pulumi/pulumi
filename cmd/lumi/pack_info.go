@@ -21,7 +21,6 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/lumi/pkg/compiler/ast"
@@ -29,7 +28,6 @@ import (
 	"github.com/pulumi/lumi/pkg/tokens"
 	"github.com/pulumi/lumi/pkg/util/cmdutil"
 	"github.com/pulumi/lumi/pkg/util/contract"
-	"github.com/pulumi/lumi/pkg/workspace"
 )
 
 func newPackInfoCmd() *cobra.Command {
@@ -51,25 +49,26 @@ func newPackInfoCmd() *cobra.Command {
 				printExportedSymbols = true
 			}
 
+			var pkg *pack.Package
+			var err error
 			if len(args) == 0 {
 				// No package specified, just load from the current directory.
 				pwd, _ := os.Getwd()
-				pkgpath, err := workspace.DetectPackage(pwd, cmdutil.Sink())
-				if err != nil {
-					return errors.Errorf("could not locate a package to load: %v", err)
+				if pkg, err = detectPackage(pwd); err != nil {
+					return err
 				}
-
-				if pkg := cmdutil.ReadPackage(pkgpath); pkg != nil {
-					printPackage(pkg, printSymbols, printExportedSymbols, printIL)
-				}
+				printPackage(pkg, printSymbols, printExportedSymbols, printIL)
 			} else {
 				// Enumerate the list of packages, deserialize them, and print information.
+				var path string
 				for _, arg := range args {
-					pkg := cmdutil.ReadPackageFromArg(arg)
+					pkg, path = readPackageFromArg(arg)
 					if pkg == nil {
-						break
+						if pkg, err = detectPackage(path); err != nil {
+							return err
+						}
+						printPackage(pkg, printSymbols, printExportedSymbols, printIL)
 					}
-					printPackage(pkg, printSymbols, printExportedSymbols, printIL)
 				}
 			}
 
@@ -273,6 +272,11 @@ func printClass(tok tokens.Type, class *ast.Class, exportOnly bool, indent strin
 	if class.Interface != nil && *class.Interface {
 		mods = append(mods, "interface")
 	}
+	if class.Attributes != nil {
+		for _, att := range *class.Attributes {
+			mods = append(mods, "@"+att.Decorator.Tok.String())
+		}
+	}
 	fmt.Printf(modString(mods))
 
 	if class.Extends != nil {
@@ -303,16 +307,16 @@ func printClassMember(tok tokens.ClassMember, member ast.ClassMember, exportOnly
 	if !exportOnly || (acc != nil && *acc == tokens.PublicAccessibility) {
 		switch member.GetKind() {
 		case ast.ClassPropertyKind:
-			printClassProperty(tok, member.(*ast.ClassProperty), indent)
+			printClassProperty(tok.Name(), member.(*ast.ClassProperty), indent)
 		case ast.ClassMethodKind:
-			printClassMethod(tok, member.(*ast.ClassMethod), indent)
+			printClassMethod(tok.Name(), member.(*ast.ClassMethod), indent)
 		default:
 			contract.Failf("Unexpected ClassMember kind: %v\n", member.GetKind())
 		}
 	}
 }
 
-func printClassProperty(tok tokens.ClassMember, prop *ast.ClassProperty, indent string) {
+func printClassProperty(name tokens.ClassMemberName, prop *ast.ClassProperty, indent string) {
 	var mods []string
 	if prop.Access != nil {
 		mods = append(mods, string(*prop.Access))
@@ -323,14 +327,31 @@ func printClassProperty(tok tokens.ClassMember, prop *ast.ClassProperty, indent 
 	if prop.Readonly != nil && *prop.Readonly {
 		mods = append(mods, "readonly")
 	}
-	fmt.Printf("%vproperty \"%v\"%v", indent, tok.Name(), modString(mods))
+	if prop.Attributes != nil {
+		for _, att := range *prop.Attributes {
+			mods = append(mods, "@"+att.Decorator.Tok.String())
+		}
+	}
+	fmt.Printf("%vproperty \"%v\"%v", indent, name, modString(mods))
 	if prop.Type != nil {
 		fmt.Printf(": %v", prop.Type.Tok)
 	}
-	fmt.Printf("\n")
+
+	if prop.Getter != nil || prop.Setter != nil {
+		fmt.Printf(" {\n")
+		if prop.Getter != nil {
+			printClassMethod(tokens.ClassMemberName("get"), prop.Getter, indent+"    ")
+		}
+		if prop.Setter != nil {
+			printClassMethod(tokens.ClassMemberName("set"), prop.Setter, indent+"    ")
+		}
+		fmt.Printf("%v}\n", indent)
+	} else {
+		fmt.Printf("\n")
+	}
 }
 
-func printClassMethod(tok tokens.ClassMember, meth *ast.ClassMethod, indent string) {
+func printClassMethod(name tokens.ClassMemberName, meth *ast.ClassMethod, indent string) {
 	var mods []string
 	if meth.Access != nil {
 		mods = append(mods, string(*meth.Access))
@@ -344,7 +365,12 @@ func printClassMethod(tok tokens.ClassMember, meth *ast.ClassMethod, indent stri
 	if meth.Abstract != nil && *meth.Abstract {
 		mods = append(mods, "abstract")
 	}
-	fmt.Printf("%vmethod \"%v\"%v: %v\n", indent, tok.Name(), modString(mods), funcSig(meth))
+	if meth.Attributes != nil {
+		for _, att := range *meth.Attributes {
+			mods = append(mods, "@"+att.Decorator.Tok.String())
+		}
+	}
+	fmt.Printf("%vmethod \"%v\"%v: %v\n", indent, name, modString(mods), funcSig(meth))
 }
 
 func printModuleMethod(tok tokens.ModuleMember, meth *ast.ModuleMethod, indent string) {
@@ -397,6 +423,15 @@ func funcSig(fun ast.Function) string {
 				sig += ", "
 			}
 			sig += string(param.Name.Ident)
+
+			var mods []string
+			if param.Attributes != nil {
+				for _, att := range *param.Attributes {
+					mods = append(mods, "@"+att.Decorator.Tok.String())
+				}
+			}
+			sig += modString(mods)
+
 			if param.Type != nil {
 				sig += ": " + string(param.Type.Tok)
 			}

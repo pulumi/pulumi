@@ -33,7 +33,7 @@ import (
 	"github.com/pulumi/lumi/lib/aws/provider/s3"
 )
 
-// provider implements the AWS resource provider's operations for all known AWS types.
+// Provider implements the AWS resource provider's operations for all known AWS types.
 type Provider struct {
 	impls map[tokens.Type]lumirpc.ResourceProviderServer
 }
@@ -106,7 +106,7 @@ func (p *Provider) Get(ctx context.Context, req *lumirpc.GetRequest) (*lumirpc.G
 
 // InspectChange checks what impacts a hypothetical update will have on the resource's properties.
 func (p *Provider) InspectChange(
-	ctx context.Context, req *lumirpc.ChangeRequest) (*lumirpc.InspectChangeResponse, error) {
+	ctx context.Context, req *lumirpc.InspectChangeRequest) (*lumirpc.InspectChangeResponse, error) {
 	t := tokens.Type(req.GetType())
 	if prov, has := p.impls[t]; has {
 		return prov.InspectChange(ctx, req)
@@ -116,7 +116,7 @@ func (p *Provider) InspectChange(
 
 // Update updates an existing resource with new values.  Only those values in the provided property bag are updated
 // to new values.  The resource ID is returned and may be different if the resource had to be recreated.
-func (p *Provider) Update(ctx context.Context, req *lumirpc.ChangeRequest) (*pbempty.Empty, error) {
+func (p *Provider) Update(ctx context.Context, req *lumirpc.UpdateRequest) (*pbempty.Empty, error) {
 	t := tokens.Type(req.GetType())
 	if prov, has := p.impls[t]; has {
 		return prov.Update(ctx, req)

@@ -108,11 +108,11 @@ func createResources(ctx *Context, ns tokens.QName, heap *heapstate.Heap, resobj
 
 		// Now fetch this resource's name by looking up its provider and doing an RPC.
 		t := resobj.Type().TypeToken()
-		prov, err := ctx.Provider(t.Package())
+		prov, err := ctx.Host.Provider(t.Package())
 		if err != nil {
 			return nil, err
 		}
-		name, err := prov.Name(t, res.Properties())
+		name, err := prov.Name(res)
 		if err != nil {
 			return nil, err
 		}

@@ -206,6 +206,8 @@ func makeTestIsFunctionAST(dynamic bool, realFunc bool) *pack.Package {
 
 // TestIsFunction verifies the `lumi:runtime/index:isFunction` intrinsic.
 func TestIsFunction(t *testing.T) {
+	t.Parallel()
+
 	// variant #1: invoke the function statically, passing a null literal; expect a false return.
 	{
 		b, e := newTestEval()

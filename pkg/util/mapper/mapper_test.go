@@ -34,6 +34,8 @@ type bag struct {
 }
 
 func TestFieldMapper(t *testing.T) {
+	t.Parallel()
+
 	md := New(nil)
 	tree := Object{
 		"b":  true,
@@ -110,6 +112,8 @@ type bagtag struct {
 }
 
 func TestMapper(t *testing.T) {
+	t.Parallel()
+
 	var err error
 	md := New(nil)
 
@@ -171,6 +175,8 @@ type bogger struct {
 }
 
 func TestNestedMapper(t *testing.T) {
+	t.Parallel()
+
 	md := New(nil)
 
 	// Test one level deep nesting (fields, arrays, pointers).
@@ -302,6 +308,8 @@ type mapentry struct {
 }
 
 func TestMapMapper(t *testing.T) {
+	t.Parallel()
+
 	md := New(nil)
 
 	// Ensure we can decode both maps of structs and maps of pointers to structs.
@@ -346,6 +354,8 @@ func (s *customStruct) GetX() float64 { return s.X }
 func (s *customStruct) GetY() float64 { return s.Y }
 
 func TestCustomMapper(t *testing.T) {
+	t.Parallel()
+
 	var md Mapper
 	md = New(&Opts{
 		CustomDecoders: Decoders{
@@ -393,4 +403,146 @@ func decodeCustomStruct(m Mapper, tree Object) (interface{}, error) {
 		return nil, err
 	}
 	return s, nil
+}
+
+type outer struct {
+	Inners *[]inner `json:"inners,omitempty"`
+}
+
+type inner struct {
+	A string   `json:"a"`
+	B *string  `json:"b,omitempty"`
+	C *string  `json:"c,omitempty"`
+	D float64  `json:"d"`
+	E *float64 `json:"e,omitempty"`
+	F *float64 `json:"f,omitempty"`
+	G *inner   `json:"g,omitempty"`
+	H *[]inner `json:"h,omitempty"`
+}
+
+func TestBasicUnmap(t *testing.T) {
+	t.Parallel()
+
+	v2 := "v2"
+	v5 := float64(5)
+	i1v2 := "i1v2"
+	i1v5 := float64(15)
+	i2v2 := "i2v2"
+	i2v5 := float64(25)
+	i3v2 := "i3v2"
+	i3v5 := float64(35)
+	o := outer{
+		Inners: &[]inner{
+			{
+				A: "v1",
+				B: &v2,
+				C: nil,
+				D: float64(4),
+				E: &v5,
+				F: nil,
+				G: &inner{
+					A: "i1v1",
+					B: &i1v2,
+					C: nil,
+					D: float64(14),
+					E: &i1v5,
+					F: nil,
+					G: nil,
+					H: nil,
+				},
+				H: &[]inner{
+					{
+						A: "i2v1",
+						B: &i2v2,
+						C: nil,
+						D: float64(24),
+						E: &i2v5,
+						F: nil,
+						G: nil,
+						H: nil,
+					},
+					{
+						A: "i3v1",
+						B: &i3v2,
+						C: nil,
+						D: float64(34),
+						E: &i3v5,
+						F: nil,
+						G: nil,
+						H: nil,
+					},
+				},
+			},
+		},
+	}
+
+	// Unmap returns a JSON-like dictionary object representing the above structure.
+	for _, e := range []interface{}{o, &o} {
+		um := Unmap(e)
+		assert.NotNil(t, um)
+
+		// check outer:
+		assert.NotNil(t, um["inners"])
+		arr := um["inners"].([]interface{})
+		assert.Equal(t, len(arr), 1)
+
+		// check outer.inner:
+		inn := arr[0].(map[string]interface{})
+		assert.Equal(t, inn["a"], "v1")
+		assert.Equal(t, inn["b"], "v2")
+		_, hasc := inn["c"]
+		assert.False(t, hasc)
+		assert.Equal(t, inn["d"], float64(4))
+		assert.Equal(t, inn["e"], float64(5))
+		_, hasf := inn["f"]
+		assert.False(t, hasf)
+		assert.NotNil(t, inn["g"])
+
+		// check outer.inner.inner:
+		inng := inn["g"].(map[string]interface{})
+		assert.Equal(t, inng["a"], "i1v1")
+		assert.Equal(t, inng["b"], "i1v2")
+		_, hasgc := inng["c"]
+		assert.False(t, hasgc)
+		assert.Equal(t, inng["d"], float64(14))
+		assert.Equal(t, inng["e"], float64(15))
+		_, hasgf := inng["f"]
+		assert.False(t, hasgf)
+		_, hasgg := inng["g"]
+		assert.False(t, hasgg)
+		_, hasgh := inng["h"]
+		assert.False(t, hasgh)
+
+		// check outer.inner.inners[0]:
+		innh := inn["h"].([]interface{})
+		assert.Equal(t, len(innh), 2)
+		innh0 := innh[0].(map[string]interface{})
+		assert.Equal(t, innh0["a"], "i2v1")
+		assert.Equal(t, innh0["b"], "i2v2")
+		_, hash0c := inng["c"]
+		assert.False(t, hash0c)
+		assert.Equal(t, innh0["d"], float64(24))
+		assert.Equal(t, innh0["e"], float64(25))
+		_, hash0f := inng["f"]
+		assert.False(t, hash0f)
+		_, hash0g := inng["g"]
+		assert.False(t, hash0g)
+		_, hash0h := inng["h"]
+		assert.False(t, hash0h)
+
+		// check outer.inner.inners[1]:
+		innh1 := innh[1].(map[string]interface{})
+		assert.Equal(t, innh1["a"], "i3v1")
+		assert.Equal(t, innh1["b"], "i3v2")
+		_, hash1c := inng["c"]
+		assert.False(t, hash1c)
+		assert.Equal(t, innh1["d"], float64(34))
+		assert.Equal(t, innh1["e"], float64(35))
+		_, hash1f := inng["f"]
+		assert.False(t, hash1f)
+		_, hash1g := inng["g"]
+		assert.False(t, hash1g)
+		_, hash1h := inng["h"]
+		assert.False(t, hash1h)
+	}
 }

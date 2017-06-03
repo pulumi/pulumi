@@ -68,10 +68,13 @@ func (p *RouteProvider) Name(
     if decerr != nil {
         return nil, decerr
     }
-    if obj.Name == "" {
+    if obj.Name == nil || *obj.Name == "" {
+        if req.Unknowns[Route_Name] {
+            return nil, errors.New("Name property cannot be computed from unknown outputs")
+        }
         return nil, errors.New("Name property cannot be empty")
     }
-    return &lumirpc.NameResponse{Name: obj.Name}, nil
+    return &lumirpc.NameResponse{Name: *obj.Name}, nil
 }
 
 func (p *RouteProvider) Create(
@@ -85,9 +88,7 @@ func (p *RouteProvider) Create(
     if err != nil {
         return nil, err
     }
-    return &lumirpc.CreateResponse{
-        Id:   string(id),
-    }, nil
+    return &lumirpc.CreateResponse{Id: string(id)}, nil
 }
 
 func (p *RouteProvider) Get(
@@ -105,7 +106,7 @@ func (p *RouteProvider) Get(
 }
 
 func (p *RouteProvider) InspectChange(
-    ctx context.Context, req *lumirpc.ChangeRequest) (*lumirpc.InspectChangeResponse, error) {
+    ctx context.Context, req *lumirpc.InspectChangeRequest) (*lumirpc.InspectChangeResponse, error) {
     contract.Assert(req.GetType() == string(RouteToken))
     id := resource.ID(req.GetId())
     old, oldprops, decerr := p.Unmarshal(req.GetOlds())
@@ -145,7 +146,7 @@ func (p *RouteProvider) InspectChange(
 }
 
 func (p *RouteProvider) Update(
-    ctx context.Context, req *lumirpc.ChangeRequest) (*pbempty.Empty, error) {
+    ctx context.Context, req *lumirpc.UpdateRequest) (*pbempty.Empty, error) {
     contract.Assert(req.GetType() == string(RouteToken))
     id := resource.ID(req.GetId())
     old, oldprops, err := p.Unmarshal(req.GetOlds())
@@ -176,7 +177,7 @@ func (p *RouteProvider) Delete(
 func (p *RouteProvider) Unmarshal(
     v *pbstruct.Struct) (*Route, resource.PropertyMap, mapper.DecodeError) {
     var obj Route
-    props := resource.UnmarshalProperties(v)
+    props := resource.UnmarshalProperties(nil, v, resource.MarshalOptions{RawResources: true})
     result := mapper.MapIU(props.Mappable(), &obj)
     return &obj, props, result
 }
@@ -185,7 +186,7 @@ func (p *RouteProvider) Unmarshal(
 
 // Route is a marshalable representation of its corresponding IDL type.
 type Route struct {
-    Name string `json:"name"`
+    Name *string `json:"name,omitempty"`
     DestinationCidrBlock string `json:"destinationCidrBlock"`
     RouteTable resource.ID `json:"routeTable"`
     InternetGateway resource.ID `json:"internetGateway"`

@@ -22,16 +22,16 @@ import (
 	"strings"
 
 	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/awserr"
-	awsiam "github.com/aws/aws-sdk-go/service/iam"
 	awslambda "github.com/aws/aws-sdk-go/service/lambda"
 	"github.com/pkg/errors"
 	"github.com/pulumi/lumi/pkg/resource"
 	"github.com/pulumi/lumi/pkg/util/contract"
+	"github.com/pulumi/lumi/pkg/util/convutil"
 	"github.com/pulumi/lumi/pkg/util/mapper"
 	"github.com/pulumi/lumi/sdk/go/pkg/lumirpc"
 	"golang.org/x/net/context"
 
+	"github.com/pulumi/lumi/lib/aws/provider/arn"
 	"github.com/pulumi/lumi/lib/aws/provider/awsctx"
 	awscommon "github.com/pulumi/lumi/lib/aws/rpc"
 	"github.com/pulumi/lumi/lib/aws/rpc/lambda"
@@ -92,32 +92,22 @@ func (p *funcProvider) Check(ctx context.Context, obj *lambda.Function) ([]mappe
 
 // Create allocates a new instance of the provided resource and returns its unique ID afterwards.  (The input ID
 // must be blank.)  If this call fails, the resource must not have been created (i.e., it is "transacational").
-func (p *funcProvider) Create(ctx context.Context, obj *lambda.Function) (resource.ID, *lambda.FunctionOuts, error) {
+func (p *funcProvider) Create(ctx context.Context, obj *lambda.Function) (resource.ID, error) {
 	contract.Assertf(obj.DeadLetterConfig == nil, "Dead letter config not yet supported")
 	contract.Assertf(obj.VPCConfig == nil, "VPC config not yet supported")
 
 	// If an explicit name is given, use it.  Otherwise, auto-generate a name in part based on the resource name.
-	// TODO: use the URN, not just the name, to enhance global uniqueness.
-	// TODO: even for explicit names, we should consider mangling it somehow, to reduce multi-instancing conflicts.
-	var id resource.ID
+	var name string
 	if obj.FunctionName != nil {
-		id = resource.ID(*obj.FunctionName)
+		name = *obj.FunctionName
 	} else {
-		id = resource.NewUniqueHexID(obj.Name+"-", maxFunctionName, sha1.Size)
-	}
-
-	roleARN, err := p.getRoleARN(obj.Role)
-	if err != nil {
-		return "", nil, err
+		name = resource.NewUniqueHex(*obj.Name+"-", maxFunctionName, sha1.Size)
 	}
 
 	code, err := p.getCode(obj.Code)
 	if err != nil {
-		return "", nil, err
+		return "", err
 	}
-
-	var dlqcfg *awslambda.DeadLetterConfig
-	var vpccfg *awslambda.VpcConfig
 
 	// Convert float fields to in64 if they are non-nil.
 	var memsize *int64
@@ -139,60 +129,98 @@ func (p *funcProvider) Create(ctx context.Context, obj *lambda.Function) (resour
 
 	// Now go ahead and create the resource.  Note that IAM profiles can take several seconds to propagate; see
 	// http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/iam-roles-for-amazon-ec2.html#launch-instance-with-role.
-	fmt.Printf("Creating Lambda Function '%v' with name '%v'\n", obj.Name, id)
+	fmt.Printf("Creating Lambda Function '%v' with name '%v'\n", obj.Name, name)
 	create := &awslambda.CreateFunctionInput{
-		Code:             code,
-		DeadLetterConfig: dlqcfg,
-		Description:      obj.Description,
-		Environment:      env,
-		FunctionName:     id.StringPtr(),
-		Handler:          aws.String(obj.Handler),
-		KMSKeyArn:        obj.KMSKey.StringPtr(),
-		MemorySize:       memsize,
-		Publish:          nil, // ???
-		Role:             roleARN,
-		Runtime:          aws.String(string(obj.Runtime)),
-		Timeout:          timeout,
-		VpcConfig:        vpccfg,
+		Code:         code,
+		Description:  obj.Description,
+		Environment:  env,
+		FunctionName: aws.String(name),
+		Handler:      aws.String(obj.Handler),
+		KMSKeyArn:    obj.KMSKey.StringPtr(),
+		MemorySize:   memsize,
+		Role:         aws.String(string(obj.Role)),
+		Runtime:      aws.String(string(obj.Runtime)),
+		Timeout:      timeout,
 	}
-	var out *lambda.FunctionOuts
+	var arn resource.ID
 	if succ, err := awsctx.RetryProgUntil(
 		p.ctx,
 		func() (bool, error) {
-			result, err := p.ctx.Lambda().CreateFunction(create)
+			resp, err := p.ctx.Lambda().CreateFunction(create)
 			if err != nil {
-				if erraws, iserraws := err.(awserr.Error); iserraws {
-					if erraws.Code() == "InvalidParameterValueException" &&
-						erraws.Message() == "The role defined for the function cannot be assumed by Lambda." {
-						return false, nil // retry the condition.
-					}
+				if awsctx.IsAWSErrorMessage(err,
+					"InvalidParameterValueException",
+					"The role defined for the function cannot be assumed by Lambda.") {
+					return false, nil // retry the condition.
 				}
 				return false, err
+			} else if resp == nil || resp.FunctionArn == nil {
+				return false, errors.New("Lambda Function created, but AWS did not respond with an ARN")
 			}
-			out = &lambda.FunctionOuts{ARN: awscommon.ARN(*result.FunctionArn)}
+			arn = resource.ID(*resp.FunctionArn)
 			return true, nil
 		},
 		func(n int) bool {
-			fmt.Printf("Lambda IAM role '%v' not yet ready; waiting for it to become usable...\n", roleARN)
+			fmt.Printf("Lambda IAM role '%v' not yet ready; waiting for it to become usable...\n", obj.Role)
 			return true
 		},
 	); err != nil {
-		return "", nil, err
+		return "", err
 	} else if !succ {
-		return "", nil, fmt.Errorf("Lambda IAM role '%v' did not become useable", roleARN)
+		return "", fmt.Errorf("Lambda IAM role '%v' did not become useable", obj.Role)
 	}
 
 	// Wait for the function to be ready and then return the function name as the ID.
-	fmt.Printf("Lambda Function created: %v; waiting for it to become active\n", id)
-	if err := p.waitForFunctionState(id, true); err != nil {
-		return "", nil, err
+	fmt.Printf("Lambda Function created: %v (ARN %v); waiting for it to become active\n", name, arn)
+	if err := p.waitForFunctionState(name, true); err != nil {
+		return "", err
 	}
-	return id, out, nil
+	return arn, nil
 }
 
-// Read reads the instance state identified by ID, returning a populated resource object, or an error if not found.
+// Get reads the instance state identified by ID, returning a populated resource object, or an error if not found.
 func (p *funcProvider) Get(ctx context.Context, id resource.ID) (*lambda.Function, error) {
-	return nil, errors.New("Not yet implemented")
+	name, err := arn.ParseResourceName(id)
+	if err != nil {
+		return nil, err
+	}
+	funcresp, err := p.ctx.Lambda().GetFunction(&awslambda.GetFunctionInput{FunctionName: aws.String(name)})
+	if err != nil {
+		if awsctx.IsAWSError(err, awslambda.ErrCodeResourceNotFoundException) {
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	// Note: We do not extract the funcresp.Code property, as this is a pre-signed S3
+	// URL at which we could download the function source code, but is not stable across
+	// calls to GetFunction.
+
+	// Deserialize all configuration properties into prompt objects.
+	contract.Assert(funcresp != nil)
+	config := funcresp.Configuration
+	contract.Assert(config != nil)
+	var env *lambda.Environment
+	if config.Environment != nil {
+		envmap := lambda.Environment(aws.StringValueMap(config.Environment.Variables))
+		env = &envmap
+	}
+
+	return &lambda.Function{
+		ARN:          awscommon.ARN(aws.StringValue(config.FunctionArn)),
+		Version:      aws.StringValue(config.Version),
+		CodeSHA256:   aws.StringValue(config.CodeSha256),
+		LastModified: aws.StringValue(config.LastModified),
+		Handler:      aws.StringValue(config.Handler),
+		Role:         resource.ID(aws.StringValue(config.Role)),
+		Runtime:      lambda.Runtime(aws.StringValue(config.Runtime)),
+		FunctionName: config.FunctionName,
+		Description:  config.Description,
+		Environment:  env,
+		KMSKey:       resource.MaybeID(config.KMSKeyArn),
+		MemorySize:   convutil.Int64PToFloat64P(config.MemorySize),
+		Timeout:      convutil.Int64PToFloat64P(config.Timeout),
+	}, nil
 }
 
 // InspectChange checks what impacts a hypothetical update will have on the resource's properties.
@@ -208,13 +236,18 @@ func (p *funcProvider) Update(ctx context.Context, id resource.ID,
 	contract.Assertf(new.DeadLetterConfig == nil, "Dead letter config not yet supported")
 	contract.Assertf(new.VPCConfig == nil, "VPC config not yet supported")
 
+	name, err := arn.ParseResourceName(id)
+	if err != nil {
+		return err
+	}
+
 	if diff.Changed(lambda.Function_Description) || diff.Changed(lambda.Function_Environment) ||
 		diff.Changed(lambda.Function_Runtime) || diff.Changed(lambda.Function_Role) ||
 		diff.Changed(lambda.Function_MemorySize) || diff.Changed(lambda.Function_Timeout) ||
 		diff.Changed(lambda.Function_Environment) {
 
 		update := &awslambda.UpdateFunctionConfigurationInput{
-			FunctionName: id.StringPtr(), // Okay to use the ARN as the FunctionName
+			FunctionName: aws.String(name),
 		}
 		if diff.Changed(lambda.Function_Description) {
 			update.Description = new.Description
@@ -226,11 +259,7 @@ func (p *funcProvider) Update(ctx context.Context, id resource.ID,
 			update.Runtime = aws.String(string(new.Runtime))
 		}
 		if diff.Changed(lambda.Function_Role) {
-			roleARN, err := p.getRoleARN(new.Role)
-			if err != nil {
-				return err
-			}
-			update.Role = roleARN
+			update.Role = aws.String(string(new.Role))
 		}
 		if diff.Changed(lambda.Function_MemorySize) {
 			if new.MemorySize != nil {
@@ -256,16 +285,16 @@ func (p *funcProvider) Update(ctx context.Context, id resource.ID,
 			}
 		}
 
-		fmt.Printf("Updating Lambda function configuration '%v'\n", id)
+		fmt.Printf("Updating Lambda function configuration '%v'\n", name)
 		var out *awslambda.FunctionConfiguration
 		var err error
 		_, err = awsctx.RetryUntil(p.ctx, func() (bool, error) {
 			out, err = p.ctx.Lambda().UpdateFunctionConfiguration(update)
 			if err != nil {
-				if erraws, iserraws := err.(awserr.Error); iserraws {
-					if erraws.Message() == "The role defined for the function cannot be assumed by Lambda." {
-						return false, nil
-					}
+				if awsctx.IsAWSErrorMessage(err,
+					"InvalidParameterValueException",
+					"The role defined for the function cannot be assumed by Lambda.") {
+					return false, nil
 				}
 				return true, err
 			}
@@ -280,11 +309,10 @@ func (p *funcProvider) Update(ctx context.Context, id resource.ID,
 			func() (bool, error) {
 				_, err := p.ctx.Lambda().UpdateFunctionConfiguration(update)
 				if err != nil {
-					if erraws, iserraws := err.(awserr.Error); iserraws {
-						if erraws.Code() == "InvalidParameterValueException" &&
-							erraws.Message() == "The role defined for the function cannot be assumed by Lambda." {
-							return false, nil // retry the condition.
-						}
+					if awsctx.IsAWSErrorMessage(err,
+						"InvalidParameterValueException",
+						"The role defined for the function cannot be assumed by Lambda.") {
+						return false, nil // retry the condition.
 					}
 					return false, err
 				}
@@ -307,13 +335,13 @@ func (p *funcProvider) Update(ctx context.Context, id resource.ID,
 			return err
 		}
 		update := &awslambda.UpdateFunctionCodeInput{
-			FunctionName:    id.StringPtr(), // Okay to use the ARN as the FunctionName
+			FunctionName:    aws.String(name),
 			S3Bucket:        code.S3Bucket,
 			S3Key:           code.S3Key,
 			S3ObjectVersion: code.S3ObjectVersion,
 			ZipFile:         code.ZipFile,
 		}
-		fmt.Printf("Updating Lambda function code '%v'\n", id)
+		fmt.Printf("Updating Lambda function code '%v'\n", name)
 		if _, err := p.ctx.Lambda().UpdateFunctionCode(update); err != nil {
 			return err
 		}
@@ -323,31 +351,34 @@ func (p *funcProvider) Update(ctx context.Context, id resource.ID,
 
 // Delete tears down an existing resource with the given ID.  If it fails, the resource is assumed to still exist.
 func (p *funcProvider) Delete(ctx context.Context, id resource.ID) error {
+	name, err := arn.ParseResourceName(id)
+	if err != nil {
+		return err
+	}
+
 	// First, perform the deletion.
-	fmt.Printf("Deleting Lambda Function '%v'\n", id)
+	fmt.Printf("Deleting Lambda Function '%v'\n", name)
 	if _, err := p.ctx.Lambda().DeleteFunction(&awslambda.DeleteFunctionInput{
-		FunctionName: id.StringPtr(),
+		FunctionName: aws.String(name),
 	}); err != nil {
 		return err
 	}
 
 	// Wait for the function to actually become deleted before returning.
 	fmt.Printf("Lambda Function delete request submitted; waiting for it to delete\n")
-	return p.waitForFunctionState(id, false)
+	return p.waitForFunctionState(name, false)
 }
 
-func (p *funcProvider) waitForFunctionState(id resource.ID, exist bool) error {
+func (p *funcProvider) waitForFunctionState(name string, exist bool) error {
 	succ, err := awsctx.RetryUntil(
 		p.ctx,
 		func() (bool, error) {
 			if _, err := p.ctx.Lambda().GetFunction(&awslambda.GetFunctionInput{
-				FunctionName: id.StringPtr(),
+				FunctionName: aws.String(name),
 			}); err != nil {
-				if erraws, iserraws := err.(awserr.Error); iserraws {
-					if erraws.Code() == "NotFound" || erraws.Code() == "ResourceNotFoundException" {
-						// The function is missing; if exist==false, we're good, otherwise keep retrying.
-						return !exist, nil
-					}
+				if awsctx.IsAWSError(err, "NotFound", "ResourceNotFoundException") {
+					// The function is missing; if exist==false, we're good, otherwise keep retrying.
+					return !exist, nil
 				}
 				return false, err // anything other than "function missing" is a real error; propagate it.
 			}
@@ -365,7 +396,7 @@ func (p *funcProvider) waitForFunctionState(id resource.ID, exist bool) error {
 		} else {
 			reason = "deleted"
 		}
-		return fmt.Errorf("Lambda Function '%v' did not become %v", id, reason)
+		return fmt.Errorf("Lambda Function '%v' did not become %v", name, reason)
 	}
 	return nil
 }
@@ -375,7 +406,6 @@ func (p *funcProvider) getCode(codeArchive resource.Archive) (*awslambda.Functio
 	if uri, isuri, err := codeArchive.GetURIURL(); err != nil {
 		return nil, err
 	} else if isuri && uri.Scheme == "s3" {
-		// TODO: it's odd that an S3 reference must *already* be a zipfile, whereas others are zipped on the fly.
 		return &awslambda.FunctionCode{
 			S3Bucket: aws.String(uri.Host),
 			S3Key:    aws.String(uri.Path),
@@ -384,15 +414,5 @@ func (p *funcProvider) getCode(codeArchive resource.Archive) (*awslambda.Functio
 	} else {
 		zip := codeArchive.Bytes(resource.ZIPArchive)
 		return &awslambda.FunctionCode{ZipFile: zip}, nil
-	}
-}
-
-func (p *funcProvider) getRoleARN(role resource.ID) (*string, error) {
-	// Fetch the IAM role's ARN.
-	// TODO[lumi/pulumi#90]: as soon as we can read output properties, this shouldn't be necessary.
-	if role, err := p.ctx.IAM().GetRole(&awsiam.GetRoleInput{RoleName: role.StringPtr()}); err != nil {
-		return nil, err
-	} else {
-		return role.Role.Arn, nil
 	}
 }

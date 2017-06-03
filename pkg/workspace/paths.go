@@ -36,7 +36,7 @@ const DepDir = "packs"           // the directory in which dependencies exist, e
 const SettingsFile = "workspace" // the base name of a markup file for shared settings in a workspace.
 
 const InstallRootEnvvar = "LUMIROOT"         // the envvar describing where Lumi has been installed.
-const InstallRootLibdir = "lib"              // the directory in which the Lumi standard library exists.
+const InstallRootLibdir = "packs"            // the directory in which the Lumi standard library exists.
 const DefaultInstallRoot = "/usr/local/lumi" // where Lumi is installed by default.
 
 // InstallRoot returns Lumi's installation location.  This is controlled my the LUMIROOT envvar.
@@ -92,7 +92,7 @@ func DetectPackage(path string, d diag.Sink) (string, error) {
 		}
 
 		// See if there's a compiled package in the expected location.
-		pack := filepath.Join(Dir, BinDir, PackFile)
+		pack := filepath.Join(curr, Dir, BinDir, PackFile)
 		for _, ext := range encoding.Exts {
 			packfile := pack + ext
 			if IsPack(packfile, d) {
@@ -100,7 +100,7 @@ func DetectPackage(path string, d diag.Sink) (string, error) {
 			}
 		}
 
-		// Now look for individual projects.
+		// Now look for uncompiled project files.
 		for _, file := range files {
 			name := file.Name()
 			path := filepath.Join(curr, name)

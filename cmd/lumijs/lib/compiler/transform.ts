@@ -1648,7 +1648,6 @@ export class Transformer {
     private async transformClassDeclaration(
             modtok: tokens.ModuleToken, node: ts.ClassDeclaration): Promise<ast.Class> {
         // TODO(joe): generics.
-        // TODO(joe): decorators.
 
         // First transform the name into an identifier.  In the absence of a name, we will proceed under the assumption
         // that it is the default export.  This should be verified later on.
@@ -1663,6 +1662,9 @@ export class Transformer {
         if (log.v(7)) {
             log.out(7).info(`Transforming class declaration: ${name.ident}`);
         }
+
+        // Pluck out any decorators and store them in the metadata as attributes.
+        let attributes: ast.Attribute[] | undefined = await this.transformDecorators(node.decorators);
 
         // Next, make a class token to use during this class's transformations.
         let classtok: tokens.ModuleMemberToken = this.createModuleMemberToken(modtok, name.ident);
@@ -1846,6 +1848,7 @@ export class Transformer {
             return this.withLocation(node, <ast.Class>{
                 kind:       ast.classKind,
                 name:       name,
+                attributes: attributes,
                 members:    members,
                 abstract:   !!(mods & ts.ModifierFlags.Abstract),
                 extends:    extend,
@@ -1998,7 +2001,6 @@ export class Transformer {
     private async transformInterfaceDeclaration(
             modtok: tokens.ModuleToken, node: ts.InterfaceDeclaration): Promise<ast.Class> {
         // TODO(joe): generics.
-        // TODO(joe): decorators.
         // TODO(joe): extends/implements.
 
         // Create a name and token for the LumiIL class representing this.
@@ -2007,6 +2009,9 @@ export class Transformer {
         if (log.v(7)) {
             log.out(7).info(`Transforming interface declaration: ${name.ident}`);
         }
+
+        // Pluck out any decorators and store them in the metadata as attributes.
+        let attributes: ast.Attribute[] | undefined = await this.transformDecorators(node.decorators);
 
         // Next, make a class token to use during this class's transformations.
         let classtok: tokens.ModuleMemberToken = this.createModuleMemberToken(modtok, name.ident);
@@ -2045,6 +2050,7 @@ export class Transformer {
             return this.withLocation(node, <ast.Class>{
                 kind:       ast.classKind,
                 name:       name,
+                attributes: attributes,
                 members:    members,
                 interface:  true, // permit multi-inheritance.
                 record:     true, // enable on-the-fly creation.
@@ -2063,23 +2069,14 @@ export class Transformer {
     }
 
     private getDecoratorSymbol(decorator: ts.Decorator): ts.Symbol {
-        contract.assert(decorator.expression.kind === ts.SyntaxKind.Identifier,
-                        "Only simple @decorator annotations are currently supported");
         return this.checker().getSymbolAtLocation(decorator.expression);
     }
 
-    private async transformParameterDeclaration(
-            node: ts.ParameterDeclaration): Promise<VariableDeclaration<ast.LocalVariable>> {
-        // Validate that we're dealing with the supported subset.
-        if (!!node.dotDotDotToken) {
-            this.diagnostics.push(this.dctx.newRestParamsNotSupportedError(node.dotDotDotToken));
-        }
-
-        // Pluck out any decorators and store them in the metadata as attributes.
+    private async transformDecorators(decorators?: ts.NodeArray<ts.Decorator>): Promise<ast.Attribute[] | undefined> {
         let attributes: ast.Attribute[] | undefined;
-        if (node.decorators) {
+        if (decorators) {
             attributes = [];
-            for (let decorator of node.decorators) {
+            for (let decorator of decorators) {
                 let sym: ts.Symbol = this.getDecoratorSymbol(decorator);
                 attributes.push({
                     kind: ast.attributeKind,
@@ -2090,6 +2087,18 @@ export class Transformer {
                 });
             }
         }
+        return attributes;
+    }
+
+    private async transformParameterDeclaration(
+            node: ts.ParameterDeclaration): Promise<VariableDeclaration<ast.LocalVariable>> {
+        // Validate that we're dealing with the supported subset.
+        if (!!node.dotDotDotToken) {
+            this.diagnostics.push(this.dctx.newRestParamsNotSupportedError(node.dotDotDotToken));
+        }
+
+        // Pluck out any decorators and store them in the metadata as attributes.
+        let attributes: ast.Attribute[] | undefined = await this.transformDecorators(node.decorators);
 
         // TODO[pulumi/lumi#43]: parameters can be any binding name, including destructuring patterns.  For now,
         //     however, we only support the identifier forms.
@@ -2312,9 +2321,11 @@ export class Transformer {
     private async transformFunctionLikeDeclaration(node: ts.FunctionLikeDeclaration): Promise<ast.ClassMethod> {
         let mods: ts.ModifierFlags = ts.getCombinedModifierFlags(node);
         let decl: FunctionLikeDeclaration = await this.transformFunctionLikeCommon(node);
+        let attributes: ast.Attribute[] | undefined = await this.transformDecorators(node.decorators);
         return this.withLocation(node, <ast.ClassMethod>{
             kind:       ast.classMethodKind,
             name:       decl.name,
+            attributes: attributes,
             access:     this.getClassAccessibility(node),
             parameters: decl.parameters,
             body:       decl.body,
@@ -2333,18 +2344,20 @@ export class Transformer {
         }
         let mods: ts.ModifierFlags = ts.getCombinedModifierFlags(node);
         let name: ast.Identifier = this.transformPropertyName(node.name);
+        let attributes: ast.Attribute[] | undefined = await this.transformDecorators(node.decorators);
         // TODO: primary properties.
         return new VariableDeclaration<ast.ClassProperty>(
             node,
             this.createClassMemberToken(classtok, name.ident),
             {
-                kind:     ast.classPropertyKind,
-                name:     name,
-                access:   this.getClassAccessibility(node),
-                readonly: !!(mods & ts.ModifierFlags.Readonly),
-                optional: !!(node.questionToken),
-                static:   !!(mods & ts.ModifierFlags.Static),
-                type:     await this.resolveTypeTokenFromTypeLike(node),
+                kind:       ast.classPropertyKind,
+                name:       name,
+                attributes: attributes,
+                access:     this.getClassAccessibility(node),
+                readonly:   !!(mods & ts.ModifierFlags.Readonly),
+                optional:   !!(node.questionToken),
+                static:     !!(mods & ts.ModifierFlags.Static),
+                type:       await this.resolveTypeTokenFromTypeLike(node),
             },
             false,
             initializer,
@@ -2353,9 +2366,11 @@ export class Transformer {
 
     private async transformMethodSignature(node: ts.MethodSignature): Promise<ast.ClassMethod> {
         let decl: FunctionLikeDeclaration = await this.transformFunctionLikeOrSignatureCommon(node, false);
+        let attributes: ast.Attribute[] | undefined = await this.transformDecorators(node.decorators);
         return this.withLocation(node, <ast.ClassMethod>{
             kind:       ast.classMethodKind,
             name:       decl.name,
+            attributes: attributes,
             access:     this.getClassAccessibility(node),
             parameters: decl.parameters,
             returnType: decl.returnType,

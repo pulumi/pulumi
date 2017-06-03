@@ -82,10 +82,13 @@ func (p *UserProvider) Name(
     if decerr != nil {
         return nil, decerr
     }
-    if obj.Name == "" {
+    if obj.Name == nil || *obj.Name == "" {
+        if req.Unknowns[User_Name] {
+            return nil, errors.New("Name property cannot be computed from unknown outputs")
+        }
         return nil, errors.New("Name property cannot be empty")
     }
-    return &lumirpc.NameResponse{Name: obj.Name}, nil
+    return &lumirpc.NameResponse{Name: *obj.Name}, nil
 }
 
 func (p *UserProvider) Create(
@@ -99,9 +102,7 @@ func (p *UserProvider) Create(
     if err != nil {
         return nil, err
     }
-    return &lumirpc.CreateResponse{
-        Id:   string(id),
-    }, nil
+    return &lumirpc.CreateResponse{Id: string(id)}, nil
 }
 
 func (p *UserProvider) Get(
@@ -119,7 +120,7 @@ func (p *UserProvider) Get(
 }
 
 func (p *UserProvider) InspectChange(
-    ctx context.Context, req *lumirpc.ChangeRequest) (*lumirpc.InspectChangeResponse, error) {
+    ctx context.Context, req *lumirpc.InspectChangeRequest) (*lumirpc.InspectChangeResponse, error) {
     contract.Assert(req.GetType() == string(UserToken))
     id := resource.ID(req.GetId())
     old, oldprops, decerr := p.Unmarshal(req.GetOlds())
@@ -150,7 +151,7 @@ func (p *UserProvider) InspectChange(
 }
 
 func (p *UserProvider) Update(
-    ctx context.Context, req *lumirpc.ChangeRequest) (*pbempty.Empty, error) {
+    ctx context.Context, req *lumirpc.UpdateRequest) (*pbempty.Empty, error) {
     contract.Assert(req.GetType() == string(UserToken))
     id := resource.ID(req.GetId())
     old, oldprops, err := p.Unmarshal(req.GetOlds())
@@ -181,7 +182,7 @@ func (p *UserProvider) Delete(
 func (p *UserProvider) Unmarshal(
     v *pbstruct.Struct) (*User, resource.PropertyMap, mapper.DecodeError) {
     var obj User
-    props := resource.UnmarshalProperties(v)
+    props := resource.UnmarshalProperties(nil, v, resource.MarshalOptions{RawResources: true})
     result := mapper.MapIU(props.Mappable(), &obj)
     return &obj, props, result
 }
@@ -190,7 +191,7 @@ func (p *UserProvider) Unmarshal(
 
 // User is a marshalable representation of its corresponding IDL type.
 type User struct {
-    Name string `json:"name"`
+    Name *string `json:"name,omitempty"`
     UserName *string `json:"userName,omitempty"`
     Groups *[]resource.ID `json:"groups,omitempty"`
     LoginProfile *LoginProfile `json:"loginProfile,omitempty"`

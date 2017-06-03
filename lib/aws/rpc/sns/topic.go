@@ -68,10 +68,13 @@ func (p *TopicProvider) Name(
     if decerr != nil {
         return nil, decerr
     }
-    if obj.Name == "" {
+    if obj.Name == nil || *obj.Name == "" {
+        if req.Unknowns[Topic_Name] {
+            return nil, errors.New("Name property cannot be computed from unknown outputs")
+        }
         return nil, errors.New("Name property cannot be empty")
     }
-    return &lumirpc.NameResponse{Name: obj.Name}, nil
+    return &lumirpc.NameResponse{Name: *obj.Name}, nil
 }
 
 func (p *TopicProvider) Create(
@@ -85,9 +88,7 @@ func (p *TopicProvider) Create(
     if err != nil {
         return nil, err
     }
-    return &lumirpc.CreateResponse{
-        Id:   string(id),
-    }, nil
+    return &lumirpc.CreateResponse{Id: string(id)}, nil
 }
 
 func (p *TopicProvider) Get(
@@ -105,7 +106,7 @@ func (p *TopicProvider) Get(
 }
 
 func (p *TopicProvider) InspectChange(
-    ctx context.Context, req *lumirpc.ChangeRequest) (*lumirpc.InspectChangeResponse, error) {
+    ctx context.Context, req *lumirpc.InspectChangeRequest) (*lumirpc.InspectChangeResponse, error) {
     contract.Assert(req.GetType() == string(TopicToken))
     id := resource.ID(req.GetId())
     old, oldprops, decerr := p.Unmarshal(req.GetOlds())
@@ -136,7 +137,7 @@ func (p *TopicProvider) InspectChange(
 }
 
 func (p *TopicProvider) Update(
-    ctx context.Context, req *lumirpc.ChangeRequest) (*pbempty.Empty, error) {
+    ctx context.Context, req *lumirpc.UpdateRequest) (*pbempty.Empty, error) {
     contract.Assert(req.GetType() == string(TopicToken))
     id := resource.ID(req.GetId())
     old, oldprops, err := p.Unmarshal(req.GetOlds())
@@ -167,7 +168,7 @@ func (p *TopicProvider) Delete(
 func (p *TopicProvider) Unmarshal(
     v *pbstruct.Struct) (*Topic, resource.PropertyMap, mapper.DecodeError) {
     var obj Topic
-    props := resource.UnmarshalProperties(v)
+    props := resource.UnmarshalProperties(nil, v, resource.MarshalOptions{RawResources: true})
     result := mapper.MapIU(props.Mappable(), &obj)
     return &obj, props, result
 }
@@ -176,7 +177,7 @@ func (p *TopicProvider) Unmarshal(
 
 // Topic is a marshalable representation of its corresponding IDL type.
 type Topic struct {
-    Name string `json:"name"`
+    Name *string `json:"name,omitempty"`
     TopicName *string `json:"topicName,omitempty"`
     DisplayName *string `json:"displayName,omitempty"`
     Subscription *[]TopicSubscription `json:"subscription,omitempty"`

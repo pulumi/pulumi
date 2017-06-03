@@ -71,8 +71,8 @@ func (chk *Checker) Check(name tokens.PackageName, pkginfo *loader.PackageInfo) 
 		default:
 			ok = false
 			cmdutil.Sink().Errorf(
-				diag.Message("%v is an unrecognized Go declaration type: %v",
-					objname, reflect.TypeOf(obj)).At(chk.diag(obj)))
+				diag.Message("%v is an unrecognized Go declaration type: %v").At(chk.diag(obj)),
+				objname, reflect.TypeOf(obj))
 		}
 	}
 
@@ -175,7 +175,9 @@ func (chk *Checker) CheckConst(c *types.Const, file *File, decl ast.Decl) (*Cons
 			chk.EnumValues[t] = append(chk.EnumValues[t], c.Val().String())
 		} else {
 			cmdutil.Sink().Errorf(
-				diag.Message("enums must be string-backed; %v has type %v", c, named).At(chk.diag(decl)))
+				diag.Message("enums must be string-backed; %v has type %v").At(chk.diag(decl)),
+				c, named,
+			)
 		}
 	} else {
 		cmdutil.Sink().Errorf(
@@ -224,9 +226,9 @@ func (chk *Checker) CheckType(t *types.TypeName, file *File, decl ast.Decl) (Mem
 				}, true
 			}
 
-			cmdutil.Sink().Errorf(
-				diag.Message("type alias %v is not a valid IDL alias type (must be bool, float64, or string)",
-					t.Name()).At(chk.diag(decl)))
+			cmdutil.Sink().Errorf(diag.Message(
+				"type alias %v is not a valid IDL alias type (must be bool, float64, or string)").At(
+				chk.diag(decl)))
 		case *types.Map, *types.Slice:
 			return &Alias{
 				member: memb,
@@ -257,11 +259,11 @@ func (chk *Checker) CheckType(t *types.TypeName, file *File, decl ast.Decl) (Mem
 			contract.Assert(!cmdutil.Sink().Success())
 		default:
 			cmdutil.Sink().Errorf(
-				diag.Message("%v is an illegal underlying type: %v", s, reflect.TypeOf(s)).At(chk.diag(decl)))
+				diag.Message("%v is an illegal underlying type: %v").At(chk.diag(decl)), s, reflect.TypeOf(s))
 		}
 	default:
 		cmdutil.Sink().Errorf(
-			diag.Message("%v is an illegal Go type kind: %v", t.Name(), reflect.TypeOf(typ)).At(chk.diag(decl)))
+			diag.Message("%v is an illegal Go type kind: %v").At(chk.diag(decl)), t.Name(), reflect.TypeOf(typ))
 	}
 	return nil, false
 }
@@ -292,32 +294,32 @@ func (chk *Checker) CheckStructFields(t *types.TypeName, s *types.Struct,
 			if opts.Name == "" {
 				ok = false
 				cmdutil.Sink().Errorf(
-					diag.Message("field %v.%v is missing a `lumi:\"<name>\"` tag directive",
-						t.Name(), fld.Name()).At(chk.diag(fld)))
+					diag.Message("field %v.%v is missing a `lumi:\"<name>\"` tag directive").At(chk.diag(fld)),
+					t.Name(), fld.Name())
 			}
 			if opts.Out && !isres {
 				ok = false
 				cmdutil.Sink().Errorf(
-					diag.Message("field %v.%v is marked `out` but is not a resource property",
-						t.Name(), fld.Name()).At(chk.diag(fld)))
+					diag.Message("field %v.%v is marked `out` but is not a resource property").At(chk.diag(fld)),
+					t.Name(), fld.Name())
 			}
 			if opts.Replaces && !isres {
 				ok = false
 				cmdutil.Sink().Errorf(
-					diag.Message("field %v.%v is marked `replaces` but is not a resource property",
-						t.Name(), fld.Name()).At(chk.diag(fld)))
+					diag.Message("field %v.%v is marked `replaces` but is not a resource property").At(chk.diag(fld)),
+					t.Name(), fld.Name())
 			}
 			if _, isptr := fld.Type().(*types.Pointer); !isptr && opts.Optional {
 				ok = false
 				cmdutil.Sink().Errorf(
-					diag.Message("field %v.%v is marked `optional` but is not a pointer in the IDL",
-						t.Name(), fld.Name()).At(chk.diag(fld)))
+					diag.Message("field %v.%v is marked `optional` but is not a pointer in the IDL").At(chk.diag(fld)),
+					t.Name(), fld.Name())
 			}
 			if err := chk.CheckIDLType(fld.Type(), opts); err != nil {
 				ok = false
 				cmdutil.Sink().Errorf(
-					diag.Message("field %v.%v is an not a legal IDL type: %v",
-						t.Name(), fld.Name(), err).At(chk.diag(fld)))
+					diag.Message("field %v.%v is an not a legal IDL type: %v").At(chk.diag(fld)),
+					t.Name(), fld.Name(), err)
 			}
 		}
 	}
@@ -358,7 +360,7 @@ func (chk *Checker) CheckIDLType(t types.Type, opts PropertyOptions) error {
 		}
 	case *types.Pointer:
 		// A pointer is OK so long as the field is either optional or an entity type (asset, resource, etc).
-		if !opts.Optional {
+		if !opts.Optional && !opts.In && !opts.Out {
 			elem := ft.Elem()
 			var ok bool
 			if named, isnamed := elem.(*types.Named); isnamed {

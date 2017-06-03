@@ -47,7 +47,7 @@ func newEnvLsCmd() *cobra.Command {
 			}
 
 			// Create a new context to share amongst all of the loads.
-			ctx := resource.NewContext(cmdutil.Sink())
+			ctx := resource.NewContext(cmdutil.Sink(), nil)
 			defer ctx.Close()
 
 			fmt.Printf("%-20s %-48s %-12s\n", "NAME", "LAST DEPLOYMENT", "RESOURCE COUNT")

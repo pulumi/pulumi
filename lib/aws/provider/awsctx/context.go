@@ -26,13 +26,21 @@ import (
 	"github.com/aws/aws-sdk-go/service/iam"
 	"github.com/aws/aws-sdk-go/service/lambda"
 	"github.com/aws/aws-sdk-go/service/s3"
+	"github.com/golang/glog"
 	"github.com/pulumi/lumi/pkg/util/contract"
+
+	"github.com/pulumi/lumi/lib/aws/provider/arn"
 )
 
 // Context represents state shared amongst all parties in this process.  In particular, it wraps an AWS session
 // object and offers convenient wrappers for creating connections to the various sub-services (EC2, S3, etc).
 type Context struct {
-	sess             *session.Session
+	sess *session.Session // a global session object, shared amongst all service connections.
+
+	accountID   string // the currently authenticated account's ID.
+	accountRole string // the currently authenticated account's IAM role.
+
+	// per-service connections (lazily allocated and reused);
 	apigateway       *apigateway.APIGateway
 	dynamodb         *dynamodb.DynamoDB
 	ec2              *ec2.EC2
@@ -44,6 +52,7 @@ type Context struct {
 
 func New() (*Context, error) {
 	// Create an AWS session; note that this is safe to share among many operations.
+	glog.V(5).Infof("Creating a new AWS session object w/ default credentials")
 	// TODO: consider verifying credentials, region, etc. here.
 	// TODO: currently we just inherit the standard AWS SDK credentials logic; eventually we will want more
 	//     flexibility, I assume, including possibly reading from configuration dynamically.
@@ -53,11 +62,35 @@ func New() (*Context, error) {
 	}
 	contract.Assert(sess != nil)
 
-	// Allocate a new global context with this session; note that all other connections are lazily allocated.
-	return &Context{
-		sess: sess,
-	}, nil
+	// Allocate the context early since we are about to use it to access the IAM service.  Its usage is inherently
+	// limited until we have finished construction (in other words, completion of the present function).
+	ctx := &Context{sess: sess}
+
+	// Query the IAM service to fetch the IAM user and role information.
+	glog.V(5).Infof("Querying AWS IAM service for profile metadata")
+	iaminfo, err := ctx.IAM().GetUser(nil)
+	if err != nil {
+		return nil, err
+	}
+	contract.Assert(iaminfo != nil)
+	contract.Assert(iaminfo.User != nil)
+	contract.Assert(iaminfo.User.Arn != nil)
+	userARN := arn.ARN(*iaminfo.User.Arn)
+
+	// Parse and store the ARN information on the context for convenient access.
+	parsedARN, err := userARN.Parse()
+	if err != nil {
+		return nil, err
+	}
+	ctx.accountID = parsedARN.AccountID
+	ctx.accountRole = parsedARN.Resource
+	glog.V(7).Infof("AWS IAM profile ARN received: %v (id=%v role=%v)", userARN, ctx.accountID, ctx.accountRole)
+
+	return ctx, nil
 }
+
+func (ctx *Context) AccountID() string { return ctx.accountID }
+func (ctx *Context) Region() string    { return *ctx.sess.Config.Region }
 
 func (ctx *Context) APIGateway() *apigateway.APIGateway {
 	contract.Assert(ctx.sess != nil)

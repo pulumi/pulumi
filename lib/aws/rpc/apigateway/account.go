@@ -68,10 +68,13 @@ func (p *AccountProvider) Name(
     if decerr != nil {
         return nil, decerr
     }
-    if obj.Name == "" {
+    if obj.Name == nil || *obj.Name == "" {
+        if req.Unknowns[Account_Name] {
+            return nil, errors.New("Name property cannot be computed from unknown outputs")
+        }
         return nil, errors.New("Name property cannot be empty")
     }
-    return &lumirpc.NameResponse{Name: obj.Name}, nil
+    return &lumirpc.NameResponse{Name: *obj.Name}, nil
 }
 
 func (p *AccountProvider) Create(
@@ -85,9 +88,7 @@ func (p *AccountProvider) Create(
     if err != nil {
         return nil, err
     }
-    return &lumirpc.CreateResponse{
-        Id:   string(id),
-    }, nil
+    return &lumirpc.CreateResponse{Id: string(id)}, nil
 }
 
 func (p *AccountProvider) Get(
@@ -105,7 +106,7 @@ func (p *AccountProvider) Get(
 }
 
 func (p *AccountProvider) InspectChange(
-    ctx context.Context, req *lumirpc.ChangeRequest) (*lumirpc.InspectChangeResponse, error) {
+    ctx context.Context, req *lumirpc.InspectChangeRequest) (*lumirpc.InspectChangeResponse, error) {
     contract.Assert(req.GetType() == string(AccountToken))
     id := resource.ID(req.GetId())
     old, oldprops, decerr := p.Unmarshal(req.GetOlds())
@@ -133,7 +134,7 @@ func (p *AccountProvider) InspectChange(
 }
 
 func (p *AccountProvider) Update(
-    ctx context.Context, req *lumirpc.ChangeRequest) (*pbempty.Empty, error) {
+    ctx context.Context, req *lumirpc.UpdateRequest) (*pbempty.Empty, error) {
     contract.Assert(req.GetType() == string(AccountToken))
     id := resource.ID(req.GetId())
     old, oldprops, err := p.Unmarshal(req.GetOlds())
@@ -164,7 +165,7 @@ func (p *AccountProvider) Delete(
 func (p *AccountProvider) Unmarshal(
     v *pbstruct.Struct) (*Account, resource.PropertyMap, mapper.DecodeError) {
     var obj Account
-    props := resource.UnmarshalProperties(v)
+    props := resource.UnmarshalProperties(nil, v, resource.MarshalOptions{RawResources: true})
     result := mapper.MapIU(props.Mappable(), &obj)
     return &obj, props, result
 }
@@ -173,7 +174,7 @@ func (p *AccountProvider) Unmarshal(
 
 // Account is a marshalable representation of its corresponding IDL type.
 type Account struct {
-    Name string `json:"name"`
+    Name *string `json:"name,omitempty"`
     CloudWatchRole *resource.ID `json:"cloudWatchRole,omitempty"`
 }
 

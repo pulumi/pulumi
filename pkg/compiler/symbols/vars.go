@@ -26,6 +26,7 @@ type Variable interface {
 	Symbol
 	Type() Type
 	Default() *interface{}
+	Latent() bool
 	Readonly() bool
 	VarNode() ast.Variable
 }
@@ -52,6 +53,7 @@ func (node *LocalVariable) Readonly() bool {
 }
 func (node *LocalVariable) Type() Type            { return node.Ty }
 func (node *LocalVariable) Default() *interface{} { return nil }
+func (node *LocalVariable) Latent() bool          { return false }
 func (node *LocalVariable) VarNode() ast.Variable { return node.Node }
 func (node *LocalVariable) String() string        { return string(node.Token()) }
 

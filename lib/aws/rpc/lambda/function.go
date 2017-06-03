@@ -39,7 +39,7 @@ const FunctionToken = tokens.Type("aws:lambda/function:Function")
 // FunctionProviderOps is a pluggable interface for Function-related management functionality.
 type FunctionProviderOps interface {
     Check(ctx context.Context, obj *Function) ([]mapper.FieldError, error)
-    Create(ctx context.Context, obj *Function) (resource.ID, *FunctionOuts, error)
+    Create(ctx context.Context, obj *Function) (resource.ID, error)
     Get(ctx context.Context, id resource.ID) (*Function, error)
     InspectChange(ctx context.Context,
         id resource.ID, old *Function, new *Function, diff *resource.ObjectDiff) ([]string, error)
@@ -82,10 +82,13 @@ func (p *FunctionProvider) Name(
     if decerr != nil {
         return nil, decerr
     }
-    if obj.Name == "" {
+    if obj.Name == nil || *obj.Name == "" {
+        if req.Unknowns[Function_Name] {
+            return nil, errors.New("Name property cannot be computed from unknown outputs")
+        }
         return nil, errors.New("Name property cannot be empty")
     }
-    return &lumirpc.NameResponse{Name: obj.Name}, nil
+    return &lumirpc.NameResponse{Name: *obj.Name}, nil
 }
 
 func (p *FunctionProvider) Create(
@@ -95,16 +98,11 @@ func (p *FunctionProvider) Create(
     if decerr != nil {
         return nil, decerr
     }
-    id, outs, err := p.ops.Create(ctx, obj)
+    id, err := p.ops.Create(ctx, obj)
     if err != nil {
         return nil, err
     }
-    return &lumirpc.CreateResponse{
-        Id:   string(id),
-        Outputs: resource.MarshalProperties(
-            nil, resource.NewPropertyMap(outs), resource.MarshalOptions{},
-        ),
-    }, nil
+    return &lumirpc.CreateResponse{Id: string(id)}, nil
 }
 
 func (p *FunctionProvider) Get(
@@ -122,7 +120,7 @@ func (p *FunctionProvider) Get(
 }
 
 func (p *FunctionProvider) InspectChange(
-    ctx context.Context, req *lumirpc.ChangeRequest) (*lumirpc.InspectChangeResponse, error) {
+    ctx context.Context, req *lumirpc.InspectChangeRequest) (*lumirpc.InspectChangeResponse, error) {
     contract.Assert(req.GetType() == string(FunctionToken))
     id := resource.ID(req.GetId())
     old, oldprops, decerr := p.Unmarshal(req.GetOlds())
@@ -150,7 +148,7 @@ func (p *FunctionProvider) InspectChange(
 }
 
 func (p *FunctionProvider) Update(
-    ctx context.Context, req *lumirpc.ChangeRequest) (*pbempty.Empty, error) {
+    ctx context.Context, req *lumirpc.UpdateRequest) (*pbempty.Empty, error) {
     contract.Assert(req.GetType() == string(FunctionToken))
     id := resource.ID(req.GetId())
     old, oldprops, err := p.Unmarshal(req.GetOlds())
@@ -181,7 +179,7 @@ func (p *FunctionProvider) Delete(
 func (p *FunctionProvider) Unmarshal(
     v *pbstruct.Struct) (*Function, resource.PropertyMap, mapper.DecodeError) {
     var obj Function
-    props := resource.UnmarshalProperties(v)
+    props := resource.UnmarshalProperties(nil, v, resource.MarshalOptions{RawResources: true})
     result := mapper.MapIU(props.Mappable(), &obj)
     return &obj, props, result
 }
@@ -190,7 +188,7 @@ func (p *FunctionProvider) Unmarshal(
 
 // Function is a marshalable representation of its corresponding IDL type.
 type Function struct {
-    Name string `json:"name"`
+    Name *string `json:"name,omitempty"`
     Code resource.Archive `json:"code"`
     Handler string `json:"handler"`
     Role resource.ID `json:"role"`
@@ -204,11 +202,9 @@ type Function struct {
     Timeout *float64 `json:"timeout,omitempty"`
     VPCConfig *VPCConfig `json:"vpcConfig,omitempty"`
     ARN __aws.ARN `json:"arn,omitempty"`
-}
-
-// FunctionOuts is a marshalable representation of its IDL type's output properties.
-type FunctionOuts struct {
-    ARN __aws.ARN `json:"arn"`
+    Version string `json:"version,omitempty"`
+    CodeSHA256 string `json:"codeSHA256,omitempty"`
+    LastModified string `json:"lastModified,omitempty"`
 }
 
 // Function's properties have constants to make dealing with diffs and property bags easier.
@@ -227,6 +223,9 @@ const (
     Function_Timeout = "timeout"
     Function_VPCConfig = "vpcConfig"
     Function_ARN = "arn"
+    Function_Version = "version"
+    Function_CodeSHA256 = "codeSHA256"
+    Function_LastModified = "lastModified"
 )
 
 /* Marshalable VPCConfig structure(s) */

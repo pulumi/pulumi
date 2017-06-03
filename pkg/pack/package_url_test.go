@@ -24,6 +24,8 @@ import (
 )
 
 func TestPackageURLStringParse(t *testing.T) {
+	t.Parallel()
+
 	{
 		s := "*"
 		pkg := tokens.PackageName("simple")

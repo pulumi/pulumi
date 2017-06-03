@@ -17,6 +17,7 @@ package mapper
 
 import (
 	"encoding"
+	"encoding/json"
 	"fmt"
 	"reflect"
 	"strings"
@@ -27,8 +28,12 @@ import (
 )
 
 type Mapper interface {
+	// Decode decodes a JSON-like object into the target pointer to a structure.
 	Decode(tree Object, target interface{}) DecodeError
+	// DecodeField decodes a single JSON-like value (with a given type and name) into a target pointer to a structure.
 	DecodeField(tree Object, ty reflect.Type, key string, target interface{}, optional bool) FieldError
+	// Encode encodes an object into a JSON-like in-memory object.
+	Encode(obj interface{}) Object
 }
 
 func New(opts *Opts) Mapper {
@@ -306,7 +311,7 @@ func (md *mapper) adjustValue(val reflect.Value,
 			} else {
 				return val, NewFieldErr(ty, key,
 					errors.Errorf(
-						"Cannot decode Object to type %v; it isn't a struct, and no custom decoder exists", to))
+						"Cannot decode Object{} to type %v; it isn't a struct, and no custom decoder exists", to))
 			}
 		} else if val.Type().Kind() == reflect.String {
 			// If the source is a string, see if the target implements encoding.TextUnmarshaler.
@@ -327,9 +332,23 @@ func (md *mapper) adjustValue(val reflect.Value,
 	return val, nil
 }
 
+func (md *mapper) Encode(obj interface{}) Object {
+	// TODO[pulumi/lumi#183]: implement this more efficiently.
+	data, err := json.Marshal(obj)
+	contract.Assert(err == nil)
+	var result Object
+	err = json.Unmarshal(data, &result)
+	return result
+}
+
 // Map decodes an entire map into a target object, using an anonymous decoder and tag-directed mappings.
 func Map(tree Object, target interface{}) DecodeError {
 	return New(nil).Decode(tree, target)
+}
+
+// Unmap translates an already mapped target object into a raw, unmapped form.
+func Unmap(obj interface{}) Object {
+	return New(nil).Encode(obj)
 }
 
 // MapI decodes an entire map into a target object, using an anonymous decoder and tag-directed mappings.  This variant

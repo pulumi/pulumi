@@ -46,6 +46,8 @@ func testCompile(paths ...string) *testutil.TestDiagSink {
 }
 
 func TestBadMissingProject(t *testing.T) {
+	t.Parallel()
+
 	sink := testCompile("testdata", "bad__missing_lumifile")
 
 	// Check that the compiler complained about a missing Project.
@@ -58,6 +60,8 @@ func TestBadMissingProject(t *testing.T) {
 }
 
 func TestBadProjectCasing(t *testing.T) {
+	t.Parallel()
+
 	sink := testCompile("testdata", "bad__lumifile_casing")
 
 	// Check that the compiler warned about a bad Project casing (lumi.yaml).
@@ -70,6 +74,8 @@ func TestBadProjectCasing(t *testing.T) {
 }
 
 func TestBadProjectExt(t *testing.T) {
+	t.Parallel()
+
 	sink := testCompile("testdata", "bad__lumifile_ext")
 
 	// Check that the compiler warned about a bad Project extension (none).
@@ -83,6 +89,8 @@ func TestBadProjectExt(t *testing.T) {
 }
 
 func TestBadProjectExt2(t *testing.T) {
+	t.Parallel()
+
 	sink := testCompile("testdata", "bad__lumifile_ext_2")
 
 	// Check that the compiler warned about a bad Project extension (".txt").
@@ -96,6 +104,8 @@ func TestBadProjectExt2(t *testing.T) {
 }
 
 func TestBadMissingPackageName(t *testing.T) {
+	t.Parallel()
+
 	sink := testCompile("testdata", "bad__missing_package_name")
 
 	// Check that the compiler complained about a missing package name.
@@ -110,6 +120,8 @@ func TestBadMissingPackageName(t *testing.T) {
 }
 
 func TestBadEmptyPackageName(t *testing.T) {
+	t.Parallel()
+
 	sink := testCompile("testdata", "bad__empty_package_name")
 
 	// Check that the compiler complained about a missing package name.
@@ -124,6 +136,8 @@ func TestBadEmptyPackageName(t *testing.T) {
 }
 
 func TestBadEmptyPackageName2(t *testing.T) {
+	t.Parallel()
+
 	sink := testCompile("testdata", "bad__empty_package_name_2")
 
 	// Check that the compiler complained about a missing package name.

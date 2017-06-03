@@ -22,12 +22,13 @@ import (
 
 	"github.com/aws/aws-sdk-go/aws"
 	awselasticbeanstalk "github.com/aws/aws-sdk-go/service/elasticbeanstalk"
-	"github.com/pkg/errors"
 	"github.com/pulumi/lumi/pkg/resource"
+	"github.com/pulumi/lumi/pkg/util/contract"
 	"github.com/pulumi/lumi/pkg/util/mapper"
 	"github.com/pulumi/lumi/sdk/go/pkg/lumirpc"
 	"golang.org/x/net/context"
 
+	"github.com/pulumi/lumi/lib/aws/provider/arn"
 	"github.com/pulumi/lumi/lib/aws/provider/awsctx"
 	"github.com/pulumi/lumi/lib/aws/rpc/elasticbeanstalk"
 )
@@ -52,7 +53,8 @@ type applicationProvider struct {
 }
 
 // Check validates that the given property bag is valid for a resource of the given type.
-func (p *applicationProvider) Check(ctx context.Context, obj *elasticbeanstalk.Application) ([]mapper.FieldError, error) {
+func (p *applicationProvider) Check(ctx context.Context,
+	obj *elasticbeanstalk.Application) ([]mapper.FieldError, error) {
 	var failures []mapper.FieldError
 	if name := obj.ApplicationName; name != nil {
 		if len(*name) < minApplicationName {
@@ -80,13 +82,11 @@ func (p *applicationProvider) Check(ctx context.Context, obj *elasticbeanstalk.A
 // must be blank.)  If this call fails, the resource must not have been created (i.e., it is "transacational").
 func (p *applicationProvider) Create(ctx context.Context, obj *elasticbeanstalk.Application) (resource.ID, error) {
 	// If an explicit name is given, use it.  Otherwise, auto-generate a name in part based on the resource name.
-	// TODO: use the URN, not just the name, to enhance global uniqueness.
-	// TODO: even for explicit names, we should consider mangling it somehow, to reduce multi-instancing conflicts.
 	var name string
 	if obj.ApplicationName != nil {
 		name = *obj.ApplicationName
 	} else {
-		name = resource.NewUniqueHex(obj.Name+"-", maxApplicationName, sha1.Size)
+		name = resource.NewUniqueHex(*obj.Name+"-", maxApplicationName, sha1.Size)
 	}
 	fmt.Printf("Creating ElasticBeanstalk Application '%v' with name '%v'\n", obj.Name, name)
 	create := &awselasticbeanstalk.CreateApplicationInput{
@@ -97,12 +97,30 @@ func (p *applicationProvider) Create(ctx context.Context, obj *elasticbeanstalk.
 	if err != nil {
 		return "", err
 	}
-	return resource.ID(name), nil
+	return arn.NewElasticBeanstalkApplicationID(p.ctx.Region(), p.ctx.AccountID(), name), nil
 }
 
-// Read reads the instance state identified by ID, returning a populated resource object, or an error if not found.
+// Get reads the instance state identified by ID, returning a populated resource object, or an error if not found.
 func (p *applicationProvider) Get(ctx context.Context, id resource.ID) (*elasticbeanstalk.Application, error) {
-	return nil, errors.New("Not yet implemented")
+	name, err := arn.ParseResourceName(id)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := p.ctx.ElasticBeanstalk().DescribeApplications(&awselasticbeanstalk.DescribeApplicationsInput{
+		ApplicationNames: []*string{aws.String(name)},
+	})
+	if err != nil {
+		return nil, err
+	} else if len(resp.Applications) == 0 {
+		return nil, nil
+	}
+	contract.Assert(len(resp.Applications) == 1)
+	app := resp.Applications[0]
+	contract.Assert(aws.StringValue(app.ApplicationName) == name)
+	return &elasticbeanstalk.Application{
+		ApplicationName: app.ApplicationName,
+		Description:     app.Description,
+	}, nil
 }
 
 // InspectChange checks what impacts a hypothetical update will have on the resource's properties.
@@ -115,6 +133,10 @@ func (p *applicationProvider) InspectChange(ctx context.Context, id resource.ID,
 // to new values.  The resource ID is returned and may be different if the resource had to be recreated.
 func (p *applicationProvider) Update(ctx context.Context, id resource.ID,
 	old *elasticbeanstalk.Application, new *elasticbeanstalk.Application, diff *resource.ObjectDiff) error {
+	name, err := arn.ParseResourceName(id)
+	if err != nil {
+		return err
+	}
 	if new.Description != old.Description {
 		description := new.Description
 		if description == nil {
@@ -123,7 +145,7 @@ func (p *applicationProvider) Update(ctx context.Context, id resource.ID,
 			description = aws.String("")
 		}
 		_, err := p.ctx.ElasticBeanstalk().UpdateApplication(&awselasticbeanstalk.UpdateApplicationInput{
-			ApplicationName: id.StringPtr(),
+			ApplicationName: aws.String(name),
 			Description:     description,
 		})
 		return err
@@ -134,13 +156,17 @@ func (p *applicationProvider) Update(ctx context.Context, id resource.ID,
 // Delete tears down an existing resource with the given ID.  If it fails, the resource is assumed to still exist.
 func (p *applicationProvider) Delete(ctx context.Context, id resource.ID) error {
 	fmt.Printf("Deleting ElasticBeanstalk Application '%v'\n", id)
+	name, err := arn.ParseResourceName(id)
+	if err != nil {
+		return err
+	}
 	if _, err := p.ctx.ElasticBeanstalk().DeleteApplication(&awselasticbeanstalk.DeleteApplicationInput{
-		ApplicationName: id.StringPtr(),
+		ApplicationName: aws.String(name),
 	}); err != nil {
 		return err
 	}
 	succ, err := awsctx.RetryUntilLong(p.ctx, func() (bool, error) {
-		resp, err := p.getApplication(id.StringPtr())
+		resp, err := p.getApplication(name)
 		if err != nil {
 			return false, err
 		}
@@ -158,9 +184,9 @@ func (p *applicationProvider) Delete(ctx context.Context, id resource.ID) error 
 	return nil
 }
 
-func (p *applicationProvider) getApplication(name *string) (*awselasticbeanstalk.ApplicationDescription, error) {
+func (p *applicationProvider) getApplication(name string) (*awselasticbeanstalk.ApplicationDescription, error) {
 	resp, err := p.ctx.ElasticBeanstalk().DescribeApplications(&awselasticbeanstalk.DescribeApplicationsInput{
-		ApplicationNames: []*string{name},
+		ApplicationNames: []*string{aws.String(name)},
 	})
 	if err != nil {
 		return nil, err

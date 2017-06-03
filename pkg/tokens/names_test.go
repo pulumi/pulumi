@@ -22,6 +22,8 @@ import (
 )
 
 func TestIsAsName(t *testing.T) {
+	t.Parallel()
+
 	var goodNames = []string{
 		"simple",  // all alpha.
 		"SiMplE",  // mixed-case alpha.
@@ -62,6 +64,7 @@ func TestIsAsName(t *testing.T) {
 }
 
 func TestNameSimple(t *testing.T) {
+	t.Parallel()
 	assert.Equal(t, "simple", string(AsName("simple")))
 	assert.Equal(t, "complex", string(AsQName("namespace/complex").Name()))
 	assert.Equal(t, "complex", string(AsQName("ns1/ns2/ns3/ns4/complex").Name()))
@@ -69,6 +72,7 @@ func TestNameSimple(t *testing.T) {
 }
 
 func TestNameNamespace(t *testing.T) {
+	t.Parallel()
 	assert.Equal(t, "namespace", string(AsQName("namespace/complex").Namespace()))
 	assert.Equal(t, "ns1/ns2/ns3/ns4", string(AsQName("ns1/ns2/ns3/ns4/complex").Namespace()))
 	assert.Equal(t, "_/_/_/_/a0", string(AsQName("_/_/_/_/a0/c0Mpl3x_").Namespace()))

@@ -17,18 +17,20 @@ package dynamodb
 
 import (
 	"crypto/sha1"
-	"errors"
 	"fmt"
 	"reflect"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	awsdynamodb "github.com/aws/aws-sdk-go/service/dynamodb"
+	"github.com/pkg/errors"
 	"github.com/pulumi/lumi/pkg/resource"
+	"github.com/pulumi/lumi/pkg/util/contract"
 	"github.com/pulumi/lumi/pkg/util/mapper"
 	"github.com/pulumi/lumi/sdk/go/pkg/lumirpc"
 	"golang.org/x/net/context"
 
+	"github.com/pulumi/lumi/lib/aws/provider/arn"
 	"github.com/pulumi/lumi/lib/aws/provider/awsctx"
 	"github.com/pulumi/lumi/lib/aws/rpc/dynamodb"
 )
@@ -44,6 +46,16 @@ const (
 	minReadCapacity           = 1
 	minWriteCapacity          = 1
 	maxGlobalSecondaryIndexes = 5
+)
+
+const (
+	// hashKeyAttribute is a partition key, also known as its hash attribute.  The term "hash attribute" derives from
+	// DynamoDB's usage of an internal hash function to evenly distribute data items across partitions based on their
+	// partition key values.
+	hashKeyAttribute = "HASH"
+	// rangeKeyType is a sort key, also known as its range attribute.  The term "range attribute" derives from the way
+	// DynamoDB stores items with the same partition key physically close together, sorted by the sort key value.
+	rangeKeyAttribute = "RANGE"
 )
 
 // NewTableProvider creates a provider that handles DynamoDB Table operations.
@@ -145,13 +157,11 @@ func (p *tableProvider) Check(ctx context.Context, obj *dynamodb.Table) ([]mappe
 // must be blank.)  If this call fails, the resource must not have been created (i.e., it is "transacational").
 func (p *tableProvider) Create(ctx context.Context, obj *dynamodb.Table) (resource.ID, error) {
 	// If an explicit name is given, use it.  Otherwise, auto-generate a name in part based on the resource name.
-	// TODO: use the URN, not just the name, to enhance global uniqueness.
-	// TODO: even for explicit names, we should consider mangling it somehow, to reduce multi-instancing conflicts.
-	var id resource.ID
+	var name string
 	if obj.TableName != nil {
-		id = resource.ID(*obj.TableName)
+		name = *obj.TableName
 	} else {
-		id = resource.NewUniqueHexID(obj.Name+"-", maxTableName, sha1.Size)
+		name = resource.NewUniqueHex(*obj.Name+"-", maxTableName, sha1.Size)
 	}
 
 	var attributeDefinitions []*awsdynamodb.AttributeDefinition
@@ -162,21 +172,21 @@ func (p *tableProvider) Create(ctx context.Context, obj *dynamodb.Table) (resour
 		})
 	}
 
-	fmt.Printf("Creating DynamoDB Table '%v' with name '%v'\n", obj.Name, id)
+	fmt.Printf("Creating DynamoDB Table '%v' with name '%v'\n", obj.Name, name)
 	keySchema := []*awsdynamodb.KeySchemaElement{
 		{
 			AttributeName: aws.String(obj.HashKey),
-			KeyType:       aws.String("HASH"),
+			KeyType:       aws.String(hashKeyAttribute),
 		},
 	}
 	if obj.RangeKey != nil {
 		keySchema = append(keySchema, &awsdynamodb.KeySchemaElement{
 			AttributeName: obj.RangeKey,
-			KeyType:       aws.String("RANGE"),
+			KeyType:       aws.String(rangeKeyAttribute),
 		})
 	}
 	create := &awsdynamodb.CreateTableInput{
-		TableName:            id.StringPtr(),
+		TableName:            aws.String(name),
 		AttributeDefinitions: attributeDefinitions,
 		KeySchema:            keySchema,
 		ProvisionedThroughput: &awsdynamodb.ProvisionedThroughput{
@@ -190,13 +200,13 @@ func (p *tableProvider) Create(ctx context.Context, obj *dynamodb.Table) (resour
 			keySchema := []*awsdynamodb.KeySchemaElement{
 				{
 					AttributeName: aws.String(gsi.HashKey),
-					KeyType:       aws.String("HASH"),
+					KeyType:       aws.String(hashKeyAttribute),
 				},
 			}
 			if gsi.RangeKey != nil {
 				keySchema = append(keySchema, &awsdynamodb.KeySchemaElement{
 					AttributeName: gsi.RangeKey,
-					KeyType:       aws.String("RANGE"),
+					KeyType:       aws.String(rangeKeyAttribute),
 				})
 			}
 			gsis = append(gsis, &awsdynamodb.GlobalSecondaryIndex{
@@ -216,21 +226,101 @@ func (p *tableProvider) Create(ctx context.Context, obj *dynamodb.Table) (resour
 	}
 
 	// Now go ahead and perform the action.
-	if _, err := p.ctx.DynamoDB().CreateTable(create); err != nil {
+	var arn string
+	if resp, err := p.ctx.DynamoDB().CreateTable(create); err != nil {
 		return "", err
+	} else if resp == nil || resp.TableDescription == nil || resp.TableDescription.TableArn == nil {
+		return "", errors.New("DynamoDB table created, but AWS did not return an ARN for it")
+	} else {
+		arn = *resp.TableDescription.TableArn
 	}
 
 	// Wait for the table to be ready and then return the ID (just its name).
-	fmt.Printf("DynamoDB Table created: %v; waiting for it to become active\n", id)
-	if err := p.waitForTableState(id, true); err != nil {
+	fmt.Printf("DynamoDB Table created: %v; waiting for it to become active\n", name)
+	if err := p.waitForTableState(name, true); err != nil {
 		return "", err
 	}
-	return id, nil
+	return resource.ID(arn), nil
 }
 
 // Get reads the instance state identified by ID, returning a populated resource object, or an error if not found.
 func (p *tableProvider) Get(ctx context.Context, id resource.ID) (*dynamodb.Table, error) {
-	return nil, errors.New("Not yet implemented")
+	name, err := arn.ParseResourceName(id)
+	if err != nil {
+		if awsctx.IsAWSError(err, "ResourceNotFoundException") {
+			return nil, nil
+		}
+		return nil, err
+	}
+	resp, err := p.ctx.DynamoDB().DescribeTable(&awsdynamodb.DescribeTableInput{TableName: aws.String(name)})
+	if err != nil {
+		return nil, err
+	} else if resp == nil || resp.Table == nil {
+		return nil, errors.New("DynamoDB query returned an empty response or table")
+	}
+
+	// The object was found, we need to reverse map a bunch of properties into the structure form.
+	tab := resp.Table
+
+	var attributes []dynamodb.Attribute
+	for _, attr := range tab.AttributeDefinitions {
+		attributes = append(attributes, dynamodb.Attribute{
+			Name: aws.StringValue(attr.AttributeName),
+			Type: dynamodb.AttributeType(aws.StringValue(attr.AttributeType)),
+		})
+	}
+
+	hashKey, rangeKey := getHashRangeKeys(tab.KeySchema)
+	if hashKey == nil {
+		return nil, errors.New("Missing hash key in table schema")
+	}
+
+	var gsis *[]dynamodb.GlobalSecondaryIndex
+	if len(tab.GlobalSecondaryIndexes) > 0 {
+		var gis []dynamodb.GlobalSecondaryIndex
+		for _, gsid := range tab.GlobalSecondaryIndexes {
+			hk, rk := getHashRangeKeys(gsid.KeySchema)
+			if hk == nil {
+				return nil, errors.New("Missing hash key in table global secondary index")
+			}
+			gis = append(gis, dynamodb.GlobalSecondaryIndex{
+				IndexName:        aws.StringValue(gsid.IndexName),
+				HashKey:          *hk,
+				ReadCapacity:     float64(aws.Int64Value(gsid.ProvisionedThroughput.ReadCapacityUnits)),
+				WriteCapacity:    float64(aws.Int64Value(gsid.ProvisionedThroughput.WriteCapacityUnits)),
+				RangeKey:         rk,
+				NonKeyAttributes: aws.StringValueSlice(gsid.Projection.NonKeyAttributes),
+				ProjectionType:   dynamodb.ProjectionType(*gsid.Projection.ProjectionType),
+			})
+		}
+		gsis = &gis
+	}
+
+	return &dynamodb.Table{
+		HashKey:                *hashKey,
+		Attributes:             attributes,
+		ReadCapacity:           float64(aws.Int64Value(tab.ProvisionedThroughput.ReadCapacityUnits)),
+		WriteCapacity:          float64(aws.Int64Value(tab.ProvisionedThroughput.WriteCapacityUnits)),
+		RangeKey:               rangeKey,
+		TableName:              tab.TableName,
+		GlobalSecondaryIndexes: gsis,
+	}, nil
+}
+
+func getHashRangeKeys(schema []*awsdynamodb.KeySchemaElement) (*string, *string) {
+	var hashKey *string
+	var rangeKey *string
+	for _, elem := range schema {
+		switch aws.StringValue(elem.KeyType) {
+		case hashKeyAttribute:
+			hashKey = elem.AttributeName
+		case rangeKeyAttribute:
+			rangeKey = elem.AttributeName
+		default:
+			contract.Failf("Unexpected key schema attribute type: %v", *elem.KeyType)
+		}
+	}
+	return hashKey, rangeKey
 }
 
 // InspectChange checks what impacts a hypothetical update will have on the resource's properties.
@@ -243,6 +333,10 @@ func (p *tableProvider) InspectChange(ctx context.Context, id resource.ID,
 // to new values.  The resource ID is returned and may be different if the resource had to be recreated.
 func (p *tableProvider) Update(ctx context.Context, id resource.ID,
 	old *dynamodb.Table, new *dynamodb.Table, diff *resource.ObjectDiff) error {
+	name, err := arn.ParseResourceName(id)
+	if err != nil {
+		return err
+	}
 
 	// Note: Changing dynamodb.Table_Attributes alone does not trigger an update on the resource, it must be changed
 	// along with using the new attributes in an index.  The latter will process the update.
@@ -261,15 +355,15 @@ func (p *tableProvider) Update(ctx context.Context, id resource.ID,
 
 	// First modify provisioned throughput if needed.
 	if diff.Changed(dynamodb.Table_ReadCapacity) || diff.Changed(dynamodb.Table_WriteCapacity) {
-		fmt.Printf("Updating provisioned capacity for DynamoDB Table %v\n", id.String())
+		fmt.Printf("Updating provisioned capacity for DynamoDB Table %v\n", aws.String(name))
 		update := &awsdynamodb.UpdateTableInput{
-			TableName: id.StringPtr(),
+			TableName: aws.String(name),
 			ProvisionedThroughput: &awsdynamodb.ProvisionedThroughput{
 				ReadCapacityUnits:  aws.Int64(int64(new.ReadCapacity)),
 				WriteCapacityUnits: aws.Int64(int64(new.WriteCapacity)),
 			},
 		}
-		if err := p.updateTable(id, update); err != nil {
+		if err := p.updateTable(name, update); err != nil {
 			return err
 		}
 	}
@@ -282,17 +376,17 @@ func (p *tableProvider) Update(ctx context.Context, id resource.ID,
 		// First, add any new indexes
 		for _, o := range d.Adds() {
 			gsi := o.(globalSecondaryIndexHash).item
-			fmt.Printf("Adding new global secondary index %v for DynamoDB Table %v\n", gsi.IndexName, id.String())
+			fmt.Printf("Adding new global secondary index %v for DynamoDB Table %v\n", gsi.IndexName, name)
 			keySchema := []*awsdynamodb.KeySchemaElement{
 				{
 					AttributeName: aws.String(gsi.HashKey),
-					KeyType:       aws.String("HASH"),
+					KeyType:       aws.String(hashKeyAttribute),
 				},
 			}
 			if gsi.RangeKey != nil {
 				keySchema = append(keySchema, &awsdynamodb.KeySchemaElement{
 					AttributeName: gsi.RangeKey,
-					KeyType:       aws.String("RANGE"),
+					KeyType:       aws.String(rangeKeyAttribute),
 				})
 			}
 			var attributeDefinitions []*awsdynamodb.AttributeDefinition
@@ -303,7 +397,7 @@ func (p *tableProvider) Update(ctx context.Context, id resource.ID,
 				})
 			}
 			update := &awsdynamodb.UpdateTableInput{
-				TableName:            aws.String(id.String()),
+				TableName:            aws.String(name),
 				AttributeDefinitions: attributeDefinitions,
 				GlobalSecondaryIndexUpdates: []*awsdynamodb.GlobalSecondaryIndexUpdate{
 					{
@@ -322,16 +416,16 @@ func (p *tableProvider) Update(ctx context.Context, id resource.ID,
 					},
 				},
 			}
-			if err := p.updateTable(id, update); err != nil {
+			if err := p.updateTable(name, update); err != nil {
 				return err
 			}
 		}
 		// Next, modify provisioned throughput on any updated indexes
 		for _, o := range d.Updates() {
 			gsi := o.(globalSecondaryIndexHash).item
-			fmt.Printf("Updating capacity for global secondary index %v for DynamoDB Table %v\n", gsi.IndexName, id.String())
+			fmt.Printf("Updating capacity for global secondary index %v for DynamoDB Table %v\n", gsi.IndexName, name)
 			update := &awsdynamodb.UpdateTableInput{
-				TableName: aws.String(id.String()),
+				TableName: aws.String(name),
 				GlobalSecondaryIndexUpdates: []*awsdynamodb.GlobalSecondaryIndexUpdate{
 					{
 						Update: &awsdynamodb.UpdateGlobalSecondaryIndexAction{
@@ -344,16 +438,16 @@ func (p *tableProvider) Update(ctx context.Context, id resource.ID,
 					},
 				},
 			}
-			if err := p.updateTable(id, update); err != nil {
+			if err := p.updateTable(name, update); err != nil {
 				return err
 			}
 		}
 		// Finally, delete and removed indexes
 		for _, o := range d.Deletes() {
 			gsi := o.(globalSecondaryIndexHash).item
-			fmt.Printf("Deleting global secondary index %v for DynamoDB Table %v\n", gsi.IndexName, id.String())
+			fmt.Printf("Deleting global secondary index %v for DynamoDB Table %v\n", gsi.IndexName, name)
 			update := &awsdynamodb.UpdateTableInput{
-				TableName: aws.String(id.String()),
+				TableName: aws.String(name),
 				GlobalSecondaryIndexUpdates: []*awsdynamodb.GlobalSecondaryIndexUpdate{
 					{
 						Delete: &awsdynamodb.DeleteGlobalSecondaryIndexAction{
@@ -362,7 +456,7 @@ func (p *tableProvider) Update(ctx context.Context, id resource.ID,
 					},
 				},
 			}
-			if err := p.updateTable(id, update); err != nil {
+			if err := p.updateTable(name, update); err != nil {
 				return err
 			}
 		}
@@ -372,51 +466,24 @@ func (p *tableProvider) Update(ctx context.Context, id resource.ID,
 
 // Delete tears down an existing resource with the given ID.  If it fails, the resource is assumed to still exist.
 func (p *tableProvider) Delete(ctx context.Context, id resource.ID) error {
-	// First, perform the deletion.
-	fmt.Printf("Deleting DynamoDB Table '%v'\n", id)
-	succ, err := awsctx.RetryUntil(
-		p.ctx,
-		func() (bool, error) {
-			_, err := p.ctx.DynamoDB().DeleteTable(&awsdynamodb.DeleteTableInput{
-				TableName: id.StringPtr(),
-			})
-			if err != nil {
-				if erraws, iserraws := err.(awserr.Error); iserraws {
-					if erraws.Code() == "ResourceNotFoundException" {
-						return true, nil
-					}
-					if erraws.Code() == "ResourceInUseException" {
-						return false, nil
-					}
-				}
-				return false, err // anything other than "ResourceNotFoundException" is a real error; propagate it.
-			}
-			return true, nil
-		},
-	)
+	name, err := arn.ParseResourceName(id)
 	if err != nil {
 		return err
 	}
-	if !succ {
-		return fmt.Errorf("DynamoDB table '%v' could not be deleted", id)
-	}
 
-	// Wait for the table to actually become deleted before returning.
-	fmt.Printf("DynamoDB Table delete request submitted; waiting for it to delete\n")
-	return p.waitForTableState(id, false)
-}
-
-func (p *tableProvider) updateTable(id resource.ID, update *awsdynamodb.UpdateTableInput) error {
-	succ, err := awsctx.RetryUntil(
+	// First, perform the deletion.
+	fmt.Printf("Deleting DynamoDB Table '%v'\n", name)
+	succ, err := awsctx.RetryUntilLong(
 		p.ctx,
 		func() (bool, error) {
-			_, err := p.ctx.DynamoDB().UpdateTable(update)
+			_, err := p.ctx.DynamoDB().DeleteTable(&awsdynamodb.DeleteTableInput{
+				TableName: aws.String(name),
+			})
 			if err != nil {
-				if erraws, iserraws := err.(awserr.Error); iserraws {
-					if erraws.Code() == "ResourceNotFoundException" || erraws.Code() == "ResourceInUseException" {
-						fmt.Printf("Waiting to update resource '%v': %v", id, erraws.Message())
-						return false, nil
-					}
+				if awsctx.IsAWSError(err, awsdynamodb.ErrCodeResourceNotFoundException) {
+					return true, nil
+				} else if awsctx.IsAWSError(err, awsdynamodb.ErrCodeResourceInUseException) {
+					return false, nil
 				}
 				return false, err // anything else is a real error; propagate it.
 			}
@@ -427,28 +494,53 @@ func (p *tableProvider) updateTable(id resource.ID, update *awsdynamodb.UpdateTa
 		return err
 	}
 	if !succ {
-		return fmt.Errorf("DynamoDB table '%v' could not be updated", id)
+		return fmt.Errorf("DynamoDB table '%v' could not be deleted", name)
 	}
-	if err := p.waitForTableState(id, true); err != nil {
+
+	// Wait for the table to actually become deleted before returning.
+	fmt.Printf("DynamoDB Table delete request submitted; waiting for it to delete\n")
+	return p.waitForTableState(name, false)
+}
+
+func (p *tableProvider) updateTable(name string, update *awsdynamodb.UpdateTableInput) error {
+	succ, err := awsctx.RetryUntil(
+		p.ctx,
+		func() (bool, error) {
+			_, err := p.ctx.DynamoDB().UpdateTable(update)
+			if err != nil {
+				if awsctx.IsAWSError(err, "ResourceNotFoundException", "ResourceInUseException") {
+					fmt.Printf("Waiting to update resource '%v': %v", name, err.(awserr.Error).Message())
+					return false, nil
+				}
+				return false, err // anything else is a real error; propagate it.
+			}
+			return true, nil
+		},
+	)
+	if err != nil {
+		return err
+	}
+	if !succ {
+		return fmt.Errorf("DynamoDB table '%v' could not be updated", name)
+	}
+	if err := p.waitForTableState(name, true); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (p *tableProvider) waitForTableState(id resource.ID, exist bool) error {
+func (p *tableProvider) waitForTableState(name string, exist bool) error {
 	succ, err := awsctx.RetryUntilLong(
 		p.ctx,
 		func() (bool, error) {
 			description, err := p.ctx.DynamoDB().DescribeTable(&awsdynamodb.DescribeTableInput{
-				TableName: id.StringPtr(),
+				TableName: aws.String(name),
 			})
 
 			if err != nil {
-				if erraws, iserraws := err.(awserr.Error); iserraws {
-					if erraws.Code() == "ResourceNotFoundException" {
-						// The table is missing; if exist==false, we're good, otherwise keep retrying.
-						return !exist, nil
-					}
+				if awsctx.IsAWSError(err, "ResourceNotFoundException") {
+					// The table is missing; if exist==false, we're good, otherwise keep retrying.
+					return !exist, nil
 				}
 				return false, err // anything other than "ResourceNotFoundException" is a real error; propagate it.
 			}
@@ -471,7 +563,7 @@ func (p *tableProvider) waitForTableState(id resource.ID, exist bool) error {
 		} else {
 			reason = "deleted"
 		}
-		return fmt.Errorf("DynamoDB table '%v' did not become %v", id, reason)
+		return fmt.Errorf("DynamoDB table '%v' did not become %v", name, reason)
 	}
 	return nil
 }

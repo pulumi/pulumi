@@ -23,6 +23,8 @@ import (
 
 // TestStable ensures that property enumeration order is stable from one run to the next.
 func TestStable(t *testing.T) {
+	t.Parallel()
+
 	props := NewPropertyMap()
 
 	// Seed the map.
@@ -48,6 +50,8 @@ func TestStable(t *testing.T) {
 // TestChrono ensures that property enumeration order returns keys in chronological order.  Note that this will need to
 // change once we adopt ECMAScript's ordering (https://tc39.github.io/ecma262/#sec-ordinaryownpropertykeys).
 func TestChrono(t *testing.T) {
+	t.Parallel()
+
 	props := NewPropertyMap()
 
 	// Just add keys to the map and then ensure it enumerates chronologically.

@@ -72,8 +72,8 @@ func newPlugin(ctx *Context, bins []string, prefix string) (*plugin, error) {
 		lbl string
 		cb  func(string)
 	}{
-		plug.Stderr: {"stderr", func(line string) { ctx.Diag.Errorf(diag.Message(line)) }},
-		plug.Stdout: {"stdout", func(line string) { ctx.Diag.Infof(diag.Message(line)) }},
+		plug.Stderr: {"stderr", func(line string) { ctx.Diag.Errorf(diag.Message("%s"), line) }},
+		plug.Stdout: {"stdout", func(line string) { ctx.Diag.Infof(diag.Message("%s"), line) }},
 	}
 	runtrace := func(t io.Reader) {
 		ts := tracers[t]
@@ -131,11 +131,13 @@ func newPlugin(ctx *Context, bins []string, prefix string) (*plugin, error) {
 func execPlugin(bin string) (*plugin, error) {
 	// Flow the logging information if set.
 	var args []string
-	if cmdutil.LogToStderr {
-		args = append(args, "--logtostderr")
-	}
-	if cmdutil.Verbose > 0 {
-		args = append(args, "-v="+strconv.Itoa(cmdutil.Verbose))
+	if cmdutil.LogFlow {
+		if cmdutil.LogToStderr {
+			args = append(args, "--logtostderr")
+		}
+		if cmdutil.Verbose > 0 {
+			args = append(args, "-v="+strconv.Itoa(cmdutil.Verbose))
+		}
 	}
 
 	cmd := exec.Command(bin, args...)

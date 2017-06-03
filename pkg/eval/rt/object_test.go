@@ -25,6 +25,8 @@ import (
 
 // TestObjectRTTI tests that objects that have been created maintain correct type identities.
 func TestObjectRTTI(t *testing.T) {
+	t.Parallel()
+
 	// null
 	nul := NewNullObject()
 	assert.True(t, nul.IsNull())

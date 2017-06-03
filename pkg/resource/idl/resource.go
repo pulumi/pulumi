@@ -21,5 +21,5 @@ type Resource struct {
 
 // NamedResource is a marker struct to indicate that an IDL struct is a named resource.
 type NamedResource struct {
-	Name string `lumi:"name,replaces"`
+	Name *string `lumi:"name,replaces,in"`
 }

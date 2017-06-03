@@ -68,10 +68,13 @@ func (p *ApplicationVersionProvider) Name(
     if decerr != nil {
         return nil, decerr
     }
-    if obj.Name == "" {
+    if obj.Name == nil || *obj.Name == "" {
+        if req.Unknowns[ApplicationVersion_Name] {
+            return nil, errors.New("Name property cannot be computed from unknown outputs")
+        }
         return nil, errors.New("Name property cannot be empty")
     }
-    return &lumirpc.NameResponse{Name: obj.Name}, nil
+    return &lumirpc.NameResponse{Name: *obj.Name}, nil
 }
 
 func (p *ApplicationVersionProvider) Create(
@@ -85,9 +88,7 @@ func (p *ApplicationVersionProvider) Create(
     if err != nil {
         return nil, err
     }
-    return &lumirpc.CreateResponse{
-        Id:   string(id),
-    }, nil
+    return &lumirpc.CreateResponse{Id: string(id)}, nil
 }
 
 func (p *ApplicationVersionProvider) Get(
@@ -105,7 +106,7 @@ func (p *ApplicationVersionProvider) Get(
 }
 
 func (p *ApplicationVersionProvider) InspectChange(
-    ctx context.Context, req *lumirpc.ChangeRequest) (*lumirpc.InspectChangeResponse, error) {
+    ctx context.Context, req *lumirpc.InspectChangeRequest) (*lumirpc.InspectChangeResponse, error) {
     contract.Assert(req.GetType() == string(ApplicationVersionToken))
     id := resource.ID(req.GetId())
     old, oldprops, decerr := p.Unmarshal(req.GetOlds())
@@ -125,6 +126,9 @@ func (p *ApplicationVersionProvider) InspectChange(
         if diff.Changed("application") {
             replaces = append(replaces, "application")
         }
+        if diff.Changed("versionLabel") {
+            replaces = append(replaces, "versionLabel")
+        }
         if diff.Changed("sourceBundle") {
             replaces = append(replaces, "sourceBundle")
         }
@@ -139,7 +143,7 @@ func (p *ApplicationVersionProvider) InspectChange(
 }
 
 func (p *ApplicationVersionProvider) Update(
-    ctx context.Context, req *lumirpc.ChangeRequest) (*pbempty.Empty, error) {
+    ctx context.Context, req *lumirpc.UpdateRequest) (*pbempty.Empty, error) {
     contract.Assert(req.GetType() == string(ApplicationVersionToken))
     id := resource.ID(req.GetId())
     old, oldprops, err := p.Unmarshal(req.GetOlds())
@@ -170,7 +174,7 @@ func (p *ApplicationVersionProvider) Delete(
 func (p *ApplicationVersionProvider) Unmarshal(
     v *pbstruct.Struct) (*ApplicationVersion, resource.PropertyMap, mapper.DecodeError) {
     var obj ApplicationVersion
-    props := resource.UnmarshalProperties(v)
+    props := resource.UnmarshalProperties(nil, v, resource.MarshalOptions{RawResources: true})
     result := mapper.MapIU(props.Mappable(), &obj)
     return &obj, props, result
 }
@@ -179,8 +183,9 @@ func (p *ApplicationVersionProvider) Unmarshal(
 
 // ApplicationVersion is a marshalable representation of its corresponding IDL type.
 type ApplicationVersion struct {
-    Name string `json:"name"`
+    Name *string `json:"name,omitempty"`
     Application resource.ID `json:"application"`
+    VersionLabel *string `json:"versionLabel,omitempty"`
     Description *string `json:"description,omitempty"`
     SourceBundle resource.ID `json:"sourceBundle"`
 }
@@ -189,6 +194,7 @@ type ApplicationVersion struct {
 const (
     ApplicationVersion_Name = "name"
     ApplicationVersion_Application = "application"
+    ApplicationVersion_VersionLabel = "versionLabel"
     ApplicationVersion_Description = "description"
     ApplicationVersion_SourceBundle = "sourceBundle"
 )

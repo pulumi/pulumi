@@ -68,10 +68,13 @@ func (p *UsagePlanKeyProvider) Name(
     if decerr != nil {
         return nil, decerr
     }
-    if obj.Name == "" {
+    if obj.Name == nil || *obj.Name == "" {
+        if req.Unknowns[UsagePlanKey_Name] {
+            return nil, errors.New("Name property cannot be computed from unknown outputs")
+        }
         return nil, errors.New("Name property cannot be empty")
     }
-    return &lumirpc.NameResponse{Name: obj.Name}, nil
+    return &lumirpc.NameResponse{Name: *obj.Name}, nil
 }
 
 func (p *UsagePlanKeyProvider) Create(
@@ -85,9 +88,7 @@ func (p *UsagePlanKeyProvider) Create(
     if err != nil {
         return nil, err
     }
-    return &lumirpc.CreateResponse{
-        Id:   string(id),
-    }, nil
+    return &lumirpc.CreateResponse{Id: string(id)}, nil
 }
 
 func (p *UsagePlanKeyProvider) Get(
@@ -105,7 +106,7 @@ func (p *UsagePlanKeyProvider) Get(
 }
 
 func (p *UsagePlanKeyProvider) InspectChange(
-    ctx context.Context, req *lumirpc.ChangeRequest) (*lumirpc.InspectChangeResponse, error) {
+    ctx context.Context, req *lumirpc.InspectChangeRequest) (*lumirpc.InspectChangeResponse, error) {
     contract.Assert(req.GetType() == string(UsagePlanKeyToken))
     id := resource.ID(req.GetId())
     old, oldprops, decerr := p.Unmarshal(req.GetOlds())
@@ -139,7 +140,7 @@ func (p *UsagePlanKeyProvider) InspectChange(
 }
 
 func (p *UsagePlanKeyProvider) Update(
-    ctx context.Context, req *lumirpc.ChangeRequest) (*pbempty.Empty, error) {
+    ctx context.Context, req *lumirpc.UpdateRequest) (*pbempty.Empty, error) {
     contract.Assert(req.GetType() == string(UsagePlanKeyToken))
     id := resource.ID(req.GetId())
     old, oldprops, err := p.Unmarshal(req.GetOlds())
@@ -170,7 +171,7 @@ func (p *UsagePlanKeyProvider) Delete(
 func (p *UsagePlanKeyProvider) Unmarshal(
     v *pbstruct.Struct) (*UsagePlanKey, resource.PropertyMap, mapper.DecodeError) {
     var obj UsagePlanKey
-    props := resource.UnmarshalProperties(v)
+    props := resource.UnmarshalProperties(nil, v, resource.MarshalOptions{RawResources: true})
     result := mapper.MapIU(props.Mappable(), &obj)
     return &obj, props, result
 }
@@ -179,7 +180,7 @@ func (p *UsagePlanKeyProvider) Unmarshal(
 
 // UsagePlanKey is a marshalable representation of its corresponding IDL type.
 type UsagePlanKey struct {
-    Name string `json:"name"`
+    Name *string `json:"name,omitempty"`
     Key resource.ID `json:"key"`
     UsagePlan resource.ID `json:"usagePlan"`
 }

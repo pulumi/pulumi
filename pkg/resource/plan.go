@@ -28,7 +28,6 @@ import (
 )
 
 // TODO: concurrency.
-// TODO: handle output dependencies
 
 // Plan is the output of analyzing resource graphs and contains the steps necessary to perform an infrastructure
 // deployment.  A plan can be generated out of whole cloth from a resource graph -- in the case of new deployments --
@@ -38,7 +37,7 @@ type Plan interface {
 	Empty() bool                                        // true if the plan is empty.
 	Steps() Step                                        // the first step to perform, linked to the rest.
 	Replaces() map[URN][]PropertyKey                    // resources being replaced and their properties.
-	Unchanged() map[Resource]Resource                   // the resources untouched by this plan.
+	Unchanged() map[Resource]Resource                   // the resources untouched by this plan (map from old to new).
 	Apply(prog Progress) (Snapshot, Step, State, error) // performs the operations specified in this plan.
 }
 
@@ -168,7 +167,7 @@ func (p *plan) Steps() Step {
 func (p *plan) Provider(res Resource) (Provider, error) {
 	t := res.Type()
 	pkg := t.Package()
-	return p.ctx.Provider(pkg)
+	return p.ctx.Host.Provider(pkg)
 }
 
 // Apply performs all steps in the plan, calling out to the progress reporting functions as desired.  It returns four
@@ -179,7 +178,10 @@ func (p *plan) Apply(prog Progress) (Snapshot, Step, State, error) {
 	for old, new := range p.unchanged {
 		contract.Assert(old.HasID())
 		contract.Assert(!new.HasID())
-		new.SetID(old.ID())
+		id := old.ID()
+		new.SetID(id)
+		p.ctx.IDURN[id] = new.URN()
+		old.PropagateOutputs(new)
 	}
 
 	// Next, walk the plan linked list and apply each step.
@@ -264,7 +266,7 @@ func newPlan(ctx *Context, old Snapshot, new Snapshot, analyzers []tokens.QName)
 
 	// Give analyzers a chance to inspect the overall deployment.
 	for _, aname := range analyzers {
-		analyzer, err := ctx.Analyzer(aname)
+		analyzer, err := ctx.Host.Analyzer(aname)
 		if err != nil {
 			return nil, err
 		}
@@ -303,7 +305,7 @@ func newPlan(ctx *Context, old Snapshot, new Snapshot, analyzers []tokens.QName)
 		if err != nil {
 			return nil, err
 		}
-		failures, err := prov.Check(t, props)
+		failures, err := prov.Check(new)
 		if err != nil {
 			return nil, err
 		}
@@ -313,7 +315,7 @@ func newPlan(ctx *Context, old Snapshot, new Snapshot, analyzers []tokens.QName)
 
 		// Next, give each analyzer -- if any -- a chance to inspect the reosurce too.
 		for _, aname := range analyzers {
-			analyzer, err := ctx.Analyzer(aname)
+			analyzer, err := ctx.Host.Analyzer(aname)
 			if err != nil {
 				return nil, err
 			}
@@ -349,20 +351,31 @@ func newPlan(ctx *Context, old Snapshot, new Snapshot, analyzers []tokens.QName)
 	for _, new := range pb.NewRes {
 		m := new.URN()
 		if old, hasold := pb.Olds[m]; hasold {
+			contract.Assert(old.Type() == new.Type())
+
 			// The resource exists in both new and old; it could be an update.  This resource is an update if one of
 			// these two conditions exist: 1) either the old and new properties don't match or 2) the update impact
 			// is assessed as having to replace the resource, in which case the ID will change.  This might have a
 			// cascading impact on subsequent updates too, since those IDs must trigger recreations, etc.
-			contract.Assert(old.Type() == new.Type())
 			computed := new.Properties().ReplaceResources(func(r URN) URN {
 				if pb.Replace(r) {
 					// If the resource is being replaced, simply mangle the URN so that it's different; this value
 					// won't actually be used for anything other than the diffing algorithms below.
+					// TODO[pulumi/lumi#90]: replace this entirely by computed properties and corresponding diffing.
 					r = r.Replace()
 					glog.V(7).Infof("Patched resource '%v's URN property: %v", m, r)
 				}
 				return r
 			})
+
+			// Propagate old outputs, provided they aren't overwritten in new, for purposes of the diff.
+			olds := old.Properties()
+			for k := range old.Outputs() {
+				if computed.NeedsValue(k) {
+					computed[k] = olds[k]
+				}
+			}
+
 			if !old.Properties().DeepEquals(computed) {
 				// See if this update has the effect of deleting and recreating the resource.  If so, we need to make
 				// sure to insert the right replacement steps into the graph (a create, replace, and delete).
@@ -371,7 +384,7 @@ func newPlan(ctx *Context, old Snapshot, new Snapshot, analyzers []tokens.QName)
 				if err != nil {
 					return nil, err
 				}
-				replacements, _, err := prov.InspectChange(old.ID(), old.Type(), old.Properties(), computed)
+				replacements, _, err := prov.InspectChange(old, new, computed)
 				if err != nil {
 					return nil, err
 				}
@@ -680,36 +693,48 @@ func (s *step) Apply() (State, error) {
 		contract.Assert(s.old == nil)
 		contract.Assert(s.new != nil)
 		contract.Assertf(!s.new.HasID(), "Resources being created must not have IDs already")
-		id, _, rst, err := prov.Create(s.new.Type(), s.new.Properties())
+		rst, err := prov.Create(s.new)
 		if err != nil {
 			return rst, err
 		}
-		s.new.SetID(id)
-		// TODO[pulumi/lumi#90]: reenable setting outputs when this is fully functional.
-		// s.new.SetPropertiesFrom(outs)
+		id := s.new.ID()
+		contract.Assert(id != "")
+
+		// Copy the old resource, set the new ID, read the resource state back (to fetch outputs), and store them.
+		s.old = s.new.ShallowClone()
+		s.p.ctx.IDURN[id] = s.new.URN()
+		if err := prov.Get(s.new); err != nil {
+			return StateUnknown, err
+		}
 
 	case OpDelete, OpReplaceDelete:
 		// Invoke the Delete RPC function for this provider:
 		contract.Assert(s.old != nil)
 		contract.Assert(s.new == nil)
 		contract.Assertf(s.old.HasID(), "Resources being deleted must have IDs")
-		if rst, err := prov.Delete(s.old.ID(), s.old.Type()); err != nil {
+		if rst, err := prov.Delete(s.old); err != nil {
 			return rst, err
 		}
 
 	case OpUpdate:
+		// First copy over any old properties that should carry over.
+		s.old.PropagateOutputs(s.new)
+
 		// Invoke the Update RPC function for this provider:
 		contract.Assert(s.old != nil)
 		contract.Assert(s.new != nil)
 		contract.Assert(s.old.Type() == s.new.Type())
 		contract.Assertf(s.old.HasID(), "Resources being updated must have IDs")
 		id := s.old.ID()
-		if rst, err := prov.Update(id, s.old.Type(), s.old.Properties(), s.new.Properties()); err != nil {
+		if rst, err := prov.Update(s.old, s.new); err != nil {
 			return rst, err
 		}
+		contract.Assert(s.new.ID() == id)
 
-		// Propagate the old ID on the new resource, so that the resulting snapshot is correct.
-		s.new.SetID(id)
+		// Now read the resource state back in case the update triggered cascading updates to other properties.
+		if err := prov.Get(s.new); err != nil {
+			return StateUnknown, err
+		}
 
 	case OpReplace:
 		contract.Assert(s.old != nil)
