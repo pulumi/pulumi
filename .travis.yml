@@ -1,9 +1,5 @@
 language: go
 go: 1.8.2
-addons:
-    apt:
-        packages:
-            - realpath
 before_install:
     # GoDep for Go dependency management.
     - go get -v github.com/tools/godep

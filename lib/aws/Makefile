@@ -1,5 +1,4 @@
 GOPKGS    = $(shell go list ./provider/... | grep -v /vendor/)
-PROCCNT   = $(shell nproc --all)
 LUMIROOT ?= /usr/local/lumi
 LUMILIB   = ${LUMIROOT}/packs
 THISLIB   = ${LUMILIB}/aws
@@ -64,7 +63,7 @@ vet:
 .PHONY: test
 test:
 	@echo "\033[0;32mTEST:\033[0m"
-	@go test -parallel ${PROCCNT} -cover ${GOPKGS}
+	@go test -cover ${GOPKGS}
 
 .PHONY: verify
 verify: gen
