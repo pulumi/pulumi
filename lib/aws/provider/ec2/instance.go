@@ -174,12 +174,16 @@ func (p *instanceProvider) Get(ctx context.Context, id resource.ID) (*ec2.Instan
 		secgrpIDs = &ids
 	}
 
-	var tags []ec2.Tag
-	for _, tag := range inst.Tags {
-		tags = append(tags, ec2.Tag{
-			Key:   aws.StringValue(tag.Key),
-			Value: aws.StringValue(tag.Value),
-		})
+	var instanceTags *[]ec2.Tag
+	if len(inst.Tags) > 0 {
+		var tags []ec2.Tag
+		for _, tag := range inst.Tags {
+			tags = append(tags, ec2.Tag{
+				Key:   aws.StringValue(tag.Key),
+				Value: aws.StringValue(tag.Value),
+			})
+		}
+		instanceTags = &tags
 	}
 
 	instanceType := ec2.InstanceType(aws.StringValue(inst.InstanceType))
@@ -193,7 +197,7 @@ func (p *instanceProvider) Get(ctx context.Context, id resource.ID) (*ec2.Instan
 		PublicDNSName:    inst.PublicDnsName,
 		PrivateIP:        inst.PrivateIpAddress,
 		PublicIP:         inst.PublicIpAddress,
-		Tags:             &tags,
+		Tags:             instanceTags,
 	}, nil
 }
 
