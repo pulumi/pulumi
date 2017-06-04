@@ -14,9 +14,9 @@ export class RestAPI extends lumi.Resource implements RestAPIArgs {
     public failOnWarnings?: boolean;
     public apiName?: string;
     public parameters?: string[];
-    @lumi.out public id: string;
-    @lumi.out public createdDate: string;
-    @lumi.out public version: string;
+    public id: string;
+    public createdDate: string;
+    public version: string;
 
     constructor(name: string, args?: RestAPIArgs) {
         super();

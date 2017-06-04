@@ -276,11 +276,7 @@ func (g *PackGenerator) emitResourceClass(w *bufio.Writer, res *Resource) {
 	hasName := false
 	hasRequiredArgs := false
 	fn := forEachField(res, func(fld *types.Var, opt PropertyOptions) {
-		var decors string
-		if opt.Out {
-			decors = "@lumi.out "
-		}
-		g.emitField(w, fld, opt, fmt.Sprintf("    %vpublic ", decors))
+		g.emitField(w, fld, opt, "    public ")
 		if !opt.Out {
 			if isResourceNameProperty(res, opt) {
 				hasName = true
