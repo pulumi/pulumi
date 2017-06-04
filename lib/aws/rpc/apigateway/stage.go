@@ -190,6 +190,8 @@ type Stage struct {
     Description *string `json:"description,omitempty"`
     MethodSettings *[]MethodSetting `json:"methodSettings,omitempty"`
     Variables *map[string]string `json:"variables,omitempty"`
+    CreatedDate string `json:"createdDate,omitempty"`
+    LastUpdatedDate string `json:"lastUpdatedDate,omitempty"`
 }
 
 // Stage's properties have constants to make dealing with diffs and property bags easier.
@@ -204,6 +206,8 @@ const (
     Stage_Description = "description"
     Stage_MethodSettings = "methodSettings"
     Stage_Variables = "variables"
+    Stage_CreatedDate = "createdDate"
+    Stage_LastUpdatedDate = "lastUpdatedDate"
 )
 
 

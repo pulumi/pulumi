@@ -1,10 +1,10 @@
 import { AssetArchive, String } from "@lumi/lumi/asset"
 import { serializeClosure, jsonStringify } from "@lumi/lumi/runtime"
-import { Function as LambdaFunction } from "./function"
+import { Function as LambdaFunction } from "../lambda/function"
 import { ARN } from "../types"
 import { Role } from "../iam/role";
 
-// Context is the shape of the context object passed to a FunctionX callback.
+// Context is the shape of the context object passed to a Function callback.
 export interface Context {
     callbackWaitsForEmptyEventLoop: boolean;
     readonly functionName: string;
@@ -33,11 +33,11 @@ let policy = {
     ]
 }
 
-// FunctionX is a higher-level API for creating and managing AWS Lambda Function resources implemented
+// Function is a higher-level API for creating and managing AWS Lambda Function resources implemented
 // by a Lumi lambda expression and with a set of attached policies.
-export class FunctionX {
-    private lambda: LambdaFunction;
-    private role: Role;
+export class Function {
+    public lambda: LambdaFunction;
+    public role: Role;
 
     constructor(name: string, policies: ARN[],
         func: (event: any, context: Context, callback: (error: any, result: any) => void) => any) {

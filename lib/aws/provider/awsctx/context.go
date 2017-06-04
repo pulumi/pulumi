@@ -19,6 +19,7 @@ import (
 	"context"
 
 	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/apigateway"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/aws/aws-sdk-go/service/elasticbeanstalk"
@@ -34,11 +35,13 @@ import (
 // Context represents state shared amongst all parties in this process.  In particular, it wraps an AWS session
 // object and offers convenient wrappers for creating connections to the various sub-services (EC2, S3, etc).
 type Context struct {
-	sess        *session.Session // a global session object, shared amongst all service connections.
-	accountID   string           // the currently authenticated account's ID.
-	accountRole string           // the currently authenticated account's IAM role.
+	sess *session.Session // a global session object, shared amongst all service connections.
+
+	accountID   string // the currently authenticated account's ID.
+	accountRole string // the currently authenticated account's IAM role.
 
 	// per-service connections (lazily allocated and reused);
+	apigateway       *apigateway.APIGateway
 	dynamodb         *dynamodb.DynamoDB
 	ec2              *ec2.EC2
 	elasticbeanstalk *elasticbeanstalk.ElasticBeanstalk
@@ -88,6 +91,14 @@ func New() (*Context, error) {
 
 func (ctx *Context) AccountID() string { return ctx.accountID }
 func (ctx *Context) Region() string    { return *ctx.sess.Config.Region }
+
+func (ctx *Context) APIGateway() *apigateway.APIGateway {
+	contract.Assert(ctx.sess != nil)
+	if ctx.apigateway == nil {
+		ctx.apigateway = apigateway.New(ctx.sess)
+	}
+	return ctx.apigateway
+}
 
 func (ctx *Context) DynamoDB() *dynamodb.DynamoDB {
 	contract.Assert(ctx.sess != nil)

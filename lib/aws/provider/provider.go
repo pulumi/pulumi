@@ -23,6 +23,7 @@ import (
 	"github.com/pulumi/lumi/sdk/go/pkg/lumirpc"
 	"golang.org/x/net/context"
 
+	"github.com/pulumi/lumi/lib/aws/provider/apigateway"
 	"github.com/pulumi/lumi/lib/aws/provider/awsctx"
 	"github.com/pulumi/lumi/lib/aws/provider/dynamodb"
 	"github.com/pulumi/lumi/lib/aws/provider/ec2"
@@ -45,6 +46,9 @@ func NewProvider() (*Provider, error) {
 	}
 	return &Provider{
 		impls: map[tokens.Type]lumirpc.ResourceProviderServer{
+			apigateway.DeploymentToken:               apigateway.NewDeploymentProvider(ctx),
+			apigateway.RestAPIToken:                  apigateway.NewRestAPIProvider(ctx),
+			apigateway.StageToken:                    apigateway.NewStageProvider(ctx),
 			dynamodb.TableToken:                      dynamodb.NewTableProvider(ctx),
 			ec2.InstanceToken:                        ec2.NewInstanceProvider(ctx),
 			ec2.SecurityGroupToken:                   ec2.NewSecurityGroupProvider(ctx),

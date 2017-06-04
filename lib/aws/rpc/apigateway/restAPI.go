@@ -182,6 +182,9 @@ type RestAPI struct {
     FailOnWarnings *bool `json:"failOnWarnings,omitempty"`
     APIName *string `json:"apiName,omitempty"`
     Parameters *[]string `json:"parameters,omitempty"`
+    ID string `json:"id,omitempty"`
+    CreatedDate string `json:"createdDate,omitempty"`
+    Version string `json:"version,omitempty"`
 }
 
 // RestAPI's properties have constants to make dealing with diffs and property bags easier.
@@ -194,6 +197,9 @@ const (
     RestAPI_FailOnWarnings = "failOnWarnings"
     RestAPI_APIName = "apiName"
     RestAPI_Parameters = "parameters"
+    RestAPI_ID = "id"
+    RestAPI_CreatedDate = "createdDate"
+    RestAPI_Version = "version"
 )
 
 /* Marshalable S3Location structure(s) */

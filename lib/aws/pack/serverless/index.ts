@@ -13,18 +13,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// isFunction checks whether the given object is a function (and hence invocable).
-export function isFunction(obj: Object): boolean {
-    return false; // functionality provided by the runtime.
-}
+// The aws.serverless module provides abstractions similar to those available in the Serverless Application Model.
+// See: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessapi
+//
+// In particular, these are similar to the following AWS CloudFormation resource types:
+// * AWS::Serverless::Function
+// * AWS::Serverless::Api
+// * AWS::Serverless::SimpleTable
 
-// dynamicInvoke dynamically calls the target function.  If the target is not a function, an error is thrown.
-export function dynamicInvoke(obj: Object, thisArg: Object, args: Object[]): Object {
-    return <any>undefined; // functionality provided by the runtime.
-}
-
-// log prints the provided message to standard out.  
-export function printf(message: any): void {
-    // functionality provided by the runtime.
-}
-
+export * from "./api";
+export * from "./function";

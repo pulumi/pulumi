@@ -41,6 +41,22 @@ type RestAPI struct {
 	APIName *string `lumi:"apiName,optional"`
 	// Custom header parameters for the request.
 	Parameters *[]string `lumi:"parameters,optional"`
+
+	// The API's identifier. This identifier is unique across all of your APIs in Amazon API Gateway.
+	ID string `lumi:"id,out"`
+	// The timestamp when the API was created.
+	CreatedDate string `lumi:"createdDate,out"`
+	// A version identifier for the API.
+	Version string `lumi:"version,out"`
+
+	// TODO[pulumi/lumi#198] Exposing array-valued output properties
+	// currently triggers failures serializing resource state, so
+	// supressing these properties.
+	// The warning messages reported when failonwarnings is turned on during API import.
+	//Warnings []string `lumi:"warnings,out"`
+	// The list of binary media types supported by the RestApi. By default, the RestApi supports only UTF-8-encoded
+	// text payloads.
+	//BinaryMediaTypes []string `lumi:"binaryMediaTypes,out"`
 }
 
 // S3Location is a property of the RestAPI resource that specifies the Amazon Simple Storage Service (Amazon S3)

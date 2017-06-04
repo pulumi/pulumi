@@ -381,12 +381,42 @@ func NewNullObject() *Object {
 
 // NewStringObject creates a new primitive number object.
 func NewStringObject(v string) *Object {
-	return NewPrimitiveObject(types.String, v)
+
+	// Add a `length` property to the object
+	arrayProps := NewPropertyMap()
+	lengthGetter := NewBuiltinIntrinsic(
+		tokens.Token("lumi:builtin/string:getLength"),
+		symbols.NewFunctionType([]symbols.Type{}, types.Number),
+	)
+	arrayProps.InitAddr(PropertyKey("length"), nil, true, lengthGetter, nil)
+
+	stringProto := StringPrototypeObject()
+
+	return NewObject(types.String, v, arrayProps, stringProto)
+}
+
+// stringProto is a cached reference to the String prototype object
+var stringProto *Object
+
+// StringPrototypeObject returns the String prototype object
+func StringPrototypeObject() *Object {
+	if stringProto != nil {
+		return stringProto
+	}
+
+	stringProtoProps := NewPropertyMap()
+	stringProto = NewObject(types.String, "", stringProtoProps, nil)
+	toLowerCase := NewFunctionObjectFromSymbol(NewBuiltinIntrinsic(
+		tokens.Token("lumi:builtin/string:toLowerCase"),
+		symbols.NewFunctionType([]symbols.Type{}, types.String),
+	), stringProto)
+	stringProtoProps.InitAddr(PropertyKey("toLowerCase"), toLowerCase, true, nil, nil)
+
+	return stringProto
 }
 
 // NewFunctionObject creates a new function object out of consistuent parts.
 func NewFunctionObject(stub FuncStub) *Object {
-	contract.Assert(stub.Func != nil)
 	contract.Assert(stub.Sig != nil)
 	return NewObject(stub.Sig, stub, nil, nil)
 }
