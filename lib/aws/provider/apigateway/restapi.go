@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/aws/aws-sdk-go/aws"
 	awsapigateway "github.com/aws/aws-sdk-go/service/apigateway"
@@ -15,6 +16,7 @@ import (
 	"github.com/pulumi/lumi/sdk/go/pkg/lumirpc"
 	"golang.org/x/net/context"
 
+	"github.com/pulumi/lumi/lib/aws/provider/arn"
 	"github.com/pulumi/lumi/lib/aws/provider/awsctx"
 	"github.com/pulumi/lumi/lib/aws/rpc/apigateway"
 )
@@ -25,6 +27,24 @@ const RestAPIToken = apigateway.RestAPIToken
 const (
 	maxRestAPIName = 255
 )
+
+// NewRestAPIID returns an AWS APIGateway RestAPI ARN ID for the given restAPIID
+func NewRestAPIID(region, restAPIID string) resource.ID {
+	return arn.NewID("apigateway", region, "", "/restapis/"+restAPIID)
+}
+
+// ParseRestAPIID parses an AWS APIGateway RestAPI ARN ID to extract the restAPIID
+func ParseRestAPIID(id resource.ID) (string, error) {
+	res, err := arn.ParseResourceName(id)
+	if err != nil {
+		return "", err
+	}
+	parts := strings.Split(res, "/")
+	if len(parts) != 3 || parts[0] != "" || parts[1] != "restapis" {
+		return "", fmt.Errorf("execpted RestAPI ARN of the form arn:aws:apigateway:region::/restapis/api-id")
+	}
+	return parts[2], nil
+}
 
 // NewRestAPIProvider creates a provider that handles APIGateway RestAPI operations.
 func NewRestAPIProvider(ctx *awsctx.Context) lumirpc.ResourceProviderServer {
@@ -65,15 +85,14 @@ func (p *restAPIProvider) Create(ctx context.Context, obj *apigateway.RestAPI) (
 	if err != nil {
 		return "", err
 	}
-	id := resource.ID(*restAPI.Id)
 
 	// Next, if a body is specified, put the rest api contents
 	if obj.Body != nil {
 		body := *obj.Body
 		bodyJSON, _ := json.Marshal(body)
-		fmt.Printf("APIGateway RestAPI created: %v; putting API contents from OpenAPI specification\n", id)
+		fmt.Printf("APIGateway RestAPI created: %v; putting API contents from OpenAPI specification\n", restAPI.Id)
 		put := &awsapigateway.PutRestApiInput{
-			RestApiId: id.StringPtr(),
+			RestApiId: restAPI.Id,
 			Body:      bodyJSON,
 			Mode:      aws.String("overwrite"),
 		}
@@ -83,13 +102,17 @@ func (p *restAPIProvider) Create(ctx context.Context, obj *apigateway.RestAPI) (
 		}
 	}
 
-	return id, nil
+	return NewRestAPIID(p.ctx.Region(), *restAPI.Id), nil
 }
 
 // Get reads the instance state identified by ID, returning a populated resource object, or an error if not found.
 func (p *restAPIProvider) Get(ctx context.Context, id resource.ID) (*apigateway.RestAPI, error) {
+	restAPIID, err := ParseRestAPIID(id)
+	if err != nil {
+		return nil, err
+	}
 	resp, err := p.ctx.APIGateway().GetRestApi(&awsapigateway.GetRestApiInput{
-		RestApiId: aws.String(string(id)),
+		RestApiId: aws.String(restAPIID),
 	})
 	if err != nil {
 		return nil, err
@@ -123,7 +146,10 @@ func (p *restAPIProvider) InspectChange(ctx context.Context, id resource.ID,
 // to new values.  The resource ID is returned and may be different if the resource had to be recreated.
 func (p *restAPIProvider) Update(ctx context.Context, id resource.ID,
 	old *apigateway.RestAPI, new *apigateway.RestAPI, diff *resource.ObjectDiff) error {
-
+	restAPIID, err := ParseRestAPIID(id)
+	if err != nil {
+		return err
+	}
 	if diff.Updated(apigateway.RestAPI_Body) {
 		if new.Body != nil {
 			body := *new.Body
@@ -133,7 +159,7 @@ func (p *restAPIProvider) Update(ctx context.Context, id resource.ID,
 			}
 			fmt.Printf("Updating API definition for %v from OpenAPI specification\n", id)
 			put := &awsapigateway.PutRestApiInput{
-				RestApiId: id.StringPtr(),
+				RestApiId: aws.String(restAPIID),
 				Body:      bodyJSON,
 				Mode:      aws.String("overwrite"),
 			}
@@ -152,7 +178,7 @@ func (p *restAPIProvider) Update(ctx context.Context, id resource.ID,
 	}
 	if len(ops) > 0 {
 		update := &awsapigateway.UpdateRestApiInput{
-			RestApiId:       id.StringPtr(),
+			RestApiId:       aws.String(restAPIID),
 			PatchOperations: ops,
 		}
 		_, err := p.ctx.APIGateway().UpdateRestApi(update)
@@ -165,9 +191,13 @@ func (p *restAPIProvider) Update(ctx context.Context, id resource.ID,
 
 // Delete tears down an existing resource with the given ID.  If it fails, the resource is assumed to still exist.
 func (p *restAPIProvider) Delete(ctx context.Context, id resource.ID) error {
+	restAPIID, err := ParseRestAPIID(id)
+	if err != nil {
+		return err
+	}
 	fmt.Printf("Deleting APIGateway RestAPI '%v'\n", id)
-	_, err := p.ctx.APIGateway().DeleteRestApi(&awsapigateway.DeleteRestApiInput{
-		RestApiId: id.StringPtr(),
+	_, err = p.ctx.APIGateway().DeleteRestApi(&awsapigateway.DeleteRestApiInput{
+		RestApiId: aws.String(restAPIID),
 	})
 	if err != nil {
 		return err

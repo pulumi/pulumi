@@ -10,11 +10,11 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	awsapigateway "github.com/aws/aws-sdk-go/service/apigateway"
 	"github.com/pulumi/lumi/pkg/resource"
-	"github.com/pulumi/lumi/pkg/util/contract"
 	"github.com/pulumi/lumi/pkg/util/mapper"
 	"github.com/pulumi/lumi/sdk/go/pkg/lumirpc"
 	"golang.org/x/net/context"
 
+	"github.com/pulumi/lumi/lib/aws/provider/arn"
 	"github.com/pulumi/lumi/lib/aws/provider/awsctx"
 	"github.com/pulumi/lumi/lib/aws/rpc/apigateway"
 )
@@ -25,6 +25,24 @@ const DeploymentToken = apigateway.DeploymentToken
 const (
 	maxDeploymentName = 255
 )
+
+// NewDeploymentID returns an AWS APIGateway Deployment ARN ID for the given restAPIID and deploymentID
+func NewDeploymentID(region, restAPIID, deploymentID string) resource.ID {
+	return arn.NewID("apigateway", region, "", "/restapis/"+restAPIID+"/deployments/"+deploymentID)
+}
+
+// ParseDeploymentID parses an AWS APIGateway Deployment ARN ID to extract the restAPIID and deploymentID
+func ParseDeploymentID(id resource.ID) (string, string, error) {
+	res, err := arn.ParseResourceName(id)
+	if err != nil {
+		return "", "", err
+	}
+	parts := strings.Split(res, "/")
+	if len(parts) != 5 || parts[0] != "" || parts[1] != "restapis" || parts[3] != "deployments" {
+		return "", "", fmt.Errorf("execpted Deployment ARN of the form arn:aws:apigateway:region::/restapis/api-id/deployments/deployment-id")
+	}
+	return parts[2], parts[4], nil
+}
 
 // NewDeploymentProvider creates a provider that handles APIGateway Deployment operations.
 func NewDeploymentProvider(ctx *awsctx.Context) lumirpc.ResourceProviderServer {
@@ -53,9 +71,13 @@ func (p *deploymentProvider) Create(ctx context.Context, obj *apigateway.Deploym
 	} else {
 		stageName = resource.NewUniqueHex(*obj.Name+"_", maxDeploymentName, sha1.Size)
 	}
+	restAPIID, err := ParseRestAPIID(obj.RestAPI)
+	if err != nil {
+		return "", err
+	}
 	fmt.Printf("Creating APIGateway Deployment '%v'\n", obj.Name)
 	create := &awsapigateway.CreateDeploymentInput{
-		RestApiId:   aws.String(string(obj.RestAPI)),
+		RestApiId:   aws.String(restAPIID),
 		Description: obj.Description,
 		StageName:   aws.String(stageName),
 	}
@@ -63,17 +85,16 @@ func (p *deploymentProvider) Create(ctx context.Context, obj *apigateway.Deploym
 	if err != nil {
 		return "", err
 	}
-	id := resource.ID(string(obj.RestAPI) + ":" + *deployment.Id)
+	id := NewDeploymentID(p.ctx.Region(), restAPIID, *deployment.Id)
 	return id, nil
 }
 
 // Get reads the instance state identified by ID, returning a populated resource object, or an error if not found.
 func (p *deploymentProvider) Get(ctx context.Context, id resource.ID) (*apigateway.Deployment, error) {
-	parts := strings.Split(id.String(), ":")
-	contract.Assertf(len(parts) == 2, "expected deployment ID to be of the form <restAPIID>:<deploymentId>")
-	restAPIID := parts[0]
-	deploymentID := parts[1]
-
+	restAPIID, deploymentID, err := ParseDeploymentID(id)
+	if err != nil {
+		return nil, err
+	}
 	resp, err := p.ctx.APIGateway().GetDeployment(&awsapigateway.GetDeploymentInput{
 		RestApiId:    aws.String(restAPIID),
 		DeploymentId: aws.String(deploymentID),
@@ -84,9 +105,8 @@ func (p *deploymentProvider) Get(ctx context.Context, id resource.ID) (*apigatew
 	if resp == nil || resp.Id == nil {
 		return nil, nil
 	}
-
 	return &apigateway.Deployment{
-		RestAPI:     resource.ID(restAPIID),
+		RestAPI:     NewRestAPIID(p.ctx.Region(), restAPIID),
 		ID:          aws.StringValue(resp.Id),
 		Description: resp.Description,
 		CreatedDate: resp.CreatedDate.String(),
@@ -108,15 +128,16 @@ func (p *deploymentProvider) Update(ctx context.Context, id resource.ID,
 		return err
 	}
 	if len(ops) > 0 {
-		parts := strings.Split(id.String(), ":")
-		contract.Assertf(len(parts) == 2, "expected deployment ID to be of the form <restAPIID>:<deploymentId>")
-		deploymentID := parts[1]
+		restAPIID, deploymentID, err := ParseDeploymentID(id)
+		if err != nil {
+			return err
+		}
 		update := &awsapigateway.UpdateDeploymentInput{
-			RestApiId:       aws.String(string(new.RestAPI)),
+			RestApiId:       aws.String(restAPIID),
 			DeploymentId:    aws.String(deploymentID),
 			PatchOperations: ops,
 		}
-		_, err := p.ctx.APIGateway().UpdateDeployment(update)
+		_, err = p.ctx.APIGateway().UpdateDeployment(update)
 		if err != nil {
 			return err
 		}
@@ -127,10 +148,10 @@ func (p *deploymentProvider) Update(ctx context.Context, id resource.ID,
 // Delete tears down an existing resource with the given ID.  If it fails, the resource is assumed to still exist.
 func (p *deploymentProvider) Delete(ctx context.Context, id resource.ID) error {
 	fmt.Printf("Deleting APIGateway Deployment '%v'\n", id)
-	parts := strings.Split(id.String(), ":")
-	contract.Assertf(len(parts) == 2, "expected deployment ID to be of the form <restAPIID>:<deploymentId>")
-	restAPIID := parts[0]
-	deploymentID := parts[1]
+	restAPIID, deploymentID, err := ParseDeploymentID(id)
+	if err != nil {
+		return err
+	}
 	resp, err := p.ctx.APIGateway().GetStages(&awsapigateway.GetStagesInput{
 		RestApiId:    aws.String(restAPIID),
 		DeploymentId: aws.String(deploymentID),

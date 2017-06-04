@@ -8,13 +8,13 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	awsapigateway "github.com/aws/aws-sdk-go/service/apigateway"
 	"github.com/pulumi/lumi/pkg/resource"
-	"github.com/pulumi/lumi/pkg/util/contract"
 	"github.com/pulumi/lumi/pkg/util/mapper"
 	"github.com/pulumi/lumi/sdk/go/pkg/lumirpc"
 	"golang.org/x/net/context"
 
 	"strings"
 
+	"github.com/pulumi/lumi/lib/aws/provider/arn"
 	"github.com/pulumi/lumi/lib/aws/provider/awsctx"
 	"github.com/pulumi/lumi/lib/aws/rpc/apigateway"
 )
@@ -25,6 +25,24 @@ const StageToken = apigateway.StageToken
 const (
 	maxStageName = 255
 )
+
+// NewStageID returns an AWS APIGateway Stage ARN ID for the given restAPIID and stageID
+func NewStageID(region, restAPIID, stageID string) resource.ID {
+	return arn.NewID("apigateway", region, "", "/restapis/"+restAPIID+"/stages/"+stageID)
+}
+
+// ParseStageID parses an AWS APIGateway Stage ARN ID to extract the restAPIID and stageID
+func ParseStageID(id resource.ID) (string, string, error) {
+	res, err := arn.ParseResourceName(id)
+	if err != nil {
+		return "", "", err
+	}
+	parts := strings.Split(res, "/")
+	if len(parts) != 5 || parts[0] != "" || parts[1] != "restapis" || parts[3] != "stages" {
+		return "", "", fmt.Errorf("execpted Stage ARN of the form arn:aws:apigateway:region::/restapis/api-id/stages/stage-id")
+	}
+	return parts[2], parts[4], nil
+}
 
 // NewStageProvider creates a provider that handles APIGateway Stage operations.
 func NewStageProvider(ctx *awsctx.Context) lumirpc.ResourceProviderServer {
@@ -50,12 +68,13 @@ func (p *stageProvider) Create(ctx context.Context, obj *apigateway.Stage) (reso
 		return "", fmt.Errorf("Not yet supported - MethodSettings or ClientCertificate")
 	}
 	fmt.Printf("Creating APIGateway Stage '%v' with stage name '%v'\n", obj.Name, obj.StageName)
-	parts := strings.Split(string(obj.Deployment), ":")
-	contract.Assertf(len(parts) == 2, "expected deployment ID to be of the form <restAPIID>:<deploymentid>")
-	deploymentID := parts[1]
+	restAPIID, deploymentID, err := ParseDeploymentID(obj.Deployment)
+	if err != nil {
+		return "", err
+	}
 	create := &awsapigateway.CreateStageInput{
 		StageName:           aws.String(obj.StageName),
-		RestApiId:           aws.String(string(obj.RestAPI)),
+		RestApiId:           aws.String(restAPIID),
 		DeploymentId:        aws.String(deploymentID),
 		Description:         obj.Description,
 		CacheClusterEnabled: obj.CacheClusterEnabled,
@@ -68,16 +87,15 @@ func (p *stageProvider) Create(ctx context.Context, obj *apigateway.Stage) (reso
 	if err != nil {
 		return "", err
 	}
-	id := resource.ID(string(obj.RestAPI) + ":" + *stage.StageName)
-	return id, nil
+	return NewStageID(p.ctx.Region(), restAPIID, *stage.StageName), nil
 }
 
 // Get reads the instance state identified by ID, returning a populated resource object, or an error if not found.
 func (p *stageProvider) Get(ctx context.Context, id resource.ID) (*apigateway.Stage, error) {
-	parts := strings.Split(id.String(), ":")
-	contract.Assertf(len(parts) == 2, "expected stage ID to be of the form <restAPIID>:<stagename>")
-	restAPIID := parts[0]
-	stageName := parts[1]
+	restAPIID, stageName, err := ParseStageID(id)
+	if err != nil {
+		return nil, err
+	}
 
 	resp, err := p.ctx.APIGateway().GetStage(&awsapigateway.GetStageInput{
 		RestApiId: aws.String(restAPIID),
@@ -89,12 +107,11 @@ func (p *stageProvider) Get(ctx context.Context, id resource.ID) (*apigateway.St
 	if resp == nil || resp.DeploymentId == nil {
 		return nil, nil
 	}
-	deploymentID := resource.ID(restAPIID + ":" + aws.StringValue(resp.DeploymentId))
 	variables := aws.StringValueMap(resp.Variables)
 
 	return &apigateway.Stage{
-		RestAPI:             resource.ID(restAPIID),
-		Deployment:          deploymentID,
+		RestAPI:             NewRestAPIID(p.ctx.Region(), restAPIID),
+		Deployment:          NewDeploymentID(p.ctx.Region(), restAPIID, aws.StringValue(resp.DeploymentId)),
 		CacheClusterEnabled: resp.CacheClusterEnabled,
 		CacheClusterSize:    resp.CacheClusterSize,
 		StageName:           aws.StringValue(resp.StageName),
@@ -121,9 +138,10 @@ func (p *stageProvider) Update(ctx context.Context, id resource.ID,
 	}
 
 	if diff.Updated(apigateway.Stage_Deployment) {
-		parts := strings.Split(string(new.Deployment), ":")
-		contract.Assertf(len(parts) == 2, "expected deployment ID to be of the form <restAPIID>:<deploymentid>")
-		deploymentID := parts[1]
+		_, deploymentID, err := ParseDeploymentID(new.Deployment)
+		if err != nil {
+			return err
+		}
 		ops = append(ops, &awsapigateway.PatchOperation{
 			Op:    aws.String("replace"),
 			Path:  aws.String("/deploymentId"),
@@ -131,13 +149,14 @@ func (p *stageProvider) Update(ctx context.Context, id resource.ID,
 		})
 	}
 
-	parts := strings.Split(id.String(), ":")
-	contract.Assertf(len(parts) == 2, "expected stage ID to be of the form <restAPIID>:<stagename>")
-	stageName := parts[1]
+	restAPIId, stageName, err := ParseStageID(id)
+	if err != nil {
+		return err
+	}
 	if len(ops) > 0 {
 		update := &awsapigateway.UpdateStageInput{
 			StageName:       aws.String(stageName),
-			RestApiId:       aws.String(string(new.RestAPI)),
+			RestApiId:       aws.String(restAPIId),
 			PatchOperations: ops,
 		}
 		_, err := p.ctx.APIGateway().UpdateStage(update)
@@ -151,11 +170,11 @@ func (p *stageProvider) Update(ctx context.Context, id resource.ID,
 // Delete tears down an existing resource with the given ID.  If it fails, the resource is assumed to still exist.
 func (p *stageProvider) Delete(ctx context.Context, id resource.ID) error {
 	fmt.Printf("Deleting APIGateway Stage '%v'\n", id)
-	parts := strings.Split(id.String(), ":")
-	contract.Assertf(len(parts) == 2, "expected stage ID to be of the form <restAPIID>:<stagename>")
-	restAPIID := parts[0]
-	stageName := parts[1]
-	_, err := p.ctx.APIGateway().DeleteStage(&awsapigateway.DeleteStageInput{
+	restAPIID, stageName, err := ParseStageID(id)
+	if err != nil {
+		return err
+	}
+	_, err = p.ctx.APIGateway().DeleteStage(&awsapigateway.DeleteStageInput{
 		RestApiId: aws.String(restAPIID),
 		StageName: aws.String(stageName),
 	})
