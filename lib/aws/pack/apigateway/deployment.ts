@@ -13,8 +13,8 @@ export class Deployment extends lumi.Resource implements DeploymentArgs {
     public description?: string;
     public stageDescription?: StageDescription;
     public stageName?: string;
-    public id: string;
-    public createdDate: string;
+    @lumi.out public id: string;
+    @lumi.out public createdDate: string;
 
     constructor(name: string, args: DeploymentArgs) {
         super();
