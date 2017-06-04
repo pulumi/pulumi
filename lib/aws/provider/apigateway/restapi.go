@@ -40,10 +40,10 @@ func ParseRestAPIID(id resource.ID) (string, error) {
 		return "", err
 	}
 	parts := strings.Split(res, "/")
-	if len(parts) != 3 || parts[0] != "" || parts[1] != "restapis" {
-		return "", fmt.Errorf("execpted RestAPI ARN of the form arn:aws:apigateway:region::/restapis/api-id")
+	if len(parts) != 2 || parts[0] != "restapis" {
+		return "", fmt.Errorf("expected RestAPI ARN of the form arn:aws:apigateway:region::/restapis/api-id: %v", id)
 	}
-	return parts[2], nil
+	return parts[1], nil
 }
 
 // NewRestAPIProvider creates a provider that handles APIGateway RestAPI operations.

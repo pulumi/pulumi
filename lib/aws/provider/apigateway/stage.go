@@ -38,10 +38,10 @@ func ParseStageID(id resource.ID) (string, string, error) {
 		return "", "", err
 	}
 	parts := strings.Split(res, "/")
-	if len(parts) != 5 || parts[0] != "" || parts[1] != "restapis" || parts[3] != "stages" {
-		return "", "", fmt.Errorf("execpted Stage ARN of the form arn:aws:apigateway:region::/restapis/api-id/stages/stage-id")
+	if len(parts) != 4 || parts[0] != "restapis" || parts[2] != "stages" {
+		return "", "", fmt.Errorf("expected Stage ARN of the form arn:aws:apigateway:region::/restapis/api-id/stages/stage-id: %v", id)
 	}
-	return parts[2], parts[4], nil
+	return parts[1], parts[3], nil
 }
 
 // NewStageProvider creates a provider that handles APIGateway Stage operations.

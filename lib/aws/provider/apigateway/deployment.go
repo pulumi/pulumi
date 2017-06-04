@@ -38,10 +38,10 @@ func ParseDeploymentID(id resource.ID) (string, string, error) {
 		return "", "", err
 	}
 	parts := strings.Split(res, "/")
-	if len(parts) != 5 || parts[0] != "" || parts[1] != "restapis" || parts[3] != "deployments" {
-		return "", "", fmt.Errorf("execpted Deployment ARN of the form arn:aws:apigateway:region::/restapis/api-id/deployments/deployment-id")
+	if len(parts) != 4 || parts[0] != "restapis" || parts[2] != "deployments" {
+		return "", "", fmt.Errorf("expected Deployment ARN of the form arn:aws:apigateway:region::/restapis/api-id/deployments/deployment-id: %v", id)
 	}
-	return parts[2], parts[4], nil
+	return parts[1], parts[3], nil
 }
 
 // NewDeploymentProvider creates a provider that handles APIGateway Deployment operations.
