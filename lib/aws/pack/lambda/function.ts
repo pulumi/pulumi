@@ -37,10 +37,10 @@ export class Function extends lumi.Resource implements FunctionArgs {
     public memorySize?: number;
     public timeout?: number;
     public vpcConfig?: VPCConfig;
-    @lumi.out public arn: ARN;
-    @lumi.out public version: string;
-    @lumi.out public codeSHA256: string;
-    @lumi.out public lastModified: string;
+    public arn: ARN;
+    public version: string;
+    public codeSHA256: string;
+    public lastModified: string;
 
     constructor(name: string, args: FunctionArgs) {
         super();
