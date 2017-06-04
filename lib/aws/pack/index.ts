@@ -25,7 +25,8 @@ import * as iam from "./iam";
 import * as kms from "./kms";
 import * as lambda from "./lambda";
 import * as s3 from "./s3";
+import * as serverless from "./serverless";
 import * as sns from "./sns";
 import * as sqs from "./sqs";
-export {apigateway, cloudwatch, config, dynamodb, ec2, elasticbeanstalk, iam, kms, lambda, s3, sns, sqs};
+export {apigateway, cloudwatch, config, dynamodb, ec2, elasticbeanstalk, iam, kms, lambda, s3, serverless, sns, sqs};
 

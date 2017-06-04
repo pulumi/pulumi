@@ -43,4 +43,9 @@ type Stage struct {
 	// variable value is the value. Variable names are limited to alphanumeric characters. Values must match the
 	// following regular expression: `[A-Za-z0-9-._~:/?#&=,]+`.
 	Variables *map[string]string `lumi:"variables,optional"`
+
+	// The timestamp when the stage was created.
+	CreatedDate string `lumi:"createdDate,out"`
+	// The timestamp when the stage last updated.
+	LastUpdatedDate string `lumi:"lastUpdatedDate,out"`
 }

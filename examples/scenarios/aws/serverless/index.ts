@@ -62,7 +62,7 @@ function createLambda() {
   let obj = { x: 42 }
   let mus = music
 
-  let lambda = new aws.lambda.FunctionX(
+  let lambda = new aws.serverless.Function(
     "mylambda",
     [aws.iam.AWSLambdaFullAccess],
     (event, context, callback) => {
@@ -73,6 +73,13 @@ function createLambda() {
       callback(null, "Succeeed with " + context.getRemainingTimeInMillis() + "ms remaining.");
     }
   );
+  return lambda;
 }
 
-createLambda();
+let lambda = createLambda();
+
+let api = new aws.serverless.API("frontend")
+api.route("GET", "/bambam", lambda)
+api.route("PUT", "/bambam", lambda)
+let stage = api.publish("prod")
+

@@ -1829,7 +1829,6 @@ func (e *evaluator) evalInvokeFunctionExpression(node *ast.InvokeFunctionExpress
 	switch t := fncobj.Type().(type) {
 	case *symbols.FunctionType:
 		fnc = fncobj.FunctionValue()
-		contract.Assert(fnc.Func != nil)
 	case *symbols.PrototypeType:
 		contract.Assertf(dynamic, "Prototype invocation is only valid for dynamic invokes")
 		// For dynamic invokes, we permit invocation of class prototypes (a "new").
