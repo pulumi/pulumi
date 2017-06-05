@@ -3,16 +3,12 @@
 
 import * as lumi from "@lumi/lumi";
 
-import {ClientCertificate} from "./clientCertificate";
-import {LoggingLevel, MethodSetting} from "./method";
 import {RestAPI} from "./restAPI";
 
 export class Deployment extends lumi.Resource implements DeploymentArgs {
     public readonly name: string;
-    public restAPI: RestAPI;
+    public readonly restAPI: RestAPI;
     public description?: string;
-    public stageDescription?: StageDescription;
-    public stageName?: string;
     public id: string;
     public createdDate: string;
 
@@ -27,34 +23,12 @@ export class Deployment extends lumi.Resource implements DeploymentArgs {
         }
         this.restAPI = args.restAPI;
         this.description = args.description;
-        this.stageDescription = args.stageDescription;
-        this.stageName = args.stageName;
     }
 }
 
 export interface DeploymentArgs {
-    restAPI: RestAPI;
+    readonly restAPI: RestAPI;
     description?: string;
-    stageDescription?: StageDescription;
-    stageName?: string;
-}
-
-export interface StageDescription {
-    cacheClusterEnabled?: boolean;
-    cacheClusterSize?: string;
-    cacheDataEncrypted?: boolean;
-    cacheTTLInSeconds?: number;
-    cachingEnabled?: boolean;
-    clientCertificate?: ClientCertificate;
-    dataTraceEnabled?: boolean;
-    description?: string;
-    loggingLevel?: LoggingLevel;
-    methodSettings?: MethodSetting[];
-    metricsEnabled?: boolean;
-    stageName?: string;
-    throttlingBurstLimit?: number;
-    throttlingRateLimit?: number;
-    variables?: {[key: string]: string};
 }
 
 

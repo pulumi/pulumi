@@ -97,6 +97,7 @@ export class API {
         }
         // TODO[pulumi/lumi#90]: Once we suport output properties, we can use `lambda.lambda.arn` as input 
         // to constructing this apigateway lambda invocation uri.
+        // this.swaggerSpec.paths[path][swaggerMethod] = createPathSpec(lambda.lambda.arn);
         this.swaggerSpec.paths[path][swaggerMethod] = createPathSpec("arn:aws:lambda:us-east-1:490047557317:function:webapi-test-func");
     }
 

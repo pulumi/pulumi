@@ -123,6 +123,9 @@ func (p *DeploymentProvider) InspectChange(
         if diff.Changed("name") {
             replaces = append(replaces, "name")
         }
+        if diff.Changed("restAPI") {
+            replaces = append(replaces, "restAPI")
+        }
     }
     more, err := p.ops.InspectChange(ctx, id, old, new, diff)
     if err != nil {
@@ -177,8 +180,6 @@ type Deployment struct {
     Name *string `json:"name,omitempty"`
     RestAPI resource.ID `json:"restAPI"`
     Description *string `json:"description,omitempty"`
-    StageDescription *StageDescription `json:"stageDescription,omitempty"`
-    StageName *string `json:"stageName,omitempty"`
     ID string `json:"id,omitempty"`
     CreatedDate string `json:"createdDate,omitempty"`
 }
@@ -188,50 +189,8 @@ const (
     Deployment_Name = "name"
     Deployment_RestAPI = "restAPI"
     Deployment_Description = "description"
-    Deployment_StageDescription = "stageDescription"
-    Deployment_StageName = "stageName"
     Deployment_ID = "id"
     Deployment_CreatedDate = "createdDate"
-)
-
-/* Marshalable StageDescription structure(s) */
-
-// StageDescription is a marshalable representation of its corresponding IDL type.
-type StageDescription struct {
-    CacheClusterEnabled *bool `json:"cacheClusterEnabled,omitempty"`
-    CacheClusterSize *string `json:"cacheClusterSize,omitempty"`
-    CacheDataEncrypted *bool `json:"cacheDataEncrypted,omitempty"`
-    CacheTTLInSeconds *float64 `json:"cacheTTLInSeconds,omitempty"`
-    CachingEnabled *bool `json:"cachingEnabled,omitempty"`
-    ClientCertificate *resource.ID `json:"clientCertificate,omitempty"`
-    DataTraceEnabled *bool `json:"dataTraceEnabled,omitempty"`
-    Description *string `json:"description,omitempty"`
-    LoggingLevel *LoggingLevel `json:"loggingLevel,omitempty"`
-    MethodSettings *[]MethodSetting `json:"methodSettings,omitempty"`
-    MetricsEnabled *bool `json:"metricsEnabled,omitempty"`
-    StageName *string `json:"stageName,omitempty"`
-    ThrottlingBurstLimit *float64 `json:"throttlingBurstLimit,omitempty"`
-    ThrottlingRateLimit *float64 `json:"throttlingRateLimit,omitempty"`
-    Variables *map[string]string `json:"variables,omitempty"`
-}
-
-// StageDescription's properties have constants to make dealing with diffs and property bags easier.
-const (
-    StageDescription_CacheClusterEnabled = "cacheClusterEnabled"
-    StageDescription_CacheClusterSize = "cacheClusterSize"
-    StageDescription_CacheDataEncrypted = "cacheDataEncrypted"
-    StageDescription_CacheTTLInSeconds = "cacheTTLInSeconds"
-    StageDescription_CachingEnabled = "cachingEnabled"
-    StageDescription_ClientCertificate = "clientCertificate"
-    StageDescription_DataTraceEnabled = "dataTraceEnabled"
-    StageDescription_Description = "description"
-    StageDescription_LoggingLevel = "loggingLevel"
-    StageDescription_MethodSettings = "methodSettings"
-    StageDescription_MetricsEnabled = "metricsEnabled"
-    StageDescription_StageName = "stageName"
-    StageDescription_ThrottlingBurstLimit = "throttlingBurstLimit"
-    StageDescription_ThrottlingRateLimit = "throttlingRateLimit"
-    StageDescription_Variables = "variables"
 )
 
 

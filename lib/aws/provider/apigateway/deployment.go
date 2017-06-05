@@ -3,7 +3,6 @@
 package apigateway
 
 import (
-	"crypto/sha1"
 	"fmt"
 	"strings"
 
@@ -64,13 +63,6 @@ func (p *deploymentProvider) Check(ctx context.Context, obj *apigateway.Deployme
 // Create allocates a new instance of the provided resource and returns its unique ID afterwards.  (The input ID
 // must be blank.)  If this call fails, the resource must not have been created (i.e., it is "transacational").
 func (p *deploymentProvider) Create(ctx context.Context, obj *apigateway.Deployment) (resource.ID, error) {
-	// If an explicit name is given, use it.  Otherwise, auto-generate a name in part based on the resource name.
-	var stageName string
-	if obj.StageName != nil {
-		stageName = *obj.StageName
-	} else {
-		stageName = resource.NewUniqueHex(*obj.Name+"_", maxDeploymentName, sha1.Size)
-	}
 	restAPIID, err := ParseRestAPIID(obj.RestAPI)
 	if err != nil {
 		return "", err
@@ -79,7 +71,6 @@ func (p *deploymentProvider) Create(ctx context.Context, obj *apigateway.Deploym
 	create := &awsapigateway.CreateDeploymentInput{
 		RestApiId:   aws.String(restAPIID),
 		Description: obj.Description,
-		StageName:   aws.String(stageName),
 	}
 	deployment, err := p.ctx.APIGateway().CreateDeployment(create)
 	if err != nil {
@@ -107,8 +98,8 @@ func (p *deploymentProvider) Get(ctx context.Context, id resource.ID) (*apigatew
 	}
 	return &apigateway.Deployment{
 		RestAPI:     NewRestAPIID(p.ctx.Region(), restAPIID),
-		ID:          aws.StringValue(resp.Id),
 		Description: resp.Description,
+		ID:          aws.StringValue(resp.Id),
 		CreatedDate: resp.CreatedDate.String(),
 	}, nil
 }
@@ -123,7 +114,7 @@ func (p *deploymentProvider) InspectChange(ctx context.Context, id resource.ID,
 // to new values.  The resource ID is returned and may be different if the resource had to be recreated.
 func (p *deploymentProvider) Update(ctx context.Context, id resource.ID,
 	old *apigateway.Deployment, new *apigateway.Deployment, diff *resource.ObjectDiff) error {
-	ops, err := patchOperations(diff, apigateway.Deployment_StageName)
+	ops, err := patchOperations(diff)
 	if err != nil {
 		return err
 	}
@@ -151,24 +142,6 @@ func (p *deploymentProvider) Delete(ctx context.Context, id resource.ID) error {
 	restAPIID, deploymentID, err := ParseDeploymentID(id)
 	if err != nil {
 		return err
-	}
-	resp, err := p.ctx.APIGateway().GetStages(&awsapigateway.GetStagesInput{
-		RestApiId:    aws.String(restAPIID),
-		DeploymentId: aws.String(deploymentID),
-	})
-	if err != nil || resp == nil {
-		return err
-	}
-	if len(resp.Item) == 1 {
-		// Assume that the single stage associated with this deployment
-		// is the stage that was automatically created along with the deployment.
-		_, err := p.ctx.APIGateway().DeleteStage(&awsapigateway.DeleteStageInput{
-			RestApiId: aws.String(restAPIID),
-			StageName: resp.Item[0].StageName,
-		})
-		if err != nil {
-			return err
-		}
 	}
 	_, err = p.ctx.APIGateway().DeleteDeployment(&awsapigateway.DeleteDeploymentInput{
 		RestApiId:    aws.String(restAPIID),
