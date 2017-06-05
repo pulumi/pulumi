@@ -185,6 +185,8 @@ type RestAPI struct {
     ID string `json:"id,omitempty"`
     CreatedDate string `json:"createdDate,omitempty"`
     Version string `json:"version,omitempty"`
+    Warnings []string `json:"warnings,omitempty"`
+    BinaryMediaTypes []string `json:"binaryMediaTypes,omitempty"`
 }
 
 // RestAPI's properties have constants to make dealing with diffs and property bags easier.
@@ -200,6 +202,8 @@ const (
     RestAPI_ID = "id"
     RestAPI_CreatedDate = "createdDate"
     RestAPI_Version = "version"
+    RestAPI_Warnings = "warnings"
+    RestAPI_BinaryMediaTypes = "binaryMediaTypes"
 )
 
 /* Marshalable S3Location structure(s) */

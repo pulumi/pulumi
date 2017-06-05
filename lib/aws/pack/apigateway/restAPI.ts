@@ -17,6 +17,8 @@ export class RestAPI extends lumi.Resource implements RestAPIArgs {
     public id: string;
     public createdDate: string;
     public version: string;
+    public warnings: string[];
+    public binaryMediaTypes: string[];
 
     constructor(name: string, args?: RestAPIArgs) {
         super();

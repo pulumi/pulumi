@@ -122,17 +122,13 @@ func (p *restAPIProvider) Get(ctx context.Context, id resource.ID) (*apigateway.
 	}
 
 	return &apigateway.RestAPI{
-		ID:          aws.StringValue(resp.Id),
-		APIName:     resp.Name,
-		Description: resp.Description,
-		CreatedDate: resp.CreatedDate.String(),
-		Version:     aws.StringValue(resp.Version),
-
-		// TODO[pulumi/lumi#198] Exposing array-valued output properties
-		// currently triggers failures serializing resource state, so
-		// supressing these properties.
-		// Warnings:         aws.StringValueSlice(resp.Warnings),
-		// BinaryMediaTypes: aws.StringValueSlice(resp.BinaryMediaTypes),
+		ID:               aws.StringValue(resp.Id),
+		APIName:          resp.Name,
+		Description:      resp.Description,
+		CreatedDate:      resp.CreatedDate.String(),
+		Version:          aws.StringValue(resp.Version),
+		Warnings:         aws.StringValueSlice(resp.Warnings),
+		BinaryMediaTypes: aws.StringValueSlice(resp.BinaryMediaTypes),
 	}, nil
 }
 
