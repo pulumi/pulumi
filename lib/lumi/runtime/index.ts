@@ -13,12 +13,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// printf prints the provided message to standard out.  
+// printf prints the provided message to standard out.
 export function printf(message: any): void {
     // functionality provided by the runtime.
 }
 
-// sha1hash generates the SHA-1 hash of the provided string.  
+// sha1hash generates the SHA-1 hash of the provided string.
 export function sha1hash(str: string): string {
     // functionality provided by the runtime.
     return "";
