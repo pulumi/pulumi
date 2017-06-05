@@ -27,7 +27,7 @@ const (
 	NoConversion          Conversion = iota // there is no known conversion (though a cast could work)
 	ImplicitConversion                      // an implicit conversion exists (including identity)
 	AutoDynamicConversion                   // an automatic dynamic cast should be used (with possible runtime failure)
-	LatentConversion                        // the type converts but the precise value cannot be known yet.
+	ComputedConversion                      // the type converts but the precise value cannot be known yet.
 )
 
 // Convert returns the sort of conversion available from a given type to another.
@@ -67,10 +67,10 @@ func Convert(from symbols.Type, to symbols.Type) Conversion {
 				return ImplicitConversion
 			}
 		}
-	case *symbols.LatentType:
-		// A latent type can convert to a regular type provided the underlying type converts.
+	case *symbols.ComputedType:
+		// A computed type can convert to a regular type provided the underlying type converts.
 		if c := Convert(t.Element, to); c != NoConversion {
-			return LatentConversion
+			return ComputedConversion
 		}
 	case *symbols.PointerType:
 		// A pointer type can be converted to a non-pointer type, since (like Go), dereferences are implicit.
@@ -144,8 +144,8 @@ func Convert(from symbols.Type, to symbols.Type) Conversion {
 		}
 	}
 
-	// If the from is the underlying element type of a latent type, this converts implicitly.
-	if ev, isev := to.(*symbols.LatentType); isev {
+	// If the from is the underlying element type of a computed type, this converts implicitly.
+	if ev, isev := to.(*symbols.ComputedType); isev {
 		return Convert(from, ev.Element)
 	}
 

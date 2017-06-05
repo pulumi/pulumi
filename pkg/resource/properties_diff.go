@@ -131,9 +131,9 @@ func (props PropertyMap) Diff(other PropertyMap) *ObjectDiff {
 			if new.IsOutput() {
 				sames[k] = old
 			} else if diff := old.Diff(new); diff != nil {
-				if old.IsNull() {
+				if !old.HasValue() {
 					adds[k] = new
-				} else if new.IsNull() {
+				} else if !new.HasValue() {
 					deletes[k] = old
 				} else {
 					updates[k] = *diff
@@ -141,7 +141,7 @@ func (props PropertyMap) Diff(other PropertyMap) *ObjectDiff {
 			} else {
 				sames[k] = old
 			}
-		} else if !old.IsNull() {
+		} else if old.HasValue() {
 			// If there was no new property, it has been deleted.
 			deletes[k] = old
 		}
@@ -149,7 +149,7 @@ func (props PropertyMap) Diff(other PropertyMap) *ObjectDiff {
 
 	// Next find any additions not in the old map.
 	for k, new := range other {
-		if _, has := props[k]; !has && !new.IsNull() {
+		if _, has := props[k]; !has && new.HasValue() {
 			adds[k] = new
 		}
 	}
@@ -235,14 +235,14 @@ func (props PropertyMap) DeepEquals(other PropertyMap) bool {
 			if !v.DeepEquals(p) {
 				return false
 			}
-		} else if !v.IsNull() {
+		} else if v.HasValue() {
 			return false
 		}
 	}
 
 	// If the other map has properties that this map doesn't have, return false.
 	for _, k := range StablePropertyKeys(other) {
-		if _, has := props[k]; !has && !other[k].IsNull() {
+		if _, has := props[k]; !has && other[k].HasValue() {
 			return false
 		}
 	}

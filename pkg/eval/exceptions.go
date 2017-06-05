@@ -55,6 +55,6 @@ func (e *evaluator) NewIllegalInvokeTargetException(node diag.Diagable, target s
 	return e.NewException(node, "Expected a function as the target of an invoke; got '%v'", target)
 }
 
-func (e *evaluator) NewUnexpectedLatentValueException(node diag.Diagable, obj *rt.Object) *rt.Unwind {
-	return e.NewException(node, "Unexpected latent '%v' value encountered; a concrete value is required", obj.Type())
+func (e *evaluator) NewUnexpectedComputedValueException(node diag.Diagable, obj *rt.Object) *rt.Unwind {
+	return e.NewException(node, "Unexpected computed value '%v' encountered; a concrete value is required", obj.Type())
 }

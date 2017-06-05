@@ -80,7 +80,9 @@ func (a *analyzer) Analyze(url pack.PackageURL) ([]AnalyzeFailure, error) {
 }
 
 // AnalyzeResource analyzes a single resource object, and returns any errors that it finds.
-func (a *analyzer) AnalyzeResource(t tokens.Type, props PropertyMap) ([]AnalyzeResourceFailure, error) {
+func (a *analyzer) AnalyzeResource(res Resource) ([]AnalyzeResourceFailure, error) {
+	t := res.Type()
+	props := res.Inputs()
 	glog.V(7).Infof("analyzer[%v].AnalyzeResource(t=%v,#props=%v) executing", a.name, t, len(props))
 	pstr, unks := MarshalPropertiesWithUnknowns(a.ctx, props, MarshalOptions{
 		OldURNs:      true, // permit old URNs, since this is pre-update.

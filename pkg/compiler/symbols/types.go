@@ -30,7 +30,7 @@ type Type interface {
 	Ctor() Function              // this type's constructor (or nil if none).
 	Record() bool                // true if this is a record type.
 	Interface() bool             // true if this is an interface type.
-	Latent() bool                // true if this is a "latent" type (triggering deferred evaluation).
+	Computed() bool              // true if this is a "latent" type (triggering deferred evaluation).
 	HasValue() bool              // true if this kind of type carries a concrete value.
 }
 
@@ -57,7 +57,7 @@ func (node *PrimitiveType) TypeMembers() ClassMemberMap { return noClassMembers 
 func (node *PrimitiveType) Ctor() Function              { return nil }
 func (node *PrimitiveType) Record() bool                { return false }
 func (node *PrimitiveType) Interface() bool             { return false }
-func (node *PrimitiveType) Latent() bool                { return false }
+func (node *PrimitiveType) Computed() bool              { return false }
 func (node *PrimitiveType) HasValue() bool              { return !node.Null }
 func (node *PrimitiveType) String() string              { return string(node.Token()) }
 
@@ -89,7 +89,7 @@ func (node *PointerType) TypeMembers() ClassMemberMap { return noClassMembers }
 func (node *PointerType) Ctor() Function              { return nil }
 func (node *PointerType) Record() bool                { return false }
 func (node *PointerType) Interface() bool             { return false }
-func (node *PointerType) Latent() bool                { return false }
+func (node *PointerType) Computed() bool              { return false }
 func (node *PointerType) HasValue() bool              { return true }
 func (node *PointerType) String() string              { return string(node.Token()) }
 
@@ -109,48 +109,48 @@ func NewPointerType(elem Type) *PointerType {
 	return ptr
 }
 
-// LatentType is a wrapper over an ordinary type that indicates a particular expression's value is not yet known and
+// ComputedType is a wrapper over an ordinary type that indicates a particular expression's value is not yet known and
 // that it will remain unknown until some future condition is met.  In many cases, the interpreter can speculate beyond
-// a latent value, producing even more derived latent values.  Eventually, of course, the real value must be known in
+// a computed value, producing even more derived computed values.  Eventually, of course, the real value must be known in
 // order to proceed (e.g., for conditionals), however even in these cases, the interpreter may choose to proceed.
-type LatentType struct {
+type ComputedType struct {
 	Element Type // the real underlying type.
 }
 
-var _ Symbol = (*LatentType)(nil)
-var _ Type = (*LatentType)(nil)
+var _ Symbol = (*ComputedType)(nil)
+var _ Type = (*ComputedType)(nil)
 
-func (node *LatentType) Name() tokens.Name {
-	return tokens.Name(string(node.Element.Name())) + ".latent"
+func (node *ComputedType) Name() tokens.Name {
+	return tokens.Name(string(node.Element.Name())) + ".computed"
 }
-func (node *LatentType) Token() tokens.Token {
-	return tokens.Token(string(node.Element.Token())) + ".latent"
+func (node *ComputedType) Token() tokens.Token {
+	return tokens.Token(string(node.Element.Token())) + ".computed"
 }
-func (node *LatentType) Special() bool               { return false }
-func (node *LatentType) Tree() diag.Diagable         { return nil }
-func (node *LatentType) Base() Type                  { return nil }
-func (node *LatentType) TypeName() tokens.TypeName   { return tokens.TypeName(node.Name()) }
-func (node *LatentType) TypeToken() tokens.Type      { return tokens.Type(node.Token()) }
-func (node *LatentType) TypeMembers() ClassMemberMap { return noClassMembers }
-func (node *LatentType) Ctor() Function              { return nil }
-func (node *LatentType) Record() bool                { return false }
-func (node *LatentType) Interface() bool             { return false }
-func (node *LatentType) Latent() bool                { return true }
-func (node *LatentType) HasValue() bool              { return false }
-func (node *LatentType) String() string              { return string(node.Token()) }
+func (node *ComputedType) Special() bool               { return false }
+func (node *ComputedType) Tree() diag.Diagable         { return nil }
+func (node *ComputedType) Base() Type                  { return nil }
+func (node *ComputedType) TypeName() tokens.TypeName   { return tokens.TypeName(node.Name()) }
+func (node *ComputedType) TypeToken() tokens.Type      { return tokens.Type(node.Token()) }
+func (node *ComputedType) TypeMembers() ClassMemberMap { return noClassMembers }
+func (node *ComputedType) Ctor() Function              { return nil }
+func (node *ComputedType) Record() bool                { return false }
+func (node *ComputedType) Interface() bool             { return false }
+func (node *ComputedType) Computed() bool              { return true }
+func (node *ComputedType) HasValue() bool              { return false }
+func (node *ComputedType) String() string              { return string(node.Token()) }
 
-// latentTypeCache is a cache keyed by token, helping to avoid creating superfluous symbol objects.
-var latentTypeCache = make(map[tokens.Type]*LatentType)
+// computedTypeCache is a cache keyed by token, helping to avoid creating superfluous symbol objects.
+var computedTypeCache = make(map[tokens.Type]*ComputedType)
 
-// NewLatentType returns an existing type symbol from the cache, if one exists, or allocates a new one otherwise.
-func NewLatentType(elem Type) *LatentType {
+// NewComputedType returns an existing type symbol from the cache, if one exists, or allocates a new one otherwise.
+func NewComputedType(elem Type) *ComputedType {
 	tok := elem.TypeToken()
-	if ev, has := latentTypeCache[tok]; has {
+	if ev, has := computedTypeCache[tok]; has {
 		return ev
 	}
 
-	ev := &LatentType{Element: elem}
-	latentTypeCache[tok] = ev
+	ev := &ComputedType{Element: elem}
+	computedTypeCache[tok] = ev
 	return ev
 }
 
@@ -175,7 +175,7 @@ func (node *ArrayType) TypeMembers() ClassMemberMap { return noClassMembers }
 func (node *ArrayType) Ctor() Function              { return nil }
 func (node *ArrayType) Record() bool                { return false }
 func (node *ArrayType) Interface() bool             { return false }
-func (node *ArrayType) Latent() bool                { return false }
+func (node *ArrayType) Computed() bool              { return false }
 func (node *ArrayType) HasValue() bool              { return true }
 func (node *ArrayType) String() string              { return string(node.Token()) }
 
@@ -217,7 +217,7 @@ func (node *MapType) TypeMembers() ClassMemberMap { return noClassMembers }
 func (node *MapType) Ctor() Function              { return nil }
 func (node *MapType) Record() bool                { return false }
 func (node *MapType) Interface() bool             { return false }
-func (node *MapType) Latent() bool                { return false }
+func (node *MapType) Computed() bool              { return false }
 func (node *MapType) HasValue() bool              { return true }
 func (node *MapType) String() string              { return string(node.Token()) }
 
@@ -259,7 +259,7 @@ func (node *FunctionType) TypeMembers() ClassMemberMap { return noClassMembers }
 func (node *FunctionType) Ctor() Function              { return nil }
 func (node *FunctionType) Record() bool                { return false }
 func (node *FunctionType) Interface() bool             { return false }
-func (node *FunctionType) Latent() bool                { return false }
+func (node *FunctionType) Computed() bool              { return false }
 func (node *FunctionType) HasValue() bool              { return true }
 func (node *FunctionType) String() string              { return string(node.Token()) }
 
@@ -317,7 +317,7 @@ func (node *ModuleType) TypeMembers() ClassMemberMap { return noClassMembers }
 func (node *ModuleType) Ctor() Function              { return nil }
 func (node *ModuleType) Record() bool                { return false }
 func (node *ModuleType) Interface() bool             { return false }
-func (node *ModuleType) Latent() bool                { return false }
+func (node *ModuleType) Computed() bool              { return false }
 func (node *ModuleType) HasValue() bool              { return true }
 func (node *ModuleType) String() string              { return string(node.Token()) }
 
@@ -356,7 +356,7 @@ func (node *PrototypeType) TypeMembers() ClassMemberMap { return noClassMembers 
 func (node *PrototypeType) Ctor() Function              { return nil }
 func (node *PrototypeType) Record() bool                { return false }
 func (node *PrototypeType) Interface() bool             { return false }
-func (node *PrototypeType) Latent() bool                { return false }
+func (node *PrototypeType) Computed() bool              { return false }
 func (node *PrototypeType) HasValue() bool              { return true }
 func (node *PrototypeType) String() string              { return string(node.Token()) }
 

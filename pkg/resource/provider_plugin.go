@@ -69,7 +69,7 @@ func (p *provider) Pkg() tokens.Package { return p.pkg }
 // Check validates that the given property bag is valid for a resource of the given type.
 func (p *provider) Check(res Resource) ([]CheckFailure, error) {
 	t := res.Type()
-	props := res.Properties()
+	props := res.Inputs()
 	glog.V(7).Infof("resource[%v].Check(t=%v,#props=%v) executing", p.pkg, t, len(props))
 	pstr, unks := MarshalPropertiesWithUnknowns(p.ctx, props, MarshalOptions{
 		OldURNs:      true, // permit old URNs, since this is pre-update.
@@ -98,7 +98,7 @@ func (p *provider) Check(res Resource) ([]CheckFailure, error) {
 // Name names a given resource.
 func (p *provider) Name(res Resource) (tokens.QName, error) {
 	t := res.Type()
-	props := res.Properties()
+	props := res.Inputs()
 	glog.V(7).Infof("resource[%v].Name(t=%v,#props=%v) executing", p.pkg, t, len(props))
 	pstr, unks := MarshalPropertiesWithUnknowns(p.ctx, props, MarshalOptions{
 		OldURNs:      true, // permit old URNs, since this is pre-update.
@@ -124,7 +124,7 @@ func (p *provider) Name(res Resource) (tokens.QName, error) {
 // Create allocates a new instance of the provided resource and assigns its unique ID afterwards.
 func (p *provider) Create(res Resource) (State, error) {
 	t := res.Type()
-	props := res.Properties()
+	props := res.Inputs()
 	glog.V(7).Infof("resource[%v].Create(t=%v,#props=%v) executing", p.pkg, t, len(props))
 	req := &lumirpc.CreateRequest{
 		Type:       string(t),
@@ -152,7 +152,6 @@ func (p *provider) Get(res Resource) error {
 	id := res.ID()
 	contract.Assert(id != "")
 	t := res.Type()
-	props := res.Properties()
 	glog.V(7).Infof("resource[%v].Get(id=%v,t=%v) executing", p.pkg, id, t)
 	req := &lumirpc.GetRequest{
 		Id:   string(id),
@@ -165,13 +164,9 @@ func (p *provider) Get(res Resource) error {
 		return err
 	}
 
-	if outs := UnmarshalPropertiesInto(p.ctx, resp.GetProperties(), props, MarshalOptions{}); outs != nil {
-		for out := range outs {
-			res.MarkOutput(out)
-		}
-	}
-
-	glog.V(7).Infof("resource[%v].Get(id=%v,t=%v) success: #props=%v", p.pkg, t, id, len(props))
+	outprops := res.Outputs()
+	UnmarshalPropertiesInto(p.ctx, resp.GetProperties(), outprops, MarshalOptions{})
+	glog.V(7).Infof("resource[%v].Get(id=%v,t=%v) success: #outs=%v", p.pkg, t, id, len(outprops))
 	return nil
 }
 
@@ -182,14 +177,14 @@ func (p *provider) InspectChange(old Resource, new Resource, computed PropertyMa
 	t := old.Type()
 	contract.Assert(t != "")
 	contract.Assert(t == new.Type())
-	olds := old.Properties()
+	olds := old.Inputs()
 	var news PropertyMap
 	if computed != nil {
 		// If a computed map has been supplied, use that for purposes of diffing.
 		news = computed
 	} else {
 		// Otherwise, simply use the raw properties from the new resource itself.
-		news = new.Properties()
+		news = new.Inputs()
 	}
 
 	glog.V(7).Infof("resource[%v].InspectChange(id=%v,t=%v,#olds=%v,#news=%v) executing",
@@ -232,8 +227,8 @@ func (p *provider) Update(old Resource, new Resource) (State, error) {
 	t := old.Type()
 	contract.Assert(t != "")
 	contract.Assert(t == new.Type())
-	olds := old.Properties()
-	news := new.Properties()
+	olds := old.Inputs()
+	news := new.Inputs()
 
 	glog.V(7).Infof("resource[%v].Update(id=%v,t=%v,#olds=%v,#news=%v) executing",
 		p.pkg, id, t, len(olds), len(news))

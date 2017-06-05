@@ -194,6 +194,29 @@ func (o *Object) IsNull() bool {
 	return o.t == types.Null
 }
 
+// IsComputed returns true if the target object is a computed value.
+func (o *Object) IsComputed() bool {
+	_, is := o.t.(*symbols.ComputedType)
+	return is
+}
+
+// ComputedValue asserts that the target is a computed and returns its underlying source, if it is available.
+func (o *Object) ComputedValue() ComputedStub {
+	contract.Assertf(o.value != nil, "Expected Computed object to carry a Value; got nil")
+	r, ok := o.value.(ComputedStub)
+	contract.Assertf(ok, "Expected Computed object's Value to be a ComputedStub")
+	contract.Assert(o.IsComputed())
+	return r
+}
+
+// TryComputedValue tests the target for a computed value and returns its underlying source, if it is available.
+func (o *Object) TryComputedValue() (ComputedStub, bool) {
+	if o.IsComputed() {
+		return o.ComputedValue(), true
+	}
+	return ComputedStub{}, false
+}
+
 // Details prints the contents of an object deeply, detecting cycles as it goes.
 func (o *Object) Details(funcs bool, indent string) string {
 	visited := make(map[*Object]bool)
@@ -457,10 +480,21 @@ func NewPointerObject(elem symbols.Type, ptr *Pointer) *Object {
 	return NewPrimitiveObject(ptrt, ptr)
 }
 
-// NewLatentObject allocates a new pointer-like object that wraps the given reference.
-func NewLatentObject(elem symbols.Type) *Object {
-	contract.Require(elem != nil, "elem")
-	return NewObject(symbols.NewLatentType(elem), nil, nil, nil)
+// NewComputedObject allocates a new computed object that wraps the given reference, with the given src object being
+// responsible for resolving the computation (if any).
+func NewComputedObject(elem symbols.Type, expr bool, sources []*Object) *Object {
+	contract.Assert(expr || len(sources) == 1)
+	stub := ComputedStub{
+		Expr:    expr,
+		Sources: sources,
+	}
+	return NewObject(symbols.NewComputedType(elem), stub, nil, nil)
+}
+
+// ComputedStub captures information about a computed value.
+type ComputedStub struct {
+	Expr    bool      // true if this is a sophisticated expression.
+	Sources []*Object // the list of sources from which the computed value derives.
 }
 
 // NewConstantObject returns a new object with the right type and value, based on some constant data.

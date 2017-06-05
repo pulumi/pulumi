@@ -354,12 +354,12 @@ func printResourceProperties(b *bytes.Buffer, old resource.Resource, new resourc
 	if !summary {
 		// Print all of the properties associated with this resource.
 		if old == nil && new != nil {
-			printObject(b, new.Properties(), planning, indent)
+			printObject(b, new.Inputs(), planning, indent)
 		} else if new == nil && old != nil {
-			printObject(b, old.Properties(), planning, indent)
+			printObject(b, old.Inputs(), planning, indent)
 		} else {
 			contract.Assert(computed != nil) // use computed properties for diffs.
-			printOldNewDiffs(b, old.Properties(), computed, replaces, planning, indent)
+			printOldNewDiffs(b, old.Inputs(), computed, replaces, planning, indent)
 		}
 	}
 }
@@ -388,20 +388,48 @@ func printObject(b *bytes.Buffer, props resource.PropertyMap, planning bool, ind
 	}
 }
 
+// printResourceOutputProperties prints only those properties that either differ from the input properties or, if
+// there is an old snapshot of the resource, differ from the prior old snapshot's output properties.
 func printResourceOutputProperties(b *bytes.Buffer, step resource.Step, indent string) {
 	indent += detailsIndent
 	b.WriteString(step.Op().Color())
 	b.WriteString(step.Op().Suffix())
 
-	olds := step.Old().Properties()
-	news := step.New().Properties()
-	keys := resource.StablePropertyKeys(olds)
+	// First fetch all the relevant property maps that we may consult.
+	newins := step.New().Inputs()
+	newouts := step.New().Outputs()
+	var oldouts resource.PropertyMap
+	if old := step.Old(); old != nil {
+		oldouts = old.Outputs()
+	}
+
+	// Now sort the keys and enumerate each output property in a deterministic order.
+	keys := resource.StablePropertyKeys(newouts)
 	maxkey := maxKey(keys)
 	for _, k := range keys {
-		v := news[k]
-		if olds.NeedsValue(k) && shouldPrintPropertyValue(v, true) {
-			printPropertyTitle(b, k, maxkey, indent)
-			printPropertyValue(b, v, false, indent)
+		newout := newouts[k]
+		// Print this property if it is printable, and one of these cases
+		//     1) new ins has it and it's different;
+		//     2) new ins doesn't have it, but old outs does, and it's different;
+		//     3) neither old outs nor new ins contain it;
+		if shouldPrintPropertyValue(newout, true) {
+			var print bool
+			if newin, has := newins[k]; has {
+				print = (newout.Diff(newin) != nil) // case 1
+			} else if oldouts != nil {
+				if oldout, has := oldouts[k]; has {
+					print = (newout.Diff(oldout) != nil) // case 2
+				} else {
+					print = true // case 3
+				}
+			} else {
+				print = true // also case 3
+			}
+
+			if print {
+				printPropertyTitle(b, k, maxkey, indent)
+				printPropertyValue(b, newout, false, indent)
+			}
 		}
 	}
 

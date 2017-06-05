@@ -76,30 +76,17 @@ func DeserializeEnvfile(ctx *Context, envfile *Envfile) (*Env, Snapshot) {
 		var resources []Resource
 		if latest.Resources != nil {
 			for _, kvp := range latest.Resources.Iter() {
-				// Deserialize the resources, if they exist.
+				// Deserialize the resource properties, if they exist.
 				res := kvp.Value
-				var props PropertyMap
-				if res.Properties == nil {
-					props = make(PropertyMap)
-				} else {
-					props = deserializeProperties(*res.Properties, reftag)
-				}
+				inputs := deserializeDeploymentProperties(res.Inputs, reftag)
+				outputs := deserializeDeploymentProperties(res.Outputs, reftag)
 
 				// And now just produce a resource object using the information available.
 				var id ID
 				if res.ID != nil {
 					id = *res.ID
 				}
-				resobj := NewResource(id, kvp.Key, res.Type, props)
-
-				// Mark any inferred properties so we know how and when to diff them appropriately.
-				if res.Outputs != nil {
-					for _, k := range *res.Outputs {
-						resobj.MarkOutput(PropertyKey(k))
-					}
-				}
-
-				resources = append(resources, resobj)
+				resources = append(resources, NewResource(id, kvp.Key, res.Type, inputs, outputs))
 			}
 		}
 

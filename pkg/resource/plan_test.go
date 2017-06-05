@@ -70,15 +70,15 @@ func TestBasicCRUDPlan(t *testing.T) {
 	oldResB := NewResource(ID("b-b-b"), urnB, typB, PropertyMap{
 		"bf1": NewStringProperty("b-value"),
 		"bf2": NewNumberProperty(42),
-	})
+	}, nil)
 	oldResC := NewResource(ID("c-c-c"), urnC, typC, PropertyMap{
 		"cf1": NewStringProperty("c-value"),
 		"cf2": NewNumberProperty(83),
-	})
+	}, nil)
 	oldResD := NewResource(ID("d-d-d"), urnD, typD, PropertyMap{
 		"df1": NewStringProperty("d-value"),
 		"df2": NewNumberProperty(167),
-	})
+	}, nil)
 	oldsnap := NewSnapshot(ctx, ns, pkg, nil, []Resource{oldResB, oldResC, oldResD})
 
 	// Create the new resources snapshot.
@@ -86,18 +86,18 @@ func TestBasicCRUDPlan(t *testing.T) {
 	newResA := NewResource(ID(""), urnA, typA, PropertyMap{
 		"af1": NewStringProperty("a-value"),
 		"af2": NewNumberProperty(42),
-	})
+	}, nil)
 	//     - B is updated:
 	newResB := NewResource(ID(""), urnB, typB, PropertyMap{
 		"bf1": NewStringProperty("b-value"),
 		// delete the bf2 field.
 		"bf3": NewBoolProperty(true), // add the bf3.
-	})
+	}, nil)
 	//     - C has no changes:
 	newResC := NewResource(ID(""), urnC, typC, PropertyMap{
 		"cf1": NewStringProperty("c-value"),
 		"cf2": NewNumberProperty(83),
-	})
+	}, nil)
 	//     - No D; it is deleted.
 	newsnap := NewSnapshot(ctx, ns, pkg, nil, []Resource{newResA, newResB, newResC})
 

@@ -19,10 +19,3 @@ export abstract class Resource {
     }
 }
 
-// out indicates that a property is an output from the resource provider.  Such properties are treated differently by
-// the runtime because their values come from outside of the Lumi type system.  Furthermore, the runtime permits
-// speculative evaluation of code that depends upon them, in some circumstances, before the real value is known.
-export function out(target: Object, propertyKey: string) {
-    // nothing to do here; this is purely a decorative metadata token.
-}
-

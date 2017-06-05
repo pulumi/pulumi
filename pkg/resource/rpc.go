@@ -42,10 +42,11 @@ func MarshalPropertiesWithUnknowns(
 		Fields: make(map[string]*structpb.Value),
 	}
 	for _, key := range StablePropertyKeys(props) {
-		if v := props[key]; !v.IsOutput() { // always skip output properties.
+		if v := props[key]; !v.IsOutput() {
 			mv, known := MarshalPropertyValue(ctx, props[key], opts)
-			result.Fields[string(key)] = mv
-			if !known {
+			if known {
+				result.Fields[string(key)] = mv
+			} else {
 				if unk == nil {
 					unk = make(map[string]bool)
 				}
@@ -140,13 +141,13 @@ func MarshalPropertyValue(ctx *Context, v PropertyValue, opts MarshalOptions) (*
 		}, true
 	} else if v.IsComputed() {
 		e := v.ComputedValue().Eventual()
-		contract.Assert(!e.IsComputed() && !e.IsOutput())
+		contract.Assert(!e.IsComputed())
 		w, known := MarshalPropertyValue(ctx, e, opts)
 		contract.Assert(known)
 		return w, false
 	} else if v.IsOutput() {
 		e := v.OutputValue().Eventual()
-		contract.Assert(!e.IsComputed() && !e.IsOutput())
+		contract.Assert(!e.IsComputed())
 		w, known := MarshalPropertyValue(ctx, e, opts)
 		contract.Assert(known)
 		return w, false
@@ -165,10 +166,8 @@ func UnmarshalProperties(ctx *Context, props *structpb.Struct, opts MarshalOptio
 	return result
 }
 
-// UnmarshalPropertiesInto unmarshals a "JSON-like" protobuf structure into an existing resource property map.  It
-// returns a set of properties that were present in the source but not the destination (or nil if none).
-func UnmarshalPropertiesInto(ctx *Context, props *structpb.Struct, t PropertyMap,
-	opts MarshalOptions) map[PropertyKey]bool {
+// UnmarshalPropertiesInto unmarshals a "JSON-like" protobuf structure into an existing resource property map.
+func UnmarshalPropertiesInto(ctx *Context, props *structpb.Struct, t PropertyMap, opts MarshalOptions) {
 	contract.Assert(props != nil)
 
 	// First sort the keys so we enumerate them in order (in case errors happen, we want determinism).
@@ -179,22 +178,13 @@ func UnmarshalPropertiesInto(ctx *Context, props *structpb.Struct, t PropertyMap
 	sort.Strings(keys)
 
 	// And now unmarshal every field it into the map.
-	var added map[PropertyKey]bool
 	for _, k := range keys {
 		pk := PropertyKey(k)
 		v := t[pk]
-		add := t.NeedsValue(pk)
 		UnmarshalPropertyValueInto(ctx, props.Fields[k], &v, opts)
-		contract.Assert(!v.IsComputed() && !v.IsOutput())
+		contract.Assert(!v.IsComputed())
 		t[pk] = v
-		if add && !v.IsNull() {
-			if added == nil {
-				added = make(map[PropertyKey]bool)
-			}
-			added[pk] = true
-		}
 	}
-	return added
 }
 
 // UnmarshalPropertyValue unmarshals a single "JSON-like" value into a new property value.

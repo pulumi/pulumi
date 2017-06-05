@@ -126,7 +126,7 @@ type ModuleProperty struct {
 var _ Symbol = (*ModuleProperty)(nil)
 var _ ModuleMember = (*ModuleProperty)(nil)
 var _ ModuleMemberProperty = (*ModuleProperty)(nil)
-var _ Variable = (*ClassProperty)(nil)
+var _ Variable = (*ModuleProperty)(nil)
 
 func (node *ModuleProperty) Name() tokens.Name { return node.Node.Name.Ident }
 func (node *ModuleProperty) Token() tokens.Token {
@@ -147,7 +147,7 @@ func (node *ModuleProperty) MemberParent() *Module { return node.Parent }
 func (node *ModuleProperty) ModuleMemberProperty() {}
 func (node *ModuleProperty) MemberType() Type      { return node.Ty }
 func (node *ModuleProperty) Default() *interface{} { return node.Node.Default }
-func (node *ModuleProperty) Latent() bool          { return false }
+func (node *ModuleProperty) Computed() bool        { return false }
 func (node *ModuleProperty) Readonly() bool        { return node.Node.Readonly != nil && *node.Node.Readonly }
 func (node *ModuleProperty) Type() Type            { return node.Ty }
 func (node *ModuleProperty) VarNode() ast.Variable { return node.Node }

@@ -33,7 +33,7 @@ type Analyzer interface {
 	// Analyze analyzes an entire project/stack/snapshot, and returns any errors that it finds.
 	Analyze(url pack.PackageURL) ([]AnalyzeFailure, error)
 	// AnalyzeResource analyzes a single resource object, and returns any errors that it finds.
-	AnalyzeResource(t tokens.Type, props PropertyMap) ([]AnalyzeResourceFailure, error)
+	AnalyzeResource(res Resource) ([]AnalyzeResourceFailure, error)
 }
 
 // AnalyzeFailure indicates that overall analysis failed; it contains the property and reason for the failure.

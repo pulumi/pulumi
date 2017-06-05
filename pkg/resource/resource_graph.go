@@ -44,7 +44,7 @@ func newResourceGraph(resources []Resource) *resourceGraph {
 	for _, res := range resources {
 		urn := res.URN()
 		fromv := verts[res]
-		for dep := range res.Properties().AllResources() {
+		for dep := range res.Inputs().AllResources() {
 			to := urns[dep]
 			contract.Assertf(to != nil, "Missing resource for target; from=%v to=%v", urn, dep)
 			tov := verts[to]

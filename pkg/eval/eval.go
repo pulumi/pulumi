@@ -295,10 +295,10 @@ func (e *evaluator) initProperty(this *rt.Object, properties *rt.PropertyMap,
 		if m.Default() != nil {
 			// If the variable has a default object, substitute it.
 			obj = e.alloc.NewConstant(m.Tree(), *m.Default())
-		} else if this != nil && m.Latent() {
-			// If the variable is a latent variable -- that is, assignments may come from outside the system at a later
-			// date and we want to be able to speculate beyond it -- then stick a latent object in the slot.
-			obj = e.alloc.NewLatent(m.Tree(), m.Type())
+		} else if this != nil && m.Computed() {
+			// If the variable is a computed one -- that is, assignments may come from outside the system at a later
+			// date and we want to be able to speculate beyond it -- then stick a computed value in the slot.
+			obj = e.alloc.NewComputed(m.Tree(), m.Type(), false, []*rt.Object{this})
 		}
 
 		// Ensure the initialized value is advertised to the heap hooks, if any.
@@ -582,11 +582,11 @@ func (e *evaluator) issueUnhandledException(uw *rt.Unwind, err *diag.Diag, args 
 	e.Diag().Errorf(err, args...)
 }
 
-// rejectLatent checks an object's value and, if it latent (not apparent), returns an exception unwind.
-func (e *evaluator) rejectLatent(tree diag.Diagable, obj *rt.Object) *rt.Unwind {
-	if obj != nil && obj.Type().Latent() {
+// rejectComputed checks an object's value and, if it's computed and its value isn't known, returns an exception unwind.
+func (e *evaluator) rejectComputed(tree diag.Diagable, obj *rt.Object) *rt.Unwind {
+	if obj != nil && obj.Type().Computed() {
 		// TODO[pulumi/lumi#170]: support multi-stage planning that speculates beyond conditionals.
-		return e.NewUnexpectedLatentValueException(tree, obj)
+		return e.NewUnexpectedComputedValueException(tree, obj)
 	}
 	return nil
 }
@@ -1182,7 +1182,7 @@ func (e *evaluator) requireExpressionValue(node ast.Expression) (*rt.Object, *rt
 	obj, uw := e.evalExpression(node)
 	if uw != nil {
 		return nil, uw
-	} else if uw = e.rejectLatent(node, obj); uw != nil {
+	} else if uw = e.rejectComputed(node, obj); uw != nil {
 		return nil, uw
 	}
 	return obj, nil
@@ -1238,9 +1238,9 @@ func (e *evaluator) evalArrayLiteral(node *ast.ArrayLiteral) (*rt.Object, *rt.Un
 		sze, uw := e.evalExpression(*node.Size)
 		if uw != nil {
 			return nil, uw
-		} else if sze.Type().Latent() {
+		} else if sze.Type().Computed() {
 			// If the array size isn't known, then we will propagate a latent value in its place.
-			return e.alloc.NewLatent(node, ty), nil
+			return e.alloc.NewComputed(node, ty, true, sze.ComputedValue().Sources), nil
 		}
 		sz := int(sze.NumberValue())
 		if sz < 0 {
@@ -1317,11 +1317,11 @@ func (e *evaluator) evalObjectLiteral(node *ast.ObjectLiteral) (*rt.Object, *rt.
 				name, uw := e.evalExpression(p.Property)
 				if uw != nil {
 					return nil, uw
-				} else if name.Type().Latent() {
+				} else if name.Type().Computed() {
 					// If we are setting a property on the object, and that property's name is dynamically computed
 					// using a string whose value is not known, then we can't let the object be seen in a concrete
 					// state.  Doing so would mean we can't assure latent propagation to operations on such properties.
-					return e.alloc.NewLatent(node, ty), nil
+					return e.alloc.NewComputed(node, ty, true, name.ComputedValue().Sources), nil
 				}
 				property = rt.PropertyKey(name.StringValue())
 				addr = obj.GetPropertyAddr(property, true, true)
@@ -1650,9 +1650,16 @@ func (e *evaluator) evalLoadDynamicCore(node ast.Node, objexpr *ast.Expression, 
 
 	var pv *rt.Pointer
 	var key tokens.Name
-	if (this != nil && this.Type().Latent()) || name.Type().Latent() {
+	if (this != nil && this.Type().Computed()) || name.Type().Computed() {
 		// If the object or name are latent, we can't possibly proceed, because we do not know what to lookup.
-		lat := e.alloc.NewLatent(node, types.Dynamic)
+		var comps []*rt.Object
+		if this.Type().Computed() {
+			comps = append(comps, this.ComputedValue().Sources...)
+		}
+		if name.Type().Computed() {
+			comps = append(comps, name.ComputedValue().Sources...)
+		}
+		lat := e.alloc.NewComputed(node, types.Dynamic, true, comps)
 		pv = rt.NewPointer(lat, false, nil, nil)
 	} else {
 		// Otherwise, go ahead and search the object for a property with the given name.
@@ -1897,25 +1904,26 @@ func (e *evaluator) evalUnaryOperatorExpressionFor(node *ast.UnaryOperatorExpres
 		}
 	}
 
-	// See if the operand is a latent type.  If yes, treat it differently.
-	if opand.Type().Latent() {
+	// See if the operand is a computed type.  If yes, treat it differently.
+	if opand.Type().Computed() {
+		comps := opand.ComputedValue().Sources
 		switch op {
 		case ast.OpDereference:
 			// The target is a pointer; return the underlying pointer element.
-			pt := opand.Type().(*symbols.LatentType).Element
+			pt := opand.Type().(*symbols.ComputedType).Element
 			et := pt.(*symbols.PointerType).Element
-			return e.alloc.NewLatent(node, et), nil
+			return e.alloc.NewComputed(node, et, true, comps), nil
 		case ast.OpAddressof:
 			// The target is a pointer; return the actual pointer.
-			pt := opand.Type().(*symbols.LatentType).Element
-			return e.alloc.NewLatent(node, pt), nil
+			pt := opand.Type().(*symbols.ComputedType).Element
+			return e.alloc.NewComputed(node, pt, true, comps), nil
 		case ast.OpLogicalNot:
 			// The target is a boolean; propagate a latent boolean.
-			return e.alloc.NewLatent(node, types.Bool), nil
+			return e.alloc.NewComputed(node, types.Bool, true, comps), nil
 		case ast.OpUnaryPlus, ast.OpUnaryMinus, ast.OpBitwiseNot,
 			ast.OpPlusPlus, ast.OpMinusMinus:
 			// All these operators deal with numbers; so, propagate a latent number.
-			return e.alloc.NewLatent(node, types.Number), nil
+			return e.alloc.NewComputed(node, types.Number, true, comps), nil
 		default:
 			contract.Failf("Unrecognized unary operator: %v", op)
 			return nil, nil
@@ -2003,7 +2011,7 @@ func (e *evaluator) evalBinaryOperatorExpression(node *ast.BinaryOperatorExpress
 
 	// For the logical && and ||, we will only evaluate the rhs it if the lhs was true.
 	if ast.IsConditionalBinaryOperator(op) {
-		if uw := e.rejectLatent(node.Left, lhs); uw != nil {
+		if uw := e.rejectComputed(node.Left, lhs); uw != nil {
 			return nil, uw
 		}
 		if lhs.BoolValue() {
@@ -2018,27 +2026,36 @@ func (e *evaluator) evalBinaryOperatorExpression(node *ast.BinaryOperatorExpress
 		return nil, uw
 	}
 
-	// Check to see if the operator involves latent operations and, if so, return a latent of the right type.
-	if lhs.Type().Latent() || rhs.Type().Latent() {
+	// Accumulate all the computed sources, if any, so that we may propagate them.
+	var comps []*rt.Object
+	if lhs.Type().Computed() {
+		comps = append(comps, lhs.ComputedValue().Sources...)
+	}
+	if rhs.Type().Computed() {
+		comps = append(comps, rhs.ComputedValue().Sources...)
+	}
+
+	// If the operator involves computed operations, return a computed of the right type.
+	if len(comps) > 0 {
 		if ast.IsArithmeticBinaryOperator(op) || ast.IsBitwiseBinaryOperator(op) {
 			if op == ast.OpAdd && types.CanConvert(rhs.Type(), types.String) {
 				// + can involve strings for concatenation.
-				return e.alloc.NewLatent(node, types.String), nil
+				return e.alloc.NewComputed(node, types.String, true, comps), nil
 			}
 			// All other arithmetic operators deal in terms of numbers.
-			return e.alloc.NewLatent(node, types.Number), nil
+			return e.alloc.NewComputed(node, types.Number, true, comps), nil
 		} else if ast.IsAssignmentBinaryOperator(op) {
 			if op == ast.OpAssign {
 				// = is an arbitrary type, just use the rhs.
-				return e.alloc.NewLatent(node, rhs.Type().(*symbols.LatentType).Element), nil
+				return e.alloc.NewComputed(node, rhs.Type().(*symbols.ComputedType).Element, true, comps), nil
 			} else if op == ast.OpAssignSum && types.CanConvert(rhs.Type(), types.String) {
 				// += can involve strings for concatenation.
-				return e.alloc.NewLatent(node, types.String), nil
+				return e.alloc.NewComputed(node, types.String, true, comps), nil
 			}
 			// All other assignment operators deal in terms of numbers.
-			return e.alloc.NewLatent(node, types.Number), nil
+			return e.alloc.NewComputed(node, types.Number, true, comps), nil
 		} else if ast.IsRelationalBinaryOperator(op) {
-			return e.alloc.NewLatent(node, types.Bool), nil
+			return e.alloc.NewComputed(node, types.Bool, true, comps), nil
 		}
 		contract.Failf("Expected to resolve latent binary operator expression for operator: %v", op)
 	}

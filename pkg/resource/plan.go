@@ -180,8 +180,8 @@ func (p *plan) Apply(prog Progress) (Snapshot, Step, State, error) {
 		contract.Assert(!new.HasID())
 		id := old.ID()
 		new.SetID(id)
+		new.SetOutputsFrom(old)
 		p.ctx.IDURN[id] = new.URN()
-		old.PropagateOutputs(new)
 	}
 
 	// Next, walk the plan linked list and apply each step.
@@ -286,7 +286,7 @@ func newPlan(ctx *Context, old Snapshot, new Snapshot, analyzers []tokens.QName)
 		pb.Olds[m] = old
 		contract.Assert(old.HasID())
 		// Keep track of which dependents exist for all resources.
-		for dep := range old.Properties().AllResources() {
+		for dep := range old.Inputs().AllResources() {
 			pb.Depends[dep] = append(pb.Depends[dep], m)
 		}
 	}
@@ -296,10 +296,6 @@ func newPlan(ctx *Context, old Snapshot, new Snapshot, analyzers []tokens.QName)
 
 	// Do a quick pass over the new resources and make sure properties pass muster.
 	for _, new := range pb.NewRes {
-		t := new.Type()
-		props := new.Properties()
-		urn := new.URN()
-
 		// First ensure that the provider is okay with this resource.
 		prov, err := pb.P.Provider(new)
 		if err != nil {
@@ -310,7 +306,7 @@ func newPlan(ctx *Context, old Snapshot, new Snapshot, analyzers []tokens.QName)
 			return nil, err
 		}
 		for _, failure := range failures {
-			ctx.Diag.Errorf(errors.ErrorResourcePropertyValueInvalid, urn, failure.Property, failure.Reason)
+			ctx.Diag.Errorf(errors.ErrorResourcePropertyValueInvalid, new.URN(), failure.Property, failure.Reason)
 		}
 
 		// Next, give each analyzer -- if any -- a chance to inspect the reosurce too.
@@ -319,12 +315,12 @@ func newPlan(ctx *Context, old Snapshot, new Snapshot, analyzers []tokens.QName)
 			if err != nil {
 				return nil, err
 			}
-			failures, err := analyzer.AnalyzeResource(t, props)
+			failures, err := analyzer.AnalyzeResource(new)
 			if err != nil {
 				return nil, err
 			}
 			for _, failure := range failures {
-				ctx.Diag.Errorf(errors.ErrorAnalyzeResourceFailure, aname, urn, failure.Property, failure.Reason)
+				ctx.Diag.Errorf(errors.ErrorAnalyzeResourceFailure, aname, new.URN(), failure.Property, failure.Reason)
 			}
 		}
 	}
@@ -357,7 +353,7 @@ func newPlan(ctx *Context, old Snapshot, new Snapshot, analyzers []tokens.QName)
 			// these two conditions exist: 1) either the old and new properties don't match or 2) the update impact
 			// is assessed as having to replace the resource, in which case the ID will change.  This might have a
 			// cascading impact on subsequent updates too, since those IDs must trigger recreations, etc.
-			computed := new.Properties().ReplaceResources(func(r URN) URN {
+			computed := new.Inputs().ReplaceResources(func(r URN) URN {
 				if pb.Replace(r) {
 					// If the resource is being replaced, simply mangle the URN so that it's different; this value
 					// won't actually be used for anything other than the diffing algorithms below.
@@ -368,15 +364,7 @@ func newPlan(ctx *Context, old Snapshot, new Snapshot, analyzers []tokens.QName)
 				return r
 			})
 
-			// Propagate old outputs, provided they aren't overwritten in new, for purposes of the diff.
-			olds := old.Properties()
-			for k := range old.Outputs() {
-				if computed.NeedsValue(k) {
-					computed[k] = olds[k]
-				}
-			}
-
-			if !old.Properties().DeepEquals(computed) {
+			if !old.Inputs().DeepEquals(computed) {
 				// See if this update has the effect of deleting and recreating the resource.  If so, we need to make
 				// sure to insert the right replacement steps into the graph (a create, replace, and delete).
 				// TODO[pulumi/lumi#90]: this should generalize to any property changes.
@@ -546,7 +534,7 @@ func (pb *planBuilder) connectCreateUpdate(m URN, v *planVertex, update bool) {
 	//     - new resources this step depends on
 	//     - updated resources that this step depends on
 	new := v.Step().New()
-	for dep := range new.Properties().AllResources() {
+	for dep := range new.Inputs().AllResources() {
 		tov, has := pb.Creates[dep] // see if we're creating the dependency.
 		if !has {
 			tov, has = pb.Updates[dep] // see if the dependency is being updated.
@@ -644,7 +632,7 @@ func (s *step) Provider() (Provider, error) {
 }
 
 func newCreateStep(p *plan, new Resource) *step {
-	return &step{p: p, op: OpCreate, new: new, newprops: new.Properties()}
+	return &step{p: p, op: OpCreate, new: new, newprops: new.Inputs()}
 }
 
 func newDeleteStep(p *plan, old Resource) *step {
@@ -660,7 +648,7 @@ func newReplaceStep(p *plan, old Resource, new Resource, newprops PropertyMap) *
 }
 
 func newReplaceCreateStep(p *plan, new Resource) *step {
-	return &step{p: p, op: OpReplaceCreate, new: new, newprops: new.Properties()}
+	return &step{p: p, op: OpReplaceCreate, new: new, newprops: new.Inputs()}
 }
 
 func newReplaceDeleteStep(p *plan, old Resource) *step {
@@ -697,11 +685,10 @@ func (s *step) Apply() (State, error) {
 		if err != nil {
 			return rst, err
 		}
+
+		// Get the ID, read the resource state back (to fetch outputs), and store them.
 		id := s.new.ID()
 		contract.Assert(id != "")
-
-		// Copy the old resource, set the new ID, read the resource state back (to fetch outputs), and store them.
-		s.old = s.new.ShallowClone()
 		s.p.ctx.IDURN[id] = s.new.URN()
 		if err := prov.Get(s.new); err != nil {
 			return StateUnknown, err
@@ -717,9 +704,6 @@ func (s *step) Apply() (State, error) {
 		}
 
 	case OpUpdate:
-		// First copy over any old properties that should carry over.
-		s.old.PropagateOutputs(s.new)
-
 		// Invoke the Update RPC function for this provider:
 		contract.Assert(s.old != nil)
 		contract.Assert(s.new != nil)

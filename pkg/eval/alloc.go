@@ -109,9 +109,10 @@ func (a *Allocator) NewPointer(tree diag.Diagable, elem symbols.Type, ptr *rt.Po
 	return obj
 }
 
-// NewLatent creates a new latent object; that is, one whose value is not yet known.
-func (a *Allocator) NewLatent(tree diag.Diagable, elem symbols.Type) *rt.Object {
-	obj := rt.NewLatentObject(elem)
+// NewComputed creates a new computed object; that is, one whose value is not yet known.  The sources list carries
+// with it a list of known objects from which the computed value will be derived.
+func (a *Allocator) NewComputed(tree diag.Diagable, elem symbols.Type, expr bool, sources []*rt.Object) *rt.Object {
+	obj := rt.NewComputedObject(elem, expr, sources)
 	a.onNewObject(tree, obj)
 	return obj
 }

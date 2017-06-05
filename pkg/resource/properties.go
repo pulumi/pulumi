@@ -384,12 +384,12 @@ func (m PropertyMap) OptOutputOrErr(k PropertyKey) (*Output, error) {
 	return m.OutputOrErr(k, false)
 }
 
-// NeedsValue returns true if the slot associated with the given property key is missing, contains a null, or is an
-// output property that is eagerly awaiting a value to be assigned.  That is to say, NeedsValue indicates a semantically
-// meaningful value is present (even if it's a computed one whose concrete value isn't yet evaluated).
-func (m PropertyMap) NeedsValue(k PropertyKey) bool {
+// HasValue returns true if the slot associated with the given property key contains a real value.  It returns false
+// if a value is null or an output property that is awaiting a value to be assigned.  That is to say, HasValue indicates
+// a semantically meaningful value is present (even if it's a computed one whose concrete value isn't yet evaluated).
+func (m PropertyMap) HasValue(k PropertyKey) bool {
 	v, has := m[k]
-	return !has || v.IsNull() || v.IsOutput()
+	return has && v.HasValue()
 }
 
 // Mappable returns a mapper-compatible object map, suitable for deserialization into structures.
@@ -424,10 +424,14 @@ func (m PropertyMap) ReplaceResources(updater func(URN) URN) PropertyMap {
 
 func (m PropertyMap) ShallowClone() PropertyMap {
 	copy := make(PropertyMap)
-	for k, v := range m {
-		copy[k] = v
-	}
+	m.ShallowCloneInto(copy)
 	return copy
+}
+
+func (m PropertyMap) ShallowCloneInto(other PropertyMap) {
+	for k, v := range m {
+		other[k] = v
+	}
 }
 
 func (s PropertySet) ShallowClone() PropertySet {
@@ -681,6 +685,11 @@ func (v PropertyValue) CanResource() bool {
 		return v.OutputValue().Eventual().CanResource()
 	}
 	return false
+}
+
+// HasValue returns true if a value is semantically meaningful.
+func (v PropertyValue) HasValue() bool {
+	return !v.IsNull() && !v.IsOutput()
 }
 
 // TypeString returns a type representation of the property value's holder type.

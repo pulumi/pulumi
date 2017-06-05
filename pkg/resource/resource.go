@@ -61,19 +61,17 @@ func IDStrings(ids []ID) []string {
 
 // Resource is an instance of a resource with an ID, type, and bag of state.
 type Resource interface {
-	ID() ID                          // the resource's unique ID assigned by the provider (or blank if uncreated).
-	URN() URN                        // the resource's object urn, a human-friendly, unique name for the resource.
-	Type() tokens.Type               // the resource's type.
-	Properties() PropertyMap         // the resource's property map.
-	Outputs() PropertySet            // the set of properties that were set via outputs from the provider.
-	ClearOutputs()                   // clears the outputs set in preparation for an operation that marks them.
-	MarkOutput(k PropertyKey)        // marks a property as an output from the provider.
-	HasID() bool                     // returns true if the resource has been assigned an ID.
-	SetID(id ID)                     // assignes an ID to this resource, for those under creation.
-	HasURN() bool                    // returns true if the resource has been assigned URN.
-	SetURN(m URN)                    // assignes a URN to this resource, for those under creation.
-	ShallowClone() Resource          // make a shallow clone of the resource.
-	PropagateOutputs(other Resource) // copy any required output properties onto the target object.
+	ID() ID                      // the resource's unique ID assigned by the provider (or blank if uncreated).
+	URN() URN                    // the resource's object urn, a human-friendly, unique name for the resource.
+	Type() tokens.Type           // the resource's type.
+	Inputs() PropertyMap         // the resource's input properties (as specified by the program).
+	Outputs() PropertyMap        // the resource's output properties (as specified by the resource provider).
+	HasID() bool                 // returns true if the resource has been assigned an ID.
+	SetID(id ID)                 // assignes an ID to this resource, for those under creation.
+	HasURN() bool                // returns true if the resource has been assigned URN.
+	SetURN(m URN)                // assignes a URN to this resource, for those under creation.
+	SetOutputsFrom(src Resource) // copy all output properties from one resource to another.
+	ShallowClone() Resource      // make a shallow clone of the resource.
 }
 
 // State is returned when an error has occurred during a resource provider operation.  It indicates whether the
@@ -91,28 +89,18 @@ func IsResourceVertex(v *heapstate.ObjectVertex) bool {
 }
 
 type resource struct {
-	id         ID          // the resource's unique ID, assigned by the resource provider (or blank if uncreated).
-	urn        URN         // the resource's object urn, a human-friendly, unique name for the resource.
-	t          tokens.Type // the resource's type.
-	properties PropertyMap // the resource's property map.
-	outs       PropertySet // the set of properties that were set via outputs from the provider.
+	id      ID          // the resource's unique ID, assigned by the resource provider (or blank if uncreated).
+	urn     URN         // the resource's object urn, a human-friendly, unique name for the resource.
+	t       tokens.Type // the resource's type.
+	inputs  PropertyMap // the resource's input properties (as specified by the program).
+	outputs PropertyMap // the resource's output properties (as specified by the resource provider).
 }
 
-func (r *resource) ID() ID                  { return r.id }
-func (r *resource) URN() URN                { return r.urn }
-func (r *resource) Type() tokens.Type       { return r.t }
-func (r *resource) Properties() PropertyMap { return r.properties }
-func (r *resource) Outputs() PropertySet    { return r.outs }
-
-func (r *resource) ClearOutputs() {
-	r.outs = nil
-}
-func (r *resource) MarkOutput(k PropertyKey) {
-	if r.outs == nil {
-		r.outs = make(PropertySet)
-	}
-	r.outs[k] = true
-}
+func (r *resource) ID() ID               { return r.id }
+func (r *resource) URN() URN             { return r.urn }
+func (r *resource) Type() tokens.Type    { return r.t }
+func (r *resource) Inputs() PropertyMap  { return r.inputs }
+func (r *resource) Outputs() PropertyMap { return r.outputs }
 
 func (r *resource) HasID() bool { return (string(r.id) != "") }
 func (r *resource) SetID(id ID) {
@@ -127,38 +115,37 @@ func (r *resource) SetURN(m URN) {
 	r.urn = m
 }
 
+// SetOutputsFrom copies all output properties from a src resource to the instance.
+func (r *resource) SetOutputsFrom(src Resource) {
+	src.Outputs().ShallowCloneInto(r.Outputs())
+}
+
 // ShallowClone clones a resource object so that any modifications to it are not reflected in the original.  Note that
 // the property map is only shallowly cloned so any mutations deep within it may get reflected in the original.
 func (r *resource) ShallowClone() Resource {
 	return &resource{
-		id:         r.id,
-		urn:        r.urn,
-		t:          r.t,
-		properties: r.properties.ShallowClone(),
-		outs:       r.outs.ShallowClone(),
-	}
-}
-
-// PropagateOutputs copies any required output properties onto the target object.
-func (r *resource) PropagateOutputs(other Resource) {
-	rs := r.Properties()
-	others := other.Properties()
-	for k := range r.Outputs() {
-		if others.NeedsValue(k) {
-			others[k] = rs[k]
-			other.MarkOutput(k)
-		}
+		id:      r.id,
+		urn:     r.urn,
+		t:       r.t,
+		inputs:  r.inputs.ShallowClone(),
+		outputs: r.outputs.ShallowClone(),
 	}
 }
 
 // NewResource creates a new resource from the information provided.
-func NewResource(id ID, urn URN, t tokens.Type, properties PropertyMap) Resource {
+func NewResource(id ID, urn URN, t tokens.Type, inputs PropertyMap, outputs PropertyMap) Resource {
+	if inputs == nil {
+		inputs = make(PropertyMap)
+	}
+	if outputs == nil {
+		outputs = make(PropertyMap)
+	}
 	return &resource{
-		id:         id,
-		urn:        urn,
-		t:          t,
-		properties: properties,
-		outs:       nil, // lazily allocated when provider operations occur.
+		id:      id,
+		urn:     urn,
+		t:       t,
+		inputs:  inputs,
+		outputs: outputs,
 	}
 }
 
@@ -176,13 +163,8 @@ func NewObjectResource(ctx *Context, obj *rt.Object) Resource {
 	props := cloneObject(ctx, obj)
 
 	// Finally allocate and return the resource object; note that ID is left blank until the provider assignes one.
-	return &resource{
-		t:          t.TypeToken(),
-		properties: props,
-	}
+	return NewResource("", urn, t.TypeToken(), props, nil)
 }
-
-const resourceOutPropertyToken = tokens.Token("lumi:resource:out")
 
 // cloneObject creates a property map out of a runtime object.  The result is fully serializable in the sense that it
 // can be stored in a JSON or YAML file, serialized over an RPC interface, etc.  In particular, any references to other
@@ -190,41 +172,14 @@ const resourceOutPropertyToken = tokens.Token("lumi:resource:out")
 func cloneObject(ctx *Context, obj *rt.Object) PropertyMap {
 	contract.Assert(obj != nil)
 
-	// First accumulate a list of properties that are known to be outputs.
-	var outs map[PropertyKey]bool
-	t := obj.Type()
-	for t != nil {
-		for name, member := range t.TypeMembers() {
-			if prop, isprop := member.(*symbols.ClassProperty); isprop {
-				if attrs := prop.Node.Attributes; attrs != nil {
-					for _, attr := range *attrs {
-						if attr.Decorator.Tok == resourceOutPropertyToken {
-							if outs == nil {
-								outs = make(map[PropertyKey]bool)
-							}
-							outs[PropertyKey(name)] = true
-							break
-						}
-					}
-				}
-			}
-		}
-		t = t.Base()
-	}
-
-	// Next walk the object's properties and serialize them in a stable order.
+	// Walk the object's properties and serialize them in a stable order.
 	src := obj.PropertyValues()
 	dest := make(PropertyMap)
 	for _, k := range src.Stable() {
 		// TODO: detect cycles.
 		obj := src.Get(k)
-		pky := PropertyKey(k)
-		var out bool
-		if outs != nil {
-			out = outs[pky]
-		}
-		if v, ok := cloneObjectProperty(ctx, obj, out); ok {
-			dest[pky] = v
+		if v, ok := cloneObjectProperty(ctx, obj); ok {
+			dest[PropertyKey(k)] = v
 		}
 	}
 	return dest
@@ -232,7 +187,7 @@ func cloneObject(ctx *Context, obj *rt.Object) PropertyMap {
 
 // cloneObjectProperty creates a single property value out of a runtime object.  It returns false if the property could
 // not be stored in a property (e.g., it is a function or other unrecognized or unserializable runtime object).
-func cloneObjectProperty(ctx *Context, obj *rt.Object, out bool) (PropertyValue, bool) {
+func cloneObjectProperty(ctx *Context, obj *rt.Object) (PropertyValue, bool) {
 	t := obj.Type()
 
 	// Serialize resource references as URNs.
@@ -264,7 +219,7 @@ func cloneObjectProperty(ctx *Context, obj *rt.Object, out bool) (PropertyValue,
 	case *symbols.ArrayType:
 		var result []PropertyValue
 		for _, e := range *obj.ArrayValue() {
-			if v, ok := cloneObjectProperty(ctx, e.Obj(), false); ok {
+			if v, ok := cloneObjectProperty(ctx, e.Obj()); ok {
 				result = append(result, v)
 			}
 		}
@@ -274,19 +229,20 @@ func cloneObjectProperty(ctx *Context, obj *rt.Object, out bool) (PropertyValue,
 		return NewObjectProperty(obj), true
 	}
 
-	// If a latent value, we can propagate an unknown value, but only for certain cases.
-	if t.Latent() {
+	// If a computed value, we can propagate an unknown value, but only for certain cases.
+	if t.Computed() {
 		// If this is an output property, then this property will turn into an output.  Otherwise, it will be marked
 		// completed.  An output property is permitted in more places by virtue of the fact that it is expected not to
 		// exist during resource create operations, whereas all computed properties should have been resolved by then.
 		var makeProperty func(PropertyValue) PropertyValue
-		if out {
+		if !obj.ComputedValue().Expr {
 			makeProperty = MakeOutput
 		} else {
 			makeProperty = MakeComputed
 		}
+		// TODO[pulumi/lumi#90]: track the resource URNs that are implicated.
 
-		future := t.(*symbols.LatentType).Element
+		future := t.(*symbols.ComputedType).Element
 		switch future {
 		case types.Null:
 			return makeProperty(NewNullProperty()), true
