@@ -3,10 +3,10 @@
 let a: string = "x";
 let b: any = <any>a; // ok.
 
-// TODO: a way to baseline expected failures.
+// IDEA: a way to baseline expected failures.
 // let c: number = <number>a; // statically rejected.
 
-// TODO: a way to baseline expected runtime failures.
+// IDEA: a way to baseline expected runtime failures.
 // let d: number = <number>b; // dynamically rejected.
 
 class C {}

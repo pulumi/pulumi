@@ -63,7 +63,8 @@ let binaryOperators = new Map<ts.SyntaxKind, ast.BinaryOperator>([
     [ ts.SyntaxKind.ExclamationEqualsEqualsToken,                 "!="  ], // TODO[pulumi/lumi#50]: emulate !==.
 
     // Intrinsics
-    // TODO: [ ts.SyntaxKind.InKeyword,                           "in" ],
+    // TODO[pulumi/lumi#66]: implement the "in" operator:
+    //     [ ts.SyntaxKind.InKeyword,                           "in" ],
 ]);
 
 // A mapping from TypeScript unary prefix operator to LumiIL AST operator.
@@ -297,7 +298,8 @@ export class Transformer {
                 if (dep !== this.pkg.name) {
                     if (!this.pkg.dependencies || !this.pkg.dependencies[dep]) {
                         // If the reference is the LumiJS standard library, we will auto-generate one for the user.
-                        // TODO: rather than using "*" as the version, take the version we actually compiled against.
+                        // TODO[pulumi/lumi#53]: rather than using "*" as the version, take the version we actually
+                        //     compiled against.
                         if (dep === mujsStdlibPackage) {
                             if (!this.pkg.dependencies) {
                                 this.pkg.dependencies = {};
@@ -566,7 +568,7 @@ export class Transformer {
         }
         else {
             // To create a module name, make it relative to the package root, and lop off the extension.
-            // TODO(joe): this still isn't 100% correct, because we might have ".."s for "up and over" references.
+            // TODO[pulumi/lumi#77]: this still isn't 100% correct, because we might have "up and over .." references.
             //     We should consult the dependency list to ensure that it exists, and use that for normalization.
             moduleName = fspath.relative(pkginfo.root, ref);
 
@@ -662,8 +664,8 @@ export class Transformer {
     // resolveModuleSymbol binds either a name or a path to an associated module symbol.
     private resolveModuleSymbol(name?: string, path?: string): ts.Symbol {
         // Resolve the module name to a real symbol.
-        // TODO(joe): ensure that this dependency exists, to avoid "accidentally" satisfyied name resolution in the
-        //     TypeScript compiler; for example, if the package just happens to exist in `node_modules`, etc.
+        // TODO[pulumi/lumi#77]: ensure that this dependency exists, to avoid "accidentally" satisfyied name resolution
+        //     in the TypeScript compiler; for example, if the package just happens to exist in `node_modules`, etc.
         let resolvedModule: ts.ResolvedModuleFull | undefined;
         this.getResolvedModules().forEach((candidate: ts.ResolvedModuleFull, candidateName: string) => {
             if ((name && candidateName === name) ||
@@ -809,7 +811,6 @@ export class Transformer {
         else if (simple.symbol) {
             if (simple.symbol.flags & (ts.SymbolFlags.ObjectLiteral | ts.SymbolFlags.TypeLiteral)) {
                 // For object and type literals, simply return the dynamic type.
-                // TODO: consider emitting strong types for these and using them anonymously.
                 return tokens.dynamicType;
             }
             else if (simple.symbol.flags & ts.SymbolFlags.Function) {
@@ -1146,7 +1147,7 @@ export class Transformer {
                     if (isVariableDeclaration(element)) {
                         // This is a module property with a possible initializer.  The property must be registered as a
                         // export in this module's export map, and the initializer must go into the module initializer.
-                        // TODO(joe): respect legacyVar to emulate "var"-like scoping.
+                        // TODO[pulumi/lumi#44]: respect legacyVar to emulate "var"-like scoping.
                         let decl = <VariableDeclaration<ast.ModuleProperty>>element;
                         if (decl.initializer) {
                             statements.push(this.makeVariableInitializer(undefined, decl));
@@ -1312,8 +1313,8 @@ export class Transformer {
         let exports: ast.Export[] = [];
 
         // Otherwise, we are exporting already-imported names from the current module.
-        // TODO: in ECMAScript, this is order independent, so we can actually export before declaring something.
-        //     To simplify things, we are only allowing you to export things declared lexically before the export.
+        // TODO[pulumi/lumi#70]: in ECMAScript, this is order independent, so we can actually export before declaring
+        //     something.  To simplify things, you may only export things declared lexically before the export.
 
         // In the case of a module specifier, we are re-exporting elements from another module.
         let sourceModule: ModuleReference | undefined;
@@ -1647,7 +1648,7 @@ export class Transformer {
 
     private async transformClassDeclaration(
             modtok: tokens.ModuleToken, node: ts.ClassDeclaration): Promise<ast.Class> {
-        // TODO(joe): generics.
+        // TODO[pulumi/lumi#128]: generics.
 
         // First transform the name into an identifier.  In the absence of a name, we will proceed under the assumption
         // that it is the default export.  This should be verified later on.
@@ -2000,8 +2001,7 @@ export class Transformer {
     // transformInterfaceDeclaration turns a TypeScript interface into a LumiIL interface class.
     private async transformInterfaceDeclaration(
             modtok: tokens.ModuleToken, node: ts.InterfaceDeclaration): Promise<ast.Class> {
-        // TODO(joe): generics.
-        // TODO(joe): extends/implements.
+        // TODO[pulumi/lumi#128]: generics.
 
         // Create a name and token for the LumiIL class representing this.
         let name: ast.Identifier = this.transformIdentifier(node.name);
@@ -2153,7 +2153,7 @@ export class Transformer {
 
     private async transformLocalVariableDeclarations(node: ts.VariableDeclarationList): Promise<ast.Statement> {
         // For variables, we need to append initializers as assignments if there are any.
-        // TODO: emulate "var"-like scoping.
+        // TODO[pulumi/lumi#44]: emulate "var"-like scoping.
         let statements: ast.Statement[] = [];
         let decls: VariableLikeDeclaration[] = await this.transformVariableDeclarationList(node);
         for (let decl of decls) {
@@ -2345,7 +2345,6 @@ export class Transformer {
         let mods: ts.ModifierFlags = ts.getCombinedModifierFlags(node);
         let name: ast.Identifier = this.transformPropertyName(node.name);
         let attributes: ast.Attribute[] | undefined = await this.transformDecorators(node.decorators);
-        // TODO: primary properties.
         return new VariableDeclaration<ast.ClassProperty>(
             node,
             this.createClassMemberToken(classtok, name.ident),
@@ -2563,7 +2562,6 @@ export class Transformer {
     /** Miscellaneous statements **/
 
     private async transformBlock(node: ts.Block): Promise<ast.Block> {
-        // TODO(joe): map directives.
         let stmts: ast.Statement[] = [];
         for (let stmt of node.statements) {
             stmts.push(await this.transformStatement(stmt));
@@ -2966,7 +2964,7 @@ export class Transformer {
 
     private async transformElementAccessExpression(node: ts.ElementAccessExpression): Promise<ast.LoadExpression> {
         // This is an indexer operation; fall back to using a dynamic load operation.
-        // TODO: detect array, string constant property loads, and module member loads.
+        // TODO[pulumi/lumi#128]: detect array, string constant property loads, and module member loads.
         let object: ast.Expression = await this.transformExpression(node.expression);
         if (node.argumentExpression) {
             return this.withLocation(node, <ast.TryLoadDynamicExpression>{
@@ -3239,9 +3237,9 @@ export class Transformer {
     }
 
     private transformStringLiteral(node: ts.StringLiteral): ast.StringLiteral {
-        // TODO: we need to dynamically populate the resulting object with ECMAScript-style string functions.  It's not
-        //     yet clear how to do this in a way that facilitates inter-language interoperability.  This is especially
-        //     challenging because most use of such functions will be entirely dynamic.
+        // TODO[pulumi/lumi#80]: we need to dynamically populate the resulting object with ECMAScript-style string
+        //     functions.  It's not yet clear how to do this in a way that facilitates inter-language interoperability.
+        //     This is especially challenging because most use of such functions will be entirely dynamic.
         return this.withLocation(node, <ast.StringLiteral>{
             kind:  ast.stringLiteralKind,
             raw:   node.text,

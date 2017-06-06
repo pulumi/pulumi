@@ -129,7 +129,8 @@ func (p *instanceProvider) Create(ctx context.Context, obj *ec2.Instance) (resou
 
 	// Before returning that all is okay, wait for the instance to reach the running state.
 	fmt.Fprintf(os.Stdout, "EC2 instance '%v' created; now waiting for it to become 'running'\n", id)
-	// TODO: if this fails, but the creation succeeded, we will have an orphaned resource; report this differently.
+	// TODO[pulumi/lumi#219]: if this fails, but the creation succeeded, we will have an orphaned resource; report this
+	//     differently than other "benign" errors.
 	if err = p.ctx.EC2().WaitUntilInstanceRunning(
 		&awsec2.DescribeInstancesInput{InstanceIds: []*string{aws.String(id)}}); err != nil {
 		return "", err

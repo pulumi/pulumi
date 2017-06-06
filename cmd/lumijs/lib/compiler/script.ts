@@ -76,7 +76,7 @@ export async function compileScript(path: string, options?: ts.CompilerOptions):
         // Create a compiler host and perform the compilation.
         const host: ts.CompilerHost = ts.createCompilerHost(options);
         host.writeFile = (filename: string, data: string, writeBOM: boolean) => {
-            contract.ignore(writeBOM); // TODO: consider respecting the BOM (for Windows).
+            contract.ignore(writeBOM); // TODO[pulumi/lumi#208]: consider respecting the BOM (for Windows).
 
             if (!outputs) {
                 outputs = new Map<string, string>();
@@ -125,7 +125,7 @@ function transformDiagnostics(root: string, diagnostics: ts.Diagnostic[]): diag.
     let result: diag.Diagnostic[] = [];
     let diagnosticsHost = new FormatDiagnosticsHost(root);
     for (let diagnostic of diagnostics) {
-        // TODO: implement colorization and fancy source context pretty-printing.
+        // IDEA: implement colorization and fancy source context pretty-printing.
         result.push(<diag.Diagnostic>{
             category:     (diagnostic.category === ts.DiagnosticCategory.Warning) ?
                               diag.DiagnosticCategory.Warning : diag.DiagnosticCategory.Error,

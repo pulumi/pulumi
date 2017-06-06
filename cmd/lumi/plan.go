@@ -120,7 +120,7 @@ func plan(cmd *cobra.Command, info *envCmdInfo, opts deployOptions) *planResult 
 		}
 
 		// Next, if a DOT output is requested, generate it and quite right now.
-		// TODO: generate this DOT from the snapshot/diff, not the raw object graph.
+		// IDEA: generate this DOT from the snapshot/diff, not the raw object graph.
 		if opts.DOT {
 			// Convert the output to a DOT file.
 			if err := dotconv.Print(result.Heap.G, os.Stdout); err != nil {
@@ -203,7 +203,7 @@ func printPlan(d diag.Sink, result *planResult, opts deployOptions) {
 		for step != nil {
 			op := step.Op()
 			// Print this step information (resource and all its properties).
-			// TODO: it would be nice if, in the output, we showed the dependencies a la `git log --graph`.
+			// IDEA: it would be nice if, in the output, we showed the dependencies a la `git log --graph`.
 			if opts.ShowReplaceSteps || (op != resource.OpReplaceCreate && op != resource.OpReplaceDelete) {
 				printStep(&summary, step, opts.Summary, true, "")
 			}

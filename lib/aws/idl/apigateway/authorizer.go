@@ -50,7 +50,7 @@ type Authorizer struct {
 	// responds with a 401 (unauthorized request) error code.
 	IdentityValidationExpression *string `lumi:"identityValidationExpression,optional"`
 	// providers is a list of the Amazon Cognito user pools to associate with this authorizer.
-	Providers *[]idl.Resource/*TODO: cognito.UserPool*/ `lumi:"providers,optional"`
+	Providers *[]idl.Resource/*TODO[pulumi/lumi#217]: cognito.UserPool*/ `lumi:"providers,optional"`
 	// RestAPI is the resource in which API Gateway creates the authorizer.
 	RestAPI *RestAPI `lumi:"restAPI,optional"`
 }

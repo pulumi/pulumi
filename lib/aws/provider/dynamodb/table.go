@@ -82,7 +82,7 @@ func (p *tableProvider) Check(ctx context.Context, obj *dynamodb.Table) ([]error
 				resource.NewFieldError(reflect.TypeOf(obj), dynamodb.Table_Name,
 					fmt.Errorf("exceeded maximum length of %v", maxTableName)))
 		}
-		// TODO: check the vailidity of names ([a-zA-Z0-9_.-]+).
+		// TODO[pulumi/lumi#216]: check the vailidity of names ([a-zA-Z0-9_.-]+).
 	}
 
 	if obj.ReadCapacity < minReadCapacity {

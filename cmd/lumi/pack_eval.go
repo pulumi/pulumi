@@ -89,8 +89,8 @@ func newPackEvalCmd() *cobra.Command {
 }
 
 // printVertex just pretty-prints a graph.  The output is not serializable, it's just for display purposes.
-// TODO: option to print properties.
-// TODO: full serializability, including a DOT file option.
+// IDEA: option to print properties.
+// IDEA: full serializability, including a DOT file option.
 func printVertex(v *heapstate.ObjectVertex, shown map[graph.Vertex]bool, indent string) {
 	s := v.Obj().Type()
 	if shown[v] {
@@ -106,7 +106,7 @@ func printVertex(v *heapstate.ObjectVertex, shown map[graph.Vertex]bool, indent 
 
 // dashdashArgsToMap is a simple args parser that places incoming key/value pairs into a map.  These are then used
 // during package compilation as inputs to the main entrypoint function.
-// TODO: this is fairly rudimentary; we eventually want to support arrays, maps, and complex types.
+// IDEA: this is fairly rudimentary; we eventually want to support arrays, maps, and complex types.
 func dashdashArgsToMap(args []string) core.Args {
 	mapped := make(core.Args)
 

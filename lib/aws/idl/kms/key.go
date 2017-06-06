@@ -27,7 +27,7 @@ type Key struct {
 	// KeyPolicy attaches a KMS policy to this key.  Use a policy to specify who has permission to use the key and which
 	// actions they can perform.  For more information, see
 	// http://docs.aws.amazon.com/kms/latest/developerguide/key-policies.html.
-	KeyPolicy interface{} `lumi:"keyPolicy"` // TODO: map the schema.
+	KeyPolicy interface{} `lumi:"keyPolicy"` // IDEA: schematize this.
 	// Description is an optional description of the key.  Use a description that helps your users decide whether the
 	// key is appropriate for a particular task.
 	Description *string `lumi:"description,optional"`

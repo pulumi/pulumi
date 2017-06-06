@@ -24,7 +24,7 @@ import (
 type Policy struct {
 	idl.NamedResource
 	// PolicyDocument is a policy document that contains permissions to add to the specified users, roles, or groups.
-	PolicyDocument interface{} `lumi:"policyDocument"` // TODO: schematize this.
+	PolicyDocument interface{} `lumi:"policyDocument"` // IDEA: schematize this.
 	// PolicyName is the name of the policy.  If you specify multiple policies for an entity, specify unique names.  For
 	// example, if you specify a list of policies for an IAM role, each policy must have a unique name.
 	PolicyName string `lumi:"policyName"`
@@ -40,7 +40,7 @@ type Policy struct {
 // For more information on policies, please see http://docs.aws.amazon.com/IAM/latest/UserGuide/access_policies.html.
 type InlinePolicy struct {
 	// PolicyDocument is a policy document that describes what actions are allowed on which resources.
-	PolicyDocument interface{} `lumi:"policyDocument"` // TODO: schematize this.
+	PolicyDocument interface{} `lumi:"policyDocument"` // IDEA: schematize this.
 	// PolicyName is the unique name of the policy.
 	PolicyName string `lumi:"policyName"`
 }

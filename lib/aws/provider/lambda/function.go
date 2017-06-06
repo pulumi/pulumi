@@ -408,7 +408,7 @@ func (p *funcProvider) getCode(codeArchive resource.Archive) (*awslambda.Functio
 		return &awslambda.FunctionCode{
 			S3Bucket: aws.String(uri.Host),
 			S3Key:    aws.String(uri.Path),
-			// TODO: S3ObjectVersion; encode as the #?
+			// TODO[pulumi/lumi#222]: S3ObjectVersion; encode as the #?
 		}, nil
 	} else {
 		zip := codeArchive.Bytes(resource.ZIPArchive)

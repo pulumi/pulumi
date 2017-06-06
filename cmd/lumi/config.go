@@ -46,7 +46,7 @@ func newConfigCmd() *cobra.Command {
 					fmt.Printf("%-32s %-32s\n", "KEY", "VALUE")
 					for _, key := range resource.StableConfigKeys(info.Env.Config) {
 						v := info.Env.Config[key]
-						// TODO: print complex values.
+						// TODO[pulumi/lumi#113]: print complex values.
 						fmt.Printf("%-32s %-32s\n", key, v)
 					}
 				}
@@ -58,7 +58,7 @@ func newConfigCmd() *cobra.Command {
 				}
 				if len(info.Args) > 1 {
 					// If there is a value, we are setting the configuration entry.
-					// TODO: support values other than strings.
+					// TODO[pulumi/lumi#113]: support values other than strings.
 					config[key] = info.Args[1]
 					saveEnv(info.Env, info.Old, "", true)
 				} else {
@@ -67,7 +67,7 @@ func newConfigCmd() *cobra.Command {
 						delete(config, key)
 						saveEnv(info.Env, info.Old, "", true)
 					} else if v, has := config[key]; has {
-						// TODO: print complex values.
+						// TODO[pulumi/lumi#113]: print complex values.
 						fmt.Printf("%v\n", v)
 					} else {
 						return errors.Errorf(

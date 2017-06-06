@@ -31,7 +31,7 @@ type Table struct {
 	TableName              *string                 `lumi:"tableName,optional,replaces"`
 	GlobalSecondaryIndexes *[]GlobalSecondaryIndex `lumi:"globalSecondaryIndexes,optional"`
 
-	// TODO:
+	// TODO[pulumi/lumi#216]:
 	// LocalSecondaryIndexes
 	// StreamSpecification
 }

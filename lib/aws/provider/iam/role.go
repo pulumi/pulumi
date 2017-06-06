@@ -38,7 +38,7 @@ const RoleToken = iam.RoleToken
 
 // constants for the various role limits.
 const (
-	maxRoleName = 64 // TODO: to use Switch Role, Path+RoleName cannot exceed 64 characters.  Warn?
+	maxRoleName = 64
 )
 
 // NewRoleProvider creates a provider that handles IAM role operations.
@@ -53,6 +53,7 @@ type roleProvider struct {
 
 // Check validates that the given property bag is valid for a resource of the given type.
 func (p *roleProvider) Check(ctx context.Context, obj *iam.Role) ([]error, error) {
+	// TODO[pulumi/lumi#221]: to use Switch Role, Path+RoleName cannot exceed 64 characters.  Warn?
 	return nil, nil
 }
 

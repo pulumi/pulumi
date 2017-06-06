@@ -15,5 +15,4 @@
 
 export * from "./archive";
 export * from "./asset";
-export * from "./decors";
 

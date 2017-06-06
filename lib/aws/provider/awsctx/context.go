@@ -53,8 +53,8 @@ type Context struct {
 func New() (*Context, error) {
 	// Create an AWS session; note that this is safe to share among many operations.
 	glog.V(5).Infof("Creating a new AWS session object w/ default credentials")
-	// TODO: consider verifying credentials, region, etc. here.
-	// TODO: currently we just inherit the standard AWS SDK credentials logic; eventually we will want more
+	// IDEA: consider verifying credentials, region, etc. here.
+	// IDEA: currently we just inherit the standard AWS SDK credentials logic; eventually we will want more
 	//     flexibility, I assume, including possibly reading from configuration dynamically.
 	sess, err := session.NewSession()
 	if err != nil {
@@ -150,6 +150,6 @@ func (ctx *Context) S3() *s3.S3 {
 
 // Request manufactures a standard Golang context object for a request within this overall AWS context.
 func (ctx *Context) Request() context.Context {
-	// TODO: unify this with the gRPC context; this will be easier once gRPC moves to the standard Golang context.
+	// IDEA: unify this with the gRPC context; this will be easier once gRPC moves to the standard Golang context.
 	return context.Background()
 }

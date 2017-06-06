@@ -26,7 +26,7 @@ import (
 type Role struct {
 	idl.NamedResource
 	// AssumeRolePolicyDocument is the trust policy associated with this role.
-	AssumeRolePolicyDocument interface{} `lumi:"assumeRolePolicyDocument"` // TODO: schematize this.
+	AssumeRolePolicyDocument interface{} `lumi:"assumeRolePolicyDocument"` // IDEA: schematize this.
 	// Path is the path associated with this role.  For more information about paths, see
 	// http://docs.aws.amazon.com/IAM/latest/UserGuide/Using_Identifiers.html#Identifiers_FriendlyNames.
 	Path *string `lumi:"path,replaces,optional"`

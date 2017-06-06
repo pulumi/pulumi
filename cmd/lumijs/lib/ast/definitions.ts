@@ -17,7 +17,7 @@ import * as tokens from "../tokens";
 import {Identifier, ModuleToken, Node, Token, TypeToken} from "./nodes";
 import * as statements from "./statements";
 
-// TODO(joe): consider refactoring modifiers from booleans to enums.
+// IDEA: consider refactoring modifiers from booleans to enums.
 
 /* Definitions */
 

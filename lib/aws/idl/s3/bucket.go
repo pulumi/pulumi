@@ -20,7 +20,7 @@ import (
 )
 
 // Bucket represents an Amazon Simple Storage Service (Amazon S3) bucket.
-// TODO: support all the various configuration settings (CORS, lifecycle, logging, and so on).
+// TODO[pulumi/lumi#218]: support all the various configuration settings (CORS, lifecycle, logging, and so on).
 type Bucket struct {
 	idl.NamedResource
 	// BucketName is a name for the bucket.  If you don't specify a name, a unique physical ID is generated.  The name

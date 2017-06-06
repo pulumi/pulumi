@@ -35,7 +35,7 @@ export class Context {
     // Formats a specific diagnostic.
     public formatDiagnostic(d: Diagnostic, opts?: FormatOptions): string {
         // If the message is already formatted, return it as-is.
-        // TODO: unify this formatting w/ TypeScript so they are uniform.
+        // IDEA: unify this formatting w/ TypeScript so they are uniform.
         if (d.preformatted) {
             let msg: string = d.message;
             // Strip off any trailing newline characters.
@@ -125,7 +125,7 @@ export class Context {
 
         // If there is a location part, prepend that to the whole thing (to come before the category/code).
         if (d.loc) {
-            // TODO: implementfancy source context, range-based pretty-printing.
+            // TODO[pulumi/lumi#15]: implementfancy source context, range-based pretty-printing.
             let loc: string = `${d.loc.file}(${d.loc.start.line},${d.loc.start.column}):`;
             if (opts && opts.colors) {
                 loc = colors.cyan(loc);

@@ -53,7 +53,7 @@ type environmentProvider struct {
 
 // Check validates that the given property bag is valid for a resource of the given type.
 func (p *environmentProvider) Check(ctx context.Context, obj *elasticbeanstalk.Environment) ([]error, error) {
-	// TODO: Check property bag
+	// TODO[pulumi/lumi#220]: validate the properties (bag, etc).
 	return nil, nil
 }
 

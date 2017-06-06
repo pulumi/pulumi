@@ -20,7 +20,7 @@ import * as statements from "./statements";
 
 import * as tokens from "../tokens";
 
-// TODO(joe): consider adding trivia (like comments and whitespace), for round-tripping purposes.
+// IDEA: consider adding trivia (like comments and whitespace), for round-tripping purposes.
 
 // Node is a discriminated type for all serialized blocks and instructions.
 export interface Node {

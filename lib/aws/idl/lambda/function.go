@@ -96,10 +96,10 @@ const (
 // events are sent to when functions cannot be processed.  For example, you can send unprocessed events to an Amazon
 // Simple Notification Service (Amazon SQS) topic, where you can take further action.
 type DeadLetterConfig struct {
-	// target is the target resource where Lambda delivers unprocessed events.  It may be an Amazon SNS topic or Amazon
+	// The Target resource where Lambda delivers unprocessed events.  It may be an Amazon SNS topic or Amazon
 	// Simple Queue Service (SQS) queue.  For the Lambda function-execution role, you must explicitly provide the
 	// relevant permissions so that access to your DLQ resource is part of the execution role for your Lambda function.
-	Target *idl.Resource `lumi:"target"` // TODO: sns.Topic | sqs.Queue;
+	Target *idl.Resource `lumi:"target"` // IDEA: use union types to represent `sns.Topic | sqs.Queue`;
 }
 
 // Environment is a property of an AWS Lambda Function resource that specifies key-value pairs that the function can

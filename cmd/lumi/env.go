@@ -180,7 +180,7 @@ func removeEnv(env *resource.Env) {
 func backupEnv(file string) {
 	contract.Require(file != "", "file")
 	os.Rename(file, file+".bak") // ignore errors.
-	// TODO: consider multiple backups (.bak.bak.bak...etc).
+	// IDEA: consider multiple backups (.bak.bak.bak...etc).
 }
 
 // deleteEnv removes an existing snapshot file, leaving behind a backup.
@@ -222,7 +222,7 @@ func readEnv(ctx *resource.Context, name tokens.QName) (*resource.Envfile, *reso
 	}
 
 	// Next, use the mapping infrastructure to validate the contents.
-	// TODO: we can eliminate this redundant unmarshaling once Go supports strict unmarshaling.
+	// IDEA: we can eliminate this redundant unmarshaling once Go supports strict unmarshaling.
 	var obj map[string]interface{}
 	if err = m.Unmarshal(b, &obj); err != nil {
 		ctx.Diag.Errorf(errors.ErrorCantReadDeployment, file, err)

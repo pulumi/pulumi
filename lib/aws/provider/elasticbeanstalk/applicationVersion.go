@@ -55,7 +55,7 @@ func (p *applicationVersionProvider) Check(ctx context.Context,
 					fmt.Errorf("exceeded maximum length of %v", maxDescription)))
 		}
 	}
-	// TODO: The SourceBundle S3 bucket must be in the same region as the environment
+	// TODO[pulumi/lumi#220]: validate that the SourceBundle S3 bucket is in the same region as the environment.
 	return failures, nil
 }
 

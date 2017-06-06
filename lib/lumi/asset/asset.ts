@@ -13,8 +13,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import {asset} from "./decors";
-
 // Asset represents a blob of text or data that is managed as a first class entity.
 export abstract class Asset {
     constructor() {
@@ -22,7 +20,7 @@ export abstract class Asset {
 }
 
 // Blob is a kind of asset produced from an in-memory blob represented as a byte array.
-/* TODO: enable this once Uint8Array is supported.
+/* IDEA: enable this once Uint8Array is supported.
 export class Blob extends Asset {
     constructor(data: Uint8Array) {
         super();

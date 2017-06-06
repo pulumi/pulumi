@@ -33,7 +33,7 @@ export function toString(argument: Object): string {
         return "false";
     }
     if (isNumber(argument)) {
-        // TODO: implement number formatting.
+        // TODO[pulumi/lumi#169]: implement number formatting.
         return "NaN";
     }
     if (isSymbol(argument)) {
@@ -70,12 +70,12 @@ export function isString(input: Object): boolean {
 }
 
 export function isSymbol(input: Object): boolean {
-    // TODO: implement symbols.
+    // TODO[pulumi/lumi#169]: implement symbols.
     return false;
 }
 
 export function isFalsey(input: Object | undefined | null): boolean {
-    // TODO: implement this based on the spec.
+    // TODO[pulumi/lumi#169]: implement this based on the spec.
     if (input === false) {
         return true;
     }
@@ -171,7 +171,7 @@ export function toObject(argument: Object): Object {
         return new String(<string>argument);
     }
     if (isSymbol(argument)) {
-        // TODO: implement symbols.
+        // TODO[pulumi/lumi#169]: implement symbols.
     }
     return argument;
 }

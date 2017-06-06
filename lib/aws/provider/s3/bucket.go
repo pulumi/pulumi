@@ -37,7 +37,7 @@ const BucketToken = s3.BucketToken
 // constants for the various bucket limits.
 const (
 	minBucketName = 3
-	maxBucketName = 63 // TODO: consider supporting legacy us-east-1 (255) limits.
+	maxBucketName = 63 // TODO[pulumi/lumi#218]: consider supporting legacy us-east-1 (255) limits.
 )
 
 // NewBucketProvider creates a provider that handles S3 bucket operations.
@@ -64,9 +64,10 @@ func (p *buckProvider) Check(ctx context.Context, obj *s3.Bucket) ([]error, erro
 					fmt.Errorf("exceeded maximum length of %v", maxBucketName)))
 		}
 	}
-	// TODO: by default, only up to 100 buckets in an account.
-	// TODO: check the vailidity of names (see http://docs.aws.amazon.com/AmazonS3/latest/dev/BucketRestrictions.html).
-	// TODO: check the validity of the access control field.
+	// TODO[pulumi/lumi#218]: by default, only up to 100 buckets in an account.
+	// TODO[pulumi/lumi#218]: check the vailidity of names (see
+	//     http://docs.aws.amazon.com/AmazonS3/latest/dev/BucketRestrictions.html).
+	// TODO[pulumi/lumi#218]: check the validity of the access control field.
 	return failures, nil
 }
 
