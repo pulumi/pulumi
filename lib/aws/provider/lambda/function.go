@@ -128,7 +128,7 @@ func (p *funcProvider) Create(ctx context.Context, obj *lambda.Function) (resour
 
 	// Now go ahead and create the resource.  Note that IAM profiles can take several seconds to propagate; see
 	// http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/iam-roles-for-amazon-ec2.html#launch-instance-with-role.
-	fmt.Printf("Creating Lambda Function '%v' with name '%v'\n", obj.Name, name)
+	fmt.Printf("Creating Lambda Function '%v' with name '%v'\n", *obj.Name, name)
 	create := &awslambda.CreateFunctionInput{
 		Code:         code,
 		Description:  obj.Description,

@@ -85,7 +85,7 @@ func (p *buckProvider) Create(ctx context.Context, obj *s3.Bucket) (resource.ID,
 	if obj.AccessControl != nil {
 		acl = aws.String(string(*obj.AccessControl))
 	}
-	fmt.Printf("Creating S3 Bucket '%v' with name '%v'\n", obj.Name, name)
+	fmt.Printf("Creating S3 Bucket '%v' with name '%v'\n", *obj.Name, name)
 	create := &awss3.CreateBucketInput{
 		Bucket: aws.String(name),
 		ACL:    acl,

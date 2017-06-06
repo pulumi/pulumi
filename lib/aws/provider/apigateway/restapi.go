@@ -72,7 +72,7 @@ func (p *restAPIProvider) Create(ctx context.Context, obj *apigateway.RestAPI) (
 	}
 
 	// First create the API Gateway
-	fmt.Printf("Creating APIGateway RestAPI '%v' with name '%v'\n", obj.Name, apiName)
+	fmt.Printf("Creating APIGateway RestAPI '%v' with name '%v'\n", *obj.Name, apiName)
 	create := &awsapigateway.CreateRestApiInput{
 		Name:        aws.String(apiName),
 		Description: obj.Description,

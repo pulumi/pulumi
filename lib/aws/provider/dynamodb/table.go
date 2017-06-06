@@ -171,7 +171,7 @@ func (p *tableProvider) Create(ctx context.Context, obj *dynamodb.Table) (resour
 		})
 	}
 
-	fmt.Printf("Creating DynamoDB Table '%v' with name '%v'\n", obj.Name, name)
+	fmt.Printf("Creating DynamoDB Table '%v' with name '%v'\n", *obj.Name, name)
 	keySchema := []*awsdynamodb.KeySchemaElement{
 		{
 			AttributeName: aws.String(obj.HashKey),

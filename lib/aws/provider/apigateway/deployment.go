@@ -65,7 +65,7 @@ func (p *deploymentProvider) Create(ctx context.Context, obj *apigateway.Deploym
 	if err != nil {
 		return "", err
 	}
-	fmt.Printf("Creating APIGateway Deployment '%v'\n", obj.Name)
+	fmt.Printf("Creating APIGateway Deployment '%v'\n", *obj.Name)
 	create := &awsapigateway.CreateDeploymentInput{
 		RestApiId:   aws.String(restAPIID),
 		Description: obj.Description,

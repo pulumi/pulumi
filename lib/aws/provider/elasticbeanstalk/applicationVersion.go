@@ -82,7 +82,7 @@ func (p *applicationVersionProvider) Create(ctx context.Context,
 		return "", err
 	}
 
-	fmt.Printf("Creating ElasticBeanstalk ApplicationVersion '%v' with version label '%v'\n", obj.Name, versionLabel)
+	fmt.Printf("Creating ElasticBeanstalk ApplicationVersion '%v' with version label '%v'\n", *obj.Name, versionLabel)
 	if _, err := p.ctx.ElasticBeanstalk().CreateApplicationVersion(
 		&awselasticbeanstalk.CreateApplicationVersionInput{
 			ApplicationName: aws.String(appname),

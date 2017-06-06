@@ -64,7 +64,7 @@ func (p *stageProvider) Create(ctx context.Context, obj *apigateway.Stage) (reso
 	if obj.MethodSettings != nil || obj.ClientCertificate != nil {
 		return "", fmt.Errorf("Not yet supported - MethodSettings or ClientCertificate")
 	}
-	fmt.Printf("Creating APIGateway Stage '%v' with stage name '%v'\n", obj.Name, obj.StageName)
+	fmt.Printf("Creating APIGateway Stage '%v' with stage name '%v'\n", *obj.Name, obj.StageName)
 	restAPIID, deploymentID, err := ParseDeploymentID(obj.Deployment)
 	if err != nil {
 		return "", err

@@ -96,7 +96,7 @@ func (p *environmentProvider) Create(ctx context.Context, obj *elasticbeanstalk.
 		versionLabel = &version
 	}
 
-	fmt.Printf("Creating ElasticBeanstalk Environment '%v' with name '%v'\n", obj.Name, name)
+	fmt.Printf("Creating ElasticBeanstalk Environment '%v' with name '%v'\n", *obj.Name, name)
 	create := &awselasticbeanstalk.CreateEnvironmentInput{
 		EnvironmentName:   aws.String(name),
 		ApplicationName:   aws.String(appname),

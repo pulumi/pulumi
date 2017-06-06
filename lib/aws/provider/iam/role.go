@@ -78,7 +78,7 @@ func (p *roleProvider) Create(ctx context.Context, obj *iam.Role) (resource.ID, 
 	}
 
 	// Now go ahead and perform the action.
-	fmt.Printf("Creating IAM Role '%v' with name '%v'\n", obj.Name, name)
+	fmt.Printf("Creating IAM Role '%v' with name '%v'\n", *obj.Name, name)
 	result, err := p.ctx.IAM().CreateRole(&awsiam.CreateRoleInput{
 		AssumeRolePolicyDocument: aws.String(string(policyDocument)),
 		Path:     obj.Path,
