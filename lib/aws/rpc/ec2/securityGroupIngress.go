@@ -24,7 +24,7 @@ const SecurityGroupIngressToken = tokens.Type("aws:ec2/securityGroupIngress:Secu
 
 // SecurityGroupIngressProviderOps is a pluggable interface for SecurityGroupIngress-related management functionality.
 type SecurityGroupIngressProviderOps interface {
-    Check(ctx context.Context, obj *SecurityGroupIngress) ([]mapper.FieldError, error)
+    Check(ctx context.Context, obj *SecurityGroupIngress) ([]error, error)
     Create(ctx context.Context, obj *SecurityGroupIngress) (resource.ID, error)
     Get(ctx context.Context, id resource.ID) (*SecurityGroupIngress, error)
     InspectChange(ctx context.Context,
@@ -48,25 +48,23 @@ func NewSecurityGroupIngressProvider(ops SecurityGroupIngressProviderOps) lumirp
 func (p *SecurityGroupIngressProvider) Check(
     ctx context.Context, req *lumirpc.CheckRequest) (*lumirpc.CheckResponse, error) {
     contract.Assert(req.GetType() == string(SecurityGroupIngressToken))
-    obj, _, decerr := p.Unmarshal(req.GetProperties())
-    if decerr == nil || len(decerr.Failures()) == 0 {
-        failures, err := p.ops.Check(ctx, obj)
-        if err != nil {
+    obj, _, err := p.Unmarshal(req.GetProperties())
+    if err == nil {
+        if failures, err := p.ops.Check(ctx, obj); err != nil {
             return nil, err
-        }
-        if len(failures) > 0 {
-            decerr = mapper.NewDecodeErr(failures)
+        } else if len(failures) > 0 {
+            err = resource.NewCheckError(failures)
         }
     }
-    return resource.NewCheckResponse(decerr), nil
+    return resource.NewCheckResponse(err), nil
 }
 
 func (p *SecurityGroupIngressProvider) Name(
     ctx context.Context, req *lumirpc.NameRequest) (*lumirpc.NameResponse, error) {
     contract.Assert(req.GetType() == string(SecurityGroupIngressToken))
-    obj, _, decerr := p.Unmarshal(req.GetProperties())
-    if decerr != nil {
-        return nil, decerr
+    obj, _, err := p.Unmarshal(req.GetProperties())
+    if err != nil {
+        return nil, err
     }
     if obj.Name == nil || *obj.Name == "" {
         if req.Unknowns[SecurityGroupIngress_Name] {
@@ -80,9 +78,9 @@ func (p *SecurityGroupIngressProvider) Name(
 func (p *SecurityGroupIngressProvider) Create(
     ctx context.Context, req *lumirpc.CreateRequest) (*lumirpc.CreateResponse, error) {
     contract.Assert(req.GetType() == string(SecurityGroupIngressToken))
-    obj, _, decerr := p.Unmarshal(req.GetProperties())
-    if decerr != nil {
-        return nil, decerr
+    obj, _, err := p.Unmarshal(req.GetProperties())
+    if err != nil {
+        return nil, err
     }
     id, err := p.ops.Create(ctx, obj)
     if err != nil {
@@ -109,13 +107,13 @@ func (p *SecurityGroupIngressProvider) InspectChange(
     ctx context.Context, req *lumirpc.InspectChangeRequest) (*lumirpc.InspectChangeResponse, error) {
     contract.Assert(req.GetType() == string(SecurityGroupIngressToken))
     id := resource.ID(req.GetId())
-    old, oldprops, decerr := p.Unmarshal(req.GetOlds())
-    if decerr != nil {
-        return nil, decerr
+    old, oldprops, err := p.Unmarshal(req.GetOlds())
+    if err != nil {
+        return nil, err
     }
-    new, newprops, decerr := p.Unmarshal(req.GetNews())
-    if decerr != nil {
-        return nil, decerr
+    new, newprops, err := p.Unmarshal(req.GetNews())
+    if err != nil {
+        return nil, err
     }
     var replaces []string
     diff := oldprops.Diff(newprops)
@@ -193,28 +191,27 @@ func (p *SecurityGroupIngressProvider) Delete(
 }
 
 func (p *SecurityGroupIngressProvider) Unmarshal(
-    v *pbstruct.Struct) (*SecurityGroupIngress, resource.PropertyMap, mapper.DecodeError) {
+    v *pbstruct.Struct) (*SecurityGroupIngress, resource.PropertyMap, error) {
     var obj SecurityGroupIngress
     props := resource.UnmarshalProperties(nil, v, resource.MarshalOptions{RawResources: true})
-    result := mapper.MapIU(props.Mappable(), &obj)
-    return &obj, props, result
+    return &obj, props, mapper.MapIU(props.Mappable(), &obj)
 }
 
 /* Marshalable SecurityGroupIngress structure(s) */
 
 // SecurityGroupIngress is a marshalable representation of its corresponding IDL type.
 type SecurityGroupIngress struct {
-    Name *string `json:"name,omitempty"`
-    IPProtocol string `json:"ipProtocol"`
-    CIDRIP *string `json:"cidrIp,omitempty"`
-    CIDRIPv6 *string `json:"cidrIpv6,omitempty"`
-    FromPort *float64 `json:"fromPort,omitempty"`
-    Group *resource.ID `json:"group,omitempty"`
-    GroupName *string `json:"groupName,omitempty"`
-    SourceSecurityGroup *resource.ID `json:"sourceSecurityGroup,omitempty"`
-    SourceSecurityGroupName *string `json:"sourceSecurityGroupName,omitempty"`
-    SourceSecurityGroupOwnerId *string `json:"sourceSecurityGroupOwnerId,omitempty"`
-    ToPort *float64 `json:"toPort,omitempty"`
+    Name *string `lumi:"name,optional"`
+    IPProtocol string `lumi:"ipProtocol"`
+    CIDRIP *string `lumi:"cidrIp,optional"`
+    CIDRIPv6 *string `lumi:"cidrIpv6,optional"`
+    FromPort *float64 `lumi:"fromPort,optional"`
+    Group *resource.ID `lumi:"group,optional"`
+    GroupName *string `lumi:"groupName,optional"`
+    SourceSecurityGroup *resource.ID `lumi:"sourceSecurityGroup,optional"`
+    SourceSecurityGroupName *string `lumi:"sourceSecurityGroupName,optional"`
+    SourceSecurityGroupOwnerId *string `lumi:"sourceSecurityGroupOwnerId,optional"`
+    ToPort *float64 `lumi:"toPort,optional"`
 }
 
 // SecurityGroupIngress's properties have constants to make dealing with diffs and property bags easier.

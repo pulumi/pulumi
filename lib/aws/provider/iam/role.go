@@ -25,7 +25,6 @@ import (
 	awsiam "github.com/aws/aws-sdk-go/service/iam"
 	"github.com/pulumi/lumi/pkg/resource"
 	"github.com/pulumi/lumi/pkg/util/contract"
-	"github.com/pulumi/lumi/pkg/util/mapper"
 	"github.com/pulumi/lumi/sdk/go/pkg/lumirpc"
 	"golang.org/x/net/context"
 
@@ -53,7 +52,7 @@ type roleProvider struct {
 }
 
 // Check validates that the given property bag is valid for a resource of the given type.
-func (p *roleProvider) Check(ctx context.Context, obj *iam.Role) ([]mapper.FieldError, error) {
+func (p *roleProvider) Check(ctx context.Context, obj *iam.Role) ([]error, error) {
 	return nil, nil
 }
 

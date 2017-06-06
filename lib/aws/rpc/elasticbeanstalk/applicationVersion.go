@@ -24,7 +24,7 @@ const ApplicationVersionToken = tokens.Type("aws:elasticbeanstalk/applicationVer
 
 // ApplicationVersionProviderOps is a pluggable interface for ApplicationVersion-related management functionality.
 type ApplicationVersionProviderOps interface {
-    Check(ctx context.Context, obj *ApplicationVersion) ([]mapper.FieldError, error)
+    Check(ctx context.Context, obj *ApplicationVersion) ([]error, error)
     Create(ctx context.Context, obj *ApplicationVersion) (resource.ID, error)
     Get(ctx context.Context, id resource.ID) (*ApplicationVersion, error)
     InspectChange(ctx context.Context,
@@ -48,25 +48,23 @@ func NewApplicationVersionProvider(ops ApplicationVersionProviderOps) lumirpc.Re
 func (p *ApplicationVersionProvider) Check(
     ctx context.Context, req *lumirpc.CheckRequest) (*lumirpc.CheckResponse, error) {
     contract.Assert(req.GetType() == string(ApplicationVersionToken))
-    obj, _, decerr := p.Unmarshal(req.GetProperties())
-    if decerr == nil || len(decerr.Failures()) == 0 {
-        failures, err := p.ops.Check(ctx, obj)
-        if err != nil {
+    obj, _, err := p.Unmarshal(req.GetProperties())
+    if err == nil {
+        if failures, err := p.ops.Check(ctx, obj); err != nil {
             return nil, err
-        }
-        if len(failures) > 0 {
-            decerr = mapper.NewDecodeErr(failures)
+        } else if len(failures) > 0 {
+            err = resource.NewCheckError(failures)
         }
     }
-    return resource.NewCheckResponse(decerr), nil
+    return resource.NewCheckResponse(err), nil
 }
 
 func (p *ApplicationVersionProvider) Name(
     ctx context.Context, req *lumirpc.NameRequest) (*lumirpc.NameResponse, error) {
     contract.Assert(req.GetType() == string(ApplicationVersionToken))
-    obj, _, decerr := p.Unmarshal(req.GetProperties())
-    if decerr != nil {
-        return nil, decerr
+    obj, _, err := p.Unmarshal(req.GetProperties())
+    if err != nil {
+        return nil, err
     }
     if obj.Name == nil || *obj.Name == "" {
         if req.Unknowns[ApplicationVersion_Name] {
@@ -80,9 +78,9 @@ func (p *ApplicationVersionProvider) Name(
 func (p *ApplicationVersionProvider) Create(
     ctx context.Context, req *lumirpc.CreateRequest) (*lumirpc.CreateResponse, error) {
     contract.Assert(req.GetType() == string(ApplicationVersionToken))
-    obj, _, decerr := p.Unmarshal(req.GetProperties())
-    if decerr != nil {
-        return nil, decerr
+    obj, _, err := p.Unmarshal(req.GetProperties())
+    if err != nil {
+        return nil, err
     }
     id, err := p.ops.Create(ctx, obj)
     if err != nil {
@@ -109,13 +107,13 @@ func (p *ApplicationVersionProvider) InspectChange(
     ctx context.Context, req *lumirpc.InspectChangeRequest) (*lumirpc.InspectChangeResponse, error) {
     contract.Assert(req.GetType() == string(ApplicationVersionToken))
     id := resource.ID(req.GetId())
-    old, oldprops, decerr := p.Unmarshal(req.GetOlds())
-    if decerr != nil {
-        return nil, decerr
+    old, oldprops, err := p.Unmarshal(req.GetOlds())
+    if err != nil {
+        return nil, err
     }
-    new, newprops, decerr := p.Unmarshal(req.GetNews())
-    if decerr != nil {
-        return nil, decerr
+    new, newprops, err := p.Unmarshal(req.GetNews())
+    if err != nil {
+        return nil, err
     }
     var replaces []string
     diff := oldprops.Diff(newprops)
@@ -172,22 +170,21 @@ func (p *ApplicationVersionProvider) Delete(
 }
 
 func (p *ApplicationVersionProvider) Unmarshal(
-    v *pbstruct.Struct) (*ApplicationVersion, resource.PropertyMap, mapper.DecodeError) {
+    v *pbstruct.Struct) (*ApplicationVersion, resource.PropertyMap, error) {
     var obj ApplicationVersion
     props := resource.UnmarshalProperties(nil, v, resource.MarshalOptions{RawResources: true})
-    result := mapper.MapIU(props.Mappable(), &obj)
-    return &obj, props, result
+    return &obj, props, mapper.MapIU(props.Mappable(), &obj)
 }
 
 /* Marshalable ApplicationVersion structure(s) */
 
 // ApplicationVersion is a marshalable representation of its corresponding IDL type.
 type ApplicationVersion struct {
-    Name *string `json:"name,omitempty"`
-    Application resource.ID `json:"application"`
-    VersionLabel *string `json:"versionLabel,omitempty"`
-    Description *string `json:"description,omitempty"`
-    SourceBundle resource.ID `json:"sourceBundle"`
+    Name *string `lumi:"name,optional"`
+    Application resource.ID `lumi:"application"`
+    VersionLabel *string `lumi:"versionLabel,optional"`
+    Description *string `lumi:"description,optional"`
+    SourceBundle resource.ID `lumi:"sourceBundle"`
 }
 
 // ApplicationVersion's properties have constants to make dealing with diffs and property bags easier.

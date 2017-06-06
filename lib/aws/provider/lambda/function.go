@@ -27,7 +27,6 @@ import (
 	"github.com/pulumi/lumi/pkg/resource"
 	"github.com/pulumi/lumi/pkg/util/contract"
 	"github.com/pulumi/lumi/pkg/util/convutil"
-	"github.com/pulumi/lumi/pkg/util/mapper"
 	"github.com/pulumi/lumi/sdk/go/pkg/lumirpc"
 	"golang.org/x/net/context"
 
@@ -67,11 +66,11 @@ type funcProvider struct {
 }
 
 // Check validates that the given property bag is valid for a resource of the given type.
-func (p *funcProvider) Check(ctx context.Context, obj *lambda.Function) ([]mapper.FieldError, error) {
-	var failures []mapper.FieldError
+func (p *funcProvider) Check(ctx context.Context, obj *lambda.Function) ([]error, error) {
+	var failures []error
 	if _, has := functionRuntimes[obj.Runtime]; !has {
 		failures = append(failures,
-			mapper.NewFieldErr(reflect.TypeOf(obj), lambda.Function_Runtime,
+			resource.NewFieldError(reflect.TypeOf(obj), lambda.Function_Runtime,
 				fmt.Errorf("%v is not a valid runtime", obj.Runtime)))
 	}
 	if name := obj.FunctionName; name != nil {
@@ -83,7 +82,7 @@ func (p *funcProvider) Check(ctx context.Context, obj *lambda.Function) ([]mappe
 		}
 		if len(*name) > maxName {
 			failures = append(failures,
-				mapper.NewFieldErr(reflect.TypeOf(obj), lambda.Function_FunctionName,
+				resource.NewFieldError(reflect.TypeOf(obj), lambda.Function_FunctionName,
 					fmt.Errorf("exceeded maximum length of %v", maxName)))
 		}
 	}

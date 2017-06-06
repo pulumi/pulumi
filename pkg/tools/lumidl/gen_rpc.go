@@ -240,7 +240,7 @@ func (g *RPCGenerator) EmitResource(w *bufio.Writer, module tokens.Module, pkg *
 	// Now, generate an ops interface that the real provider will implement.
 	writefmtln(w, "// %[1]vProviderOps is a pluggable interface for %[1]v-related management functionality.", name)
 	writefmtln(w, "type %vProviderOps interface {", name)
-	writefmtln(w, "    Check(ctx context.Context, obj *%v) ([]mapper.FieldError, error)", name)
+	writefmtln(w, "    Check(ctx context.Context, obj *%v) ([]error, error)", name)
 	if !res.Named {
 		writefmtln(w, "    Name(ctx context.Context, obj *%v) (string, error)", name)
 	}
@@ -269,25 +269,23 @@ func (g *RPCGenerator) EmitResource(w *bufio.Writer, module tokens.Module, pkg *
 	writefmtln(w, "func (p *%vProvider) Check(", name)
 	writefmtln(w, "    ctx context.Context, req *lumirpc.CheckRequest) (*lumirpc.CheckResponse, error) {")
 	writefmtln(w, "    contract.Assert(req.GetType() == string(%vToken))", name)
-	writefmtln(w, "    obj, _, decerr := p.Unmarshal(req.GetProperties())")
-	writefmtln(w, "    if decerr == nil || len(decerr.Failures()) == 0 {")
-	writefmtln(w, "        failures, err := p.ops.Check(ctx, obj)")
-	writefmtln(w, "        if err != nil {")
+	writefmtln(w, "    obj, _, err := p.Unmarshal(req.GetProperties())")
+	writefmtln(w, "    if err == nil {")
+	writefmtln(w, "        if failures, err := p.ops.Check(ctx, obj); err != nil {")
 	writefmtln(w, "            return nil, err")
-	writefmtln(w, "        }")
-	writefmtln(w, "        if len(failures) > 0 {")
-	writefmtln(w, "            decerr = mapper.NewDecodeErr(failures)")
+	writefmtln(w, "        } else if len(failures) > 0 {")
+	writefmtln(w, "            err = resource.NewCheckError(failures)")
 	writefmtln(w, "        }")
 	writefmtln(w, "    }")
-	writefmtln(w, "    return resource.NewCheckResponse(decerr), nil")
+	writefmtln(w, "    return resource.NewCheckResponse(err), nil")
 	writefmtln(w, "}")
 	writefmtln(w, "")
 	writefmtln(w, "func (p *%vProvider) Name(", name)
 	writefmtln(w, "    ctx context.Context, req *lumirpc.NameRequest) (*lumirpc.NameResponse, error) {")
 	writefmtln(w, "    contract.Assert(req.GetType() == string(%vToken))", name)
-	writefmtln(w, "    obj, _, decerr := p.Unmarshal(req.GetProperties())")
-	writefmtln(w, "    if decerr != nil {")
-	writefmtln(w, "        return nil, decerr")
+	writefmtln(w, "    obj, _, err := p.Unmarshal(req.GetProperties())")
+	writefmtln(w, "    if err != nil {")
+	writefmtln(w, "        return nil, err")
 	writefmtln(w, "    }")
 	if res.Named {
 		// For named resources, we have a canonical way of fetching the name.
@@ -308,9 +306,9 @@ func (g *RPCGenerator) EmitResource(w *bufio.Writer, module tokens.Module, pkg *
 	writefmtln(w, "func (p *%vProvider) Create(", name)
 	writefmtln(w, "    ctx context.Context, req *lumirpc.CreateRequest) (*lumirpc.CreateResponse, error) {")
 	writefmtln(w, "    contract.Assert(req.GetType() == string(%vToken))", name)
-	writefmtln(w, "    obj, _, decerr := p.Unmarshal(req.GetProperties())")
-	writefmtln(w, "    if decerr != nil {")
-	writefmtln(w, "        return nil, decerr")
+	writefmtln(w, "    obj, _, err := p.Unmarshal(req.GetProperties())")
+	writefmtln(w, "    if err != nil {")
+	writefmtln(w, "        return nil, err")
 	writefmtln(w, "    }")
 	writefmtln(w, "    id, err := p.ops.Create(ctx, obj)")
 	writefmtln(w, "    if err != nil {")
@@ -337,13 +335,13 @@ func (g *RPCGenerator) EmitResource(w *bufio.Writer, module tokens.Module, pkg *
 	writefmtln(w, "    ctx context.Context, req *lumirpc.InspectChangeRequest) (*lumirpc.InspectChangeResponse, error) {")
 	writefmtln(w, "    contract.Assert(req.GetType() == string(%vToken))", name)
 	writefmtln(w, "    id := resource.ID(req.GetId())")
-	writefmtln(w, "    old, oldprops, decerr := p.Unmarshal(req.GetOlds())")
-	writefmtln(w, "    if decerr != nil {")
-	writefmtln(w, "        return nil, decerr")
+	writefmtln(w, "    old, oldprops, err := p.Unmarshal(req.GetOlds())")
+	writefmtln(w, "    if err != nil {")
+	writefmtln(w, "        return nil, err")
 	writefmtln(w, "    }")
-	writefmtln(w, "    new, newprops, decerr := p.Unmarshal(req.GetNews())")
-	writefmtln(w, "    if decerr != nil {")
-	writefmtln(w, "        return nil, decerr")
+	writefmtln(w, "    new, newprops, err := p.Unmarshal(req.GetNews())")
+	writefmtln(w, "    if err != nil {")
+	writefmtln(w, "        return nil, err")
 	writefmtln(w, "    }")
 	writefmtln(w, "    var replaces []string")
 	writefmtln(w, "    diff := oldprops.Diff(newprops)")
@@ -395,11 +393,10 @@ func (g *RPCGenerator) EmitResource(w *bufio.Writer, module tokens.Module, pkg *
 	writefmtln(w, "}")
 	writefmtln(w, "")
 	writefmtln(w, "func (p *%vProvider) Unmarshal(", name)
-	writefmtln(w, "    v *pbstruct.Struct) (*%v, resource.PropertyMap, mapper.DecodeError) {", name)
+	writefmtln(w, "    v *pbstruct.Struct) (*%v, resource.PropertyMap, error) {", name)
 	writefmtln(w, "    var obj %v", name)
 	writefmtln(w, "    props := resource.UnmarshalProperties(nil, v, resource.MarshalOptions{RawResources: true})")
-	writefmtln(w, "    result := mapper.MapIU(props.Mappable(), &obj)")
-	writefmtln(w, "    return &obj, props, result")
+	writefmtln(w, "    return &obj, props, mapper.MapIU(props.Mappable(), &obj)")
 	writefmtln(w, "}")
 	writefmtln(w, "")
 }
@@ -416,7 +413,7 @@ func (g *RPCGenerator) EmitStructType(w *bufio.Writer, module tokens.Module, pkg
 	for i, prop := range props {
 		opts := propopts[i]
 		// Make a JSON tag for this so we can serialize; note that outputs are always optional in this position.
-		jsontag := makeJSONTag(opts)
+		jsontag := makeLumiTag(opts)
 		writefmtln(w, "    %v %v %v",
 			prop.Name(), g.GenTypeName(prop.Type(), opts.Optional || opts.In || opts.Out), jsontag)
 	}
@@ -435,13 +432,13 @@ func (g *RPCGenerator) EmitStructType(w *bufio.Writer, module tokens.Module, pkg
 	}
 }
 
-// makeJSONTag turns a set of property options into a serializable JSON tag.
-func makeJSONTag(opts PropertyOptions) string {
+// makeLumiTag turns a set of property options into a serializable JSON tag.
+func makeLumiTag(opts PropertyOptions) string {
 	var flags string
 	if opts.Optional || opts.In || opts.Out {
-		flags = ",omitempty"
+		flags = ",optional"
 	}
-	return fmt.Sprintf("`json:\"%v%v\"`", opts.Name, flags)
+	return fmt.Sprintf("`lumi:\"%v%v\"`", opts.Name, flags)
 }
 
 func (g *RPCGenerator) GenTypeName(t types.Type, opt bool) string {

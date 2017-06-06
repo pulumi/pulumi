@@ -24,7 +24,7 @@ const QueueToken = tokens.Type("aws:sqs/queue:Queue")
 
 // QueueProviderOps is a pluggable interface for Queue-related management functionality.
 type QueueProviderOps interface {
-    Check(ctx context.Context, obj *Queue) ([]mapper.FieldError, error)
+    Check(ctx context.Context, obj *Queue) ([]error, error)
     Create(ctx context.Context, obj *Queue) (resource.ID, error)
     Get(ctx context.Context, id resource.ID) (*Queue, error)
     InspectChange(ctx context.Context,
@@ -48,25 +48,23 @@ func NewQueueProvider(ops QueueProviderOps) lumirpc.ResourceProviderServer {
 func (p *QueueProvider) Check(
     ctx context.Context, req *lumirpc.CheckRequest) (*lumirpc.CheckResponse, error) {
     contract.Assert(req.GetType() == string(QueueToken))
-    obj, _, decerr := p.Unmarshal(req.GetProperties())
-    if decerr == nil || len(decerr.Failures()) == 0 {
-        failures, err := p.ops.Check(ctx, obj)
-        if err != nil {
+    obj, _, err := p.Unmarshal(req.GetProperties())
+    if err == nil {
+        if failures, err := p.ops.Check(ctx, obj); err != nil {
             return nil, err
-        }
-        if len(failures) > 0 {
-            decerr = mapper.NewDecodeErr(failures)
+        } else if len(failures) > 0 {
+            err = resource.NewCheckError(failures)
         }
     }
-    return resource.NewCheckResponse(decerr), nil
+    return resource.NewCheckResponse(err), nil
 }
 
 func (p *QueueProvider) Name(
     ctx context.Context, req *lumirpc.NameRequest) (*lumirpc.NameResponse, error) {
     contract.Assert(req.GetType() == string(QueueToken))
-    obj, _, decerr := p.Unmarshal(req.GetProperties())
-    if decerr != nil {
-        return nil, decerr
+    obj, _, err := p.Unmarshal(req.GetProperties())
+    if err != nil {
+        return nil, err
     }
     if obj.Name == nil || *obj.Name == "" {
         if req.Unknowns[Queue_Name] {
@@ -80,9 +78,9 @@ func (p *QueueProvider) Name(
 func (p *QueueProvider) Create(
     ctx context.Context, req *lumirpc.CreateRequest) (*lumirpc.CreateResponse, error) {
     contract.Assert(req.GetType() == string(QueueToken))
-    obj, _, decerr := p.Unmarshal(req.GetProperties())
-    if decerr != nil {
-        return nil, decerr
+    obj, _, err := p.Unmarshal(req.GetProperties())
+    if err != nil {
+        return nil, err
     }
     id, err := p.ops.Create(ctx, obj)
     if err != nil {
@@ -109,13 +107,13 @@ func (p *QueueProvider) InspectChange(
     ctx context.Context, req *lumirpc.InspectChangeRequest) (*lumirpc.InspectChangeResponse, error) {
     contract.Assert(req.GetType() == string(QueueToken))
     id := resource.ID(req.GetId())
-    old, oldprops, decerr := p.Unmarshal(req.GetOlds())
-    if decerr != nil {
-        return nil, decerr
+    old, oldprops, err := p.Unmarshal(req.GetOlds())
+    if err != nil {
+        return nil, err
     }
-    new, newprops, decerr := p.Unmarshal(req.GetNews())
-    if decerr != nil {
-        return nil, decerr
+    new, newprops, err := p.Unmarshal(req.GetNews())
+    if err != nil {
+        return nil, err
     }
     var replaces []string
     diff := oldprops.Diff(newprops)
@@ -169,27 +167,26 @@ func (p *QueueProvider) Delete(
 }
 
 func (p *QueueProvider) Unmarshal(
-    v *pbstruct.Struct) (*Queue, resource.PropertyMap, mapper.DecodeError) {
+    v *pbstruct.Struct) (*Queue, resource.PropertyMap, error) {
     var obj Queue
     props := resource.UnmarshalProperties(nil, v, resource.MarshalOptions{RawResources: true})
-    result := mapper.MapIU(props.Mappable(), &obj)
-    return &obj, props, result
+    return &obj, props, mapper.MapIU(props.Mappable(), &obj)
 }
 
 /* Marshalable Queue structure(s) */
 
 // Queue is a marshalable representation of its corresponding IDL type.
 type Queue struct {
-    Name *string `json:"name,omitempty"`
-    FIFOQueue *bool `json:"fifoQueue,omitempty"`
-    QueueName *string `json:"queueName,omitempty"`
-    ContentBasedDeduplication *bool `json:"contentBasedDeduplication,omitempty"`
-    DelaySeconds *float64 `json:"delaySeconds,omitempty"`
-    MaximumMessageSize *float64 `json:"maximumMessageSize,omitempty"`
-    MessageRetentionPeriod *float64 `json:"messageRetentionPeriod,omitempty"`
-    ReceiveMessageWaitTimeSeconds *float64 `json:"receiveMessageWaitTimeSeconds,omitempty"`
-    RedrivePolicy *RedrivePolicy `json:"redrivePolicy,omitempty"`
-    VisibilityTimeout *float64 `json:"visibilityTimeout,omitempty"`
+    Name *string `lumi:"name,optional"`
+    FIFOQueue *bool `lumi:"fifoQueue,optional"`
+    QueueName *string `lumi:"queueName,optional"`
+    ContentBasedDeduplication *bool `lumi:"contentBasedDeduplication,optional"`
+    DelaySeconds *float64 `lumi:"delaySeconds,optional"`
+    MaximumMessageSize *float64 `lumi:"maximumMessageSize,optional"`
+    MessageRetentionPeriod *float64 `lumi:"messageRetentionPeriod,optional"`
+    ReceiveMessageWaitTimeSeconds *float64 `lumi:"receiveMessageWaitTimeSeconds,optional"`
+    RedrivePolicy *RedrivePolicy `lumi:"redrivePolicy,optional"`
+    VisibilityTimeout *float64 `lumi:"visibilityTimeout,optional"`
 }
 
 // Queue's properties have constants to make dealing with diffs and property bags easier.
@@ -210,8 +207,8 @@ const (
 
 // RedrivePolicy is a marshalable representation of its corresponding IDL type.
 type RedrivePolicy struct {
-    DeadLetterTarget resource.ID `json:"deadLetterTarget"`
-    MaxReceiveCount float64 `json:"maxReceiveCount"`
+    DeadLetterTarget resource.ID `lumi:"deadLetterTarget"`
+    MaxReceiveCount float64 `lumi:"maxReceiveCount"`
 }
 
 // RedrivePolicy's properties have constants to make dealing with diffs and property bags easier.

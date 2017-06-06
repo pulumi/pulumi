@@ -23,8 +23,8 @@ import (
 	"github.com/pulumi/lumi/pkg/util/mapper"
 )
 
-func decodeObjectLiteralProperty(m mapper.Mapper, tree mapper.Object) (ast.ObjectLiteralProperty, error) {
-	k, err := mapper.FieldString(tree, reflect.TypeOf((*ast.ObjectLiteralProperty)(nil)).Elem(), "kind", true)
+func decodeObjectLiteralProperty(m mapper.Mapper, obj map[string]interface{}) (ast.ObjectLiteralProperty, error) {
+	k, err := mapper.FieldString(obj, reflect.TypeOf((*ast.ObjectLiteralProperty)(nil)).Elem(), "kind", true)
 	if err != nil {
 		return nil, err
 	}
@@ -32,29 +32,29 @@ func decodeObjectLiteralProperty(m mapper.Mapper, tree mapper.Object) (ast.Objec
 		kind := ast.NodeKind(*k)
 		switch kind {
 		case ast.ObjectLiteralNamedPropertyKind:
-			return decodeObjectLiteralNamedProperty(m, tree)
+			return decodeObjectLiteralNamedProperty(m, obj)
 		case ast.ObjectLiteralComputedPropertyKind:
-			return decodeObjectLiteralComputedProperty(m, tree)
+			return decodeObjectLiteralComputedProperty(m, obj)
 		default:
-			contract.Failf("Unrecognized ObjectLiteralProperty kind: %v\n%v\n", kind, tree)
+			contract.Failf("Unrecognized ObjectLiteralProperty kind: %v\n%v\n", kind, obj)
 		}
 	}
 	return nil, nil
 }
 
 func decodeObjectLiteralNamedProperty(m mapper.Mapper,
-	tree mapper.Object) (*ast.ObjectLiteralNamedProperty, error) {
+	obj map[string]interface{}) (*ast.ObjectLiteralNamedProperty, error) {
 	var p ast.ObjectLiteralNamedProperty
-	if err := m.Decode(tree, &p); err != nil {
+	if err := m.Decode(obj, &p); err != nil {
 		return nil, err
 	}
 	return &p, nil
 }
 
 func decodeObjectLiteralComputedProperty(m mapper.Mapper,
-	tree mapper.Object) (*ast.ObjectLiteralComputedProperty, error) {
+	obj map[string]interface{}) (*ast.ObjectLiteralComputedProperty, error) {
 	var p ast.ObjectLiteralComputedProperty
-	if err := m.Decode(tree, &p); err != nil {
+	if err := m.Decode(obj, &p); err != nil {
 		return nil, err
 	}
 	return &p, nil

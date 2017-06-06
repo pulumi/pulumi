@@ -24,7 +24,6 @@ import (
 	awselasticbeanstalk "github.com/aws/aws-sdk-go/service/elasticbeanstalk"
 	"github.com/pulumi/lumi/pkg/resource"
 	"github.com/pulumi/lumi/pkg/util/contract"
-	"github.com/pulumi/lumi/pkg/util/mapper"
 	"github.com/pulumi/lumi/sdk/go/pkg/lumirpc"
 	"golang.org/x/net/context"
 
@@ -54,24 +53,24 @@ type applicationProvider struct {
 
 // Check validates that the given property bag is valid for a resource of the given type.
 func (p *applicationProvider) Check(ctx context.Context,
-	obj *elasticbeanstalk.Application) ([]mapper.FieldError, error) {
-	var failures []mapper.FieldError
+	obj *elasticbeanstalk.Application) ([]error, error) {
+	var failures []error
 	if name := obj.ApplicationName; name != nil {
 		if len(*name) < minApplicationName {
 			failures = append(failures,
-				mapper.NewFieldErr(reflect.TypeOf(obj), elasticbeanstalk.Application_ApplicationName,
+				resource.NewFieldError(reflect.TypeOf(obj), elasticbeanstalk.Application_ApplicationName,
 					fmt.Errorf("less than minimum length of %v", minApplicationName)))
 		}
 		if len(*name) > maxApplicationName {
 			failures = append(failures,
-				mapper.NewFieldErr(reflect.TypeOf(obj), elasticbeanstalk.Application_ApplicationName,
+				resource.NewFieldError(reflect.TypeOf(obj), elasticbeanstalk.Application_ApplicationName,
 					fmt.Errorf("exceeded maximum length of %v", maxApplicationName)))
 		}
 	}
 	if description := obj.Description; description != nil {
 		if len(*description) > maxDescription {
 			failures = append(failures,
-				mapper.NewFieldErr(reflect.TypeOf(obj), elasticbeanstalk.Application_ApplicationName,
+				resource.NewFieldError(reflect.TypeOf(obj), elasticbeanstalk.Application_ApplicationName,
 					fmt.Errorf("exceeded maximum length of %v", maxDescription)))
 		}
 	}

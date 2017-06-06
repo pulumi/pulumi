@@ -26,7 +26,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/pulumi/lumi/pkg/resource"
 	"github.com/pulumi/lumi/pkg/util/contract"
-	"github.com/pulumi/lumi/pkg/util/mapper"
 	"github.com/pulumi/lumi/sdk/go/pkg/lumirpc"
 	"golang.org/x/net/context"
 
@@ -69,18 +68,18 @@ type tableProvider struct {
 }
 
 // Check validates that the given property bag is valid for a resource of the given type.
-func (p *tableProvider) Check(ctx context.Context, obj *dynamodb.Table) ([]mapper.FieldError, error) {
-	var failures []mapper.FieldError
+func (p *tableProvider) Check(ctx context.Context, obj *dynamodb.Table) ([]error, error) {
+	var failures []error
 
 	if name := obj.TableName; name != nil {
 		if len(*name) < minTableName {
 			failures = append(failures,
-				mapper.NewFieldErr(reflect.TypeOf(obj), dynamodb.Table_Name,
+				resource.NewFieldError(reflect.TypeOf(obj), dynamodb.Table_Name,
 					fmt.Errorf("less than minimum length of %v", minTableName)))
 		}
 		if len(*name) > maxTableName {
 			failures = append(failures,
-				mapper.NewFieldErr(reflect.TypeOf(obj), dynamodb.Table_Name,
+				resource.NewFieldError(reflect.TypeOf(obj), dynamodb.Table_Name,
 					fmt.Errorf("exceeded maximum length of %v", maxTableName)))
 		}
 		// TODO: check the vailidity of names ([a-zA-Z0-9_.-]+).
@@ -88,24 +87,24 @@ func (p *tableProvider) Check(ctx context.Context, obj *dynamodb.Table) ([]mappe
 
 	if obj.ReadCapacity < minReadCapacity {
 		failures = append(failures,
-			mapper.NewFieldErr(reflect.TypeOf(obj), dynamodb.Table_ReadCapacity,
+			resource.NewFieldError(reflect.TypeOf(obj), dynamodb.Table_ReadCapacity,
 				fmt.Errorf("less than minimum of %v", minReadCapacity)))
 	}
 	if obj.WriteCapacity < minWriteCapacity {
 		failures = append(failures,
-			mapper.NewFieldErr(reflect.TypeOf(obj), dynamodb.Table_WriteCapacity,
+			resource.NewFieldError(reflect.TypeOf(obj), dynamodb.Table_WriteCapacity,
 				fmt.Errorf("less than minimum of %v", minWriteCapacity)))
 	}
 
 	for _, attribute := range obj.Attributes {
 		if len(attribute.Name) < minTableAttributeName {
 			failures = append(failures,
-				mapper.NewFieldErr(reflect.TypeOf(attribute), dynamodb.Attribute_Name,
+				resource.NewFieldError(reflect.TypeOf(attribute), dynamodb.Attribute_Name,
 					fmt.Errorf("less than minimum length of %v", minTableAttributeName)))
 		}
 		if len(attribute.Name) > maxTableAttributeName {
 			failures = append(failures,
-				mapper.NewFieldErr(reflect.TypeOf(attribute), dynamodb.Attribute_Name,
+				resource.NewFieldError(reflect.TypeOf(attribute), dynamodb.Attribute_Name,
 					fmt.Errorf("exceeded maximum length of %v", maxTableAttributeName)))
 		}
 		switch attribute.Type {
@@ -113,7 +112,7 @@ func (p *tableProvider) Check(ctx context.Context, obj *dynamodb.Table) ([]mappe
 			break
 		default:
 			failures = append(failures,
-				mapper.NewFieldErr(reflect.TypeOf(attribute), dynamodb.Attribute_Type,
+				resource.NewFieldError(reflect.TypeOf(attribute), dynamodb.Attribute_Type,
 					fmt.Errorf("not one of valid values S (string), N (number) or B (binary)")))
 		}
 	}
@@ -122,29 +121,29 @@ func (p *tableProvider) Check(ctx context.Context, obj *dynamodb.Table) ([]mappe
 		gsis := *obj.GlobalSecondaryIndexes
 		if len(gsis) > maxGlobalSecondaryIndexes {
 			failures = append(failures,
-				mapper.NewFieldErr(reflect.TypeOf(obj), dynamodb.Table_GlobalSecondaryIndexes,
+				resource.NewFieldError(reflect.TypeOf(obj), dynamodb.Table_GlobalSecondaryIndexes,
 					fmt.Errorf("more than %v global secondary indexes requested", maxGlobalSecondaryIndexes)))
 		}
 		for _, gsi := range gsis {
 			name := gsi.IndexName
 			if len(name) < minTableName {
 				failures = append(failures,
-					mapper.NewFieldErr(reflect.TypeOf(gsi), dynamodb.GlobalSecondaryIndex_IndexName,
+					resource.NewFieldError(reflect.TypeOf(gsi), dynamodb.GlobalSecondaryIndex_IndexName,
 						fmt.Errorf("less than minimum length of %v", minTableName)))
 			}
 			if len(name) > maxTableName {
 				failures = append(failures,
-					mapper.NewFieldErr(reflect.TypeOf(gsi), dynamodb.GlobalSecondaryIndex_IndexName,
+					resource.NewFieldError(reflect.TypeOf(gsi), dynamodb.GlobalSecondaryIndex_IndexName,
 						fmt.Errorf("exceeded maximum length of %v", maxTableName)))
 			}
 			if gsi.ReadCapacity < minReadCapacity {
 				failures = append(failures,
-					mapper.NewFieldErr(reflect.TypeOf(gsi), dynamodb.GlobalSecondaryIndex_ReadCapacity,
+					resource.NewFieldError(reflect.TypeOf(gsi), dynamodb.GlobalSecondaryIndex_ReadCapacity,
 						fmt.Errorf("less than minimum of %v", minReadCapacity)))
 			}
 			if gsi.WriteCapacity < minWriteCapacity {
 				failures = append(failures,
-					mapper.NewFieldErr(reflect.TypeOf(gsi), dynamodb.GlobalSecondaryIndex_WriteCapacity,
+					resource.NewFieldError(reflect.TypeOf(gsi), dynamodb.GlobalSecondaryIndex_WriteCapacity,
 						fmt.Errorf("less than minimum of %v", minWriteCapacity)))
 			}
 		}

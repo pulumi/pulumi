@@ -24,7 +24,7 @@ const SecurityGroupEgressToken = tokens.Type("aws:ec2/securityGroupEgress:Securi
 
 // SecurityGroupEgressProviderOps is a pluggable interface for SecurityGroupEgress-related management functionality.
 type SecurityGroupEgressProviderOps interface {
-    Check(ctx context.Context, obj *SecurityGroupEgress) ([]mapper.FieldError, error)
+    Check(ctx context.Context, obj *SecurityGroupEgress) ([]error, error)
     Create(ctx context.Context, obj *SecurityGroupEgress) (resource.ID, error)
     Get(ctx context.Context, id resource.ID) (*SecurityGroupEgress, error)
     InspectChange(ctx context.Context,
@@ -48,25 +48,23 @@ func NewSecurityGroupEgressProvider(ops SecurityGroupEgressProviderOps) lumirpc.
 func (p *SecurityGroupEgressProvider) Check(
     ctx context.Context, req *lumirpc.CheckRequest) (*lumirpc.CheckResponse, error) {
     contract.Assert(req.GetType() == string(SecurityGroupEgressToken))
-    obj, _, decerr := p.Unmarshal(req.GetProperties())
-    if decerr == nil || len(decerr.Failures()) == 0 {
-        failures, err := p.ops.Check(ctx, obj)
-        if err != nil {
+    obj, _, err := p.Unmarshal(req.GetProperties())
+    if err == nil {
+        if failures, err := p.ops.Check(ctx, obj); err != nil {
             return nil, err
-        }
-        if len(failures) > 0 {
-            decerr = mapper.NewDecodeErr(failures)
+        } else if len(failures) > 0 {
+            err = resource.NewCheckError(failures)
         }
     }
-    return resource.NewCheckResponse(decerr), nil
+    return resource.NewCheckResponse(err), nil
 }
 
 func (p *SecurityGroupEgressProvider) Name(
     ctx context.Context, req *lumirpc.NameRequest) (*lumirpc.NameResponse, error) {
     contract.Assert(req.GetType() == string(SecurityGroupEgressToken))
-    obj, _, decerr := p.Unmarshal(req.GetProperties())
-    if decerr != nil {
-        return nil, decerr
+    obj, _, err := p.Unmarshal(req.GetProperties())
+    if err != nil {
+        return nil, err
     }
     if obj.Name == nil || *obj.Name == "" {
         if req.Unknowns[SecurityGroupEgress_Name] {
@@ -80,9 +78,9 @@ func (p *SecurityGroupEgressProvider) Name(
 func (p *SecurityGroupEgressProvider) Create(
     ctx context.Context, req *lumirpc.CreateRequest) (*lumirpc.CreateResponse, error) {
     contract.Assert(req.GetType() == string(SecurityGroupEgressToken))
-    obj, _, decerr := p.Unmarshal(req.GetProperties())
-    if decerr != nil {
-        return nil, decerr
+    obj, _, err := p.Unmarshal(req.GetProperties())
+    if err != nil {
+        return nil, err
     }
     id, err := p.ops.Create(ctx, obj)
     if err != nil {
@@ -109,13 +107,13 @@ func (p *SecurityGroupEgressProvider) InspectChange(
     ctx context.Context, req *lumirpc.InspectChangeRequest) (*lumirpc.InspectChangeResponse, error) {
     contract.Assert(req.GetType() == string(SecurityGroupEgressToken))
     id := resource.ID(req.GetId())
-    old, oldprops, decerr := p.Unmarshal(req.GetOlds())
-    if decerr != nil {
-        return nil, decerr
+    old, oldprops, err := p.Unmarshal(req.GetOlds())
+    if err != nil {
+        return nil, err
     }
-    new, newprops, decerr := p.Unmarshal(req.GetNews())
-    if decerr != nil {
-        return nil, decerr
+    new, newprops, err := p.Unmarshal(req.GetNews())
+    if err != nil {
+        return nil, err
     }
     var replaces []string
     diff := oldprops.Diff(newprops)
@@ -187,26 +185,25 @@ func (p *SecurityGroupEgressProvider) Delete(
 }
 
 func (p *SecurityGroupEgressProvider) Unmarshal(
-    v *pbstruct.Struct) (*SecurityGroupEgress, resource.PropertyMap, mapper.DecodeError) {
+    v *pbstruct.Struct) (*SecurityGroupEgress, resource.PropertyMap, error) {
     var obj SecurityGroupEgress
     props := resource.UnmarshalProperties(nil, v, resource.MarshalOptions{RawResources: true})
-    result := mapper.MapIU(props.Mappable(), &obj)
-    return &obj, props, result
+    return &obj, props, mapper.MapIU(props.Mappable(), &obj)
 }
 
 /* Marshalable SecurityGroupEgress structure(s) */
 
 // SecurityGroupEgress is a marshalable representation of its corresponding IDL type.
 type SecurityGroupEgress struct {
-    Name *string `json:"name,omitempty"`
-    FromPort float64 `json:"fromPort"`
-    Group resource.ID `json:"group"`
-    IPProtocol string `json:"ipProtocol"`
-    ToPort float64 `json:"toPort"`
-    CIDRIP *string `json:"cidrIp,omitempty"`
-    CIDRIPv6 *string `json:"cidrIpv6,omitempty"`
-    DestinationPrefixListId *string `json:"destinationPrefixListId,omitempty"`
-    DestinationSecurityGroup *resource.ID `json:"destinationSecurityGroup,omitempty"`
+    Name *string `lumi:"name,optional"`
+    FromPort float64 `lumi:"fromPort"`
+    Group resource.ID `lumi:"group"`
+    IPProtocol string `lumi:"ipProtocol"`
+    ToPort float64 `lumi:"toPort"`
+    CIDRIP *string `lumi:"cidrIp,optional"`
+    CIDRIPv6 *string `lumi:"cidrIpv6,optional"`
+    DestinationPrefixListId *string `lumi:"destinationPrefixListId,optional"`
+    DestinationSecurityGroup *resource.ID `lumi:"destinationSecurityGroup,optional"`
 }
 
 // SecurityGroupEgress's properties have constants to make dealing with diffs and property bags easier.

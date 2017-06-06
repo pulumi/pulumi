@@ -9,7 +9,6 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	awsapigateway "github.com/aws/aws-sdk-go/service/apigateway"
 	"github.com/pulumi/lumi/pkg/resource"
-	"github.com/pulumi/lumi/pkg/util/mapper"
 	"github.com/pulumi/lumi/sdk/go/pkg/lumirpc"
 	"golang.org/x/net/context"
 
@@ -38,7 +37,8 @@ func ParseDeploymentID(id resource.ID) (string, string, error) {
 	}
 	parts := strings.Split(res, "/")
 	if len(parts) != 4 || parts[0] != "restapis" || parts[2] != "deployments" {
-		return "", "", fmt.Errorf("expected Deployment ARN of the form arn:aws:apigateway:region::/restapis/api-id/deployments/deployment-id: %v", id)
+		return "", "", fmt.Errorf("expected Deployment ARN of the form %v: %v",
+			"arn:aws:apigateway:region::/restapis/api-id/deployments/deployment-id", id)
 	}
 	return parts[1], parts[3], nil
 }
@@ -54,10 +54,8 @@ type deploymentProvider struct {
 }
 
 // Check validates that the given property bag is valid for a resource of the given type.
-func (p *deploymentProvider) Check(ctx context.Context, obj *apigateway.Deployment) ([]mapper.FieldError, error) {
-	var failures []mapper.FieldError
-
-	return failures, nil
+func (p *deploymentProvider) Check(ctx context.Context, obj *apigateway.Deployment) ([]error, error) {
+	return nil, nil
 }
 
 // Create allocates a new instance of the provided resource and returns its unique ID afterwards.  (The input ID

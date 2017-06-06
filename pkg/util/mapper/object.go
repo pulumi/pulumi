@@ -19,22 +19,12 @@ import (
 	"reflect"
 )
 
-// Value is a "JSON-like" value.
-type Value interface{}
-
-// Object is a "JSON-like" object map.
-type Object map[string]interface{}
-
-// Array is a "JSON-like" array of values.
-type Array []interface{}
-
 // AsObject attempts to coerce an existing value to an object map, returning a non-nil error if it cannot be done.
-func AsObject(v interface{}, ty reflect.Type, key string) (*Object, FieldError) {
+func AsObject(v interface{}, ty reflect.Type, key string) (map[string]interface{}, FieldError) {
 	if vmap, ok := v.(map[string]interface{}); ok {
-		vobj := Object(vmap)
-		return &vobj, nil
+		return vmap, nil
 	}
-	return nil, NewWrongTypeErr(
+	return nil, NewWrongTypeError(
 		ty, key, reflect.TypeOf(make(map[string]interface{})), reflect.TypeOf(v))
 }
 
@@ -43,29 +33,30 @@ func AsString(v interface{}, ty reflect.Type, key string) (*string, FieldError) 
 	if s, ok := v.(string); ok {
 		return &s, nil
 	}
-	return nil, NewWrongTypeErr(ty, key, reflect.TypeOf(""), reflect.TypeOf(v))
+	return nil, NewWrongTypeError(ty, key, reflect.TypeOf(""), reflect.TypeOf(v))
 }
 
 // FieldObject looks up a field by name within an object map, coerces it to an object itself, and returns it.  If the
 // field exists but is not an object map, or it is missing and optional is false, a non-nil error is returned.
-func FieldObject(tree Object, ty reflect.Type, key string, optional bool) (*Object, FieldError) {
-	if o, has := tree[key]; has {
+func FieldObject(obj map[string]interface{}, ty reflect.Type,
+	key string, optional bool) (map[string]interface{}, FieldError) {
+	if o, has := obj[key]; has {
 		return AsObject(o, ty, key)
 	} else if !optional {
 		// The field doesn't exist and yet it is required; issue an error.
-		return nil, NewMissingErr(ty, key)
+		return nil, NewMissingError(ty, key)
 	}
 	return nil, nil
 }
 
 // FieldString looks up a field by name within an object map, coerces it to a string, and returns it.  If the
 // field exists but is not a string, or it is missing and optional is false, a non-nil error is returned.
-func FieldString(tree Object, ty reflect.Type, key string, optional bool) (*string, FieldError) {
-	if s, has := tree[key]; has {
+func FieldString(obj map[string]interface{}, ty reflect.Type, key string, optional bool) (*string, FieldError) {
+	if s, has := obj[key]; has {
 		return AsString(s, ty, key)
 	} else if !optional {
 		// The field doesn't exist and yet it is required; issue an error.
-		return nil, NewMissingErr(ty, key)
+		return nil, NewMissingError(ty, key)
 	}
 	return nil, nil
 }

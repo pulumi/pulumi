@@ -223,7 +223,7 @@ func readEnv(ctx *resource.Context, name tokens.QName) (*resource.Envfile, *reso
 
 	// Next, use the mapping infrastructure to validate the contents.
 	// TODO: we can eliminate this redundant unmarshaling once Go supports strict unmarshaling.
-	var obj mapper.Object
+	var obj map[string]interface{}
 	if err = m.Unmarshal(b, &obj); err != nil {
 		ctx.Diag.Errorf(errors.ErrorCantReadDeployment, file, err)
 		return nil, nil, nil

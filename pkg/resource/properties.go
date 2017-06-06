@@ -37,7 +37,8 @@ type PropertyMap map[PropertyKey]PropertyValue
 
 // NewPropertyMap turns a struct into a property map, using any JSON tags inside to determine naming.
 func NewPropertyMap(s interface{}) PropertyMap {
-	m := mapper.Unmap(s)
+	m, err := mapper.Unmap(s)
+	contract.Assertf(err == nil, "Struct of properties failed to map correctly: %v", err)
 	return NewPropertyMapFromMap(m)
 }
 
@@ -393,8 +394,8 @@ func (m PropertyMap) HasValue(k PropertyKey) bool {
 }
 
 // Mappable returns a mapper-compatible object map, suitable for deserialization into structures.
-func (m PropertyMap) Mappable() mapper.Object {
-	obj := make(mapper.Object)
+func (m PropertyMap) Mappable() map[string]interface{} {
+	obj := make(map[string]interface{})
 	for _, k := range StablePropertyKeys(m) {
 		obj[string(k)] = m[k].Mappable()
 	}
@@ -718,7 +719,7 @@ func (v PropertyValue) TypeString() string {
 }
 
 // Mappable returns a mapper-compatible value, suitable for deserialization into structures.
-func (v PropertyValue) Mappable() mapper.Value {
+func (v PropertyValue) Mappable() interface{} {
 	if v.IsNull() {
 		return nil
 	} else if v.IsBool() {
@@ -728,7 +729,7 @@ func (v PropertyValue) Mappable() mapper.Value {
 	} else if v.IsString() {
 		return v.StringValue()
 	} else if v.IsArray() {
-		var arr []mapper.Value
+		var arr []interface{}
 		for _, e := range v.ArrayValue() {
 			arr = append(arr, e.Mappable())
 		}

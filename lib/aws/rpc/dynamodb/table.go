@@ -21,8 +21,8 @@ import (
 
 // Attribute is a marshalable representation of its corresponding IDL type.
 type Attribute struct {
-    Name string `json:"name"`
-    Type AttributeType `json:"type"`
+    Name string `lumi:"name"`
+    Type AttributeType `lumi:"type"`
 }
 
 // Attribute's properties have constants to make dealing with diffs and property bags easier.
@@ -35,13 +35,13 @@ const (
 
 // GlobalSecondaryIndex is a marshalable representation of its corresponding IDL type.
 type GlobalSecondaryIndex struct {
-    IndexName string `json:"indexName"`
-    HashKey string `json:"hashKey"`
-    RangeKey *string `json:"rangeKey,omitempty"`
-    ReadCapacity float64 `json:"readCapacity"`
-    WriteCapacity float64 `json:"writeCapacity"`
-    NonKeyAttributes []string `json:"nonKeyAttributes"`
-    ProjectionType ProjectionType `json:"projectionType"`
+    IndexName string `lumi:"indexName"`
+    HashKey string `lumi:"hashKey"`
+    RangeKey *string `lumi:"rangeKey,optional"`
+    ReadCapacity float64 `lumi:"readCapacity"`
+    WriteCapacity float64 `lumi:"writeCapacity"`
+    NonKeyAttributes []string `lumi:"nonKeyAttributes"`
+    ProjectionType ProjectionType `lumi:"projectionType"`
 }
 
 // GlobalSecondaryIndex's properties have constants to make dealing with diffs and property bags easier.
@@ -62,7 +62,7 @@ const TableToken = tokens.Type("aws:dynamodb/table:Table")
 
 // TableProviderOps is a pluggable interface for Table-related management functionality.
 type TableProviderOps interface {
-    Check(ctx context.Context, obj *Table) ([]mapper.FieldError, error)
+    Check(ctx context.Context, obj *Table) ([]error, error)
     Create(ctx context.Context, obj *Table) (resource.ID, error)
     Get(ctx context.Context, id resource.ID) (*Table, error)
     InspectChange(ctx context.Context,
@@ -86,25 +86,23 @@ func NewTableProvider(ops TableProviderOps) lumirpc.ResourceProviderServer {
 func (p *TableProvider) Check(
     ctx context.Context, req *lumirpc.CheckRequest) (*lumirpc.CheckResponse, error) {
     contract.Assert(req.GetType() == string(TableToken))
-    obj, _, decerr := p.Unmarshal(req.GetProperties())
-    if decerr == nil || len(decerr.Failures()) == 0 {
-        failures, err := p.ops.Check(ctx, obj)
-        if err != nil {
+    obj, _, err := p.Unmarshal(req.GetProperties())
+    if err == nil {
+        if failures, err := p.ops.Check(ctx, obj); err != nil {
             return nil, err
-        }
-        if len(failures) > 0 {
-            decerr = mapper.NewDecodeErr(failures)
+        } else if len(failures) > 0 {
+            err = resource.NewCheckError(failures)
         }
     }
-    return resource.NewCheckResponse(decerr), nil
+    return resource.NewCheckResponse(err), nil
 }
 
 func (p *TableProvider) Name(
     ctx context.Context, req *lumirpc.NameRequest) (*lumirpc.NameResponse, error) {
     contract.Assert(req.GetType() == string(TableToken))
-    obj, _, decerr := p.Unmarshal(req.GetProperties())
-    if decerr != nil {
-        return nil, decerr
+    obj, _, err := p.Unmarshal(req.GetProperties())
+    if err != nil {
+        return nil, err
     }
     if obj.Name == nil || *obj.Name == "" {
         if req.Unknowns[Table_Name] {
@@ -118,9 +116,9 @@ func (p *TableProvider) Name(
 func (p *TableProvider) Create(
     ctx context.Context, req *lumirpc.CreateRequest) (*lumirpc.CreateResponse, error) {
     contract.Assert(req.GetType() == string(TableToken))
-    obj, _, decerr := p.Unmarshal(req.GetProperties())
-    if decerr != nil {
-        return nil, decerr
+    obj, _, err := p.Unmarshal(req.GetProperties())
+    if err != nil {
+        return nil, err
     }
     id, err := p.ops.Create(ctx, obj)
     if err != nil {
@@ -147,13 +145,13 @@ func (p *TableProvider) InspectChange(
     ctx context.Context, req *lumirpc.InspectChangeRequest) (*lumirpc.InspectChangeResponse, error) {
     contract.Assert(req.GetType() == string(TableToken))
     id := resource.ID(req.GetId())
-    old, oldprops, decerr := p.Unmarshal(req.GetOlds())
-    if decerr != nil {
-        return nil, decerr
+    old, oldprops, err := p.Unmarshal(req.GetOlds())
+    if err != nil {
+        return nil, err
     }
-    new, newprops, decerr := p.Unmarshal(req.GetNews())
-    if decerr != nil {
-        return nil, decerr
+    new, newprops, err := p.Unmarshal(req.GetNews())
+    if err != nil {
+        return nil, err
     }
     var replaces []string
     diff := oldprops.Diff(newprops)
@@ -210,25 +208,24 @@ func (p *TableProvider) Delete(
 }
 
 func (p *TableProvider) Unmarshal(
-    v *pbstruct.Struct) (*Table, resource.PropertyMap, mapper.DecodeError) {
+    v *pbstruct.Struct) (*Table, resource.PropertyMap, error) {
     var obj Table
     props := resource.UnmarshalProperties(nil, v, resource.MarshalOptions{RawResources: true})
-    result := mapper.MapIU(props.Mappable(), &obj)
-    return &obj, props, result
+    return &obj, props, mapper.MapIU(props.Mappable(), &obj)
 }
 
 /* Marshalable Table structure(s) */
 
 // Table is a marshalable representation of its corresponding IDL type.
 type Table struct {
-    Name *string `json:"name,omitempty"`
-    HashKey string `json:"hashKey"`
-    Attributes []Attribute `json:"attributes"`
-    ReadCapacity float64 `json:"readCapacity"`
-    WriteCapacity float64 `json:"writeCapacity"`
-    RangeKey *string `json:"rangeKey,omitempty"`
-    TableName *string `json:"tableName,omitempty"`
-    GlobalSecondaryIndexes *[]GlobalSecondaryIndex `json:"globalSecondaryIndexes,omitempty"`
+    Name *string `lumi:"name,optional"`
+    HashKey string `lumi:"hashKey"`
+    Attributes []Attribute `lumi:"attributes"`
+    ReadCapacity float64 `lumi:"readCapacity"`
+    WriteCapacity float64 `lumi:"writeCapacity"`
+    RangeKey *string `lumi:"rangeKey,optional"`
+    TableName *string `lumi:"tableName,optional"`
+    GlobalSecondaryIndexes *[]GlobalSecondaryIndex `lumi:"globalSecondaryIndexes,optional"`
 }
 
 // Table's properties have constants to make dealing with diffs and property bags easier.

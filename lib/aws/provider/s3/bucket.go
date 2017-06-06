@@ -24,7 +24,6 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	awss3 "github.com/aws/aws-sdk-go/service/s3"
 	"github.com/pulumi/lumi/pkg/resource"
-	"github.com/pulumi/lumi/pkg/util/mapper"
 	"github.com/pulumi/lumi/sdk/go/pkg/lumirpc"
 	"golang.org/x/net/context"
 
@@ -52,16 +51,16 @@ type buckProvider struct {
 }
 
 // Check validates that the given property bag is valid for a resource of the given type.
-func (p *buckProvider) Check(ctx context.Context, obj *s3.Bucket) ([]mapper.FieldError, error) {
-	var failures []mapper.FieldError
+func (p *buckProvider) Check(ctx context.Context, obj *s3.Bucket) ([]error, error) {
+	var failures []error
 	if name := obj.BucketName; name != nil {
 		if len(*name) < minBucketName {
 			failures = append(failures,
-				mapper.NewFieldErr(reflect.TypeOf(obj), s3.Bucket_BucketName,
+				resource.NewFieldError(reflect.TypeOf(obj), s3.Bucket_BucketName,
 					fmt.Errorf("less than minimum length of %v", minBucketName)))
 		} else if len(*name) > maxBucketName {
 			failures = append(failures,
-				mapper.NewFieldErr(reflect.TypeOf(obj), s3.Bucket_BucketName,
+				resource.NewFieldError(reflect.TypeOf(obj), s3.Bucket_BucketName,
 					fmt.Errorf("exceeded maximum length of %v", maxBucketName)))
 		}
 	}

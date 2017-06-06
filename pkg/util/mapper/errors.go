@@ -20,35 +20,40 @@ import (
 	"reflect"
 )
 
-// DecodeError represents a collection of decoding errors, defined below.
-type DecodeError interface {
+// MappingError represents a collection of decoding errors, defined below.
+type MappingError interface {
 	error
-	Failures() []FieldError    // the full set of errors (each of one of the below types).
-	AddFailure(err FieldError) // registers a new failure.
+	Failures() []error    // the full set of errors (each of one of the below types).
+	AddFailure(err error) // registers a new failure.
 }
 
-// decodeError is a concrete implementation of DecodeError; it is private, and we prefer to use the above interface
+// mappingError is a concrete implementation of MappingError; it is private, and we prefer to use the above interface
 // type, to avoid tricky non-nil nils in common usage patterns (see https://golang.org/doc/faq#nil_error).
-type decodeError struct {
-	failures []FieldError
+type mappingError struct {
+	failures []error
 }
 
-var _ error = (*decodeError)(nil) // ensure this implements the error interface.
+var _ error = (*mappingError)(nil) // ensure this implements the error interface.
 
-func NewDecodeErr(errs []FieldError) DecodeError {
-	return &decodeError{failures: errs}
+func NewMappingError(errs []error) MappingError {
+	return &mappingError{failures: errs}
 }
 
-func (e *decodeError) Failures() []FieldError { return e.failures }
+func (e *mappingError) Failures() []error { return e.failures }
 
-func (e *decodeError) AddFailure(err FieldError) {
+func (e *mappingError) AddFailure(err error) {
 	e.failures = append(e.failures, err)
 }
 
-func (e *decodeError) Error() string {
-	str := fmt.Sprintf("%d fields failed to decode:", len(e.failures))
+func (e *mappingError) Error() string {
+	str := fmt.Sprintf("%d failures decoding:", len(e.failures))
 	for _, failure := range e.failures {
-		str += fmt.Sprintf("\n\t%v: %v", failure.Field(), failure.Reason())
+		switch f := failure.(type) {
+		case FieldError:
+			str += fmt.Sprintf("\n\t%v: %v", f.Field(), f.Reason())
+		default:
+			str += fmt.Sprintf("\n\t%v", f)
+		}
 	}
 	return str
 }
@@ -70,7 +75,7 @@ type fieldError struct {
 var _ error = (*fieldError)(nil)      // ensure this implements the error interface.
 var _ FieldError = (*fieldError)(nil) // ensure this implements the fieldError interface.
 
-func NewFieldErr(ty reflect.Type, fld string, err error) FieldError {
+func NewFieldError(ty reflect.Type, fld string, err error) FieldError {
 	return &fieldError{
 		Type:    ty,
 		Fld:     fld,
@@ -92,7 +97,7 @@ type MissingError struct {
 var _ error = (*MissingError)(nil)      // ensure this implements the error interface.
 var _ FieldError = (*MissingError)(nil) // ensure this implements the FieldError interface.
 
-func NewMissingErr(ty reflect.Type, fld string) *MissingError {
+func NewMissingError(ty reflect.Type, fld string) *MissingError {
 	return &MissingError{
 		Type:    ty,
 		Fld:     fld,
@@ -114,7 +119,7 @@ type UnrecognizedError struct {
 var _ error = (*UnrecognizedError)(nil)      // ensure this implements the error interface.
 var _ FieldError = (*UnrecognizedError)(nil) // ensure this implements the FieldError interface.
 
-func NewUnrecognizedErr(ty reflect.Type, fld string) *UnrecognizedError {
+func NewUnrecognizedError(ty reflect.Type, fld string) *UnrecognizedError {
 	return &UnrecognizedError{
 		Type:    ty,
 		Fld:     fld,
@@ -137,7 +142,7 @@ type WrongTypeError struct {
 var _ error = (*WrongTypeError)(nil)      // ensure this implements the error interface.
 var _ FieldError = (*WrongTypeError)(nil) // ensure this implements the FieldError interface.
 
-func NewWrongTypeErr(ty reflect.Type, fld string, expect reflect.Type, actual reflect.Type) *WrongTypeError {
+func NewWrongTypeError(ty reflect.Type, fld string, expect reflect.Type, actual reflect.Type) *WrongTypeError {
 	return &WrongTypeError{
 		Type:   ty,
 		Fld:    fld,

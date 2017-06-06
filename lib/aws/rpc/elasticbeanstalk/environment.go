@@ -24,7 +24,7 @@ const EnvironmentToken = tokens.Type("aws:elasticbeanstalk/environment:Environme
 
 // EnvironmentProviderOps is a pluggable interface for Environment-related management functionality.
 type EnvironmentProviderOps interface {
-    Check(ctx context.Context, obj *Environment) ([]mapper.FieldError, error)
+    Check(ctx context.Context, obj *Environment) ([]error, error)
     Create(ctx context.Context, obj *Environment) (resource.ID, error)
     Get(ctx context.Context, id resource.ID) (*Environment, error)
     InspectChange(ctx context.Context,
@@ -48,25 +48,23 @@ func NewEnvironmentProvider(ops EnvironmentProviderOps) lumirpc.ResourceProvider
 func (p *EnvironmentProvider) Check(
     ctx context.Context, req *lumirpc.CheckRequest) (*lumirpc.CheckResponse, error) {
     contract.Assert(req.GetType() == string(EnvironmentToken))
-    obj, _, decerr := p.Unmarshal(req.GetProperties())
-    if decerr == nil || len(decerr.Failures()) == 0 {
-        failures, err := p.ops.Check(ctx, obj)
-        if err != nil {
+    obj, _, err := p.Unmarshal(req.GetProperties())
+    if err == nil {
+        if failures, err := p.ops.Check(ctx, obj); err != nil {
             return nil, err
-        }
-        if len(failures) > 0 {
-            decerr = mapper.NewDecodeErr(failures)
+        } else if len(failures) > 0 {
+            err = resource.NewCheckError(failures)
         }
     }
-    return resource.NewCheckResponse(decerr), nil
+    return resource.NewCheckResponse(err), nil
 }
 
 func (p *EnvironmentProvider) Name(
     ctx context.Context, req *lumirpc.NameRequest) (*lumirpc.NameResponse, error) {
     contract.Assert(req.GetType() == string(EnvironmentToken))
-    obj, _, decerr := p.Unmarshal(req.GetProperties())
-    if decerr != nil {
-        return nil, decerr
+    obj, _, err := p.Unmarshal(req.GetProperties())
+    if err != nil {
+        return nil, err
     }
     if obj.Name == nil || *obj.Name == "" {
         if req.Unknowns[Environment_Name] {
@@ -80,9 +78,9 @@ func (p *EnvironmentProvider) Name(
 func (p *EnvironmentProvider) Create(
     ctx context.Context, req *lumirpc.CreateRequest) (*lumirpc.CreateResponse, error) {
     contract.Assert(req.GetType() == string(EnvironmentToken))
-    obj, _, decerr := p.Unmarshal(req.GetProperties())
-    if decerr != nil {
-        return nil, decerr
+    obj, _, err := p.Unmarshal(req.GetProperties())
+    if err != nil {
+        return nil, err
     }
     id, err := p.ops.Create(ctx, obj)
     if err != nil {
@@ -109,13 +107,13 @@ func (p *EnvironmentProvider) InspectChange(
     ctx context.Context, req *lumirpc.InspectChangeRequest) (*lumirpc.InspectChangeResponse, error) {
     contract.Assert(req.GetType() == string(EnvironmentToken))
     id := resource.ID(req.GetId())
-    old, oldprops, decerr := p.Unmarshal(req.GetOlds())
-    if decerr != nil {
-        return nil, decerr
+    old, oldprops, err := p.Unmarshal(req.GetOlds())
+    if err != nil {
+        return nil, err
     }
-    new, newprops, decerr := p.Unmarshal(req.GetNews())
-    if decerr != nil {
-        return nil, decerr
+    new, newprops, err := p.Unmarshal(req.GetNews())
+    if err != nil {
+        return nil, err
     }
     var replaces []string
     diff := oldprops.Diff(newprops)
@@ -181,30 +179,29 @@ func (p *EnvironmentProvider) Delete(
 }
 
 func (p *EnvironmentProvider) Unmarshal(
-    v *pbstruct.Struct) (*Environment, resource.PropertyMap, mapper.DecodeError) {
+    v *pbstruct.Struct) (*Environment, resource.PropertyMap, error) {
     var obj Environment
     props := resource.UnmarshalProperties(nil, v, resource.MarshalOptions{RawResources: true})
-    result := mapper.MapIU(props.Mappable(), &obj)
-    return &obj, props, result
+    return &obj, props, mapper.MapIU(props.Mappable(), &obj)
 }
 
 /* Marshalable Environment structure(s) */
 
 // Environment is a marshalable representation of its corresponding IDL type.
 type Environment struct {
-    Name *string `json:"name,omitempty"`
-    Application resource.ID `json:"application"`
-    CNAMEPrefix *string `json:"cnamePrefix,omitempty"`
-    Description *string `json:"description,omitempty"`
-    EnvironmentName *string `json:"environmentName,omitempty"`
-    OptionSettings *[]OptionSetting `json:"optionSettings,omitempty"`
-    SolutionStackName *string `json:"solutionStackName,omitempty"`
-    Tags *[]Tag `json:"tags,omitempty"`
-    TemplateName *string `json:"templateName,omitempty"`
-    Tier *Tier `json:"tier,omitempty"`
-    Version *resource.ID `json:"version,omitempty"`
-    EndpointURL string `json:"endpointURL,omitempty"`
-    AllOptionSettings *[]OptionSetting `json:"allOptionSettings,omitempty"`
+    Name *string `lumi:"name,optional"`
+    Application resource.ID `lumi:"application"`
+    CNAMEPrefix *string `lumi:"cnamePrefix,optional"`
+    Description *string `lumi:"description,optional"`
+    EnvironmentName *string `lumi:"environmentName,optional"`
+    OptionSettings *[]OptionSetting `lumi:"optionSettings,optional"`
+    SolutionStackName *string `lumi:"solutionStackName,optional"`
+    Tags *[]Tag `lumi:"tags,optional"`
+    TemplateName *string `lumi:"templateName,optional"`
+    Tier *Tier `lumi:"tier,optional"`
+    Version *resource.ID `lumi:"version,optional"`
+    EndpointURL string `lumi:"endpointURL,optional"`
+    AllOptionSettings *[]OptionSetting `lumi:"allOptionSettings,optional"`
 }
 
 // Environment's properties have constants to make dealing with diffs and property bags easier.
@@ -228,9 +225,9 @@ const (
 
 // OptionSetting is a marshalable representation of its corresponding IDL type.
 type OptionSetting struct {
-    Namespace string `json:"namespace"`
-    OptionName string `json:"optionName"`
-    Value string `json:"value"`
+    Namespace string `lumi:"namespace"`
+    OptionName string `lumi:"optionName"`
+    Value string `lumi:"value"`
 }
 
 // OptionSetting's properties have constants to make dealing with diffs and property bags easier.
@@ -244,8 +241,8 @@ const (
 
 // Tag is a marshalable representation of its corresponding IDL type.
 type Tag struct {
-    Key string `json:"key"`
-    Value string `json:"value"`
+    Key string `lumi:"key"`
+    Value string `lumi:"value"`
 }
 
 // Tag's properties have constants to make dealing with diffs and property bags easier.

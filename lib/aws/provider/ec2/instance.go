@@ -25,7 +25,6 @@ import (
 	awsec2 "github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/pulumi/lumi/pkg/resource"
 	"github.com/pulumi/lumi/pkg/util/contract"
-	"github.com/pulumi/lumi/pkg/util/mapper"
 	"github.com/pulumi/lumi/sdk/go/pkg/lumirpc"
 	"golang.org/x/net/context"
 
@@ -47,8 +46,8 @@ type instanceProvider struct {
 }
 
 // Check validates that the given property bag is valid for a resource of the given type.
-func (p *instanceProvider) Check(ctx context.Context, obj *ec2.Instance) ([]mapper.FieldError, error) {
-	var failures []mapper.FieldError
+func (p *instanceProvider) Check(ctx context.Context, obj *ec2.Instance) ([]error, error) {
+	var failures []error
 	if obj.ImageID != "" {
 		// Check that the AMI exists; this catches misspellings, AMI region mismatches, accessibility problems, etc.
 		result, err := p.ctx.EC2().DescribeImages(&awsec2.DescribeImagesInput{
@@ -59,7 +58,7 @@ func (p *instanceProvider) Check(ctx context.Context, obj *ec2.Instance) ([]mapp
 		}
 		if len(result.Images) == 0 {
 			failures = append(failures,
-				mapper.NewFieldErr(reflect.TypeOf(obj), ec2.Instance_ImageID,
+				resource.NewFieldError(reflect.TypeOf(obj), ec2.Instance_ImageID,
 					fmt.Errorf("missing image: %v", obj.ImageID)))
 		} else {
 			contract.Assertf(len(result.Images) == 1, "Did not expect multiple instance matches")

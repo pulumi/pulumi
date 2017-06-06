@@ -21,16 +21,16 @@ import (
 
 // Integration is a marshalable representation of its corresponding IDL type.
 type Integration struct {
-    Type IntegrationType `json:"type"`
-    CacheKeyParameters *[]string `json:"cacheKeyParameters,omitempty"`
-    CacheNamespace *string `json:"cacheNamespace,omitempty"`
-    Credentials *string `json:"credentials,omitempty"`
-    IntegrationHTTPMethod *string `json:"integrationHTTPMethod,omitempty"`
-    IntegrationResponse *[]IntegrationResponse `json:"integrationResponse,omitempty"`
-    PassthroughBehavior *PassthroughBehavior `json:"passthroughBehavior,omitempty"`
-    RequestParameters *map[string]string `json:"requestParameters,omitempty"`
-    RequestTemplates *map[string]string `json:"requestTemplates,omitempty"`
-    URI *string `json:"uri,omitempty"`
+    Type IntegrationType `lumi:"type"`
+    CacheKeyParameters *[]string `lumi:"cacheKeyParameters,optional"`
+    CacheNamespace *string `lumi:"cacheNamespace,optional"`
+    Credentials *string `lumi:"credentials,optional"`
+    IntegrationHTTPMethod *string `lumi:"integrationHTTPMethod,optional"`
+    IntegrationResponse *[]IntegrationResponse `lumi:"integrationResponse,optional"`
+    PassthroughBehavior *PassthroughBehavior `lumi:"passthroughBehavior,optional"`
+    RequestParameters *map[string]string `lumi:"requestParameters,optional"`
+    RequestTemplates *map[string]string `lumi:"requestTemplates,optional"`
+    URI *string `lumi:"uri,optional"`
 }
 
 // Integration's properties have constants to make dealing with diffs and property bags easier.
@@ -51,10 +51,10 @@ const (
 
 // IntegrationResponse is a marshalable representation of its corresponding IDL type.
 type IntegrationResponse struct {
-    ResponseParameters *map[string]string `json:"responseParameters,omitempty"`
-    ResponseTemplates *map[string]string `json:"responseTemplates,omitempty"`
-    SelectionPattern *string `json:"selectionPattern,omitempty"`
-    StatusCode *string `json:"statusCode,omitempty"`
+    ResponseParameters *map[string]string `lumi:"responseParameters,optional"`
+    ResponseTemplates *map[string]string `lumi:"responseTemplates,optional"`
+    SelectionPattern *string `lumi:"selectionPattern,optional"`
+    StatusCode *string `lumi:"statusCode,optional"`
 }
 
 // IntegrationResponse's properties have constants to make dealing with diffs and property bags easier.
@@ -72,7 +72,7 @@ const MethodToken = tokens.Type("aws:apigateway/method:Method")
 
 // MethodProviderOps is a pluggable interface for Method-related management functionality.
 type MethodProviderOps interface {
-    Check(ctx context.Context, obj *Method) ([]mapper.FieldError, error)
+    Check(ctx context.Context, obj *Method) ([]error, error)
     Create(ctx context.Context, obj *Method) (resource.ID, error)
     Get(ctx context.Context, id resource.ID) (*Method, error)
     InspectChange(ctx context.Context,
@@ -96,25 +96,23 @@ func NewMethodProvider(ops MethodProviderOps) lumirpc.ResourceProviderServer {
 func (p *MethodProvider) Check(
     ctx context.Context, req *lumirpc.CheckRequest) (*lumirpc.CheckResponse, error) {
     contract.Assert(req.GetType() == string(MethodToken))
-    obj, _, decerr := p.Unmarshal(req.GetProperties())
-    if decerr == nil || len(decerr.Failures()) == 0 {
-        failures, err := p.ops.Check(ctx, obj)
-        if err != nil {
+    obj, _, err := p.Unmarshal(req.GetProperties())
+    if err == nil {
+        if failures, err := p.ops.Check(ctx, obj); err != nil {
             return nil, err
-        }
-        if len(failures) > 0 {
-            decerr = mapper.NewDecodeErr(failures)
+        } else if len(failures) > 0 {
+            err = resource.NewCheckError(failures)
         }
     }
-    return resource.NewCheckResponse(decerr), nil
+    return resource.NewCheckResponse(err), nil
 }
 
 func (p *MethodProvider) Name(
     ctx context.Context, req *lumirpc.NameRequest) (*lumirpc.NameResponse, error) {
     contract.Assert(req.GetType() == string(MethodToken))
-    obj, _, decerr := p.Unmarshal(req.GetProperties())
-    if decerr != nil {
-        return nil, decerr
+    obj, _, err := p.Unmarshal(req.GetProperties())
+    if err != nil {
+        return nil, err
     }
     if obj.Name == nil || *obj.Name == "" {
         if req.Unknowns[Method_Name] {
@@ -128,9 +126,9 @@ func (p *MethodProvider) Name(
 func (p *MethodProvider) Create(
     ctx context.Context, req *lumirpc.CreateRequest) (*lumirpc.CreateResponse, error) {
     contract.Assert(req.GetType() == string(MethodToken))
-    obj, _, decerr := p.Unmarshal(req.GetProperties())
-    if decerr != nil {
-        return nil, decerr
+    obj, _, err := p.Unmarshal(req.GetProperties())
+    if err != nil {
+        return nil, err
     }
     id, err := p.ops.Create(ctx, obj)
     if err != nil {
@@ -157,13 +155,13 @@ func (p *MethodProvider) InspectChange(
     ctx context.Context, req *lumirpc.InspectChangeRequest) (*lumirpc.InspectChangeResponse, error) {
     contract.Assert(req.GetType() == string(MethodToken))
     id := resource.ID(req.GetId())
-    old, oldprops, decerr := p.Unmarshal(req.GetOlds())
-    if decerr != nil {
-        return nil, decerr
+    old, oldprops, err := p.Unmarshal(req.GetOlds())
+    if err != nil {
+        return nil, err
     }
-    new, newprops, decerr := p.Unmarshal(req.GetNews())
-    if decerr != nil {
-        return nil, decerr
+    new, newprops, err := p.Unmarshal(req.GetNews())
+    if err != nil {
+        return nil, err
     }
     var replaces []string
     diff := oldprops.Diff(newprops)
@@ -211,28 +209,27 @@ func (p *MethodProvider) Delete(
 }
 
 func (p *MethodProvider) Unmarshal(
-    v *pbstruct.Struct) (*Method, resource.PropertyMap, mapper.DecodeError) {
+    v *pbstruct.Struct) (*Method, resource.PropertyMap, error) {
     var obj Method
     props := resource.UnmarshalProperties(nil, v, resource.MarshalOptions{RawResources: true})
-    result := mapper.MapIU(props.Mappable(), &obj)
-    return &obj, props, result
+    return &obj, props, mapper.MapIU(props.Mappable(), &obj)
 }
 
 /* Marshalable Method structure(s) */
 
 // Method is a marshalable representation of its corresponding IDL type.
 type Method struct {
-    Name *string `json:"name,omitempty"`
-    HTTPMethod string `json:"httpMethod"`
-    APIResource resource.ID `json:"apiResource"`
-    RestAPI resource.ID `json:"restAPI"`
-    APIKeyRequired *bool `json:"apiKeyRequired,omitempty"`
-    AuthorizationType *AuthorizationType `json:"authorizationType,omitempty"`
-    Authorizer *resource.ID `json:"authorizer,omitempty"`
-    Integration *Integration `json:"integration,omitempty"`
-    MethodResponses *[]MethodResponse `json:"methodResponses,omitempty"`
-    RequestModels *map[string]resource.ID `json:"requestModels,omitempty"`
-    RequestParameters *map[string]bool `json:"requestParameters,omitempty"`
+    Name *string `lumi:"name,optional"`
+    HTTPMethod string `lumi:"httpMethod"`
+    APIResource resource.ID `lumi:"apiResource"`
+    RestAPI resource.ID `lumi:"restAPI"`
+    APIKeyRequired *bool `lumi:"apiKeyRequired,optional"`
+    AuthorizationType *AuthorizationType `lumi:"authorizationType,optional"`
+    Authorizer *resource.ID `lumi:"authorizer,optional"`
+    Integration *Integration `lumi:"integration,optional"`
+    MethodResponses *[]MethodResponse `lumi:"methodResponses,optional"`
+    RequestModels *map[string]resource.ID `lumi:"requestModels,optional"`
+    RequestParameters *map[string]bool `lumi:"requestParameters,optional"`
 }
 
 // Method's properties have constants to make dealing with diffs and property bags easier.
@@ -254,9 +251,9 @@ const (
 
 // MethodResponse is a marshalable representation of its corresponding IDL type.
 type MethodResponse struct {
-    StatusCode string `json:"statusCode"`
-    ResponseModels *map[string]resource.ID `json:"responseModels,omitempty"`
-    ResponseParameters *map[string]bool `json:"responseParameters,omitempty"`
+    StatusCode string `lumi:"statusCode"`
+    ResponseModels *map[string]resource.ID `lumi:"responseModels,optional"`
+    ResponseParameters *map[string]bool `lumi:"responseParameters,optional"`
 }
 
 // MethodResponse's properties have constants to make dealing with diffs and property bags easier.
@@ -270,16 +267,16 @@ const (
 
 // MethodSetting is a marshalable representation of its corresponding IDL type.
 type MethodSetting struct {
-    CacheDataEncrypted *bool `json:"cacheDataEncrypted,omitempty"`
-    CacheTTLInSeconds *float64 `json:"cacheTTLInSeconds,omitempty"`
-    CachingEnabled *bool `json:"cachingEnabled,omitempty"`
-    DataTraceEnabled *bool `json:"dataTraceEnabled,omitempty"`
-    HTTPMethod *string `json:"httpMethod,omitempty"`
-    LoggingLevel *LoggingLevel `json:"loggingLevel,omitempty"`
-    MetricsEnabled *bool `json:"metricsEnabled,omitempty"`
-    ResourcePath *string `json:"resourcePath,omitempty"`
-    ThrottlingBurstLimit *float64 `json:"throttlingBurstLimit,omitempty"`
-    ThrottlingRateLimit *float64 `json:"throttlingRateLimit,omitempty"`
+    CacheDataEncrypted *bool `lumi:"cacheDataEncrypted,optional"`
+    CacheTTLInSeconds *float64 `lumi:"cacheTTLInSeconds,optional"`
+    CachingEnabled *bool `lumi:"cachingEnabled,optional"`
+    DataTraceEnabled *bool `lumi:"dataTraceEnabled,optional"`
+    HTTPMethod *string `lumi:"httpMethod,optional"`
+    LoggingLevel *LoggingLevel `lumi:"loggingLevel,optional"`
+    MetricsEnabled *bool `lumi:"metricsEnabled,optional"`
+    ResourcePath *string `lumi:"resourcePath,optional"`
+    ThrottlingBurstLimit *float64 `lumi:"throttlingBurstLimit,optional"`
+    ThrottlingRateLimit *float64 `lumi:"throttlingRateLimit,optional"`
 }
 
 // MethodSetting's properties have constants to make dealing with diffs and property bags easier.

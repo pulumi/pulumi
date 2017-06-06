@@ -8,7 +8,6 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	awsapigateway "github.com/aws/aws-sdk-go/service/apigateway"
 	"github.com/pulumi/lumi/pkg/resource"
-	"github.com/pulumi/lumi/pkg/util/mapper"
 	"github.com/pulumi/lumi/sdk/go/pkg/lumirpc"
 	"golang.org/x/net/context"
 
@@ -55,10 +54,8 @@ type stageProvider struct {
 }
 
 // Check validates that the given property bag is valid for a resource of the given type.
-func (p *stageProvider) Check(ctx context.Context, obj *apigateway.Stage) ([]mapper.FieldError, error) {
-	var failures []mapper.FieldError
-
-	return failures, nil
+func (p *stageProvider) Check(ctx context.Context, obj *apigateway.Stage) ([]error, error) {
+	return nil, nil
 }
 
 // Create allocates a new instance of the provided resource and returns its unique ID afterwards.  (The input ID

@@ -24,7 +24,7 @@ const ResourceToken = tokens.Type("aws:apigateway/resource:Resource")
 
 // ResourceProviderOps is a pluggable interface for Resource-related management functionality.
 type ResourceProviderOps interface {
-    Check(ctx context.Context, obj *Resource) ([]mapper.FieldError, error)
+    Check(ctx context.Context, obj *Resource) ([]error, error)
     Create(ctx context.Context, obj *Resource) (resource.ID, error)
     Get(ctx context.Context, id resource.ID) (*Resource, error)
     InspectChange(ctx context.Context,
@@ -48,25 +48,23 @@ func NewResourceProvider(ops ResourceProviderOps) lumirpc.ResourceProviderServer
 func (p *ResourceProvider) Check(
     ctx context.Context, req *lumirpc.CheckRequest) (*lumirpc.CheckResponse, error) {
     contract.Assert(req.GetType() == string(ResourceToken))
-    obj, _, decerr := p.Unmarshal(req.GetProperties())
-    if decerr == nil || len(decerr.Failures()) == 0 {
-        failures, err := p.ops.Check(ctx, obj)
-        if err != nil {
+    obj, _, err := p.Unmarshal(req.GetProperties())
+    if err == nil {
+        if failures, err := p.ops.Check(ctx, obj); err != nil {
             return nil, err
-        }
-        if len(failures) > 0 {
-            decerr = mapper.NewDecodeErr(failures)
+        } else if len(failures) > 0 {
+            err = resource.NewCheckError(failures)
         }
     }
-    return resource.NewCheckResponse(decerr), nil
+    return resource.NewCheckResponse(err), nil
 }
 
 func (p *ResourceProvider) Name(
     ctx context.Context, req *lumirpc.NameRequest) (*lumirpc.NameResponse, error) {
     contract.Assert(req.GetType() == string(ResourceToken))
-    obj, _, decerr := p.Unmarshal(req.GetProperties())
-    if decerr != nil {
-        return nil, decerr
+    obj, _, err := p.Unmarshal(req.GetProperties())
+    if err != nil {
+        return nil, err
     }
     if obj.Name == nil || *obj.Name == "" {
         if req.Unknowns[Resource_Name] {
@@ -80,9 +78,9 @@ func (p *ResourceProvider) Name(
 func (p *ResourceProvider) Create(
     ctx context.Context, req *lumirpc.CreateRequest) (*lumirpc.CreateResponse, error) {
     contract.Assert(req.GetType() == string(ResourceToken))
-    obj, _, decerr := p.Unmarshal(req.GetProperties())
-    if decerr != nil {
-        return nil, decerr
+    obj, _, err := p.Unmarshal(req.GetProperties())
+    if err != nil {
+        return nil, err
     }
     id, err := p.ops.Create(ctx, obj)
     if err != nil {
@@ -109,13 +107,13 @@ func (p *ResourceProvider) InspectChange(
     ctx context.Context, req *lumirpc.InspectChangeRequest) (*lumirpc.InspectChangeResponse, error) {
     contract.Assert(req.GetType() == string(ResourceToken))
     id := resource.ID(req.GetId())
-    old, oldprops, decerr := p.Unmarshal(req.GetOlds())
-    if decerr != nil {
-        return nil, decerr
+    old, oldprops, err := p.Unmarshal(req.GetOlds())
+    if err != nil {
+        return nil, err
     }
-    new, newprops, decerr := p.Unmarshal(req.GetNews())
-    if decerr != nil {
-        return nil, decerr
+    new, newprops, err := p.Unmarshal(req.GetNews())
+    if err != nil {
+        return nil, err
     }
     var replaces []string
     diff := oldprops.Diff(newprops)
@@ -172,21 +170,20 @@ func (p *ResourceProvider) Delete(
 }
 
 func (p *ResourceProvider) Unmarshal(
-    v *pbstruct.Struct) (*Resource, resource.PropertyMap, mapper.DecodeError) {
+    v *pbstruct.Struct) (*Resource, resource.PropertyMap, error) {
     var obj Resource
     props := resource.UnmarshalProperties(nil, v, resource.MarshalOptions{RawResources: true})
-    result := mapper.MapIU(props.Mappable(), &obj)
-    return &obj, props, result
+    return &obj, props, mapper.MapIU(props.Mappable(), &obj)
 }
 
 /* Marshalable Resource structure(s) */
 
 // Resource is a marshalable representation of its corresponding IDL type.
 type Resource struct {
-    Name *string `json:"name,omitempty"`
-    Parent resource.ID `json:"parent"`
-    PathPart string `json:"pathPart"`
-    RestAPI resource.ID `json:"restAPI"`
+    Name *string `lumi:"name,optional"`
+    Parent resource.ID `lumi:"parent"`
+    PathPart string `lumi:"pathPart"`
+    RestAPI resource.ID `lumi:"restAPI"`
 }
 
 // Resource's properties have constants to make dealing with diffs and property bags easier.

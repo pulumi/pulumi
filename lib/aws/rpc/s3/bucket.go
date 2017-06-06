@@ -24,7 +24,7 @@ const BucketToken = tokens.Type("aws:s3/bucket:Bucket")
 
 // BucketProviderOps is a pluggable interface for Bucket-related management functionality.
 type BucketProviderOps interface {
-    Check(ctx context.Context, obj *Bucket) ([]mapper.FieldError, error)
+    Check(ctx context.Context, obj *Bucket) ([]error, error)
     Create(ctx context.Context, obj *Bucket) (resource.ID, error)
     Get(ctx context.Context, id resource.ID) (*Bucket, error)
     InspectChange(ctx context.Context,
@@ -48,25 +48,23 @@ func NewBucketProvider(ops BucketProviderOps) lumirpc.ResourceProviderServer {
 func (p *BucketProvider) Check(
     ctx context.Context, req *lumirpc.CheckRequest) (*lumirpc.CheckResponse, error) {
     contract.Assert(req.GetType() == string(BucketToken))
-    obj, _, decerr := p.Unmarshal(req.GetProperties())
-    if decerr == nil || len(decerr.Failures()) == 0 {
-        failures, err := p.ops.Check(ctx, obj)
-        if err != nil {
+    obj, _, err := p.Unmarshal(req.GetProperties())
+    if err == nil {
+        if failures, err := p.ops.Check(ctx, obj); err != nil {
             return nil, err
-        }
-        if len(failures) > 0 {
-            decerr = mapper.NewDecodeErr(failures)
+        } else if len(failures) > 0 {
+            err = resource.NewCheckError(failures)
         }
     }
-    return resource.NewCheckResponse(decerr), nil
+    return resource.NewCheckResponse(err), nil
 }
 
 func (p *BucketProvider) Name(
     ctx context.Context, req *lumirpc.NameRequest) (*lumirpc.NameResponse, error) {
     contract.Assert(req.GetType() == string(BucketToken))
-    obj, _, decerr := p.Unmarshal(req.GetProperties())
-    if decerr != nil {
-        return nil, decerr
+    obj, _, err := p.Unmarshal(req.GetProperties())
+    if err != nil {
+        return nil, err
     }
     if obj.Name == nil || *obj.Name == "" {
         if req.Unknowns[Bucket_Name] {
@@ -80,9 +78,9 @@ func (p *BucketProvider) Name(
 func (p *BucketProvider) Create(
     ctx context.Context, req *lumirpc.CreateRequest) (*lumirpc.CreateResponse, error) {
     contract.Assert(req.GetType() == string(BucketToken))
-    obj, _, decerr := p.Unmarshal(req.GetProperties())
-    if decerr != nil {
-        return nil, decerr
+    obj, _, err := p.Unmarshal(req.GetProperties())
+    if err != nil {
+        return nil, err
     }
     id, err := p.ops.Create(ctx, obj)
     if err != nil {
@@ -109,13 +107,13 @@ func (p *BucketProvider) InspectChange(
     ctx context.Context, req *lumirpc.InspectChangeRequest) (*lumirpc.InspectChangeResponse, error) {
     contract.Assert(req.GetType() == string(BucketToken))
     id := resource.ID(req.GetId())
-    old, oldprops, decerr := p.Unmarshal(req.GetOlds())
-    if decerr != nil {
-        return nil, decerr
+    old, oldprops, err := p.Unmarshal(req.GetOlds())
+    if err != nil {
+        return nil, err
     }
-    new, newprops, decerr := p.Unmarshal(req.GetNews())
-    if decerr != nil {
-        return nil, decerr
+    new, newprops, err := p.Unmarshal(req.GetNews())
+    if err != nil {
+        return nil, err
     }
     var replaces []string
     diff := oldprops.Diff(newprops)
@@ -166,20 +164,19 @@ func (p *BucketProvider) Delete(
 }
 
 func (p *BucketProvider) Unmarshal(
-    v *pbstruct.Struct) (*Bucket, resource.PropertyMap, mapper.DecodeError) {
+    v *pbstruct.Struct) (*Bucket, resource.PropertyMap, error) {
     var obj Bucket
     props := resource.UnmarshalProperties(nil, v, resource.MarshalOptions{RawResources: true})
-    result := mapper.MapIU(props.Mappable(), &obj)
-    return &obj, props, result
+    return &obj, props, mapper.MapIU(props.Mappable(), &obj)
 }
 
 /* Marshalable Bucket structure(s) */
 
 // Bucket is a marshalable representation of its corresponding IDL type.
 type Bucket struct {
-    Name *string `json:"name,omitempty"`
-    BucketName *string `json:"bucketName,omitempty"`
-    AccessControl *CannedACL `json:"accessControl,omitempty"`
+    Name *string `lumi:"name,optional"`
+    BucketName *string `lumi:"bucketName,optional"`
+    AccessControl *CannedACL `lumi:"accessControl,optional"`
 }
 
 // Bucket's properties have constants to make dealing with diffs and property bags easier.

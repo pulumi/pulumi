@@ -24,7 +24,6 @@ import (
 	awselasticbeanstalk "github.com/aws/aws-sdk-go/service/elasticbeanstalk"
 	"github.com/pulumi/lumi/pkg/resource"
 	"github.com/pulumi/lumi/pkg/util/contract"
-	"github.com/pulumi/lumi/pkg/util/mapper"
 	"github.com/pulumi/lumi/sdk/go/pkg/lumirpc"
 	"golang.org/x/net/context"
 
@@ -47,12 +46,12 @@ type applicationVersionProvider struct {
 
 // Check validates that the given property bag is valid for a resource of the given type.
 func (p *applicationVersionProvider) Check(ctx context.Context,
-	obj *elasticbeanstalk.ApplicationVersion) ([]mapper.FieldError, error) {
-	var failures []mapper.FieldError
+	obj *elasticbeanstalk.ApplicationVersion) ([]error, error) {
+	var failures []error
 	if description := obj.Description; description != nil {
 		if len(*description) > maxDescription {
 			failures = append(failures,
-				mapper.NewFieldErr(reflect.TypeOf(obj), elasticbeanstalk.ApplicationVersion_Description,
+				resource.NewFieldError(reflect.TypeOf(obj), elasticbeanstalk.ApplicationVersion_Description,
 					fmt.Errorf("exceeded maximum length of %v", maxDescription)))
 		}
 	}

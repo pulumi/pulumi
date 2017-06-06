@@ -24,7 +24,7 @@ const SecurityGroupToken = tokens.Type("aws:ec2/securityGroup:SecurityGroup")
 
 // SecurityGroupProviderOps is a pluggable interface for SecurityGroup-related management functionality.
 type SecurityGroupProviderOps interface {
-    Check(ctx context.Context, obj *SecurityGroup) ([]mapper.FieldError, error)
+    Check(ctx context.Context, obj *SecurityGroup) ([]error, error)
     Create(ctx context.Context, obj *SecurityGroup) (resource.ID, error)
     Get(ctx context.Context, id resource.ID) (*SecurityGroup, error)
     InspectChange(ctx context.Context,
@@ -48,25 +48,23 @@ func NewSecurityGroupProvider(ops SecurityGroupProviderOps) lumirpc.ResourceProv
 func (p *SecurityGroupProvider) Check(
     ctx context.Context, req *lumirpc.CheckRequest) (*lumirpc.CheckResponse, error) {
     contract.Assert(req.GetType() == string(SecurityGroupToken))
-    obj, _, decerr := p.Unmarshal(req.GetProperties())
-    if decerr == nil || len(decerr.Failures()) == 0 {
-        failures, err := p.ops.Check(ctx, obj)
-        if err != nil {
+    obj, _, err := p.Unmarshal(req.GetProperties())
+    if err == nil {
+        if failures, err := p.ops.Check(ctx, obj); err != nil {
             return nil, err
-        }
-        if len(failures) > 0 {
-            decerr = mapper.NewDecodeErr(failures)
+        } else if len(failures) > 0 {
+            err = resource.NewCheckError(failures)
         }
     }
-    return resource.NewCheckResponse(decerr), nil
+    return resource.NewCheckResponse(err), nil
 }
 
 func (p *SecurityGroupProvider) Name(
     ctx context.Context, req *lumirpc.NameRequest) (*lumirpc.NameResponse, error) {
     contract.Assert(req.GetType() == string(SecurityGroupToken))
-    obj, _, decerr := p.Unmarshal(req.GetProperties())
-    if decerr != nil {
-        return nil, decerr
+    obj, _, err := p.Unmarshal(req.GetProperties())
+    if err != nil {
+        return nil, err
     }
     if obj.Name == nil || *obj.Name == "" {
         if req.Unknowns[SecurityGroup_Name] {
@@ -80,9 +78,9 @@ func (p *SecurityGroupProvider) Name(
 func (p *SecurityGroupProvider) Create(
     ctx context.Context, req *lumirpc.CreateRequest) (*lumirpc.CreateResponse, error) {
     contract.Assert(req.GetType() == string(SecurityGroupToken))
-    obj, _, decerr := p.Unmarshal(req.GetProperties())
-    if decerr != nil {
-        return nil, decerr
+    obj, _, err := p.Unmarshal(req.GetProperties())
+    if err != nil {
+        return nil, err
     }
     id, err := p.ops.Create(ctx, obj)
     if err != nil {
@@ -109,13 +107,13 @@ func (p *SecurityGroupProvider) InspectChange(
     ctx context.Context, req *lumirpc.InspectChangeRequest) (*lumirpc.InspectChangeResponse, error) {
     contract.Assert(req.GetType() == string(SecurityGroupToken))
     id := resource.ID(req.GetId())
-    old, oldprops, decerr := p.Unmarshal(req.GetOlds())
-    if decerr != nil {
-        return nil, decerr
+    old, oldprops, err := p.Unmarshal(req.GetOlds())
+    if err != nil {
+        return nil, err
     }
-    new, newprops, decerr := p.Unmarshal(req.GetNews())
-    if decerr != nil {
-        return nil, decerr
+    new, newprops, err := p.Unmarshal(req.GetNews())
+    if err != nil {
+        return nil, err
     }
     var replaces []string
     diff := oldprops.Diff(newprops)
@@ -172,24 +170,23 @@ func (p *SecurityGroupProvider) Delete(
 }
 
 func (p *SecurityGroupProvider) Unmarshal(
-    v *pbstruct.Struct) (*SecurityGroup, resource.PropertyMap, mapper.DecodeError) {
+    v *pbstruct.Struct) (*SecurityGroup, resource.PropertyMap, error) {
     var obj SecurityGroup
     props := resource.UnmarshalProperties(nil, v, resource.MarshalOptions{RawResources: true})
-    result := mapper.MapIU(props.Mappable(), &obj)
-    return &obj, props, result
+    return &obj, props, mapper.MapIU(props.Mappable(), &obj)
 }
 
 /* Marshalable SecurityGroup structure(s) */
 
 // SecurityGroup is a marshalable representation of its corresponding IDL type.
 type SecurityGroup struct {
-    Name *string `json:"name,omitempty"`
-    GroupDescription string `json:"groupDescription"`
-    GroupName *string `json:"groupName,omitempty"`
-    VPC *resource.ID `json:"vpc,omitempty"`
-    SecurityGroupEgress *[]SecurityGroupRule `json:"securityGroupEgress,omitempty"`
-    SecurityGroupIngress *[]SecurityGroupRule `json:"securityGroupIngress,omitempty"`
-    GroupID string `json:"groupID,omitempty"`
+    Name *string `lumi:"name,optional"`
+    GroupDescription string `lumi:"groupDescription"`
+    GroupName *string `lumi:"groupName,optional"`
+    VPC *resource.ID `lumi:"vpc,optional"`
+    SecurityGroupEgress *[]SecurityGroupRule `lumi:"securityGroupEgress,optional"`
+    SecurityGroupIngress *[]SecurityGroupRule `lumi:"securityGroupIngress,optional"`
+    GroupID string `lumi:"groupID,optional"`
 }
 
 // SecurityGroup's properties have constants to make dealing with diffs and property bags easier.
@@ -207,10 +204,10 @@ const (
 
 // SecurityGroupRule is a marshalable representation of its corresponding IDL type.
 type SecurityGroupRule struct {
-    IPProtocol string `json:"ipProtocol"`
-    CIDRIP *string `json:"cidrIp,omitempty"`
-    FromPort *float64 `json:"fromPort,omitempty"`
-    ToPort *float64 `json:"toPort,omitempty"`
+    IPProtocol string `lumi:"ipProtocol"`
+    CIDRIP *string `lumi:"cidrIp,optional"`
+    FromPort *float64 `lumi:"fromPort,optional"`
+    ToPort *float64 `lumi:"toPort,optional"`
 }
 
 // SecurityGroupRule's properties have constants to make dealing with diffs and property bags easier.

@@ -23,8 +23,8 @@ import (
 	"github.com/pulumi/lumi/pkg/util/mapper"
 )
 
-func decodeExpression(m mapper.Mapper, tree mapper.Object) (ast.Expression, error) {
-	k, err := mapper.FieldString(tree, reflect.TypeOf((*ast.Expression)(nil)).Elem(), "kind", true)
+func decodeExpression(m mapper.Mapper, obj map[string]interface{}) (ast.Expression, error) {
+	k, err := mapper.FieldString(obj, reflect.TypeOf((*ast.Expression)(nil)).Elem(), "kind", true)
 	if err != nil {
 		return nil, err
 	}
@@ -33,208 +33,208 @@ func decodeExpression(m mapper.Mapper, tree mapper.Object) (ast.Expression, erro
 		switch kind {
 		// Literals
 		case ast.NullLiteralKind:
-			return decodeNullLiteral(m, tree)
+			return decodeNullLiteral(m, obj)
 		case ast.BoolLiteralKind:
-			return decodeBoolLiteral(m, tree)
+			return decodeBoolLiteral(m, obj)
 		case ast.NumberLiteralKind:
-			return decodeNumberLiteral(m, tree)
+			return decodeNumberLiteral(m, obj)
 		case ast.StringLiteralKind:
-			return decodeStringLiteral(m, tree)
+			return decodeStringLiteral(m, obj)
 		case ast.ArrayLiteralKind:
-			return decodeArrayLiteral(m, tree)
+			return decodeArrayLiteral(m, obj)
 		case ast.ObjectLiteralKind:
-			return decodeObjectLiteral(m, tree)
+			return decodeObjectLiteral(m, obj)
 
 		// Loads
 		case ast.LoadLocationExpressionKind:
-			return decodeLoadLocationExpression(m, tree)
+			return decodeLoadLocationExpression(m, obj)
 		case ast.LoadDynamicExpressionKind:
-			return decodeLoadDynamicExpression(m, tree)
+			return decodeLoadDynamicExpression(m, obj)
 		case ast.TryLoadDynamicExpressionKind:
-			return decodeTryLoadDynamicExpression(m, tree)
+			return decodeTryLoadDynamicExpression(m, obj)
 
 		// Functions
 		case ast.NewExpressionKind:
-			return decodeNewExpression(m, tree)
+			return decodeNewExpression(m, obj)
 		case ast.InvokeFunctionExpressionKind:
-			return decodeInvokeFunctionExpression(m, tree)
+			return decodeInvokeFunctionExpression(m, obj)
 		case ast.LambdaExpressionKind:
-			return decodeLambdaExpression(m, tree)
+			return decodeLambdaExpression(m, obj)
 
 		// Operators
 		case ast.UnaryOperatorExpressionKind:
-			return decodeUnaryOperatorExpression(m, tree)
+			return decodeUnaryOperatorExpression(m, obj)
 		case ast.BinaryOperatorExpressionKind:
-			return decodeBinaryOperatorExpression(m, tree)
+			return decodeBinaryOperatorExpression(m, obj)
 
 		// Type testing
 		case ast.CastExpressionKind:
-			return decodeCastExpression(m, tree)
+			return decodeCastExpression(m, obj)
 		case ast.IsInstExpressionKind:
-			return decodeIsInstExpression(m, tree)
+			return decodeIsInstExpression(m, obj)
 		case ast.TypeOfExpressionKind:
-			return decodeTypeOfExpression(m, tree)
+			return decodeTypeOfExpression(m, obj)
 
 		// Miscellaneous
 		case ast.ConditionalExpressionKind:
-			return decodeConditionalExpression(m, tree)
+			return decodeConditionalExpression(m, obj)
 		case ast.SequenceExpressionKind:
-			return decodeSequenceExpression(m, tree)
+			return decodeSequenceExpression(m, obj)
 
 		default:
-			contract.Failf("Unrecognized Expression kind: %v\n%v\n", kind, tree)
+			contract.Failf("Unrecognized Expression kind: %v\n%v\n", kind, obj)
 		}
 	}
 	return nil, nil
 }
 
-func decodeNullLiteral(m mapper.Mapper, tree mapper.Object) (*ast.NullLiteral, error) {
+func decodeNullLiteral(m mapper.Mapper, obj map[string]interface{}) (*ast.NullLiteral, error) {
 	var lit ast.NullLiteral
-	if err := m.Decode(tree, &lit); err != nil {
+	if err := m.Decode(obj, &lit); err != nil {
 		return nil, err
 	}
 	return &lit, nil
 }
 
-func decodeBoolLiteral(m mapper.Mapper, tree mapper.Object) (*ast.BoolLiteral, error) {
+func decodeBoolLiteral(m mapper.Mapper, obj map[string]interface{}) (*ast.BoolLiteral, error) {
 	var lit ast.BoolLiteral
-	if err := m.Decode(tree, &lit); err != nil {
+	if err := m.Decode(obj, &lit); err != nil {
 		return nil, err
 	}
 	return &lit, nil
 }
 
-func decodeNumberLiteral(m mapper.Mapper, tree mapper.Object) (*ast.NumberLiteral, error) {
+func decodeNumberLiteral(m mapper.Mapper, obj map[string]interface{}) (*ast.NumberLiteral, error) {
 	var lit ast.NumberLiteral
-	if err := m.Decode(tree, &lit); err != nil {
+	if err := m.Decode(obj, &lit); err != nil {
 		return nil, err
 	}
 	return &lit, nil
 }
 
-func decodeStringLiteral(m mapper.Mapper, tree mapper.Object) (*ast.StringLiteral, error) {
+func decodeStringLiteral(m mapper.Mapper, obj map[string]interface{}) (*ast.StringLiteral, error) {
 	var lit ast.StringLiteral
-	if err := m.Decode(tree, &lit); err != nil {
+	if err := m.Decode(obj, &lit); err != nil {
 		return nil, err
 	}
 	return &lit, nil
 }
 
-func decodeArrayLiteral(m mapper.Mapper, tree mapper.Object) (*ast.ArrayLiteral, error) {
+func decodeArrayLiteral(m mapper.Mapper, obj map[string]interface{}) (*ast.ArrayLiteral, error) {
 	var lit ast.ArrayLiteral
-	if err := m.Decode(tree, &lit); err != nil {
+	if err := m.Decode(obj, &lit); err != nil {
 		return nil, err
 	}
 	return &lit, nil
 }
 
-func decodeObjectLiteral(m mapper.Mapper, tree mapper.Object) (*ast.ObjectLiteral, error) {
+func decodeObjectLiteral(m mapper.Mapper, obj map[string]interface{}) (*ast.ObjectLiteral, error) {
 	var lit ast.ObjectLiteral
-	if err := m.Decode(tree, &lit); err != nil {
+	if err := m.Decode(obj, &lit); err != nil {
 		return nil, err
 	}
 	return &lit, nil
 }
 
-func decodeLoadLocationExpression(m mapper.Mapper, tree mapper.Object) (*ast.LoadLocationExpression, error) {
+func decodeLoadLocationExpression(m mapper.Mapper, obj map[string]interface{}) (*ast.LoadLocationExpression, error) {
 	var expr ast.LoadLocationExpression
-	if err := m.Decode(tree, &expr); err != nil {
+	if err := m.Decode(obj, &expr); err != nil {
 		return nil, err
 	}
 	return &expr, nil
 }
 
-func decodeLoadDynamicExpression(m mapper.Mapper, tree mapper.Object) (*ast.LoadDynamicExpression, error) {
+func decodeLoadDynamicExpression(m mapper.Mapper, obj map[string]interface{}) (*ast.LoadDynamicExpression, error) {
 	var expr ast.LoadDynamicExpression
-	if err := m.Decode(tree, &expr); err != nil {
+	if err := m.Decode(obj, &expr); err != nil {
 		return nil, err
 	}
 	return &expr, nil
 }
 
-func decodeTryLoadDynamicExpression(m mapper.Mapper, tree mapper.Object) (*ast.TryLoadDynamicExpression, error) {
+func decodeTryLoadDynamicExpression(m mapper.Mapper, obj map[string]interface{}) (*ast.TryLoadDynamicExpression, error) {
 	var expr ast.TryLoadDynamicExpression
-	if err := m.Decode(tree, &expr); err != nil {
+	if err := m.Decode(obj, &expr); err != nil {
 		return nil, err
 	}
 	return &expr, nil
 }
 
-func decodeNewExpression(m mapper.Mapper, tree mapper.Object) (*ast.NewExpression, error) {
+func decodeNewExpression(m mapper.Mapper, obj map[string]interface{}) (*ast.NewExpression, error) {
 	var expr ast.NewExpression
-	if err := m.Decode(tree, &expr); err != nil {
+	if err := m.Decode(obj, &expr); err != nil {
 		return nil, err
 	}
 	return &expr, nil
 }
 
-func decodeInvokeFunctionExpression(m mapper.Mapper, tree mapper.Object) (*ast.InvokeFunctionExpression, error) {
+func decodeInvokeFunctionExpression(m mapper.Mapper, obj map[string]interface{}) (*ast.InvokeFunctionExpression, error) {
 	var expr ast.InvokeFunctionExpression
-	if err := m.Decode(tree, &expr); err != nil {
+	if err := m.Decode(obj, &expr); err != nil {
 		return nil, err
 	}
 	return &expr, nil
 }
 
-func decodeLambdaExpression(m mapper.Mapper, tree mapper.Object) (*ast.LambdaExpression, error) {
+func decodeLambdaExpression(m mapper.Mapper, obj map[string]interface{}) (*ast.LambdaExpression, error) {
 	var expr ast.LambdaExpression
-	if err := m.Decode(tree, &expr); err != nil {
+	if err := m.Decode(obj, &expr); err != nil {
 		return nil, err
 	}
 	return &expr, nil
 }
 
-func decodeUnaryOperatorExpression(m mapper.Mapper, tree mapper.Object) (*ast.UnaryOperatorExpression, error) {
+func decodeUnaryOperatorExpression(m mapper.Mapper, obj map[string]interface{}) (*ast.UnaryOperatorExpression, error) {
 	var expr ast.UnaryOperatorExpression
-	if err := m.Decode(tree, &expr); err != nil {
+	if err := m.Decode(obj, &expr); err != nil {
 		return nil, err
 	}
 	return &expr, nil
 }
 
-func decodeBinaryOperatorExpression(m mapper.Mapper, tree mapper.Object) (*ast.BinaryOperatorExpression, error) {
+func decodeBinaryOperatorExpression(m mapper.Mapper, obj map[string]interface{}) (*ast.BinaryOperatorExpression, error) {
 	var expr ast.BinaryOperatorExpression
-	if err := m.Decode(tree, &expr); err != nil {
+	if err := m.Decode(obj, &expr); err != nil {
 		return nil, err
 	}
 	return &expr, nil
 }
 
-func decodeCastExpression(m mapper.Mapper, tree mapper.Object) (*ast.CastExpression, error) {
+func decodeCastExpression(m mapper.Mapper, obj map[string]interface{}) (*ast.CastExpression, error) {
 	var expr ast.CastExpression
-	if err := m.Decode(tree, &expr); err != nil {
+	if err := m.Decode(obj, &expr); err != nil {
 		return nil, err
 	}
 	return &expr, nil
 }
 
-func decodeIsInstExpression(m mapper.Mapper, tree mapper.Object) (*ast.IsInstExpression, error) {
+func decodeIsInstExpression(m mapper.Mapper, obj map[string]interface{}) (*ast.IsInstExpression, error) {
 	var expr ast.IsInstExpression
-	if err := m.Decode(tree, &expr); err != nil {
+	if err := m.Decode(obj, &expr); err != nil {
 		return nil, err
 	}
 	return &expr, nil
 }
 
-func decodeTypeOfExpression(m mapper.Mapper, tree mapper.Object) (*ast.TypeOfExpression, error) {
+func decodeTypeOfExpression(m mapper.Mapper, obj map[string]interface{}) (*ast.TypeOfExpression, error) {
 	var expr ast.TypeOfExpression
-	if err := m.Decode(tree, &expr); err != nil {
+	if err := m.Decode(obj, &expr); err != nil {
 		return nil, err
 	}
 	return &expr, nil
 }
 
-func decodeConditionalExpression(m mapper.Mapper, tree mapper.Object) (*ast.ConditionalExpression, error) {
+func decodeConditionalExpression(m mapper.Mapper, obj map[string]interface{}) (*ast.ConditionalExpression, error) {
 	var expr ast.ConditionalExpression
-	if err := m.Decode(tree, &expr); err != nil {
+	if err := m.Decode(obj, &expr); err != nil {
 		return nil, err
 	}
 	return &expr, nil
 }
 
-func decodeSequenceExpression(m mapper.Mapper, tree mapper.Object) (*ast.SequenceExpression, error) {
+func decodeSequenceExpression(m mapper.Mapper, obj map[string]interface{}) (*ast.SequenceExpression, error) {
 	var expr ast.SequenceExpression
-	if err := m.Decode(tree, &expr); err != nil {
+	if err := m.Decode(obj, &expr); err != nil {
 		return nil, err
 	}
 	return &expr, nil

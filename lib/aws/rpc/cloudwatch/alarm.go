@@ -26,7 +26,7 @@ const ActionTargetToken = tokens.Type("aws:cloudwatch/alarm:ActionTarget")
 
 // ActionTargetProviderOps is a pluggable interface for ActionTarget-related management functionality.
 type ActionTargetProviderOps interface {
-    Check(ctx context.Context, obj *ActionTarget) ([]mapper.FieldError, error)
+    Check(ctx context.Context, obj *ActionTarget) ([]error, error)
     Create(ctx context.Context, obj *ActionTarget) (resource.ID, error)
     Get(ctx context.Context, id resource.ID) (*ActionTarget, error)
     InspectChange(ctx context.Context,
@@ -50,25 +50,23 @@ func NewActionTargetProvider(ops ActionTargetProviderOps) lumirpc.ResourceProvid
 func (p *ActionTargetProvider) Check(
     ctx context.Context, req *lumirpc.CheckRequest) (*lumirpc.CheckResponse, error) {
     contract.Assert(req.GetType() == string(ActionTargetToken))
-    obj, _, decerr := p.Unmarshal(req.GetProperties())
-    if decerr == nil || len(decerr.Failures()) == 0 {
-        failures, err := p.ops.Check(ctx, obj)
-        if err != nil {
+    obj, _, err := p.Unmarshal(req.GetProperties())
+    if err == nil {
+        if failures, err := p.ops.Check(ctx, obj); err != nil {
             return nil, err
-        }
-        if len(failures) > 0 {
-            decerr = mapper.NewDecodeErr(failures)
+        } else if len(failures) > 0 {
+            err = resource.NewCheckError(failures)
         }
     }
-    return resource.NewCheckResponse(decerr), nil
+    return resource.NewCheckResponse(err), nil
 }
 
 func (p *ActionTargetProvider) Name(
     ctx context.Context, req *lumirpc.NameRequest) (*lumirpc.NameResponse, error) {
     contract.Assert(req.GetType() == string(ActionTargetToken))
-    obj, _, decerr := p.Unmarshal(req.GetProperties())
-    if decerr != nil {
-        return nil, decerr
+    obj, _, err := p.Unmarshal(req.GetProperties())
+    if err != nil {
+        return nil, err
     }
     if obj.Name == nil || *obj.Name == "" {
         if req.Unknowns[ActionTarget_Name] {
@@ -82,9 +80,9 @@ func (p *ActionTargetProvider) Name(
 func (p *ActionTargetProvider) Create(
     ctx context.Context, req *lumirpc.CreateRequest) (*lumirpc.CreateResponse, error) {
     contract.Assert(req.GetType() == string(ActionTargetToken))
-    obj, _, decerr := p.Unmarshal(req.GetProperties())
-    if decerr != nil {
-        return nil, decerr
+    obj, _, err := p.Unmarshal(req.GetProperties())
+    if err != nil {
+        return nil, err
     }
     id, err := p.ops.Create(ctx, obj)
     if err != nil {
@@ -111,13 +109,13 @@ func (p *ActionTargetProvider) InspectChange(
     ctx context.Context, req *lumirpc.InspectChangeRequest) (*lumirpc.InspectChangeResponse, error) {
     contract.Assert(req.GetType() == string(ActionTargetToken))
     id := resource.ID(req.GetId())
-    old, oldprops, decerr := p.Unmarshal(req.GetOlds())
-    if decerr != nil {
-        return nil, decerr
+    old, oldprops, err := p.Unmarshal(req.GetOlds())
+    if err != nil {
+        return nil, err
     }
-    new, newprops, decerr := p.Unmarshal(req.GetNews())
-    if decerr != nil {
-        return nil, decerr
+    new, newprops, err := p.Unmarshal(req.GetNews())
+    if err != nil {
+        return nil, err
     }
     var replaces []string
     diff := oldprops.Diff(newprops)
@@ -168,21 +166,20 @@ func (p *ActionTargetProvider) Delete(
 }
 
 func (p *ActionTargetProvider) Unmarshal(
-    v *pbstruct.Struct) (*ActionTarget, resource.PropertyMap, mapper.DecodeError) {
+    v *pbstruct.Struct) (*ActionTarget, resource.PropertyMap, error) {
     var obj ActionTarget
     props := resource.UnmarshalProperties(nil, v, resource.MarshalOptions{RawResources: true})
-    result := mapper.MapIU(props.Mappable(), &obj)
-    return &obj, props, result
+    return &obj, props, mapper.MapIU(props.Mappable(), &obj)
 }
 
 /* Marshalable ActionTarget structure(s) */
 
 // ActionTarget is a marshalable representation of its corresponding IDL type.
 type ActionTarget struct {
-    Name *string `json:"name,omitempty"`
-    TopicName *string `json:"topicName,omitempty"`
-    DisplayName *string `json:"displayName,omitempty"`
-    Subscription *[]__sns.TopicSubscription `json:"subscription,omitempty"`
+    Name *string `lumi:"name,optional"`
+    TopicName *string `lumi:"topicName,optional"`
+    DisplayName *string `lumi:"displayName,optional"`
+    Subscription *[]__sns.TopicSubscription `lumi:"subscription,optional"`
 }
 
 // ActionTarget's properties have constants to make dealing with diffs and property bags easier.
@@ -200,7 +197,7 @@ const AlarmToken = tokens.Type("aws:cloudwatch/alarm:Alarm")
 
 // AlarmProviderOps is a pluggable interface for Alarm-related management functionality.
 type AlarmProviderOps interface {
-    Check(ctx context.Context, obj *Alarm) ([]mapper.FieldError, error)
+    Check(ctx context.Context, obj *Alarm) ([]error, error)
     Create(ctx context.Context, obj *Alarm) (resource.ID, error)
     Get(ctx context.Context, id resource.ID) (*Alarm, error)
     InspectChange(ctx context.Context,
@@ -224,25 +221,23 @@ func NewAlarmProvider(ops AlarmProviderOps) lumirpc.ResourceProviderServer {
 func (p *AlarmProvider) Check(
     ctx context.Context, req *lumirpc.CheckRequest) (*lumirpc.CheckResponse, error) {
     contract.Assert(req.GetType() == string(AlarmToken))
-    obj, _, decerr := p.Unmarshal(req.GetProperties())
-    if decerr == nil || len(decerr.Failures()) == 0 {
-        failures, err := p.ops.Check(ctx, obj)
-        if err != nil {
+    obj, _, err := p.Unmarshal(req.GetProperties())
+    if err == nil {
+        if failures, err := p.ops.Check(ctx, obj); err != nil {
             return nil, err
-        }
-        if len(failures) > 0 {
-            decerr = mapper.NewDecodeErr(failures)
+        } else if len(failures) > 0 {
+            err = resource.NewCheckError(failures)
         }
     }
-    return resource.NewCheckResponse(decerr), nil
+    return resource.NewCheckResponse(err), nil
 }
 
 func (p *AlarmProvider) Name(
     ctx context.Context, req *lumirpc.NameRequest) (*lumirpc.NameResponse, error) {
     contract.Assert(req.GetType() == string(AlarmToken))
-    obj, _, decerr := p.Unmarshal(req.GetProperties())
-    if decerr != nil {
-        return nil, decerr
+    obj, _, err := p.Unmarshal(req.GetProperties())
+    if err != nil {
+        return nil, err
     }
     if obj.Name == nil || *obj.Name == "" {
         if req.Unknowns[Alarm_Name] {
@@ -256,9 +251,9 @@ func (p *AlarmProvider) Name(
 func (p *AlarmProvider) Create(
     ctx context.Context, req *lumirpc.CreateRequest) (*lumirpc.CreateResponse, error) {
     contract.Assert(req.GetType() == string(AlarmToken))
-    obj, _, decerr := p.Unmarshal(req.GetProperties())
-    if decerr != nil {
-        return nil, decerr
+    obj, _, err := p.Unmarshal(req.GetProperties())
+    if err != nil {
+        return nil, err
     }
     id, err := p.ops.Create(ctx, obj)
     if err != nil {
@@ -285,13 +280,13 @@ func (p *AlarmProvider) InspectChange(
     ctx context.Context, req *lumirpc.InspectChangeRequest) (*lumirpc.InspectChangeResponse, error) {
     contract.Assert(req.GetType() == string(AlarmToken))
     id := resource.ID(req.GetId())
-    old, oldprops, decerr := p.Unmarshal(req.GetOlds())
-    if decerr != nil {
-        return nil, decerr
+    old, oldprops, err := p.Unmarshal(req.GetOlds())
+    if err != nil {
+        return nil, err
     }
-    new, newprops, decerr := p.Unmarshal(req.GetNews())
-    if decerr != nil {
-        return nil, decerr
+    new, newprops, err := p.Unmarshal(req.GetNews())
+    if err != nil {
+        return nil, err
     }
     var replaces []string
     diff := oldprops.Diff(newprops)
@@ -342,33 +337,32 @@ func (p *AlarmProvider) Delete(
 }
 
 func (p *AlarmProvider) Unmarshal(
-    v *pbstruct.Struct) (*Alarm, resource.PropertyMap, mapper.DecodeError) {
+    v *pbstruct.Struct) (*Alarm, resource.PropertyMap, error) {
     var obj Alarm
     props := resource.UnmarshalProperties(nil, v, resource.MarshalOptions{RawResources: true})
-    result := mapper.MapIU(props.Mappable(), &obj)
-    return &obj, props, result
+    return &obj, props, mapper.MapIU(props.Mappable(), &obj)
 }
 
 /* Marshalable Alarm structure(s) */
 
 // Alarm is a marshalable representation of its corresponding IDL type.
 type Alarm struct {
-    Name *string `json:"name,omitempty"`
-    ComparisonOperator AlarmComparisonOperator `json:"comparisonOperator"`
-    EvaluationPeriods float64 `json:"evaluationPerids"`
-    MetricName string `json:"metricName"`
-    Namespace string `json:"namespace"`
-    Period float64 `json:"period"`
-    Statistic AlarmStatistic `json:"statistic"`
-    Threshold float64 `json:"threshold"`
-    ActionsEnabled *bool `json:"actionsEnabled,omitempty"`
-    AlarmActions *[]resource.ID `json:"alarmActions,omitempty"`
-    AlarmDescription *string `json:"alarmDescription,omitempty"`
-    AlarmName *string `json:"alarmName,omitempty"`
-    Dimensions *[]AlarmDimension `json:"dimensions,omitempty"`
-    InsufficientDataActions *[]resource.ID `json:"insufficientDataActions,omitempty"`
-    OKActions *[]resource.ID `json:"okActions,omitempty"`
-    Unit *AlarmMetric `json:"unit,omitempty"`
+    Name *string `lumi:"name,optional"`
+    ComparisonOperator AlarmComparisonOperator `lumi:"comparisonOperator"`
+    EvaluationPeriods float64 `lumi:"evaluationPerids"`
+    MetricName string `lumi:"metricName"`
+    Namespace string `lumi:"namespace"`
+    Period float64 `lumi:"period"`
+    Statistic AlarmStatistic `lumi:"statistic"`
+    Threshold float64 `lumi:"threshold"`
+    ActionsEnabled *bool `lumi:"actionsEnabled,optional"`
+    AlarmActions *[]resource.ID `lumi:"alarmActions,optional"`
+    AlarmDescription *string `lumi:"alarmDescription,optional"`
+    AlarmName *string `lumi:"alarmName,optional"`
+    Dimensions *[]AlarmDimension `lumi:"dimensions,optional"`
+    InsufficientDataActions *[]resource.ID `lumi:"insufficientDataActions,optional"`
+    OKActions *[]resource.ID `lumi:"okActions,optional"`
+    Unit *AlarmMetric `lumi:"unit,optional"`
 }
 
 // Alarm's properties have constants to make dealing with diffs and property bags easier.
@@ -395,8 +389,8 @@ const (
 
 // AlarmDimension is a marshalable representation of its corresponding IDL type.
 type AlarmDimension struct {
-    Name string `json:"name"`
-    Value interface{} `json:"value"`
+    Name string `lumi:"name"`
+    Value interface{} `lumi:"value"`
 }
 
 // AlarmDimension's properties have constants to make dealing with diffs and property bags easier.

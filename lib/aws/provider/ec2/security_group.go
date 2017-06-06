@@ -54,16 +54,16 @@ type sgProvider struct {
 }
 
 // Check validates that the given property bag is valid for a resource of the given type.
-func (p *sgProvider) Check(ctx context.Context, obj *ec2.SecurityGroup) ([]mapper.FieldError, error) {
-	var failures []mapper.FieldError
+func (p *sgProvider) Check(ctx context.Context, obj *ec2.SecurityGroup) ([]error, error) {
+	var failures []error
 	if len(obj.GroupDescription) > maxSecurityGroupDescription {
 		failures = append(failures,
-			mapper.NewFieldErr(reflect.TypeOf(obj), ec2.SecurityGroup_GroupDescription,
+			resource.NewFieldError(reflect.TypeOf(obj), ec2.SecurityGroup_GroupDescription,
 				fmt.Errorf("exceeded maximum length of %v", maxSecurityGroupDescription)))
 	}
 	if obj.VPC == nil && obj.SecurityGroupEgress != nil && len(*obj.SecurityGroupEgress) > 0 {
 		failures = append(failures,
-			mapper.NewFieldErr(reflect.TypeOf(obj), ec2.SecurityGroup_SecurityGroupEgress,
+			resource.NewFieldError(reflect.TypeOf(obj), ec2.SecurityGroup_SecurityGroupEgress,
 				fmt.Errorf("custom egress rules are not supported on EC2-Classic groups (those without a VPC)")))
 	}
 	return failures, nil

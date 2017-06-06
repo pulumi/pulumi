@@ -29,15 +29,15 @@ import (
 func Decode(m Marshaler, b []byte) (*pack.Package, error) {
 	// First convert the whole contents of the metadata into a map.  Although it would be more efficient to walk the
 	// token stream, token by token, this allows us to reuse existing YAML packages in addition to JSON ones.
-	var tree mapper.Object
-	if err := m.Unmarshal(b, &tree); err != nil {
+	var obj map[string]interface{}
+	if err := m.Unmarshal(b, &obj); err != nil {
 		return nil, err
 	}
 
 	// Now decode the top-level Package metadata; this will automatically recurse throughout the whole structure.
 	md := mapper.New(&mapper.Opts{CustomDecoders: customDecoders()})
 	var pack pack.Package
-	if err := md.Decode(tree, &pack); err != nil {
+	if err := md.Decode(obj, &pack); err != nil {
 		return nil, err
 	}
 	return &pack, nil
@@ -60,18 +60,18 @@ func customDecoders() mapper.Decoders {
 // Each of the custom decoders is a varaible that points to a decoder function; this is done so that the decode*
 // functions can remain strongly typed, as the mapper's decoder signature requires a weakly-typed interface{} return.
 
-var moduleMemberDecoder = func(m mapper.Mapper, tree mapper.Object) (interface{}, error) {
-	return decodeModuleMember(m, tree)
+var moduleMemberDecoder = func(m mapper.Mapper, obj map[string]interface{}) (interface{}, error) {
+	return decodeModuleMember(m, obj)
 }
-var classMemberDecoder = func(m mapper.Mapper, tree mapper.Object) (interface{}, error) {
-	return decodeClassMember(m, tree)
+var classMemberDecoder = func(m mapper.Mapper, obj map[string]interface{}) (interface{}, error) {
+	return decodeClassMember(m, obj)
 }
-var statementDecoder = func(m mapper.Mapper, tree mapper.Object) (interface{}, error) {
-	return decodeStatement(m, tree)
+var statementDecoder = func(m mapper.Mapper, obj map[string]interface{}) (interface{}, error) {
+	return decodeStatement(m, obj)
 }
-var expressionDecoder = func(m mapper.Mapper, tree mapper.Object) (interface{}, error) {
-	return decodeExpression(m, tree)
+var expressionDecoder = func(m mapper.Mapper, obj map[string]interface{}) (interface{}, error) {
+	return decodeExpression(m, obj)
 }
-var objectLiteralPropertyDecoder = func(m mapper.Mapper, tree mapper.Object) (interface{}, error) {
-	return decodeObjectLiteralProperty(m, tree)
+var objectLiteralPropertyDecoder = func(m mapper.Mapper, obj map[string]interface{}) (interface{}, error) {
+	return decodeObjectLiteralProperty(m, obj)
 }

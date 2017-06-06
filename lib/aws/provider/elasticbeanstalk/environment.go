@@ -23,7 +23,6 @@ import (
 	awselasticbeanstalk "github.com/aws/aws-sdk-go/service/elasticbeanstalk"
 	"github.com/pulumi/lumi/pkg/resource"
 	"github.com/pulumi/lumi/pkg/util/contract"
-	"github.com/pulumi/lumi/pkg/util/mapper"
 	"github.com/pulumi/lumi/sdk/go/pkg/lumirpc"
 	"golang.org/x/net/context"
 
@@ -53,10 +52,9 @@ type environmentProvider struct {
 }
 
 // Check validates that the given property bag is valid for a resource of the given type.
-func (p *environmentProvider) Check(ctx context.Context, obj *elasticbeanstalk.Environment) ([]mapper.FieldError, error) {
-	var failures []mapper.FieldError
+func (p *environmentProvider) Check(ctx context.Context, obj *elasticbeanstalk.Environment) ([]error, error) {
 	// TODO: Check property bag
-	return failures, nil
+	return nil, nil
 }
 
 // Create allocates a new instance of the provided resource and returns its unique ID afterwards.  (The input ID

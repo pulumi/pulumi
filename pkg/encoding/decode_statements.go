@@ -23,8 +23,8 @@ import (
 	"github.com/pulumi/lumi/pkg/util/mapper"
 )
 
-func decodeStatement(m mapper.Mapper, tree mapper.Object) (ast.Statement, error) {
-	k, err := mapper.FieldString(tree, reflect.TypeOf((*ast.Statement)(nil)).Elem(), "kind", true)
+func decodeStatement(m mapper.Mapper, obj map[string]interface{}) (ast.Statement, error) {
+	k, err := mapper.FieldString(obj, reflect.TypeOf((*ast.Statement)(nil)).Elem(), "kind", true)
 	if err != nil {
 		return nil, err
 	}
@@ -33,47 +33,47 @@ func decodeStatement(m mapper.Mapper, tree mapper.Object) (ast.Statement, error)
 		switch kind {
 		// Imports
 		case ast.ImportKind:
-			return decodeImport(m, tree)
+			return decodeImport(m, obj)
 
 		// Blocks
 		case ast.BlockKind:
-			return decodeBlock(m, tree)
+			return decodeBlock(m, obj)
 
 		// Local variables
 		case ast.LocalVariableDeclarationKind:
-			return decodeLocalVariableDeclaration(m, tree)
+			return decodeLocalVariableDeclaration(m, obj)
 
 		// Try/catch/finally
 		case ast.TryCatchFinallyKind:
-			return decodeTryCatchFinally(m, tree)
+			return decodeTryCatchFinally(m, obj)
 
 		// Branches
 		case ast.BreakStatementKind:
-			return decodeBreakStatement(m, tree)
+			return decodeBreakStatement(m, obj)
 		case ast.ContinueStatementKind:
-			return decodeContinueStatement(m, tree)
+			return decodeContinueStatement(m, obj)
 		case ast.IfStatementKind:
-			return decodeIfStatement(m, tree)
+			return decodeIfStatement(m, obj)
 		case ast.SwitchStatementKind:
-			return decodeSwitchStatement(m, tree)
+			return decodeSwitchStatement(m, obj)
 		case ast.LabeledStatementKind:
-			return decodeLabeledStatement(m, tree)
+			return decodeLabeledStatement(m, obj)
 		case ast.ReturnStatementKind:
-			return decodeReturnStatement(m, tree)
+			return decodeReturnStatement(m, obj)
 		case ast.ThrowStatementKind:
-			return decodeThrowStatement(m, tree)
+			return decodeThrowStatement(m, obj)
 		case ast.WhileStatementKind:
-			return decodeWhileStatement(m, tree)
+			return decodeWhileStatement(m, obj)
 		case ast.ForStatementKind:
-			return decodeForStatement(m, tree)
+			return decodeForStatement(m, obj)
 
 		// Miscellaneous
 		case ast.EmptyStatementKind:
-			return decodeEmptyStatement(m, tree)
+			return decodeEmptyStatement(m, obj)
 		case ast.MultiStatementKind:
-			return decodeMultiStatement(m, tree)
+			return decodeMultiStatement(m, obj)
 		case ast.ExpressionStatementKind:
-			return decodeExpressionStatement(m, tree)
+			return decodeExpressionStatement(m, obj)
 
 		default:
 			contract.Failf("Unrecognized Statement kind: %v\n", kind)
@@ -82,125 +82,125 @@ func decodeStatement(m mapper.Mapper, tree mapper.Object) (ast.Statement, error)
 	return nil, nil
 }
 
-func decodeImport(m mapper.Mapper, tree mapper.Object) (*ast.Import, error) {
+func decodeImport(m mapper.Mapper, obj map[string]interface{}) (*ast.Import, error) {
 	var imp ast.Import
-	if err := m.Decode(tree, &imp); err != nil {
+	if err := m.Decode(obj, &imp); err != nil {
 		return nil, err
 	}
 	return &imp, nil
 }
 
-func decodeBlock(m mapper.Mapper, tree mapper.Object) (*ast.Block, error) {
+func decodeBlock(m mapper.Mapper, obj map[string]interface{}) (*ast.Block, error) {
 	var block ast.Block
-	if err := m.Decode(tree, &block); err != nil {
+	if err := m.Decode(obj, &block); err != nil {
 		return nil, err
 	}
 	return &block, nil
 }
 
-func decodeLocalVariableDeclaration(m mapper.Mapper, tree mapper.Object) (*ast.LocalVariableDeclaration, error) {
+func decodeLocalVariableDeclaration(m mapper.Mapper, obj map[string]interface{}) (*ast.LocalVariableDeclaration, error) {
 	var local ast.LocalVariableDeclaration
-	if err := m.Decode(tree, &local); err != nil {
+	if err := m.Decode(obj, &local); err != nil {
 		return nil, err
 	}
 	return &local, nil
 }
 
-func decodeTryCatchFinally(m mapper.Mapper, tree mapper.Object) (*ast.TryCatchFinally, error) {
+func decodeTryCatchFinally(m mapper.Mapper, obj map[string]interface{}) (*ast.TryCatchFinally, error) {
 	return nil, nil
 }
 
-func decodeBreakStatement(m mapper.Mapper, tree mapper.Object) (*ast.BreakStatement, error) {
+func decodeBreakStatement(m mapper.Mapper, obj map[string]interface{}) (*ast.BreakStatement, error) {
 	var stmt ast.BreakStatement
-	if err := m.Decode(tree, &stmt); err != nil {
+	if err := m.Decode(obj, &stmt); err != nil {
 		return nil, err
 	}
 	return &stmt, nil
 }
 
-func decodeContinueStatement(m mapper.Mapper, tree mapper.Object) (*ast.ContinueStatement, error) {
+func decodeContinueStatement(m mapper.Mapper, obj map[string]interface{}) (*ast.ContinueStatement, error) {
 	var stmt ast.ContinueStatement
-	if err := m.Decode(tree, &stmt); err != nil {
+	if err := m.Decode(obj, &stmt); err != nil {
 		return nil, err
 	}
 	return &stmt, nil
 }
 
-func decodeIfStatement(m mapper.Mapper, tree mapper.Object) (*ast.IfStatement, error) {
+func decodeIfStatement(m mapper.Mapper, obj map[string]interface{}) (*ast.IfStatement, error) {
 	var stmt ast.IfStatement
-	if err := m.Decode(tree, &stmt); err != nil {
+	if err := m.Decode(obj, &stmt); err != nil {
 		return nil, err
 	}
 	return &stmt, nil
 }
 
-func decodeSwitchStatement(m mapper.Mapper, tree mapper.Object) (*ast.SwitchStatement, error) {
+func decodeSwitchStatement(m mapper.Mapper, obj map[string]interface{}) (*ast.SwitchStatement, error) {
 	var stmt ast.SwitchStatement
-	if err := m.Decode(tree, &stmt); err != nil {
+	if err := m.Decode(obj, &stmt); err != nil {
 		return nil, err
 	}
 	return &stmt, nil
 }
 
-func decodeLabeledStatement(m mapper.Mapper, tree mapper.Object) (*ast.LabeledStatement, error) {
+func decodeLabeledStatement(m mapper.Mapper, obj map[string]interface{}) (*ast.LabeledStatement, error) {
 	var stmt ast.LabeledStatement
-	if err := m.Decode(tree, &stmt); err != nil {
+	if err := m.Decode(obj, &stmt); err != nil {
 		return nil, err
 	}
 	return &stmt, nil
 }
 
-func decodeReturnStatement(m mapper.Mapper, tree mapper.Object) (*ast.ReturnStatement, error) {
+func decodeReturnStatement(m mapper.Mapper, obj map[string]interface{}) (*ast.ReturnStatement, error) {
 	var stmt ast.ReturnStatement
-	if err := m.Decode(tree, &stmt); err != nil {
+	if err := m.Decode(obj, &stmt); err != nil {
 		return nil, err
 	}
 	return &stmt, nil
 }
 
-func decodeThrowStatement(m mapper.Mapper, tree mapper.Object) (*ast.ThrowStatement, error) {
+func decodeThrowStatement(m mapper.Mapper, obj map[string]interface{}) (*ast.ThrowStatement, error) {
 	var stmt ast.ThrowStatement
-	if err := m.Decode(tree, &stmt); err != nil {
+	if err := m.Decode(obj, &stmt); err != nil {
 		return nil, err
 	}
 	return &stmt, nil
 }
 
-func decodeWhileStatement(m mapper.Mapper, tree mapper.Object) (*ast.WhileStatement, error) {
+func decodeWhileStatement(m mapper.Mapper, obj map[string]interface{}) (*ast.WhileStatement, error) {
 	var stmt ast.WhileStatement
-	if err := m.Decode(tree, &stmt); err != nil {
+	if err := m.Decode(obj, &stmt); err != nil {
 		return nil, err
 	}
 	return &stmt, nil
 }
 
-func decodeForStatement(m mapper.Mapper, tree mapper.Object) (*ast.ForStatement, error) {
+func decodeForStatement(m mapper.Mapper, obj map[string]interface{}) (*ast.ForStatement, error) {
 	var stmt ast.ForStatement
-	if err := m.Decode(tree, &stmt); err != nil {
+	if err := m.Decode(obj, &stmt); err != nil {
 		return nil, err
 	}
 	return &stmt, nil
 }
 
-func decodeEmptyStatement(m mapper.Mapper, tree mapper.Object) (*ast.EmptyStatement, error) {
+func decodeEmptyStatement(m mapper.Mapper, obj map[string]interface{}) (*ast.EmptyStatement, error) {
 	var stmt ast.EmptyStatement
-	if err := m.Decode(tree, &stmt); err != nil {
+	if err := m.Decode(obj, &stmt); err != nil {
 		return nil, err
 	}
 	return &stmt, nil
 }
 
-func decodeMultiStatement(m mapper.Mapper, tree mapper.Object) (*ast.MultiStatement, error) {
+func decodeMultiStatement(m mapper.Mapper, obj map[string]interface{}) (*ast.MultiStatement, error) {
 	var stmt ast.MultiStatement
-	if err := m.Decode(tree, &stmt); err != nil {
+	if err := m.Decode(obj, &stmt); err != nil {
 		return nil, err
 	}
 	return &stmt, nil
 }
 
-func decodeExpressionStatement(m mapper.Mapper, tree mapper.Object) (*ast.ExpressionStatement, error) {
+func decodeExpressionStatement(m mapper.Mapper, obj map[string]interface{}) (*ast.ExpressionStatement, error) {
 	var stmt ast.ExpressionStatement
-	if err := m.Decode(tree, &stmt); err != nil {
+	if err := m.Decode(obj, &stmt); err != nil {
 		return nil, err
 	}
 	return &stmt, nil

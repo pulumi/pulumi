@@ -16,20 +16,44 @@
 package resource
 
 import (
+	"reflect"
+
 	"github.com/pulumi/lumi/pkg/util/mapper"
 	"github.com/pulumi/lumi/sdk/go/pkg/lumirpc"
 )
 
+// NewCheckError creates a new error pertaining to a resource.  Note that it just turns around and defers to
+// the same mapping infrastructure used for serialization and deserialization, but it presents a nicer interface.
+func NewCheckError(errs []error) error {
+	return mapper.NewMappingError(errs)
+}
+
+// NewFieldError creates a new error pertaining to a resource's field.  Note that it just turns around and defers to
+// the same mapping infrastructure used for serialization and deserialization, but it presents a nicer interface.
+func NewFieldError(ty reflect.Type, fld string, err error) error {
+	return mapper.NewFieldError(ty, fld, err)
+}
+
 // NewCheckResponse produces a response with property validation failures from the given array of mapper failures.
-func NewCheckResponse(err mapper.DecodeError) *lumirpc.CheckResponse {
-	var checkFailures []*lumirpc.CheckFailure
+func NewCheckResponse(err error) *lumirpc.CheckResponse {
+	var failures []*lumirpc.CheckFailure
 	if err != nil {
-		for _, failure := range err.Failures() {
-			checkFailures = append(checkFailures, &lumirpc.CheckFailure{
-				Property: failure.Field(),
-				Reason:   failure.Reason(),
-			})
+		switch e := err.(type) {
+		case mapper.MappingError:
+			for _, failure := range e.Failures() {
+				switch f := failure.(type) {
+				case mapper.FieldError:
+					failures = append(failures, &lumirpc.CheckFailure{
+						Property: f.Field(),
+						Reason:   f.Reason(),
+					})
+				default:
+					failures = append(failures, &lumirpc.CheckFailure{Reason: f.Error()})
+				}
+			}
+		default:
+			failures = append(failures, &lumirpc.CheckFailure{Reason: e.Error()})
 		}
 	}
-	return &lumirpc.CheckResponse{Failures: checkFailures}
+	return &lumirpc.CheckResponse{Failures: failures}
 }

@@ -21,8 +21,8 @@ import (
 
 // LoginProfile is a marshalable representation of its corresponding IDL type.
 type LoginProfile struct {
-    Password string `json:"password"`
-    PasswordResetRequired *bool `json:"passwordResetRequired,omitempty"`
+    Password string `lumi:"password"`
+    PasswordResetRequired *bool `lumi:"passwordResetRequired,optional"`
 }
 
 // LoginProfile's properties have constants to make dealing with diffs and property bags easier.
@@ -38,7 +38,7 @@ const UserToken = tokens.Type("aws:iam/user:User")
 
 // UserProviderOps is a pluggable interface for User-related management functionality.
 type UserProviderOps interface {
-    Check(ctx context.Context, obj *User) ([]mapper.FieldError, error)
+    Check(ctx context.Context, obj *User) ([]error, error)
     Create(ctx context.Context, obj *User) (resource.ID, error)
     Get(ctx context.Context, id resource.ID) (*User, error)
     InspectChange(ctx context.Context,
@@ -62,25 +62,23 @@ func NewUserProvider(ops UserProviderOps) lumirpc.ResourceProviderServer {
 func (p *UserProvider) Check(
     ctx context.Context, req *lumirpc.CheckRequest) (*lumirpc.CheckResponse, error) {
     contract.Assert(req.GetType() == string(UserToken))
-    obj, _, decerr := p.Unmarshal(req.GetProperties())
-    if decerr == nil || len(decerr.Failures()) == 0 {
-        failures, err := p.ops.Check(ctx, obj)
-        if err != nil {
+    obj, _, err := p.Unmarshal(req.GetProperties())
+    if err == nil {
+        if failures, err := p.ops.Check(ctx, obj); err != nil {
             return nil, err
-        }
-        if len(failures) > 0 {
-            decerr = mapper.NewDecodeErr(failures)
+        } else if len(failures) > 0 {
+            err = resource.NewCheckError(failures)
         }
     }
-    return resource.NewCheckResponse(decerr), nil
+    return resource.NewCheckResponse(err), nil
 }
 
 func (p *UserProvider) Name(
     ctx context.Context, req *lumirpc.NameRequest) (*lumirpc.NameResponse, error) {
     contract.Assert(req.GetType() == string(UserToken))
-    obj, _, decerr := p.Unmarshal(req.GetProperties())
-    if decerr != nil {
-        return nil, decerr
+    obj, _, err := p.Unmarshal(req.GetProperties())
+    if err != nil {
+        return nil, err
     }
     if obj.Name == nil || *obj.Name == "" {
         if req.Unknowns[User_Name] {
@@ -94,9 +92,9 @@ func (p *UserProvider) Name(
 func (p *UserProvider) Create(
     ctx context.Context, req *lumirpc.CreateRequest) (*lumirpc.CreateResponse, error) {
     contract.Assert(req.GetType() == string(UserToken))
-    obj, _, decerr := p.Unmarshal(req.GetProperties())
-    if decerr != nil {
-        return nil, decerr
+    obj, _, err := p.Unmarshal(req.GetProperties())
+    if err != nil {
+        return nil, err
     }
     id, err := p.ops.Create(ctx, obj)
     if err != nil {
@@ -123,13 +121,13 @@ func (p *UserProvider) InspectChange(
     ctx context.Context, req *lumirpc.InspectChangeRequest) (*lumirpc.InspectChangeResponse, error) {
     contract.Assert(req.GetType() == string(UserToken))
     id := resource.ID(req.GetId())
-    old, oldprops, decerr := p.Unmarshal(req.GetOlds())
-    if decerr != nil {
-        return nil, decerr
+    old, oldprops, err := p.Unmarshal(req.GetOlds())
+    if err != nil {
+        return nil, err
     }
-    new, newprops, decerr := p.Unmarshal(req.GetNews())
-    if decerr != nil {
-        return nil, decerr
+    new, newprops, err := p.Unmarshal(req.GetNews())
+    if err != nil {
+        return nil, err
     }
     var replaces []string
     diff := oldprops.Diff(newprops)
@@ -180,24 +178,23 @@ func (p *UserProvider) Delete(
 }
 
 func (p *UserProvider) Unmarshal(
-    v *pbstruct.Struct) (*User, resource.PropertyMap, mapper.DecodeError) {
+    v *pbstruct.Struct) (*User, resource.PropertyMap, error) {
     var obj User
     props := resource.UnmarshalProperties(nil, v, resource.MarshalOptions{RawResources: true})
-    result := mapper.MapIU(props.Mappable(), &obj)
-    return &obj, props, result
+    return &obj, props, mapper.MapIU(props.Mappable(), &obj)
 }
 
 /* Marshalable User structure(s) */
 
 // User is a marshalable representation of its corresponding IDL type.
 type User struct {
-    Name *string `json:"name,omitempty"`
-    UserName *string `json:"userName,omitempty"`
-    Groups *[]resource.ID `json:"groups,omitempty"`
-    LoginProfile *LoginProfile `json:"loginProfile,omitempty"`
-    ManagedPolicies *[]resource.ID `json:"managedPolicies,omitempty"`
-    Path *string `json:"path,omitempty"`
-    Policies *[]InlinePolicy `json:"policies,omitempty"`
+    Name *string `lumi:"name,optional"`
+    UserName *string `lumi:"userName,optional"`
+    Groups *[]resource.ID `lumi:"groups,optional"`
+    LoginProfile *LoginProfile `lumi:"loginProfile,optional"`
+    ManagedPolicies *[]resource.ID `lumi:"managedPolicies,optional"`
+    Path *string `lumi:"path,optional"`
+    Policies *[]InlinePolicy `lumi:"policies,optional"`
 }
 
 // User's properties have constants to make dealing with diffs and property bags easier.

@@ -24,7 +24,7 @@ const RestAPIToken = tokens.Type("aws:apigateway/restAPI:RestAPI")
 
 // RestAPIProviderOps is a pluggable interface for RestAPI-related management functionality.
 type RestAPIProviderOps interface {
-    Check(ctx context.Context, obj *RestAPI) ([]mapper.FieldError, error)
+    Check(ctx context.Context, obj *RestAPI) ([]error, error)
     Create(ctx context.Context, obj *RestAPI) (resource.ID, error)
     Get(ctx context.Context, id resource.ID) (*RestAPI, error)
     InspectChange(ctx context.Context,
@@ -48,25 +48,23 @@ func NewRestAPIProvider(ops RestAPIProviderOps) lumirpc.ResourceProviderServer {
 func (p *RestAPIProvider) Check(
     ctx context.Context, req *lumirpc.CheckRequest) (*lumirpc.CheckResponse, error) {
     contract.Assert(req.GetType() == string(RestAPIToken))
-    obj, _, decerr := p.Unmarshal(req.GetProperties())
-    if decerr == nil || len(decerr.Failures()) == 0 {
-        failures, err := p.ops.Check(ctx, obj)
-        if err != nil {
+    obj, _, err := p.Unmarshal(req.GetProperties())
+    if err == nil {
+        if failures, err := p.ops.Check(ctx, obj); err != nil {
             return nil, err
-        }
-        if len(failures) > 0 {
-            decerr = mapper.NewDecodeErr(failures)
+        } else if len(failures) > 0 {
+            err = resource.NewCheckError(failures)
         }
     }
-    return resource.NewCheckResponse(decerr), nil
+    return resource.NewCheckResponse(err), nil
 }
 
 func (p *RestAPIProvider) Name(
     ctx context.Context, req *lumirpc.NameRequest) (*lumirpc.NameResponse, error) {
     contract.Assert(req.GetType() == string(RestAPIToken))
-    obj, _, decerr := p.Unmarshal(req.GetProperties())
-    if decerr != nil {
-        return nil, decerr
+    obj, _, err := p.Unmarshal(req.GetProperties())
+    if err != nil {
+        return nil, err
     }
     if obj.Name == nil || *obj.Name == "" {
         if req.Unknowns[RestAPI_Name] {
@@ -80,9 +78,9 @@ func (p *RestAPIProvider) Name(
 func (p *RestAPIProvider) Create(
     ctx context.Context, req *lumirpc.CreateRequest) (*lumirpc.CreateResponse, error) {
     contract.Assert(req.GetType() == string(RestAPIToken))
-    obj, _, decerr := p.Unmarshal(req.GetProperties())
-    if decerr != nil {
-        return nil, decerr
+    obj, _, err := p.Unmarshal(req.GetProperties())
+    if err != nil {
+        return nil, err
     }
     id, err := p.ops.Create(ctx, obj)
     if err != nil {
@@ -109,13 +107,13 @@ func (p *RestAPIProvider) InspectChange(
     ctx context.Context, req *lumirpc.InspectChangeRequest) (*lumirpc.InspectChangeResponse, error) {
     contract.Assert(req.GetType() == string(RestAPIToken))
     id := resource.ID(req.GetId())
-    old, oldprops, decerr := p.Unmarshal(req.GetOlds())
-    if decerr != nil {
-        return nil, decerr
+    old, oldprops, err := p.Unmarshal(req.GetOlds())
+    if err != nil {
+        return nil, err
     }
-    new, newprops, decerr := p.Unmarshal(req.GetNews())
-    if decerr != nil {
-        return nil, decerr
+    new, newprops, err := p.Unmarshal(req.GetNews())
+    if err != nil {
+        return nil, err
     }
     var replaces []string
     diff := oldprops.Diff(newprops)
@@ -163,30 +161,29 @@ func (p *RestAPIProvider) Delete(
 }
 
 func (p *RestAPIProvider) Unmarshal(
-    v *pbstruct.Struct) (*RestAPI, resource.PropertyMap, mapper.DecodeError) {
+    v *pbstruct.Struct) (*RestAPI, resource.PropertyMap, error) {
     var obj RestAPI
     props := resource.UnmarshalProperties(nil, v, resource.MarshalOptions{RawResources: true})
-    result := mapper.MapIU(props.Mappable(), &obj)
-    return &obj, props, result
+    return &obj, props, mapper.MapIU(props.Mappable(), &obj)
 }
 
 /* Marshalable RestAPI structure(s) */
 
 // RestAPI is a marshalable representation of its corresponding IDL type.
 type RestAPI struct {
-    Name *string `json:"name,omitempty"`
-    Body *interface{} `json:"body,omitempty"`
-    BodyS3Location *S3Location `json:"bodyS3Location,omitempty"`
-    CloneFrom *resource.ID `json:"cloneFrom,omitempty"`
-    Description *string `json:"description,omitempty"`
-    FailOnWarnings *bool `json:"failOnWarnings,omitempty"`
-    APIName *string `json:"apiName,omitempty"`
-    Parameters *[]string `json:"parameters,omitempty"`
-    ID string `json:"id,omitempty"`
-    CreatedDate string `json:"createdDate,omitempty"`
-    Version string `json:"version,omitempty"`
-    Warnings []string `json:"warnings,omitempty"`
-    BinaryMediaTypes []string `json:"binaryMediaTypes,omitempty"`
+    Name *string `lumi:"name,optional"`
+    Body *interface{} `lumi:"body,optional"`
+    BodyS3Location *S3Location `lumi:"bodyS3Location,optional"`
+    CloneFrom *resource.ID `lumi:"cloneFrom,optional"`
+    Description *string `lumi:"description,optional"`
+    FailOnWarnings *bool `lumi:"failOnWarnings,optional"`
+    APIName *string `lumi:"apiName,optional"`
+    Parameters *[]string `lumi:"parameters,optional"`
+    ID string `lumi:"id,optional"`
+    CreatedDate string `lumi:"createdDate,optional"`
+    Version string `lumi:"version,optional"`
+    Warnings []string `lumi:"warnings,optional"`
+    BinaryMediaTypes []string `lumi:"binaryMediaTypes,optional"`
 }
 
 // RestAPI's properties have constants to make dealing with diffs and property bags easier.
@@ -210,9 +207,9 @@ const (
 
 // S3Location is a marshalable representation of its corresponding IDL type.
 type S3Location struct {
-    Object resource.ID `json:"object"`
-    ETag *string `json:"etag,omitempty"`
-    Version *string `json:"version,omitempty"`
+    Object resource.ID `lumi:"object"`
+    ETag *string `lumi:"etag,optional"`
+    Version *string `lumi:"version,optional"`
 }
 
 // S3Location's properties have constants to make dealing with diffs and property bags easier.

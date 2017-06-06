@@ -21,8 +21,8 @@ import (
 
 // InlinePolicy is a marshalable representation of its corresponding IDL type.
 type InlinePolicy struct {
-    PolicyDocument interface{} `json:"policyDocument"`
-    PolicyName string `json:"policyName"`
+    PolicyDocument interface{} `lumi:"policyDocument"`
+    PolicyName string `lumi:"policyName"`
 }
 
 // InlinePolicy's properties have constants to make dealing with diffs and property bags easier.
@@ -38,7 +38,7 @@ const PolicyToken = tokens.Type("aws:iam/policy:Policy")
 
 // PolicyProviderOps is a pluggable interface for Policy-related management functionality.
 type PolicyProviderOps interface {
-    Check(ctx context.Context, obj *Policy) ([]mapper.FieldError, error)
+    Check(ctx context.Context, obj *Policy) ([]error, error)
     Create(ctx context.Context, obj *Policy) (resource.ID, error)
     Get(ctx context.Context, id resource.ID) (*Policy, error)
     InspectChange(ctx context.Context,
@@ -62,25 +62,23 @@ func NewPolicyProvider(ops PolicyProviderOps) lumirpc.ResourceProviderServer {
 func (p *PolicyProvider) Check(
     ctx context.Context, req *lumirpc.CheckRequest) (*lumirpc.CheckResponse, error) {
     contract.Assert(req.GetType() == string(PolicyToken))
-    obj, _, decerr := p.Unmarshal(req.GetProperties())
-    if decerr == nil || len(decerr.Failures()) == 0 {
-        failures, err := p.ops.Check(ctx, obj)
-        if err != nil {
+    obj, _, err := p.Unmarshal(req.GetProperties())
+    if err == nil {
+        if failures, err := p.ops.Check(ctx, obj); err != nil {
             return nil, err
-        }
-        if len(failures) > 0 {
-            decerr = mapper.NewDecodeErr(failures)
+        } else if len(failures) > 0 {
+            err = resource.NewCheckError(failures)
         }
     }
-    return resource.NewCheckResponse(decerr), nil
+    return resource.NewCheckResponse(err), nil
 }
 
 func (p *PolicyProvider) Name(
     ctx context.Context, req *lumirpc.NameRequest) (*lumirpc.NameResponse, error) {
     contract.Assert(req.GetType() == string(PolicyToken))
-    obj, _, decerr := p.Unmarshal(req.GetProperties())
-    if decerr != nil {
-        return nil, decerr
+    obj, _, err := p.Unmarshal(req.GetProperties())
+    if err != nil {
+        return nil, err
     }
     if obj.Name == nil || *obj.Name == "" {
         if req.Unknowns[Policy_Name] {
@@ -94,9 +92,9 @@ func (p *PolicyProvider) Name(
 func (p *PolicyProvider) Create(
     ctx context.Context, req *lumirpc.CreateRequest) (*lumirpc.CreateResponse, error) {
     contract.Assert(req.GetType() == string(PolicyToken))
-    obj, _, decerr := p.Unmarshal(req.GetProperties())
-    if decerr != nil {
-        return nil, decerr
+    obj, _, err := p.Unmarshal(req.GetProperties())
+    if err != nil {
+        return nil, err
     }
     id, err := p.ops.Create(ctx, obj)
     if err != nil {
@@ -123,13 +121,13 @@ func (p *PolicyProvider) InspectChange(
     ctx context.Context, req *lumirpc.InspectChangeRequest) (*lumirpc.InspectChangeResponse, error) {
     contract.Assert(req.GetType() == string(PolicyToken))
     id := resource.ID(req.GetId())
-    old, oldprops, decerr := p.Unmarshal(req.GetOlds())
-    if decerr != nil {
-        return nil, decerr
+    old, oldprops, err := p.Unmarshal(req.GetOlds())
+    if err != nil {
+        return nil, err
     }
-    new, newprops, decerr := p.Unmarshal(req.GetNews())
-    if decerr != nil {
-        return nil, decerr
+    new, newprops, err := p.Unmarshal(req.GetNews())
+    if err != nil {
+        return nil, err
     }
     var replaces []string
     diff := oldprops.Diff(newprops)
@@ -177,23 +175,22 @@ func (p *PolicyProvider) Delete(
 }
 
 func (p *PolicyProvider) Unmarshal(
-    v *pbstruct.Struct) (*Policy, resource.PropertyMap, mapper.DecodeError) {
+    v *pbstruct.Struct) (*Policy, resource.PropertyMap, error) {
     var obj Policy
     props := resource.UnmarshalProperties(nil, v, resource.MarshalOptions{RawResources: true})
-    result := mapper.MapIU(props.Mappable(), &obj)
-    return &obj, props, result
+    return &obj, props, mapper.MapIU(props.Mappable(), &obj)
 }
 
 /* Marshalable Policy structure(s) */
 
 // Policy is a marshalable representation of its corresponding IDL type.
 type Policy struct {
-    Name *string `json:"name,omitempty"`
-    PolicyDocument interface{} `json:"policyDocument"`
-    PolicyName string `json:"policyName"`
-    Groups *[]resource.ID `json:"groups,omitempty"`
-    Roles *[]resource.ID `json:"roles,omitempty"`
-    Users *[]resource.ID `json:"users,omitempty"`
+    Name *string `lumi:"name,optional"`
+    PolicyDocument interface{} `lumi:"policyDocument"`
+    PolicyName string `lumi:"policyName"`
+    Groups *[]resource.ID `lumi:"groups,optional"`
+    Roles *[]resource.ID `lumi:"roles,optional"`
+    Users *[]resource.ID `lumi:"users,optional"`
 }
 
 // Policy's properties have constants to make dealing with diffs and property bags easier.

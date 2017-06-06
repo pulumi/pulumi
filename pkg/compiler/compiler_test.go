@@ -114,7 +114,7 @@ func TestBadMissingPackageName(t *testing.T) {
 	assert.Equal(t,
 		fmt.Sprintf("%v: %v %v%v: %v\n",
 			"Lumi.yaml", diag.Error, diag.DefaultSinkIDPrefix, d.ID,
-			fmt.Sprintf(d.Message, "1 fields failed to decode:\n"+
+			fmt.Sprintf(d.Message, "1 failures decoding:\n"+
 				"\tname: Missing required field 'name' on 'pack.Package'")),
 		sink.ErrorMsgs()[0])
 }
@@ -130,7 +130,7 @@ func TestBadEmptyPackageName(t *testing.T) {
 	assert.Equal(t,
 		fmt.Sprintf("%v: %v %v%v: %v\n",
 			"Lumi.yaml", diag.Error, diag.DefaultSinkIDPrefix, d.ID,
-			fmt.Sprintf(d.Message, "1 fields failed to decode:\n"+
+			fmt.Sprintf(d.Message, "1 failures decoding:\n"+
 				"\tname: Missing required field 'name' on 'pack.Package'")),
 		sink.ErrorMsgs()[0])
 }
