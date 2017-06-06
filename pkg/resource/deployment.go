@@ -42,16 +42,14 @@ const DefaultDeploymentReftag = "#ref"
 
 // Deployment is a serializable vertex within a LumiGL graph, specifically for resource snapshots.
 type Deployment struct {
-	ID      *ID                  `json:"id,omitempty"`      // the provider ID for this resource, if any.
-	Type    tokens.Type          `json:"type"`              // this resource's full type token.
-	Inputs  DeploymentProperties `json:"inputs,omitempty"`  // the input properties from the program.
-	Outputs DeploymentProperties `json:"outputs,omitempty"` // the output properties from the resource provider.
+	ID      *ID                    `json:"id,omitempty"`      // the provider ID for this resource, if any.
+	Type    tokens.Type            `json:"type"`              // this resource's full type token.
+	Inputs  map[string]interface{} `json:"inputs,omitempty"`  // the input properties from the program.
+	Outputs map[string]interface{} `json:"outputs,omitempty"` // the output properties from the resource provider.
 }
 
-// DeploymentProperties is a property map from resource key to the underlying property value.
-type DeploymentProperties map[string]interface{}
-
-func serializeDeploymentRecord(snap Snapshot, reftag string) *DeploymentRecord {
+// SerializeDeploymentRecord serializes an entire snapshot using the given reftag for cross-resource references.
+func SerializeDeploymentRecord(snap Snapshot, reftag string) *DeploymentRecord {
 	// Initialize the reftag if needed, and only serialize if overridden.
 	var refp *string
 	if reftag == "" {
@@ -68,7 +66,7 @@ func serializeDeploymentRecord(snap Snapshot, reftag string) *DeploymentRecord {
 			m := res.URN()
 			contract.Assertf(string(m) != "", "Unexpected empty resource URN")
 			contract.Assertf(!resm.Has(m), "Unexpected duplicate resource URN '%v'", m)
-			resm.Add(m, serializeDeployment(res, reftag))
+			resm.Add(m, SerializeDeployment(res, reftag))
 		}
 	}
 
@@ -87,8 +85,8 @@ func serializeDeploymentRecord(snap Snapshot, reftag string) *DeploymentRecord {
 	}
 }
 
-// serializeDeployment turns a resource into a LumiGL data structure suitable for serialization.
-func serializeDeployment(res Resource, reftag string) *Deployment {
+// SerializeDeployment turns a resource into a LumiGL data structure suitable for serialization.
+func SerializeDeployment(res Resource, reftag string) *Deployment {
 	contract.Assert(res != nil)
 
 	// Only serialize the ID if it is non-empty.
@@ -98,8 +96,14 @@ func serializeDeployment(res Resource, reftag string) *Deployment {
 	}
 
 	// Serialize all input and output properties recursively, and add them if non-empty.
-	inputs := serializeDeploymentProperties(res.Inputs(), reftag)
-	outputs := serializeDeploymentProperties(res.Outputs(), reftag)
+	var inputs map[string]interface{}
+	if inp := res.Inputs(); inp != nil {
+		inputs = SerializeDeploymentProperties(inp, reftag)
+	}
+	var outputs map[string]interface{}
+	if outp := res.Outputs(); outp != nil {
+		outputs = SerializeDeploymentProperties(outp, reftag)
+	}
 
 	return &Deployment{
 		ID:      idp,
@@ -109,22 +113,19 @@ func serializeDeployment(res Resource, reftag string) *Deployment {
 	}
 }
 
-// serializeDeploymentProperties serializes a resource property bag so that it's suitable for serialization.
-func serializeDeploymentProperties(props PropertyMap, reftag string) DeploymentProperties {
-	var dst DeploymentProperties
+// SerializeDeploymentProperties serializes a resource property bag so that it's suitable for serialization.
+func SerializeDeploymentProperties(props PropertyMap, reftag string) map[string]interface{} {
+	dst := make(map[string]interface{})
 	for _, k := range StablePropertyKeys(props) {
-		if v := serializeDeploymentProperty(props[k], reftag); v != nil {
-			if dst == nil {
-				dst = make(DeploymentProperties)
-			}
+		if v := SerializeDeploymentProperty(props[k], reftag); v != nil {
 			dst[string(k)] = v
 		}
 	}
 	return dst
 }
 
-// serializeDeploymentProperty serializes a resource property value so that it's suitable for serialization.
-func serializeDeploymentProperty(prop PropertyValue, reftag string) interface{} {
+// SerializeDeploymentProperty serializes a resource property value so that it's suitable for serialization.
+func SerializeDeploymentProperty(prop PropertyValue, reftag string) interface{} {
 	contract.Assert(!prop.IsComputed())
 
 	// Skip nulls and "outputs"; the former needn't be serialized, and the latter happens if there is an output
@@ -135,21 +136,17 @@ func serializeDeploymentProperty(prop PropertyValue, reftag string) interface{} 
 
 	// For arrays, make sure to recurse.
 	if prop.IsArray() {
-		var arr []interface{}
-		for _, elem := range prop.ArrayValue() {
-			if v := serializeDeploymentProperty(elem, reftag); v != nil {
-				arr = append(arr, v)
-			}
+		srcarr := prop.ArrayValue()
+		dstarr := make([]interface{}, len(srcarr))
+		for i, elem := range prop.ArrayValue() {
+			dstarr[i] = SerializeDeploymentProperty(elem, reftag)
 		}
-		if len(arr) > 0 {
-			return arr
-		}
-		return nil
+		return dstarr
 	}
 
 	// Also for objects, recurse and use naked properties.
 	if prop.IsObject() {
-		return serializeDeploymentProperties(prop.ObjectValue(), reftag)
+		return SerializeDeploymentProperties(prop.ObjectValue(), reftag)
 	}
 
 	// Morph resources into their equivalent `{ "#ref": "<URN>" }` form.
@@ -163,15 +160,17 @@ func serializeDeploymentProperty(prop PropertyValue, reftag string) interface{} 
 	return prop.V
 }
 
-func deserializeDeploymentProperties(props DeploymentProperties, reftag string) PropertyMap {
+// DeserializeDeploymentProperties deserializes an entire map of deployment properties into a resource property map.
+func DeserializeDeploymentProperties(props map[string]interface{}, reftag string) PropertyMap {
 	result := make(PropertyMap)
 	for k, prop := range props {
-		result[PropertyKey(k)] = deserializeDeploymentProperty(prop, reftag)
+		result[PropertyKey(k)] = DeserializeDeploymentProperty(prop, reftag)
 	}
 	return result
 }
 
-func deserializeDeploymentProperty(v interface{}, reftag string) PropertyValue {
+// DeserializeDeploymentProperty deserializes a single deployment property into a resource property value.
+func DeserializeDeploymentProperty(v interface{}, reftag string) PropertyValue {
 	if v != nil {
 		switch w := v.(type) {
 		case bool:
@@ -183,7 +182,7 @@ func deserializeDeploymentProperty(v interface{}, reftag string) PropertyValue {
 		case []interface{}:
 			var arr []PropertyValue
 			for _, elem := range w {
-				arr = append(arr, deserializeDeploymentProperty(elem, reftag))
+				arr = append(arr, DeserializeDeploymentProperty(elem, reftag))
 			}
 			return NewArrayProperty(arr)
 		case map[string]interface{}:
@@ -197,7 +196,7 @@ func deserializeDeploymentProperty(v interface{}, reftag string) PropertyValue {
 			}
 
 			// Otherwise, this is an arbitrary object value.
-			obj := deserializeDeploymentProperties(DeploymentProperties(w), reftag)
+			obj := DeserializeDeploymentProperties(w, reftag)
 			return NewObjectProperty(obj)
 		default:
 			contract.Failf("Unrecognized property type: %v", reflect.ValueOf(v))

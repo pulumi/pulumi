@@ -41,7 +41,7 @@ func SerializeEnvfile(env *Env, snap Snapshot, reftag string) *Envfile {
 	// If snap is nil, that's okay, we will just create an empty deployment; otherwise, serialize the whole snapshot.
 	var latest *DeploymentRecord
 	if snap != nil {
-		latest = serializeDeploymentRecord(snap, reftag)
+		latest = SerializeDeploymentRecord(snap, reftag)
 	}
 
 	var config *ConfigMap
@@ -78,8 +78,8 @@ func DeserializeEnvfile(ctx *Context, envfile *Envfile) (*Env, Snapshot) {
 			for _, kvp := range latest.Resources.Iter() {
 				// Deserialize the resource properties, if they exist.
 				res := kvp.Value
-				inputs := deserializeDeploymentProperties(res.Inputs, reftag)
-				outputs := deserializeDeploymentProperties(res.Outputs, reftag)
+				inputs := DeserializeDeploymentProperties(res.Inputs, reftag)
+				outputs := DeserializeDeploymentProperties(res.Outputs, reftag)
 
 				// And now just produce a resource object using the information available.
 				var id ID
