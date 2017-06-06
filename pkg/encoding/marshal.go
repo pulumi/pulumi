@@ -81,7 +81,7 @@ func (m *jsonMarshaler) Marshal(v interface{}) ([]byte, error) {
 }
 
 func (m *jsonMarshaler) Unmarshal(data []byte, v interface{}) error {
-	// TODO: use a "strict" marshaler, so that we can warn on unrecognized keys (avoiding silly mistakes).  We should
+	// IDEA: use a "strict" marshaler, so that we can warn on unrecognized keys (avoiding silly mistakes).  We should
 	//     set aside an officially sanctioned area in the metadata for extensibility by 3rd parties.
 	return json.Unmarshal(data, v)
 }
@@ -104,7 +104,7 @@ func (m *yamlMarshaler) Marshal(v interface{}) ([]byte, error) {
 }
 
 func (m *yamlMarshaler) Unmarshal(data []byte, v interface{}) error {
-	// TODO: use a "strict" marshaler, so that we can warn on unrecognized keys (avoiding silly mistakes).  We should
+	// IDEA: use a "strict" marshaler, so that we can warn on unrecognized keys (avoiding silly mistakes).  We should
 	//     set aside an officially sanctioned area in the metadata for extensibility by 3rd parties.
 	return yaml.Unmarshal(data, v)
 }

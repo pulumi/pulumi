@@ -176,7 +176,6 @@ func cloneObject(ctx *Context, obj *rt.Object) PropertyMap {
 	src := obj.PropertyValues()
 	dest := make(PropertyMap)
 	for _, k := range src.Stable() {
-		// TODO: detect cycles.
 		obj := src.Get(k)
 		if v, ok := cloneObjectProperty(ctx, obj); ok {
 			dest[PropertyKey(k)] = v

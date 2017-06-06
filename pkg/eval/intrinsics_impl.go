@@ -109,7 +109,8 @@ func serializeClosure(intrin *rt.Intrinsic, e *evaluator, this *rt.Object, args 
 	}
 
 	// TODO[pulumi/lumi#177]: We are using the full environment available at execution time here, we should
-	// instead capture only the free variables referenced in the function itself.
+	//     instead capture only the free variables referenced in the function itself.
+
 	// Insert environment variables into a PropertyMap with stable ordering
 	envPropMap := rt.NewPropertyMap()
 	slots := stub.Env.Slots()
@@ -243,7 +244,8 @@ func (s jsonSerializer) serializeJSONObject(o *rt.Object) (string, *rt.Unwind) {
 	final := "{"
 	for _, prop := range ownProperties {
 		propValuePointer := o.GetPropertyAddr(prop, false, false)
-		propValue := propValuePointer.Obj() // TODO: What about getters?
+		contract.Assertf(propValuePointer.Getter() == nil, "Unexpected getter during serialization")
+		propValue := propValuePointer.Obj()
 		if propValue == nil {
 			continue
 		}
@@ -277,7 +279,8 @@ func (s jsonSerializer) serializeJSONArray(o *rt.Object) (string, *rt.Unwind) {
 	final := "["
 	for index := 0; index < len(*arr); index++ {
 		propValuePointer := (*arr)[index]
-		propValue := propValuePointer.Obj() // TODO: What about getters?
+		contract.Assertf(propValuePointer.Getter() == nil, "Unexpected getter during serialization")
+		propValue := propValuePointer.Obj()
 		if isFirst {
 			final += " "
 		} else {

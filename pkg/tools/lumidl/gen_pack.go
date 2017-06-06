@@ -32,7 +32,7 @@ import (
 	"github.com/pulumi/lumi/pkg/util/contract"
 )
 
-// TODO: preserve GoDocs.
+// TODO[pulumi/lumi#139]: preserve GoDocs in the generated code.
 
 type PackGenerator struct {
 	Program     *loader.Program          // the compiled Go program.
@@ -403,7 +403,7 @@ func (g *PackGenerator) GenTypeName(t types.Type) string {
 		}
 
 		// Our import logic will have arranged for the type name to be available.
-		// TODO: consider auto-generated import names to avoid conflicts between imported and local names.
+		// IDEA: consider auto-generated import names to avoid conflicts between imported and local names.
 		g.trackNameReference(obj)
 		return obj.Name()
 	case *types.Map:

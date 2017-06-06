@@ -238,7 +238,6 @@ func (o *Object) details(funcs bool, visited map[*Object]bool, indent string) st
 	case types.String:
 		return "\"" + o.StringValue() + "\""
 	case types.Number:
-		// TODO: it'd be nice to format as ints if the decimal part is close enough to "nothing".
 		return strconv.FormatFloat(o.NumberValue(), 'f', -1, 64)
 	case types.Null:
 		return "<nil>"
@@ -308,7 +307,6 @@ func (o *Object) String() string {
 	case types.String:
 		return "\"" + o.StringValue() + "\""
 	case types.Number:
-		// TODO: it'd be nice to format as ints if the decimal part is close enough to "nothing".
 		return strconv.FormatFloat(o.NumberValue(), 'f', -1, 64)
 	case types.Null:
 		return "<nil>"
@@ -510,7 +508,7 @@ func NewConstantObject(v interface{}) *Object {
 	case float64:
 		return NewPrimitiveObject(types.Number, data)
 	default:
-		// TODO: we could support more here (essentially, anything that is JSON serializable).
+		// IDEA: we could support more here (essentially, anything that is JSON serializable).
 		contract.Failf("Unrecognized constant data literal: %v", data)
 		return nil
 	}

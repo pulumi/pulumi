@@ -75,7 +75,7 @@ func Print(g graph.Graph, w io.Writer) error {
 		id := getID(v)
 
 		// Print this vertex; first its "label" (type) and then its direct dependencies.
-		// TODO: consider serializing properties on the node also.
+		// IDEA: consider serializing properties on the node also.
 		b.WriteString(fmt.Sprintf("%v%v", indent, id))
 		if label := v.Label(); label != "" {
 			b.WriteString(fmt.Sprintf(" [label=\"%v\"]", label))

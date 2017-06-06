@@ -82,7 +82,7 @@ func (s *Scope) Lookup(nm tokens.Name) *symbols.LocalVariable {
 func (s *Scope) Register(sym *symbols.LocalVariable) bool {
 	nm := sym.Name()
 	if _, exists := s.Locals[nm]; exists {
-		// TODO: this won't catch "shadowing" for parent scopes; do we care about this?
+		// TODO[pulumi/lumi#176]: this won't catch "shadowing" for parent scopes; do we care about this?
 		return false
 	}
 

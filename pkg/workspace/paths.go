@@ -41,7 +41,7 @@ const DefaultInstallRoot = "/usr/local/lumi" // where Lumi is installed by defau
 
 // InstallRoot returns Lumi's installation location.  This is controlled my the LUMIROOT envvar.
 func InstallRoot() string {
-	// TODO: support Windows.
+	// TODO[pulumi/lumi#208]: support Windows.
 	root := os.Getenv(InstallRootEnvvar)
 	if root == "" {
 		return DefaultInstallRoot

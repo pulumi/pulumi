@@ -466,7 +466,7 @@ func (e *evaluator) getModuleGlobals(module *symbols.Module) *rt.Object {
 func (e *evaluator) getClassStatics(class *symbols.Class) *rt.PropertyMap {
 	statics, has := e.statics[class]
 	if !has {
-		// TODO: consider merging the class statics representation with the prototype object representation.
+		// TODO[pulumi/lumi#176]: merge the class statics representation with the prototype object representation.
 		statics = rt.NewPropertyMap()
 		e.statics[class] = statics
 	}
@@ -862,8 +862,8 @@ func (e *evaluator) evalImport(node *ast.Import) *rt.Unwind {
 	e.ensureModuleInit(mod)
 
 	// If a name was requested, bind it dynamically to an object with this import's exports.
-	// TODO: a more elegant way to do this might be to bind it statically, however that's more complicated because
-	//     then it would potentially require a module property versus local variable distinction.
+	// TODO[pulumi/lumi#176]: a more elegant way to do this might be to bind it statically, however that's complex
+	//     because then it would potentially require a module property versus local variable distinction.
 	if node.Name != nil {
 		key := tokens.Name(node.Name.Ident)
 		addr := e.getDynamicNameAddr(key, true)
@@ -1023,7 +1023,7 @@ func (e *evaluator) evalLabeledStatement(node *ast.LabeledStatement) *rt.Unwind 
 	uw := e.evalStatement(node.Statement)
 	if uw != nil && uw.Label() != nil && *uw.Label() == node.Label.Ident {
 		contract.Assert(uw.Continue() || uw.Break())
-		// TODO: perform correct break/continue behavior when the label is affixed to a loop.
+		// TODO[pulumi/lumi#214]: perform correct break/continue behavior when the label is affixed to a loop.
 		uw = nil
 	}
 	return uw
@@ -1766,7 +1766,7 @@ func (e *evaluator) evalNewExpression(node *ast.NewExpression) (*rt.Object, *rt.
 
 // evalNew performs a new operation on the given type with the given arguments.
 func (e *evaluator) evalNew(node diag.Diagable, t symbols.Type, args *[]*ast.CallArgument) (*rt.Object, *rt.Unwind) {
-	// TODO: if a dynamic invoke, we want a runtime exceptions, not assertions, for most failure modes below.
+	// TODO[pulumi/lumi#176]: if a dynamic invoke, we want a runtime exceptions, not assertions, for failures below.
 
 	// Create a object of the right type, containing all of the properties pre-populated.
 	obj := e.newObject(node, t)
@@ -2061,13 +2061,13 @@ func (e *evaluator) evalBinaryOperatorExpression(node *ast.BinaryOperatorExpress
 	}
 
 	// Switch on operator to perform the operator's effects.
-	// TODO: anywhere there is type coercion to/from float64/int64/etc., we should be skeptical.  Because our numeric
-	//     type system is float64-based -- i.e., "JSON-like" -- we often find ourselves doing operations on floats that
-	//     honestly don't make sense (like shifting, masking, and whatnot).  If there is a type coercion, Golang
-	//     (rightfully) doesn't support an operator on numbers of that type.  I suspect we will eventually want to
-	//     consider integer types in LumiIL, and/or verify that numbers aren't outside of the legal range as part of
-	//     verification, and then push the responsibility for presenting valid LumiIL with any required conversions back
-	//     up to the LumiLang compilers (compile-time, runtime, or othwerwise, per the language semantics).
+	// TODO[pulumi/lumi#176]: anywhere there is type coercion to/from float64/int64/etc., we should be skeptical.
+	//     Because our numeric type system is float64-based -- i.e., "JSON-like" -- we often find ourselves doing
+	//     operations on floats that honestly don't make sense (like shifting, masking, and whatnot).  If there is a
+	//     type coercion, Golang (rightfully) doesn't support an operator on numbers of that type.  I suspect we will
+	//     eventually want to consider integer types in LumiIL, and/or verify that numbers aren't outside of the legal
+	//     range as part of verification, and then push the responsibility for presenting valid LumiIL with any required
+	//     conversions bacp up to the compilers (compile-time, runtime, or othwerwise, per the language semantics).
 	switch op {
 	// Arithmetic operators
 	case ast.OpAdd:
@@ -2093,16 +2093,16 @@ func (e *evaluator) evalBinaryOperatorExpression(node *ast.BinaryOperatorExpress
 		return e.alloc.NewNumber(node, math.Pow(lhs.NumberValue(), rhs.NumberValue())), nil
 
 	// Bitwise operators
-	// TODO: the ECMAScript specification for bitwise operators is a fair bit more complicated than these; for instance,
-	//     shifts mask out all but the least significant 5 bits of the rhs.  If we don't do it here, LumiJS should; e.g.
-	//     see https://www.ecma-international.org/ecma-262/7.0/#sec-left-shift-operator.
+	// TODO[pulumi/lumi#176]: the ECMAScript specification for bitwise operators is a fair bit more complicated than
+	//     these; for instance, shifts mask out all but the least significant 5 bits of the rhs.  If we don't do it
+	//     here, LumiJS should; e.g. see https://www.ecma-international.org/ecma-262/7.0/#sec-left-shift-operator.
 	case ast.OpBitwiseShiftLeft:
 		// Both targets are numbers; fetch them (asserting their types), and << them.
-		// TODO: consider a verification error if rhs is negative.
+		// TODO[pulumi/lumi#176]: issue an error if rhs is negative.
 		return e.alloc.NewNumber(node, float64(int64(lhs.NumberValue())<<uint(rhs.NumberValue()))), nil
 	case ast.OpBitwiseShiftRight:
 		// Both targets are numbers; fetch them (asserting their types), and >> them.
-		// TODO: consider a verification error if rhs is negative.
+		// TODO[pulumi/lumi#176]: issue an error if rhs is negative.
 		return e.alloc.NewNumber(node, float64(int64(lhs.NumberValue())>>uint(rhs.NumberValue()))), nil
 	case ast.OpBitwiseAnd:
 		// Both targets are numbers; fetch them (asserting their types), and & them.

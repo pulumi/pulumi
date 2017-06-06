@@ -39,7 +39,7 @@ func Topsort(g Graph) ([]Vertex, error) {
 func topvisit(n Vertex, sorted *[]Vertex, visiting map[Vertex]bool, visited map[Vertex]bool) error {
 	if visiting[n] {
 		// This is not a DAG!  Stop sorting right away, and issue an error.
-		// TODO: use a real error here; and also ideally give an error message that makes sense (w/ the full cycle).
+		// IDEA: return diagnostic information about why this isn't a DAG (e.g., full cycle path).
 		return errors.New("Graph is not a DAG")
 	}
 	if !visited[n] {

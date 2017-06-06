@@ -31,14 +31,13 @@ import (
 // IDs, names, and properties; their dependencies; and more.  A snapshot is a diffable entity and can be used to create
 // or apply an infrastructure deployment plan in order to make reality match the snapshot state.
 type Snapshot interface {
-	Ctx() *Context                              // fetches the context for this snapshot.
-	Namespace() tokens.QName                    // the namespace target being deployed into.
-	Pkg() tokens.Package                        // the package from which this snapshot came.
-	Args() core.Args                            // the arguments used to compile this package.
-	Resources() []Resource                      // a topologically sorted list of resources (based on dependencies).
-	ResourceByID(id ID, t tokens.Type) Resource // looks up a resource by ID and type.
-	ResourceByURN(urn URN) Resource             // looks up a resource by its URN.
-	ResourceByObject(obj *rt.Object) Resource   // looks up a resource by its object.
+	Ctx() *Context                            // fetches the context for this snapshot.
+	Namespace() tokens.QName                  // the namespace target being deployed into.
+	Pkg() tokens.Package                      // the package from which this snapshot came.
+	Args() core.Args                          // the arguments used to compile this package.
+	Resources() []Resource                    // a topologically sorted list of resources (based on dependencies).
+	ResourceByURN(urn URN) Resource           // looks up a resource by its URN.
+	ResourceByObject(obj *rt.Object) Resource // looks up a resource by its object.
 }
 
 // NewSnapshot creates a snapshot from the given arguments.  The resources must be in topologically sorted order.
@@ -90,11 +89,6 @@ func (s *snapshot) Pkg() tokens.Package     { return s.pkg }
 func (s *snapshot) Args() core.Args         { return s.args }
 func (s *snapshot) Resources() []Resource   { return s.resources }
 
-func (s *snapshot) ResourceByID(id ID, t tokens.Type) Resource {
-	contract.Failf("TODO: not yet implemented")
-	return nil
-}
-
 func (s *snapshot) ResourceByURN(urn URN) Resource           { return s.ctx.URNRes[urn] }
 func (s *snapshot) ResourceByObject(obj *rt.Object) Resource { return s.ctx.ObjRes[obj] }
 
@@ -140,8 +134,8 @@ func createResources(ctx *Context, ns tokens.QName, heap *heapstate.Heap, resobj
 // topsort actually performs a topological sort on a resource graph.
 func topsort(ctx *Context, g graph.Graph) ([]*rt.Object, error) {
 	// Sort the graph output so that it's a DAG; if it's got cycles, this can fail.
-	// TODO: we want this to return a *graph*, not a linearized list, so that we can parallelize.
-	// TODO: it'd be nice to prune the graph to just the resource objects first, so we don't waste effort.
+	// TODO[pulumi/lumi#106]: we want this to return a *graph*, not a linearized list, so that we can parallelize.
+	// IDEA: it'd be nice to prune the graph to just the resource objects first, so we don't waste effort.
 	sorted, err := graph.Topsort(g)
 	if err != nil {
 		return nil, err

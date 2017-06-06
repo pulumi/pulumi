@@ -60,7 +60,7 @@ func NewContext(d diag.Sink, host ProviderHost) *Context {
 
 // Request allocates a request sub-context.
 func (ctx *Context) Request() context.Context {
-	// TODO: support cancellation.
+	// TODO[pulumi/lumi#143]: support cancellation.
 	return context.TODO()
 }
 

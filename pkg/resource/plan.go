@@ -27,7 +27,7 @@ import (
 	"github.com/pulumi/lumi/pkg/util/contract"
 )
 
-// TODO: concurrency.
+// TODO[pulumi/lumi#106]: plan parallelism.
 
 // Plan is the output of analyzing resource graphs and contains the steps necessary to perform an infrastructure
 // deployment.  A plan can be generated out of whole cloth from a resource graph -- in the case of new deployments --
@@ -270,7 +270,7 @@ func newPlan(ctx *Context, old Snapshot, new Snapshot, analyzers []tokens.QName)
 		if err != nil {
 			return nil, err
 		}
-		// TODO: we want to use the full package URL, including its SHA1 hash/version/etc.
+		// TODO[pulumi/lumi#53]: we want to use the full package URL, including its SHA1 hash/version/etc.
 		failures, err := analyzer.Analyze(pack.PackageURL{Name: new.Pkg().Name()})
 		if err != nil {
 			return nil, err

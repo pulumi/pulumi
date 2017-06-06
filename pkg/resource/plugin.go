@@ -66,8 +66,8 @@ func newPlugin(ctx *Context, bins []string, prefix string) (*plugin, error) {
 	}
 
 	// For now, we will spawn goroutines that will spew STDOUT/STDERR to the relevent diag streams.
-	// TODO: eventually we want real progress reporting, etc., which will need to be done out of band via RPC.  This
-	//     will be particularly important when we parallelize the application of the resource graph.
+	// TODO[pulumi/lumi#143]: eventually we want real progress reporting, etc., which will need to be done out of band
+	//     via RPC.  This will be particularly important when we parallelize the application of the resource graph.
 	tracers := map[io.Reader]struct {
 		lbl string
 		cb  func(string)
@@ -157,7 +157,7 @@ func execPlugin(bin string) (*plugin, error) {
 
 func (p *plugin) Close() error {
 	closerr := p.Conn.Close()
-	// TODO: consider a more graceful termination than just SIGKILL.
+	// IDEA: consider a more graceful termination than just SIGKILL.
 	if err := p.Proc.Kill(); err != nil {
 		return err
 	}

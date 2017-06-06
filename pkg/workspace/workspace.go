@@ -246,7 +246,7 @@ func (w *workspace) readSettings() (Settings, error) {
 }
 
 // saveSettings saves the settings into a file for this workspace, committing any in-memory changes that have been made.
-// TODO: right now, we only support JSON.  It'd be ideal if we supported YAML too (and it would be quite easy).
+// IDEA: right now, we only support JSON.  It'd be ideal if we supported YAML too (and it would be quite easy).
 func (w *workspace) saveSettings() error {
 	m := encoding.Default()
 	settings := w.Settings()

@@ -63,7 +63,6 @@ func (u PackageURLString) Parse(pkg tokens.PackageName) (PackageURL, error) {
 	dotIndex := strings.Index(s, ".")
 	if dotIndex != -1 {
 		// A base exists; look for a slash (indicating the name), and capture everything up to it (including it).
-		// TODO(joe): this might be questionable; e.g., domain-less hosts will require a trailing period.
 		slashIndex := strings.Index(s, tokens.QNameDelimiter)
 		if slashIndex == -1 {
 			return parsed, errors.Errorf("Expected a name to follow the base URL in '%v'", u)

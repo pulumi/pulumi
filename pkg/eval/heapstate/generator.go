@@ -48,7 +48,7 @@ func New(ctx *core.Context) Generator {
 type generator struct {
 	ctx     *core.Context    // the compiler context shared between passes.
 	objs    ObjectDepends    // a full set of objects and their dependencies.
-	globals ObjectCounts     // a global set of objects (TODO: make this stack-aware).
+	globals ObjectCounts     // a global set of objects (IDEA: make this stack-aware).
 	allocs  ObjectAllocs     // the set of allocated objects and their allocation locations.
 	currPkg *symbols.Package // the current package under evaluation.
 	currMod *symbols.Module  // the current module under evaluation.
@@ -138,7 +138,7 @@ func (g *generator) OnNewObject(tree diag.Diagable, o *rt.Object) {
 
 	// Add an entry to the depends set.  It could already exist if it's one of the few "special" object types -- like
 	// boolean and null -- that have a fixed number of constant objects.
-	// TODO: eventually we may want to be smarter about this, since tracking all dependencies will obviously create
+	// BUG[pulumi/lumi#215]: eventually we need to be smarter, since tracking all dependencies will obviously create
 	//     space leaks.  For instance, we could try to narrow down the objects we track to just those rooted by
 	//     resources -- since ultimately that's all we will care about -- however, doing that requires (expensive)
 	//     reachability analysis that we obviously wouldn't want to perform on each variable assignment.  Another

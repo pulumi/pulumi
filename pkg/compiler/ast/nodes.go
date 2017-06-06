@@ -54,10 +54,10 @@ func (node *NodeValue) GetKind() NodeKind { return node.Kind }
 func (node *NodeValue) GetLoc() *Location { return node.Loc }
 
 func (node *NodeValue) Where() (*diag.Document, *diag.Location) {
-	// TODO: consider caching Document objects; allocating one per Node is wasteful.
-	// TODO: for development scenarios, it would be really great to recover the original source file text for purposes
-	//     of the diag.Document part.  Doing so would give nice error messages tied back to the original source code
-	//     for any errors associated with the AST.  Absent that, we will simply return nil.
+	// IDEA: consider caching Document objects; allocating one per Node is wasteful.
+	// IDEA[pulumi/lumi#15]: for development scenarios, it would be really great to recover the original source file
+	//     text for purposes of the diag.Document part.  Doing so would give nice error messages tied back to the
+	//     original source code for any errors associated with the AST.  Absent that, we will simply return nil.
 	if node.Loc == nil {
 		return nil, nil
 	}

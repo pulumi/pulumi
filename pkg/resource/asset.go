@@ -313,7 +313,7 @@ func (a Archive) readURI() (map[string]*Blob, error) {
 
 	format, err := detectArchiveFormat(url.Path)
 	if err != nil {
-		// TODO: support (a) hints and (b) custom providers that default to certain formats.
+		// IDEA: support (a) hints and (b) custom providers that default to certain formats.
 		return nil, err
 	}
 

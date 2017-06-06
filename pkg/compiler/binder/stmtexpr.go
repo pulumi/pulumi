@@ -138,7 +138,7 @@ func (a *astBinder) isLValue(expr ast.Expression) bool {
 	// If the target is the result of a load operation, it is okay.
 	switch expr.(type) {
 	case *ast.LoadLocationExpression, *ast.LoadDynamicExpression, *ast.TryLoadDynamicExpression:
-		// TODO: ensure the target isn't a readonly location; if it is, issue an error.
+		// BUGBUG: ensure the target isn't a readonly location; if it is, issue an error.
 		return true
 	}
 
@@ -361,7 +361,7 @@ func (a *astBinder) checkObjectLiteral(node *ast.ObjectLiteral) {
 					}
 				}
 
-				// TODO: consider issuing an error for "excess" properties.
+				// IDEA: consider issuing an error for "excess" properties.
 			}
 		}
 	}
@@ -713,7 +713,7 @@ func (a *astBinder) checkTypeOfExpression(node *ast.TypeOfExpression) {
 }
 
 func (a *astBinder) checkConditionalExpression(node *ast.ConditionalExpression) {
-	// TODO: unify the consequent and alternate types.
+	// TODO[pulumi/lumi#213]: unify the consequent and alternate types.
 	contract.Failf("Binding of %v nodes not yet implemented", node.GetKind())
 }
 

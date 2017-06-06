@@ -48,7 +48,7 @@ func Convert(from symbols.Type, to symbols.Type) Conversion {
 	}
 
 	// Any source type converts to the "null" type; and "null" converts to anything.
-	// TODO: implement nullable types, in which case this won't be true.
+	// TODO[pulumi/lumi#64]: implement nullable types, in which case this won't be true.
 	if to == Null || from == Null {
 		return ImplicitConversion
 	}
