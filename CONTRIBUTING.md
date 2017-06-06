@@ -93,10 +93,11 @@ These are some language-agnostic rules we apply across our codebase:
     // limitations under the License.
     ```
 
-* There are two special kinds of comments, each of which MUST have a corresponding work item `xx`:
+* There are three special kinds of comments; two MUST have a corresponding work item `xx`, while the other MAY:
 
-    - `TODO[pulumi/lumi#xx]: <comment>`: a future suggestion or improvement.
-    - `BUGBUG[pulumi/lumi#xx]: <comment>`: a knowingly incorrect bit of code -- use sparingly!
+    - `TODO[pulumi/lumi#xx]: <comment>`: a known loose end for the future: MUST have a work item.
+    - `BUG[pulumi/lumi#xx]: <comment>`: knowingly incorrect code: use sparingly, MUST have a work item!
+    - `IDEA[pulumi/lumi(#xx)]: <comment>`: a lesser priority idea for improving the code: MAY have a work item.
 
 * All code SHOULD use defensive coding where applicable, such as liberal assertions and contracts.
 
