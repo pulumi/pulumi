@@ -31,6 +31,9 @@ type Package struct {
 	Website     *string `json:"website,omitempty"`     // an optional website for additional info.
 	License     *string `json:"license,omitempty"`     // an optional license governing this package's usage.
 
+	Language *LanguageSettings `json:"language,omitempty"` // optional language compiler settings.
+	Files    *[]string         `json:"files,omitempty"`    // a list of source files for this package.
+
 	Analyzers    *Analyzers     `json:"analyzers,omitempty"`    // any analyzers enabled for this project.
 	Dependencies *Dependencies  `json:"dependencies,omitempty"` // all of the package dependencies.
 	Modules      *ast.Modules   `json:"modules,omitempty"`      // a collection of top-level modules.
@@ -43,6 +46,12 @@ var _ diag.Diagable = (*Package)(nil)
 
 func (s *Package) Where() (*diag.Document, *diag.Location) {
 	return s.Doc, nil
+}
+
+// LanguageSettings are optional settings to control the language and compiler for this project.
+type LanguageSettings struct {
+	Compiler *string                 `json:"compiler,omitempty"` // the compiler to run to build this project.
+	Settings *map[string]interface{} `json:"settings,omitempty"` // an opaque bag of key/value compiler settings.
 }
 
 // Analyzers is a list of analyzers to run on this project.

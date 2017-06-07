@@ -1,4 +1,7 @@
 {
-    "name": "basic/arrays"
+    "name": "basic/arrays",
+    "files": [
+        "index.ts"
+    ]
 }
 

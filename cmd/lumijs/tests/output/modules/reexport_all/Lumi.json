@@ -1,4 +1,8 @@
 {
-    "name": "reexport_all"
+    "name": "reexport_all",
+    "files": [
+        "index.ts",
+        "other.ts"
+    ]
 }
 

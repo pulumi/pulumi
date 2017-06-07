@@ -1,4 +1,7 @@
 {
-    "name": "basic/switch"
+    "name": "basic/switch",
+    "files": [
+        "index.ts"
+    ]
 }
 

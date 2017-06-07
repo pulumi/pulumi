@@ -1,5 +1,9 @@
 {
     "name": "reexport",
+    "files": [
+        "index.ts",
+        "other.ts"
+    ],
     "modules": {
         "other": {
             "kind": "Module",

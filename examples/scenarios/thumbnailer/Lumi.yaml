@@ -1,2 +1,10 @@
 name: examples/thumbnailer
+language:
+    compiler: lumijs
+    settings:
+        outDir: .lumi/bin
+        target: es6
+files:
+    - index.ts
+    - thumb.ts
 

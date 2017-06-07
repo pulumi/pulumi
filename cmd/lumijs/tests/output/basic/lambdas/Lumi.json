@@ -1,4 +1,9 @@
 {
-    "name": "basic/lambdas"
+    "name": "basic/lambdas",
+    "files": [
+        "index.ts",
+        "lambdas.ts",
+        "localfuncs.ts"
+    ]
 }
 

@@ -31,3 +31,9 @@ let server = new aws.ec2.Instance("web-server-www", {
     imageId: aws.ec2.getLinuxAMI(size),
 });
 
+let server2 = new aws.ec2.Instance("web-server-www2", {
+    instanceType: server.instanceType,
+    securityGroups: server.securityGroups,
+    imageId: server.imageId + "-" + group.groupID,
+});
+

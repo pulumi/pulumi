@@ -1,4 +1,7 @@
 {
-    "name": "iface_1"
+    "name": "iface_1",
+    "files": [
+        "index.ts"
+    ]
 }
 

@@ -1,4 +1,7 @@
 {
-    "name": "basic/casts"
+    "name": "basic/casts",
+    "files": [
+        "index.ts"
+    ]
 }
 

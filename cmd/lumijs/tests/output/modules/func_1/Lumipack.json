@@ -1,5 +1,8 @@
 {
     "name": "func_1",
+    "files": [
+        "index.ts"
+    ],
     "modules": {
         "index": {
             "kind": "Module",

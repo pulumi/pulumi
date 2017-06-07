@@ -1,5 +1,8 @@
 {
     "name": "basic/arrays",
+    "files": [
+        "index.ts"
+    ],
     "modules": {
         "index": {
             "kind": "Module",

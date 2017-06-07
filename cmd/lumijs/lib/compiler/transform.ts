@@ -3312,25 +3312,9 @@ export class Transformer {
 }
 
 // Loads the metadata and transforms a TypeScript program into its equivalent LumiPack/LumiIL AST form.
-export async function transform(script: Script): Promise<TransformResult> {
-    let loader: PackageLoader = new PackageLoader();
-    let disc: PackageResult = await loader.loadCurrent(script.root);
-    let result: TransformResult = {
-        diagnostics: disc.diagnostics, // ensure we propagate the diagnostics
-        pkg:         undefined,
-    };
-
-    if (disc.pkg) {
-        // New up a transformer and do it.
-        let t = new Transformer(disc.pkg, script, loader);
-        let trans: TransformResult = await t.transform();
-
-        // Copy the return to our running result, so we propagate the aggregate of all diagnostics.
-        result.diagnostics = result.diagnostics.concat(trans.diagnostics);
-        result.pkg = trans.pkg;
-    }
-
-    return result;
+export async function transform(proj: pack.Manifest, script: Script, loader: PackageLoader): Promise<TransformResult> {
+    let t = new Transformer(proj, script, loader);
+    return await t.transform();
 }
 
 export interface TransformResult {

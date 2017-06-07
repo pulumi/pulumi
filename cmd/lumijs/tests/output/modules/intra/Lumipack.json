@@ -1,5 +1,8 @@
 {
     "name": "modules/intra",
+    "files": [
+        "index.ts"
+    ],
     "modules": {
         "index": {
             "kind": "Module",

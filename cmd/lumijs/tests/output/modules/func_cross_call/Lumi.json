@@ -1,4 +1,8 @@
 {
-    "name": "modules/func_cross_call"
+    "name": "modules/func_cross_call",
+    "files": [
+        "index.ts",
+        "other.ts"
+    ]
 }
 

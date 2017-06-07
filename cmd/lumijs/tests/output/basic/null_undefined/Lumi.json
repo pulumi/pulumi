@@ -1,4 +1,7 @@
 {
-    "name": "basic/undefined"
+    "name": "basic/undefined",
+    "files": [
+        "index.ts"
+    ]
 }
 

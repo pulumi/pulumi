@@ -1,5 +1,8 @@
 {
     "name": "class_exp_1",
+    "files": [
+        "index.ts"
+    ],
     "modules": {
         "index": {
             "kind": "Module",

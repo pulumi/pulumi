@@ -1,4 +1,7 @@
 {
-    "name": "var_exp_1"
+    "name": "var_exp_1",
+    "files": [
+        "index.ts"
+    ]
 }
 

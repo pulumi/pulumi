@@ -2,4 +2,23 @@ name: webserver
 description: Basic example of an AWS web server accessible over HTTP.
 dependencies:
     aws: "*"
+language:
+    compiler: lumijs
+    settings:
+        outDir: .lumi/bin
+        target: es6
+        module: commonjs
+        moduleResolution: node
+        declaration: true
+        sourceMap: true
+        stripInternal: true
+        experimentalDecorators: true
+        pretty: true
+        noFallthroughCasesInSwitch: true
+        noImplicitAny: true
+        noImplicitReturns: true
+        forceConsistentCasingInFileNames: true
+        strictNullChecks: true
+files:
+    - index.ts
 

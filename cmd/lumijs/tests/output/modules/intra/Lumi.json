@@ -1,4 +1,7 @@
 {
-    "name": "modules/intra"
+    "name": "modules/intra",
+    "files": [
+        "index.ts"
+    ]
 }
 

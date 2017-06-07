@@ -48,10 +48,18 @@ export interface Manifest {
     website?: string;            // an optional website for additional information.
     license?: string;            // an optional license governing this package's usage.
     dependencies?: Dependencies; // all of the package's dependencies.
+    language?: LanguageSettings; // the project's language settings.
+    files?: string[];            // the project's file listing.
 }
 
 // Dependencies is a map from dependency package token to a version string.
 export type Dependencies = {[pkg: string/*tokens.PackageToken*/]: string};
+
+// LanguageSettings directs the compilation of a package.
+export interface LanguageSettings {
+    compiler?: string;                  // the name of the compiler to use.
+    settings?: {[config: string]: any}; // the bag of properties specific to this compiler.
+}
 
 // Package is a fully compiled package definition.
 export interface Package extends Manifest {

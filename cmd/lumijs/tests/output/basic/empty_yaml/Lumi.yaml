@@ -1,2 +1,4 @@
 name: basic/empty_yaml
+files:
+    - index.ts
 

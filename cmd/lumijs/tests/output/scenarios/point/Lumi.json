@@ -1,4 +1,7 @@
 {
-    "name": "scenarios/point"
+    "name": "scenarios/point",
+    "files": [
+        "index.ts"
+    ]
 }
 

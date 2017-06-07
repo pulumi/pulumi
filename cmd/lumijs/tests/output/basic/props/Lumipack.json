@@ -1,5 +1,13 @@
 {
     "name": "basic/props",
+    "language": {
+        "settings": {
+            "target": "es5"
+        }
+    },
+    "files": [
+        "index.ts"
+    ],
     "modules": {
         "index": {
             "kind": "Module",

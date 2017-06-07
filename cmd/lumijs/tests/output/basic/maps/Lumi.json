@@ -1,4 +1,12 @@
 {
-    "name": "basic/maps"
+    "name": "basic/maps",
+    "language": {
+        "settings": {
+            "target": "es6"
+        }
+    },
+    "files": [
+        "index.ts"
+    ]
 }
 

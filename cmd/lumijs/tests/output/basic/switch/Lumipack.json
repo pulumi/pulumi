@@ -1,5 +1,8 @@
 {
     "name": "basic/switch",
+    "files": [
+        "index.ts"
+    ],
     "modules": {
         "index": {
             "kind": "Module",
@@ -821,18 +824,21 @@
                                         },
                                         "arguments": [
                                             {
-                                                "kind": "StringLiteral",
-                                                "raw": "a",
-                                                "value": "a",
-                                                "loc": {
-                                                    "file": "index.ts",
-                                                    "start": {
-                                                        "line": 19,
-                                                        "column": 12
-                                                    },
-                                                    "end": {
-                                                        "line": 19,
-                                                        "column": 15
+                                                "kind": "CallArgument",
+                                                "expr": {
+                                                    "kind": "StringLiteral",
+                                                    "raw": "a",
+                                                    "value": "a",
+                                                    "loc": {
+                                                        "file": "index.ts",
+                                                        "start": {
+                                                            "line": 19,
+                                                            "column": 12
+                                                        },
+                                                        "end": {
+                                                            "line": 19,
+                                                            "column": 15
+                                                        }
                                                     }
                                                 }
                                             }
@@ -1135,18 +1141,21 @@
                                         },
                                         "arguments": [
                                             {
-                                                "kind": "StringLiteral",
-                                                "raw": "b",
-                                                "value": "b",
-                                                "loc": {
-                                                    "file": "index.ts",
-                                                    "start": {
-                                                        "line": 24,
-                                                        "column": 12
-                                                    },
-                                                    "end": {
-                                                        "line": 24,
-                                                        "column": 15
+                                                "kind": "CallArgument",
+                                                "expr": {
+                                                    "kind": "StringLiteral",
+                                                    "raw": "b",
+                                                    "value": "b",
+                                                    "loc": {
+                                                        "file": "index.ts",
+                                                        "start": {
+                                                            "line": 24,
+                                                            "column": 12
+                                                        },
+                                                        "end": {
+                                                            "line": 24,
+                                                            "column": 15
+                                                        }
                                                     }
                                                 }
                                             }
@@ -1449,18 +1458,21 @@
                                         },
                                         "arguments": [
                                             {
-                                                "kind": "StringLiteral",
-                                                "raw": "d",
-                                                "value": "d",
-                                                "loc": {
-                                                    "file": "index.ts",
-                                                    "start": {
-                                                        "line": 29,
-                                                        "column": 12
-                                                    },
-                                                    "end": {
-                                                        "line": 29,
-                                                        "column": 15
+                                                "kind": "CallArgument",
+                                                "expr": {
+                                                    "kind": "StringLiteral",
+                                                    "raw": "d",
+                                                    "value": "d",
+                                                    "loc": {
+                                                        "file": "index.ts",
+                                                        "start": {
+                                                            "line": 29,
+                                                            "column": 12
+                                                        },
+                                                        "end": {
+                                                            "line": 29,
+                                                            "column": 15
+                                                        }
                                                     }
                                                 }
                                             }
