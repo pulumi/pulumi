@@ -109,7 +109,6 @@ type permissionProvider struct {
 // Check validates that the given property bag is valid for a resource of the given type.
 func (p *permissionProvider) Check(ctx context.Context, obj *lambda.Permission) ([]error, error) {
 	var failures []error
-	fmt.Printf("Check: %v\n", obj)
 	if matched, err := regexp.MatchString(actionRegexp, obj.Action); err != nil || !matched {
 		failures = append(failures,
 			resource.NewFieldError(reflect.TypeOf(obj), lambda.Permission_Action,
@@ -130,7 +129,6 @@ func (p *permissionProvider) Check(ctx context.Context, obj *lambda.Permission) 
 					fmt.Errorf("did not match regexp %v", sourceARNRegexp)))
 		}
 	}
-	fmt.Printf("# failures: %v\n", len(failures))
 	return failures, nil
 }
 
