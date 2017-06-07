@@ -29,12 +29,10 @@ func Test(t *testing.T) {
 	cleanupFunctions(ctx)
 	cleanupRoles(ctx)
 
-	functionProvider := NewFunctionProvider(ctx)
-	roleProvider := iamprovider.NewRoleProvider(ctx)
-
 	resources := map[string]testutil.Resource{
-		"role": {Provider: roleProvider, Token: iam.RoleToken},
-		"f":    {Provider: functionProvider, Token: FunctionToken},
+		"role":       {Provider: iamprovider.NewRoleProvider(ctx), Token: iam.RoleToken},
+		"f":          {Provider: NewFunctionProvider(ctx), Token: FunctionToken},
+		"permission": {Provider: NewPermissionProvider(ctx), Token: PermissionToken},
 	}
 	steps := []testutil.Step{
 		testutil.Step{
@@ -77,6 +75,17 @@ func Test(t *testing.T) {
 						Handler: "index.handler",
 						Runtime: lambda.NodeJS6d10Runtime,
 						Role:    ctx.GetResourceID("role"),
+					}
+				},
+			},
+			testutil.ResourceGenerator{
+				Name: "permission",
+				Creator: func(ctx testutil.Context) interface{} {
+					return &lambda.Permission{
+						Name:      aws.String(RESOURCEPREFIX),
+						Function:  ctx.GetResourceID("f"),
+						Action:    "lambda:InvokeFunction",
+						Principal: "apigateway.amazonaws.com",
 					}
 				},
 			},

@@ -35,18 +35,25 @@ type Step []ResourceGenerator
 func ProviderTest(t *testing.T, resources map[string]Resource, steps []Step) {
 
 	p := &providerTest{
-		resources: resources,
-		ids:       map[string]resource.ID{},
-		props:     map[string]*structpb.Struct{},
+		resources:            resources,
+		namesInCreationOrder: []string{},
+		ids:                  map[string]resource.ID{},
+		props:                map[string]*structpb.Struct{},
 	}
 
+	// For each step, create or update all listed resources
 	for _, step := range steps {
 		for _, res := range step {
-			provider := resources[res.Name].Provider
-			token := resources[res.Name].Token
+			currentResource, ok := resources[res.Name]
+			if !ok {
+				t.Fatalf("expected resource to have been pre-declared: %v", res.Name)
+			}
+			provider := currentResource.Provider
+			token := currentResource.Token
 			if id, ok := p.ids[res.Name]; !ok {
 				id, props := createResource(t, res.Creator(p), provider, token)
 				p.ids[res.Name] = resource.ID(id)
+				p.namesInCreationOrder = append(p.namesInCreationOrder, res.Name)
 				p.props[res.Name] = props
 				if id == "" {
 					t.Fatal("expected to succesfully create resource")
@@ -61,7 +68,10 @@ func ProviderTest(t *testing.T, resources map[string]Resource, steps []Step) {
 			}
 		}
 	}
-	for name, id := range p.ids {
+	// Delete resources in the opposite order they were created
+	for i := len(p.namesInCreationOrder) - 1; i >= 0; i-- {
+		name := p.namesInCreationOrder[i]
+		id := p.ids[name]
 		provider := resources[name].Provider
 		token := resources[name].Token
 		ok := deleteResource(t, string(id), provider, token)
@@ -97,9 +107,10 @@ func ProviderTestSimple(t *testing.T, provider lumirpc.ResourceProviderServer, t
 }
 
 type providerTest struct {
-	resources map[string]Resource
-	ids       map[string]resource.ID
-	props     map[string]*structpb.Struct
+	resources            map[string]Resource
+	namesInCreationOrder []string
+	ids                  map[string]resource.ID
+	props                map[string]*structpb.Struct
 }
 
 func (p *providerTest) GetResourceID(name string) resource.ID {
