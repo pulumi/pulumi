@@ -277,7 +277,7 @@ func printClass(tok tokens.Type, class *ast.Class, exportOnly bool, indent strin
 			mods = append(mods, "@"+att.Decorator.Tok.String())
 		}
 	}
-	fmt.Printf(modString(mods))
+	fmt.Print(modString(mods))
 
 	if class.Extends != nil {
 		fmt.Printf("\n%vextends %v", indent+tab+tab, string(class.Extends.Tok))
@@ -295,7 +295,7 @@ func printClass(tok tokens.Type, class *ast.Class, exportOnly bool, indent strin
 			memtok := tokens.NewClassMemberToken(tok, member)
 			printClassMember(memtok, (*class.Members)[member], exportOnly, indent+tab)
 		}
-		fmt.Printf(indent)
+		fmt.Print(indent)
 	}
 	fmt.Printf("}\n")
 }

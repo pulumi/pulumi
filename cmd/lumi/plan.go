@@ -193,7 +193,7 @@ func printPlan(d diag.Sink, result *planResult, opts deployOptions) {
 
 	// Now walk the plan's steps and and pretty-print them out.
 	prelude.WriteString(fmt.Sprintf("%vPlanned changes:%v\n", colors.SpecUnimportant, colors.Reset))
-	fmt.Printf(colors.Colorize(&prelude))
+	fmt.Print(colors.Colorize(&prelude))
 
 	// Print a nice message if the update is an empty one.
 	if empty := checkEmpty(d, result.Plan); !empty {
@@ -213,7 +213,7 @@ func printPlan(d diag.Sink, result *planResult, opts deployOptions) {
 
 		// Print a summary of operation counts.
 		printSummary(&summary, counts, opts.ShowReplaceSteps, true)
-		fmt.Printf(colors.Colorize(&summary))
+		fmt.Print(colors.Colorize(&summary))
 	}
 }
 

@@ -104,7 +104,7 @@ func (eci *envCmdInfo) Close() error {
 
 func confirmPrompt(msg string, name tokens.QName) bool {
 	prompt := fmt.Sprintf(msg, name)
-	fmt.Printf(
+	fmt.Print(
 		colors.ColorizeText(fmt.Sprintf("%v%v%v\n", colors.SpecAttention, prompt, colors.Reset)))
 	fmt.Printf("Please confirm that this is what you'd like to do by typing (\"%v\"): ", name)
 	reader := bufio.NewReader(os.Stdin)
@@ -172,7 +172,7 @@ func removeEnv(env *resource.Env) {
 	deleteEnv(env)
 	msg := fmt.Sprintf("%sEnvironment '%s' has been removed!%s\n",
 		colors.SpecAttention, env.Name, colors.Reset)
-	fmt.Printf(colors.ColorizeText(msg))
+	fmt.Print(colors.ColorizeText(msg))
 }
 
 // backupEnv makes a backup of an existing file, in preparation for writing a new one.  Instead of a copy, it
@@ -271,7 +271,7 @@ func saveEnv(env *resource.Env, snap resource.Snapshot, file string, existok boo
 
 	// If it's not ok for the file to already exist, ensure that it doesn't.
 	if !existok {
-		if _, err := os.Stat(file); err == nil {
+		if _, locerr := os.Stat(file); locerr == nil {
 			cmdutil.Sink().Errorf(errors.ErrorIO, goerr.Errorf("file '%v' already exists", file))
 			return false
 		}
