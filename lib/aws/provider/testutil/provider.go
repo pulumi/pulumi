@@ -1,6 +1,7 @@
 package testutil
 
 import (
+	"fmt"
 	"testing"
 
 	structpb "github.com/golang/protobuf/ptypes/struct"
@@ -124,6 +125,7 @@ var _ Context = &providerTest{}
 
 func createResource(t *testing.T, res interface{}, provider lumirpc.ResourceProviderServer, token tokens.Type) (string, *structpb.Struct) {
 	props := resource.MarshalProperties(nil, resource.NewPropertyMap(res), resource.MarshalOptions{})
+	fmt.Printf("[Provider Test]: Checking %v\n", token)
 	checkResp, err := provider.Check(nil, &lumirpc.CheckRequest{
 		Type:       string(token),
 		Properties: props,
@@ -132,6 +134,7 @@ func createResource(t *testing.T, res interface{}, provider lumirpc.ResourceProv
 		return "", nil
 	}
 	assert.Equal(t, 0, len(checkResp.Failures), "expected no check failures")
+	fmt.Printf("[Provider Test]: Creating %v\n", token)
 	resp, err := provider.Create(nil, &lumirpc.CreateRequest{
 		Type:       string(token),
 		Properties: props,
@@ -143,11 +146,23 @@ func createResource(t *testing.T, res interface{}, provider lumirpc.ResourceProv
 		return "", nil
 	}
 	id := resp.Id
+	fmt.Printf("[Provider Test]: Getting %v with id %v\n", token, id)
+	getResp, err := provider.Get(nil, &lumirpc.GetRequest{
+		Type: string(token),
+		Id:   id,
+	})
+	if !assert.NoError(t, err, "expected no error reading resource") {
+		return "", nil
+	}
+	if !assert.NotNil(t, getResp, "expected a non-nil response reading the resources") {
+		return "", nil
+	}
 	return id, props
 }
 
 func updateResource(t *testing.T, id string, lastProps *structpb.Struct, res interface{}, provider lumirpc.ResourceProviderServer, token tokens.Type) (bool, *structpb.Struct) {
 	newProps := resource.MarshalProperties(nil, resource.NewPropertyMap(res), resource.MarshalOptions{})
+	fmt.Printf("[Provider Test]: Checking %v\n", token)
 	checkResp, err := provider.Check(nil, &lumirpc.CheckRequest{
 		Type:       string(token),
 		Properties: newProps,
@@ -156,6 +171,7 @@ func updateResource(t *testing.T, id string, lastProps *structpb.Struct, res int
 		return false, nil
 	}
 	assert.Equal(t, 0, len(checkResp.Failures), "expected no check failures")
+	fmt.Printf("[Provider Test]: Updating %v with id %v\n", token, id)
 	_, err = provider.Update(nil, &lumirpc.UpdateRequest{
 		Type: string(token),
 		Id:   id,
@@ -169,6 +185,7 @@ func updateResource(t *testing.T, id string, lastProps *structpb.Struct, res int
 }
 
 func deleteResource(t *testing.T, id string, provider lumirpc.ResourceProviderServer, token tokens.Type) bool {
+	fmt.Printf("[Provider Test]: Deleting %v with id %v\n", token, id)
 	_, err := provider.Delete(nil, &lumirpc.DeleteRequest{
 		Type: string(token),
 		Id:   id,
