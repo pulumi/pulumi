@@ -56,6 +56,7 @@ func NewProvider() (*Provider, error) {
 			elasticbeanstalk.ApplicationVersionToken: elasticbeanstalk.NewApplicationVersionProvider(ctx),
 			elasticbeanstalk.EnvironmentToken:        elasticbeanstalk.NewEnvironmentProvider(ctx),
 			lambda.FunctionToken:                     lambda.NewFunctionProvider(ctx),
+			lambda.PermissionToken:                   lambda.NewPermissionProvider(ctx),
 			iam.RoleToken:                            iam.NewRoleProvider(ctx),
 			s3.BucketToken:                           s3.NewBucketProvider(ctx),
 			s3.ObjectToken:                           s3.NewObjectProvider(ctx),
