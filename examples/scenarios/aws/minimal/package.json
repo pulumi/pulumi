@@ -1,5 +1,5 @@
 {
-    "name": "serverless",
+    "name": "minimal",
     "version": "0.1",
     "typings": ".lumi/bin/index.d.ts",
     "scripts": {
@@ -9,6 +9,7 @@
         "typescript": "^2.1.4"
     },
     "peerDependencies": {
+        "@lumi/lumi": "*",
         "@lumi/aws": "*"
     }
 }
