@@ -1870,7 +1870,7 @@ func (e *evaluator) evalLambdaExpression(node *ast.LambdaExpression) (*rt.Object
 	// To create a lambda object we will simply produce a function object that can invoke it.  Lambdas also uniquely
 	// capture the current environment, including the this variable.
 	sig := e.ctx.RequireType(node).(*symbols.FunctionType)
-	obj := rt.NewFunctionObjectFromLambda(node, sig, e.locals)
+	obj := rt.NewFunctionObjectFromLambda(node, sig, e.locals, e.ctx.Currmodule)
 	return obj, nil
 }
 

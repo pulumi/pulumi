@@ -28,6 +28,7 @@ import (
 	"github.com/pulumi/lumi/pkg/compiler/symbols"
 	"github.com/pulumi/lumi/pkg/compiler/types"
 	"github.com/pulumi/lumi/pkg/eval/rt"
+	"github.com/pulumi/lumi/pkg/tokens"
 	"github.com/pulumi/lumi/pkg/util/contract"
 )
 
@@ -111,22 +112,29 @@ func serializeClosure(intrin *rt.Intrinsic, e *evaluator, this *rt.Object, args 
 
 	// Insert environment variables into a PropertyMap with stable ordering
 	envPropMap := rt.NewPropertyMap()
-	var keys []*symbols.LocalVariable
-	freeVars := binder.FreeVars(stub.Func)
-	for _, freeVar := range freeVars {
-		// TODO[pulumi/lumi#174]: Variables returned from FreeVars which are not simple are
-		// references to globals. For now, we will ignore these.
-		if freeVar.Simple() {
-			local := stub.Env.Lookup(freeVar.Name())
-			keys = append(keys, local)
+	names := []tokens.Name{}
+	vals := map[tokens.Name]*rt.Object{}
+	for _, tok := range binder.FreeVars(stub.Func) {
+		var name tokens.Name
+		var val *rt.Object
+		contract.Assertf(tok.Simple() || (tok.HasModule() && tok.HasModuleMember() && !tok.HasClassMember()),
+			"Expected free variable to be simple name or reference to top-level module name")
+		if tok.Simple() {
+			name = tok.Name()
+			lv := stub.Env.Lookup(name)
+			contract.Assert(lv != nil)
+			val = stub.Env.GetValue(lv)
+		} else {
+			name = tokens.Name(tok.ModuleMember().Name())
+			global := e.getModuleGlobals(stub.Module)
+			val = global.Properties().Get(rt.PropertyKey(name))
 		}
+		names = append(names, name)
+		vals[name] = val
 	}
-	sort.SliceStable(keys, func(i, j int) bool {
-		return keys[i].Name() < keys[j].Name()
-	})
-	for _, key := range keys {
-		val := stub.Env.GetValue(key)
-		envPropMap.Set(rt.PropertyKey(key.Name()), val)
+	sort.SliceStable(names, func(i, j int) bool { return names[i] < names[j] })
+	for _, name := range names {
+		envPropMap.Set(rt.PropertyKey(name), vals[name])
 	}
 	envObj := e.alloc.New(intrin.Tree(), types.Dynamic, envPropMap, nil)
 

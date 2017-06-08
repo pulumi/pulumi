@@ -60,7 +60,7 @@ func TestFreeVars_Parameter(t *testing.T) {
 		},
 	}
 	freeVars := FreeVars(&fun)
-	assert.EqualValues(t, []tokens.Token{}, freeVars, "expected no free variables")
+	assert.Len(t, freeVars, 0, "expected no free variables")
 }
 
 func TestFreeVars_LocalVariable(t *testing.T) {
@@ -101,7 +101,8 @@ func TestFreeVars_LocalVariable(t *testing.T) {
 		},
 	}
 	freeVars := FreeVars(&fun)
-	assert.EqualValues(t, []tokens.Token{tokens.Token("baz")}, freeVars, "expected one free variable")
+	assert.Len(t, freeVars, 1, "expected one free variable")
+	assert.Equal(t, tokens.Name("baz"), freeVars[0].Name())
 }
 
 func TestFreeVars_Member(t *testing.T) {
@@ -126,7 +127,7 @@ func TestFreeVars_Member(t *testing.T) {
 		},
 	}
 	freeVars := FreeVars(&fun)
-	assert.EqualValues(t, []tokens.Token{}, freeVars, "expected no free variables")
+	assert.Len(t, freeVars, 0, "expected no free variables")
 }
 
 func TestFreeVars_Lambda(t *testing.T) {
@@ -168,5 +169,5 @@ func TestFreeVars_Lambda(t *testing.T) {
 		},
 	}
 	freeVars := FreeVars(&fun)
-	assert.EqualValues(t, []tokens.Token{}, freeVars, "expected no free variables")
+	assert.Len(t, freeVars, 0, "expected no free variables")
 }

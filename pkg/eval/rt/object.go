@@ -450,21 +450,23 @@ func NewFunctionObjectFromSymbol(fnc symbols.Function, this *Object) *Object {
 }
 
 // NewFunctionObjectFromLambda creates a new function object with very specific underlying parts.
-func NewFunctionObjectFromLambda(fnc ast.Function, sig *symbols.FunctionType, env Environment) *Object {
+func NewFunctionObjectFromLambda(fnc ast.Function, sig *symbols.FunctionType, env Environment, module *symbols.Module) *Object {
 	return NewFunctionObject(FuncStub{
-		Func: fnc,
-		Sig:  sig,
-		Env:  env,
+		Func:   fnc,
+		Sig:    sig,
+		Env:    env,
+		Module: module,
 	})
 }
 
 // FuncStub is a stub that captures a symbol plus an optional instance 'this' object.
 type FuncStub struct {
-	Func ast.Function          // the function whose body AST to evaluate.
-	Sym  symbols.Function      // an optional function symbol that this AST belongs to.
-	Sig  *symbols.FunctionType // the function type representing this function's signature.
-	This *Object               // an optional "this" pointer to bind when invoking this function.
-	Env  Environment           // an optional environment to evaluate this function inside.
+	Func   ast.Function          // the function whose body AST to evaluate.
+	Sym    symbols.Function      // an optional function symbol that this AST belongs to.
+	Sig    *symbols.FunctionType // the function type representing this function's signature.
+	This   *Object               // an optional "this" pointer to bind when invoking this function.
+	Env    Environment           // an optional environment to evaluate this function inside.
+	Module *symbols.Module       // an optional module to use for module variable lookups when evaluating this function.
 }
 
 // NewPointerObject allocates a new pointer-like object that wraps the given reference.
@@ -639,11 +641,12 @@ func adjustPointerForThis(parent *Object, this *Object, prop *Pointer) *Pointer 
 				stub := value.FunctionValue()
 				contract.Assert(stub.This == parent)
 				value = NewFunctionObject(FuncStub{
-					Func: stub.Func,
-					Sym:  stub.Sym,
-					Sig:  stub.Sig,
-					This: this,
-					Env:  stub.Env,
+					Func:   stub.Func,
+					Sym:    stub.Sym,
+					Sig:    stub.Sig,
+					This:   this,
+					Env:    stub.Env,
+					Module: stub.Module,
 				})
 				prop = NewPointer(value, prop.Readonly(), prop.Getter(), prop.Setter())
 			case *symbols.ComputedType:
@@ -682,7 +685,7 @@ func (intrin *Intrinsic) SpecialModInit() bool             { return false }
 func (intrin *Intrinsic) Tree() diag.Diagable              { return intrin.node }
 func (intrin *Intrinsic) Function() ast.Function           { return intrin.node }
 func (intrin *Intrinsic) Signature() *symbols.FunctionType { return intrin.sig }
-func (intrin *Intrinsic) String() string                   { return string(intrin.Name()) }
+func (intrin *Intrinsic) String() string                   { return string(intrin.Token()) }
 
 func (intrin *Intrinsic) UnderlyingSymbol() symbols.Function { return intrin.fnc }
 
