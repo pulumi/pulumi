@@ -54,7 +54,7 @@ func NewGraphSnapshot(ctx *Context, ns tokens.QName, pkg tokens.Package, args co
 	// If the old snapshot is non-nil, we need to register old IDs so they will be found below.
 	if old != nil {
 		for _, res := range old.Resources() {
-			contract.Assert(res.HasID())
+			contract.Assert(HasID(res))
 			ctx.URNOldIDs[res.URN()] = res.ID()
 		}
 	}
