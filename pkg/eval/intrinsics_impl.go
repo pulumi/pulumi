@@ -24,6 +24,7 @@ import (
 	"strings"
 
 	"github.com/pulumi/lumi/pkg/compiler/ast"
+	"github.com/pulumi/lumi/pkg/compiler/binder"
 	"github.com/pulumi/lumi/pkg/compiler/symbols"
 	"github.com/pulumi/lumi/pkg/compiler/types"
 	"github.com/pulumi/lumi/pkg/eval/rt"
@@ -108,21 +109,24 @@ func serializeClosure(intrin *rt.Intrinsic, e *evaluator, this *rt.Object, args 
 		return e.NewException(intrin.Tree(), "Expected argument 'func' to be a lambda expression.")
 	}
 
-	// TODO[pulumi/lumi#177]: We are using the full environment available at execution time here, we should
-	//     instead capture only the free variables referenced in the function itself.
-
 	// Insert environment variables into a PropertyMap with stable ordering
 	envPropMap := rt.NewPropertyMap()
-	slots := stub.Env.Slots()
 	var keys []*symbols.LocalVariable
-	for key := range slots {
-		keys = append(keys, key)
+	freeVars := binder.FreeVars(stub.Func)
+	for _, freeVar := range freeVars {
+		// TODO[pulumi/lumi#174]: Variables returned from FreeVars which are not simple are
+		// references to globals. For now, we will ignore these.
+		if freeVar.Simple() {
+			local := stub.Env.Lookup(freeVar.Name())
+			keys = append(keys, local)
+		}
 	}
 	sort.SliceStable(keys, func(i, j int) bool {
 		return keys[i].Name() < keys[j].Name()
 	})
 	for _, key := range keys {
-		envPropMap.Set(rt.PropertyKey(key.Name()), slots[key].Obj())
+		val := stub.Env.GetValue(key)
+		envPropMap.Set(rt.PropertyKey(key.Name()), val)
 	}
 	envObj := e.alloc.New(intrin.Tree(), types.Dynamic, envPropMap, nil)
 
