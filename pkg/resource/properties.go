@@ -58,15 +58,15 @@ type PropertyValue struct {
 // Computed represents the absence of a property value, because it will be computed at some point in the future.  It
 // contains a property value which represents the underlying expected type of the eventual property value.
 type Computed struct {
-	Sources  []URN         // the resources whose state contribute to this value.
-	Eventual PropertyValue // the eventual value (type) of the computed property.
+	Sources []URN         // the resources whose state contribute to this value.
+	Element PropertyValue // the eventual value (type) of the computed property.
 }
 
 // Output is a property value that will eventually be computed by the resource provider.  If an output property is
 // encountered, it means the resource has not yet been created, and so the output value is unavailable.  Note that an
 // output property is a special case of computed, but carries additional semantic meaning.
 type Output struct {
-	Eventual PropertyValue // the eventual value (type) of the output property.
+	Element PropertyValue // the eventual value (type) of the output property.
 }
 
 type ReqError struct {
@@ -449,11 +449,11 @@ func NewComputedProperty(v Computed) PropertyValue     { return PropertyValue{v}
 func NewOutputProperty(v Output) PropertyValue         { return PropertyValue{v} }
 
 func MakeComputed(v PropertyValue, sources []URN) PropertyValue {
-	return NewComputedProperty(Computed{Eventual: v, Sources: sources})
+	return NewComputedProperty(Computed{Element: v, Sources: sources})
 }
 
 func MakeOutput(v PropertyValue) PropertyValue {
-	return NewOutputProperty(Output{Eventual: v})
+	return NewOutputProperty(Output{Element: v})
 }
 
 // NewPropertyValue turns a value into a property value, provided it is of a legal "JSON-like" kind.
@@ -610,10 +610,10 @@ func (v PropertyValue) CanBool() bool {
 		return true
 	}
 	if v.IsComputed() {
-		return v.ComputedValue().Eventual.CanBool()
+		return v.ComputedValue().Element.CanBool()
 	}
 	if v.IsOutput() {
-		return v.OutputValue().Eventual.CanBool()
+		return v.OutputValue().Element.CanBool()
 	}
 	return false
 }
@@ -624,10 +624,10 @@ func (v PropertyValue) CanNumber() bool {
 		return true
 	}
 	if v.IsComputed() {
-		return v.ComputedValue().Eventual.CanNumber()
+		return v.ComputedValue().Element.CanNumber()
 	}
 	if v.IsOutput() {
-		return v.OutputValue().Eventual.CanNumber()
+		return v.OutputValue().Element.CanNumber()
 	}
 	return false
 }
@@ -638,10 +638,10 @@ func (v PropertyValue) CanString() bool {
 		return true
 	}
 	if v.IsComputed() {
-		return v.ComputedValue().Eventual.CanString()
+		return v.ComputedValue().Element.CanString()
 	}
 	if v.IsOutput() {
-		return v.OutputValue().Eventual.CanString()
+		return v.OutputValue().Element.CanString()
 	}
 	return false
 }
@@ -652,10 +652,10 @@ func (v PropertyValue) CanArray() bool {
 		return true
 	}
 	if v.IsComputed() {
-		return v.ComputedValue().Eventual.CanArray()
+		return v.ComputedValue().Element.CanArray()
 	}
 	if v.IsOutput() {
-		return v.OutputValue().Eventual.CanArray()
+		return v.OutputValue().Element.CanArray()
 	}
 	return false
 }
@@ -666,10 +666,10 @@ func (v PropertyValue) CanObject() bool {
 		return true
 	}
 	if v.IsComputed() {
-		return v.ComputedValue().Eventual.CanObject()
+		return v.ComputedValue().Element.CanObject()
 	}
 	if v.IsOutput() {
-		return v.OutputValue().Eventual.CanObject()
+		return v.OutputValue().Element.CanObject()
 	}
 	return false
 }
@@ -680,10 +680,10 @@ func (v PropertyValue) CanResource() bool {
 		return true
 	}
 	if v.IsComputed() {
-		return v.ComputedValue().Eventual.CanResource()
+		return v.ComputedValue().Element.CanResource()
 	}
 	if v.IsOutput() {
-		return v.OutputValue().Eventual.CanResource()
+		return v.OutputValue().Element.CanResource()
 	}
 	return false
 }
@@ -710,9 +710,9 @@ func (v PropertyValue) TypeString() string {
 	} else if v.IsResource() {
 		return "resource"
 	} else if v.IsComputed() {
-		return "computed<" + v.ComputedValue().Eventual.TypeString() + ">"
+		return "computed<" + v.ComputedValue().Element.TypeString() + ">"
 	} else if v.IsOutput() {
-		return "output<" + v.OutputValue().Eventual.TypeString() + ">"
+		return "output<" + v.OutputValue().Element.TypeString() + ">"
 	}
 	contract.Failf("Unrecognized PropertyValue type")
 	return ""

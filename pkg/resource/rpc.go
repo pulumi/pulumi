@@ -140,13 +140,13 @@ func MarshalPropertyValue(ctx *Context, v PropertyValue, opts MarshalOptions) (*
 			},
 		}, true
 	} else if v.IsComputed() {
-		e := v.ComputedValue().Eventual
+		e := v.ComputedValue().Element
 		contract.Assert(!e.IsComputed())
 		w, known := MarshalPropertyValue(ctx, e, opts)
 		contract.Assert(known)
 		return w, false
 	} else if v.IsOutput() {
-		e := v.OutputValue().Eventual
+		e := v.OutputValue().Element
 		contract.Assert(!e.IsComputed())
 		w, known := MarshalPropertyValue(ctx, e, opts)
 		contract.Assert(known)
