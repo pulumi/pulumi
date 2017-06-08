@@ -152,48 +152,41 @@ func NewResource(id ID, urn URN, t tokens.Type, inputs PropertyMap, outputs Prop
 // NewObjectResource creates a new resource object out of the runtime object provided.  The context is used to resolve
 // dependencies between resources and must contain all references that could be encountered.
 func NewObjectResource(ctx *Context, obj *rt.Object) Resource {
+	// Ensure this is actually a resource type first.
 	t := obj.Type()
 	contract.Assert(predef.IsResourceType(t))
 
-	// Extract the urn.  This must already exist.
-	urn, hasm := ctx.ObjURN[obj]
-	contract.Assertf(!hasm, "Object already assigned a urn '%v'; double allocation detected", urn)
-
 	// Do a deep copy of the resource properties.  This ensures property serializability.
-	props := cloneObject(ctx, obj)
+	props := cloneResource(ctx, obj)
 
-	// Finally allocate and return the resource object; note that ID is left blank until the provider assignes one.
-	return NewResource("", urn, t.TypeToken(), props, nil)
+	// Finally allocate and return the resource object; note that ID and URN are blank until the provider assigns them.
+	return NewResource("", "", t.TypeToken(), props, nil)
+}
+
+// cloneResource creates a property map out of a resource's runtime object.
+func cloneResource(ctx *Context, resobj *rt.Object) PropertyMap {
+	return cloneObject(ctx, resobj, resobj)
 }
 
 // cloneObject creates a property map out of a runtime object.  The result is fully serializable in the sense that it
 // can be stored in a JSON or YAML file, serialized over an RPC interface, etc.  In particular, any references to other
 // resources are replaced with their urn equivalents, which the runtime understands.
-func cloneObject(ctx *Context, obj *rt.Object) PropertyMap {
+func cloneObject(ctx *Context, resobj *rt.Object, obj *rt.Object) PropertyMap {
 	contract.Assert(obj != nil)
-
-	// Walk the object's properties and serialize them in a stable order.
-	src := obj.PropertyValues()
-	dest := make(PropertyMap)
-	for _, k := range src.Stable() {
-		obj := src.Get(k)
-		if v, ok := cloneObjectProperty(ctx, obj); ok {
-			dest[PropertyKey(k)] = v
-		}
-	}
-	return dest
+	props := obj.PropertyValues()
+	return cloneObjectProperties(ctx, resobj, props)
 }
 
 // cloneObjectProperty creates a single property value out of a runtime object.  It returns false if the property could
 // not be stored in a property (e.g., it is a function or other unrecognized or unserializable runtime object).
-func cloneObjectProperty(ctx *Context, obj *rt.Object) (PropertyValue, bool) {
+func cloneObjectProperty(ctx *Context, resobj *rt.Object, obj *rt.Object) (PropertyValue, bool) {
 	t := obj.Type()
 
 	// Serialize resource references as URNs.
 	if predef.IsResourceType(t) {
 		// For resources, simply look up the urn from the resource map.
 		urn, hasm := ctx.ObjURN[obj]
-		contract.Assertf(hasm, "Missing object reference; possible out of order dependency walk")
+		contract.Assertf(hasm, "Missing object reference for %v; possible out of order dependency walk", obj)
 		return NewResourceProperty(urn), true
 	}
 
@@ -208,24 +201,30 @@ func cloneObjectProperty(ctx *Context, obj *rt.Object) (PropertyValue, bool) {
 	case types.String:
 		return NewStringProperty(obj.StringValue()), true
 	case types.Object, types.Dynamic:
-		obj := cloneObject(ctx, obj) // an object literal, clone it
-		return NewObjectProperty(obj), true
+		result := cloneObject(ctx, resobj, obj) // an object literal, clone it
+		return NewObjectProperty(result), true
 	}
 
 	// Serialize arrays, maps, and object instances in the obvious way.
-	// TODO: handle symbols.MapType.
 	switch t.(type) {
 	case *symbols.ArrayType:
+		// Make a new array, clone each element, and return the result.
 		var result []PropertyValue
 		for _, e := range *obj.ArrayValue() {
-			if v, ok := cloneObjectProperty(ctx, e.Obj()); ok {
+			if v, ok := cloneObjectProperty(ctx, obj, e.Obj()); ok {
 				result = append(result, v)
 			}
 		}
 		return NewArrayProperty(result), true
+	case *symbols.MapType:
+		// Make a new map, clone each property value, and return the result.
+		props := obj.PropertyValues()
+		result := cloneObjectProperties(ctx, resobj, props)
+		return NewObjectProperty(result), true
 	case *symbols.Class:
-		obj := cloneObject(ctx, obj) // a class, just deep clone it
-		return NewObjectProperty(obj), true
+		// Make a new object that contains a deep clone of the source.
+		result := cloneObject(ctx, resobj, obj)
+		return NewObjectProperty(result), true
 	}
 
 	// If a computed value, we can propagate an unknown value, but only for certain cases.
@@ -233,13 +232,30 @@ func cloneObjectProperty(ctx *Context, obj *rt.Object) (PropertyValue, bool) {
 		// If this is an output property, then this property will turn into an output.  Otherwise, it will be marked
 		// completed.  An output property is permitted in more places by virtue of the fact that it is expected not to
 		// exist during resource create operations, whereas all computed properties should have been resolved by then.
+		comp := obj.ComputedValue()
+		outprop := (!comp.Expr && len(comp.Sources) == 1 && comp.Sources[0] == resobj)
 		var makeProperty func(PropertyValue) PropertyValue
-		if !obj.ComputedValue().Expr {
-			makeProperty = MakeOutput
+		if outprop {
+			// For output properties, we need not track any URNs.
+			makeProperty = func(v PropertyValue) PropertyValue {
+				return MakeOutput(v)
+			}
 		} else {
-			makeProperty = MakeComputed
+			// For all other properties, we need to look up and store the URNs for all resource dependencies.
+			var urns []URN
+			for _, src := range comp.Sources {
+				// For all inter-resource references, materialize a URN.  Skip this for intra-resource references!
+				if src != resobj {
+					urn, hasm := ctx.ObjURN[src]
+					contract.Assertf(hasm,
+						"Missing computed reference from %v to %v; possible out of order dependency walk", resobj, src)
+					urns = append(urns, urn)
+				}
+			}
+			makeProperty = func(v PropertyValue) PropertyValue {
+				return MakeComputed(v, urns)
+			}
 		}
-		// TODO[pulumi/lumi#90]: track the resource URNs that are implicated.
 
 		future := t.(*symbols.ComputedType).Element
 		switch future {
@@ -266,6 +282,18 @@ func cloneObjectProperty(ctx *Context, obj *rt.Object) (PropertyValue, bool) {
 	_, isfunc := t.(*symbols.FunctionType)
 	contract.Assertf(isfunc, "Unrecognized resource property object type '%v' (%v)", t, reflect.TypeOf(t))
 	return PropertyValue{}, false
+}
+
+// cloneObjectProperties copies a resource's properties.
+func cloneObjectProperties(ctx *Context, resobj *rt.Object, props *rt.PropertyMap) PropertyMap {
+	// Walk the object's properties and serialize them in a stable order.
+	result := make(PropertyMap)
+	for _, k := range props.Stable() {
+		if v, ok := cloneObjectProperty(ctx, resobj, props.Get(k)); ok {
+			result[PropertyKey(k)] = v
+		}
+	}
+	return result
 }
 
 // NewUniqueHex generates a new "random" hex string for use by resource providers.  It has the given optional prefix and

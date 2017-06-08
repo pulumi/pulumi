@@ -402,7 +402,6 @@ func NewNullObject() *Object {
 
 // NewStringObject creates a new primitive number object.
 func NewStringObject(v string) *Object {
-
 	// Add a `length` property to the object
 	arrayProps := NewPropertyMap()
 	lengthGetter := NewBuiltinIntrinsic(
@@ -411,9 +410,7 @@ func NewStringObject(v string) *Object {
 	)
 	arrayProps.InitAddr(PropertyKey("length"), nil, true, lengthGetter, nil)
 
-	stringProto := StringPrototypeObject()
-
-	return NewObject(types.String, v, arrayProps, stringProto)
+	return NewObject(types.String, v, arrayProps, StringPrototypeObject())
 }
 
 // stringProto is a cached reference to the String prototype object
@@ -636,8 +633,9 @@ func (o *Object) PropertyValues() *PropertyMap {
 func adjustPointerForThis(parent *Object, this *Object, prop *Pointer) *Pointer {
 	if parent != this {
 		if value := prop.Obj(); value != nil {
-			if _, isfunc := value.Type().(*symbols.FunctionType); isfunc {
-				contract.Assert(prop.Readonly()) // otherwise, writes to the resulting pointer could go missing.
+			switch vt := value.Type().(type) {
+			case *symbols.FunctionType:
+				// Function stubs must be adjusted so that `this` is correct.
 				stub := value.FunctionValue()
 				contract.Assert(stub.This == parent)
 				value = NewFunctionObject(FuncStub{
@@ -647,7 +645,20 @@ func adjustPointerForThis(parent *Object, this *Object, prop *Pointer) *Pointer 
 					This: this,
 					Env:  stub.Env,
 				})
-				prop = NewPointer(value, true, prop.Getter(), prop.Setter())
+				prop = NewPointer(value, prop.Readonly(), prop.Getter(), prop.Setter())
+			case *symbols.ComputedType:
+				// Computed stubs must be adjusted so that any self-references are correct.
+				stub := value.ComputedValue()
+				var sources []*Object
+				for _, source := range stub.Sources {
+					if source == parent {
+						sources = append(sources, this)
+					} else {
+						sources = append(sources, source)
+					}
+				}
+				value = NewComputedObject(vt.Element, stub.Expr, sources)
+				prop = NewPointer(value, prop.Readonly(), prop.Getter(), prop.Setter())
 			}
 		}
 	}
