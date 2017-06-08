@@ -13,7 +13,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package resource
+package plugin
 
 import (
 	"fmt"
@@ -22,6 +22,7 @@ import (
 	"github.com/golang/glog"
 
 	"github.com/pulumi/lumi/pkg/pack"
+	"github.com/pulumi/lumi/pkg/resource"
 	"github.com/pulumi/lumi/pkg/tokens"
 	"github.com/pulumi/lumi/sdk/go/pkg/lumirpc"
 )
@@ -80,9 +81,7 @@ func (a *analyzer) Analyze(url pack.PackageURL) ([]AnalyzeFailure, error) {
 }
 
 // AnalyzeResource analyzes a single resource object, and returns any errors that it finds.
-func (a *analyzer) AnalyzeResource(res Resource) ([]AnalyzeResourceFailure, error) {
-	t := res.Type()
-	props := res.Inputs()
+func (a *analyzer) AnalyzeResource(t tokens.Type, props resource.PropertyMap) ([]AnalyzeResourceFailure, error) {
 	glog.V(7).Infof("analyzer[%v].AnalyzeResource(t=%v,#props=%v) executing", a.name, t, len(props))
 	pstr, unks := MarshalPropertiesWithUnknowns(a.ctx, props, MarshalOptions{
 		OldURNs:      true, // permit old URNs, since this is pre-update.
@@ -102,7 +101,10 @@ func (a *analyzer) AnalyzeResource(res Resource) ([]AnalyzeResourceFailure, erro
 
 	var failures []AnalyzeResourceFailure
 	for _, failure := range resp.GetFailures() {
-		failures = append(failures, AnalyzeResourceFailure{PropertyKey(failure.Property), failure.Reason})
+		failures = append(failures, AnalyzeResourceFailure{
+			Property: resource.PropertyKey(failure.Property),
+			Reason:   failure.Reason,
+		})
 	}
 	glog.V(7).Infof("analyzer[%v].AnalyzeResource(t=%v,...) success: failures=#%v", a.name, t, len(failures))
 	return failures, nil

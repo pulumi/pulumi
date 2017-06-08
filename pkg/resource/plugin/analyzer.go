@@ -13,12 +13,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package resource
+package plugin
 
 import (
 	"io"
 
 	"github.com/pulumi/lumi/pkg/pack"
+	"github.com/pulumi/lumi/pkg/resource"
 	"github.com/pulumi/lumi/pkg/tokens"
 )
 
@@ -33,7 +34,7 @@ type Analyzer interface {
 	// Analyze analyzes an entire project/stack/snapshot, and returns any errors that it finds.
 	Analyze(url pack.PackageURL) ([]AnalyzeFailure, error)
 	// AnalyzeResource analyzes a single resource object, and returns any errors that it finds.
-	AnalyzeResource(res Resource) ([]AnalyzeResourceFailure, error)
+	AnalyzeResource(t tokens.Type, props resource.PropertyMap) ([]AnalyzeResourceFailure, error)
 }
 
 // AnalyzeFailure indicates that overall analysis failed; it contains the property and reason for the failure.
@@ -43,6 +44,6 @@ type AnalyzeFailure struct {
 
 // AnalyzeResourceFailure indicates that resource analysis failed; it contains the property and reason for the failure.
 type AnalyzeResourceFailure struct {
-	Property PropertyKey // the property that failed the analysis.
-	Reason   string      // the reason the property failed the analysis.
+	Property resource.PropertyKey // the property that failed the analysis.
+	Reason   string               // the reason the property failed the analysis.
 }

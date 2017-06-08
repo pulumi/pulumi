@@ -13,7 +13,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package resource
+// Package environment contains the serialized and configurable state associated with an environment; or, in other
+// words, a deployment target.  It pertains to resources and deployment plans, but is a package unto itself.
+package environment
 
 import (
 	"github.com/pulumi/lumi/pkg/compiler/core"
@@ -21,27 +23,27 @@ import (
 	"github.com/pulumi/lumi/pkg/util/contract"
 )
 
-// Env represents information about a deployment target.
-type Env struct {
+// Environment represents information about a deployment target.
+type Environment struct {
 	Name   tokens.QName // the target environment name.
 	Config ConfigMap    // optional configuration key/values.
 }
 
-// Envfile is a serialized deployment target plus a record of the latest deployment.
-type Envfile struct {
-	Target tokens.QName      `json:"target"`           // the target environment name.
-	Config *ConfigMap        `json:"config,omitempty"` // optional configuration key/values.
-	Latest *DeploymentRecord `json:"latest,omitempty"` // the latest/current deployment record.
+// Checkpoint is a serialized deployment target plus a record of the latest deployment.
+type Checkpoint struct {
+	Target tokens.QName `json:"target"`           // the target environment name.
+	Config *ConfigMap   `json:"config,omitempty"` // optional configuration key/values.
+	Latest *Deployment  `json:"latest,omitempty"` // the latest/current deployment information.
 }
 
-// SerializeEnvfile turns a snapshot into a LumiGL data structure suitable for serialization.
-func SerializeEnvfile(env *Env, snap Snapshot, reftag string) *Envfile {
+// SerializeCheckpoint turns a snapshot into a LumiGL data structure suitable for serialization.
+func SerializeCheckpoint(env *Environment, snap Snapshot, reftag string) *Checkpoint {
 	contract.Requiref(env != nil, "env", "!= nil")
 
 	// If snap is nil, that's okay, we will just create an empty deployment; otherwise, serialize the whole snapshot.
-	var latest *DeploymentRecord
+	var latest *Deployment
 	if snap != nil {
-		latest = SerializeDeploymentRecord(snap, reftag)
+		latest = SerializeDeployment(snap, reftag)
 	}
 
 	var config *ConfigMap
@@ -49,15 +51,15 @@ func SerializeEnvfile(env *Env, snap Snapshot, reftag string) *Envfile {
 		config = &env.Config
 	}
 
-	return &Envfile{
+	return &Checkpoint{
 		Target: env.Name,
 		Config: config,
 		Latest: latest,
 	}
 }
 
-// DeserializeEnvfile takes a serialized deployment record and returns its associated snapshot.
-func DeserializeEnvfile(ctx *Context, envfile *Envfile) (*Env, Snapshot) {
+// DeserializeCheckpoint takes a serialized deployment record and returns its associated snapshot.
+func DeserializeCheckpoint(ctx *Context, envfile *Checkpoint) (*Environment, Snapshot) {
 	contract.Require(ctx != nil, "ctx")
 	contract.Require(envfile != nil, "envfile")
 
@@ -82,11 +84,7 @@ func DeserializeEnvfile(ctx *Context, envfile *Envfile) (*Env, Snapshot) {
 				outputs := DeserializeDeploymentProperties(res.Outputs, reftag)
 
 				// And now just produce a resource object using the information available.
-				var id ID
-				if res.ID != nil {
-					id = *res.ID
-				}
-				resources = append(resources, NewResource(id, kvp.Key, res.Type, inputs, outputs))
+				resources = append(resources, NewResource(res.ID, kvp.Key, res.Type, inputs, outputs))
 			}
 		}
 
@@ -100,7 +98,7 @@ func DeserializeEnvfile(ctx *Context, envfile *Envfile) (*Env, Snapshot) {
 	}
 
 	// Create an environment and snapshot objects to return.
-	env := &Env{Name: name}
+	env := &Environment{Name: name}
 	if envfile.Config != nil {
 		env.Config = *envfile.Config
 	}

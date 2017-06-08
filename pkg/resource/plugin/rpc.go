@@ -13,15 +13,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package resource
+package plugin
 
 import (
 	"reflect"
 	"sort"
 
-	"github.com/golang/glog"
 	structpb "github.com/golang/protobuf/ptypes/struct"
 
+	"github.com/pulumi/lumi/pkg/resource"
 	"github.com/pulumi/lumi/pkg/util/contract"
 )
 
@@ -36,12 +36,12 @@ type MarshalOptions struct {
 // map of any unknown properties encountered during marshaling (latent values) is returned on the side; these values are
 // marshaled using the default value in the returned structure and so this map is essential for interpreting results.
 func MarshalPropertiesWithUnknowns(
-	ctx *Context, props PropertyMap, opts MarshalOptions) (*structpb.Struct, map[string]bool) {
+	ctx *Context, props resource.PropertyMap, opts MarshalOptions) (*structpb.Struct, map[string]bool) {
 	var unk map[string]bool
 	result := &structpb.Struct{
 		Fields: make(map[string]*structpb.Value),
 	}
-	for _, key := range StablePropertyKeys(props) {
+	for _, key := range resource.StablePropertyKeys(props) {
 		if v := props[key]; !v.IsOutput() {
 			mv, known := MarshalPropertyValue(ctx, props[key], opts)
 			if known {
@@ -59,7 +59,7 @@ func MarshalPropertiesWithUnknowns(
 
 // MarshalProperties performs ordinary marshaling of a resource's properties but then validates afterwards that all
 // fields were known (in other words, no latent properties were encountered).
-func MarshalProperties(ctx *Context, props PropertyMap, opts MarshalOptions) *structpb.Struct {
+func MarshalProperties(ctx *Context, props resource.PropertyMap, opts MarshalOptions) *structpb.Struct {
 	pstr, unks := MarshalPropertiesWithUnknowns(ctx, props, opts)
 	contract.Assertf(unks == nil, "Unexpected unknown properties during final marshaling")
 	return pstr
@@ -67,7 +67,7 @@ func MarshalProperties(ctx *Context, props PropertyMap, opts MarshalOptions) *st
 
 // MarshalPropertyValue marshals a single resource property value into its "JSON-like" value representation.  The
 // boolean return value indicates whether the value was known (true) or unknown (false).
-func MarshalPropertyValue(ctx *Context, v PropertyValue, opts MarshalOptions) (*structpb.Value, bool) {
+func MarshalPropertyValue(ctx *Context, v resource.PropertyValue, opts MarshalOptions) (*structpb.Value, bool) {
 	if v.IsNull() {
 		return &structpb.Value{
 			Kind: &structpb.Value_NullValue{
@@ -112,33 +112,6 @@ func MarshalPropertyValue(ctx *Context, v PropertyValue, opts MarshalOptions) (*
 				StructValue: obj,
 			},
 		}, unks == nil
-	} else if v.IsResource() {
-		// During marshaling, the wire format of a resource URN is the provider ID; in some circumstances, this is
-		// not desirable -- such as when the provider is marshaling data for its own use, or when the IDs are not
-		// yet ready -- in which case RawResources == true and we simply marshal the URN as-is.
-		var wire string
-		m := v.ResourceValue()
-		if opts.RawResources {
-			wire = string(m)
-		} else {
-			contract.Assertf(ctx != nil, "Resource encountered with a nil context; URN not recoverable")
-			var id ID
-			if res, has := ctx.URNRes[m]; has {
-				id = res.ID() // found a new resource with this ID, use it.
-			} else if oldid, has := ctx.URNOldIDs[m]; opts.OldURNs && has {
-				id = oldid // found an old resource, maybe deleted, so use that.
-			} else {
-				contract.Failf("Expected resource URN '%v' to exist at marshal time", m)
-			}
-			contract.Assertf(id != "", "Expected resource URN '%v' to have an ID at marshal time", m)
-			wire = string(id)
-		}
-		glog.V(7).Infof("Serializing resource URN '%v' as '%v' (raw=%v)", m, wire, opts.RawResources)
-		return &structpb.Value{
-			Kind: &structpb.Value_StringValue{
-				StringValue: wire,
-			},
-		}, true
 	} else if v.IsComputed() {
 		e := v.ComputedValue().Element
 		contract.Assert(!e.IsComputed())
@@ -158,8 +131,8 @@ func MarshalPropertyValue(ctx *Context, v PropertyValue, opts MarshalOptions) (*
 }
 
 // UnmarshalProperties unmarshals a "JSON-like" protobuf structure into a new resource property map.
-func UnmarshalProperties(ctx *Context, props *structpb.Struct, opts MarshalOptions) PropertyMap {
-	result := make(PropertyMap)
+func UnmarshalProperties(ctx *Context, props *structpb.Struct, opts MarshalOptions) resource.PropertyMap {
+	result := make(resource.PropertyMap)
 	if props != nil {
 		UnmarshalPropertiesInto(ctx, props, result, opts)
 	}
@@ -167,7 +140,7 @@ func UnmarshalProperties(ctx *Context, props *structpb.Struct, opts MarshalOptio
 }
 
 // UnmarshalPropertiesInto unmarshals a "JSON-like" protobuf structure into an existing resource property map.
-func UnmarshalPropertiesInto(ctx *Context, props *structpb.Struct, t PropertyMap, opts MarshalOptions) {
+func UnmarshalPropertiesInto(ctx *Context, props *structpb.Struct, t resource.PropertyMap, opts MarshalOptions) {
 	contract.Assert(props != nil)
 
 	// First sort the keys so we enumerate them in order (in case errors happen, we want determinism).
@@ -179,7 +152,7 @@ func UnmarshalPropertiesInto(ctx *Context, props *structpb.Struct, t PropertyMap
 
 	// And now unmarshal every field it into the map.
 	for _, k := range keys {
-		pk := PropertyKey(k)
+		pk := resource.PropertyKey(k)
 		v := t[pk]
 		UnmarshalPropertyValueInto(ctx, props.Fields[k], &v, opts)
 		contract.Assert(!v.IsComputed())
@@ -188,50 +161,34 @@ func UnmarshalPropertiesInto(ctx *Context, props *structpb.Struct, t PropertyMap
 }
 
 // UnmarshalPropertyValue unmarshals a single "JSON-like" value into a new property value.
-func UnmarshalPropertyValue(ctx *Context, v *structpb.Value, opts MarshalOptions) PropertyValue {
-	var result PropertyValue
+func UnmarshalPropertyValue(ctx *Context, v *structpb.Value, opts MarshalOptions) resource.PropertyValue {
+	var result resource.PropertyValue
 	UnmarshalPropertyValueInto(ctx, v, &result, opts)
 	return result
 }
 
 // UnmarshalPropertyValueInto unmarshals a single "JSON-like" value into an existing property value slot.  The existing
 // slot may be used to drive transformations, if necessary, such as recovering resource URNs on the receiver side.
-func UnmarshalPropertyValueInto(ctx *Context, v *structpb.Value, t *PropertyValue, opts MarshalOptions) {
+func UnmarshalPropertyValueInto(ctx *Context, v *structpb.Value, t *resource.PropertyValue, opts MarshalOptions) {
 	contract.Assert(v != nil)
 
 	switch v.Kind.(type) {
 	case *structpb.Value_NullValue:
 		contract.Assert(t.CanNull())
-		*t = NewNullProperty()
+		*t = resource.NewNullProperty()
 	case *structpb.Value_BoolValue:
 		contract.Assert(t.CanBool())
-		*t = NewBoolProperty(v.GetBoolValue())
+		*t = resource.NewBoolProperty(v.GetBoolValue())
 	case *structpb.Value_NumberValue:
 		contract.Assert(t.CanNumber())
-		*t = NewNumberProperty(v.GetNumberValue())
+		*t = resource.NewNumberProperty(v.GetNumberValue())
 	case *structpb.Value_StringValue:
-		// In the case of a string, the target may be either a resource URN or a real string.
-		s := v.GetStringValue()
-		if t.CanString() || opts.RawResources {
-			*t = NewStringProperty(s)
-		} else {
-			// During unmarshaling, we must translate from the expected resource wire format of a provider ID, back
-			// into its Lumi side URN.  There are cases when this is not desirable, most notably, when a resource
-			// provider is unmarshaling data for its own consumption (as is the case for receiving payloads from Lumi,
-			// for instance).  In such cases, RawResources == true, and those will end up as simple strings (above).
-			contract.Assert(t.CanResource())
-			contract.Assertf(ctx != nil, "Resource encountered with a nil context; URN not recoverable")
-			id := ID(s)
-			urn, has := ctx.IDURN[id]
-			contract.Assertf(has, "Expected resource ID '%v' to have a URN; none found", id)
-			glog.V(7).Infof("Deserializing resource ID '%v' as URN '%v' (raw=%v)", id, urn, opts.RawResources)
-			*t = NewResourceProperty(urn)
-		}
+		*t = resource.NewStringProperty(v.GetStringValue())
 	case *structpb.Value_ListValue:
 		contract.Assert(t.CanArray())
 
 		// If there's already an array, prefer to swap elements within it.
-		var elems []PropertyValue
+		var elems []resource.PropertyValue
 		if t.IsArray() {
 			elems = t.ArrayValue()
 		}
@@ -239,22 +196,22 @@ func UnmarshalPropertyValueInto(ctx *Context, v *structpb.Value, t *PropertyValu
 		lst := v.GetListValue()
 		for i, elem := range lst.GetValues() {
 			if i == len(elems) {
-				elems = append(elems, PropertyValue{})
+				elems = append(elems, resource.PropertyValue{})
 			}
 			contract.Assert(len(elems) > i)
 			UnmarshalPropertyValueInto(ctx, elem, &elems[i], opts)
 		}
-		*t = NewArrayProperty(elems)
+		*t = resource.NewArrayProperty(elems)
 	case *structpb.Value_StructValue:
 		contract.Assert(t.CanObject())
 
 		// If there's already an object, prefer to swap existing properties.
-		var obj PropertyMap
+		var obj resource.PropertyMap
 		if t.IsObject() {
 			obj = t.ObjectValue()
 		} else {
-			obj = make(PropertyMap)
-			*t = NewObjectProperty(obj)
+			obj = make(resource.PropertyMap)
+			*t = resource.NewObjectProperty(obj)
 		}
 
 		UnmarshalPropertiesInto(ctx, v.GetStructValue(), obj, opts)

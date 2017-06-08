@@ -13,7 +13,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package resource
+package deployment
 
 import (
 	"github.com/golang/glog"
@@ -23,6 +23,8 @@ import (
 	"github.com/pulumi/lumi/pkg/eval/heapstate"
 	"github.com/pulumi/lumi/pkg/eval/rt"
 	"github.com/pulumi/lumi/pkg/graph"
+	"github.com/pulumi/lumi/pkg/resource"
+	"github.com/pulumi/lumi/pkg/resource/plugin"
 	"github.com/pulumi/lumi/pkg/tokens"
 	"github.com/pulumi/lumi/pkg/util/contract"
 )
@@ -31,25 +33,23 @@ import (
 // IDs, names, and properties; their dependencies; and more.  A snapshot is a diffable entity and can be used to create
 // or apply an infrastructure deployment plan in order to make reality match the snapshot state.
 type Snapshot interface {
-	Ctx() *Context                            // fetches the context for this snapshot.
-	Namespace() tokens.QName                  // the namespace target being deployed into.
-	Pkg() tokens.Package                      // the package from which this snapshot came.
-	Args() core.Args                          // the arguments used to compile this package.
-	Resources() []Resource                    // a topologically sorted list of resources (based on dependencies).
-	ResourceByURN(urn URN) Resource           // looks up a resource by its URN.
-	ResourceByObject(obj *rt.Object) Resource // looks up a resource by its object.
+	Ctx() *plugin.Context        // fetches the context for this snapshot.
+	Namespace() tokens.QName     // the namespace target being deployed into.
+	Pkg() tokens.Package         // the package from which this snapshot came.
+	Args() core.Args             // the arguments used to compile this package.
+	Resources() []resource.State // a topologically sorted list of resource states (based on dependencies).
 }
 
 // NewSnapshot creates a snapshot from the given arguments.  The resources must be in topologically sorted order.
-func NewSnapshot(ctx *Context, ns tokens.QName, pkg tokens.Package,
-	args core.Args, resources []Resource) Snapshot {
+func NewSnapshot(ctx *plugin.Context, ns tokens.QName, pkg tokens.Package,
+	args core.Args, resources []resource.State) Snapshot {
 	return &snapshot{ctx, ns, pkg, args, resources}
 }
 
 // NewGraphSnapshot takes an object graph and produces a resource snapshot from it.  It understands how to name
 // resources based on their position within the graph and how to identify and record dependencies.  This function can
 // fail dynamically if the input graph did not satisfy the preconditions for resource graphs (like that it is a DAG).
-func NewGraphSnapshot(ctx *Context, ns tokens.QName, pkg tokens.Package, args core.Args,
+func NewGraphSnapshot(ctx *plugin.Context, ns tokens.QName, pkg tokens.Package, args core.Args,
 	heap *heapstate.Heap, old Snapshot) (Snapshot, error) {
 	// If the old snapshot is non-nil, we need to register old IDs so they will be found below.
 	if old != nil {
@@ -76,26 +76,24 @@ func NewGraphSnapshot(ctx *Context, ns tokens.QName, pkg tokens.Package, args co
 }
 
 type snapshot struct {
-	ctx       *Context       // the context shared by all operations in this snapshot.
-	ns        tokens.QName   // the namespace target being deployed into.
-	pkg       tokens.Package // the package from which this snapshot came.
-	args      core.Args      // the arguments used to compile this package.
-	resources []Resource     // the topologically sorted linearized list of resources.
+	ctx       *plugin.Context  // the context shared by all operations in this snapshot.
+	ns        tokens.QName     // the namespace target being deployed into.
+	pkg       tokens.Package   // the package from which this snapshot came.
+	args      core.Args        // the arguments used to compile this package.
+	resources []resource.State // the topologically sorted linearized list of resource states.
 }
 
-func (s *snapshot) Ctx() *Context           { return s.ctx }
-func (s *snapshot) Namespace() tokens.QName { return s.ns }
-func (s *snapshot) Pkg() tokens.Package     { return s.pkg }
-func (s *snapshot) Args() core.Args         { return s.args }
-func (s *snapshot) Resources() []Resource   { return s.resources }
-
-func (s *snapshot) ResourceByURN(urn URN) Resource           { return s.ctx.URNRes[urn] }
-func (s *snapshot) ResourceByObject(obj *rt.Object) Resource { return s.ctx.ObjRes[obj] }
+func (s *snapshot) Ctx() *plugin.Context        { return s.ctx }
+func (s *snapshot) Namespace() tokens.QName     { return s.ns }
+func (s *snapshot) Pkg() tokens.Package         { return s.pkg }
+func (s *snapshot) Args() core.Args             { return s.args }
+func (s *snapshot) Resources() []resource.State { return s.resources }
 
 // createResources uses a graph to create URNs and resource objects for every resource within.  It
 // returns two maps for further use: a map of vertex to its new resource object, and a map of vertex to its URN.
-func createResources(ctx *Context, ns tokens.QName, heap *heapstate.Heap, resobjs []*rt.Object) ([]Resource, error) {
-	var resources []Resource
+func createResources(ctx *plugin.Context, ns tokens.QName,
+	heap *heapstate.Heap, resobjs []*rt.Object) ([]resource.State, error) {
+	var resources []resource.State
 	for _, resobj := range resobjs {
 		// Make sure the URN doesn't already exist for this object.
 		if urn, has := ctx.ObjURN[resobj]; has {
@@ -125,19 +123,20 @@ func createResources(ctx *Context, ns tokens.QName, heap *heapstate.Heap, resobj
 			// because subsequent resources might contain references to this URN and would fail to find it.
 			ctx.Diag.Errorf(errors.ErrorDuplicateURNNames.At(alloc.Loc), urn)
 			break
-		} else {
-			res.SetURN(urn)
-			ctx.ObjRes[resobj] = res
-			ctx.URNRes[urn] = res
-			ctx.ObjURN[resobj] = urn
 		}
+
+		// Otherwise, we succeeded in generating a URN; assign it and register it in the various maps.
+		res.SetURN(urn)
+		ctx.ObjRes[resobj] = res
+		ctx.URNRes[urn] = res
+		ctx.ObjURN[resobj] = urn
 		resources = append(resources, res)
 	}
 	return resources, nil
 }
 
 // topsort actually performs a topological sort on a resource graph.
-func topsort(ctx *Context, g graph.Graph) ([]*rt.Object, error) {
+func topsort(ctx *plugin.Context, g graph.Graph) ([]*rt.Object, error) {
 	// Sort the graph output so that it's a DAG; if it's got cycles, this can fail.
 	// TODO[pulumi/lumi#106]: we want this to return a *graph*, not a linearized list, so that we can parallelize.
 	// IDEA: it'd be nice to prune the graph to just the resource objects first, so we don't waste effort.

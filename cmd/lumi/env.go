@@ -30,6 +30,7 @@ import (
 	"github.com/pulumi/lumi/pkg/diag/colors"
 	"github.com/pulumi/lumi/pkg/encoding"
 	"github.com/pulumi/lumi/pkg/resource"
+	"github.com/pulumi/lumi/pkg/resource/deployment"
 	"github.com/pulumi/lumi/pkg/tokens"
 	"github.com/pulumi/lumi/pkg/util/cmdutil"
 	"github.com/pulumi/lumi/pkg/util/contract"
@@ -91,11 +92,11 @@ func initEnvCmdName(name tokens.QName, args []string) (*envCmdInfo, error) {
 }
 
 type envCmdInfo struct {
-	Ctx     *resource.Context // the resulting context
-	Env     *resource.Env     // the environment information
-	Envfile *resource.Envfile // the full serialized envfile from which this came.
-	Old     resource.Snapshot // the environment's latest deployment snapshot
-	Args    []string          // the args after extracting the environment name
+	Ctx     *resource.Context   // the resulting context
+	Env     *deployment.Env     // the environment information
+	Envfile *deployment.Envfile // the full serialized envfile from which this came.
+	Old     deployment.Snapshot // the environment's latest deployment snapshot
+	Args    []string            // the args after extracting the environment name
 }
 
 func (eci *envCmdInfo) Close() error {

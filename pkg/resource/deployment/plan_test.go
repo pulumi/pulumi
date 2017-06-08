@@ -13,7 +13,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package resource
+package deployment
 
 import (
 	"testing"
@@ -21,6 +21,8 @@ import (
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 
+	"github.com/pulumi/lumi/pkg/resource"
+	"github.com/pulumi/lumi/pkg/resource/plugin"
 	"github.com/pulumi/lumi/pkg/tokens"
 	"github.com/pulumi/lumi/pkg/util/cmdutil"
 )
@@ -36,7 +38,7 @@ func TestBasicCRUDPlan(t *testing.T) {
 
 	// Create a context that the snapshots and plan will use.
 	ctx := NewContext(cmdutil.Sink(), &testProviderHost{
-		provider: func(propkg tokens.Package) (Provider, error) {
+		provider: func(propkg tokens.Package) (plugin.Provider, error) {
 			if propkg != pkg {
 				return nil, errors.Errorf("Unexpected request to load package %v; expected just %v", propkg, pkg)
 			}
@@ -44,7 +46,7 @@ func TestBasicCRUDPlan(t *testing.T) {
 				check: func(res Resource) ([]CheckFailure, error) {
 					return nil, nil // accept all changes.
 				},
-				inspectChange: func(old, new Resource, computed PropertyMap) ([]string, PropertyMap, error) {
+				inspectChange: func(old, new Resource, computed resource.PropertyMap) ([]string, resource.PropertyMap, error) {
 					return nil, nil, nil // accept all changes.
 				},
 				// we don't actually execute the plan, so there's no need to implement the other functions.
@@ -67,15 +69,15 @@ func TestBasicCRUDPlan(t *testing.T) {
 	urnD := NewURN(ns, mod, typD, namD)
 
 	// Create the old resources snapshot.
-	oldResB := NewResource(ID("b-b-b"), urnB, typB, PropertyMap{
+	oldResB := NewResource(ID("b-b-b"), urnB, typB, resource.PropertyMap{
 		"bf1": NewStringProperty("b-value"),
 		"bf2": NewNumberProperty(42),
 	}, nil)
-	oldResC := NewResource(ID("c-c-c"), urnC, typC, PropertyMap{
+	oldResC := NewResource(ID("c-c-c"), urnC, typC, resource.PropertyMap{
 		"cf1": NewStringProperty("c-value"),
 		"cf2": NewNumberProperty(83),
 	}, nil)
-	oldResD := NewResource(ID("d-d-d"), urnD, typD, PropertyMap{
+	oldResD := NewResource(ID("d-d-d"), urnD, typD, resource.PropertyMap{
 		"df1": NewStringProperty("d-value"),
 		"df2": NewNumberProperty(167),
 	}, nil)
@@ -83,18 +85,18 @@ func TestBasicCRUDPlan(t *testing.T) {
 
 	// Create the new resources snapshot.
 	//     - A is created:
-	newResA := NewResource(ID(""), urnA, typA, PropertyMap{
+	newResA := NewResource(ID(""), urnA, typA, resource.PropertyMap{
 		"af1": NewStringProperty("a-value"),
 		"af2": NewNumberProperty(42),
 	}, nil)
 	//     - B is updated:
-	newResB := NewResource(ID(""), urnB, typB, PropertyMap{
+	newResB := NewResource(ID(""), urnB, typB, resource.PropertyMap{
 		"bf1": NewStringProperty("b-value"),
 		// delete the bf2 field.
 		"bf3": NewBoolProperty(true), // add the bf3.
 	}, nil)
 	//     - C has no changes:
-	newResC := NewResource(ID(""), urnC, typC, PropertyMap{
+	newResC := NewResource(ID(""), urnC, typC, resource.PropertyMap{
 		"cf1": NewStringProperty("c-value"),
 		"cf2": NewNumberProperty(83),
 	}, nil)
@@ -144,29 +146,31 @@ func TestBasicCRUDPlan(t *testing.T) {
 }
 
 type testProviderHost struct {
-	analyzer func(nm tokens.QName) (Analyzer, error)
-	provider func(pkg tokens.Package) (Provider, error)
+	analyzer func(nm tokens.QName) (plugin.Analyzer, error)
+	provider func(pkg tokens.Package) (plugin.Provider, error)
 }
 
 func (host *testProviderHost) Close() error {
 	return nil
 }
-func (host *testProviderHost) Analyzer(nm tokens.QName) (Analyzer, error) {
+func (host *testProviderHost) Analyzer(nm tokens.QName) (plugin.Analyzer, error) {
 	return host.analyzer(nm)
 }
-func (host *testProviderHost) Provider(pkg tokens.Package) (Provider, error) {
+func (host *testProviderHost) Provider(pkg tokens.Package) (plugin.Provider, error) {
 	return host.provider(pkg)
 }
 
 type testProvider struct {
 	pkg           tokens.Package
-	check         func(Resource) ([]CheckFailure, error)
-	name          func(Resource) (tokens.QName, error)
-	create        func(Resource) (State, error)
-	get           func(Resource) error
-	inspectChange func(Resource, Resource, PropertyMap) ([]string, PropertyMap, error)
-	update        func(Resource, Resource) (State, error)
-	delete        func(Resource) (State, error)
+	check         func(tokens.Type, resource.PropertyMap) ([]plugin.CheckFailure, error)
+	name          func(tokens.Type, resource.PropertyMap) (tokens.QName, error)
+	create        func(tokens.Type, resource.PropertyMap) (resource.ID, resource.Status, error)
+	get           func(tokens.Type, resource.ID) (resource.PropertyMap, error)
+	inspectChange func(tokens.Type, resource.ID,
+		resource.PropertyMap, resource.PropertyMap) ([]string, resource.PropertyMap, error)
+	update func(tokens.Type, resource.ID,
+		resource.PropertyMap, resource.PropertyMap) (resource.Status, error)
+	delete func(tokens.Type, resource.ID) (resource.Status, error)
 }
 
 func (prov *testProvider) Close() error {
@@ -175,23 +179,26 @@ func (prov *testProvider) Close() error {
 func (prov *testProvider) Pkg() tokens.Package {
 	return prov.pkg
 }
-func (prov *testProvider) Check(res Resource) ([]CheckFailure, error) {
-	return prov.check(res)
+func (prov *testProvider) Check(t tokens.Type, props resource.PropertyMap) ([]plugin.CheckFailure, error) {
+	return prov.check(t, props)
 }
-func (prov *testProvider) Name(res Resource) (tokens.QName, error) {
-	return prov.name(res)
+func (prov *testProvider) Name(t tokens.Type, props resource.PropertyMap) (tokens.QName, error) {
+	return prov.name(t, props)
 }
-func (prov *testProvider) Create(res Resource) (State, error) {
-	return prov.create(res)
+func (prov *testProvider) Create(t tokens.Type, props resource.PropertyMap) (resource.ID, resource.Status, error) {
+	return prov.create(t, props)
 }
-func (prov *testProvider) Get(res Resource) error {
-	return prov.get(res)
+func (prov *testProvider) Get(t tokens.Type, id resource.ID) (resource.PropertyMap, error) {
+	return prov.get(t, id)
 }
-func (prov *testProvider) InspectChange(old Resource, new Resource,
-	computed PropertyMap) ([]string, PropertyMap, error) {
-	return prov.inspectChange(old, new, computed)
+func (prov *testProvider) InspectChange(t tokens.Type, id resource.ID,
+	olds resource.PropertyMap, news resource.PropertyMap) ([]string, resource.PropertyMap, error) {
+	return prov.inspectChange(t, id, olds, news)
 }
-func (prov *testProvider) Update(old Resource, new Resource) (State, error) {
-	return prov.update(old, new)
+func (prov *testProvider) Update(t tokens.Type, id resource.ID,
+	olds resource.PropertyMap, news resource.PropertyMap) (resource.Status, error) {
+	return prov.update(t, id, olds, news)
 }
-func (prov *testProvider) Delete(res Resource) (State, error) { return prov.delete(res) }
+func (prov *testProvider) Delete(t tokens.Type, id resource.ID) (resource.Status, error) {
+	return prov.delete(res)
+}

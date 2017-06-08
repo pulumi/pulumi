@@ -13,12 +13,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package resource
+package deployment
 
 import (
 	"github.com/pulumi/lumi/pkg/compiler/types/predef"
 	"github.com/pulumi/lumi/pkg/eval/heapstate"
 	"github.com/pulumi/lumi/pkg/graph"
+	"github.com/pulumi/lumi/pkg/resource"
 	"github.com/pulumi/lumi/pkg/util/contract"
 )
 
@@ -30,10 +31,10 @@ type resourceGraph struct {
 var _ graph.Graph = (*resourceGraph)(nil)
 
 // newResourceGraph produces a DAG using the resources' properties embedded URN information.
-func newResourceGraph(resources []Resource) *resourceGraph {
+func newResourceGraph(resources []resource.Resource) *resourceGraph {
 	// First make two maps: one with URNs to resources, the other with resources to vertices.
-	urns := make(map[URN]Resource)
-	verts := make(map[Resource]*resourceVertex)
+	urns := make(map[resource.URN]resource.Resource)
+	verts := make(map[resource.Resource]*resourceVertex)
 	for _, res := range resources {
 		contract.Assert(res != nil)
 		urn := res.URN()
@@ -46,7 +47,7 @@ func newResourceGraph(resources []Resource) *resourceGraph {
 	for _, res := range resources {
 		urn := res.URN()
 		fromv := verts[res]
-		for dep := range res.Inputs().AllResources() {
+		for dep := range res.Dependencies() {
 			to := urns[dep]
 			contract.Assertf(to != nil, "Missing resource for target; from=%v to=%v", urn, dep)
 			tov := verts[to]
@@ -77,8 +78,8 @@ func (v *resourceGraph) Objs() []*resourceEdge { return v.objs }
 func (v *resourceGraph) Roots() []graph.Edge   { return v.roots }
 
 type resourceVertex struct {
-	res    Resource     // this vertex's resource.
-	ins    []graph.Edge // edges connecting from other vertices into this vertex.
+	res    resource.Resource // this vertex's resource.
+	ins    []graph.Edge      // edges connecting from other vertices into this vertex.
 	inres  []*resourceEdge
 	outs   []graph.Edge // edges connecting this vertex to other vertices.
 	outres []*resourceEdge
@@ -86,17 +87,17 @@ type resourceVertex struct {
 
 var _ graph.Vertex = (*resourceVertex)(nil)
 
-func newResourceVertex(res Resource) *resourceVertex {
+func newResourceVertex(res resource.Resource) *resourceVertex {
 	return &resourceVertex{res: res}
 }
 
-func (v *resourceVertex) Resource() Resource      { return v.res }
-func (v *resourceVertex) Data() interface{}       { return v.res }
-func (v *resourceVertex) Label() string           { return "" }
-func (v *resourceVertex) Ins() []graph.Edge       { return v.ins }
-func (v *resourceVertex) InRes() []*resourceEdge  { return v.inres }
-func (v *resourceVertex) Outs() []graph.Edge      { return v.outs }
-func (v *resourceVertex) OutRes() []*resourceEdge { return v.outres }
+func (v *resourceVertex) Resource() resource.Resource { return v.res }
+func (v *resourceVertex) Data() interface{}           { return v.res }
+func (v *resourceVertex) Label() string               { return "" }
+func (v *resourceVertex) Ins() []graph.Edge           { return v.ins }
+func (v *resourceVertex) InRes() []*resourceEdge      { return v.inres }
+func (v *resourceVertex) Outs() []graph.Edge          { return v.outs }
+func (v *resourceVertex) OutRes() []*resourceEdge     { return v.outres }
 
 // connectTo creates an edge connecting the receiver vertex to the argument vertex.
 func (v *resourceVertex) connectTo(to *resourceVertex) {

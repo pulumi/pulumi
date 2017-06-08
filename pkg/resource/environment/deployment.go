@@ -13,7 +13,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package resource
+package environment
 
 import (
 	"bytes"
@@ -22,34 +22,36 @@ import (
 	"time"
 
 	"github.com/pulumi/lumi/pkg/compiler/core"
+	"github.com/pulumi/lumi/pkg/resource"
+	"github.com/pulumi/lumi/pkg/resource/deployment"
 	"github.com/pulumi/lumi/pkg/tokens"
 	"github.com/pulumi/lumi/pkg/util/contract"
 )
 
-// DeploymentRecord is a serializable, flattened LumiGL graph structure, representing a deployment.   It is similar
+// Deployment is a serializable, flattened LumiGL graph structure, representing a deployment.   It is similar
 // to the actual Snapshot interface, except that it flattens and rearranges a few data structures for serializability.
 // Over time, we also expect this to gather more information about deployments themselves.
-type DeploymentRecord struct {
-	Time      time.Time            `json:"time"`                // the time of the deployment.
-	Reftag    *string              `json:"reftag,omitempty"`    // the ref alias, if any (`#ref` by default).
-	Package   tokens.Package       `json:"package"`             // the package deployed by this record.
-	Args      *core.Args           `json:"args,omitempty"`      // the blueprint args for graph creation.
-	Resources *DeploymentResources `json:"resources,omitempty"` // a map of URNs to resource vertices.
+type Deployment struct {
+	Time            time.Time        `json:"time"`                // the time of the deployment.
+	Reftag          *string          `json:"reftag,omitempty"`    // the ref alias, if any (`#ref` by default).
+	Package         tokens.Package   `json:"package"`             // the package deployed by this record.
+	Args            *core.Args       `json:"args,omitempty"`      // the blueprint args for graph creation.
+	ResourceRecords *ResourceRecords `json:"resources,omitempty"` // a map of resource.URNs to resource vertices.
 }
 
 // DefaultDeploymentReftag is the default ref tag for intra-graph edges.
 const DefaultDeploymentReftag = "#ref"
 
-// Deployment is a serializable vertex within a LumiGL graph, specifically for resource snapshots.
-type Deployment struct {
-	ID      *ID                    `json:"id,omitempty"`      // the provider ID for this resource, if any.
+// ResourceRecord is a serializable vertex within a LumiGL graph, specifically for resource snapshots.
+type ResourceRecord struct {
+	ID      resource.ID            `json:"id"`                // the provider ID for this resource, if any.
 	Type    tokens.Type            `json:"type"`              // this resource's full type token.
 	Inputs  map[string]interface{} `json:"inputs,omitempty"`  // the input properties from the program.
 	Outputs map[string]interface{} `json:"outputs,omitempty"` // the output properties from the resource provider.
 }
 
-// SerializeDeploymentRecord serializes an entire snapshot using the given reftag for cross-resource references.
-func SerializeDeploymentRecord(snap Snapshot, reftag string) *DeploymentRecord {
+// SerializeDeployment serializes an entire snapshot using the given reftag for cross-resource references.
+func SerializeDeployment(snap deployment.Snapshot, reftag string) *Deployment {
 	// Initialize the reftag if needed, and only serialize if overridden.
 	var refp *string
 	if reftag == "" {
@@ -59,14 +61,14 @@ func SerializeDeploymentRecord(snap Snapshot, reftag string) *DeploymentRecord {
 	}
 
 	// Serialize all vertices and only include a vertex section if non-empty.
-	var resm *DeploymentResources
-	if snapres := snap.Resources(); len(snapres) > 0 {
-		resm = NewDeploymentResources()
-		for _, res := range snap.Resources() {
-			m := res.URN()
-			contract.Assertf(string(m) != "", "Unexpected empty resource URN")
-			contract.Assertf(!resm.Has(m), "Unexpected duplicate resource URN '%v'", m)
-			resm.Add(m, SerializeDeployment(res, reftag))
+	var resm *ResourceRecords
+	if snapres := snap.ResourceRecords(); len(snapres) > 0 {
+		resm = NewResourceRecords()
+		for _, res := range snap.ResourceRecords() {
+			m := res.resource.URN()
+			contract.Assertf(string(m) != "", "Unexpected empty resource resource.URN")
+			contract.Assertf(!resm.Has(m), "Unexpected duplicate resource resource.URN '%v'", m)
+			resm.Add(m, SerializeResourceRecord(res, reftag))
 		}
 	}
 
@@ -76,56 +78,50 @@ func SerializeDeploymentRecord(snap Snapshot, reftag string) *DeploymentRecord {
 		argsp = &args
 	}
 
-	return &DeploymentRecord{
-		Time:      time.Now(),
-		Reftag:    refp,
-		Package:   snap.Pkg(),
-		Args:      argsp,
-		Resources: resm,
+	return &Deployment{
+		Time:            time.Now(),
+		Reftag:          refp,
+		Package:         snap.Pkg(),
+		Args:            argsp,
+		ResourceRecords: resm,
 	}
 }
 
-// SerializeDeployment turns a resource into a LumiGL data structure suitable for serialization.
-func SerializeDeployment(res Resource, reftag string) *Deployment {
+// SerializeResourceRecord turns a resource into a LumiGL data structure suitable for serialization.
+func SerializeResourceRecord(res resource.Provisioned, reftag string) *ResourceRecord {
 	contract.Assert(res != nil)
-
-	// Only serialize the ID if it is non-empty.
-	var idp *ID
-	if id := res.ID(); id != ID("") {
-		idp = &id
-	}
 
 	// Serialize all input and output properties recursively, and add them if non-empty.
 	var inputs map[string]interface{}
 	if inp := res.Inputs(); inp != nil {
-		inputs = SerializeDeploymentProperties(inp, reftag)
+		inputs = SerializeResourceRecordProperties(inp, reftag)
 	}
 	var outputs map[string]interface{}
 	if outp := res.Outputs(); outp != nil {
-		outputs = SerializeDeploymentProperties(outp, reftag)
+		outputs = SerializeResourceRecordProperties(outp, reftag)
 	}
 
-	return &Deployment{
-		ID:      idp,
+	return &ResourceRecord{
+		ID:      res.ID(),
 		Type:    res.Type(),
 		Inputs:  inputs,
 		Outputs: outputs,
 	}
 }
 
-// SerializeDeploymentProperties serializes a resource property bag so that it's suitable for serialization.
-func SerializeDeploymentProperties(props PropertyMap, reftag string) map[string]interface{} {
+// SerializeResourceRecordProperties serializes a resource property bag so that it's suitable for serialization.
+func SerializeResourceRecordProperties(props resource.PropertyMap, reftag string) map[string]interface{} {
 	dst := make(map[string]interface{})
 	for _, k := range StablePropertyKeys(props) {
-		if v := SerializeDeploymentProperty(props[k], reftag); v != nil {
+		if v := SerializeResourceRecordProperty(props[k], reftag); v != nil {
 			dst[string(k)] = v
 		}
 	}
 	return dst
 }
 
-// SerializeDeploymentProperty serializes a resource property value so that it's suitable for serialization.
-func SerializeDeploymentProperty(prop PropertyValue, reftag string) interface{} {
+// SerializeResourceRecordProperty serializes a resource property value so that it's suitable for serialization.
+func SerializeResourceRecordProperty(prop resource.PropertyValue, reftag string) interface{} {
 	contract.Assert(!prop.IsComputed())
 
 	// Skip nulls and "outputs"; the former needn't be serialized, and the latter happens if there is an output
@@ -139,20 +135,20 @@ func SerializeDeploymentProperty(prop PropertyValue, reftag string) interface{} 
 		srcarr := prop.ArrayValue()
 		dstarr := make([]interface{}, len(srcarr))
 		for i, elem := range prop.ArrayValue() {
-			dstarr[i] = SerializeDeploymentProperty(elem, reftag)
+			dstarr[i] = SerializeResourceRecordProperty(elem, reftag)
 		}
 		return dstarr
 	}
 
 	// Also for objects, recurse and use naked properties.
 	if prop.IsObject() {
-		return SerializeDeploymentProperties(prop.ObjectValue(), reftag)
+		return SerializeResourceRecordProperties(prop.ObjectValue(), reftag)
 	}
 
-	// Morph resources into their equivalent `{ "#ref": "<URN>" }` form.
-	if prop.IsResource() {
+	// Morph resources into their equivalent `{ "#ref": "<resource.URN>" }` form.
+	if prop.IsResourceRecord() {
 		return map[string]string{
-			reftag: string(prop.ResourceValue()),
+			reftag: string(prop.ResourceRecordValue()),
 		}
 	}
 
@@ -160,17 +156,17 @@ func SerializeDeploymentProperty(prop PropertyValue, reftag string) interface{} 
 	return prop.V
 }
 
-// DeserializeDeploymentProperties deserializes an entire map of deployment properties into a resource property map.
-func DeserializeDeploymentProperties(props map[string]interface{}, reftag string) PropertyMap {
+// DeserializeProperties deserializes an entire map of deployment properties into a resource property map.
+func DeserializeProperties(props map[string]interface{}, reftag string) resource.PropertyMap {
 	result := make(PropertyMap)
 	for k, prop := range props {
-		result[PropertyKey(k)] = DeserializeDeploymentProperty(prop, reftag)
+		result[PropertyKey(k)] = DeserializeProperty(prop, reftag)
 	}
 	return result
 }
 
-// DeserializeDeploymentProperty deserializes a single deployment property into a resource property value.
-func DeserializeDeploymentProperty(v interface{}, reftag string) PropertyValue {
+// DeserializeProperty deserializes a single deployment property into a resource property value.
+func DeserializeProperty(v interface{}, reftag string) resource.PropertyValue {
 	if v != nil {
 		switch w := v.(type) {
 		case bool:
@@ -182,21 +178,21 @@ func DeserializeDeploymentProperty(v interface{}, reftag string) PropertyValue {
 		case []interface{}:
 			var arr []PropertyValue
 			for _, elem := range w {
-				arr = append(arr, DeserializeDeploymentProperty(elem, reftag))
+				arr = append(arr, DeserializeProperty(elem, reftag))
 			}
 			return NewArrayProperty(arr)
 		case map[string]interface{}:
-			// If the map has a single entry and it is the reftag, this is a URN.
+			// If the map has a single entry and it is the reftag, this is a resource.URN.
 			if len(w) == 1 {
 				if tag, has := w[reftag]; has {
 					if tagstr, isstring := tag.(string); isstring {
-						return NewResourceProperty(URN(tagstr))
+						return NewResourceRecordProperty(resource.URN(tagstr))
 					}
 				}
 			}
 
 			// Otherwise, this is an arbitrary object value.
-			obj := DeserializeDeploymentProperties(w, reftag)
+			obj := DeserializeProperties(w, reftag)
 			return NewObjectProperty(obj)
 		default:
 			contract.Failf("Unrecognized property type: %v", reflect.ValueOf(v))
@@ -206,29 +202,29 @@ func DeserializeDeploymentProperty(v interface{}, reftag string) PropertyValue {
 	return NewNullProperty()
 }
 
-// DeploymentResources is a map of URN to resource, that also preserves a stable order of its keys.  This ensures
+// ResourceRecords is a map of URN to resource, that also preserves a stable order of its keys.  This ensures
 // enumerations are ordered deterministically, versus Go's built-in map type whose enumeration is randomized.
 // Additionally, because of this stable ordering, marshaling to and from JSON also preserves the order of keys.
-type DeploymentResources struct {
-	m    map[URN]*Deployment
-	keys []URN
+type ResourceRecords struct {
+	m    map[resource.URN]*ResourceRecord
+	keys []resource.URN
 }
 
-func NewDeploymentResources() *DeploymentResources {
-	return &DeploymentResources{m: make(map[URN]*Deployment)}
+func NewResourceRecords() *ResourceRecords {
+	return &ResourceRecords{m: make(map[resource.URN]*ResourceRecord)}
 }
 
-func (m *DeploymentResources) Keys() []URN { return m.keys }
-func (m *DeploymentResources) Len() int    { return len(m.keys) }
+func (m *ResourceRecords) Keys() []resource.URN { return m.keys }
+func (m *ResourceRecords) Len() int             { return len(m.keys) }
 
-func (m *DeploymentResources) Add(k URN, v *Deployment) {
+func (m *ResourceRecords) Add(k resource.URN, v *ResourceRecord) {
 	_, has := m.m[k]
 	contract.Assertf(!has, "Unexpected duplicate key '%v' added to map")
 	m.m[k] = v
 	m.keys = append(m.keys, k)
 }
 
-func (m *DeploymentResources) Delete(k URN) {
+func (m *ResourceRecords) Delete(k resource.URN) {
 	_, has := m.m[k]
 	contract.Assertf(has, "Unexpected delete of non-existent key key '%v'")
 	delete(m.m, k)
@@ -242,29 +238,29 @@ func (m *DeploymentResources) Delete(k URN) {
 	}
 }
 
-func (m *DeploymentResources) Get(k URN) (*Deployment, bool) {
+func (m *ResourceRecords) Get(k resource.URN) (*ResourceRecord, bool) {
 	v, has := m.m[k]
 	return v, has
 }
 
-func (m *DeploymentResources) Has(k URN) bool {
+func (m *ResourceRecords) Has(k resource.URN) bool {
 	_, has := m.m[k]
 	return has
 }
 
-func (m *DeploymentResources) Must(k URN) *Deployment {
+func (m *ResourceRecords) Must(k resource.URN) *ResourceRecord {
 	v, has := m.m[k]
 	contract.Assertf(has, "Expected key '%v' to exist in this map", k)
 	return v
 }
 
-func (m *DeploymentResources) Set(k URN, v *Deployment) {
+func (m *ResourceRecords) Set(k resource.URN, v *ResourceRecord) {
 	_, has := m.m[k]
 	contract.Assertf(has, "Expected key '%v' to exist in this map for setting an element", k)
 	m.m[k] = v
 }
 
-func (m *DeploymentResources) SetOrAdd(k URN, v *Deployment) {
+func (m *ResourceRecords) SetOrAdd(k resource.URN, v *ResourceRecord) {
 	if _, has := m.m[k]; has {
 		m.Set(k, v)
 	} else {
@@ -272,21 +268,21 @@ func (m *DeploymentResources) SetOrAdd(k URN, v *Deployment) {
 	}
 }
 
-type DeploymentKeyValue struct {
-	Key   URN
-	Value *Deployment
+type ResourceRecordKV struct {
+	Key   resource.URN
+	Value *ResourceRecord
 }
 
 // Iter can be used to conveniently range over a map's contents stably.
-func (m *DeploymentResources) Iter() []DeploymentKeyValue {
-	var kvps []DeploymentKeyValue
+func (m *ResourceRecords) Iter() []ResourceRecordKV {
+	var kvps []ResourceRecordKV
 	for _, k := range m.Keys() {
-		kvps = append(kvps, DeploymentKeyValue{k, m.Must(k)})
+		kvps = append(kvps, ResourceRecordKV{k, m.Must(k)})
 	}
 	return kvps
 }
 
-func (m *DeploymentResources) MarshalJSON() ([]byte, error) {
+func (m *ResourceRecords) MarshalJSON() ([]byte, error) {
 	var b bytes.Buffer
 	b.WriteString("{")
 	for i, k := range m.Keys() {
@@ -312,9 +308,9 @@ func (m *DeploymentResources) MarshalJSON() ([]byte, error) {
 	return b.Bytes(), nil
 }
 
-func (m *DeploymentResources) UnmarshalJSON(b []byte) error {
+func (m *ResourceRecords) UnmarshalJSON(b []byte) error {
 	contract.Assert(m.m == nil)
-	m.m = make(map[URN]*Deployment)
+	m.m = make(map[resource.URN]*ResourceRecord)
 
 	// Do a pass and read keys and values in the right order.
 	rdr := bytes.NewReader(b)
@@ -328,7 +324,7 @@ func (m *DeploymentResources) UnmarshalJSON(b []byte) error {
 	}
 	contract.Assert(opencurly.(json.Delim) == '{')
 
-	// Parse out every resource key (URN) and element (*Deployment):
+	// Parse out every resource key (resource.URN) and element (*Deployment):
 	for dec.More() {
 		// See if we've reached the closing '}'; if yes, chew on it and break.
 		token, err := dec.Token()
@@ -340,9 +336,9 @@ func (m *DeploymentResources) UnmarshalJSON(b []byte) error {
 			break
 		}
 
-		k := URN(token.(string))
+		k := resource.URN(token.(string))
 		contract.Assert(dec.More())
-		var v *Deployment
+		var v *ResourceRecord
 		if err := dec.Decode(&v); err != nil {
 			return err
 		}
