@@ -319,7 +319,7 @@ func ParseFunctionType(tok Type) FunctionType {
 }
 
 // funcDelims are the set of characters that might delimit function type parameters.
-var funcDelims = FunctionTypeParamSeparator + FunctionTypeSeparator
+//var funcDelims = FunctionTypeParamSeparator + FunctionTypeSeparator
 
 // parseNextFunctionType parses the next function type from the given token, returning any excess.
 func parseNextFunctionType(b *tokenBuffer) FunctionType {

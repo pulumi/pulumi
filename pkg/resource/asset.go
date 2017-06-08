@@ -348,7 +348,11 @@ func (a Archive) openURLStream(url *url.URL) (io.ReadCloser, error) {
 // APIs that demand []bytes.
 func (a Archive) Bytes(format ArchiveFormat) []byte {
 	var data bytes.Buffer
-	a.Archive(format, &data)
+	err := a.Archive(format, &data)
+	if err != nil {
+		contract.Assert(err != nil)
+	}
+
 	return data.Bytes()
 }
 
@@ -450,12 +454,21 @@ func (a Archive) archiveZIP(w io.Writer) error {
 // ReadSourceArchive returns a stream to the underlying archive, if there eis one.
 func (a Archive) ReadSourceArchive() (ArchiveFormat, io.ReadCloser, error) {
 	if path, ispath := a.GetPath(); ispath {
-		if format, _ := detectArchiveFormat(path); format != NotArchive {
+		if format, locerr := detectArchiveFormat(path); format != NotArchive {
+			if locerr != nil {
+				return 0, nil, locerr
+			}
 			f, err := os.Open(path)
 			return format, f, err
 		}
-	} else if url, isurl, _ := a.GetURIURL(); isurl {
-		if format, _ := detectArchiveFormat(url.Path); format != NotArchive {
+	} else if url, isurl, urlerr := a.GetURIURL(); isurl {
+		if urlerr != nil {
+			return 0, nil, urlerr
+		}
+		if format, arcerr := detectArchiveFormat(url.Path); format != NotArchive {
+			if arcerr != nil {
+				return 0, nil, arcerr
+			}
 			s, err := a.openURLStream(url)
 			return format, s, err
 		}

@@ -79,8 +79,8 @@ func newPlugin(ctx *Context, bins []string, prefix string) (*plugin, error) {
 		ts := tracers[t]
 		reader := bufio.NewReader(t)
 		for {
-			line, err := reader.ReadString('\n')
-			if err != nil {
+			line, readerr := reader.ReadString('\n')
+			if readerr != nil {
 				break
 			}
 			ts.cb(fmt.Sprintf("%v.%v: %v", prefix, ts.lbl, line[:len(line)-1]))
@@ -95,13 +95,13 @@ func newPlugin(ctx *Context, bins []string, prefix string) (*plugin, error) {
 	var port string
 	b := make([]byte, 1)
 	for {
-		n, err := plug.Stdout.Read(b)
-		if err != nil {
+		n, stderr := plug.Stdout.Read(b)
+		if stderr != nil {
 			plug.Proc.Kill()
 			if port == "" {
-				return nil, errors.Wrapf(err, "could not read plugin [%v] stdout", foundbin)
+				return nil, errors.Wrapf(stderr, "could not read plugin [%v] stdout", foundbin)
 			}
-			return nil, errors.Wrapf(err, "failure reading plugin [%v] stdout (read '%v')", foundbin, port)
+			return nil, errors.Wrapf(stderr, "failure reading plugin [%v] stdout (read '%v')", foundbin, port)
 		}
 		if n > 0 && b[0] == '\n' {
 			break

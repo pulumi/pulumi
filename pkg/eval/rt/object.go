@@ -29,6 +29,8 @@ import (
 	"github.com/pulumi/lumi/pkg/util/contract"
 )
 
+const nilString = "<nil>"
+
 // Object is a value allocated and stored on the heap.  In LumiIL's interpreter, all values are heap allocated, since we
 // are less concerned about performance of the evaluation (compared to the cost of provisioning cloud resources).
 type Object struct {
@@ -240,14 +242,14 @@ func (o *Object) details(funcs bool, visited map[*Object]bool, indent string) st
 	case types.Number:
 		return strconv.FormatFloat(o.NumberValue(), 'f', -1, 64)
 	case types.Null:
-		return "<nil>"
+		return nilString
 	default:
 		// See if it's a func; if yes, do function formatting.
 		if _, isfnc := o.t.(*symbols.FunctionType); isfnc {
 			stub := o.FunctionValue()
 			var this string
 			if stub.This == nil {
-				this = "<nil>"
+				this = nilString
 			} else {
 				this = stub.This.String()
 			}
@@ -309,14 +311,14 @@ func (o *Object) String() string {
 	case types.Number:
 		return strconv.FormatFloat(o.NumberValue(), 'f', -1, 64)
 	case types.Null:
-		return "<nil>"
+		return nilString
 	default:
 		// See if it's a func; if yes, do function formatting.
 		if _, isfnc := o.t.(*symbols.FunctionType); isfnc {
 			stub := o.FunctionValue()
 			var this string
 			if stub.This == nil {
-				this = "<nil>"
+				this = nilString
 			} else {
 				this = stub.This.String()
 			}

@@ -53,7 +53,10 @@ func newPackInfoCmd() *cobra.Command {
 			var err error
 			if len(args) == 0 {
 				// No package specified, just load from the current directory.
-				pwd, _ := os.Getwd()
+				pwd, locerr := os.Getwd()
+				if locerr != nil {
+					return locerr
+				}
 				if pkg, err = detectPackage(pwd); err != nil {
 					return err
 				}

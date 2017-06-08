@@ -76,38 +76,59 @@ func Print(g graph.Graph, w io.Writer) error {
 
 		// Print this vertex; first its "label" (type) and then its direct dependencies.
 		// IDEA: consider serializing properties on the node also.
-		b.WriteString(fmt.Sprintf("%v%v", indent, id))
-		if label := v.Label(); label != "" {
-			b.WriteString(fmt.Sprintf(" [label=\"%v\"]", label))
+		_, writerr := b.WriteString(fmt.Sprintf("%v%v", indent, id))
+		if writerr != nil {
+			return writerr
 		}
-		b.WriteString(";\n")
+		if label := v.Label(); label != "" {
+			_, writerr2 := b.WriteString(fmt.Sprintf(" [label=\"%v\"]", label))
+			if writerr2 != nil {
+				return writerr2
+			}
+		}
+		_, writerr3 := b.WriteString(";\n")
+		if writerr3 != nil {
+			return writerr3
+		}
 
 		// Now print out all dependencies as "ID -> {A ... Z}".
 		outs := v.Outs()
 		if len(outs) > 0 {
-			b.WriteString(fmt.Sprintf("%v%v -> {", indent, id))
-
+			_, reterr := b.WriteString(fmt.Sprintf("%v%v -> {", indent, id))
+			if reterr != nil {
+				return reterr
+			}
 			// Print the ID of each dependency and, for those we haven't seen, add them to the frontier.
 			for i, out := range outs {
 				to := out.To()
 
 				if i > 0 {
-					b.WriteString(" ")
+					_, reterr2 := b.WriteString(" ")
+					if reterr2 != nil {
+						return reterr2
+					}
 				}
-				b.WriteString(getID(to))
-
+				_, reterr3 := b.WriteString(getID(to))
+				if reterr3 != nil {
+					return reterr3
+				}
 				if _, q := queued[to]; !q {
 					queued[to] = true
 					frontier = append(frontier, to)
 				}
 			}
 
-			b.WriteString("}\n")
+			_, locerr := b.WriteString("}\n")
+			if locerr != nil {
+				return locerr
+			}
 		}
 	}
 
 	// Finish the graph.
-	b.WriteString("}\n")
-
+	_, finerr := b.WriteString("}\n")
+	if finerr != nil {
+		return finerr
+	}
 	return b.Flush()
 }

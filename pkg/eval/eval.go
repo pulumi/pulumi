@@ -991,9 +991,9 @@ func (e *evaluator) evalSwitchStatement(node *ast.SwitchStatement) *rt.Unwind {
 			match = true
 		} else {
 			// Otherwise, evaluate the expression, and check for equality.
-			clause, uw := e.evalExpression(*caseNode.Clause)
-			if uw != nil {
-				return uw
+			clause, locerr := e.evalExpression(*caseNode.Clause)
+			if locerr != nil {
+				return locerr
 			}
 			match = e.evalBinaryOperatorEquals(expr, clause)
 		}
