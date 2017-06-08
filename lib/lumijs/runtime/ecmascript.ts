@@ -13,6 +13,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+/* tslint:disable:ordered-imports */
+
 import * as lumi from "@lumi/lumi";
 import {assert} from "./assert";
 import {Boolean, Number, String, TypeError} from "../lib";

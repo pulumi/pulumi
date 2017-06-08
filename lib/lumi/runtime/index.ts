@@ -50,7 +50,7 @@ export function jsonParse(json: string): any {
 // as simple JSON.  Like toString, it includes the full text of the function's source code, suitable for execution.
 export function serializeClosure(func: any): Closure | undefined {
     // functionality provided by the runtime
-    return undefined; 
+    return undefined;
 }
 
 // Closure represents the serialized form of a Lumi function.

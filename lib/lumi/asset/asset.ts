@@ -13,6 +13,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+/* tslint:disable:no-empty */
+
 // Asset represents a blob of text or data that is managed as a first class entity.
 export abstract class Asset {
     constructor() {
