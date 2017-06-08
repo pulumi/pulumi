@@ -349,9 +349,7 @@ func (a Archive) openURLStream(url *url.URL) (io.ReadCloser, error) {
 func (a Archive) Bytes(format ArchiveFormat) []byte {
 	var data bytes.Buffer
 	err := a.Archive(format, &data)
-	if err != nil {
-		contract.Assert(err != nil)
-	}
+	contract.Assert(err == nil)
 
 	return data.Bytes()
 }

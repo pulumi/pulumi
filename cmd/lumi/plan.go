@@ -559,22 +559,22 @@ func printPropertyValueDiff(b *bytes.Buffer, title func(string), diff resource.V
 		a := diff.Array
 		for i := 0; i < a.Len(); i++ {
 			_, newIndent := getArrayElemHeader(b, i, indent)
-			ftitle := func(id string) { printArrayElemHeader(b, i, id) }
+			titleFunc := func(id string) { printArrayElemHeader(b, i, id) }
 			if add, isadd := a.Adds[i]; isadd {
 				b.WriteString(resource.OpCreate.Color())
-				ftitle(addIndent(indent))
+				titleFunc(addIndent(indent))
 				printPropertyValue(b, add, planning, addIndent(newIndent))
 				b.WriteString(colors.Reset)
 			} else if delete, isdelete := a.Deletes[i]; isdelete {
 				b.WriteString(resource.OpDelete.Color())
-				ftitle(deleteIndent(indent))
+				titleFunc(deleteIndent(indent))
 				printPropertyValue(b, delete, planning, deleteIndent(newIndent))
 				b.WriteString(colors.Reset)
 			} else if update, isupdate := a.Updates[i]; isupdate {
-				ftitle(indent)
+				titleFunc(indent)
 				printPropertyValueDiff(b, func(string) {}, update, causedReplace, planning, newIndent)
 			} else {
-				ftitle(indent)
+				titleFunc(indent)
 				printPropertyValue(b, a.Sames[i], planning, newIndent)
 			}
 		}

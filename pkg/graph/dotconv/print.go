@@ -29,12 +29,14 @@ import (
 )
 
 func Print(g graph.Graph, w io.Writer) error {
+
+	var err error
 	// Allocate a new writer.  In general, we will ignore write errors throughout this function, for simplicity, opting
 	// instead to return the result of flushing the buffer at the end, which is generally latching.
 	b := bufio.NewWriter(w)
 
 	// Print the graph header.
-	if _, err := b.WriteString("strict digraph {\n"); err != nil {
+	if _, err = b.WriteString("strict digraph {\n"); err != nil {
 		return err
 	}
 
@@ -76,41 +78,41 @@ func Print(g graph.Graph, w io.Writer) error {
 
 		// Print this vertex; first its "label" (type) and then its direct dependencies.
 		// IDEA: consider serializing properties on the node also.
-		_, writerr := b.WriteString(fmt.Sprintf("%v%v", indent, id))
-		if writerr != nil {
-			return writerr
+		_, err = b.WriteString(fmt.Sprintf("%v%v", indent, id))
+		if err != nil {
+			return err
 		}
 		if label := v.Label(); label != "" {
-			_, writerr2 := b.WriteString(fmt.Sprintf(" [label=\"%v\"]", label))
-			if writerr2 != nil {
-				return writerr2
+			_, err = b.WriteString(fmt.Sprintf(" [label=\"%v\"]", label))
+			if err != nil {
+				return err
 			}
 		}
-		_, writerr3 := b.WriteString(";\n")
-		if writerr3 != nil {
-			return writerr3
+		_, err = b.WriteString(";\n")
+		if err != nil {
+			return err
 		}
 
 		// Now print out all dependencies as "ID -> {A ... Z}".
 		outs := v.Outs()
 		if len(outs) > 0 {
-			_, reterr := b.WriteString(fmt.Sprintf("%v%v -> {", indent, id))
-			if reterr != nil {
-				return reterr
+			_, err = b.WriteString(fmt.Sprintf("%v%v -> {", indent, id))
+			if err != nil {
+				return err
 			}
 			// Print the ID of each dependency and, for those we haven't seen, add them to the frontier.
 			for i, out := range outs {
 				to := out.To()
 
 				if i > 0 {
-					_, reterr2 := b.WriteString(" ")
-					if reterr2 != nil {
-						return reterr2
+					_, err = b.WriteString(" ")
+					if err != nil {
+						return err
 					}
 				}
-				_, reterr3 := b.WriteString(getID(to))
-				if reterr3 != nil {
-					return reterr3
+				_, err = b.WriteString(getID(to))
+				if err != nil {
+					return err
 				}
 				if _, q := queued[to]; !q {
 					queued[to] = true
@@ -118,17 +120,17 @@ func Print(g graph.Graph, w io.Writer) error {
 				}
 			}
 
-			_, locerr := b.WriteString("}\n")
-			if locerr != nil {
-				return locerr
+			_, err = b.WriteString("}\n")
+			if err != nil {
+				return err
 			}
 		}
 	}
 
 	// Finish the graph.
-	_, finerr := b.WriteString("}\n")
-	if finerr != nil {
-		return finerr
+	_, err = b.WriteString("}\n")
+	if err != nil {
+		return err
 	}
 	return b.Flush()
 }
