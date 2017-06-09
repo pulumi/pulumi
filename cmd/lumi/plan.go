@@ -193,7 +193,7 @@ func printPlan(d diag.Sink, result *planResult, opts deployOptions) {
 
 	// Now walk the plan's steps and and pretty-print them out.
 	prelude.WriteString(fmt.Sprintf("%vPlanned changes:%v\n", colors.SpecUnimportant, colors.Reset))
-	fmt.Printf(colors.Colorize(&prelude))
+	fmt.Print(colors.Colorize(&prelude))
 
 	// Print a nice message if the update is an empty one.
 	if empty := checkEmpty(d, result.Plan); !empty {
@@ -213,7 +213,7 @@ func printPlan(d diag.Sink, result *planResult, opts deployOptions) {
 
 		// Print a summary of operation counts.
 		printSummary(&summary, counts, opts.ShowReplaceSteps, true)
-		fmt.Printf(colors.Colorize(&summary))
+		fmt.Print(colors.Colorize(&summary))
 	}
 }
 
@@ -559,22 +559,22 @@ func printPropertyValueDiff(b *bytes.Buffer, title func(string), diff resource.V
 		a := diff.Array
 		for i := 0; i < a.Len(); i++ {
 			_, newIndent := getArrayElemHeader(b, i, indent)
-			title := func(id string) { printArrayElemHeader(b, i, id) }
+			titleFunc := func(id string) { printArrayElemHeader(b, i, id) }
 			if add, isadd := a.Adds[i]; isadd {
 				b.WriteString(resource.OpCreate.Color())
-				title(addIndent(indent))
+				titleFunc(addIndent(indent))
 				printPropertyValue(b, add, planning, addIndent(newIndent))
 				b.WriteString(colors.Reset)
 			} else if delete, isdelete := a.Deletes[i]; isdelete {
 				b.WriteString(resource.OpDelete.Color())
-				title(deleteIndent(indent))
+				titleFunc(deleteIndent(indent))
 				printPropertyValue(b, delete, planning, deleteIndent(newIndent))
 				b.WriteString(colors.Reset)
 			} else if update, isupdate := a.Updates[i]; isupdate {
-				title(indent)
+				titleFunc(indent)
 				printPropertyValueDiff(b, func(string) {}, update, causedReplace, planning, newIndent)
 			} else {
-				title(indent)
+				titleFunc(indent)
 				printPropertyValue(b, a.Sames[i], planning, newIndent)
 			}
 		}

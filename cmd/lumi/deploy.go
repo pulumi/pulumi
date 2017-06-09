@@ -117,7 +117,7 @@ func deploy(cmd *cobra.Command, info *envCmdInfo, opts deployOptions) {
 			var header bytes.Buffer
 			printPrelude(&header, result, opts, false)
 			header.WriteString(fmt.Sprintf("%vDeploying changes:%v\n", colors.SpecUnimportant, colors.Reset))
-			fmt.Printf(colors.Colorize(&header))
+			fmt.Print(colors.Colorize(&header))
 
 			// Print a nice message if the update is an empty one.
 			empty := checkEmpty(info.Ctx.Diag, result.Plan)
@@ -149,7 +149,7 @@ func deploy(cmd *cobra.Command, info *envCmdInfo, opts deployOptions) {
 			env := result.Info.Env
 			saveEnv(env, checkpoint, opts.Output, true /*overwrite*/)
 
-			fmt.Printf(colors.Colorize(&summary))
+			fmt.Print(colors.Colorize(&summary))
 		}
 	}
 }
@@ -198,7 +198,7 @@ func (prog *deployProgress) Before(step resource.Step) {
 	var b bytes.Buffer
 	b.WriteString(fmt.Sprintf("Applying step #%v [%v]%v\n", stepnum, stepop, extra))
 	printStep(&b, step, prog.Summary, false, "")
-	fmt.Printf(colors.Colorize(&b))
+	fmt.Print(colors.Colorize(&b))
 }
 
 func (prog *deployProgress) After(step resource.Step, state resource.State, err error) {
@@ -211,7 +211,7 @@ func (prog *deployProgress) After(step resource.Step, state resource.State, err 
 		if step.Op() == resource.OpCreate {
 			var b bytes.Buffer
 			printResourceOutputProperties(&b, step, "")
-			fmt.Printf(colors.Colorize(&b))
+			fmt.Print(colors.Colorize(&b))
 		}
 	} else {
 		// Issue a true, bonafide error.
@@ -234,6 +234,6 @@ func (prog *deployProgress) After(step resource.Step, state resource.State, err 
 		}
 		b.WriteString(colors.Reset)
 		b.WriteString("\n")
-		fmt.Printf(colors.Colorize(&b))
+		fmt.Print(colors.Colorize(&b))
 	}
 }

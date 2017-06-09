@@ -22,6 +22,7 @@ import (
 	"golang.org/x/tools/go/loader"
 
 	"github.com/pulumi/lumi/pkg/diag"
+	"github.com/pulumi/lumi/pkg/util/contract"
 )
 
 type goPos interface {
@@ -33,7 +34,9 @@ func goDiag(prog *loader.Program, elem goPos, relto string) diag.Diagable {
 	pos := prog.Fset.Position(elem.Pos())
 	file := pos.Filename
 	if relto != "" {
-		file, _ = filepath.Rel(relto, file)
+		var err error
+		file, err = filepath.Rel(relto, file)
+		contract.Assert(err != nil)
 	}
 	return &goDiagable{
 		doc: diag.NewDocument(file),

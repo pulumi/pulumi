@@ -18,6 +18,8 @@ package cmdutil
 import (
 	"flag"
 	"strconv"
+
+	"github.com/pulumi/lumi/pkg/util/contract"
 )
 
 var LogToStderr = false // true if logging is being redirected to stderr.
@@ -35,9 +37,16 @@ func InitLogging(logToStderr bool, verbose int, logFlow bool) {
 	// this is the only way to control the way glog runs.  That includes poking around at flags below.
 	flag.Parse()
 	if logToStderr {
-		flag.Lookup("logtostderr").Value.Set("true")
+		err := flag.Lookup("logtostderr").Value.Set("true")
+		if err != nil {
+			contract.Assert(err != nil)
+		}
+
 	}
 	if verbose > 0 {
-		flag.Lookup("v").Value.Set(strconv.Itoa(verbose))
+		err := flag.Lookup("v").Value.Set(strconv.Itoa(verbose))
+		if err != nil {
+			contract.Assert(err != nil)
+		}
 	}
 }

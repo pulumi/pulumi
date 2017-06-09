@@ -13,6 +13,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+/* tslint:disable:ordered-imports */
+
 export * from "./arch";
 
 import * as clouds from "./clouds";

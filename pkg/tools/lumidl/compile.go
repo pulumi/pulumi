@@ -50,9 +50,17 @@ func Compile(opts CompileOptions, path string) error {
 
 	// Adjust settings to their defaults and adjust any paths to be absolute.
 	if path == "" {
-		path, _ = os.Getwd()
+		var err error
+		path, err = os.Getwd()
+		if err != nil {
+			return err
+		}
 	} else {
-		path, _ = filepath.Abs(path)
+		var err error
+		path, err = filepath.Abs(path)
+		if err != nil {
+			return err
+		}
 	}
 	if opts.PkgBaseIDL == "" {
 		// The default IDL package base is just the GOPATH package path for the target IDL path.
@@ -63,10 +71,18 @@ func Compile(opts CompileOptions, path string) error {
 		opts.PkgBaseIDL = pkgpath
 	}
 	if opts.OutPack != "" {
-		opts.OutPack, _ = filepath.Abs(opts.OutPack)
+		var err error
+		opts.OutPack, err = filepath.Abs(opts.OutPack)
+		if err != nil {
+			return err
+		}
 	}
 	if opts.OutRPC != "" {
-		opts.OutRPC, _ = filepath.Abs(opts.OutRPC)
+		var err error
+		opts.OutRPC, err = filepath.Abs(opts.OutRPC)
+		if err != nil {
+			return err
+		}
 
 		// If there is no package base, pick a default based on GOPATH.
 		if opts.PkgBaseRPC == "" {

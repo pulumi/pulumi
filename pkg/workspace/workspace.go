@@ -179,7 +179,7 @@ func (w *workspace) DepCandidates(dep pack.PackageURL) []string {
 }
 
 // namePath just cleans a name and makes sure it's appropriate to use as a path.
-func namePath(nm tokens.Name) string {
+func namePath(nm tokens.Name) string { //nolint
 	return stringNamePath(string(nm))
 }
 

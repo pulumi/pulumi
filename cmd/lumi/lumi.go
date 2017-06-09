@@ -31,6 +31,7 @@ import (
 	"github.com/pulumi/lumi/pkg/util/cmdutil"
 )
 
+// NewLumiCmd creates a new Lumi Cmd instance.
 func NewLumiCmd() *cobra.Command {
 	var logFlow bool
 	var logToStderr bool

@@ -13,10 +13,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { AssetArchive, String } from "@lumi/lumi/asset"
-import { serializeClosure, jsonStringify } from "@lumi/lumi/runtime"
-import { Function as LambdaFunction } from "../lambda/function"
-import { ARN } from "../types"
+/* tslint:disable: ordered-imports align*/
+import { AssetArchive, String } from "@lumi/lumi/asset";
+import { serializeClosure, jsonStringify } from "@lumi/lumi/runtime";
+import { Function as LambdaFunction } from "../lambda/function";
+import { ARN } from "../types";
 import { Role } from "../iam/role";
 
 // Context is the shape of the context object passed to a Function callback.
@@ -40,13 +41,13 @@ let policy = {
         {
             "Action": "sts:AssumeRole",
             "Principal": {
-                "Service": "lambda.amazonaws.com"
+                "Service": "lambda.amazonaws.com",
             },
             "Effect": "Allow",
-            "Sid": ""
-        }
-    ]
-}
+            "Sid": "",
+        },
+    ],
+};
 
 // Function is a higher-level API for creating and managing AWS Lambda Function resources implemented
 // by a Lumi lambda expression and with a set of attached policies.
@@ -71,29 +72,28 @@ export class Function {
         this.role = new Role(name + "-role", {
             assumeRolePolicyDocument: policy,
             managedPolicyARNs: policies,
-        })
+        });
 
         switch (closure.language) {
             case ".js":
                 this.lambda = new LambdaFunction(name, {
                     code: new AssetArchive({
-                        "index.js": new String(
+                        "index.js":
                             "exports.handler = (__event, __context, __callback) => {\n" +
                             "  let env = JSON.parse(process.env.LUMI_ENV)\n" +
-                            // TODO[pulumi/lumi#173]: Once we decide how to deserialize Lumi Resources, we 
-                            // likely will need to add additional deserialization behaviour here. 
+                            // TODO[pulumi/lumi#173]: Once we decide how to deserialize Lumi Resources, we
+                            // likely will need to add additional deserialization behaviour here.
                             "   with(env) {\n" +
                             "       let __f = " + closure.code +
                             "       __f(__event, __context, __callback);\n" +
                             "   }\n" +
-                            "}\n"
-                        )
+                            "}\n",
                     }),
                     handler: "index.handler",
                     runtime: "nodejs6.10",
                     role: this.role,
                     environment: {
-                        LUMI_ENV: jsonStringify(closure.environment)
+                        LUMI_ENV: jsonStringify(closure.environment),
                     },
                 });
                 break;

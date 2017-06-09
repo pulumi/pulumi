@@ -22,7 +22,7 @@ import * as config from "../config";
 
 // instanceTypeArch is a map of instance type to its architecture.
 export let instanceTypeArch: {
-    [instanceType: string]: string
+    [instanceType: string]: string,
 } = {
     "t1.micro"   : "PV64" ,
     "t2.nano"    : "HVM64",
@@ -81,7 +81,7 @@ export let instanceTypeArch: {
 
 // regionArchLinuxAMI is a map from region to inner maps from architecture to the recommended Linux AMI.
 export let regionArchLinuxAMI: {
-    [region: string]: { [arch: string]: string; }
+    [region: string]: { [arch: string]: string; },
 } = {
     "us-east-1": {
         "PV64" : "ami-2a69aa47",
@@ -157,7 +157,7 @@ export let regionArchLinuxAMI: {
         "PV64" : "ami-77559f1a",
         "HVM64": "ami-8e6aa0e3",
         "HVMG2": "NOT_SUPPORTED",
-    }
+    },
 };
 
 // getLinuxAMI gets the recommended Linux AMI for the given instance in the current AWS region.
