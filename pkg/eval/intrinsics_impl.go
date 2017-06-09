@@ -19,7 +19,6 @@ import (
 	"crypto/sha1"
 	"encoding/hex"
 	"fmt"
-	"sort"
 	"strconv"
 	"strings"
 
@@ -112,38 +111,23 @@ func serializeClosure(intrin *rt.Intrinsic, e *evaluator, this *rt.Object, args 
 
 	// Insert environment variables into a PropertyMap with stable ordering
 	envPropMap := rt.NewPropertyMap()
-	names := []tokens.Name{}
-	vals := map[tokens.Name]*rt.Object{}
-	global := e.getModuleGlobals(stub.Module)
 	for _, tok := range binder.FreeVars(stub.Func) {
 		var name tokens.Name
-		var val *rt.Object
 		contract.Assertf(tok.Simple() || (tok.HasModule() && tok.HasModuleMember() && !tok.HasClassMember()),
 			"Expected free variable to be simple name or reference to top-level module name")
 		if tok.Simple() {
 			name = tok.Name()
-			lv := stub.Env.Lookup(name)
-			if lv != nil {
-				val = stub.Env.GetValue(lv)
-			} else {
-				val = global.Properties().Get(rt.PropertyKey(name))
-				if val == nil {
-					// The variable was not found in the environment, so skip serializing it.
-					// This will be true for references to globals which are not known to Lumi but
-					// will be available within the runtime environment.
-					continue
-				}
-			}
 		} else {
 			name = tokens.Name(tok.ModuleMember().Name())
-			val = global.Properties().Get(rt.PropertyKey(name))
 		}
-		names = append(names, name)
-		vals[name] = val
-	}
-	sort.SliceStable(names, func(i, j int) bool { return names[i] < names[j] })
-	for _, name := range names {
-		envPropMap.Set(rt.PropertyKey(name), vals[name])
+		global := e.getModuleGlobals(stub.Module)
+		pv := getDynamicNameAddrCore(stub.Env, global, name)
+		if pv != nil {
+			envPropMap.Set(rt.PropertyKey(name), pv.Obj())
+		}
+		// Else the variable was not found, so we skip serializing it.
+		// This will be true for references to globals which are not known to Lumi but
+		// will be available within the runtime environment.
 	}
 	envObj := e.alloc.New(intrin.Tree(), types.Dynamic, envPropMap, nil)
 

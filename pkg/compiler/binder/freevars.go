@@ -18,9 +18,12 @@ package binder
 import (
 	"github.com/pulumi/lumi/pkg/compiler/ast"
 	"github.com/pulumi/lumi/pkg/tokens"
+	"github.com/pulumi/lumi/pkg/util/contract"
 )
 
 // FreeVars computes the free variables referenced inside a function body.
+// The free variables for a function will be either simple identifier tokens or tokens
+// referencing module-scope variables.
 func FreeVars(fnc ast.Function) []tokens.Token {
 	visitor := &freeVarsVisitor{
 		freeVars: map[tokens.Token]bool{},
@@ -35,7 +38,7 @@ func FreeVars(fnc ast.Function) []tokens.Token {
 		}
 	}
 
-	vars := []tokens.Token{}
+	var vars []tokens.Token
 	for k := range visitor.freeVars {
 		vars = append(vars, k)
 	}
@@ -52,6 +55,9 @@ func (visitor *freeVarsVisitor) Visit(node ast.Node) ast.Visitor {
 	return visitor
 }
 
+// We walk the AST and process each node after visiting it in depth first order. There are two cases we care about:
+// 1) After visiting a leaf node which is a reference to a local variable (`n.Object == nil``), we add it to our set.
+// 2) After visiting a LocalVariableDeclaration or a Lambda, we remove the declared variables from our set.
 func (visitor *freeVarsVisitor) After(node ast.Node) {
 	switch n := node.(type) {
 	case *ast.LoadLocationExpression:
@@ -63,6 +69,8 @@ func (visitor *freeVarsVisitor) After(node ast.Node) {
 			switch e := n.Name.(type) {
 			case *ast.StringLiteral:
 				visitor.addToken(tokens.Token(e.Value))
+			default:
+				contract.Failf("expected LoadDynamicExpression with Object == nil to have a StringLiteral expression")
 			}
 		}
 	case *ast.TryLoadDynamicExpression:
@@ -70,6 +78,8 @@ func (visitor *freeVarsVisitor) After(node ast.Node) {
 			switch e := n.Name.(type) {
 			case *ast.StringLiteral:
 				visitor.addToken(tokens.Token(e.Value))
+			default:
+				contract.Failf("expected LoadDynamicExpression with Object == nil to have a StringLiteral expression")
 			}
 		}
 	case *ast.LambdaExpression:

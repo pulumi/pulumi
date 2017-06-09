@@ -1730,22 +1730,23 @@ func (e *evaluator) evalLoadDynamicCore(node ast.Node, objexpr *ast.Expression, 
 	}, nil
 }
 
-func (e *evaluator) getDynamicNameAddr(key tokens.Name, lval bool) *rt.Pointer {
-	var pv *rt.Pointer
-
-	// If there's no object, look in the current localsment.
-	pkey := rt.PropertyKey(key)
-	globals := e.getModuleGlobals(e.ctx.Currmodule)
-	if loc := e.locals.Lookup(key); loc != nil {
-		pv = e.locals.GetValueAddr(loc, true) // create a slot, we know the declaration exists.
-	} else {
-		// If it didn't exist in the lexical scope, check the module's globals.
-		pv = globals.Properties().GetAddr(pkey) // look for a global by this name, but don't allocate one.
+func getDynamicNameAddrCore(locals rt.Environment, globals *rt.Object, key tokens.Name) *rt.Pointer {
+	if loc := locals.Lookup(key); loc != nil {
+		return locals.GetValueAddr(loc, true) // create a slot, we know the declaration exists.
 	}
+	// If it didn't exist in the lexical scope, check the module's globals.
+	pkey := rt.PropertyKey(key)
+	return globals.Properties().GetAddr(pkey) // look for a global by this name, but don't allocate one.
+}
 
-	// Finally, if neither of those existed, and this is the target of a load, allocate a slot.
+func (e *evaluator) getDynamicNameAddr(key tokens.Name, lval bool) *rt.Pointer {
+	globals := e.getModuleGlobals(e.ctx.Currmodule)
+	pv := getDynamicNameAddrCore(e.locals, globals, key)
+
+	// If not found and this is the target of a load, allocate a slot.
 	if pv == nil && lval {
 		if e.fnc != nil && e.fnc.SpecialModInit() && e.locals.Activation() {
+			pkey := rt.PropertyKey(key)
 			pv = globals.Properties().GetInitAddr(pkey)
 		} else {
 			loc := symbols.NewSpecialVariableSym(key, types.Dynamic)

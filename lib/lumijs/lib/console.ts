@@ -22,4 +22,4 @@ export class Console {
     }
 }
 
-export let console = new Console()
+export let console = new Console();
