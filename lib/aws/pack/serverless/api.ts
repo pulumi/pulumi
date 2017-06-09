@@ -119,7 +119,7 @@ export class API {
         if(this.api.apiName !== undefined) {
             apiName = this.api.apiName;
         }
-        let invokePermission = new Permission(this.apiName + "_invoke_" + method + path, {
+        let invokePermission = new Permission(this.apiName + "_invoke_" + sha1hash(method + path), {
             action: "lambda:invokeFunction",
             function: lambda.lambda,
             principal: "apigateway.amazonaws.com",

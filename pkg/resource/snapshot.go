@@ -54,7 +54,7 @@ func NewGraphSnapshot(ctx *Context, ns tokens.QName, pkg tokens.Package, args co
 	// If the old snapshot is non-nil, we need to register old IDs so they will be found below.
 	if old != nil {
 		for _, res := range old.Resources() {
-			contract.Assert(res.HasID())
+			contract.Assert(HasID(res))
 			ctx.URNOldIDs[res.URN()] = res.ID()
 		}
 	}
@@ -97,6 +97,11 @@ func (s *snapshot) ResourceByObject(obj *rt.Object) Resource { return s.ctx.ObjR
 func createResources(ctx *Context, ns tokens.QName, heap *heapstate.Heap, resobjs []*rt.Object) ([]Resource, error) {
 	var resources []Resource
 	for _, resobj := range resobjs {
+		// Make sure the URN doesn't already exist for this object.
+		if urn, has := ctx.ObjURN[resobj]; has {
+			contract.Failf("Object already assigned a URN '%v'; double allocation detected", urn)
+		}
+
 		// Create an object resource without a URN.
 		res := NewObjectResource(ctx, resobj)
 

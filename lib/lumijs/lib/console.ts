@@ -13,9 +13,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// The lib module exports the standard ECMAScript APIs.
+import { printf } from "@lumi/lumi/runtime"
 
-export * from "./errors";
-export * from "./types";
-export * from "./console";
+export class Console {
+    log(message: any) {
+        printf(message);
+        printf("\n");
+    }
+}
 
+export let console = new Console();

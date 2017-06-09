@@ -29,6 +29,8 @@ func Test(t *testing.T) {
 	cleanupFunctions(ctx)
 	cleanupRoles(ctx)
 
+	sourceARN := rpc.ARN("arn:aws:s3:::elasticbeanstalk-us-east-1-111111111111")
+
 	resources := map[string]testutil.Resource{
 		"role":       {Provider: iamprovider.NewRoleProvider(ctx), Token: iam.RoleToken},
 		"f":          {Provider: NewFunctionProvider(ctx), Token: FunctionToken},
@@ -82,10 +84,12 @@ func Test(t *testing.T) {
 				Name: "permission",
 				Creator: func(ctx testutil.Context) interface{} {
 					return &lambda.Permission{
-						Name:      aws.String(RESOURCEPREFIX),
-						Function:  ctx.GetResourceID("f"),
-						Action:    "lambda:InvokeFunction",
-						Principal: "apigateway.amazonaws.com",
+						Name:          aws.String(RESOURCEPREFIX),
+						Function:      ctx.GetResourceID("f"),
+						Action:        "lambda:InvokeFunction",
+						Principal:     "s3.amazonaws.com",
+						SourceAccount: aws.String("111111111111"),
+						SourceARN:     &sourceARN,
 					}
 				},
 			},

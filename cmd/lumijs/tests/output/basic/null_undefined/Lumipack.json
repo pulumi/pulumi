@@ -942,10 +942,10 @@
                                 "expression": {
                                     "kind": "InvokeFunctionExpression",
                                     "function": {
-                                        "kind": "LoadLocationExpression",
+                                        "kind": "TryLoadDynamicExpression",
                                         "name": {
-                                            "kind": "Token",
-                                            "tok": "basic/undefined:index:f",
+                                            "kind": "StringLiteral",
+                                            "value": "f",
                                             "loc": {
                                                 "file": "index.ts",
                                                 "start": {
@@ -1237,10 +1237,10 @@
                                 "expression": {
                                     "kind": "InvokeFunctionExpression",
                                     "function": {
-                                        "kind": "LoadLocationExpression",
+                                        "kind": "TryLoadDynamicExpression",
                                         "name": {
-                                            "kind": "Token",
-                                            "tok": "basic/undefined:index:g",
+                                            "kind": "StringLiteral",
+                                            "value": "g",
                                             "loc": {
                                                 "file": "index.ts",
                                                 "start": {

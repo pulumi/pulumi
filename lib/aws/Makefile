@@ -34,7 +34,7 @@ build:
 	@cd pack/ && lumi pack verify # ensure the pack verifies
 	@cp -R pack/.lumi/bin/ bin/ # copy the pack to our bin dir
 	@go version
-	@cd provider/ && go build -o ../bin/lumi-resource-aws # compile the resource provider
+	@cd provider/ && go build -i -o ../bin/lumi-resource-aws # compile the resource provider
 
 .PHONY: install
 install:

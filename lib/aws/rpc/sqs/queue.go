@@ -49,14 +49,15 @@ func (p *QueueProvider) Check(
     ctx context.Context, req *lumirpc.CheckRequest) (*lumirpc.CheckResponse, error) {
     contract.Assert(req.GetType() == string(QueueToken))
     obj, _, err := p.Unmarshal(req.GetProperties())
-    if err == nil {
-        if failures, err := p.ops.Check(ctx, obj); err != nil {
-            return nil, err
-        } else if len(failures) > 0 {
-            err = resource.NewCheckError(failures)
-        }
+    if err != nil {
+        return resource.NewCheckResponse(err), nil
     }
-    return resource.NewCheckResponse(err), nil
+    if failures, err := p.ops.Check(ctx, obj); err != nil {
+        return nil, err
+    } else if len(failures) > 0 {
+        return resource.NewCheckResponse(resource.NewCheckError(failures)), nil
+    }
+    return resource.NewCheckResponse(nil), nil
 }
 
 func (p *QueueProvider) Name(

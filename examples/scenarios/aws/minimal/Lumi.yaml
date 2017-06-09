@@ -1,5 +1,5 @@
 name: aws/minimal
-description: A minimal AWS blueprint that consists solely of creating a single VPC resource.
+description: An empty Lumi script.
 dependencies:
     lumi: "*"
     aws: "*"
