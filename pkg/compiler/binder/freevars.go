@@ -56,7 +56,21 @@ func (visitor *freeVarsVisitor) After(node ast.Node) {
 	switch n := node.(type) {
 	case *ast.LoadLocationExpression:
 		if n.Object == nil {
-			visitor.addToken(n.Name)
+			visitor.addToken(n.Name.Tok)
+		}
+	case *ast.LoadDynamicExpression:
+		if n.Object == nil {
+			switch e := n.Name.(type) {
+			case *ast.StringLiteral:
+				visitor.addToken(tokens.Token(e.Value))
+			}
+		}
+	case *ast.TryLoadDynamicExpression:
+		if n.Object == nil {
+			switch e := n.Name.(type) {
+			case *ast.StringLiteral:
+				visitor.addToken(tokens.Token(e.Value))
+			}
 		}
 	case *ast.LambdaExpression:
 		if n.Parameters != nil {
@@ -74,8 +88,8 @@ func (visitor *freeVarsVisitor) After(node ast.Node) {
 	}
 }
 
-func (visitor *freeVarsVisitor) addToken(tok *ast.Token) {
-	visitor.freeVars[tok.Tok] = true
+func (visitor *freeVarsVisitor) addToken(tok tokens.Token) {
+	visitor.freeVars[tok] = true
 }
 
 func (visitor *freeVarsVisitor) removeLocalVariable(lv *ast.LocalVariable) {

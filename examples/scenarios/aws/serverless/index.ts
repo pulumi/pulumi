@@ -49,11 +49,6 @@ let music = new aws.dynamodb.Table("music", {
   ],
 })
 
-// TODO[pulumi/lumi#174] Until we have global definitions available in Lumi for these APIs that are expected 
-// by runtime code, we'll declare variables that should be available on the global scope of the lambda to keep
-// TypeScript type checking happy.
-let console: any
-
 let hello = "Hello, world!"
 let lambda = new aws.serverless.Function(
   "mylambda",

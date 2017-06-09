@@ -63,6 +63,25 @@ func TestFreeVars_Parameter(t *testing.T) {
 	assert.Len(t, freeVars, 0, "expected no free variables")
 }
 
+func TestFreeVars_Dynamic(t *testing.T) {
+	// function(foo) foo
+	fun := ast.ModuleMethod{
+		FunctionNode: ast.FunctionNode{
+			Parameters: &[]*ast.LocalVariable{},
+			Body: &ast.ExpressionStatement{
+				Expression: &ast.LoadDynamicExpression{
+					Name: &ast.StringLiteral{
+						Value: "foo",
+					},
+				},
+			},
+		},
+	}
+	freeVars := FreeVars(&fun)
+	assert.Len(t, freeVars, 1, "expected one free variable")
+	assert.Equal(t, tokens.Name("foo"), freeVars[0].Name())
+}
+
 func TestFreeVars_LocalVariable(t *testing.T) {
 	// function(foo) { var bar; foo; bar; baz; }
 	fun := ast.ModuleMethod{
@@ -90,9 +109,9 @@ func TestFreeVars_LocalVariable(t *testing.T) {
 						},
 					},
 					&ast.ExpressionStatement{
-						Expression: &ast.LoadLocationExpression{
-							Name: &ast.Token{
-								Tok: tokens.Token("baz"),
+						Expression: &ast.TryLoadDynamicExpression{
+							Name: &ast.StringLiteral{
+								Value: "baz",
 							},
 						},
 					},

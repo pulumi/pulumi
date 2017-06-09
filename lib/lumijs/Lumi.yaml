@@ -1,3 +1,5 @@
 name: lumijs
 description: The LumiJS runtime library.
+dependencies:
+    lumi: "*"
 

@@ -1023,11 +1023,14 @@ export class Transformer {
             contract.assert(!!idsym, `Expected an ID symbol for '${id.ident}', but it is missing`);
             tok = await this.resolveTokenFromSymbol(idsym);
             // note that we intentionally leave object blank, since the token is fully qualified.
+            if ((idsym.flags & ts.SymbolFlags.Alias) === 0) {
+                // Mark as dynamic unless this is an alias to a module import.
+                isDynamic = true;
+            }
         }
 
         if (isDynamic) {
             // If the target type is `dynamic`, we cannot perform static lookups; devolve into a dynamic load.
-            contract.assert(!!object);
             return this.withLocation(node, <ast.TryLoadDynamicExpression>{
                 kind:   ast.tryLoadDynamicExpressionKind,
                 object: object,
