@@ -450,7 +450,7 @@ func NewFunctionObjectFromSymbol(fnc symbols.Function, this *Object) *Object {
 }
 
 // NewFunctionObjectFromLambda creates a new function object with very specific underlying parts.
-func NewFunctionObjectFromLambda(fnc ast.Function, sig *symbols.FunctionType, env Environment, module *symbols.Module) *Object {
+func NewFunctionObjectFromLambda(fnc ast.Function, sig *symbols.FunctionType, env Environment, module *Object) *Object {
 	return NewFunctionObject(FuncStub{
 		Func:   fnc,
 		Sig:    sig,
@@ -466,7 +466,7 @@ type FuncStub struct {
 	Sig    *symbols.FunctionType // the function type representing this function's signature.
 	This   *Object               // an optional "this" pointer to bind when invoking this function.
 	Env    Environment           // an optional environment to evaluate this function inside.
-	Module *symbols.Module       // an optional module to use for module variable lookups when evaluating this function.
+	Module *Object               // an optional module object to use for module variable lookups inside this function.
 }
 
 // NewPointerObject allocates a new pointer-like object that wraps the given reference.

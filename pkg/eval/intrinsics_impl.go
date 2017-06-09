@@ -120,8 +120,7 @@ func serializeClosure(intrin *rt.Intrinsic, e *evaluator, this *rt.Object, args 
 		} else {
 			name = tokens.Name(tok.ModuleMember().Name())
 		}
-		global := e.getModuleGlobals(stub.Module)
-		pv := getDynamicNameAddrCore(stub.Env, global, name)
+		pv := getDynamicNameAddrCore(stub.Env, stub.Module, name)
 		if pv != nil {
 			envPropMap.Set(rt.PropertyKey(name), pv.Obj())
 		}
