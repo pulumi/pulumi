@@ -126,6 +126,7 @@ func (g *PackGenerator) emitFileContents(file string, body string) error {
 
 	// Emit a header into the file.
 	emitHeaderWarning(w)
+	writefmtln(w, "/* tslint:disable:ordered-imports variable-name */")
 
 	// If there are any resources, import the Lumi package.
 	if g.FileHadRes {
