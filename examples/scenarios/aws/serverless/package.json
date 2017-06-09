@@ -9,6 +9,7 @@
         "typescript": "^2.1.4"
     },
     "peerDependencies": {
+        "@lumi/lumi": "*",
         "@lumi/aws": "*"
     }
 }
