@@ -1,6 +1,7 @@
 package testutil
 
 import (
+	"fmt"
 	"testing"
 
 	structpb "github.com/golang/protobuf/ptypes/struct"
@@ -35,18 +36,25 @@ type Step []ResourceGenerator
 func ProviderTest(t *testing.T, resources map[string]Resource, steps []Step) {
 
 	p := &providerTest{
-		resources: resources,
-		ids:       map[string]resource.ID{},
-		props:     map[string]*structpb.Struct{},
+		resources:            resources,
+		namesInCreationOrder: []string{},
+		ids:                  map[string]resource.ID{},
+		props:                map[string]*structpb.Struct{},
 	}
 
+	// For each step, create or update all listed resources
 	for _, step := range steps {
 		for _, res := range step {
-			provider := resources[res.Name].Provider
-			token := resources[res.Name].Token
+			currentResource, ok := resources[res.Name]
+			if !ok {
+				t.Fatalf("expected resource to have been pre-declared: %v", res.Name)
+			}
+			provider := currentResource.Provider
+			token := currentResource.Token
 			if id, ok := p.ids[res.Name]; !ok {
 				id, props := createResource(t, res.Creator(p), provider, token)
 				p.ids[res.Name] = resource.ID(id)
+				p.namesInCreationOrder = append(p.namesInCreationOrder, res.Name)
 				p.props[res.Name] = props
 				if id == "" {
 					t.Fatal("expected to succesfully create resource")
@@ -61,7 +69,10 @@ func ProviderTest(t *testing.T, resources map[string]Resource, steps []Step) {
 			}
 		}
 	}
-	for name, id := range p.ids {
+	// Delete resources in the opposite order they were created
+	for i := len(p.namesInCreationOrder) - 1; i >= 0; i-- {
+		name := p.namesInCreationOrder[i]
+		id := p.ids[name]
 		provider := resources[name].Provider
 		token := resources[name].Token
 		ok := deleteResource(t, string(id), provider, token)
@@ -97,9 +108,10 @@ func ProviderTestSimple(t *testing.T, provider lumirpc.ResourceProviderServer, t
 }
 
 type providerTest struct {
-	resources map[string]Resource
-	ids       map[string]resource.ID
-	props     map[string]*structpb.Struct
+	resources            map[string]Resource
+	namesInCreationOrder []string
+	ids                  map[string]resource.ID
+	props                map[string]*structpb.Struct
 }
 
 func (p *providerTest) GetResourceID(name string) resource.ID {
@@ -113,6 +125,7 @@ var _ Context = &providerTest{}
 
 func createResource(t *testing.T, res interface{}, provider lumirpc.ResourceProviderServer, token tokens.Type) (string, *structpb.Struct) {
 	props := resource.MarshalProperties(nil, resource.NewPropertyMap(res), resource.MarshalOptions{})
+	fmt.Printf("[Provider Test]: Checking %v\n", token)
 	checkResp, err := provider.Check(nil, &lumirpc.CheckRequest{
 		Type:       string(token),
 		Properties: props,
@@ -121,6 +134,7 @@ func createResource(t *testing.T, res interface{}, provider lumirpc.ResourceProv
 		return "", nil
 	}
 	assert.Equal(t, 0, len(checkResp.Failures), "expected no check failures")
+	fmt.Printf("[Provider Test]: Creating %v\n", token)
 	resp, err := provider.Create(nil, &lumirpc.CreateRequest{
 		Type:       string(token),
 		Properties: props,
@@ -132,11 +146,23 @@ func createResource(t *testing.T, res interface{}, provider lumirpc.ResourceProv
 		return "", nil
 	}
 	id := resp.Id
+	fmt.Printf("[Provider Test]: Getting %v with id %v\n", token, id)
+	getResp, err := provider.Get(nil, &lumirpc.GetRequest{
+		Type: string(token),
+		Id:   id,
+	})
+	if !assert.NoError(t, err, "expected no error reading resource") {
+		return "", nil
+	}
+	if !assert.NotNil(t, getResp, "expected a non-nil response reading the resources") {
+		return "", nil
+	}
 	return id, props
 }
 
 func updateResource(t *testing.T, id string, lastProps *structpb.Struct, res interface{}, provider lumirpc.ResourceProviderServer, token tokens.Type) (bool, *structpb.Struct) {
 	newProps := resource.MarshalProperties(nil, resource.NewPropertyMap(res), resource.MarshalOptions{})
+	fmt.Printf("[Provider Test]: Checking %v\n", token)
 	checkResp, err := provider.Check(nil, &lumirpc.CheckRequest{
 		Type:       string(token),
 		Properties: newProps,
@@ -145,6 +171,7 @@ func updateResource(t *testing.T, id string, lastProps *structpb.Struct, res int
 		return false, nil
 	}
 	assert.Equal(t, 0, len(checkResp.Failures), "expected no check failures")
+	fmt.Printf("[Provider Test]: Updating %v with id %v\n", token, id)
 	_, err = provider.Update(nil, &lumirpc.UpdateRequest{
 		Type: string(token),
 		Id:   id,
@@ -158,6 +185,7 @@ func updateResource(t *testing.T, id string, lastProps *structpb.Struct, res int
 }
 
 func deleteResource(t *testing.T, id string, provider lumirpc.ResourceProviderServer, token tokens.Type) bool {
+	fmt.Printf("[Provider Test]: Deleting %v with id %v\n", token, id)
 	_, err := provider.Delete(nil, &lumirpc.DeleteRequest{
 		Type: string(token),
 		Id:   id,

@@ -13,11 +13,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+
 /* tslint:disable: ordered-imports */
 import { jsonStringify, sha1hash, printf } from "@lumi/lumi/runtime";
 import { Deployment, RestAPI, Stage } from "../apigateway";
+import { Permission } from "../lambda";
 import { Function } from "./function";
 import { region } from "../config";
+
 
 export interface Route {
     method: string;
@@ -75,6 +78,10 @@ function createPathSpec(lambdaARN: string): SwaggerOperation {
     };
 }
 
+function createSourceARN(region: string, account: string, apiid: string, functionName: string): string {
+   return "arn:aws:execute-api:"+region+":"+account+":"+apiid+"/*/*/"+ functionName;
+}
+
 // API is a higher level abstraction for working with AWS APIGateway reources.
 export class API {
     public api: RestAPI;
@@ -111,7 +118,19 @@ export class API {
             default:
                 throw new Error("Method not supported: " + method);
         }
+
+      let apiName = "";
+        if(this.api.apiName !== undefined) {
+            apiName = this.api.apiName;
+        }
+        let invokePermission = new Permission(this.apiName + "_invoke_" + sha1hash(method + path), {
+            action: "lambda:invokeFunction",
+            function: lambda.lambda,
+            principal: "apigateway.amazonaws.com",
+            sourceARN: createSourceARN("us-east-1", "490047557317", apiName, "webapi-test-func"),
+        });
         // TODO[pulumi/lumi#90]: Once we suport output properties, we can use `lambda.lambda.arn` as input
+
         //     to constructing this apigateway lambda invocation uri.
         // this.swaggerSpec.paths[path][swaggerMethod] = createPathSpec(lambda.lambda.arn);
         this.swaggerSpec.paths[path][swaggerMethod] = createPathSpec(

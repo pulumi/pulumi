@@ -21,13 +21,6 @@ banner_all:
 	@echo "\033[1;37mLumi (Full)\033[0m"
 	@echo "\033[1;37m============\033[0m"
 
-.PHONY: build
-build:
-	@echo "\033[0;32mBUILD:\033[0m"
-	@go version
-	@go build ${PROJECT}/cmd/lumi
-	@go build ${PROJECT}/cmd/lumidl
-
 .PHONY: install
 install:
 	@echo "\033[0;32mINSTALL:\033[0m"

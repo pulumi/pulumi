@@ -176,11 +176,11 @@ func (p *plan) Provider(res Resource) (Provider, error) {
 func (p *plan) Apply(prog Progress) (Snapshot, Step, State, error) {
 	// First go ahead and propagate IDs for unchanged resources.
 	for old, new := range p.unchanged {
-		contract.Assert(old.HasID())
-		contract.Assert(!new.HasID())
+		contract.Assert(HasID(old))
+		contract.Assert(!HasID(new))
 		id := old.ID()
 		new.SetID(id)
-		new.SetOutputsFrom(old)
+		CopyOutputs(old, new)
 		p.ctx.IDURN[id] = new.URN()
 	}
 
@@ -284,7 +284,7 @@ func newPlan(ctx *Context, old Snapshot, new Snapshot, analyzers []tokens.QName)
 	for _, old := range pb.OldRes {
 		m := old.URN()
 		pb.Olds[m] = old
-		contract.Assert(old.HasID())
+		contract.Assert(HasID(old))
 		// Keep track of which dependents exist for all resources.
 		for dep := range old.Inputs().AllResources() {
 			pb.Depends[dep] = append(pb.Depends[dep], m)
@@ -680,7 +680,7 @@ func (s *step) Apply() (State, error) {
 		// Invoke the Create RPC function for this provider:
 		contract.Assert(s.old == nil)
 		contract.Assert(s.new != nil)
-		contract.Assertf(!s.new.HasID(), "Resources being created must not have IDs already")
+		contract.Assertf(!HasID(s.new), "Resources being created must not have IDs already")
 		rst, err := prov.Create(s.new)
 		if err != nil {
 			return rst, err
@@ -698,7 +698,7 @@ func (s *step) Apply() (State, error) {
 		// Invoke the Delete RPC function for this provider:
 		contract.Assert(s.old != nil)
 		contract.Assert(s.new == nil)
-		contract.Assertf(s.old.HasID(), "Resources being deleted must have IDs")
+		contract.Assertf(HasID(s.old), "Resources being deleted must have IDs")
 		if rst, err := prov.Delete(s.old); err != nil {
 			return rst, err
 		}
@@ -708,7 +708,7 @@ func (s *step) Apply() (State, error) {
 		contract.Assert(s.old != nil)
 		contract.Assert(s.new != nil)
 		contract.Assert(s.old.Type() == s.new.Type())
-		contract.Assertf(s.old.HasID(), "Resources being updated must have IDs")
+		contract.Assertf(HasID(s.old), "Resources being updated must have IDs")
 		id := s.old.ID()
 		if rst, err := prov.Update(s.old, s.new); err != nil {
 			return rst, err
@@ -724,7 +724,7 @@ func (s *step) Apply() (State, error) {
 		contract.Assert(s.old != nil)
 		contract.Assert(s.new != nil)
 		contract.Assert(s.old.Type() == s.new.Type())
-		contract.Assertf(s.old.HasID(), "Resources being replaced must have IDs")
+		contract.Assertf(HasID(s.old), "Resources being replaced must have IDs")
 
 		// There is nothing to do for OpReplace nodes; they are here to represent logical steps in the graph, and mostly
 		// for visualization purposes; there will be true OpReplaceCreate and OpReplaceDelete nodes in the graph.

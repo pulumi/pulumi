@@ -179,6 +179,9 @@ func TestArrayPropertyValueDiffs(t *testing.T) {
 		assert.Equal(t, d5a1.ArrayValue()[i], update.Old)
 		assert.Equal(t, d5a2.ArrayValue()[i], update.New)
 	}
+	// from nil to empty array:
+	d6 := NewNullProperty().Diff(NewArrayProperty([]PropertyValue{}))
+	assert.NotNil(t, d6)
 }
 
 func TestObjectPropertyValueDiffs(t *testing.T) {

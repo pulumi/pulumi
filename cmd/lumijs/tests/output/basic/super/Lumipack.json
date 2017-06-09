@@ -1164,10 +1164,10 @@
                                         "function": {
                                             "kind": "LoadLocationExpression",
                                             "object": {
-                                                "kind": "LoadLocationExpression",
+                                                "kind": "TryLoadDynamicExpression",
                                                 "name": {
-                                                    "kind": "Token",
-                                                    "tok": "basic/super:index:b",
+                                                    "kind": "StringLiteral",
+                                                    "value": "b",
                                                     "loc": {
                                                         "file": "index.ts",
                                                         "start": {
@@ -1262,10 +1262,10 @@
                                     "kind": "BinaryOperatorExpression",
                                     "operator": "!=",
                                     "left": {
-                                        "kind": "LoadLocationExpression",
+                                        "kind": "TryLoadDynamicExpression",
                                         "name": {
-                                            "kind": "Token",
-                                            "tok": "basic/super:index:bgx",
+                                            "kind": "StringLiteral",
+                                            "value": "bgx",
                                             "loc": {
                                                 "file": "index.ts",
                                                 "start": {
@@ -1363,10 +1363,10 @@
                                                                 }
                                                             },
                                                             "right": {
-                                                                "kind": "LoadLocationExpression",
+                                                                "kind": "TryLoadDynamicExpression",
                                                                 "name": {
-                                                                    "kind": "Token",
-                                                                    "tok": "basic/super:index:bgx",
+                                                                    "kind": "StringLiteral",
+                                                                    "value": "bgx",
                                                                     "loc": {
                                                                         "file": "index.ts",
                                                                         "start": {
@@ -1581,10 +1581,10 @@
                                         "function": {
                                             "kind": "LoadLocationExpression",
                                             "object": {
-                                                "kind": "LoadLocationExpression",
+                                                "kind": "TryLoadDynamicExpression",
                                                 "name": {
-                                                    "kind": "Token",
-                                                    "tok": "basic/super:index:c",
+                                                    "kind": "StringLiteral",
+                                                    "value": "c",
                                                     "loc": {
                                                         "file": "index.ts",
                                                         "start": {
@@ -1679,10 +1679,10 @@
                                     "kind": "BinaryOperatorExpression",
                                     "operator": "!=",
                                     "left": {
-                                        "kind": "LoadLocationExpression",
+                                        "kind": "TryLoadDynamicExpression",
                                         "name": {
-                                            "kind": "Token",
-                                            "tok": "basic/super:index:cgx",
+                                            "kind": "StringLiteral",
+                                            "value": "cgx",
                                             "loc": {
                                                 "file": "index.ts",
                                                 "start": {
@@ -1780,10 +1780,10 @@
                                                                 }
                                                             },
                                                             "right": {
-                                                                "kind": "LoadLocationExpression",
+                                                                "kind": "TryLoadDynamicExpression",
                                                                 "name": {
-                                                                    "kind": "Token",
-                                                                    "tok": "basic/super:index:cgx",
+                                                                    "kind": "StringLiteral",
+                                                                    "value": "cgx",
                                                                     "loc": {
                                                                         "file": "index.ts",
                                                                         "start": {
@@ -1910,10 +1910,10 @@
                                         "function": {
                                             "kind": "LoadLocationExpression",
                                             "object": {
-                                                "kind": "LoadLocationExpression",
+                                                "kind": "TryLoadDynamicExpression",
                                                 "name": {
-                                                    "kind": "Token",
-                                                    "tok": "basic/super:index:c",
+                                                    "kind": "StringLiteral",
+                                                    "value": "c",
                                                     "loc": {
                                                         "file": "index.ts",
                                                         "start": {
@@ -2008,10 +2008,10 @@
                                     "kind": "BinaryOperatorExpression",
                                     "operator": "!=",
                                     "left": {
-                                        "kind": "LoadLocationExpression",
+                                        "kind": "TryLoadDynamicExpression",
                                         "name": {
-                                            "kind": "Token",
-                                            "tok": "basic/super:index:cgy",
+                                            "kind": "StringLiteral",
+                                            "value": "cgy",
                                             "loc": {
                                                 "file": "index.ts",
                                                 "start": {
@@ -2109,10 +2109,10 @@
                                                                 }
                                                             },
                                                             "right": {
-                                                                "kind": "LoadLocationExpression",
+                                                                "kind": "TryLoadDynamicExpression",
                                                                 "name": {
-                                                                    "kind": "Token",
-                                                                    "tok": "basic/super:index:cgy",
+                                                                    "kind": "StringLiteral",
+                                                                    "value": "cgy",
                                                                     "loc": {
                                                                         "file": "index.ts",
                                                                         "start": {

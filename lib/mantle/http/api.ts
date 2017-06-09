@@ -111,7 +111,6 @@ export class API {
         let restAPI = new aws.apigateway.RestAPI(prefix, { body: body });
         let deployment = new aws.apigateway.Deployment(prefix + "-deployment", {
             restAPI: restAPI,
-            stageName: "Stage",
         });
         let stage = new aws.apigateway.Stage(prefix + "-primary-stage", {
             deployment: deployment,

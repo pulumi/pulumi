@@ -16,6 +16,8 @@
 package resource
 
 import (
+	"github.com/pulumi/lumi/pkg/compiler/types/predef"
+	"github.com/pulumi/lumi/pkg/eval/heapstate"
 	"github.com/pulumi/lumi/pkg/graph"
 	"github.com/pulumi/lumi/pkg/util/contract"
 )
@@ -127,3 +129,8 @@ func (e *resourceEdge) From() graph.Vertex {
 	return e.from
 }
 func (e *resourceEdge) FromObj() *resourceVertex { return e.from }
+
+// IsResourceVertex returns true if the heap graph vertex has an object whose type is the standard resource class.
+func IsResourceVertex(v *heapstate.ObjectVertex) bool {
+	return predef.IsResourceType(v.Obj().Type())
+}

@@ -103,8 +103,8 @@ func (arn ARN) Parse() (Parts, error) {
 	if len(ps) > 5 {
 		parts.Resource = ps[5]
 	}
-	if len(ps) > 6 {
-		parts.Resource = parts.Resource + ":" + ps[6]
+	for i := 6; i < len(ps); i++ {
+		parts.Resource = parts.Resource + ":" + ps[i]
 	}
 	return parts, nil
 }
