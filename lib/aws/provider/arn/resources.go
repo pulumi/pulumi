@@ -25,7 +25,7 @@ import (
 
 const (
 	EC2              = "ec2"
-	EC2Instance      = "intance"
+	EC2Instance      = "instance"
 	EC2SecurityGroup = "security-group"
 	EC2VPC           = "vpc"
 )
