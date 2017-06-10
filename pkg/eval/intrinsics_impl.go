@@ -36,7 +36,7 @@ func isFunction(intrin *rt.Intrinsic, e *evaluator, this *rt.Object, args []*rt.
 	contract.Assert(this == nil)    // module function
 	contract.Assert(len(args) == 1) // just one arg: the object to inquire about functionness
 	_, isfunc := args[0].Type().(*symbols.FunctionType)
-	ret := e.alloc.NewBool(intrin.Tree(), isfunc)
+	ret := rt.Bools[isfunc]
 	return rt.NewReturnUnwind(ret)
 }
 
@@ -81,7 +81,7 @@ func printf(intrin *rt.Intrinsic, e *evaluator, this *rt.Object, args []*rt.Obje
 	if len(args) >= 1 {
 		message = args[0]
 	} else {
-		message = e.alloc.NewNull(intrin.Tree())
+		message = rt.Null
 	}
 
 	// TODO[pulumi/lumi#169]: Move this to use a proper ToString() conversion.
@@ -107,7 +107,7 @@ func sha1hash(intrin *rt.Intrinsic, e *evaluator, this *rt.Object, args []*rt.Ob
 	sum := hasher.Sum(nil)
 	hash := hex.EncodeToString(sum)
 
-	hashObj := e.alloc.NewString(intrin.Tree(), hash)
+	hashObj := rt.NewStringObject(hash)
 	return rt.NewReturnUnwind(hashObj)
 }
 
@@ -152,7 +152,7 @@ func (s *closureSerializer) serializeClosure(stub rt.FuncStub, lambda *ast.Lambd
 		// This will be true for references to globals which are not known to Lumi but
 		// will be available within the runtime environment.
 	}
-	envObj := s.e.alloc.New(s.node, types.Dynamic, envPropMap, nil)
+	envObj := rt.NewObject(types.Dynamic, nil, envPropMap, nil)
 
 	// Build up the properties for the returned Closure object
 	props := rt.NewPropertyMap()
@@ -160,8 +160,7 @@ func (s *closureSerializer) serializeClosure(stub rt.FuncStub, lambda *ast.Lambd
 	props.Set("signature", s.e.alloc.NewString(s.node, string(stub.Sig.Token())))
 	props.Set("language", s.e.alloc.NewString(s.node, lambda.SourceLanguage))
 	props.Set("environment", envObj)
-	closure := s.e.alloc.New(s.node, types.Dynamic, props, nil)
-	return closure
+	return rt.NewObject(s.node, types.Dynamic, props, nil)
 }
 
 func serializeClosure(intrin *rt.Intrinsic, e *evaluator, this *rt.Object, args []*rt.Object) *rt.Unwind {
@@ -194,7 +193,7 @@ func arrayGetLength(intrin *rt.Intrinsic, e *evaluator, this *rt.Object, args []
 	if arr == nil {
 		return e.NewException(intrin.Tree(), "Expected receiver to be non-null array value")
 	}
-	return rt.NewReturnUnwind(e.alloc.NewNumber(intrin.Tree(), float64(len(*arr))))
+	return rt.NewReturnUnwind(rt.NewNumberObject(float64(len(*arr))))
 }
 
 func arraySetLength(intrin *rt.Intrinsic, e *evaluator, this *rt.Object, args []*rt.Object) *rt.Unwind {
@@ -236,7 +235,7 @@ func stringGetLength(intrin *rt.Intrinsic, e *evaluator, this *rt.Object, args [
 	}
 	str := this.StringValue()
 
-	return rt.NewReturnUnwind(e.alloc.NewNumber(intrin.Tree(), float64(len(str))))
+	return rt.NewReturnUnwind(rt.NewNumberObject(float64(len(str))))
 }
 
 func stringToLowerCase(intrin *rt.Intrinsic, e *evaluator, this *rt.Object, args []*rt.Object) *rt.Unwind {
@@ -249,7 +248,7 @@ func stringToLowerCase(intrin *rt.Intrinsic, e *evaluator, this *rt.Object, args
 	str := this.StringValue()
 	out := strings.ToLower(str)
 
-	return rt.NewReturnUnwind(e.alloc.NewString(intrin.Tree(), out))
+	return rt.NewReturnUnwind(rt.NewStringObject(out))
 }
 
 type jsonSerializer struct {
@@ -259,10 +258,7 @@ type jsonSerializer struct {
 }
 
 func (s jsonSerializer) serializeJSONProperty(o *rt.Object) (string, *rt.Unwind) {
-	if o == nil {
-		return "null", nil
-	}
-	if o.IsNull() {
+	if o == nil || o.IsNull() {
 		return "null", nil
 	} else if o.IsBool() {
 		if o.BoolValue() {
@@ -351,7 +347,7 @@ func jsonStringify(intrin *rt.Intrinsic, e *evaluator, this *rt.Object, args []*
 	contract.Assert(len(args) == 1) // just one arg: the object to stringify
 	obj := args[0]
 	if obj == nil {
-		return rt.NewReturnUnwind(e.alloc.NewString(intrin.Tree(), "{}"))
+		return rt.NewReturnUnwind(rt.NewStringObject("{}"))
 	}
 	s := jsonSerializer{
 		map[*rt.Object]bool{},
@@ -362,7 +358,7 @@ func jsonStringify(intrin *rt.Intrinsic, e *evaluator, this *rt.Object, args []*
 	if uw != nil {
 		return uw
 	}
-	return rt.NewReturnUnwind(e.alloc.NewString(intrin.Tree(), str))
+	return rt.NewReturnUnwind(rt.NewStringObject(str))
 }
 
 func jsonParse(intrin *rt.Intrinsic, e *evaluator, this *rt.Object, args []*rt.Object) *rt.Unwind {

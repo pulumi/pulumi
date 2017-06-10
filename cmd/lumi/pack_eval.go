@@ -24,7 +24,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/lumi/pkg/compiler/core"
-	"github.com/pulumi/lumi/pkg/eval/heapstate"
 	"github.com/pulumi/lumi/pkg/graph"
 	"github.com/pulumi/lumi/pkg/graph/dotconv"
 	"github.com/pulumi/lumi/pkg/resource"

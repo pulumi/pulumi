@@ -58,7 +58,6 @@ type PropertyValue struct {
 // Computed represents the absence of a property value, because it will be computed at some point in the future.  It
 // contains a property value which represents the underlying expected type of the eventual property value.
 type Computed struct {
-	Sources []URN         // the resources whose state contribute to this value.
 	Element PropertyValue // the eventual value (type) of the computed property.
 }
 
@@ -398,8 +397,8 @@ func NewObjectProperty(v PropertyMap) PropertyValue    { return PropertyValue{v}
 func NewComputedProperty(v Computed) PropertyValue     { return PropertyValue{v} }
 func NewOutputProperty(v Output) PropertyValue         { return PropertyValue{v} }
 
-func MakeComputed(v PropertyValue, sources []URN) PropertyValue {
-	return NewComputedProperty(Computed{Element: v, Sources: sources})
+func MakeComputed(v PropertyValue) PropertyValue {
+	return NewComputedProperty(Computed{Element: v})
 }
 
 func MakeOutput(v PropertyValue) PropertyValue {

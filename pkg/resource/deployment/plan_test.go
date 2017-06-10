@@ -37,16 +37,17 @@ func TestBasicCRUDPlan(t *testing.T) {
 	mod := tokens.Module(string(pkg) + ":index")
 
 	// Create a context that the snapshots and plan will use.
-	ctx := NewContext(cmdutil.Sink(), &testProviderHost{
+	ctx := plugin.NewContext(cmdutil.Sink(), &testProviderHost{
 		provider: func(propkg tokens.Package) (plugin.Provider, error) {
 			if propkg != pkg {
 				return nil, errors.Errorf("Unexpected request to load package %v; expected just %v", propkg, pkg)
 			}
 			return &testProvider{
-				check: func(res Resource) ([]CheckFailure, error) {
+				check: func(t tokens.Type, props resource.PropertyMap) ([]plugin.CheckFailure, error) {
 					return nil, nil // accept all changes.
 				},
-				inspectChange: func(old, new Resource, computed resource.PropertyMap) ([]string, resource.PropertyMap, error) {
+				inspectChange: func(t tokens.Type, id resource.ID, olds resource.PropertyMap,
+					news resource.PropertyMap) ([]string, resource.PropertyMap, error) {
 					return nil, nil, nil // accept all changes.
 				},
 				// we don't actually execute the plan, so there's no need to implement the other functions.
@@ -57,48 +58,48 @@ func TestBasicCRUDPlan(t *testing.T) {
 	// Some shared tokens and names.
 	typA := tokens.Type(string(mod) + ":A")
 	namA := tokens.QName("res-a")
-	urnA := NewURN(ns, mod, typA, namA)
+	urnA := resource.NewURN(ns, mod, typA, namA)
 	typB := tokens.Type(string(mod) + ":B")
 	namB := tokens.QName("res-b")
-	urnB := NewURN(ns, mod, typB, namB)
+	urnB := resource.NewURN(ns, mod, typB, namB)
 	typC := tokens.Type(string(mod) + ":C")
 	namC := tokens.QName("res-c")
-	urnC := NewURN(ns, mod, typC, namC)
+	urnC := resource.NewURN(ns, mod, typC, namC)
 	typD := tokens.Type(string(mod) + ":D")
 	namD := tokens.QName("res-d")
-	urnD := NewURN(ns, mod, typD, namD)
+	urnD := resource.NewURN(ns, mod, typD, namD)
 
 	// Create the old resources snapshot.
-	oldResB := NewResource(ID("b-b-b"), urnB, typB, resource.PropertyMap{
-		"bf1": NewStringProperty("b-value"),
-		"bf2": NewNumberProperty(42),
+	oldResB := resource.NewState(typB, urnB, resource.ID("b-b-b"), resource.PropertyMap{
+		"bf1": resource.NewStringProperty("b-value"),
+		"bf2": resource.NewNumberProperty(42),
 	}, nil)
-	oldResC := NewResource(ID("c-c-c"), urnC, typC, resource.PropertyMap{
-		"cf1": NewStringProperty("c-value"),
-		"cf2": NewNumberProperty(83),
+	oldResC := resource.NewState(typC, urnC, resource.ID("c-c-c"), resource.PropertyMap{
+		"cf1": resource.NewStringProperty("c-value"),
+		"cf2": resource.NewNumberProperty(83),
 	}, nil)
-	oldResD := NewResource(ID("d-d-d"), urnD, typD, resource.PropertyMap{
-		"df1": NewStringProperty("d-value"),
-		"df2": NewNumberProperty(167),
+	oldResD := resource.NewState(typD, urnD, resource.ID("d-d-d"), resource.PropertyMap{
+		"df1": resource.NewStringProperty("d-value"),
+		"df2": resource.NewNumberProperty(167),
 	}, nil)
-	oldsnap := NewSnapshot(ctx, ns, pkg, nil, []Resource{oldResB, oldResC, oldResD})
+	oldsnap := NewSnapshot(ns, pkg, nil, []*resource.State{oldResB, oldResC, oldResD})
 
 	// Create the new resources snapshot.
 	//     - A is created:
-	newResA := NewResource(ID(""), urnA, typA, resource.PropertyMap{
-		"af1": NewStringProperty("a-value"),
-		"af2": NewNumberProperty(42),
+	newResA := NewResource(resource.ID(""), urnA, typA, resource.PropertyMap{
+		"af1": resource.NewStringProperty("a-value"),
+		"af2": resource.NewNumberProperty(42),
 	}, nil)
 	//     - B is updated:
-	newResB := NewResource(ID(""), urnB, typB, resource.PropertyMap{
-		"bf1": NewStringProperty("b-value"),
+	newResB := NewResource(resource.ID(""), urnB, typB, resource.PropertyMap{
+		"bf1": resource.NewStringProperty("b-value"),
 		// delete the bf2 field.
-		"bf3": NewBoolProperty(true), // add the bf3.
+		"bf3": resource.NewBoolProperty(true), // add the bf3.
 	}, nil)
 	//     - C has no changes:
-	newResC := NewResource(ID(""), urnC, typC, resource.PropertyMap{
-		"cf1": NewStringProperty("c-value"),
-		"cf2": NewNumberProperty(83),
+	newResC := NewResource(resource.ID(""), urnC, typC, resource.PropertyMap{
+		"cf1": resource.NewStringProperty("c-value"),
+		"cf2": resource.NewNumberProperty(83),
 	}, nil)
 	//     - No D; it is deleted.
 	newsnap := NewSnapshot(ctx, ns, pkg, nil, []Resource{newResA, newResB, newResC})

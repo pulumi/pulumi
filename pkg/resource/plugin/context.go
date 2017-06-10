@@ -27,7 +27,7 @@ import (
 // reclaimed as appropriate.
 type Context struct {
 	Diag      diag.Sink         // the diagnostics sink to use for messages.
-	Host      ProviderHost      // the host that can be used to fetch providers.
+	Host      Host              // the host that can be used to fetch providers.
 	ObjRes    objectResourceMap // the resources held inside of this snapshot.
 	ObjURN    objectURNMap      // a convenient lookup map for object to URN.
 	IDURN     idURNMap          // a convenient lookup map for ID to URN.
@@ -43,7 +43,7 @@ type urnIDMap map[resource.URN]resource.ID
 
 // NewContext allocates a new context with a given sink and host.  Note that the host is "owned" by this context from
 // here forwards, such that when the context's resources are reclaimed, so too are the host's.
-func NewContext(d diag.Sink, host ProviderHost) *Context {
+func NewContext(d diag.Sink, host Host) *Context {
 	ctx := &Context{
 		Diag:      d,
 		Host:      host,
@@ -54,7 +54,7 @@ func NewContext(d diag.Sink, host ProviderHost) *Context {
 		URNOldIDs: make(urnIDMap),
 	}
 	if host == nil {
-		ctx.Host = NewDefaultProviderHost(ctx)
+		ctx.Host = NewDefaultHost(ctx)
 	}
 	return ctx
 }

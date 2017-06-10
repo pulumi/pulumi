@@ -19,25 +19,26 @@ package environment
 
 import (
 	"github.com/pulumi/lumi/pkg/compiler/core"
+	"github.com/pulumi/lumi/pkg/resource"
 	"github.com/pulumi/lumi/pkg/tokens"
 	"github.com/pulumi/lumi/pkg/util/contract"
 )
 
 // Environment represents information about a deployment target.
 type Environment struct {
-	Name   tokens.QName // the target environment name.
-	Config ConfigMap    // optional configuration key/values.
+	Name   tokens.QName       // the target environment name.
+	Config resource.ConfigMap // optional configuration key/values.
 }
 
 // Checkpoint is a serialized deployment target plus a record of the latest deployment.
 type Checkpoint struct {
-	Target tokens.QName `json:"target"`           // the target environment name.
-	Config *ConfigMap   `json:"config,omitempty"` // optional configuration key/values.
-	Latest *Deployment  `json:"latest,omitempty"` // the latest/current deployment information.
+	Target tokens.QName        `json:"target"`           // the target environment name.
+	Config *resource.ConfigMap `json:"config,omitempty"` // optional configuration key/values.
+	Latest *Deployment         `json:"latest,omitempty"` // the latest/current deployment information.
 }
 
 // SerializeCheckpoint turns a snapshot into a LumiGL data structure suitable for serialization.
-func SerializeCheckpoint(env *Environment, snap Snapshot, reftag string) *Checkpoint {
+func SerializeCheckpoint(env *Environment, snap *deployment.Snapshot, reftag string) *Checkpoint {
 	contract.Requiref(env != nil, "env", "!= nil")
 
 	// If snap is nil, that's okay, we will just create an empty deployment; otherwise, serialize the whole snapshot.
@@ -46,7 +47,7 @@ func SerializeCheckpoint(env *Environment, snap Snapshot, reftag string) *Checkp
 		latest = SerializeDeployment(snap, reftag)
 	}
 
-	var config *ConfigMap
+	var config *resource.ConfigMap
 	if env.Config != nil {
 		config = &env.Config
 	}
@@ -59,7 +60,7 @@ func SerializeCheckpoint(env *Environment, snap Snapshot, reftag string) *Checkp
 }
 
 // DeserializeCheckpoint takes a serialized deployment record and returns its associated snapshot.
-func DeserializeCheckpoint(ctx *Context, envfile *Checkpoint) (*Environment, Snapshot) {
+func DeserializeCheckpoint(ctx *Context, envfile *Checkpoint) (*Environment, *Snapshot) {
 	contract.Require(ctx != nil, "ctx")
 	contract.Require(envfile != nil, "envfile")
 
