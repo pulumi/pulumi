@@ -1702,6 +1702,12 @@ func (e *evaluator) evalLoadDynamicCore(node ast.Node, objexpr *ast.Expression, 
 		}
 	}
 
+	if pv == nil && try {
+		// If this is a try load and we couldn't find the name,
+		nul := e.alloc.NewNull(node)
+		pv = rt.NewPointer(nul, false, nil, nil)
+	}
+
 	if pv == nil {
 		// If the result is nil, then the name is not defined.  In the event of a try load, we will have substituted a
 		// null already above, so if we got here, we need to propagate an exception.
