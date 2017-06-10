@@ -1,3 +1,4 @@
-.lumi/
-node_modules/
+/.lumi/
+/node_modules/
+/out.txt
 
