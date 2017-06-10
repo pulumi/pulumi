@@ -58,7 +58,7 @@ func (diff *ObjectDiff) Same(k PropertyKey) bool {
 
 // Keys returns a stable snapshot of all keys known to this object, across adds, deletes, sames, and updates.
 func (diff *ObjectDiff) Keys() []PropertyKey {
-	var ks propertyKeys
+	var ks []PropertyKey
 	for k := range diff.Adds {
 		ks = append(ks, k)
 	}
@@ -71,7 +71,7 @@ func (diff *ObjectDiff) Keys() []PropertyKey {
 	for k := range diff.Updates {
 		ks = append(ks, k)
 	}
-	sort.Sort(ks)
+	sort.Slice(ks, func(i, j int) bool { return ks[i] < ks[j] })
 	return ks
 }
 
@@ -229,7 +229,7 @@ func (v PropertyValue) Diff(other PropertyValue) *ValueDiff {
 // DeepEquals returns true if this property map is deeply equal to the other property map; and false otherwise.
 func (props PropertyMap) DeepEquals(other PropertyMap) bool {
 	// If any in props either doesn't exist, or is of a different value, return false.
-	for _, k := range StablePropertyKeys(props) {
+	for _, k := range props.StableKeys() {
 		v := props[k]
 		if p, has := other[k]; has {
 			if !v.DeepEquals(p) {
@@ -241,7 +241,7 @@ func (props PropertyMap) DeepEquals(other PropertyMap) bool {
 	}
 
 	// If the other map has properties that this map doesn't have, return false.
-	for _, k := range StablePropertyKeys(other) {
+	for _, k := range other.StableKeys() {
 		if _, has := props[k]; !has && other[k].HasValue() {
 			return false
 		}

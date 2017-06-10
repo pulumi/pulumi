@@ -21,7 +21,6 @@ import (
 
 	"github.com/golang/glog"
 
-	"github.com/pulumi/lumi/pkg/pack"
 	"github.com/pulumi/lumi/pkg/resource"
 	"github.com/pulumi/lumi/pkg/tokens"
 	"github.com/pulumi/lumi/sdk/go/pkg/lumirpc"
@@ -59,54 +58,33 @@ func NewAnalyzer(ctx *Context, name tokens.QName) (Analyzer, error) {
 
 func (a *analyzer) Name() tokens.QName { return a.name }
 
-// Analyze analyzes an entire project/stack/snapshot, and returns any errors that it finds.
-func (a *analyzer) Analyze(url pack.PackageURL) ([]AnalyzeFailure, error) {
-	glog.V(7).Infof("analyzer[%v].Analyze(url=%v) executing", a.name, url)
-	req := &lumirpc.AnalyzeRequest{
-		Pkg: url.String(),
-	}
-
-	resp, err := a.client.Analyze(a.ctx.Request(), req)
-	if err != nil {
-		glog.V(7).Infof("analyzer[%v].Analyze(url=%v) failed: err=%v", a.name, url, err)
-		return nil, err
-	}
-
-	var failures []AnalyzeFailure
-	for _, failure := range resp.GetFailures() {
-		failures = append(failures, AnalyzeFailure{failure.Reason})
-	}
-	glog.V(7).Infof("analyzer[%v].Analyze(url=%v) success: failures=#%v", a.name, url, len(failures))
-	return failures, nil
-}
-
-// AnalyzeResource analyzes a single resource object, and returns any errors that it finds.
-func (a *analyzer) AnalyzeResource(t tokens.Type, props resource.PropertyMap) ([]AnalyzeResourceFailure, error) {
-	glog.V(7).Infof("analyzer[%v].AnalyzeResource(t=%v,#props=%v) executing", a.name, t, len(props))
+// Analyze analyzes a single resource object, and returns any errors that it finds.
+func (a *analyzer) Analyze(t tokens.Type, props resource.PropertyMap) ([]AnalyzeFailure, error) {
+	glog.V(7).Infof("analyzer[%v].Analyze(t=%v,#props=%v) executing", a.name, t, len(props))
 	pstr, unks := MarshalPropertiesWithUnknowns(a.ctx, props, MarshalOptions{
 		OldURNs:      true, // permit old URNs, since this is pre-update.
 		RawResources: true, // often used during URN creation; IDs won't be ready.
 	})
-	req := &lumirpc.AnalyzeResourceRequest{
+	req := &lumirpc.AnalyzeRequest{
 		Type:       string(t),
 		Properties: pstr,
 		Unknowns:   unks,
 	}
 
-	resp, err := a.client.AnalyzeResource(a.ctx.Request(), req)
+	resp, err := a.client.Analyze(a.ctx.Request(), req)
 	if err != nil {
-		glog.V(7).Infof("analyzer[%v].AnalyzeResource(t=%v,...) failed: err=%v", a.name, t, err)
+		glog.V(7).Infof("analyzer[%v].Analyze(t=%v,...) failed: err=%v", a.name, t, err)
 		return nil, err
 	}
 
-	var failures []AnalyzeResourceFailure
+	var failures []AnalyzeFailure
 	for _, failure := range resp.GetFailures() {
-		failures = append(failures, AnalyzeResourceFailure{
+		failures = append(failures, AnalyzeFailure{
 			Property: resource.PropertyKey(failure.Property),
 			Reason:   failure.Reason,
 		})
 	}
-	glog.V(7).Infof("analyzer[%v].AnalyzeResource(t=%v,...) success: failures=#%v", a.name, t, len(failures))
+	glog.V(7).Infof("analyzer[%v].Analyze(t=%v,...) success: failures=#%v", a.name, t, len(failures))
 	return failures, nil
 }
 

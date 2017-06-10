@@ -39,7 +39,6 @@ func NewState(t tokens.Type, urn URN, id ID, inputs PropertyMap, outputs Propert
 	contract.Assert(urn != "")
 	contract.Assert(id != "")
 	contract.Assert(inputs != nil)
-	contract.Assert(outputs != nil)
 	return &State{
 		t:       t,
 		urn:     urn,

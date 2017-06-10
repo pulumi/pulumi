@@ -13,7 +13,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package deployment
+package deploy
 
 import (
 	"github.com/pulumi/lumi/pkg/diag/colors"
@@ -49,12 +49,12 @@ func NewReplaceStep(iter *PlanIterator, old *resource.State,
 	return &Step{iter: iter, op: OpReplace, old: old, new: new, inputs: inputs}
 }
 
-func (s *Step) Plan() *Plan                    { return s.iter.p }
-func (s *Step) Iterator() *PlanIterator        { return s.iter }
-func (s *Step) Op() StepOp                     { return s.op }
-func (s *Step) Old() resource.Resource         { return s.old }
-func (s *Step) New() resource.Resource         { return s.new }
-func (s *Step) NewProps() resource.PropertyMap { return s.inputs }
+func (s *Step) Plan() *Plan                  { return s.iter.p }
+func (s *Step) Iterator() *PlanIterator      { return s.iter }
+func (s *Step) Op() StepOp                   { return s.op }
+func (s *Step) Old() resource.Resource       { return s.old }
+func (s *Step) New() resource.Resource       { return s.new }
+func (s *Step) Inputs() resource.PropertyMap { return s.inputs }
 
 func (s *Step) Provider() (plugin.Provider, error) {
 	contract.Assert(s.old == nil || s.new == nil || s.old.Type() == s.new.Type())

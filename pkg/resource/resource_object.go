@@ -204,8 +204,12 @@ func copyObjectProperties(props *rt.PropertyMap) PropertyMap {
 func setRuntimeProperties(obj *rt.Object, props PropertyMap) {
 	for k, v := range props {
 		prop := obj.GetPropertyAddr(rt.PropertyKey(k), true, true)
-		val := createRuntimeProperty(v)
-		prop.Set(val)
+		// TODO: we are only setting if IsNull == true, to avoid certain shortcomings in our serialization format
+		//     today.  For example, if a resource ID appears, we must map it back to the runtime object.
+		if prop.Obj().IsNull() {
+			val := createRuntimeProperty(v)
+			prop.Set(val)
+		}
 	}
 }
 

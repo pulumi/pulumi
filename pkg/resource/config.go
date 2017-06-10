@@ -24,7 +24,7 @@ import (
 // ConfigMap contains a mapping from variable token to the value to poke into that variable.
 type ConfigMap map[tokens.Token]interface{}
 
-func (config ConfigMap) Stable() []tokens.Token {
+func (config ConfigMap) StableKeys() []tokens.Token {
 	sorted := make([]tokens.Token, 0, len(config))
 	for key := range config {
 		sorted = append(sorted, key)

@@ -13,31 +13,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package resource
+package deploy
 
 import (
-	"sort"
+	"github.com/pulumi/lumi/pkg/resource"
+	"github.com/pulumi/lumi/pkg/tokens"
 )
 
-func StablePropertyKeys(props PropertyMap) []PropertyKey {
-	sorted := make(propertyKeys, 0, len(props))
-	for prop := range props {
-		sorted = append(sorted, prop)
-	}
-	sort.Sort(sorted)
-	return sorted
-}
-
-type propertyKeys []PropertyKey
-
-func (s propertyKeys) Len() int {
-	return len(s)
-}
-
-func (s propertyKeys) Swap(i, j int) {
-	s[i], s[j] = s[j], s[i]
-}
-
-func (s propertyKeys) Less(i, j int) bool {
-	return s[i] < s[j]
+// Target represents information about a deployment target.
+type Target struct {
+	Name   tokens.QName       // the target environment name.
+	Config resource.ConfigMap // optional configuration key/values.
 }

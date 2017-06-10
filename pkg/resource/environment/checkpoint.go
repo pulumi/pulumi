@@ -18,17 +18,11 @@
 package environment
 
 import (
-	"github.com/pulumi/lumi/pkg/compiler/core"
 	"github.com/pulumi/lumi/pkg/resource"
+	"github.com/pulumi/lumi/pkg/resource/deploy"
 	"github.com/pulumi/lumi/pkg/tokens"
 	"github.com/pulumi/lumi/pkg/util/contract"
 )
-
-// Environment represents information about a deployment target.
-type Environment struct {
-	Name   tokens.QName       // the target environment name.
-	Config resource.ConfigMap // optional configuration key/values.
-}
 
 // Checkpoint is a serialized deployment target plus a record of the latest deployment.
 type Checkpoint struct {
@@ -38,70 +32,56 @@ type Checkpoint struct {
 }
 
 // SerializeCheckpoint turns a snapshot into a LumiGL data structure suitable for serialization.
-func SerializeCheckpoint(env *Environment, snap *deployment.Snapshot, reftag string) *Checkpoint {
-	contract.Requiref(env != nil, "env", "!= nil")
+func SerializeCheckpoint(targ *deploy.Target, snap *deploy.Snapshot) *Checkpoint {
+	contract.Requiref(targ != nil, "targ", "!= nil")
 
 	// If snap is nil, that's okay, we will just create an empty deployment; otherwise, serialize the whole snapshot.
 	var latest *Deployment
 	if snap != nil {
-		latest = SerializeDeployment(snap, reftag)
+		latest = SerializeDeployment(snap)
 	}
 
 	var config *resource.ConfigMap
-	if env.Config != nil {
-		config = &env.Config
+	if targ.Config != nil {
+		config = &targ.Config
 	}
 
 	return &Checkpoint{
-		Target: env.Name,
+		Target: targ.Name,
 		Config: config,
 		Latest: latest,
 	}
 }
 
 // DeserializeCheckpoint takes a serialized deployment record and returns its associated snapshot.
-func DeserializeCheckpoint(ctx *Context, envfile *Checkpoint) (*Environment, *Snapshot) {
-	contract.Require(ctx != nil, "ctx")
-	contract.Require(envfile != nil, "envfile")
+func DeserializeCheckpoint(chkpoint *Checkpoint) (*deploy.Target, *deploy.Snapshot) {
+	contract.Require(chkpoint != nil, "chkpoint")
 
-	var snap Snapshot
-	name := envfile.Target
-	if latest := envfile.Latest; latest != nil {
-		// Determine the reftag to use.
-		var reftag string
-		if latest.Reftag == nil {
-			reftag = DefaultDeploymentReftag
-		} else {
-			reftag = *latest.Reftag
-		}
-
+	var snap *deploy.Snapshot
+	name := chkpoint.Target
+	if latest := chkpoint.Latest; latest != nil {
 		// For every serialized resource vertex, create a ResourceDeployment out of it.
-		var resources []Resource
+		var resources []*resource.State
 		if latest.Resources != nil {
 			for _, kvp := range latest.Resources.Iter() {
 				// Deserialize the resource properties, if they exist.
 				res := kvp.Value
-				inputs := DeserializeDeploymentProperties(res.Inputs, reftag)
-				outputs := DeserializeDeploymentProperties(res.Outputs, reftag)
+				inputs := DeserializeProperties(res.Inputs)
+				outputs := DeserializeProperties(res.Outputs)
 
 				// And now just produce a resource object using the information available.
-				resources = append(resources, NewResource(res.ID, kvp.Key, res.Type, inputs, outputs))
+				state := resource.NewState(res.Type, kvp.Key, res.ID, inputs, outputs)
+				resources = append(resources, state)
 			}
 		}
 
-		// If the args are non-nil, use them.
-		var args core.Args
-		if latest.Args != nil {
-			args = *latest.Args
-		}
-
-		snap = NewSnapshot(ctx, name, latest.Package, args, resources)
+		snap = deploy.NewSnapshot(name, resources, latest.Info)
 	}
 
-	// Create an environment and snapshot objects to return.
-	env := &Environment{Name: name}
-	if envfile.Config != nil {
-		env.Config = *envfile.Config
+	// Create a new target and snapshot objects to return.
+	targ := &deploy.Target{Name: name}
+	if chkpoint.Config != nil {
+		targ.Config = *chkpoint.Config
 	}
-	return env, snap
+	return targ, snap
 }

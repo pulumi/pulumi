@@ -16,16 +16,11 @@
 package main
 
 import (
-	"fmt"
-	"os"
 	"strings"
 
-	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/lumi/pkg/compiler/core"
-	"github.com/pulumi/lumi/pkg/graph"
-	"github.com/pulumi/lumi/pkg/graph/dotconv"
 	"github.com/pulumi/lumi/pkg/resource"
 	"github.com/pulumi/lumi/pkg/tokens"
 	"github.com/pulumi/lumi/pkg/util/cmdutil"
@@ -54,25 +49,28 @@ func newPackEvalCmd() *cobra.Command {
 				if err != nil {
 					return err
 				}
-				config = envInfo.Env.Config
+				config = envInfo.Target.Config
 			}
 
 			// Perform the compilation and, if non-nil is returned, output the graph.
-			if result := compile(cmd, args, config); result != nil && result.Heap != nil && result.Heap.G != nil {
-				// Serialize that evaluation graph so that it's suitable for printing/serializing.
-				if dotOutput {
-					// Convert the output to a DOT file.
-					if err := dotconv.Print(result.Heap.G, os.Stdout); err != nil {
-						return errors.Errorf("failed to write DOT file to output: %v", err)
-					}
-				} else {
-					// Just print a very basic, yet (hopefully) aesthetically pleasing, ascii-ization of the graph.
-					shown := make(map[graph.Vertex]bool)
-					for _, root := range result.Heap.G.Objs() {
-						printVertex(root.ToObj(), shown, "")
+			// TODO: reenable this.
+			/*
+				if result := compile(cmd, args, config); result != nil && result.Heap != nil && result.Heap.G != nil {
+					// Serialize that evaluation graph so that it's suitable for printing/serializing.
+					if dotOutput {
+						// Convert the output to a DOT file.
+						if err := dotconv.Print(result.Heap.G, os.Stdout); err != nil {
+							return errors.Errorf("failed to write DOT file to output: %v", err)
+						}
+					} else {
+						// Just print a very basic, yet (hopefully) aesthetically pleasing, ascii-ization of the graph.
+						shown := make(map[graph.Vertex]bool)
+						for _, root := range result.Heap.G.Objs() {
+							printVertex(root.ToObj(), shown, "")
+						}
 					}
 				}
-			}
+			*/
 			return nil
 		}),
 	}
@@ -90,6 +88,7 @@ func newPackEvalCmd() *cobra.Command {
 // printVertex just pretty-prints a graph.  The output is not serializable, it's just for display purposes.
 // IDEA: option to print properties.
 // IDEA: full serializability, including a DOT file option.
+/*
 func printVertex(v *heapstate.ObjectVertex, shown map[graph.Vertex]bool, indent string) {
 	s := v.Obj().Type()
 	if shown[v] {
@@ -102,6 +101,7 @@ func printVertex(v *heapstate.ObjectVertex, shown map[graph.Vertex]bool, indent 
 		}
 	}
 }
+*/
 
 // dashdashArgsToMap is a simple args parser that places incoming key/value pairs into a map.  These are then used
 // during package compilation as inputs to the main entrypoint function.

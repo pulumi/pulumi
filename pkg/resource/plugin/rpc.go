@@ -41,7 +41,7 @@ func MarshalPropertiesWithUnknowns(
 	result := &structpb.Struct{
 		Fields: make(map[string]*structpb.Value),
 	}
-	for _, key := range resource.StablePropertyKeys(props) {
+	for _, key := range props.StableKeys() {
 		if v := props[key]; !v.IsOutput() {
 			mv, known := MarshalPropertyValue(ctx, props[key], opts)
 			if known {

@@ -13,10 +13,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package deployment
+package deploy
 
 import (
-	"github.com/pulumi/lumi/pkg/compiler/core"
 	"github.com/pulumi/lumi/pkg/resource"
 	"github.com/pulumi/lumi/pkg/tokens"
 )
@@ -26,17 +25,15 @@ import (
 // or apply an infrastructure deployment plan in order to make reality match the snapshot state.
 type Snapshot struct {
 	Namespace tokens.QName      // the namespace target being deployed into.
-	Pkg       tokens.Package    // the package from which this snapshot came.
-	Args      core.Args         // the arguments used to compile this package.
 	Resources []*resource.State // fetches all resources and their associated states.
+	Info      interface{}       // optional information about the source.
 }
 
 // NewSnapshot creates a snapshot from the given arguments.  The resources must be in topologically sorted order.
-func NewSnapshot(ns tokens.QName, pkg tokens.Package, args core.Args, resources []*resource.State) *Snapshot {
+func NewSnapshot(ns tokens.QName, resources []*resource.State, info interface{}) *Snapshot {
 	return &Snapshot{
 		Namespace: ns,
-		Pkg:       pkg,
-		Args:      args,
 		Resources: resources,
+		Info:      info,
 	}
 }

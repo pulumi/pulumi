@@ -18,18 +18,16 @@ package main
 import (
 	"bytes"
 	"fmt"
-	"os"
 	"sort"
 	"strconv"
 
-	goerr "github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
-	"github.com/pulumi/lumi/pkg/compiler/errors"
 	"github.com/pulumi/lumi/pkg/diag"
 	"github.com/pulumi/lumi/pkg/diag/colors"
-	"github.com/pulumi/lumi/pkg/graph/dotconv"
 	"github.com/pulumi/lumi/pkg/resource"
+	"github.com/pulumi/lumi/pkg/resource/deploy"
+	"github.com/pulumi/lumi/pkg/resource/plugin"
 	"github.com/pulumi/lumi/pkg/tokens"
 	"github.com/pulumi/lumi/pkg/util/cmdutil"
 	"github.com/pulumi/lumi/pkg/util/contract"
@@ -63,8 +61,7 @@ func newPlanCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			defer info.Close()
-			deploy(cmd, info, deployOptions{
+			planAndDeploy(cmd, info, deployOptions{
 				Delete:           false,
 				DryRun:           true,
 				Analyzers:        analyzers,
@@ -109,84 +106,73 @@ func newPlanCmd() *cobra.Command {
 
 // plan just uses the standard logic to parse arguments, options, and to create a snapshot and plan.
 func plan(cmd *cobra.Command, info *envCmdInfo, opts deployOptions) *planResult {
-	// If deleting, there is no need to create a new snapshot; otherwise, we will need to compile the package.
-	var new resource.Snapshot
-	var result *compileResult
+	var source deploy.Source
 	var analyzers []tokens.QName
-	if !opts.Delete {
-		// First, compile; if that yields errors or an empty heap, exit early.
-		if result = compile(cmd, info.Args, info.Env.Config); result == nil || result.Heap == nil {
+	if opts.Delete {
+		// If we are deleting, we use the null source.  This just makes it look like we have no new resources.
+		source = deploy.NullSource
+	} else {
+		// If we aren't deleting, we will actually need an object source.  This is formed over the result of compiling
+		// the supplied package and will wrap an underlying interpreter that runs the program to create resources.
+		result := compile(cmd, info.Args)
+		if result == nil {
 			return nil
 		}
 
-		// Next, if a DOT output is requested, generate it and quite right now.
-		// IDEA: generate this DOT from the snapshot/diff, not the raw object graph.
-		if opts.DOT {
-			// Convert the output to a DOT file.
-			if err := dotconv.Print(result.Heap.G, os.Stdout); err != nil {
-				cmdutil.Sink().Errorf(errors.ErrorIO,
-					goerr.Errorf("failed to write DOT file to output: %v", err))
-			}
-			return nil
-		}
+		// If that succeded, create a new source that will perform interpretation of the compiled program.
+		source = deploy.NewEvalSource(result.B.Ctx(), result.Pkg, info.Args, info.Target.Config)
 
-		// Create a resource snapshot from the compiled/evaluated object graph.
-		var err error
-		new, err = resource.NewGraphSnapshot(
-			info.Ctx, info.Env.Name, result.Pkg.Tok, result.C.Ctx().Opts.Args, result.Heap, info.Old)
-		if err != nil {
-			result.C.Diag().Errorf(errors.ErrorCantCreateSnapshot, err)
-			return nil
-		} else if !info.Ctx.Diag.Success() {
-			return nil
-		}
-
-		// If there are any analyzers to run, queue them up.
-		for _, a := range opts.Analyzers {
-			analyzers = append(analyzers, tokens.QName(a)) // from the command line.
-		}
+		// If there are any analyzers in the project file, add them.
 		if as := result.Pkg.Node.Analyzers; as != nil {
 			for _, a := range *as {
-				analyzers = append(analyzers, a) // from the project file.
+				analyzers = append(analyzers, a)
 			}
 		}
+	}
+
+	// Append any analyzers from the command line.
+	for _, a := range opts.Analyzers {
+		analyzers = append(analyzers, tokens.QName(a))
 	}
 
 	// Generate a plan; this API handles all interesting cases (create, update, delete).
-	plan, err := resource.NewPlan(info.Ctx, info.Old, new, analyzers)
-	if err != nil {
-		result.C.Diag().Errorf(errors.ErrorCantCreateSnapshot, err)
-		return nil
-	}
-	if !info.Ctx.Diag.Success() {
-		return nil
-	}
+	ctx := plugin.NewContext(cmdutil.Diag(), nil)
+	plan := deploy.NewPlan(ctx, info.Snapshot, source, analyzers)
 	return &planResult{
-		compileResult: result,
-		Info:          info,
-		New:           new,
-		Plan:          plan,
+		Info: info,
+		Plan: plan,
 	}
 }
 
 type planResult struct {
-	*compileResult
-	Info *envCmdInfo       // plan command information.
-	Old  resource.Snapshot // the existing snapshot (if any).
-	New  resource.Snapshot // the new snapshot for this plan (if any).
-	Plan resource.Plan     // the plan created by this command.
+	Info *envCmdInfo  // plan command information.
+	Plan *deploy.Plan // the plan created by this command.
 }
 
-func checkEmpty(d diag.Sink, plan resource.Plan) bool {
-	// If we are doing an empty update, say so.
-	if plan.Empty() {
-		d.Infof(diag.Message("no resources need to be updated"))
-		return true
+// beginPlan starts walking a plan's steps, but does some initial validation too.  It returns the iterator object and
+// the first step in the deployment plan.  If the first step is nil, the plan was empty.
+func beginPlan(plan *deploy.Plan) (*deploy.PlanIterator, *deploy.Step) {
+	iter, err := plan.Iterate()
+	if err != nil {
+		cmdutil.Diag().Errorf(diag.Message("An error occurred while preparing the plan: %v"), err)
+		return nil, nil
 	}
-	return false
+
+	step, err := iter.Next()
+	if err != nil {
+		cmdutil.Diag().Errorf(diag.Message("An error occurred while starting to walk the plan: %v"), err)
+		return nil, nil
+	}
+
+	// If we are doing an empty update, say so.
+	if step == nil {
+		cmdutil.Diag().Infof(diag.Message("no resources need to be updated"))
+	}
+
+	return iter, step
 }
 
-func printPlan(d diag.Sink, result *planResult, opts deployOptions) {
+func printPlan(result *planResult, opts deployOptions) {
 	// First print config/unchanged/etc. if necessary.
 	var prelude bytes.Buffer
 	printPrelude(&prelude, result, opts, true)
@@ -194,12 +180,9 @@ func printPlan(d diag.Sink, result *planResult, opts deployOptions) {
 	// Now walk the plan's steps and and pretty-print them out.
 	prelude.WriteString(fmt.Sprintf("%vPlanned changes:%v\n", colors.SpecUnimportant, colors.Reset))
 	fmt.Printf(colors.Colorize(&prelude))
-
-	// Print a nice message if the update is an empty one.
-	if empty := checkEmpty(d, result.Plan); !empty {
+	if iter, step := beginPlan(result.Plan); step != nil {
 		var summary bytes.Buffer
-		step := result.Plan.Steps()
-		counts := make(map[resource.StepOp]int)
+		counts := make(map[deploy.StepOp]int)
 		for step != nil {
 			op := step.Op()
 			// Print this step information (resource and all its properties).
@@ -208,7 +191,16 @@ func printPlan(d diag.Sink, result *planResult, opts deployOptions) {
 				printStep(&summary, step, opts.Summary, true, "")
 			}
 			counts[step.Op()]++
-			step = step.Next()
+			var err error
+			if step, err = iter.Next(); err != nil {
+				cmdutil.Diag().Errorf(diag.Message("An error occurred while viewing the plan: %v"), err)
+				return
+			}
+		}
+
+		// If show-sames was requested, walk the sames and print them.
+		if opts.ShowUnchanged {
+			printUnchanged(&summary, iter, opts.Summary, true)
 		}
 
 		// Print a summary of operation counts.
@@ -220,30 +212,25 @@ func printPlan(d diag.Sink, result *planResult, opts deployOptions) {
 func printPrelude(b *bytes.Buffer, result *planResult, opts deployOptions, planning bool) {
 	// If there are configuration variables, show them.
 	if opts.ShowConfig {
-		printConfig(b, result.compileResult)
-	}
-
-	// If show-sames was requested, walk the sames and print them.
-	if opts.ShowUnchanged {
-		printUnchanged(b, result.Plan, opts.Summary, planning)
+		printConfig(b, result.Info.Target.Config)
 	}
 }
 
-func printConfig(b *bytes.Buffer, result *compileResult) {
+func printConfig(b *bytes.Buffer, config resource.ConfigMap) {
 	b.WriteString(fmt.Sprintf("%vConfiguration:%v\n", colors.SpecUnimportant, colors.Reset))
-	if result != nil && result.ConfigVars != nil {
+	if config != nil {
 		var toks []string
-		for tok := range result.ConfigVars {
+		for tok := range config {
 			toks = append(toks, string(tok))
 		}
 		sort.Strings(toks)
 		for _, tok := range toks {
-			b.WriteString(fmt.Sprintf("%v%v: %v\n", detailsIndent, tok, result.ConfigVars[tokens.Token(tok)]))
+			b.WriteString(fmt.Sprintf("%v%v: %v\n", detailsIndent, tok, config[tokens.Token(tok)]))
 		}
 	}
 }
 
-func printSummary(b *bytes.Buffer, counts map[resource.StepOp]int, showReplaceSteps bool, plan bool) {
+func printSummary(b *bytes.Buffer, counts map[deploy.StepOp]int, showReplaceSteps bool, plan bool) {
 	total := 0
 	for op, c := range counts {
 		if !showReplaceSteps && (op == resource.OpReplaceCreate || op == resource.OpReplaceDelete) {
@@ -270,7 +257,7 @@ func printSummary(b *bytes.Buffer, counts map[resource.StepOp]int, showReplaceSt
 		pastTense = "d"
 	}
 
-	for _, op := range resource.StepOps() {
+	for _, op := range deploy.StepOps {
 		if !showReplaceSteps && (op == resource.OpReplaceCreate || op == resource.OpReplaceDelete) {
 			// Unless the user requested it, don't show the fine-grained replacement steps; just the logical ones.
 			continue
@@ -291,16 +278,18 @@ func plural(s string, c int) string {
 
 const detailsIndent = "      " // 4 spaces, plus 2 for "+ ", "- ", and " " leaders
 
-func printUnchanged(b *bytes.Buffer, plan resource.Plan, summary bool, planning bool) {
+func printUnchanged(b *bytes.Buffer, stats deploy.PlanSummary, summary bool, planning bool) {
 	b.WriteString(fmt.Sprintf("%vUnchanged resources:%v\n", colors.SpecUnimportant, colors.Reset))
-	for _, res := range plan.Unchanged() {
-		b.WriteString("  ") // simulate the 2 spaces for +, -, etc.
-		printResourceHeader(b, res, nil, "")
-		printResourceProperties(b, res, nil, nil, nil, summary, planning, "")
+	for _, res := range stats.Resources() {
+		if stats.Sames()[res.URN()] {
+			b.WriteString("  ") // simulate the 2 spaces for +, -, etc.
+			printResourceHeader(b, res, nil, "")
+			printResourceProperties(b, res, nil, nil, nil, summary, planning, "")
+		}
 	}
 }
 
-func printStep(b *bytes.Buffer, step resource.Step, summary bool, planning bool, indent string) {
+func printStep(b *bytes.Buffer, step *deploy.Step, summary bool, planning bool, indent string) {
 	// First print out the operation's prefix.
 	b.WriteString(step.Op().Prefix())
 
@@ -314,7 +303,7 @@ func printStep(b *bytes.Buffer, step resource.Step, summary bool, planning bool,
 		replaceMap := step.Plan().Replaces()
 		replaces = replaceMap[m]
 	}
-	printResourceProperties(b, step.Old(), step.New(), step.NewProps(), replaces, summary, planning, indent)
+	printResourceProperties(b, step.Old(), step.New(), step.Inputs(), replaces, summary, planning, indent)
 
 	// Finally make sure to reset the color.
 	b.WriteString(colors.Reset)
@@ -390,7 +379,7 @@ func printObject(b *bytes.Buffer, props resource.PropertyMap, planning bool, ind
 
 // printResourceOutputProperties prints only those properties that either differ from the input properties or, if
 // there is an old snapshot of the resource, differ from the prior old snapshot's output properties.
-func printResourceOutputProperties(b *bytes.Buffer, step resource.Step, indent string) {
+func printResourceOutputProperties(b *bytes.Buffer, step *deploy.Step, indent string) {
 	indent += detailsIndent
 	b.WriteString(step.Op().Color())
 	b.WriteString(step.Op().Suffix())

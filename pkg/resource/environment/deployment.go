@@ -21,62 +21,52 @@ import (
 	"reflect"
 	"time"
 
-	"github.com/pulumi/lumi/pkg/compiler/core"
 	"github.com/pulumi/lumi/pkg/resource"
-	"github.com/pulumi/lumi/pkg/resource/deployment"
+	"github.com/pulumi/lumi/pkg/resource/deploy"
 	"github.com/pulumi/lumi/pkg/tokens"
 	"github.com/pulumi/lumi/pkg/util/contract"
 )
 
-// Deployment is a serializable, flattened LumiGL graph structure, representing a deployment.   It is similar
+// Deployment is a serializable, flattened LumiGL graph structure, representing a deploy.   It is similar
 // to the actual Snapshot structure, except that it flattens and rearranges a few data structures for serializability.
-// Over time, we also expect this to gather more information about deployments themselves.
+// Over time, we also expect this to gather more information about deploys themselves.
 type Deployment struct {
-	Time           time.Time       `json:"time"`                // the time of the deployment.
-	Package        tokens.Package  `json:"package"`             // the package deployed by this record.
-	Args           *core.Args      `json:"args,omitempty"`      // the blueprint args for graph creation.
-	ResourceStates *ResourceStates `json:"resources,omitempty"` // a map of resource.URNs to resource vertices.
+	Time      time.Time   `json:"time"`                // the time of the deploy.
+	Info      interface{} `json:"info,omitempty"`      // optional information about the source.
+	Resources *Resources  `json:"resources,omitempty"` // a map of resource.URNs to resource vertices.
 }
 
-// ResourceState is a serializable vertex within a LumiGL graph, specifically for resource snapshots.
-type ResourceState struct {
+// Resource is a serializable vertex within a LumiGL graph, specifically for resource snapshots.
+type Resource struct {
 	ID      resource.ID            `json:"id"`                // the provider ID for this resource, if any.
 	Type    tokens.Type            `json:"type"`              // this resource's full type token.
 	Inputs  map[string]interface{} `json:"inputs,omitempty"`  // the input properties from the program.
 	Outputs map[string]interface{} `json:"outputs,omitempty"` // the output properties from the resource provider.
 }
 
-// SerializeDeployment serializes an entire snapshot as a deployment record.
-func SerializeDeployment(snap *deployment.Snapshot) *Deployment {
+// SerializeDeployment serializes an entire snapshot as a deploy record.
+func SerializeDeployment(snap *deploy.Snapshot) *Deployment {
 	// Serialize all vertices and only include a vertex section if non-empty.
-	var resm *ResourceStates
-	if snapres := snap.ResourceStates(); len(snapres) > 0 {
-		resm = NewResourceStates()
-		for _, res := range snap.ResourceStates() {
-			m := res.resource.URN()
-			contract.Assertf(string(m) != "", "Unexpected empty resource resource.URN")
-			contract.Assertf(!resm.Has(m), "Unexpected duplicate resource resource.URN '%v'", m)
-			resm.Add(m, SerializeResourceState(res))
+	var resm *Resources
+	if snapres := snap.Resources; len(snapres) > 0 {
+		resm = NewResources()
+		for _, res := range snapres {
+			urn := res.URN()
+			contract.Assertf(string(urn) != "", "Unexpected empty resource resource.URN")
+			contract.Assertf(!resm.Has(urn), "Unexpected duplicate resource resource.URN '%v'", urn)
+			resm.Add(urn, SerializeResource(res))
 		}
 	}
 
-	// Initialize the args pointer, but only serialize if the args are non-empty.
-	var argsp *core.Args
-	if args := snap.Args(); len(args) > 0 {
-		argsp = &args
-	}
-
 	return &Deployment{
-		Time:           time.Now(),
-		Reftag:         refp,
-		Package:        snap.Pkg(),
-		Args:           argsp,
-		ResourceStates: resm,
+		Time:      time.Now(),
+		Info:      snap.Info,
+		Resources: resm,
 	}
 }
 
-// SerializeResourceState turns a resource into a LumiGL data structure suitable for serialization.
-func SerializeResourceState(res resource.State) *ResourceState {
+// SerializeResource turns a resource into a LumiGL data structure suitable for serialization.
+func SerializeResource(res *resource.State) *Resource {
 	contract.Assert(res != nil)
 
 	// Serialize all input and output properties recursively, and add them if non-empty.
@@ -89,7 +79,7 @@ func SerializeResourceState(res resource.State) *ResourceState {
 		outputs = SerializeProperties(outp)
 	}
 
-	return &ResourceState{
+	return &Resource{
 		ID:      res.ID(),
 		Type:    res.Type(),
 		Inputs:  inputs,
@@ -100,7 +90,7 @@ func SerializeResourceState(res resource.State) *ResourceState {
 // SerializeProperties serializes a resource property bag so that it's suitable for serialization.
 func SerializeProperties(props resource.PropertyMap) map[string]interface{} {
 	dst := make(map[string]interface{})
-	for _, k := range StablePropertyKeys(props) {
+	for _, k := range props.StableKeys() {
 		if v := SerializePropertyValue(props[k]); v != nil {
 			dst[string(k)] = v
 		}
@@ -137,65 +127,65 @@ func SerializePropertyValue(prop resource.PropertyValue) interface{} {
 	return prop.V
 }
 
-// DeserializeProperties deserializes an entire map of deployment properties into a resource property map.
+// DeserializeProperties deserializes an entire map of deploy properties into a resource property map.
 func DeserializeProperties(props map[string]interface{}) resource.PropertyMap {
-	result := make(PropertyMap)
+	result := make(resource.PropertyMap)
 	for k, prop := range props {
-		result[PropertyKey(k)] = DeserializePropertyValue(prop)
+		result[resource.PropertyKey(k)] = DeserializePropertyValue(prop)
 	}
 	return result
 }
 
-// DeserializePropertyValue deserializes a single deployment property into a resource property value.
+// DeserializePropertyValue deserializes a single deploy property into a resource property value.
 func DeserializePropertyValue(v interface{}) resource.PropertyValue {
 	if v != nil {
 		switch w := v.(type) {
 		case bool:
-			return NewBoolProperty(w)
+			return resource.NewBoolProperty(w)
 		case float64:
-			return NewNumberProperty(w)
+			return resource.NewNumberProperty(w)
 		case string:
-			return NewStringProperty(w)
+			return resource.NewStringProperty(w)
 		case []interface{}:
-			var arr []PropertyValue
+			var arr []resource.PropertyValue
 			for _, elem := range w {
 				arr = append(arr, DeserializePropertyValue(elem))
 			}
-			return NewArrayProperty(arr)
+			return resource.NewArrayProperty(arr)
 		case map[string]interface{}:
 			obj := DeserializeProperties(w)
-			return NewObjectProperty(obj)
+			return resource.NewObjectProperty(obj)
 		default:
 			contract.Failf("Unrecognized property type: %v", reflect.ValueOf(v))
 		}
 	}
 
-	return NewNullProperty()
+	return resource.NewNullProperty()
 }
 
-// ResourceStates is a map of URN to resource, that also preserves a stable order of its keys.  This ensures
+// Resources is a map of URN to resource, that also preserves a stable order of its keys.  This ensures
 // enumerations are ordered deterministically, versus Go's built-in map type whose enumeration is randomized.
 // Additionally, because of this stable ordering, marshaling to and from JSON also preserves the order of keys.
-type ResourceStates struct {
-	m    map[resource.URN]*ResourceState
+type Resources struct {
+	m    map[resource.URN]*Resource
 	keys []resource.URN
 }
 
-func NewResourceStates() *ResourceStates {
-	return &ResourceStates{m: make(map[resource.URN]*ResourceState)}
+func NewResources() *Resources {
+	return &Resources{m: make(map[resource.URN]*Resource)}
 }
 
-func (m *ResourceStates) Keys() []resource.URN { return m.keys }
-func (m *ResourceStates) Len() int             { return len(m.keys) }
+func (m *Resources) Keys() []resource.URN { return m.keys }
+func (m *Resources) Len() int             { return len(m.keys) }
 
-func (m *ResourceStates) Add(k resource.URN, v *ResourceState) {
+func (m *Resources) Add(k resource.URN, v *Resource) {
 	_, has := m.m[k]
 	contract.Assertf(!has, "Unexpected duplicate key '%v' added to map")
 	m.m[k] = v
 	m.keys = append(m.keys, k)
 }
 
-func (m *ResourceStates) Delete(k resource.URN) {
+func (m *Resources) Delete(k resource.URN) {
 	_, has := m.m[k]
 	contract.Assertf(has, "Unexpected delete of non-existent key key '%v'")
 	delete(m.m, k)
@@ -209,29 +199,29 @@ func (m *ResourceStates) Delete(k resource.URN) {
 	}
 }
 
-func (m *ResourceStates) Get(k resource.URN) (*ResourceState, bool) {
+func (m *Resources) Get(k resource.URN) (*Resource, bool) {
 	v, has := m.m[k]
 	return v, has
 }
 
-func (m *ResourceStates) Has(k resource.URN) bool {
+func (m *Resources) Has(k resource.URN) bool {
 	_, has := m.m[k]
 	return has
 }
 
-func (m *ResourceStates) Must(k resource.URN) *ResourceState {
+func (m *Resources) Must(k resource.URN) *Resource {
 	v, has := m.m[k]
 	contract.Assertf(has, "Expected key '%v' to exist in this map", k)
 	return v
 }
 
-func (m *ResourceStates) Set(k resource.URN, v *ResourceState) {
+func (m *Resources) Set(k resource.URN, v *Resource) {
 	_, has := m.m[k]
 	contract.Assertf(has, "Expected key '%v' to exist in this map for setting an element", k)
 	m.m[k] = v
 }
 
-func (m *ResourceStates) SetOrAdd(k resource.URN, v *ResourceState) {
+func (m *Resources) SetOrAdd(k resource.URN, v *Resource) {
 	if _, has := m.m[k]; has {
 		m.Set(k, v)
 	} else {
@@ -239,21 +229,21 @@ func (m *ResourceStates) SetOrAdd(k resource.URN, v *ResourceState) {
 	}
 }
 
-type ResourceStateKV struct {
+type ResourceKV struct {
 	Key   resource.URN
-	Value *ResourceState
+	Value *Resource
 }
 
 // Iter can be used to conveniently range over a map's contents stably.
-func (m *ResourceStates) Iter() []ResourceStateKV {
-	var kvps []ResourceStateKV
+func (m *Resources) Iter() []ResourceKV {
+	var kvps []ResourceKV
 	for _, k := range m.Keys() {
-		kvps = append(kvps, ResourceStateKV{k, m.Must(k)})
+		kvps = append(kvps, ResourceKV{k, m.Must(k)})
 	}
 	return kvps
 }
 
-func (m *ResourceStates) MarshalJSON() ([]byte, error) {
+func (m *Resources) MarshalJSON() ([]byte, error) {
 	var b bytes.Buffer
 	b.WriteString("{")
 	for i, k := range m.Keys() {
@@ -279,9 +269,9 @@ func (m *ResourceStates) MarshalJSON() ([]byte, error) {
 	return b.Bytes(), nil
 }
 
-func (m *ResourceStates) UnmarshalJSON(b []byte) error {
+func (m *Resources) UnmarshalJSON(b []byte) error {
 	contract.Assert(m.m == nil)
-	m.m = make(map[resource.URN]*ResourceState)
+	m.m = make(map[resource.URN]*Resource)
 
 	// Do a pass and read keys and values in the right order.
 	rdr := bytes.NewReader(b)
@@ -309,7 +299,7 @@ func (m *ResourceStates) UnmarshalJSON(b []byte) error {
 
 		k := resource.URN(token.(string))
 		contract.Assert(dec.More())
-		var v *ResourceState
+		var v *Resource
 		if err := dec.Decode(&v); err != nil {
 			return err
 		}

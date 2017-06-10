@@ -13,22 +13,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package deployment
+package deploy
 
 import (
 	"github.com/golang/glog"
 	goerr "github.com/pkg/errors"
 
 	"github.com/pulumi/lumi/pkg/compiler/errors"
-	"github.com/pulumi/lumi/pkg/compiler/symbols"
-	"github.com/pulumi/lumi/pkg/diag"
-	"github.com/pulumi/lumi/pkg/eval"
-	"github.com/pulumi/lumi/pkg/eval/rt"
-	"github.com/pulumi/lumi/pkg/pack"
 	"github.com/pulumi/lumi/pkg/resource"
+	"github.com/pulumi/lumi/pkg/resource/plugin"
 	"github.com/pulumi/lumi/pkg/tokens"
 	"github.com/pulumi/lumi/pkg/util/contract"
-	"github.com/pulumi/lumi/pkg/util/rendezvous"
 )
 
 // TODO[pulumi/lumi#106]: parallelism.
@@ -36,7 +31,7 @@ import (
 // Apply performs all steps in the plan, calling out to the progress reporting functions as desired.  It returns four
 // things: the resulting Snapshot, no matter whether an error occurs or not; an error, if something went wrong; the step
 // that failed, if the error is non-nil; and finally the state of the resource modified in the failing step.
-func (p *Plan) Apply(prog Progress) (*Snapshot, *Step, resource.Status, error) {
+func (p *Plan) Apply(prog Progress) (PlanSummary, *Step, resource.Status, error) {
 	// Fetch a plan iterator and keep walking it until we are done.
 	iter, err := p.Iterate()
 	if err != nil {
@@ -63,7 +58,7 @@ func (p *Plan) Apply(prog Progress) (*Snapshot, *Step, resource.Status, error) {
 		// If an error occurred, exit early.
 		if err != nil {
 			glog.V(7).Infof("Plan step #%v failed [%v]: %v", n, step.Op(), err)
-			return iter.Snap(), step, rst, err
+			return iter, step, rst, err
 		}
 
 		glog.V(7).Infof("Plan step #%v succeeded [%v]", n, step.Op())
@@ -71,8 +66,8 @@ func (p *Plan) Apply(prog Progress) (*Snapshot, *Step, resource.Status, error) {
 		n++
 	}
 
-	// Finally, produce a new snapshot and return the resulting information.
-	return iter.Snap(), nil, resource.StatusOK, nil
+	// Finally, return a summary and the resulting plan information.
+	return iter, nil, resource.StatusOK, nil
 }
 
 // Iterate initializes and returns an iterator that can be used to step through a plan's individual steps.
@@ -85,42 +80,41 @@ func (p *Plan) Iterate() (*PlanIterator, error) {
 		keeps[res] = true
 	}
 
-	// Start the planning process; this will perform initial steps that are required for the plan to be useable.
-	rz := rendezvous.New()
-	ps := &PlanIterator{
+	// Ask the source for its iterator.
+	src, err := p.new.Iterate()
+	if err != nil {
+		return nil, err
+	}
+
+	// Create an iterator that can be used to perform the planning process.
+	return &PlanIterator{
 		p:         p,
-		e:         eval.New(p.bindctx, newPlanEvalHooks(rz)),
-		rz:        rz,
+		src:       src,
 		creates:   make(map[resource.URN]bool),
 		updates:   make(map[resource.URN]bool),
 		deletes:   make(map[resource.URN]bool),
 		sames:     make(map[resource.URN]bool),
 		resources: resources,
 		keeps:     keeps,
-	}
+	}, nil
+}
 
-	// First, populate the configuration variables.
-	if err := ps.initConfig(); err != nil {
-		return nil, err
-	}
-
-	// Give analyzers a chance to inspect the overall deployment.
-	if err := ps.initAnalyzers(); err != nil {
-		return nil, err
-	}
-
-	// Now create the evaluator coroutine and prepare it to take its first step.
-	ps.forkEval()
-
-	// If no error occurred, return a valid plan stepping object.
-	return ps, nil
+// PlanSummary is an interface for summarizing the progress of a plan.
+type PlanSummary interface {
+	Steps() int
+	Creates() map[resource.URN]bool
+	Updates() map[resource.URN]bool
+	Replaces() map[resource.URN]bool
+	Deletes() map[resource.URN]bool
+	Sames() map[resource.URN]bool
+	Resources() []*resource.State
+	Snap() *Snapshot
 }
 
 // PlanIterator can be used to step through and/or execute a plan's proposed actions.
 type PlanIterator struct {
-	p  *Plan                  // the plan to which this stepper belongs.
-	e  eval.Interpreter       // the interpreter used to compute the new state.
-	rz *rendezvous.Rendezvous // the rendezvous where planning and evaluator coroutines meet.
+	p   *Plan          // the plan to which this iterator belongs.
+	src SourceIterator // the iterator that fetches source resources.
 
 	creates  map[resource.URN]bool // URNs discovered to be created.
 	updates  map[resource.URN]bool // URNs discovered to be updated.
@@ -132,129 +126,37 @@ type PlanIterator struct {
 	resources []*resource.State        // the resulting ordered resource states.
 	keeps     map[*resource.State]bool // a map of which states to keep in the final output.
 
-	evaldone bool // true if the interpreter has been run to completion.
-	done     bool // true if the planning and associated iteration has finished.
+	srcdone bool // true if the source interpreter has been run to completion.
+	done    bool // true if the planning and associated iteration has finished.
 }
 
-func (iter *PlanIterator) Plan() *Plan                    { return iter.p }
-func (iter *PlanIterator) Interpreter() eval.Interpreter  { return iter.e }
-func (iter *PlanIterator) Creates() map[resource.URN]bool { return iter.creates }
-func (iter *PlanIterator) Updates() map[resource.URN]bool { return iter.updates }
-func (iter *PlanIterator) Deletes() map[resource.URN]bool { return iter.deletes }
-func (iter *PlanIterator) Sames() map[resource.URN]bool   { return iter.sames }
-func (iter *PlanIterator) EvalDone() bool                 { return iter.evaldone }
-func (iter *PlanIterator) Done() bool                     { return iter.done }
-
-// initConfig applies the configuration map to an existing interpreter context.  The map is simply a map of tokens --
-// which must be globally settable variables (module properties or static class properties) -- to serializable constant
-// values.  The routine simply walks these tokens in sorted order, and assigns the constant objects.  Note that, because
-// we are accessing module and class members, this routine will also trigger the relevant initialization routines.
-func (iter *PlanIterator) initConfig() error {
-	config := iter.p.config
-	glog.V(5).Infof("Applying %v configuration values for package '%v'", len(config), iter.p.pkg)
-	if config == nil {
-		return nil
-	}
-
-	// For each config entry, bind the token to its symbol, and then attempt to assign to it.
-	for _, tok := range config.Stable() {
-		glog.V(5).Infof("Applying configuration value for token '%v'", tok)
-
-		// Bind to the symbol; if it returns nil, this means an error has resulted, and we can skip it.
-		var tree diag.Diagable // there is no source info for this; eventually we may assign one.
-		if sym := iter.p.bindctx.LookupSymbol(tree, tokens.Token(tok), true); sym != nil {
-			var ok bool
-			switch s := sym.(type) {
-			case *symbols.ModuleProperty:
-				ok = true
-			case *symbols.ClassProperty:
-				// class properties are ok, so long as they are static.
-				ok = s.Static()
-			default:
-				ok = false
-			}
-			if !ok {
-				iter.p.Diag().Errorf(errors.ErrorIllegalConfigToken, tok)
-				continue // skip to the next one
-			}
-
-			// Load up the location as an l-value; because we don't support instance properties, this is nil.
-			if loc := iter.e.LoadLocation(tree, sym, nil, true); loc != nil {
-				// Allocate a new constant for the value we are about to assign, and assign it to the location.
-				v := config[tok]
-				obj := rt.NewConstantObject(v)
-				loc.Set(tree, obj)
-			}
-		}
-	}
-
-	if !iter.p.Diag().Success() {
-		return goerr.New("Plan config application failed")
-	}
-
-	return nil
+func (iter *PlanIterator) Plan() *Plan { return iter.p }
+func (iter *PlanIterator) Steps() int {
+	return len(iter.creates) + len(iter.updates) + len(iter.replaces) + len(iter.deletes)
 }
-
-// initAnalyzers fires up the analyzers and asks them to validate the entire package.
-func (iter *PlanIterator) initAnalyzers() error {
-	for _, aname := range iter.p.analyzers {
-		analyzer, err := iter.p.plugctx.Host.Analyzer(aname)
-		if err != nil {
-			return err
-		}
-		// TODO[pulumi/lumi#53]: we want to use the full package URL, including its SHA1 hash/version/etc.
-		failures, err := analyzer.Analyze(pack.PackageURL{Name: iter.p.PkgName()})
-		if err != nil {
-			return err
-		}
-		for _, failure := range failures {
-			iter.p.Diag().Errorf(errors.ErrorAnalyzeFailure, aname, failure.Reason)
-		}
-		if len(failures) > 0 {
-			return goerr.New("At least one analyzer failured occurred")
-		}
-	}
-	return nil
-}
-
-// forkEval performs the evaluation from a distinct goroutine.
-func (iter *PlanIterator) forkEval() error {
-	// Fire up the goroutine.
-	go func() {
-		iter.e.EvaluatePackage(iter.p.pkg, iter.p.args)
-	}()
-
-	// And wait for it to reach its rendezvous before proceeding.
-	ret, done, err := iter.rz.Meet(planParty, nil)
-	if err != nil {
-		return err
-	} else if done {
-		contract.Assertf(!iter.p.Diag().Success(), "Expected diagnostics pertaining to the program failure")
-		return goerr.New("Failure running the program before it even began executing")
-	}
-	contract.Assert(ret == nil)
-	return nil
-}
+func (iter *PlanIterator) Creates() map[resource.URN]bool  { return iter.creates }
+func (iter *PlanIterator) Updates() map[resource.URN]bool  { return iter.updates }
+func (iter *PlanIterator) Replaces() map[resource.URN]bool { return iter.replaces }
+func (iter *PlanIterator) Deletes() map[resource.URN]bool  { return iter.deletes }
+func (iter *PlanIterator) Sames() map[resource.URN]bool    { return iter.sames }
+func (iter *PlanIterator) Resources() []*resource.State    { return iter.resources }
+func (iter *PlanIterator) Done() bool                      { return iter.done }
 
 // Next advances the plan by a single step, and returns the next step to be performed.  In doing so, it will perform
 // evaluation of the program as much as necessary to determine the next step.  If there is no further action to be
 // taken, Next will return a nil step pointer.
 func (iter *PlanIterator) Next() (*Step, error) {
 	for !iter.done {
-		if !iter.evaldone {
-			// Kick the interpreter to compute some more and then inspect what it has to say.
-			obj, done, err := iter.rz.Meet(planParty, nil)
+		if !iter.srcdone {
+			obj, ctx, err := iter.src.Next()
 			if err != nil {
 				return nil, err
-			} else if done {
-				// If the interpreter is done, note it, and don't go back for more.
-				iter.evaldone = true
+			} else if obj == nil {
+				// If the source is done, note it, and don't go back for more.
+				iter.srcdone = true
 				iter.delqueue = iter.calculateDeletes()
 			} else {
-				// Otherwise, check t see if there's something to be done for the given resource.
-				contract.Assert(obj != nil)
-				info := obj.(*AllocInfo)
-				step, err := iter.nextResource(info)
+				step, err := iter.nextResource(obj, ctx)
 				if err != nil {
 					return nil, err
 				} else if step != nil {
@@ -279,17 +181,13 @@ func (iter *PlanIterator) Next() (*Step, error) {
 }
 
 // nextResource produces a new step for a given resource or nil if there isn't one to perform.
-func (iter *PlanIterator) nextResource(info *AllocInfo) (*Step, error) {
-	// Manufacture a resource object.
-	obj := info.Obj
-	new := resource.NewObject(obj)
-	t := obj.Type().TypeToken()
-
+func (iter *PlanIterator) nextResource(new *resource.Object, ctx tokens.Module) (*Step, error) {
 	// Take a moment in time snapshot of the live object's properties.
+	t := new.Type()
 	newprops := new.CopyProperties()
 
 	// Fetch the provider for this resource type.
-	prov, err := iter.p.Provider(new)
+	prov, err := iter.Provider(new)
 	if err != nil {
 		return nil, err
 	}
@@ -299,7 +197,8 @@ func (iter *PlanIterator) nextResource(info *AllocInfo) (*Step, error) {
 	if err != nil {
 		return nil, err
 	}
-	urn := resource.NewURN(iter.p.Namespace(), info.Mod.Tok, t, name)
+	urn := resource.NewURN(iter.p.Namespace(), ctx, t, name)
+	new.SetURN(urn)
 
 	// Now see if there is an old resource and, if so, propagate the ID to the new object.
 	var id resource.ID
@@ -313,36 +212,36 @@ func (iter *PlanIterator) nextResource(info *AllocInfo) (*Step, error) {
 	}
 
 	// First ensure the provider is okay with this resource.
-	var valid bool
+	var invalid bool
 	failures, err := prov.Check(new.Type(), newprops)
 	if err != nil {
 		return nil, err
 	}
 	for _, failure := range failures {
-		valid = false
+		invalid = true
 		iter.p.Diag().Errorf(
 			errors.ErrorResourcePropertyInvalidValue, new.URN(), failure.Property, failure.Reason)
 	}
 
 	// Next, give each analyzer -- if any -- a chance to inspect the resource too.
 	for _, a := range iter.p.analyzers {
-		analyzer, err := iter.p.plugctx.Host.Analyzer(a)
+		analyzer, err := iter.p.ctx.Host.Analyzer(a)
 		if err != nil {
 			return nil, err
 		}
-		failures, err := analyzer.AnalyzeResource(t, newprops)
+		failures, err := analyzer.Analyze(t, newprops)
 		if err != nil {
 			return nil, err
 		}
 		for _, failure := range failures {
-			valid = false
+			invalid = true
 			iter.p.Diag().Errorf(
 				errors.ErrorAnalyzeResourceFailure, a, new.URN(), failure.Property, failure.Reason)
 		}
 	}
 
 	// If the resource isn't valid, don't proceed any further.
-	if !valid {
+	if invalid {
 		return nil, goerr.New("One or more resource validation errors occurred; refusing to proceed")
 	}
 
@@ -405,8 +304,13 @@ func (iter *PlanIterator) nextDelete() *Step {
 // calculateDeletes creates a list of deletes to perform.  This will include any resources in the snapshot that were
 // not encountered in the input, along with any resources that were replaced.
 func (iter *PlanIterator) calculateDeletes() []*resource.State {
+	// To compute the deletion list, we must walk the list of old resources *backwards*.  This is because the list is
+	// stored in dependency order, and earlier elements are possibly leaf nodes for later elements.  We must not delete
+	// dependencies prior to their dependent nodes.
 	var dels []*resource.State
-	for _, res := range iter.p.old.Resources {
+	ress := iter.p.prev.Resources
+	for i := len(ress) - 1; i >= 0; i-- {
+		res := ress[i]
 		urn := res.URN()
 		contract.Assert(!iter.creates[urn])
 		if iter.replaces[urn] || !iter.updates[urn] {
@@ -426,7 +330,7 @@ func (iter *PlanIterator) Snap() *Snapshot {
 			resources = append(resources, resource)
 		}
 	}
-	return NewSnapshot(iter.p.old.Namespace, iter.p.old.Pkg, iter.p.args, resources)
+	return NewSnapshot(iter.p.Namespace(), resources, iter.p.new.Info())
 }
 
 // AppendStateSnapshot appends a resource's state to the current snapshot.
@@ -440,85 +344,10 @@ func (iter *PlanIterator) RemoveStateSnapshot(state *resource.State) {
 	iter.keeps[state] = false // drop this state on the floor when creating the final snapshot.
 }
 
-// AllocInfo is the context in which an object got allocated.
-type AllocInfo struct {
-	Obj *rt.Object       // the object itself.
-	Loc diag.Diagable    // the location information for the allocation.
-	Pkg *symbols.Package // the package being evaluated when the allocation happened.
-	Mod *symbols.Module  // the module being evaluated when the allocation happened.
-	Fnc symbols.Function // the function being evaluated when the allocation happened.
-}
-
-// planEvalHooks are the interpreter hooks that synchronize between planner and evaluator in the appropriate ways.
-type planEvalHooks struct {
-	rz      *rendezvous.Rendezvous // the rendezvous object.
-	currpkg *symbols.Package       // the current package being executed.
-	currmod *symbols.Module        // the current module being executed.
-	currfnc symbols.Function       // the current function being executed.
-}
-
-func newPlanEvalHooks(rz *rendezvous.Rendezvous) eval.Hooks {
-	return &planEvalHooks{rz: rz}
-}
-
-// OnStart ensures that, before starting, we wait our turn.
-func (h *planEvalHooks) OnStart() {
-	ret, done, err := h.rz.Meet(evalParty, nil)
-	contract.Assert(ret == nil)
-	contract.Assertf(!done && err == nil, "Did not expect failure before even a single turn")
-}
-
-// OnDone ensures that, after completion, we tell the other party that we're done.
-func (h *planEvalHooks) OnDone(uw *rt.Unwind) {
-	h.rz.Done(nil)
-}
-
-// OnObjectInit ensures that, for every resource object created, we tell the planner about it.
-func (h *planEvalHooks) OnObjectInit(tree diag.Diagable, obj *rt.Object) {
-	if resource.IsResourceObject(obj) {
-		// Communicate the full allocation context: AST node, package, module, and function.
-		alloc := &AllocInfo{
-			Obj: obj,
-			Loc: tree,
-			Pkg: h.currpkg,
-			Mod: h.currmod,
-			Fnc: h.currfnc,
-		}
-		ret, _, _ := h.rz.Meet(evalParty, alloc)
-		contract.Assert(ret == nil)
-		// TODO: if we are done, we need to inject an unwind or somesuch to stop the interpreter.
-	}
-}
-
-// OnEnterPackage is invoked whenever we enter a new package.
-func (h *planEvalHooks) OnEnterPackage(pkg *symbols.Package) func() {
-	glog.V(9).Infof("GraphGenerator OnEnterPackage %v", pkg)
-	prevpkg := h.currpkg
-	h.currpkg = pkg
-	return func() {
-		glog.V(9).Infof("GraphGenerator OnLeavePackage %v", pkg)
-		h.currpkg = prevpkg
-	}
-}
-
-// OnEnterModule is invoked whenever we enter a new module.
-func (h *planEvalHooks) OnEnterModule(mod *symbols.Module) func() {
-	glog.V(9).Infof("GraphGenerator OnEnterModule %v", mod)
-	prevmod := h.currmod
-	h.currmod = mod
-	return func() {
-		glog.V(9).Infof("GraphGenerator OnLeaveModule %v", mod)
-		h.currmod = prevmod
-	}
-}
-
-// OnEnterFunction is invoked whenever we enter a new function.
-func (h *planEvalHooks) OnEnterFunction(fnc symbols.Function) func() {
-	glog.V(9).Infof("GraphGenerator OnEnterFunction %v", fnc)
-	prevfnc := h.currfnc
-	h.currfnc = fnc
-	return func() {
-		glog.V(9).Infof("GraphGenerator OnLeaveFunction %v", fnc)
-		h.currfnc = prevfnc
-	}
+// Provider fetches the provider for a given resource, possibly lazily allocating the plugins for it.  If a provider
+// could not be found, or an error occurred while creating it, a non-nil error is returned.
+func (iter *PlanIterator) Provider(res resource.Resource) (plugin.Provider, error) {
+	t := res.Type()
+	pkg := t.Package()
+	return iter.p.ctx.Host.Provider(pkg)
 }

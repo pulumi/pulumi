@@ -23,8 +23,10 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/lumi/pkg/compiler/errors"
+	"github.com/pulumi/lumi/pkg/diag"
 	"github.com/pulumi/lumi/pkg/diag/colors"
 	"github.com/pulumi/lumi/pkg/resource"
+	"github.com/pulumi/lumi/pkg/resource/deploy"
 	"github.com/pulumi/lumi/pkg/tokens"
 	"github.com/pulumi/lumi/pkg/util/cmdutil"
 	"github.com/pulumi/lumi/pkg/util/contract"
@@ -59,8 +61,7 @@ func newDeployCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			defer info.Close()
-			deploy(cmd, info, deployOptions{
+			planAndDeploy(cmd, info, deployOptions{
 				Delete:           false,
 				DryRun:           dryRun,
 				Analyzers:        analyzers,
@@ -102,15 +103,16 @@ func newDeployCmd() *cobra.Command {
 	return cmd
 }
 
-func deploy(cmd *cobra.Command, info *envCmdInfo, opts deployOptions) {
+func planAndDeploy(cmd *cobra.Command, info *envCmdInfo, opts deployOptions) {
 	if result := plan(cmd, info, opts); result != nil {
 		// Now based on whether a dry run was specified, or not, either print or perform the planned operations.
 		if opts.DryRun {
 			// If no output file was requested, or "-", print to stdout; else write to that file.
 			if opts.Output == "" || opts.Output == "-" {
-				printPlan(info.Ctx.Diag, result, opts)
+				printPlan(result, opts)
 			} else {
-				saveEnv(info.Env, result.New, opts.Output, true /*overwrite*/)
+				// FIXME: reenable this.
+				//saveEnv(info.Target, result.New, opts.Output, true /*overwrite*/)
 			}
 		} else {
 			// If show unchanged was requested, print them first, along with a header.
@@ -119,37 +121,42 @@ func deploy(cmd *cobra.Command, info *envCmdInfo, opts deployOptions) {
 			header.WriteString(fmt.Sprintf("%vDeploying changes:%v\n", colors.SpecUnimportant, colors.Reset))
 			fmt.Printf(colors.Colorize(&header))
 
-			// Print a nice message if the update is an empty one.
-			empty := checkEmpty(info.Ctx.Diag, result.Plan)
-
 			// Create an object to track progress and perform the actual operations.
 			start := time.Now()
-			progress := newProgress(info.Ctx, opts.Summary)
-			checkpoint, err, _, _ := result.Plan.Apply(progress)
-			if err != nil {
-				contract.Assert(!info.Ctx.Diag.Success()) // an error should have been emitted.
+			progress := newProgress(opts.Summary)
+			summary, _, _, _ := result.Plan.Apply(progress)
+			contract.Assert(summary != nil)
+			empty := (summary.Steps() == 0) // if no step is returned, it was empty.
+
+			// Print a summary.
+			var footer bytes.Buffer
+
+			// If show-sames was requested, walk the sames and print them.
+			if opts.ShowUnchanged {
+				printUnchanged(&footer, summary, opts.Summary, false)
 			}
 
-			var summary bytes.Buffer
-			if !empty {
+			if empty {
 				// Print out the total number of steps performed (and their kinds), the duration, and any summary info.
-				printSummary(&summary, progress.Ops, opts.ShowReplaceSteps, false)
-				summary.WriteString(fmt.Sprintf("%vDeployment duration: %v%v\n",
+				printSummary(&footer, progress.Ops, opts.ShowReplaceSteps, false)
+				footer.WriteString(fmt.Sprintf("%vDeployment duration: %v%v\n",
 					colors.SpecUnimportant, time.Since(start), colors.Reset))
+			} else {
+				cmdutil.Diag().Infof(diag.Message("no resources need to be updated"))
 			}
 
 			if progress.MaybeCorrupt {
-				summary.WriteString(fmt.Sprintf(
+				footer.WriteString(fmt.Sprintf(
 					"%vA catastrophic error occurred; resources states may be unknown%v\n",
 					colors.SpecAttention, colors.Reset))
 			}
 
 			// Now save the updated snapshot to the specified output file, if any, or the standard location otherwise.
 			// Note that if a failure has occurred, the Apply routine above will have returned a safe checkpoint.
-			env := result.Info.Env
-			saveEnv(env, checkpoint, opts.Output, true /*overwrite*/)
+			targ := result.Info.Target
+			saveEnv(targ, summary.Snap(), opts.Output, true /*overwrite*/)
 
-			fmt.Printf(colors.Colorize(&summary))
+			fmt.Printf(colors.Colorize(&footer))
 		}
 	}
 }
@@ -169,29 +176,27 @@ type deployOptions struct {
 
 // deployProgress pretty-prints the plan application process as it goes.
 type deployProgress struct {
-	Ctx          *resource.Context
 	Steps        int
-	Ops          map[resource.StepOp]int
+	Ops          map[deploy.StepOp]int
 	MaybeCorrupt bool
 	Summary      bool
 }
 
-func newProgress(ctx *resource.Context, summary bool) *deployProgress {
+func newProgress(summary bool) *deployProgress {
 	return &deployProgress{
-		Ctx:     ctx,
 		Steps:   0,
-		Ops:     make(map[resource.StepOp]int),
+		Ops:     make(map[deploy.StepOp]int),
 		Summary: summary,
 	}
 }
 
-func (prog *deployProgress) Before(step resource.Step) {
+func (prog *deployProgress) Before(step *deploy.Step) {
 	// Print the step.
 	stepop := step.Op()
 	stepnum := prog.Steps + 1
 
 	var extra string
-	if stepop == resource.OpReplaceCreate || stepop == resource.OpReplaceDelete {
+	if stepop == deploy.OpReplaceCreate || stepop == deploy.OpReplaceDelete {
 		extra = " (part of a replacement change)"
 	}
 
@@ -201,36 +206,36 @@ func (prog *deployProgress) Before(step resource.Step) {
 	fmt.Printf(colors.Colorize(&b))
 }
 
-func (prog *deployProgress) After(step resource.Step, state resource.State, err error) {
+func (prog *deployProgress) After(step *deploy.Step, status resource.Status, err error) {
 	if err == nil {
 		// Increment the counters.
 		prog.Steps++
 		prog.Ops[step.Op()]++
 
 		// Print out any output properties that got created as a result of this operation.
-		if step.Op() == resource.OpCreate {
+		if step.Op() == deploy.OpCreate {
 			var b bytes.Buffer
 			printResourceOutputProperties(&b, step, "")
 			fmt.Printf(colors.Colorize(&b))
 		}
 	} else {
 		// Issue a true, bonafide error.
-		prog.Ctx.Diag.Errorf(errors.ErrorPlanApplyFailed, err)
+		cmdutil.Diag().Errorf(errors.ErrorPlanApplyFailed, err)
 
 		// Print the state of the resource; we don't issue the error, because the deploy above will do that.
 		var b bytes.Buffer
 		stepnum := prog.Steps + 1
 		b.WriteString(fmt.Sprintf("Step #%v failed [%v]: ", stepnum, step.Op()))
-		switch state {
-		case resource.StateOK:
+		switch status {
+		case resource.StatusOK:
 			b.WriteString(colors.SpecNote)
 			b.WriteString("provider successfully recovered from this failure")
-		case resource.StateUnknown:
+		case resource.StatusUnknown:
 			b.WriteString(colors.SpecAttention)
 			b.WriteString("this failure was catastrophic and the provider cannot guarantee recovery")
 			prog.MaybeCorrupt = true
 		default:
-			contract.Failf("Unrecognized resource state: %v", state)
+			contract.Failf("Unrecognized resource state: %v", status)
 		}
 		b.WriteString(colors.Reset)
 		b.WriteString("\n")

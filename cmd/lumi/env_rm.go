@@ -39,18 +39,17 @@ func newEnvRmCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			defer info.Close()
 
 			// Don't remove environments that still have resources.
-			if !force && info.Old != nil && len(info.Old.Resources()) > 0 {
+			if !force && info.Snapshot != nil && len(info.Snapshot.Resources) > 0 {
 				return errors.Errorf(
-					"'%v' still has resources; removal rejected; pass --force to override", info.Env.Name)
+					"'%v' still has resources; removal rejected; pass --force to override", info.Target.Name)
 			}
 
 			// Ensure the user really wants to do this.
 			if yes ||
-				confirmPrompt("This will permanently remove the '%v' environment!", info.Env.Name) {
-				removeEnv(info.Env)
+				confirmPrompt("This will permanently remove the '%v' environment!", info.Target.Name) {
+				removeTarget(info.Target)
 			}
 
 			return nil

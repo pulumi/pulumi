@@ -18,7 +18,6 @@ package plugin
 import (
 	"io"
 
-	"github.com/pulumi/lumi/pkg/pack"
 	"github.com/pulumi/lumi/pkg/resource"
 	"github.com/pulumi/lumi/pkg/tokens"
 )
@@ -31,19 +30,12 @@ type Analyzer interface {
 	io.Closer
 	// Name fetches an analyzer's qualified name.
 	Name() tokens.QName
-	// Analyze analyzes an entire project/stack/snapshot, and returns any errors that it finds.
-	Analyze(url pack.PackageURL) ([]AnalyzeFailure, error)
-	// AnalyzeResource analyzes a single resource object, and returns any errors that it finds.
-	AnalyzeResource(t tokens.Type, props resource.PropertyMap) ([]AnalyzeResourceFailure, error)
+	// Analyze analyzes a single resource object, and returns any errors that it finds.
+	Analyze(t tokens.Type, props resource.PropertyMap) ([]AnalyzeFailure, error)
 }
 
-// AnalyzeFailure indicates that overall analysis failed; it contains the property and reason for the failure.
+// AnalyzeFailure indicates that resource analysis failed; it contains the property and reason for the failure.
 type AnalyzeFailure struct {
-	Reason string // the reason the analysis failed.
-}
-
-// AnalyzeResourceFailure indicates that resource analysis failed; it contains the property and reason for the failure.
-type AnalyzeResourceFailure struct {
 	Property resource.PropertyKey // the property that failed the analysis.
 	Reason   string               // the reason the property failed the analysis.
 }

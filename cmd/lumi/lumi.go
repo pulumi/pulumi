@@ -20,14 +20,13 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/lumi/pkg/compiler"
+	"github.com/pulumi/lumi/pkg/compiler/binder"
 	"github.com/pulumi/lumi/pkg/compiler/core"
 	"github.com/pulumi/lumi/pkg/compiler/errors"
 	"github.com/pulumi/lumi/pkg/compiler/symbols"
-	"github.com/pulumi/lumi/pkg/eval/rt"
 	"github.com/pulumi/lumi/pkg/pack"
-	"github.com/pulumi/lumi/pkg/resource"
-	"github.com/pulumi/lumi/pkg/tokens"
 	"github.com/pulumi/lumi/pkg/util/cmdutil"
+	"github.com/pulumi/lumi/pkg/util/contract"
 )
 
 func NewLumiCmd() *cobra.Command {
@@ -91,47 +90,37 @@ func prepareCompiler(cmd *cobra.Command, args []string) (compiler.Compiler, *pac
 		comp, err = compiler.New(root, opts)
 	}
 	if err != nil {
-		cmdutil.Sink().Errorf(errors.ErrorCantCreateCompiler, err)
+		cmdutil.Diag().Errorf(errors.ErrorCantCreateCompiler, err)
 	}
 
 	return comp, pkg
 }
 
 // compile just uses the standard logic to parse arguments, options, and to locate/compile a package.  It returns the
-// LumiGL graph that is produced, or nil if an error occurred (in which case, we would expect non-0 errors).
-func compile(cmd *cobra.Command, args []string, config resource.ConfigMap) *compileResult {
+// compilation result, or nil if an error occurred (in which case, we would expect diagnostics to have been output).
+func compile(cmd *cobra.Command, args []string) *compileResult {
 	// Prepare the compiler info and, provided it succeeds, perform the compilation.
 	if comp, pkg := prepareCompiler(cmd, args); comp != nil {
-		// Create the preexec hook if the config map is non-nil.
-		var preexec compiler.Preexec
-		configVars := make(map[tokens.Token]*rt.Object)
-		if config != nil {
-			preexec = config.ConfigApplier(configVars)
-		}
-
-		// Now perform the compilation and extract the heap snapshot.
-		var heap *heapstate.Heap
+		var b binder.Binder
 		var pkgsym *symbols.Package
 		if pkg == nil {
-			pkgsym, heap = comp.Compile(preexec)
+			b, pkgsym = comp.Compile()
 		} else {
-			pkgsym, heap = comp.CompilePackage(pkg, preexec)
+			b, pkgsym = comp.CompilePackage(pkg)
 		}
-
+		contract.Assert(b != nil)
+		contract.Assert(pkgsym != nil)
 		return &compileResult{
-			C:          comp,
-			Pkg:        pkgsym,
-			Heap:       heap,
-			ConfigVars: configVars,
+			C:   comp,
+			B:   b,
+			Pkg: pkgsym,
 		}
 	}
-
 	return nil
 }
 
 type compileResult struct {
-	C          compiler.Compiler
-	Pkg        *symbols.Package
-	Heap       *heapstate.Heap
-	ConfigVars map[tokens.Token]*rt.Object
+	C   compiler.Compiler
+	B   binder.Binder
+	Pkg *symbols.Package
 }

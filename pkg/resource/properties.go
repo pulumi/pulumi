@@ -18,6 +18,7 @@ package resource
 import (
 	"fmt"
 	"reflect"
+	"sort"
 
 	"github.com/pkg/errors"
 
@@ -362,10 +363,20 @@ func (m PropertyMap) HasValue(k PropertyKey) bool {
 // Mappable returns a mapper-compatible object map, suitable for deserialization into structures.
 func (m PropertyMap) Mappable() map[string]interface{} {
 	obj := make(map[string]interface{})
-	for _, k := range StablePropertyKeys(m) {
+	for _, k := range m.StableKeys() {
 		obj[string(k)] = m[k].Mappable()
 	}
 	return obj
+}
+
+// StableKeys returns all of the map's keys in a stable order.
+func (m PropertyMap) StableKeys() []PropertyKey {
+	sorted := make([]PropertyKey, 0, len(m))
+	for k := range m {
+		sorted = append(sorted, k)
+	}
+	sort.Slice(sorted, func(i, j int) bool { return sorted[i] < sorted[j] })
+	return sorted
 }
 
 func (m PropertyMap) ShallowClone() PropertyMap {
