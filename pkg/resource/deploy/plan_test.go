@@ -37,8 +37,9 @@ func TestNullPlan(t *testing.T) {
 	t.Parallel()
 
 	ctx := plugin.NewContext(cmdutil.Diag(), nil)
-	prev := NewSnapshot(tokens.QName("null"), nil, nil)
-	plan := NewPlan(ctx, prev, NullSource, nil)
+	targ := &Target{Name: tokens.QName("null")}
+	prev := NewSnapshot(targ.Name, nil, nil)
+	plan := NewPlan(ctx, targ, prev, NullSource, nil)
 	iter, err := plan.Iterate()
 	assert.Nil(t, err)
 	assert.NotNil(t, iter)
@@ -54,7 +55,8 @@ func TestBasicCRUDPlan(t *testing.T) {
 	t.Parallel()
 
 	// Setup a fake namespace/target combination.
-	ns := tokens.QName("crud")
+	targ := &Target{Name: tokens.QName("crud")}
+	ns := targ.Name
 	base := fakeResourceBase()
 	pkg, mod, newResourceType := fakeTestResources(tokens.PackageName("testcrud"), tokens.ModuleName("index"))
 
@@ -75,7 +77,7 @@ func TestBasicCRUDPlan(t *testing.T) {
 					return tokens.QName(name.StringValue()), nil
 				},
 				inspectChange: func(t tokens.Type, id resource.ID, olds resource.PropertyMap,
-					news resource.PropertyMap) ([]string, resource.PropertyMap, error) {
+					news resource.PropertyMap) ([]resource.PropertyKey, resource.PropertyMap, error) {
 					return nil, nil, nil // accept all changes.
 				},
 				// we don't actually execute the plan, so there's no need to implement the other functions.
@@ -141,7 +143,7 @@ func TestBasicCRUDPlan(t *testing.T) {
 	new := NewFixedSource(mod.Tok, []*resource.Object{newResA, newResB, newResC})
 
 	// Next up, create a plan from the new and old, and validate its shape.
-	plan := NewPlan(ctx, oldsnap, new, nil)
+	plan := NewPlan(ctx, targ, oldsnap, new, nil)
 
 	// Next, validate the steps and ensure that we see all of the expected ones.  Note that there aren't any
 	// dependencies between the steps, so we must validate it in a way that's insensitive of order.
@@ -152,7 +154,9 @@ func TestBasicCRUDPlan(t *testing.T) {
 	for {
 		step, err := iter.Next()
 		assert.Nil(t, err)
-		assert.NotNil(t, step)
+		if step == nil {
+			break
+		}
 
 		op := step.Op()
 		switch op {
@@ -184,10 +188,8 @@ func TestBasicCRUDPlan(t *testing.T) {
 		seen[op]++ // track the # of these we've seen so we can validate.
 	}
 	assert.Equal(t, 1, seen[OpCreate])
-	assert.Equal(t, 0, seen[OpRead])
 	assert.Equal(t, 1, seen[OpUpdate])
 	assert.Equal(t, 1, seen[OpDelete])
-	assert.Equal(t, 0, seen[OpReplace])
 	assert.Equal(t, 0, seen[OpReplaceCreate])
 	assert.Equal(t, 0, seen[OpReplaceDelete])
 
@@ -255,7 +257,7 @@ type testProvider struct {
 	create        func(tokens.Type, resource.PropertyMap) (resource.ID, resource.Status, error)
 	get           func(tokens.Type, resource.ID) (resource.PropertyMap, error)
 	inspectChange func(tokens.Type, resource.ID,
-		resource.PropertyMap, resource.PropertyMap) ([]string, resource.PropertyMap, error)
+		resource.PropertyMap, resource.PropertyMap) ([]resource.PropertyKey, resource.PropertyMap, error)
 	update func(tokens.Type, resource.ID,
 		resource.PropertyMap, resource.PropertyMap) (resource.Status, error)
 	delete func(tokens.Type, resource.ID) (resource.Status, error)
@@ -280,7 +282,7 @@ func (prov *testProvider) Get(t tokens.Type, id resource.ID) (resource.PropertyM
 	return prov.get(t, id)
 }
 func (prov *testProvider) InspectChange(t tokens.Type, id resource.ID,
-	olds resource.PropertyMap, news resource.PropertyMap) ([]string, resource.PropertyMap, error) {
+	olds resource.PropertyMap, news resource.PropertyMap) ([]resource.PropertyKey, resource.PropertyMap, error) {
 	return prov.inspectChange(t, id, olds, news)
 }
 func (prov *testProvider) Update(t tokens.Type, id resource.ID,

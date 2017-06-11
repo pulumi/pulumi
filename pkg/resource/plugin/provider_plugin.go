@@ -168,7 +168,7 @@ func (p *provider) Get(t tokens.Type, id resource.ID) (resource.PropertyMap, err
 
 // InspectChange checks what impacts a hypothetical update will have on the resource's properties.
 func (p *provider) InspectChange(t tokens.Type, id resource.ID,
-	news resource.PropertyMap, olds resource.PropertyMap) ([]string, resource.PropertyMap, error) {
+	news resource.PropertyMap, olds resource.PropertyMap) ([]resource.PropertyKey, resource.PropertyMap, error) {
 	contract.Assert(t != "")
 	contract.Assert(id != "")
 	contract.Assert(news != nil)
@@ -195,8 +195,13 @@ func (p *provider) InspectChange(t tokens.Type, id resource.ID,
 		return nil, nil, err
 	}
 
-	replaces := resp.GetReplaces()
+	var replaces []resource.PropertyKey
+	for _, replace := range resp.GetReplaces() {
+		replaces = append(replaces, resource.PropertyKey(replace))
+	}
+
 	changes := UnmarshalProperties(p.ctx, resp.GetChanges(), MarshalOptions{RawResources: true})
+
 	glog.V(7).Infof("resource[%v].Update(id=%v,t=%v,...) success: #replaces=%v #changes=%v",
 		p.pkg, id, t, len(replaces), len(changes))
 	if glog.V(9) {
@@ -204,6 +209,7 @@ func (p *provider) InspectChange(t tokens.Type, id resource.ID,
 			glog.V(9).Infof("resource[%v].Update(id=%v,t=%v,...) repace #%v: %v", p.pkg, id, t, i, repl)
 		}
 	}
+
 	return replaces, changes, nil
 }
 

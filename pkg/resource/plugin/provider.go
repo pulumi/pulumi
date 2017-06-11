@@ -49,7 +49,7 @@ type Provider interface {
 	Get(t tokens.Type, id resource.ID) (resource.PropertyMap, error)
 	// InspectChange checks what impacts a hypothetical update will have on the resource's properties.
 	InspectChange(t tokens.Type, id resource.ID,
-		olds resource.PropertyMap, news resource.PropertyMap) ([]string, resource.PropertyMap, error)
+		olds resource.PropertyMap, news resource.PropertyMap) ([]resource.PropertyKey, resource.PropertyMap, error)
 	// Update updates an existing resource with new values.
 	Update(t tokens.Type, id resource.ID,
 		olds resource.PropertyMap, news resource.PropertyMap) (resource.Status, error)

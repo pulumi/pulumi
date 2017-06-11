@@ -61,24 +61,21 @@ func NewLumiCmd() *cobra.Command {
 }
 
 func prepareCompiler(cmd *cobra.Command, args []string) (compiler.Compiler, *pack.Package) {
-	// If there's a --, we need to separate out the command args from the stack args.
-	flags := cmd.Flags()
-	dashdash := flags.ArgsLenAtDash()
-	var packArgs []string
-	if dashdash != -1 {
-		packArgs = args[dashdash:]
-		args = args[0:dashdash]
+	// TODO[pulumi/lumi#88]: enable arguments to flow to the package itself.  In that case, we want to split the
+	//     arguments at the --, if any, so we can still pass arguments to the compiler itself in these cases.
+	var pkgarg string
+	if len(args) > 0 {
+		pkgarg = args[0]
 	}
 
 	// Create a compiler options object and map any flags and arguments to settings on it.
 	opts := core.DefaultOptions()
-	opts.Args = dashdashArgsToMap(packArgs)
 
 	// If a package argument is present, try to load that package (either via stdin or a path).
 	var pkg *pack.Package
 	var root string
-	if len(args) > 0 {
-		pkg, root = readPackageFromArg(args[0])
+	if pkgarg != "" {
+		pkg, root = readPackageFromArg(pkgarg)
 	}
 
 	// Now create a compiler object based on whether we loaded a package or just have a root to deal with.
@@ -116,6 +113,7 @@ func compile(cmd *cobra.Command, args []string) *compileResult {
 			Pkg: pkgsym,
 		}
 	}
+
 	return nil
 }
 

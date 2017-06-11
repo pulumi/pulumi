@@ -70,7 +70,7 @@ func (chk *Checker) Check(name tokens.PackageName, pkginfo *loader.PackageInfo) 
 			gotypes = append(gotypes, o)
 		default:
 			ok = false
-			cmdutil.Sink().Errorf(
+			cmdutil.Diag().Errorf(
 				diag.Message("%v is an unrecognized Go declaration type: %v").At(chk.diag(obj)),
 				objname, reflect.TypeOf(obj))
 		}
@@ -134,7 +134,7 @@ func (chk *Checker) Check(name tokens.PackageName, pkginfo *loader.PackageInfo) 
 			nm := tokens.Name(goconst.Name())
 			pkg.AddMember(file, nm, c)
 		} else {
-			contract.Assert(!cmdutil.Sink().Success())
+			contract.Assert(!cmdutil.Diag().Success())
 			ok = false
 		}
 	}
@@ -148,13 +148,13 @@ func (chk *Checker) Check(name tokens.PackageName, pkginfo *loader.PackageInfo) 
 			nm := tokens.Name(gotype.Name())
 			pkg.AddMember(file, nm, t)
 		} else {
-			contract.Assert(!cmdutil.Sink().Success())
+			contract.Assert(!cmdutil.Diag().Success())
 			ok = false
 		}
 	}
 
 	if !ok {
-		contract.Assert(!cmdutil.Sink().Success())
+		contract.Assert(!cmdutil.Diag().Success())
 		return nil, errors.New("one or more problems with the input IDL were found; skipping code-generation")
 	}
 
@@ -174,13 +174,13 @@ func (chk *Checker) CheckConst(c *types.Const, file *File, decl ast.Decl) (*Cons
 			t = pt
 			chk.EnumValues[t] = append(chk.EnumValues[t], c.Val().String())
 		} else {
-			cmdutil.Sink().Errorf(
+			cmdutil.Diag().Errorf(
 				diag.Message("enums must be string-backed; %v has type %v").At(chk.diag(decl)),
 				c, named,
 			)
 		}
 	} else {
-		cmdutil.Sink().Errorf(
+		cmdutil.Diag().Errorf(
 			diag.Message("only constants of valid primitive types (bool, float64, number, or aliases) supported").At(
 				chk.diag(decl)))
 	}
@@ -226,7 +226,7 @@ func (chk *Checker) CheckType(t *types.TypeName, file *File, decl ast.Decl) (Mem
 				}, true
 			}
 
-			cmdutil.Sink().Errorf(diag.Message(
+			cmdutil.Diag().Errorf(diag.Message(
 				"type alias %v is not a valid IDL alias type (must be bool, float64, or string)").At(
 				chk.diag(decl)))
 		case *types.Map, *types.Slice:
@@ -256,13 +256,13 @@ func (chk *Checker) CheckType(t *types.TypeName, file *File, decl ast.Decl) (Mem
 					popts:  opts,
 				}, true
 			}
-			contract.Assert(!cmdutil.Sink().Success())
+			contract.Assert(!cmdutil.Diag().Success())
 		default:
-			cmdutil.Sink().Errorf(
+			cmdutil.Diag().Errorf(
 				diag.Message("%v is an illegal underlying type: %v").At(chk.diag(decl)), s, reflect.TypeOf(s))
 		}
 	default:
-		cmdutil.Sink().Errorf(
+		cmdutil.Diag().Errorf(
 			diag.Message("%v is an illegal Go type kind: %v").At(chk.diag(decl)), t.Name(), reflect.TypeOf(typ))
 	}
 	return nil, false
@@ -293,31 +293,31 @@ func (chk *Checker) CheckStructFields(t *types.TypeName, s *types.Struct,
 			allopts = append(allopts, opts)
 			if opts.Name == "" {
 				ok = false
-				cmdutil.Sink().Errorf(
+				cmdutil.Diag().Errorf(
 					diag.Message("field %v.%v is missing a `lumi:\"<name>\"` tag directive").At(chk.diag(fld)),
 					t.Name(), fld.Name())
 			}
 			if opts.Out && !isres {
 				ok = false
-				cmdutil.Sink().Errorf(
+				cmdutil.Diag().Errorf(
 					diag.Message("field %v.%v is marked `out` but is not a resource property").At(chk.diag(fld)),
 					t.Name(), fld.Name())
 			}
 			if opts.Replaces && !isres {
 				ok = false
-				cmdutil.Sink().Errorf(
+				cmdutil.Diag().Errorf(
 					diag.Message("field %v.%v is marked `replaces` but is not a resource property").At(chk.diag(fld)),
 					t.Name(), fld.Name())
 			}
 			if _, isptr := fld.Type().(*types.Pointer); !isptr && opts.Optional {
 				ok = false
-				cmdutil.Sink().Errorf(
+				cmdutil.Diag().Errorf(
 					diag.Message("field %v.%v is marked `optional` but is not a pointer in the IDL").At(chk.diag(fld)),
 					t.Name(), fld.Name())
 			}
 			if err := chk.CheckIDLType(fld.Type(), opts); err != nil {
 				ok = false
-				cmdutil.Sink().Errorf(
+				cmdutil.Diag().Errorf(
 					diag.Message("field %v.%v is an not a legal IDL type: %v").At(chk.diag(fld)),
 					t.Name(), fld.Name(), err)
 			}

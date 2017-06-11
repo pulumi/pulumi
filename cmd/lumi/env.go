@@ -81,7 +81,6 @@ func initEnvCmdName(name tokens.QName, args []string) (*envCmdInfo, error) {
 	}
 	contract.Assert(target != nil)
 	contract.Assert(checkpoint != nil)
-	contract.Assert(snapshot != nil)
 	return &envCmdInfo{
 		Target:     target,
 		Checkpoint: checkpoint,
@@ -237,7 +236,6 @@ func readEnv(name tokens.QName) (*deploy.Target, *deploy.Snapshot, *environment.
 
 	target, snapshot := environment.DeserializeCheckpoint(&checkpoint)
 	contract.Assert(target != nil)
-	contract.Assert(snapshot != nil)
 	return target, snapshot, &checkpoint
 }
 

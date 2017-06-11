@@ -24,11 +24,13 @@ import (
 
 // Step is a specification for a deployment operation.
 type Step struct {
-	iter   *PlanIterator        // the current plan iteration.
-	op     StepOp               // the operation that will be performed.
-	old    *resource.State      // the state of the resource before this step.
-	new    *resource.Object     // the state of the resource after this step.
-	inputs resource.PropertyMap // the input properties to use during the operation.
+	iter    *PlanIterator          // the current plan iteration.
+	op      StepOp                 // the operation that will be performed.
+	old     *resource.State        // the state of the resource before this step.
+	new     *resource.Object       // the state of the resource after this step.
+	inputs  resource.PropertyMap   // the input properties to use during the operation.
+	outputs resource.PropertyMap   // the output properties calculated after the operation.
+	reasons []resource.PropertyKey // the reasons for replacement, if applicable.
 }
 
 func NewCreateStep(iter *PlanIterator, new *resource.Object, inputs resource.PropertyMap) *Step {
@@ -44,17 +46,23 @@ func NewUpdateStep(iter *PlanIterator, old *resource.State,
 	return &Step{iter: iter, op: OpUpdate, old: old, new: new, inputs: inputs}
 }
 
-func NewReplaceStep(iter *PlanIterator, old *resource.State,
-	new *resource.Object, inputs resource.PropertyMap) *Step {
-	return &Step{iter: iter, op: OpReplace, old: old, new: new, inputs: inputs}
+func NewReplaceCreateStep(iter *PlanIterator, old *resource.State,
+	new *resource.Object, inputs resource.PropertyMap, reasons []resource.PropertyKey) *Step {
+	return &Step{iter: iter, op: OpReplaceCreate, old: old, new: new, inputs: inputs, reasons: reasons}
 }
 
-func (s *Step) Plan() *Plan                  { return s.iter.p }
-func (s *Step) Iterator() *PlanIterator      { return s.iter }
-func (s *Step) Op() StepOp                   { return s.op }
-func (s *Step) Old() resource.Resource       { return s.old }
-func (s *Step) New() resource.Resource       { return s.new }
-func (s *Step) Inputs() resource.PropertyMap { return s.inputs }
+func NewReplaceDeleteStep(iter *PlanIterator, old *resource.State) *Step {
+	return &Step{iter: iter, op: OpReplaceDelete, old: old}
+}
+
+func (s *Step) Plan() *Plan                     { return s.iter.p }
+func (s *Step) Iterator() *PlanIterator         { return s.iter }
+func (s *Step) Op() StepOp                      { return s.op }
+func (s *Step) Old() *resource.State            { return s.old }
+func (s *Step) New() *resource.Object           { return s.new }
+func (s *Step) Inputs() resource.PropertyMap    { return s.inputs }
+func (s *Step) Outputs() resource.PropertyMap   { return s.outputs }
+func (s *Step) Reasons() []resource.PropertyKey { return s.reasons }
 
 func (s *Step) Provider() (plugin.Provider, error) {
 	contract.Assert(s.old == nil || s.new == nil || s.old.Type() == s.new.Type())
@@ -74,9 +82,9 @@ func (s *Step) Apply() (resource.Status, error) {
 
 	// Now simply perform the operation of the right kind.
 	switch s.op {
-	case OpCreate, OpReplace:
+	case OpCreate, OpReplaceCreate:
 		// Invoke the Create RPC function for this provider:
-		contract.Assert(s.old == nil || s.op == OpReplace)
+		contract.Assert(s.old == nil || s.op == OpReplaceCreate)
 		contract.Assert(s.new != nil)
 		t := s.new.Type()
 		id, rst, err := prov.Create(t, s.inputs)
@@ -90,10 +98,11 @@ func (s *Step) Apply() (resource.Status, error) {
 		if err != nil {
 			return resource.StatusUnknown, err
 		}
+		s.outputs = outs
 		state := s.new.Update(id, outs)
 		s.iter.AppendStateSnapshot(state)
 
-	case OpDelete:
+	case OpDelete, OpReplaceDelete:
 		// Invoke the Delete RPC function for this provider:
 		contract.Assert(s.old != nil)
 		contract.Assert(s.new == nil)
@@ -119,6 +128,7 @@ func (s *Step) Apply() (resource.Status, error) {
 		if err != nil {
 			return resource.StatusUnknown, err
 		}
+		s.outputs = outs
 		state := s.new.Update(id, outs)
 		s.iter.AppendStateSnapshot(state)
 
@@ -134,11 +144,9 @@ type StepOp string
 
 const (
 	OpCreate        StepOp = "create"         // creating a new resource.
-	OpRead          StepOp = "read"           // reading from an existing resource.
 	OpUpdate        StepOp = "update"         // updating an existing resource.
 	OpDelete        StepOp = "delete"         // deleting an existing resource.
-	OpReplace       StepOp = "replace"        // replacing a resource with a new one (logically).
-	OpReplaceCreate StepOp = "replace-create" // the fine-grained replacement step to create the new resource.
+	OpReplaceCreate StepOp = "replace-create" // replacing a resource with a new one.
 	OpReplaceDelete StepOp = "replace-delete" // the fine-grained replacement step to delete the old resource.
 )
 
@@ -147,7 +155,6 @@ var StepOps = []StepOp{
 	OpCreate,
 	OpUpdate,
 	OpDelete,
-	OpReplace,
 	OpReplaceCreate,
 	OpReplaceDelete,
 }
@@ -155,14 +162,16 @@ var StepOps = []StepOp{
 // Color returns a suggested color for lines of this op type.
 func (op StepOp) Color() string {
 	switch op {
-	case OpCreate, OpReplaceCreate:
+	case OpCreate:
 		return colors.SpecAdded
-	case OpDelete, OpReplaceDelete:
+	case OpDelete:
 		return colors.SpecDeleted
 	case OpUpdate:
 		return colors.SpecChanged
-	case OpReplace:
+	case OpReplaceCreate:
 		return colors.SpecReplaced
+	case OpReplaceDelete:
+		return colors.SpecDeleted
 	default:
 		contract.Failf("Unrecognized resource step op: %v", op)
 		return ""
@@ -178,8 +187,6 @@ func (op StepOp) Prefix() string {
 		return op.Color() + "- "
 	case OpUpdate:
 		return op.Color() + "  "
-	case OpReplace:
-		return op.Color() + "-+"
 	case OpReplaceCreate:
 		return op.Color() + "~+"
 	case OpReplaceDelete:
@@ -192,7 +199,7 @@ func (op StepOp) Prefix() string {
 
 // Suffix returns a suggested suffix for lines of this op type.
 func (op StepOp) Suffix() string {
-	if op == OpUpdate || op == OpReplace {
+	if op == OpUpdate || op == OpReplaceCreate {
 		return colors.Reset // updates and replacements colorize individual lines
 	}
 	return ""

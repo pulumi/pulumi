@@ -68,10 +68,10 @@ func TestObjectRTTI(t *testing.T) {
 	boFalse2 := False
 	assert.True(t, boFalse2.IsBool())
 	assert.Equal(t, types.Bool, boFalse2.Type())
-	assert.Equal(t, true, boFalse2.BoolValue())
+	assert.Equal(t, false, boFalse2.BoolValue())
 	boFalseV2, boFalseOK2 := boFalse2.TryBoolValue()
 	assert.True(t, boFalseOK2)
-	assert.Equal(t, true, boFalseV2)
+	assert.Equal(t, false, boFalseV2)
 
 	// 42 number
 	n := float64(42)

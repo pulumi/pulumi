@@ -21,7 +21,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/lumi/pkg/compiler/core"
-	"github.com/pulumi/lumi/pkg/resource"
 	"github.com/pulumi/lumi/pkg/tokens"
 	"github.com/pulumi/lumi/pkg/util/cmdutil"
 )
@@ -42,34 +41,34 @@ func newPackEvalCmd() *cobra.Command {
 			"By default, a blueprint package is loaded from the current directory.  Optionally,\n" +
 			"a path to a package elsewhere can be provided as the [package] argument.",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			// If a configuration environment was requested, load it.
-			var config resource.ConfigMap
-			if configEnv != "" {
-				envInfo, err := initEnvCmdName(tokens.QName(configEnv), args)
-				if err != nil {
-					return err
-				}
-				config = envInfo.Target.Config
-			}
-
-			// Perform the compilation and, if non-nil is returned, output the graph.
-			// TODO: reenable this.
+			// FIXME: reenable this, but nix the graph printing, and simply print the output value.
 			/*
-				if result := compile(cmd, args, config); result != nil && result.Heap != nil && result.Heap.G != nil {
-					// Serialize that evaluation graph so that it's suitable for printing/serializing.
-					if dotOutput {
-						// Convert the output to a DOT file.
-						if err := dotconv.Print(result.Heap.G, os.Stdout); err != nil {
-							return errors.Errorf("failed to write DOT file to output: %v", err)
-						}
-					} else {
-						// Just print a very basic, yet (hopefully) aesthetically pleasing, ascii-ization of the graph.
-						shown := make(map[graph.Vertex]bool)
-						for _, root := range result.Heap.G.Objs() {
-							printVertex(root.ToObj(), shown, "")
+				// If a configuration environment was requested, load it.
+				var config resource.ConfigMap
+				if configEnv != "" {
+					envInfo, err := initEnvCmdName(tokens.QName(configEnv), args)
+					if err != nil {
+						return err
+					}
+					config = envInfo.Target.Config
+				}
+
+				// Perform the compilation and, if non-nil is returned, output the graph.
+					if result := compile(cmd, args, config); result != nil && result.Heap != nil && result.Heap.G != nil {
+						// Serialize that evaluation graph so that it's suitable for printing/serializing.
+						if dotOutput {
+							// Convert the output to a DOT file.
+							if err := dotconv.Print(result.Heap.G, os.Stdout); err != nil {
+								return errors.Errorf("failed to write DOT file to output: %v", err)
+							}
+						} else {
+							// Just print a very basic, yet (hopefully) aesthetically pleasing, ascii-ization of the graph.
+							shown := make(map[graph.Vertex]bool)
+							for _, root := range result.Heap.G.Objs() {
+								printVertex(root.ToObj(), shown, "")
+							}
 						}
 					}
-				}
 			*/
 			return nil
 		}),

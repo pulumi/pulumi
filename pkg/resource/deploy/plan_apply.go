@@ -197,7 +197,7 @@ func (iter *PlanIterator) nextResource(new *resource.Object, ctx tokens.Module) 
 	if err != nil {
 		return nil, err
 	}
-	urn := resource.NewURN(iter.p.Namespace(), ctx, t, name)
+	urn := resource.NewURN(iter.p.Target().Name, ctx, t, name)
 	new.SetURN(urn)
 
 	// Now see if there is an old resource and, if so, propagate the ID to the new object.
@@ -274,7 +274,7 @@ func (iter *PlanIterator) nextResource(new *resource.Object, ctx tokens.Module) 
 		} else if len(replacements) > 0 {
 			iter.replaces[urn] = true
 			glog.V(7).Infof("Planner decided to replace '%v'", urn)
-			return NewReplaceStep(iter, old, new, newprops), nil
+			return NewReplaceCreateStep(iter, old, new, newprops, replacements), nil
 		}
 
 		iter.updates[urn] = true
@@ -295,6 +295,10 @@ func (iter *PlanIterator) nextDelete() *Step {
 		iter.delqueue = iter.delqueue[1:]
 		urn := del.URN()
 		iter.deletes[urn] = true
+		if iter.replaces[urn] {
+			glog.V(7).Infof("Planner decided to delete '%v' due to replacement", urn)
+			return NewReplaceDeleteStep(iter, del)
+		}
 		glog.V(7).Infof("Planner decided to delete '%v'", urn)
 		return NewDeleteStep(iter, del)
 	}
@@ -330,7 +334,7 @@ func (iter *PlanIterator) Snap() *Snapshot {
 			resources = append(resources, resource)
 		}
 	}
-	return NewSnapshot(iter.p.Namespace(), resources, iter.p.new.Info())
+	return NewSnapshot(iter.p.Target().Name, resources, iter.p.new.Info())
 }
 
 // AppendStateSnapshot appends a resource's state to the current snapshot.

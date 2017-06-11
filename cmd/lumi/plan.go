@@ -120,7 +120,8 @@ func plan(cmd *cobra.Command, info *envCmdInfo, opts deployOptions) *planResult 
 		}
 
 		// If that succeded, create a new source that will perform interpretation of the compiled program.
-		source = deploy.NewEvalSource(result.B.Ctx(), result.Pkg, info.Args, info.Target.Config)
+		// TODO[pulumi/lumi#88]: we are passing `nil` as the arguments map; we need to allow a way to pass these.
+		source = deploy.NewEvalSource(result.B.Ctx(), result.Pkg, nil, info.Target.Config)
 
 		// If there are any analyzers in the project file, add them.
 		if as := result.Pkg.Node.Analyzers; as != nil {
@@ -137,7 +138,7 @@ func plan(cmd *cobra.Command, info *envCmdInfo, opts deployOptions) *planResult 
 
 	// Generate a plan; this API handles all interesting cases (create, update, delete).
 	ctx := plugin.NewContext(cmdutil.Diag(), nil)
-	plan := deploy.NewPlan(ctx, info.Snapshot, source, analyzers)
+	plan := deploy.NewPlan(ctx, info.Target, info.Snapshot, source, analyzers)
 	return &planResult{
 		Info: info,
 		Plan: plan,
@@ -187,7 +188,7 @@ func printPlan(result *planResult, opts deployOptions) {
 			op := step.Op()
 			// Print this step information (resource and all its properties).
 			// IDEA: it would be nice if, in the output, we showed the dependencies a la `git log --graph`.
-			if opts.ShowReplaceSteps || (op != resource.OpReplaceCreate && op != resource.OpReplaceDelete) {
+			if opts.ShowReplaceSteps || (op != deploy.OpReplaceCreate && op != deploy.OpReplaceDelete) {
 				printStep(&summary, step, opts.Summary, true, "")
 			}
 			counts[step.Op()]++
@@ -233,7 +234,7 @@ func printConfig(b *bytes.Buffer, config resource.ConfigMap) {
 func printSummary(b *bytes.Buffer, counts map[deploy.StepOp]int, showReplaceSteps bool, plan bool) {
 	total := 0
 	for op, c := range counts {
-		if !showReplaceSteps && (op == resource.OpReplaceCreate || op == resource.OpReplaceDelete) {
+		if !showReplaceSteps && (op == deploy.OpReplaceCreate || op == deploy.OpReplaceDelete) {
 			continue // skip counting replacement steps unless explicitly requested.
 		}
 		total += c
@@ -258,7 +259,7 @@ func printSummary(b *bytes.Buffer, counts map[deploy.StepOp]int, showReplaceStep
 	}
 
 	for _, op := range deploy.StepOps {
-		if !showReplaceSteps && (op == resource.OpReplaceCreate || op == resource.OpReplaceDelete) {
+		if !showReplaceSteps && (op == deploy.OpReplaceCreate || op == deploy.OpReplaceDelete) {
 			// Unless the user requested it, don't show the fine-grained replacement steps; just the logical ones.
 			continue
 		}
@@ -296,14 +297,7 @@ func printStep(b *bytes.Buffer, step *deploy.Step, summary bool, planning bool, 
 	// Next print the resource URN, properties, etc.
 	printResourceHeader(b, step.Old(), step.New(), indent)
 	b.WriteString(step.Op().Suffix())
-
-	var replaces []resource.PropertyKey
-	if step.Old() != nil {
-		m := step.Old().URN()
-		replaceMap := step.Plan().Replaces()
-		replaces = replaceMap[m]
-	}
-	printResourceProperties(b, step.Old(), step.New(), step.Inputs(), replaces, summary, planning, indent)
+	printResourceProperties(b, step.Old(), step.New(), step.Inputs(), step.Reasons(), summary, planning, indent)
 
 	// Finally make sure to reset the color.
 	b.WriteString(colors.Reset)
@@ -321,15 +315,14 @@ func printResourceHeader(b *bytes.Buffer, old resource.Resource, new resource.Re
 	b.WriteString(fmt.Sprintf("%s:\n", string(t)))
 }
 
-func printResourceProperties(b *bytes.Buffer, old resource.Resource, new resource.Resource,
-	computed resource.PropertyMap, replaces []resource.PropertyKey, summary bool, planning bool, indent string) {
+func printResourceProperties(b *bytes.Buffer, old *resource.State, new *resource.Object,
+	inputs resource.PropertyMap, replaces []resource.PropertyKey, summary bool, planning bool, indent string) {
 	indent += detailsIndent
 
 	// Print out the URN and, if present, the ID, as "pseudo-properties".
 	var id resource.ID
 	var URN resource.URN
 	if old == nil {
-		id = new.ID()
 		URN = new.URN()
 	} else {
 		id = old.ID()
@@ -343,12 +336,12 @@ func printResourceProperties(b *bytes.Buffer, old resource.Resource, new resourc
 	if !summary {
 		// Print all of the properties associated with this resource.
 		if old == nil && new != nil {
-			printObject(b, new.Inputs(), planning, indent)
+			printObject(b, inputs, planning, indent)
 		} else if new == nil && old != nil {
 			printObject(b, old.Inputs(), planning, indent)
 		} else {
-			contract.Assert(computed != nil) // use computed properties for diffs.
-			printOldNewDiffs(b, old.Inputs(), computed, replaces, planning, indent)
+			contract.Assert(inputs != nil) // use computed properties for diffs.
+			printOldNewDiffs(b, old.Inputs(), inputs, replaces, planning, indent)
 		}
 	}
 }
@@ -365,7 +358,7 @@ func maxKey(keys []resource.PropertyKey) int {
 
 func printObject(b *bytes.Buffer, props resource.PropertyMap, planning bool, indent string) {
 	// Compute the maximum with of property keys so we can justify everything.
-	keys := resource.StablePropertyKeys(props)
+	keys := props.StableKeys()
 	maxkey := maxKey(keys)
 
 	// Now print out the values intelligently based on the type.
@@ -385,15 +378,15 @@ func printResourceOutputProperties(b *bytes.Buffer, step *deploy.Step, indent st
 	b.WriteString(step.Op().Suffix())
 
 	// First fetch all the relevant property maps that we may consult.
-	newins := step.New().Inputs()
-	newouts := step.New().Outputs()
+	newins := step.Inputs()
+	newouts := step.Outputs()
 	var oldouts resource.PropertyMap
 	if old := step.Old(); old != nil {
 		oldouts = old.Outputs()
 	}
 
 	// Now sort the keys and enumerate each output property in a deterministic order.
-	keys := resource.StablePropertyKeys(newouts)
+	keys := newouts.StableKeys()
 	maxkey := maxKey(keys)
 	for _, k := range keys {
 		newout := newouts[k]
@@ -450,8 +443,6 @@ func printPropertyValue(b *bytes.Buffer, v resource.PropertyValue, planning bool
 		b.WriteString(fmt.Sprintf("%v", v.NumberValue()))
 	} else if v.IsString() {
 		b.WriteString(fmt.Sprintf("%q", v.StringValue()))
-	} else if v.IsResource() {
-		b.WriteString(fmt.Sprintf("&%s", v.ResourceValue()))
 	} else if v.IsArray() {
 		b.WriteString(fmt.Sprintf("[\n"))
 		for i, elem := range v.ArrayValue() {
@@ -550,12 +541,12 @@ func printPropertyValueDiff(b *bytes.Buffer, title func(string), diff resource.V
 			_, newIndent := getArrayElemHeader(b, i, indent)
 			title := func(id string) { printArrayElemHeader(b, i, id) }
 			if add, isadd := a.Adds[i]; isadd {
-				b.WriteString(resource.OpCreate.Color())
+				b.WriteString(deploy.OpCreate.Color())
 				title(addIndent(indent))
 				printPropertyValue(b, add, planning, addIndent(newIndent))
 				b.WriteString(colors.Reset)
 			} else if delete, isdelete := a.Deletes[i]; isdelete {
-				b.WriteString(resource.OpDelete.Color())
+				b.WriteString(deploy.OpDelete.Color())
 				title(deleteIndent(indent))
 				printPropertyValue(b, delete, planning, deleteIndent(newIndent))
 				b.WriteString(colors.Reset)
@@ -573,21 +564,15 @@ func printPropertyValueDiff(b *bytes.Buffer, title func(string), diff resource.V
 		b.WriteString("{\n")
 		printObjectDiff(b, *diff.Object, nil, causedReplace, planning, indent+"    ")
 		b.WriteString(fmt.Sprintf("%s}\n", indent))
-	} else if diff.Old.IsResource() && diff.New.IsResource() && diff.New.ResourceValue().Replacement() {
-		// If the old and new are both resources, and the new is a replacement, show this in a special way (+-).
-		b.WriteString(resource.OpReplace.Color())
-		title(updateIndent(indent))
-		printPropertyValue(b, diff.Old, planning, updateIndent(indent))
-		b.WriteString(colors.Reset)
 	} else {
 		// If we ended up here, the two values either differ by type, or they have different primitive values.  We will
 		// simply emit a deletion line followed by an addition line.
 		if shouldPrintPropertyValue(diff.Old, false) {
 			var color string
 			if causedReplace {
-				color = resource.OpDelete.Color() // this property triggered replacement; color as a delete
+				color = deploy.OpDelete.Color() // this property triggered replacement; color as a delete
 			} else {
-				color = resource.OpUpdate.Color()
+				color = deploy.OpUpdate.Color()
 			}
 			b.WriteString(color)
 			title(deleteIndent(indent))
@@ -597,9 +582,9 @@ func printPropertyValueDiff(b *bytes.Buffer, title func(string), diff resource.V
 		if shouldPrintPropertyValue(diff.New, false) {
 			var color string
 			if causedReplace {
-				color = resource.OpCreate.Color() // this property triggered replacement; color as a create
+				color = deploy.OpCreate.Color() // this property triggered replacement; color as a create
 			} else {
-				color = resource.OpUpdate.Color()
+				color = deploy.OpUpdate.Color()
 			}
 			b.WriteString(color)
 			title(addIndent(indent))
