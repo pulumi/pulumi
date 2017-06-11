@@ -101,16 +101,13 @@ function createJavaScriptLambda(functionName: string, role: Role, closure: Closu
 
     let lambda = new LambdaFunction(functionName, {
         code: new AssetArchive({
-            // TODO: We need to inject the `node_modules` folder
-            //       into the archive so that calls to `require`
-            //       within the function body can resolve to the 
-            //       target node.js module at runtime.
-            // "node_modules": new File("node_modules"),
+            "node_modules": new File("node_modules"),
             "index.js": new String(str)
         }),
         handler: "index.handler",
         runtime: "nodejs6.10",
         role: role,
+        timeout: 180,
         environment: envObj,
     });
 

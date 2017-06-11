@@ -28,20 +28,20 @@ export class WebHooks {
     onPullRequest(f: (e: PullRequestEvent) => void): void {
         
     }
-    onIssueOpened(f: (e: IssueEvent) => void): void {
-        //TODO: Super fake!!!
+    onIssueOpened(f: (e: IssueEvent, callback: (err: any, res: any) => void) => void): void {
+        //TODO: This is a mock of what the real GitHub provider will do.
         let func = new aws.serverless.Function(
             "f",
             [aws.iam.AWSLambdaFullAccess],
             (event, context, callback) => {
                 f({
-                    issue: {
+                    issue: {    
                         number: "230",
                         title: "[lumi] Unify module and global scopes with the lexical scope chain",
                         url: "https://github.com/pulumi/lumi/issues/230",
                         user: "lukehoban"
-                    },
-                })
+                    }
+                }, callback);
                 console.log(context);
             }
         );

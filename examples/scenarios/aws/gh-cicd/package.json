@@ -5,9 +5,7 @@
     "scripts": {
         "build": "lumijs"
     },
-    "devDependencies": {
-        "typescript": "^2.1.4"
-    },
+    "devDependencies": {},
     "peerDependencies": {
         "@lumi/lumi": "*",
         "@lumi/aws": "*"

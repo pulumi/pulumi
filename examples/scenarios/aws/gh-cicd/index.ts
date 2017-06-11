@@ -50,12 +50,9 @@ declare let require: any;
 lumi.runtime.printf(`Hello ${slackToken}, good night.`);
 
 // On creation of a new issue, post to our Slack channel.
-github.webhooks.onIssueOpened((e: github.IssueEvent) => {
-    let slack = require('@slack/client')
+github.webhooks.onIssueOpened((e: github.IssueEvent, callback: (err: any, res: any) => void) => {
+    let slack = require('@slack/client');
     let client = new slack.WebClient(slackToken)
-    let message = `New issue ${e.issue.title} (#${e.issue.number}) by ${e.issue.user}: ${e.issue.url}`
-    client.chat.postMessage("Issues", message, (err: any, result: any) => {
-        if(!err) throw err;
-        console.log(result);
-    })
+    let message = "New issue " + e.issue.title + " (#" + e.issue.number +") by "+ e.issue.user + ": " + e.issue.url;
+    client.chat.postMessage("#random", message, callback);
 });
