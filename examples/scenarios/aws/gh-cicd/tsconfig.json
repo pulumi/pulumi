@@ -17,7 +17,6 @@
     },
     "files": [
         "index.ts",
-        "cicd.ts",
         "github.ts"
     ]
 }

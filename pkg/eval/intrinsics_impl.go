@@ -180,7 +180,6 @@ func serializeClosure(intrin *rt.Intrinsic, e *evaluator, this *rt.Object, args 
 		e:    e,
 	}
 	closure := closureSerializer.serializeClosure(stub, lambda)
-	fmt.Printf("Closure: %v\n", closure)
 	return rt.NewReturnUnwind(closure)
 }
 
