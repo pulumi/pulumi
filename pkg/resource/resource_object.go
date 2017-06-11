@@ -18,6 +18,8 @@ package resource
 import (
 	"reflect"
 
+	"github.com/golang/glog"
+
 	"github.com/pulumi/lumi/pkg/compiler/symbols"
 	"github.com/pulumi/lumi/pkg/compiler/types"
 	"github.com/pulumi/lumi/pkg/compiler/types/predef"
@@ -221,6 +223,7 @@ func copyObjectProperties(props *rt.PropertyMap) PropertyMap {
 // the given runtime object.
 func setRuntimeProperties(obj *rt.Object, props PropertyMap) {
 	for k, v := range props {
+		glog.V(9).Infof("Setting resource object property: %v=%v", k, v)
 		prop := obj.GetPropertyAddr(rt.PropertyKey(k), true, true)
 		// TODO: we are only setting if IsNull == true, to avoid certain shortcomings in our serialization format
 		//     today.  For example, if a resource ID appears, we must map it back to the runtime object.

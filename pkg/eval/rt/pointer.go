@@ -47,6 +47,7 @@ func (ptr *Pointer) Setter() symbols.Function { return ptr.set }
 func (ptr *Pointer) Obj() *Object             { return ptr.obj }
 func (ptr *Pointer) Freeze()                  { ptr.readonly = true }
 
+// Set sets the underlying value of the object.
 func (ptr *Pointer) Set(obj *Object) {
 	contract.Assertf(!ptr.readonly, "Unexpected write to readonly reference")
 	ptr.obj = obj

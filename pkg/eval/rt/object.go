@@ -528,9 +528,7 @@ func (o *Object) FreezeReadonlyProperties() {
 			if m := members[member]; !m.Static() {
 				if prop, isprop := m.(*symbols.ClassProperty); isprop && prop.Readonly() {
 					ptr := o.GetPropertyAddr(PropertyKey(member), true, true)
-					if !ptr.Readonly() {
-						ptr.Freeze() // ensure we cannot write to this any longer.
-					}
+					ptr.Freeze() // ensure we cannot write to this any longer.
 				}
 			}
 		}

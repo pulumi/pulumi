@@ -1772,13 +1772,15 @@ func (e *evaluator) evalNew(node diag.Diagable, t symbols.Type, args *[]*ast.Cal
 			"No constructor found for non-record type %v, yet the new expression had %v args", t, len(*args))
 	}
 
-	// Finally, ensure that all readonly properties are frozen now.
-	obj.FreezeReadonlyProperties()
-
-	// Lastly, if there are post-construction hooks, run them right now.
+	// If there are post-construction hooks, run them right now.  Note that we intentionally invoke this after
+	// construction but before object freezing, in case the hook wants to mutate readonly properties.  In a sense, this
+	// hook becomes an extension of the constructor itself.
 	if e.hooks != nil {
 		e.hooks.OnObjectInit(node, obj)
 	}
+
+	// Finally, ensure that all readonly properties are frozen now.
+	obj.FreezeReadonlyProperties()
 
 	return obj, nil
 }
