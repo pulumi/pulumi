@@ -16,13 +16,17 @@
 package main
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/lumi/pkg/compiler/core"
+	"github.com/pulumi/lumi/pkg/eval"
+	"github.com/pulumi/lumi/pkg/resource/deploy"
 	"github.com/pulumi/lumi/pkg/tokens"
 	"github.com/pulumi/lumi/pkg/util/cmdutil"
+	"github.com/pulumi/lumi/pkg/util/contract"
 )
 
 func newPackEvalCmd() *cobra.Command {
@@ -41,35 +45,30 @@ func newPackEvalCmd() *cobra.Command {
 			"By default, a blueprint package is loaded from the current directory.  Optionally,\n" +
 			"a path to a package elsewhere can be provided as the [package] argument.",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			// FIXME: reenable this, but nix the graph printing, and simply print the output value.
-			/*
-				// If a configuration environment was requested, load it.
-				var config resource.ConfigMap
-				if configEnv != "" {
-					envInfo, err := initEnvCmdName(tokens.QName(configEnv), args)
-					if err != nil {
-						return err
-					}
-					config = envInfo.Target.Config
-				}
+			contract.Assertf(!dotOutput, "TODO[pulumi/lumi#235]: DOT files not yet supported")
 
-				// Perform the compilation and, if non-nil is returned, output the graph.
-					if result := compile(cmd, args, config); result != nil && result.Heap != nil && result.Heap.G != nil {
-						// Serialize that evaluation graph so that it's suitable for printing/serializing.
-						if dotOutput {
-							// Convert the output to a DOT file.
-							if err := dotconv.Print(result.Heap.G, os.Stdout); err != nil {
-								return errors.Errorf("failed to write DOT file to output: %v", err)
-							}
-						} else {
-							// Just print a very basic, yet (hopefully) aesthetically pleasing, ascii-ization of the graph.
-							shown := make(map[graph.Vertex]bool)
-							for _, root := range result.Heap.G.Objs() {
-								printVertex(root.ToObj(), shown, "")
-							}
-						}
-					}
-			*/
+			// First, load and compile the package.
+			result := compile(cmd, args)
+			if result == nil {
+				return nil
+			}
+
+			// Now fire up an interpreter so we can run the program.
+			e := eval.New(result.B.Ctx(), nil)
+
+			// If configuration was requested, load it up and populate the object state.
+			if configEnv != "" {
+				envInfo, err := initEnvCmdName(tokens.QName(configEnv), args)
+				if err != nil {
+					return err
+				}
+				deploy.InitEvalConfig(result.B.Ctx(), e, envInfo.Target.Config)
+			}
+
+			// Finally, execute the entire program, and serialize the return value (if any).
+			if obj, _ := e.EvaluatePackage(result.Pkg, nil); obj != nil {
+				fmt.Print(obj)
+			}
 			return nil
 		}),
 	}
@@ -83,24 +82,6 @@ func newPackEvalCmd() *cobra.Command {
 
 	return cmd
 }
-
-// printVertex just pretty-prints a graph.  The output is not serializable, it's just for display purposes.
-// IDEA: option to print properties.
-// IDEA: full serializability, including a DOT file option.
-/*
-func printVertex(v *heapstate.ObjectVertex, shown map[graph.Vertex]bool, indent string) {
-	s := v.Obj().Type()
-	if shown[v] {
-		fmt.Printf("%v%v: <cycle...>\n", indent, s)
-	} else {
-		shown[v] = true // prevent cycles.
-		fmt.Printf("%v%v:\n", indent, s)
-		for _, out := range v.OutObjs() {
-			printVertex(out.ToObj(), shown, indent+"    -> ")
-		}
-	}
-}
-*/
 
 // dashdashArgsToMap is a simple args parser that places incoming key/value pairs into a map.  These are then used
 // during package compilation as inputs to the main entrypoint function.

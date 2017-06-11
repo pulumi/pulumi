@@ -82,7 +82,7 @@ func (src *evalSource) Iterate() (SourceIterator, error) {
 	e := eval.New(src.bindctx, &evalHooks{rz: rz})
 
 	// Populate the configuration variables.
-	if err := initEvalConfig(src, e); err != nil {
+	if err := InitEvalConfig(src.bindctx, e, src.config); err != nil {
 		return nil, err
 	}
 
@@ -126,24 +126,23 @@ func (iter *evalSourceIterator) Next() (*resource.Object, tokens.Module, error) 
 	return resource.NewObject(info.Obj), info.Mod.Tok, nil
 }
 
-// initEvalConfig applies the configuration map to an existing interpreter context.  The map is simply a map of tokens --
+// InitEvalConfig applies the configuration map to an existing interpreter context.  The map is simply a map of tokens --
 // which must be globally settable variables (module properties or static class properties) -- to serializable constant
 // values.  The routine simply walks these tokens in sorted order, and assigns the constant objects.  Note that, because
 // we are accessing module and class members, this routine will also trigger the relevant initialization routines.
-func initEvalConfig(src *evalSource, e eval.Interpreter) error {
-	config := src.config
-	glog.V(5).Infof("Applying %v configuration values for package '%v'", len(config), src.pkg)
+func InitEvalConfig(ctx *binder.Context, e eval.Interpreter, config resource.ConfigMap) error {
 	if config == nil {
 		return nil
 	}
 
 	// For each config entry, bind the token to its symbol, and then attempt to assign to it.
+	glog.V(5).Infof("Applying %v configuration values: %v", len(config), config)
 	for _, tok := range config.StableKeys() {
 		glog.V(5).Infof("Applying configuration value for token '%v'", tok)
 
 		// Bind to the symbol; if it returns nil, this means an error has resulted, and we can skip it.
 		var tree diag.Diagable // there is no source info for this; eventually we may assign one.
-		if sym := src.bindctx.LookupSymbol(tree, tokens.Token(tok), true); sym != nil {
+		if sym := ctx.LookupSymbol(tree, tokens.Token(tok), true); sym != nil {
 			var ok bool
 			switch s := sym.(type) {
 			case *symbols.ModuleProperty:
@@ -155,7 +154,7 @@ func initEvalConfig(src *evalSource, e eval.Interpreter) error {
 				ok = false
 			}
 			if !ok {
-				src.bindctx.Diag.Errorf(errors.ErrorIllegalConfigToken, tok)
+				ctx.Diag.Errorf(errors.ErrorIllegalConfigToken, tok)
 				continue // skip to the next one
 			}
 

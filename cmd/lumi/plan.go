@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"sort"
 	"strconv"
+	"time"
 
 	"github.com/spf13/cobra"
 
@@ -41,7 +42,6 @@ func newPlanCmd() *cobra.Command {
 	var showReplaceSteps bool
 	var showSames bool
 	var summary bool
-	var output string
 	var cmd = &cobra.Command{
 		Use:     "plan [<package>] [-- [<args>]]",
 		Aliases: []string{"dryrun"},
@@ -61,6 +61,7 @@ func newPlanCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
+			contract.Assertf(!dotOutput, "TODO[pulumi/lumi#235]: DOT files not yet supported")
 			planAndDeploy(cmd, info, deployOptions{
 				Delete:           false,
 				DryRun:           true,
@@ -70,7 +71,6 @@ func newPlanCmd() *cobra.Command {
 				ShowSames:        showSames,
 				Summary:          summary,
 				DOT:              dotOutput,
-				Output:           output,
 			})
 			return nil
 		}),
@@ -97,9 +97,6 @@ func newPlanCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVarP(
 		&summary, "summary", "s", false,
 		"Only display summarization of resources and plan operations")
-	cmd.PersistentFlags().StringVarP(
-		&output, "output", "o", "",
-		"Serialize the resulting plan to a file instead of simply printing it")
 
 	return cmd
 }
@@ -151,6 +148,53 @@ func plan(cmd *cobra.Command, info *envCmdInfo, opts deployOptions) *planResult 
 type planResult struct {
 	Info *envCmdInfo  // plan command information.
 	Plan *deploy.Plan // the plan created by this command.
+}
+
+func planAndDeploy(cmd *cobra.Command, info *envCmdInfo, opts deployOptions) {
+	if result := plan(cmd, info, opts); result != nil {
+		// Now based on whether a dry run was specified, or not, either print or perform the planned operations.
+		if opts.DryRun {
+			printPlan(result, opts)
+		} else {
+			// If show unchanged was requested, print them first, along with a header.
+			var header bytes.Buffer
+			printPrelude(&header, result, opts, false)
+			header.WriteString(fmt.Sprintf("%vDeploying changes:%v\n", colors.SpecUnimportant, colors.Reset))
+			fmt.Printf(colors.Colorize(&header))
+
+			// Create an object to track progress and perform the actual operations.
+			start := time.Now()
+			progress := newProgress(opts.Summary)
+			summary, _, _, _ := result.Plan.Apply(progress)
+			contract.Assert(summary != nil)
+			empty := (summary.Steps() == 0) // if no step is returned, it was empty.
+
+			// Print a summary.
+			var footer bytes.Buffer
+
+			if empty {
+				cmdutil.Diag().Infof(diag.Message("no resources need to be updated"))
+			} else {
+				// Print out the total number of steps performed (and their kinds), the duration, and any summary info.
+				printSummary(&footer, progress.Ops, opts.ShowReplaceSteps, false)
+				footer.WriteString(fmt.Sprintf("%vDeployment duration: %v%v\n",
+					colors.SpecUnimportant, time.Since(start), colors.Reset))
+			}
+
+			if progress.MaybeCorrupt {
+				footer.WriteString(fmt.Sprintf(
+					"%vA catastrophic error occurred; resources states may be unknown%v\n",
+					colors.SpecAttention, colors.Reset))
+			}
+
+			// Now save the updated snapshot to the specified output file, if any, or the standard location otherwise.
+			// Note that if a failure has occurred, the Apply routine above will have returned a safe checkpoint.
+			targ := result.Info.Target
+			saveEnv(targ, summary.Snap(), opts.Output, true /*overwrite*/)
+
+			fmt.Printf(colors.Colorize(&footer))
+		}
+	}
 }
 
 func printPlan(result *planResult, opts deployOptions) {

@@ -18,12 +18,10 @@ package main
 import (
 	"bytes"
 	"fmt"
-	"time"
 
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/lumi/pkg/compiler/errors"
-	"github.com/pulumi/lumi/pkg/diag"
 	"github.com/pulumi/lumi/pkg/diag/colors"
 	"github.com/pulumi/lumi/pkg/resource"
 	"github.com/pulumi/lumi/pkg/resource/deploy"
@@ -101,59 +99,6 @@ func newDeployCmd() *cobra.Command {
 		"Serialize the resulting checkpoint to a specific file, instead of overwriting the existing one")
 
 	return cmd
-}
-
-func planAndDeploy(cmd *cobra.Command, info *envCmdInfo, opts deployOptions) {
-	if result := plan(cmd, info, opts); result != nil {
-		// Now based on whether a dry run was specified, or not, either print or perform the planned operations.
-		if opts.DryRun {
-			// If no output file was requested, or "-", print to stdout; else write to that file.
-			if opts.Output == "" || opts.Output == "-" {
-				printPlan(result, opts)
-			} else {
-				// FIXME: reenable this.
-				//saveEnv(info.Target, result.New, opts.Output, true /*overwrite*/)
-			}
-		} else {
-			// If show unchanged was requested, print them first, along with a header.
-			var header bytes.Buffer
-			printPrelude(&header, result, opts, false)
-			header.WriteString(fmt.Sprintf("%vDeploying changes:%v\n", colors.SpecUnimportant, colors.Reset))
-			fmt.Printf(colors.Colorize(&header))
-
-			// Create an object to track progress and perform the actual operations.
-			start := time.Now()
-			progress := newProgress(opts.Summary)
-			summary, _, _, _ := result.Plan.Apply(progress)
-			contract.Assert(summary != nil)
-			empty := (summary.Steps() == 0) // if no step is returned, it was empty.
-
-			// Print a summary.
-			var footer bytes.Buffer
-
-			if empty {
-				cmdutil.Diag().Infof(diag.Message("no resources need to be updated"))
-			} else {
-				// Print out the total number of steps performed (and their kinds), the duration, and any summary info.
-				printSummary(&footer, progress.Ops, opts.ShowReplaceSteps, false)
-				footer.WriteString(fmt.Sprintf("%vDeployment duration: %v%v\n",
-					colors.SpecUnimportant, time.Since(start), colors.Reset))
-			}
-
-			if progress.MaybeCorrupt {
-				footer.WriteString(fmt.Sprintf(
-					"%vA catastrophic error occurred; resources states may be unknown%v\n",
-					colors.SpecAttention, colors.Reset))
-			}
-
-			// Now save the updated snapshot to the specified output file, if any, or the standard location otherwise.
-			// Note that if a failure has occurred, the Apply routine above will have returned a safe checkpoint.
-			targ := result.Info.Target
-			saveEnv(targ, summary.Snap(), opts.Output, true /*overwrite*/)
-
-			fmt.Printf(colors.Colorize(&footer))
-		}
-	}
 }
 
 type deployOptions struct {
