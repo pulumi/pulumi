@@ -180,7 +180,7 @@ const (
 	OpCreate        StepOp = "create"         // creating a new resource.
 	OpUpdate        StepOp = "update"         // updating an existing resource.
 	OpDelete        StepOp = "delete"         // deleting an existing resource.
-	OpReplaceCreate StepOp = "replace-create" // replacing a resource with a new one.
+	OpReplaceCreate StepOp = "replace"        // replacing a resource with a new one.
 	OpReplaceDelete StepOp = "replace-delete" // the fine-grained replacement step to delete the old resource.
 )
 
