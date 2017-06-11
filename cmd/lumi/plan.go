@@ -39,7 +39,7 @@ func newPlanCmd() *cobra.Command {
 	var env string
 	var showConfig bool
 	var showReplaceSteps bool
-	var showUnchanged bool
+	var showSames bool
 	var summary bool
 	var output string
 	var cmd = &cobra.Command{
@@ -67,7 +67,7 @@ func newPlanCmd() *cobra.Command {
 				Analyzers:        analyzers,
 				ShowConfig:       showConfig,
 				ShowReplaceSteps: showReplaceSteps,
-				ShowUnchanged:    showUnchanged,
+				ShowSames:        showSames,
 				Summary:          summary,
 				DOT:              dotOutput,
 				Output:           output,
@@ -92,7 +92,7 @@ func newPlanCmd() *cobra.Command {
 		&showReplaceSteps, "show-replace-steps", false,
 		"Show detailed resource replacement creates and deletes; normally shows as a single step")
 	cmd.PersistentFlags().BoolVar(
-		&showUnchanged, "show-unchanged", false,
+		&showSames, "show-sames", false,
 		"Show resources that needn't be updated because they haven't changed, alongside those that do")
 	cmd.PersistentFlags().BoolVarP(
 		&summary, "summary", "s", false,
@@ -153,29 +153,6 @@ type planResult struct {
 	Plan *deploy.Plan // the plan created by this command.
 }
 
-// beginPlan starts walking a plan's steps, but does some initial validation too.  It returns the iterator object and
-// the first step in the deployment plan.  If the first step is nil, the plan was empty.
-func beginPlan(plan *deploy.Plan) (*deploy.PlanIterator, *deploy.Step) {
-	iter, err := plan.Iterate()
-	if err != nil {
-		cmdutil.Diag().Errorf(diag.Message("An error occurred while preparing the plan: %v"), err)
-		return nil, nil
-	}
-
-	step, err := iter.Next()
-	if err != nil {
-		cmdutil.Diag().Errorf(diag.Message("An error occurred while starting to walk the plan: %v"), err)
-		return nil, nil
-	}
-
-	// If we are doing an empty update, say so.
-	if step == nil {
-		cmdutil.Diag().Infof(diag.Message("no resources need to be updated"))
-	}
-
-	return iter, step
-}
-
 func printPlan(result *planResult, opts deployOptions) {
 	// First print config/unchanged/etc. if necessary.
 	var prelude bytes.Buffer
@@ -184,29 +161,51 @@ func printPlan(result *planResult, opts deployOptions) {
 	// Now walk the plan's steps and and pretty-print them out.
 	prelude.WriteString(fmt.Sprintf("%vPlanned changes:%v\n", colors.SpecUnimportant, colors.Reset))
 	fmt.Printf(colors.Colorize(&prelude))
-	if iter, step := beginPlan(result.Plan); step != nil {
-		var summary bytes.Buffer
-		counts := make(map[deploy.StepOp]int)
-		for step != nil {
-			op := step.Op()
-			// Print this step information (resource and all its properties).
-			// IDEA: it would be nice if, in the output, we showed the dependencies a la `git log --graph`.
-			if opts.ShowReplaceSteps || (op != deploy.OpReplaceCreate && op != deploy.OpReplaceDelete) {
-				printStep(&summary, step, opts.Summary, true, "")
-			}
-			counts[step.Op()]++
-			var err error
-			if step, err = iter.Next(); err != nil {
-				cmdutil.Diag().Errorf(diag.Message("An error occurred while viewing the plan: %v"), err)
-				return
-			}
+
+	iter, err := result.Plan.Iterate()
+	if err != nil {
+		cmdutil.Diag().Errorf(diag.Message("An error occurred while preparing the plan: %v"), err)
+		return
+	}
+
+	step, err := iter.Next()
+	if err != nil {
+		cmdutil.Diag().Errorf(diag.Message("An error occurred while starting to walk the plan: %v"), err)
+		return
+	}
+
+	var summary bytes.Buffer
+	empty := true
+	counts := make(map[deploy.StepOp]int)
+	for step != nil {
+		op := step.Op()
+		if empty && op != deploy.OpSame {
+			empty = false
 		}
 
-		// If show-sames was requested, walk the sames and print them.
-		if opts.ShowUnchanged {
-			printUnchanged(&summary, iter, opts.Summary, true)
+		// Print this step information (resource and all its properties).
+		// IDEA: it would be nice if, in the output, we showed the dependencies a la `git log --graph`.
+		if (opts.ShowReplaceSteps || op != deploy.OpReplaceDelete) &&
+			(opts.ShowSames || op != deploy.OpSame) {
+			printStep(&summary, step, opts.Summary, true, "")
 		}
 
+		// Be sure to skip the step so that in-memory state updates are performed.
+		step.Skip()
+
+		counts[step.Op()]++
+
+		var err error
+		if step, err = iter.Next(); err != nil {
+			cmdutil.Diag().Errorf(diag.Message("An error occurred while viewing the plan: %v"), err)
+			return
+		}
+	}
+
+	// If we are doing an empty update, say so.
+	if empty {
+		cmdutil.Diag().Infof(diag.Message("no resources need to be updated"))
+	} else {
 		// Print a summary of operation counts.
 		printSummary(&summary, counts, opts.ShowReplaceSteps, true)
 		fmt.Printf(colors.Colorize(&summary))
@@ -237,7 +236,7 @@ func printConfig(b *bytes.Buffer, config resource.ConfigMap) {
 func printSummary(b *bytes.Buffer, counts map[deploy.StepOp]int, showReplaceSteps bool, plan bool) {
 	total := 0
 	for op, c := range counts {
-		if !showReplaceSteps && (op == deploy.OpReplaceCreate || op == deploy.OpReplaceDelete) {
+		if op == deploy.OpSame || (!showReplaceSteps && op == deploy.OpReplaceDelete) {
 			continue // skip counting replacement steps unless explicitly requested.
 		}
 		total += c
@@ -262,7 +261,7 @@ func printSummary(b *bytes.Buffer, counts map[deploy.StepOp]int, showReplaceStep
 	}
 
 	for _, op := range deploy.StepOps {
-		if !showReplaceSteps && (op == deploy.OpReplaceCreate || op == deploy.OpReplaceDelete) {
+		if op == deploy.OpSame || (!showReplaceSteps && op == deploy.OpReplaceDelete) {
 			// Unless the user requested it, don't show the fine-grained replacement steps; just the logical ones.
 			continue
 		}

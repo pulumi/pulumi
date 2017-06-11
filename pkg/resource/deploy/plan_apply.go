@@ -72,14 +72,6 @@ func (p *Plan) Apply(prog Progress) (PlanSummary, *Step, resource.Status, error)
 
 // Iterate initializes and returns an iterator that can be used to step through a plan's individual steps.
 func (p *Plan) Iterate() (*PlanIterator, error) {
-	// Manufacture an initial list of snapshots for the final output.
-	var resources []*resource.State
-	keeps := make(map[*resource.State]bool)
-	for _, res := range p.Olds() {
-		resources = append(resources, res)
-		keeps[res] = true
-	}
-
 	// Ask the source for its iterator.
 	src, err := p.new.Iterate()
 	if err != nil {
@@ -88,14 +80,13 @@ func (p *Plan) Iterate() (*PlanIterator, error) {
 
 	// Create an iterator that can be used to perform the planning process.
 	return &PlanIterator{
-		p:         p,
-		src:       src,
-		creates:   make(map[resource.URN]bool),
-		updates:   make(map[resource.URN]bool),
-		deletes:   make(map[resource.URN]bool),
-		sames:     make(map[resource.URN]bool),
-		resources: resources,
-		keeps:     keeps,
+		p:        p,
+		src:      src,
+		creates:  make(map[resource.URN]bool),
+		updates:  make(map[resource.URN]bool),
+		replaces: make(map[resource.URN]bool),
+		deletes:  make(map[resource.URN]bool),
+		sames:    make(map[resource.URN]bool),
 	}, nil
 }
 
@@ -122,9 +113,8 @@ type PlanIterator struct {
 	deletes  map[resource.URN]bool // URNs discovered to be deleted.
 	sames    map[resource.URN]bool // URNs discovered to be the same.
 
-	delqueue  []*resource.State        // a queue of deletes left to perform.
-	resources []*resource.State        // the resulting ordered resource states.
-	keeps     map[*resource.State]bool // a map of which states to keep in the final output.
+	delqueue  []*resource.State // a queue of deletes left to perform.
+	resources []*resource.State // the resulting ordered resource states.
 
 	srcdone bool // true if the source interpreter has been run to completion.
 	done    bool // true if the planning and associated iteration has finished.
@@ -184,7 +174,7 @@ func (iter *PlanIterator) Next() (*Step, error) {
 func (iter *PlanIterator) nextResource(new *resource.Object, ctx tokens.Module) (*Step, error) {
 	// Take a moment in time snapshot of the live object's properties.
 	t := new.Type()
-	newprops := new.CopyProperties()
+	inputs := new.CopyProperties()
 
 	// Fetch the provider for this resource type.
 	prov, err := iter.Provider(new)
@@ -193,27 +183,16 @@ func (iter *PlanIterator) nextResource(new *resource.Object, ctx tokens.Module) 
 	}
 
 	// Fetch the resource's name from its provider, and use it to construct a URN.
-	name, err := prov.Name(t, newprops)
+	name, err := prov.Name(t, inputs)
 	if err != nil {
 		return nil, err
 	}
 	urn := resource.NewURN(iter.p.Target().Name, ctx, t, name)
 	new.SetURN(urn)
 
-	// Now see if there is an old resource and, if so, propagate the ID to the new object.
-	var id resource.ID
-	old, hasold := iter.p.Olds()[urn]
-	if hasold {
-		contract.Assert(old != nil && old.Type() == new.Type())
-		id = old.ID()
-		contract.Assert(id != "")
-		new.SetID(id)                   // set the live object ID property.
-		newprops = new.CopyProperties() // snap the properties again to reflect the ID.
-	}
-
 	// First ensure the provider is okay with this resource.
 	var invalid bool
-	failures, err := prov.Check(new.Type(), newprops)
+	failures, err := prov.Check(new.Type(), inputs)
 	if err != nil {
 		return nil, err
 	}
@@ -229,7 +208,7 @@ func (iter *PlanIterator) nextResource(new *resource.Object, ctx tokens.Module) 
 		if err != nil {
 			return nil, err
 		}
-		failures, err := analyzer.Analyze(t, newprops)
+		failures, err := analyzer.Analyze(t, inputs)
 		if err != nil {
 			return nil, err
 		}
@@ -254,38 +233,40 @@ func (iter *PlanIterator) nextResource(new *resource.Object, ctx tokens.Module) 
 	//
 	//     * If the URN does not exist in the old snapshot, create the resource anew.
 	//
-	if hasold {
+	if old, hasold := iter.p.Olds()[urn]; hasold {
+		contract.Assert(old != nil && old.Type() == new.Type())
+
 		// The resource exists in both new and old; it could be an update.  This constitutes an update if the old
 		// and new properties don't match exactly.  It is also possible we'll need to replace the resource if the
 		// update impact assessment says so.  In this case, the resource's ID will change, which might have a
 		// cascading impact on subsequent updates too, since those IDs must trigger recreations, etc.
 		oldprops := old.Inputs()
-		if oldprops.DeepEquals(newprops) {
-			// No need to update anything, the properties didn't change; but we need to record the ID.
+		if oldprops.DeepEquals(inputs) {
+			// No need to update anything, the properties didn't change.
 			iter.sames[urn] = true
 			glog.V(7).Infof("Planner decided not to update '%v'", urn)
-			return nil, nil
+			return NewSameStep(iter, old, new, inputs), nil
 		}
 
 		// The properties changed; we need to figure out whether to do an update or replacement.
-		replacements, _, err := prov.InspectChange(t, id, oldprops, newprops)
+		replacements, _, err := prov.InspectChange(t, old.ID(), oldprops, inputs)
 		if err != nil {
 			return nil, err
 		} else if len(replacements) > 0 {
 			iter.replaces[urn] = true
 			glog.V(7).Infof("Planner decided to replace '%v'", urn)
-			return NewReplaceCreateStep(iter, old, new, newprops, replacements), nil
+			return NewReplaceCreateStep(iter, old, new, inputs, replacements), nil
 		}
 
 		iter.updates[urn] = true
 		glog.V(7).Infof("Planner decided to update '%v'", urn)
-		return NewUpdateStep(iter, old, new, newprops), nil
+		return NewUpdateStep(iter, old, new, inputs), nil
 	}
 
 	// Otherwise, the resource isn't in the old map, so it must be a resource creation.
 	iter.creates[urn] = true
 	glog.V(7).Infof("Planner decided to create '%v'", urn)
-	return NewCreateStep(iter, new, newprops), nil
+	return NewCreateStep(iter, new, inputs), nil
 }
 
 // nextDelete produces a new step that deletes a resource if necessary.
@@ -317,7 +298,7 @@ func (iter *PlanIterator) calculateDeletes() []*resource.State {
 			res := prev.Resources[i]
 			urn := res.URN()
 			contract.Assert(!iter.creates[urn])
-			if iter.replaces[urn] || !iter.updates[urn] {
+			if (!iter.sames[urn] && !iter.updates[urn]) || iter.replaces[urn] {
 				dels = append(dels, res)
 			}
 		}
@@ -329,24 +310,12 @@ func (iter *PlanIterator) calculateDeletes() []*resource.State {
 // failure happens partway through, the untouched snapshot elements will be retained, while any updates will be
 // preserved.  If no failure happens, the snapshot naturally reflects the final state of all resources.
 func (iter *PlanIterator) Snap() *Snapshot {
-	var resources []*resource.State
-	for _, resource := range iter.resources {
-		if iter.keeps[resource] {
-			resources = append(resources, resource)
-		}
-	}
-	return NewSnapshot(iter.p.Target().Name, resources, iter.p.new.Info())
+	return NewSnapshot(iter.p.Target().Name, iter.resources, iter.p.new.Info())
 }
 
 // AppendStateSnapshot appends a resource's state to the current snapshot.
 func (iter *PlanIterator) AppendStateSnapshot(state *resource.State) {
 	iter.resources = append(iter.resources, state) // add this state to the pending list.
-	iter.keeps[state] = true                       // ensure that we know to keep it in the final snapshot.
-}
-
-// RemoveStateSnapshot removes a resource's existing state from the current snapshot.
-func (iter *PlanIterator) RemoveStateSnapshot(state *resource.State) {
-	iter.keeps[state] = false // drop this state on the floor when creating the final snapshot.
 }
 
 // Provider fetches the provider for a given resource, possibly lazily allocating the plugins for it.  If a provider

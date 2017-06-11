@@ -33,6 +33,10 @@ type Step struct {
 	reasons []resource.PropertyKey // the reasons for replacement, if applicable.
 }
 
+func NewSameStep(iter *PlanIterator, old *resource.State, new *resource.Object, inputs resource.PropertyMap) *Step {
+	return &Step{iter: iter, op: OpSame, old: old, new: new, inputs: inputs}
+}
+
 func NewCreateStep(iter *PlanIterator, new *resource.Object, inputs resource.PropertyMap) *Step {
 	return &Step{iter: iter, op: OpCreate, new: new, inputs: inputs}
 }
@@ -82,6 +86,13 @@ func (s *Step) Apply() (resource.Status, error) {
 
 	// Now simply perform the operation of the right kind.
 	switch s.op {
+	case OpSame:
+		// Just propagate the ID and output state to the live object and append to the snapshot.
+		contract.Assert(s.old != nil)
+		contract.Assert(s.new != nil)
+		s.new.Update(s.old.ID(), s.old.Outputs())
+		s.iter.AppendStateSnapshot(s.old)
+
 	case OpCreate, OpReplaceCreate:
 		// Invoke the Create RPC function for this provider:
 		contract.Assert(s.old == nil || s.op == OpReplaceCreate)
@@ -109,7 +120,6 @@ func (s *Step) Apply() (resource.Status, error) {
 		if rst, err := prov.Delete(s.old.Type(), s.old.ID()); err != nil {
 			return rst, err
 		}
-		s.iter.RemoveStateSnapshot(s.old)
 
 	case OpUpdate:
 		// Invoke the Update RPC function for this provider:
@@ -139,10 +149,18 @@ func (s *Step) Apply() (resource.Status, error) {
 	return resource.StatusOK, nil
 }
 
+// Skip skips a step.  This is required even when just viewing a plan to ensure in-memory object states are correct.
+func (s *Step) Skip() {
+	if s.old != nil && s.new != nil {
+		s.new.Update(s.old.ID(), s.old.Outputs())
+	}
+}
+
 // StepOp represents the kind of operation performed by this step.
 type StepOp string
 
 const (
+	OpSame          StepOp = "same"           // nothing to do.
 	OpCreate        StepOp = "create"         // creating a new resource.
 	OpUpdate        StepOp = "update"         // updating an existing resource.
 	OpDelete        StepOp = "delete"         // deleting an existing resource.
@@ -152,6 +170,7 @@ const (
 
 // StepOps contains the full set of step operation types.
 var StepOps = []StepOp{
+	OpSame,
 	OpCreate,
 	OpUpdate,
 	OpDelete,
@@ -162,6 +181,8 @@ var StepOps = []StepOp{
 // Color returns a suggested color for lines of this op type.
 func (op StepOp) Color() string {
 	switch op {
+	case OpSame:
+		return ""
 	case OpCreate:
 		return colors.SpecAdded
 	case OpDelete:
@@ -181,6 +202,8 @@ func (op StepOp) Color() string {
 // Prefix returns a suggested prefix for lines of this op type.
 func (op StepOp) Prefix() string {
 	switch op {
+	case OpSame:
+		return op.Color() + "  "
 	case OpCreate:
 		return op.Color() + "+ "
 	case OpDelete:

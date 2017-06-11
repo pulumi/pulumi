@@ -124,6 +124,7 @@ func TestBasicCRUDPlan(t *testing.T) {
 	newObjA.Properties().InitAddr(rt.PropertyKey("af1"), rt.NewStringObject("a-value"), false, nil, nil)
 	newObjA.Properties().InitAddr(rt.PropertyKey("af2"), rt.NewNumberObject(42), false, nil, nil)
 	newResA := resource.NewObject(newObjA)
+	newResAProps := newResA.CopyProperties()
 	//     - B is updated:
 	newObjB := rt.NewObject(typB, nil, nil, nil)
 	newObjB.Properties().InitAddr(rt.PropertyKey("name"), rt.NewStringObject(namB.String()), false, nil, nil)
@@ -131,6 +132,7 @@ func TestBasicCRUDPlan(t *testing.T) {
 	// delete the bf2 field, and add bf3.
 	newObjB.Properties().InitAddr(rt.PropertyKey("bf3"), rt.True, false, nil, nil)
 	newResB := resource.NewObject(newObjB)
+	newResBProps := newResB.CopyProperties()
 	//     - C has no changes:
 	newObjC := rt.NewObject(typC, nil, nil, nil)
 	newObjC.Properties().InitAddr(rt.PropertyKey("name"), rt.NewStringObject(namC.String()), false, nil, nil)
@@ -166,7 +168,7 @@ func TestBasicCRUDPlan(t *testing.T) {
 			assert.Nil(t, old)
 			assert.NotNil(t, new)
 			assert.Equal(t, urnA, new.URN())
-			assert.Equal(t, newResA.CopyProperties(), step.Inputs())
+			assert.Equal(t, newResAProps, step.Inputs())
 		case OpUpdate: // B is updated
 			old := step.Old()
 			new := step.New()
@@ -175,7 +177,7 @@ func TestBasicCRUDPlan(t *testing.T) {
 			assert.Equal(t, oldResB, old)
 			assert.NotNil(t, new)
 			assert.Equal(t, urnB, new.URN())
-			assert.Equal(t, newResB.CopyProperties(), step.Inputs())
+			assert.Equal(t, newResBProps, step.Inputs())
 		case OpDelete: // D is deleted
 			old := step.Old()
 			new := step.New()
@@ -196,7 +198,7 @@ func TestBasicCRUDPlan(t *testing.T) {
 	assert.Equal(t, 1, len(iter.Creates()))
 	assert.True(t, iter.Creates()[urnA])
 	assert.Equal(t, 1, len(iter.Updates()))
-	assert.True(t, iter.Creates()[urnB])
+	assert.True(t, iter.Updates()[urnB])
 	assert.Equal(t, 0, len(iter.Replaces()))
 	assert.Equal(t, 1, len(iter.Sames()))
 	assert.True(t, iter.Sames()[urnC])

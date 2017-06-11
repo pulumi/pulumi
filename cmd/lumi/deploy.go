@@ -38,7 +38,7 @@ func newDeployCmd() *cobra.Command {
 	var env string
 	var showConfig bool
 	var showReplaceSteps bool
-	var showUnchanged bool
+	var showSames bool
 	var summary bool
 	var output string
 	var cmd = &cobra.Command{
@@ -67,7 +67,7 @@ func newDeployCmd() *cobra.Command {
 				Analyzers:        analyzers,
 				ShowConfig:       showConfig,
 				ShowReplaceSteps: showReplaceSteps,
-				ShowUnchanged:    showUnchanged,
+				ShowSames:        showSames,
 				Summary:          summary,
 				Output:           output,
 			})
@@ -91,7 +91,7 @@ func newDeployCmd() *cobra.Command {
 		&showReplaceSteps, "show-replace-steps", false,
 		"Show detailed resource replacement creates and deletes; normally shows as a single step")
 	cmd.PersistentFlags().BoolVar(
-		&showUnchanged, "show-unchanged", false,
+		&showSames, "show-sames", false,
 		"Show resources that needn't be updated because they haven't changed, alongside those that do")
 	cmd.PersistentFlags().BoolVarP(
 		&summary, "summary", "s", false,
@@ -131,18 +131,13 @@ func planAndDeploy(cmd *cobra.Command, info *envCmdInfo, opts deployOptions) {
 			// Print a summary.
 			var footer bytes.Buffer
 
-			// If show-sames was requested, walk the sames and print them.
-			if opts.ShowUnchanged {
-				printUnchanged(&footer, summary, opts.Summary, false)
-			}
-
 			if empty {
+				cmdutil.Diag().Infof(diag.Message("no resources need to be updated"))
+			} else {
 				// Print out the total number of steps performed (and their kinds), the duration, and any summary info.
 				printSummary(&footer, progress.Ops, opts.ShowReplaceSteps, false)
 				footer.WriteString(fmt.Sprintf("%vDeployment duration: %v%v\n",
 					colors.SpecUnimportant, time.Since(start), colors.Reset))
-			} else {
-				cmdutil.Diag().Infof(diag.Message("no resources need to be updated"))
 			}
 
 			if progress.MaybeCorrupt {
@@ -168,7 +163,7 @@ type deployOptions struct {
 	Analyzers        []string // an optional set of analyzers to run as part of this deployment.
 	ShowConfig       bool     // true to show the configuration variables being used.
 	ShowReplaceSteps bool     // true to show the replacement steps in the plan.
-	ShowUnchanged    bool     // true to show the resources that aren't updated, in addition to those that are.
+	ShowSames        bool     // true to show the resources that aren't updated, in addition to those that are.
 	Summary          bool     // true if we should only summarize resources and operations.
 	DOT              bool     // true if we should print the DOT file for this plan.
 	Output           string   // the place to store the output, if any.
@@ -191,8 +186,12 @@ func newProgress(summary bool) *deployProgress {
 }
 
 func (prog *deployProgress) Before(step *deploy.Step) {
-	// Print the step.
 	stepop := step.Op()
+	if stepop == deploy.OpSame {
+		return
+	}
+
+	// Print the step.
 	stepnum := prog.Steps + 1
 
 	var extra string
@@ -207,25 +206,15 @@ func (prog *deployProgress) Before(step *deploy.Step) {
 }
 
 func (prog *deployProgress) After(step *deploy.Step, status resource.Status, err error) {
-	if err == nil {
-		// Increment the counters.
-		prog.Steps++
-		prog.Ops[step.Op()]++
-
-		// Print out any output properties that got created as a result of this operation.
-		if step.Op() == deploy.OpCreate {
-			var b bytes.Buffer
-			printResourceOutputProperties(&b, step, "")
-			fmt.Printf(colors.Colorize(&b))
-		}
-	} else {
+	stepop := step.Op()
+	if err != nil {
 		// Issue a true, bonafide error.
 		cmdutil.Diag().Errorf(errors.ErrorPlanApplyFailed, err)
 
 		// Print the state of the resource; we don't issue the error, because the deploy above will do that.
 		var b bytes.Buffer
 		stepnum := prog.Steps + 1
-		b.WriteString(fmt.Sprintf("Step #%v failed [%v]: ", stepnum, step.Op()))
+		b.WriteString(fmt.Sprintf("Step #%v failed [%v]: ", stepnum, stepop))
 		switch status {
 		case resource.StatusOK:
 			b.WriteString(colors.SpecNote)
@@ -240,5 +229,16 @@ func (prog *deployProgress) After(step *deploy.Step, status resource.Status, err
 		b.WriteString(colors.Reset)
 		b.WriteString("\n")
 		fmt.Printf(colors.Colorize(&b))
+	} else if stepop != deploy.OpSame {
+		// Increment the counters.
+		prog.Steps++
+		prog.Ops[stepop]++
+
+		// Print out any output properties that got created as a result of this operation.
+		if step.Op() == deploy.OpCreate {
+			var b bytes.Buffer
+			printResourceOutputProperties(&b, step, "")
+			fmt.Printf(colors.Colorize(&b))
+		}
 	}
 }

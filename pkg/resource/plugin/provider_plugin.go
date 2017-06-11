@@ -168,7 +168,7 @@ func (p *provider) Get(t tokens.Type, id resource.ID) (resource.PropertyMap, err
 
 // InspectChange checks what impacts a hypothetical update will have on the resource's properties.
 func (p *provider) InspectChange(t tokens.Type, id resource.ID,
-	news resource.PropertyMap, olds resource.PropertyMap) ([]resource.PropertyKey, resource.PropertyMap, error) {
+	olds resource.PropertyMap, news resource.PropertyMap) ([]resource.PropertyKey, resource.PropertyMap, error) {
 	contract.Assert(t != "")
 	contract.Assert(id != "")
 	contract.Assert(news != nil)
@@ -215,7 +215,7 @@ func (p *provider) InspectChange(t tokens.Type, id resource.ID,
 
 // Update updates an existing resource with new values.
 func (p *provider) Update(t tokens.Type, id resource.ID,
-	news resource.PropertyMap, olds resource.PropertyMap) (resource.Status, error) {
+	olds resource.PropertyMap, news resource.PropertyMap) (resource.Status, error) {
 	contract.Assert(t != "")
 	contract.Assert(id != "")
 	contract.Assert(news != nil)

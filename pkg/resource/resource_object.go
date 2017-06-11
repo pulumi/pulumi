@@ -57,6 +57,14 @@ func (r *Object) ID() ID {
 	return getID(r.Obj())
 }
 
+// HasID returns true if the object already has an ID assigned to it.
+func (r *Object) HasID() bool {
+	if prop := r.obj.GetPropertyAddr(IDProperty, true, true); prop != nil {
+		return prop.Obj() != rt.Null
+	}
+	return false
+}
+
 // SetID assigns an ID to the target object.  This must only happen once.
 func (r *Object) SetID(id ID) {
 	prop := r.obj.GetPropertyAddr(IDProperty, true, true)
@@ -90,7 +98,11 @@ func (r *Object) Update(id ID, outputs PropertyMap) *State {
 	inputs := r.CopyProperties()
 
 	// Now assign the ID and copy everything in the property map, overwriting what exists.
-	r.SetID(id)
+	if r.HasID() {
+		contract.Assert(r.ID() == id)
+	} else {
+		r.SetID(id)
+	}
 	r.SetProperties(outputs)
 
 	// Finally, return a state snapshot of the underlying object state.
