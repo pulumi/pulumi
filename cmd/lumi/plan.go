@@ -597,8 +597,7 @@ func printPropertyValueDiff(b *bytes.Buffer, title func(string), diff resource.V
 				printPropertyValue(b, delete, planning, deleteIndent(newIndent))
 				b.WriteString(colors.Reset)
 			} else if update, isupdate := a.Updates[i]; isupdate {
-				title(indent)
-				printPropertyValueDiff(b, func(string) {}, update, causedReplace, planning, newIndent)
+				printPropertyValueDiff(b, title, update, causedReplace, planning, indent)
 			} else {
 				title(indent)
 				printPropertyValue(b, a.Sames[i], planning, newIndent)

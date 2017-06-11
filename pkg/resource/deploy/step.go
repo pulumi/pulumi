@@ -150,9 +150,25 @@ func (s *Step) Apply() (resource.Status, error) {
 }
 
 // Skip skips a step.  This is required even when just viewing a plan to ensure in-memory object states are correct.
+// This factors in the correct differences in behavior depending on the kind of action being taken.
 func (s *Step) Skip() {
-	if s.old != nil && s.new != nil {
+	switch s.op {
+	case OpSame:
+		// In the case of a same, both ID and outputs are identical.
 		s.new.Update(s.old.ID(), s.old.Outputs())
+	case OpCreate:
+		// In the case of a create, we cannot possibly know the ID or output properties.
+	case OpUpdate:
+		// In the case of an update, the ID is the same, however, the outputs remain unknown.
+		s.new.SetID(s.old.ID())
+	case OpReplaceCreate:
+		// In the case of a replacement, we neither propagate the ID nor output properties.  This may be surprising,
+		// however, it must be done this way since the entire resource will be deleted and recreated.  As a result, we
+		// actually want the ID to be seen as having been updated (triggering cascading updates as appropriate).
+	case OpDelete, OpReplaceDelete:
+		// In the case of a deletion, there is no state to propagate: the new object doesn't even exist.
+	default:
+		contract.Failf("Unexpected step operation: %v", s.op)
 	}
 }
 
