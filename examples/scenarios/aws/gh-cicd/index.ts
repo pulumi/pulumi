@@ -20,9 +20,9 @@ export let slackToken = "<must provide a token>"
 declare let require: any;
 
 // On creation of a new issue, post to our Slack channel.
-github.webhooks.onIssueOpened((e: github.IssueEvent, callback: (err: any, res: any) => void) => {
+github.webhooks.onIssueOpened((e, callback) => {
     let slack = require('@slack/client');
     let client = new slack.WebClient(slackToken)
     let message = "New issue " + e.issue.title + " (#" + e.issue.number +") by "+ e.issue.user + ": " + e.issue.url;
-    client.chat.postMessage("#apitesting", message, callback);
+    client.chat.postMessage("#issues", message, callback);
 });
