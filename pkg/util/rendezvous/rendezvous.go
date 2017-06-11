@@ -75,7 +75,7 @@ func (rz *Rendezvous) Meet(me Party, data interface{}) (interface{}, bool, error
 		rz.cond.Wait()
 	}
 
-	return rz.data, !rz.done, rz.err
+	return rz.data, rz.done, rz.err
 }
 
 // Done signals to any waiters that the rendezvous is done.

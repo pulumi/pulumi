@@ -312,13 +312,14 @@ func (iter *PlanIterator) calculateDeletes() []*resource.State {
 	// stored in dependency order, and earlier elements are possibly leaf nodes for later elements.  We must not delete
 	// dependencies prior to their dependent nodes.
 	var dels []*resource.State
-	ress := iter.p.prev.Resources
-	for i := len(ress) - 1; i >= 0; i-- {
-		res := ress[i]
-		urn := res.URN()
-		contract.Assert(!iter.creates[urn])
-		if iter.replaces[urn] || !iter.updates[urn] {
-			dels = append(dels, res)
+	if prev := iter.p.prev; prev != nil {
+		for i := len(prev.Resources) - 1; i >= 0; i-- {
+			res := prev.Resources[i]
+			urn := res.URN()
+			contract.Assert(!iter.creates[urn])
+			if iter.replaces[urn] || !iter.updates[urn] {
+				dels = append(dels, res)
+			}
 		}
 	}
 	return dels

@@ -157,6 +157,11 @@ func (e *evaluator) EvaluateFunction(fnc symbols.Function, this *rt.Object, args
 			fnc.Token(), e.Diag().Warnings(), e.Diag().Errors())
 	}
 
+	// Call the pre-start hook if registered.
+	if e.hooks != nil {
+		e.hooks.OnStart()
+	}
+
 	// Ensure that initializers have been run.
 	switch f := fnc.(type) {
 	case *symbols.ClassMethod:
@@ -206,10 +211,6 @@ func (e *evaluator) EvaluateFunction(fnc symbols.Function, this *rt.Object, args
 	var uw *rt.Unwind
 	if e.Diag().Success() {
 		// If the arguments bound correctly, actually perform the invocation.
-		if e.hooks != nil {
-			e.hooks.OnStart()
-		}
-
 		if ret, uw = e.evalCallSymbol(fnc.Tree(), fnc, this, argos...); uw != nil {
 			// If the call had an unwind out of it, then presumably we have an unhandled exception.
 			e.issueUnhandledException(uw, errors.ErrorUnhandledException.At(fnc.Tree()))

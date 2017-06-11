@@ -106,6 +106,9 @@ func newPlanCmd() *cobra.Command {
 
 // plan just uses the standard logic to parse arguments, options, and to create a snapshot and plan.
 func plan(cmd *cobra.Command, info *envCmdInfo, opts deployOptions) *planResult {
+	contract.Assert(info != nil)
+	contract.Assert(info.Target != nil)
+
 	var source deploy.Source
 	var analyzers []tokens.QName
 	if opts.Delete {
@@ -303,12 +306,12 @@ func printStep(b *bytes.Buffer, step *deploy.Step, summary bool, planning bool, 
 	b.WriteString(colors.Reset)
 }
 
-func printResourceHeader(b *bytes.Buffer, old resource.Resource, new resource.Resource, indent string) {
+func printResourceHeader(b *bytes.Buffer, old *resource.State, new *resource.Object, indent string) {
 	var t tokens.Type
-	if old == nil {
-		t = new.Type()
-	} else {
+	if old != nil {
 		t = old.Type()
+	} else {
+		t = new.Type()
 	}
 
 	// The primary header is the resource type (since it is easy on the eyes).

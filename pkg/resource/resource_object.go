@@ -50,11 +50,27 @@ func (r *Object) URN() URN          { return r.urn }
 func (r *Object) Obj() *rt.Object   { return r.obj }
 func (r *Object) Type() tokens.Type { return r.obj.Type().TypeToken() }
 
+// ID fetches the object's ID.
+func (r *Object) ID() ID {
+	return getID(r.Obj())
+}
+
 // SetID assigns an ID to the target object.  This must only happen once.
 func (r *Object) SetID(id ID) {
 	prop := r.obj.GetPropertyAddr(IDProperty, true, true)
 	contract.Assert(prop.Obj() == rt.Null)
 	prop.Set(rt.NewStringObject(id.String()))
+}
+
+// getID fetches the ID off the target object, dynamically, given its runtime value.
+func getID(obj *rt.Object) ID {
+	if idprop := obj.GetPropertyAddr(IDProperty, false, false); idprop != nil {
+		id := idprop.Obj()
+		contract.Assert(id != nil)
+		contract.Assert(id.IsString())
+		return ID(id.StringValue())
+	}
+	return ""
 }
 
 // SetURN assignes a URN to the target object.  This must only happen once.
@@ -100,14 +116,16 @@ func copyObject(obj *rt.Object) PropertyMap {
 // copyObjectProperty creates a single property value out of a runtime object.  It returns false if the property could
 // not be stored in a property (e.g., it is a function or other unrecognized or unserializable runtime object).
 func copyObjectProperty(obj *rt.Object) (PropertyValue, bool) {
-	// Serialize resource references as references to the object's special ID property.
 	t := obj.Type()
+
 	if predef.IsResourceType(t) {
-		idprop := obj.GetPropertyAddr(IDProperty, false, false)
-		contract.Assert(idprop != nil)
-		idvalue := idprop.Obj()
-		contract.Assert(idvalue != nil)
-		return copyObjectProperty(idvalue)
+		// Resource references expand to that resource's ID.
+		if id := getID(obj); id != "" {
+			return NewStringProperty(string(id)), true
+		}
+
+		// If an ID hasn't yet been assigned, we must be planning, and so this is an output property.
+		return MakeOutput(NewStringProperty("")), true
 	}
 
 	// Serialize simple primitive types with their primitive equivalents.

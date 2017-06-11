@@ -115,12 +115,14 @@ func (iter *evalSourceIterator) Next() (*resource.Object, tokens.Module, error) 
 	if err != nil {
 		return nil, "", err
 	} else if done {
+		glog.V(5).Infof("EvalSourceIterator is done")
 		return nil, "", nil
 	}
 
 	// Otherwise, transform the object returned into a resource object that the planner can deal with.
 	contract.Assert(obj != nil)
 	info := obj.(*AllocInfo)
+	glog.V(5).Infof("EvalSourceIterator produced a new object: obj=%v, ctx=%v", info.Obj, info.Mod.Tok)
 	return resource.NewObject(info.Obj), info.Mod.Tok, nil
 }
 
@@ -219,6 +221,7 @@ func (h *evalHooks) OnDone(uw *rt.Unwind) {
 
 // OnObjectInit ensures that, for every resource object created, we tell the planner about it.
 func (h *evalHooks) OnObjectInit(tree diag.Diagable, obj *rt.Object) {
+	glog.V(9).Infof("EvalSource OnObjectInit %v (IsResource=%v)", obj, resource.IsResourceObject(obj))
 	if resource.IsResourceObject(obj) {
 		// Communicate the full allocation context: AST node, package, module, and function.
 		alloc := &AllocInfo{
@@ -228,41 +231,42 @@ func (h *evalHooks) OnObjectInit(tree diag.Diagable, obj *rt.Object) {
 			Mod: h.currmod,
 			Fnc: h.currfnc,
 		}
-		ret, _, _ := h.rz.Meet(evalParty, alloc)
+		ret, done, err := h.rz.Meet(evalParty, alloc)
 		contract.Assert(ret == nil)
-		// TODO: if we are done, we need to inject an unwind or somesuch to stop the interpreter.
+		contract.Assert(!done)
+		contract.Assert(err == nil)
 	}
 }
 
 // OnEnterPackage is invoked whenever we enter a new package.
 func (h *evalHooks) OnEnterPackage(pkg *symbols.Package) func() {
-	glog.V(9).Infof("GraphGenerator OnEnterPackage %v", pkg)
+	glog.V(9).Infof("EvalSource OnEnterPackage %v", pkg)
 	prevpkg := h.currpkg
 	h.currpkg = pkg
 	return func() {
-		glog.V(9).Infof("GraphGenerator OnLeavePackage %v", pkg)
+		glog.V(9).Infof("EvalSource OnLeavePackage %v", pkg)
 		h.currpkg = prevpkg
 	}
 }
 
 // OnEnterModule is invoked whenever we enter a new module.
 func (h *evalHooks) OnEnterModule(mod *symbols.Module) func() {
-	glog.V(9).Infof("GraphGenerator OnEnterModule %v", mod)
+	glog.V(9).Infof("EvalSource OnEnterModule %v", mod)
 	prevmod := h.currmod
 	h.currmod = mod
 	return func() {
-		glog.V(9).Infof("GraphGenerator OnLeaveModule %v", mod)
+		glog.V(9).Infof("EvalSource OnLeaveModule %v", mod)
 		h.currmod = prevmod
 	}
 }
 
 // OnEnterFunction is invoked whenever we enter a new function.
 func (h *evalHooks) OnEnterFunction(fnc symbols.Function) func() {
-	glog.V(9).Infof("GraphGenerator OnEnterFunction %v", fnc)
+	glog.V(9).Infof("EvalSource OnEnterFunction %v", fnc)
 	prevfnc := h.currfnc
 	h.currfnc = fnc
 	return func() {
-		glog.V(9).Infof("GraphGenerator OnLeaveFunction %v", fnc)
+		glog.V(9).Infof("EvalSource OnLeaveFunction %v", fnc)
 		h.currfnc = prevfnc
 	}
 }
