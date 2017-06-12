@@ -55,6 +55,10 @@ interface FuncEnv {
     env: string;
 }
 
+// addToFuncEnvs adds the closure with the given name into a collection of function environments.  As it walks the 
+// closures environment, it finds additional closures that this closure is dependent on, and recursively adds those
+// to the function environment as well.  The resulting environments for each closure are json stringified representations
+// ready to be marshalled to a target execution environment.
 function addToFuncEnvs(funcEnvs: { [key: string]: FuncEnv}, name: string, closure: Closure): { [key: string]: FuncEnv} {
     let obj: any = {}
     let keys = objectKeys(closure.environment);
@@ -64,12 +68,12 @@ function addToFuncEnvs(funcEnvs: { [key: string]: FuncEnv}, name: string, closur
         if (envEntry.json !== undefined) {
             obj[key] = envEntry.json;
         } else if (envEntry.closure !== undefined) {
-            // FIXME: Detect cycles
+            // TODO[pulumi/lumi#238]: We need to detect cycles here.
             addToFuncEnvs(funcEnvs, key, envEntry.closure)
         } else {
-            // FIXME: For now we will skeip serialziing when the captured JSON object is null/undefined.
-            //        This is not technically correct, as it will cause references to these to fail instead
-            //        of return undefined.
+            // TODO[pulumi/lumi#239]: For now we will skip serialziing when the captured JSON object is null/undefined.
+            //     This is not technically correct, as it will cause references to these to fail instead
+            //     of return undefined.
         }
     }
     funcEnvs[name] = {
@@ -80,9 +84,9 @@ function addToFuncEnvs(funcEnvs: { [key: string]: FuncEnv}, name: string, closur
 }
 
 function createJavaScriptLambda(functionName: string, role: Role, closure: Closure): LambdaFunction {
-    let funcs = addToFuncEnvs({}, "__1", closure);
+    let funcs = addToFuncEnvs({}, "__handler", closure);
     
-    let str = "exports.handler = __1;\n\n";
+    let str = "exports.handler = __handler;\n\n";
     let fkeys = objectKeys(funcs);
     let envObj: any = {}
     for (let i = 0; i < (<any>fkeys).length; i++) { 

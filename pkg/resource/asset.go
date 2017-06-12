@@ -278,8 +278,8 @@ func (a Archive) readMap() (map[string]*Blob, error) {
 	result := map[string]*Blob{}
 	for name, asset := range m {
 		var err error
-		// TODO: It would be better to treat folders as a first class concept intead
-		//       of reusing a path Asset for this purpose.
+		// TODO[pulumi/lumi#240]: It would be better to treat folders as a first class concept intead
+		//  of reusing a path Asset for this purpose.
 		path, isPath := asset.GetPath()
 		if isPath {
 			if fi, err := os.Stat(path); err == nil && fi.IsDir() {

@@ -1,7 +1,7 @@
 {
     "name": "gh-cicd",
     "version": "0.1",
-    "typings": "bin/index.d.ts",
+    "typings": ".lumi/bin/index.d.ts",
     "scripts": {
         "build": "lumijs"
     },
