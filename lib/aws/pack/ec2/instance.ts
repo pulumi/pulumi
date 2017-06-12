@@ -65,10 +65,10 @@ export let X1Instance32XLarge: InstanceType = "x1.32xlarge";
 
 export class Instance extends lumi.Resource implements InstanceArgs {
     public readonly name: string;
-    public imageId: string;
-    public instanceType?: InstanceType;
+    public readonly imageId: string;
+    public readonly instanceType?: InstanceType;
     public readonly securityGroups?: SecurityGroup[];
-    public keyName?: string;
+    public readonly keyName?: string;
     public tags?: Tag[];
     public availabilityZone: string;
     public privateDNSName?: string;
@@ -94,10 +94,10 @@ export class Instance extends lumi.Resource implements InstanceArgs {
 }
 
 export interface InstanceArgs {
-    imageId: string;
-    instanceType?: InstanceType;
+    readonly imageId: string;
+    readonly instanceType?: InstanceType;
     readonly securityGroups?: SecurityGroup[];
-    keyName?: string;
+    readonly keyName?: string;
     tags?: Tag[];
 }
 

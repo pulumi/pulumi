@@ -24,13 +24,13 @@ import (
 type Instance struct {
 	idl.NamedResource
 	// Provides the unique ID of the Amazon Machine Image (AMI) that was assigned during registration.
-	ImageID string `lumi:"imageId"`
+	ImageID string `lumi:"imageId,replaces"`
 	// The instance type, such as t2.micro. The default type is "m3.medium".
-	InstanceType *InstanceType `lumi:"instanceType,optional"`
+	InstanceType *InstanceType `lumi:"instanceType,optional,replaces"`
 	// A list that contains the Amazon EC2 security groups to assign to the Amazon EC2 instance.
 	SecurityGroups *[]*SecurityGroup `lumi:"securityGroups,optional,replaces"`
 	// Provides the name of the Amazon EC2 key pair.
-	KeyName *string `lumi:"keyName,optional"`
+	KeyName *string `lumi:"keyName,optional,replaces"`
 	// Provides a list of tags to attach to the instance.
 	Tags *[]Tag `lumi:"tags,optional"`
 
