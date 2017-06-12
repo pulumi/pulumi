@@ -35,6 +35,7 @@ func init() {
 		// These intrinsics are exposed directly to users in the `lumi.runtime` package.
 		"lumi:runtime/index:isFunction":       isFunction,
 		"lumi:runtime/index:dynamicInvoke":    dynamicInvoke,
+		"lumi:runtime/index:objectKeys":       objectKeys,
 		"lumi:runtime/index:printf":           printf,
 		"lumi:runtime/index:sha1hash":         sha1hash,
 		"lumi:runtime/index:jsonStringify":    jsonStringify,

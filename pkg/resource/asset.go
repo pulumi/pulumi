@@ -278,6 +278,23 @@ func (a Archive) readMap() (map[string]*Blob, error) {
 	result := map[string]*Blob{}
 	for name, asset := range m {
 		var err error
+		// TODO[pulumi/lumi#240]: It would be better to treat folders as a first class concept intead
+		//  of reusing a path Asset for this purpose.
+		path, isPath := asset.GetPath()
+		if isPath {
+			if fi, err := os.Stat(path); err == nil && fi.IsDir() {
+				// Asset is a folder, expand it
+				if err := filepath.Walk(path, func(filePath string, f os.FileInfo, err error) error {
+					if !f.IsDir() && f.Mode()&os.ModeSymlink == 0 {
+						result[filePath], _ = NewPathAsset(filePath).Read()
+					}
+					return nil
+				}); err != nil {
+					return nil, err
+				}
+				continue
+			}
+		}
 		if result[name], err = asset.Read(); err != nil {
 			return nil, err
 		}
@@ -346,10 +363,12 @@ func (a Archive) openURLStream(url *url.URL) (io.ReadCloser, error) {
 // Bytes fetches the archive contents as a byte slices.  This is almost certainly the least efficient way to deal with
 // the underlying streaming capabilities offered by assets and archives, but can be used in a pinch to interact with
 // APIs that demand []bytes.
-func (a Archive) Bytes(format ArchiveFormat) []byte {
+func (a Archive) Bytes(format ArchiveFormat) ([]byte, error) {
 	var data bytes.Buffer
-	a.Archive(format, &data)
-	return data.Bytes()
+	if err := a.Archive(format, &data); err != nil {
+		return nil, err
+	}
+	return data.Bytes(), nil
 }
 
 // Archive produces a single archive stream in the desired format.  It prefers to return the archive with as little
