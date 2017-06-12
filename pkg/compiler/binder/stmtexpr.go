@@ -457,34 +457,36 @@ func (a *astBinder) checkNewExpression(node *ast.NewExpression) {
 		}
 	}
 
-	// Find the constructor for that type and check the arguments.
-	argc := 0
-	if node.Arguments != nil {
-		argc = len(*node.Arguments)
-	}
-	if ctor, has := ty.TypeMembers()[tokens.ClassConstructorFunction]; has {
-		// The constructor should be a method.
-		if ctormeth, isfunc := ctor.(*symbols.ClassMethod); isfunc {
-			if ctormeth.Sig.Return != nil {
-				// Constructors ought not to have return types.
-				a.b.Diag().Errorf(errors.ErrorConstructorReturnType, ctormeth, ctormeth.Sig.Return)
-			}
-
-			// Typecheck the arguments.
-			parc := len(ctormeth.Sig.Parameters)
-			if parc != argc {
-				a.b.Diag().Errorf(errors.ErrorArgumentCountMismatch.At(node), parc, argc)
-			}
-			if argc > 0 {
-				for i := 0; i < parc && i < argc; i++ {
-					a.checkExprType((*node.Arguments)[i].Expr, ctormeth.Sig.Parameters[i])
-				}
-			}
-		} else {
-			a.b.Diag().Errorf(errors.ErrorConstructorNotMethod, ctormeth, reflect.TypeOf(ctor))
+	if ty != types.Dynamic {
+		// Find the constructor for that type and check the arguments.
+		argc := 0
+		if node.Arguments != nil {
+			argc = len(*node.Arguments)
 		}
-	} else if argc > 0 {
-		a.b.Diag().Errorf(errors.ErrorArgumentCountMismatch.At(node), 0, argc)
+		if ctor, has := ty.TypeMembers()[tokens.ClassConstructorFunction]; has {
+			// The constructor should be a method.
+			if ctormeth, isfunc := ctor.(*symbols.ClassMethod); isfunc {
+				if ctormeth.Sig.Return != nil {
+					// Constructors ought not to have return types.
+					a.b.Diag().Errorf(errors.ErrorConstructorReturnType, ctormeth, ctormeth.Sig.Return)
+				}
+
+				// Typecheck the arguments.
+				parc := len(ctormeth.Sig.Parameters)
+				if parc != argc {
+					a.b.Diag().Errorf(errors.ErrorArgumentCountMismatch.At(node), parc, argc)
+				}
+				if argc > 0 {
+					for i := 0; i < parc && i < argc; i++ {
+						a.checkExprType((*node.Arguments)[i].Expr, ctormeth.Sig.Parameters[i])
+					}
+				}
+			} else {
+				a.b.Diag().Errorf(errors.ErrorConstructorNotMethod, ctormeth, reflect.TypeOf(ctor))
+			}
+		} else if argc > 0 {
+			a.b.Diag().Errorf(errors.ErrorArgumentCountMismatch.At(node), 0, argc)
+		}
 	}
 
 	// The expression evaluates to the type that is instantiated.
@@ -586,7 +588,7 @@ func (a *astBinder) checkBinaryOperatorExpression(node *ast.BinaryOperatorExpres
 	switch node.Operator {
 	// Arithmetic and bitwise operators:
 	case ast.OpAdd:
-		// Lhs and rhs can be numbers (for addition) or strings (for concatenation).
+		// Lhs and rhs can be numbers (for addition) or strings (for concatenation) or dynamic.
 		if lhs == types.Number {
 			if !types.CanConvert(rhs, types.Number) {
 				a.b.Diag().Errorf(errors.ErrorBinaryOperatorInvalidForType.At(node),
@@ -599,10 +601,16 @@ func (a *astBinder) checkBinaryOperatorExpression(node *ast.BinaryOperatorExpres
 					node.Operator, "RHS", rhs, types.String)
 			}
 			a.b.ctx.RegisterType(node, types.String)
+		} else if lhs == types.Dynamic {
+			if types.CanConvert(rhs, types.String) {
+				a.b.ctx.RegisterType(node, types.String)
+			} else {
+				a.b.ctx.RegisterType(node, types.Dynamic)
+			}
 		} else {
 			a.b.Diag().Errorf(errors.ErrorBinaryOperatorInvalidForType.At(node),
 				node.Operator, "LHS", lhs, "string or number")
-			a.b.ctx.RegisterType(node, types.Number)
+			a.b.ctx.RegisterType(node, types.String)
 		}
 	case ast.OpSubtract, ast.OpMultiply, ast.OpDivide, ast.OpRemainder, ast.OpExponentiate,
 		ast.OpBitwiseShiftLeft, ast.OpBitwiseShiftRight, ast.OpBitwiseAnd, ast.OpBitwiseOr, ast.OpBitwiseXor:

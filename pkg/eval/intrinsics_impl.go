@@ -26,6 +26,7 @@ import (
 	"github.com/pulumi/lumi/pkg/compiler/binder"
 	"github.com/pulumi/lumi/pkg/compiler/symbols"
 	"github.com/pulumi/lumi/pkg/compiler/types"
+	"github.com/pulumi/lumi/pkg/diag"
 	"github.com/pulumi/lumi/pkg/eval/rt"
 	"github.com/pulumi/lumi/pkg/tokens"
 	"github.com/pulumi/lumi/pkg/util/contract"
@@ -59,6 +60,20 @@ func dynamicInvoke(intrin *rt.Intrinsic, e *evaluator, this *rt.Object, args []*
 		return uw
 	}
 	return rt.NewReturnUnwind(obj)
+}
+
+func objectKeys(intrin *rt.Intrinsic, e *evaluator, this *rt.Object, args []*rt.Object) *rt.Unwind {
+	var arr []*rt.Pointer
+	if len(args) >= 1 && args[0] != nil {
+		o := args[0]
+		names := o.Properties().Stable()
+		for _, name := range names {
+			namePtr := rt.NewPointer(e.alloc.NewString(intrin.Tree(), string(name)), true, nil, nil)
+			arr = append(arr, namePtr)
+		}
+	}
+	arrObj := e.alloc.NewArray(intrin.Tree(), types.String, &arr)
+	return rt.NewReturnUnwind(arrObj)
 }
 
 func printf(intrin *rt.Intrinsic, e *evaluator, this *rt.Object, args []*rt.Object) *rt.Unwind {
@@ -96,20 +111,27 @@ func sha1hash(intrin *rt.Intrinsic, e *evaluator, this *rt.Object, args []*rt.Ob
 	return rt.NewReturnUnwind(hashObj)
 }
 
-func serializeClosure(intrin *rt.Intrinsic, e *evaluator, this *rt.Object, args []*rt.Object) *rt.Unwind {
-	contract.Assert(this == nil)    // module function
-	contract.Assert(len(args) == 1) // one arg: func
+type closureSerializer struct {
+	node diag.Diagable
+	e    *evaluator
+}
 
-	stub, ok := args[0].TryFunctionValue()
-	if !ok {
-		return e.NewException(intrin.Tree(), "Expected argument 'func' to be a function value.")
+func (s *closureSerializer) envEntryObjFor(obj *rt.Object) *rt.Object {
+	props := rt.NewPropertyMap()
+	if obj.IsFunction() {
+		// Serialize functions using serializeClosure
+		stub := obj.FunctionValue()
+		lambda, ok := stub.Func.(*ast.LambdaExpression)
+		contract.Assertf(ok, "Expected function to be lambda expression")
+		props.Set("closure", s.serializeClosure(stub, lambda))
+	} else {
+		// Else we will pass through the object to serialize
+		props.Set("json", obj)
 	}
-	lambda, ok := stub.Func.(*ast.LambdaExpression)
-	if !ok {
-		return e.NewException(intrin.Tree(), "Expected argument 'func' to be a lambda expression.")
-	}
+	return s.e.alloc.New(s.node, types.Dynamic, props, nil)
+}
 
-	// Insert environment variables into a PropertyMap with stable ordering
+func (s *closureSerializer) serializeClosure(stub rt.FuncStub, lambda *ast.LambdaExpression) *rt.Object {
 	envPropMap := rt.NewPropertyMap()
 	for _, tok := range binder.FreeVars(stub.Func) {
 		var name tokens.Name
@@ -122,22 +144,42 @@ func serializeClosure(intrin *rt.Intrinsic, e *evaluator, this *rt.Object, args 
 		}
 		pv := getDynamicNameAddrCore(stub.Env, stub.Module, name)
 		if pv != nil {
-			envPropMap.Set(rt.PropertyKey(name), pv.Obj())
+			o := pv.Obj()
+			entry := s.envEntryObjFor(o)
+			envPropMap.Set(rt.PropertyKey(name), entry)
 		}
 		// Else the variable was not found, so we skip serializing it.
 		// This will be true for references to globals which are not known to Lumi but
 		// will be available within the runtime environment.
 	}
-	envObj := e.alloc.New(intrin.Tree(), types.Dynamic, envPropMap, nil)
+	envObj := s.e.alloc.New(s.node, types.Dynamic, envPropMap, nil)
 
 	// Build up the properties for the returned Closure object
 	props := rt.NewPropertyMap()
-	props.Set("code", rt.NewStringObject(lambda.SourceText))
-	props.Set("signature", rt.NewStringObject(string(stub.Sig.Token())))
-	props.Set("language", rt.NewStringObject(lambda.SourceLanguage))
+	props.Set("code", s.e.alloc.NewString(s.node, lambda.SourceText))
+	props.Set("signature", s.e.alloc.NewString(s.node, string(stub.Sig.Token())))
+	props.Set("language", s.e.alloc.NewString(s.node, lambda.SourceLanguage))
 	props.Set("environment", envObj)
-	closure := e.alloc.New(intrin.Tree(), intrin.Signature().Return, props, nil)
+	closure := s.e.alloc.New(s.node, types.Dynamic, props, nil)
+	return closure
+}
 
+func serializeClosure(intrin *rt.Intrinsic, e *evaluator, this *rt.Object, args []*rt.Object) *rt.Unwind {
+	contract.Assert(this == nil)    // module function
+	contract.Assert(len(args) == 1) // one arg: func
+	stub, ok := args[0].TryFunctionValue()
+	if !ok {
+		return e.NewException(intrin.Tree(), "Expected argument 'func' to be a function value.")
+	}
+	lambda, ok := stub.Func.(*ast.LambdaExpression)
+	if !ok {
+		return e.NewException(intrin.Tree(), "Expected argument 'func' to be a lambda expression.")
+	}
+	closureSerializer := &closureSerializer{
+		node: intrin.Tree(),
+		e:    e,
+	}
+	closure := closureSerializer.serializeClosure(stub, lambda)
 	return rt.NewReturnUnwind(closure)
 }
 

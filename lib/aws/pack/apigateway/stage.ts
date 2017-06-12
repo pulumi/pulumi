@@ -21,6 +21,8 @@ export class Stage extends lumi.Resource implements StageArgs {
     public variables?: {[key: string]: string};
     public createdDate: string;
     public lastUpdatedDate: string;
+    public url: string;
+    public executionARN: string;
 
     constructor(name: string, args: StageArgs) {
         super();

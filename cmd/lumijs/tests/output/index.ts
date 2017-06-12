@@ -27,6 +27,7 @@ let testCases: string[] = [
     // Basic language constructs.
     "basic/empty",
     "basic/empty_yaml",
+    "basic/literals",
     "basic/arrays",
     "basic/maps",
     "basic/super",

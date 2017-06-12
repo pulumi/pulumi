@@ -190,6 +190,8 @@ type Stage struct {
     Variables *map[string]string `lumi:"variables,optional"`
     CreatedDate string `lumi:"createdDate,optional"`
     LastUpdatedDate string `lumi:"lastUpdatedDate,optional"`
+    URL string `lumi:"url,optional"`
+    ExecutionARN string `lumi:"executionARN,optional"`
 }
 
 // Stage's properties have constants to make dealing with diffs and property bags easier.
@@ -206,6 +208,8 @@ const (
     Stage_Variables = "variables"
     Stage_CreatedDate = "createdDate"
     Stage_LastUpdatedDate = "lastUpdatedDate"
+    Stage_URL = "url"
+    Stage_ExecutionARN = "executionARN"
 )
 
 
