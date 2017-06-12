@@ -91,6 +91,7 @@ func (s *Step) Apply() (resource.Status, error) {
 		contract.Assert(s.old != nil)
 		contract.Assert(s.new != nil)
 		s.new.Update(s.old.ID(), s.old.Outputs())
+		s.iter.MarkStateSnapshot(s.old)
 		s.iter.AppendStateSnapshot(s.old)
 
 	case OpCreate, OpReplaceCreate:
@@ -111,6 +112,9 @@ func (s *Step) Apply() (resource.Status, error) {
 		}
 		s.outputs = outs
 		state := s.new.Update(id, outs)
+		if s.old != nil {
+			s.iter.MarkStateSnapshot(s.old)
+		}
 		s.iter.AppendStateSnapshot(state)
 
 	case OpDelete, OpReplaceDelete:
@@ -120,6 +124,7 @@ func (s *Step) Apply() (resource.Status, error) {
 		if rst, err := prov.Delete(s.old.Type(), s.old.ID()); err != nil {
 			return rst, err
 		}
+		s.iter.MarkStateSnapshot(s.old)
 
 	case OpUpdate:
 		// Invoke the Update RPC function for this provider:
@@ -140,6 +145,7 @@ func (s *Step) Apply() (resource.Status, error) {
 		}
 		s.outputs = outs
 		state := s.new.Update(id, outs)
+		s.iter.MarkStateSnapshot(s.old)
 		s.iter.AppendStateSnapshot(state)
 
 	default:

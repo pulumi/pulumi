@@ -87,6 +87,7 @@ func (p *Plan) Iterate() (*PlanIterator, error) {
 		replaces: make(map[resource.URN]bool),
 		deletes:  make(map[resource.URN]bool),
 		sames:    make(map[resource.URN]bool),
+		dones:    make(map[*resource.State]bool),
 	}, nil
 }
 
@@ -113,8 +114,9 @@ type PlanIterator struct {
 	deletes  map[resource.URN]bool // URNs discovered to be deleted.
 	sames    map[resource.URN]bool // URNs discovered to be the same.
 
-	delqueue  []*resource.State // a queue of deletes left to perform.
-	resources []*resource.State // the resulting ordered resource states.
+	delqueue  []*resource.State        // a queue of deletes left to perform.
+	resources []*resource.State        // the resulting ordered resource states.
+	dones     map[*resource.State]bool // true for each old state we're done with.
 
 	srcdone bool // true if the source interpreter has been run to completion.
 	done    bool // true if the planning and associated iteration has finished.
@@ -130,6 +132,7 @@ func (iter *PlanIterator) Replaces() map[resource.URN]bool { return iter.replace
 func (iter *PlanIterator) Deletes() map[resource.URN]bool  { return iter.deletes }
 func (iter *PlanIterator) Sames() map[resource.URN]bool    { return iter.sames }
 func (iter *PlanIterator) Resources() []*resource.State    { return iter.resources }
+func (iter *PlanIterator) Dones() map[*resource.State]bool { return iter.dones }
 func (iter *PlanIterator) Done() bool                      { return iter.done }
 
 // Next advances the plan by a single step, and returns the next step to be performed.  In doing so, it will perform
@@ -310,12 +313,36 @@ func (iter *PlanIterator) calculateDeletes() []*resource.State {
 // failure happens partway through, the untouched snapshot elements will be retained, while any updates will be
 // preserved.  If no failure happens, the snapshot naturally reflects the final state of all resources.
 func (iter *PlanIterator) Snap() *Snapshot {
-	return NewSnapshot(iter.p.Target().Name, iter.resources, iter.p.new.Info())
+	var resources []*resource.State
+
+	// If we didn't finish the execution, we must produce a partial snapshot of old plus new states.
+	if !iter.done {
+		if prev := iter.p.prev; prev != nil {
+			for _, res := range prev.Resources {
+				if !iter.dones[res] {
+					resources = append(resources, res)
+				}
+			}
+		}
+	} else {
+		contract.Assert(len(iter.dones) == 0)
+	}
+
+	// Always add the new resoures afterwards that got produced during the evaluation of the current plan.
+	resources = append(resources, iter.resources...)
+
+	return NewSnapshot(iter.p.Target().Name, resources, iter.p.new.Info())
+}
+
+// MarkStateSnapshot marks an old state snapshot as being processed.  This is done to recover from failures partway
+// through the application of a deployment plan.  Any old state that has not yet been recovered needs to be kept.
+func (iter *PlanIterator) MarkStateSnapshot(state *resource.State) {
+	iter.dones[state] = true
 }
 
 // AppendStateSnapshot appends a resource's state to the current snapshot.
 func (iter *PlanIterator) AppendStateSnapshot(state *resource.State) {
-	iter.resources = append(iter.resources, state) // add this state to the pending list.
+	iter.resources = append(iter.resources, state)
 }
 
 // Provider fetches the provider for a given resource, possibly lazily allocating the plugins for it.  If a provider

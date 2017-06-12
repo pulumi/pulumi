@@ -18,10 +18,12 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"time"
 
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/lumi/pkg/compiler/errors"
+	"github.com/pulumi/lumi/pkg/diag"
 	"github.com/pulumi/lumi/pkg/diag/colors"
 	"github.com/pulumi/lumi/pkg/resource"
 	"github.com/pulumi/lumi/pkg/resource/deploy"
@@ -59,7 +61,7 @@ func newDeployCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			planAndDeploy(cmd, info, deployOptions{
+			deployLatest(cmd, info, deployOptions{
 				Delete:           false,
 				DryRun:           dryRun,
 				Analyzers:        analyzers,
@@ -112,6 +114,52 @@ type deployOptions struct {
 	Summary          bool     // true if we should only summarize resources and operations.
 	DOT              bool     // true if we should print the DOT file for this plan.
 	Output           string   // the place to store the output, if any.
+}
+
+func deployLatest(cmd *cobra.Command, info *envCmdInfo, opts deployOptions) {
+	if result := plan(cmd, info, opts); result != nil {
+		if opts.DryRun {
+			// If a dry run, just print the plan, don't actually carry out the deployment.
+			printPlan(result, opts)
+		} else {
+			// Otherwise, we will actually deploy the latest bits.
+			var header bytes.Buffer
+			printPrelude(&header, result, opts, false)
+			header.WriteString(fmt.Sprintf("%vDeploying changes:%v\n", colors.SpecUnimportant, colors.Reset))
+			fmt.Printf(colors.Colorize(&header))
+
+			// Create an object to track progress and perform the actual operations.
+			start := time.Now()
+			progress := newProgress(opts.Summary)
+			summary, _, _, _ := result.Plan.Apply(progress)
+			contract.Assert(summary != nil)
+			empty := (summary.Steps() == 0) // if no step is returned, it was empty.
+
+			// Print a summary.
+			var footer bytes.Buffer
+			if empty {
+				cmdutil.Diag().Infof(diag.Message("no resources need to be updated"))
+			} else {
+				// Print out the total number of steps performed (and their kinds), the duration, and any summary info.
+				printSummary(&footer, progress.Ops, opts.ShowReplaceSteps, false)
+				footer.WriteString(fmt.Sprintf("%vDeployment duration: %v%v\n",
+					colors.SpecUnimportant, time.Since(start), colors.Reset))
+			}
+
+			if progress.MaybeCorrupt {
+				footer.WriteString(fmt.Sprintf(
+					"%vA catastrophic error occurred; resources states may be unknown%v\n",
+					colors.SpecAttention, colors.Reset))
+			}
+
+			// Now save the updated snapshot to the specified output file, if any, or the standard location otherwise.
+			// Note that if a failure has occurred, the Apply routine above will have returned a safe checkpoint.
+			targ := result.Info.Target
+			saveEnv(targ, summary.Snap(), opts.Output, true /*overwrite*/)
+
+			fmt.Printf(colors.Colorize(&footer))
+		}
+	}
 }
 
 // deployProgress pretty-prints the plan application process as it goes.
