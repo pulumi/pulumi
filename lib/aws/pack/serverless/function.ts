@@ -34,6 +34,9 @@ export interface Context {
     getRemainingTimeInMillis(): string;
 }
 
+// Handler is the signature for a serverless function.
+export type Handler = (event: any, context: Context, callback: (error: any, result: any) => void) => any;
+
 let policy = {
     "Version": "2012-10-17",
     "Statement": [
@@ -54,9 +57,7 @@ export class Function {
     public lambda: LambdaFunction;
     public role: Role;
 
-    constructor(name: string, policies: ARN[],
-        func: (event: any, context: Context, callback: (error: any, result: any) => void) => any) {
-
+    constructor(name: string, policies: ARN[], func: Handler) {
         if (name === undefined) {
             throw new Error("Missing required resource name");
         }
