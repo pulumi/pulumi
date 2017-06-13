@@ -13,26 +13,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package resource
+package plugin
 
 import (
-	"reflect"
-
 	"github.com/pulumi/lumi/pkg/util/mapper"
 	"github.com/pulumi/lumi/sdk/go/pkg/lumirpc"
 )
-
-// NewCheckError creates a new error pertaining to a resource.  Note that it just turns around and defers to
-// the same mapping infrastructure used for serialization and deserialization, but it presents a nicer interface.
-func NewCheckError(errs []error) error {
-	return mapper.NewMappingError(errs)
-}
-
-// NewFieldError creates a new error pertaining to a resource's field.  Note that it just turns around and defers to
-// the same mapping infrastructure used for serialization and deserialization, but it presents a nicer interface.
-func NewFieldError(ty reflect.Type, fld string, err error) error {
-	return mapper.NewFieldError(ty, fld, err)
-}
 
 // NewCheckResponse produces a response with property validation failures from the given array of mapper failures.
 func NewCheckResponse(err error) *lumirpc.CheckResponse {

@@ -92,7 +92,7 @@ func (props *PropertyMap) InitAddr(key PropertyKey, obj *Object,
 
 	// If no object was provided, initialize the slot to null.
 	if obj == nil {
-		obj = NewNullObject()
+		obj = Null
 	}
 
 	ptr := NewPointer(obj, readonly, get, set)

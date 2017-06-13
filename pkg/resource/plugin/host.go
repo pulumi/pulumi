@@ -13,7 +13,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package resource
+package plugin
 
 import (
 	"github.com/golang/glog"
@@ -22,8 +22,8 @@ import (
 	"github.com/pulumi/lumi/pkg/util/contract"
 )
 
-// A ProviderHost hosts provider plugins and makes them easily accessible by package name.
-type ProviderHost interface {
+// A Host hosts provider plugins and makes them easily accessible by package name.
+type Host interface {
 	// Analyzer fetches the analyzer with a given name, possibly lazily allocating the plugins for it.  If an analyzer
 	// could not be found, or an error occurred while creating it, a non-nil error is returned.
 	Analyzer(nm tokens.QName) (Analyzer, error)
@@ -36,22 +36,22 @@ type ProviderHost interface {
 	Close() error
 }
 
-// NewDefaultProviderHost implements the standard plugin logic, using the standard installation root to find them.
-func NewDefaultProviderHost(ctx *Context) ProviderHost {
-	return &defaultProviderHost{
+// NewDefaultHost implements the standard plugin logic, using the standard installation root to find them.
+func NewDefaultHost(ctx *Context) Host {
+	return &defaultHost{
 		ctx:       ctx,
 		analyzers: make(map[tokens.QName]Analyzer),
 		providers: make(map[tokens.Package]Provider),
 	}
 }
 
-type defaultProviderHost struct {
+type defaultHost struct {
 	ctx       *Context                    // the shared context for this host.
 	analyzers map[tokens.QName]Analyzer   // a cache of analyzer plugins and their processes.
 	providers map[tokens.Package]Provider // a cache of provider plugins and their processes.
 }
 
-func (host *defaultProviderHost) Analyzer(name tokens.QName) (Analyzer, error) {
+func (host *defaultHost) Analyzer(name tokens.QName) (Analyzer, error) {
 	// First see if we already loaded this plugin.
 	if plug, has := host.analyzers[name]; has {
 		contract.Assert(plug != nil)
@@ -66,7 +66,7 @@ func (host *defaultProviderHost) Analyzer(name tokens.QName) (Analyzer, error) {
 	return plug, err
 }
 
-func (host *defaultProviderHost) Provider(pkg tokens.Package) (Provider, error) {
+func (host *defaultHost) Provider(pkg tokens.Package) (Provider, error) {
 	// First see if we already loaded this plugin.
 	if plug, has := host.providers[pkg]; has {
 		contract.Assert(plug != nil)
@@ -81,7 +81,7 @@ func (host *defaultProviderHost) Provider(pkg tokens.Package) (Provider, error) 
 	return plug, err
 }
 
-func (host *defaultProviderHost) Close() error {
+func (host *defaultHost) Close() error {
 	// Close all plugins.
 	for _, plugin := range host.analyzers {
 		if err := plugin.Close(); err != nil {

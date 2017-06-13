@@ -30,7 +30,7 @@ func TestStable(t *testing.T) {
 	// Seed the map.
 	ks := "abcdefghijklmnopqrstuvwxyz0123456789"
 	for _, k := range ks {
-		props.Set(PropertyKey(string(k)), NewNullObject())
+		props.Set(PropertyKey(string(k)), Null)
 	}
 
 	// Observe an initial key ordering.
@@ -57,7 +57,7 @@ func TestChrono(t *testing.T) {
 	// Just add keys to the map and then ensure it enumerates chronologically.
 	ks := "abcdefghijklmnopqrstuvwxyz0123456789"
 	for _, k := range ks {
-		props.Set(PropertyKey(string(k)), NewNullObject())
+		props.Set(PropertyKey(string(k)), Null)
 	}
 	for i, k := range props.Stable() {
 		assert.Equal(t, string(ks[i]), string(k))

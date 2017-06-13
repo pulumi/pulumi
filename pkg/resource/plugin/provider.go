@@ -13,11 +13,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package resource
+package plugin
 
 import (
 	"io"
 
+	"github.com/pulumi/lumi/pkg/resource"
 	"github.com/pulumi/lumi/pkg/tokens"
 )
 
@@ -37,25 +38,27 @@ type Provider interface {
 	// Pkg fetches this provider's package.
 	Pkg() tokens.Package
 	// Check validates that the given property bag is valid for a resource of the given type.
-	Check(res Resource) ([]CheckFailure, error)
+	Check(t tokens.Type, props resource.PropertyMap) ([]CheckFailure, error)
 	// Name names a given resource.  Sometimes this will be assigned by a developer, and so the provider
 	// simply fetches it from the property bag; other times, the provider will assign this based on its own algorithm.
 	// In any case, resources with the same name must be safe to use interchangeably with one another.
-	Name(res Resource) (tokens.QName, error)
-	// Create allocates a new instance of the provided resource and assigns its unique ID afterwards.
-	Create(res Resource) (State, error)
-	// Get reads the instance state identified by res, and copies it into the target resource object.
-	Get(res Resource) error
+	Name(t tokens.Type, props resource.PropertyMap) (tokens.QName, error)
+	// Create allocates a new instance of the provided resource and returns its unique resource.ID.
+	Create(t tokens.Type, props resource.PropertyMap) (resource.ID, resource.Status, error)
+	// Get reads the instance state identified by res and returns it.
+	Get(t tokens.Type, id resource.ID) (resource.PropertyMap, error)
 	// InspectChange checks what impacts a hypothetical update will have on the resource's properties.
-	InspectChange(old Resource, new Resource, computed PropertyMap) ([]string, PropertyMap, error)
+	InspectChange(t tokens.Type, id resource.ID,
+		olds resource.PropertyMap, news resource.PropertyMap) ([]resource.PropertyKey, resource.PropertyMap, error)
 	// Update updates an existing resource with new values.
-	Update(ols Resource, new Resource) (State, error)
+	Update(t tokens.Type, id resource.ID,
+		olds resource.PropertyMap, news resource.PropertyMap) (resource.Status, error)
 	// Delete tears down an existing resource.
-	Delete(res Resource) (State, error)
+	Delete(t tokens.Type, id resource.ID) (resource.Status, error)
 }
 
 // CheckFailure indicates that a call to check failed; it contains the property and reason for the failure.
 type CheckFailure struct {
-	Property PropertyKey // the property that failed checking.
-	Reason   string      // the reason the property failed to check.
+	Property resource.PropertyKey // the property that failed checking.
+	Reason   string               // the reason the property failed to check.
 }

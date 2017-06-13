@@ -13,31 +13,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package resource
+package deploy
 
 import (
-	"sort"
+	"github.com/pulumi/lumi/pkg/resource"
 )
 
-func StablePropertyKeys(props PropertyMap) []PropertyKey {
-	sorted := make(propertyKeys, 0, len(props))
-	for prop := range props {
-		sorted = append(sorted, prop)
-	}
-	sort.Sort(sorted)
-	return sorted
-}
-
-type propertyKeys []PropertyKey
-
-func (s propertyKeys) Len() int {
-	return len(s)
-}
-
-func (s propertyKeys) Swap(i, j int) {
-	s[i], s[j] = s[j], s[i]
-}
-
-func (s propertyKeys) Less(i, j int) bool {
-	return s[i] < s[j]
+// Progress can be used for progress reporting.
+type Progress interface {
+	// Before is invoked prior to a step executing.
+	Before(step *Step)
+	// After is invoked after a step executes, and is given access to the error, if any, that occurred.
+	After(step *Step, state resource.Status, err error)
 }

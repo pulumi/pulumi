@@ -27,7 +27,7 @@ import (
 // NewException produces a new exception in the evaluator using the current location and stack frames.
 func (e *evaluator) NewException(node diag.Diagable, msg string, args ...interface{}) *rt.Unwind {
 	contract.Require(node != nil, "node")
-	thrown := e.alloc.NewString(node, fmt.Sprintf(msg, args...))
+	thrown := rt.NewStringObject(fmt.Sprintf(msg, args...))
 	return rt.NewThrowUnwind(thrown, node, e.stack)
 }
 

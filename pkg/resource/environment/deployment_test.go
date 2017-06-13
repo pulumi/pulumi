@@ -13,23 +13,29 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package resource
+package environment
 
 import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 
+	"github.com/pulumi/lumi/pkg/resource"
 	"github.com/pulumi/lumi/pkg/tokens"
 )
 
 // TestDeploymentSerialization creates a basic
 func TestDeploymentSerialization(t *testing.T) {
-	res := NewResource(
-		ID("test-resource-x"),
-		NewURN(tokens.QName("test"), tokens.Module("resource/test"), tokens.Type("Test"), tokens.QName("resource-x")),
+	res := resource.NewState(
 		tokens.Type("Test"),
-		NewPropertyMapFromMap(map[string]interface{}{
+		resource.NewURN(
+			tokens.QName("test"),
+			tokens.Module("resource/test"),
+			tokens.Type("Test"),
+			tokens.QName("resource-x"),
+		),
+		resource.ID("test-resource-x"),
+		resource.NewPropertyMapFromMap(map[string]interface{}{
 			"in-nil":         nil,
 			"in-bool":        true,
 			"in-float64":     float64(1.5),
@@ -44,7 +50,7 @@ func TestDeploymentSerialization(t *testing.T) {
 			},
 			"in-empty-map": map[string]interface{}{},
 		}),
-		NewPropertyMapFromMap(map[string]interface{}{
+		resource.NewPropertyMapFromMap(map[string]interface{}{
 			"out-nil":         nil,
 			"out-bool":        false,
 			"out-float64":     float64(76),
@@ -60,12 +66,12 @@ func TestDeploymentSerialization(t *testing.T) {
 		}),
 	)
 
-	dep := SerializeDeployment(res, DefaultDeploymentReftag)
+	dep := SerializeResource(res)
 
 	// assert some things about the deployment record:
 	assert.NotNil(t, dep)
 	assert.NotNil(t, dep.ID)
-	assert.Equal(t, ID("test-resource-x"), *dep.ID)
+	assert.Equal(t, resource.ID("test-resource-x"), dep.ID)
 	assert.Equal(t, tokens.Type("Test"), dep.Type)
 
 	// assert some things about the inputs:

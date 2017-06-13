@@ -357,6 +357,17 @@ func NewPrimitiveObject(t symbols.Type, v interface{}) *Object {
 	return NewObject(t, v, nil, nil)
 }
 
+// Certain objects do not usually have distinct identity:
+var (
+	Null  = NewNullObject()      // the one and only null.
+	True  = NewBoolObject(true)  // the one and only true.
+	False = NewBoolObject(false) // the one and only false.
+	Bools = map[bool]*Object{
+		true:  True,
+		false: False,
+	}
+)
+
 // NewArrayObject allocates a new array object with the given array payload.
 func NewArrayObject(elem symbols.Type, arr *[]*Pointer) *Object {
 	contract.Require(elem != nil, "elem")
@@ -377,15 +388,9 @@ func NewArrayObject(elem symbols.Type, arr *[]*Pointer) *Object {
 	return NewObject(arrt, arr, arrayProps, nil)
 }
 
-var trueObj = NewPrimitiveObject(types.Bool, true)
-var falseObj = NewPrimitiveObject(types.Bool, false)
-
 // NewBoolObject creates a new primitive number object.
 func NewBoolObject(v bool) *Object {
-	if v {
-		return trueObj
-	}
-	return falseObj
+	return NewPrimitiveObject(types.Bool, v)
 }
 
 // NewNumberObject creates a new primitive number object.
@@ -393,11 +398,9 @@ func NewNumberObject(v float64) *Object {
 	return NewPrimitiveObject(types.Number, v)
 }
 
-var nullObj = NewPrimitiveObject(types.Null, nil)
-
 // NewNullObject creates a new null object; null objects are not expected to have distinct identity.
 func NewNullObject() *Object {
-	return nullObj
+	return NewPrimitiveObject(types.Null, nil)
 }
 
 // NewStringObject creates a new primitive number object.
@@ -525,9 +528,7 @@ func (o *Object) FreezeReadonlyProperties() {
 			if m := members[member]; !m.Static() {
 				if prop, isprop := m.(*symbols.ClassProperty); isprop && prop.Readonly() {
 					ptr := o.GetPropertyAddr(PropertyKey(member), true, true)
-					if !ptr.Readonly() {
-						ptr.Freeze() // ensure we cannot write to this any longer.
-					}
+					ptr.Freeze() // ensure we cannot write to this any longer.
 				}
 			}
 		}
