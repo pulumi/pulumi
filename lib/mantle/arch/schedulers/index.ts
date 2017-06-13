@@ -13,14 +13,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-/* tslint:disable:variable-name */
-
 // The available container scheduler/runtimes.
-
-export const Swarm = "swarm";           // Docker Swarm.
-export const Kubernetes = "kubernetes"; // Kubernetes.
-export const Mesos = "mesos";           // Apache Mesos.
-export const ECS = "ecs";               // Amazon Elastic Container Service (only valid for AWS clouds).
-export const GKE = "gke";               // Google Container Engine (only valid for GCP clouds).
-export const ACS = "acs";               // Microsoft Azure Container Service (only valid for Azure).
+export const swarm = "swarm";           // Docker Swarm.
+export const kubernetes = "kubernetes"; // Kubernetes.
+export const mesos = "mesos";           // Apache Mesos.
+export const ecs = "ecs";               // Amazon Elastic Container Service (only valid for AWS clouds).
+export const gke = "gke";               // Google Container Engine (only valid for GCP clouds).
+export const acs = "acs";               // Microsoft Azure Container Service (only valid for Azure).
 

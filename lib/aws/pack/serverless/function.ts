@@ -13,12 +13,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-/* tslint:disable: ordered-imports align*/
 import { AssetArchive, String } from "@lumi/lumi/asset";
-import { serializeClosure, jsonStringify } from "@lumi/lumi/runtime";
+import { jsonStringify, serializeClosure} from "@lumi/lumi/runtime";
+import { Role } from "../iam/role";
 import { Function as LambdaFunction } from "../lambda/function";
 import { ARN } from "../types";
-import { Role } from "../iam/role";
 
 // Context is the shape of the context object passed to a Function callback.
 export interface Context {
@@ -56,7 +55,7 @@ export class Function {
     public role: Role;
 
     constructor(name: string, policies: ARN[],
-        func: (event: any, context: Context, callback: (error: any, result: any) => void) => any) {
+                func: (event: any, context: Context, callback: (error: any, result: any) => void) => any) {
 
         if (name === undefined) {
             throw new Error("Missing required resource name");

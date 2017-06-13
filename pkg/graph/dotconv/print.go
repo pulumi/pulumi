@@ -28,8 +28,8 @@ import (
 	"github.com/pulumi/lumi/pkg/util/contract"
 )
 
+// Print prints a LumiGL graph.
 func Print(g graph.Graph, w io.Writer) error {
-
 	var err error
 	// Allocate a new writer.  In general, we will ignore write errors throughout this function, for simplicity, opting
 	// instead to return the result of flushing the buffer at the end, which is generally latching.

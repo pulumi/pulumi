@@ -13,14 +13,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-/* tslint:disable:ordered-imports */
-
-import * as arch from "../arch";
-import * as config from "../config";
-import * as runtime from "../runtime";
 import * as aws from "@lumi/aws";
 import * as kubefission from "@lumi/kubefission";
 import {asset} from "@lumi/lumi";
+import * as arch from "../arch";
+import * as config from "../config";
+import * as runtime from "../runtime";
 
 // Function is a cross-cloud function abstraction whose source code is taken from a string, file, or network asset.
 // For example, `https://gist.github.com/pulumi/fe8a5ae322ffe63fac90535eb554237f` will use a Gist published on GitHub,
@@ -48,16 +46,16 @@ export class Function {
     // initCloudResources sets up the right resources for the given cloud and scheduler target.
     private initCloudResources(): any {
         let target: arch.Arch = config.requireArch();
-        if (target.scheduler === arch.schedulers.Kubernetes) {
+        if (target.scheduler === arch.schedulers.kubernetes) {
             return this.initKubernetesResources();
         }
         else {
             switch (target.cloud) {
-                case arch.clouds.AWS:
+                case arch.clouds.aws:
                     return this.initAWSResources();
-                case arch.clouds.GCP:
+                case arch.clouds.gcp:
                     return this.initGCPResources();
-                case arch.clouds.Azure:
+                case arch.clouds.azure:
                     return this.initAzureResources();
                 default:
                     throw new Error("Unsupported target cloud: " + target.cloud);

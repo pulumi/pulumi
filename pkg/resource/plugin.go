@@ -95,13 +95,13 @@ func newPlugin(ctx *Context, bins []string, prefix string) (*plugin, error) {
 	var port string
 	b := make([]byte, 1)
 	for {
-		n, stderr := plug.Stdout.Read(b)
-		if stderr != nil {
+		n, readerr := plug.Stdout.Read(b)
+		if readerr != nil {
 			plug.Proc.Kill()
 			if port == "" {
-				return nil, errors.Wrapf(stderr, "could not read plugin [%v] stdout", foundbin)
+				return nil, errors.Wrapf(readerr, "could not read plugin [%v] stdout", foundbin)
 			}
-			return nil, errors.Wrapf(stderr, "failure reading plugin [%v] stdout (read '%v')", foundbin, port)
+			return nil, errors.Wrapf(readerr, "failure reading plugin [%v] stdout (read '%v')", foundbin, port)
 		}
 		if n > 0 && b[0] == '\n' {
 			break

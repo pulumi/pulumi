@@ -13,12 +13,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// The available language runtimes.
-export const nodejs = "nodejs";
-export const python = "python";
+import { printf } from "@lumi/lumi/runtime"
 
-export let ext: {[lang: string]: string} = {
-    nodejs: ".js",
-    python: ".py",
-};
+export class Console {
+    log(message: any) {
+        printf(message);
+        printf("\n");
+    }
+}
 
+export let console = new Console();

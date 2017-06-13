@@ -346,12 +346,11 @@ func (a Archive) openURLStream(url *url.URL) (io.ReadCloser, error) {
 // Bytes fetches the archive contents as a byte slices.  This is almost certainly the least efficient way to deal with
 // the underlying streaming capabilities offered by assets and archives, but can be used in a pinch to interact with
 // APIs that demand []bytes.
-func (a Archive) Bytes(format ArchiveFormat) []byte {
+func (a Archive) Bytes(format ArchiveFormat) ([]byte, error) {
 	var data bytes.Buffer
-	err := a.Archive(format, &data)
-	contract.Assert(err == nil)
-
-	return data.Bytes()
+	var err error
+	err = a.Archive(format, &data)
+	return data.Bytes(), err
 }
 
 // Archive produces a single archive stream in the desired format.  It prefers to return the archive with as little

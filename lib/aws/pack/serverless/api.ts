@@ -78,7 +78,7 @@ function createPathSpec(lambdaARN: string): SwaggerOperation {
 }
 
 function createSourceARN(region: string, account: string, apiid: string, functionName: string): string {
-   return "arn:aws:execute-api:"+region+":"+account+":"+apiid+"/*/*/"+ functionName;
+    return "arn:aws:execute-api:" + region + ":" + account + ":" + apiid + "/*/*/" + functionName;
 }
 
 // API is a higher level abstraction for working with AWS APIGateway reources.
@@ -117,9 +117,8 @@ export class API {
             default:
                 throw new Error("Method not supported: " + method);
         }
-<<<<<<< HEAD
         let apiName = "";
-        if(this.api.apiName !== undefined) {
+        if (this.api.apiName !== undefined) {
             apiName = this.api.apiName;
         }
         let invokePermission = new Permission(this.apiName + "_invoke_" + sha1hash(method + path), {
@@ -129,9 +128,6 @@ export class API {
             sourceARN: createSourceARN("us-east-1", "490047557317", apiName, "webapi-test-func"),
         });
         // TODO[pulumi/lumi#90]: Once we suport output properties, we can use `lambda.lambda.arn` as input 
-=======
-        // TODO[pulumi/lumi#90]: Once we suport output properties, we can use `lambda.lambda.arn` as input
->>>>>>> 13dbcdbafc96be49e509c618194cd649ba6d0817
         //     to constructing this apigateway lambda invocation uri.
         // this.swaggerSpec.paths[path][swaggerMethod] = createPathSpec(lambda.lambda.arn);
         this.swaggerSpec.paths[path][swaggerMethod] = createPathSpec(

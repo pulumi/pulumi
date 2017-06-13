@@ -1023,10 +1023,10 @@
                                     },
                                     "operator": "=",
                                     "right": {
-                                        "kind": "LoadLocationExpression",
+                                        "kind": "TryLoadDynamicExpression",
                                         "name": {
-                                            "kind": "Token",
-                                            "tok": "basic/props:index:modprop",
+                                            "kind": "StringLiteral",
+                                            "value": "modprop",
                                             "loc": {
                                                 "file": "index.ts",
                                                 "start": {
@@ -1256,10 +1256,10 @@
                                     "kind": "BinaryOperatorExpression",
                                     "operator": "!=",
                                     "left": {
-                                        "kind": "LoadLocationExpression",
+                                        "kind": "TryLoadDynamicExpression",
                                         "name": {
-                                            "kind": "Token",
-                                            "tok": "basic/props:index:c",
+                                            "kind": "StringLiteral",
+                                            "value": "c",
                                             "loc": {
                                                 "file": "index.ts",
                                                 "start": {
@@ -1389,10 +1389,10 @@
                                                         "right": {
                                                             "kind": "LoadLocationExpression",
                                                             "object": {
-                                                                "kind": "LoadLocationExpression",
+                                                                "kind": "TryLoadDynamicExpression",
                                                                 "name": {
-                                                                    "kind": "Token",
-                                                                    "tok": "basic/props:index:c",
+                                                                    "kind": "StringLiteral",
+                                                                    "value": "c",
                                                                     "loc": {
                                                                         "file": "index.ts",
                                                                         "start": {
@@ -1568,10 +1568,10 @@
                                                                         "tok": "f"
                                                                     },
                                                                     "value": {
-                                                                        "kind": "LoadLocationExpression",
+                                                                        "kind": "TryLoadDynamicExpression",
                                                                         "name": {
-                                                                            "kind": "Token",
-                                                                            "tok": "basic/props:index:modprop",
+                                                                            "kind": "StringLiteral",
+                                                                            "value": "modprop",
                                                                             "loc": {
                                                                                 "file": "index.ts",
                                                                                 "start": {
@@ -1664,10 +1664,10 @@
                                                                     "value": {
                                                                         "kind": "LoadLocationExpression",
                                                                         "object": {
-                                                                            "kind": "LoadLocationExpression",
+                                                                            "kind": "TryLoadDynamicExpression",
                                                                             "name": {
-                                                                                "kind": "Token",
-                                                                                "tok": "basic/props:index:c",
+                                                                                "kind": "StringLiteral",
+                                                                                "value": "c",
                                                                                 "loc": {
                                                                                     "file": "index.ts",
                                                                                     "start": {
@@ -1770,10 +1770,10 @@
                                                                     "property": {
                                                                         "kind": "InvokeFunctionExpression",
                                                                         "function": {
-                                                                            "kind": "LoadLocationExpression",
+                                                                            "kind": "TryLoadDynamicExpression",
                                                                             "name": {
-                                                                                "kind": "Token",
-                                                                                "tok": "basic/props:index:j",
+                                                                                "kind": "StringLiteral",
+                                                                                "value": "j",
                                                                                 "loc": {
                                                                                     "file": "index.ts",
                                                                                     "start": {
@@ -1965,10 +1965,10 @@
                                                         "right": {
                                                             "kind": "LoadLocationExpression",
                                                             "object": {
-                                                                "kind": "LoadLocationExpression",
+                                                                "kind": "TryLoadDynamicExpression",
                                                                 "name": {
-                                                                    "kind": "Token",
-                                                                    "tok": "basic/props:index:c",
+                                                                    "kind": "StringLiteral",
+                                                                    "value": "c",
                                                                     "loc": {
                                                                         "file": "index.ts",
                                                                         "start": {
@@ -2065,10 +2065,10 @@
                                                 "left": {
                                                     "kind": "LoadLocationExpression",
                                                     "object": {
-                                                        "kind": "LoadLocationExpression",
+                                                        "kind": "TryLoadDynamicExpression",
                                                         "name": {
-                                                            "kind": "Token",
-                                                            "tok": "basic/props:index:c",
+                                                            "kind": "StringLiteral",
+                                                            "value": "c",
                                                             "loc": {
                                                                 "file": "index.ts",
                                                                 "start": {

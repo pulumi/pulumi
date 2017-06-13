@@ -13,12 +13,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-/* tslint:disable: variable-name */
+
 
 // The available cloud providers.
 
-export const AWS = "aws";       // Amazon Web Services.
-export const GCP = "gcp";       // Google Cloud Platform.
-export const Azure = "azure";   // Microsoft Azure.
-export const VMWare = "vmware"; // VMWare vSphere, etc.
+export const aws = "aws";       // Amazon Web Services.
+export const gcp = "gcp";       // Google Cloud Platform.
+export const azure = "azure";   // Microsoft Azure.
+export const vmware = "vmware"; // VMWare vSphere, etc.
 

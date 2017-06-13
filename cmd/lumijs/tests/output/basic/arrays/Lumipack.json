@@ -1215,10 +1215,10 @@
                                     "right": {
                                         "kind": "TryLoadDynamicExpression",
                                         "object": {
-                                            "kind": "LoadLocationExpression",
+                                            "kind": "TryLoadDynamicExpression",
                                             "name": {
-                                                "kind": "Token",
-                                                "tok": "basic/arrays:index:a2",
+                                                "kind": "StringLiteral",
+                                                "value": "a2",
                                                 "loc": {
                                                     "file": "index.ts",
                                                     "start": {
@@ -1303,10 +1303,10 @@
                                     "left": {
                                         "kind": "TryLoadDynamicExpression",
                                         "object": {
-                                            "kind": "LoadLocationExpression",
+                                            "kind": "TryLoadDynamicExpression",
                                             "name": {
-                                                "kind": "Token",
-                                                "tok": "basic/arrays:index:a2",
+                                                "kind": "StringLiteral",
+                                                "value": "a2",
                                                 "loc": {
                                                     "file": "index.ts",
                                                     "start": {
@@ -1436,10 +1436,10 @@
                                     "right": {
                                         "kind": "TryLoadDynamicExpression",
                                         "object": {
-                                            "kind": "LoadLocationExpression",
+                                            "kind": "TryLoadDynamicExpression",
                                             "name": {
-                                                "kind": "Token",
-                                                "tok": "basic/arrays:index:a2",
+                                                "kind": "StringLiteral",
+                                                "value": "a2",
                                                 "loc": {
                                                     "file": "index.ts",
                                                     "start": {
@@ -1524,10 +1524,10 @@
                                     "left": {
                                         "kind": "TryLoadDynamicExpression",
                                         "object": {
-                                            "kind": "LoadLocationExpression",
+                                            "kind": "TryLoadDynamicExpression",
                                             "name": {
-                                                "kind": "Token",
-                                                "tok": "basic/arrays:index:a2",
+                                                "kind": "StringLiteral",
+                                                "value": "a2",
                                                 "loc": {
                                                     "file": "index.ts",
                                                     "start": {
@@ -1657,10 +1657,10 @@
                                     "right": {
                                         "kind": "TryLoadDynamicExpression",
                                         "object": {
-                                            "kind": "LoadLocationExpression",
+                                            "kind": "TryLoadDynamicExpression",
                                             "name": {
-                                                "kind": "Token",
-                                                "tok": "basic/arrays:index:a2",
+                                                "kind": "StringLiteral",
+                                                "value": "a2",
                                                 "loc": {
                                                     "file": "index.ts",
                                                     "start": {
@@ -1745,10 +1745,10 @@
                                     "left": {
                                         "kind": "TryLoadDynamicExpression",
                                         "object": {
-                                            "kind": "LoadLocationExpression",
+                                            "kind": "TryLoadDynamicExpression",
                                             "name": {
-                                                "kind": "Token",
-                                                "tok": "basic/arrays:index:a2",
+                                                "kind": "StringLiteral",
+                                                "value": "a2",
                                                 "loc": {
                                                     "file": "index.ts",
                                                     "start": {
@@ -2004,10 +2004,10 @@
                                     "right": {
                                         "kind": "TryLoadDynamicExpression",
                                         "object": {
-                                            "kind": "LoadLocationExpression",
+                                            "kind": "TryLoadDynamicExpression",
                                             "name": {
-                                                "kind": "Token",
-                                                "tok": "basic/arrays:index:a3",
+                                                "kind": "StringLiteral",
+                                                "value": "a3",
                                                 "loc": {
                                                     "file": "index.ts",
                                                     "start": {
@@ -2121,10 +2121,10 @@
                                     "right": {
                                         "kind": "TryLoadDynamicExpression",
                                         "object": {
-                                            "kind": "LoadLocationExpression",
+                                            "kind": "TryLoadDynamicExpression",
                                             "name": {
-                                                "kind": "Token",
-                                                "tok": "basic/arrays:index:a3",
+                                                "kind": "StringLiteral",
+                                                "value": "a3",
                                                 "loc": {
                                                     "file": "index.ts",
                                                     "start": {
@@ -2238,10 +2238,10 @@
                                     "right": {
                                         "kind": "TryLoadDynamicExpression",
                                         "object": {
-                                            "kind": "LoadLocationExpression",
+                                            "kind": "TryLoadDynamicExpression",
                                             "name": {
-                                                "kind": "Token",
-                                                "tok": "basic/arrays:index:a3",
+                                                "kind": "StringLiteral",
+                                                "value": "a3",
                                                 "loc": {
                                                     "file": "index.ts",
                                                     "start": {
@@ -2859,10 +2859,10 @@
                                     "right": {
                                         "kind": "TryLoadDynamicExpression",
                                         "object": {
-                                            "kind": "LoadLocationExpression",
+                                            "kind": "TryLoadDynamicExpression",
                                             "name": {
-                                                "kind": "Token",
-                                                "tok": "basic/arrays:index:a6",
+                                                "kind": "StringLiteral",
+                                                "value": "a6",
                                                 "loc": {
                                                     "file": "index.ts",
                                                     "start": {
@@ -2978,10 +2978,10 @@
                                         "object": {
                                             "kind": "TryLoadDynamicExpression",
                                             "object": {
-                                                "kind": "LoadLocationExpression",
+                                                "kind": "TryLoadDynamicExpression",
                                                 "name": {
-                                                    "kind": "Token",
-                                                    "tok": "basic/arrays:index:a6",
+                                                    "kind": "StringLiteral",
+                                                    "value": "a6",
                                                     "loc": {
                                                         "file": "index.ts",
                                                         "start": {
@@ -3125,10 +3125,10 @@
                                         "object": {
                                             "kind": "TryLoadDynamicExpression",
                                             "object": {
-                                                "kind": "LoadLocationExpression",
+                                                "kind": "TryLoadDynamicExpression",
                                                 "name": {
-                                                    "kind": "Token",
-                                                    "tok": "basic/arrays:index:a6",
+                                                    "kind": "StringLiteral",
+                                                    "value": "a6",
                                                     "loc": {
                                                         "file": "index.ts",
                                                         "start": {
@@ -3272,10 +3272,10 @@
                                         "object": {
                                             "kind": "TryLoadDynamicExpression",
                                             "object": {
-                                                "kind": "LoadLocationExpression",
+                                                "kind": "TryLoadDynamicExpression",
                                                 "name": {
-                                                    "kind": "Token",
-                                                    "tok": "basic/arrays:index:a6",
+                                                    "kind": "StringLiteral",
+                                                    "value": "a6",
                                                     "loc": {
                                                         "file": "index.ts",
                                                         "start": {
@@ -3417,10 +3417,10 @@
                                     "right": {
                                         "kind": "TryLoadDynamicExpression",
                                         "object": {
-                                            "kind": "LoadLocationExpression",
+                                            "kind": "TryLoadDynamicExpression",
                                             "name": {
-                                                "kind": "Token",
-                                                "tok": "basic/arrays:index:a6",
+                                                "kind": "StringLiteral",
+                                                "value": "a6",
                                                 "loc": {
                                                     "file": "index.ts",
                                                     "start": {
@@ -3536,10 +3536,10 @@
                                         "object": {
                                             "kind": "TryLoadDynamicExpression",
                                             "object": {
-                                                "kind": "LoadLocationExpression",
+                                                "kind": "TryLoadDynamicExpression",
                                                 "name": {
-                                                    "kind": "Token",
-                                                    "tok": "basic/arrays:index:a6",
+                                                    "kind": "StringLiteral",
+                                                    "value": "a6",
                                                     "loc": {
                                                         "file": "index.ts",
                                                         "start": {
@@ -3683,10 +3683,10 @@
                                         "object": {
                                             "kind": "TryLoadDynamicExpression",
                                             "object": {
-                                                "kind": "LoadLocationExpression",
+                                                "kind": "TryLoadDynamicExpression",
                                                 "name": {
-                                                    "kind": "Token",
-                                                    "tok": "basic/arrays:index:a6",
+                                                    "kind": "StringLiteral",
+                                                    "value": "a6",
                                                     "loc": {
                                                         "file": "index.ts",
                                                         "start": {
@@ -3830,10 +3830,10 @@
                                         "object": {
                                             "kind": "TryLoadDynamicExpression",
                                             "object": {
-                                                "kind": "LoadLocationExpression",
+                                                "kind": "TryLoadDynamicExpression",
                                                 "name": {
-                                                    "kind": "Token",
-                                                    "tok": "basic/arrays:index:a6",
+                                                    "kind": "StringLiteral",
+                                                    "value": "a6",
                                                     "loc": {
                                                         "file": "index.ts",
                                                         "start": {
@@ -4189,10 +4189,10 @@
                                     "right": {
                                         "kind": "TryLoadDynamicExpression",
                                         "object": {
-                                            "kind": "LoadLocationExpression",
+                                            "kind": "TryLoadDynamicExpression",
                                             "name": {
-                                                "kind": "Token",
-                                                "tok": "basic/arrays:index:a6",
+                                                "kind": "StringLiteral",
+                                                "value": "a6",
                                                 "loc": {
                                                     "file": "index.ts",
                                                     "start": {
@@ -4308,10 +4308,10 @@
                                         "object": {
                                             "kind": "TryLoadDynamicExpression",
                                             "object": {
-                                                "kind": "LoadLocationExpression",
+                                                "kind": "TryLoadDynamicExpression",
                                                 "name": {
-                                                    "kind": "Token",
-                                                    "tok": "basic/arrays:index:a6",
+                                                    "kind": "StringLiteral",
+                                                    "value": "a6",
                                                     "loc": {
                                                         "file": "index.ts",
                                                         "start": {
@@ -4455,10 +4455,10 @@
                                         "object": {
                                             "kind": "TryLoadDynamicExpression",
                                             "object": {
-                                                "kind": "LoadLocationExpression",
+                                                "kind": "TryLoadDynamicExpression",
                                                 "name": {
-                                                    "kind": "Token",
-                                                    "tok": "basic/arrays:index:a6",
+                                                    "kind": "StringLiteral",
+                                                    "value": "a6",
                                                     "loc": {
                                                         "file": "index.ts",
                                                         "start": {
@@ -4602,10 +4602,10 @@
                                         "object": {
                                             "kind": "TryLoadDynamicExpression",
                                             "object": {
-                                                "kind": "LoadLocationExpression",
+                                                "kind": "TryLoadDynamicExpression",
                                                 "name": {
-                                                    "kind": "Token",
-                                                    "tok": "basic/arrays:index:a6",
+                                                    "kind": "StringLiteral",
+                                                    "value": "a6",
                                                     "loc": {
                                                         "file": "index.ts",
                                                         "start": {
@@ -4747,10 +4747,10 @@
                                     "right": {
                                         "kind": "TryLoadDynamicExpression",
                                         "object": {
-                                            "kind": "LoadLocationExpression",
+                                            "kind": "TryLoadDynamicExpression",
                                             "name": {
-                                                "kind": "Token",
-                                                "tok": "basic/arrays:index:a6",
+                                                "kind": "StringLiteral",
+                                                "value": "a6",
                                                 "loc": {
                                                     "file": "index.ts",
                                                     "start": {
@@ -4866,10 +4866,10 @@
                                         "object": {
                                             "kind": "TryLoadDynamicExpression",
                                             "object": {
-                                                "kind": "LoadLocationExpression",
+                                                "kind": "TryLoadDynamicExpression",
                                                 "name": {
-                                                    "kind": "Token",
-                                                    "tok": "basic/arrays:index:a6",
+                                                    "kind": "StringLiteral",
+                                                    "value": "a6",
                                                     "loc": {
                                                         "file": "index.ts",
                                                         "start": {
@@ -5013,10 +5013,10 @@
                                         "object": {
                                             "kind": "TryLoadDynamicExpression",
                                             "object": {
-                                                "kind": "LoadLocationExpression",
+                                                "kind": "TryLoadDynamicExpression",
                                                 "name": {
-                                                    "kind": "Token",
-                                                    "tok": "basic/arrays:index:a6",
+                                                    "kind": "StringLiteral",
+                                                    "value": "a6",
                                                     "loc": {
                                                         "file": "index.ts",
                                                         "start": {
@@ -5160,10 +5160,10 @@
                                         "object": {
                                             "kind": "TryLoadDynamicExpression",
                                             "object": {
-                                                "kind": "LoadLocationExpression",
+                                                "kind": "TryLoadDynamicExpression",
                                                 "name": {
-                                                    "kind": "Token",
-                                                    "tok": "basic/arrays:index:a6",
+                                                    "kind": "StringLiteral",
+                                                    "value": "a6",
                                                     "loc": {
                                                         "file": "index.ts",
                                                         "start": {

@@ -13,11 +13,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-/* tslint:disable: ordered-imports */
-
+import * as slack from "@slack/client";
 import {builders, providers} from "./cicd";
 import * as github from "./github";
-import * as slack from "@slack/client";
 
 // On pushes or PR merges,
 //     - In master, build and deploy the bits to production.

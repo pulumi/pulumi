@@ -19,14 +19,15 @@ import (
 	"crypto/sha1"
 	"encoding/hex"
 	"fmt"
-	"sort"
 	"strconv"
 	"strings"
 
 	"github.com/pulumi/lumi/pkg/compiler/ast"
+	"github.com/pulumi/lumi/pkg/compiler/binder"
 	"github.com/pulumi/lumi/pkg/compiler/symbols"
 	"github.com/pulumi/lumi/pkg/compiler/types"
 	"github.com/pulumi/lumi/pkg/eval/rt"
+	"github.com/pulumi/lumi/pkg/tokens"
 	"github.com/pulumi/lumi/pkg/util/contract"
 )
 
@@ -108,21 +109,24 @@ func serializeClosure(intrin *rt.Intrinsic, e *evaluator, this *rt.Object, args 
 		return e.NewException(intrin.Tree(), "Expected argument 'func' to be a lambda expression.")
 	}
 
-	// TODO[pulumi/lumi#177]: We are using the full environment available at execution time here, we should
-	//     instead capture only the free variables referenced in the function itself.
-
 	// Insert environment variables into a PropertyMap with stable ordering
 	envPropMap := rt.NewPropertyMap()
-	slots := stub.Env.Slots()
-	var keys []*symbols.LocalVariable
-	for key := range slots {
-		keys = append(keys, key)
-	}
-	sort.SliceStable(keys, func(i, j int) bool {
-		return keys[i].Name() < keys[j].Name()
-	})
-	for _, key := range keys {
-		envPropMap.Set(rt.PropertyKey(key.Name()), slots[key].Obj())
+	for _, tok := range binder.FreeVars(stub.Func) {
+		var name tokens.Name
+		contract.Assertf(tok.Simple() || (tok.HasModule() && tok.HasModuleMember() && !tok.HasClassMember()),
+			"Expected free variable to be simple name or reference to top-level module name")
+		if tok.Simple() {
+			name = tok.Name()
+		} else {
+			name = tokens.Name(tok.ModuleMember().Name())
+		}
+		pv := getDynamicNameAddrCore(stub.Env, stub.Module, name)
+		if pv != nil {
+			envPropMap.Set(rt.PropertyKey(name), pv.Obj())
+		}
+		// Else the variable was not found, so we skip serializing it.
+		// This will be true for references to globals which are not known to Lumi but
+		// will be available within the runtime environment.
 	}
 	envObj := e.alloc.New(intrin.Tree(), types.Dynamic, envPropMap, nil)
 
