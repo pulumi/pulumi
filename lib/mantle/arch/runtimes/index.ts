@@ -13,15 +13,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-/* tslint:disable:variable-name */
-
 // The available language runtimes.
-
-export const NodeJS = "nodejs";
-export const Python = "python";
+export const nodejs = "nodejs";
+export const python = "python";
 
 export let ext: {[lang: string]: string} = {
-    NodeJS: ".js",
-    Python: ".py",
+    nodejs: ".js",
+    python: ".py",
 };
 

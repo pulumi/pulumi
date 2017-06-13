@@ -12,10 +12,8 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-/* tslint:disable:no-empty*/
+
 // Resource represents a class whose CRUD operations are implemented by a provider plugin.
 export abstract class Resource {
-    constructor() {
-    }
 }
 
