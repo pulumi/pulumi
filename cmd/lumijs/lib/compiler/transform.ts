@@ -353,9 +353,12 @@ export class Transformer {
     // globals returns the TypeScript globals symbol table.
     private globals(flags: ts.SymbolFlags): Map<string, ts.Symbol> {
         // TODO[pulumi/lumi#52]: we abuse getSymbolsInScope to access the global symbol table, because TypeScript
-        //     doesn't expose it.  It is conceivable that the undefined 1st parameter will cause troubles some day.
+        //     doesn't expose it.
+        contract.assert(!!this.script.tree);
+        let libdts = this.script.tree!.getSourceFiles()[0];
+        contract.assert(!!libdts && libdts.isDeclarationFile && libdts.hasNoDefaultLib);
         let globals = new Map<string, ts.Symbol>();
-        for (let sym of this.checker().getSymbolsInScope(<ts.Node><any>undefined, flags)) {
+        for (let sym of this.checker().getSymbolsInScope(libdts, flags)) {
             globals.set(sym.name, sym);
         }
         return globals;
@@ -3165,8 +3168,31 @@ export class Transformer {
         return notYetImplemented(node);
     }
 
-    private transformTemplateExpression(node: ts.TemplateExpression): ast.Expression {
-        return notYetImplemented(node);
+    private async transformTemplateExpression(node: ts.TemplateExpression): Promise<ast.Expression> {
+        let ret: ast.Expression = this.withLocation(node, <ast.StringLiteral>{
+            kind:  ast.stringLiteralKind,
+            raw:   node.head.text,
+            value: node.head.text,
+        });
+        for (let span of node.templateSpans) {
+            let nextPart = this.withLocation(node, <ast.BinaryOperatorExpression>{
+                kind: ast.binaryOperatorExpressionKind,
+                left: await this.transformExpression(span.expression),
+                operator: "+",
+                right: this.withLocation(node, <ast.StringLiteral>{
+                    kind:  ast.stringLiteralKind,
+                    raw:   span.literal.text,
+                    value: span.literal.text,
+                }),
+            });
+            ret = this.withLocation(node, <ast.BinaryOperatorExpression>{
+                kind: ast.binaryOperatorExpressionKind,
+                left: ret,
+                operator: "+",
+                right: nextPart,
+            });
+        }
+        return ret;
     }
 
     private transformThisExpression(node: ts.ThisExpression): ast.LoadLocationExpression {
@@ -3217,7 +3243,11 @@ export class Transformer {
     }
 
     private transformNoSubstitutionTemplateLiteral(node: ts.NoSubstitutionTemplateLiteral): ast.Expression {
-        return notYetImplemented(node);
+        return this.withLocation(node, <ast.StringLiteral>{
+            kind:  ast.stringLiteralKind,
+            raw:   node.text,
+            value: node.text,
+        });
     }
 
     private transformNullLiteral(node: ts.NullLiteral): ast.NullLiteral {
@@ -3240,9 +3270,6 @@ export class Transformer {
     }
 
     private transformStringLiteral(node: ts.StringLiteral): ast.StringLiteral {
-        // TODO[pulumi/lumi#80]: we need to dynamically populate the resulting object with ECMAScript-style string
-        //     functions.  It's not yet clear how to do this in a way that facilitates inter-language interoperability.
-        //     This is especially challenging because most use of such functions will be entirely dynamic.
         return this.withLocation(node, <ast.StringLiteral>{
             kind:  ast.stringLiteralKind,
             raw:   node.text,

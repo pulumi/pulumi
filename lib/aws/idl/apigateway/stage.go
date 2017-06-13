@@ -48,4 +48,8 @@ type Stage struct {
 	CreatedDate string `lumi:"createdDate,out"`
 	// The timestamp when the stage last updated.
 	LastUpdatedDate string `lumi:"lastUpdatedDate,out"`
+	// The URL to invoke the HTTP endpoint for this API stage.
+	URL string `lumi:"url,out"`
+	// The execution ARN needed to pass to Lambda to give this API stage permission.
+	ExecutionARN string `lumi:"executionARN,out"`
 }

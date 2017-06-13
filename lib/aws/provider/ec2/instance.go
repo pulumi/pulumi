@@ -205,6 +205,7 @@ func (p *instanceProvider) Get(ctx context.Context, id resource.ID) (*ec2.Instan
 func (p *instanceProvider) InspectChange(ctx context.Context, id resource.ID,
 	old *ec2.Instance, new *ec2.Instance, diff *resource.ObjectDiff) ([]string, error) {
 	// TODO[pulumi/lumi#187]: we should permit changes to security groups for non-EC2-classic VMs that are in VPCs.
+	// TODO[pulumi/lumi#241]: we shoudl permit changes to instance type for EBS-backed instances.
 	return nil, nil
 }
 

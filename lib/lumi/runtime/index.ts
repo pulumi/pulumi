@@ -34,6 +34,11 @@ export function dynamicInvoke(obj: Object, thisArg: Object, args: Object[]): Obj
     return <any>undefined; // functionality provided by the runtime.
 }
 
+// objectKeys returns the property keys for the target object.
+export function objectKeys(obj: any): string[] {
+    return <any>undefined; // functionality provided by the runtime.
+}
+
 // jsonStringify converts a Lumi value into a JSON string.
 export function jsonStringify(val: any): string {
     // functionality provided by the runtime
@@ -55,9 +60,14 @@ export function serializeClosure(func: any): Closure | undefined {
 
 // Closure represents the serialized form of a Lumi function.
 export interface Closure {
-    code: string;                       // a serialization of the function's source code as text.
-    language: string;                   // the language runtime required to execute the serialized code.
-    signature: string;                  // the function signature type token.
-    environment?: {[key: string]: any}; // the captured lexical environment of variables to values, if any.
+    code: string;                            // a serialization of the function's source code as text.
+    language: string;                        // the language runtime required to execute the serialized code.
+    signature: string;                       // the function signature type token.
+    environment: {[key: string]: EnvEntry}; // the captured lexical environment of variables to values, if any.
+}
+
+export interface EnvEntry {
+    json?: any;         // a value which can be safely json serialized  
+    closure?: Closure   // a closure we are dependent on
 }
 

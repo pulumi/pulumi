@@ -106,6 +106,9 @@ func (p *stageProvider) Get(ctx context.Context, id resource.ID) (*apigateway.St
 	}
 	variables := aws.StringValueMap(resp.Variables)
 
+	url := "https://" + restAPIID + ".execute-api." + p.ctx.Region() + ".amazonaws.com/" + stageName
+	executionARN := "arn:aws:execute-api:" + p.ctx.Region() + ":" + p.ctx.AccountID() + ":" + restAPIID + "/" + stageName
+
 	return &apigateway.Stage{
 		RestAPI:             NewRestAPIID(p.ctx.Region(), restAPIID),
 		Deployment:          NewDeploymentID(p.ctx.Region(), restAPIID, aws.StringValue(resp.DeploymentId)),
@@ -116,6 +119,8 @@ func (p *stageProvider) Get(ctx context.Context, id resource.ID) (*apigateway.St
 		Description:         resp.Description,
 		CreatedDate:         resp.CreatedDate.String(),
 		LastUpdatedDate:     resp.LastUpdatedDate.String(),
+		URL:                 url,
+		ExecutionARN:        executionARN,
 	}, nil
 }
 

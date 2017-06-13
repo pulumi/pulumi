@@ -18,6 +18,7 @@ package resource
 import (
 	"fmt"
 	"reflect"
+	"sort"
 
 	"github.com/pkg/errors"
 
@@ -58,7 +59,6 @@ type PropertyValue struct {
 // Computed represents the absence of a property value, because it will be computed at some point in the future.  It
 // contains a property value which represents the underlying expected type of the eventual property value.
 type Computed struct {
-	Sources []URN         // the resources whose state contribute to this value.
 	Element PropertyValue // the eventual value (type) of the computed property.
 }
 
@@ -198,20 +198,6 @@ func (m PropertyMap) ObjectOrErr(k PropertyKey, req bool) (*PropertyMap, error) 
 	return nil, nil
 }
 
-// ResourceOrErr checks that the given property is a resource, issuing an error if not; req indicates if required.
-func (m PropertyMap) ResourceOrErr(k PropertyKey, req bool) (*URN, error) {
-	if v, has := m[k]; has && !v.IsNull() {
-		if !v.IsResource() {
-			return nil, errors.Errorf("property '%v' is not an object (%v)", k, reflect.TypeOf(v.V))
-		}
-		m := v.ResourceValue()
-		return &m, nil
-	} else if req {
-		return nil, &ReqError{k}
-	}
-	return nil, nil
-}
-
 // ComputedOrErr checks that the given property is computed, issuing an error if not; req indicates if required.
 func (m PropertyMap) ComputedOrErr(k PropertyKey, req bool) (*Computed, error) {
 	if v, has := m[k]; has && !v.IsNull() {
@@ -303,15 +289,6 @@ func (m PropertyMap) ReqObjectOrErr(k PropertyKey) (PropertyMap, error) {
 	return *o, nil
 }
 
-// ReqResourceOrErr checks that the given property exists and has the type URN.
-func (m PropertyMap) ReqResourceOrErr(k PropertyKey) (URN, error) {
-	r, err := m.ResourceOrErr(k, true)
-	if err != nil {
-		return URN(""), err
-	}
-	return *r, nil
-}
-
 // ReqComputedOrErr checks that the given property exists and is computed.
 func (m PropertyMap) ReqComputedOrErr(k PropertyKey) (Computed, error) {
 	v, err := m.ComputedOrErr(k, true)
@@ -365,11 +342,6 @@ func (m PropertyMap) OptObjectOrErr(k PropertyKey) (*PropertyMap, error) {
 	return m.ObjectOrErr(k, false)
 }
 
-// OptResourceOrErr checks that the given property has the type URN, if it exists.
-func (m PropertyMap) OptResourceOrErr(k PropertyKey) (*URN, error) {
-	return m.ResourceOrErr(k, false)
-}
-
 // OptComputedOrErr checks that the given property is computed, if it exists.
 func (m PropertyMap) OptComputedOrErr(k PropertyKey) (*Computed, error) {
 	return m.ComputedOrErr(k, false)
@@ -391,31 +363,20 @@ func (m PropertyMap) HasValue(k PropertyKey) bool {
 // Mappable returns a mapper-compatible object map, suitable for deserialization into structures.
 func (m PropertyMap) Mappable() map[string]interface{} {
 	obj := make(map[string]interface{})
-	for _, k := range StablePropertyKeys(m) {
+	for _, k := range m.StableKeys() {
 		obj[string(k)] = m[k].Mappable()
 	}
 	return obj
 }
 
-// AllResources finds all resource URNs, transitively throughout the property map, and returns them.
-func (m PropertyMap) AllResources() map[URN]bool {
-	URNs := make(map[URN]bool)
-	for _, k := range StablePropertyKeys(m) {
-		for m, v := range m[k].AllResources() {
-			URNs[m] = v
-		}
+// StableKeys returns all of the map's keys in a stable order.
+func (m PropertyMap) StableKeys() []PropertyKey {
+	sorted := make([]PropertyKey, 0, len(m))
+	for k := range m {
+		sorted = append(sorted, k)
 	}
-	return URNs
-}
-
-// ReplaceResources finds all resources and lets an updater function update them if necessary.  This is often used
-// during a "replacement"-style updated, to replace all URNs of a certain value with another.
-func (m PropertyMap) ReplaceResources(updater func(URN) URN) PropertyMap {
-	result := make(PropertyMap)
-	for _, k := range StablePropertyKeys(m) {
-		result[k] = m[k].ReplaceResources(updater)
-	}
-	return result
+	sort.Slice(sorted, func(i, j int) bool { return sorted[i] < sorted[j] })
+	return sorted
 }
 
 func (m PropertyMap) ShallowClone() PropertyMap {
@@ -444,12 +405,11 @@ func NewNumberProperty(v float64) PropertyValue        { return PropertyValue{v}
 func NewStringProperty(v string) PropertyValue         { return PropertyValue{v} }
 func NewArrayProperty(v []PropertyValue) PropertyValue { return PropertyValue{v} }
 func NewObjectProperty(v PropertyMap) PropertyValue    { return PropertyValue{v} }
-func NewResourceProperty(v URN) PropertyValue          { return PropertyValue{v} }
 func NewComputedProperty(v Computed) PropertyValue     { return PropertyValue{v} }
 func NewOutputProperty(v Output) PropertyValue         { return PropertyValue{v} }
 
-func MakeComputed(v PropertyValue, sources []URN) PropertyValue {
-	return NewComputedProperty(Computed{Element: v, Sources: sources})
+func MakeComputed(v PropertyValue) PropertyValue {
+	return NewComputedProperty(Computed{Element: v})
 }
 
 func MakeOutput(v PropertyValue) PropertyValue {
@@ -471,8 +431,6 @@ func NewPropertyValue(v interface{}) PropertyValue {
 		return NewNumberProperty(t)
 	case string:
 		return NewStringProperty(t)
-	case URN:
-		return NewResourceProperty(t)
 	case Computed:
 		return NewComputedProperty(t)
 	}
@@ -537,9 +495,6 @@ func (v PropertyValue) ArrayValue() []PropertyValue { return v.V.([]PropertyValu
 // ObjectValue fetches the underlying object value (panicking if it isn't a object).
 func (v PropertyValue) ObjectValue() PropertyMap { return v.V.(PropertyMap) }
 
-// ResourceValue fetches the underlying resource value (panicking if it isn't a resource).
-func (v PropertyValue) ResourceValue() URN { return v.V.(URN) }
-
 // ComputedValue fetches the underlying computed value (panicking if it isn't a computed).
 func (v PropertyValue) ComputedValue() Computed { return v.V.(Computed) }
 
@@ -578,12 +533,6 @@ func (v PropertyValue) IsArray() bool {
 // IsObject returns true if the underlying value is an object.
 func (v PropertyValue) IsObject() bool {
 	_, is := v.V.(PropertyMap)
-	return is
-}
-
-// IsResource returns true if the underlying value is a resource.
-func (v PropertyValue) IsResource() bool {
-	_, is := v.V.(URN)
 	return is
 }
 
@@ -674,20 +623,6 @@ func (v PropertyValue) CanObject() bool {
 	return false
 }
 
-// CanResource returns true if the target property is capable of holding a resource value.
-func (v PropertyValue) CanResource() bool {
-	if v.IsNull() || v.IsResource() {
-		return true
-	}
-	if v.IsComputed() {
-		return v.ComputedValue().Element.CanResource()
-	}
-	if v.IsOutput() {
-		return v.OutputValue().Element.CanResource()
-	}
-	return false
-}
-
 // HasValue returns true if a value is semantically meaningful.
 func (v PropertyValue) HasValue() bool {
 	return !v.IsNull() && !v.IsOutput()
@@ -707,8 +642,6 @@ func (v PropertyValue) TypeString() string {
 		return "[]"
 	} else if v.IsObject() {
 		return "object"
-	} else if v.IsResource() {
-		return "resource"
 	} else if v.IsComputed() {
 		return "computed<" + v.ComputedValue().Element.TypeString() + ">"
 	} else if v.IsOutput() {
@@ -747,43 +680,4 @@ func (v PropertyValue) String() string {
 	}
 	// For all others, just display the underlying property value.
 	return fmt.Sprintf("{%v}", v.V)
-}
-
-// AllResources finds all resource URNs, transitively throughout the property value, and returns them.
-func (v PropertyValue) AllResources() map[URN]bool {
-	URNs := make(map[URN]bool)
-	if v.IsResource() {
-		URNs[v.ResourceValue()] = true
-	} else if v.IsArray() {
-		for _, elem := range v.ArrayValue() {
-			for m, v := range elem.AllResources() {
-				URNs[m] = v
-			}
-		}
-	} else if v.IsObject() {
-		for m, v := range v.ObjectValue().AllResources() {
-			URNs[m] = v
-		}
-	}
-	return URNs
-}
-
-// ReplaceResources finds all resources and lets an updater function update them if necessary.  This is often used
-// during a "replacement"-style updated, to replace all URNs of a certain value with another.
-func (v PropertyValue) ReplaceResources(updater func(URN) URN) PropertyValue {
-	if v.IsResource() {
-		m := v.ResourceValue()
-		return NewResourceProperty(updater(m))
-	} else if v.IsArray() {
-		arr := v.ArrayValue()
-		elems := make([]PropertyValue, len(arr))
-		for i, elem := range arr {
-			elems[i] = elem.ReplaceResources(updater)
-		}
-		return NewArrayProperty(elems)
-	} else if v.IsObject() {
-		rep := v.ObjectValue().ReplaceResources(updater)
-		return NewObjectProperty(rep)
-	}
-	return v
 }

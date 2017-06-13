@@ -11,6 +11,7 @@ import (
     "golang.org/x/net/context"
 
     "github.com/pulumi/lumi/pkg/resource"
+    "github.com/pulumi/lumi/pkg/resource/plugin"
     "github.com/pulumi/lumi/pkg/tokens"
     "github.com/pulumi/lumi/pkg/util/contract"
     "github.com/pulumi/lumi/pkg/util/mapper"
@@ -98,14 +99,14 @@ func (p *MethodProvider) Check(
     contract.Assert(req.GetType() == string(MethodToken))
     obj, _, err := p.Unmarshal(req.GetProperties())
     if err != nil {
-        return resource.NewCheckResponse(err), nil
+        return plugin.NewCheckResponse(err), nil
     }
     if failures, err := p.ops.Check(ctx, obj); err != nil {
         return nil, err
     } else if len(failures) > 0 {
-        return resource.NewCheckResponse(resource.NewCheckError(failures)), nil
+        return plugin.NewCheckResponse(resource.NewErrors(failures)), nil
     }
-    return resource.NewCheckResponse(nil), nil
+    return plugin.NewCheckResponse(nil), nil
 }
 
 func (p *MethodProvider) Name(
@@ -147,8 +148,8 @@ func (p *MethodProvider) Get(
         return nil, err
     }
     return &lumirpc.GetResponse{
-        Properties: resource.MarshalProperties(
-            nil, resource.NewPropertyMap(obj), resource.MarshalOptions{}),
+        Properties: plugin.MarshalProperties(
+            nil, resource.NewPropertyMap(obj), plugin.MarshalOptions{}),
     }, nil
 }
 
@@ -212,7 +213,7 @@ func (p *MethodProvider) Delete(
 func (p *MethodProvider) Unmarshal(
     v *pbstruct.Struct) (*Method, resource.PropertyMap, error) {
     var obj Method
-    props := resource.UnmarshalProperties(nil, v, resource.MarshalOptions{RawResources: true})
+    props := plugin.UnmarshalProperties(nil, v, plugin.MarshalOptions{RawResources: true})
     return &obj, props, mapper.MapIU(props.Mappable(), &obj)
 }
 

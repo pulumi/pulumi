@@ -26,6 +26,7 @@ import (
 	"github.com/pulumi/lumi/pkg/compiler/binder"
 	"github.com/pulumi/lumi/pkg/compiler/symbols"
 	"github.com/pulumi/lumi/pkg/compiler/types"
+	"github.com/pulumi/lumi/pkg/diag"
 	"github.com/pulumi/lumi/pkg/eval/rt"
 	"github.com/pulumi/lumi/pkg/tokens"
 	"github.com/pulumi/lumi/pkg/util/contract"
@@ -35,7 +36,7 @@ func isFunction(intrin *rt.Intrinsic, e *evaluator, this *rt.Object, args []*rt.
 	contract.Assert(this == nil)    // module function
 	contract.Assert(len(args) == 1) // just one arg: the object to inquire about functionness
 	_, isfunc := args[0].Type().(*symbols.FunctionType)
-	ret := e.alloc.NewBool(intrin.Tree(), isfunc)
+	ret := rt.Bools[isfunc]
 	return rt.NewReturnUnwind(ret)
 }
 
@@ -61,12 +62,26 @@ func dynamicInvoke(intrin *rt.Intrinsic, e *evaluator, this *rt.Object, args []*
 	return rt.NewReturnUnwind(obj)
 }
 
+func objectKeys(intrin *rt.Intrinsic, e *evaluator, this *rt.Object, args []*rt.Object) *rt.Unwind {
+	var arr []*rt.Pointer
+	if len(args) >= 1 && args[0] != nil {
+		o := args[0]
+		names := o.Properties().Stable()
+		for _, name := range names {
+			namePtr := rt.NewPointer(rt.NewStringObject(string(name)), true, nil, nil)
+			arr = append(arr, namePtr)
+		}
+	}
+	arrObj := rt.NewArrayObject(types.String, &arr)
+	return rt.NewReturnUnwind(arrObj)
+}
+
 func printf(intrin *rt.Intrinsic, e *evaluator, this *rt.Object, args []*rt.Object) *rt.Unwind {
 	var message *rt.Object
 	if len(args) >= 1 {
 		message = args[0]
 	} else {
-		message = e.alloc.NewNull(intrin.Tree())
+		message = rt.Null
 	}
 
 	// TODO[pulumi/lumi#169]: Move this to use a proper ToString() conversion.
@@ -92,24 +107,31 @@ func sha1hash(intrin *rt.Intrinsic, e *evaluator, this *rt.Object, args []*rt.Ob
 	sum := hasher.Sum(nil)
 	hash := hex.EncodeToString(sum)
 
-	hashObj := e.alloc.NewString(intrin.Tree(), hash)
+	hashObj := rt.NewStringObject(hash)
 	return rt.NewReturnUnwind(hashObj)
 }
 
-func serializeClosure(intrin *rt.Intrinsic, e *evaluator, this *rt.Object, args []*rt.Object) *rt.Unwind {
-	contract.Assert(this == nil)    // module function
-	contract.Assert(len(args) == 1) // one arg: func
+type closureSerializer struct {
+	node diag.Diagable
+	e    *evaluator
+}
 
-	stub, ok := args[0].TryFunctionValue()
-	if !ok {
-		return e.NewException(intrin.Tree(), "Expected argument 'func' to be a function value.")
+func (s *closureSerializer) envEntryObjFor(obj *rt.Object) *rt.Object {
+	props := rt.NewPropertyMap()
+	if obj.IsFunction() {
+		// Serialize functions using serializeClosure
+		stub := obj.FunctionValue()
+		lambda, ok := stub.Func.(*ast.LambdaExpression)
+		contract.Assertf(ok, "Expected function to be lambda expression")
+		props.Set("closure", s.serializeClosure(stub, lambda))
+	} else {
+		// Else we will pass through the object to serialize
+		props.Set("json", obj)
 	}
-	lambda, ok := stub.Func.(*ast.LambdaExpression)
-	if !ok {
-		return e.NewException(intrin.Tree(), "Expected argument 'func' to be a lambda expression.")
-	}
+	return rt.NewObject(types.Dynamic, nil, props, nil)
+}
 
-	// Insert environment variables into a PropertyMap with stable ordering
+func (s *closureSerializer) serializeClosure(stub rt.FuncStub, lambda *ast.LambdaExpression) *rt.Object {
 	envPropMap := rt.NewPropertyMap()
 	for _, tok := range binder.FreeVars(stub.Func) {
 		var name tokens.Name
@@ -122,22 +144,40 @@ func serializeClosure(intrin *rt.Intrinsic, e *evaluator, this *rt.Object, args 
 		}
 		pv := getDynamicNameAddrCore(stub.Env, stub.Module, name)
 		if pv != nil {
-			envPropMap.Set(rt.PropertyKey(name), pv.Obj())
+			o := pv.Obj()
+			entry := s.envEntryObjFor(o)
+			envPropMap.Set(rt.PropertyKey(name), entry)
 		}
 		// Else the variable was not found, so we skip serializing it.
 		// This will be true for references to globals which are not known to Lumi but
 		// will be available within the runtime environment.
 	}
-	envObj := e.alloc.New(intrin.Tree(), types.Dynamic, envPropMap, nil)
 
 	// Build up the properties for the returned Closure object
 	props := rt.NewPropertyMap()
 	props.Set("code", rt.NewStringObject(lambda.SourceText))
 	props.Set("signature", rt.NewStringObject(string(stub.Sig.Token())))
 	props.Set("language", rt.NewStringObject(lambda.SourceLanguage))
-	props.Set("environment", envObj)
-	closure := e.alloc.New(intrin.Tree(), intrin.Signature().Return, props, nil)
+	props.Set("environment", rt.NewObject(types.Dynamic, nil, envPropMap, nil))
+	return rt.NewObject(types.Dynamic, nil, props, nil)
+}
 
+func serializeClosure(intrin *rt.Intrinsic, e *evaluator, this *rt.Object, args []*rt.Object) *rt.Unwind {
+	contract.Assert(this == nil)    // module function
+	contract.Assert(len(args) == 1) // one arg: func
+	stub, ok := args[0].TryFunctionValue()
+	if !ok {
+		return e.NewException(intrin.Tree(), "Expected argument 'func' to be a function value.")
+	}
+	lambda, ok := stub.Func.(*ast.LambdaExpression)
+	if !ok {
+		return e.NewException(intrin.Tree(), "Expected argument 'func' to be a lambda expression.")
+	}
+	closureSerializer := &closureSerializer{
+		node: intrin.Tree(),
+		e:    e,
+	}
+	closure := closureSerializer.serializeClosure(stub, lambda)
 	return rt.NewReturnUnwind(closure)
 }
 
@@ -152,7 +192,7 @@ func arrayGetLength(intrin *rt.Intrinsic, e *evaluator, this *rt.Object, args []
 	if arr == nil {
 		return e.NewException(intrin.Tree(), "Expected receiver to be non-null array value")
 	}
-	return rt.NewReturnUnwind(e.alloc.NewNumber(intrin.Tree(), float64(len(*arr))))
+	return rt.NewReturnUnwind(rt.NewNumberObject(float64(len(*arr))))
 }
 
 func arraySetLength(intrin *rt.Intrinsic, e *evaluator, this *rt.Object, args []*rt.Object) *rt.Unwind {
@@ -194,7 +234,7 @@ func stringGetLength(intrin *rt.Intrinsic, e *evaluator, this *rt.Object, args [
 	}
 	str := this.StringValue()
 
-	return rt.NewReturnUnwind(e.alloc.NewNumber(intrin.Tree(), float64(len(str))))
+	return rt.NewReturnUnwind(rt.NewNumberObject(float64(len(str))))
 }
 
 func stringToLowerCase(intrin *rt.Intrinsic, e *evaluator, this *rt.Object, args []*rt.Object) *rt.Unwind {
@@ -207,7 +247,7 @@ func stringToLowerCase(intrin *rt.Intrinsic, e *evaluator, this *rt.Object, args
 	str := this.StringValue()
 	out := strings.ToLower(str)
 
-	return rt.NewReturnUnwind(e.alloc.NewString(intrin.Tree(), out))
+	return rt.NewReturnUnwind(rt.NewStringObject(out))
 }
 
 type jsonSerializer struct {
@@ -217,10 +257,7 @@ type jsonSerializer struct {
 }
 
 func (s jsonSerializer) serializeJSONProperty(o *rt.Object) (string, *rt.Unwind) {
-	if o == nil {
-		return "null", nil
-	}
-	if o.IsNull() {
+	if o == nil || o.IsNull() {
 		return "null", nil
 	} else if o.IsBool() {
 		if o.BoolValue() {
@@ -309,7 +346,7 @@ func jsonStringify(intrin *rt.Intrinsic, e *evaluator, this *rt.Object, args []*
 	contract.Assert(len(args) == 1) // just one arg: the object to stringify
 	obj := args[0]
 	if obj == nil {
-		return rt.NewReturnUnwind(e.alloc.NewString(intrin.Tree(), "{}"))
+		return rt.NewReturnUnwind(rt.NewStringObject("{}"))
 	}
 	s := jsonSerializer{
 		map[*rt.Object]bool{},
@@ -320,7 +357,7 @@ func jsonStringify(intrin *rt.Intrinsic, e *evaluator, this *rt.Object, args []*
 	if uw != nil {
 		return uw
 	}
-	return rt.NewReturnUnwind(e.alloc.NewString(intrin.Tree(), str))
+	return rt.NewReturnUnwind(rt.NewStringObject(str))
 }
 
 func jsonParse(intrin *rt.Intrinsic, e *evaluator, this *rt.Object, args []*rt.Object) *rt.Unwind {
