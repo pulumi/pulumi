@@ -324,8 +324,6 @@ func (iter *PlanIterator) Snap() *Snapshot {
 				}
 			}
 		}
-	} else {
-		contract.Assert(len(iter.dones) == 0)
 	}
 
 	// Always add the new resoures afterwards that got produced during the evaluation of the current plan.

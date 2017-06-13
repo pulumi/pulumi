@@ -19,6 +19,7 @@ import (
 	"reflect"
 	"sort"
 
+	"github.com/golang/glog"
 	structpb "github.com/golang/protobuf/ptypes/struct"
 
 	"github.com/pulumi/lumi/pkg/resource"
@@ -43,14 +44,16 @@ func MarshalPropertiesWithUnknowns(
 	}
 	for _, key := range props.StableKeys() {
 		if v := props[key]; !v.IsOutput() {
-			mv, known := MarshalPropertyValue(ctx, props[key], opts)
-			if known {
-				result.Fields[string(key)] = mv
-			} else {
+			glog.V(9).Infof("Marshaling property for RPC: %v=%v", key, v)
+			mv, known := MarshalPropertyValue(ctx, v, opts)
+			result.Fields[string(key)] = mv
+
+			// If the property was unknown, note it, so that we may tell the provider.
+			if !known {
 				if unk == nil {
 					unk = make(map[string]bool)
 				}
-				unk[string(key)] = true // remember that this property was unknown, tainting this whole object.
+				unk[string(key)] = true
 			}
 		}
 	}

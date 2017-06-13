@@ -68,11 +68,11 @@ func objectKeys(intrin *rt.Intrinsic, e *evaluator, this *rt.Object, args []*rt.
 		o := args[0]
 		names := o.Properties().Stable()
 		for _, name := range names {
-			namePtr := rt.NewPointer(e.alloc.NewString(intrin.Tree(), string(name)), true, nil, nil)
+			namePtr := rt.NewPointer(rt.NewStringObject(string(name)), true, nil, nil)
 			arr = append(arr, namePtr)
 		}
 	}
-	arrObj := e.alloc.NewArray(intrin.Tree(), types.String, &arr)
+	arrObj := rt.NewArrayObject(types.String, &arr)
 	return rt.NewReturnUnwind(arrObj)
 }
 
@@ -128,7 +128,7 @@ func (s *closureSerializer) envEntryObjFor(obj *rt.Object) *rt.Object {
 		// Else we will pass through the object to serialize
 		props.Set("json", obj)
 	}
-	return s.e.alloc.New(s.node, types.Dynamic, props, nil)
+	return rt.NewObject(types.Dynamic, nil, props, nil)
 }
 
 func (s *closureSerializer) serializeClosure(stub rt.FuncStub, lambda *ast.LambdaExpression) *rt.Object {
@@ -152,15 +152,14 @@ func (s *closureSerializer) serializeClosure(stub rt.FuncStub, lambda *ast.Lambd
 		// This will be true for references to globals which are not known to Lumi but
 		// will be available within the runtime environment.
 	}
-	envObj := rt.NewObject(types.Dynamic, nil, envPropMap, nil)
 
 	// Build up the properties for the returned Closure object
 	props := rt.NewPropertyMap()
-	props.Set("code", s.e.alloc.NewString(s.node, lambda.SourceText))
-	props.Set("signature", s.e.alloc.NewString(s.node, string(stub.Sig.Token())))
-	props.Set("language", s.e.alloc.NewString(s.node, lambda.SourceLanguage))
-	props.Set("environment", envObj)
-	return rt.NewObject(s.node, types.Dynamic, props, nil)
+	props.Set("code", rt.NewStringObject(lambda.SourceText))
+	props.Set("signature", rt.NewStringObject(string(stub.Sig.Token())))
+	props.Set("language", rt.NewStringObject(lambda.SourceLanguage))
+	props.Set("environment", rt.NewObject(types.Dynamic, nil, envPropMap, nil))
+	return rt.NewObject(types.Dynamic, nil, props, nil)
 }
 
 func serializeClosure(intrin *rt.Intrinsic, e *evaluator, this *rt.Object, args []*rt.Object) *rt.Unwind {

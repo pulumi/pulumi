@@ -1660,8 +1660,7 @@ func (e *evaluator) evalLoadDynamicCore(node ast.Node, objexpr *ast.Expression, 
 
 	if pv == nil && try {
 		// If this is a try load and we couldn't find the name,
-		nul := e.alloc.NewNull(node)
-		pv = rt.NewPointer(nul, false, nil, nil)
+		pv = rt.NewPointer(rt.Null, false, nil, nil)
 	}
 
 	if pv == nil {

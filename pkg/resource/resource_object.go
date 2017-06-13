@@ -54,33 +54,35 @@ func (r *Object) Type() tokens.Type { return r.obj.Type().TypeToken() }
 
 // ID fetches the object's ID.
 func (r *Object) ID() ID {
-	return getID(r.Obj())
+	idobj := getIDObject(r.Obj())
+	contract.Assert(idobj != nil)
+	contract.Assert(idobj.IsString())
+	return ID(idobj.StringValue())
 }
 
 // HasID returns true if the object already has an ID assigned to it.
 func (r *Object) HasID() bool {
-	if prop := r.obj.GetPropertyAddr(IDProperty, true, true); prop != nil {
-		return prop.Obj() != rt.Null
-	}
-	return false
+	idobj := getIDObject(r.Obj())
+	return idobj != nil && !idobj.IsNull()
 }
 
 // SetID assigns an ID to the target object.  This must only happen once.
 func (r *Object) SetID(id ID) {
 	prop := r.obj.GetPropertyAddr(IDProperty, true, true)
-	contract.Assert(prop.Obj() == rt.Null)
+	contract.Assertf(prop.Obj().IsNull() || prop.Obj().IsComputed(), "Unexpected double set on ID; previous=%v", prop)
 	prop.Set(rt.NewStringObject(id.String()))
 }
 
-// getID fetches the ID off the target object, dynamically, given its runtime value.
-func getID(obj *rt.Object) ID {
+// getIDObject fetches the ID off the target object, dynamically, given its runtime value.
+func getIDObject(obj *rt.Object) *rt.Object {
+	contract.Assert(IsResourceObject(obj))
 	if idprop := obj.GetPropertyAddr(IDProperty, false, false); idprop != nil {
 		id := idprop.Obj()
 		contract.Assert(id != nil)
-		contract.Assert(id.IsString())
-		return ID(id.StringValue())
+		contract.Assert(id.IsString() || id.IsComputed())
+		return id
 	}
-	return ""
+	return nil
 }
 
 // SetURN assignes a URN to the target object.  This must only happen once.
@@ -98,11 +100,7 @@ func (r *Object) Update(id ID, outputs PropertyMap) *State {
 	inputs := r.CopyProperties()
 
 	// Now assign the ID and copy everything in the property map, overwriting what exists.
-	if r.HasID() {
-		contract.Assert(r.ID() == id)
-	} else {
-		r.SetID(id)
-	}
+	r.SetID(id)
 	r.SetProperties(outputs)
 
 	// Finally, return a state snapshot of the underlying object state.
@@ -112,7 +110,8 @@ func (r *Object) Update(id ID, outputs PropertyMap) *State {
 // CopyProperties creates a property map out of a resource's runtime object.  This is a snapshot and is completely
 // disconnected from the object itself, such that any subsequent object updates will not be observed.
 func (r *Object) CopyProperties() PropertyMap {
-	return copyObject(r.Obj())
+	resobj := r.Obj()
+	return copyObject(resobj, resobj)
 }
 
 // SetProperties copies from a resource property map to the runtime object, overwriting properties as it goes.
@@ -121,40 +120,41 @@ func (r *Object) SetProperties(props PropertyMap) {
 	setRuntimeProperties(r.Obj(), props)
 }
 
-func copyObject(obj *rt.Object) PropertyMap {
+func copyObject(resobj *rt.Object, obj *rt.Object) PropertyMap {
 	contract.Assert(obj != nil)
 	props := obj.PropertyValues()
-	return copyObjectProperties(props)
+	return copyObjectProperties(resobj, props)
 }
 
 // copyObjectProperty creates a single property value out of a runtime object.  It returns false if the property could
 // not be stored in a property (e.g., it is a function or other unrecognized or unserializable runtime object).
-func copyObjectProperty(obj *rt.Object) (PropertyValue, bool) {
+func copyObjectProperty(resobj *rt.Object, obj *rt.Object) PropertyValue {
 	t := obj.Type()
 
 	if predef.IsResourceType(t) {
 		// Resource references expand to that resource's ID.
-		if id := getID(obj); id != "" {
-			return NewStringProperty(string(id)), true
+		idobj := getIDObject(obj)
+		if idobj != nil && idobj.IsString() {
+			return NewStringProperty(idobj.StringValue())
 		}
 
-		// If an ID hasn't yet been assigned, we must be planning, and so this is an output property.
-		return MakeOutput(NewStringProperty("")), true
+		// If an ID hasn't yet been assigned, we must be planning, and so this is a computed property.
+		return MakeComputed(NewStringProperty(""))
 	}
 
 	// Serialize simple primitive types with their primitive equivalents.
 	switch t {
 	case types.Null:
-		return NewNullProperty(), true
+		return NewNullProperty()
 	case types.Bool:
-		return NewBoolProperty(obj.BoolValue()), true
+		return NewBoolProperty(obj.BoolValue())
 	case types.Number:
-		return NewNumberProperty(obj.NumberValue()), true
+		return NewNumberProperty(obj.NumberValue())
 	case types.String:
-		return NewStringProperty(obj.StringValue()), true
+		return NewStringProperty(obj.StringValue())
 	case types.Object, types.Dynamic:
-		result := copyObject(obj) // an object literal, clone it
-		return NewObjectProperty(result), true
+		result := copyObject(nil, obj) // an object literal, clone it
+		return NewObjectProperty(result)
 	}
 
 	// Serialize arrays, maps, and object instances in the obvious way.
@@ -163,70 +163,66 @@ func copyObjectProperty(obj *rt.Object) (PropertyValue, bool) {
 		// Make a new array, clone each element, and return the result.
 		var result []PropertyValue
 		for _, e := range *obj.ArrayValue() {
-			if v, ok := copyObjectProperty(e.Obj()); ok {
-				result = append(result, v)
-			}
+			result = append(result, copyObjectProperty(nil, e.Obj()))
 		}
-		return NewArrayProperty(result), true
+		return NewArrayProperty(result)
 	case *symbols.MapType:
 		// Make a new map, clone each property value, and return the result.
 		props := obj.PropertyValues()
-		result := copyObjectProperties(props)
-		return NewObjectProperty(result), true
+		result := copyObjectProperties(nil, props)
+		return NewObjectProperty(result)
 	case *symbols.Class:
 		// Make a new object that contains a deep clone of the source.
-		result := copyObject(obj)
-		return NewObjectProperty(result), true
+		result := copyObject(nil, obj)
+		return NewObjectProperty(result)
 	}
 
 	// If a computed value, we can propagate an unknown value, but only for certain cases.
 	if t.Computed() {
-		// If this is an output property, then this property will turn into an output.  Otherwise, it will be marked
-		// completed.  An output property is permitted in more places by virtue of the fact that it is expected not to
-		// exist during resource create operations, whereas all computed properties should have been resolved by then.
+		// See if this is an output property.  An output property is a property that is set directly on the resource
+		// object that is computed from precisely a single dependency and no expression.  Otherwise, it is computed.
 		comp := obj.ComputedValue()
 		var makeProperty func(PropertyValue) PropertyValue
-		if comp.Expr {
-			makeProperty = MakeComputed
-		} else {
+		if !comp.Expr && len(comp.Sources) == 1 && comp.Sources[0] == resobj {
 			makeProperty = MakeOutput
+		} else {
+			makeProperty = MakeComputed
 		}
 
+		// Now just wrap the underlying object appropriately.
 		elem := t.(*symbols.ComputedType).Element
 		switch elem {
 		case types.Null:
-			return makeProperty(NewNullProperty()), true
+			return makeProperty(NewNullProperty())
 		case types.Bool:
-			return makeProperty(NewBoolProperty(false)), true
+			return makeProperty(NewBoolProperty(false))
 		case types.Number:
-			return makeProperty(NewNumberProperty(0)), true
+			return makeProperty(NewNumberProperty(0))
 		case types.String:
-			return makeProperty(NewStringProperty("")), true
+			return makeProperty(NewStringProperty(""))
 		case types.Object, types.Dynamic:
-			return makeProperty(NewObjectProperty(make(PropertyMap))), true
+			return makeProperty(NewObjectProperty(make(PropertyMap)))
 		}
 		switch elem.(type) {
 		case *symbols.ArrayType:
-			return makeProperty(NewArrayProperty(nil)), true
+			return makeProperty(NewArrayProperty(nil))
 		case *symbols.Class:
-			return makeProperty(NewObjectProperty(make(PropertyMap))), true
+			return makeProperty(NewObjectProperty(make(PropertyMap)))
 		}
 	}
 
 	// We can safely skip serializing functions, however, anything else is unexpected at this point.
 	_, isfunc := t.(*symbols.FunctionType)
 	contract.Assertf(isfunc, "Unrecognized resource property object type '%v' (%v)", t, reflect.TypeOf(t))
-	return PropertyValue{}, false
+	return PropertyValue{}
 }
 
 // copyObjectProperties copies a resource's properties.
-func copyObjectProperties(props *rt.PropertyMap) PropertyMap {
+func copyObjectProperties(resobj *rt.Object, props *rt.PropertyMap) PropertyMap {
 	// Walk the object's properties and serialize them in a stable order.
 	result := make(PropertyMap)
 	for _, k := range props.Stable() {
-		if v, ok := copyObjectProperty(props.Get(k)); ok {
-			result[PropertyKey(k)] = v
-		}
+		result[PropertyKey(k)] = copyObjectProperty(resobj, props.Get(k))
 	}
 	return result
 }
