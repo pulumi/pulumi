@@ -469,21 +469,12 @@ func (a Archive) archiveZIP(w io.Writer) error {
 // ReadSourceArchive returns a stream to the underlying archive, if there eis one.
 func (a Archive) ReadSourceArchive() (ArchiveFormat, io.ReadCloser, error) {
 	if path, ispath := a.GetPath(); ispath {
-		if format, locerr := detectArchiveFormat(path); format != NotArchive {
-			if locerr != nil {
-				return 0, nil, locerr
-			}
+		if format, archerr := detectArchiveFormat(path); archerr != nil && format != NotArchive {
 			f, err := os.Open(path)
 			return format, f, err
 		}
-	} else if url, isurl, urlerr := a.GetURIURL(); isurl {
-		if urlerr != nil {
-			return 0, nil, urlerr
-		}
-		if format, arcerr := detectArchiveFormat(url.Path); format != NotArchive {
-			if arcerr != nil {
-				return 0, nil, arcerr
-			}
+	} else if url, isurl, urlerr := a.GetURIURL(); urlerr == nil && isurl {
+		if format, archerr := detectArchiveFormat(url.Path); archerr == nil && format != NotArchive {
 			s, err := a.openURLStream(url)
 			return format, s, err
 		}

@@ -30,13 +30,12 @@ import (
 
 // Print prints a LumiGL graph.
 func Print(g graph.Graph, w io.Writer) error {
-	var err error
 	// Allocate a new writer.  In general, we will ignore write errors throughout this function, for simplicity, opting
 	// instead to return the result of flushing the buffer at the end, which is generally latching.
 	b := bufio.NewWriter(w)
 
 	// Print the graph header.
-	if _, err = b.WriteString("strict digraph {\n"); err != nil {
+	if _, err := b.WriteString("strict digraph {\n"); err != nil {
 		return err
 	}
 
@@ -78,26 +77,22 @@ func Print(g graph.Graph, w io.Writer) error {
 
 		// Print this vertex; first its "label" (type) and then its direct dependencies.
 		// IDEA: consider serializing properties on the node also.
-		_, err = b.WriteString(fmt.Sprintf("%v%v", indent, id))
-		if err != nil {
+		if _, err := b.WriteString(fmt.Sprintf("%v%v", indent, id)); err != nil {
 			return err
 		}
 		if label := v.Label(); label != "" {
-			_, err = b.WriteString(fmt.Sprintf(" [label=\"%v\"]", label))
-			if err != nil {
+			if _, err := b.WriteString(fmt.Sprintf(" [label=\"%v\"]", label)); err != nil {
 				return err
 			}
 		}
-		_, err = b.WriteString(";\n")
-		if err != nil {
+		if _, err := b.WriteString(";\n"); err != nil {
 			return err
 		}
 
 		// Now print out all dependencies as "ID -> {A ... Z}".
 		outs := v.Outs()
 		if len(outs) > 0 {
-			_, err = b.WriteString(fmt.Sprintf("%v%v -> {", indent, id))
-			if err != nil {
+			if _, err := b.WriteString(fmt.Sprintf("%v%v -> {", indent, id)); err != nil {
 				return err
 			}
 			// Print the ID of each dependency and, for those we haven't seen, add them to the frontier.
@@ -105,13 +100,11 @@ func Print(g graph.Graph, w io.Writer) error {
 				to := out.To()
 
 				if i > 0 {
-					_, err = b.WriteString(" ")
-					if err != nil {
+					if _, err := b.WriteString(" "); err != nil {
 						return err
 					}
 				}
-				_, err = b.WriteString(getID(to))
-				if err != nil {
+				if _, err := b.WriteString(getID(to)); err != nil {
 					return err
 				}
 				if _, q := queued[to]; !q {
@@ -120,16 +113,14 @@ func Print(g graph.Graph, w io.Writer) error {
 				}
 			}
 
-			_, err = b.WriteString("}\n")
-			if err != nil {
+			if _, err := b.WriteString("}\n"); err != nil {
 				return err
 			}
 		}
 	}
 
 	// Finish the graph.
-	_, err = b.WriteString("}\n")
-	if err != nil {
+	if _, err := b.WriteString("}\n"); err != nil {
 		return err
 	}
 	return b.Flush()

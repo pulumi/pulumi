@@ -50,16 +50,12 @@ func Compile(opts CompileOptions, path string) error {
 
 	// Adjust settings to their defaults and adjust any paths to be absolute.
 	if path == "" {
-		var err error
-		path, err = os.Getwd()
-		if err != nil {
-			return err
+		if wd, err := os.Getwd(); err == nil {
+			path = wd
 		}
 	} else {
-		var err error
-		path, err = filepath.Abs(path)
-		if err != nil {
-			return err
+		if absPath, err := filepath.Abs(path); err == nil {
+			path = absPath
 		}
 	}
 	if opts.PkgBaseIDL == "" {
@@ -71,17 +67,13 @@ func Compile(opts CompileOptions, path string) error {
 		opts.PkgBaseIDL = pkgpath
 	}
 	if opts.OutPack != "" {
-		var err error
-		opts.OutPack, err = filepath.Abs(opts.OutPack)
-		if err != nil {
-			return err
+		if outpack, err := filepath.Abs(opts.OutPack); err == nil {
+			opts.OutPack = outpack
 		}
 	}
 	if opts.OutRPC != "" {
-		var err error
-		opts.OutRPC, err = filepath.Abs(opts.OutRPC)
-		if err != nil {
-			return err
+		if outrpc, err := filepath.Abs(opts.OutRPC); err == nil {
+			opts.OutRPC = outrpc
 		}
 
 		// If there is no package base, pick a default based on GOPATH.
