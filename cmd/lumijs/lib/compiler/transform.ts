@@ -353,9 +353,12 @@ export class Transformer {
     // globals returns the TypeScript globals symbol table.
     private globals(flags: ts.SymbolFlags): Map<string, ts.Symbol> {
         // TODO[pulumi/lumi#52]: we abuse getSymbolsInScope to access the global symbol table, because TypeScript
-        //     doesn't expose it.  It is conceivable that the undefined 1st parameter will cause troubles some day.
+        //     doesn't expose it.
+        contract.assert(!!this.script.tree);
+        let libdts = this.script.tree!.getSourceFiles()[0];
+        contract.assert(!!libdts && libdts.isDeclarationFile && libdts.hasNoDefaultLib);
         let globals = new Map<string, ts.Symbol>();
-        for (let sym of this.checker().getSymbolsInScope(<ts.Node><any>undefined, flags)) {
+        for (let sym of this.checker().getSymbolsInScope(libdts, flags)) {
             globals.set(sym.name, sym);
         }
         return globals;
