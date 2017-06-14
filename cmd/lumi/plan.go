@@ -169,7 +169,7 @@ func printPlan(result *planResult, opts deployOptions) {
 
 	step, err := iter.Next()
 	if err != nil {
-		cmdutil.Diag().Errorf(diag.Message("An error occurred while starting to walk the plan: %v"), err)
+		cmdutil.Diag().Errorf(diag.Message("An error occurred while enumerating the plan: %v"), err)
 		return
 	}
 

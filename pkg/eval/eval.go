@@ -162,12 +162,33 @@ func (e *evaluator) EvaluateFunction(fnc symbols.Function, this *rt.Object, args
 		e.hooks.OnStart()
 	}
 
+	// Ensure all exit paths do the right thing (dumping, exceptions, hooks).
+	var uw *rt.Unwind
+	defer (func() {
+		// Dump the evaluation state at log-level 5, if it is enabled.
+		e.dumpEvalState(5)
+
+		// If the call had a throw unwind, then we have an unhandled exception.
+		if uw != nil && uw.Throw() {
+			e.issueUnhandledException(uw, errors.ErrorUnhandledException.At(fnc.Tree()))
+		}
+
+		// Make sure to invoke the done hook.
+		if e.hooks != nil {
+			e.hooks.OnDone(uw)
+		}
+	})()
+
 	// Ensure that initializers have been run.
 	switch f := fnc.(type) {
 	case *symbols.ClassMethod:
-		e.ensureClassInit(f.Parent)
+		if uw = e.ensureClassInit(f.Parent); uw != nil {
+			return nil, uw
+		}
 	case *symbols.ModuleMethod:
-		e.ensureModuleInit(f.Parent)
+		if uw = e.ensureModuleInit(f.Parent); uw != nil {
+			return nil, uw
+		}
 	default:
 		contract.Failf("Unrecognized function evaluation type: %v", reflect.TypeOf(f))
 	}
@@ -207,23 +228,11 @@ func (e *evaluator) EvaluateFunction(fnc symbols.Function, this *rt.Object, args
 		}
 	}
 
+	// If the arguments bound correctly, actually perform the invocation.
 	var ret *rt.Object
-	var uw *rt.Unwind
 	if e.Diag().Success() {
-		// If the arguments bound correctly, actually perform the invocation.
-		if ret, uw = e.evalCallSymbol(fnc.Tree(), fnc, this, argos...); uw != nil {
-			// If the call had an unwind out of it, then presumably we have an unhandled exception.
-			e.issueUnhandledException(uw, errors.ErrorUnhandledException.At(fnc.Tree()))
-		}
-
-		if e.hooks != nil {
-			e.hooks.OnDone(uw)
-		}
+		ret, uw = e.evalCallSymbol(fnc.Tree(), fnc, this, argos...)
 	}
-
-	// Dump the evaluation state at log-level 5, if it is enabled.
-	e.dumpEvalState(5)
-
 	return ret, uw
 }
 
@@ -310,13 +319,15 @@ func (e *evaluator) initProperty(this *rt.Object, properties *rt.PropertyMap,
 }
 
 // ensureClassInit ensures that the target's class initializer has been run.
-func (e *evaluator) ensureClassInit(class *symbols.Class) {
+func (e *evaluator) ensureClassInit(class *symbols.Class) *rt.Unwind {
 	already := e.classinits[class]
 	e.classinits[class] = true // set true before running, in case of cycles.
 
 	if !already {
 		// First ensure the module initializer has run.
-		e.ensureModuleInit(class.Parent)
+		if uw := e.ensureModuleInit(class.Parent); uw != nil {
+			return uw
+		}
 
 		// Next ensure that the base class's statics are initialized.
 		if class.Extends != nil {
@@ -351,11 +362,10 @@ func (e *evaluator) ensureClassInit(class *symbols.Class) {
 			contract.Assert(len(init.Sig.Parameters) == 0)
 			contract.Assert(init.Sig.Return == nil)
 			ret, uw := e.evalCallSymbol(class.Tree(), init, nil)
-			contract.Assert(ret == nil)
 			if uw != nil {
-				// Must be an unhandled exception; spew it as an error (but keep going).
-				e.issueUnhandledException(uw, errors.ErrorUnhandledInitException.At(init.Tree()), class)
+				return uw
 			}
+			contract.Assert(ret == nil)
 		} else {
 			glog.V(7).Infof("Class has no initializer: %v", class)
 		}
@@ -365,11 +375,13 @@ func (e *evaluator) ensureClassInit(class *symbols.Class) {
 			readonly.Freeze() // ensure this cannot be written post-initialization.
 		}
 	}
+
+	return nil
 }
 
 // ensureModuleInit ensures that the target's module initializer has been run.  It also evaluates dependency module
 // initializers, assuming they have been declared.  If they have not, those will run when we access them.
-func (e *evaluator) ensureModuleInit(mod *symbols.Module) {
+func (e *evaluator) ensureModuleInit(mod *symbols.Module) *rt.Unwind {
 	already := e.modinits[mod]
 	e.modinits[mod] = true // set true before running, in case of cycles.
 
@@ -392,11 +404,10 @@ func (e *evaluator) ensureModuleInit(mod *symbols.Module) {
 			contract.Assert(len(init.Sig.Parameters) == 0)
 			contract.Assert(init.Sig.Return == nil)
 			ret, uw := e.evalCallSymbol(mod.Tree(), init, nil)
-			contract.Assert(ret == nil)
 			if uw != nil {
-				// Must be an unhandled exception; spew it as an error (but keep going).
-				e.issueUnhandledException(uw, errors.ErrorUnhandledInitException.At(init.Tree()), mod)
+				return uw
 			}
+			contract.Assert(ret == nil)
 		} else {
 			glog.V(7).Infof("Module has no initializer: %v", mod)
 		}
@@ -406,6 +417,8 @@ func (e *evaluator) ensureModuleInit(mod *symbols.Module) {
 			readonly.Freeze() // ensure this is never written to after initialization.
 		}
 	}
+
+	return nil
 }
 
 // getModuleGlobals returns a globals table for the given module, lazily initializing if needed.
@@ -832,7 +845,9 @@ func (e *evaluator) evalImport(node *ast.Import) *rt.Unwind {
 	default:
 		contract.Failf("Unrecognized import symbol: %v", reflect.TypeOf(sym))
 	}
-	e.ensureModuleInit(mod)
+	if uw := e.ensureModuleInit(mod); uw != nil {
+		return uw
+	}
 
 	// If a name was requested, bind it dynamically to an object with this import's exports.
 	// TODO[pulumi/lumi#176]: a more elegant way to do this might be to bind it statically, however that's complex
@@ -1312,11 +1327,13 @@ func (e *evaluator) evalObjectLiteral(node *ast.ObjectLiteral) (*rt.Object, *rt.
 // getObjectOrSuperProperty loads a property pointer from an object using the given property key.  It understands how
 // to determine whether this is a `super` load, and bind it, and will adjust the resulting pointer accordingly.
 func (e *evaluator) getObjectOrSuperProperty(
-	obj *rt.Object, objexpr ast.Expression, k rt.PropertyKey, init bool, forWrite bool) *rt.Pointer {
+	obj *rt.Object, objexpr ast.Expression, k rt.PropertyKey, init bool, forWrite bool) (*rt.Pointer, *rt.Unwind) {
 	// Ensure the object's class has been initialized.
 	if obj != nil {
 		if class, isclass := obj.Type().(*symbols.Class); isclass {
-			e.ensureClassInit(class)
+			if uw := e.ensureClassInit(class); uw != nil {
+				return nil, uw
+			}
 		}
 	}
 
@@ -1336,11 +1353,11 @@ func (e *evaluator) getObjectOrSuperProperty(
 	// If a superclass, use the right prototype.
 	if super != nil {
 		// Make sure to call GetPropertyAddrForThis to ensure the this parameter is adjusted to the object.
-		return super.GetPropertyAddrForThis(obj, k, init, forWrite)
+		return super.GetPropertyAddrForThis(obj, k, init, forWrite), nil
 	}
 
 	// Otherwise, simply fetch the property from the object directly.
-	return obj.GetPropertyAddr(k, init, forWrite)
+	return obj.GetPropertyAddr(k, init, forWrite), nil
 }
 
 func (e *evaluator) evalLoadLocationExpression(node *ast.LoadLocationExpression) (*rt.Object, *rt.Unwind) {
@@ -1502,8 +1519,13 @@ func (e *evaluator) evalLoadSymbolLocation(node diag.Diagable, sym symbols.Symbo
 		k := rt.PropertyKey(sym.Name())
 		if s.Static() {
 			contract.Assert(this == nil)
+			// Ensure the class is initialized.
 			class := s.MemberParent()
-			e.ensureClassInit(class) // ensure the class is initialized.
+			if uw := e.ensureClassInit(class); uw != nil {
+				return nil, nil, uw
+			}
+
+			// Now fetch the statics and lookup the property.
 			statics := e.getClassStatics(class)
 			pv = statics.GetAddr(k)
 			contract.Assertf(pv != nil, "Missing static class member '%v'", s.Token())
@@ -1515,7 +1537,10 @@ func (e *evaluator) evalLoadSymbolLocation(node diag.Diagable, sym symbols.Symbo
 				return nil, nil, uw
 			}
 			dynload := this.Type() == types.Dynamic
-			pv = e.getObjectOrSuperProperty(this, thisexpr, k, dynload, lval)
+			var uw *rt.Unwind
+			if pv, uw = e.getObjectOrSuperProperty(this, thisexpr, k, dynload, lval); uw != nil {
+				return nil, nil, uw
+			}
 			contract.Assertf(pv != nil, "Missing instance class member '%v'", s.Token())
 		}
 		ty = s.Type()
@@ -1524,7 +1549,9 @@ func (e *evaluator) evalLoadSymbolLocation(node diag.Diagable, sym symbols.Symbo
 		module := s.MemberParent()
 
 		// Ensure this module has been initialized.
-		e.ensureModuleInit(module)
+		if uw := e.ensureModuleInit(module); uw != nil {
+			return nil, nil, uw
+		}
 
 		// Search the globals table for this module's members.
 		contract.Assert(this == nil)
@@ -1655,7 +1682,11 @@ func (e *evaluator) evalLoadDynamicCore(node ast.Node, objexpr *ast.Expression, 
 			if thisexpr == nil {
 				pv = e.getDynamicNameAddr(key, lval)
 			} else {
-				pv = e.getObjectOrSuperProperty(this, thisexpr, rt.PropertyKey(key), lval || try, lval)
+				var uw *rt.Unwind
+				if pv, uw = e.getObjectOrSuperProperty(
+					this, thisexpr, rt.PropertyKey(key), lval || try, lval); uw != nil {
+					return nil, uw
+				}
 			}
 		}
 	}

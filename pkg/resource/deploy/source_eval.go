@@ -215,7 +215,15 @@ func (h *evalHooks) OnStart() {
 
 // OnDone ensures that, after completion, we tell the other party that we're done.
 func (h *evalHooks) OnDone(uw *rt.Unwind) {
-	h.rz.Done(nil)
+	var err error
+	if uw != nil {
+		if uw.Throw() {
+			err = goerr.New("Planning resulted in an unhandled exception; cannot proceed with the plan")
+		} else {
+			contract.Assert(uw.Return())
+		}
+	}
+	h.rz.Done(err)
 }
 
 // OnObjectInit ensures that, for every resource object created, we tell the planner about it.

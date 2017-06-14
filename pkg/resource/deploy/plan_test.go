@@ -50,6 +50,75 @@ func TestNullPlan(t *testing.T) {
 	assert.Nil(t, err)
 }
 
+// TestErrorPlan creates a plan that immediately fails with an unhandled error.
+func TestErrorPlan(t *testing.T) {
+	t.Parallel()
+
+	// First trigger an error from Iterate:
+	{
+		ctx := plugin.NewContext(cmdutil.Diag(), nil)
+		targ := &Target{Name: tokens.QName("errs")}
+		prev := NewSnapshot(targ.Name, nil, nil)
+		plan := NewPlan(ctx, targ, prev, &errorSource{err: errors.New("ITERATE"), duringIterate: true}, nil)
+		iter, err := plan.Iterate()
+		assert.Nil(t, iter)
+		assert.NotNil(t, err)
+		assert.Equal(t, "ITERATE", err.Error())
+		err = ctx.Close()
+		assert.Nil(t, err)
+	}
+
+	// Next trigger an error from Next:
+	{
+		ctx := plugin.NewContext(cmdutil.Diag(), nil)
+		targ := &Target{Name: tokens.QName("errs")}
+		prev := NewSnapshot(targ.Name, nil, nil)
+		plan := NewPlan(ctx, targ, prev, &errorSource{err: errors.New("NEXT"), duringIterate: false}, nil)
+		iter, err := plan.Iterate()
+		assert.Nil(t, err)
+		assert.NotNil(t, iter)
+		next, err := iter.Next()
+		assert.Nil(t, next)
+		assert.NotNil(t, err)
+		assert.Equal(t, "NEXT", err.Error())
+		err = ctx.Close()
+		assert.Nil(t, err)
+	}
+}
+
+// An errorSource returns an error from either iterate or next, depending on the flag.
+type errorSource struct {
+	err           error // the error to return.
+	duringIterate bool  // if true, the error happens in Iterate; else, Next.
+}
+
+func (src *errorSource) Close() error {
+	return nil // nothing to do.
+}
+
+func (src *errorSource) Info() interface{} {
+	return nil
+}
+
+func (src *errorSource) Iterate() (SourceIterator, error) {
+	if src.duringIterate {
+		return nil, src.err
+	}
+	return &errorSourceIterator{src: src}, nil
+}
+
+type errorSourceIterator struct {
+	src *errorSource
+}
+
+func (iter *errorSourceIterator) Close() error {
+	return nil // nothing to do.
+}
+
+func (iter *errorSourceIterator) Next() (*resource.Object, tokens.Module, error) {
+	return nil, "", iter.src.err
+}
+
 // TestBasicCRUDPlan creates a plan with numerous C(R)UD operations.
 func TestBasicCRUDPlan(t *testing.T) {
 	t.Parallel()
