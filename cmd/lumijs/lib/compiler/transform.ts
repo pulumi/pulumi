@@ -1794,21 +1794,20 @@ export class Transformer {
                 };
             }
 
-            // Locate the constructor, possibly creating a new one if necessary, if there were instance initializers.
+            // Locate the constructor or create one.
+            let ctor: ast.ClassMethod | undefined = <ast.ClassMethod>members[tokens.constructorFunction];
+            let insertAt: number | undefined = undefined;
+            if (!ctor) {
+                // No explicit constructor was found; create a new one.
+                ctor = <ast.ClassMethod>{
+                    kind:   ast.classMethodKind,
+                    name:   ident(tokens.constructorFunction),
+                    access: tokens.publicAccessibility,
+                };
+                insertAt = 0; // add the initializers to the empty block.
+                members[tokens.constructorFunction] = ctor;
+            }
             if (instancePropertyInitializers.length > 0) {
-                let ctor: ast.ClassMethod | undefined = <ast.ClassMethod>members[tokens.constructorFunction];
-                let insertAt: number | undefined = undefined;
-                if (!ctor) {
-                    // No explicit constructor was found; create a new one.
-                    ctor = <ast.ClassMethod>{
-                        kind:   ast.classMethodKind,
-                        name:   ident(tokens.constructorFunction),
-                        access: tokens.publicAccessibility,
-                    };
-                    insertAt = 0; // add the initializers to the empty block.
-                    members[tokens.constructorFunction] = ctor;
-                }
-
                 let bodyBlock: ast.Block;
                 if (ctor.body) {
                     bodyBlock = <ast.Block>ctor.body;

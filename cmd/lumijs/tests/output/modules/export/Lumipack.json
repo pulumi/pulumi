@@ -159,7 +159,16 @@
                             }
                         }
                     },
-                    "members": {},
+                    "members": {
+                        ".ctor": {
+                            "kind": "ClassMethod",
+                            "name": {
+                                "kind": "Identifier",
+                                "ident": ".ctor"
+                            },
+                            "access": "public"
+                        }
+                    },
                     "abstract": false,
                     "loc": {
                         "file": "other.ts",
@@ -550,7 +559,16 @@
                             }
                         }
                     },
-                    "members": {},
+                    "members": {
+                        ".ctor": {
+                            "kind": "ClassMethod",
+                            "name": {
+                                "kind": "Identifier",
+                                "ident": ".ctor"
+                            },
+                            "access": "public"
+                        }
+                    },
                     "abstract": false,
                     "loc": {
                         "file": "index.ts",
