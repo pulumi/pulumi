@@ -38,7 +38,7 @@ build:
 
 .PHONY: install
 install:
-	@echo "\033[0;32mINSTALL:\033[0m"
+	@echo "\033[0;32mINSTALL:\033[0m [${LUMILIB}]"
 	@cd pack/ && yarn link  # ensure NPM references resolve locally.
 	@mkdir -p ${LUMILIB} # ensure the machine-wide library dir exists.
 	@cp -R ./bin/ ${THISLIB} # copy to the standard library location.
