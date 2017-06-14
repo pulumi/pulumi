@@ -91,9 +91,6 @@ export class API {
     constructor(apiName: string) {
         this.apiName = apiName;
         this.swaggerSpec = createBaseSpec(apiName);
-        this.api = new RestAPI(apiName, {
-            body: this.swaggerSpec,
-        });
     }
 
     public route(method: string, path: string, lambda: Function) {
@@ -117,15 +114,11 @@ export class API {
             default:
                 throw new Error("Method not supported: " + method);
         }
-        let apiName = "";
-        if (this.api.apiName !== undefined) {
-            apiName = this.api.apiName;
-        }
         let invokePermission = new Permission(this.apiName + "_invoke_" + sha1hash(method + path), {
             action: "lambda:invokeFunction",
             function: lambda.lambda,
             principal: "apigateway.amazonaws.com",
-            sourceARN: createSourceARN("us-east-1", "490047557317", apiName, "webapi-test-func"),
+            sourceARN: createSourceARN("us-east-1", "490047557317", this.apiName, "webapi-test-func"),
         });
         // TODO[pulumi/lumi#90]: Once we suport output properties, we can use `lambda.lambda.arn` as input 
         //     to constructing this apigateway lambda invocation uri.
@@ -134,18 +127,18 @@ export class API {
             "arn:aws:lambda:us-east-1:490047557317:function:webapi-test-func");
     }
 
-    public publish(stageName?: string): Stage {
-        if (stageName === undefined) {
-            stageName = "prod";
-        }
+    public publish(): Stage {
+        this.api = new RestAPI(this.apiName, {
+            body: this.swaggerSpec,
+        });
         let deploymentId = sha1hash(jsonStringify(this.swaggerSpec));
         this.deployment = new Deployment(this.apiName + "_" + deploymentId, {
             restAPI: this.api,
             description: "Deployment of version " + deploymentId,
         });
-        let stage = new Stage(this.apiName + "_" + stageName, {
-            stageName: stageName,
-            description: "The production deployment of the API.",
+        let stage = new Stage(this.apiName + "_stage", {
+            stageName: "stage",
+            description: "The current deployment of the API.",
             restAPI: this.api,
             deployment: this.deployment,
         });

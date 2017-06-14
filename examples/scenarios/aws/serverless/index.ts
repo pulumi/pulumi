@@ -64,5 +64,5 @@ let lambda = new aws.serverless.Function(
 let api = new aws.serverless.API("frontend")
 api.route("GET", "/bambam", lambda)
 api.route("PUT", "/bambam", lambda)
-let stage = api.publish("prod")
+let stage = api.publish()
 
