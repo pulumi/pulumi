@@ -15,7 +15,7 @@
 
 
 /* tslint:disable: ordered-imports */
-import { jsonStringify, sha1hash, printf } from "@lumi/lumi/runtime";
+import { jsonStringify, sha1hash, printf } from "@lumi/lumirt";
 import { Deployment, RestAPI, Stage } from "../apigateway";
 import { Permission } from "../lambda";
 import { Function } from "./function";

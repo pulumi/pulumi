@@ -16,14 +16,7 @@
         "strictNullChecks": true
     },
     "files": [
-        "index.ts",
-
-        "context.ts",
-        "resource.ts",
-
-        "asset/index.ts",
-        "asset/asset.ts",
-        "asset/archive.ts"
+        "index.ts"
     ]
 }
 

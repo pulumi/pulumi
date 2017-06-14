@@ -29,7 +29,7 @@ clean:
 .PHONY: build
 build:
 	@echo "\033[0;32mBUILD:\033[0m"
-	@cd pack/ && yarn link @lumi/lumi && yarn link @lumi/lumijs # ensure we resolve to Lumi's stdlib.
+	@cd pack/ && yarn link @lumi/lumirt @lumi/lumijs @lumi/lumi # ensure we resolve to Lumi's stdlib.
 	@cd pack/ && lumijs # compile the LumiPack
 	@cd pack/ && lumi pack verify # ensure the pack verifies
 	@cp -R pack/.lumi/bin/ bin/ # copy the pack to our bin dir

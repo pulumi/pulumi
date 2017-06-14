@@ -44,7 +44,7 @@ func newTestEval() (binder.Binder, Interpreter) {
 	return b, New(b.Ctx(), nil)
 }
 
-var isFunctionIntrin = tokens.ModuleMember("lumi:runtime/index:isFunction")
+var isFunctionIntrin = tokens.ModuleMember("lumirt:index:isFunction")
 
 func makeIsFunctionExprAST(dynamic bool) ast.Expression {
 	if dynamic {
@@ -109,10 +109,10 @@ func makeTestIsFunctionAST(dynamic bool, realFunc bool) *pack.Package {
 	})
 
 	// Now return a package with a default module and single entrypoint main function.  Note that we must call this
-	// package "lumi" and indeed have a fake implementation of the very isFunction intrinsic we are testing, to avoid
+	// package "lumirt" and indeed have a fake implementation of the very isFunction intrinsic we are testing, to avoid
 	// depending on the Lumi standard library as an external package; this ensures tests are self-contained.
 	return &pack.Package{
-		Name: "lumi",
+		Name: "lumirt",
 		Modules: &ast.Modules{
 			tokens.ModuleName(".default"): &ast.Module{
 				DefinitionNode: ast.DefinitionNode{
@@ -140,10 +140,10 @@ func makeTestIsFunctionAST(dynamic bool, realFunc bool) *pack.Package {
 					},
 				},
 			},
-			tokens.ModuleName("runtime/index"): &ast.Module{
+			tokens.ModuleName("index"): &ast.Module{
 				DefinitionNode: ast.DefinitionNode{
 					Name: &ast.Identifier{
-						Ident: tokens.Name("runtime/index"),
+						Ident: tokens.Name("index"),
 					},
 				},
 				Exports: &ast.ModuleExports{
@@ -154,7 +154,7 @@ func makeTestIsFunctionAST(dynamic bool, realFunc bool) *pack.Package {
 							},
 						},
 						Referent: &ast.Token{
-							Tok: tokens.Token("lumi:runtime/index:isFunction"),
+							Tok: tokens.Token("lumirt:index:isFunction"),
 						},
 					},
 				},
@@ -204,7 +204,7 @@ func makeTestIsFunctionAST(dynamic bool, realFunc bool) *pack.Package {
 	}
 }
 
-// TestIsFunction verifies the `lumi:runtime/index:isFunction` intrinsic.
+// TestIsFunction verifies the `lumirt:index:isFunction` intrinsic.
 func TestIsFunction(t *testing.T) {
 	t.Parallel()
 

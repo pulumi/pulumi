@@ -5,7 +5,7 @@ PROJECT_PKGS=$(shell go list ./cmd/... ./pkg/... | grep -v /vendor/)
 default: banner lint_quiet vet test install
 
 .PHONY: all
-all: banner_all lint_quiet vet test install lumijs lumipkg lumijspkg awspkg
+all: banner_all lint_quiet vet test install lumijs lumirtpkg lumijspkg lumipkg awspkg
 
 .PHONY: banner
 banner:
@@ -57,13 +57,17 @@ test:
 lumijs:
 	@cd ./cmd/lumijs && $(MAKE)
 
-.PHONY: lumipkg
-lumipkg:
-	@cd ./lib/lumi && $(MAKE)
+.PHONY: lumirtpkg
+lumirtpkg:
+	@cd ./lib/lumirt && $(MAKE)
 
 .PHONY: lumijspkg
 lumijspkg:
 	@cd ./lib/lumijs && $(MAKE)
+
+.PHONY: lumipkg
+lumipkg:
+	@cd ./lib/lumi && $(MAKE)
 
 .PHONY: awspkg
 awspkg:

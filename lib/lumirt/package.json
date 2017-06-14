@@ -1,0 +1,12 @@
+{
+    "name": "@lumi/lumirt",
+    "main": ".lumi/bin/index.js",
+    "typings": ".lumi/bin/index.d.ts",
+    "scripts": {
+        "build": "lumijs"
+    },
+    "devDependencies": {
+        "typescript": "^2.1.4"
+    }
+}
+

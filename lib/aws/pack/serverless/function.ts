@@ -16,7 +16,7 @@
 import { AssetArchive, String, File } from "@lumi/lumi/asset";
 import {
     serializeClosure, jsonStringify, objectKeys, Closure, printf
-} from "@lumi/lumi/runtime";
+} from "@lumi/lumirt";
 import { Role } from "../iam/role";
 import { Function as LambdaFunction } from "../lambda/function";
 import { ARN } from "../types";
