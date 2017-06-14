@@ -20,7 +20,7 @@ clean:
 .PHONY: build
 build:
 	@echo "\033[0;32mBUILD:\033[0m"
-	@yarn link @lumi/lumi # ensure we resolve to Lumi's stdlib.
+	@yarn link @lumi/lumirt # ensure we resolve to Lumi's rtlib.
 	@lumijs # compile the LumiPack
 	@lumi pack verify # ensure the pack verifies
 
