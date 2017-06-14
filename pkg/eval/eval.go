@@ -772,6 +772,7 @@ func (e *evaluator) evalCallFuncStub(node diag.Diagable,
 // Statements
 
 func (e *evaluator) evalStatement(node ast.Statement) *rt.Unwind {
+	contract.Assert(node != nil)
 	if glog.V(7) {
 		glog.V(7).Infof("Evaluating statement: %v", reflect.TypeOf(node))
 	}
@@ -1093,6 +1094,7 @@ func (e *evaluator) evalExpressionStatement(node *ast.ExpressionStatement) *rt.U
 // Expressions
 
 func (e *evaluator) evalExpression(node ast.Expression) (*rt.Object, *rt.Unwind) {
+	contract.Assert(node != nil)
 	if glog.V(7) {
 		glog.V(7).Infof("Evaluating expression: %v", reflect.TypeOf(node))
 	}

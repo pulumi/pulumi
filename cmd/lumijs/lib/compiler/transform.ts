@@ -1796,24 +1796,29 @@ export class Transformer {
 
             // Locate the constructor or create one.
             let ctor: ast.ClassMethod | undefined = <ast.ClassMethod>members[tokens.constructorFunction];
-            let insertAt: number | undefined = undefined;
             if (!ctor) {
                 // No explicit constructor was found; create a new one.
                 ctor = <ast.ClassMethod>{
                     kind:   ast.classMethodKind,
                     name:   ident(tokens.constructorFunction),
                     access: tokens.publicAccessibility,
+                    body:   this.withLocation(node, <ast.Block>{
+                        kind:       ast.blockKind,
+                        statements: [],
+                    }),
                 };
-                insertAt = 0; // add the initializers to the empty block.
                 members[tokens.constructorFunction] = ctor;
             }
             if (instancePropertyInitializers.length > 0) {
-                let bodyBlock: ast.Block;
-                if (ctor.body) {
-                    bodyBlock = <ast.Block>ctor.body;
-                    if (extend) {
-                        // If there is a superclass, find the insertion point right *after* the explicit call to
-                        // `super()`, to achieve the expected initialization order.
+                let bodyBlock: ast.Block = <ast.Block>ctor.body;
+
+                // Figure out where to insert the initializers; by default, at the start, but if there are `super()`
+                // calls, we may need to insert the initializers afterwards.
+                let insertAt = 0;
+                if (extend) {
+                    if (bodyBlock.statements.length > 0) {
+                        // If there is a body and a superclass, find the insertion point right *after* the explicit
+                        // call to `super()`, to achieve the expected initialization order.
                         for (let i = 0; i < bodyBlock.statements.length; i++) {
                             if (this.isSuperCall(bodyBlock.statements[i], extend.tok)) {
                                 insertAt = i+1; // place the initializers right after this call.
@@ -1823,24 +1828,11 @@ export class Transformer {
                         contract.assert(insertAt !== undefined);
                     }
                     else {
-                        insertAt = 0; // put the initializers before everything else.
-                    }
-                }
-                else {
-                    bodyBlock = this.withLocation(node, <ast.Block>{
-                        kind:       ast.blockKind,
-                        statements: [],
-                    });
-                    ctor.body = bodyBlock;
-                    if (extend) {
                         // Generate an automatic call to the base class.  Omitting this is only legal if the base class
                         // constructor has zero arguments, so we just generate a simple `super();` call.
                         bodyBlock.statements.push(
-                            this.copyLocation(ctor.body, this.createEmptySuperCall(extend.tok)));
+                            this.copyLocation(bodyBlock, this.createEmptySuperCall(extend.tok)));
                         insertAt = 1; // insert the initializers immediately after this call.
-                    }
-                    else {
-                        insertAt = 0; // place the initializers at the start of the (currently empty) block.
                     }
                 }
 

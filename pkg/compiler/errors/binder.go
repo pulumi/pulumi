@@ -60,4 +60,5 @@ var (
 	ErrorPropertySetterParamCount  = newError(535, "Property setter must have exactly 1 parameter; got %v")
 	ErrorPropertySetterParamType   = newError(536, "Property setter parameter is type '%v'; expected '%v'")
 	ErrorPropertySetterReturnType  = newError(537, "Property setter returned type '%v'; expected no return type")
+	ErrorMethodsMustHaveBodies     = newError(538, "Non-abstract methods must have bodies: '%v' is %v")
 )

@@ -145,6 +145,11 @@ func (b *binder) bindClassMethod(node *ast.ClassMethod, parent *symbols.Class) *
 	sym := symbols.NewClassMethodSym(node, parent, typ)
 	b.ctx.RegisterSymbol(node, sym)
 
+	// All methods have bodies (unless they are abstract).
+	if node.Body == nil && (node.Abstract == nil || !*node.Abstract) {
+		b.Diag().Errorf(errors.ErrorMethodsMustHaveBodies.At(node), sym, "a concrete class method")
+	}
+
 	// Note that we don't actually bind the body of this method yet.  Until we have gone ahead and injected *all*
 	// top-level symbols into the type table, we would potentially encounter missing intra-module symbols.
 	return sym
