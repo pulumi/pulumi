@@ -116,11 +116,13 @@ type deployOptions struct {
 	Output           string   // the place to store the output, if any.
 }
 
-func deployLatest(cmd *cobra.Command, info *envCmdInfo, opts deployOptions) {
+func deployLatest(cmd *cobra.Command, info *envCmdInfo, opts deployOptions) error {
 	if result := plan(cmd, info, opts); result != nil {
 		if opts.DryRun {
 			// If a dry run, just print the plan, don't actually carry out the deployment.
-			printPlan(result, opts)
+			if err := printPlan(result, opts); err != nil {
+				return err
+			}
 		} else {
 			// Otherwise, we will actually deploy the latest bits.
 			var header bytes.Buffer
@@ -131,7 +133,7 @@ func deployLatest(cmd *cobra.Command, info *envCmdInfo, opts deployOptions) {
 			// Create an object to track progress and perform the actual operations.
 			start := time.Now()
 			progress := newProgress(opts.Summary)
-			summary, _, _, _ := result.Plan.Apply(progress)
+			summary, _, _, err := result.Plan.Apply(progress)
 			contract.Assert(summary != nil)
 			empty := (summary.Steps() == 0) // if no step is returned, it was empty.
 
@@ -158,8 +160,10 @@ func deployLatest(cmd *cobra.Command, info *envCmdInfo, opts deployOptions) {
 			saveEnv(targ, summary.Snap(), opts.Output, true /*overwrite*/)
 
 			fmt.Print(colors.Colorize(&footer))
+			return err
 		}
 	}
+	return nil
 }
 
 // deployProgress pretty-prints the plan application process as it goes.

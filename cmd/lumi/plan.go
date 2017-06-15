@@ -72,7 +72,9 @@ func newPlanCmd() *cobra.Command {
 				DOT:              dotOutput,
 			}
 			if result := plan(cmd, info, opts); result != nil {
-				printPlan(result, opts)
+				if err := printPlan(result, opts); err != nil {
+					return err
+				}
 			}
 			return nil
 		}),
@@ -152,7 +154,7 @@ type planResult struct {
 	Plan *deploy.Plan // the plan created by this command.
 }
 
-func printPlan(result *planResult, opts deployOptions) {
+func printPlan(result *planResult, opts deployOptions) error {
 	// First print config/unchanged/etc. if necessary.
 	var prelude bytes.Buffer
 	printPrelude(&prelude, result, opts, true)
@@ -164,13 +166,13 @@ func printPlan(result *planResult, opts deployOptions) {
 	iter, err := result.Plan.Iterate()
 	if err != nil {
 		cmdutil.Diag().Errorf(diag.Message("An error occurred while preparing the plan: %v"), err)
-		return
+		return err
 	}
 
 	step, err := iter.Next()
 	if err != nil {
 		cmdutil.Diag().Errorf(diag.Message("An error occurred while enumerating the plan: %v"), err)
-		return
+		return err
 	}
 
 	var summary bytes.Buffer
@@ -197,7 +199,7 @@ func printPlan(result *planResult, opts deployOptions) {
 		var err error
 		if step, err = iter.Next(); err != nil {
 			cmdutil.Diag().Errorf(diag.Message("An error occurred while viewing the plan: %v"), err)
-			return
+			return err
 		}
 	}
 
@@ -209,6 +211,7 @@ func printPlan(result *planResult, opts deployOptions) {
 		printSummary(&summary, counts, opts.ShowReplaceSteps, true)
 		fmt.Print(colors.Colorize(&summary))
 	}
+	return nil
 }
 
 func printPrelude(b *bytes.Buffer, result *planResult, opts deployOptions, planning bool) {
