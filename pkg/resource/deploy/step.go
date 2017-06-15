@@ -26,6 +26,7 @@ import (
 type Step struct {
 	iter    *PlanIterator          // the current plan iteration.
 	op      StepOp                 // the operation that will be performed.
+	urn     resource.URN           // the resource URN (for before and after).
 	old     *resource.State        // the state of the resource before this step.
 	new     *resource.Object       // the state of the resource after this step.
 	inputs  resource.PropertyMap   // the input properties to use during the operation.
@@ -34,34 +35,44 @@ type Step struct {
 }
 
 func NewSameStep(iter *PlanIterator, old *resource.State, new *resource.Object, inputs resource.PropertyMap) *Step {
-	return &Step{iter: iter, op: OpSame, old: old, new: new, inputs: inputs}
+	contract.Assert(resource.HasURN(old))
+	contract.Assert(!resource.HasURN(new))
+	return &Step{iter: iter, op: OpSame, urn: old.URN(), old: old, new: new, inputs: inputs}
 }
 
-func NewCreateStep(iter *PlanIterator, new *resource.Object, inputs resource.PropertyMap) *Step {
-	return &Step{iter: iter, op: OpCreate, new: new, inputs: inputs}
+func NewCreateStep(iter *PlanIterator, urn resource.URN, new *resource.Object, inputs resource.PropertyMap) *Step {
+	contract.Assert(!resource.HasURN(new))
+	return &Step{iter: iter, op: OpCreate, urn: urn, new: new, inputs: inputs}
 }
 
 func NewDeleteStep(iter *PlanIterator, old *resource.State) *Step {
-	return &Step{iter: iter, op: OpDelete, old: old}
+	contract.Assert(resource.HasURN(old))
+	return &Step{iter: iter, op: OpDelete, urn: old.URN(), old: old}
 }
 
 func NewUpdateStep(iter *PlanIterator, old *resource.State,
 	new *resource.Object, inputs resource.PropertyMap) *Step {
-	return &Step{iter: iter, op: OpUpdate, old: old, new: new, inputs: inputs}
+	contract.Assert(resource.HasURN(old))
+	contract.Assert(!resource.HasURN(new))
+	return &Step{iter: iter, op: OpUpdate, urn: old.URN(), old: old, new: new, inputs: inputs}
 }
 
 func NewReplaceCreateStep(iter *PlanIterator, old *resource.State,
 	new *resource.Object, inputs resource.PropertyMap, reasons []resource.PropertyKey) *Step {
-	return &Step{iter: iter, op: OpReplaceCreate, old: old, new: new, inputs: inputs, reasons: reasons}
+	contract.Assert(resource.HasURN(old))
+	contract.Assert(!resource.HasURN(new))
+	return &Step{iter: iter, op: OpReplaceCreate, urn: old.URN(), old: old, new: new, inputs: inputs, reasons: reasons}
 }
 
 func NewReplaceDeleteStep(iter *PlanIterator, old *resource.State) *Step {
-	return &Step{iter: iter, op: OpReplaceDelete, old: old}
+	contract.Assert(resource.HasURN(old))
+	return &Step{iter: iter, op: OpReplaceDelete, urn: old.URN(), old: old}
 }
 
 func (s *Step) Plan() *Plan                     { return s.iter.p }
 func (s *Step) Iterator() *PlanIterator         { return s.iter }
 func (s *Step) Op() StepOp                      { return s.op }
+func (s *Step) URN() resource.URN               { return s.urn }
 func (s *Step) Old() *resource.State            { return s.old }
 func (s *Step) New() *resource.Object           { return s.new }
 func (s *Step) Inputs() resource.PropertyMap    { return s.inputs }
@@ -90,7 +101,7 @@ func (s *Step) Apply() (resource.Status, error) {
 		// Just propagate the ID and output state to the live object and append to the snapshot.
 		contract.Assert(s.old != nil)
 		contract.Assert(s.new != nil)
-		s.new.Update(s.old.ID(), s.old.Outputs())
+		s.new.Update(s.urn, s.old.ID(), s.old.Outputs())
 		s.iter.MarkStateSnapshot(s.old)
 		s.iter.AppendStateSnapshot(s.old)
 
@@ -111,7 +122,7 @@ func (s *Step) Apply() (resource.Status, error) {
 			return resource.StatusUnknown, err
 		}
 		s.outputs = outs
-		state := s.new.Update(id, outs)
+		state := s.new.Update(s.urn, id, outs)
 		if s.old != nil {
 			s.iter.MarkStateSnapshot(s.old)
 		}
@@ -144,7 +155,7 @@ func (s *Step) Apply() (resource.Status, error) {
 			return resource.StatusUnknown, err
 		}
 		s.outputs = outs
-		state := s.new.Update(id, outs)
+		state := s.new.Update(s.urn, id, outs)
 		s.iter.MarkStateSnapshot(s.old)
 		s.iter.AppendStateSnapshot(state)
 
@@ -161,11 +172,13 @@ func (s *Step) Skip() {
 	switch s.op {
 	case OpSame:
 		// In the case of a same, both ID and outputs are identical.
-		s.new.Update(s.old.ID(), s.old.Outputs())
+		s.new.Update(s.urn, s.old.ID(), s.old.Outputs())
 	case OpCreate:
-		// In the case of a create, we cannot possibly know the ID or output properties.
+		// In the case of a create, we cannot possibly know the ID or output properties.  But we do know the URN.
+		s.new.SetURN(s.urn)
 	case OpUpdate:
 		// In the case of an update, the ID is the same, however, the outputs remain unknown.
+		s.new.SetURN(s.urn)
 		s.new.SetID(s.old.ID())
 	case OpReplaceCreate:
 		// In the case of a replacement, we neither propagate the ID nor output properties.  This may be surprising,

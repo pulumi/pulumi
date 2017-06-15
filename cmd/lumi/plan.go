@@ -286,7 +286,7 @@ func printUnchanged(b *bytes.Buffer, stats deploy.PlanSummary, summary bool, pla
 		if stats.Sames()[res.URN()] {
 			b.WriteString("  ") // simulate the 2 spaces for +, -, etc.
 			printResourceHeader(b, res, nil, "")
-			printResourceProperties(b, res, nil, nil, nil, summary, planning, "")
+			printResourceProperties(b, res.URN(), res, nil, nil, nil, summary, planning, "")
 		}
 	}
 }
@@ -298,7 +298,8 @@ func printStep(b *bytes.Buffer, step *deploy.Step, summary bool, planning bool, 
 	// Next print the resource URN, properties, etc.
 	printResourceHeader(b, step.Old(), step.New(), indent)
 	b.WriteString(step.Op().Suffix())
-	printResourceProperties(b, step.Old(), step.New(), step.Inputs(), step.Reasons(), summary, planning, indent)
+	printResourceProperties(b, step.URN(), step.Old(), step.New(), step.Inputs(), step.Reasons(),
+		summary, planning, indent)
 
 	// Finally make sure to reset the color.
 	b.WriteString(colors.Reset)
@@ -316,23 +317,19 @@ func printResourceHeader(b *bytes.Buffer, old *resource.State, new *resource.Obj
 	b.WriteString(fmt.Sprintf("%s:\n", string(t)))
 }
 
-func printResourceProperties(b *bytes.Buffer, old *resource.State, new *resource.Object,
+func printResourceProperties(b *bytes.Buffer, urn resource.URN, old *resource.State, new *resource.Object,
 	inputs resource.PropertyMap, replaces []resource.PropertyKey, summary bool, planning bool, indent string) {
 	indent += detailsIndent
 
 	// Print out the URN and, if present, the ID, as "pseudo-properties".
 	var id resource.ID
-	var URN resource.URN
-	if old == nil {
-		URN = new.URN()
-	} else {
+	if old != nil {
 		id = old.ID()
-		URN = old.URN()
 	}
 	if id != "" {
 		b.WriteString(fmt.Sprintf("%s[id=%s]\n", indent, string(id)))
 	}
-	b.WriteString(fmt.Sprintf("%s[urn=%s]\n", indent, URN.Name()))
+	b.WriteString(fmt.Sprintf("%s[urn=%s]\n", indent, urn.Name()))
 
 	if !summary {
 		// Print all of the properties associated with this resource.

@@ -16,7 +16,6 @@
 package mapper
 
 import (
-	"fmt"
 	"reflect"
 	"testing"
 
@@ -485,7 +484,6 @@ func TestBasicUnmap(t *testing.T) {
 
 		// check outer:
 		assert.NotNil(t, um["inners"])
-		fmt.Printf("XXX: %v\n", um["inners"])
 		arr := um["inners"].([]interface{})
 		assert.Equal(t, len(arr), 1)
 

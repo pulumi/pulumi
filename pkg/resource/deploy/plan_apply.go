@@ -191,7 +191,6 @@ func (iter *PlanIterator) nextResource(new *resource.Object, ctx tokens.Module) 
 		return nil, err
 	}
 	urn := resource.NewURN(iter.p.Target().Name, ctx, t, name)
-	new.SetURN(urn)
 
 	// First ensure the provider is okay with this resource.
 	var invalid bool
@@ -201,8 +200,7 @@ func (iter *PlanIterator) nextResource(new *resource.Object, ctx tokens.Module) 
 	}
 	for _, failure := range failures {
 		invalid = true
-		iter.p.Diag().Errorf(
-			errors.ErrorResourcePropertyInvalidValue, new.URN(), failure.Property, failure.Reason)
+		iter.p.Diag().Errorf(errors.ErrorResourcePropertyInvalidValue, urn, failure.Property, failure.Reason)
 	}
 
 	// Next, give each analyzer -- if any -- a chance to inspect the resource too.
@@ -217,8 +215,7 @@ func (iter *PlanIterator) nextResource(new *resource.Object, ctx tokens.Module) 
 		}
 		for _, failure := range failures {
 			invalid = true
-			iter.p.Diag().Errorf(
-				errors.ErrorAnalyzeResourceFailure, a, new.URN(), failure.Property, failure.Reason)
+			iter.p.Diag().Errorf(errors.ErrorAnalyzeResourceFailure, a, urn, failure.Property, failure.Reason)
 		}
 	}
 
@@ -257,19 +254,19 @@ func (iter *PlanIterator) nextResource(new *resource.Object, ctx tokens.Module) 
 			return nil, err
 		} else if len(replacements) > 0 {
 			iter.replaces[urn] = true
-			glog.V(7).Infof("Planner decided to replace '%v'", urn)
+			glog.V(7).Infof("Planner decided to replace '%v' (oldprops=%v inputs=%v)", urn, oldprops, inputs)
 			return NewReplaceCreateStep(iter, old, new, inputs, replacements), nil
 		}
 
 		iter.updates[urn] = true
-		glog.V(7).Infof("Planner decided to update '%v'", urn)
+		glog.V(7).Infof("Planner decided to update '%v' (oldprops=%v inputs=%v", urn, oldprops, inputs)
 		return NewUpdateStep(iter, old, new, inputs), nil
 	}
 
 	// Otherwise, the resource isn't in the old map, so it must be a resource creation.
 	iter.creates[urn] = true
 	glog.V(7).Infof("Planner decided to create '%v'", urn)
-	return NewCreateStep(iter, new, inputs), nil
+	return NewCreateStep(iter, urn, new, inputs), nil
 }
 
 // nextDelete produces a new step that deletes a resource if necessary.

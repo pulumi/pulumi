@@ -270,18 +270,24 @@ func (g *PackGenerator) EmitResource(w *bufio.Writer, res *Resource) {
 func (g *PackGenerator) emitResourceClass(w *bufio.Writer, res *Resource) {
 	// Emit the class definition itself.
 	name := res.Name()
-	writefmtln(w, "export class %v extends lumi.Resource implements %vArgs {", name, name)
+	var base string
+	if res.Named {
+		base = "NamedResource"
+	} else {
+		base = "Resource"
+	}
+	writefmtln(w, "export class %v extends lumi.%v implements %vArgs {", name, base, name)
 
 	// Now all fields definitions.
 	hasArgs := false
 	hasName := false
 	hasRequiredArgs := false
 	fn := forEachField(res, func(fld *types.Var, opt PropertyOptions) {
-		g.emitField(w, fld, opt, "    public ")
-		if !opt.Out {
-			if isResourceNameProperty(res, opt) {
-				hasName = true
-			} else {
+		if isResourceNameProperty(res, opt) {
+			hasName = true
+		} else {
+			g.emitField(w, fld, opt, "    public ")
+			if !opt.Out {
 				hasArgs = true
 				if !opt.Optional {
 					hasRequiredArgs = true
@@ -303,16 +309,13 @@ func (g *PackGenerator) emitResourceClass(w *bufio.Writer, res *Resource) {
 		writefmt(w, "?")
 	}
 	writefmtln(w, ": %vArgs) {", name)
-	writefmtln(w, "        super();")
 
-	// Named properties are passed as the constructor's first argument.
 	if hasName {
-		writefmtln(w, "        if (name === undefined) {")
-		writefmtln(w, "            throw new Error(\"Missing required resource name\");")
-		writefmtln(w, "        }")
-		writefmtln(w, "        this.name = name;")
+		// Named properties are passed as the constructor's first argument.
+		writefmtln(w, "        super(name);")
+	} else {
+		writefmtln(w, "        super();")
 	}
-
 	// Next, validate that required parameters exist, and store all arguments on the object.
 	argLinePrefix := "        "
 	needsArgsCheck := hasArgs && !hasRequiredArgs

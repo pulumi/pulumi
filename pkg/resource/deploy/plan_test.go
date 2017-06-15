@@ -208,6 +208,7 @@ func TestBasicCRUDPlan(t *testing.T) {
 	newObjC.Properties().InitAddr(rt.PropertyKey("cf1"), rt.NewStringObject("c-value"), false, nil, nil)
 	newObjC.Properties().InitAddr(rt.PropertyKey("cf2"), rt.NewNumberObject(83), false, nil, nil)
 	newResC := resource.NewObject(newObjC)
+	newResCProps := newResC.CopyProperties()
 	//     - No D; it is deleted.
 
 	// Use a fixed source that just returns the above predefined objects during planning.
@@ -229,6 +230,9 @@ func TestBasicCRUDPlan(t *testing.T) {
 			break
 		}
 
+		var urn resource.URN
+		var realID bool
+		var obj *resource.Object
 		op := step.Op()
 		switch op {
 		case OpCreate: // A is created
@@ -236,8 +240,8 @@ func TestBasicCRUDPlan(t *testing.T) {
 			new := step.New()
 			assert.Nil(t, old)
 			assert.NotNil(t, new)
-			assert.Equal(t, urnA, new.URN())
 			assert.Equal(t, newResAProps, step.Inputs())
+			obj, urn, realID = new, urnA, false
 		case OpUpdate: // B is updated
 			old := step.Old()
 			new := step.New()
@@ -245,8 +249,17 @@ func TestBasicCRUDPlan(t *testing.T) {
 			assert.Equal(t, urnB, old.URN())
 			assert.Equal(t, oldResB, old)
 			assert.NotNil(t, new)
-			assert.Equal(t, urnB, new.URN())
 			assert.Equal(t, newResBProps, step.Inputs())
+			obj, urn, realID = new, urnB, true
+		case OpSame: // C is the same
+			old := step.Old()
+			new := step.New()
+			assert.NotNil(t, old)
+			assert.Equal(t, urnC, old.URN())
+			assert.Equal(t, oldResC, old)
+			assert.NotNil(t, new)
+			assert.Equal(t, newResCProps, step.Inputs())
+			obj, urn, realID = new, urnC, true
 		case OpDelete: // D is deleted
 			old := step.Old()
 			new := step.New()
@@ -254,6 +267,23 @@ func TestBasicCRUDPlan(t *testing.T) {
 			assert.Equal(t, urnD, old.URN())
 			assert.Equal(t, oldResD, old)
 			assert.Nil(t, new)
+		}
+
+		if obj != nil {
+			// Ensure the ID and URN aren't assigned until we step.
+			assert.False(t, obj.HasID())
+			assert.False(t, obj.HasURN())
+		}
+
+		step.Skip()
+
+		if obj != nil {
+			// Ensure the ID and URN are populated correctly.
+			if realID {
+				assert.True(t, obj.HasID(), "Expected op %v to populate a real ID (%v)", op, urn)
+			}
+			assert.True(t, obj.HasURN(), "Expected op %v to populate a URN (%v)", op, urn)
+			assert.Equal(t, urn, obj.URN())
 		}
 
 		seen[op]++ // track the # of these we've seen so we can validate.

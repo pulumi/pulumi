@@ -35,7 +35,6 @@ func IsResourceObject(obj *rt.Object) bool {
 
 // Object is a live resource object, connected to state that may change due to evaluation.
 type Object struct {
-	urn URN        // the resource's object urn, a human-friendly, unique name for the
 	obj *rt.Object // the resource's live object reference.
 }
 
@@ -48,22 +47,26 @@ func NewObject(obj *rt.Object) *Object {
 	return &Object{obj: obj}
 }
 
-func (r *Object) URN() URN          { return r.urn }
 func (r *Object) Obj() *rt.Object   { return r.obj }
 func (r *Object) Type() tokens.Type { return r.obj.Type().TypeToken() }
 
 // ID fetches the object's ID.
 func (r *Object) ID() ID {
-	idobj := getIDObject(r.Obj())
-	contract.Assert(idobj != nil)
-	contract.Assert(idobj.IsString())
-	return ID(idobj.StringValue())
+	if idobj := getIDObject(r.Obj()); idobj != nil && idobj.IsString() {
+		return ID(idobj.StringValue())
+	}
+	return ID("")
 }
 
 // HasID returns true if the object already has an ID assigned to it.
 func (r *Object) HasID() bool {
+	return r.ID() != ""
+}
+
+// HasComputedID returns true if the object has an ID, but is computed and its value is not known yet.
+func (r *Object) HasComputedID() bool {
 	idobj := getIDObject(r.Obj())
-	return idobj != nil && !idobj.IsNull()
+	return idobj != nil && idobj.IsComputed()
 }
 
 // SetID assigns an ID to the target object.  This must only happen once.
@@ -85,21 +88,53 @@ func getIDObject(obj *rt.Object) *rt.Object {
 	return nil
 }
 
-// SetURN assignes a URN to the target object.  This must only happen once.
-func (r *Object) SetURN(m URN) {
-	contract.Requiref(!HasURN(r), "urn", "empty")
-	r.urn = m
+const (
+	// URNProperty is the special URN property name.
+	URNProperty = rt.PropertyKey("urn")
+	// URNPropertyKey is the special URN property name for resource maps.
+	URNPropertyKey = PropertyKey("urn")
+)
+
+// URN fetches the object's URN.
+func (r *Object) URN() URN {
+	if urnobj := getURNObject(r.Obj()); urnobj != nil && urnobj.IsString() {
+		return URN(urnobj.StringValue())
+	}
+	return URN("")
 }
 
-// Update updates the target object an ID and resource property map.  This mutates the live object connected to this
-// resource and also archives the resource object's present state in the form of a state snapshot.
-func (r *Object) Update(id ID, outputs PropertyMap) *State {
-	contract.Require(HasURN(r), "urn")
+// HasURN returns true if the object has a URN assigned.
+func (r *Object) HasURN() bool {
+	return r.URN() != ""
+}
 
+// SetURN assignes a URN to the target object.  This must only happen once.
+func (r *Object) SetURN(urn URN) {
+	prop := r.obj.GetPropertyAddr(URNProperty, true, true)
+	contract.Assertf(prop.Obj().IsNull() || prop.Obj().IsComputed(), "Unexpected double set on URN; previous=%v", prop)
+	prop.Set(rt.NewStringObject(string(urn)))
+}
+
+// getURNObject fetches the URN off the target object, dynamically, given its runtime value.
+func getURNObject(obj *rt.Object) *rt.Object {
+	contract.Assert(IsResourceObject(obj))
+	if urnprop := obj.GetPropertyAddr(URNProperty, false, false); urnprop != nil {
+		urn := urnprop.Obj()
+		contract.Assert(urn != nil)
+		contract.Assert(urn.IsString() || urn.IsComputed())
+		return urn
+	}
+	return nil
+}
+
+// Update updates the target object URN, ID, and resource property map.  This mutates the live object connected to this
+// resource and also archives the resource object's present state in the form of a state snapshot.
+func (r *Object) Update(urn URN, id ID, outputs PropertyMap) *State {
 	// First take a snapshot of the properties.
 	inputs := r.CopyProperties()
 
-	// Now assign the ID and copy everything in the property map, overwriting what exists.
+	// Now assign the URN, ID, and copy everything in the property map, overwriting what exists.
+	r.SetURN(urn)
 	r.SetID(id)
 	r.SetProperties(outputs)
 
@@ -116,8 +151,9 @@ func (r *Object) CopyProperties() PropertyMap {
 
 // SetProperties copies from a resource property map to the runtime object, overwriting properties as it goes.
 func (r *Object) SetProperties(props PropertyMap) {
-	contract.Assert(props != nil)
-	setRuntimeProperties(r.Obj(), props)
+	if props != nil {
+		setRuntimeProperties(r.Obj(), props)
+	}
 }
 
 func copyObject(resobj *rt.Object, obj *rt.Object) PropertyMap {
