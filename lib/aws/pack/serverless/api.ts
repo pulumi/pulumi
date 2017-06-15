@@ -15,11 +15,11 @@
 
 
 /* tslint:disable: ordered-imports */
-import { jsonStringify, sha1hash, printf } from "@lumi/lumirt";
+import { jsonStringify, sha1hash, printf, objectKeys } from "@lumi/lumirt";
 import { Deployment, RestAPI, Stage } from "../apigateway";
 import { Permission } from "../lambda";
 import { Function } from "./function";
-import { region } from "../config";
+import { requireRegion } from "../config";
 
 export interface Route {
     method: string;
@@ -67,6 +67,7 @@ function createBaseSpec(apiName: string): SwaggerSpec {
 }
 
 function createPathSpec(lambdaARN: string): SwaggerOperation {
+    let region = requireRegion();
     return {
         "x-amazon-apigateway-integration": {
             uri: "arn:aws:apigateway:" + region + ":lambda:path/2015-03-31/functions/" + lambdaARN + "/invocations",
@@ -77,20 +78,18 @@ function createPathSpec(lambdaARN: string): SwaggerOperation {
     };
 }
 
-function createSourceARN(region: string, account: string, apiid: string, functionName: string): string {
-    return "arn:aws:execute-api:" + region + ":" + account + ":" + apiid + "/*/*/" + functionName;
-}
-
 // API is a higher level abstraction for working with AWS APIGateway reources.
 export class API {
     public api: RestAPI;
     public deployment: Deployment;
     private swaggerSpec: SwaggerSpec;
     private apiName: string;
+    private lambdas: { [key: string]: Function};
 
     constructor(apiName: string) {
         this.apiName = apiName;
         this.swaggerSpec = createBaseSpec(apiName);
+        this.lambdas = {};
     }
 
     public route(method: string, path: string, lambda: Function) {
@@ -114,17 +113,8 @@ export class API {
             default:
                 throw new Error("Method not supported: " + method);
         }
-        let invokePermission = new Permission(this.apiName + "_invoke_" + sha1hash(method + path), {
-            action: "lambda:invokeFunction",
-            function: lambda.lambda,
-            principal: "apigateway.amazonaws.com",
-            sourceARN: createSourceARN("us-east-1", "490047557317", this.apiName, "webapi-test-func"),
-        });
-        // TODO[pulumi/lumi#90]: Once we suport output properties, we can use `lambda.lambda.arn` as input 
-        //     to constructing this apigateway lambda invocation uri.
-        // this.swaggerSpec.paths[path][swaggerMethod] = createPathSpec(lambda.lambda.arn);
-        this.swaggerSpec.paths[path][swaggerMethod] = createPathSpec(
-            "arn:aws:lambda:us-east-1:490047557317:function:webapi-test-func");
+        this.swaggerSpec.paths[path][swaggerMethod] = createPathSpec(lambda.lambda.arn);
+        this.lambdas[swaggerMethod + ":" + path] = lambda;
     }
 
     public publish(): Stage {
@@ -142,6 +132,27 @@ export class API {
             restAPI: this.api,
             deployment: this.deployment,
         });
+
+        let pathKeys = objectKeys(this.swaggerSpec.paths);
+        for (let i = 0; i < (<any>pathKeys).length; i++) {
+            let path = pathKeys[i];
+            let methodKeys = objectKeys(this.swaggerSpec.paths[path]);
+            for (let j = 0; j < (<any>methodKeys).length; j++) {
+                let method = methodKeys[j];
+                let lambda = this.lambdas[method + ":" + path];
+                if (method === "x-amazon-apigateway-any-method") {
+                    method = "*";
+                } else {
+                    method = (<any>method).toUpperCase();
+                }
+                let invokePermission = new Permission(this.apiName + "_invoke_" + sha1hash(method + path), {
+                    action: "lambda:invokeFunction",
+                    function: lambda.lambda,
+                    principal: "apigateway.amazonaws.com",
+                    sourceARN: stage.executionARN + "/" + method + path,
+                });
+            }
+        }
         return stage;
     }
 }

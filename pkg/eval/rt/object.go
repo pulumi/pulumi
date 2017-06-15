@@ -461,6 +461,11 @@ func StringPrototypeObject() *Object {
 		symbols.NewFunctionType([]symbols.Type{}, types.String),
 	), stringProto)
 	stringProtoProps.InitAddr(PropertyKey("toLowerCase"), toLowerCase, true, nil, nil)
+	toUpperCase := NewFunctionObjectFromSymbol(NewBuiltinIntrinsic(
+		tokens.Token("lumi:builtin/string:toUpperCase"),
+		symbols.NewFunctionType([]symbols.Type{}, types.String),
+	), stringProto)
+	stringProtoProps.InitAddr(PropertyKey("toUpperCase"), toUpperCase, true, nil, nil)
 
 	return stringProto
 }

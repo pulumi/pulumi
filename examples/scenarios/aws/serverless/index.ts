@@ -54,10 +54,12 @@ let lambda = new aws.serverless.Function(
   "mylambda",
   [aws.iam.AWSLambdaFullAccess],
   (event, context, callback) => {
-    console.log(hello);
     console.log("Music table hash key is: " + music.hashKey);
     console.log("Invoked function: " + context.invokedFunctionArn);
-    callback(null, "Succeeed with " + context.getRemainingTimeInMillis() + "ms remaining.");
+    callback(null, {
+      statusCode: 200,
+      body: hello + "\n\nSucceeed with " + context.getRemainingTimeInMillis() + "ms remaining.\n"
+    });
   }
 );
 

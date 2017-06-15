@@ -50,6 +50,7 @@ func init() {
 		"lumi:builtin/array:pop":          arrayPop,
 		"lumi:builtin/string:getLength":   stringGetLength,
 		"lumi:builtin/string:toLowerCase": stringToLowerCase,
+		"lumi:builtin/string:toUpperCase": stringToUpperCase,
 	}
 }
 

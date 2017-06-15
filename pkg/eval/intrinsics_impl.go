@@ -284,6 +284,19 @@ func stringToLowerCase(intrin *rt.Intrinsic, e *evaluator, this *rt.Object, args
 	return rt.NewReturnUnwind(rt.NewStringObject(out))
 }
 
+func stringToUpperCase(intrin *rt.Intrinsic, e *evaluator, this *rt.Object, args []*rt.Object) *rt.Unwind {
+	if this == nil || this.IsNull() {
+		return e.NewException(intrin.Tree(), "Expected receiver to be non-null")
+	}
+	if !this.IsString() {
+		return e.NewException(intrin.Tree(), "Expected receiver to be a string value")
+	}
+	str := this.StringValue()
+	out := strings.ToUpper(str)
+
+	return rt.NewReturnUnwind(rt.NewStringObject(out))
+}
+
 type jsonSerializer struct {
 	stack  map[*rt.Object]bool
 	intrin *rt.Intrinsic
