@@ -15,7 +15,6 @@ import (
 	"github.com/pulumi/lumi/lib/aws/rpc/iam"
 	"github.com/pulumi/lumi/lib/aws/rpc/lambda"
 	"github.com/pulumi/lumi/pkg/resource"
-	"github.com/stretchr/testify/assert"
 )
 
 const RESOURCEPREFIX = "lumitest"
@@ -23,9 +22,7 @@ const RESOURCEPREFIX = "lumitest"
 func Test(t *testing.T) {
 	t.Parallel()
 
-	ctx, err := awsctx.New()
-	assert.Nil(t, err, "expected no error getting AWS context")
-
+	ctx := testutil.CreateContext(t)
 	cleanupFunctions(ctx)
 	cleanupRoles(ctx)
 

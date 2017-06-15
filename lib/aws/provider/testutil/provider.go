@@ -20,6 +20,7 @@ import (
 	"testing"
 
 	structpb "github.com/golang/protobuf/ptypes/struct"
+	"github.com/pulumi/lumi/lib/aws/provider/awsctx"
 	"github.com/pulumi/lumi/pkg/resource"
 	"github.com/pulumi/lumi/pkg/resource/plugin"
 	"github.com/pulumi/lumi/pkg/tokens"
@@ -212,4 +213,14 @@ func deleteResource(t *testing.T, id string, provider lumirpc.ResourceProviderSe
 		return false
 	}
 	return true
+}
+
+// CreateContext creates an AWS Context object for executing tests, and skips the test if the context cannot be
+// created succefully, most likely because credentials are unavailable in the execution environment.
+func CreateContext(t *testing.T) *awsctx.Context {
+	ctx, err := awsctx.New()
+	if err != nil {
+		t.Skipf("AWS context could not be acquired: %v", err)
+	}
+	return ctx
 }
