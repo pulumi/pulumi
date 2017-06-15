@@ -28,82 +28,169 @@ import (
 	"github.com/pulumi/lumi/pkg/util/contract"
 )
 
-type objectResource struct {
-	ctx     *Context    // the resource context this object is associated with.
-	id      ID          // the resource's unique ID, assigned by the resource provider (or blank if uncreated).
-	urn     URN         // the resource's object urn, a human-friendly, unique name for the resource.
-	obj     *rt.Object  // the resource's live object reference.
-	outputs PropertyMap // the resource's output properties (as specified by the resource provider).
+// IsResourceObject returns true if the given runtime object is a
+func IsResourceObject(obj *rt.Object) bool {
+	return obj != nil && predef.IsResourceType(obj.Type())
 }
 
-// NewObjectResource creates a new resource object out of the runtime object provided.  The context is used to resolve
+// Object is a live resource object, connected to state that may change due to evaluation.
+type Object struct {
+	obj *rt.Object // the resource's live object reference.
+}
+
+var _ Resource = (*Object)(nil)
+
+// NewObject creates a new resource object out of the runtime object provided.  The context is used to resolve
 // dependencies between resources and must contain all references that could be encountered.
-func NewObjectResource(ctx *Context, obj *rt.Object) Resource {
-	contract.Assertf(predef.IsResourceType(obj.Type()), "Expected a resource type")
-	return &objectResource{
-		ctx:     ctx,
-		obj:     obj,
-		outputs: make(PropertyMap),
+func NewObject(obj *rt.Object) *Object {
+	contract.Assertf(IsResourceObject(obj), "Expected a resource type")
+	return &Object{obj: obj}
+}
+
+func (r *Object) Obj() *rt.Object   { return r.obj }
+func (r *Object) Type() tokens.Type { return r.obj.Type().TypeToken() }
+
+// ID fetches the object's ID.
+func (r *Object) ID() ID {
+	if idobj := getIDObject(r.Obj()); idobj != nil && idobj.IsString() {
+		return ID(idobj.StringValue())
+	}
+	return ID("")
+}
+
+// HasID returns true if the object already has an ID assigned to it.
+func (r *Object) HasID() bool {
+	return r.ID() != ""
+}
+
+// HasComputedID returns true if the object has an ID, but is computed and its value is not known yet.
+func (r *Object) HasComputedID() bool {
+	idobj := getIDObject(r.Obj())
+	return idobj != nil && idobj.IsComputed()
+}
+
+// SetID assigns an ID to the target object.  This must only happen once.
+func (r *Object) SetID(id ID) {
+	prop := r.obj.GetPropertyAddr(IDProperty, true, true)
+	contract.Assertf(prop.Obj().IsNull() || prop.Obj().IsComputed(), "Unexpected double set on ID; previous=%v", prop)
+	prop.Set(rt.NewStringObject(id.String()))
+}
+
+// getIDObject fetches the ID off the target object, dynamically, given its runtime value.
+func getIDObject(obj *rt.Object) *rt.Object {
+	contract.Assert(IsResourceObject(obj))
+	if idprop := obj.GetPropertyAddr(IDProperty, false, false); idprop != nil {
+		id := idprop.Obj()
+		contract.Assert(id != nil)
+		contract.Assert(id.IsString() || id.IsComputed())
+		return id
+	}
+	return nil
+}
+
+const (
+	// URNProperty is the special URN property name.
+	URNProperty = rt.PropertyKey("urn")
+	// URNPropertyKey is the special URN property name for resource maps.
+	URNPropertyKey = PropertyKey("urn")
+)
+
+// URN fetches the object's URN.
+func (r *Object) URN() URN {
+	if urnobj := getURNObject(r.Obj()); urnobj != nil && urnobj.IsString() {
+		return URN(urnobj.StringValue())
+	}
+	return URN("")
+}
+
+// HasURN returns true if the object has a URN assigned.
+func (r *Object) HasURN() bool {
+	return r.URN() != ""
+}
+
+// SetURN assignes a URN to the target object.  This must only happen once.
+func (r *Object) SetURN(urn URN) {
+	prop := r.obj.GetPropertyAddr(URNProperty, true, true)
+	contract.Assertf(prop.Obj().IsNull() || prop.Obj().IsComputed(), "Unexpected double set on URN; previous=%v", prop)
+	prop.Set(rt.NewStringObject(string(urn)))
+}
+
+// getURNObject fetches the URN off the target object, dynamically, given its runtime value.
+func getURNObject(obj *rt.Object) *rt.Object {
+	contract.Assert(IsResourceObject(obj))
+	if urnprop := obj.GetPropertyAddr(URNProperty, false, false); urnprop != nil {
+		urn := urnprop.Obj()
+		contract.Assert(urn != nil)
+		contract.Assert(urn.IsString() || urn.IsComputed())
+		return urn
+	}
+	return nil
+}
+
+// Update updates the target object URN, ID, and resource property map.  This mutates the live object connected to this
+// resource and also archives the resource object's present state in the form of a state snapshot.
+func (r *Object) Update(urn URN, id ID, outputs PropertyMap) *State {
+	// First take a snapshot of the properties.
+	inputs := r.CopyProperties()
+
+	// Now assign the URN, ID, and copy everything in the property map, overwriting what exists.
+	r.SetURN(urn)
+	r.SetID(id)
+	r.SetProperties(outputs)
+
+	// Finally, return a state snapshot of the underlying object state.
+	return NewState(r.Type(), r.URN(), id, inputs, outputs)
+}
+
+// CopyProperties creates a property map out of a resource's runtime object.  This is a snapshot and is completely
+// disconnected from the object itself, such that any subsequent object updates will not be observed.
+func (r *Object) CopyProperties() PropertyMap {
+	resobj := r.Obj()
+	return copyObject(resobj, resobj)
+}
+
+// SetProperties copies from a resource property map to the runtime object, overwriting properties as it goes.
+func (r *Object) SetProperties(props PropertyMap) {
+	if props != nil {
+		setRuntimeProperties(r.Obj(), props)
 	}
 }
 
-func (r *objectResource) ID() ID               { return r.id }
-func (r *objectResource) URN() URN             { return r.urn }
-func (r *objectResource) Type() tokens.Type    { return r.obj.Type().TypeToken() }
-func (r *objectResource) Inputs() PropertyMap  { return cloneResource(r.ctx, r.obj) }
-func (r *objectResource) Outputs() PropertyMap { return r.outputs }
-
-func (r *objectResource) SetID(id ID) {
-	contract.Requiref(!HasID(r), "id", "empty")
-	glog.V(9).Infof("Assigning ID=%v to resource w/ URN=%v", id, r.urn)
-	r.id = id
-}
-
-func (r *objectResource) SetURN(m URN) {
-	contract.Requiref(!HasURN(r), "urn", "empty")
-	r.urn = m
-}
-
-// cloneResource creates a property map out of a resource's runtime object.
-func cloneResource(ctx *Context, resobj *rt.Object) PropertyMap {
-	return cloneObject(ctx, resobj, resobj)
-}
-
-// cloneObject creates a property map out of a runtime object.  The result is fully serializable in the sense that it
-// can be stored in a JSON or YAML file, serialized over an RPC interface, etc.  In particular, any references to other
-// resources are replaced with their urn equivalents, which the runtime understands.
-func cloneObject(ctx *Context, resobj *rt.Object, obj *rt.Object) PropertyMap {
+func copyObject(resobj *rt.Object, obj *rt.Object) PropertyMap {
 	contract.Assert(obj != nil)
 	props := obj.PropertyValues()
-	return cloneObjectProperties(ctx, resobj, props)
+	return copyObjectProperties(resobj, props)
 }
 
-// cloneObjectProperty creates a single property value out of a runtime object.  It returns false if the property could
+// copyObjectProperty creates a single property value out of a runtime object.  It returns false if the property could
 // not be stored in a property (e.g., it is a function or other unrecognized or unserializable runtime object).
-func cloneObjectProperty(ctx *Context, resobj *rt.Object, obj *rt.Object) (PropertyValue, bool) {
+func copyObjectProperty(resobj *rt.Object, obj *rt.Object) PropertyValue {
 	t := obj.Type()
 
-	// Serialize resource references as URNs.
 	if predef.IsResourceType(t) {
-		// For resources, simply look up the urn from the resource map.
-		urn, hasm := ctx.ObjURN[obj]
-		contract.Assertf(hasm, "Missing object reference for %v; possible out of order dependency walk", obj)
-		return NewResourceProperty(urn), true
+		// Resource references expand to that resource's ID.
+		idobj := getIDObject(obj)
+		if idobj != nil && idobj.IsString() {
+			return NewStringProperty(idobj.StringValue())
+		}
+
+		// If an ID hasn't yet been assigned, we must be planning, and so this is a computed property.
+		return MakeComputed(NewStringProperty(""))
 	}
 
 	// Serialize simple primitive types with their primitive equivalents.
 	switch t {
 	case types.Null:
-		return NewNullProperty(), true
+		return NewNullProperty()
 	case types.Bool:
-		return NewBoolProperty(obj.BoolValue()), true
+		return NewBoolProperty(obj.BoolValue())
 	case types.Number:
-		return NewNumberProperty(obj.NumberValue()), true
+		return NewNumberProperty(obj.NumberValue())
 	case types.String:
-		return NewStringProperty(obj.StringValue()), true
+		return NewStringProperty(obj.StringValue())
 	case types.Object, types.Dynamic:
-		result := cloneObject(ctx, resobj, obj) // an object literal, clone it
-		return NewObjectProperty(result), true
+		result := copyObject(nil, obj) // an object literal, clone it
+		return NewObjectProperty(result)
 	}
 
 	// Serialize arrays, maps, and object instances in the obvious way.
@@ -112,87 +199,107 @@ func cloneObjectProperty(ctx *Context, resobj *rt.Object, obj *rt.Object) (Prope
 		// Make a new array, clone each element, and return the result.
 		var result []PropertyValue
 		for _, e := range *obj.ArrayValue() {
-			if v, ok := cloneObjectProperty(ctx, obj, e.Obj()); ok {
-				result = append(result, v)
-			}
+			result = append(result, copyObjectProperty(nil, e.Obj()))
 		}
-		return NewArrayProperty(result), true
+		return NewArrayProperty(result)
 	case *symbols.MapType:
 		// Make a new map, clone each property value, and return the result.
 		props := obj.PropertyValues()
-		result := cloneObjectProperties(ctx, resobj, props)
-		return NewObjectProperty(result), true
+		result := copyObjectProperties(nil, props)
+		return NewObjectProperty(result)
 	case *symbols.Class:
 		// Make a new object that contains a deep clone of the source.
-		result := cloneObject(ctx, resobj, obj)
-		return NewObjectProperty(result), true
+		result := copyObject(nil, obj)
+		return NewObjectProperty(result)
 	}
 
 	// If a computed value, we can propagate an unknown value, but only for certain cases.
 	if t.Computed() {
-		// If this is an output property, then this property will turn into an output.  Otherwise, it will be marked
-		// completed.  An output property is permitted in more places by virtue of the fact that it is expected not to
-		// exist during resource create operations, whereas all computed properties should have been resolved by then.
+		// See if this is an output property.  An output property is a property that is set directly on the resource
+		// object that is computed from precisely a single dependency and no expression.  Otherwise, it is computed.
 		comp := obj.ComputedValue()
-		outprop := (!comp.Expr && len(comp.Sources) == 1 && comp.Sources[0] == resobj)
 		var makeProperty func(PropertyValue) PropertyValue
-		if outprop {
-			// For output properties, we need not track any URNs.
-			makeProperty = func(v PropertyValue) PropertyValue {
-				return MakeOutput(v)
-			}
+		if !comp.Expr && len(comp.Sources) == 1 && comp.Sources[0] == resobj {
+			makeProperty = MakeOutput
 		} else {
-			// For all other properties, we need to look up and store the URNs for all resource dependencies.
-			var urns []URN
-			for _, src := range comp.Sources {
-				// For all inter-resource references, materialize a URN.  Skip this for intra-resource references!
-				if src != resobj {
-					urn, hasm := ctx.ObjURN[src]
-					contract.Assertf(hasm,
-						"Missing computed reference from %v to %v; possible out of order dependency walk", resobj, src)
-					urns = append(urns, urn)
-				}
-			}
-			makeProperty = func(v PropertyValue) PropertyValue {
-				return MakeComputed(v, urns)
-			}
+			makeProperty = MakeComputed
 		}
 
-		future := t.(*symbols.ComputedType).Element
-		switch future {
+		// Now just wrap the underlying object appropriately.
+		elem := t.(*symbols.ComputedType).Element
+		switch elem {
 		case types.Null:
-			return makeProperty(NewNullProperty()), true
+			return makeProperty(NewNullProperty())
 		case types.Bool:
-			return makeProperty(NewBoolProperty(false)), true
+			return makeProperty(NewBoolProperty(false))
 		case types.Number:
-			return makeProperty(NewNumberProperty(0)), true
+			return makeProperty(NewNumberProperty(0))
 		case types.String:
-			return makeProperty(NewStringProperty("")), true
+			return makeProperty(NewStringProperty(""))
 		case types.Object, types.Dynamic:
-			return makeProperty(NewObjectProperty(make(PropertyMap))), true
+			return makeProperty(NewObjectProperty(make(PropertyMap)))
 		}
-		switch future.(type) {
+		switch elem.(type) {
 		case *symbols.ArrayType:
-			return makeProperty(NewArrayProperty(nil)), true
+			return makeProperty(NewArrayProperty(nil))
 		case *symbols.Class:
-			return makeProperty(NewObjectProperty(make(PropertyMap))), true
+			return makeProperty(NewObjectProperty(make(PropertyMap)))
 		}
 	}
 
 	// We can safely skip serializing functions, however, anything else is unexpected at this point.
 	_, isfunc := t.(*symbols.FunctionType)
 	contract.Assertf(isfunc, "Unrecognized resource property object type '%v' (%v)", t, reflect.TypeOf(t))
-	return PropertyValue{}, false
+	return PropertyValue{}
 }
 
-// cloneObjectProperties copies a resource's properties.
-func cloneObjectProperties(ctx *Context, resobj *rt.Object, props *rt.PropertyMap) PropertyMap {
+// copyObjectProperties copies a resource's properties.
+func copyObjectProperties(resobj *rt.Object, props *rt.PropertyMap) PropertyMap {
 	// Walk the object's properties and serialize them in a stable order.
 	result := make(PropertyMap)
 	for _, k := range props.Stable() {
-		if v, ok := cloneObjectProperty(ctx, resobj, props.Get(k)); ok {
-			result[PropertyKey(k)] = v
-		}
+		result[PropertyKey(k)] = copyObjectProperty(resobj, props.Get(k))
 	}
 	return result
+}
+
+// setRuntimeProperties translates from a resource property map into the equivalent runtime objects, and stores them on
+// the given runtime object.
+func setRuntimeProperties(obj *rt.Object, props PropertyMap) {
+	for k, v := range props {
+		glog.V(9).Infof("Setting resource object property: %v=%v", k, v)
+		prop := obj.GetPropertyAddr(rt.PropertyKey(k), true, true)
+		// TODO: we are only setting if IsNull == true, to avoid certain shortcomings in our serialization format
+		//     today.  For example, if a resource ID appears, we must map it back to the runtime object.
+		if prop.Obj().IsNull() {
+			val := createRuntimeProperty(v)
+			prop.Set(val)
+		}
+	}
+}
+
+// createRuntimeProperty translates a property value into a runtime object.
+func createRuntimeProperty(v PropertyValue) *rt.Object {
+	if v.IsNull() {
+		return rt.Null
+	} else if v.IsBool() {
+		return rt.Bools[v.BoolValue()]
+	} else if v.IsNumber() {
+		return rt.NewNumberObject(v.NumberValue())
+	} else if v.IsString() {
+		return rt.NewStringObject(v.StringValue())
+	} else if v.IsArray() {
+		src := v.ArrayValue()
+		arr := make([]*rt.Pointer, len(src))
+		for i, elem := range src {
+			ve := createRuntimeProperty(elem)
+			arr[i] = rt.NewPointer(ve, false, nil, nil)
+		}
+		return rt.NewArrayObject(types.Dynamic, &arr)
+	}
+
+	contract.Assertf(v.IsObject(), "Expected an object, not a computed/output value")
+	obj := rt.NewObject(types.Dynamic, nil, nil, nil)
+	setRuntimeProperties(obj, v.ObjectValue())
+	return obj
 }

@@ -22,8 +22,8 @@ import (
 
 var snk diag.Sink
 
-// Sink lazily allocates a sink to be used if we can't create a compiler.
-func Sink() diag.Sink {
+// Diag lazily allocates a sink to be used if we can't create a compiler.
+func Diag() diag.Sink {
 	if snk == nil {
 		snk = core.DefaultSink("")
 	}

@@ -411,7 +411,10 @@ func (p *funcProvider) getCode(codeArchive resource.Archive) (*awslambda.Functio
 			// TODO[pulumi/lumi#222]: S3ObjectVersion; encode as the #?
 		}, nil
 	} else {
-		zip := codeArchive.Bytes(resource.ZIPArchive)
+		zip, err := codeArchive.Bytes(resource.ZIPArchive)
+		if err != nil {
+			return nil, err
+		}
 		return &awslambda.FunctionCode{ZipFile: zip}, nil
 	}
 }

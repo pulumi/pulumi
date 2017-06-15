@@ -23,9 +23,7 @@
 
         "asset/index.ts",
         "asset/asset.ts",
-        "asset/archive.ts",
-
-        "runtime/index.ts"
+        "asset/archive.ts"
     ]
 }
 

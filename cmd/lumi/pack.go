@@ -47,7 +47,7 @@ func newPackCmd() *cobra.Command {
 
 // detectPackage returns a package given the path, or returns an error if one could not be located.
 func detectPackage(path string) (*pack.Package, error) {
-	pkgpath, err := workspace.DetectPackage(path, cmdutil.Sink())
+	pkgpath, err := workspace.DetectPackage(path, cmdutil.Diag())
 	if err != nil {
 		return nil, errors.Errorf("could not locate a package to load: %v", err)
 	} else if pkgpath == "" {

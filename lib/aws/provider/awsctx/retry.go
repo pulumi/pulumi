@@ -21,7 +21,7 @@ import (
 	"github.com/pulumi/lumi/pkg/util/retry"
 )
 
-const DefaultTimeout time.Duration = 30 * time.Second     // by default, wait at most 30 seconds for things.
+const DefaultTimeout time.Duration = 1 * time.Minute      // by default, wait at most 1 minute for things.
 const DefaultTimeoutLong time.Duration = 20 * time.Minute // for really long operations, wait at most 20 minutes.
 
 // RetryUntil is a wrapper atop util.retry.Until that uses standard retry and backoff values for AWS operations.

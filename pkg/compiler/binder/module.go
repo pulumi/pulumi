@@ -21,6 +21,7 @@ import (
 	"github.com/golang/glog"
 
 	"github.com/pulumi/lumi/pkg/compiler/ast"
+	"github.com/pulumi/lumi/pkg/compiler/errors"
 	"github.com/pulumi/lumi/pkg/compiler/symbols"
 	"github.com/pulumi/lumi/pkg/util/contract"
 )
@@ -105,6 +106,12 @@ func (b *binder) bindModuleMethodDeclaration(node *ast.ModuleMethod,
 	// Simply create a function declaration without any type.  That will happen in a subsequent pass.
 	sym := symbols.NewModuleMethodSym(node, parent, nil)
 	b.ctx.RegisterSymbol(node, sym)
+
+	// Ensure that module methods have bodies.
+	if node.Body == nil {
+		b.Diag().Errorf(errors.ErrorMethodsMustHaveBodies.At(node), sym, "a module method")
+	}
+
 	return sym
 }
 

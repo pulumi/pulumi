@@ -32,6 +32,11 @@ func TestObjectRTTI(t *testing.T) {
 	assert.True(t, nul.IsNull())
 	assert.Equal(t, types.Null, nul.Type())
 
+	// null (predefined)
+	nul2 := Null
+	assert.True(t, nul2.IsNull())
+	assert.Equal(t, types.Null, nul2.Type())
+
 	// true bool
 	boTrue := NewBoolObject(true)
 	assert.True(t, boTrue.IsBool())
@@ -41,6 +46,15 @@ func TestObjectRTTI(t *testing.T) {
 	assert.True(t, boTrueOK)
 	assert.Equal(t, true, boTrueV)
 
+	// true bool (predefined)
+	boTrue2 := True
+	assert.True(t, boTrue2.IsBool())
+	assert.Equal(t, types.Bool, boTrue2.Type())
+	assert.Equal(t, true, boTrue2.BoolValue())
+	boTrueV2, boTrueOK2 := boTrue2.TryBoolValue()
+	assert.True(t, boTrueOK2)
+	assert.Equal(t, true, boTrueV2)
+
 	// false bool
 	boFalse := NewBoolObject(true)
 	assert.True(t, boFalse.IsBool())
@@ -49,6 +63,15 @@ func TestObjectRTTI(t *testing.T) {
 	boFalseV, boFalseOK := boFalse.TryBoolValue()
 	assert.True(t, boFalseOK)
 	assert.Equal(t, true, boFalseV)
+
+	// false bool (predefined)
+	boFalse2 := False
+	assert.True(t, boFalse2.IsBool())
+	assert.Equal(t, types.Bool, boFalse2.Type())
+	assert.Equal(t, false, boFalse2.BoolValue())
+	boFalseV2, boFalseOK2 := boFalse2.TryBoolValue()
+	assert.True(t, boFalseOK2)
+	assert.Equal(t, false, boFalseV2)
 
 	// 42 number
 	n := float64(42)

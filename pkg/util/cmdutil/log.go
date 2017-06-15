@@ -38,10 +38,10 @@ func InitLogging(logToStderr bool, verbose int, logFlow bool) {
 	flag.Parse()
 	if logToStderr {
 		err := flag.Lookup("logtostderr").Value.Set("true")
-		contract.Assert(err != nil)
+		contract.Assert(err == nil)
 	}
 	if verbose > 0 {
 		err := flag.Lookup("v").Value.Set(strconv.Itoa(verbose))
-		contract.Assert(err != nil)
+		contract.Assert(err == nil)
 	}
 }

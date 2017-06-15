@@ -11,6 +11,7 @@ import (
     "golang.org/x/net/context"
 
     "github.com/pulumi/lumi/pkg/resource"
+    "github.com/pulumi/lumi/pkg/resource/plugin"
     "github.com/pulumi/lumi/pkg/tokens"
     "github.com/pulumi/lumi/pkg/util/contract"
     "github.com/pulumi/lumi/pkg/util/mapper"
@@ -50,14 +51,14 @@ func (p *StageProvider) Check(
     contract.Assert(req.GetType() == string(StageToken))
     obj, _, err := p.Unmarshal(req.GetProperties())
     if err != nil {
-        return resource.NewCheckResponse(err), nil
+        return plugin.NewCheckResponse(err), nil
     }
     if failures, err := p.ops.Check(ctx, obj); err != nil {
         return nil, err
     } else if len(failures) > 0 {
-        return resource.NewCheckResponse(resource.NewCheckError(failures)), nil
+        return plugin.NewCheckResponse(resource.NewErrors(failures)), nil
     }
-    return resource.NewCheckResponse(nil), nil
+    return plugin.NewCheckResponse(nil), nil
 }
 
 func (p *StageProvider) Name(
@@ -99,8 +100,8 @@ func (p *StageProvider) Get(
         return nil, err
     }
     return &lumirpc.GetResponse{
-        Properties: resource.MarshalProperties(
-            nil, resource.NewPropertyMap(obj), resource.MarshalOptions{}),
+        Properties: plugin.MarshalProperties(
+            nil, resource.NewPropertyMap(obj), plugin.MarshalOptions{}),
     }, nil
 }
 
@@ -170,7 +171,7 @@ func (p *StageProvider) Delete(
 func (p *StageProvider) Unmarshal(
     v *pbstruct.Struct) (*Stage, resource.PropertyMap, error) {
     var obj Stage
-    props := resource.UnmarshalProperties(nil, v, resource.MarshalOptions{RawResources: true})
+    props := plugin.UnmarshalProperties(nil, v, plugin.MarshalOptions{RawResources: true})
     return &obj, props, mapper.MapIU(props.Mappable(), &obj)
 }
 
@@ -190,6 +191,8 @@ type Stage struct {
     Variables *map[string]string `lumi:"variables,optional"`
     CreatedDate string `lumi:"createdDate,optional"`
     LastUpdatedDate string `lumi:"lastUpdatedDate,optional"`
+    URL string `lumi:"url,optional"`
+    ExecutionARN string `lumi:"executionARN,optional"`
 }
 
 // Stage's properties have constants to make dealing with diffs and property bags easier.
@@ -206,6 +209,8 @@ const (
     Stage_Variables = "variables"
     Stage_CreatedDate = "createdDate"
     Stage_LastUpdatedDate = "lastUpdatedDate"
+    Stage_URL = "url"
+    Stage_ExecutionARN = "executionARN"
 )
 
 

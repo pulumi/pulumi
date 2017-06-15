@@ -1,3 +1,18 @@
+// Licensed to Pulumi Corporation ("Pulumi") under one or more
+// contributor license agreements.  See the NOTICE file distributed with
+// this work for additional information regarding copyright ownership.
+// Pulumi licenses this file to You under the Apache License, Version 2.0
+// (the "License"); you may not use this file except in compliance with
+// the License.  You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package testutil
 
 import (
@@ -5,7 +20,9 @@ import (
 	"testing"
 
 	structpb "github.com/golang/protobuf/ptypes/struct"
+	"github.com/pulumi/lumi/lib/aws/provider/awsctx"
 	"github.com/pulumi/lumi/pkg/resource"
+	"github.com/pulumi/lumi/pkg/resource/plugin"
 	"github.com/pulumi/lumi/pkg/tokens"
 	"github.com/pulumi/lumi/sdk/go/pkg/lumirpc"
 	"github.com/stretchr/testify/assert"
@@ -82,12 +99,12 @@ func ProviderTest(t *testing.T, resources map[string]Resource, steps []Step) {
 	}
 }
 
-// ProviderTestSimple takes a resource provider and array of resource steps and performs a Create, as many Udpates
+// ProviderTestSimple takes a resource provider and array of resource steps and performs a Create, as many Updates
 // as neeed, and finally a Delete operation on a single resouce of the given type to walk the resource through the
 // resource lifecycle.  It also performs Check operations on each input state of the resource.
 func ProviderTestSimple(t *testing.T, provider lumirpc.ResourceProviderServer, token tokens.Type, steps []interface{}) {
 	resources := map[string]Resource{
-		"testResource": Resource{
+		"testResource": {
 			Provider: provider,
 			Token:    token,
 		},
@@ -123,8 +140,9 @@ func (p *providerTest) GetResourceID(name string) resource.ID {
 
 var _ Context = &providerTest{}
 
-func createResource(t *testing.T, res interface{}, provider lumirpc.ResourceProviderServer, token tokens.Type) (string, *structpb.Struct) {
-	props := resource.MarshalProperties(nil, resource.NewPropertyMap(res), resource.MarshalOptions{})
+func createResource(t *testing.T, res interface{}, provider lumirpc.ResourceProviderServer,
+	token tokens.Type) (string, *structpb.Struct) {
+	props := plugin.MarshalProperties(nil, resource.NewPropertyMap(res), plugin.MarshalOptions{})
 	fmt.Printf("[Provider Test]: Checking %v\n", token)
 	checkResp, err := provider.Check(nil, &lumirpc.CheckRequest{
 		Type:       string(token),
@@ -160,8 +178,9 @@ func createResource(t *testing.T, res interface{}, provider lumirpc.ResourceProv
 	return id, props
 }
 
-func updateResource(t *testing.T, id string, lastProps *structpb.Struct, res interface{}, provider lumirpc.ResourceProviderServer, token tokens.Type) (bool, *structpb.Struct) {
-	newProps := resource.MarshalProperties(nil, resource.NewPropertyMap(res), resource.MarshalOptions{})
+func updateResource(t *testing.T, id string, lastProps *structpb.Struct, res interface{},
+	provider lumirpc.ResourceProviderServer, token tokens.Type) (bool, *structpb.Struct) {
+	newProps := plugin.MarshalProperties(nil, resource.NewPropertyMap(res), plugin.MarshalOptions{})
 	fmt.Printf("[Provider Test]: Checking %v\n", token)
 	checkResp, err := provider.Check(nil, &lumirpc.CheckRequest{
 		Type:       string(token),
@@ -194,4 +213,14 @@ func deleteResource(t *testing.T, id string, provider lumirpc.ResourceProviderSe
 		return false
 	}
 	return true
+}
+
+// CreateContext creates an AWS Context object for executing tests, and skips the test if the context cannot be
+// created succefully, most likely because credentials are unavailable in the execution environment.
+func CreateContext(t *testing.T) *awsctx.Context {
+	ctx, err := awsctx.New()
+	if err != nil {
+		t.Skipf("AWS context could not be acquired: %v", err)
+	}
+	return ctx
 }

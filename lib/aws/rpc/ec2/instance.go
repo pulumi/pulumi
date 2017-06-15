@@ -11,6 +11,7 @@ import (
     "golang.org/x/net/context"
 
     "github.com/pulumi/lumi/pkg/resource"
+    "github.com/pulumi/lumi/pkg/resource/plugin"
     "github.com/pulumi/lumi/pkg/tokens"
     "github.com/pulumi/lumi/pkg/util/contract"
     "github.com/pulumi/lumi/pkg/util/mapper"
@@ -50,14 +51,14 @@ func (p *InstanceProvider) Check(
     contract.Assert(req.GetType() == string(InstanceToken))
     obj, _, err := p.Unmarshal(req.GetProperties())
     if err != nil {
-        return resource.NewCheckResponse(err), nil
+        return plugin.NewCheckResponse(err), nil
     }
     if failures, err := p.ops.Check(ctx, obj); err != nil {
         return nil, err
     } else if len(failures) > 0 {
-        return resource.NewCheckResponse(resource.NewCheckError(failures)), nil
+        return plugin.NewCheckResponse(resource.NewErrors(failures)), nil
     }
-    return resource.NewCheckResponse(nil), nil
+    return plugin.NewCheckResponse(nil), nil
 }
 
 func (p *InstanceProvider) Name(
@@ -99,8 +100,8 @@ func (p *InstanceProvider) Get(
         return nil, err
     }
     return &lumirpc.GetResponse{
-        Properties: resource.MarshalProperties(
-            nil, resource.NewPropertyMap(obj), resource.MarshalOptions{}),
+        Properties: plugin.MarshalProperties(
+            nil, resource.NewPropertyMap(obj), plugin.MarshalOptions{}),
     }, nil
 }
 
@@ -122,8 +123,17 @@ func (p *InstanceProvider) InspectChange(
         if diff.Changed("name") {
             replaces = append(replaces, "name")
         }
+        if diff.Changed("imageId") {
+            replaces = append(replaces, "imageId")
+        }
+        if diff.Changed("instanceType") {
+            replaces = append(replaces, "instanceType")
+        }
         if diff.Changed("securityGroups") {
             replaces = append(replaces, "securityGroups")
+        }
+        if diff.Changed("keyName") {
+            replaces = append(replaces, "keyName")
         }
     }
     more, err := p.ops.InspectChange(ctx, id, old, new, diff)
@@ -167,7 +177,7 @@ func (p *InstanceProvider) Delete(
 func (p *InstanceProvider) Unmarshal(
     v *pbstruct.Struct) (*Instance, resource.PropertyMap, error) {
     var obj Instance
-    props := resource.UnmarshalProperties(nil, v, resource.MarshalOptions{RawResources: true})
+    props := plugin.UnmarshalProperties(nil, v, plugin.MarshalOptions{RawResources: true})
     return &obj, props, mapper.MapIU(props.Mappable(), &obj)
 }
 

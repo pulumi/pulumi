@@ -9,12 +9,17 @@ An example using some serverless AWS resources, currently including:
 * AWS IAM Managed Policies  
 
 To deploy (and re-deploy):
+
 ```bash
 lumijs && lumi deploy
 ```
 
 To invoke the lambda deployed by the script:
+
 ```bash
 export LAMBDA=mylambda-d12c918004e # replace with your lambda's name from the `lumi deploy` output
 aws lambda invoke --function-name $LAMBDA --log-type Tail out.txt | jq '.LogResult' -r | base64 --decode
 ```
+
+Alternatively, simply run the `invoke.sh` script and enter in your Lambda's name when prompted.
+

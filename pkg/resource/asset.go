@@ -278,6 +278,23 @@ func (a Archive) readMap() (map[string]*Blob, error) {
 	result := map[string]*Blob{}
 	for name, asset := range m {
 		var err error
+		// TODO[pulumi/lumi#240]: It would be better to treat folders as a first class concept intead
+		//  of reusing a path Asset for this purpose.
+		path, isPath := asset.GetPath()
+		if isPath {
+			if fi, err := os.Stat(path); err == nil && fi.IsDir() {
+				// Asset is a folder, expand it
+				if err := filepath.Walk(path, func(filePath string, f os.FileInfo, err error) error {
+					if !f.IsDir() && f.Mode()&os.ModeSymlink == 0 {
+						result[filePath], _ = NewPathAsset(filePath).Read()
+					}
+					return nil
+				}); err != nil {
+					return nil, err
+				}
+				continue
+			}
+		}
 		if result[name], err = asset.Read(); err != nil {
 			return nil, err
 		}
@@ -348,9 +365,10 @@ func (a Archive) openURLStream(url *url.URL) (io.ReadCloser, error) {
 // APIs that demand []bytes.
 func (a Archive) Bytes(format ArchiveFormat) ([]byte, error) {
 	var data bytes.Buffer
-	var err error
-	err = a.Archive(format, &data)
-	return data.Bytes(), err
+	if err := a.Archive(format, &data); err != nil {
+		return nil, err
+	}
+	return data.Bytes(), nil
 }
 
 // Archive produces a single archive stream in the desired format.  It prefers to return the archive with as little
@@ -451,21 +469,12 @@ func (a Archive) archiveZIP(w io.Writer) error {
 // ReadSourceArchive returns a stream to the underlying archive, if there eis one.
 func (a Archive) ReadSourceArchive() (ArchiveFormat, io.ReadCloser, error) {
 	if path, ispath := a.GetPath(); ispath {
-		if format, locerr := detectArchiveFormat(path); format != NotArchive {
-			if locerr != nil {
-				return 0, nil, locerr
-			}
+		if format, archerr := detectArchiveFormat(path); archerr != nil && format != NotArchive {
 			f, err := os.Open(path)
 			return format, f, err
 		}
-	} else if url, isurl, urlerr := a.GetURIURL(); isurl {
-		if urlerr != nil {
-			return 0, nil, urlerr
-		}
-		if format, arcerr := detectArchiveFormat(url.Path); format != NotArchive {
-			if arcerr != nil {
-				return 0, nil, arcerr
-			}
+	} else if url, isurl, urlerr := a.GetURIURL(); urlerr == nil && isurl {
+		if format, archerr := detectArchiveFormat(url.Path); archerr == nil && format != NotArchive {
 			s, err := a.openURLStream(url)
 			return format, s, err
 		}
