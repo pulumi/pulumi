@@ -181,33 +181,34 @@ func serializeClosure(intrin *rt.Intrinsic, e *evaluator, this *rt.Object, args 
 	return rt.NewReturnUnwind(closure)
 }
 
-func arrayGetLength(intrin *rt.Intrinsic, e *evaluator, this *rt.Object, args []*rt.Object) *rt.Unwind {
-	if this == nil {
-		return e.NewException(intrin.Tree(), "Expected receiver to be non-null")
-	}
-	if !this.IsArray() {
-		return e.NewException(intrin.Tree(), "Expected receiver to be an array value")
+func checkGetArray(intrin *rt.Intrinsic, e *evaluator, this *rt.Object) (*[]*rt.Pointer, *rt.Unwind) {
+	if this == nil || this.IsNull() {
+		return nil, e.NewNullObjectException(intrin.Tree())
+	} else if !this.IsArray() {
+		return nil, e.NewException(intrin.Tree(), "Expected receiver to be an array value")
 	}
 	arr := this.ArrayValue()
 	if arr == nil {
-		return e.NewException(intrin.Tree(), "Expected receiver to be non-null array value")
+		return nil, e.NewNullObjectException(intrin.Tree())
+	}
+	return arr, nil
+}
+
+func arrayGetLength(intrin *rt.Intrinsic, e *evaluator, this *rt.Object, args []*rt.Object) *rt.Unwind {
+	arr, uw := checkGetArray(intrin, e, this)
+	if uw != nil {
+		return uw
 	}
 	return rt.NewReturnUnwind(rt.NewNumberObject(float64(len(*arr))))
 }
 
 func arraySetLength(intrin *rt.Intrinsic, e *evaluator, this *rt.Object, args []*rt.Object) *rt.Unwind {
-	if this == nil {
-		return e.NewException(intrin.Tree(), "Expected receiver to be non-null")
+	arr, uw := checkGetArray(intrin, e, this)
+	if uw != nil {
+		return uw
 	}
-	if !this.IsArray() {
-		return e.NewException(intrin.Tree(), "Expected receiver to be an array value")
-	}
-	arr := this.ArrayValue()
-	if arr == nil {
-		return e.NewException(intrin.Tree(), "Expected receiver to be non-null array value")
-	}
-	if len(args) < 1 {
-	}
+
+	// Get and convert the 1st argument to a number.
 	lengthFloat, ok := args[0].TryNumberValue()
 	if !ok {
 		return e.NewException(intrin.Tree(), "Expected length argument to be a number value")
@@ -217,7 +218,7 @@ func arraySetLength(intrin *rt.Intrinsic, e *evaluator, this *rt.Object, args []
 		return e.NewException(intrin.Tree(), "Expected length argument to be a positive number value")
 	}
 
-	// Update the size of the array to the requested length
+	// Update the size of the array to the requested length.
 	newArr := make([]*rt.Pointer, length)
 	copy(*arr, newArr)
 	*arr = newArr
@@ -225,8 +226,41 @@ func arraySetLength(intrin *rt.Intrinsic, e *evaluator, this *rt.Object, args []
 	return rt.NewReturnUnwind(nil)
 }
 
+// arrayPush implements Array.prototype.push.  It adds one or more elements to the end of an array and returns the new
+// length of the array.  Please see the following link for details:
+// https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/push.
+func arrayPush(intrin *rt.Intrinsic, e *evaluator, this *rt.Object, args []*rt.Object) *rt.Unwind {
+	arr, uw := checkGetArray(intrin, e, this)
+	if uw != nil {
+		return uw
+	}
+	for _, arg := range args {
+		ptr := rt.NewPointer(arg, false, nil, nil)
+		*arr = append(*arr, ptr)
+	}
+	return rt.NewReturnUnwind(rt.NewNumberObject(float64(len(*arr))))
+}
+
+// arrayPop implements Array.prototype.pop.  It removes the last element from an array and returns that element.
+// This method changes the length of the array.  Please see the following link for details:
+// https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/pop.
+func arrayPop(intrin *rt.Intrinsic, e *evaluator, this *rt.Object, args []*rt.Object) *rt.Unwind {
+	arr, uw := checkGetArray(intrin, e, this)
+	if uw != nil {
+		return uw
+	}
+	var ret *rt.Object
+	if al := len(*arr); al > 0 {
+		ret = ((*arr)[al-1]).Obj()
+		*arr = (*arr)[:al-1]
+	} else {
+		ret = rt.Null
+	}
+	return rt.NewReturnUnwind(ret)
+}
+
 func stringGetLength(intrin *rt.Intrinsic, e *evaluator, this *rt.Object, args []*rt.Object) *rt.Unwind {
-	if this == nil {
+	if this == nil || this.IsNull() {
 		return e.NewException(intrin.Tree(), "Expected receiver to be non-null")
 	}
 	if !this.IsString() {
@@ -238,7 +272,7 @@ func stringGetLength(intrin *rt.Intrinsic, e *evaluator, this *rt.Object, args [
 }
 
 func stringToLowerCase(intrin *rt.Intrinsic, e *evaluator, this *rt.Object, args []*rt.Object) *rt.Unwind {
-	if this == nil {
+	if this == nil || this.IsNull() {
 		return e.NewException(intrin.Tree(), "Expected receiver to be non-null")
 	}
 	if !this.IsString() {

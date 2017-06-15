@@ -720,7 +720,9 @@ func (e *evaluator) evalCall(node diag.Diagable,
 				sym := e.ctx.RequireVariable(param).(*symbols.LocalVariable)
 				e.locals.Register(sym)
 				arg := args[i]
-				contract.Assert(types.CanConvert(arg.Type(), sym.Type()))
+				contract.Assertf(arg != nil, "Did not expect nil argument slot (#%v)", i)
+				contract.Assertf(types.CanConvert(arg.Type(), sym.Type()),
+					"Arg %v of type %v cannot convert to the expected type %v", arg.Type(), sym.Type())
 				e.locals.SetValue(sym, arg)
 			}
 		}
@@ -1377,6 +1379,7 @@ func (e *evaluator) newLocation(node diag.Diagable, sym symbols.Symbol,
 	} else {
 		obj = pv.Obj()
 	}
+	contract.Assert(obj != nil)
 
 	if glog.V(9) {
 		glog.V(9).Infof("Loaded location of type '%v' from symbol '%v': lval=%v current=%v",
@@ -1442,6 +1445,7 @@ func (loc *Location) Read(node diag.Diagable) (*rt.Object, *rt.Unwind) {
 		return loc.e.evalCallSymbol(node, loc.Getter, loc.This)
 	}
 	// Otherwise, just return the object directly.
+	contract.Assertf(loc.Obj != nil, "Unexpected nil object from location ready by %v", node)
 	return loc.Obj, nil
 }
 
@@ -1482,6 +1486,10 @@ func (e *evaluator) evalLoadLocation(node *ast.LoadLocationExpression, lval bool
 		}
 	}
 
+	contract.Assert(pv != nil)
+	contract.Assert(pv.Obj() != nil)
+	contract.Assert(ty != nil)
+	contract.Assert(sym != nil)
 	return e.newLocation(node, sym, pv, ty, this, lval), nil
 }
 
@@ -1544,7 +1552,6 @@ func (e *evaluator) evalLoadSymbolLocation(node diag.Diagable, sym symbols.Symbo
 			contract.Assertf(pv != nil, "Missing instance class member '%v'", s.Token())
 		}
 		ty = s.Type()
-		contract.Assert(ty != nil)
 	case symbols.ModuleMemberProperty:
 		module := s.MemberParent()
 
@@ -1562,11 +1569,12 @@ func (e *evaluator) evalLoadSymbolLocation(node diag.Diagable, sym symbols.Symbo
 		contract.Assertf(pv.Getter() == nil, "Module property getters unexpected (%v)", s)
 		contract.Assertf(pv.Setter() == nil, "Module property setters unexpected (%v)", s)
 		ty = s.MemberType()
-		contract.Assert(ty != nil)
 	default:
 		contract.Failf("Unexpected symbol token '%v' kind during load expression: %v",
 			sym.Token(), reflect.TypeOf(sym))
 	}
+	contract.Assert(pv != nil)
+	contract.Assert(ty != nil)
 
 	return pv, ty, nil
 }
@@ -1856,6 +1864,7 @@ func (e *evaluator) evalInvokeFunctionExpression(node *ast.InvokeFunctionExpress
 			if uw != nil {
 				return nil, uw
 			}
+			contract.Assertf(argobj != nil, "Unexpected nil argument expression: %v", arg.Expr)
 			args = append(args, argobj)
 		}
 	}
