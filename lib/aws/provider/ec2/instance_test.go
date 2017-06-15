@@ -9,7 +9,6 @@ import (
 	"github.com/pulumi/lumi/lib/aws/provider/awsctx"
 	"github.com/pulumi/lumi/lib/aws/provider/testutil"
 	"github.com/pulumi/lumi/lib/aws/rpc/ec2"
-	"github.com/stretchr/testify/assert"
 )
 
 const RESOURCEPREFIX = "lumitest"
@@ -35,9 +34,7 @@ var amis = map[string]string{
 func Test(t *testing.T) {
 	t.Parallel()
 
-	ctx, err := awsctx.New()
-	assert.Nil(t, err, "expected no error getting AWS context")
-
+	ctx := testutil.CreateContext(t)
 	cleanup(ctx)
 
 	instanceType := ec2.InstanceType("t2.nano")
