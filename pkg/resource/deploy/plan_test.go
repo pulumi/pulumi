@@ -23,6 +23,7 @@ import (
 
 	"github.com/pulumi/lumi/pkg/compiler/ast"
 	"github.com/pulumi/lumi/pkg/compiler/symbols"
+	"github.com/pulumi/lumi/pkg/compiler/types"
 	"github.com/pulumi/lumi/pkg/compiler/types/predef"
 	"github.com/pulumi/lumi/pkg/eval/rt"
 	"github.com/pulumi/lumi/pkg/pack"
@@ -178,7 +179,10 @@ func TestBasicCRUDPlan(t *testing.T) {
 		"name": resource.NewStringProperty(namC.String()),
 		"cf1":  resource.NewStringProperty("c-value"),
 		"cf2":  resource.NewNumberProperty(83),
-	}, nil)
+	}, resource.PropertyMap{
+		"outta1":   resource.NewStringProperty("populated during skip/step"),
+		"outta234": resource.NewNumberProperty(99881122),
+	})
 	oldResD := resource.NewState(typD.Tok, urnD, resource.ID("d-d-d"), resource.PropertyMap{
 		"name": resource.NewStringProperty(namD.String()),
 		"df1":  resource.NewStringProperty("d-value"),
@@ -207,6 +211,8 @@ func TestBasicCRUDPlan(t *testing.T) {
 	newObjC.Properties().InitAddr(rt.PropertyKey("name"), rt.NewStringObject(namC.String()), false, nil, nil)
 	newObjC.Properties().InitAddr(rt.PropertyKey("cf1"), rt.NewStringObject("c-value"), false, nil, nil)
 	newObjC.Properties().InitAddr(rt.PropertyKey("cf2"), rt.NewNumberObject(83), false, nil, nil)
+	newObjC.Properties().InitAddr(rt.PropertyKey("outta234"),
+		rt.NewComputedObject(types.Dynamic, false, []*rt.Object{newObjC}), false, nil, nil)
 	newResC := resource.NewObject(newObjC)
 	newResCProps := newResC.CopyProperties()
 	//     - No D; it is deleted.
@@ -232,6 +238,7 @@ func TestBasicCRUDPlan(t *testing.T) {
 
 		var urn resource.URN
 		var realID bool
+		var expectOuts resource.PropertyMap
 		var obj *resource.Object
 		op := step.Op()
 		switch op {
@@ -259,7 +266,7 @@ func TestBasicCRUDPlan(t *testing.T) {
 			assert.Equal(t, oldResC, old)
 			assert.NotNil(t, new)
 			assert.Equal(t, newResCProps, step.Inputs())
-			obj, urn, realID = new, urnC, true
+			obj, urn, realID, expectOuts = new, urnC, true, oldResC.Outputs()
 		case OpDelete: // D is deleted
 			old := step.Old()
 			new := step.New()
@@ -273,6 +280,16 @@ func TestBasicCRUDPlan(t *testing.T) {
 			// Ensure the ID and URN aren't assigned until we step.
 			assert.False(t, obj.HasID())
 			assert.False(t, obj.HasURN())
+			if expectOuts != nil {
+				for k := range expectOuts {
+					outprop := obj.Obj().Properties().GetAddr(rt.PropertyKey(k))
+					if outprop != nil {
+						outobj := outprop.Obj()
+						assert.NotNil(t, outobj)
+						assert.True(t, outobj.IsNull() || outobj.IsComputed())
+					}
+				}
+			}
 		}
 
 		step.Skip()
@@ -284,6 +301,15 @@ func TestBasicCRUDPlan(t *testing.T) {
 			}
 			assert.True(t, obj.HasURN(), "Expected op %v to populate a URN (%v)", op, urn)
 			assert.Equal(t, urn, obj.URN())
+			if expectOuts != nil {
+				for k := range expectOuts {
+					outprop := obj.Obj().Properties().GetAddr(rt.PropertyKey(k))
+					assert.NotNil(t, outprop)
+					outobj := outprop.Obj()
+					assert.NotNil(t, outobj)
+					assert.False(t, outobj.IsNull())
+				}
+			}
 		}
 
 		seen[op]++ // track the # of these we've seen so we can validate.
