@@ -200,7 +200,11 @@ func (iter *PlanIterator) nextResource(new *resource.Object, ctx tokens.Module) 
 	}
 	for _, failure := range failures {
 		invalid = true
-		iter.p.Diag().Errorf(errors.ErrorResourcePropertyInvalidValue, urn, failure.Property, failure.Reason)
+		var v resource.PropertyValue
+		if failure.Property != "" {
+			v = inputs[failure.Property]
+		}
+		iter.p.Diag().Errorf(errors.ErrorResourcePropertyInvalidValue, urn, failure.Property, v, failure.Reason)
 	}
 
 	// Next, give each analyzer -- if any -- a chance to inspect the resource too.
