@@ -218,6 +218,9 @@ func deleteResource(t *testing.T, id string, provider lumirpc.ResourceProviderSe
 // CreateContext creates an AWS Context object for executing tests, and skips the test if the context cannot be
 // created succefully, most likely because credentials are unavailable in the execution environment.
 func CreateContext(t *testing.T) *awsctx.Context {
+	if testing.Short() {
+		t.Skip("skipping long running AWS provider test - run tests without -short to test providers")
+	}
 	ctx, err := awsctx.New()
 	if err != nil {
 		t.Skipf("AWS context could not be acquired: %v", err)
