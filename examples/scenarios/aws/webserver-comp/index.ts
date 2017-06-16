@@ -16,5 +16,5 @@
 import * as webserver from "./webserver";
 
 let webServer = new webserver.Micro("www");
-let appServer = new webserver.Large("app");
+let appServer = new webserver.Nano("app");
 

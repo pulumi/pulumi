@@ -6,19 +6,44 @@ import (
 	"os"
 	"os/exec"
 	"path"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 )
 
-func Test_WebServer(t *testing.T) {
+func Test_Examples(t *testing.T) {
+	var examples []string
+	if testing.Short() {
+		examples = []string{
+			path.Join("..", "..", "examples", "scenarios", "aws", "serverless"),
+		}
+	} else {
+		examples = []string{
+			path.Join("..", "..", "examples", "scenarios", "aws", "serverless-raw"),
+			path.Join("..", "..", "examples", "scenarios", "aws", "serverless"),
+			path.Join("..", "..", "examples", "scenarios", "aws", "webserver"),
+			path.Join("..", "..", "examples", "scenarios", "aws", "webserver-comp"),
+			path.Join("..", "..", "examples", "scenarios", "aws", "beanstalk"),
+			path.Join("..", "..", "examples", "scenarios", "aws", "minimal"),
+		}
+	}
+	for _, example := range examples {
+		t.Run(example, func(t *testing.T) {
+			testExample(t, example)
+		})
+	}
+}
+
+func testExample(t *testing.T, exampleDir string) {
+	t.Parallel()
 	region := os.Getenv("AWS_REGION")
 	if region == "" {
 		t.Skipf("Skipping test due to missing AWS_REGION environment variable")
 	}
 	cwd, err := os.Getwd()
 	assert.NoError(t, err, "expected a valid working directory: %v", err)
-	examplewd := path.Join(cwd, "..", "..", "examples", "scenarios", "aws", "webserver")
+	examplewd := path.Join(cwd, exampleDir)
 	lumijs := path.Join(cwd, "..", "..", "cmd", "lumijs", "lumijs")
 	lumisrc := path.Join(cwd, "..", "..", "cmd", "lumi")
 	lumipkg, err := build.ImportDir(lumisrc, build.FindOnly)
@@ -31,81 +56,26 @@ func Test_WebServer(t *testing.T) {
 	fmt.Printf("lumijs: %v\n", lumijs)
 	fmt.Printf("lumi: %v\n", lumi)
 
-	fmt.Printf("\n**** Invoke 'lumijs --verbose'\n")
+	runCmd(t, []string{lumijs, "--verbose"}, examplewd)
+	runCmd(t, []string{lumi, "env", "init", "integrationtesting"}, examplewd)
+	runCmd(t, []string{lumi, "config", "aws:config/index:region", region}, examplewd)
+	runCmd(t, []string{lumi, "plan"}, examplewd)
+	runCmd(t, []string{lumi, "deploy"}, examplewd)
+	runCmd(t, []string{lumi, "destroy", "--yes"}, examplewd)
+	runCmd(t, []string{lumi, "env", "rm", "--yes", "integrationtesting"}, examplewd)
+}
+
+func runCmd(t *testing.T, args []string, wd string) {
+	path := args[0]
+	command := strings.Join(args, " ")
+	fmt.Printf("\n**** Invoke '%v' in %v\n", command, wd)
 	cmd := exec.Cmd{
-		Path:   lumijs,
-		Dir:    examplewd,
-		Args:   []string{"", "--verbose"},
+		Path:   path,
+		Dir:    wd,
+		Args:   args,
 		Stdout: os.Stdout,
 		Stderr: os.Stderr,
 	}
-	err = cmd.Run()
-	assert.NoError(t, err, "expected to successfully compile lumijs to Lumipack: %v", err)
-
-	fmt.Printf("\n**** Invoke 'lumi env init integrationtesting'\n")
-	cmd = exec.Cmd{
-		Path:   lumi,
-		Dir:    examplewd,
-		Args:   []string{"", "env", "init", "integrationtesting"},
-		Stdout: os.Stdout,
-		Stderr: os.Stderr,
-	}
-	err = cmd.Run()
-	assert.NoError(t, err, "expected to successfully initialize Lumi environment: %v", err)
-
-	fmt.Printf("\n**** Invoke 'lumi config aws:config/index:region %v'\n", region)
-	cmd = exec.Cmd{
-		Path:   lumi,
-		Dir:    examplewd,
-		Args:   []string{"", "config", "aws:config/index:region", region},
-		Stdout: os.Stdout,
-		Stderr: os.Stderr,
-	}
-	err = cmd.Run()
-	assert.NoError(t, err, "expected to successfully run `lumi config aws:config/index:region %v`: %v", region, err)
-
-	fmt.Printf("\n**** Invoke 'lumi plan'\n")
-	cmd = exec.Cmd{
-		Path:   lumi,
-		Dir:    examplewd,
-		Args:   []string{"", "plan"},
-		Stdout: os.Stdout,
-		Stderr: os.Stderr,
-	}
-	err = cmd.Run()
-	assert.NoError(t, err, "expected to successfully run `lumi plan`: %v", err)
-
-	fmt.Printf("\n**** Invoke 'lumi deploy'\n")
-	cmd = exec.Cmd{
-		Path:   lumi,
-		Dir:    examplewd,
-		Args:   []string{"", "deploy"},
-		Stdout: os.Stdout,
-		Stderr: os.Stderr,
-	}
-	err = cmd.Run()
-	assert.NoError(t, err, "expected to successfully run `lumi deploy`: %v", err)
-
-	fmt.Printf("\n**** Invoke 'lumi destroy'\n")
-	cmd = exec.Cmd{
-		Path:   lumi,
-		Dir:    examplewd,
-		Args:   []string{"", "destroy", "--yes"},
-		Stdout: os.Stdout,
-		Stderr: os.Stderr,
-	}
-	err = cmd.Run()
-	assert.NoError(t, err, "expected to successfully run `lumi destroy`: %v", err)
-
-	fmt.Printf("\n**** Invoke 'lumi env rm integrationtesting'\n")
-	cmd = exec.Cmd{
-		Path:   lumi,
-		Dir:    examplewd,
-		Args:   []string{"", "env", "rm", "--yes", "integrationtesting"},
-		Stdout: os.Stdout,
-		Stderr: os.Stderr,
-	}
-	err = cmd.Run()
-	assert.NoError(t, err, "expected to successfully remove Lumi environment: %v", err)
-
+	err := cmd.Run()
+	assert.NoError(t, err, "expected to successfully invoke '%v' in %v: %v", command, wd, err)
 }

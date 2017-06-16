@@ -1,5 +1,6 @@
 PROJECT=github.com/pulumi/lumi
 PROJECT_PKGS=$(shell go list ./cmd/... ./pkg/... | grep -v /vendor/)
+TESTPARALLELISM=10
 
 .PHONY: default
 default: banner lint_quiet vet test install
@@ -51,7 +52,7 @@ vet:
 .PHONY: test
 test:
 	@echo "\033[0;32mTEST:\033[0m"
-	@go test -cover ${PROJECT_PKGS}
+	@go test -cover ${PROJECT_PKGS} -parallel ${TESTPARALLELISM}
 
 .PHONY: lumijs
 lumijs:
