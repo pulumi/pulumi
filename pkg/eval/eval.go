@@ -48,7 +48,10 @@ type Interpreter interface {
 	EvaluateFunction(fnc symbols.Function, this *rt.Object, args core.Args) (*rt.Object, *rt.Unwind)
 
 	// LoadLocation loads a location by symbol; lval controls whether it is an l-value or just a value.
-	LoadLocation(tree diag.Diagable, sym symbols.Symbol, this *rt.Object, lval bool) *Location
+	LoadLocation(tree diag.Diagable, sym symbols.Symbol, this *rt.Object, lval bool) (*Location, *rt.Unwind)
+
+	// UnhandledException triggers the unhandled exception logic.
+	UnhandledException(tree diag.Diagable, ex *rt.Exception)
 }
 
 // New creates an interpreter that can be used to evaluate LumiPacks.
@@ -170,7 +173,7 @@ func (e *evaluator) EvaluateFunction(fnc symbols.Function, this *rt.Object, args
 
 		// If the call had a throw unwind, then we have an unhandled exception.
 		if uw != nil && uw.Throw() {
-			e.issueUnhandledException(uw, errors.ErrorUnhandledException.At(fnc.Tree()))
+			e.UnhandledException(fnc.Tree(), uw.Exception())
 		}
 
 		// Make sure to invoke the done hook.
@@ -553,12 +556,10 @@ func (e *evaluator) newObject(t symbols.Type) *rt.Object {
 }
 
 // issueUnhandledException issues an unhandled exception error using the given diagnostic and unwind information.
-func (e *evaluator) issueUnhandledException(uw *rt.Unwind, err *diag.Diag, args ...interface{}) {
-	contract.Assert(uw.Throw())
-
+func (e *evaluator) UnhandledException(tree diag.Diagable, ex *rt.Exception) {
 	// Produce a message with the exception text plus stack trace.
 	var msg string
-	if ex := uw.Exception(); ex != nil {
+	if ex != nil {
 		if ex.Thrown.Type() == types.String {
 			msg = ex.Thrown.StringValue() // use the basic string value.
 		} else {
@@ -570,8 +571,7 @@ func (e *evaluator) issueUnhandledException(uw *rt.Unwind, err *diag.Diag, args 
 	}
 
 	// Now simply output the error with the message plus stack trace.
-	args = append(args, msg)
-	e.Diag().Errorf(err, args...)
+	e.Diag().Errorf(errors.ErrorUnhandledException.At(tree), msg)
 }
 
 // rejectComputed checks an object's value and, if it's computed and its value isn't known, returns an exception unwind.
@@ -1596,10 +1596,13 @@ func (e *evaluator) evalLoadSymbolLocation(node diag.Diagable, sym symbols.Symbo
 	return pv, ty, nil
 }
 
-func (e *evaluator) LoadLocation(tree diag.Diagable, sym symbols.Symbol, this *rt.Object, lval bool) *Location {
+func (e *evaluator) LoadLocation(tree diag.Diagable, sym symbols.Symbol, this *rt.Object,
+	lval bool) (*Location, *rt.Unwind) {
 	pv, ty, uw := e.evalLoadSymbolLocation(tree, sym, this, nil, lval)
-	contract.Assertf(uw == nil, "Unexpected unwind; possible nil 'this' for instance method")
-	return e.newLocation(tree, sym, pv, ty, this, lval)
+	if uw != nil {
+		return nil, uw
+	}
+	return e.newLocation(tree, sym, pv, ty, this, lval), nil
 }
 
 // checkThis checks a this object, raising a runtime error if it is the runtime null value.

@@ -137,6 +137,7 @@ func InitEvalConfig(ctx *binder.Context, e eval.Interpreter, config resource.Con
 
 	// For each config entry, bind the token to its symbol, and then attempt to assign to it.
 	glog.V(5).Infof("Applying %v configuration values: %v", len(config), config)
+	var err error
 	for _, tok := range config.StableKeys() {
 		glog.V(5).Infof("Applying configuration value for token '%v'", tok)
 
@@ -155,20 +156,28 @@ func InitEvalConfig(ctx *binder.Context, e eval.Interpreter, config resource.Con
 			}
 			if !ok {
 				ctx.Diag.Errorf(errors.ErrorIllegalConfigToken, tok)
-				continue // skip to the next one
+			} else {
+				// Load up the location as an l-value; because we don't support instance properties, this is nil.
+				loc, uw := e.LoadLocation(tree, sym, nil, true)
+				if uw != nil {
+					// If an error was thrown, print it and keep going.
+					contract.Assert(uw.Throw())
+					e.UnhandledException(tree, uw.Exception())
+					ok = false
+				} else if loc != nil {
+					// Allocate a new constant for the value we are about to assign, and assign it to the location.
+					v := config[tok]
+					obj := rt.NewConstantObject(v)
+					loc.Set(tree, obj)
+				}
 			}
-
-			// Load up the location as an l-value; because we don't support instance properties, this is nil.
-			if loc := e.LoadLocation(tree, sym, nil, true); loc != nil {
-				// Allocate a new constant for the value we are about to assign, and assign it to the location.
-				v := config[tok]
-				obj := rt.NewConstantObject(v)
-				loc.Set(tree, obj)
+			if !ok && err == nil {
+				err = goerr.New("Configuration variables could not be applied; stopping")
 			}
 		}
 	}
 
-	return nil
+	return err
 }
 
 // forkEval performs the evaluation from a distinct goroutine.  This function blocks until it's our turn to go.

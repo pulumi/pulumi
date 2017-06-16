@@ -350,7 +350,7 @@ func (o *Object) String() string {
 		}
 
 		// Otherwise it's an arbitrary object; just print the type (we can't recurse, due to possible cycles).
-		return fmt.Sprintf("object{type=%v,props={...}}", o.t.Token())
+		return fmt.Sprintf("object{type=%v,v=%v,props={...%v}}", o.t.Token(), o.value, o.properties.Len())
 	}
 }
 
