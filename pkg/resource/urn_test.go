@@ -16,26 +16,21 @@
 package resource
 
 import (
-	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+
+	"github.com/pulumi/lumi/pkg/tokens"
 )
 
-func Test_NewUniqueHex(t *testing.T) {
-	prefix := "prefix"
-	randlen := 20
-	maxlen := 100
-	id := NewUniqueHex(prefix, maxlen, randlen)
-	assert.Equal(t, len(prefix)+randlen*2, len(id))
-	assert.Equal(t, true, strings.HasPrefix(id, prefix))
-}
-
-func Test_NewUniqueHex_Maxlen(t *testing.T) {
-	prefix := "prefix"
-	randlen := 20
-	maxlen := 20
-	id := NewUniqueHex(prefix, maxlen, randlen)
-	assert.Equal(t, maxlen, len(id))
-	assert.Equal(t, true, strings.HasPrefix(id, prefix))
+func TestURNRoundTripping(t *testing.T) {
+	ns := tokens.QName("namespace")
+	alloc := tokens.Module("foo:bar/baz")
+	typ := tokens.Type("bang:boom/fizzle:MajorResource")
+	name := tokens.QName("a-swell-resource")
+	urn := NewURN(ns, alloc, typ, name)
+	assert.Equal(t, ns, urn.Namespace())
+	assert.Equal(t, alloc, urn.Alloc())
+	assert.Equal(t, typ, urn.Type())
+	assert.Equal(t, name, urn.Name())
 }

@@ -51,40 +51,38 @@ const (
 
 // NewURN creates a unique resource URN for the given resource object.
 func NewURN(ns tokens.QName, alloc tokens.Module, t tokens.Type, name tokens.QName) URN {
-	urn := URN(
+	return URN(
 		URNPrefix +
 			string(ns) +
 			URNNameDelimiter + string(alloc) +
 			URNNameDelimiter + string(t) +
 			URNNameDelimiter + string(name),
 	)
-	contract.Assert(!urn.Replacement())
-	return urn
 }
 
-// replaceURNSuffix is the suffix for URNs referring to resources that are being replaced.
-const replaceURNSuffix = URN("#<new-id(replace)>")
-
-// Name returns the name part of a URN.
-func (urn URN) Name() string {
-	urns := string(urn)
-	contract.Assert(strings.HasPrefix(urns, URNPrefix))
-	return urns[len(URNPrefix):]
+// URNName returns the URN name part of a URN (i.e., strips off the prefix).
+func (urn URN) URNName() string {
+	s := string(urn)
+	contract.Assert(strings.HasPrefix(s, URNPrefix))
+	return s[len(URNPrefix):]
 }
 
-// Replace returns a new, modified replacement URN (used to tag resources that are meant to be replaced).
-func (urn URN) Replace() URN {
-	contract.Assert(!urn.Replacement())
-	return urn + replaceURNSuffix
+// Namespace returns the resource namespace part of a URN.
+func (urn URN) Namespace() tokens.QName {
+	return tokens.QName(strings.Split(urn.URNName(), URNNameDelimiter)[0])
 }
 
-// Unreplace returns the underlying replacement's URN.
-func (urn URN) Unreplace() URN {
-	contract.Assert(urn.Replacement())
-	return urn[:len(urn)-len(replaceURNSuffix)]
+// Alloc returns the resource allocation context part of a URN.
+func (urn URN) Alloc() tokens.Module {
+	return tokens.Module(strings.Split(urn.URNName(), URNNameDelimiter)[1])
 }
 
-// Replacement returns true if this URN refers to a resource that is meant to be replaced.
-func (urn URN) Replacement() bool {
-	return strings.HasSuffix(string(urn), string(replaceURNSuffix))
+// Type returns the resource type part of a URN.
+func (urn URN) Type() tokens.Type {
+	return tokens.Type(strings.Split(urn.URNName(), URNNameDelimiter)[2])
+}
+
+// Name returns the resource name part of a URN.
+func (urn URN) Name() tokens.QName {
+	return tokens.QName(strings.Split(urn.URNName(), URNNameDelimiter)[3])
 }

@@ -329,7 +329,7 @@ func printResourceProperties(b *bytes.Buffer, urn resource.URN, old *resource.St
 	if id != "" {
 		b.WriteString(fmt.Sprintf("%s[id=%s]\n", indent, string(id)))
 	}
-	b.WriteString(fmt.Sprintf("%s[urn=%s]\n", indent, urn.Name()))
+	b.WriteString(fmt.Sprintf("%s[urn=%s]\n", indent, urn))
 
 	if !summary {
 		// Print all of the properties associated with this resource.
