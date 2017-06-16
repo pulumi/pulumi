@@ -65,7 +65,7 @@ vet:
 	@go tool vet -printf=false provider/
 
 .PHONY: test_short
-test:
+test_short:
 	@echo "\033[0;32mTEST:\033[0m"
 	@go test -short -cover -parallel ${TESTPARALLELISM} ${GOPKGS}
 

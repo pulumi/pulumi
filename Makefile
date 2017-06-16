@@ -83,7 +83,7 @@ awspkg:
 	@cd ./lib/aws && $(MAKE)
 
 .PHONY: awspkg_nightly
-awspkg:
+awspkg_nightly:
 	@cd ./lib/aws && $(MAKE) nightly
 
 .PHONY: verify
