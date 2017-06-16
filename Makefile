@@ -6,7 +6,7 @@ TESTPARALLELISM=10
 default: banner lint_quiet vet test install
 
 .PHONY: all
-all: banner_all lint_quiet vet test install lumijs lumirtpkg lumijspkg lumipkg awspkg
+all: banner_all lint_quiet vet test install lumijs lumirtpkg lumijspkg lumipkg awspkg examples
 
 .PHONY: banner
 banner:
@@ -52,7 +52,7 @@ vet:
 .PHONY: test
 test:
 	@echo "\033[0;32mTEST:\033[0m"
-	@go test -cover ${PROJECT_PKGS} -parallel ${TESTPARALLELISM}
+	@go test -cover -parallel ${TESTPARALLELISM} ${PROJECT_PKGS}
 
 .PHONY: lumijs
 lumijs:
@@ -78,3 +78,7 @@ awspkg:
 verify:
 	@cd ./lib/aws && $(MAKE) verify
 
+.PHONY: examples
+examples:
+	@echo "\033[0;32mTEST EXAMPLES:\033[0m"
+	@go test -cover -parallel ${TESTPARALLELISM} ./examples

@@ -1,4 +1,4 @@
-package integration
+package examples
 
 import (
 	"fmt"
@@ -16,16 +16,16 @@ func Test_Examples(t *testing.T) {
 	var examples []string
 	if testing.Short() {
 		examples = []string{
-			path.Join("..", "..", "examples", "scenarios", "aws", "serverless"),
+			path.Join("scenarios", "aws", "serverless"),
 		}
 	} else {
 		examples = []string{
-			path.Join("..", "..", "examples", "scenarios", "aws", "serverless-raw"),
-			path.Join("..", "..", "examples", "scenarios", "aws", "serverless"),
-			path.Join("..", "..", "examples", "scenarios", "aws", "webserver"),
-			path.Join("..", "..", "examples", "scenarios", "aws", "webserver-comp"),
-			path.Join("..", "..", "examples", "scenarios", "aws", "beanstalk"),
-			path.Join("..", "..", "examples", "scenarios", "aws", "minimal"),
+			path.Join("scenarios", "aws", "serverless-raw"),
+			path.Join("scenarios", "aws", "serverless"),
+			path.Join("scenarios", "aws", "webserver"),
+			path.Join("scenarios", "aws", "webserver-comp"),
+			path.Join("scenarios", "aws", "beanstalk"),
+			path.Join("scenarios", "aws", "minimal"),
 		}
 	}
 	for _, example := range examples {
@@ -44,8 +44,8 @@ func testExample(t *testing.T, exampleDir string) {
 	cwd, err := os.Getwd()
 	assert.NoError(t, err, "expected a valid working directory: %v", err)
 	examplewd := path.Join(cwd, exampleDir)
-	lumijs := path.Join(cwd, "..", "..", "cmd", "lumijs", "lumijs")
-	lumisrc := path.Join(cwd, "..", "..", "cmd", "lumi")
+	lumijs := path.Join(cwd, "..", "cmd", "lumijs", "lumijs")
+	lumisrc := path.Join(cwd, "..", "cmd", "lumi")
 	lumipkg, err := build.ImportDir(lumisrc, build.FindOnly)
 	assert.NoError(t, err, "expected to find lumi package info: %v", err)
 	lumi := path.Join(lumipkg.BinDir, "lumi")

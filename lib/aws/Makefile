@@ -64,7 +64,7 @@ vet:
 .PHONY: test
 test:
 	@echo "\033[0;32mTEST:\033[0m"
-	@go test -cover ${GOPKGS} -parallel ${TESTPARALLELISM}
+	@go test -cover -parallel ${TESTPARALLELISM} ${GOPKGS}
 
 .PHONY: verify
 verify: gen
