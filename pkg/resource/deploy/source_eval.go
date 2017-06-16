@@ -185,7 +185,7 @@ func forkEval(src *evalSource, rz *rendezvous.Rendezvous, e eval.Interpreter) er
 	} else if done {
 		return goerr.New("Failure running the program before it even began executing")
 	}
-	contract.Assert(ret == nil)
+	contract.Assertf(ret == nil, "unexpected rendezvous return: %v", ret)
 	return nil
 }
 

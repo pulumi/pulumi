@@ -1,10 +1,14 @@
-GOPKGS    = $(shell go list ./provider/... | grep -v /vendor/)
-LUMIROOT ?= /usr/local/lumi
-LUMILIB   = ${LUMIROOT}/packs
-THISLIB   = ${LUMILIB}/aws
+GOPKGS          = $(shell go list ./provider/... | grep -v /vendor/)
+LUMIROOT       ?= /usr/local/lumi
+LUMILIB         = ${LUMIROOT}/packs
+THISLIB         = ${LUMILIB}/aws
+TESTPARALLELISM = 10
 
 .PHONY: default
-default: banner lint_quiet vet build test install
+default: banner lint_quiet vet build test_short install
+
+.PHONY: nightly
+nightly: banner lint_quiet vet build test install
 
 .PHONY: banner
 banner:
@@ -60,10 +64,15 @@ vet:
 	@echo "\033[0;32mVET:\033[0m"
 	@go tool vet -printf=false provider/
 
+.PHONY: test_short
+test:
+	@echo "\033[0;32mTEST:\033[0m"
+	@go test -short -cover -parallel ${TESTPARALLELISM} ${GOPKGS}
+
 .PHONY: test
 test:
 	@echo "\033[0;32mTEST:\033[0m"
-	@go test -cover ${GOPKGS}
+	@go test -cover -parallel ${TESTPARALLELISM} ${GOPKGS}
 
 .PHONY: verify
 verify: gen

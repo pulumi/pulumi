@@ -38,7 +38,7 @@ const (
 	minCNAMEPrefix     = 4
 	maxCNAMEPrefix     = 63
 	minEnvironmentName = 4
-	maxEnvironmentName = 63
+	maxEnvironmentName = 40
 )
 
 // NewEnvironmentProvider creates a provider that handles ElasticBeanstalk environment operations.
