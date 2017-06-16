@@ -25,7 +25,7 @@ const SubnetToken = tokens.Type("aws:ec2/subnet:Subnet")
 
 // SubnetProviderOps is a pluggable interface for Subnet-related management functionality.
 type SubnetProviderOps interface {
-    Check(ctx context.Context, obj *Subnet) ([]error, error)
+    Check(ctx context.Context, obj *Subnet, property string) error
     Create(ctx context.Context, obj *Subnet) (resource.ID, error)
     Get(ctx context.Context, id resource.ID) (*Subnet, error)
     InspectChange(ctx context.Context,
@@ -53,9 +53,39 @@ func (p *SubnetProvider) Check(
     if err != nil {
         return plugin.NewCheckResponse(err), nil
     }
-    if failures, err := p.ops.Check(ctx, obj); err != nil {
-        return nil, err
-    } else if len(failures) > 0 {
+    var failures []error
+    unks := req.GetUnknowns()
+    if !unks["name"] {
+        if failure := p.ops.Check(ctx, obj, "name"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Subnet", "name", failure))
+        }
+    }
+    if !unks["cidrBlock"] {
+        if failure := p.ops.Check(ctx, obj, "cidrBlock"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Subnet", "cidrBlock", failure))
+        }
+    }
+    if !unks["vpc"] {
+        if failure := p.ops.Check(ctx, obj, "vpc"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Subnet", "vpc", failure))
+        }
+    }
+    if !unks["availabilityZone"] {
+        if failure := p.ops.Check(ctx, obj, "availabilityZone"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Subnet", "availabilityZone", failure))
+        }
+    }
+    if !unks["mapPublicIpOnLaunch"] {
+        if failure := p.ops.Check(ctx, obj, "mapPublicIpOnLaunch"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Subnet", "mapPublicIpOnLaunch", failure))
+        }
+    }
+    if len(failures) > 0 {
         return plugin.NewCheckResponse(resource.NewErrors(failures)), nil
     }
     return plugin.NewCheckResponse(nil), nil

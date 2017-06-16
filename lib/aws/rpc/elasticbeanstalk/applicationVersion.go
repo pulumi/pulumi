@@ -25,7 +25,7 @@ const ApplicationVersionToken = tokens.Type("aws:elasticbeanstalk/applicationVer
 
 // ApplicationVersionProviderOps is a pluggable interface for ApplicationVersion-related management functionality.
 type ApplicationVersionProviderOps interface {
-    Check(ctx context.Context, obj *ApplicationVersion) ([]error, error)
+    Check(ctx context.Context, obj *ApplicationVersion, property string) error
     Create(ctx context.Context, obj *ApplicationVersion) (resource.ID, error)
     Get(ctx context.Context, id resource.ID) (*ApplicationVersion, error)
     InspectChange(ctx context.Context,
@@ -53,9 +53,39 @@ func (p *ApplicationVersionProvider) Check(
     if err != nil {
         return plugin.NewCheckResponse(err), nil
     }
-    if failures, err := p.ops.Check(ctx, obj); err != nil {
-        return nil, err
-    } else if len(failures) > 0 {
+    var failures []error
+    unks := req.GetUnknowns()
+    if !unks["name"] {
+        if failure := p.ops.Check(ctx, obj, "name"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("ApplicationVersion", "name", failure))
+        }
+    }
+    if !unks["application"] {
+        if failure := p.ops.Check(ctx, obj, "application"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("ApplicationVersion", "application", failure))
+        }
+    }
+    if !unks["versionLabel"] {
+        if failure := p.ops.Check(ctx, obj, "versionLabel"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("ApplicationVersion", "versionLabel", failure))
+        }
+    }
+    if !unks["description"] {
+        if failure := p.ops.Check(ctx, obj, "description"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("ApplicationVersion", "description", failure))
+        }
+    }
+    if !unks["sourceBundle"] {
+        if failure := p.ops.Check(ctx, obj, "sourceBundle"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("ApplicationVersion", "sourceBundle", failure))
+        }
+    }
+    if len(failures) > 0 {
         return plugin.NewCheckResponse(resource.NewErrors(failures)), nil
     }
     return plugin.NewCheckResponse(nil), nil

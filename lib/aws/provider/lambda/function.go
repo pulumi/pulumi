@@ -18,7 +18,6 @@ package lambda
 import (
 	"crypto/sha1"
 	"fmt"
-	"reflect"
 	"strings"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -66,27 +65,26 @@ type funcProvider struct {
 }
 
 // Check validates that the given property bag is valid for a resource of the given type.
-func (p *funcProvider) Check(ctx context.Context, obj *lambda.Function) ([]error, error) {
-	var failures []error
-	if _, has := functionRuntimes[obj.Runtime]; !has {
-		failures = append(failures,
-			resource.NewFieldError(reflect.TypeOf(obj), lambda.Function_Runtime,
-				fmt.Errorf("%v is not a valid runtime", obj.Runtime)))
-	}
-	if name := obj.FunctionName; name != nil {
-		var maxName int
-		if strings.HasPrefix(*name, functionNameARNPrefix) {
-			maxName = maxFunctionNameARN
-		} else {
-			maxName = maxFunctionName
+func (p *funcProvider) Check(ctx context.Context, obj *lambda.Function, property string) error {
+	switch property {
+	case lambda.Function_Runtime:
+		if _, has := functionRuntimes[obj.Runtime]; !has {
+			return fmt.Errorf("%v is not a valid runtime", obj.Runtime)
 		}
-		if len(*name) > maxName {
-			failures = append(failures,
-				resource.NewFieldError(reflect.TypeOf(obj), lambda.Function_FunctionName,
-					fmt.Errorf("exceeded maximum length of %v", maxName)))
+	case lambda.Function_FunctionName:
+		if name := obj.FunctionName; name != nil {
+			var maxName int
+			if strings.HasPrefix(*name, functionNameARNPrefix) {
+				maxName = maxFunctionNameARN
+			} else {
+				maxName = maxFunctionName
+			}
+			if len(*name) > maxName {
+				return fmt.Errorf("exceeded maximum length of %v", maxName)
+			}
 		}
 	}
-	return failures, nil
+	return nil
 }
 
 // Create allocates a new instance of the provided resource and returns its unique ID afterwards.  (The input ID

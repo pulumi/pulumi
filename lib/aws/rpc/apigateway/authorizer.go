@@ -25,7 +25,7 @@ const AuthorizerToken = tokens.Type("aws:apigateway/authorizer:Authorizer")
 
 // AuthorizerProviderOps is a pluggable interface for Authorizer-related management functionality.
 type AuthorizerProviderOps interface {
-    Check(ctx context.Context, obj *Authorizer) ([]error, error)
+    Check(ctx context.Context, obj *Authorizer, property string) error
     Create(ctx context.Context, obj *Authorizer) (resource.ID, error)
     Get(ctx context.Context, id resource.ID) (*Authorizer, error)
     InspectChange(ctx context.Context,
@@ -53,9 +53,63 @@ func (p *AuthorizerProvider) Check(
     if err != nil {
         return plugin.NewCheckResponse(err), nil
     }
-    if failures, err := p.ops.Check(ctx, obj); err != nil {
-        return nil, err
-    } else if len(failures) > 0 {
+    var failures []error
+    unks := req.GetUnknowns()
+    if !unks["name"] {
+        if failure := p.ops.Check(ctx, obj, "name"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Authorizer", "name", failure))
+        }
+    }
+    if !unks["type"] {
+        if failure := p.ops.Check(ctx, obj, "type"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Authorizer", "type", failure))
+        }
+    }
+    if !unks["authorizerCredentials"] {
+        if failure := p.ops.Check(ctx, obj, "authorizerCredentials"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Authorizer", "authorizerCredentials", failure))
+        }
+    }
+    if !unks["authorizerResultTTLInSeconds"] {
+        if failure := p.ops.Check(ctx, obj, "authorizerResultTTLInSeconds"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Authorizer", "authorizerResultTTLInSeconds", failure))
+        }
+    }
+    if !unks["authorizerURI"] {
+        if failure := p.ops.Check(ctx, obj, "authorizerURI"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Authorizer", "authorizerURI", failure))
+        }
+    }
+    if !unks["identitySource"] {
+        if failure := p.ops.Check(ctx, obj, "identitySource"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Authorizer", "identitySource", failure))
+        }
+    }
+    if !unks["identityValidationExpression"] {
+        if failure := p.ops.Check(ctx, obj, "identityValidationExpression"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Authorizer", "identityValidationExpression", failure))
+        }
+    }
+    if !unks["providers"] {
+        if failure := p.ops.Check(ctx, obj, "providers"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Authorizer", "providers", failure))
+        }
+    }
+    if !unks["restAPI"] {
+        if failure := p.ops.Check(ctx, obj, "restAPI"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Authorizer", "restAPI", failure))
+        }
+    }
+    if len(failures) > 0 {
         return plugin.NewCheckResponse(resource.NewErrors(failures)), nil
     }
     return plugin.NewCheckResponse(nil), nil

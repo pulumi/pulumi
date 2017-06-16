@@ -27,7 +27,7 @@ const ActionTargetToken = tokens.Type("aws:cloudwatch/alarm:ActionTarget")
 
 // ActionTargetProviderOps is a pluggable interface for ActionTarget-related management functionality.
 type ActionTargetProviderOps interface {
-    Check(ctx context.Context, obj *ActionTarget) ([]error, error)
+    Check(ctx context.Context, obj *ActionTarget, property string) error
     Create(ctx context.Context, obj *ActionTarget) (resource.ID, error)
     Get(ctx context.Context, id resource.ID) (*ActionTarget, error)
     InspectChange(ctx context.Context,
@@ -55,9 +55,33 @@ func (p *ActionTargetProvider) Check(
     if err != nil {
         return plugin.NewCheckResponse(err), nil
     }
-    if failures, err := p.ops.Check(ctx, obj); err != nil {
-        return nil, err
-    } else if len(failures) > 0 {
+    var failures []error
+    unks := req.GetUnknowns()
+    if !unks["name"] {
+        if failure := p.ops.Check(ctx, obj, "name"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("ActionTarget", "name", failure))
+        }
+    }
+    if !unks["topicName"] {
+        if failure := p.ops.Check(ctx, obj, "topicName"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("ActionTarget", "topicName", failure))
+        }
+    }
+    if !unks["displayName"] {
+        if failure := p.ops.Check(ctx, obj, "displayName"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("ActionTarget", "displayName", failure))
+        }
+    }
+    if !unks["subscription"] {
+        if failure := p.ops.Check(ctx, obj, "subscription"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("ActionTarget", "subscription", failure))
+        }
+    }
+    if len(failures) > 0 {
         return plugin.NewCheckResponse(resource.NewErrors(failures)), nil
     }
     return plugin.NewCheckResponse(nil), nil
@@ -199,7 +223,7 @@ const AlarmToken = tokens.Type("aws:cloudwatch/alarm:Alarm")
 
 // AlarmProviderOps is a pluggable interface for Alarm-related management functionality.
 type AlarmProviderOps interface {
-    Check(ctx context.Context, obj *Alarm) ([]error, error)
+    Check(ctx context.Context, obj *Alarm, property string) error
     Create(ctx context.Context, obj *Alarm) (resource.ID, error)
     Get(ctx context.Context, id resource.ID) (*Alarm, error)
     InspectChange(ctx context.Context,
@@ -227,9 +251,105 @@ func (p *AlarmProvider) Check(
     if err != nil {
         return plugin.NewCheckResponse(err), nil
     }
-    if failures, err := p.ops.Check(ctx, obj); err != nil {
-        return nil, err
-    } else if len(failures) > 0 {
+    var failures []error
+    unks := req.GetUnknowns()
+    if !unks["name"] {
+        if failure := p.ops.Check(ctx, obj, "name"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Alarm", "name", failure))
+        }
+    }
+    if !unks["comparisonOperator"] {
+        if failure := p.ops.Check(ctx, obj, "comparisonOperator"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Alarm", "comparisonOperator", failure))
+        }
+    }
+    if !unks["evaluationPerids"] {
+        if failure := p.ops.Check(ctx, obj, "evaluationPerids"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Alarm", "evaluationPerids", failure))
+        }
+    }
+    if !unks["metricName"] {
+        if failure := p.ops.Check(ctx, obj, "metricName"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Alarm", "metricName", failure))
+        }
+    }
+    if !unks["namespace"] {
+        if failure := p.ops.Check(ctx, obj, "namespace"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Alarm", "namespace", failure))
+        }
+    }
+    if !unks["period"] {
+        if failure := p.ops.Check(ctx, obj, "period"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Alarm", "period", failure))
+        }
+    }
+    if !unks["statistic"] {
+        if failure := p.ops.Check(ctx, obj, "statistic"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Alarm", "statistic", failure))
+        }
+    }
+    if !unks["threshold"] {
+        if failure := p.ops.Check(ctx, obj, "threshold"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Alarm", "threshold", failure))
+        }
+    }
+    if !unks["actionsEnabled"] {
+        if failure := p.ops.Check(ctx, obj, "actionsEnabled"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Alarm", "actionsEnabled", failure))
+        }
+    }
+    if !unks["alarmActions"] {
+        if failure := p.ops.Check(ctx, obj, "alarmActions"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Alarm", "alarmActions", failure))
+        }
+    }
+    if !unks["alarmDescription"] {
+        if failure := p.ops.Check(ctx, obj, "alarmDescription"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Alarm", "alarmDescription", failure))
+        }
+    }
+    if !unks["alarmName"] {
+        if failure := p.ops.Check(ctx, obj, "alarmName"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Alarm", "alarmName", failure))
+        }
+    }
+    if !unks["dimensions"] {
+        if failure := p.ops.Check(ctx, obj, "dimensions"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Alarm", "dimensions", failure))
+        }
+    }
+    if !unks["insufficientDataActions"] {
+        if failure := p.ops.Check(ctx, obj, "insufficientDataActions"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Alarm", "insufficientDataActions", failure))
+        }
+    }
+    if !unks["okActions"] {
+        if failure := p.ops.Check(ctx, obj, "okActions"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Alarm", "okActions", failure))
+        }
+    }
+    if !unks["unit"] {
+        if failure := p.ops.Check(ctx, obj, "unit"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Alarm", "unit", failure))
+        }
+    }
+    if len(failures) > 0 {
         return plugin.NewCheckResponse(resource.NewErrors(failures)), nil
     }
     return plugin.NewCheckResponse(nil), nil

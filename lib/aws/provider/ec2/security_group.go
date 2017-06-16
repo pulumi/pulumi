@@ -18,7 +18,6 @@ package ec2
 import (
 	"crypto/sha1"
 	"fmt"
-	"reflect"
 
 	"github.com/aws/aws-sdk-go/aws"
 	awsec2 "github.com/aws/aws-sdk-go/service/ec2"
@@ -54,19 +53,18 @@ type sgProvider struct {
 }
 
 // Check validates that the given property bag is valid for a resource of the given type.
-func (p *sgProvider) Check(ctx context.Context, obj *ec2.SecurityGroup) ([]error, error) {
-	var failures []error
-	if len(obj.GroupDescription) > maxSecurityGroupDescription {
-		failures = append(failures,
-			resource.NewFieldError(reflect.TypeOf(obj), ec2.SecurityGroup_GroupDescription,
-				fmt.Errorf("exceeded maximum length of %v", maxSecurityGroupDescription)))
+func (p *sgProvider) Check(ctx context.Context, obj *ec2.SecurityGroup, property string) error {
+	switch property {
+	case ec2.SecurityGroup_GroupDescription:
+		if len(obj.GroupDescription) > maxSecurityGroupDescription {
+			return fmt.Errorf("exceeded maximum length of %v", maxSecurityGroupDescription)
+		}
+	case ec2.SecurityGroup_SecurityGroupEgress:
+		if obj.VPC == nil && obj.SecurityGroupEgress != nil && len(*obj.SecurityGroupEgress) > 0 {
+			return fmt.Errorf("custom egress rules are not supported on EC2-Classic groups (those without a VPC)")
+		}
 	}
-	if obj.VPC == nil && obj.SecurityGroupEgress != nil && len(*obj.SecurityGroupEgress) > 0 {
-		failures = append(failures,
-			resource.NewFieldError(reflect.TypeOf(obj), ec2.SecurityGroup_SecurityGroupEgress,
-				fmt.Errorf("custom egress rules are not supported on EC2-Classic groups (those without a VPC)")))
-	}
-	return failures, nil
+	return nil
 }
 
 // Create allocates a new instance of the provided resource and returns its unique ID afterwards.  (The input ID

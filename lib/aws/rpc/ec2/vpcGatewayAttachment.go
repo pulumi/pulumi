@@ -25,7 +25,7 @@ const VPCGatewayAttachmentToken = tokens.Type("aws:ec2/vpcGatewayAttachment:VPCG
 
 // VPCGatewayAttachmentProviderOps is a pluggable interface for VPCGatewayAttachment-related management functionality.
 type VPCGatewayAttachmentProviderOps interface {
-    Check(ctx context.Context, obj *VPCGatewayAttachment) ([]error, error)
+    Check(ctx context.Context, obj *VPCGatewayAttachment, property string) error
     Create(ctx context.Context, obj *VPCGatewayAttachment) (resource.ID, error)
     Get(ctx context.Context, id resource.ID) (*VPCGatewayAttachment, error)
     InspectChange(ctx context.Context,
@@ -53,9 +53,27 @@ func (p *VPCGatewayAttachmentProvider) Check(
     if err != nil {
         return plugin.NewCheckResponse(err), nil
     }
-    if failures, err := p.ops.Check(ctx, obj); err != nil {
-        return nil, err
-    } else if len(failures) > 0 {
+    var failures []error
+    unks := req.GetUnknowns()
+    if !unks["name"] {
+        if failure := p.ops.Check(ctx, obj, "name"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("VPCGatewayAttachment", "name", failure))
+        }
+    }
+    if !unks["vpc"] {
+        if failure := p.ops.Check(ctx, obj, "vpc"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("VPCGatewayAttachment", "vpc", failure))
+        }
+    }
+    if !unks["internetGateway"] {
+        if failure := p.ops.Check(ctx, obj, "internetGateway"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("VPCGatewayAttachment", "internetGateway", failure))
+        }
+    }
+    if len(failures) > 0 {
         return plugin.NewCheckResponse(resource.NewErrors(failures)), nil
     }
     return plugin.NewCheckResponse(nil), nil

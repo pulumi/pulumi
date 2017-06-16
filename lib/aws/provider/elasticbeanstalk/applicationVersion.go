@@ -18,7 +18,6 @@ package elasticbeanstalk
 import (
 	"crypto/sha1"
 	"fmt"
-	"reflect"
 
 	"github.com/aws/aws-sdk-go/aws"
 	awselasticbeanstalk "github.com/aws/aws-sdk-go/service/elasticbeanstalk"
@@ -46,17 +45,17 @@ type applicationVersionProvider struct {
 
 // Check validates that the given property bag is valid for a resource of the given type.
 func (p *applicationVersionProvider) Check(ctx context.Context,
-	obj *elasticbeanstalk.ApplicationVersion) ([]error, error) {
-	var failures []error
-	if description := obj.Description; description != nil {
-		if len(*description) > maxDescription {
-			failures = append(failures,
-				resource.NewFieldError(reflect.TypeOf(obj), elasticbeanstalk.ApplicationVersion_Description,
-					fmt.Errorf("exceeded maximum length of %v", maxDescription)))
+	obj *elasticbeanstalk.ApplicationVersion, property string) error {
+	switch property {
+	case elasticbeanstalk.ApplicationVersion_Description:
+		if description := obj.Description; description != nil {
+			if len(*description) > maxDescription {
+				return fmt.Errorf("exceeded maximum length of %v", maxDescription)
+			}
 		}
 	}
 	// TODO[pulumi/lumi#220]: validate that the SourceBundle S3 bucket is in the same region as the environment.
-	return failures, nil
+	return nil
 }
 
 // Create allocates a new instance of the provided resource and returns its unique ID afterwards.  (The input ID

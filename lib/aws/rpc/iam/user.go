@@ -39,7 +39,7 @@ const UserToken = tokens.Type("aws:iam/user:User")
 
 // UserProviderOps is a pluggable interface for User-related management functionality.
 type UserProviderOps interface {
-    Check(ctx context.Context, obj *User) ([]error, error)
+    Check(ctx context.Context, obj *User, property string) error
     Create(ctx context.Context, obj *User) (resource.ID, error)
     Get(ctx context.Context, id resource.ID) (*User, error)
     InspectChange(ctx context.Context,
@@ -67,9 +67,51 @@ func (p *UserProvider) Check(
     if err != nil {
         return plugin.NewCheckResponse(err), nil
     }
-    if failures, err := p.ops.Check(ctx, obj); err != nil {
-        return nil, err
-    } else if len(failures) > 0 {
+    var failures []error
+    unks := req.GetUnknowns()
+    if !unks["name"] {
+        if failure := p.ops.Check(ctx, obj, "name"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("User", "name", failure))
+        }
+    }
+    if !unks["userName"] {
+        if failure := p.ops.Check(ctx, obj, "userName"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("User", "userName", failure))
+        }
+    }
+    if !unks["groups"] {
+        if failure := p.ops.Check(ctx, obj, "groups"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("User", "groups", failure))
+        }
+    }
+    if !unks["loginProfile"] {
+        if failure := p.ops.Check(ctx, obj, "loginProfile"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("User", "loginProfile", failure))
+        }
+    }
+    if !unks["managedPolicies"] {
+        if failure := p.ops.Check(ctx, obj, "managedPolicies"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("User", "managedPolicies", failure))
+        }
+    }
+    if !unks["path"] {
+        if failure := p.ops.Check(ctx, obj, "path"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("User", "path", failure))
+        }
+    }
+    if !unks["policies"] {
+        if failure := p.ops.Check(ctx, obj, "policies"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("User", "policies", failure))
+        }
+    }
+    if len(failures) > 0 {
         return plugin.NewCheckResponse(resource.NewErrors(failures)), nil
     }
     return plugin.NewCheckResponse(nil), nil

@@ -231,6 +231,13 @@ func (g *RPCGenerator) EmitResource(w *bufio.Writer, module tokens.Module, pkg *
 	}
 
 	propopts := res.PropertyOptions()
+	var hasinputs bool
+	for _, propopt := range propopts {
+		if !propopt.Out {
+			hasinputs = true
+			break
+		}
+	}
 
 	// Emit a type token.
 	token := fmt.Sprintf("%v:%v:%v", pkg.Name, module, name)
@@ -241,7 +248,7 @@ func (g *RPCGenerator) EmitResource(w *bufio.Writer, module tokens.Module, pkg *
 	// Now, generate an ops interface that the real provider will implement.
 	writefmtln(w, "// %[1]vProviderOps is a pluggable interface for %[1]v-related management functionality.", name)
 	writefmtln(w, "type %vProviderOps interface {", name)
-	writefmtln(w, "    Check(ctx context.Context, obj *%v) ([]error, error)", name)
+	writefmtln(w, "    Check(ctx context.Context, obj *%v, property string) error", name)
 	if !res.Named {
 		writefmtln(w, "    Name(ctx context.Context, obj *%v) (string, error)", name)
 	}
@@ -274,11 +281,23 @@ func (g *RPCGenerator) EmitResource(w *bufio.Writer, module tokens.Module, pkg *
 	writefmtln(w, "    if err != nil {")
 	writefmtln(w, "        return plugin.NewCheckResponse(err), nil")
 	writefmtln(w, "    }")
-	writefmtln(w, "    if failures, err := p.ops.Check(ctx, obj); err != nil {")
-	writefmtln(w, "        return nil, err")
-	writefmtln(w, "    } else if len(failures) > 0 {")
-	writefmtln(w, "        return plugin.NewCheckResponse(resource.NewErrors(failures)), nil")
-	writefmtln(w, "    }")
+	if hasinputs {
+		writefmtln(w, "    var failures []error")
+		writefmtln(w, "    unks := req.GetUnknowns()")
+		for _, opts := range propopts {
+			if !opts.Out {
+				writefmtln(w, "    if !unks[\"%v\"] {", opts.Name)
+				writefmtln(w, "        if failure := p.ops.Check(ctx, obj, \"%v\"); failure != nil {", opts.Name)
+				writefmtln(w, "            failures = append(failures,")
+				writefmtln(w, "                resource.NewPropertyError(\"%v\", \"%v\", failure))", name, opts.Name)
+				writefmtln(w, "        }")
+				writefmtln(w, "    }")
+			}
+		}
+		writefmtln(w, "    if len(failures) > 0 {")
+		writefmtln(w, "        return plugin.NewCheckResponse(resource.NewErrors(failures)), nil")
+		writefmtln(w, "    }")
+	}
 	writefmtln(w, "    return plugin.NewCheckResponse(nil), nil")
 	writefmtln(w, "}")
 	writefmtln(w, "")

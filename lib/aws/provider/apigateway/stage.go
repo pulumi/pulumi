@@ -54,8 +54,8 @@ type stageProvider struct {
 }
 
 // Check validates that the given property bag is valid for a resource of the given type.
-func (p *stageProvider) Check(ctx context.Context, obj *apigateway.Stage) ([]error, error) {
-	return nil, nil
+func (p *stageProvider) Check(ctx context.Context, obj *apigateway.Stage, property string) error {
+	return nil
 }
 
 // Create allocates a new instance of the provided resource and returns its unique ID afterwards.  (The input ID

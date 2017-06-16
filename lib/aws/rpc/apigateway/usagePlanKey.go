@@ -25,7 +25,7 @@ const UsagePlanKeyToken = tokens.Type("aws:apigateway/usagePlanKey:UsagePlanKey"
 
 // UsagePlanKeyProviderOps is a pluggable interface for UsagePlanKey-related management functionality.
 type UsagePlanKeyProviderOps interface {
-    Check(ctx context.Context, obj *UsagePlanKey) ([]error, error)
+    Check(ctx context.Context, obj *UsagePlanKey, property string) error
     Create(ctx context.Context, obj *UsagePlanKey) (resource.ID, error)
     Get(ctx context.Context, id resource.ID) (*UsagePlanKey, error)
     InspectChange(ctx context.Context,
@@ -53,9 +53,27 @@ func (p *UsagePlanKeyProvider) Check(
     if err != nil {
         return plugin.NewCheckResponse(err), nil
     }
-    if failures, err := p.ops.Check(ctx, obj); err != nil {
-        return nil, err
-    } else if len(failures) > 0 {
+    var failures []error
+    unks := req.GetUnknowns()
+    if !unks["name"] {
+        if failure := p.ops.Check(ctx, obj, "name"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("UsagePlanKey", "name", failure))
+        }
+    }
+    if !unks["key"] {
+        if failure := p.ops.Check(ctx, obj, "key"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("UsagePlanKey", "key", failure))
+        }
+    }
+    if !unks["usagePlan"] {
+        if failure := p.ops.Check(ctx, obj, "usagePlan"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("UsagePlanKey", "usagePlan", failure))
+        }
+    }
+    if len(failures) > 0 {
         return plugin.NewCheckResponse(resource.NewErrors(failures)), nil
     }
     return plugin.NewCheckResponse(nil), nil

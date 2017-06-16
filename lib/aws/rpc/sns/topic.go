@@ -25,7 +25,7 @@ const TopicToken = tokens.Type("aws:sns/topic:Topic")
 
 // TopicProviderOps is a pluggable interface for Topic-related management functionality.
 type TopicProviderOps interface {
-    Check(ctx context.Context, obj *Topic) ([]error, error)
+    Check(ctx context.Context, obj *Topic, property string) error
     Create(ctx context.Context, obj *Topic) (resource.ID, error)
     Get(ctx context.Context, id resource.ID) (*Topic, error)
     InspectChange(ctx context.Context,
@@ -53,9 +53,33 @@ func (p *TopicProvider) Check(
     if err != nil {
         return plugin.NewCheckResponse(err), nil
     }
-    if failures, err := p.ops.Check(ctx, obj); err != nil {
-        return nil, err
-    } else if len(failures) > 0 {
+    var failures []error
+    unks := req.GetUnknowns()
+    if !unks["name"] {
+        if failure := p.ops.Check(ctx, obj, "name"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Topic", "name", failure))
+        }
+    }
+    if !unks["topicName"] {
+        if failure := p.ops.Check(ctx, obj, "topicName"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Topic", "topicName", failure))
+        }
+    }
+    if !unks["displayName"] {
+        if failure := p.ops.Check(ctx, obj, "displayName"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Topic", "displayName", failure))
+        }
+    }
+    if !unks["subscription"] {
+        if failure := p.ops.Check(ctx, obj, "subscription"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Topic", "subscription", failure))
+        }
+    }
+    if len(failures) > 0 {
         return plugin.NewCheckResponse(resource.NewErrors(failures)), nil
     }
     return plugin.NewCheckResponse(nil), nil

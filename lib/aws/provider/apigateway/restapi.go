@@ -56,8 +56,8 @@ type restAPIProvider struct {
 }
 
 // Check validates that the given property bag is valid for a resource of the given type.
-func (p *restAPIProvider) Check(ctx context.Context, obj *apigateway.RestAPI) ([]error, error) {
-	return nil, nil
+func (p *restAPIProvider) Check(ctx context.Context, obj *apigateway.RestAPI, property string) error {
+	return nil
 }
 
 // Create allocates a new instance of the provided resource and returns its unique ID afterwards.  (The input ID

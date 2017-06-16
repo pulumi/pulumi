@@ -16,8 +16,6 @@
 package resource
 
 import (
-	"reflect"
-
 	"github.com/pulumi/lumi/pkg/util/mapper"
 )
 
@@ -27,8 +25,8 @@ func NewErrors(errs []error) error {
 	return mapper.NewMappingError(errs)
 }
 
-// NewFieldError creates a new error pertaining to a resource's field.  Note that it just turns around and defers to
-// the same mapping infrastructure used for serialization and deserialization, but it presents a nicer interface.
-func NewFieldError(ty reflect.Type, fld string, err error) error {
-	return mapper.NewFieldError(ty, fld, err)
+// NewPropertyError creates a new error pertaining to a resource's property.  Note that it just turns around and defers
+// to the same mapping infrastructure used for serialization and deserialization, but it presents a nicer interface.
+func NewPropertyError(typ string, property string, err error) error {
+	return mapper.NewFieldError(typ, property, err)
 }

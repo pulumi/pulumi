@@ -25,7 +25,7 @@ const AccountToken = tokens.Type("aws:apigateway/account:Account")
 
 // AccountProviderOps is a pluggable interface for Account-related management functionality.
 type AccountProviderOps interface {
-    Check(ctx context.Context, obj *Account) ([]error, error)
+    Check(ctx context.Context, obj *Account, property string) error
     Create(ctx context.Context, obj *Account) (resource.ID, error)
     Get(ctx context.Context, id resource.ID) (*Account, error)
     InspectChange(ctx context.Context,
@@ -53,9 +53,21 @@ func (p *AccountProvider) Check(
     if err != nil {
         return plugin.NewCheckResponse(err), nil
     }
-    if failures, err := p.ops.Check(ctx, obj); err != nil {
-        return nil, err
-    } else if len(failures) > 0 {
+    var failures []error
+    unks := req.GetUnknowns()
+    if !unks["name"] {
+        if failure := p.ops.Check(ctx, obj, "name"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Account", "name", failure))
+        }
+    }
+    if !unks["cloudWatchRole"] {
+        if failure := p.ops.Check(ctx, obj, "cloudWatchRole"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Account", "cloudWatchRole", failure))
+        }
+    }
+    if len(failures) > 0 {
         return plugin.NewCheckResponse(resource.NewErrors(failures)), nil
     }
     return plugin.NewCheckResponse(nil), nil
