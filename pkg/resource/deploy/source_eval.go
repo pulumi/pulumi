@@ -178,8 +178,8 @@ func forkEval(src *evalSource, rz *rendezvous.Rendezvous, e eval.Interpreter) er
 		e.EvaluatePackage(src.pkg, src.args)
 	}()
 
-	// And wait for it to reach its rendezvous before proceeding.
-	ret, done, err := rz.Meet(planParty, nil)
+	// Let the other party run and only resume when it's our turn.
+	ret, done, err := rz.Let(planParty)
 	if err != nil {
 		return err
 	} else if done {
