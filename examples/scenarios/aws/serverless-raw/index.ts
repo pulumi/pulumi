@@ -13,8 +13,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import * as lumi from "@lumi/lumi";
 import * as aws from "@lumi/aws";
+import * as lumi from "@lumi/lumi";
 
 ///////////////////
 // Lambda Function
@@ -25,13 +25,13 @@ let policy = {
     {
       "Action": "sts:AssumeRole",
       "Principal": {
-        "Service": "lambda.amazonaws.com"
+        "Service": "lambda.amazonaws.com",
       },
       "Effect": "Allow",
-      "Sid": ""
-    }
-  ]
-}
+      "Sid": "",
+    },
+  ],
+};
 
 let role = new aws.iam.Role("mylambdarole", {
   assumeRolePolicyDocument: policy,
@@ -41,7 +41,7 @@ let role = new aws.iam.Role("mylambdarole", {
 let lambda = new aws.lambda.Function("mylambda", {
   code: new lumi.asset.AssetArchive({
     "index.js": new lumi.asset.String(
-        "exports.handler = (e, c, cb) => cb({statusCode: 200, body: 'Hello, world!'});"
+        "exports.handler = (e, c, cb) => cb({statusCode: 200, body: 'Hello, world!'});",
     ),
   }),
   role: role,
@@ -62,7 +62,7 @@ let music = new aws.dynamodb.Table("music", {
   rangeKey: "Artist",
   readCapacity: 1,
   writeCapacity: 1,
-})
+});
 
 
 ///////////////////
@@ -80,15 +80,15 @@ let swaggerSpec = {
           uri: "arn:aws:apigateway:" + region + ":lambda:path/2015-03-31/functions/" + lambda.arn + "/invocations",
           passthroughBehavior: "when_no_match",
           httpMethod: "POST",
-          type: "aws_proxy"
-        }
-      }
-    }
-  }
-}
+          type: "aws_proxy",
+        },
+      },
+    },
+  },
+};
 
 let restAPI = new aws.apigateway.RestAPI("myrestapi", {
-  body: swaggerSpec
+  body: swaggerSpec,
 });
 
 let deployment = new aws.apigateway.Deployment("myrestapi_deployment", {

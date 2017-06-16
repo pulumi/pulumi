@@ -13,8 +13,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import * as lumi from "@lumi/lumi";
 import * as aws from "@lumi/aws";
+import * as lumi from "@lumi/lumi";
 
 let music = new aws.dynamodb.Table("music", {
   attributes: [
@@ -47,9 +47,9 @@ let music = new aws.dynamodb.Table("music", {
       writeCapacity: 2,
     },
   ],
-})
+});
 
-let hello = "Hello, world!"
+let hello = "Hello, world!";
 let lambda = new aws.serverless.Function(
   "mylambda",
   [aws.iam.AWSLambdaFullAccess],
@@ -58,13 +58,13 @@ let lambda = new aws.serverless.Function(
     console.log("Invoked function: " + context.invokedFunctionArn);
     callback(null, {
       statusCode: 200,
-      body: hello + "\n\nSucceeed with " + context.getRemainingTimeInMillis() + "ms remaining.\n"
+      body: hello + "\n\nSucceeed with " + context.getRemainingTimeInMillis() + "ms remaining.\n",
     });
-  }
+  },
 );
 
-let api = new aws.serverless.API("frontend")
-api.route("GET", "/bambam", lambda)
-api.route("PUT", "/bambam", lambda)
-let stage = api.publish()
+let api = new aws.serverless.API("frontend");
+api.route("GET", "/bambam", lambda);
+api.route("PUT", "/bambam", lambda);
+let stage = api.publish();
 
