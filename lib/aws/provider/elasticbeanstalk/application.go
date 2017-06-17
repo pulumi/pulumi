@@ -160,6 +160,7 @@ func (p *applicationProvider) Delete(ctx context.Context, id resource.ID) error 
 		return err
 	}
 	succ, err := awsctx.RetryUntilLong(p.ctx, func() (bool, error) {
+		fmt.Printf("Waiting for application %v to become Terminated\n", name)
 		resp, err := p.getApplication(name)
 		if err != nil {
 			return false, err

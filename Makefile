@@ -3,13 +3,13 @@ PROJECT_PKGS=$(shell go list ./cmd/... ./pkg/... | grep -v /vendor/)
 TESTPARALLELISM=10
 
 .PHONY: default
-default: banner lint_quiet vet test_short install
+default: banner lint_quiet vet test install
 
 .PHONY: all
-all: banner_all lint_quiet vet test_short install lumijs lumirtpkg lumijspkg lumipkg awspkg
+all: banner_all lint_quiet vet test install lumijs lumirtpkg lumijspkg lumipkg awspkg
 
 .PHONY: nightly
-nightly: banner_all lint_quiet vet test install lumijs lumirtpkg lumijspkg lumipkg awspkg_nightly examples
+nightly: banner_all lint_quiet vet test install lumijs lumirtpkg lumijspkg lumipkg awspkg examples
 
 .PHONY: banner
 banner:
@@ -52,11 +52,6 @@ vet:
 	@echo "\033[0;32mVET:\033[0m"
 	@go tool vet -printf=false cmd/ pkg/
 
-.PHONY: test_short
-test_short:
-	@echo "\033[0;32mTEST:\033[0m"
-	@go test -short -cover ${PROJECT_PKGS}
-
 .PHONY: test
 test:
 	@echo "\033[0;32mTEST:\033[0m"
@@ -82,10 +77,6 @@ lumipkg:
 awspkg:
 	@cd ./lib/aws && $(MAKE)
 
-.PHONY: awspkg_nightly
-awspkg_nightly:
-	@cd ./lib/aws && $(MAKE) nightly
-
 .PHONY: verify
 verify:
 	@cd ./lib/aws && $(MAKE) verify
@@ -93,4 +84,4 @@ verify:
 .PHONY: examples
 examples:
 	@echo "\033[0;32mTEST EXAMPLES:\033[0m"
-	@go test -cover -timeout 1h -parallel ${TESTPARALLELISM} ./examples
+	@go test -v -cover -timeout 1h -parallel ${TESTPARALLELISM} ./examples

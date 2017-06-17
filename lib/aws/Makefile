@@ -5,10 +5,7 @@ THISLIB         = ${LUMILIB}/aws
 TESTPARALLELISM = 10
 
 .PHONY: default
-default: banner lint_quiet vet build test_short install
-
-.PHONY: nightly
-nightly: banner lint_quiet vet build test install
+default: banner lint_quiet vet build test install
 
 .PHONY: banner
 banner:
@@ -64,11 +61,6 @@ lint_quiet:
 vet:
 	@echo "\033[0;32mVET:\033[0m"
 	@go tool vet -printf=false provider/
-
-.PHONY: test_short
-test_short:
-	@echo "\033[0;32mTEST:\033[0m"
-	@go test -short -cover -parallel ${TESTPARALLELISM} ${GOPKGS}
 
 .PHONY: test
 test:
