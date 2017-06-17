@@ -51,6 +51,7 @@ install:
 lint:
 	@echo "\033[0;32mLINT:\033[0m"
 	@golint -set_exit_status provider/...
+	@tslint lib/aws/pack/...
 
 .PHONY: lint_quiet
 lint_quiet:
