@@ -189,11 +189,24 @@ func (p *restAPIProvider) Delete(ctx context.Context, id resource.ID) error {
 		return err
 	}
 	fmt.Printf("Deleting APIGateway RestAPI '%v'\n", id)
-	_, err = p.ctx.APIGateway().DeleteRestApi(&awsapigateway.DeleteRestApiInput{
-		RestApiId: aws.String(restAPIID),
+	succ, err := awsctx.RetryUntilLong(p.ctx, func() (bool, error) {
+		fmt.Printf("Waiting for RestAPI %v to be deleted\n", id)
+		_, err = p.ctx.APIGateway().DeleteRestApi(&awsapigateway.DeleteRestApiInput{
+			RestApiId: aws.String(restAPIID),
+		})
+		if err != nil {
+			if awsctx.IsAWSError(err, "TooManyRequestsException") {
+				return false, nil
+			}
+			return false, err
+		}
+		return true, nil
 	})
 	if err != nil {
 		return err
+	}
+	if !succ {
+		return fmt.Errorf("Timed out waiting for RestAPI to become ready")
 	}
 	return nil
 }

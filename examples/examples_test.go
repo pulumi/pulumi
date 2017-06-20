@@ -28,7 +28,8 @@ func Test_Examples(t *testing.T) {
 			path.Join("scenarios", "aws", "minimal"),
 		}
 	}
-	for _, example := range examples {
+	for _, ex := range examples {
+		example := ex
 		t.Run(example, func(t *testing.T) {
 			testExample(t, example)
 		})
@@ -42,20 +43,34 @@ func testExample(t *testing.T, exampleDir string) {
 		t.Skipf("Skipping test due to missing AWS_REGION environment variable")
 	}
 	cwd, err := os.Getwd()
-	assert.NoError(t, err, "expected a valid working directory: %v", err)
+	if !assert.NoError(t, err, "expected a valid working directory: %v", err) {
+		return
+	}
 	examplewd := path.Join(cwd, exampleDir)
 	lumijs := path.Join(cwd, "..", "cmd", "lumijs", "lumijs")
 	lumisrc := path.Join(cwd, "..", "cmd", "lumi")
 	lumipkg, err := build.ImportDir(lumisrc, build.FindOnly)
-	assert.NoError(t, err, "expected to find lumi package info: %v", err)
+	if !assert.NoError(t, err, "expected to find lumi package info: %v", err) {
+		return
+	}
 	lumi := path.Join(lumipkg.BinDir, "lumi")
 	_, err = os.Stat(lumi)
-	assert.NoError(t, err, "expected to find lumi binary: %v", err)
+	if !assert.NoError(t, err, "expected to find lumi binary: %v", err) {
+		return
+	}
+	yarn, err := exec.LookPath("yarn")
+	if !assert.NoError(t, err, "expected to find yarn binary: %v", err) {
+		return
+	}
 
 	fmt.Printf("sample: %v\n", examplewd)
 	fmt.Printf("lumijs: %v\n", lumijs)
 	fmt.Printf("lumi: %v\n", lumi)
+	fmt.Printf("yarn: %v\n", yarn)
 
+	runCmd(t, []string{yarn, "link", "@lumi/lumirt"}, examplewd)
+	runCmd(t, []string{yarn, "link", "@lumi/lumi"}, examplewd)
+	runCmd(t, []string{yarn, "link", "@lumi/aws"}, examplewd)
 	runCmd(t, []string{lumijs, "--verbose"}, examplewd)
 	runCmd(t, []string{lumi, "env", "init", "integrationtesting"}, examplewd)
 	runCmd(t, []string{lumi, "config", "aws:config/index:region", region}, examplewd)

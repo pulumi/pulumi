@@ -1,6 +1,6 @@
 name: serverless
 description: Basic example of a serverless AWS application.
 dependencies:
-    lumirt: "*"
+    lumi: "*"
     aws: "*"
 
