@@ -13,9 +13,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { AssetArchive, String, File } from "@lumi/lumi/asset";
+import { AssetArchive, File, String as StringAsset } from "@lumi/lumi/asset";
 import {
-    serializeClosure, jsonStringify, objectKeys, Closure, printf
+    Closure, jsonStringify, objectKeys, printf, serializeClosure,
 } from "@lumi/lumirt";
 import { Role } from "../iam/role";
 import { Function as LambdaFunction } from "../lambda/function";
@@ -58,12 +58,12 @@ interface FuncEnv {
     env: string;
 }
 
-// addToFuncEnvs adds the closure with the given name into a collection of function environments.  As it walks the 
+// addToFuncEnvs adds the closure with the given name into a collection of function environments.  As it walks the
 // closures environment, it finds additional closures that this closure is dependent on, and recursively adds those
-// to the function environment as well.  The resulting environments for each closure are json stringified representations
-// ready to be marshalled to a target execution environment.
+// to the function environment as well.  The resulting environments for each closure are json stringified
+// representations ready to be marshalled to a target execution environment.
 function addToFuncEnvs(funcEnvs: { [key: string]: FuncEnv}, name: string, closure: Closure): { [key: string]: FuncEnv} {
-    let obj: any = {}
+    let obj: any = {};
     let keys = objectKeys(closure.environment);
     for (let i = 0; i < (<any>keys).length; i++) {
         let key = keys[i];
@@ -72,7 +72,7 @@ function addToFuncEnvs(funcEnvs: { [key: string]: FuncEnv}, name: string, closur
             obj[key] = envEntry.json;
         } else if (envEntry.closure !== undefined) {
             // TODO[pulumi/lumi#238]: We need to detect cycles here.
-            addToFuncEnvs(funcEnvs, key, envEntry.closure)
+            addToFuncEnvs(funcEnvs, key, envEntry.closure);
         } else {
             // TODO[pulumi/lumi#239]: For now we will skip serialziing when the captured JSON object is null/undefined.
             //     This is not technically correct, as it will cause references to these to fail instead
@@ -88,20 +88,20 @@ function addToFuncEnvs(funcEnvs: { [key: string]: FuncEnv}, name: string, closur
 
 function createJavaScriptLambda(functionName: string, role: Role, closure: Closure): LambdaFunction {
     let funcs = addToFuncEnvs({}, "__handler", closure);
-    
+
     let str = "exports.handler = __handler;\n\n";
     let fkeys = objectKeys(funcs);
-    let envObj: any = {}
-    for (let i = 0; i < (<any>fkeys).length; i++) { 
+    let envObj: any = {};
+    for (let i = 0; i < (<any>fkeys).length; i++) {
         let name = fkeys[i];
-        str += 
+        str +=
             "function " + name + "() {\n" +
             "  let __env = JSON.parse(process.env.LUMI_ENV_" + name + ");\n" +
             "  with(__env) {\n" +
             "    let __f = " + funcs[name].code +
             "    return __f.apply(null, arguments);\n" +
-            "  }\n" + 
-            "}\n" + 
+            "  }\n" +
+            "}\n" +
             "\n";
         envObj["LUMI_ENV_" + name] = funcs[name].env;
     }
@@ -109,7 +109,7 @@ function createJavaScriptLambda(functionName: string, role: Role, closure: Closu
     let lambda = new LambdaFunction(functionName, {
         code: new AssetArchive({
             "node_modules": new File("node_modules"),
-            "index.js": new String(str)
+            "index.js": new StringAsset(str),
         }),
         handler: "index.handler",
         runtime: "nodejs6.10",

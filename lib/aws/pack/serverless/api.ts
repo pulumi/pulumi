@@ -13,13 +13,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-
-/* tslint:disable: ordered-imports */
-import { jsonStringify, sha1hash, printf, objectKeys } from "@lumi/lumirt";
+import { jsonStringify, objectKeys, printf, sha1hash } from "@lumi/lumirt";
 import { Deployment, RestAPI, Stage } from "../apigateway";
+import { requireRegion } from "../config";
 import { Permission } from "../lambda";
 import { Function } from "./function";
-import { requireRegion } from "../config";
 
 export interface Route {
     method: string;

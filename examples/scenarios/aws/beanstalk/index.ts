@@ -13,21 +13,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { Bucket, Object } from "@lumi/aws/s3";
 import { Application, ApplicationVersion, Environment } from "@lumi/aws/elasticbeanstalk";
+import { Bucket, Object } from "@lumi/aws/s3";
 import { File } from "@lumi/lumi/asset";
 
-let sourceBucket = new Bucket("sourceBucket", {})
+let sourceBucket = new Bucket("sourceBucket", {});
 let source = new Object({
     bucket: sourceBucket,
     key: "testSource/app.zip",
-    source: new File("app.zip")
-})
-let myapp = new Application("myapp", {})
+    source: new File("app.zip"),
+});
+let myapp = new Application("myapp", {});
 let myappversion = new ApplicationVersion("myappversion", {
     application: myapp,
-    sourceBundle: source
-})
+    sourceBundle: source,
+});
 let myenv = new Environment("myenv", {
     application: myapp,
     version: myappversion,
@@ -36,12 +36,12 @@ let myenv = new Environment("myenv", {
         {
             namespace: "aws:autoscaling:asg",
             optionName: "MinSize",
-            value: "2"
+            value: "2",
         },
         {
             namespace: "aws:autoscaling:launchconfiguration",
             optionName: "InstanceType",
-            value: "t2.nano"
-        }
-    ]
-})
+            value: "t2.nano",
+        },
+    ],
+});
