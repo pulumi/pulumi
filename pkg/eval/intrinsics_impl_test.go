@@ -16,6 +16,7 @@
 package eval
 
 import (
+	"fmt"
 	"os"
 	"testing"
 
@@ -32,6 +33,13 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+// intrin carries the qualified name and signature for an intrinsic function
+type intrin struct {
+	moduleMember tokens.ModuleMember
+	paramTypes   []tokens.Type
+	returnType   tokens.Type
+}
+
 // newTestEval makes an interpreter that can be used for testing purposes.
 func newTestEval() (binder.Binder, Interpreter) {
 	pwd, err := os.Getwd()
@@ -44,13 +52,79 @@ func newTestEval() (binder.Binder, Interpreter) {
 	return b, New(b.Ctx(), nil)
 }
 
-// makeTestPackage creates a Lumi package for testing a series of statements to be invoked
-func makeTestPackage(body []ast.Statement) *pack.Package {
-	return &pack.Package{
-		Name: "lumitest",
-		Dependencies: &pack.Dependencies{
-			tokens.PackageName("lumirt"): pack.PackageURLString("*"),
+func makeFakeIntrinsicDefinition(intrin intrin) *ast.Module {
+	moduleMemberName := intrin.moduleMember.Name()
+	moduleName := tokens.Name(intrin.moduleMember.Module().Name())
+	functionName := tokens.Name(intrin.moduleMember.Name())
+	intrinToken := tokens.Token(intrin.moduleMember)
+
+	var params []*ast.LocalVariable
+	for i, pty := range intrin.paramTypes {
+		params = append(params, &ast.LocalVariable{
+			DefinitionNode: ast.DefinitionNode{
+				Name: &ast.Identifier{
+					Ident: tokens.Name(fmt.Sprintf("x%d", i)),
+				},
+			},
+			VariableNode: ast.VariableNode{
+				Type: &ast.TypeToken{
+					Tok: pty,
+				},
+			},
+		})
+	}
+
+	return &ast.Module{
+		DefinitionNode: ast.DefinitionNode{
+			Name: &ast.Identifier{
+				Ident: moduleName,
+			},
 		},
+		Exports: &ast.ModuleExports{
+			moduleMemberName: &ast.Export{
+				DefinitionNode: ast.DefinitionNode{
+					Name: &ast.Identifier{
+						Ident: functionName,
+					},
+				},
+				Referent: &ast.Token{
+					Tok: intrinToken,
+				},
+			},
+		},
+		Members: &ast.ModuleMembers{
+			moduleMemberName: &ast.ModuleMethod{
+				FunctionNode: ast.FunctionNode{
+					Parameters: &params,
+					ReturnType: &ast.TypeToken{
+						Tok: intrin.returnType,
+					},
+					Body: &ast.Block{
+						Statements: []ast.Statement{
+							&ast.ThrowStatement{
+								Expression: &ast.StringLiteral{
+									Value: "unreachable",
+								},
+							},
+						},
+					},
+				},
+				ModuleMemberNode: ast.ModuleMemberNode{
+					DefinitionNode: ast.DefinitionNode{
+						Name: &ast.Identifier{
+							Ident: functionName,
+						},
+					},
+				},
+			},
+		},
+	}
+}
+
+// makeTestPackage creates a Lumi package for testing a series of statements to be invoked
+func makeTestPackage(body []ast.Statement, fakeIntrinsicDefinition *ast.Module) *pack.Package {
+	return &pack.Package{
+		Name: "lumirt",
 		Modules: &ast.Modules{
 			tokens.ModuleName(".default"): &ast.Module{
 				DefinitionNode: ast.DefinitionNode{
@@ -78,6 +152,7 @@ func makeTestPackage(body []ast.Statement) *pack.Package {
 					},
 				},
 			},
+			tokens.ModuleName("index"): fakeIntrinsicDefinition,
 		},
 	}
 }
@@ -136,11 +211,12 @@ func makeInvokeIntrinsicAST(intrin tokens.ModuleMember, dynamic bool, args []ast
 // fresh evaluator.  It returns the resulting object and unwind, as well as the binder used during evaluation.  If the
 // dynamic flag is true, the function is loaded dynamically, else it is loaded statically through a reference to the
 // intrinsic symbol.
-func invokeIntrinsic(intrin tokens.ModuleMember, dynamic bool, args []ast.Expression) (binder.Binder,
+func invokeIntrinsic(intrin intrin, dynamic bool, args []ast.Expression) (binder.Binder,
 	*rt.Object, *rt.Unwind) {
 	b, e := newTestEval()
-	body := makeInvokeIntrinsicAST(intrin, dynamic, args)
-	pack := makeTestPackage(body)
+	body := makeInvokeIntrinsicAST(intrin.moduleMember, dynamic, args)
+	fakeIntrinsicDefinitionModule := makeFakeIntrinsicDefinition(intrin)
+	pack := makeTestPackage(body, fakeIntrinsicDefinitionModule)
 	sym := b.BindPackage(pack)
 	ret, uw := e.EvaluatePackage(sym, nil)
 	return b, ret, uw
@@ -150,10 +226,14 @@ func invokeIntrinsic(intrin tokens.ModuleMember, dynamic bool, args []ast.Expres
 func Test_IsFunction(t *testing.T) {
 	t.Parallel()
 
-	isFunctionIntrin := tokens.ModuleMember("lumirt:index:isFunction")
+	isFunctionIntrin := intrin{
+		moduleMember: tokens.ModuleMember("lumirt:index:isFunction"),
+		paramTypes:   []tokens.Type{types.Object.TypeToken()},
+		returnType:   types.Bool.TypeToken(),
+	}
 	aFunction := &ast.LoadLocationExpression{
 		Name: &ast.Token{
-			Tok: tokens.Token(isFunctionIntrin),
+			Tok: tokens.Token(isFunctionIntrin.moduleMember),
 		},
 	}
 	notAFunction := &ast.NullLiteral{}
@@ -203,7 +283,11 @@ func Test_IsFunction(t *testing.T) {
 func Test_JsonStringify(t *testing.T) {
 	t.Parallel()
 
-	jsonStringifyIntrin := tokens.ModuleMember("lumirt:index:jsonStringify")
+	jsonStringifyIntrin := intrin{
+		moduleMember: tokens.ModuleMember("lumirt:index:jsonStringify"),
+		paramTypes:   []tokens.Type{types.Object.TypeToken()},
+		returnType:   types.String.TypeToken(),
+	}
 
 	{
 		//jsonStringify(`a
