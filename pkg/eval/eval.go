@@ -701,13 +701,6 @@ func (e *evaluator) evalCall(node diag.Diagable,
 	e.pushScope(frame, !shareActivation)
 	defer e.popScope(frame)
 
-	// Invoke the hooks if available.
-	if e.hooks != nil {
-		if leave := e.hooks.OnEnterFunction(sym); leave != nil {
-			defer leave()
-		}
-	}
-
 	// If the target is an instance method, the "this" and "super" variables must be bound to values.
 	if thisVariable != nil {
 		contract.Assert(this != nil)
@@ -740,14 +733,26 @@ func (e *evaluator) evalCall(node diag.Diagable,
 		}
 	}
 
-	// Now perform the invocation; for intrinsics, just run the code; for all others, interpret the body.
 	var uw *rt.Unwind
-	if intrinsic {
-		isym := sym.(*rt.Intrinsic)
-		invoker := GetIntrinsicInvoker(isym)
-		uw = invoker(isym, e, this, args)
-	} else {
-		uw = e.evalStatement(fnc.GetBody())
+
+	// Invoke the hooks if available.
+	if e.hooks != nil {
+		var leave func()
+		if uw, leave = e.hooks.OnEnterFunction(sym, args); leave != nil {
+			defer leave()
+		}
+	}
+
+	// Assuming the hook didn't perform its own logic, we can now perform the real invocation; for intrinsics, just run
+	// the code; for all others, interpret the body.
+	if uw == nil {
+		if intrinsic {
+			isym := sym.(*rt.Intrinsic)
+			invoker := GetIntrinsicInvoker(isym)
+			uw = invoker(isym, e, this, args)
+		} else {
+			uw = e.evalStatement(fnc.GetBody())
+		}
 	}
 
 	// Check that the unwind is as expected.  In particular:

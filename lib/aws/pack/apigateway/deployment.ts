@@ -20,6 +20,14 @@ export class Deployment extends lumi.NamedResource implements DeploymentArgs {
         this.restAPI = args.restAPI;
         this.description = args.description;
     }
+
+    public static get(id: lumi.ID): Deployment {
+        return <any>undefined; // functionality provided by the runtime
+    }
+
+    public static query(q: any): Deployment[] {
+        return <any>undefined; // functionality provided by the runtime
+    }
 }
 
 export interface DeploymentArgs {

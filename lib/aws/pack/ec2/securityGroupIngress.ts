@@ -34,6 +34,14 @@ export class SecurityGroupIngress extends lumi.NamedResource implements Security
         this.sourceSecurityGroupOwnerId = args.sourceSecurityGroupOwnerId;
         this.toPort = args.toPort;
     }
+
+    public static get(id: lumi.ID): SecurityGroupIngress {
+        return <any>undefined; // functionality provided by the runtime
+    }
+
+    public static query(q: any): SecurityGroupIngress[] {
+        return <any>undefined; // functionality provided by the runtime
+    }
 }
 
 export interface SecurityGroupIngressArgs {

@@ -116,8 +116,12 @@ func (iter *errorSourceIterator) Close() error {
 	return nil // nothing to do.
 }
 
-func (iter *errorSourceIterator) Next() (*resource.Object, tokens.Module, error) {
-	return nil, "", iter.src.err
+func (iter *errorSourceIterator) Produce(res *resource.Object) {
+	// nothing to do.
+}
+
+func (iter *errorSourceIterator) Next() (*SourceAllocation, *SourceQuery, error) {
+	return nil, nil, iter.src.err
 }
 
 // TestBasicCRUDPlan creates a plan with numerous C(R)UD operations.
@@ -236,44 +240,48 @@ func TestBasicCRUDPlan(t *testing.T) {
 			break
 		}
 
+		err = step.Pre()
+		assert.Nil(t, err)
+
 		var urn resource.URN
 		var realID bool
 		var expectOuts resource.PropertyMap
 		var obj *resource.Object
-		op := step.Op()
-		switch op {
-		case OpCreate: // A is created
-			old := step.Old()
-			new := step.New()
+		switch s := step.(type) {
+		case *CreateStep: // A is created
+			old := s.Old()
+			new := s.New()
 			assert.Nil(t, old)
 			assert.NotNil(t, new)
-			assert.Equal(t, newResAProps, step.Inputs())
+			assert.Equal(t, newResAProps, s.Inputs())
 			obj, urn, realID = new, urnA, false
-		case OpUpdate: // B is updated
-			old := step.Old()
-			new := step.New()
+		case *UpdateStep: // B is updated
+			old := s.Old()
+			new := s.New()
 			assert.NotNil(t, old)
 			assert.Equal(t, urnB, old.URN())
 			assert.Equal(t, oldResB, old)
 			assert.NotNil(t, new)
-			assert.Equal(t, newResBProps, step.Inputs())
+			assert.Equal(t, newResBProps, s.Inputs())
 			obj, urn, realID = new, urnB, true
-		case OpSame: // C is the same
-			old := step.Old()
-			new := step.New()
+		case *SameStep: // C is the same
+			old := s.Old()
+			new := s.New()
 			assert.NotNil(t, old)
 			assert.Equal(t, urnC, old.URN())
 			assert.Equal(t, oldResC, old)
 			assert.NotNil(t, new)
-			assert.Equal(t, newResCProps, step.Inputs())
+			assert.Equal(t, newResCProps, s.Inputs())
 			obj, urn, realID, expectOuts = new, urnC, true, oldResC.Outputs()
-		case OpDelete: // D is deleted
-			old := step.Old()
-			new := step.New()
+		case *DeleteStep: // D is deleted
+			old := s.Old()
+			new := s.New()
 			assert.NotNil(t, old)
 			assert.Equal(t, urnD, old.URN())
 			assert.Equal(t, oldResD, old)
 			assert.Nil(t, new)
+		default:
+			t.FailNow() // unexpected step kind.
 		}
 
 		if obj != nil {
@@ -292,8 +300,10 @@ func TestBasicCRUDPlan(t *testing.T) {
 			}
 		}
 
-		step.Skip()
+		err = step.Skip()
+		assert.Nil(t, err)
 
+		op := step.Op()
 		if obj != nil {
 			// Ensure the ID and URN are populated correctly.
 			if realID {
@@ -317,8 +327,9 @@ func TestBasicCRUDPlan(t *testing.T) {
 	assert.Equal(t, 1, seen[OpCreate])
 	assert.Equal(t, 1, seen[OpUpdate])
 	assert.Equal(t, 1, seen[OpDelete])
-	assert.Equal(t, 0, seen[OpReplaceCreate])
-	assert.Equal(t, 0, seen[OpReplaceDelete])
+	assert.Equal(t, 0, seen[OpReplace])
+	assert.Equal(t, 0, seen[OpGet])
+	assert.Equal(t, 0, seen[OpQuery])
 
 	assert.Equal(t, 1, len(iter.Creates()))
 	assert.True(t, iter.Creates()[urnA])

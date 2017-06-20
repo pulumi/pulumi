@@ -21,6 +21,14 @@ export class VPCPeeringConnection extends lumi.NamedResource implements VPCPeeri
         }
         this.vpc = args.vpc;
     }
+
+    public static get(id: lumi.ID): VPCPeeringConnection {
+        return <any>undefined; // functionality provided by the runtime
+    }
+
+    public static query(q: any): VPCPeeringConnection[] {
+        return <any>undefined; // functionality provided by the runtime
+    }
 }
 
 export interface VPCPeeringConnectionArgs {

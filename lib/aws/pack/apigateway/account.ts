@@ -15,6 +15,14 @@ export class Account extends lumi.NamedResource implements AccountArgs {
             this.cloudWatchRole = args.cloudWatchRole;
         }
     }
+
+    public static get(id: lumi.ID): Account {
+        return <any>undefined; // functionality provided by the runtime
+    }
+
+    public static query(q: any): Account[] {
+        return <any>undefined; // functionality provided by the runtime
+    }
 }
 
 export interface AccountArgs {

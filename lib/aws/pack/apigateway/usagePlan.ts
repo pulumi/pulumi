@@ -49,6 +49,14 @@ export class UsagePlan extends lumi.NamedResource implements UsagePlanArgs {
             this.usagePlanName = args.usagePlanName;
         }
     }
+
+    public static get(id: lumi.ID): UsagePlan {
+        return <any>undefined; // functionality provided by the runtime
+    }
+
+    public static query(q: any): UsagePlan[] {
+        return <any>undefined; // functionality provided by the runtime
+    }
 }
 
 export interface UsagePlanArgs {

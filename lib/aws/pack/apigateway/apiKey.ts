@@ -22,6 +22,14 @@ export class APIKey extends lumi.NamedResource implements APIKeyArgs {
             this.stageKeys = args.stageKeys;
         }
     }
+
+    public static get(id: lumi.ID): APIKey {
+        return <any>undefined; // functionality provided by the runtime
+    }
+
+    public static query(q: any): APIKey[] {
+        return <any>undefined; // functionality provided by the runtime
+    }
 }
 
 export interface APIKeyArgs {

@@ -25,6 +25,14 @@ export class Subnet extends lumi.NamedResource implements SubnetArgs {
         this.availabilityZone = args.availabilityZone;
         this.mapPublicIpOnLaunch = args.mapPublicIpOnLaunch;
     }
+
+    public static get(id: lumi.ID): Subnet {
+        return <any>undefined; // functionality provided by the runtime
+    }
+
+    public static query(q: any): Subnet[] {
+        return <any>undefined; // functionality provided by the runtime
+    }
 }
 
 export interface SubnetArgs {

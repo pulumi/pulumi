@@ -21,6 +21,14 @@ export class Group extends lumi.NamedResource implements GroupArgs {
             this.policies = args.policies;
         }
     }
+
+    public static get(id: lumi.ID): Group {
+        return <any>undefined; // functionality provided by the runtime
+    }
+
+    public static query(q: any): Group[] {
+        return <any>undefined; // functionality provided by the runtime
+    }
 }
 
 export interface GroupArgs {

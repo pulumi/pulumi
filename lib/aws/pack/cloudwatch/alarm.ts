@@ -56,6 +56,14 @@ export class ActionTarget extends lumi.NamedResource implements ActionTargetArgs
             this.subscription = args.subscription;
         }
     }
+
+    public static get(id: lumi.ID): ActionTarget {
+        return <any>undefined; // functionality provided by the runtime
+    }
+
+    public static query(q: any): ActionTarget[] {
+        return <any>undefined; // functionality provided by the runtime
+    }
 }
 
 export interface ActionTargetArgs {
@@ -119,6 +127,14 @@ export class Alarm extends lumi.NamedResource implements AlarmArgs {
         this.insufficientDataActions = args.insufficientDataActions;
         this.okActions = args.okActions;
         this.unit = args.unit;
+    }
+
+    public static get(id: lumi.ID): Alarm {
+        return <any>undefined; // functionality provided by the runtime
+    }
+
+    public static query(q: any): Alarm[] {
+        return <any>undefined; // functionality provided by the runtime
     }
 }
 

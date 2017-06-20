@@ -31,6 +31,14 @@ export class User extends lumi.NamedResource implements UserArgs {
             this.policies = args.policies;
         }
     }
+
+    public static get(id: lumi.ID): User {
+        return <any>undefined; // functionality provided by the runtime
+    }
+
+    public static query(q: any): User[] {
+        return <any>undefined; // functionality provided by the runtime
+    }
 }
 
 export interface UserArgs {

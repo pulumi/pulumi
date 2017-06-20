@@ -26,6 +26,14 @@ export class BasePathMapping extends lumi.NamedResource implements BasePathMappi
         this.basePath = args.basePath;
         this.stage = args.stage;
     }
+
+    public static get(id: lumi.ID): BasePathMapping {
+        return <any>undefined; // functionality provided by the runtime
+    }
+
+    public static query(q: any): BasePathMapping[] {
+        return <any>undefined; // functionality provided by the runtime
+    }
 }
 
 export interface BasePathMappingArgs {

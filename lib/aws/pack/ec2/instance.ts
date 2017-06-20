@@ -87,6 +87,14 @@ export class Instance extends lumi.NamedResource implements InstanceArgs {
         this.keyName = args.keyName;
         this.tags = args.tags;
     }
+
+    public static get(id: lumi.ID): Instance {
+        return <any>undefined; // functionality provided by the runtime
+    }
+
+    public static query(q: any): Instance[] {
+        return <any>undefined; // functionality provided by the runtime
+    }
 }
 
 export interface InstanceArgs {

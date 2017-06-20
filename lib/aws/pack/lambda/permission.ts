@@ -31,6 +31,14 @@ export class Permission extends lumi.NamedResource implements PermissionArgs {
         this.sourceAccount = args.sourceAccount;
         this.sourceARN = args.sourceARN;
     }
+
+    public static get(id: lumi.ID): Permission {
+        return <any>undefined; // functionality provided by the runtime
+    }
+
+    public static query(q: any): Permission[] {
+        return <any>undefined; // functionality provided by the runtime
+    }
 }
 
 export interface PermissionArgs {

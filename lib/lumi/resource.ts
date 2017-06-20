@@ -13,10 +13,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+export type ID = string;
+export type URN = string;
+
 // Resource represents a class whose CRUD operations are implemented by a provider plugin.
 export abstract class Resource {
-    public readonly id: string;  // the provider-assigned unique ID (initialized by the runtime).
-    public readonly urn: string; // the Lumi URN (initialized by the runtime).
+    public readonly id: ID;   // the provider-assigned unique ID (initialized by the runtime).
+    public readonly urn: URN; // the Lumi URN (initialized by the runtime).
 }
 
 // NamedResource is a kind of resource that has a friendly resource name associated with it.

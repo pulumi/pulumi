@@ -97,6 +97,14 @@ export class Method extends lumi.NamedResource implements MethodArgs {
         this.requestModels = args.requestModels;
         this.requestParameters = args.requestParameters;
     }
+
+    public static get(id: lumi.ID): Method {
+        return <any>undefined; // functionality provided by the runtime
+    }
+
+    public static query(q: any): Method[] {
+        return <any>undefined; // functionality provided by the runtime
+    }
 }
 
 export interface MethodArgs {

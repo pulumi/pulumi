@@ -29,6 +29,14 @@ export class VPC extends lumi.NamedResource implements VPCArgs {
         this.enableDnsSupport = args.enableDnsSupport;
         this.enableDnsHostnames = args.enableDnsHostnames;
     }
+
+    public static get(id: lumi.ID): VPC {
+        return <any>undefined; // functionality provided by the runtime
+    }
+
+    public static query(q: any): VPC[] {
+        return <any>undefined; // functionality provided by the runtime
+    }
 }
 
 export interface VPCArgs {

@@ -15,6 +15,14 @@ export class Application extends lumi.NamedResource implements ApplicationArgs {
             this.description = args.description;
         }
     }
+
+    public static get(id: lumi.ID): Application {
+        return <any>undefined; // functionality provided by the runtime
+    }
+
+    public static query(q: any): Application[] {
+        return <any>undefined; // functionality provided by the runtime
+    }
 }
 
 export interface ApplicationArgs {

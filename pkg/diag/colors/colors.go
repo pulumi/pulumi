@@ -81,6 +81,7 @@ var (
 
 	SpecAdded    = Green        // for adds (in the diff sense).
 	SpecChanged  = BrightYellow // for changes (in the diff sense).
+	SpecRead     = BrightWhite  // for reads (relatively unimportant).
 	SpecReplaced = Yellow       // for replacements (in the diff sense).
 	SpecDeleted  = Red          // for deletes (in the diff sense).
 )
