@@ -22,7 +22,6 @@ import (
 	"github.com/pulumi/lumi/pkg/compiler/errors"
 	"github.com/pulumi/lumi/pkg/resource"
 	"github.com/pulumi/lumi/pkg/resource/plugin"
-	"github.com/pulumi/lumi/pkg/tokens"
 	"github.com/pulumi/lumi/pkg/util/contract"
 )
 
@@ -31,7 +30,7 @@ import (
 // Apply performs all steps in the plan, calling out to the progress reporting functions as desired.  It returns four
 // things: the resulting Snapshot, no matter whether an error occurs or not; an error, if something went wrong; the step
 // that failed, if the error is non-nil; and finally the state of the resource modified in the failing step.
-func (p *Plan) Apply(prog Progress) (PlanSummary, *Step, resource.Status, error) {
+func (p *Plan) Apply(prog Progress) (PlanSummary, Step, resource.Status, error) {
 	// Fetch a plan iterator and keep walking it until we are done.
 	iter, err := p.Iterate()
 	if err != nil {
@@ -43,12 +42,18 @@ func (p *Plan) Apply(prog Progress) (PlanSummary, *Step, resource.Status, error)
 		return nil, nil, resource.StatusOK, err
 	}
 	for step != nil {
+		// Do the pre-step.
+		rst := resource.StatusOK
+		err := step.Pre()
+
 		// Perform pre-application progress reporting.
 		if prog != nil {
 			prog.Before(step)
 		}
 
-		rst, err := step.Apply()
+		if err == nil {
+			rst, err = step.Apply()
+		}
 
 		// Perform post-application progress reporting.
 		if prog != nil {
@@ -135,33 +140,43 @@ func (iter *PlanIterator) Resources() []*resource.State    { return iter.resourc
 func (iter *PlanIterator) Dones() map[*resource.State]bool { return iter.dones }
 func (iter *PlanIterator) Done() bool                      { return iter.done }
 
+// Produce is used to indicate that a new resource state has been read from a live environment.
+func (iter *PlanIterator) Produce(res *resource.Object) {
+	iter.src.Produce(res)
+}
+
 // Next advances the plan by a single step, and returns the next step to be performed.  In doing so, it will perform
 // evaluation of the program as much as necessary to determine the next step.  If there is no further action to be
 // taken, Next will return a nil step pointer.
-func (iter *PlanIterator) Next() (*Step, error) {
+func (iter *PlanIterator) Next() (Step, error) {
 	for !iter.done {
 		if !iter.srcdone {
-			obj, ctx, err := iter.src.Next()
+			res, q, err := iter.src.Next()
 			if err != nil {
 				return nil, err
-			} else if obj == nil {
-				// If the source is done, note it, and don't go back for more.
-				iter.srcdone = true
-				iter.delqueue = iter.calculateDeletes()
-			} else {
-				step, err := iter.nextResource(obj, ctx)
+			} else if res != nil {
+				step, err := iter.nextResourceStep(res)
 				if err != nil {
 					return nil, err
-				} else if step != nil {
-					return step, nil
 				}
-
-				// If the step returned was nil, this resource is fine, so we'll keep on going.
-				continue
+				contract.Assert(step != nil)
+				return step, nil
+			} else if q != nil {
+				step, err := iter.nextQueryStep(q)
+				if err != nil {
+					return nil, err
+				}
+				contract.Assert(step != nil)
+				return step, nil
 			}
+
+			// If all returns are nil, the source is done, note it, and don't go back for more.  Add any deletions to be
+			// performed, and then keep going 'round the next iteration of the loop so we can wrap up the planning.
+			iter.srcdone = true
+			iter.delqueue = iter.calculateDeletes()
 		} else {
 			// The interpreter has finished, so we need to now drain any deletions that piled up.
-			if step := iter.nextDelete(); step != nil {
+			if step := iter.nextDeleteStep(); step != nil {
 				return step, nil
 			}
 
@@ -173,9 +188,10 @@ func (iter *PlanIterator) Next() (*Step, error) {
 	return nil, nil
 }
 
-// nextResource produces a new step for a given resource or nil if there isn't one to perform.
-func (iter *PlanIterator) nextResource(new *resource.Object, ctx tokens.Module) (*Step, error) {
+// nextResourceStep produces a new step for a given resource or nil if there isn't one to perform.
+func (iter *PlanIterator) nextResourceStep(res *SourceAllocation) (Step, error) {
 	// Take a moment in time snapshot of the live object's properties.
+	new := res.Obj
 	t := new.Type()
 	inputs := new.CopyProperties()
 
@@ -190,7 +206,7 @@ func (iter *PlanIterator) nextResource(new *resource.Object, ctx tokens.Module) 
 	if err != nil {
 		return nil, err
 	}
-	urn := resource.NewURN(iter.p.Target().Name, ctx, t, name)
+	urn := resource.NewURN(iter.p.Target().Name, res.Ctx, t, name)
 
 	// First ensure the provider is okay with this resource.
 	var invalid bool
@@ -259,7 +275,7 @@ func (iter *PlanIterator) nextResource(new *resource.Object, ctx tokens.Module) 
 		} else if len(replacements) > 0 {
 			iter.replaces[urn] = true
 			glog.V(7).Infof("Planner decided to replace '%v' (oldprops=%v inputs=%v)", urn, oldprops, inputs)
-			return NewReplaceCreateStep(iter, old, new, inputs, replacements), nil
+			return NewReplaceStep(iter, old, new, inputs, replacements), nil
 		}
 
 		iter.updates[urn] = true
@@ -273,8 +289,18 @@ func (iter *PlanIterator) nextResource(new *resource.Object, ctx tokens.Module) 
 	return NewCreateStep(iter, urn, new, inputs), nil
 }
 
-// nextDelete produces a new step that deletes a resource if necessary.
-func (iter *PlanIterator) nextDelete() *Step {
+// nextQueryStep produces a new query step that looks up a resource in some manner.
+func (iter *PlanIterator) nextQueryStep(q *SourceQuery) (Step, error) {
+	if id := q.GetID; id != "" {
+		return NewGetStep(iter, q.Type, id, nil), nil
+	}
+	contract.Assert(q.QueryFilter != nil)
+	contract.Failf("TODO[pulumi/lumi#83]: querying not yet supported")
+	return nil, nil
+}
+
+// nextDeleteStep produces a new step that deletes a resource if necessary.
+func (iter *PlanIterator) nextDeleteStep() Step {
 	if len(iter.delqueue) > 0 {
 		del := iter.delqueue[0]
 		iter.delqueue = iter.delqueue[1:]
@@ -282,10 +308,10 @@ func (iter *PlanIterator) nextDelete() *Step {
 		iter.deletes[urn] = true
 		if iter.replaces[urn] {
 			glog.V(7).Infof("Planner decided to delete '%v' due to replacement", urn)
-			return NewReplaceDeleteStep(iter, del)
+		} else {
+			glog.V(7).Infof("Planner decided to delete '%v'", urn)
 		}
-		glog.V(7).Infof("Planner decided to delete '%v'", urn)
-		return NewDeleteStep(iter, del)
+		return NewDeleteStep(iter, del, iter.replaces[urn])
 	}
 	return nil
 }

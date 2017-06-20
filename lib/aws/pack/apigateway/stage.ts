@@ -45,6 +45,14 @@ export class Stage extends lumi.NamedResource implements StageArgs {
         this.methodSettings = args.methodSettings;
         this.variables = args.variables;
     }
+
+    public static get(id: lumi.ID): Stage {
+        return <any>undefined; // functionality provided by the runtime
+    }
+
+    public static query(q: any): Stage[] {
+        return <any>undefined; // functionality provided by the runtime
+    }
 }
 
 export interface StageArgs {

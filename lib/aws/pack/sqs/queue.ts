@@ -29,6 +29,14 @@ export class Queue extends lumi.NamedResource implements QueueArgs {
             this.visibilityTimeout = args.visibilityTimeout;
         }
     }
+
+    public static get(id: lumi.ID): Queue {
+        return <any>undefined; // functionality provided by the runtime
+    }
+
+    public static query(q: any): Queue[] {
+        return <any>undefined; // functionality provided by the runtime
+    }
 }
 
 export interface QueueArgs {

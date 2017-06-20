@@ -17,7 +17,6 @@ package deploy
 
 import (
 	"github.com/pulumi/lumi/pkg/resource"
-	"github.com/pulumi/lumi/pkg/tokens"
 )
 
 // NullSource is a singleton source that never returns any resources.  This may be used in scenarios where the "new"
@@ -48,6 +47,10 @@ func (iter *nullSourceIterator) Close() error {
 	return nil // nothing to do.
 }
 
-func (iter *nullSourceIterator) Next() (*resource.Object, tokens.Module, error) {
-	return nil, "", nil // means "done"
+func (iter *nullSourceIterator) Produce(res *resource.Object) {
+	// ignore
+}
+
+func (iter *nullSourceIterator) Next() (*SourceAllocation, *SourceQuery, error) {
+	return nil, nil, nil // means "done"
 }

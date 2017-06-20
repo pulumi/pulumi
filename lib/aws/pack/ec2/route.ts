@@ -33,6 +33,14 @@ export class Route extends lumi.NamedResource implements RouteArgs {
         }
         this.vpcGatewayAttachment = args.vpcGatewayAttachment;
     }
+
+    public static get(id: lumi.ID): Route {
+        return <any>undefined; // functionality provided by the runtime
+    }
+
+    public static query(q: any): Route[] {
+        return <any>undefined; // functionality provided by the runtime
+    }
 }
 
 export interface RouteArgs {

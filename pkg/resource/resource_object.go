@@ -47,6 +47,14 @@ func NewObject(obj *rt.Object) *Object {
 	return &Object{obj: obj}
 }
 
+// NewEmptyObject allocates an empty resource object of a given type.
+func NewEmptyObject(t symbols.Type) *Object {
+	contract.Assert(predef.IsResourceType(t))
+	return &Object{
+		obj: rt.NewObject(t, nil, nil, nil),
+	}
+}
+
 func (r *Object) Obj() *rt.Object   { return r.obj }
 func (r *Object) Type() tokens.Type { return r.obj.Type().TypeToken() }
 

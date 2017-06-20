@@ -67,6 +67,14 @@ export class Table extends lumi.NamedResource implements TableArgs {
         this.tableName = args.tableName;
         this.globalSecondaryIndexes = args.globalSecondaryIndexes;
     }
+
+    public static get(id: lumi.ID): Table {
+        return <any>undefined; // functionality provided by the runtime
+    }
+
+    public static query(q: any): Table[] {
+        return <any>undefined; // functionality provided by the runtime
+    }
 }
 
 export interface TableArgs {

@@ -82,7 +82,12 @@ func (p *Plan) New() Source                            { return p.new }
 // Provider fetches the provider for a given resource, possibly lazily allocating the plugins for it.  If a provider
 // could not be found, or an error occurred while creating it, a non-nil error is returned.
 func (p *Plan) Provider(res resource.Resource) (plugin.Provider, error) {
-	t := res.Type()
+	return p.ProviderT(res.Type())
+}
+
+// ProviderT fetches the provider for a given resource type, possibly lazily allocating the plugins for it.  If a
+// provider could not be found, or an error occurred while creating it, a non-nil error is returned.
+func (p *Plan) ProviderT(t tokens.Type) (plugin.Provider, error) {
 	pkg := t.Package()
 	return p.ctx.Host.Provider(pkg)
 }

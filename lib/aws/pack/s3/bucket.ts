@@ -17,6 +17,14 @@ export class Bucket extends lumi.NamedResource implements BucketArgs {
             this.accessControl = args.accessControl;
         }
     }
+
+    public static get(id: lumi.ID): Bucket {
+        return <any>undefined; // functionality provided by the runtime
+    }
+
+    public static query(q: any): Bucket[] {
+        return <any>undefined; // functionality provided by the runtime
+    }
 }
 
 export interface BucketArgs {

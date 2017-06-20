@@ -26,6 +26,14 @@ export class Resource extends lumi.NamedResource implements ResourceArgs {
         }
         this.restAPI = args.restAPI;
     }
+
+    public static get(id: lumi.ID): Resource {
+        return <any>undefined; // functionality provided by the runtime
+    }
+
+    public static query(q: any): Resource[] {
+        return <any>undefined; // functionality provided by the runtime
+    }
 }
 
 export interface ResourceArgs {

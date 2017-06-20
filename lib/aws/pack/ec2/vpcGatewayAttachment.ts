@@ -22,6 +22,14 @@ export class VPCGatewayAttachment extends lumi.NamedResource implements VPCGatew
         }
         this.internetGateway = args.internetGateway;
     }
+
+    public static get(id: lumi.ID): VPCGatewayAttachment {
+        return <any>undefined; // functionality provided by the runtime
+    }
+
+    public static query(q: any): VPCGatewayAttachment[] {
+        return <any>undefined; // functionality provided by the runtime
+    }
 }
 
 export interface VPCGatewayAttachmentArgs {

@@ -18,6 +18,7 @@ package deploy
 import (
 	"io"
 
+	"github.com/pulumi/lumi/pkg/compiler/symbols"
 	"github.com/pulumi/lumi/pkg/resource"
 	"github.com/pulumi/lumi/pkg/tokens"
 )
@@ -34,8 +35,23 @@ type Source interface {
 // A SourceIterator enumerates the list of resources that a source has to offer.
 type SourceIterator interface {
 	io.Closer
-	// Next returns the next resource object plus a token context (usually where it was allocated); the token is used in
-	// the production of the ensuing resource's URN.  If something went wrong, error is non-nil.  If both error and the
-	// resource are nil, then the iterator has completed its job and no subsequent calls to next should be made.
-	Next() (*resource.Object, tokens.Module, error)
+	// Produce registers a resource that was produced during the iteration, to publish next time.
+	Produce(res *resource.Object)
+	// Next returns the next step from the source.  If the source allocation is non-nil, it represents the creation of
+	// a resource object; if query is non-nil, it represents querying the resources; if both error and the other
+	// objects are nil, then the iterator has completed its job and no subsequent calls to next should be made.
+	Next() (*SourceAllocation, *SourceQuery, error)
+}
+
+// SourceAllocation is used when a resource object is allocated.
+type SourceAllocation struct {
+	Obj *resource.Object // the resource object.
+	Ctx tokens.Module    // the context in which the resource was allocated, used in the production of URNs.
+}
+
+// SourceQuery is used when a query function is to be performed.
+type SourceQuery struct {
+	Type        symbols.Type         // the type of resource being queried.
+	GetID       resource.ID          // the resource ID to get (for gets only).
+	QueryFilter resource.PropertyMap // the query's filter (for queries only).
 }

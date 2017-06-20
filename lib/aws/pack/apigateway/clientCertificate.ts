@@ -13,6 +13,14 @@ export class ClientCertificate extends lumi.NamedResource implements ClientCerti
             this.description = args.description;
         }
     }
+
+    public static get(id: lumi.ID): ClientCertificate {
+        return <any>undefined; // functionality provided by the runtime
+    }
+
+    public static query(q: any): ClientCertificate[] {
+        return <any>undefined; // functionality provided by the runtime
+    }
 }
 
 export interface ClientCertificateArgs {
