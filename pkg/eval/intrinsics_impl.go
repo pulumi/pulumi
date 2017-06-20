@@ -22,6 +22,8 @@ import (
 	"strconv"
 	"strings"
 
+	"bytes"
+
 	"github.com/pulumi/lumi/pkg/compiler/ast"
 	"github.com/pulumi/lumi/pkg/compiler/binder"
 	"github.com/pulumi/lumi/pkg/compiler/symbols"
@@ -303,6 +305,7 @@ type jsonSerializer struct {
 	e      *evaluator
 }
 
+// See https://tc39.github.io/ecma262/2017/#sec-serializejsonproperty
 func (s jsonSerializer) serializeJSONProperty(o *rt.Object) (string, *rt.Unwind) {
 	if o == nil || o.IsNull() {
 		return "null", nil
@@ -311,9 +314,8 @@ func (s jsonSerializer) serializeJSONProperty(o *rt.Object) (string, *rt.Unwind)
 			return "true", nil
 		}
 		return "false", nil
-
 	} else if o.IsString() {
-		return o.String(), nil
+		return s.quote(o.StringValue()), nil
 	} else if o.IsNumber() {
 		return o.String(), nil
 	} else if o.IsArray() {
@@ -322,6 +324,31 @@ func (s jsonSerializer) serializeJSONProperty(o *rt.Object) (string, *rt.Unwind)
 	return s.serializeJSONObject(o)
 }
 
+// See https://tc39.github.io/ecma262/2017/#sec-quotejsonstring
+func (s jsonSerializer) quote(str string) string {
+	escapes := map[rune]string{'\b': "\\b", '\f': "\\f", '\n': "\\n", '\r': "\\r", '\t': "\\t"}
+	var buffer bytes.Buffer
+	buffer.WriteRune('"')
+	for _, c := range str {
+		switch c {
+		case '"', '\\':
+			buffer.WriteRune('\\')
+			buffer.WriteRune(c)
+		case '\b', '\f', '\n', '\r', '\t':
+			buffer.WriteString(escapes[c])
+		default:
+			if c < ' ' {
+				buffer.WriteString(fmt.Sprintf("\\u%.4x", c))
+			} else {
+				buffer.WriteRune(c)
+			}
+		}
+	}
+	buffer.WriteRune('"')
+	return buffer.String()
+}
+
+// See https://tc39.github.io/ecma262/2017/#sec-serializejsonobject
 func (s jsonSerializer) serializeJSONObject(o *rt.Object) (string, *rt.Unwind) {
 	if _, found := s.stack[o]; found {
 		return "", s.e.NewException(s.intrin.Tree(), "Cannot JSON serialize an object with cyclic references")
@@ -354,6 +381,7 @@ func (s jsonSerializer) serializeJSONObject(o *rt.Object) (string, *rt.Unwind) {
 	return final, nil
 }
 
+// See https://tc39.github.io/ecma262/2017/#sec-serializejsonarray
 func (s jsonSerializer) serializeJSONArray(o *rt.Object) (string, *rt.Unwind) {
 	contract.Assert(o.IsArray()) // expect to be called on an Array
 	if _, found := s.stack[o]; found {
