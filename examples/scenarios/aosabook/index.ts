@@ -13,8 +13,8 @@ console.log("Launched crawler front end @ " + frontEnd.url);
 
 queue.forEach((url) => {
     console.log("Handling: " + url);
-    let found = documents.get({ id: url });
-    if (found) {
+    let locate = documents.get({ id: url });
+    if (locate) {
         console.log("Already found " + url);
         return false;
     }
@@ -30,13 +30,13 @@ queue.forEach((url) => {
     if (!(contentType && contentType.indexOf("text/html") > -1)) {
         console.log("Skipping non-HTML");
         return false;
-    };
+    }
     for (let href of Set($("a", "href", html))) {
         if (href && (href.indexOf("visualstudio.com") > -1)) {
             let found = documents.get([id: href]);
-            if (!found) queue.push(href);
+            if (!found) { queue.push(href); }
         }
-    };
+    }
     documents.update({ id: url }, { crawlInProgress: false });
     console.log("Succeed url: " + url);
 });

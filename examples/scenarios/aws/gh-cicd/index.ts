@@ -13,16 +13,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import * as github from "./github";  
-import * as lumi from "@lumi/lumi";
+/* tslint:disable:no-require-imports */
 
-export let slackToken = "<must provide a token>"
+import * as lumi from "@lumi/lumi";
+import * as github from "./github";
+
+export let slackToken = "<must provide a token>";
 declare let require: any;
 
 // On creation of a new issue, post to our Slack channel.
 github.webhooks.onIssueOpened((e, callback) => {
-    let slack = require('@slack/client');
-    let client = new slack.WebClient(slackToken)
+    let slack = require("@slack/client");
+    let client = new slack.WebClient(slackToken);
     let message = "New issue " + e.issue.title + " (#" + e.issue.number +") by "+ e.issue.user + ": " + e.issue.url;
     client.chat.postMessage("#issues", message, callback);
 });

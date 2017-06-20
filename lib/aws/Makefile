@@ -47,7 +47,6 @@ install:
 lint:
 	@echo "\033[0;32mLINT:\033[0m"
 	@golint -set_exit_status provider/...
-	@tslint lib/aws/pack/...
 
 .PHONY: lint_quiet
 lint_quiet:
@@ -55,6 +54,7 @@ lint_quiet:
 	@echo "`golint provider/... | grep -v "or be unexported"`"
 	@test -z "$$(golint provider/... | grep -v 'or be unexported')"
 	@echo "\033[0;33mgolint was run quietly; to run with noisy errors, run 'make lint'\033[0m"
+	@tslint lib/aws/pack/...
 
 .PHONY: vet
 vet:

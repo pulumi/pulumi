@@ -22,30 +22,29 @@ export interface Issue {
 }
 
 export class WebHooks {
-    onPush(f: (e: PushEvent) => void): void {
-
+    onPush(f: (e: PushEvent) => void): void { // TODO
     }
-    onPullRequest(f: (e: PullRequestEvent) => void): void {
-        
-    }
+    onPullRequest(f: (e: PullRequestEvent) => void): void { // TODO
+}
     onIssueOpened(f: (e: IssueEvent, callback: (err: any, res: any) => void) => void): void {
-        //TODO: This is a mock of what the real GitHub provider will do.
+        // TODO: This is a mock of what the real GitHub provider will do.
         let func = new aws.serverless.Function(
             "f",
             [aws.iam.AWSLambdaFullAccess],
             (event, context, callback) => {
                 f({
-                    issue: {    
+                    issue: {
                         number: "230",
                         title: "[lumi] Unify module and global scopes with the lexical scope chain",
                         url: "https://github.com/pulumi/lumi/issues/230",
-                        user: "lukehoban"
-                    }
-                }, callback);
+                        user: "lukehoban",
+                    },
+                },
+                  callback);
                 console.log(context);
-            }
+            },
         );
     }
 }
 
-export let webhooks = new WebHooks()
+export let webhooks = new WebHooks();

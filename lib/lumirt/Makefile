@@ -17,6 +17,11 @@ clean:
 	rm -rf ./.lumi/bin
 	rm -rf ${THISLIB}
 
+.PHONY: lint
+lint:
+	@echo "\033[0;32mLINT:\033[0m"
+	@tslint lumirt/.lumi/...
+	
 .PHONY: build
 build:
 	@echo "\033[0;32mBUILD:\033[0m"
