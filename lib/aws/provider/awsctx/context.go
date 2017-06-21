@@ -62,14 +62,16 @@ func New(host *provider.HostClient) (*Context, error) {
 	// IDEA: currently we just inherit the standard AWS SDK credentials logic; eventually we will want more
 	//     flexibility, I assume, including possibly reading from configuration dynamically.
 	var config []*aws.Config
-	reg, err := host.ReadLocation(regionConfig)
-	if err != nil {
-		return nil, err
-	} else if !reg.IsNull() {
-		if !reg.IsString() {
-			return nil, errors.Errorf("Expected a string for AWS region config '%v'; got %v", regionConfig, reg)
+	if host != nil {
+		reg, err := host.ReadLocation(regionConfig)
+		if err != nil {
+			return nil, err
+		} else if !reg.IsNull() {
+			if !reg.IsString() {
+				return nil, errors.Errorf("Expected a string for AWS region config '%v'; got %v", regionConfig, reg)
+			}
+			config = append(config, &aws.Config{Region: aws.String(reg.StringValue())})
 		}
-		config = append(config, &aws.Config{Region: aws.String(reg.StringValue())})
 	}
 	sess, err := session.NewSession(config...)
 	if err != nil {
