@@ -20,6 +20,7 @@ import (
 	"os"
 	"os/signal"
 	"strconv"
+	"strings"
 	"syscall"
 
 	"github.com/pkg/errors"
@@ -33,7 +34,7 @@ import (
 // the port number.  The return values are: the chosen port (the same as supplied if non-0), a channel that may
 // eventually return an error, and an error, in case something went wrong.  The channel is non-nil and waits until
 // the server is finished, in the case of a successful launch of the RPC server.
-func Serve(port int, registers []func(*grpc.Server) error) (int, chan error, error) {
+func Serve(port int, cancel chan bool, registers []func(*grpc.Server) error) (int, chan error, error) {
 	// Listen on a TCP port, but let the kernel choose a free port for us.
 	lis, err := net.Listen("tcp", ":"+strconv.Itoa(port))
 	if err != nil {
@@ -60,14 +61,30 @@ func Serve(port int, registers []func(*grpc.Server) error) (int, chan error, err
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGQUIT, syscall.SIGTERM)
 	go func() {
-		<-sigs
-		srv.Stop()
+		if cancel == nil {
+			// make a channel that will never resolve.
+			cancel = make(chan bool)
+		}
+
+		for {
+			var stop bool
+			select {
+			case <-sigs:
+				stop = true
+			case c := <-cancel:
+				stop = c
+			}
+			if stop {
+				srv.GracefulStop()
+			}
+		}
 	}()
 
 	// Finally, serve; this returns only once the server shuts down (e.g., due to a signal).
 	done := make(chan error)
 	go func() {
-		if err := srv.Serve(lis); err != nil {
+		if err := srv.Serve(lis); err != nil &&
+			!strings.HasSuffix(err.Error(), "use of closed network connection") {
 			done <- errors.Errorf("stopped serving: %v", err)
 		} else {
 			done <- nil // send a signal so caller knows we're done, even though it's nil.

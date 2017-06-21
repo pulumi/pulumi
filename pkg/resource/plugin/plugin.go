@@ -39,7 +39,7 @@ type plugin struct {
 	Stderr io.ReadCloser
 }
 
-func newPlugin(ctx *Context, bins []string, prefix string) (*plugin, error) {
+func newPlugin(host Host, ctx *Context, bins []string, prefix string) (*plugin, error) {
 	// Try all of the search paths given in the bin argument, either until we find something, or until we've exhausted
 	// all available options, whichever comes first.
 	var plug *plugin
@@ -47,7 +47,7 @@ func newPlugin(ctx *Context, bins []string, prefix string) (*plugin, error) {
 	var foundbin string
 	for _, bin := range bins {
 		// Try to execute the binary.
-		if plug, err = execPlugin(bin); err == nil {
+		if plug, err = execPlugin(host, bin); err == nil {
 			// Great!  Break out, we're ready to go.
 			foundbin = bin
 			break
@@ -128,9 +128,13 @@ func newPlugin(ctx *Context, bins []string, prefix string) (*plugin, error) {
 	return plug, nil
 }
 
-func execPlugin(bin string) (*plugin, error) {
+func execPlugin(host Host, bin string) (*plugin, error) {
 	// Flow the logging information if set.
 	var args []string
+
+	// Append the argument that tells the plugin the address for the engine.
+	args = append(args, ":"+host.EngineAddr())
+
 	if cmdutil.LogFlow {
 		if cmdutil.LogToStderr {
 			args = append(args, "--logtostderr")

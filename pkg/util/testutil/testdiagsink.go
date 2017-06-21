@@ -23,7 +23,7 @@ import (
 type TestDiagSink struct {
 	Pwd      string
 	sink     diag.Sink
-	messages map[diag.Category][]string
+	messages map[diag.Severity][]string
 }
 
 func NewTestDiagSink(pwd string) *TestDiagSink {
@@ -32,11 +32,13 @@ func NewTestDiagSink(pwd string) *TestDiagSink {
 		sink: diag.DefaultSink(diag.FormatOptions{
 			Pwd: pwd,
 		}),
-		messages: make(map[diag.Category][]string),
+		messages: make(map[diag.Severity][]string),
 	}
 }
 
-func (d *TestDiagSink) Count() int            { return d.Infos() + d.Errors() + d.Warnings() }
+func (d *TestDiagSink) Count() int            { return d.Debugs() + d.Infos() + d.Errors() + d.Warnings() }
+func (d *TestDiagSink) Debugs() int           { return len(d.DebugMsgs()) }
+func (d *TestDiagSink) DebugMsgs() []string   { return d.messages[diag.Debug] }
 func (d *TestDiagSink) Infos() int            { return len(d.InfoMsgs()) }
 func (d *TestDiagSink) InfoMsgs() []string    { return d.messages[diag.Info] }
 func (d *TestDiagSink) Errors() int           { return len(d.ErrorMsgs()) }
@@ -45,22 +47,30 @@ func (d *TestDiagSink) Warnings() int         { return len(d.WarningMsgs()) }
 func (d *TestDiagSink) WarningMsgs() []string { return d.messages[diag.Warning] }
 func (d *TestDiagSink) Success() bool         { return d.Errors() == 0 }
 
+func (d *TestDiagSink) Logf(sev diag.Severity, dia *diag.Diag, args ...interface{}) {
+	d.messages[sev] = append(d.messages[sev], d.Stringify(sev, dia, args...))
+}
+
+func (d *TestDiagSink) Debugf(dia *diag.Diag, args ...interface{}) {
+	d.messages[diag.Debug] = append(d.messages[diag.Debug], d.Stringify(diag.Debug, dia, args...))
+}
+
 func (d *TestDiagSink) Infof(dia *diag.Diag, args ...interface{}) {
-	d.messages[diag.Info] = append(d.messages[diag.Info], d.Stringify(dia, diag.Info, args...))
+	d.messages[diag.Info] = append(d.messages[diag.Info], d.Stringify(diag.Info, dia, args...))
 }
 
 func (d *TestDiagSink) Errorf(dia *diag.Diag, args ...interface{}) {
-	d.messages[diag.Error] = append(d.messages[diag.Error], d.Stringify(dia, diag.Error, args...))
+	d.messages[diag.Error] = append(d.messages[diag.Error], d.Stringify(diag.Error, dia, args...))
 }
 
 func (d *TestDiagSink) Warningf(dia *diag.Diag, args ...interface{}) {
-	d.messages[diag.Warning] = append(d.messages[diag.Warning], d.Stringify(dia, diag.Warning, args...))
+	d.messages[diag.Warning] = append(d.messages[diag.Warning], d.Stringify(diag.Warning, dia, args...))
 }
 
-func (d *TestDiagSink) Stringify(dia *diag.Diag, cat diag.Category, args ...interface{}) string {
-	return d.sink.Stringify(dia, cat, args...)
+func (d *TestDiagSink) Stringify(sev diag.Severity, dia *diag.Diag, args ...interface{}) string {
+	return d.sink.Stringify(sev, dia, args...)
 }
 
-func (d *TestDiagSink) StringifyLocation(doc *diag.Document, loc *diag.Location) string {
-	return d.sink.StringifyLocation(doc, loc)
+func (d *TestDiagSink) StringifyLocation(sev diag.Severity, doc *diag.Document, loc *diag.Location) string {
+	return d.sink.StringifyLocation(sev, doc, loc)
 }

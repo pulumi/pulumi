@@ -17,17 +17,27 @@ package plugin
 
 import (
 	"github.com/golang/glog"
+	"github.com/pkg/errors"
 
+	"github.com/pulumi/lumi/pkg/diag"
+	"github.com/pulumi/lumi/pkg/resource"
 	"github.com/pulumi/lumi/pkg/tokens"
 	"github.com/pulumi/lumi/pkg/util/contract"
 )
 
 // A Host hosts provider plugins and makes them easily accessible by package name.
 type Host interface {
+	// EngineAddr returns the address at which the host's RPC interface may be found.
+	EngineAddr() string
+
+	// Log logs a global message, including errors and warnings.
+	Log(sev diag.Severity, msg string)
+	// ReadLocation reads the value from a static or module property.
+	ReadLocation(tok tokens.Token) (resource.PropertyValue, error)
+
 	// Analyzer fetches the analyzer with a given name, possibly lazily allocating the plugins for it.  If an analyzer
 	// could not be found, or an error occurred while creating it, a non-nil error is returned.
 	Analyzer(nm tokens.QName) (Analyzer, error)
-
 	// Provider fetches the provider for a given package, lazily allocating it if necessary.  If a provider for this
 	// package could not be found, or an error occurs while creating it, a non-nil error is returned.
 	Provider(pkg tokens.Package) (Provider, error)
@@ -37,18 +47,50 @@ type Host interface {
 }
 
 // NewDefaultHost implements the standard plugin logic, using the standard installation root to find them.
-func NewDefaultHost(ctx *Context) Host {
-	return &defaultHost{
+func NewDefaultHost(ctx *Context) (Host, error) {
+	host := &defaultHost{
 		ctx:       ctx,
 		analyzers: make(map[tokens.QName]Analyzer),
 		providers: make(map[tokens.Package]Provider),
 	}
+
+	// Fire up a gRPC server to listen for engine requests.  This acts as a RPC interface that plugins can use
+	// to "phone home" in case there are things the engine must do on behalf of the plugins (like log, etc).
+	engine, err := newHostEngineRPC(host, ctx)
+	if err != nil {
+		return nil, err
+	}
+	host.engine = engine
+
+	return host, nil
 }
 
 type defaultHost struct {
 	ctx       *Context                    // the shared context for this host.
 	analyzers map[tokens.QName]Analyzer   // a cache of analyzer plugins and their processes.
 	providers map[tokens.Package]Provider // a cache of provider plugins and their processes.
+	engine    *hostEngineRPC              // the engine RPC machinery.
+}
+
+func (host *defaultHost) EngineAddr() string { return host.engine.Address() }
+
+func (host *defaultHost) Log(sev diag.Severity, msg string) {
+	host.ctx.Diag.Logf(sev, diag.Message(msg))
+}
+
+func (host *defaultHost) ReadLocation(tok tokens.Token) (resource.PropertyValue, error) {
+	e := host.ctx.E
+	sym := e.Ctx().LookupSymbol(nil, tok, false)
+	if sym == nil {
+		return resource.PropertyValue{}, errors.Errorf("Location '%v' was not found", tok)
+	}
+	loc, uw := e.LoadLocation(nil, sym, nil, false)
+	if uw != nil {
+		contract.Assert(uw.Throw())
+		return resource.PropertyValue{},
+			errors.Errorf("An error occurred reading location '%v': ", tok, uw.Thrown().Message(host.ctx.Diag))
+	}
+	return resource.CopyObject(loc.Obj), nil
 }
 
 func (host *defaultHost) Analyzer(name tokens.QName) (Analyzer, error) {
@@ -59,7 +101,7 @@ func (host *defaultHost) Analyzer(name tokens.QName) (Analyzer, error) {
 	}
 
 	// If not, try to load and bind to a plugin.
-	plug, err := NewAnalyzer(host.ctx, name)
+	plug, err := NewAnalyzer(host, host.ctx, name)
 	if err == nil {
 		host.analyzers[name] = plug // memoize the result.
 	}
@@ -74,7 +116,7 @@ func (host *defaultHost) Provider(pkg tokens.Package) (Provider, error) {
 	}
 
 	// If not, try to load and bind to a plugin.
-	plug, err := NewProvider(host.ctx, pkg)
+	plug, err := NewProvider(host, host.ctx, pkg)
 	if err == nil {
 		host.providers[pkg] = plug // memoize the result.
 	}
@@ -93,8 +135,11 @@ func (host *defaultHost) Close() error {
 			glog.Infof("Error closing '%v' provider plugin during shutdown; ignoring: %v", plugin.Pkg(), err)
 		}
 	}
+
 	// Empty out all maps.
 	host.analyzers = make(map[tokens.QName]Analyzer)
 	host.providers = make(map[tokens.Package]Provider)
-	return nil
+
+	// Finally, shut down the engine gRPC server.
+	return host.engine.Cancel()
 }

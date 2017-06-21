@@ -25,19 +25,22 @@ import (
 	"github.com/pulumi/lumi/pkg/compiler/symbols"
 	"github.com/pulumi/lumi/pkg/compiler/types"
 	"github.com/pulumi/lumi/pkg/compiler/types/predef"
+	"github.com/pulumi/lumi/pkg/diag"
 	"github.com/pulumi/lumi/pkg/eval/rt"
 	"github.com/pulumi/lumi/pkg/pack"
 	"github.com/pulumi/lumi/pkg/resource"
 	"github.com/pulumi/lumi/pkg/resource/plugin"
 	"github.com/pulumi/lumi/pkg/tokens"
 	"github.com/pulumi/lumi/pkg/util/cmdutil"
+	"github.com/pulumi/lumi/pkg/util/contract"
 )
 
 // TestNullPlan creates a plan with no operations.
 func TestNullPlan(t *testing.T) {
 	t.Parallel()
 
-	ctx := plugin.NewContext(cmdutil.Diag(), nil)
+	ctx, err := plugin.NewContext(cmdutil.Diag(), nil)
+	assert.Nil(t, err)
 	targ := &Target{Name: tokens.QName("null")}
 	prev := NewSnapshot(targ.Name, nil, nil)
 	plan := NewPlan(ctx, targ, prev, NullSource, nil)
@@ -57,7 +60,8 @@ func TestErrorPlan(t *testing.T) {
 
 	// First trigger an error from Iterate:
 	{
-		ctx := plugin.NewContext(cmdutil.Diag(), nil)
+		ctx, err := plugin.NewContext(cmdutil.Diag(), nil)
+		assert.Nil(t, err)
 		targ := &Target{Name: tokens.QName("errs")}
 		prev := NewSnapshot(targ.Name, nil, nil)
 		plan := NewPlan(ctx, targ, prev, &errorSource{err: errors.New("ITERATE"), duringIterate: true}, nil)
@@ -71,7 +75,8 @@ func TestErrorPlan(t *testing.T) {
 
 	// Next trigger an error from Next:
 	{
-		ctx := plugin.NewContext(cmdutil.Diag(), nil)
+		ctx, err := plugin.NewContext(cmdutil.Diag(), nil)
+		assert.Nil(t, err)
 		targ := &Target{Name: tokens.QName("errs")}
 		prev := NewSnapshot(targ.Name, nil, nil)
 		plan := NewPlan(ctx, targ, prev, &errorSource{err: errors.New("NEXT"), duringIterate: false}, nil)
@@ -135,7 +140,7 @@ func TestBasicCRUDPlan(t *testing.T) {
 	pkg, mod, newResourceType := fakeTestResources(tokens.PackageName("testcrud"), tokens.ModuleName("index"))
 
 	// Create a context that the snapshots and plan will use.
-	ctx := plugin.NewContext(cmdutil.Diag(), &testProviderHost{
+	ctx, err := plugin.NewContext(cmdutil.Diag(), &testProviderHost{
 		provider: func(propkg tokens.Package) (plugin.Provider, error) {
 			if propkg != pkg.Tok {
 				return nil, errors.Errorf("Unexpected request to load package %v; expected just %v", propkg, pkg)
@@ -158,6 +163,7 @@ func TestBasicCRUDPlan(t *testing.T) {
 			}, nil
 		},
 	})
+	assert.Nil(t, err)
 
 	// Some shared tokens and names.
 	typA := newResourceType(tokens.TypeName("A"), base)
@@ -380,6 +386,16 @@ type testProviderHost struct {
 
 func (host *testProviderHost) Close() error {
 	return nil
+}
+func (host *testProviderHost) EngineAddr() string {
+	contract.Failf("Engine address not available")
+	return ""
+}
+func (host *testProviderHost) Log(sev diag.Severity, msg string) {
+	cmdutil.Diag().Logf(sev, diag.Message(msg))
+}
+func (host *testProviderHost) ReadLocation(tok tokens.Token) (resource.PropertyValue, error) {
+	return resource.PropertyValue{}, errors.New("Invalid location")
 }
 func (host *testProviderHost) Analyzer(nm tokens.QName) (plugin.Analyzer, error) {
 	return host.analyzer(nm)

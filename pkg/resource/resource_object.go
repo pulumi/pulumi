@@ -170,6 +170,11 @@ func copyObject(resobj *rt.Object, obj *rt.Object) PropertyMap {
 	return copyObjectProperties(resobj, props)
 }
 
+// CopyObject flattens a single object into a serializable "JSON-like" property value.
+func CopyObject(obj *rt.Object) PropertyValue {
+	return copyObjectProperty(nil, obj)
+}
+
 // copyObjectProperty creates a single property value out of a runtime object.  It returns false if the property could
 // not be stored in a property (e.g., it is a function or other unrecognized or unserializable runtime object).
 func copyObjectProperty(resobj *rt.Object, obj *rt.Object) PropertyValue {

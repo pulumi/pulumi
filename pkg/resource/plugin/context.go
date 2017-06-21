@@ -19,6 +19,7 @@ import (
 	"context"
 
 	"github.com/pulumi/lumi/pkg/diag"
+	"github.com/pulumi/lumi/pkg/eval"
 	"github.com/pulumi/lumi/pkg/eval/rt"
 	"github.com/pulumi/lumi/pkg/resource"
 )
@@ -28,6 +29,7 @@ import (
 type Context struct {
 	Diag      diag.Sink         // the diagnostics sink to use for messages.
 	Host      Host              // the host that can be used to fetch providers.
+	E         eval.Interpreter  // the interpreter shared amongst all planning in this context.
 	ObjRes    objectResourceMap // the resources held inside of this snapshot.
 	ObjURN    objectURNMap      // a convenient lookup map for object to URN.
 	IDURN     idURNMap          // a convenient lookup map for ID to URN.
@@ -43,7 +45,7 @@ type urnIDMap map[resource.URN]resource.ID
 
 // NewContext allocates a new context with a given sink and host.  Note that the host is "owned" by this context from
 // here forwards, such that when the context's resources are reclaimed, so too are the host's.
-func NewContext(d diag.Sink, host Host) *Context {
+func NewContext(d diag.Sink, host Host) (*Context, error) {
 	ctx := &Context{
 		Diag:      d,
 		Host:      host,
@@ -54,9 +56,13 @@ func NewContext(d diag.Sink, host Host) *Context {
 		URNOldIDs: make(urnIDMap),
 	}
 	if host == nil {
-		ctx.Host = NewDefaultHost(ctx)
+		h, err := NewDefaultHost(ctx)
+		if err != nil {
+			return nil, err
+		}
+		ctx.Host = h
 	}
-	return ctx
+	return ctx, nil
 }
 
 // Request allocates a request sub-context.

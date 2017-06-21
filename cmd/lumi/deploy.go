@@ -123,7 +123,11 @@ type deployOptions struct {
 }
 
 func deployLatest(cmd *cobra.Command, info *envCmdInfo, opts deployOptions) error {
-	if result := plan(cmd, info, opts); result != nil {
+	result, err := plan(cmd, info, opts)
+	if err != nil {
+		return err
+	}
+	if result != nil {
 		if opts.DryRun {
 			// If a dry run, just print the plan, don't actually carry out the deployment.
 			if err := printPlan(result, opts); err != nil {

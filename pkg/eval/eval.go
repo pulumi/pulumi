@@ -173,7 +173,7 @@ func (e *evaluator) EvaluateFunction(fnc symbols.Function, this *rt.Object, args
 
 		// If the call had a throw unwind, then we have an unhandled exception.
 		if uw != nil && uw.Throw() {
-			e.UnhandledException(fnc.Tree(), uw.Exception())
+			e.UnhandledException(fnc.Tree(), uw.Thrown())
 		}
 
 		// Make sure to invoke the done hook.
@@ -558,17 +558,7 @@ func (e *evaluator) newObject(t symbols.Type) *rt.Object {
 // issueUnhandledException issues an unhandled exception error using the given diagnostic and unwind information.
 func (e *evaluator) UnhandledException(tree diag.Diagable, ex *rt.Exception) {
 	// Produce a message with the exception text plus stack trace.
-	var msg string
-	if ex != nil {
-		if ex.Thrown.Type() == types.String {
-			msg = ex.Thrown.StringValue() // use the basic string value.
-		} else {
-			msg = "\n" + ex.Thrown.Details(false, "\t") // convert the thrown object into a detailed string
-		}
-		msg += "\n" + ex.Stack.Trace(e.Diag(), "\t", ex.Node)
-	} else {
-		msg = "no details available"
-	}
+	msg := ex.Message(e.Diag())
 
 	// Now simply output the error with the message plus stack trace.
 	e.Diag().Errorf(errors.ErrorUnhandledException.At(tree), msg)
@@ -764,7 +754,7 @@ func (e *evaluator) evalCall(node diag.Diagable,
 		if uw.Throw() {
 			if glog.V(7) {
 				glog.V(7).Infof("Evaluated call to fnc %v (sym %v); unhandled exception: %v",
-					fnc, sym, uw.Exception().Thrown)
+					fnc, sym, uw.Thrown().Obj)
 			}
 			return nil, uw
 		}
@@ -916,7 +906,7 @@ func (e *evaluator) evalTryCatchFinally(node *ast.TryCatchFinally) *rt.Unwind {
 	uw := e.evalStatement(node.TryClause)
 	if uw != nil && uw.Throw() {
 		// The try block threw something; see if there is a handler that covers this.
-		thrown := uw.Exception().Thrown
+		thrown := uw.Thrown().Obj
 		if node.CatchClauses != nil {
 			for _, catch := range *node.CatchClauses {
 				ex := e.ctx.RequireVariable(catch.Exception).(*symbols.LocalVariable)

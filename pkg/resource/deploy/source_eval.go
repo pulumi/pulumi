@@ -200,7 +200,7 @@ func InitEvalConfig(ctx *binder.Context, e eval.Interpreter, config resource.Con
 				if uw != nil {
 					// If an error was thrown, print it and keep going.
 					contract.Assert(uw.Throw())
-					e.UnhandledException(tree, uw.Exception())
+					e.UnhandledException(tree, uw.Thrown())
 					ok = false
 				} else if loc != nil {
 					// Allocate a new constant for the value we are about to assign, and assign it to the location.

@@ -74,7 +74,11 @@ func newPlanCmd() *cobra.Command {
 				Summary:            summary,
 				DOT:                dotOutput,
 			}
-			if result := plan(cmd, info, opts); result != nil {
+			result, err := plan(cmd, info, opts)
+			if err != nil {
+				return err
+			}
+			if result != nil {
 				if err := printPlan(result, opts); err != nil {
 					return err
 				}
@@ -112,7 +116,7 @@ func newPlanCmd() *cobra.Command {
 }
 
 // plan just uses the standard logic to parse arguments, options, and to create a snapshot and plan.
-func plan(cmd *cobra.Command, info *envCmdInfo, opts deployOptions) *planResult {
+func plan(cmd *cobra.Command, info *envCmdInfo, opts deployOptions) (*planResult, error) {
 	contract.Assert(info != nil)
 	contract.Assert(info.Target != nil)
 
@@ -126,7 +130,7 @@ func plan(cmd *cobra.Command, info *envCmdInfo, opts deployOptions) *planResult 
 		// the supplied package and will wrap an underlying interpreter that runs the program to create resources.
 		result := compile(cmd, info.Args)
 		if result == nil {
-			return nil
+			return nil, nil
 		}
 
 		// If that succeded, create a new source that will perform interpretation of the compiled program.
@@ -147,12 +151,15 @@ func plan(cmd *cobra.Command, info *envCmdInfo, opts deployOptions) *planResult 
 	}
 
 	// Generate a plan; this API handles all interesting cases (create, update, delete).
-	ctx := plugin.NewContext(cmdutil.Diag(), nil)
+	ctx, err := plugin.NewContext(cmdutil.Diag(), nil)
+	if err != nil {
+		return nil, err
+	}
 	plan := deploy.NewPlan(ctx, info.Target, info.Snapshot, source, analyzers)
 	return &planResult{
 		Info: info,
 		Plan: plan,
-	}
+	}, nil
 }
 
 type planResult struct {
