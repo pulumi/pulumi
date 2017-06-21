@@ -4,6 +4,9 @@ PROJECT=github.com/pulumi/lumi
 PROJECT_PKGS=$(shell go list ./cmd/... ./pkg/... | grep -v /vendor/)
 TESTPARALLELISM=10
 
+GOMETALINTERBIN=gometalinter
+GOMETALINTER=${GOMETALINTERBIN} --disable=gotype
+
 .PHONY: default
 default: banner vet test install lint_quiet
 
@@ -36,10 +39,10 @@ install:
 .PHONY: lint
 lint:
 	@echo "\033[0;32mLINT:\033[0m"
-	which gometalinter >/dev/null
-	gometalinter pkg/... | sort ; exit "$${PIPESTATUS[0]}"
-	gometalinter cmd/lumi/... | sort ; exit "$${PIPESTATUS[0]}"
-	gometalinter cmd/lumidl/... | sort ; exit "$${PIPESTATUS[0]}"
+	which ${GOMETALINTERBIN} >/dev/null
+	$(GOMETALINTER) pkg/... | sort ; exit "$${PIPESTATUS[0]}"
+	$(GOMETALINTER) cmd/lumi/... | sort ; exit "$${PIPESTATUS[0]}"
+	$(GOMETALINTER) cmd/lumidl/... | sort ; exit "$${PIPESTATUS[0]}"
 
 # In quiet mode, suppress some messages.
 #    - "or be unexported": TODO[pulumi/lumi#191]: will fix when we write all of our API docs
@@ -50,13 +53,13 @@ LINT_SUPPRESS="or be unexported|cyclomatic complexity|Subprocess launching with 
 .PHONY: lint_quiet
 lint_quiet:
 	@echo "\033[0;32mLINT (quiet):\033[0m"
-	which gometalinter >/dev/null
-	gometalinter pkg/... | grep -vE ${LINT_SUPPRESS} | sort
-	gometalinter cmd/lumi/... | grep -vE ${LINT_SUPPRESS} | sort
-	gometalinter cmd/lumidl/... | grep -vE ${LINT_SUPPRESS} | sort
-	@test -z "$$(gometalinter pkg/... | grep -vE ${LINT_SUPPRESS})"
-	@test -z "$$(gometalinter cmd/lumi/... | grep -vE ${LINT_SUPPRESS})"
-	@test -z "$$(gometalinter cmd/lumidl/... | grep -vE ${LINT_SUPPRESS})"
+	which ${GOMETALINTERBIN} >/dev/null
+	$(GOMETALINTER) pkg/... | grep -vE ${LINT_SUPPRESS} | sort
+	$(GOMETALINTER) cmd/lumi/... | grep -vE ${LINT_SUPPRESS} | sort
+	$(GOMETALINTER) cmd/lumidl/... | grep -vE ${LINT_SUPPRESS} | sort
+	@test -z "$$($(GOMETALINTER) pkg/... | grep -vE ${LINT_SUPPRESS})"
+	@test -z "$$($(GOMETALINTER) cmd/lumi/... | grep -vE ${LINT_SUPPRESS})"
+	@test -z "$$($(GOMETALINTER) cmd/lumidl/... | grep -vE ${LINT_SUPPRESS})"
 	@echo "\033[0;33mlint was run quietly; to run with noisy errors, run 'make lint'\033[0m"
 
 .PHONY: vet
