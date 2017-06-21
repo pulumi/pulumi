@@ -64,7 +64,7 @@ func newPlanCmd() *cobra.Command {
 			}
 			contract.Assertf(!dotOutput, "TODO[pulumi/lumi#235]: DOT files not yet supported")
 			opts := deployOptions{
-				Delete:             false,
+				Destroy:            false,
 				DryRun:             true,
 				Analyzers:          analyzers,
 				ShowConfig:         showConfig,
@@ -120,28 +120,27 @@ func plan(cmd *cobra.Command, info *envCmdInfo, opts deployOptions) (*planResult
 	contract.Assert(info != nil)
 	contract.Assert(info.Target != nil)
 
-	var source deploy.Source
+	// Create a context for plugins.
+	ctx, err := plugin.NewContext(cmdutil.Diag(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	// First, compile the package, in preparatin for interpreting it and creating resources.
+	result := compile(cmd, info.Args)
+	if result == nil {
+		return nil, nil
+	}
+
+	// If that succeded, create a new source that will perform interpretation of the compiled program.
+	// TODO[pulumi/lumi#88]: we are passing `nil` as the arguments map; we need to allow a way to pass these.
+	source := deploy.NewEvalSource(ctx, result.B.Ctx(), result.Pkg, nil, info.Target.Config, opts.Destroy)
+
+	// If there are any analyzers in the project file, add them.
 	var analyzers []tokens.QName
-	if opts.Delete {
-		// If we are deleting, we use the null source.  This just makes it look like we have no new resources.
-		source = deploy.NullSource
-	} else {
-		// If we aren't deleting, we will actually need an object source.  This is formed over the result of compiling
-		// the supplied package and will wrap an underlying interpreter that runs the program to create resources.
-		result := compile(cmd, info.Args)
-		if result == nil {
-			return nil, nil
-		}
-
-		// If that succeded, create a new source that will perform interpretation of the compiled program.
-		// TODO[pulumi/lumi#88]: we are passing `nil` as the arguments map; we need to allow a way to pass these.
-		source = deploy.NewEvalSource(result.B.Ctx(), result.Pkg, nil, info.Target.Config)
-
-		// If there are any analyzers in the project file, add them.
-		if as := result.Pkg.Node.Analyzers; as != nil {
-			for _, a := range *as {
-				analyzers = append(analyzers, a)
-			}
+	if as := result.Pkg.Node.Analyzers; as != nil {
+		for _, a := range *as {
+			analyzers = append(analyzers, a)
 		}
 	}
 
@@ -151,10 +150,6 @@ func plan(cmd *cobra.Command, info *envCmdInfo, opts deployOptions) (*planResult
 	}
 
 	// Generate a plan; this API handles all interesting cases (create, update, delete).
-	ctx, err := plugin.NewContext(cmdutil.Diag(), nil)
-	if err != nil {
-		return nil, err
-	}
 	plan := deploy.NewPlan(ctx, info.Target, info.Snapshot, source, analyzers)
 	return &planResult{
 		Info: info,
@@ -180,6 +175,7 @@ func printPlan(result *planResult, opts deployOptions) error {
 	if err != nil {
 		return errors.Errorf("An error occurred while preparing the plan: %v", err)
 	}
+	defer iter.Close()
 
 	step, err := iter.Next()
 	if err != nil {

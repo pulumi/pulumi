@@ -133,7 +133,7 @@ func execPlugin(host Host, bin string) (*plugin, error) {
 	var args []string
 
 	// Append the argument that tells the plugin the address for the engine.
-	args = append(args, ":"+host.EngineAddr())
+	args = append(args, host.ServerAddr())
 
 	if cmdutil.LogFlow {
 		if cmdutil.LogToStderr {

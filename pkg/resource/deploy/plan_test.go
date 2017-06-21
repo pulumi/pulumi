@@ -387,8 +387,8 @@ type testProviderHost struct {
 func (host *testProviderHost) Close() error {
 	return nil
 }
-func (host *testProviderHost) EngineAddr() string {
-	contract.Failf("Engine address not available")
+func (host *testProviderHost) ServerAddr() string {
+	contract.Failf("Host RPC address not available")
 	return ""
 }
 func (host *testProviderHost) Log(sev diag.Severity, msg string) {

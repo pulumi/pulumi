@@ -28,8 +28,8 @@ import (
 
 // A Host hosts provider plugins and makes them easily accessible by package name.
 type Host interface {
-	// EngineAddr returns the address at which the host's RPC interface may be found.
-	EngineAddr() string
+	// ServerAddr returns the address at which the host's RPC interface may be found.
+	ServerAddr() string
 
 	// Log logs a global message, including errors and warnings.
 	Log(sev diag.Severity, msg string)
@@ -55,13 +55,13 @@ func NewDefaultHost(ctx *Context) (Host, error) {
 		providers: make(map[tokens.Package]Provider),
 	}
 
-	// Fire up a gRPC server to listen for engine requests.  This acts as a RPC interface that plugins can use
-	// to "phone home" in case there are things the engine must do on behalf of the plugins (like log, etc).
-	engine, err := newHostEngineRPC(host, ctx)
+	// Fire up a gRPC server to listen for requests.  This acts as a RPC interface that plugins can use
+	// to "phone home" in case there are things the host must do on behalf of the plugins (like log, etc).
+	svr, err := newHostServer(host, ctx)
 	if err != nil {
 		return nil, err
 	}
-	host.engine = engine
+	host.server = svr
 
 	return host, nil
 }
@@ -70,10 +70,12 @@ type defaultHost struct {
 	ctx       *Context                    // the shared context for this host.
 	analyzers map[tokens.QName]Analyzer   // a cache of analyzer plugins and their processes.
 	providers map[tokens.Package]Provider // a cache of provider plugins and their processes.
-	engine    *hostEngineRPC              // the engine RPC machinery.
+	server    *hostServer                 // the server's RPC machinery.
 }
 
-func (host *defaultHost) EngineAddr() string { return host.engine.Address() }
+func (host *defaultHost) ServerAddr() string {
+	return host.server.Address()
+}
 
 func (host *defaultHost) Log(sev diag.Severity, msg string) {
 	host.ctx.Diag.Logf(sev, diag.Message(msg))
@@ -147,6 +149,6 @@ func (host *defaultHost) Close() error {
 	host.analyzers = make(map[tokens.QName]Analyzer)
 	host.providers = make(map[tokens.Package]Provider)
 
-	// Finally, shut down the engine gRPC server.
-	return host.engine.Cancel()
+	// Finally, shut down the host's gRPC server.
+	return host.server.Cancel()
 }

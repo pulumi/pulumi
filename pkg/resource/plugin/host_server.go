@@ -30,7 +30,8 @@ import (
 	"github.com/pulumi/lumi/sdk/go/pkg/lumirpc"
 )
 
-type hostEngineRPC struct {
+// hostServer is the server side of the host RPC machinery.
+type hostServer struct {
 	host   Host       // the host for this RPC server.
 	ctx    *Context   // the associated plugin context.
 	port   int        // the port the host is listening on.
@@ -38,9 +39,10 @@ type hostEngineRPC struct {
 	done   chan error // a channel that resolves when the server completes.
 }
 
-func newHostEngineRPC(host Host, ctx *Context) (*hostEngineRPC, error) {
+// newHostServer creates a new host server wired up to the given host and context.
+func newHostServer(host Host, ctx *Context) (*hostServer, error) {
 	// New up an engine RPC server.
-	engine := &hostEngineRPC{
+	engine := &hostServer{
 		host:   host,
 		ctx:    ctx,
 		cancel: make(chan bool),
@@ -64,18 +66,18 @@ func newHostEngineRPC(host Host, ctx *Context) (*hostEngineRPC, error) {
 }
 
 // Address returns the address at which the engine's RPC server may be reached.
-func (eng *hostEngineRPC) Address() string {
+func (eng *hostServer) Address() string {
 	return ":" + strconv.Itoa(eng.port)
 }
 
 // Cancel signals that the engine should be terminated, awaits its termination, and returns any errors that result.
-func (eng *hostEngineRPC) Cancel() error {
+func (eng *hostServer) Cancel() error {
 	eng.cancel <- true
 	return <-eng.done
 }
 
 // Log logs a global message in the engine, including errors and warnings.
-func (eng *hostEngineRPC) Log(ctx context.Context,
+func (eng *hostServer) Log(ctx context.Context,
 	req *lumirpc.LogRequest) (*pbempty.Empty, error) {
 	var sev diag.Severity
 	switch req.Severity {
@@ -95,7 +97,7 @@ func (eng *hostEngineRPC) Log(ctx context.Context,
 }
 
 // ReadLocation reads the value from a location identified by a token in the current program.
-func (eng *hostEngineRPC) ReadLocation(ctx context.Context,
+func (eng *hostServer) ReadLocation(ctx context.Context,
 	req *lumirpc.ReadLocationRequest) (*pbstruct.Value, error) {
 	tok := tokens.Token(req.Token)
 	v, err := eng.host.ReadLocation(tok)

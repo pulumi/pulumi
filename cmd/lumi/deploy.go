@@ -63,7 +63,7 @@ func newDeployCmd() *cobra.Command {
 				return err
 			}
 			deployLatest(cmd, info, deployOptions{
-				Delete:             false,
+				Destroy:            false,
 				DryRun:             dryRun,
 				Analyzers:          analyzers,
 				ShowConfig:         showConfig,
@@ -110,7 +110,7 @@ func newDeployCmd() *cobra.Command {
 
 type deployOptions struct {
 	Create             bool     // true if we are creating resources.
-	Delete             bool     // true if we are deleting resources.
+	Destroy            bool     // true if we are destroying the environment.
 	DryRun             bool     // true if we should just print the plan without performing it.
 	Analyzers          []string // an optional set of analyzers to run as part of this deployment.
 	ShowConfig         bool     // true to show the configuration variables being used.

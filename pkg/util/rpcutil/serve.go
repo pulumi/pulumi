@@ -29,6 +29,13 @@ import (
 	"google.golang.org/grpc/reflection"
 )
 
+// IsBenignCloseErr returns true if the error is "expected" upon shutdown of the server.
+func IsBenignCloseErr(err error) bool {
+	msg := err.Error()
+	return strings.HasSuffix(msg, "use of closed network connection") ||
+		strings.HasSuffix(msg, "grpc: the server has been stopped")
+}
+
 // Serve creates a new gRPC server, calls out to the supplied registration functions to bind interfaces, and then
 // listens on the supplied TCP port.  If the caller wishes for the kernel to choose a free port automatically, pass 0 as
 // the port number.  The return values are: the chosen port (the same as supplied if non-0), a channel that may
@@ -83,8 +90,7 @@ func Serve(port int, cancel chan bool, registers []func(*grpc.Server) error) (in
 	// Finally, serve; this returns only once the server shuts down (e.g., due to a signal).
 	done := make(chan error)
 	go func() {
-		if err := srv.Serve(lis); err != nil &&
-			!strings.HasSuffix(err.Error(), "use of closed network connection") {
+		if err := srv.Serve(lis); err != nil && !IsBenignCloseErr(err) {
 			done <- errors.Errorf("stopped serving: %v", err)
 		} else {
 			done <- nil // send a signal so caller knows we're done, even though it's nil.
