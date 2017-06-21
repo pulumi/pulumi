@@ -14,6 +14,7 @@
 // limitations under the License.
 
 /*tslint:disable:no-require-imports*/
+
 import * as github from "./github";
 
 export let slackToken = "<must provide a token>";

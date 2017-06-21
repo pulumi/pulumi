@@ -36,12 +36,14 @@ export interface Issue {
 }
 
 export class WebHooks {
+
     onPush(f: (e: PushEvent) => void): void {
         console.log("Not yet implemented");
     }
     onPullRequest(f: (e: PullRequestEvent) => void): void {
         console.log("Not yet implemented");
     }
+
     onIssueOpened(f: (e: IssueEvent, callback: (err: any, res: any) => void) => void): void {
         // TODO: This is a mock of what the real GitHub provider will do.
         let func = new aws.serverless.Function(

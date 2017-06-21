@@ -6,7 +6,8 @@
         "build": "tsc"
     },
     "devDependencies": {
-        "typescript": "^2.1.4"
+        "typescript": "^2.1.4",
+        "tslint": "^4.2.0"
     },
     "peerDependencies": {
         "@lumi/lumi": "*"

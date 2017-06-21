@@ -34,9 +34,9 @@ install:
 .PHONY: lint
 lint:
 	@echo "\033[0;32mLINT:\033[0m"
-	@gometalinter pkg/...
-	@gometalinter cmd/lumi/...
-	@gometalinter cmd/lumidl/...
+	@gometalinter pkg/... | grep -v "or be unexported" | grep -v "cyclomatic complexity"
+	@gometalinter cmd/lumi/... | grep -v "or be unexported" | grep -v "cyclomatic complexity"
+	@gometalinter cmd/lumidl/... | grep -v "or be unexported" | grep -v "cyclomatic complexity"
 
 .PHONY: lint_quiet
 lint_quiet:

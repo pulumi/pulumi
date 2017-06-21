@@ -22,7 +22,7 @@ export let ebsDbVolumeId: string | undefined;
 export let ebsDocDbVolumeId: string | undefined;
 export let ebsRegistryVolumeId: string | undefined;
 
-export function new() {
+export function new(){
     // Generate the VPC and an associated default subnet for it.  For now, we always use the same CIDR block of
     // 10.0.0.0/16, which gives us way more headroom than we actually required.
     let vpcCidrBlock = "10.0.0.0/16";
