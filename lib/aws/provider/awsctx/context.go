@@ -18,6 +18,7 @@ package awsctx
 import (
 	"context"
 
+	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/apigateway"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
@@ -27,6 +28,8 @@ import (
 	"github.com/aws/aws-sdk-go/service/lambda"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/golang/glog"
+	"github.com/pkg/errors"
+	"github.com/pulumi/lumi/pkg/resource/provider"
 	"github.com/pulumi/lumi/pkg/util/contract"
 
 	"github.com/pulumi/lumi/lib/aws/provider/arn"
@@ -50,13 +53,25 @@ type Context struct {
 	s3               *s3.S3
 }
 
-func New() (*Context, error) {
+const regionConfig = "aws:config:region"
+
+func New(host *provider.HostClient) (*Context, error) {
 	// Create an AWS session; note that this is safe to share among many operations.
 	glog.V(5).Infof("Creating a new AWS session object w/ default credentials")
 	// IDEA: consider verifying credentials, region, etc. here.
 	// IDEA: currently we just inherit the standard AWS SDK credentials logic; eventually we will want more
 	//     flexibility, I assume, including possibly reading from configuration dynamically.
-	sess, err := session.NewSession()
+	var config []*aws.Config
+	reg, err := host.ReadLocation(regionConfig)
+	if err != nil {
+		return nil, err
+	} else if !reg.IsNull() {
+		if !reg.IsString() {
+			return nil, errors.Errorf("Expected a string for AWS region config '%v'; got %v", regionConfig, reg)
+		}
+		config = append(config, &aws.Config{Region: aws.String(reg.StringValue())})
+	}
+	sess, err := session.NewSession(config...)
 	if err != nil {
 		return nil, err
 	}
