@@ -316,6 +316,7 @@ func (g *PackGenerator) emitResourceClass(w *bufio.Writer, res *Resource) {
 	} else {
 		writefmtln(w, "        super();")
 	}
+
 	// Next, validate that required parameters exist, and store all arguments on the object.
 	argLinePrefix := "        "
 	needsArgsCheck := hasArgs && !hasRequiredArgs
@@ -338,6 +339,17 @@ func (g *PackGenerator) emitResourceClass(w *bufio.Writer, res *Resource) {
 	}
 
 	writefmtln(w, "    }")
+	writefmtln(w, "")
+
+	// Finally, add the standard "factory" functions: get and query.
+	writefmtln(w, "    public static get(id: lumi.ID): %v {", name)
+	writefmtln(w, "        return <any>undefined; // functionality provided by the runtime")
+	writefmtln(w, "    }")
+	writefmtln(w, "")
+	writefmtln(w, "    public static query(q: any): %v[] {", name)
+	writefmtln(w, "        return <any>undefined; // functionality provided by the runtime")
+	writefmtln(w, "    }")
+
 	writefmtln(w, "}")
 }
 

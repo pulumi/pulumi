@@ -23,7 +23,7 @@ const ObjectToken = tokens.Type("aws:s3/object:Object")
 
 // ObjectProviderOps is a pluggable interface for Object-related management functionality.
 type ObjectProviderOps interface {
-    Check(ctx context.Context, obj *Object) ([]error, error)
+    Check(ctx context.Context, obj *Object, property string) error
     Name(ctx context.Context, obj *Object) (string, error)
     Create(ctx context.Context, obj *Object) (resource.ID, error)
     Get(ctx context.Context, id resource.ID) (*Object, error)
@@ -52,9 +52,27 @@ func (p *ObjectProvider) Check(
     if err != nil {
         return plugin.NewCheckResponse(err), nil
     }
-    if failures, err := p.ops.Check(ctx, obj); err != nil {
-        return nil, err
-    } else if len(failures) > 0 {
+    var failures []error
+    unks := req.GetUnknowns()
+    if !unks["key"] {
+        if failure := p.ops.Check(ctx, obj, "key"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Object", "key", failure))
+        }
+    }
+    if !unks["bucket"] {
+        if failure := p.ops.Check(ctx, obj, "bucket"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Object", "bucket", failure))
+        }
+    }
+    if !unks["source"] {
+        if failure := p.ops.Check(ctx, obj, "source"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Object", "source", failure))
+        }
+    }
+    if len(failures) > 0 {
         return plugin.NewCheckResponse(resource.NewErrors(failures)), nil
     }
     return plugin.NewCheckResponse(nil), nil

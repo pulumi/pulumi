@@ -56,10 +56,17 @@ func (iter *fixedSourceIterator) Close() error {
 	return nil // nothing to do.
 }
 
-func (iter *fixedSourceIterator) Next() (*resource.Object, tokens.Module, error) {
+func (iter *fixedSourceIterator) Produce(res *resource.Object) {
+	// ignore
+}
+
+func (iter *fixedSourceIterator) Next() (*SourceAllocation, *SourceQuery, error) {
 	iter.current++
 	if iter.current >= len(iter.src.resources) {
-		return nil, "", nil
+		return nil, nil, nil
 	}
-	return iter.src.resources[iter.current], iter.src.ctx, nil
+	return &SourceAllocation{
+		Obj: iter.src.resources[iter.current],
+		Ctx: iter.src.ctx,
+	}, nil, nil
 }

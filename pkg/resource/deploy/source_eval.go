@@ -23,6 +23,7 @@ import (
 	"github.com/pulumi/lumi/pkg/compiler/core"
 	"github.com/pulumi/lumi/pkg/compiler/errors"
 	"github.com/pulumi/lumi/pkg/compiler/symbols"
+	"github.com/pulumi/lumi/pkg/compiler/types/predef"
 	"github.com/pulumi/lumi/pkg/diag"
 	"github.com/pulumi/lumi/pkg/eval"
 	"github.com/pulumi/lumi/pkg/eval/rt"
@@ -100,6 +101,7 @@ func (src *evalSource) Iterate() (SourceIterator, error) {
 type evalSourceIterator struct {
 	src *evalSource            // the owning eval source object.
 	e   eval.Interpreter       // the interpreter used to compute the new state.
+	res *resource.Object       // a resource to publish during the next rendezvous.
 	rz  *rendezvous.Rendezvous // the rendezvous where planning and evaluator coroutines meet.
 }
 
@@ -109,21 +111,57 @@ func (iter *evalSourceIterator) Close() error {
 	return nil
 }
 
-func (iter *evalSourceIterator) Next() (*resource.Object, tokens.Module, error) {
+func (iter *evalSourceIterator) Produce(res *resource.Object) {
+	iter.res = res
+}
+
+func (iter *evalSourceIterator) Next() (*SourceAllocation, *SourceQuery, error) {
 	// Kick the interpreter to compute some more and then inspect what it has to say.
-	obj, done, err := iter.rz.Meet(planParty, nil)
+	var data interface{}
+	if res := iter.res; res != nil {
+		data = rt.NewReturnUnwind(res.Obj())
+		iter.res = nil // reset the state so we don't return things more than once.
+	}
+	obj, done, err := iter.rz.Meet(planParty, data)
 	if err != nil {
-		return nil, "", err
+		return nil, nil, err
 	} else if done {
 		glog.V(5).Infof("EvalSourceIterator is done")
-		return nil, "", nil
+		return nil, nil, nil
+	}
+	contract.Assert(obj != nil)
+
+	// See what the interpreter came up with.  It's either an allocation or a query operation.
+	if alloc, isalloc := obj.(*AllocRendezvous); isalloc {
+		glog.V(5).Infof("EvalSourceIterator produced a new object: obj=%v, ctx=%v", alloc.Obj, alloc.Mod.Tok)
+		return &SourceAllocation{
+			Obj: resource.NewObject(alloc.Obj),
+			Ctx: alloc.Mod.Tok,
+		}, nil, nil
+	} else if query, isquery := obj.(*QueryRendezvous); isquery {
+		glog.V(5).Infof("EvalSourceIterator produced a new query: fnc=%v, #args=%v", query.Meth, len(query.Args))
+		meth := query.Meth
+		args := query.Args
+		t := meth.Parent
+		switch meth.Name() {
+		case specialResourceGetFunction:
+			if len(args) == 0 {
+				return nil, nil,
+					goerr.Errorf("Missing required argument 'id' for method %v", meth)
+			} else if !args[0].IsString() {
+				return nil, nil,
+					goerr.Errorf("Expected method %v argument 'id' to be a string; got", meth, args[0])
+			}
+			return nil, &SourceQuery{Type: t, GetID: resource.ID(args[0].StringValue())}, nil
+		case specialResourceQueryFunction:
+			contract.Failf("TODO[pulumi/lumi#83]: query not yet implemented")
+		default:
+			contract.Failf("Unrecognized query rendezvous function name: %v", meth.Name())
+		}
 	}
 
-	// Otherwise, transform the object returned into a resource object that the planner can deal with.
-	contract.Assert(obj != nil)
-	info := obj.(*AllocInfo)
-	glog.V(5).Infof("EvalSourceIterator produced a new object: obj=%v, ctx=%v", info.Obj, info.Mod.Tok)
-	return resource.NewObject(info.Obj), info.Mod.Tok, nil
+	contract.Failf("Unexpected rendezvous object: %v (expected alloc or query)", obj)
+	return nil, nil, nil
 }
 
 // InitEvalConfig applies the configuration map to an existing interpreter context.  The map is simply a map of tokens --
@@ -137,6 +175,7 @@ func InitEvalConfig(ctx *binder.Context, e eval.Interpreter, config resource.Con
 
 	// For each config entry, bind the token to its symbol, and then attempt to assign to it.
 	glog.V(5).Infof("Applying %v configuration values: %v", len(config), config)
+	var err error
 	for _, tok := range config.StableKeys() {
 		glog.V(5).Infof("Applying configuration value for token '%v'", tok)
 
@@ -155,20 +194,28 @@ func InitEvalConfig(ctx *binder.Context, e eval.Interpreter, config resource.Con
 			}
 			if !ok {
 				ctx.Diag.Errorf(errors.ErrorIllegalConfigToken, tok)
-				continue // skip to the next one
+			} else {
+				// Load up the location as an l-value; because we don't support instance properties, this is nil.
+				loc, uw := e.LoadLocation(tree, sym, nil, true)
+				if uw != nil {
+					// If an error was thrown, print it and keep going.
+					contract.Assert(uw.Throw())
+					e.UnhandledException(tree, uw.Thrown())
+					ok = false
+				} else if loc != nil {
+					// Allocate a new constant for the value we are about to assign, and assign it to the location.
+					v := config[tok]
+					obj := rt.NewConstantObject(v)
+					loc.Set(tree, obj)
+				}
 			}
-
-			// Load up the location as an l-value; because we don't support instance properties, this is nil.
-			if loc := e.LoadLocation(tree, sym, nil, true); loc != nil {
-				// Allocate a new constant for the value we are about to assign, and assign it to the location.
-				v := config[tok]
-				obj := rt.NewConstantObject(v)
-				loc.Set(tree, obj)
+			if !ok && err == nil {
+				err = goerr.New("Configuration variables could not be applied; stopping")
 			}
 		}
 	}
 
-	return nil
+	return err
 }
 
 // forkEval performs the evaluation from a distinct goroutine.  This function blocks until it's our turn to go.
@@ -178,24 +225,30 @@ func forkEval(src *evalSource, rz *rendezvous.Rendezvous, e eval.Interpreter) er
 		e.EvaluatePackage(src.pkg, src.args)
 	}()
 
-	// And wait for it to reach its rendezvous before proceeding.
-	ret, done, err := rz.Meet(planParty, nil)
+	// Let the other party run and only resume when it's our turn.
+	ret, done, err := rz.Let(planParty)
 	if err != nil {
 		return err
 	} else if done {
 		return goerr.New("Failure running the program before it even began executing")
 	}
-	contract.Assert(ret == nil)
+	contract.Assertf(ret == nil, "unexpected rendezvous return: %v", ret)
 	return nil
 }
 
-// AllocInfo is the context in which an object got allocated.
-type AllocInfo struct {
+// AllocRendezvous is used when an object is allocated, and tracks the context in which it was allocated.
+type AllocRendezvous struct {
 	Obj *rt.Object       // the object itself.
 	Loc diag.Diagable    // the location information for the allocation.
 	Pkg *symbols.Package // the package being evaluated when the allocation happened.
 	Mod *symbols.Module  // the module being evaluated when the allocation happened.
 	Fnc symbols.Function // the function being evaluated when the allocation happened.
+}
+
+// QueryRendezvous is used when the interpreter hits a query routine that needs to be evaluated by the planner.
+type QueryRendezvous struct {
+	Meth *symbols.ClassMethod // the resource method that triggered the need to rendezvous.
+	Args []*rt.Object         // the arguments supplied, if any.
 }
 
 // evalHooks are the interpreter hooks that synchronize between planner and evaluator in the appropriate ways.
@@ -231,7 +284,7 @@ func (h *evalHooks) OnObjectInit(tree diag.Diagable, obj *rt.Object) {
 	glog.V(9).Infof("EvalSource OnObjectInit %v (IsResource=%v)", obj, resource.IsResourceObject(obj))
 	if resource.IsResourceObject(obj) {
 		// Communicate the full allocation context: AST node, package, module, and function.
-		alloc := &AllocInfo{
+		alloc := &AllocRendezvous{
 			Obj: obj,
 			Loc: tree,
 			Pkg: h.currpkg,
@@ -267,12 +320,39 @@ func (h *evalHooks) OnEnterModule(mod *symbols.Module) func() {
 	}
 }
 
-// OnEnterFunction is invoked whenever we enter a new function.
-func (h *evalHooks) OnEnterFunction(fnc symbols.Function) func() {
+const (
+	specialResourceGetFunction   = "get"   // gets a single resource by ID.
+	specialResourceQueryFunction = "query" // queries 0-to-many resources using arbitrary filters.
+)
+
+// OnEnterFunction is invoked whenever we enter a new function.  If it returns a non-nil unwind object, it will be used
+// in place of the actual function call, effectively monkey patching it on the fly.
+func (h *evalHooks) OnEnterFunction(fnc symbols.Function, args []*rt.Object) (*rt.Unwind, func()) {
 	glog.V(9).Infof("EvalSource OnEnterFunction %v", fnc)
 	prevfnc := h.currfnc
 	h.currfnc = fnc
-	return func() {
+
+	// If this is one of the "special" resource functions, we need to essentially monkey patch it on the fly.
+	var uw *rt.Unwind
+	if meth, ismeth := fnc.(*symbols.ClassMethod); ismeth {
+		if predef.IsResourceType(meth.Parent) {
+			switch meth.Name() {
+			case specialResourceGetFunction, specialResourceQueryFunction:
+				// For any of these functions, we must defer to the planning side to do its thing.  After awaiting our
+				// turn, we will be given an opportunity to resume with the object and/or unwind in hand.
+				ret, done, err := h.rz.Meet(evalParty, &QueryRendezvous{
+					Meth: meth,
+					Args: args,
+				})
+				contract.Assertf(ret != nil, "Expecting unwind instructions from the planning goroutine")
+				uw = ret.(*rt.Unwind)
+				contract.Assert(!done)
+				contract.Assert(err == nil)
+			}
+		}
+	}
+
+	return uw, func() {
 		glog.V(9).Infof("EvalSource OnLeaveFunction %v", fnc)
 		h.currfnc = prevfnc
 	}

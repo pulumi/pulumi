@@ -25,7 +25,7 @@ const RouteToken = tokens.Type("aws:ec2/route:Route")
 
 // RouteProviderOps is a pluggable interface for Route-related management functionality.
 type RouteProviderOps interface {
-    Check(ctx context.Context, obj *Route) ([]error, error)
+    Check(ctx context.Context, obj *Route, property string) error
     Create(ctx context.Context, obj *Route) (resource.ID, error)
     Get(ctx context.Context, id resource.ID) (*Route, error)
     InspectChange(ctx context.Context,
@@ -53,9 +53,39 @@ func (p *RouteProvider) Check(
     if err != nil {
         return plugin.NewCheckResponse(err), nil
     }
-    if failures, err := p.ops.Check(ctx, obj); err != nil {
-        return nil, err
-    } else if len(failures) > 0 {
+    var failures []error
+    unks := req.GetUnknowns()
+    if !unks["name"] {
+        if failure := p.ops.Check(ctx, obj, "name"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Route", "name", failure))
+        }
+    }
+    if !unks["destinationCidrBlock"] {
+        if failure := p.ops.Check(ctx, obj, "destinationCidrBlock"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Route", "destinationCidrBlock", failure))
+        }
+    }
+    if !unks["routeTable"] {
+        if failure := p.ops.Check(ctx, obj, "routeTable"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Route", "routeTable", failure))
+        }
+    }
+    if !unks["internetGateway"] {
+        if failure := p.ops.Check(ctx, obj, "internetGateway"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Route", "internetGateway", failure))
+        }
+    }
+    if !unks["vpcGatewayAttachment"] {
+        if failure := p.ops.Check(ctx, obj, "vpcGatewayAttachment"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Route", "vpcGatewayAttachment", failure))
+        }
+    }
+    if len(failures) > 0 {
         return plugin.NewCheckResponse(resource.NewErrors(failures)), nil
     }
     return plugin.NewCheckResponse(nil), nil

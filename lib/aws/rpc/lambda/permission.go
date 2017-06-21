@@ -27,7 +27,7 @@ const PermissionToken = tokens.Type("aws:lambda/permission:Permission")
 
 // PermissionProviderOps is a pluggable interface for Permission-related management functionality.
 type PermissionProviderOps interface {
-    Check(ctx context.Context, obj *Permission) ([]error, error)
+    Check(ctx context.Context, obj *Permission, property string) error
     Create(ctx context.Context, obj *Permission) (resource.ID, error)
     Get(ctx context.Context, id resource.ID) (*Permission, error)
     InspectChange(ctx context.Context,
@@ -55,9 +55,45 @@ func (p *PermissionProvider) Check(
     if err != nil {
         return plugin.NewCheckResponse(err), nil
     }
-    if failures, err := p.ops.Check(ctx, obj); err != nil {
-        return nil, err
-    } else if len(failures) > 0 {
+    var failures []error
+    unks := req.GetUnknowns()
+    if !unks["name"] {
+        if failure := p.ops.Check(ctx, obj, "name"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Permission", "name", failure))
+        }
+    }
+    if !unks["action"] {
+        if failure := p.ops.Check(ctx, obj, "action"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Permission", "action", failure))
+        }
+    }
+    if !unks["function"] {
+        if failure := p.ops.Check(ctx, obj, "function"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Permission", "function", failure))
+        }
+    }
+    if !unks["principal"] {
+        if failure := p.ops.Check(ctx, obj, "principal"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Permission", "principal", failure))
+        }
+    }
+    if !unks["sourceAccount"] {
+        if failure := p.ops.Check(ctx, obj, "sourceAccount"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Permission", "sourceAccount", failure))
+        }
+    }
+    if !unks["sourceARN"] {
+        if failure := p.ops.Check(ctx, obj, "sourceARN"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Permission", "sourceARN", failure))
+        }
+    }
+    if len(failures) > 0 {
         return plugin.NewCheckResponse(resource.NewErrors(failures)), nil
     }
     return plugin.NewCheckResponse(nil), nil

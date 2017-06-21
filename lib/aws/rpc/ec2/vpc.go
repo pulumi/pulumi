@@ -25,7 +25,7 @@ const VPCToken = tokens.Type("aws:ec2/vpc:VPC")
 
 // VPCProviderOps is a pluggable interface for VPC-related management functionality.
 type VPCProviderOps interface {
-    Check(ctx context.Context, obj *VPC) ([]error, error)
+    Check(ctx context.Context, obj *VPC, property string) error
     Create(ctx context.Context, obj *VPC) (resource.ID, error)
     Get(ctx context.Context, id resource.ID) (*VPC, error)
     InspectChange(ctx context.Context,
@@ -53,9 +53,39 @@ func (p *VPCProvider) Check(
     if err != nil {
         return plugin.NewCheckResponse(err), nil
     }
-    if failures, err := p.ops.Check(ctx, obj); err != nil {
-        return nil, err
-    } else if len(failures) > 0 {
+    var failures []error
+    unks := req.GetUnknowns()
+    if !unks["name"] {
+        if failure := p.ops.Check(ctx, obj, "name"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("VPC", "name", failure))
+        }
+    }
+    if !unks["cidrBlock"] {
+        if failure := p.ops.Check(ctx, obj, "cidrBlock"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("VPC", "cidrBlock", failure))
+        }
+    }
+    if !unks["instanceTenancy"] {
+        if failure := p.ops.Check(ctx, obj, "instanceTenancy"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("VPC", "instanceTenancy", failure))
+        }
+    }
+    if !unks["enableDnsSupport"] {
+        if failure := p.ops.Check(ctx, obj, "enableDnsSupport"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("VPC", "enableDnsSupport", failure))
+        }
+    }
+    if !unks["enableDnsHostnames"] {
+        if failure := p.ops.Check(ctx, obj, "enableDnsHostnames"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("VPC", "enableDnsHostnames", failure))
+        }
+    }
+    if len(failures) > 0 {
         return plugin.NewCheckResponse(resource.NewErrors(failures)), nil
     }
     return plugin.NewCheckResponse(nil), nil

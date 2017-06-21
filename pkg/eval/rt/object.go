@@ -350,7 +350,7 @@ func (o *Object) String() string {
 		}
 
 		// Otherwise it's an arbitrary object; just print the type (we can't recurse, due to possible cycles).
-		return fmt.Sprintf("object{type=%v,props={...}}", o.t.Token())
+		return fmt.Sprintf("object{type=%v,v=%v,props={...%v}}", o.t.Token(), o.value, o.properties.Len())
 	}
 }
 
@@ -374,12 +374,12 @@ var (
 func NewArrayObject(elem symbols.Type, arr *[]*Pointer) *Object {
 	contract.Require(elem != nil, "elem")
 	arrt := symbols.NewArrayType(elem)
+	arrayProps := NewPropertyMap()
 
 	// Add a `length` property to the object
-	arrayProps := NewPropertyMap()
 	lengthGetter := NewBuiltinIntrinsic(
 		tokens.Token("lumi:builtin/array:getLength"),
-		symbols.NewFunctionType([]symbols.Type{}, types.Number),
+		symbols.NewFunctionType(nil, types.Number),
 	)
 	lengthSetter := NewBuiltinIntrinsic(
 		tokens.Token("lumi:builtin/array:setLength"),
@@ -387,7 +387,33 @@ func NewArrayObject(elem symbols.Type, arr *[]*Pointer) *Object {
 	)
 	arrayProps.InitAddr(PropertyKey("length"), nil, false, lengthGetter, lengthSetter)
 
-	return NewObject(arrt, arr, arrayProps, nil)
+	return NewObject(arrt, arr, arrayProps, ArrayPrototypeObject())
+}
+
+// arrayProto is a cached reference to the Array prototype object.
+var arrayProto *Object
+
+func ArrayPrototypeObject() *Object {
+	if arrayProto != nil {
+		return arrayProto
+	}
+
+	// Add `push` and `pop` methods to the prototype.
+	proto := symbols.NewPrototypeType(symbols.NewArrayType(types.Dynamic))
+	arrayProtoProps := NewPropertyMap()
+	arrayProto = NewObject(proto, nil, arrayProtoProps, nil)
+	push := NewFunctionObjectFromSymbol(NewBuiltinIntrinsic(
+		tokens.Token("lumi:builtin/array:push"),
+		symbols.NewFunctionType([]symbols.Type{types.Dynamic}, types.Number),
+	), arrayProto)
+	arrayProtoProps.InitAddr(PropertyKey("push"), push, true, nil, nil)
+	pop := NewFunctionObjectFromSymbol(NewBuiltinIntrinsic(
+		tokens.Token("lumi:builtin/array:pop"),
+		symbols.NewFunctionType(nil, types.Dynamic),
+	), arrayProto)
+	arrayProtoProps.InitAddr(PropertyKey("pop"), pop, true, nil, nil)
+
+	return arrayProto
 }
 
 // NewBoolObject creates a new primitive number object.
@@ -418,22 +444,28 @@ func NewStringObject(v string) *Object {
 	return NewObject(types.String, v, arrayProps, StringPrototypeObject())
 }
 
-// stringProto is a cached reference to the String prototype object
+// stringProto is a cached reference to the String prototype object.
 var stringProto *Object
 
-// StringPrototypeObject returns the String prototype object
+// StringPrototypeObject returns the String prototype object.
 func StringPrototypeObject() *Object {
 	if stringProto != nil {
 		return stringProto
 	}
 
+	proto := symbols.NewPrototypeType(types.String)
 	stringProtoProps := NewPropertyMap()
-	stringProto = NewObject(types.String, "", stringProtoProps, nil)
+	stringProto = NewObject(proto, nil, stringProtoProps, nil)
 	toLowerCase := NewFunctionObjectFromSymbol(NewBuiltinIntrinsic(
 		tokens.Token("lumi:builtin/string:toLowerCase"),
 		symbols.NewFunctionType([]symbols.Type{}, types.String),
 	), stringProto)
 	stringProtoProps.InitAddr(PropertyKey("toLowerCase"), toLowerCase, true, nil, nil)
+	toUpperCase := NewFunctionObjectFromSymbol(NewBuiltinIntrinsic(
+		tokens.Token("lumi:builtin/string:toUpperCase"),
+		symbols.NewFunctionType([]symbols.Type{}, types.String),
+	), stringProto)
+	stringProtoProps.InitAddr(PropertyKey("toUpperCase"), toUpperCase, true, nil, nil)
 
 	return stringProto
 }

@@ -16,19 +16,21 @@
 package resource
 
 import (
-	"reflect"
+	"testing"
 
-	"github.com/pulumi/lumi/pkg/util/mapper"
+	"github.com/stretchr/testify/assert"
+
+	"github.com/pulumi/lumi/pkg/tokens"
 )
 
-// NewErrors creates a new error list pertaining to a resource.  Note that it just turns around and defers to
-// the same mapping infrastructure used for serialization and deserialization, but it presents a nicer interface.
-func NewErrors(errs []error) error {
-	return mapper.NewMappingError(errs)
-}
-
-// NewFieldError creates a new error pertaining to a resource's field.  Note that it just turns around and defers to
-// the same mapping infrastructure used for serialization and deserialization, but it presents a nicer interface.
-func NewFieldError(ty reflect.Type, fld string, err error) error {
-	return mapper.NewFieldError(ty, fld, err)
+func TestURNRoundTripping(t *testing.T) {
+	ns := tokens.QName("namespace")
+	alloc := tokens.Module("foo:bar/baz")
+	typ := tokens.Type("bang:boom/fizzle:MajorResource")
+	name := tokens.QName("a-swell-resource")
+	urn := NewURN(ns, alloc, typ, name)
+	assert.Equal(t, ns, urn.Namespace())
+	assert.Equal(t, alloc, urn.Alloc())
+	assert.Equal(t, typ, urn.Type())
+	assert.Equal(t, name, urn.Name())
 }

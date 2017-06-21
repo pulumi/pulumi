@@ -30,7 +30,7 @@ type Hooks interface {
 	// OnEnterModule is invoked whenever we enter a module.
 	OnEnterModule(sym *symbols.Module) func()
 	// OnEnterFunction is invoked whenever we enter a function.
-	OnEnterFunction(fnc symbols.Function) func()
+	OnEnterFunction(fnc symbols.Function, args []*rt.Object) (*rt.Unwind, func())
 	// OnObjectInit is invoked after an object has been allocated and initialized.  This means that its constructor, if
 	// any, has been run to completion.  The diagnostics tree is the AST node responsible for the allocation.
 	OnObjectInit(tree diag.Diagable, o *rt.Object)

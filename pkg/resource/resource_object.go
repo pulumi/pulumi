@@ -47,6 +47,14 @@ func NewObject(obj *rt.Object) *Object {
 	return &Object{obj: obj}
 }
 
+// NewEmptyObject allocates an empty resource object of a given type.
+func NewEmptyObject(t symbols.Type) *Object {
+	contract.Assert(predef.IsResourceType(t))
+	return &Object{
+		obj: rt.NewObject(t, nil, nil, nil),
+	}
+}
+
 func (r *Object) Obj() *rt.Object   { return r.obj }
 func (r *Object) Type() tokens.Type { return r.obj.Type().TypeToken() }
 
@@ -162,6 +170,11 @@ func copyObject(resobj *rt.Object, obj *rt.Object) PropertyMap {
 	return copyObjectProperties(resobj, props)
 }
 
+// CopyObject flattens a single object into a serializable "JSON-like" property value.
+func CopyObject(obj *rt.Object) PropertyValue {
+	return copyObjectProperty(nil, obj)
+}
+
 // copyObjectProperty creates a single property value out of a runtime object.  It returns false if the property could
 // not be stored in a property (e.g., it is a function or other unrecognized or unserializable runtime object).
 func copyObjectProperty(resobj *rt.Object, obj *rt.Object) PropertyValue {
@@ -217,9 +230,8 @@ func copyObjectProperty(resobj *rt.Object, obj *rt.Object) PropertyValue {
 	if t.Computed() {
 		// See if this is an output property.  An output property is a property that is set directly on the resource
 		// object that is computed from precisely a single dependency and no expression.  Otherwise, it is computed.
-		comp := obj.ComputedValue()
 		var makeProperty func(PropertyValue) PropertyValue
-		if !comp.Expr && len(comp.Sources) == 1 && comp.Sources[0] == resobj {
+		if isOutputObject(resobj, obj) {
 			makeProperty = MakeOutput
 		} else {
 			makeProperty = MakeComputed
@@ -263,17 +275,29 @@ func copyObjectProperties(resobj *rt.Object, props *rt.PropertyMap) PropertyMap 
 	return result
 }
 
+// isOutputObject returns true if the object obj is a computed output property for resource object resobj.
+func isOutputObject(resobj *rt.Object, obj *rt.Object) bool {
+	if obj.IsComputed() {
+		v := obj.ComputedValue()
+		return !v.Expr && len(v.Sources) == 1 && v.Sources[0] == resobj
+	}
+	return false
+}
+
 // setRuntimeProperties translates from a resource property map into the equivalent runtime objects, and stores them on
 // the given runtime object.
 func setRuntimeProperties(obj *rt.Object, props PropertyMap) {
 	for k, v := range props {
-		glog.V(9).Infof("Setting resource object property: %v=%v", k, v)
 		prop := obj.GetPropertyAddr(rt.PropertyKey(k), true, true)
-		// TODO: we are only setting if IsNull == true, to avoid certain shortcomings in our serialization format
+		// TODO: we are only setting if IsNull or IsComputed, to avoid certain shortcomings in our serialization format
 		//     today.  For example, if a resource ID appears, we must map it back to the runtime object.
-		if prop.Obj().IsNull() {
+		pobj := prop.Obj()
+		if pobj.IsNull() || isOutputObject(obj, pobj) {
+			glog.V(9).Infof("Setting resource object property: %v=%v", k, v)
 			val := createRuntimeProperty(v)
 			prop.Set(val)
+		} else {
+			glog.V(9).Infof("Skipping resource object property: %v=%v; existing=%v", k, v, pobj)
 		}
 	}
 }

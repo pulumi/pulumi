@@ -25,7 +25,7 @@ const InstanceToken = tokens.Type("aws:ec2/instance:Instance")
 
 // InstanceProviderOps is a pluggable interface for Instance-related management functionality.
 type InstanceProviderOps interface {
-    Check(ctx context.Context, obj *Instance) ([]error, error)
+    Check(ctx context.Context, obj *Instance, property string) error
     Create(ctx context.Context, obj *Instance) (resource.ID, error)
     Get(ctx context.Context, id resource.ID) (*Instance, error)
     InspectChange(ctx context.Context,
@@ -53,9 +53,45 @@ func (p *InstanceProvider) Check(
     if err != nil {
         return plugin.NewCheckResponse(err), nil
     }
-    if failures, err := p.ops.Check(ctx, obj); err != nil {
-        return nil, err
-    } else if len(failures) > 0 {
+    var failures []error
+    unks := req.GetUnknowns()
+    if !unks["name"] {
+        if failure := p.ops.Check(ctx, obj, "name"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Instance", "name", failure))
+        }
+    }
+    if !unks["imageId"] {
+        if failure := p.ops.Check(ctx, obj, "imageId"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Instance", "imageId", failure))
+        }
+    }
+    if !unks["instanceType"] {
+        if failure := p.ops.Check(ctx, obj, "instanceType"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Instance", "instanceType", failure))
+        }
+    }
+    if !unks["securityGroups"] {
+        if failure := p.ops.Check(ctx, obj, "securityGroups"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Instance", "securityGroups", failure))
+        }
+    }
+    if !unks["keyName"] {
+        if failure := p.ops.Check(ctx, obj, "keyName"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Instance", "keyName", failure))
+        }
+    }
+    if !unks["tags"] {
+        if failure := p.ops.Check(ctx, obj, "tags"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Instance", "tags", failure))
+        }
+    }
+    if len(failures) > 0 {
         return plugin.NewCheckResponse(resource.NewErrors(failures)), nil
     }
     return plugin.NewCheckResponse(nil), nil

@@ -25,7 +25,7 @@ const SecurityGroupIngressToken = tokens.Type("aws:ec2/securityGroupIngress:Secu
 
 // SecurityGroupIngressProviderOps is a pluggable interface for SecurityGroupIngress-related management functionality.
 type SecurityGroupIngressProviderOps interface {
-    Check(ctx context.Context, obj *SecurityGroupIngress) ([]error, error)
+    Check(ctx context.Context, obj *SecurityGroupIngress, property string) error
     Create(ctx context.Context, obj *SecurityGroupIngress) (resource.ID, error)
     Get(ctx context.Context, id resource.ID) (*SecurityGroupIngress, error)
     InspectChange(ctx context.Context,
@@ -53,9 +53,75 @@ func (p *SecurityGroupIngressProvider) Check(
     if err != nil {
         return plugin.NewCheckResponse(err), nil
     }
-    if failures, err := p.ops.Check(ctx, obj); err != nil {
-        return nil, err
-    } else if len(failures) > 0 {
+    var failures []error
+    unks := req.GetUnknowns()
+    if !unks["name"] {
+        if failure := p.ops.Check(ctx, obj, "name"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("SecurityGroupIngress", "name", failure))
+        }
+    }
+    if !unks["ipProtocol"] {
+        if failure := p.ops.Check(ctx, obj, "ipProtocol"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("SecurityGroupIngress", "ipProtocol", failure))
+        }
+    }
+    if !unks["cidrIp"] {
+        if failure := p.ops.Check(ctx, obj, "cidrIp"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("SecurityGroupIngress", "cidrIp", failure))
+        }
+    }
+    if !unks["cidrIpv6"] {
+        if failure := p.ops.Check(ctx, obj, "cidrIpv6"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("SecurityGroupIngress", "cidrIpv6", failure))
+        }
+    }
+    if !unks["fromPort"] {
+        if failure := p.ops.Check(ctx, obj, "fromPort"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("SecurityGroupIngress", "fromPort", failure))
+        }
+    }
+    if !unks["group"] {
+        if failure := p.ops.Check(ctx, obj, "group"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("SecurityGroupIngress", "group", failure))
+        }
+    }
+    if !unks["groupName"] {
+        if failure := p.ops.Check(ctx, obj, "groupName"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("SecurityGroupIngress", "groupName", failure))
+        }
+    }
+    if !unks["sourceSecurityGroup"] {
+        if failure := p.ops.Check(ctx, obj, "sourceSecurityGroup"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("SecurityGroupIngress", "sourceSecurityGroup", failure))
+        }
+    }
+    if !unks["sourceSecurityGroupName"] {
+        if failure := p.ops.Check(ctx, obj, "sourceSecurityGroupName"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("SecurityGroupIngress", "sourceSecurityGroupName", failure))
+        }
+    }
+    if !unks["sourceSecurityGroupOwnerId"] {
+        if failure := p.ops.Check(ctx, obj, "sourceSecurityGroupOwnerId"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("SecurityGroupIngress", "sourceSecurityGroupOwnerId", failure))
+        }
+    }
+    if !unks["toPort"] {
+        if failure := p.ops.Check(ctx, obj, "toPort"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("SecurityGroupIngress", "toPort", failure))
+        }
+    }
+    if len(failures) > 0 {
         return plugin.NewCheckResponse(resource.NewErrors(failures)), nil
     }
     return plugin.NewCheckResponse(nil), nil

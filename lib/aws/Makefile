@@ -1,7 +1,8 @@
-GOPKGS    = $(shell go list ./provider/... | grep -v /vendor/)
-LUMIROOT ?= /usr/local/lumi
-LUMILIB   = ${LUMIROOT}/packs
-THISLIB   = ${LUMILIB}/aws
+GOPKGS          = $(shell go list ./provider/... | grep -v /vendor/)
+LUMIROOT       ?= /usr/local/lumi
+LUMILIB         = ${LUMIROOT}/packs
+THISLIB         = ${LUMILIB}/aws
+TESTPARALLELISM = 10
 
 .PHONY: default
 default: banner lint_quiet vet build test install
@@ -47,6 +48,7 @@ install:
 lint:
 	@echo "\033[0;32mLINT:\033[0m"
 	@golint -set_exit_status provider/...
+	@tslint lib/aws/pack/...
 
 .PHONY: lint_quiet
 lint_quiet:
@@ -64,7 +66,7 @@ vet:
 .PHONY: test
 test:
 	@echo "\033[0;32mTEST:\033[0m"
-	@go test -cover ${GOPKGS}
+	@go test -cover -parallel ${TESTPARALLELISM} ${GOPKGS}
 
 .PHONY: verify
 verify: gen

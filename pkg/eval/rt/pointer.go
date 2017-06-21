@@ -33,6 +33,9 @@ type Pointer struct {
 var _ fmt.Stringer = (*Pointer)(nil)
 
 func NewPointer(obj *Object, readonly bool, get symbols.Function, set symbols.Function) *Pointer {
+	if obj == nil {
+		obj = Null
+	}
 	return &Pointer{
 		obj:      obj,
 		readonly: readonly,

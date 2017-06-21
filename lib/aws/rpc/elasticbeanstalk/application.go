@@ -25,7 +25,7 @@ const ApplicationToken = tokens.Type("aws:elasticbeanstalk/application:Applicati
 
 // ApplicationProviderOps is a pluggable interface for Application-related management functionality.
 type ApplicationProviderOps interface {
-    Check(ctx context.Context, obj *Application) ([]error, error)
+    Check(ctx context.Context, obj *Application, property string) error
     Create(ctx context.Context, obj *Application) (resource.ID, error)
     Get(ctx context.Context, id resource.ID) (*Application, error)
     InspectChange(ctx context.Context,
@@ -53,9 +53,27 @@ func (p *ApplicationProvider) Check(
     if err != nil {
         return plugin.NewCheckResponse(err), nil
     }
-    if failures, err := p.ops.Check(ctx, obj); err != nil {
-        return nil, err
-    } else if len(failures) > 0 {
+    var failures []error
+    unks := req.GetUnknowns()
+    if !unks["name"] {
+        if failure := p.ops.Check(ctx, obj, "name"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Application", "name", failure))
+        }
+    }
+    if !unks["applicationName"] {
+        if failure := p.ops.Check(ctx, obj, "applicationName"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Application", "applicationName", failure))
+        }
+    }
+    if !unks["description"] {
+        if failure := p.ops.Check(ctx, obj, "description"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Application", "description", failure))
+        }
+    }
+    if len(failures) > 0 {
         return plugin.NewCheckResponse(resource.NewErrors(failures)), nil
     }
     return plugin.NewCheckResponse(nil), nil

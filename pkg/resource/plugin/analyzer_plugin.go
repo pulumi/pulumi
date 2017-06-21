@@ -38,12 +38,12 @@ type analyzer struct {
 
 // NewAnalyzer binds to a given analyzer's plugin by name and creates a gRPC connection to it.  If the associated plugin
 // could not be found by name on the PATH, or an error occurs while creating the child process, an error is returned.
-func NewAnalyzer(ctx *Context, name tokens.QName) (Analyzer, error) {
+func NewAnalyzer(host Host, ctx *Context, name tokens.QName) (Analyzer, error) {
 	// Search for the analyzer on the path.
 	srvexe := analyzerPrefix + "-" + strings.Replace(string(name), tokens.QNameDelimiter, "_", -1)
 
 	// Now go ahead and attempt to load the plugin.
-	plug, err := newPlugin(ctx, []string{srvexe}, fmt.Sprintf("analyzer[%v]", name))
+	plug, err := newPlugin(host, ctx, []string{srvexe}, fmt.Sprintf("analyzer[%v]", name))
 	if err != nil {
 		return nil, err
 	}

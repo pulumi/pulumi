@@ -30,6 +30,14 @@ export class Model extends lumi.NamedResource implements ModelArgs {
         this.modelName = args.modelName;
         this.description = args.description;
     }
+
+    public static get(id: lumi.ID): Model {
+        return <any>undefined; // functionality provided by the runtime
+    }
+
+    public static query(q: any): Model[] {
+        return <any>undefined; // functionality provided by the runtime
+    }
 }
 
 export interface ModelArgs {

@@ -19,7 +19,6 @@ import (
 	"crypto/sha1"
 	"encoding/json"
 	"fmt"
-	"reflect"
 	"regexp"
 	"strings"
 
@@ -107,29 +106,26 @@ type permissionProvider struct {
 }
 
 // Check validates that the given property bag is valid for a resource of the given type.
-func (p *permissionProvider) Check(ctx context.Context, obj *lambda.Permission) ([]error, error) {
-	var failures []error
-	if matched, err := regexp.MatchString(actionRegexp, obj.Action); err != nil || !matched {
-		failures = append(failures,
-			resource.NewFieldError(reflect.TypeOf(obj), lambda.Permission_Action,
-				fmt.Errorf("did not match regexp %v", actionRegexp)))
-	}
-	if obj.SourceAccount != nil {
-		if matched, err := regexp.MatchString(sourceAccountRegexp, *obj.SourceAccount); err != nil || !matched {
-			fmt.Printf("adding failure because source account didn't match\n")
-			failures = append(failures,
-				resource.NewFieldError(reflect.TypeOf(obj), lambda.Permission_SourceAccount,
-					fmt.Errorf("did not match regexp %v", sourceAccountRegexp)))
+func (p *permissionProvider) Check(ctx context.Context, obj *lambda.Permission, property string) error {
+	switch property {
+	case lambda.Permission_Action:
+		if matched, err := regexp.MatchString(actionRegexp, obj.Action); err != nil || !matched {
+			return fmt.Errorf("did not match regexp %v", actionRegexp)
+		}
+	case lambda.Permission_SourceAccount:
+		if obj.SourceAccount != nil {
+			if matched, err := regexp.MatchString(sourceAccountRegexp, *obj.SourceAccount); err != nil || !matched {
+				return fmt.Errorf("did not match regexp %v", sourceAccountRegexp)
+			}
+		}
+	case lambda.Permission_SourceARN:
+		if obj.SourceARN != nil {
+			if matched, err := regexp.MatchString(sourceARNRegexp, string(*obj.SourceARN)); err != nil || !matched {
+				return fmt.Errorf("did not match regexp %v", sourceARNRegexp)
+			}
 		}
 	}
-	if obj.SourceARN != nil {
-		if matched, err := regexp.MatchString(sourceARNRegexp, string(*obj.SourceARN)); err != nil || !matched {
-			failures = append(failures,
-				resource.NewFieldError(reflect.TypeOf(obj), lambda.Permission_SourceARN,
-					fmt.Errorf("did not match regexp %v", sourceARNRegexp)))
-		}
-	}
-	return failures, nil
+	return nil
 }
 
 // Create allocates a new instance of the provided resource and returns its unique ID afterwards.  (The input ID

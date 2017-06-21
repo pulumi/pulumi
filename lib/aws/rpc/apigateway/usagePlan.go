@@ -69,7 +69,7 @@ const UsagePlanToken = tokens.Type("aws:apigateway/usagePlan:UsagePlan")
 
 // UsagePlanProviderOps is a pluggable interface for UsagePlan-related management functionality.
 type UsagePlanProviderOps interface {
-    Check(ctx context.Context, obj *UsagePlan) ([]error, error)
+    Check(ctx context.Context, obj *UsagePlan, property string) error
     Create(ctx context.Context, obj *UsagePlan) (resource.ID, error)
     Get(ctx context.Context, id resource.ID) (*UsagePlan, error)
     InspectChange(ctx context.Context,
@@ -97,9 +97,45 @@ func (p *UsagePlanProvider) Check(
     if err != nil {
         return plugin.NewCheckResponse(err), nil
     }
-    if failures, err := p.ops.Check(ctx, obj); err != nil {
-        return nil, err
-    } else if len(failures) > 0 {
+    var failures []error
+    unks := req.GetUnknowns()
+    if !unks["name"] {
+        if failure := p.ops.Check(ctx, obj, "name"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("UsagePlan", "name", failure))
+        }
+    }
+    if !unks["apiStages"] {
+        if failure := p.ops.Check(ctx, obj, "apiStages"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("UsagePlan", "apiStages", failure))
+        }
+    }
+    if !unks["description"] {
+        if failure := p.ops.Check(ctx, obj, "description"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("UsagePlan", "description", failure))
+        }
+    }
+    if !unks["quota"] {
+        if failure := p.ops.Check(ctx, obj, "quota"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("UsagePlan", "quota", failure))
+        }
+    }
+    if !unks["throttle"] {
+        if failure := p.ops.Check(ctx, obj, "throttle"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("UsagePlan", "throttle", failure))
+        }
+    }
+    if !unks["usagePlanName"] {
+        if failure := p.ops.Check(ctx, obj, "usagePlanName"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("UsagePlan", "usagePlanName", failure))
+        }
+    }
+    if len(failures) > 0 {
         return plugin.NewCheckResponse(resource.NewErrors(failures)), nil
     }
     return plugin.NewCheckResponse(nil), nil

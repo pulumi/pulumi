@@ -27,7 +27,7 @@ const RoleToken = tokens.Type("aws:iam/role:Role")
 
 // RoleProviderOps is a pluggable interface for Role-related management functionality.
 type RoleProviderOps interface {
-    Check(ctx context.Context, obj *Role) ([]error, error)
+    Check(ctx context.Context, obj *Role, property string) error
     Create(ctx context.Context, obj *Role) (resource.ID, error)
     Get(ctx context.Context, id resource.ID) (*Role, error)
     InspectChange(ctx context.Context,
@@ -55,9 +55,45 @@ func (p *RoleProvider) Check(
     if err != nil {
         return plugin.NewCheckResponse(err), nil
     }
-    if failures, err := p.ops.Check(ctx, obj); err != nil {
-        return nil, err
-    } else if len(failures) > 0 {
+    var failures []error
+    unks := req.GetUnknowns()
+    if !unks["name"] {
+        if failure := p.ops.Check(ctx, obj, "name"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Role", "name", failure))
+        }
+    }
+    if !unks["assumeRolePolicyDocument"] {
+        if failure := p.ops.Check(ctx, obj, "assumeRolePolicyDocument"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Role", "assumeRolePolicyDocument", failure))
+        }
+    }
+    if !unks["path"] {
+        if failure := p.ops.Check(ctx, obj, "path"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Role", "path", failure))
+        }
+    }
+    if !unks["roleName"] {
+        if failure := p.ops.Check(ctx, obj, "roleName"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Role", "roleName", failure))
+        }
+    }
+    if !unks["managedPolicyARNs"] {
+        if failure := p.ops.Check(ctx, obj, "managedPolicyARNs"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Role", "managedPolicyARNs", failure))
+        }
+    }
+    if !unks["policies"] {
+        if failure := p.ops.Check(ctx, obj, "policies"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Role", "policies", failure))
+        }
+    }
+    if len(failures) > 0 {
         return plugin.NewCheckResponse(resource.NewErrors(failures)), nil
     }
     return plugin.NewCheckResponse(nil), nil

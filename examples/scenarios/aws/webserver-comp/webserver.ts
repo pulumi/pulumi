@@ -40,9 +40,9 @@ export class Micro extends Server {
     }
 }
 
-export class Large extends Server {
+export class Nano extends Server {
     constructor(name: string) {
-        super(name, "t2.large");
+        super(name, "t2.nano");
     }
 }
 

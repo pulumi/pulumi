@@ -25,7 +25,7 @@ const ClientCertificateToken = tokens.Type("aws:apigateway/clientCertificate:Cli
 
 // ClientCertificateProviderOps is a pluggable interface for ClientCertificate-related management functionality.
 type ClientCertificateProviderOps interface {
-    Check(ctx context.Context, obj *ClientCertificate) ([]error, error)
+    Check(ctx context.Context, obj *ClientCertificate, property string) error
     Create(ctx context.Context, obj *ClientCertificate) (resource.ID, error)
     Get(ctx context.Context, id resource.ID) (*ClientCertificate, error)
     InspectChange(ctx context.Context,
@@ -53,9 +53,21 @@ func (p *ClientCertificateProvider) Check(
     if err != nil {
         return plugin.NewCheckResponse(err), nil
     }
-    if failures, err := p.ops.Check(ctx, obj); err != nil {
-        return nil, err
-    } else if len(failures) > 0 {
+    var failures []error
+    unks := req.GetUnknowns()
+    if !unks["name"] {
+        if failure := p.ops.Check(ctx, obj, "name"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("ClientCertificate", "name", failure))
+        }
+    }
+    if !unks["description"] {
+        if failure := p.ops.Check(ctx, obj, "description"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("ClientCertificate", "description", failure))
+        }
+    }
+    if len(failures) > 0 {
         return plugin.NewCheckResponse(resource.NewErrors(failures)), nil
     }
     return plugin.NewCheckResponse(nil), nil

@@ -25,7 +25,7 @@ const APIKeyToken = tokens.Type("aws:apigateway/apiKey:APIKey")
 
 // APIKeyProviderOps is a pluggable interface for APIKey-related management functionality.
 type APIKeyProviderOps interface {
-    Check(ctx context.Context, obj *APIKey) ([]error, error)
+    Check(ctx context.Context, obj *APIKey, property string) error
     Create(ctx context.Context, obj *APIKey) (resource.ID, error)
     Get(ctx context.Context, id resource.ID) (*APIKey, error)
     InspectChange(ctx context.Context,
@@ -53,9 +53,39 @@ func (p *APIKeyProvider) Check(
     if err != nil {
         return plugin.NewCheckResponse(err), nil
     }
-    if failures, err := p.ops.Check(ctx, obj); err != nil {
-        return nil, err
-    } else if len(failures) > 0 {
+    var failures []error
+    unks := req.GetUnknowns()
+    if !unks["name"] {
+        if failure := p.ops.Check(ctx, obj, "name"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("APIKey", "name", failure))
+        }
+    }
+    if !unks["keyName"] {
+        if failure := p.ops.Check(ctx, obj, "keyName"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("APIKey", "keyName", failure))
+        }
+    }
+    if !unks["description"] {
+        if failure := p.ops.Check(ctx, obj, "description"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("APIKey", "description", failure))
+        }
+    }
+    if !unks["enabled"] {
+        if failure := p.ops.Check(ctx, obj, "enabled"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("APIKey", "enabled", failure))
+        }
+    }
+    if !unks["stageKeys"] {
+        if failure := p.ops.Check(ctx, obj, "stageKeys"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("APIKey", "stageKeys", failure))
+        }
+    }
+    if len(failures) > 0 {
         return plugin.NewCheckResponse(resource.NewErrors(failures)), nil
     }
     return plugin.NewCheckResponse(nil), nil

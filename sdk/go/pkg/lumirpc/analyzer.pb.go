@@ -15,6 +15,7 @@ It has these top-level messages:
 	AnalyzeResponse
 	AnalyzeFailure
 	LogRequest
+	ReadLocationRequest
 	CheckRequest
 	CheckResponse
 	CheckFailure

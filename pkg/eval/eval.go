@@ -48,7 +48,10 @@ type Interpreter interface {
 	EvaluateFunction(fnc symbols.Function, this *rt.Object, args core.Args) (*rt.Object, *rt.Unwind)
 
 	// LoadLocation loads a location by symbol; lval controls whether it is an l-value or just a value.
-	LoadLocation(tree diag.Diagable, sym symbols.Symbol, this *rt.Object, lval bool) *Location
+	LoadLocation(tree diag.Diagable, sym symbols.Symbol, this *rt.Object, lval bool) (*Location, *rt.Unwind)
+
+	// UnhandledException triggers the unhandled exception logic.
+	UnhandledException(tree diag.Diagable, ex *rt.Exception)
 }
 
 // New creates an interpreter that can be used to evaluate LumiPacks.
@@ -170,7 +173,7 @@ func (e *evaluator) EvaluateFunction(fnc symbols.Function, this *rt.Object, args
 
 		// If the call had a throw unwind, then we have an unhandled exception.
 		if uw != nil && uw.Throw() {
-			e.issueUnhandledException(uw, errors.ErrorUnhandledException.At(fnc.Tree()))
+			e.UnhandledException(fnc.Tree(), uw.Thrown())
 		}
 
 		// Make sure to invoke the done hook.
@@ -290,7 +293,14 @@ func (e *evaluator) initProperty(this *rt.Object, properties *rt.PropertyMap,
 			// If the variable is a computed one -- that is, assignments may come from outside the system at a later
 			// date and we want to be able to speculate beyond it -- then stick a computed value in the slot.
 			obj = rt.NewComputedObject(m.Type(), false, []*rt.Object{this})
+		} else {
+			obj = rt.Null
 		}
+		var thist symbols.Type
+		if this != nil {
+			thist = this.Type()
+		}
+		glog.V(9).Infof("Initializing property '%v' (t=%v) for obj type '%v': %v", key, m.Type(), thist, obj)
 
 		// If this is a class property, it may have a getter and/or setter; flow them.
 		var get symbols.Function
@@ -546,25 +556,12 @@ func (e *evaluator) newObject(t symbols.Type) *rt.Object {
 }
 
 // issueUnhandledException issues an unhandled exception error using the given diagnostic and unwind information.
-func (e *evaluator) issueUnhandledException(uw *rt.Unwind, err *diag.Diag, args ...interface{}) {
-	contract.Assert(uw.Throw())
-
+func (e *evaluator) UnhandledException(tree diag.Diagable, ex *rt.Exception) {
 	// Produce a message with the exception text plus stack trace.
-	var msg string
-	if ex := uw.Exception(); ex != nil {
-		if ex.Thrown.Type() == types.String {
-			msg = ex.Thrown.StringValue() // use the basic string value.
-		} else {
-			msg = "\n" + ex.Thrown.Details(false, "\t") // convert the thrown object into a detailed string
-		}
-		msg += "\n" + ex.Stack.Trace(e.Diag(), "\t", ex.Node)
-	} else {
-		msg = "no details available"
-	}
+	msg := ex.Message(e.Diag())
 
 	// Now simply output the error with the message plus stack trace.
-	args = append(args, msg)
-	e.Diag().Errorf(err, args...)
+	e.Diag().Errorf(errors.ErrorUnhandledException.At(tree), msg)
 }
 
 // rejectComputed checks an object's value and, if it's computed and its value isn't known, returns an exception unwind.
@@ -619,6 +616,11 @@ func (e *evaluator) evalCall(node diag.Diagable,
 		label = string(sym.Token())
 	}
 	glog.V(7).Infof("Evaluating call to fnc %v; this=%v args=%v", label, this != nil, len(args))
+	if glog.V(9) {
+		for i, arg := range args {
+			glog.V(9).Infof("Call argument #%v=%v", i, arg)
+		}
+	}
 
 	// First check the this pointer, since it might throw before the call even happens.
 	intrinsic := false
@@ -689,13 +691,6 @@ func (e *evaluator) evalCall(node diag.Diagable,
 	e.pushScope(frame, !shareActivation)
 	defer e.popScope(frame)
 
-	// Invoke the hooks if available.
-	if e.hooks != nil {
-		if leave := e.hooks.OnEnterFunction(sym); leave != nil {
-			defer leave()
-		}
-	}
-
 	// If the target is an instance method, the "this" and "super" variables must be bound to values.
 	if thisVariable != nil {
 		contract.Assert(this != nil)
@@ -720,20 +715,34 @@ func (e *evaluator) evalCall(node diag.Diagable,
 				sym := e.ctx.RequireVariable(param).(*symbols.LocalVariable)
 				e.locals.Register(sym)
 				arg := args[i]
-				contract.Assert(types.CanConvert(arg.Type(), sym.Type()))
+				contract.Assertf(arg != nil, "Did not expect nil argument slot (#%v)", i)
+				contract.Assertf(types.CanConvert(arg.Type(), sym.Type()),
+					"Arg %v of type %v cannot convert to the expected type %v", arg.Type(), sym.Type())
 				e.locals.SetValue(sym, arg)
 			}
 		}
 	}
 
-	// Now perform the invocation; for intrinsics, just run the code; for all others, interpret the body.
 	var uw *rt.Unwind
-	if intrinsic {
-		isym := sym.(*rt.Intrinsic)
-		invoker := GetIntrinsicInvoker(isym)
-		uw = invoker(isym, e, this, args)
-	} else {
-		uw = e.evalStatement(fnc.GetBody())
+
+	// Invoke the hooks if available.
+	if e.hooks != nil {
+		var leave func()
+		if uw, leave = e.hooks.OnEnterFunction(sym, args); leave != nil {
+			defer leave()
+		}
+	}
+
+	// Assuming the hook didn't perform its own logic, we can now perform the real invocation; for intrinsics, just run
+	// the code; for all others, interpret the body.
+	if uw == nil {
+		if intrinsic {
+			isym := sym.(*rt.Intrinsic)
+			invoker := GetIntrinsicInvoker(isym)
+			uw = invoker(isym, e, this, args)
+		} else {
+			uw = e.evalStatement(fnc.GetBody())
+		}
 	}
 
 	// Check that the unwind is as expected.  In particular:
@@ -744,7 +753,8 @@ func (e *evaluator) evalCall(node diag.Diagable,
 	if uw != nil {
 		if uw.Throw() {
 			if glog.V(7) {
-				glog.V(7).Infof("Evaluated call to fnc %v; unhandled exception: %v", fnc, uw.Exception().Thrown)
+				glog.V(7).Infof("Evaluated call to fnc %v (sym %v); unhandled exception: %v",
+					fnc, sym, uw.Thrown().Obj)
 			}
 			return nil, uw
 		}
@@ -896,7 +906,7 @@ func (e *evaluator) evalTryCatchFinally(node *ast.TryCatchFinally) *rt.Unwind {
 	uw := e.evalStatement(node.TryClause)
 	if uw != nil && uw.Throw() {
 		// The try block threw something; see if there is a handler that covers this.
-		thrown := uw.Exception().Thrown
+		thrown := uw.Thrown().Obj
 		if node.CatchClauses != nil {
 			for _, catch := range *node.CatchClauses {
 				ex := e.ctx.RequireVariable(catch.Exception).(*symbols.LocalVariable)
@@ -1188,7 +1198,7 @@ func (e *evaluator) evalLValueExpression(node ast.Expression) (*Location, *rt.Un
 	case *ast.UnaryOperatorExpression:
 		contract.Assert(n.Operator == ast.OpDereference)
 		obj, uw := e.evalUnaryOperatorExpressionFor(n, true)
-		return &Location{e: e, Obj: obj}, uw
+		return &Location{e: e, obj: obj}, uw
 	default:
 		contract.Failf("Unrecognized l-value expression type: %v", node.GetKind())
 		return nil, nil
@@ -1377,54 +1387,59 @@ func (e *evaluator) newLocation(node diag.Diagable, sym symbols.Symbol,
 	} else {
 		obj = pv.Obj()
 	}
+	contract.Assert(obj != nil)
 
 	if glog.V(9) {
-		glog.V(9).Infof("Loaded location of type '%v' from symbol '%v': lval=%v current=%v",
-			ty.Token(), sym.Token(), lval, pv.Obj())
+		var thist symbols.Type
+		if this != nil {
+			thist = this.Type()
+		}
+		glog.V(9).Infof("Loaded location of type '%v' from symbol '%v': lval=%v current=%v this=%v",
+			ty.Token(), sym.Token(), lval, pv.Obj(), thist)
 	}
 
 	return &Location{
 		e:      e,
-		This:   this,
-		Name:   sym.Name(),
-		Lval:   lval,
-		Obj:    obj,
-		Getter: pv.Getter(),
-		Setter: pv.Setter(),
+		this:   this,
+		name:   sym.Name(),
+		lval:   lval,
+		obj:    obj,
+		getter: pv.Getter(),
+		setter: pv.Setter(),
 	}
 }
 
 type Location struct {
 	e      *evaluator       // the evaluator that produced this location.
-	This   *rt.Object       // the target object, if any.
-	Name   tokens.Name      // the simple name of the variable.
-	Lval   bool             // whether the result is an lval.
-	Obj    *rt.Object       // the resulting object (pointer if lval, object otherwise).
-	Getter symbols.Function // the getter function, if any.
-	Setter symbols.Function // the setter function, if any.
+	this   *rt.Object       // the target object, if any.
+	name   tokens.Name      // the simple name of the variable.
+	lval   bool             // whether the result is an lval.
+	obj    *rt.Object       // the resulting object (pointer if lval, object otherwise).
+	getter symbols.Function // the getter function, if any.
+	setter symbols.Function // the setter function, if any.
 }
 
 func (loc *Location) Get(node diag.Diagable) (*rt.Object, *rt.Unwind) {
-	if loc.Getter != nil {
+	if loc.getter != nil {
 		// If there is a getter, invoke it.
-		contract.Assert(loc.This != nil)
-		return loc.e.evalCallSymbol(node, loc.Getter, loc.This)
+		contract.Assert(loc.this != nil)
+		return loc.e.evalCallSymbol(node, loc.getter, loc.this)
 	}
 
 	// Otherwise, just return the object directly.
-	return loc.Obj, nil
+	return loc.obj, nil
 }
 
 func (loc *Location) Set(node diag.Diagable, val *rt.Object) *rt.Unwind {
-	if loc.Setter != nil {
+	if loc.setter != nil {
 		// If the location has a setter, use that for the assignment.
-		contract.Assert(loc.This != nil)
-		if _, uw := loc.e.evalCallSymbol(node, loc.Setter, loc.This, val); uw != nil {
+		contract.Assert(loc.this != nil)
+		if _, uw := loc.e.evalCallSymbol(node, loc.setter, loc.this, val); uw != nil {
 			return uw
 		}
 	} else {
 		// Otherwise, perform a straightforward assignment, invoking the variable assignment if necessary.
-		ptr := loc.Obj.PointerValue()
+		ptr := loc.obj.PointerValue()
 		if ptr.Readonly() {
 			// If the pointer is readonly, however, we will disallow the assignment.
 			loc.e.Diag().Errorf(errors.ErrorIllegalReadonlyLValue.At(node))
@@ -1436,13 +1451,14 @@ func (loc *Location) Set(node diag.Diagable, val *rt.Object) *rt.Unwind {
 }
 
 func (loc *Location) Read(node diag.Diagable) (*rt.Object, *rt.Unwind) {
-	if loc.Getter != nil {
+	if loc.getter != nil {
 		// If the location has a getter, use that for the assignment.
-		contract.Assert(loc.This != nil)
-		return loc.e.evalCallSymbol(node, loc.Getter, loc.This)
+		contract.Assert(loc.this != nil)
+		return loc.e.evalCallSymbol(node, loc.getter, loc.this)
 	}
 	// Otherwise, just return the object directly.
-	return loc.Obj, nil
+	contract.Assertf(loc.obj != nil, "Unexpected nil object from location ready by %v", node)
+	return loc.obj, nil
 }
 
 // evalLoadLocation evaluates and loads information about the target.  It takes an lval bool which
@@ -1482,6 +1498,10 @@ func (e *evaluator) evalLoadLocation(node *ast.LoadLocationExpression, lval bool
 		}
 	}
 
+	contract.Assert(pv != nil)
+	contract.Assert(pv.Obj() != nil)
+	contract.Assert(ty != nil)
+	contract.Assert(sym != nil)
 	return e.newLocation(node, sym, pv, ty, this, lval), nil
 }
 
@@ -1544,7 +1564,6 @@ func (e *evaluator) evalLoadSymbolLocation(node diag.Diagable, sym symbols.Symbo
 			contract.Assertf(pv != nil, "Missing instance class member '%v'", s.Token())
 		}
 		ty = s.Type()
-		contract.Assert(ty != nil)
 	case symbols.ModuleMemberProperty:
 		module := s.MemberParent()
 
@@ -1562,19 +1581,23 @@ func (e *evaluator) evalLoadSymbolLocation(node diag.Diagable, sym symbols.Symbo
 		contract.Assertf(pv.Getter() == nil, "Module property getters unexpected (%v)", s)
 		contract.Assertf(pv.Setter() == nil, "Module property setters unexpected (%v)", s)
 		ty = s.MemberType()
-		contract.Assert(ty != nil)
 	default:
 		contract.Failf("Unexpected symbol token '%v' kind during load expression: %v",
 			sym.Token(), reflect.TypeOf(sym))
 	}
+	contract.Assert(pv != nil)
+	contract.Assert(ty != nil)
 
 	return pv, ty, nil
 }
 
-func (e *evaluator) LoadLocation(tree diag.Diagable, sym symbols.Symbol, this *rt.Object, lval bool) *Location {
+func (e *evaluator) LoadLocation(tree diag.Diagable, sym symbols.Symbol, this *rt.Object,
+	lval bool) (*Location, *rt.Unwind) {
 	pv, ty, uw := e.evalLoadSymbolLocation(tree, sym, this, nil, lval)
-	contract.Assertf(uw == nil, "Unexpected unwind; possible nil 'this' for instance method")
-	return e.newLocation(tree, sym, pv, ty, this, lval)
+	if uw != nil {
+		return nil, uw
+	}
+	return e.newLocation(tree, sym, pv, ty, this, lval), nil
 }
 
 // checkThis checks a this object, raising a runtime error if it is the runtime null value.
@@ -1693,6 +1716,7 @@ func (e *evaluator) evalLoadDynamicCore(node ast.Node, objexpr *ast.Expression, 
 
 	if pv == nil && try {
 		// If this is a try load and we couldn't find the name,
+		glog.V(9).Infof("Attempted to dynamically load location %v; failed -- returning null", key)
 		pv = rt.NewPointer(rt.Null, false, nil, nil)
 	}
 
@@ -1715,12 +1739,12 @@ func (e *evaluator) evalLoadDynamicCore(node ast.Node, objexpr *ast.Expression, 
 
 	return &Location{
 		e:      e,
-		This:   this,
-		Name:   key,
-		Lval:   lval,
-		Obj:    obj,
-		Getter: pv.Getter(),
-		Setter: pv.Setter(),
+		this:   this,
+		name:   key,
+		lval:   lval,
+		obj:    obj,
+		getter: pv.Getter(),
+		setter: pv.Setter(),
 	}, nil
 }
 
@@ -1856,6 +1880,7 @@ func (e *evaluator) evalInvokeFunctionExpression(node *ast.InvokeFunctionExpress
 			if uw != nil {
 				return nil, uw
 			}
+			contract.Assertf(argobj != nil, "Unexpected nil argument expression: %v", arg.Expr)
 			args = append(args, argobj)
 		}
 	}
@@ -1993,6 +2018,7 @@ func (e *evaluator) evalBinaryOperatorExpression(node *ast.BinaryOperatorExpress
 	var lhsloc *Location
 	op := node.Operator
 	if ast.IsAssignmentBinaryOperator(op) {
+		// If an assignment, we must produce an l-value.
 		var uw *rt.Unwind
 		if lhsloc, uw = e.evalLValueExpression(node.Left); uw != nil {
 			return nil, uw
@@ -2002,6 +2028,7 @@ func (e *evaluator) evalBinaryOperatorExpression(node *ast.BinaryOperatorExpress
 			return nil, uw
 		}
 	} else {
+		// Else we will just be evaluating an expression to use its value.
 		var uw *rt.Unwind
 		if lhs, uw = e.evalExpression(node.Left); uw != nil {
 			return nil, uw
@@ -2013,10 +2040,18 @@ func (e *evaluator) evalBinaryOperatorExpression(node *ast.BinaryOperatorExpress
 		if uw := e.rejectComputed(node.Left, lhs); uw != nil {
 			return nil, uw
 		}
-		if lhs.BoolValue() {
-			return e.evalExpression(node.Right)
+		switch op {
+		case ast.OpLogicalAnd:
+			if lhs.BoolValue() {
+				return e.evalExpression(node.Right)
+			}
+			return rt.False, nil
+		case ast.OpLogicalOr:
+			if !lhs.BoolValue() {
+				return e.evalExpression(node.Right)
+			}
+			return rt.True, nil
 		}
-		return rt.False, nil
 	}
 
 	// Otherwise, just evaluate the rhs and prepare to evaluate the operator.
@@ -2025,220 +2060,194 @@ func (e *evaluator) evalBinaryOperatorExpression(node *ast.BinaryOperatorExpress
 		return nil, uw
 	}
 
-	// Accumulate all the computed sources, if any, so that we may propagate them.
+	// If the operator involves computed operations, we must accumulate a list of the sources, so we can propagate.
 	var comps []*rt.Object
-	if lhs.Type().Computed() {
-		comps = append(comps, lhs.ComputedValue().Sources...)
+	if lhs.Type().Computed() && op != ast.OpAssign {
+		// Note that a LHS that is computed doesn't matter for straight assignment, because we never read it.
+		lhssrc := lhs.ComputedValue().Sources
+		contract.Assert(len(lhssrc) > 0)
+		comps = append(comps, lhssrc...)
 	}
 	if rhs.Type().Computed() {
-		comps = append(comps, rhs.ComputedValue().Sources...)
-	}
-
-	// If the operator involves computed operations, return a computed of the right type.
-	if len(comps) > 0 {
-		if ast.IsArithmeticBinaryOperator(op) || ast.IsBitwiseBinaryOperator(op) {
-			if op == ast.OpAdd && types.CanConvert(rhs.Type(), types.String) {
-				// + can involve strings for concatenation.
-				return rt.NewComputedObject(types.String, true, comps), nil
-			}
-			// All other arithmetic operators deal in terms of numbers.
-			return rt.NewComputedObject(types.Number, true, comps), nil
-		} else if ast.IsAssignmentBinaryOperator(op) {
-			if op == ast.OpAssign {
-				// = is an arbitrary type, just use the rhs.
-				return rt.NewComputedObject(rhs.Type().(*symbols.ComputedType).Element, true, comps), nil
-			} else if op == ast.OpAssignSum && types.CanConvert(rhs.Type(), types.String) {
-				// += can involve strings for concatenation.
-				return rt.NewComputedObject(types.String, true, comps), nil
-			}
-			// All other assignment operators deal in terms of numbers.
-			return rt.NewComputedObject(types.Number, true, comps), nil
-		} else if ast.IsRelationalBinaryOperator(op) {
-			return rt.NewComputedObject(types.Bool, true, comps), nil
-		}
-		contract.Failf("Expected to resolve latent binary operator expression for operator: %v", op)
+		rhssrc := rhs.ComputedValue().Sources
+		contract.Assert(len(rhssrc) > 0)
+		comps = append(comps, rhssrc...)
 	}
 
 	// Switch on operator to perform the operator's effects.
 	// TODO[pulumi/lumi#176]: anywhere there is type coercion to/from float64/int64/etc., we should be skeptical.
 	//     Because our numeric type system is float64-based -- i.e., "JSON-like" -- we often find ourselves doing
 	//     operations on floats that honestly don't make sense (like shifting, masking, and whatnot).  If there is a
-	//     type coercion, Golang (rightfully) doesn't support an operator on numbers of that type.  I suspect we will
+	//     type coercion, Golang (rightfully) doesn't support an operator on numbers of that type.  I suspect we'll
 	//     eventually want to consider integer types in LumiIL, and/or verify that numbers aren't outside of the legal
 	//     range as part of verification, and then push the responsibility for presenting valid LumiIL with any required
 	//     conversions bacp up to the compilers (compile-time, runtime, or othwerwise, per the language semantics).
-	switch op {
-	// Arithmetic operators
-	case ast.OpAdd:
-		// If the lhs/rhs are strings, concatenate them; if numbers, + them.
-		if types.CanConvert(rhs.Type(), types.String) {
-			return rt.NewStringObject(lhs.StringValue() + rhs.StringValue()), nil
+	if ast.IsArithmeticBinaryOperator(op) {
+		if len(comps) > 0 {
+			// If the arithmetic operator uses a computed value, propagate a computed of that type.  In the case of
+			// string concatenation, the result will be a computed string; for all other cases, a number.
+			if op == ast.OpAdd && types.CanConvert(rhs.Type(), types.String) {
+				return rt.NewComputedObject(types.String, true, comps), nil
+			}
+			return rt.NewComputedObject(types.Number, true, comps), nil
 		}
-		return rt.NewNumberObject(lhs.NumberValue() + rhs.NumberValue()), nil
-	case ast.OpSubtract:
-		// Both targets are numbers; fetch them (asserting their types), and - them.
-		return rt.NewNumberObject(lhs.NumberValue() - rhs.NumberValue()), nil
-	case ast.OpMultiply:
-		// Both targets are numbers; fetch them (asserting their types), and * them.
-		return rt.NewNumberObject(lhs.NumberValue() * rhs.NumberValue()), nil
-	case ast.OpDivide:
-		// Both targets are numbers; fetch them (asserting their types), and / them.
-		return rt.NewNumberObject(lhs.NumberValue() / rhs.NumberValue()), nil
-	case ast.OpRemainder:
-		// Both targets are numbers; fetch them (asserting their types), and % them.
-		return rt.NewNumberObject(float64(int64(lhs.NumberValue()) % int64(rhs.NumberValue()))), nil
-	case ast.OpExponentiate:
-		// Both targets are numbers; fetch them (asserting their types), and raise lhs to rhs's power.
-		return rt.NewNumberObject(math.Pow(lhs.NumberValue(), rhs.NumberValue())), nil
 
-	// Bitwise operators
-	// TODO[pulumi/lumi#176]: the ECMAScript specification for bitwise operators is a fair bit more complicated than
-	//     these; for instance, shifts mask out all but the least significant 5 bits of the rhs.  If we don't do it
-	//     here, LumiJS should; e.g. see https://www.ecma-international.org/ecma-262/7.0/#sec-left-shift-operator.
-	case ast.OpBitwiseShiftLeft:
-		// Both targets are numbers; fetch them (asserting their types), and << them.
-		// TODO[pulumi/lumi#176]: issue an error if rhs is negative.
-		return rt.NewNumberObject(float64(int64(lhs.NumberValue()) << uint(rhs.NumberValue()))), nil
-	case ast.OpBitwiseShiftRight:
-		// Both targets are numbers; fetch them (asserting their types), and >> them.
-		// TODO[pulumi/lumi#176]: issue an error if rhs is negative.
-		return rt.NewNumberObject(float64(int64(lhs.NumberValue()) >> uint(rhs.NumberValue()))), nil
-	case ast.OpBitwiseAnd:
-		// Both targets are numbers; fetch them (asserting their types), and & them.
-		return rt.NewNumberObject(float64(int64(lhs.NumberValue()) & int64(rhs.NumberValue()))), nil
-	case ast.OpBitwiseOr:
-		// Both targets are numbers; fetch them (asserting their types), and | them.
-		return rt.NewNumberObject(float64(int64(lhs.NumberValue()) | int64(rhs.NumberValue()))), nil
-	case ast.OpBitwiseXor:
-		// Both targets are numbers; fetch them (asserting their types), and ^ them.
-		return rt.NewNumberObject(float64(int64(lhs.NumberValue()) ^ int64(rhs.NumberValue()))), nil
-
-	// Assignment operators
-	case ast.OpAssign:
-		// The target is an l-value; just overwrite its value, and yield the new value as the result.
-		if uw := lhsloc.Set(node.Left, rhs); uw != nil {
-			return nil, uw
+		switch op {
+		case ast.OpAdd:
+			// If the lhs/rhs are strings, concatenate them; if numbers, + them.
+			if types.CanConvert(rhs.Type(), types.String) {
+				return rt.NewStringObject(lhs.StringValue() + rhs.StringValue()), nil
+			}
+			return rt.NewNumberObject(lhs.NumberValue() + rhs.NumberValue()), nil
+		case ast.OpSubtract:
+			// Both targets are numbers; fetch them (asserting their types), and - them.
+			return rt.NewNumberObject(lhs.NumberValue() - rhs.NumberValue()), nil
+		case ast.OpMultiply:
+			// Both targets are numbers; fetch them (asserting their types), and * them.
+			return rt.NewNumberObject(lhs.NumberValue() * rhs.NumberValue()), nil
+		case ast.OpDivide:
+			// Both targets are numbers; fetch them (asserting their types), and / them.
+			return rt.NewNumberObject(lhs.NumberValue() / rhs.NumberValue()), nil
+		case ast.OpRemainder:
+			// Both targets are numbers; fetch them (asserting their types), and % them.
+			return rt.NewNumberObject(float64(int64(lhs.NumberValue()) % int64(rhs.NumberValue()))), nil
+		case ast.OpExponentiate:
+			// Both targets are numbers; fetch them (asserting their types), and raise lhs to rhs's power.
+			return rt.NewNumberObject(math.Pow(lhs.NumberValue(), rhs.NumberValue())), nil
+		default:
+			contract.Failf("Unrecognized binary arithmetic operator: %v", op)
+			return nil, nil
 		}
-		return rhs, nil
-	case ast.OpAssignSum:
+	} else if ast.IsBitwiseBinaryOperator(op) {
+		if len(comps) > 0 {
+			// If the binary operator uses a computed value, propagate a computed number.
+			return rt.NewComputedObject(types.Number, true, comps), nil
+		}
+
+		switch op {
+		// TODO[pulumi/lumi#176]: the ECMAScript specification for bitwise operators is a fair bit more complicated than
+		//     these; for instance, shifts mask out all but the least significant 5 bits of the rhs.  If we don't do it
+		//     here, LumiJS should; e.g. see https://www.ecma-international.org/ecma-262/7.0/#sec-left-shift-operator.
+		case ast.OpBitwiseShiftLeft:
+			// Both targets are numbers; fetch them (asserting their types), and << them.
+			// TODO[pulumi/lumi#176]: issue an error if rhs is negative.
+			return rt.NewNumberObject(float64(int64(lhs.NumberValue()) << uint(rhs.NumberValue()))), nil
+		case ast.OpBitwiseShiftRight:
+			// Both targets are numbers; fetch them (asserting their types), and >> them.
+			// TODO[pulumi/lumi#176]: issue an error if rhs is negative.
+			return rt.NewNumberObject(float64(int64(lhs.NumberValue()) >> uint(rhs.NumberValue()))), nil
+		case ast.OpBitwiseAnd:
+			// Both targets are numbers; fetch them (asserting their types), and & them.
+			return rt.NewNumberObject(float64(int64(lhs.NumberValue()) & int64(rhs.NumberValue()))), nil
+		case ast.OpBitwiseOr:
+			// Both targets are numbers; fetch them (asserting their types), and | them.
+			return rt.NewNumberObject(float64(int64(lhs.NumberValue()) | int64(rhs.NumberValue()))), nil
+		case ast.OpBitwiseXor:
+			// Both targets are numbers; fetch them (asserting their types), and ^ them.
+			return rt.NewNumberObject(float64(int64(lhs.NumberValue()) ^ int64(rhs.NumberValue()))), nil
+		default:
+			contract.Failf("Unrecognized binary bitwise operator: %v", op)
+			return nil, nil
+		}
+	} else if ast.IsAssignmentBinaryOperator(op) {
+		// If the assignment entails computed properties, we still want to proceed with the assignment.  In general,
+		// we simply propagate the RHS as-is, although in the cases of operators, we must check the contents.
+		if op == ast.OpAssign {
+			// The target is an l-value; just overwrite its value, and yield the new value as the result.
+			if uw := lhsloc.Set(node.Left, rhs); uw != nil {
+				return nil, uw
+			}
+			return rhs, nil
+		}
 		var val *rt.Object
 		ptr := lhs.PointerValue()
-		if ptr.Obj().Type() == types.String {
-			// If the lhs/rhs are strings, just concatenate += and yield the new value as a result.
-			val = rt.NewStringObject(ptr.Obj().StringValue() + rhs.StringValue())
+		if len(comps) > 0 {
+			if op == ast.OpAssignSum && types.CanConvert(ptr.Obj().Type(), types.String) {
+				val = rt.NewComputedObject(types.String, true, comps)
+			} else {
+				val = rt.NewComputedObject(types.Number, true, comps)
+			}
 		} else {
-			// Otherwise, the target is a numeric l-value; just += to it, and yield the new value as the result.
-			val = rt.NewNumberObject(ptr.Obj().NumberValue() + rhs.NumberValue())
+			switch op {
+			case ast.OpAssignSum:
+				if types.CanConvert(ptr.Obj().Type(), types.String) {
+					// If the lhs/rhs are strings, just concatenate += and yield the new value as a result.
+					val = rt.NewStringObject(ptr.Obj().StringValue() + rhs.StringValue())
+				} else {
+					// Otherwise, the target is a numeric l-value; just += to it, and yield the new value as the result.
+					val = rt.NewNumberObject(ptr.Obj().NumberValue() + rhs.NumberValue())
+				}
+			case ast.OpAssignDifference:
+				// The target is a numeric l-value; just -= rhs to it, and yield the new value as the result.
+				val = rt.NewNumberObject(ptr.Obj().NumberValue() - rhs.NumberValue())
+			case ast.OpAssignProduct:
+				// The target is a numeric l-value; just *= rhs to it, and yield the new value as the result.
+				val = rt.NewNumberObject(ptr.Obj().NumberValue() * rhs.NumberValue())
+			case ast.OpAssignQuotient:
+				// The target is a numeric l-value; just /= rhs to it, and yield the new value as the result.
+				val = rt.NewNumberObject(ptr.Obj().NumberValue() / rhs.NumberValue())
+			case ast.OpAssignRemainder:
+				// The target is a numeric l-value; just %= rhs to it, and yield the new value as the result.
+				val = rt.NewNumberObject(float64(int64(ptr.Obj().NumberValue()) % int64(rhs.NumberValue())))
+			case ast.OpAssignExponentiation:
+				// The target is a numeric l-value; just raise to rhs as a power, and yield the new value as the result.
+				val = rt.NewNumberObject(math.Pow(ptr.Obj().NumberValue(), rhs.NumberValue()))
+			case ast.OpAssignBitwiseShiftLeft:
+				// The target is a numeric l-value; just <<= rhs to it, and yield the new value as the result.
+				val = rt.NewNumberObject(float64(int64(ptr.Obj().NumberValue()) << uint(rhs.NumberValue())))
+			case ast.OpAssignBitwiseShiftRight:
+				// The target is a numeric l-value; just >>= rhs to it, and yield the new value as the result.
+				val = rt.NewNumberObject(float64(int64(ptr.Obj().NumberValue()) >> uint(rhs.NumberValue())))
+			case ast.OpAssignBitwiseAnd:
+				// The target is a numeric l-value; just &= rhs to it, and yield the new value as the result.
+				val = rt.NewNumberObject(float64(int64(ptr.Obj().NumberValue()) & int64(rhs.NumberValue())))
+			case ast.OpAssignBitwiseOr:
+				// The target is a numeric l-value; just |= rhs to it, and yield the new value as the result.
+				val = rt.NewNumberObject(float64(int64(ptr.Obj().NumberValue()) | int64(rhs.NumberValue())))
+			case ast.OpAssignBitwiseXor:
+				// The target is a numeric l-value; just ^= rhs to it, and yield the new value as the result.
+				val = rt.NewNumberObject(float64(int64(ptr.Obj().NumberValue()) ^ int64(rhs.NumberValue())))
+			default:
+				contract.Failf("Unrecognized binary assignment operator: %v", op)
+				return nil, nil
+			}
 		}
 		if uw := lhsloc.Set(node.Left, val); uw != nil {
 			return nil, uw
 		}
 		return val, nil
-	case ast.OpAssignDifference:
-		// The target is a numeric l-value; just -= rhs to it, and yield the new value as the result.
-		ptr := lhs.PointerValue()
-		val := rt.NewNumberObject(ptr.Obj().NumberValue() - rhs.NumberValue())
-		if uw := lhsloc.Set(node.Left, val); uw != nil {
-			return nil, uw
+	} else if ast.IsRelationalBinaryOperator(op) {
+		// All relational operators produce bools, so if it's computed, we can quickly return a computed bool.
+		if len(comps) > 0 {
+			return rt.NewComputedObject(types.Bool, true, comps), nil
 		}
-		return val, nil
-	case ast.OpAssignProduct:
-		// The target is a numeric l-value; just *= rhs to it, and yield the new value as the result.
-		ptr := lhs.PointerValue()
-		val := rt.NewNumberObject(ptr.Obj().NumberValue() * rhs.NumberValue())
-		if uw := lhsloc.Set(node.Left, val); uw != nil {
-			return nil, uw
-		}
-		return val, nil
-	case ast.OpAssignQuotient:
-		// The target is a numeric l-value; just /= rhs to it, and yield the new value as the result.
-		ptr := lhs.PointerValue()
-		val := rt.NewNumberObject(ptr.Obj().NumberValue() / rhs.NumberValue())
-		if uw := lhsloc.Set(node.Left, val); uw != nil {
-			return nil, uw
-		}
-		return val, nil
-	case ast.OpAssignRemainder:
-		// The target is a numeric l-value; just %= rhs to it, and yield the new value as the result.
-		ptr := lhs.PointerValue()
-		val := rt.NewNumberObject(float64(int64(ptr.Obj().NumberValue()) % int64(rhs.NumberValue())))
-		if uw := lhsloc.Set(node.Left, val); uw != nil {
-			return nil, uw
-		}
-		return val, nil
-	case ast.OpAssignExponentiation:
-		// The target is a numeric l-value; just raise to rhs as a power, and yield the new value as the result.
-		ptr := lhs.PointerValue()
-		val := rt.NewNumberObject(math.Pow(ptr.Obj().NumberValue(), rhs.NumberValue()))
-		if uw := lhsloc.Set(node.Left, val); uw != nil {
-			return nil, uw
-		}
-		return val, nil
-	case ast.OpAssignBitwiseShiftLeft:
-		// The target is a numeric l-value; just <<= rhs to it, and yield the new value as the result.
-		ptr := lhs.PointerValue()
-		val := rt.NewNumberObject(float64(int64(ptr.Obj().NumberValue()) << uint(rhs.NumberValue())))
-		if uw := lhsloc.Set(node.Left, val); uw != nil {
-			return nil, uw
-		}
-		return val, nil
-	case ast.OpAssignBitwiseShiftRight:
-		// The target is a numeric l-value; just >>= rhs to it, and yield the new value as the result.
-		ptr := lhs.PointerValue()
-		val := rt.NewNumberObject(float64(int64(ptr.Obj().NumberValue()) >> uint(rhs.NumberValue())))
-		if uw := lhsloc.Set(node.Left, val); uw != nil {
-			return nil, uw
-		}
-		return val, nil
-	case ast.OpAssignBitwiseAnd:
-		// The target is a numeric l-value; just &= rhs to it, and yield the new value as the result.
-		ptr := lhs.PointerValue()
-		val := rt.NewNumberObject(float64(int64(ptr.Obj().NumberValue()) & int64(rhs.NumberValue())))
-		if uw := lhsloc.Set(node.Left, val); uw != nil {
-			return nil, uw
-		}
-		return val, nil
-	case ast.OpAssignBitwiseOr:
-		// The target is a numeric l-value; just |= rhs to it, and yield the new value as the result.
-		ptr := lhs.PointerValue()
-		val := rt.NewNumberObject(float64(int64(ptr.Obj().NumberValue()) | int64(rhs.NumberValue())))
-		if uw := lhsloc.Set(node.Left, val); uw != nil {
-			return nil, uw
-		}
-		return val, nil
-	case ast.OpAssignBitwiseXor:
-		// The target is a numeric l-value; just ^= rhs to it, and yield the new value as the result.
-		ptr := lhs.PointerValue()
-		val := rt.NewNumberObject(float64(int64(ptr.Obj().NumberValue()) ^ int64(rhs.NumberValue())))
-		if uw := lhsloc.Set(node.Left, val); uw != nil {
-			return nil, uw
-		}
-		return val, nil
 
-	// Relational operators
-	case ast.OpLt:
-		// The targets are numbers; just compare them with < and yield the boolean result.
-		return rt.Bools[lhs.NumberValue() < rhs.NumberValue()], nil
-	case ast.OpLtEquals:
-		// The targets are numbers; just compare them with <= and yield the boolean result.
-		return rt.Bools[lhs.NumberValue() <= rhs.NumberValue()], nil
-	case ast.OpGt:
-		// The targets are numbers; just compare them with > and yield the boolean result.
-		return rt.Bools[lhs.NumberValue() > rhs.NumberValue()], nil
-	case ast.OpGtEquals:
-		// The targets are numbers; just compare them with >= and yield the boolean result.
-		return rt.Bools[lhs.NumberValue() >= rhs.NumberValue()], nil
-	case ast.OpEquals:
-		// Equality checking handles many object types, so defer to a helper for it.
-		return rt.Bools[e.evalBinaryOperatorEquals(lhs, rhs)], nil
-	case ast.OpNotEquals:
-		// Just return the inverse of what the operator equals function itself returns.
-		return rt.Bools[!e.evalBinaryOperatorEquals(lhs, rhs)], nil
-
-	default:
-		contract.Failf("Unrecognized binary operator: %v", op)
-		return nil, nil
+		switch op {
+		case ast.OpLt:
+			// The targets are numbers; just compare them with < and yield the boolean result.
+			return rt.Bools[lhs.NumberValue() < rhs.NumberValue()], nil
+		case ast.OpLtEquals:
+			// The targets are numbers; just compare them with <= and yield the boolean result.
+			return rt.Bools[lhs.NumberValue() <= rhs.NumberValue()], nil
+		case ast.OpGt:
+			// The targets are numbers; just compare them with > and yield the boolean result.
+			return rt.Bools[lhs.NumberValue() > rhs.NumberValue()], nil
+		case ast.OpGtEquals:
+			// The targets are numbers; just compare them with >= and yield the boolean result.
+			return rt.Bools[lhs.NumberValue() >= rhs.NumberValue()], nil
+		case ast.OpEquals:
+			// Equality checking handles many object types, so defer to a helper for it.
+			return rt.Bools[e.evalBinaryOperatorEquals(lhs, rhs)], nil
+		case ast.OpNotEquals:
+			// Just return the inverse of what the operator equals function itself returns.
+			return rt.Bools[!e.evalBinaryOperatorEquals(lhs, rhs)], nil
+		default:
+			contract.Failf("Unrecognized relational binary operator: %v", op)
+			return nil, nil
+		}
 	}
+	contract.Failf("Unrecognized binary operator: %v", op)
+	return nil, nil
 }
 
 func (e *evaluator) evalBinaryOperatorEquals(lhs *rt.Object, rhs *rt.Object) bool {

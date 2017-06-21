@@ -25,7 +25,7 @@ const BasePathMappingToken = tokens.Type("aws:apigateway/basePathMapping:BasePat
 
 // BasePathMappingProviderOps is a pluggable interface for BasePathMapping-related management functionality.
 type BasePathMappingProviderOps interface {
-    Check(ctx context.Context, obj *BasePathMapping) ([]error, error)
+    Check(ctx context.Context, obj *BasePathMapping, property string) error
     Create(ctx context.Context, obj *BasePathMapping) (resource.ID, error)
     Get(ctx context.Context, id resource.ID) (*BasePathMapping, error)
     InspectChange(ctx context.Context,
@@ -53,9 +53,39 @@ func (p *BasePathMappingProvider) Check(
     if err != nil {
         return plugin.NewCheckResponse(err), nil
     }
-    if failures, err := p.ops.Check(ctx, obj); err != nil {
-        return nil, err
-    } else if len(failures) > 0 {
+    var failures []error
+    unks := req.GetUnknowns()
+    if !unks["name"] {
+        if failure := p.ops.Check(ctx, obj, "name"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("BasePathMapping", "name", failure))
+        }
+    }
+    if !unks["domainName"] {
+        if failure := p.ops.Check(ctx, obj, "domainName"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("BasePathMapping", "domainName", failure))
+        }
+    }
+    if !unks["restAPI"] {
+        if failure := p.ops.Check(ctx, obj, "restAPI"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("BasePathMapping", "restAPI", failure))
+        }
+    }
+    if !unks["basePath"] {
+        if failure := p.ops.Check(ctx, obj, "basePath"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("BasePathMapping", "basePath", failure))
+        }
+    }
+    if !unks["stage"] {
+        if failure := p.ops.Check(ctx, obj, "stage"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("BasePathMapping", "stage", failure))
+        }
+    }
+    if len(failures) > 0 {
         return plugin.NewCheckResponse(resource.NewErrors(failures)), nil
     }
     return plugin.NewCheckResponse(nil), nil

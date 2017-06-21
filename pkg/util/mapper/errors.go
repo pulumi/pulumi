@@ -67,7 +67,7 @@ type FieldError interface {
 
 // fieldError is used when a general purpose error occurs decoding a field.
 type fieldError struct {
-	Type    reflect.Type
+	Type    string
 	Fld     string
 	Message string
 }
@@ -75,12 +75,16 @@ type fieldError struct {
 var _ error = (*fieldError)(nil)      // ensure this implements the error interface.
 var _ FieldError = (*fieldError)(nil) // ensure this implements the fieldError interface.
 
-func NewFieldError(ty reflect.Type, fld string, err error) FieldError {
+func NewFieldError(ty string, fld string, err error) FieldError {
 	return &fieldError{
 		Type:    ty,
 		Fld:     fld,
 		Message: fmt.Sprintf("An error occurred decoding '%v.%v': %v", ty, fld, err),
 	}
+}
+
+func NewTypeFieldError(ty reflect.Type, fld string, err error) FieldError {
+	return NewFieldError(ty.Name(), fld, err)
 }
 
 func (e *fieldError) Error() string  { return e.Message }

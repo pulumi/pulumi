@@ -13,9 +13,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-/* tslint:disable:no-require-imports */
+/*tslint:disable:no-require-imports*/
 
-import * as lumi from "@lumi/lumi";
 import * as github from "./github";
 
 export let slackToken = "<must provide a token>";

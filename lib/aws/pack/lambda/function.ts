@@ -69,6 +69,14 @@ export class Function extends lumi.NamedResource implements FunctionArgs {
         this.timeout = args.timeout;
         this.vpcConfig = args.vpcConfig;
     }
+
+    public static get(id: lumi.ID): Function {
+        return <any>undefined; // functionality provided by the runtime
+    }
+
+    public static query(q: any): Function[] {
+        return <any>undefined; // functionality provided by the runtime
+    }
 }
 
 export interface FunctionArgs {

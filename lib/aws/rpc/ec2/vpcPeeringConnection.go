@@ -25,7 +25,7 @@ const VPCPeeringConnectionToken = tokens.Type("aws:ec2/vpcPeeringConnection:VPCP
 
 // VPCPeeringConnectionProviderOps is a pluggable interface for VPCPeeringConnection-related management functionality.
 type VPCPeeringConnectionProviderOps interface {
-    Check(ctx context.Context, obj *VPCPeeringConnection) ([]error, error)
+    Check(ctx context.Context, obj *VPCPeeringConnection, property string) error
     Create(ctx context.Context, obj *VPCPeeringConnection) (resource.ID, error)
     Get(ctx context.Context, id resource.ID) (*VPCPeeringConnection, error)
     InspectChange(ctx context.Context,
@@ -53,9 +53,27 @@ func (p *VPCPeeringConnectionProvider) Check(
     if err != nil {
         return plugin.NewCheckResponse(err), nil
     }
-    if failures, err := p.ops.Check(ctx, obj); err != nil {
-        return nil, err
-    } else if len(failures) > 0 {
+    var failures []error
+    unks := req.GetUnknowns()
+    if !unks["name"] {
+        if failure := p.ops.Check(ctx, obj, "name"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("VPCPeeringConnection", "name", failure))
+        }
+    }
+    if !unks["peerVpc"] {
+        if failure := p.ops.Check(ctx, obj, "peerVpc"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("VPCPeeringConnection", "peerVpc", failure))
+        }
+    }
+    if !unks["vpc"] {
+        if failure := p.ops.Check(ctx, obj, "vpc"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("VPCPeeringConnection", "vpc", failure))
+        }
+    }
+    if len(failures) > 0 {
         return plugin.NewCheckResponse(resource.NewErrors(failures)), nil
     }
     return plugin.NewCheckResponse(nil), nil

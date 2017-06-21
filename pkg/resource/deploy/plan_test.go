@@ -23,20 +23,24 @@ import (
 
 	"github.com/pulumi/lumi/pkg/compiler/ast"
 	"github.com/pulumi/lumi/pkg/compiler/symbols"
+	"github.com/pulumi/lumi/pkg/compiler/types"
 	"github.com/pulumi/lumi/pkg/compiler/types/predef"
+	"github.com/pulumi/lumi/pkg/diag"
 	"github.com/pulumi/lumi/pkg/eval/rt"
 	"github.com/pulumi/lumi/pkg/pack"
 	"github.com/pulumi/lumi/pkg/resource"
 	"github.com/pulumi/lumi/pkg/resource/plugin"
 	"github.com/pulumi/lumi/pkg/tokens"
 	"github.com/pulumi/lumi/pkg/util/cmdutil"
+	"github.com/pulumi/lumi/pkg/util/contract"
 )
 
 // TestNullPlan creates a plan with no operations.
 func TestNullPlan(t *testing.T) {
 	t.Parallel()
 
-	ctx := plugin.NewContext(cmdutil.Diag(), nil)
+	ctx, err := plugin.NewContext(cmdutil.Diag(), nil)
+	assert.Nil(t, err)
 	targ := &Target{Name: tokens.QName("null")}
 	prev := NewSnapshot(targ.Name, nil, nil)
 	plan := NewPlan(ctx, targ, prev, NullSource, nil)
@@ -56,7 +60,8 @@ func TestErrorPlan(t *testing.T) {
 
 	// First trigger an error from Iterate:
 	{
-		ctx := plugin.NewContext(cmdutil.Diag(), nil)
+		ctx, err := plugin.NewContext(cmdutil.Diag(), nil)
+		assert.Nil(t, err)
 		targ := &Target{Name: tokens.QName("errs")}
 		prev := NewSnapshot(targ.Name, nil, nil)
 		plan := NewPlan(ctx, targ, prev, &errorSource{err: errors.New("ITERATE"), duringIterate: true}, nil)
@@ -70,7 +75,8 @@ func TestErrorPlan(t *testing.T) {
 
 	// Next trigger an error from Next:
 	{
-		ctx := plugin.NewContext(cmdutil.Diag(), nil)
+		ctx, err := plugin.NewContext(cmdutil.Diag(), nil)
+		assert.Nil(t, err)
 		targ := &Target{Name: tokens.QName("errs")}
 		prev := NewSnapshot(targ.Name, nil, nil)
 		plan := NewPlan(ctx, targ, prev, &errorSource{err: errors.New("NEXT"), duringIterate: false}, nil)
@@ -115,8 +121,12 @@ func (iter *errorSourceIterator) Close() error {
 	return nil // nothing to do.
 }
 
-func (iter *errorSourceIterator) Next() (*resource.Object, tokens.Module, error) {
-	return nil, "", iter.src.err
+func (iter *errorSourceIterator) Produce(res *resource.Object) {
+	// nothing to do.
+}
+
+func (iter *errorSourceIterator) Next() (*SourceAllocation, *SourceQuery, error) {
+	return nil, nil, iter.src.err
 }
 
 // TestBasicCRUDPlan creates a plan with numerous C(R)UD operations.
@@ -130,7 +140,7 @@ func TestBasicCRUDPlan(t *testing.T) {
 	pkg, mod, newResourceType := fakeTestResources(tokens.PackageName("testcrud"), tokens.ModuleName("index"))
 
 	// Create a context that the snapshots and plan will use.
-	ctx := plugin.NewContext(cmdutil.Diag(), &testProviderHost{
+	ctx, err := plugin.NewContext(cmdutil.Diag(), &testProviderHost{
 		provider: func(propkg tokens.Package) (plugin.Provider, error) {
 			if propkg != pkg.Tok {
 				return nil, errors.Errorf("Unexpected request to load package %v; expected just %v", propkg, pkg)
@@ -153,6 +163,7 @@ func TestBasicCRUDPlan(t *testing.T) {
 			}, nil
 		},
 	})
+	assert.Nil(t, err)
 
 	// Some shared tokens and names.
 	typA := newResourceType(tokens.TypeName("A"), base)
@@ -178,7 +189,10 @@ func TestBasicCRUDPlan(t *testing.T) {
 		"name": resource.NewStringProperty(namC.String()),
 		"cf1":  resource.NewStringProperty("c-value"),
 		"cf2":  resource.NewNumberProperty(83),
-	}, nil)
+	}, resource.PropertyMap{
+		"outta1":   resource.NewStringProperty("populated during skip/step"),
+		"outta234": resource.NewNumberProperty(99881122),
+	})
 	oldResD := resource.NewState(typD.Tok, urnD, resource.ID("d-d-d"), resource.PropertyMap{
 		"name": resource.NewStringProperty(namD.String()),
 		"df1":  resource.NewStringProperty("d-value"),
@@ -207,6 +221,8 @@ func TestBasicCRUDPlan(t *testing.T) {
 	newObjC.Properties().InitAddr(rt.PropertyKey("name"), rt.NewStringObject(namC.String()), false, nil, nil)
 	newObjC.Properties().InitAddr(rt.PropertyKey("cf1"), rt.NewStringObject("c-value"), false, nil, nil)
 	newObjC.Properties().InitAddr(rt.PropertyKey("cf2"), rt.NewNumberObject(83), false, nil, nil)
+	newObjC.Properties().InitAddr(rt.PropertyKey("outta234"),
+		rt.NewComputedObject(types.Dynamic, false, []*rt.Object{newObjC}), false, nil, nil)
 	newResC := resource.NewObject(newObjC)
 	newResCProps := newResC.CopyProperties()
 	//     - No D; it is deleted.
@@ -230,53 +246,70 @@ func TestBasicCRUDPlan(t *testing.T) {
 			break
 		}
 
+		err = step.Pre()
+		assert.Nil(t, err)
+
 		var urn resource.URN
 		var realID bool
+		var expectOuts resource.PropertyMap
 		var obj *resource.Object
-		op := step.Op()
-		switch op {
-		case OpCreate: // A is created
-			old := step.Old()
-			new := step.New()
+		switch s := step.(type) {
+		case *CreateStep: // A is created
+			old := s.Old()
+			new := s.New()
 			assert.Nil(t, old)
 			assert.NotNil(t, new)
-			assert.Equal(t, newResAProps, step.Inputs())
+			assert.Equal(t, newResAProps, s.Inputs())
 			obj, urn, realID = new, urnA, false
-		case OpUpdate: // B is updated
-			old := step.Old()
-			new := step.New()
+		case *UpdateStep: // B is updated
+			old := s.Old()
+			new := s.New()
 			assert.NotNil(t, old)
 			assert.Equal(t, urnB, old.URN())
 			assert.Equal(t, oldResB, old)
 			assert.NotNil(t, new)
-			assert.Equal(t, newResBProps, step.Inputs())
+			assert.Equal(t, newResBProps, s.Inputs())
 			obj, urn, realID = new, urnB, true
-		case OpSame: // C is the same
-			old := step.Old()
-			new := step.New()
+		case *SameStep: // C is the same
+			old := s.Old()
+			new := s.New()
 			assert.NotNil(t, old)
 			assert.Equal(t, urnC, old.URN())
 			assert.Equal(t, oldResC, old)
 			assert.NotNil(t, new)
-			assert.Equal(t, newResCProps, step.Inputs())
-			obj, urn, realID = new, urnC, true
-		case OpDelete: // D is deleted
-			old := step.Old()
-			new := step.New()
+			assert.Equal(t, newResCProps, s.Inputs())
+			obj, urn, realID, expectOuts = new, urnC, true, oldResC.Outputs()
+		case *DeleteStep: // D is deleted
+			old := s.Old()
+			new := s.New()
 			assert.NotNil(t, old)
 			assert.Equal(t, urnD, old.URN())
 			assert.Equal(t, oldResD, old)
 			assert.Nil(t, new)
+		default:
+			t.FailNow() // unexpected step kind.
 		}
 
 		if obj != nil {
 			// Ensure the ID and URN aren't assigned until we step.
 			assert.False(t, obj.HasID())
 			assert.False(t, obj.HasURN())
+			if expectOuts != nil {
+				for k := range expectOuts {
+					outprop := obj.Obj().Properties().GetAddr(rt.PropertyKey(k))
+					if outprop != nil {
+						outobj := outprop.Obj()
+						assert.NotNil(t, outobj)
+						assert.True(t, outobj.IsNull() || outobj.IsComputed())
+					}
+				}
+			}
 		}
 
-		step.Skip()
+		err = step.Skip()
+		assert.Nil(t, err)
 
+		op := step.Op()
 		if obj != nil {
 			// Ensure the ID and URN are populated correctly.
 			if realID {
@@ -284,6 +317,15 @@ func TestBasicCRUDPlan(t *testing.T) {
 			}
 			assert.True(t, obj.HasURN(), "Expected op %v to populate a URN (%v)", op, urn)
 			assert.Equal(t, urn, obj.URN())
+			if expectOuts != nil {
+				for k := range expectOuts {
+					outprop := obj.Obj().Properties().GetAddr(rt.PropertyKey(k))
+					assert.NotNil(t, outprop)
+					outobj := outprop.Obj()
+					assert.NotNil(t, outobj)
+					assert.False(t, outobj.IsNull())
+				}
+			}
 		}
 
 		seen[op]++ // track the # of these we've seen so we can validate.
@@ -291,8 +333,9 @@ func TestBasicCRUDPlan(t *testing.T) {
 	assert.Equal(t, 1, seen[OpCreate])
 	assert.Equal(t, 1, seen[OpUpdate])
 	assert.Equal(t, 1, seen[OpDelete])
-	assert.Equal(t, 0, seen[OpReplaceCreate])
-	assert.Equal(t, 0, seen[OpReplaceDelete])
+	assert.Equal(t, 0, seen[OpReplace])
+	assert.Equal(t, 0, seen[OpGet])
+	assert.Equal(t, 0, seen[OpQuery])
 
 	assert.Equal(t, 1, len(iter.Creates()))
 	assert.True(t, iter.Creates()[urnA])
@@ -343,6 +386,16 @@ type testProviderHost struct {
 
 func (host *testProviderHost) Close() error {
 	return nil
+}
+func (host *testProviderHost) EngineAddr() string {
+	contract.Failf("Engine address not available")
+	return ""
+}
+func (host *testProviderHost) Log(sev diag.Severity, msg string) {
+	cmdutil.Diag().Logf(sev, diag.Message(msg))
+}
+func (host *testProviderHost) ReadLocation(tok tokens.Token) (resource.PropertyValue, error) {
+	return resource.PropertyValue{}, errors.New("Invalid location")
 }
 func (host *testProviderHost) Analyzer(nm tokens.QName) (plugin.Analyzer, error) {
 	return host.analyzer(nm)

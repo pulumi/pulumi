@@ -39,7 +39,7 @@ const PolicyToken = tokens.Type("aws:iam/policy:Policy")
 
 // PolicyProviderOps is a pluggable interface for Policy-related management functionality.
 type PolicyProviderOps interface {
-    Check(ctx context.Context, obj *Policy) ([]error, error)
+    Check(ctx context.Context, obj *Policy, property string) error
     Create(ctx context.Context, obj *Policy) (resource.ID, error)
     Get(ctx context.Context, id resource.ID) (*Policy, error)
     InspectChange(ctx context.Context,
@@ -67,9 +67,45 @@ func (p *PolicyProvider) Check(
     if err != nil {
         return plugin.NewCheckResponse(err), nil
     }
-    if failures, err := p.ops.Check(ctx, obj); err != nil {
-        return nil, err
-    } else if len(failures) > 0 {
+    var failures []error
+    unks := req.GetUnknowns()
+    if !unks["name"] {
+        if failure := p.ops.Check(ctx, obj, "name"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Policy", "name", failure))
+        }
+    }
+    if !unks["policyDocument"] {
+        if failure := p.ops.Check(ctx, obj, "policyDocument"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Policy", "policyDocument", failure))
+        }
+    }
+    if !unks["policyName"] {
+        if failure := p.ops.Check(ctx, obj, "policyName"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Policy", "policyName", failure))
+        }
+    }
+    if !unks["groups"] {
+        if failure := p.ops.Check(ctx, obj, "groups"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Policy", "groups", failure))
+        }
+    }
+    if !unks["roles"] {
+        if failure := p.ops.Check(ctx, obj, "roles"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Policy", "roles", failure))
+        }
+    }
+    if !unks["users"] {
+        if failure := p.ops.Check(ctx, obj, "users"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Policy", "users", failure))
+        }
+    }
+    if len(failures) > 0 {
         return plugin.NewCheckResponse(resource.NewErrors(failures)), nil
     }
     return plugin.NewCheckResponse(nil), nil

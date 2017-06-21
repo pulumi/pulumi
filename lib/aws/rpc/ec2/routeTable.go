@@ -25,7 +25,7 @@ const RouteTableToken = tokens.Type("aws:ec2/routeTable:RouteTable")
 
 // RouteTableProviderOps is a pluggable interface for RouteTable-related management functionality.
 type RouteTableProviderOps interface {
-    Check(ctx context.Context, obj *RouteTable) ([]error, error)
+    Check(ctx context.Context, obj *RouteTable, property string) error
     Create(ctx context.Context, obj *RouteTable) (resource.ID, error)
     Get(ctx context.Context, id resource.ID) (*RouteTable, error)
     InspectChange(ctx context.Context,
@@ -53,9 +53,21 @@ func (p *RouteTableProvider) Check(
     if err != nil {
         return plugin.NewCheckResponse(err), nil
     }
-    if failures, err := p.ops.Check(ctx, obj); err != nil {
-        return nil, err
-    } else if len(failures) > 0 {
+    var failures []error
+    unks := req.GetUnknowns()
+    if !unks["name"] {
+        if failure := p.ops.Check(ctx, obj, "name"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("RouteTable", "name", failure))
+        }
+    }
+    if !unks["vpc"] {
+        if failure := p.ops.Check(ctx, obj, "vpc"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("RouteTable", "vpc", failure))
+        }
+    }
+    if len(failures) > 0 {
         return plugin.NewCheckResponse(resource.NewErrors(failures)), nil
     }
     return plugin.NewCheckResponse(nil), nil

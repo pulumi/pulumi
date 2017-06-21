@@ -19,7 +19,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"reflect"
 
 	"github.com/aws/aws-sdk-go/aws"
 	awsec2 "github.com/aws/aws-sdk-go/service/ec2"
@@ -46,27 +45,21 @@ type instanceProvider struct {
 }
 
 // Check validates that the given property bag is valid for a resource of the given type.
-func (p *instanceProvider) Check(ctx context.Context, obj *ec2.Instance) ([]error, error) {
-	var failures []error
-	if obj.ImageID != "" {
+func (p *instanceProvider) Check(ctx context.Context, obj *ec2.Instance, property string) error {
+	switch property {
+	case ec2.Instance_ImageID:
 		// Check that the AMI exists; this catches misspellings, AMI region mismatches, accessibility problems, etc.
 		result, err := p.ctx.EC2().DescribeImages(&awsec2.DescribeImagesInput{
 			ImageIds: []*string{aws.String(obj.ImageID)},
 		})
 		if err != nil {
-			return nil, err
+			return err
 		}
 		if len(result.Images) == 0 {
-			failures = append(failures,
-				resource.NewFieldError(reflect.TypeOf(obj), ec2.Instance_ImageID,
-					fmt.Errorf("missing image: %v", obj.ImageID)))
-		} else {
-			contract.Assertf(len(result.Images) == 1, "Did not expect multiple instance matches")
-			contract.Assertf(result.Images[0].ImageId != nil, "Expected a non-nil matched instance ID")
-			contract.Assertf(*result.Images[0].ImageId == obj.ImageID, "Expected instance IDs to match")
+			return fmt.Errorf("missing image: %v", obj.ImageID)
 		}
 	}
-	return failures, nil
+	return nil
 }
 
 // Create allocates a new instance of the provided resource and returns its unique ID afterwards.  (The input ID

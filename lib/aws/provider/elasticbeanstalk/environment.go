@@ -38,7 +38,7 @@ const (
 	minCNAMEPrefix     = 4
 	maxCNAMEPrefix     = 63
 	minEnvironmentName = 4
-	maxEnvironmentName = 63
+	maxEnvironmentName = 40
 )
 
 // NewEnvironmentProvider creates a provider that handles ElasticBeanstalk environment operations.
@@ -52,9 +52,9 @@ type environmentProvider struct {
 }
 
 // Check validates that the given property bag is valid for a resource of the given type.
-func (p *environmentProvider) Check(ctx context.Context, obj *elasticbeanstalk.Environment) ([]error, error) {
+func (p *environmentProvider) Check(ctx context.Context, obj *elasticbeanstalk.Environment, property string) error {
 	// TODO[pulumi/lumi#220]: validate the properties (bag, etc).
-	return nil, nil
+	return nil
 }
 
 // Create allocates a new instance of the provided resource and returns its unique ID afterwards.  (The input ID

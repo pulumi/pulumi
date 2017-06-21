@@ -17,7 +17,6 @@ package s3
 
 import (
 	"fmt"
-	"reflect"
 	"regexp"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -51,19 +50,17 @@ type objProvider struct {
 }
 
 // Check validates that the given property bag is valid for a resource of the given type.
-func (p *objProvider) Check(ctx context.Context, obj *s3.Object) ([]error, error) {
-	var failures []error
-	if len(obj.Key) > maxObjectKey {
-		failures = append(failures,
-			resource.NewFieldError(reflect.TypeOf(obj), s3.Object_Key,
-				fmt.Errorf("exceeded maximum length of %v", maxObjectKey)))
+func (p *objProvider) Check(ctx context.Context, obj *s3.Object, property string) error {
+	switch property {
+	case s3.Object_Key:
+		if len(obj.Key) > maxObjectKey {
+			return fmt.Errorf("exceeded maximum length of %v", maxObjectKey)
+		}
+		if match, _ := regexp.MatchString(objectKeyRegexp, obj.Key); !match {
+			return fmt.Errorf("contains invalid characters (must match '%v')", objectKeyRegexp)
+		}
 	}
-	if match, _ := regexp.MatchString(objectKeyRegexp, obj.Key); !match {
-		failures = append(failures,
-			resource.NewFieldError(reflect.TypeOf(obj), s3.Object_Key,
-				fmt.Errorf("contains invalid characters (must match '%v')", objectKeyRegexp)))
-	}
-	return failures, nil
+	return nil
 }
 
 // Name names a given resource.  Sometimes this will be assigned by a developer, and so the provider

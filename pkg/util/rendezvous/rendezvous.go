@@ -51,26 +51,28 @@ type Rendezvous struct {
 	err  error       // non-nil if an error was submitted at closing time.
 }
 
-// Meet arrives at the rendezvous point.  It awaits the other party's arrival and returns whatever data they supply, if
-// any.  If the bool it returns is false, that means the rendezvous point has been closed and the party should quit.
+// Let lets the other party to run a turn and then returns.
+func (rz *Rendezvous) Let(me Party) (interface{}, bool, error) {
+	rz.lock.Lock()
+	defer rz.lock.Unlock()
+	for rz.turn != me && !rz.done {
+		rz.cond.Wait()
+	}
+	return rz.data, rz.done, rz.err
+}
+
+// Meet arrives at the meeting point and gives away the current turn.  The turn must be owned by the current party.
 func (rz *Rendezvous) Meet(me Party, data interface{}) (interface{}, bool, error) {
 	rz.lock.Lock()
 	defer rz.lock.Unlock()
 
-	// If it's our turn already, it is coming to an end, and we must give it away.
-	if rz.turn == me {
-		rz.data = data
-		if rz.turn == PartyA {
-			rz.turn = PartyB
-		} else {
-			rz.turn = PartyA
-		}
-		rz.cond.Signal()
-	} else {
-		contract.Assert(data == nil)
-	}
+	// Give away the turn.
+	contract.Assert(rz.turn == me)
+	rz.data = data   // advertise our new data (if any).
+	rz.flipTurn()    // let the other party run.
+	rz.cond.Signal() // now signal to them, in case they are awaiting.
 
-	// Until it's our turn, we must wait.
+	// Wait until its our turn again.
 	for rz.turn != me && !rz.done {
 		rz.cond.Wait()
 	}
@@ -85,4 +87,13 @@ func (rz *Rendezvous) Done(err error) {
 	rz.err = err
 	rz.done = true
 	rz.cond.Broadcast() // awaken any in case they are sleeping
+}
+
+// flipTurn lets the opposite party through the rendezvous point.
+func (rz *Rendezvous) flipTurn() {
+	if rz.turn == PartyA {
+		rz.turn = PartyB
+	} else {
+		rz.turn = PartyA
+	}
 }
