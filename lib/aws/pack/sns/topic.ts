@@ -18,6 +18,14 @@ export class Topic extends lumi.NamedResource implements TopicArgs {
     public displayName?: string;
     public subscription?: TopicSubscription[];
 
+    public static get(id: lumi.ID): Topic {
+        return <any>undefined; // functionality provided by the runtime
+    }
+
+    public static query(q: any): Topic[] {
+        return <any>undefined; // functionality provided by the runtime
+    }
+
     constructor(name: string, args?: TopicArgs) {
         super(name);
         if (args !== undefined) {
@@ -25,14 +33,6 @@ export class Topic extends lumi.NamedResource implements TopicArgs {
             this.displayName = args.displayName;
             this.subscription = args.subscription;
         }
-    }
-
-    public static get(id: lumi.ID): Topic {
-        return <any>undefined; // functionality provided by the runtime
-    }
-
-    public static query(q: any): Topic[] {
-        return <any>undefined; // functionality provided by the runtime
     }
 }
 
@@ -56,5 +56,4 @@ export interface TopicSubscription {
     protocol: TopicProtocol;
     endpoint: string;
 }
-
 

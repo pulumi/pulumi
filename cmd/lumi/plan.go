@@ -303,17 +303,6 @@ func plural(s string, c int) string {
 
 const detailsIndent = "      " // 4 spaces, plus 2 for "+ ", "- ", and " " leaders
 
-func printUnchanged(b *bytes.Buffer, stats deploy.PlanSummary, summary bool, planning bool) {
-	b.WriteString(fmt.Sprintf("%vUnchanged resources:%v\n", colors.SpecUnimportant, colors.Reset))
-	for _, res := range stats.Resources() {
-		if stats.Sames()[res.URN()] {
-			b.WriteString("  ") // simulate the 2 spaces for +, -, etc.
-			printResourceHeader(b, res)
-			printResourceProperties(b, res.URN(), res, nil, nil, nil, summary, planning, "")
-		}
-	}
-}
-
 func printStep(b *bytes.Buffer, step deploy.Step, summary bool, planning bool, indent string) {
 	// First print out the operation's prefix.
 	b.WriteString(step.Op().Prefix())
@@ -345,10 +334,6 @@ func printStep(b *bytes.Buffer, step deploy.Step, summary bool, planning bool, i
 
 func printStepHeader(b *bytes.Buffer, step deploy.Step) {
 	b.WriteString(fmt.Sprintf("%s:\n", string(step.Type())))
-}
-
-func printResourceHeader(b *bytes.Buffer, res resource.Resource) {
-	b.WriteString(fmt.Sprintf("%s:\n", string(res.Type())))
 }
 
 func printResourceProperties(b *bytes.Buffer, urn resource.URN, old *resource.State, new *resource.Object,
@@ -635,4 +620,3 @@ func printPropertyValueDiff(b *bytes.Buffer, title func(string), diff resource.V
 
 func addIndent(indent string) string    { return indent[:len(indent)-2] + "+ " }
 func deleteIndent(indent string) string { return indent[:len(indent)-2] + "- " }
-func updateIndent(indent string) string { return indent[:len(indent)-2] + "+-" }

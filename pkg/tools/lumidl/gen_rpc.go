@@ -94,7 +94,7 @@ func (g *RPCGenerator) EmitFile(file string, pkg *Package, members []Member) err
 	body := g.genFileBody(file, pkg, members)
 
 	// Open up a writer that overwrites whatever file contents already exist.
-	f, err := os.OpenFile(file, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0644)
+	f, err := os.OpenFile(file, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0600)
 	if err != nil {
 		return err
 	}

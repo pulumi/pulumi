@@ -20,11 +20,6 @@ import (
 
 const StageToken = apigateway.StageToken
 
-// constants for the various stage limits.
-const (
-	maxStageName = 255
-)
-
 // NewStageID returns an AWS APIGateway Stage ARN ID for the given restAPIID and stageID
 func NewStageID(region, restAPIID, stageID string) resource.ID {
 	return arn.NewID("apigateway", region, "", "/restapis/"+restAPIID+"/stages/"+stageID)
@@ -38,7 +33,8 @@ func ParseStageID(id resource.ID) (string, string, error) {
 	}
 	parts := strings.Split(res, "/")
 	if len(parts) != 4 || parts[0] != "restapis" || parts[2] != "stages" {
-		return "", "", fmt.Errorf("expected Stage ARN of the form arn:aws:apigateway:region::/restapis/api-id/stages/stage-id: %v", id)
+		return "", "", fmt.Errorf(
+			"expected Stage ARN of the form arn:aws:apigateway:region::/restapis/api-id/stages/stage-id: %v", id)
 	}
 	return parts[1], parts[3], nil
 }
@@ -140,9 +136,9 @@ func (p *stageProvider) Update(ctx context.Context, id resource.ID,
 	}
 
 	if diff.Updated(apigateway.Stage_Deployment) {
-		_, deploymentID, err := ParseDeploymentID(new.Deployment)
-		if err != nil {
-			return err
+		_, deploymentID, deperr := ParseDeploymentID(new.Deployment)
+		if deperr != nil {
+			return deperr
 		}
 		ops = append(ops, &awsapigateway.PatchOperation{
 			Op:    aws.String("replace"),

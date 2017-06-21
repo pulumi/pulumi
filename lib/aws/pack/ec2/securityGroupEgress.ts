@@ -16,6 +16,14 @@ export class SecurityGroupEgress extends lumi.NamedResource implements SecurityG
     public readonly destinationPrefixListId?: string;
     public readonly destinationSecurityGroup?: SecurityGroup;
 
+    public static get(id: lumi.ID): SecurityGroupEgress {
+        return <any>undefined; // functionality provided by the runtime
+    }
+
+    public static query(q: any): SecurityGroupEgress[] {
+        return <any>undefined; // functionality provided by the runtime
+    }
+
     constructor(name: string, args: SecurityGroupEgressArgs) {
         super(name);
         if (args.fromPort === undefined) {
@@ -39,14 +47,6 @@ export class SecurityGroupEgress extends lumi.NamedResource implements SecurityG
         this.destinationPrefixListId = args.destinationPrefixListId;
         this.destinationSecurityGroup = args.destinationSecurityGroup;
     }
-
-    public static get(id: lumi.ID): SecurityGroupEgress {
-        return <any>undefined; // functionality provided by the runtime
-    }
-
-    public static query(q: any): SecurityGroupEgress[] {
-        return <any>undefined; // functionality provided by the runtime
-    }
 }
 
 export interface SecurityGroupEgressArgs {
@@ -59,5 +59,4 @@ export interface SecurityGroupEgressArgs {
     readonly destinationPrefixListId?: string;
     readonly destinationSecurityGroup?: SecurityGroup;
 }
-
 

@@ -18,7 +18,6 @@ package ec2
 import (
 	"errors"
 	"fmt"
-	"os"
 
 	"github.com/aws/aws-sdk-go/aws"
 	awsec2 "github.com/aws/aws-sdk-go/service/ec2"
@@ -106,7 +105,7 @@ func (p *instanceProvider) Create(ctx context.Context, obj *ec2.Instance) (resou
 	}
 
 	// Now go ahead and perform the action.
-	fmt.Fprintf(os.Stdout, "Creating new EC2 instance resource\n")
+	fmt.Print("Creating new EC2 instance resource\n")
 	result, err := p.ctx.EC2().RunInstances(create)
 	if err != nil {
 		return "", err
@@ -121,7 +120,7 @@ func (p *instanceProvider) Create(ctx context.Context, obj *ec2.Instance) (resou
 	id := aws.StringValue(result.Instances[0].InstanceId)
 
 	// Before returning that all is okay, wait for the instance to reach the running state.
-	fmt.Fprintf(os.Stdout, "EC2 instance '%v' created; now waiting for it to become 'running'\n", id)
+	fmt.Printf("EC2 instance '%v' created; now waiting for it to become 'running'\n", id)
 	// TODO[pulumi/lumi#219]: if this fails, but the creation succeeded, we will have an orphaned resource; report this
 	//     differently than other "benign" errors.
 	if err = p.ctx.EC2().WaitUntilInstanceRunning(
@@ -223,12 +222,11 @@ func (p *instanceProvider) Update(ctx context.Context, id resource.ID,
 			})
 		}
 		if len(addOrUpdateTags) > 0 {
-			_, err := p.ctx.EC2().CreateTags(&awsec2.CreateTagsInput{
+			if _, tagerr := p.ctx.EC2().CreateTags(&awsec2.CreateTagsInput{
 				Resources: []*string{aws.String(iid)},
 				Tags:      addOrUpdateTags,
-			})
-			if err != nil {
-				return err
+			}); tagerr != nil {
+				return tagerr
 			}
 		}
 		var deleteTags []*awsec2.Tag
@@ -259,12 +257,12 @@ func (p *instanceProvider) Delete(ctx context.Context, id resource.ID) error {
 		return err
 	}
 	delete := &awsec2.TerminateInstancesInput{InstanceIds: []*string{aws.String(iid)}}
-	fmt.Fprintf(os.Stdout, "Terminating EC2 instance '%v'\n", id)
+	fmt.Printf("Terminating EC2 instance '%v'\n", id)
 	if _, err := p.ctx.EC2().TerminateInstances(delete); err != nil {
 		return err
 	}
 
-	fmt.Fprintf(os.Stdout, "EC2 instance termination request submitted; waiting for it to terminate\n")
+	fmt.Print("EC2 instance termination request submitted; waiting for it to terminate\n")
 	return p.ctx.EC2().WaitUntilInstanceTerminated(
 		&awsec2.DescribeInstancesInput{InstanceIds: []*string{aws.String(iid)}})
 }

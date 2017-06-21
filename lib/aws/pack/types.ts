@@ -35,4 +35,3 @@ export type Region =
     "us-west-1" |
     "us-west-2";
 
-

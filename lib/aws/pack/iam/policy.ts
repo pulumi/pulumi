@@ -20,6 +20,14 @@ export class Policy extends lumi.NamedResource implements PolicyArgs {
     public roles?: Role[];
     public users?: User[];
 
+    public static get(id: lumi.ID): Policy {
+        return <any>undefined; // functionality provided by the runtime
+    }
+
+    public static query(q: any): Policy[] {
+        return <any>undefined; // functionality provided by the runtime
+    }
+
     constructor(name: string, args: PolicyArgs) {
         super(name);
         if (args.policyDocument === undefined) {
@@ -34,14 +42,6 @@ export class Policy extends lumi.NamedResource implements PolicyArgs {
         this.roles = args.roles;
         this.users = args.users;
     }
-
-    public static get(id: lumi.ID): Policy {
-        return <any>undefined; // functionality provided by the runtime
-    }
-
-    public static query(q: any): Policy[] {
-        return <any>undefined; // functionality provided by the runtime
-    }
 }
 
 export interface PolicyArgs {
@@ -51,5 +51,4 @@ export interface PolicyArgs {
     roles?: Role[];
     users?: User[];
 }
-
 

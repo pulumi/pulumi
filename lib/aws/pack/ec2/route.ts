@@ -14,6 +14,14 @@ export class Route extends lumi.NamedResource implements RouteArgs {
     public readonly internetGateway: InternetGateway;
     public readonly vpcGatewayAttachment: VPCGatewayAttachment;
 
+    public static get(id: lumi.ID): Route {
+        return <any>undefined; // functionality provided by the runtime
+    }
+
+    public static query(q: any): Route[] {
+        return <any>undefined; // functionality provided by the runtime
+    }
+
     constructor(name: string, args: RouteArgs) {
         super(name);
         if (args.destinationCidrBlock === undefined) {
@@ -33,14 +41,6 @@ export class Route extends lumi.NamedResource implements RouteArgs {
         }
         this.vpcGatewayAttachment = args.vpcGatewayAttachment;
     }
-
-    public static get(id: lumi.ID): Route {
-        return <any>undefined; // functionality provided by the runtime
-    }
-
-    public static query(q: any): Route[] {
-        return <any>undefined; // functionality provided by the runtime
-    }
 }
 
 export interface RouteArgs {
@@ -49,5 +49,4 @@ export interface RouteArgs {
     readonly internetGateway: InternetGateway;
     readonly vpcGatewayAttachment: VPCGatewayAttachment;
 }
-
 

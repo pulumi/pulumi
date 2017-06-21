@@ -15,6 +15,14 @@ export class Role extends lumi.NamedResource implements RoleArgs {
     public policies?: InlinePolicy[];
     public arn: ARN;
 
+    public static get(id: lumi.ID): Role {
+        return <any>undefined; // functionality provided by the runtime
+    }
+
+    public static query(q: any): Role[] {
+        return <any>undefined; // functionality provided by the runtime
+    }
+
     constructor(name: string, args: RoleArgs) {
         super(name);
         if (args.assumeRolePolicyDocument === undefined) {
@@ -26,14 +34,6 @@ export class Role extends lumi.NamedResource implements RoleArgs {
         this.managedPolicyARNs = args.managedPolicyARNs;
         this.policies = args.policies;
     }
-
-    public static get(id: lumi.ID): Role {
-        return <any>undefined; // functionality provided by the runtime
-    }
-
-    public static query(q: any): Role[] {
-        return <any>undefined; // functionality provided by the runtime
-    }
 }
 
 export interface RoleArgs {
@@ -43,5 +43,4 @@ export interface RoleArgs {
     managedPolicyARNs?: ARN[];
     policies?: InlinePolicy[];
 }
-
 

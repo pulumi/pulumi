@@ -451,27 +451,24 @@ func (p *tableProvider) Delete(ctx context.Context, id resource.ID) error {
 
 	// First, perform the deletion.
 	fmt.Printf("Deleting DynamoDB Table '%v'\n", name)
-	succ, err := awsctx.RetryUntilLong(
+	if succ, err := awsctx.RetryUntilLong(
 		p.ctx,
 		func() (bool, error) {
-			_, err := p.ctx.DynamoDB().DeleteTable(&awsdynamodb.DeleteTableInput{
+			if _, delerr := p.ctx.DynamoDB().DeleteTable(&awsdynamodb.DeleteTableInput{
 				TableName: aws.String(name),
-			})
-			if err != nil {
-				if awsctx.IsAWSError(err, awsdynamodb.ErrCodeResourceNotFoundException) {
+			}); delerr != nil {
+				if awsctx.IsAWSError(delerr, awsdynamodb.ErrCodeResourceNotFoundException) {
 					return true, nil
-				} else if awsctx.IsAWSError(err, awsdynamodb.ErrCodeResourceInUseException) {
+				} else if awsctx.IsAWSError(delerr, awsdynamodb.ErrCodeResourceInUseException) {
 					return false, nil
 				}
-				return false, err // anything else is a real error; propagate it.
+				return false, delerr // anything else is a real error; propagate it.
 			}
 			return true, nil
 		},
-	)
-	if err != nil {
+	); err != nil {
 		return err
-	}
-	if !succ {
+	} else if !succ {
 		return fmt.Errorf("DynamoDB table '%v' could not be deleted", name)
 	}
 

@@ -10,6 +10,14 @@ export class Key extends lumi.NamedResource implements KeyArgs {
     public enabled?: boolean;
     public enableKeyRotation?: boolean;
 
+    public static get(id: lumi.ID): Key {
+        return <any>undefined; // functionality provided by the runtime
+    }
+
+    public static query(q: any): Key[] {
+        return <any>undefined; // functionality provided by the runtime
+    }
+
     constructor(name: string, args: KeyArgs) {
         super(name);
         if (args.keyPolicy === undefined) {
@@ -20,14 +28,6 @@ export class Key extends lumi.NamedResource implements KeyArgs {
         this.enabled = args.enabled;
         this.enableKeyRotation = args.enableKeyRotation;
     }
-
-    public static get(id: lumi.ID): Key {
-        return <any>undefined; // functionality provided by the runtime
-    }
-
-    public static query(q: any): Key[] {
-        return <any>undefined; // functionality provided by the runtime
-    }
 }
 
 export interface KeyArgs {
@@ -36,5 +36,4 @@ export interface KeyArgs {
     enabled?: boolean;
     enableKeyRotation?: boolean;
 }
-
 

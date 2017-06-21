@@ -20,6 +20,14 @@ export class RestAPI extends lumi.NamedResource implements RestAPIArgs {
     public warnings: string[];
     public binaryMediaTypes: string[];
 
+    public static get(id: lumi.ID): RestAPI {
+        return <any>undefined; // functionality provided by the runtime
+    }
+
+    public static query(q: any): RestAPI[] {
+        return <any>undefined; // functionality provided by the runtime
+    }
+
     constructor(name: string, args?: RestAPIArgs) {
         super(name);
         if (args !== undefined) {
@@ -31,14 +39,6 @@ export class RestAPI extends lumi.NamedResource implements RestAPIArgs {
             this.apiName = args.apiName;
             this.parameters = args.parameters;
         }
-    }
-
-    public static get(id: lumi.ID): RestAPI {
-        return <any>undefined; // functionality provided by the runtime
-    }
-
-    public static query(q: any): RestAPI[] {
-        return <any>undefined; // functionality provided by the runtime
     }
 }
 
@@ -57,5 +57,4 @@ export interface S3Location {
     etag?: string;
     version?: string;
 }
-
 

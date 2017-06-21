@@ -117,7 +117,7 @@ func (g *PackGenerator) emitFileContents(file string, body string) error {
 	file += ".ts"
 
 	// Open up a writer that overwrites whatever file contents already exist.
-	f, err := os.OpenFile(file, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0644)
+	f, err := os.OpenFile(file, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0600)
 	if err != nil {
 		return err
 	}
@@ -195,7 +195,7 @@ func (g *PackGenerator) emitFileContents(file string, body string) error {
 		writefmtln(w, "")
 	}
 
-	writefmtln(w, "%v", body)
+	writefmt(w, "%v", body)
 	return w.Flush()
 }
 
@@ -278,7 +278,7 @@ func (g *PackGenerator) emitResourceClass(w *bufio.Writer, res *Resource) {
 	}
 	writefmtln(w, "export class %v extends lumi.%v implements %vArgs {", name, base, name)
 
-	// Now all fields definitions.
+	// First, emit all fields definitions.
 	hasArgs := false
 	hasName := false
 	hasRequiredArgs := false
@@ -298,6 +298,16 @@ func (g *PackGenerator) emitResourceClass(w *bufio.Writer, res *Resource) {
 	if fn > 0 {
 		writefmtln(w, "")
 	}
+
+	// Add the standard "factory" functions: get and query.  These are static, so they go before the constructor.
+	writefmtln(w, "    public static get(id: lumi.ID): %v {", name)
+	writefmtln(w, "        return <any>undefined; // functionality provided by the runtime")
+	writefmtln(w, "    }")
+	writefmtln(w, "")
+	writefmtln(w, "    public static query(q: any): %v[] {", name)
+	writefmtln(w, "        return <any>undefined; // functionality provided by the runtime")
+	writefmtln(w, "    }")
+	writefmtln(w, "")
 
 	// Next, a constructor that validates arguments and self-assigns them.
 	writefmt(w, "    constructor(")
@@ -339,17 +349,6 @@ func (g *PackGenerator) emitResourceClass(w *bufio.Writer, res *Resource) {
 	}
 
 	writefmtln(w, "    }")
-	writefmtln(w, "")
-
-	// Finally, add the standard "factory" functions: get and query.
-	writefmtln(w, "    public static get(id: lumi.ID): %v {", name)
-	writefmtln(w, "        return <any>undefined; // functionality provided by the runtime")
-	writefmtln(w, "    }")
-	writefmtln(w, "")
-	writefmtln(w, "    public static query(q: any): %v[] {", name)
-	writefmtln(w, "        return <any>undefined; // functionality provided by the runtime")
-	writefmtln(w, "    }")
-
 	writefmtln(w, "}")
 }
 

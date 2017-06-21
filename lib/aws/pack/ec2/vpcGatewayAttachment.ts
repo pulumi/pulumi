@@ -11,6 +11,14 @@ export class VPCGatewayAttachment extends lumi.NamedResource implements VPCGatew
     public readonly vpc: VPC;
     public readonly internetGateway: InternetGateway;
 
+    public static get(id: lumi.ID): VPCGatewayAttachment {
+        return <any>undefined; // functionality provided by the runtime
+    }
+
+    public static query(q: any): VPCGatewayAttachment[] {
+        return <any>undefined; // functionality provided by the runtime
+    }
+
     constructor(name: string, args: VPCGatewayAttachmentArgs) {
         super(name);
         if (args.vpc === undefined) {
@@ -22,19 +30,10 @@ export class VPCGatewayAttachment extends lumi.NamedResource implements VPCGatew
         }
         this.internetGateway = args.internetGateway;
     }
-
-    public static get(id: lumi.ID): VPCGatewayAttachment {
-        return <any>undefined; // functionality provided by the runtime
-    }
-
-    public static query(q: any): VPCGatewayAttachment[] {
-        return <any>undefined; // functionality provided by the runtime
-    }
 }
 
 export interface VPCGatewayAttachmentArgs {
     readonly vpc: VPC;
     readonly internetGateway: InternetGateway;
 }
-
 

@@ -283,22 +283,18 @@ func (p *funcProvider) Update(ctx context.Context, id resource.ID,
 		}
 
 		fmt.Printf("Updating Lambda function configuration '%v'\n", name)
-		var out *awslambda.FunctionConfiguration
-		var err error
-		_, err = awsctx.RetryUntil(p.ctx, func() (bool, error) {
-			out, err = p.ctx.Lambda().UpdateFunctionConfiguration(update)
-			if err != nil {
-				if awsctx.IsAWSErrorMessage(err,
+		if _, retryerr := awsctx.RetryUntil(p.ctx, func() (bool, error) {
+			if _, upderr := p.ctx.Lambda().UpdateFunctionConfiguration(update); upderr != nil {
+				if awsctx.IsAWSErrorMessage(upderr,
 					"InvalidParameterValueException",
 					"The role defined for the function cannot be assumed by Lambda.") {
 					return false, nil
 				}
-				return true, err
+				return true, upderr
 			}
 			return true, nil
-		})
-		if err != nil {
-			return err
+		}); retryerr != nil {
+			return retryerr
 		}
 
 		if succ, err := awsctx.RetryProgUntil(

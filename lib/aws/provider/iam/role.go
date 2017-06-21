@@ -93,20 +93,19 @@ func (p *roleProvider) Create(ctx context.Context, obj *iam.Role) (resource.ID, 
 
 	if obj.ManagedPolicyARNs != nil {
 		for _, policyARN := range *obj.ManagedPolicyARNs {
-			_, err := p.ctx.IAM().AttachRolePolicy(&awsiam.AttachRolePolicyInput{
+			if _, atterr := p.ctx.IAM().AttachRolePolicy(&awsiam.AttachRolePolicyInput{
 				RoleName:  aws.String(name),
 				PolicyArn: aws.String(string(policyARN)),
-			})
-			if err != nil {
-				return "", err
+			}); atterr != nil {
+				return "", atterr
 			}
 		}
 	}
 
 	// Wait for the role to be ready and then return the ID (just its name).
 	fmt.Printf("IAM Role created: %v; waiting for it to become active\n", name)
-	if err = p.waitForRoleState(name, true); err != nil {
-		return "", err
+	if waiterr := p.waitForRoleState(name, true); waiterr != nil {
+		return "", waiterr
 	}
 	return resource.ID(*result.Role.Arn), nil
 }
@@ -136,8 +135,8 @@ func (p *roleProvider) Get(ctx context.Context, id resource.ID) (*iam.Role, erro
 	if err != nil {
 		return nil, err
 	}
-	if err := json.Unmarshal([]byte(assumePolicyDocumentJSON), &policyDocument); err != nil {
-		return nil, err
+	if jsonerr := json.Unmarshal([]byte(assumePolicyDocumentJSON), &policyDocument); jsonerr != nil {
+		return nil, jsonerr
 	}
 
 	// Now get a list of attached role policies.

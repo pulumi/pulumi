@@ -30,7 +30,9 @@ func failfast(msg string) {
 	if g, isgettable := v.(flag.Getter); isgettable {
 		if enabled := g.Get().(bool); enabled {
 			// Print the stack to stderr anytime glog verbose logging is enabled, since glog won't.
-			fmt.Fprintf(os.Stderr, "fatal: %v\n", msg)
+			if _, err := fmt.Fprintf(os.Stderr, "fatal: %v\n", msg); err != nil {
+				glog.Infof("Printing fatal error failed with error: %v", err)
+			}
 			debug.PrintStack()
 		}
 	}

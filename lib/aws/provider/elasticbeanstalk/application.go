@@ -154,18 +154,16 @@ func (p *applicationProvider) Delete(ctx context.Context, id resource.ID) error 
 	if err != nil {
 		return err
 	}
-	if _, err := p.ctx.ElasticBeanstalk().DeleteApplication(&awselasticbeanstalk.DeleteApplicationInput{
+	if _, delerr := p.ctx.ElasticBeanstalk().DeleteApplication(&awselasticbeanstalk.DeleteApplicationInput{
 		ApplicationName: aws.String(name),
-	}); err != nil {
-		return err
+	}); delerr != nil {
+		return delerr
 	}
 	succ, err := awsctx.RetryUntilLong(p.ctx, func() (bool, error) {
 		fmt.Printf("Waiting for application %v to become Terminated\n", name)
-		resp, err := p.getApplication(name)
-		if err != nil {
-			return false, err
-		}
-		if resp == nil {
+		if resp, geterr := p.getApplication(name); geterr != nil {
+			return false, geterr
+		} else if resp == nil {
 			return true, nil
 		}
 		return false, nil

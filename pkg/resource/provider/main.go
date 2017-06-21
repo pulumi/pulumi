@@ -47,9 +47,9 @@ func Main(provMaker func(*HostClient) (lumirpc.ResourceProviderServer, error)) e
 	// Fire up a gRPC server, letting the kernel choose a free port for us.
 	port, done, err := rpcutil.Serve(0, nil, []func(*grpc.Server) error{
 		func(srv *grpc.Server) error {
-			prov, err := provMaker(host)
-			if err != nil {
-				return fmt.Errorf("failed to create resource provider: %v", err)
+			prov, proverr := provMaker(host)
+			if proverr != nil {
+				return fmt.Errorf("failed to create resource provider: %v", proverr)
 			}
 			lumirpc.RegisterResourceProviderServer(srv, prov)
 			return nil

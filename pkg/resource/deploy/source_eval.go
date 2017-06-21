@@ -168,7 +168,7 @@ func (iter *evalSourceIterator) Next() (*SourceAllocation, *SourceQuery, error) 
 					goerr.Errorf("Missing required argument 'id' for method %v", meth)
 			} else if !args[0].IsString() {
 				return nil, nil,
-					goerr.Errorf("Expected method %v argument 'id' to be a string; got", meth, args[0])
+					goerr.Errorf("Expected method %v argument 'id' to be a string; got %v", meth, args[0])
 			}
 			return nil, &SourceQuery{Type: t, GetID: resource.ID(args[0].StringValue())}, nil
 		case specialResourceQueryFunction:

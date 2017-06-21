@@ -20,6 +20,14 @@ export class User extends lumi.NamedResource implements UserArgs {
     public path?: string;
     public policies?: InlinePolicy[];
 
+    public static get(id: lumi.ID): User {
+        return <any>undefined; // functionality provided by the runtime
+    }
+
+    public static query(q: any): User[] {
+        return <any>undefined; // functionality provided by the runtime
+    }
+
     constructor(name: string, args?: UserArgs) {
         super(name);
         if (args !== undefined) {
@@ -31,14 +39,6 @@ export class User extends lumi.NamedResource implements UserArgs {
             this.policies = args.policies;
         }
     }
-
-    public static get(id: lumi.ID): User {
-        return <any>undefined; // functionality provided by the runtime
-    }
-
-    public static query(q: any): User[] {
-        return <any>undefined; // functionality provided by the runtime
-    }
 }
 
 export interface UserArgs {
@@ -49,5 +49,4 @@ export interface UserArgs {
     path?: string;
     policies?: InlinePolicy[];
 }
-
 

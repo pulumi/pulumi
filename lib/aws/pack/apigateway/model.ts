@@ -13,6 +13,14 @@ export class Model extends lumi.NamedResource implements ModelArgs {
     public readonly modelName?: string;
     public description?: string;
 
+    public static get(id: lumi.ID): Model {
+        return <any>undefined; // functionality provided by the runtime
+    }
+
+    public static query(q: any): Model[] {
+        return <any>undefined; // functionality provided by the runtime
+    }
+
     constructor(name: string, args: ModelArgs) {
         super(name);
         if (args.contentType === undefined) {
@@ -30,14 +38,6 @@ export class Model extends lumi.NamedResource implements ModelArgs {
         this.modelName = args.modelName;
         this.description = args.description;
     }
-
-    public static get(id: lumi.ID): Model {
-        return <any>undefined; // functionality provided by the runtime
-    }
-
-    public static query(q: any): Model[] {
-        return <any>undefined; // functionality provided by the runtime
-    }
 }
 
 export interface ModelArgs {
@@ -47,5 +47,4 @@ export interface ModelArgs {
     readonly modelName?: string;
     description?: string;
 }
-
 

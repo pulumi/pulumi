@@ -977,7 +977,7 @@ func (e *evaluator) evalSwitchStatement(node *ast.SwitchStatement) *rt.Unwind {
 	// Next try to find a match; do this by walking all cases, in order, and checking for strict equality.
 	fallen := false
 	for _, caseNode := range node.Cases {
-		match := false
+		var match bool
 		if fallen {
 			// A fallthrough automatically executes the body without evaluating the clause.
 			match = true

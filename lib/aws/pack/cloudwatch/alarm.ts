@@ -48,6 +48,14 @@ export class ActionTarget extends lumi.NamedResource implements ActionTargetArgs
     public displayName?: string;
     public subscription?: TopicSubscription[];
 
+    public static get(id: lumi.ID): ActionTarget {
+        return <any>undefined; // functionality provided by the runtime
+    }
+
+    public static query(q: any): ActionTarget[] {
+        return <any>undefined; // functionality provided by the runtime
+    }
+
     constructor(name: string, args?: ActionTargetArgs) {
         super(name);
         if (args !== undefined) {
@@ -55,14 +63,6 @@ export class ActionTarget extends lumi.NamedResource implements ActionTargetArgs
             this.displayName = args.displayName;
             this.subscription = args.subscription;
         }
-    }
-
-    public static get(id: lumi.ID): ActionTarget {
-        return <any>undefined; // functionality provided by the runtime
-    }
-
-    public static query(q: any): ActionTarget[] {
-        return <any>undefined; // functionality provided by the runtime
     }
 }
 
@@ -88,6 +88,14 @@ export class Alarm extends lumi.NamedResource implements AlarmArgs {
     public insufficientDataActions?: ActionTarget[];
     public okActions?: ActionTarget[];
     public unit?: AlarmMetric;
+
+    public static get(id: lumi.ID): Alarm {
+        return <any>undefined; // functionality provided by the runtime
+    }
+
+    public static query(q: any): Alarm[] {
+        return <any>undefined; // functionality provided by the runtime
+    }
 
     constructor(name: string, args: AlarmArgs) {
         super(name);
@@ -127,14 +135,6 @@ export class Alarm extends lumi.NamedResource implements AlarmArgs {
         this.insufficientDataActions = args.insufficientDataActions;
         this.okActions = args.okActions;
         this.unit = args.unit;
-    }
-
-    public static get(id: lumi.ID): Alarm {
-        return <any>undefined; // functionality provided by the runtime
-    }
-
-    public static query(q: any): Alarm[] {
-        return <any>undefined; // functionality provided by the runtime
     }
 }
 
@@ -202,5 +202,4 @@ export type AlarmStatistic =
     "Minimum" |
     "SampleCount" |
     "Sum";
-
 

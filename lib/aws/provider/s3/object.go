@@ -56,7 +56,9 @@ func (p *objProvider) Check(ctx context.Context, obj *s3.Object, property string
 		if len(obj.Key) > maxObjectKey {
 			return fmt.Errorf("exceeded maximum length of %v", maxObjectKey)
 		}
-		if match, _ := regexp.MatchString(objectKeyRegexp, obj.Key); !match {
+		if match, err := regexp.MatchString(objectKeyRegexp, obj.Key); err != nil {
+			return err
+		} else if !match {
 			return fmt.Errorf("contains invalid characters (must match '%v')", objectKeyRegexp)
 		}
 	}

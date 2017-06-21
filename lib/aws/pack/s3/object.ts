@@ -11,6 +11,14 @@ export class Object extends lumi.Resource implements ObjectArgs {
     public readonly bucket: Bucket;
     public readonly source: lumi.asset.Asset;
 
+    public static get(id: lumi.ID): Object {
+        return <any>undefined; // functionality provided by the runtime
+    }
+
+    public static query(q: any): Object[] {
+        return <any>undefined; // functionality provided by the runtime
+    }
+
     constructor(args: ObjectArgs) {
         super();
         if (args.key === undefined) {
@@ -26,14 +34,6 @@ export class Object extends lumi.Resource implements ObjectArgs {
         }
         this.source = args.source;
     }
-
-    public static get(id: lumi.ID): Object {
-        return <any>undefined; // functionality provided by the runtime
-    }
-
-    public static query(q: any): Object[] {
-        return <any>undefined; // functionality provided by the runtime
-    }
 }
 
 export interface ObjectArgs {
@@ -41,5 +41,4 @@ export interface ObjectArgs {
     readonly bucket: Bucket;
     readonly source: lumi.asset.Asset;
 }
-
 

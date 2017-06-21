@@ -71,6 +71,16 @@ func (p *restAPIProvider) Create(ctx context.Context, obj *apigateway.RestAPI) (
 		apiName = resource.NewUniqueHex(*obj.Name+"-", maxRestAPIName, sha1.Size)
 	}
 
+	// Marshal the body ahead of creating the gateway objects, so that we don't orphan state during failure.
+	var body []byte
+	if obj.Body != nil {
+		bodyJSON, err := json.Marshal(*obj.Body)
+		if err != nil {
+			return "", err
+		}
+		body = bodyJSON
+	}
+
 	// First create the API Gateway
 	fmt.Printf("Creating APIGateway RestAPI '%v' with name '%v'\n", *obj.Name, apiName)
 	create := &awsapigateway.CreateRestApiInput{
@@ -84,13 +94,11 @@ func (p *restAPIProvider) Create(ctx context.Context, obj *apigateway.RestAPI) (
 	}
 
 	// Next, if a body is specified, put the rest api contents
-	if obj.Body != nil {
-		body := *obj.Body
-		bodyJSON, _ := json.Marshal(body)
+	if body != nil {
 		fmt.Printf("APIGateway RestAPI created: %v; putting API contents from OpenAPI specification\n", restAPI.Id)
 		put := &awsapigateway.PutRestApiInput{
 			RestApiId: restAPI.Id,
-			Body:      bodyJSON,
+			Body:      body,
 			Mode:      aws.String("overwrite"),
 		}
 		_, err := p.ctx.APIGateway().PutRestApi(put)
@@ -146,9 +154,9 @@ func (p *restAPIProvider) Update(ctx context.Context, id resource.ID,
 	if diff.Updated(apigateway.RestAPI_Body) {
 		if new.Body != nil {
 			body := *new.Body
-			bodyJSON, err := json.Marshal(body)
-			if err != nil {
-				return fmt.Errorf("Could not convert Swagger defintion object to JSON: %v", err)
+			bodyJSON, marerr := json.Marshal(body)
+			if marerr != nil {
+				return fmt.Errorf("Could not convert Swagger defintion object to JSON: %v", marerr)
 			}
 			fmt.Printf("Updating API definition for %v from OpenAPI specification\n", id)
 			put := &awsapigateway.PutRestApiInput{
@@ -156,9 +164,9 @@ func (p *restAPIProvider) Update(ctx context.Context, id resource.ID,
 				Body:      bodyJSON,
 				Mode:      aws.String("overwrite"),
 			}
-			newAPI, err := p.ctx.APIGateway().PutRestApi(put)
-			if err != nil {
-				return err
+			newAPI, puterr := p.ctx.APIGateway().PutRestApi(put)
+			if puterr != nil {
+				return puterr
 			}
 			fmt.Printf("Updated to: %v\n", newAPI)
 		} else {

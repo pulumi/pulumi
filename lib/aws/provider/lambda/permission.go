@@ -170,12 +170,11 @@ func (p *permissionProvider) Get(ctx context.Context, id resource.ID) (*lambda.P
 	}
 	contract.Assert(resp != nil)
 	contract.Assert(resp.Policy != nil)
-	policy := policy{}
-	err = json.Unmarshal([]byte(*resp.Policy), &policy)
-	if err != nil {
-		return nil, err
+	policyDoc := policy{}
+	if jsonerr := json.Unmarshal([]byte(*resp.Policy), &policyDoc); jsonerr != nil {
+		return nil, jsonerr
 	}
-	for _, statement := range policy.Statement {
+	for _, statement := range policyDoc.Statement {
 		if statement.Sid == statementID {
 			permission := &lambda.Permission{
 				Action:    statement.Action,

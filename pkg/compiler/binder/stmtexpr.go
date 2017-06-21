@@ -264,7 +264,7 @@ func (a *astBinder) visitLambdaExpression(node *ast.LambdaExpression) {
 
 func (a *astBinder) checkExprType(expr ast.Expression, expect symbols.Type, alts ...symbols.Type) bool {
 	actual := a.b.ctx.RequireType(expr)
-	conv := false
+	var conv bool
 	if conv = types.CanConvert(actual, expect); !conv {
 		// If the primary didn't convert, check the alternatives.
 		for _, alt := range alts {

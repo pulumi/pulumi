@@ -277,24 +277,27 @@ func (a Archive) readMap() (map[string]*Blob, error) {
 	contract.Assertf(ismap, "Expected a map-based archive")
 	result := map[string]*Blob{}
 	for name, asset := range m {
-		var err error
 		// TODO[pulumi/lumi#240]: It would be better to treat folders as a first class concept intead
 		//  of reusing a path Asset for this purpose.
 		path, isPath := asset.GetPath()
 		if isPath {
 			if fi, err := os.Stat(path); err == nil && fi.IsDir() {
 				// Asset is a folder, expand it
-				if err := filepath.Walk(path, func(filePath string, f os.FileInfo, err error) error {
-					if !f.IsDir() && f.Mode()&os.ModeSymlink == 0 {
-						result[filePath], _ = NewPathAsset(filePath).Read()
+				if walkerr := filepath.Walk(path, func(filePath string, f os.FileInfo, fileerr error) error {
+					if fileerr != nil || f.IsDir() || f.Mode()&os.ModeSymlink != 0 {
+						return fileerr
 					}
-					return nil
-				}); err != nil {
-					return nil, err
+
+					var err error
+					result[filePath], err = NewPathAsset(filePath).Read()
+					return err
+				}); walkerr != nil {
+					return nil, walkerr
 				}
 				continue
 			}
 		}
+		var err error
 		if result[name], err = asset.Read(); err != nil {
 			return nil, err
 		}

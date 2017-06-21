@@ -15,6 +15,14 @@ export class Queue extends lumi.NamedResource implements QueueArgs {
     public redrivePolicy?: RedrivePolicy;
     public visibilityTimeout?: number;
 
+    public static get(id: lumi.ID): Queue {
+        return <any>undefined; // functionality provided by the runtime
+    }
+
+    public static query(q: any): Queue[] {
+        return <any>undefined; // functionality provided by the runtime
+    }
+
     constructor(name: string, args?: QueueArgs) {
         super(name);
         if (args !== undefined) {
@@ -28,14 +36,6 @@ export class Queue extends lumi.NamedResource implements QueueArgs {
             this.redrivePolicy = args.redrivePolicy;
             this.visibilityTimeout = args.visibilityTimeout;
         }
-    }
-
-    public static get(id: lumi.ID): Queue {
-        return <any>undefined; // functionality provided by the runtime
-    }
-
-    public static query(q: any): Queue[] {
-        return <any>undefined; // functionality provided by the runtime
     }
 }
 
@@ -55,5 +55,4 @@ export interface RedrivePolicy {
     deadLetterTarget: Queue;
     maxReceiveCount: number;
 }
-
 

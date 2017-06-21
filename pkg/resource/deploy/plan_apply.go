@@ -72,6 +72,11 @@ func (p *Plan) Apply(prog Progress) (PlanSummary, Step, resource.Status, error) 
 
 		glog.V(7).Infof("Plan step #%v succeeded [%v]", n, step.Op())
 		step, err = iter.Next()
+		if err != nil {
+			glog.V(7).Infof("Advancing to plan step #%v failed: %v", n+1, err)
+			_ = iter.Close() // ignore close errors; the Apply error trumps
+			return iter, step, resource.StatusOK, err
+		}
 		n++
 	}
 

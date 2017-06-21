@@ -12,6 +12,14 @@ export class Group extends lumi.NamedResource implements GroupArgs {
     public path?: string;
     public policies?: InlinePolicy;
 
+    public static get(id: lumi.ID): Group {
+        return <any>undefined; // functionality provided by the runtime
+    }
+
+    public static query(q: any): Group[] {
+        return <any>undefined; // functionality provided by the runtime
+    }
+
     constructor(name: string, args?: GroupArgs) {
         super(name);
         if (args !== undefined) {
@@ -21,14 +29,6 @@ export class Group extends lumi.NamedResource implements GroupArgs {
             this.policies = args.policies;
         }
     }
-
-    public static get(id: lumi.ID): Group {
-        return <any>undefined; // functionality provided by the runtime
-    }
-
-    public static query(q: any): Group[] {
-        return <any>undefined; // functionality provided by the runtime
-    }
 }
 
 export interface GroupArgs {
@@ -37,5 +37,4 @@ export interface GroupArgs {
     path?: string;
     policies?: InlinePolicy;
 }
-
 

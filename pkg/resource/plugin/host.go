@@ -96,7 +96,7 @@ func (host *defaultHost) ReadLocation(tok tokens.Token) (resource.PropertyValue,
 	if uw != nil {
 		contract.Assert(uw.Throw())
 		return resource.PropertyValue{},
-			errors.Errorf("An error occurred reading location '%v': ", tok, uw.Thrown().Message(host.ctx.Diag))
+			errors.Errorf("An error occurred reading location '%v': %v", tok, uw.Thrown().Message(host.ctx.Diag))
 	}
 
 	return resource.CopyObject(obj), nil

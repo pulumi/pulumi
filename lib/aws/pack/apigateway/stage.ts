@@ -24,6 +24,14 @@ export class Stage extends lumi.NamedResource implements StageArgs {
     public url: string;
     public executionARN: string;
 
+    public static get(id: lumi.ID): Stage {
+        return <any>undefined; // functionality provided by the runtime
+    }
+
+    public static query(q: any): Stage[] {
+        return <any>undefined; // functionality provided by the runtime
+    }
+
     constructor(name: string, args: StageArgs) {
         super(name);
         if (args.restAPI === undefined) {
@@ -45,14 +53,6 @@ export class Stage extends lumi.NamedResource implements StageArgs {
         this.methodSettings = args.methodSettings;
         this.variables = args.variables;
     }
-
-    public static get(id: lumi.ID): Stage {
-        return <any>undefined; // functionality provided by the runtime
-    }
-
-    public static query(q: any): Stage[] {
-        return <any>undefined; // functionality provided by the runtime
-    }
 }
 
 export interface StageArgs {
@@ -66,5 +66,4 @@ export interface StageArgs {
     methodSettings?: MethodSetting[];
     variables?: {[key: string]: string};
 }
-
 

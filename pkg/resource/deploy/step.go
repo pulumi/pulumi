@@ -271,14 +271,14 @@ func (s *UpdateStep) Apply() (resource.Status, error) {
 	if err != nil {
 		return resource.StatusOK, err
 	}
-	if rst, err := prov.Update(t, id, s.old.Inputs(), s.inputs); err != nil {
-		return rst, err
+	if rst, upderr := prov.Update(t, id, s.old.Inputs(), s.inputs); upderr != nil {
+		return rst, upderr
 	}
 
 	// Now read the resource state back in case the update triggered cascading updates to other properties.
-	outs, err := prov.Get(t, id)
-	if err != nil {
-		return resource.StatusUnknown, err
+	outs, geterr := prov.Get(t, id)
+	if geterr != nil {
+		return resource.StatusUnknown, geterr
 	}
 	s.outputs = outs
 	state := s.new.Update(s.old.URN(), id, outs)

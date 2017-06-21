@@ -11,6 +11,14 @@ export class UsagePlanKey extends lumi.NamedResource implements UsagePlanKeyArgs
     public readonly key: APIKey;
     public readonly usagePlan: UsagePlan;
 
+    public static get(id: lumi.ID): UsagePlanKey {
+        return <any>undefined; // functionality provided by the runtime
+    }
+
+    public static query(q: any): UsagePlanKey[] {
+        return <any>undefined; // functionality provided by the runtime
+    }
+
     constructor(name: string, args: UsagePlanKeyArgs) {
         super(name);
         if (args.key === undefined) {
@@ -22,19 +30,10 @@ export class UsagePlanKey extends lumi.NamedResource implements UsagePlanKeyArgs
         }
         this.usagePlan = args.usagePlan;
     }
-
-    public static get(id: lumi.ID): UsagePlanKey {
-        return <any>undefined; // functionality provided by the runtime
-    }
-
-    public static query(q: any): UsagePlanKey[] {
-        return <any>undefined; // functionality provided by the runtime
-    }
 }
 
 export interface UsagePlanKeyArgs {
     readonly key: APIKey;
     readonly usagePlan: UsagePlan;
 }
-
 
