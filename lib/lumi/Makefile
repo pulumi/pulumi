@@ -15,7 +15,7 @@ banner:
 .PHONY: lint
 lint:
 	@echo "\033[0;32mLINT:\033[0m"
-	@tslint lib/aws/lumi/...
+	@./pack/node_modules/.bin/tslint lib/aws/lumi/...
 
 .PHONY: clean
 clean:

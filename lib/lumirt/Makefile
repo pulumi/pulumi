@@ -20,7 +20,7 @@ clean:
 .PHONY: lint
 lint:
 	@echo "\033[0;32mLINT:\033[0m"
-	@tslint lumirt/.lumi/...
+	@./pack/node_modules/.bin/tslint lumirt/.lumi/...
 	
 .PHONY: build
 build:

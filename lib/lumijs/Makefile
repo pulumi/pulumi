@@ -15,7 +15,7 @@ banner:
 .PHONY: lint
 lint:
 	@echo "\033[0;32mLINT:\033[0m"
-	@tslint lib/aws/lumijs/...
+	@./pack/node_modules/.bin/tslint lib/aws/lumijs/...
 
 .PHONY: clean
 clean:
