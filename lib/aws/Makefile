@@ -5,7 +5,7 @@ THISLIB         = ${LUMILIB}/aws
 TESTPARALLELISM = 10
 
 .PHONY: default
-default: banner lint_quiet vet build test install
+default: banner vet build test install lint_quiet
 
 .PHONY: banner
 banner:
@@ -38,7 +38,7 @@ build:
 	cd provider/ && go build -i -o ../bin/lumi-resource-aws # compile the resource provider
 
 .PHONY: install
-install:
+install: build
 	@echo "\033[0;32mINSTALL:\033[0m [${LUMILIB}]"
 	cd pack/ && yarn link  # ensure NPM references resolve locally.
 	mkdir -p ${LUMILIB} # ensure the machine-wide library dir exists.

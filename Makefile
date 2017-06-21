@@ -5,13 +5,13 @@ PROJECT_PKGS=$(shell go list ./cmd/... ./pkg/... | grep -v /vendor/)
 TESTPARALLELISM=10
 
 .PHONY: default
-default: banner lint_quiet vet test install
+default: banner vet test install lint_quiet
 
 .PHONY: all
-all: banner_all lint_quiet vet test install lumijs lumirtpkg lumijspkg lumipkg awspkg
+all: banner_all vet test install lint_quiet lumijs lumirtpkg lumijspkg lumipkg awspkg
 
 .PHONY: nightly
-nightly: banner_all lint_quiet vet test install lumijs lumirtpkg lumijspkg lumipkg awspkg examples
+nightly: banner_all vet test install lint_quiet lumijs lumirtpkg lumijspkg lumipkg awspkg examples
 
 .PHONY: banner
 banner:
