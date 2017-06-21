@@ -25,7 +25,7 @@ const ModelToken = tokens.Type("aws:apigateway/model:Model")
 
 // ModelProviderOps is a pluggable interface for Model-related management functionality.
 type ModelProviderOps interface {
-    Check(ctx context.Context, obj *Model) ([]error, error)
+    Check(ctx context.Context, obj *Model, property string) error
     Create(ctx context.Context, obj *Model) (resource.ID, error)
     Get(ctx context.Context, id resource.ID) (*Model, error)
     InspectChange(ctx context.Context,
@@ -53,9 +53,45 @@ func (p *ModelProvider) Check(
     if err != nil {
         return plugin.NewCheckResponse(err), nil
     }
-    if failures, err := p.ops.Check(ctx, obj); err != nil {
-        return nil, err
-    } else if len(failures) > 0 {
+    var failures []error
+    unks := req.GetUnknowns()
+    if !unks["name"] {
+        if failure := p.ops.Check(ctx, obj, "name"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Model", "name", failure))
+        }
+    }
+    if !unks["contentType"] {
+        if failure := p.ops.Check(ctx, obj, "contentType"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Model", "contentType", failure))
+        }
+    }
+    if !unks["restAPI"] {
+        if failure := p.ops.Check(ctx, obj, "restAPI"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Model", "restAPI", failure))
+        }
+    }
+    if !unks["schema"] {
+        if failure := p.ops.Check(ctx, obj, "schema"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Model", "schema", failure))
+        }
+    }
+    if !unks["modelName"] {
+        if failure := p.ops.Check(ctx, obj, "modelName"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Model", "modelName", failure))
+        }
+    }
+    if !unks["description"] {
+        if failure := p.ops.Check(ctx, obj, "description"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Model", "description", failure))
+        }
+    }
+    if len(failures) > 0 {
         return plugin.NewCheckResponse(resource.NewErrors(failures)), nil
     }
     return plugin.NewCheckResponse(nil), nil

@@ -19,7 +19,6 @@ import (
 	"crypto/sha1"
 	"errors"
 	"fmt"
-	"reflect"
 
 	"github.com/aws/aws-sdk-go/aws"
 	awss3 "github.com/aws/aws-sdk-go/service/s3"
@@ -51,24 +50,22 @@ type buckProvider struct {
 }
 
 // Check validates that the given property bag is valid for a resource of the given type.
-func (p *buckProvider) Check(ctx context.Context, obj *s3.Bucket) ([]error, error) {
-	var failures []error
-	if name := obj.BucketName; name != nil {
-		if len(*name) < minBucketName {
-			failures = append(failures,
-				resource.NewFieldError(reflect.TypeOf(obj), s3.Bucket_BucketName,
-					fmt.Errorf("less than minimum length of %v", minBucketName)))
-		} else if len(*name) > maxBucketName {
-			failures = append(failures,
-				resource.NewFieldError(reflect.TypeOf(obj), s3.Bucket_BucketName,
-					fmt.Errorf("exceeded maximum length of %v", maxBucketName)))
+func (p *buckProvider) Check(ctx context.Context, obj *s3.Bucket, property string) error {
+	switch property {
+	case s3.Bucket_BucketName:
+		if name := obj.BucketName; name != nil {
+			if len(*name) < minBucketName {
+				return fmt.Errorf("less than minimum length of %v", minBucketName)
+			} else if len(*name) > maxBucketName {
+				return fmt.Errorf("exceeded maximum length of %v", maxBucketName)
+			}
 		}
 	}
 	// TODO[pulumi/lumi#218]: by default, only up to 100 buckets in an account.
 	// TODO[pulumi/lumi#218]: check the vailidity of names (see
 	//     http://docs.aws.amazon.com/AmazonS3/latest/dev/BucketRestrictions.html).
 	// TODO[pulumi/lumi#218]: check the validity of the access control field.
-	return failures, nil
+	return nil
 }
 
 // Create allocates a new instance of the provided resource and returns its unique ID afterwards.  (The input ID

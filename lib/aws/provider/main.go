@@ -30,7 +30,7 @@ func main() {
 	cmdutil.InitLogging(false, 0, false)
 
 	// Fire up a gRPC server, letting the kernel choose a free port for us.
-	port, done, err := rpcutil.Serve(0, []func(*grpc.Server) error{
+	port, done, err := rpcutil.Serve(0, nil, []func(*grpc.Server) error{
 		func(srv *grpc.Server) error {
 			prov, err := NewProvider()
 			if err != nil {

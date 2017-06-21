@@ -26,6 +26,14 @@ export class Object extends lumi.Resource implements ObjectArgs {
         }
         this.source = args.source;
     }
+
+    public static get(id: lumi.ID): Object {
+        return <any>undefined; // functionality provided by the runtime
+    }
+
+    public static query(q: any): Object[] {
+        return <any>undefined; // functionality provided by the runtime
+    }
 }
 
 export interface ObjectArgs {

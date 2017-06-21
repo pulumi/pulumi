@@ -212,7 +212,7 @@ func (md *mapper) adjustValueForAssignment(val reflect.Value,
 				// A custom decoder exists; use it to unmarshal the type.
 				target, err := decode(md, obj)
 				if err != nil {
-					return val, NewFieldError(ty, key, err)
+					return val, NewTypeFieldError(ty, key, err)
 				}
 				val = reflect.ValueOf(target)
 			} else if to.Kind() == reflect.Struct || (to.Kind() == reflect.Ptr && to.Elem().Kind() == reflect.Struct) {
@@ -224,11 +224,11 @@ func (md *mapper) adjustValueForAssignment(val reflect.Value,
 					target = reflect.New(to).Interface()
 				}
 				if err := md.Decode(obj, target); err != nil {
-					return val, NewFieldError(ty, key, err)
+					return val, NewTypeFieldError(ty, key, err)
 				}
 				val = reflect.ValueOf(target).Elem()
 			} else {
-				return val, NewFieldError(ty, key,
+				return val, NewTypeFieldError(ty, key,
 					errors.Errorf(
 						"Cannot decode Object{} to type %v; it isn't a struct, and no custom decoder exists", to))
 			}
@@ -238,7 +238,7 @@ func (md *mapper) adjustValueForAssignment(val reflect.Value,
 			if target.Type().Implements(textUnmarshalerType) {
 				um := target.Interface().(encoding.TextUnmarshaler)
 				if err := um.UnmarshalText([]byte(val.String())); err != nil {
-					return val, NewFieldError(ty, key, err)
+					return val, NewTypeFieldError(ty, key, err)
 				}
 				val = target.Elem()
 			} else {

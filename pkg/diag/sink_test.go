@@ -25,7 +25,7 @@ import (
 
 func discardSink() Sink {
 	// Create a new default sink with /dev/null writers to avoid spamming the test log.
-	return newDefaultSink(FormatOptions{}, map[Category]io.Writer{
+	return newDefaultSink(FormatOptions{}, map[Severity]io.Writer{
 		Info:    ioutil.Discard,
 		Error:   ioutil.Discard,
 		Warning: ioutil.Discard,
@@ -40,6 +40,7 @@ func TestCounts(t *testing.T) {
 	const numEach = 10
 
 	for i := 0; i < numEach; i++ {
+		assert.Equal(t, sink.Debugs(), 0, "expected debugs pre to stay at zero")
 		assert.Equal(t, sink.Infos(), 0, "expected infos pre to stay at zero")
 		assert.Equal(t, sink.Errors(), 0, "expected errors pre to stay at zero")
 		assert.Equal(t, sink.Warnings(), i, "expected warnings pre to be at iteration count")
@@ -50,10 +51,12 @@ func TestCounts(t *testing.T) {
 	}
 
 	for i := 0; i < numEach; i++ {
+		assert.Equal(t, sink.Debugs(), 0, "expected debugs pre to stay at zero")
 		assert.Equal(t, sink.Infos(), 0, "expected infos pre to stay at zero")
 		assert.Equal(t, sink.Errors(), i, "expected errors pre to be at iteration count")
 		assert.Equal(t, sink.Warnings(), numEach, "expected warnings pre to stay at numEach")
 		sink.Errorf(&Diag{Message: "A test of the emergency error system: %v."}, i)
+		assert.Equal(t, sink.Debugs(), 0, "expected deugs post to stay at zero")
 		assert.Equal(t, sink.Infos(), 0, "expected infos post to stay at zero")
 		assert.Equal(t, sink.Errors(), i+1, "expected errors post to be at iteration count+1")
 		assert.Equal(t, sink.Warnings(), numEach, "expected warnings post to stay at numEach")
@@ -67,10 +70,10 @@ func TestEscape(t *testing.T) {
 	sink := discardSink()
 
 	// Passing % chars in the argument should not yield %!(MISSING)s.
-	s := sink.Stringify(Message("%s"), Error, "lots of %v %s %d chars")
+	s := sink.Stringify(Error, Message("%s"), "lots of %v %s %d chars")
 	assert.Equal(t, "error: lots of %v %s %d chars\n", s)
 
 	// Passing % chars in the format string, on the other hand, should.
-	smiss := sink.Stringify(Message("lots of %v %s %d chars"), Error)
+	smiss := sink.Stringify(Error, Message("lots of %v %s %d chars"))
 	assert.Equal(t, "error: lots of %!v(MISSING) %!s(MISSING) %!d(MISSING) chars\n", smiss)
 }

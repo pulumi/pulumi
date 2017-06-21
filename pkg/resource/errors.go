@@ -13,25 +13,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-export type ID = string;
-export type URN = string;
+package resource
 
-// Resource represents a class whose CRUD operations are implemented by a provider plugin.
-export abstract class Resource {
-    public readonly id: ID;   // the provider-assigned unique ID (initialized by the runtime).
-    public readonly urn: URN; // the Lumi URN (initialized by the runtime).
+import (
+	"github.com/pulumi/lumi/pkg/util/mapper"
+)
+
+// NewErrors creates a new error list pertaining to a resource.  Note that it just turns around and defers to
+// the same mapping infrastructure used for serialization and deserialization, but it presents a nicer interface.
+func NewErrors(errs []error) error {
+	return mapper.NewMappingError(errs)
 }
 
-// NamedResource is a kind of resource that has a friendly resource name associated with it.
-export abstract class NamedResource extends Resource {
-    public readonly name: string;
-
-    constructor(name: string) {
-        super();
-        if (name === undefined || name === "") {
-            throw new Error("Named resources must have a name");
-        }
-        this.name = name;
-    }
+// NewPropertyError creates a new error pertaining to a resource's property.  Note that it just turns around and defers
+// to the same mapping infrastructure used for serialization and deserialization, but it presents a nicer interface.
+func NewPropertyError(typ string, property string, err error) error {
+	return mapper.NewFieldError(typ, property, err)
 }
-

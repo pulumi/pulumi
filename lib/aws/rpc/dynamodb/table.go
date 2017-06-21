@@ -63,7 +63,7 @@ const TableToken = tokens.Type("aws:dynamodb/table:Table")
 
 // TableProviderOps is a pluggable interface for Table-related management functionality.
 type TableProviderOps interface {
-    Check(ctx context.Context, obj *Table) ([]error, error)
+    Check(ctx context.Context, obj *Table, property string) error
     Create(ctx context.Context, obj *Table) (resource.ID, error)
     Get(ctx context.Context, id resource.ID) (*Table, error)
     InspectChange(ctx context.Context,
@@ -91,9 +91,57 @@ func (p *TableProvider) Check(
     if err != nil {
         return plugin.NewCheckResponse(err), nil
     }
-    if failures, err := p.ops.Check(ctx, obj); err != nil {
-        return nil, err
-    } else if len(failures) > 0 {
+    var failures []error
+    unks := req.GetUnknowns()
+    if !unks["name"] {
+        if failure := p.ops.Check(ctx, obj, "name"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Table", "name", failure))
+        }
+    }
+    if !unks["hashKey"] {
+        if failure := p.ops.Check(ctx, obj, "hashKey"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Table", "hashKey", failure))
+        }
+    }
+    if !unks["attributes"] {
+        if failure := p.ops.Check(ctx, obj, "attributes"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Table", "attributes", failure))
+        }
+    }
+    if !unks["readCapacity"] {
+        if failure := p.ops.Check(ctx, obj, "readCapacity"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Table", "readCapacity", failure))
+        }
+    }
+    if !unks["writeCapacity"] {
+        if failure := p.ops.Check(ctx, obj, "writeCapacity"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Table", "writeCapacity", failure))
+        }
+    }
+    if !unks["rangeKey"] {
+        if failure := p.ops.Check(ctx, obj, "rangeKey"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Table", "rangeKey", failure))
+        }
+    }
+    if !unks["tableName"] {
+        if failure := p.ops.Check(ctx, obj, "tableName"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Table", "tableName", failure))
+        }
+    }
+    if !unks["globalSecondaryIndexes"] {
+        if failure := p.ops.Check(ctx, obj, "globalSecondaryIndexes"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Table", "globalSecondaryIndexes", failure))
+        }
+    }
+    if len(failures) > 0 {
         return plugin.NewCheckResponse(resource.NewErrors(failures)), nil
     }
     return plugin.NewCheckResponse(nil), nil

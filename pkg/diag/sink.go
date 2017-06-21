@@ -33,6 +33,8 @@ import (
 type Sink interface {
 	// Count fetches the total number of diagnostics issued (errors plus warnings).
 	Count() int
+	// Infos fetches the number of debug messages issued.
+	Debugs() int
 	// Infos fetches the number of informational messages issued.
 	Infos() int
 	// Errors fetches the number of errors issued.
@@ -42,6 +44,10 @@ type Sink interface {
 	// Success returns true if this sink is currently error-free.
 	Success() bool
 
+	// Logf issues a log message.
+	Logf(sev Severity, diag *Diag, args ...interface{})
+	// Debugf issues a debugging message.
+	Debugf(diag *Diag, args ...interface{})
 	// Infof issues an informational message.
 	Infof(diag *Diag, args ...interface{})
 	// Errorf issues a new error diagnostic.
@@ -50,18 +56,19 @@ type Sink interface {
 	Warningf(diag *Diag, args ...interface{})
 
 	// Stringify stringifies a diagnostic in the usual way (e.g., "error: MU123: Lumi.yaml:7:39: error goes here\n").
-	Stringify(diag *Diag, cat Category, args ...interface{}) string
+	Stringify(sev Severity, diag *Diag, args ...interface{}) string
 	// StringifyLocation stringifies a source document location.
-	StringifyLocation(doc *Document, loc *Location) string
+	StringifyLocation(sev Severity, doc *Document, loc *Location) string
 }
 
-// Category dictates the kind of diagnostic.
-type Category string
+// Severity dictates the kind of diagnostic.
+type Severity string
 
 const (
-	Error   Category = "error"
-	Warning          = "warning"
-	Info             = "info"
+	Debug   Severity = "debug"
+	Info    Severity = "info"
+	Warning Severity = "warning"
+	Error   Severity = "error"
 )
 
 // FormatOptions controls the output style and content.
@@ -72,20 +79,20 @@ type FormatOptions struct {
 
 // DefaultSink returns a default sink that simply logs output to stderr/stdout.
 func DefaultSink(opts FormatOptions) Sink {
-	return newDefaultSink(opts, map[Category]io.Writer{
+	return newDefaultSink(opts, map[Severity]io.Writer{
 		Info:    os.Stdout,
 		Error:   os.Stderr,
 		Warning: os.Stdout,
 	})
 }
 
-func newDefaultSink(opts FormatOptions, writers map[Category]io.Writer) *defaultSink {
+func newDefaultSink(opts FormatOptions, writers map[Severity]io.Writer) *defaultSink {
 	contract.Assert(writers[Info] != nil)
 	contract.Assert(writers[Error] != nil)
 	contract.Assert(writers[Warning] != nil)
 	return &defaultSink{
 		opts:    opts,
-		counts:  make(map[Category]int),
+		counts:  make(map[Severity]int),
 		writers: writers,
 	}
 }
@@ -95,55 +102,86 @@ const DefaultSinkIDPrefix = "LUMI"
 // defaultSink is the default sink which logs output to stderr/stdout.
 type defaultSink struct {
 	opts    FormatOptions          // a set of options that control output style and content.
-	counts  map[Category]int       // the number of messages that have been issued per category.
-	writers map[Category]io.Writer // the writers to use for each kind of diagnostic category.
+	counts  map[Severity]int       // the number of messages that have been issued per severity.
+	writers map[Severity]io.Writer // the writers to use for each kind of diagnostic severity.
 }
 
-func (d *defaultSink) Count() int    { return d.Infos() + d.Errors() + d.Warnings() }
+func (d *defaultSink) Count() int    { return d.Debugs() + d.Infos() + d.Errors() + d.Warnings() }
+func (d *defaultSink) Debugs() int   { return d.counts[Debug] }
 func (d *defaultSink) Infos() int    { return d.counts[Info] }
 func (d *defaultSink) Errors() int   { return d.counts[Error] }
 func (d *defaultSink) Warnings() int { return d.counts[Warning] }
 func (d *defaultSink) Success() bool { return d.Errors() == 0 }
 
+func (d *defaultSink) Logf(sev Severity, diag *Diag, args ...interface{}) {
+	switch sev {
+	case Debug:
+		d.Debugf(diag, args...)
+	case Info:
+		d.Infof(diag, args...)
+	case Warning:
+		d.Warningf(diag, args...)
+	case Error:
+		d.Errorf(diag, args...)
+	default:
+		contract.Failf("Unrecognized severity: %v", sev)
+	}
+}
+
+func (d *defaultSink) Debugf(diag *Diag, args ...interface{}) {
+	msg := d.Stringify(Debug, diag, args...)
+	if glog.V(5) {
+		glog.V(5).Infof("defaultSink::Debug(%v)", msg[:len(msg)-1])
+	}
+	// For debug messages, we print to glog rather than a standard io.Writer.
+	glog.V(3).Infoln(msg)
+	d.counts[Debug]++
+}
+
 func (d *defaultSink) Infof(diag *Diag, args ...interface{}) {
-	msg := d.Stringify(diag, Info, args...)
-	if glog.V(3) {
-		glog.V(3).Infof("defaultSink::Info(%v)", msg[:len(msg)-1])
+	msg := d.Stringify(Info, diag, args...)
+	if glog.V(5) {
+		glog.V(5).Infof("defaultSink::Info(%v)", msg[:len(msg)-1])
 	}
 	fmt.Fprintf(d.writers[Info], msg)
 	d.counts[Info]++
 }
 
 func (d *defaultSink) Errorf(diag *Diag, args ...interface{}) {
-	msg := d.Stringify(diag, Error, args...)
-	if glog.V(3) {
-		glog.V(3).Infof("defaultSink::Error(%v)", msg[:len(msg)-1])
+	msg := d.Stringify(Error, diag, args...)
+	if glog.V(5) {
+		glog.V(5).Infof("defaultSink::Error(%v)", msg[:len(msg)-1])
 	}
 	fmt.Fprintf(d.writers[Error], msg)
 	d.counts[Error]++
 }
 
 func (d *defaultSink) Warningf(diag *Diag, args ...interface{}) {
-	msg := d.Stringify(diag, Warning, args...)
-	if glog.V(4) {
-		glog.V(4).Infof("defaultSink::Warning(%v)", msg[:len(msg)-1])
+	msg := d.Stringify(Warning, diag, args...)
+	if glog.V(5) {
+		glog.V(5).Infof("defaultSink::Warning(%v)", msg[:len(msg)-1])
 	}
 	fmt.Fprintf(d.writers[Warning], msg)
 	d.counts[Warning]++
 }
 
-func (d *defaultSink) Stringify(diag *Diag, cat Category, args ...interface{}) string {
+func (d *defaultSink) useColor(sev Severity) bool {
+	// we will use color so long as we're not spewing to debug (which is colorless).
+	return d.opts.Colors && sev != Debug
+}
+
+func (d *defaultSink) Stringify(sev Severity, diag *Diag, args ...interface{}) string {
 	var buffer bytes.Buffer
 
 	// First print the location if there is one.
 	if diag.Doc != nil || diag.Loc != nil {
-		buffer.WriteString(d.StringifyLocation(diag.Doc, diag.Loc))
+		buffer.WriteString(d.StringifyLocation(sev, diag.Doc, diag.Loc))
 		buffer.WriteString(": ")
 	}
 
 	// Now print the message category's prefix (error/warning).
-	if d.opts.Colors {
-		switch cat {
+	if d.useColor(sev) {
+		switch sev {
 		case Info:
 			buffer.WriteString(colors.SpecInfo)
 		case Error:
@@ -151,11 +189,11 @@ func (d *defaultSink) Stringify(diag *Diag, cat Category, args ...interface{}) s
 		case Warning:
 			buffer.WriteString(colors.SpecWarning)
 		default:
-			contract.Failf("Unrecognized diagnostic category: %v", cat)
+			contract.Failf("Unrecognized diagnostic severity: %v", sev)
 		}
 	}
 
-	buffer.WriteString(string(cat))
+	buffer.WriteString(string(sev))
 
 	if diag.ID > 0 {
 		buffer.WriteString(" ")
@@ -165,18 +203,18 @@ func (d *defaultSink) Stringify(diag *Diag, cat Category, args ...interface{}) s
 
 	buffer.WriteString(": ")
 
-	if d.opts.Colors {
+	if d.useColor(sev) {
 		buffer.WriteString(colors.Reset)
 	}
 
 	// Finally, actually print the message itself.
-	if d.opts.Colors {
+	if d.useColor(sev) {
 		buffer.WriteString(colors.SpecNote)
 	}
 
 	buffer.WriteString(fmt.Sprintf(diag.Message, args...))
 
-	if d.opts.Colors {
+	if d.useColor(sev) {
 		buffer.WriteString(colors.Reset)
 	}
 
@@ -188,18 +226,18 @@ func (d *defaultSink) Stringify(diag *Diag, cat Category, args ...interface{}) s
 	s := buffer.String()
 
 	// If colorization was requested, compile and execute the directives now.
-	if d.opts.Colors {
+	if d.useColor(sev) {
 		s = colors.ColorizeText(s)
 	}
 
 	return s
 }
 
-func (d *defaultSink) StringifyLocation(doc *Document, loc *Location) string {
+func (d *defaultSink) StringifyLocation(sev Severity, doc *Document, loc *Location) string {
 	var buffer bytes.Buffer
 
 	if doc != nil {
-		if d.opts.Colors {
+		if d.useColor(sev) {
 			buffer.WriteString(colors.SpecLocation)
 		}
 
@@ -224,14 +262,14 @@ func (d *defaultSink) StringifyLocation(doc *Document, loc *Location) string {
 
 	var s string
 	if doc != nil || loc != nil {
-		if d.opts.Colors {
+		if d.useColor(sev) {
 			buffer.WriteString(colors.Reset)
 		}
 
 		s = buffer.String()
 
 		// If colorization was requested, compile and execute the directives now.
-		if d.opts.Colors {
+		if d.useColor(sev) {
 			s = colors.ColorizeText(s)
 		}
 	}

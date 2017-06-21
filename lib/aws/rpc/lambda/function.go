@@ -39,7 +39,7 @@ const FunctionToken = tokens.Type("aws:lambda/function:Function")
 
 // FunctionProviderOps is a pluggable interface for Function-related management functionality.
 type FunctionProviderOps interface {
-    Check(ctx context.Context, obj *Function) ([]error, error)
+    Check(ctx context.Context, obj *Function, property string) error
     Create(ctx context.Context, obj *Function) (resource.ID, error)
     Get(ctx context.Context, id resource.ID) (*Function, error)
     InspectChange(ctx context.Context,
@@ -67,9 +67,87 @@ func (p *FunctionProvider) Check(
     if err != nil {
         return plugin.NewCheckResponse(err), nil
     }
-    if failures, err := p.ops.Check(ctx, obj); err != nil {
-        return nil, err
-    } else if len(failures) > 0 {
+    var failures []error
+    unks := req.GetUnknowns()
+    if !unks["name"] {
+        if failure := p.ops.Check(ctx, obj, "name"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Function", "name", failure))
+        }
+    }
+    if !unks["code"] {
+        if failure := p.ops.Check(ctx, obj, "code"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Function", "code", failure))
+        }
+    }
+    if !unks["handler"] {
+        if failure := p.ops.Check(ctx, obj, "handler"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Function", "handler", failure))
+        }
+    }
+    if !unks["role"] {
+        if failure := p.ops.Check(ctx, obj, "role"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Function", "role", failure))
+        }
+    }
+    if !unks["runtime"] {
+        if failure := p.ops.Check(ctx, obj, "runtime"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Function", "runtime", failure))
+        }
+    }
+    if !unks["functionName"] {
+        if failure := p.ops.Check(ctx, obj, "functionName"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Function", "functionName", failure))
+        }
+    }
+    if !unks["deadLetterConfig"] {
+        if failure := p.ops.Check(ctx, obj, "deadLetterConfig"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Function", "deadLetterConfig", failure))
+        }
+    }
+    if !unks["description"] {
+        if failure := p.ops.Check(ctx, obj, "description"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Function", "description", failure))
+        }
+    }
+    if !unks["environment"] {
+        if failure := p.ops.Check(ctx, obj, "environment"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Function", "environment", failure))
+        }
+    }
+    if !unks["kmsKey"] {
+        if failure := p.ops.Check(ctx, obj, "kmsKey"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Function", "kmsKey", failure))
+        }
+    }
+    if !unks["memorySize"] {
+        if failure := p.ops.Check(ctx, obj, "memorySize"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Function", "memorySize", failure))
+        }
+    }
+    if !unks["timeout"] {
+        if failure := p.ops.Check(ctx, obj, "timeout"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Function", "timeout", failure))
+        }
+    }
+    if !unks["vpcConfig"] {
+        if failure := p.ops.Check(ctx, obj, "vpcConfig"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Function", "vpcConfig", failure))
+        }
+    }
+    if len(failures) > 0 {
         return plugin.NewCheckResponse(resource.NewErrors(failures)), nil
     }
     return plugin.NewCheckResponse(nil), nil

@@ -25,7 +25,7 @@ const KeyToken = tokens.Type("aws:kms/key:Key")
 
 // KeyProviderOps is a pluggable interface for Key-related management functionality.
 type KeyProviderOps interface {
-    Check(ctx context.Context, obj *Key) ([]error, error)
+    Check(ctx context.Context, obj *Key, property string) error
     Create(ctx context.Context, obj *Key) (resource.ID, error)
     Get(ctx context.Context, id resource.ID) (*Key, error)
     InspectChange(ctx context.Context,
@@ -53,9 +53,39 @@ func (p *KeyProvider) Check(
     if err != nil {
         return plugin.NewCheckResponse(err), nil
     }
-    if failures, err := p.ops.Check(ctx, obj); err != nil {
-        return nil, err
-    } else if len(failures) > 0 {
+    var failures []error
+    unks := req.GetUnknowns()
+    if !unks["name"] {
+        if failure := p.ops.Check(ctx, obj, "name"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Key", "name", failure))
+        }
+    }
+    if !unks["keyPolicy"] {
+        if failure := p.ops.Check(ctx, obj, "keyPolicy"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Key", "keyPolicy", failure))
+        }
+    }
+    if !unks["description"] {
+        if failure := p.ops.Check(ctx, obj, "description"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Key", "description", failure))
+        }
+    }
+    if !unks["enabled"] {
+        if failure := p.ops.Check(ctx, obj, "enabled"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Key", "enabled", failure))
+        }
+    }
+    if !unks["enableKeyRotation"] {
+        if failure := p.ops.Check(ctx, obj, "enableKeyRotation"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Key", "enableKeyRotation", failure))
+        }
+    }
+    if len(failures) > 0 {
         return plugin.NewCheckResponse(resource.NewErrors(failures)), nil
     }
     return plugin.NewCheckResponse(nil), nil

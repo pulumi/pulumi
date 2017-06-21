@@ -40,6 +40,14 @@ export class Environment extends lumi.NamedResource implements EnvironmentArgs {
         this.tier = args.tier;
         this.version = args.version;
     }
+
+    public static get(id: lumi.ID): Environment {
+        return <any>undefined; // functionality provided by the runtime
+    }
+
+    public static query(q: any): Environment[] {
+        return <any>undefined; // functionality provided by the runtime
+    }
 }
 
 export interface EnvironmentArgs {

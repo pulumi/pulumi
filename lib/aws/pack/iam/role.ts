@@ -26,6 +26,14 @@ export class Role extends lumi.NamedResource implements RoleArgs {
         this.managedPolicyARNs = args.managedPolicyARNs;
         this.policies = args.policies;
     }
+
+    public static get(id: lumi.ID): Role {
+        return <any>undefined; // functionality provided by the runtime
+    }
+
+    public static query(q: any): Role[] {
+        return <any>undefined; // functionality provided by the runtime
+    }
 }
 
 export interface RoleArgs {

@@ -52,9 +52,9 @@ type roleProvider struct {
 }
 
 // Check validates that the given property bag is valid for a resource of the given type.
-func (p *roleProvider) Check(ctx context.Context, obj *iam.Role) ([]error, error) {
+func (p *roleProvider) Check(ctx context.Context, obj *iam.Role, property string) error {
 	// TODO[pulumi/lumi#221]: to use Switch Role, Path+RoleName cannot exceed 64 characters.  Warn?
-	return nil, nil
+	return nil
 }
 
 // Create allocates a new instance of the provided resource and returns its unique ID afterwards.  (The input ID

@@ -25,7 +25,7 @@ const StageToken = tokens.Type("aws:apigateway/stage:Stage")
 
 // StageProviderOps is a pluggable interface for Stage-related management functionality.
 type StageProviderOps interface {
-    Check(ctx context.Context, obj *Stage) ([]error, error)
+    Check(ctx context.Context, obj *Stage, property string) error
     Create(ctx context.Context, obj *Stage) (resource.ID, error)
     Get(ctx context.Context, id resource.ID) (*Stage, error)
     InspectChange(ctx context.Context,
@@ -53,9 +53,69 @@ func (p *StageProvider) Check(
     if err != nil {
         return plugin.NewCheckResponse(err), nil
     }
-    if failures, err := p.ops.Check(ctx, obj); err != nil {
-        return nil, err
-    } else if len(failures) > 0 {
+    var failures []error
+    unks := req.GetUnknowns()
+    if !unks["name"] {
+        if failure := p.ops.Check(ctx, obj, "name"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Stage", "name", failure))
+        }
+    }
+    if !unks["restAPI"] {
+        if failure := p.ops.Check(ctx, obj, "restAPI"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Stage", "restAPI", failure))
+        }
+    }
+    if !unks["stageName"] {
+        if failure := p.ops.Check(ctx, obj, "stageName"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Stage", "stageName", failure))
+        }
+    }
+    if !unks["deployment"] {
+        if failure := p.ops.Check(ctx, obj, "deployment"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Stage", "deployment", failure))
+        }
+    }
+    if !unks["cacheClusterEnabled"] {
+        if failure := p.ops.Check(ctx, obj, "cacheClusterEnabled"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Stage", "cacheClusterEnabled", failure))
+        }
+    }
+    if !unks["cacheClusterSize"] {
+        if failure := p.ops.Check(ctx, obj, "cacheClusterSize"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Stage", "cacheClusterSize", failure))
+        }
+    }
+    if !unks["clientCertificate"] {
+        if failure := p.ops.Check(ctx, obj, "clientCertificate"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Stage", "clientCertificate", failure))
+        }
+    }
+    if !unks["description"] {
+        if failure := p.ops.Check(ctx, obj, "description"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Stage", "description", failure))
+        }
+    }
+    if !unks["methodSettings"] {
+        if failure := p.ops.Check(ctx, obj, "methodSettings"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Stage", "methodSettings", failure))
+        }
+    }
+    if !unks["variables"] {
+        if failure := p.ops.Check(ctx, obj, "variables"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Stage", "variables", failure))
+        }
+    }
+    if len(failures) > 0 {
         return plugin.NewCheckResponse(resource.NewErrors(failures)), nil
     }
     return plugin.NewCheckResponse(nil), nil

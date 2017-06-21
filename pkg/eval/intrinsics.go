@@ -46,8 +46,11 @@ func init() {
 		// They are used as the implementation of core object APIs in the runtime.
 		"lumi:builtin/array:getLength":    arrayGetLength,
 		"lumi:builtin/array:setLength":    arraySetLength,
+		"lumi:builtin/array:push":         arrayPush,
+		"lumi:builtin/array:pop":          arrayPop,
 		"lumi:builtin/string:getLength":   stringGetLength,
 		"lumi:builtin/string:toLowerCase": stringToLowerCase,
+		"lumi:builtin/string:toUpperCase": stringToUpperCase,
 	}
 }
 

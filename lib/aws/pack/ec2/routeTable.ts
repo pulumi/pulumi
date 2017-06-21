@@ -16,6 +16,14 @@ export class RouteTable extends lumi.NamedResource implements RouteTableArgs {
         }
         this.vpc = args.vpc;
     }
+
+    public static get(id: lumi.ID): RouteTable {
+        return <any>undefined; // functionality provided by the runtime
+    }
+
+    public static query(q: any): RouteTable[] {
+        return <any>undefined; // functionality provided by the runtime
+    }
 }
 
 export interface RouteTableArgs {

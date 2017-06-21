@@ -16,15 +16,16 @@
 syntax = "proto3";
 
 import "google/protobuf/empty.proto";
+import "google/protobuf/struct.proto";
 
 package lumirpc;
-
-// TODO: secrets.
 
 // Engine is an interface into the core engine responsible for orchestrating resource operations.
 service Engine {
     // Log logs a global message in the engine, including errors and warnings.
     rpc Log(LogRequest) returns (google.protobuf.Empty) {}
+    // ReadLocation reads the value from a location identified by a token in the current program.
+    rpc ReadLocation(ReadLocationRequest) returns (google.protobuf.Value) {}
 }
 
 // LogSeverity is the severity level of a log message.  Errors are fatal; all others are informational.
@@ -38,5 +39,9 @@ enum LogSeverity {
 message LogRequest {
     LogSeverity severity = 1; // the logging level of this message.
     string message = 2;       // the contents of the logged message.
+}
+
+message ReadLocationRequest {
+    string token = 1; // the static or module variable whose value to read.
 }
 

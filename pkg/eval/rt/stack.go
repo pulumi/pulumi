@@ -48,7 +48,7 @@ func (s *StackFrame) Trace(d diag.Sink, prefix string, current diag.Diagable) st
 			if s.Node != nil {
 				if doc, loc := s.Node.Where(); doc != nil || loc != nil {
 					trace.WriteString(" (")
-					trace.WriteString(d.StringifyLocation(doc, loc))
+					trace.WriteString(d.StringifyLocation(diag.Info, doc, loc))
 					trace.WriteString(")")
 				}
 			}
@@ -61,7 +61,7 @@ func (s *StackFrame) Trace(d diag.Sink, prefix string, current diag.Diagable) st
 		if current != nil {
 			if doc, loc := current.Where(); doc != nil || loc != nil {
 				trace.WriteString(" in ")
-				trace.WriteString(d.StringifyLocation(doc, loc))
+				trace.WriteString(d.StringifyLocation(diag.Info, doc, loc))
 			}
 		}
 

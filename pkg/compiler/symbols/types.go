@@ -16,6 +16,8 @@
 package symbols
 
 import (
+	"sync"
+
 	"github.com/pulumi/lumi/pkg/diag"
 	"github.com/pulumi/lumi/pkg/tokens"
 )
@@ -36,6 +38,21 @@ type Type interface {
 
 // Types is a list of type symbols.
 type Types []Type
+
+// These are some type caches, keyed by token, to avoid creating superfluous type symbol objects.
+var (
+	pointerTypeCache   = make(map[tokens.Type]*PointerType)
+	computedTypeCache  = make(map[tokens.Type]*ComputedType)
+	arrayTypeCache     = make(map[tokens.Type]*ArrayType)
+	mapTypeCache       = make(map[tokens.Type]*MapType)
+	moduleTypeCache    = make(map[*Module]*ModuleType)
+	functionTypeCache  = make(map[tokens.Type]*FunctionType)
+	prototypeTypeCache = make(map[Type]*PrototypeType)
+)
+
+// typeCacheLock synchronizes all read and update access to the type caches.
+// IDEA: eventually, we should make these associated with the compiler context, rather than being global.
+var typeCacheLock sync.Locker = &sync.Mutex{}
 
 // PrimitiveType is an internal representation of a primitive type symbol (any, bool, number, string).
 type PrimitiveType struct {
@@ -93,12 +110,12 @@ func (node *PointerType) Computed() bool              { return false }
 func (node *PointerType) HasValue() bool              { return true }
 func (node *PointerType) String() string              { return string(node.Token()) }
 
-// pointerTypeCache is a cache keyed by token, helping to avoid creating superfluous symbol objects.
-var pointerTypeCache = make(map[tokens.Type]*PointerType)
-
 // NewPointerType returns an existing type symbol from the cache, if one exists, or allocates a new one otherwise.
 func NewPointerType(elem Type) *PointerType {
 	tok := tokens.NewPointerTypeToken(elem.TypeToken())
+
+	typeCacheLock.Lock()
+	defer typeCacheLock.Unlock()
 	if ptr, has := pointerTypeCache[tok]; has {
 		return ptr
 	}
@@ -139,12 +156,12 @@ func (node *ComputedType) Computed() bool              { return true }
 func (node *ComputedType) HasValue() bool              { return false }
 func (node *ComputedType) String() string              { return string(node.Token()) }
 
-// computedTypeCache is a cache keyed by token, helping to avoid creating superfluous symbol objects.
-var computedTypeCache = make(map[tokens.Type]*ComputedType)
-
 // NewComputedType returns an existing type symbol from the cache, if one exists, or allocates a new one otherwise.
 func NewComputedType(elem Type) *ComputedType {
 	tok := elem.TypeToken()
+
+	typeCacheLock.Lock()
+	defer typeCacheLock.Unlock()
 	if ev, has := computedTypeCache[tok]; has {
 		return ev
 	}
@@ -179,12 +196,12 @@ func (node *ArrayType) Computed() bool              { return false }
 func (node *ArrayType) HasValue() bool              { return true }
 func (node *ArrayType) String() string              { return string(node.Token()) }
 
-// arrayTypeCache is a cache keyed by token, helping to avoid creating superfluous symbol objects.
-var arrayTypeCache = make(map[tokens.Type]*ArrayType)
-
 // NewArrayType returns an existing type symbol from the cache, if one exists, or allocates a new one otherwise.
 func NewArrayType(elem Type) *ArrayType {
 	tok := tokens.NewArrayTypeToken(elem.TypeToken())
+
+	typeCacheLock.Lock()
+	defer typeCacheLock.Unlock()
 	if arr, has := arrayTypeCache[tok]; has {
 		return arr
 	}
@@ -221,12 +238,12 @@ func (node *MapType) Computed() bool              { return false }
 func (node *MapType) HasValue() bool              { return true }
 func (node *MapType) String() string              { return string(node.Token()) }
 
-// mapTypeCache is a cache keyed by token, helping to avoid creating superfluous symbol objects.
-var mapTypeCache = make(map[tokens.Type]*MapType)
-
 // NewMapType returns an existing type symbol from the cache, if one exists, or allocates a new one otherwise.
 func NewMapType(key Type, elem Type) *MapType {
 	tok := tokens.NewMapTypeToken(key.TypeToken(), elem.TypeToken())
+
+	typeCacheLock.Lock()
+	defer typeCacheLock.Unlock()
 	if mam, has := mapTypeCache[tok]; has {
 		return mam
 	}
@@ -263,9 +280,6 @@ func (node *FunctionType) Computed() bool              { return false }
 func (node *FunctionType) HasValue() bool              { return true }
 func (node *FunctionType) String() string              { return string(node.Token()) }
 
-// functionTypeCache is a cache keyed by token, helping to avoid creating superfluous symbol objects.
-var functionTypeCache = make(map[tokens.Type]*FunctionType)
-
 // NewFunctionType returns an existing type symbol from the cache, if one exists, or allocates a new one otherwise.
 func NewFunctionType(params []Type, ret Type) *FunctionType {
 	var paramsn []tokens.TypeName
@@ -282,8 +296,10 @@ func NewFunctionType(params []Type, ret Type) *FunctionType {
 		tok := ret.TypeToken()
 		rett = &tok
 	}
-
 	tok := tokens.NewFunctionTypeToken(paramst, rett)
+
+	typeCacheLock.Lock()
+	defer typeCacheLock.Unlock()
 	if fnc, has := functionTypeCache[tok]; has {
 		return fnc
 	}
@@ -321,10 +337,9 @@ func (node *ModuleType) Computed() bool              { return false }
 func (node *ModuleType) HasValue() bool              { return true }
 func (node *ModuleType) String() string              { return string(node.Token()) }
 
-// moduleTypeCache is a cache keyed by module, helping to avoid creating superfluous symbol objects.
-var moduleTypeCache = make(map[*Module]*ModuleType)
-
 func NewModuleType(m *Module) *ModuleType {
+	typeCacheLock.Lock()
+	defer typeCacheLock.Unlock()
 	if mtype, has := moduleTypeCache[m]; has {
 		return mtype
 	}
@@ -360,10 +375,9 @@ func (node *PrototypeType) Computed() bool              { return false }
 func (node *PrototypeType) HasValue() bool              { return true }
 func (node *PrototypeType) String() string              { return string(node.Token()) }
 
-// prototypeTypeCache is a cache keyed by token, helping to avoid creating superfluous symbol objects.
-var prototypeTypeCache = make(map[Type]*PrototypeType)
-
 func NewPrototypeType(t Type) *PrototypeType {
+	typeCacheLock.Lock()
+	defer typeCacheLock.Unlock()
 	if proto, has := prototypeTypeCache[t]; has {
 		return proto
 	}

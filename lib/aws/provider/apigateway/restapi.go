@@ -56,8 +56,8 @@ type restAPIProvider struct {
 }
 
 // Check validates that the given property bag is valid for a resource of the given type.
-func (p *restAPIProvider) Check(ctx context.Context, obj *apigateway.RestAPI) ([]error, error) {
-	return nil, nil
+func (p *restAPIProvider) Check(ctx context.Context, obj *apigateway.RestAPI, property string) error {
+	return nil
 }
 
 // Create allocates a new instance of the provided resource and returns its unique ID afterwards.  (The input ID
@@ -189,11 +189,24 @@ func (p *restAPIProvider) Delete(ctx context.Context, id resource.ID) error {
 		return err
 	}
 	fmt.Printf("Deleting APIGateway RestAPI '%v'\n", id)
-	_, err = p.ctx.APIGateway().DeleteRestApi(&awsapigateway.DeleteRestApiInput{
-		RestApiId: aws.String(restAPIID),
+	succ, err := awsctx.RetryUntilLong(p.ctx, func() (bool, error) {
+		fmt.Printf("Waiting for RestAPI %v to be deleted\n", id)
+		_, err = p.ctx.APIGateway().DeleteRestApi(&awsapigateway.DeleteRestApiInput{
+			RestApiId: aws.String(restAPIID),
+		})
+		if err != nil {
+			if awsctx.IsAWSError(err, "TooManyRequestsException") {
+				return false, nil
+			}
+			return false, err
+		}
+		return true, nil
 	})
 	if err != nil {
 		return err
+	}
+	if !succ {
+		return fmt.Errorf("Timed out waiting for RestAPI to become ready")
 	}
 	return nil
 }

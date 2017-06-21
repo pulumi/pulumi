@@ -73,7 +73,7 @@ const MethodToken = tokens.Type("aws:apigateway/method:Method")
 
 // MethodProviderOps is a pluggable interface for Method-related management functionality.
 type MethodProviderOps interface {
-    Check(ctx context.Context, obj *Method) ([]error, error)
+    Check(ctx context.Context, obj *Method, property string) error
     Create(ctx context.Context, obj *Method) (resource.ID, error)
     Get(ctx context.Context, id resource.ID) (*Method, error)
     InspectChange(ctx context.Context,
@@ -101,9 +101,75 @@ func (p *MethodProvider) Check(
     if err != nil {
         return plugin.NewCheckResponse(err), nil
     }
-    if failures, err := p.ops.Check(ctx, obj); err != nil {
-        return nil, err
-    } else if len(failures) > 0 {
+    var failures []error
+    unks := req.GetUnknowns()
+    if !unks["name"] {
+        if failure := p.ops.Check(ctx, obj, "name"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Method", "name", failure))
+        }
+    }
+    if !unks["httpMethod"] {
+        if failure := p.ops.Check(ctx, obj, "httpMethod"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Method", "httpMethod", failure))
+        }
+    }
+    if !unks["apiResource"] {
+        if failure := p.ops.Check(ctx, obj, "apiResource"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Method", "apiResource", failure))
+        }
+    }
+    if !unks["restAPI"] {
+        if failure := p.ops.Check(ctx, obj, "restAPI"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Method", "restAPI", failure))
+        }
+    }
+    if !unks["apiKeyRequired"] {
+        if failure := p.ops.Check(ctx, obj, "apiKeyRequired"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Method", "apiKeyRequired", failure))
+        }
+    }
+    if !unks["authorizationType"] {
+        if failure := p.ops.Check(ctx, obj, "authorizationType"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Method", "authorizationType", failure))
+        }
+    }
+    if !unks["authorizer"] {
+        if failure := p.ops.Check(ctx, obj, "authorizer"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Method", "authorizer", failure))
+        }
+    }
+    if !unks["integration"] {
+        if failure := p.ops.Check(ctx, obj, "integration"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Method", "integration", failure))
+        }
+    }
+    if !unks["methodResponses"] {
+        if failure := p.ops.Check(ctx, obj, "methodResponses"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Method", "methodResponses", failure))
+        }
+    }
+    if !unks["requestModels"] {
+        if failure := p.ops.Check(ctx, obj, "requestModels"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Method", "requestModels", failure))
+        }
+    }
+    if !unks["requestParameters"] {
+        if failure := p.ops.Check(ctx, obj, "requestParameters"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Method", "requestParameters", failure))
+        }
+    }
+    if len(failures) > 0 {
         return plugin.NewCheckResponse(resource.NewErrors(failures)), nil
     }
     return plugin.NewCheckResponse(nil), nil

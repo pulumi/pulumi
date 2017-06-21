@@ -42,7 +42,7 @@ type provider struct {
 
 // NewProvider attempts to bind to a given package's resource plugin and then creates a gRPC connection to it.  If the
 // plugin could not be found, or an error occurs while creating the child process, an error is returned.
-func NewProvider(ctx *Context, pkg tokens.Package) (Provider, error) {
+func NewProvider(host Host, ctx *Context, pkg tokens.Package) (Provider, error) {
 	// Setup the search paths; first, the naked name (found on the PATH); next, the fully qualified name.
 	srvexe := providerPrefix + "-" + strings.Replace(string(pkg), tokens.QNameDelimiter, "_", -1)
 	paths := []string{
@@ -52,7 +52,7 @@ func NewProvider(ctx *Context, pkg tokens.Package) (Provider, error) {
 	}
 
 	// Now go ahead and attempt to load the plugin.
-	plug, err := newPlugin(ctx, paths, fmt.Sprintf("resource[%v]", pkg))
+	plug, err := newPlugin(host, ctx, paths, fmt.Sprintf("resource[%v]", pkg))
 	if err != nil {
 		return nil, err
 	}

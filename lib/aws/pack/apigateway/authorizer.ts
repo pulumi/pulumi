@@ -34,6 +34,14 @@ export class Authorizer extends lumi.NamedResource implements AuthorizerArgs {
         this.providers = args.providers;
         this.restAPI = args.restAPI;
     }
+
+    public static get(id: lumi.ID): Authorizer {
+        return <any>undefined; // functionality provided by the runtime
+    }
+
+    public static query(q: any): Authorizer[] {
+        return <any>undefined; // functionality provided by the runtime
+    }
 }
 
 export interface AuthorizerArgs {

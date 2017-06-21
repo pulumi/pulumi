@@ -13,25 +13,29 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-export type ID = string;
-export type URN = string;
+package resource
 
-// Resource represents a class whose CRUD operations are implemented by a provider plugin.
-export abstract class Resource {
-    public readonly id: ID;   // the provider-assigned unique ID (initialized by the runtime).
-    public readonly urn: URN; // the Lumi URN (initialized by the runtime).
+import (
+	"strings"
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+)
+
+func Test_NewUniqueHex(t *testing.T) {
+	prefix := "prefix"
+	randlen := 20
+	maxlen := 100
+	id := NewUniqueHex(prefix, maxlen, randlen)
+	assert.Equal(t, len(prefix)+randlen*2, len(id))
+	assert.Equal(t, true, strings.HasPrefix(id, prefix))
 }
 
-// NamedResource is a kind of resource that has a friendly resource name associated with it.
-export abstract class NamedResource extends Resource {
-    public readonly name: string;
-
-    constructor(name: string) {
-        super();
-        if (name === undefined || name === "") {
-            throw new Error("Named resources must have a name");
-        }
-        this.name = name;
-    }
+func Test_NewUniqueHex_Maxlen(t *testing.T) {
+	prefix := "prefix"
+	randlen := 20
+	maxlen := 20
+	id := NewUniqueHex(prefix, maxlen, randlen)
+	assert.Equal(t, maxlen, len(id))
+	assert.Equal(t, true, strings.HasPrefix(id, prefix))
 }
-

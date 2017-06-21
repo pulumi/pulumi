@@ -25,7 +25,7 @@ const SecurityGroupToken = tokens.Type("aws:ec2/securityGroup:SecurityGroup")
 
 // SecurityGroupProviderOps is a pluggable interface for SecurityGroup-related management functionality.
 type SecurityGroupProviderOps interface {
-    Check(ctx context.Context, obj *SecurityGroup) ([]error, error)
+    Check(ctx context.Context, obj *SecurityGroup, property string) error
     Create(ctx context.Context, obj *SecurityGroup) (resource.ID, error)
     Get(ctx context.Context, id resource.ID) (*SecurityGroup, error)
     InspectChange(ctx context.Context,
@@ -53,9 +53,45 @@ func (p *SecurityGroupProvider) Check(
     if err != nil {
         return plugin.NewCheckResponse(err), nil
     }
-    if failures, err := p.ops.Check(ctx, obj); err != nil {
-        return nil, err
-    } else if len(failures) > 0 {
+    var failures []error
+    unks := req.GetUnknowns()
+    if !unks["name"] {
+        if failure := p.ops.Check(ctx, obj, "name"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("SecurityGroup", "name", failure))
+        }
+    }
+    if !unks["groupDescription"] {
+        if failure := p.ops.Check(ctx, obj, "groupDescription"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("SecurityGroup", "groupDescription", failure))
+        }
+    }
+    if !unks["groupName"] {
+        if failure := p.ops.Check(ctx, obj, "groupName"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("SecurityGroup", "groupName", failure))
+        }
+    }
+    if !unks["vpc"] {
+        if failure := p.ops.Check(ctx, obj, "vpc"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("SecurityGroup", "vpc", failure))
+        }
+    }
+    if !unks["securityGroupEgress"] {
+        if failure := p.ops.Check(ctx, obj, "securityGroupEgress"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("SecurityGroup", "securityGroupEgress", failure))
+        }
+    }
+    if !unks["securityGroupIngress"] {
+        if failure := p.ops.Check(ctx, obj, "securityGroupIngress"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("SecurityGroup", "securityGroupIngress", failure))
+        }
+    }
+    if len(failures) > 0 {
         return plugin.NewCheckResponse(resource.NewErrors(failures)), nil
     }
     return plugin.NewCheckResponse(nil), nil

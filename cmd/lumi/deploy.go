@@ -37,7 +37,8 @@ func newDeployCmd() *cobra.Command {
 	var dryRun bool
 	var env string
 	var showConfig bool
-	var showReplaceSteps bool
+	var showReads bool
+	var showReplaceDeletes bool
 	var showSames bool
 	var summary bool
 	var output string
@@ -62,14 +63,15 @@ func newDeployCmd() *cobra.Command {
 				return err
 			}
 			deployLatest(cmd, info, deployOptions{
-				Delete:           false,
-				DryRun:           dryRun,
-				Analyzers:        analyzers,
-				ShowConfig:       showConfig,
-				ShowReplaceSteps: showReplaceSteps,
-				ShowSames:        showSames,
-				Summary:          summary,
-				Output:           output,
+				Delete:             false,
+				DryRun:             dryRun,
+				Analyzers:          analyzers,
+				ShowConfig:         showConfig,
+				ShowReads:          showReads,
+				ShowReplaceDeletes: showReplaceDeletes,
+				ShowSames:          showSames,
+				Summary:            summary,
+				Output:             output,
 			})
 			return nil
 		}),
@@ -88,7 +90,10 @@ func newDeployCmd() *cobra.Command {
 		&showConfig, "show-config", false,
 		"Show configuration keys and variables")
 	cmd.PersistentFlags().BoolVar(
-		&showReplaceSteps, "show-replace-steps", false,
+		&showReads, "show-reads", false,
+		"Show resources that will be read, in addition to those that will be modified")
+	cmd.PersistentFlags().BoolVar(
+		&showReplaceDeletes, "show-replace-deletes", false,
 		"Show detailed resource replacement creates and deletes; normally shows as a single step")
 	cmd.PersistentFlags().BoolVar(
 		&showSames, "show-sames", false,
@@ -104,23 +109,30 @@ func newDeployCmd() *cobra.Command {
 }
 
 type deployOptions struct {
-	Create           bool     // true if we are creating resources.
-	Delete           bool     // true if we are deleting resources.
-	DryRun           bool     // true if we should just print the plan without performing it.
-	Analyzers        []string // an optional set of analyzers to run as part of this deployment.
-	ShowConfig       bool     // true to show the configuration variables being used.
-	ShowReplaceSteps bool     // true to show the replacement steps in the plan.
-	ShowSames        bool     // true to show the resources that aren't updated, in addition to those that are.
-	Summary          bool     // true if we should only summarize resources and operations.
-	DOT              bool     // true if we should print the DOT file for this plan.
-	Output           string   // the place to store the output, if any.
+	Create             bool     // true if we are creating resources.
+	Delete             bool     // true if we are deleting resources.
+	DryRun             bool     // true if we should just print the plan without performing it.
+	Analyzers          []string // an optional set of analyzers to run as part of this deployment.
+	ShowConfig         bool     // true to show the configuration variables being used.
+	ShowReads          bool     // true to show the read-only steps in the plan.
+	ShowReplaceDeletes bool     // true to show the replacement deletion steps in the plan.
+	ShowSames          bool     // true to show the resources that aren't updated, in addition to those that are.
+	Summary            bool     // true if we should only summarize resources and operations.
+	DOT                bool     // true if we should print the DOT file for this plan.
+	Output             string   // the place to store the output, if any.
 }
 
-func deployLatest(cmd *cobra.Command, info *envCmdInfo, opts deployOptions) {
-	if result := plan(cmd, info, opts); result != nil {
+func deployLatest(cmd *cobra.Command, info *envCmdInfo, opts deployOptions) error {
+	result, err := plan(cmd, info, opts)
+	if err != nil {
+		return err
+	}
+	if result != nil {
 		if opts.DryRun {
 			// If a dry run, just print the plan, don't actually carry out the deployment.
-			printPlan(result, opts)
+			if err := printPlan(result, opts); err != nil {
+				return err
+			}
 		} else {
 			// Otherwise, we will actually deploy the latest bits.
 			var header bytes.Buffer
@@ -130,8 +142,8 @@ func deployLatest(cmd *cobra.Command, info *envCmdInfo, opts deployOptions) {
 
 			// Create an object to track progress and perform the actual operations.
 			start := time.Now()
-			progress := newProgress(opts.Summary)
-			summary, _, _, _ := result.Plan.Apply(progress)
+			progress := newProgress(opts)
+			summary, _, _, err := result.Plan.Apply(progress)
 			contract.Assert(summary != nil)
 			empty := (summary.Steps() == 0) // if no step is returned, it was empty.
 
@@ -141,7 +153,7 @@ func deployLatest(cmd *cobra.Command, info *envCmdInfo, opts deployOptions) {
 				cmdutil.Diag().Infof(diag.Message("no resources need to be updated"))
 			} else {
 				// Print out the total number of steps performed (and their kinds), the duration, and any summary info.
-				printSummary(&footer, progress.Ops, opts.ShowReplaceSteps, false)
+				printSummary(&footer, progress.Ops, false)
 				footer.WriteString(fmt.Sprintf("%vDeployment duration: %v%v\n",
 					colors.SpecUnimportant, time.Since(start), colors.Reset))
 			}
@@ -158,8 +170,10 @@ func deployLatest(cmd *cobra.Command, info *envCmdInfo, opts deployOptions) {
 			saveEnv(targ, summary.Snap(), opts.Output, true /*overwrite*/)
 
 			fmt.Print(colors.Colorize(&footer))
+			return err
 		}
 	}
+	return nil
 }
 
 // deployProgress pretty-prints the plan application process as it goes.
@@ -167,18 +181,18 @@ type deployProgress struct {
 	Steps        int
 	Ops          map[deploy.StepOp]int
 	MaybeCorrupt bool
-	Summary      bool
+	Opts         deployOptions
 }
 
-func newProgress(summary bool) *deployProgress {
+func newProgress(opts deployOptions) *deployProgress {
 	return &deployProgress{
-		Steps:   0,
-		Ops:     make(map[deploy.StepOp]int),
-		Summary: summary,
+		Steps: 0,
+		Ops:   make(map[deploy.StepOp]int),
+		Opts:  opts,
 	}
 }
 
-func (prog *deployProgress) Before(step *deploy.Step) {
+func (prog *deployProgress) Before(step deploy.Step) {
 	stepop := step.Op()
 	if stepop == deploy.OpSame {
 		return
@@ -188,17 +202,18 @@ func (prog *deployProgress) Before(step *deploy.Step) {
 	stepnum := prog.Steps + 1
 
 	var extra string
-	if stepop == deploy.OpReplaceCreate || stepop == deploy.OpReplaceDelete {
+	if stepop == deploy.OpReplace ||
+		(stepop == deploy.OpDelete && step.(*deploy.DeleteStep).Replaced()) {
 		extra = " (part of a replacement change)"
 	}
 
 	var b bytes.Buffer
 	b.WriteString(fmt.Sprintf("Applying step #%v [%v]%v\n", stepnum, stepop, extra))
-	printStep(&b, step, prog.Summary, false, "")
+	printStep(&b, step, prog.Opts.Summary, false, "")
 	fmt.Print(colors.Colorize(&b))
 }
 
-func (prog *deployProgress) After(step *deploy.Step, status resource.Status, err error) {
+func (prog *deployProgress) After(step deploy.Step, status resource.Status, err error) {
 	stepop := step.Op()
 	if err != nil {
 		// Issue a true, bonafide error.
@@ -222,7 +237,7 @@ func (prog *deployProgress) After(step *deploy.Step, status resource.Status, err
 		b.WriteString(colors.Reset)
 		b.WriteString("\n")
 		fmt.Printf(colors.Colorize(&b))
-	} else if stepop != deploy.OpSame {
+	} else if shouldTrack(step, prog.Opts) {
 		// Increment the counters.
 		prog.Steps++
 		prog.Ops[stepop]++

@@ -26,6 +26,14 @@ export class Topic extends lumi.NamedResource implements TopicArgs {
             this.subscription = args.subscription;
         }
     }
+
+    public static get(id: lumi.ID): Topic {
+        return <any>undefined; // functionality provided by the runtime
+    }
+
+    public static query(q: any): Topic[] {
+        return <any>undefined; // functionality provided by the runtime
+    }
 }
 
 export interface TopicArgs {

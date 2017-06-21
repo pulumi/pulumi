@@ -40,7 +40,9 @@ let role = new aws.iam.Role("mylambdarole", {
 
 let lambda = new aws.lambda.Function("mylambda", {
   code: new lumi.asset.AssetArchive({
-    "index.js": new lumi.asset.String("exports.handler = (ev, ctx, cb) => cb('Hello, world!');"),
+    "index.js": new lumi.asset.String(
+        "exports.handler = (e, c, cb) => cb({statusCode: 200, body: 'Hello, world!'});",
+    ),
   }),
   role: role,
   handler: "index.handler",
@@ -68,8 +70,6 @@ let music = new aws.dynamodb.Table("music", {
 ///////////////////
 let region = aws.config.requireRegion();
 
-let lambdaarn = "arn:aws:lambda:us-east-1:490047557317:function:webapi-test-func"; // should be lambda.arn
-
 let swaggerSpec = {
   swagger: "2.0",
   info: { title: "myrestapi", version: "1.0" },
@@ -77,7 +77,7 @@ let swaggerSpec = {
     "/bambam": {
       "x-amazon-apigateway-any-method": {
         "x-amazon-apigateway-integration": {
-          uri: "arn:aws:apigateway:" + region + ":lambda:path/2015-03-31/functions/" + lambdaarn + "/invocations",
+          uri: "arn:aws:apigateway:" + region + ":lambda:path/2015-03-31/functions/" + lambda.arn + "/invocations",
           passthroughBehavior: "when_no_match",
           httpMethod: "POST",
           type: "aws_proxy",

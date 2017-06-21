@@ -34,6 +34,11 @@ func NewPropertyMap() *PropertyMap {
 	}
 }
 
+// Len returns the length of the property map.
+func (props *PropertyMap) Len() int {
+	return len(props.m)
+}
+
 // Stable returns the keys for the target map in a stable order.
 func (props *PropertyMap) Stable() []PropertyKey {
 	return props.chrono // chronological order is already stable, so just return that.
