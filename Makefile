@@ -1,3 +1,5 @@
+.SHELLFLAGS=-e
+
 PROJECT=github.com/pulumi/lumi
 PROJECT_PKGS=$(shell go list ./cmd/... ./pkg/... | grep -v /vendor/)
 TESTPARALLELISM=10
@@ -34,6 +36,7 @@ install:
 .PHONY: lint
 lint:
 	@echo "\033[0;32mLINT:\033[0m"
+	which gometalinter >/dev/null
 	gometalinter pkg/... | sort ; exit "$${PIPESTATUS[0]}"
 	gometalinter cmd/lumi/... | sort ; exit "$${PIPESTATUS[0]}"
 	gometalinter cmd/lumidl/... | sort ; exit "$${PIPESTATUS[0]}"
@@ -47,6 +50,7 @@ LINT_SUPPRESS="or be unexported|cyclomatic complexity|Subprocess launching with 
 .PHONY: lint_quiet
 lint_quiet:
 	@echo "\033[0;32mLINT (quiet):\033[0m"
+	which gometalinter >/dev/null
 	gometalinter pkg/... | grep -vE ${LINT_SUPPRESS} | sort
 	gometalinter cmd/lumi/... | grep -vE ${LINT_SUPPRESS} | sort
 	gometalinter cmd/lumidl/... | grep -vE ${LINT_SUPPRESS} | sort

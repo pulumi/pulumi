@@ -3,8 +3,9 @@ go: 1.8.2
 before_install:
     # GoDep for Go dependency management.
     - go get -v github.com/tools/godep
-    # Golint for good Go hygiene.
-    - go get -v github.com/golang/lint/golint
+    # Gometalinter for good Go linting/hygiene.
+    - go get -v github.com/alecthomas/gometalinter
+    - gometalinter --install
     # Node.js 7.x for LumiJS and associated JS code.
     - nvm install v7
     # Install Yarn as per https://yarnpkg.com/lang/en/docs/install-ci/#travis-tab.

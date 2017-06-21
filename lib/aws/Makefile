@@ -48,6 +48,7 @@ install:
 lint:
 	@echo "\033[0;32mLINT:\033[0m"
 	./pack/node_modules/.bin/tslint './pack/**/*.ts' --exclude='./pack/node_modules/**'
+	which gometalinter >/dev/null
 	gometalinter provider/... | sort ; exit "$${PIPESTATUS[0]}"
 
 # In quiet mode, suppress some messages.
@@ -59,6 +60,7 @@ LINT_SUPPRESS="or be unexported|cyclomatic complexity"
 lint_quiet:
 	@echo "\033[0;32mLINT (quiet):\033[0m"
 	./pack/node_modules/.bin/tslint './pack/**/*.ts' --exclude='./pack/node_modules/**'
+	which gometalinter >/dev/null
 	gometalinter provider/... | grep -vE ${LINT_SUPPRESS} | sort
 	@test -z "$$(gometalinter provider/... | grep -vE ${LINT_SUPPRESS})"
 	@echo "\033[0;33mgolint was run quietly; to run with noisy errors, run 'make lint'\033[0m"
