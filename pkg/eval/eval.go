@@ -1198,7 +1198,7 @@ func (e *evaluator) evalLValueExpression(node ast.Expression) (*Location, *rt.Un
 	case *ast.UnaryOperatorExpression:
 		contract.Assert(n.Operator == ast.OpDereference)
 		obj, uw := e.evalUnaryOperatorExpressionFor(n, true)
-		return &Location{e: e, Obj: obj}, uw
+		return &Location{e: e, obj: obj}, uw
 	default:
 		contract.Failf("Unrecognized l-value expression type: %v", node.GetKind())
 		return nil, nil
@@ -1400,46 +1400,46 @@ func (e *evaluator) newLocation(node diag.Diagable, sym symbols.Symbol,
 
 	return &Location{
 		e:      e,
-		This:   this,
-		Name:   sym.Name(),
-		Lval:   lval,
-		Obj:    obj,
-		Getter: pv.Getter(),
-		Setter: pv.Setter(),
+		this:   this,
+		name:   sym.Name(),
+		lval:   lval,
+		obj:    obj,
+		getter: pv.Getter(),
+		setter: pv.Setter(),
 	}
 }
 
 type Location struct {
 	e      *evaluator       // the evaluator that produced this location.
-	This   *rt.Object       // the target object, if any.
-	Name   tokens.Name      // the simple name of the variable.
-	Lval   bool             // whether the result is an lval.
-	Obj    *rt.Object       // the resulting object (pointer if lval, object otherwise).
-	Getter symbols.Function // the getter function, if any.
-	Setter symbols.Function // the setter function, if any.
+	this   *rt.Object       // the target object, if any.
+	name   tokens.Name      // the simple name of the variable.
+	lval   bool             // whether the result is an lval.
+	obj    *rt.Object       // the resulting object (pointer if lval, object otherwise).
+	getter symbols.Function // the getter function, if any.
+	setter symbols.Function // the setter function, if any.
 }
 
 func (loc *Location) Get(node diag.Diagable) (*rt.Object, *rt.Unwind) {
-	if loc.Getter != nil {
+	if loc.getter != nil {
 		// If there is a getter, invoke it.
-		contract.Assert(loc.This != nil)
-		return loc.e.evalCallSymbol(node, loc.Getter, loc.This)
+		contract.Assert(loc.this != nil)
+		return loc.e.evalCallSymbol(node, loc.getter, loc.this)
 	}
 
 	// Otherwise, just return the object directly.
-	return loc.Obj, nil
+	return loc.obj, nil
 }
 
 func (loc *Location) Set(node diag.Diagable, val *rt.Object) *rt.Unwind {
-	if loc.Setter != nil {
+	if loc.setter != nil {
 		// If the location has a setter, use that for the assignment.
-		contract.Assert(loc.This != nil)
-		if _, uw := loc.e.evalCallSymbol(node, loc.Setter, loc.This, val); uw != nil {
+		contract.Assert(loc.this != nil)
+		if _, uw := loc.e.evalCallSymbol(node, loc.setter, loc.this, val); uw != nil {
 			return uw
 		}
 	} else {
 		// Otherwise, perform a straightforward assignment, invoking the variable assignment if necessary.
-		ptr := loc.Obj.PointerValue()
+		ptr := loc.obj.PointerValue()
 		if ptr.Readonly() {
 			// If the pointer is readonly, however, we will disallow the assignment.
 			loc.e.Diag().Errorf(errors.ErrorIllegalReadonlyLValue.At(node))
@@ -1451,14 +1451,14 @@ func (loc *Location) Set(node diag.Diagable, val *rt.Object) *rt.Unwind {
 }
 
 func (loc *Location) Read(node diag.Diagable) (*rt.Object, *rt.Unwind) {
-	if loc.Getter != nil {
+	if loc.getter != nil {
 		// If the location has a getter, use that for the assignment.
-		contract.Assert(loc.This != nil)
-		return loc.e.evalCallSymbol(node, loc.Getter, loc.This)
+		contract.Assert(loc.this != nil)
+		return loc.e.evalCallSymbol(node, loc.getter, loc.this)
 	}
 	// Otherwise, just return the object directly.
-	contract.Assertf(loc.Obj != nil, "Unexpected nil object from location ready by %v", node)
-	return loc.Obj, nil
+	contract.Assertf(loc.obj != nil, "Unexpected nil object from location ready by %v", node)
+	return loc.obj, nil
 }
 
 // evalLoadLocation evaluates and loads information about the target.  It takes an lval bool which
@@ -1739,12 +1739,12 @@ func (e *evaluator) evalLoadDynamicCore(node ast.Node, objexpr *ast.Expression, 
 
 	return &Location{
 		e:      e,
-		This:   this,
-		Name:   key,
-		Lval:   lval,
-		Obj:    obj,
-		Getter: pv.Getter(),
-		Setter: pv.Setter(),
+		this:   this,
+		name:   key,
+		lval:   lval,
+		obj:    obj,
+		getter: pv.Getter(),
+		setter: pv.Setter(),
 	}, nil
 }
 

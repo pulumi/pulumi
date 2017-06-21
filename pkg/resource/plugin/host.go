@@ -20,6 +20,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/pulumi/lumi/pkg/diag"
+	"github.com/pulumi/lumi/pkg/eval/rt"
 	"github.com/pulumi/lumi/pkg/resource"
 	"github.com/pulumi/lumi/pkg/tokens"
 	"github.com/pulumi/lumi/pkg/util/contract"
@@ -84,13 +85,19 @@ func (host *defaultHost) ReadLocation(tok tokens.Token) (resource.PropertyValue,
 	if sym == nil {
 		return resource.PropertyValue{}, errors.Errorf("Location '%v' was not found", tok)
 	}
+
+	var obj *rt.Object
 	loc, uw := e.LoadLocation(nil, sym, nil, false)
+	if uw == nil {
+		obj, uw = loc.Read(nil)
+	}
 	if uw != nil {
 		contract.Assert(uw.Throw())
 		return resource.PropertyValue{},
 			errors.Errorf("An error occurred reading location '%v': ", tok, uw.Thrown().Message(host.ctx.Diag))
 	}
-	return resource.CopyObject(loc.Obj), nil
+
+	return resource.CopyObject(obj), nil
 }
 
 func (host *defaultHost) Analyzer(name tokens.QName) (Analyzer, error) {
