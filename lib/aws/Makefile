@@ -66,6 +66,7 @@ lint_quiet:
 	which ${GOMETALINTERBIN} >/dev/null
 	$(GOMETALINTER) ./provider/... | grep -vE ${LINT_SUPPRESS} | sort ; exit $$(($${PIPESTATUS[1]}-1))
 	@echo "\033[0;33mgolint was run quietly; to run with noisy errors, run 'make lint'\033[0m"
+	@./pack/node_modules/.bin/tslint lib/aws/pack/...
 
 .PHONY: vet
 vet:
