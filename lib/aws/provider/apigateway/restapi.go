@@ -88,9 +88,24 @@ func (p *restAPIProvider) Create(ctx context.Context, obj *apigateway.RestAPI) (
 		Description: obj.Description,
 		CloneFrom:   obj.CloneFrom.StringPtr(),
 	}
-	restAPI, err := p.ctx.APIGateway().CreateRestApi(create)
+	var restAPI *awsapigateway.RestApi
+	succ, err := awsctx.RetryUntilLong(p.ctx, func() (bool, error) {
+		var err error
+		fmt.Printf("Waiting for RestAPI %v to be created\n", apiName)
+		restAPI, err = p.ctx.APIGateway().CreateRestApi(create)
+		if err != nil {
+			if awsctx.IsAWSError(err, "TooManyRequestsException") {
+				return false, nil
+			}
+			return false, err
+		}
+		return true, nil
+	})
 	if err != nil {
 		return "", err
+	}
+	if !succ {
+		return "", fmt.Errorf("Timed out waiting for RestAPI to become ready")
 	}
 
 	// Next, if a body is specified, put the rest api contents
