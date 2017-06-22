@@ -100,7 +100,9 @@ func (src *evalSource) Iterate() (SourceIterator, error) {
 	src.plugctx.SetCurrentInterpreter(e)
 
 	// Now create the evaluator coroutine and prepare it to take its first step.
-	forkEval(src, rz, e)
+	if err := forkEval(src, rz, e); err != nil {
+		return nil, err
+	}
 
 	// Finally, return the fresh iterator that can take things from here.
 	return &evalSourceIterator{

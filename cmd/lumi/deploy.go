@@ -62,7 +62,7 @@ func newDeployCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			deployLatest(cmd, info, deployOptions{
+			err = deployLatest(cmd, info, deployOptions{
 				Destroy:            false,
 				DryRun:             dryRun,
 				Analyzers:          analyzers,
@@ -73,7 +73,7 @@ func newDeployCmd() *cobra.Command {
 				Summary:            summary,
 				Output:             output,
 			})
-			return nil
+			return err
 		}),
 	}
 
