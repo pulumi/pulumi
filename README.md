@@ -39,7 +39,7 @@ Lumi is written in Go, uses Godep for dependency management, and GoMetaLinter fo
 * [Go](https://golang.org/doc/install): https://golang.org/dl
 * [Godep](https://github.com/tools/godep): `$ go get -v github.com/tools/godep`
 * [GoMetaLinter](https://github.com/alecthomas/gometalinter):
-    - `$ go get -v github.com/golang/alecthomas/gometalinter`
+    - `$ go get -v github.com/alecthomas/gometalinter`
     - `$ gometalinter --install`
 
 ### Building and Testing
