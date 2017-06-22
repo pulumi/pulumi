@@ -163,9 +163,7 @@ func execPlugin(host Host, bin string) (*plugin, error) {
 
 func (p *plugin) Close() error {
 	closerr := p.Conn.Close()
+	contract.IgnoreError(closerr)
 	// IDEA: consider a more graceful termination than just SIGKILL.
-	if err := p.Proc.Kill(); err != nil {
-		return err
-	}
-	return closerr
+	return p.Proc.Kill()
 }

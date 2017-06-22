@@ -79,6 +79,7 @@ func newPlanCmd() *cobra.Command {
 				return err
 			}
 			if result != nil {
+				defer contract.IgnoreClose(result)
 				if err := printPlan(result, opts); err != nil {
 					return err
 				}
@@ -152,14 +153,20 @@ func plan(cmd *cobra.Command, info *envCmdInfo, opts deployOptions) (*planResult
 	// Generate a plan; this API handles all interesting cases (create, update, delete).
 	plan := deploy.NewPlan(ctx, info.Target, info.Snapshot, source, analyzers)
 	return &planResult{
+		Ctx:  ctx,
 		Info: info,
 		Plan: plan,
 	}, nil
 }
 
 type planResult struct {
-	Info *envCmdInfo  // plan command information.
-	Plan *deploy.Plan // the plan created by this command.
+	Ctx  *plugin.Context // the context containing plugins and their state.
+	Info *envCmdInfo     // plan command information.
+	Plan *deploy.Plan    // the plan created by this command.
+}
+
+func (res *planResult) Close() error {
+	return res.Ctx.Close()
 }
 
 func printPlan(result *planResult, opts deployOptions) error {

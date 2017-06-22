@@ -127,6 +127,7 @@ func deployLatest(cmd *cobra.Command, info *envCmdInfo, opts deployOptions) erro
 		return err
 	}
 	if result != nil {
+		defer contract.IgnoreClose(result)
 		if opts.DryRun {
 			// If a dry run, just print the plan, don't actually carry out the deployment.
 			if err := printPlan(result, opts); err != nil {
