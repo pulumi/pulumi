@@ -1,5 +1,5 @@
 {
-    "Deadline": "120s",
+    "Deadline": "5m",
     "DisableAll": true,
     "Enable": [
         "aligncheck",
