@@ -98,7 +98,7 @@ func (g *RPCGenerator) EmitFile(file string, pkg *Package, members []Member) err
 	if err != nil {
 		return err
 	}
-	defer f.Close()
+	defer contract.IgnoreClose(f)
 	w := bufio.NewWriter(f)
 
 	// Emit a header into the file.
@@ -204,7 +204,8 @@ func (g *RPCGenerator) genFileBody(file string, pkg *Package, members []Member) 
 		g.EmitConstants(w, consts)
 	}
 
-	w.Flush()
+	err := w.Flush()
+	contract.IgnoreError(err)
 	return buffer.String()
 }
 

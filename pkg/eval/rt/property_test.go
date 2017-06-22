@@ -34,10 +34,7 @@ func TestStable(t *testing.T) {
 	}
 
 	// Observe an initial key ordering.
-	var observed []PropertyKey
-	for _, k := range props.Stable() {
-		observed = append(observed, k)
-	}
+	observed := props.Stable()
 
 	// Finally validate that the key ordering never changes (well, okay, check 100 iterations).
 	for i := 0; i < 100; i++ {

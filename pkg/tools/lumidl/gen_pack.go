@@ -121,7 +121,7 @@ func (g *PackGenerator) emitFileContents(file string, body string) error {
 	if err != nil {
 		return err
 	}
-	defer f.Close()
+	defer contract.IgnoreClose(f)
 	w := bufio.NewWriter(f)
 
 	// Emit a header into the file.
@@ -231,7 +231,8 @@ func (g *PackGenerator) genFileBody(members []Member) string {
 	}
 
 	writefmtln(w, "")
-	w.Flush()
+	err := w.Flush()
+	contract.IgnoreError(err)
 	return buffer.String()
 }
 

@@ -65,7 +65,7 @@ func newPlugin(host Host, ctx *Context, bins []string, prefix string) (*plugin, 
 		return nil, err
 	}
 
-	// For now, we will spawn goroutines that will spew STDOUT/STDERR to the relevent diag streams.
+	// For now, we will spawn goroutines that will spew STDOUT/STDERR to the relevant diag streams.
 	// TODO[pulumi/lumi#143]: eventually we want real progress reporting, etc., which will need to be done out of band
 	//     via RPC.  This will be particularly important when we parallelize the application of the resource graph.
 	tracers := map[io.Reader]struct {
@@ -97,7 +97,8 @@ func newPlugin(host Host, ctx *Context, bins []string, prefix string) (*plugin, 
 	for {
 		n, readerr := plug.Stdout.Read(b)
 		if readerr != nil {
-			plug.Proc.Kill()
+			killerr := plug.Proc.Kill()
+			contract.IgnoreError(killerr) // we are ignoring because the readerr trumps it.
 			if port == "" {
 				return nil, errors.Wrapf(readerr, "could not read plugin [%v] stdout", foundbin)
 			}
@@ -111,7 +112,8 @@ func newPlugin(host Host, ctx *Context, bins []string, prefix string) (*plugin, 
 
 	// Parse the output line (minus the '\n') to ensure it's a numeric port.
 	if _, err = strconv.Atoi(port); err != nil {
-		plug.Proc.Kill()
+		killerr := plug.Proc.Kill()
+		contract.IgnoreError(killerr) // ignoring the error because the existing one trumps it.
 		return nil, errors.Wrapf(
 			err, "%v plugin [%v] wrote a non-numeric port to stdout ('%v')", prefix, foundbin, port)
 	}

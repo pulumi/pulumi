@@ -21,11 +21,14 @@ import (
 	"go/types"
 	"os"
 	"path/filepath"
+
+	"github.com/pulumi/lumi/pkg/util/contract"
 )
 
 // writefmt wraps the bufio.Writer.WriteString function, but also performs fmt.Sprintf-style formatting.
 func writefmt(w *bufio.Writer, msg string, args ...interface{}) {
-	w.WriteString(fmt.Sprintf(msg, args...))
+	_, err := w.WriteString(fmt.Sprintf(msg, args...))
+	contract.IgnoreError(err)
 }
 
 // writefmtln wraps the bufio.Writer.WriteString function, performing fmt.Sprintf-style formatting and appending \n.

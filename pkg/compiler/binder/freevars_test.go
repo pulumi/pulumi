@@ -174,7 +174,7 @@ func TestFreeVars_Lambda(t *testing.T) {
 					},
 					CallExpressionNode: ast.CallExpressionNode{
 						Arguments: &[]*ast.CallArgument{
-							&ast.CallArgument{
+							{
 								Expr: &ast.LoadLocationExpression{
 									Name: &ast.Token{
 										Tok: tokens.Token("foo"),

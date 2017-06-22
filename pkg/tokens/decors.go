@@ -192,7 +192,8 @@ func parseNextArrayType(b *tokenBuffer) ArrayType {
 	return ArrayType{Tok: b.From(mark), Elem: elem}
 }
 
-// MapType is a type token that decorates a key and element type token to turn them into a map: `"map[" <Key> "]" <Elem>`.
+// MapType is a type token that decorates a key and element type token to turn them into a map:
+//  `"map[" <Key> "]" <Elem>`.
 type MapType struct {
 	Tok  Type // the full map type token.
 	Key  Type // the key portion of the map type token.
@@ -248,8 +249,8 @@ func parseNextMapType(b *tokenBuffer) MapType {
 	return MapType{Tok: b.From(mark), Key: key, Elem: elem}
 }
 
-// FunctionType is a type token that decorates a set of optional parameter and return tokens to turn them into a function
-// type: `(" [ <Param1> [ "," <ParamN> ]* ] ")" [ <Return> ]`).
+// FunctionType is a type token that decorates a set of optional parameter and return tokens to turn them into a
+// function type: `(" [ <Param1> [ "," <ParamN> ]* ] ")" [ <Return> ]`).
 type FunctionType struct {
 	Tok        Type   // the full map type token.
 	Parameters []Type // the parameter parts of the type token.

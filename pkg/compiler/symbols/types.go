@@ -128,8 +128,8 @@ func NewPointerType(elem Type) *PointerType {
 
 // ComputedType is a wrapper over an ordinary type that indicates a particular expression's value is not yet known and
 // that it will remain unknown until some future condition is met.  In many cases, the interpreter can speculate beyond
-// a computed value, producing even more derived computed values.  Eventually, of course, the real value must be known in
-// order to proceed (e.g., for conditionals), however even in these cases, the interpreter may choose to proceed.
+// a computed value, producing even more derived computed values.  Eventually, of course, the real value must be known
+// in order to proceed (e.g., for conditionals), however even in these cases, the interpreter may choose to proceed.
 type ComputedType struct {
 	Element Type // the real underlying type.
 }

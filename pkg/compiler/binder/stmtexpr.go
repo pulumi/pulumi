@@ -156,7 +156,7 @@ func (a *astBinder) isLValue(expr ast.Expression) bool {
 
 func (a *astBinder) checkImport(node *ast.Import) {
 	imptok := node.Referent
-	if !tokens.Token(imptok.Tok).HasModule() {
+	if !imptok.Tok.HasModule() {
 		a.b.Diag().Errorf(errors.ErrorMalformedToken.At(imptok),
 			"Module", imptok.Tok, "missing module part")
 	} else {
@@ -178,7 +178,7 @@ func (a *astBinder) checkBlock(node *ast.Block) {
 func (a *astBinder) checkBreakStatement(node *ast.BreakStatement) {
 	// If the break specifies a label, ensure that it exists.
 	if node.Label != nil {
-		label := tokens.Name(node.Label.Ident)
+		label := node.Label.Ident
 		if _, has := a.labels[label]; !has {
 			a.b.Diag().Errorf(errors.ErrorUnknownJumpLabel.At(node), label, "break")
 		}
@@ -188,7 +188,7 @@ func (a *astBinder) checkBreakStatement(node *ast.BreakStatement) {
 func (a *astBinder) checkContinueStatement(node *ast.ContinueStatement) {
 	// If the continue specifies a label, ensure that it exists.
 	if node.Label != nil {
-		label := tokens.Name(node.Label.Ident)
+		label := node.Label.Ident
 		if _, has := a.labels[label]; !has {
 			a.b.Diag().Errorf(errors.ErrorUnknownJumpLabel.At(node), label, "continue")
 		}
@@ -211,7 +211,7 @@ func (a *astBinder) visitLocalVariable(node *ast.LocalVariable) {
 
 func (a *astBinder) visitLabeledStatement(node *ast.LabeledStatement) {
 	// Ensure this label doesn't already exist and then register it.
-	label := tokens.Name(node.Label.Ident)
+	label := node.Label.Ident
 	if other, has := a.labels[label]; has {
 		a.b.Diag().Errorf(errors.ErrorDuplicateLabel.At(node), label, other)
 	}

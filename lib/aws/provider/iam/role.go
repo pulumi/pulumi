@@ -202,14 +202,10 @@ func (p *roleProvider) Update(ctx context.Context, id resource.ID,
 		var detaches []awscommon.ARN
 		var attaches []awscommon.ARN
 		if diff.Added(iam.Role_ManagedPolicyARNs) {
-			for _, policy := range *new.ManagedPolicyARNs {
-				attaches = append(attaches, policy)
-			}
+			attaches = append(attaches, *new.ManagedPolicyARNs...)
 		}
 		if diff.Deleted(iam.Role_ManagedPolicyARNs) {
-			for _, policy := range *old.ManagedPolicyARNs {
-				detaches = append(detaches, policy)
-			}
+			detaches = append(detaches, *old.ManagedPolicyARNs...)
 		}
 		if diff.Updated(iam.Role_ManagedPolicyARNs) {
 			arrayDiff := diff.Updates[iam.Role_ManagedPolicyARNs].Array

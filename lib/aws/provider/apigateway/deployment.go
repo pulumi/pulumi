@@ -145,12 +145,9 @@ func (p *deploymentProvider) Delete(ctx context.Context, id resource.ID) error {
 	if err != nil {
 		return err
 	}
-	_, err = p.ctx.APIGateway().DeleteDeployment(&awsapigateway.DeleteDeploymentInput{
+	_, delerr := p.ctx.APIGateway().DeleteDeployment(&awsapigateway.DeleteDeploymentInput{
 		RestApiId:    aws.String(restAPIID),
 		DeploymentId: aws.String(deploymentID),
 	})
-	if err != nil {
-		return err
-	}
-	return nil
+	return delerr
 }

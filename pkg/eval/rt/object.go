@@ -713,7 +713,7 @@ type Intrinsic struct {
 
 var _ symbols.Function = (*Intrinsic)(nil)
 
-func (intrin *Intrinsic) Name() tokens.Name                { return tokens.Name(intrin.tok.Name()) }
+func (intrin *Intrinsic) Name() tokens.Name                { return intrin.tok.Name() }
 func (intrin *Intrinsic) Token() tokens.Token              { return intrin.tok }
 func (intrin *Intrinsic) Special() bool                    { return false }
 func (intrin *Intrinsic) SpecialModInit() bool             { return false }

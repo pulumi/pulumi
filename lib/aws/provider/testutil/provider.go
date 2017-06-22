@@ -74,13 +74,13 @@ func ProviderTest(t *testing.T, resources map[string]Resource, steps []Step) {
 				p.namesInCreationOrder = append(p.namesInCreationOrder, res.Name)
 				p.props[res.Name] = props
 				if id == "" {
-					t.Fatal("expected to succesfully create resource")
+					t.Fatal("expected to successfully create resource")
 				}
 			} else {
 				oldProps := p.props[res.Name]
 				ok, props := updateResource(t, string(id), oldProps, res.Creator(p), provider, token)
 				if !ok {
-					t.Fatal("expected to succesfully update resource")
+					t.Fatal("expected to successfully update resource")
 				}
 				p.props[res.Name] = props
 			}
@@ -94,7 +94,7 @@ func ProviderTest(t *testing.T, resources map[string]Resource, steps []Step) {
 		token := resources[name].Token
 		ok := deleteResource(t, string(id), provider, token)
 		if !ok {
-			t.Fatal("expected to succesfully delete resource")
+			t.Fatal("expected to successfully delete resource")
 		}
 	}
 }
@@ -209,10 +209,7 @@ func deleteResource(t *testing.T, id string, provider lumirpc.ResourceProviderSe
 		Type: string(token),
 		Id:   id,
 	})
-	if !assert.NoError(t, err, "expected no error deleting resource") {
-		return false
-	}
-	return true
+	return assert.NoError(t, err, "expected no error deleting resource")
 }
 
 // CreateContext creates an AWS Context object for executing tests, and skips the test if the context cannot be

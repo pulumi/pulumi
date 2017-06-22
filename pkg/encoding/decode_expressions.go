@@ -152,7 +152,8 @@ func decodeLoadDynamicExpression(m mapper.Mapper, obj map[string]interface{}) (*
 	return &expr, nil
 }
 
-func decodeTryLoadDynamicExpression(m mapper.Mapper, obj map[string]interface{}) (*ast.TryLoadDynamicExpression, error) {
+func decodeTryLoadDynamicExpression(m mapper.Mapper,
+	obj map[string]interface{}) (*ast.TryLoadDynamicExpression, error) {
 	var expr ast.TryLoadDynamicExpression
 	if err := m.Decode(obj, &expr); err != nil {
 		return nil, err
@@ -168,7 +169,8 @@ func decodeNewExpression(m mapper.Mapper, obj map[string]interface{}) (*ast.NewE
 	return &expr, nil
 }
 
-func decodeInvokeFunctionExpression(m mapper.Mapper, obj map[string]interface{}) (*ast.InvokeFunctionExpression, error) {
+func decodeInvokeFunctionExpression(m mapper.Mapper,
+	obj map[string]interface{}) (*ast.InvokeFunctionExpression, error) {
 	var expr ast.InvokeFunctionExpression
 	if err := m.Decode(obj, &expr); err != nil {
 		return nil, err
@@ -184,7 +186,8 @@ func decodeLambdaExpression(m mapper.Mapper, obj map[string]interface{}) (*ast.L
 	return &expr, nil
 }
 
-func decodeUnaryOperatorExpression(m mapper.Mapper, obj map[string]interface{}) (*ast.UnaryOperatorExpression, error) {
+func decodeUnaryOperatorExpression(m mapper.Mapper,
+	obj map[string]interface{}) (*ast.UnaryOperatorExpression, error) {
 	var expr ast.UnaryOperatorExpression
 	if err := m.Decode(obj, &expr); err != nil {
 		return nil, err
@@ -192,7 +195,8 @@ func decodeUnaryOperatorExpression(m mapper.Mapper, obj map[string]interface{}) 
 	return &expr, nil
 }
 
-func decodeBinaryOperatorExpression(m mapper.Mapper, obj map[string]interface{}) (*ast.BinaryOperatorExpression, error) {
+func decodeBinaryOperatorExpression(m mapper.Mapper,
+	obj map[string]interface{}) (*ast.BinaryOperatorExpression, error) {
 	var expr ast.BinaryOperatorExpression
 	if err := m.Decode(obj, &expr); err != nil {
 		return nil, err

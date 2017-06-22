@@ -46,8 +46,7 @@ func TestFieldMapper(t *testing.T) {
 
 	// Try some simple primitive decodes.
 	var s bag
-	var err error
-	err = md.DecodeValue(tree, reflect.TypeOf(bag{}), "b", &s.Bool, false)
+	err := md.DecodeValue(tree, reflect.TypeOf(bag{}), "b", &s.Bool, false)
 	assert.Nil(t, err)
 	assert.Equal(t, tree["b"], s.Bool)
 	err = md.DecodeValue(tree, reflect.TypeOf(bag{}), "b", &s.BoolP, false)
@@ -74,12 +73,14 @@ func TestFieldMapper(t *testing.T) {
 
 	// Ensure interface{} conversions work:
 	var sif string
-	err = md.DecodeValue(map[string]interface{}{"x": interface{}("hello")}, reflect.TypeOf(bag{}), "x", &sif, false)
+	err = md.DecodeValue(map[string]interface{}{"x": interface{}("hello")},
+		reflect.TypeOf(bag{}), "x", &sif, false)
 	assert.Nil(t, err)
 	assert.Equal(t, "hello", sif)
 
 	var sifs []string
-	err = md.DecodeValue(map[string]interface{}{"arr": []interface{}{"a", "b", "c"}}, reflect.TypeOf(bag{}), "arr", &sifs, false)
+	err = md.DecodeValue(map[string]interface{}{"arr": []interface{}{"a", "b", "c"}},
+		reflect.TypeOf(bag{}), "arr", &sifs, false)
 	assert.Nil(t, err)
 	assert.Equal(t, []string{"a", "b", "c"}, sifs)
 
@@ -356,8 +357,7 @@ func (s *customStruct) GetY() float64 { return s.Y }
 func TestCustomMapper(t *testing.T) {
 	t.Parallel()
 
-	var md Mapper
-	md = New(&Opts{
+	md := New(&Opts{
 		CustomDecoders: Decoders{
 			reflect.TypeOf((*customInterface)(nil)).Elem(): decodeCustomInterface,
 			reflect.TypeOf(customStruct{}):                 decodeCustomStruct,

@@ -138,10 +138,10 @@ func (md *mapper) defaultTags() (tags []string, optionalTags []string, skipTags 
 
 // structFieldTags includes a field's information plus any parsed tags.
 type structFieldTags struct {
-	Key      string              // the JSON key name.
+	Info     reflect.StructField // the struct field info.
 	Optional bool                // true if this can be missing.
 	Skip     bool                // true to skip a field.
-	Info     reflect.StructField // the struct field info.
+	Key      string              // the JSON key name.
 }
 
 // structFieldsTags digs into a type to fetch all fields, including embedded structs, plus any associated tags.

@@ -243,14 +243,10 @@ func (p *sgProvider) Update(ctx context.Context, id resource.ID,
 			var deletes []ec2.SecurityGroupRule
 			if diff.Added(gress.key) {
 				contract.Assert(gress.news != nil && len(*gress.news) > 0)
-				for _, rule := range *gress.news {
-					creates = append(creates, rule)
-				}
+				creates = append(creates, *gress.news...)
 			} else if diff.Deleted(gress.key) {
 				contract.Assert(gress.olds != nil && len(*gress.olds) > 0)
-				for _, rule := range *gress.olds {
-					deletes = append(deletes, rule)
-				}
+				deletes = append(deletes, *gress.olds...)
 			} else if diff.Updated(gress.key) {
 				update := diff.Updates[gress.key]
 				contract.Assert(update.Array != nil)
@@ -410,7 +406,7 @@ func (p *sgProvider) waitForSecurityGroupState(id string, exist bool) error {
 				}
 			} else if res != nil && len(res.SecurityGroups) > 0 {
 				contract.Assert(len(res.SecurityGroups) == 1)
-				contract.Assert(*res.SecurityGroups[0].GroupId == string(id))
+				contract.Assert(*res.SecurityGroups[0].GroupId == id)
 				missing = false // we found one
 			}
 

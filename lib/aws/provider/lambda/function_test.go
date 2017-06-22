@@ -5,6 +5,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+
 	"github.com/aws/aws-sdk-go/aws"
 	awsiam "github.com/aws/aws-sdk-go/service/iam"
 	awslambda "github.com/aws/aws-sdk-go/service/lambda"
@@ -23,8 +25,10 @@ func Test(t *testing.T) {
 	t.Parallel()
 
 	ctx := testutil.CreateContext(t)
-	cleanupFunctions(ctx)
-	cleanupRoles(ctx)
+	funcerr := cleanupFunctions(ctx)
+	assert.Nil(t, funcerr)
+	roleerr := cleanupRoles(ctx)
+	assert.Nil(t, roleerr)
 
 	sourceARN := rpc.ARN("arn:aws:s3:::elasticbeanstalk-us-east-1-111111111111")
 
@@ -34,7 +38,7 @@ func Test(t *testing.T) {
 		"permission": {Provider: NewPermissionProvider(ctx), Token: PermissionToken},
 	}
 	steps := []testutil.Step{
-		testutil.Step{
+		{
 			testutil.ResourceGenerator{
 				Name: "role",
 				Creator: func(ctx testutil.Context) interface{} {
@@ -66,7 +70,7 @@ func Test(t *testing.T) {
 						Name: aws.String(RESOURCEPREFIX),
 						Code: resource.Archive{
 							Assets: &map[string]*resource.Asset{
-								"index.js": &resource.Asset{
+								"index.js": {
 									Text: aws.String("exports.handler = (ev, ctx, cb) => { console.log(ev); console.log(ctx); }"),
 								},
 							},
@@ -97,33 +101,33 @@ func Test(t *testing.T) {
 
 }
 
-func cleanupFunctions(ctx *awsctx.Context) {
+func cleanupFunctions(ctx *awsctx.Context) error {
 	fmt.Printf("Cleaning up function with name:%v\n", RESOURCEPREFIX)
 	list, err := ctx.Lambda().ListFunctions(&awslambda.ListFunctionsInput{})
 	if err != nil {
-		return
+		return err
 	}
 	cleaned := 0
 	for _, fnc := range list.Functions {
 		if strings.HasPrefix(aws.StringValue(fnc.FunctionName), RESOURCEPREFIX) {
-			_, err := ctx.Lambda().DeleteFunction(&awslambda.DeleteFunctionInput{
+			if _, delerr := ctx.Lambda().DeleteFunction(&awslambda.DeleteFunctionInput{
 				FunctionName: fnc.FunctionName,
-			})
-			if err != nil {
-				fmt.Printf("Unable to cleanip function %v: %v\n", fnc.FunctionName, err)
-			} else {
-				cleaned++
+			}); delerr != nil {
+				fmt.Printf("Unable to cleanip function %v: %v\n", fnc.FunctionName, delerr)
+				return delerr
 			}
+			cleaned++
 		}
 	}
 	fmt.Printf("Cleaned up %v functions\n", cleaned)
+	return nil
 }
 
-func cleanupRoles(ctx *awsctx.Context) {
+func cleanupRoles(ctx *awsctx.Context) error {
 	fmt.Printf("Cleaning up roles with name:%v\n", RESOURCEPREFIX)
 	list, err := ctx.IAM().ListRoles(&awsiam.ListRolesInput{})
 	if err != nil {
-		return
+		return err
 	}
 	cleaned := 0
 	for _, role := range list.Roles {
@@ -133,25 +137,27 @@ func cleanupRoles(ctx *awsctx.Context) {
 			})
 			if err != nil {
 				fmt.Printf("Unable to cleanup role %v: %v\n", role.RoleName, err)
-				continue
+				return err
 			}
 			if policies != nil {
 				for _, policy := range policies.AttachedPolicies {
-					ctx.IAM().DetachRolePolicy(&awsiam.DetachRolePolicyInput{
+					if _, deterr := ctx.IAM().DetachRolePolicy(&awsiam.DetachRolePolicyInput{
 						RoleName:  role.RoleName,
 						PolicyArn: policy.PolicyArn,
-					})
+					}); deterr != nil {
+						return deterr
+					}
 				}
 			}
-			_, err = ctx.IAM().DeleteRole(&awsiam.DeleteRoleInput{
+			if _, delerr := ctx.IAM().DeleteRole(&awsiam.DeleteRoleInput{
 				RoleName: role.RoleName,
-			})
-			if err != nil {
+			}); delerr != nil {
 				fmt.Printf("Unable to cleanup role %v: %v\n", role.RoleName, err)
-			} else {
-				cleaned++
+				return delerr
 			}
+			cleaned++
 		}
 	}
 	fmt.Printf("Cleaned up %v roles\n", cleaned)
+	return nil
 }

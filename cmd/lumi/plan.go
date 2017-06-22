@@ -132,7 +132,7 @@ func plan(cmd *cobra.Command, info *envCmdInfo, opts deployOptions) (*planResult
 		return nil, nil
 	}
 
-	// If that succeded, create a new source that will perform interpretation of the compiled program.
+	// If that succeeded, create a new source that will perform interpretation of the compiled program.
 	// TODO[pulumi/lumi#88]: we are passing `nil` as the arguments map; we need to allow a way to pass these.
 	source := deploy.NewEvalSource(ctx, result.B.Ctx(), result.Pkg, nil, info.Target.Config, opts.Destroy)
 
@@ -175,7 +175,7 @@ func printPlan(result *planResult, opts deployOptions) error {
 	if err != nil {
 		return errors.Errorf("An error occurred while preparing the plan: %v", err)
 	}
-	defer iter.Close()
+	defer contract.IgnoreClose(iter)
 
 	step, err := iter.Next()
 	if err != nil {

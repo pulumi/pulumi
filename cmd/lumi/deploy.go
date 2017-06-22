@@ -62,7 +62,7 @@ func newDeployCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			err = deployLatest(cmd, info, deployOptions{
+			return deployLatest(cmd, info, deployOptions{
 				Destroy:            false,
 				DryRun:             dryRun,
 				Analyzers:          analyzers,
@@ -73,7 +73,6 @@ func newDeployCmd() *cobra.Command {
 				Summary:            summary,
 				Output:             output,
 			})
-			return err
 		}),
 	}
 
@@ -236,7 +235,7 @@ func (prog *deployProgress) After(step deploy.Step, status resource.Status, err 
 		}
 		b.WriteString(colors.Reset)
 		b.WriteString("\n")
-		fmt.Printf(colors.Colorize(&b))
+		fmt.Print(colors.Colorize(&b))
 	} else if shouldTrack(step, prog.Opts) {
 		// Increment the counters.
 		prog.Steps++
@@ -246,7 +245,7 @@ func (prog *deployProgress) After(step deploy.Step, status resource.Status, err 
 		if step.Op() == deploy.OpCreate {
 			var b bytes.Buffer
 			printResourceOutputProperties(&b, step, "")
-			fmt.Printf(colors.Colorize(&b))
+			fmt.Print(colors.Colorize(&b))
 		}
 	}
 }

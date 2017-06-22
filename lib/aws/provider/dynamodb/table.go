@@ -524,7 +524,8 @@ func (p *tableProvider) waitForTableState(name string, exist bool) error {
 				return false, nil
 			}
 
-			// If we got here, the table was found and was ACTIVE if exist is true; if exist==true, we're good; else, keep retrying.
+			// If we got here, the table was found and was ACTIVE if exist is true; if exist==true, we're good; else,
+			// keep retrying.
 			return exist, nil
 		},
 	)

@@ -185,7 +185,7 @@ func NewReadCloserBlob(r io.ReadCloser) (*Blob, error) {
 		return NewFileBlob(f)
 	}
 	// Otherwise, read it all in, and create a blob out of that.
-	defer r.Close()
+	defer contract.IgnoreClose(r)
 	data, err := ioutil.ReadAll(r)
 	if err != nil {
 		return nil, err
@@ -429,7 +429,7 @@ func (a Archive) archiveTar(w io.Writer) error {
 		if err != nil {
 			return err
 		}
-		contract.Assert(int64(n) == sz)
+		contract.Assert(n == sz)
 	}
 
 	return tw.Close()
@@ -519,7 +519,7 @@ func detectArchiveFormat(path string) (ArchiveFormat, error) {
 // readArchive takes a stream to an existing archive and returns a map of names to readers for the inner assets.
 // The routine returns an error if something goes wrong and, no matter what, closes the stream before returning.
 func readArchive(ar io.ReadCloser, format ArchiveFormat) (map[string]*Blob, error) {
-	defer ar.Close() // consume the input stream
+	defer contract.IgnoreClose(ar) // consume the input stream
 
 	switch format {
 	case TarArchive:
@@ -552,7 +552,7 @@ func readArchive(ar io.ReadCloser, format ArchiveFormat) (map[string]*Blob, erro
 }
 
 func readTarArchive(ar io.ReadCloser) (map[string]*Blob, error) {
-	defer ar.Close() // consume the input stream
+	defer contract.IgnoreClose(ar) // consume the input stream
 
 	// Create a tar reader and walk through each file, adding each one to the map.
 	assets := make(map[string]*Blob)
@@ -585,7 +585,7 @@ func readTarArchive(ar io.ReadCloser) (map[string]*Blob, error) {
 }
 
 func readTarGZIPArchive(ar io.ReadCloser) (map[string]*Blob, error) {
-	defer ar.Close() // consume the input stream
+	defer contract.IgnoreClose(ar) // consume the input stream
 
 	// First decompress the GZIP stream.
 	gz, err := gzip.NewReader(ar)

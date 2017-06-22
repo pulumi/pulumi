@@ -171,7 +171,7 @@ func (p *restAPIProvider) Update(ctx context.Context, id resource.ID,
 			body := *new.Body
 			bodyJSON, marerr := json.Marshal(body)
 			if marerr != nil {
-				return fmt.Errorf("Could not convert Swagger defintion object to JSON: %v", marerr)
+				return fmt.Errorf("Could not convert Swagger definition object to JSON: %v", marerr)
 			}
 			fmt.Printf("Updating API definition for %v from OpenAPI specification\n", id)
 			put := &awsapigateway.PutRestApiInput{

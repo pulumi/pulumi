@@ -23,6 +23,7 @@ import (
 	awss3 "github.com/aws/aws-sdk-go/service/s3"
 	"github.com/pkg/errors"
 	"github.com/pulumi/lumi/pkg/resource"
+	"github.com/pulumi/lumi/pkg/util/contract"
 	"github.com/pulumi/lumi/sdk/go/pkg/lumirpc"
 	"golang.org/x/net/context"
 
@@ -83,7 +84,7 @@ func (p *objProvider) Create(ctx context.Context, obj *s3.Object) (resource.ID, 
 	if err != nil {
 		return "", err
 	}
-	defer body.Close()
+	defer contract.IgnoreClose(body)
 
 	// Now go ahead and perform the creation.
 	buck, err := arn.ParseResourceName(obj.Bucket)

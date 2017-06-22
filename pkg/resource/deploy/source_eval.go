@@ -184,8 +184,8 @@ func (iter *evalSourceIterator) Next() (*SourceAllocation, *SourceQuery, error) 
 	return nil, nil, nil
 }
 
-// InitEvalConfig applies the configuration map to an existing interpreter context.  The map is simply a map of tokens --
-// which must be globally settable variables (module properties or static class properties) -- to serializable constant
+// InitEvalConfig applies the configuration map to an existing interpreter context.  The map is simply a map of tokens,
+// which must be globally settable variables (module properties or static class properties), to serializable constant
 // values.  The routine simply walks these tokens in sorted order, and assigns the constant objects.  Note that, because
 // we are accessing module and class members, this routine will also trigger the relevant initialization routines.
 func InitEvalConfig(ctx *binder.Context, e eval.Interpreter, config resource.ConfigMap) error {
@@ -201,7 +201,7 @@ func InitEvalConfig(ctx *binder.Context, e eval.Interpreter, config resource.Con
 
 		// Bind to the symbol; if it returns nil, this means an error has resulted, and we can skip it.
 		var tree diag.Diagable // there is no source info for this; eventually we may assign one.
-		if sym := ctx.LookupSymbol(tree, tokens.Token(tok), true); sym != nil {
+		if sym := ctx.LookupSymbol(tree, tok, true); sym != nil {
 			var ok bool
 			switch s := sym.(type) {
 			case *symbols.ModuleProperty:

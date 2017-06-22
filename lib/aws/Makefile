@@ -5,7 +5,7 @@ THISLIB         = ${LUMILIB}/aws
 TESTPARALLELISM = 10
 
 GOMETALINTERBIN=gometalinter
-GOMETALINTER=${GOMETALINTERBIN} --disable=gotype
+GOMETALINTER=${GOMETALINTERBIN} --config=Gometalinter.json
 
 .PHONY: default
 default: banner vet build test install lint_quiet
@@ -52,20 +52,19 @@ lint:
 	@echo "\033[0;32mLINT:\033[0m"
 	./pack/node_modules/.bin/tslint './pack/**/*.ts' --exclude='./pack/node_modules/**'
 	which ${GOMETALINTERBIN} >/dev/null
-	$(GOMETALINTER) provider/... | sort ; exit "$${PIPESTATUS[0]}"
+	$(GOMETALINTER) ./provider/... | sort ; exit "$${PIPESTATUS[0]}"
 
 # In quiet mode, suppress some messages.
 #    - "or be unexported": TODO[pulumi/lumi#191]: will fix when we write all of our API docs
-#    - "cyclomatic complexity": TODO[pulumi/lumi#259]: need to fix a bunch of cyclomatically complex functions.
-LINT_SUPPRESS="or be unexported|cyclomatic complexity"
+#    - "cyclomatic complexity" (in config): TODO[pulumi/lumi#259]: need to fix a bunch of complex functions.
+LINT_SUPPRESS="or be unexported"
 
 .PHONY: lint_quiet
 lint_quiet:
 	@echo "\033[0;32mLINT (quiet):\033[0m"
 	./pack/node_modules/.bin/tslint './pack/**/*.ts' --exclude='./pack/node_modules/**'
 	which ${GOMETALINTERBIN} >/dev/null
-	$(GOMETALINTER) provider/... | grep -vE ${LINT_SUPPRESS} | sort
-	@test -z "$$($(GOMETALINTER) provider/... | grep -vE ${LINT_SUPPRESS})"
+	$(GOMETALINTER) ./provider/... | grep -vE ${LINT_SUPPRESS} | sort ; exit $$(($${PIPESTATUS[1]}-1))
 	@echo "\033[0;33mgolint was run quietly; to run with noisy errors, run 'make lint'\033[0m"
 
 .PHONY: vet

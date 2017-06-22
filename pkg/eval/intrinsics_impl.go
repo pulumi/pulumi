@@ -87,7 +87,7 @@ func printf(intrin *rt.Intrinsic, e *evaluator, this *rt.Object, args []*rt.Obje
 	}
 
 	// TODO[pulumi/lumi#169]: Move this to use a proper ToString() conversion.
-	fmt.Printf(message.String())
+	fmt.Print(message.String())
 
 	return rt.NewReturnUnwind(nil)
 }
@@ -105,7 +105,9 @@ func sha1hash(intrin *rt.Intrinsic, e *evaluator, this *rt.Object, args []*rt.Ob
 
 	hasher := sha1.New()
 	byts := []byte(str.StringValue())
-	hasher.Write(byts)
+	if _, err := hasher.Write(byts); err != nil {
+		return e.NewException(intrin.Tree(), "Failed to write out SHA1 bytes: %v", err)
+	}
 	sum := hasher.Sum(nil)
 	hash := hex.EncodeToString(sum)
 

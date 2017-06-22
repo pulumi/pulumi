@@ -13,8 +13,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package dotconv convers a LumiGL graph into its DOT digraph equivalent.  This is useful for integration with various
-// visualization tools, like Graphviz.  Please see http://www.graphviz.org/content/dot-language for a thorough
+// Package dotconv converts a LumiGL graph into its DOT digraph equivalent.  This is useful for integration with
+// various visualization tools, like Graphviz.  Please see http://www.graphviz.org/content/dot-language for a thorough
 // specification of the DOT file format.
 package dotconv
 

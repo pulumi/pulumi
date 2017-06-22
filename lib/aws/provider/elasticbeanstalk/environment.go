@@ -167,7 +167,7 @@ func (p *environmentProvider) Get(ctx context.Context, id resource.ID) (*elastic
 	// TODO[pulumi/lumi#189] We may want to call `DecribeConfigurationSettings` to populate all of
 	// the option settings onto the returned object.  However, this returns all of the settings with
 	// their default values, not just those provided as input.  This leads to signalling deletions
-	// on future updates.  For now, we will populate a seperate output property with the full set
+	// on future updates.  For now, we will populate a separate output property with the full set
 	// of settings, but we should revisist this once we've resolved #189.
 
 	// Next see if there are any configuration option settings and, if so, set them on the return.

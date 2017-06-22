@@ -863,7 +863,7 @@ func (e *evaluator) evalImport(node *ast.Import) *rt.Unwind {
 	// TODO[pulumi/lumi#176]: a more elegant way to do this might be to bind it statically, however that's complex
 	//     because then it would potentially require a module property versus local variable distinction.
 	if node.Name != nil {
-		key := tokens.Name(node.Name.Ident)
+		key := node.Name.Ident
 		addr := e.getDynamicNameAddr(key, true)
 		modobj := e.getModuleObject(mod)
 		addr.Set(modobj)
@@ -1206,6 +1206,7 @@ func (e *evaluator) evalLValueExpression(node ast.Expression) (*Location, *rt.Un
 }
 
 func (e *evaluator) evalNullLiteral(node *ast.NullLiteral) (*rt.Object, *rt.Unwind) {
+	contract.Ignore(node) // no need for the node, all nulls are the same.
 	return rt.Null, nil
 }
 
@@ -1902,7 +1903,8 @@ func (e *evaluator) evalUnaryOperatorExpression(node *ast.UnaryOperatorExpressio
 	return e.evalUnaryOperatorExpressionFor(node, false)
 }
 
-func (e *evaluator) evalUnaryOperatorExpressionFor(node *ast.UnaryOperatorExpression, lval bool) (*rt.Object, *rt.Unwind) {
+func (e *evaluator) evalUnaryOperatorExpressionFor(node *ast.UnaryOperatorExpression,
+	lval bool) (*rt.Object, *rt.Unwind) {
 	contract.Assertf(!lval || node.Operator == ast.OpDereference, "Only dereference unary ops support l-values")
 
 	// Evaluate the operand and prepare to use it.

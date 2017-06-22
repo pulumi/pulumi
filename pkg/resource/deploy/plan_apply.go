@@ -350,7 +350,7 @@ func (iter *PlanIterator) calculateDeletes() []*resource.State {
 	return dels
 }
 
-// Snap returns a fresh snapshot that takes into account everything that has happend up till this point.  Namely, if a
+// Snap returns a fresh snapshot that takes into account everything that has happened up till this point.  Namely, if a
 // failure happens partway through, the untouched snapshot elements will be retained, while any updates will be
 // preserved.  If no failure happens, the snapshot naturally reflects the final state of all resources.
 func (iter *PlanIterator) Snap() *Snapshot {

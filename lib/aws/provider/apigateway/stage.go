@@ -172,12 +172,9 @@ func (p *stageProvider) Delete(ctx context.Context, id resource.ID) error {
 	if err != nil {
 		return err
 	}
-	_, err = p.ctx.APIGateway().DeleteStage(&awsapigateway.DeleteStageInput{
+	_, delerr := p.ctx.APIGateway().DeleteStage(&awsapigateway.DeleteStageInput{
 		RestApiId: aws.String(restAPIID),
 		StageName: aws.String(stageName),
 	})
-	if err != nil {
-		return err
-	}
-	return nil
+	return delerr
 }

@@ -201,7 +201,7 @@ func (b *binder) bindPackageExports(pkg *symbols.Package) {
 	}
 }
 
-// bindPackageDefinitions binds all definitions within a package (classes, signatures, varaibles, etc), but doesn't
+// bindPackageDefinitions binds all definitions within a package (classes, signatures, variables, etc), but doesn't
 // actually bind any function bodies yet.  The function bodies may depend upon information that depends upon information
 // that isn't fully computed until after the definition pass has been completed.
 func (b *binder) bindPackageDefinitions(pkg *symbols.Package) {

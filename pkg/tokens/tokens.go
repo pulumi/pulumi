@@ -23,7 +23,7 @@ import (
 )
 
 // Token is a qualified name that is capable of resolving to a symbol entirely on its own.  Most uses of tokens are
-// typed based on the context, so that a subset of the token syntax is permissable (see the various typedefs below).
+// typed based on the context, so that a subset of the token syntax is permissible (see the various typedefs below).
 // However, in its full generality, a token can have a package part, a module part, a module-member part, and a
 // class-member part.  Obviously tokens that are meant to address just a module won't have the module-member part, and
 // tokens addressing module members won't have the class-member part, etc.
@@ -205,7 +205,7 @@ func (tok ModuleMember) Name() ModuleMemberName {
 func (tok ModuleMember) String() string { return string(tok) }
 
 // ClassMember is a token representing a class's member.  It uses the following grammar.  Unlike ModuleMember, this
-// cannot use a slash for delimiting names, because we use often ClassMember and ModuleMember interchangably:
+// cannot use a slash for delimiting names, because we use often ClassMember and ModuleMember interchangeably:
 //		ClassMember = <ModuleMember> "." <ClassMemberName>
 type ClassMember Token
 

@@ -30,7 +30,7 @@ import (
 // It is important to note that provider operations are not transactional.  (Some providers might decide to offer
 // transactional semantics, but such a provider is a rare treat.)  As a result, failures in the operations below can
 // range from benign to catastrophic (possibly leaving behind a corrupt resource).  It is up to the provider to make a
-// best effort to ensure catastrophies do not occur.  The errors returned from mutating operations indicate both the
+// best effort to ensure catastrophes do not occur.  The errors returned from mutating operations indicate both the
 // underlying error condition in addition to a bit indicating whether the operation was successfully rolled back.
 type Provider interface {
 	// Closer closes any underlying OS resources associated with this provider (like processes, RPC channels, etc).

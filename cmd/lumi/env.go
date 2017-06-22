@@ -220,9 +220,8 @@ func removeTarget(env *deploy.Target) {
 // simply renames the file, which is simpler, more efficient, etc.
 func backupTarget(file string) {
 	contract.Require(file != "", "file")
-	if err := os.Rename(file, file+".bak"); err != nil {
-		// ignore errors.
-	}
+	err := os.Rename(file, file+".bak")
+	contract.IgnoreError(err) // ignore errors.
 	// IDEA: consider multiple backups (.bak.bak.bak...etc).
 }
 
