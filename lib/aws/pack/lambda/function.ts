@@ -42,6 +42,14 @@ export class Function extends lumi.NamedResource implements FunctionArgs {
     public codeSHA256: string;
     public lastModified: string;
 
+    public static get(id: lumi.ID): Function {
+        return <any>undefined; // functionality provided by the runtime
+    }
+
+    public static query(q: any): Function[] {
+        return <any>undefined; // functionality provided by the runtime
+    }
+
     constructor(name: string, args: FunctionArgs) {
         super(name);
         if (args.code === undefined) {
@@ -68,14 +76,6 @@ export class Function extends lumi.NamedResource implements FunctionArgs {
         this.memorySize = args.memorySize;
         this.timeout = args.timeout;
         this.vpcConfig = args.vpcConfig;
-    }
-
-    public static get(id: lumi.ID): Function {
-        return <any>undefined; // functionality provided by the runtime
-    }
-
-    public static query(q: any): Function[] {
-        return <any>undefined; // functionality provided by the runtime
     }
 }
 
@@ -107,5 +107,4 @@ export interface VPCConfig {
     securityGroups: SecurityGroup[];
     subnets: Subnet[];
 }
-
 

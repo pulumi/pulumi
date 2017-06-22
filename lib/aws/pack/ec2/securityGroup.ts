@@ -14,6 +14,14 @@ export class SecurityGroup extends lumi.NamedResource implements SecurityGroupAr
     public securityGroupIngress?: SecurityGroupRule[];
     public groupID: string;
 
+    public static get(id: lumi.ID): SecurityGroup {
+        return <any>undefined; // functionality provided by the runtime
+    }
+
+    public static query(q: any): SecurityGroup[] {
+        return <any>undefined; // functionality provided by the runtime
+    }
+
     constructor(name: string, args: SecurityGroupArgs) {
         super(name);
         if (args.groupDescription === undefined) {
@@ -24,14 +32,6 @@ export class SecurityGroup extends lumi.NamedResource implements SecurityGroupAr
         this.vpc = args.vpc;
         this.securityGroupEgress = args.securityGroupEgress;
         this.securityGroupIngress = args.securityGroupIngress;
-    }
-
-    public static get(id: lumi.ID): SecurityGroup {
-        return <any>undefined; // functionality provided by the runtime
-    }
-
-    public static query(q: any): SecurityGroup[] {
-        return <any>undefined; // functionality provided by the runtime
     }
 }
 
@@ -49,5 +49,4 @@ export interface SecurityGroupRule {
     fromPort?: number;
     toPort?: number;
 }
-
 

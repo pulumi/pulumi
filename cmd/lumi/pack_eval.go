@@ -62,11 +62,14 @@ func newPackEvalCmd() *cobra.Command {
 				if err != nil {
 					return err
 				}
-				deploy.InitEvalConfig(result.B.Ctx(), e, envInfo.Target.Config)
+				if err := deploy.InitEvalConfig(result.B.Ctx(), e, envInfo.Target.Config); err != nil {
+					return err
+				}
 			}
 
 			// Finally, execute the entire program, and serialize the return value (if any).
-			if obj, _ := e.EvaluatePackage(result.Pkg, nil); obj != nil {
+			packArgs := dashdashArgsToMap(args)
+			if obj, _ := e.EvaluatePackage(result.Pkg, packArgs); obj != nil {
 				fmt.Print(obj)
 			}
 			return nil

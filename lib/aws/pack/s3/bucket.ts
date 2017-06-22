@@ -10,14 +10,6 @@ export class Bucket extends lumi.NamedResource implements BucketArgs {
     public readonly bucketName?: string;
     public accessControl?: CannedACL;
 
-    constructor(name: string, args?: BucketArgs) {
-        super(name);
-        if (args !== undefined) {
-            this.bucketName = args.bucketName;
-            this.accessControl = args.accessControl;
-        }
-    }
-
     public static get(id: lumi.ID): Bucket {
         return <any>undefined; // functionality provided by the runtime
     }
@@ -25,11 +17,18 @@ export class Bucket extends lumi.NamedResource implements BucketArgs {
     public static query(q: any): Bucket[] {
         return <any>undefined; // functionality provided by the runtime
     }
+
+    constructor(name: string, args?: BucketArgs) {
+        super(name);
+        if (args !== undefined) {
+            this.bucketName = args.bucketName;
+            this.accessControl = args.accessControl;
+        }
+    }
 }
 
 export interface BucketArgs {
     readonly bucketName?: string;
     accessControl?: CannedACL;
 }
-
 

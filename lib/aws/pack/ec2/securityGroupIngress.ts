@@ -18,6 +18,14 @@ export class SecurityGroupIngress extends lumi.NamedResource implements Security
     public readonly sourceSecurityGroupOwnerId?: string;
     public readonly toPort?: number;
 
+    public static get(id: lumi.ID): SecurityGroupIngress {
+        return <any>undefined; // functionality provided by the runtime
+    }
+
+    public static query(q: any): SecurityGroupIngress[] {
+        return <any>undefined; // functionality provided by the runtime
+    }
+
     constructor(name: string, args: SecurityGroupIngressArgs) {
         super(name);
         if (args.ipProtocol === undefined) {
@@ -34,14 +42,6 @@ export class SecurityGroupIngress extends lumi.NamedResource implements Security
         this.sourceSecurityGroupOwnerId = args.sourceSecurityGroupOwnerId;
         this.toPort = args.toPort;
     }
-
-    public static get(id: lumi.ID): SecurityGroupIngress {
-        return <any>undefined; // functionality provided by the runtime
-    }
-
-    public static query(q: any): SecurityGroupIngress[] {
-        return <any>undefined; // functionality provided by the runtime
-    }
 }
 
 export interface SecurityGroupIngressArgs {
@@ -56,5 +56,4 @@ export interface SecurityGroupIngressArgs {
     readonly sourceSecurityGroupOwnerId?: string;
     readonly toPort?: number;
 }
-
 

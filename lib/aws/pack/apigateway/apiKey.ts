@@ -13,6 +13,14 @@ export class APIKey extends lumi.NamedResource implements APIKeyArgs {
     public enabled?: boolean;
     public stageKeys?: StageKey;
 
+    public static get(id: lumi.ID): APIKey {
+        return <any>undefined; // functionality provided by the runtime
+    }
+
+    public static query(q: any): APIKey[] {
+        return <any>undefined; // functionality provided by the runtime
+    }
+
     constructor(name: string, args?: APIKeyArgs) {
         super(name);
         if (args !== undefined) {
@@ -21,14 +29,6 @@ export class APIKey extends lumi.NamedResource implements APIKeyArgs {
             this.enabled = args.enabled;
             this.stageKeys = args.stageKeys;
         }
-    }
-
-    public static get(id: lumi.ID): APIKey {
-        return <any>undefined; // functionality provided by the runtime
-    }
-
-    public static query(q: any): APIKey[] {
-        return <any>undefined; // functionality provided by the runtime
     }
 }
 
@@ -43,5 +43,4 @@ export interface StageKey {
     restAPI?: RestAPI;
     stage?: Stage;
 }
-
 

@@ -21,11 +21,14 @@ import (
 	"go/types"
 	"os"
 	"path/filepath"
+
+	"github.com/pulumi/lumi/pkg/util/contract"
 )
 
 // writefmt wraps the bufio.Writer.WriteString function, but also performs fmt.Sprintf-style formatting.
 func writefmt(w *bufio.Writer, msg string, args ...interface{}) {
-	w.WriteString(fmt.Sprintf(msg, args...))
+	_, err := w.WriteString(fmt.Sprintf(msg, args...))
+	contract.IgnoreError(err)
 }
 
 // writefmtln wraps the bufio.Writer.WriteString function, performing fmt.Sprintf-style formatting and appending \n.
@@ -55,7 +58,7 @@ func mirrorDirLayout(pkg *Package, out string) error {
 // ensurePath ensures that a target filepath exists (like `mkdir -p`), returning a non-nil error if any problem occurs.
 func ensurePath(path string) error {
 	dir := filepath.Dir(path)
-	return os.MkdirAll(dir, 0755)
+	return os.MkdirAll(dir, 0700)
 }
 
 func forEachField(t TypeMember, action func(*types.Var, PropertyOptions)) int {

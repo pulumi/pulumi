@@ -7,13 +7,6 @@ import * as lumi from "@lumi/lumi";
 export class ClientCertificate extends lumi.NamedResource implements ClientCertificateArgs {
     public description?: string;
 
-    constructor(name: string, args?: ClientCertificateArgs) {
-        super(name);
-        if (args !== undefined) {
-            this.description = args.description;
-        }
-    }
-
     public static get(id: lumi.ID): ClientCertificate {
         return <any>undefined; // functionality provided by the runtime
     }
@@ -21,10 +14,16 @@ export class ClientCertificate extends lumi.NamedResource implements ClientCerti
     public static query(q: any): ClientCertificate[] {
         return <any>undefined; // functionality provided by the runtime
     }
+
+    constructor(name: string, args?: ClientCertificateArgs) {
+        super(name);
+        if (args !== undefined) {
+            this.description = args.description;
+        }
+    }
 }
 
 export interface ClientCertificateArgs {
     description?: string;
 }
-
 

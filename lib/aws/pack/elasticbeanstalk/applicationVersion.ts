@@ -13,6 +13,14 @@ export class ApplicationVersion extends lumi.NamedResource implements Applicatio
     public description?: string;
     public readonly sourceBundle: Object;
 
+    public static get(id: lumi.ID): ApplicationVersion {
+        return <any>undefined; // functionality provided by the runtime
+    }
+
+    public static query(q: any): ApplicationVersion[] {
+        return <any>undefined; // functionality provided by the runtime
+    }
+
     constructor(name: string, args: ApplicationVersionArgs) {
         super(name);
         if (args.application === undefined) {
@@ -26,14 +34,6 @@ export class ApplicationVersion extends lumi.NamedResource implements Applicatio
         }
         this.sourceBundle = args.sourceBundle;
     }
-
-    public static get(id: lumi.ID): ApplicationVersion {
-        return <any>undefined; // functionality provided by the runtime
-    }
-
-    public static query(q: any): ApplicationVersion[] {
-        return <any>undefined; // functionality provided by the runtime
-    }
 }
 
 export interface ApplicationVersionArgs {
@@ -42,5 +42,4 @@ export interface ApplicationVersionArgs {
     description?: string;
     readonly sourceBundle: Object;
 }
-
 

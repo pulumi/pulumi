@@ -24,6 +24,14 @@ export class Environment extends lumi.NamedResource implements EnvironmentArgs {
     public endpointURL: string;
     public allOptionSettings: OptionSetting[];
 
+    public static get(id: lumi.ID): Environment {
+        return <any>undefined; // functionality provided by the runtime
+    }
+
+    public static query(q: any): Environment[] {
+        return <any>undefined; // functionality provided by the runtime
+    }
+
     constructor(name: string, args: EnvironmentArgs) {
         super(name);
         if (args.application === undefined) {
@@ -39,14 +47,6 @@ export class Environment extends lumi.NamedResource implements EnvironmentArgs {
         this.templateName = args.templateName;
         this.tier = args.tier;
         this.version = args.version;
-    }
-
-    public static get(id: lumi.ID): Environment {
-        return <any>undefined; // functionality provided by the runtime
-    }
-
-    public static query(q: any): Environment[] {
-        return <any>undefined; // functionality provided by the runtime
     }
 }
 
@@ -77,5 +77,4 @@ export interface Tag {
 export type Tier =
     "WebServer::Standard::1.0" |
     "Worker::SQS/HTTP::1.0";
-
 

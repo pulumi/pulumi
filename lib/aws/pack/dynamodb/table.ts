@@ -45,6 +45,14 @@ export class Table extends lumi.NamedResource implements TableArgs {
     public readonly tableName?: string;
     public globalSecondaryIndexes?: GlobalSecondaryIndex[];
 
+    public static get(id: lumi.ID): Table {
+        return <any>undefined; // functionality provided by the runtime
+    }
+
+    public static query(q: any): Table[] {
+        return <any>undefined; // functionality provided by the runtime
+    }
+
     constructor(name: string, args: TableArgs) {
         super(name);
         if (args.hashKey === undefined) {
@@ -67,14 +75,6 @@ export class Table extends lumi.NamedResource implements TableArgs {
         this.tableName = args.tableName;
         this.globalSecondaryIndexes = args.globalSecondaryIndexes;
     }
-
-    public static get(id: lumi.ID): Table {
-        return <any>undefined; // functionality provided by the runtime
-    }
-
-    public static query(q: any): Table[] {
-        return <any>undefined; // functionality provided by the runtime
-    }
 }
 
 export interface TableArgs {
@@ -86,5 +86,4 @@ export interface TableArgs {
     readonly tableName?: string;
     globalSecondaryIndexes?: GlobalSecondaryIndex[];
 }
-
 

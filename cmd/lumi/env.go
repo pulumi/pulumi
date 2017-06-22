@@ -220,7 +220,8 @@ func removeTarget(env *deploy.Target) {
 // simply renames the file, which is simpler, more efficient, etc.
 func backupTarget(file string) {
 	contract.Require(file != "", "file")
-	os.Rename(file, file+".bak") // ignore errors.
+	err := os.Rename(file, file+".bak")
+	contract.IgnoreError(err) // ignore errors.
 	// IDEA: consider multiple backups (.bak.bak.bak...etc).
 }
 
@@ -312,7 +313,7 @@ func saveEnv(env *deploy.Target, snap *deploy.Snapshot, file string, existok boo
 
 	// If it's not ok for the file to already exist, ensure that it doesn't.
 	if !existok {
-		if _, err := os.Stat(file); err == nil {
+		if _, staterr := os.Stat(file); staterr == nil {
 			cmdutil.Diag().Errorf(errors.ErrorIO, goerr.Errorf("file '%v' already exists", file))
 			return false
 		}
@@ -322,13 +323,13 @@ func saveEnv(env *deploy.Target, snap *deploy.Snapshot, file string, existok boo
 	backupTarget(file)
 
 	// Ensure the directory exists.
-	if err = os.MkdirAll(filepath.Dir(file), 0755); err != nil {
+	if err = os.MkdirAll(filepath.Dir(file), 0700); err != nil {
 		cmdutil.Diag().Errorf(errors.ErrorIO, err)
 		return false
 	}
 
 	// And now write out the new snapshot file, overwriting that location.
-	if err = ioutil.WriteFile(file, b, 0644); err != nil {
+	if err = ioutil.WriteFile(file, b, 0600); err != nil {
 		cmdutil.Diag().Errorf(errors.ErrorIO, err)
 		return false
 	}

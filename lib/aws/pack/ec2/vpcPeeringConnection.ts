@@ -10,6 +10,14 @@ export class VPCPeeringConnection extends lumi.NamedResource implements VPCPeeri
     public readonly peerVpc: VPC;
     public readonly vpc: VPC;
 
+    public static get(id: lumi.ID): VPCPeeringConnection {
+        return <any>undefined; // functionality provided by the runtime
+    }
+
+    public static query(q: any): VPCPeeringConnection[] {
+        return <any>undefined; // functionality provided by the runtime
+    }
+
     constructor(name: string, args: VPCPeeringConnectionArgs) {
         super(name);
         if (args.peerVpc === undefined) {
@@ -21,19 +29,10 @@ export class VPCPeeringConnection extends lumi.NamedResource implements VPCPeeri
         }
         this.vpc = args.vpc;
     }
-
-    public static get(id: lumi.ID): VPCPeeringConnection {
-        return <any>undefined; // functionality provided by the runtime
-    }
-
-    public static query(q: any): VPCPeeringConnection[] {
-        return <any>undefined; // functionality provided by the runtime
-    }
 }
 
 export interface VPCPeeringConnectionArgs {
     readonly peerVpc: VPC;
     readonly vpc: VPC;
 }
-
 

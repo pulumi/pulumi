@@ -62,8 +62,8 @@ func newDeployCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			deployLatest(cmd, info, deployOptions{
-				Delete:             false,
+			return deployLatest(cmd, info, deployOptions{
+				Destroy:            false,
 				DryRun:             dryRun,
 				Analyzers:          analyzers,
 				ShowConfig:         showConfig,
@@ -73,7 +73,6 @@ func newDeployCmd() *cobra.Command {
 				Summary:            summary,
 				Output:             output,
 			})
-			return nil
 		}),
 	}
 
@@ -110,7 +109,7 @@ func newDeployCmd() *cobra.Command {
 
 type deployOptions struct {
 	Create             bool     // true if we are creating resources.
-	Delete             bool     // true if we are deleting resources.
+	Destroy            bool     // true if we are destroying the environment.
 	DryRun             bool     // true if we should just print the plan without performing it.
 	Analyzers          []string // an optional set of analyzers to run as part of this deployment.
 	ShowConfig         bool     // true to show the configuration variables being used.
@@ -236,7 +235,7 @@ func (prog *deployProgress) After(step deploy.Step, status resource.Status, err 
 		}
 		b.WriteString(colors.Reset)
 		b.WriteString("\n")
-		fmt.Printf(colors.Colorize(&b))
+		fmt.Print(colors.Colorize(&b))
 	} else if shouldTrack(step, prog.Opts) {
 		// Increment the counters.
 		prog.Steps++
@@ -246,7 +245,7 @@ func (prog *deployProgress) After(step deploy.Step, status resource.Status, err 
 		if step.Op() == deploy.OpCreate {
 			var b bytes.Buffer
 			printResourceOutputProperties(&b, step, "")
-			fmt.Printf(colors.Colorize(&b))
+			fmt.Print(colors.Colorize(&b))
 		}
 	}
 }

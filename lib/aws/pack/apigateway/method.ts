@@ -75,6 +75,14 @@ export class Method extends lumi.NamedResource implements MethodArgs {
     public requestModels?: {[key: string]: Model};
     public requestParameters?: {[key: string]: boolean};
 
+    public static get(id: lumi.ID): Method {
+        return <any>undefined; // functionality provided by the runtime
+    }
+
+    public static query(q: any): Method[] {
+        return <any>undefined; // functionality provided by the runtime
+    }
+
     constructor(name: string, args: MethodArgs) {
         super(name);
         if (args.httpMethod === undefined) {
@@ -96,14 +104,6 @@ export class Method extends lumi.NamedResource implements MethodArgs {
         this.methodResponses = args.methodResponses;
         this.requestModels = args.requestModels;
         this.requestParameters = args.requestParameters;
-    }
-
-    public static get(id: lumi.ID): Method {
-        return <any>undefined; // functionality provided by the runtime
-    }
-
-    public static query(q: any): Method[] {
-        return <any>undefined; // functionality provided by the runtime
     }
 }
 
@@ -143,5 +143,4 @@ export type PassthroughBehavior =
     "NEVER" |
     "WHEN_NO_MATCH" |
     "WHEN_NO_TEMPLATES";
-
 

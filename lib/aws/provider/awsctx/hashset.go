@@ -74,14 +74,10 @@ func (diff *HashSetDiff) Deletes() []Hashable { return diff.deletes }
 
 // AddOrUpdates returns all items tht were added or updates in the new HashSet
 func (diff *HashSetDiff) AddOrUpdates() []Hashable {
-	newArr := []Hashable{}
-	for _, update := range diff.updates {
-		newArr = append(newArr, update)
-	}
-	for _, add := range diff.adds {
-		newArr = append(newArr, add)
-	}
-	return newArr
+	result := make([]Hashable, 0, len(diff.updates)+len(diff.adds))
+	result = append(result, diff.updates...)
+	result = append(result, diff.adds...)
+	return result
 }
 
 func newHashSetDiff(old *HashSet, new *HashSet) *HashSetDiff {

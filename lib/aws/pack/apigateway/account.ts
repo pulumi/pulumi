@@ -9,13 +9,6 @@ import {Role} from "../iam/role";
 export class Account extends lumi.NamedResource implements AccountArgs {
     public cloudWatchRole?: Role;
 
-    constructor(name: string, args?: AccountArgs) {
-        super(name);
-        if (args !== undefined) {
-            this.cloudWatchRole = args.cloudWatchRole;
-        }
-    }
-
     public static get(id: lumi.ID): Account {
         return <any>undefined; // functionality provided by the runtime
     }
@@ -23,10 +16,16 @@ export class Account extends lumi.NamedResource implements AccountArgs {
     public static query(q: any): Account[] {
         return <any>undefined; // functionality provided by the runtime
     }
+
+    constructor(name: string, args?: AccountArgs) {
+        super(name);
+        if (args !== undefined) {
+            this.cloudWatchRole = args.cloudWatchRole;
+        }
+    }
 }
 
 export interface AccountArgs {
     cloudWatchRole?: Role;
 }
-
 

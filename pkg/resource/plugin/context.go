@@ -18,10 +18,14 @@ package plugin
 import (
 	"context"
 
+	"github.com/golang/glog"
+
 	"github.com/pulumi/lumi/pkg/diag"
 	"github.com/pulumi/lumi/pkg/eval"
 	"github.com/pulumi/lumi/pkg/eval/rt"
 	"github.com/pulumi/lumi/pkg/resource"
+	"github.com/pulumi/lumi/pkg/util/contract"
+	"github.com/pulumi/lumi/pkg/util/rpcutil"
 )
 
 // Context is used to group related operations together so that associated OS resources can be cached, shared, and
@@ -65,6 +69,18 @@ func NewContext(d diag.Sink, host Host) (*Context, error) {
 	return ctx, nil
 }
 
+// SetCurrentInterpreter changes the current interpreter context.  Only one interpreter may be in use at any given time
+// for a single context.  This allows the heap state to be read by plugins remotely over an RPC interface.
+func (ctx *Context) SetCurrentInterpreter(e eval.Interpreter) {
+	contract.Assertf(e == nil || ctx.E == nil, "Only one active interpreter permitted at one time")
+	// IDEA: we could refactor the way contexts are used so that they are unique per *iteration* inside of a plan,
+	//     rather than shared amongst all possible activations of a single plan.  I wouldn't say we have a good
+	//     philosophy on whether we want to support concurrent iteration of the same plan, however, so doing this right
+	//     now seems like overkill.  Perhaps down the road, the scenarios will become clearer and we can take action.
+	ctx.E = e
+	glog.V(9).Infof("Set current plugctx interpreter to: %v", e)
+}
+
 // Request allocates a request sub-context.
 func (ctx *Context) Request() context.Context {
 	// TODO[pulumi/lumi#143]: support cancellation.
@@ -73,5 +89,9 @@ func (ctx *Context) Request() context.Context {
 
 // Close reclaims all resources associated with this context.
 func (ctx *Context) Close() error {
-	return ctx.Host.Close()
+	err := ctx.Host.Close()
+	if err != nil && !rpcutil.IsBenignCloseErr(err) {
+		return err
+	}
+	return nil
 }

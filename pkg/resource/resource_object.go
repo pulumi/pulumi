@@ -289,8 +289,9 @@ func isOutputObject(resobj *rt.Object, obj *rt.Object) bool {
 func setRuntimeProperties(obj *rt.Object, props PropertyMap) {
 	for k, v := range props {
 		prop := obj.GetPropertyAddr(rt.PropertyKey(k), true, true)
-		// TODO: we are only setting if IsNull or IsComputed, to avoid certain shortcomings in our serialization format
-		//     today.  For example, if a resource ID appears, we must map it back to the runtime object.
+		// TODO[pulumi/lumi#260]: we are only setting if IsNull or IsComputed, to avoid certain shortcomings in our
+		//     serialization format today.  For example, if a resource ID appears, we must map it back to the runtime
+		//     object.  This means some resource outputs won't get reflected accurately.  We will need to fix this.
 		pobj := prop.Obj()
 		if pobj.IsNull() || isOutputObject(obj, pobj) {
 			glog.V(9).Infof("Setting resource object property: %v=%v", k, v)

@@ -76,6 +76,14 @@ export class Instance extends lumi.NamedResource implements InstanceArgs {
     public privateIP?: string;
     public publicIP?: string;
 
+    public static get(id: lumi.ID): Instance {
+        return <any>undefined; // functionality provided by the runtime
+    }
+
+    public static query(q: any): Instance[] {
+        return <any>undefined; // functionality provided by the runtime
+    }
+
     constructor(name: string, args: InstanceArgs) {
         super(name);
         if (args.imageId === undefined) {
@@ -86,14 +94,6 @@ export class Instance extends lumi.NamedResource implements InstanceArgs {
         this.securityGroups = args.securityGroups;
         this.keyName = args.keyName;
         this.tags = args.tags;
-    }
-
-    public static get(id: lumi.ID): Instance {
-        return <any>undefined; // functionality provided by the runtime
-    }
-
-    public static query(q: any): Instance[] {
-        return <any>undefined; // functionality provided by the runtime
     }
 }
 
@@ -168,5 +168,4 @@ export interface Tag {
     key: string;
     value: string;
 }
-
 

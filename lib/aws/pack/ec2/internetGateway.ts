@@ -6,10 +6,6 @@ import * as lumi from "@lumi/lumi";
 
 export class InternetGateway extends lumi.NamedResource implements InternetGatewayArgs {
 
-    constructor(name: string, args?: InternetGatewayArgs) {
-        super(name);
-    }
-
     public static get(id: lumi.ID): InternetGateway {
         return <any>undefined; // functionality provided by the runtime
     }
@@ -17,9 +13,12 @@ export class InternetGateway extends lumi.NamedResource implements InternetGatew
     public static query(q: any): InternetGateway[] {
         return <any>undefined; // functionality provided by the runtime
     }
+
+    constructor(name: string, args?: InternetGatewayArgs) {
+        super(name);
+    }
 }
 
 export interface InternetGatewayArgs {
 }
-
 

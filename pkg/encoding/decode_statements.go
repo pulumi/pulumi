@@ -98,7 +98,8 @@ func decodeBlock(m mapper.Mapper, obj map[string]interface{}) (*ast.Block, error
 	return &block, nil
 }
 
-func decodeLocalVariableDeclaration(m mapper.Mapper, obj map[string]interface{}) (*ast.LocalVariableDeclaration, error) {
+func decodeLocalVariableDeclaration(m mapper.Mapper,
+	obj map[string]interface{}) (*ast.LocalVariableDeclaration, error) {
 	var local ast.LocalVariableDeclaration
 	if err := m.Decode(obj, &local); err != nil {
 		return nil, err

@@ -28,6 +28,7 @@ import (
 	"github.com/pulumi/lumi/pkg/eval"
 	"github.com/pulumi/lumi/pkg/eval/rt"
 	"github.com/pulumi/lumi/pkg/resource"
+	"github.com/pulumi/lumi/pkg/resource/plugin"
 	"github.com/pulumi/lumi/pkg/tokens"
 	"github.com/pulumi/lumi/pkg/util/contract"
 	"github.com/pulumi/lumi/pkg/util/rendezvous"
@@ -36,20 +37,28 @@ import (
 // NewEvalSource returns a planning source that fetches resources by evaluating a package pkg with a set of args args
 // and a confgiuration map config.  This evaluation is performed using the given context ctx and may optionally use the
 // given plugin host (or the default, if this is nil).  Note that closing the eval source also closes the host.
-func NewEvalSource(ctx *binder.Context, pkg *symbols.Package, args core.Args, config resource.ConfigMap) Source {
+//
+// If destroy is true, then all of the usual initialization will take place, but the state will be presented to the
+// planning engine as if no new resources exist.  This will cause it to forcibly remove them.
+func NewEvalSource(plugctx *plugin.Context, bindctx *binder.Context,
+	pkg *symbols.Package, args core.Args, config resource.ConfigMap, destroy bool) Source {
 	return &evalSource{
-		bindctx: ctx,
+		plugctx: plugctx,
+		bindctx: bindctx,
 		pkg:     pkg,
 		args:    args,
 		config:  config,
+		destroy: destroy,
 	}
 }
 
 type evalSource struct {
+	plugctx *plugin.Context    // the plugin context (for plugin communication, e.g. interpreter state).
 	bindctx *binder.Context    // the binder context (for compiler operations).
 	pkg     *symbols.Package   // the package to evaluate.
 	args    core.Args          // the arguments used to compile this package.
 	config  resource.ConfigMap // the configuration variables for this package.
+	destroy bool               // true if this source will trigger total destruction.
 }
 
 const (
@@ -87,8 +96,13 @@ func (src *evalSource) Iterate() (SourceIterator, error) {
 		return nil, err
 	}
 
+	// Set the current context iterator; we will relinqush this in Close.
+	src.plugctx.SetCurrentInterpreter(e)
+
 	// Now create the evaluator coroutine and prepare it to take its first step.
-	forkEval(src, rz, e)
+	if err := forkEval(src, rz, e); err != nil {
+		return nil, err
+	}
 
 	// Finally, return the fresh iterator that can take things from here.
 	return &evalSourceIterator{
@@ -106,8 +120,9 @@ type evalSourceIterator struct {
 }
 
 func (iter *evalSourceIterator) Close() error {
-	// TODO: cancel the interpreter.
+	// TODO: cancel the interpreter if it is still running.
 	iter.rz.Done(nil)
+	iter.src.plugctx.SetCurrentInterpreter(nil)
 	return nil
 }
 
@@ -116,6 +131,11 @@ func (iter *evalSourceIterator) Produce(res *resource.Object) {
 }
 
 func (iter *evalSourceIterator) Next() (*SourceAllocation, *SourceQuery, error) {
+	// If we are destroying, we simply return nothing.
+	if iter.src.destroy {
+		return nil, nil, nil
+	}
+
 	// Kick the interpreter to compute some more and then inspect what it has to say.
 	var data interface{}
 	if res := iter.res; res != nil {
@@ -150,7 +170,7 @@ func (iter *evalSourceIterator) Next() (*SourceAllocation, *SourceQuery, error) 
 					goerr.Errorf("Missing required argument 'id' for method %v", meth)
 			} else if !args[0].IsString() {
 				return nil, nil,
-					goerr.Errorf("Expected method %v argument 'id' to be a string; got", meth, args[0])
+					goerr.Errorf("Expected method %v argument 'id' to be a string; got %v", meth, args[0])
 			}
 			return nil, &SourceQuery{Type: t, GetID: resource.ID(args[0].StringValue())}, nil
 		case specialResourceQueryFunction:
@@ -164,8 +184,8 @@ func (iter *evalSourceIterator) Next() (*SourceAllocation, *SourceQuery, error) 
 	return nil, nil, nil
 }
 
-// InitEvalConfig applies the configuration map to an existing interpreter context.  The map is simply a map of tokens --
-// which must be globally settable variables (module properties or static class properties) -- to serializable constant
+// InitEvalConfig applies the configuration map to an existing interpreter context.  The map is simply a map of tokens,
+// which must be globally settable variables (module properties or static class properties), to serializable constant
 // values.  The routine simply walks these tokens in sorted order, and assigns the constant objects.  Note that, because
 // we are accessing module and class members, this routine will also trigger the relevant initialization routines.
 func InitEvalConfig(ctx *binder.Context, e eval.Interpreter, config resource.ConfigMap) error {
@@ -181,7 +201,7 @@ func InitEvalConfig(ctx *binder.Context, e eval.Interpreter, config resource.Con
 
 		// Bind to the symbol; if it returns nil, this means an error has resulted, and we can skip it.
 		var tree diag.Diagable // there is no source info for this; eventually we may assign one.
-		if sym := ctx.LookupSymbol(tree, tokens.Token(tok), true); sym != nil {
+		if sym := ctx.LookupSymbol(tree, tok, true); sym != nil {
 			var ok bool
 			switch s := sym.(type) {
 			case *symbols.ModuleProperty:
@@ -220,19 +240,24 @@ func InitEvalConfig(ctx *binder.Context, e eval.Interpreter, config resource.Con
 
 // forkEval performs the evaluation from a distinct goroutine.  This function blocks until it's our turn to go.
 func forkEval(src *evalSource, rz *rendezvous.Rendezvous, e eval.Interpreter) error {
-	// Fire up the goroutine.
-	go func() {
-		e.EvaluatePackage(src.pkg, src.args)
-	}()
+	if src.destroy {
+		// If we are destroying, no need to perform any evaluation beyond the config initialization.
+	} else {
+		// Fire up the goroutine.
+		go func() {
+			e.EvaluatePackage(src.pkg, src.args)
+		}()
 
-	// Let the other party run and only resume when it's our turn.
-	ret, done, err := rz.Let(planParty)
-	if err != nil {
-		return err
-	} else if done {
-		return goerr.New("Failure running the program before it even began executing")
+		// Let the other party run and only resume when it's our turn.
+		ret, done, err := rz.Let(planParty)
+		if err != nil {
+			return err
+		} else if done {
+			return goerr.New("Failure running the program before it even began executing")
+		}
+		contract.Assertf(ret == nil, "unexpected rendezvous return: %v", ret)
 	}
-	contract.Assertf(ret == nil, "unexpected rendezvous return: %v", ret)
+
 	return nil
 }
 

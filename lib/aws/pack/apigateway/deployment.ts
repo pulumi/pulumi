@@ -12,6 +12,14 @@ export class Deployment extends lumi.NamedResource implements DeploymentArgs {
     public id: string;
     public createdDate: string;
 
+    public static get(id: lumi.ID): Deployment {
+        return <any>undefined; // functionality provided by the runtime
+    }
+
+    public static query(q: any): Deployment[] {
+        return <any>undefined; // functionality provided by the runtime
+    }
+
     constructor(name: string, args: DeploymentArgs) {
         super(name);
         if (args.restAPI === undefined) {
@@ -20,19 +28,10 @@ export class Deployment extends lumi.NamedResource implements DeploymentArgs {
         this.restAPI = args.restAPI;
         this.description = args.description;
     }
-
-    public static get(id: lumi.ID): Deployment {
-        return <any>undefined; // functionality provided by the runtime
-    }
-
-    public static query(q: any): Deployment[] {
-        return <any>undefined; // functionality provided by the runtime
-    }
 }
 
 export interface DeploymentArgs {
     readonly restAPI: RestAPI;
     description?: string;
 }
-
 

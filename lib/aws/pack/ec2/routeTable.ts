@@ -9,14 +9,6 @@ import {VPC} from "./vpc";
 export class RouteTable extends lumi.NamedResource implements RouteTableArgs {
     public readonly vpc: VPC;
 
-    constructor(name: string, args: RouteTableArgs) {
-        super(name);
-        if (args.vpc === undefined) {
-            throw new Error("Missing required argument 'vpc'");
-        }
-        this.vpc = args.vpc;
-    }
-
     public static get(id: lumi.ID): RouteTable {
         return <any>undefined; // functionality provided by the runtime
     }
@@ -24,10 +16,17 @@ export class RouteTable extends lumi.NamedResource implements RouteTableArgs {
     public static query(q: any): RouteTable[] {
         return <any>undefined; // functionality provided by the runtime
     }
+
+    constructor(name: string, args: RouteTableArgs) {
+        super(name);
+        if (args.vpc === undefined) {
+            throw new Error("Missing required argument 'vpc'");
+        }
+        this.vpc = args.vpc;
+    }
 }
 
 export interface RouteTableArgs {
     readonly vpc: VPC;
 }
-
 

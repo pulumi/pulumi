@@ -175,7 +175,7 @@ func goPackagePath(path string) (string, error) {
 	gopath = filepath.Join(gopath, "src")
 
 	// Now ensure that the package path is a proper subset within it.
-	if !filepath.HasPrefix(path, gopath) {
+	if !strings.HasPrefix(path, gopath+string(os.PathSeparator)) {
 		return "", errors.Errorf(
 			"Package root '%v' is not underneath $GOPATH/src, so its package cannot be inferred", path)
 	}

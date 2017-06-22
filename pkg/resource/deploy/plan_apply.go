@@ -36,11 +36,14 @@ func (p *Plan) Apply(prog Progress) (PlanSummary, Step, resource.Status, error) 
 	if err != nil {
 		return nil, nil, resource.StatusOK, err
 	}
+
 	n := 1
 	step, err := iter.Next()
 	if err != nil {
+		_ = iter.Close() // ignore close errors; the Next error trumps
 		return nil, nil, resource.StatusOK, err
 	}
+
 	for step != nil {
 		// Do the pre-step.
 		rst := resource.StatusOK
@@ -63,16 +66,22 @@ func (p *Plan) Apply(prog Progress) (PlanSummary, Step, resource.Status, error) 
 		// If an error occurred, exit early.
 		if err != nil {
 			glog.V(7).Infof("Plan step #%v failed [%v]: %v", n, step.Op(), err)
+			_ = iter.Close() // ignore close errors; the Apply error trumps
 			return iter, step, rst, err
 		}
 
 		glog.V(7).Infof("Plan step #%v succeeded [%v]", n, step.Op())
 		step, err = iter.Next()
+		if err != nil {
+			glog.V(7).Infof("Advancing to plan step #%v failed: %v", n+1, err)
+			_ = iter.Close() // ignore close errors; the Apply error trumps
+			return iter, step, resource.StatusOK, err
+		}
 		n++
 	}
 
 	// Finally, return a summary and the resulting plan information.
-	return iter, nil, resource.StatusOK, nil
+	return iter, nil, resource.StatusOK, iter.Close()
 }
 
 // Iterate initializes and returns an iterator that can be used to step through a plan's individual steps.
@@ -139,6 +148,11 @@ func (iter *PlanIterator) Sames() map[resource.URN]bool    { return iter.sames }
 func (iter *PlanIterator) Resources() []*resource.State    { return iter.resources }
 func (iter *PlanIterator) Dones() map[*resource.State]bool { return iter.dones }
 func (iter *PlanIterator) Done() bool                      { return iter.done }
+
+// Close terminates the iteration of this plan.
+func (iter *PlanIterator) Close() error {
+	return iter.src.Close()
+}
 
 // Produce is used to indicate that a new resource state has been read from a live environment.
 func (iter *PlanIterator) Produce(res *resource.Object) {
@@ -336,7 +350,7 @@ func (iter *PlanIterator) calculateDeletes() []*resource.State {
 	return dels
 }
 
-// Snap returns a fresh snapshot that takes into account everything that has happend up till this point.  Namely, if a
+// Snap returns a fresh snapshot that takes into account everything that has happened up till this point.  Namely, if a
 // failure happens partway through, the untouched snapshot elements will be retained, while any updates will be
 // preserved.  If no failure happens, the snapshot naturally reflects the final state of all resources.
 func (iter *PlanIterator) Snap() *Snapshot {

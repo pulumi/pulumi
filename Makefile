@@ -1,15 +1,20 @@
+.SHELLFLAGS=-e
+
 PROJECT=github.com/pulumi/lumi
 PROJECT_PKGS=$(shell go list ./cmd/... ./pkg/... | grep -v /vendor/)
 TESTPARALLELISM=10
 
+GOMETALINTERBIN=gometalinter
+GOMETALINTER=${GOMETALINTERBIN} --config=Gometalinter.json
+
 .PHONY: default
-default: banner lint_quiet vet test install
+default: banner vet test install lint_quiet
 
 .PHONY: all
-all: banner_all lint_quiet vet test install lumijs lumirtpkg lumijspkg lumipkg awspkg
+all: banner_all vet test install lint_quiet lumijs lumirtpkg lumijspkg lumipkg awspkg
 
 .PHONY: nightly
-nightly: banner_all lint_quiet vet test install lumijs lumirtpkg lumijspkg lumipkg awspkg examples
+nightly: banner_all vet test install lint_quiet lumijs lumirtpkg lumijspkg lumipkg awspkg examples
 
 .PHONY: banner
 banner:
@@ -28,34 +33,43 @@ banner_all:
 .PHONY: install
 install:
 	@echo "\033[0;32mINSTALL:\033[0m"
-	@go install ${PROJECT}/cmd/lumi
-	@go install ${PROJECT}/cmd/lumidl
+	go install ${PROJECT}/cmd/lumi
+	go install ${PROJECT}/cmd/lumidl
 
 .PHONY: lint
 lint:
 	@echo "\033[0;32mLINT:\033[0m"
-	@gometalinter pkg/... | grep -v "or be unexported" | grep -v "cyclomatic complexity"
-	@gometalinter cmd/lumi/... | grep -v "or be unexported" | grep -v "cyclomatic complexity"
-	@gometalinter cmd/lumidl/... | grep -v "or be unexported" | grep -v "cyclomatic complexity"
+
+	which ${GOMETALINTERBIN} >/dev/null
+	$(GOMETALINTER) ./pkg/... | sort ; exit "$${PIPESTATUS[0]}"
+	$(GOMETALINTER) ./cmd/lumi/... | sort ; exit "$${PIPESTATUS[0]}"
+	$(GOMETALINTER) ./cmd/lumidl/... | sort ; exit "$${PIPESTATUS[0]}"
+
+# In quiet mode, suppress some messages.
+#    - "or be unexported": TODO[pulumi/lumi#191]: will fix when we write all of our API docs
+#    - "Subprocess launching with variable": we intentionally launch processes dynamically.
+#    - "cyclomatic complexity" (disabled in config): TODO[pulumi/lumi#259]: need to fix many of these.
+LINT_SUPPRESS="or be unexported|Subprocess launching with variable"
+
 
 .PHONY: lint_quiet
 lint_quiet:
 	@echo "\033[0;32mLINT (quiet):\033[0m"
-	@echo "`golint cmd/... | grep -v "or be unexported"`"
-	@echo "`golint pkg/... | grep -v "or be unexported"`"
-	@test -z "$$(golint cmd/... | grep -v 'or be unexported')"
-	@test -z "$$(golint pkg/... | grep -v 'or be unexported')"
-	@echo "\033[0;33mgolint was run quietly; to run with noisy errors, run 'make lint'\033[0m"
+	which ${GOMETALINTERBIN} >/dev/null
+	$(GOMETALINTER) ./pkg/... | grep -vE ${LINT_SUPPRESS} | sort ; exit $$(($${PIPESTATUS[1]}-1))
+	$(GOMETALINTER) ./cmd/lumi/... | grep -vE ${LINT_SUPPRESS} | sort ; exit $$(($${PIPESTATUS[1]}-1))
+	$(GOMETALINTER) ./cmd/lumidl/... | grep -vE ${LINT_SUPPRESS} | sort ; exit $$(($${PIPESTATUS[1]}-1))
+	@echo "\033[0;33mlint was run quietly; to run with noisy errors, run 'make lint'\033[0m"
 
 .PHONY: vet
 vet:
 	@echo "\033[0;32mVET:\033[0m"
-	@go tool vet -printf=false cmd/ pkg/
+	go tool vet -printf=false cmd/ pkg/
 
 .PHONY: test
 test:
 	@echo "\033[0;32mTEST:\033[0m"
-	@go test -cover -parallel ${TESTPARALLELISM} ${PROJECT_PKGS}
+	go test -cover -parallel ${TESTPARALLELISM} ${PROJECT_PKGS}
 
 .PHONY: lumijs
 lumijs:
@@ -84,4 +98,5 @@ verify:
 .PHONY: examples
 examples:
 	@echo "\033[0;32mTEST EXAMPLES:\033[0m"
-	@go test -v -cover -timeout 1h -parallel ${TESTPARALLELISM} ./examples
+	go test -v -cover -timeout 1h -parallel ${TESTPARALLELISM} ./examples
+

@@ -43,31 +43,31 @@ func Test(t *testing.T) {
 		},
 	}
 	expectedPatchOps := []*apigateway.PatchOperation{
-		&apigateway.PatchOperation{
+		{
 			Op:    aws.String("add"),
 			Path:  aws.String("/optionalArray/1"),
 			Value: aws.String("{\"number\": 1}"),
 		},
-		&apigateway.PatchOperation{
+		{
 			Op:    aws.String("replace"),
 			Path:  aws.String("/optionalArray/0/number"),
 			Value: aws.String("3"),
 		},
-		&apigateway.PatchOperation{
+		{
 			Op:    aws.String("add"),
 			Path:  aws.String("/optionalArray/0/optionalBool"),
 			Value: aws.String("true"),
 		},
-		&apigateway.PatchOperation{
+		{
 			Op:   aws.String("remove"),
 			Path: aws.String("/optionalBool"),
 		},
-		&apigateway.PatchOperation{
+		{
 			Op:    aws.String("add"),
 			Path:  aws.String("/optionalNumber"),
 			Value: aws.String("3"),
 		},
-		&apigateway.PatchOperation{
+		{
 			Op:    aws.String("replace"),
 			Path:  aws.String("/optionalString"),
 			Value: aws.String("goodbye"),

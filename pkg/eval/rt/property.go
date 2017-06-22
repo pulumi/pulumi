@@ -52,8 +52,7 @@ func (props *PropertyMap) Has(key PropertyKey) bool {
 
 // GetAddr returns a reference to a map's property.  If no entry is found, the return value is nil.
 func (props *PropertyMap) GetAddr(key PropertyKey) *Pointer {
-	ptr, _ := props.m[key]
-	return ptr
+	return props.m[key]
 }
 
 // Get returns a map's property valye.  If no entry is found, the return value is nil.

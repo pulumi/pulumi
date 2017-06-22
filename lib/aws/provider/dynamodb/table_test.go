@@ -2,9 +2,10 @@ package dynamodb
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 
-	"strings"
+	"github.com/stretchr/testify/assert"
 
 	"github.com/aws/aws-sdk-go/aws"
 	awsdynamodb "github.com/aws/aws-sdk-go/service/dynamodb"
@@ -19,7 +20,8 @@ func Test(t *testing.T) {
 	t.Parallel()
 
 	ctx := testutil.CreateContext(t)
-	cleanup(ctx)
+	err := cleanup(ctx)
+	assert.Nil(t, err)
 
 	testutil.ProviderTestSimple(t, NewTableProvider(ctx), TableToken, []interface{}{
 		&dynamodb.Table{
@@ -81,20 +83,23 @@ func Test(t *testing.T) {
 	})
 }
 
-func cleanup(ctx *awsctx.Context) {
+func cleanup(ctx *awsctx.Context) error {
 	fmt.Printf("Cleaning up tables with prefix: %v\n", RESOURCEPREFIX)
 	list, err := ctx.DynamoDB().ListTables(&awsdynamodb.ListTablesInput{})
 	if err != nil {
-		return
+		return err
 	}
 	cleaned := 0
 	for _, table := range list.TableNames {
 		if strings.HasPrefix(aws.StringValue(table), RESOURCEPREFIX) {
-			ctx.DynamoDB().DeleteTable(&awsdynamodb.DeleteTableInput{
+			if _, delerr := ctx.DynamoDB().DeleteTable(&awsdynamodb.DeleteTableInput{
 				TableName: table,
-			})
+			}); delerr != nil {
+				return delerr
+			}
 			cleaned++
 		}
 	}
 	fmt.Printf("Cleaned up %v tables\n", cleaned)
+	return nil
 }

@@ -12,6 +12,14 @@ export class Subnet extends lumi.NamedResource implements SubnetArgs {
     public readonly availabilityZone?: string;
     public mapPublicIpOnLaunch?: boolean;
 
+    public static get(id: lumi.ID): Subnet {
+        return <any>undefined; // functionality provided by the runtime
+    }
+
+    public static query(q: any): Subnet[] {
+        return <any>undefined; // functionality provided by the runtime
+    }
+
     constructor(name: string, args: SubnetArgs) {
         super(name);
         if (args.cidrBlock === undefined) {
@@ -25,14 +33,6 @@ export class Subnet extends lumi.NamedResource implements SubnetArgs {
         this.availabilityZone = args.availabilityZone;
         this.mapPublicIpOnLaunch = args.mapPublicIpOnLaunch;
     }
-
-    public static get(id: lumi.ID): Subnet {
-        return <any>undefined; // functionality provided by the runtime
-    }
-
-    public static query(q: any): Subnet[] {
-        return <any>undefined; // functionality provided by the runtime
-    }
 }
 
 export interface SubnetArgs {
@@ -41,5 +41,4 @@ export interface SubnetArgs {
     readonly availabilityZone?: string;
     mapPublicIpOnLaunch?: boolean;
 }
-
 

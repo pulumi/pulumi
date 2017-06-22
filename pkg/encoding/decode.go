@@ -57,7 +57,7 @@ func customDecoders() mapper.Decoders {
 	}
 }
 
-// Each of the custom decoders is a varaible that points to a decoder function; this is done so that the decode*
+// Each of the custom decoders is a variable that points to a decoder function; this is done so that the decode*
 // functions can remain strongly typed, as the mapper's decoder signature requires a weakly-typed interface{} return.
 
 var moduleMemberDecoder = func(m mapper.Mapper, obj map[string]interface{}) (interface{}, error) {

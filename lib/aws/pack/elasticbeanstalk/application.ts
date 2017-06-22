@@ -8,14 +8,6 @@ export class Application extends lumi.NamedResource implements ApplicationArgs {
     public readonly applicationName?: string;
     public description?: string;
 
-    constructor(name: string, args?: ApplicationArgs) {
-        super(name);
-        if (args !== undefined) {
-            this.applicationName = args.applicationName;
-            this.description = args.description;
-        }
-    }
-
     public static get(id: lumi.ID): Application {
         return <any>undefined; // functionality provided by the runtime
     }
@@ -23,11 +15,18 @@ export class Application extends lumi.NamedResource implements ApplicationArgs {
     public static query(q: any): Application[] {
         return <any>undefined; // functionality provided by the runtime
     }
+
+    constructor(name: string, args?: ApplicationArgs) {
+        super(name);
+        if (args !== undefined) {
+            this.applicationName = args.applicationName;
+            this.description = args.description;
+        }
+    }
 }
 
 export interface ApplicationArgs {
     readonly applicationName?: string;
     description?: string;
 }
-
 

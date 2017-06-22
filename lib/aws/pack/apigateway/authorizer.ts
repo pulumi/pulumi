@@ -20,6 +20,14 @@ export class Authorizer extends lumi.NamedResource implements AuthorizerArgs {
     public providers?: lumi.Resource[];
     public restAPI?: RestAPI;
 
+    public static get(id: lumi.ID): Authorizer {
+        return <any>undefined; // functionality provided by the runtime
+    }
+
+    public static query(q: any): Authorizer[] {
+        return <any>undefined; // functionality provided by the runtime
+    }
+
     constructor(name: string, args: AuthorizerArgs) {
         super(name);
         if (args.type === undefined) {
@@ -33,14 +41,6 @@ export class Authorizer extends lumi.NamedResource implements AuthorizerArgs {
         this.identityValidationExpression = args.identityValidationExpression;
         this.providers = args.providers;
         this.restAPI = args.restAPI;
-    }
-
-    public static get(id: lumi.ID): Authorizer {
-        return <any>undefined; // functionality provided by the runtime
-    }
-
-    public static query(q: any): Authorizer[] {
-        return <any>undefined; // functionality provided by the runtime
     }
 }
 
@@ -58,5 +58,4 @@ export interface AuthorizerArgs {
 export type AuthorizerType =
     "COGNITO_USER_POOLS" |
     "TOKEN";
-
 

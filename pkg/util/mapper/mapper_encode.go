@@ -81,7 +81,7 @@ func (md *mapper) EncodeValue(v interface{}) (interface{}, MappingError) {
 	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
 		return float64(vsrc.Uint()), nil
 	case reflect.Float32, reflect.Float64:
-		return float64(vsrc.Float()), nil
+		return vsrc.Float(), nil
 	case reflect.String:
 		return vsrc.String(), nil
 

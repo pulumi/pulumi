@@ -35,9 +35,6 @@ const EnvironmentToken = elasticbeanstalk.EnvironmentToken
 
 // constants for the various environment limits.
 const (
-	minCNAMEPrefix     = 4
-	maxCNAMEPrefix     = 63
-	minEnvironmentName = 4
 	maxEnvironmentName = 40
 )
 
@@ -105,11 +102,10 @@ func (p *environmentProvider) Create(ctx context.Context, obj *elasticbeanstalk.
 		VersionLabel:      versionLabel,
 		SolutionStackName: obj.SolutionStackName,
 	}
-	if _, err := p.ctx.ElasticBeanstalk().CreateEnvironment(create); err != nil {
-		return "", err
+	if _, enverr := p.ctx.ElasticBeanstalk().CreateEnvironment(create); enverr != nil {
+		return "", enverr
 	}
-	var endpointURL *string
-	succ, err := awsctx.RetryUntilLong(p.ctx, func() (bool, error) {
+	if succ, err := awsctx.RetryUntilLong(p.ctx, func() (bool, error) {
 		fmt.Printf("Waiting for environment %v to become Ready\n", name)
 		resp, err := p.getEnvironment(appname, name)
 		if err != nil {
@@ -119,12 +115,10 @@ func (p *environmentProvider) Create(ctx context.Context, obj *elasticbeanstalk.
 			return false, fmt.Errorf("New environment was terminated before becoming ready")
 		}
 		if *resp.Status == "Ready" {
-			endpointURL = resp.EndpointURL
 			return true, nil
 		}
 		return false, nil
-	})
-	if err != nil {
+	}); err != nil {
 		return "", err
 	} else if !succ {
 		return "", fmt.Errorf("Timed out waiting for environment to become ready")
@@ -173,7 +167,7 @@ func (p *environmentProvider) Get(ctx context.Context, id resource.ID) (*elastic
 	// TODO[pulumi/lumi#189] We may want to call `DecribeConfigurationSettings` to populate all of
 	// the option settings onto the returned object.  However, this returns all of the settings with
 	// their default values, not just those provided as input.  This leads to signalling deletions
-	// on future updates.  For now, we will populate a seperate output property with the full set
+	// on future updates.  For now, we will populate a separate output property with the full set
 	// of settings, but we should revisist this once we've resolved #189.
 
 	// Next see if there are any configuration option settings and, if so, set them on the return.
@@ -249,10 +243,10 @@ func (p *environmentProvider) Update(ctx context.Context, id resource.ID,
 			})
 		}
 	}
-	if _, err := p.ctx.ElasticBeanstalk().UpdateEnvironment(&envUpdate); err != nil {
-		return err
+	if _, upderr := p.ctx.ElasticBeanstalk().UpdateEnvironment(&envUpdate); upderr != nil {
+		return upderr
 	}
-	succ, err := awsctx.RetryUntilLong(p.ctx, func() (bool, error) {
+	if succ, err := awsctx.RetryUntilLong(p.ctx, func() (bool, error) {
 		fmt.Printf("Waiting for environment %v to become Ready\n", envname)
 		resp, err := p.getEnvironment(appname, envname)
 		if err != nil {
@@ -265,11 +259,9 @@ func (p *environmentProvider) Update(ctx context.Context, id resource.ID,
 			return true, nil
 		}
 		return false, nil
-	})
-	if err != nil {
+	}); err != nil {
 		return err
-	}
-	if !succ {
+	} else if !succ {
 		return fmt.Errorf("Timed out waiting for environment to become ready")
 	}
 	return nil
@@ -282,12 +274,12 @@ func (p *environmentProvider) Delete(ctx context.Context, id resource.ID) error 
 	if err != nil {
 		return err
 	}
-	if _, err := p.ctx.ElasticBeanstalk().TerminateEnvironment(&awselasticbeanstalk.TerminateEnvironmentInput{
+	if _, termerr := p.ctx.ElasticBeanstalk().TerminateEnvironment(&awselasticbeanstalk.TerminateEnvironmentInput{
 		EnvironmentName: aws.String(envname),
-	}); err != nil {
-		return err
+	}); termerr != nil {
+		return termerr
 	}
-	succ, err := awsctx.RetryUntilLong(p.ctx, func() (bool, error) {
+	if succ, err := awsctx.RetryUntilLong(p.ctx, func() (bool, error) {
 		fmt.Printf("Waiting for environment %v to become Terminated\n", envname)
 		resp, err := p.getEnvironment(appname, envname)
 		if err != nil {
@@ -297,11 +289,9 @@ func (p *environmentProvider) Delete(ctx context.Context, id resource.ID) error 
 			return true, nil
 		}
 		return false, nil
-	})
-	if err != nil {
+	}); err != nil {
 		return err
-	}
-	if !succ {
+	} else if !succ {
 		return fmt.Errorf("Timed out waiting for environment to become terminated")
 	}
 	return nil
