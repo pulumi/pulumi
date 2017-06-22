@@ -15,6 +15,7 @@
 
 export * from "./awsmanagedpolicies";
 export * from "./group";
+export * from "./instanceprofile";
 export * from "./policy";
 export * from "./role";
 export * from "./user";

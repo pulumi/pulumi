@@ -36,7 +36,7 @@ func goDiag(prog *loader.Program, elem goPos, relto string) diag.Diagable {
 	if relto != "" {
 		var err error
 		file, err = filepath.Rel(relto, file)
-		contract.Assert(err != nil)
+		contract.Assertf(err == nil, "error: %v", err)
 	}
 	return &goDiagable{
 		doc: diag.NewDocument(file),

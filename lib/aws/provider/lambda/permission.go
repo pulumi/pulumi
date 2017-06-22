@@ -38,10 +38,13 @@ import (
 const PermissionToken = lambda.PermissionToken
 
 const (
-	maxStatementID      = 100
-	actionRegexp        = "(lambda:[*]|lambda:[a-zA-Z]+|[*])"
-	sourceAccountRegexp = "\\d{12}"
-	sourceARNRegexp     = "arn:aws:([a-zA-Z0-9\\-])+:([a-z]{2}-[a-z]+-\\d{1})?:(\\d{12})?:(.*)"
+	maxStatementID = 100
+)
+
+var (
+	actionRegexp        = regexp.MustCompile("(lambda:[*]|lambda:[a-zA-Z]+|[*])")
+	sourceAccountRegexp = regexp.MustCompile("\\d{12}")
+	sourceARNRegexp     = regexp.MustCompile("arn:aws:([a-zA-Z0-9\\-])+:([a-z]{2}-[a-z]+-\\d{1})?:(\\d{12})?:(.*)")
 )
 
 type policy struct {
@@ -109,18 +112,18 @@ type permissionProvider struct {
 func (p *permissionProvider) Check(ctx context.Context, obj *lambda.Permission, property string) error {
 	switch property {
 	case lambda.Permission_Action:
-		if matched, err := regexp.MatchString(actionRegexp, obj.Action); err != nil || !matched {
+		if matched := actionRegexp.MatchString(obj.Action); !matched {
 			return fmt.Errorf("did not match regexp %v", actionRegexp)
 		}
 	case lambda.Permission_SourceAccount:
 		if obj.SourceAccount != nil {
-			if matched, err := regexp.MatchString(sourceAccountRegexp, *obj.SourceAccount); err != nil || !matched {
+			if matched := sourceAccountRegexp.MatchString(*obj.SourceAccount); !matched {
 				return fmt.Errorf("did not match regexp %v", sourceAccountRegexp)
 			}
 		}
 	case lambda.Permission_SourceARN:
 		if obj.SourceARN != nil {
-			if matched, err := regexp.MatchString(sourceARNRegexp, string(*obj.SourceARN)); err != nil || !matched {
+			if matched := sourceARNRegexp.MatchString(string(*obj.SourceARN)); !matched {
 				return fmt.Errorf("did not match regexp %v", sourceARNRegexp)
 			}
 		}
