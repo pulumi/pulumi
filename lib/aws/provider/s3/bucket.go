@@ -42,8 +42,8 @@ const (
 )
 
 var (
-	bucketNameRegexp         = regexp.MustCompile("^[a-z0-9.-]*$")
-	bucketNameBadCharsRegExp = regexp.MustCompile("[^a-z0-9.-]")
+	bucketNameRegexp         = regexp.MustCompile(`^[a-z0-9.\-]*$`)
+	bucketNameBadCharsRegExp = regexp.MustCompile(`[^a-z0-9.\-]`)
 )
 
 // NewBucketProvider creates a provider that handles S3 bucket operations.

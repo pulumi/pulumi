@@ -58,8 +58,9 @@ func (p *InstanceProfileProvider) Check(ctx context.Context, obj *iam.InstancePr
 // Create allocates a new instance of the provided resource and returns its unique ID afterwards.  (The input ID
 // must be blank.)  If this call fails, the resource must not have been created (i.e., it is "transacational").
 func (p *InstanceProfileProvider) Create(ctx context.Context, obj *iam.InstanceProfile) (resource.ID, error) {
-	// A InstanceProfile uses its name as the unique ID, since the GetInstanceProfile function uses it.  If an explicit name is given, use
-	// it directly (at the risk of conflicts).  Otherwise, auto-generate a name in part based on the resource name.
+	// A InstanceProfile uses its name as the unique ID, since the GetInstanceProfile function uses it.  If an explicit
+	// name is given, use it directly (at the risk of conflicts).  Otherwise, auto-generate a name in part based on the
+	// resource name.
 	var name string
 	if obj.InstanceProfileName != nil {
 		name = *obj.InstanceProfileName
@@ -108,7 +109,9 @@ func (p *InstanceProfileProvider) Get(ctx context.Context, id resource.ID) (*iam
 	if err != nil {
 		return nil, err
 	}
-	getInstanceProfile, err := p.ctx.IAM().GetInstanceProfile(&awsiam.GetInstanceProfileInput{InstanceProfileName: aws.String(name)})
+	getInstanceProfile, err := p.ctx.IAM().GetInstanceProfile(&awsiam.GetInstanceProfileInput{
+		InstanceProfileName: aws.String(name),
+	})
 	if err != nil {
 		if awsctx.IsAWSError(err, "NotFound", "NoSuchEntity") {
 			return nil, nil
@@ -152,14 +155,10 @@ func (p *InstanceProfileProvider) Update(ctx context.Context, id resource.ID,
 		var removes []resource.ID
 		var adds []resource.ID
 		if diff.Added(iam.InstanceProfile_Roles) {
-			for _, role := range new.Roles {
-				adds = append(adds, role)
-			}
+			adds = append(adds, new.Roles...)
 		}
 		if diff.Deleted(iam.InstanceProfile_Roles) {
-			for _, policy := range old.Roles {
-				removes = append(removes, policy)
-			}
+			removes = append(removes, old.Roles...)
 		}
 		if diff.Updated(iam.InstanceProfile_Roles) {
 			arrayDiff := diff.Updates[iam.InstanceProfile_Roles].Array
@@ -225,7 +224,9 @@ func (p *InstanceProfileProvider) Delete(ctx context.Context, id resource.ID) er
 
 	// Perform the deletion.
 	fmt.Printf("Deleting IAM InstanceProfile '%v'\n", name)
-	if _, err := p.ctx.IAM().DeleteInstanceProfile(&awsiam.DeleteInstanceProfileInput{InstanceProfileName: aws.String(name)}); err != nil {
+	if _, err := p.ctx.IAM().DeleteInstanceProfile(&awsiam.DeleteInstanceProfileInput{
+		InstanceProfileName: aws.String(name),
+	}); err != nil {
 		return err
 	}
 
@@ -238,7 +239,9 @@ func (p *InstanceProfileProvider) waitForInstanceProfileState(name string, exist
 	succ, err := awsctx.RetryUntil(
 		p.ctx,
 		func() (bool, error) {
-			if _, err := p.ctx.IAM().GetInstanceProfile(&awsiam.GetInstanceProfileInput{InstanceProfileName: aws.String(name)}); err != nil {
+			if _, err := p.ctx.IAM().GetInstanceProfile(&awsiam.GetInstanceProfileInput{
+				InstanceProfileName: aws.String(name),
+			}); err != nil {
 				if awsctx.IsAWSError(err, "NotFound", "NoSuchEntity") {
 					// The InstanceProfile is missing; if exist==false, we're good, otherwise keep retrying.
 					return !exist, nil

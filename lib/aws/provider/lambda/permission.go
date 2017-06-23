@@ -42,9 +42,9 @@ const (
 )
 
 var (
-	actionRegexp        = regexp.MustCompile("(lambda:[*]|lambda:[a-zA-Z]+|[*])")
-	sourceAccountRegexp = regexp.MustCompile("\\d{12}")
-	sourceARNRegexp     = regexp.MustCompile("arn:aws:([a-zA-Z0-9\\-])+:([a-z]{2}-[a-z]+-\\d{1})?:(\\d{12})?:(.*)")
+	actionRegexp        = regexp.MustCompile(`(lambda:[*]|lambda:[a-zA-Z]+|[*])`)
+	sourceAccountRegexp = regexp.MustCompile(`\d{12}`)
+	sourceARNRegexp     = regexp.MustCompile(`arn:aws:([a-zA-Z0-9\-])+:([a-z]{2}-[a-z]+-\d{1})?:(\d{12})?:(.*)`)
 )
 
 type policy struct {
