@@ -23,9 +23,8 @@ import (
 	"github.com/pulumi/lumi/lib/aws/provider/awsctx"
 	"github.com/pulumi/lumi/lib/aws/provider/testutil"
 	"github.com/pulumi/lumi/lib/aws/rpc/ec2"
+	"github.com/pulumi/lumi/pkg/resource"
 )
-
-const RESOURCEPREFIX = "lumitest"
 
 var amis = map[string]string{
 	"us-east-1":      "ami-6869aa05",
@@ -48,28 +47,28 @@ var amis = map[string]string{
 func Test(t *testing.T) {
 	t.Parallel()
 
+	prefix := resource.NewUniqueHex("lumitest", 20, 20)
 	ctx := testutil.CreateContext(t)
-	cleanup(ctx)
-
+	defer cleanup(prefix, ctx)
 	instanceType := ec2.InstanceType("t2.nano")
 
 	testutil.ProviderTestSimple(t, NewInstanceProvider(ctx), InstanceToken, []interface{}{
 		&ec2.Instance{
-			Name:         aws.String(RESOURCEPREFIX),
+			Name:         aws.String(prefix),
 			InstanceType: &instanceType,
 			ImageID:      amis[ctx.Region()],
 			Tags: &[]ec2.Tag{{
-				Key:   RESOURCEPREFIX,
-				Value: RESOURCEPREFIX,
+				Key:   prefix,
+				Value: prefix,
 			}},
 		},
 		&ec2.Instance{
-			Name:         aws.String(RESOURCEPREFIX),
+			Name:         aws.String(prefix),
 			InstanceType: &instanceType,
 			ImageID:      amis[ctx.Region()],
 			Tags: &[]ec2.Tag{{
-				Key:   RESOURCEPREFIX,
-				Value: RESOURCEPREFIX,
+				Key:   prefix,
+				Value: prefix,
 			}, {
 				Key:   "Hello",
 				Value: "World",
@@ -79,12 +78,12 @@ func Test(t *testing.T) {
 
 }
 
-func cleanup(ctx *awsctx.Context) {
-	fmt.Printf("Cleaning up instances with tag:%v=%v\n", RESOURCEPREFIX, RESOURCEPREFIX)
+func cleanup(prefix string, ctx *awsctx.Context) {
+	fmt.Printf("Cleaning up instances with tag:%v=%v\n", prefix, prefix)
 	list, err := ctx.EC2().DescribeInstances(&awsec2.DescribeInstancesInput{
 		Filters: []*awsec2.Filter{{
-			Name:   aws.String("tag:" + RESOURCEPREFIX),
-			Values: []*string{aws.String(RESOURCEPREFIX)},
+			Name:   aws.String("tag:" + prefix),
+			Values: []*string{aws.String(prefix)},
 		}},
 	})
 	if err != nil {

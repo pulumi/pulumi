@@ -19,8 +19,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
-
 	"github.com/aws/aws-sdk-go/aws"
 	awsiam "github.com/aws/aws-sdk-go/service/iam"
 	awslambda "github.com/aws/aws-sdk-go/service/lambda"
@@ -31,18 +29,20 @@ import (
 	"github.com/pulumi/lumi/lib/aws/rpc/iam"
 	"github.com/pulumi/lumi/lib/aws/rpc/lambda"
 	"github.com/pulumi/lumi/pkg/resource"
+	"github.com/stretchr/testify/assert"
 )
-
-const RESOURCEPREFIX = "lumitest"
 
 func Test(t *testing.T) {
 	t.Parallel()
 
+	prefix := resource.NewUniqueHex("lumitest", 20, 20)
 	ctx := testutil.CreateContext(t)
-	funcerr := cleanupFunctions(ctx)
-	assert.Nil(t, funcerr)
-	roleerr := cleanupRoles(ctx)
-	assert.Nil(t, roleerr)
+	defer func() {
+		funcerr := cleanupFunctions(prefix, ctx)
+		assert.Nil(t, funcerr)
+		roleerr := cleanupRoles(prefix, ctx)
+		assert.Nil(t, roleerr)
+	}()
 
 	sourceARN := rpc.ARN("arn:aws:s3:::elasticbeanstalk-us-east-1-111111111111")
 
@@ -57,7 +57,7 @@ func Test(t *testing.T) {
 				Name: "role",
 				Creator: func(ctx testutil.Context) interface{} {
 					return &iam.Role{
-						Name: aws.String(RESOURCEPREFIX),
+						Name: aws.String(prefix),
 						ManagedPolicyARNs: &[]rpc.ARN{
 							rpc.ARN("arn:aws:iam::aws:policy/AWSLambdaFullAccess"),
 						},
@@ -81,7 +81,7 @@ func Test(t *testing.T) {
 				Name: "f",
 				Creator: func(ctx testutil.Context) interface{} {
 					return &lambda.Function{
-						Name: aws.String(RESOURCEPREFIX),
+						Name: aws.String(prefix),
 						Code: resource.Archive{
 							Assets: &map[string]*resource.Asset{
 								"index.js": {
@@ -99,7 +99,7 @@ func Test(t *testing.T) {
 				Name: "permission",
 				Creator: func(ctx testutil.Context) interface{} {
 					return &lambda.Permission{
-						Name:          aws.String(RESOURCEPREFIX),
+						Name:          aws.String(prefix),
 						Function:      ctx.GetResourceID("f"),
 						Action:        "lambda:InvokeFunction",
 						Principal:     "s3.amazonaws.com",
@@ -115,19 +115,19 @@ func Test(t *testing.T) {
 
 }
 
-func cleanupFunctions(ctx *awsctx.Context) error {
-	fmt.Printf("Cleaning up function with name:%v\n", RESOURCEPREFIX)
+func cleanupFunctions(prefix string, ctx *awsctx.Context) error {
+	fmt.Printf("Cleaning up function with name:%v\n", prefix)
 	list, err := ctx.Lambda().ListFunctions(&awslambda.ListFunctionsInput{})
 	if err != nil {
 		return err
 	}
 	cleaned := 0
 	for _, fnc := range list.Functions {
-		if strings.HasPrefix(aws.StringValue(fnc.FunctionName), RESOURCEPREFIX) {
+		if strings.HasPrefix(aws.StringValue(fnc.FunctionName), prefix) {
 			if _, delerr := ctx.Lambda().DeleteFunction(&awslambda.DeleteFunctionInput{
 				FunctionName: fnc.FunctionName,
 			}); delerr != nil {
-				fmt.Printf("Unable to cleanip function %v: %v\n", fnc.FunctionName, delerr)
+				fmt.Printf("Unable to cleanup function %v: %v\n", fnc.FunctionName, delerr)
 				return delerr
 			}
 			cleaned++
@@ -137,15 +137,15 @@ func cleanupFunctions(ctx *awsctx.Context) error {
 	return nil
 }
 
-func cleanupRoles(ctx *awsctx.Context) error {
-	fmt.Printf("Cleaning up roles with name:%v\n", RESOURCEPREFIX)
+func cleanupRoles(prefix string, ctx *awsctx.Context) error {
+	fmt.Printf("Cleaning up roles with name:%v\n", prefix)
 	list, err := ctx.IAM().ListRoles(&awsiam.ListRolesInput{})
 	if err != nil {
 		return err
 	}
 	cleaned := 0
 	for _, role := range list.Roles {
-		if strings.HasPrefix(aws.StringValue(role.RoleName), RESOURCEPREFIX) {
+		if strings.HasPrefix(aws.StringValue(role.RoleName), prefix) {
 			policies, err := ctx.IAM().ListAttachedRolePolicies(&awsiam.ListAttachedRolePoliciesInput{
 				RoleName: role.RoleName,
 			})
