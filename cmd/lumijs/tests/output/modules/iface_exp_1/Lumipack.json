@@ -16,11 +16,11 @@
                         "loc": {
                             "file": "index.ts",
                             "start": {
-                                "line": 1,
+                                "line": 15,
                                 "column": 18
                             },
                             "end": {
-                                "line": 1,
+                                "line": 15,
                                 "column": 19
                             }
                         }
@@ -31,11 +31,11 @@
                         "loc": {
                             "file": "index.ts",
                             "start": {
-                                "line": 1,
+                                "line": 15,
                                 "column": 18
                             },
                             "end": {
-                                "line": 1,
+                                "line": 15,
                                 "column": 19
                             }
                         }
@@ -43,11 +43,11 @@
                     "loc": {
                         "file": "index.ts",
                         "start": {
-                            "line": 1,
+                            "line": 15,
                             "column": 1
                         },
                         "end": {
-                            "line": 2,
+                            "line": 16,
                             "column": 2
                         }
                     }
@@ -62,11 +62,11 @@
                         "loc": {
                             "file": "index.ts",
                             "start": {
-                                "line": 1,
+                                "line": 15,
                                 "column": 18
                             },
                             "end": {
-                                "line": 1,
+                                "line": 15,
                                 "column": 19
                             }
                         }
@@ -77,11 +77,11 @@
                     "loc": {
                         "file": "index.ts",
                         "start": {
-                            "line": 1,
+                            "line": 15,
                             "column": 1
                         },
                         "end": {
-                            "line": 2,
+                            "line": 16,
                             "column": 2
                         }
                     }
@@ -101,11 +101,11 @@
             "loc": {
                 "file": "index.ts",
                 "start": {
-                    "line": 1,
+                    "line": 15,
                     "column": 1
                 },
                 "end": {
-                    "line": 4,
+                    "line": 18,
                     "column": 1
                 }
             }

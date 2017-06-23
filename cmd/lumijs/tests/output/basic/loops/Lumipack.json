@@ -17,11 +17,11 @@
                         "loc": {
                             "file": "index.ts",
                             "start": {
-                                "line": 4,
+                                "line": 18,
                                 "column": 10
                             },
                             "end": {
-                                "line": 4,
+                                "line": 18,
                                 "column": 15
                             }
                         }
@@ -43,11 +43,11 @@
                                                 "loc": {
                                                     "file": "index.ts",
                                                     "start": {
-                                                        "line": 5,
+                                                        "line": 19,
                                                         "column": 9
                                                     },
                                                     "end": {
-                                                        "line": 5,
+                                                        "line": 19,
                                                         "column": 10
                                                     }
                                                 }
@@ -58,11 +58,11 @@
                                                 "loc": {
                                                     "file": "index.ts",
                                                     "start": {
-                                                        "line": 5,
+                                                        "line": 19,
                                                         "column": 9
                                                     },
                                                     "end": {
-                                                        "line": 5,
+                                                        "line": 19,
                                                         "column": 14
                                                     }
                                                 }
@@ -81,11 +81,11 @@
                                                     "loc": {
                                                         "file": "index.ts",
                                                         "start": {
-                                                            "line": 5,
+                                                            "line": 19,
                                                             "column": 9
                                                         },
                                                         "end": {
-                                                            "line": 5,
+                                                            "line": 19,
                                                             "column": 10
                                                         }
                                                     }
@@ -93,11 +93,11 @@
                                                 "loc": {
                                                     "file": "index.ts",
                                                     "start": {
-                                                        "line": 5,
+                                                        "line": 19,
                                                         "column": 13
                                                     },
                                                     "end": {
-                                                        "line": 5,
+                                                        "line": 19,
                                                         "column": 14
                                                     }
                                                 }
@@ -110,11 +110,11 @@
                                                 "loc": {
                                                     "file": "index.ts",
                                                     "start": {
-                                                        "line": 5,
+                                                        "line": 19,
                                                         "column": 13
                                                     },
                                                     "end": {
-                                                        "line": 5,
+                                                        "line": 19,
                                                         "column": 14
                                                     }
                                                 }
@@ -122,11 +122,11 @@
                                             "loc": {
                                                 "file": "index.ts",
                                                 "start": {
-                                                    "line": 5,
+                                                    "line": 19,
                                                     "column": 13
                                                 },
                                                 "end": {
-                                                    "line": 5,
+                                                    "line": 19,
                                                     "column": 14
                                                 }
                                             }
@@ -134,11 +134,11 @@
                                         "loc": {
                                             "file": "index.ts",
                                             "start": {
-                                                "line": 5,
+                                                "line": 19,
                                                 "column": 13
                                             },
                                             "end": {
-                                                "line": 5,
+                                                "line": 19,
                                                 "column": 14
                                             }
                                         }
@@ -147,11 +147,11 @@
                                 "loc": {
                                     "file": "index.ts",
                                     "start": {
-                                        "line": 5,
+                                        "line": 19,
                                         "column": 13
                                     },
                                     "end": {
-                                        "line": 5,
+                                        "line": 19,
                                         "column": 14
                                     }
                                 }
@@ -169,11 +169,11 @@
                                             "loc": {
                                                 "file": "index.ts",
                                                 "start": {
-                                                    "line": 6,
+                                                    "line": 20,
                                                     "column": 12
                                                 },
                                                 "end": {
-                                                    "line": 6,
+                                                    "line": 20,
                                                     "column": 13
                                                 }
                                             }
@@ -181,11 +181,11 @@
                                         "loc": {
                                             "file": "index.ts",
                                             "start": {
-                                                "line": 6,
+                                                "line": 20,
                                                 "column": 12
                                             },
                                             "end": {
-                                                "line": 6,
+                                                "line": 20,
                                                 "column": 13
                                             }
                                         }
@@ -197,11 +197,11 @@
                                         "loc": {
                                             "file": "index.ts",
                                             "start": {
-                                                "line": 6,
+                                                "line": 20,
                                                 "column": 16
                                             },
                                             "end": {
-                                                "line": 6,
+                                                "line": 20,
                                                 "column": 18
                                             }
                                         }
@@ -209,11 +209,11 @@
                                     "loc": {
                                         "file": "index.ts",
                                         "start": {
-                                            "line": 6,
+                                            "line": 20,
                                             "column": 12
                                         },
                                         "end": {
-                                            "line": 6,
+                                            "line": 20,
                                             "column": 18
                                         }
                                     }
@@ -235,11 +235,11 @@
                                                         "loc": {
                                                             "file": "index.ts",
                                                             "start": {
-                                                                "line": 7,
+                                                                "line": 21,
                                                                 "column": 9
                                                             },
                                                             "end": {
-                                                                "line": 7,
+                                                                "line": 21,
                                                                 "column": 10
                                                             }
                                                         }
@@ -247,11 +247,11 @@
                                                     "loc": {
                                                         "file": "index.ts",
                                                         "start": {
-                                                            "line": 7,
+                                                            "line": 21,
                                                             "column": 9
                                                         },
                                                         "end": {
-                                                            "line": 7,
+                                                            "line": 21,
                                                             "column": 10
                                                         }
                                                     }
@@ -259,11 +259,11 @@
                                                 "loc": {
                                                     "file": "index.ts",
                                                     "start": {
-                                                        "line": 7,
+                                                        "line": 21,
                                                         "column": 9
                                                     },
                                                     "end": {
-                                                        "line": 7,
+                                                        "line": 21,
                                                         "column": 12
                                                     }
                                                 }
@@ -271,11 +271,11 @@
                                             "loc": {
                                                 "file": "index.ts",
                                                 "start": {
-                                                    "line": 7,
+                                                    "line": 21,
                                                     "column": 9
                                                 },
                                                 "end": {
-                                                    "line": 7,
+                                                    "line": 21,
                                                     "column": 13
                                                 }
                                             }
@@ -284,11 +284,11 @@
                                     "loc": {
                                         "file": "index.ts",
                                         "start": {
-                                            "line": 6,
+                                            "line": 20,
                                             "column": 20
                                         },
                                         "end": {
-                                            "line": 8,
+                                            "line": 22,
                                             "column": 6
                                         }
                                     }
@@ -296,11 +296,11 @@
                                 "loc": {
                                     "file": "index.ts",
                                     "start": {
-                                        "line": 6,
+                                        "line": 20,
                                         "column": 5
                                     },
                                     "end": {
-                                        "line": 8,
+                                        "line": 22,
                                         "column": 6
                                     }
                                 }
@@ -318,11 +318,11 @@
                                             "loc": {
                                                 "file": "index.ts",
                                                 "start": {
-                                                    "line": 9,
+                                                    "line": 23,
                                                     "column": 9
                                                 },
                                                 "end": {
-                                                    "line": 9,
+                                                    "line": 23,
                                                     "column": 10
                                                 }
                                             }
@@ -330,11 +330,11 @@
                                         "loc": {
                                             "file": "index.ts",
                                             "start": {
-                                                "line": 9,
+                                                "line": 23,
                                                 "column": 9
                                             },
                                             "end": {
-                                                "line": 9,
+                                                "line": 23,
                                                 "column": 10
                                             }
                                         }
@@ -346,11 +346,11 @@
                                         "loc": {
                                             "file": "index.ts",
                                             "start": {
-                                                "line": 9,
+                                                "line": 23,
                                                 "column": 15
                                             },
                                             "end": {
-                                                "line": 9,
+                                                "line": 23,
                                                 "column": 17
                                             }
                                         }
@@ -358,11 +358,11 @@
                                     "loc": {
                                         "file": "index.ts",
                                         "start": {
-                                            "line": 9,
+                                            "line": 23,
                                             "column": 9
                                         },
                                         "end": {
-                                            "line": 9,
+                                            "line": 23,
                                             "column": 17
                                         }
                                     }
@@ -379,11 +379,11 @@
                                                 "loc": {
                                                     "file": "index.ts",
                                                     "start": {
-                                                        "line": 10,
+                                                        "line": 24,
                                                         "column": 15
                                                     },
                                                     "end": {
-                                                        "line": 10,
+                                                        "line": 24,
                                                         "column": 33
                                                     }
                                                 }
@@ -391,11 +391,11 @@
                                             "loc": {
                                                 "file": "index.ts",
                                                 "start": {
-                                                    "line": 10,
+                                                    "line": 24,
                                                     "column": 9
                                                 },
                                                 "end": {
-                                                    "line": 10,
+                                                    "line": 24,
                                                     "column": 34
                                                 }
                                             }
@@ -404,11 +404,11 @@
                                     "loc": {
                                         "file": "index.ts",
                                         "start": {
-                                            "line": 9,
+                                            "line": 23,
                                             "column": 19
                                         },
                                         "end": {
-                                            "line": 11,
+                                            "line": 25,
                                             "column": 6
                                         }
                                     }
@@ -416,11 +416,11 @@
                                 "loc": {
                                     "file": "index.ts",
                                     "start": {
-                                        "line": 9,
+                                        "line": 23,
                                         "column": 5
                                     },
                                     "end": {
-                                        "line": 11,
+                                        "line": 25,
                                         "column": 6
                                     }
                                 }
@@ -438,11 +438,11 @@
                                                 "loc": {
                                                     "file": "index.ts",
                                                     "start": {
-                                                        "line": 13,
+                                                        "line": 27,
                                                         "column": 9
                                                     },
                                                     "end": {
-                                                        "line": 13,
+                                                        "line": 27,
                                                         "column": 13
                                                     }
                                                 }
@@ -453,11 +453,11 @@
                                                 "loc": {
                                                     "file": "index.ts",
                                                     "start": {
-                                                        "line": 13,
+                                                        "line": 27,
                                                         "column": 9
                                                     },
                                                     "end": {
-                                                        "line": 13,
+                                                        "line": 27,
                                                         "column": 21
                                                     }
                                                 }
@@ -476,11 +476,11 @@
                                                     "loc": {
                                                         "file": "index.ts",
                                                         "start": {
-                                                            "line": 13,
+                                                            "line": 27,
                                                             "column": 9
                                                         },
                                                         "end": {
-                                                            "line": 13,
+                                                            "line": 27,
                                                             "column": 13
                                                         }
                                                     }
@@ -488,11 +488,11 @@
                                                 "loc": {
                                                     "file": "index.ts",
                                                     "start": {
-                                                        "line": 13,
+                                                        "line": 27,
                                                         "column": 16
                                                     },
                                                     "end": {
-                                                        "line": 13,
+                                                        "line": 27,
                                                         "column": 21
                                                     }
                                                 }
@@ -505,11 +505,11 @@
                                                 "loc": {
                                                     "file": "index.ts",
                                                     "start": {
-                                                        "line": 13,
+                                                        "line": 27,
                                                         "column": 16
                                                     },
                                                     "end": {
-                                                        "line": 13,
+                                                        "line": 27,
                                                         "column": 21
                                                     }
                                                 }
@@ -517,11 +517,11 @@
                                             "loc": {
                                                 "file": "index.ts",
                                                 "start": {
-                                                    "line": 13,
+                                                    "line": 27,
                                                     "column": 16
                                                 },
                                                 "end": {
-                                                    "line": 13,
+                                                    "line": 27,
                                                     "column": 21
                                                 }
                                             }
@@ -529,11 +529,11 @@
                                         "loc": {
                                             "file": "index.ts",
                                             "start": {
-                                                "line": 13,
+                                                "line": 27,
                                                 "column": 16
                                             },
                                             "end": {
-                                                "line": 13,
+                                                "line": 27,
                                                 "column": 21
                                             }
                                         }
@@ -542,453 +542,458 @@
                                 "loc": {
                                     "file": "index.ts",
                                     "start": {
-                                        "line": 13,
+                                        "line": 27,
                                         "column": 16
                                     },
                                     "end": {
-                                        "line": 13,
+                                        "line": 27,
                                         "column": 21
                                     }
                                 }
                             },
                             {
-                                "kind": "ForStatement",
-                                "init": {
-                                    "kind": "MultiStatement",
-                                    "statements": [
-                                        {
-                                            "kind": "LocalVariableDeclaration",
-                                            "local": {
-                                                "kind": "LocalVariable",
-                                                "name": {
-                                                    "kind": "Identifier",
-                                                    "ident": "i",
-                                                    "loc": {
-                                                        "file": "index.ts",
-                                                        "start": {
-                                                            "line": 14,
-                                                            "column": 14
-                                                        },
-                                                        "end": {
-                                                            "line": 14,
-                                                            "column": 15
-                                                        }
-                                                    }
-                                                },
-                                                "type": {
-                                                    "kind": "TypeToken",
-                                                    "tok": "number",
-                                                    "loc": {
-                                                        "file": "index.ts",
-                                                        "start": {
-                                                            "line": 14,
-                                                            "column": 14
-                                                        },
-                                                        "end": {
-                                                            "line": 14,
-                                                            "column": 19
-                                                        }
-                                                    }
-                                                }
-                                            }
-                                        },
-                                        {
-                                            "kind": "ExpressionStatement",
-                                            "expression": {
-                                                "kind": "BinaryOperatorExpression",
-                                                "left": {
-                                                    "kind": "LoadLocationExpression",
-                                                    "name": {
-                                                        "kind": "Token",
-                                                        "tok": "i",
-                                                        "loc": {
-                                                            "file": "index.ts",
-                                                            "start": {
-                                                                "line": 14,
-                                                                "column": 14
-                                                            },
-                                                            "end": {
-                                                                "line": 14,
-                                                                "column": 15
-                                                            }
-                                                        }
-                                                    },
-                                                    "loc": {
-                                                        "file": "index.ts",
-                                                        "start": {
-                                                            "line": 14,
-                                                            "column": 18
-                                                        },
-                                                        "end": {
-                                                            "line": 14,
-                                                            "column": 19
-                                                        }
-                                                    }
-                                                },
-                                                "operator": "=",
-                                                "right": {
-                                                    "kind": "NumberLiteral",
-                                                    "raw": "0",
-                                                    "value": 0,
-                                                    "loc": {
-                                                        "file": "index.ts",
-                                                        "start": {
-                                                            "line": 14,
-                                                            "column": 18
-                                                        },
-                                                        "end": {
-                                                            "line": 14,
-                                                            "column": 19
-                                                        }
-                                                    }
-                                                },
-                                                "loc": {
-                                                    "file": "index.ts",
-                                                    "start": {
-                                                        "line": 14,
-                                                        "column": 18
-                                                    },
-                                                    "end": {
-                                                        "line": 14,
-                                                        "column": 19
-                                                    }
-                                                }
-                                            },
-                                            "loc": {
-                                                "file": "index.ts",
-                                                "start": {
-                                                    "line": 14,
-                                                    "column": 18
-                                                },
-                                                "end": {
-                                                    "line": 14,
-                                                    "column": 19
-                                                }
-                                            }
-                                        }
-                                    ],
-                                    "loc": {
-                                        "file": "index.ts",
-                                        "start": {
-                                            "line": 14,
-                                            "column": 18
-                                        },
-                                        "end": {
-                                            "line": 14,
-                                            "column": 19
-                                        }
-                                    }
-                                },
-                                "condition": {
-                                    "kind": "BinaryOperatorExpression",
-                                    "operator": "<",
-                                    "left": {
-                                        "kind": "LoadLocationExpression",
-                                        "name": {
-                                            "kind": "Token",
-                                            "tok": "i",
-                                            "loc": {
-                                                "file": "index.ts",
-                                                "start": {
-                                                    "line": 14,
-                                                    "column": 21
-                                                },
-                                                "end": {
-                                                    "line": 14,
-                                                    "column": 22
-                                                }
-                                            }
-                                        },
-                                        "loc": {
-                                            "file": "index.ts",
-                                            "start": {
-                                                "line": 14,
-                                                "column": 21
-                                            },
-                                            "end": {
-                                                "line": 14,
-                                                "column": 22
-                                            }
-                                        }
-                                    },
-                                    "right": {
-                                        "kind": "NumberLiteral",
-                                        "raw": "10",
-                                        "value": 10,
-                                        "loc": {
-                                            "file": "index.ts",
-                                            "start": {
-                                                "line": 14,
-                                                "column": 25
-                                            },
-                                            "end": {
-                                                "line": 14,
-                                                "column": 27
-                                            }
-                                        }
-                                    },
-                                    "loc": {
-                                        "file": "index.ts",
-                                        "start": {
-                                            "line": 14,
-                                            "column": 21
-                                        },
-                                        "end": {
-                                            "line": 14,
-                                            "column": 27
-                                        }
-                                    }
-                                },
-                                "post": {
-                                    "kind": "ExpressionStatement",
-                                    "expression": {
-                                        "kind": "UnaryOperatorExpression",
-                                        "postfix": true,
-                                        "operator": "++",
-                                        "operand": {
-                                            "kind": "LoadLocationExpression",
-                                            "name": {
-                                                "kind": "Token",
-                                                "tok": "i",
-                                                "loc": {
-                                                    "file": "index.ts",
-                                                    "start": {
-                                                        "line": 14,
-                                                        "column": 29
-                                                    },
-                                                    "end": {
-                                                        "line": 14,
-                                                        "column": 30
-                                                    }
-                                                }
-                                            },
-                                            "loc": {
-                                                "file": "index.ts",
-                                                "start": {
-                                                    "line": 14,
-                                                    "column": 29
-                                                },
-                                                "end": {
-                                                    "line": 14,
-                                                    "column": 30
-                                                }
-                                            }
-                                        },
-                                        "loc": {
-                                            "file": "index.ts",
-                                            "start": {
-                                                "line": 14,
-                                                "column": 29
-                                            },
-                                            "end": {
-                                                "line": 14,
-                                                "column": 32
-                                            }
-                                        }
-                                    },
-                                    "loc": {
-                                        "file": "index.ts",
-                                        "start": {
-                                            "line": 14,
-                                            "column": 29
-                                        },
-                                        "end": {
-                                            "line": 14,
-                                            "column": 32
-                                        }
-                                    }
-                                },
-                                "body": {
-                                    "kind": "Block",
-                                    "statements": [
-                                        {
-                                            "kind": "IfStatement",
-                                            "condition": {
-                                                "kind": "BinaryOperatorExpression",
-                                                "operator": "==",
-                                                "left": {
-                                                    "kind": "LoadLocationExpression",
-                                                    "name": {
-                                                        "kind": "Token",
-                                                        "tok": "i",
-                                                        "loc": {
-                                                            "file": "index.ts",
-                                                            "start": {
-                                                                "line": 15,
-                                                                "column": 13
-                                                            },
-                                                            "end": {
-                                                                "line": 15,
-                                                                "column": 14
-                                                            }
-                                                        }
-                                                    },
-                                                    "loc": {
-                                                        "file": "index.ts",
-                                                        "start": {
-                                                            "line": 15,
-                                                            "column": 13
-                                                        },
-                                                        "end": {
-                                                            "line": 15,
-                                                            "column": 14
-                                                        }
-                                                    }
-                                                },
-                                                "right": {
-                                                    "kind": "NumberLiteral",
-                                                    "raw": "9",
-                                                    "value": 9,
-                                                    "loc": {
-                                                        "file": "index.ts",
-                                                        "start": {
-                                                            "line": 15,
-                                                            "column": 19
-                                                        },
-                                                        "end": {
-                                                            "line": 15,
-                                                            "column": 20
-                                                        }
-                                                    }
-                                                },
-                                                "loc": {
-                                                    "file": "index.ts",
-                                                    "start": {
-                                                        "line": 15,
-                                                        "column": 13
-                                                    },
-                                                    "end": {
-                                                        "line": 15,
-                                                        "column": 20
-                                                    }
-                                                }
-                                            },
-                                            "consequent": {
-                                                "kind": "Block",
-                                                "statements": [
-                                                    {
-                                                        "kind": "ExpressionStatement",
-                                                        "expression": {
-                                                            "kind": "BinaryOperatorExpression",
-                                                            "operator": "=",
-                                                            "left": {
-                                                                "kind": "LoadLocationExpression",
-                                                                "name": {
-                                                                    "kind": "Token",
-                                                                    "tok": "last",
-                                                                    "loc": {
-                                                                        "file": "index.ts",
-                                                                        "start": {
-                                                                            "line": 16,
-                                                                            "column": 13
-                                                                        },
-                                                                        "end": {
-                                                                            "line": 16,
-                                                                            "column": 17
-                                                                        }
-                                                                    }
+                                "kind": "Block",
+                                "statements": [
+                                    {
+                                        "kind": "ForStatement",
+                                        "init": {
+                                            "kind": "MultiStatement",
+                                            "statements": [
+                                                {
+                                                    "kind": "LocalVariableDeclaration",
+                                                    "local": {
+                                                        "kind": "LocalVariable",
+                                                        "name": {
+                                                            "kind": "Identifier",
+                                                            "ident": "i",
+                                                            "loc": {
+                                                                "file": "index.ts",
+                                                                "start": {
+                                                                    "line": 28,
+                                                                    "column": 14
                                                                 },
-                                                                "loc": {
-                                                                    "file": "index.ts",
-                                                                    "start": {
-                                                                        "line": 16,
-                                                                        "column": 13
-                                                                    },
-                                                                    "end": {
-                                                                        "line": 16,
-                                                                        "column": 17
-                                                                    }
+                                                                "end": {
+                                                                    "line": 28,
+                                                                    "column": 15
                                                                 }
-                                                            },
-                                                            "right": {
-                                                                "kind": "BoolLiteral",
-                                                                "raw": "true",
-                                                                "value": true,
+                                                            }
+                                                        },
+                                                        "type": {
+                                                            "kind": "TypeToken",
+                                                            "tok": "number",
+                                                            "loc": {
+                                                                "file": "index.ts",
+                                                                "start": {
+                                                                    "line": 28,
+                                                                    "column": 14
+                                                                },
+                                                                "end": {
+                                                                    "line": 28,
+                                                                    "column": 19
+                                                                }
+                                                            }
+                                                        }
+                                                    }
+                                                },
+                                                {
+                                                    "kind": "ExpressionStatement",
+                                                    "expression": {
+                                                        "kind": "BinaryOperatorExpression",
+                                                        "left": {
+                                                            "kind": "LoadLocationExpression",
+                                                            "name": {
+                                                                "kind": "Token",
+                                                                "tok": "i",
                                                                 "loc": {
                                                                     "file": "index.ts",
                                                                     "start": {
-                                                                        "line": 16,
-                                                                        "column": 20
+                                                                        "line": 28,
+                                                                        "column": 14
                                                                     },
                                                                     "end": {
-                                                                        "line": 16,
-                                                                        "column": 24
+                                                                        "line": 28,
+                                                                        "column": 15
                                                                     }
                                                                 }
                                                             },
                                                             "loc": {
                                                                 "file": "index.ts",
                                                                 "start": {
-                                                                    "line": 16,
-                                                                    "column": 13
+                                                                    "line": 28,
+                                                                    "column": 18
                                                                 },
                                                                 "end": {
-                                                                    "line": 16,
-                                                                    "column": 24
+                                                                    "line": 28,
+                                                                    "column": 19
+                                                                }
+                                                            }
+                                                        },
+                                                        "operator": "=",
+                                                        "right": {
+                                                            "kind": "NumberLiteral",
+                                                            "raw": "0",
+                                                            "value": 0,
+                                                            "loc": {
+                                                                "file": "index.ts",
+                                                                "start": {
+                                                                    "line": 28,
+                                                                    "column": 18
+                                                                },
+                                                                "end": {
+                                                                    "line": 28,
+                                                                    "column": 19
                                                                 }
                                                             }
                                                         },
                                                         "loc": {
                                                             "file": "index.ts",
                                                             "start": {
-                                                                "line": 16,
-                                                                "column": 13
+                                                                "line": 28,
+                                                                "column": 18
                                                             },
                                                             "end": {
-                                                                "line": 16,
-                                                                "column": 25
+                                                                "line": 28,
+                                                                "column": 19
                                                             }
                                                         }
+                                                    },
+                                                    "loc": {
+                                                        "file": "index.ts",
+                                                        "start": {
+                                                            "line": 28,
+                                                            "column": 18
+                                                        },
+                                                        "end": {
+                                                            "line": 28,
+                                                            "column": 19
+                                                        }
                                                     }
-                                                ],
+                                                }
+                                            ],
+                                            "loc": {
+                                                "file": "index.ts",
+                                                "start": {
+                                                    "line": 28,
+                                                    "column": 18
+                                                },
+                                                "end": {
+                                                    "line": 28,
+                                                    "column": 19
+                                                }
+                                            }
+                                        },
+                                        "condition": {
+                                            "kind": "BinaryOperatorExpression",
+                                            "operator": "<",
+                                            "left": {
+                                                "kind": "LoadLocationExpression",
+                                                "name": {
+                                                    "kind": "Token",
+                                                    "tok": "i",
+                                                    "loc": {
+                                                        "file": "index.ts",
+                                                        "start": {
+                                                            "line": 28,
+                                                            "column": 21
+                                                        },
+                                                        "end": {
+                                                            "line": 28,
+                                                            "column": 22
+                                                        }
+                                                    }
+                                                },
                                                 "loc": {
                                                     "file": "index.ts",
                                                     "start": {
-                                                        "line": 15,
-                                                        "column": 22
+                                                        "line": 28,
+                                                        "column": 21
                                                     },
                                                     "end": {
-                                                        "line": 17,
-                                                        "column": 10
+                                                        "line": 28,
+                                                        "column": 22
+                                                    }
+                                                }
+                                            },
+                                            "right": {
+                                                "kind": "NumberLiteral",
+                                                "raw": "10",
+                                                "value": 10,
+                                                "loc": {
+                                                    "file": "index.ts",
+                                                    "start": {
+                                                        "line": 28,
+                                                        "column": 25
+                                                    },
+                                                    "end": {
+                                                        "line": 28,
+                                                        "column": 27
                                                     }
                                                 }
                                             },
                                             "loc": {
                                                 "file": "index.ts",
                                                 "start": {
-                                                    "line": 15,
-                                                    "column": 9
+                                                    "line": 28,
+                                                    "column": 21
                                                 },
                                                 "end": {
-                                                    "line": 17,
-                                                    "column": 10
+                                                    "line": 28,
+                                                    "column": 27
                                                 }
                                             }
-                                        }
-                                    ],
-                                    "loc": {
-                                        "file": "index.ts",
-                                        "start": {
-                                            "line": 14,
-                                            "column": 34
                                         },
-                                        "end": {
-                                            "line": 18,
-                                            "column": 6
+                                        "post": {
+                                            "kind": "ExpressionStatement",
+                                            "expression": {
+                                                "kind": "UnaryOperatorExpression",
+                                                "postfix": true,
+                                                "operator": "++",
+                                                "operand": {
+                                                    "kind": "LoadLocationExpression",
+                                                    "name": {
+                                                        "kind": "Token",
+                                                        "tok": "i",
+                                                        "loc": {
+                                                            "file": "index.ts",
+                                                            "start": {
+                                                                "line": 28,
+                                                                "column": 29
+                                                            },
+                                                            "end": {
+                                                                "line": 28,
+                                                                "column": 30
+                                                            }
+                                                        }
+                                                    },
+                                                    "loc": {
+                                                        "file": "index.ts",
+                                                        "start": {
+                                                            "line": 28,
+                                                            "column": 29
+                                                        },
+                                                        "end": {
+                                                            "line": 28,
+                                                            "column": 30
+                                                        }
+                                                    }
+                                                },
+                                                "loc": {
+                                                    "file": "index.ts",
+                                                    "start": {
+                                                        "line": 28,
+                                                        "column": 29
+                                                    },
+                                                    "end": {
+                                                        "line": 28,
+                                                        "column": 32
+                                                    }
+                                                }
+                                            },
+                                            "loc": {
+                                                "file": "index.ts",
+                                                "start": {
+                                                    "line": 28,
+                                                    "column": 29
+                                                },
+                                                "end": {
+                                                    "line": 28,
+                                                    "column": 32
+                                                }
+                                            }
+                                        },
+                                        "body": {
+                                            "kind": "Block",
+                                            "statements": [
+                                                {
+                                                    "kind": "IfStatement",
+                                                    "condition": {
+                                                        "kind": "BinaryOperatorExpression",
+                                                        "operator": "==",
+                                                        "left": {
+                                                            "kind": "LoadLocationExpression",
+                                                            "name": {
+                                                                "kind": "Token",
+                                                                "tok": "i",
+                                                                "loc": {
+                                                                    "file": "index.ts",
+                                                                    "start": {
+                                                                        "line": 29,
+                                                                        "column": 13
+                                                                    },
+                                                                    "end": {
+                                                                        "line": 29,
+                                                                        "column": 14
+                                                                    }
+                                                                }
+                                                            },
+                                                            "loc": {
+                                                                "file": "index.ts",
+                                                                "start": {
+                                                                    "line": 29,
+                                                                    "column": 13
+                                                                },
+                                                                "end": {
+                                                                    "line": 29,
+                                                                    "column": 14
+                                                                }
+                                                            }
+                                                        },
+                                                        "right": {
+                                                            "kind": "NumberLiteral",
+                                                            "raw": "9",
+                                                            "value": 9,
+                                                            "loc": {
+                                                                "file": "index.ts",
+                                                                "start": {
+                                                                    "line": 29,
+                                                                    "column": 19
+                                                                },
+                                                                "end": {
+                                                                    "line": 29,
+                                                                    "column": 20
+                                                                }
+                                                            }
+                                                        },
+                                                        "loc": {
+                                                            "file": "index.ts",
+                                                            "start": {
+                                                                "line": 29,
+                                                                "column": 13
+                                                            },
+                                                            "end": {
+                                                                "line": 29,
+                                                                "column": 20
+                                                            }
+                                                        }
+                                                    },
+                                                    "consequent": {
+                                                        "kind": "Block",
+                                                        "statements": [
+                                                            {
+                                                                "kind": "ExpressionStatement",
+                                                                "expression": {
+                                                                    "kind": "BinaryOperatorExpression",
+                                                                    "operator": "=",
+                                                                    "left": {
+                                                                        "kind": "LoadLocationExpression",
+                                                                        "name": {
+                                                                            "kind": "Token",
+                                                                            "tok": "last",
+                                                                            "loc": {
+                                                                                "file": "index.ts",
+                                                                                "start": {
+                                                                                    "line": 30,
+                                                                                    "column": 13
+                                                                                },
+                                                                                "end": {
+                                                                                    "line": 30,
+                                                                                    "column": 17
+                                                                                }
+                                                                            }
+                                                                        },
+                                                                        "loc": {
+                                                                            "file": "index.ts",
+                                                                            "start": {
+                                                                                "line": 30,
+                                                                                "column": 13
+                                                                            },
+                                                                            "end": {
+                                                                                "line": 30,
+                                                                                "column": 17
+                                                                            }
+                                                                        }
+                                                                    },
+                                                                    "right": {
+                                                                        "kind": "BoolLiteral",
+                                                                        "raw": "true",
+                                                                        "value": true,
+                                                                        "loc": {
+                                                                            "file": "index.ts",
+                                                                            "start": {
+                                                                                "line": 30,
+                                                                                "column": 20
+                                                                            },
+                                                                            "end": {
+                                                                                "line": 30,
+                                                                                "column": 24
+                                                                            }
+                                                                        }
+                                                                    },
+                                                                    "loc": {
+                                                                        "file": "index.ts",
+                                                                        "start": {
+                                                                            "line": 30,
+                                                                            "column": 13
+                                                                        },
+                                                                        "end": {
+                                                                            "line": 30,
+                                                                            "column": 24
+                                                                        }
+                                                                    }
+                                                                },
+                                                                "loc": {
+                                                                    "file": "index.ts",
+                                                                    "start": {
+                                                                        "line": 30,
+                                                                        "column": 13
+                                                                    },
+                                                                    "end": {
+                                                                        "line": 30,
+                                                                        "column": 25
+                                                                    }
+                                                                }
+                                                            }
+                                                        ],
+                                                        "loc": {
+                                                            "file": "index.ts",
+                                                            "start": {
+                                                                "line": 29,
+                                                                "column": 22
+                                                            },
+                                                            "end": {
+                                                                "line": 31,
+                                                                "column": 10
+                                                            }
+                                                        }
+                                                    },
+                                                    "loc": {
+                                                        "file": "index.ts",
+                                                        "start": {
+                                                            "line": 29,
+                                                            "column": 9
+                                                        },
+                                                        "end": {
+                                                            "line": 31,
+                                                            "column": 10
+                                                        }
+                                                    }
+                                                }
+                                            ],
+                                            "loc": {
+                                                "file": "index.ts",
+                                                "start": {
+                                                    "line": 28,
+                                                    "column": 34
+                                                },
+                                                "end": {
+                                                    "line": 32,
+                                                    "column": 6
+                                                }
+                                            }
+                                        },
+                                        "loc": {
+                                            "file": "index.ts",
+                                            "start": {
+                                                "line": 28,
+                                                "column": 5
+                                            },
+                                            "end": {
+                                                "line": 32,
+                                                "column": 6
+                                            }
                                         }
                                     }
-                                },
-                                "loc": {
-                                    "file": "index.ts",
-                                    "start": {
-                                        "line": 14,
-                                        "column": 5
-                                    },
-                                    "end": {
-                                        "line": 18,
-                                        "column": 6
-                                    }
-                                }
+                                ]
                             },
                             {
                                 "kind": "IfStatement",
@@ -1004,11 +1009,11 @@
                                             "loc": {
                                                 "file": "index.ts",
                                                 "start": {
-                                                    "line": 19,
+                                                    "line": 33,
                                                     "column": 10
                                                 },
                                                 "end": {
-                                                    "line": 19,
+                                                    "line": 33,
                                                     "column": 14
                                                 }
                                             }
@@ -1016,11 +1021,11 @@
                                         "loc": {
                                             "file": "index.ts",
                                             "start": {
-                                                "line": 19,
+                                                "line": 33,
                                                 "column": 10
                                             },
                                             "end": {
-                                                "line": 19,
+                                                "line": 33,
                                                 "column": 14
                                             }
                                         }
@@ -1028,11 +1033,11 @@
                                     "loc": {
                                         "file": "index.ts",
                                         "start": {
-                                            "line": 19,
+                                            "line": 33,
                                             "column": 9
                                         },
                                         "end": {
-                                            "line": 19,
+                                            "line": 33,
                                             "column": 14
                                         }
                                     }
@@ -1049,11 +1054,11 @@
                                                 "loc": {
                                                     "file": "index.ts",
                                                     "start": {
-                                                        "line": 20,
+                                                        "line": 34,
                                                         "column": 15
                                                     },
                                                     "end": {
-                                                        "line": 20,
+                                                        "line": 34,
                                                         "column": 38
                                                     }
                                                 }
@@ -1061,11 +1066,11 @@
                                             "loc": {
                                                 "file": "index.ts",
                                                 "start": {
-                                                    "line": 20,
+                                                    "line": 34,
                                                     "column": 9
                                                 },
                                                 "end": {
-                                                    "line": 20,
+                                                    "line": 34,
                                                     "column": 39
                                                 }
                                             }
@@ -1074,11 +1079,11 @@
                                     "loc": {
                                         "file": "index.ts",
                                         "start": {
-                                            "line": 19,
+                                            "line": 33,
                                             "column": 16
                                         },
                                         "end": {
-                                            "line": 21,
+                                            "line": 35,
                                             "column": 6
                                         }
                                     }
@@ -1086,11 +1091,11 @@
                                 "loc": {
                                     "file": "index.ts",
                                     "start": {
-                                        "line": 19,
+                                        "line": 33,
                                         "column": 5
                                     },
                                     "end": {
-                                        "line": 21,
+                                        "line": 35,
                                         "column": 6
                                     }
                                 }
@@ -1099,11 +1104,11 @@
                         "loc": {
                             "file": "index.ts",
                             "start": {
-                                "line": 4,
+                                "line": 18,
                                 "column": 18
                             },
                             "end": {
-                                "line": 22,
+                                "line": 36,
                                 "column": 2
                             }
                         }
@@ -1111,11 +1116,11 @@
                     "loc": {
                         "file": "index.ts",
                         "start": {
-                            "line": 4,
+                            "line": 18,
                             "column": 1
                         },
                         "end": {
-                            "line": 22,
+                            "line": 36,
                             "column": 2
                         }
                     }
@@ -1128,11 +1133,11 @@
                         "loc": {
                             "file": "index.ts",
                             "start": {
-                                "line": 25,
+                                "line": 39,
                                 "column": 5
                             },
                             "end": {
-                                "line": 25,
+                                "line": 39,
                                 "column": 6
                             }
                         }
@@ -1143,11 +1148,11 @@
                         "loc": {
                             "file": "index.ts",
                             "start": {
-                                "line": 25,
+                                "line": 39,
                                 "column": 5
                             },
                             "end": {
-                                "line": 25,
+                                "line": 39,
                                 "column": 10
                             }
                         }
@@ -1161,11 +1166,11 @@
                         "loc": {
                             "file": "index.ts",
                             "start": {
-                                "line": 33,
+                                "line": 47,
                                 "column": 5
                             },
                             "end": {
-                                "line": 33,
+                                "line": 47,
                                 "column": 9
                             }
                         }
@@ -1176,11 +1181,11 @@
                         "loc": {
                             "file": "index.ts",
                             "start": {
-                                "line": 33,
+                                "line": 47,
                                 "column": 5
                             },
                             "end": {
-                                "line": 33,
+                                "line": 47,
                                 "column": 17
                             }
                         }
@@ -1207,11 +1212,11 @@
                                             "loc": {
                                                 "file": "index.ts",
                                                 "start": {
-                                                    "line": 25,
+                                                    "line": 39,
                                                     "column": 5
                                                 },
                                                 "end": {
-                                                    "line": 25,
+                                                    "line": 39,
                                                     "column": 6
                                                 }
                                             }
@@ -1219,11 +1224,11 @@
                                         "loc": {
                                             "file": "index.ts",
                                             "start": {
-                                                "line": 25,
+                                                "line": 39,
                                                 "column": 9
                                             },
                                             "end": {
-                                                "line": 25,
+                                                "line": 39,
                                                 "column": 10
                                             }
                                         }
@@ -1236,11 +1241,11 @@
                                         "loc": {
                                             "file": "index.ts",
                                             "start": {
-                                                "line": 25,
+                                                "line": 39,
                                                 "column": 9
                                             },
                                             "end": {
-                                                "line": 25,
+                                                "line": 39,
                                                 "column": 10
                                             }
                                         }
@@ -1248,11 +1253,11 @@
                                     "loc": {
                                         "file": "index.ts",
                                         "start": {
-                                            "line": 25,
+                                            "line": 39,
                                             "column": 9
                                         },
                                         "end": {
-                                            "line": 25,
+                                            "line": 39,
                                             "column": 10
                                         }
                                     }
@@ -1260,11 +1265,11 @@
                                 "loc": {
                                     "file": "index.ts",
                                     "start": {
-                                        "line": 25,
+                                        "line": 39,
                                         "column": 9
                                     },
                                     "end": {
-                                        "line": 25,
+                                        "line": 39,
                                         "column": 10
                                     }
                                 }
@@ -1275,18 +1280,18 @@
                                     "kind": "BinaryOperatorExpression",
                                     "operator": "<",
                                     "left": {
-                                        "kind": "LoadLocationExpression",
+                                        "kind": "TryLoadDynamicExpression",
                                         "name": {
-                                            "kind": "Token",
-                                            "tok": "basic/loops:index:x",
+                                            "kind": "StringLiteral",
+                                            "value": "x",
                                             "loc": {
                                                 "file": "index.ts",
                                                 "start": {
-                                                    "line": 26,
+                                                    "line": 40,
                                                     "column": 8
                                                 },
                                                 "end": {
-                                                    "line": 26,
+                                                    "line": 40,
                                                     "column": 9
                                                 }
                                             }
@@ -1294,11 +1299,11 @@
                                         "loc": {
                                             "file": "index.ts",
                                             "start": {
-                                                "line": 26,
+                                                "line": 40,
                                                 "column": 8
                                             },
                                             "end": {
-                                                "line": 26,
+                                                "line": 40,
                                                 "column": 9
                                             }
                                         }
@@ -1310,11 +1315,11 @@
                                         "loc": {
                                             "file": "index.ts",
                                             "start": {
-                                                "line": 26,
+                                                "line": 40,
                                                 "column": 12
                                             },
                                             "end": {
-                                                "line": 26,
+                                                "line": 40,
                                                 "column": 14
                                             }
                                         }
@@ -1322,11 +1327,11 @@
                                     "loc": {
                                         "file": "index.ts",
                                         "start": {
-                                            "line": 26,
+                                            "line": 40,
                                             "column": 8
                                         },
                                         "end": {
-                                            "line": 26,
+                                            "line": 40,
                                             "column": 14
                                         }
                                     }
@@ -1341,18 +1346,18 @@
                                                 "postfix": true,
                                                 "operator": "++",
                                                 "operand": {
-                                                    "kind": "LoadLocationExpression",
+                                                    "kind": "TryLoadDynamicExpression",
                                                     "name": {
-                                                        "kind": "Token",
-                                                        "tok": "basic/loops:index:x",
+                                                        "kind": "StringLiteral",
+                                                        "value": "x",
                                                         "loc": {
                                                             "file": "index.ts",
                                                             "start": {
-                                                                "line": 27,
+                                                                "line": 41,
                                                                 "column": 5
                                                             },
                                                             "end": {
-                                                                "line": 27,
+                                                                "line": 41,
                                                                 "column": 6
                                                             }
                                                         }
@@ -1360,11 +1365,11 @@
                                                     "loc": {
                                                         "file": "index.ts",
                                                         "start": {
-                                                            "line": 27,
+                                                            "line": 41,
                                                             "column": 5
                                                         },
                                                         "end": {
-                                                            "line": 27,
+                                                            "line": 41,
                                                             "column": 6
                                                         }
                                                     }
@@ -1372,11 +1377,11 @@
                                                 "loc": {
                                                     "file": "index.ts",
                                                     "start": {
-                                                        "line": 27,
+                                                        "line": 41,
                                                         "column": 5
                                                     },
                                                     "end": {
-                                                        "line": 27,
+                                                        "line": 41,
                                                         "column": 8
                                                     }
                                                 }
@@ -1384,11 +1389,11 @@
                                             "loc": {
                                                 "file": "index.ts",
                                                 "start": {
-                                                    "line": 27,
+                                                    "line": 41,
                                                     "column": 5
                                                 },
                                                 "end": {
-                                                    "line": 27,
+                                                    "line": 41,
                                                     "column": 9
                                                 }
                                             }
@@ -1397,11 +1402,11 @@
                                     "loc": {
                                         "file": "index.ts",
                                         "start": {
-                                            "line": 26,
+                                            "line": 40,
                                             "column": 16
                                         },
                                         "end": {
-                                            "line": 28,
+                                            "line": 42,
                                             "column": 2
                                         }
                                     }
@@ -1409,11 +1414,11 @@
                                 "loc": {
                                     "file": "index.ts",
                                     "start": {
-                                        "line": 26,
+                                        "line": 40,
                                         "column": 1
                                     },
                                     "end": {
-                                        "line": 28,
+                                        "line": 42,
                                         "column": 2
                                     }
                                 }
@@ -1424,18 +1429,18 @@
                                     "kind": "BinaryOperatorExpression",
                                     "operator": "!=",
                                     "left": {
-                                        "kind": "LoadLocationExpression",
+                                        "kind": "TryLoadDynamicExpression",
                                         "name": {
-                                            "kind": "Token",
-                                            "tok": "basic/loops:index:x",
+                                            "kind": "StringLiteral",
+                                            "value": "x",
                                             "loc": {
                                                 "file": "index.ts",
                                                 "start": {
-                                                    "line": 29,
+                                                    "line": 43,
                                                     "column": 5
                                                 },
                                                 "end": {
-                                                    "line": 29,
+                                                    "line": 43,
                                                     "column": 6
                                                 }
                                             }
@@ -1443,11 +1448,11 @@
                                         "loc": {
                                             "file": "index.ts",
                                             "start": {
-                                                "line": 29,
+                                                "line": 43,
                                                 "column": 5
                                             },
                                             "end": {
-                                                "line": 29,
+                                                "line": 43,
                                                 "column": 6
                                             }
                                         }
@@ -1459,11 +1464,11 @@
                                         "loc": {
                                             "file": "index.ts",
                                             "start": {
-                                                "line": 29,
+                                                "line": 43,
                                                 "column": 11
                                             },
                                             "end": {
-                                                "line": 29,
+                                                "line": 43,
                                                 "column": 13
                                             }
                                         }
@@ -1471,11 +1476,11 @@
                                     "loc": {
                                         "file": "index.ts",
                                         "start": {
-                                            "line": 29,
+                                            "line": 43,
                                             "column": 5
                                         },
                                         "end": {
-                                            "line": 29,
+                                            "line": 43,
                                             "column": 13
                                         }
                                     }
@@ -1492,11 +1497,11 @@
                                                 "loc": {
                                                     "file": "index.ts",
                                                     "start": {
-                                                        "line": 30,
+                                                        "line": 44,
                                                         "column": 11
                                                     },
                                                     "end": {
-                                                        "line": 30,
+                                                        "line": 44,
                                                         "column": 29
                                                     }
                                                 }
@@ -1504,11 +1509,11 @@
                                             "loc": {
                                                 "file": "index.ts",
                                                 "start": {
-                                                    "line": 30,
+                                                    "line": 44,
                                                     "column": 5
                                                 },
                                                 "end": {
-                                                    "line": 30,
+                                                    "line": 44,
                                                     "column": 30
                                                 }
                                             }
@@ -1517,11 +1522,11 @@
                                     "loc": {
                                         "file": "index.ts",
                                         "start": {
-                                            "line": 29,
+                                            "line": 43,
                                             "column": 15
                                         },
                                         "end": {
-                                            "line": 31,
+                                            "line": 45,
                                             "column": 2
                                         }
                                     }
@@ -1529,11 +1534,11 @@
                                 "loc": {
                                     "file": "index.ts",
                                     "start": {
-                                        "line": 29,
+                                        "line": 43,
                                         "column": 1
                                     },
                                     "end": {
-                                        "line": 31,
+                                        "line": 45,
                                         "column": 2
                                     }
                                 }
@@ -1550,11 +1555,11 @@
                                             "loc": {
                                                 "file": "index.ts",
                                                 "start": {
-                                                    "line": 33,
+                                                    "line": 47,
                                                     "column": 5
                                                 },
                                                 "end": {
-                                                    "line": 33,
+                                                    "line": 47,
                                                     "column": 9
                                                 }
                                             }
@@ -1562,11 +1567,11 @@
                                         "loc": {
                                             "file": "index.ts",
                                             "start": {
-                                                "line": 33,
+                                                "line": 47,
                                                 "column": 12
                                             },
                                             "end": {
-                                                "line": 33,
+                                                "line": 47,
                                                 "column": 17
                                             }
                                         }
@@ -1579,11 +1584,11 @@
                                         "loc": {
                                             "file": "index.ts",
                                             "start": {
-                                                "line": 33,
+                                                "line": 47,
                                                 "column": 12
                                             },
                                             "end": {
-                                                "line": 33,
+                                                "line": 47,
                                                 "column": 17
                                             }
                                         }
@@ -1591,11 +1596,11 @@
                                     "loc": {
                                         "file": "index.ts",
                                         "start": {
-                                            "line": 33,
+                                            "line": 47,
                                             "column": 12
                                         },
                                         "end": {
-                                            "line": 33,
+                                            "line": 47,
                                             "column": 17
                                         }
                                     }
@@ -1603,453 +1608,458 @@
                                 "loc": {
                                     "file": "index.ts",
                                     "start": {
-                                        "line": 33,
+                                        "line": 47,
                                         "column": 12
                                     },
                                     "end": {
-                                        "line": 33,
+                                        "line": 47,
                                         "column": 17
                                     }
                                 }
                             },
                             {
-                                "kind": "ForStatement",
-                                "init": {
-                                    "kind": "MultiStatement",
-                                    "statements": [
-                                        {
-                                            "kind": "LocalVariableDeclaration",
-                                            "local": {
-                                                "kind": "LocalVariable",
-                                                "name": {
-                                                    "kind": "Identifier",
-                                                    "ident": "i",
-                                                    "loc": {
-                                                        "file": "index.ts",
-                                                        "start": {
-                                                            "line": 34,
-                                                            "column": 10
-                                                        },
-                                                        "end": {
-                                                            "line": 34,
-                                                            "column": 11
-                                                        }
-                                                    }
-                                                },
-                                                "type": {
-                                                    "kind": "TypeToken",
-                                                    "tok": "number",
-                                                    "loc": {
-                                                        "file": "index.ts",
-                                                        "start": {
-                                                            "line": 34,
-                                                            "column": 10
-                                                        },
-                                                        "end": {
-                                                            "line": 34,
-                                                            "column": 15
-                                                        }
-                                                    }
-                                                }
-                                            }
-                                        },
-                                        {
-                                            "kind": "ExpressionStatement",
-                                            "expression": {
-                                                "kind": "BinaryOperatorExpression",
-                                                "left": {
-                                                    "kind": "LoadLocationExpression",
-                                                    "name": {
-                                                        "kind": "Token",
-                                                        "tok": "i",
-                                                        "loc": {
-                                                            "file": "index.ts",
-                                                            "start": {
-                                                                "line": 34,
-                                                                "column": 10
-                                                            },
-                                                            "end": {
-                                                                "line": 34,
-                                                                "column": 11
-                                                            }
-                                                        }
-                                                    },
-                                                    "loc": {
-                                                        "file": "index.ts",
-                                                        "start": {
-                                                            "line": 34,
-                                                            "column": 14
-                                                        },
-                                                        "end": {
-                                                            "line": 34,
-                                                            "column": 15
-                                                        }
-                                                    }
-                                                },
-                                                "operator": "=",
-                                                "right": {
-                                                    "kind": "NumberLiteral",
-                                                    "raw": "0",
-                                                    "value": 0,
-                                                    "loc": {
-                                                        "file": "index.ts",
-                                                        "start": {
-                                                            "line": 34,
-                                                            "column": 14
-                                                        },
-                                                        "end": {
-                                                            "line": 34,
-                                                            "column": 15
-                                                        }
-                                                    }
-                                                },
-                                                "loc": {
-                                                    "file": "index.ts",
-                                                    "start": {
-                                                        "line": 34,
-                                                        "column": 14
-                                                    },
-                                                    "end": {
-                                                        "line": 34,
-                                                        "column": 15
-                                                    }
-                                                }
-                                            },
-                                            "loc": {
-                                                "file": "index.ts",
-                                                "start": {
-                                                    "line": 34,
-                                                    "column": 14
-                                                },
-                                                "end": {
-                                                    "line": 34,
-                                                    "column": 15
-                                                }
-                                            }
-                                        }
-                                    ],
-                                    "loc": {
-                                        "file": "index.ts",
-                                        "start": {
-                                            "line": 34,
-                                            "column": 14
-                                        },
-                                        "end": {
-                                            "line": 34,
-                                            "column": 15
-                                        }
-                                    }
-                                },
-                                "condition": {
-                                    "kind": "BinaryOperatorExpression",
-                                    "operator": "<",
-                                    "left": {
-                                        "kind": "LoadLocationExpression",
-                                        "name": {
-                                            "kind": "Token",
-                                            "tok": "i",
-                                            "loc": {
-                                                "file": "index.ts",
-                                                "start": {
-                                                    "line": 34,
-                                                    "column": 17
-                                                },
-                                                "end": {
-                                                    "line": 34,
-                                                    "column": 18
-                                                }
-                                            }
-                                        },
-                                        "loc": {
-                                            "file": "index.ts",
-                                            "start": {
-                                                "line": 34,
-                                                "column": 17
-                                            },
-                                            "end": {
-                                                "line": 34,
-                                                "column": 18
-                                            }
-                                        }
-                                    },
-                                    "right": {
-                                        "kind": "NumberLiteral",
-                                        "raw": "10",
-                                        "value": 10,
-                                        "loc": {
-                                            "file": "index.ts",
-                                            "start": {
-                                                "line": 34,
-                                                "column": 21
-                                            },
-                                            "end": {
-                                                "line": 34,
-                                                "column": 23
-                                            }
-                                        }
-                                    },
-                                    "loc": {
-                                        "file": "index.ts",
-                                        "start": {
-                                            "line": 34,
-                                            "column": 17
-                                        },
-                                        "end": {
-                                            "line": 34,
-                                            "column": 23
-                                        }
-                                    }
-                                },
-                                "post": {
-                                    "kind": "ExpressionStatement",
-                                    "expression": {
-                                        "kind": "UnaryOperatorExpression",
-                                        "postfix": true,
-                                        "operator": "++",
-                                        "operand": {
-                                            "kind": "LoadLocationExpression",
-                                            "name": {
-                                                "kind": "Token",
-                                                "tok": "i",
-                                                "loc": {
-                                                    "file": "index.ts",
-                                                    "start": {
-                                                        "line": 34,
-                                                        "column": 25
-                                                    },
-                                                    "end": {
-                                                        "line": 34,
-                                                        "column": 26
-                                                    }
-                                                }
-                                            },
-                                            "loc": {
-                                                "file": "index.ts",
-                                                "start": {
-                                                    "line": 34,
-                                                    "column": 25
-                                                },
-                                                "end": {
-                                                    "line": 34,
-                                                    "column": 26
-                                                }
-                                            }
-                                        },
-                                        "loc": {
-                                            "file": "index.ts",
-                                            "start": {
-                                                "line": 34,
-                                                "column": 25
-                                            },
-                                            "end": {
-                                                "line": 34,
-                                                "column": 28
-                                            }
-                                        }
-                                    },
-                                    "loc": {
-                                        "file": "index.ts",
-                                        "start": {
-                                            "line": 34,
-                                            "column": 25
-                                        },
-                                        "end": {
-                                            "line": 34,
-                                            "column": 28
-                                        }
-                                    }
-                                },
-                                "body": {
-                                    "kind": "Block",
-                                    "statements": [
-                                        {
-                                            "kind": "IfStatement",
-                                            "condition": {
-                                                "kind": "BinaryOperatorExpression",
-                                                "operator": "==",
-                                                "left": {
-                                                    "kind": "LoadLocationExpression",
-                                                    "name": {
-                                                        "kind": "Token",
-                                                        "tok": "i",
-                                                        "loc": {
-                                                            "file": "index.ts",
-                                                            "start": {
-                                                                "line": 35,
-                                                                "column": 9
-                                                            },
-                                                            "end": {
-                                                                "line": 35,
-                                                                "column": 10
-                                                            }
-                                                        }
-                                                    },
-                                                    "loc": {
-                                                        "file": "index.ts",
-                                                        "start": {
-                                                            "line": 35,
-                                                            "column": 9
-                                                        },
-                                                        "end": {
-                                                            "line": 35,
-                                                            "column": 10
-                                                        }
-                                                    }
-                                                },
-                                                "right": {
-                                                    "kind": "NumberLiteral",
-                                                    "raw": "9",
-                                                    "value": 9,
-                                                    "loc": {
-                                                        "file": "index.ts",
-                                                        "start": {
-                                                            "line": 35,
-                                                            "column": 15
-                                                        },
-                                                        "end": {
-                                                            "line": 35,
-                                                            "column": 16
-                                                        }
-                                                    }
-                                                },
-                                                "loc": {
-                                                    "file": "index.ts",
-                                                    "start": {
-                                                        "line": 35,
-                                                        "column": 9
-                                                    },
-                                                    "end": {
-                                                        "line": 35,
-                                                        "column": 16
-                                                    }
-                                                }
-                                            },
-                                            "consequent": {
-                                                "kind": "Block",
-                                                "statements": [
-                                                    {
-                                                        "kind": "ExpressionStatement",
-                                                        "expression": {
-                                                            "kind": "BinaryOperatorExpression",
-                                                            "operator": "=",
-                                                            "left": {
-                                                                "kind": "LoadLocationExpression",
-                                                                "name": {
-                                                                    "kind": "Token",
-                                                                    "tok": "basic/loops:index:last",
-                                                                    "loc": {
-                                                                        "file": "index.ts",
-                                                                        "start": {
-                                                                            "line": 36,
-                                                                            "column": 9
-                                                                        },
-                                                                        "end": {
-                                                                            "line": 36,
-                                                                            "column": 13
-                                                                        }
-                                                                    }
+                                "kind": "Block",
+                                "statements": [
+                                    {
+                                        "kind": "ForStatement",
+                                        "init": {
+                                            "kind": "MultiStatement",
+                                            "statements": [
+                                                {
+                                                    "kind": "LocalVariableDeclaration",
+                                                    "local": {
+                                                        "kind": "LocalVariable",
+                                                        "name": {
+                                                            "kind": "Identifier",
+                                                            "ident": "i",
+                                                            "loc": {
+                                                                "file": "index.ts",
+                                                                "start": {
+                                                                    "line": 48,
+                                                                    "column": 10
                                                                 },
-                                                                "loc": {
-                                                                    "file": "index.ts",
-                                                                    "start": {
-                                                                        "line": 36,
-                                                                        "column": 9
-                                                                    },
-                                                                    "end": {
-                                                                        "line": 36,
-                                                                        "column": 13
-                                                                    }
+                                                                "end": {
+                                                                    "line": 48,
+                                                                    "column": 11
                                                                 }
-                                                            },
-                                                            "right": {
-                                                                "kind": "BoolLiteral",
-                                                                "raw": "true",
-                                                                "value": true,
+                                                            }
+                                                        },
+                                                        "type": {
+                                                            "kind": "TypeToken",
+                                                            "tok": "number",
+                                                            "loc": {
+                                                                "file": "index.ts",
+                                                                "start": {
+                                                                    "line": 48,
+                                                                    "column": 10
+                                                                },
+                                                                "end": {
+                                                                    "line": 48,
+                                                                    "column": 15
+                                                                }
+                                                            }
+                                                        }
+                                                    }
+                                                },
+                                                {
+                                                    "kind": "ExpressionStatement",
+                                                    "expression": {
+                                                        "kind": "BinaryOperatorExpression",
+                                                        "left": {
+                                                            "kind": "LoadLocationExpression",
+                                                            "name": {
+                                                                "kind": "Token",
+                                                                "tok": "i",
                                                                 "loc": {
                                                                     "file": "index.ts",
                                                                     "start": {
-                                                                        "line": 36,
-                                                                        "column": 16
+                                                                        "line": 48,
+                                                                        "column": 10
                                                                     },
                                                                     "end": {
-                                                                        "line": 36,
-                                                                        "column": 20
+                                                                        "line": 48,
+                                                                        "column": 11
                                                                     }
                                                                 }
                                                             },
                                                             "loc": {
                                                                 "file": "index.ts",
                                                                 "start": {
-                                                                    "line": 36,
-                                                                    "column": 9
+                                                                    "line": 48,
+                                                                    "column": 14
                                                                 },
                                                                 "end": {
-                                                                    "line": 36,
-                                                                    "column": 20
+                                                                    "line": 48,
+                                                                    "column": 15
+                                                                }
+                                                            }
+                                                        },
+                                                        "operator": "=",
+                                                        "right": {
+                                                            "kind": "NumberLiteral",
+                                                            "raw": "0",
+                                                            "value": 0,
+                                                            "loc": {
+                                                                "file": "index.ts",
+                                                                "start": {
+                                                                    "line": 48,
+                                                                    "column": 14
+                                                                },
+                                                                "end": {
+                                                                    "line": 48,
+                                                                    "column": 15
                                                                 }
                                                             }
                                                         },
                                                         "loc": {
                                                             "file": "index.ts",
                                                             "start": {
-                                                                "line": 36,
-                                                                "column": 9
+                                                                "line": 48,
+                                                                "column": 14
                                                             },
                                                             "end": {
-                                                                "line": 36,
-                                                                "column": 21
+                                                                "line": 48,
+                                                                "column": 15
                                                             }
                                                         }
+                                                    },
+                                                    "loc": {
+                                                        "file": "index.ts",
+                                                        "start": {
+                                                            "line": 48,
+                                                            "column": 14
+                                                        },
+                                                        "end": {
+                                                            "line": 48,
+                                                            "column": 15
+                                                        }
                                                     }
-                                                ],
+                                                }
+                                            ],
+                                            "loc": {
+                                                "file": "index.ts",
+                                                "start": {
+                                                    "line": 48,
+                                                    "column": 14
+                                                },
+                                                "end": {
+                                                    "line": 48,
+                                                    "column": 15
+                                                }
+                                            }
+                                        },
+                                        "condition": {
+                                            "kind": "BinaryOperatorExpression",
+                                            "operator": "<",
+                                            "left": {
+                                                "kind": "LoadLocationExpression",
+                                                "name": {
+                                                    "kind": "Token",
+                                                    "tok": "i",
+                                                    "loc": {
+                                                        "file": "index.ts",
+                                                        "start": {
+                                                            "line": 48,
+                                                            "column": 17
+                                                        },
+                                                        "end": {
+                                                            "line": 48,
+                                                            "column": 18
+                                                        }
+                                                    }
+                                                },
                                                 "loc": {
                                                     "file": "index.ts",
                                                     "start": {
-                                                        "line": 35,
-                                                        "column": 18
+                                                        "line": 48,
+                                                        "column": 17
                                                     },
                                                     "end": {
-                                                        "line": 37,
-                                                        "column": 6
+                                                        "line": 48,
+                                                        "column": 18
+                                                    }
+                                                }
+                                            },
+                                            "right": {
+                                                "kind": "NumberLiteral",
+                                                "raw": "10",
+                                                "value": 10,
+                                                "loc": {
+                                                    "file": "index.ts",
+                                                    "start": {
+                                                        "line": 48,
+                                                        "column": 21
+                                                    },
+                                                    "end": {
+                                                        "line": 48,
+                                                        "column": 23
                                                     }
                                                 }
                                             },
                                             "loc": {
                                                 "file": "index.ts",
                                                 "start": {
-                                                    "line": 35,
-                                                    "column": 5
+                                                    "line": 48,
+                                                    "column": 17
                                                 },
                                                 "end": {
-                                                    "line": 37,
-                                                    "column": 6
+                                                    "line": 48,
+                                                    "column": 23
                                                 }
                                             }
-                                        }
-                                    ],
-                                    "loc": {
-                                        "file": "index.ts",
-                                        "start": {
-                                            "line": 34,
-                                            "column": 30
                                         },
-                                        "end": {
-                                            "line": 38,
-                                            "column": 2
+                                        "post": {
+                                            "kind": "ExpressionStatement",
+                                            "expression": {
+                                                "kind": "UnaryOperatorExpression",
+                                                "postfix": true,
+                                                "operator": "++",
+                                                "operand": {
+                                                    "kind": "LoadLocationExpression",
+                                                    "name": {
+                                                        "kind": "Token",
+                                                        "tok": "i",
+                                                        "loc": {
+                                                            "file": "index.ts",
+                                                            "start": {
+                                                                "line": 48,
+                                                                "column": 25
+                                                            },
+                                                            "end": {
+                                                                "line": 48,
+                                                                "column": 26
+                                                            }
+                                                        }
+                                                    },
+                                                    "loc": {
+                                                        "file": "index.ts",
+                                                        "start": {
+                                                            "line": 48,
+                                                            "column": 25
+                                                        },
+                                                        "end": {
+                                                            "line": 48,
+                                                            "column": 26
+                                                        }
+                                                    }
+                                                },
+                                                "loc": {
+                                                    "file": "index.ts",
+                                                    "start": {
+                                                        "line": 48,
+                                                        "column": 25
+                                                    },
+                                                    "end": {
+                                                        "line": 48,
+                                                        "column": 28
+                                                    }
+                                                }
+                                            },
+                                            "loc": {
+                                                "file": "index.ts",
+                                                "start": {
+                                                    "line": 48,
+                                                    "column": 25
+                                                },
+                                                "end": {
+                                                    "line": 48,
+                                                    "column": 28
+                                                }
+                                            }
+                                        },
+                                        "body": {
+                                            "kind": "Block",
+                                            "statements": [
+                                                {
+                                                    "kind": "IfStatement",
+                                                    "condition": {
+                                                        "kind": "BinaryOperatorExpression",
+                                                        "operator": "==",
+                                                        "left": {
+                                                            "kind": "LoadLocationExpression",
+                                                            "name": {
+                                                                "kind": "Token",
+                                                                "tok": "i",
+                                                                "loc": {
+                                                                    "file": "index.ts",
+                                                                    "start": {
+                                                                        "line": 49,
+                                                                        "column": 9
+                                                                    },
+                                                                    "end": {
+                                                                        "line": 49,
+                                                                        "column": 10
+                                                                    }
+                                                                }
+                                                            },
+                                                            "loc": {
+                                                                "file": "index.ts",
+                                                                "start": {
+                                                                    "line": 49,
+                                                                    "column": 9
+                                                                },
+                                                                "end": {
+                                                                    "line": 49,
+                                                                    "column": 10
+                                                                }
+                                                            }
+                                                        },
+                                                        "right": {
+                                                            "kind": "NumberLiteral",
+                                                            "raw": "9",
+                                                            "value": 9,
+                                                            "loc": {
+                                                                "file": "index.ts",
+                                                                "start": {
+                                                                    "line": 49,
+                                                                    "column": 15
+                                                                },
+                                                                "end": {
+                                                                    "line": 49,
+                                                                    "column": 16
+                                                                }
+                                                            }
+                                                        },
+                                                        "loc": {
+                                                            "file": "index.ts",
+                                                            "start": {
+                                                                "line": 49,
+                                                                "column": 9
+                                                            },
+                                                            "end": {
+                                                                "line": 49,
+                                                                "column": 16
+                                                            }
+                                                        }
+                                                    },
+                                                    "consequent": {
+                                                        "kind": "Block",
+                                                        "statements": [
+                                                            {
+                                                                "kind": "ExpressionStatement",
+                                                                "expression": {
+                                                                    "kind": "BinaryOperatorExpression",
+                                                                    "operator": "=",
+                                                                    "left": {
+                                                                        "kind": "TryLoadDynamicExpression",
+                                                                        "name": {
+                                                                            "kind": "StringLiteral",
+                                                                            "value": "last",
+                                                                            "loc": {
+                                                                                "file": "index.ts",
+                                                                                "start": {
+                                                                                    "line": 50,
+                                                                                    "column": 9
+                                                                                },
+                                                                                "end": {
+                                                                                    "line": 50,
+                                                                                    "column": 13
+                                                                                }
+                                                                            }
+                                                                        },
+                                                                        "loc": {
+                                                                            "file": "index.ts",
+                                                                            "start": {
+                                                                                "line": 50,
+                                                                                "column": 9
+                                                                            },
+                                                                            "end": {
+                                                                                "line": 50,
+                                                                                "column": 13
+                                                                            }
+                                                                        }
+                                                                    },
+                                                                    "right": {
+                                                                        "kind": "BoolLiteral",
+                                                                        "raw": "true",
+                                                                        "value": true,
+                                                                        "loc": {
+                                                                            "file": "index.ts",
+                                                                            "start": {
+                                                                                "line": 50,
+                                                                                "column": 16
+                                                                            },
+                                                                            "end": {
+                                                                                "line": 50,
+                                                                                "column": 20
+                                                                            }
+                                                                        }
+                                                                    },
+                                                                    "loc": {
+                                                                        "file": "index.ts",
+                                                                        "start": {
+                                                                            "line": 50,
+                                                                            "column": 9
+                                                                        },
+                                                                        "end": {
+                                                                            "line": 50,
+                                                                            "column": 20
+                                                                        }
+                                                                    }
+                                                                },
+                                                                "loc": {
+                                                                    "file": "index.ts",
+                                                                    "start": {
+                                                                        "line": 50,
+                                                                        "column": 9
+                                                                    },
+                                                                    "end": {
+                                                                        "line": 50,
+                                                                        "column": 21
+                                                                    }
+                                                                }
+                                                            }
+                                                        ],
+                                                        "loc": {
+                                                            "file": "index.ts",
+                                                            "start": {
+                                                                "line": 49,
+                                                                "column": 18
+                                                            },
+                                                            "end": {
+                                                                "line": 51,
+                                                                "column": 6
+                                                            }
+                                                        }
+                                                    },
+                                                    "loc": {
+                                                        "file": "index.ts",
+                                                        "start": {
+                                                            "line": 49,
+                                                            "column": 5
+                                                        },
+                                                        "end": {
+                                                            "line": 51,
+                                                            "column": 6
+                                                        }
+                                                    }
+                                                }
+                                            ],
+                                            "loc": {
+                                                "file": "index.ts",
+                                                "start": {
+                                                    "line": 48,
+                                                    "column": 30
+                                                },
+                                                "end": {
+                                                    "line": 52,
+                                                    "column": 2
+                                                }
+                                            }
+                                        },
+                                        "loc": {
+                                            "file": "index.ts",
+                                            "start": {
+                                                "line": 48,
+                                                "column": 1
+                                            },
+                                            "end": {
+                                                "line": 52,
+                                                "column": 2
+                                            }
                                         }
                                     }
-                                },
-                                "loc": {
-                                    "file": "index.ts",
-                                    "start": {
-                                        "line": 34,
-                                        "column": 1
-                                    },
-                                    "end": {
-                                        "line": 38,
-                                        "column": 2
-                                    }
-                                }
+                                ]
                             },
                             {
                                 "kind": "IfStatement",
@@ -2058,18 +2068,18 @@
                                     "postfix": false,
                                     "operator": "!",
                                     "operand": {
-                                        "kind": "LoadLocationExpression",
+                                        "kind": "TryLoadDynamicExpression",
                                         "name": {
-                                            "kind": "Token",
-                                            "tok": "basic/loops:index:last",
+                                            "kind": "StringLiteral",
+                                            "value": "last",
                                             "loc": {
                                                 "file": "index.ts",
                                                 "start": {
-                                                    "line": 39,
+                                                    "line": 53,
                                                     "column": 6
                                                 },
                                                 "end": {
-                                                    "line": 39,
+                                                    "line": 53,
                                                     "column": 10
                                                 }
                                             }
@@ -2077,11 +2087,11 @@
                                         "loc": {
                                             "file": "index.ts",
                                             "start": {
-                                                "line": 39,
+                                                "line": 53,
                                                 "column": 6
                                             },
                                             "end": {
-                                                "line": 39,
+                                                "line": 53,
                                                 "column": 10
                                             }
                                         }
@@ -2089,11 +2099,11 @@
                                     "loc": {
                                         "file": "index.ts",
                                         "start": {
-                                            "line": 39,
+                                            "line": 53,
                                             "column": 5
                                         },
                                         "end": {
-                                            "line": 39,
+                                            "line": 53,
                                             "column": 10
                                         }
                                     }
@@ -2110,11 +2120,11 @@
                                                 "loc": {
                                                     "file": "index.ts",
                                                     "start": {
-                                                        "line": 40,
+                                                        "line": 54,
                                                         "column": 11
                                                     },
                                                     "end": {
-                                                        "line": 40,
+                                                        "line": 54,
                                                         "column": 34
                                                     }
                                                 }
@@ -2122,11 +2132,11 @@
                                             "loc": {
                                                 "file": "index.ts",
                                                 "start": {
-                                                    "line": 40,
+                                                    "line": 54,
                                                     "column": 5
                                                 },
                                                 "end": {
-                                                    "line": 40,
+                                                    "line": 54,
                                                     "column": 35
                                                 }
                                             }
@@ -2135,11 +2145,11 @@
                                     "loc": {
                                         "file": "index.ts",
                                         "start": {
-                                            "line": 39,
+                                            "line": 53,
                                             "column": 12
                                         },
                                         "end": {
-                                            "line": 41,
+                                            "line": 55,
                                             "column": 2
                                         }
                                     }
@@ -2147,11 +2157,11 @@
                                 "loc": {
                                     "file": "index.ts",
                                     "start": {
-                                        "line": 39,
+                                        "line": 53,
                                         "column": 1
                                     },
                                     "end": {
-                                        "line": 41,
+                                        "line": 55,
                                         "column": 2
                                     }
                                 }
@@ -2174,11 +2184,11 @@
             "loc": {
                 "file": "index.ts",
                 "start": {
-                    "line": 4,
+                    "line": 18,
                     "column": 1
                 },
                 "end": {
-                    "line": 43,
+                    "line": 57,
                     "column": 1
                 }
             }
