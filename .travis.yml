@@ -7,6 +7,8 @@ before_install:
     # Gometalinter for good Go linting/hygiene.
     - go get -v github.com/alecthomas/gometalinter
     - gometalinter --install
+    # gocovmerge for Go code coverage.
+    - go get -v github.com/wadey/gocovmerge
     # Node.js 7.x for LumiJS and associated JS code.
     - nvm install v7
     # Install Yarn as per https://yarnpkg.com/lang/en/docs/install-ci/#travis-tab.
