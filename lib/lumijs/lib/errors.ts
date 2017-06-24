@@ -24,7 +24,7 @@ export class Error {
 }
 
 // TODO[pulumi/mu#70]: consider projecting all of the various subclasses (EvalError, RangeError, ReferenceError,
-//     SyntaxError, TypeError, etc.)  Unfortunately, unless we come up with some clever way of mapping MuIL runtime
+//     SyntaxError, TypeError, etc.)  Unfortunately, unless we come up with some clever way of mapping Lumi runtime
 //     errors into their ECMAScript equivalents, we aren't going to have perfect compatibility with error path logic.
 
 export class TypeError extends Error {

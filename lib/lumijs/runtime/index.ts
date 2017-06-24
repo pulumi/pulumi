@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// The runtime module contains helpers that the MuJS compiler emits to do certain things.
+// The runtime module contains helpers that the LumiJS compiler emits to do certain things.
 
 export * from "./assert";
 

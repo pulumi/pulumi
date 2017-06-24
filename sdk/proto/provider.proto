@@ -19,10 +19,8 @@ import "google/protobuf/struct.proto";
 
 package lumirpc;
 
-// TODO: figure out "transactionality" and possibly "tainting".
-
 // ResourceProvider is a service that understands how to create, read, update, or delete resources for types defined
-// within a single MuPackage.  It is driven by the overall Mu toolchain in response to blueprints and graphs.
+// within a single package.  It is driven by the overall planning engine in response to resource diffs.
 service ResourceProvider {
     // Check validates that the given property bag is valid for a resource of the given type.
     rpc Check(CheckRequest) returns (CheckResponse) {}
