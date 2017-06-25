@@ -123,6 +123,52 @@ func TestFreeVars_LocalVariable(t *testing.T) {
 	assert.Equal(t, tokens.Name("baz"), freeVars[0].Name())
 }
 
+func TestFreeVars_LocalVariable_2(t *testing.T) {
+	// function(foo) { {var bar;} foo; bar; baz; }
+	fun := ast.ModuleMethod{
+		FunctionNode: ast.FunctionNode{
+			Parameters: &[]*ast.LocalVariable{
+				makeLocalVariable("foo"),
+			},
+			Body: &ast.Block{
+				Statements: []ast.Statement{
+					&ast.MultiStatement{
+						Statements: []ast.Statement{
+							&ast.LocalVariableDeclaration{
+								Local: makeLocalVariable("bar"),
+							},
+						},
+					},
+					&ast.ExpressionStatement{
+						Expression: &ast.LoadLocationExpression{
+							Name: &ast.Token{
+								Tok: tokens.Token("foo"),
+							},
+						},
+					},
+					&ast.ExpressionStatement{
+						Expression: &ast.LoadLocationExpression{
+							Name: &ast.Token{
+								Tok: tokens.Token("bar"),
+							},
+						},
+					},
+					&ast.ExpressionStatement{
+						Expression: &ast.TryLoadDynamicExpression{
+							Name: &ast.StringLiteral{
+								Value: "baz",
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+	freeVars := FreeVars(&fun)
+	assert.Len(t, freeVars, 1, "expected one free variable")
+	assert.Equal(t, tokens.Name("baz"), freeVars[0].Name())
+}
+
 func TestFreeVars_Member(t *testing.T) {
 	// function(foo) foo.bar
 	fun := ast.ModuleMethod{

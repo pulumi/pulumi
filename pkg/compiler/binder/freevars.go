@@ -88,11 +88,17 @@ func (visitor *freeVarsVisitor) After(node ast.Node) {
 			}
 		}
 	case *ast.Block:
-		for _, stmt := range n.Statements {
-			switch s := stmt.(type) {
-			case *ast.LocalVariableDeclaration:
-				visitor.removeLocalVariable(s.Local)
-			}
+		visitor.removeBlockVariables(n.Statements)
+	}
+}
+
+func (visitor *freeVarsVisitor) removeBlockVariables(statements []ast.Statement) {
+	for _, stmt := range statements {
+		switch s := stmt.(type) {
+		case *ast.LocalVariableDeclaration:
+			visitor.removeLocalVariable(s.Local)
+		case *ast.MultiStatement:
+			visitor.removeBlockVariables(s.Statements)
 		}
 	}
 }
