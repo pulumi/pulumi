@@ -90,11 +90,22 @@ func (p *objProvider) Create(ctx context.Context, obj *s3.Object) (resource.ID, 
 	if err != nil {
 		return "", err
 	}
+	var contentLength *int64
+	if obj.ContentLength != nil {
+		temp := int64(*obj.ContentLength)
+		contentLength = &temp
+	}
 	fmt.Printf("Creating S3 Object '%v' in bucket '%v'\n", obj.Key, buck)
 	if _, err := p.ctx.S3().PutObject(&awss3.PutObjectInput{
-		Bucket: aws.String(buck),
-		Key:    aws.String(obj.Key),
-		Body:   body,
+		Bucket:             aws.String(buck),
+		Key:                aws.String(obj.Key),
+		Body:               body,
+		ContentType:        obj.ContentType,
+		ContentDisposition: obj.ContentDisposition,
+		CacheControl:       obj.CacheControl,
+		ContentEncoding:    obj.ContentEncoding,
+		ContentLanguage:    obj.ContentLanguage,
+		ContentLength:      contentLength,
 	}); err != nil {
 		return "", err
 	}
@@ -113,18 +124,30 @@ func (p *objProvider) Get(ctx context.Context, id resource.ID) (*s3.Object, erro
 	if err != nil {
 		return nil, err
 	}
-	if _, err := p.ctx.S3().GetObject(&awss3.GetObjectInput{
+	resp, err := p.ctx.S3().GetObject(&awss3.GetObjectInput{
 		Bucket: aws.String(buck),
 		Key:    aws.String(key),
-	}); err != nil {
+	})
+	if err != nil {
 		if awsctx.IsAWSError(err, "NotFound", "NoSuchKey") {
 			return nil, nil
 		}
 		return nil, err
 	}
+	var contentLength *float64
+	if resp.ContentLength != nil {
+		temp := float64(*resp.ContentLength)
+		contentLength = &temp
+	}
 	return &s3.Object{
-		Bucket: resource.ID(arn.NewS3Bucket(buck)),
-		Key:    key,
+		Bucket:             resource.ID(arn.NewS3Bucket(buck)),
+		Key:                key,
+		ContentType:        resp.ContentType,
+		ContentDisposition: resp.ContentDisposition,
+		CacheControl:       resp.CacheControl,
+		ContentEncoding:    resp.ContentEncoding,
+		ContentLanguage:    resp.ContentLanguage,
+		ContentLength:      contentLength,
 	}, nil
 }
 
@@ -138,7 +161,11 @@ func (p *objProvider) InspectChange(ctx context.Context, id resource.ID,
 // to new values.  The resource ID is returned and may be different if the resource had to be recreated.
 func (p *objProvider) Update(ctx context.Context, id resource.ID,
 	old *s3.Object, new *s3.Object, diff *resource.ObjectDiff) error {
-	return errors.New("Not yet implemented")
+	// The id is uniquely determined by `replace` properties, so update is the same as create, and we can expect
+	// the resulting id to be unchanged.
+	newid, err := p.Create(ctx, new)
+	contract.Assert(id == newid)
+	return err
 }
 
 // Delete tears down an existing resource with the given ID.  If it fails, the resource is assumed to still exist.

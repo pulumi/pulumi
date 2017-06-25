@@ -15,6 +15,8 @@
 package lambda
 
 import (
+	"crypto/sha256"
+	"encoding/base64"
 	"fmt"
 	"strings"
 	"testing"
@@ -45,6 +47,13 @@ func Test(t *testing.T) {
 	}()
 
 	sourceARN := rpc.ARN("arn:aws:s3:::elasticbeanstalk-us-east-1-111111111111")
+	code := resource.Archive{
+		Assets: &map[string]*resource.Asset{
+			"index.js": {
+				Text: aws.String("exports.handler = (ev, ctx, cb) => { console.log(ev); console.log(ctx); }"),
+			},
+		},
+	}
 
 	resources := map[string]testutil.Resource{
 		"role":       {Provider: iamprovider.NewRoleProvider(ctx), Token: iam.RoleToken},
@@ -81,14 +90,8 @@ func Test(t *testing.T) {
 				Name: "f",
 				Creator: func(ctx testutil.Context) interface{} {
 					return &lambda.Function{
-						Name: aws.String(prefix),
-						Code: resource.Archive{
-							Assets: &map[string]*resource.Asset{
-								"index.js": {
-									Text: aws.String("exports.handler = (ev, ctx, cb) => { console.log(ev); console.log(ctx); }"),
-								},
-							},
-						},
+						Name:    aws.String(prefix),
+						Code:    code,
 						Handler: "index.handler",
 						Runtime: lambda.NodeJS6d10Runtime,
 						Role:    ctx.GetResourceID("role"),
@@ -111,8 +114,14 @@ func Test(t *testing.T) {
 		},
 	}
 
-	testutil.ProviderTest(t, resources, steps)
+	props := testutil.ProviderTest(t, resources, steps)
 
+	// Returned SHA256 must match what we uploaded
+	byts, err := code.Bytes(resource.ZIPArchive)
+	assert.NoError(t, err)
+	sum := sha256.Sum256(byts)
+	codeSHA256 := base64.StdEncoding.EncodeToString(sum[:])
+	assert.Equal(t, codeSHA256, props["f"].Fields["codeSHA256"].GetStringValue())
 }
 
 func cleanupFunctions(prefix string, ctx *awsctx.Context) error {
