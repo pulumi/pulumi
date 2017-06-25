@@ -105,7 +105,8 @@ func ProviderTest(t *testing.T, resources map[string]Resource, steps []Step) map
 // ProviderTestSimple takes a resource provider and array of resource steps and performs a Create, as many Updates
 // as neeed, and finally a Delete operation on a single resouce of the given type to walk the resource through the
 // resource lifecycle.  It also performs Check operations on each input state of the resource.
-func ProviderTestSimple(t *testing.T, provider lumirpc.ResourceProviderServer, token tokens.Type, steps []interface{}) *structpb.Struct {
+func ProviderTestSimple(t *testing.T, provider lumirpc.ResourceProviderServer, token tokens.Type,
+	steps []interface{}) *structpb.Struct {
 	resources := map[string]Resource{
 		"testResource": {
 			Provider: provider,
