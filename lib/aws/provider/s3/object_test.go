@@ -116,7 +116,7 @@ func cleanupBucket(prefix string, ctx *awsctx.Context) error {
 					return err
 				}
 			}
-			ctx.S3().DeleteBucket(&awss3.DeleteBucketInput{
+			_, err = ctx.S3().DeleteBucket(&awss3.DeleteBucketInput{
 				Bucket: buck.Name,
 			})
 			if err != nil {
