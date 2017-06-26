@@ -23,6 +23,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/pulumi/lumi/pkg/resource"
 	"github.com/pulumi/lumi/pkg/util/contract"
+	"github.com/pulumi/lumi/pkg/util/convutil"
 	"github.com/pulumi/lumi/sdk/go/pkg/lumirpc"
 	"golang.org/x/net/context"
 
@@ -90,11 +91,6 @@ func (p *objProvider) Create(ctx context.Context, obj *s3.Object) (resource.ID, 
 	if err != nil {
 		return "", err
 	}
-	var contentLength *int64
-	if obj.ContentLength != nil {
-		temp := int64(*obj.ContentLength)
-		contentLength = &temp
-	}
 	fmt.Printf("Creating S3 Object '%v' in bucket '%v'\n", obj.Key, buck)
 	if _, err := p.ctx.S3().PutObject(&awss3.PutObjectInput{
 		Bucket:             aws.String(buck),
@@ -105,7 +101,7 @@ func (p *objProvider) Create(ctx context.Context, obj *s3.Object) (resource.ID, 
 		CacheControl:       obj.CacheControl,
 		ContentEncoding:    obj.ContentEncoding,
 		ContentLanguage:    obj.ContentLanguage,
-		ContentLength:      contentLength,
+		ContentLength:      convutil.Float64PToInt64P(obj.ContentLength),
 	}); err != nil {
 		return "", err
 	}
@@ -134,11 +130,6 @@ func (p *objProvider) Get(ctx context.Context, id resource.ID) (*s3.Object, erro
 		}
 		return nil, err
 	}
-	var contentLength *float64
-	if resp.ContentLength != nil {
-		temp := float64(*resp.ContentLength)
-		contentLength = &temp
-	}
 	return &s3.Object{
 		Bucket:             resource.ID(arn.NewS3Bucket(buck)),
 		Key:                key,
@@ -147,7 +138,7 @@ func (p *objProvider) Get(ctx context.Context, id resource.ID) (*s3.Object, erro
 		CacheControl:       resp.CacheControl,
 		ContentEncoding:    resp.ContentEncoding,
 		ContentLanguage:    resp.ContentLanguage,
-		ContentLength:      contentLength,
+		ContentLength:      convutil.Int64PToFloat64P(resp.ContentLength),
 	}, nil
 }
 
