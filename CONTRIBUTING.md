@@ -22,12 +22,8 @@ In order to ensure contributions go through smoothly, please follow these guidel
 
 We'd love to jump straight into the code.  Before we can do that, we have to talk about licenses for a moment.
 
-Licensing is very important to open source projects, because it helps ensure the software continues to be available
-under the terms the author desired.  Lumi uses [the Apache 2.0 license](
-https://github.com/pulumi/lumi/blob/master/LICENSE) to strike a balance between friction-free open contributing while
-still  allowing you to use the software however you would like to.
-
-The license tells you what rights you have that are provided by the copyright holder.  It's important that the
+Licensing is very important because it helps ensure the software continues to be available under the terms the author
+desired. The license tells you what rights you have that are provided by the copyright holder.  It's important that the
 contributor fully understands what rights they are licensing and agrees to them.  Sometimes the copyright holder isn't
 the contributor, such as when the contributor is doing the work on behalf of a company.
 
@@ -117,19 +113,7 @@ These are some language-agnostic rules we apply across our codebase:
 * The top of each file MUST contain the standard Lumi licensing information:
 
     ```
-    // Copyright 2016-2017, Pulumi Corporation
-    //
-    // Licensed under the Apache License, Version 2.0 (the "License");
-    // you may not use this file except in compliance with the License.
-    // You may obtain a copy of the License at
-    //
-    //     http://www.apache.org/licenses/LICENSE-2.0
-    //
-    // Unless required by applicable law or agreed to in writing, software
-    // distributed under the License is distributed on an "AS IS" BASIS,
-    // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-    // See the License for the specific language governing permissions and
-    // limitations under the License.
+    // Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
     ```
 
 * There are three special kinds of comments; two MUST have a corresponding work item `xx`, while the other MAY:
