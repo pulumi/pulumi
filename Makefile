@@ -16,7 +16,7 @@ default: banner vet test install lint_quiet
 all: banner_all vet test install lint_quiet lumijs lumirtpkg lumijspkg lumipkg awspkg
 
 .PHONY: nightly
-nightly: banner_all vet test install lint_quiet lumijs lumirtpkg lumijspkg lumipkg awspkg examples
+nightly: banner_all vet test install lint_quiet lumijs lumirtpkg lumijspkg lumipkg awspkg examples gocover
 
 .PHONY: banner
 banner:
@@ -99,4 +99,9 @@ verify:
 examples:
 	@$(ECHO) "\033[0;32mTEST EXAMPLES:\033[0m"
 	go test -v -cover -timeout 1h -parallel ${TESTPARALLELISM} ./examples
+
+.PHONY: gocover
+gocover:
+	@$(ECHO) "\033[0;32mGO CODE COVERAGE:\033[0m"
+	./gocover.sh
 
