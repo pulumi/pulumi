@@ -56,7 +56,7 @@ func newEnvCmd() *cobra.Command {
 			if target.Config != nil && len(target.Config) > 0 {
 				fmt.Printf("%v configuration variables set (see `lumi config` for details)\n", len(target.Config))
 			}
-			if len(snapshot.Resources) == 0 {
+			if snapshot == nil || len(snapshot.Resources) == 0 {
 				fmt.Printf("No resources currently in this environment\n")
 			} else {
 				fmt.Printf("%v resources currently in this environment:\n", len(snapshot.Resources))
