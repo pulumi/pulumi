@@ -46,12 +46,14 @@ type unwindKind int
 
 const (
 	breakUnwind unwindKind = iota
+	cancelUnwind
 	continueUnwind
 	returnUnwind
 	throwUnwind
 )
 
 func NewBreakUnwind(label *tokens.Name) *Unwind    { return &Unwind{kind: breakUnwind, label: label} }
+func NewCancelUnwind() *Unwind                     { return &Unwind{kind: cancelUnwind} }
 func NewContinueUnwind(label *tokens.Name) *Unwind { return &Unwind{kind: continueUnwind, label: label} }
 func NewReturnUnwind(ret *Object) *Unwind          { return &Unwind{kind: returnUnwind, returned: ret} }
 
@@ -69,6 +71,7 @@ func NewThrowUnwind(obj *Object, node diag.Diagable, stack *StackFrame) *Unwind 
 }
 
 func (uw *Unwind) Break() bool    { return uw.kind == breakUnwind }
+func (uw *Unwind) Cancel() bool   { return uw.kind == cancelUnwind }
 func (uw *Unwind) Continue() bool { return uw.kind == continueUnwind }
 func (uw *Unwind) Return() bool   { return uw.kind == returnUnwind }
 func (uw *Unwind) Throw() bool    { return uw.kind == throwUnwind }

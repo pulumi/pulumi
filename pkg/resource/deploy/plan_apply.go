@@ -218,9 +218,8 @@ func (iter *PlanIterator) nextResourceStep(res *SourceAllocation) (Step, error) 
 	for _, failure := range failures {
 		invalid = true
 		if failure.Property != "" {
-			v := inputs[failure.Property]
 			iter.p.Diag().Errorf(errors.ErrorResourcePropertyInvalidValue,
-				t, urn.Name(), failure.Property, v, failure.Reason)
+				t, urn.Name(), failure.Property, inputs[failure.Property], failure.Reason)
 		} else {
 			iter.p.Diag().Errorf(errors.ErrorResourceInvalid, t, urn.Name(), failure.Reason)
 		}

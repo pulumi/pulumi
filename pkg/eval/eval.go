@@ -85,7 +85,10 @@ func (e *evaluator) Diag() diag.Sink      { return e.ctx.Diag }
 func (e *evaluator) EvaluatePackage(pkg *symbols.Package, args core.Args) (*rt.Object, *rt.Unwind) {
 	glog.Infof("Evaluating package '%v'", pkg.Name())
 	if e.hooks != nil {
-		if leave := e.hooks.OnEnterPackage(pkg); leave != nil {
+		uw, leave := e.hooks.OnEnterPackage(pkg)
+		if uw != nil {
+			return nil, uw
+		} else if leave != nil {
 			defer leave()
 		}
 	}
@@ -111,7 +114,10 @@ func (e *evaluator) EvaluatePackage(pkg *symbols.Package, args core.Args) (*rt.O
 func (e *evaluator) EvaluateModule(mod *symbols.Module, args core.Args) (*rt.Object, *rt.Unwind) {
 	glog.Infof("Evaluating module '%v'", mod.Token())
 	if e.hooks != nil {
-		if leave := e.hooks.OnEnterModule(mod); leave != nil {
+		uw, leave := e.hooks.OnEnterModule(mod)
+		if uw != nil {
+			return nil, uw
+		} else if leave != nil {
 			defer leave()
 		}
 	}
@@ -149,7 +155,9 @@ func (e *evaluator) EvaluateFunction(fnc symbols.Function, this *rt.Object, args
 
 	// Call the pre-start hook if registered.
 	if e.hooks != nil {
-		e.hooks.OnStart()
+		if uw := e.hooks.OnStart(); uw != nil {
+			return nil, uw
+		}
 	}
 
 	// Ensure all exit paths do the right thing (dumping, exceptions, hooks).
@@ -165,7 +173,9 @@ func (e *evaluator) EvaluateFunction(fnc symbols.Function, this *rt.Object, args
 
 		// Make sure to invoke the done hook.
 		if e.hooks != nil {
-			e.hooks.OnDone(uw)
+			if doneuw := e.hooks.OnDone(uw); doneuw != nil {
+				uw = doneuw
+			}
 		}
 	})()
 
@@ -739,10 +749,11 @@ func (e *evaluator) evalCall(node diag.Diagable,
 	retty := sig.Return
 	if uw != nil {
 		if uw.Throw() {
-			if glog.V(7) {
-				glog.V(7).Infof("Evaluated call to fnc %v (sym %v); unhandled exception: %v",
-					fnc, sym, uw.Thrown().Obj)
-			}
+			glog.V(7).Infof("Evaluated call to fnc %v (sym %v); unhandled exception: %v",
+				fnc, sym, uw.Thrown().Obj)
+			return nil, uw
+		} else if uw.Cancel() {
+			glog.V(7).Infof("Evaluated call to fnc %v (sym %v) ended in cancellation", fnc, sym)
 			return nil, uw
 		}
 
@@ -1820,7 +1831,9 @@ func (e *evaluator) evalNew(node diag.Diagable, t symbols.Type, args *[]*ast.Cal
 	// construction but before object freezing, in case the hook wants to mutate readonly properties.  In a sense, this
 	// hook becomes an extension of the constructor itself.
 	if e.hooks != nil {
-		e.hooks.OnObjectInit(node, obj)
+		if uw := e.hooks.OnObjectInit(node, obj); uw != nil {
+			return nil, uw
+		}
 	}
 
 	// Finally, ensure that all readonly properties are frozen now.

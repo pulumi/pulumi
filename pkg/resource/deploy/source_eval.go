@@ -107,7 +107,6 @@ type evalSourceIterator struct {
 }
 
 func (iter *evalSourceIterator) Close() error {
-	// TODO: cancel the interpreter if it is still running.
 	iter.rz.Done(nil)
 	iter.src.plugctx.SetCurrentInterpreter(nil)
 	return nil
@@ -272,27 +271,32 @@ type evalHooks struct {
 }
 
 // OnStart ensures that, before starting, we wait our turn.
-func (h *evalHooks) OnStart() {
+func (h *evalHooks) OnStart() *rt.Unwind {
 	ret, done, err := h.rz.Meet(evalParty, nil)
+	contract.Assert(err == nil)
+	if done {
+		return rt.NewCancelUnwind()
+	}
 	contract.Assert(ret == nil)
-	contract.Assertf(!done && err == nil, "Did not expect failure before even a single turn")
+	return nil
 }
 
 // OnDone ensures that, after completion, we tell the other party that we're done.
-func (h *evalHooks) OnDone(uw *rt.Unwind) {
+func (h *evalHooks) OnDone(uw *rt.Unwind) *rt.Unwind {
 	var err error
 	if uw != nil {
 		if uw.Throw() {
 			err = goerr.New("Planning resulted in an unhandled exception; cannot proceed with the plan")
 		} else {
-			contract.Assert(uw.Return())
+			contract.Assert(uw.Return() || uw.Cancel())
 		}
 	}
 	h.rz.Done(err)
+	return nil
 }
 
 // OnObjectInit ensures that, for every resource object created, we tell the planner about it.
-func (h *evalHooks) OnObjectInit(tree diag.Diagable, obj *rt.Object) {
+func (h *evalHooks) OnObjectInit(tree diag.Diagable, obj *rt.Object) *rt.Unwind {
 	glog.V(9).Infof("EvalSource OnObjectInit %v (IsResource=%v)", obj, resource.IsResourceObject(obj))
 	if resource.IsResourceObject(obj) {
 		// Communicate the full allocation context: AST node, package, module, and function.
@@ -304,29 +308,32 @@ func (h *evalHooks) OnObjectInit(tree diag.Diagable, obj *rt.Object) {
 			Fnc: h.currfnc,
 		}
 		ret, done, err := h.rz.Meet(evalParty, alloc)
-		contract.Assert(ret == nil)
-		contract.Assert(!done)
 		contract.Assert(err == nil)
+		if done {
+			return rt.NewCancelUnwind()
+		}
+		contract.Assert(ret == nil)
 	}
+	return nil
 }
 
 // OnEnterPackage is invoked whenever we enter a new package.
-func (h *evalHooks) OnEnterPackage(pkg *symbols.Package) func() {
+func (h *evalHooks) OnEnterPackage(pkg *symbols.Package) (*rt.Unwind, func()) {
 	glog.V(9).Infof("EvalSource OnEnterPackage %v", pkg)
 	prevpkg := h.currpkg
 	h.currpkg = pkg
-	return func() {
+	return nil, func() {
 		glog.V(9).Infof("EvalSource OnLeavePackage %v", pkg)
 		h.currpkg = prevpkg
 	}
 }
 
 // OnEnterModule is invoked whenever we enter a new module.
-func (h *evalHooks) OnEnterModule(mod *symbols.Module) func() {
+func (h *evalHooks) OnEnterModule(mod *symbols.Module) (*rt.Unwind, func()) {
 	glog.V(9).Infof("EvalSource OnEnterModule %v", mod)
 	prevmod := h.currmod
 	h.currmod = mod
-	return func() {
+	return nil, func() {
 		glog.V(9).Infof("EvalSource OnLeaveModule %v", mod)
 		h.currmod = prevmod
 	}
@@ -356,10 +363,12 @@ func (h *evalHooks) OnEnterFunction(fnc symbols.Function, args []*rt.Object) (*r
 					Meth: meth,
 					Args: args,
 				})
+				contract.Assert(err == nil)
+				if done {
+					return rt.NewCancelUnwind(), nil
+				}
 				contract.Assertf(ret != nil, "Expecting unwind instructions from the planning goroutine")
 				uw = ret.(*rt.Unwind)
-				contract.Assert(!done)
-				contract.Assert(err == nil)
 			}
 		}
 	}
