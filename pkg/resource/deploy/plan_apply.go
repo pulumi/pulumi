@@ -83,6 +83,7 @@ func (p *Plan) Iterate() (*PlanIterator, error) {
 	return &PlanIterator{
 		p:        p,
 		src:      src,
+		urns:     make(map[resource.URN]bool),
 		creates:  make(map[resource.URN]bool),
 		updates:  make(map[resource.URN]bool),
 		replaces: make(map[resource.URN]bool),
@@ -109,6 +110,7 @@ type PlanIterator struct {
 	p   *Plan          // the plan to which this iterator belongs.
 	src SourceIterator // the iterator that fetches source resources.
 
+	urns     map[resource.URN]bool // URNs discovered.
 	creates  map[resource.URN]bool // URNs discovered to be created.
 	updates  map[resource.URN]bool // URNs discovered to be updated.
 	replaces map[resource.URN]bool // URNs discovered to be replaced.
@@ -202,15 +204,21 @@ func (iter *PlanIterator) nextResourceStep(res *SourceAllocation) (Step, error) 
 		return nil, err
 	}
 
+	var invalid bool
+
 	// Fetch the resource's name from its provider, and use it to construct a URN.
 	name, err := prov.Name(t, inputs)
 	if err != nil {
 		return nil, err
 	}
 	urn := resource.NewURN(iter.p.Target().Name, res.Ctx, t, name)
+	if iter.urns[urn] {
+		invalid = true
+		iter.p.Diag().Errorf(errors.ErrorDuplicateResourceURN.At(res.Loc), urn)
+	}
+	iter.urns[urn] = true
 
 	// First ensure the provider is okay with this resource.
-	var invalid bool
 	failures, err := prov.Check(t, inputs)
 	if err != nil {
 		return nil, err

@@ -15,10 +15,11 @@ var (
 	ErrorIllegalConfigToken     = newError(2008,
 		"Configs may only target module properties and class static properties; '%v' is neither")
 	ErrorConfigApplyFailure           = newError(2009, "One or more errors occurred while applying '%v's configuration")
-	ErrorResourceInvalid              = newError(2010, "%v resource '%v' has a problem: %v")
-	ErrorResourcePropertyInvalidValue = newError(2012, "%v resource '%v's property '%v' value %v has a problem: %v")
-	ErrorAnalyzeFailure               = newError(2013, "Analyzer '%v' reported an error: %v")
-	ErrorAnalyzeResourceFailure       = newError(2014,
+	ErrorDuplicateResourceURN         = newError(2010, "Duplicate resource URN '%v'; try giving it a unique name")
+	ErrorResourceInvalid              = newError(2012, "%v resource '%v' has a problem: %v")
+	ErrorResourcePropertyInvalidValue = newError(2013, "%v resource '%v's property '%v' value %v has a problem: %v")
+	ErrorAnalyzeFailure               = newError(2014, "Analyzer '%v' reported an error: %v")
+	ErrorAnalyzeResourceFailure       = newError(2015,
 		"Analyzer '%v' reported a resource error:\n"+
 			"\tResource: %v\n"+
 			"\tProperty: %v\n"+

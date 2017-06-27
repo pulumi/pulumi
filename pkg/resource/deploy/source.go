@@ -6,6 +6,7 @@ import (
 	"io"
 
 	"github.com/pulumi/lumi/pkg/compiler/symbols"
+	"github.com/pulumi/lumi/pkg/diag"
 	"github.com/pulumi/lumi/pkg/resource"
 	"github.com/pulumi/lumi/pkg/tokens"
 )
@@ -32,6 +33,7 @@ type SourceIterator interface {
 
 // SourceAllocation is used when a resource object is allocated.
 type SourceAllocation struct {
+	Loc diag.Diagable    // the location this object was allocated at.
 	Obj *resource.Object // the resource object.
 	Ctx tokens.Module    // the context in which the resource was allocated, used in the production of URNs.
 }

@@ -141,6 +141,7 @@ func (iter *evalSourceIterator) Next() (*SourceAllocation, *SourceQuery, error) 
 	if alloc, isalloc := obj.(*AllocRendezvous); isalloc {
 		glog.V(5).Infof("EvalSourceIterator produced a new object: obj=%v, ctx=%v", alloc.Obj, alloc.Mod.Tok)
 		return &SourceAllocation{
+			Loc: alloc.Loc,
 			Obj: resource.NewObject(alloc.Obj),
 			Ctx: alloc.Mod.Tok,
 		}, nil, nil
