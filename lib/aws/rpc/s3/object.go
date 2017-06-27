@@ -53,6 +53,9 @@ func (p *ObjectProvider) Check(
         return plugin.NewCheckResponse(err), nil
     }
     var failures []error
+    if failure := p.ops.Check(ctx, obj, ""); failure != nil {
+        failures = append(failures, failure)
+    }
     unks := req.GetUnknowns()
     if !unks["key"] {
         if failure := p.ops.Check(ctx, obj, "key"); failure != nil {

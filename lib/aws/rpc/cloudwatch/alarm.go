@@ -56,6 +56,9 @@ func (p *ActionTargetProvider) Check(
         return plugin.NewCheckResponse(err), nil
     }
     var failures []error
+    if failure := p.ops.Check(ctx, obj, ""); failure != nil {
+        failures = append(failures, failure)
+    }
     unks := req.GetUnknowns()
     if !unks["name"] {
         if failure := p.ops.Check(ctx, obj, "name"); failure != nil {
@@ -252,6 +255,9 @@ func (p *AlarmProvider) Check(
         return plugin.NewCheckResponse(err), nil
     }
     var failures []error
+    if failure := p.ops.Check(ctx, obj, ""); failure != nil {
+        failures = append(failures, failure)
+    }
     unks := req.GetUnknowns()
     if !unks["name"] {
         if failure := p.ops.Check(ctx, obj, "name"); failure != nil {

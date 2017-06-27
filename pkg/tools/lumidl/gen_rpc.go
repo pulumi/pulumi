@@ -269,8 +269,13 @@ func (g *RPCGenerator) EmitResource(w *bufio.Writer, module tokens.Module, pkg *
 	writefmtln(w, "    if err != nil {")
 	writefmtln(w, "        return plugin.NewCheckResponse(err), nil")
 	writefmtln(w, "    }")
+	writefmtln(w, "    var failures []error")
+	// check global properties:
+	writefmtln(w, "    if failure := p.ops.Check(ctx, obj, \"\"); failure != nil {")
+	writefmtln(w, "        failures = append(failures, failure)")
+	writefmtln(w, "    }")
+	// check each input property:
 	if hasinputs {
-		writefmtln(w, "    var failures []error")
 		writefmtln(w, "    unks := req.GetUnknowns()")
 		for _, opts := range propopts {
 			if !opts.Out {

@@ -54,6 +54,9 @@ func (p *SecurityGroupProvider) Check(
         return plugin.NewCheckResponse(err), nil
     }
     var failures []error
+    if failure := p.ops.Check(ctx, obj, ""); failure != nil {
+        failures = append(failures, failure)
+    }
     unks := req.GetUnknowns()
     if !unks["name"] {
         if failure := p.ops.Check(ctx, obj, "name"); failure != nil {
