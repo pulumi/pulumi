@@ -75,6 +75,8 @@ func (host *HostClient) ReadBoolLocation(tok tokens.Token) (bool, error) {
 	v, err := host.ReadLocation(tok)
 	if err != nil {
 		return false, err
+	} else if v.IsNull() {
+		return false, errors.Errorf("Expected %v to have a value; it is null", tok)
 	} else if !v.IsBool() {
 		return false, errors.Errorf("Expected %v to be a bool; got %v instead", tok, v)
 	}
@@ -86,6 +88,8 @@ func (host *HostClient) ReadNumberLocation(tok tokens.Token) (float64, error) {
 	v, err := host.ReadLocation(tok)
 	if err != nil {
 		return float64(0), err
+	} else if v.IsNull() {
+		return float64(0), errors.Errorf("Expected %v to have a value; it is null", tok)
 	} else if !v.IsNumber() {
 		return float64(0), errors.Errorf("Expected %v to be a number; got %v instead", tok, v)
 	}
@@ -97,6 +101,8 @@ func (host *HostClient) ReadStringLocation(tok tokens.Token) (string, error) {
 	v, err := host.ReadLocation(tok)
 	if err != nil {
 		return "", err
+	} else if v.IsNull() {
+		return "", errors.Errorf("Expected %v to have a value; it is null", tok)
 	} else if !v.IsString() {
 		return "", errors.Errorf("Expected %v to be a string; got %v instead", tok, v)
 	}
@@ -108,6 +114,8 @@ func (host *HostClient) ReadArrayLocation(tok tokens.Token) ([]resource.Property
 	v, err := host.ReadLocation(tok)
 	if err != nil {
 		return nil, err
+	} else if v.IsNull() {
+		return nil, errors.Errorf("Expected %v to have a value; it is null", tok)
 	} else if !v.IsArray() {
 		return nil, errors.Errorf("Expected %v to be an array; got %v instead", tok, v)
 	}
@@ -119,6 +127,8 @@ func (host *HostClient) ReadObjectLocation(tok tokens.Token) (resource.PropertyM
 	v, err := host.ReadLocation(tok)
 	if err != nil {
 		return nil, err
+	} else if v.IsNull() {
+		return nil, errors.Errorf("Expected %v to have a value; it is null", tok)
 	} else if !v.IsObject() {
 		return nil, errors.Errorf("Expected %v to be an object; got %v instead", tok, v)
 	}
