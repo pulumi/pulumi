@@ -14,27 +14,4 @@ type Topic struct {
 	TopicName *string `lumi:"topicName,replaces,optional"`
 	// A developer-defined string that can be used to identify this SNS topic.
 	DisplayName *string `lumi:"displayName,optional"`
-	// The SNS subscriptions (endpoints) for this topic.
-	Subscription *[]TopicSubscription `lumi:"subscription,optional"`
 }
-
-type TopicSubscription struct {
-	// The subscription's protocol.
-	Protocol TopicProtocol `lumi:"protocol"`
-	// The subscription's endpoint (format depends on the protocol).
-	Endpoint string `lumi:"endpoint"`
-}
-
-// The protocols supported by the Amazon Simple Notification Service (Amazon SNS).
-type TopicProtocol string
-
-const (
-	HTTPTopic        TopicProtocol = "http"        // delivery of JSON-encoded message via HTTP POST.
-	HTTPSTopic       TopicProtocol = "https"       // delivery of JSON-encoded message via HTTPS POST.
-	EmailTopic       TopicProtocol = "email"       // delivery of message via SMTP.
-	EmailJSONTopic   TopicProtocol = "email-json"  // delivery of JSON-encoded message via SMTP.
-	SMSTopic         TopicProtocol = "sms"         // delivery of message via SMS.
-	SQSTopic         TopicProtocol = "sqs"         // delivery of JSON-encoded message to an Amazon SQS queue.
-	ApplicationTopic TopicProtocol = "application" // delivery of JSON-encoded message to a mobile app or device.
-	LambdaTopic      TopicProtocol = "lambda"      // delivery of JSON-encoded message to an AWS Lambda function.
-)

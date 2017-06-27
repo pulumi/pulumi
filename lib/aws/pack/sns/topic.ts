@@ -4,19 +4,9 @@
 /* tslint:disable:ordered-imports variable-name */
 import * as lumi from "@lumi/lumi";
 
-export let ApplicationTopic: TopicProtocol = "application";
-export let EmailJSONTopic: TopicProtocol = "email-json";
-export let EmailTopic: TopicProtocol = "email";
-export let HTTPSTopic: TopicProtocol = "https";
-export let HTTPTopic: TopicProtocol = "http";
-export let LambdaTopic: TopicProtocol = "lambda";
-export let SMSTopic: TopicProtocol = "sms";
-export let SQSTopic: TopicProtocol = "sqs";
-
 export class Topic extends lumi.NamedResource implements TopicArgs {
     public readonly topicName?: string;
     public displayName?: string;
-    public subscription?: TopicSubscription[];
 
     public static get(id: lumi.ID): Topic {
         return <any>undefined; // functionality provided by the runtime
@@ -31,7 +21,6 @@ export class Topic extends lumi.NamedResource implements TopicArgs {
         if (args !== undefined) {
             this.topicName = args.topicName;
             this.displayName = args.displayName;
-            this.subscription = args.subscription;
         }
     }
 }
@@ -39,21 +28,5 @@ export class Topic extends lumi.NamedResource implements TopicArgs {
 export interface TopicArgs {
     readonly topicName?: string;
     displayName?: string;
-    subscription?: TopicSubscription[];
-}
-
-export type TopicProtocol =
-    "application" |
-    "email-json" |
-    "email" |
-    "https" |
-    "http" |
-    "lambda" |
-    "sms" |
-    "sqs";
-
-export interface TopicSubscription {
-    protocol: TopicProtocol;
-    endpoint: string;
 }
 

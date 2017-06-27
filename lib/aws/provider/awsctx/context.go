@@ -14,6 +14,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/iam"
 	"github.com/aws/aws-sdk-go/service/lambda"
 	"github.com/aws/aws-sdk-go/service/s3"
+	"github.com/aws/aws-sdk-go/service/sns"
 	"github.com/golang/glog"
 	"github.com/pkg/errors"
 	"github.com/pulumi/lumi/pkg/resource/provider"
@@ -38,6 +39,7 @@ type Context struct {
 	iam              *iam.IAM
 	lambda           *lambda.Lambda
 	s3               *s3.S3
+	sns              *sns.SNS
 }
 
 const regionConfig = "aws:config:region"
@@ -150,6 +152,14 @@ func (ctx *Context) S3() *s3.S3 {
 		ctx.s3 = s3.New(ctx.sess)
 	}
 	return ctx.s3
+}
+
+func (ctx *Context) SNS() *sns.SNS {
+	contract.Assert(ctx.sess != nil)
+	if ctx.sns == nil {
+		ctx.sns = sns.New(ctx.sess)
+	}
+	return ctx.sns
 }
 
 // Request manufactures a standard Golang context object for a request within this overall AWS context.
