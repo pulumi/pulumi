@@ -19,6 +19,7 @@ import (
 	"github.com/pulumi/lumi/lib/aws/provider/iam"
 	"github.com/pulumi/lumi/lib/aws/provider/lambda"
 	"github.com/pulumi/lumi/lib/aws/provider/s3"
+	"github.com/pulumi/lumi/lib/aws/provider/sns"
 )
 
 // Provider implements the AWS resource provider's operations for all known AWS types.
@@ -49,6 +50,8 @@ func NewProvider(host *provider.HostClient) (*Provider, error) {
 			iam.RoleToken:                            iam.NewRoleProvider(ctx),
 			s3.BucketToken:                           s3.NewBucketProvider(ctx),
 			s3.ObjectToken:                           s3.NewObjectProvider(ctx),
+			sns.TopicToken:                           sns.NewTopicProvider(ctx),
+			sns.SubscriptionToken:                    sns.NewSubscriptionProvider(ctx),
 		},
 	}, nil
 }
