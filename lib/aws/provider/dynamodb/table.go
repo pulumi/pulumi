@@ -84,10 +84,7 @@ func (p *tableProvider) Check(ctx context.Context, obj *dynamodb.Table, property
 				return fmt.Errorf("attribute name '%v' exceeded maximum length of %v",
 					attr.Name, maxTableAttributeName)
 			}
-			switch attr.Type {
-			case "S", "N", "B":
-				break
-			default:
+			if attr.Type != "S" && attr.Type != "N" && attr.Type != "B" {
 				return fmt.Errorf(
 					"attribute type '%v' not one of valid values S (string), N (number) or B (binary)", attr.Type)
 			}
