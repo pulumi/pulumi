@@ -211,17 +211,19 @@ func (iter *PlanIterator) nextResourceStep(res *SourceAllocation) (Step, error) 
 
 	// First ensure the provider is okay with this resource.
 	var invalid bool
-	failures, err := prov.Check(new.Type(), inputs)
+	failures, err := prov.Check(t, inputs)
 	if err != nil {
 		return nil, err
 	}
 	for _, failure := range failures {
 		invalid = true
-		var v resource.PropertyValue
 		if failure.Property != "" {
-			v = inputs[failure.Property]
+			v := inputs[failure.Property]
+			iter.p.Diag().Errorf(errors.ErrorResourcePropertyInvalidValue,
+				t, urn.Name(), failure.Property, v, failure.Reason)
+		} else {
+			iter.p.Diag().Errorf(errors.ErrorResourceInvalid, t, urn.Name(), failure.Reason)
 		}
-		iter.p.Diag().Errorf(errors.ErrorResourcePropertyInvalidValue, urn.Name(), failure.Property, v, failure.Reason)
 	}
 
 	// Next, give each analyzer -- if any -- a chance to inspect the resource too.
