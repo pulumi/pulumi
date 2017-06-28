@@ -167,14 +167,9 @@ func (p *logGroupProvider) Delete(ctx context.Context, id resource.ID) error {
 	if err != nil {
 		return err
 	}
-
 	fmt.Printf("Deleting Cloudwatch LogGroup '%v'\n", id)
 	_, err = p.ctx.CloudwatchLogs().DeleteLogGroup(&awscloudwatch.DeleteLogGroupInput{
 		LogGroupName: aws.String(logGroupName),
 	})
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return err
 }

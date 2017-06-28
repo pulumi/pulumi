@@ -160,15 +160,10 @@ func (p *logSubscriptionFilterProvider) Delete(ctx context.Context, id resource.
 	if err != nil {
 		return err
 	}
-
 	fmt.Printf("Deleting Cloudwatch LogSubscriptionFilter '%v'\n", id)
 	_, err = p.ctx.CloudwatchLogs().DeleteSubscriptionFilter(&awscloudwatch.DeleteSubscriptionFilterInput{
 		LogGroupName: aws.String(logGroupName),
 		FilterName:   aws.String(filterName),
 	})
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return err
 }
