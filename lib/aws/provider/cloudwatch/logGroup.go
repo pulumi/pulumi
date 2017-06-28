@@ -29,7 +29,7 @@ const (
 )
 
 var (
-	logGroupNameRegexp = regexp.MustCompile(`[\.\-_/#A-Za-z0-9]+`)
+	logGroupNameRegexp = regexp.MustCompile(`^[\.\-_/#A-Za-z0-9]+$`)
 )
 
 // NewLogGroupProvider creates a provider that handles Cloudwatch LogGroup operations.
