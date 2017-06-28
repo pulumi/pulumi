@@ -8,6 +8,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/apigateway"
+	"github.com/aws/aws-sdk-go/service/cloudwatchlogs"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/aws/aws-sdk-go/service/elasticbeanstalk"
@@ -33,6 +34,7 @@ type Context struct {
 
 	// per-service connections (lazily allocated and reused);
 	apigateway       *apigateway.APIGateway
+	cloudwatchlogs   *cloudwatchlogs.CloudWatchLogs
 	dynamodb         *dynamodb.DynamoDB
 	ec2              *ec2.EC2
 	elasticbeanstalk *elasticbeanstalk.ElasticBeanstalk
@@ -104,6 +106,14 @@ func (ctx *Context) APIGateway() *apigateway.APIGateway {
 		ctx.apigateway = apigateway.New(ctx.sess)
 	}
 	return ctx.apigateway
+}
+
+func (ctx *Context) CloudwatchLogs() *cloudwatchlogs.CloudWatchLogs {
+	contract.Assert(ctx.sess != nil)
+	if ctx.cloudwatchlogs == nil {
+		ctx.cloudwatchlogs = cloudwatchlogs.New(ctx.sess)
+	}
+	return ctx.cloudwatchlogs
 }
 
 func (ctx *Context) DynamoDB() *dynamodb.DynamoDB {

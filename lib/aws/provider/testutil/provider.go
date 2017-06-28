@@ -17,6 +17,7 @@ import (
 
 type Context interface {
 	GetResourceID(name string) resource.ID
+	GetOutputProps(name string) *structpb.Struct
 }
 
 type Resource struct {
@@ -130,6 +131,13 @@ func (p *providerTest) GetResourceID(name string) resource.ID {
 		return id
 	}
 	return resource.ID("")
+}
+
+func (p *providerTest) GetOutputProps(name string) *structpb.Struct {
+	if props, ok := p.outProps[name]; ok {
+		return props
+	}
+	return nil
 }
 
 var _ Context = &providerTest{}
