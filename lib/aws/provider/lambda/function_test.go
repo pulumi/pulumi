@@ -13,9 +13,11 @@ import (
 	awsiam "github.com/aws/aws-sdk-go/service/iam"
 	awslambda "github.com/aws/aws-sdk-go/service/lambda"
 	"github.com/pulumi/lumi/lib/aws/provider/awsctx"
+	cloudwatchprovider "github.com/pulumi/lumi/lib/aws/provider/cloudwatch"
 	iamprovider "github.com/pulumi/lumi/lib/aws/provider/iam"
 	"github.com/pulumi/lumi/lib/aws/provider/testutil"
 	rpc "github.com/pulumi/lumi/lib/aws/rpc"
+	"github.com/pulumi/lumi/lib/aws/rpc/cloudwatch"
 	"github.com/pulumi/lumi/lib/aws/rpc/iam"
 	"github.com/pulumi/lumi/lib/aws/rpc/lambda"
 	"github.com/pulumi/lumi/pkg/resource"
@@ -26,11 +28,11 @@ func Test(t *testing.T) {
 	t.Parallel()
 
 	prefix := resource.NewUniqueHex("lumitest", 20, 20)
-	ctx := testutil.CreateContext(t)
+	awsctx := testutil.CreateContext(t)
 	defer func() {
-		funcerr := cleanupFunctions(prefix, ctx)
+		funcerr := cleanupFunctions(prefix, awsctx)
 		assert.Nil(t, funcerr)
-		roleerr := cleanupRoles(prefix, ctx)
+		roleerr := cleanupRoles(prefix, awsctx)
 		assert.Nil(t, roleerr)
 	}()
 
@@ -44,9 +46,14 @@ func Test(t *testing.T) {
 	}
 
 	resources := map[string]testutil.Resource{
-		"role":       {Provider: iamprovider.NewRoleProvider(ctx), Token: iam.RoleToken},
-		"f":          {Provider: NewFunctionProvider(ctx), Token: FunctionToken},
-		"permission": {Provider: NewPermissionProvider(ctx), Token: PermissionToken},
+		"role":         {Provider: iamprovider.NewRoleProvider(awsctx), Token: iam.RoleToken},
+		"f":            {Provider: NewFunctionProvider(awsctx), Token: FunctionToken},
+		"logcollector": {Provider: NewFunctionProvider(awsctx), Token: FunctionToken},
+		"permission":   {Provider: NewPermissionProvider(awsctx), Token: PermissionToken},
+		"loggroup": {Provider: cloudwatchprovider.NewLogGroupProvider(awsctx),
+			Token: cloudwatchprovider.LogGroupToken},
+		"filter": {Provider: cloudwatchprovider.NewLogSubscriptionFilterProvider(awsctx),
+			Token: cloudwatchprovider.LogSubscriptionFilterToken},
 	}
 	steps := []testutil.Step{
 		{
@@ -87,15 +94,49 @@ func Test(t *testing.T) {
 				},
 			},
 			testutil.ResourceGenerator{
+				Name: "logcollector",
+				Creator: func(ctx testutil.Context) interface{} {
+					return &lambda.Function{
+						Name:    aws.String(prefix),
+						Code:    code,
+						Handler: "index.handler",
+						Runtime: lambda.NodeJS6d10Runtime,
+						Role:    ctx.GetResourceID("role"),
+					}
+				},
+			},
+			testutil.ResourceGenerator{
+				Name: "loggroup",
+				Creator: func(ctx testutil.Context) interface{} {
+					return &cloudwatch.LogGroup{
+						Name: aws.String(prefix),
+						LogGroupName: aws.String("/aws/lambda/" +
+							ctx.GetOutputProps("f").Fields["functionName"].GetStringValue()),
+						RetentionInDays: aws.Float64(float64(7)),
+					}
+				},
+			},
+			testutil.ResourceGenerator{
 				Name: "permission",
 				Creator: func(ctx testutil.Context) interface{} {
+					sourceARN = rpc.ARN(string(ctx.GetResourceID("loggroup")) + ":*")
 					return &lambda.Permission{
 						Name:          aws.String(prefix),
-						Function:      ctx.GetResourceID("f"),
+						Function:      ctx.GetResourceID("logcollector"),
 						Action:        "lambda:InvokeFunction",
-						Principal:     "s3.amazonaws.com",
-						SourceAccount: aws.String("111111111111"),
+						Principal:     "logs." + awsctx.Region() + ".amazonaws.com",
+						SourceAccount: aws.String(awsctx.AccountID()),
 						SourceARN:     &sourceARN,
+					}
+				},
+			},
+			testutil.ResourceGenerator{
+				Name: "filter",
+				Creator: func(ctx testutil.Context) interface{} {
+					return &cloudwatch.LogSubscriptionFilter{
+						Name:           aws.String(prefix),
+						DestinationArn: string(ctx.GetResourceID("logcollector")),
+						LogGroupName:   ctx.GetOutputProps("loggroup").Fields["logGroupName"].GetStringValue(),
 					}
 				},
 			},

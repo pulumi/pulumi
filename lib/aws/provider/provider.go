@@ -13,6 +13,7 @@ import (
 
 	"github.com/pulumi/lumi/lib/aws/provider/apigateway"
 	"github.com/pulumi/lumi/lib/aws/provider/awsctx"
+	"github.com/pulumi/lumi/lib/aws/provider/cloudwatch"
 	"github.com/pulumi/lumi/lib/aws/provider/dynamodb"
 	"github.com/pulumi/lumi/lib/aws/provider/ec2"
 	"github.com/pulumi/lumi/lib/aws/provider/elasticbeanstalk"
@@ -38,6 +39,8 @@ func NewProvider(host *provider.HostClient) (*Provider, error) {
 			apigateway.DeploymentToken:               apigateway.NewDeploymentProvider(ctx),
 			apigateway.RestAPIToken:                  apigateway.NewRestAPIProvider(ctx),
 			apigateway.StageToken:                    apigateway.NewStageProvider(ctx),
+			cloudwatch.LogGroupToken:                 cloudwatch.NewLogGroupProvider(ctx),
+			cloudwatch.LogSubscriptionFilterToken:    cloudwatch.NewLogSubscriptionFilterProvider(ctx),
 			dynamodb.TableToken:                      dynamodb.NewTableProvider(ctx),
 			ec2.InstanceToken:                        ec2.NewInstanceProvider(ctx),
 			ec2.SecurityGroupToken:                   ec2.NewSecurityGroupProvider(ctx),
