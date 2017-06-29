@@ -1360,23 +1360,19 @@ export class Transformer {
                     reftok = await this.createModuleRefMemberToken(sourceModule, srcname.ident);
                 }
                 else {
-                    let expsym: ts.Symbol | undefined = this.checker().getSymbolAtLocation(exportClause.name);
-                    contract.assert(!!expsym);
-                    if (expsym.flags & ts.SymbolFlags.Alias) {
-                        expsym = this.checker().getAliasedSymbol(expsym);
-                    }
-                    if (expsym.flags & (ts.SymbolFlags.ValueModule | ts.SymbolFlags.NamespaceModule)) {
+                    contract.assert(!!this.currentModuleImports);
+                    let modref: ModuleReference | undefined = this.currentModuleImports!.get(srcname.ident);
+                    if (!!modref) {
                         // If this is a module symbol, then we are rexporting an import, e.g.:
                         //      import * as other from "other";
                         //      export {other};
                         // Create a fully qualified token for that other module using the one we used on import.
-                        contract.assert(!!this.currentModuleImports);
-                        let modref: ModuleReference | undefined = this.currentModuleImports!.get(srcname.ident);
-                        contract.assert(!!modref);
                         reftok = await this.createModuleToken(modref!);
                     }
                     else {
-                        // Otherwise, it must be a module member, e.g. an exported class, interface, or variable.
+                        // Else we try to look it up as a module member in the current module, e.g.:
+                        //      class A {};
+                        //      export {A};
                         contract.assert(!!this.currentModuleToken);
                         contract.assert(!!this.currentModuleMembers);
                         contract.assert(!!this.currentModuleMembers![srcname.ident]);
