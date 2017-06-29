@@ -116,7 +116,7 @@ func plan(cmd *cobra.Command, info *envCmdInfo, opts deployOptions) (*planResult
 
 	// First, compile the package, in preparatin for interpreting it and creating resources.
 	result := compile(cmd, info.Args)
-	if result == nil {
+	if result == nil || !result.B.Ctx().Diag.Success() {
 		return nil, nil
 	}
 
