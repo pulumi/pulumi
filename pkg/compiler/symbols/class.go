@@ -28,19 +28,20 @@ var _ Symbol = (*Class)(nil)
 var _ Type = (*Class)(nil)
 var _ ModuleMember = (*Class)(nil)
 
-func (node *Class) Name() tokens.Name                   { return tokens.Name(node.Nm) }
-func (node *Class) Token() tokens.Token                 { return tokens.Token(node.Tok) }
-func (node *Class) Special() bool                       { return false }
-func (node *Class) Tree() diag.Diagable                 { return node.Node }
-func (node *Class) moduleMember()                       {}
-func (node *Class) MemberNode() ast.ModuleMember        { return node.Node }
-func (node *Class) MemberName() tokens.ModuleMemberName { return tokens.ModuleMemberName(node.Name()) }
-func (node *Class) MemberParent() *Module               { return node.Parent }
-func (node *Class) typesym()                            {}
-func (node *Class) Base() Type                          { return node.Extends }
-func (node *Class) TypeName() tokens.TypeName           { return node.Nm }
-func (node *Class) TypeToken() tokens.Type              { return node.Tok }
-func (node *Class) TypeMembers() ClassMemberMap         { return node.Members }
+func (node *Class) Name() tokens.Name                       { return tokens.Name(node.Nm) }
+func (node *Class) Token() tokens.Token                     { return tokens.Token(node.Tok) }
+func (node *Class) Special() bool                           { return false }
+func (node *Class) Tree() diag.Diagable                     { return node.Node }
+func (node *Class) moduleMember()                           {}
+func (node *Class) MemberNode() ast.ModuleMember            { return node.Node }
+func (node *Class) MemberName() tokens.ModuleMemberName     { return tokens.ModuleMemberName(node.Name()) }
+func (node *Class) MemberParent() *Module                   { return node.Parent }
+func (node *Class) typesym()                                {}
+func (node *Class) Base() Type                              { return node.Extends }
+func (node *Class) TypeName() tokens.TypeName               { return node.Nm }
+func (node *Class) TypeToken() tokens.Type                  { return node.Tok }
+func (node *Class) TypeMembers() ClassMemberMap             { return node.Members }
+func (node *Class) StableMembers() []tokens.ClassMemberName { return StableClassMemberMap(node.Members) }
 func (node *Class) Ctor() Function {
 	if ctor, has := node.TypeMembers()[tokens.ClassConstructorFunction]; has {
 		ctormeth, ismeth := ctor.(*ClassMethod)

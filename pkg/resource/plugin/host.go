@@ -6,6 +6,7 @@ import (
 	"github.com/golang/glog"
 	"github.com/pkg/errors"
 
+	"github.com/pulumi/lumi/pkg/compiler/symbols"
 	"github.com/pulumi/lumi/pkg/diag"
 	"github.com/pulumi/lumi/pkg/eval/rt"
 	"github.com/pulumi/lumi/pkg/resource"
@@ -22,6 +23,8 @@ type Host interface {
 	Log(sev diag.Severity, msg string)
 	// ReadLocation reads the value from a static or module property.
 	ReadLocation(tok tokens.Token) (resource.PropertyValue, error)
+	// ReadLocations reads takes a class or module token and reads all (static) properties belonging to it.
+	ReadLocations(tok tokens.Token) (resource.PropertyMap, error)
 
 	// Analyzer fetches the analyzer with a given name, possibly lazily allocating the plugins for it.  If an analyzer
 	// could not be found, or an error occurred while creating it, a non-nil error is returned.
@@ -69,12 +72,14 @@ func (host *defaultHost) Log(sev diag.Severity, msg string) {
 }
 
 func (host *defaultHost) ReadLocation(tok tokens.Token) (resource.PropertyValue, error) {
+	// First lookup the symbol.  If it's missing, just return nil, so that this is "dynamic-like".
 	e := host.ctx.E
 	sym := e.Ctx().LookupSymbol(nil, tok, false)
 	if sym == nil {
-		return resource.PropertyValue{}, errors.Errorf("Location '%v' was not found", tok)
+		return resource.NewNullProperty(), nil
 	}
 
+	// Next do a read of the location.  This may trigger code (initializers), and so it might fail.
 	var obj *rt.Object
 	loc, uw := e.LoadLocation(nil, sym, nil, false)
 	if uw == nil {
@@ -83,10 +88,47 @@ func (host *defaultHost) ReadLocation(tok tokens.Token) (resource.PropertyValue,
 	if uw != nil {
 		contract.Assert(uw.Throw())
 		return resource.PropertyValue{},
-			errors.Errorf("An error occurred reading location '%v': %v", tok, uw.Thrown().Message(host.ctx.Diag))
+			errors.Errorf("An error occurred reading property '%v': %v", tok, uw.Thrown().Message(host.ctx.Diag))
 	}
 
 	return resource.CopyObject(obj), nil
+}
+
+func (host *defaultHost) ReadLocations(tok tokens.Token) (resource.PropertyMap, error) {
+	props := make(resource.PropertyMap)
+
+	// First load up the class or module object.  If missing, return an empty map.
+	e := host.ctx.E
+	sym := e.Ctx().LookupSymbol(nil, tok, false)
+	if sym == nil {
+		return props, nil
+	}
+
+	// Now, for each (static) property, read it and add it to the list.
+	switch t := sym.(type) {
+	case *symbols.Class:
+		for _, pname := range t.StableMembers() {
+			prop := t.Members[pname]
+			v, err := host.ReadLocation(prop.Token())
+			if err != nil {
+				return nil, err
+			}
+			props[resource.PropertyKey(pname)] = v
+		}
+	case *symbols.Module:
+		for _, pname := range t.StableMembers() {
+			prop := t.Members[pname]
+			v, err := host.ReadLocation(prop.Token())
+			if err != nil {
+				return nil, err
+			}
+			props[resource.PropertyKey(pname)] = v
+		}
+	default:
+		return nil, errors.Errorf("Only reads of class or module properties supported; '%v' is neither", tok)
+	}
+
+	return props, nil
 }
 
 func (host *defaultHost) Analyzer(name tokens.QName) (Analyzer, error) {

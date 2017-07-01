@@ -384,6 +384,9 @@ func (host *testProviderHost) Log(sev diag.Severity, msg string) {
 func (host *testProviderHost) ReadLocation(tok tokens.Token) (resource.PropertyValue, error) {
 	return resource.PropertyValue{}, errors.New("Invalid location")
 }
+func (host *testProviderHost) ReadLocations(tok tokens.Token) (resource.PropertyMap, error) {
+	return nil, errors.New("Invalid location")
+}
 func (host *testProviderHost) Analyzer(nm tokens.QName) (plugin.Analyzer, error) {
 	return host.analyzer(nm)
 }

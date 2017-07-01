@@ -97,3 +97,18 @@ func (eng *hostServer) ReadLocation(ctx context.Context,
 	}
 	return m, nil
 }
+
+// ReadLocations reads takes a class or module token and reads all (static) properties belonging to it.
+func (eng *hostServer) ReadLocations(ctx context.Context,
+	req *lumirpc.ReadLocationsRequest) (*lumirpc.ReadLocationsResponse, error) {
+	tok := tokens.Token(req.Token)
+	locs, err := eng.host.ReadLocations(tok)
+	if err != nil {
+		return nil, err
+	}
+	props, unks := MarshalPropertiesWithUnknowns(eng.ctx, locs, MarshalOptions{})
+	if len(unks) > 0 {
+		return nil, errors.Errorf("Location %v contained %v unknown computed value(s)", tok, len(unks))
+	}
+	return &lumirpc.ReadLocationsResponse{Properties: props}, nil
+}

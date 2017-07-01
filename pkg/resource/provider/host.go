@@ -65,7 +65,7 @@ func (host *HostClient) ReadLocation(tok tokens.Token) (resource.PropertyValue, 
 	req := &lumirpc.ReadLocationRequest{Token: string(tok)}
 	resp, err := host.client.ReadLocation(context.TODO(), req)
 	if err != nil {
-		return resource.PropertyValue{}, nil
+		return resource.PropertyValue{}, err
 	}
 	return plugin.UnmarshalPropertyValue(nil, resp, plugin.MarshalOptions{}), nil
 }
@@ -133,4 +133,14 @@ func (host *HostClient) ReadObjectLocation(tok tokens.Token) (resource.PropertyM
 		return nil, errors.Errorf("Expected %v to be an object; got %v instead", tok, v)
 	}
 	return v.ObjectValue(), nil
+}
+
+// ReadLocations takes a class or module token and reads all of its statics or module properties.
+func (host *HostClient) ReadLocations(tok tokens.Token) (resource.PropertyMap, error) {
+	req := &lumirpc.ReadLocationsRequest{Token: string(tok)}
+	resp, err := host.client.ReadLocations(context.TODO(), req)
+	if err != nil {
+		return nil, err
+	}
+	return plugin.UnmarshalProperties(nil, resp.GetProperties(), plugin.MarshalOptions{}), nil
 }

@@ -13,6 +13,8 @@ service Engine {
     rpc Log(LogRequest) returns (google.protobuf.Empty) {}
     // ReadLocation reads the value from a location identified by a token in the current program.
     rpc ReadLocation(ReadLocationRequest) returns (google.protobuf.Value) {}
+    // ReadLocations reads a list of static or module variables from a single parent token.
+    rpc ReadLocations(ReadLocationsRequest) returns (ReadLocationsResponse) {}
 }
 
 // LogSeverity is the severity level of a log message.  Errors are fatal; all others are informational.
@@ -30,5 +32,13 @@ message LogRequest {
 
 message ReadLocationRequest {
     string token = 1; // the static or module variable whose value to read.
+}
+
+message ReadLocationsRequest {
+    string token = 1; // the class or module token whose static or property values to read.
+}
+
+message ReadLocationsResponse {
+    google.protobuf.Struct properties = 1; // the resulting static or module properties.
 }
 

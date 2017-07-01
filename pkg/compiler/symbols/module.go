@@ -23,7 +23,10 @@ func (node *Module) Name() tokens.Name   { return node.Node.Name.Ident }
 func (node *Module) Token() tokens.Token { return tokens.Token(node.Tok) }
 func (node *Module) Tree() diag.Diagable { return node.Node }
 func (node *Module) Special() bool       { return false }
-func (node *Module) String() string      { return string(node.Token()) }
+func (node *Module) StableMembers() []tokens.ModuleMemberName {
+	return StableModuleMemberMap(node.Members)
+}
+func (node *Module) String() string { return string(node.Token()) }
 
 // HasInit returns true if this module has an initialzer associated with it.
 func (node *Module) HasInit() bool { return node.GetInit() != nil }

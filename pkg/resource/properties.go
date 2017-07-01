@@ -685,3 +685,9 @@ func (v PropertyValue) String() string {
 	// For all others, just display the underlying property value.
 	return fmt.Sprintf("{%v}", v.V)
 }
+
+// Property is a pair of key and value.
+type Property struct {
+	Key   PropertyKey
+	Value PropertyValue
+}
