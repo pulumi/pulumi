@@ -15,6 +15,7 @@ import (
 
 // MarshalOptions controls the marshaling of RPC structures.
 type MarshalOptions struct {
+	SkipNulls    bool // true to skip nulls altogether in the resulting map.
 	OldURNs      bool // true to permit old URNs in the properties (e.g., for pre-update).
 	RawResources bool // true to marshal resources "as-is"; often used when ID mappings aren't known yet.
 }
@@ -30,18 +31,25 @@ func MarshalPropertiesWithUnknowns(
 		Fields: make(map[string]*structpb.Value),
 	}
 	for _, key := range props.StableKeys() {
-		if v := props[key]; !v.IsOutput() {
-			glog.V(9).Infof("Marshaling property for RPC: %v=%v", key, v)
-			mv, known := MarshalPropertyValue(ctx, v, opts)
-			result.Fields[string(key)] = mv
+		v := props[key]
+		glog.V(9).Infof("Marshaling property for RPC: %v=%v", key, v)
+		if v.IsOutput() {
+			glog.V(9).Infof("Skipping output property %v", key)
+			continue // skip output properties.
+		} else if opts.SkipNulls && v.IsNull() {
+			glog.V(9).Infof("Skipping null property %v (as requested)", key)
+			continue // skip nulls if requested.
+		}
 
-			// If the property was unknown, note it, so that we may tell the provider.
-			if !known {
-				if unk == nil {
-					unk = make(map[string]bool)
-				}
-				unk[string(key)] = true
+		mv, known := MarshalPropertyValue(ctx, v, opts)
+		result.Fields[string(key)] = mv
+
+		// If the property was unknown, note it, so that we may tell the provider.
+		if !known {
+			if unk == nil {
+				unk = make(map[string]bool)
 			}
+			unk[string(key)] = true
 		}
 	}
 	return result, unk
@@ -141,12 +149,17 @@ func UnmarshalPropertiesInto(ctx *Context, props *structpb.Struct, t resource.Pr
 	sort.Strings(keys)
 
 	// And now unmarshal every field it into the map.
-	for _, k := range keys {
-		pk := resource.PropertyKey(k)
+	for _, key := range keys {
+		pk := resource.PropertyKey(key)
 		v := t[pk]
-		UnmarshalPropertyValueInto(ctx, props.Fields[k], &v, opts)
+		UnmarshalPropertyValueInto(ctx, props.Fields[key], &v, opts)
+		glog.V(9).Infof("Unmarshaling property for RPC: %v=%v", key, v)
 		contract.Assert(!v.IsComputed())
-		t[pk] = v
+		if opts.SkipNulls && v.IsNull() {
+			glog.V(9).Infof("Skipping unmarshaling of %v (it is null)", key)
+		} else {
+			t[pk] = v
+		}
 	}
 }
 
