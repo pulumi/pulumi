@@ -349,9 +349,15 @@ func (m PropertyMap) HasValue(k PropertyKey) bool {
 
 // Mappable returns a mapper-compatible object map, suitable for deserialization into structures.
 func (m PropertyMap) Mappable() map[string]interface{} {
+	return m.MapReplace(nil)
+}
+
+// MapReplace returns a mapper-compatible object map, suitable for deserialization into structures.  A replace function
+// repl may be passed that will replace elements using custom logic if appropriate.
+func (m PropertyMap) MapReplace(repl func(PropertyValue) (interface{}, bool)) map[string]interface{} {
 	obj := make(map[string]interface{})
 	for _, k := range m.StableKeys() {
-		obj[string(k)] = m[k].Mappable()
+		obj[string(k)] = m[k].MapReplace(repl)
 	}
 	return obj
 }
@@ -640,6 +646,17 @@ func (v PropertyValue) TypeString() string {
 
 // Mappable returns a mapper-compatible value, suitable for deserialization into structures.
 func (v PropertyValue) Mappable() interface{} {
+	return v.MapReplace(nil)
+}
+
+// MapReplace returns a mapper-compatible object map, suitable for deserialization into structures.  A replace function
+// repl may be passed that will replace elements using custom logic if appropriate.
+func (v PropertyValue) MapReplace(repl func(PropertyValue) (interface{}, bool)) interface{} {
+	if repl != nil {
+		if vret, vrep := repl(v); vrep {
+			return vret
+		}
+	}
 	if v.IsNull() {
 		return nil
 	} else if v.IsBool() {
@@ -651,12 +668,12 @@ func (v PropertyValue) Mappable() interface{} {
 	} else if v.IsArray() {
 		var arr []interface{}
 		for _, e := range v.ArrayValue() {
-			arr = append(arr, e.Mappable())
+			arr = append(arr, e.MapReplace(repl))
 		}
 		return arr
 	}
 	contract.Assert(v.IsObject())
-	return v.ObjectValue().Mappable()
+	return v.ObjectValue().MapReplace(repl)
 }
 
 // String implements the fmt.Stringer interface to add slightly more information to the output.
