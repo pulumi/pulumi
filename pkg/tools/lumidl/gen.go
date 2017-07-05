@@ -16,7 +16,7 @@ func mirrorDirLayout(pkg *Package, out string) error {
 	for relpath := range pkg.Files {
 		// Make the target file by concatening the output with the relative path, and ensure the directory exists.
 		path := filepath.Join(out, relpath)
-		if err := tools.EnsurePath(path); err != nil {
+		if err := tools.EnsureFileDir(path); err != nil {
 			return err
 		}
 	}
