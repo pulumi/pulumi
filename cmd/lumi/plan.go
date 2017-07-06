@@ -463,19 +463,29 @@ func printPropertyValue(b *bytes.Buffer, v resource.PropertyValue, planning bool
 	} else if v.IsString() {
 		b.WriteString(fmt.Sprintf("%q", v.StringValue()))
 	} else if v.IsArray() {
-		b.WriteString(fmt.Sprintf("[\n"))
-		for i, elem := range v.ArrayValue() {
-			newIndent := printArrayElemHeader(b, i, indent)
-			printPropertyValue(b, elem, planning, newIndent)
+		arr := v.ArrayValue()
+		if len(arr) == 0 {
+			b.WriteString("[]")
+		} else {
+			b.WriteString(fmt.Sprintf("[\n"))
+			for i, elem := range arr {
+				newIndent := printArrayElemHeader(b, i, indent)
+				printPropertyValue(b, elem, planning, newIndent)
+			}
+			b.WriteString(fmt.Sprintf("%s]", indent))
 		}
-		b.WriteString(fmt.Sprintf("%s]", indent))
 	} else if v.IsComputed() || v.IsOutput() {
 		b.WriteString(v.TypeString())
 	} else {
 		contract.Assert(v.IsObject())
-		b.WriteString("{\n")
-		printObject(b, v.ObjectValue(), planning, indent+"    ")
-		b.WriteString(fmt.Sprintf("%s}", indent))
+		obj := v.ObjectValue()
+		if len(obj) == 0 {
+			b.WriteString("{}")
+		} else {
+			b.WriteString("{\n")
+			printObject(b, obj, planning, indent+"    ")
+			b.WriteString(fmt.Sprintf("%s}", indent))
+		}
 	}
 	b.WriteString("\n")
 }
