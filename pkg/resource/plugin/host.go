@@ -101,28 +101,37 @@ func (host *defaultHost) ReadLocations(tok tokens.Token) (resource.PropertyMap, 
 	e := host.ctx.E
 	sym := e.Ctx().LookupSymbol(nil, tok, false)
 	if sym == nil {
+		glog.V(9).Infof("Reading locations at token: %v; location not found", tok)
 		return props, nil
 	}
 
 	// Now, for each (static) property, read it and add it to the list.
 	switch t := sym.(type) {
 	case *symbols.Class:
+		glog.V(9).Infof("Reading locations at token: %v; %v class members found", tok, len(t.Members))
 		for _, pname := range t.StableMembers() {
 			prop := t.Members[pname]
-			v, err := host.ReadLocation(prop.Token())
-			if err != nil {
-				return nil, err
+			if _, isprop := prop.(*symbols.ClassProperty); isprop {
+				if prop.Static() {
+					v, err := host.ReadLocation(prop.Token())
+					if err != nil {
+						return nil, err
+					}
+					props[resource.PropertyKey(pname)] = v
+				}
 			}
-			props[resource.PropertyKey(pname)] = v
 		}
 	case *symbols.Module:
+		glog.V(9).Infof("Reading locations at token: %v; %v module members found", tok, len(t.Members))
 		for _, pname := range t.StableMembers() {
 			prop := t.Members[pname]
-			v, err := host.ReadLocation(prop.Token())
-			if err != nil {
-				return nil, err
+			if _, isprop := prop.(*symbols.ModuleProperty); isprop {
+				v, err := host.ReadLocation(prop.Token())
+				if err != nil {
+					return nil, err
+				}
+				props[resource.PropertyKey(pname)] = v
 			}
-			props[resource.PropertyKey(pname)] = v
 		}
 	default:
 		return nil, errors.Errorf("Only reads of class or module properties supported; '%v' is neither", tok)
