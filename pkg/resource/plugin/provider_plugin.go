@@ -17,7 +17,7 @@ import (
 	"github.com/pulumi/lumi/sdk/go/pkg/lumirpc"
 )
 
-const providerPrefix = "lumi-resource"
+const ProviderPluginPrefix = "lumi-resource-"
 
 // provider reflects a resource plugin, loaded dynamically for a single package.
 type provider struct {
@@ -31,7 +31,7 @@ type provider struct {
 // plugin could not be found, or an error occurs while creating the child process, an error is returned.
 func NewProvider(host Host, ctx *Context, pkg tokens.Package) (Provider, error) {
 	// Setup the search paths; first, the naked name (found on the PATH); next, the fully qualified name.
-	srvexe := providerPrefix + "-" + strings.Replace(string(pkg), tokens.QNameDelimiter, "_", -1)
+	srvexe := ProviderPluginPrefix + strings.Replace(string(pkg), tokens.QNameDelimiter, "_", -1)
 	paths := []string{
 		srvexe, // naked PATH.
 		filepath.Join(

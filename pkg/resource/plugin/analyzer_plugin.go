@@ -13,7 +13,7 @@ import (
 	"github.com/pulumi/lumi/sdk/go/pkg/lumirpc"
 )
 
-const analyzerPrefix = "lumi-analyzer"
+const AnalyzerPluginPrefix = "lumi-analyzer-"
 
 // analyzer reflects an analyzer plugin, loaded dynamically for a single suite of checks.
 type analyzer struct {
@@ -27,7 +27,7 @@ type analyzer struct {
 // could not be found by name on the PATH, or an error occurs while creating the child process, an error is returned.
 func NewAnalyzer(host Host, ctx *Context, name tokens.QName) (Analyzer, error) {
 	// Search for the analyzer on the path.
-	srvexe := analyzerPrefix + "-" + strings.Replace(string(name), tokens.QNameDelimiter, "_", -1)
+	srvexe := AnalyzerPluginPrefix + strings.Replace(string(name), tokens.QNameDelimiter, "_", -1)
 
 	// Now go ahead and attempt to load the plugin.
 	plug, err := newPlugin(host, ctx, []string{srvexe}, fmt.Sprintf("analyzer[%v]", name))
