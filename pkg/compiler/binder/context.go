@@ -265,13 +265,13 @@ func (ctx *Context) LookupTypeToken(node diag.Diagable, tok tokens.Type, require
 		}
 	}
 
-	// The type was not found; issue an error, and return an error type so we can proceed with typechecking.
+	// The type was not found; issue an warning, and return the dynamic type so we can proceed with typechecking.
 	if ty == nil {
 		if require {
 			contract.Assert(reason != "")
-			ctx.Diag.Errorf(errors.ErrorTypeNotFound.At(node), tok, reason)
+			ctx.Diag.Warningf(errors.ErrorTypeNotFound.At(node), tok, reason)
 		}
-		ty = types.Error
+		ty = types.Dynamic
 	}
 	return ty
 }
@@ -287,7 +287,7 @@ func (ctx *Context) LookupFunctionType(node ast.Function) *symbols.FunctionType 
 
 			// If either the parameter's type was unknown, or the lookup failed, sub in an error type.
 			if ptysym == nil {
-				ptysym = types.Error
+				ptysym = types.Dynamic
 			}
 
 			params = append(params, ptysym)
@@ -351,9 +351,9 @@ func (ctx *Context) lookupBasicType(node diag.Diagable, tok tokens.Type, require
 	glog.V(5).Infof("Failed to bind primitive type '%v'", tok)
 
 	if require {
-		ctx.Diag.Errorf(errors.ErrorTypeNotFound.At(node), tok, "unrecognized primitive type name")
+		ctx.Diag.Warningf(errors.ErrorTypeNotFound.At(node), tok, "unrecognized primitive type name")
 	}
-	return types.Error
+	return types.Dynamic
 }
 
 func (ctx *Context) checkClassVisibility(node diag.Diagable, class symbols.Type, member symbols.ClassMember) {
