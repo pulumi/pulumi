@@ -16,12 +16,11 @@ import (
 	"github.com/aws/aws-sdk-go/service/lambda"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/sns"
+	"github.com/aws/aws-sdk-go/service/sts"
 	"github.com/golang/glog"
 	"github.com/pkg/errors"
 	"github.com/pulumi/lumi/pkg/resource/provider"
 	"github.com/pulumi/lumi/pkg/util/contract"
-
-	"github.com/pulumi/lumi/lib/aws/provider/arn"
 )
 
 // Context represents state shared amongst all parties in this process.  In particular, it wraps an AWS session
@@ -42,6 +41,7 @@ type Context struct {
 	lambda           *lambda.Lambda
 	s3               *s3.S3
 	sns              *sns.SNS
+	sts              *sts.STS
 }
 
 const regionConfig = "aws:config:region"
@@ -73,26 +73,17 @@ func New(host *provider.HostClient) (*Context, error) {
 	// Allocate the context early since we are about to use it to access the IAM service.  Its usage is inherently
 	// limited until we have finished construction (in other words, completion of the present function).
 	ctx := &Context{sess: sess}
-
 	// Query the IAM service to fetch the IAM user and role information.
-	glog.V(5).Infof("Querying AWS IAM service for profile metadata")
-	iaminfo, err := ctx.IAM().GetUser(nil)
+	glog.V(5).Infof("Querying AWS STS for profile metadata")
+	identity, err := ctx.STS().GetCallerIdentity(nil)
 	if err != nil {
 		return nil, err
 	}
-	contract.Assert(iaminfo != nil)
-	contract.Assert(iaminfo.User != nil)
-	contract.Assert(iaminfo.User.Arn != nil)
-	userARN := arn.ARN(*iaminfo.User.Arn)
-
-	// Parse and store the ARN information on the context for convenient access.
-	parsedARN, err := userARN.Parse()
-	if err != nil {
-		return nil, err
-	}
-	ctx.accountID = parsedARN.AccountID
-	ctx.accountRole = parsedARN.Resource
-	glog.V(7).Infof("AWS IAM profile ARN received: %v (id=%v role=%v)", userARN, ctx.accountID, ctx.accountRole)
+	contract.Assert(identity != nil)
+	ctx.accountID = aws.StringValue(identity.Account)
+	ctx.accountRole = aws.StringValue(identity.Arn)
+	user := aws.StringValue(identity.UserId)
+	glog.V(7).Infof("AWS STS identity received: %v (id=%v role=%v)", user, ctx.accountID, ctx.accountRole)
 
 	return ctx, nil
 }
@@ -170,6 +161,14 @@ func (ctx *Context) SNS() *sns.SNS {
 		ctx.sns = sns.New(ctx.sess)
 	}
 	return ctx.sns
+}
+
+func (ctx *Context) STS() *sts.STS {
+	contract.Assert(ctx.sess != nil)
+	if ctx.sts == nil {
+		ctx.sts = sts.New(ctx.sess)
+	}
+	return ctx.sts
 }
 
 // Request manufactures a standard Golang context object for a request within this overall AWS context.
