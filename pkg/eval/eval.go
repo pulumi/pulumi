@@ -924,7 +924,7 @@ func (e *evaluator) evalTryCatchFinally(node *ast.TryCatchFinally) *rt.Unwind {
 
 	// No matter the rt.Unwind instructions, be sure to invoke the finally part.
 	if node.FinallyClause != nil {
-		uwf := e.evalStatement(node.FinallyClause)
+		uwf := e.evalStatement(*node.FinallyClause)
 
 		// Any rt.Unwind information from the finally block overrides the try rt.Unwind that was in flight.
 		if uwf != nil {

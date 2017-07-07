@@ -3,8 +3,9 @@
 package ast
 
 import (
-	"github.com/golang/glog"
 	"reflect"
+
+	"github.com/golang/glog"
 
 	"github.com/pulumi/lumi/pkg/util/contract"
 )
@@ -118,7 +119,7 @@ func WalkChildren(v Visitor, node Node) {
 			}
 		}
 		if n.FinallyClause != nil {
-			Walk(v, n.FinallyClause)
+			Walk(v, *n.FinallyClause)
 		}
 	case *TryCatchClause:
 		Walk(v, n.Exception)

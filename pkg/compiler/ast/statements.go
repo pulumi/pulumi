@@ -60,7 +60,7 @@ type TryCatchFinally struct {
 	StatementNode
 	TryClause     Statement          `json:"tryClause"`
 	CatchClauses  *[]*TryCatchClause `json:"catchClauses,omitempty"`
-	FinallyClause Statement          `json:"finallyClause"`
+	FinallyClause *Statement         `json:"finallyClause,omitempty"`
 }
 
 var _ Node = (*TryCatchFinally)(nil)

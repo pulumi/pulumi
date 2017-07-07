@@ -237,9 +237,9 @@ export class Context {
         };
     }
 
-    public newAsyncNotSupportedError(node: ts.Node): Diagnostic {
+    public newAsyncNotSupportedWarning(node: ts.Node): Diagnostic {
         return {
-            category: DiagnosticCategory.Error,
+            category: DiagnosticCategory.Warning,
             code:     100,
             message:  "Async functions are not supported in the LumiJS subset",
             loc:      this.locationFrom(node),

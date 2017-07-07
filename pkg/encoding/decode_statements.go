@@ -95,7 +95,11 @@ func decodeLocalVariableDeclaration(m mapper.Mapper,
 }
 
 func decodeTryCatchFinally(m mapper.Mapper, obj map[string]interface{}) (*ast.TryCatchFinally, error) {
-	return nil, nil
+	var stmt ast.TryCatchFinally
+	if err := m.Decode(obj, &stmt); err != nil {
+		return nil, err
+	}
+	return &stmt, nil
 }
 
 func decodeBreakStatement(m mapper.Mapper, obj map[string]interface{}) (*ast.BreakStatement, error) {
