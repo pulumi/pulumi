@@ -93,6 +93,12 @@ function createJavaScriptLambda(functionName: string, role: Role, closure: Closu
         envObj["LUMI_ENV_" + name] = funcs[name].env;
     }
 
+    // Inject some TypeScript runtime helpers that the transpiled code may have dependencies on.
+    // These are necessary for targeting Node.js runtime environments that do not yet support
+    // new ECMAScript features like `async`/`await`.
+    //
+    // The implemnetations are sourced from: https://github.com/Microsoft/tslib/blob/master/tslib.es6.js
+
     /*tslint:disable: max-line-length */
     str += `
 function __awaiter(thisArg, _arguments, P, generator) {

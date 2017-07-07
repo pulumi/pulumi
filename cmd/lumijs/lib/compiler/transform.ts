@@ -2229,12 +2229,12 @@ export class Transformer {
         //     however, we only support the identifier forms.
         let name: ast.Identifier = this.transformBindingIdentifier(node.name);
 
-        return {
+        return this.withLocation(node, <ast.LocalVariable>{
             kind:       ast.localVariableKind,
             name:       name,
             type:       await this.resolveTypeTokenFromTypeLike(node),
             attributes: attributes,
-        };
+        });
     }
 
     private async transformVariableDeclarationList(
@@ -2790,6 +2790,7 @@ export class Transformer {
         // Async/await is not yet implemented in Lumi, but we want to defer the error
         // until runtime, so that async/await can be used on code executed on the inside
         // by Node.js.
+        let errorMessage = "Async/Await not yet implemented for configuration code.";
         return this.withLocation(node, <ast.CastExpression>{
             kind: ast.castExpressionKind,
             type: <ast.TypeToken>{
@@ -2801,7 +2802,7 @@ export class Transformer {
                 function: <ast.LambdaExpression>{
                     kind: ast.lambdaExpressionKind,
                     sourceLanguage: ".js",
-                    sourceText: "(function() { throw 'Async/Await not yet implemented.'});\n",
+                    sourceText: `(function() { throw '${errorMessage}'});\n`,
                     parameters: [],
                     body: <ast.Block>{
                         kind: ast.blockKind,
@@ -2814,8 +2815,8 @@ export class Transformer {
                                 kind: ast.throwStatementKind,
                                 expression: <ast.StringLiteral>{
                                     kind: ast.stringLiteralKind,
-                                    value: "Async/await not yet implemented.",
-                                    raw: "Async/await not yet implemented.",
+                                    value: errorMessage,
+                                    raw: errorMessage,
                                 },
                             },
                         ],
