@@ -21,3 +21,5 @@ export class Number {
     }
 }
 
+export class Promise<T> {
+}
