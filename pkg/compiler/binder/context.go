@@ -265,7 +265,7 @@ func (ctx *Context) LookupTypeToken(node diag.Diagable, tok tokens.Type, require
 		}
 	}
 
-	// The type was not found; issue an warning, and return the dynamic type so we can proceed with typechecking.
+	// The type was not found; issue a warning, and return the dynamic type so we can proceed with typechecking.
 	if ty == nil {
 		if require {
 			contract.Assert(reason != "")
