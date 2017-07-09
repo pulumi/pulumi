@@ -15,11 +15,13 @@ import (
 	"github.com/pulumi/lumi/lib/aws/provider/awsctx"
 	cloudwatchprovider "github.com/pulumi/lumi/lib/aws/provider/cloudwatch"
 	iamprovider "github.com/pulumi/lumi/lib/aws/provider/iam"
+	snsprovider "github.com/pulumi/lumi/lib/aws/provider/sns"
 	"github.com/pulumi/lumi/lib/aws/provider/testutil"
 	rpc "github.com/pulumi/lumi/lib/aws/rpc"
 	"github.com/pulumi/lumi/lib/aws/rpc/cloudwatch"
 	"github.com/pulumi/lumi/lib/aws/rpc/iam"
 	"github.com/pulumi/lumi/lib/aws/rpc/lambda"
+	"github.com/pulumi/lumi/lib/aws/rpc/sns"
 	"github.com/pulumi/lumi/pkg/resource"
 	"github.com/stretchr/testify/assert"
 )
@@ -54,6 +56,7 @@ func Test(t *testing.T) {
 			Token: cloudwatchprovider.LogGroupToken},
 		"filter": {Provider: cloudwatchprovider.NewLogSubscriptionFilterProvider(awsctx),
 			Token: cloudwatchprovider.LogSubscriptionFilterToken},
+		"deadlettertopic": {Provider: snsprovider.NewTopicProvider(awsctx), Token: snsprovider.TopicToken},
 	}
 	steps := []testutil.Step{
 		{
@@ -82,6 +85,14 @@ func Test(t *testing.T) {
 				},
 			},
 			testutil.ResourceGenerator{
+				Name: "deadlettertopic",
+				Creator: func(ctx testutil.Context) interface{} {
+					return &sns.Topic{
+						Name: aws.String(prefix),
+					}
+				},
+			},
+			testutil.ResourceGenerator{
 				Name: "f",
 				Creator: func(ctx testutil.Context) interface{} {
 					return &lambda.Function{
@@ -90,6 +101,9 @@ func Test(t *testing.T) {
 						Handler: "index.handler",
 						Runtime: lambda.NodeJS6d10Runtime,
 						Role:    ctx.GetResourceID("role"),
+						DeadLetterConfig: &lambda.DeadLetterConfig{
+							Target: ctx.GetResourceID("deadlettertopic"),
+						},
 					}
 				},
 			},

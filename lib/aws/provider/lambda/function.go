@@ -77,7 +77,6 @@ func (p *funcProvider) Check(ctx context.Context, obj *lambda.Function, property
 // Create allocates a new instance of the provided resource and returns its unique ID afterwards.  (The input ID
 // must be blank.)  If this call fails, the resource must not have been created (i.e., it is "transacational").
 func (p *funcProvider) Create(ctx context.Context, obj *lambda.Function) (resource.ID, error) {
-	contract.Assertf(obj.DeadLetterConfig == nil, "Dead letter config not yet supported")
 	contract.Assertf(obj.VPCConfig == nil, "VPC config not yet supported")
 
 	// If an explicit name is given, use it.  Otherwise, auto-generate a name in part based on the resource name.
@@ -110,21 +109,28 @@ func (p *funcProvider) Create(ctx context.Context, obj *lambda.Function) (resour
 			Variables: aws.StringMap(*obj.Environment),
 		}
 	}
+	var deadLetterConfig *awslambda.DeadLetterConfig
+	if obj.DeadLetterConfig != nil {
+		deadLetterConfig = &awslambda.DeadLetterConfig{
+			TargetArn: aws.String(string(obj.DeadLetterConfig.Target)),
+		}
+	}
 
 	// Now go ahead and create the resource.  Note that IAM profiles can take several seconds to propagate; see
 	// http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/iam-roles-for-amazon-ec2.html#launch-instance-with-role.
 	fmt.Printf("Creating Lambda Function '%v' with name '%v'\n", *obj.Name, name)
 	create := &awslambda.CreateFunctionInput{
-		Code:         code,
-		Description:  obj.Description,
-		Environment:  env,
-		FunctionName: aws.String(name),
-		Handler:      aws.String(obj.Handler),
-		KMSKeyArn:    obj.KMSKey.StringPtr(),
-		MemorySize:   memsize,
-		Role:         aws.String(string(obj.Role)),
-		Runtime:      aws.String(string(obj.Runtime)),
-		Timeout:      timeout,
+		Code:             code,
+		DeadLetterConfig: deadLetterConfig,
+		Description:      obj.Description,
+		Environment:      env,
+		FunctionName:     aws.String(name),
+		Handler:          aws.String(obj.Handler),
+		KMSKeyArn:        obj.KMSKey.StringPtr(),
+		MemorySize:       memsize,
+		Role:             aws.String(string(obj.Role)),
+		Runtime:          aws.String(string(obj.Runtime)),
+		Timeout:          timeout,
 	}
 	var arn resource.ID
 	if succ, err := awsctx.RetryProgUntil(
@@ -189,21 +195,28 @@ func (p *funcProvider) Get(ctx context.Context, id resource.ID) (*lambda.Functio
 		envmap := lambda.Environment(aws.StringValueMap(config.Environment.Variables))
 		env = &envmap
 	}
+	var deadLetterConfig *lambda.DeadLetterConfig
+	if config.DeadLetterConfig != nil {
+		deadLetterConfig = &lambda.DeadLetterConfig{
+			Target: resource.ID(aws.StringValue(config.DeadLetterConfig.TargetArn)),
+		}
+	}
 
 	return &lambda.Function{
-		ARN:          awscommon.ARN(aws.StringValue(config.FunctionArn)),
-		Version:      aws.StringValue(config.Version),
-		CodeSHA256:   aws.StringValue(config.CodeSha256),
-		LastModified: aws.StringValue(config.LastModified),
-		Handler:      aws.StringValue(config.Handler),
-		Role:         resource.ID(aws.StringValue(config.Role)),
-		Runtime:      lambda.Runtime(aws.StringValue(config.Runtime)),
-		FunctionName: config.FunctionName,
-		Description:  config.Description,
-		Environment:  env,
-		KMSKey:       resource.MaybeID(config.KMSKeyArn),
-		MemorySize:   convutil.Int64PToFloat64P(config.MemorySize),
-		Timeout:      convutil.Int64PToFloat64P(config.Timeout),
+		ARN:              awscommon.ARN(aws.StringValue(config.FunctionArn)),
+		Version:          aws.StringValue(config.Version),
+		CodeSHA256:       aws.StringValue(config.CodeSha256),
+		LastModified:     aws.StringValue(config.LastModified),
+		Handler:          aws.StringValue(config.Handler),
+		Role:             resource.ID(aws.StringValue(config.Role)),
+		Runtime:          lambda.Runtime(aws.StringValue(config.Runtime)),
+		FunctionName:     config.FunctionName,
+		Description:      config.Description,
+		DeadLetterConfig: deadLetterConfig,
+		Environment:      env,
+		KMSKey:           resource.MaybeID(config.KMSKeyArn),
+		MemorySize:       convutil.Int64PToFloat64P(config.MemorySize),
+		Timeout:          convutil.Int64PToFloat64P(config.Timeout),
 	}, nil
 }
 
@@ -228,7 +241,7 @@ func (p *funcProvider) Update(ctx context.Context, id resource.ID,
 	if diff.Changed(lambda.Function_Description) || diff.Changed(lambda.Function_Environment) ||
 		diff.Changed(lambda.Function_Runtime) || diff.Changed(lambda.Function_Role) ||
 		diff.Changed(lambda.Function_MemorySize) || diff.Changed(lambda.Function_Timeout) ||
-		diff.Changed(lambda.Function_Environment) {
+		diff.Changed(lambda.Function_Environment) || diff.Changed(lambda.Function_DeadLetterConfig) {
 
 		update := &awslambda.UpdateFunctionConfigurationInput{
 			FunctionName: aws.String(name),
@@ -265,6 +278,13 @@ func (p *funcProvider) Update(ctx context.Context, id resource.ID,
 			} else {
 				update.Environment = &awslambda.Environment{
 					Variables: map[string]*string{},
+				}
+			}
+		}
+		if diff.Changed(lambda.Function_DeadLetterConfig) {
+			if new.DeadLetterConfig != nil {
+				update.DeadLetterConfig = &awslambda.DeadLetterConfig{
+					TargetArn: aws.String(string(new.DeadLetterConfig.Target)),
 				}
 			}
 		}
