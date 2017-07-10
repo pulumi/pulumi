@@ -5,7 +5,7 @@ import {
     Closure, jsonStringify, objectKeys, printf, serializeClosure,
 } from "@lumi/lumirt";
 import { Role } from "../iam/role";
-import { Function as LambdaFunction } from "../lambda/function";
+import { DeadLetterConfig, Function as LambdaFunction } from "../lambda/function";
 import { ARN } from "../types";
 
 // Context is the shape of the context object passed to a Function callback.
@@ -73,9 +73,13 @@ function addToFuncEnvs(funcEnvs: { [key: string]: FuncEnv}, name: string, closur
     return funcEnvs;
 }
 
-function createJavaScriptLambda(functionName: string, role: Role, closure: Closure): LambdaFunction {
-    let funcs = addToFuncEnvs({}, "__handler", closure);
+function createJavaScriptLambda(
+    functionName: string,
+    role: Role,
+    closure: Closure,
+    opts: FunctionOptions): LambdaFunction {
 
+    let funcs = addToFuncEnvs({}, "__handler", closure);
     let str = "exports.handler = __handler;\n\n";
     let fkeys = objectKeys(funcs);
     let envObj: any = {};
@@ -139,6 +143,11 @@ function __generator(thisArg, body) {
 }
 `;
 
+    let timeout = 180;
+    if (opts.timeout !== undefined) {
+        timeout = opts.timeout;
+    }
+
     let lambda = new LambdaFunction(functionName, {
         code: new AssetArchive({
             "node_modules": new File("node_modules"),
@@ -147,11 +156,20 @@ function __generator(thisArg, body) {
         handler: "index.handler",
         runtime: "nodejs6.10",
         role: role,
-        timeout: 180,
+        timeout: timeout,
+        memorySize: opts.memorySize,
+        deadLetterConfig: opts.deadLetterConfig,
         environment: envObj,
     });
 
     return lambda;
+}
+
+export interface FunctionOptions {
+    policies: ARN[];
+    timeout?: number;
+    memorySize?: number;
+    deadLetterConfig?: DeadLetterConfig;
 }
 
 // Function is a higher-level API for creating and managing AWS Lambda Function resources implemented
@@ -160,7 +178,7 @@ export class Function {
     public lambda: LambdaFunction;
     public role: Role;
 
-    constructor(name: string, policies: ARN[], func: Handler) {
+    constructor(name: string, options: FunctionOptions, func: Handler) {
         if (name === undefined) {
             throw new Error("Missing required resource name");
         }
@@ -174,12 +192,12 @@ export class Function {
 
         this.role = new Role(name + "-role", {
             assumeRolePolicyDocument: policy,
-            managedPolicyARNs: policies,
+            managedPolicyARNs: options.policies,
         });
 
         switch (closure.language) {
             case ".js":
-                this.lambda = createJavaScriptLambda(name, this.role, closure);
+                this.lambda = createJavaScriptLambda(name, this.role, closure, options);
                 break;
             default:
                 throw new Error("Language '" + closure.language + "' not yet supported (currently only JavaScript).");

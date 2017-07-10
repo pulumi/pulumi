@@ -35,7 +35,7 @@ export class WebHooks {
         // TODO: This is a mock of what the real GitHub provider will do.
         let func = new aws.serverless.Function(
             "f",
-            [aws.iam.AWSLambdaFullAccess],
+            { policies: [aws.iam.AWSLambdaFullAccess] },
             (event, context, callback) => {
                 f(
                     {

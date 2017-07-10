@@ -230,7 +230,6 @@ func (p *funcProvider) InspectChange(ctx context.Context, id resource.ID,
 // to new values.  The resource ID is returned and may be different if the resource had to be recreated.
 func (p *funcProvider) Update(ctx context.Context, id resource.ID,
 	old *lambda.Function, new *lambda.Function, diff *resource.ObjectDiff) error {
-	contract.Assertf(new.DeadLetterConfig == nil, "Dead letter config not yet supported")
 	contract.Assertf(new.VPCConfig == nil, "VPC config not yet supported")
 
 	name, err := arn.ParseResourceName(id)
