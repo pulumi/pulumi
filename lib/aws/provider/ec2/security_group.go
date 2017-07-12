@@ -1,24 +1,10 @@
-// Licensed to Pulumi Corporation ("Pulumi") under one or more
-// contributor license agreements.  See the NOTICE file distributed with
-// this work for additional information regarding copyright ownership.
-// Pulumi licenses this file to You under the Apache License, Version 2.0
-// (the "License"); you may not use this file except in compliance with
-// the License.  You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
 
 package ec2
 
 import (
 	"crypto/sha1"
 	"fmt"
-	"reflect"
 
 	"github.com/aws/aws-sdk-go/aws"
 	awsec2 "github.com/aws/aws-sdk-go/service/ec2"
@@ -54,19 +40,18 @@ type sgProvider struct {
 }
 
 // Check validates that the given property bag is valid for a resource of the given type.
-func (p *sgProvider) Check(ctx context.Context, obj *ec2.SecurityGroup) ([]error, error) {
-	var failures []error
-	if len(obj.GroupDescription) > maxSecurityGroupDescription {
-		failures = append(failures,
-			resource.NewFieldError(reflect.TypeOf(obj), ec2.SecurityGroup_GroupDescription,
-				fmt.Errorf("exceeded maximum length of %v", maxSecurityGroupDescription)))
+func (p *sgProvider) Check(ctx context.Context, obj *ec2.SecurityGroup, property string) error {
+	switch property {
+	case ec2.SecurityGroup_GroupDescription:
+		if len(obj.GroupDescription) > maxSecurityGroupDescription {
+			return fmt.Errorf("exceeded maximum length of %v", maxSecurityGroupDescription)
+		}
+	case ec2.SecurityGroup_SecurityGroupEgress:
+		if obj.VPC == nil && obj.SecurityGroupEgress != nil && len(*obj.SecurityGroupEgress) > 0 {
+			return fmt.Errorf("custom egress rules are not supported on EC2-Classic groups (those without a VPC)")
+		}
 	}
-	if obj.VPC == nil && obj.SecurityGroupEgress != nil && len(*obj.SecurityGroupEgress) > 0 {
-		failures = append(failures,
-			resource.NewFieldError(reflect.TypeOf(obj), ec2.SecurityGroup_SecurityGroupEgress,
-				fmt.Errorf("custom egress rules are not supported on EC2-Classic groups (those without a VPC)")))
-	}
-	return failures, nil
+	return nil
 }
 
 // Create allocates a new instance of the provided resource and returns its unique ID afterwards.  (The input ID
@@ -245,14 +230,10 @@ func (p *sgProvider) Update(ctx context.Context, id resource.ID,
 			var deletes []ec2.SecurityGroupRule
 			if diff.Added(gress.key) {
 				contract.Assert(gress.news != nil && len(*gress.news) > 0)
-				for _, rule := range *gress.news {
-					creates = append(creates, rule)
-				}
+				creates = append(creates, *gress.news...)
 			} else if diff.Deleted(gress.key) {
 				contract.Assert(gress.olds != nil && len(*gress.olds) > 0)
-				for _, rule := range *gress.olds {
-					deletes = append(deletes, rule)
-				}
+				deletes = append(deletes, *gress.olds...)
 			} else if diff.Updated(gress.key) {
 				update := diff.Updates[gress.key]
 				contract.Assert(update.Array != nil)
@@ -412,7 +393,7 @@ func (p *sgProvider) waitForSecurityGroupState(id string, exist bool) error {
 				}
 			} else if res != nil && len(res.SecurityGroups) > 0 {
 				contract.Assert(len(res.SecurityGroups) == 1)
-				contract.Assert(*res.SecurityGroups[0].GroupId == string(id))
+				contract.Assert(*res.SecurityGroups[0].GroupId == id)
 				missing = false // we found one
 			}
 

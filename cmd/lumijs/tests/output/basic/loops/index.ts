@@ -1,3 +1,5 @@
+// Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
+
 // Test out the various kinds of loops.
 
 // test some loops within a function.

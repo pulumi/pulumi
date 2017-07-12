@@ -11,6 +11,7 @@ import (
     "golang.org/x/net/context"
 
     "github.com/pulumi/lumi/pkg/resource"
+    "github.com/pulumi/lumi/pkg/resource/plugin"
     "github.com/pulumi/lumi/pkg/tokens"
     "github.com/pulumi/lumi/pkg/util/contract"
     "github.com/pulumi/lumi/pkg/util/mapper"
@@ -24,7 +25,7 @@ const QueueToken = tokens.Type("aws:sqs/queue:Queue")
 
 // QueueProviderOps is a pluggable interface for Queue-related management functionality.
 type QueueProviderOps interface {
-    Check(ctx context.Context, obj *Queue) ([]error, error)
+    Check(ctx context.Context, obj *Queue, property string) error
     Create(ctx context.Context, obj *Queue) (resource.ID, error)
     Get(ctx context.Context, id resource.ID) (*Queue, error)
     InspectChange(ctx context.Context,
@@ -50,14 +51,77 @@ func (p *QueueProvider) Check(
     contract.Assert(req.GetType() == string(QueueToken))
     obj, _, err := p.Unmarshal(req.GetProperties())
     if err != nil {
-        return resource.NewCheckResponse(err), nil
+        return plugin.NewCheckResponse(err), nil
     }
-    if failures, err := p.ops.Check(ctx, obj); err != nil {
-        return nil, err
-    } else if len(failures) > 0 {
-        return resource.NewCheckResponse(resource.NewCheckError(failures)), nil
+    var failures []error
+    if failure := p.ops.Check(ctx, obj, ""); failure != nil {
+        failures = append(failures, failure)
     }
-    return resource.NewCheckResponse(nil), nil
+    unks := req.GetUnknowns()
+    if !unks["name"] {
+        if failure := p.ops.Check(ctx, obj, "name"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Queue", "name", failure))
+        }
+    }
+    if !unks["fifoQueue"] {
+        if failure := p.ops.Check(ctx, obj, "fifoQueue"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Queue", "fifoQueue", failure))
+        }
+    }
+    if !unks["queueName"] {
+        if failure := p.ops.Check(ctx, obj, "queueName"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Queue", "queueName", failure))
+        }
+    }
+    if !unks["contentBasedDeduplication"] {
+        if failure := p.ops.Check(ctx, obj, "contentBasedDeduplication"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Queue", "contentBasedDeduplication", failure))
+        }
+    }
+    if !unks["delaySeconds"] {
+        if failure := p.ops.Check(ctx, obj, "delaySeconds"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Queue", "delaySeconds", failure))
+        }
+    }
+    if !unks["maximumMessageSize"] {
+        if failure := p.ops.Check(ctx, obj, "maximumMessageSize"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Queue", "maximumMessageSize", failure))
+        }
+    }
+    if !unks["messageRetentionPeriod"] {
+        if failure := p.ops.Check(ctx, obj, "messageRetentionPeriod"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Queue", "messageRetentionPeriod", failure))
+        }
+    }
+    if !unks["receiveMessageWaitTimeSeconds"] {
+        if failure := p.ops.Check(ctx, obj, "receiveMessageWaitTimeSeconds"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Queue", "receiveMessageWaitTimeSeconds", failure))
+        }
+    }
+    if !unks["redrivePolicy"] {
+        if failure := p.ops.Check(ctx, obj, "redrivePolicy"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Queue", "redrivePolicy", failure))
+        }
+    }
+    if !unks["visibilityTimeout"] {
+        if failure := p.ops.Check(ctx, obj, "visibilityTimeout"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Queue", "visibilityTimeout", failure))
+        }
+    }
+    if len(failures) > 0 {
+        return plugin.NewCheckResponse(resource.NewErrors(failures)), nil
+    }
+    return plugin.NewCheckResponse(nil), nil
 }
 
 func (p *QueueProvider) Name(
@@ -99,8 +163,8 @@ func (p *QueueProvider) Get(
         return nil, err
     }
     return &lumirpc.GetResponse{
-        Properties: resource.MarshalProperties(
-            nil, resource.NewPropertyMap(obj), resource.MarshalOptions{}),
+        Properties: plugin.MarshalProperties(
+            nil, resource.NewPropertyMap(obj), plugin.MarshalOptions{}),
     }, nil
 }
 
@@ -170,7 +234,7 @@ func (p *QueueProvider) Delete(
 func (p *QueueProvider) Unmarshal(
     v *pbstruct.Struct) (*Queue, resource.PropertyMap, error) {
     var obj Queue
-    props := resource.UnmarshalProperties(nil, v, resource.MarshalOptions{RawResources: true})
+    props := plugin.UnmarshalProperties(nil, v, plugin.MarshalOptions{RawResources: true})
     return &obj, props, mapper.MapIU(props.Mappable(), &obj)
 }
 

@@ -1,17 +1,4 @@
-// Licensed to Pulumi Corporation ("Pulumi") under one or more
-// contributor license agreements.  See the NOTICE file distributed with
-// this work for additional information regarding copyright ownership.
-// Pulumi licenses this file to You under the Apache License, Version 2.0
-// (the "License"); you may not use this file except in compliance with
-// the License.  You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
 
 package tokens
 
@@ -192,7 +179,8 @@ func parseNextArrayType(b *tokenBuffer) ArrayType {
 	return ArrayType{Tok: b.From(mark), Elem: elem}
 }
 
-// MapType is a type token that decorates a key and element type token to turn them into a map: `"map[" <Key> "]" <Elem>`.
+// MapType is a type token that decorates a key and element type token to turn them into a map:
+//  `"map[" <Key> "]" <Elem>`.
 type MapType struct {
 	Tok  Type // the full map type token.
 	Key  Type // the key portion of the map type token.
@@ -248,8 +236,8 @@ func parseNextMapType(b *tokenBuffer) MapType {
 	return MapType{Tok: b.From(mark), Key: key, Elem: elem}
 }
 
-// FunctionType is a type token that decorates a set of optional parameter and return tokens to turn them into a function
-// type: `(" [ <Param1> [ "," <ParamN> ]* ] ")" [ <Return> ]`).
+// FunctionType is a type token that decorates a set of optional parameter and return tokens to turn them into a
+// function type: `(" [ <Param1> [ "," <ParamN> ]* ] ")" [ <Return> ]`).
 type FunctionType struct {
 	Tok        Type   // the full map type token.
 	Parameters []Type // the parameter parts of the type token.
@@ -317,9 +305,6 @@ func ParseFunctionType(tok Type) FunctionType {
 	}
 	return fnc
 }
-
-// funcDelims are the set of characters that might delimit function type parameters.
-var funcDelims = FunctionTypeParamSeparator + FunctionTypeSeparator
 
 // parseNextFunctionType parses the next function type from the given token, returning any excess.
 func parseNextFunctionType(b *tokenBuffer) FunctionType {

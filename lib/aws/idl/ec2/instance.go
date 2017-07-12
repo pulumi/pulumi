@@ -1,17 +1,4 @@
-// Licensed to Pulumi Corporation ("Pulumi") under one or more
-// contributor license agreements.  See the NOTICE file distributed with
-// this work for additional information regarding copyright ownership.
-// Pulumi licenses this file to You under the Apache License, Version 2.0
-// (the "License"); you may not use this file except in compliance with
-// the License.  You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
 
 package ec2
 
@@ -24,13 +11,13 @@ import (
 type Instance struct {
 	idl.NamedResource
 	// Provides the unique ID of the Amazon Machine Image (AMI) that was assigned during registration.
-	ImageID string `lumi:"imageId"`
+	ImageID string `lumi:"imageId,replaces"`
 	// The instance type, such as t2.micro. The default type is "m3.medium".
-	InstanceType *InstanceType `lumi:"instanceType,optional"`
+	InstanceType *InstanceType `lumi:"instanceType,optional,replaces"`
 	// A list that contains the Amazon EC2 security groups to assign to the Amazon EC2 instance.
 	SecurityGroups *[]*SecurityGroup `lumi:"securityGroups,optional,replaces"`
 	// Provides the name of the Amazon EC2 key pair.
-	KeyName *string `lumi:"keyName,optional"`
+	KeyName *string `lumi:"keyName,optional,replaces"`
 	// Provides a list of tags to attach to the instance.
 	Tags *[]Tag `lumi:"tags,optional"`
 

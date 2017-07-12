@@ -11,6 +11,7 @@ import (
     "golang.org/x/net/context"
 
     "github.com/pulumi/lumi/pkg/resource"
+    "github.com/pulumi/lumi/pkg/resource/plugin"
     "github.com/pulumi/lumi/pkg/tokens"
     "github.com/pulumi/lumi/pkg/util/contract"
     "github.com/pulumi/lumi/pkg/util/mapper"
@@ -24,7 +25,7 @@ const ResourceToken = tokens.Type("aws:apigateway/resource:Resource")
 
 // ResourceProviderOps is a pluggable interface for Resource-related management functionality.
 type ResourceProviderOps interface {
-    Check(ctx context.Context, obj *Resource) ([]error, error)
+    Check(ctx context.Context, obj *Resource, property string) error
     Create(ctx context.Context, obj *Resource) (resource.ID, error)
     Get(ctx context.Context, id resource.ID) (*Resource, error)
     InspectChange(ctx context.Context,
@@ -50,14 +51,41 @@ func (p *ResourceProvider) Check(
     contract.Assert(req.GetType() == string(ResourceToken))
     obj, _, err := p.Unmarshal(req.GetProperties())
     if err != nil {
-        return resource.NewCheckResponse(err), nil
+        return plugin.NewCheckResponse(err), nil
     }
-    if failures, err := p.ops.Check(ctx, obj); err != nil {
-        return nil, err
-    } else if len(failures) > 0 {
-        return resource.NewCheckResponse(resource.NewCheckError(failures)), nil
+    var failures []error
+    if failure := p.ops.Check(ctx, obj, ""); failure != nil {
+        failures = append(failures, failure)
     }
-    return resource.NewCheckResponse(nil), nil
+    unks := req.GetUnknowns()
+    if !unks["name"] {
+        if failure := p.ops.Check(ctx, obj, "name"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Resource", "name", failure))
+        }
+    }
+    if !unks["parent"] {
+        if failure := p.ops.Check(ctx, obj, "parent"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Resource", "parent", failure))
+        }
+    }
+    if !unks["pathPart"] {
+        if failure := p.ops.Check(ctx, obj, "pathPart"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Resource", "pathPart", failure))
+        }
+    }
+    if !unks["restAPI"] {
+        if failure := p.ops.Check(ctx, obj, "restAPI"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Resource", "restAPI", failure))
+        }
+    }
+    if len(failures) > 0 {
+        return plugin.NewCheckResponse(resource.NewErrors(failures)), nil
+    }
+    return plugin.NewCheckResponse(nil), nil
 }
 
 func (p *ResourceProvider) Name(
@@ -99,8 +127,8 @@ func (p *ResourceProvider) Get(
         return nil, err
     }
     return &lumirpc.GetResponse{
-        Properties: resource.MarshalProperties(
-            nil, resource.NewPropertyMap(obj), resource.MarshalOptions{}),
+        Properties: plugin.MarshalProperties(
+            nil, resource.NewPropertyMap(obj), plugin.MarshalOptions{}),
     }, nil
 }
 
@@ -173,7 +201,7 @@ func (p *ResourceProvider) Delete(
 func (p *ResourceProvider) Unmarshal(
     v *pbstruct.Struct) (*Resource, resource.PropertyMap, error) {
     var obj Resource
-    props := resource.UnmarshalProperties(nil, v, resource.MarshalOptions{RawResources: true})
+    props := plugin.UnmarshalProperties(nil, v, plugin.MarshalOptions{RawResources: true})
     return &obj, props, mapper.MapIU(props.Mappable(), &obj)
 }
 

@@ -11,6 +11,7 @@ import (
     "golang.org/x/net/context"
 
     "github.com/pulumi/lumi/pkg/resource"
+    "github.com/pulumi/lumi/pkg/resource/plugin"
     "github.com/pulumi/lumi/pkg/tokens"
     "github.com/pulumi/lumi/pkg/util/contract"
     "github.com/pulumi/lumi/pkg/util/mapper"
@@ -24,7 +25,7 @@ const KeyToken = tokens.Type("aws:kms/key:Key")
 
 // KeyProviderOps is a pluggable interface for Key-related management functionality.
 type KeyProviderOps interface {
-    Check(ctx context.Context, obj *Key) ([]error, error)
+    Check(ctx context.Context, obj *Key, property string) error
     Create(ctx context.Context, obj *Key) (resource.ID, error)
     Get(ctx context.Context, id resource.ID) (*Key, error)
     InspectChange(ctx context.Context,
@@ -50,14 +51,47 @@ func (p *KeyProvider) Check(
     contract.Assert(req.GetType() == string(KeyToken))
     obj, _, err := p.Unmarshal(req.GetProperties())
     if err != nil {
-        return resource.NewCheckResponse(err), nil
+        return plugin.NewCheckResponse(err), nil
     }
-    if failures, err := p.ops.Check(ctx, obj); err != nil {
-        return nil, err
-    } else if len(failures) > 0 {
-        return resource.NewCheckResponse(resource.NewCheckError(failures)), nil
+    var failures []error
+    if failure := p.ops.Check(ctx, obj, ""); failure != nil {
+        failures = append(failures, failure)
     }
-    return resource.NewCheckResponse(nil), nil
+    unks := req.GetUnknowns()
+    if !unks["name"] {
+        if failure := p.ops.Check(ctx, obj, "name"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Key", "name", failure))
+        }
+    }
+    if !unks["keyPolicy"] {
+        if failure := p.ops.Check(ctx, obj, "keyPolicy"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Key", "keyPolicy", failure))
+        }
+    }
+    if !unks["description"] {
+        if failure := p.ops.Check(ctx, obj, "description"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Key", "description", failure))
+        }
+    }
+    if !unks["enabled"] {
+        if failure := p.ops.Check(ctx, obj, "enabled"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Key", "enabled", failure))
+        }
+    }
+    if !unks["enableKeyRotation"] {
+        if failure := p.ops.Check(ctx, obj, "enableKeyRotation"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Key", "enableKeyRotation", failure))
+        }
+    }
+    if len(failures) > 0 {
+        return plugin.NewCheckResponse(resource.NewErrors(failures)), nil
+    }
+    return plugin.NewCheckResponse(nil), nil
 }
 
 func (p *KeyProvider) Name(
@@ -99,8 +133,8 @@ func (p *KeyProvider) Get(
         return nil, err
     }
     return &lumirpc.GetResponse{
-        Properties: resource.MarshalProperties(
-            nil, resource.NewPropertyMap(obj), resource.MarshalOptions{}),
+        Properties: plugin.MarshalProperties(
+            nil, resource.NewPropertyMap(obj), plugin.MarshalOptions{}),
     }, nil
 }
 
@@ -164,7 +198,7 @@ func (p *KeyProvider) Delete(
 func (p *KeyProvider) Unmarshal(
     v *pbstruct.Struct) (*Key, resource.PropertyMap, error) {
     var obj Key
-    props := resource.UnmarshalProperties(nil, v, resource.MarshalOptions{RawResources: true})
+    props := plugin.UnmarshalProperties(nil, v, plugin.MarshalOptions{RawResources: true})
     return &obj, props, mapper.MapIU(props.Mappable(), &obj)
 }
 

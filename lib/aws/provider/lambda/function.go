@@ -1,24 +1,10 @@
-// Licensed to Pulumi Corporation ("Pulumi") under one or more
-// contributor license agreements.  See the NOTICE file distributed with
-// this work for additional information regarding copyright ownership.
-// Pulumi licenses this file to You under the Apache License, Version 2.0
-// (the "License"); you may not use this file except in compliance with
-// the License.  You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
 
 package lambda
 
 import (
 	"crypto/sha1"
 	"fmt"
-	"reflect"
 	"strings"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -66,33 +52,31 @@ type funcProvider struct {
 }
 
 // Check validates that the given property bag is valid for a resource of the given type.
-func (p *funcProvider) Check(ctx context.Context, obj *lambda.Function) ([]error, error) {
-	var failures []error
-	if _, has := functionRuntimes[obj.Runtime]; !has {
-		failures = append(failures,
-			resource.NewFieldError(reflect.TypeOf(obj), lambda.Function_Runtime,
-				fmt.Errorf("%v is not a valid runtime", obj.Runtime)))
-	}
-	if name := obj.FunctionName; name != nil {
-		var maxName int
-		if strings.HasPrefix(*name, functionNameARNPrefix) {
-			maxName = maxFunctionNameARN
-		} else {
-			maxName = maxFunctionName
+func (p *funcProvider) Check(ctx context.Context, obj *lambda.Function, property string) error {
+	switch property {
+	case lambda.Function_Runtime:
+		if _, has := functionRuntimes[obj.Runtime]; !has {
+			return fmt.Errorf("%v is not a valid runtime", obj.Runtime)
 		}
-		if len(*name) > maxName {
-			failures = append(failures,
-				resource.NewFieldError(reflect.TypeOf(obj), lambda.Function_FunctionName,
-					fmt.Errorf("exceeded maximum length of %v", maxName)))
+	case lambda.Function_FunctionName:
+		if name := obj.FunctionName; name != nil {
+			var maxName int
+			if strings.HasPrefix(*name, functionNameARNPrefix) {
+				maxName = maxFunctionNameARN
+			} else {
+				maxName = maxFunctionName
+			}
+			if len(*name) > maxName {
+				return fmt.Errorf("exceeded maximum length of %v", maxName)
+			}
 		}
 	}
-	return failures, nil
+	return nil
 }
 
 // Create allocates a new instance of the provided resource and returns its unique ID afterwards.  (The input ID
 // must be blank.)  If this call fails, the resource must not have been created (i.e., it is "transacational").
 func (p *funcProvider) Create(ctx context.Context, obj *lambda.Function) (resource.ID, error) {
-	contract.Assertf(obj.DeadLetterConfig == nil, "Dead letter config not yet supported")
 	contract.Assertf(obj.VPCConfig == nil, "VPC config not yet supported")
 
 	// If an explicit name is given, use it.  Otherwise, auto-generate a name in part based on the resource name.
@@ -125,21 +109,28 @@ func (p *funcProvider) Create(ctx context.Context, obj *lambda.Function) (resour
 			Variables: aws.StringMap(*obj.Environment),
 		}
 	}
+	var deadLetterConfig *awslambda.DeadLetterConfig
+	if obj.DeadLetterConfig != nil {
+		deadLetterConfig = &awslambda.DeadLetterConfig{
+			TargetArn: aws.String(string(obj.DeadLetterConfig.Target)),
+		}
+	}
 
 	// Now go ahead and create the resource.  Note that IAM profiles can take several seconds to propagate; see
 	// http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/iam-roles-for-amazon-ec2.html#launch-instance-with-role.
 	fmt.Printf("Creating Lambda Function '%v' with name '%v'\n", *obj.Name, name)
 	create := &awslambda.CreateFunctionInput{
-		Code:         code,
-		Description:  obj.Description,
-		Environment:  env,
-		FunctionName: aws.String(name),
-		Handler:      aws.String(obj.Handler),
-		KMSKeyArn:    obj.KMSKey.StringPtr(),
-		MemorySize:   memsize,
-		Role:         aws.String(string(obj.Role)),
-		Runtime:      aws.String(string(obj.Runtime)),
-		Timeout:      timeout,
+		Code:             code,
+		DeadLetterConfig: deadLetterConfig,
+		Description:      obj.Description,
+		Environment:      env,
+		FunctionName:     aws.String(name),
+		Handler:          aws.String(obj.Handler),
+		KMSKeyArn:        obj.KMSKey.StringPtr(),
+		MemorySize:       memsize,
+		Role:             aws.String(string(obj.Role)),
+		Runtime:          aws.String(string(obj.Runtime)),
+		Timeout:          timeout,
 	}
 	var arn resource.ID
 	if succ, err := awsctx.RetryProgUntil(
@@ -204,21 +195,28 @@ func (p *funcProvider) Get(ctx context.Context, id resource.ID) (*lambda.Functio
 		envmap := lambda.Environment(aws.StringValueMap(config.Environment.Variables))
 		env = &envmap
 	}
+	var deadLetterConfig *lambda.DeadLetterConfig
+	if config.DeadLetterConfig != nil {
+		deadLetterConfig = &lambda.DeadLetterConfig{
+			Target: resource.ID(aws.StringValue(config.DeadLetterConfig.TargetArn)),
+		}
+	}
 
 	return &lambda.Function{
-		ARN:          awscommon.ARN(aws.StringValue(config.FunctionArn)),
-		Version:      aws.StringValue(config.Version),
-		CodeSHA256:   aws.StringValue(config.CodeSha256),
-		LastModified: aws.StringValue(config.LastModified),
-		Handler:      aws.StringValue(config.Handler),
-		Role:         resource.ID(aws.StringValue(config.Role)),
-		Runtime:      lambda.Runtime(aws.StringValue(config.Runtime)),
-		FunctionName: config.FunctionName,
-		Description:  config.Description,
-		Environment:  env,
-		KMSKey:       resource.MaybeID(config.KMSKeyArn),
-		MemorySize:   convutil.Int64PToFloat64P(config.MemorySize),
-		Timeout:      convutil.Int64PToFloat64P(config.Timeout),
+		ARN:              awscommon.ARN(aws.StringValue(config.FunctionArn)),
+		Version:          aws.StringValue(config.Version),
+		CodeSHA256:       aws.StringValue(config.CodeSha256),
+		LastModified:     aws.StringValue(config.LastModified),
+		Handler:          aws.StringValue(config.Handler),
+		Role:             resource.ID(aws.StringValue(config.Role)),
+		Runtime:          lambda.Runtime(aws.StringValue(config.Runtime)),
+		FunctionName:     config.FunctionName,
+		Description:      config.Description,
+		DeadLetterConfig: deadLetterConfig,
+		Environment:      env,
+		KMSKey:           resource.MaybeID(config.KMSKeyArn),
+		MemorySize:       convutil.Int64PToFloat64P(config.MemorySize),
+		Timeout:          convutil.Int64PToFloat64P(config.Timeout),
 	}, nil
 }
 
@@ -232,7 +230,6 @@ func (p *funcProvider) InspectChange(ctx context.Context, id resource.ID,
 // to new values.  The resource ID is returned and may be different if the resource had to be recreated.
 func (p *funcProvider) Update(ctx context.Context, id resource.ID,
 	old *lambda.Function, new *lambda.Function, diff *resource.ObjectDiff) error {
-	contract.Assertf(new.DeadLetterConfig == nil, "Dead letter config not yet supported")
 	contract.Assertf(new.VPCConfig == nil, "VPC config not yet supported")
 
 	name, err := arn.ParseResourceName(id)
@@ -243,7 +240,7 @@ func (p *funcProvider) Update(ctx context.Context, id resource.ID,
 	if diff.Changed(lambda.Function_Description) || diff.Changed(lambda.Function_Environment) ||
 		diff.Changed(lambda.Function_Runtime) || diff.Changed(lambda.Function_Role) ||
 		diff.Changed(lambda.Function_MemorySize) || diff.Changed(lambda.Function_Timeout) ||
-		diff.Changed(lambda.Function_Environment) {
+		diff.Changed(lambda.Function_Environment) || diff.Changed(lambda.Function_DeadLetterConfig) {
 
 		update := &awslambda.UpdateFunctionConfigurationInput{
 			FunctionName: aws.String(name),
@@ -283,24 +280,27 @@ func (p *funcProvider) Update(ctx context.Context, id resource.ID,
 				}
 			}
 		}
+		if diff.Changed(lambda.Function_DeadLetterConfig) {
+			if new.DeadLetterConfig != nil {
+				update.DeadLetterConfig = &awslambda.DeadLetterConfig{
+					TargetArn: aws.String(string(new.DeadLetterConfig.Target)),
+				}
+			}
+		}
 
 		fmt.Printf("Updating Lambda function configuration '%v'\n", name)
-		var out *awslambda.FunctionConfiguration
-		var err error
-		_, err = awsctx.RetryUntil(p.ctx, func() (bool, error) {
-			out, err = p.ctx.Lambda().UpdateFunctionConfiguration(update)
-			if err != nil {
-				if awsctx.IsAWSErrorMessage(err,
+		if _, retryerr := awsctx.RetryUntil(p.ctx, func() (bool, error) {
+			if _, upderr := p.ctx.Lambda().UpdateFunctionConfiguration(update); upderr != nil {
+				if awsctx.IsAWSErrorMessage(upderr,
 					"InvalidParameterValueException",
 					"The role defined for the function cannot be assumed by Lambda.") {
 					return false, nil
 				}
-				return true, err
+				return true, upderr
 			}
 			return true, nil
-		})
-		if err != nil {
-			return err
+		}); retryerr != nil {
+			return retryerr
 		}
 
 		if succ, err := awsctx.RetryProgUntil(

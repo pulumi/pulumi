@@ -9,6 +9,7 @@ import (
     "golang.org/x/net/context"
 
     "github.com/pulumi/lumi/pkg/resource"
+    "github.com/pulumi/lumi/pkg/resource/plugin"
     "github.com/pulumi/lumi/pkg/tokens"
     "github.com/pulumi/lumi/pkg/util/contract"
     "github.com/pulumi/lumi/pkg/util/mapper"
@@ -22,7 +23,7 @@ const ObjectToken = tokens.Type("aws:s3/object:Object")
 
 // ObjectProviderOps is a pluggable interface for Object-related management functionality.
 type ObjectProviderOps interface {
-    Check(ctx context.Context, obj *Object) ([]error, error)
+    Check(ctx context.Context, obj *Object, property string) error
     Name(ctx context.Context, obj *Object) (string, error)
     Create(ctx context.Context, obj *Object) (resource.ID, error)
     Get(ctx context.Context, id resource.ID) (*Object, error)
@@ -49,14 +50,71 @@ func (p *ObjectProvider) Check(
     contract.Assert(req.GetType() == string(ObjectToken))
     obj, _, err := p.Unmarshal(req.GetProperties())
     if err != nil {
-        return resource.NewCheckResponse(err), nil
+        return plugin.NewCheckResponse(err), nil
     }
-    if failures, err := p.ops.Check(ctx, obj); err != nil {
-        return nil, err
-    } else if len(failures) > 0 {
-        return resource.NewCheckResponse(resource.NewCheckError(failures)), nil
+    var failures []error
+    if failure := p.ops.Check(ctx, obj, ""); failure != nil {
+        failures = append(failures, failure)
     }
-    return resource.NewCheckResponse(nil), nil
+    unks := req.GetUnknowns()
+    if !unks["key"] {
+        if failure := p.ops.Check(ctx, obj, "key"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Object", "key", failure))
+        }
+    }
+    if !unks["bucket"] {
+        if failure := p.ops.Check(ctx, obj, "bucket"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Object", "bucket", failure))
+        }
+    }
+    if !unks["source"] {
+        if failure := p.ops.Check(ctx, obj, "source"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Object", "source", failure))
+        }
+    }
+    if !unks["contentType"] {
+        if failure := p.ops.Check(ctx, obj, "contentType"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Object", "contentType", failure))
+        }
+    }
+    if !unks["contentDisposition"] {
+        if failure := p.ops.Check(ctx, obj, "contentDisposition"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Object", "contentDisposition", failure))
+        }
+    }
+    if !unks["cacheControl"] {
+        if failure := p.ops.Check(ctx, obj, "cacheControl"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Object", "cacheControl", failure))
+        }
+    }
+    if !unks["contentEncoding"] {
+        if failure := p.ops.Check(ctx, obj, "contentEncoding"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Object", "contentEncoding", failure))
+        }
+    }
+    if !unks["contentLanguage"] {
+        if failure := p.ops.Check(ctx, obj, "contentLanguage"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Object", "contentLanguage", failure))
+        }
+    }
+    if !unks["contentLength"] {
+        if failure := p.ops.Check(ctx, obj, "contentLength"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Object", "contentLength", failure))
+        }
+    }
+    if len(failures) > 0 {
+        return plugin.NewCheckResponse(resource.NewErrors(failures)), nil
+    }
+    return plugin.NewCheckResponse(nil), nil
 }
 
 func (p *ObjectProvider) Name(
@@ -93,8 +151,8 @@ func (p *ObjectProvider) Get(
         return nil, err
     }
     return &lumirpc.GetResponse{
-        Properties: resource.MarshalProperties(
-            nil, resource.NewPropertyMap(obj), resource.MarshalOptions{}),
+        Properties: plugin.MarshalProperties(
+            nil, resource.NewPropertyMap(obj), plugin.MarshalOptions{}),
     }, nil
 }
 
@@ -118,9 +176,6 @@ func (p *ObjectProvider) InspectChange(
         }
         if diff.Changed("bucket") {
             replaces = append(replaces, "bucket")
-        }
-        if diff.Changed("source") {
-            replaces = append(replaces, "source")
         }
     }
     more, err := p.ops.InspectChange(ctx, id, old, new, diff)
@@ -164,7 +219,7 @@ func (p *ObjectProvider) Delete(
 func (p *ObjectProvider) Unmarshal(
     v *pbstruct.Struct) (*Object, resource.PropertyMap, error) {
     var obj Object
-    props := resource.UnmarshalProperties(nil, v, resource.MarshalOptions{RawResources: true})
+    props := plugin.UnmarshalProperties(nil, v, plugin.MarshalOptions{RawResources: true})
     return &obj, props, mapper.MapIU(props.Mappable(), &obj)
 }
 
@@ -175,6 +230,12 @@ type Object struct {
     Key string `lumi:"key"`
     Bucket resource.ID `lumi:"bucket"`
     Source *resource.Asset `lumi:"source,optional"`
+    ContentType *string `lumi:"contentType,optional"`
+    ContentDisposition *string `lumi:"contentDisposition,optional"`
+    CacheControl *string `lumi:"cacheControl,optional"`
+    ContentEncoding *string `lumi:"contentEncoding,optional"`
+    ContentLanguage *string `lumi:"contentLanguage,optional"`
+    ContentLength *float64 `lumi:"contentLength,optional"`
 }
 
 // Object's properties have constants to make dealing with diffs and property bags easier.
@@ -182,6 +243,12 @@ const (
     Object_Key = "key"
     Object_Bucket = "bucket"
     Object_Source = "source"
+    Object_ContentType = "contentType"
+    Object_ContentDisposition = "contentDisposition"
+    Object_CacheControl = "cacheControl"
+    Object_ContentEncoding = "contentEncoding"
+    Object_ContentLanguage = "contentLanguage"
+    Object_ContentLength = "contentLength"
 )
 
 

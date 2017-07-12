@@ -11,6 +11,7 @@ import (
     "golang.org/x/net/context"
 
     "github.com/pulumi/lumi/pkg/resource"
+    "github.com/pulumi/lumi/pkg/resource/plugin"
     "github.com/pulumi/lumi/pkg/tokens"
     "github.com/pulumi/lumi/pkg/util/contract"
     "github.com/pulumi/lumi/pkg/util/mapper"
@@ -24,7 +25,7 @@ const UsagePlanKeyToken = tokens.Type("aws:apigateway/usagePlanKey:UsagePlanKey"
 
 // UsagePlanKeyProviderOps is a pluggable interface for UsagePlanKey-related management functionality.
 type UsagePlanKeyProviderOps interface {
-    Check(ctx context.Context, obj *UsagePlanKey) ([]error, error)
+    Check(ctx context.Context, obj *UsagePlanKey, property string) error
     Create(ctx context.Context, obj *UsagePlanKey) (resource.ID, error)
     Get(ctx context.Context, id resource.ID) (*UsagePlanKey, error)
     InspectChange(ctx context.Context,
@@ -50,14 +51,35 @@ func (p *UsagePlanKeyProvider) Check(
     contract.Assert(req.GetType() == string(UsagePlanKeyToken))
     obj, _, err := p.Unmarshal(req.GetProperties())
     if err != nil {
-        return resource.NewCheckResponse(err), nil
+        return plugin.NewCheckResponse(err), nil
     }
-    if failures, err := p.ops.Check(ctx, obj); err != nil {
-        return nil, err
-    } else if len(failures) > 0 {
-        return resource.NewCheckResponse(resource.NewCheckError(failures)), nil
+    var failures []error
+    if failure := p.ops.Check(ctx, obj, ""); failure != nil {
+        failures = append(failures, failure)
     }
-    return resource.NewCheckResponse(nil), nil
+    unks := req.GetUnknowns()
+    if !unks["name"] {
+        if failure := p.ops.Check(ctx, obj, "name"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("UsagePlanKey", "name", failure))
+        }
+    }
+    if !unks["key"] {
+        if failure := p.ops.Check(ctx, obj, "key"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("UsagePlanKey", "key", failure))
+        }
+    }
+    if !unks["usagePlan"] {
+        if failure := p.ops.Check(ctx, obj, "usagePlan"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("UsagePlanKey", "usagePlan", failure))
+        }
+    }
+    if len(failures) > 0 {
+        return plugin.NewCheckResponse(resource.NewErrors(failures)), nil
+    }
+    return plugin.NewCheckResponse(nil), nil
 }
 
 func (p *UsagePlanKeyProvider) Name(
@@ -99,8 +121,8 @@ func (p *UsagePlanKeyProvider) Get(
         return nil, err
     }
     return &lumirpc.GetResponse{
-        Properties: resource.MarshalProperties(
-            nil, resource.NewPropertyMap(obj), resource.MarshalOptions{}),
+        Properties: plugin.MarshalProperties(
+            nil, resource.NewPropertyMap(obj), plugin.MarshalOptions{}),
     }, nil
 }
 
@@ -170,7 +192,7 @@ func (p *UsagePlanKeyProvider) Delete(
 func (p *UsagePlanKeyProvider) Unmarshal(
     v *pbstruct.Struct) (*UsagePlanKey, resource.PropertyMap, error) {
     var obj UsagePlanKey
-    props := resource.UnmarshalProperties(nil, v, resource.MarshalOptions{RawResources: true})
+    props := plugin.UnmarshalProperties(nil, v, plugin.MarshalOptions{RawResources: true})
     return &obj, props, mapper.MapIU(props.Mappable(), &obj)
 }
 

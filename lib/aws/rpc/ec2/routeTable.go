@@ -11,6 +11,7 @@ import (
     "golang.org/x/net/context"
 
     "github.com/pulumi/lumi/pkg/resource"
+    "github.com/pulumi/lumi/pkg/resource/plugin"
     "github.com/pulumi/lumi/pkg/tokens"
     "github.com/pulumi/lumi/pkg/util/contract"
     "github.com/pulumi/lumi/pkg/util/mapper"
@@ -24,7 +25,7 @@ const RouteTableToken = tokens.Type("aws:ec2/routeTable:RouteTable")
 
 // RouteTableProviderOps is a pluggable interface for RouteTable-related management functionality.
 type RouteTableProviderOps interface {
-    Check(ctx context.Context, obj *RouteTable) ([]error, error)
+    Check(ctx context.Context, obj *RouteTable, property string) error
     Create(ctx context.Context, obj *RouteTable) (resource.ID, error)
     Get(ctx context.Context, id resource.ID) (*RouteTable, error)
     InspectChange(ctx context.Context,
@@ -50,14 +51,29 @@ func (p *RouteTableProvider) Check(
     contract.Assert(req.GetType() == string(RouteTableToken))
     obj, _, err := p.Unmarshal(req.GetProperties())
     if err != nil {
-        return resource.NewCheckResponse(err), nil
+        return plugin.NewCheckResponse(err), nil
     }
-    if failures, err := p.ops.Check(ctx, obj); err != nil {
-        return nil, err
-    } else if len(failures) > 0 {
-        return resource.NewCheckResponse(resource.NewCheckError(failures)), nil
+    var failures []error
+    if failure := p.ops.Check(ctx, obj, ""); failure != nil {
+        failures = append(failures, failure)
     }
-    return resource.NewCheckResponse(nil), nil
+    unks := req.GetUnknowns()
+    if !unks["name"] {
+        if failure := p.ops.Check(ctx, obj, "name"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("RouteTable", "name", failure))
+        }
+    }
+    if !unks["vpc"] {
+        if failure := p.ops.Check(ctx, obj, "vpc"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("RouteTable", "vpc", failure))
+        }
+    }
+    if len(failures) > 0 {
+        return plugin.NewCheckResponse(resource.NewErrors(failures)), nil
+    }
+    return plugin.NewCheckResponse(nil), nil
 }
 
 func (p *RouteTableProvider) Name(
@@ -99,8 +115,8 @@ func (p *RouteTableProvider) Get(
         return nil, err
     }
     return &lumirpc.GetResponse{
-        Properties: resource.MarshalProperties(
-            nil, resource.NewPropertyMap(obj), resource.MarshalOptions{}),
+        Properties: plugin.MarshalProperties(
+            nil, resource.NewPropertyMap(obj), plugin.MarshalOptions{}),
     }, nil
 }
 
@@ -167,7 +183,7 @@ func (p *RouteTableProvider) Delete(
 func (p *RouteTableProvider) Unmarshal(
     v *pbstruct.Struct) (*RouteTable, resource.PropertyMap, error) {
     var obj RouteTable
-    props := resource.UnmarshalProperties(nil, v, resource.MarshalOptions{RawResources: true})
+    props := plugin.UnmarshalProperties(nil, v, plugin.MarshalOptions{RawResources: true})
     return &obj, props, mapper.MapIU(props.Mappable(), &obj)
 }
 

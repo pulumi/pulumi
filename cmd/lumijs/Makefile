@@ -11,25 +11,25 @@ banner:
 
 .PHONY: clean
 clean:
-	@rm -rf ./bin
-	@rm -rf ${INSTALL}
+	rm -rf ./bin
+	rm -rf ${INSTALL}
 
 .PHONY: build
 build:
 	@echo "\033[0;32mBUILD:\033[0m"
-	@yarn run build
+	yarn run build
 
 .PHONY: install
 install:
 	@echo "\033[0;32mINSTALL:\033[0m"
-	@ln -sf ${shell pwd}/lumijs ${INSTALL}/lumijs
+	ln -sf ${shell pwd}/lumijs ${INSTALL}/lumijs
 
 .PHONY: test
 test:
 	@echo "\033[0;32mTEST:\033[0m"
-	@yarn run test
+	yarn run test
 
 .PHONY: verify
 verify: gen
-	@$(shell git diff --quiet .)
+	$(shell git diff --quiet .)
 

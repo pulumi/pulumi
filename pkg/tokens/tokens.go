@@ -1,17 +1,4 @@
-// Licensed to Pulumi Corporation ("Pulumi") under one or more
-// contributor license agreements.  See the NOTICE file distributed with
-// this work for additional information regarding copyright ownership.
-// Pulumi licenses this file to You under the Apache License, Version 2.0
-// (the "License"); you may not use this file except in compliance with
-// the License.  You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
 
 // Package tokens contains the core LumiIL symbol and token types.
 package tokens
@@ -23,7 +10,7 @@ import (
 )
 
 // Token is a qualified name that is capable of resolving to a symbol entirely on its own.  Most uses of tokens are
-// typed based on the context, so that a subset of the token syntax is permissable (see the various typedefs below).
+// typed based on the context, so that a subset of the token syntax is permissible (see the various typedefs below).
 // However, in its full generality, a token can have a package part, a module part, a module-member part, and a
 // class-member part.  Obviously tokens that are meant to address just a module won't have the module-member part, and
 // tokens addressing module members won't have the class-member part, etc.
@@ -205,7 +192,7 @@ func (tok ModuleMember) Name() ModuleMemberName {
 func (tok ModuleMember) String() string { return string(tok) }
 
 // ClassMember is a token representing a class's member.  It uses the following grammar.  Unlike ModuleMember, this
-// cannot use a slash for delimiting names, because we use often ClassMember and ModuleMember interchangably:
+// cannot use a slash for delimiting names, because we use often ClassMember and ModuleMember interchangeably:
 //		ClassMember = <ModuleMember> "." <ClassMemberName>
 type ClassMember Token
 

@@ -1,3 +1,5 @@
+// Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
+
 import * as aws from "@mu/aws";
 import * as mu from "mu";
 import {Thumbnailer} from "./thumb";

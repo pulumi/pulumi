@@ -1,24 +1,11 @@
-// Licensed to Pulumi Corporation ("Pulumi") under one or more
-// contributor license agreements.  See the NOTICE file distributed with
-// this work for additional information regarding copyright ownership.
-// Pulumi licenses this file to You under the Apache License, Version 2.0
-// (the "License"); you may not use this file except in compliance with
-// the License.  You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
 
-import * as arch from "../arch";
-import * as config from "../config";
-import * as runtime from "../runtime";
 import * as aws from "@lumi/aws";
 import * as kubefission from "@lumi/kubefission";
 import {asset} from "@lumi/lumi";
+import * as arch from "../arch";
+import * as config from "../config";
+import * as runtime from "../runtime";
 
 // Function is a cross-cloud function abstraction whose source code is taken from a string, file, or network asset.
 // For example, `https://gist.github.com/pulumi/fe8a5ae322ffe63fac90535eb554237f` will use a Gist published on GitHub,
@@ -46,16 +33,16 @@ export class Function {
     // initCloudResources sets up the right resources for the given cloud and scheduler target.
     private initCloudResources(): any {
         let target: arch.Arch = config.requireArch();
-        if (target.scheduler === arch.schedulers.Kubernetes) {
+        if (target.scheduler === arch.schedulers.kubernetes) {
             return this.initKubernetesResources();
         }
         else {
             switch (target.cloud) {
-                case arch.clouds.AWS:
+                case arch.clouds.aws:
                     return this.initAWSResources();
-                case arch.clouds.GCP:
+                case arch.clouds.gcp:
                     return this.initGCPResources();
-                case arch.clouds.Azure:
+                case arch.clouds.azure:
                     return this.initAzureResources();
                 default:
                     throw new Error("Unsupported target cloud: " + target.cloud);

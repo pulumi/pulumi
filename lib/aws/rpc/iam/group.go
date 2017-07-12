@@ -11,6 +11,7 @@ import (
     "golang.org/x/net/context"
 
     "github.com/pulumi/lumi/pkg/resource"
+    "github.com/pulumi/lumi/pkg/resource/plugin"
     "github.com/pulumi/lumi/pkg/tokens"
     "github.com/pulumi/lumi/pkg/util/contract"
     "github.com/pulumi/lumi/pkg/util/mapper"
@@ -24,7 +25,7 @@ const GroupToken = tokens.Type("aws:iam/group:Group")
 
 // GroupProviderOps is a pluggable interface for Group-related management functionality.
 type GroupProviderOps interface {
-    Check(ctx context.Context, obj *Group) ([]error, error)
+    Check(ctx context.Context, obj *Group, property string) error
     Create(ctx context.Context, obj *Group) (resource.ID, error)
     Get(ctx context.Context, id resource.ID) (*Group, error)
     InspectChange(ctx context.Context,
@@ -50,14 +51,47 @@ func (p *GroupProvider) Check(
     contract.Assert(req.GetType() == string(GroupToken))
     obj, _, err := p.Unmarshal(req.GetProperties())
     if err != nil {
-        return resource.NewCheckResponse(err), nil
+        return plugin.NewCheckResponse(err), nil
     }
-    if failures, err := p.ops.Check(ctx, obj); err != nil {
-        return nil, err
-    } else if len(failures) > 0 {
-        return resource.NewCheckResponse(resource.NewCheckError(failures)), nil
+    var failures []error
+    if failure := p.ops.Check(ctx, obj, ""); failure != nil {
+        failures = append(failures, failure)
     }
-    return resource.NewCheckResponse(nil), nil
+    unks := req.GetUnknowns()
+    if !unks["name"] {
+        if failure := p.ops.Check(ctx, obj, "name"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Group", "name", failure))
+        }
+    }
+    if !unks["groupName"] {
+        if failure := p.ops.Check(ctx, obj, "groupName"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Group", "groupName", failure))
+        }
+    }
+    if !unks["managedPolicies"] {
+        if failure := p.ops.Check(ctx, obj, "managedPolicies"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Group", "managedPolicies", failure))
+        }
+    }
+    if !unks["path"] {
+        if failure := p.ops.Check(ctx, obj, "path"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Group", "path", failure))
+        }
+    }
+    if !unks["policies"] {
+        if failure := p.ops.Check(ctx, obj, "policies"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Group", "policies", failure))
+        }
+    }
+    if len(failures) > 0 {
+        return plugin.NewCheckResponse(resource.NewErrors(failures)), nil
+    }
+    return plugin.NewCheckResponse(nil), nil
 }
 
 func (p *GroupProvider) Name(
@@ -99,8 +133,8 @@ func (p *GroupProvider) Get(
         return nil, err
     }
     return &lumirpc.GetResponse{
-        Properties: resource.MarshalProperties(
-            nil, resource.NewPropertyMap(obj), resource.MarshalOptions{}),
+        Properties: plugin.MarshalProperties(
+            nil, resource.NewPropertyMap(obj), plugin.MarshalOptions{}),
     }, nil
 }
 
@@ -167,7 +201,7 @@ func (p *GroupProvider) Delete(
 func (p *GroupProvider) Unmarshal(
     v *pbstruct.Struct) (*Group, resource.PropertyMap, error) {
     var obj Group
-    props := resource.UnmarshalProperties(nil, v, resource.MarshalOptions{RawResources: true})
+    props := plugin.UnmarshalProperties(nil, v, plugin.MarshalOptions{RawResources: true})
     return &obj, props, mapper.MapIU(props.Mappable(), &obj)
 }
 

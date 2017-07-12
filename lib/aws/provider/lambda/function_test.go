@@ -1,6 +1,10 @@
+// Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
+
 package lambda
 
 import (
+	"crypto/sha256"
+	"encoding/base64"
 	"fmt"
 	"strings"
 	"testing"
@@ -9,40 +13,58 @@ import (
 	awsiam "github.com/aws/aws-sdk-go/service/iam"
 	awslambda "github.com/aws/aws-sdk-go/service/lambda"
 	"github.com/pulumi/lumi/lib/aws/provider/awsctx"
+	cloudwatchprovider "github.com/pulumi/lumi/lib/aws/provider/cloudwatch"
 	iamprovider "github.com/pulumi/lumi/lib/aws/provider/iam"
+	snsprovider "github.com/pulumi/lumi/lib/aws/provider/sns"
 	"github.com/pulumi/lumi/lib/aws/provider/testutil"
 	rpc "github.com/pulumi/lumi/lib/aws/rpc"
+	"github.com/pulumi/lumi/lib/aws/rpc/cloudwatch"
 	"github.com/pulumi/lumi/lib/aws/rpc/iam"
 	"github.com/pulumi/lumi/lib/aws/rpc/lambda"
+	"github.com/pulumi/lumi/lib/aws/rpc/sns"
 	"github.com/pulumi/lumi/pkg/resource"
 	"github.com/stretchr/testify/assert"
 )
 
-const RESOURCEPREFIX = "lumitest"
-
 func Test(t *testing.T) {
 	t.Parallel()
 
-	ctx, err := awsctx.New()
-	assert.Nil(t, err, "expected no error getting AWS context")
-
-	cleanupFunctions(ctx)
-	cleanupRoles(ctx)
+	prefix := resource.NewUniqueHex("lumitest", 20, 20)
+	awsctx := testutil.CreateContext(t)
+	defer func() {
+		funcerr := cleanupFunctions(prefix, awsctx)
+		assert.Nil(t, funcerr)
+		roleerr := cleanupRoles(prefix, awsctx)
+		assert.Nil(t, roleerr)
+	}()
 
 	sourceARN := rpc.ARN("arn:aws:s3:::elasticbeanstalk-us-east-1-111111111111")
+	code := resource.Archive{
+		Assets: &map[string]*resource.Asset{
+			"index.js": {
+				Text: aws.String("exports.handler = (ev, ctx, cb) => { console.log(ev); console.log(ctx); }"),
+			},
+		},
+	}
 
 	resources := map[string]testutil.Resource{
-		"role":       {Provider: iamprovider.NewRoleProvider(ctx), Token: iam.RoleToken},
-		"f":          {Provider: NewFunctionProvider(ctx), Token: FunctionToken},
-		"permission": {Provider: NewPermissionProvider(ctx), Token: PermissionToken},
+		"role":         {Provider: iamprovider.NewRoleProvider(awsctx), Token: iam.RoleToken},
+		"f":            {Provider: NewFunctionProvider(awsctx), Token: FunctionToken},
+		"logcollector": {Provider: NewFunctionProvider(awsctx), Token: FunctionToken},
+		"permission":   {Provider: NewPermissionProvider(awsctx), Token: PermissionToken},
+		"loggroup": {Provider: cloudwatchprovider.NewLogGroupProvider(awsctx),
+			Token: cloudwatchprovider.LogGroupToken},
+		"filter": {Provider: cloudwatchprovider.NewLogSubscriptionFilterProvider(awsctx),
+			Token: cloudwatchprovider.LogSubscriptionFilterToken},
+		"deadlettertopic": {Provider: snsprovider.NewTopicProvider(awsctx), Token: snsprovider.TopicToken},
 	}
 	steps := []testutil.Step{
-		testutil.Step{
+		{
 			testutil.ResourceGenerator{
 				Name: "role",
 				Creator: func(ctx testutil.Context) interface{} {
 					return &iam.Role{
-						Name: aws.String(RESOURCEPREFIX),
+						Name: aws.String(prefix),
 						ManagedPolicyARNs: &[]rpc.ARN{
 							rpc.ARN("arn:aws:iam::aws:policy/AWSLambdaFullAccess"),
 						},
@@ -63,17 +85,34 @@ func Test(t *testing.T) {
 				},
 			},
 			testutil.ResourceGenerator{
+				Name: "deadlettertopic",
+				Creator: func(ctx testutil.Context) interface{} {
+					return &sns.Topic{
+						Name: aws.String(prefix),
+					}
+				},
+			},
+			testutil.ResourceGenerator{
 				Name: "f",
 				Creator: func(ctx testutil.Context) interface{} {
 					return &lambda.Function{
-						Name: aws.String(RESOURCEPREFIX),
-						Code: resource.Archive{
-							Assets: &map[string]*resource.Asset{
-								"index.js": &resource.Asset{
-									Text: aws.String("exports.handler = (ev, ctx, cb) => { console.log(ev); console.log(ctx); }"),
-								},
-							},
+						Name:    aws.String(prefix),
+						Code:    code,
+						Handler: "index.handler",
+						Runtime: lambda.NodeJS6d10Runtime,
+						Role:    ctx.GetResourceID("role"),
+						DeadLetterConfig: &lambda.DeadLetterConfig{
+							Target: ctx.GetResourceID("deadlettertopic"),
 						},
+					}
+				},
+			},
+			testutil.ResourceGenerator{
+				Name: "logcollector",
+				Creator: func(ctx testutil.Context) interface{} {
+					return &lambda.Function{
+						Name:    aws.String(prefix),
+						Code:    code,
 						Handler: "index.handler",
 						Runtime: lambda.NodeJS6d10Runtime,
 						Role:    ctx.GetResourceID("role"),
@@ -81,80 +120,110 @@ func Test(t *testing.T) {
 				},
 			},
 			testutil.ResourceGenerator{
+				Name: "loggroup",
+				Creator: func(ctx testutil.Context) interface{} {
+					return &cloudwatch.LogGroup{
+						Name: aws.String(prefix),
+						LogGroupName: aws.String("/aws/lambda/" +
+							ctx.GetOutputProps("f").Fields["functionName"].GetStringValue()),
+						RetentionInDays: aws.Float64(float64(7)),
+					}
+				},
+			},
+			testutil.ResourceGenerator{
 				Name: "permission",
 				Creator: func(ctx testutil.Context) interface{} {
+					sourceARN = rpc.ARN(string(ctx.GetResourceID("loggroup")) + ":*")
 					return &lambda.Permission{
-						Name:          aws.String(RESOURCEPREFIX),
-						Function:      ctx.GetResourceID("f"),
+						Name:          aws.String(prefix),
+						Function:      ctx.GetResourceID("logcollector"),
 						Action:        "lambda:InvokeFunction",
-						Principal:     "s3.amazonaws.com",
-						SourceAccount: aws.String("111111111111"),
+						Principal:     "logs." + awsctx.Region() + ".amazonaws.com",
+						SourceAccount: aws.String(awsctx.AccountID()),
 						SourceARN:     &sourceARN,
+					}
+				},
+			},
+			testutil.ResourceGenerator{
+				Name: "filter",
+				Creator: func(ctx testutil.Context) interface{} {
+					return &cloudwatch.LogSubscriptionFilter{
+						Name:           aws.String(prefix),
+						DestinationArn: string(ctx.GetResourceID("logcollector")),
+						LogGroupName:   ctx.GetOutputProps("loggroup").Fields["logGroupName"].GetStringValue(),
 					}
 				},
 			},
 		},
 	}
 
-	testutil.ProviderTest(t, resources, steps)
+	props := testutil.ProviderTest(t, resources, steps)
 
+	// Returned SHA256 must match what we uploaded
+	byts, err := code.Bytes(resource.ZIPArchive)
+	assert.NoError(t, err)
+	sum := sha256.Sum256(byts)
+	codeSHA256 := base64.StdEncoding.EncodeToString(sum[:])
+	assert.Equal(t, codeSHA256, props["f"].Fields["codeSHA256"].GetStringValue())
 }
 
-func cleanupFunctions(ctx *awsctx.Context) {
-	fmt.Printf("Cleaning up function with name:%v\n", RESOURCEPREFIX)
+func cleanupFunctions(prefix string, ctx *awsctx.Context) error {
+	fmt.Printf("Cleaning up function with name:%v\n", prefix)
 	list, err := ctx.Lambda().ListFunctions(&awslambda.ListFunctionsInput{})
 	if err != nil {
-		return
+		return err
 	}
 	cleaned := 0
 	for _, fnc := range list.Functions {
-		if strings.HasPrefix(aws.StringValue(fnc.FunctionName), RESOURCEPREFIX) {
-			_, err := ctx.Lambda().DeleteFunction(&awslambda.DeleteFunctionInput{
+		if strings.HasPrefix(aws.StringValue(fnc.FunctionName), prefix) {
+			if _, delerr := ctx.Lambda().DeleteFunction(&awslambda.DeleteFunctionInput{
 				FunctionName: fnc.FunctionName,
-			})
-			if err != nil {
-				fmt.Printf("Unable to cleanip function %v: %v\n", fnc.FunctionName, err)
-			} else {
-				cleaned++
+			}); delerr != nil {
+				fmt.Printf("Unable to cleanup function %v: %v\n", fnc.FunctionName, delerr)
+				return delerr
 			}
+			cleaned++
 		}
 	}
 	fmt.Printf("Cleaned up %v functions\n", cleaned)
+	return nil
 }
 
-func cleanupRoles(ctx *awsctx.Context) {
-	fmt.Printf("Cleaning up roles with name:%v\n", RESOURCEPREFIX)
+func cleanupRoles(prefix string, ctx *awsctx.Context) error {
+	fmt.Printf("Cleaning up roles with name:%v\n", prefix)
 	list, err := ctx.IAM().ListRoles(&awsiam.ListRolesInput{})
 	if err != nil {
-		return
+		return err
 	}
 	cleaned := 0
 	for _, role := range list.Roles {
-		if strings.HasPrefix(aws.StringValue(role.RoleName), RESOURCEPREFIX) {
+		if strings.HasPrefix(aws.StringValue(role.RoleName), prefix) {
 			policies, err := ctx.IAM().ListAttachedRolePolicies(&awsiam.ListAttachedRolePoliciesInput{
 				RoleName: role.RoleName,
 			})
 			if err != nil {
 				fmt.Printf("Unable to cleanup role %v: %v\n", role.RoleName, err)
-				continue
+				return err
 			}
 			if policies != nil {
 				for _, policy := range policies.AttachedPolicies {
-					ctx.IAM().DetachRolePolicy(&awsiam.DetachRolePolicyInput{
+					if _, deterr := ctx.IAM().DetachRolePolicy(&awsiam.DetachRolePolicyInput{
 						RoleName:  role.RoleName,
 						PolicyArn: policy.PolicyArn,
-					})
+					}); deterr != nil {
+						return deterr
+					}
 				}
 			}
-			_, err = ctx.IAM().DeleteRole(&awsiam.DeleteRoleInput{
+			if _, delerr := ctx.IAM().DeleteRole(&awsiam.DeleteRoleInput{
 				RoleName: role.RoleName,
-			})
-			if err != nil {
+			}); delerr != nil {
 				fmt.Printf("Unable to cleanup role %v: %v\n", role.RoleName, err)
-			} else {
-				cleaned++
+				return delerr
 			}
+			cleaned++
 		}
 	}
 	fmt.Printf("Cleaned up %v roles\n", cleaned)
+	return nil
 }

@@ -1,23 +1,11 @@
-// Licensed to Pulumi Corporation ("Pulumi") under one or more
-// contributor license agreements.  See the NOTICE file distributed with
-// this work for additional information regarding copyright ownership.
-// Pulumi licenses this file to You under the Apache License, Version 2.0
-// (the "License"); you may not use this file except in compliance with
-// the License.  You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
 
 package resource
 
 import (
 	"fmt"
 	"reflect"
+	"sort"
 
 	"github.com/pkg/errors"
 
@@ -37,15 +25,35 @@ type PropertyMap map[PropertyKey]PropertyValue
 
 // NewPropertyMap turns a struct into a property map, using any JSON tags inside to determine naming.
 func NewPropertyMap(s interface{}) PropertyMap {
-	m, err := mapper.Unmap(s)
-	contract.Assertf(err == nil, "Struct of properties failed to map correctly: %v", err)
-	return NewPropertyMapFromMap(m)
+	return NewPropertyMapRepl(s, nil, nil)
 }
 
+// NewPropertyMapRepl turns a struct into a property map, using any JSON tags inside to determine naming.  If non-nil
+// replk or replv function(s) are provided, key and/or value transformations are performed during the mapping.
+func NewPropertyMapRepl(s interface{},
+	replk func(string) (PropertyKey, bool), replv func(interface{}) (PropertyValue, bool)) PropertyMap {
+	m, err := mapper.Unmap(s)
+	contract.Assertf(err == nil, "Struct of properties failed to map correctly: %v", err)
+	return NewPropertyMapFromMapRepl(m, replk, replv)
+}
+
+// NewPropertyMapFromMap creates a resource map from a regular weakly typed JSON-like map.
 func NewPropertyMapFromMap(m map[string]interface{}) PropertyMap {
+	return NewPropertyMapFromMapRepl(m, nil, nil)
+}
+
+// NewPropertyMapFromMapRepl optionally replaces keys/values in an existing map while creating a new resource map.
+func NewPropertyMapFromMapRepl(m map[string]interface{},
+	replk func(string) (PropertyKey, bool), replv func(interface{}) (PropertyValue, bool)) PropertyMap {
 	result := make(PropertyMap)
 	for k, v := range m {
-		result[PropertyKey(k)] = NewPropertyValue(v)
+		key := PropertyKey(k)
+		if replk != nil {
+			if rk, repl := replk(k); repl {
+				key = rk
+			}
+		}
+		result[key] = NewPropertyValueRepl(v, replk, replv)
 	}
 	return result
 }
@@ -58,7 +66,6 @@ type PropertyValue struct {
 // Computed represents the absence of a property value, because it will be computed at some point in the future.  It
 // contains a property value which represents the underlying expected type of the eventual property value.
 type Computed struct {
-	Sources []URN         // the resources whose state contribute to this value.
 	Element PropertyValue // the eventual value (type) of the computed property.
 }
 
@@ -198,20 +205,6 @@ func (m PropertyMap) ObjectOrErr(k PropertyKey, req bool) (*PropertyMap, error) 
 	return nil, nil
 }
 
-// ResourceOrErr checks that the given property is a resource, issuing an error if not; req indicates if required.
-func (m PropertyMap) ResourceOrErr(k PropertyKey, req bool) (*URN, error) {
-	if v, has := m[k]; has && !v.IsNull() {
-		if !v.IsResource() {
-			return nil, errors.Errorf("property '%v' is not an object (%v)", k, reflect.TypeOf(v.V))
-		}
-		m := v.ResourceValue()
-		return &m, nil
-	} else if req {
-		return nil, &ReqError{k}
-	}
-	return nil, nil
-}
-
 // ComputedOrErr checks that the given property is computed, issuing an error if not; req indicates if required.
 func (m PropertyMap) ComputedOrErr(k PropertyKey, req bool) (*Computed, error) {
 	if v, has := m[k]; has && !v.IsNull() {
@@ -303,15 +296,6 @@ func (m PropertyMap) ReqObjectOrErr(k PropertyKey) (PropertyMap, error) {
 	return *o, nil
 }
 
-// ReqResourceOrErr checks that the given property exists and has the type URN.
-func (m PropertyMap) ReqResourceOrErr(k PropertyKey) (URN, error) {
-	r, err := m.ResourceOrErr(k, true)
-	if err != nil {
-		return URN(""), err
-	}
-	return *r, nil
-}
-
 // ReqComputedOrErr checks that the given property exists and is computed.
 func (m PropertyMap) ReqComputedOrErr(k PropertyKey) (Computed, error) {
 	v, err := m.ComputedOrErr(k, true)
@@ -365,11 +349,6 @@ func (m PropertyMap) OptObjectOrErr(k PropertyKey) (*PropertyMap, error) {
 	return m.ObjectOrErr(k, false)
 }
 
-// OptResourceOrErr checks that the given property has the type URN, if it exists.
-func (m PropertyMap) OptResourceOrErr(k PropertyKey) (*URN, error) {
-	return m.ResourceOrErr(k, false)
-}
-
 // OptComputedOrErr checks that the given property is computed, if it exists.
 func (m PropertyMap) OptComputedOrErr(k PropertyKey) (*Computed, error) {
 	return m.ComputedOrErr(k, false)
@@ -390,32 +369,34 @@ func (m PropertyMap) HasValue(k PropertyKey) bool {
 
 // Mappable returns a mapper-compatible object map, suitable for deserialization into structures.
 func (m PropertyMap) Mappable() map[string]interface{} {
+	return m.MapRepl(nil, nil)
+}
+
+// MapRepl returns a mapper-compatible object map, suitable for deserialization into structures.  A key and/or value
+// replace function, replk/replv, may be passed that will replace elements using custom logic if appropriate.
+func (m PropertyMap) MapRepl(replk func(string) (string, bool),
+	replv func(PropertyValue) (interface{}, bool)) map[string]interface{} {
 	obj := make(map[string]interface{})
-	for _, k := range StablePropertyKeys(m) {
-		obj[string(k)] = m[k].Mappable()
+	for _, k := range m.StableKeys() {
+		key := string(k)
+		if replk != nil {
+			if rk, repk := replk(key); repk {
+				key = rk
+			}
+		}
+		obj[key] = m[k].MapRepl(replk, replv)
 	}
 	return obj
 }
 
-// AllResources finds all resource URNs, transitively throughout the property map, and returns them.
-func (m PropertyMap) AllResources() map[URN]bool {
-	URNs := make(map[URN]bool)
-	for _, k := range StablePropertyKeys(m) {
-		for m, v := range m[k].AllResources() {
-			URNs[m] = v
-		}
+// StableKeys returns all of the map's keys in a stable order.
+func (m PropertyMap) StableKeys() []PropertyKey {
+	sorted := make([]PropertyKey, 0, len(m))
+	for k := range m {
+		sorted = append(sorted, k)
 	}
-	return URNs
-}
-
-// ReplaceResources finds all resources and lets an updater function update them if necessary.  This is often used
-// during a "replacement"-style updated, to replace all URNs of a certain value with another.
-func (m PropertyMap) ReplaceResources(updater func(URN) URN) PropertyMap {
-	result := make(PropertyMap)
-	for _, k := range StablePropertyKeys(m) {
-		result[k] = m[k].ReplaceResources(updater)
-	}
-	return result
+	sort.Slice(sorted, func(i, j int) bool { return sorted[i] < sorted[j] })
+	return sorted
 }
 
 func (m PropertyMap) ShallowClone() PropertyMap {
@@ -444,12 +425,11 @@ func NewNumberProperty(v float64) PropertyValue        { return PropertyValue{v}
 func NewStringProperty(v string) PropertyValue         { return PropertyValue{v} }
 func NewArrayProperty(v []PropertyValue) PropertyValue { return PropertyValue{v} }
 func NewObjectProperty(v PropertyMap) PropertyValue    { return PropertyValue{v} }
-func NewResourceProperty(v URN) PropertyValue          { return PropertyValue{v} }
 func NewComputedProperty(v Computed) PropertyValue     { return PropertyValue{v} }
 func NewOutputProperty(v Output) PropertyValue         { return PropertyValue{v} }
 
-func MakeComputed(v PropertyValue, sources []URN) PropertyValue {
-	return NewComputedProperty(Computed{Element: v, Sources: sources})
+func MakeComputed(v PropertyValue) PropertyValue {
+	return NewComputedProperty(Computed{Element: v})
 }
 
 func MakeOutput(v PropertyValue) PropertyValue {
@@ -458,6 +438,20 @@ func MakeOutput(v PropertyValue) PropertyValue {
 
 // NewPropertyValue turns a value into a property value, provided it is of a legal "JSON-like" kind.
 func NewPropertyValue(v interface{}) PropertyValue {
+	return NewPropertyValueRepl(v, nil, nil)
+}
+
+// NewPropertyValueRepl turns a value into a property value, provided it is of a legal "JSON-like" kind.  The
+// replacement functions, replk and replv, may be supplied to transform keys and/or values as the mapping takes place.
+func NewPropertyValueRepl(v interface{},
+	replk func(string) (PropertyKey, bool), replv func(interface{}) (PropertyValue, bool)) PropertyValue {
+	// If a replacement routine is supplied, use that.
+	if replv != nil {
+		if rv, repl := replv(v); repl {
+			return rv
+		}
+	}
+
 	// If nil, easy peasy, just return a null.
 	if v == nil {
 		return NewNullProperty()
@@ -471,8 +465,6 @@ func NewPropertyValue(v interface{}) PropertyValue {
 		return NewNumberProperty(t)
 	case string:
 		return NewStringProperty(t)
-	case URN:
-		return NewResourceProperty(t)
 	case Computed:
 		return NewComputedProperty(t)
 	}
@@ -485,7 +477,7 @@ func NewPropertyValue(v interface{}) PropertyValue {
 		var arr []PropertyValue
 		for i := 0; i < rv.Len(); i++ {
 			elem := rv.Index(i)
-			arr = append(arr, NewPropertyValue(elem.Interface()))
+			arr = append(arr, NewPropertyValueRepl(elem.Interface(), replk, replv))
 		}
 		return NewArrayProperty(arr)
 	case reflect.Ptr:
@@ -493,7 +485,7 @@ func NewPropertyValue(v interface{}) PropertyValue {
 		if rv.IsNil() {
 			return NewNullProperty()
 		}
-		return NewPropertyValue(rv.Elem().Interface())
+		return NewPropertyValueRepl(rv.Elem().Interface(), replk, replv)
 	case reflect.Map:
 		// If a map, create a new property map, provided the keys and values are okay.
 		obj := PropertyMap{}
@@ -507,13 +499,18 @@ func NewPropertyValue(v interface{}) PropertyValue {
 			default:
 				contract.Failf("Unrecognized PropertyMap key type: %v", reflect.TypeOf(key))
 			}
+			if replk != nil {
+				if rk, repl := replk(string(pk)); repl {
+					pk = rk
+				}
+			}
 			val := rv.MapIndex(key)
-			pv := NewPropertyValue(val.Interface())
+			pv := NewPropertyValueRepl(val.Interface(), replk, replv)
 			obj[pk] = pv
 		}
 		return NewObjectProperty(obj)
 	case reflect.Struct:
-		obj := NewPropertyMap(v)
+		obj := NewPropertyMapRepl(v, replk, replv)
 		return NewObjectProperty(obj)
 	default:
 		contract.Failf("Unrecognized value type: type=%v kind=%v", rv.Type(), rk)
@@ -536,9 +533,6 @@ func (v PropertyValue) ArrayValue() []PropertyValue { return v.V.([]PropertyValu
 
 // ObjectValue fetches the underlying object value (panicking if it isn't a object).
 func (v PropertyValue) ObjectValue() PropertyMap { return v.V.(PropertyMap) }
-
-// ResourceValue fetches the underlying resource value (panicking if it isn't a resource).
-func (v PropertyValue) ResourceValue() URN { return v.V.(URN) }
 
 // ComputedValue fetches the underlying computed value (panicking if it isn't a computed).
 func (v PropertyValue) ComputedValue() Computed { return v.V.(Computed) }
@@ -578,12 +572,6 @@ func (v PropertyValue) IsArray() bool {
 // IsObject returns true if the underlying value is an object.
 func (v PropertyValue) IsObject() bool {
 	_, is := v.V.(PropertyMap)
-	return is
-}
-
-// IsResource returns true if the underlying value is a resource.
-func (v PropertyValue) IsResource() bool {
-	_, is := v.V.(URN)
 	return is
 }
 
@@ -674,20 +662,6 @@ func (v PropertyValue) CanObject() bool {
 	return false
 }
 
-// CanResource returns true if the target property is capable of holding a resource value.
-func (v PropertyValue) CanResource() bool {
-	if v.IsNull() || v.IsResource() {
-		return true
-	}
-	if v.IsComputed() {
-		return v.ComputedValue().Element.CanResource()
-	}
-	if v.IsOutput() {
-		return v.OutputValue().Element.CanResource()
-	}
-	return false
-}
-
 // HasValue returns true if a value is semantically meaningful.
 func (v PropertyValue) HasValue() bool {
 	return !v.IsNull() && !v.IsOutput()
@@ -707,8 +681,6 @@ func (v PropertyValue) TypeString() string {
 		return "[]"
 	} else if v.IsObject() {
 		return "object"
-	} else if v.IsResource() {
-		return "resource"
 	} else if v.IsComputed() {
 		return "computed<" + v.ComputedValue().Element.TypeString() + ">"
 	} else if v.IsOutput() {
@@ -720,6 +692,18 @@ func (v PropertyValue) TypeString() string {
 
 // Mappable returns a mapper-compatible value, suitable for deserialization into structures.
 func (v PropertyValue) Mappable() interface{} {
+	return v.MapRepl(nil, nil)
+}
+
+// MapRepl returns a mapper-compatible object map, suitable for deserialization into structures.  A key and/or value
+// replace function, replk/replv, may be passed that will replace elements using custom logic if appropriate.
+func (v PropertyValue) MapRepl(replk func(string) (string, bool),
+	replv func(PropertyValue) (interface{}, bool)) interface{} {
+	if replv != nil {
+		if rv, repv := replv(v); repv {
+			return rv
+		}
+	}
 	if v.IsNull() {
 		return nil
 	} else if v.IsBool() {
@@ -731,12 +715,12 @@ func (v PropertyValue) Mappable() interface{} {
 	} else if v.IsArray() {
 		var arr []interface{}
 		for _, e := range v.ArrayValue() {
-			arr = append(arr, e.Mappable())
+			arr = append(arr, e.MapRepl(replk, replv))
 		}
 		return arr
 	}
 	contract.Assert(v.IsObject())
-	return v.ObjectValue().Mappable()
+	return v.ObjectValue().MapRepl(replk, replv)
 }
 
 // String implements the fmt.Stringer interface to add slightly more information to the output.
@@ -749,41 +733,8 @@ func (v PropertyValue) String() string {
 	return fmt.Sprintf("{%v}", v.V)
 }
 
-// AllResources finds all resource URNs, transitively throughout the property value, and returns them.
-func (v PropertyValue) AllResources() map[URN]bool {
-	URNs := make(map[URN]bool)
-	if v.IsResource() {
-		URNs[v.ResourceValue()] = true
-	} else if v.IsArray() {
-		for _, elem := range v.ArrayValue() {
-			for m, v := range elem.AllResources() {
-				URNs[m] = v
-			}
-		}
-	} else if v.IsObject() {
-		for m, v := range v.ObjectValue().AllResources() {
-			URNs[m] = v
-		}
-	}
-	return URNs
-}
-
-// ReplaceResources finds all resources and lets an updater function update them if necessary.  This is often used
-// during a "replacement"-style updated, to replace all URNs of a certain value with another.
-func (v PropertyValue) ReplaceResources(updater func(URN) URN) PropertyValue {
-	if v.IsResource() {
-		m := v.ResourceValue()
-		return NewResourceProperty(updater(m))
-	} else if v.IsArray() {
-		arr := v.ArrayValue()
-		elems := make([]PropertyValue, len(arr))
-		for i, elem := range arr {
-			elems[i] = elem.ReplaceResources(updater)
-		}
-		return NewArrayProperty(elems)
-	} else if v.IsObject() {
-		rep := v.ObjectValue().ReplaceResources(updater)
-		return NewObjectProperty(rep)
-	}
-	return v
+// Property is a pair of key and value.
+type Property struct {
+	Key   PropertyKey
+	Value PropertyValue
 }

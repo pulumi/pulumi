@@ -11,6 +11,7 @@ import (
     "golang.org/x/net/context"
 
     "github.com/pulumi/lumi/pkg/resource"
+    "github.com/pulumi/lumi/pkg/resource/plugin"
     "github.com/pulumi/lumi/pkg/tokens"
     "github.com/pulumi/lumi/pkg/util/contract"
     "github.com/pulumi/lumi/pkg/util/mapper"
@@ -24,7 +25,7 @@ const StageToken = tokens.Type("aws:apigateway/stage:Stage")
 
 // StageProviderOps is a pluggable interface for Stage-related management functionality.
 type StageProviderOps interface {
-    Check(ctx context.Context, obj *Stage) ([]error, error)
+    Check(ctx context.Context, obj *Stage, property string) error
     Create(ctx context.Context, obj *Stage) (resource.ID, error)
     Get(ctx context.Context, id resource.ID) (*Stage, error)
     InspectChange(ctx context.Context,
@@ -50,14 +51,77 @@ func (p *StageProvider) Check(
     contract.Assert(req.GetType() == string(StageToken))
     obj, _, err := p.Unmarshal(req.GetProperties())
     if err != nil {
-        return resource.NewCheckResponse(err), nil
+        return plugin.NewCheckResponse(err), nil
     }
-    if failures, err := p.ops.Check(ctx, obj); err != nil {
-        return nil, err
-    } else if len(failures) > 0 {
-        return resource.NewCheckResponse(resource.NewCheckError(failures)), nil
+    var failures []error
+    if failure := p.ops.Check(ctx, obj, ""); failure != nil {
+        failures = append(failures, failure)
     }
-    return resource.NewCheckResponse(nil), nil
+    unks := req.GetUnknowns()
+    if !unks["name"] {
+        if failure := p.ops.Check(ctx, obj, "name"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Stage", "name", failure))
+        }
+    }
+    if !unks["restAPI"] {
+        if failure := p.ops.Check(ctx, obj, "restAPI"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Stage", "restAPI", failure))
+        }
+    }
+    if !unks["stageName"] {
+        if failure := p.ops.Check(ctx, obj, "stageName"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Stage", "stageName", failure))
+        }
+    }
+    if !unks["deployment"] {
+        if failure := p.ops.Check(ctx, obj, "deployment"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Stage", "deployment", failure))
+        }
+    }
+    if !unks["cacheClusterEnabled"] {
+        if failure := p.ops.Check(ctx, obj, "cacheClusterEnabled"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Stage", "cacheClusterEnabled", failure))
+        }
+    }
+    if !unks["cacheClusterSize"] {
+        if failure := p.ops.Check(ctx, obj, "cacheClusterSize"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Stage", "cacheClusterSize", failure))
+        }
+    }
+    if !unks["clientCertificate"] {
+        if failure := p.ops.Check(ctx, obj, "clientCertificate"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Stage", "clientCertificate", failure))
+        }
+    }
+    if !unks["description"] {
+        if failure := p.ops.Check(ctx, obj, "description"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Stage", "description", failure))
+        }
+    }
+    if !unks["methodSettings"] {
+        if failure := p.ops.Check(ctx, obj, "methodSettings"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Stage", "methodSettings", failure))
+        }
+    }
+    if !unks["variables"] {
+        if failure := p.ops.Check(ctx, obj, "variables"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Stage", "variables", failure))
+        }
+    }
+    if len(failures) > 0 {
+        return plugin.NewCheckResponse(resource.NewErrors(failures)), nil
+    }
+    return plugin.NewCheckResponse(nil), nil
 }
 
 func (p *StageProvider) Name(
@@ -99,8 +163,8 @@ func (p *StageProvider) Get(
         return nil, err
     }
     return &lumirpc.GetResponse{
-        Properties: resource.MarshalProperties(
-            nil, resource.NewPropertyMap(obj), resource.MarshalOptions{}),
+        Properties: plugin.MarshalProperties(
+            nil, resource.NewPropertyMap(obj), plugin.MarshalOptions{}),
     }, nil
 }
 
@@ -170,7 +234,7 @@ func (p *StageProvider) Delete(
 func (p *StageProvider) Unmarshal(
     v *pbstruct.Struct) (*Stage, resource.PropertyMap, error) {
     var obj Stage
-    props := resource.UnmarshalProperties(nil, v, resource.MarshalOptions{RawResources: true})
+    props := plugin.UnmarshalProperties(nil, v, plugin.MarshalOptions{RawResources: true})
     return &obj, props, mapper.MapIU(props.Mappable(), &obj)
 }
 

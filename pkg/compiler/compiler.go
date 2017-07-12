@@ -1,17 +1,4 @@
-// Licensed to Pulumi Corporation ("Pulumi") under one or more
-// contributor license agreements.  See the NOTICE file distributed with
-// this work for additional information regarding copyright ownership.
-// Pulumi licenses this file to You under the Apache License, Version 2.0
-// (the "License"); you may not use this file except in compliance with
-// the License.  You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
 
 package compiler
 
@@ -27,8 +14,6 @@ import (
 	"github.com/pulumi/lumi/pkg/compiler/metadata"
 	"github.com/pulumi/lumi/pkg/compiler/symbols"
 	"github.com/pulumi/lumi/pkg/diag"
-	"github.com/pulumi/lumi/pkg/eval"
-	"github.com/pulumi/lumi/pkg/eval/heapstate"
 	"github.com/pulumi/lumi/pkg/pack"
 	"github.com/pulumi/lumi/pkg/util/contract"
 	"github.com/pulumi/lumi/pkg/workspace"
@@ -41,12 +26,12 @@ type Compiler interface {
 	Ctx() *core.Context     // the shared context object.
 	Workspace() workspace.W // the workspace that this compielr is using.
 
-	// Compile detects a package from the workspace and compiles it into a graph.
-	Compile(preexec Preexec) (*symbols.Package, *heapstate.Heap)
-	// CompilePath compiles a package given its path into its graph form.
-	CompilePath(path string, preexec Preexec) (*symbols.Package, *heapstate.Heap)
-	// CompilePackage compiles a given package object into its associated graph form.
-	CompilePackage(pkg *pack.Package, preexec Preexec) (*symbols.Package, *heapstate.Heap)
+	// Compile detects a package from the workspace and compiles it.
+	Compile() (binder.Binder, *symbols.Package)
+	// CompilePath compiles a package in the given path.
+	CompilePath(path string) (binder.Binder, *symbols.Package)
+	// CompilePackage compiles a given pre-loaded package object.
+	CompilePackage(pkg *pack.Package) (binder.Binder, *symbols.Package)
 	// Verify detects a package from the workspace and validates its LumiIL contents.
 	Verify() bool
 	// VerifyPath verifies a package given its path, validating that its LumiIL contents are correct.
@@ -54,9 +39,6 @@ type Compiler interface {
 	// VerifyPackage verifies a given package object, validating that its LumiIL contents are correct.
 	VerifyPackage(pkg *pack.Package) bool
 }
-
-// Preexec can be used to hook compilation after binding, but before evaluation, for any pre-evaluation steps.
-type Preexec func(*binder.Context, *symbols.Package, eval.Interpreter)
 
 // compiler is the canonical implementation of the Lumi compiler.
 type compiler struct {
@@ -113,23 +95,23 @@ func (c *compiler) Diag() diag.Sink        { return c.ctx.Diag }
 func (c *compiler) Workspace() workspace.W { return c.w }
 
 // Compile attempts to detect the package from the current working directory and, provided that succeeds, compiles it.
-func (c *compiler) Compile(preexec Preexec) (*symbols.Package, *heapstate.Heap) {
+func (c *compiler) Compile() (binder.Binder, *symbols.Package) {
 	if path := c.detectPackage(); path != "" {
-		return c.CompilePath(path, preexec)
+		return c.CompilePath(path)
 	}
 	return nil, nil
 }
 
 // CompilePath loads a package at the given path and compiles it into a graph.
-func (c *compiler) CompilePath(path string, preexec Preexec) (*symbols.Package, *heapstate.Heap) {
+func (c *compiler) CompilePath(path string) (binder.Binder, *symbols.Package) {
 	if pkg := c.readPackage(path); pkg != nil {
-		return c.CompilePackage(pkg, preexec)
+		return c.CompilePackage(pkg)
 	}
 	return nil, nil
 }
 
 // CompilePackage compiles the given package into a graph.
-func (c *compiler) CompilePackage(pkg *pack.Package, preexec Preexec) (*symbols.Package, *heapstate.Heap) {
+func (c *compiler) CompilePackage(pkg *pack.Package) (binder.Binder, *symbols.Package) {
 	contract.Requiref(pkg != nil, "pkg", "!= nil")
 	glog.Infof("Compiling package '%v' (w=%v)", pkg.Name, c.w.Root())
 	if glog.V(2) {
@@ -152,37 +134,9 @@ func (c *compiler) CompilePackage(pkg *pack.Package, preexec Preexec) (*symbols.
 	// Essentially, all we are doing is mapping names to concrete symbols.  This ensures that as we compile a package,
 	// we are able to find all tokens in these maps.  If we ever cannot find a token in a map, it means the LumiPack
 	// file is invalid.  We require that LumiLang compilers produce valid, verifiable LumiIL, and this is a requriement.
-	//
-	// Afterwards, we can safely evaluate the LumiIL entrypoint, using our LumiIL AST interpreter.
 
-	// First, bind.
 	b := binder.New(c.w, c.ctx, c.reader)
-	pkgsym := b.BindPackage(pkg)
-	if !c.Diag().Success() {
-		return nil, nil
-	}
-
-	// Now, create the machinery we need to generate a graph.
-	gg := heapstate.New(c.ctx)
-
-	// Create a fresh evaluator; if there are pre-exec hooks, run them now.
-	e := eval.New(b.Ctx(), gg)
-	if preexec != nil {
-		glog.V(7).Infof("Invoking compiler preexec routine")
-		preexec(b.Ctx(), pkgsym, e)
-	}
-	if !c.Diag().Success() {
-		return nil, nil // the preexec functions raised errors; quit.
-	}
-
-	// Go ahead and perform the evaluation.
-	e.EvaluatePackage(pkgsym, c.ctx.Opts.Args)
-	if !c.Diag().Success() {
-		return pkgsym, nil
-	}
-
-	// Finally ask the graph generator to return what it has seen in graph form.
-	return pkgsym, gg.HeapSnapshot()
+	return b, b.BindPackage(pkg)
 }
 
 // Verify detects a package from the workspace and validates its LumiIL contents.

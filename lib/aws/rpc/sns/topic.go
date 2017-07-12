@@ -11,6 +11,7 @@ import (
     "golang.org/x/net/context"
 
     "github.com/pulumi/lumi/pkg/resource"
+    "github.com/pulumi/lumi/pkg/resource/plugin"
     "github.com/pulumi/lumi/pkg/tokens"
     "github.com/pulumi/lumi/pkg/util/contract"
     "github.com/pulumi/lumi/pkg/util/mapper"
@@ -24,7 +25,7 @@ const TopicToken = tokens.Type("aws:sns/topic:Topic")
 
 // TopicProviderOps is a pluggable interface for Topic-related management functionality.
 type TopicProviderOps interface {
-    Check(ctx context.Context, obj *Topic) ([]error, error)
+    Check(ctx context.Context, obj *Topic, property string) error
     Create(ctx context.Context, obj *Topic) (resource.ID, error)
     Get(ctx context.Context, id resource.ID) (*Topic, error)
     InspectChange(ctx context.Context,
@@ -50,14 +51,35 @@ func (p *TopicProvider) Check(
     contract.Assert(req.GetType() == string(TopicToken))
     obj, _, err := p.Unmarshal(req.GetProperties())
     if err != nil {
-        return resource.NewCheckResponse(err), nil
+        return plugin.NewCheckResponse(err), nil
     }
-    if failures, err := p.ops.Check(ctx, obj); err != nil {
-        return nil, err
-    } else if len(failures) > 0 {
-        return resource.NewCheckResponse(resource.NewCheckError(failures)), nil
+    var failures []error
+    if failure := p.ops.Check(ctx, obj, ""); failure != nil {
+        failures = append(failures, failure)
     }
-    return resource.NewCheckResponse(nil), nil
+    unks := req.GetUnknowns()
+    if !unks["name"] {
+        if failure := p.ops.Check(ctx, obj, "name"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Topic", "name", failure))
+        }
+    }
+    if !unks["topicName"] {
+        if failure := p.ops.Check(ctx, obj, "topicName"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Topic", "topicName", failure))
+        }
+    }
+    if !unks["displayName"] {
+        if failure := p.ops.Check(ctx, obj, "displayName"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Topic", "displayName", failure))
+        }
+    }
+    if len(failures) > 0 {
+        return plugin.NewCheckResponse(resource.NewErrors(failures)), nil
+    }
+    return plugin.NewCheckResponse(nil), nil
 }
 
 func (p *TopicProvider) Name(
@@ -99,8 +121,8 @@ func (p *TopicProvider) Get(
         return nil, err
     }
     return &lumirpc.GetResponse{
-        Properties: resource.MarshalProperties(
-            nil, resource.NewPropertyMap(obj), resource.MarshalOptions{}),
+        Properties: plugin.MarshalProperties(
+            nil, resource.NewPropertyMap(obj), plugin.MarshalOptions{}),
     }, nil
 }
 
@@ -167,7 +189,7 @@ func (p *TopicProvider) Delete(
 func (p *TopicProvider) Unmarshal(
     v *pbstruct.Struct) (*Topic, resource.PropertyMap, error) {
     var obj Topic
-    props := resource.UnmarshalProperties(nil, v, resource.MarshalOptions{RawResources: true})
+    props := plugin.UnmarshalProperties(nil, v, plugin.MarshalOptions{RawResources: true})
     return &obj, props, mapper.MapIU(props.Mappable(), &obj)
 }
 
@@ -178,7 +200,6 @@ type Topic struct {
     Name *string `lumi:"name,optional"`
     TopicName *string `lumi:"topicName,optional"`
     DisplayName *string `lumi:"displayName,optional"`
-    Subscription *[]TopicSubscription `lumi:"subscription,optional"`
 }
 
 // Topic's properties have constants to make dealing with diffs and property bags easier.
@@ -186,40 +207,6 @@ const (
     Topic_Name = "name"
     Topic_TopicName = "topicName"
     Topic_DisplayName = "displayName"
-    Topic_Subscription = "subscription"
-)
-
-/* Marshalable TopicSubscription structure(s) */
-
-// TopicSubscription is a marshalable representation of its corresponding IDL type.
-type TopicSubscription struct {
-    Protocol TopicProtocol `lumi:"protocol"`
-    Endpoint string `lumi:"endpoint"`
-}
-
-// TopicSubscription's properties have constants to make dealing with diffs and property bags easier.
-const (
-    TopicSubscription_Protocol = "protocol"
-    TopicSubscription_Endpoint = "endpoint"
-)
-
-/* Typedefs */
-
-type (
-    TopicProtocol string
-)
-
-/* Constants */
-
-const (
-    ApplicationTopic TopicProtocol = "application"
-    EmailJSONTopic TopicProtocol = "email-json"
-    EmailTopic TopicProtocol = "email"
-    HTTPSTopic TopicProtocol = "https"
-    HTTPTopic TopicProtocol = "http"
-    LambdaTopic TopicProtocol = "lambda"
-    SMSTopic TopicProtocol = "sms"
-    SQSTopic TopicProtocol = "sqs"
 )
 
 

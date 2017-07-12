@@ -1,17 +1,4 @@
-// Licensed to Pulumi Corporation ("Pulumi") under one or more
-// contributor license agreements.  See the NOTICE file distributed with
-// this work for additional information regarding copyright ownership.
-// Pulumi licenses this file to You under the Apache License, Version 2.0
-// (the "License"); you may not use this file except in compliance with
-// the License.  You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
 
 package eval
 
@@ -21,6 +8,8 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+
+	"bytes"
 
 	"github.com/pulumi/lumi/pkg/compiler/ast"
 	"github.com/pulumi/lumi/pkg/compiler/binder"
@@ -36,7 +25,7 @@ func isFunction(intrin *rt.Intrinsic, e *evaluator, this *rt.Object, args []*rt.
 	contract.Assert(this == nil)    // module function
 	contract.Assert(len(args) == 1) // just one arg: the object to inquire about functionness
 	_, isfunc := args[0].Type().(*symbols.FunctionType)
-	ret := e.alloc.NewBool(intrin.Tree(), isfunc)
+	ret := rt.Bools[isfunc]
 	return rt.NewReturnUnwind(ret)
 }
 
@@ -68,11 +57,11 @@ func objectKeys(intrin *rt.Intrinsic, e *evaluator, this *rt.Object, args []*rt.
 		o := args[0]
 		names := o.Properties().Stable()
 		for _, name := range names {
-			namePtr := rt.NewPointer(e.alloc.NewString(intrin.Tree(), string(name)), true, nil, nil)
+			namePtr := rt.NewPointer(rt.NewStringObject(string(name)), true, nil, nil)
 			arr = append(arr, namePtr)
 		}
 	}
-	arrObj := e.alloc.NewArray(intrin.Tree(), types.String, &arr)
+	arrObj := rt.NewArrayObject(types.String, &arr)
 	return rt.NewReturnUnwind(arrObj)
 }
 
@@ -81,11 +70,11 @@ func printf(intrin *rt.Intrinsic, e *evaluator, this *rt.Object, args []*rt.Obje
 	if len(args) >= 1 {
 		message = args[0]
 	} else {
-		message = e.alloc.NewNull(intrin.Tree())
+		message = rt.Null
 	}
 
 	// TODO[pulumi/lumi#169]: Move this to use a proper ToString() conversion.
-	fmt.Printf(message.String())
+	fmt.Print(message.String())
 
 	return rt.NewReturnUnwind(nil)
 }
@@ -103,11 +92,13 @@ func sha1hash(intrin *rt.Intrinsic, e *evaluator, this *rt.Object, args []*rt.Ob
 
 	hasher := sha1.New()
 	byts := []byte(str.StringValue())
-	hasher.Write(byts)
+	if _, err := hasher.Write(byts); err != nil {
+		return e.NewException(intrin.Tree(), "Failed to write out SHA1 bytes: %v", err)
+	}
 	sum := hasher.Sum(nil)
 	hash := hex.EncodeToString(sum)
 
-	hashObj := e.alloc.NewString(intrin.Tree(), hash)
+	hashObj := rt.NewStringObject(hash)
 	return rt.NewReturnUnwind(hashObj)
 }
 
@@ -128,7 +119,7 @@ func (s *closureSerializer) envEntryObjFor(obj *rt.Object) *rt.Object {
 		// Else we will pass through the object to serialize
 		props.Set("json", obj)
 	}
-	return s.e.alloc.New(s.node, types.Dynamic, props, nil)
+	return rt.NewObject(types.Dynamic, nil, props, nil)
 }
 
 func (s *closureSerializer) serializeClosure(stub rt.FuncStub, lambda *ast.LambdaExpression) *rt.Object {
@@ -152,16 +143,14 @@ func (s *closureSerializer) serializeClosure(stub rt.FuncStub, lambda *ast.Lambd
 		// This will be true for references to globals which are not known to Lumi but
 		// will be available within the runtime environment.
 	}
-	envObj := s.e.alloc.New(s.node, types.Dynamic, envPropMap, nil)
 
 	// Build up the properties for the returned Closure object
 	props := rt.NewPropertyMap()
-	props.Set("code", s.e.alloc.NewString(s.node, lambda.SourceText))
-	props.Set("signature", s.e.alloc.NewString(s.node, string(stub.Sig.Token())))
-	props.Set("language", s.e.alloc.NewString(s.node, lambda.SourceLanguage))
-	props.Set("environment", envObj)
-	closure := s.e.alloc.New(s.node, types.Dynamic, props, nil)
-	return closure
+	props.Set("code", rt.NewStringObject(lambda.SourceText))
+	props.Set("signature", rt.NewStringObject(string(stub.Sig.Token())))
+	props.Set("language", rt.NewStringObject(lambda.SourceLanguage))
+	props.Set("environment", rt.NewObject(types.Dynamic, nil, envPropMap, nil))
+	return rt.NewObject(types.Dynamic, nil, props, nil)
 }
 
 func serializeClosure(intrin *rt.Intrinsic, e *evaluator, this *rt.Object, args []*rt.Object) *rt.Unwind {
@@ -183,33 +172,34 @@ func serializeClosure(intrin *rt.Intrinsic, e *evaluator, this *rt.Object, args 
 	return rt.NewReturnUnwind(closure)
 }
 
-func arrayGetLength(intrin *rt.Intrinsic, e *evaluator, this *rt.Object, args []*rt.Object) *rt.Unwind {
-	if this == nil {
-		return e.NewException(intrin.Tree(), "Expected receiver to be non-null")
-	}
-	if !this.IsArray() {
-		return e.NewException(intrin.Tree(), "Expected receiver to be an array value")
+func checkGetArray(intrin *rt.Intrinsic, e *evaluator, this *rt.Object) (*[]*rt.Pointer, *rt.Unwind) {
+	if this == nil || this.IsNull() {
+		return nil, e.NewNullObjectException(intrin.Tree())
+	} else if !this.IsArray() {
+		return nil, e.NewException(intrin.Tree(), "Expected receiver to be an array value")
 	}
 	arr := this.ArrayValue()
 	if arr == nil {
-		return e.NewException(intrin.Tree(), "Expected receiver to be non-null array value")
+		return nil, e.NewNullObjectException(intrin.Tree())
 	}
-	return rt.NewReturnUnwind(e.alloc.NewNumber(intrin.Tree(), float64(len(*arr))))
+	return arr, nil
+}
+
+func arrayGetLength(intrin *rt.Intrinsic, e *evaluator, this *rt.Object, args []*rt.Object) *rt.Unwind {
+	arr, uw := checkGetArray(intrin, e, this)
+	if uw != nil {
+		return uw
+	}
+	return rt.NewReturnUnwind(rt.NewNumberObject(float64(len(*arr))))
 }
 
 func arraySetLength(intrin *rt.Intrinsic, e *evaluator, this *rt.Object, args []*rt.Object) *rt.Unwind {
-	if this == nil {
-		return e.NewException(intrin.Tree(), "Expected receiver to be non-null")
+	arr, uw := checkGetArray(intrin, e, this)
+	if uw != nil {
+		return uw
 	}
-	if !this.IsArray() {
-		return e.NewException(intrin.Tree(), "Expected receiver to be an array value")
-	}
-	arr := this.ArrayValue()
-	if arr == nil {
-		return e.NewException(intrin.Tree(), "Expected receiver to be non-null array value")
-	}
-	if len(args) < 1 {
-	}
+
+	// Get and convert the 1st argument to a number.
 	lengthFloat, ok := args[0].TryNumberValue()
 	if !ok {
 		return e.NewException(intrin.Tree(), "Expected length argument to be a number value")
@@ -219,7 +209,7 @@ func arraySetLength(intrin *rt.Intrinsic, e *evaluator, this *rt.Object, args []
 		return e.NewException(intrin.Tree(), "Expected length argument to be a positive number value")
 	}
 
-	// Update the size of the array to the requested length
+	// Update the size of the array to the requested length.
 	newArr := make([]*rt.Pointer, length)
 	copy(*arr, newArr)
 	*arr = newArr
@@ -227,8 +217,41 @@ func arraySetLength(intrin *rt.Intrinsic, e *evaluator, this *rt.Object, args []
 	return rt.NewReturnUnwind(nil)
 }
 
+// arrayPush implements Array.prototype.push.  It adds one or more elements to the end of an array and returns the new
+// length of the array.  Please see the following link for details:
+// https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/push.
+func arrayPush(intrin *rt.Intrinsic, e *evaluator, this *rt.Object, args []*rt.Object) *rt.Unwind {
+	arr, uw := checkGetArray(intrin, e, this)
+	if uw != nil {
+		return uw
+	}
+	for _, arg := range args {
+		ptr := rt.NewPointer(arg, false, nil, nil)
+		*arr = append(*arr, ptr)
+	}
+	return rt.NewReturnUnwind(rt.NewNumberObject(float64(len(*arr))))
+}
+
+// arrayPop implements Array.prototype.pop.  It removes the last element from an array and returns that element.
+// This method changes the length of the array.  Please see the following link for details:
+// https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/pop.
+func arrayPop(intrin *rt.Intrinsic, e *evaluator, this *rt.Object, args []*rt.Object) *rt.Unwind {
+	arr, uw := checkGetArray(intrin, e, this)
+	if uw != nil {
+		return uw
+	}
+	var ret *rt.Object
+	if al := len(*arr); al > 0 {
+		ret = ((*arr)[al-1]).Obj()
+		*arr = (*arr)[:al-1]
+	} else {
+		ret = rt.Null
+	}
+	return rt.NewReturnUnwind(ret)
+}
+
 func stringGetLength(intrin *rt.Intrinsic, e *evaluator, this *rt.Object, args []*rt.Object) *rt.Unwind {
-	if this == nil {
+	if this == nil || this.IsNull() {
 		return e.NewException(intrin.Tree(), "Expected receiver to be non-null")
 	}
 	if !this.IsString() {
@@ -236,11 +259,11 @@ func stringGetLength(intrin *rt.Intrinsic, e *evaluator, this *rt.Object, args [
 	}
 	str := this.StringValue()
 
-	return rt.NewReturnUnwind(e.alloc.NewNumber(intrin.Tree(), float64(len(str))))
+	return rt.NewReturnUnwind(rt.NewNumberObject(float64(len(str))))
 }
 
 func stringToLowerCase(intrin *rt.Intrinsic, e *evaluator, this *rt.Object, args []*rt.Object) *rt.Unwind {
-	if this == nil {
+	if this == nil || this.IsNull() {
 		return e.NewException(intrin.Tree(), "Expected receiver to be non-null")
 	}
 	if !this.IsString() {
@@ -249,7 +272,20 @@ func stringToLowerCase(intrin *rt.Intrinsic, e *evaluator, this *rt.Object, args
 	str := this.StringValue()
 	out := strings.ToLower(str)
 
-	return rt.NewReturnUnwind(e.alloc.NewString(intrin.Tree(), out))
+	return rt.NewReturnUnwind(rt.NewStringObject(out))
+}
+
+func stringToUpperCase(intrin *rt.Intrinsic, e *evaluator, this *rt.Object, args []*rt.Object) *rt.Unwind {
+	if this == nil || this.IsNull() {
+		return e.NewException(intrin.Tree(), "Expected receiver to be non-null")
+	}
+	if !this.IsString() {
+		return e.NewException(intrin.Tree(), "Expected receiver to be a string value")
+	}
+	str := this.StringValue()
+	out := strings.ToUpper(str)
+
+	return rt.NewReturnUnwind(rt.NewStringObject(out))
 }
 
 type jsonSerializer struct {
@@ -258,20 +294,17 @@ type jsonSerializer struct {
 	e      *evaluator
 }
 
+// See https://tc39.github.io/ecma262/2017/#sec-serializejsonproperty
 func (s jsonSerializer) serializeJSONProperty(o *rt.Object) (string, *rt.Unwind) {
-	if o == nil {
-		return "null", nil
-	}
-	if o.IsNull() {
+	if o == nil || o.IsNull() {
 		return "null", nil
 	} else if o.IsBool() {
 		if o.BoolValue() {
 			return "true", nil
 		}
 		return "false", nil
-
 	} else if o.IsString() {
-		return o.String(), nil
+		return s.quote(o.StringValue()), nil
 	} else if o.IsNumber() {
 		return o.String(), nil
 	} else if o.IsArray() {
@@ -280,6 +313,31 @@ func (s jsonSerializer) serializeJSONProperty(o *rt.Object) (string, *rt.Unwind)
 	return s.serializeJSONObject(o)
 }
 
+// See https://tc39.github.io/ecma262/2017/#sec-quotejsonstring
+func (s jsonSerializer) quote(str string) string {
+	escapes := map[rune]string{'\b': "\\b", '\f': "\\f", '\n': "\\n", '\r': "\\r", '\t': "\\t"}
+	var buffer bytes.Buffer
+	buffer.WriteRune('"')
+	for _, c := range str {
+		switch c {
+		case '"', '\\':
+			buffer.WriteRune('\\')
+			buffer.WriteRune(c)
+		case '\b', '\f', '\n', '\r', '\t':
+			buffer.WriteString(escapes[c])
+		default:
+			if c < ' ' {
+				buffer.WriteString(fmt.Sprintf("\\u%.4x", c))
+			} else {
+				buffer.WriteRune(c)
+			}
+		}
+	}
+	buffer.WriteRune('"')
+	return buffer.String()
+}
+
+// See https://tc39.github.io/ecma262/2017/#sec-serializejsonobject
 func (s jsonSerializer) serializeJSONObject(o *rt.Object) (string, *rt.Unwind) {
 	if _, found := s.stack[o]; found {
 		return "", s.e.NewException(s.intrin.Tree(), "Cannot JSON serialize an object with cyclic references")
@@ -312,6 +370,7 @@ func (s jsonSerializer) serializeJSONObject(o *rt.Object) (string, *rt.Unwind) {
 	return final, nil
 }
 
+// See https://tc39.github.io/ecma262/2017/#sec-serializejsonarray
 func (s jsonSerializer) serializeJSONArray(o *rt.Object) (string, *rt.Unwind) {
 	contract.Assert(o.IsArray()) // expect to be called on an Array
 	if _, found := s.stack[o]; found {
@@ -351,7 +410,7 @@ func jsonStringify(intrin *rt.Intrinsic, e *evaluator, this *rt.Object, args []*
 	contract.Assert(len(args) == 1) // just one arg: the object to stringify
 	obj := args[0]
 	if obj == nil {
-		return rt.NewReturnUnwind(e.alloc.NewString(intrin.Tree(), "{}"))
+		return rt.NewReturnUnwind(rt.NewStringObject("{}"))
 	}
 	s := jsonSerializer{
 		map[*rt.Object]bool{},
@@ -362,7 +421,7 @@ func jsonStringify(intrin *rt.Intrinsic, e *evaluator, this *rt.Object, args []*
 	if uw != nil {
 		return uw
 	}
-	return rt.NewReturnUnwind(e.alloc.NewString(intrin.Tree(), str))
+	return rt.NewReturnUnwind(rt.NewStringObject(str))
 }
 
 func jsonParse(intrin *rt.Intrinsic, e *evaluator, this *rt.Object, args []*rt.Object) *rt.Unwind {

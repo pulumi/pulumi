@@ -11,6 +11,7 @@ import (
     "golang.org/x/net/context"
 
     "github.com/pulumi/lumi/pkg/resource"
+    "github.com/pulumi/lumi/pkg/resource/plugin"
     "github.com/pulumi/lumi/pkg/tokens"
     "github.com/pulumi/lumi/pkg/util/contract"
     "github.com/pulumi/lumi/pkg/util/mapper"
@@ -24,7 +25,7 @@ const InstanceToken = tokens.Type("aws:ec2/instance:Instance")
 
 // InstanceProviderOps is a pluggable interface for Instance-related management functionality.
 type InstanceProviderOps interface {
-    Check(ctx context.Context, obj *Instance) ([]error, error)
+    Check(ctx context.Context, obj *Instance, property string) error
     Create(ctx context.Context, obj *Instance) (resource.ID, error)
     Get(ctx context.Context, id resource.ID) (*Instance, error)
     InspectChange(ctx context.Context,
@@ -50,14 +51,53 @@ func (p *InstanceProvider) Check(
     contract.Assert(req.GetType() == string(InstanceToken))
     obj, _, err := p.Unmarshal(req.GetProperties())
     if err != nil {
-        return resource.NewCheckResponse(err), nil
+        return plugin.NewCheckResponse(err), nil
     }
-    if failures, err := p.ops.Check(ctx, obj); err != nil {
-        return nil, err
-    } else if len(failures) > 0 {
-        return resource.NewCheckResponse(resource.NewCheckError(failures)), nil
+    var failures []error
+    if failure := p.ops.Check(ctx, obj, ""); failure != nil {
+        failures = append(failures, failure)
     }
-    return resource.NewCheckResponse(nil), nil
+    unks := req.GetUnknowns()
+    if !unks["name"] {
+        if failure := p.ops.Check(ctx, obj, "name"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Instance", "name", failure))
+        }
+    }
+    if !unks["imageId"] {
+        if failure := p.ops.Check(ctx, obj, "imageId"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Instance", "imageId", failure))
+        }
+    }
+    if !unks["instanceType"] {
+        if failure := p.ops.Check(ctx, obj, "instanceType"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Instance", "instanceType", failure))
+        }
+    }
+    if !unks["securityGroups"] {
+        if failure := p.ops.Check(ctx, obj, "securityGroups"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Instance", "securityGroups", failure))
+        }
+    }
+    if !unks["keyName"] {
+        if failure := p.ops.Check(ctx, obj, "keyName"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Instance", "keyName", failure))
+        }
+    }
+    if !unks["tags"] {
+        if failure := p.ops.Check(ctx, obj, "tags"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Instance", "tags", failure))
+        }
+    }
+    if len(failures) > 0 {
+        return plugin.NewCheckResponse(resource.NewErrors(failures)), nil
+    }
+    return plugin.NewCheckResponse(nil), nil
 }
 
 func (p *InstanceProvider) Name(
@@ -99,8 +139,8 @@ func (p *InstanceProvider) Get(
         return nil, err
     }
     return &lumirpc.GetResponse{
-        Properties: resource.MarshalProperties(
-            nil, resource.NewPropertyMap(obj), resource.MarshalOptions{}),
+        Properties: plugin.MarshalProperties(
+            nil, resource.NewPropertyMap(obj), plugin.MarshalOptions{}),
     }, nil
 }
 
@@ -122,8 +162,17 @@ func (p *InstanceProvider) InspectChange(
         if diff.Changed("name") {
             replaces = append(replaces, "name")
         }
+        if diff.Changed("imageId") {
+            replaces = append(replaces, "imageId")
+        }
+        if diff.Changed("instanceType") {
+            replaces = append(replaces, "instanceType")
+        }
         if diff.Changed("securityGroups") {
             replaces = append(replaces, "securityGroups")
+        }
+        if diff.Changed("keyName") {
+            replaces = append(replaces, "keyName")
         }
     }
     more, err := p.ops.InspectChange(ctx, id, old, new, diff)
@@ -167,7 +216,7 @@ func (p *InstanceProvider) Delete(
 func (p *InstanceProvider) Unmarshal(
     v *pbstruct.Struct) (*Instance, resource.PropertyMap, error) {
     var obj Instance
-    props := resource.UnmarshalProperties(nil, v, resource.MarshalOptions{RawResources: true})
+    props := plugin.UnmarshalProperties(nil, v, plugin.MarshalOptions{RawResources: true})
     return &obj, props, mapper.MapIU(props.Mappable(), &obj)
 }
 

@@ -1,24 +1,10 @@
-// Licensed to Pulumi Corporation ("Pulumi") under one or more
-// contributor license agreements.  See the NOTICE file distributed with
-// this work for additional information regarding copyright ownership.
-// Pulumi licenses this file to You under the Apache License, Version 2.0
-// (the "License"); you may not use this file except in compliance with
-// the License.  You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
 
 package elasticbeanstalk
 
 import (
 	"crypto/sha1"
 	"fmt"
-	"reflect"
 
 	"github.com/aws/aws-sdk-go/aws"
 	awselasticbeanstalk "github.com/aws/aws-sdk-go/service/elasticbeanstalk"
@@ -52,29 +38,25 @@ type applicationProvider struct {
 }
 
 // Check validates that the given property bag is valid for a resource of the given type.
-func (p *applicationProvider) Check(ctx context.Context,
-	obj *elasticbeanstalk.Application) ([]error, error) {
-	var failures []error
-	if name := obj.ApplicationName; name != nil {
-		if len(*name) < minApplicationName {
-			failures = append(failures,
-				resource.NewFieldError(reflect.TypeOf(obj), elasticbeanstalk.Application_ApplicationName,
-					fmt.Errorf("less than minimum length of %v", minApplicationName)))
+func (p *applicationProvider) Check(ctx context.Context, obj *elasticbeanstalk.Application, property string) error {
+	switch property {
+	case elasticbeanstalk.Application_ApplicationName:
+		if name := obj.ApplicationName; name != nil {
+			if len(*name) < minApplicationName {
+				return fmt.Errorf("less than minimum length of %v", minApplicationName)
+			}
+			if len(*name) > maxApplicationName {
+				return fmt.Errorf("exceeded maximum length of %v", maxApplicationName)
+			}
 		}
-		if len(*name) > maxApplicationName {
-			failures = append(failures,
-				resource.NewFieldError(reflect.TypeOf(obj), elasticbeanstalk.Application_ApplicationName,
-					fmt.Errorf("exceeded maximum length of %v", maxApplicationName)))
-		}
-	}
-	if description := obj.Description; description != nil {
-		if len(*description) > maxDescription {
-			failures = append(failures,
-				resource.NewFieldError(reflect.TypeOf(obj), elasticbeanstalk.Application_ApplicationName,
-					fmt.Errorf("exceeded maximum length of %v", maxDescription)))
+	case elasticbeanstalk.Application_Description:
+		if description := obj.Description; description != nil {
+			if len(*description) > maxDescription {
+				return fmt.Errorf("exceeded maximum length of %v", maxDescription)
+			}
 		}
 	}
-	return failures, nil
+	return nil
 }
 
 // Create allocates a new instance of the provided resource and returns its unique ID afterwards.  (The input ID
@@ -159,17 +141,16 @@ func (p *applicationProvider) Delete(ctx context.Context, id resource.ID) error 
 	if err != nil {
 		return err
 	}
-	if _, err := p.ctx.ElasticBeanstalk().DeleteApplication(&awselasticbeanstalk.DeleteApplicationInput{
+	if _, delerr := p.ctx.ElasticBeanstalk().DeleteApplication(&awselasticbeanstalk.DeleteApplicationInput{
 		ApplicationName: aws.String(name),
-	}); err != nil {
-		return err
+	}); delerr != nil {
+		return delerr
 	}
 	succ, err := awsctx.RetryUntilLong(p.ctx, func() (bool, error) {
-		resp, err := p.getApplication(name)
-		if err != nil {
-			return false, err
-		}
-		if resp == nil {
+		fmt.Printf("Waiting for application %v to become Terminated\n", name)
+		if resp, geterr := p.getApplication(name); geterr != nil {
+			return false, geterr
+		} else if resp == nil {
 			return true, nil
 		}
 		return false, nil

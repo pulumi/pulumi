@@ -1,20 +1,7 @@
-// Licensed to Pulumi Corporation ("Pulumi") under one or more
-// contributor license agreements.  See the NOTICE file distributed with
-// this work for additional information regarding copyright ownership.
-// Pulumi licenses this file to You under the Apache License, Version 2.0
-// (the "License"); you may not use this file except in compliance with
-// the License.  You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
 
-// Package dotconv convers a LumiGL graph into its DOT digraph equivalent.  This is useful for integration with various
-// visualization tools, like Graphviz.  Please see http://www.graphviz.org/content/dot-language for a thorough
+// Package dotconv converts a LumiGL graph into its DOT digraph equivalent.  This is useful for integration with
+// various visualization tools, like Graphviz.  Please see http://www.graphviz.org/content/dot-language for a thorough
 // specification of the DOT file format.
 package dotconv
 
@@ -28,6 +15,7 @@ import (
 	"github.com/pulumi/lumi/pkg/util/contract"
 )
 
+// Print prints a LumiGL graph.
 func Print(g graph.Graph, w io.Writer) error {
 	// Allocate a new writer.  In general, we will ignore write errors throughout this function, for simplicity, opting
 	// instead to return the result of flushing the buffer at the end, which is generally latching.
@@ -76,38 +64,51 @@ func Print(g graph.Graph, w io.Writer) error {
 
 		// Print this vertex; first its "label" (type) and then its direct dependencies.
 		// IDEA: consider serializing properties on the node also.
-		b.WriteString(fmt.Sprintf("%v%v", indent, id))
-		if label := v.Label(); label != "" {
-			b.WriteString(fmt.Sprintf(" [label=\"%v\"]", label))
+		if _, err := b.WriteString(fmt.Sprintf("%v%v", indent, id)); err != nil {
+			return err
 		}
-		b.WriteString(";\n")
+		if label := v.Label(); label != "" {
+			if _, err := b.WriteString(fmt.Sprintf(" [label=\"%v\"]", label)); err != nil {
+				return err
+			}
+		}
+		if _, err := b.WriteString(";\n"); err != nil {
+			return err
+		}
 
 		// Now print out all dependencies as "ID -> {A ... Z}".
 		outs := v.Outs()
 		if len(outs) > 0 {
-			b.WriteString(fmt.Sprintf("%v%v -> {", indent, id))
-
+			if _, err := b.WriteString(fmt.Sprintf("%v%v -> {", indent, id)); err != nil {
+				return err
+			}
 			// Print the ID of each dependency and, for those we haven't seen, add them to the frontier.
 			for i, out := range outs {
 				to := out.To()
 
 				if i > 0 {
-					b.WriteString(" ")
+					if _, err := b.WriteString(" "); err != nil {
+						return err
+					}
 				}
-				b.WriteString(getID(to))
-
+				if _, err := b.WriteString(getID(to)); err != nil {
+					return err
+				}
 				if _, q := queued[to]; !q {
 					queued[to] = true
 					frontier = append(frontier, to)
 				}
 			}
 
-			b.WriteString("}\n")
+			if _, err := b.WriteString("}\n"); err != nil {
+				return err
+			}
 		}
 	}
 
 	// Finish the graph.
-	b.WriteString("}\n")
-
+	if _, err := b.WriteString("}\n"); err != nil {
+		return err
+	}
 	return b.Flush()
 }

@@ -1,38 +1,12 @@
-// Licensed to Pulumi Corporation ("Pulumi") under one or more
-// contributor license agreements.  See the NOTICE file distributed with
-// this work for additional information regarding copyright ownership.
-// Pulumi licenses this file to You under the Apache License, Version 2.0
-// (the "License"); you may not use this file except in compliance with
-// the License.  You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
 
 package contract
 
 import (
-	"flag"
 	"fmt"
-	"os"
-	"runtime/debug"
-
-	"github.com/golang/glog"
 )
 
 // failfast logs and panics the process in a way that is friendly to debugging.
 func failfast(msg string) {
-	v := flag.Lookup("logtostderr").Value
-	if g, isgettable := v.(flag.Getter); isgettable {
-		if enabled := g.Get().(bool); enabled {
-			// Print the stack to stderr anytime glog verbose logging is enabled, since glog won't.
-			fmt.Fprintf(os.Stderr, "fatal: %v\n", msg)
-			debug.PrintStack()
-		}
-	}
-	glog.Fatal(msg)
+	panic(fmt.Sprintf("fatal: %v", msg))
 }

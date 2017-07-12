@@ -1,25 +1,10 @@
-// Licensed to Pulumi Corporation ("Pulumi") under one or more
-// contributor license agreements.  See the NOTICE file distributed with
-// this work for additional information regarding copyright ownership.
-// Pulumi licenses this file to You under the Apache License, Version 2.0
-// (the "License"); you may not use this file except in compliance with
-// the License.  You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
 
 package ec2
 
 import (
 	"errors"
 	"fmt"
-	"os"
-	"reflect"
 
 	"github.com/aws/aws-sdk-go/aws"
 	awsec2 "github.com/aws/aws-sdk-go/service/ec2"
@@ -46,27 +31,21 @@ type instanceProvider struct {
 }
 
 // Check validates that the given property bag is valid for a resource of the given type.
-func (p *instanceProvider) Check(ctx context.Context, obj *ec2.Instance) ([]error, error) {
-	var failures []error
-	if obj.ImageID != "" {
+func (p *instanceProvider) Check(ctx context.Context, obj *ec2.Instance, property string) error {
+	switch property {
+	case ec2.Instance_ImageID:
 		// Check that the AMI exists; this catches misspellings, AMI region mismatches, accessibility problems, etc.
 		result, err := p.ctx.EC2().DescribeImages(&awsec2.DescribeImagesInput{
 			ImageIds: []*string{aws.String(obj.ImageID)},
 		})
 		if err != nil {
-			return nil, err
+			return err
 		}
 		if len(result.Images) == 0 {
-			failures = append(failures,
-				resource.NewFieldError(reflect.TypeOf(obj), ec2.Instance_ImageID,
-					fmt.Errorf("missing image: %v", obj.ImageID)))
-		} else {
-			contract.Assertf(len(result.Images) == 1, "Did not expect multiple instance matches")
-			contract.Assertf(result.Images[0].ImageId != nil, "Expected a non-nil matched instance ID")
-			contract.Assertf(*result.Images[0].ImageId == obj.ImageID, "Expected instance IDs to match")
+			return fmt.Errorf("missing image: %v", obj.ImageID)
 		}
 	}
-	return failures, nil
+	return nil
 }
 
 // Create allocates a new instance of the provided resource and returns its unique ID afterwards.  (The input ID
@@ -113,7 +92,7 @@ func (p *instanceProvider) Create(ctx context.Context, obj *ec2.Instance) (resou
 	}
 
 	// Now go ahead and perform the action.
-	fmt.Fprintf(os.Stdout, "Creating new EC2 instance resource\n")
+	fmt.Print("Creating new EC2 instance resource\n")
 	result, err := p.ctx.EC2().RunInstances(create)
 	if err != nil {
 		return "", err
@@ -128,7 +107,7 @@ func (p *instanceProvider) Create(ctx context.Context, obj *ec2.Instance) (resou
 	id := aws.StringValue(result.Instances[0].InstanceId)
 
 	// Before returning that all is okay, wait for the instance to reach the running state.
-	fmt.Fprintf(os.Stdout, "EC2 instance '%v' created; now waiting for it to become 'running'\n", id)
+	fmt.Printf("EC2 instance '%v' created; now waiting for it to become 'running'\n", id)
 	// TODO[pulumi/lumi#219]: if this fails, but the creation succeeded, we will have an orphaned resource; report this
 	//     differently than other "benign" errors.
 	if err = p.ctx.EC2().WaitUntilInstanceRunning(
@@ -205,6 +184,7 @@ func (p *instanceProvider) Get(ctx context.Context, id resource.ID) (*ec2.Instan
 func (p *instanceProvider) InspectChange(ctx context.Context, id resource.ID,
 	old *ec2.Instance, new *ec2.Instance, diff *resource.ObjectDiff) ([]string, error) {
 	// TODO[pulumi/lumi#187]: we should permit changes to security groups for non-EC2-classic VMs that are in VPCs.
+	// TODO[pulumi/lumi#241]: we should permit changes to instance type for EBS-backed instances.
 	return nil, nil
 }
 
@@ -229,12 +209,11 @@ func (p *instanceProvider) Update(ctx context.Context, id resource.ID,
 			})
 		}
 		if len(addOrUpdateTags) > 0 {
-			_, err := p.ctx.EC2().CreateTags(&awsec2.CreateTagsInput{
+			if _, tagerr := p.ctx.EC2().CreateTags(&awsec2.CreateTagsInput{
 				Resources: []*string{aws.String(iid)},
 				Tags:      addOrUpdateTags,
-			})
-			if err != nil {
-				return err
+			}); tagerr != nil {
+				return tagerr
 			}
 		}
 		var deleteTags []*awsec2.Tag
@@ -265,12 +244,12 @@ func (p *instanceProvider) Delete(ctx context.Context, id resource.ID) error {
 		return err
 	}
 	delete := &awsec2.TerminateInstancesInput{InstanceIds: []*string{aws.String(iid)}}
-	fmt.Fprintf(os.Stdout, "Terminating EC2 instance '%v'\n", id)
+	fmt.Printf("Terminating EC2 instance '%v'\n", id)
 	if _, err := p.ctx.EC2().TerminateInstances(delete); err != nil {
 		return err
 	}
 
-	fmt.Fprintf(os.Stdout, "EC2 instance termination request submitted; waiting for it to terminate\n")
+	fmt.Print("EC2 instance termination request submitted; waiting for it to terminate\n")
 	return p.ctx.EC2().WaitUntilInstanceTerminated(
 		&awsec2.DescribeInstancesInput{InstanceIds: []*string{aws.String(iid)}})
 }

@@ -11,6 +11,7 @@ import (
     "golang.org/x/net/context"
 
     "github.com/pulumi/lumi/pkg/resource"
+    "github.com/pulumi/lumi/pkg/resource/plugin"
     "github.com/pulumi/lumi/pkg/tokens"
     "github.com/pulumi/lumi/pkg/util/contract"
     "github.com/pulumi/lumi/pkg/util/mapper"
@@ -24,7 +25,7 @@ const BucketToken = tokens.Type("aws:s3/bucket:Bucket")
 
 // BucketProviderOps is a pluggable interface for Bucket-related management functionality.
 type BucketProviderOps interface {
-    Check(ctx context.Context, obj *Bucket) ([]error, error)
+    Check(ctx context.Context, obj *Bucket, property string) error
     Create(ctx context.Context, obj *Bucket) (resource.ID, error)
     Get(ctx context.Context, id resource.ID) (*Bucket, error)
     InspectChange(ctx context.Context,
@@ -50,14 +51,35 @@ func (p *BucketProvider) Check(
     contract.Assert(req.GetType() == string(BucketToken))
     obj, _, err := p.Unmarshal(req.GetProperties())
     if err != nil {
-        return resource.NewCheckResponse(err), nil
+        return plugin.NewCheckResponse(err), nil
     }
-    if failures, err := p.ops.Check(ctx, obj); err != nil {
-        return nil, err
-    } else if len(failures) > 0 {
-        return resource.NewCheckResponse(resource.NewCheckError(failures)), nil
+    var failures []error
+    if failure := p.ops.Check(ctx, obj, ""); failure != nil {
+        failures = append(failures, failure)
     }
-    return resource.NewCheckResponse(nil), nil
+    unks := req.GetUnknowns()
+    if !unks["name"] {
+        if failure := p.ops.Check(ctx, obj, "name"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Bucket", "name", failure))
+        }
+    }
+    if !unks["bucketName"] {
+        if failure := p.ops.Check(ctx, obj, "bucketName"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Bucket", "bucketName", failure))
+        }
+    }
+    if !unks["accessControl"] {
+        if failure := p.ops.Check(ctx, obj, "accessControl"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Bucket", "accessControl", failure))
+        }
+    }
+    if len(failures) > 0 {
+        return plugin.NewCheckResponse(resource.NewErrors(failures)), nil
+    }
+    return plugin.NewCheckResponse(nil), nil
 }
 
 func (p *BucketProvider) Name(
@@ -99,8 +121,8 @@ func (p *BucketProvider) Get(
         return nil, err
     }
     return &lumirpc.GetResponse{
-        Properties: resource.MarshalProperties(
-            nil, resource.NewPropertyMap(obj), resource.MarshalOptions{}),
+        Properties: plugin.MarshalProperties(
+            nil, resource.NewPropertyMap(obj), plugin.MarshalOptions{}),
     }, nil
 }
 
@@ -167,7 +189,7 @@ func (p *BucketProvider) Delete(
 func (p *BucketProvider) Unmarshal(
     v *pbstruct.Struct) (*Bucket, resource.PropertyMap, error) {
     var obj Bucket
-    props := resource.UnmarshalProperties(nil, v, resource.MarshalOptions{RawResources: true})
+    props := plugin.UnmarshalProperties(nil, v, plugin.MarshalOptions{RawResources: true})
     return &obj, props, mapper.MapIU(props.Mappable(), &obj)
 }
 

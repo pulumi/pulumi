@@ -11,6 +11,7 @@ import (
     "golang.org/x/net/context"
 
     "github.com/pulumi/lumi/pkg/resource"
+    "github.com/pulumi/lumi/pkg/resource/plugin"
     "github.com/pulumi/lumi/pkg/tokens"
     "github.com/pulumi/lumi/pkg/util/contract"
     "github.com/pulumi/lumi/pkg/util/mapper"
@@ -24,7 +25,7 @@ const RestAPIToken = tokens.Type("aws:apigateway/restAPI:RestAPI")
 
 // RestAPIProviderOps is a pluggable interface for RestAPI-related management functionality.
 type RestAPIProviderOps interface {
-    Check(ctx context.Context, obj *RestAPI) ([]error, error)
+    Check(ctx context.Context, obj *RestAPI, property string) error
     Create(ctx context.Context, obj *RestAPI) (resource.ID, error)
     Get(ctx context.Context, id resource.ID) (*RestAPI, error)
     InspectChange(ctx context.Context,
@@ -50,14 +51,65 @@ func (p *RestAPIProvider) Check(
     contract.Assert(req.GetType() == string(RestAPIToken))
     obj, _, err := p.Unmarshal(req.GetProperties())
     if err != nil {
-        return resource.NewCheckResponse(err), nil
+        return plugin.NewCheckResponse(err), nil
     }
-    if failures, err := p.ops.Check(ctx, obj); err != nil {
-        return nil, err
-    } else if len(failures) > 0 {
-        return resource.NewCheckResponse(resource.NewCheckError(failures)), nil
+    var failures []error
+    if failure := p.ops.Check(ctx, obj, ""); failure != nil {
+        failures = append(failures, failure)
     }
-    return resource.NewCheckResponse(nil), nil
+    unks := req.GetUnknowns()
+    if !unks["name"] {
+        if failure := p.ops.Check(ctx, obj, "name"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("RestAPI", "name", failure))
+        }
+    }
+    if !unks["body"] {
+        if failure := p.ops.Check(ctx, obj, "body"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("RestAPI", "body", failure))
+        }
+    }
+    if !unks["bodyS3Location"] {
+        if failure := p.ops.Check(ctx, obj, "bodyS3Location"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("RestAPI", "bodyS3Location", failure))
+        }
+    }
+    if !unks["cloneFrom"] {
+        if failure := p.ops.Check(ctx, obj, "cloneFrom"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("RestAPI", "cloneFrom", failure))
+        }
+    }
+    if !unks["description"] {
+        if failure := p.ops.Check(ctx, obj, "description"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("RestAPI", "description", failure))
+        }
+    }
+    if !unks["failOnWarnings"] {
+        if failure := p.ops.Check(ctx, obj, "failOnWarnings"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("RestAPI", "failOnWarnings", failure))
+        }
+    }
+    if !unks["apiName"] {
+        if failure := p.ops.Check(ctx, obj, "apiName"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("RestAPI", "apiName", failure))
+        }
+    }
+    if !unks["parameters"] {
+        if failure := p.ops.Check(ctx, obj, "parameters"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("RestAPI", "parameters", failure))
+        }
+    }
+    if len(failures) > 0 {
+        return plugin.NewCheckResponse(resource.NewErrors(failures)), nil
+    }
+    return plugin.NewCheckResponse(nil), nil
 }
 
 func (p *RestAPIProvider) Name(
@@ -99,8 +151,8 @@ func (p *RestAPIProvider) Get(
         return nil, err
     }
     return &lumirpc.GetResponse{
-        Properties: resource.MarshalProperties(
-            nil, resource.NewPropertyMap(obj), resource.MarshalOptions{}),
+        Properties: plugin.MarshalProperties(
+            nil, resource.NewPropertyMap(obj), plugin.MarshalOptions{}),
     }, nil
 }
 
@@ -164,7 +216,7 @@ func (p *RestAPIProvider) Delete(
 func (p *RestAPIProvider) Unmarshal(
     v *pbstruct.Struct) (*RestAPI, resource.PropertyMap, error) {
     var obj RestAPI
-    props := resource.UnmarshalProperties(nil, v, resource.MarshalOptions{RawResources: true})
+    props := plugin.UnmarshalProperties(nil, v, plugin.MarshalOptions{RawResources: true})
     return &obj, props, mapper.MapIU(props.Mappable(), &obj)
 }
 

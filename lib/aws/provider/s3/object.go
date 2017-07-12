@@ -1,29 +1,17 @@
-// Licensed to Pulumi Corporation ("Pulumi") under one or more
-// contributor license agreements.  See the NOTICE file distributed with
-// this work for additional information regarding copyright ownership.
-// Pulumi licenses this file to You under the Apache License, Version 2.0
-// (the "License"); you may not use this file except in compliance with
-// the License.  You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
 
 package s3
 
 import (
 	"fmt"
-	"reflect"
 	"regexp"
 
 	"github.com/aws/aws-sdk-go/aws"
 	awss3 "github.com/aws/aws-sdk-go/service/s3"
 	"github.com/pkg/errors"
 	"github.com/pulumi/lumi/pkg/resource"
+	"github.com/pulumi/lumi/pkg/util/contract"
+	"github.com/pulumi/lumi/pkg/util/convutil"
 	"github.com/pulumi/lumi/sdk/go/pkg/lumirpc"
 	"golang.org/x/net/context"
 
@@ -51,19 +39,19 @@ type objProvider struct {
 }
 
 // Check validates that the given property bag is valid for a resource of the given type.
-func (p *objProvider) Check(ctx context.Context, obj *s3.Object) ([]error, error) {
-	var failures []error
-	if len(obj.Key) > maxObjectKey {
-		failures = append(failures,
-			resource.NewFieldError(reflect.TypeOf(obj), s3.Object_Key,
-				fmt.Errorf("exceeded maximum length of %v", maxObjectKey)))
+func (p *objProvider) Check(ctx context.Context, obj *s3.Object, property string) error {
+	switch property {
+	case s3.Object_Key:
+		if len(obj.Key) > maxObjectKey {
+			return fmt.Errorf("exceeded maximum length of %v", maxObjectKey)
+		}
+		if match, err := regexp.MatchString(objectKeyRegexp, obj.Key); err != nil {
+			return err
+		} else if !match {
+			return fmt.Errorf("contains invalid characters (must match '%v')", objectKeyRegexp)
+		}
 	}
-	if match, _ := regexp.MatchString(objectKeyRegexp, obj.Key); !match {
-		failures = append(failures,
-			resource.NewFieldError(reflect.TypeOf(obj), s3.Object_Key,
-				fmt.Errorf("contains invalid characters (must match '%v')", objectKeyRegexp)))
-	}
-	return failures, nil
+	return nil
 }
 
 // Name names a given resource.  Sometimes this will be assigned by a developer, and so the provider
@@ -84,7 +72,7 @@ func (p *objProvider) Create(ctx context.Context, obj *s3.Object) (resource.ID, 
 	if err != nil {
 		return "", err
 	}
-	defer body.Close()
+	defer contract.IgnoreClose(body)
 
 	// Now go ahead and perform the creation.
 	buck, err := arn.ParseResourceName(obj.Bucket)
@@ -93,9 +81,15 @@ func (p *objProvider) Create(ctx context.Context, obj *s3.Object) (resource.ID, 
 	}
 	fmt.Printf("Creating S3 Object '%v' in bucket '%v'\n", obj.Key, buck)
 	if _, err := p.ctx.S3().PutObject(&awss3.PutObjectInput{
-		Bucket: aws.String(buck),
-		Key:    aws.String(obj.Key),
-		Body:   body,
+		Bucket:             aws.String(buck),
+		Key:                aws.String(obj.Key),
+		Body:               body,
+		ContentType:        obj.ContentType,
+		ContentDisposition: obj.ContentDisposition,
+		CacheControl:       obj.CacheControl,
+		ContentEncoding:    obj.ContentEncoding,
+		ContentLanguage:    obj.ContentLanguage,
+		ContentLength:      convutil.Float64PToInt64P(obj.ContentLength),
 	}); err != nil {
 		return "", err
 	}
@@ -114,18 +108,25 @@ func (p *objProvider) Get(ctx context.Context, id resource.ID) (*s3.Object, erro
 	if err != nil {
 		return nil, err
 	}
-	if _, err := p.ctx.S3().GetObject(&awss3.GetObjectInput{
+	resp, err := p.ctx.S3().GetObject(&awss3.GetObjectInput{
 		Bucket: aws.String(buck),
 		Key:    aws.String(key),
-	}); err != nil {
+	})
+	if err != nil {
 		if awsctx.IsAWSError(err, "NotFound", "NoSuchKey") {
 			return nil, nil
 		}
 		return nil, err
 	}
 	return &s3.Object{
-		Bucket: resource.ID(arn.NewS3Bucket(buck)),
-		Key:    key,
+		Bucket:             resource.ID(arn.NewS3Bucket(buck)),
+		Key:                key,
+		ContentType:        resp.ContentType,
+		ContentDisposition: resp.ContentDisposition,
+		CacheControl:       resp.CacheControl,
+		ContentEncoding:    resp.ContentEncoding,
+		ContentLanguage:    resp.ContentLanguage,
+		ContentLength:      convutil.Int64PToFloat64P(resp.ContentLength),
 	}, nil
 }
 
@@ -139,7 +140,11 @@ func (p *objProvider) InspectChange(ctx context.Context, id resource.ID,
 // to new values.  The resource ID is returned and may be different if the resource had to be recreated.
 func (p *objProvider) Update(ctx context.Context, id resource.ID,
 	old *s3.Object, new *s3.Object, diff *resource.ObjectDiff) error {
-	return errors.New("Not yet implemented")
+	// The id is uniquely determined by `replace` properties, so update is the same as create, and we can expect
+	// the resulting id to be unchanged.
+	newid, err := p.Create(ctx, new)
+	contract.Assert(id == newid)
+	return err
 }
 
 // Delete tears down an existing resource with the given ID.  If it fails, the resource is assumed to still exist.

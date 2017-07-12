@@ -1,3 +1,5 @@
+// Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
+
 // simple function lambdas (empty bodies)
 let lamb01 = function() {};
 let lamb02 = function(x) {};

@@ -1,3 +1,5 @@
+// Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
+
 package apigateway
 
 import (
@@ -52,9 +54,7 @@ func patchOperationsForObject(path string, diff *resource.ObjectDiff, ignores ma
 			if err != nil {
 				return nil, err
 			}
-			for _, op := range arrayOps {
-				ops = append(ops, op)
-			}
+			ops = append(ops, arrayOps...)
 		}
 		if diff.Deleted(name) {
 			ops = append(ops, &awsapigateway.PatchOperation{
@@ -103,9 +103,7 @@ func patchOperationsForArray(path string, diff *resource.ArrayDiff) ([]*awsapiga
 		if err != nil {
 			return nil, err
 		}
-		for _, op := range arrayOps {
-			ops = append(ops, op)
-		}
+		ops = append(ops, arrayOps...)
 	}
 	for i := range diff.Deletes {
 		deleteOp, err := newOp("delete", path+"/"+strconv.Itoa(i), nil)

@@ -1,17 +1,4 @@
-// Licensed to Pulumi Corporation ("Pulumi") under one or more
-// contributor license agreements.  See the NOTICE file distributed with
-// this work for additional information regarding copyright ownership.
-// Pulumi licenses this file to You under the Apache License, Version 2.0
-// (the "License"); you may not use this file except in compliance with
-// the License.  You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
 
 package lumidl
 
@@ -50,9 +37,13 @@ func Compile(opts CompileOptions, path string) error {
 
 	// Adjust settings to their defaults and adjust any paths to be absolute.
 	if path == "" {
-		path, _ = os.Getwd()
+		if wd, err := os.Getwd(); err == nil {
+			path = wd
+		}
 	} else {
-		path, _ = filepath.Abs(path)
+		if absPath, err := filepath.Abs(path); err == nil {
+			path = absPath
+		}
 	}
 	if opts.PkgBaseIDL == "" {
 		// The default IDL package base is just the GOPATH package path for the target IDL path.
@@ -63,10 +54,14 @@ func Compile(opts CompileOptions, path string) error {
 		opts.PkgBaseIDL = pkgpath
 	}
 	if opts.OutPack != "" {
-		opts.OutPack, _ = filepath.Abs(opts.OutPack)
+		if outpack, err := filepath.Abs(opts.OutPack); err == nil {
+			opts.OutPack = outpack
+		}
 	}
 	if opts.OutRPC != "" {
-		opts.OutRPC, _ = filepath.Abs(opts.OutRPC)
+		if outrpc, err := filepath.Abs(opts.OutRPC); err == nil {
+			opts.OutRPC = outrpc
+		}
 
 		// If there is no package base, pick a default based on GOPATH.
 		if opts.PkgBaseRPC == "" {
@@ -167,7 +162,7 @@ func goPackagePath(path string) (string, error) {
 	gopath = filepath.Join(gopath, "src")
 
 	// Now ensure that the package path is a proper subset within it.
-	if !filepath.HasPrefix(path, gopath) {
+	if !strings.HasPrefix(path, gopath+string(os.PathSeparator)) {
 		return "", errors.Errorf(
 			"Package root '%v' is not underneath $GOPATH/src, so its package cannot be inferred", path)
 	}

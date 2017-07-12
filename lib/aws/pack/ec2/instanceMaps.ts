@@ -1,17 +1,4 @@
-// Licensed to Pulumi Corporation ("Pulumi") under one or more
-// contributor license agreements.  See the NOTICE file distributed with
-// this work for additional information regarding copyright ownership.
-// Pulumi licenses this file to You under the Apache License, Version 2.0
-// (the "License"); you may not use this file except in compliance with
-// the License.  You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
 
 // This file defines some maps that correspond to the recommended AWS Marketplace values:
 //     http://docs.aws.amazon.com/servicecatalog/latest/adminguide/catalogs_marketplace-products.html
@@ -22,7 +9,7 @@ import * as config from "../config";
 
 // instanceTypeArch is a map of instance type to its architecture.
 export let instanceTypeArch: {
-    [instanceType: string]: string
+    [instanceType: string]: string,
 } = {
     "t1.micro"   : "PV64" ,
     "t2.nano"    : "HVM64",
@@ -81,7 +68,7 @@ export let instanceTypeArch: {
 
 // regionArchLinuxAMI is a map from region to inner maps from architecture to the recommended Linux AMI.
 export let regionArchLinuxAMI: {
-    [region: string]: { [arch: string]: string; }
+    [region: string]: { [arch: string]: string; },
 } = {
     "us-east-1": {
         "PV64" : "ami-2a69aa47",
@@ -157,7 +144,7 @@ export let regionArchLinuxAMI: {
         "PV64" : "ami-77559f1a",
         "HVM64": "ami-8e6aa0e3",
         "HVMG2": "NOT_SUPPORTED",
-    }
+    },
 };
 
 // getLinuxAMI gets the recommended Linux AMI for the given instance in the current AWS region.

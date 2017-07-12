@@ -11,6 +11,7 @@ import (
     "golang.org/x/net/context"
 
     "github.com/pulumi/lumi/pkg/resource"
+    "github.com/pulumi/lumi/pkg/resource/plugin"
     "github.com/pulumi/lumi/pkg/tokens"
     "github.com/pulumi/lumi/pkg/util/contract"
     "github.com/pulumi/lumi/pkg/util/mapper"
@@ -24,7 +25,7 @@ const RouteToken = tokens.Type("aws:ec2/route:Route")
 
 // RouteProviderOps is a pluggable interface for Route-related management functionality.
 type RouteProviderOps interface {
-    Check(ctx context.Context, obj *Route) ([]error, error)
+    Check(ctx context.Context, obj *Route, property string) error
     Create(ctx context.Context, obj *Route) (resource.ID, error)
     Get(ctx context.Context, id resource.ID) (*Route, error)
     InspectChange(ctx context.Context,
@@ -50,14 +51,47 @@ func (p *RouteProvider) Check(
     contract.Assert(req.GetType() == string(RouteToken))
     obj, _, err := p.Unmarshal(req.GetProperties())
     if err != nil {
-        return resource.NewCheckResponse(err), nil
+        return plugin.NewCheckResponse(err), nil
     }
-    if failures, err := p.ops.Check(ctx, obj); err != nil {
-        return nil, err
-    } else if len(failures) > 0 {
-        return resource.NewCheckResponse(resource.NewCheckError(failures)), nil
+    var failures []error
+    if failure := p.ops.Check(ctx, obj, ""); failure != nil {
+        failures = append(failures, failure)
     }
-    return resource.NewCheckResponse(nil), nil
+    unks := req.GetUnknowns()
+    if !unks["name"] {
+        if failure := p.ops.Check(ctx, obj, "name"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Route", "name", failure))
+        }
+    }
+    if !unks["destinationCidrBlock"] {
+        if failure := p.ops.Check(ctx, obj, "destinationCidrBlock"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Route", "destinationCidrBlock", failure))
+        }
+    }
+    if !unks["routeTable"] {
+        if failure := p.ops.Check(ctx, obj, "routeTable"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Route", "routeTable", failure))
+        }
+    }
+    if !unks["internetGateway"] {
+        if failure := p.ops.Check(ctx, obj, "internetGateway"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Route", "internetGateway", failure))
+        }
+    }
+    if !unks["vpcGatewayAttachment"] {
+        if failure := p.ops.Check(ctx, obj, "vpcGatewayAttachment"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Route", "vpcGatewayAttachment", failure))
+        }
+    }
+    if len(failures) > 0 {
+        return plugin.NewCheckResponse(resource.NewErrors(failures)), nil
+    }
+    return plugin.NewCheckResponse(nil), nil
 }
 
 func (p *RouteProvider) Name(
@@ -99,8 +133,8 @@ func (p *RouteProvider) Get(
         return nil, err
     }
     return &lumirpc.GetResponse{
-        Properties: resource.MarshalProperties(
-            nil, resource.NewPropertyMap(obj), resource.MarshalOptions{}),
+        Properties: plugin.MarshalProperties(
+            nil, resource.NewPropertyMap(obj), plugin.MarshalOptions{}),
     }, nil
 }
 
@@ -176,7 +210,7 @@ func (p *RouteProvider) Delete(
 func (p *RouteProvider) Unmarshal(
     v *pbstruct.Struct) (*Route, resource.PropertyMap, error) {
     var obj Route
-    props := resource.UnmarshalProperties(nil, v, resource.MarshalOptions{RawResources: true})
+    props := plugin.UnmarshalProperties(nil, v, plugin.MarshalOptions{RawResources: true})
     return &obj, props, mapper.MapIU(props.Mappable(), &obj)
 }
 

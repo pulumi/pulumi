@@ -11,6 +11,7 @@ import (
     "golang.org/x/net/context"
 
     "github.com/pulumi/lumi/pkg/resource"
+    "github.com/pulumi/lumi/pkg/resource/plugin"
     "github.com/pulumi/lumi/pkg/tokens"
     "github.com/pulumi/lumi/pkg/util/contract"
     "github.com/pulumi/lumi/pkg/util/mapper"
@@ -24,7 +25,7 @@ const APIKeyToken = tokens.Type("aws:apigateway/apiKey:APIKey")
 
 // APIKeyProviderOps is a pluggable interface for APIKey-related management functionality.
 type APIKeyProviderOps interface {
-    Check(ctx context.Context, obj *APIKey) ([]error, error)
+    Check(ctx context.Context, obj *APIKey, property string) error
     Create(ctx context.Context, obj *APIKey) (resource.ID, error)
     Get(ctx context.Context, id resource.ID) (*APIKey, error)
     InspectChange(ctx context.Context,
@@ -50,14 +51,47 @@ func (p *APIKeyProvider) Check(
     contract.Assert(req.GetType() == string(APIKeyToken))
     obj, _, err := p.Unmarshal(req.GetProperties())
     if err != nil {
-        return resource.NewCheckResponse(err), nil
+        return plugin.NewCheckResponse(err), nil
     }
-    if failures, err := p.ops.Check(ctx, obj); err != nil {
-        return nil, err
-    } else if len(failures) > 0 {
-        return resource.NewCheckResponse(resource.NewCheckError(failures)), nil
+    var failures []error
+    if failure := p.ops.Check(ctx, obj, ""); failure != nil {
+        failures = append(failures, failure)
     }
-    return resource.NewCheckResponse(nil), nil
+    unks := req.GetUnknowns()
+    if !unks["name"] {
+        if failure := p.ops.Check(ctx, obj, "name"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("APIKey", "name", failure))
+        }
+    }
+    if !unks["keyName"] {
+        if failure := p.ops.Check(ctx, obj, "keyName"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("APIKey", "keyName", failure))
+        }
+    }
+    if !unks["description"] {
+        if failure := p.ops.Check(ctx, obj, "description"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("APIKey", "description", failure))
+        }
+    }
+    if !unks["enabled"] {
+        if failure := p.ops.Check(ctx, obj, "enabled"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("APIKey", "enabled", failure))
+        }
+    }
+    if !unks["stageKeys"] {
+        if failure := p.ops.Check(ctx, obj, "stageKeys"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("APIKey", "stageKeys", failure))
+        }
+    }
+    if len(failures) > 0 {
+        return plugin.NewCheckResponse(resource.NewErrors(failures)), nil
+    }
+    return plugin.NewCheckResponse(nil), nil
 }
 
 func (p *APIKeyProvider) Name(
@@ -99,8 +133,8 @@ func (p *APIKeyProvider) Get(
         return nil, err
     }
     return &lumirpc.GetResponse{
-        Properties: resource.MarshalProperties(
-            nil, resource.NewPropertyMap(obj), resource.MarshalOptions{}),
+        Properties: plugin.MarshalProperties(
+            nil, resource.NewPropertyMap(obj), plugin.MarshalOptions{}),
     }, nil
 }
 
@@ -167,7 +201,7 @@ func (p *APIKeyProvider) Delete(
 func (p *APIKeyProvider) Unmarshal(
     v *pbstruct.Struct) (*APIKey, resource.PropertyMap, error) {
     var obj APIKey
-    props := resource.UnmarshalProperties(nil, v, resource.MarshalOptions{RawResources: true})
+    props := plugin.UnmarshalProperties(nil, v, plugin.MarshalOptions{RawResources: true})
     return &obj, props, mapper.MapIU(props.Mappable(), &obj)
 }
 

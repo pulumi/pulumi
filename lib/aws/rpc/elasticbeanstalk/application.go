@@ -11,6 +11,7 @@ import (
     "golang.org/x/net/context"
 
     "github.com/pulumi/lumi/pkg/resource"
+    "github.com/pulumi/lumi/pkg/resource/plugin"
     "github.com/pulumi/lumi/pkg/tokens"
     "github.com/pulumi/lumi/pkg/util/contract"
     "github.com/pulumi/lumi/pkg/util/mapper"
@@ -24,7 +25,7 @@ const ApplicationToken = tokens.Type("aws:elasticbeanstalk/application:Applicati
 
 // ApplicationProviderOps is a pluggable interface for Application-related management functionality.
 type ApplicationProviderOps interface {
-    Check(ctx context.Context, obj *Application) ([]error, error)
+    Check(ctx context.Context, obj *Application, property string) error
     Create(ctx context.Context, obj *Application) (resource.ID, error)
     Get(ctx context.Context, id resource.ID) (*Application, error)
     InspectChange(ctx context.Context,
@@ -50,14 +51,35 @@ func (p *ApplicationProvider) Check(
     contract.Assert(req.GetType() == string(ApplicationToken))
     obj, _, err := p.Unmarshal(req.GetProperties())
     if err != nil {
-        return resource.NewCheckResponse(err), nil
+        return plugin.NewCheckResponse(err), nil
     }
-    if failures, err := p.ops.Check(ctx, obj); err != nil {
-        return nil, err
-    } else if len(failures) > 0 {
-        return resource.NewCheckResponse(resource.NewCheckError(failures)), nil
+    var failures []error
+    if failure := p.ops.Check(ctx, obj, ""); failure != nil {
+        failures = append(failures, failure)
     }
-    return resource.NewCheckResponse(nil), nil
+    unks := req.GetUnknowns()
+    if !unks["name"] {
+        if failure := p.ops.Check(ctx, obj, "name"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Application", "name", failure))
+        }
+    }
+    if !unks["applicationName"] {
+        if failure := p.ops.Check(ctx, obj, "applicationName"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Application", "applicationName", failure))
+        }
+    }
+    if !unks["description"] {
+        if failure := p.ops.Check(ctx, obj, "description"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Application", "description", failure))
+        }
+    }
+    if len(failures) > 0 {
+        return plugin.NewCheckResponse(resource.NewErrors(failures)), nil
+    }
+    return plugin.NewCheckResponse(nil), nil
 }
 
 func (p *ApplicationProvider) Name(
@@ -99,8 +121,8 @@ func (p *ApplicationProvider) Get(
         return nil, err
     }
     return &lumirpc.GetResponse{
-        Properties: resource.MarshalProperties(
-            nil, resource.NewPropertyMap(obj), resource.MarshalOptions{}),
+        Properties: plugin.MarshalProperties(
+            nil, resource.NewPropertyMap(obj), plugin.MarshalOptions{}),
     }, nil
 }
 
@@ -167,7 +189,7 @@ func (p *ApplicationProvider) Delete(
 func (p *ApplicationProvider) Unmarshal(
     v *pbstruct.Struct) (*Application, resource.PropertyMap, error) {
     var obj Application
-    props := resource.UnmarshalProperties(nil, v, resource.MarshalOptions{RawResources: true})
+    props := plugin.UnmarshalProperties(nil, v, plugin.MarshalOptions{RawResources: true})
     return &obj, props, mapper.MapIU(props.Mappable(), &obj)
 }
 

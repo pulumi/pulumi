@@ -1,17 +1,4 @@
-// Licensed to Pulumi Corporation ("Pulumi") under one or more
-// contributor license agreements.  See the NOTICE file distributed with
-// this work for additional information regarding copyright ownership.
-// Pulumi licenses this file to You under the Apache License, Version 2.0
-// (the "License"); you may not use this file except in compliance with
-// the License.  You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
 
 package mapper
 
@@ -212,7 +199,7 @@ func (md *mapper) adjustValueForAssignment(val reflect.Value,
 				// A custom decoder exists; use it to unmarshal the type.
 				target, err := decode(md, obj)
 				if err != nil {
-					return val, NewFieldError(ty, key, err)
+					return val, NewTypeFieldError(ty, key, err)
 				}
 				val = reflect.ValueOf(target)
 			} else if to.Kind() == reflect.Struct || (to.Kind() == reflect.Ptr && to.Elem().Kind() == reflect.Struct) {
@@ -224,11 +211,11 @@ func (md *mapper) adjustValueForAssignment(val reflect.Value,
 					target = reflect.New(to).Interface()
 				}
 				if err := md.Decode(obj, target); err != nil {
-					return val, NewFieldError(ty, key, err)
+					return val, NewTypeFieldError(ty, key, err)
 				}
 				val = reflect.ValueOf(target).Elem()
 			} else {
-				return val, NewFieldError(ty, key,
+				return val, NewTypeFieldError(ty, key,
 					errors.Errorf(
 						"Cannot decode Object{} to type %v; it isn't a struct, and no custom decoder exists", to))
 			}
@@ -238,7 +225,7 @@ func (md *mapper) adjustValueForAssignment(val reflect.Value,
 			if target.Type().Implements(textUnmarshalerType) {
 				um := target.Interface().(encoding.TextUnmarshaler)
 				if err := um.UnmarshalText([]byte(val.String())); err != nil {
-					return val, NewFieldError(ty, key, err)
+					return val, NewTypeFieldError(ty, key, err)
 				}
 				val = target.Elem()
 			} else {

@@ -1,17 +1,4 @@
-// Licensed to Pulumi Corporation ("Pulumi") under one or more
-// contributor license agreements.  See the NOTICE file distributed with
-// this work for additional information regarding copyright ownership.
-// Pulumi licenses this file to You under the Apache License, Version 2.0
-// (the "License"); you may not use this file except in compliance with
-// the License.  You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
 
 package main
 
@@ -26,10 +13,8 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/lumi/pkg/encoding"
-	"github.com/pulumi/lumi/pkg/resource"
 	"github.com/pulumi/lumi/pkg/tokens"
 	"github.com/pulumi/lumi/pkg/util/cmdutil"
-	"github.com/pulumi/lumi/pkg/util/contract"
 	"github.com/pulumi/lumi/pkg/workspace"
 )
 
@@ -45,10 +30,6 @@ func newEnvLsCmd() *cobra.Command {
 			if err != nil && !os.IsNotExist(err) {
 				return errors.Errorf("could not read environments: %v", err)
 			}
-
-			// Create a new context to share amongst all of the loads.
-			ctx := resource.NewContext(cmdutil.Sink(), nil)
-			defer ctx.Close()
 
 			fmt.Printf("%-20s %-48s %-12s\n", "NAME", "LAST DEPLOYMENT", "RESOURCE COUNT")
 			curr := getCurrentEnv()
@@ -67,22 +48,21 @@ func newEnvLsCmd() *cobra.Command {
 
 				// Read in this environment's information.
 				name := tokens.QName(envfn[:len(envfn)-len(ext)])
-				envfile, env, old := readEnv(ctx, name)
-				if env == nil {
-					contract.Assert(!ctx.Diag.Success())
+				target, snapshot, checkpoint := readEnv(name)
+				if checkpoint == nil {
 					continue // failure reading the environment information.
 				}
 
 				// Now print out the name, last deployment time (if any), and resources (if any).
 				lastDeploy := "n/a"
 				resourceCount := "n/a"
-				if envfile.Latest != nil {
-					lastDeploy = envfile.Latest.Time.String()
+				if checkpoint.Latest != nil {
+					lastDeploy = checkpoint.Latest.Time.String()
 				}
-				if old != nil {
-					resourceCount = strconv.Itoa(len(old.Resources()))
+				if snapshot != nil {
+					resourceCount = strconv.Itoa(len(snapshot.Resources))
 				}
-				display := env.Name
+				display := target.Name
 				if display == curr {
 					display += "*" // fancify the current environment.
 				}

@@ -1,17 +1,4 @@
-// Licensed to Pulumi Corporation ("Pulumi") under one or more
-// contributor license agreements.  See the NOTICE file distributed with
-// this work for additional information regarding copyright ownership.
-// Pulumi licenses this file to You under the Apache License, Version 2.0
-// (the "License"); you may not use this file except in compliance with
-// the License.  You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
 
 package binder
 
@@ -156,7 +143,7 @@ func (a *astBinder) isLValue(expr ast.Expression) bool {
 
 func (a *astBinder) checkImport(node *ast.Import) {
 	imptok := node.Referent
-	if !tokens.Token(imptok.Tok).HasModule() {
+	if !imptok.Tok.HasModule() {
 		a.b.Diag().Errorf(errors.ErrorMalformedToken.At(imptok),
 			"Module", imptok.Tok, "missing module part")
 	} else {
@@ -178,7 +165,7 @@ func (a *astBinder) checkBlock(node *ast.Block) {
 func (a *astBinder) checkBreakStatement(node *ast.BreakStatement) {
 	// If the break specifies a label, ensure that it exists.
 	if node.Label != nil {
-		label := tokens.Name(node.Label.Ident)
+		label := node.Label.Ident
 		if _, has := a.labels[label]; !has {
 			a.b.Diag().Errorf(errors.ErrorUnknownJumpLabel.At(node), label, "break")
 		}
@@ -188,7 +175,7 @@ func (a *astBinder) checkBreakStatement(node *ast.BreakStatement) {
 func (a *astBinder) checkContinueStatement(node *ast.ContinueStatement) {
 	// If the continue specifies a label, ensure that it exists.
 	if node.Label != nil {
-		label := tokens.Name(node.Label.Ident)
+		label := node.Label.Ident
 		if _, has := a.labels[label]; !has {
 			a.b.Diag().Errorf(errors.ErrorUnknownJumpLabel.At(node), label, "continue")
 		}
@@ -211,7 +198,7 @@ func (a *astBinder) visitLocalVariable(node *ast.LocalVariable) {
 
 func (a *astBinder) visitLabeledStatement(node *ast.LabeledStatement) {
 	// Ensure this label doesn't already exist and then register it.
-	label := tokens.Name(node.Label.Ident)
+	label := node.Label.Ident
 	if other, has := a.labels[label]; has {
 		a.b.Diag().Errorf(errors.ErrorDuplicateLabel.At(node), label, other)
 	}
@@ -264,7 +251,7 @@ func (a *astBinder) visitLambdaExpression(node *ast.LambdaExpression) {
 
 func (a *astBinder) checkExprType(expr ast.Expression, expect symbols.Type, alts ...symbols.Type) bool {
 	actual := a.b.ctx.RequireType(expr)
-	conv := false
+	var conv bool
 	if conv = types.CanConvert(actual, expect); !conv {
 		// If the primary didn't convert, check the alternatives.
 		for _, alt := range alts {

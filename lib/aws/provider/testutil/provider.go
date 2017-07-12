@@ -1,3 +1,5 @@
+// Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
+
 package testutil
 
 import (
@@ -5,7 +7,9 @@ import (
 	"testing"
 
 	structpb "github.com/golang/protobuf/ptypes/struct"
+	"github.com/pulumi/lumi/lib/aws/provider/awsctx"
 	"github.com/pulumi/lumi/pkg/resource"
+	"github.com/pulumi/lumi/pkg/resource/plugin"
 	"github.com/pulumi/lumi/pkg/tokens"
 	"github.com/pulumi/lumi/sdk/go/pkg/lumirpc"
 	"github.com/stretchr/testify/assert"
@@ -13,6 +17,7 @@ import (
 
 type Context interface {
 	GetResourceID(name string) resource.ID
+	GetOutputProps(name string) *structpb.Struct
 }
 
 type Resource struct {
@@ -33,13 +38,14 @@ type Step []ResourceGenerator
 // be created or updated as needed.  After walking through each step, all of the created resources are deleted.
 // Check operations are performed on all provided resource inputs during the test.
 // performs Check operations on each provided resource.
-func ProviderTest(t *testing.T, resources map[string]Resource, steps []Step) {
+func ProviderTest(t *testing.T, resources map[string]Resource, steps []Step) map[string]*structpb.Struct {
 
 	p := &providerTest{
 		resources:            resources,
 		namesInCreationOrder: []string{},
 		ids:                  map[string]resource.ID{},
 		props:                map[string]*structpb.Struct{},
+		outProps:             map[string]*structpb.Struct{},
 	}
 
 	// For each step, create or update all listed resources
@@ -52,20 +58,22 @@ func ProviderTest(t *testing.T, resources map[string]Resource, steps []Step) {
 			provider := currentResource.Provider
 			token := currentResource.Token
 			if id, ok := p.ids[res.Name]; !ok {
-				id, props := createResource(t, res.Creator(p), provider, token)
+				id, props, outProps := createResource(t, res.Creator(p), provider, token)
 				p.ids[res.Name] = resource.ID(id)
 				p.namesInCreationOrder = append(p.namesInCreationOrder, res.Name)
 				p.props[res.Name] = props
+				p.outProps[res.Name] = outProps
 				if id == "" {
-					t.Fatal("expected to succesfully create resource")
+					t.Fatal("expected to successfully create resource")
 				}
 			} else {
 				oldProps := p.props[res.Name]
-				ok, props := updateResource(t, string(id), oldProps, res.Creator(p), provider, token)
+				ok, props, outProps := updateResource(t, string(id), oldProps, res.Creator(p), provider, token)
 				if !ok {
-					t.Fatal("expected to succesfully update resource")
+					t.Fatal("expected to successfully update resource")
 				}
 				p.props[res.Name] = props
+				p.outProps[res.Name] = outProps
 			}
 		}
 	}
@@ -77,17 +85,19 @@ func ProviderTest(t *testing.T, resources map[string]Resource, steps []Step) {
 		token := resources[name].Token
 		ok := deleteResource(t, string(id), provider, token)
 		if !ok {
-			t.Fatal("expected to succesfully delete resource")
+			t.Fatal("expected to successfully delete resource")
 		}
 	}
+	return p.outProps
 }
 
-// ProviderTestSimple takes a resource provider and array of resource steps and performs a Create, as many Udpates
+// ProviderTestSimple takes a resource provider and array of resource steps and performs a Create, as many Updates
 // as neeed, and finally a Delete operation on a single resouce of the given type to walk the resource through the
 // resource lifecycle.  It also performs Check operations on each input state of the resource.
-func ProviderTestSimple(t *testing.T, provider lumirpc.ResourceProviderServer, token tokens.Type, steps []interface{}) {
+func ProviderTestSimple(t *testing.T, provider lumirpc.ResourceProviderServer, token tokens.Type,
+	steps []interface{}) *structpb.Struct {
 	resources := map[string]Resource{
-		"testResource": Resource{
+		"testResource": {
 			Provider: provider,
 			Token:    token,
 		},
@@ -104,7 +114,8 @@ func ProviderTestSimple(t *testing.T, provider lumirpc.ResourceProviderServer, t
 			},
 		})
 	}
-	ProviderTest(t, resources, detailedSteps)
+	outProps := ProviderTest(t, resources, detailedSteps)
+	return outProps["testResource"]
 }
 
 type providerTest struct {
@@ -112,6 +123,7 @@ type providerTest struct {
 	namesInCreationOrder []string
 	ids                  map[string]resource.ID
 	props                map[string]*structpb.Struct
+	outProps             map[string]*structpb.Struct
 }
 
 func (p *providerTest) GetResourceID(name string) resource.ID {
@@ -121,17 +133,25 @@ func (p *providerTest) GetResourceID(name string) resource.ID {
 	return resource.ID("")
 }
 
+func (p *providerTest) GetOutputProps(name string) *structpb.Struct {
+	if props, ok := p.outProps[name]; ok {
+		return props
+	}
+	return nil
+}
+
 var _ Context = &providerTest{}
 
-func createResource(t *testing.T, res interface{}, provider lumirpc.ResourceProviderServer, token tokens.Type) (string, *structpb.Struct) {
-	props := resource.MarshalProperties(nil, resource.NewPropertyMap(res), resource.MarshalOptions{})
+func createResource(t *testing.T, res interface{}, provider lumirpc.ResourceProviderServer,
+	token tokens.Type) (string, *structpb.Struct, *structpb.Struct) {
+	props := plugin.MarshalProperties(nil, resource.NewPropertyMap(res), plugin.MarshalOptions{})
 	fmt.Printf("[Provider Test]: Checking %v\n", token)
 	checkResp, err := provider.Check(nil, &lumirpc.CheckRequest{
 		Type:       string(token),
 		Properties: props,
 	})
 	if !assert.NoError(t, err, "expected no error checking table") {
-		return "", nil
+		return "", nil, nil
 	}
 	assert.Equal(t, 0, len(checkResp.Failures), "expected no check failures")
 	fmt.Printf("[Provider Test]: Creating %v\n", token)
@@ -140,10 +160,10 @@ func createResource(t *testing.T, res interface{}, provider lumirpc.ResourceProv
 		Properties: props,
 	})
 	if !assert.NoError(t, err, "expected no error creating resource") {
-		return "", nil
+		return "", nil, nil
 	}
 	if !assert.NotNil(t, resp, "expected a non-nil response") {
-		return "", nil
+		return "", nil, nil
 	}
 	id := resp.Id
 	fmt.Printf("[Provider Test]: Getting %v with id %v\n", token, id)
@@ -152,23 +172,24 @@ func createResource(t *testing.T, res interface{}, provider lumirpc.ResourceProv
 		Id:   id,
 	})
 	if !assert.NoError(t, err, "expected no error reading resource") {
-		return "", nil
+		return "", nil, nil
 	}
 	if !assert.NotNil(t, getResp, "expected a non-nil response reading the resources") {
-		return "", nil
+		return "", nil, nil
 	}
-	return id, props
+	return id, props, getResp.Properties
 }
 
-func updateResource(t *testing.T, id string, lastProps *structpb.Struct, res interface{}, provider lumirpc.ResourceProviderServer, token tokens.Type) (bool, *structpb.Struct) {
-	newProps := resource.MarshalProperties(nil, resource.NewPropertyMap(res), resource.MarshalOptions{})
+func updateResource(t *testing.T, id string, lastProps *structpb.Struct, res interface{},
+	provider lumirpc.ResourceProviderServer, token tokens.Type) (bool, *structpb.Struct, *structpb.Struct) {
+	newProps := plugin.MarshalProperties(nil, resource.NewPropertyMap(res), plugin.MarshalOptions{})
 	fmt.Printf("[Provider Test]: Checking %v\n", token)
 	checkResp, err := provider.Check(nil, &lumirpc.CheckRequest{
 		Type:       string(token),
 		Properties: newProps,
 	})
 	if !assert.NoError(t, err, "expected no error checking resource") {
-		return false, nil
+		return false, nil, nil
 	}
 	assert.Equal(t, 0, len(checkResp.Failures), "expected no check failures")
 	fmt.Printf("[Provider Test]: Updating %v with id %v\n", token, id)
@@ -179,9 +200,20 @@ func updateResource(t *testing.T, id string, lastProps *structpb.Struct, res int
 		News: newProps,
 	})
 	if !assert.NoError(t, err, "expected no error creating resource") {
-		return false, nil
+		return false, nil, nil
 	}
-	return true, newProps
+	fmt.Printf("[Provider Test]: Getting %v with id %v\n", token, id)
+	getResp, err := provider.Get(nil, &lumirpc.GetRequest{
+		Type: string(token),
+		Id:   id,
+	})
+	if !assert.NoError(t, err, "expected no error reading resource") {
+		return false, nil, nil
+	}
+	if !assert.NotNil(t, getResp, "expected a non-nil response reading the resources") {
+		return false, nil, nil
+	}
+	return true, newProps, getResp.Properties
 }
 
 func deleteResource(t *testing.T, id string, provider lumirpc.ResourceProviderServer, token tokens.Type) bool {
@@ -190,8 +222,18 @@ func deleteResource(t *testing.T, id string, provider lumirpc.ResourceProviderSe
 		Type: string(token),
 		Id:   id,
 	})
-	if !assert.NoError(t, err, "expected no error deleting resource") {
-		return false
+	return assert.NoError(t, err, "expected no error deleting resource")
+}
+
+// CreateContext creates an AWS Context object for executing tests, and skips the test if the context cannot be
+// created succefully, most likely because credentials are unavailable in the execution environment.
+func CreateContext(t *testing.T) *awsctx.Context {
+	if testing.Short() {
+		t.Skip("skipping long running AWS provider test - run tests without -short to test providers")
 	}
-	return true
+	ctx, err := awsctx.New(nil)
+	if err != nil {
+		t.Skipf("AWS context could not be acquired: %v", err)
+	}
+	return ctx
 }

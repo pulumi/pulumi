@@ -11,6 +11,7 @@ import (
     "golang.org/x/net/context"
 
     "github.com/pulumi/lumi/pkg/resource"
+    "github.com/pulumi/lumi/pkg/resource/plugin"
     "github.com/pulumi/lumi/pkg/tokens"
     "github.com/pulumi/lumi/pkg/util/contract"
     "github.com/pulumi/lumi/pkg/util/mapper"
@@ -26,7 +27,7 @@ const PermissionToken = tokens.Type("aws:lambda/permission:Permission")
 
 // PermissionProviderOps is a pluggable interface for Permission-related management functionality.
 type PermissionProviderOps interface {
-    Check(ctx context.Context, obj *Permission) ([]error, error)
+    Check(ctx context.Context, obj *Permission, property string) error
     Create(ctx context.Context, obj *Permission) (resource.ID, error)
     Get(ctx context.Context, id resource.ID) (*Permission, error)
     InspectChange(ctx context.Context,
@@ -52,14 +53,53 @@ func (p *PermissionProvider) Check(
     contract.Assert(req.GetType() == string(PermissionToken))
     obj, _, err := p.Unmarshal(req.GetProperties())
     if err != nil {
-        return resource.NewCheckResponse(err), nil
+        return plugin.NewCheckResponse(err), nil
     }
-    if failures, err := p.ops.Check(ctx, obj); err != nil {
-        return nil, err
-    } else if len(failures) > 0 {
-        return resource.NewCheckResponse(resource.NewCheckError(failures)), nil
+    var failures []error
+    if failure := p.ops.Check(ctx, obj, ""); failure != nil {
+        failures = append(failures, failure)
     }
-    return resource.NewCheckResponse(nil), nil
+    unks := req.GetUnknowns()
+    if !unks["name"] {
+        if failure := p.ops.Check(ctx, obj, "name"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Permission", "name", failure))
+        }
+    }
+    if !unks["action"] {
+        if failure := p.ops.Check(ctx, obj, "action"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Permission", "action", failure))
+        }
+    }
+    if !unks["function"] {
+        if failure := p.ops.Check(ctx, obj, "function"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Permission", "function", failure))
+        }
+    }
+    if !unks["principal"] {
+        if failure := p.ops.Check(ctx, obj, "principal"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Permission", "principal", failure))
+        }
+    }
+    if !unks["sourceAccount"] {
+        if failure := p.ops.Check(ctx, obj, "sourceAccount"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Permission", "sourceAccount", failure))
+        }
+    }
+    if !unks["sourceARN"] {
+        if failure := p.ops.Check(ctx, obj, "sourceARN"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Permission", "sourceARN", failure))
+        }
+    }
+    if len(failures) > 0 {
+        return plugin.NewCheckResponse(resource.NewErrors(failures)), nil
+    }
+    return plugin.NewCheckResponse(nil), nil
 }
 
 func (p *PermissionProvider) Name(
@@ -101,8 +141,8 @@ func (p *PermissionProvider) Get(
         return nil, err
     }
     return &lumirpc.GetResponse{
-        Properties: resource.MarshalProperties(
-            nil, resource.NewPropertyMap(obj), resource.MarshalOptions{}),
+        Properties: plugin.MarshalProperties(
+            nil, resource.NewPropertyMap(obj), plugin.MarshalOptions{}),
     }, nil
 }
 
@@ -181,7 +221,7 @@ func (p *PermissionProvider) Delete(
 func (p *PermissionProvider) Unmarshal(
     v *pbstruct.Struct) (*Permission, resource.PropertyMap, error) {
     var obj Permission
-    props := resource.UnmarshalProperties(nil, v, resource.MarshalOptions{RawResources: true})
+    props := plugin.UnmarshalProperties(nil, v, plugin.MarshalOptions{RawResources: true})
     return &obj, props, mapper.MapIU(props.Mappable(), &obj)
 }
 

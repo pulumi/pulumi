@@ -1,4 +1,4 @@
-// Copyright 2017 Pulumi, Inc. All rights reserved.
+// Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
 
 package apigateway
 
@@ -19,14 +19,16 @@ import (
 
 const DeploymentToken = apigateway.DeploymentToken
 
-// constants for the various deployment limits.
 const (
-	maxDeploymentName = 255
+	gatewayARNService     = "apigateway"
+	gatewayARNRestAPIs    = "restapis"
+	gatewayARNDeployments = "deployments"
 )
 
 // NewDeploymentID returns an AWS APIGateway Deployment ARN ID for the given restAPIID and deploymentID
 func NewDeploymentID(region, restAPIID, deploymentID string) resource.ID {
-	return arn.NewID("apigateway", region, "", "/restapis/"+restAPIID+"/deployments/"+deploymentID)
+	return arn.NewID(gatewayARNService, region, "",
+		fmt.Sprintf("/%v/%v/%v/%v", gatewayARNRestAPIs, restAPIID, gatewayARNDeployments, deploymentID))
 }
 
 // ParseDeploymentID parses an AWS APIGateway Deployment ARN ID to extract the restAPIID and deploymentID
@@ -36,9 +38,11 @@ func ParseDeploymentID(id resource.ID) (string, string, error) {
 		return "", "", err
 	}
 	parts := strings.Split(res, "/")
-	if len(parts) != 4 || parts[0] != "restapis" || parts[2] != "deployments" {
+	if len(parts) != 4 || parts[0] != gatewayARNRestAPIs || parts[2] != gatewayARNDeployments {
 		return "", "", fmt.Errorf("expected Deployment ARN of the form %v: %v",
-			"arn:aws:apigateway:region::/restapis/api-id/deployments/deployment-id", id)
+			fmt.Sprintf("arn:aws:%v:region::/%v/<api-id>/%v/<deployment-id>",
+				gatewayARNService, gatewayARNRestAPIs, gatewayARNDeployments),
+			id)
 	}
 	return parts[1], parts[3], nil
 }
@@ -54,8 +58,8 @@ type deploymentProvider struct {
 }
 
 // Check validates that the given property bag is valid for a resource of the given type.
-func (p *deploymentProvider) Check(ctx context.Context, obj *apigateway.Deployment) ([]error, error) {
-	return nil, nil
+func (p *deploymentProvider) Check(ctx context.Context, obj *apigateway.Deployment, property string) error {
+	return nil
 }
 
 // Create allocates a new instance of the provided resource and returns its unique ID afterwards.  (The input ID
@@ -141,12 +145,9 @@ func (p *deploymentProvider) Delete(ctx context.Context, id resource.ID) error {
 	if err != nil {
 		return err
 	}
-	_, err = p.ctx.APIGateway().DeleteDeployment(&awsapigateway.DeleteDeploymentInput{
+	_, delerr := p.ctx.APIGateway().DeleteDeployment(&awsapigateway.DeleteDeploymentInput{
 		RestApiId:    aws.String(restAPIID),
 		DeploymentId: aws.String(deploymentID),
 	})
-	if err != nil {
-		return err
-	}
-	return nil
+	return delerr
 }

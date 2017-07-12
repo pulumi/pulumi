@@ -1,0 +1,26 @@
+{
+    "Deadline": "5m",
+    "DisableAll": true,
+    "Enable": [
+        "aligncheck",
+        "deadcode",
+        "errcheck",
+        "gas",
+        "goconst",
+        "gofmt",
+        "golint",
+        "gosimple",
+        "ineffassign",
+        "interfacer",
+        "lll",
+        "misspell",
+        "staticcheck",
+        "structcheck",
+        "unconvert",
+        "varcheck",
+        "vet",
+        "vetshadow"
+    ],
+    "LineLength": 120
+}
+

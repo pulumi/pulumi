@@ -1,3 +1,5 @@
+// Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
+
 // This is a simple test case that exports a class with a number of interesting facets: namely, a constructor, some
 // member variables, and some member methods.
 

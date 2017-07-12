@@ -1,3 +1,5 @@
+// Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
+
 // This tests intra-module type references.  They should be emitted with a fully resolved module name, even though the
 // referenced type isn't exported.
 

@@ -1,17 +1,4 @@
-// Licensed to Pulumi Corporation ("Pulumi") under one or more
-// contributor license agreements.  See the NOTICE file distributed with
-// this work for additional information regarding copyright ownership.
-// Pulumi licenses this file to You under the Apache License, Version 2.0
-// (the "License"); you may not use this file except in compliance with
-// the License.  You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
 
 syntax = "proto3";
 
@@ -22,14 +9,14 @@ package lumirpc;
 // Analyzer is a pluggable service that checks entire projects/stacks/snapshots, and/or individual resources,
 // for arbitrary issues.  These might be style, policy, correctness, security, or performance related.
 service Analyzer {
-    // Analyze analyzes an entire project/stack/snapshot, and returns any errors that it finds.
+    // Analyze analyzes a single resource object, and returns any errors that it finds.
     rpc Analyze(AnalyzeRequest) returns (AnalyzeResponse) {}
-    // AnalyzeResource analyzes a single resource object, and returns any errors that it finds.
-    rpc AnalyzeResource(AnalyzeResourceRequest) returns (AnalyzeResourceResponse) {}
 }
 
 message AnalyzeRequest {
-    string pkg = 1; // the fully resolved package URL being deployed.
+    string type = 1;                       // the type token of the resource.
+    google.protobuf.Struct properties = 2; // the full properties to use for validation.
+    map<string, bool> unknowns = 3;        // the optional set of properties whose values are unknown.
 }
 
 message AnalyzeResponse {
@@ -37,20 +24,6 @@ message AnalyzeResponse {
 }
 
 message AnalyzeFailure {
-    string reason = 1; // the reason that the analyzer rejected the request.
-}
-
-message AnalyzeResourceRequest {
-    string type = 1;                       // the type token of the resource.
-    google.protobuf.Struct properties = 2; // the full properties to use for validation.
-    map<string, bool> unknowns = 3;        // the optional set of properties whose values are unknown.
-}
-
-message AnalyzeResourceResponse {
-    repeated AnalyzeResourceFailure failures = 1; // the failures (or empty if none).
-}
-
-message AnalyzeResourceFailure {
     string property = 1; // the property that the analyzer rejected (or "" if general).
     string reason = 2;   // the reason that the analyzer rejected the request.
 }

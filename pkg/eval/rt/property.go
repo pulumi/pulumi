@@ -1,17 +1,4 @@
-// Licensed to Pulumi Corporation ("Pulumi") under one or more
-// contributor license agreements.  See the NOTICE file distributed with
-// this work for additional information regarding copyright ownership.
-// Pulumi licenses this file to You under the Apache License, Version 2.0
-// (the "License"); you may not use this file except in compliance with
-// the License.  You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
 
 package rt
 
@@ -34,6 +21,11 @@ func NewPropertyMap() *PropertyMap {
 	}
 }
 
+// Len returns the length of the property map.
+func (props *PropertyMap) Len() int {
+	return len(props.m)
+}
+
 // Stable returns the keys for the target map in a stable order.
 func (props *PropertyMap) Stable() []PropertyKey {
 	return props.chrono // chronological order is already stable, so just return that.
@@ -47,8 +39,7 @@ func (props *PropertyMap) Has(key PropertyKey) bool {
 
 // GetAddr returns a reference to a map's property.  If no entry is found, the return value is nil.
 func (props *PropertyMap) GetAddr(key PropertyKey) *Pointer {
-	ptr, _ := props.m[key]
-	return ptr
+	return props.m[key]
 }
 
 // Get returns a map's property valye.  If no entry is found, the return value is nil.
@@ -92,7 +83,7 @@ func (props *PropertyMap) InitAddr(key PropertyKey, obj *Object,
 
 	// If no object was provided, initialize the slot to null.
 	if obj == nil {
-		obj = NewNullObject()
+		obj = Null
 	}
 
 	ptr := NewPointer(obj, readonly, get, set)

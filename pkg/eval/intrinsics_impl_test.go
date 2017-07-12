@@ -1,36 +1,31 @@
-// Licensed to Pulumi Corporation ("Pulumi") under one or more
-// contributor license agreements.  See the NOTICE file distributed with
-// this work for additional information regarding copyright ownership.
-// Pulumi licenses this file to You under the Apache License, Version 2.0
-// (the "License"); you may not use this file except in compliance with
-// the License.  You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
 
 package eval
 
 import (
+	"fmt"
 	"os"
 	"testing"
-
-	"github.com/stretchr/testify/assert"
 
 	"github.com/pulumi/lumi/pkg/compiler/ast"
 	"github.com/pulumi/lumi/pkg/compiler/binder"
 	"github.com/pulumi/lumi/pkg/compiler/core"
 	"github.com/pulumi/lumi/pkg/compiler/metadata"
 	"github.com/pulumi/lumi/pkg/compiler/types"
+	"github.com/pulumi/lumi/pkg/eval/rt"
 	"github.com/pulumi/lumi/pkg/pack"
 	"github.com/pulumi/lumi/pkg/tokens"
 	"github.com/pulumi/lumi/pkg/util/contract"
 	"github.com/pulumi/lumi/pkg/workspace"
+	"github.com/stretchr/testify/assert"
 )
+
+// intrin carries the qualified name and signature for an intrinsic function
+type intrin struct {
+	moduleMember tokens.ModuleMember
+	paramTypes   []tokens.Type
+	returnType   tokens.Type
+}
 
 // newTestEval makes an interpreter that can be used for testing purposes.
 func newTestEval() (binder.Binder, Interpreter) {
@@ -44,75 +39,79 @@ func newTestEval() (binder.Binder, Interpreter) {
 	return b, New(b.Ctx(), nil)
 }
 
-var isFunctionIntrin = tokens.ModuleMember("lumi:runtime/index:isFunction")
+func makeFakeIntrinsicDefinition(intrin intrin) *ast.Module {
+	moduleMemberName := intrin.moduleMember.Name()
+	moduleName := tokens.Name(intrin.moduleMember.Module().Name())
+	functionName := tokens.Name(intrin.moduleMember.Name())
+	intrinToken := tokens.Token(intrin.moduleMember)
 
-func makeIsFunctionExprAST(dynamic bool) ast.Expression {
-	if dynamic {
-		var loadLumiMod ast.Expression = &ast.LoadDynamicExpression{
-			Name: &ast.StringLiteral{
-				Value: isFunctionIntrin.Module().Name().String(),
+	var params []*ast.LocalVariable
+	for i, pty := range intrin.paramTypes {
+		params = append(params, &ast.LocalVariable{
+			DefinitionNode: ast.DefinitionNode{
+				Name: &ast.Identifier{
+					Ident: tokens.Name(fmt.Sprintf("x%d", i)),
+				},
 			},
-		}
-		return &ast.LoadDynamicExpression{
-			Object: &loadLumiMod,
-			Name: &ast.StringLiteral{
-				Value: isFunctionIntrin.Name().String(),
-			},
-		}
-	}
-	return &ast.LoadLocationExpression{
-		Name: &ast.Token{
-			Tok: tokens.Token(isFunctionIntrin),
-		},
-	}
-}
-
-func makeTestIsFunctionAST(dynamic bool, realFunc bool) *pack.Package {
-	// Make the function body.
-	var body []ast.Statement
-
-	// If an intrinsic, we need to import the module so that it's available dynamically through a name.
-	if dynamic {
-		body = append(body, &ast.Import{
-			Referent: &ast.Token{
-				Tok: tokens.Token(isFunctionIntrin.Module()),
-			},
-			Name: &ast.Identifier{
-				Ident: tokens.Name(isFunctionIntrin.Module().Name().String()),
+			VariableNode: ast.VariableNode{
+				Type: &ast.TypeToken{
+					Tok: pty,
+				},
 			},
 		})
 	}
 
-	var invokeArg *ast.CallArgument
-	if realFunc {
-		// for real functions, just pass the isFunction function object itself.
-		loadFuncExpr := makeIsFunctionExprAST(dynamic)
-		invokeArg = &ast.CallArgument{
-			Expr: loadFuncExpr,
-		}
-	} else {
-		// for others, just pass a null literal.
-		invokeArg = &ast.CallArgument{
-			Expr: &ast.NullLiteral{},
-		}
-	}
-
-	loadFuncExpr := makeIsFunctionExprAST(dynamic)
-	var invokeExpr ast.Expression = &ast.InvokeFunctionExpression{
-		CallExpressionNode: ast.CallExpressionNode{
-			Arguments: &[]*ast.CallArgument{invokeArg},
+	return &ast.Module{
+		DefinitionNode: ast.DefinitionNode{
+			Name: &ast.Identifier{
+				Ident: moduleName,
+			},
 		},
-		Function: loadFuncExpr,
+		Exports: &ast.ModuleExports{
+			moduleMemberName: &ast.Export{
+				DefinitionNode: ast.DefinitionNode{
+					Name: &ast.Identifier{
+						Ident: functionName,
+					},
+				},
+				Referent: &ast.Token{
+					Tok: intrinToken,
+				},
+			},
+		},
+		Members: &ast.ModuleMembers{
+			moduleMemberName: &ast.ModuleMethod{
+				FunctionNode: ast.FunctionNode{
+					Parameters: &params,
+					ReturnType: &ast.TypeToken{
+						Tok: intrin.returnType,
+					},
+					Body: &ast.Block{
+						Statements: []ast.Statement{
+							&ast.ThrowStatement{
+								Expression: &ast.StringLiteral{
+									Value: "unreachable",
+								},
+							},
+						},
+					},
+				},
+				ModuleMemberNode: ast.ModuleMemberNode{
+					DefinitionNode: ast.DefinitionNode{
+						Name: &ast.Identifier{
+							Ident: functionName,
+						},
+					},
+				},
+			},
+		},
 	}
-	body = append(body, &ast.ReturnStatement{
-		Expression: &invokeExpr,
-	})
+}
 
-	// Now return a package with a default module and single entrypoint main function.  Note that we must call this
-	// package "lumi" and indeed have a fake implementation of the very isFunction intrinsic we are testing, to avoid
-	// depending on the Lumi standard library as an external package; this ensures tests are self-contained.
+// makeTestPackage creates a Lumi package for testing a series of statements to be invoked
+func makeTestPackage(body []ast.Statement, fakeIntrinsicDefinition *ast.Module) *pack.Package {
 	return &pack.Package{
-		Name: "lumi",
+		Name: "lumirt",
 		Modules: &ast.Modules{
 			tokens.ModuleName(".default"): &ast.Module{
 				DefinitionNode: ast.DefinitionNode{
@@ -124,7 +123,7 @@ func makeTestIsFunctionAST(dynamic bool, realFunc bool) *pack.Package {
 					tokens.ModuleMemberName(".main"): &ast.ModuleMethod{
 						FunctionNode: ast.FunctionNode{
 							ReturnType: &ast.TypeToken{
-								Tok: types.Bool.TypeToken(),
+								Tok: types.Dynamic.TypeToken(),
 							},
 							Body: &ast.Block{
 								Statements: body,
@@ -140,120 +139,156 @@ func makeTestIsFunctionAST(dynamic bool, realFunc bool) *pack.Package {
 					},
 				},
 			},
-			tokens.ModuleName("runtime/index"): &ast.Module{
-				DefinitionNode: ast.DefinitionNode{
-					Name: &ast.Identifier{
-						Ident: tokens.Name("runtime/index"),
-					},
-				},
-				Exports: &ast.ModuleExports{
-					tokens.ModuleMemberName("isFunction"): &ast.Export{
-						DefinitionNode: ast.DefinitionNode{
-							Name: &ast.Identifier{
-								Ident: tokens.Name("isFunction"),
-							},
-						},
-						Referent: &ast.Token{
-							Tok: tokens.Token("lumi:runtime/index:isFunction"),
-						},
-					},
-				},
-				Members: &ast.ModuleMembers{
-					tokens.ModuleMemberName("isFunction"): &ast.ModuleMethod{
-						FunctionNode: ast.FunctionNode{
-							Parameters: &[]*ast.LocalVariable{
-								{
-									DefinitionNode: ast.DefinitionNode{
-										Name: &ast.Identifier{
-											Ident: tokens.Name("isFunction"),
-										},
-									},
-									VariableNode: ast.VariableNode{
-										Type: &ast.TypeToken{
-											Tok: types.Object.TypeToken(),
-										},
-									},
-								},
-							},
-							ReturnType: &ast.TypeToken{
-								Tok: types.Bool.TypeToken(),
-							},
-							Body: &ast.Block{
-								Statements: []ast.Statement{
-									&ast.ReturnStatement{
-										Expression: ast.OptExpression(
-											&ast.BoolLiteral{
-												Value: false,
-											},
-										),
-									},
-								},
-							},
-						},
-						ModuleMemberNode: ast.ModuleMemberNode{
-							DefinitionNode: ast.DefinitionNode{
-								Name: &ast.Identifier{
-									Ident: tokens.Name("isFunction"),
-								},
-							},
-						},
-					},
-				},
-			},
+			tokens.ModuleName("index"): fakeIntrinsicDefinition,
 		},
 	}
 }
 
-// TestIsFunction verifies the `lumi:runtime/index:isFunction` intrinsic.
-func TestIsFunction(t *testing.T) {
+// makeInvokeIntrinsicAST creates the AST for invoking a requested intrinsic, potentially dynamically, with a
+// provided argument list.  It returns the statements to invoke.
+func makeInvokeIntrinsicAST(intrin tokens.ModuleMember, dynamic bool, args []ast.Expression) []ast.Statement {
+	var loadFuncExpr ast.Expression
+	if dynamic {
+		var loadLumiMod ast.Expression = &ast.LoadDynamicExpression{
+			Name: &ast.StringLiteral{
+				Value: intrin.Module().Name().String(),
+			},
+		}
+		loadFuncExpr = &ast.LoadDynamicExpression{
+			Object: &loadLumiMod,
+			Name: &ast.StringLiteral{
+				Value: intrin.Name().String(),
+			},
+		}
+	} else {
+		loadFuncExpr = &ast.LoadLocationExpression{
+			Name: &ast.Token{
+				Tok: tokens.Token(intrin),
+			},
+		}
+	}
+	var arguments []*ast.CallArgument
+	for _, arg := range args {
+		arguments = append(arguments, &ast.CallArgument{Expr: arg})
+	}
+
+	var invokeExpr ast.Expression = &ast.InvokeFunctionExpression{
+		CallExpressionNode: ast.CallExpressionNode{
+			Arguments: &arguments,
+		},
+		Function: loadFuncExpr,
+	}
+
+	return []ast.Statement{
+		&ast.Import{
+			Referent: &ast.Token{
+				Tok: tokens.Token(intrin.Module()),
+			},
+			Name: &ast.Identifier{
+				Ident: tokens.Name(intrin.Module().Name().String()),
+			},
+		},
+		&ast.ReturnStatement{
+			Expression: &invokeExpr,
+		},
+	}
+}
+
+// invokeIntrinsic creates an AST for calling the intrinsic with the provided arguments and evaluates that AST in a
+// fresh evaluator.  It returns the resulting object and unwind, as well as the binder used during evaluation.  If the
+// dynamic flag is true, the function is loaded dynamically, else it is loaded statically through a reference to the
+// intrinsic symbol.
+func invokeIntrinsic(intrin intrin, dynamic bool, args []ast.Expression) (binder.Binder,
+	*rt.Object, *rt.Unwind) {
+	b, e := newTestEval()
+	body := makeInvokeIntrinsicAST(intrin.moduleMember, dynamic, args)
+	fakeIntrinsicDefinitionModule := makeFakeIntrinsicDefinition(intrin)
+	pack := makeTestPackage(body, fakeIntrinsicDefinitionModule)
+	sym := b.BindPackage(pack)
+	ret, uw := e.EvaluatePackage(sym, nil)
+	return b, ret, uw
+}
+
+// TestIsFunction verifies the `lumirt:index:isFunction` intrinsic.
+func Test_IsFunction(t *testing.T) {
 	t.Parallel()
+
+	isFunctionIntrin := intrin{
+		moduleMember: tokens.ModuleMember("lumirt:index:isFunction"),
+		paramTypes:   []tokens.Type{types.Object.TypeToken()},
+		returnType:   types.Bool.TypeToken(),
+	}
+	aFunction := &ast.LoadLocationExpression{
+		Name: &ast.Token{
+			Tok: tokens.Token(isFunctionIntrin.moduleMember),
+		},
+	}
+	notAFunction := &ast.NullLiteral{}
 
 	// variant #1: invoke the function statically, passing a null literal; expect a false return.
 	{
-		b, e := newTestEval()
-		pack := makeTestIsFunctionAST(false, false)
-		sym := b.BindPackage(pack)
-		ret, uw := e.EvaluatePackage(sym, nil)
+		b, ret, uw := invokeIntrinsic(isFunctionIntrin, false, []ast.Expression{notAFunction})
 		assert.True(t, b.Diag().Success(), "Expected a successful evaluation")
 		assert.Nil(t, uw, "Did not expect a out-of-the-ordinary unwind to occur (expected a return)")
 		assert.NotNil(t, ret, "Expected a non-nil return value")
-		assert.True(t, ret.IsBool(), "Expected a bool return value; got %v", ret.Type())
-		assert.Equal(t, ret.BoolValue(), false, "Expected a return value of false; got %v", ret.BoolValue())
+		assert.True(t, ret.IsBool(), "Unexpected return type: %v", ret.Type())
+		val := ret.BoolValue()
+		assert.Equal(t, false, val, "Unexpected return value: %v", val)
 	}
 	// variant #2: invoke the function dynamically, passing a null literal; expect a false return.
 	{
-		b, e := newTestEval()
-		pack := makeTestIsFunctionAST(true, false)
-		sym := b.BindPackage(pack)
-		ret, uw := e.EvaluatePackage(sym, nil)
+		b, ret, uw := invokeIntrinsic(isFunctionIntrin, true, []ast.Expression{notAFunction})
 		assert.True(t, b.Diag().Success(), "Expected a successful evaluation")
 		assert.Nil(t, uw, "Did not expect a out-of-the-ordinary unwind to occur (expected a return)")
 		assert.NotNil(t, ret, "Expected a non-nil return value")
-		assert.True(t, ret.IsBool(), "Expected a bool return value; got %v", ret.Type())
-		assert.Equal(t, ret.BoolValue(), false, "Expected a return value of false; got %v", ret.BoolValue())
+		assert.True(t, ret.IsBool(), "Unexpected return type: %v", ret.Type())
+		val := ret.BoolValue()
+		assert.Equal(t, false, val, "Unexpected return value: %v", val)
 	}
 	// variant #3: invoke the function statically, passing a real function; expect a true return.
 	{
-		b, e := newTestEval()
-		pack := makeTestIsFunctionAST(false, true)
-		sym := b.BindPackage(pack)
-		ret, uw := e.EvaluatePackage(sym, nil)
+		b, ret, uw := invokeIntrinsic(isFunctionIntrin, false, []ast.Expression{aFunction})
 		assert.True(t, b.Diag().Success(), "Expected a successful evaluation")
 		assert.Nil(t, uw, "Did not expect a out-of-the-ordinary unwind to occur (expected a return)")
 		assert.NotNil(t, ret, "Expected a non-nil return value")
-		assert.True(t, ret.IsBool(), "Expected a bool return value; got %v", ret.Type())
-		assert.Equal(t, ret.BoolValue(), true, "Expected a return value of true; got %v", ret.BoolValue())
+		assert.True(t, ret.IsBool(), "Unexpected return type: %v", ret.Type())
+		val := ret.BoolValue()
+		assert.Equal(t, true, val, "Unexpected return value: %v", val)
 	}
 	// variant #4: invoke the function dynamically, passing a real function; expect a true return.
 	{
-		b, e := newTestEval()
-		pack := makeTestIsFunctionAST(true, true)
-		sym := b.BindPackage(pack)
-		ret, uw := e.EvaluatePackage(sym, nil)
+		b, ret, uw := invokeIntrinsic(isFunctionIntrin, true, []ast.Expression{aFunction})
 		assert.True(t, b.Diag().Success(), "Expected a successful evaluation")
 		assert.Nil(t, uw, "Did not expect a out-of-the-ordinary unwind to occur (expected a return)")
 		assert.NotNil(t, ret, "Expected a non-nil return value")
-		assert.True(t, ret.IsBool(), "Expected a bool return value; got %v", ret.Type())
-		assert.Equal(t, ret.BoolValue(), true, "Expected a return value of true; got %v", ret.BoolValue())
+		assert.True(t, ret.IsBool(), "Unexpected return type: %v", ret.Type())
+		val := ret.BoolValue()
+		assert.Equal(t, true, val, "Unexpected return value: %v", val)
+	}
+}
+
+func Test_JsonStringify(t *testing.T) {
+	t.Parallel()
+
+	jsonStringifyIntrin := intrin{
+		moduleMember: tokens.ModuleMember("lumirt:index:jsonStringify"),
+		paramTypes:   []tokens.Type{types.Object.TypeToken()},
+		returnType:   types.String.TypeToken(),
+	}
+
+	{
+		//jsonStringify(`a
+		//b"`)
+		obj := &ast.StringLiteral{
+			Value: `a
+b"`,
+		}
+		b, ret, uw := invokeIntrinsic(jsonStringifyIntrin, true, []ast.Expression{obj})
+		assert.True(t, b.Diag().Success(), "Expected a successful evaluation")
+		assert.Nil(t, uw, "Did not expect a out-of-the-ordinary unwind to occur (expected a return)")
+		assert.NotNil(t, ret, "Expected a non-nil return value")
+		assert.True(t, ret.IsString(), "Unexpected return type: %v", ret.Type())
+		val := ret.StringValue()
+		assert.Equal(t, "\"a\\nb\\\"\"", val, "Unexpected return value: %v", val)
 	}
 }

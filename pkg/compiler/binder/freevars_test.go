@@ -1,17 +1,4 @@
-// Licensed to Pulumi Corporation ("Pulumi") under one or more
-// contributor license agreements.  See the NOTICE file distributed with
-// this work for additional information regarding copyright ownership.
-// Pulumi licenses this file to You under the Apache License, Version 2.0
-// (the "License"); you may not use this file except in compliance with
-// the License.  You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
 
 package binder
 
@@ -124,6 +111,52 @@ func TestFreeVars_LocalVariable(t *testing.T) {
 	assert.Equal(t, tokens.Name("baz"), freeVars[0].Name())
 }
 
+func TestFreeVars_LocalVariable_2(t *testing.T) {
+	// function(foo) { {var bar;} foo; bar; baz; }
+	fun := ast.ModuleMethod{
+		FunctionNode: ast.FunctionNode{
+			Parameters: &[]*ast.LocalVariable{
+				makeLocalVariable("foo"),
+			},
+			Body: &ast.Block{
+				Statements: []ast.Statement{
+					&ast.MultiStatement{
+						Statements: []ast.Statement{
+							&ast.LocalVariableDeclaration{
+								Local: makeLocalVariable("bar"),
+							},
+						},
+					},
+					&ast.ExpressionStatement{
+						Expression: &ast.LoadLocationExpression{
+							Name: &ast.Token{
+								Tok: tokens.Token("foo"),
+							},
+						},
+					},
+					&ast.ExpressionStatement{
+						Expression: &ast.LoadLocationExpression{
+							Name: &ast.Token{
+								Tok: tokens.Token("bar"),
+							},
+						},
+					},
+					&ast.ExpressionStatement{
+						Expression: &ast.TryLoadDynamicExpression{
+							Name: &ast.StringLiteral{
+								Value: "baz",
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+	freeVars := FreeVars(&fun)
+	assert.Len(t, freeVars, 1, "expected one free variable")
+	assert.Equal(t, tokens.Name("baz"), freeVars[0].Name())
+}
+
 func TestFreeVars_Member(t *testing.T) {
 	// function(foo) foo.bar
 	fun := ast.ModuleMethod{
@@ -174,7 +207,7 @@ func TestFreeVars_Lambda(t *testing.T) {
 					},
 					CallExpressionNode: ast.CallExpressionNode{
 						Arguments: &[]*ast.CallArgument{
-							&ast.CallArgument{
+							{
 								Expr: &ast.LoadLocationExpression{
 									Name: &ast.Token{
 										Tok: tokens.Token("foo"),

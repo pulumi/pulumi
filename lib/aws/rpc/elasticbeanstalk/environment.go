@@ -11,6 +11,7 @@ import (
     "golang.org/x/net/context"
 
     "github.com/pulumi/lumi/pkg/resource"
+    "github.com/pulumi/lumi/pkg/resource/plugin"
     "github.com/pulumi/lumi/pkg/tokens"
     "github.com/pulumi/lumi/pkg/util/contract"
     "github.com/pulumi/lumi/pkg/util/mapper"
@@ -24,7 +25,7 @@ const EnvironmentToken = tokens.Type("aws:elasticbeanstalk/environment:Environme
 
 // EnvironmentProviderOps is a pluggable interface for Environment-related management functionality.
 type EnvironmentProviderOps interface {
-    Check(ctx context.Context, obj *Environment) ([]error, error)
+    Check(ctx context.Context, obj *Environment, property string) error
     Create(ctx context.Context, obj *Environment) (resource.ID, error)
     Get(ctx context.Context, id resource.ID) (*Environment, error)
     InspectChange(ctx context.Context,
@@ -50,14 +51,83 @@ func (p *EnvironmentProvider) Check(
     contract.Assert(req.GetType() == string(EnvironmentToken))
     obj, _, err := p.Unmarshal(req.GetProperties())
     if err != nil {
-        return resource.NewCheckResponse(err), nil
+        return plugin.NewCheckResponse(err), nil
     }
-    if failures, err := p.ops.Check(ctx, obj); err != nil {
-        return nil, err
-    } else if len(failures) > 0 {
-        return resource.NewCheckResponse(resource.NewCheckError(failures)), nil
+    var failures []error
+    if failure := p.ops.Check(ctx, obj, ""); failure != nil {
+        failures = append(failures, failure)
     }
-    return resource.NewCheckResponse(nil), nil
+    unks := req.GetUnknowns()
+    if !unks["name"] {
+        if failure := p.ops.Check(ctx, obj, "name"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Environment", "name", failure))
+        }
+    }
+    if !unks["application"] {
+        if failure := p.ops.Check(ctx, obj, "application"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Environment", "application", failure))
+        }
+    }
+    if !unks["cnamePrefix"] {
+        if failure := p.ops.Check(ctx, obj, "cnamePrefix"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Environment", "cnamePrefix", failure))
+        }
+    }
+    if !unks["description"] {
+        if failure := p.ops.Check(ctx, obj, "description"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Environment", "description", failure))
+        }
+    }
+    if !unks["environmentName"] {
+        if failure := p.ops.Check(ctx, obj, "environmentName"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Environment", "environmentName", failure))
+        }
+    }
+    if !unks["optionSettings"] {
+        if failure := p.ops.Check(ctx, obj, "optionSettings"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Environment", "optionSettings", failure))
+        }
+    }
+    if !unks["solutionStackName"] {
+        if failure := p.ops.Check(ctx, obj, "solutionStackName"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Environment", "solutionStackName", failure))
+        }
+    }
+    if !unks["tags"] {
+        if failure := p.ops.Check(ctx, obj, "tags"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Environment", "tags", failure))
+        }
+    }
+    if !unks["templateName"] {
+        if failure := p.ops.Check(ctx, obj, "templateName"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Environment", "templateName", failure))
+        }
+    }
+    if !unks["tier"] {
+        if failure := p.ops.Check(ctx, obj, "tier"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Environment", "tier", failure))
+        }
+    }
+    if !unks["version"] {
+        if failure := p.ops.Check(ctx, obj, "version"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Environment", "version", failure))
+        }
+    }
+    if len(failures) > 0 {
+        return plugin.NewCheckResponse(resource.NewErrors(failures)), nil
+    }
+    return plugin.NewCheckResponse(nil), nil
 }
 
 func (p *EnvironmentProvider) Name(
@@ -99,8 +169,8 @@ func (p *EnvironmentProvider) Get(
         return nil, err
     }
     return &lumirpc.GetResponse{
-        Properties: resource.MarshalProperties(
-            nil, resource.NewPropertyMap(obj), resource.MarshalOptions{}),
+        Properties: plugin.MarshalProperties(
+            nil, resource.NewPropertyMap(obj), plugin.MarshalOptions{}),
     }, nil
 }
 
@@ -182,7 +252,7 @@ func (p *EnvironmentProvider) Delete(
 func (p *EnvironmentProvider) Unmarshal(
     v *pbstruct.Struct) (*Environment, resource.PropertyMap, error) {
     var obj Environment
-    props := resource.UnmarshalProperties(nil, v, resource.MarshalOptions{RawResources: true})
+    props := plugin.UnmarshalProperties(nil, v, plugin.MarshalOptions{RawResources: true})
     return &obj, props, mapper.MapIU(props.Mappable(), &obj)
 }
 

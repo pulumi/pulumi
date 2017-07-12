@@ -1,4 +1,4 @@
-// Copyright 2017 Pulumi. All rights reserved.
+// Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
 
 "use strict";
 
@@ -353,9 +353,12 @@ export class Transformer {
     // globals returns the TypeScript globals symbol table.
     private globals(flags: ts.SymbolFlags): Map<string, ts.Symbol> {
         // TODO[pulumi/lumi#52]: we abuse getSymbolsInScope to access the global symbol table, because TypeScript
-        //     doesn't expose it.  It is conceivable that the undefined 1st parameter will cause troubles some day.
+        //     doesn't expose it.
+        contract.assert(!!this.script.tree);
+        let libdts = this.script.tree!.getSourceFiles()[0];
+        contract.assert(!!libdts && libdts.isDeclarationFile && libdts.hasNoDefaultLib);
         let globals = new Map<string, ts.Symbol>();
-        for (let sym of this.checker().getSymbolsInScope(<ts.Node><any>undefined, flags)) {
+        for (let sym of this.checker().getSymbolsInScope(libdts, flags)) {
             globals.set(sym.name, sym);
         }
         return globals;
@@ -1791,27 +1794,31 @@ export class Transformer {
                 };
             }
 
-            // Locate the constructor, possibly creating a new one if necessary, if there were instance initializers.
+            // Locate the constructor or create one.
+            let ctor: ast.ClassMethod | undefined = <ast.ClassMethod>members[tokens.constructorFunction];
+            if (!ctor) {
+                // No explicit constructor was found; create a new one.
+                ctor = <ast.ClassMethod>{
+                    kind:   ast.classMethodKind,
+                    name:   ident(tokens.constructorFunction),
+                    access: tokens.publicAccessibility,
+                    body:   this.withLocation(node, <ast.Block>{
+                        kind:       ast.blockKind,
+                        statements: [],
+                    }),
+                };
+                members[tokens.constructorFunction] = ctor;
+            }
             if (instancePropertyInitializers.length > 0) {
-                let ctor: ast.ClassMethod | undefined = <ast.ClassMethod>members[tokens.constructorFunction];
-                let insertAt: number | undefined = undefined;
-                if (!ctor) {
-                    // No explicit constructor was found; create a new one.
-                    ctor = <ast.ClassMethod>{
-                        kind:   ast.classMethodKind,
-                        name:   ident(tokens.constructorFunction),
-                        access: tokens.publicAccessibility,
-                    };
-                    insertAt = 0; // add the initializers to the empty block.
-                    members[tokens.constructorFunction] = ctor;
-                }
+                let bodyBlock: ast.Block = <ast.Block>ctor.body;
 
-                let bodyBlock: ast.Block;
-                if (ctor.body) {
-                    bodyBlock = <ast.Block>ctor.body;
-                    if (extend) {
-                        // If there is a superclass, find the insertion point right *after* the explicit call to
-                        // `super()`, to achieve the expected initialization order.
+                // Figure out where to insert the initializers; by default, at the start, but if there are `super()`
+                // calls, we may need to insert the initializers afterwards.
+                let insertAt = 0;
+                if (extend) {
+                    if (bodyBlock.statements.length > 0) {
+                        // If there is a body and a superclass, find the insertion point right *after* the explicit
+                        // call to `super()`, to achieve the expected initialization order.
                         for (let i = 0; i < bodyBlock.statements.length; i++) {
                             if (this.isSuperCall(bodyBlock.statements[i], extend.tok)) {
                                 insertAt = i+1; // place the initializers right after this call.
@@ -1821,24 +1828,11 @@ export class Transformer {
                         contract.assert(insertAt !== undefined);
                     }
                     else {
-                        insertAt = 0; // put the initializers before everything else.
-                    }
-                }
-                else {
-                    bodyBlock = this.withLocation(node, <ast.Block>{
-                        kind:       ast.blockKind,
-                        statements: [],
-                    });
-                    ctor.body = bodyBlock;
-                    if (extend) {
                         // Generate an automatic call to the base class.  Omitting this is only legal if the base class
                         // constructor has zero arguments, so we just generate a simple `super();` call.
                         bodyBlock.statements.push(
-                            this.copyLocation(ctor.body, this.createEmptySuperCall(extend.tok)));
+                            this.copyLocation(bodyBlock, this.createEmptySuperCall(extend.tok)));
                         insertAt = 1; // insert the initializers immediately after this call.
-                    }
-                    else {
-                        insertAt = 0; // place the initializers at the start of the (currently empty) block.
                     }
                 }
 
@@ -1877,15 +1871,6 @@ export class Transformer {
                 return await this.transformIdentifierExpression(node);
             default:
                 return contract.fail(`Unrecognized declaration node: ${ts.SyntaxKind[node.kind]}`);
-        }
-    }
-
-    private transformDeclarationIdentifier(node: ts.DeclarationName): ast.Identifier {
-        switch (node.kind) {
-            case ts.SyntaxKind.Identifier:
-                return this.transformIdentifier(node);
-            default:
-                return contract.fail(`Unrecognized declaration identifier: ${ts.SyntaxKind[node.kind]}`);
         }
     }
 
@@ -1932,7 +1917,7 @@ export class Transformer {
             isLocal: boolean, body?: ast.Block): Promise<FunctionLikeDeclaration> {
         // Ensure we are dealing with the supported subset of functions.
         if (ts.getCombinedModifierFlags(node) & ts.ModifierFlags.Async) {
-            this.diagnostics.push(this.dctx.newAsyncNotSupportedError(node));
+            this.diagnostics.push(this.dctx.newAsyncNotSupportedWarning(node));
         }
 
         // First transform the name into an identifier.  In the absence of a name, we will proceed under the assumption
@@ -2223,7 +2208,7 @@ export class Transformer {
     private async transformVariableDeclaration(node: ts.VariableDeclaration): Promise<VariableLikeDeclaration> {
         // TODO[pulumi/lumi#43]: parameters can be any binding name, including destructuring patterns.  For now,
         //     however, we only support the identifier forms.
-        let name: ast.Identifier = this.transformDeclarationIdentifier(node.name);
+        let name: ast.Identifier = this.transformBindingIdentifier(node.name);
         let initializer: ast.Expression | undefined;
         if (node.initializer) {
             initializer = await this.transformExpression(node.initializer);
@@ -2233,6 +2218,23 @@ export class Transformer {
             type:        await this.resolveTypeTokenFromTypeLike(node),
             initializer: initializer,
         };
+    }
+
+    private async transformVariableDeclarationToLocalVariable(
+            node: ts.VariableDeclaration): Promise<ast.LocalVariable> {
+        // Pluck out any decorators and store them in the metadata as attributes.
+        let attributes: ast.Attribute[] | undefined = await this.transformDecorators(node.decorators);
+
+        // TODO[pulumi/lumi#43]: parameters can be any binding name, including destructuring patterns.  For now,
+        //     however, we only support the identifier forms.
+        let name: ast.Identifier = this.transformBindingIdentifier(node.name);
+
+        return this.withLocation(node, <ast.LocalVariable>{
+            kind:       ast.localVariableKind,
+            name:       name,
+            type:       await this.resolveTypeTokenFromTypeLike(node),
+            attributes: attributes,
+        });
     }
 
     private async transformVariableDeclarationList(
@@ -2393,8 +2395,12 @@ export class Transformer {
         return notYetImplemented(node);
     }
 
-    private transformCatchClause(node: ts.CatchClause): ast.Statement {
-        return notYetImplemented(node);
+    private async transformCatchClause(node: ts.CatchClause): Promise<ast.TryCatchClause> {
+        return this.withLocation(node, <ast.TryCatchClause>{
+            kind: ast.tryCatchClauseKind,
+            body: await this.transformBlock(node.block),
+            exception: await this.transformVariableDeclarationToLocalVariable(node.variableDeclaration),
+        });
     }
 
     private transformContinueStatement(node: ts.ContinueStatement): ast.ContinueStatement {
@@ -2550,8 +2556,21 @@ export class Transformer {
         });
     }
 
-    private transformTryStatement(node: ts.TryStatement): ast.TryCatchFinally {
-        return notYetImplemented(node);
+    private async transformTryStatement(node: ts.TryStatement): Promise<ast.TryCatchFinally> {
+        let catchClauses: ast.TryCatchClause[] = [];
+        if (!!node.catchClause) {
+            catchClauses.push(await this.transformCatchClause(node.catchClause));
+        }
+        let finallyClause: ast.Block | undefined = undefined;
+        if (!!node.finallyBlock) {
+            finallyClause = await this.transformBlock(node.finallyBlock);
+        }
+        return this.withLocation(node, <ast.TryCatchFinally>{
+            kind: ast.tryCatchFinallyKind,
+            tryClause: await this.transformBlock(node.tryBlock),
+            catchClauses: catchClauses,
+            finallyClause: finallyClause,
+        });
     }
 
     private async transformWhileStatement(node: ts.WhileStatement): Promise<ast.WhileStatement> {
@@ -2635,6 +2654,8 @@ export class Transformer {
                 return this.transformArrayLiteralExpression(<ts.ArrayLiteralExpression>node);
             case ts.SyntaxKind.ArrowFunction:
                 return await this.transformArrowFunction(<ts.ArrowFunction>node);
+            case ts.SyntaxKind.AwaitExpression:
+                return await this.transformAwaitExpression(<ts.AwaitExpression>node);
             case ts.SyntaxKind.BinaryExpression:
                 return this.transformBinaryExpression(<ts.BinaryExpression>node);
             case ts.SyntaxKind.CallExpression:
@@ -2748,9 +2769,10 @@ export class Transformer {
 
         // Transpile the arrow function to get it's JavaScript source text to store on the AST
         let arrowText = this.printer.printNode(ts.EmitHint.Expression, node, this.currentSourceFile!);
-        let result = ts.transpileModule(arrowText, {
+        let result = ts.transpileModule("return " + arrowText, {
             compilerOptions: {
                 module: ts.ModuleKind.ES2015,
+                noEmitHelpers: true,
             },
         });
 
@@ -2761,6 +2783,46 @@ export class Transformer {
             returnType:     decl.returnType,
             sourceText:     result.outputText,
             sourceLanguage: ".js",
+        });
+    }
+
+    private async transformAwaitExpression(node: ts.AwaitExpression): Promise<ast.Expression> {
+        // Async/await is not yet implemented in Lumi, but we want to defer the error
+        // until runtime, so that async/await can be used on code executed on the inside
+        // by Node.js.
+        let errorMessage = "Async/Await not yet implemented for configuration code.";
+        return this.withLocation(node, <ast.CastExpression>{
+            kind: ast.castExpressionKind,
+            type: <ast.TypeToken>{
+                kind: ast.typeTokenKind,
+                tok:  tokens.dynamicType,
+            },
+            expression: <ast.InvokeFunctionExpression>{
+                kind: ast.invokeFunctionExpressionKind,
+                function: <ast.LambdaExpression>{
+                    kind: ast.lambdaExpressionKind,
+                    sourceLanguage: ".js",
+                    sourceText: `(function() { throw '${errorMessage}'});\n`,
+                    parameters: [],
+                    body: <ast.Block>{
+                        kind: ast.blockKind,
+                        statements: [
+                            <ast.ExpressionStatement>{
+                                kind: ast.expressionStatementKind,
+                                expression: await this.transformExpression(node.expression),
+                            },
+                            <ast.ThrowStatement>{
+                                kind: ast.throwStatementKind,
+                                expression: <ast.StringLiteral>{
+                                    kind: ast.stringLiteralKind,
+                                    value: errorMessage,
+                                    raw: errorMessage,
+                                },
+                            },
+                        ],
+                    },
+                },
+            },
         });
     }
 

@@ -1,17 +1,4 @@
-// Licensed to Pulumi Corporation ("Pulumi") under one or more
-// contributor license agreements.  See the NOTICE file distributed with
-// this work for additional information regarding copyright ownership.
-// Pulumi licenses this file to You under the Apache License, Version 2.0
-// (the "License"); you may not use this file except in compliance with
-// the License.  You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
 
 package iam
 
@@ -52,9 +39,9 @@ type roleProvider struct {
 }
 
 // Check validates that the given property bag is valid for a resource of the given type.
-func (p *roleProvider) Check(ctx context.Context, obj *iam.Role) ([]error, error) {
+func (p *roleProvider) Check(ctx context.Context, obj *iam.Role, property string) error {
 	// TODO[pulumi/lumi#221]: to use Switch Role, Path+RoleName cannot exceed 64 characters.  Warn?
-	return nil, nil
+	return nil
 }
 
 // Create allocates a new instance of the provided resource and returns its unique ID afterwards.  (The input ID
@@ -93,20 +80,19 @@ func (p *roleProvider) Create(ctx context.Context, obj *iam.Role) (resource.ID, 
 
 	if obj.ManagedPolicyARNs != nil {
 		for _, policyARN := range *obj.ManagedPolicyARNs {
-			_, err := p.ctx.IAM().AttachRolePolicy(&awsiam.AttachRolePolicyInput{
+			if _, atterr := p.ctx.IAM().AttachRolePolicy(&awsiam.AttachRolePolicyInput{
 				RoleName:  aws.String(name),
 				PolicyArn: aws.String(string(policyARN)),
-			})
-			if err != nil {
-				return "", err
+			}); atterr != nil {
+				return "", atterr
 			}
 		}
 	}
 
 	// Wait for the role to be ready and then return the ID (just its name).
 	fmt.Printf("IAM Role created: %v; waiting for it to become active\n", name)
-	if err = p.waitForRoleState(name, true); err != nil {
-		return "", err
+	if waiterr := p.waitForRoleState(name, true); waiterr != nil {
+		return "", waiterr
 	}
 	return resource.ID(*result.Role.Arn), nil
 }
@@ -136,8 +122,8 @@ func (p *roleProvider) Get(ctx context.Context, id resource.ID) (*iam.Role, erro
 	if err != nil {
 		return nil, err
 	}
-	if err := json.Unmarshal([]byte(assumePolicyDocumentJSON), &policyDocument); err != nil {
-		return nil, err
+	if jsonerr := json.Unmarshal([]byte(assumePolicyDocumentJSON), &policyDocument); jsonerr != nil {
+		return nil, jsonerr
 	}
 
 	// Now get a list of attached role policies.
@@ -203,14 +189,10 @@ func (p *roleProvider) Update(ctx context.Context, id resource.ID,
 		var detaches []awscommon.ARN
 		var attaches []awscommon.ARN
 		if diff.Added(iam.Role_ManagedPolicyARNs) {
-			for _, policy := range *new.ManagedPolicyARNs {
-				attaches = append(attaches, policy)
-			}
+			attaches = append(attaches, *new.ManagedPolicyARNs...)
 		}
 		if diff.Deleted(iam.Role_ManagedPolicyARNs) {
-			for _, policy := range *old.ManagedPolicyARNs {
-				detaches = append(detaches, policy)
-			}
+			detaches = append(detaches, *old.ManagedPolicyARNs...)
 		}
 		if diff.Updated(iam.Role_ManagedPolicyARNs) {
 			arrayDiff := diff.Updates[iam.Role_ManagedPolicyARNs].Array

@@ -1,17 +1,4 @@
-// Licensed to Pulumi Corporation ("Pulumi") under one or more
-// contributor license agreements.  See the NOTICE file distributed with
-// this work for additional information regarding copyright ownership.
-// Pulumi licenses this file to You under the Apache License, Version 2.0
-// (the "License"); you may not use this file except in compliance with
-// the License.  You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
 
 package encoding
 
@@ -152,7 +139,8 @@ func decodeLoadDynamicExpression(m mapper.Mapper, obj map[string]interface{}) (*
 	return &expr, nil
 }
 
-func decodeTryLoadDynamicExpression(m mapper.Mapper, obj map[string]interface{}) (*ast.TryLoadDynamicExpression, error) {
+func decodeTryLoadDynamicExpression(m mapper.Mapper,
+	obj map[string]interface{}) (*ast.TryLoadDynamicExpression, error) {
 	var expr ast.TryLoadDynamicExpression
 	if err := m.Decode(obj, &expr); err != nil {
 		return nil, err
@@ -168,7 +156,8 @@ func decodeNewExpression(m mapper.Mapper, obj map[string]interface{}) (*ast.NewE
 	return &expr, nil
 }
 
-func decodeInvokeFunctionExpression(m mapper.Mapper, obj map[string]interface{}) (*ast.InvokeFunctionExpression, error) {
+func decodeInvokeFunctionExpression(m mapper.Mapper,
+	obj map[string]interface{}) (*ast.InvokeFunctionExpression, error) {
 	var expr ast.InvokeFunctionExpression
 	if err := m.Decode(obj, &expr); err != nil {
 		return nil, err
@@ -184,7 +173,8 @@ func decodeLambdaExpression(m mapper.Mapper, obj map[string]interface{}) (*ast.L
 	return &expr, nil
 }
 
-func decodeUnaryOperatorExpression(m mapper.Mapper, obj map[string]interface{}) (*ast.UnaryOperatorExpression, error) {
+func decodeUnaryOperatorExpression(m mapper.Mapper,
+	obj map[string]interface{}) (*ast.UnaryOperatorExpression, error) {
 	var expr ast.UnaryOperatorExpression
 	if err := m.Decode(obj, &expr); err != nil {
 		return nil, err
@@ -192,7 +182,8 @@ func decodeUnaryOperatorExpression(m mapper.Mapper, obj map[string]interface{}) 
 	return &expr, nil
 }
 
-func decodeBinaryOperatorExpression(m mapper.Mapper, obj map[string]interface{}) (*ast.BinaryOperatorExpression, error) {
+func decodeBinaryOperatorExpression(m mapper.Mapper,
+	obj map[string]interface{}) (*ast.BinaryOperatorExpression, error) {
 	var expr ast.BinaryOperatorExpression
 	if err := m.Decode(obj, &expr); err != nil {
 		return nil, err

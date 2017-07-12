@@ -1,22 +1,8 @@
-// Licensed to Pulumi Corporation ("Pulumi") under one or more
-// contributor license agreements.  See the NOTICE file distributed with
-// this work for additional information regarding copyright ownership.
-// Pulumi licenses this file to You under the Apache License, Version 2.0
-// (the "License"); you may not use this file except in compliance with
-// the License.  You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
 
 package mapper
 
 import (
-	"fmt"
 	"reflect"
 	"testing"
 
@@ -47,8 +33,7 @@ func TestFieldMapper(t *testing.T) {
 
 	// Try some simple primitive decodes.
 	var s bag
-	var err error
-	err = md.DecodeValue(tree, reflect.TypeOf(bag{}), "b", &s.Bool, false)
+	err := md.DecodeValue(tree, reflect.TypeOf(bag{}), "b", &s.Bool, false)
 	assert.Nil(t, err)
 	assert.Equal(t, tree["b"], s.Bool)
 	err = md.DecodeValue(tree, reflect.TypeOf(bag{}), "b", &s.BoolP, false)
@@ -75,12 +60,14 @@ func TestFieldMapper(t *testing.T) {
 
 	// Ensure interface{} conversions work:
 	var sif string
-	err = md.DecodeValue(map[string]interface{}{"x": interface{}("hello")}, reflect.TypeOf(bag{}), "x", &sif, false)
+	err = md.DecodeValue(map[string]interface{}{"x": interface{}("hello")},
+		reflect.TypeOf(bag{}), "x", &sif, false)
 	assert.Nil(t, err)
 	assert.Equal(t, "hello", sif)
 
 	var sifs []string
-	err = md.DecodeValue(map[string]interface{}{"arr": []interface{}{"a", "b", "c"}}, reflect.TypeOf(bag{}), "arr", &sifs, false)
+	err = md.DecodeValue(map[string]interface{}{"arr": []interface{}{"a", "b", "c"}},
+		reflect.TypeOf(bag{}), "arr", &sifs, false)
 	assert.Nil(t, err)
 	assert.Equal(t, []string{"a", "b", "c"}, sifs)
 
@@ -357,8 +344,7 @@ func (s *customStruct) GetY() float64 { return s.Y }
 func TestCustomMapper(t *testing.T) {
 	t.Parallel()
 
-	var md Mapper
-	md = New(&Opts{
+	md := New(&Opts{
 		CustomDecoders: Decoders{
 			reflect.TypeOf((*customInterface)(nil)).Elem(): decodeCustomInterface,
 			reflect.TypeOf(customStruct{}):                 decodeCustomStruct,
@@ -485,7 +471,6 @@ func TestBasicUnmap(t *testing.T) {
 
 		// check outer:
 		assert.NotNil(t, um["inners"])
-		fmt.Printf("XXX: %v\n", um["inners"])
 		arr := um["inners"].([]interface{})
 		assert.Equal(t, len(arr), 1)
 

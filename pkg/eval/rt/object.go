@@ -1,17 +1,4 @@
-// Licensed to Pulumi Corporation ("Pulumi") under one or more
-// contributor license agreements.  See the NOTICE file distributed with
-// this work for additional information regarding copyright ownership.
-// Pulumi licenses this file to You under the Apache License, Version 2.0
-// (the "License"); you may not use this file except in compliance with
-// the License.  You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
 
 package rt
 
@@ -28,6 +15,8 @@ import (
 	"github.com/pulumi/lumi/pkg/tokens"
 	"github.com/pulumi/lumi/pkg/util/contract"
 )
+
+const nilString = "<nil>"
 
 // Object is a value allocated and stored on the heap.  In LumiIL's interpreter, all values are heap allocated, since we
 // are less concerned about performance of the evaluation (compared to the cost of provisioning cloud resources).
@@ -240,14 +229,14 @@ func (o *Object) details(funcs bool, visited map[*Object]bool, indent string) st
 	case types.Number:
 		return strconv.FormatFloat(o.NumberValue(), 'f', -1, 64)
 	case types.Null:
-		return "<nil>"
+		return nilString
 	default:
 		// See if it's a func; if yes, do function formatting.
 		if _, isfnc := o.t.(*symbols.FunctionType); isfnc {
 			stub := o.FunctionValue()
 			var this string
 			if stub.This == nil {
-				this = "<nil>"
+				this = nilString
 			} else {
 				this = stub.This.String()
 			}
@@ -309,14 +298,14 @@ func (o *Object) String() string {
 	case types.Number:
 		return strconv.FormatFloat(o.NumberValue(), 'f', -1, 64)
 	case types.Null:
-		return "<nil>"
+		return nilString
 	default:
 		// See if it's a func; if yes, do function formatting.
 		if _, isfnc := o.t.(*symbols.FunctionType); isfnc {
 			stub := o.FunctionValue()
 			var this string
 			if stub.This == nil {
-				this = "<nil>"
+				this = nilString
 			} else {
 				this = stub.This.String()
 			}
@@ -348,7 +337,7 @@ func (o *Object) String() string {
 		}
 
 		// Otherwise it's an arbitrary object; just print the type (we can't recurse, due to possible cycles).
-		return fmt.Sprintf("object{type=%v,props={...}}", o.t.Token())
+		return fmt.Sprintf("object{type=%v,v=%v,props={...%v}}", o.t.Token(), o.value, o.properties.Len())
 	}
 }
 
@@ -357,16 +346,27 @@ func NewPrimitiveObject(t symbols.Type, v interface{}) *Object {
 	return NewObject(t, v, nil, nil)
 }
 
+// Certain objects do not usually have distinct identity:
+var (
+	Null  = NewNullObject()      // the one and only null.
+	True  = NewBoolObject(true)  // the one and only true.
+	False = NewBoolObject(false) // the one and only false.
+	Bools = map[bool]*Object{
+		true:  True,
+		false: False,
+	}
+)
+
 // NewArrayObject allocates a new array object with the given array payload.
 func NewArrayObject(elem symbols.Type, arr *[]*Pointer) *Object {
 	contract.Require(elem != nil, "elem")
 	arrt := symbols.NewArrayType(elem)
+	arrayProps := NewPropertyMap()
 
 	// Add a `length` property to the object
-	arrayProps := NewPropertyMap()
 	lengthGetter := NewBuiltinIntrinsic(
 		tokens.Token("lumi:builtin/array:getLength"),
-		symbols.NewFunctionType([]symbols.Type{}, types.Number),
+		symbols.NewFunctionType(nil, types.Number),
 	)
 	lengthSetter := NewBuiltinIntrinsic(
 		tokens.Token("lumi:builtin/array:setLength"),
@@ -374,18 +374,38 @@ func NewArrayObject(elem symbols.Type, arr *[]*Pointer) *Object {
 	)
 	arrayProps.InitAddr(PropertyKey("length"), nil, false, lengthGetter, lengthSetter)
 
-	return NewObject(arrt, arr, arrayProps, nil)
+	return NewObject(arrt, arr, arrayProps, ArrayPrototypeObject())
 }
 
-var trueObj = NewPrimitiveObject(types.Bool, true)
-var falseObj = NewPrimitiveObject(types.Bool, false)
+// arrayProto is a cached reference to the Array prototype object.
+var arrayProto *Object
+
+func ArrayPrototypeObject() *Object {
+	if arrayProto != nil {
+		return arrayProto
+	}
+
+	// Add `push` and `pop` methods to the prototype.
+	proto := symbols.NewPrototypeType(symbols.NewArrayType(types.Dynamic))
+	arrayProtoProps := NewPropertyMap()
+	arrayProto = NewObject(proto, nil, arrayProtoProps, nil)
+	push := NewFunctionObjectFromSymbol(NewBuiltinIntrinsic(
+		tokens.Token("lumi:builtin/array:push"),
+		symbols.NewFunctionType([]symbols.Type{types.Dynamic}, types.Number),
+	), arrayProto)
+	arrayProtoProps.InitAddr(PropertyKey("push"), push, true, nil, nil)
+	pop := NewFunctionObjectFromSymbol(NewBuiltinIntrinsic(
+		tokens.Token("lumi:builtin/array:pop"),
+		symbols.NewFunctionType(nil, types.Dynamic),
+	), arrayProto)
+	arrayProtoProps.InitAddr(PropertyKey("pop"), pop, true, nil, nil)
+
+	return arrayProto
+}
 
 // NewBoolObject creates a new primitive number object.
 func NewBoolObject(v bool) *Object {
-	if v {
-		return trueObj
-	}
-	return falseObj
+	return NewPrimitiveObject(types.Bool, v)
 }
 
 // NewNumberObject creates a new primitive number object.
@@ -393,11 +413,9 @@ func NewNumberObject(v float64) *Object {
 	return NewPrimitiveObject(types.Number, v)
 }
 
-var nullObj = NewPrimitiveObject(types.Null, nil)
-
 // NewNullObject creates a new null object; null objects are not expected to have distinct identity.
 func NewNullObject() *Object {
-	return nullObj
+	return NewPrimitiveObject(types.Null, nil)
 }
 
 // NewStringObject creates a new primitive number object.
@@ -413,22 +431,28 @@ func NewStringObject(v string) *Object {
 	return NewObject(types.String, v, arrayProps, StringPrototypeObject())
 }
 
-// stringProto is a cached reference to the String prototype object
+// stringProto is a cached reference to the String prototype object.
 var stringProto *Object
 
-// StringPrototypeObject returns the String prototype object
+// StringPrototypeObject returns the String prototype object.
 func StringPrototypeObject() *Object {
 	if stringProto != nil {
 		return stringProto
 	}
 
+	proto := symbols.NewPrototypeType(types.String)
 	stringProtoProps := NewPropertyMap()
-	stringProto = NewObject(types.String, "", stringProtoProps, nil)
+	stringProto = NewObject(proto, nil, stringProtoProps, nil)
 	toLowerCase := NewFunctionObjectFromSymbol(NewBuiltinIntrinsic(
 		tokens.Token("lumi:builtin/string:toLowerCase"),
 		symbols.NewFunctionType([]symbols.Type{}, types.String),
 	), stringProto)
 	stringProtoProps.InitAddr(PropertyKey("toLowerCase"), toLowerCase, true, nil, nil)
+	toUpperCase := NewFunctionObjectFromSymbol(NewBuiltinIntrinsic(
+		tokens.Token("lumi:builtin/string:toUpperCase"),
+		symbols.NewFunctionType([]symbols.Type{}, types.String),
+	), stringProto)
+	stringProtoProps.InitAddr(PropertyKey("toUpperCase"), toUpperCase, true, nil, nil)
 
 	return stringProto
 }
@@ -525,9 +549,7 @@ func (o *Object) FreezeReadonlyProperties() {
 			if m := members[member]; !m.Static() {
 				if prop, isprop := m.(*symbols.ClassProperty); isprop && prop.Readonly() {
 					ptr := o.GetPropertyAddr(PropertyKey(member), true, true)
-					if !ptr.Readonly() {
-						ptr.Freeze() // ensure we cannot write to this any longer.
-					}
+					ptr.Freeze() // ensure we cannot write to this any longer.
 				}
 			}
 		}
@@ -678,7 +700,7 @@ type Intrinsic struct {
 
 var _ symbols.Function = (*Intrinsic)(nil)
 
-func (intrin *Intrinsic) Name() tokens.Name                { return tokens.Name(intrin.tok.Name()) }
+func (intrin *Intrinsic) Name() tokens.Name                { return intrin.tok.Name() }
 func (intrin *Intrinsic) Token() tokens.Token              { return intrin.tok }
 func (intrin *Intrinsic) Special() bool                    { return false }
 func (intrin *Intrinsic) SpecialModInit() bool             { return false }

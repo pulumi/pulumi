@@ -1,17 +1,4 @@
-// Licensed to Pulumi Corporation ("Pulumi") under one or more
-// contributor license agreements.  See the NOTICE file distributed with
-// this work for additional information regarding copyright ownership.
-// Pulumi licenses this file to You under the Apache License, Version 2.0
-// (the "License"); you may not use this file except in compliance with
-// the License.  You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
 
 package main
 
@@ -29,7 +16,8 @@ import (
 	"github.com/pulumi/lumi/pkg/compiler/errors"
 	"github.com/pulumi/lumi/pkg/diag/colors"
 	"github.com/pulumi/lumi/pkg/encoding"
-	"github.com/pulumi/lumi/pkg/resource"
+	"github.com/pulumi/lumi/pkg/resource/deploy"
+	"github.com/pulumi/lumi/pkg/resource/environment"
 	"github.com/pulumi/lumi/pkg/tokens"
 	"github.com/pulumi/lumi/pkg/util/cmdutil"
 	"github.com/pulumi/lumi/pkg/util/contract"
@@ -38,6 +26,8 @@ import (
 )
 
 func newEnvCmd() *cobra.Command {
+	var showIDs bool
+	var showURNs bool
 	cmd := &cobra.Command{
 		Use:   "env",
 		Short: "Manage target environments",
@@ -46,7 +36,53 @@ func newEnvCmd() *cobra.Command {
 			"An environment is a named deployment target, and a single project may have many of them.\n" +
 			"Each environment has a configuration and deployment history associated with it, stored in\n" +
 			"the workspace, in addition to a full checkpoint of the last known good deployment.\n",
+		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+			curr := getCurrentEnv()
+			if curr == "" {
+				return goerr.New("no current environment; either `lumi env init` or `lumi env select` one")
+			}
+			fmt.Printf("Current environment is %v\n", curr)
+			fmt.Printf("    (use `lumi env select` to change environments; `lumi env ls` lists known ones)\n")
+			target, snapshot, checkpoint := readEnv(curr)
+			if checkpoint == nil {
+				return goerr.Errorf("could not read environment information")
+			}
+			if checkpoint.Latest != nil {
+				fmt.Printf("Last deployment at %v\n", checkpoint.Latest.Time)
+				if checkpoint.Latest.Info != nil {
+					fmt.Printf("Additional deployment info: %v\n", checkpoint.Latest.Info)
+				}
+			}
+			if target.Config != nil && len(target.Config) > 0 {
+				fmt.Printf("%v configuration variables set (see `lumi config` for details)\n", len(target.Config))
+			}
+			if snapshot == nil || len(snapshot.Resources) == 0 {
+				fmt.Printf("No resources currently in this environment\n")
+			} else {
+				fmt.Printf("%v resources currently in this environment:\n", len(snapshot.Resources))
+				fmt.Printf("\n")
+				fmt.Printf("%-48s %s\n", "TYPE", "NAME")
+				for _, res := range snapshot.Resources {
+					fmt.Printf("%-48s %s\n", res.Type(), res.URN().Name())
+
+					// If the ID and/or URN is requested, show it on the following line.  It would be nice to do this
+					// on a single line, but they can get quite lengthy and so this formatting makes more sense.
+					if showIDs {
+						fmt.Printf("\tID: %s\n", res.ID())
+					}
+					if showURNs {
+						fmt.Printf("\tURN: %s\n", res.URN())
+					}
+				}
+			}
+			return nil
+		}),
 	}
+
+	cmd.PersistentFlags().BoolVarP(
+		&showIDs, "show-ids", "i", false, "Display each resource's provider-assigned unique ID")
+	cmd.PersistentFlags().BoolVarP(
+		&showURNs, "show-urns", "u", false, "Display each resource's Lumi-assigned globally unique URN")
 
 	cmd.AddCommand(newEnvInitCmd())
 	cmd.AddCommand(newEnvLsCmd())
@@ -74,37 +110,30 @@ func initEnvCmdName(name tokens.QName, args []string) (*envCmdInfo, error) {
 	}
 
 	// Read in the deployment information, bailing if an IO error occurs.
-	ctx := resource.NewContext(cmdutil.Sink(), nil)
-	envfile, env, old := readEnv(ctx, name)
-	if env == nil {
-		contract.Assert(!ctx.Diag.Success())
-		ctx.Close()                                                            // close now, since we are exiting.
-		return nil, goerr.Errorf("could not read envfile required to proceed") // failure reading the env information.
+	target, snapshot, checkpoint := readEnv(name)
+	if checkpoint == nil {
+		return nil, goerr.Errorf("could not read environment information")
 	}
+	contract.Assert(target != nil)
+	contract.Assert(checkpoint != nil)
 	return &envCmdInfo{
-		Ctx:     ctx,
-		Env:     env,
-		Envfile: envfile,
-		Old:     old,
-		Args:    args,
+		Target:     target,
+		Checkpoint: checkpoint,
+		Snapshot:   snapshot,
+		Args:       args,
 	}, nil
 }
 
 type envCmdInfo struct {
-	Ctx     *resource.Context // the resulting context
-	Env     *resource.Env     // the environment information
-	Envfile *resource.Envfile // the full serialized envfile from which this came.
-	Old     resource.Snapshot // the environment's latest deployment snapshot
-	Args    []string          // the args after extracting the environment name
-}
-
-func (eci *envCmdInfo) Close() error {
-	return eci.Ctx.Close()
+	Target     *deploy.Target          // the target environment.
+	Checkpoint *environment.Checkpoint // the full serialized checkpoint from which this came.
+	Snapshot   *deploy.Snapshot        // the environment's latest deployment snapshot
+	Args       []string                // the args after extracting the environment name
 }
 
 func confirmPrompt(msg string, name tokens.QName) bool {
 	prompt := fmt.Sprintf(msg, name)
-	fmt.Printf(
+	fmt.Print(
 		colors.ColorizeText(fmt.Sprintf("%v%v%v\n", colors.SpecAttention, prompt, colors.Reset)))
 	fmt.Printf("Please confirm that this is what you'd like to do by typing (\"%v\"): ", name)
 	reader := bufio.NewReader(os.Stdin)
@@ -117,7 +146,7 @@ func confirmPrompt(msg string, name tokens.QName) bool {
 
 // createEnv just creates a new empty environment without deploying anything into it.
 func createEnv(name tokens.QName) {
-	env := &resource.Env{Name: name}
+	env := &deploy.Target{Name: name}
 	if success := saveEnv(env, nil, "", false); success {
 		fmt.Printf("Environment '%v' initialized; see `lumi deploy` to deploy into it\n", name)
 		setCurrentEnv(name, false)
@@ -142,7 +171,7 @@ func getCurrentEnv() tokens.QName {
 		name = w.Settings().Env
 	}
 	if err != nil {
-		cmdutil.Sink().Errorf(errors.ErrorIO, err)
+		cmdutil.Diag().Errorf(errors.ErrorIO, err)
 	}
 	return name
 }
@@ -150,8 +179,7 @@ func getCurrentEnv() tokens.QName {
 // setCurrentEnv changes the current environment to the given environment name, issuing an error if it doesn't exist.
 func setCurrentEnv(name tokens.QName, verify bool) {
 	if verify {
-		ctx := resource.NewContext(cmdutil.Sink(), nil)
-		if _, env, _ := readEnv(ctx, name); env == nil {
+		if _, _, checkpoint := readEnv(name); checkpoint == nil {
 			return // no environment by this name exists, bail out.
 		}
 	}
@@ -163,43 +191,44 @@ func setCurrentEnv(name tokens.QName, verify bool) {
 		err = w.Save()
 	}
 	if err != nil {
-		cmdutil.Sink().Errorf(errors.ErrorIO, err)
+		cmdutil.Diag().Errorf(errors.ErrorIO, err)
 	}
 }
 
-// removeEnv permanently deletes the environment's information from the local workstation.
-func removeEnv(env *resource.Env) {
-	deleteEnv(env)
+// removeTarget permanently deletes the environment's information from the local workstation.
+func removeTarget(env *deploy.Target) {
+	deleteTarget(env)
 	msg := fmt.Sprintf("%sEnvironment '%s' has been removed!%s\n",
 		colors.SpecAttention, env.Name, colors.Reset)
-	fmt.Printf(colors.ColorizeText(msg))
+	fmt.Print(colors.ColorizeText(msg))
 }
 
-// backupEnv makes a backup of an existing file, in preparation for writing a new one.  Instead of a copy, it
+// backupTarget makes a backup of an existing file, in preparation for writing a new one.  Instead of a copy, it
 // simply renames the file, which is simpler, more efficient, etc.
-func backupEnv(file string) {
+func backupTarget(file string) {
 	contract.Require(file != "", "file")
-	os.Rename(file, file+".bak") // ignore errors.
+	err := os.Rename(file, file+".bak")
+	contract.IgnoreError(err) // ignore errors.
 	// IDEA: consider multiple backups (.bak.bak.bak...etc).
 }
 
-// deleteEnv removes an existing snapshot file, leaving behind a backup.
-func deleteEnv(env *resource.Env) {
+// deleteTarget removes an existing snapshot file, leaving behind a backup.
+func deleteTarget(env *deploy.Target) {
 	contract.Require(env != nil, "env")
 	// Just make a backup of the file and don't write out anything new.
 	file := workspace.EnvPath(env.Name)
-	backupEnv(file)
+	backupTarget(file)
 }
 
 // readEnv reads in an existing snapshot file, issuing an error and returning nil if something goes awry.
-func readEnv(ctx *resource.Context, name tokens.QName) (*resource.Envfile, *resource.Env, resource.Snapshot) {
+func readEnv(name tokens.QName) (*deploy.Target, *deploy.Snapshot, *environment.Checkpoint) {
 	contract.Require(name != "", "name")
 	file := workspace.EnvPath(name)
 
 	// Detect the encoding of the file so we can do our initial unmarshaling.
 	m, ext := encoding.Detect(file)
 	if m == nil {
-		ctx.Diag.Errorf(errors.ErrorIllegalMarkupExtension, ext)
+		cmdutil.Diag().Errorf(errors.ErrorIllegalMarkupExtension, ext)
 		return nil, nil, nil
 	}
 
@@ -207,17 +236,17 @@ func readEnv(ctx *resource.Context, name tokens.QName) (*resource.Envfile, *reso
 	b, err := ioutil.ReadFile(file)
 	if err != nil {
 		if os.IsNotExist(err) {
-			ctx.Diag.Errorf(errors.ErrorInvalidEnvName, name)
+			cmdutil.Diag().Errorf(errors.ErrorInvalidEnvName, name)
 		} else {
-			ctx.Diag.Errorf(errors.ErrorIO, err)
+			cmdutil.Diag().Errorf(errors.ErrorIO, err)
 		}
 		return nil, nil, nil
 	}
 
-	// Unmarshal the contents into a envfile deployment structure.
-	var envfile resource.Envfile
-	if err = m.Unmarshal(b, &envfile); err != nil {
-		ctx.Diag.Errorf(errors.ErrorCantReadDeployment, file, err)
+	// Unmarshal the contents into a checkpoint structure.
+	var checkpoint environment.Checkpoint
+	if err = m.Unmarshal(b, &checkpoint); err != nil {
+		cmdutil.Diag().Errorf(errors.ErrorCantReadDeployment, file, err)
 		return nil, nil, nil
 	}
 
@@ -225,7 +254,7 @@ func readEnv(ctx *resource.Context, name tokens.QName) (*resource.Envfile, *reso
 	// IDEA: we can eliminate this redundant unmarshaling once Go supports strict unmarshaling.
 	var obj map[string]interface{}
 	if err = m.Unmarshal(b, &obj); err != nil {
-		ctx.Diag.Errorf(errors.ErrorCantReadDeployment, file, err)
+		cmdutil.Diag().Errorf(errors.ErrorCantReadDeployment, file, err)
 		return nil, nil, nil
 	}
 
@@ -235,19 +264,19 @@ func readEnv(ctx *resource.Context, name tokens.QName) (*resource.Envfile, *reso
 		}
 	}
 	md := mapper.New(nil)
-	var ignore resource.Envfile // just for errors.
+	var ignore environment.Checkpoint // just for errors.
 	if err = md.Decode(obj, &ignore); err != nil {
-		ctx.Diag.Errorf(errors.ErrorCantReadDeployment, file, err)
+		cmdutil.Diag().Errorf(errors.ErrorCantReadDeployment, file, err)
 		return nil, nil, nil
 	}
 
-	env, snap := resource.DeserializeEnvfile(ctx, &envfile)
-	contract.Assert(env != nil)
-	return &envfile, env, snap
+	target, snapshot := environment.DeserializeCheckpoint(&checkpoint)
+	contract.Assert(target != nil)
+	return target, snapshot, &checkpoint
 }
 
 // saveEnv saves a new snapshot at the given location, backing up any existing ones.
-func saveEnv(env *resource.Env, snap resource.Snapshot, file string, existok bool) bool {
+func saveEnv(env *deploy.Target, snap *deploy.Snapshot, file string, existok bool) bool {
 	contract.Require(env != nil, "env")
 	if file == "" {
 		file = workspace.EnvPath(env.Name)
@@ -256,39 +285,39 @@ func saveEnv(env *resource.Env, snap resource.Snapshot, file string, existok boo
 	// Make a serializable LumiGL data structure and then use the encoder to encode it.
 	m, ext := encoding.Detect(file)
 	if m == nil {
-		cmdutil.Sink().Errorf(errors.ErrorIllegalMarkupExtension, ext)
+		cmdutil.Diag().Errorf(errors.ErrorIllegalMarkupExtension, ext)
 		return false
 	}
 	if filepath.Ext(file) == "" {
 		file = file + ext
 	}
-	dep := resource.SerializeEnvfile(env, snap, "")
+	dep := environment.SerializeCheckpoint(env, snap)
 	b, err := m.Marshal(dep)
 	if err != nil {
-		cmdutil.Sink().Errorf(errors.ErrorIO, err)
+		cmdutil.Diag().Errorf(errors.ErrorIO, err)
 		return false
 	}
 
 	// If it's not ok for the file to already exist, ensure that it doesn't.
 	if !existok {
-		if _, err := os.Stat(file); err == nil {
-			cmdutil.Sink().Errorf(errors.ErrorIO, goerr.Errorf("file '%v' already exists", file))
+		if _, staterr := os.Stat(file); staterr == nil {
+			cmdutil.Diag().Errorf(errors.ErrorIO, goerr.Errorf("file '%v' already exists", file))
 			return false
 		}
 	}
 
 	// Back up the existing file if it already exists.
-	backupEnv(file)
+	backupTarget(file)
 
 	// Ensure the directory exists.
-	if err = os.MkdirAll(filepath.Dir(file), 0755); err != nil {
-		cmdutil.Sink().Errorf(errors.ErrorIO, err)
+	if err = os.MkdirAll(filepath.Dir(file), 0700); err != nil {
+		cmdutil.Diag().Errorf(errors.ErrorIO, err)
 		return false
 	}
 
 	// And now write out the new snapshot file, overwriting that location.
-	if err = ioutil.WriteFile(file, b, 0644); err != nil {
-		cmdutil.Sink().Errorf(errors.ErrorIO, err)
+	if err = ioutil.WriteFile(file, b, 0600); err != nil {
+		cmdutil.Diag().Errorf(errors.ErrorIO, err)
 		return false
 	}
 

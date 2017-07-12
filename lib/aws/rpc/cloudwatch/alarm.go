@@ -11,12 +11,11 @@ import (
     "golang.org/x/net/context"
 
     "github.com/pulumi/lumi/pkg/resource"
+    "github.com/pulumi/lumi/pkg/resource/plugin"
     "github.com/pulumi/lumi/pkg/tokens"
     "github.com/pulumi/lumi/pkg/util/contract"
     "github.com/pulumi/lumi/pkg/util/mapper"
     "github.com/pulumi/lumi/sdk/go/pkg/lumirpc"
-
-    __sns "github.com/pulumi/lumi/lib/aws/rpc/sns"
 )
 
 /* RPC stubs for ActionTarget resource provider */
@@ -26,7 +25,7 @@ const ActionTargetToken = tokens.Type("aws:cloudwatch/alarm:ActionTarget")
 
 // ActionTargetProviderOps is a pluggable interface for ActionTarget-related management functionality.
 type ActionTargetProviderOps interface {
-    Check(ctx context.Context, obj *ActionTarget) ([]error, error)
+    Check(ctx context.Context, obj *ActionTarget, property string) error
     Create(ctx context.Context, obj *ActionTarget) (resource.ID, error)
     Get(ctx context.Context, id resource.ID) (*ActionTarget, error)
     InspectChange(ctx context.Context,
@@ -52,14 +51,35 @@ func (p *ActionTargetProvider) Check(
     contract.Assert(req.GetType() == string(ActionTargetToken))
     obj, _, err := p.Unmarshal(req.GetProperties())
     if err != nil {
-        return resource.NewCheckResponse(err), nil
+        return plugin.NewCheckResponse(err), nil
     }
-    if failures, err := p.ops.Check(ctx, obj); err != nil {
-        return nil, err
-    } else if len(failures) > 0 {
-        return resource.NewCheckResponse(resource.NewCheckError(failures)), nil
+    var failures []error
+    if failure := p.ops.Check(ctx, obj, ""); failure != nil {
+        failures = append(failures, failure)
     }
-    return resource.NewCheckResponse(nil), nil
+    unks := req.GetUnknowns()
+    if !unks["name"] {
+        if failure := p.ops.Check(ctx, obj, "name"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("ActionTarget", "name", failure))
+        }
+    }
+    if !unks["topicName"] {
+        if failure := p.ops.Check(ctx, obj, "topicName"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("ActionTarget", "topicName", failure))
+        }
+    }
+    if !unks["displayName"] {
+        if failure := p.ops.Check(ctx, obj, "displayName"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("ActionTarget", "displayName", failure))
+        }
+    }
+    if len(failures) > 0 {
+        return plugin.NewCheckResponse(resource.NewErrors(failures)), nil
+    }
+    return plugin.NewCheckResponse(nil), nil
 }
 
 func (p *ActionTargetProvider) Name(
@@ -101,8 +121,8 @@ func (p *ActionTargetProvider) Get(
         return nil, err
     }
     return &lumirpc.GetResponse{
-        Properties: resource.MarshalProperties(
-            nil, resource.NewPropertyMap(obj), resource.MarshalOptions{}),
+        Properties: plugin.MarshalProperties(
+            nil, resource.NewPropertyMap(obj), plugin.MarshalOptions{}),
     }, nil
 }
 
@@ -169,7 +189,7 @@ func (p *ActionTargetProvider) Delete(
 func (p *ActionTargetProvider) Unmarshal(
     v *pbstruct.Struct) (*ActionTarget, resource.PropertyMap, error) {
     var obj ActionTarget
-    props := resource.UnmarshalProperties(nil, v, resource.MarshalOptions{RawResources: true})
+    props := plugin.UnmarshalProperties(nil, v, plugin.MarshalOptions{RawResources: true})
     return &obj, props, mapper.MapIU(props.Mappable(), &obj)
 }
 
@@ -180,7 +200,6 @@ type ActionTarget struct {
     Name *string `lumi:"name,optional"`
     TopicName *string `lumi:"topicName,optional"`
     DisplayName *string `lumi:"displayName,optional"`
-    Subscription *[]__sns.TopicSubscription `lumi:"subscription,optional"`
 }
 
 // ActionTarget's properties have constants to make dealing with diffs and property bags easier.
@@ -188,7 +207,6 @@ const (
     ActionTarget_Name = "name"
     ActionTarget_TopicName = "topicName"
     ActionTarget_DisplayName = "displayName"
-    ActionTarget_Subscription = "subscription"
 )
 
 /* RPC stubs for Alarm resource provider */
@@ -198,7 +216,7 @@ const AlarmToken = tokens.Type("aws:cloudwatch/alarm:Alarm")
 
 // AlarmProviderOps is a pluggable interface for Alarm-related management functionality.
 type AlarmProviderOps interface {
-    Check(ctx context.Context, obj *Alarm) ([]error, error)
+    Check(ctx context.Context, obj *Alarm, property string) error
     Create(ctx context.Context, obj *Alarm) (resource.ID, error)
     Get(ctx context.Context, id resource.ID) (*Alarm, error)
     InspectChange(ctx context.Context,
@@ -224,14 +242,113 @@ func (p *AlarmProvider) Check(
     contract.Assert(req.GetType() == string(AlarmToken))
     obj, _, err := p.Unmarshal(req.GetProperties())
     if err != nil {
-        return resource.NewCheckResponse(err), nil
+        return plugin.NewCheckResponse(err), nil
     }
-    if failures, err := p.ops.Check(ctx, obj); err != nil {
-        return nil, err
-    } else if len(failures) > 0 {
-        return resource.NewCheckResponse(resource.NewCheckError(failures)), nil
+    var failures []error
+    if failure := p.ops.Check(ctx, obj, ""); failure != nil {
+        failures = append(failures, failure)
     }
-    return resource.NewCheckResponse(nil), nil
+    unks := req.GetUnknowns()
+    if !unks["name"] {
+        if failure := p.ops.Check(ctx, obj, "name"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Alarm", "name", failure))
+        }
+    }
+    if !unks["comparisonOperator"] {
+        if failure := p.ops.Check(ctx, obj, "comparisonOperator"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Alarm", "comparisonOperator", failure))
+        }
+    }
+    if !unks["evaluationPerids"] {
+        if failure := p.ops.Check(ctx, obj, "evaluationPerids"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Alarm", "evaluationPerids", failure))
+        }
+    }
+    if !unks["metricName"] {
+        if failure := p.ops.Check(ctx, obj, "metricName"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Alarm", "metricName", failure))
+        }
+    }
+    if !unks["namespace"] {
+        if failure := p.ops.Check(ctx, obj, "namespace"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Alarm", "namespace", failure))
+        }
+    }
+    if !unks["period"] {
+        if failure := p.ops.Check(ctx, obj, "period"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Alarm", "period", failure))
+        }
+    }
+    if !unks["statistic"] {
+        if failure := p.ops.Check(ctx, obj, "statistic"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Alarm", "statistic", failure))
+        }
+    }
+    if !unks["threshold"] {
+        if failure := p.ops.Check(ctx, obj, "threshold"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Alarm", "threshold", failure))
+        }
+    }
+    if !unks["actionsEnabled"] {
+        if failure := p.ops.Check(ctx, obj, "actionsEnabled"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Alarm", "actionsEnabled", failure))
+        }
+    }
+    if !unks["alarmActions"] {
+        if failure := p.ops.Check(ctx, obj, "alarmActions"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Alarm", "alarmActions", failure))
+        }
+    }
+    if !unks["alarmDescription"] {
+        if failure := p.ops.Check(ctx, obj, "alarmDescription"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Alarm", "alarmDescription", failure))
+        }
+    }
+    if !unks["alarmName"] {
+        if failure := p.ops.Check(ctx, obj, "alarmName"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Alarm", "alarmName", failure))
+        }
+    }
+    if !unks["dimensions"] {
+        if failure := p.ops.Check(ctx, obj, "dimensions"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Alarm", "dimensions", failure))
+        }
+    }
+    if !unks["insufficientDataActions"] {
+        if failure := p.ops.Check(ctx, obj, "insufficientDataActions"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Alarm", "insufficientDataActions", failure))
+        }
+    }
+    if !unks["okActions"] {
+        if failure := p.ops.Check(ctx, obj, "okActions"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Alarm", "okActions", failure))
+        }
+    }
+    if !unks["unit"] {
+        if failure := p.ops.Check(ctx, obj, "unit"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Alarm", "unit", failure))
+        }
+    }
+    if len(failures) > 0 {
+        return plugin.NewCheckResponse(resource.NewErrors(failures)), nil
+    }
+    return plugin.NewCheckResponse(nil), nil
 }
 
 func (p *AlarmProvider) Name(
@@ -273,8 +390,8 @@ func (p *AlarmProvider) Get(
         return nil, err
     }
     return &lumirpc.GetResponse{
-        Properties: resource.MarshalProperties(
-            nil, resource.NewPropertyMap(obj), resource.MarshalOptions{}),
+        Properties: plugin.MarshalProperties(
+            nil, resource.NewPropertyMap(obj), plugin.MarshalOptions{}),
     }, nil
 }
 
@@ -341,7 +458,7 @@ func (p *AlarmProvider) Delete(
 func (p *AlarmProvider) Unmarshal(
     v *pbstruct.Struct) (*Alarm, resource.PropertyMap, error) {
     var obj Alarm
-    props := resource.UnmarshalProperties(nil, v, resource.MarshalOptions{RawResources: true})
+    props := plugin.UnmarshalProperties(nil, v, plugin.MarshalOptions{RawResources: true})
     return &obj, props, mapper.MapIU(props.Mappable(), &obj)
 }
 

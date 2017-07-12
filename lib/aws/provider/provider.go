@@ -1,17 +1,4 @@
-// Licensed to Pulumi Corporation ("Pulumi") under one or more
-// contributor license agreements.  See the NOTICE file distributed with
-// this work for additional information regarding copyright ownership.
-// Pulumi licenses this file to You under the Apache License, Version 2.0
-// (the "License"); you may not use this file except in compliance with
-// the License.  You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
 
 package main
 
@@ -19,18 +6,21 @@ import (
 	"fmt"
 
 	pbempty "github.com/golang/protobuf/ptypes/empty"
+	"github.com/pulumi/lumi/pkg/resource/provider"
 	"github.com/pulumi/lumi/pkg/tokens"
 	"github.com/pulumi/lumi/sdk/go/pkg/lumirpc"
 	"golang.org/x/net/context"
 
 	"github.com/pulumi/lumi/lib/aws/provider/apigateway"
 	"github.com/pulumi/lumi/lib/aws/provider/awsctx"
+	"github.com/pulumi/lumi/lib/aws/provider/cloudwatch"
 	"github.com/pulumi/lumi/lib/aws/provider/dynamodb"
 	"github.com/pulumi/lumi/lib/aws/provider/ec2"
 	"github.com/pulumi/lumi/lib/aws/provider/elasticbeanstalk"
 	"github.com/pulumi/lumi/lib/aws/provider/iam"
 	"github.com/pulumi/lumi/lib/aws/provider/lambda"
 	"github.com/pulumi/lumi/lib/aws/provider/s3"
+	"github.com/pulumi/lumi/lib/aws/provider/sns"
 )
 
 // Provider implements the AWS resource provider's operations for all known AWS types.
@@ -39,8 +29,8 @@ type Provider struct {
 }
 
 // NewProvider creates a new provider instance with server objects registered for every resource type.
-func NewProvider() (*Provider, error) {
-	ctx, err := awsctx.New()
+func NewProvider(host *provider.HostClient) (*Provider, error) {
+	ctx, err := awsctx.New(host)
 	if err != nil {
 		return nil, err
 	}
@@ -49,6 +39,8 @@ func NewProvider() (*Provider, error) {
 			apigateway.DeploymentToken:               apigateway.NewDeploymentProvider(ctx),
 			apigateway.RestAPIToken:                  apigateway.NewRestAPIProvider(ctx),
 			apigateway.StageToken:                    apigateway.NewStageProvider(ctx),
+			cloudwatch.LogGroupToken:                 cloudwatch.NewLogGroupProvider(ctx),
+			cloudwatch.LogSubscriptionFilterToken:    cloudwatch.NewLogSubscriptionFilterProvider(ctx),
 			dynamodb.TableToken:                      dynamodb.NewTableProvider(ctx),
 			ec2.InstanceToken:                        ec2.NewInstanceProvider(ctx),
 			ec2.SecurityGroupToken:                   ec2.NewSecurityGroupProvider(ctx),
@@ -57,9 +49,12 @@ func NewProvider() (*Provider, error) {
 			elasticbeanstalk.EnvironmentToken:        elasticbeanstalk.NewEnvironmentProvider(ctx),
 			lambda.FunctionToken:                     lambda.NewFunctionProvider(ctx),
 			lambda.PermissionToken:                   lambda.NewPermissionProvider(ctx),
+			iam.InstanceProfileToken:                 iam.NewInstanceProfileProvider(ctx),
 			iam.RoleToken:                            iam.NewRoleProvider(ctx),
 			s3.BucketToken:                           s3.NewBucketProvider(ctx),
 			s3.ObjectToken:                           s3.NewObjectProvider(ctx),
+			sns.TopicToken:                           sns.NewTopicProvider(ctx),
+			sns.SubscriptionToken:                    sns.NewSubscriptionProvider(ctx),
 		},
 	}, nil
 }

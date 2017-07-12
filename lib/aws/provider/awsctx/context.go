@@ -1,35 +1,26 @@
-// Licensed to Pulumi Corporation ("Pulumi") under one or more
-// contributor license agreements.  See the NOTICE file distributed with
-// this work for additional information regarding copyright ownership.
-// Pulumi licenses this file to You under the Apache License, Version 2.0
-// (the "License"); you may not use this file except in compliance with
-// the License.  You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
 
 package awsctx
 
 import (
 	"context"
 
+	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/apigateway"
+	"github.com/aws/aws-sdk-go/service/cloudwatchlogs"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/aws/aws-sdk-go/service/elasticbeanstalk"
 	"github.com/aws/aws-sdk-go/service/iam"
 	"github.com/aws/aws-sdk-go/service/lambda"
 	"github.com/aws/aws-sdk-go/service/s3"
+	"github.com/aws/aws-sdk-go/service/sns"
+	"github.com/aws/aws-sdk-go/service/sts"
 	"github.com/golang/glog"
+	"github.com/pkg/errors"
+	"github.com/pulumi/lumi/pkg/resource/provider"
 	"github.com/pulumi/lumi/pkg/util/contract"
-
-	"github.com/pulumi/lumi/lib/aws/provider/arn"
 )
 
 // Context represents state shared amongst all parties in this process.  In particular, it wraps an AWS session
@@ -42,21 +33,38 @@ type Context struct {
 
 	// per-service connections (lazily allocated and reused);
 	apigateway       *apigateway.APIGateway
+	cloudwatchlogs   *cloudwatchlogs.CloudWatchLogs
 	dynamodb         *dynamodb.DynamoDB
 	ec2              *ec2.EC2
 	elasticbeanstalk *elasticbeanstalk.ElasticBeanstalk
 	iam              *iam.IAM
 	lambda           *lambda.Lambda
 	s3               *s3.S3
+	sns              *sns.SNS
+	sts              *sts.STS
 }
 
-func New() (*Context, error) {
+const regionConfig = "aws:config:region"
+
+func New(host *provider.HostClient) (*Context, error) {
 	// Create an AWS session; note that this is safe to share among many operations.
 	glog.V(5).Infof("Creating a new AWS session object w/ default credentials")
 	// IDEA: consider verifying credentials, region, etc. here.
 	// IDEA: currently we just inherit the standard AWS SDK credentials logic; eventually we will want more
 	//     flexibility, I assume, including possibly reading from configuration dynamically.
-	sess, err := session.NewSession()
+	var config []*aws.Config
+	if host != nil {
+		reg, err := host.ReadLocation(regionConfig)
+		if err != nil {
+			return nil, err
+		} else if !reg.IsNull() {
+			if !reg.IsString() {
+				return nil, errors.Errorf("Expected a string for AWS region config '%v'; got %v", regionConfig, reg)
+			}
+			config = append(config, &aws.Config{Region: aws.String(reg.StringValue())})
+		}
+	}
+	sess, err := session.NewSession(config...)
 	if err != nil {
 		return nil, err
 	}
@@ -65,26 +73,17 @@ func New() (*Context, error) {
 	// Allocate the context early since we are about to use it to access the IAM service.  Its usage is inherently
 	// limited until we have finished construction (in other words, completion of the present function).
 	ctx := &Context{sess: sess}
-
 	// Query the IAM service to fetch the IAM user and role information.
-	glog.V(5).Infof("Querying AWS IAM service for profile metadata")
-	iaminfo, err := ctx.IAM().GetUser(nil)
+	glog.V(5).Infof("Querying AWS STS for profile metadata")
+	identity, err := ctx.STS().GetCallerIdentity(nil)
 	if err != nil {
 		return nil, err
 	}
-	contract.Assert(iaminfo != nil)
-	contract.Assert(iaminfo.User != nil)
-	contract.Assert(iaminfo.User.Arn != nil)
-	userARN := arn.ARN(*iaminfo.User.Arn)
-
-	// Parse and store the ARN information on the context for convenient access.
-	parsedARN, err := userARN.Parse()
-	if err != nil {
-		return nil, err
-	}
-	ctx.accountID = parsedARN.AccountID
-	ctx.accountRole = parsedARN.Resource
-	glog.V(7).Infof("AWS IAM profile ARN received: %v (id=%v role=%v)", userARN, ctx.accountID, ctx.accountRole)
+	contract.Assert(identity != nil)
+	ctx.accountID = aws.StringValue(identity.Account)
+	ctx.accountRole = aws.StringValue(identity.Arn)
+	user := aws.StringValue(identity.UserId)
+	glog.V(7).Infof("AWS STS identity received: %v (id=%v role=%v)", user, ctx.accountID, ctx.accountRole)
 
 	return ctx, nil
 }
@@ -98,6 +97,14 @@ func (ctx *Context) APIGateway() *apigateway.APIGateway {
 		ctx.apigateway = apigateway.New(ctx.sess)
 	}
 	return ctx.apigateway
+}
+
+func (ctx *Context) CloudwatchLogs() *cloudwatchlogs.CloudWatchLogs {
+	contract.Assert(ctx.sess != nil)
+	if ctx.cloudwatchlogs == nil {
+		ctx.cloudwatchlogs = cloudwatchlogs.New(ctx.sess)
+	}
+	return ctx.cloudwatchlogs
 }
 
 func (ctx *Context) DynamoDB() *dynamodb.DynamoDB {
@@ -146,6 +153,22 @@ func (ctx *Context) S3() *s3.S3 {
 		ctx.s3 = s3.New(ctx.sess)
 	}
 	return ctx.s3
+}
+
+func (ctx *Context) SNS() *sns.SNS {
+	contract.Assert(ctx.sess != nil)
+	if ctx.sns == nil {
+		ctx.sns = sns.New(ctx.sess)
+	}
+	return ctx.sns
+}
+
+func (ctx *Context) STS() *sts.STS {
+	contract.Assert(ctx.sess != nil)
+	if ctx.sts == nil {
+		ctx.sts = sts.New(ctx.sess)
+	}
+	return ctx.sts
 }
 
 // Request manufactures a standard Golang context object for a request within this overall AWS context.

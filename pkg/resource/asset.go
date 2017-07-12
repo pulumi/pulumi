@@ -1,17 +1,4 @@
-// Licensed to Pulumi Corporation ("Pulumi") under one or more
-// contributor license agreements.  See the NOTICE file distributed with
-// this work for additional information regarding copyright ownership.
-// Pulumi licenses this file to You under the Apache License, Version 2.0
-// (the "License"); you may not use this file except in compliance with
-// the License.  You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
 
 package resource
 
@@ -185,7 +172,7 @@ func NewReadCloserBlob(r io.ReadCloser) (*Blob, error) {
 		return NewFileBlob(f)
 	}
 	// Otherwise, read it all in, and create a blob out of that.
-	defer r.Close()
+	defer contract.IgnoreClose(r)
 	data, err := ioutil.ReadAll(r)
 	if err != nil {
 		return nil, err
@@ -277,24 +264,27 @@ func (a Archive) readMap() (map[string]*Blob, error) {
 	contract.Assertf(ismap, "Expected a map-based archive")
 	result := map[string]*Blob{}
 	for name, asset := range m {
-		var err error
 		// TODO[pulumi/lumi#240]: It would be better to treat folders as a first class concept intead
 		//  of reusing a path Asset for this purpose.
 		path, isPath := asset.GetPath()
 		if isPath {
 			if fi, err := os.Stat(path); err == nil && fi.IsDir() {
 				// Asset is a folder, expand it
-				if err := filepath.Walk(path, func(filePath string, f os.FileInfo, err error) error {
-					if !f.IsDir() && f.Mode()&os.ModeSymlink == 0 {
-						result[filePath], _ = NewPathAsset(filePath).Read()
+				if walkerr := filepath.Walk(path, func(filePath string, f os.FileInfo, fileerr error) error {
+					if fileerr != nil || f.IsDir() || f.Mode()&os.ModeSymlink != 0 {
+						return fileerr
 					}
-					return nil
-				}); err != nil {
-					return nil, err
+
+					var err error
+					result[filePath], err = NewPathAsset(filePath).Read()
+					return err
+				}); walkerr != nil {
+					return nil, walkerr
 				}
 				continue
 			}
 		}
+		var err error
 		if result[name], err = asset.Read(); err != nil {
 			return nil, err
 		}
@@ -426,7 +416,7 @@ func (a Archive) archiveTar(w io.Writer) error {
 		if err != nil {
 			return err
 		}
-		contract.Assert(int64(n) == sz)
+		contract.Assert(n == sz)
 	}
 
 	return tw.Close()
@@ -469,12 +459,12 @@ func (a Archive) archiveZIP(w io.Writer) error {
 // ReadSourceArchive returns a stream to the underlying archive, if there eis one.
 func (a Archive) ReadSourceArchive() (ArchiveFormat, io.ReadCloser, error) {
 	if path, ispath := a.GetPath(); ispath {
-		if format, _ := detectArchiveFormat(path); format != NotArchive {
+		if format, archerr := detectArchiveFormat(path); archerr != nil && format != NotArchive {
 			f, err := os.Open(path)
 			return format, f, err
 		}
-	} else if url, isurl, _ := a.GetURIURL(); isurl {
-		if format, _ := detectArchiveFormat(url.Path); format != NotArchive {
+	} else if url, isurl, urlerr := a.GetURIURL(); urlerr == nil && isurl {
+		if format, archerr := detectArchiveFormat(url.Path); archerr == nil && format != NotArchive {
 			s, err := a.openURLStream(url)
 			return format, s, err
 		}
@@ -516,7 +506,7 @@ func detectArchiveFormat(path string) (ArchiveFormat, error) {
 // readArchive takes a stream to an existing archive and returns a map of names to readers for the inner assets.
 // The routine returns an error if something goes wrong and, no matter what, closes the stream before returning.
 func readArchive(ar io.ReadCloser, format ArchiveFormat) (map[string]*Blob, error) {
-	defer ar.Close() // consume the input stream
+	defer contract.IgnoreClose(ar) // consume the input stream
 
 	switch format {
 	case TarArchive:
@@ -549,7 +539,7 @@ func readArchive(ar io.ReadCloser, format ArchiveFormat) (map[string]*Blob, erro
 }
 
 func readTarArchive(ar io.ReadCloser) (map[string]*Blob, error) {
-	defer ar.Close() // consume the input stream
+	defer contract.IgnoreClose(ar) // consume the input stream
 
 	// Create a tar reader and walk through each file, adding each one to the map.
 	assets := make(map[string]*Blob)
@@ -582,7 +572,7 @@ func readTarArchive(ar io.ReadCloser) (map[string]*Blob, error) {
 }
 
 func readTarGZIPArchive(ar io.ReadCloser) (map[string]*Blob, error) {
-	defer ar.Close() // consume the input stream
+	defer contract.IgnoreClose(ar) // consume the input stream
 
 	// First decompress the GZIP stream.
 	gz, err := gzip.NewReader(ar)

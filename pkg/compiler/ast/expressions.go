@@ -1,17 +1,4 @@
-// Licensed to Pulumi Corporation ("Pulumi") under one or more
-// contributor license agreements.  See the NOTICE file distributed with
-// this work for additional information regarding copyright ownership.
-// Pulumi licenses this file to You under the Apache License, Version 2.0
-// (the "License"); you may not use this file except in compliance with
-// the License.  You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
 
 package ast
 
@@ -303,14 +290,30 @@ const (
 	OpMinusMinus UnaryOperator = "--"
 )
 
-func IsPrefixUnaryOperator(op UnaryOperator) bool {
-	return op == OpDereference || op == OpAddressof ||
-		op == OpUnaryPlus || op == OpUnaryMinus ||
-		op == OpLogicalNot || op == OpBitwiseNot
+// PrefixUnaryOperators is a set containing all of the prefix unary operators.
+var PrefixUnaryOperators = map[UnaryOperator]bool{
+	OpDereference: true,
+	OpAddressof:   true,
+	OpUnaryPlus:   true,
+	OpUnaryMinus:  true,
+	OpLogicalNot:  true,
+	OpBitwiseNot:  true,
 }
 
+// IsPrefixUnaryOperator returns true if the given unary operator is a unary operator.
+func IsPrefixUnaryOperator(op UnaryOperator) bool {
+	return PrefixUnaryOperators[op]
+}
+
+// PrePostfixUnaryOperators is a set containing all of the unary operators that may be either pre- or postfix.
+var PrePostfixUnaryOperators = map[UnaryOperator]bool{
+	OpPlusPlus:   true,
+	OpMinusMinus: true,
+}
+
+// IsPreOrPostfixUnaryOperator returns true if the given unary operator may be either pre- or postfix.
 func IsPreOrPostfixUnaryOperator(op UnaryOperator) bool {
-	return op == OpPlusPlus || op == OpMinusMinus
+	return PrePostfixUnaryOperators[op]
 }
 
 // BinaryOperatorExpression is the usual C-like binary operator (assignment, logical, operator, or relational).
@@ -377,33 +380,80 @@ const (
 	OpNotEquals BinaryOperator = "!="
 )
 
+// ArithmeticBinaryOperators is a set containing all of the arithmetic binary operators.
+var ArithmeticBinaryOperators = map[BinaryOperator]bool{
+	OpAdd:          true,
+	OpSubtract:     true,
+	OpMultiply:     true,
+	OpDivide:       true,
+	OpRemainder:    true,
+	OpExponentiate: true,
+}
+
+// IsArithmeticBinaryOperator returns true if the given binary operator is an arithmetic operator.
 func IsArithmeticBinaryOperator(op BinaryOperator) bool {
-	return op == OpAdd || op == OpSubtract ||
-		op == OpMultiply || op == OpDivide ||
-		op == OpRemainder || op == OpExponentiate
+	return ArithmeticBinaryOperators[op]
 }
 
+// BitwiseBinaryOperators is a set containing all of the bitwise binary operators.
+var BitwiseBinaryOperators = map[BinaryOperator]bool{
+	OpBitwiseShiftLeft:  true,
+	OpBitwiseShiftRight: true,
+	OpBitwiseAnd:        true,
+	OpBitwiseOr:         true,
+	OpBitwiseXor:        true,
+}
+
+// IsBitwiseBinaryOperator returns true if the given binary operator is a bitwise operator.
 func IsBitwiseBinaryOperator(op BinaryOperator) bool {
-	return op == OpBitwiseShiftLeft || op == OpBitwiseShiftRight ||
-		op == OpBitwiseAnd || op == OpBitwiseOr || op == OpBitwiseXor
+	return BitwiseBinaryOperators[op]
 }
 
+// AssignmentBinaryOperators is a set containing all of the assignment binary operators.
+var AssignmentBinaryOperators = map[BinaryOperator]bool{
+	OpAssign:                  true,
+	OpAssignSum:               true,
+	OpAssignDifference:        true,
+	OpAssignProduct:           true,
+	OpAssignQuotient:          true,
+	OpAssignRemainder:         true,
+	OpAssignExponentiation:    true,
+	OpAssignBitwiseShiftLeft:  true,
+	OpAssignBitwiseShiftRight: true,
+	OpAssignBitwiseAnd:        true,
+	OpAssignBitwiseOr:         true,
+	OpAssignBitwiseXor:        true,
+}
+
+// IsAssignmentBinaryOperator returns true if the given binary operator is an assignment operator.
 func IsAssignmentBinaryOperator(op BinaryOperator) bool {
-	return op == OpAssign || op == OpAssignSum ||
-		op == OpAssignDifference || op == OpAssignProduct ||
-		op == OpAssignQuotient || op == OpAssignRemainder || op == OpAssignExponentiation ||
-		op == OpAssignBitwiseShiftLeft || op == OpAssignBitwiseShiftRight ||
-		op == OpAssignBitwiseAnd || op == OpAssignBitwiseOr || op == OpAssignBitwiseXor
+	return AssignmentBinaryOperators[op]
 }
 
+// ConditionalBinaryOperators is a set containing all of the conditional binary operators.
+var ConditionalBinaryOperators = map[BinaryOperator]bool{
+	OpLogicalAnd: true,
+	OpLogicalOr:  true,
+}
+
+// IsConditionalBinaryOperator returns true if the given binary operator is a conditional operator.
 func IsConditionalBinaryOperator(op BinaryOperator) bool {
-	return op == OpLogicalAnd || op == OpLogicalOr
+	return ConditionalBinaryOperators[op]
 }
 
+// RelationalBinaryOperators is a set containing all of the relational binary operators.
+var RelationalBinaryOperators = map[BinaryOperator]bool{
+	OpLt:        true,
+	OpLtEquals:  true,
+	OpGt:        true,
+	OpGtEquals:  true,
+	OpEquals:    true,
+	OpNotEquals: true,
+}
+
+// IsRelationalBinaryOperator returns true if the given binary operator is a relational operator.
 func IsRelationalBinaryOperator(op BinaryOperator) bool {
-	return op == OpLt || op == OpLtEquals ||
-		op == OpGt || op == OpGtEquals ||
-		op == OpEquals || op == OpNotEquals
+	return RelationalBinaryOperators[op]
 }
 
 /* Type Testing */

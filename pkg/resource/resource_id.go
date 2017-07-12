@@ -1,17 +1,4 @@
-// Licensed to Pulumi Corporation ("Pulumi") under one or more
-// contributor license agreements.  See the NOTICE file distributed with
-// this work for additional information regarding copyright ownership.
-// Pulumi licenses this file to You under the Apache License, Version 2.0
-// (the "License"); you may not use this file except in compliance with
-// the License.  You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
 
 package resource
 
@@ -19,6 +6,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 
+	"github.com/pulumi/lumi/pkg/eval/rt"
 	"github.com/pulumi/lumi/pkg/util/contract"
 )
 
@@ -58,9 +46,16 @@ func MaybeID(s *string) *ID {
 	return ret
 }
 
+const (
+	// IDProperty is the special ID property name.
+	IDProperty = rt.PropertyKey("id")
+	// IDPropertyKey is the special ID property name for resource maps.
+	IDPropertyKey = PropertyKey("id")
+)
+
 // NewUniqueHex generates a new "random" hex string for use by resource providers.  It has the given optional prefix and
 // the total length is capped to the maxlen.  Note that capping to maxlen necessarily increases the risk of collisions.
-func NewUniqueHex(prefix string, randlen, maxlen int) string {
+func NewUniqueHex(prefix string, maxlen, randlen int) string {
 	bs := make([]byte, randlen)
 	n, err := rand.Read(bs)
 	contract.Assert(err == nil)
@@ -75,6 +70,6 @@ func NewUniqueHex(prefix string, randlen, maxlen int) string {
 
 // NewUniqueHexID generates a new "random" hex ID for use by resource providers.  It has the given optional prefix and
 // the total length is capped to the maxlen.  Note that capping to maxlen necessarily increases the risk of collisions.
-func NewUniqueHexID(prefix string, randlen, maxlen int) ID {
+func NewUniqueHexID(prefix string, maxlen, randlen int) ID {
 	return ID(NewUniqueHex(prefix, randlen, maxlen))
 }
