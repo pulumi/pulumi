@@ -1,17 +1,4 @@
-// Licensed to Pulumi Corporation ("Pulumi") under one or more
-// contributor license agreements.  See the NOTICE file distributed with
-// this work for additional information regarding copyright ownership.
-// Pulumi licenses this file to You under the Apache License, Version 2.0
-// (the "License"); you may not use this file except in compliance with
-// the License.  You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
 
 package binder
 
@@ -278,13 +265,13 @@ func (ctx *Context) LookupTypeToken(node diag.Diagable, tok tokens.Type, require
 		}
 	}
 
-	// The type was not found; issue an error, and return an error type so we can proceed with typechecking.
+	// The type was not found; issue a warning, and return the dynamic type so we can proceed with typechecking.
 	if ty == nil {
 		if require {
 			contract.Assert(reason != "")
-			ctx.Diag.Errorf(errors.ErrorTypeNotFound.At(node), tok, reason)
+			ctx.Diag.Warningf(errors.ErrorTypeNotFound.At(node), tok, reason)
 		}
-		ty = types.Error
+		ty = types.Dynamic
 	}
 	return ty
 }
@@ -300,7 +287,7 @@ func (ctx *Context) LookupFunctionType(node ast.Function) *symbols.FunctionType 
 
 			// If either the parameter's type was unknown, or the lookup failed, sub in an error type.
 			if ptysym == nil {
-				ptysym = types.Error
+				ptysym = types.Dynamic
 			}
 
 			params = append(params, ptysym)
@@ -364,9 +351,9 @@ func (ctx *Context) lookupBasicType(node diag.Diagable, tok tokens.Type, require
 	glog.V(5).Infof("Failed to bind primitive type '%v'", tok)
 
 	if require {
-		ctx.Diag.Errorf(errors.ErrorTypeNotFound.At(node), tok, "unrecognized primitive type name")
+		ctx.Diag.Warningf(errors.ErrorTypeNotFound.At(node), tok, "unrecognized primitive type name")
 	}
-	return types.Error
+	return types.Dynamic
 }
 
 func (ctx *Context) checkClassVisibility(node diag.Diagable, class symbols.Type, member symbols.ClassMember) {

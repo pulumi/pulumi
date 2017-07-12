@@ -1,20 +1,8 @@
-// Licensed to Pulumi Corporation ("Pulumi") under one or more
-// contributor license agreements.  See the NOTICE file distributed with
-// this work for additional information regarding copyright ownership.
-// Pulumi licenses this file to You under the Apache License, Version 2.0
-// (the "License"); you may not use this file except in compliance with
-// the License.  You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
 
 import * as aws from "@lumi/aws";
 import * as lumi from "@lumi/lumi";
+let region = aws.config.requireRegion();
 
 ///////////////////
 // Lambda Function
@@ -41,7 +29,7 @@ let role = new aws.iam.Role("mylambdarole", {
 let lambda = new aws.lambda.Function("mylambda", {
   code: new lumi.asset.AssetArchive({
     "index.js": new lumi.asset.String(
-        "exports.handler = (e, c, cb) => cb({statusCode: 200, body: 'Hello, world!'});",
+        "exports.handler = (e, c, cb) => cb(null, {statusCode: 200, body: 'Hello, world!'});",
     ),
   }),
   role: role,
@@ -49,6 +37,37 @@ let lambda = new aws.lambda.Function("mylambda", {
   runtime: aws.lambda.NodeJS6d10Runtime,
 });
 
+///////////////////
+// Logging
+///////////////////
+let logGroup = new aws.cloudwatch.LogGroup("mylambda-logs", {
+  logGroupName: "/aws/lambda/" + lambda.functionName,
+  retentionInDays: 7,
+});
+
+let logcollector = new aws.lambda.Function("mylambda-logcollector", {
+  code: new lumi.asset.AssetArchive({
+    "index.js": new lumi.asset.String(
+        "exports.handler = (e, c, cb) => console.log(e);",
+    ),
+  }),
+  role: role,
+  handler: "index.handler",
+  runtime: aws.lambda.NodeJS6d10Runtime,
+});
+
+let permission = new aws.lambda.Permission("logcollector-permission", {
+  action: "lambda:InvokeFunction",
+  principal: "logs." + region + ".amazonaws.com",
+  sourceARN: logGroup.id + ":*",
+  function: logcollector,
+});
+
+let logSubscription = new aws.cloudwatch.LogSubscriptionFilter("logsubscription", {
+  destinationArn: logcollector.id,
+  logGroupName: logGroup.logGroupName!,
+  filterPattern: "",
+});
 
 ///////////////////
 // DynamoDB Table
@@ -64,11 +83,9 @@ let music = new aws.dynamodb.Table("music", {
   writeCapacity: 1,
 });
 
-
 ///////////////////
 // APIGateway RestAPI
 ///////////////////
-let region = aws.config.requireRegion();
 
 let swaggerSpec = {
   swagger: "2.0",

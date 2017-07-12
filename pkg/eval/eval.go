@@ -1,17 +1,4 @@
-// Licensed to Pulumi Corporation ("Pulumi") under one or more
-// contributor license agreements.  See the NOTICE file distributed with
-// this work for additional information regarding copyright ownership.
-// Pulumi licenses this file to You under the Apache License, Version 2.0
-// (the "License"); you may not use this file except in compliance with
-// the License.  You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
 
 package eval
 
@@ -98,7 +85,10 @@ func (e *evaluator) Diag() diag.Sink      { return e.ctx.Diag }
 func (e *evaluator) EvaluatePackage(pkg *symbols.Package, args core.Args) (*rt.Object, *rt.Unwind) {
 	glog.Infof("Evaluating package '%v'", pkg.Name())
 	if e.hooks != nil {
-		if leave := e.hooks.OnEnterPackage(pkg); leave != nil {
+		uw, leave := e.hooks.OnEnterPackage(pkg)
+		if uw != nil {
+			return nil, uw
+		} else if leave != nil {
 			defer leave()
 		}
 	}
@@ -124,7 +114,10 @@ func (e *evaluator) EvaluatePackage(pkg *symbols.Package, args core.Args) (*rt.O
 func (e *evaluator) EvaluateModule(mod *symbols.Module, args core.Args) (*rt.Object, *rt.Unwind) {
 	glog.Infof("Evaluating module '%v'", mod.Token())
 	if e.hooks != nil {
-		if leave := e.hooks.OnEnterModule(mod); leave != nil {
+		uw, leave := e.hooks.OnEnterModule(mod)
+		if uw != nil {
+			return nil, uw
+		} else if leave != nil {
 			defer leave()
 		}
 	}
@@ -162,7 +155,9 @@ func (e *evaluator) EvaluateFunction(fnc symbols.Function, this *rt.Object, args
 
 	// Call the pre-start hook if registered.
 	if e.hooks != nil {
-		e.hooks.OnStart()
+		if uw := e.hooks.OnStart(); uw != nil {
+			return nil, uw
+		}
 	}
 
 	// Ensure all exit paths do the right thing (dumping, exceptions, hooks).
@@ -178,7 +173,9 @@ func (e *evaluator) EvaluateFunction(fnc symbols.Function, this *rt.Object, args
 
 		// Make sure to invoke the done hook.
 		if e.hooks != nil {
-			e.hooks.OnDone(uw)
+			if doneuw := e.hooks.OnDone(uw); doneuw != nil {
+				uw = doneuw
+			}
 		}
 	})()
 
@@ -752,10 +749,11 @@ func (e *evaluator) evalCall(node diag.Diagable,
 	retty := sig.Return
 	if uw != nil {
 		if uw.Throw() {
-			if glog.V(7) {
-				glog.V(7).Infof("Evaluated call to fnc %v (sym %v); unhandled exception: %v",
-					fnc, sym, uw.Thrown().Obj)
-			}
+			glog.V(7).Infof("Evaluated call to fnc %v (sym %v); unhandled exception: %v",
+				fnc, sym, uw.Thrown().Obj)
+			return nil, uw
+		} else if uw.Cancel() {
+			glog.V(7).Infof("Evaluated call to fnc %v (sym %v) ended in cancellation", fnc, sym)
 			return nil, uw
 		}
 
@@ -926,7 +924,7 @@ func (e *evaluator) evalTryCatchFinally(node *ast.TryCatchFinally) *rt.Unwind {
 
 	// No matter the rt.Unwind instructions, be sure to invoke the finally part.
 	if node.FinallyClause != nil {
-		uwf := e.evalStatement(node.FinallyClause)
+		uwf := e.evalStatement(*node.FinallyClause)
 
 		// Any rt.Unwind information from the finally block overrides the try rt.Unwind that was in flight.
 		if uwf != nil {
@@ -1833,7 +1831,9 @@ func (e *evaluator) evalNew(node diag.Diagable, t symbols.Type, args *[]*ast.Cal
 	// construction but before object freezing, in case the hook wants to mutate readonly properties.  In a sense, this
 	// hook becomes an extension of the constructor itself.
 	if e.hooks != nil {
-		e.hooks.OnObjectInit(node, obj)
+		if uw := e.hooks.OnObjectInit(node, obj); uw != nil {
+			return nil, uw
+		}
 	}
 
 	// Finally, ensure that all readonly properties are frozen now.

@@ -1,24 +1,11 @@
-// Licensed to Pulumi Corporation ("Pulumi") under one or more
-// contributor license agreements.  See the NOTICE file distributed with
-// this work for additional information regarding copyright ownership.
-// Pulumi licenses this file to You under the Apache License, Version 2.0
-// (the "License"); you may not use this file except in compliance with
-// the License.  You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
 
 import { AssetArchive, File, String as StringAsset } from "@lumi/lumi/asset";
 import {
     Closure, jsonStringify, objectKeys, printf, serializeClosure,
 } from "@lumi/lumirt";
 import { Role } from "../iam/role";
-import { Function as LambdaFunction } from "../lambda/function";
+import { DeadLetterConfig, Function as LambdaFunction } from "../lambda/function";
 import { ARN } from "../types";
 
 // Context is the shape of the context object passed to a Function callback.
@@ -86,9 +73,13 @@ function addToFuncEnvs(funcEnvs: { [key: string]: FuncEnv}, name: string, closur
     return funcEnvs;
 }
 
-function createJavaScriptLambda(functionName: string, role: Role, closure: Closure): LambdaFunction {
-    let funcs = addToFuncEnvs({}, "__handler", closure);
+function createJavaScriptLambda(
+    functionName: string,
+    role: Role,
+    closure: Closure,
+    opts: FunctionOptions): LambdaFunction {
 
+    let funcs = addToFuncEnvs({}, "__handler", closure);
     let str = "exports.handler = __handler;\n\n";
     let fkeys = objectKeys(funcs);
     let envObj: any = {};
@@ -98,12 +89,63 @@ function createJavaScriptLambda(functionName: string, role: Role, closure: Closu
             "function " + name + "() {\n" +
             "  let __env = JSON.parse(process.env.LUMI_ENV_" + name + ");\n" +
             "  with(__env) {\n" +
-            "    let __f = " + funcs[name].code +
-            "    return __f.apply(null, arguments);\n" +
+            "    let __f = (() => {" + funcs[name].code + "})();\n" +
+            "    return __f.apply(this, arguments);\n" +
             "  }\n" +
             "}\n" +
             "\n";
         envObj["LUMI_ENV_" + name] = funcs[name].env;
+    }
+
+    // Inject some TypeScript runtime helpers that the transpiled code may have dependencies on.
+    // These are necessary for targeting Node.js runtime environments that do not yet support
+    // new ECMAScript features like `async`/`await`.
+    //
+    // The implemnetations are sourced from: https://github.com/Microsoft/tslib/blob/master/tslib.es6.js
+
+    /*tslint:disable: max-line-length */
+    str += `
+function __awaiter(thisArg, _arguments, P, generator) {
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator.throw(value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : new P(function (resolve) { resolve(result.value); }).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+}
+
+function __generator(thisArg, body) {
+    var _ = { label: 0, sent: function() { if (t[0] & 1) throw t[1]; return t[1]; }, trys: [], ops: [] }, f, y, t, g;
+    return g = { next: verb(0), "throw": verb(1), "return": verb(2) }, typeof Symbol === "function" && (g[Symbol.iterator] = function() { return this; }), g;
+    function verb(n) { return function (v) { return step([n, v]); }; }
+    function step(op) {
+        if (f) throw new TypeError("Generator is already executing.");
+        while (_) try {
+            if (f = 1, y && (t = y[op[0] & 2 ? "return" : op[0] ? "throw" : "next"]) && !(t = t.call(y, op[1])).done) return t;
+            if (y = 0, t) op = [0, t.value];
+            switch (op[0]) {
+                case 0: case 1: t = op; break;
+                case 4: _.label++; return { value: op[1], done: false };
+                case 5: _.label++; y = op[1]; op = [0]; continue;
+                case 7: op = _.ops.pop(); _.trys.pop(); continue;
+                default:
+                    if (!(t = _.trys, t = t.length > 0 && t[t.length - 1]) && (op[0] === 6 || op[0] === 2)) { _ = 0; continue; }
+                    if (op[0] === 3 && (!t || (op[1] > t[0] && op[1] < t[3]))) { _.label = op[1]; break; }
+                    if (op[0] === 6 && _.label < t[1]) { _.label = t[1]; t = op; break; }
+                    if (t && _.label < t[2]) { _.label = t[2]; _.ops.push(op); break; }
+                    if (t[2]) _.ops.pop();
+                    _.trys.pop(); continue;
+            }
+            op = body.call(thisArg, _);
+        } catch (e) { op = [6, e]; y = 0; } finally { f = t = 0; }
+        if (op[0] & 5) throw op[1]; return { value: op[0] ? op[1] : void 0, done: true };
+    }
+}
+`;
+
+    let timeout = 180;
+    if (opts.timeout !== undefined) {
+        timeout = opts.timeout;
     }
 
     let lambda = new LambdaFunction(functionName, {
@@ -114,11 +156,20 @@ function createJavaScriptLambda(functionName: string, role: Role, closure: Closu
         handler: "index.handler",
         runtime: "nodejs6.10",
         role: role,
-        timeout: 180,
+        timeout: timeout,
+        memorySize: opts.memorySize,
+        deadLetterConfig: opts.deadLetterConfig,
         environment: envObj,
     });
 
     return lambda;
+}
+
+export interface FunctionOptions {
+    policies: ARN[];
+    timeout?: number;
+    memorySize?: number;
+    deadLetterConfig?: DeadLetterConfig;
 }
 
 // Function is a higher-level API for creating and managing AWS Lambda Function resources implemented
@@ -127,7 +178,7 @@ export class Function {
     public lambda: LambdaFunction;
     public role: Role;
 
-    constructor(name: string, policies: ARN[], func: Handler) {
+    constructor(name: string, options: FunctionOptions, func: Handler) {
         if (name === undefined) {
             throw new Error("Missing required resource name");
         }
@@ -141,12 +192,12 @@ export class Function {
 
         this.role = new Role(name + "-role", {
             assumeRolePolicyDocument: policy,
-            managedPolicyARNs: policies,
+            managedPolicyARNs: options.policies,
         });
 
         switch (closure.language) {
             case ".js":
-                this.lambda = createJavaScriptLambda(name, this.role, closure);
+                this.lambda = createJavaScriptLambda(name, this.role, closure, options);
                 break;
             default:
                 throw new Error("Language '" + closure.language + "' not yet supported (currently only JavaScript).");

@@ -53,6 +53,9 @@ func (p *ObjectProvider) Check(
         return plugin.NewCheckResponse(err), nil
     }
     var failures []error
+    if failure := p.ops.Check(ctx, obj, ""); failure != nil {
+        failures = append(failures, failure)
+    }
     unks := req.GetUnknowns()
     if !unks["key"] {
         if failure := p.ops.Check(ctx, obj, "key"); failure != nil {
@@ -70,6 +73,42 @@ func (p *ObjectProvider) Check(
         if failure := p.ops.Check(ctx, obj, "source"); failure != nil {
             failures = append(failures,
                 resource.NewPropertyError("Object", "source", failure))
+        }
+    }
+    if !unks["contentType"] {
+        if failure := p.ops.Check(ctx, obj, "contentType"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Object", "contentType", failure))
+        }
+    }
+    if !unks["contentDisposition"] {
+        if failure := p.ops.Check(ctx, obj, "contentDisposition"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Object", "contentDisposition", failure))
+        }
+    }
+    if !unks["cacheControl"] {
+        if failure := p.ops.Check(ctx, obj, "cacheControl"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Object", "cacheControl", failure))
+        }
+    }
+    if !unks["contentEncoding"] {
+        if failure := p.ops.Check(ctx, obj, "contentEncoding"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Object", "contentEncoding", failure))
+        }
+    }
+    if !unks["contentLanguage"] {
+        if failure := p.ops.Check(ctx, obj, "contentLanguage"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Object", "contentLanguage", failure))
+        }
+    }
+    if !unks["contentLength"] {
+        if failure := p.ops.Check(ctx, obj, "contentLength"); failure != nil {
+            failures = append(failures,
+                resource.NewPropertyError("Object", "contentLength", failure))
         }
     }
     if len(failures) > 0 {
@@ -138,9 +177,6 @@ func (p *ObjectProvider) InspectChange(
         if diff.Changed("bucket") {
             replaces = append(replaces, "bucket")
         }
-        if diff.Changed("source") {
-            replaces = append(replaces, "source")
-        }
     }
     more, err := p.ops.InspectChange(ctx, id, old, new, diff)
     if err != nil {
@@ -194,6 +230,12 @@ type Object struct {
     Key string `lumi:"key"`
     Bucket resource.ID `lumi:"bucket"`
     Source *resource.Asset `lumi:"source,optional"`
+    ContentType *string `lumi:"contentType,optional"`
+    ContentDisposition *string `lumi:"contentDisposition,optional"`
+    CacheControl *string `lumi:"cacheControl,optional"`
+    ContentEncoding *string `lumi:"contentEncoding,optional"`
+    ContentLanguage *string `lumi:"contentLanguage,optional"`
+    ContentLength *float64 `lumi:"contentLength,optional"`
 }
 
 // Object's properties have constants to make dealing with diffs and property bags easier.
@@ -201,6 +243,12 @@ const (
     Object_Key = "key"
     Object_Bucket = "bucket"
     Object_Source = "source"
+    Object_ContentType = "contentType"
+    Object_ContentDisposition = "contentDisposition"
+    Object_CacheControl = "cacheControl"
+    Object_ContentEncoding = "contentEncoding"
+    Object_ContentLanguage = "contentLanguage"
+    Object_ContentLength = "contentLength"
 )
 
 

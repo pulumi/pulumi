@@ -1,3 +1,5 @@
+// Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
+
 // This test ensures that references to `super` (base class) are resolved and emitted correctly.
 
 class B {

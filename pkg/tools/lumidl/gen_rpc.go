@@ -1,32 +1,17 @@
-// Licensed to Pulumi Corporation ("Pulumi") under one or more
-// contributor license agreements.  See the NOTICE file distributed with
-// this work for additional information regarding copyright ownership.
-// Pulumi licenses this file to You under the Apache License, Version 2.0
-// (the "License"); you may not use this file except in compliance with
-// the License.  You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
 
 package lumidl
 
 import (
-	"bufio"
-	"bytes"
 	"fmt"
 	"go/types"
-	"os"
 	"path/filepath"
 	"reflect"
 	"sort"
 	"strings"
 
 	"github.com/pulumi/lumi/pkg/tokens"
+	"github.com/pulumi/lumi/pkg/tools"
 	"github.com/pulumi/lumi/pkg/util/contract"
 )
 
@@ -94,44 +79,43 @@ func (g *RPCGenerator) EmitFile(file string, pkg *Package, members []Member) err
 	body := g.genFileBody(file, pkg, members)
 
 	// Open up a writer that overwrites whatever file contents already exist.
-	f, err := os.OpenFile(file, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0600)
+	w, err := tools.NewGenWriter(lumidl, file)
 	if err != nil {
 		return err
 	}
-	defer contract.IgnoreClose(f)
-	w := bufio.NewWriter(f)
+	defer contract.IgnoreClose(w)
 
 	// Emit a header into the file.
-	emitHeaderWarning(w)
+	w.EmitHeaderWarning()
 
 	// Now emit the package name at the top-level.
-	writefmtln(w, "package %v", pkg.Pkginfo.Pkg.Name())
-	writefmtln(w, "")
+	w.Writefmtln("package %v", pkg.Pkginfo.Pkg.Name())
+	w.Writefmtln("")
 
 	// And all of the imports that we're going to need.
 	if g.FileHadRes || len(g.FileImports) > 0 {
-		writefmtln(w, "import (")
+		w.Writefmtln("import (")
 
 		if g.FileHadRes {
 			if g.FileHadNamedRes {
-				writefmtln(w, `    "errors"`)
-				writefmtln(w, "")
+				w.Writefmtln(`    "errors"`)
+				w.Writefmtln("")
 			}
-			writefmtln(w, `    pbempty "github.com/golang/protobuf/ptypes/empty"`)
-			writefmtln(w, `    pbstruct "github.com/golang/protobuf/ptypes/struct"`)
-			writefmtln(w, `    "golang.org/x/net/context"`)
-			writefmtln(w, "")
-			writefmtln(w, `    "github.com/pulumi/lumi/pkg/resource"`)
-			writefmtln(w, `    "github.com/pulumi/lumi/pkg/resource/plugin"`)
-			writefmtln(w, `    "github.com/pulumi/lumi/pkg/tokens"`)
-			writefmtln(w, `    "github.com/pulumi/lumi/pkg/util/contract"`)
-			writefmtln(w, `    "github.com/pulumi/lumi/pkg/util/mapper"`)
-			writefmtln(w, `    "github.com/pulumi/lumi/sdk/go/pkg/lumirpc"`)
+			w.Writefmtln(`    pbempty "github.com/golang/protobuf/ptypes/empty"`)
+			w.Writefmtln(`    pbstruct "github.com/golang/protobuf/ptypes/struct"`)
+			w.Writefmtln(`    "golang.org/x/net/context"`)
+			w.Writefmtln("")
+			w.Writefmtln(`    "github.com/pulumi/lumi/pkg/resource"`)
+			w.Writefmtln(`    "github.com/pulumi/lumi/pkg/resource/plugin"`)
+			w.Writefmtln(`    "github.com/pulumi/lumi/pkg/tokens"`)
+			w.Writefmtln(`    "github.com/pulumi/lumi/pkg/util/contract"`)
+			w.Writefmtln(`    "github.com/pulumi/lumi/pkg/util/mapper"`)
+			w.Writefmtln(`    "github.com/pulumi/lumi/sdk/go/pkg/lumirpc"`)
 		}
 
 		if len(g.FileImports) > 0 {
 			if g.FileHadRes {
-				writefmtln(w, "")
+				w.Writefmtln("")
 			}
 			// Sort the imports so they are in a correct, deterministic order.
 			var imports []string
@@ -155,22 +139,22 @@ func (g *RPCGenerator) EmitFile(file string, pkg *Package, members []Member) err
 					imppath = g.RPCPkgBase + "/" + relimp
 				}
 
-				writefmtln(w, `    %v "%v"`, name, imppath)
+				w.Writefmtln(`    %v "%v"`, name, imppath)
 			}
 		}
 
-		writefmtln(w, ")")
-		writefmtln(w, "")
+		w.Writefmtln(")")
+		w.Writefmtln("")
 	}
 
 	// Now finally emit the actual body and close out the file.
-	writefmtln(w, "%v", body)
+	w.Writefmtln("%v", body)
 	return w.Flush()
 }
 
 func (g *RPCGenerator) genFileBody(file string, pkg *Package, members []Member) string {
-	var buffer bytes.Buffer
-	w := bufio.NewWriter(&buffer)
+	w, err := tools.NewGenWriter(lumidl, "")
+	contract.IgnoreError(err)
 
 	// First, for each RPC struct/resource member, emit its appropriate generated code.
 	var typedefs []Typedef
@@ -204,9 +188,9 @@ func (g *RPCGenerator) genFileBody(file string, pkg *Package, members []Member) 
 		g.EmitConstants(w, consts)
 	}
 
-	err := w.Flush()
+	err = w.Flush()
 	contract.IgnoreError(err)
-	return buffer.String()
+	return w.Buffer()
 }
 
 // getFileModule generates a module name from a filename.  To do so, we simply find the path part after the root and
@@ -220,10 +204,10 @@ func (g *RPCGenerator) getFileModule(file string) tokens.Module {
 	return tokens.Module(module)
 }
 
-func (g *RPCGenerator) EmitResource(w *bufio.Writer, module tokens.Module, pkg *Package, res *Resource) {
+func (g *RPCGenerator) EmitResource(w *tools.GenWriter, module tokens.Module, pkg *Package, res *Resource) {
 	name := res.Name()
-	writefmtln(w, "/* RPC stubs for %v resource provider */", name)
-	writefmtln(w, "")
+	w.Writefmtln("/* RPC stubs for %v resource provider */", name)
+	w.Writefmtln("")
 
 	// Remember when we encounter resources so we can import the right packages.
 	g.FileHadRes = true
@@ -242,215 +226,220 @@ func (g *RPCGenerator) EmitResource(w *bufio.Writer, module tokens.Module, pkg *
 
 	// Emit a type token.
 	token := fmt.Sprintf("%v:%v:%v", pkg.Name, module, name)
-	writefmtln(w, "// %[1]vToken is the type token corresponding to the %[1]v package type.", name)
-	writefmtln(w, `const %vToken = tokens.Type("%v")`, name, token)
-	writefmtln(w, "")
+	w.Writefmtln("// %[1]vToken is the type token corresponding to the %[1]v package type.", name)
+	w.Writefmtln(`const %vToken = tokens.Type("%v")`, name, token)
+	w.Writefmtln("")
 
 	// Now, generate an ops interface that the real provider will implement.
-	writefmtln(w, "// %[1]vProviderOps is a pluggable interface for %[1]v-related management functionality.", name)
-	writefmtln(w, "type %vProviderOps interface {", name)
-	writefmtln(w, "    Check(ctx context.Context, obj *%v, property string) error", name)
+	w.Writefmtln("// %[1]vProviderOps is a pluggable interface for %[1]v-related management functionality.", name)
+	w.Writefmtln("type %vProviderOps interface {", name)
+	w.Writefmtln("    Check(ctx context.Context, obj *%v, property string) error", name)
 	if !res.Named {
-		writefmtln(w, "    Name(ctx context.Context, obj *%v) (string, error)", name)
+		w.Writefmtln("    Name(ctx context.Context, obj *%v) (string, error)", name)
 	}
-	writefmtln(w, "    Create(ctx context.Context, obj *%v) (resource.ID, error)", name)
-	writefmtln(w, "    Get(ctx context.Context, id resource.ID) (*%v, error)", name)
-	writefmtln(w, "    InspectChange(ctx context.Context,")
-	writefmtln(w, "        id resource.ID, old *%[1]v, new *%[1]v, diff *resource.ObjectDiff) ([]string, error)", name)
-	writefmtln(w, "    Update(ctx context.Context,")
-	writefmtln(w, "        id resource.ID, old *%[1]v, new *%[1]v, diff *resource.ObjectDiff) error", name)
-	writefmtln(w, "    Delete(ctx context.Context, id resource.ID) error")
-	writefmtln(w, "}")
-	writefmtln(w, "")
+	w.Writefmtln("    Create(ctx context.Context, obj *%v) (resource.ID, error)", name)
+	w.Writefmtln("    Get(ctx context.Context, id resource.ID) (*%v, error)", name)
+	w.Writefmtln("    InspectChange(ctx context.Context,")
+	w.Writefmtln("        id resource.ID, old *%[1]v, new *%[1]v, diff *resource.ObjectDiff) ([]string, error)", name)
+	w.Writefmtln("    Update(ctx context.Context,")
+	w.Writefmtln("        id resource.ID, old *%[1]v, new *%[1]v, diff *resource.ObjectDiff) error", name)
+	w.Writefmtln("    Delete(ctx context.Context, id resource.ID) error")
+	w.Writefmtln("}")
+	w.Writefmtln("")
 
 	// Next generate all the RPC scaffolding goo
-	writefmtln(w, "// %[1]vProvider is a dynamic gRPC-based plugin for managing %[1]v resources.", name)
-	writefmtln(w, "type %vProvider struct {", name)
-	writefmtln(w, "    ops %vProviderOps", name)
-	writefmtln(w, "}")
-	writefmtln(w, "")
-	writefmtln(w, "// New%vProvider allocates a resource provider that delegates to a ops instance.", name)
-	writefmtln(w, "func New%[1]vProvider(ops %[1]vProviderOps) lumirpc.ResourceProviderServer {", name)
-	writefmtln(w, "    contract.Assert(ops != nil)")
-	writefmtln(w, "    return &%vProvider{ops: ops}", name)
-	writefmtln(w, "}")
-	writefmtln(w, "")
-	writefmtln(w, "func (p *%vProvider) Check(", name)
-	writefmtln(w, "    ctx context.Context, req *lumirpc.CheckRequest) (*lumirpc.CheckResponse, error) {")
-	writefmtln(w, "    contract.Assert(req.GetType() == string(%vToken))", name)
-	writefmtln(w, "    obj, _, err := p.Unmarshal(req.GetProperties())")
-	writefmtln(w, "    if err != nil {")
-	writefmtln(w, "        return plugin.NewCheckResponse(err), nil")
-	writefmtln(w, "    }")
+	w.Writefmtln("// %[1]vProvider is a dynamic gRPC-based plugin for managing %[1]v resources.", name)
+	w.Writefmtln("type %vProvider struct {", name)
+	w.Writefmtln("    ops %vProviderOps", name)
+	w.Writefmtln("}")
+	w.Writefmtln("")
+	w.Writefmtln("// New%vProvider allocates a resource provider that delegates to a ops instance.", name)
+	w.Writefmtln("func New%[1]vProvider(ops %[1]vProviderOps) lumirpc.ResourceProviderServer {", name)
+	w.Writefmtln("    contract.Assert(ops != nil)")
+	w.Writefmtln("    return &%vProvider{ops: ops}", name)
+	w.Writefmtln("}")
+	w.Writefmtln("")
+	w.Writefmtln("func (p *%vProvider) Check(", name)
+	w.Writefmtln("    ctx context.Context, req *lumirpc.CheckRequest) (*lumirpc.CheckResponse, error) {")
+	w.Writefmtln("    contract.Assert(req.GetType() == string(%vToken))", name)
+	w.Writefmtln("    obj, _, err := p.Unmarshal(req.GetProperties())")
+	w.Writefmtln("    if err != nil {")
+	w.Writefmtln("        return plugin.NewCheckResponse(err), nil")
+	w.Writefmtln("    }")
+	w.Writefmtln("    var failures []error")
+	// check global properties:
+	w.Writefmtln("    if failure := p.ops.Check(ctx, obj, \"\"); failure != nil {")
+	w.Writefmtln("        failures = append(failures, failure)")
+	w.Writefmtln("    }")
+	// check each input property:
 	if hasinputs {
-		writefmtln(w, "    var failures []error")
-		writefmtln(w, "    unks := req.GetUnknowns()")
+		w.Writefmtln("    unks := req.GetUnknowns()")
 		for _, opts := range propopts {
 			if !opts.Out {
-				writefmtln(w, "    if !unks[\"%v\"] {", opts.Name)
-				writefmtln(w, "        if failure := p.ops.Check(ctx, obj, \"%v\"); failure != nil {", opts.Name)
-				writefmtln(w, "            failures = append(failures,")
-				writefmtln(w, "                resource.NewPropertyError(\"%v\", \"%v\", failure))", name, opts.Name)
-				writefmtln(w, "        }")
-				writefmtln(w, "    }")
+				w.Writefmtln("    if !unks[\"%v\"] {", opts.Name)
+				w.Writefmtln("        if failure := p.ops.Check(ctx, obj, \"%v\"); failure != nil {", opts.Name)
+				w.Writefmtln("            failures = append(failures,")
+				w.Writefmtln("                resource.NewPropertyError(\"%v\", \"%v\", failure))", name, opts.Name)
+				w.Writefmtln("        }")
+				w.Writefmtln("    }")
 			}
 		}
-		writefmtln(w, "    if len(failures) > 0 {")
-		writefmtln(w, "        return plugin.NewCheckResponse(resource.NewErrors(failures)), nil")
-		writefmtln(w, "    }")
+		w.Writefmtln("    if len(failures) > 0 {")
+		w.Writefmtln("        return plugin.NewCheckResponse(resource.NewErrors(failures)), nil")
+		w.Writefmtln("    }")
 	}
-	writefmtln(w, "    return plugin.NewCheckResponse(nil), nil")
-	writefmtln(w, "}")
-	writefmtln(w, "")
-	writefmtln(w, "func (p *%vProvider) Name(", name)
-	writefmtln(w, "    ctx context.Context, req *lumirpc.NameRequest) (*lumirpc.NameResponse, error) {")
-	writefmtln(w, "    contract.Assert(req.GetType() == string(%vToken))", name)
-	writefmtln(w, "    obj, _, err := p.Unmarshal(req.GetProperties())")
-	writefmtln(w, "    if err != nil {")
-	writefmtln(w, "        return nil, err")
-	writefmtln(w, "    }")
+	w.Writefmtln("    return plugin.NewCheckResponse(nil), nil")
+	w.Writefmtln("}")
+	w.Writefmtln("")
+	w.Writefmtln("func (p *%vProvider) Name(", name)
+	w.Writefmtln("    ctx context.Context, req *lumirpc.NameRequest) (*lumirpc.NameResponse, error) {")
+	w.Writefmtln("    contract.Assert(req.GetType() == string(%vToken))", name)
+	w.Writefmtln("    obj, _, err := p.Unmarshal(req.GetProperties())")
+	w.Writefmtln("    if err != nil {")
+	w.Writefmtln("        return nil, err")
+	w.Writefmtln("    }")
 	if res.Named {
 		// For named resources, we have a canonical way of fetching the name.
-		writefmtln(w, `    if obj.Name == nil || *obj.Name == "" {`)
-		writefmtln(w, `        if req.Unknowns[%v_Name] {`, name)
-		writefmtln(w, `            return nil, errors.New("Name property cannot be computed from unknown outputs")`)
-		writefmtln(w, "        }")
-		writefmtln(w, `        return nil, errors.New("Name property cannot be empty")`)
-		writefmtln(w, "    }")
-		writefmtln(w, "    return &lumirpc.NameResponse{Name: *obj.Name}, nil")
+		w.Writefmtln(`    if obj.Name == nil || *obj.Name == "" {`)
+		w.Writefmtln(`        if req.Unknowns[%v_Name] {`, name)
+		w.Writefmtln(`            return nil, errors.New("Name property cannot be computed from unknown outputs")`)
+		w.Writefmtln("        }")
+		w.Writefmtln(`        return nil, errors.New("Name property cannot be empty")`)
+		w.Writefmtln("    }")
+		w.Writefmtln("    return &lumirpc.NameResponse{Name: *obj.Name}, nil")
 	} else {
 		// For all other resources, delegate to the underlying provider to perform the naming operation.
-		writefmtln(w, "    name, err := p.ops.Name(ctx, obj)")
-		writefmtln(w, "    return &lumirpc.NameResponse{Name: name}, err")
+		w.Writefmtln("    name, err := p.ops.Name(ctx, obj)")
+		w.Writefmtln("    return &lumirpc.NameResponse{Name: name}, err")
 	}
-	writefmtln(w, "}")
-	writefmtln(w, "")
-	writefmtln(w, "func (p *%vProvider) Create(", name)
-	writefmtln(w, "    ctx context.Context, req *lumirpc.CreateRequest) (*lumirpc.CreateResponse, error) {")
-	writefmtln(w, "    contract.Assert(req.GetType() == string(%vToken))", name)
-	writefmtln(w, "    obj, _, err := p.Unmarshal(req.GetProperties())")
-	writefmtln(w, "    if err != nil {")
-	writefmtln(w, "        return nil, err")
-	writefmtln(w, "    }")
-	writefmtln(w, "    id, err := p.ops.Create(ctx, obj)")
-	writefmtln(w, "    if err != nil {")
-	writefmtln(w, "        return nil, err")
-	writefmtln(w, "    }")
-	writefmtln(w, "    return &lumirpc.CreateResponse{Id: string(id)}, nil")
-	writefmtln(w, "}")
-	writefmtln(w, "")
-	writefmtln(w, "func (p *%vProvider) Get(", name)
-	writefmtln(w, "    ctx context.Context, req *lumirpc.GetRequest) (*lumirpc.GetResponse, error) {")
-	writefmtln(w, "    contract.Assert(req.GetType() == string(%vToken))", name)
-	writefmtln(w, "    id := resource.ID(req.GetId())")
-	writefmtln(w, "    obj, err := p.ops.Get(ctx, id)")
-	writefmtln(w, "    if err != nil {")
-	writefmtln(w, "        return nil, err")
-	writefmtln(w, "    }")
-	writefmtln(w, "    return &lumirpc.GetResponse{")
-	writefmtln(w, "        Properties: plugin.MarshalProperties(")
-	writefmtln(w, "            nil, resource.NewPropertyMap(obj), plugin.MarshalOptions{}),")
-	writefmtln(w, "    }, nil")
-	writefmtln(w, "}")
-	writefmtln(w, "")
-	writefmtln(w, "func (p *%vProvider) InspectChange(", name)
-	writefmtln(w, "    ctx context.Context, req *lumirpc.InspectChangeRequest) (*lumirpc.InspectChangeResponse, error) {")
-	writefmtln(w, "    contract.Assert(req.GetType() == string(%vToken))", name)
-	writefmtln(w, "    id := resource.ID(req.GetId())")
-	writefmtln(w, "    old, oldprops, err := p.Unmarshal(req.GetOlds())")
-	writefmtln(w, "    if err != nil {")
-	writefmtln(w, "        return nil, err")
-	writefmtln(w, "    }")
-	writefmtln(w, "    new, newprops, err := p.Unmarshal(req.GetNews())")
-	writefmtln(w, "    if err != nil {")
-	writefmtln(w, "        return nil, err")
-	writefmtln(w, "    }")
-	writefmtln(w, "    var replaces []string")
-	writefmtln(w, "    diff := oldprops.Diff(newprops)")
-	writefmtln(w, "    if diff != nil {")
+	w.Writefmtln("}")
+	w.Writefmtln("")
+	w.Writefmtln("func (p *%vProvider) Create(", name)
+	w.Writefmtln("    ctx context.Context, req *lumirpc.CreateRequest) (*lumirpc.CreateResponse, error) {")
+	w.Writefmtln("    contract.Assert(req.GetType() == string(%vToken))", name)
+	w.Writefmtln("    obj, _, err := p.Unmarshal(req.GetProperties())")
+	w.Writefmtln("    if err != nil {")
+	w.Writefmtln("        return nil, err")
+	w.Writefmtln("    }")
+	w.Writefmtln("    id, err := p.ops.Create(ctx, obj)")
+	w.Writefmtln("    if err != nil {")
+	w.Writefmtln("        return nil, err")
+	w.Writefmtln("    }")
+	w.Writefmtln("    return &lumirpc.CreateResponse{Id: string(id)}, nil")
+	w.Writefmtln("}")
+	w.Writefmtln("")
+	w.Writefmtln("func (p *%vProvider) Get(", name)
+	w.Writefmtln("    ctx context.Context, req *lumirpc.GetRequest) (*lumirpc.GetResponse, error) {")
+	w.Writefmtln("    contract.Assert(req.GetType() == string(%vToken))", name)
+	w.Writefmtln("    id := resource.ID(req.GetId())")
+	w.Writefmtln("    obj, err := p.ops.Get(ctx, id)")
+	w.Writefmtln("    if err != nil {")
+	w.Writefmtln("        return nil, err")
+	w.Writefmtln("    }")
+	w.Writefmtln("    return &lumirpc.GetResponse{")
+	w.Writefmtln("        Properties: plugin.MarshalProperties(")
+	w.Writefmtln("            nil, resource.NewPropertyMap(obj), plugin.MarshalOptions{}),")
+	w.Writefmtln("    }, nil")
+	w.Writefmtln("}")
+	w.Writefmtln("")
+	w.Writefmtln("func (p *%vProvider) InspectChange(", name)
+	w.Writefmtln("    ctx context.Context, req *lumirpc.InspectChangeRequest) (*lumirpc.InspectChangeResponse, error) {")
+	w.Writefmtln("    contract.Assert(req.GetType() == string(%vToken))", name)
+	w.Writefmtln("    id := resource.ID(req.GetId())")
+	w.Writefmtln("    old, oldprops, err := p.Unmarshal(req.GetOlds())")
+	w.Writefmtln("    if err != nil {")
+	w.Writefmtln("        return nil, err")
+	w.Writefmtln("    }")
+	w.Writefmtln("    new, newprops, err := p.Unmarshal(req.GetNews())")
+	w.Writefmtln("    if err != nil {")
+	w.Writefmtln("        return nil, err")
+	w.Writefmtln("    }")
+	w.Writefmtln("    var replaces []string")
+	w.Writefmtln("    diff := oldprops.Diff(newprops)")
+	w.Writefmtln("    if diff != nil {")
 	for _, opts := range propopts {
 		if opts.Replaces {
-			writefmtln(w, "        if diff.Changed(\"%v\") {", opts.Name)
-			writefmtln(w, "            replaces = append(replaces, \"%v\")", opts.Name)
-			writefmtln(w, "        }")
+			w.Writefmtln("        if diff.Changed(\"%v\") {", opts.Name)
+			w.Writefmtln("            replaces = append(replaces, \"%v\")", opts.Name)
+			w.Writefmtln("        }")
 		}
 	}
-	writefmtln(w, "    }")
-	writefmtln(w, "    more, err := p.ops.InspectChange(ctx, id, old, new, diff)")
-	writefmtln(w, "    if err != nil {")
-	writefmtln(w, "        return nil, err")
-	writefmtln(w, "    }")
-	writefmtln(w, "    return &lumirpc.InspectChangeResponse{")
-	writefmtln(w, "        Replaces: append(replaces, more...),")
-	writefmtln(w, "    }, err")
-	writefmtln(w, "}")
-	writefmtln(w, "")
-	writefmtln(w, "func (p *%vProvider) Update(", name)
-	writefmtln(w, "    ctx context.Context, req *lumirpc.UpdateRequest) (*pbempty.Empty, error) {")
-	writefmtln(w, "    contract.Assert(req.GetType() == string(%vToken))", name)
-	writefmtln(w, "    id := resource.ID(req.GetId())")
-	writefmtln(w, "    old, oldprops, err := p.Unmarshal(req.GetOlds())")
-	writefmtln(w, "    if err != nil {")
-	writefmtln(w, "        return nil, err")
-	writefmtln(w, "    }")
-	writefmtln(w, "    new, newprops, err := p.Unmarshal(req.GetNews())")
-	writefmtln(w, "    if err != nil {")
-	writefmtln(w, "        return nil, err")
-	writefmtln(w, "    }")
-	writefmtln(w, "    diff := oldprops.Diff(newprops)")
-	writefmtln(w, "    if err := p.ops.Update(ctx, id, old, new, diff); err != nil {")
-	writefmtln(w, "        return nil, err")
-	writefmtln(w, "    }")
-	writefmtln(w, "    return &pbempty.Empty{}, nil")
-	writefmtln(w, "}")
-	writefmtln(w, "")
-	writefmtln(w, "func (p *%vProvider) Delete(", name)
-	writefmtln(w, "    ctx context.Context, req *lumirpc.DeleteRequest) (*pbempty.Empty, error) {")
-	writefmtln(w, "    contract.Assert(req.GetType() == string(%vToken))", name)
-	writefmtln(w, "    id := resource.ID(req.GetId())")
-	writefmtln(w, "    if err := p.ops.Delete(ctx, id); err != nil {")
-	writefmtln(w, "        return nil, err")
-	writefmtln(w, "    }")
-	writefmtln(w, "    return &pbempty.Empty{}, nil")
-	writefmtln(w, "}")
-	writefmtln(w, "")
-	writefmtln(w, "func (p *%vProvider) Unmarshal(", name)
-	writefmtln(w, "    v *pbstruct.Struct) (*%v, resource.PropertyMap, error) {", name)
-	writefmtln(w, "    var obj %v", name)
-	writefmtln(w, "    props := plugin.UnmarshalProperties(nil, v, plugin.MarshalOptions{RawResources: true})")
-	writefmtln(w, "    return &obj, props, mapper.MapIU(props.Mappable(), &obj)")
-	writefmtln(w, "}")
-	writefmtln(w, "")
+	w.Writefmtln("    }")
+	w.Writefmtln("    more, err := p.ops.InspectChange(ctx, id, old, new, diff)")
+	w.Writefmtln("    if err != nil {")
+	w.Writefmtln("        return nil, err")
+	w.Writefmtln("    }")
+	w.Writefmtln("    return &lumirpc.InspectChangeResponse{")
+	w.Writefmtln("        Replaces: append(replaces, more...),")
+	w.Writefmtln("    }, err")
+	w.Writefmtln("}")
+	w.Writefmtln("")
+	w.Writefmtln("func (p *%vProvider) Update(", name)
+	w.Writefmtln("    ctx context.Context, req *lumirpc.UpdateRequest) (*pbempty.Empty, error) {")
+	w.Writefmtln("    contract.Assert(req.GetType() == string(%vToken))", name)
+	w.Writefmtln("    id := resource.ID(req.GetId())")
+	w.Writefmtln("    old, oldprops, err := p.Unmarshal(req.GetOlds())")
+	w.Writefmtln("    if err != nil {")
+	w.Writefmtln("        return nil, err")
+	w.Writefmtln("    }")
+	w.Writefmtln("    new, newprops, err := p.Unmarshal(req.GetNews())")
+	w.Writefmtln("    if err != nil {")
+	w.Writefmtln("        return nil, err")
+	w.Writefmtln("    }")
+	w.Writefmtln("    diff := oldprops.Diff(newprops)")
+	w.Writefmtln("    if err := p.ops.Update(ctx, id, old, new, diff); err != nil {")
+	w.Writefmtln("        return nil, err")
+	w.Writefmtln("    }")
+	w.Writefmtln("    return &pbempty.Empty{}, nil")
+	w.Writefmtln("}")
+	w.Writefmtln("")
+	w.Writefmtln("func (p *%vProvider) Delete(", name)
+	w.Writefmtln("    ctx context.Context, req *lumirpc.DeleteRequest) (*pbempty.Empty, error) {")
+	w.Writefmtln("    contract.Assert(req.GetType() == string(%vToken))", name)
+	w.Writefmtln("    id := resource.ID(req.GetId())")
+	w.Writefmtln("    if err := p.ops.Delete(ctx, id); err != nil {")
+	w.Writefmtln("        return nil, err")
+	w.Writefmtln("    }")
+	w.Writefmtln("    return &pbempty.Empty{}, nil")
+	w.Writefmtln("}")
+	w.Writefmtln("")
+	w.Writefmtln("func (p *%vProvider) Unmarshal(", name)
+	w.Writefmtln("    v *pbstruct.Struct) (*%v, resource.PropertyMap, error) {", name)
+	w.Writefmtln("    var obj %v", name)
+	w.Writefmtln("    props := plugin.UnmarshalProperties(nil, v, plugin.MarshalOptions{RawResources: true})")
+	w.Writefmtln("    return &obj, props, mapper.MapIU(props.Mappable(), &obj)")
+	w.Writefmtln("}")
+	w.Writefmtln("")
 }
 
-func (g *RPCGenerator) EmitStructType(w *bufio.Writer, module tokens.Module, pkg *Package, t TypeMember) {
+func (g *RPCGenerator) EmitStructType(w *tools.GenWriter, module tokens.Module, pkg *Package, t TypeMember) {
 	name := t.Name()
-	writefmtln(w, "/* Marshalable %v structure(s) */", name)
-	writefmtln(w, "")
+	w.Writefmtln("/* Marshalable %v structure(s) */", name)
+	w.Writefmtln("")
 
 	props := t.Properties()
 	propopts := t.PropertyOptions()
-	writefmtln(w, "// %v is a marshalable representation of its corresponding IDL type.", name)
-	writefmtln(w, "type %v struct {", name)
+	w.Writefmtln("// %v is a marshalable representation of its corresponding IDL type.", name)
+	w.Writefmtln("type %v struct {", name)
 	for i, prop := range props {
 		opts := propopts[i]
 		// Make a JSON tag for this so we can serialize; note that outputs are always optional in this position.
 		jsontag := makeLumiTag(opts)
-		writefmtln(w, "    %v %v %v",
+		w.Writefmtln("    %v %v %v",
 			prop.Name(), g.GenTypeName(prop.Type(), opts.Optional || opts.In || opts.Out), jsontag)
 	}
-	writefmtln(w, "}")
-	writefmtln(w, "")
+	w.Writefmtln("}")
+	w.Writefmtln("")
 
 	if len(props) > 0 {
-		writefmtln(w, "// %v's properties have constants to make dealing with diffs and property bags easier.", name)
-		writefmtln(w, "const (")
+		w.Writefmtln("// %v's properties have constants to make dealing with diffs and property bags easier.", name)
+		w.Writefmtln("const (")
 		for i, prop := range props {
 			opts := propopts[i]
-			writefmtln(w, "    %v_%v = \"%v\"", name, prop.Name(), opts.Name)
+			w.Writefmtln("    %v_%v = \"%v\"", name, prop.Name(), opts.Name)
 		}
-		writefmtln(w, ")")
-		writefmtln(w, "")
+		w.Writefmtln(")")
+		w.Writefmtln("")
 	}
 }
 
@@ -550,28 +539,28 @@ func (g *RPCGenerator) registerImport(pkg *types.Package) string {
 	return name
 }
 
-func (g *RPCGenerator) EmitTypedefs(w *bufio.Writer, typedefs []Typedef) {
-	writefmtln(w, "/* Typedefs */")
-	writefmtln(w, "")
+func (g *RPCGenerator) EmitTypedefs(w *tools.GenWriter, typedefs []Typedef) {
+	w.Writefmtln("/* Typedefs */")
+	w.Writefmtln("")
 
-	writefmtln(w, "type (")
+	w.Writefmtln("type (")
 	for _, td := range typedefs {
-		writefmtln(w, "    %v %v", td.Name(), td.Target())
+		w.Writefmtln("    %v %v", td.Name(), td.Target())
 	}
-	writefmtln(w, ")")
+	w.Writefmtln(")")
 
-	writefmtln(w, "")
+	w.Writefmtln("")
 }
 
-func (g *RPCGenerator) EmitConstants(w *bufio.Writer, consts []*Const) {
-	writefmtln(w, "/* Constants */")
-	writefmtln(w, "")
+func (g *RPCGenerator) EmitConstants(w *tools.GenWriter, consts []*Const) {
+	w.Writefmtln("/* Constants */")
+	w.Writefmtln("")
 
-	writefmtln(w, "const (")
+	w.Writefmtln("const (")
 	for _, konst := range consts {
-		writefmtln(w, "    %v %v = %v", konst.Name(), g.GenTypeName(konst.Type, false), konst.Value)
+		w.Writefmtln("    %v %v = %v", konst.Name(), g.GenTypeName(konst.Type, false), konst.Value)
 	}
-	writefmtln(w, ")")
+	w.Writefmtln(")")
 
-	writefmtln(w, "")
+	w.Writefmtln("")
 }

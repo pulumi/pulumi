@@ -1,2 +1,2 @@
-# Copyright 2017 Pulumi, Inc. All rights reserved.
+# Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
 

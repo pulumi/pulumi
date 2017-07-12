@@ -1,3 +1,5 @@
+// Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
+
 // Define a bunch of no-op decorators.
 export function classDecorate(target: Object) {}
 export function propertyDecorate(target: Object, propertyKey: string) {}

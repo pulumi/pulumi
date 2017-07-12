@@ -1,4 +1,4 @@
-# Copyright 2017 Pulumi, Inc. All rights reserved.
+# Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
 
 delim      = ":" # the character used to delimit parts of a token (module, member, etc).
 name_delim = "/" # the character used to delimit parts of a name (e.g., namespaces, sub-modules).

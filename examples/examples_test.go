@@ -1,3 +1,5 @@
+// Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
+
 package examples
 
 import (
@@ -80,7 +82,8 @@ func testExample(t *testing.T, exampleDir string) {
 	runCmd(t, []string{lumijs, "--verbose"}, examplewd, stdout, stderr)
 	runCmd(t, []string{lumi, "env", "init", "integrationtesting"}, examplewd, stdout, stderr)
 	runCmd(t, []string{lumi, "config", "aws:config/index:region", region}, examplewd, stdout, stderr)
-	runCmd(t, []string{lumi, "plan"}, examplewd, stdout, stderr)
+	// TODO[pulumi/lumi#276] Disabling `lumi plan` for now as it has issues with output properties
+	// runCmd(t, []string{lumi, "plan"}, examplewd, stdout, stderr)
 	runCmd(t, []string{lumi, "deploy"}, examplewd, stdout, stderr)
 	runCmd(t, []string{lumi, "destroy", "--yes"}, examplewd, stdout, stderr)
 	runCmd(t, []string{lumi, "env", "rm", "--yes", "integrationtesting"}, examplewd, stdout, stderr)

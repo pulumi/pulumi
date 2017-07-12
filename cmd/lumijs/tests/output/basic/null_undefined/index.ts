@@ -1,3 +1,5 @@
+// Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
+
 // This test just ensures that undefined expands correctly.
 
 let au = undefined;

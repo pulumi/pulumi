@@ -1,5 +1,6 @@
 *.swp
-/mu
 /vendor/
 /.vscode/
+coverage.cov
+*.coverprofile
 

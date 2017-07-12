@@ -4,8 +4,6 @@
 /* tslint:disable:ordered-imports variable-name */
 import * as lumi from "@lumi/lumi";
 
-import {TopicSubscription} from "../sns/topic";
-
 export let AverageStatistic: AlarmStatistic = "Average";
 export let BitsMetric: AlarmMetric = "Bits";
 export let BitsPerSecondMetric: AlarmMetric = "Bits/Second";
@@ -46,7 +44,6 @@ export let ThresholdLessThanOrEqualTo: AlarmComparisonOperator = "LessThanOrEqua
 export class ActionTarget extends lumi.NamedResource implements ActionTargetArgs {
     public readonly topicName?: string;
     public displayName?: string;
-    public subscription?: TopicSubscription[];
 
     public static get(id: lumi.ID): ActionTarget {
         return <any>undefined; // functionality provided by the runtime
@@ -61,7 +58,6 @@ export class ActionTarget extends lumi.NamedResource implements ActionTargetArgs
         if (args !== undefined) {
             this.topicName = args.topicName;
             this.displayName = args.displayName;
-            this.subscription = args.subscription;
         }
     }
 }
@@ -69,7 +65,6 @@ export class ActionTarget extends lumi.NamedResource implements ActionTargetArgs
 export interface ActionTargetArgs {
     readonly topicName?: string;
     displayName?: string;
-    subscription?: TopicSubscription[];
 }
 
 export class Alarm extends lumi.NamedResource implements AlarmArgs {

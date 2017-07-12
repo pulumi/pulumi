@@ -1,26 +1,10 @@
-// Licensed to Pulumi Corporation ("Pulumi") under one or more
-// contributor license agreements.  See the NOTICE file distributed with
-// this work for additional information regarding copyright ownership.
-// Pulumi licenses this file to You under the Apache License, Version 2.0
-// (the "License"); you may not use this file except in compliance with
-// the License.  You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
 
 package lumidl
 
 import (
-	"bufio"
-	"bytes"
 	"fmt"
 	"go/types"
-	"os"
 	"path/filepath"
 	"reflect"
 	"sort"
@@ -29,6 +13,7 @@ import (
 	"golang.org/x/tools/go/loader"
 
 	"github.com/pulumi/lumi/pkg/tokens"
+	"github.com/pulumi/lumi/pkg/tools"
 	"github.com/pulumi/lumi/pkg/util/contract"
 )
 
@@ -117,21 +102,20 @@ func (g *PackGenerator) emitFileContents(file string, body string) error {
 	file += ".ts"
 
 	// Open up a writer that overwrites whatever file contents already exist.
-	f, err := os.OpenFile(file, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0600)
+	w, err := tools.NewGenWriter(lumidl, file)
 	if err != nil {
 		return err
 	}
-	defer contract.IgnoreClose(f)
-	w := bufio.NewWriter(f)
+	defer contract.IgnoreClose(w)
 
 	// Emit a header into the file.
-	emitHeaderWarning(w)
-	writefmtln(w, "/* tslint:disable:ordered-imports variable-name */")
+	w.EmitHeaderWarning()
+	w.Writefmtln("/* tslint:disable:ordered-imports variable-name */")
 
 	// If there are any resources, import the Lumi package.
 	if g.FileHadRes {
-		writefmtln(w, "import * as lumi from \"@lumi/lumi\";")
-		writefmtln(w, "")
+		w.Writefmtln("import * as lumi from \"@lumi/lumi\";")
+		w.Writefmtln("")
 	}
 	if len(g.FileImports) > 0 {
 		// First, sort the imported package names, to ensure determinism.
@@ -182,27 +166,27 @@ func (g *PackGenerator) emitFileContents(file string, body string) error {
 				})
 
 				// Finally, go through and produce the import clause.
-				writefmt(w, "import {")
+				w.Writefmt("import {")
 				for i, member := range members {
 					if i > 0 {
-						writefmt(w, ", ")
+						w.Writefmt(", ")
 					}
-					writefmt(w, string(member))
+					w.Writefmt(string(member))
 				}
-				writefmtln(w, "} from \"%v\";", impname)
+				w.Writefmtln("} from \"%v\";", impname)
 			}
 		}
-		writefmtln(w, "")
+		w.Writefmtln("")
 	}
 
-	writefmt(w, "%v", body)
-	return w.Flush()
+	w.Writefmt("%v", body)
+	return nil
 }
 
 func (g *PackGenerator) genFileBody(members []Member) string {
 	// Accumulate the buffer in a string.
-	var buffer bytes.Buffer
-	w := bufio.NewWriter(&buffer)
+	w, err := tools.NewGenWriter(lumidl, "")
+	contract.IgnoreError(err)
 
 	// Now go ahead and emit the code for all members of this package.
 	for i, m := range members {
@@ -211,7 +195,7 @@ func (g *PackGenerator) genFileBody(members []Member) string {
 			_, isalias := m.(*Alias)
 			_, isconst := m.(*Const)
 			if (!isalias && !isconst) || reflect.TypeOf(m) != reflect.TypeOf(members[i-1]) {
-				writefmtln(w, "")
+				w.Writefmtln("")
 			}
 		}
 		switch t := m.(type) {
@@ -230,36 +214,36 @@ func (g *PackGenerator) genFileBody(members []Member) string {
 		}
 	}
 
-	writefmtln(w, "")
-	err := w.Flush()
+	w.Writefmtln("")
+	err = w.Flush()
 	contract.IgnoreError(err)
-	return buffer.String()
+	return w.Buffer()
 }
 
-func (g *PackGenerator) EmitAlias(w *bufio.Writer, alias *Alias) {
-	writefmtln(w, "export type %v = %v;", alias.Name(), g.GenTypeName(alias.Target()))
+func (g *PackGenerator) EmitAlias(w *tools.GenWriter, alias *Alias) {
+	w.Writefmtln("export type %v = %v;", alias.Name(), g.GenTypeName(alias.Target()))
 }
 
-func (g *PackGenerator) EmitConst(w *bufio.Writer, konst *Const) {
-	writefmtln(w, "export let %v: %v = %v;", konst.Name(), g.GenTypeName(konst.Type), konst.Value.String())
+func (g *PackGenerator) EmitConst(w *tools.GenWriter, konst *Const) {
+	w.Writefmtln("export let %v: %v = %v;", konst.Name(), g.GenTypeName(konst.Type), konst.Value.String())
 }
 
-func (g *PackGenerator) EmitEnum(w *bufio.Writer, enum *Enum) {
-	writefmtln(w, "export type %v =", enum.Name())
+func (g *PackGenerator) EmitEnum(w *tools.GenWriter, enum *Enum) {
+	w.Writefmtln("export type %v =", enum.Name())
 	contract.Assert(len(enum.Values) > 0)
 	for i, value := range enum.Values {
 		if i > 0 {
-			writefmtln(w, " |")
+			w.Writefmtln(" |")
 		}
-		writefmt(w, "    %v", value)
+		w.Writefmt("    %v", value)
 	}
-	writefmtln(w, ";")
+	w.Writefmtln(";")
 }
 
-func (g *PackGenerator) EmitResource(w *bufio.Writer, res *Resource) {
+func (g *PackGenerator) EmitResource(w *tools.GenWriter, res *Resource) {
 	// Emit the full resource class definition, including constructor, etc.
 	g.emitResourceClass(w, res)
-	writefmtln(w, "")
+	w.Writefmtln("")
 
 	// Finally, emit an entire struct type for the args interface.
 	g.emitStructType(w, res, res.Name()+tokens.Name("Args"))
@@ -268,7 +252,7 @@ func (g *PackGenerator) EmitResource(w *bufio.Writer, res *Resource) {
 	g.FileHadRes = true
 }
 
-func (g *PackGenerator) emitResourceClass(w *bufio.Writer, res *Resource) {
+func (g *PackGenerator) emitResourceClass(w *tools.GenWriter, res *Resource) {
 	// Emit the class definition itself.
 	name := res.Name()
 	var base string
@@ -277,7 +261,7 @@ func (g *PackGenerator) emitResourceClass(w *bufio.Writer, res *Resource) {
 	} else {
 		base = "Resource"
 	}
-	writefmtln(w, "export class %v extends lumi.%v implements %vArgs {", name, base, name)
+	w.Writefmtln("export class %v extends lumi.%v implements %vArgs {", name, base, name)
 
 	// First, emit all fields definitions.
 	hasArgs := false
@@ -297,72 +281,72 @@ func (g *PackGenerator) emitResourceClass(w *bufio.Writer, res *Resource) {
 		}
 	})
 	if fn > 0 {
-		writefmtln(w, "")
+		w.Writefmtln("")
 	}
 
 	// Add the standard "factory" functions: get and query.  These are static, so they go before the constructor.
-	writefmtln(w, "    public static get(id: lumi.ID): %v {", name)
-	writefmtln(w, "        return <any>undefined; // functionality provided by the runtime")
-	writefmtln(w, "    }")
-	writefmtln(w, "")
-	writefmtln(w, "    public static query(q: any): %v[] {", name)
-	writefmtln(w, "        return <any>undefined; // functionality provided by the runtime")
-	writefmtln(w, "    }")
-	writefmtln(w, "")
+	w.Writefmtln("    public static get(id: lumi.ID): %v {", name)
+	w.Writefmtln("        return <any>undefined; // functionality provided by the runtime")
+	w.Writefmtln("    }")
+	w.Writefmtln("")
+	w.Writefmtln("    public static query(q: any): %v[] {", name)
+	w.Writefmtln("        return <any>undefined; // functionality provided by the runtime")
+	w.Writefmtln("    }")
+	w.Writefmtln("")
 
 	// Next, a constructor that validates arguments and self-assigns them.
-	writefmt(w, "    constructor(")
+	w.Writefmt("    constructor(")
 	if res.Named {
-		writefmt(w, "name: string, ")
+		w.Writefmt("name: string, ")
 	}
-	writefmt(w, "args")
+	w.Writefmt("args")
 	if !hasRequiredArgs {
-		writefmt(w, "?")
+		w.Writefmt("?")
 	}
-	writefmtln(w, ": %vArgs) {", name)
+	w.Writefmtln(": %vArgs) {", name)
 
 	if hasName {
 		// Named properties are passed as the constructor's first argument.
-		writefmtln(w, "        super(name);")
+		w.Writefmtln("        super(name);")
 	} else {
-		writefmtln(w, "        super();")
+		w.Writefmtln("        super();")
 	}
 
 	// Next, validate that required parameters exist, and store all arguments on the object.
 	argLinePrefix := "        "
 	needsArgsCheck := hasArgs && !hasRequiredArgs
 	if needsArgsCheck {
-		writefmtln(w, "        if (args !== undefined) {")
+		w.Writefmtln("        if (args !== undefined) {")
 		argLinePrefix += "    "
 	}
 	forEachField(res, func(fld *types.Var, opt PropertyOptions) {
 		if !opt.Out && !isResourceNameProperty(res, opt) {
 			if !opt.Optional {
-				writefmtln(w, "%vif (args.%v === undefined) {", argLinePrefix, opt.Name)
-				writefmtln(w, "%v    throw new Error(\"Missing required argument '%v'\");", argLinePrefix, opt.Name)
-				writefmtln(w, "%v}", argLinePrefix)
+				w.Writefmtln("%vif (args.%v === undefined) {", argLinePrefix, opt.Name)
+				w.Writefmtln("%v    throw new Error(\"Missing required argument '%v'\");", argLinePrefix, opt.Name)
+				w.Writefmtln("%v}", argLinePrefix)
 			}
-			writefmtln(w, "%vthis.%v = args.%v;", argLinePrefix, opt.Name, opt.Name)
+			w.Writefmtln("%vthis.%v = args.%v;", argLinePrefix, opt.Name, opt.Name)
 		}
 	})
 	if needsArgsCheck {
-		writefmtln(w, "        }")
+		w.Writefmtln("        }")
 	}
 
-	writefmtln(w, "    }")
-	writefmtln(w, "}")
+	w.Writefmtln("    }")
+	w.Writefmtln("}")
 }
 
 func isResourceNameProperty(res *Resource, prop PropertyOptions) bool {
 	return res.Named && prop.Name == "name"
 }
 
-func (g *PackGenerator) EmitStruct(w *bufio.Writer, s *Struct) {
+func (g *PackGenerator) EmitStruct(w *tools.GenWriter, s *Struct) {
 	g.emitStructType(w, s, s.Name())
 }
 
-func (g *PackGenerator) emitStructType(w *bufio.Writer, t TypeMember, name tokens.Name) {
-	writefmtln(w, fmt.Sprintf("export interface %v {", name))
+func (g *PackGenerator) emitStructType(w *tools.GenWriter, t TypeMember, name tokens.Name) {
+	w.Writefmtln(fmt.Sprintf("export interface %v {", name))
 	forEachField(t, func(fld *types.Var, opt PropertyOptions) {
 		if opt.Out {
 			return // skip output properties, since those exist solely on the resource class.
@@ -371,10 +355,10 @@ func (g *PackGenerator) emitStructType(w *bufio.Writer, t TypeMember, name token
 		}
 		g.emitField(w, fld, opt, "    ")
 	})
-	writefmtln(w, "}")
+	w.Writefmtln("}")
 }
 
-func (g *PackGenerator) emitField(w *bufio.Writer, fld *types.Var, opt PropertyOptions, prefix string) {
+func (g *PackGenerator) emitField(w *tools.GenWriter, fld *types.Var, opt PropertyOptions, prefix string) {
 	var readonly string
 	var optional string
 	var typ string
@@ -385,7 +369,7 @@ func (g *PackGenerator) emitField(w *bufio.Writer, fld *types.Var, opt PropertyO
 		optional = "?"
 	}
 	typ = g.GenTypeName(fld.Type())
-	writefmtln(w, "%v%v%v%v: %v;", prefix, readonly, opt.Name, optional, typ)
+	w.Writefmtln("%v%v%v%v: %v;", prefix, readonly, opt.Name, optional, typ)
 }
 
 func (g *PackGenerator) GenTypeName(t types.Type) string {

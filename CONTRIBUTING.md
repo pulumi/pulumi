@@ -18,18 +18,54 @@ we recommend engaging early and often with the core community contributors.
 
 In order to ensure contributions go through smoothly, please follow these guidelines.
 
-### Contributor License Agreements
+### Licenses and Developer Certificate of Origin (DCO)
 
-We'd love to jump straight into the code.  Before we can do that, however, we have to jump through a couple of legal
-hurdles, to protect you, us, and the Lumi project.
+We'd love to jump straight into the code.  Before we can do that, we have to talk about licenses for a moment.
 
-Namely, we need a signed individual or corporate [Contributor License Agreement (CLA)](
-https://en.wikipedia.org/wiki/Contributor_License_Agreement).  If you are an individual writing original source code and
-you're sure you own the intellectual property, you'll need to sign an individual CLA.  If, on the other hand, you work
-for a company that wants to allow you to contribute your work, you'll need to sign a corporate CLA.
+Licensing is very important because it helps ensure the software continues to be available under the terms the author
+desired. The license tells you what rights you have that are provided by the copyright holder.  It's important that the
+contributor fully understands what rights they are licensing and agrees to them.  Sometimes the copyright holder isn't
+the contributor, such as when the contributor is doing the work on behalf of a company.
 
-At the moment, the Lumi project doesn't have an automated system for CLA signatures.  Please ask one of the project
-maintainers for the relevant document, sign and return it, and we'll keep it on file for you.
+To ensure these criteria are met, contributions to Lumi must follow the Developer Certificate of Origin (DCO) process.
+
+The DCO is an attestation attached to every contribution made by every developer.  In the commit message of the
+contribution, you will simply add a Signed-off-by statement, which indicates that you agree to the DCO:
+
+    Signed-off-by: Hinakuluiau Lie <hina@pulumi.com>
+
+The easiest way to perform this sign-off is with the `-s` option to `git commit` (long form `--signoff`).
+
+You may find a copy of the DCO at http://developercertificate.org/ or below for convenience:
+
+```
+Developer's Certificate of Origin 1.1
+
+By making a contribution to this project, I certify that:
+
+(a) The contribution was created in whole or in part by me and I
+    have the right to submit it under the open source license
+    indicated in the file; or
+
+(b) The contribution is based upon previous work that, to the
+    best of my knowledge, is covered under an appropriate open
+    source license and I have the right under that license to
+    submit that work with modifications, whether created in whole
+    or in part by me, under the same open source license (unless
+    I am permitted to submit under a different license), as
+    Indicated in the file; or
+
+(c) The contribution was provided directly to me by some other
+    person who certified (a), (b) or (c) and I have not modified
+    it.
+
+(d) I understand and agree that this project and the contribution
+    are public and that a record of the contribution (including
+    all personal information I submit with it, including my
+    sign-off) is maintained indefinitely and may be redistributed
+    consistent with this project or the open source license(s)
+    involved.
+```
 
 ### Coding Standards
 
@@ -77,20 +113,7 @@ These are some language-agnostic rules we apply across our codebase:
 * The top of each file MUST contain the standard Lumi licensing information:
 
     ```
-    // Licensed to Pulumi Corporation ("Pulumi") under one or more
-    // contributor license agreements.  See the NOTICE file distributed with
-    // this work for additional information regarding copyright ownership.
-    // Pulumi licenses this file to You under the Apache License, Version 2.0
-    // (the "License"); you may not use this file except in compliance with
-    // the License.  You may obtain a copy of the License at
-    //
-    //     http://www.apache.org/licenses/LICENSE-2.0
-    //
-    // Unless required by applicable law or agreed to in writing, software
-    // distributed under the License is distributed on an "AS IS" BASIS,
-    // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-    // See the License for the specific language governing permissions and
-    // limitations under the License.
+    // Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
     ```
 
 * There are three special kinds of comments; two MUST have a corresponding work item `xx`, while the other MAY:

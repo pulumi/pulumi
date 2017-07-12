@@ -1,17 +1,4 @@
-// Licensed to Pulumi Corporation ("Pulumi") under one or more
-// contributor license agreements.  See the NOTICE file distributed with
-// this work for additional information regarding copyright ownership.
-// Pulumi licenses this file to You under the Apache License, Version 2.0
-// (the "License"); you may not use this file except in compliance with
-// the License.  You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
 
 package plugin
 
@@ -26,7 +13,7 @@ import (
 	"github.com/pulumi/lumi/sdk/go/pkg/lumirpc"
 )
 
-const analyzerPrefix = "lumi-analyzer"
+const AnalyzerPluginPrefix = "lumi-analyzer-"
 
 // analyzer reflects an analyzer plugin, loaded dynamically for a single suite of checks.
 type analyzer struct {
@@ -40,7 +27,7 @@ type analyzer struct {
 // could not be found by name on the PATH, or an error occurs while creating the child process, an error is returned.
 func NewAnalyzer(host Host, ctx *Context, name tokens.QName) (Analyzer, error) {
 	// Search for the analyzer on the path.
-	srvexe := analyzerPrefix + "-" + strings.Replace(string(name), tokens.QNameDelimiter, "_", -1)
+	srvexe := AnalyzerPluginPrefix + strings.Replace(string(name), tokens.QNameDelimiter, "_", -1)
 
 	// Now go ahead and attempt to load the plugin.
 	plug, err := newPlugin(host, ctx, []string{srvexe}, fmt.Sprintf("analyzer[%v]", name))
