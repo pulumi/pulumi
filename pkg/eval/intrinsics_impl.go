@@ -103,23 +103,38 @@ func sha1hash(intrin *rt.Intrinsic, e *evaluator, this *rt.Object, args []*rt.Ob
 }
 
 type closureSerializer struct {
-	node diag.Diagable
-	e    *evaluator
+	node          diag.Diagable
+	e             *evaluator
+	envEntryCache map[*rt.Object]*rt.Object
 }
 
 func (s *closureSerializer) envEntryObjFor(obj *rt.Object) *rt.Object {
-	props := rt.NewPropertyMap()
-	if obj.IsFunction() {
-		// Serialize functions using serializeClosure
-		stub := obj.FunctionValue()
-		lambda, ok := stub.Func.(*ast.LambdaExpression)
-		contract.Assertf(ok, "Expected function to be lambda expression")
-		props.Set("closure", s.serializeClosure(stub, lambda))
-	} else {
-		// Else we will pass through the object to serialize
-		props.Set("json", obj)
+	envEntry, ok := s.envEntryCache[obj]
+	if !ok {
+		props := rt.NewPropertyMap()
+		envEntry = rt.NewObject(types.Dynamic, nil, props, nil)
+		s.envEntryCache[obj] = envEntry
+		if obj.IsFunction() {
+			// Serialize functions using serializeClosure
+			stub := obj.FunctionValue()
+			lambda, ok := stub.Func.(*ast.LambdaExpression)
+			contract.Assertf(ok, "Expected function to be lambda expression")
+			props.Set("closure", s.serializeClosure(stub, lambda))
+		} else {
+			// Else we will pass through the object to serialize
+			// IDEA: Support for function members on captured references
+			// could be added by recurring here in the case that
+			// obj is not a primitive type.
+			//   let x = {
+			//     f: () => 24,
+			//   };
+			//   let g = () => x.f();
+			// In the above case, the free vars of g are only [x], which will
+			// currently trigger JSON serialization, losing access to `x.f`.
+			props.Set("json", obj)
+		}
 	}
-	return rt.NewObject(types.Dynamic, nil, props, nil)
+	return envEntry
 }
 
 func (s *closureSerializer) serializeClosure(stub rt.FuncStub, lambda *ast.LambdaExpression) *rt.Object {
@@ -165,8 +180,9 @@ func serializeClosure(intrin *rt.Intrinsic, e *evaluator, this *rt.Object, args 
 		return e.NewException(intrin.Tree(), "Expected argument 'func' to be a lambda expression.")
 	}
 	closureSerializer := &closureSerializer{
-		node: intrin.Tree(),
-		e:    e,
+		node:          intrin.Tree(),
+		e:             e,
+		envEntryCache: map[*rt.Object]*rt.Object{},
 	}
 	closure := closureSerializer.serializeClosure(stub, lambda)
 	return rt.NewReturnUnwind(closure)
