@@ -94,6 +94,26 @@ func (p *applicationProvider) Create(ctx context.Context, obj *elasticbeanstalk.
 	return arn.NewElasticBeanstalkApplicationID(p.ctx.Region(), p.ctx.AccountID(), name), nil
 }
 
+// Query returns an (possibly empty) array of resource objects.
+func (p *applicationProvider) Query(ctx context.Context) ([]*elasticbeanstalk.Application, error) {
+	resp, err := p.ctx.ElasticBeanstalk.DescribeApplications(&awselasticbeanstalk.DescribeApplicationsInput{})
+	if err != nil {
+		return nil, err
+	} else if len(resp.Applications) == 0 {
+		return nil, nil
+	}
+
+	var apps []*elasticbeanstalk.Application
+	for _, app := range resp.Applications {
+		apps = append(apps, &elasticbeanstalk.Application{
+			ApplicationName: app.ApplicationName,
+			Description:     app.Description,
+		})
+	}
+
+	return apps, nil
+}
+
 // Get reads the instance state identified by ID, returning a populated resource object, or an error if not found.
 func (p *applicationProvider) Get(ctx context.Context, id resource.ID) (*elasticbeanstalk.Application, error) {
 	name, err := arn.ParseResourceName(id)

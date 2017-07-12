@@ -221,6 +221,72 @@ func (p *tableProvider) Create(ctx context.Context, obj *dynamodb.Table) (resour
 	return resource.ID(arn), nil
 }
 
+// Query returns an (possible empty) array of resource objects.
+func (p *tableProvider) Query(ctx context.Context) ([]*dynamodb.Table, error) {
+
+	// List tables, iterate through each one, describe table, construct table reference and add to array.
+	var names []string = p.ctx.DynamoDB().ListTables()
+	var tables []*dynamodb.Table
+
+	for name := range names {
+		resp, err := p.ctx.DynamoDB().DescribeTable(&awsdynamodb.DescribeTableInput{TableName: aws.String(name)})
+		if err != nil {
+			return nil, err
+		} else if resp == nil || resp.Table == nil {
+			return nil, errors.New("DynamoDB query returned an empty response or table")
+		}
+
+		// The object was found, we need to reverse map a bunch of properties into the structure form.
+		tab := resp.Table
+
+		var attributes []dynamodb.Attribute
+		for _, attr := range tab.AttributeDefinitions {
+			attributes = append(attributes, dynamodb.Attribute{
+				Name: aws.StringValue(attr.AttributeName),
+				Type: dynamodb.AttributeType(aws.StringValue(attr.AttributeType)),
+			})
+		}
+
+		hashKey, rangeKey := getHashRangeKeys(tab.KeySchema)
+		if hashKey == nil {
+			return nil, errors.New("Missing hash key in table schema")
+		}
+
+		var gsis *[]dynamodb.GlobalSecondaryIndex
+		if len(tab.GlobalSecondaryIndexes) > 0 {
+			var gis []dynamodb.GlobalSecondaryIndex
+			for _, gsid := range tab.GlobalSecondaryIndexes {
+				hk, rk := getHashRangeKeys(gsid.KeySchema)
+				if hk == nil {
+					return nil, errors.New("Missing hash key in table global secondary index")
+				}
+				gis = append(gis, dynamodb.GlobalSecondaryIndex{
+					IndexName:        aws.StringValue(gsid.IndexName),
+					HashKey:          *hk,
+					ReadCapacity:     float64(aws.Int64Value(gsid.ProvisionedThroughput.ReadCapacityUnits)),
+					WriteCapacity:    float64(aws.Int64Value(gsid.ProvisionedThroughput.WriteCapacityUnits)),
+					RangeKey:         rk,
+					NonKeyAttributes: aws.StringValueSlice(gsid.Projection.NonKeyAttributes),
+					ProjectionType:   dynamodb.ProjectionType(*gsid.Projection.ProjectionType),
+				})
+			}
+			gsis = &gis
+		}
+
+		tables = append(tables, &dynamodb.Table{
+			HashKey:                *hashKey,
+			Attributes:             attributes,
+			ReadCapacity:           float64(aws.Int64Value(tab.ProvisionedThroughput.ReadCapacityUnits)),
+			WriteCapacity:          float64(aws.Int64Value(tab.ProvisionedThroughput.WriteCapacityUnits)),
+			RangeKey:               rangeKey,
+			TableName:              tab.TableName,
+			GlobalSecondaryIndexes: gsis,
+		})
+	}
+
+	return tables, nil
+}
+
 // Get reads the instance state identified by ID, returning a populated resource object, or an error if not found.
 func (p *tableProvider) Get(ctx context.Context, id resource.ID) (*dynamodb.Table, error) {
 	name, err := arn.ParseResourceName(id)

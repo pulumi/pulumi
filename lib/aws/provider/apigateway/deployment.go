@@ -82,6 +82,23 @@ func (p *deploymentProvider) Create(ctx context.Context, obj *apigateway.Deploym
 	return id, nil
 }
 
+// Query returns an (possibly empty) array of resource objects.
+func (p *deploymentProvider) Query(ctx context.Context) ([]*apigateway.Deployment, error) {
+	restAPIs := restapi.Query(ctx)
+	var deploys []*apigateway.Deployment
+	for _, restAPI := range restAPIs {
+		for _, deploy := p.ctx.APIGateway().GetDeployments(restAPI.Id).Items {
+			deploys = append(deploys, &apigateway.Deployment{
+				RestAPI:     NewRestAPIID(p.ctx.Region(), restAPI.Id),
+				Description: deploy.Description,
+				ID:          aws.StringValue(deploy.Id),
+				CreatedDate: deploy.CreatedDate.String(),
+			})
+		}
+	}
+	return deploys, nil
+}
+
 // Get reads the instance state identified by ID, returning a populated resource object, or an error if not found.
 func (p *deploymentProvider) Get(ctx context.Context, id resource.ID) (*apigateway.Deployment, error) {
 	restAPIID, deploymentID, err := ParseDeploymentID(id)

@@ -108,6 +108,23 @@ func (p *objProvider) Create(ctx context.Context, obj *s3.Object) (resource.ID, 
 	return arn.NewS3ObjectID(buck, obj.Key), nil
 }
 
+// Query returns an (possibly empty) array of resource objects.
+func (p *objProvider) Query(ctx context.Context) ([]*s3.Object, error) {
+	// First get all buckets. Then iterate through and get all objects within each bucket.
+	var objects []*s3.Object
+	bucks, nil := bucket.Query(ctx)
+	for buck := range bucks {
+		objs := p.ctx.S3().ListObjects(buck)
+		for obj := range objs {
+			objects = append(objects, &s3.Object{
+				Bucket: resource.ID(arn.NewS3Bucket(buck)),
+				Key:    obj.Key,
+			})
+		}
+	}
+	return nil, objects
+}
+
 // Get reads the instance state identified by ID, returning a populated resource object, or an error if not found.
 func (p *objProvider) Get(ctx context.Context, id resource.ID) (*s3.Object, error) {
 	buck, key, err := arn.ParseResourceNamePair(id)

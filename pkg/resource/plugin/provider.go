@@ -22,7 +22,7 @@ import (
 	"github.com/pulumi/lumi/pkg/tokens"
 )
 
-// Provider presents a simple interface for orchestrating resource create, reead, update, and delete operations.  Each
+// Provider presents a simple interface for orchestrating resource create, read, update, and delete operations.  Each
 // provider understands how to handle all of the resource types within a single package.
 //
 // This interface hides some of the messiness of the underlying machinery, since providers are behind an RPC boundary.
@@ -55,6 +55,8 @@ type Provider interface {
 		olds resource.PropertyMap, news resource.PropertyMap) (resource.Status, error)
 	// Delete tears down an existing resource.
 	Delete(t tokens.Type, id resource.ID) (resource.Status, error)
+	// Query returns an array of resource references of a specified type.
+	Query(t tokens.Type) ([]resource.PropertyMap, error)
 }
 
 // CheckFailure indicates that a call to check failed; it contains the property and reason for the failure.

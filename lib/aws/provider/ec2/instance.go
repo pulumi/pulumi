@@ -131,6 +131,60 @@ func (p *instanceProvider) Create(ctx context.Context, obj *ec2.Instance) (resou
 	return arn.NewEC2InstanceID(p.ctx.Region(), p.ctx.AccountID(), id), nil
 }
 
+// Query returns an (possibly empty) array of instances.
+func (p *instanceProvider) Query(ctx context.Context) ([]*ec2.Instance, error) {
+	resp, err := p.ctx.EC2().DescribeInstances()
+	var instances []*ec2.Instance
+	if err != nil {
+		if awsctx.IsAWSError(err, "InvalidInstanceID.NotFound") {
+			return nil, nil
+		}
+		return nil, err
+	} else if resp == nil || len(resp.Reservations) == 0 {
+		return nil, nil
+	}
+
+	for inst := range resp.Reservations {
+		var secgrpIDs *[]resource.ID
+		if len(inst.SecurityGroups) > 0 {
+			var ids []resource.ID
+			for _, group := range inst.SecurityGroups {
+				ids = append(ids,
+					arn.NewEC2SecurityGroupID(idarn.Region, idarn.AccountID, aws.StringValue(group.GroupId)))
+			}
+			secgrpIDs = &ids
+		}
+
+		var instanceTags *[]ec2.Tag
+		if len(inst.Tags) > 0 {
+			var tags []ec2.Tag
+			for _, tag := range inst.Tags {
+				tags = append(tags, ec2.Tag{
+					Key:   aws.StringValue(tag.Key),
+					Value: aws.StringValue(tag.Value),
+				})
+			}
+			instanceTags = &tags
+		}
+
+		instanceType := ec2.InstanceType(aws.StringValue(inst.InstanceType))
+		instances = append(instances, &ec2.Instance{
+			ImageID:          aws.StringValue(inst.ImageId),
+			InstanceType:     &instanceType,
+			SecurityGroups:   secgrpIDs,
+			KeyName:          inst.KeyName,
+			AvailabilityZone: aws.StringValue(inst.Placement.AvailabilityZone),
+			PrivateDNSName:   inst.PrivateDnsName,
+			PublicDNSName:    inst.PublicDnsName,
+			PrivateIP:        inst.PrivateIpAddress,
+			PublicIP:         inst.PublicIpAddress,
+			Tags:             instanceTags,
+		})
+	}
+
+	return instances, nil
+}
+
 // Get reads the instance state identified by ID, returning a populated resource object, or an nil if not found.
 func (p *instanceProvider) Get(ctx context.Context, id resource.ID) (*ec2.Instance, error) {
 	idarn, err := arn.ARN(id).Parse()

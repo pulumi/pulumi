@@ -42,6 +42,16 @@ service ResourceProvider {
     rpc Update(UpdateRequest) returns (google.protobuf.Empty) {}
     // Delete tears down an existing resource with the given ID.  If it fails, the resource is assumed to still exist.
     rpc Delete(DeleteRequest) returns (google.protobuf.Empty) {}
+    // [WIP] Query returns a list of all lumi resources of the given type.
+    rpc Query(QueryRequest) returns (repeated QueryResponse) {} // TODO[#]: Add support for returning a stream QueryResponse. 
+} 
+
+message QueryRequest{
+    string type = 1;    // the type token of the requested resource.
+}
+
+message QueryResponse{  
+    google.protobuf.Struct resource = 1; // the queried resource reference.
 }
 
 message CheckRequest {

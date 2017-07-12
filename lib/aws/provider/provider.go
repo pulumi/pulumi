@@ -97,6 +97,15 @@ func (p *Provider) Create(ctx context.Context, req *lumirpc.CreateRequest) (*lum
 	return nil, fmt.Errorf("Unrecognized resource type (Create): %v", t)
 }
 
+// Query returns an (possibly empty) array of resource objects, or an error if an invalid type is specified.
+func (p *Provider) Query(ctx context.Context, req *lumirpc.QueryRequest) (*lumirpc.QueryResponse, error) {
+	t := tokens.Type(req.GetType())
+	if prov, has := p.impls[t]; has {
+		return prov.Query(ctx, req)
+	}
+	return nil, fmt.Errorf("Unrecognized resource type (Query): %v", t)
+}
+
 // Get reads the instance state identified by ID, returning a populated resource object, or an error if not found.
 func (p *Provider) Get(ctx context.Context, req *lumirpc.GetRequest) (*lumirpc.GetResponse, error) {
 	t := tokens.Type(req.GetType())

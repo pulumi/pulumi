@@ -110,6 +110,60 @@ func (p *roleProvider) Create(ctx context.Context, obj *iam.Role) (resource.ID, 
 	return resource.ID(*result.Role.Arn), nil
 }
 
+// Query returns an (possibly empty) array of resource objects.
+func (p *roleProvider) Query(ctx context.Context) ([]*iam.Role, error) {
+	names := p.ctx.IAM().ListRoles()
+	var roles []*iam.Role
+	for name := range names.Roles.RoleName {
+		getrole, err := p.ctx.IAM().GetRole(&awsiam.GetRoleInput{RoleName: aws.String(name)})
+		if err != nil {
+			if awsctx.IsAWSError(err, "NotFound", "NoSuchEntity") {
+				return nil, nil
+			}
+			return nil, err
+		} else if getrole == nil {
+			return nil, nil
+		}
+
+		role := getrole.Role
+
+		// Policy is a URL-encoded JSON blob, parse it.
+		var policyDocument map[string]interface{}
+		assumePolicyDocumentJSON, err := url.QueryUnescape(*role.AssumeRolePolicyDocument)
+		if err != nil {
+			return nil, err
+		}
+		if jsonerr := json.Unmarshal([]byte(assumePolicyDocumentJSON), &policyDocument); jsonerr != nil {
+			return nil, jsonerr
+		}
+
+		// Now get a list of attached role policies.
+		getpols, err := p.ctx.IAM().ListAttachedRolePolicies(&awsiam.ListAttachedRolePoliciesInput{
+			RoleName: aws.String(name),
+		})
+		if err != nil {
+			return nil, err
+		}
+		var managedPolicies *[]awscommon.ARN
+		if len(getpols.AttachedPolicies) > 0 {
+			var policies []awscommon.ARN
+			for _, policy := range getpols.AttachedPolicies {
+				policies = append(policies, awscommon.ARN(aws.StringValue(policy.PolicyArn)))
+			}
+			managedPolicies = &policies
+		}
+
+		roles = append(roles, &iam.Role{
+			AssumeRolePolicyDocument: policyDocument,
+			Path:              role.Path,
+			RoleName:          role.RoleName,
+			ManagedPolicyARNs: managedPolicies,
+			ARN:               awscommon.ARN(aws.StringValue(role.Arn)),
+		})
+	}
+	return roles, nil
+}
+
 // Get reads the instance state identified by ID, returning a populated resource object, or an error if not found.
 func (p *roleProvider) Get(ctx context.Context, id resource.ID) (*iam.Role, error) {
 	name, err := arn.ParseResourceName(id)

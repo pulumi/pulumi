@@ -173,7 +173,7 @@ func (iter *evalSourceIterator) Next() (*SourceAllocation, *SourceQuery, error) 
 					goerr.Errorf("Expected method %v argument 'id' to be a string; got %v", meth, args[0])
 			}
 			return nil, &SourceQuery{Type: t, GetID: resource.ID(args[0].StringValue())}, nil
-		case specialResourceQueryFunction:
+		case specialResourceQueryFunction: // Add similar checks to input args, if all good, then return nil, &SourceQuery{}, nil
 			contract.Failf("TODO[pulumi/lumi#83]: query not yet implemented")
 		default:
 			contract.Failf("Unrecognized query rendezvous function name: %v", meth.Name())
