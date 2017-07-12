@@ -232,7 +232,7 @@ import * as aws from "@lumi/aws";
 
 let lambda = new aws.serverless.Function(
   "mylambda",
-  [aws.iam.AWSLambdaFullAccess],
+  { policies: [aws.iam.AWSLambdaFullAccess] },
   (ev, ctx, cb) => {
     callback(null, "Succeeed with " + ctx.getRemainingTimeInMillis() + "ms remaining.");
   }
@@ -255,7 +255,7 @@ let hello = "Hello, world!"
 
 let lambda = new aws.serverless.Function(
   "mylambda",
-  [aws.iam.AWSLambdaFullAccess],
+  { policies: [aws.iam.AWSLambdaFullAccess] },
   (ev, ctx, cb) => {
     console.log(hello);
     callback(null, "Succeeed with " + ctx.getRemainingTimeInMillis() + "ms remaining.");

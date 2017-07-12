@@ -1,17 +1,4 @@
-// Licensed to Pulumi Corporation ("Pulumi") under one or more
-// contributor license agreements.  See the NOTICE file distributed with
-// this work for additional information regarding copyright ownership.
-// Pulumi licenses this file to You under the Apache License, Version 2.0
-// (the "License"); you may not use this file except in compliance with
-// the License.  You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
 
 package errors
 
@@ -28,9 +15,11 @@ var (
 	ErrorIllegalConfigToken     = newError(2008,
 		"Configs may only target module properties and class static properties; '%v' is neither")
 	ErrorConfigApplyFailure           = newError(2009, "One or more errors occurred while applying '%v's configuration")
-	ErrorResourcePropertyInvalidValue = newError(2010, "Resource '%v's property '%v' value %v has a problem: %v")
-	ErrorAnalyzeFailure               = newError(2011, "Analyzer '%v' reported an error: %v")
-	ErrorAnalyzeResourceFailure       = newError(2012,
+	ErrorDuplicateResourceURN         = newError(2010, "Duplicate resource URN '%v'; try giving it a unique name")
+	ErrorResourceInvalid              = newError(2012, "%v resource '%v' has a problem: %v")
+	ErrorResourcePropertyInvalidValue = newError(2013, "%v resource '%v's property '%v' value %v has a problem: %v")
+	ErrorAnalyzeFailure               = newError(2014, "Analyzer '%v' reported an error: %v")
+	ErrorAnalyzeResourceFailure       = newError(2015,
 		"Analyzer '%v' reported a resource error:\n"+
 			"\tResource: %v\n"+
 			"\tProperty: %v\n"+

@@ -1,9 +1,13 @@
+SHELL=/bin/bash
+.SHELLFLAGS=-e
+
 GOPKGS          = $(shell go list ./provider/... | grep -v /vendor/)
 LUMIROOT       ?= /usr/local/lumi
 LUMILIB         = ${LUMIROOT}/packs
 THISLIB         = ${LUMILIB}/aws
 TESTPARALLELISM = 10
 
+ECHO=echo -e
 GOMETALINTERBIN=gometalinter
 GOMETALINTER=${GOMETALINTERBIN} --config=Gometalinter.json
 
@@ -12,13 +16,13 @@ default: banner vet build test install lint_quiet
 
 .PHONY: banner
 banner:
-	@echo "\033[1;37m================\033[0m"
-	@echo "\033[1;37mLumi AWS Package\033[0m"
-	@echo "\033[1;37m================\033[0m"
+	@$(ECHO) "\033[1;37m================\033[0m"
+	@$(ECHO) "\033[1;37mLumi AWS Package\033[0m"
+	@$(ECHO) "\033[1;37m================\033[0m"
 
 .PHONY: gen
 gen:
-	@echo "\033[0;32mGEN:\033[0m"
+	@$(ECHO) "\033[0;32mGEN:\033[0m"
 	lumidl \
 	    aws idl/ \
 		--recursive \
@@ -32,7 +36,7 @@ clean:
 
 .PHONY: build
 build:
-	@echo "\033[0;32mBUILD:\033[0m"
+	@$(ECHO) "\033[0;32mBUILD:\033[0m"
 	cd pack/ && yarn link @lumi/lumirt @lumi/lumijs @lumi/lumi # ensure we resolve to Lumi's stdlib.
 	cd pack/ && lumijs # compile the LumiPack
 	cd pack/ && lumi pack verify # ensure the pack verifies
@@ -42,14 +46,14 @@ build:
 
 .PHONY: install
 install: build
-	@echo "\033[0;32mINSTALL:\033[0m [${LUMILIB}]"
+	@$(ECHO) "\033[0;32mINSTALL:\033[0m [${LUMILIB}]"
 	cd pack/ && yarn link  # ensure NPM references resolve locally.
 	mkdir -p ${LUMILIB} # ensure the machine-wide library dir exists.
 	cp -R ./bin/ ${THISLIB} # copy to the standard library location.
 
 .PHONY: lint
 lint:
-	@echo "\033[0;32mLINT:\033[0m"
+	@$(ECHO) "\033[0;32mLINT:\033[0m"
 	./pack/node_modules/.bin/tslint './pack/**/*.ts' --exclude='./pack/node_modules/**'
 	which ${GOMETALINTERBIN} >/dev/null
 	$(GOMETALINTER) ./provider/... | sort ; exit "$${PIPESTATUS[0]}"
@@ -61,21 +65,22 @@ LINT_SUPPRESS="or be unexported"
 
 .PHONY: lint_quiet
 lint_quiet:
-	@echo "\033[0;32mLINT (quiet):\033[0m"
+	@$(ECHO) "\033[0;32mLINT (quiet):\033[0m"
 	./pack/node_modules/.bin/tslint './pack/**/*.ts' --exclude='./pack/node_modules/**'
 	which ${GOMETALINTERBIN} >/dev/null
 	$(GOMETALINTER) ./provider/... | grep -vE ${LINT_SUPPRESS} | sort ; exit $$(($${PIPESTATUS[1]}-1))
-	@echo "\033[0;33mgolint was run quietly; to run with noisy errors, run 'make lint'\033[0m"
-	@./pack/node_modules/.bin/tslint lib/aws/pack/...
+
+	@$(ECHO) "\033[0;33mgolint was run quietly; to run with noisy errors, run 'make lint'\033[0m"
+
 
 .PHONY: vet
 vet:
-	@echo "\033[0;32mVET:\033[0m"
+	@$(ECHO) "\033[0;32mVET:\033[0m"
 	go tool vet -printf=false provider/
 
 .PHONY: test
 test:
-	@echo "\033[0;32mTEST:\033[0m"
+	@$(ECHO) "\033[0;32mTEST:\033[0m"
 	go test -cover -parallel ${TESTPARALLELISM} ${GOPKGS}
 
 .PHONY: verify

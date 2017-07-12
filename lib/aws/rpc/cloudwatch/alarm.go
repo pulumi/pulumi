@@ -16,8 +16,6 @@ import (
     "github.com/pulumi/lumi/pkg/util/contract"
     "github.com/pulumi/lumi/pkg/util/mapper"
     "github.com/pulumi/lumi/sdk/go/pkg/lumirpc"
-
-    __sns "github.com/pulumi/lumi/lib/aws/rpc/sns"
 )
 
 /* RPC stubs for ActionTarget resource provider */
@@ -56,6 +54,9 @@ func (p *ActionTargetProvider) Check(
         return plugin.NewCheckResponse(err), nil
     }
     var failures []error
+    if failure := p.ops.Check(ctx, obj, ""); failure != nil {
+        failures = append(failures, failure)
+    }
     unks := req.GetUnknowns()
     if !unks["name"] {
         if failure := p.ops.Check(ctx, obj, "name"); failure != nil {
@@ -73,12 +74,6 @@ func (p *ActionTargetProvider) Check(
         if failure := p.ops.Check(ctx, obj, "displayName"); failure != nil {
             failures = append(failures,
                 resource.NewPropertyError("ActionTarget", "displayName", failure))
-        }
-    }
-    if !unks["subscription"] {
-        if failure := p.ops.Check(ctx, obj, "subscription"); failure != nil {
-            failures = append(failures,
-                resource.NewPropertyError("ActionTarget", "subscription", failure))
         }
     }
     if len(failures) > 0 {
@@ -205,7 +200,6 @@ type ActionTarget struct {
     Name *string `lumi:"name,optional"`
     TopicName *string `lumi:"topicName,optional"`
     DisplayName *string `lumi:"displayName,optional"`
-    Subscription *[]__sns.TopicSubscription `lumi:"subscription,optional"`
 }
 
 // ActionTarget's properties have constants to make dealing with diffs and property bags easier.
@@ -213,7 +207,6 @@ const (
     ActionTarget_Name = "name"
     ActionTarget_TopicName = "topicName"
     ActionTarget_DisplayName = "displayName"
-    ActionTarget_Subscription = "subscription"
 )
 
 /* RPC stubs for Alarm resource provider */
@@ -252,6 +245,9 @@ func (p *AlarmProvider) Check(
         return plugin.NewCheckResponse(err), nil
     }
     var failures []error
+    if failure := p.ops.Check(ctx, obj, ""); failure != nil {
+        failures = append(failures, failure)
+    }
     unks := req.GetUnknowns()
     if !unks["name"] {
         if failure := p.ops.Check(ctx, obj, "name"); failure != nil {

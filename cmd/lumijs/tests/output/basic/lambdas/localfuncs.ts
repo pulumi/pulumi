@@ -1,3 +1,5 @@
+// Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
+
 // local functions (named and anonymous)
 let func = () => {
     let inner = (): number => { return 42; };

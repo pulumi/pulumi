@@ -1,4 +1,4 @@
-# Copyright 2017 Pulumi, Inc. All rights reserved.
+# Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
 
 def underscore_to_camel_case(key):
     # Quickly check to see if there is no _; in that case, just return the key as-is.

@@ -1,17 +1,4 @@
-// Licensed to Pulumi Corporation ("Pulumi") under one or more
-// contributor license agreements.  See the NOTICE file distributed with
-// this work for additional information regarding copyright ownership.
-// Pulumi licenses this file to You under the Apache License, Version 2.0
-// (the "License"); you may not use this file except in compliance with
-// the License.  You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
 
 package s3
 
@@ -19,6 +6,8 @@ import (
 	"crypto/sha1"
 	"errors"
 	"fmt"
+	"regexp"
+	"strings"
 
 	"github.com/aws/aws-sdk-go/aws"
 	awss3 "github.com/aws/aws-sdk-go/service/s3"
@@ -39,6 +28,11 @@ const (
 	maxBucketName = 63 // TODO[pulumi/lumi#218]: consider supporting legacy us-east-1 (255) limits.
 )
 
+var (
+	bucketNameRegexp         = regexp.MustCompile(`^[a-z0-9.\-]*$`)
+	bucketNameBadCharsRegExp = regexp.MustCompile(`[^a-z0-9.\-]`)
+)
+
 // NewBucketProvider creates a provider that handles S3 bucket operations.
 func NewBucketProvider(ctx *awsctx.Context) lumirpc.ResourceProviderServer {
 	ops := &buckProvider{ctx}
@@ -54,7 +48,10 @@ func (p *buckProvider) Check(ctx context.Context, obj *s3.Bucket, property strin
 	switch property {
 	case s3.Bucket_BucketName:
 		if name := obj.BucketName; name != nil {
-			if len(*name) < minBucketName {
+			if matched := bucketNameRegexp.MatchString(*name); !matched {
+				fmt.Printf("Failed to match regexp\n")
+				return fmt.Errorf("did not match regexp %v", bucketNameRegexp)
+			} else if len(*name) < minBucketName {
 				return fmt.Errorf("less than minimum length of %v", minBucketName)
 			} else if len(*name) > maxBucketName {
 				return fmt.Errorf("exceeded maximum length of %v", maxBucketName)
@@ -76,7 +73,11 @@ func (p *buckProvider) Create(ctx context.Context, obj *s3.Bucket) (resource.ID,
 	if obj.BucketName != nil {
 		name = *obj.BucketName
 	} else {
-		name = resource.NewUniqueHex(*obj.Name+"-", maxBucketName, sha1.Size)
+		// S3 bucket names have strict naming requirements.  To use the Name property as a prefix, we
+		// need to convert it to a safe form first.
+		lowerName := strings.ToLower(*obj.Name)
+		safeName := bucketNameBadCharsRegExp.ReplaceAllString(lowerName, "-")
+		name = resource.NewUniqueHex(safeName+"-", maxBucketName, sha1.Size)
 	}
 	var acl *string
 	if obj.AccessControl != nil {

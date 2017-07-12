@@ -1,17 +1,4 @@
-// Licensed to Pulumi Corporation ("Pulumi") under one or more
-// contributor license agreements.  See the NOTICE file distributed with
-// this work for additional information regarding copyright ownership.
-// Pulumi licenses this file to You under the Apache License, Version 2.0
-// (the "License"); you may not use this file except in compliance with
-// the License.  You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
 
 package rt
 
@@ -59,12 +46,14 @@ type unwindKind int
 
 const (
 	breakUnwind unwindKind = iota
+	cancelUnwind
 	continueUnwind
 	returnUnwind
 	throwUnwind
 )
 
 func NewBreakUnwind(label *tokens.Name) *Unwind    { return &Unwind{kind: breakUnwind, label: label} }
+func NewCancelUnwind() *Unwind                     { return &Unwind{kind: cancelUnwind} }
 func NewContinueUnwind(label *tokens.Name) *Unwind { return &Unwind{kind: continueUnwind, label: label} }
 func NewReturnUnwind(ret *Object) *Unwind          { return &Unwind{kind: returnUnwind, returned: ret} }
 
@@ -82,6 +71,7 @@ func NewThrowUnwind(obj *Object, node diag.Diagable, stack *StackFrame) *Unwind 
 }
 
 func (uw *Unwind) Break() bool    { return uw.kind == breakUnwind }
+func (uw *Unwind) Cancel() bool   { return uw.kind == cancelUnwind }
 func (uw *Unwind) Continue() bool { return uw.kind == continueUnwind }
 func (uw *Unwind) Return() bool   { return uw.kind == returnUnwind }
 func (uw *Unwind) Throw() bool    { return uw.kind == throwUnwind }

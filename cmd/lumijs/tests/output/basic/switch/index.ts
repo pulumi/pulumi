@@ -1,3 +1,5 @@
+// Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
+
 // This tests the code-generated expansion of a switch statement.
 
 function sw(v: string): string {

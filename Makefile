@@ -1,9 +1,11 @@
+SHELL=/bin/bash
 .SHELLFLAGS=-e
 
 PROJECT=github.com/pulumi/lumi
 PROJECT_PKGS=$(shell go list ./cmd/... ./pkg/... | grep -v /vendor/)
 TESTPARALLELISM=10
 
+ECHO=echo -e
 GOMETALINTERBIN=gometalinter
 GOMETALINTER=${GOMETALINTERBIN} --config=Gometalinter.json
 
@@ -14,31 +16,32 @@ default: banner vet test install lint_quiet
 all: banner_all vet test install lint_quiet lumijs lumirtpkg lumijspkg lumipkg awspkg
 
 .PHONY: nightly
-nightly: banner_all vet test install lint_quiet lumijs lumirtpkg lumijspkg lumipkg awspkg examples
+nightly: banner_all vet test install lint_quiet lumijs lumirtpkg lumijspkg lumipkg awspkg examples gocover
 
 .PHONY: banner
 banner:
-	@echo "\033[1;37m============\033[0m"
-	@echo "\033[1;37mLumi (Quick)\033[0m"
-	@echo "\033[1;37m============\033[0m"
-	@echo "\033[0;33mRunning quick build; to run full tests, run 'make all'\033[0m"
-	@echo "\033[0;33mRemember to do this before checkin, otherwise your CI will fail\033[0m"
+	@$(ECHO) "\033[1;37m============\033[0m"
+	@$(ECHO) "\033[1;37mLumi (Quick)\033[0m"
+	@$(ECHO) "\033[1;37m============\033[0m"
+	@$(ECHO) "\033[0;33mRunning quick build; to run full tests, run 'make all'\033[0m"
+	@$(ECHO) "\033[0;33mRemember to do this before checkin, otherwise your CI will fail\033[0m"
 
 .PHONY: banner_all
 banner_all:
-	@echo "\033[1;37m============\033[0m"
-	@echo "\033[1;37mLumi (Full)\033[0m"
-	@echo "\033[1;37m============\033[0m"
+	@$(ECHO) "\033[1;37m============\033[0m"
+	@$(ECHO) "\033[1;37mLumi (Full)\033[0m"
+	@$(ECHO) "\033[1;37m============\033[0m"
 
 .PHONY: install
 install:
-	@echo "\033[0;32mINSTALL:\033[0m"
+	@$(ECHO) "\033[0;32mINSTALL:\033[0m"
 	go install ${PROJECT}/cmd/lumi
 	go install ${PROJECT}/cmd/lumidl
 
 .PHONY: lint
 lint:
-	@echo "\033[0;32mLINT:\033[0m"
+
+	@$(ECHO) "\033[0;32mLINT:\033[0m"
 
 	which ${GOMETALINTERBIN} >/dev/null
 	$(GOMETALINTER) ./pkg/... | sort ; exit "$${PIPESTATUS[0]}"
@@ -54,21 +57,21 @@ LINT_SUPPRESS="or be unexported|Subprocess launching with variable"
 
 .PHONY: lint_quiet
 lint_quiet:
-	@echo "\033[0;32mLINT (quiet):\033[0m"
+	@$(ECHO) "\033[0;32mLINT (quiet):\033[0m"
 	which ${GOMETALINTERBIN} >/dev/null
 	$(GOMETALINTER) ./pkg/... | grep -vE ${LINT_SUPPRESS} | sort ; exit $$(($${PIPESTATUS[1]}-1))
 	$(GOMETALINTER) ./cmd/lumi/... | grep -vE ${LINT_SUPPRESS} | sort ; exit $$(($${PIPESTATUS[1]}-1))
 	$(GOMETALINTER) ./cmd/lumidl/... | grep -vE ${LINT_SUPPRESS} | sort ; exit $$(($${PIPESTATUS[1]}-1))
-	@echo "\033[0;33mlint was run quietly; to run with noisy errors, run 'make lint'\033[0m"
+	@$(ECHO) "\033[0;33mlint was run quietly; to run with noisy errors, run 'make lint'\033[0m"
 
 .PHONY: vet
 vet:
-	@echo "\033[0;32mVET:\033[0m"
+	@$(ECHO) "\033[0;32mVET:\033[0m"
 	go tool vet -printf=false cmd/ pkg/
 
 .PHONY: test
 test:
-	@echo "\033[0;32mTEST:\033[0m"
+	@$(ECHO) "\033[0;32mTEST:\033[0m"
 	go test -cover -parallel ${TESTPARALLELISM} ${PROJECT_PKGS}
 
 .PHONY: lumijs
@@ -97,6 +100,11 @@ verify:
 
 .PHONY: examples
 examples:
-	@echo "\033[0;32mTEST EXAMPLES:\033[0m"
+	@$(ECHO) "\033[0;32mTEST EXAMPLES:\033[0m"
 	go test -v -cover -timeout 1h -parallel ${TESTPARALLELISM} ./examples
+
+.PHONY: gocover
+gocover:
+	@$(ECHO) "\033[0;32mGO CODE COVERAGE:\033[0m"
+	./gocover.sh
 

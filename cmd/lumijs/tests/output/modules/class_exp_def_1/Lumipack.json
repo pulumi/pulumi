@@ -21,11 +21,11 @@
                     "loc": {
                         "file": "index.ts",
                         "start": {
-                            "line": 1,
+                            "line": 3,
                             "column": 1
                         },
                         "end": {
-                            "line": 2,
+                            "line": 4,
                             "column": 2
                         }
                     }
@@ -38,16 +38,40 @@
                         "kind": "Identifier",
                         "ident": "default"
                     },
-                    "members": {},
+                    "members": {
+                        ".ctor": {
+                            "kind": "ClassMethod",
+                            "name": {
+                                "kind": "Identifier",
+                                "ident": ".ctor"
+                            },
+                            "access": "public",
+                            "body": {
+                                "kind": "Block",
+                                "statements": [],
+                                "loc": {
+                                    "file": "index.ts",
+                                    "start": {
+                                        "line": 3,
+                                        "column": 1
+                                    },
+                                    "end": {
+                                        "line": 4,
+                                        "column": 2
+                                    }
+                                }
+                            }
+                        }
+                    },
                     "abstract": false,
                     "loc": {
                         "file": "index.ts",
                         "start": {
-                            "line": 1,
+                            "line": 3,
                             "column": 1
                         },
                         "end": {
-                            "line": 2,
+                            "line": 4,
                             "column": 2
                         }
                     }
@@ -67,11 +91,11 @@
             "loc": {
                 "file": "index.ts",
                 "start": {
-                    "line": 1,
+                    "line": 3,
                     "column": 1
                 },
                 "end": {
-                    "line": 4,
+                    "line": 6,
                     "column": 1
                 }
             }

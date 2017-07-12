@@ -1,3 +1,5 @@
+// Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
+
 // This tests that class and module properties are emitted with correctly qualified token names.
 
 // First, define some properties:

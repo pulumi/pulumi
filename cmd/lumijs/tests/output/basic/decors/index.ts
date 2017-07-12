@@ -1,3 +1,5 @@
+// Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
+
 import {classDecorate, propertyDecorate, methodDecorate, parameterDecorate} from "./decors";
 import * as decors from "./decors";
 

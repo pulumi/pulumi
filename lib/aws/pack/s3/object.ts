@@ -9,7 +9,13 @@ import {Bucket} from "./bucket";
 export class Object extends lumi.Resource implements ObjectArgs {
     public readonly key: string;
     public readonly bucket: Bucket;
-    public readonly source: lumi.asset.Asset;
+    public source: lumi.asset.Asset;
+    public contentType?: string;
+    public contentDisposition?: string;
+    public cacheControl?: string;
+    public contentEncoding?: string;
+    public contentLanguage?: string;
+    public contentLength?: number;
 
     public static get(id: lumi.ID): Object {
         return <any>undefined; // functionality provided by the runtime
@@ -33,12 +39,24 @@ export class Object extends lumi.Resource implements ObjectArgs {
             throw new Error("Missing required argument 'source'");
         }
         this.source = args.source;
+        this.contentType = args.contentType;
+        this.contentDisposition = args.contentDisposition;
+        this.cacheControl = args.cacheControl;
+        this.contentEncoding = args.contentEncoding;
+        this.contentLanguage = args.contentLanguage;
+        this.contentLength = args.contentLength;
     }
 }
 
 export interface ObjectArgs {
     readonly key: string;
     readonly bucket: Bucket;
-    readonly source: lumi.asset.Asset;
+    source: lumi.asset.Asset;
+    contentType?: string;
+    contentDisposition?: string;
+    cacheControl?: string;
+    contentEncoding?: string;
+    contentLanguage?: string;
+    contentLength?: number;
 }
 

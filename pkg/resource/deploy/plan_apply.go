@@ -1,17 +1,4 @@
-// Licensed to Pulumi Corporation ("Pulumi") under one or more
-// contributor license agreements.  See the NOTICE file distributed with
-// this work for additional information regarding copyright ownership.
-// Pulumi licenses this file to You under the Apache License, Version 2.0
-// (the "License"); you may not use this file except in compliance with
-// the License.  You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
 
 package deploy
 
@@ -96,6 +83,7 @@ func (p *Plan) Iterate() (*PlanIterator, error) {
 	return &PlanIterator{
 		p:        p,
 		src:      src,
+		urns:     make(map[resource.URN]bool),
 		creates:  make(map[resource.URN]bool),
 		updates:  make(map[resource.URN]bool),
 		replaces: make(map[resource.URN]bool),
@@ -122,6 +110,7 @@ type PlanIterator struct {
 	p   *Plan          // the plan to which this iterator belongs.
 	src SourceIterator // the iterator that fetches source resources.
 
+	urns     map[resource.URN]bool // URNs discovered.
 	creates  map[resource.URN]bool // URNs discovered to be created.
 	updates  map[resource.URN]bool // URNs discovered to be updated.
 	replaces map[resource.URN]bool // URNs discovered to be replaced.
@@ -215,26 +204,33 @@ func (iter *PlanIterator) nextResourceStep(res *SourceAllocation) (Step, error) 
 		return nil, err
 	}
 
+	var invalid bool
+
 	// Fetch the resource's name from its provider, and use it to construct a URN.
 	name, err := prov.Name(t, inputs)
 	if err != nil {
 		return nil, err
 	}
 	urn := resource.NewURN(iter.p.Target().Name, res.Ctx, t, name)
+	if iter.urns[urn] {
+		invalid = true
+		iter.p.Diag().Errorf(errors.ErrorDuplicateResourceURN.At(res.Loc), urn)
+	}
+	iter.urns[urn] = true
 
 	// First ensure the provider is okay with this resource.
-	var invalid bool
-	failures, err := prov.Check(new.Type(), inputs)
+	failures, err := prov.Check(t, inputs)
 	if err != nil {
 		return nil, err
 	}
 	for _, failure := range failures {
 		invalid = true
-		var v resource.PropertyValue
 		if failure.Property != "" {
-			v = inputs[failure.Property]
+			iter.p.Diag().Errorf(errors.ErrorResourcePropertyInvalidValue,
+				t, urn.Name(), failure.Property, inputs[failure.Property], failure.Reason)
+		} else {
+			iter.p.Diag().Errorf(errors.ErrorResourceInvalid, t, urn.Name(), failure.Reason)
 		}
-		iter.p.Diag().Errorf(errors.ErrorResourcePropertyInvalidValue, urn.Name(), failure.Property, v, failure.Reason)
 	}
 
 	// Next, give each analyzer -- if any -- a chance to inspect the resource too.

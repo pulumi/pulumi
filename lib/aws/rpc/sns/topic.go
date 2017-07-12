@@ -54,6 +54,9 @@ func (p *TopicProvider) Check(
         return plugin.NewCheckResponse(err), nil
     }
     var failures []error
+    if failure := p.ops.Check(ctx, obj, ""); failure != nil {
+        failures = append(failures, failure)
+    }
     unks := req.GetUnknowns()
     if !unks["name"] {
         if failure := p.ops.Check(ctx, obj, "name"); failure != nil {
@@ -71,12 +74,6 @@ func (p *TopicProvider) Check(
         if failure := p.ops.Check(ctx, obj, "displayName"); failure != nil {
             failures = append(failures,
                 resource.NewPropertyError("Topic", "displayName", failure))
-        }
-    }
-    if !unks["subscription"] {
-        if failure := p.ops.Check(ctx, obj, "subscription"); failure != nil {
-            failures = append(failures,
-                resource.NewPropertyError("Topic", "subscription", failure))
         }
     }
     if len(failures) > 0 {
@@ -203,7 +200,6 @@ type Topic struct {
     Name *string `lumi:"name,optional"`
     TopicName *string `lumi:"topicName,optional"`
     DisplayName *string `lumi:"displayName,optional"`
-    Subscription *[]TopicSubscription `lumi:"subscription,optional"`
 }
 
 // Topic's properties have constants to make dealing with diffs and property bags easier.
@@ -211,40 +207,6 @@ const (
     Topic_Name = "name"
     Topic_TopicName = "topicName"
     Topic_DisplayName = "displayName"
-    Topic_Subscription = "subscription"
-)
-
-/* Marshalable TopicSubscription structure(s) */
-
-// TopicSubscription is a marshalable representation of its corresponding IDL type.
-type TopicSubscription struct {
-    Protocol TopicProtocol `lumi:"protocol"`
-    Endpoint string `lumi:"endpoint"`
-}
-
-// TopicSubscription's properties have constants to make dealing with diffs and property bags easier.
-const (
-    TopicSubscription_Protocol = "protocol"
-    TopicSubscription_Endpoint = "endpoint"
-)
-
-/* Typedefs */
-
-type (
-    TopicProtocol string
-)
-
-/* Constants */
-
-const (
-    ApplicationTopic TopicProtocol = "application"
-    EmailJSONTopic TopicProtocol = "email-json"
-    EmailTopic TopicProtocol = "email"
-    HTTPSTopic TopicProtocol = "https"
-    HTTPTopic TopicProtocol = "http"
-    LambdaTopic TopicProtocol = "lambda"
-    SMSTopic TopicProtocol = "sms"
-    SQSTopic TopicProtocol = "sqs"
 )
 
 

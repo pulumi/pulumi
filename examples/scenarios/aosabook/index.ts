@@ -1,3 +1,5 @@
+// Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
+
 import * as mu from "mu";
 
 let queue = new mu.x.Queue("sites_to_process");

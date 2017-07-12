@@ -1,3 +1,5 @@
+// Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
+
 // This tests out some good and bad cast cases.
 
 let a: string = "x";

@@ -1,3 +1,5 @@
+// Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
+
 /* tslint:disable:max-line-length ordered-imports variable-name */
 import {ARN} from "../types";
 

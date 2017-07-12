@@ -1,3 +1,5 @@
+// Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
+
 // Export a whole submodule:
 import * as other from "./other";
 export {other};

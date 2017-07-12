@@ -1,4 +1,4 @@
-// Copyright 2017 Pulumi. All rights reserved.
+// Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
 
 "use strict";
 
@@ -1874,15 +1874,6 @@ export class Transformer {
         }
     }
 
-    private transformDeclarationIdentifier(node: ts.DeclarationName): ast.Identifier {
-        switch (node.kind) {
-            case ts.SyntaxKind.Identifier:
-                return this.transformIdentifier(node);
-            default:
-                return contract.fail(`Unrecognized declaration identifier: ${ts.SyntaxKind[node.kind]}`);
-        }
-    }
-
     private async transformFunctionLikeCommon(node: ts.FunctionLikeDeclaration): Promise<FunctionLikeDeclaration> {
         if (!!node.asteriskToken) {
             this.diagnostics.push(this.dctx.newGeneratorsNotSupportedError(node.asteriskToken));
@@ -1926,7 +1917,7 @@ export class Transformer {
             isLocal: boolean, body?: ast.Block): Promise<FunctionLikeDeclaration> {
         // Ensure we are dealing with the supported subset of functions.
         if (ts.getCombinedModifierFlags(node) & ts.ModifierFlags.Async) {
-            this.diagnostics.push(this.dctx.newAsyncNotSupportedError(node));
+            this.diagnostics.push(this.dctx.newAsyncNotSupportedWarning(node));
         }
 
         // First transform the name into an identifier.  In the absence of a name, we will proceed under the assumption
@@ -2217,7 +2208,7 @@ export class Transformer {
     private async transformVariableDeclaration(node: ts.VariableDeclaration): Promise<VariableLikeDeclaration> {
         // TODO[pulumi/lumi#43]: parameters can be any binding name, including destructuring patterns.  For now,
         //     however, we only support the identifier forms.
-        let name: ast.Identifier = this.transformDeclarationIdentifier(node.name);
+        let name: ast.Identifier = this.transformBindingIdentifier(node.name);
         let initializer: ast.Expression | undefined;
         if (node.initializer) {
             initializer = await this.transformExpression(node.initializer);
@@ -2227,6 +2218,23 @@ export class Transformer {
             type:        await this.resolveTypeTokenFromTypeLike(node),
             initializer: initializer,
         };
+    }
+
+    private async transformVariableDeclarationToLocalVariable(
+            node: ts.VariableDeclaration): Promise<ast.LocalVariable> {
+        // Pluck out any decorators and store them in the metadata as attributes.
+        let attributes: ast.Attribute[] | undefined = await this.transformDecorators(node.decorators);
+
+        // TODO[pulumi/lumi#43]: parameters can be any binding name, including destructuring patterns.  For now,
+        //     however, we only support the identifier forms.
+        let name: ast.Identifier = this.transformBindingIdentifier(node.name);
+
+        return this.withLocation(node, <ast.LocalVariable>{
+            kind:       ast.localVariableKind,
+            name:       name,
+            type:       await this.resolveTypeTokenFromTypeLike(node),
+            attributes: attributes,
+        });
     }
 
     private async transformVariableDeclarationList(
@@ -2387,8 +2395,12 @@ export class Transformer {
         return notYetImplemented(node);
     }
 
-    private transformCatchClause(node: ts.CatchClause): ast.Statement {
-        return notYetImplemented(node);
+    private async transformCatchClause(node: ts.CatchClause): Promise<ast.TryCatchClause> {
+        return this.withLocation(node, <ast.TryCatchClause>{
+            kind: ast.tryCatchClauseKind,
+            body: await this.transformBlock(node.block),
+            exception: await this.transformVariableDeclarationToLocalVariable(node.variableDeclaration),
+        });
     }
 
     private transformContinueStatement(node: ts.ContinueStatement): ast.ContinueStatement {
@@ -2544,8 +2556,21 @@ export class Transformer {
         });
     }
 
-    private transformTryStatement(node: ts.TryStatement): ast.TryCatchFinally {
-        return notYetImplemented(node);
+    private async transformTryStatement(node: ts.TryStatement): Promise<ast.TryCatchFinally> {
+        let catchClauses: ast.TryCatchClause[] = [];
+        if (!!node.catchClause) {
+            catchClauses.push(await this.transformCatchClause(node.catchClause));
+        }
+        let finallyClause: ast.Block | undefined = undefined;
+        if (!!node.finallyBlock) {
+            finallyClause = await this.transformBlock(node.finallyBlock);
+        }
+        return this.withLocation(node, <ast.TryCatchFinally>{
+            kind: ast.tryCatchFinallyKind,
+            tryClause: await this.transformBlock(node.tryBlock),
+            catchClauses: catchClauses,
+            finallyClause: finallyClause,
+        });
     }
 
     private async transformWhileStatement(node: ts.WhileStatement): Promise<ast.WhileStatement> {
@@ -2629,6 +2654,8 @@ export class Transformer {
                 return this.transformArrayLiteralExpression(<ts.ArrayLiteralExpression>node);
             case ts.SyntaxKind.ArrowFunction:
                 return await this.transformArrowFunction(<ts.ArrowFunction>node);
+            case ts.SyntaxKind.AwaitExpression:
+                return await this.transformAwaitExpression(<ts.AwaitExpression>node);
             case ts.SyntaxKind.BinaryExpression:
                 return this.transformBinaryExpression(<ts.BinaryExpression>node);
             case ts.SyntaxKind.CallExpression:
@@ -2742,9 +2769,10 @@ export class Transformer {
 
         // Transpile the arrow function to get it's JavaScript source text to store on the AST
         let arrowText = this.printer.printNode(ts.EmitHint.Expression, node, this.currentSourceFile!);
-        let result = ts.transpileModule(arrowText, {
+        let result = ts.transpileModule("return " + arrowText, {
             compilerOptions: {
                 module: ts.ModuleKind.ES2015,
+                noEmitHelpers: true,
             },
         });
 
@@ -2755,6 +2783,46 @@ export class Transformer {
             returnType:     decl.returnType,
             sourceText:     result.outputText,
             sourceLanguage: ".js",
+        });
+    }
+
+    private async transformAwaitExpression(node: ts.AwaitExpression): Promise<ast.Expression> {
+        // Async/await is not yet implemented in Lumi, but we want to defer the error
+        // until runtime, so that async/await can be used on code executed on the inside
+        // by Node.js.
+        let errorMessage = "Async/Await not yet implemented for configuration code.";
+        return this.withLocation(node, <ast.CastExpression>{
+            kind: ast.castExpressionKind,
+            type: <ast.TypeToken>{
+                kind: ast.typeTokenKind,
+                tok:  tokens.dynamicType,
+            },
+            expression: <ast.InvokeFunctionExpression>{
+                kind: ast.invokeFunctionExpressionKind,
+                function: <ast.LambdaExpression>{
+                    kind: ast.lambdaExpressionKind,
+                    sourceLanguage: ".js",
+                    sourceText: `(function() { throw '${errorMessage}'});\n`,
+                    parameters: [],
+                    body: <ast.Block>{
+                        kind: ast.blockKind,
+                        statements: [
+                            <ast.ExpressionStatement>{
+                                kind: ast.expressionStatementKind,
+                                expression: await this.transformExpression(node.expression),
+                            },
+                            <ast.ThrowStatement>{
+                                kind: ast.throwStatementKind,
+                                expression: <ast.StringLiteral>{
+                                    kind: ast.stringLiteralKind,
+                                    value: errorMessage,
+                                    raw: errorMessage,
+                                },
+                            },
+                        ],
+                    },
+                },
+            },
         });
     }
 

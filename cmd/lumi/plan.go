@@ -1,17 +1,4 @@
-// Licensed to Pulumi Corporation ("Pulumi") under one or more
-// contributor license agreements.  See the NOTICE file distributed with
-// this work for additional information regarding copyright ownership.
-// Pulumi licenses this file to You under the Apache License, Version 2.0
-// (the "License"); you may not use this file except in compliance with
-// the License.  You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
 
 package main
 
@@ -79,6 +66,7 @@ func newPlanCmd() *cobra.Command {
 				return err
 			}
 			if result != nil {
+				defer contract.IgnoreClose(result)
 				if err := printPlan(result, opts); err != nil {
 					return err
 				}
@@ -128,7 +116,7 @@ func plan(cmd *cobra.Command, info *envCmdInfo, opts deployOptions) (*planResult
 
 	// First, compile the package, in preparatin for interpreting it and creating resources.
 	result := compile(cmd, info.Args)
-	if result == nil {
+	if result == nil || !result.B.Ctx().Diag.Success() {
 		return nil, nil
 	}
 
@@ -152,14 +140,20 @@ func plan(cmd *cobra.Command, info *envCmdInfo, opts deployOptions) (*planResult
 	// Generate a plan; this API handles all interesting cases (create, update, delete).
 	plan := deploy.NewPlan(ctx, info.Target, info.Snapshot, source, analyzers)
 	return &planResult{
+		Ctx:  ctx,
 		Info: info,
 		Plan: plan,
 	}, nil
 }
 
 type planResult struct {
-	Info *envCmdInfo  // plan command information.
-	Plan *deploy.Plan // the plan created by this command.
+	Ctx  *plugin.Context // the context containing plugins and their state.
+	Info *envCmdInfo     // plan command information.
+	Plan *deploy.Plan    // the plan created by this command.
+}
+
+func (res *planResult) Close() error {
+	return res.Ctx.Close()
 }
 
 func printPlan(result *planResult, opts deployOptions) error {
@@ -469,19 +463,29 @@ func printPropertyValue(b *bytes.Buffer, v resource.PropertyValue, planning bool
 	} else if v.IsString() {
 		b.WriteString(fmt.Sprintf("%q", v.StringValue()))
 	} else if v.IsArray() {
-		b.WriteString(fmt.Sprintf("[\n"))
-		for i, elem := range v.ArrayValue() {
-			newIndent := printArrayElemHeader(b, i, indent)
-			printPropertyValue(b, elem, planning, newIndent)
+		arr := v.ArrayValue()
+		if len(arr) == 0 {
+			b.WriteString("[]")
+		} else {
+			b.WriteString(fmt.Sprintf("[\n"))
+			for i, elem := range arr {
+				newIndent := printArrayElemHeader(b, i, indent)
+				printPropertyValue(b, elem, planning, newIndent)
+			}
+			b.WriteString(fmt.Sprintf("%s]", indent))
 		}
-		b.WriteString(fmt.Sprintf("%s]", indent))
 	} else if v.IsComputed() || v.IsOutput() {
 		b.WriteString(v.TypeString())
 	} else {
 		contract.Assert(v.IsObject())
-		b.WriteString("{\n")
-		printObject(b, v.ObjectValue(), planning, indent+"    ")
-		b.WriteString(fmt.Sprintf("%s}", indent))
+		obj := v.ObjectValue()
+		if len(obj) == 0 {
+			b.WriteString("{}")
+		} else {
+			b.WriteString("{\n")
+			printObject(b, obj, planning, indent+"    ")
+			b.WriteString(fmt.Sprintf("%s}", indent))
+		}
 	}
 	b.WriteString("\n")
 }
