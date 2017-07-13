@@ -10,6 +10,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+
+	"github.com/pulumi/lumi/pkg/util/contract"
 )
 
 // LumiProgramTestOptions provides options for LumiProgramTest
@@ -55,10 +57,14 @@ func LumiProgramTest(t *testing.T, programDir string, options LumiProgramTestOpt
 	stdout := newPrefixer(os.Stdout, prefix)
 	stderr := newPrefixer(os.Stderr, prefix)
 
-	fmt.Fprintf(stdout, "sample: %v\n", programDir)
-	fmt.Fprintf(stdout, "lumijs: %v\n", lumijs)
-	fmt.Fprintf(stdout, "lumi: %v\n", lumi)
-	fmt.Fprintf(stdout, "yarn: %v\n", yarn)
+	_, err = fmt.Fprintf(stdout, "sample: %v\n", programDir)
+	contract.Assert(err == nil)
+	_, err = fmt.Fprintf(stdout, "lumijs: %v\n", lumijs)
+	contract.Assert(err == nil)
+	_, err = fmt.Fprintf(stdout, "lumi: %v\n", lumi)
+	contract.Assert(err == nil)
+	_, err = fmt.Fprintf(stdout, "yarn: %v\n", yarn)
+	contract.Assert(err == nil)
 
 	for _, dependency := range options.Dependencies {
 		runCmd(t, []string{yarn, "link", dependency}, programDir, stdout, stderr)
@@ -78,7 +84,8 @@ func LumiProgramTest(t *testing.T, programDir string, options LumiProgramTestOpt
 func runCmd(t *testing.T, args []string, wd string, stdout, stderr io.Writer) {
 	path := args[0]
 	command := strings.Join(args, " ")
-	fmt.Fprintf(stdout, "\n**** Invoke '%v' in %v\n", command, wd)
+	_, err := fmt.Fprintf(stdout, "\n**** Invoke '%v' in %v\n", command, wd)
+	contract.Assert(err == nil)
 	cmd := exec.Cmd{
 		Path:   path,
 		Dir:    wd,
@@ -86,7 +93,7 @@ func runCmd(t *testing.T, args []string, wd string, stdout, stderr io.Writer) {
 		Stdout: stdout,
 		Stderr: stderr,
 	}
-	err := cmd.Run()
+	err = cmd.Run()
 	assert.NoError(t, err, "expected to successfully invoke '%v' in %v: %v", command, wd, err)
 }
 
