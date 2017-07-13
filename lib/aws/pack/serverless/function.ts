@@ -105,6 +105,12 @@ function envObjToString(envObj: { [key: string]: string; }): string {
     for (let i = 0; i < (<any>keys).length; i++) {
         let key = keys[i];
         let val = envObj[key];
+        // Lumi generates the special name `.this` for references to `this`.
+        // We will rewrite to the same `_this` and then pass that as the
+        // receiver to `.apply` later on.
+        if (key === ".this") {
+            key = "_this";
+        }
         if (isStart) {
             ret += " ";
         } else {
@@ -131,10 +137,11 @@ function createJavaScriptLambda(
         let name = fkeys[i];
         str +=
             "function " + name + "() {\n" +
+            "  var _this;\n" +
             "  with(" + envObjToString(funcs[name].env) + ") {\n" +
-            "    return (() => {\n\n" +
+            "    return (function() {\n\n" +
             funcs[name].code + "\n" +
-            "    })().apply(this, arguments);\n" +
+            "    }).apply(_this).apply(undefined, arguments);\n" +
             "  }\n" +
             "}\n" +
             "\n";
