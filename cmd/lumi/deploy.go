@@ -136,11 +136,15 @@ func deployLatest(cmd *cobra.Command, info *envCmdInfo, opts deployOptions) erro
 
 			// Print a summary.
 			var footer bytes.Buffer
-			if empty {
-				cmdutil.Diag().Infof(diag.Message("no resources need to be updated"))
-			} else {
+			if !empty {
 				// Print out the total number of steps performed (and their kinds), the duration, and any summary info.
-				printSummary(&footer, progress.Ops, false)
+				if c := printSummary(&footer, progress.Ops, false); c == 0 {
+					empty = true
+				}
+			}
+			if empty {
+				cmdutil.Diag().Infof(diag.Message("no changes were made"))
+			} else {
 				footer.WriteString(fmt.Sprintf("%vDeployment duration: %v%v\n",
 					colors.SpecUnimportant, time.Since(start), colors.Reset))
 			}

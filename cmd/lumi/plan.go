@@ -210,11 +210,15 @@ func printPlan(result *planResult, opts deployOptions) error {
 	}
 
 	// If we are doing an empty update, say so.
-	if empty {
-		cmdutil.Diag().Infof(diag.Message("no resources need to be updated"))
-	} else {
+	if !empty {
 		// Print a summary of operation counts.
-		printSummary(&summary, counts, true)
+		if c := printSummary(&summary, counts, true); c == 0 {
+			empty = true
+		}
+	}
+	if empty {
+		cmdutil.Diag().Infof(diag.Message("no changes are required"))
+	} else {
 		fmt.Print(colors.Colorize(&summary))
 	}
 	return nil
@@ -256,36 +260,39 @@ func printConfig(b *bytes.Buffer, config resource.ConfigMap) {
 	}
 }
 
-func printSummary(b *bytes.Buffer, counts map[deploy.StepOp]int, plan bool) {
+func printSummary(b *bytes.Buffer, counts map[deploy.StepOp]int, plan bool) int {
 	total := 0
 	for _, c := range counts {
 		total += c
 	}
 
-	var planned string
-	if plan {
-		planned = "planned "
-	}
-	var colon string
-	if total != 0 {
-		colon = ":"
-	}
-	b.WriteString(fmt.Sprintf("%v total %v%v%v\n", total, planned, plural("change", total), colon))
+	if total > 0 {
+		var kind string
+		if plan {
+			kind = "planned"
+		} else {
+			kind = "deployed"
+		}
+		b.WriteString(fmt.Sprintf("%vinfo%v: %v %v %v:\n",
+			colors.SpecInfo, colors.Reset, total, kind, plural("change", total)))
 
-	var planTo string
-	var pastTense string
-	if plan {
-		planTo = "to "
-	} else {
-		pastTense = "d"
-	}
+		var planTo string
+		var pastTense string
+		if plan {
+			planTo = "to "
+		} else {
+			pastTense = "d"
+		}
 
-	for _, op := range deploy.StepOps {
-		if c := counts[op]; c > 0 {
-			b.WriteString(fmt.Sprintf("    %v%v %v %v%v%v%v\n",
-				op.Prefix(), c, plural("resource", c), planTo, op, pastTense, colors.Reset))
+		for _, op := range deploy.StepOps {
+			if c := counts[op]; c > 0 {
+				b.WriteString(fmt.Sprintf("    %v%v %v %v%v%v%v\n",
+					op.Prefix(), c, plural("resource", c), planTo, op, pastTense, colors.Reset))
+			}
 		}
 	}
+
+	return total
 }
 
 func plural(s string, c int) string {
