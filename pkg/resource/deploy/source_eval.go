@@ -161,7 +161,14 @@ func (iter *evalSourceIterator) Next() (*SourceAllocation, *SourceQuery, error) 
 			}
 			return nil, &SourceQuery{Type: t, GetID: resource.ID(args[0].StringValue())}, nil
 		case specialResourceQueryFunction: // Add similar checks to input args, if all good, then return nil, &SourceQuery{}, nil
-			contract.Failf("TODO[pulumi/lumi#83]: query not yet implemented")
+			if len(args) == 0 {
+				return nil, nil,
+					goerr.Errorf("Missing required argument 'type' for method %v", meth)
+			} else if !args[0].IsString() {
+				return nil, nil,
+					goerr.Errorf("Expected method %v argument 'type' to be a string; got %v", meth, args[0])
+			}
+			return nil, &SourceQuery{Type: t}, nil
 		default:
 			contract.Failf("Unrecognized query rendezvous function name: %v", meth.Name())
 		}

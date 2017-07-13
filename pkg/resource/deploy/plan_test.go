@@ -400,6 +400,7 @@ type testProvider struct {
 	name          func(tokens.Type, resource.PropertyMap) (tokens.QName, error)
 	create        func(tokens.Type, resource.PropertyMap) (resource.ID, resource.Status, error)
 	get           func(tokens.Type, resource.ID) (resource.PropertyMap, error)
+	query         func(tokens.Type) ([]resource.PropertyMap, error)
 	inspectChange func(tokens.Type, resource.ID,
 		resource.PropertyMap, resource.PropertyMap) ([]resource.PropertyKey, resource.PropertyMap, error)
 	update func(tokens.Type, resource.ID,
@@ -424,6 +425,9 @@ func (prov *testProvider) Create(t tokens.Type, props resource.PropertyMap) (res
 }
 func (prov *testProvider) Get(t tokens.Type, id resource.ID) (resource.PropertyMap, error) {
 	return prov.get(t, id)
+}
+func (prov *testProvider) Query(t tokens.Type) ([]resource.PropertyMap, error) {
+	return prov.query(t)
 }
 func (prov *testProvider) InspectChange(t tokens.Type, id resource.ID,
 	olds resource.PropertyMap, news resource.PropertyMap) ([]resource.PropertyKey, resource.PropertyMap, error) {
