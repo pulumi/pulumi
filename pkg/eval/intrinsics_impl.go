@@ -118,20 +118,23 @@ func (s *closureSerializer) envEntryObjFor(obj *rt.Object) *rt.Object {
 			// Serialize functions using serializeClosure
 			stub := obj.FunctionValue()
 			lambda, ok := stub.Func.(*ast.LambdaExpression)
-			contract.Assertf(ok, "Expected function to be lambda expression")
-			props.Set("closure", s.serializeClosure(stub, lambda))
-		} else {
-			// Else we will pass through the object to serialize
-			// IDEA: Support for function members on captured references
-			// could be added by recurring here in the case that
-			// obj is not a primitive type.
-			//   let x = {
-			//     f: () => 24,
-			//   };
-			//   let g = () => x.f();
-			// In the above case, the free vars of g are only [x], which will
-			// currently trigger JSON serialization, losing access to `x.f`.
+			if ok {
+				props.Set("closure", s.serializeClosure(stub, lambda))
+			}
+		} else if obj.IsBool() || obj.IsString() || obj.IsNumber() || obj.IsNull() {
+			// Else if it's a primitive, pass through the object to serialize
 			props.Set("json", obj)
+		} else {
+			// Else it's an object, and we recursively serialize it's properties.
+			newObjProps := rt.NewPropertyMap()
+			ownProps := obj.PropertyValues().Stable()
+			for _, propKey := range ownProps {
+				propPointer := obj.GetPropertyAddr(propKey, false, true)
+				propObj := propPointer.Obj()
+				newValue := s.envEntryObjFor(propObj)
+				newObjProps.Set(propKey, newValue)
+			}
+			props.Set("obj", rt.NewObject(types.Dynamic, nil, newObjProps, nil))
 		}
 	}
 	return envEntry

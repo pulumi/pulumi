@@ -2,7 +2,7 @@
 
 import { AssetArchive, File, String as StringAsset } from "@lumi/lumi/asset";
 import {
-    Closure, jsonStringify, objectKeys, printf, serializeClosure, sha1hash,
+    Closure, EnvObj, jsonStringify, objectKeys, printf, serializeClosure, sha1hash,
 } from "@lumi/lumirt";
 import { Role } from "../iam/role";
 import { DeadLetterConfig, Function as LambdaFunction } from "../lambda/function";
@@ -64,27 +64,33 @@ class FuncsForClosure {
         if (this.funcs[hash] === undefined) {
             this.funcs[hash] = {
                 code: closure.code,
-                env: {},
+                env: {}, // initialize as empty - update after recusrive call
             };
-            let envObj: any = {};
-            let keys = objectKeys(closure.environment);
-            for (let i = 0; i < (<any>keys).length; i++) {
-                let key = keys[i];
-                let envEntry = closure.environment[key];
-                if (envEntry.json !== undefined) {
-                    envObj[key] = jsonStringify(envEntry.json);
-                } else if (envEntry.closure !== undefined) {
-                    let innerHash = this.createFuncForClosure(envEntry.closure);
-                    envObj[key] = innerHash;
-                } else {
-                    // TODO[pulumi/lumi#239]: For now we will skip serialziing when the captured JSON object is
-                    // null/undefined. This is not technically correct, as it will cause references to these to
-                    // fail instead of return undefined.
-                }
-            }
-            this.funcs[hash].env = envObj;
+            this.funcs[hash].env = this.envFromClosureEnvironment(closure.environment);
         }
         return hash;
+    }
+
+    private envFromClosureEnvironment(env: EnvObj): {[key: string]: string} {
+        let envObj: {[key: string]: string} = {};
+        let keys = objectKeys(env);
+        for (let i = 0; i < (<any>keys).length; i++) {
+            let key = keys[i];
+            let envEntry = env[key];
+            if (envEntry.json !== undefined) {
+                envObj[key] = jsonStringify(envEntry.json);
+            } else if (envEntry.closure !== undefined) {
+                let innerHash = this.createFuncForClosure(envEntry.closure);
+                envObj[key] = innerHash;
+            } else if (envEntry.obj !== undefined) {
+                envObj[key] = envObjToString(this.envFromClosureEnvironment(envEntry.obj));
+            } else {
+                // TODO[pulumi/lumi#239]: For now we will skip serialziing when the captured JSON object is
+                // null/undefined. This is not technically correct, as it will cause references to these to
+                // fail instead of return undefined.
+            }
+        }
+        return envObj;
     }
 }
 
