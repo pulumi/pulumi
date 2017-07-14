@@ -100,6 +100,24 @@ func (p *logGroupProvider) Create(ctx context.Context,
 	return arn.NewResourceID("logs", p.ctx.Region(), p.ctx.AccountID(), "log-group", name), nil
 }
 
+// Query returns an (possibly empty) array of resource objects.
+func (p *logGroupProvider) Query(ctx context.Context) ([]*cloudwatch.LogGroup, error) {
+	logs, err := p.ctx.CloudwatchLogs().DescribeLogGroups(&awscloudwatch.DescribeLogGroupsInput{})
+	if err != nil {
+		return nil, err
+	} else if logs == nil {
+		return nil, errors.New("Cloudwatch query returned an empty response")
+	}
+	var logGroups []*awscloudwatch.LogGroup
+	for _, group := range logs.LogGroups {
+		logGroups = append(logGroups, &cloudwatch.LogGroup{
+			LogGroupName:    aws.String(group.LogGroupName),
+			RetentionInDays: convutil.Int64PToFloat64P(group.RetentionInDays),
+		})
+	}
+	return logGroups, nil
+}
+
 // Get reads the instance state identified by ID, returning a populated resource object, or an error if not found.
 func (p *logGroupProvider) Get(ctx context.Context,
 	id resource.ID) (*cloudwatch.LogGroup, error) {

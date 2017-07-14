@@ -171,11 +171,13 @@ func (p *funcProvider) Create(ctx context.Context, obj *lambda.Function) (resour
 // Query returns an (possibly empty) array of resource objects.
 func (p *funcProvider) Query(ctx context.Context) ([]*lambda.Function, error) {
 	var names []string
-	funcs, _ := p.ctx.Lambda().ListFunctions()
+	funcs, err := p.ctx.Lambda().ListFunctions(&awslambda.ListFunctionsInput{})
+	if err != nil {
+		return nil, err
+	}
 	var lambdas []*lambda.Function
-	for function := range funcs.Functions {
+	for _, function := range funcs.Functions {
 		name := function.FunctionName
-
 		funcresp, err := p.ctx.Lambda().GetFunction(&awslambda.GetFunctionInput{FunctionName: aws.String(name)})
 		if err != nil {
 			if awsctx.IsAWSError(err, awslambda.ErrCodeResourceNotFoundException) {
@@ -183,7 +185,6 @@ func (p *funcProvider) Query(ctx context.Context) ([]*lambda.Function, error) {
 			}
 			return nil, err
 		}
-
 		contract.Assert(funcresp != nil)
 		config := funcresp.Configuration
 		contract.Assert(config != nil)
@@ -209,7 +210,7 @@ func (p *funcProvider) Query(ctx context.Context) ([]*lambda.Function, error) {
 			Timeout:      convutil.Int64PToFloat64P(config.Timeout),
 		})
 	}
-
+	return lambdas, nil
 }
 
 // Get reads the instance state identified by ID, returning a populated resource object, or an error if not found.

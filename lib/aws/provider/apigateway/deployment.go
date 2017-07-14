@@ -84,10 +84,18 @@ func (p *deploymentProvider) Create(ctx context.Context, obj *apigateway.Deploym
 
 // Query returns an (possibly empty) array of resource objects.
 func (p *deploymentProvider) Query(ctx context.Context) ([]*apigateway.Deployment, error) {
-	restAPIs := restapi.Query(ctx)
+	restAPIs, err := restapi.Query(ctx)
+	if err != nil {
+		return nil, err
+	}
 	var deploys []*apigateway.Deployment
 	for _, restAPI := range restAPIs {
-		for _, deploy := p.ctx.APIGateway().GetDeployments(restAPI.Id).Items {
+		deployments, err := p.ctx.APIGateway().GetDeployments(
+			&apigateway.GetDeploymentsInput{RestApiId: restAPI.Id})
+		if err != nil {
+			return nil, err
+		}
+		for _, deploy := deployments.Items {
 			deploys = append(deploys, &apigateway.Deployment{
 				RestAPI:     NewRestAPIID(p.ctx.Region(), restAPI.Id),
 				Description: deploy.Description,

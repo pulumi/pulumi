@@ -116,16 +116,16 @@ func (p *environmentProvider) Create(ctx context.Context, obj *elasticbeanstalk.
 
 // Query returns an (possibly empty) array of resource objects.
 func (p *environmentProvider) Query(ctx context.Context) ([]*elasticbeanstalk.Environment, error) {
-	envs := p.ctx.ElasticBeanstalk().DescribeEnvironments()
+	envs, err := p.ctx.ElasticBeanstalk().DescribeEnvironments(&elasticbeanstalk.DescribeEnvironmentsInput{})
+	if err != nil {
+		return nil, err
+	}
 	var ebsenvs []*elasticbeanstalk.Environment
 
-	for env := range envs {
+	for _, env := range envs.Environments {
 		if env.Environments == nil || len(env.Environments) == 0 {
 			return nil, nil
 		}
-
-		contract.Assert(len(envresp.Environments) == 1)
-		env := envresp.Environments[0]
 
 		var versionLabel *resource.ID
 		if env.VersionLabel != nil {

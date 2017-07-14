@@ -174,7 +174,6 @@ func (p *sgProvider) Query(ctx context.Context) ([]*ec2.SecurityGroup, error) {
 			SecurityGroupIngress: createSecurityGroupRulesFromIPPermissions(grp.IpPermissions),
 		})
 	}
-
 	return grps, nil
 }
 

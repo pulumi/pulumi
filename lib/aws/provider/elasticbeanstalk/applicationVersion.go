@@ -86,6 +86,28 @@ func (p *applicationVersionProvider) Create(ctx context.Context,
 	return arn.NewElasticBeanstalkApplicationVersionID(p.ctx.Region(), p.ctx.AccountID(), appname, versionLabel), nil
 }
 
+// Query returns an (possibly empty) array of resource objects.
+func (p *applicationVersionProvider) Query(ctx context.Context) ([]*elasticbeanstalk.ApplicationVersion, error) {
+	resp, err := p.ctx.ElasticBeanstalk().DescribeApplicationVersions(&awselasticbeanstalk.DescribeApplicationVersionsInput{})
+	if err != nil {
+		return nil, err
+	} else if len(resp.ApplicationVersions) == 0 {
+		return nil, nil
+	}
+	var appVersion []*elasticbeanstalk.ApplicationVersion
+	for _, app := resp.ApplicationVersions {
+		s3buck := aws.StringValue(app.SourceBundle.S3Bucket)
+		s3key := aws.StringValue(app.SourceBundle.S3Key)
+
+		appVersion = append(appVersion, &elasticbeanstalk.ApplicationVersion{
+			VersionLabel: app.VersionLabel,
+			Application:  resource.ID(app.BuildArn), // Build ARN?
+			Description:  app.Description,
+			SourceBundle: arn.NewS3ObjectID(s3buck, s3key),
+		})
+	}
+}
+
 // Get reads the instance state identified by ID, returning a populated resource object, or an error if not found.
 func (p *applicationVersionProvider) Get(ctx context.Context,
 	id resource.ID) (*elasticbeanstalk.ApplicationVersion, error) {

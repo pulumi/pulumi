@@ -99,10 +99,13 @@ func (p *roleProvider) Create(ctx context.Context, obj *iam.Role) (resource.ID, 
 
 // Query returns an (possibly empty) array of resource objects.
 func (p *roleProvider) Query(ctx context.Context) ([]*iam.Role, error) {
-	names := p.ctx.IAM().ListRoles()
+	names, err := p.ctx.IAM().ListRoles(&awsiam.ListRolesInput{})
+	if err != nil {
+		return nil, err
+	}
 	var roles []*iam.Role
-	for name := range names.Roles.RoleName {
-		getrole, err := p.ctx.IAM().GetRole(&awsiam.GetRoleInput{RoleName: aws.String(name)})
+	for name := range names.Roles {
+		getrole, err := p.ctx.IAM().GetRole(&awsiam.GetRoleInput{RoleName: aws.String(name.RoleName)})
 		if err != nil {
 			if awsctx.IsAWSError(err, "NotFound", "NoSuchEntity") {
 				return nil, nil
@@ -126,7 +129,7 @@ func (p *roleProvider) Query(ctx context.Context) ([]*iam.Role, error) {
 
 		// Now get a list of attached role policies.
 		getpols, err := p.ctx.IAM().ListAttachedRolePolicies(&awsiam.ListAttachedRolePoliciesInput{
-			RoleName: aws.String(name),
+			RoleName: aws.String(name.RoleName),
 		})
 		if err != nil {
 			return nil, err

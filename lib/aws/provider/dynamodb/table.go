@@ -207,12 +207,13 @@ func (p *tableProvider) Create(ctx context.Context, obj *dynamodb.Table) (resour
 
 // Query returns an (possible empty) array of resource objects.
 func (p *tableProvider) Query(ctx context.Context) ([]*dynamodb.Table, error) {
-
-	// List tables, iterate through each one, describe table, construct table reference and add to array.
-	var names []string = p.ctx.DynamoDB().ListTables()
+	names, err := p.ctx.DynamoDB().ListTables(&dynamodb.ListTablesInput{})
+	if err != nil {
+		return nil, err
+	}
 	var tables []*dynamodb.Table
 
-	for name := range names {
+	for _, name := range names.TableNames {
 		resp, err := p.ctx.DynamoDB().DescribeTable(&awsdynamodb.DescribeTableInput{TableName: aws.String(name)})
 		if err != nil {
 			return nil, err
@@ -267,7 +268,6 @@ func (p *tableProvider) Query(ctx context.Context) ([]*dynamodb.Table, error) {
 			GlobalSecondaryIndexes: gsis,
 		})
 	}
-
 	return tables, nil
 }
 

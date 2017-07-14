@@ -148,7 +148,10 @@ func (p *permissionProvider) Create(ctx context.Context, obj *lambda.Permission)
 
 // Query returns an (possibly empty) array of resource objects.
 func (p *permissionProvider) Query(ctx context.Context) ([]*lambda.Permission, error) {
-	funcs := p.ctx.Lambda().ListFunctions().Functions
+	funcs, err := p.ctx.Lambda().ListFunctions(&awslambda.ListFunctionsInput{}).Functions
+	if err != nil {
+		return nil, err
+	}
 	var names []string
 	for _, fun := range funcs {
 		names = append(names, funcs.FunctionName)

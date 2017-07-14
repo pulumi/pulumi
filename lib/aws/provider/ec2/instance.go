@@ -120,8 +120,7 @@ func (p *instanceProvider) Create(ctx context.Context, obj *ec2.Instance) (resou
 
 // Query returns an (possibly empty) array of instances.
 func (p *instanceProvider) Query(ctx context.Context) ([]*ec2.Instance, error) {
-	resp, err := p.ctx.EC2().DescribeInstances()
-	var instances []*ec2.Instance
+	resp, err := p.ctx.EC2().DescribeInstances(&ec2.DescribeInstancesInput{})
 	if err != nil {
 		if awsctx.IsAWSError(err, "InvalidInstanceID.NotFound") {
 			return nil, nil
@@ -131,11 +130,16 @@ func (p *instanceProvider) Query(ctx context.Context) ([]*ec2.Instance, error) {
 		return nil, nil
 	}
 
-	for inst := range resp.Reservations {
+	var instances []*ec2.Instance
+	for _, inst := range resp.Reservations {
 		var secgrpIDs *[]resource.ID
 		if len(inst.SecurityGroups) > 0 {
 			var ids []resource.ID
 			for _, group := range inst.SecurityGroups {
+				idarn, err := arn.ARN(inst.InstanceId).Parse()
+				if err != nil {
+					return nil, err
+				}
 				ids = append(ids,
 					arn.NewEC2SecurityGroupID(idarn.Region, idarn.AccountID, aws.StringValue(group.GroupId)))
 			}
@@ -168,7 +172,6 @@ func (p *instanceProvider) Query(ctx context.Context) ([]*ec2.Instance, error) {
 			Tags:             instanceTags,
 		})
 	}
-
 	return instances, nil
 }
 

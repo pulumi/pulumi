@@ -97,7 +97,6 @@ func (p *applicationProvider) Query(ctx context.Context) ([]*elasticbeanstalk.Ap
 			Description:     app.Description,
 		})
 	}
-
 	return apps, nil
 }
 

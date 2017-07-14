@@ -127,10 +127,13 @@ func (p *restAPIProvider) Create(ctx context.Context, obj *apigateway.RestAPI) (
 
 // Query returns an (possibly empty) array of resource objects.
 func (p *restAPIProvider) Query(ctx context.Context) ([]*apigateway.RestAPI, error) {
-	resps := p.ctx.APIGateway().GetRestApis()
+	resps, err := p.ctx.APIGateway().GetRestApis(&apigateway.GetRestApisInput{})
+	if err != nil {
+		return nil, err
+	}
 	var restAPIs []*apigateway.RestAPI
 
-	for resp := range resps.Items {
+	for _, resp := range resps.Items {
 		restAPIs = append(restAPIs, &apigateway.RestAPI{
 			ID:               aws.StringValue(resp.Id),
 			APIName:          resp.Name,
@@ -141,7 +144,6 @@ func (p *restAPIProvider) Query(ctx context.Context) ([]*apigateway.RestAPI, err
 			BinaryMediaTypes: aws.StringValueSlice(resp.BinaryMediaTypes),
 		})
 	}
-
 	return restAPIs, nil
 }
 

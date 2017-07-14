@@ -85,12 +85,17 @@ func (p *stageProvider) Create(ctx context.Context, obj *apigateway.Stage) (reso
 
 // Query returns an (possibly empty) array of resource objects.
 func (p *stageProvider) Query(ctx context.Context) ([]*apigateway.Stage, error) {
-	restAPIs := restapi.Query(ctx)
+	restAPIs, err := restapi.Query(ctx)
+	if err != nil {
+		return nil, err
+	}
 	var stages []*apigateway.Stage
 	for _, restAPI := range restAPIs {
-		for _, deploys := range p.ctx.APIGateway().GetDeployments(restAPI.Id).Items {
-			deploymentStages := p.ctx.APIGateway().GetStages(deploys, restAPI).Item
-			for stage := range deploymentStages {
+		for _, deploys := range p.ctx.APIGateway().GetDeployments(&apigateway.GetDeploymentsInput{RestApiId: restAPI.Id}).Items {
+			deploymentStages := p.ctx.APIGateway().GetStages(&apigateway.GetStagesInput{
+				DeploymentId: deploys,
+				RestApiId:    restAPI.Id}).Item
+			for _, stage := range deploymentStages {
 				variables := aws.StringValueMap(stage.Variables)
 				url := "https://" + restAPI.Id + ".execute-api." + p.ctx.Region() + ".amazonaws.com/" + stage.StageName
 				executionARN := "arn:aws:execute-api:" + p.ctx.Region() + ":" + p.ctx.AccountID() + ":" + restAPI.Id + "/" + stage.StageName
