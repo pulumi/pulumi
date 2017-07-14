@@ -84,10 +84,10 @@ func getIDObject(obj *rt.Object) *rt.Object {
 }
 
 const (
-	// URNProperty is the special URN property name.
-	URNProperty = rt.PropertyKey("urn")
-	// URNPropertyKey is the special URN property name for resource maps.
-	URNPropertyKey = PropertyKey("urn")
+	// URNProperty is the special Universal Pulumi Name (UPN) property name.
+	URNProperty = rt.PropertyKey("upn")
+	// URNPropertyKey is the special Universal Pulumi Name (UPN) property name for resource maps.
+	URNPropertyKey = PropertyKey("upn")
 )
 
 // URN fetches the object's URN.
