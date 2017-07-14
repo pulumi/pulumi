@@ -134,7 +134,7 @@ func (p *KeyProvider) Get(
     }
     return &lumirpc.GetResponse{
         Properties: plugin.MarshalProperties(
-            nil, resource.NewPropertyMap(obj), plugin.MarshalOptions{}),
+            resource.NewPropertyMap(obj), plugin.MarshalOptions{}),
     }, nil
 }
 
@@ -198,7 +198,7 @@ func (p *KeyProvider) Delete(
 func (p *KeyProvider) Unmarshal(
     v *pbstruct.Struct) (*Key, resource.PropertyMap, error) {
     var obj Key
-    props := plugin.UnmarshalProperties(nil, v, plugin.MarshalOptions{RawResources: true})
+    props := plugin.UnmarshalProperties(v, plugin.MarshalOptions{RawResources: true})
     return &obj, props, mapper.MapIU(props.Mappable(), &obj)
 }
 

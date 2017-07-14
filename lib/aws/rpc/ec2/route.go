@@ -134,7 +134,7 @@ func (p *RouteProvider) Get(
     }
     return &lumirpc.GetResponse{
         Properties: plugin.MarshalProperties(
-            nil, resource.NewPropertyMap(obj), plugin.MarshalOptions{}),
+            resource.NewPropertyMap(obj), plugin.MarshalOptions{}),
     }, nil
 }
 
@@ -210,7 +210,7 @@ func (p *RouteProvider) Delete(
 func (p *RouteProvider) Unmarshal(
     v *pbstruct.Struct) (*Route, resource.PropertyMap, error) {
     var obj Route
-    props := plugin.UnmarshalProperties(nil, v, plugin.MarshalOptions{RawResources: true})
+    props := plugin.UnmarshalProperties(v, plugin.MarshalOptions{RawResources: true})
     return &obj, props, mapper.MapIU(props.Mappable(), &obj)
 }
 

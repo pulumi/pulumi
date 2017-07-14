@@ -122,7 +122,7 @@ func (p *ActionTargetProvider) Get(
     }
     return &lumirpc.GetResponse{
         Properties: plugin.MarshalProperties(
-            nil, resource.NewPropertyMap(obj), plugin.MarshalOptions{}),
+            resource.NewPropertyMap(obj), plugin.MarshalOptions{}),
     }, nil
 }
 
@@ -189,7 +189,7 @@ func (p *ActionTargetProvider) Delete(
 func (p *ActionTargetProvider) Unmarshal(
     v *pbstruct.Struct) (*ActionTarget, resource.PropertyMap, error) {
     var obj ActionTarget
-    props := plugin.UnmarshalProperties(nil, v, plugin.MarshalOptions{RawResources: true})
+    props := plugin.UnmarshalProperties(v, plugin.MarshalOptions{RawResources: true})
     return &obj, props, mapper.MapIU(props.Mappable(), &obj)
 }
 
@@ -391,7 +391,7 @@ func (p *AlarmProvider) Get(
     }
     return &lumirpc.GetResponse{
         Properties: plugin.MarshalProperties(
-            nil, resource.NewPropertyMap(obj), plugin.MarshalOptions{}),
+            resource.NewPropertyMap(obj), plugin.MarshalOptions{}),
     }, nil
 }
 
@@ -458,7 +458,7 @@ func (p *AlarmProvider) Delete(
 func (p *AlarmProvider) Unmarshal(
     v *pbstruct.Struct) (*Alarm, resource.PropertyMap, error) {
     var obj Alarm
-    props := plugin.UnmarshalProperties(nil, v, plugin.MarshalOptions{RawResources: true})
+    props := plugin.UnmarshalProperties(v, plugin.MarshalOptions{RawResources: true})
     return &obj, props, mapper.MapIU(props.Mappable(), &obj)
 }
 

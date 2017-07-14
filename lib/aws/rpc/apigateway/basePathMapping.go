@@ -134,7 +134,7 @@ func (p *BasePathMappingProvider) Get(
     }
     return &lumirpc.GetResponse{
         Properties: plugin.MarshalProperties(
-            nil, resource.NewPropertyMap(obj), plugin.MarshalOptions{}),
+            resource.NewPropertyMap(obj), plugin.MarshalOptions{}),
     }, nil
 }
 
@@ -198,7 +198,7 @@ func (p *BasePathMappingProvider) Delete(
 func (p *BasePathMappingProvider) Unmarshal(
     v *pbstruct.Struct) (*BasePathMapping, resource.PropertyMap, error) {
     var obj BasePathMapping
-    props := plugin.UnmarshalProperties(nil, v, plugin.MarshalOptions{RawResources: true})
+    props := plugin.UnmarshalProperties(v, plugin.MarshalOptions{RawResources: true})
     return &obj, props, mapper.MapIU(props.Mappable(), &obj)
 }
 

@@ -110,7 +110,7 @@ func (p *InternetGatewayProvider) Get(
     }
     return &lumirpc.GetResponse{
         Properties: plugin.MarshalProperties(
-            nil, resource.NewPropertyMap(obj), plugin.MarshalOptions{}),
+            resource.NewPropertyMap(obj), plugin.MarshalOptions{}),
     }, nil
 }
 
@@ -174,7 +174,7 @@ func (p *InternetGatewayProvider) Delete(
 func (p *InternetGatewayProvider) Unmarshal(
     v *pbstruct.Struct) (*InternetGateway, resource.PropertyMap, error) {
     var obj InternetGateway
-    props := plugin.UnmarshalProperties(nil, v, plugin.MarshalOptions{RawResources: true})
+    props := plugin.UnmarshalProperties(v, plugin.MarshalOptions{RawResources: true})
     return &obj, props, mapper.MapIU(props.Mappable(), &obj)
 }
 

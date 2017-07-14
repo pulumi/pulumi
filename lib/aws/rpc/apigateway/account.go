@@ -116,7 +116,7 @@ func (p *AccountProvider) Get(
     }
     return &lumirpc.GetResponse{
         Properties: plugin.MarshalProperties(
-            nil, resource.NewPropertyMap(obj), plugin.MarshalOptions{}),
+            resource.NewPropertyMap(obj), plugin.MarshalOptions{}),
     }, nil
 }
 
@@ -180,7 +180,7 @@ func (p *AccountProvider) Delete(
 func (p *AccountProvider) Unmarshal(
     v *pbstruct.Struct) (*Account, resource.PropertyMap, error) {
     var obj Account
-    props := plugin.UnmarshalProperties(nil, v, plugin.MarshalOptions{RawResources: true})
+    props := plugin.UnmarshalProperties(v, plugin.MarshalOptions{RawResources: true})
     return &obj, props, mapper.MapIU(props.Mappable(), &obj)
 }
 

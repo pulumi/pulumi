@@ -167,8 +167,8 @@ func CopyObject(obj *rt.Object) PropertyValue {
 func copyObjectProperty(resobj *rt.Object, obj *rt.Object) PropertyValue {
 	t := obj.Type()
 
+	// If the object is a resource, marshal its ID.
 	if predef.IsResourceType(t) {
-		// Resource references expand to that resource's ID.
 		idobj := getIDObject(obj)
 		if idobj != nil && idobj.IsString() {
 			return NewStringProperty(idobj.StringValue())
@@ -176,6 +176,15 @@ func copyObjectProperty(resobj *rt.Object, obj *rt.Object) PropertyValue {
 
 		// If an ID hasn't yet been assigned, we must be planning, and so this is a computed property.
 		return MakeComputed(NewStringProperty(""))
+	}
+
+	// If the object is an asset or archive type, recover that value.
+	if predef.IsResourceAssetType(t) {
+		a := NewAssetFromObject(obj)
+		return NewAssetProperty(a)
+	} else if predef.IsResourceArchiveType(t) {
+		a := NewArchiveFromObject(obj)
+		return NewArchiveProperty(a)
 	}
 
 	// Serialize simple primitive types with their primitive equivalents.

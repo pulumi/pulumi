@@ -337,7 +337,7 @@ func TestBasicCRUDPlan(t *testing.T) {
 
 // fakeResourceBase news up a resource type so that it looks like a predefined resource type.
 func fakeResourceBase() symbols.Type {
-	_, _, fact := fakeTestResources(predef.LumiStdlib.Name(), predef.LumiStdlibResourceModule.Name())
+	_, _, fact := fakeTestResources(predef.LumiStdlib.Name(), predef.LumiStdlibResourceClass.Module().Name())
 	return fact(predef.LumiStdlibResourceClass.Name(), nil)
 }
 

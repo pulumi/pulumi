@@ -144,7 +144,7 @@ var _ Context = &providerTest{}
 
 func createResource(t *testing.T, res interface{}, provider lumirpc.ResourceProviderServer,
 	token tokens.Type) (string, *structpb.Struct, *structpb.Struct) {
-	props := plugin.MarshalProperties(nil, resource.NewPropertyMap(res), plugin.MarshalOptions{})
+	props := plugin.MarshalProperties(resource.NewPropertyMap(res), plugin.MarshalOptions{})
 	fmt.Printf("[Provider Test]: Checking %v\n", token)
 	checkResp, err := provider.Check(nil, &lumirpc.CheckRequest{
 		Type:       string(token),
@@ -182,7 +182,7 @@ func createResource(t *testing.T, res interface{}, provider lumirpc.ResourceProv
 
 func updateResource(t *testing.T, id string, lastProps *structpb.Struct, res interface{},
 	provider lumirpc.ResourceProviderServer, token tokens.Type) (bool, *structpb.Struct, *structpb.Struct) {
-	newProps := plugin.MarshalProperties(nil, resource.NewPropertyMap(res), plugin.MarshalOptions{})
+	newProps := plugin.MarshalProperties(resource.NewPropertyMap(res), plugin.MarshalOptions{})
 	fmt.Printf("[Provider Test]: Checking %v\n", token)
 	checkResp, err := provider.Check(nil, &lumirpc.CheckRequest{
 		Type:       string(token),

@@ -18,20 +18,46 @@ import (
 
 	"github.com/pkg/errors"
 
+	"github.com/pulumi/lumi/pkg/compiler/types/predef"
+	"github.com/pulumi/lumi/pkg/eval/rt"
 	"github.com/pulumi/lumi/pkg/util/contract"
 )
 
 // Asset is a serialized asset reference.  It is a union: thus, only one of its fields will be non-nil.  Several helper
 // routines exist as members in order to easily interact with the assets referenced by an instance of this type.
 type Asset struct {
-	Text *string `json:"text,omitempty"` // a textual asset.
-	Path *string `json:"path,omitempty"` // a file on the current filesystem.
-	URI  *string `json:"uri,omitempty"`  // a URI to a reference fetched (file://, http://, https://, or custom).
+	Text *string `lumi:"text,optional"` // a textual asset.
+	Path *string `lumi:"path,optional"` // a file on the current filesystem.
+	URI  *string `lumi:"uri,optional"`  // a URI to a reference fetched (file://, http://, https://, or custom).
 }
+
+const (
+	AssetTextProperty = "text" // the dynamic property for an asset's text.
+	AssetPathProperty = "path" // the dynamic property for an asset's path.
+	AssetURIProperty  = "uri"  // the dynamic property for an asset's URI.
+)
 
 func NewTextAsset(text string) Asset { return Asset{Text: &text} }
 func NewPathAsset(path string) Asset { return Asset{Path: &path} }
 func NewURIAsset(uri string) Asset   { return Asset{URI: &uri} }
+
+func NewAssetFromObject(obj *rt.Object) Asset {
+	contract.Assert(predef.IsResourceAssetType(obj.Type()))
+	var text string
+	var path string
+	var uri string
+	props := obj.Properties()
+	if prop, has := props.TryGet(AssetTextProperty); has {
+		text = prop.StringValue()
+	}
+	if prop, has := props.TryGet(AssetPathProperty); has {
+		path = prop.StringValue()
+	}
+	if prop, has := props.TryGet(AssetURIProperty); has {
+		uri = prop.StringValue()
+	}
+	return Asset{Text: &text, Path: &path, URI: &uri}
+}
 
 func (a Asset) IsText() bool { return a.Text != nil }
 func (a Asset) IsPath() bool { return a.Path != nil }
@@ -198,20 +224,48 @@ func (b bytesReader) Close() error {
 // Archive is a serialized archive reference.  It is a union: thus, only one of its fields will be non-nil.  Several
 // helper routines exist as members in order to easily interact with archives of different kinds.
 type Archive struct {
-	Assets *map[string]*Asset `json:"assets,omitempty"` // a collection of other assets.
-	Path   *string            `json:"path,omitempty"`   // a file on the current filesystem.
-	URI    *string            `json:"uri,omitempty"`    // a URI to a remote archive (file://, http://, https://, etc).
+	Assets *map[string]Asset `lumi:"assets,optional"` // a collection of other assets.
+	Path   *string           `lumi:"path,optional"`   // a file on the current filesystem.
+	URI    *string           `lumi:"uri,optional"`    // a URI to a remote archive (file://, http://, https://, etc).
 }
 
-func NewAssetArchive(assets map[string]*Asset) Archive { return Archive{Assets: &assets} }
-func NewPathArchive(path string) Archive               { return Archive{Path: &path} }
-func NewURIArchive(uri string) Archive                 { return Archive{URI: &uri} }
+const (
+	ArchiveAssetsProperty = "assets" // the dynamic property for an archive's assets.
+	ArchivePathProperty   = "path"   // the dynamic property for an archive's path.
+	ArchiveURIProperty    = "uri"    // the dynamic property for an archive's URI.
+)
+
+func NewAssetArchive(assets map[string]Asset) Archive { return Archive{Assets: &assets} }
+func NewPathArchive(path string) Archive              { return Archive{Path: &path} }
+func NewURIArchive(uri string) Archive                { return Archive{URI: &uri} }
+
+func NewArchiveFromObject(obj *rt.Object) Archive {
+	contract.Assert(predef.IsResourceArchiveType(obj.Type()))
+	var assets map[string]Asset
+	var path string
+	var uri string
+	props := obj.Properties()
+	if prop, has := props.TryGet(ArchiveAssetsProperty); has {
+		assets = make(map[string]Asset)
+		mapprops := prop.Properties()
+		for _, k := range mapprops.Stable() {
+			assets[string(k)] = NewAssetFromObject(mapprops.Get(k))
+		}
+	}
+	if prop, has := props.TryGet(ArchivePathProperty); has {
+		path = prop.StringValue()
+	}
+	if prop, has := props.TryGet(ArchiveURIProperty); has {
+		uri = prop.StringValue()
+	}
+	return Archive{Assets: &assets, Path: &path, URI: &uri}
+}
 
 func (a Archive) IsMap() bool  { return a.Assets != nil }
 func (a Archive) IsPath() bool { return a.Path != nil }
 func (a Archive) IsURI() bool  { return a.URI != nil }
 
-func (a Archive) GetMap() (map[string]*Asset, bool) {
+func (a Archive) GetMap() (map[string]Asset, bool) {
 	if a.IsMap() {
 		return *a.Assets, true
 	}

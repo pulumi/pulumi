@@ -7,8 +7,6 @@ import (
 	"reflect"
 	"sort"
 
-	"github.com/pkg/errors"
-
 	"github.com/pulumi/lumi/pkg/tokens"
 	"github.com/pulumi/lumi/pkg/util/contract"
 	"github.com/pulumi/lumi/pkg/util/mapper"
@@ -89,276 +87,6 @@ func (err *ReqError) Error() string {
 	return fmt.Sprintf("required property '%v' is missing", err.K)
 }
 
-// BoolOrErr checks that the given property has the type bool, issuing an error if not; req indicates if required.
-func (m PropertyMap) BoolOrErr(k PropertyKey, req bool) (*bool, error) {
-	if v, has := m[k]; has && !v.IsNull() {
-		if !v.IsBool() {
-			return nil, errors.Errorf("property '%v' is not a bool (%v)", k, reflect.TypeOf(v.V))
-		}
-		b := v.BoolValue()
-		return &b, nil
-	} else if req {
-		return nil, &ReqError{k}
-	}
-	return nil, nil
-}
-
-// NumberOrErr checks that the given property has the type float64, issuing an error if not; req indicates if required.
-func (m PropertyMap) NumberOrErr(k PropertyKey, req bool) (*float64, error) {
-	if v, has := m[k]; has && !v.IsNull() {
-		if !v.IsNumber() {
-			return nil, errors.Errorf("property '%v' is not a number (%v)", k, reflect.TypeOf(v.V))
-		}
-		n := v.NumberValue()
-		return &n, nil
-	} else if req {
-		return nil, &ReqError{k}
-	}
-	return nil, nil
-}
-
-// StringOrErr checks that the given property has the type string, issuing an error if not; req indicates if required.
-func (m PropertyMap) StringOrErr(k PropertyKey, req bool) (*string, error) {
-	if v, has := m[k]; has && !v.IsNull() {
-		if !v.IsString() {
-			return nil, errors.Errorf("property '%v' is not a string (%v)", k, reflect.TypeOf(v.V))
-		}
-		s := v.StringValue()
-		return &s, nil
-	} else if req {
-		return nil, &ReqError{k}
-	}
-	return nil, nil
-}
-
-// ArrayOrErr checks that the given property has the type array, issuing an error if not; req indicates if required.
-func (m PropertyMap) ArrayOrErr(k PropertyKey, req bool) (*[]PropertyValue, error) {
-	if v, has := m[k]; has && !v.IsNull() {
-		if !v.IsArray() {
-			return nil, errors.Errorf("property '%v' is not an array (%v)", k, reflect.TypeOf(v.V))
-		}
-		a := v.ArrayValue()
-		return &a, nil
-	} else if req {
-		return nil, &ReqError{k}
-	}
-	return nil, nil
-}
-
-// ObjectArrayOrErr ensures a property is an array of objects, issuing an error if not; req indicates if required.
-func (m PropertyMap) ObjectArrayOrErr(k PropertyKey, req bool) (*[]PropertyMap, error) {
-	if v, has := m[k]; has && !v.IsNull() {
-		if !v.IsArray() {
-			return nil, errors.Errorf("property '%v' is not an array (%v)", k, reflect.TypeOf(v.V))
-		}
-		a := v.ArrayValue()
-		var objs []PropertyMap
-		for i, e := range a {
-			if e.IsObject() {
-				objs = append(objs, e.ObjectValue())
-			} else {
-				return nil, errors.Errorf(
-					"property '%v' array element %v is not an object (%v)", k, i, reflect.TypeOf(e))
-			}
-		}
-		return &objs, nil
-	} else if req {
-		return nil, &ReqError{k}
-	}
-	return nil, nil
-}
-
-// StringArrayOrErr ensures a property is an array of strings, issuing an error if not; req indicates if required.
-func (m PropertyMap) StringArrayOrErr(k PropertyKey, req bool) (*[]string, error) {
-	if v, has := m[k]; has && !v.IsNull() {
-		if !v.IsArray() {
-			return nil, errors.Errorf("property '%v' is not an array (%v)", k, reflect.TypeOf(v.V))
-		}
-		a := v.ArrayValue()
-		var strs []string
-		for i, e := range a {
-			if e.IsString() {
-				strs = append(strs, e.StringValue())
-			} else {
-				return nil, errors.Errorf(
-					"property '%v' array element %v is not a string (%v)", k, i, reflect.TypeOf(e))
-			}
-		}
-		return &strs, nil
-	} else if req {
-		return nil, &ReqError{k}
-	}
-	return nil, nil
-}
-
-// ObjectOrErr checks that the given property is an object, issuing an error if not; req indicates if required.
-func (m PropertyMap) ObjectOrErr(k PropertyKey, req bool) (*PropertyMap, error) {
-	if v, has := m[k]; has && !v.IsNull() {
-		if !v.IsObject() {
-			return nil, errors.Errorf("property '%v' is not an object (%v)", k, reflect.TypeOf(v.V))
-		}
-		o := v.ObjectValue()
-		return &o, nil
-	} else if req {
-		return nil, &ReqError{k}
-	}
-	return nil, nil
-}
-
-// ComputedOrErr checks that the given property is computed, issuing an error if not; req indicates if required.
-func (m PropertyMap) ComputedOrErr(k PropertyKey, req bool) (*Computed, error) {
-	if v, has := m[k]; has && !v.IsNull() {
-		if !v.IsComputed() {
-			return nil, errors.Errorf("property '%v' is not an object (%v)", k, reflect.TypeOf(v.V))
-		}
-		m := v.ComputedValue()
-		return &m, nil
-	} else if req {
-		return nil, &ReqError{k}
-	}
-	return nil, nil
-}
-
-// OutputOrErr checks that the given property is an output, issuing an error if not; req indicates if required.
-func (m PropertyMap) OutputOrErr(k PropertyKey, req bool) (*Output, error) {
-	if v, has := m[k]; has && !v.IsNull() {
-		if !v.IsOutput() {
-			return nil, errors.Errorf("property '%v' is not an object (%v)", k, reflect.TypeOf(v.V))
-		}
-		m := v.OutputValue()
-		return &m, nil
-	} else if req {
-		return nil, &ReqError{k}
-	}
-	return nil, nil
-}
-
-// ReqBoolOrErr checks that the given property exists and has the type bool.
-func (m PropertyMap) ReqBoolOrErr(k PropertyKey) (bool, error) {
-	b, err := m.BoolOrErr(k, true)
-	if err != nil {
-		return false, err
-	}
-	return *b, nil
-}
-
-// ReqNumberOrErr checks that the given property exists and has the type float64.
-func (m PropertyMap) ReqNumberOrErr(k PropertyKey) (float64, error) {
-	n, err := m.NumberOrErr(k, true)
-	if err != nil {
-		return 0, err
-	}
-	return *n, nil
-}
-
-// ReqStringOrErr checks that the given property exists and has the type string.
-func (m PropertyMap) ReqStringOrErr(k PropertyKey) (string, error) {
-	s, err := m.StringOrErr(k, true)
-	if err != nil {
-		return "", err
-	}
-	return *s, nil
-}
-
-// ReqArrayOrErr checks that the given property exists and has the type array.
-func (m PropertyMap) ReqArrayOrErr(k PropertyKey) ([]PropertyValue, error) {
-	a, err := m.ArrayOrErr(k, true)
-	if err != nil {
-		return nil, err
-	}
-	return *a, nil
-}
-
-// ReqObjectArrayOrErr checks that the given property exists and has the type array of objects.
-func (m PropertyMap) ReqObjectArrayOrErr(k PropertyKey) ([]PropertyMap, error) {
-	a, err := m.ObjectArrayOrErr(k, true)
-	if err != nil {
-		return nil, err
-	}
-	return *a, nil
-}
-
-// ReqStringArrayOrErr checks that the given property exists and has the type array of objects.
-func (m PropertyMap) ReqStringArrayOrErr(k PropertyKey) ([]string, error) {
-	a, err := m.StringArrayOrErr(k, true)
-	if err != nil {
-		return nil, err
-	}
-	return *a, nil
-}
-
-// ReqObjectOrErr checks that the given property exists and has the type object.
-func (m PropertyMap) ReqObjectOrErr(k PropertyKey) (PropertyMap, error) {
-	o, err := m.ObjectOrErr(k, true)
-	if err != nil {
-		return nil, err
-	}
-	return *o, nil
-}
-
-// ReqComputedOrErr checks that the given property exists and is computed.
-func (m PropertyMap) ReqComputedOrErr(k PropertyKey) (Computed, error) {
-	v, err := m.ComputedOrErr(k, true)
-	if err != nil {
-		return Computed{}, err
-	}
-	return *v, nil
-}
-
-// ReqOutputOrErr checks that the given property exists and is an output property.
-func (m PropertyMap) ReqOutputOrErr(k PropertyKey) (Output, error) {
-	v, err := m.OutputOrErr(k, true)
-	if err != nil {
-		return Output{}, err
-	}
-	return *v, nil
-}
-
-// OptBoolOrErr checks that the given property has the type bool, if it exists.
-func (m PropertyMap) OptBoolOrErr(k PropertyKey) (*bool, error) {
-	return m.BoolOrErr(k, false)
-}
-
-// OptNumberOrErr checks that the given property has the type float64, if it exists.
-func (m PropertyMap) OptNumberOrErr(k PropertyKey) (*float64, error) {
-	return m.NumberOrErr(k, false)
-}
-
-// OptStringOrErr checks that the given property has the type string, if it exists.
-func (m PropertyMap) OptStringOrErr(k PropertyKey) (*string, error) {
-	return m.StringOrErr(k, false)
-}
-
-// OptArrayOrErr checks that the given property has the type array, if it exists.
-func (m PropertyMap) OptArrayOrErr(k PropertyKey) (*[]PropertyValue, error) {
-	return m.ArrayOrErr(k, false)
-}
-
-// OptObjectArrayOrErr checks that the given property has the type array of objects, if it exists.
-func (m PropertyMap) OptObjectArrayOrErr(k PropertyKey) (*[]PropertyMap, error) {
-	return m.ObjectArrayOrErr(k, false)
-}
-
-// OptStringArrayOrErr checks that the given property has the type array of objects, if it exists.
-func (m PropertyMap) OptStringArrayOrErr(k PropertyKey) (*[]string, error) {
-	return m.StringArrayOrErr(k, false)
-}
-
-// OptObjectOrErr checks that the given property has the type object, if it exists.
-func (m PropertyMap) OptObjectOrErr(k PropertyKey) (*PropertyMap, error) {
-	return m.ObjectOrErr(k, false)
-}
-
-// OptComputedOrErr checks that the given property is computed, if it exists.
-func (m PropertyMap) OptComputedOrErr(k PropertyKey) (*Computed, error) {
-	return m.ComputedOrErr(k, false)
-}
-
-// OptOutputOrErr checks that the given property is an output property, if it exists.
-func (m PropertyMap) OptOutputOrErr(k PropertyKey) (*Output, error) {
-	return m.OutputOrErr(k, false)
-}
-
 // HasValue returns true if the slot associated with the given property key contains a real value.  It returns false
 // if a value is null or an output property that is awaiting a value to be assigned.  That is to say, HasValue indicates
 // a semantically meaningful value is present (even if it's a computed one whose concrete value isn't yet evaluated).
@@ -399,31 +127,13 @@ func (m PropertyMap) StableKeys() []PropertyKey {
 	return sorted
 }
 
-func (m PropertyMap) ShallowClone() PropertyMap {
-	copy := make(PropertyMap)
-	m.ShallowCloneInto(copy)
-	return copy
-}
-
-func (m PropertyMap) ShallowCloneInto(other PropertyMap) {
-	for k, v := range m {
-		other[k] = v
-	}
-}
-
-func (s PropertySet) ShallowClone() PropertySet {
-	copy := make(PropertySet)
-	for k, v := range s {
-		copy[k] = v
-	}
-	return copy
-}
-
 func NewNullProperty() PropertyValue                   { return PropertyValue{nil} }
 func NewBoolProperty(v bool) PropertyValue             { return PropertyValue{v} }
 func NewNumberProperty(v float64) PropertyValue        { return PropertyValue{v} }
 func NewStringProperty(v string) PropertyValue         { return PropertyValue{v} }
 func NewArrayProperty(v []PropertyValue) PropertyValue { return PropertyValue{v} }
+func NewAssetProperty(v Asset) PropertyValue           { return PropertyValue{v} }
+func NewArchiveProperty(v Archive) PropertyValue       { return PropertyValue{v} }
 func NewObjectProperty(v PropertyMap) PropertyValue    { return PropertyValue{v} }
 func NewComputedProperty(v Computed) PropertyValue     { return PropertyValue{v} }
 func NewOutputProperty(v Output) PropertyValue         { return PropertyValue{v} }
@@ -465,6 +175,10 @@ func NewPropertyValueRepl(v interface{},
 		return NewNumberProperty(t)
 	case string:
 		return NewStringProperty(t)
+	case Asset:
+		return NewAssetProperty(t)
+	case Archive:
+		return NewArchiveProperty(t)
 	case Computed:
 		return NewComputedProperty(t)
 	}
@@ -519,6 +233,11 @@ func NewPropertyValueRepl(v interface{},
 	return NewNullProperty()
 }
 
+// HasValue returns true if a value is semantically meaningful.
+func (v PropertyValue) HasValue() bool {
+	return !v.IsNull() && !v.IsOutput()
+}
+
 // BoolValue fetches the underlying bool value (panicking if it isn't a bool).
 func (v PropertyValue) BoolValue() bool { return v.V.(bool) }
 
@@ -530,6 +249,12 @@ func (v PropertyValue) StringValue() string { return v.V.(string) }
 
 // ArrayValue fetches the underlying array value (panicking if it isn't a array).
 func (v PropertyValue) ArrayValue() []PropertyValue { return v.V.([]PropertyValue) }
+
+// AssetValue fetches the underlying asset value (panicking if it isn't an asset).
+func (v PropertyValue) AssetValue() Asset { return v.V.(Asset) }
+
+// ArchiveValue fetches the underlying archive value (panicking if it isn't an archive).
+func (v PropertyValue) ArchiveValue() Archive { return v.V.(Archive) }
 
 // ObjectValue fetches the underlying object value (panicking if it isn't a object).
 func (v PropertyValue) ObjectValue() PropertyMap { return v.V.(PropertyMap) }
@@ -569,6 +294,18 @@ func (v PropertyValue) IsArray() bool {
 	return is
 }
 
+// IsAsset returns true if the underlying value is an object.
+func (v PropertyValue) IsAsset() bool {
+	_, is := v.V.(Asset)
+	return is
+}
+
+// IsArchive returns true if the underlying value is an object.
+func (v PropertyValue) IsArchive() bool {
+	_, is := v.V.(Archive)
+	return is
+}
+
 // IsObject returns true if the underlying value is an object.
 func (v PropertyValue) IsObject() bool {
 	_, is := v.V.(PropertyMap)
@@ -587,86 +324,6 @@ func (v PropertyValue) IsOutput() bool {
 	return is
 }
 
-// CanNull returns true if the target property is capable of holding a null value.
-func (v PropertyValue) CanNull() bool {
-	return true // all properties can be null
-}
-
-// CanBool returns true if the target property is capable of holding a bool value.
-func (v PropertyValue) CanBool() bool {
-	if v.IsNull() || v.IsBool() {
-		return true
-	}
-	if v.IsComputed() {
-		return v.ComputedValue().Element.CanBool()
-	}
-	if v.IsOutput() {
-		return v.OutputValue().Element.CanBool()
-	}
-	return false
-}
-
-// CanNumber returns true if the target property is capable of holding a number value.
-func (v PropertyValue) CanNumber() bool {
-	if v.IsNull() || v.IsNumber() {
-		return true
-	}
-	if v.IsComputed() {
-		return v.ComputedValue().Element.CanNumber()
-	}
-	if v.IsOutput() {
-		return v.OutputValue().Element.CanNumber()
-	}
-	return false
-}
-
-// CanString returns true if the target property is capable of holding a string value.
-func (v PropertyValue) CanString() bool {
-	if v.IsNull() || v.IsString() {
-		return true
-	}
-	if v.IsComputed() {
-		return v.ComputedValue().Element.CanString()
-	}
-	if v.IsOutput() {
-		return v.OutputValue().Element.CanString()
-	}
-	return false
-}
-
-// CanArray returns true if the target property is capable of holding an array value.
-func (v PropertyValue) CanArray() bool {
-	if v.IsNull() || v.IsArray() {
-		return true
-	}
-	if v.IsComputed() {
-		return v.ComputedValue().Element.CanArray()
-	}
-	if v.IsOutput() {
-		return v.OutputValue().Element.CanArray()
-	}
-	return false
-}
-
-// CanObject returns true if the target property is capable of holding an object value.
-func (v PropertyValue) CanObject() bool {
-	if v.IsNull() || v.IsObject() {
-		return true
-	}
-	if v.IsComputed() {
-		return v.ComputedValue().Element.CanObject()
-	}
-	if v.IsOutput() {
-		return v.OutputValue().Element.CanObject()
-	}
-	return false
-}
-
-// HasValue returns true if a value is semantically meaningful.
-func (v PropertyValue) HasValue() bool {
-	return !v.IsNull() && !v.IsOutput()
-}
-
 // TypeString returns a type representation of the property value's holder type.
 func (v PropertyValue) TypeString() string {
 	if v.IsNull() {
@@ -679,6 +336,10 @@ func (v PropertyValue) TypeString() string {
 		return "string"
 	} else if v.IsArray() {
 		return "[]"
+	} else if v.IsAsset() {
+		return "asset"
+	} else if v.IsArchive() {
+		return "archive"
 	} else if v.IsObject() {
 		return "object"
 	} else if v.IsComputed() {
@@ -718,6 +379,10 @@ func (v PropertyValue) MapRepl(replk func(string) (string, bool),
 			arr = append(arr, e.MapRepl(replk, replv))
 		}
 		return arr
+	} else if v.IsAsset() {
+		return v.AssetValue()
+	} else if v.IsArchive() {
+		return v.ArchiveValue()
 	}
 	contract.Assert(v.IsObject())
 	return v.ObjectValue().MapRepl(replk, replv)
