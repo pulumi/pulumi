@@ -23,6 +23,7 @@ import (
 
 func newPlanCmd() *cobra.Command {
 	var analyzers []string
+	var debug bool
 	var dotOutput bool
 	var env string
 	var showConfig bool
@@ -51,6 +52,7 @@ func newPlanCmd() *cobra.Command {
 			}
 			contract.Assertf(!dotOutput, "TODO[pulumi/lumi#235]: DOT files not yet supported")
 			opts := deployOptions{
+				Debug:              debug,
 				Destroy:            false,
 				DryRun:             true,
 				Analyzers:          analyzers,
@@ -78,6 +80,9 @@ func newPlanCmd() *cobra.Command {
 	cmd.PersistentFlags().StringSliceVar(
 		&analyzers, "analyzer", []string{},
 		"Run one or more analyzers as part of this deployment")
+	cmd.PersistentFlags().BoolVarP(
+		&debug, "debug", "d", false,
+		"Print detailed debugging output during resource operations")
 	cmd.PersistentFlags().BoolVar(
 		&dotOutput, "dot", false,
 		"Output the plan as a DOT digraph (graph description language)")
@@ -107,6 +112,12 @@ func newPlanCmd() *cobra.Command {
 func plan(cmd *cobra.Command, info *envCmdInfo, opts deployOptions) (*planResult, error) {
 	contract.Assert(info != nil)
 	contract.Assert(info.Target != nil)
+
+	// Initialize the diagnostics logger with the right stuff.
+	cmdutil.InitDiag(diag.FormatOptions{
+		Colors: true,
+		Debug:  opts.Debug,
+	})
 
 	// Create a context for plugins.
 	ctx, err := plugin.NewContext(cmdutil.Diag(), nil)

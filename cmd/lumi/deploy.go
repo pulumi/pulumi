@@ -21,6 +21,7 @@ import (
 
 func newDeployCmd() *cobra.Command {
 	var analyzers []string
+	var debug bool
 	var dryRun bool
 	var env string
 	var showConfig bool
@@ -50,6 +51,7 @@ func newDeployCmd() *cobra.Command {
 				return err
 			}
 			return deployLatest(cmd, info, deployOptions{
+				Debug:              debug,
 				Destroy:            false,
 				DryRun:             dryRun,
 				Analyzers:          analyzers,
@@ -66,6 +68,9 @@ func newDeployCmd() *cobra.Command {
 	cmd.PersistentFlags().StringSliceVar(
 		&analyzers, "analyzer", []string{},
 		"Run one or more analyzers as part of this deployment")
+	cmd.PersistentFlags().BoolVarP(
+		&debug, "debug", "d", false,
+		"Print detailed debugging output during resource operations")
 	cmd.PersistentFlags().BoolVarP(
 		&dryRun, "dry-run", "n", false,
 		"Don't actually update resources, just print out the planned updates (synonym for plan)")
@@ -95,6 +100,7 @@ func newDeployCmd() *cobra.Command {
 }
 
 type deployOptions struct {
+	Debug              bool     // true to enable resource debugging output.
 	Create             bool     // true if we are creating resources.
 	Destroy            bool     // true if we are destroying the environment.
 	DryRun             bool     // true if we should just print the plan without performing it.
