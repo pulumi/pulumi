@@ -64,7 +64,7 @@ class FuncsForClosure {
         if (this.funcs[hash] === undefined) {
             this.funcs[hash] = {
                 code: closure.code,
-                env: {}, // initialize as empty - update after recusrive call
+                env: {}, // initialize as empty - update after recursive call
             };
             this.funcs[hash].env = this.envFromClosureEnvironment(closure.environment);
         }
@@ -106,7 +106,7 @@ function envObjToString(envObj: { [key: string]: string; }): string {
         let key = keys[i];
         let val = envObj[key];
         // Lumi generates the special name `.this` for references to `this`.
-        // We will rewrite to the same `_this` and then pass that as the
+        // We will rewrite to the name `_this` and then pass that as the
         // receiver to `.apply` later on.
         if (key === ".this") {
             key = "_this";
