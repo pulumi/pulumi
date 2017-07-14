@@ -103,23 +103,41 @@ func sha1hash(intrin *rt.Intrinsic, e *evaluator, this *rt.Object, args []*rt.Ob
 }
 
 type closureSerializer struct {
-	node diag.Diagable
-	e    *evaluator
+	node          diag.Diagable
+	e             *evaluator
+	envEntryCache map[*rt.Object]*rt.Object
 }
 
 func (s *closureSerializer) envEntryObjFor(obj *rt.Object) *rt.Object {
-	props := rt.NewPropertyMap()
-	if obj.IsFunction() {
-		// Serialize functions using serializeClosure
-		stub := obj.FunctionValue()
-		lambda, ok := stub.Func.(*ast.LambdaExpression)
-		contract.Assertf(ok, "Expected function to be lambda expression")
-		props.Set("closure", s.serializeClosure(stub, lambda))
-	} else {
-		// Else we will pass through the object to serialize
-		props.Set("json", obj)
+	envEntry, ok := s.envEntryCache[obj]
+	if !ok {
+		props := rt.NewPropertyMap()
+		envEntry = rt.NewObject(types.Dynamic, nil, props, nil)
+		s.envEntryCache[obj] = envEntry
+		if obj.IsFunction() {
+			// Serialize functions using serializeClosure
+			stub := obj.FunctionValue()
+			lambda, ok := stub.Func.(*ast.LambdaExpression)
+			if ok {
+				props.Set("closure", s.serializeClosure(stub, lambda))
+			}
+		} else if obj.IsBool() || obj.IsString() || obj.IsNumber() || obj.IsNull() {
+			// Else if it's a primitive, pass through the object to serialize
+			props.Set("json", obj)
+		} else {
+			// Else it's an object, and we recursively serialize it's properties.
+			newObjProps := rt.NewPropertyMap()
+			ownProps := obj.PropertyValues().Stable()
+			for _, propKey := range ownProps {
+				propPointer := obj.GetPropertyAddr(propKey, false, true)
+				propObj := propPointer.Obj()
+				newValue := s.envEntryObjFor(propObj)
+				newObjProps.Set(propKey, newValue)
+			}
+			props.Set("obj", rt.NewObject(types.Dynamic, nil, newObjProps, nil))
+		}
 	}
-	return rt.NewObject(types.Dynamic, nil, props, nil)
+	return envEntry
 }
 
 func (s *closureSerializer) serializeClosure(stub rt.FuncStub, lambda *ast.LambdaExpression) *rt.Object {
@@ -165,8 +183,9 @@ func serializeClosure(intrin *rt.Intrinsic, e *evaluator, this *rt.Object, args 
 		return e.NewException(intrin.Tree(), "Expected argument 'func' to be a lambda expression.")
 	}
 	closureSerializer := &closureSerializer{
-		node: intrin.Tree(),
-		e:    e,
+		node:          intrin.Tree(),
+		e:             e,
+		envEntryCache: map[*rt.Object]*rt.Object{},
 	}
 	closure := closureSerializer.serializeClosure(stub, lambda)
 	return rt.NewReturnUnwind(closure)

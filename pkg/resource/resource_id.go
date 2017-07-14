@@ -48,9 +48,9 @@ func MaybeID(s *string) *ID {
 
 const (
 	// IDProperty is the special ID property name.
-	IDProperty = rt.PropertyKey("id")
+	IDProperty = rt.PropertyKey("pid")
 	// IDPropertyKey is the special ID property name for resource maps.
-	IDPropertyKey = PropertyKey("id")
+	IDPropertyKey = PropertyKey("pid")
 )
 
 // NewUniqueHex generates a new "random" hex string for use by resource providers.  It has the given optional prefix and

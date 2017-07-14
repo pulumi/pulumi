@@ -57,7 +57,7 @@ func (p *provider) Pkg() tokens.Package { return p.pkg }
 // Check validates that the given property bag is valid for a resource of the given type.
 func (p *provider) Check(t tokens.Type, props resource.PropertyMap) ([]CheckFailure, error) {
 	glog.V(7).Infof("resource[%v].Check(t=%v,#props=%v) executing", p.pkg, t, len(props))
-	pstr, unks := MarshalPropertiesWithUnknowns(p.ctx, props, MarshalOptions{
+	pstr, unks := MarshalPropertiesWithUnknowns(props, MarshalOptions{
 		OldURNs:      true, // permit old URNs, since this is pre-update.
 		RawResources: true, // pre-create, resource.IDs won't be ready, just ship over the URNs.
 	})
@@ -86,7 +86,7 @@ func (p *provider) Name(t tokens.Type, props resource.PropertyMap) (tokens.QName
 	contract.Assert(t != "")
 	contract.Assert(props != nil)
 	glog.V(7).Infof("resource[%v].Name(t=%v,#props=%v) executing", p.pkg, t, len(props))
-	pstr, unks := MarshalPropertiesWithUnknowns(p.ctx, props, MarshalOptions{
+	pstr, unks := MarshalPropertiesWithUnknowns(props, MarshalOptions{
 		OldURNs:      true, // permit old URNs, since this is pre-update.
 		RawResources: true, // pre-create, resource.IDs won't be ready, just ship over the URNs.
 	})
@@ -114,7 +114,7 @@ func (p *provider) Create(t tokens.Type, props resource.PropertyMap) (resource.I
 	glog.V(7).Infof("resource[%v].Create(t=%v,#props=%v) executing", p.pkg, t, len(props))
 	req := &lumirpc.CreateRequest{
 		Type:       string(t),
-		Properties: MarshalProperties(p.ctx, props, MarshalOptions{}),
+		Properties: MarshalProperties(props, MarshalOptions{}),
 	}
 
 	resp, err := p.client.Create(p.ctx.Request(), req)
@@ -148,7 +148,7 @@ func (p *provider) Get(t tokens.Type, id resource.ID) (resource.PropertyMap, err
 		return nil, err
 	}
 
-	props := UnmarshalProperties(p.ctx, resp.GetProperties(), MarshalOptions{})
+	props := UnmarshalProperties(resp.GetProperties(), MarshalOptions{})
 	glog.V(7).Infof("resource[%v].Get(id=%v,t=%v) success: #outs=%v", p.pkg, t, id, len(props))
 	return props, nil
 }
@@ -181,13 +181,13 @@ func (p *provider) InspectChange(t tokens.Type, id resource.ID,
 	glog.V(7).Infof("resource[%v].InspectChange(id=%v,t=%v,#olds=%v,#news=%v) executing",
 		p.pkg, id, t, len(olds), len(news))
 
-	newpstr, newunks := MarshalPropertiesWithUnknowns(p.ctx, news, MarshalOptions{
+	newpstr, newunks := MarshalPropertiesWithUnknowns(news, MarshalOptions{
 		RawResources: true, // pre-change, resource.IDs won't be ready, ship over URNs.
 	})
 	req := &lumirpc.InspectChangeRequest{
 		Id:   string(id),
 		Type: string(t),
-		Olds: MarshalProperties(p.ctx, olds, MarshalOptions{
+		Olds: MarshalProperties(olds, MarshalOptions{
 			RawResources: true, // just leave these as-is, so they match the news.
 		}),
 		News:     newpstr,
@@ -205,7 +205,7 @@ func (p *provider) InspectChange(t tokens.Type, id resource.ID,
 		replaces = append(replaces, resource.PropertyKey(replace))
 	}
 
-	changes := UnmarshalProperties(p.ctx, resp.GetChanges(), MarshalOptions{RawResources: true})
+	changes := UnmarshalProperties(resp.GetChanges(), MarshalOptions{RawResources: true})
 
 	glog.V(7).Infof("resource[%v].Update(id=%v,t=%v,...) success: #replaces=%v #changes=%v",
 		p.pkg, id, t, len(replaces), len(changes))
@@ -231,10 +231,10 @@ func (p *provider) Update(t tokens.Type, id resource.ID,
 	req := &lumirpc.UpdateRequest{
 		Id:   string(id),
 		Type: string(t),
-		Olds: MarshalProperties(p.ctx, olds, MarshalOptions{
+		Olds: MarshalProperties(olds, MarshalOptions{
 			OldURNs: true, // permit old URNs since these are the old values.
 		}),
-		News: MarshalProperties(p.ctx, news, MarshalOptions{}),
+		News: MarshalProperties(news, MarshalOptions{}),
 	}
 
 	_, err := p.client.Update(p.ctx.Request(), req)

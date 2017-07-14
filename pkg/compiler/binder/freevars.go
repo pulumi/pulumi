@@ -3,6 +3,8 @@
 package binder
 
 import (
+	"sort"
+
 	"github.com/pulumi/lumi/pkg/compiler/ast"
 	"github.com/pulumi/lumi/pkg/tokens"
 	"github.com/pulumi/lumi/pkg/util/contract"
@@ -29,6 +31,7 @@ func FreeVars(fnc ast.Function) []tokens.Token {
 	for k := range visitor.freeVars {
 		vars = append(vars, k)
 	}
+	sort.Sort(tokens.ByName(vars))
 	return vars
 }
 

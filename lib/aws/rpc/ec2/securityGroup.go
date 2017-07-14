@@ -131,17 +131,17 @@ func (p *SecurityGroupProvider) Create(
 }
 
 func (p *SecurityGroupProvider) Get(
-	ctx context.Context, req *lumirpc.GetRequest) (*lumirpc.GetResponse, error) {
-	contract.Assert(req.GetType() == string(SecurityGroupToken))
-	id := resource.ID(req.GetId())
-	obj, err := p.ops.Get(ctx, id)
-	if err != nil {
-		return nil, err
-	}
-	return &lumirpc.GetResponse{
-		Properties: plugin.MarshalProperties(
-			nil, resource.NewPropertyMap(obj), plugin.MarshalOptions{}),
-	}, nil
+    ctx context.Context, req *lumirpc.GetRequest) (*lumirpc.GetResponse, error) {
+    contract.Assert(req.GetType() == string(SecurityGroupToken))
+    id := resource.ID(req.GetId())
+    obj, err := p.ops.Get(ctx, id)
+    if err != nil {
+        return nil, err
+    }
+    return &lumirpc.GetResponse{
+        Properties: plugin.MarshalProperties(
+            resource.NewPropertyMap(obj), plugin.MarshalOptions{}),
+    }, nil
 }
 
 func (p *SecurityGroupProvider) InspectChange(
@@ -211,10 +211,10 @@ func (p *SecurityGroupProvider) Delete(
 }
 
 func (p *SecurityGroupProvider) Unmarshal(
-	v *pbstruct.Struct) (*SecurityGroup, resource.PropertyMap, error) {
-	var obj SecurityGroup
-	props := plugin.UnmarshalProperties(nil, v, plugin.MarshalOptions{RawResources: true})
-	return &obj, props, mapper.MapIU(props.Mappable(), &obj)
+    v *pbstruct.Struct) (*SecurityGroup, resource.PropertyMap, error) {
+    var obj SecurityGroup
+    props := plugin.UnmarshalProperties(v, plugin.MarshalOptions{RawResources: true})
+    return &obj, props, mapper.MapIU(props.Mappable(), &obj)
 }
 
 /* Marshalable SecurityGroup structure(s) */

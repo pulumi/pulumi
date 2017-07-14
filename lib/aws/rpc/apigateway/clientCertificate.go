@@ -116,7 +116,7 @@ func (p *ClientCertificateProvider) Get(
     }
     return &lumirpc.GetResponse{
         Properties: plugin.MarshalProperties(
-            nil, resource.NewPropertyMap(obj), plugin.MarshalOptions{}),
+            resource.NewPropertyMap(obj), plugin.MarshalOptions{}),
     }, nil
 }
 
@@ -180,7 +180,7 @@ func (p *ClientCertificateProvider) Delete(
 func (p *ClientCertificateProvider) Unmarshal(
     v *pbstruct.Struct) (*ClientCertificate, resource.PropertyMap, error) {
     var obj ClientCertificate
-    props := plugin.UnmarshalProperties(nil, v, plugin.MarshalOptions{RawResources: true})
+    props := plugin.UnmarshalProperties(v, plugin.MarshalOptions{RawResources: true})
     return &obj, props, mapper.MapIU(props.Mappable(), &obj)
 }
 

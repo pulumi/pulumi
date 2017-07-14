@@ -158,7 +158,7 @@ func (p *SecurityGroupEgressProvider) Get(
     }
     return &lumirpc.GetResponse{
         Properties: plugin.MarshalProperties(
-            nil, resource.NewPropertyMap(obj), plugin.MarshalOptions{}),
+            resource.NewPropertyMap(obj), plugin.MarshalOptions{}),
     }, nil
 }
 
@@ -246,7 +246,7 @@ func (p *SecurityGroupEgressProvider) Delete(
 func (p *SecurityGroupEgressProvider) Unmarshal(
     v *pbstruct.Struct) (*SecurityGroupEgress, resource.PropertyMap, error) {
     var obj SecurityGroupEgress
-    props := plugin.UnmarshalProperties(nil, v, plugin.MarshalOptions{RawResources: true})
+    props := plugin.UnmarshalProperties(v, plugin.MarshalOptions{RawResources: true})
     return &obj, props, mapper.MapIU(props.Mappable(), &obj)
 }
 

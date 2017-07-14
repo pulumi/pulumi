@@ -334,20 +334,6 @@ func (p *funcProvider) Update(ctx context.Context, id resource.ID,
 		}
 
 		fmt.Printf("Updating Lambda function configuration '%v'\n", name)
-		if _, retryerr := awsctx.RetryUntil(p.ctx, func() (bool, error) {
-			if _, upderr := p.ctx.Lambda().UpdateFunctionConfiguration(update); upderr != nil {
-				if awsctx.IsAWSErrorMessage(upderr,
-					"InvalidParameterValueException",
-					"The role defined for the function cannot be assumed by Lambda.") {
-					return false, nil
-				}
-				return true, upderr
-			}
-			return true, nil
-		}); retryerr != nil {
-			return retryerr
-		}
-
 		if succ, err := awsctx.RetryProgUntil(
 			p.ctx,
 			func() (bool, error) {
@@ -363,13 +349,13 @@ func (p *funcProvider) Update(ctx context.Context, id resource.ID,
 				return true, nil
 			},
 			func(n int) bool {
-				fmt.Printf("Lambda IAM role '%v' not yet ready; waiting for it to become usable...\n", update.Role)
+				fmt.Printf("Lambda IAM role '%v' not yet ready; waiting for it to become usable...\n", new.Role)
 				return true
 			},
 		); err != nil {
 			return err
 		} else if !succ {
-			return fmt.Errorf("Lambda IAM role '%v' did not become useable", update.Role)
+			return fmt.Errorf("Lambda IAM role '%v' did not become useable", new.Role)
 		}
 	}
 

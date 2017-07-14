@@ -292,3 +292,59 @@ b"`,
 		assert.Equal(t, "\"a\\nb\\\"\"", val, "Unexpected return value: %v", val)
 	}
 }
+
+func Test_SerializeClosure(t *testing.T) {
+	t.Parallel()
+
+	serializeClosure := intrin{
+		moduleMember: tokens.ModuleMember("lumirt:index:serializeClosure"),
+		paramTypes:   []tokens.Type{types.Dynamic.TypeToken()},
+		returnType:   types.Dynamic.TypeToken(),
+	}
+
+	{
+		// let f = () => 12
+		f := &ast.LambdaExpression{
+			FunctionNode: ast.FunctionNode{
+				Body: &ast.ExpressionStatement{
+					Expression: &ast.NumberLiteral{
+						Value: 12.0,
+					},
+				},
+				Parameters: &[]*ast.LocalVariable{},
+				ReturnType: &ast.TypeToken{
+					Tok: types.Number.TypeToken(),
+				},
+			},
+			SourceLanguage: ".js",
+			SourceText:     "return function() { return 12; }",
+		}
+
+		b, ret, uw := invokeIntrinsic(serializeClosure, true, []ast.Expression{f})
+		assert.True(t, b.Diag().Success(), "Expected a successful evaluation")
+		assert.Nil(t, uw, "Did not expect a out-of-the-ordinary unwind to occur (expected a return)")
+		assert.NotNil(t, ret, "Expected a non-nil return value")
+
+		code := ret.GetPropertyAddr("code", false, true)
+		assert.NotNil(t, code, "Expected a non-nil 'code' property")
+		assert.True(t, code.Obj().IsString(), "Expected 'code' to be a string")
+		assert.Equal(t, "return function() { return 12; }", code.Obj().StringValue(), "Expected 'code' to be a string")
+
+		signature := ret.GetPropertyAddr("signature", false, true)
+		assert.NotNil(t, signature, "Expected a non-nil 'signature' property")
+		assert.True(t, signature.Obj().IsString(), "Expected 'signature' to be a string")
+		assert.Equal(t, "()number",
+			signature.Obj().StringValue(), "Expected 'signature' to be a string")
+
+		language := ret.GetPropertyAddr("language", false, true)
+		assert.NotNil(t, language, "Expected a non-nil 'language' property")
+		assert.True(t, language.Obj().IsString(), "Expected 'language' to be a string")
+		assert.Equal(t, ".js",
+			language.Obj().StringValue(), "Expected 'language' to be a string")
+
+		environment := ret.GetPropertyAddr("environment", false, true)
+		assert.NotNil(t, environment, "Expected a non-nil 'environment' property")
+		envProps := environment.Obj().Properties()
+		assert.Len(t, envProps.Stable(), 0, "Expected 0 variables in the environment")
+	}
+}

@@ -10,6 +10,7 @@ import (
 )
 
 func newDestroyCmd() *cobra.Command {
+	var debug bool
 	var dryRun bool
 	var env string
 	var summary bool
@@ -34,6 +35,7 @@ func newDestroyCmd() *cobra.Command {
 			if dryRun || yes ||
 				confirmPrompt("This will permanently destroy all resources in the '%v' environment!", name) {
 				return deployLatest(cmd, info, deployOptions{
+					Debug:   debug,
 					Destroy: true,
 					DryRun:  dryRun,
 					Summary: summary,
@@ -43,6 +45,9 @@ func newDestroyCmd() *cobra.Command {
 		}),
 	}
 
+	cmd.PersistentFlags().BoolVarP(
+		&debug, "debug", "d", false,
+		"Print detailed debugging output during resource operations")
 	cmd.PersistentFlags().BoolVarP(
 		&dryRun, "dry-run", "n", false,
 		"Don't actually delete resources; just print out the planned deletions")

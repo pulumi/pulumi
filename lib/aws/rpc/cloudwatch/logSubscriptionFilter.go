@@ -142,7 +142,7 @@ func (p *LogSubscriptionFilterProvider) Get(
     }
     return &lumirpc.GetResponse{
         Properties: plugin.MarshalProperties(
-            nil, resource.NewPropertyMap(obj), plugin.MarshalOptions{}),
+            resource.NewPropertyMap(obj), plugin.MarshalOptions{}),
     }, nil
 }
 
@@ -212,7 +212,7 @@ func (p *LogSubscriptionFilterProvider) Delete(
 func (p *LogSubscriptionFilterProvider) Unmarshal(
     v *pbstruct.Struct) (*LogSubscriptionFilter, resource.PropertyMap, error) {
     var obj LogSubscriptionFilter
-    props := plugin.UnmarshalProperties(nil, v, plugin.MarshalOptions{RawResources: true})
+    props := plugin.UnmarshalProperties(v, plugin.MarshalOptions{RawResources: true})
     return &obj, props, mapper.MapIU(props.Mappable(), &obj)
 }
 

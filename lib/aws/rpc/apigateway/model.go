@@ -140,7 +140,7 @@ func (p *ModelProvider) Get(
     }
     return &lumirpc.GetResponse{
         Properties: plugin.MarshalProperties(
-            nil, resource.NewPropertyMap(obj), plugin.MarshalOptions{}),
+            resource.NewPropertyMap(obj), plugin.MarshalOptions{}),
     }, nil
 }
 
@@ -213,7 +213,7 @@ func (p *ModelProvider) Delete(
 func (p *ModelProvider) Unmarshal(
     v *pbstruct.Struct) (*Model, resource.PropertyMap, error) {
     var obj Model
-    props := plugin.UnmarshalProperties(nil, v, plugin.MarshalOptions{RawResources: true})
+    props := plugin.UnmarshalProperties(v, plugin.MarshalOptions{RawResources: true})
     return &obj, props, mapper.MapIU(props.Mappable(), &obj)
 }
 

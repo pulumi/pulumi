@@ -286,3 +286,11 @@ func (tok Variable) String() string { return string(tok) }
 type Function Token
 
 func (tok Function) String() string { return string(tok) }
+
+// ByName implements sort.Interface to allow an array of tokens to be
+// sorted based on string order.
+type ByName []Token
+
+func (ts ByName) Len() int               { return len(ts) }
+func (ts ByName) Less(i int, j int) bool { return ts[i] < ts[j] }
+func (ts ByName) Swap(i int, j int)      { ts[i], ts[j] = ts[j], ts[i] }
