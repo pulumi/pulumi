@@ -10,12 +10,6 @@ import (
 	"github.com/pulumi/lumi/pkg/util/contract"
 )
 
-type byName []tokens.Token
-
-func (ts byName) Len() int               { return len(ts) }
-func (ts byName) Less(i int, j int) bool { return ts[i] < ts[j] }
-func (ts byName) Swap(i int, j int)      { ts[i], ts[j] = ts[j], ts[i] }
-
 // FreeVars computes the free variables referenced inside a function body.
 // The free variables for a function will be either simple identifier tokens or tokens
 // referencing module-scope variables.
@@ -37,7 +31,7 @@ func FreeVars(fnc ast.Function) []tokens.Token {
 	for k := range visitor.freeVars {
 		vars = append(vars, k)
 	}
-	sort.Sort(byName(vars))
+	sort.Sort(tokens.ByName(vars))
 	return vars
 }
 
