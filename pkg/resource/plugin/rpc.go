@@ -126,10 +126,12 @@ func UnmarshalProperties(props *structpb.Struct, opts MarshalOptions) resource.P
 
 	// First sort the keys so we enumerate them in order (in case errors happen, we want determinism).
 	var keys []string
-	for k := range props.Fields {
-		keys = append(keys, k)
+	if props != nil {
+		for k := range props.Fields {
+			keys = append(keys, k)
+		}
+		sort.Strings(keys)
 	}
-	sort.Strings(keys)
 
 	// And now unmarshal every field it into the map.
 	for _, key := range keys {
@@ -259,9 +261,18 @@ func MarshalAsset(a resource.Asset, opts MarshalOptions) *structpb.Value {
 // TryUnmarshalAsset tests whether the object is a marshaled asset and, if so, recovers its state.
 func TryUnmarshalAsset(obj resource.PropertyMap) (*resource.Asset, bool) {
 	if hasSig(obj, assetSig) {
-		text := obj[resource.AssetTextProperty].StringValue()
-		path := obj[resource.AssetPathProperty].StringValue()
-		uri := obj[resource.AssetURIProperty].StringValue()
+		var text string
+		if v, has := obj[resource.AssetTextProperty]; has {
+			text = v.StringValue()
+		}
+		var path string
+		if v, has := obj[resource.AssetPathProperty]; has {
+			path = v.StringValue()
+		}
+		var uri string
+		if v, has := obj[resource.AssetURIProperty]; has {
+			uri = v.StringValue()
+		}
 		return &resource.Asset{
 			Text: &text,
 			Path: &path,
@@ -286,7 +297,7 @@ func MarshalArchive(a resource.Archive, opts MarshalOptions) *structpb.Value {
 		Kind: &structpb.Value_StructValue{
 			StructValue: &structpb.Struct{
 				Fields: map[string]*structpb.Value{
-					sigProperty:                    MarshalString(assetSig, opts),
+					sigProperty:                    MarshalString(archiveSig, opts),
 					resource.ArchiveAssetsProperty: MarshalStruct(assets, opts),
 					resource.ArchivePathProperty:   MarshalOptString(a.Path, opts),
 					resource.ArchiveURIProperty:    MarshalOptString(a.URI, opts),
@@ -303,13 +314,17 @@ func TryUnmarshalArchive(obj resource.PropertyMap) (*resource.Archive, bool) {
 		if rawAssets, has := obj[resource.ArchiveAssetsProperty]; has {
 			assets = make(map[string]resource.Asset)
 			for aname, avalue := range rawAssets.ObjectValue() {
-				asset, isasset := TryUnmarshalAsset(avalue.ObjectValue())
-				contract.Assert(isasset)
-				assets[string(aname)] = *asset
+				assets[string(aname)] = avalue.AssetValue()
 			}
 		}
-		path := obj[resource.ArchivePathProperty].StringValue()
-		uri := obj[resource.ArchiveURIProperty].StringValue()
+		var path string
+		if v, has := obj[resource.ArchivePathProperty]; has {
+			path = v.StringValue()
+		}
+		var uri string
+		if v, has := obj[resource.ArchiveURIProperty]; has {
+			uri = v.StringValue()
+		}
 		return &resource.Archive{
 			Assets: &assets,
 			Path:   &path,
