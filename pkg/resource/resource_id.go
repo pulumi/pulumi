@@ -4,6 +4,7 @@ package resource
 
 import (
 	"crypto/rand"
+	"crypto/sha1"
 	"encoding/hex"
 
 	"github.com/pulumi/lumi/pkg/eval/rt"
@@ -56,13 +57,17 @@ const (
 // NewUniqueHex generates a new "random" hex string for use by resource providers.  It has the given optional prefix and
 // the total length is capped to the maxlen.  Note that capping to maxlen necessarily increases the risk of collisions.
 func NewUniqueHex(prefix string, maxlen, randlen int) string {
+	if randlen == -1 {
+		randlen = sha1.Size // default to SHA1 size.
+	}
+
 	bs := make([]byte, randlen)
 	n, err := rand.Read(bs)
 	contract.Assert(err == nil)
 	contract.Assert(n == len(bs))
 
 	str := prefix + hex.EncodeToString(bs)
-	if len(str) > maxlen {
+	if maxlen != -1 && len(str) > maxlen {
 		str = str[:maxlen]
 	}
 	return str
@@ -71,5 +76,5 @@ func NewUniqueHex(prefix string, maxlen, randlen int) string {
 // NewUniqueHexID generates a new "random" hex ID for use by resource providers.  It has the given optional prefix and
 // the total length is capped to the maxlen.  Note that capping to maxlen necessarily increases the risk of collisions.
 func NewUniqueHexID(prefix string, maxlen, randlen int) ID {
-	return ID(NewUniqueHex(prefix, randlen, maxlen))
+	return ID(NewUniqueHex(prefix, maxlen, randlen))
 }
