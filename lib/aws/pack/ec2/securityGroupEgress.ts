@@ -3,6 +3,7 @@
 
 /* tslint:disable:ordered-imports variable-name */
 import * as lumi from "@lumi/lumi";
+import * as lumirt from "@lumi/lumirt";
 
 import {SecurityGroup} from "./securityGroup";
 
@@ -26,19 +27,19 @@ export class SecurityGroupEgress extends lumi.NamedResource implements SecurityG
 
     constructor(name: string, args: SecurityGroupEgressArgs) {
         super(name);
-        if (args.fromPort === undefined) {
+        if (lumirt.defaultIfComputed(args.fromPort, "") === undefined) {
             throw new Error("Missing required argument 'fromPort'");
         }
         this.fromPort = args.fromPort;
-        if (args.group === undefined) {
+        if (lumirt.defaultIfComputed(args.group, "") === undefined) {
             throw new Error("Missing required argument 'group'");
         }
         this.group = args.group;
-        if (args.ipProtocol === undefined) {
+        if (lumirt.defaultIfComputed(args.ipProtocol, "") === undefined) {
             throw new Error("Missing required argument 'ipProtocol'");
         }
         this.ipProtocol = args.ipProtocol;
-        if (args.toPort === undefined) {
+        if (lumirt.defaultIfComputed(args.toPort, "") === undefined) {
             throw new Error("Missing required argument 'toPort'");
         }
         this.toPort = args.toPort;

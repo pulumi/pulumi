@@ -3,6 +3,7 @@
 
 /* tslint:disable:ordered-imports variable-name */
 import * as lumi from "@lumi/lumi";
+import * as lumirt from "@lumi/lumirt";
 
 import {SecurityGroup} from "./securityGroup";
 
@@ -28,7 +29,7 @@ export class SecurityGroupIngress extends lumi.NamedResource implements Security
 
     constructor(name: string, args: SecurityGroupIngressArgs) {
         super(name);
-        if (args.ipProtocol === undefined) {
+        if (lumirt.defaultIfComputed(args.ipProtocol, "") === undefined) {
             throw new Error("Missing required argument 'ipProtocol'");
         }
         this.ipProtocol = args.ipProtocol;

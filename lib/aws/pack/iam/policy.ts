@@ -3,6 +3,7 @@
 
 /* tslint:disable:ordered-imports variable-name */
 import * as lumi from "@lumi/lumi";
+import * as lumirt from "@lumi/lumirt";
 
 import {Group} from "./group";
 import {Role} from "./role";
@@ -30,11 +31,11 @@ export class Policy extends lumi.NamedResource implements PolicyArgs {
 
     constructor(name: string, args: PolicyArgs) {
         super(name);
-        if (args.policyDocument === undefined) {
+        if (lumirt.defaultIfComputed(args.policyDocument, "") === undefined) {
             throw new Error("Missing required argument 'policyDocument'");
         }
         this.policyDocument = args.policyDocument;
-        if (args.policyName === undefined) {
+        if (lumirt.defaultIfComputed(args.policyName, "") === undefined) {
             throw new Error("Missing required argument 'policyName'");
         }
         this.policyName = args.policyName;

@@ -3,6 +3,7 @@
 
 /* tslint:disable:ordered-imports variable-name */
 import * as lumi from "@lumi/lumi";
+import * as lumirt from "@lumi/lumirt";
 
 import {APIKey} from "./apiKey";
 import {UsagePlan} from "./usagePlan";
@@ -21,11 +22,11 @@ export class UsagePlanKey extends lumi.NamedResource implements UsagePlanKeyArgs
 
     constructor(name: string, args: UsagePlanKeyArgs) {
         super(name);
-        if (args.key === undefined) {
+        if (lumirt.defaultIfComputed(args.key, "") === undefined) {
             throw new Error("Missing required argument 'key'");
         }
         this.key = args.key;
-        if (args.usagePlan === undefined) {
+        if (lumirt.defaultIfComputed(args.usagePlan, "") === undefined) {
             throw new Error("Missing required argument 'usagePlan'");
         }
         this.usagePlan = args.usagePlan;

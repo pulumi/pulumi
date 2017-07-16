@@ -3,6 +3,7 @@
 
 /* tslint:disable:ordered-imports variable-name */
 import * as lumi from "@lumi/lumi";
+import * as lumirt from "@lumi/lumirt";
 
 import {ARN} from "../types";
 
@@ -31,15 +32,15 @@ export class LogSubscriptionFilter extends lumi.NamedResource implements LogSubs
 
     constructor(name: string, args: LogSubscriptionFilterArgs) {
         super(name);
-        if (args.logGroupName === undefined) {
+        if (lumirt.defaultIfComputed(args.logGroupName, "") === undefined) {
             throw new Error("Missing required argument 'logGroupName'");
         }
         this.logGroupName = args.logGroupName;
-        if (args.filterPattern === undefined) {
+        if (lumirt.defaultIfComputed(args.filterPattern, "") === undefined) {
             throw new Error("Missing required argument 'filterPattern'");
         }
         this.filterPattern = args.filterPattern;
-        if (args.destinationArn === undefined) {
+        if (lumirt.defaultIfComputed(args.destinationArn, "") === undefined) {
             throw new Error("Missing required argument 'destinationArn'");
         }
         this.destinationArn = args.destinationArn;

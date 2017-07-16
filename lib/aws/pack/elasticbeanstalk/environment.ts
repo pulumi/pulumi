@@ -3,6 +3,7 @@
 
 /* tslint:disable:ordered-imports variable-name */
 import * as lumi from "@lumi/lumi";
+import * as lumirt from "@lumi/lumirt";
 
 import {Application} from "./application";
 import {ApplicationVersion} from "./applicationVersion";
@@ -34,7 +35,7 @@ export class Environment extends lumi.NamedResource implements EnvironmentArgs {
 
     constructor(name: string, args: EnvironmentArgs) {
         super(name);
-        if (args.application === undefined) {
+        if (lumirt.defaultIfComputed(args.application, "") === undefined) {
             throw new Error("Missing required argument 'application'");
         }
         this.application = args.application;

@@ -3,6 +3,7 @@
 
 /* tslint:disable:ordered-imports variable-name */
 import * as lumi from "@lumi/lumi";
+import * as lumirt from "@lumi/lumirt";
 
 import {RestAPI} from "./restAPI";
 import {Role} from "../iam/role";
@@ -30,7 +31,7 @@ export class Authorizer extends lumi.NamedResource implements AuthorizerArgs {
 
     constructor(name: string, args: AuthorizerArgs) {
         super(name);
-        if (args.type === undefined) {
+        if (lumirt.defaultIfComputed(args.type, "") === undefined) {
             throw new Error("Missing required argument 'type'");
         }
         this.type = args.type;

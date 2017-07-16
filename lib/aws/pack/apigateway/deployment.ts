@@ -3,6 +3,7 @@
 
 /* tslint:disable:ordered-imports variable-name */
 import * as lumi from "@lumi/lumi";
+import * as lumirt from "@lumi/lumirt";
 
 import {RestAPI} from "./restAPI";
 
@@ -22,7 +23,7 @@ export class Deployment extends lumi.NamedResource implements DeploymentArgs {
 
     constructor(name: string, args: DeploymentArgs) {
         super(name);
-        if (args.restAPI === undefined) {
+        if (lumirt.defaultIfComputed(args.restAPI, "") === undefined) {
             throw new Error("Missing required argument 'restAPI'");
         }
         this.restAPI = args.restAPI;

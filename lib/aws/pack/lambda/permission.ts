@@ -3,6 +3,7 @@
 
 /* tslint:disable:ordered-imports variable-name */
 import * as lumi from "@lumi/lumi";
+import * as lumirt from "@lumi/lumirt";
 
 import {ARN} from "../types";
 import {Function} from "./function";
@@ -24,15 +25,15 @@ export class Permission extends lumi.NamedResource implements PermissionArgs {
 
     constructor(name: string, args: PermissionArgs) {
         super(name);
-        if (args.action === undefined) {
+        if (lumirt.defaultIfComputed(args.action, "") === undefined) {
             throw new Error("Missing required argument 'action'");
         }
         this.action = args.action;
-        if (args.function === undefined) {
+        if (lumirt.defaultIfComputed(args.function, "") === undefined) {
             throw new Error("Missing required argument 'function'");
         }
         this.function = args.function;
-        if (args.principal === undefined) {
+        if (lumirt.defaultIfComputed(args.principal, "") === undefined) {
             throw new Error("Missing required argument 'principal'");
         }
         this.principal = args.principal;

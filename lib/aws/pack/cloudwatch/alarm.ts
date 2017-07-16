@@ -3,6 +3,7 @@
 
 /* tslint:disable:ordered-imports variable-name */
 import * as lumi from "@lumi/lumi";
+import * as lumirt from "@lumi/lumirt";
 
 export let AverageStatistic: AlarmStatistic = "Average";
 export let BitsMetric: AlarmMetric = "Bits";
@@ -94,31 +95,31 @@ export class Alarm extends lumi.NamedResource implements AlarmArgs {
 
     constructor(name: string, args: AlarmArgs) {
         super(name);
-        if (args.comparisonOperator === undefined) {
+        if (lumirt.defaultIfComputed(args.comparisonOperator, "") === undefined) {
             throw new Error("Missing required argument 'comparisonOperator'");
         }
         this.comparisonOperator = args.comparisonOperator;
-        if (args.evaluationPerids === undefined) {
+        if (lumirt.defaultIfComputed(args.evaluationPerids, "") === undefined) {
             throw new Error("Missing required argument 'evaluationPerids'");
         }
         this.evaluationPerids = args.evaluationPerids;
-        if (args.metricName === undefined) {
+        if (lumirt.defaultIfComputed(args.metricName, "") === undefined) {
             throw new Error("Missing required argument 'metricName'");
         }
         this.metricName = args.metricName;
-        if (args.namespace === undefined) {
+        if (lumirt.defaultIfComputed(args.namespace, "") === undefined) {
             throw new Error("Missing required argument 'namespace'");
         }
         this.namespace = args.namespace;
-        if (args.period === undefined) {
+        if (lumirt.defaultIfComputed(args.period, "") === undefined) {
             throw new Error("Missing required argument 'period'");
         }
         this.period = args.period;
-        if (args.statistic === undefined) {
+        if (lumirt.defaultIfComputed(args.statistic, "") === undefined) {
             throw new Error("Missing required argument 'statistic'");
         }
         this.statistic = args.statistic;
-        if (args.threshold === undefined) {
+        if (lumirt.defaultIfComputed(args.threshold, "") === undefined) {
             throw new Error("Missing required argument 'threshold'");
         }
         this.threshold = args.threshold;

@@ -3,6 +3,7 @@
 
 /* tslint:disable:ordered-imports variable-name */
 import * as lumi from "@lumi/lumi";
+import * as lumirt from "@lumi/lumirt";
 
 import {InternetGateway} from "./internetGateway";
 import {RouteTable} from "./routeTable";
@@ -24,19 +25,19 @@ export class Route extends lumi.NamedResource implements RouteArgs {
 
     constructor(name: string, args: RouteArgs) {
         super(name);
-        if (args.destinationCidrBlock === undefined) {
+        if (lumirt.defaultIfComputed(args.destinationCidrBlock, "") === undefined) {
             throw new Error("Missing required argument 'destinationCidrBlock'");
         }
         this.destinationCidrBlock = args.destinationCidrBlock;
-        if (args.routeTable === undefined) {
+        if (lumirt.defaultIfComputed(args.routeTable, "") === undefined) {
             throw new Error("Missing required argument 'routeTable'");
         }
         this.routeTable = args.routeTable;
-        if (args.internetGateway === undefined) {
+        if (lumirt.defaultIfComputed(args.internetGateway, "") === undefined) {
             throw new Error("Missing required argument 'internetGateway'");
         }
         this.internetGateway = args.internetGateway;
-        if (args.vpcGatewayAttachment === undefined) {
+        if (lumirt.defaultIfComputed(args.vpcGatewayAttachment, "") === undefined) {
             throw new Error("Missing required argument 'vpcGatewayAttachment'");
         }
         this.vpcGatewayAttachment = args.vpcGatewayAttachment;

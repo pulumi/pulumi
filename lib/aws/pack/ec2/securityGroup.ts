@@ -3,6 +3,7 @@
 
 /* tslint:disable:ordered-imports variable-name */
 import * as lumi from "@lumi/lumi";
+import * as lumirt from "@lumi/lumirt";
 
 import {VPC} from "./vpc";
 
@@ -24,7 +25,7 @@ export class SecurityGroup extends lumi.NamedResource implements SecurityGroupAr
 
     constructor(name: string, args: SecurityGroupArgs) {
         super(name);
-        if (args.groupDescription === undefined) {
+        if (lumirt.defaultIfComputed(args.groupDescription, "") === undefined) {
             throw new Error("Missing required argument 'groupDescription'");
         }
         this.groupDescription = args.groupDescription;

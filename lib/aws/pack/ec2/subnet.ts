@@ -3,6 +3,7 @@
 
 /* tslint:disable:ordered-imports variable-name */
 import * as lumi from "@lumi/lumi";
+import * as lumirt from "@lumi/lumirt";
 
 import {VPC} from "./vpc";
 
@@ -22,11 +23,11 @@ export class Subnet extends lumi.NamedResource implements SubnetArgs {
 
     constructor(name: string, args: SubnetArgs) {
         super(name);
-        if (args.cidrBlock === undefined) {
+        if (lumirt.defaultIfComputed(args.cidrBlock, "") === undefined) {
             throw new Error("Missing required argument 'cidrBlock'");
         }
         this.cidrBlock = args.cidrBlock;
-        if (args.vpc === undefined) {
+        if (lumirt.defaultIfComputed(args.vpc, "") === undefined) {
             throw new Error("Missing required argument 'vpc'");
         }
         this.vpc = args.vpc;

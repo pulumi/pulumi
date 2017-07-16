@@ -3,6 +3,7 @@
 
 /* tslint:disable:ordered-imports variable-name */
 import * as lumi from "@lumi/lumi";
+import * as lumirt from "@lumi/lumirt";
 
 import {Topic} from "./topic";
 
@@ -40,15 +41,15 @@ export class Subscription extends lumi.NamedResource implements SubscriptionArgs
 
     constructor(name: string, args: SubscriptionArgs) {
         super(name);
-        if (args.topic === undefined) {
+        if (lumirt.defaultIfComputed(args.topic, "") === undefined) {
             throw new Error("Missing required argument 'topic'");
         }
         this.topic = args.topic;
-        if (args.protocol === undefined) {
+        if (lumirt.defaultIfComputed(args.protocol, "") === undefined) {
             throw new Error("Missing required argument 'protocol'");
         }
         this.protocol = args.protocol;
-        if (args.endpoint === undefined) {
+        if (lumirt.defaultIfComputed(args.endpoint, "") === undefined) {
             throw new Error("Missing required argument 'endpoint'");
         }
         this.endpoint = args.endpoint;

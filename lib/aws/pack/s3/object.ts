@@ -3,6 +3,7 @@
 
 /* tslint:disable:ordered-imports variable-name */
 import * as lumi from "@lumi/lumi";
+import * as lumirt from "@lumi/lumirt";
 
 import {Bucket} from "./bucket";
 
@@ -27,15 +28,15 @@ export class Object extends lumi.Resource implements ObjectArgs {
 
     constructor(args: ObjectArgs) {
         super();
-        if (args.key === undefined) {
+        if (lumirt.defaultIfComputed(args.key, "") === undefined) {
             throw new Error("Missing required argument 'key'");
         }
         this.key = args.key;
-        if (args.bucket === undefined) {
+        if (lumirt.defaultIfComputed(args.bucket, "") === undefined) {
             throw new Error("Missing required argument 'bucket'");
         }
         this.bucket = args.bucket;
-        if (args.source === undefined) {
+        if (lumirt.defaultIfComputed(args.source, "") === undefined) {
             throw new Error("Missing required argument 'source'");
         }
         this.source = args.source;

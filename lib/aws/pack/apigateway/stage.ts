@@ -3,6 +3,7 @@
 
 /* tslint:disable:ordered-imports variable-name */
 import * as lumi from "@lumi/lumi";
+import * as lumirt from "@lumi/lumirt";
 
 import {ClientCertificate} from "./clientCertificate";
 import {Deployment} from "./deployment";
@@ -34,15 +35,15 @@ export class Stage extends lumi.NamedResource implements StageArgs {
 
     constructor(name: string, args: StageArgs) {
         super(name);
-        if (args.restAPI === undefined) {
+        if (lumirt.defaultIfComputed(args.restAPI, "") === undefined) {
             throw new Error("Missing required argument 'restAPI'");
         }
         this.restAPI = args.restAPI;
-        if (args.stageName === undefined) {
+        if (lumirt.defaultIfComputed(args.stageName, "") === undefined) {
             throw new Error("Missing required argument 'stageName'");
         }
         this.stageName = args.stageName;
-        if (args.deployment === undefined) {
+        if (lumirt.defaultIfComputed(args.deployment, "") === undefined) {
             throw new Error("Missing required argument 'deployment'");
         }
         this.deployment = args.deployment;

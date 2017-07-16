@@ -16,6 +16,12 @@ export function isFunction(obj: Object): boolean {
     return false; // functionality provided by the runtime.
 }
 
+// defaultIfComputed substitutes a default value if target object is computed.  In the absence of pulumi/lumi#170,
+// this is required in some cases to avoid conditionalizing code on a computed property.
+export function defaultIfComputed(obj: Object, def: Object): Object {
+    return <any>undefined; // functionality provided by the runtime.
+}
+
 // dynamicInvoke dynamically calls the target function.  If the target is not a function, an error is thrown.
 export function dynamicInvoke(obj: Object, thisArg: Object, args: Object[]): Object {
     return <any>undefined; // functionality provided by the runtime.

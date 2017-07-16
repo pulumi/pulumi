@@ -3,6 +3,7 @@
 
 /* tslint:disable:ordered-imports variable-name */
 import * as lumi from "@lumi/lumi";
+import * as lumirt from "@lumi/lumirt";
 
 import {SecurityGroup} from "./securityGroup";
 
@@ -86,7 +87,7 @@ export class Instance extends lumi.NamedResource implements InstanceArgs {
 
     constructor(name: string, args: InstanceArgs) {
         super(name);
-        if (args.imageId === undefined) {
+        if (lumirt.defaultIfComputed(args.imageId, "") === undefined) {
             throw new Error("Missing required argument 'imageId'");
         }
         this.imageId = args.imageId;

@@ -3,6 +3,7 @@
 
 /* tslint:disable:ordered-imports variable-name */
 import * as lumi from "@lumi/lumi";
+import * as lumirt from "@lumi/lumirt";
 
 import {VPC} from "./vpc";
 
@@ -20,11 +21,11 @@ export class VPCPeeringConnection extends lumi.NamedResource implements VPCPeeri
 
     constructor(name: string, args: VPCPeeringConnectionArgs) {
         super(name);
-        if (args.peerVpc === undefined) {
+        if (lumirt.defaultIfComputed(args.peerVpc, "") === undefined) {
             throw new Error("Missing required argument 'peerVpc'");
         }
         this.peerVpc = args.peerVpc;
-        if (args.vpc === undefined) {
+        if (lumirt.defaultIfComputed(args.vpc, "") === undefined) {
             throw new Error("Missing required argument 'vpc'");
         }
         this.vpc = args.vpc;

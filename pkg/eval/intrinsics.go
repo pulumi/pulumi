@@ -20,14 +20,15 @@ var Intrinsics map[tokens.Token]Invoker
 func init() {
 	Intrinsics = map[tokens.Token]Invoker{
 		// These intrinsics are exposed directly to users in the `lumi.runtime` package.
-		"lumirt:index:isFunction":       isFunction,
-		"lumirt:index:dynamicInvoke":    dynamicInvoke,
-		"lumirt:index:objectKeys":       objectKeys,
-		"lumirt:index:printf":           printf,
-		"lumirt:index:sha1hash":         sha1hash,
-		"lumirt:index:jsonStringify":    jsonStringify,
-		"lumirt:index:jsonParse":        jsonParse,
-		"lumirt:index:serializeClosure": serializeClosure,
+		"lumirt:index:defaultIfComputed": defaultIfComputed,
+		"lumirt:index:isFunction":        isFunction,
+		"lumirt:index:dynamicInvoke":     dynamicInvoke,
+		"lumirt:index:objectKeys":        objectKeys,
+		"lumirt:index:printf":            printf,
+		"lumirt:index:sha1hash":          sha1hash,
+		"lumirt:index:jsonStringify":     jsonStringify,
+		"lumirt:index:jsonParse":         jsonParse,
+		"lumirt:index:serializeClosure":  serializeClosure,
 
 		// These intrinsics are built-ins with no Lumi function exposed to users.
 		// They are used as the implementation of core object APIs in the runtime.

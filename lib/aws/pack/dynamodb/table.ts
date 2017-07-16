@@ -3,6 +3,7 @@
 
 /* tslint:disable:ordered-imports variable-name */
 import * as lumi from "@lumi/lumi";
+import * as lumirt from "@lumi/lumirt";
 
 export let AllProjection: ProjectionType = "ALL";
 export let BinaryAttribute: AttributeType = "B";
@@ -55,19 +56,19 @@ export class Table extends lumi.NamedResource implements TableArgs {
 
     constructor(name: string, args: TableArgs) {
         super(name);
-        if (args.hashKey === undefined) {
+        if (lumirt.defaultIfComputed(args.hashKey, "") === undefined) {
             throw new Error("Missing required argument 'hashKey'");
         }
         this.hashKey = args.hashKey;
-        if (args.attributes === undefined) {
+        if (lumirt.defaultIfComputed(args.attributes, "") === undefined) {
             throw new Error("Missing required argument 'attributes'");
         }
         this.attributes = args.attributes;
-        if (args.readCapacity === undefined) {
+        if (lumirt.defaultIfComputed(args.readCapacity, "") === undefined) {
             throw new Error("Missing required argument 'readCapacity'");
         }
         this.readCapacity = args.readCapacity;
-        if (args.writeCapacity === undefined) {
+        if (lumirt.defaultIfComputed(args.writeCapacity, "") === undefined) {
             throw new Error("Missing required argument 'writeCapacity'");
         }
         this.writeCapacity = args.writeCapacity;

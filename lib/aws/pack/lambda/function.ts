@@ -3,6 +3,7 @@
 
 /* tslint:disable:ordered-imports variable-name */
 import * as lumi from "@lumi/lumi";
+import * as lumirt from "@lumi/lumirt";
 
 import {ARN} from "../types";
 import {SecurityGroup} from "../ec2/securityGroup";
@@ -52,19 +53,19 @@ export class Function extends lumi.NamedResource implements FunctionArgs {
 
     constructor(name: string, args: FunctionArgs) {
         super(name);
-        if (args.code === undefined) {
+        if (lumirt.defaultIfComputed(args.code, "") === undefined) {
             throw new Error("Missing required argument 'code'");
         }
         this.code = args.code;
-        if (args.handler === undefined) {
+        if (lumirt.defaultIfComputed(args.handler, "") === undefined) {
             throw new Error("Missing required argument 'handler'");
         }
         this.handler = args.handler;
-        if (args.role === undefined) {
+        if (lumirt.defaultIfComputed(args.role, "") === undefined) {
             throw new Error("Missing required argument 'role'");
         }
         this.role = args.role;
-        if (args.runtime === undefined) {
+        if (lumirt.defaultIfComputed(args.runtime, "") === undefined) {
             throw new Error("Missing required argument 'runtime'");
         }
         this.runtime = args.runtime;

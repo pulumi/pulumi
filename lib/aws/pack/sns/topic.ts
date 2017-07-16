@@ -3,6 +3,7 @@
 
 /* tslint:disable:ordered-imports variable-name */
 import * as lumi from "@lumi/lumi";
+import * as lumirt from "@lumi/lumirt";
 
 export class Topic extends lumi.NamedResource implements TopicArgs {
     public readonly topicName?: string;

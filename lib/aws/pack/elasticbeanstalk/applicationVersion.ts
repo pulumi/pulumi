@@ -3,6 +3,7 @@
 
 /* tslint:disable:ordered-imports variable-name */
 import * as lumi from "@lumi/lumi";
+import * as lumirt from "@lumi/lumirt";
 
 import {Application} from "./application";
 import {Object} from "../s3/object";
@@ -23,13 +24,13 @@ export class ApplicationVersion extends lumi.NamedResource implements Applicatio
 
     constructor(name: string, args: ApplicationVersionArgs) {
         super(name);
-        if (args.application === undefined) {
+        if (lumirt.defaultIfComputed(args.application, "") === undefined) {
             throw new Error("Missing required argument 'application'");
         }
         this.application = args.application;
         this.versionLabel = args.versionLabel;
         this.description = args.description;
-        if (args.sourceBundle === undefined) {
+        if (lumirt.defaultIfComputed(args.sourceBundle, "") === undefined) {
             throw new Error("Missing required argument 'sourceBundle'");
         }
         this.sourceBundle = args.sourceBundle;

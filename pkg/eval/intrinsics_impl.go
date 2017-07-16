@@ -29,6 +29,22 @@ func isFunction(intrin *rt.Intrinsic, e *evaluator, this *rt.Object, args []*rt.
 	return rt.NewReturnUnwind(ret)
 }
 
+func defaultIfComputed(intrin *rt.Intrinsic, e *evaluator, this *rt.Object, args []*rt.Object) *rt.Unwind {
+	contract.Assert(this == nil) // module function.
+	if len(args) <= 0 {
+		return e.NewException(intrin.Tree(), "Missing 'obj' argument")
+	} else if len(args) <= 1 {
+		return e.NewException(intrin.Tree(), "Missing 'def' argument")
+	}
+
+	// If the object is computed, return def; otherwise, just return obj.
+	obj := args[0]
+	if obj.IsComputed() {
+		return rt.NewReturnUnwind(args[1])
+	}
+	return rt.NewReturnUnwind(obj)
+}
+
 func dynamicInvoke(intrin *rt.Intrinsic, e *evaluator, this *rt.Object, args []*rt.Object) *rt.Unwind {
 	contract.Assert(this == nil)    // module function
 	contract.Assert(len(args) == 3) // three args: obj, thisArg, and args

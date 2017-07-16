@@ -3,6 +3,7 @@
 
 /* tslint:disable:ordered-imports variable-name */
 import * as lumi from "@lumi/lumi";
+import * as lumirt from "@lumi/lumirt";
 
 export let DedicatedTenancy: InstanceTenancy = "dedicated";
 export let DefaultTenancy: InstanceTenancy = "default";
@@ -29,7 +30,7 @@ export class VPC extends lumi.NamedResource implements VPCArgs {
 
     constructor(name: string, args: VPCArgs) {
         super(name);
-        if (args.cidrBlock === undefined) {
+        if (lumirt.defaultIfComputed(args.cidrBlock, "") === undefined) {
             throw new Error("Missing required argument 'cidrBlock'");
         }
         this.cidrBlock = args.cidrBlock;

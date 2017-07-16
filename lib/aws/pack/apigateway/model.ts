@@ -3,6 +3,7 @@
 
 /* tslint:disable:ordered-imports variable-name */
 import * as lumi from "@lumi/lumi";
+import * as lumirt from "@lumi/lumirt";
 
 import {RestAPI} from "./restAPI";
 
@@ -23,15 +24,15 @@ export class Model extends lumi.NamedResource implements ModelArgs {
 
     constructor(name: string, args: ModelArgs) {
         super(name);
-        if (args.contentType === undefined) {
+        if (lumirt.defaultIfComputed(args.contentType, "") === undefined) {
             throw new Error("Missing required argument 'contentType'");
         }
         this.contentType = args.contentType;
-        if (args.restAPI === undefined) {
+        if (lumirt.defaultIfComputed(args.restAPI, "") === undefined) {
             throw new Error("Missing required argument 'restAPI'");
         }
         this.restAPI = args.restAPI;
-        if (args.schema === undefined) {
+        if (lumirt.defaultIfComputed(args.schema, "") === undefined) {
             throw new Error("Missing required argument 'schema'");
         }
         this.schema = args.schema;

@@ -3,6 +3,7 @@
 
 /* tslint:disable:ordered-imports variable-name */
 import * as lumi from "@lumi/lumi";
+import * as lumirt from "@lumi/lumirt";
 
 export class ClientCertificate extends lumi.NamedResource implements ClientCertificateArgs {
     public description?: string;

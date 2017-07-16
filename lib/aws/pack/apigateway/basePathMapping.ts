@@ -3,6 +3,7 @@
 
 /* tslint:disable:ordered-imports variable-name */
 import * as lumi from "@lumi/lumi";
+import * as lumirt from "@lumi/lumirt";
 
 import {RestAPI} from "./restAPI";
 import {Stage} from "./stage";
@@ -23,11 +24,11 @@ export class BasePathMapping extends lumi.NamedResource implements BasePathMappi
 
     constructor(name: string, args: BasePathMappingArgs) {
         super(name);
-        if (args.domainName === undefined) {
+        if (lumirt.defaultIfComputed(args.domainName, "") === undefined) {
             throw new Error("Missing required argument 'domainName'");
         }
         this.domainName = args.domainName;
-        if (args.restAPI === undefined) {
+        if (lumirt.defaultIfComputed(args.restAPI, "") === undefined) {
             throw new Error("Missing required argument 'restAPI'");
         }
         this.restAPI = args.restAPI;

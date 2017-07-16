@@ -115,6 +115,7 @@ func (g *PackGenerator) emitFileContents(file string, body string) error {
 	// If there are any resources, import the Lumi package.
 	if g.FileHadRes {
 		w.Writefmtln("import * as lumi from \"@lumi/lumi\";")
+		w.Writefmtln("import * as lumirt from \"@lumi/lumirt\";")
 		w.Writefmtln("")
 	}
 	if len(g.FileImports) > 0 {
@@ -322,7 +323,7 @@ func (g *PackGenerator) emitResourceClass(w *tools.GenWriter, res *Resource) {
 	forEachField(res, func(fld *types.Var, opt PropertyOptions) {
 		if !opt.Out && !isResourceNameProperty(res, opt) {
 			if !opt.Optional {
-				w.Writefmtln("%vif (args.%v === undefined) {", argLinePrefix, opt.Name)
+				w.Writefmtln("%vif (lumirt.defaultIfComputed(args.%v, \"\") === undefined) {", argLinePrefix, opt.Name)
 				w.Writefmtln("%v    throw new Error(\"Missing required argument '%v'\");", argLinePrefix, opt.Name)
 				w.Writefmtln("%v}", argLinePrefix)
 			}

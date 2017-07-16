@@ -3,6 +3,7 @@
 
 /* tslint:disable:ordered-imports variable-name */
 import * as lumi from "@lumi/lumi";
+import * as lumirt from "@lumi/lumirt";
 
 import {Authorizer} from "./authorizer";
 import {Model} from "./model";
@@ -85,15 +86,15 @@ export class Method extends lumi.NamedResource implements MethodArgs {
 
     constructor(name: string, args: MethodArgs) {
         super(name);
-        if (args.httpMethod === undefined) {
+        if (lumirt.defaultIfComputed(args.httpMethod, "") === undefined) {
             throw new Error("Missing required argument 'httpMethod'");
         }
         this.httpMethod = args.httpMethod;
-        if (args.apiResource === undefined) {
+        if (lumirt.defaultIfComputed(args.apiResource, "") === undefined) {
             throw new Error("Missing required argument 'apiResource'");
         }
         this.apiResource = args.apiResource;
-        if (args.restAPI === undefined) {
+        if (lumirt.defaultIfComputed(args.restAPI, "") === undefined) {
             throw new Error("Missing required argument 'restAPI'");
         }
         this.restAPI = args.restAPI;

@@ -3,6 +3,7 @@
 
 /* tslint:disable:ordered-imports variable-name */
 import * as lumi from "@lumi/lumi";
+import * as lumirt from "@lumi/lumirt";
 
 import {ARN} from "../types";
 import {Role} from "./role";
@@ -25,7 +26,7 @@ export class InstanceProfile extends lumi.NamedResource implements InstanceProfi
         super(name);
         this.path = args.path;
         this.instanceProfileName = args.instanceProfileName;
-        if (args.roles === undefined) {
+        if (lumirt.defaultIfComputed(args.roles, "") === undefined) {
             throw new Error("Missing required argument 'roles'");
         }
         this.roles = args.roles;

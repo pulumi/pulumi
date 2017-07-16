@@ -3,6 +3,7 @@
 
 /* tslint:disable:ordered-imports variable-name */
 import * as lumi from "@lumi/lumi";
+import * as lumirt from "@lumi/lumirt";
 
 export class Key extends lumi.NamedResource implements KeyArgs {
     public keyPolicy: any;
@@ -20,7 +21,7 @@ export class Key extends lumi.NamedResource implements KeyArgs {
 
     constructor(name: string, args: KeyArgs) {
         super(name);
-        if (args.keyPolicy === undefined) {
+        if (lumirt.defaultIfComputed(args.keyPolicy, "") === undefined) {
             throw new Error("Missing required argument 'keyPolicy'");
         }
         this.keyPolicy = args.keyPolicy;
