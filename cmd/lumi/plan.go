@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"sort"
 	"strconv"
+	"strings"
 
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
@@ -491,6 +492,42 @@ func printPropertyValue(b *bytes.Buffer, v resource.PropertyValue, planning bool
 				printPropertyValue(b, elem, planning, newIndent)
 			}
 			b.WriteString(fmt.Sprintf("%s]", indent))
+		}
+	} else if v.IsAsset() {
+		a := v.AssetValue()
+		if text, has := a.GetText(); has {
+			b.WriteString("asset {\n")
+			// pretty print the text, line by line, with proper breaks.
+			lines := strings.Split(text, "\n")
+			for _, line := range lines {
+				b.WriteString(fmt.Sprintf("%v    \"%v\"\n", indent, line))
+			}
+			b.WriteString(fmt.Sprintf("%v}", indent))
+		} else if path, has := a.GetPath(); has {
+			b.WriteString(fmt.Sprintf("asset { file://%v }", path))
+		} else {
+			contract.Assert(a.IsURI())
+			b.WriteString(fmt.Sprintf("asset { %v }", *a.URI))
+		}
+	} else if v.IsArchive() {
+		a := v.ArchiveValue()
+		if assets, has := a.GetMap(); has {
+			b.WriteString("archive {\n")
+			var names []string
+			for name := range assets {
+				names = append(names, name)
+			}
+			sort.Strings(names)
+			for _, name := range names {
+				b.WriteString(fmt.Sprintf("%v    \"%v\": ", indent, name))
+				printPropertyValue(b, resource.NewAssetProperty(assets[name]), planning, indent+"    ")
+			}
+			b.WriteString(fmt.Sprintf("%v}", indent))
+		} else if path, has := a.GetPath(); has {
+			b.WriteString(fmt.Sprintf("archive { file://%v }", path))
+		} else {
+			contract.Assert(a.IsURI())
+			b.WriteString(fmt.Sprintf("archive { %v }", *a.URI))
 		}
 	} else if v.IsComputed() || v.IsOutput() {
 		b.WriteString(v.TypeString())
