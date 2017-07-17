@@ -110,6 +110,13 @@ func SerializePropertyValue(prop resource.PropertyValue) interface{} {
 		return SerializeProperties(prop.ObjectValue())
 	}
 
+	// For assets, we need to serialize them a little carefully, so we can recover them afterwards.
+	if prop.IsAsset() {
+		return prop.AssetValue().Serialize()
+	} else if prop.IsArchive() {
+		return prop.ArchiveValue().Serialize()
+	}
+
 	// All others are returned as-is.
 	return prop.V
 }
@@ -141,6 +148,14 @@ func DeserializePropertyValue(v interface{}) resource.PropertyValue {
 			return resource.NewArrayProperty(arr)
 		case map[string]interface{}:
 			obj := DeserializeProperties(w)
+			// This could be an asset or archive; if so, recover its type.
+			objmap := obj.Mappable()
+			if asset, isasset := resource.DeserializeAsset(objmap); isasset {
+				return resource.NewAssetProperty(asset)
+			} else if archive, isarchive := resource.DeserializeArchive(objmap); isarchive {
+				return resource.NewArchiveProperty(archive)
+			}
+			// Otherwise, it's just a weakly typed object map.
 			return resource.NewObjectProperty(obj)
 		default:
 			contract.Failf("Unrecognized property type: %v", reflect.ValueOf(v))

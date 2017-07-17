@@ -26,60 +26,61 @@ import (
 // Asset is a serialized asset reference.  It is a union: thus, only one of its fields will be non-nil.  Several helper
 // routines exist as members in order to easily interact with the assets referenced by an instance of this type.
 type Asset struct {
-	Text *string `lumi:"text,optional"` // a textual asset.
-	Path *string `lumi:"path,optional"` // a file on the current filesystem.
-	URI  *string `lumi:"uri,optional"`  // a URI to a reference fetched (file://, http://, https://, or custom).
+	Text string // a textual asset.
+	Path string // a file on the current filesystem.
+	URI  string // a URI to a reference fetched (file://, http://, https://, or custom).
 }
 
 const (
-	AssetTextProperty = "text" // the dynamic property for an asset's text.
-	AssetPathProperty = "path" // the dynamic property for an asset's path.
-	AssetURIProperty  = "uri"  // the dynamic property for an asset's URI.
+	AssetSig          = "c44067f5952c0a294b673a41bacd8c17" // a randomly assigned type hash for assets.
+	AssetTextProperty = "text"                             // the dynamic property for an asset's text.
+	AssetPathProperty = "path"                             // the dynamic property for an asset's path.
+	AssetURIProperty  = "uri"                              // the dynamic property for an asset's URI.
 )
 
-func NewTextAsset(text string) Asset { return Asset{Text: &text} }
-func NewPathAsset(path string) Asset { return Asset{Path: &path} }
-func NewURIAsset(uri string) Asset   { return Asset{URI: &uri} }
+func NewTextAsset(text string) Asset { return Asset{Text: text} }
+func NewPathAsset(path string) Asset { return Asset{Path: path} }
+func NewURIAsset(uri string) Asset   { return Asset{URI: uri} }
 
 func NewAssetFromObject(obj *rt.Object) Asset {
 	contract.Assert(predef.IsResourceAssetType(obj.Type()))
-	var text string
-	var path string
-	var uri string
 	props := obj.Properties()
+	var text string
 	if prop, has := props.TryGet(AssetTextProperty); has {
 		text = prop.StringValue()
 	}
+	var path string
 	if prop, has := props.TryGet(AssetPathProperty); has {
 		path = prop.StringValue()
 	}
+	var uri string
 	if prop, has := props.TryGet(AssetURIProperty); has {
 		uri = prop.StringValue()
 	}
-	return Asset{Text: &text, Path: &path, URI: &uri}
+	return Asset{Text: text, Path: path, URI: uri}
 }
 
-func (a Asset) IsText() bool { return a.Text != nil }
-func (a Asset) IsPath() bool { return a.Path != nil }
-func (a Asset) IsURI() bool  { return a.URI != nil }
+func (a Asset) IsText() bool { return a.Text != "" }
+func (a Asset) IsPath() bool { return a.Path != "" }
+func (a Asset) IsURI() bool  { return a.URI != "" }
 
 func (a Asset) GetText() (string, bool) {
 	if a.IsText() {
-		return *a.Text, true
+		return a.Text, true
 	}
 	return "", false
 }
 
 func (a Asset) GetPath() (string, bool) {
 	if a.IsPath() {
-		return *a.Path, true
+		return a.Path, true
 	}
 	return "", false
 }
 
 func (a Asset) GetURI() (string, bool) {
 	if a.IsURI() {
-		return *a.URI, true
+		return a.URI, true
 	}
 	return "", false
 }
@@ -97,6 +98,41 @@ func (a Asset) GetURIURL() (*url.URL, bool, error) {
 	return nil, false, nil
 }
 
+// Serialize returns a weakly typed map that contains the right signature for serialization purposes.
+func (a Asset) Serialize() map[string]interface{} {
+	return map[string]interface{}{
+		string(SigKey):    AssetSig,
+		AssetTextProperty: a.Text,
+		AssetPathProperty: a.Path,
+		AssetURIProperty:  a.URI,
+	}
+}
+
+// DeserializeAsset checks to see if the map contains an asset, using its signature, and if so deserializes it.
+func DeserializeAsset(obj map[string]interface{}) (Asset, bool) {
+	if obj[string(SigKey)] != AssetSig {
+		return Asset{}, false
+	}
+	var text string
+	if v, has := obj[AssetTextProperty]; has {
+		text = v.(string)
+	}
+	var path string
+	if v, has := obj[AssetPathProperty]; has {
+		path = v.(string)
+	}
+	var uri string
+	if v, has := obj[AssetURIProperty]; has {
+		uri = v.(string)
+	}
+	return Asset{
+		Text: text,
+		Path: path,
+		URI:  uri,
+	}, true
+}
+
+// Read reads an asset's contents into memory.
 func (a Asset) Read() (*Blob, error) {
 	if a.IsText() {
 		return a.readText()
@@ -224,27 +260,26 @@ func (b bytesReader) Close() error {
 // Archive is a serialized archive reference.  It is a union: thus, only one of its fields will be non-nil.  Several
 // helper routines exist as members in order to easily interact with archives of different kinds.
 type Archive struct {
-	Assets *map[string]Asset `lumi:"assets,optional"` // a collection of other assets.
-	Path   *string           `lumi:"path,optional"`   // a file on the current filesystem.
-	URI    *string           `lumi:"uri,optional"`    // a URI to a remote archive (file://, http://, https://, etc).
+	Assets map[string]Asset // a collection of other assets.
+	Path   string           // a file on the current filesystem.
+	URI    string           // a URI to a remote archive (file://, http://, https://, etc).
 }
 
 const (
-	ArchiveAssetsProperty = "assets" // the dynamic property for an archive's assets.
-	ArchivePathProperty   = "path"   // the dynamic property for an archive's path.
-	ArchiveURIProperty    = "uri"    // the dynamic property for an archive's URI.
+	ArchiveSig            = "0def7320c3a5731c473e5ecbe6d01bc7" // a randomly assigned archive type signature.
+	ArchiveAssetsProperty = "assets"                           // the dynamic property for an archive's assets.
+	ArchivePathProperty   = "path"                             // the dynamic property for an archive's path.
+	ArchiveURIProperty    = "uri"                              // the dynamic property for an archive's URI.
 )
 
-func NewAssetArchive(assets map[string]Asset) Archive { return Archive{Assets: &assets} }
-func NewPathArchive(path string) Archive              { return Archive{Path: &path} }
-func NewURIArchive(uri string) Archive                { return Archive{URI: &uri} }
+func NewAssetArchive(assets map[string]Asset) Archive { return Archive{Assets: assets} }
+func NewPathArchive(path string) Archive              { return Archive{Path: path} }
+func NewURIArchive(uri string) Archive                { return Archive{URI: uri} }
 
 func NewArchiveFromObject(obj *rt.Object) Archive {
 	contract.Assert(predef.IsResourceArchiveType(obj.Type()))
-	var assets map[string]Asset
-	var path string
-	var uri string
 	props := obj.Properties()
+	var assets map[string]Asset
 	if prop, has := props.TryGet(ArchiveAssetsProperty); has {
 		assets = make(map[string]Asset)
 		mapprops := prop.Properties()
@@ -252,36 +287,38 @@ func NewArchiveFromObject(obj *rt.Object) Archive {
 			assets[string(k)] = NewAssetFromObject(mapprops.Get(k))
 		}
 	}
+	var path string
 	if prop, has := props.TryGet(ArchivePathProperty); has {
 		path = prop.StringValue()
 	}
+	var uri string
 	if prop, has := props.TryGet(ArchiveURIProperty); has {
 		uri = prop.StringValue()
 	}
-	return Archive{Assets: &assets, Path: &path, URI: &uri}
+	return Archive{Assets: assets, Path: path, URI: uri}
 }
 
-func (a Archive) IsMap() bool  { return a.Assets != nil }
-func (a Archive) IsPath() bool { return a.Path != nil }
-func (a Archive) IsURI() bool  { return a.URI != nil }
+func (a Archive) IsAssets() bool { return a.Assets != nil }
+func (a Archive) IsPath() bool   { return a.Path != "" }
+func (a Archive) IsURI() bool    { return a.URI != "" }
 
-func (a Archive) GetMap() (map[string]Asset, bool) {
-	if a.IsMap() {
-		return *a.Assets, true
+func (a Archive) GetAssets() (map[string]Asset, bool) {
+	if a.IsAssets() {
+		return a.Assets, true
 	}
 	return nil, false
 }
 
 func (a Archive) GetPath() (string, bool) {
 	if a.IsPath() {
-		return *a.Path, true
+		return a.Path, true
 	}
 	return "", false
 }
 
 func (a Archive) GetURI() (string, bool) {
 	if a.IsURI() {
-		return *a.URI, true
+		return a.URI, true
 	}
 	return "", false
 }
@@ -299,10 +336,65 @@ func (a Archive) GetURIURL() (*url.URL, bool, error) {
 	return nil, false, nil
 }
 
+// Serialize returns a weakly typed map that contains the right signature for serialization purposes.
+func (a Archive) Serialize() map[string]interface{} {
+	var assets map[string]interface{}
+	if a.Assets != nil {
+		assets = make(map[string]interface{})
+		for k, v := range a.Assets {
+			assets[k] = v.Serialize()
+		}
+	}
+	return map[string]interface{}{
+		string(SigKey):        ArchiveSig,
+		ArchiveAssetsProperty: assets,
+		ArchivePathProperty:   a.Path,
+		ArchiveURIProperty:    a.URI,
+	}
+}
+
+// DeserializeArchive checks to see if the map contains an archive, using its signature, and if so deserializes it.
+func DeserializeArchive(obj map[string]interface{}) (Archive, bool) {
+	if obj[string(SigKey)] != ArchiveSig {
+		return Archive{}, false
+	}
+	var assets map[string]Asset
+	if v, has := obj[ArchiveAssetsProperty]; has {
+		assets = make(map[string]Asset)
+		for k, v := range v.(map[string]interface{}) {
+			switch t := v.(type) {
+			case Asset:
+				assets[k] = t
+			case map[string]interface{}:
+				a, isa := DeserializeAsset(t)
+				if !isa {
+					return Archive{}, false
+				}
+				assets[k] = a
+			default:
+				return Archive{}, false
+			}
+		}
+	}
+	var path string
+	if v, has := obj[ArchivePathProperty]; has {
+		path = v.(string)
+	}
+	var uri string
+	if v, has := obj[ArchiveURIProperty]; has {
+		uri = v.(string)
+	}
+	return Archive{
+		Assets: assets,
+		Path:   path,
+		URI:    uri,
+	}, true
+}
+
 // Read returns a map of asset name to its associated reader object (which can be used to perform reads/IO).
 func (a Archive) Read() (map[string]*Blob, error) {
-	if a.IsMap() {
-		return a.readMap()
+	if a.IsAssets() {
+		return a.readAssets()
 	} else if a.IsPath() {
 		return a.readPath()
 	} else if a.IsURI() {
@@ -312,10 +404,10 @@ func (a Archive) Read() (map[string]*Blob, error) {
 	return nil, nil
 }
 
-func (a Archive) readMap() (map[string]*Blob, error) {
+func (a Archive) readAssets() (map[string]*Blob, error) {
 	// To read a map-based archive, just produce a map from each asset to its associated reader.
-	m, ismap := a.GetMap()
-	contract.Assertf(ismap, "Expected a map-based archive")
+	m, isassets := a.GetAssets()
+	contract.Assertf(isassets, "Expected an asset map-based archive")
 	result := map[string]*Blob{}
 	for name, asset := range m {
 		// TODO[pulumi/lumi#240]: It would be better to treat folders as a first class concept intead

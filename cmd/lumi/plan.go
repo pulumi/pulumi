@@ -507,11 +507,11 @@ func printPropertyValue(b *bytes.Buffer, v resource.PropertyValue, planning bool
 			b.WriteString(fmt.Sprintf("asset { file://%v }", path))
 		} else {
 			contract.Assert(a.IsURI())
-			b.WriteString(fmt.Sprintf("asset { %v }", *a.URI))
+			b.WriteString(fmt.Sprintf("asset { %v }", a.URI))
 		}
 	} else if v.IsArchive() {
 		a := v.ArchiveValue()
-		if assets, has := a.GetMap(); has {
+		if assets, has := a.GetAssets(); has {
 			b.WriteString("archive {\n")
 			var names []string
 			for name := range assets {
@@ -527,7 +527,7 @@ func printPropertyValue(b *bytes.Buffer, v resource.PropertyValue, planning bool
 			b.WriteString(fmt.Sprintf("archive { file://%v }", path))
 		} else {
 			contract.Assert(a.IsURI())
-			b.WriteString(fmt.Sprintf("archive { %v }", *a.URI))
+			b.WriteString(fmt.Sprintf("archive { %v }", a.URI))
 		}
 	} else if v.IsComputed() || v.IsOutput() {
 		b.WriteString(v.TypeString())

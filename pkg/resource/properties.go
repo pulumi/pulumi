@@ -403,3 +403,15 @@ type Property struct {
 	Key   PropertyKey
 	Value PropertyValue
 }
+
+// SigKey is sometimes used to encode type identity inside of a map.  This is required when flattening into ordinary
+// maps, like we do when performing serialization, to ensure recoverability of type identities later on.
+const SigKey = PropertyKey("4dabf18193072939515e22adb298388d")
+
+// HasSig checks to see if the given property map contains the specific signature match.
+func HasSig(obj PropertyMap, match string) bool {
+	if sig, hassig := obj[SigKey]; hassig {
+		return sig.IsString() && sig.StringValue() == match
+	}
+	return false
+}

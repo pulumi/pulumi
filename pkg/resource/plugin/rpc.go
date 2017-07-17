@@ -96,9 +96,9 @@ func MarshalPropertyValue(v resource.PropertyValue, opts MarshalOptions) (*struc
 			},
 		}, outcome
 	} else if v.IsAsset() {
-		return MarshalAsset(v.AssetValue(), opts), true
+		return MarshalAsset(v.AssetValue(), opts)
 	} else if v.IsArchive() {
-		return MarshalArchive(v.ArchiveValue(), opts), true
+		return MarshalArchive(v.ArchiveValue(), opts)
 	} else if v.IsObject() {
 		obj, unks := MarshalPropertiesWithUnknowns(v.ObjectValue(), opts)
 		return MarshalStruct(obj, opts), unks == nil
@@ -180,10 +180,11 @@ func UnmarshalPropertyValue(v *structpb.Value, opts MarshalOptions) resource.Pro
 		obj := UnmarshalProperties(v.GetStructValue(), opts)
 
 		// Before returning it as an object, check to see if it's a known recoverable type.
-		if asset, isasset := TryUnmarshalAsset(obj); isasset {
-			return resource.NewAssetProperty(*asset)
-		} else if archive, isarchive := TryUnmarshalArchive(obj); isarchive {
-			return resource.NewArchiveProperty(*archive)
+		objmap := obj.Mappable()
+		if asset, isasset := resource.DeserializeAsset(objmap); isasset {
+			return resource.NewAssetProperty(asset)
+		} else if archive, isarchive := resource.DeserializeArchive(objmap); isarchive {
+			return resource.NewArchiveProperty(archive)
 		}
 		return resource.NewObjectProperty(obj)
 
@@ -211,14 +212,6 @@ func MarshalString(s string, opts MarshalOptions) *structpb.Value {
 	}
 }
 
-// MarshalOptString marshals a string to its protobuf form (either a null or string payload).
-func MarshalOptString(s *string, opts MarshalOptions) *structpb.Value {
-	if s == nil {
-		return MarshalNull(opts)
-	}
-	return MarshalString(*s, opts)
-}
-
 // MarshalStruct marshals a struct for use in a protobuf field where a value is expected.
 func MarshalStruct(obj *structpb.Struct, opts MarshalOptions) *structpb.Value {
 	return &structpb.Value{
@@ -228,108 +221,18 @@ func MarshalStruct(obj *structpb.Struct, opts MarshalOptions) *structpb.Value {
 	}
 }
 
-/// a few random hashes to avoid accidental conflicts with real human-authored properties and values.
-var (
-	sigProperty = "sig-4dabf18193072939515e22adb298388d" // a special hidden sig property.
-	assetSig    = "c44067f5952c0a294b673a41bacd8c17"     // serialized assets.
-	archiveSig  = "0def7320c3a5731c473e5ecbe6d01bc7"     // serialized archives.
-)
-
-func hasSig(obj resource.PropertyMap, match string) bool {
-	if sig, hassig := obj[resource.PropertyKey(sigProperty)]; hassig {
-		return sig.IsString() && sig.StringValue() == match
-	}
-	return false
-}
-
 // MarshalAsset marshals an asset into its wire form for resource provider plugins.
-func MarshalAsset(a resource.Asset, opts MarshalOptions) *structpb.Value {
-	return &structpb.Value{
-		Kind: &structpb.Value_StructValue{
-			StructValue: &structpb.Struct{
-				Fields: map[string]*structpb.Value{
-					sigProperty:                MarshalString(assetSig, opts),
-					resource.AssetTextProperty: MarshalOptString(a.Text, opts),
-					resource.AssetPathProperty: MarshalOptString(a.Path, opts),
-					resource.AssetURIProperty:  MarshalOptString(a.URI, opts),
-				},
-			},
-		},
-	}
-}
-
-// TryUnmarshalAsset tests whether the object is a marshaled asset and, if so, recovers its state.
-func TryUnmarshalAsset(obj resource.PropertyMap) (*resource.Asset, bool) {
-	if hasSig(obj, assetSig) {
-		var text string
-		if v, has := obj[resource.AssetTextProperty]; has {
-			text = v.StringValue()
-		}
-		var path string
-		if v, has := obj[resource.AssetPathProperty]; has {
-			path = v.StringValue()
-		}
-		var uri string
-		if v, has := obj[resource.AssetURIProperty]; has {
-			uri = v.StringValue()
-		}
-		return &resource.Asset{
-			Text: &text,
-			Path: &path,
-			URI:  &uri,
-		}, true
-	}
-	return nil, false
+func MarshalAsset(v resource.Asset, opts MarshalOptions) (*structpb.Value, bool) {
+	// To marshal an asset, we need to first serialize it, and then marshal that.
+	sera := v.Serialize()
+	serap := resource.NewPropertyMapFromMap(sera)
+	return MarshalPropertyValue(resource.NewObjectProperty(serap), opts)
 }
 
 // MarshalArchive marshals an archive into its wire form for resource provider plugins.
-func MarshalArchive(a resource.Archive, opts MarshalOptions) *structpb.Value {
-	var assets *structpb.Struct
-	if a.Assets != nil {
-		assets = &structpb.Struct{
-			Fields: make(map[string]*structpb.Value),
-		}
-		for name, asset := range *a.Assets {
-			assets.Fields[name] = MarshalAsset(asset, opts)
-		}
-	}
-	return &structpb.Value{
-		Kind: &structpb.Value_StructValue{
-			StructValue: &structpb.Struct{
-				Fields: map[string]*structpb.Value{
-					sigProperty:                    MarshalString(archiveSig, opts),
-					resource.ArchiveAssetsProperty: MarshalStruct(assets, opts),
-					resource.ArchivePathProperty:   MarshalOptString(a.Path, opts),
-					resource.ArchiveURIProperty:    MarshalOptString(a.URI, opts),
-				},
-			},
-		},
-	}
-}
-
-// TryUnmarshalArchive tests whether the object is a marshaled archive and, if so, recovers its state.
-func TryUnmarshalArchive(obj resource.PropertyMap) (*resource.Archive, bool) {
-	if hasSig(obj, archiveSig) {
-		var assets map[string]resource.Asset
-		if rawAssets, has := obj[resource.ArchiveAssetsProperty]; has {
-			assets = make(map[string]resource.Asset)
-			for aname, avalue := range rawAssets.ObjectValue() {
-				assets[string(aname)] = avalue.AssetValue()
-			}
-		}
-		var path string
-		if v, has := obj[resource.ArchivePathProperty]; has {
-			path = v.StringValue()
-		}
-		var uri string
-		if v, has := obj[resource.ArchiveURIProperty]; has {
-			uri = v.StringValue()
-		}
-		return &resource.Archive{
-			Assets: &assets,
-			Path:   &path,
-			URI:    &uri,
-		}, true
-	}
-	return nil, false
+func MarshalArchive(v resource.Archive, opts MarshalOptions) (*structpb.Value, bool) {
+	// To marshal an archive, we need to first serialize it, and then marshal that.
+	sera := v.Serialize()
+	serap := resource.NewPropertyMapFromMap(sera)
+	return MarshalPropertyValue(resource.NewObjectProperty(serap), opts)
 }
