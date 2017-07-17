@@ -207,7 +207,7 @@ func (v PropertyValue) Diff(other PropertyValue) *ValueDiff {
 	}
 
 	// If we got here, either the values are primitives, or they weren't the same type; do a simple diff.
-	if v.V == other.V {
+	if v.DeepEquals(other) {
 		return nil
 	}
 	return &ValueDiff{Old: v, New: other}
@@ -255,6 +255,19 @@ func (v PropertyValue) DeepEquals(other PropertyValue) bool {
 			}
 		}
 		return true
+	}
+
+	// Assets and archives enjoy value equality.
+	if v.IsAsset() {
+		if !other.IsAsset() {
+			return false
+		}
+		return v.AssetValue().Equals(other.AssetValue())
+	} else if v.IsArchive() {
+		if !other.IsArchive() {
+			return false
+		}
+		return v.ArchiveValue().Equals(other.ArchiveValue())
 	}
 
 	// Object values are equal if their contents are deeply equal.

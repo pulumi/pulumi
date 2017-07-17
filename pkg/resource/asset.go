@@ -98,6 +98,11 @@ func (a Asset) GetURIURL() (*url.URL, bool, error) {
 	return nil, false, nil
 }
 
+// Equals returns true if a is value-equal to other.
+func (a Asset) Equals(other Asset) bool {
+	return a.Text == other.Text && a.Path == other.Path && a.URI == other.URI
+}
+
 // Serialize returns a weakly typed map that contains the right signature for serialization purposes.
 func (a Asset) Serialize() map[string]interface{} {
 	return map[string]interface{}{
@@ -334,6 +339,26 @@ func (a Archive) GetURIURL() (*url.URL, bool, error) {
 		return url, true, nil
 	}
 	return nil, false, nil
+}
+
+// Equals returns true if a is value-equal to other.
+func (a Archive) Equals(other Archive) bool {
+	if a.Assets != nil {
+		if other.Assets == nil {
+			return false
+		}
+		if len(a.Assets) != len(other.Assets) {
+			return false
+		}
+		for key, value := range a.Assets {
+			if other.Assets[key] != value {
+				return false
+			}
+		}
+	} else if other.Assets != nil {
+		return false
+	}
+	return a.Path == other.Path && a.URI == other.URI
 }
 
 // Serialize returns a weakly typed map that contains the right signature for serialization purposes.
