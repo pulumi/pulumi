@@ -88,11 +88,21 @@ func printf(intrin *rt.Intrinsic, e *evaluator, this *rt.Object, args []*rt.Obje
 	} else {
 		message = rt.Null
 	}
-
 	// TODO[pulumi/lumi#169]: Move this to use a proper ToString() conversion.
 	fmt.Print(message.String())
-
 	return rt.NewReturnUnwind(nil)
+}
+
+func toString(intrin *rt.Intrinsic, e *evaluator, this *rt.Object, args []*rt.Object) *rt.Unwind {
+	var obj *rt.Object
+	if len(args) >= 1 {
+		obj = args[0]
+	} else {
+		obj = rt.Null
+	}
+	// TODO[pulumi/lumi#169]: Move this to use a proper ToString() conversion.
+	s := rt.NewStringObject(obj.String())
+	return rt.NewReturnUnwind(s)
 }
 
 func sha1hash(intrin *rt.Intrinsic, e *evaluator, this *rt.Object, args []*rt.Object) *rt.Unwind {

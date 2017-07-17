@@ -5,10 +5,14 @@ export function printf(message: any): void {
     // functionality provided by the runtime.
 }
 
+// toString returns a string representation of the given object.
+export function toString(obj: Object): string {
+    return ""; // functionality provided by the runtime.
+}
+
 // sha1hash generates the SHA-1 hash of the provided string.
 export function sha1hash(str: string): string {
-    // functionality provided by the runtime.
-    return "";
+    return ""; // functionality provided by the runtime.
 }
 
 // isFunction checks whether the given object is a function (and hence invocable).

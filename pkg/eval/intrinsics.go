@@ -26,6 +26,7 @@ func init() {
 		"lumirt:index:objectKeys":        objectKeys,
 		"lumirt:index:printf":            printf,
 		"lumirt:index:sha1hash":          sha1hash,
+		"lumirt:index:toString":          toString,
 		"lumirt:index:jsonStringify":     jsonStringify,
 		"lumirt:index:jsonParse":         jsonParse,
 		"lumirt:index:serializeClosure":  serializeClosure,
