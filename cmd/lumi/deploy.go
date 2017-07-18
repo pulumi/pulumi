@@ -32,7 +32,7 @@ func newDeployCmd() *cobra.Command {
 	var output string
 	var cmd = &cobra.Command{
 		Use:     "deploy [<package>] [-- [<args>]]",
-		Aliases: []string{"up", "update"},
+		Aliases: []string{"run", "up", "update"},
 		Short:   "Deploy resource updates, creations, and deletions to an environment",
 		Long: "Deploy resource updates, creations, and deletions to an environment\n" +
 			"\n" +
@@ -240,7 +240,7 @@ func (prog *deployProgress) After(step deploy.Step, status resource.Status, err 
 		prog.Ops[stepop]++
 
 		// Print out any output properties that got created as a result of this operation.
-		if step.Op() == deploy.OpCreate {
+		if !prog.Opts.Summary && step.Op() == deploy.OpCreate {
 			var b bytes.Buffer
 			printResourceOutputProperties(&b, step, "")
 			fmt.Print(colors.Colorize(&b))
