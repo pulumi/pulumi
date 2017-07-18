@@ -30,6 +30,7 @@ It has these top-level messages:
 	InspectChangeRequest
 	InspectChangeResponse
 	UpdateRequest
+	UpdateResponse
 	DeleteRequest
 */
 package lumirpc

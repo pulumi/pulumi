@@ -107,8 +107,9 @@ func (p *provider) Name(t tokens.Type, props resource.PropertyMap) (tokens.QName
 	return name, nil
 }
 
-// Create allocates a new instance of the provided resource and assigns its unique resource.ID afterwards.
-func (p *provider) Create(t tokens.Type, props resource.PropertyMap) (resource.ID, resource.Status, error) {
+// Create allocates a new instance of the provided resource and assigns its unique resource.ID and outputs afterwards.
+func (p *provider) Create(t tokens.Type, props resource.PropertyMap) (resource.ID,
+	resource.PropertyMap, resource.Status, error) {
 	contract.Assert(t != "")
 	contract.Assert(props != nil)
 	glog.V(7).Infof("resource[%v].Create(t=%v,#props=%v) executing", p.pkg, t, len(props))
@@ -120,16 +121,18 @@ func (p *provider) Create(t tokens.Type, props resource.PropertyMap) (resource.I
 	resp, err := p.client.Create(p.ctx.Request(), req)
 	if err != nil {
 		glog.V(7).Infof("resource[%v].Create(t=%v,...) failed: err=%v", p.pkg, t, err)
-		return "", resource.StatusUnknown, err
+		return "", nil, resource.StatusUnknown, err
 	}
 
 	id := resource.ID(resp.GetId())
-	glog.V(7).Infof("resource[%v].Create(t=%v,...) success: id=%v", p.pkg, t, id)
 	if id == "" {
-		return "", resource.StatusUnknown,
+		return "", nil, resource.StatusUnknown,
 			errors.Errorf("plugin for package '%v' returned empty resource.ID from create '%v'", p.pkg, t)
 	}
-	return id, resource.StatusOK, nil
+	outs := UnmarshalProperties(resp.GetProperties(), MarshalOptions{})
+
+	glog.V(7).Infof("resource[%v].Create(t=%v,...) success: id=%v; #outs=%v", p.pkg, t, id, len(outs))
+	return id, outs, resource.StatusOK, nil
 }
 
 // Get reads the instance state identified by res, and copies into the resource object.
@@ -202,7 +205,7 @@ func (p *provider) InspectChange(t tokens.Type, id resource.ID,
 
 // Update updates an existing resource with new values.
 func (p *provider) Update(t tokens.Type, id resource.ID,
-	olds resource.PropertyMap, news resource.PropertyMap) (resource.Status, error) {
+	olds resource.PropertyMap, news resource.PropertyMap) (resource.PropertyMap, resource.Status, error) {
 	contract.Assert(t != "")
 	contract.Assert(id != "")
 	contract.Assert(news != nil)
@@ -219,14 +222,15 @@ func (p *provider) Update(t tokens.Type, id resource.ID,
 		News: MarshalProperties(news, MarshalOptions{}),
 	}
 
-	_, err := p.client.Update(p.ctx.Request(), req)
+	resp, err := p.client.Update(p.ctx.Request(), req)
 	if err != nil {
 		glog.V(7).Infof("resource[%v].Update(id=%v,t=%v,...) failed: %v", p.pkg, id, t, err)
-		return resource.StatusUnknown, err
+		return nil, resource.StatusUnknown, err
 	}
+	outs := UnmarshalProperties(resp.GetProperties(), MarshalOptions{})
 
-	glog.V(7).Infof("resource[%v].Update(id=%v,t=%v,...) success", p.pkg, id, t)
-	return resource.StatusOK, nil
+	glog.V(7).Infof("resource[%v].Update(id=%v,t=%v,...) success; #out=%v", p.pkg, id, t, len(outs))
+	return outs, resource.StatusOK, nil
 }
 
 // Delete tears down an existing resource.

@@ -31,7 +31,7 @@ type Provider interface {
 	// In any case, resources with the same name must be safe to use interchangeably with one another.
 	Name(t tokens.Type, props resource.PropertyMap) (tokens.QName, error)
 	// Create allocates a new instance of the provided resource and returns its unique resource.ID.
-	Create(t tokens.Type, props resource.PropertyMap) (resource.ID, resource.Status, error)
+	Create(t tokens.Type, props resource.PropertyMap) (resource.ID, resource.PropertyMap, resource.Status, error)
 	// Get reads the instance state identified by res and returns it.
 	Get(t tokens.Type, id resource.ID) (resource.PropertyMap, error)
 	// InspectChange checks what impacts a hypothetical update will have on the resource's properties.
@@ -39,7 +39,7 @@ type Provider interface {
 		olds resource.PropertyMap, news resource.PropertyMap) ([]resource.PropertyKey, resource.PropertyMap, error)
 	// Update updates an existing resource with new values.
 	Update(t tokens.Type, id resource.ID,
-		olds resource.PropertyMap, news resource.PropertyMap) (resource.Status, error)
+		olds resource.PropertyMap, news resource.PropertyMap) (resource.PropertyMap, resource.Status, error)
 	// Delete tears down an existing resource.
 	Delete(t tokens.Type, id resource.ID) (resource.Status, error)
 }
