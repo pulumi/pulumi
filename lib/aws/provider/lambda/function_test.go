@@ -40,9 +40,9 @@ func Test(t *testing.T) {
 
 	sourceARN := rpc.ARN("arn:aws:s3:::elasticbeanstalk-us-east-1-111111111111")
 	code := resource.Archive{
-		Assets: &map[string]resource.Asset{
+		Assets: map[string]resource.Asset{
 			"index.js": {
-				Text: aws.String("exports.handler = (ev, ctx, cb) => { console.log(ev); console.log(ctx); }"),
+				Text: "exports.handler = (ev, ctx, cb) => { console.log(ev); console.log(ctx); }",
 			},
 		},
 	}
