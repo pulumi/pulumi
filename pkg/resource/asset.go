@@ -26,9 +26,10 @@ import (
 // Asset is a serialized asset reference.  It is a union: thus, only one of its fields will be non-nil.  Several helper
 // routines exist as members in order to easily interact with the assets referenced by an instance of this type.
 type Asset struct {
-	Text string // a textual asset.
-	Path string // a file on the current filesystem.
-	URI  string // a URI to a reference fetched (file://, http://, https://, or custom).
+	Sig  string `json:"4dabf18193072939515e22adb298388d"` // the unique asset signature (see properties.go).
+	Text string `json:"text,omitempty"`                   // a textual asset.
+	Path string `json:"path,omitempty"`                   // a file on the current filesystem.
+	URI  string `json:"uri,omitempty"`                    // a URI (file://, http://, https://, or custom).
 }
 
 const (
@@ -38,9 +39,9 @@ const (
 	AssetURIProperty  = "uri"                              // the dynamic property for an asset's URI.
 )
 
-func NewTextAsset(text string) Asset { return Asset{Text: text} }
-func NewPathAsset(path string) Asset { return Asset{Path: path} }
-func NewURIAsset(uri string) Asset   { return Asset{URI: uri} }
+func NewTextAsset(text string) Asset { return Asset{Sig: AssetSig, Text: text} }
+func NewPathAsset(path string) Asset { return Asset{Sig: AssetSig, Path: path} }
+func NewURIAsset(uri string) Asset   { return Asset{Sig: AssetSig, URI: uri} }
 
 func NewAssetFromObject(obj *rt.Object) Asset {
 	contract.Assert(predef.IsResourceAssetType(obj.Type()))
@@ -265,9 +266,10 @@ func (b bytesReader) Close() error {
 // Archive is a serialized archive reference.  It is a union: thus, only one of its fields will be non-nil.  Several
 // helper routines exist as members in order to easily interact with archives of different kinds.
 type Archive struct {
-	Assets map[string]Asset // a collection of other assets.
-	Path   string           // a file on the current filesystem.
-	URI    string           // a URI to a remote archive (file://, http://, https://, etc).
+	Sig    string           `json:"4dabf18193072939515e22adb298388d"` // the unique asset signature (see properties.go).
+	Assets map[string]Asset `json:"assets,omitempty"`                 // a collection of other assets.
+	Path   string           `json:"path,omitempty"`                   // a file on the current filesystem.
+	URI    string           `json:"uri,omitempty"`                    // a remote URI (file://, http://, https://, etc).
 }
 
 const (
@@ -277,9 +279,9 @@ const (
 	ArchiveURIProperty    = "uri"                              // the dynamic property for an archive's URI.
 )
 
-func NewAssetArchive(assets map[string]Asset) Archive { return Archive{Assets: assets} }
-func NewPathArchive(path string) Archive              { return Archive{Path: path} }
-func NewURIArchive(uri string) Archive                { return Archive{URI: uri} }
+func NewAssetArchive(assets map[string]Asset) Archive { return Archive{Sig: ArchiveSig, Assets: assets} }
+func NewPathArchive(path string) Archive              { return Archive{Sig: ArchiveSig, Path: path} }
+func NewURIArchive(uri string) Archive                { return Archive{Sig: ArchiveSig, URI: uri} }
 
 func NewArchiveFromObject(obj *rt.Object) Archive {
 	contract.Assert(predef.IsResourceArchiveType(obj.Type()))
