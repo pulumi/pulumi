@@ -41,7 +41,7 @@ type Provider interface {
 	Update(t tokens.Type, id resource.ID,
 		olds resource.PropertyMap, news resource.PropertyMap) (resource.PropertyMap, resource.Status, error)
 	// Delete tears down an existing resource.
-	Delete(t tokens.Type, id resource.ID) (resource.Status, error)
+	Delete(t tokens.Type, id resource.ID, props resource.PropertyMap) (resource.Status, error)
 }
 
 // CheckFailure indicates that a call to check failed; it contains the property and reason for the failure.

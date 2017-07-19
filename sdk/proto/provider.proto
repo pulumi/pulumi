@@ -98,7 +98,8 @@ message UpdateResponse {
 }
 
 message DeleteRequest {
-    string id = 1;   // the ID of the resource to delete.
-    string type = 2; // the type token of the resource to update.
+    string id = 1;                         // the ID of the resource to delete.
+    string type = 2;                       // the type token of the resource to update.
+    google.protobuf.Struct properties = 3; // the current properties on the resource.
 }
 

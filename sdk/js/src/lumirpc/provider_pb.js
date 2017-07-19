@@ -2568,7 +2568,8 @@ proto.lumirpc.DeleteRequest.prototype.toObject = function(opt_includeInstance) {
 proto.lumirpc.DeleteRequest.toObject = function(includeInstance, msg) {
   var f, obj = {
     id: jspb.Message.getFieldWithDefault(msg, 1, ""),
-    type: jspb.Message.getFieldWithDefault(msg, 2, "")
+    type: jspb.Message.getFieldWithDefault(msg, 2, ""),
+    properties: (f = msg.getProperties()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f)
   };
 
   if (includeInstance) {
@@ -2613,6 +2614,11 @@ proto.lumirpc.DeleteRequest.deserializeBinaryFromReader = function(msg, reader) 
       var value = /** @type {string} */ (reader.readString());
       msg.setType(value);
       break;
+    case 3:
+      var value = new google_protobuf_struct_pb.Struct;
+      reader.readMessage(value,google_protobuf_struct_pb.Struct.deserializeBinaryFromReader);
+      msg.setProperties(value);
+      break;
     default:
       reader.skipField();
       break;
@@ -2655,6 +2661,14 @@ proto.lumirpc.DeleteRequest.serializeBinaryToWriter = function(message, writer) 
       f
     );
   }
+  f = message.getProperties();
+  if (f != null) {
+    writer.writeMessage(
+      3,
+      f,
+      google_protobuf_struct_pb.Struct.serializeBinaryToWriter
+    );
+  }
 };
 
 
@@ -2685,6 +2699,36 @@ proto.lumirpc.DeleteRequest.prototype.getType = function() {
 /** @param {string} value */
 proto.lumirpc.DeleteRequest.prototype.setType = function(value) {
   jspb.Message.setField(this, 2, value);
+};
+
+
+/**
+ * optional google.protobuf.Struct properties = 3;
+ * @return {?proto.google.protobuf.Struct}
+ */
+proto.lumirpc.DeleteRequest.prototype.getProperties = function() {
+  return /** @type{?proto.google.protobuf.Struct} */ (
+    jspb.Message.getWrapperField(this, google_protobuf_struct_pb.Struct, 3));
+};
+
+
+/** @param {?proto.google.protobuf.Struct|undefined} value */
+proto.lumirpc.DeleteRequest.prototype.setProperties = function(value) {
+  jspb.Message.setWrapperField(this, 3, value);
+};
+
+
+proto.lumirpc.DeleteRequest.prototype.clearProperties = function() {
+  this.setProperties(undefined);
+};
+
+
+/**
+ * Returns whether this field is set.
+ * @return {!boolean}
+ */
+proto.lumirpc.DeleteRequest.prototype.hasProperties = function() {
+  return jspb.Message.getField(this, 3) != null;
 };
 
 

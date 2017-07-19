@@ -234,14 +234,15 @@ func (p *provider) Update(t tokens.Type, id resource.ID,
 }
 
 // Delete tears down an existing resource.
-func (p *provider) Delete(t tokens.Type, id resource.ID) (resource.Status, error) {
+func (p *provider) Delete(t tokens.Type, id resource.ID, props resource.PropertyMap) (resource.Status, error) {
 	contract.Assert(t != "")
 	contract.Assert(id != "")
 
 	glog.V(7).Infof("resource[%v].Delete(id=%v,t=%v) executing", p.pkg, id, t)
 	req := &lumirpc.DeleteRequest{
-		Id:   string(id),
-		Type: string(t),
+		Id:         string(id),
+		Type:       string(t),
+		Properties: MarshalProperties(props, MarshalOptions{}),
 	}
 
 	if _, err := p.client.Delete(p.ctx.Request(), req); err != nil {

@@ -199,7 +199,7 @@ func (s *DeleteStep) Apply() (resource.Status, error) {
 	if err != nil {
 		return resource.StatusOK, err
 	}
-	if rst, err := prov.Delete(s.old.Type(), s.old.ID()); err != nil {
+	if rst, err := prov.Delete(s.old.Type(), s.old.ID(), s.old.Inputs()); err != nil {
 		return rst, err
 	}
 	s.iter.MarkStateSnapshot(s.old)
