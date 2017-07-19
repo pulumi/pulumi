@@ -35,8 +35,9 @@ func NewState(t tokens.Type, urn URN, id ID, inputs PropertyMap, outputs Propert
 	}
 }
 
-func (r *State) ID() ID               { return r.id }
-func (r *State) URN() URN             { return r.urn }
-func (r *State) Type() tokens.Type    { return r.t }
-func (r *State) Inputs() PropertyMap  { return r.inputs }
-func (r *State) Outputs() PropertyMap { return r.outputs }
+func (r *State) ID() ID                { return r.id }
+func (r *State) URN() URN              { return r.urn }
+func (r *State) Type() tokens.Type     { return r.t }
+func (r *State) Inputs() PropertyMap   { return r.inputs }
+func (r *State) Outputs() PropertyMap  { return r.outputs }
+func (r *State) Combined() PropertyMap { return r.inputs.Merge(r.outputs) }

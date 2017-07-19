@@ -117,6 +117,18 @@ func (m PropertyMap) MapRepl(replk func(string) (string, bool),
 	return obj
 }
 
+// Merge simply merges in another map atop another, and returns the result.
+func (m PropertyMap) Merge(other PropertyMap) PropertyMap {
+	new := make(PropertyMap)
+	for k, v := range m {
+		new[k] = v
+	}
+	for k, v := range other {
+		new[k] = v
+	}
+	return new
+}
+
 // StableKeys returns all of the map's keys in a stable order.
 func (m PropertyMap) StableKeys() []PropertyKey {
 	sorted := make([]PropertyKey, 0, len(m))
