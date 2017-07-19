@@ -453,6 +453,11 @@ func StringPrototypeObject() *Object {
 		symbols.NewFunctionType([]symbols.Type{}, types.String),
 	), stringProto)
 	stringProtoProps.InitAddr(PropertyKey("toUpperCase"), toUpperCase, true, nil, nil)
+	split := NewFunctionObjectFromSymbol(NewBuiltinIntrinsic(
+		tokens.Token("lumi:builtin/string:split"),
+		symbols.NewFunctionType([]symbols.Type{types.String}, symbols.NewArrayType(types.String)),
+	), stringProto)
+	stringProtoProps.InitAddr(PropertyKey("split"), split, true, nil, nil)
 
 	return stringProto
 }
