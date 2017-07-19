@@ -1058,7 +1058,7 @@ func (e *evaluator) evalLoop(condition *ast.Expression, body ast.Statement, post
 			if uw := e.evalStatement(body); uw != nil {
 				if uw.Continue() {
 					contract.Assertf(uw.Label() == nil, "Labeled continue not yet supported")
-					continue
+					// continue through to evaluate the post expression
 				} else if uw.Break() {
 					contract.Assertf(uw.Label() == nil, "Labeled break not yet supported")
 					break
