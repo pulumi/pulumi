@@ -404,7 +404,7 @@ type testProvider struct {
 		resource.PropertyMap, resource.PropertyMap) ([]resource.PropertyKey, resource.PropertyMap, error)
 	update func(tokens.Type, resource.ID,
 		resource.PropertyMap, resource.PropertyMap) (resource.PropertyMap, resource.Status, error)
-	delete func(tokens.Type, resource.ID) (resource.Status, error)
+	delete func(tokens.Type, resource.ID, resource.PropertyMap) (resource.Status, error)
 }
 
 func (prov *testProvider) Close() error {
@@ -434,6 +434,6 @@ func (prov *testProvider) Update(t tokens.Type, id resource.ID,
 	olds resource.PropertyMap, news resource.PropertyMap) (resource.PropertyMap, resource.Status, error) {
 	return prov.update(t, id, olds, news)
 }
-func (prov *testProvider) Delete(t tokens.Type, id resource.ID) (resource.Status, error) {
-	return prov.delete(t, id)
+func (prov *testProvider) Delete(t tokens.Type, id resource.ID, props resource.PropertyMap) (resource.Status, error) {
+	return prov.delete(t, id, props)
 }
