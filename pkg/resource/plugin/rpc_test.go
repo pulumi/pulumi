@@ -14,7 +14,7 @@ func TestAssetSerialize(t *testing.T) {
 	// Ensure that asset and archive serialization round trips.
 	text := "a test asset"
 	asset := resource.NewTextAsset(text)
-	assetProps, _ := MarshalPropertyValue(resource.NewAssetProperty(asset), MarshalOptions{})
+	assetProps := MarshalPropertyValue(resource.NewAssetProperty(asset), MarshalOptions{})
 	assetValue := UnmarshalPropertyValue(assetProps, MarshalOptions{})
 	assert.True(t, assetValue.IsAsset())
 	assetDes := assetValue.AssetValue()
@@ -22,7 +22,7 @@ func TestAssetSerialize(t *testing.T) {
 	assert.Equal(t, text, assetDes.Text)
 
 	arch := resource.NewAssetArchive(map[string]resource.Asset{"foo": asset})
-	archProps, _ := MarshalPropertyValue(resource.NewArchiveProperty(arch), MarshalOptions{})
+	archProps := MarshalPropertyValue(resource.NewArchiveProperty(arch), MarshalOptions{})
 	archValue := UnmarshalPropertyValue(archProps, MarshalOptions{})
 	assert.True(t, archValue.IsArchive())
 	archDes := archValue.ArchiveValue()

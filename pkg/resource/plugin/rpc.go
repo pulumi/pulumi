@@ -15,109 +15,134 @@ import (
 
 // MarshalOptions controls the marshaling of RPC structures.
 type MarshalOptions struct {
-	SkipNulls    bool // true to skip nulls altogether in the resulting map.
-	OldURNs      bool // true to permit old URNs in the properties (e.g., for pre-update).
-	RawResources bool // true to marshal resources "as-is"; often used when ID mappings aren't known yet.
+	SkipNulls        bool // true to skip nulls altogether in the resulting map.
+	DisallowUnknowns bool // true if we are disallowing unknown values (results in assertion failures).
 }
 
-// MarshalPropertiesWithUnknowns marshals a resource's property map as a "JSON-like" protobuf structure.  Any URNs are
-// replaced with their resource IDs during marshaling; it is an error to marshal a URN for a resource without an ID.  A
-// map of any unknown properties encountered during marshaling (latent values) is returned on the side; these values are
-// marshaled using the default value in the returned structure and so this map is essential for interpreting results.
-func MarshalPropertiesWithUnknowns(
-	props resource.PropertyMap, opts MarshalOptions) (*structpb.Struct, map[string]bool) {
-	var unk map[string]bool
-	result := &structpb.Struct{
-		Fields: make(map[string]*structpb.Value),
-	}
+const (
+	// UnknownBoolValue is a sentinel indicating that a bool property's value is not known, because it depends on
+	// a computation with values whose values themselves are not yet known (e.g., dependent upon an output property).
+	UnknownBoolValue = "1c4a061d-8072-4f0a-a4cb-0ff528b18fe7"
+	// UnknownNumberValue is a sentinel indicating that a number property's value is not known, because it depends on
+	// a computation with values whose values themselves are not yet known (e.g., dependent upon an output property).
+	UnknownNumberValue = "3eeb2bf0-c639-47a8-9e75-3b44932eb421"
+	// UnknownStringValue is a sentinel indicating that a string property's value is not known, because it depends on
+	// a computation with values whose values themselves are not yet known (e.g., dependent upon an output property).
+	UnknownStringValue = "04da6b54-80e4-46f7-96ec-b56ff0331ba9"
+	// UnknownArrayValue is a sentinel indicating that an array property's value is not known, because it depends on
+	// a computation with values whose values themselves are not yet known (e.g., dependent upon an output property).
+	UnknownArrayValue = "6a19a0b0-7e62-4c92-b797-7f8e31da9cc2"
+	// UnknownAssetValue is a sentinel indicating that an asset property's value is not known, because it depends on
+	// a computation with values whose values themselves are not yet known (e.g., dependent upon an output property).
+	UnknownAssetValue = "030794c1-ac77-496b-92df-f27374a8bd58"
+	// UnknownArchiveValue is a sentinel indicating that an archive property's value is not known, because it depends
+	// on a computation with values whose values themselves are not yet known (e.g., dependent upon an output property).
+	UnknownArchiveValue = "e48ece36-62e2-4504-bad9-02848725956a"
+	// UnknownObjectValue is a sentinel indicating that an archive property's value is not known, because it depends
+	// on a computation with values whose values themselves are not yet known (e.g., dependent upon an output property).
+	UnknownObjectValue = "dd056dcd-154b-4c76-9bd3-c8f88648b5ff"
+)
+
+// MarshalProperties marshals a resource's property map as a "JSON-like" protobuf structure.
+func MarshalProperties(props resource.PropertyMap, opts MarshalOptions) *structpb.Struct {
+	fields := make(map[string]*structpb.Value)
 	for _, key := range props.StableKeys() {
 		v := props[key]
 		glog.V(9).Infof("Marshaling property for RPC: %v=%v", key, v)
 		if v.IsOutput() {
 			glog.V(9).Infof("Skipping output property %v", key)
-			continue // skip output properties.
 		} else if opts.SkipNulls && v.IsNull() {
 			glog.V(9).Infof("Skipping null property %v (as requested)", key)
-			continue // skip nulls if requested.
-		}
-
-		mv, known := MarshalPropertyValue(v, opts)
-		result.Fields[string(key)] = mv
-
-		// If the property was unknown, note it, so that we may tell the provider.
-		if !known {
-			if unk == nil {
-				unk = make(map[string]bool)
-			}
-			unk[string(key)] = true
+		} else {
+			fields[string(key)] = MarshalPropertyValue(v, opts)
 		}
 	}
-	return result, unk
+	return &structpb.Struct{
+		Fields: fields,
+	}
 }
 
-// MarshalProperties performs ordinary marshaling of a resource's properties but then validates afterwards that all
-// fields were known (in other words, no latent properties were encountered).
-func MarshalProperties(props resource.PropertyMap, opts MarshalOptions) *structpb.Struct {
-	pstr, unks := MarshalPropertiesWithUnknowns(props, opts)
-	contract.Assertf(unks == nil, "Unexpected unknown properties during final marshaling")
-	return pstr
-}
-
-// MarshalPropertyValue marshals a single resource property value into its "JSON-like" value representation.  The
-// boolean return value indicates whether the value was known (true) or unknown (false).
-func MarshalPropertyValue(v resource.PropertyValue, opts MarshalOptions) (*structpb.Value, bool) {
+// MarshalPropertyValue marshals a single resource property value into its "JSON-like" value representation.
+func MarshalPropertyValue(v resource.PropertyValue, opts MarshalOptions) *structpb.Value {
 	if v.IsNull() {
-		return MarshalNull(opts), true
+		return MarshalNull(opts)
 	} else if v.IsBool() {
 		return &structpb.Value{
 			Kind: &structpb.Value_BoolValue{
 				BoolValue: v.BoolValue(),
 			},
-		}, true
+		}
 	} else if v.IsNumber() {
 		return &structpb.Value{
 			Kind: &structpb.Value_NumberValue{
 				NumberValue: v.NumberValue(),
 			},
-		}, true
+		}
 	} else if v.IsString() {
-		return MarshalString(v.StringValue(), opts), true
+		return MarshalString(v.StringValue(), opts)
 	} else if v.IsArray() {
-		outcome := true
 		var elems []*structpb.Value
 		for _, elem := range v.ArrayValue() {
-			elemv, known := MarshalPropertyValue(elem, opts)
-			outcome = outcome && known
-			elems = append(elems, elemv)
+			elems = append(elems, MarshalPropertyValue(elem, opts))
 		}
 		return &structpb.Value{
 			Kind: &structpb.Value_ListValue{
 				ListValue: &structpb.ListValue{Values: elems},
 			},
-		}, outcome
+		}
 	} else if v.IsAsset() {
 		return MarshalAsset(v.AssetValue(), opts)
 	} else if v.IsArchive() {
 		return MarshalArchive(v.ArchiveValue(), opts)
 	} else if v.IsObject() {
-		obj, unks := MarshalPropertiesWithUnknowns(v.ObjectValue(), opts)
-		return MarshalStruct(obj, opts), unks == nil
+		obj := MarshalProperties(v.ObjectValue(), opts)
+		return MarshalStruct(obj, opts)
 	} else if v.IsComputed() {
-		e := v.ComputedValue().Element
-		contract.Assert(!e.IsComputed())
-		w, known := MarshalPropertyValue(e, opts)
-		contract.Assert(known)
-		return w, false
+		return marshalUnknownProperty(v.ComputedValue().Element, opts)
 	} else if v.IsOutput() {
-		e := v.OutputValue().Element
-		contract.Assert(!e.IsComputed())
-		w, known := MarshalPropertyValue(e, opts)
-		contract.Assert(known)
-		return w, false
+		// Note that at the moment we don't differentiate between computed and output properties on the wire.  As
+		// a result, they will show up as computed on the other end.  This distinction isn't currently interesting.
+		return marshalUnknownProperty(v.OutputValue().Element, opts)
 	}
 
 	contract.Failf("Unrecognized property value: %v (type=%v)", v.V, reflect.TypeOf(v.V))
-	return nil, true
+	return nil
+}
+
+// marshalUnknownProperty marshals an unknown property in a way that lets us recover its type on the other end.
+func marshalUnknownProperty(elem resource.PropertyValue, opts MarshalOptions) *structpb.Value {
+	contract.Assertf(!opts.DisallowUnknowns, "Unexpected unknown value when opts.DisallowUnknowns")
+	// Normal cases, these get sentinels.
+	if elem.IsBool() {
+		return MarshalString(UnknownBoolValue, opts)
+	} else if elem.IsNumber() {
+		return MarshalString(UnknownNumberValue, opts)
+	} else if elem.IsString() {
+		return MarshalString(UnknownStringValue, opts)
+	} else if elem.IsArray() {
+		return MarshalString(UnknownArrayValue, opts)
+	} else if elem.IsAsset() {
+		return MarshalString(UnknownAssetValue, opts)
+	} else if elem.IsArchive() {
+		return MarshalString(UnknownArchiveValue, opts)
+	} else if elem.IsObject() {
+		return MarshalString(UnknownObjectValue, opts)
+	}
+
+	// If for some reason we end up with a recursive computed/output, just keep digging.
+	if elem.IsComputed() {
+		return marshalUnknownProperty(elem.ComputedValue().Element, opts)
+	} else if elem.IsOutput() {
+		return marshalUnknownProperty(elem.OutputValue().Element, opts)
+	}
+
+	// Finally, if a null, we can guess its value!  (the one and only...)
+	if elem.IsNull() {
+		return MarshalNull(opts)
+	}
+
+	contract.Failf("Unexpected output/computed property element: %v", elem)
+	return nil
 }
 
 // UnmarshalProperties unmarshals a "JSON-like" protobuf structure into a new resource property map.
@@ -161,7 +186,12 @@ func UnmarshalPropertyValue(v *structpb.Value, opts MarshalOptions) resource.Pro
 	case *structpb.Value_NumberValue:
 		return resource.NewNumberProperty(v.GetNumberValue())
 	case *structpb.Value_StringValue:
-		return resource.NewStringProperty(v.GetStringValue())
+		// If it's a string, it could be an unknown property, or just a regular string.
+		s := v.GetStringValue()
+		if unk, isunk := unmarshalUnknownPropertyValue(s, opts); isunk {
+			return unk
+		}
+		return resource.NewStringProperty(s)
 	case *structpb.Value_ListValue:
 		// If there's already an array, prefer to swap elements within it.
 		var elems []resource.PropertyValue
@@ -194,6 +224,32 @@ func UnmarshalPropertyValue(v *structpb.Value, opts MarshalOptions) resource.Pro
 	}
 }
 
+func unmarshalUnknownPropertyValue(s string, opts MarshalOptions) (resource.PropertyValue, bool) {
+	var elem resource.PropertyValue
+	var unknown bool
+	switch s {
+	case UnknownBoolValue:
+		elem, unknown = resource.NewBoolProperty(false), true
+	case UnknownNumberValue:
+		elem, unknown = resource.NewNumberProperty(0), true
+	case UnknownStringValue:
+		elem, unknown = resource.NewStringProperty(""), true
+	case UnknownArrayValue:
+		elem, unknown = resource.NewArrayProperty([]resource.PropertyValue{}), true
+	case UnknownAssetValue:
+		elem, unknown = resource.NewAssetProperty(resource.Asset{}), true
+	case UnknownArchiveValue:
+		elem, unknown = resource.NewArchiveProperty(resource.Archive{}), true
+	case UnknownObjectValue:
+		elem, unknown = resource.NewObjectProperty(make(resource.PropertyMap)), true
+	}
+	if unknown {
+		comp := resource.Computed{Element: elem}
+		return resource.NewComputedProperty(comp), true
+	}
+	return resource.PropertyValue{}, false
+}
+
 // MarshalNull marshals a nil to its protobuf form.
 func MarshalNull(opts MarshalOptions) *structpb.Value {
 	return &structpb.Value{
@@ -222,7 +278,7 @@ func MarshalStruct(obj *structpb.Struct, opts MarshalOptions) *structpb.Value {
 }
 
 // MarshalAsset marshals an asset into its wire form for resource provider plugins.
-func MarshalAsset(v resource.Asset, opts MarshalOptions) (*structpb.Value, bool) {
+func MarshalAsset(v resource.Asset, opts MarshalOptions) *structpb.Value {
 	// To marshal an asset, we need to first serialize it, and then marshal that.
 	sera := v.Serialize()
 	serap := resource.NewPropertyMapFromMap(sera)
@@ -230,7 +286,7 @@ func MarshalAsset(v resource.Asset, opts MarshalOptions) (*structpb.Value, bool)
 }
 
 // MarshalArchive marshals an archive into its wire form for resource provider plugins.
-func MarshalArchive(v resource.Archive, opts MarshalOptions) (*structpb.Value, bool) {
+func MarshalArchive(v resource.Archive, opts MarshalOptions) *structpb.Value {
 	// To marshal an archive, we need to first serialize it, and then marshal that.
 	sera := v.Serialize()
 	serap := resource.NewPropertyMapFromMap(sera)

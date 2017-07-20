@@ -57,14 +57,9 @@ func (p *provider) Pkg() tokens.Package { return p.pkg }
 // Check validates that the given property bag is valid for a resource of the given type.
 func (p *provider) Check(t tokens.Type, props resource.PropertyMap) ([]CheckFailure, error) {
 	glog.V(7).Infof("resource[%v].Check(t=%v,#props=%v) executing", p.pkg, t, len(props))
-	pstr, unks := MarshalPropertiesWithUnknowns(props, MarshalOptions{
-		OldURNs:      true, // permit old URNs, since this is pre-update.
-		RawResources: true, // pre-create, resource.IDs won't be ready, just ship over the URNs.
-	})
 	req := &lumirpc.CheckRequest{
 		Type:       string(t),
-		Properties: pstr,
-		Unknowns:   unks,
+		Properties: MarshalProperties(props, MarshalOptions{}),
 	}
 
 	resp, err := p.client.Check(p.ctx.Request(), req)
@@ -86,14 +81,9 @@ func (p *provider) Name(t tokens.Type, props resource.PropertyMap) (tokens.QName
 	contract.Assert(t != "")
 	contract.Assert(props != nil)
 	glog.V(7).Infof("resource[%v].Name(t=%v,#props=%v) executing", p.pkg, t, len(props))
-	pstr, unks := MarshalPropertiesWithUnknowns(props, MarshalOptions{
-		OldURNs:      true, // permit old URNs, since this is pre-update.
-		RawResources: true, // pre-create, resource.IDs won't be ready, just ship over the URNs.
-	})
 	req := &lumirpc.NameRequest{
 		Type:       string(t),
-		Properties: pstr,
-		Unknowns:   unks,
+		Properties: MarshalProperties(props, MarshalOptions{}),
 	}
 
 	resp, err := p.client.Name(p.ctx.Request(), req)
@@ -115,7 +105,7 @@ func (p *provider) Create(t tokens.Type, props resource.PropertyMap) (resource.I
 	glog.V(7).Infof("resource[%v].Create(t=%v,#props=%v) executing", p.pkg, t, len(props))
 	req := &lumirpc.CreateRequest{
 		Type:       string(t),
-		Properties: MarshalProperties(props, MarshalOptions{}),
+		Properties: MarshalProperties(props, MarshalOptions{DisallowUnknowns: true}),
 	}
 
 	resp, err := p.client.Create(p.ctx.Request(), req)
@@ -166,19 +156,12 @@ func (p *provider) InspectChange(t tokens.Type, id resource.ID,
 	glog.V(7).Infof("resource[%v].InspectChange(id=%v,t=%v,#olds=%v,#news=%v) executing",
 		p.pkg, id, t, len(olds), len(news))
 
-	newpstr, newunks := MarshalPropertiesWithUnknowns(news, MarshalOptions{
-		RawResources: true, // pre-change, resource.IDs won't be ready, ship over URNs.
-	})
 	req := &lumirpc.InspectChangeRequest{
 		Id:   string(id),
 		Type: string(t),
-		Olds: MarshalProperties(olds, MarshalOptions{
-			RawResources: true, // just leave these as-is, so they match the news.
-		}),
-		News:     newpstr,
-		Unknowns: newunks,
+		Olds: MarshalProperties(olds, MarshalOptions{DisallowUnknowns: true}),
+		News: MarshalProperties(news, MarshalOptions{}),
 	}
-
 	resp, err := p.client.InspectChange(p.ctx.Request(), req)
 	if err != nil {
 		glog.V(7).Infof("resource[%v].InspectChange(id=%v,t=%v,...) failed: %v", p.pkg, id, t, err)
@@ -189,8 +172,7 @@ func (p *provider) InspectChange(t tokens.Type, id resource.ID,
 	for _, replace := range resp.GetReplaces() {
 		replaces = append(replaces, resource.PropertyKey(replace))
 	}
-
-	changes := UnmarshalProperties(resp.GetChanges(), MarshalOptions{RawResources: true})
+	changes := UnmarshalProperties(resp.GetChanges(), MarshalOptions{})
 
 	glog.V(7).Infof("resource[%v].Update(id=%v,t=%v,...) success: #replaces=%v #changes=%v",
 		p.pkg, id, t, len(replaces), len(changes))
@@ -216,10 +198,8 @@ func (p *provider) Update(t tokens.Type, id resource.ID,
 	req := &lumirpc.UpdateRequest{
 		Id:   string(id),
 		Type: string(t),
-		Olds: MarshalProperties(olds, MarshalOptions{
-			OldURNs: true, // permit old URNs since these are the old values.
-		}),
-		News: MarshalProperties(news, MarshalOptions{}),
+		Olds: MarshalProperties(olds, MarshalOptions{DisallowUnknowns: true}),
+		News: MarshalProperties(news, MarshalOptions{DisallowUnknowns: true}),
 	}
 
 	resp, err := p.client.Update(p.ctx.Request(), req)
@@ -242,7 +222,7 @@ func (p *provider) Delete(t tokens.Type, id resource.ID, props resource.Property
 	req := &lumirpc.DeleteRequest{
 		Id:         string(id),
 		Type:       string(t),
-		Properties: MarshalProperties(props, MarshalOptions{}),
+		Properties: MarshalProperties(props, MarshalOptions{DisallowUnknowns: true}),
 	}
 
 	if _, err := p.client.Delete(p.ctx.Request(), req); err != nil {

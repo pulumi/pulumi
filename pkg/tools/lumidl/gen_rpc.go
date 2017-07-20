@@ -417,7 +417,7 @@ func (g *RPCGenerator) EmitResource(w *tools.GenWriter, module tokens.Module, pk
 	w.Writefmtln("func (p *%vProvider) Unmarshal(", name)
 	w.Writefmtln("    v *pbstruct.Struct) (*%v, resource.PropertyMap, error) {", name)
 	w.Writefmtln("    var obj %v", name)
-	w.Writefmtln("    props := plugin.UnmarshalProperties(v, plugin.MarshalOptions{RawResources: true})")
+	w.Writefmtln("    props := plugin.UnmarshalProperties(v, plugin.MarshalOptions{})")
 	w.Writefmtln("    return &obj, props, mapper.MapIU(props.Mappable(), &obj)")
 	w.Writefmtln("}")
 	w.Writefmtln("")

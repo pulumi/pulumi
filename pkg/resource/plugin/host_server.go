@@ -91,11 +91,7 @@ func (eng *hostServer) ReadLocation(ctx context.Context,
 	if err != nil {
 		return nil, err
 	}
-	m, known := MarshalPropertyValue(v, MarshalOptions{})
-	if !known {
-		return nil, errors.Errorf("Location %v contained an unknown computed value", tok)
-	}
-	return m, nil
+	return MarshalPropertyValue(v, MarshalOptions{}), nil
 }
 
 // ReadLocations reads takes a class or module token and reads all (static) properties belonging to it.
@@ -106,9 +102,6 @@ func (eng *hostServer) ReadLocations(ctx context.Context,
 	if err != nil {
 		return nil, err
 	}
-	props, unks := MarshalPropertiesWithUnknowns(locs, MarshalOptions{})
-	if len(unks) > 0 {
-		return nil, errors.Errorf("Location %v contained %v unknown computed value(s)", tok, len(unks))
-	}
+	props := MarshalProperties(locs, MarshalOptions{})
 	return &lumirpc.ReadLocationsResponse{Properties: props}, nil
 }

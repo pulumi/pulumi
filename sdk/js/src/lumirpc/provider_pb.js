@@ -72,8 +72,7 @@ proto.lumirpc.CheckRequest.prototype.toObject = function(opt_includeInstance) {
 proto.lumirpc.CheckRequest.toObject = function(includeInstance, msg) {
   var f, obj = {
     type: jspb.Message.getFieldWithDefault(msg, 1, ""),
-    properties: (f = msg.getProperties()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
-    unknownsMap: (f = msg.getUnknownsMap()) ? f.toObject(includeInstance, undefined) : []
+    properties: (f = msg.getProperties()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f)
   };
 
   if (includeInstance) {
@@ -119,12 +118,6 @@ proto.lumirpc.CheckRequest.deserializeBinaryFromReader = function(msg, reader) {
       reader.readMessage(value,google_protobuf_struct_pb.Struct.deserializeBinaryFromReader);
       msg.setProperties(value);
       break;
-    case 3:
-      var value = msg.getUnknownsMap();
-      reader.readMessage(value, function(message, reader) {
-        jspb.Map.deserializeBinary(message, reader, jspb.BinaryReader.prototype.readString, jspb.BinaryReader.prototype.readBool);
-         });
-      break;
     default:
       reader.skipField();
       break;
@@ -167,10 +160,6 @@ proto.lumirpc.CheckRequest.serializeBinaryToWriter = function(message, writer) {
       f,
       google_protobuf_struct_pb.Struct.serializeBinaryToWriter
     );
-  }
-  f = message.getUnknownsMap(true);
-  if (f && f.getLength() > 0) {
-    f.serializeBinary(3, writer, jspb.BinaryWriter.prototype.writeString, jspb.BinaryWriter.prototype.writeBool);
   }
 };
 
@@ -217,24 +206,6 @@ proto.lumirpc.CheckRequest.prototype.clearProperties = function() {
  */
 proto.lumirpc.CheckRequest.prototype.hasProperties = function() {
   return jspb.Message.getField(this, 2) != null;
-};
-
-
-/**
- * map<string, bool> unknowns = 3;
- * @param {boolean=} opt_noLazyCreate Do not create the map if
- * empty, instead returning `undefined`
- * @return {!jspb.Map<string,boolean>}
- */
-proto.lumirpc.CheckRequest.prototype.getUnknownsMap = function(opt_noLazyCreate) {
-  return /** @type {!jspb.Map<string,boolean>} */ (
-      jspb.Message.getMapField(this, 3, opt_noLazyCreate,
-      null));
-};
-
-
-proto.lumirpc.CheckRequest.prototype.clearUnknownsMap = function() {
-  this.getUnknownsMap().clear();
 };
 
 
@@ -620,8 +591,7 @@ proto.lumirpc.NameRequest.prototype.toObject = function(opt_includeInstance) {
 proto.lumirpc.NameRequest.toObject = function(includeInstance, msg) {
   var f, obj = {
     type: jspb.Message.getFieldWithDefault(msg, 1, ""),
-    properties: (f = msg.getProperties()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
-    unknownsMap: (f = msg.getUnknownsMap()) ? f.toObject(includeInstance, undefined) : []
+    properties: (f = msg.getProperties()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f)
   };
 
   if (includeInstance) {
@@ -667,12 +637,6 @@ proto.lumirpc.NameRequest.deserializeBinaryFromReader = function(msg, reader) {
       reader.readMessage(value,google_protobuf_struct_pb.Struct.deserializeBinaryFromReader);
       msg.setProperties(value);
       break;
-    case 3:
-      var value = msg.getUnknownsMap();
-      reader.readMessage(value, function(message, reader) {
-        jspb.Map.deserializeBinary(message, reader, jspb.BinaryReader.prototype.readString, jspb.BinaryReader.prototype.readBool);
-         });
-      break;
     default:
       reader.skipField();
       break;
@@ -715,10 +679,6 @@ proto.lumirpc.NameRequest.serializeBinaryToWriter = function(message, writer) {
       f,
       google_protobuf_struct_pb.Struct.serializeBinaryToWriter
     );
-  }
-  f = message.getUnknownsMap(true);
-  if (f && f.getLength() > 0) {
-    f.serializeBinary(3, writer, jspb.BinaryWriter.prototype.writeString, jspb.BinaryWriter.prototype.writeBool);
   }
 };
 
@@ -765,24 +725,6 @@ proto.lumirpc.NameRequest.prototype.clearProperties = function() {
  */
 proto.lumirpc.NameRequest.prototype.hasProperties = function() {
   return jspb.Message.getField(this, 2) != null;
-};
-
-
-/**
- * map<string, bool> unknowns = 3;
- * @param {boolean=} opt_noLazyCreate Do not create the map if
- * empty, instead returning `undefined`
- * @return {!jspb.Map<string,boolean>}
- */
-proto.lumirpc.NameRequest.prototype.getUnknownsMap = function(opt_noLazyCreate) {
-  return /** @type {!jspb.Map<string,boolean>} */ (
-      jspb.Message.getMapField(this, 3, opt_noLazyCreate,
-      null));
-};
-
-
-proto.lumirpc.NameRequest.prototype.clearUnknownsMap = function() {
-  this.getUnknownsMap().clear();
 };
 
 
@@ -1667,8 +1609,7 @@ proto.lumirpc.InspectChangeRequest.toObject = function(includeInstance, msg) {
     id: jspb.Message.getFieldWithDefault(msg, 1, ""),
     type: jspb.Message.getFieldWithDefault(msg, 2, ""),
     olds: (f = msg.getOlds()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
-    news: (f = msg.getNews()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
-    unknownsMap: (f = msg.getUnknownsMap()) ? f.toObject(includeInstance, undefined) : []
+    news: (f = msg.getNews()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f)
   };
 
   if (includeInstance) {
@@ -1722,12 +1663,6 @@ proto.lumirpc.InspectChangeRequest.deserializeBinaryFromReader = function(msg, r
       var value = new google_protobuf_struct_pb.Struct;
       reader.readMessage(value,google_protobuf_struct_pb.Struct.deserializeBinaryFromReader);
       msg.setNews(value);
-      break;
-    case 5:
-      var value = msg.getUnknownsMap();
-      reader.readMessage(value, function(message, reader) {
-        jspb.Map.deserializeBinary(message, reader, jspb.BinaryReader.prototype.readString, jspb.BinaryReader.prototype.readBool);
-         });
       break;
     default:
       reader.skipField();
@@ -1786,10 +1721,6 @@ proto.lumirpc.InspectChangeRequest.serializeBinaryToWriter = function(message, w
       f,
       google_protobuf_struct_pb.Struct.serializeBinaryToWriter
     );
-  }
-  f = message.getUnknownsMap(true);
-  if (f && f.getLength() > 0) {
-    f.serializeBinary(5, writer, jspb.BinaryWriter.prototype.writeString, jspb.BinaryWriter.prototype.writeBool);
   }
 };
 
@@ -1881,24 +1812,6 @@ proto.lumirpc.InspectChangeRequest.prototype.clearNews = function() {
  */
 proto.lumirpc.InspectChangeRequest.prototype.hasNews = function() {
   return jspb.Message.getField(this, 4) != null;
-};
-
-
-/**
- * map<string, bool> unknowns = 5;
- * @param {boolean=} opt_noLazyCreate Do not create the map if
- * empty, instead returning `undefined`
- * @return {!jspb.Map<string,boolean>}
- */
-proto.lumirpc.InspectChangeRequest.prototype.getUnknownsMap = function(opt_noLazyCreate) {
-  return /** @type {!jspb.Map<string,boolean>} */ (
-      jspb.Message.getMapField(this, 5, opt_noLazyCreate,
-      null));
-};
-
-
-proto.lumirpc.InspectChangeRequest.prototype.clearUnknownsMap = function() {
-  this.getUnknownsMap().clear();
 };
 
 

@@ -32,7 +32,6 @@ service ResourceProvider {
 message CheckRequest {
     string type = 1;                       // the type token of the resource.
     google.protobuf.Struct properties = 2; // the full properties to use for validation.
-    map<string, bool> unknowns = 3;        // the optional set of properties whose values are unknown.
 }
 
 message CheckResponse {
@@ -47,7 +46,6 @@ message CheckFailure {
 message NameRequest {
     string type = 1;                       // the type token of the resource.
     google.protobuf.Struct properties = 2; // the full properties to use for name creation.
-    map<string, bool> unknowns = 3;        // the optional set of properties whose values are unknown.
 }
 
 message NameResponse {
@@ -78,7 +76,6 @@ message InspectChangeRequest {
     string type = 2;                 // the type token of the resource to inspect.
     google.protobuf.Struct olds = 3; // the old values of properties to inspect.
     google.protobuf.Struct news = 4; // the new values of properties to inspect.
-    map<string, bool> unknowns = 5;  // the optional set of properties whose values are unknown.
 }
 
 message InspectChangeResponse {
