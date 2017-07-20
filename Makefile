@@ -104,6 +104,10 @@ publish:
 	@$(ECHO) Publishing to: ${PUBTARGET}
 	mkdir -p ${PUBDIR}/cmd ${PUBDIR}/packs
 	cp ${GOPATH}/bin/lumi ${PUBDIR}/cmd
+	cp ./cmd/lumijs/lumijs ${PUBDIR}/cmd
+	sed -i "" 's/"\.\/bin\/cmd"/"\.\/lumijs.bin\/cmd"/g' ${PUBDIR}/cmd/lumijs
+	cp -R ./cmd/lumijs/bin/ ${PUBDIR}/cmd/lumijs.bin
+	cp -R ./cmd/lumijs/node_modules/ ${PUBDIR}/cmd/lumijs.bin/node_modules/
 	cp -R ${LUMILIB}/lumirt ${PUBDIR}/packs/lumirt
 	cp -R ${LUMILIB}/lumijs ${PUBDIR}/packs/lumijs
 	cp -R ${LUMILIB}/lumi ${PUBDIR}/packs/lumi
