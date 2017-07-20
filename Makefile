@@ -3,6 +3,8 @@ SHELL=/bin/bash
 
 PROJECT=github.com/pulumi/lumi
 PROJECT_PKGS=$(shell go list ./cmd/... ./pkg/... | grep -v /vendor/)
+LUMIROOT ?= /usr/local/lumi
+LUMILIB   = ${LUMIROOT}/packs
 TESTPARALLELISM=10
 
 ECHO=echo -e
@@ -91,9 +93,23 @@ lumipkg:
 awspkg:
 	@cd ./lib/aws && $(MAKE)
 
-.PHONY: verify
-verify:
-	@cd ./lib/aws && $(MAKE) verify
+PUBDIR := $(shell mktemp -du)
+GITVER := $(shell git rev-parse HEAD)
+PUBFILE := $(shell dirname ${PUBDIR})/${GITVER}.tgz
+PUBTARGET := "s3://eng.pulumi.com/releases/${GITVER}.tgz"
+publish:
+	@git diff-index --quiet HEAD -- || \
+		test -n "${PUBFORCE}" || \
+		(echo "error: Cannot publish a dirty repo; set PUBFORCE=true to override" && exit 99)
+	@$(ECHO) Publishing to: ${PUBTARGET}
+	mkdir -p ${PUBDIR}/cmd ${PUBDIR}/packs
+	cp ${GOPATH}/bin/lumi ${PUBDIR}/cmd
+	cp -R ${LUMILIB}/lumirt ${PUBDIR}/packs/lumirt
+	cp -R ${LUMILIB}/lumijs ${PUBDIR}/packs/lumijs
+	cp -R ${LUMILIB}/lumi ${PUBDIR}/packs/lumi
+	tar -czf ${PUBFILE} -C ${PUBDIR} .
+	aws s3 cp ${PUBFILE} ${PUBTARGET}
+.PHONY: publish
 
 .PHONY: examples
 examples:
