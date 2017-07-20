@@ -864,8 +864,10 @@ export class Transformer {
             return tokens.objectType;
         }
 
-        // Finally, if we got here, it's not a type we support yet; issue an error and return `dynamic`.
-        this.diagnostics.push(this.dctx.newInvalidTypeWarning(node, simple));
+        // Finally, if we got here, it's not a type we support yet; log an error and return `dynamic`.
+        if (log.v(5)) {
+            log.out(5).info(`Unrecognized type: node=${node}, kind=${ts.TypeFlags[ty.flags]}`);
+        }
         return tokens.dynamicType;
     }
 

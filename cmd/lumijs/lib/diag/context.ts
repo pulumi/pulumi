@@ -273,22 +273,6 @@ export class Context {
         };
     }
 
-    public newInvalidTypeWarning(node: ts.Node, ty: ts.Type): Diagnostic {
-        let name: string;
-        if (ty.symbol) {
-            name = `'${ty.symbol.name}' `;
-        }
-        else {
-            name = "";
-        }
-        return {
-            category: DiagnosticCategory.Warning,
-            code:     501,
-            message:  `Type ${name}(kind ${ts.TypeFlags[ty.flags]}) is not supported in LumiJS, emitting 'dynamic'`,
-            loc:      this.locationFrom(node),
-        };
-    }
-
     public newMissingDependencyError(pkg: tokens.PackageToken): Diagnostic {
         return {
             category: DiagnosticCategory.Error,
