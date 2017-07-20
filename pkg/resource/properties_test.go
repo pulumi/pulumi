@@ -120,3 +120,19 @@ func TestMapReplKeys(t *testing.T) {
 	assert.Equal(t, m["e"].(map[string]interface{})["e.n"], mam["E"].(map[string]interface{})["E.N"])
 	assert.Equal(t, m["e"].(map[string]interface{})["e.^"], mam["E"].(map[string]interface{})["E.^"])
 }
+
+func TestCopy(t *testing.T) {
+	src := NewPropertyMapFromMap(map[string]interface{}{
+		"a": "str",
+		"b": 42,
+	})
+	dst := src.Copy()
+	assert.NotNil(t, dst)
+	assert.Equal(t, len(src), len(dst))
+	assert.Equal(t, src["a"], dst["a"])
+	assert.Equal(t, src["b"], dst["b"])
+	src["a"] = NewNullProperty()
+	assert.Equal(t, NewStringProperty("str"), dst["a"])
+	src["c"] = NewNumberProperty(99.99)
+	assert.Equal(t, 2, len(dst))
+}
