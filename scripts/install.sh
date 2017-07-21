@@ -8,7 +8,7 @@ GITVER=${1}
 INSTALLDIR=${2}
 
 if [ -z "${GITVER}" ]; then
-    echo error: missing Git version argument
+    echo error: missing Git commit/tag/branch argument
     exit 1
 fi
 if [ -z "${INSTALLDIR}" ]; then
@@ -17,7 +17,7 @@ if [ -z "${INSTALLDIR}" ]; then
 fi
 
 # Make the directory, download the bits, and unzip/tar them in place.
-RELEASE=s3://eng.pulumi.com/releases/${GITVER}.tgz
+RELEASE=s3://eng.pulumi.com/releases/lumi/${GITVER}.tgz
 echo Installing ${RELEASE} to: ${PUBTARGET}
 mkdir -p ${INSTALLDIR}
 aws s3 cp ${RELEASE} ${INSTALLDIR}
