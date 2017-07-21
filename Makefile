@@ -40,7 +40,9 @@ install:
 
 .PHONY: lint
 lint:
+
 	@$(ECHO) "\033[0;32mLINT:\033[0m"
+
 	which ${GOMETALINTERBIN} >/dev/null
 	$(GOMETALINTER) ./pkg/... | sort ; exit "$${PIPESTATUS[0]}"
 	$(GOMETALINTER) ./cmd/lumi/... | sort ; exit "$${PIPESTATUS[0]}"
@@ -51,6 +53,7 @@ lint:
 #    - "Subprocess launching with variable": we intentionally launch processes dynamically.
 #    - "cyclomatic complexity" (disabled in config): TODO[pulumi/lumi#259]: need to fix many of these.
 LINT_SUPPRESS="or be unexported|Subprocess launching with variable"
+
 
 .PHONY: lint_quiet
 lint_quiet:

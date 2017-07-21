@@ -97,6 +97,49 @@ func (p *logSubscriptionFilterProvider) Create(ctx context.Context,
 	return p.newLogSubscriptionFilterID(obj.LogGroupName, name), nil
 }
 
+// Query returns an (possibly empty) array of resource objects.
+func (p *logSubscriptionFilterProvider) Query(ctx context.Context) ([]*cloudwatch.LogSubscriptionFilter, error) {
+	logGroups, err := logGroup.Query(ctx)
+	if err != nil {
+		return nil, err
+	}
+	var subscriptionFilters []*cloudwatch.LogSubscriptionFilter
+	for _, group := range logGroups {
+		resp, err := p.ctx.CloudwatchLogs().DescribeSubscriptionFilters(&awscloudwatch.DescribeSubscriptionFiltersInput{
+			LogGroupName: aws.String(group.LogGroupName),
+		}))
+		if err != nil {
+		return nil, err
+		} else if resp == nil {
+		return nil, errors.New("Cloudwatch query returned an empty response")
+		} else if len(resp.SubscriptionFilters) == 0 {
+		return nil, nil
+		} else if len(resp.SubscriptionFilters) > 1 {
+		return nil, errors.New("Only one subscription filter expected per log group")
+		}
+		filter := resp.SubscriptionFilters[0]
+
+		var distribution *cloudwatch.LogSubscriptionDistribution
+		if filter.Distribution != nil {
+			tmp := cloudwatch.LogSubscriptionDistribution(*filter.Distribution)
+			distribution = &tmp
+		}
+		var roleARN *awscommon.ARN
+		if filter.RoleArn != nil {
+			tmp := awscommon.ARN(*filter.RoleArn)
+			roleARN = &tmp
+		}
+
+		subscriptionFilters = append(subscriptionFilters, &cloudwatch.LogSubscriptionFilter{
+			LogGroupName:   group.LogGroupName,
+			DestinationArn: aws.StringValue(filter.DestinationArn),
+			CreationTime:   convutil.Int64PToFloat64P(filter.CreationTime),
+			Distribution:   distribution,
+			RoleARN:        roleARN,
+		})
+	}
+	return subscriptionFilters, nil
+}
 // Get reads the instance state identified by ID, returning a populated resource object, or an error if not found.
 func (p *logSubscriptionFilterProvider) Get(ctx context.Context,
 	id resource.ID) (*cloudwatch.LogSubscriptionFilter, error) {

@@ -153,6 +153,24 @@ func (p *provider) Get(t tokens.Type, id resource.ID) (resource.PropertyMap, err
 	return props, nil
 }
 
+// Query returns an array of resource references of a specified type.
+func (p *provider) Query(t tokens.Type) ([]resource.PropertyMap, error) {
+	contract.Assert(t != "")
+	glog.V(7).Infof("resource[%v].Query(t=%v) executing", p.pkg, t)
+	req := &lumirpc.QueryRequest{
+		Type: string(t),
+	}
+
+	_, err := p.client.Query(p.ctx.Request(), req)
+	if err != nil {
+		glog.V(7).Infof("resource[%v].Query(t=%v) failed: err=%v", p.pkg, t, err)
+		return nil, err
+	}
+
+	// Resp = QueryResponse
+	return nil, nil
+}
+
 // InspectChange checks what impacts a hypothetical update will have on the resource's properties.
 func (p *provider) InspectChange(t tokens.Type, id resource.ID,
 	olds resource.PropertyMap, news resource.PropertyMap) ([]resource.PropertyKey, resource.PropertyMap, error) {

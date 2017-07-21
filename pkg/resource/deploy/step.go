@@ -355,6 +355,66 @@ func (s *ReplaceStep) Skip() error {
 	return nil
 }
 
+// QueryStep is a read-only step that queries for all resources of a specific type.
+type QueryStep struct {
+	iter    *PlanIterator
+	t       symbols.Type
+	objs    []*resource.Object
+	outputs []resource.PropertyMap
+}
+
+var _ ReadStep = (*QueryStep)(nil)
+
+func NewQueryStep(iter *PlanIterator, t symbols.Type, objs []*resource.Object) Step {
+	return &QueryStep{
+		iter: iter,
+		t:    t,
+		objs: objs,
+	}
+}
+
+func (s *QueryStep) Op() StepOp                    { return OpGet }
+func (s *QueryStep) Plan() *Plan                   { return s.iter.p }
+func (s *QueryStep) Iterator() *PlanIterator       { return s.iter }
+func (s *QueryStep) Type() tokens.Type             { return s.t.TypeToken() }
+func (s *QueryStep) Resources() []*resource.Object { return s.objs }
+
+func (s *QueryStep) Pre() error {
+	prov, err := getProvider(s)
+	if err != nil {
+		return err
+	}
+	outs, err := prov.Query(s.Type())
+	if err != nil {
+		return err
+	}
+
+	s.outputs = outs
+	for _, obj := range s.objs {
+		if obj == nil {
+			obj = resource.NewEmptyObject(s.t)
+		}
+	}
+	for _, obj := range s.objs {
+		for _, out := range outs {
+			obj.SetProperties(out)
+		}
+	}
+	for _, obj := range s.objs {
+		s.iter.Produce(obj)
+	}
+
+	return nil
+}
+
+func (s *QueryStep) Apply() (resource.Status, error) {
+	return resource.StatusOK, nil
+}
+
+func (s *QueryStep) Skip() error {
+	return nil
+}
+
 // GetStep is a read-only step that queries for a single resource.
 type GetStep struct {
 	iter    *PlanIterator        // the current plan iteration.

@@ -237,6 +237,7 @@ func (g *RPCGenerator) EmitResource(w *tools.GenWriter, module tokens.Module, pk
 	if !res.Named {
 		w.Writefmtln("    Name(ctx context.Context, obj *%v) (string, error)", name)
 	}
+
 	w.Writefmtln("    Create(ctx context.Context, obj *%v) (resource.ID, error)", name)
 	w.Writefmtln("    Get(ctx context.Context, id resource.ID) (*%v, error)", name)
 	w.Writefmtln("    InspectChange(ctx context.Context,")
@@ -244,6 +245,7 @@ func (g *RPCGenerator) EmitResource(w *tools.GenWriter, module tokens.Module, pk
 	w.Writefmtln("    Update(ctx context.Context,")
 	w.Writefmtln("        id resource.ID, old *%[1]v, new *%[1]v, diff *resource.ObjectDiff) error", name)
 	w.Writefmtln("    Delete(ctx context.Context, id resource.ID) error")
+	w.Writefmtln("    Query(ctx context.Context, type string) ([]*%v, error)", name)
 	w.Writefmtln("}")
 	w.Writefmtln("")
 
@@ -312,6 +314,7 @@ func (g *RPCGenerator) EmitResource(w *tools.GenWriter, module tokens.Module, pk
 		w.Writefmtln("    name, err := p.ops.Name(ctx, obj)")
 		w.Writefmtln("    return &lumirpc.NameResponse{Name: name}, err")
 	}
+
 	w.Writefmtln("}")
 	w.Writefmtln("")
 	w.Writefmtln("func (p *%vProvider) Create(", name)
@@ -322,6 +325,7 @@ func (g *RPCGenerator) EmitResource(w *tools.GenWriter, module tokens.Module, pk
 	w.Writefmtln("        return nil, err")
 	w.Writefmtln("    }")
 	w.Writefmtln("    id, err := p.ops.Create(ctx, obj)")
+
 	w.Writefmtln("    if err != nil {")
 	w.Writefmtln("        return nil, err")
 	w.Writefmtln("    }")
@@ -342,6 +346,21 @@ func (g *RPCGenerator) EmitResource(w *tools.GenWriter, module tokens.Module, pk
 	w.Writefmtln("    }, nil")
 	w.Writefmtln("}")
 	w.Writefmtln("")
+	w.Writefmtln("func (p *%vProvider) Query(", name)
+	w.Writefmtln("		ctx context.Context, req *lumirpc.QueryRequest) (*lumirpc.QueryResponse, error) {")
+	w.Writefmtln(" 	contract.Assert(req.GetType() == string(%vToken))", name)
+	w.Writefmtln(" 	objs, err := p.ops.Query(ctx,type)")
+	w.Writefmtln(" 	if err != nil {")
+	w.Writefmtln(" 		return nil, err")
+	w.Writefmtln(" 	}")
+	w.Writefmtln("		var ret []*%v", name)
+	w.Writefmtln(" 	for _, obj := range objs {")
+	w.Writefmtln("			ret = append(ret, plugin.MarshalProperties(")
+	w.Writefmtln("			nil, resource.NewPropertyMap(obj), plugin.MarshalOptions{})")
+	w.Writefmtln("		return &lumirpc.QueryResponse{ret}")
+	w.Writefmtln("		}")
+	w.Writefmtln("}")
+	w.Writefmtln("")
 	w.Writefmtln("func (p *%vProvider) InspectChange(", name)
 	w.Writefmtln("    ctx context.Context, req *lumirpc.InspectChangeRequest) (*lumirpc.InspectChangeResponse, error) {")
 	w.Writefmtln("    contract.Assert(req.GetType() == string(%vToken))", name)
@@ -357,6 +376,7 @@ func (g *RPCGenerator) EmitResource(w *tools.GenWriter, module tokens.Module, pk
 	w.Writefmtln("    var replaces []string")
 	w.Writefmtln("    diff := oldprops.Diff(newprops)")
 	w.Writefmtln("    if diff != nil {")
+
 	for _, opts := range propopts {
 		if opts.Replaces {
 			w.Writefmtln("        if diff.Changed(\"%v\") {", opts.Name)

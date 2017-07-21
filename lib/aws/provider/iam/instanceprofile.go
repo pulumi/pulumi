@@ -90,6 +90,31 @@ func (p *InstanceProfileProvider) Create(ctx context.Context, obj *iam.InstanceP
 	return resource.ID(*result.InstanceProfile.Arn), nil
 }
 
+// Query returns an (possibly empty) array of resource objects.
+func (p *InstanceProfileProvider) Query(ctx context.Context) (*iam.InstanceProfile, error) {
+	instProfs, err := p.ctx.IAM().ListInstanceProfiles(&iam.ListInstanceProfilesInput{})
+	if err != nil {
+		return nil, err
+	}
+	var instanceProfiles []*iam.InstanceProfile
+
+	for _, inst := range instProfs.InstanceProfiles {
+		if inst == nil {
+			return nil, nil
+		}
+		var roles []resource.ID
+		for _, role := inst.Roles {
+			roles = append(roles, resource.ID(*role.Arn))
+		}
+		instanceProfiles = append(instanceProfiles, &iam.InstanceProfile{
+			Path:                inst.Path,
+			InstanceProfileName: inst.InstanceProfileName,
+			Roles:               roles,
+			ARN:                 awscommon.ARN(aws.StringValue(inst.Arn)),
+		})
+	}
+	return instanceProfiles, nil
+}
 // Get reads the instance state identified by ID, returning a populated resource object, or an error if not found.
 func (p *InstanceProfileProvider) Get(ctx context.Context, id resource.ID) (*iam.InstanceProfile, error) {
 	name, err := arn.ParseResourceName(id)

@@ -168,6 +168,51 @@ func (p *funcProvider) Create(ctx context.Context, obj *lambda.Function) (resour
 	return arn, nil
 }
 
+// Query returns an (possibly empty) array of resource objects.
+func (p *funcProvider) Query(ctx context.Context) ([]*lambda.Function, error) {
+	var names []string
+	funcs, err := p.ctx.Lambda().ListFunctions(&awslambda.ListFunctionsInput{})
+	if err != nil {
+		return nil, err
+	}
+	var lambdas []*lambda.Function
+	for _, function := range funcs.Functions {
+		name := function.FunctionName
+		funcresp, err := p.ctx.Lambda().GetFunction(&awslambda.GetFunctionInput{FunctionName: aws.String(name)})
+		if err != nil {
+			if awsctx.IsAWSError(err, awslambda.ErrCodeResourceNotFoundException) {
+				return nil, nil
+			}
+			return nil, err
+		}
+		contract.Assert(funcresp != nil)
+		config := funcresp.Configuration
+		contract.Assert(config != nil)
+		var env *lambda.Environment
+		if config.Environment != nil {
+			envmap := lambda.Environment(aws.StringValueMap(config.Environment.Variables))
+			env = &envmap
+		}
+
+		lambdas = append(lambdas, &lambda.Function{
+			ARN:          awscommon.ARN(aws.StringValue(config.FunctionArn)),
+			Version:      aws.StringValue(config.Version),
+			CodeSHA256:   aws.StringValue(config.CodeSha256),
+			LastModified: aws.StringValue(config.LastModified),
+			Handler:      aws.StringValue(config.Handler),
+			Role:         resource.ID(aws.StringValue(config.Role)),
+			Runtime:      lambda.Runtime(aws.StringValue(config.Runtime)),
+			FunctionName: config.FunctionName,
+			Description:  config.Description,
+			Environment:  env,
+			KMSKey:       resource.MaybeID(config.KMSKeyArn),
+			MemorySize:   convutil.Int64PToFloat64P(config.MemorySize),
+			Timeout:      convutil.Int64PToFloat64P(config.Timeout),
+		})
+	}
+	return lambdas, nil
+}
+
 // Get reads the instance state identified by ID, returning a populated resource object, or an error if not found.
 func (p *funcProvider) Get(ctx context.Context, id resource.ID) (*lambda.Function, error) {
 	name, err := arn.ParseResourceName(id)

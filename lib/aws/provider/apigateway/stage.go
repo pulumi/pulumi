@@ -83,6 +83,43 @@ func (p *stageProvider) Create(ctx context.Context, obj *apigateway.Stage) (reso
 	return NewStageID(p.ctx.Region(), restAPIID, *stage.StageName), nil
 }
 
+// Query returns an (possibly empty) array of resource objects.
+func (p *stageProvider) Query(ctx context.Context) ([]*apigateway.Stage, error) {
+	restAPIs, err := restapi.Query(ctx)
+	if err != nil {
+		return nil, err
+	}
+	var stages []*apigateway.Stage
+	for _, restAPI := range restAPIs {
+		for _, deploys := range p.ctx.APIGateway().GetDeployments(&apigateway.GetDeploymentsInput{RestApiId: restAPI.Id}).Items {
+			deploymentStages := p.ctx.APIGateway().GetStages(&apigateway.GetStagesInput{
+				DeploymentId: deploys,
+				RestApiId:    restAPI.Id}).Item
+			for _, stage := range deploymentStages {
+				variables := aws.StringValueMap(stage.Variables)
+				url := "https://" + restAPI.Id + ".execute-api." + p.ctx.Region() + ".amazonaws.com/" + stage.StageName
+				executionARN := "arn:aws:execute-api:" + p.ctx.Region() + ":" + p.ctx.AccountID() + ":" + restAPI.Id + "/" + stage.StageName
+
+				stages = append(stages, &apigateway.Stage{
+					RestAPI:             NewRestAPIID(p.ctx.Region(), restAPI.Id),
+					Deployment:          NewDeploymentID(p.ctx.Region(), restAPI.Id, aws.StringValue(stage.DeploymentId)),
+					CacheClusterEnabled: stage.CacheClusterEnabled,
+					CacheClusterSize:    stage.CacheClusterSize,
+					StageName:           aws.StringValue(stage.StageName),
+					Variables:           &variables,
+					Description:         stage.Description,
+					CreatedDate:         stage.CreatedDate.String(),
+					LastUpdatedDate:     stage.LastUpdatedDate.String(),
+					URL:                 url,
+					ExecutionARN:        executionARN,
+				})
+			}
+		}
+	}
+
+	return stages, nil
+}
+
 // Get reads the instance state identified by ID, returning a populated resource object, or an error if not found.
 func (p *stageProvider) Get(ctx context.Context, id resource.ID) (*apigateway.Stage, error) {
 	restAPIID, stageName, err := ParseStageID(id)

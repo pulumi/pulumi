@@ -97,6 +97,28 @@ func (p *topicProvider) Create(ctx context.Context, obj *sns.Topic) (resource.ID
 	return resource.ID(*resp.TopicArn), nil
 }
 
+// Query returns an (possibly empty) array of resource objects.
+func (p *topicProvider) Query(ctx context.Context) (*sns.Topic, error) {
+	var topics []*sns.Topic
+	tops, err := p.ctx.SNS().ListTopics(&awssns.ListTopicsInput{})
+	if err != nil {
+		return nil, err
+	}
+	for _, topic := range tops.Topics {
+		resp, err := p.ctx.SNS().GetTopicAttributes(&awssns.GetTopicAttributesInput{
+			TopicArn: aws.String(string(topic.TopicArn))
+		})
+		if err != nil {
+			return nil, err
+		}
+		topics = append(topics, &sns.Topic{
+		TopicName:   &topic.TopicArn,
+		DisplayName: resp.Attributes[displayNameAttributeName],
+		})
+	}
+	return topics, nil
+}
+
 // Get reads the instance state identified by ID, returning a populated resource object, or an error if not found.
 func (p *topicProvider) Get(ctx context.Context, id resource.ID) (*sns.Topic, error) {
 	name, err := arn.ParseResourceName(id)

@@ -114,6 +114,67 @@ func (p *environmentProvider) Create(ctx context.Context, obj *elasticbeanstalk.
 	return arn.NewElasticBeanstalkEnvironmentID(p.ctx.Region(), p.ctx.AccountID(), appname, name), nil
 }
 
+// Query returns an (possibly empty) array of resource objects.
+func (p *environmentProvider) Query(ctx context.Context) ([]*elasticbeanstalk.Environment, error) {
+	envs, err := p.ctx.ElasticBeanstalk().DescribeEnvironments(&elasticbeanstalk.DescribeEnvironmentsInput{})
+	if err != nil {
+		return nil, err
+	}
+	var ebsenvs []*elasticbeanstalk.Environment
+
+	for _, env := range envs.Environments {
+		if env.Environments == nil || len(env.Environments) == 0 {
+			return nil, nil
+		}
+
+		var versionLabel *resource.ID
+		if env.VersionLabel != nil {
+			version := arn.NewElasticBeanstalkApplicationVersionID(
+				p.ctx.Region(), p.ctx.AccountID(), appname, aws.StringValue(env.VersionLabel))
+			versionLabel = &version
+		}
+		envobj := &elasticbeanstalk.Environment{
+			Application:       arn.NewElasticBeanstalkApplicationID(p.ctx.Region(), p.ctx.AccountID(), appname),
+			Description:       env.Description,
+			EnvironmentName:   env.EnvironmentName,
+			SolutionStackName: env.SolutionStackName,
+			Version:           versionLabel,
+			EndpointURL:       aws.StringValue(env.EndpointURL),
+		}
+
+		// TODO[pulumi/lumi#189] We may want to call `DecribeConfigurationSettings` to populate all of
+		// the option settings onto the returned object.  However, this returns all of the settings with
+		// their default values, not just those provided as input.  This leads to signalling deletions
+		// on future updates.  For now, we will populate a separate output property with the full set
+		// of settings, but we should revisist this once we've resolved #189.
+
+		// Next see if there are any configuration option settings and, if so, set them on the return.
+		confresp, err := p.ctx.ElasticBeanstalk().DescribeConfigurationSettings(
+			&awselasticbeanstalk.DescribeConfigurationSettingsInput{
+				ApplicationName: aws.String(appname),
+				EnvironmentName: aws.String(envname),
+			})
+		if err != nil {
+			return nil, err
+		}
+		if confresp != nil && len(confresp.ConfigurationSettings) > 0 {
+			var options []elasticbeanstalk.OptionSetting
+			for _, setting := range confresp.ConfigurationSettings {
+				for _, option := range setting.OptionSettings {
+					options = append(options, elasticbeanstalk.OptionSetting{
+						Namespace:  aws.StringValue(option.Namespace),
+						OptionName: aws.StringValue(option.OptionName),
+						Value:      aws.StringValue(option.Value),
+					})
+				}
+			}
+			envobj.AllOptionSettings = &options
+		}
+		ebsenvs = append(ebsenvs, envobj)
+	}
+	return ebsenvs, nil
+}
+
 // Get reads the instance state identified by ID, returning a populated resource object, or an error if not found.
 func (p *environmentProvider) Get(ctx context.Context, id resource.ID) (*elasticbeanstalk.Environment, error) {
 	appname, envname, err := arn.ParseResourceNamePair(id)
