@@ -1,7 +1,10 @@
 #!/bin/bash
 set -ex
 
-LUMIROOT=/usr/local/lumi
+# Default the Lumi root to the right place, but let it be overridden.
+if [ -z "${LUMIROOT}" ]; then
+    LUMIROOT=/usr/local/lumi
+fi
 LUMILIB=${LUMIROOT}/packs
 
 PUBDIR=$(mktemp -du)
