@@ -14,6 +14,8 @@ before_install:
     # Install Yarn as per https://yarnpkg.com/lang/en/docs/install-ci/#travis-tab.
     - curl -o- -L https://yarnpkg.com/install.sh | bash -s -- --version 0.24.6
     - export PATH=$HOME/.yarn/bin:$PATH
+    # Install the AWS CLI so that we can publish the resulting release (if applicable) at the end.
+    - pip install --upgrade --user awscli
 cache:
     yarn: true
 install:
