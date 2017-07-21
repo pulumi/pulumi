@@ -1,5 +1,0 @@
-name: cpuwatch
-description: A package for monitoring CPU levels of AWS instances.
-dependencies:
-    aws: "*"
-

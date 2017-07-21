@@ -1,5 +1,0 @@
-name: aws/minimal
-description: An empty Lumi script.
-dependencies:
-    aws: "*"
-
