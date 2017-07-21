@@ -24,7 +24,7 @@ service ResourceProvider {
     // InspectChange checks what impacts a hypothetical update will have on the resource's properties.
     rpc InspectChange(InspectChangeRequest) returns (InspectChangeResponse) {}
     // Update updates an existing resource with new values.
-    rpc Update(UpdateRequest) returns (google.protobuf.Empty) {}
+    rpc Update(UpdateRequest) returns (UpdateResponse) {}
     // Delete tears down an existing resource with the given ID.  If it fails, the resource is assumed to still exist.
     rpc Delete(DeleteRequest) returns (google.protobuf.Empty) {}
 }
@@ -32,7 +32,6 @@ service ResourceProvider {
 message CheckRequest {
     string type = 1;                       // the type token of the resource.
     google.protobuf.Struct properties = 2; // the full properties to use for validation.
-    map<string, bool> unknowns = 3;        // the optional set of properties whose values are unknown.
 }
 
 message CheckResponse {
@@ -47,7 +46,6 @@ message CheckFailure {
 message NameRequest {
     string type = 1;                       // the type token of the resource.
     google.protobuf.Struct properties = 2; // the full properties to use for name creation.
-    map<string, bool> unknowns = 3;        // the optional set of properties whose values are unknown.
 }
 
 message NameResponse {
@@ -60,7 +58,8 @@ message CreateRequest {
 }
 
 message CreateResponse {
-    string id = 1; // the ID of the resource created.
+    string id = 1;                         // the ID of the resource created.
+    google.protobuf.Struct properties = 2; // any properties that were computed during creation.
 }
 
 message GetRequest {
@@ -77,7 +76,6 @@ message InspectChangeRequest {
     string type = 2;                 // the type token of the resource to inspect.
     google.protobuf.Struct olds = 3; // the old values of properties to inspect.
     google.protobuf.Struct news = 4; // the new values of properties to inspect.
-    map<string, bool> unknowns = 5;  // the optional set of properties whose values are unknown.
 }
 
 message InspectChangeResponse {
@@ -92,8 +90,13 @@ message UpdateRequest {
     google.protobuf.Struct news = 4; // the new values of properties to update.
 }
 
+message UpdateResponse {
+    google.protobuf.Struct properties = 1; // any properties that were computed during updating.
+}
+
 message DeleteRequest {
-    string id = 1;   // the ID of the resource to delete.
-    string type = 2; // the type token of the resource to update.
+    string id = 1;                         // the ID of the resource to delete.
+    string type = 2;                       // the type token of the resource to update.
+    google.protobuf.Struct properties = 3; // the current properties on the resource.
 }
 

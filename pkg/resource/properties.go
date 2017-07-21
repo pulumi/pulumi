@@ -117,6 +117,24 @@ func (m PropertyMap) MapRepl(replk func(string) (string, bool),
 	return obj
 }
 
+// Copy makes a shallow copy of the map.
+func (m PropertyMap) Copy() PropertyMap {
+	new := make(PropertyMap)
+	for k, v := range m {
+		new[k] = v
+	}
+	return new
+}
+
+// Merge simply merges in another map atop another, and returns the result.
+func (m PropertyMap) Merge(other PropertyMap) PropertyMap {
+	new := m.Copy()
+	for k, v := range other {
+		new[k] = v
+	}
+	return new
+}
+
 // StableKeys returns all of the map's keys in a stable order.
 func (m PropertyMap) StableKeys() []PropertyKey {
 	sorted := make([]PropertyKey, 0, len(m))
@@ -171,6 +189,20 @@ func NewPropertyValueRepl(v interface{},
 	switch t := v.(type) {
 	case bool:
 		return NewBoolProperty(t)
+	case int:
+		return NewNumberProperty(float64(t))
+	case uint:
+		return NewNumberProperty(float64(t))
+	case int32:
+		return NewNumberProperty(float64(t))
+	case uint32:
+		return NewNumberProperty(float64(t))
+	case int64:
+		return NewNumberProperty(float64(t))
+	case uint64:
+		return NewNumberProperty(float64(t))
+	case float32:
+		return NewNumberProperty(float64(t))
 	case float64:
 		return NewNumberProperty(t)
 	case string:

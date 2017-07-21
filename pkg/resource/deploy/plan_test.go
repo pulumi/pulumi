@@ -398,13 +398,13 @@ type testProvider struct {
 	pkg           tokens.Package
 	check         func(tokens.Type, resource.PropertyMap) ([]plugin.CheckFailure, error)
 	name          func(tokens.Type, resource.PropertyMap) (tokens.QName, error)
-	create        func(tokens.Type, resource.PropertyMap) (resource.ID, resource.Status, error)
+	create        func(tokens.Type, resource.PropertyMap) (resource.ID, resource.PropertyMap, resource.Status, error)
 	get           func(tokens.Type, resource.ID) (resource.PropertyMap, error)
 	inspectChange func(tokens.Type, resource.ID,
 		resource.PropertyMap, resource.PropertyMap) ([]resource.PropertyKey, resource.PropertyMap, error)
 	update func(tokens.Type, resource.ID,
-		resource.PropertyMap, resource.PropertyMap) (resource.Status, error)
-	delete func(tokens.Type, resource.ID) (resource.Status, error)
+		resource.PropertyMap, resource.PropertyMap) (resource.PropertyMap, resource.Status, error)
+	delete func(tokens.Type, resource.ID, resource.PropertyMap) (resource.Status, error)
 }
 
 func (prov *testProvider) Close() error {
@@ -419,7 +419,8 @@ func (prov *testProvider) Check(t tokens.Type, props resource.PropertyMap) ([]pl
 func (prov *testProvider) Name(t tokens.Type, props resource.PropertyMap) (tokens.QName, error) {
 	return prov.name(t, props)
 }
-func (prov *testProvider) Create(t tokens.Type, props resource.PropertyMap) (resource.ID, resource.Status, error) {
+func (prov *testProvider) Create(t tokens.Type, props resource.PropertyMap) (resource.ID,
+	resource.PropertyMap, resource.Status, error) {
 	return prov.create(t, props)
 }
 func (prov *testProvider) Get(t tokens.Type, id resource.ID) (resource.PropertyMap, error) {
@@ -430,9 +431,9 @@ func (prov *testProvider) InspectChange(t tokens.Type, id resource.ID,
 	return prov.inspectChange(t, id, olds, news)
 }
 func (prov *testProvider) Update(t tokens.Type, id resource.ID,
-	olds resource.PropertyMap, news resource.PropertyMap) (resource.Status, error) {
+	olds resource.PropertyMap, news resource.PropertyMap) (resource.PropertyMap, resource.Status, error) {
 	return prov.update(t, id, olds, news)
 }
-func (prov *testProvider) Delete(t tokens.Type, id resource.ID) (resource.Status, error) {
-	return prov.delete(t, id)
+func (prov *testProvider) Delete(t tokens.Type, id resource.ID, props resource.PropertyMap) (resource.Status, error) {
+	return prov.delete(t, id, props)
 }

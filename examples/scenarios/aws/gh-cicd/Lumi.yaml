@@ -1,6 +1,0 @@
-name: gh-cicd
-description: A serverless CI/CD system that uses GitHub webhooks.
-dependencies:
-    lumi: "*"
-    aws: "*"
-

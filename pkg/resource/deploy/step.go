@@ -133,17 +133,20 @@ func (s *CreateStep) Apply() (resource.Status, error) {
 	if err != nil {
 		return resource.StatusOK, err
 	}
-	id, rst, err := prov.Create(t, s.inputs)
+	id, outs, rst, err := prov.Create(t, s.inputs)
 	if err != nil {
 		return rst, err
 	}
 	contract.Assert(id != "")
 
-	// Read the resource state back (to fetch outputs) and store everything on the live object.
-	outs, err := prov.Get(t, id)
-	if err != nil {
-		return resource.StatusUnknown, err
+	// If Create returned outputs, we have no need to query the provider again.  If not, however, issue a Get.
+	if outs == nil {
+		if outs, err = prov.Get(t, id); err != nil {
+			return resource.StatusUnknown, err
+		}
 	}
+
+	// Copy any of the output properties on the live object state.
 	s.outputs = outs
 	state := s.new.Update(s.urn, id, outs)
 	s.iter.AppendStateSnapshot(state)
@@ -196,7 +199,7 @@ func (s *DeleteStep) Apply() (resource.Status, error) {
 	if err != nil {
 		return resource.StatusOK, err
 	}
-	if rst, err := prov.Delete(s.old.Type(), s.old.ID()); err != nil {
+	if rst, err := prov.Delete(s.old.Type(), s.old.ID(), s.old.Combined()); err != nil {
 		return rst, err
 	}
 	s.iter.MarkStateSnapshot(s.old)
@@ -258,15 +261,19 @@ func (s *UpdateStep) Apply() (resource.Status, error) {
 	if err != nil {
 		return resource.StatusOK, err
 	}
-	if rst, upderr := prov.Update(t, id, s.old.Inputs(), s.inputs); upderr != nil {
+	outs, rst, upderr := prov.Update(t, id, s.old.Combined(), s.inputs)
+	if upderr != nil {
 		return rst, upderr
 	}
 
-	// Now read the resource state back in case the update triggered cascading updates to other properties.
-	outs, geterr := prov.Get(t, id)
-	if geterr != nil {
-		return resource.StatusUnknown, geterr
+	// If Update returned outputs, we have no need to query the provider again.  If not, however, issue a Get.
+	if outs == nil {
+		if outs, err = prov.Get(t, id); err != nil {
+			return resource.StatusUnknown, err
+		}
 	}
+
+	// Now copy any output state back in case the update triggered cascading updates to other properties.
 	s.outputs = outs
 	state := s.new.Update(s.old.URN(), id, outs)
 	s.iter.MarkStateSnapshot(s.old)
@@ -329,17 +336,20 @@ func (s *ReplaceStep) Apply() (resource.Status, error) {
 	if err != nil {
 		return resource.StatusOK, err
 	}
-	id, rst, err := prov.Create(t, s.inputs)
+	id, outs, rst, err := prov.Create(t, s.inputs)
 	if err != nil {
 		return rst, err
 	}
 	contract.Assert(id != "")
 
-	// Read the resource state back (to fetch outputs) and store everything on the live object.
-	outs, err := prov.Get(t, id)
-	if err != nil {
-		return resource.StatusUnknown, err
+	// If Create returned outputs, we have no need to query the provider again.  If not, however, issue a Get.
+	if outs == nil {
+		if outs, err = prov.Get(t, id); err != nil {
+			return resource.StatusUnknown, err
+		}
 	}
+
+	// Copy resource state back to observe outputs and store everything on the live object.
 	s.outputs = outs
 	state := s.new.Update(s.old.URN(), id, outs)
 	s.iter.MarkStateSnapshot(s.old)

@@ -333,6 +333,31 @@ func stringToUpperCase(intrin *rt.Intrinsic, e *evaluator, this *rt.Object, args
 	return rt.NewReturnUnwind(rt.NewStringObject(out))
 }
 
+func stringSplit(intrin *rt.Intrinsic, e *evaluator, this *rt.Object, args []*rt.Object) *rt.Unwind {
+	if this == nil || this.IsNull() {
+		return e.NewException(intrin.Tree(), "Expected receiver to be non-null")
+	}
+	if !this.IsString() {
+		return e.NewException(intrin.Tree(), "Expected receiver to be a string value")
+	}
+	str := this.StringValue()
+	arr := []*rt.Pointer{}
+	if len(args) < 1 {
+		arr = append(arr, rt.NewPointer(rt.NewStringObject(str), false, nil, nil))
+	} else {
+		sep := args[0]
+		if !sep.IsString() {
+			return e.NewException(intrin.Tree(), "Expected separate to be a string value")
+		}
+		parts := strings.Split(str, sep.StringValue())
+		for _, part := range parts {
+			arr = append(arr, rt.NewPointer(rt.NewStringObject(part), false, nil, nil))
+		}
+	}
+
+	return rt.NewReturnUnwind(rt.NewArrayObject(types.String, &arr))
+}
+
 type jsonSerializer struct {
 	stack  map[*rt.Object]bool
 	intrin *rt.Intrinsic

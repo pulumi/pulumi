@@ -48,14 +48,9 @@ func (a *analyzer) Name() tokens.QName { return a.name }
 // Analyze analyzes a single resource object, and returns any errors that it finds.
 func (a *analyzer) Analyze(t tokens.Type, props resource.PropertyMap) ([]AnalyzeFailure, error) {
 	glog.V(7).Infof("analyzer[%v].Analyze(t=%v,#props=%v) executing", a.name, t, len(props))
-	pstr, unks := MarshalPropertiesWithUnknowns(props, MarshalOptions{
-		OldURNs:      true, // permit old URNs, since this is pre-update.
-		RawResources: true, // often used during URN creation; IDs won't be ready.
-	})
 	req := &lumirpc.AnalyzeRequest{
 		Type:       string(t),
-		Properties: pstr,
-		Unknowns:   unks,
+		Properties: MarshalProperties(props, MarshalOptions{}),
 	}
 
 	resp, err := a.client.Analyze(a.ctx.Request(), req)

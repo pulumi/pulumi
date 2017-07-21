@@ -40,6 +40,7 @@ func init() {
 		"lumi:builtin/string:getLength":   stringGetLength,
 		"lumi:builtin/string:toLowerCase": stringToLowerCase,
 		"lumi:builtin/string:toUpperCase": stringToUpperCase,
+		"lumi:builtin/string:split":       stringSplit,
 	}
 }
 

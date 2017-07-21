@@ -60,8 +60,7 @@ proto.lumirpc.AnalyzeRequest.prototype.toObject = function(opt_includeInstance) 
 proto.lumirpc.AnalyzeRequest.toObject = function(includeInstance, msg) {
   var f, obj = {
     type: jspb.Message.getFieldWithDefault(msg, 1, ""),
-    properties: (f = msg.getProperties()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f),
-    unknownsMap: (f = msg.getUnknownsMap()) ? f.toObject(includeInstance, undefined) : []
+    properties: (f = msg.getProperties()) && google_protobuf_struct_pb.Struct.toObject(includeInstance, f)
   };
 
   if (includeInstance) {
@@ -107,12 +106,6 @@ proto.lumirpc.AnalyzeRequest.deserializeBinaryFromReader = function(msg, reader)
       reader.readMessage(value,google_protobuf_struct_pb.Struct.deserializeBinaryFromReader);
       msg.setProperties(value);
       break;
-    case 3:
-      var value = msg.getUnknownsMap();
-      reader.readMessage(value, function(message, reader) {
-        jspb.Map.deserializeBinary(message, reader, jspb.BinaryReader.prototype.readString, jspb.BinaryReader.prototype.readBool);
-         });
-      break;
     default:
       reader.skipField();
       break;
@@ -155,10 +148,6 @@ proto.lumirpc.AnalyzeRequest.serializeBinaryToWriter = function(message, writer)
       f,
       google_protobuf_struct_pb.Struct.serializeBinaryToWriter
     );
-  }
-  f = message.getUnknownsMap(true);
-  if (f && f.getLength() > 0) {
-    f.serializeBinary(3, writer, jspb.BinaryWriter.prototype.writeString, jspb.BinaryWriter.prototype.writeBool);
   }
 };
 
@@ -205,24 +194,6 @@ proto.lumirpc.AnalyzeRequest.prototype.clearProperties = function() {
  */
 proto.lumirpc.AnalyzeRequest.prototype.hasProperties = function() {
   return jspb.Message.getField(this, 2) != null;
-};
-
-
-/**
- * map<string, bool> unknowns = 3;
- * @param {boolean=} opt_noLazyCreate Do not create the map if
- * empty, instead returning `undefined`
- * @return {!jspb.Map<string,boolean>}
- */
-proto.lumirpc.AnalyzeRequest.prototype.getUnknownsMap = function(opt_noLazyCreate) {
-  return /** @type {!jspb.Map<string,boolean>} */ (
-      jspb.Message.getMapField(this, 3, opt_noLazyCreate,
-      null));
-};
-
-
-proto.lumirpc.AnalyzeRequest.prototype.clearUnknownsMap = function() {
-  this.getUnknownsMap().clear();
 };
 
 

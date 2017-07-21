@@ -16,7 +16,6 @@ service Analyzer {
 message AnalyzeRequest {
     string type = 1;                       // the type token of the resource.
     google.protobuf.Struct properties = 2; // the full properties to use for validation.
-    map<string, bool> unknowns = 3;        // the optional set of properties whose values are unknown.
 }
 
 message AnalyzeResponse {
