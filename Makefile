@@ -13,10 +13,10 @@ GOMETALINTER=${GOMETALINTERBIN} --config=Gometalinter.json
 default: banner vet test install lint_quiet
 
 .PHONY: all
-all: banner_all vet test install lint_quiet lumijs lumirtpkg lumijspkg lumipkg awspkg
+all: banner_all vet test install lint_quiet lumijs lumirtpkg lumijspkg lumipkg
 
 .PHONY: nightly
-nightly: banner_all vet test install lint_quiet lumijs lumirtpkg lumijspkg lumipkg awspkg examples gocover
+nightly: banner_all vet test install lint_quiet lumijs lumirtpkg lumijspkg lumipkg examples gocover
 
 .PHONY: banner
 banner:
@@ -75,21 +75,13 @@ test:
 lumijs:
 	@cd ./cmd/lumijs && $(MAKE)
 
-.PHONY: lumirtpkg
 lumirtpkg:
 	@cd ./lib/lumirt && $(MAKE)
-
-.PHONY: lumijspkg
 lumijspkg:
 	@cd ./lib/lumijs && $(MAKE)
-
-.PHONY: lumipkg
 lumipkg:
 	@cd ./lib/lumi && $(MAKE)
-
-.PHONY: awspkg
-awspkg:
-	@cd ./lib/aws && $(MAKE)
+.PHONY: lumirtpkg lumijspkg lumipkg
 
 publish:
 	@$(ECHO) "\033[0;32mPublishing current release:\033[0m"

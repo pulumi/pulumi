@@ -1,6 +1,0 @@
-name: aws
-description: A collection of AWS resources as Lumi stacks.
-dependencies:
-    lumi: "*"
-    lumirt: "*"
-
