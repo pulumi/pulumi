@@ -1,5 +1,7 @@
 #!/bin/bash
-set -ex
+# publish.sh will publish the current bits from the usual build location to an S3 build share.
+
+set -e
 
 # Default the Lumi root to the right place, but let it be overridden.
 if [ -z "${LUMIROOT}" ]; then
@@ -20,7 +22,7 @@ git diff-index --quiet HEAD -- || \
     (echo "error: Cannot publish a dirty repo; set PUBFORCE=true to override" && exit 99)
 
 # If it isn't, or publication was forced, do it.
-echo Publishing to: ${PUBTARGET}
+echo Publishing ${GITVER} to: ${PUBTARGET}
 mkdir -p ${PUBDIR}/cmd ${PUBDIR}/packs
 
 # Copy the binaries and packs.
