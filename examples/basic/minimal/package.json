@@ -1,7 +1,7 @@
 {
     "name": "minimal",
-    "main": "bin/index.js",
-    "typings": "bin/index.d.ts",
+    "main": ".lumi/bin/index.js",
+    "typings": ".lumi/bin/index.d.ts",
     "scripts": {
         "build": "lumijs"
     },

@@ -36,10 +36,6 @@ type LumiProgramTestOptions struct {
 // All commands must return success return codes for the test to succeed.
 func LumiProgramTest(t *testing.T, programDir string, options LumiProgramTestOptions) {
 	t.Parallel()
-	region := os.Getenv("AWS_REGION")
-	if region == "" {
-		t.Skipf("Skipping test due to missing AWS_REGION environment variable")
-	}
 	lumijs, err := exec.LookPath("lumijs")
 	if !assert.NoError(t, err, "expected to find lumijs binary: %v", err) {
 		return

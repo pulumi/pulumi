@@ -1,5 +1,5 @@
-name: examples/minimal
-description: The minimal valid LumiJS blueprint program.
+name: minimal
+description: A minimal Lumi program.
 dependencies:
-    lumi: "*"
+    lumirt: "*"
 
