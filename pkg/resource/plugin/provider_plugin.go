@@ -168,7 +168,7 @@ func (p *provider) Query(t tokens.Type) ([]*QueryItem, error) {
 	results := resp.GetItem()
 	var ret []*QueryItem
 	for index, resc := range results {
-		ret[index].Item = UnmarshalProperties(p.ctx, resc.GetResource(), MarshalOptions{})
+		ret[index].Item = UnmarshalProperties(resc.GetResource(), MarshalOptions{})
 		index++
 	}
 	glog.V(7).Infof("resource[%v].Query(t=%v) success: #outs=%v", p.pkg, t, len(results))
