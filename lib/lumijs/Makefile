@@ -36,5 +36,5 @@ install:
 	@mkdir -p ${LUMILIB} # ensure the machine-wide library dir exists.
 	@cp -R ./.lumi/bin/ ${THISLIB} # copy to the standard library location.
 	@cp package.json ${THISLIB} # ensure the result is an NPM package.
-	@if [ -d ./node_modules ]; then cp -r ./node_modules ${LUMIROOT}; fi # keep the links we depend upon.
+	@if [ -d ./node_modules ]; then cp -RL ./node_modules ${LUMIROOT}; fi # copy the links we depend upon.
 
