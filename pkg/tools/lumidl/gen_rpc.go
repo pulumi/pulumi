@@ -111,6 +111,7 @@ func (g *RPCGenerator) EmitFile(file string, pkg *Package, members []Member) err
 			w.Writefmtln(`    "github.com/pulumi/lumi/pkg/util/contract"`)
 			w.Writefmtln(`    "github.com/pulumi/lumi/pkg/util/mapper"`)
 			w.Writefmtln(`    "github.com/pulumi/lumi/sdk/go/pkg/lumirpc"`)
+			w.Writefmtln(`    "github.com/golang/protobuf/ptypes/struct"`)
 		}
 
 		if len(g.FileImports) > 0 {
@@ -245,7 +246,7 @@ func (g *RPCGenerator) EmitResource(w *tools.GenWriter, module tokens.Module, pk
 	w.Writefmtln("    Update(ctx context.Context,")
 	w.Writefmtln("        id resource.ID, old *%[1]v, new *%[1]v, diff *resource.ObjectDiff) error", name)
 	w.Writefmtln("    Delete(ctx context.Context, id resource.ID) error")
-	w.Writefmtln("    Query(ctx context.Context, type string) ([]*%v, error)", name)
+	w.Writefmtln("    Query(ctx context.Context) ([]*%vItem, error)", name)
 	w.Writefmtln("}")
 	w.Writefmtln("")
 
@@ -349,16 +350,18 @@ func (g *RPCGenerator) EmitResource(w *tools.GenWriter, module tokens.Module, pk
 	w.Writefmtln("func (p *%vProvider) Query(", name)
 	w.Writefmtln("		ctx context.Context, req *lumirpc.QueryRequest) (*lumirpc.QueryResponse, error) {")
 	w.Writefmtln(" 	contract.Assert(req.GetType() == string(%vToken))", name)
-	w.Writefmtln(" 	objs, err := p.ops.Query(ctx,type)")
+	w.Writefmtln(" 	objs, err := p.ops.Query(ctx)")
 	w.Writefmtln(" 	if err != nil {")
 	w.Writefmtln(" 		return nil, err")
 	w.Writefmtln(" 	}")
-	w.Writefmtln("		var ret []*%v", name)
-	w.Writefmtln(" 	for _, obj := range objs {")
-	w.Writefmtln("			ret = append(ret, plugin.MarshalProperties(")
-	w.Writefmtln("			nil, resource.NewPropertyMap(obj), plugin.MarshalOptions{})")
-	w.Writefmtln("		return &lumirpc.QueryResponse{ret}")
-	w.Writefmtln("		}")
+	w.Writefmtln("	var ret []*QueryItem")
+	w.Writefmtln(" 	for index, obj := range objs {")
+	w.Writefmtln("			ret[index] = &QueryItem{")
+	w.Writefmtln("				Id:			*obj.Name")
+	w.Writefmtln("				Resource:	plugin.MarshalProperties(")
+	w.Writefmtln("					nil, resource.NewPropertyMap(obj.Resource), plugin.MarshalOptions{})})")
+	w.Writefmtln("	}")
+	w.Writefmtln("	return &lumirpc.QueryResponse{ret}, nil")
 	w.Writefmtln("}")
 	w.Writefmtln("")
 	w.Writefmtln("func (p *%vProvider) InspectChange(", name)
@@ -430,6 +433,10 @@ func (g *RPCGenerator) EmitResource(w *tools.GenWriter, module tokens.Module, pk
 	w.Writefmtln("    return &obj, props, mapper.MapIU(props.Mappable(), &obj)")
 	w.Writefmtln("}")
 	w.Writefmtln("")
+	w.Writefmtln("type %vItem struct {", name)
+	w.Writefmtln("	ID resource.ID")
+	w.Writefmtln("	Resource *%v", name)
+	w.Writefmtln("}")
 }
 
 func (g *RPCGenerator) EmitStructType(w *tools.GenWriter, module tokens.Module, pkg *Package, t TypeMember) {

@@ -15,8 +15,11 @@ It has these top-level messages:
 	AnalyzeFailure
 	LogRequest
 	ReadLocationRequest
+	ReadLocationsRequest
+	ReadLocationsResponse
 	QueryRequest
 	QueryResponse
+	QueryItem
 	CheckRequest
 	CheckResponse
 	CheckFailure

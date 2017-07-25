@@ -154,21 +154,25 @@ func (p *provider) Get(t tokens.Type, id resource.ID) (resource.PropertyMap, err
 }
 
 // Query returns an array of resource references of a specified type.
-func (p *provider) Query(t tokens.Type) ([]resource.PropertyMap, error) {
+func (p *provider) Query(t tokens.Type) ([]*QueryItem, error) {
 	contract.Assert(t != "")
 	glog.V(7).Infof("resource[%v].Query(t=%v) executing", p.pkg, t)
 	req := &lumirpc.QueryRequest{
 		Type: string(t),
 	}
-
-	_, err := p.client.Query(p.ctx.Request(), req)
+	resp, err := p.client.Query(p.ctx.Request(), req)
 	if err != nil {
 		glog.V(7).Infof("resource[%v].Query(t=%v) failed: err=%v", p.pkg, t, err)
 		return nil, err
 	}
-
-	// Resp = QueryResponse
-	return nil, nil
+	results := resp.GetItem()
+	var ret []*QueryItem
+	for index, resc := range results {
+		ret[index].Item = UnmarshalProperties(p.ctx, resc.GetResource(), MarshalOptions{})
+		index++
+	}
+	glog.V(7).Infof("resource[%v].Query(t=%v) success: #outs=%v", p.pkg, t, len(results))
+	return ret, nil
 }
 
 // InspectChange checks what impacts a hypothetical update will have on the resource's properties.

@@ -43,11 +43,16 @@ type Provider interface {
 	// Delete tears down an existing resource.
 	Delete(t tokens.Type, id resource.ID) (resource.Status, error)
 	// Query returns an array of resource references of a specified type.
-	Query(t tokens.Type) ([]resource.PropertyMap, error)
+	Query(t tokens.Type) ([]*QueryItem, error)
 }
 
 // CheckFailure indicates that a call to check failed; it contains the property and reason for the failure.
 type CheckFailure struct {
 	Property resource.PropertyKey // the property that failed checking.
 	Reason   string               // the reason the property failed to check.
+}
+
+type QueryItem struct {
+	ID   resource.ID          // The ID of the returned resource
+	Item resource.PropertyMap // The property map of the returned resource
 }
