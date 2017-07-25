@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -62,18 +63,27 @@ const (
 type FormatOptions struct {
 	Pwd    string // the working directory.
 	Colors bool   // if true, output will be colorized.
+	Debug  bool   // if true, debugging will be output to stdout.
 }
 
 // DefaultSink returns a default sink that simply logs output to stderr/stdout.
 func DefaultSink(opts FormatOptions) Sink {
+	var debug io.Writer
+	if opts.Debug {
+		debug = os.Stdout
+	} else {
+		debug = ioutil.Discard
+	}
 	return newDefaultSink(opts, map[Severity]io.Writer{
+		Debug:   debug,
 		Info:    os.Stdout,
 		Error:   os.Stderr,
-		Warning: os.Stdout,
+		Warning: os.Stderr,
 	})
 }
 
 func newDefaultSink(opts FormatOptions, writers map[Severity]io.Writer) *defaultSink {
+	contract.Assert(writers[Debug] != nil)
 	contract.Assert(writers[Info] != nil)
 	contract.Assert(writers[Error] != nil)
 	contract.Assert(writers[Warning] != nil)
@@ -116,12 +126,13 @@ func (d *defaultSink) Logf(sev Severity, diag *Diag, args ...interface{}) {
 }
 
 func (d *defaultSink) Debugf(diag *Diag, args ...interface{}) {
+	// For debug messages, write both to the glogger and a stream, if there is one.
+	glog.V(3).Infof(diag.Message, args...)
 	msg := d.Stringify(Debug, diag, args...)
-	if glog.V(5) {
-		glog.V(5).Infof("defaultSink::Debug(%v)", msg[:len(msg)-1])
+	if glog.V(9) {
+		glog.V(9).Infof("defaultSink::Debug(%v)", msg[:len(msg)-1])
 	}
-	// For debug messages, we print to glog rather than a standard io.Writer.
-	glog.V(3).Infoln(msg)
+	fmt.Fprintf(d.writers[Debug], msg)
 	d.counts[Debug]++
 }
 
@@ -154,7 +165,7 @@ func (d *defaultSink) Warningf(diag *Diag, args ...interface{}) {
 
 func (d *defaultSink) useColor(sev Severity) bool {
 	// we will use color so long as we're not spewing to debug (which is colorless).
-	return d.opts.Colors && sev != Debug
+	return d.opts.Colors
 }
 
 func (d *defaultSink) Stringify(sev Severity, diag *Diag, args ...interface{}) string {
@@ -169,6 +180,8 @@ func (d *defaultSink) Stringify(sev Severity, diag *Diag, args ...interface{}) s
 	// Now print the message category's prefix (error/warning).
 	if d.useColor(sev) {
 		switch sev {
+		case Debug:
+			buffer.WriteString(colors.SpecDebug)
 		case Info:
 			buffer.WriteString(colors.SpecInfo)
 		case Error:

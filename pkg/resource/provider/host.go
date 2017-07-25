@@ -67,7 +67,7 @@ func (host *HostClient) ReadLocation(tok tokens.Token) (resource.PropertyValue, 
 	if err != nil {
 		return resource.PropertyValue{}, err
 	}
-	return plugin.UnmarshalPropertyValue(nil, resp, plugin.MarshalOptions{}), nil
+	return plugin.UnmarshalPropertyValue(resp, plugin.MarshalOptions{}), nil
 }
 
 // ReadBoolLocation reads the value from a static or module property, and returns it as a bool.
@@ -142,7 +142,7 @@ func (host *HostClient) ReadLocations(tok tokens.Token, skipNulls bool) (resourc
 	if err != nil {
 		return nil, err
 	}
-	return plugin.UnmarshalProperties(nil, resp.GetProperties(), plugin.MarshalOptions{
+	return plugin.UnmarshalProperties(resp.GetProperties(), plugin.MarshalOptions{
 		SkipNulls: skipNulls,
 	}), nil
 }

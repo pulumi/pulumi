@@ -13,6 +13,7 @@ import (
 func discardSink() Sink {
 	// Create a new default sink with /dev/null writers to avoid spamming the test log.
 	return newDefaultSink(FormatOptions{}, map[Severity]io.Writer{
+		Debug:   ioutil.Discard,
 		Info:    ioutil.Discard,
 		Error:   ioutil.Discard,
 		Warning: ioutil.Discard,

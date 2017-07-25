@@ -14,6 +14,16 @@ func IsResourceType(t symbols.Type) bool {
 	return types.HasBaseName(t, LumiStdlibResourceClass)
 }
 
+// IsResourceAssetType returns true if the given type symbol represents a subclass of the standard asset class.
+func IsResourceAssetType(t symbols.Type) bool {
+	return types.HasBaseName(t, LumiStdlibAssetClass)
+}
+
+// IsResourceArchiveType returns true if the given type symbol represents a subclass of the standard archive class.
+func IsResourceArchiveType(t symbols.Type) bool {
+	return types.HasBaseName(t, LumiStdlibArchiveClass)
+}
+
 // IsLatentResourceProperty returns true if the given type symbol t represents the standard resource class and the
 // property type symbol pt represents a latent property of that resource type.  A latent property is one whose value may
 // not be known during certain phases like planning; the interpreter attempts to proceed despite this.

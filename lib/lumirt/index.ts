@@ -47,14 +47,17 @@ export function serializeClosure(func: any): Closure | undefined {
 
 // Closure represents the serialized form of a Lumi function.
 export interface Closure {
-    code: string;                            // a serialization of the function's source code as text.
-    language: string;                        // the language runtime required to execute the serialized code.
-    signature: string;                       // the function signature type token.
-    environment: {[key: string]: EnvEntry}; // the captured lexical environment of variables to values, if any.
+    code: string;        // a serialization of the function's source code as text.
+    language: string;    // the language runtime required to execute the serialized code.
+    signature: string;   // the function signature type token.
+    environment: EnvObj; // the captured lexical environment of variables to values, if any.
 }
 
+export type EnvObj = {[key: string]: EnvEntry};
+
 export interface EnvEntry {
-    json?: any;         // a value which can be safely json serialized  
-    closure?: Closure   // a closure we are dependent on
+    json?: any;        // a value which can be safely json serialized
+    closure?: Closure; // a closure we are dependent on
+    obj: EnvObj;       // an object which may contain nested closures
 }
 

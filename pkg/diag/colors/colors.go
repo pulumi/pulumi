@@ -57,14 +57,17 @@ var (
 
 // Special predefined colors for logical conditions.
 var (
-	SpecInfo        = Magenta      // for information.
-	SpecError       = Red          // for errors.
-	SpecWarning     = Yellow       // for warnings.
-	SpecLocation    = Cyan         // for source locations.
-	SpecAttention   = BrightRed    // for messages that are meant to grab attention.
-	SpecNote        = White        // for simple notes.
 	SpecImportant   = BrightYellow // for particularly noteworthy messages.
 	SpecUnimportant = BrightBlack  // for notes that can be skimmed or aren't very important.
+
+	SpecDebug   = SpecUnimportant // for debugging.
+	SpecInfo    = Magenta         // for information.
+	SpecError   = Red             // for errors.
+	SpecWarning = Yellow          // for warnings.
+
+	SpecLocation  = Cyan      // for source locations.
+	SpecAttention = BrightRed // for messages that are meant to grab attention.
+	SpecNote      = White     // for simple notes.
 
 	SpecAdded    = Green        // for adds (in the diff sense).
 	SpecChanged  = BrightYellow // for changes (in the diff sense).
