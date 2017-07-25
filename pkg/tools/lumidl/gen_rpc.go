@@ -273,14 +273,11 @@ func (g *RPCGenerator) EmitResource(w *tools.GenWriter, module tokens.Module, pk
 	w.Writefmtln("    }")
 	// check each input property:
 	if hasinputs {
-		w.Writefmtln("    unks := req.GetUnknowns()")
 		for _, opts := range propopts {
 			if !opts.Out {
-				w.Writefmtln("    if !unks[\"%v\"] {", opts.Name)
-				w.Writefmtln("        if failure := p.ops.Check(ctx, obj, \"%v\"); failure != nil {", opts.Name)
-				w.Writefmtln("            failures = append(failures,")
-				w.Writefmtln("                resource.NewPropertyError(\"%v\", \"%v\", failure))", name, opts.Name)
-				w.Writefmtln("        }")
+				w.Writefmtln("    if failure := p.ops.Check(ctx, obj, \"%v\"); failure != nil {", opts.Name)
+				w.Writefmtln("        failures = append(failures,")
+				w.Writefmtln("            resource.NewPropertyError(\"%v\", \"%v\", failure))", name, opts.Name)
 				w.Writefmtln("    }")
 			}
 		}
@@ -301,9 +298,6 @@ func (g *RPCGenerator) EmitResource(w *tools.GenWriter, module tokens.Module, pk
 	if res.Named {
 		// For named resources, we have a canonical way of fetching the name.
 		w.Writefmtln(`    if obj.Name == nil || *obj.Name == "" {`)
-		w.Writefmtln(`        if req.Unknowns[%v_Name] {`, name)
-		w.Writefmtln(`            return nil, errors.New("Name property cannot be computed from unknown outputs")`)
-		w.Writefmtln("        }")
 		w.Writefmtln(`        return nil, errors.New("Name property cannot be empty")`)
 		w.Writefmtln("    }")
 		w.Writefmtln("    return &lumirpc.NameResponse{Name: *obj.Name}, nil")
@@ -379,7 +373,7 @@ func (g *RPCGenerator) EmitResource(w *tools.GenWriter, module tokens.Module, pk
 	w.Writefmtln("}")
 	w.Writefmtln("")
 	w.Writefmtln("func (p *%vProvider) Update(", name)
-	w.Writefmtln("    ctx context.Context, req *lumirpc.UpdateRequest) (*pbempty.Empty, error) {")
+	w.Writefmtln("    ctx context.Context, req *lumirpc.UpdateRequest) (*lumirpc.UpdateResponse, error) {")
 	w.Writefmtln("    contract.Assert(req.GetType() == string(%vToken))", name)
 	w.Writefmtln("    id := resource.ID(req.GetId())")
 	w.Writefmtln("    old, oldprops, err := p.Unmarshal(req.GetOlds())")
@@ -394,9 +388,9 @@ func (g *RPCGenerator) EmitResource(w *tools.GenWriter, module tokens.Module, pk
 	w.Writefmtln("    if err := p.ops.Update(ctx, id, old, new, diff); err != nil {")
 	w.Writefmtln("        return nil, err")
 	w.Writefmtln("    }")
-	w.Writefmtln("    return &pbempty.UpdateResponse{")
+	w.Writefmtln("    return &lumirpc.UpdateResponse{")
 	w.Writefmtln("        Properties: plugin.MarshalProperties(")
-	w.Writefmtln("            resource.NewPropertyMap(obj), plugin.MarshalOptions{}),")
+	w.Writefmtln("            resource.NewPropertyMap(new), plugin.MarshalOptions{}),")
 	w.Writefmtln("    }, nil")
 	w.Writefmtln("}")
 	w.Writefmtln("")
@@ -408,7 +402,7 @@ func (g *RPCGenerator) EmitResource(w *tools.GenWriter, module tokens.Module, pk
 	w.Writefmtln("    if err != nil {")
 	w.Writefmtln("        return nil, err")
 	w.Writefmtln("    }")
-	w.Writefmtln("    if err := p.ops.Delete(ctx, id, obj); err != nil {")
+	w.Writefmtln("    if err := p.ops.Delete(ctx, id, *obj); err != nil {")
 	w.Writefmtln("        return nil, err")
 	w.Writefmtln("    }")
 	w.Writefmtln("    return &pbempty.Empty{}, nil")
