@@ -35,6 +35,7 @@ type PermissionProviderOps interface {
     Update(ctx context.Context,
         id resource.ID, old *Permission, new *Permission, diff *resource.ObjectDiff) error
     Delete(ctx context.Context, id resource.ID) error
+    Query(ctx context.Context) ([]*PermissionItem, error)
 }
 
 // PermissionProvider is a dynamic gRPC-based plugin for managing Permission resources.
@@ -146,6 +147,23 @@ func (p *PermissionProvider) Get(
     }, nil
 }
 
+func (p *PermissionProvider) Query(
+		ctx context.Context, req *lumirpc.QueryRequest) (*lumirpc.QueryResponse, error) {
+ 	contract.Assert(req.GetType() == string(PermissionToken))
+ 	objs, err := p.ops.Query(ctx)
+ 	if err != nil {
+ 		return nil, err
+ 	}
+	var ret []*lumirpc.QueryItem
+ 	for _, obj := range objs {
+			ret = append(ret, &lumirpc.QueryItem{
+				Id:			obj.Id,
+				Resource:	plugin.MarshalProperties(
+					resource.NewPropertyMap(obj.Resource), plugin.MarshalOptions{})})
+	}
+	return &lumirpc.QueryResponse{ret}, nil
+}
+
 func (p *PermissionProvider) InspectChange(
     ctx context.Context, req *lumirpc.InspectChangeRequest) (*lumirpc.InspectChangeResponse, error) {
     contract.Assert(req.GetType() == string(PermissionToken))
@@ -235,6 +253,12 @@ type Permission struct {
     Principal string `lumi:"principal"`
     SourceAccount *string `lumi:"sourceAccount,optional"`
     SourceARN *__aws.ARN `lumi:"sourceARN,optional"`
+}
+
+// PermissionItem is a marshalable representation of its corresponding IDL Query type.
+type PermissionItem struct {
+	Id 			string
+	Resource	resource.PropertyMap
 }
 
 // Permission's properties have constants to make dealing with diffs and property bags easier.

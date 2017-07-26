@@ -33,6 +33,7 @@ type SecurityGroupEgressProviderOps interface {
     Update(ctx context.Context,
         id resource.ID, old *SecurityGroupEgress, new *SecurityGroupEgress, diff *resource.ObjectDiff) error
     Delete(ctx context.Context, id resource.ID) error
+    Query(ctx context.Context) ([]*SecurityGroupEgressItem, error)
 }
 
 // SecurityGroupEgressProvider is a dynamic gRPC-based plugin for managing SecurityGroupEgress resources.
@@ -162,6 +163,23 @@ func (p *SecurityGroupEgressProvider) Get(
     }, nil
 }
 
+func (p *SecurityGroupEgressProvider) Query(
+		ctx context.Context, req *lumirpc.QueryRequest) (*lumirpc.QueryResponse, error) {
+ 	contract.Assert(req.GetType() == string(SecurityGroupEgressToken))
+ 	objs, err := p.ops.Query(ctx)
+ 	if err != nil {
+ 		return nil, err
+ 	}
+	var ret []*lumirpc.QueryItem
+ 	for _, obj := range objs {
+			ret = append(ret, &lumirpc.QueryItem{
+				Id:			obj.Id,
+				Resource:	plugin.MarshalProperties(
+					resource.NewPropertyMap(obj.Resource), plugin.MarshalOptions{})})
+	}
+	return &lumirpc.QueryResponse{ret}, nil
+}
+
 func (p *SecurityGroupEgressProvider) InspectChange(
     ctx context.Context, req *lumirpc.InspectChangeRequest) (*lumirpc.InspectChangeResponse, error) {
     contract.Assert(req.GetType() == string(SecurityGroupEgressToken))
@@ -263,6 +281,12 @@ type SecurityGroupEgress struct {
     CIDRIPv6 *string `lumi:"cidrIpv6,optional"`
     DestinationPrefixListId *string `lumi:"destinationPrefixListId,optional"`
     DestinationSecurityGroup *resource.ID `lumi:"destinationSecurityGroup,optional"`
+}
+
+// SecurityGroupEgressItem is a marshalable representation of its corresponding IDL Query type.
+type SecurityGroupEgressItem struct {
+	Id 			string
+	Resource	resource.PropertyMap
 }
 
 // SecurityGroupEgress's properties have constants to make dealing with diffs and property bags easier.

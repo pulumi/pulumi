@@ -360,7 +360,7 @@ type QueryStep struct {
 	iter    *PlanIterator
 	t       symbols.Type
 	objs    []*resource.Object
-	outputs []resource.PropertyMap
+	outputs []*plugin.QueryItem
 }
 
 var _ ReadStep = (*QueryStep)(nil)
@@ -388,22 +388,19 @@ func (s *QueryStep) Pre() error {
 	if err != nil {
 		return err
 	}
-
 	s.outputs = outs
 	for _, obj := range s.objs {
 		if obj == nil {
-			obj = resource.NewEmptyObject(s.t)
+			s.objs = append(s.objs, resource.NewEmptyObject(s.t))
 		}
 	}
-	for _, obj := range s.objs {
-		for _, out := range outs {
-			obj.SetProperties(out)
-		}
+	for i, out := range outs {
+		s.objs[i].SetProperties(out.Item)
+		s.objs[i].SetID(out.ID)
 	}
 	for _, obj := range s.objs {
 		s.iter.Produce(obj)
 	}
-
 	return nil
 }
 

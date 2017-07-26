@@ -34,6 +34,12 @@ type Integration struct {
     URI *string `lumi:"uri,optional"`
 }
 
+// IntegrationItem is a marshalable representation of its corresponding IDL Query type.
+type IntegrationItem struct {
+	Id 			string
+	Resource	resource.PropertyMap
+}
+
 // Integration's properties have constants to make dealing with diffs and property bags easier.
 const (
     Integration_Type = "type"
@@ -56,6 +62,12 @@ type IntegrationResponse struct {
     ResponseTemplates *map[string]string `lumi:"responseTemplates,optional"`
     SelectionPattern *string `lumi:"selectionPattern,optional"`
     StatusCode *string `lumi:"statusCode,optional"`
+}
+
+// IntegrationResponseItem is a marshalable representation of its corresponding IDL Query type.
+type IntegrationResponseItem struct {
+	Id 			string
+	Resource	resource.PropertyMap
 }
 
 // IntegrationResponse's properties have constants to make dealing with diffs and property bags easier.
@@ -81,6 +93,7 @@ type MethodProviderOps interface {
     Update(ctx context.Context,
         id resource.ID, old *Method, new *Method, diff *resource.ObjectDiff) error
     Delete(ctx context.Context, id resource.ID) error
+    Query(ctx context.Context) ([]*MethodItem, error)
 }
 
 // MethodProvider is a dynamic gRPC-based plugin for managing Method resources.
@@ -222,6 +235,23 @@ func (p *MethodProvider) Get(
     }, nil
 }
 
+func (p *MethodProvider) Query(
+		ctx context.Context, req *lumirpc.QueryRequest) (*lumirpc.QueryResponse, error) {
+ 	contract.Assert(req.GetType() == string(MethodToken))
+ 	objs, err := p.ops.Query(ctx)
+ 	if err != nil {
+ 		return nil, err
+ 	}
+	var ret []*lumirpc.QueryItem
+ 	for _, obj := range objs {
+			ret = append(ret, &lumirpc.QueryItem{
+				Id:			obj.Id,
+				Resource:	plugin.MarshalProperties(
+					resource.NewPropertyMap(obj.Resource), plugin.MarshalOptions{})})
+	}
+	return &lumirpc.QueryResponse{ret}, nil
+}
+
 func (p *MethodProvider) InspectChange(
     ctx context.Context, req *lumirpc.InspectChangeRequest) (*lumirpc.InspectChangeResponse, error) {
     contract.Assert(req.GetType() == string(MethodToken))
@@ -303,6 +333,12 @@ type Method struct {
     RequestParameters *map[string]bool `lumi:"requestParameters,optional"`
 }
 
+// MethodItem is a marshalable representation of its corresponding IDL Query type.
+type MethodItem struct {
+	Id 			string
+	Resource	resource.PropertyMap
+}
+
 // Method's properties have constants to make dealing with diffs and property bags easier.
 const (
     Method_Name = "name"
@@ -327,6 +363,12 @@ type MethodResponse struct {
     ResponseParameters *map[string]bool `lumi:"responseParameters,optional"`
 }
 
+// MethodResponseItem is a marshalable representation of its corresponding IDL Query type.
+type MethodResponseItem struct {
+	Id 			string
+	Resource	resource.PropertyMap
+}
+
 // MethodResponse's properties have constants to make dealing with diffs and property bags easier.
 const (
     MethodResponse_StatusCode = "statusCode"
@@ -348,6 +390,12 @@ type MethodSetting struct {
     ResourcePath *string `lumi:"resourcePath,optional"`
     ThrottlingBurstLimit *float64 `lumi:"throttlingBurstLimit,optional"`
     ThrottlingRateLimit *float64 `lumi:"throttlingRateLimit,optional"`
+}
+
+// MethodSettingItem is a marshalable representation of its corresponding IDL Query type.
+type MethodSettingItem struct {
+	Id 			string
+	Resource	resource.PropertyMap
 }
 
 // MethodSetting's properties have constants to make dealing with diffs and property bags easier.

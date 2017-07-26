@@ -26,6 +26,12 @@ type Attribute struct {
     Type AttributeType `lumi:"type"`
 }
 
+// AttributeItem is a marshalable representation of its corresponding IDL Query type.
+type AttributeItem struct {
+	Id 			string
+	Resource	resource.PropertyMap
+}
+
 // Attribute's properties have constants to make dealing with diffs and property bags easier.
 const (
     Attribute_Name = "name"
@@ -43,6 +49,12 @@ type GlobalSecondaryIndex struct {
     WriteCapacity float64 `lumi:"writeCapacity"`
     NonKeyAttributes []string `lumi:"nonKeyAttributes"`
     ProjectionType ProjectionType `lumi:"projectionType"`
+}
+
+// GlobalSecondaryIndexItem is a marshalable representation of its corresponding IDL Query type.
+type GlobalSecondaryIndexItem struct {
+	Id 			string
+	Resource	resource.PropertyMap
 }
 
 // GlobalSecondaryIndex's properties have constants to make dealing with diffs and property bags easier.
@@ -71,6 +83,7 @@ type TableProviderOps interface {
     Update(ctx context.Context,
         id resource.ID, old *Table, new *Table, diff *resource.ObjectDiff) error
     Delete(ctx context.Context, id resource.ID) error
+    Query(ctx context.Context) ([]*TableItem, error)
 }
 
 // TableProvider is a dynamic gRPC-based plugin for managing Table resources.
@@ -194,6 +207,23 @@ func (p *TableProvider) Get(
     }, nil
 }
 
+func (p *TableProvider) Query(
+		ctx context.Context, req *lumirpc.QueryRequest) (*lumirpc.QueryResponse, error) {
+ 	contract.Assert(req.GetType() == string(TableToken))
+ 	objs, err := p.ops.Query(ctx)
+ 	if err != nil {
+ 		return nil, err
+ 	}
+	var ret []*lumirpc.QueryItem
+ 	for _, obj := range objs {
+			ret = append(ret, &lumirpc.QueryItem{
+				Id:			obj.Id,
+				Resource:	plugin.MarshalProperties(
+					resource.NewPropertyMap(obj.Resource), plugin.MarshalOptions{})})
+	}
+	return &lumirpc.QueryResponse{ret}, nil
+}
+
 func (p *TableProvider) InspectChange(
     ctx context.Context, req *lumirpc.InspectChangeRequest) (*lumirpc.InspectChangeResponse, error) {
     contract.Assert(req.GetType() == string(TableToken))
@@ -279,6 +309,12 @@ type Table struct {
     RangeKey *string `lumi:"rangeKey,optional"`
     TableName *string `lumi:"tableName,optional"`
     GlobalSecondaryIndexes *[]GlobalSecondaryIndex `lumi:"globalSecondaryIndexes,optional"`
+}
+
+// TableItem is a marshalable representation of its corresponding IDL Query type.
+type TableItem struct {
+	Id 			string
+	Resource	resource.PropertyMap
 }
 
 // Table's properties have constants to make dealing with diffs and property bags easier.

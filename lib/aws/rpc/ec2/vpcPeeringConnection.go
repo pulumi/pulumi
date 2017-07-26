@@ -33,6 +33,7 @@ type VPCPeeringConnectionProviderOps interface {
     Update(ctx context.Context,
         id resource.ID, old *VPCPeeringConnection, new *VPCPeeringConnection, diff *resource.ObjectDiff) error
     Delete(ctx context.Context, id resource.ID) error
+    Query(ctx context.Context) ([]*VPCPeeringConnectionItem, error)
 }
 
 // VPCPeeringConnectionProvider is a dynamic gRPC-based plugin for managing VPCPeeringConnection resources.
@@ -126,6 +127,23 @@ func (p *VPCPeeringConnectionProvider) Get(
     }, nil
 }
 
+func (p *VPCPeeringConnectionProvider) Query(
+		ctx context.Context, req *lumirpc.QueryRequest) (*lumirpc.QueryResponse, error) {
+ 	contract.Assert(req.GetType() == string(VPCPeeringConnectionToken))
+ 	objs, err := p.ops.Query(ctx)
+ 	if err != nil {
+ 		return nil, err
+ 	}
+	var ret []*lumirpc.QueryItem
+ 	for _, obj := range objs {
+			ret = append(ret, &lumirpc.QueryItem{
+				Id:			obj.Id,
+				Resource:	plugin.MarshalProperties(
+					resource.NewPropertyMap(obj.Resource), plugin.MarshalOptions{})})
+	}
+	return &lumirpc.QueryResponse{ret}, nil
+}
+
 func (p *VPCPeeringConnectionProvider) InspectChange(
     ctx context.Context, req *lumirpc.InspectChangeRequest) (*lumirpc.InspectChangeResponse, error) {
     contract.Assert(req.GetType() == string(VPCPeeringConnectionToken))
@@ -203,6 +221,12 @@ type VPCPeeringConnection struct {
     Name *string `lumi:"name,optional"`
     PeerVPC resource.ID `lumi:"peerVpc"`
     VPC resource.ID `lumi:"vpc"`
+}
+
+// VPCPeeringConnectionItem is a marshalable representation of its corresponding IDL Query type.
+type VPCPeeringConnectionItem struct {
+	Id 			string
+	Resource	resource.PropertyMap
 }
 
 // VPCPeeringConnection's properties have constants to make dealing with diffs and property bags easier.

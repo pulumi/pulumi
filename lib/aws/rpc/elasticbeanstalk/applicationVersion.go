@@ -33,6 +33,7 @@ type ApplicationVersionProviderOps interface {
     Update(ctx context.Context,
         id resource.ID, old *ApplicationVersion, new *ApplicationVersion, diff *resource.ObjectDiff) error
     Delete(ctx context.Context, id resource.ID) error
+    Query(ctx context.Context) ([]*ApplicationVersionItem, error)
 }
 
 // ApplicationVersionProvider is a dynamic gRPC-based plugin for managing ApplicationVersion resources.
@@ -138,6 +139,23 @@ func (p *ApplicationVersionProvider) Get(
     }, nil
 }
 
+func (p *ApplicationVersionProvider) Query(
+		ctx context.Context, req *lumirpc.QueryRequest) (*lumirpc.QueryResponse, error) {
+ 	contract.Assert(req.GetType() == string(ApplicationVersionToken))
+ 	objs, err := p.ops.Query(ctx)
+ 	if err != nil {
+ 		return nil, err
+ 	}
+	var ret []*lumirpc.QueryItem
+ 	for _, obj := range objs {
+			ret = append(ret, &lumirpc.QueryItem{
+				Id:			obj.Id,
+				Resource:	plugin.MarshalProperties(
+					resource.NewPropertyMap(obj.Resource), plugin.MarshalOptions{})})
+	}
+	return &lumirpc.QueryResponse{ret}, nil
+}
+
 func (p *ApplicationVersionProvider) InspectChange(
     ctx context.Context, req *lumirpc.InspectChangeRequest) (*lumirpc.InspectChangeResponse, error) {
     contract.Assert(req.GetType() == string(ApplicationVersionToken))
@@ -220,6 +238,12 @@ type ApplicationVersion struct {
     VersionLabel *string `lumi:"versionLabel,optional"`
     Description *string `lumi:"description,optional"`
     SourceBundle resource.ID `lumi:"sourceBundle"`
+}
+
+// ApplicationVersionItem is a marshalable representation of its corresponding IDL Query type.
+type ApplicationVersionItem struct {
+	Id 			string
+	Resource	resource.PropertyMap
 }
 
 // ApplicationVersion's properties have constants to make dealing with diffs and property bags easier.

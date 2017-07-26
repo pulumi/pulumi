@@ -33,6 +33,7 @@ type ApplicationProviderOps interface {
     Update(ctx context.Context,
         id resource.ID, old *Application, new *Application, diff *resource.ObjectDiff) error
     Delete(ctx context.Context, id resource.ID) error
+    Query(ctx context.Context) ([]*ApplicationItem, error)
 }
 
 // ApplicationProvider is a dynamic gRPC-based plugin for managing Application resources.
@@ -126,6 +127,23 @@ func (p *ApplicationProvider) Get(
     }, nil
 }
 
+func (p *ApplicationProvider) Query(
+		ctx context.Context, req *lumirpc.QueryRequest) (*lumirpc.QueryResponse, error) {
+ 	contract.Assert(req.GetType() == string(ApplicationToken))
+ 	objs, err := p.ops.Query(ctx)
+ 	if err != nil {
+ 		return nil, err
+ 	}
+	var ret []*lumirpc.QueryItem
+ 	for _, obj := range objs {
+			ret = append(ret, &lumirpc.QueryItem{
+				Id:			obj.Id,
+				Resource:	plugin.MarshalProperties(
+					resource.NewPropertyMap(obj.Resource), plugin.MarshalOptions{})})
+	}
+	return &lumirpc.QueryResponse{ret}, nil
+}
+
 func (p *ApplicationProvider) InspectChange(
     ctx context.Context, req *lumirpc.InspectChangeRequest) (*lumirpc.InspectChangeResponse, error) {
     contract.Assert(req.GetType() == string(ApplicationToken))
@@ -200,6 +218,12 @@ type Application struct {
     Name *string `lumi:"name,optional"`
     ApplicationName *string `lumi:"applicationName,optional"`
     Description *string `lumi:"description,optional"`
+}
+
+// ApplicationItem is a marshalable representation of its corresponding IDL Query type.
+type ApplicationItem struct {
+	Id 			string
+	Resource	resource.PropertyMap
 }
 
 // Application's properties have constants to make dealing with diffs and property bags easier.

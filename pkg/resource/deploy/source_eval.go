@@ -160,15 +160,11 @@ func (iter *evalSourceIterator) Next() (*SourceAllocation, *SourceQuery, error) 
 					goerr.Errorf("Expected method %v argument 'id' to be a string; got %v", meth, args[0])
 			}
 			return nil, &SourceQuery{Type: t, GetID: resource.ID(args[0].StringValue())}, nil
-		case specialResourceQueryFunction: // Add similar checks to input args, if all good, then return nil, &SourceQuery{}, nil
-			if len(args) == 0 {
-				return nil, nil,
-					goerr.Errorf("Missing required argument 'type' for method %v", meth)
-			} else if !args[0].IsString() {
-				return nil, nil,
-					goerr.Errorf("Expected method %v argument 'type' to be a string; got %v", meth, args[0])
+		case specialResourceQueryFunction:
+			if len(args) == 0 { // Add similar checks to input args, if all good, then return nil, &SourceQuery{}, nil
+				return nil, &SourceQuery{}, nil
 			}
-			return nil, &SourceQuery{Type: t}, nil
+			return nil, nil, goerr.Errorf("Invalid argument for method %v", meth)
 		default:
 			contract.Failf("Unrecognized query rendezvous function name: %v", meth.Name())
 		}

@@ -33,6 +33,7 @@ type ActionTargetProviderOps interface {
     Update(ctx context.Context,
         id resource.ID, old *ActionTarget, new *ActionTarget, diff *resource.ObjectDiff) error
     Delete(ctx context.Context, id resource.ID) error
+    Query(ctx context.Context) ([]*ActionTargetItem, error)
 }
 
 // ActionTargetProvider is a dynamic gRPC-based plugin for managing ActionTarget resources.
@@ -126,6 +127,23 @@ func (p *ActionTargetProvider) Get(
     }, nil
 }
 
+func (p *ActionTargetProvider) Query(
+		ctx context.Context, req *lumirpc.QueryRequest) (*lumirpc.QueryResponse, error) {
+ 	contract.Assert(req.GetType() == string(ActionTargetToken))
+ 	objs, err := p.ops.Query(ctx)
+ 	if err != nil {
+ 		return nil, err
+ 	}
+	var ret []*lumirpc.QueryItem
+ 	for _, obj := range objs {
+			ret = append(ret, &lumirpc.QueryItem{
+				Id:			obj.Id,
+				Resource:	plugin.MarshalProperties(
+					resource.NewPropertyMap(obj.Resource), plugin.MarshalOptions{})})
+	}
+	return &lumirpc.QueryResponse{ret}, nil
+}
+
 func (p *ActionTargetProvider) InspectChange(
     ctx context.Context, req *lumirpc.InspectChangeRequest) (*lumirpc.InspectChangeResponse, error) {
     contract.Assert(req.GetType() == string(ActionTargetToken))
@@ -202,6 +220,12 @@ type ActionTarget struct {
     DisplayName *string `lumi:"displayName,optional"`
 }
 
+// ActionTargetItem is a marshalable representation of its corresponding IDL Query type.
+type ActionTargetItem struct {
+	Id 			string
+	Resource	resource.PropertyMap
+}
+
 // ActionTarget's properties have constants to make dealing with diffs and property bags easier.
 const (
     ActionTarget_Name = "name"
@@ -224,6 +248,7 @@ type AlarmProviderOps interface {
     Update(ctx context.Context,
         id resource.ID, old *Alarm, new *Alarm, diff *resource.ObjectDiff) error
     Delete(ctx context.Context, id resource.ID) error
+    Query(ctx context.Context) ([]*AlarmItem, error)
 }
 
 // AlarmProvider is a dynamic gRPC-based plugin for managing Alarm resources.
@@ -395,6 +420,23 @@ func (p *AlarmProvider) Get(
     }, nil
 }
 
+func (p *AlarmProvider) Query(
+		ctx context.Context, req *lumirpc.QueryRequest) (*lumirpc.QueryResponse, error) {
+ 	contract.Assert(req.GetType() == string(AlarmToken))
+ 	objs, err := p.ops.Query(ctx)
+ 	if err != nil {
+ 		return nil, err
+ 	}
+	var ret []*lumirpc.QueryItem
+ 	for _, obj := range objs {
+			ret = append(ret, &lumirpc.QueryItem{
+				Id:			obj.Id,
+				Resource:	plugin.MarshalProperties(
+					resource.NewPropertyMap(obj.Resource), plugin.MarshalOptions{})})
+	}
+	return &lumirpc.QueryResponse{ret}, nil
+}
+
 func (p *AlarmProvider) InspectChange(
     ctx context.Context, req *lumirpc.InspectChangeRequest) (*lumirpc.InspectChangeResponse, error) {
     contract.Assert(req.GetType() == string(AlarmToken))
@@ -484,6 +526,12 @@ type Alarm struct {
     Unit *AlarmMetric `lumi:"unit,optional"`
 }
 
+// AlarmItem is a marshalable representation of its corresponding IDL Query type.
+type AlarmItem struct {
+	Id 			string
+	Resource	resource.PropertyMap
+}
+
 // Alarm's properties have constants to make dealing with diffs and property bags easier.
 const (
     Alarm_Name = "name"
@@ -510,6 +558,12 @@ const (
 type AlarmDimension struct {
     Name string `lumi:"name"`
     Value interface{} `lumi:"value"`
+}
+
+// AlarmDimensionItem is a marshalable representation of its corresponding IDL Query type.
+type AlarmDimensionItem struct {
+	Id 			string
+	Resource	resource.PropertyMap
 }
 
 // AlarmDimension's properties have constants to make dealing with diffs and property bags easier.

@@ -82,8 +82,12 @@ func (p *applicationProvider) Create(ctx context.Context, obj *elasticbeanstalk.
 }
 
 // Query returns an (possibly empty) array of resource objects.
-func (p *applicationProvider) Query(ctx context.Context) ([]*elasticbeanstalk.Application, error) {
-	resp, err := p.ctx.ElasticBeanstalk.DescribeApplications(&awselasticbeanstalk.DescribeApplicationsInput{})
+func (p *applicationProvider) Query(ctx context.Context) ([]*elasticbeanstalk.ApplicationItem, error) {
+	return nil, nil
+}
+
+/*
+	resp, err := p.ctx.ElasticBeanstalk().DescribeApplications(&awselasticbeanstalk.DescribeApplicationsInput{})
 	if err != nil {
 		return nil, err
 	} else if len(resp.Applications) == 0 {
@@ -99,9 +103,24 @@ func (p *applicationProvider) Query(ctx context.Context) ([]*elasticbeanstalk.Ap
 	}
 	return apps, nil
 }
+*/
 
 // Get reads the instance state identified by ID, returning a populated resource object, or an error if not found.
 func (p *applicationProvider) Get(ctx context.Context, id resource.ID) (*elasticbeanstalk.Application, error) {
+	/*
+			queresp, err := p.Query(ctx)
+			if err != nil {
+				return nil, err
+			}
+			name, err := arn.ParseResourceName(id)
+			for _, app := range queresp {
+				if app.ApplicationName == aws.String(name) {
+					return app, nil
+				}
+			}
+			return nil, errors.New("No resource found with matching ID")
+		}
+	*/
 	name, err := arn.ParseResourceName(id)
 	if err != nil {
 		return nil, err

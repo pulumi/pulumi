@@ -103,31 +103,41 @@ func (p *buckProvider) Create(ctx context.Context, obj *s3.Bucket) (resource.ID,
 }
 
 // Query returns an (possibly empty) array of resource objects.
-func (p *buckprovider) Query(ctx context.Context) ([]*s3.Bucket, error) {
+func (p *buckProvider) Query(ctx context.Context) ([]*s3.BucketItem, error) {
+	return nil, nil
+}
+
+/*
 	bucks, err := p.ctx.S3().ListBuckets(&awss3.ListBucketsInput{})
 	if err != nil {
 		return nil, err
 	}
 	var names []string
 	for _, bucket := range bucks.Buckets {
-		names = append(names, bucket.Name)
+		names = append(names, *bucket.Name)
 	}
-
 	var buckets []*s3.Bucket
 	for _, name := range names {
-		if _, err := p.ctx.S3().GetBucketAcl(&awss3.GetBucketAclInput{Bucket: aws.String(name)}); err != nil {
-			if awsctx.IsAWSError(err, "NotFound", "NoSuchBucket") {
-				return nil, nil
-			}
+		bucket, err := p.Get(ctx, resource.ID(name))
+		if err != nil {
 			return nil, err
 		}
-		buckets = append(buckets, &s3.Bucket{
-			BucketName: &name,
-		})
+		buckets = append(buckets, bucket)
 	}
-
 	return buckets, nil
 }
+
+/*
+	if _, err := p.ctx.S3().GetBucketAcl(&awss3.GetBucketAclInput{Bucket: aws.String(name)}); err != nil {
+		if awsctx.IsAWSError(err, "NotFound", "NoSuchBucket") {
+			return nil, nil
+		}
+		return nil, err
+	}
+	buckets = append(buckets, &s3.Bucket{
+		BucketName: &name,
+	})
+*/
 
 // Get reads the instance state identified by ID, returning a populated resource object, or an error if not found.
 func (p *buckProvider) Get(ctx context.Context, id resource.ID) (*s3.Bucket, error) {

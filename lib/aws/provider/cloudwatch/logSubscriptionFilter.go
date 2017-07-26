@@ -9,16 +9,13 @@ import (
 
 	"github.com/aws/aws-sdk-go/aws"
 	awscloudwatch "github.com/aws/aws-sdk-go/service/cloudwatchlogs"
-	"github.com/pkg/errors"
 	"github.com/pulumi/lumi/pkg/resource"
 	"github.com/pulumi/lumi/pkg/util/contract"
-	"github.com/pulumi/lumi/pkg/util/convutil"
 	"github.com/pulumi/lumi/sdk/go/pkg/lumirpc"
 	"golang.org/x/net/context"
 
 	"github.com/pulumi/lumi/lib/aws/provider/arn"
 	"github.com/pulumi/lumi/lib/aws/provider/awsctx"
-	awscommon "github.com/pulumi/lumi/lib/aws/rpc"
 	"github.com/pulumi/lumi/lib/aws/rpc/cloudwatch"
 )
 
@@ -98,24 +95,28 @@ func (p *logSubscriptionFilterProvider) Create(ctx context.Context,
 }
 
 // Query returns an (possibly empty) array of resource objects.
-func (p *logSubscriptionFilterProvider) Query(ctx context.Context) ([]*cloudwatch.LogSubscriptionFilter, error) {
-	logGroups, err := logGroup.Query(ctx)
+func (p *logSubscriptionFilterProvider) Query(ctx context.Context) ([]*cloudwatch.LogSubscriptionFilterItem, error) {
+	return nil, nil
+}
+
+/*
+	var subscriptionFilters []*cloudwatch.LogSubscriptionFilter
+	logs, err := p.ctx.CloudwatchLogs().DescribeLogGroups(&awscloudwatch.DescribeLogGroupsInput{})
 	if err != nil {
 		return nil, err
 	}
-	var subscriptionFilters []*cloudwatch.LogSubscriptionFilter
-	for _, group := range logGroups {
+	for _, group := range logs.LogGroups {
 		resp, err := p.ctx.CloudwatchLogs().DescribeSubscriptionFilters(&awscloudwatch.DescribeSubscriptionFiltersInput{
-			LogGroupName: aws.String(group.LogGroupName),
-		}))
+			LogGroupName: group.LogGroupName,
+		})
 		if err != nil {
-		return nil, err
+			return nil, err
 		} else if resp == nil {
-		return nil, errors.New("Cloudwatch query returned an empty response")
+			return nil, errors.New("Cloudwatch query returned an empty response")
 		} else if len(resp.SubscriptionFilters) == 0 {
-		return nil, nil
+			return nil, nil
 		} else if len(resp.SubscriptionFilters) > 1 {
-		return nil, errors.New("Only one subscription filter expected per log group")
+			return nil, errors.New("Only one subscription filter expected per log group")
 		}
 		filter := resp.SubscriptionFilters[0]
 
@@ -131,7 +132,7 @@ func (p *logSubscriptionFilterProvider) Query(ctx context.Context) ([]*cloudwatc
 		}
 
 		subscriptionFilters = append(subscriptionFilters, &cloudwatch.LogSubscriptionFilter{
-			LogGroupName:   group.LogGroupName,
+			LogGroupName:   *group.LogGroupName,
 			DestinationArn: aws.StringValue(filter.DestinationArn),
 			CreationTime:   convutil.Int64PToFloat64P(filter.CreationTime),
 			Distribution:   distribution,
@@ -140,46 +141,67 @@ func (p *logSubscriptionFilterProvider) Query(ctx context.Context) ([]*cloudwatc
 	}
 	return subscriptionFilters, nil
 }
+*/
+
 // Get reads the instance state identified by ID, returning a populated resource object, or an error if not found.
 func (p *logSubscriptionFilterProvider) Get(ctx context.Context,
 	id resource.ID) (*cloudwatch.LogSubscriptionFilter, error) {
-	logGroupName, filterName, err := p.parseLogSubscriptionFilterID(id)
-	if err != nil {
-		return nil, err
-	}
+	/*
+				queresp, err := p.Query(ctx)
+				if err != nil {
+					return nil, err
+				}
+				logGroupName, _, err := p.parseLogSubscriptionFilterID(id)
+				if err != nil {
+					return nil, err
+				}
+				for _, logsub := range queresp {
+					if logsub.LogGroupName == logGroupName {
+						return logsub, nil
+					} // Return 'resource not found' error
+				}
+				return nil, nil
+			}
 
-	resp, err := p.ctx.CloudwatchLogs().DescribeSubscriptionFilters(&awscloudwatch.DescribeSubscriptionFiltersInput{
-		LogGroupName: aws.String(logGroupName),
-	})
-	if err != nil {
-		return nil, err
-	} else if resp == nil {
-		return nil, errors.New("Cloudwatch query returned an empty response")
-	} else if len(resp.SubscriptionFilters) == 0 {
-		return nil, nil
-	} else if len(resp.SubscriptionFilters) > 1 {
-		return nil, errors.New("Only one subscription filter expected per log group")
-	}
-	filter := resp.SubscriptionFilters[0]
-	contract.Assert(*filter.FilterName == filterName)
+		logGroupName, filterName, err := p.parseLogSubscriptionFilterID(id)
+		if err != nil {
+			return nil, err
+		}
 
-	var distribution *cloudwatch.LogSubscriptionDistribution
-	if filter.Distribution != nil {
-		tmp := cloudwatch.LogSubscriptionDistribution(*filter.Distribution)
-		distribution = &tmp
-	}
-	var roleARN *awscommon.ARN
-	if filter.RoleArn != nil {
-		tmp := awscommon.ARN(*filter.RoleArn)
-		roleARN = &tmp
-	}
-	return &cloudwatch.LogSubscriptionFilter{
-		LogGroupName:   logGroupName,
-		DestinationArn: aws.StringValue(filter.DestinationArn),
-		CreationTime:   convutil.Int64PToFloat64P(filter.CreationTime),
-		Distribution:   distribution,
-		RoleARN:        roleARN,
-	}, nil
+		resp, err := p.ctx.CloudwatchLogs().DescribeSubscriptionFilters(&awscloudwatch.DescribeSubscriptionFiltersInput{
+			LogGroupName: aws.String(logGroupName),
+		})
+		if err != nil {
+			return nil, err
+		} else if resp == nil {
+			return nil, errors.New("Cloudwatch query returned an empty response")
+		} else if len(resp.SubscriptionFilters) == 0 {
+			return nil, nil
+		} else if len(resp.SubscriptionFilters) > 1 {
+			return nil, errors.New("Only one subscription filter expected per log group")
+		}
+		filter := resp.SubscriptionFilters[0]
+		contract.Assert(*filter.FilterName == filterName)
+
+		var distribution *cloudwatch.LogSubscriptionDistribution
+		if filter.Distribution != nil {
+			tmp := cloudwatch.LogSubscriptionDistribution(*filter.Distribution)
+			distribution = &tmp
+		}
+		var roleARN *awscommon.ARN
+		if filter.RoleArn != nil {
+			tmp := awscommon.ARN(*filter.RoleArn)
+			roleARN = &tmp
+		}
+		return &cloudwatch.LogSubscriptionFilter{
+			LogGroupName:   logGroupName,
+			DestinationArn: aws.StringValue(filter.DestinationArn),
+			CreationTime:   convutil.Int64PToFloat64P(filter.CreationTime),
+			Distribution:   distribution,
+			RoleARN:        roleARN,
+		}, nil
+	*/
+	return nil, nil
 }
 
 // InspectChange checks what impacts a hypothetical update will have on the resource's properties.

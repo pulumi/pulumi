@@ -33,6 +33,7 @@ type BucketProviderOps interface {
     Update(ctx context.Context,
         id resource.ID, old *Bucket, new *Bucket, diff *resource.ObjectDiff) error
     Delete(ctx context.Context, id resource.ID) error
+    Query(ctx context.Context) ([]*BucketItem, error)
 }
 
 // BucketProvider is a dynamic gRPC-based plugin for managing Bucket resources.
@@ -126,6 +127,23 @@ func (p *BucketProvider) Get(
     }, nil
 }
 
+func (p *BucketProvider) Query(
+		ctx context.Context, req *lumirpc.QueryRequest) (*lumirpc.QueryResponse, error) {
+ 	contract.Assert(req.GetType() == string(BucketToken))
+ 	objs, err := p.ops.Query(ctx)
+ 	if err != nil {
+ 		return nil, err
+ 	}
+	var ret []*lumirpc.QueryItem
+ 	for _, obj := range objs {
+			ret = append(ret, &lumirpc.QueryItem{
+				Id:			obj.Id,
+				Resource:	plugin.MarshalProperties(
+					resource.NewPropertyMap(obj.Resource), plugin.MarshalOptions{})})
+	}
+	return &lumirpc.QueryResponse{ret}, nil
+}
+
 func (p *BucketProvider) InspectChange(
     ctx context.Context, req *lumirpc.InspectChangeRequest) (*lumirpc.InspectChangeResponse, error) {
     contract.Assert(req.GetType() == string(BucketToken))
@@ -200,6 +218,12 @@ type Bucket struct {
     Name *string `lumi:"name,optional"`
     BucketName *string `lumi:"bucketName,optional"`
     AccessControl *CannedACL `lumi:"accessControl,optional"`
+}
+
+// BucketItem is a marshalable representation of its corresponding IDL Query type.
+type BucketItem struct {
+	Id 			string
+	Resource	resource.PropertyMap
 }
 
 // Bucket's properties have constants to make dealing with diffs and property bags easier.

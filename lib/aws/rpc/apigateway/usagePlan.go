@@ -26,6 +26,12 @@ type APIStage struct {
     Stage *resource.ID `lumi:"stage,optional"`
 }
 
+// APIStageItem is a marshalable representation of its corresponding IDL Query type.
+type APIStageItem struct {
+	Id 			string
+	Resource	resource.PropertyMap
+}
+
 // APIStage's properties have constants to make dealing with diffs and property bags easier.
 const (
     APIStage_API = "api"
@@ -41,6 +47,12 @@ type QuotaSettings struct {
     Period *QuotaPeriod `lumi:"period,optional"`
 }
 
+// QuotaSettingsItem is a marshalable representation of its corresponding IDL Query type.
+type QuotaSettingsItem struct {
+	Id 			string
+	Resource	resource.PropertyMap
+}
+
 // QuotaSettings's properties have constants to make dealing with diffs and property bags easier.
 const (
     QuotaSettings_Limit = "limit"
@@ -54,6 +66,12 @@ const (
 type ThrottleSettings struct {
     BurstRateLimit *float64 `lumi:"burstRateLimit,optional"`
     RateLimit *float64 `lumi:"rateLimit,optional"`
+}
+
+// ThrottleSettingsItem is a marshalable representation of its corresponding IDL Query type.
+type ThrottleSettingsItem struct {
+	Id 			string
+	Resource	resource.PropertyMap
 }
 
 // ThrottleSettings's properties have constants to make dealing with diffs and property bags easier.
@@ -77,6 +95,7 @@ type UsagePlanProviderOps interface {
     Update(ctx context.Context,
         id resource.ID, old *UsagePlan, new *UsagePlan, diff *resource.ObjectDiff) error
     Delete(ctx context.Context, id resource.ID) error
+    Query(ctx context.Context) ([]*UsagePlanItem, error)
 }
 
 // UsagePlanProvider is a dynamic gRPC-based plugin for managing UsagePlan resources.
@@ -188,6 +207,23 @@ func (p *UsagePlanProvider) Get(
     }, nil
 }
 
+func (p *UsagePlanProvider) Query(
+		ctx context.Context, req *lumirpc.QueryRequest) (*lumirpc.QueryResponse, error) {
+ 	contract.Assert(req.GetType() == string(UsagePlanToken))
+ 	objs, err := p.ops.Query(ctx)
+ 	if err != nil {
+ 		return nil, err
+ 	}
+	var ret []*lumirpc.QueryItem
+ 	for _, obj := range objs {
+			ret = append(ret, &lumirpc.QueryItem{
+				Id:			obj.Id,
+				Resource:	plugin.MarshalProperties(
+					resource.NewPropertyMap(obj.Resource), plugin.MarshalOptions{})})
+	}
+	return &lumirpc.QueryResponse{ret}, nil
+}
+
 func (p *UsagePlanProvider) InspectChange(
     ctx context.Context, req *lumirpc.InspectChangeRequest) (*lumirpc.InspectChangeResponse, error) {
     contract.Assert(req.GetType() == string(UsagePlanToken))
@@ -262,6 +298,12 @@ type UsagePlan struct {
     Quota *QuotaSettings `lumi:"quota,optional"`
     Throttle *ThrottleSettings `lumi:"throttle,optional"`
     UsagePlanName *string `lumi:"usagePlanName,optional"`
+}
+
+// UsagePlanItem is a marshalable representation of its corresponding IDL Query type.
+type UsagePlanItem struct {
+	Id 			string
+	Resource	resource.PropertyMap
 }
 
 // UsagePlan's properties have constants to make dealing with diffs and property bags easier.

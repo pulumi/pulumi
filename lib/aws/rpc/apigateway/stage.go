@@ -33,6 +33,7 @@ type StageProviderOps interface {
     Update(ctx context.Context,
         id resource.ID, old *Stage, new *Stage, diff *resource.ObjectDiff) error
     Delete(ctx context.Context, id resource.ID) error
+    Query(ctx context.Context) ([]*StageItem, error)
 }
 
 // StageProvider is a dynamic gRPC-based plugin for managing Stage resources.
@@ -168,6 +169,23 @@ func (p *StageProvider) Get(
     }, nil
 }
 
+func (p *StageProvider) Query(
+		ctx context.Context, req *lumirpc.QueryRequest) (*lumirpc.QueryResponse, error) {
+ 	contract.Assert(req.GetType() == string(StageToken))
+ 	objs, err := p.ops.Query(ctx)
+ 	if err != nil {
+ 		return nil, err
+ 	}
+	var ret []*lumirpc.QueryItem
+ 	for _, obj := range objs {
+			ret = append(ret, &lumirpc.QueryItem{
+				Id:			obj.Id,
+				Resource:	plugin.MarshalProperties(
+					resource.NewPropertyMap(obj.Resource), plugin.MarshalOptions{})})
+	}
+	return &lumirpc.QueryResponse{ret}, nil
+}
+
 func (p *StageProvider) InspectChange(
     ctx context.Context, req *lumirpc.InspectChangeRequest) (*lumirpc.InspectChangeResponse, error) {
     contract.Assert(req.GetType() == string(StageToken))
@@ -256,6 +274,12 @@ type Stage struct {
     LastUpdatedDate string `lumi:"lastUpdatedDate,optional"`
     URL string `lumi:"url,optional"`
     ExecutionARN string `lumi:"executionARN,optional"`
+}
+
+// StageItem is a marshalable representation of its corresponding IDL Query type.
+type StageItem struct {
+	Id 			string
+	Resource	resource.PropertyMap
 }
 
 // Stage's properties have constants to make dealing with diffs and property bags easier.

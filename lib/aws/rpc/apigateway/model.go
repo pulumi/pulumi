@@ -33,6 +33,7 @@ type ModelProviderOps interface {
     Update(ctx context.Context,
         id resource.ID, old *Model, new *Model, diff *resource.ObjectDiff) error
     Delete(ctx context.Context, id resource.ID) error
+    Query(ctx context.Context) ([]*ModelItem, error)
 }
 
 // ModelProvider is a dynamic gRPC-based plugin for managing Model resources.
@@ -144,6 +145,23 @@ func (p *ModelProvider) Get(
     }, nil
 }
 
+func (p *ModelProvider) Query(
+		ctx context.Context, req *lumirpc.QueryRequest) (*lumirpc.QueryResponse, error) {
+ 	contract.Assert(req.GetType() == string(ModelToken))
+ 	objs, err := p.ops.Query(ctx)
+ 	if err != nil {
+ 		return nil, err
+ 	}
+	var ret []*lumirpc.QueryItem
+ 	for _, obj := range objs {
+			ret = append(ret, &lumirpc.QueryItem{
+				Id:			obj.Id,
+				Resource:	plugin.MarshalProperties(
+					resource.NewPropertyMap(obj.Resource), plugin.MarshalOptions{})})
+	}
+	return &lumirpc.QueryResponse{ret}, nil
+}
+
 func (p *ModelProvider) InspectChange(
     ctx context.Context, req *lumirpc.InspectChangeRequest) (*lumirpc.InspectChangeResponse, error) {
     contract.Assert(req.GetType() == string(ModelToken))
@@ -227,6 +245,12 @@ type Model struct {
     Schema interface{} `lumi:"schema"`
     ModelName *string `lumi:"modelName,optional"`
     Description *string `lumi:"description,optional"`
+}
+
+// ModelItem is a marshalable representation of its corresponding IDL Query type.
+type ModelItem struct {
+	Id 			string
+	Resource	resource.PropertyMap
 }
 
 // Model's properties have constants to make dealing with diffs and property bags easier.

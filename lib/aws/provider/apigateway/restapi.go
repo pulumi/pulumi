@@ -126,13 +126,16 @@ func (p *restAPIProvider) Create(ctx context.Context, obj *apigateway.RestAPI) (
 }
 
 // Query returns an (possibly empty) array of resource objects.
-func (p *restAPIProvider) Query(ctx context.Context) ([]*apigateway.RestAPI, error) {
-	resps, err := p.ctx.APIGateway().GetRestApis(&apigateway.GetRestApisInput{})
+func (p *restAPIProvider) Query(ctx context.Context) ([]*apigateway.RestAPIItem, error) {
+	return nil, nil
+}
+
+/*
+	resps, err := p.ctx.APIGateway().GetRestApis(&awsapigateway.GetRestApisInput{})
 	if err != nil {
 		return nil, err
 	}
 	var restAPIs []*apigateway.RestAPI
-
 	for _, resp := range resps.Items {
 		restAPIs = append(restAPIs, &apigateway.RestAPI{
 			ID:               aws.StringValue(resp.Id),
@@ -146,6 +149,7 @@ func (p *restAPIProvider) Query(ctx context.Context) ([]*apigateway.RestAPI, err
 	}
 	return restAPIs, nil
 }
+*/
 
 // Get reads the instance state identified by ID, returning a populated resource object, or an error if not found.
 func (p *restAPIProvider) Get(ctx context.Context, id resource.ID) (*apigateway.RestAPI, error) {

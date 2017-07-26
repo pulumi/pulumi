@@ -33,6 +33,7 @@ type SubnetProviderOps interface {
     Update(ctx context.Context,
         id resource.ID, old *Subnet, new *Subnet, diff *resource.ObjectDiff) error
     Delete(ctx context.Context, id resource.ID) error
+    Query(ctx context.Context) ([]*SubnetItem, error)
 }
 
 // SubnetProvider is a dynamic gRPC-based plugin for managing Subnet resources.
@@ -138,6 +139,23 @@ func (p *SubnetProvider) Get(
     }, nil
 }
 
+func (p *SubnetProvider) Query(
+		ctx context.Context, req *lumirpc.QueryRequest) (*lumirpc.QueryResponse, error) {
+ 	contract.Assert(req.GetType() == string(SubnetToken))
+ 	objs, err := p.ops.Query(ctx)
+ 	if err != nil {
+ 		return nil, err
+ 	}
+	var ret []*lumirpc.QueryItem
+ 	for _, obj := range objs {
+			ret = append(ret, &lumirpc.QueryItem{
+				Id:			obj.Id,
+				Resource:	plugin.MarshalProperties(
+					resource.NewPropertyMap(obj.Resource), plugin.MarshalOptions{})})
+	}
+	return &lumirpc.QueryResponse{ret}, nil
+}
+
 func (p *SubnetProvider) InspectChange(
     ctx context.Context, req *lumirpc.InspectChangeRequest) (*lumirpc.InspectChangeResponse, error) {
     contract.Assert(req.GetType() == string(SubnetToken))
@@ -220,6 +238,12 @@ type Subnet struct {
     VPC resource.ID `lumi:"vpc"`
     AvailabilityZone *string `lumi:"availabilityZone,optional"`
     MapPublicIpOnLaunch *bool `lumi:"mapPublicIpOnLaunch,optional"`
+}
+
+// SubnetItem is a marshalable representation of its corresponding IDL Query type.
+type SubnetItem struct {
+	Id 			string
+	Resource	resource.PropertyMap
 }
 
 // Subnet's properties have constants to make dealing with diffs and property bags easier.

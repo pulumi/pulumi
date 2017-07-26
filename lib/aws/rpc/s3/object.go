@@ -32,6 +32,7 @@ type ObjectProviderOps interface {
     Update(ctx context.Context,
         id resource.ID, old *Object, new *Object, diff *resource.ObjectDiff) error
     Delete(ctx context.Context, id resource.ID) error
+    Query(ctx context.Context) ([]*ObjectItem, error)
 }
 
 // ObjectProvider is a dynamic gRPC-based plugin for managing Object resources.
@@ -156,6 +157,23 @@ func (p *ObjectProvider) Get(
     }, nil
 }
 
+func (p *ObjectProvider) Query(
+		ctx context.Context, req *lumirpc.QueryRequest) (*lumirpc.QueryResponse, error) {
+ 	contract.Assert(req.GetType() == string(ObjectToken))
+ 	objs, err := p.ops.Query(ctx)
+ 	if err != nil {
+ 		return nil, err
+ 	}
+	var ret []*lumirpc.QueryItem
+ 	for _, obj := range objs {
+			ret = append(ret, &lumirpc.QueryItem{
+				Id:			obj.Id,
+				Resource:	plugin.MarshalProperties(
+					resource.NewPropertyMap(obj.Resource), plugin.MarshalOptions{})})
+	}
+	return &lumirpc.QueryResponse{ret}, nil
+}
+
 func (p *ObjectProvider) InspectChange(
     ctx context.Context, req *lumirpc.InspectChangeRequest) (*lumirpc.InspectChangeResponse, error) {
     contract.Assert(req.GetType() == string(ObjectToken))
@@ -236,6 +254,12 @@ type Object struct {
     ContentEncoding *string `lumi:"contentEncoding,optional"`
     ContentLanguage *string `lumi:"contentLanguage,optional"`
     ContentLength *float64 `lumi:"contentLength,optional"`
+}
+
+// ObjectItem is a marshalable representation of its corresponding IDL Query type.
+type ObjectItem struct {
+	Id 			string
+	Resource	resource.PropertyMap
 }
 
 // Object's properties have constants to make dealing with diffs and property bags easier.

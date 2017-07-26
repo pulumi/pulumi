@@ -98,13 +98,24 @@ func (p *roleProvider) Create(ctx context.Context, obj *iam.Role) (resource.ID, 
 }
 
 // Query returns an (possibly empty) array of resource objects.
-func (p *roleProvider) Query(ctx context.Context) ([]*iam.Role, error) {
+func (p *roleProvider) Query(ctx context.Context) ([]*iam.RoleItem, error) {
+	return nil, nil
+}
+
+/*
 	names, err := p.ctx.IAM().ListRoles(&awsiam.ListRolesInput{})
 	if err != nil {
 		return nil, err
 	}
 	var roles []*iam.Role
-	for name := range names.Roles {
+	for _, name := range names.Roles {
+		role, err := p.Get(ctx, resource.ID(name))
+		if err != nil {
+			return nil, err
+		}
+		roles = append(roles, role)
+	}
+	return roles, nil
 		getrole, err := p.ctx.IAM().GetRole(&awsiam.GetRoleInput{RoleName: aws.String(name.RoleName)})
 		if err != nil {
 			if awsctx.IsAWSError(err, "NotFound", "NoSuchEntity") {
@@ -150,9 +161,7 @@ func (p *roleProvider) Query(ctx context.Context) ([]*iam.Role, error) {
 			ManagedPolicyARNs: managedPolicies,
 			ARN:               awscommon.ARN(aws.StringValue(role.Arn)),
 		})
-	}
-	return roles, nil
-}
+*/
 
 // Get reads the instance state identified by ID, returning a populated resource object, or an error if not found.
 func (p *roleProvider) Get(ctx context.Context, id resource.ID) (*iam.Role, error) {

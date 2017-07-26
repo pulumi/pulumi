@@ -33,6 +33,7 @@ type EnvironmentProviderOps interface {
     Update(ctx context.Context,
         id resource.ID, old *Environment, new *Environment, diff *resource.ObjectDiff) error
     Delete(ctx context.Context, id resource.ID) error
+    Query(ctx context.Context) ([]*EnvironmentItem, error)
 }
 
 // EnvironmentProvider is a dynamic gRPC-based plugin for managing Environment resources.
@@ -174,6 +175,23 @@ func (p *EnvironmentProvider) Get(
     }, nil
 }
 
+func (p *EnvironmentProvider) Query(
+		ctx context.Context, req *lumirpc.QueryRequest) (*lumirpc.QueryResponse, error) {
+ 	contract.Assert(req.GetType() == string(EnvironmentToken))
+ 	objs, err := p.ops.Query(ctx)
+ 	if err != nil {
+ 		return nil, err
+ 	}
+	var ret []*lumirpc.QueryItem
+ 	for _, obj := range objs {
+			ret = append(ret, &lumirpc.QueryItem{
+				Id:			obj.Id,
+				Resource:	plugin.MarshalProperties(
+					resource.NewPropertyMap(obj.Resource), plugin.MarshalOptions{})})
+	}
+	return &lumirpc.QueryResponse{ret}, nil
+}
+
 func (p *EnvironmentProvider) InspectChange(
     ctx context.Context, req *lumirpc.InspectChangeRequest) (*lumirpc.InspectChangeResponse, error) {
     contract.Assert(req.GetType() == string(EnvironmentToken))
@@ -275,6 +293,12 @@ type Environment struct {
     AllOptionSettings *[]OptionSetting `lumi:"allOptionSettings,optional"`
 }
 
+// EnvironmentItem is a marshalable representation of its corresponding IDL Query type.
+type EnvironmentItem struct {
+	Id 			string
+	Resource	resource.PropertyMap
+}
+
 // Environment's properties have constants to make dealing with diffs and property bags easier.
 const (
     Environment_Name = "name"
@@ -301,6 +325,12 @@ type OptionSetting struct {
     Value string `lumi:"value"`
 }
 
+// OptionSettingItem is a marshalable representation of its corresponding IDL Query type.
+type OptionSettingItem struct {
+	Id 			string
+	Resource	resource.PropertyMap
+}
+
 // OptionSetting's properties have constants to make dealing with diffs and property bags easier.
 const (
     OptionSetting_Namespace = "namespace"
@@ -314,6 +344,12 @@ const (
 type Tag struct {
     Key string `lumi:"key"`
     Value string `lumi:"value"`
+}
+
+// TagItem is a marshalable representation of its corresponding IDL Query type.
+type TagItem struct {
+	Id 			string
+	Resource	resource.PropertyMap
 }
 
 // Tag's properties have constants to make dealing with diffs and property bags easier.

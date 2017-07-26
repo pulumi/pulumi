@@ -33,6 +33,7 @@ type GroupProviderOps interface {
     Update(ctx context.Context,
         id resource.ID, old *Group, new *Group, diff *resource.ObjectDiff) error
     Delete(ctx context.Context, id resource.ID) error
+    Query(ctx context.Context) ([]*GroupItem, error)
 }
 
 // GroupProvider is a dynamic gRPC-based plugin for managing Group resources.
@@ -138,6 +139,23 @@ func (p *GroupProvider) Get(
     }, nil
 }
 
+func (p *GroupProvider) Query(
+		ctx context.Context, req *lumirpc.QueryRequest) (*lumirpc.QueryResponse, error) {
+ 	contract.Assert(req.GetType() == string(GroupToken))
+ 	objs, err := p.ops.Query(ctx)
+ 	if err != nil {
+ 		return nil, err
+ 	}
+	var ret []*lumirpc.QueryItem
+ 	for _, obj := range objs {
+			ret = append(ret, &lumirpc.QueryItem{
+				Id:			obj.Id,
+				Resource:	plugin.MarshalProperties(
+					resource.NewPropertyMap(obj.Resource), plugin.MarshalOptions{})})
+	}
+	return &lumirpc.QueryResponse{ret}, nil
+}
+
 func (p *GroupProvider) InspectChange(
     ctx context.Context, req *lumirpc.InspectChangeRequest) (*lumirpc.InspectChangeResponse, error) {
     contract.Assert(req.GetType() == string(GroupToken))
@@ -214,6 +232,12 @@ type Group struct {
     ManagedPolicies *[]resource.ID `lumi:"managedPolicies,optional"`
     Path *string `lumi:"path,optional"`
     Policies *InlinePolicy `lumi:"policies,optional"`
+}
+
+// GroupItem is a marshalable representation of its corresponding IDL Query type.
+type GroupItem struct {
+	Id 			string
+	Resource	resource.PropertyMap
 }
 
 // Group's properties have constants to make dealing with diffs and property bags easier.

@@ -57,7 +57,11 @@ func (p *subscriptionProvider) Create(ctx context.Context, obj *sns.Subscription
 }
 
 // Query returns an (possibly non-empty) array of resource objects.
-func (p *subscriptionProvider) Query(ctx context.Context) (*sns.Subscription, error) {
+func (p *subscriptionProvider) Query(ctx context.Context) ([]*sns.SubscriptionItem, error) {
+	return nil, nil
+}
+
+/*
 	subs, err := p.ctx.SNS().ListSubscriptions(&awssns.ListSubscriptionsInput{})
 	if err != nil {
 		return nil, err
@@ -72,9 +76,22 @@ func (p *subscriptionProvider) Query(ctx context.Context) (*sns.Subscription, er
 	}
 	return subscriptions, nil
 }
+*/
 
 // Get reads the instance state identified by ID, returning a populated resource object, or an error if not found.
 func (p *subscriptionProvider) Get(ctx context.Context, id resource.ID) (*sns.Subscription, error) {
+	/*
+		queresp, err := p.Query(ctx)
+		if err != nil {
+			return nil, err
+		}
+		for _, s := range queresp {
+			if s.SubscriptionArn == id {
+				return s, nil
+			}
+		}
+		return nil, errors.New("No resource with matching ID found")
+	*/
 	resp, err := p.ctx.SNS().GetSubscriptionAttributes(&awssns.GetSubscriptionAttributesInput{
 		SubscriptionArn: aws.String(string(id)),
 	})

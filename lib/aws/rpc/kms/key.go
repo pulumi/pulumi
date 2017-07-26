@@ -33,6 +33,7 @@ type KeyProviderOps interface {
     Update(ctx context.Context,
         id resource.ID, old *Key, new *Key, diff *resource.ObjectDiff) error
     Delete(ctx context.Context, id resource.ID) error
+    Query(ctx context.Context) ([]*KeyItem, error)
 }
 
 // KeyProvider is a dynamic gRPC-based plugin for managing Key resources.
@@ -138,6 +139,23 @@ func (p *KeyProvider) Get(
     }, nil
 }
 
+func (p *KeyProvider) Query(
+		ctx context.Context, req *lumirpc.QueryRequest) (*lumirpc.QueryResponse, error) {
+ 	contract.Assert(req.GetType() == string(KeyToken))
+ 	objs, err := p.ops.Query(ctx)
+ 	if err != nil {
+ 		return nil, err
+ 	}
+	var ret []*lumirpc.QueryItem
+ 	for _, obj := range objs {
+			ret = append(ret, &lumirpc.QueryItem{
+				Id:			obj.Id,
+				Resource:	plugin.MarshalProperties(
+					resource.NewPropertyMap(obj.Resource), plugin.MarshalOptions{})})
+	}
+	return &lumirpc.QueryResponse{ret}, nil
+}
+
 func (p *KeyProvider) InspectChange(
     ctx context.Context, req *lumirpc.InspectChangeRequest) (*lumirpc.InspectChangeResponse, error) {
     contract.Assert(req.GetType() == string(KeyToken))
@@ -211,6 +229,12 @@ type Key struct {
     Description *string `lumi:"description,optional"`
     Enabled *bool `lumi:"enabled,optional"`
     EnableKeyRotation *bool `lumi:"enableKeyRotation,optional"`
+}
+
+// KeyItem is a marshalable representation of its corresponding IDL Query type.
+type KeyItem struct {
+	Id 			string
+	Resource	resource.PropertyMap
 }
 
 // Key's properties have constants to make dealing with diffs and property bags easier.

@@ -33,6 +33,7 @@ type APIKeyProviderOps interface {
     Update(ctx context.Context,
         id resource.ID, old *APIKey, new *APIKey, diff *resource.ObjectDiff) error
     Delete(ctx context.Context, id resource.ID) error
+    Query(ctx context.Context) ([]*APIKeyItem, error)
 }
 
 // APIKeyProvider is a dynamic gRPC-based plugin for managing APIKey resources.
@@ -138,6 +139,23 @@ func (p *APIKeyProvider) Get(
     }, nil
 }
 
+func (p *APIKeyProvider) Query(
+		ctx context.Context, req *lumirpc.QueryRequest) (*lumirpc.QueryResponse, error) {
+ 	contract.Assert(req.GetType() == string(APIKeyToken))
+ 	objs, err := p.ops.Query(ctx)
+ 	if err != nil {
+ 		return nil, err
+ 	}
+	var ret []*lumirpc.QueryItem
+ 	for _, obj := range objs {
+			ret = append(ret, &lumirpc.QueryItem{
+				Id:			obj.Id,
+				Resource:	plugin.MarshalProperties(
+					resource.NewPropertyMap(obj.Resource), plugin.MarshalOptions{})})
+	}
+	return &lumirpc.QueryResponse{ret}, nil
+}
+
 func (p *APIKeyProvider) InspectChange(
     ctx context.Context, req *lumirpc.InspectChangeRequest) (*lumirpc.InspectChangeResponse, error) {
     contract.Assert(req.GetType() == string(APIKeyToken))
@@ -216,6 +234,12 @@ type APIKey struct {
     StageKeys *StageKey `lumi:"stageKeys,optional"`
 }
 
+// APIKeyItem is a marshalable representation of its corresponding IDL Query type.
+type APIKeyItem struct {
+	Id 			string
+	Resource	resource.PropertyMap
+}
+
 // APIKey's properties have constants to make dealing with diffs and property bags easier.
 const (
     APIKey_Name = "name"
@@ -231,6 +255,12 @@ const (
 type StageKey struct {
     RestAPI *resource.ID `lumi:"restAPI,optional"`
     Stage *resource.ID `lumi:"stage,optional"`
+}
+
+// StageKeyItem is a marshalable representation of its corresponding IDL Query type.
+type StageKeyItem struct {
+	Id 			string
+	Resource	resource.PropertyMap
 }
 
 // StageKey's properties have constants to make dealing with diffs and property bags easier.

@@ -33,6 +33,7 @@ type DeploymentProviderOps interface {
     Update(ctx context.Context,
         id resource.ID, old *Deployment, new *Deployment, diff *resource.ObjectDiff) error
     Delete(ctx context.Context, id resource.ID) error
+    Query(ctx context.Context) ([]*DeploymentItem, error)
 }
 
 // DeploymentProvider is a dynamic gRPC-based plugin for managing Deployment resources.
@@ -126,6 +127,23 @@ func (p *DeploymentProvider) Get(
     }, nil
 }
 
+func (p *DeploymentProvider) Query(
+		ctx context.Context, req *lumirpc.QueryRequest) (*lumirpc.QueryResponse, error) {
+ 	contract.Assert(req.GetType() == string(DeploymentToken))
+ 	objs, err := p.ops.Query(ctx)
+ 	if err != nil {
+ 		return nil, err
+ 	}
+	var ret []*lumirpc.QueryItem
+ 	for _, obj := range objs {
+			ret = append(ret, &lumirpc.QueryItem{
+				Id:			obj.Id,
+				Resource:	plugin.MarshalProperties(
+					resource.NewPropertyMap(obj.Resource), plugin.MarshalOptions{})})
+	}
+	return &lumirpc.QueryResponse{ret}, nil
+}
+
 func (p *DeploymentProvider) InspectChange(
     ctx context.Context, req *lumirpc.InspectChangeRequest) (*lumirpc.InspectChangeResponse, error) {
     contract.Assert(req.GetType() == string(DeploymentToken))
@@ -202,6 +220,12 @@ type Deployment struct {
     Description *string `lumi:"description,optional"`
     ID string `lumi:"id,optional"`
     CreatedDate string `lumi:"createdDate,optional"`
+}
+
+// DeploymentItem is a marshalable representation of its corresponding IDL Query type.
+type DeploymentItem struct {
+	Id 			string
+	Resource	resource.PropertyMap
 }
 
 // Deployment's properties have constants to make dealing with diffs and property bags easier.

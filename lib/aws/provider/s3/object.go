@@ -103,30 +103,51 @@ func (p *objProvider) Create(ctx context.Context, obj *s3.Object) (resource.ID, 
 }
 
 // Query returns an (possibly empty) array of resource objects.
-func (p *objProvider) Query(ctx context.Context) ([]*s3.Object, error) {
+func (p *objProvider) Query(ctx context.Context) ([]*s3.ObjectItem, error) {
+	return nil, nil
+}
+
+/*
 	var objects []*s3.Object
-	bucks, err := bucket.Query(ctx)
+	bucks, err := p.ctx.S3().ListBuckets(&awss3.ListBucketsInput{})
 	if err != nil {
 		return nil, err
 	}
-	for _, buck := range bucks {
+	for _, buck := range bucks.Buckets {
 		objs, err := p.ctx.S3().ListObjects(&awss3.ListObjectsInput{
-			Bucket: buck})
+			Bucket: buck.Name})
 		if err != nil {
 			return nil, err
 		}
 		for _, obj := range objs.Contents {
 			objects = append(objects, &s3.Object{
-				Bucket: resource.ID(arn.NewS3Bucket(buck)),
-				Key:    obj.Key,
+				Bucket: resource.ID((arn.NewS3Bucket(*buck.Name))),
+				Key:    *obj.Key,
 			})
 		}
 	}
 	return objects, nil
 }
+*/
 
 // Get reads the instance state identified by ID, returning a populated resource object, or an error if not found.
 func (p *objProvider) Get(ctx context.Context, id resource.ID) (*s3.Object, error) {
+	/*
+		queresp, err := p.Query(ctx)
+		if err != nil {
+			return nil, err
+		}
+		buck, key, err := arn.ParseResourceNamePair(id)
+		if err != nil {
+			return nil, err
+		}
+		for _, obj := range queresp {
+			if string(obj.Bucket) == buck && obj.Key == key {
+				return obj, nil
+			}
+		}
+		return nil, errors.New("No resource with matching ID found")
+	*/
 	buck, key, err := arn.ParseResourceNamePair(id)
 	if err != nil {
 		return nil, err

@@ -35,6 +35,7 @@ type LogSubscriptionFilterProviderOps interface {
     Update(ctx context.Context,
         id resource.ID, old *LogSubscriptionFilter, new *LogSubscriptionFilter, diff *resource.ObjectDiff) error
     Delete(ctx context.Context, id resource.ID) error
+    Query(ctx context.Context) ([]*LogSubscriptionFilterItem, error)
 }
 
 // LogSubscriptionFilterProvider is a dynamic gRPC-based plugin for managing LogSubscriptionFilter resources.
@@ -146,6 +147,23 @@ func (p *LogSubscriptionFilterProvider) Get(
     }, nil
 }
 
+func (p *LogSubscriptionFilterProvider) Query(
+		ctx context.Context, req *lumirpc.QueryRequest) (*lumirpc.QueryResponse, error) {
+ 	contract.Assert(req.GetType() == string(LogSubscriptionFilterToken))
+ 	objs, err := p.ops.Query(ctx)
+ 	if err != nil {
+ 		return nil, err
+ 	}
+	var ret []*lumirpc.QueryItem
+ 	for _, obj := range objs {
+			ret = append(ret, &lumirpc.QueryItem{
+				Id:			obj.Id,
+				Resource:	plugin.MarshalProperties(
+					resource.NewPropertyMap(obj.Resource), plugin.MarshalOptions{})})
+	}
+	return &lumirpc.QueryResponse{ret}, nil
+}
+
 func (p *LogSubscriptionFilterProvider) InspectChange(
     ctx context.Context, req *lumirpc.InspectChangeRequest) (*lumirpc.InspectChangeResponse, error) {
     contract.Assert(req.GetType() == string(LogSubscriptionFilterToken))
@@ -227,6 +245,12 @@ type LogSubscriptionFilter struct {
     RoleARN *__aws.ARN `lumi:"roleArn,optional"`
     Distribution *LogSubscriptionDistribution `lumi:"distribution,optional"`
     CreationTime *float64 `lumi:"creationTime,optional"`
+}
+
+// LogSubscriptionFilterItem is a marshalable representation of its corresponding IDL Query type.
+type LogSubscriptionFilterItem struct {
+	Id 			string
+	Resource	resource.PropertyMap
 }
 
 // LogSubscriptionFilter's properties have constants to make dealing with diffs and property bags easier.

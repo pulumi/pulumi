@@ -33,6 +33,7 @@ type SubscriptionProviderOps interface {
     Update(ctx context.Context,
         id resource.ID, old *Subscription, new *Subscription, diff *resource.ObjectDiff) error
     Delete(ctx context.Context, id resource.ID) error
+    Query(ctx context.Context) ([]*SubscriptionItem, error)
 }
 
 // SubscriptionProvider is a dynamic gRPC-based plugin for managing Subscription resources.
@@ -132,6 +133,23 @@ func (p *SubscriptionProvider) Get(
     }, nil
 }
 
+func (p *SubscriptionProvider) Query(
+		ctx context.Context, req *lumirpc.QueryRequest) (*lumirpc.QueryResponse, error) {
+ 	contract.Assert(req.GetType() == string(SubscriptionToken))
+ 	objs, err := p.ops.Query(ctx)
+ 	if err != nil {
+ 		return nil, err
+ 	}
+	var ret []*lumirpc.QueryItem
+ 	for _, obj := range objs {
+			ret = append(ret, &lumirpc.QueryItem{
+				Id:			obj.Id,
+				Resource:	plugin.MarshalProperties(
+					resource.NewPropertyMap(obj.Resource), plugin.MarshalOptions{})})
+	}
+	return &lumirpc.QueryResponse{ret}, nil
+}
+
 func (p *SubscriptionProvider) InspectChange(
     ctx context.Context, req *lumirpc.InspectChangeRequest) (*lumirpc.InspectChangeResponse, error) {
     contract.Assert(req.GetType() == string(SubscriptionToken))
@@ -213,6 +231,12 @@ type Subscription struct {
     Topic resource.ID `lumi:"topic"`
     Protocol Protocol `lumi:"protocol"`
     Endpoint string `lumi:"endpoint"`
+}
+
+// SubscriptionItem is a marshalable representation of its corresponding IDL Query type.
+type SubscriptionItem struct {
+	Id 			string
+	Resource	resource.PropertyMap
 }
 
 // Subscription's properties have constants to make dealing with diffs and property bags easier.

@@ -33,6 +33,7 @@ type VPCProviderOps interface {
     Update(ctx context.Context,
         id resource.ID, old *VPC, new *VPC, diff *resource.ObjectDiff) error
     Delete(ctx context.Context, id resource.ID) error
+    Query(ctx context.Context) ([]*VPCItem, error)
 }
 
 // VPCProvider is a dynamic gRPC-based plugin for managing VPC resources.
@@ -138,6 +139,23 @@ func (p *VPCProvider) Get(
     }, nil
 }
 
+func (p *VPCProvider) Query(
+		ctx context.Context, req *lumirpc.QueryRequest) (*lumirpc.QueryResponse, error) {
+ 	contract.Assert(req.GetType() == string(VPCToken))
+ 	objs, err := p.ops.Query(ctx)
+ 	if err != nil {
+ 		return nil, err
+ 	}
+	var ret []*lumirpc.QueryItem
+ 	for _, obj := range objs {
+			ret = append(ret, &lumirpc.QueryItem{
+				Id:			obj.Id,
+				Resource:	plugin.MarshalProperties(
+					resource.NewPropertyMap(obj.Resource), plugin.MarshalOptions{})})
+	}
+	return &lumirpc.QueryResponse{ret}, nil
+}
+
 func (p *VPCProvider) InspectChange(
     ctx context.Context, req *lumirpc.InspectChangeRequest) (*lumirpc.InspectChangeResponse, error) {
     contract.Assert(req.GetType() == string(VPCToken))
@@ -217,6 +235,12 @@ type VPC struct {
     InstanceTenancy *InstanceTenancy `lumi:"instanceTenancy,optional"`
     EnableDNSSupport *bool `lumi:"enableDnsSupport,optional"`
     EnableDNSHostnames *bool `lumi:"enableDnsHostnames,optional"`
+}
+
+// VPCItem is a marshalable representation of its corresponding IDL Query type.
+type VPCItem struct {
+	Id 			string
+	Resource	resource.PropertyMap
 }
 
 // VPC's properties have constants to make dealing with diffs and property bags easier.

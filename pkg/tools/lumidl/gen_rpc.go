@@ -111,7 +111,6 @@ func (g *RPCGenerator) EmitFile(file string, pkg *Package, members []Member) err
 			w.Writefmtln(`    "github.com/pulumi/lumi/pkg/util/contract"`)
 			w.Writefmtln(`    "github.com/pulumi/lumi/pkg/util/mapper"`)
 			w.Writefmtln(`    "github.com/pulumi/lumi/sdk/go/pkg/lumirpc"`)
-			w.Writefmtln(`    "github.com/golang/protobuf/ptypes/struct"`)
 		}
 
 		if len(g.FileImports) > 0 {
@@ -354,12 +353,12 @@ func (g *RPCGenerator) EmitResource(w *tools.GenWriter, module tokens.Module, pk
 	w.Writefmtln(" 	if err != nil {")
 	w.Writefmtln(" 		return nil, err")
 	w.Writefmtln(" 	}")
-	w.Writefmtln("	var ret []*QueryItem")
-	w.Writefmtln(" 	for index, obj := range objs {")
-	w.Writefmtln("			ret[index] = &QueryItem{")
-	w.Writefmtln("				Id:			*obj.Name")
+	w.Writefmtln("	var ret []*lumirpc.QueryItem")
+	w.Writefmtln(" 	for _, obj := range objs {")
+	w.Writefmtln("			ret = append(ret, &lumirpc.QueryItem{")
+	w.Writefmtln("				Id:			obj.Id,")
 	w.Writefmtln("				Resource:	plugin.MarshalProperties(")
-	w.Writefmtln("					nil, resource.NewPropertyMap(obj.Resource), plugin.MarshalOptions{})})")
+	w.Writefmtln("					resource.NewPropertyMap(obj.Resource), plugin.MarshalOptions{})})")
 	w.Writefmtln("	}")
 	w.Writefmtln("	return &lumirpc.QueryResponse{ret}, nil")
 	w.Writefmtln("}")
@@ -433,10 +432,6 @@ func (g *RPCGenerator) EmitResource(w *tools.GenWriter, module tokens.Module, pk
 	w.Writefmtln("    return &obj, props, mapper.MapIU(props.Mappable(), &obj)")
 	w.Writefmtln("}")
 	w.Writefmtln("")
-	w.Writefmtln("type %vItem struct {", name)
-	w.Writefmtln("	ID resource.ID")
-	w.Writefmtln("	Resource *%v", name)
-	w.Writefmtln("}")
 }
 
 func (g *RPCGenerator) EmitStructType(w *tools.GenWriter, module tokens.Module, pkg *Package, t TypeMember) {
@@ -455,6 +450,13 @@ func (g *RPCGenerator) EmitStructType(w *tools.GenWriter, module tokens.Module, 
 		w.Writefmtln("    %v %v %v",
 			prop.Name(), g.GenTypeName(prop.Type(), opts.Optional || opts.In || opts.Out), jsontag)
 	}
+	w.Writefmtln("}")
+	w.Writefmtln("")
+
+	w.Writefmtln("// %vItem is a marshalable representation of its corresponding IDL Query type.", name)
+	w.Writefmtln("type %vItem struct {", name)
+	w.Writefmtln("	Id 			string")
+	w.Writefmtln("	Resource	resource.PropertyMap")
 	w.Writefmtln("}")
 	w.Writefmtln("")
 

@@ -26,6 +26,12 @@ type InlinePolicy struct {
     PolicyName string `lumi:"policyName"`
 }
 
+// InlinePolicyItem is a marshalable representation of its corresponding IDL Query type.
+type InlinePolicyItem struct {
+	Id 			string
+	Resource	resource.PropertyMap
+}
+
 // InlinePolicy's properties have constants to make dealing with diffs and property bags easier.
 const (
     InlinePolicy_PolicyDocument = "policyDocument"
@@ -47,6 +53,7 @@ type PolicyProviderOps interface {
     Update(ctx context.Context,
         id resource.ID, old *Policy, new *Policy, diff *resource.ObjectDiff) error
     Delete(ctx context.Context, id resource.ID) error
+    Query(ctx context.Context) ([]*PolicyItem, error)
 }
 
 // PolicyProvider is a dynamic gRPC-based plugin for managing Policy resources.
@@ -158,6 +165,23 @@ func (p *PolicyProvider) Get(
     }, nil
 }
 
+func (p *PolicyProvider) Query(
+		ctx context.Context, req *lumirpc.QueryRequest) (*lumirpc.QueryResponse, error) {
+ 	contract.Assert(req.GetType() == string(PolicyToken))
+ 	objs, err := p.ops.Query(ctx)
+ 	if err != nil {
+ 		return nil, err
+ 	}
+	var ret []*lumirpc.QueryItem
+ 	for _, obj := range objs {
+			ret = append(ret, &lumirpc.QueryItem{
+				Id:			obj.Id,
+				Resource:	plugin.MarshalProperties(
+					resource.NewPropertyMap(obj.Resource), plugin.MarshalOptions{})})
+	}
+	return &lumirpc.QueryResponse{ret}, nil
+}
+
 func (p *PolicyProvider) InspectChange(
     ctx context.Context, req *lumirpc.InspectChangeRequest) (*lumirpc.InspectChangeResponse, error) {
     contract.Assert(req.GetType() == string(PolicyToken))
@@ -232,6 +256,12 @@ type Policy struct {
     Groups *[]resource.ID `lumi:"groups,optional"`
     Roles *[]resource.ID `lumi:"roles,optional"`
     Users *[]resource.ID `lumi:"users,optional"`
+}
+
+// PolicyItem is a marshalable representation of its corresponding IDL Query type.
+type PolicyItem struct {
+	Id 			string
+	Resource	resource.PropertyMap
 }
 
 // Policy's properties have constants to make dealing with diffs and property bags easier.

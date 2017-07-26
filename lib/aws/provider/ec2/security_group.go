@@ -149,7 +149,11 @@ func createSecurityGroupRulesFromIPPermissions(perms []*awsec2.IpPermission) *[]
 }
 
 // Query returns an (possibly empty) array of resource objects.
-func (p *sgProvider) Query(ctx context.Context) ([]*ec2.SecurityGroup, error) {
+func (p *sgProvider) Query(ctx context.Context) ([]*ec2.SecurityGroupItem, error) {
+	return nil, nil
+}
+
+/*
 	resp, err := p.ctx.EC2().DescribeSecurityGroups(&awsec2.DescribeSecurityGroupsInput{})
 	if err != nil {
 		return nil, err
@@ -176,9 +180,28 @@ func (p *sgProvider) Query(ctx context.Context) ([]*ec2.SecurityGroup, error) {
 	}
 	return grps, nil
 }
+*/
 
 // Get reads the instance state identified by ID, returning a populated resource object, or an error if not found.
 func (p *sgProvider) Get(ctx context.Context, id resource.ID) (*ec2.SecurityGroup, error) {
+	/*
+			queresp, err := p.Query(ctx)
+			if err != nil {
+				return nil, err
+			}
+			gid, err := arn.ParseResourceName(id)
+			if err != nil {
+				return nil, err
+			}
+
+			for _, secgroup := range queresp {
+				if secgroup.GroupID == gid {
+					return secgroup, nil
+				}
+			}
+			return nil, errors.New("Security group ID not found")
+		}
+	*/
 	gid, err := arn.ParseResourceName(id)
 	if err != nil {
 		return nil, err

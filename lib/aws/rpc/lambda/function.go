@@ -27,6 +27,12 @@ type DeadLetterConfig struct {
     Target resource.ID `lumi:"target"`
 }
 
+// DeadLetterConfigItem is a marshalable representation of its corresponding IDL Query type.
+type DeadLetterConfigItem struct {
+	Id 			string
+	Resource	resource.PropertyMap
+}
+
 // DeadLetterConfig's properties have constants to make dealing with diffs and property bags easier.
 const (
     DeadLetterConfig_Target = "target"
@@ -47,6 +53,7 @@ type FunctionProviderOps interface {
     Update(ctx context.Context,
         id resource.ID, old *Function, new *Function, diff *resource.ObjectDiff) error
     Delete(ctx context.Context, id resource.ID) error
+    Query(ctx context.Context) ([]*FunctionItem, error)
 }
 
 // FunctionProvider is a dynamic gRPC-based plugin for managing Function resources.
@@ -200,6 +207,23 @@ func (p *FunctionProvider) Get(
     }, nil
 }
 
+func (p *FunctionProvider) Query(
+		ctx context.Context, req *lumirpc.QueryRequest) (*lumirpc.QueryResponse, error) {
+ 	contract.Assert(req.GetType() == string(FunctionToken))
+ 	objs, err := p.ops.Query(ctx)
+ 	if err != nil {
+ 		return nil, err
+ 	}
+	var ret []*lumirpc.QueryItem
+ 	for _, obj := range objs {
+			ret = append(ret, &lumirpc.QueryItem{
+				Id:			obj.Id,
+				Resource:	plugin.MarshalProperties(
+					resource.NewPropertyMap(obj.Resource), plugin.MarshalOptions{})})
+	}
+	return &lumirpc.QueryResponse{ret}, nil
+}
+
 func (p *FunctionProvider) InspectChange(
     ctx context.Context, req *lumirpc.InspectChangeRequest) (*lumirpc.InspectChangeResponse, error) {
     contract.Assert(req.GetType() == string(FunctionToken))
@@ -287,6 +311,12 @@ type Function struct {
     LastModified string `lumi:"lastModified,optional"`
 }
 
+// FunctionItem is a marshalable representation of its corresponding IDL Query type.
+type FunctionItem struct {
+	Id 			string
+	Resource	resource.PropertyMap
+}
+
 // Function's properties have constants to make dealing with diffs and property bags easier.
 const (
     Function_Name = "name"
@@ -314,6 +344,12 @@ const (
 type VPCConfig struct {
     SecurityGroups []resource.ID `lumi:"securityGroups"`
     Subnets []resource.ID `lumi:"subnets"`
+}
+
+// VPCConfigItem is a marshalable representation of its corresponding IDL Query type.
+type VPCConfigItem struct {
+	Id 			string
+	Resource	resource.PropertyMap
 }
 
 // VPCConfig's properties have constants to make dealing with diffs and property bags easier.

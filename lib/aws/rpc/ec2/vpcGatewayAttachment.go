@@ -33,6 +33,7 @@ type VPCGatewayAttachmentProviderOps interface {
     Update(ctx context.Context,
         id resource.ID, old *VPCGatewayAttachment, new *VPCGatewayAttachment, diff *resource.ObjectDiff) error
     Delete(ctx context.Context, id resource.ID) error
+    Query(ctx context.Context) ([]*VPCGatewayAttachmentItem, error)
 }
 
 // VPCGatewayAttachmentProvider is a dynamic gRPC-based plugin for managing VPCGatewayAttachment resources.
@@ -126,6 +127,23 @@ func (p *VPCGatewayAttachmentProvider) Get(
     }, nil
 }
 
+func (p *VPCGatewayAttachmentProvider) Query(
+		ctx context.Context, req *lumirpc.QueryRequest) (*lumirpc.QueryResponse, error) {
+ 	contract.Assert(req.GetType() == string(VPCGatewayAttachmentToken))
+ 	objs, err := p.ops.Query(ctx)
+ 	if err != nil {
+ 		return nil, err
+ 	}
+	var ret []*lumirpc.QueryItem
+ 	for _, obj := range objs {
+			ret = append(ret, &lumirpc.QueryItem{
+				Id:			obj.Id,
+				Resource:	plugin.MarshalProperties(
+					resource.NewPropertyMap(obj.Resource), plugin.MarshalOptions{})})
+	}
+	return &lumirpc.QueryResponse{ret}, nil
+}
+
 func (p *VPCGatewayAttachmentProvider) InspectChange(
     ctx context.Context, req *lumirpc.InspectChangeRequest) (*lumirpc.InspectChangeResponse, error) {
     contract.Assert(req.GetType() == string(VPCGatewayAttachmentToken))
@@ -203,6 +221,12 @@ type VPCGatewayAttachment struct {
     Name *string `lumi:"name,optional"`
     VPC resource.ID `lumi:"vpc"`
     InternetGateway resource.ID `lumi:"internetGateway"`
+}
+
+// VPCGatewayAttachmentItem is a marshalable representation of its corresponding IDL Query type.
+type VPCGatewayAttachmentItem struct {
+	Id 			string
+	Resource	resource.PropertyMap
 }
 
 // VPCGatewayAttachment's properties have constants to make dealing with diffs and property bags easier.

@@ -33,6 +33,7 @@ type TopicProviderOps interface {
     Update(ctx context.Context,
         id resource.ID, old *Topic, new *Topic, diff *resource.ObjectDiff) error
     Delete(ctx context.Context, id resource.ID) error
+    Query(ctx context.Context) ([]*TopicItem, error)
 }
 
 // TopicProvider is a dynamic gRPC-based plugin for managing Topic resources.
@@ -126,6 +127,23 @@ func (p *TopicProvider) Get(
     }, nil
 }
 
+func (p *TopicProvider) Query(
+		ctx context.Context, req *lumirpc.QueryRequest) (*lumirpc.QueryResponse, error) {
+ 	contract.Assert(req.GetType() == string(TopicToken))
+ 	objs, err := p.ops.Query(ctx)
+ 	if err != nil {
+ 		return nil, err
+ 	}
+	var ret []*lumirpc.QueryItem
+ 	for _, obj := range objs {
+			ret = append(ret, &lumirpc.QueryItem{
+				Id:			obj.Id,
+				Resource:	plugin.MarshalProperties(
+					resource.NewPropertyMap(obj.Resource), plugin.MarshalOptions{})})
+	}
+	return &lumirpc.QueryResponse{ret}, nil
+}
+
 func (p *TopicProvider) InspectChange(
     ctx context.Context, req *lumirpc.InspectChangeRequest) (*lumirpc.InspectChangeResponse, error) {
     contract.Assert(req.GetType() == string(TopicToken))
@@ -200,6 +218,12 @@ type Topic struct {
     Name *string `lumi:"name,optional"`
     TopicName *string `lumi:"topicName,optional"`
     DisplayName *string `lumi:"displayName,optional"`
+}
+
+// TopicItem is a marshalable representation of its corresponding IDL Query type.
+type TopicItem struct {
+	Id 			string
+	Resource	resource.PropertyMap
 }
 
 // Topic's properties have constants to make dealing with diffs and property bags easier.

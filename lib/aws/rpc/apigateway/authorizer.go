@@ -33,6 +33,7 @@ type AuthorizerProviderOps interface {
     Update(ctx context.Context,
         id resource.ID, old *Authorizer, new *Authorizer, diff *resource.ObjectDiff) error
     Delete(ctx context.Context, id resource.ID) error
+    Query(ctx context.Context) ([]*AuthorizerItem, error)
 }
 
 // AuthorizerProvider is a dynamic gRPC-based plugin for managing Authorizer resources.
@@ -162,6 +163,23 @@ func (p *AuthorizerProvider) Get(
     }, nil
 }
 
+func (p *AuthorizerProvider) Query(
+		ctx context.Context, req *lumirpc.QueryRequest) (*lumirpc.QueryResponse, error) {
+ 	contract.Assert(req.GetType() == string(AuthorizerToken))
+ 	objs, err := p.ops.Query(ctx)
+ 	if err != nil {
+ 		return nil, err
+ 	}
+	var ret []*lumirpc.QueryItem
+ 	for _, obj := range objs {
+			ret = append(ret, &lumirpc.QueryItem{
+				Id:			obj.Id,
+				Resource:	plugin.MarshalProperties(
+					resource.NewPropertyMap(obj.Resource), plugin.MarshalOptions{})})
+	}
+	return &lumirpc.QueryResponse{ret}, nil
+}
+
 func (p *AuthorizerProvider) InspectChange(
     ctx context.Context, req *lumirpc.InspectChangeRequest) (*lumirpc.InspectChangeResponse, error) {
     contract.Assert(req.GetType() == string(AuthorizerToken))
@@ -239,6 +257,12 @@ type Authorizer struct {
     IdentityValidationExpression *string `lumi:"identityValidationExpression,optional"`
     Providers *[]resource.ID `lumi:"providers,optional"`
     RestAPI *resource.ID `lumi:"restAPI,optional"`
+}
+
+// AuthorizerItem is a marshalable representation of its corresponding IDL Query type.
+type AuthorizerItem struct {
+	Id 			string
+	Resource	resource.PropertyMap
 }
 
 // Authorizer's properties have constants to make dealing with diffs and property bags easier.

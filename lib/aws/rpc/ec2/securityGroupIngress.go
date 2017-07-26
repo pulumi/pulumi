@@ -33,6 +33,7 @@ type SecurityGroupIngressProviderOps interface {
     Update(ctx context.Context,
         id resource.ID, old *SecurityGroupIngress, new *SecurityGroupIngress, diff *resource.ObjectDiff) error
     Delete(ctx context.Context, id resource.ID) error
+    Query(ctx context.Context) ([]*SecurityGroupIngressItem, error)
 }
 
 // SecurityGroupIngressProvider is a dynamic gRPC-based plugin for managing SecurityGroupIngress resources.
@@ -174,6 +175,23 @@ func (p *SecurityGroupIngressProvider) Get(
     }, nil
 }
 
+func (p *SecurityGroupIngressProvider) Query(
+		ctx context.Context, req *lumirpc.QueryRequest) (*lumirpc.QueryResponse, error) {
+ 	contract.Assert(req.GetType() == string(SecurityGroupIngressToken))
+ 	objs, err := p.ops.Query(ctx)
+ 	if err != nil {
+ 		return nil, err
+ 	}
+	var ret []*lumirpc.QueryItem
+ 	for _, obj := range objs {
+			ret = append(ret, &lumirpc.QueryItem{
+				Id:			obj.Id,
+				Resource:	plugin.MarshalProperties(
+					resource.NewPropertyMap(obj.Resource), plugin.MarshalOptions{})})
+	}
+	return &lumirpc.QueryResponse{ret}, nil
+}
+
 func (p *SecurityGroupIngressProvider) InspectChange(
     ctx context.Context, req *lumirpc.InspectChangeRequest) (*lumirpc.InspectChangeResponse, error) {
     contract.Assert(req.GetType() == string(SecurityGroupIngressToken))
@@ -283,6 +301,12 @@ type SecurityGroupIngress struct {
     SourceSecurityGroupName *string `lumi:"sourceSecurityGroupName,optional"`
     SourceSecurityGroupOwnerId *string `lumi:"sourceSecurityGroupOwnerId,optional"`
     ToPort *float64 `lumi:"toPort,optional"`
+}
+
+// SecurityGroupIngressItem is a marshalable representation of its corresponding IDL Query type.
+type SecurityGroupIngressItem struct {
+	Id 			string
+	Resource	resource.PropertyMap
 }
 
 // SecurityGroupIngress's properties have constants to make dealing with diffs and property bags easier.

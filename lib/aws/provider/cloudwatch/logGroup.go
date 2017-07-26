@@ -101,26 +101,47 @@ func (p *logGroupProvider) Create(ctx context.Context,
 }
 
 // Query returns an (possibly empty) array of resource objects.
-func (p *logGroupProvider) Query(ctx context.Context) ([]*cloudwatch.LogGroup, error) {
+func (p *logGroupProvider) Query(ctx context.Context) ([]*cloudwatch.LogGroupItem, error) {
+	return nil, nil
+}
+
+/*
 	logs, err := p.ctx.CloudwatchLogs().DescribeLogGroups(&awscloudwatch.DescribeLogGroupsInput{})
 	if err != nil {
 		return nil, err
 	} else if logs == nil {
-		return nil, errors.New("Cloudwatch query returned an empty response")
+		return nil, errors.New("No Cloudwatch Queries returned")
 	}
-	var logGroups []*awscloudwatch.LogGroup
+	var logGroups []*cloudwatch.LogGroup
 	for _, group := range logs.LogGroups {
 		logGroups = append(logGroups, &cloudwatch.LogGroup{
-			LogGroupName:    aws.String(group.LogGroupName),
+			LogGroupName:    group.LogGroupName,
 			RetentionInDays: convutil.Int64PToFloat64P(group.RetentionInDays),
 		})
 	}
 	return logGroups, nil
 }
+*/
 
 // Get reads the instance state identified by ID, returning a populated resource object, or an error if not found.
 func (p *logGroupProvider) Get(ctx context.Context,
 	id resource.ID) (*cloudwatch.LogGroup, error) {
+	/*
+		queresp, err := p.Query(ctx)
+		if err != nil {
+			return nil, err
+		}
+		logGroupName, err := arn.ParseResourceName(id)
+		if err != nil {
+			return nil, err
+		}
+		for _, logGroup := range queresp {
+			if logGroup.LogGroupName == aws.String(logGroupName) {
+				return logGroup, nil
+			}
+		} // Return resource not found error
+		return nil, errors.New("Cloudwatch query returned an empty response")
+	*/
 	logGroupName, err := arn.ParseResourceName(id)
 	if err != nil {
 		return nil, err

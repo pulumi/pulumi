@@ -15,7 +15,6 @@ import (
 
 	"github.com/pulumi/lumi/lib/aws/provider/arn"
 	"github.com/pulumi/lumi/lib/aws/provider/awsctx"
-	awscommon "github.com/pulumi/lumi/lib/aws/rpc"
 	"github.com/pulumi/lumi/lib/aws/rpc/iam"
 )
 
@@ -91,8 +90,12 @@ func (p *InstanceProfileProvider) Create(ctx context.Context, obj *iam.InstanceP
 }
 
 // Query returns an (possibly empty) array of resource objects.
-func (p *InstanceProfileProvider) Query(ctx context.Context) (*iam.InstanceProfile, error) {
-	instProfs, err := p.ctx.IAM().ListInstanceProfiles(&iam.ListInstanceProfilesInput{})
+func (p *InstanceProfileProvider) Query(ctx context.Context) ([]*iam.InstanceProfileItem, error) {
+	return nil, nil
+}
+
+/*
+	instProfs, err := p.ctx.IAM().ListInstanceProfiles(&awsiam.ListInstanceProfilesInput{})
 	if err != nil {
 		return nil, err
 	}
@@ -103,7 +106,7 @@ func (p *InstanceProfileProvider) Query(ctx context.Context) (*iam.InstanceProfi
 			return nil, nil
 		}
 		var roles []resource.ID
-		for _, role := inst.Roles {
+		for _, role := range inst.Roles {
 			roles = append(roles, resource.ID(*role.Arn))
 		}
 		instanceProfiles = append(instanceProfiles, &iam.InstanceProfile{
@@ -115,37 +118,55 @@ func (p *InstanceProfileProvider) Query(ctx context.Context) (*iam.InstanceProfi
 	}
 	return instanceProfiles, nil
 }
+*/
+
 // Get reads the instance state identified by ID, returning a populated resource object, or an error if not found.
 func (p *InstanceProfileProvider) Get(ctx context.Context, id resource.ID) (*iam.InstanceProfile, error) {
-	name, err := arn.ParseResourceName(id)
-	if err != nil {
-		return nil, err
-	}
-	getInstanceProfile, err := p.ctx.IAM().GetInstanceProfile(&awsiam.GetInstanceProfileInput{
-		InstanceProfileName: aws.String(name),
-	})
-	if err != nil {
-		if awsctx.IsAWSError(err, "NotFound", "NoSuchEntity") {
+	/*
+			queresp, err := p.Query(ctx)
+			if err != nil {
+				return nil, err
+			}
+			name, err := arn.ParseResourceName(id)
+			for _, instProf := range queresp {
+				if *instProf.InstanceProfileName == name {
+					return instProf, nil
+				} // Return 'resource not found' error
+			}
+			return nil, errors.New("No resource found with matching ID")
+		}
+	*/
+	/*
+		name, err := arn.ParseResourceName(id)
+		if err != nil {
+			return nil, err
+		}
+		getInstanceProfile, err := p.ctx.IAM().GetInstanceProfile(&awsiam.GetInstanceProfileInput{
+			InstanceProfileName: aws.String(name),
+		})
+		if err != nil {
+			if awsctx.IsAWSError(err, "NotFound", "NoSuchEntity") {
+				return nil, nil
+			}
+			return nil, err
+		} else if getInstanceProfile == nil {
 			return nil, nil
 		}
-		return nil, err
-	} else if getInstanceProfile == nil {
-		return nil, nil
-	}
+		// If we got here, we found the InstanceProfile; populate the data structure accordingly.
+		instanceProfile := getInstanceProfile.InstanceProfile
+		var roles []resource.ID
+		for _, role := range instanceProfile.Roles {
+			roles = append(roles, resource.ID(*role.Arn))
+		}
 
-	// If we got here, we found the InstanceProfile; populate the data structure accordingly.
-	instanceProfile := getInstanceProfile.InstanceProfile
-	var roles []resource.ID
-	for _, role := range instanceProfile.Roles {
-		roles = append(roles, resource.ID(*role.Arn))
-	}
-
-	return &iam.InstanceProfile{
-		Path:                instanceProfile.Path,
-		InstanceProfileName: instanceProfile.InstanceProfileName,
-		Roles:               roles,
-		ARN:                 awscommon.ARN(aws.StringValue(instanceProfile.Arn)),
-	}, nil
+		return &iam.InstanceProfile{
+			Path:                instanceProfile.Path,
+			InstanceProfileName: instanceProfile.InstanceProfileName,
+			Roles:               roles,
+			ARN:                 awscommon.ARN(aws.StringValue(instanceProfile.Arn)),
+		}, nil
+	*/
+	return nil, nil
 }
 
 // InspectChange checks what impacts a hypothetical update will have on the resource's properties.

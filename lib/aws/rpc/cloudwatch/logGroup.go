@@ -33,6 +33,7 @@ type LogGroupProviderOps interface {
     Update(ctx context.Context,
         id resource.ID, old *LogGroup, new *LogGroup, diff *resource.ObjectDiff) error
     Delete(ctx context.Context, id resource.ID) error
+    Query(ctx context.Context) ([]*LogGroupItem, error)
 }
 
 // LogGroupProvider is a dynamic gRPC-based plugin for managing LogGroup resources.
@@ -126,6 +127,23 @@ func (p *LogGroupProvider) Get(
     }, nil
 }
 
+func (p *LogGroupProvider) Query(
+		ctx context.Context, req *lumirpc.QueryRequest) (*lumirpc.QueryResponse, error) {
+ 	contract.Assert(req.GetType() == string(LogGroupToken))
+ 	objs, err := p.ops.Query(ctx)
+ 	if err != nil {
+ 		return nil, err
+ 	}
+	var ret []*lumirpc.QueryItem
+ 	for _, obj := range objs {
+			ret = append(ret, &lumirpc.QueryItem{
+				Id:			obj.Id,
+				Resource:	plugin.MarshalProperties(
+					resource.NewPropertyMap(obj.Resource), plugin.MarshalOptions{})})
+	}
+	return &lumirpc.QueryResponse{ret}, nil
+}
+
 func (p *LogGroupProvider) InspectChange(
     ctx context.Context, req *lumirpc.InspectChangeRequest) (*lumirpc.InspectChangeResponse, error) {
     contract.Assert(req.GetType() == string(LogGroupToken))
@@ -200,6 +218,12 @@ type LogGroup struct {
     Name *string `lumi:"name,optional"`
     LogGroupName *string `lumi:"logGroupName,optional"`
     RetentionInDays *float64 `lumi:"retentionInDays,optional"`
+}
+
+// LogGroupItem is a marshalable representation of its corresponding IDL Query type.
+type LogGroupItem struct {
+	Id 			string
+	Resource	resource.PropertyMap
 }
 
 // LogGroup's properties have constants to make dealing with diffs and property bags easier.

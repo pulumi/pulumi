@@ -33,6 +33,7 @@ type RouteProviderOps interface {
     Update(ctx context.Context,
         id resource.ID, old *Route, new *Route, diff *resource.ObjectDiff) error
     Delete(ctx context.Context, id resource.ID) error
+    Query(ctx context.Context) ([]*RouteItem, error)
 }
 
 // RouteProvider is a dynamic gRPC-based plugin for managing Route resources.
@@ -138,6 +139,23 @@ func (p *RouteProvider) Get(
     }, nil
 }
 
+func (p *RouteProvider) Query(
+		ctx context.Context, req *lumirpc.QueryRequest) (*lumirpc.QueryResponse, error) {
+ 	contract.Assert(req.GetType() == string(RouteToken))
+ 	objs, err := p.ops.Query(ctx)
+ 	if err != nil {
+ 		return nil, err
+ 	}
+	var ret []*lumirpc.QueryItem
+ 	for _, obj := range objs {
+			ret = append(ret, &lumirpc.QueryItem{
+				Id:			obj.Id,
+				Resource:	plugin.MarshalProperties(
+					resource.NewPropertyMap(obj.Resource), plugin.MarshalOptions{})})
+	}
+	return &lumirpc.QueryResponse{ret}, nil
+}
+
 func (p *RouteProvider) InspectChange(
     ctx context.Context, req *lumirpc.InspectChangeRequest) (*lumirpc.InspectChangeResponse, error) {
     contract.Assert(req.GetType() == string(RouteToken))
@@ -223,6 +241,12 @@ type Route struct {
     RouteTable resource.ID `lumi:"routeTable"`
     InternetGateway resource.ID `lumi:"internetGateway"`
     VPCGatewayAttachment resource.ID `lumi:"vpcGatewayAttachment"`
+}
+
+// RouteItem is a marshalable representation of its corresponding IDL Query type.
+type RouteItem struct {
+	Id 			string
+	Resource	resource.PropertyMap
 }
 
 // Route's properties have constants to make dealing with diffs and property bags easier.

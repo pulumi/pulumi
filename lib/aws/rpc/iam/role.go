@@ -35,6 +35,7 @@ type RoleProviderOps interface {
     Update(ctx context.Context,
         id resource.ID, old *Role, new *Role, diff *resource.ObjectDiff) error
     Delete(ctx context.Context, id resource.ID) error
+    Query(ctx context.Context) ([]*RoleItem, error)
 }
 
 // RoleProvider is a dynamic gRPC-based plugin for managing Role resources.
@@ -146,6 +147,23 @@ func (p *RoleProvider) Get(
     }, nil
 }
 
+func (p *RoleProvider) Query(
+		ctx context.Context, req *lumirpc.QueryRequest) (*lumirpc.QueryResponse, error) {
+ 	contract.Assert(req.GetType() == string(RoleToken))
+ 	objs, err := p.ops.Query(ctx)
+ 	if err != nil {
+ 		return nil, err
+ 	}
+	var ret []*lumirpc.QueryItem
+ 	for _, obj := range objs {
+			ret = append(ret, &lumirpc.QueryItem{
+				Id:			obj.Id,
+				Resource:	plugin.MarshalProperties(
+					resource.NewPropertyMap(obj.Resource), plugin.MarshalOptions{})})
+	}
+	return &lumirpc.QueryResponse{ret}, nil
+}
+
 func (p *RoleProvider) InspectChange(
     ctx context.Context, req *lumirpc.InspectChangeRequest) (*lumirpc.InspectChangeResponse, error) {
     contract.Assert(req.GetType() == string(RoleToken))
@@ -227,6 +245,12 @@ type Role struct {
     ManagedPolicyARNs *[]__aws.ARN `lumi:"managedPolicyARNs,optional"`
     Policies *[]InlinePolicy `lumi:"policies,optional"`
     ARN __aws.ARN `lumi:"arn,optional"`
+}
+
+// RoleItem is a marshalable representation of its corresponding IDL Query type.
+type RoleItem struct {
+	Id 			string
+	Resource	resource.PropertyMap
 }
 
 // Role's properties have constants to make dealing with diffs and property bags easier.

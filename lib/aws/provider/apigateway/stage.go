@@ -84,25 +84,38 @@ func (p *stageProvider) Create(ctx context.Context, obj *apigateway.Stage) (reso
 }
 
 // Query returns an (possibly empty) array of resource objects.
-func (p *stageProvider) Query(ctx context.Context) ([]*apigateway.Stage, error) {
-	restAPIs, err := restapi.Query(ctx)
+func (p *stageProvider) Query(ctx context.Context) ([]*apigateway.StageItem, error) {
+	return nil, nil
+}
+
+/*
+	restAPIs, err := p.ctx.APIGateway().GetRestApis(&awsapigateway.GetRestApisInput{})
 	if err != nil {
 		return nil, err
 	}
 	var stages []*apigateway.Stage
-	for _, restAPI := range restAPIs {
-		for _, deploys := range p.ctx.APIGateway().GetDeployments(&apigateway.GetDeploymentsInput{RestApiId: restAPI.Id}).Items {
-			deploymentStages := p.ctx.APIGateway().GetStages(&apigateway.GetStagesInput{
-				DeploymentId: deploys,
-				RestApiId:    restAPI.Id}).Item
-			for _, stage := range deploymentStages {
+	for _, restAPI := range restAPIs.Items {
+		deployments, err := p.ctx.APIGateway().GetDeployments(&awsapigateway.GetDeploymentsInput{
+			RestApiId: restAPI.Id})
+		if err != nil {
+			return nil, err
+		}
+		for _, deploys := range deployments.Items {
+			deploymentStages, err := p.ctx.APIGateway().GetStages(&awsapigateway.GetStagesInput{
+				DeploymentId: deploys.Id,
+				RestApiId:    restAPI.Id})
+			if err != nil {
+				return nil, err
+			}
+			for _, stage := range deploymentStages.Item {
 				variables := aws.StringValueMap(stage.Variables)
-				url := "https://" + restAPI.Id + ".execute-api." + p.ctx.Region() + ".amazonaws.com/" + stage.StageName
-				executionARN := "arn:aws:execute-api:" + p.ctx.Region() + ":" + p.ctx.AccountID() + ":" + restAPI.Id + "/" + stage.StageName
+				url := "https://" + *restAPI.Id + ".execute-api." + p.ctx.Region() + ".amazonaws.com/" + *stage.StageName
+				executionARN := "arn:aws:execute-api:" + p.ctx.Region() + ":" + p.ctx.AccountID() + ":" + *restAPI.Id
+					+ "/" + *stage.StageName
 
 				stages = append(stages, &apigateway.Stage{
-					RestAPI:             NewRestAPIID(p.ctx.Region(), restAPI.Id),
-					Deployment:          NewDeploymentID(p.ctx.Region(), restAPI.Id, aws.StringValue(stage.DeploymentId)),
+					RestAPI:             NewRestAPIID(p.ctx.Region(), *restAPI.Id),
+					Deployment:          NewDeploymentID(p.ctx.Region(), *restAPI.Id, aws.StringValue(stage.DeploymentId)),
 					CacheClusterEnabled: stage.CacheClusterEnabled,
 					CacheClusterSize:    stage.CacheClusterSize,
 					StageName:           aws.StringValue(stage.StageName),
@@ -116,12 +129,29 @@ func (p *stageProvider) Query(ctx context.Context) ([]*apigateway.Stage, error) 
 			}
 		}
 	}
-
 	return stages, nil
 }
+*/
 
 // Get reads the instance state identified by ID, returning a populated resource object, or an error if not found.
 func (p *stageProvider) Get(ctx context.Context, id resource.ID) (*apigateway.Stage, error) {
+	/*
+		queresp, err := p.Query(ctx)
+		if err != nil {
+			return nil, err
+		}
+		_, stageName, err := ParseStageID(id)
+		if err != nil {
+			return nil, err
+		}
+
+		for _, stage := range queresp {
+			if stage.StageName == stageName {
+				return stage, nil
+			}
+		}
+		return nil, errors.New("Resource not found")
+	*/
 	restAPIID, stageName, err := ParseStageID(id)
 	if err != nil {
 		return nil, err
