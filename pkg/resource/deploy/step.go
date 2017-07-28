@@ -3,8 +3,11 @@
 package deploy
 
 import (
+	"fmt"
+
 	"github.com/pulumi/lumi/pkg/compiler/symbols"
 	"github.com/pulumi/lumi/pkg/diag/colors"
+	"github.com/pulumi/lumi/pkg/eval/rt"
 	"github.com/pulumi/lumi/pkg/resource"
 	"github.com/pulumi/lumi/pkg/resource/plugin"
 	"github.com/pulumi/lumi/pkg/tokens"
@@ -385,13 +388,17 @@ func (s *QueryStep) Pre() error {
 		return err
 	}
 	outs, err := prov.Query(s.Type())
+	fmt.Printf("Outputs: %v\n", outs)
 	if err != nil {
 		return err
 	}
 	s.outputs = outs
 
 	for _, out := range outs {
+		fmt.Printf("\n")
+		fmt.Printf("out: %v\n", out)
 		for i, obj := range s.objs {
+			fmt.Printf("i: %v, obj: %v\n", i, obj)
 			if obj == nil {
 				s.objs = append(s.objs, resource.NewEmptyObject(s.t))
 			}
@@ -399,9 +406,12 @@ func (s *QueryStep) Pre() error {
 			s.objs[i].SetID(out.ID)
 		}
 	}
+	var arr []*rt.Pointer
 	for _, obj := range s.objs {
-		s.iter.Produce(obj)
+		arr = append(arr, rt.NewPointer(obj.Obj(), false, nil, nil))
 	}
+	fmt.Printf("arr: %v\n", arr)
+	s.iter.Produce(rt.NewArrayObject(s.t, &arr))
 	return nil
 }
 
@@ -463,7 +473,7 @@ func (s *GetStep) Pre() error {
 	s.obj.SetProperties(outs)
 
 	// Finally, the iterate must communicate the result back to the interpreter, by way of an unwind.
-	s.iter.Produce(s.obj)
+	s.iter.Produce(s.obj.Obj())
 
 	return nil
 }

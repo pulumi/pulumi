@@ -7,6 +7,7 @@ import (
 
 	"github.com/pulumi/lumi/pkg/compiler/symbols"
 	"github.com/pulumi/lumi/pkg/diag"
+	"github.com/pulumi/lumi/pkg/eval/rt"
 	"github.com/pulumi/lumi/pkg/resource"
 	"github.com/pulumi/lumi/pkg/tokens"
 )
@@ -24,7 +25,7 @@ type Source interface {
 type SourceIterator interface {
 	io.Closer
 	// Produce registers a resource that was produced during the iteration, to publish next time.
-	Produce(res *resource.Object)
+	Produce(res *rt.Object)
 	// Next returns the next step from the source.  If the source allocation is non-nil, it represents the creation of
 	// a resource object; if query is non-nil, it represents querying the resources; if both error and the other
 	// objects are nil, then the iterator has completed its job and no subsequent calls to next should be made.

@@ -102,7 +102,7 @@ func (src *evalSource) Iterate() (SourceIterator, error) {
 type evalSourceIterator struct {
 	src *evalSource            // the owning eval source object.
 	e   eval.Interpreter       // the interpreter used to compute the new state.
-	res *resource.Object       // a resource to publish during the next rendezvous.
+	res *rt.Object             // a resource to publish during the next rendezvous.
 	rz  *rendezvous.Rendezvous // the rendezvous where planning and evaluator coroutines meet.
 }
 
@@ -112,7 +112,7 @@ func (iter *evalSourceIterator) Close() error {
 	return nil
 }
 
-func (iter *evalSourceIterator) Produce(res *resource.Object) {
+func (iter *evalSourceIterator) Produce(res *rt.Object) {
 	iter.res = res
 }
 
@@ -125,7 +125,7 @@ func (iter *evalSourceIterator) Next() (*SourceAllocation, *SourceQuery, error) 
 	// Kick the interpreter to compute some more and then inspect what it has to say.
 	var data interface{}
 	if res := iter.res; res != nil {
-		data = rt.NewReturnUnwind(res.Obj())
+		data = rt.NewReturnUnwind(res)
 		iter.res = nil // reset the state so we don't return things more than once.
 	}
 	obj, done, err := iter.rz.Meet(planParty, data)

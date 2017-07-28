@@ -2,9 +2,7 @@
 
 package deploy
 
-import (
-	"github.com/pulumi/lumi/pkg/resource"
-)
+import "github.com/pulumi/lumi/pkg/eval/rt"
 
 // NullSource is a singleton source that never returns any resources.  This may be used in scenarios where the "new"
 // version of the world is meant to be empty, either for testing purposes, or removal of an existing environment.
@@ -34,7 +32,7 @@ func (iter *nullSourceIterator) Close() error {
 	return nil // nothing to do.
 }
 
-func (iter *nullSourceIterator) Produce(res *resource.Object) {
+func (iter *nullSourceIterator) Produce(res *rt.Object) {
 	// ignore
 }
 

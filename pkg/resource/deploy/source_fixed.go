@@ -3,6 +3,7 @@
 package deploy
 
 import (
+	"github.com/pulumi/lumi/pkg/eval/rt"
 	"github.com/pulumi/lumi/pkg/resource"
 	"github.com/pulumi/lumi/pkg/tokens"
 )
@@ -43,7 +44,7 @@ func (iter *fixedSourceIterator) Close() error {
 	return nil // nothing to do.
 }
 
-func (iter *fixedSourceIterator) Produce(res *resource.Object) {
+func (iter *fixedSourceIterator) Produce(res *rt.Object) {
 	// ignore
 }
 

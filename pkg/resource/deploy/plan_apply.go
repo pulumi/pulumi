@@ -7,6 +7,7 @@ import (
 	goerr "github.com/pkg/errors"
 
 	"github.com/pulumi/lumi/pkg/compiler/errors"
+	"github.com/pulumi/lumi/pkg/eval/rt"
 	"github.com/pulumi/lumi/pkg/resource"
 	"github.com/pulumi/lumi/pkg/resource/plugin"
 	"github.com/pulumi/lumi/pkg/util/contract"
@@ -144,7 +145,7 @@ func (iter *PlanIterator) Close() error {
 }
 
 // Produce is used to indicate that a new resource state has been read from a live environment.
-func (iter *PlanIterator) Produce(res *resource.Object) {
+func (iter *PlanIterator) Produce(res *rt.Object) {
 	iter.src.Produce(res)
 }
 

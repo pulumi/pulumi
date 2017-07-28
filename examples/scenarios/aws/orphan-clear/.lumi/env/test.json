@@ -4,10 +4,10 @@
         "aws:config:region": "us-west-2"
     },
     "latest": {
-        "time": "2017-07-28T11:54:13.815168267-07:00",
+        "time": "2017-07-28T13:54:50.057956955-07:00",
         "info": {
-            "args": null,
-            "pkg": "aws/orphan-clear"
+            "pkg": "aws/orphan-clear",
+            "args": null
         }
     }
 }

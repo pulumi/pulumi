@@ -108,7 +108,7 @@ func (iter *errorSourceIterator) Close() error {
 	return nil // nothing to do.
 }
 
-func (iter *errorSourceIterator) Produce(res *resource.Object) {
+func (iter *errorSourceIterator) Produce(res *rt.Object) {
 	// nothing to do.
 }
 

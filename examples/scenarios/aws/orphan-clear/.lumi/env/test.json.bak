@@ -1,7 +1,10 @@
 {
     "target": "test",
+    "config": {
+        "aws:config:region": "us-west-2"
+    },
     "latest": {
-        "time": "2017-07-28T11:53:01.54370048-07:00",
+        "time": "2017-07-28T13:53:47.316688349-07:00",
         "info": {
             "pkg": "aws/orphan-clear",
             "args": null
