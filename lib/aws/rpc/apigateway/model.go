@@ -250,7 +250,7 @@ type Model struct {
 // ModelItem is a marshalable representation of its corresponding IDL Query type.
 type ModelItem struct {
 	Id 			string
-	Resource	resource.PropertyMap
+	Resource	Model
 }
 
 // Model's properties have constants to make dealing with diffs and property bags easier.

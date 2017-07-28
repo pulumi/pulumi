@@ -24,7 +24,7 @@ export class RestAPI extends lumi.NamedResource implements RestAPIArgs {
         return <any>undefined; // functionality provided by the runtime
     }
 
-    public static query(q: any): RestAPI[] {
+    public static query(): RestAPI[] {
         return <any>undefined; // functionality provided by the runtime
     }
 

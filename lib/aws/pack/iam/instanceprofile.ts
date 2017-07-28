@@ -17,7 +17,7 @@ export class InstanceProfile extends lumi.NamedResource implements InstanceProfi
         return <any>undefined; // functionality provided by the runtime
     }
 
-    public static query(q: any): InstanceProfile[] {
+    public static query(): InstanceProfile[] {
         return <any>undefined; // functionality provided by the runtime
     }
 

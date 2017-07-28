@@ -18,7 +18,7 @@ export class SecurityGroup extends lumi.NamedResource implements SecurityGroupAr
         return <any>undefined; // functionality provided by the runtime
     }
 
-    public static query(q: any): SecurityGroup[] {
+    public static query(): SecurityGroup[] {
         return <any>undefined; // functionality provided by the runtime
     }
 

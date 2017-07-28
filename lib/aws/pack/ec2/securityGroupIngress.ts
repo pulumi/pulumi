@@ -22,7 +22,7 @@ export class SecurityGroupIngress extends lumi.NamedResource implements Security
         return <any>undefined; // functionality provided by the runtime
     }
 
-    public static query(q: any): SecurityGroupIngress[] {
+    public static query(): SecurityGroupIngress[] {
         return <any>undefined; // functionality provided by the runtime
     }
 

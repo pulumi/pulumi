@@ -17,7 +17,7 @@ export class BasePathMapping extends lumi.NamedResource implements BasePathMappi
         return <any>undefined; // functionality provided by the runtime
     }
 
-    public static query(q: any): BasePathMapping[] {
+    public static query(): BasePathMapping[] {
         return <any>undefined; // functionality provided by the runtime
     }
 

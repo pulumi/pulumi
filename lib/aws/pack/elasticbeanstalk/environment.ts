@@ -28,7 +28,7 @@ export class Environment extends lumi.NamedResource implements EnvironmentArgs {
         return <any>undefined; // functionality provided by the runtime
     }
 
-    public static query(q: any): Environment[] {
+    public static query(): Environment[] {
         return <any>undefined; // functionality provided by the runtime
     }
 

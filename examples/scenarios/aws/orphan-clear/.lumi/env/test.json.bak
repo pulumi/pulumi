@@ -1,0 +1,10 @@
+{
+    "target": "test",
+    "latest": {
+        "time": "2017-07-28T11:53:01.54370048-07:00",
+        "info": {
+            "pkg": "aws/orphan-clear",
+            "args": null
+        }
+    }
+}

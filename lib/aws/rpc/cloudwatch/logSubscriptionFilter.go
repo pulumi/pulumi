@@ -250,7 +250,7 @@ type LogSubscriptionFilter struct {
 // LogSubscriptionFilterItem is a marshalable representation of its corresponding IDL Query type.
 type LogSubscriptionFilterItem struct {
 	Id 			string
-	Resource	resource.PropertyMap
+	Resource	LogSubscriptionFilter
 }
 
 // LogSubscriptionFilter's properties have constants to make dealing with diffs and property bags easier.

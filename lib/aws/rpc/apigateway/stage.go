@@ -279,7 +279,7 @@ type Stage struct {
 // StageItem is a marshalable representation of its corresponding IDL Query type.
 type StageItem struct {
 	Id 			string
-	Resource	resource.PropertyMap
+	Resource	Stage
 }
 
 // Stage's properties have constants to make dealing with diffs and property bags easier.

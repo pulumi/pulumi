@@ -17,7 +17,7 @@ export class Model extends lumi.NamedResource implements ModelArgs {
         return <any>undefined; // functionality provided by the runtime
     }
 
-    public static query(q: any): Model[] {
+    public static query(): Model[] {
         return <any>undefined; // functionality provided by the runtime
     }
 

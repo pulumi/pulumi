@@ -236,7 +236,7 @@ type Subscription struct {
 // SubscriptionItem is a marshalable representation of its corresponding IDL Query type.
 type SubscriptionItem struct {
 	Id 			string
-	Resource	resource.PropertyMap
+	Resource	Subscription
 }
 
 // Subscription's properties have constants to make dealing with diffs and property bags easier.

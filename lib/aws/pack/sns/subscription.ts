@@ -34,7 +34,7 @@ export class Subscription extends lumi.NamedResource implements SubscriptionArgs
         return <any>undefined; // functionality provided by the runtime
     }
 
-    public static query(q: any): Subscription[] {
+    public static query(): Subscription[] {
         return <any>undefined; // functionality provided by the runtime
     }
 

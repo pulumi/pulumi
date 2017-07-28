@@ -80,7 +80,7 @@ export class Instance extends lumi.NamedResource implements InstanceArgs {
         return <any>undefined; // functionality provided by the runtime
     }
 
-    public static query(q: any): Instance[] {
+    public static query(): Instance[] {
         return <any>undefined; // functionality provided by the runtime
     }
 

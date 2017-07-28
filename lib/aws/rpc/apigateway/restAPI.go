@@ -260,7 +260,7 @@ type RestAPI struct {
 // RestAPIItem is a marshalable representation of its corresponding IDL Query type.
 type RestAPIItem struct {
 	Id 			string
-	Resource	resource.PropertyMap
+	Resource	RestAPI
 }
 
 // RestAPI's properties have constants to make dealing with diffs and property bags easier.
@@ -292,7 +292,7 @@ type S3Location struct {
 // S3LocationItem is a marshalable representation of its corresponding IDL Query type.
 type S3LocationItem struct {
 	Id 			string
-	Resource	resource.PropertyMap
+	Resource	S3Location
 }
 
 // S3Location's properties have constants to make dealing with diffs and property bags easier.

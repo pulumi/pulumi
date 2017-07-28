@@ -18,7 +18,7 @@ export class Permission extends lumi.NamedResource implements PermissionArgs {
         return <any>undefined; // functionality provided by the runtime
     }
 
-    public static query(q: any): Permission[] {
+    public static query(): Permission[] {
         return <any>undefined; // functionality provided by the runtime
     }
 

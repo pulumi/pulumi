@@ -304,9 +304,7 @@ func (iter *PlanIterator) nextQueryStep(q *SourceQuery) (Step, error) {
 	if id := q.GetID; id != "" {
 		return NewGetStep(iter, q.Type, id, nil), nil
 	}
-	contract.Assert(q.QueryFilter != nil)
-	contract.Failf("TODO[pulumi/lumi#83]: querying not yet supported")
-	return nil, nil
+	return NewQueryStep(iter, q.Type, nil), nil
 }
 
 // nextDeleteStep produces a new step that deletes a resource if necessary.

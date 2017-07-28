@@ -456,7 +456,7 @@ func (g *RPCGenerator) EmitStructType(w *tools.GenWriter, module tokens.Module, 
 	w.Writefmtln("// %vItem is a marshalable representation of its corresponding IDL Query type.", name)
 	w.Writefmtln("type %vItem struct {", name)
 	w.Writefmtln("	Id 			string")
-	w.Writefmtln("	Resource	resource.PropertyMap")
+	w.Writefmtln("	Resource	%v", name)
 	w.Writefmtln("}")
 	w.Writefmtln("")
 

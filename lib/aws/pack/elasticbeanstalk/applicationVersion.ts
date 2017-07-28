@@ -17,7 +17,7 @@ export class ApplicationVersion extends lumi.NamedResource implements Applicatio
         return <any>undefined; // functionality provided by the runtime
     }
 
-    public static query(q: any): ApplicationVersion[] {
+    public static query(): ApplicationVersion[] {
         return <any>undefined; // functionality provided by the runtime
     }
 

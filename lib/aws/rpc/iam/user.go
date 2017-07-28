@@ -29,7 +29,7 @@ type LoginProfile struct {
 // LoginProfileItem is a marshalable representation of its corresponding IDL Query type.
 type LoginProfileItem struct {
 	Id 			string
-	Resource	resource.PropertyMap
+	Resource	LoginProfile
 }
 
 // LoginProfile's properties have constants to make dealing with diffs and property bags easier.
@@ -271,7 +271,7 @@ type User struct {
 // UserItem is a marshalable representation of its corresponding IDL Query type.
 type UserItem struct {
 	Id 			string
-	Resource	resource.PropertyMap
+	Resource	User
 }
 
 // User's properties have constants to make dealing with diffs and property bags easier.

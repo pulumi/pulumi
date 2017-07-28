@@ -18,7 +18,7 @@ export class Route extends lumi.NamedResource implements RouteArgs {
         return <any>undefined; // functionality provided by the runtime
     }
 
-    public static query(q: any): Route[] {
+    public static query(): Route[] {
         return <any>undefined; // functionality provided by the runtime
     }
 

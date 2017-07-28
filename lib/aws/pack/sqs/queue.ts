@@ -19,7 +19,7 @@ export class Queue extends lumi.NamedResource implements QueueArgs {
         return <any>undefined; // functionality provided by the runtime
     }
 
-    public static query(q: any): Queue[] {
+    public static query(): Queue[] {
         return <any>undefined; // functionality provided by the runtime
     }
 

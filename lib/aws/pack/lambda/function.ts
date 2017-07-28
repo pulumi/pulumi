@@ -46,7 +46,7 @@ export class Function extends lumi.NamedResource implements FunctionArgs {
         return <any>undefined; // functionality provided by the runtime
     }
 
-    public static query(q: any): Function[] {
+    public static query(): Function[] {
         return <any>undefined; // functionality provided by the runtime
     }
 

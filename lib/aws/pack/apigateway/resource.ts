@@ -15,7 +15,7 @@ export class Resource extends lumi.NamedResource implements ResourceArgs {
         return <any>undefined; // functionality provided by the runtime
     }
 
-    public static query(q: any): Resource[] {
+    public static query(): Resource[] {
         return <any>undefined; // functionality provided by the runtime
     }
 

@@ -275,7 +275,7 @@ type Queue struct {
 // QueueItem is a marshalable representation of its corresponding IDL Query type.
 type QueueItem struct {
 	Id 			string
-	Resource	resource.PropertyMap
+	Resource	Queue
 }
 
 // Queue's properties have constants to make dealing with diffs and property bags easier.
@@ -303,7 +303,7 @@ type RedrivePolicy struct {
 // RedrivePolicyItem is a marshalable representation of its corresponding IDL Query type.
 type RedrivePolicyItem struct {
 	Id 			string
-	Resource	resource.PropertyMap
+	Resource	RedrivePolicy
 }
 
 // RedrivePolicy's properties have constants to make dealing with diffs and property bags easier.

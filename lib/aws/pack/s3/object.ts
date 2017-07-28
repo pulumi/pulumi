@@ -21,7 +21,7 @@ export class Object extends lumi.Resource implements ObjectArgs {
         return <any>undefined; // functionality provided by the runtime
     }
 
-    public static query(q: any): Object[] {
+    public static query(): Object[] {
         return <any>undefined; // functionality provided by the runtime
     }
 

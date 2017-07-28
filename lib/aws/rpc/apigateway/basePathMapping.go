@@ -234,7 +234,7 @@ type BasePathMapping struct {
 // BasePathMappingItem is a marshalable representation of its corresponding IDL Query type.
 type BasePathMappingItem struct {
 	Id 			string
-	Resource	resource.PropertyMap
+	Resource	BasePathMapping
 }
 
 // BasePathMapping's properties have constants to make dealing with diffs and property bags easier.

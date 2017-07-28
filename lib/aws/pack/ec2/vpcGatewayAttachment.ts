@@ -15,7 +15,7 @@ export class VPCGatewayAttachment extends lumi.NamedResource implements VPCGatew
         return <any>undefined; // functionality provided by the runtime
     }
 
-    public static query(q: any): VPCGatewayAttachment[] {
+    public static query(): VPCGatewayAttachment[] {
         return <any>undefined; // functionality provided by the runtime
     }
 

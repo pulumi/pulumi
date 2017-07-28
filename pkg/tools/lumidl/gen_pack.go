@@ -289,7 +289,7 @@ func (g *PackGenerator) emitResourceClass(w *tools.GenWriter, res *Resource) {
 	w.Writefmtln("        return <any>undefined; // functionality provided by the runtime")
 	w.Writefmtln("    }")
 	w.Writefmtln("")
-	w.Writefmtln("    public static query(q: any): %v[] {", name)
+	w.Writefmtln("    public static query(): %v[] {", name)
 	w.Writefmtln("        return <any>undefined; // functionality provided by the runtime")
 	w.Writefmtln("    }")
 	w.Writefmtln("")

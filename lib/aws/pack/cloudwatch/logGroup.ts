@@ -12,7 +12,7 @@ export class LogGroup extends lumi.NamedResource implements LogGroupArgs {
         return <any>undefined; // functionality provided by the runtime
     }
 
-    public static query(q: any): LogGroup[] {
+    public static query(): LogGroup[] {
         return <any>undefined; // functionality provided by the runtime
     }
 

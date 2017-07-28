@@ -150,7 +150,33 @@ func createSecurityGroupRulesFromIPPermissions(perms []*awsec2.IpPermission) *[]
 
 // Query returns an (possibly empty) array of resource objects.
 func (p *sgProvider) Query(ctx context.Context) ([]*ec2.SecurityGroupItem, error) {
-	return nil, nil
+	resp, err := p.ctx.EC2().DescribeSecurityGroups(&awsec2.DescribeSecurityGroupsInput{})
+	if err != nil {
+		return nil, err
+	} else if resp == nil || len(resp.SecurityGroups) == 0 {
+		return nil, nil
+	}
+
+	var grps []*ec2.SecurityGroupItem
+	for _, grp := range resp.SecurityGroups {
+		var vpcID *resource.ID
+		if grp.VpcId != nil {
+			vpc := arn.NewEC2VPCID(p.ctx.Region(), p.ctx.AccountID(), aws.StringValue(grp.VpcId))
+			vpcID = &vpc
+		}
+		grps = append(grps, &ec2.SecurityGroupItem{
+			Id: *grp.GroupId,
+			Resource: ec2.SecurityGroup{
+				GroupID:              aws.StringValue(grp.GroupId),
+				GroupName:            grp.GroupName,
+				GroupDescription:     aws.StringValue(grp.Description),
+				VPC:                  vpcID,
+				SecurityGroupEgress:  createSecurityGroupRulesFromIPPermissions(grp.IpPermissionsEgress),
+				SecurityGroupIngress: createSecurityGroupRulesFromIPPermissions(grp.IpPermissions),
+			},
+		})
+	}
+	return grps, nil
 }
 
 /*

@@ -13,7 +13,7 @@ export class Account extends lumi.NamedResource implements AccountArgs {
         return <any>undefined; // functionality provided by the runtime
     }
 
-    public static query(q: any): Account[] {
+    public static query(): Account[] {
         return <any>undefined; // functionality provided by the runtime
     }
 

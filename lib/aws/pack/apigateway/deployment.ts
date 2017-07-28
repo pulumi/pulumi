@@ -16,7 +16,7 @@ export class Deployment extends lumi.NamedResource implements DeploymentArgs {
         return <any>undefined; // functionality provided by the runtime
     }
 
-    public static query(q: any): Deployment[] {
+    public static query(): Deployment[] {
         return <any>undefined; // functionality provided by the runtime
     }
 

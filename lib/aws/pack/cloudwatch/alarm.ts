@@ -49,7 +49,7 @@ export class ActionTarget extends lumi.NamedResource implements ActionTargetArgs
         return <any>undefined; // functionality provided by the runtime
     }
 
-    public static query(q: any): ActionTarget[] {
+    public static query(): ActionTarget[] {
         return <any>undefined; // functionality provided by the runtime
     }
 
@@ -88,7 +88,7 @@ export class Alarm extends lumi.NamedResource implements AlarmArgs {
         return <any>undefined; // functionality provided by the runtime
     }
 
-    public static query(q: any): Alarm[] {
+    public static query(): Alarm[] {
         return <any>undefined; // functionality provided by the runtime
     }
 

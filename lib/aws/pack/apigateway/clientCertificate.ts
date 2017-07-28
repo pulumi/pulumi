@@ -11,7 +11,7 @@ export class ClientCertificate extends lumi.NamedResource implements ClientCerti
         return <any>undefined; // functionality provided by the runtime
     }
 
-    public static query(q: any): ClientCertificate[] {
+    public static query(): ClientCertificate[] {
         return <any>undefined; // functionality provided by the runtime
     }
 

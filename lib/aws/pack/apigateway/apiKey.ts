@@ -17,7 +17,7 @@ export class APIKey extends lumi.NamedResource implements APIKeyArgs {
         return <any>undefined; // functionality provided by the runtime
     }
 
-    public static query(q: any): APIKey[] {
+    public static query(): APIKey[] {
         return <any>undefined; // functionality provided by the runtime
     }
 

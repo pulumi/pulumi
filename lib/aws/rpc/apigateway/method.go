@@ -37,7 +37,7 @@ type Integration struct {
 // IntegrationItem is a marshalable representation of its corresponding IDL Query type.
 type IntegrationItem struct {
 	Id 			string
-	Resource	resource.PropertyMap
+	Resource	Integration
 }
 
 // Integration's properties have constants to make dealing with diffs and property bags easier.
@@ -67,7 +67,7 @@ type IntegrationResponse struct {
 // IntegrationResponseItem is a marshalable representation of its corresponding IDL Query type.
 type IntegrationResponseItem struct {
 	Id 			string
-	Resource	resource.PropertyMap
+	Resource	IntegrationResponse
 }
 
 // IntegrationResponse's properties have constants to make dealing with diffs and property bags easier.
@@ -336,7 +336,7 @@ type Method struct {
 // MethodItem is a marshalable representation of its corresponding IDL Query type.
 type MethodItem struct {
 	Id 			string
-	Resource	resource.PropertyMap
+	Resource	Method
 }
 
 // Method's properties have constants to make dealing with diffs and property bags easier.
@@ -366,7 +366,7 @@ type MethodResponse struct {
 // MethodResponseItem is a marshalable representation of its corresponding IDL Query type.
 type MethodResponseItem struct {
 	Id 			string
-	Resource	resource.PropertyMap
+	Resource	MethodResponse
 }
 
 // MethodResponse's properties have constants to make dealing with diffs and property bags easier.
@@ -395,7 +395,7 @@ type MethodSetting struct {
 // MethodSettingItem is a marshalable representation of its corresponding IDL Query type.
 type MethodSettingItem struct {
 	Id 			string
-	Resource	resource.PropertyMap
+	Resource	MethodSetting
 }
 
 // MethodSetting's properties have constants to make dealing with diffs and property bags easier.

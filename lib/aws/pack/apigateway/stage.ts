@@ -28,7 +28,7 @@ export class Stage extends lumi.NamedResource implements StageArgs {
         return <any>undefined; // functionality provided by the runtime
     }
 
-    public static query(q: any): Stage[] {
+    public static query(): Stage[] {
         return <any>undefined; // functionality provided by the runtime
     }
 

@@ -24,7 +24,7 @@ export class Policy extends lumi.NamedResource implements PolicyArgs {
         return <any>undefined; // functionality provided by the runtime
     }
 
-    public static query(q: any): Policy[] {
+    public static query(): Policy[] {
         return <any>undefined; // functionality provided by the runtime
     }
 

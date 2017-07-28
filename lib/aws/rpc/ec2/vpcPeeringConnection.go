@@ -226,7 +226,7 @@ type VPCPeeringConnection struct {
 // VPCPeeringConnectionItem is a marshalable representation of its corresponding IDL Query type.
 type VPCPeeringConnectionItem struct {
 	Id 			string
-	Resource	resource.PropertyMap
+	Resource	VPCPeeringConnection
 }
 
 // VPCPeeringConnection's properties have constants to make dealing with diffs and property bags easier.

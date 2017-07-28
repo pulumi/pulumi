@@ -15,7 +15,7 @@ export class UsagePlanKey extends lumi.NamedResource implements UsagePlanKeyArgs
         return <any>undefined; // functionality provided by the runtime
     }
 
-    public static query(q: any): UsagePlanKey[] {
+    public static query(): UsagePlanKey[] {
         return <any>undefined; // functionality provided by the runtime
     }
 

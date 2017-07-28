@@ -23,7 +23,7 @@ export class VPC extends lumi.NamedResource implements VPCArgs {
         return <any>undefined; // functionality provided by the runtime
     }
 
-    public static query(q: any): VPC[] {
+    public static query(): VPC[] {
         return <any>undefined; // functionality provided by the runtime
     }
 

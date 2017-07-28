@@ -237,7 +237,7 @@ type APIKey struct {
 // APIKeyItem is a marshalable representation of its corresponding IDL Query type.
 type APIKeyItem struct {
 	Id 			string
-	Resource	resource.PropertyMap
+	Resource	APIKey
 }
 
 // APIKey's properties have constants to make dealing with diffs and property bags easier.
@@ -260,7 +260,7 @@ type StageKey struct {
 // StageKeyItem is a marshalable representation of its corresponding IDL Query type.
 type StageKeyItem struct {
 	Id 			string
-	Resource	resource.PropertyMap
+	Resource	StageKey
 }
 
 // StageKey's properties have constants to make dealing with diffs and property bags easier.

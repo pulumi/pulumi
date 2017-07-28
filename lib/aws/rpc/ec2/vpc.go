@@ -240,7 +240,7 @@ type VPC struct {
 // VPCItem is a marshalable representation of its corresponding IDL Query type.
 type VPCItem struct {
 	Id 			string
-	Resource	resource.PropertyMap
+	Resource	VPC
 }
 
 // VPC's properties have constants to make dealing with diffs and property bags easier.

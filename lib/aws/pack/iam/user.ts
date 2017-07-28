@@ -24,7 +24,7 @@ export class User extends lumi.NamedResource implements UserArgs {
         return <any>undefined; // functionality provided by the runtime
     }
 
-    public static query(q: any): User[] {
+    public static query(): User[] {
         return <any>undefined; // functionality provided by the runtime
     }
 

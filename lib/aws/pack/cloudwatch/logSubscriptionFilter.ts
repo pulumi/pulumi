@@ -25,7 +25,7 @@ export class LogSubscriptionFilter extends lumi.NamedResource implements LogSubs
         return <any>undefined; // functionality provided by the runtime
     }
 
-    public static query(q: any): LogSubscriptionFilter[] {
+    public static query(): LogSubscriptionFilter[] {
         return <any>undefined; // functionality provided by the runtime
     }
 

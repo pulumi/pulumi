@@ -14,7 +14,7 @@ export class Key extends lumi.NamedResource implements KeyArgs {
         return <any>undefined; // functionality provided by the runtime
     }
 
-    public static query(q: any): Key[] {
+    public static query(): Key[] {
         return <any>undefined; // functionality provided by the runtime
     }
 

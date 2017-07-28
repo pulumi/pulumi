@@ -258,7 +258,7 @@ type Permission struct {
 // PermissionItem is a marshalable representation of its corresponding IDL Query type.
 type PermissionItem struct {
 	Id 			string
-	Resource	resource.PropertyMap
+	Resource	Permission
 }
 
 // Permission's properties have constants to make dealing with diffs and property bags easier.

@@ -251,7 +251,7 @@ type SecurityGroup struct {
 // SecurityGroupItem is a marshalable representation of its corresponding IDL Query type.
 type SecurityGroupItem struct {
 	Id 			string
-	Resource	resource.PropertyMap
+	Resource	SecurityGroup
 }
 
 // SecurityGroup's properties have constants to make dealing with diffs and property bags easier.
@@ -278,7 +278,7 @@ type SecurityGroupRule struct {
 // SecurityGroupRuleItem is a marshalable representation of its corresponding IDL Query type.
 type SecurityGroupRuleItem struct {
 	Id 			string
-	Resource	resource.PropertyMap
+	Resource	SecurityGroupRule
 }
 
 // SecurityGroupRule's properties have constants to make dealing with diffs and property bags easier.

@@ -389,14 +389,15 @@ func (s *QueryStep) Pre() error {
 		return err
 	}
 	s.outputs = outs
-	for _, obj := range s.objs {
-		if obj == nil {
-			s.objs = append(s.objs, resource.NewEmptyObject(s.t))
+
+	for _, out := range outs {
+		for i, obj := range s.objs {
+			if obj == nil {
+				s.objs = append(s.objs, resource.NewEmptyObject(s.t))
+			}
+			s.objs[i].SetProperties(out.Item)
+			s.objs[i].SetID(out.ID)
 		}
-	}
-	for i, out := range outs {
-		s.objs[i].SetProperties(out.Item)
-		s.objs[i].SetID(out.ID)
 	}
 	for _, obj := range s.objs {
 		s.iter.Produce(obj)

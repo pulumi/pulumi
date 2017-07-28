@@ -24,7 +24,7 @@ export class Authorizer extends lumi.NamedResource implements AuthorizerArgs {
         return <any>undefined; // functionality provided by the runtime
     }
 
-    public static query(q: any): Authorizer[] {
+    public static query(): Authorizer[] {
         return <any>undefined; // functionality provided by the runtime
     }
 

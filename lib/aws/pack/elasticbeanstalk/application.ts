@@ -12,7 +12,7 @@ export class Application extends lumi.NamedResource implements ApplicationArgs {
         return <any>undefined; // functionality provided by the runtime
     }
 
-    public static query(q: any): Application[] {
+    public static query(): Application[] {
         return <any>undefined; // functionality provided by the runtime
     }
 

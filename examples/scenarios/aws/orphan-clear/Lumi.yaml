@@ -1,0 +1,6 @@
+name: aws/orphan-clear
+description: An empty Lumi script.
+dependencies:
+    aws: "*"
+    lumirt: "*"
+

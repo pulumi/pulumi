@@ -14,7 +14,7 @@ export class Bucket extends lumi.NamedResource implements BucketArgs {
         return <any>undefined; // functionality provided by the runtime
     }
 
-    public static query(q: any): Bucket[] {
+    public static query(): Bucket[] {
         return <any>undefined; // functionality provided by the runtime
     }
 

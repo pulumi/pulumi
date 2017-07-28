@@ -223,7 +223,7 @@ type ActionTarget struct {
 // ActionTargetItem is a marshalable representation of its corresponding IDL Query type.
 type ActionTargetItem struct {
 	Id 			string
-	Resource	resource.PropertyMap
+	Resource	ActionTarget
 }
 
 // ActionTarget's properties have constants to make dealing with diffs and property bags easier.
@@ -529,7 +529,7 @@ type Alarm struct {
 // AlarmItem is a marshalable representation of its corresponding IDL Query type.
 type AlarmItem struct {
 	Id 			string
-	Resource	resource.PropertyMap
+	Resource	Alarm
 }
 
 // Alarm's properties have constants to make dealing with diffs and property bags easier.
@@ -563,7 +563,7 @@ type AlarmDimension struct {
 // AlarmDimensionItem is a marshalable representation of its corresponding IDL Query type.
 type AlarmDimensionItem struct {
 	Id 			string
-	Resource	resource.PropertyMap
+	Resource	AlarmDimension
 }
 
 // AlarmDimension's properties have constants to make dealing with diffs and property bags easier.

@@ -16,7 +16,7 @@ export class Group extends lumi.NamedResource implements GroupArgs {
         return <any>undefined; // functionality provided by the runtime
     }
 
-    public static query(q: any): Group[] {
+    public static query(): Group[] {
         return <any>undefined; // functionality provided by the runtime
     }
 

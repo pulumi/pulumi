@@ -16,7 +16,7 @@ export class Subnet extends lumi.NamedResource implements SubnetArgs {
         return <any>undefined; // functionality provided by the runtime
     }
 
-    public static query(q: any): Subnet[] {
+    public static query(): Subnet[] {
         return <any>undefined; // functionality provided by the runtime
     }
 

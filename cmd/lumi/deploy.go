@@ -137,7 +137,7 @@ func deployLatest(cmd *cobra.Command, info *envCmdInfo, opts deployOptions) erro
 			start := time.Now()
 			progress := newProgress(opts)
 			summary, _, _, err := result.Plan.Apply(progress)
-			contract.Assert(summary != nil)
+			contract.Assertf(summary != nil, "expected non-nil summary, got err %v", err)
 			empty := (summary.Steps() == 0) // if no step is returned, it was empty.
 
 			// Print a summary.

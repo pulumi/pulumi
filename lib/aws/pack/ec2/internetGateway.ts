@@ -10,7 +10,7 @@ export class InternetGateway extends lumi.NamedResource implements InternetGatew
         return <any>undefined; // functionality provided by the runtime
     }
 
-    public static query(q: any): InternetGateway[] {
+    public static query(): InternetGateway[] {
         return <any>undefined; // functionality provided by the runtime
     }
 

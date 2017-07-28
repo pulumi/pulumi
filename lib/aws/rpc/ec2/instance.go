@@ -258,7 +258,7 @@ type Instance struct {
 // InstanceItem is a marshalable representation of its corresponding IDL Query type.
 type InstanceItem struct {
 	Id 			string
-	Resource	resource.PropertyMap
+	Resource	Instance
 }
 
 // Instance's properties have constants to make dealing with diffs and property bags easier.
@@ -287,7 +287,7 @@ type Tag struct {
 // TagItem is a marshalable representation of its corresponding IDL Query type.
 type TagItem struct {
 	Id 			string
-	Resource	resource.PropertyMap
+	Resource	Tag
 }
 
 // Tag's properties have constants to make dealing with diffs and property bags easier.

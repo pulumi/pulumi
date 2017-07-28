@@ -162,7 +162,7 @@ func (iter *evalSourceIterator) Next() (*SourceAllocation, *SourceQuery, error) 
 			return nil, &SourceQuery{Type: t, GetID: resource.ID(args[0].StringValue())}, nil
 		case specialResourceQueryFunction:
 			if len(args) == 0 { // Add similar checks to input args, if all good, then return nil, &SourceQuery{}, nil
-				return nil, &SourceQuery{}, nil
+				return nil, &SourceQuery{Type: t}, nil
 			}
 			return nil, nil, goerr.Errorf("Invalid argument for method %v", meth)
 		default:
@@ -371,6 +371,7 @@ func (h *evalHooks) OnEnterFunction(fnc symbols.Function, args []*rt.Object) (*r
 				if done {
 					return rt.NewCancelUnwind(), nil
 				}
+				glog.V(7).Infof("Ret:%v", ret)
 				contract.Assertf(ret != nil, "Expecting unwind instructions from the planning goroutine")
 				uw = ret.(*rt.Unwind)
 			}

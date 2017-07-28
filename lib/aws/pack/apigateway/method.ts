@@ -79,7 +79,7 @@ export class Method extends lumi.NamedResource implements MethodArgs {
         return <any>undefined; // functionality provided by the runtime
     }
 
-    public static query(q: any): Method[] {
+    public static query(): Method[] {
         return <any>undefined; // functionality provided by the runtime
     }
 

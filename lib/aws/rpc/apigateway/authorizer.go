@@ -262,7 +262,7 @@ type Authorizer struct {
 // AuthorizerItem is a marshalable representation of its corresponding IDL Query type.
 type AuthorizerItem struct {
 	Id 			string
-	Resource	resource.PropertyMap
+	Resource	Authorizer
 }
 
 // Authorizer's properties have constants to make dealing with diffs and property bags easier.

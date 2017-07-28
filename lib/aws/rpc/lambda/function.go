@@ -30,7 +30,7 @@ type DeadLetterConfig struct {
 // DeadLetterConfigItem is a marshalable representation of its corresponding IDL Query type.
 type DeadLetterConfigItem struct {
 	Id 			string
-	Resource	resource.PropertyMap
+	Resource	DeadLetterConfig
 }
 
 // DeadLetterConfig's properties have constants to make dealing with diffs and property bags easier.
@@ -314,7 +314,7 @@ type Function struct {
 // FunctionItem is a marshalable representation of its corresponding IDL Query type.
 type FunctionItem struct {
 	Id 			string
-	Resource	resource.PropertyMap
+	Resource	Function
 }
 
 // Function's properties have constants to make dealing with diffs and property bags easier.
@@ -349,7 +349,7 @@ type VPCConfig struct {
 // VPCConfigItem is a marshalable representation of its corresponding IDL Query type.
 type VPCConfigItem struct {
 	Id 			string
-	Resource	resource.PropertyMap
+	Resource	VPCConfig
 }
 
 // VPCConfig's properties have constants to make dealing with diffs and property bags easier.

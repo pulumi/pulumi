@@ -29,7 +29,7 @@ type Attribute struct {
 // AttributeItem is a marshalable representation of its corresponding IDL Query type.
 type AttributeItem struct {
 	Id 			string
-	Resource	resource.PropertyMap
+	Resource	Attribute
 }
 
 // Attribute's properties have constants to make dealing with diffs and property bags easier.
@@ -54,7 +54,7 @@ type GlobalSecondaryIndex struct {
 // GlobalSecondaryIndexItem is a marshalable representation of its corresponding IDL Query type.
 type GlobalSecondaryIndexItem struct {
 	Id 			string
-	Resource	resource.PropertyMap
+	Resource	GlobalSecondaryIndex
 }
 
 // GlobalSecondaryIndex's properties have constants to make dealing with diffs and property bags easier.
@@ -314,7 +314,7 @@ type Table struct {
 // TableItem is a marshalable representation of its corresponding IDL Query type.
 type TableItem struct {
 	Id 			string
-	Resource	resource.PropertyMap
+	Resource	Table
 }
 
 // Table's properties have constants to make dealing with diffs and property bags easier.

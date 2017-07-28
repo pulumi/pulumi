@@ -250,7 +250,7 @@ type Role struct {
 // RoleItem is a marshalable representation of its corresponding IDL Query type.
 type RoleItem struct {
 	Id 			string
-	Resource	resource.PropertyMap
+	Resource	Role
 }
 
 // Role's properties have constants to make dealing with diffs and property bags easier.

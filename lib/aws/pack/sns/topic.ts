@@ -12,7 +12,7 @@ export class Topic extends lumi.NamedResource implements TopicArgs {
         return <any>undefined; // functionality provided by the runtime
     }
 
-    public static query(q: any): Topic[] {
+    public static query(): Topic[] {
         return <any>undefined; // functionality provided by the runtime
     }
 

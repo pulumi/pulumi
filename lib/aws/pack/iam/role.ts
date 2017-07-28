@@ -19,7 +19,7 @@ export class Role extends lumi.NamedResource implements RoleArgs {
         return <any>undefined; // functionality provided by the runtime
     }
 
-    public static query(q: any): Role[] {
+    public static query(): Role[] {
         return <any>undefined; // functionality provided by the runtime
     }
 

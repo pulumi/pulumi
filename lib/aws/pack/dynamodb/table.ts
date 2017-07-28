@@ -49,7 +49,7 @@ export class Table extends lumi.NamedResource implements TableArgs {
         return <any>undefined; // functionality provided by the runtime
     }
 
-    public static query(q: any): Table[] {
+    public static query(): Table[] {
         return <any>undefined; // functionality provided by the runtime
     }
 

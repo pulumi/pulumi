@@ -13,7 +13,7 @@ export class RouteTable extends lumi.NamedResource implements RouteTableArgs {
         return <any>undefined; // functionality provided by the runtime
     }
 
-    public static query(q: any): RouteTable[] {
+    public static query(): RouteTable[] {
         return <any>undefined; // functionality provided by the runtime
     }
 
