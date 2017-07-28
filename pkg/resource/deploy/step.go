@@ -393,7 +393,6 @@ func (s *QueryStep) Pre() error {
 		return err
 	}
 	s.outputs = outs
-
 	for _, out := range outs {
 		fmt.Printf("\n")
 		fmt.Printf("out: %v\n", out)
