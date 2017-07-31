@@ -163,7 +163,6 @@ func UnmarshalProperties(props *structpb.Struct, opts MarshalOptions) resource.P
 		pk := resource.PropertyKey(key)
 		v := UnmarshalPropertyValue(props.Fields[key], opts)
 		glog.V(9).Infof("Unmarshaling property for RPC: %v=%v", key, v)
-		contract.Assert(!v.IsComputed())
 		if opts.SkipNulls && v.IsNull() {
 			glog.V(9).Infof("Skipping unmarshaling of %v (it is null)", key)
 		} else {

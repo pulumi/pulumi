@@ -31,3 +31,24 @@ func TestAssetSerialize(t *testing.T) {
 	assert.True(t, archDes.Assets["foo"].IsText())
 	assert.Equal(t, text, archDes.Assets["foo"].Text)
 }
+
+func TestComputedSerialize(t *testing.T) {
+	// Ensure that computed properties survive round trips.
+	opts := MarshalOptions{}
+	{
+		cprop := MarshalPropertyValue(
+			resource.NewComputedProperty(
+				resource.Computed{Element: resource.NewStringProperty("")}), opts)
+		cpropU := UnmarshalPropertyValue(cprop, opts)
+		assert.True(t, cpropU.IsComputed())
+		assert.True(t, cpropU.ComputedValue().Element.IsString())
+	}
+	{
+		cprop := MarshalPropertyValue(
+			resource.NewComputedProperty(
+				resource.Computed{Element: resource.NewNumberProperty(0)}), opts)
+		cpropU := UnmarshalPropertyValue(cprop, opts)
+		assert.True(t, cpropU.IsComputed())
+		assert.True(t, cpropU.ComputedValue().Element.IsNumber())
+	}
+}
