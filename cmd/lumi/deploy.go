@@ -200,7 +200,7 @@ func (prog *deployProgress) Before(step deploy.Step) {
 
 	var extra string
 	if stepop == deploy.OpReplace ||
-		(stepop == deploy.OpDelete && step.(*deploy.DeleteStep).Replaced()) {
+		(stepop == deploy.OpDelete && step.(*deploy.DeleteStep).Replacing()) {
 		extra = " (part of a replacement change)"
 	}
 

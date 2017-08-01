@@ -31,53 +31,52 @@ type ReadStep interface {
 // MutatingStep is a step that, when performed, will actually modify/mutate the target environment and its resources.
 type MutatingStep interface {
 	Step
-	URN() resource.URN             // the resource URN (for before and after).
-	New() *resource.Object         // the state of the resource before performing this step.
-	Old() *resource.State          // the state of the resource after performing this step.
-	Inputs() resource.PropertyMap  // the input properties to use during the operation.
-	Outputs() resource.PropertyMap // the output properties calculated during the operation.
+	URN() resource.URN     // the resource URN (for before and after).
+	Obj() *resource.Object // the live object reference.
+	Old() *resource.State  // the state of the resource after performing this step.
+	New() *resource.State  // the state of the resource before performing this step.
 }
 
 // SameStep is a mutating step that does nothing.
 type SameStep struct {
-	iter   *PlanIterator        // the current plan iteration.
-	old    *resource.State      // the state of the resource before this step.
-	new    *resource.Object     // the state of the resource after this step.
-	inputs resource.PropertyMap // the computed inputs supplied at creation time.
+	iter *PlanIterator    // the current plan iteration.
+	old  *resource.State  // the state of the resource before this step.
+	obj  *resource.Object // the live resource object to update.
+	new  *resource.State  // the state of the resource after this step.
 }
 
 var _ MutatingStep = (*SameStep)(nil)
 
-func NewSameStep(iter *PlanIterator, old *resource.State, new *resource.Object, inputs resource.PropertyMap) Step {
+func NewSameStep(iter *PlanIterator, old *resource.State, obj *resource.Object, new *resource.State) Step {
 	contract.Assert(resource.HasURN(old))
+	contract.Assert(!resource.HasURN(obj))
 	contract.Assert(!resource.HasURN(new))
 	return &SameStep{
-		iter:   iter,
-		old:    old,
-		new:    new,
-		inputs: inputs,
+		iter: iter,
+		old:  old,
+		obj:  obj,
+		new:  new,
 	}
 }
 
-func (s *SameStep) Op() StepOp                    { return OpSame }
-func (s *SameStep) Plan() *Plan                   { return s.iter.p }
-func (s *SameStep) Iterator() *PlanIterator       { return s.iter }
-func (s *SameStep) Type() tokens.Type             { return s.old.Type() }
-func (s *SameStep) URN() resource.URN             { return s.old.URN() }
-func (s *SameStep) Old() *resource.State          { return s.old }
-func (s *SameStep) New() *resource.Object         { return s.new }
-func (s *SameStep) Inputs() resource.PropertyMap  { return s.inputs }
-func (s *SameStep) Outputs() resource.PropertyMap { return s.old.Outputs() }
+func (s *SameStep) Op() StepOp              { return OpSame }
+func (s *SameStep) Plan() *Plan             { return s.iter.p }
+func (s *SameStep) Iterator() *PlanIterator { return s.iter }
+func (s *SameStep) Type() tokens.Type       { return s.old.Type() }
+func (s *SameStep) URN() resource.URN       { return s.old.URN() }
+func (s *SameStep) Old() *resource.State    { return s.old }
+func (s *SameStep) Obj() *resource.Object   { return s.obj }
+func (s *SameStep) New() *resource.State    { return s.new }
 
 func (s *SameStep) Pre() error {
 	contract.Assert(s.old != nil)
-	contract.Assert(s.new != nil)
+	contract.Assert(s.obj != nil)
 	return nil
 }
 
 func (s *SameStep) Apply() (resource.Status, error) {
 	// Just propagate the ID and output state to the live object and append to the snapshot.
-	s.new.Update(s.old.URN(), s.old.ID(), s.old.Outputs())
+	s.obj.Update(&s.old.U, &s.old.ID, s.old.Defaults, s.old.Outputs)
 	s.iter.MarkStateSnapshot(s.old)
 	s.iter.AppendStateSnapshot(s.old)
 	return resource.StatusOK, nil
@@ -85,40 +84,38 @@ func (s *SameStep) Apply() (resource.Status, error) {
 
 func (s *SameStep) Skip() error {
 	// In the case of a same, both ID and outputs are identical.
-	s.new.Update(s.old.URN(), s.old.ID(), s.old.Outputs())
+	s.obj.Update(&s.old.U, &s.old.ID, s.old.Defaults, s.old.Outputs)
 	return nil
 }
 
 // CreateStep is a mutating step that creates an entirely new resource.
 type CreateStep struct {
-	iter    *PlanIterator        // the current plan iteration.
-	urn     resource.URN         // the resource URN being created.
-	new     *resource.Object     // the state of the resource after this step.
-	inputs  resource.PropertyMap // the input properties for the creation.
-	outputs resource.PropertyMap // the output properties after creation.
+	iter *PlanIterator    // the current plan iteration.
+	urn  resource.URN     // the resource URN being created.
+	obj  *resource.Object // the live object being created.
+	new  *resource.State  // the state of the resource after this step.
 }
 
 var _ MutatingStep = (*CreateStep)(nil)
 
-func NewCreateStep(iter *PlanIterator, urn resource.URN, new *resource.Object, inputs resource.PropertyMap) Step {
+func NewCreateStep(iter *PlanIterator, urn resource.URN, obj *resource.Object, new *resource.State) Step {
 	contract.Assert(!resource.HasURN(new))
 	return &CreateStep{
-		iter:   iter,
-		urn:    urn,
-		new:    new,
-		inputs: inputs,
+		iter: iter,
+		urn:  urn,
+		obj:  obj,
+		new:  new,
 	}
 }
 
-func (s *CreateStep) Op() StepOp                    { return OpCreate }
-func (s *CreateStep) Plan() *Plan                   { return s.iter.p }
-func (s *CreateStep) Iterator() *PlanIterator       { return s.iter }
-func (s *CreateStep) Type() tokens.Type             { return s.new.Type() }
-func (s *CreateStep) URN() resource.URN             { return s.urn }
-func (s *CreateStep) Old() *resource.State          { return nil }
-func (s *CreateStep) New() *resource.Object         { return s.new }
-func (s *CreateStep) Inputs() resource.PropertyMap  { return s.inputs }
-func (s *CreateStep) Outputs() resource.PropertyMap { return s.outputs }
+func (s *CreateStep) Op() StepOp              { return OpCreate }
+func (s *CreateStep) Plan() *Plan             { return s.iter.p }
+func (s *CreateStep) Iterator() *PlanIterator { return s.iter }
+func (s *CreateStep) Type() tokens.Type       { return s.obj.Type() }
+func (s *CreateStep) URN() resource.URN       { return s.urn }
+func (s *CreateStep) Old() *resource.State    { return nil }
+func (s *CreateStep) Obj() *resource.Object   { return s.obj }
+func (s *CreateStep) New() *resource.State    { return s.new }
 
 func (s *CreateStep) Pre() error {
 	contract.Assert(s.new != nil)
@@ -133,7 +130,7 @@ func (s *CreateStep) Apply() (resource.Status, error) {
 	if err != nil {
 		return resource.StatusOK, err
 	}
-	id, outs, rst, err := prov.Create(t, s.inputs)
+	id, outs, rst, err := prov.Create(t, s.new.AllInputs())
 	if err != nil {
 		return rst, err
 	}
@@ -141,52 +138,51 @@ func (s *CreateStep) Apply() (resource.Status, error) {
 
 	// If Create returned outputs, we have no need to query the provider again.  If not, however, issue a Get.
 	if outs == nil {
-		if outs, err = prov.Get(t, id); err != nil {
+		if outs, err = prov.Get(s.new.T, id); err != nil {
 			return resource.StatusUnknown, err
 		}
 	}
 
-	// Copy any of the output properties on the live object state.
-	s.outputs = outs
-	state := s.new.Update(s.urn, id, outs)
+	// Copy any of the default and output properties on the live object state.
+	s.new.Outputs = outs
+	state := s.obj.Update(&s.urn, &id, s.new.Defaults, s.new.Outputs)
 	s.iter.AppendStateSnapshot(state)
 	return resource.StatusOK, nil
 }
 
 func (s *CreateStep) Skip() error {
-	// In the case of a create, we cannot possibly know the ID or output properties.  But we do know the URN.
-	s.new.SetURN(s.urn)
+	// In the case of a create, we don't know the ID or output properties.  But we do know the defaults and URN.
+	s.obj.Update(&s.urn, nil, s.new.Defaults, nil)
 	return nil
 }
 
 // DeleteStep is a mutating step that deletes an existing resource.
 type DeleteStep struct {
-	iter     *PlanIterator   // the current plan iteration.
-	old      *resource.State // the state of the existing resource.
-	replaced bool            // true if part of a replacement.
+	iter      *PlanIterator   // the current plan iteration.
+	old       *resource.State // the state of the existing resource.
+	replacing bool            // true if part of a replacement.
 }
 
 var _ MutatingStep = (*DeleteStep)(nil)
 
-func NewDeleteStep(iter *PlanIterator, old *resource.State, replaced bool) Step {
+func NewDeleteStep(iter *PlanIterator, old *resource.State, replacing bool) Step {
 	contract.Assert(resource.HasURN(old))
 	return &DeleteStep{
-		iter:     iter,
-		old:      old,
-		replaced: replaced,
+		iter:      iter,
+		old:       old,
+		replacing: replacing,
 	}
 }
 
-func (s *DeleteStep) Op() StepOp                    { return OpDelete }
-func (s *DeleteStep) Plan() *Plan                   { return s.iter.p }
-func (s *DeleteStep) Iterator() *PlanIterator       { return s.iter }
-func (s *DeleteStep) Type() tokens.Type             { return s.old.Type() }
-func (s *DeleteStep) URN() resource.URN             { return s.old.URN() }
-func (s *DeleteStep) Old() *resource.State          { return s.old }
-func (s *DeleteStep) New() *resource.Object         { return nil }
-func (s *DeleteStep) Inputs() resource.PropertyMap  { return s.old.Inputs() }
-func (s *DeleteStep) Outputs() resource.PropertyMap { return s.old.Outputs() }
-func (s *DeleteStep) Replaced() bool                { return s.replaced }
+func (s *DeleteStep) Op() StepOp              { return OpDelete }
+func (s *DeleteStep) Plan() *Plan             { return s.iter.p }
+func (s *DeleteStep) Iterator() *PlanIterator { return s.iter }
+func (s *DeleteStep) Type() tokens.Type       { return s.old.Type() }
+func (s *DeleteStep) URN() resource.URN       { return s.old.URN() }
+func (s *DeleteStep) Old() *resource.State    { return s.old }
+func (s *DeleteStep) Obj() *resource.Object   { return nil }
+func (s *DeleteStep) New() *resource.State    { return nil }
+func (s *DeleteStep) Replacing() bool         { return s.replacing }
 
 func (s *DeleteStep) Pre() error {
 	contract.Assert(s.old != nil)
@@ -199,7 +195,7 @@ func (s *DeleteStep) Apply() (resource.Status, error) {
 	if err != nil {
 		return resource.StatusOK, err
 	}
-	if rst, err := prov.Delete(s.old.Type(), s.old.ID(), s.old.Combined()); err != nil {
+	if rst, err := prov.Delete(s.old.T, s.old.ID, s.old.All()); err != nil {
 		return rst, err
 	}
 	s.iter.MarkStateSnapshot(s.old)
@@ -213,55 +209,53 @@ func (s *DeleteStep) Skip() error {
 
 // UpdateStep is a mutating step that updates an existing resource's state.
 type UpdateStep struct {
-	iter    *PlanIterator        // the current plan iteration.
-	old     *resource.State      // the state of the existing resource.
-	new     *resource.Object     // the live resource object.
-	inputs  resource.PropertyMap // the input properties for the update.
-	outputs resource.PropertyMap // the output properties populated after updating.
+	iter *PlanIterator    // the current plan iteration.
+	old  *resource.State  // the state of the existing resource.
+	obj  *resource.Object // the live resource object.
+	new  *resource.State  // the newly computed state of the resource after updating.
 }
 
 var _ MutatingStep = (*UpdateStep)(nil)
 
-func NewUpdateStep(iter *PlanIterator, old *resource.State,
-	new *resource.Object, inputs resource.PropertyMap) Step {
+func NewUpdateStep(iter *PlanIterator, old *resource.State, obj *resource.Object, new *resource.State) Step {
 	contract.Assert(resource.HasURN(old))
+	contract.Assert(!resource.HasURN(obj))
 	contract.Assert(!resource.HasURN(new))
 	return &UpdateStep{
-		iter:   iter,
-		old:    old,
-		new:    new,
-		inputs: inputs,
+		iter: iter,
+		old:  old,
+		obj:  obj,
+		new:  new,
 	}
 }
 
-func (s *UpdateStep) Op() StepOp                    { return OpUpdate }
-func (s *UpdateStep) Plan() *Plan                   { return s.iter.p }
-func (s *UpdateStep) Iterator() *PlanIterator       { return s.iter }
-func (s *UpdateStep) Type() tokens.Type             { return s.old.Type() }
-func (s *UpdateStep) URN() resource.URN             { return s.old.URN() }
-func (s *UpdateStep) Old() *resource.State          { return s.old }
-func (s *UpdateStep) New() *resource.Object         { return s.new }
-func (s *UpdateStep) Inputs() resource.PropertyMap  { return s.inputs }
-func (s *UpdateStep) Outputs() resource.PropertyMap { return s.outputs }
+func (s *UpdateStep) Op() StepOp              { return OpUpdate }
+func (s *UpdateStep) Plan() *Plan             { return s.iter.p }
+func (s *UpdateStep) Iterator() *PlanIterator { return s.iter }
+func (s *UpdateStep) Type() tokens.Type       { return s.old.Type() }
+func (s *UpdateStep) URN() resource.URN       { return s.old.URN() }
+func (s *UpdateStep) Old() *resource.State    { return s.old }
+func (s *UpdateStep) Obj() *resource.Object   { return s.obj }
+func (s *UpdateStep) New() *resource.State    { return s.new }
 
 func (s *UpdateStep) Pre() error {
 	contract.Assert(s.old != nil)
 	contract.Assert(s.new != nil)
-	contract.Assert(s.old.Type() == s.new.Type())
-	contract.Assert(s.old.ID() != "")
+	contract.Assert(s.old.T == s.new.T)
+	contract.Assert(s.old.ID != "")
 	return nil
 }
 
 func (s *UpdateStep) Apply() (resource.Status, error) {
-	t := s.old.Type()
-	id := s.old.ID()
+	t := s.old.T
+	id := s.old.ID
 
 	// Invoke the Update RPC function for this provider:
 	prov, err := getProvider(s)
 	if err != nil {
 		return resource.StatusOK, err
 	}
-	outs, rst, upderr := prov.Update(t, id, s.old.Combined(), s.inputs)
+	outs, rst, upderr := prov.Update(t, id, s.old.AllInputs(), s.new.AllInputs())
 	if upderr != nil {
 		return rst, upderr
 	}
@@ -274,53 +268,51 @@ func (s *UpdateStep) Apply() (resource.Status, error) {
 	}
 
 	// Now copy any output state back in case the update triggered cascading updates to other properties.
-	s.outputs = outs
-	state := s.new.Update(s.old.URN(), id, outs)
+	s.new.Outputs = outs
+	state := s.obj.Update(&s.old.U, &id, s.new.Defaults, s.new.Outputs)
 	s.iter.MarkStateSnapshot(s.old)
 	s.iter.AppendStateSnapshot(state)
 	return resource.StatusOK, nil
 }
 
 func (s *UpdateStep) Skip() error {
-	// In the case of an update, the ID is the same, however, the outputs remain unknown.
-	s.new.SetURN(s.old.URN())
-	s.new.SetID(s.old.ID())
+	// In the case of an update, the URN, defaults, and ID are the same, however, the outputs remain unknown.
+	s.obj.Update(&s.old.U, &s.old.ID, s.new.Defaults, nil)
 	return nil
 }
 
 // ReplaceStep is a mutating step that updates an existing resource's state.
 type ReplaceStep struct {
-	iter    *PlanIterator          // the current plan iteration.
-	old     *resource.State        // the state of the existing resource.
-	new     *resource.Object       // the live resource object.
-	inputs  resource.PropertyMap   // the input properties for the replacement.
-	outputs resource.PropertyMap   // the output properties populated after replacing.
-	reasons []resource.PropertyKey // the reasons for the replacement.
+	iter *PlanIterator          // the current plan iteration.
+	old  *resource.State        // the state of the existing resource.
+	obj  *resource.Object       // the live resource object.
+	new  *resource.State        // the new state snapshot.
+	keys []resource.PropertyKey // the keys causing replacement.
 }
 
 func NewReplaceStep(iter *PlanIterator, old *resource.State,
-	new *resource.Object, inputs resource.PropertyMap, reasons []resource.PropertyKey) Step {
+	obj *resource.Object, new *resource.State, keys []resource.PropertyKey) Step {
 	contract.Assert(resource.HasURN(old))
+	contract.Assert(!resource.HasURN(obj))
 	contract.Assert(!resource.HasURN(new))
 	return &ReplaceStep{
-		iter:    iter,
-		old:     old,
-		new:     new,
-		inputs:  inputs,
-		reasons: reasons,
+		iter: iter,
+		old:  old,
+		obj:  obj,
+		new:  new,
+		keys: keys,
 	}
 }
 
-func (s *ReplaceStep) Op() StepOp                      { return OpReplace }
-func (s *ReplaceStep) Plan() *Plan                     { return s.iter.p }
-func (s *ReplaceStep) Iterator() *PlanIterator         { return s.iter }
-func (s *ReplaceStep) Type() tokens.Type               { return s.old.Type() }
-func (s *ReplaceStep) URN() resource.URN               { return s.old.URN() }
-func (s *ReplaceStep) Old() *resource.State            { return s.old }
-func (s *ReplaceStep) New() *resource.Object           { return s.new }
-func (s *ReplaceStep) Inputs() resource.PropertyMap    { return s.inputs }
-func (s *ReplaceStep) Outputs() resource.PropertyMap   { return s.outputs }
-func (s *ReplaceStep) Reasons() []resource.PropertyKey { return s.reasons }
+func (s *ReplaceStep) Op() StepOp                   { return OpReplace }
+func (s *ReplaceStep) Plan() *Plan                  { return s.iter.p }
+func (s *ReplaceStep) Iterator() *PlanIterator      { return s.iter }
+func (s *ReplaceStep) Type() tokens.Type            { return s.old.T }
+func (s *ReplaceStep) URN() resource.URN            { return s.old.U }
+func (s *ReplaceStep) Old() *resource.State         { return s.old }
+func (s *ReplaceStep) Obj() *resource.Object        { return s.obj }
+func (s *ReplaceStep) New() *resource.State         { return s.new }
+func (s *ReplaceStep) Keys() []resource.PropertyKey { return s.keys }
 
 func (s *ReplaceStep) Pre() error {
 	contract.Assert(s.old != nil)
@@ -336,7 +328,7 @@ func (s *ReplaceStep) Apply() (resource.Status, error) {
 	if err != nil {
 		return resource.StatusOK, err
 	}
-	id, outs, rst, err := prov.Create(t, s.inputs)
+	id, outs, rst, err := prov.Create(t, s.new.AllInputs())
 	if err != nil {
 		return rst, err
 	}
@@ -350,8 +342,8 @@ func (s *ReplaceStep) Apply() (resource.Status, error) {
 	}
 
 	// Copy resource state back to observe outputs and store everything on the live object.
-	s.outputs = outs
-	state := s.new.Update(s.old.URN(), id, outs)
+	s.new.Outputs = outs
+	state := s.obj.Update(&s.old.U, &id, s.new.Defaults, s.new.Outputs)
 	s.iter.MarkStateSnapshot(s.old)
 	s.iter.AppendStateSnapshot(state)
 	return resource.StatusOK, nil
@@ -361,7 +353,7 @@ func (s *ReplaceStep) Skip() error {
 	// In the case of a replacement, we neither propagate the ID nor output properties.  This may be surprising,
 	// however, it must be done this way since the entire resource will be deleted and recreated.  As a result, we
 	// actually want the ID to be seen as having been updated (triggering cascading updates as appropriate).
-	s.new.SetURN(s.old.URN())
+	s.obj.Update(&s.old.U, nil, s.new.Defaults, nil)
 	return nil
 }
 

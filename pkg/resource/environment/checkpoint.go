@@ -54,10 +54,11 @@ func DeserializeCheckpoint(chkpoint *Checkpoint) (*deploy.Target, *deploy.Snapsh
 				// Deserialize the resource properties, if they exist.
 				res := kvp.Value
 				inputs := DeserializeProperties(res.Inputs)
+				defaults := DeserializeProperties(res.Defaults)
 				outputs := DeserializeProperties(res.Outputs)
 
 				// And now just produce a resource object using the information available.
-				state := resource.NewState(res.Type, kvp.Key, res.ID, inputs, outputs)
+				state := resource.NewState(res.Type, kvp.Key, res.ID, inputs, defaults, outputs)
 				resources = append(resources, state)
 			}
 		}

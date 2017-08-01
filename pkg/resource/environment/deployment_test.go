@@ -37,6 +37,7 @@ func TestDeploymentSerialization(t *testing.T) {
 			},
 			"in-empty-map": map[string]interface{}{},
 		}),
+		make(resource.PropertyMap),
 		resource.NewPropertyMapFromMap(map[string]interface{}{
 			"out-nil":         nil,
 			"out-bool":        false,

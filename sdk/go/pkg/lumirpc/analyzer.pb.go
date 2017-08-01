@@ -18,17 +18,17 @@ It has these top-level messages:
 	ReadLocationRequest
 	ReadLocationsRequest
 	ReadLocationsResponse
+	NameRequest
+	NameResponse
 	CheckRequest
 	CheckResponse
 	CheckFailure
-	NameRequest
-	NameResponse
+	DiffRequest
+	DiffResponse
 	CreateRequest
 	CreateResponse
 	GetRequest
 	GetResponse
-	InspectChangeRequest
-	InspectChangeResponse
 	UpdateRequest
 	UpdateResponse
 	DeleteRequest

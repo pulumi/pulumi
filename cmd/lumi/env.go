@@ -68,7 +68,7 @@ func newEnvCmd() *cobra.Command {
 					// If the ID and/or URN is requested, show it on the following line.  It would be nice to do this
 					// on a single line, but they can get quite lengthy and so this formatting makes more sense.
 					if showIDs {
-						fmt.Printf("\tID: %s\n", res.ID())
+						fmt.Printf("\tID: %s\n", res.ID)
 					}
 					if showURNs {
 						fmt.Printf("\tURN: %s\n", res.URN())

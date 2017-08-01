@@ -24,19 +24,18 @@ type Provider interface {
 	io.Closer
 	// Pkg fetches this provider's package.
 	Pkg() tokens.Package
-	// Check validates that the given property bag is valid for a resource of the given type.
-	Check(t tokens.Type, props resource.PropertyMap) ([]CheckFailure, error)
 	// Name names a given resource.  Sometimes this will be assigned by a developer, and so the provider
 	// simply fetches it from the property bag; other times, the provider will assign this based on its own algorithm.
 	// In any case, resources with the same name must be safe to use interchangeably with one another.
 	Name(t tokens.Type, props resource.PropertyMap) (tokens.QName, error)
+	// Check validates that the given property bag is valid for a resource of the given type.
+	Check(t tokens.Type, props resource.PropertyMap) (resource.PropertyMap, []CheckFailure, error)
+	// Diff checks what impacts a hypothetical update will have on the resource's properties.
+	Diff(t tokens.Type, id resource.ID, olds resource.PropertyMap, news resource.PropertyMap) (DiffResult, error)
 	// Create allocates a new instance of the provided resource and returns its unique resource.ID.
 	Create(t tokens.Type, props resource.PropertyMap) (resource.ID, resource.PropertyMap, resource.Status, error)
 	// Get reads the instance state identified by res and returns it.
 	Get(t tokens.Type, id resource.ID) (resource.PropertyMap, error)
-	// InspectChange checks what impacts a hypothetical update will have on the resource's properties.
-	InspectChange(t tokens.Type, id resource.ID,
-		olds resource.PropertyMap, news resource.PropertyMap) ([]resource.PropertyKey, resource.PropertyMap, error)
 	// Update updates an existing resource with new values.
 	Update(t tokens.Type, id resource.ID,
 		olds resource.PropertyMap, news resource.PropertyMap) (resource.PropertyMap, resource.Status, error)
@@ -48,4 +47,14 @@ type Provider interface {
 type CheckFailure struct {
 	Property resource.PropertyKey // the property that failed checking.
 	Reason   string               // the reason the property failed to check.
+}
+
+// DiffResult indicates whether an operation should replace or update an existing resource.
+type DiffResult struct {
+	ReplaceKeys []resource.PropertyKey // an optional list of replacement keys.
+}
+
+// Replace returns true if this diff represents a replacement.
+func (r DiffResult) Replace() bool {
+	return len(r.ReplaceKeys) > 0
 }

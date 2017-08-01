@@ -25,10 +25,11 @@ type Deployment struct {
 
 // Resource is a serializable vertex within a LumiGL graph, specifically for resource snapshots.
 type Resource struct {
-	ID      resource.ID            `json:"id"`                // the provider ID for this resource, if any.
-	Type    tokens.Type            `json:"type"`              // this resource's full type token.
-	Inputs  map[string]interface{} `json:"inputs,omitempty"`  // the input properties from the program.
-	Outputs map[string]interface{} `json:"outputs,omitempty"` // the output properties from the resource provider.
+	ID       resource.ID            `json:"id"`                 // the provider ID for this resource, if any.
+	Type     tokens.Type            `json:"type"`               // this resource's full type token.
+	Inputs   map[string]interface{} `json:"inputs,omitempty"`   // the input properties from the program.
+	Defaults map[string]interface{} `json:"defaults,omitempty"` // the default property values from the provider.
+	Outputs  map[string]interface{} `json:"outputs,omitempty"`  // the output properties from the resource provider.
 }
 
 // SerializeDeployment serializes an entire snapshot as a deploy record.
@@ -58,19 +59,24 @@ func SerializeResource(res *resource.State) *Resource {
 
 	// Serialize all input and output properties recursively, and add them if non-empty.
 	var inputs map[string]interface{}
-	if inp := res.Inputs(); inp != nil {
+	if inp := res.Inputs; inp != nil {
 		inputs = SerializeProperties(inp)
 	}
+	var defaults map[string]interface{}
+	if defp := res.Defaults; defp != nil {
+		defaults = SerializeProperties(defp)
+	}
 	var outputs map[string]interface{}
-	if outp := res.Outputs(); outp != nil {
+	if outp := res.Outputs; outp != nil {
 		outputs = SerializeProperties(outp)
 	}
 
 	return &Resource{
-		ID:      res.ID(),
-		Type:    res.Type(),
-		Inputs:  inputs,
-		Outputs: outputs,
+		ID:       res.ID,
+		Type:     res.Type(),
+		Inputs:   inputs,
+		Defaults: defaults,
+		Outputs:  outputs,
 	}
 }
 

@@ -130,7 +130,9 @@ func (m PropertyMap) Copy() PropertyMap {
 func (m PropertyMap) Merge(other PropertyMap) PropertyMap {
 	new := m.Copy()
 	for k, v := range other {
-		new[k] = v
+		if !v.IsNull() {
+			new[k] = v
+		}
 	}
 	return new
 }

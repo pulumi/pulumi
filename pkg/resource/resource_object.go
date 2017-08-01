@@ -3,6 +3,7 @@
 package resource
 
 import (
+	"fmt"
 	"reflect"
 
 	"github.com/golang/glog"
@@ -122,19 +123,31 @@ func getURNObject(obj *rt.Object) *rt.Object {
 	return nil
 }
 
+// State fetches a state object reflecting a snapshot of the current object.  This is to be used before performing any
+// operations with the actual provider, meaning that defaults and outputs will not yet be known.
+func (r *Object) State() *State {
+	return NewState(r.Type(), r.URN(), "", r.CopyProperties(), nil, nil)
+}
+
 // Update updates the target object URN, ID, and resource property map.  This mutates the live object connected to this
 // resource and also archives the resource object's present state in the form of a state snapshot.
-func (r *Object) Update(urn URN, id ID, outputs PropertyMap) *State {
+func (r *Object) Update(urn *URN, id *ID, defaults PropertyMap, outputs PropertyMap) *State {
 	// First take a snapshot of the properties.
 	inputs := r.CopyProperties()
 
 	// Now assign the URN, ID, and copy everything in the property map, overwriting what exists.
-	r.SetURN(urn)
-	r.SetID(id)
-	r.SetProperties(outputs)
+	if urn != nil {
+		r.SetURN(*urn)
+	}
+	if id != nil {
+		r.SetID(*id)
+	}
+	if defaults != nil || outputs != nil {
+		r.SetProperties(defaults.Merge(outputs))
+	}
 
 	// Finally, return a state snapshot of the underlying object state.
-	return NewState(r.Type(), r.URN(), id, inputs, outputs)
+	return NewState(r.Type(), r.URN(), r.ID(), inputs, defaults, outputs)
 }
 
 // CopyProperties creates a property map out of a resource's runtime object.  This is a snapshot and is completely
@@ -170,6 +183,7 @@ func copyObjectProperty(resobj *rt.Object, obj *rt.Object) PropertyValue {
 	// If the object is a resource, marshal its ID.
 	if predef.IsResourceType(t) {
 		idobj := getIDObject(obj)
+		fmt.Printf("ID: %v = %v\n", t, idobj)
 		if idobj != nil && idobj.IsString() {
 			return NewStringProperty(idobj.StringValue())
 		}

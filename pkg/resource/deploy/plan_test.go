@@ -133,8 +133,9 @@ func TestBasicCRUDPlan(t *testing.T) {
 				return nil, errors.Errorf("Unexpected request to load package %v; expected just %v", propkg, pkg)
 			}
 			return &testProvider{
-				check: func(t tokens.Type, props resource.PropertyMap) ([]plugin.CheckFailure, error) {
-					return nil, nil // accept all changes.
+				check: func(t tokens.Type,
+					props resource.PropertyMap) (resource.PropertyMap, []plugin.CheckFailure, error) {
+					return nil, nil, nil // accept all changes.
 				},
 				name: func(_ tokens.Type, props resource.PropertyMap) (tokens.QName, error) {
 					name, has := props["name"]
@@ -142,9 +143,9 @@ func TestBasicCRUDPlan(t *testing.T) {
 					assert.True(t, name.IsString())
 					return tokens.QName(name.StringValue()), nil
 				},
-				inspectChange: func(t tokens.Type, id resource.ID, olds resource.PropertyMap,
-					news resource.PropertyMap) ([]resource.PropertyKey, resource.PropertyMap, error) {
-					return nil, nil, nil // accept all changes.
+				diff: func(t tokens.Type, id resource.ID, olds resource.PropertyMap,
+					news resource.PropertyMap) (plugin.DiffResult, error) {
+					return plugin.DiffResult{}, nil // accept all changes.
 				},
 				// we don't actually execute the plan, so there's no need to implement the other functions.
 			}, nil
@@ -167,24 +168,36 @@ func TestBasicCRUDPlan(t *testing.T) {
 	urnD := resource.NewURN(ns, mod.Tok, typD.Tok, namD)
 
 	// Create the old resources snapshot.
-	oldResB := resource.NewState(typB.Tok, urnB, resource.ID("b-b-b"), resource.PropertyMap{
-		"name": resource.NewStringProperty(namB.String()),
-		"bf1":  resource.NewStringProperty("b-value"),
-		"bf2":  resource.NewNumberProperty(42),
-	}, nil)
-	oldResC := resource.NewState(typC.Tok, urnC, resource.ID("c-c-c"), resource.PropertyMap{
-		"name": resource.NewStringProperty(namC.String()),
-		"cf1":  resource.NewStringProperty("c-value"),
-		"cf2":  resource.NewNumberProperty(83),
-	}, resource.PropertyMap{
-		"outta1":   resource.NewStringProperty("populated during skip/step"),
-		"outta234": resource.NewNumberProperty(99881122),
-	})
-	oldResD := resource.NewState(typD.Tok, urnD, resource.ID("d-d-d"), resource.PropertyMap{
-		"name": resource.NewStringProperty(namD.String()),
-		"df1":  resource.NewStringProperty("d-value"),
-		"df2":  resource.NewNumberProperty(167),
-	}, nil)
+	oldResB := resource.NewState(typB.Tok, urnB, resource.ID("b-b-b"),
+		resource.PropertyMap{
+			"name": resource.NewStringProperty(namB.String()),
+			"bf1":  resource.NewStringProperty("b-value"),
+			"bf2":  resource.NewNumberProperty(42),
+		},
+		make(resource.PropertyMap),
+		nil,
+	)
+	oldResC := resource.NewState(typC.Tok, urnC, resource.ID("c-c-c"),
+		resource.PropertyMap{
+			"name": resource.NewStringProperty(namC.String()),
+			"cf1":  resource.NewStringProperty("c-value"),
+			"cf2":  resource.NewNumberProperty(83),
+		},
+		make(resource.PropertyMap),
+		resource.PropertyMap{
+			"outta1":   resource.NewStringProperty("populated during skip/step"),
+			"outta234": resource.NewNumberProperty(99881122),
+		},
+	)
+	oldResD := resource.NewState(typD.Tok, urnD, resource.ID("d-d-d"),
+		resource.PropertyMap{
+			"name": resource.NewStringProperty(namD.String()),
+			"df1":  resource.NewStringProperty("d-value"),
+			"df2":  resource.NewNumberProperty(167),
+		},
+		make(resource.PropertyMap),
+		nil,
+	)
 	oldsnap := NewSnapshot(ns, []*resource.State{oldResB, oldResC, oldResD}, nil)
 
 	// Create the new resource objects a priori.
@@ -243,29 +256,32 @@ func TestBasicCRUDPlan(t *testing.T) {
 		switch s := step.(type) {
 		case *CreateStep: // A is created
 			old := s.Old()
-			new := s.New()
+			new := s.Obj()
 			assert.Nil(t, old)
 			assert.NotNil(t, new)
-			assert.Equal(t, newResAProps, s.Inputs())
+			assert.Equal(t, newResAProps, s.New().Inputs)
+			assert.Equal(t, newResAProps, s.New().AllInputs())
 			obj, urn, realID = new, urnA, false
 		case *UpdateStep: // B is updated
 			old := s.Old()
-			new := s.New()
+			new := s.Obj()
 			assert.NotNil(t, old)
 			assert.Equal(t, urnB, old.URN())
 			assert.Equal(t, oldResB, old)
 			assert.NotNil(t, new)
-			assert.Equal(t, newResBProps, s.Inputs())
+			assert.Equal(t, newResBProps, s.New().Inputs)
+			assert.Equal(t, newResBProps, s.New().AllInputs())
 			obj, urn, realID = new, urnB, true
 		case *SameStep: // C is the same
 			old := s.Old()
-			new := s.New()
+			new := s.Obj()
 			assert.NotNil(t, old)
 			assert.Equal(t, urnC, old.URN())
 			assert.Equal(t, oldResC, old)
 			assert.NotNil(t, new)
-			assert.Equal(t, newResCProps, s.Inputs())
-			obj, urn, realID, expectOuts = new, urnC, true, oldResC.Outputs()
+			assert.Equal(t, newResCProps, s.New().Inputs)
+			assert.Equal(t, newResCProps, s.New().AllInputs())
+			obj, urn, realID, expectOuts = new, urnC, true, oldResC.Outputs
 		case *DeleteStep: // D is deleted
 			old := s.Old()
 			new := s.New()
@@ -395,13 +411,12 @@ func (host *testProviderHost) Provider(pkg tokens.Package) (plugin.Provider, err
 }
 
 type testProvider struct {
-	pkg           tokens.Package
-	check         func(tokens.Type, resource.PropertyMap) ([]plugin.CheckFailure, error)
-	name          func(tokens.Type, resource.PropertyMap) (tokens.QName, error)
-	create        func(tokens.Type, resource.PropertyMap) (resource.ID, resource.PropertyMap, resource.Status, error)
-	get           func(tokens.Type, resource.ID) (resource.PropertyMap, error)
-	inspectChange func(tokens.Type, resource.ID,
-		resource.PropertyMap, resource.PropertyMap) ([]resource.PropertyKey, resource.PropertyMap, error)
+	pkg    tokens.Package
+	check  func(tokens.Type, resource.PropertyMap) (resource.PropertyMap, []plugin.CheckFailure, error)
+	name   func(tokens.Type, resource.PropertyMap) (tokens.QName, error)
+	create func(tokens.Type, resource.PropertyMap) (resource.ID, resource.PropertyMap, resource.Status, error)
+	get    func(tokens.Type, resource.ID) (resource.PropertyMap, error)
+	diff   func(tokens.Type, resource.ID, resource.PropertyMap, resource.PropertyMap) (plugin.DiffResult, error)
 	update func(tokens.Type, resource.ID,
 		resource.PropertyMap, resource.PropertyMap) (resource.PropertyMap, resource.Status, error)
 	delete func(tokens.Type, resource.ID, resource.PropertyMap) (resource.Status, error)
@@ -413,7 +428,8 @@ func (prov *testProvider) Close() error {
 func (prov *testProvider) Pkg() tokens.Package {
 	return prov.pkg
 }
-func (prov *testProvider) Check(t tokens.Type, props resource.PropertyMap) ([]plugin.CheckFailure, error) {
+func (prov *testProvider) Check(t tokens.Type,
+	props resource.PropertyMap) (resource.PropertyMap, []plugin.CheckFailure, error) {
 	return prov.check(t, props)
 }
 func (prov *testProvider) Name(t tokens.Type, props resource.PropertyMap) (tokens.QName, error) {
@@ -426,9 +442,9 @@ func (prov *testProvider) Create(t tokens.Type, props resource.PropertyMap) (res
 func (prov *testProvider) Get(t tokens.Type, id resource.ID) (resource.PropertyMap, error) {
 	return prov.get(t, id)
 }
-func (prov *testProvider) InspectChange(t tokens.Type, id resource.ID,
-	olds resource.PropertyMap, news resource.PropertyMap) ([]resource.PropertyKey, resource.PropertyMap, error) {
-	return prov.inspectChange(t, id, olds, news)
+func (prov *testProvider) Diff(t tokens.Type, id resource.ID,
+	olds resource.PropertyMap, news resource.PropertyMap) (plugin.DiffResult, error) {
+	return prov.diff(t, id, olds, news)
 }
 func (prov *testProvider) Update(t tokens.Type, id resource.ID,
 	olds resource.PropertyMap, news resource.PropertyMap) (resource.PropertyMap, resource.Status, error) {

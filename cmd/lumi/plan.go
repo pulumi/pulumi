@@ -244,7 +244,7 @@ func shouldTrack(step deploy.Step, opts deployOptions) bool {
 		return opts.ShowReads
 	} else if step.Op() == deploy.OpSame {
 		return opts.ShowSames
-	} else if step.Op() == deploy.OpDelete && step.(*deploy.DeleteStep).Replaced() {
+	} else if step.Op() == deploy.OpDelete && step.(*deploy.DeleteStep).Replacing() {
 		return opts.ShowReplaceDeletes
 	}
 	// By default, however, steps are tracked.
@@ -328,14 +328,12 @@ func printStep(b *bytes.Buffer, step deploy.Step, summary bool, planning bool, i
 	if mut, ismut := step.(deploy.MutatingStep); ismut {
 		var replaces []resource.PropertyKey
 		if step.Op() == deploy.OpReplace {
-			replaces = step.(*deploy.ReplaceStep).Reasons()
+			replaces = step.(*deploy.ReplaceStep).Keys()
 		}
-		printResourceProperties(b,
-			mut.URN(), mut.Old(), mut.New(), mut.Inputs(), replaces, summary, planning, indent)
+		printResourceProperties(b, mut.URN(), mut.Old(), mut.New(), replaces, summary, planning, indent)
 	} else if rd, isrd := step.(deploy.ReadStep); isrd {
 		for _, res := range rd.Resources() {
-			printResourceProperties(b,
-				"", nil, res, res.CopyProperties(), nil, summary, planning, indent)
+			printResourceProperties(b, "", nil, res.State(), nil, summary, planning, indent)
 		}
 	} else {
 		contract.Failf("Expected each step to either be mutating or read-only")
@@ -349,14 +347,14 @@ func printStepHeader(b *bytes.Buffer, step deploy.Step) {
 	b.WriteString(fmt.Sprintf("%s:\n", string(step.Type())))
 }
 
-func printResourceProperties(b *bytes.Buffer, urn resource.URN, old *resource.State, new *resource.Object,
-	props resource.PropertyMap, replaces []resource.PropertyKey, summary bool, planning bool, indent string) {
+func printResourceProperties(b *bytes.Buffer, urn resource.URN, old *resource.State, new *resource.State,
+	replaces []resource.PropertyKey, summary bool, planning bool, indent string) {
 	indent += detailsIndent
 
 	// Print out the URN and, if present, the ID, as "pseudo-properties".
 	var id resource.ID
 	if old != nil {
-		id = old.ID()
+		id = old.ID
 	}
 	if id != "" {
 		b.WriteString(fmt.Sprintf("%s[id=%s]\n", indent, string(id)))
@@ -368,12 +366,11 @@ func printResourceProperties(b *bytes.Buffer, urn resource.URN, old *resource.St
 	if !summary {
 		// Print all of the properties associated with this resource.
 		if old == nil && new != nil {
-			printObject(b, props, planning, indent)
+			printObject(b, new.AllInputs(), planning, indent)
 		} else if new == nil && old != nil {
-			printObject(b, old.Inputs(), planning, indent)
+			printObject(b, old.AllInputs(), planning, indent)
 		} else {
-			contract.Assert(props != nil) // use computed properties for diffs.
-			printOldNewDiffs(b, old.Inputs(), props, replaces, planning, indent)
+			printOldNewDiffs(b, old.AllInputs(), new.AllInputs(), replaces, planning, indent)
 		}
 	}
 }
@@ -416,11 +413,11 @@ func printResourceOutputProperties(b *bytes.Buffer, step deploy.Step, indent str
 	b.WriteString(step.Op().Suffix())
 
 	// First fetch all the relevant property maps that we may consult.
-	newins := mut.Inputs()
-	newouts := mut.Outputs()
+	newins := mut.New().Inputs
+	newouts := mut.New().Outputs
 	var oldouts resource.PropertyMap
 	if old := mut.Old(); old != nil {
-		oldouts = old.Outputs()
+		oldouts = old.Outputs
 	}
 
 	// Now sort the keys and enumerate each output property in a deterministic order.

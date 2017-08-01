@@ -54,28 +54,6 @@ func NewProvider(host Host, ctx *Context, pkg tokens.Package) (Provider, error) 
 
 func (p *provider) Pkg() tokens.Package { return p.pkg }
 
-// Check validates that the given property bag is valid for a resource of the given type.
-func (p *provider) Check(t tokens.Type, props resource.PropertyMap) ([]CheckFailure, error) {
-	glog.V(7).Infof("resource[%v].Check(t=%v,#props=%v) executing", p.pkg, t, len(props))
-	req := &lumirpc.CheckRequest{
-		Type:       string(t),
-		Properties: MarshalProperties(props, MarshalOptions{}),
-	}
-
-	resp, err := p.client.Check(p.ctx.Request(), req)
-	if err != nil {
-		glog.V(7).Infof("resource[%v].Check(t=%v,...) failed: err=%v", p.pkg, t, err)
-		return nil, err
-	}
-
-	var failures []CheckFailure
-	for _, failure := range resp.GetFailures() {
-		failures = append(failures, CheckFailure{resource.PropertyKey(failure.Property), failure.Reason})
-	}
-	glog.V(7).Infof("resource[%v].Check(t=%v,...) success: failures=#%v", p.pkg, t, len(failures))
-	return failures, nil
-}
-
 // Name names a given resource.
 func (p *provider) Name(t tokens.Type, props resource.PropertyMap) (tokens.QName, error) {
 	contract.Assert(t != "")
@@ -95,6 +73,66 @@ func (p *provider) Name(t tokens.Type, props resource.PropertyMap) (tokens.QName
 	name := tokens.QName(resp.GetName())
 	glog.V(7).Infof("resource[%v].Name(t=%v,...) success: name=%v", p.pkg, t, name)
 	return name, nil
+}
+
+// Check validates that the given property bag is valid for a resource of the given type.
+func (p *provider) Check(t tokens.Type, props resource.PropertyMap) (resource.PropertyMap, []CheckFailure, error) {
+	glog.V(7).Infof("resource[%v].Check(t=%v,#props=%v) executing", p.pkg, t, len(props))
+	req := &lumirpc.CheckRequest{
+		Type:       string(t),
+		Properties: MarshalProperties(props, MarshalOptions{}),
+	}
+
+	resp, err := p.client.Check(p.ctx.Request(), req)
+	if err != nil {
+		glog.V(7).Infof("resource[%v].Check(t=%v,...) failed: err=%v", p.pkg, t, err)
+		return nil, nil, err
+	}
+
+	// Unmarshal any defaults.
+	var defaults resource.PropertyMap
+	if defs := resp.GetDefaults(); defs != nil {
+		defaults = UnmarshalProperties(defs, MarshalOptions{})
+	}
+
+	// And now any properties that failed verification.
+	var failures []CheckFailure
+	for _, failure := range resp.GetFailures() {
+		failures = append(failures, CheckFailure{resource.PropertyKey(failure.Property), failure.Reason})
+	}
+
+	glog.V(7).Infof("resource[%v].Check(t=%v,...) success: defs=#%v failures=#%v",
+		p.pkg, t, len(defaults), len(failures))
+	return defaults, failures, nil
+}
+
+// Diff checks what impacts a hypothetical update will have on the resource's properties.
+func (p *provider) Diff(t tokens.Type, id resource.ID,
+	olds resource.PropertyMap, news resource.PropertyMap) (DiffResult, error) {
+	contract.Assert(t != "")
+	contract.Assert(id != "")
+	contract.Assert(news != nil)
+	contract.Assert(olds != nil)
+	glog.V(7).Infof("resource[%v].Diff(id=%v,t=%v,#olds=%v,#news=%v) executing",
+		p.pkg, id, t, len(olds), len(news))
+
+	resp, err := p.client.Diff(p.ctx.Request(), &lumirpc.DiffRequest{
+		Id:   string(id),
+		Type: string(t),
+		Olds: MarshalProperties(olds, MarshalOptions{DisallowUnknowns: true}),
+		News: MarshalProperties(news, MarshalOptions{}),
+	})
+	if err != nil {
+		glog.V(7).Infof("resource[%v].Diff(id=%v,t=%v,...) failed: %v", p.pkg, id, t, err)
+		return DiffResult{}, err
+	}
+
+	var replaces []resource.PropertyKey
+	for _, replace := range resp.GetReplaces() {
+		replaces = append(replaces, resource.PropertyKey(replace))
+	}
+	glog.V(7).Infof("resource[%v].Update(id=%v,t=%v,...) success: #replaces=%v", p.pkg, id, t, len(replaces))
+	return DiffResult{ReplaceKeys: replaces}, nil
 }
 
 // Create allocates a new instance of the provided resource and assigns its unique resource.ID and outputs afterwards.
@@ -144,45 +182,6 @@ func (p *provider) Get(t tokens.Type, id resource.ID) (resource.PropertyMap, err
 	props := UnmarshalProperties(resp.GetProperties(), MarshalOptions{})
 	glog.V(7).Infof("resource[%v].Get(id=%v,t=%v) success: #outs=%v", p.pkg, t, id, len(props))
 	return props, nil
-}
-
-// InspectChange checks what impacts a hypothetical update will have on the resource's properties.
-func (p *provider) InspectChange(t tokens.Type, id resource.ID,
-	olds resource.PropertyMap, news resource.PropertyMap) ([]resource.PropertyKey, resource.PropertyMap, error) {
-	contract.Assert(t != "")
-	contract.Assert(id != "")
-	contract.Assert(news != nil)
-	contract.Assert(olds != nil)
-	glog.V(7).Infof("resource[%v].InspectChange(id=%v,t=%v,#olds=%v,#news=%v) executing",
-		p.pkg, id, t, len(olds), len(news))
-
-	req := &lumirpc.InspectChangeRequest{
-		Id:   string(id),
-		Type: string(t),
-		Olds: MarshalProperties(olds, MarshalOptions{DisallowUnknowns: true}),
-		News: MarshalProperties(news, MarshalOptions{}),
-	}
-	resp, err := p.client.InspectChange(p.ctx.Request(), req)
-	if err != nil {
-		glog.V(7).Infof("resource[%v].InspectChange(id=%v,t=%v,...) failed: %v", p.pkg, id, t, err)
-		return nil, nil, err
-	}
-
-	var replaces []resource.PropertyKey
-	for _, replace := range resp.GetReplaces() {
-		replaces = append(replaces, resource.PropertyKey(replace))
-	}
-	changes := UnmarshalProperties(resp.GetChanges(), MarshalOptions{})
-
-	glog.V(7).Infof("resource[%v].Update(id=%v,t=%v,...) success: #replaces=%v #changes=%v",
-		p.pkg, id, t, len(replaces), len(changes))
-	if glog.V(9) {
-		for i, repl := range replaces {
-			glog.V(9).Infof("resource[%v].Update(id=%v,t=%v,...) repace #%v: %v", p.pkg, id, t, i, repl)
-		}
-	}
-
-	return replaces, changes, nil
 }
 
 // Update updates an existing resource with new values.
