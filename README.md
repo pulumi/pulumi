@@ -34,7 +34,7 @@ This section is for Lumi developers.
 
 ### Prerequisites
 
-Lumi is written in Go, uses Godep for dependency management, and GoMetaLinter for linting:
+Lumi is written in Go, uses Govendor for dependency management, and GoMetaLinter for linting:
 
 * [Go](https://golang.org/doc/install): https://golang.org/dl
 * [Govendor](https://github.com/kardianos/govendor): `$ go get -u github.com/kardianos/govendor`
@@ -51,7 +51,7 @@ To build Lumi, ensure `$GOPATH` is set, and clone into a standard Go workspace:
 
 Before building, you will need to ensure dependencies have been restored to your enlistment:
 
-    $ godep restore
+    $ govendor sync
 
 At this point you can run `make` to build and run tests:
 

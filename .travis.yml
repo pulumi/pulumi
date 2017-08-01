@@ -2,7 +2,7 @@ language: go
 go: 1.8.2
 sudo: true # give us 7.5GB and >2 bursted cores.
 before_install:
-    # GoDep for Go dependency management.
+    # Govendor for Go dependency management.
     - go get -v github.com/kardianos/govendor
     # Gometalinter for good Go linting/hygiene.
     - go get -v github.com/alecthomas/gometalinter
