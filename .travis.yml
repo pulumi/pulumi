@@ -2,8 +2,8 @@ language: go
 go: 1.8.2
 sudo: true # give us 7.5GB and >2 bursted cores.
 before_install:
-    # Govendor for Go dependency management.
-    - go get -v github.com/kardianos/govendor
+    # GoDep for Go dependency management.
+    - go get -v github.com/tools/godep
     # Gometalinter for good Go linting/hygiene.
     - go get -v github.com/alecthomas/gometalinter
     - gometalinter --install
@@ -19,7 +19,7 @@ before_install:
 cache:
     yarn: true
 install:
-    - govendor sync
+    - godep restore -v
     - pushd cmd/lumijs/ && yarn install && popd
     - pushd lib/lumi/ && yarn install && popd
 before_script:

@@ -1,4 +1,5 @@
 *.swp
+/vendor/
 /.vscode/
 coverage.cov
 *.coverprofile
