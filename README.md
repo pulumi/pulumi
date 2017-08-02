@@ -34,12 +34,12 @@ This section is for Lumi developers.
 
 ### Prerequisites
 
-Lumi is written in Go, uses Godep for dependency management, and GoMetaLinter for linting:
+Lumi is written in Go, uses Dep for dependency management, and GoMetaLinter for linting:
 
 * [Go](https://golang.org/doc/install): https://golang.org/dl
-* [Godep](https://github.com/tools/godep): `$ go get -v github.com/tools/godep`
+* [Dep](https://github.com/golang/dep): `$ go get -u github.com/golang/dep/cmd/dep`
 * [GoMetaLinter](https://github.com/alecthomas/gometalinter):
-    - `$ go get -v github.com/alecthomas/gometalinter`
+    - `$ go get -u github.com/alecthomas/gometalinter`
     - `$ gometalinter --install`
 
 ### Building and Testing
@@ -51,7 +51,7 @@ To build Lumi, ensure `$GOPATH` is set, and clone into a standard Go workspace:
 
 Before building, you will need to ensure dependencies have been restored to your enlistment:
 
-    $ godep restore
+    $ dep ensure
 
 At this point you can run `make` to build and run tests:
 

@@ -41,7 +41,6 @@ install:
 .PHONY: lint
 lint:
 	@$(ECHO) "\033[0;32mLINT:\033[0m"
-	which ${GOMETALINTERBIN} >/dev/null
 	$(GOMETALINTER) ./pkg/... | sort ; exit "$${PIPESTATUS[0]}"
 	$(GOMETALINTER) ./cmd/lumi/... | sort ; exit "$${PIPESTATUS[0]}"
 	$(GOMETALINTER) ./cmd/lumidl/... | sort ; exit "$${PIPESTATUS[0]}"
@@ -55,7 +54,6 @@ LINT_SUPPRESS="or be unexported|Subprocess launching with variable"
 .PHONY: lint_quiet
 lint_quiet:
 	@$(ECHO) "\033[0;32mLINT (quiet):\033[0m"
-	which ${GOMETALINTERBIN} >/dev/null
 	$(GOMETALINTER) ./pkg/... | grep -vE ${LINT_SUPPRESS} | sort ; exit $$(($${PIPESTATUS[1]}-1))
 	$(GOMETALINTER) ./cmd/lumi/... | grep -vE ${LINT_SUPPRESS} | sort ; exit $$(($${PIPESTATUS[1]}-1))
 	$(GOMETALINTER) ./cmd/lumidl/... | grep -vE ${LINT_SUPPRESS} | sort ; exit $$(($${PIPESTATUS[1]}-1))
