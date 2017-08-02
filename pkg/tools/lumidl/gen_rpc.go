@@ -10,9 +10,9 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/pulumi/lumi/pkg/tokens"
-	"github.com/pulumi/lumi/pkg/tools"
-	"github.com/pulumi/lumi/pkg/util/contract"
+	"github.com/pulumi/pulumi-fabric/pkg/tokens"
+	"github.com/pulumi/pulumi-fabric/pkg/tools"
+	"github.com/pulumi/pulumi-fabric/pkg/util/contract"
 )
 
 type RPCGenerator struct {
@@ -105,12 +105,12 @@ func (g *RPCGenerator) EmitFile(file string, pkg *Package, members []Member) err
 			w.Writefmtln(`    pbstruct "github.com/golang/protobuf/ptypes/struct"`)
 			w.Writefmtln(`    "golang.org/x/net/context"`)
 			w.Writefmtln("")
-			w.Writefmtln(`    "github.com/pulumi/lumi/pkg/resource"`)
-			w.Writefmtln(`    "github.com/pulumi/lumi/pkg/resource/plugin"`)
-			w.Writefmtln(`    "github.com/pulumi/lumi/pkg/tokens"`)
-			w.Writefmtln(`    "github.com/pulumi/lumi/pkg/util/contract"`)
-			w.Writefmtln(`    "github.com/pulumi/lumi/pkg/util/mapper"`)
-			w.Writefmtln(`    "github.com/pulumi/lumi/sdk/go/pkg/lumirpc"`)
+			w.Writefmtln(`    "github.com/pulumi/pulumi-fabric/pkg/resource"`)
+			w.Writefmtln(`    "github.com/pulumi/pulumi-fabric/pkg/resource/plugin"`)
+			w.Writefmtln(`    "github.com/pulumi/pulumi-fabric/pkg/tokens"`)
+			w.Writefmtln(`    "github.com/pulumi/pulumi-fabric/pkg/util/contract"`)
+			w.Writefmtln(`    "github.com/pulumi/pulumi-fabric/pkg/util/mapper"`)
+			w.Writefmtln(`    "github.com/pulumi/pulumi-fabric/sdk/go/pkg/lumirpc"`)
 		}
 
 		if len(g.FileImports) > 0 {

@@ -5,9 +5,9 @@ package encoding
 import (
 	"reflect"
 
-	"github.com/pulumi/lumi/pkg/compiler/ast"
-	"github.com/pulumi/lumi/pkg/util/contract"
-	"github.com/pulumi/lumi/pkg/util/mapper"
+	"github.com/pulumi/pulumi-fabric/pkg/compiler/ast"
+	"github.com/pulumi/pulumi-fabric/pkg/util/contract"
+	"github.com/pulumi/pulumi-fabric/pkg/util/mapper"
 )
 
 func decodeExpression(m mapper.Mapper, obj map[string]interface{}) (ast.Expression, error) {

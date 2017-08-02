@@ -3,11 +3,11 @@
 package binder
 
 import (
-	"github.com/pulumi/lumi/pkg/compiler/ast"
-	"github.com/pulumi/lumi/pkg/compiler/errors"
-	"github.com/pulumi/lumi/pkg/compiler/symbols"
-	"github.com/pulumi/lumi/pkg/tokens"
-	"github.com/pulumi/lumi/pkg/util/contract"
+	"github.com/pulumi/pulumi-fabric/pkg/compiler/ast"
+	"github.com/pulumi/pulumi-fabric/pkg/compiler/errors"
+	"github.com/pulumi/pulumi-fabric/pkg/compiler/symbols"
+	"github.com/pulumi/pulumi-fabric/pkg/tokens"
+	"github.com/pulumi/pulumi-fabric/pkg/util/contract"
 )
 
 // Scope facilitates storing information that obeys lexically nested scoping rules.
@@ -69,7 +69,7 @@ func (s *Scope) Lookup(nm tokens.Name) *symbols.LocalVariable {
 func (s *Scope) Register(sym *symbols.LocalVariable) bool {
 	nm := sym.Name()
 	if _, exists := s.Locals[nm]; exists {
-		// TODO[pulumi/lumi#176]: this won't catch "shadowing" for parent scopes; do we care about this?
+		// TODO[pulumi/pulumi-fabric#176]: this won't catch "shadowing" for parent scopes; do we care about this?
 		return false
 	}
 

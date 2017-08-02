@@ -8,10 +8,10 @@ import (
 	"reflect"
 	"time"
 
-	"github.com/pulumi/lumi/pkg/resource"
-	"github.com/pulumi/lumi/pkg/resource/deploy"
-	"github.com/pulumi/lumi/pkg/tokens"
-	"github.com/pulumi/lumi/pkg/util/contract"
+	"github.com/pulumi/pulumi-fabric/pkg/resource"
+	"github.com/pulumi/pulumi-fabric/pkg/resource/deploy"
+	"github.com/pulumi/pulumi-fabric/pkg/tokens"
+	"github.com/pulumi/pulumi-fabric/pkg/util/contract"
 )
 
 // Deployment is a serializable, flattened LumiGL graph structure, representing a deploy.   It is similar

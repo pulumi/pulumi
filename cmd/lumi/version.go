@@ -5,11 +5,11 @@ package main
 import (
 	"fmt"
 
-	"github.com/pulumi/lumi/pkg/util/cmdutil"
+	"github.com/pulumi/pulumi-fabric/pkg/util/cmdutil"
 	"github.com/spf13/cobra"
 )
 
-const version = "0.0.1" // TODO[pulumi/lumi#13]: a real auto-incrementing version number.
+const version = "0.0.1" // TODO[pulumi/pulumi-fabric#13]: a real auto-incrementing version number.
 
 func newVersionCmd() *cobra.Command {
 	return &cobra.Command{

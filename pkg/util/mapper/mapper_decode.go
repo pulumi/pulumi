@@ -9,7 +9,7 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/pulumi/lumi/pkg/util/contract"
+	"github.com/pulumi/pulumi-fabric/pkg/util/contract"
 )
 
 // Decoder is a func that knows how to decode into particular type.

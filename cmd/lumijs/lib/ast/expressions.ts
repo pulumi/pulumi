@@ -87,7 +87,7 @@ export type  ObjectLiteralComputedPropertyKind = "ObjectLiteralComputedProperty"
 
 /** Loads **/
 
-// TODO[pulumi/lumi#80]: figure out how to load/store from arrays/maps.  Possibly just use intrinsic functions.
+// TODO[pulumi/pulumi-fabric#80]: figure out how to load/store from arrays/maps.  Possibly just use intrinsic functions.
 
 export interface LoadExpression extends Expression {
 }
@@ -198,7 +198,7 @@ export type BinaryArithmeticOperator  = "+"   | "-"   | // addition and subtract
                                         "%"   | "**"  ; // remainder and exponentiation.
 
 // All of the available assignment operators.
-// TODO[pulumi/lumi#50]: figure out what to do with ECMAScript's >>>= operator.
+// TODO[pulumi/pulumi-fabric#50]: figure out what to do with ECMAScript's >>>= operator.
 export type BinaryAssignmentOperator  = "="           | // simple assignment.
                                         "+="  | "-="  | // assignment by sum and difference.
                                         "*="  | "/="  | // assignment by product and quotient.
@@ -208,7 +208,7 @@ export type BinaryAssignmentOperator  = "="           | // simple assignment.
                                         "^="          ; // assignment by bitwise XOR.
 
 // All of the available bitwise operators.
-// TODO[pulumi/lumi#50]: figure out what to do with ECMAScript's >>> operator.
+// TODO[pulumi/pulumi-fabric#50]: figure out what to do with ECMAScript's >>> operator.
 export type BinaryBitwiseOperator     = "<<"  | ">>"  | // bitwise left and right shift.
                                         "&"   | "|"   | // bitwise AND and OR (inclusive OR).
                                         "^"           ; // bitwise XOR (exclusive OR).
@@ -217,7 +217,7 @@ export type BinaryBitwiseOperator     = "<<"  | ">>"  | // bitwise left and righ
 export type BinaryConditionalOperator = "&&"  | "||"  ; // logical AND and OR.
 
 // All of the available relational operators.
-// TODO[pulumi/lumi#50]: figure out what to do with ECMAScript's === and !=== operators.
+// TODO[pulumi/pulumi-fabric#50]: figure out what to do with ECMAScript's === and !=== operators.
 export type BinaryRelationalOperator  = "<"   | "<="  | // relational operators less-than and less-than-or-equals.
                                         ">"   | ">="  | // relational operators greater-than and greater-than-or-equals.
                                         "=="  | "!="  ; // relational operators equals and not-equals.

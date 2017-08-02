@@ -20,7 +20,7 @@ export function isFunction(obj: Object): boolean {
     return false; // functionality provided by the runtime.
 }
 
-// defaultIfComputed substitutes a default value if target object is computed.  In the absence of pulumi/lumi#170,
+// defaultIfComputed substitutes a default value if target object is computed.  In the absence of pulumi/pulumi-fabric#170,
 // this is required in some cases to avoid conditionalizing code on a computed property.
 export function defaultIfComputed(obj: Object, def: Object): Object {
     return <any>undefined; // functionality provided by the runtime.

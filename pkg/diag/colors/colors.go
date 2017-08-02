@@ -7,7 +7,7 @@ import (
 
 	"github.com/reconquest/loreley"
 
-	"github.com/pulumi/lumi/pkg/util/contract"
+	"github.com/pulumi/pulumi-fabric/pkg/util/contract"
 )
 
 const colorLeft = "<{%"

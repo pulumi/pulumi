@@ -6,12 +6,12 @@ import (
 	"github.com/golang/glog"
 	"github.com/pkg/errors"
 
-	"github.com/pulumi/lumi/pkg/compiler/symbols"
-	"github.com/pulumi/lumi/pkg/diag"
-	"github.com/pulumi/lumi/pkg/eval/rt"
-	"github.com/pulumi/lumi/pkg/resource"
-	"github.com/pulumi/lumi/pkg/tokens"
-	"github.com/pulumi/lumi/pkg/util/contract"
+	"github.com/pulumi/pulumi-fabric/pkg/compiler/symbols"
+	"github.com/pulumi/pulumi-fabric/pkg/diag"
+	"github.com/pulumi/pulumi-fabric/pkg/eval/rt"
+	"github.com/pulumi/pulumi-fabric/pkg/resource"
+	"github.com/pulumi/pulumi-fabric/pkg/tokens"
+	"github.com/pulumi/pulumi-fabric/pkg/util/contract"
 )
 
 // A Host hosts provider plugins and makes them easily accessible by package name.

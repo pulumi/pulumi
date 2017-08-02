@@ -10,11 +10,11 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/pulumi/lumi/pkg/compiler/ast"
-	"github.com/pulumi/lumi/pkg/pack"
-	"github.com/pulumi/lumi/pkg/tokens"
-	"github.com/pulumi/lumi/pkg/util/cmdutil"
-	"github.com/pulumi/lumi/pkg/util/contract"
+	"github.com/pulumi/pulumi-fabric/pkg/compiler/ast"
+	"github.com/pulumi/pulumi-fabric/pkg/pack"
+	"github.com/pulumi/pulumi-fabric/pkg/tokens"
+	"github.com/pulumi/pulumi-fabric/pkg/util/cmdutil"
+	"github.com/pulumi/pulumi-fabric/pkg/util/contract"
 )
 
 func newPackInfoCmd() *cobra.Command {

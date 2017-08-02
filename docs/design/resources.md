@@ -98,7 +98,7 @@ one of [the standard installation locations](deps.md).  `<pkg>` is the package t
 
 There is no requirement around a resource provider, other than that it implement a specific HTTP/2 protocol.  This
 protocol is described by a [set of gRPC interfaces](
-https://github.com/pulumi/lumi/blob/master/sdk/proto/provider.proto).  In particular:
+https://github.com/pulumi/pulumi-fabric/blob/master/sdk/proto/provider.proto).  In particular:
 
     service ResourceProvider {
         // Check validates that the given property bag is valid for a resource of the given type.
@@ -120,7 +120,7 @@ https://github.com/pulumi/lumi/blob/master/sdk/proto/provider.proto).  In partic
         rpc Delete(DeleteRequest) returns (google.protobuf.Empty) {}
     }
 
-TODO[pulumi/lumi#54]: eventually we will add operational APIs to resource providers.  This will allow them to report
+TODO[pulumi/pulumi-fabric#54]: eventually we will add operational APIs to resource providers.  This will allow them to report
     logging and performance counters, for example.  This will permit easy inspection from the command line (e.g.,
     `lumi resource perf cpu <resource-id>` could print out the current CPU perf-counter history for a resource).  It
     will also permit handy resource monitoring from our hosted service, possibly in conjunction with workflows.

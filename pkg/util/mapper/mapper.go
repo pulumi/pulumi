@@ -6,7 +6,7 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/pulumi/lumi/pkg/util/contract"
+	"github.com/pulumi/pulumi-fabric/pkg/util/contract"
 )
 
 // Mapper can map from weakly typed JSON-like property bags to strongly typed structs, and vice versa.

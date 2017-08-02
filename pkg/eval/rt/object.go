@@ -8,12 +8,12 @@ import (
 
 	"github.com/golang/glog"
 
-	"github.com/pulumi/lumi/pkg/compiler/ast"
-	"github.com/pulumi/lumi/pkg/compiler/symbols"
-	"github.com/pulumi/lumi/pkg/compiler/types"
-	"github.com/pulumi/lumi/pkg/diag"
-	"github.com/pulumi/lumi/pkg/tokens"
-	"github.com/pulumi/lumi/pkg/util/contract"
+	"github.com/pulumi/pulumi-fabric/pkg/compiler/ast"
+	"github.com/pulumi/pulumi-fabric/pkg/compiler/symbols"
+	"github.com/pulumi/pulumi-fabric/pkg/compiler/types"
+	"github.com/pulumi/pulumi-fabric/pkg/diag"
+	"github.com/pulumi/pulumi-fabric/pkg/tokens"
+	"github.com/pulumi/pulumi-fabric/pkg/util/contract"
 )
 
 const nilString = "<nil>"
@@ -544,7 +544,7 @@ func NewConstantObject(v interface{}) *Object {
 
 // FreezeReadonlyProperties freezes the readonly fields of an object, possibly copying properties down from the
 // prototype chain as necessary to accomplish the freezing (since modifying the prototype chain would clearly be wrong).
-// TODO[pulumi/lumi#70]: this could cause subtle compatibility issues; e.g., it's possible to write to the prototype
+// TODO[pulumi/pulumi-fabric#70]: this could cause subtle compatibility issues; it's possible to write to the prototype
 //     for an inherited property postconstruction; in vanilla ECMAscript, that write would be seen; in LumiJS it won't.
 func (o *Object) FreezeReadonlyProperties() {
 	current := o.Type()

@@ -7,12 +7,12 @@ import (
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 
-	"github.com/pulumi/lumi/pkg/diag"
-	"github.com/pulumi/lumi/pkg/resource"
-	"github.com/pulumi/lumi/pkg/resource/plugin"
-	"github.com/pulumi/lumi/pkg/tokens"
-	"github.com/pulumi/lumi/pkg/util/contract"
-	"github.com/pulumi/lumi/sdk/go/pkg/lumirpc"
+	"github.com/pulumi/pulumi-fabric/pkg/diag"
+	"github.com/pulumi/pulumi-fabric/pkg/resource"
+	"github.com/pulumi/pulumi-fabric/pkg/resource/plugin"
+	"github.com/pulumi/pulumi-fabric/pkg/tokens"
+	"github.com/pulumi/pulumi-fabric/pkg/util/contract"
+	"github.com/pulumi/pulumi-fabric/sdk/go/pkg/lumirpc"
 )
 
 // HostClient is a client interface into the host's engine RPC interface.

@@ -39,7 +39,7 @@ higher the priority (a sorted list will produce the intended implementation orde
 In all cases, the native metadata formats for the IaaS and CaaS provider in question is supported; for example, ECS on
 AWS will leverage CloudFormation as the target metadata.  In certain cases, we also support Terraform outputs.
 
-Refer to [pulumi/lumi#2](https://github.com/pulumi/lumi/issues/2) for an up-to-date prioritization of platforms.
+Refer to [pulumi/pulumi-fabric#2](https://github.com/pulumi/pulumi-fabric/issues/2) for an up-to-date prioritization of platforms.
 
 ## Clusters
 
@@ -120,7 +120,7 @@ Each Cluster gets a Virtual Private Cloud (VPC) for network isolation.  Along wi
 sub-resources: a Subnet, Internet Gateway, and Route Table.  By default, Ingress and Egress ports are left closed.  As
 Stacks are deployed, ports are managed automatically (although an administrator can lock them (TODO(joe): how)).
 
-TODO[pulumi/lumi#33]: figure out what to do with SSH by default; most likely, we want to lock this down.
+TODO[pulumi/pulumi-fabric#33]: figure out what to do with SSH by default; most likely, we want to lock this down.
 
 TODO(joe): joining existing VPCs.
 

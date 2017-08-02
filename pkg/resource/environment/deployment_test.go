@@ -7,8 +7,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/pulumi/lumi/pkg/resource"
-	"github.com/pulumi/lumi/pkg/tokens"
+	"github.com/pulumi/pulumi-fabric/pkg/resource"
+	"github.com/pulumi/pulumi-fabric/pkg/tokens"
 )
 
 // TestDeploymentSerialization creates a basic

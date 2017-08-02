@@ -8,12 +8,12 @@ import (
 
 	"github.com/golang/glog"
 
-	"github.com/pulumi/lumi/pkg/compiler/symbols"
-	"github.com/pulumi/lumi/pkg/compiler/types"
-	"github.com/pulumi/lumi/pkg/compiler/types/predef"
-	"github.com/pulumi/lumi/pkg/eval/rt"
-	"github.com/pulumi/lumi/pkg/tokens"
-	"github.com/pulumi/lumi/pkg/util/contract"
+	"github.com/pulumi/pulumi-fabric/pkg/compiler/symbols"
+	"github.com/pulumi/pulumi-fabric/pkg/compiler/types"
+	"github.com/pulumi/pulumi-fabric/pkg/compiler/types/predef"
+	"github.com/pulumi/pulumi-fabric/pkg/eval/rt"
+	"github.com/pulumi/pulumi-fabric/pkg/tokens"
+	"github.com/pulumi/pulumi-fabric/pkg/util/contract"
 )
 
 // IsResourceObject returns true if the given runtime object is a
@@ -299,7 +299,7 @@ func isOutputObject(resobj *rt.Object, obj *rt.Object) bool {
 func setRuntimeProperties(obj *rt.Object, props PropertyMap) {
 	for k, v := range props {
 		prop := obj.GetPropertyAddr(rt.PropertyKey(k), true, true)
-		// TODO[pulumi/lumi#260]: we are only setting if IsNull or IsComputed, to avoid certain shortcomings in our
+		// TODO[pulumi/pulumi-fabric#260]: we are only setting if IsNull or IsComputed, to avoid certain shortcomings in our
 		//     serialization format today.  For example, if a resource ID appears, we must map it back to the runtime
 		//     object.  This means some resource outputs won't get reflected accurately.  We will need to fix this.
 		pobj := prop.Obj()

@@ -5,12 +5,12 @@ package metadata
 import (
 	"github.com/golang/glog"
 
-	"github.com/pulumi/lumi/pkg/compiler/core"
-	"github.com/pulumi/lumi/pkg/compiler/errors"
-	"github.com/pulumi/lumi/pkg/diag"
-	"github.com/pulumi/lumi/pkg/encoding"
-	"github.com/pulumi/lumi/pkg/pack"
-	"github.com/pulumi/lumi/pkg/util/contract"
+	"github.com/pulumi/pulumi-fabric/pkg/compiler/core"
+	"github.com/pulumi/pulumi-fabric/pkg/compiler/errors"
+	"github.com/pulumi/pulumi-fabric/pkg/diag"
+	"github.com/pulumi/pulumi-fabric/pkg/encoding"
+	"github.com/pulumi/pulumi-fabric/pkg/pack"
+	"github.com/pulumi/pulumi-fabric/pkg/util/contract"
 )
 
 // Reader reads a document by decoding/parsing it into its AST form.
@@ -48,7 +48,7 @@ func (r *reader) ReadPackage(doc *diag.Document) *pack.Package {
 	pkg, err := encoding.Decode(m, doc.Body)
 	if err != nil {
 		r.Diag().Errorf(errors.ErrorIllegalProjectSyntax.At(doc), err)
-		// TODO[pulumi/lumi#14]: issue an error per issue found in the file with line/col numbers.
+		// TODO[pulumi/pulumi-fabric#14]: issue an error per issue found in the file with line/col numbers.
 		return nil
 	}
 

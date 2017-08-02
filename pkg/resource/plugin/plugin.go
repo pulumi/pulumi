@@ -13,9 +13,9 @@ import (
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
 
-	"github.com/pulumi/lumi/pkg/diag"
-	"github.com/pulumi/lumi/pkg/util/cmdutil"
-	"github.com/pulumi/lumi/pkg/util/contract"
+	"github.com/pulumi/pulumi-fabric/pkg/diag"
+	"github.com/pulumi/pulumi-fabric/pkg/util/cmdutil"
+	"github.com/pulumi/pulumi-fabric/pkg/util/contract"
 )
 
 type plugin struct {
@@ -53,7 +53,7 @@ func newPlugin(host Host, ctx *Context, bins []string, prefix string) (*plugin, 
 	}
 
 	// For now, we will spawn goroutines that will spew STDOUT/STDERR to the relevant diag streams.
-	// TODO[pulumi/lumi#143]: eventually we want real progress reporting, etc., which will need to be done out of band
+	// TODO[pulumi/pulumi-fabric#143]: eventually we want real progress reporting, etc., out of band
 	//     via RPC.  This will be particularly important when we parallelize the application of the resource graph.
 	tracers := map[io.Reader]struct {
 		lbl string

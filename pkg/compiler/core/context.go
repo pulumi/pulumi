@@ -3,8 +3,8 @@
 package core
 
 import (
-	"github.com/pulumi/lumi/pkg/compiler/symbols"
-	"github.com/pulumi/lumi/pkg/diag"
+	"github.com/pulumi/pulumi-fabric/pkg/compiler/symbols"
+	"github.com/pulumi/pulumi-fabric/pkg/diag"
 )
 
 // Context is a bag of state common throughout all compiler passes.

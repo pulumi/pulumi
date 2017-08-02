@@ -11,14 +11,14 @@ import (
 
 	"bytes"
 
-	"github.com/pulumi/lumi/pkg/compiler/ast"
-	"github.com/pulumi/lumi/pkg/compiler/binder"
-	"github.com/pulumi/lumi/pkg/compiler/symbols"
-	"github.com/pulumi/lumi/pkg/compiler/types"
-	"github.com/pulumi/lumi/pkg/diag"
-	"github.com/pulumi/lumi/pkg/eval/rt"
-	"github.com/pulumi/lumi/pkg/tokens"
-	"github.com/pulumi/lumi/pkg/util/contract"
+	"github.com/pulumi/pulumi-fabric/pkg/compiler/ast"
+	"github.com/pulumi/pulumi-fabric/pkg/compiler/binder"
+	"github.com/pulumi/pulumi-fabric/pkg/compiler/symbols"
+	"github.com/pulumi/pulumi-fabric/pkg/compiler/types"
+	"github.com/pulumi/pulumi-fabric/pkg/diag"
+	"github.com/pulumi/pulumi-fabric/pkg/eval/rt"
+	"github.com/pulumi/pulumi-fabric/pkg/tokens"
+	"github.com/pulumi/pulumi-fabric/pkg/util/contract"
 )
 
 func isFunction(intrin *rt.Intrinsic, e *evaluator, this *rt.Object, args []*rt.Object) *rt.Unwind {
@@ -88,7 +88,7 @@ func printf(intrin *rt.Intrinsic, e *evaluator, this *rt.Object, args []*rt.Obje
 	} else {
 		message = rt.Null
 	}
-	// TODO[pulumi/lumi#169]: Move this to use a proper ToString() conversion.
+	// TODO[pulumi/pulumi-fabric#169]: Move this to use a proper ToString() conversion.
 	fmt.Print(message.String())
 	return rt.NewReturnUnwind(nil)
 }
@@ -100,7 +100,7 @@ func toString(intrin *rt.Intrinsic, e *evaluator, this *rt.Object, args []*rt.Ob
 	} else {
 		obj = rt.Null
 	}
-	// TODO[pulumi/lumi#169]: Move this to use a proper ToString() conversion.
+	// TODO[pulumi/pulumi-fabric#169]: Move this to use a proper ToString() conversion.
 	s := rt.NewStringObject(obj.String())
 	return rt.NewReturnUnwind(s)
 }

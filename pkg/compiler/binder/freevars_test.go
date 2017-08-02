@@ -5,9 +5,9 @@ package binder
 import (
 	"testing"
 
-	"github.com/pulumi/lumi/pkg/compiler/ast"
-	"github.com/pulumi/lumi/pkg/compiler/types"
-	"github.com/pulumi/lumi/pkg/tokens"
+	"github.com/pulumi/pulumi-fabric/pkg/compiler/ast"
+	"github.com/pulumi/pulumi-fabric/pkg/compiler/types"
+	"github.com/pulumi/pulumi-fabric/pkg/tokens"
 	"github.com/stretchr/testify/assert"
 )
 

@@ -8,15 +8,15 @@ import (
 	"github.com/golang/glog"
 	goerr "github.com/pkg/errors"
 
-	"github.com/pulumi/lumi/pkg/compiler/binder"
-	"github.com/pulumi/lumi/pkg/compiler/core"
-	"github.com/pulumi/lumi/pkg/compiler/errors"
-	"github.com/pulumi/lumi/pkg/compiler/metadata"
-	"github.com/pulumi/lumi/pkg/compiler/symbols"
-	"github.com/pulumi/lumi/pkg/diag"
-	"github.com/pulumi/lumi/pkg/pack"
-	"github.com/pulumi/lumi/pkg/util/contract"
-	"github.com/pulumi/lumi/pkg/workspace"
+	"github.com/pulumi/pulumi-fabric/pkg/compiler/binder"
+	"github.com/pulumi/pulumi-fabric/pkg/compiler/core"
+	"github.com/pulumi/pulumi-fabric/pkg/compiler/errors"
+	"github.com/pulumi/pulumi-fabric/pkg/compiler/metadata"
+	"github.com/pulumi/pulumi-fabric/pkg/compiler/symbols"
+	"github.com/pulumi/pulumi-fabric/pkg/diag"
+	"github.com/pulumi/pulumi-fabric/pkg/pack"
+	"github.com/pulumi/pulumi-fabric/pkg/util/contract"
+	"github.com/pulumi/pulumi-fabric/pkg/workspace"
 )
 
 // Compiler provides an interface into the many phases of the Lumi compilation process.

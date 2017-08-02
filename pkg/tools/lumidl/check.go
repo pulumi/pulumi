@@ -10,10 +10,10 @@ import (
 	"github.com/pkg/errors"
 	"golang.org/x/tools/go/loader"
 
-	"github.com/pulumi/lumi/pkg/diag"
-	"github.com/pulumi/lumi/pkg/tokens"
-	"github.com/pulumi/lumi/pkg/util/cmdutil"
-	"github.com/pulumi/lumi/pkg/util/contract"
+	"github.com/pulumi/pulumi-fabric/pkg/diag"
+	"github.com/pulumi/pulumi-fabric/pkg/tokens"
+	"github.com/pulumi/pulumi-fabric/pkg/util/cmdutil"
+	"github.com/pulumi/pulumi-fabric/pkg/util/contract"
 )
 
 type Checker struct {

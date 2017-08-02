@@ -9,7 +9,7 @@ LumiPack/IL.
 
 LumiJS is built independent from the overall Lumi toolchain.  First clone and `cd` to the right place:
 
-    $ git clone git@github.com:pulumi/lumi
+    $ git clone git@github.com:pulumi/pulumi-fabric
     $ cd lumi/cmd/lumijs
 
 Next, install dependencies, ideally [using Yarn](https://yarnpkg.com/en/docs/install):

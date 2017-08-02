@@ -5,8 +5,8 @@ package rt
 import (
 	"bytes"
 
-	"github.com/pulumi/lumi/pkg/compiler/symbols"
-	"github.com/pulumi/lumi/pkg/diag"
+	"github.com/pulumi/pulumi-fabric/pkg/compiler/symbols"
+	"github.com/pulumi/pulumi-fabric/pkg/diag"
 )
 
 // StackFrame is a structure that helps us build up a stack trace upon failure.

@@ -1,7 +1,7 @@
 SHELL=/bin/bash
 .SHELLFLAGS=-e
 
-PROJECT=github.com/pulumi/lumi
+PROJECT=github.com/pulumi/pulumi-fabric
 PROJECT_PKGS=$(shell go list ./cmd/... ./pkg/... | grep -v /vendor/)
 TESTPARALLELISM=10
 
@@ -20,17 +20,17 @@ nightly: banner_all vet test install lint_quiet lumijs lumirtpkg lumijspkg lumip
 
 .PHONY: banner
 banner:
-	@$(ECHO) "\033[1;37m============\033[0m"
-	@$(ECHO) "\033[1;37mLumi (Quick)\033[0m"
-	@$(ECHO) "\033[1;37m============\033[0m"
+	@$(ECHO) "\033[1;37m=====================\033[0m"
+	@$(ECHO) "\033[1;37mPulumi Fabric (Quick)\033[0m"
+	@$(ECHO) "\033[1;37m=====================\033[0m"
 	@$(ECHO) "\033[0;33mRunning quick build; to run full tests, run 'make all'\033[0m"
 	@$(ECHO) "\033[0;33mRemember to do this before checkin, otherwise your CI will fail\033[0m"
 
 .PHONY: banner_all
 banner_all:
-	@$(ECHO) "\033[1;37m============\033[0m"
-	@$(ECHO) "\033[1;37mLumi (Full)\033[0m"
-	@$(ECHO) "\033[1;37m============\033[0m"
+	@$(ECHO) "\033[1;37m====================\033[0m"
+	@$(ECHO) "\033[1;37mPulumi Fabric (Full)\033[0m"
+	@$(ECHO) "\033[1;37m====================\033[0m"
 
 .PHONY: install
 install:
@@ -46,9 +46,9 @@ lint:
 	$(GOMETALINTER) ./cmd/lumidl/... | sort ; exit "$${PIPESTATUS[0]}"
 
 # In quiet mode, suppress some messages.
-#    - "or be unexported": TODO[pulumi/lumi#191]: will fix when we write all of our API docs
+#    - "or be unexported": TODO[pulumi/pulumi-fabric#191]: will fix when we write all of our API docs
 #    - "Subprocess launching with variable": we intentionally launch processes dynamically.
-#    - "cyclomatic complexity" (disabled in config): TODO[pulumi/lumi#259]: need to fix many of these.
+#    - "cyclomatic complexity" (disabled in config): TODO[pulumi/pulumi-fabric#259]: need to fix many of these.
 LINT_SUPPRESS="or be unexported|Subprocess launching with variable"
 
 .PHONY: lint_quiet

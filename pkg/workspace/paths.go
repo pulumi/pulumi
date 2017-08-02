@@ -8,10 +8,10 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/pulumi/lumi/pkg/compiler/errors"
-	"github.com/pulumi/lumi/pkg/diag"
-	"github.com/pulumi/lumi/pkg/encoding"
-	"github.com/pulumi/lumi/pkg/tokens"
+	"github.com/pulumi/pulumi-fabric/pkg/compiler/errors"
+	"github.com/pulumi/pulumi-fabric/pkg/diag"
+	"github.com/pulumi/pulumi-fabric/pkg/encoding"
+	"github.com/pulumi/pulumi-fabric/pkg/tokens"
 )
 
 const ProjectFile = "Lumi"       // the base name of a Project.
@@ -28,7 +28,7 @@ const DefaultInstallRoot = "/usr/local/lumi" // where Lumi is installed by defau
 
 // InstallRoot returns Lumi's installation location.  This is controlled my the LUMIROOT envvar.
 func InstallRoot() string {
-	// TODO[pulumi/lumi#208]: support Windows.
+	// TODO[pulumi/pulumi-fabric#208]: support Windows.
 	root := os.Getenv(InstallRootEnvvar)
 	if root == "" {
 		return DefaultInstallRoot

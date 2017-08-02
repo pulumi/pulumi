@@ -8,9 +8,9 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
-	"github.com/pulumi/lumi/pkg/resource"
-	"github.com/pulumi/lumi/pkg/tokens"
-	"github.com/pulumi/lumi/pkg/util/cmdutil"
+	"github.com/pulumi/pulumi-fabric/pkg/resource"
+	"github.com/pulumi/pulumi-fabric/pkg/tokens"
+	"github.com/pulumi/pulumi-fabric/pkg/util/cmdutil"
 )
 
 func newConfigCmd() *cobra.Command {
@@ -32,7 +32,7 @@ func newConfigCmd() *cobra.Command {
 					fmt.Printf("%-32s %-32s\n", "KEY", "VALUE")
 					for _, key := range info.Target.Config.StableKeys() {
 						v := info.Target.Config[key]
-						// TODO[pulumi/lumi#113]: print complex values.
+						// TODO[pulumi/pulumi-fabric#113]: print complex values.
 						fmt.Printf("%-32s %-32s\n", key, v)
 					}
 				}
@@ -44,7 +44,7 @@ func newConfigCmd() *cobra.Command {
 				}
 				if len(info.Args) > 1 {
 					// If there is a value, we are setting the configuration entry.
-					// TODO[pulumi/lumi#113]: support values other than strings.
+					// TODO[pulumi/pulumi-fabric#113]: support values other than strings.
 					config[key] = info.Args[1]
 					saveEnv(info.Target, info.Snapshot, "", true)
 				} else {
@@ -53,7 +53,7 @@ func newConfigCmd() *cobra.Command {
 						delete(config, key)
 						saveEnv(info.Target, info.Snapshot, "", true)
 					} else if v, has := config[key]; has {
-						// TODO[pulumi/lumi#113]: print complex values.
+						// TODO[pulumi/pulumi-fabric#113]: print complex values.
 						fmt.Printf("%v\n", v)
 					} else {
 						return errors.Errorf(

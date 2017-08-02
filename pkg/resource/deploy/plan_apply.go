@@ -6,13 +6,13 @@ import (
 	"github.com/golang/glog"
 	goerr "github.com/pkg/errors"
 
-	"github.com/pulumi/lumi/pkg/compiler/errors"
-	"github.com/pulumi/lumi/pkg/resource"
-	"github.com/pulumi/lumi/pkg/resource/plugin"
-	"github.com/pulumi/lumi/pkg/util/contract"
+	"github.com/pulumi/pulumi-fabric/pkg/compiler/errors"
+	"github.com/pulumi/pulumi-fabric/pkg/resource"
+	"github.com/pulumi/pulumi-fabric/pkg/resource/plugin"
+	"github.com/pulumi/pulumi-fabric/pkg/util/contract"
 )
 
-// TODO[pulumi/lumi#106]: parallelism.
+// TODO[pulumi/pulumi-fabric#106]: parallelism.
 
 // Apply performs all steps in the plan, calling out to the progress reporting functions as desired.  It returns four
 // things: the resulting Snapshot, no matter whether an error occurs or not; an error, if something went wrong; the step
@@ -351,7 +351,7 @@ func (iter *PlanIterator) nextQueryStep(q *SourceQuery) (Step, error) {
 		return NewGetStep(iter, q.Type, id, nil), nil
 	}
 	contract.Assert(q.QueryFilter != nil)
-	contract.Failf("TODO[pulumi/lumi#83]: querying not yet supported")
+	contract.Failf("TODO[pulumi/pulumi-fabric#83]: querying not yet supported")
 	return nil, nil
 }
 

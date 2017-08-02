@@ -6,7 +6,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/pulumi/lumi/pkg/util/contract"
+	"github.com/pulumi/pulumi-fabric/pkg/util/contract"
 )
 
 // Name is an identifier.  It conforms to the regex [A-Za-z_.][A-Za-z0-9_]*.
@@ -32,7 +32,7 @@ func AsName(s string) Name {
 }
 
 // QName is a qualified identifier.  The "/" character optionally delimits different pieces of the name.  Each element
-// conforms to the Name regex [A-Za-z_][A-Za-z0-9_]*.  For example, "pulumi/lumi/stack".
+// conforms to the Name regex [A-Za-z_][A-Za-z0-9_]*.  For example, "pulumi/pulumi-fabric/stack".
 type QName string
 
 func (nm QName) String() string { return string(nm) }

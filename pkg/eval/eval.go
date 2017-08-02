@@ -9,16 +9,16 @@ import (
 
 	"github.com/golang/glog"
 
-	"github.com/pulumi/lumi/pkg/compiler/ast"
-	"github.com/pulumi/lumi/pkg/compiler/binder"
-	"github.com/pulumi/lumi/pkg/compiler/core"
-	"github.com/pulumi/lumi/pkg/compiler/errors"
-	"github.com/pulumi/lumi/pkg/compiler/symbols"
-	"github.com/pulumi/lumi/pkg/compiler/types"
-	"github.com/pulumi/lumi/pkg/diag"
-	"github.com/pulumi/lumi/pkg/eval/rt"
-	"github.com/pulumi/lumi/pkg/tokens"
-	"github.com/pulumi/lumi/pkg/util/contract"
+	"github.com/pulumi/pulumi-fabric/pkg/compiler/ast"
+	"github.com/pulumi/pulumi-fabric/pkg/compiler/binder"
+	"github.com/pulumi/pulumi-fabric/pkg/compiler/core"
+	"github.com/pulumi/pulumi-fabric/pkg/compiler/errors"
+	"github.com/pulumi/pulumi-fabric/pkg/compiler/symbols"
+	"github.com/pulumi/pulumi-fabric/pkg/compiler/types"
+	"github.com/pulumi/pulumi-fabric/pkg/diag"
+	"github.com/pulumi/pulumi-fabric/pkg/eval/rt"
+	"github.com/pulumi/pulumi-fabric/pkg/tokens"
+	"github.com/pulumi/pulumi-fabric/pkg/util/contract"
 )
 
 // Interpreter can evaluate compiled LumiPacks.
@@ -278,7 +278,7 @@ func (e *evaluator) initProperty(this *rt.Object, properties *rt.PropertyMap,
 	case symbols.Function:
 		// A function results in a closure object referring to `this`, if any.
 		obj := rt.NewFunctionObjectFromSymbol(m, this)
-		// TODO[pulumi/lumi#56]: all methods are readonly; consider permitting JS-style overwriting of them.
+		// TODO[pulumi/pulumi-fabric#56]: all methods are readonly; consider permitting JS-style overwriting of them.
 		return properties.InitAddr(key, obj, true, nil, nil), false
 	case symbols.Variable:
 		// A variable could have a default object; if so, use that; otherwise, null will be substituted automatically.
@@ -463,7 +463,7 @@ func (e *evaluator) getModuleGlobals(module *symbols.Module) *rt.Object {
 func (e *evaluator) getClassStatics(class *symbols.Class) *rt.PropertyMap {
 	statics, has := e.statics[class]
 	if !has {
-		// TODO[pulumi/lumi#176]: merge the class statics representation with the prototype object representation.
+		// TODO[pulumi/pulumi-fabric#176]: merge the class statics representation with the prototype object representation.
 		statics = rt.NewPropertyMap()
 		e.statics[class] = statics
 	}
@@ -484,7 +484,7 @@ func (e *evaluator) getModuleObject(m *symbols.Module) *rt.Object {
 // getPrototypeObject returns the prototype for a given type.  The prototype is a mutable object, and so it is cached,
 // and reused for subsequent lookups.  This means that mutations in the prototype are lasting and visible for all later
 // uses.  This is similar to ECMAScript behavior; see http://www.ecma-international.org/ecma-262/6.0/#sec-objects.
-// TODO[pulumi/lumi#70]: technically this should be gotten from the constructor function object; we will need to
+// TODO[pulumi/pulumi-fabric#70]: technically this should be gotten from the constructor function object; we need to
 //     rewire things a bit, depending on how serious we are about ECMAScript compliance, especially dynamic scenarios.
 func (e *evaluator) getPrototypeObject(t symbols.Type) *rt.Object {
 	// If there is already a proto for this type, use it.
@@ -564,7 +564,7 @@ func (e *evaluator) UnhandledException(tree diag.Diagable, ex *rt.Exception) {
 // rejectComputed checks an object's value and, if it's computed and its value isn't known, returns an exception unwind.
 func (e *evaluator) rejectComputed(tree diag.Diagable, obj *rt.Object) *rt.Unwind {
 	if obj != nil && obj.Type().Computed() {
-		// TODO[pulumi/lumi#170]: support multi-stage planning that speculates beyond conditionals.
+		// TODO[pulumi/pulumi-fabric#170]: support multi-stage planning that speculates beyond conditionals.
 		return e.NewUnexpectedComputedValueException(tree, obj)
 	}
 	return nil
@@ -858,7 +858,7 @@ func (e *evaluator) evalImport(node *ast.Import) *rt.Unwind {
 	}
 
 	// If a name was requested, bind it dynamically to an object with this import's exports.
-	// TODO[pulumi/lumi#176]: a more elegant way to do this might be to bind it statically, however that's complex
+	// TODO[pulumi/pulumi-fabric#176]: a more elegant way to do this might be to bind it statically, however that's complex
 	//     because then it would potentially require a module property versus local variable distinction.
 	if node.Name != nil {
 		key := node.Name.Ident
@@ -1016,7 +1016,7 @@ func (e *evaluator) evalLabeledStatement(node *ast.LabeledStatement) *rt.Unwind 
 	uw := e.evalStatement(node.Statement)
 	if uw != nil && uw.Label() != nil && *uw.Label() == node.Label.Ident {
 		contract.Assert(uw.Continue() || uw.Break())
-		// TODO[pulumi/lumi#214]: perform correct break/continue behavior when the label is affixed to a loop.
+		// TODO[pulumi/pulumi-fabric#214]: perform correct break/continue behavior when the label is affixed to a loop.
 		uw = nil
 	}
 	return uw
@@ -1171,8 +1171,8 @@ func (e *evaluator) evalExpression(node ast.Expression) (*rt.Object, *rt.Unwind)
 // requireExpressionValue evaluates an expression and ensures that it isn't latent; that is, it has a concrete value.
 // If it is latent, the function returns a non-nil exception unwind object.
 func (e *evaluator) requireExpressionValue(node ast.Expression) (*rt.Object, *rt.Unwind) {
-	// TODO[pulumi/lumi#170]: eventually we should audit all uses of this routine and, for most if not all of them,
-	//     make them work.  Doing so requires a fair bit of machinery around stepwise application of deployments.
+	// TODO[pulumi/pulumi-fabric#170]: eventually we should audit all uses of this routine and, for most if not all of
+	//     them, make them work.  Doing so requires a fair bit of machinery around stepwise application of deployments.
 	obj, uw := e.evalExpression(node)
 	if uw != nil {
 		return nil, uw
@@ -1675,11 +1675,11 @@ func (e *evaluator) evalLoadDynamicCore(node ast.Node, objexpr *ast.Expression, 
 			contract.Assertf(isarr, "Expected an array for numeric dynamic load index")
 			ix := int(name.NumberValue())
 			arrv := this.ArrayValue()
-			// TODO[pulumi/lumi#70]: Although storing arrays as arrays is fine for many circumstances, there are two
+			// TODO[pulumi/pulumi-fabric#70]: Although storing arrays as arrays is fine for many circumstances, there are two
 			//     situations that could cause us troubles with ECMAScript compliance.  First, negative indices are fine in
 			//     ECMAScript.  Second, sparse arrays can be represented more efficiently as a "bag of properties" than as a
 			//     true array that needs to be resized (possibly growing to become enormous in memory usage).
-			// TODO[pulumi/lumi#70]: We are emulating "ECMAScript-like" array accesses, where -- just like ordinary
+			// TODO[pulumi/pulumi-fabric#70]: We are emulating "ECMAScript-like" array accesses, where -- just like ordinary
 			//     property accesses below -- we will permit indexes that we've never seen before.  Out of bounds should
 			//     yield `undefined`, rather than the usual case of throwing an exception, for example.  And such
 			//     assignments are to be permitted.  This will cause troubles down the road when we do other languages that
@@ -1784,7 +1784,7 @@ func (e *evaluator) evalNewExpression(node *ast.NewExpression) (*rt.Object, *rt.
 
 // evalNew performs a new operation on the given type with the given arguments.
 func (e *evaluator) evalNew(node diag.Diagable, t symbols.Type, args *[]*ast.CallArgument) (*rt.Object, *rt.Unwind) {
-	// TODO[pulumi/lumi#176]: if a dynamic invoke, we want a runtime exceptions, not assertions, for failures below.
+	// TODO[pulumi/pulumi-fabric#176]: if a dynamic invoke, we want a runtime exceptions, not assertions, for failures.
 
 	// Create a object of the right type, containing all of the properties pre-populated.
 	obj := e.newObject(t)
@@ -1845,7 +1845,7 @@ func (e *evaluator) evalNew(node diag.Diagable, t symbols.Type, args *[]*ast.Cal
 func (e *evaluator) evalInvokeFunctionExpression(node *ast.InvokeFunctionExpression) (*rt.Object, *rt.Unwind) {
 	// Evaluate the function that we are meant to invoke.  Note that at the moment we reject latent types; we could
 	// simply propagate a latent value with the expected return type, however that would risk covering up code paths
-	// that contain conditionals, something that we don't permit until pulumi/lumi#170 is handled.
+	// that contain conditionals, something that we don't permit until pulumi/pulumi-fabric#170 is handled.
 	fncobj, uw := e.requireExpressionValue(node.Function)
 	if uw != nil {
 		return nil, uw
@@ -2077,7 +2077,7 @@ func (e *evaluator) evalBinaryOperatorExpression(node *ast.BinaryOperatorExpress
 	}
 
 	// Switch on operator to perform the operator's effects.
-	// TODO[pulumi/lumi#176]: anywhere there is type coercion to/from float64/int64/etc., we should be skeptical.
+	// TODO[pulumi/pulumi-fabric#176]: anywhere there is type coercion to/from float64/int64/etc., we should be skeptical.
 	//     Because our numeric type system is float64-based -- i.e., "JSON-like" -- we often find ourselves doing
 	//     operations on floats that honestly don't make sense (like shifting, masking, and whatnot).  If there is a
 	//     type coercion, Golang (rightfully) doesn't support an operator on numbers of that type.  I suspect we'll
@@ -2127,16 +2127,16 @@ func (e *evaluator) evalBinaryOperatorExpression(node *ast.BinaryOperatorExpress
 		}
 
 		switch op {
-		// TODO[pulumi/lumi#176]: the ECMAScript specification for bitwise operators is a fair bit more complicated than
+		// TODO[pulumi/pulumi-fabric#176]: the ECMAScript specification for bitwise operators is more complicated than
 		//     these; for instance, shifts mask out all but the least significant 5 bits of the rhs.  If we don't do it
 		//     here, LumiJS should; e.g. see https://www.ecma-international.org/ecma-262/7.0/#sec-left-shift-operator.
 		case ast.OpBitwiseShiftLeft:
 			// Both targets are numbers; fetch them (asserting their types), and << them.
-			// TODO[pulumi/lumi#176]: issue an error if rhs is negative.
+			// TODO[pulumi/pulumi-fabric#176]: issue an error if rhs is negative.
 			return rt.NewNumberObject(float64(int64(lhs.NumberValue()) << uint(rhs.NumberValue()))), nil
 		case ast.OpBitwiseShiftRight:
 			// Both targets are numbers; fetch them (asserting their types), and >> them.
-			// TODO[pulumi/lumi#176]: issue an error if rhs is negative.
+			// TODO[pulumi/pulumi-fabric#176]: issue an error if rhs is negative.
 			return rt.NewNumberObject(float64(int64(lhs.NumberValue()) >> uint(rhs.NumberValue()))), nil
 		case ast.OpBitwiseAnd:
 			// Both targets are numbers; fetch them (asserting their types), and & them.

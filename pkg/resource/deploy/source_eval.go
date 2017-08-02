@@ -6,19 +6,19 @@ import (
 	"github.com/golang/glog"
 	goerr "github.com/pkg/errors"
 
-	"github.com/pulumi/lumi/pkg/compiler/binder"
-	"github.com/pulumi/lumi/pkg/compiler/core"
-	"github.com/pulumi/lumi/pkg/compiler/errors"
-	"github.com/pulumi/lumi/pkg/compiler/symbols"
-	"github.com/pulumi/lumi/pkg/compiler/types/predef"
-	"github.com/pulumi/lumi/pkg/diag"
-	"github.com/pulumi/lumi/pkg/eval"
-	"github.com/pulumi/lumi/pkg/eval/rt"
-	"github.com/pulumi/lumi/pkg/resource"
-	"github.com/pulumi/lumi/pkg/resource/plugin"
-	"github.com/pulumi/lumi/pkg/tokens"
-	"github.com/pulumi/lumi/pkg/util/contract"
-	"github.com/pulumi/lumi/pkg/util/rendezvous"
+	"github.com/pulumi/pulumi-fabric/pkg/compiler/binder"
+	"github.com/pulumi/pulumi-fabric/pkg/compiler/core"
+	"github.com/pulumi/pulumi-fabric/pkg/compiler/errors"
+	"github.com/pulumi/pulumi-fabric/pkg/compiler/symbols"
+	"github.com/pulumi/pulumi-fabric/pkg/compiler/types/predef"
+	"github.com/pulumi/pulumi-fabric/pkg/diag"
+	"github.com/pulumi/pulumi-fabric/pkg/eval"
+	"github.com/pulumi/pulumi-fabric/pkg/eval/rt"
+	"github.com/pulumi/pulumi-fabric/pkg/resource"
+	"github.com/pulumi/pulumi-fabric/pkg/resource/plugin"
+	"github.com/pulumi/pulumi-fabric/pkg/tokens"
+	"github.com/pulumi/pulumi-fabric/pkg/util/contract"
+	"github.com/pulumi/pulumi-fabric/pkg/util/rendezvous"
 )
 
 // NewEvalSource returns a planning source that fetches resources by evaluating a package pkg with a set of args args
@@ -161,7 +161,7 @@ func (iter *evalSourceIterator) Next() (*SourceAllocation, *SourceQuery, error) 
 			}
 			return nil, &SourceQuery{Type: t, GetID: resource.ID(args[0].StringValue())}, nil
 		case specialResourceQueryFunction:
-			contract.Failf("TODO[pulumi/lumi#83]: query not yet implemented")
+			contract.Failf("TODO[pulumi/pulumi-fabric#83]: query not yet implemented")
 		default:
 			contract.Failf("Unrecognized query rendezvous function name: %v", meth.Name())
 		}

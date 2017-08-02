@@ -8,12 +8,12 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/pulumi/lumi/pkg/compiler/core"
-	"github.com/pulumi/lumi/pkg/eval"
-	"github.com/pulumi/lumi/pkg/resource/deploy"
-	"github.com/pulumi/lumi/pkg/tokens"
-	"github.com/pulumi/lumi/pkg/util/cmdutil"
-	"github.com/pulumi/lumi/pkg/util/contract"
+	"github.com/pulumi/pulumi-fabric/pkg/compiler/core"
+	"github.com/pulumi/pulumi-fabric/pkg/eval"
+	"github.com/pulumi/pulumi-fabric/pkg/resource/deploy"
+	"github.com/pulumi/pulumi-fabric/pkg/tokens"
+	"github.com/pulumi/pulumi-fabric/pkg/util/cmdutil"
+	"github.com/pulumi/pulumi-fabric/pkg/util/contract"
 )
 
 func newPackEvalCmd() *cobra.Command {
@@ -32,7 +32,7 @@ func newPackEvalCmd() *cobra.Command {
 			"By default, a blueprint package is loaded from the current directory.  Optionally,\n" +
 			"a path to a package elsewhere can be provided as the [package] argument.",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			contract.Assertf(!dotOutput, "TODO[pulumi/lumi#235]: DOT files not yet supported")
+			contract.Assertf(!dotOutput, "TODO[pulumi/pulumi-fabric#235]: DOT files not yet supported")
 
 			// First, load and compile the package.
 			result := compile(cmd, args)

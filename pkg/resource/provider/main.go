@@ -8,9 +8,9 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/pulumi/lumi/pkg/util/cmdutil"
-	"github.com/pulumi/lumi/pkg/util/rpcutil"
-	"github.com/pulumi/lumi/sdk/go/pkg/lumirpc"
+	"github.com/pulumi/pulumi-fabric/pkg/util/cmdutil"
+	"github.com/pulumi/pulumi-fabric/pkg/util/rpcutil"
+	"github.com/pulumi/pulumi-fabric/sdk/go/pkg/lumirpc"
 	"google.golang.org/grpc"
 )
 

@@ -3,8 +3,8 @@
 package deploy
 
 import (
-	"github.com/pulumi/lumi/pkg/resource"
-	"github.com/pulumi/lumi/pkg/tokens"
+	"github.com/pulumi/pulumi-fabric/pkg/resource"
+	"github.com/pulumi/pulumi-fabric/pkg/tokens"
 )
 
 // Snapshot is a view of a collection of resources in an environment at a point in time.  It describes resources; their

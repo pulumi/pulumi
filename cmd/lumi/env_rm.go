@@ -6,7 +6,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
-	"github.com/pulumi/lumi/pkg/util/cmdutil"
+	"github.com/pulumi/pulumi-fabric/pkg/util/cmdutil"
 )
 
 func newEnvRmCmd() *cobra.Command {

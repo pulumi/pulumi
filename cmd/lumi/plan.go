@@ -12,14 +12,14 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
-	"github.com/pulumi/lumi/pkg/diag"
-	"github.com/pulumi/lumi/pkg/diag/colors"
-	"github.com/pulumi/lumi/pkg/resource"
-	"github.com/pulumi/lumi/pkg/resource/deploy"
-	"github.com/pulumi/lumi/pkg/resource/plugin"
-	"github.com/pulumi/lumi/pkg/tokens"
-	"github.com/pulumi/lumi/pkg/util/cmdutil"
-	"github.com/pulumi/lumi/pkg/util/contract"
+	"github.com/pulumi/pulumi-fabric/pkg/diag"
+	"github.com/pulumi/pulumi-fabric/pkg/diag/colors"
+	"github.com/pulumi/pulumi-fabric/pkg/resource"
+	"github.com/pulumi/pulumi-fabric/pkg/resource/deploy"
+	"github.com/pulumi/pulumi-fabric/pkg/resource/plugin"
+	"github.com/pulumi/pulumi-fabric/pkg/tokens"
+	"github.com/pulumi/pulumi-fabric/pkg/util/cmdutil"
+	"github.com/pulumi/pulumi-fabric/pkg/util/contract"
 )
 
 func newPlanCmd() *cobra.Command {
@@ -51,7 +51,7 @@ func newPlanCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			contract.Assertf(!dotOutput, "TODO[pulumi/lumi#235]: DOT files not yet supported")
+			contract.Assertf(!dotOutput, "TODO[pulumi/pulumi-fabric#235]: DOT files not yet supported")
 			opts := deployOptions{
 				Debug:              debug,
 				Destroy:            false,
@@ -133,7 +133,7 @@ func plan(cmd *cobra.Command, info *envCmdInfo, opts deployOptions) (*planResult
 	}
 
 	// If that succeeded, create a new source that will perform interpretation of the compiled program.
-	// TODO[pulumi/lumi#88]: we are passing `nil` as the arguments map; we need to allow a way to pass these.
+	// TODO[pulumi/pulumi-fabric#88]: we are passing `nil` as the arguments map; we need to allow a way to pass these.
 	source := deploy.NewEvalSource(ctx, result.B.Ctx(), result.Pkg, nil, info.Target.Config, opts.Destroy)
 
 	// If there are any analyzers in the project file, add them.

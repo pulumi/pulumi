@@ -12,12 +12,12 @@ import (
 
 	"golang.org/x/tools/go/loader"
 
-	"github.com/pulumi/lumi/pkg/tokens"
-	"github.com/pulumi/lumi/pkg/tools"
-	"github.com/pulumi/lumi/pkg/util/contract"
+	"github.com/pulumi/pulumi-fabric/pkg/tokens"
+	"github.com/pulumi/pulumi-fabric/pkg/tools"
+	"github.com/pulumi/pulumi-fabric/pkg/util/contract"
 )
 
-// TODO[pulumi/lumi#139]: preserve GoDocs in the generated code.
+// TODO[pulumi/pulumi-fabric#139]: preserve GoDocs in the generated code.
 
 type PackGenerator struct {
 	Program     *loader.Program          // the compiled Go program.

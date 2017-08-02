@@ -3,7 +3,7 @@
 package resource
 
 import (
-	"github.com/pulumi/lumi/pkg/util/mapper"
+	"github.com/pulumi/pulumi-fabric/pkg/util/mapper"
 )
 
 // NewErrors creates a new error list pertaining to a resource.  Note that it just turns around and defers to

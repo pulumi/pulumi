@@ -219,7 +219,7 @@ Because the graph is a DAG, any cycles in this graph are illegal and will result
 level translation catches this, since each step in the translation process reduces the diagnosability of errors.
 Dynamic linking is possible for advanced scenarios, and leverages URNs for discovery, but is described elsewhere.
 
-Please refer to the [design document](https://github.com/pulumi/lumi/blob/master/docs/design/graphs.md) for more
+Please refer to the [design document](https://github.com/pulumi/pulumi-fabric/blob/master/docs/design/graphs.md) for more
 information about LumiGL graphs.
 
 ### Resource Providers

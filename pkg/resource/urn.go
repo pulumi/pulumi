@@ -5,8 +5,8 @@ package resource
 import (
 	"strings"
 
-	"github.com/pulumi/lumi/pkg/tokens"
-	"github.com/pulumi/lumi/pkg/util/contract"
+	"github.com/pulumi/pulumi-fabric/pkg/tokens"
+	"github.com/pulumi/pulumi-fabric/pkg/util/contract"
 )
 
 // URN is a friendly, but unique, URN for a resource, most often auto-assigned by Lumi.  These are

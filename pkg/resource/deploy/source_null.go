@@ -3,7 +3,7 @@
 package deploy
 
 import (
-	"github.com/pulumi/lumi/pkg/resource"
+	"github.com/pulumi/pulumi-fabric/pkg/resource"
 )
 
 // NullSource is a singleton source that never returns any resources.  This may be used in scenarios where the "new"

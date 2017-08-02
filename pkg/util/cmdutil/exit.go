@@ -8,7 +8,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/pulumi/lumi/pkg/diag"
+	"github.com/pulumi/pulumi-fabric/pkg/diag"
 )
 
 // RunFunc wraps an error-returning run func with standard Lumi error handling.  All Lumi commands should wrap

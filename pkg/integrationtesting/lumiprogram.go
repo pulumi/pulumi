@@ -11,7 +11,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/pulumi/lumi/pkg/util/contract"
+	"github.com/pulumi/pulumi-fabric/pkg/util/contract"
 )
 
 // LumiProgramTestOptions provides options for LumiProgramTest
@@ -29,7 +29,7 @@ type LumiProgramTestOptions struct {
 //   lumijs --verbose
 //   lumi env init integrationtesting
 //   lumi config <each options.Config>
-//   lumi plan (currently being skipped due to pulumi/lumi#276)
+//   lumi plan (currently being skipped due to pulumi/pulumi-fabric#276)
 //   lumi deploy
 //   lumi destroy --yes
 //   lumi env rm --yes integrationtesting
@@ -70,7 +70,7 @@ func LumiProgramTest(t *testing.T, programDir string, options LumiProgramTestOpt
 	for key, value := range options.Config {
 		runCmd(t, []string{lumi, "config", key, value}, programDir, stdout, stderr)
 	}
-	// TODO[pulumi/lumi#276] Disabling `lumi plan` for now as it has issues with output properties
+	// TODO[pulumi/pulumi-fabric#276] Disabling `lumi plan` for now as it has issues with output properties
 	// runCmd(t, []string{lumi, "plan"}, programDir, stdout, stderr)
 	runCmd(t, []string{lumi, "deploy"}, programDir, stdout, stderr)
 	runCmd(t, []string{lumi, "destroy", "--yes"}, programDir, stdout, stderr)

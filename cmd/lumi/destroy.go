@@ -5,8 +5,8 @@ package main
 import (
 	"github.com/spf13/cobra"
 
-	"github.com/pulumi/lumi/pkg/tokens"
-	"github.com/pulumi/lumi/pkg/util/cmdutil"
+	"github.com/pulumi/pulumi-fabric/pkg/tokens"
+	"github.com/pulumi/pulumi-fabric/pkg/util/cmdutil"
 )
 
 func newDestroyCmd() *cobra.Command {

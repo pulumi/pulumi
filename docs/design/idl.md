@@ -75,7 +75,7 @@ A type is a resource if it embeds one of the standard Lumi IDL resource types: e
 `pkg/resource/idl/NamedResource`, the latter having a `Name` property.  For example:
 
     import (
-        "github.com/pulumi/lumi/pkg/resource/idl"
+        "github.com/pulumi/pulumi-fabric/pkg/resource/idl"
     )
     type FooResource struct {
         idl.Resource
@@ -109,7 +109,7 @@ In fact, there are three other options supported by the `lumi` tag, to control c
 The resulting package and provider will perform client- and server-side validation automatically for each of these.
 
 Eventually we envision additional annotations, like min/max values for numbers, regexes for strings, and so on
-(see [pulumi/lumi#64](https://github.com/pulumi/lumi/issues/64) for details).
+(see [pulumi/pulumi-fabric#64](https://github.com/pulumi/pulumi-fabric/issues/64) for details).
 
 Enums are supported using semi-idiomatic Go enums, by just using a `string`-backed type alias, and by declaring the
 entire set of constants that the enum may take on.  The IDL compiler will treat this like an enum type:
@@ -205,7 +205,7 @@ This is an example of the IDL definition for the aws/ec2/SecurityGroup resource 
 package ec2
 
 import (
-    "github.com/pulumi/lumi/pkg/resource/idl"
+    "github.com/pulumi/pulumi-fabric/pkg/resource/idl"
 )
 
 // A SecurityGroup is an Amazon EC2 Security Group.  For more information, see

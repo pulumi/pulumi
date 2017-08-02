@@ -5,7 +5,7 @@ package main
 import (
 	"errors"
 
-	"github.com/pulumi/lumi/pkg/util/cmdutil"
+	"github.com/pulumi/pulumi-fabric/pkg/util/cmdutil"
 	"github.com/spf13/cobra"
 )
 

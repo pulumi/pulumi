@@ -6,8 +6,8 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/pulumi/lumi/pkg/diag"
-	"github.com/pulumi/lumi/pkg/util/cmdutil"
+	"github.com/pulumi/pulumi-fabric/pkg/diag"
+	"github.com/pulumi/pulumi-fabric/pkg/util/cmdutil"
 )
 
 // PropertyOptionsTag is the field tag the IDL compiler uses to find property options.

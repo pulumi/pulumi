@@ -3,7 +3,7 @@
 package resource
 
 import (
-	"github.com/pulumi/lumi/pkg/tokens"
+	"github.com/pulumi/pulumi-fabric/pkg/tokens"
 )
 
 // Resource is an instance of a resource with an ID, type, and bag of state.

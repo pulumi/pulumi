@@ -76,7 +76,7 @@ export async function compileScript(path: string, options?: ts.CompilerOptions):
         // Create a compiler host and perform the compilation.
         const host: ts.CompilerHost = ts.createCompilerHost(options);
         host.writeFile = (filename: string, data: string, writeBOM: boolean) => {
-            contract.ignore(writeBOM); // TODO[pulumi/lumi#208]: consider respecting the BOM (for Windows).
+            contract.ignore(writeBOM); // TODO[pulumi/pulumi-fabric#208]: consider respecting the BOM (for Windows).
 
             if (!outputs) {
                 outputs = new Map<string, string>();

@@ -11,8 +11,8 @@ import (
 	"io"
 	"strconv"
 
-	"github.com/pulumi/lumi/pkg/graph"
-	"github.com/pulumi/lumi/pkg/util/contract"
+	"github.com/pulumi/pulumi-fabric/pkg/graph"
+	"github.com/pulumi/pulumi-fabric/pkg/util/contract"
 )
 
 // Print prints a LumiGL graph.
@@ -36,7 +36,7 @@ func Print(g graph.Graph, w io.Writer) error {
 	}
 
 	// For now, we auto-generate IDs.
-	// TODO[pulumi/lumi#76]: use the object URNs instead, once we have them.
+	// TODO[pulumi/pulumi-fabric#76]: use the object URNs instead, once we have them.
 	c := 0
 	ids := make(map[graph.Vertex]string)
 	getID := func(v graph.Vertex) string {

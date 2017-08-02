@@ -5,21 +5,21 @@ package binder
 import (
 	"github.com/golang/glog"
 
-	"github.com/pulumi/lumi/pkg/compiler/ast"
-	"github.com/pulumi/lumi/pkg/compiler/errors"
-	"github.com/pulumi/lumi/pkg/compiler/symbols"
-	"github.com/pulumi/lumi/pkg/diag"
-	"github.com/pulumi/lumi/pkg/pack"
-	"github.com/pulumi/lumi/pkg/tokens"
-	"github.com/pulumi/lumi/pkg/util/contract"
-	"github.com/pulumi/lumi/pkg/workspace"
+	"github.com/pulumi/pulumi-fabric/pkg/compiler/ast"
+	"github.com/pulumi/pulumi-fabric/pkg/compiler/errors"
+	"github.com/pulumi/pulumi-fabric/pkg/compiler/symbols"
+	"github.com/pulumi/pulumi-fabric/pkg/diag"
+	"github.com/pulumi/pulumi-fabric/pkg/pack"
+	"github.com/pulumi/pulumi-fabric/pkg/tokens"
+	"github.com/pulumi/pulumi-fabric/pkg/util/contract"
+	"github.com/pulumi/pulumi-fabric/pkg/workspace"
 )
 
 // BindPackages takes a package AST, resolves all dependencies and tokens inside of it, and returns a fully bound
 // package symbol that can be used for semantic operations (like interpretation and evaluation).
 func (b *binder) BindPackage(pkg *pack.Package) *symbols.Package {
 	// Use the shared binding routine; but just use a default URL since we didn't fetch this as a dependency.
-	// TODO[pulumi/lumi#53]: detect the version from the workspace.
+	// TODO[pulumi/pulumi-fabric#53]: detect the version from the workspace.
 	respkg := b.resolveBindPackage(pkg, pack.PackageURL{Name: pkg.Name})
 	return respkg.Pkg
 }
@@ -30,8 +30,8 @@ func (b *binder) resolveBindPackage(pkg *pack.Package, pkgurl pack.PackageURL) *
 		b.Diag().Errorf(errors.ErrorInvalidPackageName.At(pkg.Doc))
 	}
 
-	// TODO[pulumi/lumi#53]: read the package's version and ensure that it is not a range.  In other words, resolved
-	//     packages must have concrete versions, either semantic (e.g., "1.3.9-beta2") or SHA hashes.
+	// TODO[pulumi/pulumi-fabric#53]: read the package's version and ensure that it is not a range.  In other words,
+	//     resolved packages must have concrete versions, either semantic (e.g., "1.3.9-beta2") or SHA hashes.
 
 	// Create a symbol with empty dependencies and modules; this allows child symbols to parent to it.
 	pkgsym := symbols.NewPackageSym(pkg)
@@ -98,7 +98,7 @@ func (b *binder) resolvePackageDeps(pkg *symbols.Package) {
 func (b *binder) resolveDep(dep pack.PackageURL) *symbols.ResolvedPackage {
 	// First, see if we've already loaded this package.  If yes, reuse it.
 	if pkgsym, exists := b.ctx.Pkgs[dep.Name]; exists {
-		// TODO[pulumi/lumi#53]: ensure versions match.
+		// TODO[pulumi/pulumi-fabric#53]: ensure versions match.
 		return pkgsym
 	}
 

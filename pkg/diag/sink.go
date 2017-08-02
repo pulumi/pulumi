@@ -13,8 +13,8 @@ import (
 
 	"github.com/golang/glog"
 
-	"github.com/pulumi/lumi/pkg/diag/colors"
-	"github.com/pulumi/lumi/pkg/util/contract"
+	"github.com/pulumi/pulumi-fabric/pkg/diag/colors"
+	"github.com/pulumi/pulumi-fabric/pkg/util/contract"
 )
 
 // Sink facilitates pluggable diagnostics messages.
@@ -220,8 +220,8 @@ func (d *defaultSink) Stringify(sev Severity, diag *Diag, args ...interface{}) s
 
 	buffer.WriteRune('\n')
 
-	// TODO[pulumi/lumi#15]: support Clang-style expressive diagnostics.  This would entail, for example, using the
-	//     buffer within the target document, to demonstrate the offending line/column range of code.
+	// TODO[pulumi/pulumi-fabric#15]: support Clang-style expressive diagnostics.  This would entail, for example, using
+	//     the buffer within the target document, to demonstrate the offending line/column range of code.
 
 	s := buffer.String()
 

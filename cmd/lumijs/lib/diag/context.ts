@@ -112,7 +112,7 @@ export class Context {
 
         // If there is a location part, prepend that to the whole thing (to come before the category/code).
         if (d.loc) {
-            // TODO[pulumi/lumi#15]: implementfancy source context, range-based pretty-printing.
+            // TODO[pulumi/pulumi-fabric#15]: implementfancy source context, range-based pretty-printing.
             let loc: string = `${d.loc.file}(${d.loc.start.line},${d.loc.start.column}):`;
             if (opts && opts.colors) {
                 loc = colors.cyan(loc);

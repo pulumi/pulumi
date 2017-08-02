@@ -7,12 +7,12 @@ import (
 
 	"github.com/golang/glog"
 
-	"github.com/pulumi/lumi/pkg/diag"
-	"github.com/pulumi/lumi/pkg/eval"
-	"github.com/pulumi/lumi/pkg/eval/rt"
-	"github.com/pulumi/lumi/pkg/resource"
-	"github.com/pulumi/lumi/pkg/util/contract"
-	"github.com/pulumi/lumi/pkg/util/rpcutil"
+	"github.com/pulumi/pulumi-fabric/pkg/diag"
+	"github.com/pulumi/pulumi-fabric/pkg/eval"
+	"github.com/pulumi/pulumi-fabric/pkg/eval/rt"
+	"github.com/pulumi/pulumi-fabric/pkg/resource"
+	"github.com/pulumi/pulumi-fabric/pkg/util/contract"
+	"github.com/pulumi/pulumi-fabric/pkg/util/rpcutil"
 )
 
 // Context is used to group related operations together so that associated OS resources can be cached, shared, and
@@ -70,7 +70,7 @@ func (ctx *Context) SetCurrentInterpreter(e eval.Interpreter) {
 
 // Request allocates a request sub-context.
 func (ctx *Context) Request() context.Context {
-	// TODO[pulumi/lumi#143]: support cancellation.
+	// TODO[pulumi/pulumi-fabric#143]: support cancellation.
 	return context.TODO()
 }
 

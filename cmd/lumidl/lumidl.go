@@ -7,9 +7,9 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
-	"github.com/pulumi/lumi/pkg/tokens"
-	"github.com/pulumi/lumi/pkg/tools/lumidl"
-	"github.com/pulumi/lumi/pkg/util/cmdutil"
+	"github.com/pulumi/pulumi-fabric/pkg/tokens"
+	"github.com/pulumi/pulumi-fabric/pkg/tools/lumidl"
+	"github.com/pulumi/pulumi-fabric/pkg/util/cmdutil"
 )
 
 func NewIDLCCmd() *cobra.Command {

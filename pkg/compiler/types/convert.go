@@ -3,8 +3,8 @@
 package types
 
 import (
-	"github.com/pulumi/lumi/pkg/compiler/symbols"
-	"github.com/pulumi/lumi/pkg/tokens"
+	"github.com/pulumi/pulumi-fabric/pkg/compiler/symbols"
+	"github.com/pulumi/pulumi-fabric/pkg/tokens"
 )
 
 // Conversion represents the kind of conversion required to convert from a value of one type to another.
@@ -35,7 +35,7 @@ func Convert(from symbols.Type, to symbols.Type) Conversion {
 	}
 
 	// Any source type converts to the "null" type; and "null" converts to anything.
-	// TODO[pulumi/lumi#64]: implement nullable types, in which case this won't be true.
+	// TODO[pulumi/pulumi-fabric#64]: implement nullable types, in which case this won't be true.
 	if to == Null || from == Null {
 		return ImplicitConversion
 	}

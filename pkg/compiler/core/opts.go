@@ -3,7 +3,7 @@
 package core
 
 import (
-	"github.com/pulumi/lumi/pkg/diag"
+	"github.com/pulumi/pulumi-fabric/pkg/diag"
 )
 
 // Options contains all of the settings a user can use to control the compiler's behavior.

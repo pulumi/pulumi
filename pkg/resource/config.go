@@ -5,7 +5,7 @@ package resource
 import (
 	"sort"
 
-	"github.com/pulumi/lumi/pkg/tokens"
+	"github.com/pulumi/pulumi-fabric/pkg/tokens"
 )
 
 // ConfigMap contains a mapping from variable token to the value to poke into that variable.

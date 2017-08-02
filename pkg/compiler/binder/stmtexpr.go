@@ -6,12 +6,12 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/pulumi/lumi/pkg/compiler/ast"
-	"github.com/pulumi/lumi/pkg/compiler/errors"
-	"github.com/pulumi/lumi/pkg/compiler/symbols"
-	"github.com/pulumi/lumi/pkg/compiler/types"
-	"github.com/pulumi/lumi/pkg/tokens"
-	"github.com/pulumi/lumi/pkg/util/contract"
+	"github.com/pulumi/pulumi-fabric/pkg/compiler/ast"
+	"github.com/pulumi/pulumi-fabric/pkg/compiler/errors"
+	"github.com/pulumi/pulumi-fabric/pkg/compiler/symbols"
+	"github.com/pulumi/pulumi-fabric/pkg/compiler/types"
+	"github.com/pulumi/pulumi-fabric/pkg/tokens"
+	"github.com/pulumi/pulumi-fabric/pkg/util/contract"
 )
 
 // astBinder is an AST visitor implementation that understands how to deal with all sorts of node types.  It
@@ -708,7 +708,7 @@ func (a *astBinder) checkTypeOfExpression(node *ast.TypeOfExpression) {
 }
 
 func (a *astBinder) checkConditionalExpression(node *ast.ConditionalExpression) {
-	// TODO[pulumi/lumi#213]: unify the consequent and alternate types.
+	// TODO[pulumi/pulumi-fabric#213]: unify the consequent and alternate types.
 	contract.Failf("Binding of %v nodes not yet implemented", node.GetKind())
 }
 

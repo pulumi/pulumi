@@ -7,9 +7,9 @@ package encoding
 import (
 	"reflect"
 
-	"github.com/pulumi/lumi/pkg/compiler/ast"
-	"github.com/pulumi/lumi/pkg/pack"
-	"github.com/pulumi/lumi/pkg/util/mapper"
+	"github.com/pulumi/pulumi-fabric/pkg/compiler/ast"
+	"github.com/pulumi/pulumi-fabric/pkg/pack"
+	"github.com/pulumi/pulumi-fabric/pkg/util/mapper"
 )
 
 // Decode unmarshals the entire contents of the given byte array into a Package object.

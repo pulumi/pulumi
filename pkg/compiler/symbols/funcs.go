@@ -3,7 +3,7 @@
 package symbols
 
 import (
-	"github.com/pulumi/lumi/pkg/compiler/ast"
+	"github.com/pulumi/pulumi-fabric/pkg/compiler/ast"
 )
 
 // Function is an interface common to all functions.

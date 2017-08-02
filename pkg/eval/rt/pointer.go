@@ -5,8 +5,8 @@ package rt
 import (
 	"fmt"
 
-	"github.com/pulumi/lumi/pkg/compiler/symbols"
-	"github.com/pulumi/lumi/pkg/util/contract"
+	"github.com/pulumi/pulumi-fabric/pkg/compiler/symbols"
+	"github.com/pulumi/pulumi-fabric/pkg/util/contract"
 )
 
 // Pointer is a slot that can be used for indirection purposes (since Go maps are not stable).

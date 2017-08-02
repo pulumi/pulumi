@@ -5,7 +5,7 @@
 package predef
 
 import (
-	"github.com/pulumi/lumi/pkg/tokens"
+	"github.com/pulumi/pulumi-fabric/pkg/tokens"
 )
 
 var (

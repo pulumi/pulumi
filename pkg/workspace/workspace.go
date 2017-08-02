@@ -11,11 +11,11 @@ import (
 	"github.com/golang/glog"
 	homedir "github.com/mitchellh/go-homedir"
 
-	"github.com/pulumi/lumi/pkg/compiler/core"
-	"github.com/pulumi/lumi/pkg/encoding"
-	"github.com/pulumi/lumi/pkg/pack"
-	"github.com/pulumi/lumi/pkg/tokens"
-	"github.com/pulumi/lumi/pkg/util/contract"
+	"github.com/pulumi/pulumi-fabric/pkg/compiler/core"
+	"github.com/pulumi/pulumi-fabric/pkg/encoding"
+	"github.com/pulumi/pulumi-fabric/pkg/pack"
+	"github.com/pulumi/pulumi-fabric/pkg/tokens"
+	"github.com/pulumi/pulumi-fabric/pkg/util/contract"
 )
 
 // W offers functionality for interacting with Lumi workspaces.  A workspace influences compilation; for example, it
@@ -114,7 +114,7 @@ func (w *workspace) DetectPackage() (string, error) {
 }
 
 func (w *workspace) DepCandidates(dep pack.PackageURL) []string {
-	// The search order for dependencies is specified in https://github.com/pulumi/lumi/blob/master/docs/deps.md.
+	// The search order for dependencies is specified in https://github.com/pulumi/pulumi-fabric/blob/master/docs/deps.md.
 	//
 	// Roughly speaking, these locations are are searched, in order:
 	//

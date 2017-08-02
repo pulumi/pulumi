@@ -6,7 +6,7 @@ import (
 	"flag"
 	"strconv"
 
-	"github.com/pulumi/lumi/pkg/util/contract"
+	"github.com/pulumi/pulumi-fabric/pkg/util/contract"
 )
 
 var LogToStderr = false // true if logging is being redirected to stderr.

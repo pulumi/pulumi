@@ -35,7 +35,7 @@ let binaryOperators = new Map<ts.SyntaxKind, ast.BinaryOperator>([
     [ ts.SyntaxKind.AsteriskAsteriskEqualsToken,                  "**=" ],
     [ ts.SyntaxKind.LessThanLessThanEqualsToken,                  "<<=" ],
     [ ts.SyntaxKind.GreaterThanGreaterThanEqualsToken,            ">>=" ],
-    [ ts.SyntaxKind.GreaterThanGreaterThanGreaterThanEqualsToken, ">>=" ], // TODO[pulumi/lumi#50]: emulate >>>=.
+    [ ts.SyntaxKind.GreaterThanGreaterThanGreaterThanEqualsToken, ">>=" ], // TODO[pulumi/pulumi-fabric#50]: >>>=.
     [ ts.SyntaxKind.AmpersandEqualsToken,                         "&="  ],
     [ ts.SyntaxKind.BarEqualsToken,                               "|="  ],
     [ ts.SyntaxKind.CaretEqualsToken,                             "^="  ],
@@ -43,7 +43,7 @@ let binaryOperators = new Map<ts.SyntaxKind, ast.BinaryOperator>([
     // Bitwise
     [ ts.SyntaxKind.LessThanLessThanToken,                        "<<"  ],
     [ ts.SyntaxKind.GreaterThanGreaterThanToken,                  ">>"  ],
-    [ ts.SyntaxKind.GreaterThanGreaterThanGreaterThanToken,       ">>"  ], // TODO[pulumi/lumi#50]: emulate >>>.
+    [ ts.SyntaxKind.GreaterThanGreaterThanGreaterThanToken,       ">>"  ], // TODO[pulumi/pulumi-fabric#50]: >>>.
     [ ts.SyntaxKind.BarToken,                                     "|"   ],
     [ ts.SyntaxKind.CaretToken,                                   "^"   ],
     [ ts.SyntaxKind.AmpersandToken,                               "&"   ],
@@ -58,12 +58,12 @@ let binaryOperators = new Map<ts.SyntaxKind, ast.BinaryOperator>([
     [ ts.SyntaxKind.GreaterThanToken,                             ">"   ],
     [ ts.SyntaxKind.GreaterThanEqualsToken,                       ">="  ],
     [ ts.SyntaxKind.EqualsEqualsToken,                            "=="  ],
-    [ ts.SyntaxKind.EqualsEqualsEqualsToken,                      "=="  ], // TODO[pulumi/lumi#50]: emulate ===.
+    [ ts.SyntaxKind.EqualsEqualsEqualsToken,                      "=="  ], // TODO[pulumi/pulumi-fabric#50]: ===.
     [ ts.SyntaxKind.ExclamationEqualsToken,                       "!="  ],
-    [ ts.SyntaxKind.ExclamationEqualsEqualsToken,                 "!="  ], // TODO[pulumi/lumi#50]: emulate !==.
+    [ ts.SyntaxKind.ExclamationEqualsEqualsToken,                 "!="  ], // TODO[pulumi/pulumi-fabric#50]: !==.
 
     // Intrinsics
-    // TODO[pulumi/lumi#66]: implement the "in" operator:
+    // TODO[pulumi/pulumi-fabric#66]: implement the "in" operator:
     //     [ ts.SyntaxKind.InKeyword,                           "in" ],
 ]);
 
@@ -267,7 +267,7 @@ export class Transformer {
             let modules: ast.Modules = {};
             let aliases: pack.ModuleAliases = {};
             for (let sourceFile of this.script.tree!.getSourceFiles()) {
-                // TODO[pulumi/lumi#52]: to determine whether a SourceFile is part of the current compilation unit,
+                // TODO[pulumi/pulumi-fabric#52]: to determine if a SourceFile is part of the current compilation unit,
                 // we rely on a private TypeScript API, isSourceFileFromExternalLibrary.  An alternative would be to
                 // check to see if the file was loaded from the node_modules/ directory, which is essentially what the
                 // TypeScript compiler does (except that it has logic for nesting and symbolic links that'd be hard to
@@ -283,7 +283,7 @@ export class Transformer {
                     modules[modname] = mod;
                     if (modname === "index") {
                         // The special index module is the package's main/default module.
-                        // TODO[pulumi/lumi#57]: respect the package.json "main" specifier, if it exists.
+                        // TODO[pulumi/pulumi-fabric#57]: respect the package.json "main" specifier, if it exists.
                         aliases[tokens.defaultModule] = modname;
                     }
                     else if (modname.endsWith("/index")) {
@@ -298,8 +298,8 @@ export class Transformer {
                 if (dep !== this.pkg.name) {
                     if (!this.pkg.dependencies || !this.pkg.dependencies[dep]) {
                         // If the reference is the LumiJS standard library, we will auto-generate one for the user.
-                        // TODO[pulumi/lumi#53]: rather than using "*" as the version, take the version we actually
-                        //     compiled against.
+                        // TODO[pulumi/pulumi-fabric#53]: rather than using "*" as the version, take the version we
+                        //     actually compiled against.
                         if (dep === mujsStdlibPackage) {
                             if (!this.pkg.dependencies) {
                                 this.pkg.dependencies = {};
@@ -352,8 +352,8 @@ export class Transformer {
 
     // globals returns the TypeScript globals symbol table.
     private globals(flags: ts.SymbolFlags): Map<string, ts.Symbol> {
-        // TODO[pulumi/lumi#52]: we abuse getSymbolsInScope to access the global symbol table, because TypeScript
-        //     doesn't expose it.
+        // TODO[pulumi/pulumi-fabric#52]: we abuse getSymbolsInScope to access the global symbol table, because
+        //     TypeScript doesn't expose it.
         contract.assert(!!this.script.tree);
         let libdts = this.script.tree!.getSourceFiles()[0];
         contract.assert(!!libdts && libdts.isDeclarationFile && libdts.hasNoDefaultLib);
@@ -512,8 +512,8 @@ export class Transformer {
         if (!pkginfo) {
             // For references to the TypeScript library, hijack and redirect them to the LumiJS runtime library.
             if (isTypeScriptStdlib(ref)) {
-                // TODO[pulumi/lumi#87]: at the moment, we unconditionally rewrite references.  This leads to silent
-                //     compilation of things that could be missing (either intentional, like `eval`, or simply because
+                // TODO[pulumi/pulumi-fabric#87]: at the moment, we unconditionally rewrite references.  This leads to
+                //     silent compilation of things that could be missing (either intentional like `eval` or because
                 //     we haven't gotten around to implementing them yet).  Ideally we would reject the LumiJS
                 //     compilation later on during type token binding so that developers get a better experience.
                 let stdlib: PackageInfo = synthesizeLumijsStdlibPackage(ref);
@@ -571,8 +571,9 @@ export class Transformer {
         }
         else {
             // To create a module name, make it relative to the package root, and lop off the extension.
-            // TODO[pulumi/lumi#77]: this still isn't 100% correct, because we might have "up and over .." references.
-            //     We should consult the dependency list to ensure that it exists, and use that for normalization.
+            // TODO[pulumi/pulumi-fabric#77]: this still isn't 100% correct, because we might have "up and over .."
+            //     references.  We should consult the dependency list to ensure that it exists, and use that for
+            //     normalization.
             moduleName = fspath.relative(pkginfo.root, ref);
 
             // If the module contains a ".js", ".d.ts", or ".ts" on the end of it, strip it off.
@@ -647,7 +648,7 @@ export class Transformer {
 
     // getResolvedModules returns the current SourceFile's known modules inside of a map.
     private getResolvedModules(): ts.Map<ts.ResolvedModuleFull> {
-        // TODO[pulumi/lumi#52]: we are grabbing the sourceContext's resolvedModules property directly, because
+        // TODO[pulumi/pulumi-fabric#52]: we are grabbing the sourceContext's resolvedModules property directly, because
         //     TypeScript doesn't currently offer a convenient way of accessing this information.  The (unexported)
         //     getResolvedModule function almost does this, but not quite, because it doesn't allow us to look up
         //     based on path.  Ideally we can remove this as soon as the tsserverlibrary is consumable as a module.
@@ -667,8 +668,8 @@ export class Transformer {
     // resolveModuleSymbol binds either a name or a path to an associated module symbol.
     private resolveModuleSymbol(name?: string, path?: string): ts.Symbol {
         // Resolve the module name to a real symbol.
-        // TODO[pulumi/lumi#77]: ensure that this dependency exists, to avoid "accidentally" satisfyied name resolution
-        //     in the TypeScript compiler; for example, if the package just happens to exist in `node_modules`, etc.
+        // TODO[pulumi/pulumi-fabric#77]: ensure that this dependency exists, to avoid "accidentally" satisfied name
+        //     resolution in the TypeScript compiler; e.g., if the package just happens to exist in `node_modules`, etc.
         let resolvedModule: ts.ResolvedModuleFull | undefined;
         this.getResolvedModules().forEach((candidate: ts.ResolvedModuleFull, candidateName: string) => {
             if ((name && candidateName === name) ||
@@ -745,12 +746,12 @@ export class Transformer {
             //
             //     1) All members of the union that are literal types of the same root type (e.g., all StringLiterals
             //        which can safely compress to Strings) can be compressed just to the shared root type.
-            //        TODO[pulumi/lumi#82]: eventually, we will support union and literal types natively.
+            //        TODO[pulumi/pulumi-fabric#82]: eventually, we will support union and literal types natively.
             //
             //     2) Any `undefined` or `null` types can be stripped out.  The reason is that everything in LumiIL is
             //        nullable at the moment.  (Note that the special case of `T?` as an interface property is encoded
             //        as `T|undefined`.)  The result is that we just yield just the underlying naked type.
-            //        TODO[pulumi/lumi#64]: eventually we want to consider supporting 1st-class nullability.
+            //        TODO[pulumi/pulumi-fabric#64]: eventually we want to consider supporting 1st-class nullability.
             //
             let union = <ts.UnionOrIntersectionType>ty;
             let result: ts.Type | undefined;
@@ -1155,7 +1156,7 @@ export class Transformer {
                     if (isVariableDeclaration(element)) {
                         // This is a module property with a possible initializer.  The property must be registered as a
                         // export in this module's export map, and the initializer must go into the module initializer.
-                        // TODO[pulumi/lumi#44]: respect legacyVar to emulate "var"-like scoping.
+                        // TODO[pulumi/pulumi-fabric#44]: respect legacyVar to emulate "var"-like scoping.
                         let decl = <VariableDeclaration<ast.ModuleProperty>>element;
                         if (decl.initializer) {
                             statements.push(this.makeVariableInitializer(undefined, decl));
@@ -1321,8 +1322,8 @@ export class Transformer {
         let exports: ast.Export[] = [];
 
         // Otherwise, we are exporting already-imported names from the current module.
-        // TODO[pulumi/lumi#70]: in ECMAScript, this is order independent, so we can actually export before declaring
-        //     something.  To simplify things, you may only export things declared lexically before the export.
+        // TODO[pulumi/pulumi-fabric#70]: in ECMAScript, this is order independent, so we can actually export before
+        //     declaring something.  To simplify things, you may only export things declared before the export.
 
         // In the case of a module specifier, we are re-exporting elements from another module.
         let sourceModule: ModuleReference | undefined;
@@ -1656,7 +1657,7 @@ export class Transformer {
 
     private async transformClassDeclaration(
             modtok: tokens.ModuleToken, node: ts.ClassDeclaration): Promise<ast.Class> {
-        // TODO[pulumi/lumi#128]: generics.
+        // TODO[pulumi/pulumi-fabric#128]: generics.
 
         // First transform the name into an identifier.  In the absence of a name, we will proceed under the assumption
         // that it is the default export.  This should be verified later on.
@@ -1991,7 +1992,7 @@ export class Transformer {
     // transformInterfaceDeclaration turns a TypeScript interface into a LumiIL interface class.
     private async transformInterfaceDeclaration(
             modtok: tokens.ModuleToken, node: ts.InterfaceDeclaration): Promise<ast.Class> {
-        // TODO[pulumi/lumi#128]: generics.
+        // TODO[pulumi/pulumi-fabric#128]: generics.
 
         // Create a name and token for the LumiIL class representing this.
         let name: ast.Identifier = this.transformIdentifier(node.name);
@@ -2090,8 +2091,8 @@ export class Transformer {
         // Pluck out any decorators and store them in the metadata as attributes.
         let attributes: ast.Attribute[] | undefined = await this.transformDecorators(node.decorators);
 
-        // TODO[pulumi/lumi#43]: parameters can be any binding name, including destructuring patterns.  For now,
-        //     however, we only support the identifier forms.
+        // TODO[pulumi/pulumi-fabric#43]: parameters can be any binding name, including destructuring patterns.  For
+        //     now, however, we only support the identifier forms.
         let name: ast.Identifier = this.transformBindingIdentifier(node.name);
         let initializer: ast.Expression | undefined;
         if (node.initializer) {
@@ -2143,7 +2144,7 @@ export class Transformer {
 
     private async transformLocalVariableDeclarations(node: ts.VariableDeclarationList): Promise<ast.Statement> {
         // For variables, we need to append initializers as assignments if there are any.
-        // TODO[pulumi/lumi#44]: emulate "var"-like scoping.
+        // TODO[pulumi/pulumi-fabric#44]: emulate "var"-like scoping.
         let statements: ast.Statement[] = [];
         let decls: VariableLikeDeclaration[] = await this.transformVariableDeclarationList(node);
         for (let decl of decls) {
@@ -2208,8 +2209,8 @@ export class Transformer {
     }
 
     private async transformVariableDeclaration(node: ts.VariableDeclaration): Promise<VariableLikeDeclaration> {
-        // TODO[pulumi/lumi#43]: parameters can be any binding name, including destructuring patterns.  For now,
-        //     however, we only support the identifier forms.
+        // TODO[pulumi/pulumi-fabric#43]: parameters can be any binding name, including destructuring patterns.  For
+        //     now, however, we only support the identifier forms.
         let name: ast.Identifier = this.transformBindingIdentifier(node.name);
         let initializer: ast.Expression | undefined;
         if (node.initializer) {
@@ -2227,8 +2228,8 @@ export class Transformer {
         // Pluck out any decorators and store them in the metadata as attributes.
         let attributes: ast.Attribute[] | undefined = await this.transformDecorators(node.decorators);
 
-        // TODO[pulumi/lumi#43]: parameters can be any binding name, including destructuring patterns.  For now,
-        //     however, we only support the identifier forms.
+        // TODO[pulumi/pulumi-fabric#43]: parameters can be any binding name, including destructuring patterns.  For
+        //     now, however, we only support the identifier forms.
         let name: ast.Identifier = this.transformBindingIdentifier(node.name);
 
         return this.withLocation(node, <ast.LocalVariable>{
@@ -2867,7 +2868,7 @@ export class Transformer {
                     case ts.SyntaxKind.ExclamationEqualsEqualsToken:
                         log.out(3).info(
                             `ECMAScript operator '${ts.SyntaxKind[node.operatorToken.kind]}' not supported; ` +
-                            `until pulumi/lumi#50 is implemented, be careful about subtle behavioral differences`,
+                            `until pulumi/pulumi-fabric#50 is implemented, be careful about subtle differences`,
                         );
                         break;
                     default:
@@ -3012,10 +3013,10 @@ export class Transformer {
         if (log.v(3)) {
             log.out(3).info(
                 `ECMAScript operator 'delete' not supported; ` +
-                `until pulumi/lumi#50 is implemented, be careful about subtle behavioral differences`,
+                `until pulumi/pulumi-fabric#50 is implemented, be careful about subtle behavioral differences`,
             );
         }
-        // TODO[pulumi/lumi#50]: we need to decide how to map `delete` into a runtime LumiIL operator.  It's possible
+        // TODO[pulumi/pulumi-fabric#50]: we need to decide how to map `delete` into a runtime operator.  It's possible
         //     this can leverage some dynamic trickery to delete an entry from a map.  But for strong typing reasons,
         //     this is dubious (at best); for now, we will simply `null` the target out, however, this will cause
         //     problems down the road once we properly support nullable types.
@@ -3031,7 +3032,7 @@ export class Transformer {
 
     private async transformElementAccessExpression(node: ts.ElementAccessExpression): Promise<ast.LoadExpression> {
         // This is an indexer operation; fall back to using a dynamic load operation.
-        // TODO[pulumi/lumi#128]: detect array, string constant property loads, and module member loads.
+        // TODO[pulumi/pulumi-fabric#128]: detect array, string constant property loads, and module member loads.
         let object: ast.Expression = await this.transformExpression(node.expression);
         if (node.argumentExpression) {
             return this.withLocation(node, <ast.TryLoadDynamicExpression>{
@@ -3056,7 +3057,7 @@ export class Transformer {
     }
 
     private async transformObjectLiteralExpression(node: ts.ObjectLiteralExpression): Promise<ast.ObjectLiteral> {
-        // TODO[pulumi/lumi#46]: because TypeScript object literals are untyped, it's not clear what LumiIL type this
+        // TODO[pulumi/pulumi-fabric#46]: because TypeScript object literals are untyped, it's not clear what type this
         //     expression should produce.  It's common for a TypeScript literal to be enclosed in a cast, for example,
         //     `<SomeType>{ literal }`, in which case, perhaps we could detect `<SomeType>`.  Alternatively LumiIL could
         //     just automatically dynamically coerce `any` to the target type, similar to TypeScript, when necessary.
@@ -3142,7 +3143,7 @@ export class Transformer {
     }
 
     private transformObjectLiteralFunctionLikeElement(node: ts.FunctionLikeDeclaration): ast.ObjectLiteralProperty {
-        // TODO[pulumi/lumi#62]: implement lambdas.
+        // TODO[pulumi/pulumi-fabric#62]: implement lambdas.
         return notYetImplemented(node);
     }
 
@@ -3354,7 +3355,7 @@ export class Transformer {
 
     private transformBindingIdentifier(node: ts.BindingName): ast.Identifier {
         contract.assert(node.kind === ts.SyntaxKind.Identifier,
-                        "Binding name must be an identifier (TODO[pulumi/lumi#34])");
+                        "Binding name must be an identifier (TODO[pulumi/pulumi-fabric#34])");
         return this.transformIdentifier(<ts.Identifier>node);
     }
 

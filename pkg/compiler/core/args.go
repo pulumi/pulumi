@@ -3,7 +3,7 @@
 package core
 
 import (
-	"github.com/pulumi/lumi/pkg/tokens"
+	"github.com/pulumi/pulumi-fabric/pkg/tokens"
 )
 
 // Args are a set of command line arguments supplied during evaluation.

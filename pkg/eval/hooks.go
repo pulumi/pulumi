@@ -3,9 +3,9 @@
 package eval
 
 import (
-	"github.com/pulumi/lumi/pkg/compiler/symbols"
-	"github.com/pulumi/lumi/pkg/diag"
-	"github.com/pulumi/lumi/pkg/eval/rt"
+	"github.com/pulumi/pulumi-fabric/pkg/compiler/symbols"
+	"github.com/pulumi/pulumi-fabric/pkg/diag"
+	"github.com/pulumi/pulumi-fabric/pkg/eval/rt"
 )
 
 // Hooks is a set of callbacks that can be used to hook into interesting interpreter events.

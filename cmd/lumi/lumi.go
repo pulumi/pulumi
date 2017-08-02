@@ -6,14 +6,14 @@ import (
 	"github.com/golang/glog"
 	"github.com/spf13/cobra"
 
-	"github.com/pulumi/lumi/pkg/compiler"
-	"github.com/pulumi/lumi/pkg/compiler/binder"
-	"github.com/pulumi/lumi/pkg/compiler/core"
-	"github.com/pulumi/lumi/pkg/compiler/errors"
-	"github.com/pulumi/lumi/pkg/compiler/symbols"
-	"github.com/pulumi/lumi/pkg/pack"
-	"github.com/pulumi/lumi/pkg/util/cmdutil"
-	"github.com/pulumi/lumi/pkg/util/contract"
+	"github.com/pulumi/pulumi-fabric/pkg/compiler"
+	"github.com/pulumi/pulumi-fabric/pkg/compiler/binder"
+	"github.com/pulumi/pulumi-fabric/pkg/compiler/core"
+	"github.com/pulumi/pulumi-fabric/pkg/compiler/errors"
+	"github.com/pulumi/pulumi-fabric/pkg/compiler/symbols"
+	"github.com/pulumi/pulumi-fabric/pkg/pack"
+	"github.com/pulumi/pulumi-fabric/pkg/util/cmdutil"
+	"github.com/pulumi/pulumi-fabric/pkg/util/contract"
 )
 
 // NewLumiCmd creates a new Lumi Cmd instance.
@@ -49,7 +49,7 @@ func NewLumiCmd() *cobra.Command {
 }
 
 func prepareCompiler(cmd *cobra.Command, args []string) (compiler.Compiler, *pack.Package) {
-	// TODO[pulumi/lumi#88]: enable arguments to flow to the package itself.  In that case, we want to split the
+	// TODO[pulumi/pulumi-fabric#88]: enable arguments to flow to the package itself.  In that case, we want to split the
 	//     arguments at the --, if any, so we can still pass arguments to the compiler itself in these cases.
 	var pkgarg string
 	if len(args) > 0 {

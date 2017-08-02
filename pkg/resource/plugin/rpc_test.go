@@ -7,7 +7,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/pulumi/lumi/pkg/resource"
+	"github.com/pulumi/pulumi-fabric/pkg/resource"
 )
 
 func TestAssetSerialize(t *testing.T) {

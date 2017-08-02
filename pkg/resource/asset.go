@@ -18,9 +18,9 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/pulumi/lumi/pkg/compiler/types/predef"
-	"github.com/pulumi/lumi/pkg/eval/rt"
-	"github.com/pulumi/lumi/pkg/util/contract"
+	"github.com/pulumi/pulumi-fabric/pkg/compiler/types/predef"
+	"github.com/pulumi/pulumi-fabric/pkg/eval/rt"
+	"github.com/pulumi/pulumi-fabric/pkg/util/contract"
 )
 
 // Asset is a serialized asset reference.  It is a union: thus, only one of its fields will be non-nil.  Several helper
@@ -437,7 +437,7 @@ func (a Archive) readAssets() (map[string]*Blob, error) {
 	contract.Assertf(isassets, "Expected an asset map-based archive")
 	result := map[string]*Blob{}
 	for name, asset := range m {
-		// TODO[pulumi/lumi#240]: It would be better to treat folders as a first class concept intead
+		// TODO[pulumi/pulumi-fabric#240]: It would be better to treat folders as a first class concept intead
 		//  of reusing a path Asset for this purpose.
 		path, isPath := asset.GetPath()
 		if isPath {

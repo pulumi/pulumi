@@ -6,7 +6,7 @@ package tokens
 import (
 	"strings"
 
-	"github.com/pulumi/lumi/pkg/util/contract"
+	"github.com/pulumi/pulumi-fabric/pkg/util/contract"
 )
 
 // Token is a qualified name that is capable of resolving to a symbol entirely on its own.  Most uses of tokens are

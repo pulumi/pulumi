@@ -5,8 +5,8 @@ package plugin
 import (
 	"io"
 
-	"github.com/pulumi/lumi/pkg/resource"
-	"github.com/pulumi/lumi/pkg/tokens"
+	"github.com/pulumi/pulumi-fabric/pkg/resource"
+	"github.com/pulumi/pulumi-fabric/pkg/tokens"
 )
 
 // Analyzer provides a pluggable interface for performing arbitrary analysis of entire projects/stacks/snapshots, and/or

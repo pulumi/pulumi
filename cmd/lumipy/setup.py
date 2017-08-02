@@ -5,7 +5,7 @@ from setuptools import setup
 setup(name="lumipy",
       version="0.1",
       description="The Lumi Python compiler",
-      url="http://github.com/pulumi/lumi/cmd/lumipy",
+      url="http://github.com/pulumi/pulumi-fabric/cmd/lumipy",
       packages=["lumipy"],
       zip_safe=False)
 

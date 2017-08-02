@@ -10,11 +10,11 @@ import (
 	"github.com/golang/glog"
 	"github.com/pkg/errors"
 
-	"github.com/pulumi/lumi/pkg/resource"
-	"github.com/pulumi/lumi/pkg/tokens"
-	"github.com/pulumi/lumi/pkg/util/contract"
-	"github.com/pulumi/lumi/pkg/workspace"
-	"github.com/pulumi/lumi/sdk/go/pkg/lumirpc"
+	"github.com/pulumi/pulumi-fabric/pkg/resource"
+	"github.com/pulumi/pulumi-fabric/pkg/tokens"
+	"github.com/pulumi/pulumi-fabric/pkg/util/contract"
+	"github.com/pulumi/pulumi-fabric/pkg/workspace"
+	"github.com/pulumi/pulumi-fabric/sdk/go/pkg/lumirpc"
 )
 
 const ProviderPluginPrefix = "lumi-resource-"

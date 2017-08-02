@@ -5,8 +5,8 @@ package symbols
 import (
 	"fmt"
 
-	"github.com/pulumi/lumi/pkg/diag"
-	"github.com/pulumi/lumi/pkg/tokens"
+	"github.com/pulumi/pulumi-fabric/pkg/diag"
+	"github.com/pulumi/pulumi-fabric/pkg/tokens"
 )
 
 // Symbol is the base interface for all LumiIL symbol types.

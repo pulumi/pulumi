@@ -5,8 +5,8 @@ package symbols
 import (
 	"sync"
 
-	"github.com/pulumi/lumi/pkg/diag"
-	"github.com/pulumi/lumi/pkg/tokens"
+	"github.com/pulumi/pulumi-fabric/pkg/diag"
+	"github.com/pulumi/pulumi-fabric/pkg/tokens"
 )
 
 // Type is a type symbol that can be used for typechecking operations.

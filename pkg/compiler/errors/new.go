@@ -3,8 +3,8 @@
 package errors
 
 import (
-	"github.com/pulumi/lumi/pkg/diag"
-	"github.com/pulumi/lumi/pkg/util/contract"
+	"github.com/pulumi/pulumi-fabric/pkg/diag"
+	"github.com/pulumi/pulumi-fabric/pkg/util/contract"
 )
 
 // errors tracks all existing errors, keyed by their unique ID.

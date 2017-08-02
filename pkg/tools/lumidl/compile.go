@@ -15,7 +15,7 @@ import (
 	"github.com/pkg/errors"
 	"golang.org/x/tools/go/loader"
 
-	"github.com/pulumi/lumi/pkg/tokens"
+	"github.com/pulumi/pulumi-fabric/pkg/tokens"
 )
 
 type CompileOptions struct {

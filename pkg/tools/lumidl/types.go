@@ -6,8 +6,8 @@ import (
 	"go/types"
 	"reflect"
 
-	"github.com/pulumi/lumi/pkg/resource/idl"
-	"github.com/pulumi/lumi/pkg/util/contract"
+	"github.com/pulumi/pulumi-fabric/pkg/resource/idl"
+	"github.com/pulumi/pulumi-fabric/pkg/util/contract"
 )
 
 func IsPrimitive(t types.Type) bool {

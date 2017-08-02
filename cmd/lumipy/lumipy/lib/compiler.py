@@ -114,7 +114,7 @@ class Transformer:
         modtok = self.current_module_token()
 
         # Auto-generate the special __name__ variable and populate it in the initializer.
-        # TODO[pulumi/lumi#129]: once we support multi-module projects, we will need something other than __main__.
+        # TODO[pulumi/pulumi-fabric#129]: once we support multi-module projects, we will need something other than __main__.
         var_modname = "__name__"
         members[var_modname] = ast.ModuleProperty(
             self.ident(var_modname), self.type_token(tokens.type_dynamic))
@@ -180,7 +180,7 @@ class Transformer:
         elif isinstance(node, py_ast.Break):
             stmt = self.transform_Break(node)
         elif isinstance(node, py_ast.ClassDef):
-            assert False, "TODO[pulumi/lumi#129]: classes in non-top-level positions not yet supported"
+            assert False, "TODO[pulumi/pulumi-fabric#129]: classes in non-top-level positions not yet supported"
         elif isinstance(node, py_ast.Continue):
             stmt = self.transform_Continue(node)
         elif isinstance(node, py_ast.Delete):
@@ -192,7 +192,7 @@ class Transformer:
         elif isinstance(node, py_ast.For):
             stmt = self.transform_For(node)
         elif isinstance(node, py_ast.FunctionDef):
-            assert False, "TODO[pulumi/lumi#129]: functions in non-top-level positions not yet supported"
+            assert False, "TODO[pulumi/pulumi-fabric#129]: functions in non-top-level positions not yet supported"
         elif isinstance(node, py_ast.Global):
             stmt = self.transform_Global(node)
         elif isinstance(node, py_ast.If):
@@ -261,7 +261,7 @@ class Transformer:
             self.ctx.globals.add(lhs.id)
 
     def transform_Assign(self, node):
-        assert len(node.targets) == 1, "TODO[pulumi/lumi#129]: multi-assignments not yet supported"
+        assert len(node.targets) == 1, "TODO[pulumi/pulumi-fabric#129]: multi-assignments not yet supported"
         lhs = self.transform_expr(node.targets[0])
         self.track_assign(lhs)
         rhs = self.transform_expr(node.value)
@@ -269,7 +269,7 @@ class Transformer:
         return ast.ExpressionStatement(assgop)
 
     def transform_AugAssign(self, node):
-        assert len(node.targets) == 1, "TODO[pulumi/lumi#129]: multi-assignments not yet supported"
+        assert len(node.targets) == 1, "TODO[pulumi/pulumi-fabric#129]: multi-assignments not yet supported"
         lhs = self.transform_expr(node.targets[0])
         self.track_assign(lhs)
 
@@ -355,7 +355,7 @@ class Transformer:
             self.ctx.func = node
 
             # Generate the argument list, visit the body, and then return the AST node.
-            # TODO[pulumi/lumi#129]: varargs, kwargs, defaults, decorators, type annotations.
+            # TODO[pulumi/pulumi-fabric#129]: varargs, kwargs, defaults, decorators, type annotations.
             if is_class_method and node.name == "__init__":
                 id = self.ident(tokens.func_ctor)
             else:
@@ -394,7 +394,7 @@ class Transformer:
         # Python module names are dot-delimited; we need to translate into "/" delimited names.
         tok = name.replace(".", tokens.name_delim)
         # Now transform the module name into a qualified package/module token.
-        # TODO[pulumi/lumi#129]: this heuristic isn't perfect; I think we should load up the target package and read its
+        # TODO[pulumi/pulumi-fabric#129]: this heuristic isn't perfect; I think we should load up the target package and read its
         #     manifest to figure out the precise package naming, etc. (since packages can be multi-part too).
         delimix = tok.find(tokens.name_delim)
         if delimix == -1:
@@ -407,7 +407,7 @@ class Transformer:
 
     def transform_Import(self, node):
         """Transforms an import clause into a set of AST nodes representing the imported module tokens."""
-        # TODO[pulumi/lumi#129]: come up with a way to determine intra-project references.
+        # TODO[pulumi/pulumi-fabric#129]: come up with a way to determine intra-project references.
         imports = list()
         for namenode in node.names:
             name = namenode.name
@@ -566,7 +566,7 @@ class Transformer:
         self.not_yet_implemented(node) # op, values
 
     def transform_Call(self, node):
-        # TODO[pulumi/lumi#129]: support named arguments, starargs, etc.
+        # TODO[pulumi/pulumi-fabric#129]: support named arguments, starargs, etc.
         assert node.starargs is None or len(node.starargs) == 0, "Star args not yet supported"
         assert node.kwargs is None or len(node.kwargs) == 0, "KW (splat) args not yet supported"
         func = self.transform_expr(node.func)
@@ -585,10 +585,10 @@ class Transformer:
         lhs = self.transform_expr(node.left)
         pyop = node.ops[0]
         if isinstance(pyop, py_ast.Eq) or isinstance(pyop, py_ast.Is):
-            # TODO[pulumi/lumi#129]: support precise semantics of Eq versus Is.
+            # TODO[pulumi/pulumi-fabric#129]: support precise semantics of Eq versus Is.
             op = ast.binop_eqeq
         elif isinstance(pyop, py_ast.NotEq) or isinstance(pyop, py_ast.IsNot):
-            # TODO[pulumi/lumi#129]: support precise semantics of Eq versus Is.
+            # TODO[pulumi/pulumi-fabric#129]: support precise semantics of Eq versus Is.
             op = ast.binop_noteq
         elif isinstance(pyop, py_ast.Gt):
             op = ast.binop_gt
@@ -691,7 +691,7 @@ class Transformer:
     def transform_YieldFrom(self, node):
         self.not_yet_implemented(node) # value
 
-    # TODO[pulumi/lumi#129]: slicing operations.
+    # TODO[pulumi/pulumi-fabric#129]: slicing operations.
 
 class Loader:
     """A loader knows how to load Lumi packages."""

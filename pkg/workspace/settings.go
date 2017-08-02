@@ -3,7 +3,7 @@
 package workspace
 
 import (
-	"github.com/pulumi/lumi/pkg/tokens"
+	"github.com/pulumi/pulumi-fabric/pkg/tokens"
 )
 
 // Settings defines workspace settings shared amongst many related projects.

@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.com/pulumi/lumi.svg?token=cTUUEgrxaTEGyecqJpDn&branch=master)](https://travis-ci.com/pulumi/lumi)
+[![Build Status](https://travis-ci.com/pulumi/pulumi-fabric.svg?token=cTUUEgrxaTEGyecqJpDn&branch=master)](https://travis-ci.com/pulumi/pulumi-fabric)
 
 # Lumi
 
@@ -10,7 +10,7 @@ If you are learning about Lumi for the first time, please see [the overview docu
 
 To install Lumi from source, simply run:
 
-    $ go get -u github.com/pulumi/lumi/cmd/lumi
+    $ go get -u github.com/pulumi/pulumi-fabric/cmd/lumi
 
 A `GOPATH` must be set.  A good default value is `~/go`.  In fact, [this is the default in Go 1.8](
 https://github.com/golang/go/issues/17262).
@@ -46,8 +46,8 @@ Lumi is written in Go, uses Dep for dependency management, and GoMetaLinter for 
 
 To build Lumi, ensure `$GOPATH` is set, and clone into a standard Go workspace:
 
-    $ git clone git@github.com:pulumi/lumi $GOPATH/src/github.com/pulumi/lumi
-    $ cd $GOPATH/src/github.com/pulumi/lumi
+    $ git clone git@github.com:pulumi/pulumi-fabric $GOPATH/src/github.com/pulumi/pulumi-fabric
+    $ cd $GOPATH/src/github.com/pulumi/pulumi-fabric
 
 Before building, you will need to ensure dependencies have been restored to your enlistment:
 

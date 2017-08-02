@@ -9,8 +9,8 @@ import (
 	"github.com/golang/glog"
 	structpb "github.com/golang/protobuf/ptypes/struct"
 
-	"github.com/pulumi/lumi/pkg/resource"
-	"github.com/pulumi/lumi/pkg/util/contract"
+	"github.com/pulumi/pulumi-fabric/pkg/resource"
+	"github.com/pulumi/pulumi-fabric/pkg/util/contract"
 )
 
 // MarshalOptions controls the marshaling of RPC structures.
