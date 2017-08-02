@@ -70,8 +70,7 @@ func LumiProgramTest(t *testing.T, programDir string, options LumiProgramTestOpt
 	for key, value := range options.Config {
 		runCmd(t, []string{lumi, "config", key, value}, programDir, stdout, stderr)
 	}
-	// TODO[pulumi/pulumi-fabric#276] Disabling `lumi plan` for now as it has issues with output properties
-	// runCmd(t, []string{lumi, "plan"}, programDir, stdout, stderr)
+	runCmd(t, []string{lumi, "plan"}, programDir, stdout, stderr)
 	runCmd(t, []string{lumi, "deploy"}, programDir, stdout, stderr)
 	runCmd(t, []string{lumi, "destroy", "--yes"}, programDir, stdout, stderr)
 	runCmd(t, []string{lumi, "env", "rm", "--yes", "integrationtesting"}, programDir, stdout, stderr)
