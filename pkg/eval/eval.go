@@ -97,8 +97,8 @@ func (e *evaluator) EvaluatePackage(pkg *symbols.Package, args core.Args) (*rt.O
 	})()
 
 	if e.hooks != nil {
-		uw, leave := e.hooks.OnEnterPackage(pkg)
-		if uw != nil {
+		var leave func()
+		if uw, leave = e.hooks.OnEnterPackage(pkg); uw != nil {
 			return nil, uw
 		} else if leave != nil {
 			defer leave()
@@ -143,8 +143,8 @@ func (e *evaluator) evaluateModule(mod *symbols.Module, args core.Args, first bo
 	}
 
 	if e.hooks != nil {
-		uw, leave := e.hooks.OnEnterModule(mod)
-		if uw != nil {
+		var leave func()
+		if uw, leave = e.hooks.OnEnterModule(mod); uw != nil {
 			return nil, uw
 		} else if leave != nil {
 			defer leave()
