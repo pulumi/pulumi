@@ -84,6 +84,18 @@ func (e *evaluator) Diag() diag.Sink      { return e.ctx.Diag }
 // EvaluatePackage performs evaluation on the given blueprint package.
 func (e *evaluator) EvaluatePackage(pkg *symbols.Package, args core.Args) (*rt.Object, *rt.Unwind) {
 	glog.Infof("Evaluating package '%v'", pkg.Name())
+
+	// Ensure the start and finish logic happens.
+	uw := e.startEval()
+	if uw != nil {
+		return nil, uw
+	}
+	defer (func() {
+		if finuw := e.finishEval(pkg.Tree(), uw); finuw != nil {
+			uw = finuw
+		}
+	})()
+
 	if e.hooks != nil {
 		uw, leave := e.hooks.OnEnterPackage(pkg)
 		if uw != nil {
@@ -100,19 +112,36 @@ func (e *evaluator) EvaluatePackage(pkg *symbols.Package, args core.Args) (*rt.O
 
 	// Search the package for a default module to evaluate.
 	var ret *rt.Object
-	var uw *rt.Unwind
 	defmod := pkg.Default()
 	if defmod == nil {
 		e.Diag().Errorf(errors.ErrorPackageHasNoDefaultModule.At(pkg.Tree()), pkg.Name())
 	} else {
-		ret, uw = e.EvaluateModule(defmod, args)
+		ret, uw = e.evaluateModule(defmod, args, false)
 	}
 	return ret, uw
 }
 
 // EvaluateModule performs evaluation on the given module's entrypoint function.
 func (e *evaluator) EvaluateModule(mod *symbols.Module, args core.Args) (*rt.Object, *rt.Unwind) {
+	return e.evaluateModule(mod, args, true)
+}
+
+func (e *evaluator) evaluateModule(mod *symbols.Module, args core.Args, first bool) (*rt.Object, *rt.Unwind) {
 	glog.Infof("Evaluating module '%v'", mod.Token())
+
+	// Ensure the start and finish logic happens.
+	var uw *rt.Unwind
+	if first {
+		if uw = e.startEval(); uw != nil {
+			return nil, uw
+		}
+		defer (func() {
+			if finuw := e.finishEval(mod.Tree(), uw); finuw != nil {
+				uw = finuw
+			}
+		})()
+	}
+
 	if e.hooks != nil {
 		uw, leave := e.hooks.OnEnterModule(mod)
 		if uw != nil {
@@ -129,11 +158,10 @@ func (e *evaluator) EvaluateModule(mod *symbols.Module, args core.Args) (*rt.Obj
 
 	// Fetch the module's entrypoint function, erroring out if it doesn't have one.
 	var ret *rt.Object
-	var uw *rt.Unwind
 	hadEntry := false
 	if entry, has := mod.Members[tokens.EntryPointFunction]; has {
 		if entryfnc, ok := entry.(symbols.Function); ok {
-			ret, uw = e.EvaluateFunction(entryfnc, nil, args)
+			ret, uw = e.evaluateFunction(entryfnc, nil, args, false)
 			hadEntry = true
 		}
 	}
@@ -147,37 +175,29 @@ func (e *evaluator) EvaluateModule(mod *symbols.Module, args core.Args) (*rt.Obj
 
 // EvaluateFunction performs an evaluation of the given function, using the provided arguments.
 func (e *evaluator) EvaluateFunction(fnc symbols.Function, this *rt.Object, args core.Args) (*rt.Object, *rt.Unwind) {
+	return e.evaluateFunction(fnc, this, args, true)
+}
+
+func (e *evaluator) evaluateFunction(fnc symbols.Function, this *rt.Object,
+	args core.Args, first bool) (*rt.Object, *rt.Unwind) {
 	glog.Infof("Evaluating function '%v'", fnc.Token())
 	if glog.V(2) {
 		defer glog.V(2).Infof("Evaluation of function '%v' completed w/ %v warnings and %v errors",
 			fnc.Token(), e.Diag().Warnings(), e.Diag().Errors())
 	}
 
-	// Call the pre-start hook if registered.
-	if e.hooks != nil {
-		if uw := e.hooks.OnStart(); uw != nil {
+	// Ensure the start and finish logic happens.
+	var uw *rt.Unwind
+	if first {
+		if uw = e.startEval(); uw != nil {
 			return nil, uw
 		}
-	}
-
-	// Ensure all exit paths do the right thing (dumping, exceptions, hooks).
-	var uw *rt.Unwind
-	defer (func() {
-		// Dump the evaluation state at log-level 5, if it is enabled.
-		e.dumpEvalState(5)
-
-		// If the call had a throw unwind, then we have an unhandled exception.
-		if uw != nil && uw.Throw() {
-			e.UnhandledException(fnc.Tree(), uw.Thrown())
-		}
-
-		// Make sure to invoke the done hook.
-		if e.hooks != nil {
-			if doneuw := e.hooks.OnDone(uw); doneuw != nil {
-				uw = doneuw
+		defer (func() {
+			if finuw := e.finishEval(fnc.Tree(), uw); finuw != nil {
+				uw = finuw
 			}
-		}
-	})()
+		})()
+	}
 
 	// Ensure that initializers have been run.
 	switch f := fnc.(type) {
@@ -237,6 +257,35 @@ func (e *evaluator) EvaluateFunction(fnc symbols.Function, this *rt.Object, args
 }
 
 // Utility functions
+
+func (e *evaluator) startEval() *rt.Unwind {
+	// Call the pre-start hook if registered.
+	if e.hooks != nil {
+		if uw := e.hooks.OnStart(); uw != nil {
+			return uw
+		}
+	}
+	return nil
+}
+
+func (e *evaluator) finishEval(tree diag.Diagable, uw *rt.Unwind) *rt.Unwind {
+	// Dump the evaluation state at log-level 5, if it is enabled.
+	e.dumpEvalState(5)
+
+	// If the call had a throw unwind, then we have an unhandled exception.
+	if uw != nil && uw.Throw() {
+		e.UnhandledException(tree, uw.Thrown())
+	}
+
+	// Make sure to invoke the done hook.
+	if e.hooks != nil {
+		if finuw := e.hooks.OnDone(uw); finuw != nil {
+			return finuw
+		}
+	}
+
+	return uw
+}
 
 // dumpEvalState logs the evaluator's current state at the given log-level.
 func (e *evaluator) dumpEvalState(v glog.Level) {

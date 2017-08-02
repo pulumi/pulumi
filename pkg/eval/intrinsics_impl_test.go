@@ -4,19 +4,13 @@ package eval
 
 import (
 	"fmt"
-	"os"
 	"testing"
 
 	"github.com/pulumi/pulumi-fabric/pkg/compiler/ast"
 	"github.com/pulumi/pulumi-fabric/pkg/compiler/binder"
-	"github.com/pulumi/pulumi-fabric/pkg/compiler/core"
-	"github.com/pulumi/pulumi-fabric/pkg/compiler/metadata"
 	"github.com/pulumi/pulumi-fabric/pkg/compiler/types"
 	"github.com/pulumi/pulumi-fabric/pkg/eval/rt"
-	"github.com/pulumi/pulumi-fabric/pkg/pack"
 	"github.com/pulumi/pulumi-fabric/pkg/tokens"
-	"github.com/pulumi/pulumi-fabric/pkg/util/contract"
-	"github.com/pulumi/pulumi-fabric/pkg/workspace"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -25,18 +19,6 @@ type intrin struct {
 	moduleMember tokens.ModuleMember
 	paramTypes   []tokens.Type
 	returnType   tokens.Type
-}
-
-// newTestEval makes an interpreter that can be used for testing purposes.
-func newTestEval() (binder.Binder, Interpreter) {
-	pwd, err := os.Getwd()
-	contract.Assert(err == nil)
-	ctx := core.NewContext(pwd, core.DefaultSink(pwd), nil)
-	w, err := workspace.New(ctx)
-	contract.Assert(err == nil)
-	reader := metadata.NewReader(ctx)
-	b := binder.New(w, ctx, reader)
-	return b, New(b.Ctx(), nil)
 }
 
 func makeFakeIntrinsicDefinition(intrin intrin) *ast.Module {
@@ -108,42 +90,6 @@ func makeFakeIntrinsicDefinition(intrin intrin) *ast.Module {
 	}
 }
 
-// makeTestPackage creates a Lumi package for testing a series of statements to be invoked
-func makeTestPackage(body []ast.Statement, fakeIntrinsicDefinition *ast.Module) *pack.Package {
-	return &pack.Package{
-		Name: "lumirt",
-		Modules: &ast.Modules{
-			tokens.ModuleName(".default"): &ast.Module{
-				DefinitionNode: ast.DefinitionNode{
-					Name: &ast.Identifier{
-						Ident: tokens.Name(".default"),
-					},
-				},
-				Members: &ast.ModuleMembers{
-					tokens.ModuleMemberName(".main"): &ast.ModuleMethod{
-						FunctionNode: ast.FunctionNode{
-							ReturnType: &ast.TypeToken{
-								Tok: types.Dynamic.TypeToken(),
-							},
-							Body: &ast.Block{
-								Statements: body,
-							},
-						},
-						ModuleMemberNode: ast.ModuleMemberNode{
-							DefinitionNode: ast.DefinitionNode{
-								Name: &ast.Identifier{
-									Ident: tokens.Name(".main"),
-								},
-							},
-						},
-					},
-				},
-			},
-			tokens.ModuleName("index"): fakeIntrinsicDefinition,
-		},
-	}
-}
-
 // makeInvokeIntrinsicAST creates the AST for invoking a requested intrinsic, potentially dynamically, with a
 // provided argument list.  It returns the statements to invoke.
 func makeInvokeIntrinsicAST(intrin tokens.ModuleMember, dynamic bool, args []ast.Expression) []ast.Statement {
@@ -200,10 +146,12 @@ func makeInvokeIntrinsicAST(intrin tokens.ModuleMember, dynamic bool, args []ast
 // intrinsic symbol.
 func invokeIntrinsic(intrin intrin, dynamic bool, args []ast.Expression) (binder.Binder,
 	*rt.Object, *rt.Unwind) {
-	b, e := newTestEval()
+	b, e := newTestEval(nil)
 	body := makeInvokeIntrinsicAST(intrin.moduleMember, dynamic, args)
 	fakeIntrinsicDefinitionModule := makeFakeIntrinsicDefinition(intrin)
-	pack := makeTestPackage(body, fakeIntrinsicDefinitionModule)
+	pack := makeTestPackage("lumirt")
+	addTestDefaultModule(pack, true, body)
+	(*pack.Modules)[tokens.ModuleName("index")] = fakeIntrinsicDefinitionModule
 	sym := b.BindPackage(pack)
 	ret, uw := e.EvaluatePackage(sym, nil)
 	return b, ret, uw
