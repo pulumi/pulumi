@@ -215,6 +215,8 @@ func NewPropertyValueRepl(v interface{},
 		return NewArchiveProperty(t)
 	case Computed:
 		return NewComputedProperty(t)
+	case Output:
+		return NewOutputProperty(t)
 	}
 
 	// Next, see if it's an array, slice, pointer or struct, and handle each accordingly.
@@ -417,6 +419,10 @@ func (v PropertyValue) MapRepl(replk func(string) (string, bool),
 		return v.AssetValue()
 	} else if v.IsArchive() {
 		return v.ArchiveValue()
+	} else if v.IsComputed() {
+		return v.ComputedValue()
+	} else if v.IsOutput() {
+		return v.OutputValue()
 	}
 	contract.Assert(v.IsObject())
 	return v.ObjectValue().MapRepl(replk, replv)

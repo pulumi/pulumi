@@ -299,11 +299,14 @@ func isOutputObject(resobj *rt.Object, obj *rt.Object) bool {
 func setRuntimeProperties(obj *rt.Object, props PropertyMap) {
 	for k, v := range props {
 		prop := obj.GetPropertyAddr(rt.PropertyKey(k), true, true)
-		// TODO[pulumi/pulumi-fabric#260]: we are only setting if IsNull or IsComputed, to avoid certain shortcomings in our
-		//     serialization format today.  For example, if a resource ID appears, we must map it back to the runtime
-		//     object.  This means some resource outputs won't get reflected accurately.  We will need to fix this.
 		pobj := prop.Obj()
-		if pobj.IsNull() || isOutputObject(obj, pobj) {
+		if pobj.IsComputed() && v.IsComputed() {
+			// If the target is already computed, we prefer to keep it as-is, since it contains the dependencies.
+			glog.V(9).Infof("Skipping computed property: %v=%v", k, v)
+		} else if pobj.IsNull() || isOutputObject(obj, pobj) {
+			// TODO[pulumi/pulumi-fabric#260]: we are only setting if IsNull or IsComputed, to avoid shortcomings in
+			//     our serialization format today.  For example, if a resource ID appears, we must map it back to the
+			//     runtime object.  This means some resource outputs won't get set accurately.  We need to fix this.
 			glog.V(9).Infof("Setting resource object property: %v=%v", k, v)
 			val := createRuntimeProperty(v)
 			prop.Set(val)
@@ -331,9 +334,15 @@ func createRuntimeProperty(v PropertyValue) *rt.Object {
 			arr[i] = rt.NewPointer(ve, false, nil, nil)
 		}
 		return rt.NewArrayObject(types.Dynamic, &arr)
+	} else if v.IsComputed() {
+		elem := createRuntimeProperty(v.ComputedValue().Element).Type()
+		return rt.NewComputedObject(elem, true, nil)
+	} else if v.IsOutput() {
+		elem := createRuntimeProperty(v.OutputValue().Element).Type()
+		return rt.NewComputedObject(elem, false, nil)
 	}
 
-	contract.Assertf(v.IsObject(), "Expected an object, not a computed/output value")
+	contract.Assertf(v.IsObject(), "Expected an object, not a computed/output value: %v", v)
 	obj := rt.NewObject(types.Dynamic, nil, nil, nil)
 	setRuntimeProperties(obj, v.ObjectValue())
 	return obj
