@@ -3,7 +3,6 @@
 package resource
 
 import (
-	"fmt"
 	"reflect"
 
 	"github.com/golang/glog"
@@ -183,7 +182,6 @@ func copyObjectProperty(resobj *rt.Object, obj *rt.Object) PropertyValue {
 	// If the object is a resource, marshal its ID.
 	if predef.IsResourceType(t) {
 		idobj := getIDObject(obj)
-		fmt.Printf("ID: %v = %v\n", t, idobj)
 		if idobj != nil && idobj.IsString() {
 			return NewStringProperty(idobj.StringValue())
 		}
