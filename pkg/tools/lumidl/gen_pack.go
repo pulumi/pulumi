@@ -298,7 +298,7 @@ func (g *PackGenerator) emitResourceClass(w *tools.GenWriter, res *Resource) {
 	// Next, a constructor that validates arguments and self-assigns them.
 	w.Writefmt("    constructor(")
 	if res.Named {
-		w.Writefmt("name: string, ")
+		w.Writefmt("urnName: string, ")
 	}
 	w.Writefmt("args")
 	if !hasRequiredArgs {
@@ -308,7 +308,7 @@ func (g *PackGenerator) emitResourceClass(w *tools.GenWriter, res *Resource) {
 
 	if hasName {
 		// Named properties are passed as the constructor's first argument.
-		w.Writefmtln("        super(name);")
+		w.Writefmtln("        super(urnName);")
 	} else {
 		w.Writefmtln("        super();")
 	}
@@ -339,7 +339,7 @@ func (g *PackGenerator) emitResourceClass(w *tools.GenWriter, res *Resource) {
 }
 
 func isResourceNameProperty(res *Resource, prop PropertyOptions) bool {
-	return res.Named && prop.Name == "name"
+	return res.Named && prop.Name == "urnName"
 }
 
 func (g *PackGenerator) EmitStruct(w *tools.GenWriter, s *Struct) {
