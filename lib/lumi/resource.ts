@@ -13,7 +13,7 @@ export abstract class Resource {
 }
 
 // NamedResource is a kind of resource that has a friendly resource name associated with it.
-export abstract class NamedResource {
+export abstract class NamedResource extends Resource {
 	// urnName is the logical name used to create a globally unique URN for an object.  It is mixed with the resource's
 	// type, parent module, target deployment environment, and other information to help ensure that it is unique.
     public readonly urnName: string;

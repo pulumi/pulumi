@@ -10,6 +10,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/pulumi/pulumi-fabric/pkg/resource/idl"
 	"github.com/pulumi/pulumi-fabric/pkg/tokens"
 	"github.com/pulumi/pulumi-fabric/pkg/tools"
 	"github.com/pulumi/pulumi-fabric/pkg/util/contract"
@@ -297,10 +298,11 @@ func (g *RPCGenerator) EmitResource(w *tools.GenWriter, module tokens.Module, pk
 	w.Writefmtln("    }")
 	if res.Named {
 		// For named resources, we have a canonical way of fetching the name.
-		w.Writefmtln(`    if obj.Name == nil || *obj.Name == "" {`)
-		w.Writefmtln(`        return nil, errors.New("Name property cannot be empty")`)
+		urnName := idl.URNNameProperty
+		w.Writefmtln(`    if obj.%[1]v == nil || *obj.%[1]v == "" {`, urnName)
+		w.Writefmtln(`        return nil, errors.New("%v property cannot be empty")`, urnName)
 		w.Writefmtln("    }")
-		w.Writefmtln("    return &lumirpc.NameResponse{Name: *obj.Name}, nil")
+		w.Writefmtln("    return &lumirpc.NameResponse{Name: *obj.%v}, nil", urnName)
 	} else {
 		// For all other resources, delegate to the underlying provider to perform the naming operation.
 		w.Writefmtln("    name, err := p.ops.Name(ctx, obj)")

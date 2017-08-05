@@ -7,7 +7,6 @@ import (
 	"crypto/sha1"
 	"encoding/hex"
 
-	"github.com/pulumi/pulumi-fabric/pkg/eval/rt"
 	"github.com/pulumi/pulumi-fabric/pkg/util/contract"
 )
 
@@ -46,13 +45,6 @@ func MaybeID(s *string) *ID {
 	}
 	return ret
 }
-
-const (
-	// IDProperty is the special ID property name.
-	IDProperty = rt.PropertyKey("id")
-	// IDPropertyKey is the special ID property name for resource maps.
-	IDPropertyKey = PropertyKey("id")
-)
 
 // NewUniqueHex generates a new "random" hex string for use by resource providers.  It has the given optional prefix and
 // the total length is capped to the maxlen.  Note that capping to maxlen necessarily increases the risk of collisions.

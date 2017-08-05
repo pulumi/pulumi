@@ -15,11 +15,6 @@ import (
 	"github.com/pulumi/pulumi-fabric/pkg/util/contract"
 )
 
-// IsResourceObject returns true if the given runtime object is a
-func IsResourceObject(obj *rt.Object) bool {
-	return obj != nil && predef.IsResourceType(obj.Type())
-}
-
 // Object is a live resource object, connected to state that may change due to evaluation.
 type Object struct {
 	obj *rt.Object // the resource's live object reference.
@@ -41,6 +36,21 @@ func NewEmptyObject(t symbols.Type) *Object {
 		obj: rt.NewObject(t, nil, nil, nil),
 	}
 }
+
+const (
+	// IDProperty is the special ID property name.
+	IDProperty = rt.PropertyKey("id")
+	// IDPropertyKey is the special ID property name for resource maps.
+	IDPropertyKey = PropertyKey("id")
+	// URNProperty is the special URN property name.
+	URNProperty = rt.PropertyKey("urn")
+	// URNPropertyKey is the special URN property name for resource maps.
+	URNPropertyKey = PropertyKey("urn")
+	// URNNameProperty is the special URNName property name.
+	URNNameProperty = rt.PropertyKey("urnName")
+	// URNNamePropertyKey is the special URNName property name for resource maps.
+	URNNamePropertyKey = PropertyKey("urnName")
+)
 
 func (r *Object) Obj() *rt.Object   { return r.obj }
 func (r *Object) Type() tokens.Type { return r.obj.Type().TypeToken() }
@@ -82,13 +92,6 @@ func getIDObject(obj *rt.Object) *rt.Object {
 	}
 	return nil
 }
-
-const (
-	// URNProperty is the special URN property name.
-	URNProperty = rt.PropertyKey("urn")
-	// URNPropertyKey is the special URN property name for resource maps.
-	URNPropertyKey = PropertyKey("urn")
-)
 
 // URN fetches the object's URN.
 func (r *Object) URN() URN {
@@ -344,4 +347,9 @@ func createRuntimeProperty(v PropertyValue) *rt.Object {
 	obj := rt.NewObject(types.Dynamic, nil, nil, nil)
 	setRuntimeProperties(obj, v.ObjectValue())
 	return obj
+}
+
+// IsResourceObject returns true if the given runtime object is a
+func IsResourceObject(obj *rt.Object) bool {
+	return obj != nil && predef.IsResourceType(obj.Type())
 }

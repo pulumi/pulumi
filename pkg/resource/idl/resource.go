@@ -12,3 +12,5 @@ type NamedResource struct {
 	// type, parent module, target deployment environment, and other information to help ensure that it is unique.
 	URNName *string `lumi:"urnName,replaces,in"`
 }
+
+const URNNameProperty = "URNName"
