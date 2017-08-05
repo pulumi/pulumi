@@ -1,4 +1,6 @@
-package integrationtesting
+// Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
+
+package integration
 
 import (
 	"bytes"
@@ -9,7 +11,7 @@ import (
 	"github.com/pulumi/pulumi-fabric/pkg/util/contract"
 )
 
-func Test_Prefixer(t *testing.T) {
+func TestPrefixer(t *testing.T) {
 	byts := make([]byte, 0, 1000)
 	buf := bytes.NewBuffer(byts)
 	prefixer := newPrefixer(buf, "OK: ")

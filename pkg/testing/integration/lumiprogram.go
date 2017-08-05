@@ -1,4 +1,6 @@
-package integrationtesting
+// Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
+
+package integration
 
 import (
 	"bytes"
@@ -10,8 +12,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-
-	"github.com/pulumi/pulumi-fabric/pkg/util/contract"
 )
 
 // LumiProgramTestOptions provides options for LumiProgramTest
@@ -29,8 +29,10 @@ type LumiProgramTestOptions struct {
 //   lumijs --verbose
 //   lumi env init integrationtesting
 //   lumi config <each options.Config>
-//   lumi plan (currently being skipped due to pulumi/pulumi-fabric#276)
+//   lumi plan
 //   lumi deploy
+//   lumi plan (expected to be empty)
+//   lumi deploy (expected to be empty)
 //   lumi destroy --yes
 //   lumi env rm --yes integrationtesting
 // All commands must return success return codes for the test to succeed.
@@ -53,14 +55,10 @@ func LumiProgramTest(t *testing.T, programDir string, options LumiProgramTestOpt
 	stdout := newPrefixer(os.Stdout, prefix)
 	stderr := newPrefixer(os.Stderr, prefix)
 
-	_, err = fmt.Fprintf(stdout, "sample: %v\n", programDir)
-	contract.Assert(err == nil)
-	_, err = fmt.Fprintf(stdout, "lumijs: %v\n", lumijs)
-	contract.Assert(err == nil)
-	_, err = fmt.Fprintf(stdout, "lumi: %v\n", lumi)
-	contract.Assert(err == nil)
-	_, err = fmt.Fprintf(stdout, "yarn: %v\n", yarn)
-	contract.Assert(err == nil)
+	fmt.Printf("sample: %v\n", programDir)
+	fmt.Printf("lumijs: %v\n", lumijs)
+	fmt.Printf("lumi: %v\n", lumi)
+	fmt.Printf("yarn: %v\n", yarn)
 
 	for _, dependency := range options.Dependencies {
 		runCmd(t, []string{yarn, "link", dependency}, programDir, stdout, stderr)
@@ -72,6 +70,8 @@ func LumiProgramTest(t *testing.T, programDir string, options LumiProgramTestOpt
 	}
 	runCmd(t, []string{lumi, "plan"}, programDir, stdout, stderr)
 	runCmd(t, []string{lumi, "deploy"}, programDir, stdout, stderr)
+	runCmd(t, []string{lumi, "plan"}, programDir, stdout, stderr)   // expected to be empty.
+	runCmd(t, []string{lumi, "deploy"}, programDir, stdout, stderr) // expected to be empty.
 	runCmd(t, []string{lumi, "destroy", "--yes"}, programDir, stdout, stderr)
 	runCmd(t, []string{lumi, "env", "rm", "--yes", "integrationtesting"}, programDir, stdout, stderr)
 }
@@ -79,8 +79,7 @@ func LumiProgramTest(t *testing.T, programDir string, options LumiProgramTestOpt
 func runCmd(t *testing.T, args []string, wd string, stdout, stderr io.Writer) {
 	path := args[0]
 	command := strings.Join(args, " ")
-	_, err := fmt.Fprintf(stdout, "\n**** Invoke '%v' in %v\n", command, wd)
-	contract.Assert(err == nil)
+	fmt.Printf("\n**** Invoke '%v' in %v\n", command, wd)
 	cmd := exec.Cmd{
 		Path:   path,
 		Dir:    wd,
@@ -88,7 +87,7 @@ func runCmd(t *testing.T, args []string, wd string, stdout, stderr io.Writer) {
 		Stdout: stdout,
 		Stderr: stderr,
 	}
-	err = cmd.Run()
+	err := cmd.Run()
 	assert.NoError(t, err, "expected to successfully invoke '%v' in %v: %v", command, wd, err)
 }
 
@@ -106,7 +105,6 @@ func newPrefixer(writer io.Writer, prefix string) *prefixer {
 var _ io.Writer = (*prefixer)(nil)
 
 func (prefixer *prefixer) Write(p []byte) (int, error) {
-
 	n := 0
 	lines := bytes.SplitAfter(p, []byte{'\n'})
 	for _, line := range lines {
