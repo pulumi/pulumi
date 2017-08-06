@@ -10,13 +10,13 @@ GOMETALINTERBIN=gometalinter
 GOMETALINTER=${GOMETALINTERBIN} --config=Gometalinter.json
 
 .PHONY: default
-default: banner vet install test lint_quiet
-
-.PHONY: all
-all: banner_all vet install test lint_quiet lumijs lumirtpkg lumijspkg lumipkg
+all: banner_all core lumijs lumirtpkg lumijspkg lumipkg integrationtest
 
 .PHONY: nightly
-nightly: all gocover
+nightly: default gocover
+
+.PHONY: core
+core: vet test install lint_quiet
 
 .PHONY: banner
 banner:
@@ -67,7 +67,12 @@ vet:
 .PHONY: test
 test:
 	@$(ECHO) "\033[0;32mTEST:\033[0m"
-	go test -cover -parallel ${TESTPARALLELISM} ${PROJECT_PKGS} ./examples
+	go test -cover -parallel ${TESTPARALLELISM} ${PROJECT_PKGS}
+
+.PHONY: integrationtest
+integrationtest:
+	@$(ECHO) "\033[0;32mINTEGRATION TEST:\033[0m"
+	go test -cover -parallel ${TESTPARALLELISM} ./examples
 
 .PHONY: lumijs
 lumijs:

@@ -26,7 +26,7 @@ before_script:
     - export PATH=$TRAVIS_BUILD_DIR/cmd/lumijs:$PATH
     - export LUMIROOT=~/.lumi
 script:
-    - if [ $TRAVIS_EVENT_TYPE = "cron" ]; then make nightly; else make all; fi
+    - if [ $TRAVIS_EVENT_TYPE = "cron" ]; then make nightly; else make; fi
 after_script:
     - if [ $TRAVIS_EVENT_TYPE = "push" ] && [ $TRAVIS_BRANCH = "master" ]; then PUBFORCE=true make publish; fi
 notifications:
