@@ -9,7 +9,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/pulumi/pulumi-fabric/pkg/integrationtesting"
+	"github.com/pulumi/pulumi-fabric/pkg/testing/integration"
 )
 
 func TestExamples(t *testing.T) {
@@ -17,19 +17,19 @@ func TestExamples(t *testing.T) {
 	if !assert.NoError(t, err, "expected a valid working directory: %v", err) {
 		return
 	}
-	examples := []string{
-		path.Join(cwd, "basic/minimal"),
-	}
-	options := integrationtesting.LumiProgramTestOptions{
-		Dependencies: []string{
-			"@lumi/lumirt",
-			"@lumi/lumi",
+	examples := []integration.LumiProgramTestOptions{
+		{
+			Dir: path.Join(cwd, "basic/minimal"),
+			Dependencies: []string{
+				"@lumi/lumirt",
+				"@lumi/lumi",
+			},
 		},
 	}
 	for _, ex := range examples {
 		example := ex
-		t.Run(example, func(t *testing.T) {
-			integrationtesting.LumiProgramTest(t, example, options)
+		t.Run(example.Dir, func(t *testing.T) {
+			integration.LumiProgramTest(t, example)
 		})
 	}
 }

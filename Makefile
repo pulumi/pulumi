@@ -16,7 +16,7 @@ default: banner vet test install lint_quiet
 all: banner_all vet test install lint_quiet lumijs lumirtpkg lumijspkg lumipkg
 
 .PHONY: nightly
-nightly: banner_all vet test install lint_quiet lumijs lumirtpkg lumijspkg lumipkg examples gocover
+nightly: all gocover
 
 .PHONY: banner
 banner:
@@ -67,7 +67,7 @@ vet:
 .PHONY: test
 test:
 	@$(ECHO) "\033[0;32mTEST:\033[0m"
-	go test -cover -parallel ${TESTPARALLELISM} ${PROJECT_PKGS}
+	go test -cover -parallel ${TESTPARALLELISM} ${PROJECT_PKGS} ./examples
 
 .PHONY: lumijs
 lumijs:
@@ -85,11 +85,6 @@ publish:
 	@$(ECHO) "\033[0;32mPublishing current release:\033[0m"
 	./scripts/publish.sh
 .PHONY: publish
-
-.PHONY: examples
-examples:
-	@$(ECHO) "\033[0;32mTEST EXAMPLES:\033[0m"
-	go test -v -cover -timeout 1h -parallel ${TESTPARALLELISM} ./examples
 
 .PHONY: gocover
 gocover:
