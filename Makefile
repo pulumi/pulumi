@@ -10,10 +10,10 @@ GOMETALINTERBIN=gometalinter
 GOMETALINTER=${GOMETALINTERBIN} --config=Gometalinter.json
 
 .PHONY: default
-default: banner vet test install lint_quiet
+default: banner vet install test lint_quiet
 
 .PHONY: all
-all: banner_all vet test install lint_quiet lumijs lumirtpkg lumijspkg lumipkg
+all: banner_all vet install test lint_quiet lumijs lumirtpkg lumijspkg lumipkg
 
 .PHONY: nightly
 nightly: all gocover
