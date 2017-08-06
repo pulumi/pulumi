@@ -20,6 +20,7 @@ type Step interface {
 	Pre() error                      // run any pre-execution steps.
 	Apply() (resource.Status, error) // applies the action that this step represents.
 	Skip() error                     // skips past this step (required when iterating a plan).
+	Logical() bool                   // true if this step represents a logical operation in the program.
 }
 
 // ReadStep is a step that doesn't actually modify the target environment.  It only reads/queries from it.
@@ -67,6 +68,7 @@ func (s *SameStep) URN() resource.URN       { return s.old.URN() }
 func (s *SameStep) Old() *resource.State    { return s.old }
 func (s *SameStep) Obj() *resource.Object   { return s.obj }
 func (s *SameStep) New() *resource.State    { return s.new }
+func (s *SameStep) Logical() bool           { return true }
 
 func (s *SameStep) Pre() error {
 	contract.Assert(s.old != nil)
@@ -90,10 +92,13 @@ func (s *SameStep) Skip() error {
 
 // CreateStep is a mutating step that creates an entirely new resource.
 type CreateStep struct {
-	iter *PlanIterator    // the current plan iteration.
-	urn  resource.URN     // the resource URN being created.
-	obj  *resource.Object // the live object being created.
-	new  *resource.State  // the state of the resource after this step.
+	iter      *PlanIterator          // the current plan iteration.
+	urn       resource.URN           // the resource URN being created.
+	old       *resource.State        // the state of the existing resource (only for replacements).
+	obj       *resource.Object       // the live object being created.
+	new       *resource.State        // the state of the resource after this step.
+	keys      []resource.PropertyKey // the keys causing replacement (only for replacements).
+	replacing bool                   // true if this is a create due to a replacement.
 }
 
 var _ MutatingStep = (*CreateStep)(nil)
@@ -108,14 +113,35 @@ func NewCreateStep(iter *PlanIterator, urn resource.URN, obj *resource.Object, n
 	}
 }
 
-func (s *CreateStep) Op() StepOp              { return OpCreate }
-func (s *CreateStep) Plan() *Plan             { return s.iter.p }
-func (s *CreateStep) Iterator() *PlanIterator { return s.iter }
-func (s *CreateStep) Type() tokens.Type       { return s.obj.Type() }
-func (s *CreateStep) URN() resource.URN       { return s.urn }
-func (s *CreateStep) Old() *resource.State    { return nil }
-func (s *CreateStep) Obj() *resource.Object   { return s.obj }
-func (s *CreateStep) New() *resource.State    { return s.new }
+func NewCreateReplacementStep(iter *PlanIterator, old *resource.State,
+	obj *resource.Object, new *resource.State, keys []resource.PropertyKey) Step {
+	contract.Assert(!resource.HasURN(new))
+	return &CreateStep{
+		iter:      iter,
+		old:       old,
+		urn:       old.URN(),
+		obj:       obj,
+		new:       new,
+		keys:      keys,
+		replacing: true,
+	}
+}
+
+func (s *CreateStep) Op() StepOp {
+	if s.replacing {
+		return OpCreateReplacement
+	}
+	return OpCreate
+}
+func (s *CreateStep) Plan() *Plan                  { return s.iter.p }
+func (s *CreateStep) Iterator() *PlanIterator      { return s.iter }
+func (s *CreateStep) Type() tokens.Type            { return s.obj.Type() }
+func (s *CreateStep) URN() resource.URN            { return s.urn }
+func (s *CreateStep) Old() *resource.State         { return s.old }
+func (s *CreateStep) Obj() *resource.Object        { return s.obj }
+func (s *CreateStep) New() *resource.State         { return s.new }
+func (s *CreateStep) Keys() []resource.PropertyKey { return s.keys }
+func (s *CreateStep) Logical() bool                { return !s.replacing }
 
 func (s *CreateStep) Pre() error {
 	contract.Assert(s.new != nil)
@@ -174,7 +200,12 @@ func NewDeleteStep(iter *PlanIterator, old *resource.State, replacing bool) Step
 	}
 }
 
-func (s *DeleteStep) Op() StepOp              { return OpDelete }
+func (s *DeleteStep) Op() StepOp {
+	if s.replacing {
+		return OpDeleteReplaced
+	}
+	return OpDelete
+}
 func (s *DeleteStep) Plan() *Plan             { return s.iter.p }
 func (s *DeleteStep) Iterator() *PlanIterator { return s.iter }
 func (s *DeleteStep) Type() tokens.Type       { return s.old.Type() }
@@ -182,7 +213,7 @@ func (s *DeleteStep) URN() resource.URN       { return s.old.URN() }
 func (s *DeleteStep) Old() *resource.State    { return s.old }
 func (s *DeleteStep) Obj() *resource.Object   { return nil }
 func (s *DeleteStep) New() *resource.State    { return nil }
-func (s *DeleteStep) Replacing() bool         { return s.replacing }
+func (s *DeleteStep) Logical() bool           { return !s.replacing }
 
 func (s *DeleteStep) Pre() error {
 	contract.Assert(s.old != nil)
@@ -237,6 +268,7 @@ func (s *UpdateStep) URN() resource.URN       { return s.old.URN() }
 func (s *UpdateStep) Old() *resource.State    { return s.old }
 func (s *UpdateStep) Obj() *resource.Object   { return s.obj }
 func (s *UpdateStep) New() *resource.State    { return s.new }
+func (s *UpdateStep) Logical() bool           { return true }
 
 func (s *UpdateStep) Pre() error {
 	contract.Assert(s.old != nil)
@@ -281,7 +313,9 @@ func (s *UpdateStep) Skip() error {
 	return nil
 }
 
-// ReplaceStep is a mutating step that updates an existing resource's state.
+// ReplaceStep is a logical step indicating a resource will be replaced.  This is comprised of three physical steps:
+// a creation of the new resource, any number of intervening updates of dependents to the new resource, and then
+// a deletion of the now-replaced old resource.  This logical step is primarily here for tools and visualization.
 type ReplaceStep struct {
 	iter *PlanIterator          // the current plan iteration.
 	old  *resource.State        // the state of the existing resource.
@@ -313,6 +347,7 @@ func (s *ReplaceStep) Old() *resource.State         { return s.old }
 func (s *ReplaceStep) Obj() *resource.Object        { return s.obj }
 func (s *ReplaceStep) New() *resource.State         { return s.new }
 func (s *ReplaceStep) Keys() []resource.PropertyKey { return s.keys }
+func (s *ReplaceStep) Logical() bool                { return true }
 
 func (s *ReplaceStep) Pre() error {
 	contract.Assert(s.old != nil)
@@ -321,39 +356,10 @@ func (s *ReplaceStep) Pre() error {
 }
 
 func (s *ReplaceStep) Apply() (resource.Status, error) {
-	t := s.new.Type()
-
-	// Invoke the Create RPC function for this provider:
-	prov, err := getProvider(s)
-	if err != nil {
-		return resource.StatusOK, err
-	}
-	id, outs, rst, err := prov.Create(t, s.new.AllInputs())
-	if err != nil {
-		return rst, err
-	}
-	contract.Assert(id != "")
-
-	// If Create returned outputs, we have no need to query the provider again.  If not, however, issue a Get.
-	if outs == nil {
-		if outs, err = prov.Get(t, id); err != nil {
-			return resource.StatusUnknown, err
-		}
-	}
-
-	// Copy resource state back to observe outputs and store everything on the live object.
-	s.new.Outputs = outs
-	state := s.obj.Update(&s.old.U, &id, s.new.Defaults, s.new.Outputs)
-	s.iter.MarkStateSnapshot(s.old)
-	s.iter.AppendStateSnapshot(state)
 	return resource.StatusOK, nil
 }
 
 func (s *ReplaceStep) Skip() error {
-	// In the case of a replacement, we neither propagate the ID nor output properties.  This may be surprising,
-	// however, it must be done this way since the entire resource will be deleted and recreated.  As a result, we
-	// actually want the ID to be seen as having been updated (triggering cascading updates as appropriate).
-	s.obj.Update(&s.old.U, nil, s.new.Defaults, nil)
 	return nil
 }
 
@@ -382,6 +388,7 @@ func (s *GetStep) Plan() *Plan                   { return s.iter.p }
 func (s *GetStep) Iterator() *PlanIterator       { return s.iter }
 func (s *GetStep) Type() tokens.Type             { return s.t.TypeToken() }
 func (s *GetStep) Resources() []*resource.Object { return []*resource.Object{s.obj} }
+func (s *GetStep) Logical() bool                 { return false }
 
 func (s *GetStep) Pre() error {
 	// Simply call through to the provider's Get API.
@@ -429,13 +436,15 @@ func getProvider(s Step) (plugin.Provider, error) {
 type StepOp string
 
 const (
-	OpSame    StepOp = "same"    // nothing to do.
-	OpCreate  StepOp = "create"  // creating a new resource.
-	OpUpdate  StepOp = "update"  // updating an existing resource.
-	OpDelete  StepOp = "delete"  // deleting an existing resource.
-	OpReplace StepOp = "replace" // replacing a resource with a new one.
-	OpGet     StepOp = "get"     // fetching a resource by ID or URN.
-	OpQuery   StepOp = "query"   // querying a resource list by type and filter.
+	OpSame              StepOp = "same"               // nothing to do.
+	OpCreate            StepOp = "create"             // creating a new resource.
+	OpUpdate            StepOp = "update"             // updating an existing resource.
+	OpDelete            StepOp = "delete"             // deleting an existing resource.
+	OpReplace           StepOp = "replace"            // replacing a resource with a new one.
+	OpCreateReplacement StepOp = "create-replacement" // creating a new resource for a replacement.
+	OpDeleteReplaced    StepOp = "delete-replaced"    // deleting an existing resource after replacement.
+	OpGet               StepOp = "get"                // fetching a resource by ID or URN.
+	OpQuery             StepOp = "query"              // querying a resource list by type and filter.
 )
 
 // StepOps contains the full set of step operation types.
@@ -445,6 +454,8 @@ var StepOps = []StepOp{
 	OpUpdate,
 	OpDelete,
 	OpReplace,
+	OpCreateReplacement,
+	OpDeleteReplaced,
 	OpGet,
 	OpQuery,
 }
@@ -455,13 +466,17 @@ func (op StepOp) Color() string {
 	case OpSame:
 		return ""
 	case OpCreate:
-		return colors.SpecAdded
+		return colors.SpecCreate
 	case OpDelete:
-		return colors.SpecDeleted
+		return colors.SpecDelete
 	case OpUpdate:
-		return colors.SpecChanged
+		return colors.SpecUpdate
 	case OpReplace:
-		return colors.SpecReplaced
+		return colors.SpecReplace
+	case OpCreateReplacement:
+		return colors.SpecCreateReplacement
+	case OpDeleteReplaced:
+		return colors.SpecDeleteReplaced
 	case OpGet, OpQuery:
 		return colors.SpecRead
 	default:
@@ -483,6 +498,10 @@ func (op StepOp) Prefix() string {
 		return op.Color() + "~ "
 	case OpReplace:
 		return op.Color() + "+-"
+	case OpCreateReplacement:
+		return op.Color() + " +"
+	case OpDeleteReplaced:
+		return op.Color() + " -"
 	default:
 		contract.Failf("Unrecognized resource step op: %v", op)
 		return ""
@@ -491,7 +510,7 @@ func (op StepOp) Prefix() string {
 
 // Suffix returns a suggested suffix for lines of this op type.
 func (op StepOp) Suffix() string {
-	if op == OpUpdate || op == OpReplace || op == OpGet {
+	if op == OpCreateReplacement || op == OpUpdate || op == OpReplace || op == OpGet {
 		return colors.Reset // updates and replacements colorize individual lines; get has none
 	}
 	return ""

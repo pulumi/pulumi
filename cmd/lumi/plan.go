@@ -29,7 +29,7 @@ func newPlanCmd() *cobra.Command {
 	var env string
 	var showConfig bool
 	var showReads bool
-	var showReplaceDeletes bool
+	var showReplacementSteps bool
 	var showSames bool
 	var summary bool
 	var cmd = &cobra.Command{
@@ -53,16 +53,16 @@ func newPlanCmd() *cobra.Command {
 			}
 			contract.Assertf(!dotOutput, "TODO[pulumi/pulumi-fabric#235]: DOT files not yet supported")
 			opts := deployOptions{
-				Debug:              debug,
-				Destroy:            false,
-				DryRun:             true,
-				Analyzers:          analyzers,
-				ShowConfig:         showConfig,
-				ShowReads:          showReads,
-				ShowReplaceDeletes: showReplaceDeletes,
-				ShowSames:          showSames,
-				Summary:            summary,
-				DOT:                dotOutput,
+				Debug:                debug,
+				Destroy:              false,
+				DryRun:               true,
+				Analyzers:            analyzers,
+				ShowConfig:           showConfig,
+				ShowReads:            showReads,
+				ShowReplacementSteps: showReplacementSteps,
+				ShowSames:            showSames,
+				Summary:              summary,
+				DOT:                  dotOutput,
 			}
 			result, err := plan(cmd, info, opts)
 			if err != nil {
@@ -97,8 +97,8 @@ func newPlanCmd() *cobra.Command {
 		&showReads, "show-reads", false,
 		"Show resources that will be read, in addition to those that will be modified")
 	cmd.PersistentFlags().BoolVar(
-		&showReplaceDeletes, "show-replace-deletes", false,
-		"Show detailed resource replacement creates and deletes; normally shows as a single step")
+		&showReplacementSteps, "show-replacement-steps", false,
+		"Show detailed resource replacement creates and deletes instead of a single step")
 	cmd.PersistentFlags().BoolVar(
 		&showSames, "show-sames", false,
 		"Show resources that needn't be updated because they haven't changed, alongside those that do")
@@ -174,7 +174,7 @@ func printPlan(result *planResult, opts deployOptions) error {
 	printPrelude(&prelude, result, opts, true)
 
 	// Now walk the plan's steps and and pretty-print them out.
-	prelude.WriteString(fmt.Sprintf("%vPlanned changes:%v\n", colors.SpecUnimportant, colors.Reset))
+	prelude.WriteString(fmt.Sprintf("%vPlanning changes:%v\n", colors.SpecUnimportant, colors.Reset))
 	fmt.Print(colors.Colorize(&prelude))
 
 	iter, err := result.Plan.Iterate()
@@ -189,7 +189,6 @@ func printPlan(result *planResult, opts deployOptions) error {
 	}
 
 	var summary bytes.Buffer
-	empty := true
 	counts := make(map[deploy.StepOp]int)
 	for step != nil {
 		var err error
@@ -201,10 +200,8 @@ func printPlan(result *planResult, opts deployOptions) error {
 
 		// Print this step information (resource and all its properties).
 		// IDEA: it would be nice if, in the output, we showed the dependencies a la `git log --graph`.
-		track := shouldTrack(step, opts)
-		if track {
+		if shouldShow(step, opts) {
 			printStep(&summary, step, opts.Summary, true, "")
-			empty = false
 		}
 
 		// Be sure to skip the step so that in-memory state updates are performed.
@@ -212,7 +209,8 @@ func printPlan(result *planResult, opts deployOptions) error {
 			return errors.Errorf("An error occurred while advancing the plan: %v", err)
 		}
 
-		if track {
+		// Track the operation if shown and/or if it is a logically meaningful operation.
+		if step.Logical() {
 			counts[step.Op()]++
 		}
 
@@ -221,33 +219,24 @@ func printPlan(result *planResult, opts deployOptions) error {
 		}
 	}
 
-	// If we are doing an empty update, say so.
-	if !empty {
-		// Print a summary of operation counts.
-		if c := printSummary(&summary, counts, true); c == 0 {
-			empty = true
-		}
-	}
-	if empty {
-		cmdutil.Diag().Infof(diag.Message("no changes are required"))
-	} else {
-		fmt.Print(colors.Colorize(&summary))
-	}
+	// Print a summary of operation counts.
+	printChangeSummary(&summary, counts, true)
+	fmt.Print(colors.Colorize(&summary))
 	return nil
 }
 
-// shouldTrack returns true if the step should be "tracked"; this affects two things: 1) whether the resource is shown
-// in the planning phase and 2) whether the resource operation is tallied up and displayed in the final summary.
-func shouldTrack(step deploy.Step, opts deployOptions) bool {
+// shouldShow returns true if a step should show in the output.
+func shouldShow(step deploy.Step, opts deployOptions) bool {
 	// For certain operations, whether they are tracked is controlled by flags (to cut down on superfluous output).
 	if _, isrd := step.(deploy.ReadStep); isrd {
 		return opts.ShowReads
 	} else if step.Op() == deploy.OpSame {
 		return opts.ShowSames
-	} else if step.Op() == deploy.OpDelete && step.(*deploy.DeleteStep).Replacing() {
-		return opts.ShowReplaceDeletes
+	} else if step.Op() == deploy.OpCreateReplacement || step.Op() == deploy.OpDeleteReplaced {
+		return opts.ShowReplacementSteps
+	} else if step.Op() == deploy.OpReplace {
+		return !opts.ShowReplacementSteps
 	}
-	// By default, however, steps are tracked.
 	return true
 }
 
@@ -272,39 +261,54 @@ func printConfig(b *bytes.Buffer, config resource.ConfigMap) {
 	}
 }
 
-func printSummary(b *bytes.Buffer, counts map[deploy.StepOp]int, plan bool) int {
-	total := 0
-	for _, c := range counts {
-		total += c
+func printChangeSummary(b *bytes.Buffer, counts map[deploy.StepOp]int, plan bool) int {
+	changes := 0
+	for op, c := range counts {
+		if op != deploy.OpSame {
+			changes += c
+		}
 	}
 
-	if total > 0 {
-		var kind string
-		if plan {
-			kind = "planned"
-		} else {
-			kind = "deployed"
-		}
-		b.WriteString(fmt.Sprintf("%vinfo%v: %v %v %v:\n",
-			colors.SpecInfo, colors.Reset, total, kind, plural("change", total)))
+	var kind string
+	if plan {
+		kind = "planned"
+	} else {
+		kind = "deployed"
+	}
 
-		var planTo string
-		var pastTense string
-		if plan {
-			planTo = "to "
-		} else {
-			pastTense = "d"
-		}
+	var changesLabel string
+	if changes == 0 {
+		kind = "required"
+		changesLabel = "no"
+	} else {
+		changesLabel = strconv.Itoa(changes)
+	}
 
-		for _, op := range deploy.StepOps {
+	b.WriteString(fmt.Sprintf("%vinfo%v: %v %v %v:\n",
+		colors.SpecInfo, colors.Reset, changesLabel, plural("change", changes), kind))
+
+	var planTo string
+	var pastTense string
+	if plan {
+		planTo = "to "
+	} else {
+		pastTense = "d"
+	}
+
+	// Now summarize all of the changes; we print sames a little differently.
+	for _, op := range deploy.StepOps {
+		if op != deploy.OpSame {
 			if c := counts[op]; c > 0 {
 				b.WriteString(fmt.Sprintf("    %v%v %v %v%v%v%v\n",
 					op.Prefix(), c, plural("resource", c), planTo, op, pastTense, colors.Reset))
 			}
 		}
 	}
+	if c := counts[deploy.OpSame]; c > 0 {
+		b.WriteString(fmt.Sprintf("      %v %v unchanged\n", c, plural("resource", c)))
+	}
 
-	return total
+	return changes
 }
 
 func plural(s string, c int) string {
@@ -327,7 +331,9 @@ func printStep(b *bytes.Buffer, step deploy.Step, summary bool, planning bool, i
 	// Next print the resource URN, properties, etc.
 	if mut, ismut := step.(deploy.MutatingStep); ismut {
 		var replaces []resource.PropertyKey
-		if step.Op() == deploy.OpReplace {
+		if step.Op() == deploy.OpCreateReplacement {
+			replaces = step.(*deploy.CreateStep).Keys()
+		} else if step.Op() == deploy.OpReplace {
 			replaces = step.(*deploy.ReplaceStep).Keys()
 		}
 		printResourceProperties(b, mut.URN(), mut.Old(), mut.New(), replaces, summary, planning, indent)
@@ -344,7 +350,7 @@ func printStep(b *bytes.Buffer, step deploy.Step, summary bool, planning bool, i
 }
 
 func printStepHeader(b *bytes.Buffer, step deploy.Step) {
-	b.WriteString(fmt.Sprintf("%s:\n", string(step.Type())))
+	b.WriteString(fmt.Sprintf("%s: (%s)\n", string(step.Type()), step.Op()))
 }
 
 func printResourceProperties(b *bytes.Buffer, urn resource.URN, old *resource.State, new *resource.State,
@@ -402,9 +408,12 @@ func printObject(b *bytes.Buffer, props resource.PropertyMap, planning bool, ind
 // printResourceOutputProperties prints only those properties that either differ from the input properties or, if
 // there is an old snapshot of the resource, differ from the prior old snapshot's output properties.
 func printResourceOutputProperties(b *bytes.Buffer, step deploy.Step, indent string) {
-	mut, ismut := step.(deploy.MutatingStep)
-	if !ismut {
-		// Only mutating steps have output properties associated with them.
+	// Only certain kinds of steps have output properties associated with them.
+	mut := step.(deploy.MutatingStep)
+	if mut == nil ||
+		(step.Op() != deploy.OpCreate &&
+			step.Op() != deploy.OpCreateReplacement &&
+			step.Op() != deploy.OpUpdate) {
 		return
 	}
 
@@ -421,6 +430,7 @@ func printResourceOutputProperties(b *bytes.Buffer, step deploy.Step, indent str
 	}
 
 	// Now sort the keys and enumerate each output property in a deterministic order.
+	firstout := true
 	keys := newouts.StableKeys()
 	maxkey := maxKey(keys)
 	for _, k := range keys {
@@ -444,6 +454,10 @@ func printResourceOutputProperties(b *bytes.Buffer, step deploy.Step, indent str
 			}
 
 			if print {
+				if firstout {
+					b.WriteString(fmt.Sprintf("%v---outputs:---\n", indent))
+					firstout = false
+				}
 				printPropertyTitle(b, k, maxkey, indent)
 				printPropertyValue(b, newout, false, indent)
 			}
@@ -585,14 +599,14 @@ func printObjectDiff(b *bytes.Buffer, diff resource.ObjectDiff,
 		title := func(id string) { printPropertyTitle(b, k, maxkey, id) }
 		if add, isadd := diff.Adds[k]; isadd {
 			if shouldPrintPropertyValue(add, planning) {
-				b.WriteString(colors.SpecAdded)
+				b.WriteString(colors.SpecCreate)
 				title(addIndent(indent))
 				printPropertyValue(b, add, planning, addIndent(indent))
 				b.WriteString(colors.Reset)
 			}
 		} else if delete, isdelete := diff.Deletes[k]; isdelete {
 			if shouldPrintPropertyValue(delete, planning) {
-				b.WriteString(colors.SpecDeleted)
+				b.WriteString(colors.SpecDelete)
 				title(deleteIndent(indent))
 				printPropertyValue(b, delete, planning, deleteIndent(indent))
 				b.WriteString(colors.Reset)

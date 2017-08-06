@@ -117,6 +117,7 @@ type PlanIterator struct {
 	deletes  map[resource.URN]bool // URNs discovered to be deleted.
 	sames    map[resource.URN]bool // URNs discovered to be the same.
 
+	stepqueue []Step                   // a queue of steps to drain.
 	delqueue  []*resource.State        // a queue of deletes left to perform.
 	resources []*resource.State        // the resulting ordered resource states.
 	dones     map[*resource.State]bool // true for each old state we're done with.
@@ -153,17 +154,25 @@ func (iter *PlanIterator) Produce(res *resource.Object) {
 // taken, Next will return a nil step pointer.
 func (iter *PlanIterator) Next() (Step, error) {
 	for !iter.done {
+		if len(iter.stepqueue) > 0 {
+			step := iter.stepqueue[0]
+			iter.stepqueue = iter.stepqueue[1:]
+			return step, nil
+		}
 		if !iter.srcdone {
 			res, q, err := iter.src.Next()
 			if err != nil {
 				return nil, err
 			} else if res != nil {
-				step, err := iter.nextResourceStep(res)
+				steps, err := iter.nextResourceSteps(res)
 				if err != nil {
 					return nil, err
 				}
-				contract.Assert(step != nil)
-				return step, nil
+				contract.Assert(len(steps) > 0)
+				if len(steps) > 1 {
+					iter.stepqueue = steps[1:]
+				}
+				return steps[0], nil
 			} else if q != nil {
 				step, err := iter.nextQueryStep(q)
 				if err != nil {
@@ -191,8 +200,9 @@ func (iter *PlanIterator) Next() (Step, error) {
 	return nil, nil
 }
 
-// nextResourceStep produces a new step for a given resource or nil if there isn't one to perform.
-func (iter *PlanIterator) nextResourceStep(res *SourceAllocation) (Step, error) {
+// nextResourceSteps produces a new step for a given resource or nil if there isn't one to perform.  It is possible to
+// return multiple steps if the current resource state necessitates it.
+func (iter *PlanIterator) nextResourceSteps(res *SourceAllocation) ([]Step, error) {
 	// Take a moment in time snapshot of the live object's properties.
 	obj := res.Obj
 	new := obj.State()
@@ -303,14 +313,17 @@ func (iter *PlanIterator) nextResourceStep(res *SourceAllocation) (Step, error) 
 					glog.V(7).Infof("Planner decided to replace '%v' (oldprops=%v inputs=%v)",
 						urn, oldinputs, new.AllInputs())
 				}
-				return NewReplaceStep(iter, old, obj, new, diff.ReplaceKeys), nil
+				return []Step{
+					NewCreateReplacementStep(iter, old, obj, new, diff.ReplaceKeys),
+					NewReplaceStep(iter, old, obj, new, diff.ReplaceKeys),
+				}, nil
 			}
 			iter.updates[urn] = true
 			if glog.V(7) {
 				glog.V(7).Infof("Planner decided to update '%v' (oldprops=%v inputs=%v",
 					urn, oldinputs, new.AllInputs())
 			}
-			return NewUpdateStep(iter, old, obj, new), nil
+			return []Step{NewUpdateStep(iter, old, obj, new)}, nil
 		}
 
 		// No need to update anything, the properties didn't change.
@@ -318,13 +331,13 @@ func (iter *PlanIterator) nextResourceStep(res *SourceAllocation) (Step, error) 
 		if glog.V(7) {
 			glog.V(7).Infof("Planner decided not to update '%v' (same) (inputs=%v)", urn, new.AllInputs())
 		}
-		return NewSameStep(iter, old, obj, new), nil
+		return []Step{NewSameStep(iter, old, obj, new)}, nil
 	}
 
 	// Otherwise, the resource isn't in the old map, so it must be a resource creation.
 	iter.creates[urn] = true
 	glog.V(7).Infof("Planner decided to create '%v' (inputs=%v)", urn, new.AllInputs())
-	return NewCreateStep(iter, urn, obj, new), nil
+	return []Step{NewCreateStep(iter, urn, obj, new)}, nil
 }
 
 // issueCheckErrors prints any check errors to the diagnostics sink.

@@ -10,7 +10,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi-fabric/pkg/compiler/errors"
-	"github.com/pulumi/pulumi-fabric/pkg/diag"
 	"github.com/pulumi/pulumi-fabric/pkg/diag/colors"
 	"github.com/pulumi/pulumi-fabric/pkg/resource"
 	"github.com/pulumi/pulumi-fabric/pkg/resource/deploy"
@@ -26,7 +25,7 @@ func newDeployCmd() *cobra.Command {
 	var env string
 	var showConfig bool
 	var showReads bool
-	var showReplaceDeletes bool
+	var showReplacementSteps bool
 	var showSames bool
 	var summary bool
 	var output string
@@ -51,16 +50,16 @@ func newDeployCmd() *cobra.Command {
 				return err
 			}
 			return deployLatest(cmd, info, deployOptions{
-				Debug:              debug,
-				Destroy:            false,
-				DryRun:             dryRun,
-				Analyzers:          analyzers,
-				ShowConfig:         showConfig,
-				ShowReads:          showReads,
-				ShowReplaceDeletes: showReplaceDeletes,
-				ShowSames:          showSames,
-				Summary:            summary,
-				Output:             output,
+				Debug:                debug,
+				Destroy:              false,
+				DryRun:               dryRun,
+				Analyzers:            analyzers,
+				ShowConfig:           showConfig,
+				ShowReads:            showReads,
+				ShowReplacementSteps: showReplacementSteps,
+				ShowSames:            showSames,
+				Summary:              summary,
+				Output:               output,
 			})
 		}),
 	}
@@ -84,8 +83,8 @@ func newDeployCmd() *cobra.Command {
 		&showReads, "show-reads", false,
 		"Show resources that will be read, in addition to those that will be modified")
 	cmd.PersistentFlags().BoolVar(
-		&showReplaceDeletes, "show-replace-deletes", false,
-		"Show detailed resource replacement creates and deletes; normally shows as a single step")
+		&showReplacementSteps, "show-replacement-steps", true,
+		"Show detailed resource replacement creates and deletes instead of a single step")
 	cmd.PersistentFlags().BoolVar(
 		&showSames, "show-sames", false,
 		"Show resources that needn't be updated because they haven't changed, alongside those that do")
@@ -100,18 +99,18 @@ func newDeployCmd() *cobra.Command {
 }
 
 type deployOptions struct {
-	Debug              bool     // true to enable resource debugging output.
-	Create             bool     // true if we are creating resources.
-	Destroy            bool     // true if we are destroying the environment.
-	DryRun             bool     // true if we should just print the plan without performing it.
-	Analyzers          []string // an optional set of analyzers to run as part of this deployment.
-	ShowConfig         bool     // true to show the configuration variables being used.
-	ShowReads          bool     // true to show the read-only steps in the plan.
-	ShowReplaceDeletes bool     // true to show the replacement deletion steps in the plan.
-	ShowSames          bool     // true to show the resources that aren't updated, in addition to those that are.
-	Summary            bool     // true if we should only summarize resources and operations.
-	DOT                bool     // true if we should print the DOT file for this plan.
-	Output             string   // the place to store the output, if any.
+	Debug                bool     // true to enable resource debugging output.
+	Create               bool     // true if we are creating resources.
+	Destroy              bool     // true if we are destroying the environment.
+	DryRun               bool     // true if we should just print the plan without performing it.
+	Analyzers            []string // an optional set of analyzers to run as part of this deployment.
+	ShowConfig           bool     // true to show the configuration variables being used.
+	ShowReads            bool     // true to show the read-only steps in the plan.
+	ShowReplacementSteps bool     // true to show the replacement steps in the plan.
+	ShowSames            bool     // true to show the resources that aren't updated, in addition to those that are.
+	Summary              bool     // true if we should only summarize resources and operations.
+	DOT                  bool     // true if we should print the DOT file for this plan.
+	Output               string   // the place to store the output, if any.
 }
 
 func deployLatest(cmd *cobra.Command, info *envCmdInfo, opts deployOptions) error {
@@ -138,19 +137,11 @@ func deployLatest(cmd *cobra.Command, info *envCmdInfo, opts deployOptions) erro
 			progress := newProgress(opts)
 			summary, _, _, err := result.Plan.Apply(progress)
 			contract.Assert(summary != nil)
-			empty := (summary.Steps() == 0) // if no step is returned, it was empty.
 
 			// Print a summary.
 			var footer bytes.Buffer
-			if !empty {
-				// Print out the total number of steps performed (and their kinds), the duration, and any summary info.
-				if c := printSummary(&footer, progress.Ops, false); c == 0 {
-					empty = true
-				}
-			}
-			if empty {
-				cmdutil.Diag().Infof(diag.Message("no changes were made"))
-			} else {
+			// Print out the total number of steps performed (and their kinds), the duration, and any summary info.
+			if c := printChangeSummary(&footer, progress.Ops, false); c != 0 {
 				footer.WriteString(fmt.Sprintf("%vDeployment duration: %v%v\n",
 					colors.SpecUnimportant, time.Since(start), colors.Reset))
 			}
@@ -190,24 +181,11 @@ func newProgress(opts deployOptions) *deployProgress {
 }
 
 func (prog *deployProgress) Before(step deploy.Step) {
-	stepop := step.Op()
-	if stepop == deploy.OpSame {
-		return
+	if shouldShow(step, prog.Opts) {
+		var b bytes.Buffer
+		printStep(&b, step, prog.Opts.Summary, false, "")
+		fmt.Print(colors.Colorize(&b))
 	}
-
-	// Print the step.
-	stepnum := prog.Steps + 1
-
-	var extra string
-	if stepop == deploy.OpReplace ||
-		(stepop == deploy.OpDelete && step.(*deploy.DeleteStep).Replacing()) {
-		extra = " (part of a replacement change)"
-	}
-
-	var b bytes.Buffer
-	b.WriteString(fmt.Sprintf("Applying step #%v [%v]%v\n", stepnum, stepop, extra))
-	printStep(&b, step, prog.Opts.Summary, false, "")
-	fmt.Print(colors.Colorize(&b))
 }
 
 func (prog *deployProgress) After(step deploy.Step, status resource.Status, err error) {
@@ -234,13 +212,15 @@ func (prog *deployProgress) After(step deploy.Step, status resource.Status, err 
 		b.WriteString(colors.Reset)
 		b.WriteString("\n")
 		fmt.Print(colors.Colorize(&b))
-	} else if shouldTrack(step, prog.Opts) {
+	} else {
 		// Increment the counters.
-		prog.Steps++
-		prog.Ops[stepop]++
+		if step.Logical() {
+			prog.Steps++
+			prog.Ops[stepop]++
+		}
 
 		// Print out any output properties that got created as a result of this operation.
-		if !prog.Opts.Summary && step.Op() == deploy.OpCreate {
+		if shouldShow(step, prog.Opts) && !prog.Opts.Summary {
 			var b bytes.Buffer
 			printResourceOutputProperties(&b, step, "")
 			fmt.Print(colors.Colorize(&b))

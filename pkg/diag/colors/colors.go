@@ -69,9 +69,11 @@ var (
 	SpecAttention = BrightRed // for messages that are meant to grab attention.
 	SpecNote      = White     // for simple notes.
 
-	SpecAdded    = Green        // for adds (in the diff sense).
-	SpecChanged  = BrightYellow // for changes (in the diff sense).
-	SpecRead     = BrightWhite  // for reads (relatively unimportant).
-	SpecReplaced = Yellow       // for replacements (in the diff sense).
-	SpecDeleted  = Red          // for deletes (in the diff sense).
+	SpecCreate            = Green        // for adds (in the diff sense).
+	SpecUpdate            = BrightYellow // for changes (in the diff sense).
+	SpecRead              = BrightWhite  // for reads (relatively unimportant).
+	SpecReplace           = Yellow       // for replacements (in the diff sense).
+	SpecDelete            = Red          // for deletes (in the diff sense).
+	SpecCreateReplacement = BrightGreen  // for replacement creates (in the diff sense).
+	SpecDeleteReplaced    = BrightRed    // for replacement deletes (in the diff sense).
 )

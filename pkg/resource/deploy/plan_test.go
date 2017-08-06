@@ -337,6 +337,7 @@ func TestBasicCRUDPlan(t *testing.T) {
 	assert.Equal(t, 1, seen[OpUpdate])
 	assert.Equal(t, 1, seen[OpDelete])
 	assert.Equal(t, 0, seen[OpReplace])
+	assert.Equal(t, 0, seen[OpDeleteReplaced])
 	assert.Equal(t, 0, seen[OpGet])
 	assert.Equal(t, 0, seen[OpQuery])
 
