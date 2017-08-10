@@ -671,15 +671,23 @@ func (a *astBinder) checkBinaryOperatorExpression(node *ast.BinaryOperatorExpres
 	// Relational operators:
 	case ast.OpLt, ast.OpLtEquals, ast.OpGt, ast.OpGtEquals:
 		// Both lhs and rhs must be numbers, and it produces a boolean.
-		if !types.CanConvert(lhs, types.Number) {
+		if lhs == types.Number {
+			if !types.CanConvert(rhs, types.Number) {
+				a.b.Diag().Errorf(errors.ErrorBinaryOperatorInvalidForType.At(node),
+					node.Operator, "RHS", rhs, types.String)
+			}
+			a.b.ctx.RegisterType(node, types.Bool)
+		} else if lhs == types.String {
+			if !types.CanConvert(rhs, types.String) {
+				a.b.Diag().Errorf(errors.ErrorBinaryOperatorInvalidForType.At(node),
+					node.Operator, "RHS", rhs, types.String)
+			}
+			a.b.ctx.RegisterType(node, types.Bool)
+		} else {
 			a.b.Diag().Errorf(errors.ErrorBinaryOperatorInvalidForType.At(node),
-				node.Operator, "LHS", lhs, types.Number)
+				node.Operator, "LHS", lhs, "string or number")
+			a.b.ctx.RegisterType(node, types.Bool)
 		}
-		if !types.CanConvert(rhs, types.Number) {
-			a.b.Diag().Errorf(errors.ErrorBinaryOperatorInvalidForType.At(node),
-				node.Operator, "RHS", rhs, types.Number)
-		}
-		a.b.ctx.RegisterType(node, types.Bool)
 	case ast.OpEquals, ast.OpNotEquals:
 		// Equality checking is valid on any type, and it always produces a boolean.
 		a.b.ctx.RegisterType(node, types.Bool)
@@ -709,7 +717,8 @@ func (a *astBinder) checkTypeOfExpression(node *ast.TypeOfExpression) {
 
 func (a *astBinder) checkConditionalExpression(node *ast.ConditionalExpression) {
 	// TODO[pulumi/pulumi-fabric#213]: unify the consequent and alternate types.
-	contract.Failf("Binding of %v nodes not yet implemented", node.GetKind())
+	consequentType := a.b.ctx.RequireType(node.Consequent)
+	a.b.ctx.RegisterType(node, consequentType)
 }
 
 func (a *astBinder) checkSequenceExpression(node *ast.SequenceExpression) {
