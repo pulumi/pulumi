@@ -26,7 +26,7 @@ func newConfigCmd() *cobra.Command {
 			}
 
 			config := info.Target.Config
-			if len(info.Args) == 0 {
+			if len(args) == 0 {
 				// If no args were supplied, we are just printing out the current configuration.
 				if config != nil {
 					fmt.Printf("%-32s %-32s\n", "KEY", "VALUE")
@@ -37,15 +37,15 @@ func newConfigCmd() *cobra.Command {
 					}
 				}
 			} else {
-				key := tokens.Token(info.Args[0])
+				key := tokens.Token(args[0])
 				if config == nil {
 					config = make(resource.ConfigMap)
 					info.Target.Config = config
 				}
-				if len(info.Args) > 1 {
+				if len(args) > 1 {
 					// If there is a value, we are setting the configuration entry.
 					// TODO[pulumi/pulumi-fabric#113]: support values other than strings.
-					config[key] = info.Args[1]
+					config[key] = args[1]
 					saveEnv(info.Target, info.Snapshot, "", true)
 				} else {
 					// If there was no value supplied, we are either reading or unsetting the entry.
