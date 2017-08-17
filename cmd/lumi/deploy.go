@@ -49,7 +49,7 @@ func newDeployCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			return deployLatest(cmd, info, deployOptions{
+			return deployLatest(info, deployOptions{
 				Debug:                debug,
 				Destroy:              false,
 				DryRun:               dryRun,
@@ -113,8 +113,8 @@ type deployOptions struct {
 	Output               string   // the place to store the output, if any.
 }
 
-func deployLatest(cmd *cobra.Command, info *envCmdInfo, opts deployOptions) error {
-	result, err := plan(cmd, info, opts)
+func deployLatest(info *envCmdInfo, opts deployOptions) error {
+	result, err := plan(info, opts)
 	if err != nil {
 		return err
 	}

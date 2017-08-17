@@ -64,7 +64,7 @@ func newPlanCmd() *cobra.Command {
 				Summary:              summary,
 				DOT:                  dotOutput,
 			}
-			result, err := plan(cmd, info, opts)
+			result, err := plan(info, opts)
 			if err != nil {
 				return err
 			}
@@ -110,7 +110,7 @@ func newPlanCmd() *cobra.Command {
 }
 
 // plan just uses the standard logic to parse arguments, options, and to create a snapshot and plan.
-func plan(cmd *cobra.Command, info *envCmdInfo, opts deployOptions) (*planResult, error) {
+func plan(info *envCmdInfo, opts deployOptions) (*planResult, error) {
 	contract.Assert(info != nil)
 	contract.Assert(info.Target != nil)
 
@@ -127,7 +127,7 @@ func plan(cmd *cobra.Command, info *envCmdInfo, opts deployOptions) (*planResult
 	}
 
 	// First, compile the package, in preparatin for interpreting it and creating resources.
-	result := compile(cmd, info.Args)
+	result := compile(info.Args)
 	if result == nil || !result.B.Ctx().Diag.Success() {
 		return nil, fmt.Errorf("Errors during compilation: %v", result.B.Ctx().Diag.Errors())
 	}

@@ -38,7 +38,7 @@ func newPackVerifyCmd() *cobra.Command {
 // succeeds, the return value is true; if verification fails, errors will have been output, and the return is false.
 func verify(cmd *cobra.Command, args []string) bool {
 	// Prepare the compiler info and, provided it succeeds, perform the verification.
-	if comp, pkg := prepareCompiler(cmd, args); comp != nil {
+	if comp, pkg := prepareCompiler(args); comp != nil {
 		// Now perform the compilation and extract the heap snapshot.
 		if pkg == nil {
 			return comp.Verify()
