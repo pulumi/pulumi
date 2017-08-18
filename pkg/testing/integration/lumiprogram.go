@@ -4,18 +4,25 @@ package integration
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
 	"os/exec"
+	"path"
 	"path/filepath"
 	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 
+	"github.com/pulumi/pulumi-fabric/pkg/resource/environment"
 	"github.com/pulumi/pulumi-fabric/pkg/util/contract"
+)
+
+const (
+	testEnvironmentName = "integrationtesting"
 )
 
 // LumiProgramTestOptions provides options for LumiProgramTest
@@ -28,6 +35,8 @@ type LumiProgramTestOptions struct {
 	Config map[string]string
 	// EditDirs is an optional list of edits to apply to the example, as subsequent deployments.
 	EditDirs []string
+	// ExtraRuntimeValidation is an optional callback for additional validation, called before applying edits.
+	ExtraRuntimeValidation func(t *testing.T, checkpoint environment.Checkpoint)
 
 	// Stdout is the writer to use for all stdout messages.
 	Stdout io.Writer
@@ -138,7 +147,7 @@ func LumiProgramTest(t *testing.T, opts LumiProgramTestOptions) {
 	// Ensure all links are present, the environment is created, and all configs are applied.
 	_, err = fmt.Fprintf(opts.Stdout, "Initializing project\n")
 	contract.IgnoreError(err)
-	runCmd(t, []string{opts.LumiBin, "env", "init", "integrationtesting"}, dir, opts)
+	runCmd(t, []string{opts.LumiBin, "env", "init", testEnvironmentName}, dir, opts)
 	for key, value := range opts.Config {
 		runCmd(t, []string{opts.LumiBin, "config", key, value}, dir, opts)
 	}
@@ -157,6 +166,19 @@ func LumiProgramTest(t *testing.T, opts LumiProgramTestOptions) {
 	contract.IgnoreError(err)
 	planAndDeploy(dir)
 
+	// Run additional validation provided by the test options, passing in the
+	checkpointFile := path.Join(dir, ".lumi", "env", testEnvironmentName+".json")
+	byts, err := ioutil.ReadFile(path.Join(dir, ".lumi", "env", testEnvironmentName+".json"))
+	if !assert.NoError(t, err, "Expected to be able to read checkpoint file at %v: %v", checkpointFile, err) {
+		return
+	}
+	var checkpoint environment.Checkpoint
+	err = json.Unmarshal(byts, &checkpoint)
+	if !assert.NoError(t, err, "Expected to be able to deserialize checkpoint file at %v: %v", checkpointFile, err) {
+		return
+	}
+	opts.ExtraRuntimeValidation(t, checkpoint)
+
 	// If there are any edits, apply them and run a plan and deploy for each one.
 	for _, edit := range opts.EditDirs {
 		_, err = fmt.Fprintf(opts.Stdout, "Applying edit '%v' and rerunning plan and deploy\n", edit)
@@ -172,7 +194,7 @@ func LumiProgramTest(t *testing.T, opts LumiProgramTestOptions) {
 	_, err = fmt.Fprintf(opts.Stdout, "Destroying environment\n")
 	contract.IgnoreError(err)
 	runCmd(t, []string{opts.LumiBin, "destroy", "--yes"}, dir, opts)
-	runCmd(t, []string{opts.LumiBin, "env", "rm", "--yes", "integrationtesting"}, dir, opts)
+	runCmd(t, []string{opts.LumiBin, "env", "rm", "--yes", testEnvironmentName}, dir, opts)
 }
 
 func runCmd(t *testing.T, args []string, wd string, opts LumiProgramTestOptions) {
