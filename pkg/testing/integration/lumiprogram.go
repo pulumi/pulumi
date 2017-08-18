@@ -167,17 +167,19 @@ func LumiProgramTest(t *testing.T, opts LumiProgramTestOptions) {
 	planAndDeploy(dir)
 
 	// Run additional validation provided by the test options, passing in the
-	checkpointFile := path.Join(dir, ".lumi", "env", testEnvironmentName+".json")
-	byts, err := ioutil.ReadFile(path.Join(dir, ".lumi", "env", testEnvironmentName+".json"))
-	if !assert.NoError(t, err, "Expected to be able to read checkpoint file at %v: %v", checkpointFile, err) {
-		return
+	if opts.ExtraRuntimeValidation != nil {
+		checkpointFile := path.Join(dir, ".lumi", "env", testEnvironmentName+".json")
+		byts, err := ioutil.ReadFile(path.Join(dir, ".lumi", "env", testEnvironmentName+".json"))
+		if !assert.NoError(t, err, "Expected to be able to read checkpoint file at %v: %v", checkpointFile, err) {
+			return
+		}
+		var checkpoint environment.Checkpoint
+		err = json.Unmarshal(byts, &checkpoint)
+		if !assert.NoError(t, err, "Expected to be able to deserialize checkpoint file at %v: %v", checkpointFile, err) {
+			return
+		}
+		opts.ExtraRuntimeValidation(t, checkpoint)
 	}
-	var checkpoint environment.Checkpoint
-	err = json.Unmarshal(byts, &checkpoint)
-	if !assert.NoError(t, err, "Expected to be able to deserialize checkpoint file at %v: %v", checkpointFile, err) {
-		return
-	}
-	opts.ExtraRuntimeValidation(t, checkpoint)
 
 	// If there are any edits, apply them and run a plan and deploy for each one.
 	for _, edit := range opts.EditDirs {
