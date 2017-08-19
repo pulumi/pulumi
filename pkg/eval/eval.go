@@ -1736,7 +1736,7 @@ func (e *evaluator) evalLoadDynamicCore(node ast.Node, objexpr *ast.Expression, 
 			//     use a runtime library anytime an array is accessed, translating exceptions like this into `undefined`s.
 			if ix >= len(*arrv) && (lval || try) {
 				newarr := make([]*rt.Pointer, ix+1)
-				copy(*arrv, newarr)
+				copy(newarr, *arrv)
 				*arrv = newarr
 			}
 			if ix < len(*arrv) {
