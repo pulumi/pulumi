@@ -150,6 +150,14 @@ func (s *closureSerializer) envEntryObjFor(obj *rt.Object) *rt.Object {
 		} else if obj.IsBool() || obj.IsString() || obj.IsNumber() || obj.IsNull() {
 			// Else if it's a primitive, pass through the object to serialize
 			props.Set("json", obj)
+		} else if obj.IsArray() {
+			arr := *obj.ArrayValue()
+			newArrElements := make([]*rt.Pointer, len(arr))
+			for i, elem := range arr {
+				newValue := s.envEntryObjFor(elem.Obj())
+				newArrElements[i] = rt.NewPointer(newValue, false, nil, nil)
+			}
+			props.Set("arr", rt.NewArrayObject(types.Dynamic, &newArrElements))
 		} else {
 			// Else it's an object, and we recursively serialize it's properties.
 			newObjProps := rt.NewPropertyMap()

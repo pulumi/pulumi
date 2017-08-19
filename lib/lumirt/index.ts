@@ -68,6 +68,7 @@ export type EnvObj = {[key: string]: EnvEntry};
 export interface EnvEntry {
     json?: any;        // a value which can be safely json serialized
     closure?: Closure; // a closure we are dependent on
-    obj: EnvObj;       // an object which may contain nested closures
+    obj?: EnvObj;      // an object which may contain nested closures
+    arr?: EnvEntry[];  // an array which may contain nested closures 
 }
 
