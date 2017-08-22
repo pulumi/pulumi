@@ -4,6 +4,7 @@ package main
 
 import (
 	"github.com/pkg/errors"
+	"github.com/pulumi/pulumi-fabric/pkg/util/contract"
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi-fabric/pkg/util/cmdutil"
@@ -27,22 +28,12 @@ func newEnvRmCmd() *cobra.Command {
 				return errors.Errorf("missing required environment name")
 			}
 
-			info, err := initEnvCmd(args[0], pkgargFromArgs(args[1:]))
-
-			if err != nil {
-				return err
-			}
-
-			// Don't remove environments that still have resources.
-			if !force && info.Snapshot != nil && len(info.Snapshot.Resources) > 0 {
-				return errors.Errorf(
-					"'%v' still has resources; removal rejected; pass --force to override", info.Target.Name)
-			}
+			envName := args[0]
 
 			// Ensure the user really wants to do this.
 			if yes ||
-				confirmPrompt("This will permanently remove the '%v' environment!", info.Target.Name) {
-				removeTarget(info.Target)
+				confirmPrompt("This will permanently remove the '%v' environment!", envName) {
+				return RemoveEnv(envName, force)
 			}
 
 			return nil
@@ -57,4 +48,23 @@ func newEnvRmCmd() *cobra.Command {
 		"Skip confirmation prompts, and proceed with removal anyway")
 
 	return cmd
+}
+
+func RemoveEnv(envName string, force bool) error {
+	contract.Assert(envName != "")
+
+	info, err := initEnvCmd(envName, "")
+
+	if err != nil {
+		return err
+	}
+
+	// Don't remove environments that still have resources.
+	if !force && info.Snapshot != nil && len(info.Snapshot.Resources) > 0 {
+		return errors.Errorf(
+			"'%v' still has resources; removal rejected; pass --force to override", info.Target.Name)
+	}
+
+	removeTarget(info.Target)
+	return nil
 }

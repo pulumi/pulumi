@@ -45,13 +45,10 @@ func newDeployCmd() *cobra.Command {
 			"By default, the package to execute is loaded from the current directory.  Optionally, an\n" +
 			"explicit path can be provided using the [package] argument.",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			info, err := initEnvCmdName(tokens.QName(env), pkgargFromArgs(args))
-			if err != nil {
-				return err
-			}
-			return deployLatest(info, deployOptions{
+			return Deploy(DeployOptions{
+				Environment:          env,
+				Package:              pkgargFromArgs(args),
 				Debug:                debug,
-				Destroy:              false,
 				DryRun:               dryRun,
 				Analyzers:            analyzers,
 				ShowConfig:           showConfig,
@@ -96,6 +93,39 @@ func newDeployCmd() *cobra.Command {
 		"Serialize the resulting checkpoint to a specific file, instead of overwriting the existing one")
 
 	return cmd
+}
+
+type DeployOptions struct {
+	Environment          string   // the environment we are deploying into
+	Package              string   // the package we are deploying (or "" to use the default)
+	Debug                bool     // true to enable resource debugging output.
+	DryRun               bool     // true if we should just print the plan without performing it.
+	Analyzers            []string // an optional set of analyzers to run as part of this deployment.
+	ShowConfig           bool     // true to show the configuration variables being used.
+	ShowReads            bool     // true to show the read-only steps in the plan.
+	ShowReplacementSteps bool     // true to show the replacement steps in the plan.
+	ShowSames            bool     // true to show the resources that aren't updated, in addition to those that are.
+	Summary              bool     // true if we should only summarize resources and operations.
+	Output               string   // the place to store the output, if any.
+}
+
+func Deploy(opts DeployOptions) error {
+	info, err := initEnvCmdName(tokens.QName(opts.Environment), opts.Package)
+	if err != nil {
+		return err
+	}
+	return deployLatest(info, deployOptions{
+		Debug:                opts.Debug,
+		Destroy:              false,
+		DryRun:               opts.DryRun,
+		Analyzers:            opts.Analyzers,
+		ShowConfig:           opts.ShowConfig,
+		ShowReads:            opts.ShowReads,
+		ShowReplacementSteps: opts.ShowReplacementSteps,
+		ShowSames:            opts.ShowSames,
+		Summary:              opts.Summary,
+		Output:               opts.Output,
+	})
 }
 
 type deployOptions struct {

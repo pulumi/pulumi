@@ -24,14 +24,22 @@ func newEnvSelectCmd() *cobra.Command {
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			// Read in the name of the environment to switch to.
 			if len(args) == 0 {
-				if name := getCurrentEnv(); name != "" {
-					fmt.Println(name)
-				}
-			} else {
-				name := tokens.QName(args[0])
-				setCurrentEnv(name, true)
+				return GetCurrentEnv()
 			}
-			return nil
+
+			return SelectEnv(args[0])
 		}),
 	}
+}
+
+func GetCurrentEnv() error {
+	if name := getCurrentEnv(); name != "" {
+		fmt.Println(name)
+	}
+	return nil
+}
+
+func SelectEnv(envName string) error {
+	setCurrentEnv(tokens.QName(envName), true)
+	return nil
 }

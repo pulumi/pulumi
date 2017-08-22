@@ -47,34 +47,19 @@ func newPlanCmd() *cobra.Command {
 			"By default, the package to execute is loaded from the current directory.  Optionally, an\n" +
 			"explicit path can be provided using the [package] argument.",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			info, err := initEnvCmdName(tokens.QName(env), pkgargFromArgs(args))
-			if err != nil {
-				return err
-			}
 			contract.Assertf(!dotOutput, "TODO[pulumi/pulumi-fabric#235]: DOT files not yet supported")
-			opts := deployOptions{
+
+			return Plan(PlanOptions{
+				Package:              pkgargFromArgs(args),
 				Debug:                debug,
-				Destroy:              false,
-				DryRun:               true,
+				Environment:          env,
 				Analyzers:            analyzers,
 				ShowConfig:           showConfig,
 				ShowReads:            showReads,
 				ShowReplacementSteps: showReplacementSteps,
 				ShowSames:            showSames,
 				Summary:              summary,
-				DOT:                  dotOutput,
-			}
-			result, err := plan(info, opts)
-			if err != nil {
-				return err
-			}
-			if result != nil {
-				defer contract.IgnoreClose(result)
-				if err := printPlan(result, opts); err != nil {
-					return err
-				}
-			}
-			return nil
+			})
 		}),
 	}
 
@@ -107,6 +92,47 @@ func newPlanCmd() *cobra.Command {
 		"Only display summarization of resources and plan operations")
 
 	return cmd
+}
+
+type PlanOptions struct {
+	Package              string   // the package to compute the plan for
+	Debug                bool     // true to enable resource debugging output.
+	Environment          string   // the environment to use when planning
+	Analyzers            []string // an optional set of analyzers to run as part of this deployment.
+	ShowConfig           bool     // true to show the configuration variables being used.
+	ShowReads            bool     // true to show the read-only steps in the plan.
+	ShowReplacementSteps bool     // true to show the replacement steps in the plan.
+	ShowSames            bool     // true to show the resources that aren't updated, in addition to those that are.
+	Summary              bool     // true if we should only summarize resources and operations.
+}
+
+func Plan(opts PlanOptions) error {
+	info, err := initEnvCmdName(tokens.QName(opts.Environment), opts.Package)
+	if err != nil {
+		return err
+	}
+	deployOpts := deployOptions{
+		Debug:                opts.Debug,
+		Destroy:              false,
+		DryRun:               true,
+		Analyzers:            opts.Analyzers,
+		ShowConfig:           opts.ShowConfig,
+		ShowReads:            opts.ShowReads,
+		ShowReplacementSteps: opts.ShowReplacementSteps,
+		ShowSames:            opts.ShowSames,
+		Summary:              opts.Summary,
+	}
+	result, err := plan(info, deployOpts)
+	if err != nil {
+		return err
+	}
+	if result != nil {
+		defer contract.IgnoreClose(result)
+		if err := printPlan(result, deployOpts); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // plan just uses the standard logic to parse arguments, options, and to create a snapshot and plan.

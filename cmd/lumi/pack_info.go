@@ -36,33 +36,7 @@ func newPackInfoCmd() *cobra.Command {
 				printExportedSymbols = true
 			}
 
-			var pkg *pack.Package
-			var err error
-			if len(args) == 0 {
-				// No package specified, just load from the current directory.
-				pwd, locerr := os.Getwd()
-				if locerr != nil {
-					return locerr
-				}
-				if pkg, err = detectPackage(pwd); err != nil {
-					return err
-				}
-				printPackage(pkg, printSymbols, printExportedSymbols, printIL)
-			} else {
-				// Enumerate the list of packages, deserialize them, and print information.
-				var path string
-				for _, arg := range args {
-					pkg, path = readPackageFromArg(arg)
-					if pkg == nil {
-						if pkg, err = detectPackage(path); err != nil {
-							return err
-						}
-						printPackage(pkg, printSymbols, printExportedSymbols, printIL)
-					}
-				}
-			}
-
-			return nil
+			return PackInfo(printExportedSymbols, printIL, printSymbols, args)
 		}),
 	}
 
@@ -80,6 +54,36 @@ func newPackInfoCmd() *cobra.Command {
 		"Print a complete listing of all symbols, exported or otherwise")
 
 	return cmd
+}
+
+func PackInfo(printExportedSymbols bool, printIL bool, printSymbols bool, args []string) error {
+	var pkg *pack.Package
+	var err error
+	if len(args) == 0 {
+		// No package specified, just load from the current directory.
+		pwd, locerr := os.Getwd()
+		if locerr != nil {
+			return locerr
+		}
+		if pkg, err = detectPackage(pwd); err != nil {
+			return err
+		}
+		printPackage(pkg, printSymbols, printExportedSymbols, printIL)
+	} else {
+		// Enumerate the list of packages, deserialize them, and print information.
+		var path string
+		for _, arg := range args {
+			pkg, path = readPackageFromArg(arg)
+			if pkg == nil {
+				if pkg, err = detectPackage(path); err != nil {
+					return err
+				}
+				printPackage(pkg, printSymbols, printExportedSymbols, printIL)
+			}
+		}
+	}
+
+	return nil
 }
 
 func printComment(pc *string, indent string) {

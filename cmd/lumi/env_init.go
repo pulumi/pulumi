@@ -26,9 +26,12 @@ func newEnvInitCmd() *cobra.Command {
 				return errors.New("missing required environment name")
 			}
 
-			name := tokens.QName(args[0])
-			createEnv(name)
-			return nil
+			return InitEnv(args[0])
 		}),
 	}
+}
+
+func InitEnv(name string) error {
+	createEnv(tokens.QName(name))
+	return nil
 }

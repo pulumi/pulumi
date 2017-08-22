@@ -33,33 +33,7 @@ func newPackEvalCmd() *cobra.Command {
 			"a path to a package elsewhere can be provided as the [package] argument.",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			contract.Assertf(!dotOutput, "TODO[pulumi/pulumi-fabric#235]: DOT files not yet supported")
-
-			// First, load and compile the package.
-			result := compile(pkgargFromArgs(args))
-			if result == nil {
-				return nil
-			}
-
-			// Now fire up an interpreter so we can run the program.
-			e := eval.New(result.B.Ctx(), nil)
-
-			// If configuration was requested, load it up and populate the object state.
-			if configEnv != "" {
-				envInfo, err := initEnvCmdName(tokens.QName(configEnv), pkgargFromArgs(args))
-				if err != nil {
-					return err
-				}
-				if err := deploy.InitEvalConfig(result.B.Ctx(), e, envInfo.Target.Config); err != nil {
-					return err
-				}
-			}
-
-			// Finally, execute the entire program, and serialize the return value (if any).
-			packArgs := dashdashArgsToMap(args)
-			if obj, _ := e.EvaluatePackage(result.Pkg, packArgs); obj != nil {
-				fmt.Print(obj)
-			}
-			return nil
+			return PackEval(configEnv, args)
 		}),
 	}
 
@@ -71,6 +45,35 @@ func newPackEvalCmd() *cobra.Command {
 		"Output the graph as a DOT digraph (graph description language)")
 
 	return cmd
+}
+
+func PackEval(configEnv string, args []string) error {
+	// First, load and compile the package.
+	result := compile(pkgargFromArgs(args))
+	if result == nil {
+		return nil
+	}
+
+	// Now fire up an interpreter so we can run the program.
+	e := eval.New(result.B.Ctx(), nil)
+
+	// If configuration was requested, load it up and populate the object state.
+	if configEnv != "" {
+		envInfo, err := initEnvCmdName(tokens.QName(configEnv), pkgargFromArgs(args))
+		if err != nil {
+			return err
+		}
+		if err := deploy.InitEvalConfig(result.B.Ctx(), e, envInfo.Target.Config); err != nil {
+			return err
+		}
+	}
+
+	// Finally, execute the entire program, and serialize the return value (if any).
+	packArgs := dashdashArgsToMap(args)
+	if obj, _ := e.EvaluatePackage(result.Pkg, packArgs); obj != nil {
+		fmt.Print(obj)
+	}
+	return nil
 }
 
 // dashdashArgsToMap is a simple args parser that places incoming key/value pairs into a map.  These are then used
