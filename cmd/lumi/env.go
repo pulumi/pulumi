@@ -114,13 +114,20 @@ func initEnvCmdName(name tokens.QName, args []string) (*envCmdInfo, error) {
 	if checkpoint == nil {
 		return nil, goerr.Errorf("could not read environment information")
 	}
+
+	var pkgarg string
+
+	if len(args) > 0 {
+		pkgarg = args[0]
+	}
+
 	contract.Assert(target != nil)
 	contract.Assert(checkpoint != nil)
 	return &envCmdInfo{
 		Target:     target,
 		Checkpoint: checkpoint,
 		Snapshot:   snapshot,
-		Args:       args,
+		PackageArg: pkgarg,
 	}, nil
 }
 
@@ -128,7 +135,7 @@ type envCmdInfo struct {
 	Target     *deploy.Target          // the target environment.
 	Checkpoint *environment.Checkpoint // the full serialized checkpoint from which this came.
 	Snapshot   *deploy.Snapshot        // the environment's latest deployment snapshot
-	Args       []string                // the args after extracting the environment name
+	PackageArg string                  // an optional path to a package to pass to the compiler
 }
 
 func confirmPrompt(msg string, name tokens.QName) bool {

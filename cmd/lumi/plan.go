@@ -127,7 +127,7 @@ func plan(info *envCmdInfo, opts deployOptions) (*planResult, error) {
 	}
 
 	// First, compile the package, in preparatin for interpreting it and creating resources.
-	result := compile(info.Args)
+	result := compile(info.PackageArg)
 	if result == nil || !result.B.Ctx().Diag.Success() {
 		return nil, fmt.Errorf("Errors during compilation: %v", result.B.Ctx().Diag.Errors())
 	}

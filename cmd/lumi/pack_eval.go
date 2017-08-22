@@ -34,8 +34,14 @@ func newPackEvalCmd() *cobra.Command {
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			contract.Assertf(!dotOutput, "TODO[pulumi/pulumi-fabric#235]: DOT files not yet supported")
 
+			var pkgarg string
+
+			if len(args) > 0 {
+				pkgarg = args[0]
+			}
+
 			// First, load and compile the package.
-			result := compile(args)
+			result := compile(pkgarg)
 			if result == nil {
 				return nil
 			}

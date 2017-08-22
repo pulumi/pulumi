@@ -48,14 +48,9 @@ func NewLumiCmd() *cobra.Command {
 	return cmd
 }
 
-func prepareCompiler(args []string) (compiler.Compiler, *pack.Package) {
-	// TODO[pulumi/pulumi-fabric#88]: enable arguments to flow to the package itself.  In that case, we want to split the
-	//     arguments at the --, if any, so we can still pass arguments to the compiler itself in these cases.
-	var pkgarg string
-	if len(args) > 0 {
-		pkgarg = args[0]
-	}
-
+// TODO[pulumi/pulumi-fabric#88]: enable arguments to flow to the package itself.  In that case, we want to split the
+//     arguments at the --, if any, so we can still pass arguments to the compiler itself in these cases.
+func prepareCompiler(pkgarg string) (compiler.Compiler, *pack.Package) {
 	// Create a compiler options object and map any flags and arguments to settings on it.
 	opts := core.DefaultOptions()
 
@@ -83,9 +78,9 @@ func prepareCompiler(args []string) (compiler.Compiler, *pack.Package) {
 
 // compile just uses the standard logic to parse arguments, options, and to locate/compile a package.  It returns the
 // compilation result, or nil if an error occurred (in which case, we would expect diagnostics to have been output).
-func compile(args []string) *compileResult {
+func compile(pkgarg string) *compileResult {
 	// Prepare the compiler info and, provided it succeeds, perform the compilation.
-	if comp, pkg := prepareCompiler(args); comp != nil {
+	if comp, pkg := prepareCompiler(pkgarg); comp != nil {
 		var b binder.Binder
 		var pkgsym *symbols.Package
 		if pkg == nil {
