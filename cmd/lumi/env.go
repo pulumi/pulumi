@@ -92,7 +92,7 @@ func newEnvCmd() *cobra.Command {
 	return cmd
 }
 
-func initEnvCmd(cmd *cobra.Command, args []string) (*envCmdInfo, error) {
+func initEnvCmd(args []string) (*envCmdInfo, error) {
 	// Read in the name of the environment to use.
 	if len(args) == 0 || args[0] == "" {
 		return nil, goerr.Errorf("missing required environment name")

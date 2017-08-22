@@ -22,7 +22,7 @@ func newEnvRmCmd() *cobra.Command {
 			"\n" +
 			"After this command completes, the environment will no longer be available for deployments.",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			info, err := initEnvCmd(cmd, args)
+			info, err := initEnvCmd(args)
 			if err != nil {
 				return err
 			}
