@@ -92,15 +92,11 @@ func newEnvCmd() *cobra.Command {
 	return cmd
 }
 
-func initEnvCmd(args []string) (*envCmdInfo, error) {
-	// Read in the name of the environment to use.
-	if len(args) == 0 || args[0] == "" {
-		return nil, goerr.Errorf("missing required environment name")
-	}
-	return initEnvCmdName(tokens.QName(args[0]), args[1:])
+func initEnvCmd(name string, pkgarg string) (*envCmdInfo, error) {
+	return initEnvCmdName(tokens.QName(name), pkgarg)
 }
 
-func initEnvCmdName(name tokens.QName, args []string) (*envCmdInfo, error) {
+func initEnvCmdName(name tokens.QName, pkgarg string) (*envCmdInfo, error) {
 	// If the name is blank, use the default.
 	if name == "" {
 		name = getCurrentEnv()
@@ -113,12 +109,6 @@ func initEnvCmdName(name tokens.QName, args []string) (*envCmdInfo, error) {
 	target, snapshot, checkpoint := readEnv(name)
 	if checkpoint == nil {
 		return nil, goerr.Errorf("could not read environment information")
-	}
-
-	var pkgarg string
-
-	if len(args) > 0 {
-		pkgarg = args[0]
 	}
 
 	contract.Assert(target != nil)

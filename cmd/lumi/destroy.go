@@ -28,7 +28,7 @@ func newDestroyCmd() *cobra.Command {
 			"Warning: although old snapshots can be used to recreate an environment, this command\n" +
 			"is generally irreversable and should be used with great care.",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			info, err := initEnvCmdName(tokens.QName(env), args)
+			info, err := initEnvCmdName(tokens.QName(env), pkgargFromArgs(args))
 			if err != nil {
 				return err
 			}

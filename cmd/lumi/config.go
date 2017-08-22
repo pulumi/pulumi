@@ -20,7 +20,8 @@ func newConfigCmd() *cobra.Command {
 		Use:   "config [<key> [value]]",
 		Short: "Query, set, replace, or unset configuration values",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			info, err := initEnvCmdName(tokens.QName(env), args)
+
+			info, err := initEnvCmdName(tokens.QName(env), pkgargFromArgs(args))
 			if err != nil {
 				return err
 			}

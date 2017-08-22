@@ -48,6 +48,14 @@ func NewLumiCmd() *cobra.Command {
 	return cmd
 }
 
+func pkgargFromArgs(args []string) string {
+	if len(args) > 0 {
+		return args[0]
+	}
+
+	return ""
+}
+
 // TODO[pulumi/pulumi-fabric#88]: enable arguments to flow to the package itself.  In that case, we want to split the
 //     arguments at the --, if any, so we can still pass arguments to the compiler itself in these cases.
 func prepareCompiler(pkgarg string) (compiler.Compiler, *pack.Package) {

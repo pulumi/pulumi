@@ -37,14 +37,8 @@ func newPackVerifyCmd() *cobra.Command {
 // verify creates a compiler, much like compile, but only performs binding and verification on it.  If verification
 // succeeds, the return value is true; if verification fails, errors will have been output, and the return is false.
 func verify(cmd *cobra.Command, args []string) bool {
-	var pkgarg string
-
-	if len(args) > 0 {
-		pkgarg = args[0]
-	}
-
 	// Prepare the compiler info and, provided it succeeds, perform the verification.
-	if comp, pkg := prepareCompiler(pkgarg); comp != nil {
+	if comp, pkg := prepareCompiler(pkgargFromArgs(args)); comp != nil {
 		// Now perform the compilation and extract the heap snapshot.
 		if pkg == nil {
 			return comp.Verify()
