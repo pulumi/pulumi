@@ -7,7 +7,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/pulumi/pulumi-fabric/pkg/tokens"
+	"github.com/pulumi/pulumi-fabric/pkg/engine"
 	"github.com/pulumi/pulumi-fabric/pkg/util/cmdutil"
 )
 
@@ -26,12 +26,7 @@ func newEnvInitCmd() *cobra.Command {
 				return errors.New("missing required environment name")
 			}
 
-			return InitEnv(args[0])
+			return engine.InitEnv(args[0])
 		}),
 	}
-}
-
-func InitEnv(name string) error {
-	createEnv(tokens.QName(name))
-	return nil
 }

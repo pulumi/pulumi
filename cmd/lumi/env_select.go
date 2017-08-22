@@ -3,11 +3,9 @@
 package main
 
 import (
-	"fmt"
-
 	"github.com/spf13/cobra"
 
-	"github.com/pulumi/pulumi-fabric/pkg/tokens"
+	"github.com/pulumi/pulumi-fabric/pkg/engine"
 	"github.com/pulumi/pulumi-fabric/pkg/util/cmdutil"
 )
 
@@ -24,22 +22,10 @@ func newEnvSelectCmd() *cobra.Command {
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			// Read in the name of the environment to switch to.
 			if len(args) == 0 {
-				return GetCurrentEnv()
+				return engine.GetCurrentEnv()
 			}
 
-			return SelectEnv(args[0])
+			return engine.SelectEnv(args[0])
 		}),
 	}
-}
-
-func GetCurrentEnv() error {
-	if name := getCurrentEnv(); name != "" {
-		fmt.Println(name)
-	}
-	return nil
-}
-
-func SelectEnv(envName string) error {
-	setCurrentEnv(tokens.QName(envName), true)
-	return nil
 }

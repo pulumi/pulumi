@@ -5,7 +5,7 @@ package main
 import (
 	"github.com/spf13/cobra"
 
-	"github.com/pulumi/pulumi-fabric/pkg/tokens"
+	"github.com/pulumi/pulumi-fabric/pkg/engine"
 	"github.com/pulumi/pulumi-fabric/pkg/util/cmdutil"
 )
 
@@ -30,7 +30,7 @@ func newDestroyCmd() *cobra.Command {
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			if dryRun || yes ||
 				confirmPrompt("This will permanently destroy all resources in the '%v' environment!", env) {
-				return Destroy(env, pkgargFromArgs(args), dryRun, debug, summary)
+				return engine.Destroy(env, pkgargFromArgs(args), dryRun, debug, summary)
 			}
 
 			return nil
@@ -54,18 +54,4 @@ func newDestroyCmd() *cobra.Command {
 		"Skip confirmation prompts, and proceed with the destruction anyway")
 
 	return cmd
-}
-
-func Destroy(envName string, pkgarg string, dryRun bool, debug bool, summary bool) error {
-	info, err := initEnvCmdName(tokens.QName(envName), pkgarg)
-	if err != nil {
-		return err
-	}
-
-	return deployLatest(info, deployOptions{
-		Debug:   debug,
-		Destroy: true,
-		DryRun:  dryRun,
-		Summary: summary,
-	})
 }
