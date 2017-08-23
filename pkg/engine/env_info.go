@@ -6,6 +6,10 @@ import (
 	"github.com/pkg/errors"
 )
 
+func (eng *Engine) GetCurrentEnvName() string {
+	return eng.getCurrentEnv().String()
+}
+
 func (eng *Engine) EnvInfo(showIDs bool, showURNs bool) error {
 	curr := eng.getCurrentEnv()
 	if curr == "" {

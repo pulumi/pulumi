@@ -27,6 +27,10 @@ func newDestroyCmd() *cobra.Command {
 			"Warning: although old snapshots can be used to recreate an environment, this command\n" +
 			"is generally irreversable and should be used with great care.",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+			if env == "" {
+				env = lumiEngine.GetCurrentEnvName()
+			}
+
 			if dryRun || yes ||
 				confirmPrompt("This will permanently destroy all resources in the '%v' environment!", env) {
 				return lumiEngine.Destroy(env, pkgargFromArgs(args), dryRun, debug, summary)
