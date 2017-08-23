@@ -7,7 +7,6 @@ import (
 	"github.com/pulumi/pulumi-fabric/pkg/compiler/errors"
 	"github.com/pulumi/pulumi-fabric/pkg/compiler/symbols"
 	"github.com/pulumi/pulumi-fabric/pkg/pack"
-	"github.com/pulumi/pulumi-fabric/pkg/util/cmdutil"
 	"github.com/pulumi/pulumi-fabric/pkg/util/contract"
 )
 
@@ -16,6 +15,7 @@ import (
 func prepareCompiler(pkgarg string) (compiler.Compiler, *pack.Package) {
 	// Create a compiler options object and map any flags and arguments to settings on it.
 	opts := core.DefaultOptions()
+	opts.Diag = E.Diag()
 
 	// If a package argument is present, try to load that package (either via stdin or a path).
 	var pkg *pack.Package
@@ -33,7 +33,7 @@ func prepareCompiler(pkgarg string) (compiler.Compiler, *pack.Package) {
 		comp, err = compiler.New(root, opts)
 	}
 	if err != nil {
-		cmdutil.Diag().Errorf(errors.ErrorCantCreateCompiler, err)
+		E.Diag().Errorf(errors.ErrorCantCreateCompiler, err)
 	}
 
 	return comp, pkg

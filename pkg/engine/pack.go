@@ -9,14 +9,13 @@ import (
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi-fabric/pkg/encoding"
 	"github.com/pulumi/pulumi-fabric/pkg/pack"
-	"github.com/pulumi/pulumi-fabric/pkg/util/cmdutil"
 	"github.com/pulumi/pulumi-fabric/pkg/util/contract"
 	"github.com/pulumi/pulumi-fabric/pkg/workspace"
 )
 
 // detectPackage returns a package given the path, or returns an error if one could not be located.
 func detectPackage(path string) (*pack.Package, error) {
-	pkgpath, err := workspace.DetectPackage(path, cmdutil.Diag())
+	pkgpath, err := workspace.DetectPackage(path, E.Diag())
 	if err != nil {
 		return nil, errors.Errorf("could not locate a package to load: %v", err)
 	} else if pkgpath == "" {

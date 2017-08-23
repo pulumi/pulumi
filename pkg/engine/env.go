@@ -15,7 +15,6 @@ import (
 	"github.com/pulumi/pulumi-fabric/pkg/resource/deploy"
 	"github.com/pulumi/pulumi-fabric/pkg/resource/environment"
 	"github.com/pulumi/pulumi-fabric/pkg/tokens"
-	"github.com/pulumi/pulumi-fabric/pkg/util/cmdutil"
 	"github.com/pulumi/pulumi-fabric/pkg/util/contract"
 	"github.com/pulumi/pulumi-fabric/pkg/util/mapper"
 	"github.com/pulumi/pulumi-fabric/pkg/workspace"
@@ -72,7 +71,7 @@ func newWorkspace() (workspace.W, error) {
 	if err != nil {
 		return nil, err
 	}
-	ctx := core.NewContext(pwd, nil, &core.Options{})
+	ctx := core.NewContext(pwd, E.Diag(), &core.Options{})
 	return workspace.New(ctx)
 }
 
@@ -84,7 +83,7 @@ func getCurrentEnv() tokens.QName {
 		name = w.Settings().Env
 	}
 	if err != nil {
-		cmdutil.Diag().Errorf(errors.ErrorIO, err)
+		E.Diag().Errorf(errors.ErrorIO, err)
 	}
 	return name
 }
@@ -104,7 +103,7 @@ func setCurrentEnv(name tokens.QName, verify bool) {
 		err = w.Save()
 	}
 	if err != nil {
-		cmdutil.Diag().Errorf(errors.ErrorIO, err)
+		E.Diag().Errorf(errors.ErrorIO, err)
 	}
 }
 
@@ -141,7 +140,7 @@ func readEnv(name tokens.QName) (*deploy.Target, *deploy.Snapshot, *environment.
 	// Detect the encoding of the file so we can do our initial unmarshaling.
 	m, ext := encoding.Detect(file)
 	if m == nil {
-		cmdutil.Diag().Errorf(errors.ErrorIllegalMarkupExtension, ext)
+		E.Diag().Errorf(errors.ErrorIllegalMarkupExtension, ext)
 		return nil, nil, nil
 	}
 
@@ -149,9 +148,9 @@ func readEnv(name tokens.QName) (*deploy.Target, *deploy.Snapshot, *environment.
 	b, err := ioutil.ReadFile(file)
 	if err != nil {
 		if os.IsNotExist(err) {
-			cmdutil.Diag().Errorf(errors.ErrorInvalidEnvName, name)
+			E.Diag().Errorf(errors.ErrorInvalidEnvName, name)
 		} else {
-			cmdutil.Diag().Errorf(errors.ErrorIO, err)
+			E.Diag().Errorf(errors.ErrorIO, err)
 		}
 		return nil, nil, nil
 	}
@@ -159,7 +158,7 @@ func readEnv(name tokens.QName) (*deploy.Target, *deploy.Snapshot, *environment.
 	// Unmarshal the contents into a checkpoint structure.
 	var checkpoint environment.Checkpoint
 	if err = m.Unmarshal(b, &checkpoint); err != nil {
-		cmdutil.Diag().Errorf(errors.ErrorCantReadDeployment, file, err)
+		E.Diag().Errorf(errors.ErrorCantReadDeployment, file, err)
 		return nil, nil, nil
 	}
 
@@ -167,7 +166,7 @@ func readEnv(name tokens.QName) (*deploy.Target, *deploy.Snapshot, *environment.
 	// IDEA: we can eliminate this redundant unmarshaling once Go supports strict unmarshaling.
 	var obj map[string]interface{}
 	if err = m.Unmarshal(b, &obj); err != nil {
-		cmdutil.Diag().Errorf(errors.ErrorCantReadDeployment, file, err)
+		E.Diag().Errorf(errors.ErrorCantReadDeployment, file, err)
 		return nil, nil, nil
 	}
 
@@ -179,7 +178,7 @@ func readEnv(name tokens.QName) (*deploy.Target, *deploy.Snapshot, *environment.
 	md := mapper.New(nil)
 	var ignore environment.Checkpoint // just for errors.
 	if err = md.Decode(obj, &ignore); err != nil {
-		cmdutil.Diag().Errorf(errors.ErrorCantReadDeployment, file, err)
+		E.Diag().Errorf(errors.ErrorCantReadDeployment, file, err)
 		return nil, nil, nil
 	}
 
@@ -198,7 +197,7 @@ func saveEnv(env *deploy.Target, snap *deploy.Snapshot, file string, existok boo
 	// Make a serializable LumiGL data structure and then use the encoder to encode it.
 	m, ext := encoding.Detect(file)
 	if m == nil {
-		cmdutil.Diag().Errorf(errors.ErrorIllegalMarkupExtension, ext)
+		E.Diag().Errorf(errors.ErrorIllegalMarkupExtension, ext)
 		return false
 	}
 	if filepath.Ext(file) == "" {
@@ -207,14 +206,14 @@ func saveEnv(env *deploy.Target, snap *deploy.Snapshot, file string, existok boo
 	dep := environment.SerializeCheckpoint(env, snap)
 	b, err := m.Marshal(dep)
 	if err != nil {
-		cmdutil.Diag().Errorf(errors.ErrorIO, err)
+		E.Diag().Errorf(errors.ErrorIO, err)
 		return false
 	}
 
 	// If it's not ok for the file to already exist, ensure that it doesn't.
 	if !existok {
 		if _, staterr := os.Stat(file); staterr == nil {
-			cmdutil.Diag().Errorf(errors.ErrorIO, goerr.Errorf("file '%v' already exists", file))
+			E.Diag().Errorf(errors.ErrorIO, goerr.Errorf("file '%v' already exists", file))
 			return false
 		}
 	}
@@ -224,13 +223,13 @@ func saveEnv(env *deploy.Target, snap *deploy.Snapshot, file string, existok boo
 
 	// Ensure the directory exists.
 	if err = os.MkdirAll(filepath.Dir(file), 0700); err != nil {
-		cmdutil.Diag().Errorf(errors.ErrorIO, err)
+		E.Diag().Errorf(errors.ErrorIO, err)
 		return false
 	}
 
 	// And now write out the new snapshot file, overwriting that location.
 	if err = ioutil.WriteFile(file, b, 0600); err != nil {
-		cmdutil.Diag().Errorf(errors.ErrorIO, err)
+		E.Diag().Errorf(errors.ErrorIO, err)
 		return false
 	}
 

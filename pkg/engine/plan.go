@@ -14,7 +14,6 @@ import (
 	"github.com/pulumi/pulumi-fabric/pkg/resource/deploy"
 	"github.com/pulumi/pulumi-fabric/pkg/resource/plugin"
 	"github.com/pulumi/pulumi-fabric/pkg/tokens"
-	"github.com/pulumi/pulumi-fabric/pkg/util/cmdutil"
 	"github.com/pulumi/pulumi-fabric/pkg/util/contract"
 )
 
@@ -31,6 +30,12 @@ type PlanOptions struct {
 }
 
 func Plan(opts PlanOptions) error {
+	// Initialize the diagnostics logger with the right stuff.
+	E.InitDiag(diag.FormatOptions{
+		Colors: true,
+		Debug:  opts.Debug,
+	})
+
 	info, err := initEnvCmdName(tokens.QName(opts.Environment), opts.Package)
 	if err != nil {
 		return err
@@ -64,14 +69,8 @@ func plan(info *envCmdInfo, opts deployOptions) (*planResult, error) {
 	contract.Assert(info != nil)
 	contract.Assert(info.Target != nil)
 
-	// Initialize the diagnostics logger with the right stuff.
-	cmdutil.InitDiag(diag.FormatOptions{
-		Colors: true,
-		Debug:  opts.Debug,
-	})
-
 	// Create a context for plugins.
-	ctx, err := plugin.NewContext(cmdutil.Diag(), nil)
+	ctx, err := plugin.NewContext(E.Diag(), nil)
 	if err != nil {
 		return nil, err
 	}

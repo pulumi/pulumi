@@ -10,7 +10,6 @@ import (
 	"github.com/pulumi/pulumi-fabric/pkg/resource"
 	"github.com/pulumi/pulumi-fabric/pkg/resource/deploy"
 	"github.com/pulumi/pulumi-fabric/pkg/tokens"
-	"github.com/pulumi/pulumi-fabric/pkg/util/cmdutil"
 	"github.com/pulumi/pulumi-fabric/pkg/util/contract"
 )
 
@@ -141,7 +140,7 @@ func (prog *deployProgress) After(step deploy.Step, status resource.Status, err 
 	stepop := step.Op()
 	if err != nil {
 		// Issue a true, bonafide error.
-		cmdutil.Diag().Errorf(errors.ErrorPlanApplyFailed, err)
+		E.Diag().Errorf(errors.ErrorPlanApplyFailed, err)
 
 		// Print the state of the resource; we don't issue the error, because the deploy above will do that.
 		var b bytes.Buffer
