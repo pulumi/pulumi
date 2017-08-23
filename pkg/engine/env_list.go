@@ -21,7 +21,7 @@ func ListEnvs() error {
 		return errors.Errorf("could not read environments: %v", err)
 	}
 
-	fmt.Printf("%-20s %-48s %-12s\n", "NAME", "LAST DEPLOYMENT", "RESOURCE COUNT")
+	fmt.Fprintf(E.Stdout, "%-20s %-48s %-12s\n", "NAME", "LAST DEPLOYMENT", "RESOURCE COUNT")
 	curr := getCurrentEnv()
 	for _, file := range files {
 		// Ignore directories.
@@ -56,7 +56,7 @@ func ListEnvs() error {
 		if display == curr {
 			display += "*" // fancify the current environment.
 		}
-		fmt.Printf("%-20s %-48s %-12s\n", display, lastDeploy, resourceCount)
+		fmt.Fprintf(E.Stdout, "%-20s %-48s %-12s\n", display, lastDeploy, resourceCount)
 	}
 
 	return nil

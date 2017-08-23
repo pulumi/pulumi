@@ -125,7 +125,7 @@ func printPlan(result *planResult, opts deployOptions) error {
 
 	// Now walk the plan's steps and and pretty-print them out.
 	prelude.WriteString(fmt.Sprintf("%vPlanning changes:%v\n", colors.SpecUnimportant, colors.Reset))
-	fmt.Print(colors.Colorize(&prelude))
+	fmt.Fprint(E.Stdout, colors.Colorize(&prelude))
 
 	iter, err := result.Plan.Iterate()
 	if err != nil {
@@ -171,7 +171,7 @@ func printPlan(result *planResult, opts deployOptions) error {
 
 	// Print a summary of operation counts.
 	printChangeSummary(&summary, counts, true)
-	fmt.Print(colors.Colorize(&summary))
+	fmt.Fprint(E.Stdout, colors.Colorize(&summary))
 	return nil
 }
 

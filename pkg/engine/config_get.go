@@ -16,7 +16,7 @@ func GetConfig(envName string, key string) error {
 
 	if config != nil {
 		if v, has := config[tokens.Token(key)]; has {
-			fmt.Printf("%v\n", v)
+			fmt.Fprintf(E.Stdout, "%v\n", v)
 			return nil
 		}
 	}

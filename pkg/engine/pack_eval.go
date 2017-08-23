@@ -32,7 +32,7 @@ func PackEval(configEnv string, pkg string, packArgs core.Args) error {
 
 	// Finally, execute the entire program, and serialize the return value (if any).
 	if obj, _ := e.EvaluatePackage(result.Pkg, packArgs); obj != nil {
-		fmt.Print(obj)
+		fmt.Fprint(E.Stdout, obj)
 	}
 	return nil
 }

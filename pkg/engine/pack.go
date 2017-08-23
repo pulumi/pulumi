@@ -46,8 +46,8 @@ func readPackageFromStdin() *pack.Package {
 	// If stdin, read the package from text, and then create a compiler using the working directory.
 	b, err := ioutil.ReadAll(os.Stdin)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "error: could not read from stdin\n")
-		fmt.Fprintf(os.Stderr, "       %v\n", err)
+		fmt.Fprintf(E.Stderr, "error: could not read from stdin\n")
+		fmt.Fprintf(E.Stderr, "       %v\n", err)
 		return nil
 	}
 
@@ -60,7 +60,7 @@ func readPackage(path string) (*pack.Package, string) {
 	// If it's a directory, bail early.
 	info, err := os.Stat(path)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "error: could not read path '%v': %v\n", path, err)
+		fmt.Fprintf(E.Stderr, "error: could not read path '%v': %v\n", path, err)
 		return nil, ""
 	}
 	if info.IsDir() {
@@ -71,15 +71,15 @@ func readPackage(path string) (*pack.Package, string) {
 	ext := filepath.Ext(path)
 	m, has := encoding.Marshalers[ext]
 	if !has {
-		fmt.Fprintf(os.Stderr, "error: no marshaler found for file format '%v'\n", ext)
+		fmt.Fprintf(E.Stderr, "error: no marshaler found for file format '%v'\n", ext)
 		return nil, ""
 	}
 
 	// Read the contents.
 	b, err := ioutil.ReadFile(path)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "error: a problem occurred when reading file '%v'\n", path)
-		fmt.Fprintf(os.Stderr, "       %v\n", err)
+		fmt.Fprintf(E.Stderr, "error: a problem occurred when reading file '%v'\n", path)
+		fmt.Fprintf(E.Stderr, "       %v\n", err)
 		return nil, ""
 	}
 
@@ -92,8 +92,8 @@ func DecodePackage(m encoding.Marshaler, b []byte, path string) *pack.Package {
 	// Unmarshal the contents into a fresh package.
 	pkg, err := encoding.Decode(m, b)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "error: a problem occurred when unmarshaling file '%v'\n", path)
-		fmt.Fprintf(os.Stderr, "       %v\n", err)
+		fmt.Fprintf(E.Stderr, "error: a problem occurred when unmarshaling file '%v'\n", path)
+		fmt.Fprintf(E.Stderr, "       %v\n", err)
 		return nil
 	}
 	return pkg

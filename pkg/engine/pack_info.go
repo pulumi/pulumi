@@ -65,7 +65,7 @@ func printComment(pc *string, indent string) {
 		}
 
 		for len(c) > 0 {
-			fmt.Print(indent + prefix)
+			fmt.Fprint(E.Stdout, indent + prefix)
 			// Now, try to split the comment as close to maxlen-3 chars as possible (taking into account indent+"// "),
 			// but don't split words -- only split at whitespace characters if we can help it.
 			six := maxlen
@@ -95,7 +95,7 @@ func printComment(pc *string, indent string) {
 			}
 
 			// Print what we've got thus far, plus a newline.
-			fmt.Printf("%v\n", string(c[:six]))
+			fmt.Fprintf(E.Stdout, "%v\n", string(c[:six]))
 
 			// Now find the first non-space character beyond the split point and use that for the remainder.
 			eix := six
@@ -110,33 +110,33 @@ func printComment(pc *string, indent string) {
 // printPackage pretty-prints the package metadata.
 func printPackage(pkg *pack.Package, printSymbols bool, printExports bool, printIL bool) {
 	printComment(pkg.Description, "")
-	fmt.Printf("package \"%v\" {\n", pkg.Name)
+	fmt.Fprintf(E.Stdout, "package \"%v\" {\n", pkg.Name)
 
 	if pkg.Author != nil {
-		fmt.Printf("%vauthor \"%v\"\n", tab, *pkg.Author)
+		fmt.Fprintf(E.Stdout, "%vauthor \"%v\"\n", tab, *pkg.Author)
 	}
 	if pkg.Website != nil {
-		fmt.Printf("%vwebsite \"%v\"\n", tab, *pkg.Website)
+		fmt.Fprintf(E.Stdout, "%vwebsite \"%v\"\n", tab, *pkg.Website)
 	}
 	if pkg.License != nil {
-		fmt.Printf("%vlicense \"%v\"\n", tab, *pkg.License)
+		fmt.Fprintf(E.Stdout, "%vlicense \"%v\"\n", tab, *pkg.License)
 	}
 
 	// Print the dependencies:
-	fmt.Printf("%vdependencies [", tab)
+	fmt.Fprintf(E.Stdout, "%vdependencies [", tab)
 	if pkg.Dependencies != nil && len(*pkg.Dependencies) > 0 {
-		fmt.Printf("\n")
+		fmt.Fprintf(E.Stdout, "\n")
 		for _, dep := range pack.StableDependencies(*pkg.Dependencies) {
-			fmt.Printf("%v%v: \"%v\"\n", tab+tab, dep, (*pkg.Dependencies)[dep])
+			fmt.Fprintf(E.Stdout, "%v%v: \"%v\"\n", tab+tab, dep, (*pkg.Dependencies)[dep])
 		}
-		fmt.Printf("%v", tab)
+		fmt.Fprintf(E.Stdout, "%v", tab)
 	}
-	fmt.Printf("]\n")
+	fmt.Fprintf(E.Stdout, "]\n")
 
 	// Print the modules (just names by default, or full symbols and/or IL if requested).
 	printModules(pkg, printSymbols, printExports, printIL, tab)
 
-	fmt.Printf("}\n")
+	fmt.Fprintf(E.Stdout, "}\n")
 }
 
 func printModules(pkg *pack.Package, printSymbols bool, printExports bool, printIL bool, indent string) {
@@ -147,27 +147,27 @@ func printModules(pkg *pack.Package, printSymbols bool, printExports bool, print
 			modtok := tokens.NewModuleToken(pkgtok, name)
 
 			// Print the name.
-			fmt.Printf("%vmodule \"%v\" {", indent, name)
+			fmt.Fprintf(E.Stdout, "%vmodule \"%v\" {", indent, name)
 
 			// Now, if requested, print the tokens.
 			if printSymbols || printExports {
 				if mod.Exports != nil || mod.Members != nil {
-					fmt.Printf("\n")
+					fmt.Fprintf(E.Stdout, "\n")
 
 					exports := make(map[tokens.Token]bool)
 					if mod.Exports != nil {
 						// Print the exports.
-						fmt.Printf("%vexports [", indent+tab)
+						fmt.Fprintf(E.Stdout, "%vexports [", indent+tab)
 						if mod.Exports != nil && len(*mod.Exports) > 0 {
-							fmt.Printf("\n")
+							fmt.Fprintf(E.Stdout, "\n")
 							for _, exp := range ast.StableModuleExports(*mod.Exports) {
 								ref := (*mod.Exports)[exp].Referent.Tok
-								fmt.Printf("%v\"%v\" -> \"%v\"\n", indent+tab+tab, exp, ref)
+								fmt.Fprintf(E.Stdout, "%v\"%v\" -> \"%v\"\n", indent+tab+tab, exp, ref)
 								exports[ref] = true
 							}
-							fmt.Printf("%v", indent+tab)
+							fmt.Fprintf(E.Stdout, "%v", indent+tab)
 						}
-						fmt.Printf("]\n")
+						fmt.Fprintf(E.Stdout, "]\n")
 					}
 
 					if mod.Members != nil {
@@ -176,14 +176,14 @@ func printModules(pkg *pack.Package, printSymbols bool, printExports bool, print
 							memtok := tokens.NewModuleMemberToken(modtok, member)
 							printModuleMember(memtok, (*mod.Members)[member], printExports, exports, indent+tab)
 						}
-						fmt.Printf("%v", indent)
+						fmt.Fprintf(E.Stdout, "%v", indent)
 					}
 				}
 			} else {
 				// Print a "..." so that it's clear we're omitting information, versus the module being empty.
-				fmt.Printf("...")
+				fmt.Fprintf(E.Stdout, "...")
 			}
-			fmt.Printf("}\n")
+			fmt.Fprintf(E.Stdout, "}\n")
 		}
 	}
 }
@@ -207,7 +207,7 @@ func printModuleMember(tok tokens.ModuleMember, member ast.ModuleMember,
 }
 
 func printClass(tok tokens.Type, class *ast.Class, exportOnly bool, indent string) {
-	fmt.Printf("%vclass \"%v\"", indent, tok.Name())
+	fmt.Fprintf(E.Stdout, "%vclass \"%v\"", indent, tok.Name())
 
 	var mods []string
 	if class.Sealed != nil && *class.Sealed {
@@ -227,27 +227,27 @@ func printClass(tok tokens.Type, class *ast.Class, exportOnly bool, indent strin
 			mods = append(mods, "@"+att.Decorator.Tok.String())
 		}
 	}
-	fmt.Print(modString(mods))
+	fmt.Fprint(E.Stdout, modString(mods))
 
 	if class.Extends != nil {
-		fmt.Printf("\n%vextends %v", indent+tab+tab, string(class.Extends.Tok))
+		fmt.Fprintf(E.Stdout, "\n%vextends %v", indent+tab+tab, string(class.Extends.Tok))
 	}
 	if class.Implements != nil {
 		for _, impl := range *class.Implements {
-			fmt.Printf("\n%vimplements %v", indent+tab+tab, string(impl.Tok))
+			fmt.Fprintf(E.Stdout, "\n%vimplements %v", indent+tab+tab, string(impl.Tok))
 		}
 	}
 
-	fmt.Printf(" {")
+	fmt.Fprintf(E.Stdout, " {")
 	if class.Members != nil {
-		fmt.Printf("\n")
+		fmt.Fprintf(E.Stdout, "\n")
 		for _, member := range ast.StableClassMembers(*class.Members) {
 			memtok := tokens.NewClassMemberToken(tok, member)
 			printClassMember(memtok, (*class.Members)[member], exportOnly, indent+tab)
 		}
-		fmt.Print(indent)
+		fmt.Fprint(E.Stdout, indent)
 	}
-	fmt.Printf("}\n")
+	fmt.Fprintf(E.Stdout, "}\n")
 }
 
 func printClassMember(tok tokens.ClassMember, member ast.ClassMember, exportOnly bool, indent string) {
@@ -282,22 +282,22 @@ func printClassProperty(name tokens.ClassMemberName, prop *ast.ClassProperty, in
 			mods = append(mods, "@"+att.Decorator.Tok.String())
 		}
 	}
-	fmt.Printf("%vproperty \"%v\"%v", indent, name, modString(mods))
+	fmt.Fprintf(E.Stdout, "%vproperty \"%v\"%v", indent, name, modString(mods))
 	if prop.Type != nil {
-		fmt.Printf(": %v", prop.Type.Tok)
+		fmt.Fprintf(E.Stdout, ": %v", prop.Type.Tok)
 	}
 
 	if prop.Getter != nil || prop.Setter != nil {
-		fmt.Printf(" {\n")
+		fmt.Fprintf(E.Stdout, " {\n")
 		if prop.Getter != nil {
 			printClassMethod(tokens.ClassMemberName("get"), prop.Getter, indent+"    ")
 		}
 		if prop.Setter != nil {
 			printClassMethod(tokens.ClassMemberName("set"), prop.Setter, indent+"    ")
 		}
-		fmt.Printf("%v}\n", indent)
+		fmt.Fprintf(E.Stdout, "%v}\n", indent)
 	} else {
-		fmt.Printf("\n")
+		fmt.Fprintf(E.Stdout, "\n")
 	}
 }
 
@@ -320,11 +320,11 @@ func printClassMethod(name tokens.ClassMemberName, meth *ast.ClassMethod, indent
 			mods = append(mods, "@"+att.Decorator.Tok.String())
 		}
 	}
-	fmt.Printf("%vmethod \"%v\"%v: %v\n", indent, name, modString(mods), funcSig(meth))
+	fmt.Fprintf(E.Stdout, "%vmethod \"%v\"%v: %v\n", indent, name, modString(mods), funcSig(meth))
 }
 
 func printModuleMethod(tok tokens.ModuleMember, meth *ast.ModuleMethod, indent string) {
-	fmt.Printf("%vmethod \"%v\": %v\n", indent, tok.Name(), funcSig(meth))
+	fmt.Fprintf(E.Stdout, "%vmethod \"%v\": %v\n", indent, tok.Name(), funcSig(meth))
 }
 
 func printModuleProperty(tok tokens.ModuleMember, prop *ast.ModuleProperty, indent string) {
@@ -332,11 +332,11 @@ func printModuleProperty(tok tokens.ModuleMember, prop *ast.ModuleProperty, inde
 	if prop.Readonly != nil && *prop.Readonly {
 		mods = append(mods, "readonly")
 	}
-	fmt.Printf("%vproperty \"%v\"%v", indent, tok.Name(), modString(mods))
+	fmt.Fprintf(E.Stdout, "%vproperty \"%v\"%v", indent, tok.Name(), modString(mods))
 	if prop.Type != nil {
-		fmt.Printf(": %v", prop.Type.Tok)
+		fmt.Fprintf(E.Stdout, ": %v", prop.Type.Tok)
 	}
-	fmt.Printf("\n")
+	fmt.Fprintf(E.Stdout, "\n")
 }
 
 func modString(mods []string) string {

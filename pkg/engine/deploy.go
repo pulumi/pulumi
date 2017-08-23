@@ -79,7 +79,7 @@ func deployLatest(info *envCmdInfo, opts deployOptions) error {
 			var header bytes.Buffer
 			printPrelude(&header, result, opts, false)
 			header.WriteString(fmt.Sprintf("%vDeploying changes:%v\n", colors.SpecUnimportant, colors.Reset))
-			fmt.Print(colors.Colorize(&header))
+			fmt.Fprint(E.Stdout, colors.Colorize(&header))
 
 			// Create an object to track progress and perform the actual operations.
 			start := time.Now()
@@ -106,7 +106,7 @@ func deployLatest(info *envCmdInfo, opts deployOptions) error {
 			targ := result.Info.Target
 			saveEnv(targ, summary.Snap(), opts.Output, true /*overwrite*/)
 
-			fmt.Print(colors.Colorize(&footer))
+			fmt.Fprint(E.Stdout, colors.Colorize(&footer))
 			return err
 		}
 	}
@@ -133,7 +133,7 @@ func (prog *deployProgress) Before(step deploy.Step) {
 	if shouldShow(step, prog.Opts) {
 		var b bytes.Buffer
 		printStep(&b, step, prog.Opts.Summary, false, "")
-		fmt.Print(colors.Colorize(&b))
+		fmt.Fprint(E.Stdout, colors.Colorize(&b))
 	}
 }
 
@@ -160,7 +160,7 @@ func (prog *deployProgress) After(step deploy.Step, status resource.Status, err 
 		}
 		b.WriteString(colors.Reset)
 		b.WriteString("\n")
-		fmt.Print(colors.Colorize(&b))
+		fmt.Fprint(E.Stdout, colors.Colorize(&b))
 	} else {
 		// Increment the counters.
 		if step.Logical() {
@@ -172,7 +172,7 @@ func (prog *deployProgress) After(step deploy.Step, status resource.Status, err 
 		if shouldShow(step, prog.Opts) && !prog.Opts.Summary {
 			var b bytes.Buffer
 			printResourceOutputProperties(&b, step, "")
-			fmt.Print(colors.Colorize(&b))
+			fmt.Fprint(E.Stdout, colors.Colorize(&b))
 		}
 	}
 }

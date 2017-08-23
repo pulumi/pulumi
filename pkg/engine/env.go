@@ -61,7 +61,7 @@ type envCmdInfo struct {
 func createEnv(name tokens.QName) {
 	env := &deploy.Target{Name: name}
 	if success := saveEnv(env, nil, "", false); success {
-		fmt.Printf("Environment '%v' initialized; see `lumi deploy` to deploy into it\n", name)
+		fmt.Fprintf(E.Stdout, "Environment '%v' initialized; see `lumi deploy` to deploy into it\n", name)
 		setCurrentEnv(name, false)
 	}
 }
@@ -113,7 +113,7 @@ func removeTarget(env *deploy.Target) {
 	deleteTarget(env)
 	msg := fmt.Sprintf("%sEnvironment '%s' has been removed!%s\n",
 		colors.SpecAttention, env.Name, colors.Reset)
-	fmt.Print(colors.ColorizeText(msg))
+	fmt.Fprint(E.Stdout, colors.ColorizeText(msg))
 }
 
 // backupTarget makes a backup of an existing file, in preparation for writing a new one.  Instead of a copy, it
