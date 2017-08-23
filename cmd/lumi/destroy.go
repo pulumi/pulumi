@@ -3,6 +3,7 @@
 package main
 
 import (
+	"github.com/pulumi/pulumi-fabric/pkg/engine"
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi-fabric/pkg/util/cmdutil"
@@ -33,7 +34,12 @@ func newDestroyCmd() *cobra.Command {
 
 			if dryRun || yes ||
 				confirmPrompt("This will permanently destroy all resources in the '%v' environment!", env) {
-				return lumiEngine.Destroy(env, pkgargFromArgs(args), dryRun, debug, summary)
+				return lumiEngine.Destroy(engine.DestroyOptions{
+					Environment: env,
+					Package:     pkgargFromArgs(args),
+					DryRun:      dryRun,
+					Debug:       debug,
+					Summary:     summary})
 			}
 
 			return nil

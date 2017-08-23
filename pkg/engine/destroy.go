@@ -2,16 +2,24 @@ package engine
 
 import "github.com/pulumi/pulumi-fabric/pkg/tokens"
 
-func (eng *Engine) Destroy(envName string, pkgarg string, dryRun bool, debug bool, summary bool) error {
-	info, err := eng.initEnvCmdName(tokens.QName(envName), pkgarg)
+type DestroyOptions struct {
+	Environment string
+	Package     string
+	DryRun      bool
+	Debug       bool
+	Summary     bool
+}
+
+func (eng *Engine) Destroy(opts DestroyOptions) error {
+	info, err := eng.initEnvCmdName(tokens.QName(opts.Environment), opts.Package)
 	if err != nil {
 		return err
 	}
 
 	return eng.deployLatest(info, deployOptions{
-		Debug:   debug,
+		Debug:   opts.Debug,
 		Destroy: true,
-		DryRun:  dryRun,
-		Summary: summary,
+		DryRun:  opts.DryRun,
+		Summary: opts.Summary,
 	})
 }
