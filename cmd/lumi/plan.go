@@ -37,7 +37,7 @@ func newPlanCmd() *cobra.Command {
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			contract.Assertf(!dotOutput, "TODO[pulumi/pulumi-fabric#235]: DOT files not yet supported")
 
-			return engine.Plan(engine.PlanOptions{
+			return lumiEngine.Plan(engine.PlanOptions{
 				Package:              pkgargFromArgs(args),
 				Debug:                debug,
 				Environment:          env,

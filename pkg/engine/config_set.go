@@ -6,8 +6,8 @@ import (
 	"github.com/pulumi/pulumi-fabric/pkg/tokens"
 )
 
-func SetConfig(envName string, key string, value string) error {
-	info, err := initEnvCmdName(tokens.QName(envName), "")
+func (eng *Engine) SetConfig(envName string, key string, value string) error {
+	info, err := eng.initEnvCmdName(tokens.QName(envName), "")
 	if err != nil {
 		return err
 	}
@@ -20,7 +20,7 @@ func SetConfig(envName string, key string, value string) error {
 
 	config[tokens.Token(key)] = value
 
-	if !saveEnv(info.Target, info.Snapshot, "", true) {
+	if !eng.saveEnv(info.Target, info.Snapshot, "", true) {
 		return errors.Errorf("could not save configuration value")
 	}
 

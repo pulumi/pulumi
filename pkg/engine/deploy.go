@@ -27,12 +27,12 @@ type DeployOptions struct {
 	Output               string   // the place to store the output, if any.
 }
 
-func Deploy(opts DeployOptions) error {
-	info, err := initEnvCmdName(tokens.QName(opts.Environment), opts.Package)
+func (eng *Engine) Deploy(opts DeployOptions) error {
+	info, err := eng.initEnvCmdName(tokens.QName(opts.Environment), opts.Package)
 	if err != nil {
 		return err
 	}
-	return deployLatest(info, deployOptions{
+	return eng.deployLatest(info, deployOptions{
 		Debug:                opts.Debug,
 		Destroy:              false,
 		DryRun:               opts.DryRun,
@@ -61,8 +61,8 @@ type deployOptions struct {
 	Output               string   // the place to store the output, if any.
 }
 
-func deployLatest(info *envCmdInfo, opts deployOptions) error {
-	result, err := plan(info, opts)
+func (eng *Engine) deployLatest(info *envCmdInfo, opts deployOptions) error {
+	result, err := eng.plan(info, opts)
 	if err != nil {
 		return err
 	}
@@ -70,7 +70,7 @@ func deployLatest(info *envCmdInfo, opts deployOptions) error {
 		defer contract.IgnoreClose(result)
 		if opts.DryRun {
 			// If a dry run, just print the plan, don't actually carry out the deployment.
-			if err := printPlan(result, opts); err != nil {
+			if err := eng.printPlan(result, opts); err != nil {
 				return err
 			}
 		} else {
@@ -78,11 +78,11 @@ func deployLatest(info *envCmdInfo, opts deployOptions) error {
 			var header bytes.Buffer
 			printPrelude(&header, result, opts, false)
 			header.WriteString(fmt.Sprintf("%vDeploying changes:%v\n", colors.SpecUnimportant, colors.Reset))
-			fmt.Fprint(E.Stdout, colors.Colorize(&header))
+			fmt.Fprint(eng.Stdout, colors.Colorize(&header))
 
 			// Create an object to track progress and perform the actual operations.
 			start := time.Now()
-			progress := newProgress(opts)
+			progress := newProgress(opts, eng)
 			summary, _, _, err := result.Plan.Apply(progress)
 			contract.Assert(summary != nil)
 
@@ -103,9 +103,9 @@ func deployLatest(info *envCmdInfo, opts deployOptions) error {
 			// Now save the updated snapshot to the specified output file, if any, or the standard location otherwise.
 			// Note that if a failure has occurred, the Apply routine above will have returned a safe checkpoint.
 			targ := result.Info.Target
-			saveEnv(targ, summary.Snap(), opts.Output, true /*overwrite*/)
+			eng.saveEnv(targ, summary.Snap(), opts.Output, true /*overwrite*/)
 
-			fmt.Fprint(E.Stdout, colors.Colorize(&footer))
+			fmt.Fprint(eng.Stdout, colors.Colorize(&footer))
 			return err
 		}
 	}
@@ -118,13 +118,15 @@ type deployProgress struct {
 	Ops          map[deploy.StepOp]int
 	MaybeCorrupt bool
 	Opts         deployOptions
+	Engine       *Engine
 }
 
-func newProgress(opts deployOptions) *deployProgress {
+func newProgress(opts deployOptions, engine *Engine) *deployProgress {
 	return &deployProgress{
-		Steps: 0,
-		Ops:   make(map[deploy.StepOp]int),
-		Opts:  opts,
+		Steps:  0,
+		Ops:    make(map[deploy.StepOp]int),
+		Opts:   opts,
+		Engine: engine,
 	}
 }
 
@@ -132,7 +134,7 @@ func (prog *deployProgress) Before(step deploy.Step) {
 	if shouldShow(step, prog.Opts) {
 		var b bytes.Buffer
 		printStep(&b, step, prog.Opts.Summary, false, "")
-		fmt.Fprint(E.Stdout, colors.Colorize(&b))
+		fmt.Fprint(prog.Engine.Stdout, colors.Colorize(&b))
 	}
 }
 
@@ -140,7 +142,7 @@ func (prog *deployProgress) After(step deploy.Step, status resource.Status, err 
 	stepop := step.Op()
 	if err != nil {
 		// Issue a true, bonafide error.
-		E.Diag().Errorf(errors.ErrorPlanApplyFailed, err)
+		prog.Engine.Diag().Errorf(errors.ErrorPlanApplyFailed, err)
 
 		// Print the state of the resource; we don't issue the error, because the deploy above will do that.
 		var b bytes.Buffer
@@ -159,7 +161,7 @@ func (prog *deployProgress) After(step deploy.Step, status resource.Status, err 
 		}
 		b.WriteString(colors.Reset)
 		b.WriteString("\n")
-		fmt.Fprint(E.Stdout, colors.Colorize(&b))
+		fmt.Fprint(prog.Engine.Stdout, colors.Colorize(&b))
 	} else {
 		// Increment the counters.
 		if step.Logical() {
@@ -171,7 +173,7 @@ func (prog *deployProgress) After(step deploy.Step, status resource.Status, err 
 		if shouldShow(step, prog.Opts) && !prog.Opts.Summary {
 			var b bytes.Buffer
 			printResourceOutputProperties(&b, step, "")
-			fmt.Fprint(E.Stdout, colors.Colorize(&b))
+			fmt.Fprint(prog.Engine.Stdout, colors.Colorize(&b))
 		}
 	}
 }

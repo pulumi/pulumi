@@ -5,10 +5,10 @@ import (
 	"github.com/pulumi/pulumi-fabric/pkg/util/contract"
 )
 
-func RemoveEnv(envName string, force bool) error {
+func (eng *Engine) RemoveEnv(envName string, force bool) error {
 	contract.Assert(envName != "")
 
-	info, err := initEnvCmd(envName, "")
+	info, err := eng.initEnvCmd(envName, "")
 
 	if err != nil {
 		return err
@@ -20,6 +20,6 @@ func RemoveEnv(envName string, force bool) error {
 			"'%v' still has resources; removal rejected; pass --force to override", info.Target.Name)
 	}
 
-	removeTarget(info.Target)
+	eng.removeTarget(info.Target)
 	return nil
 }

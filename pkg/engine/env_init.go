@@ -2,7 +2,7 @@ package engine
 
 import "github.com/pulumi/pulumi-fabric/pkg/tokens"
 
-func InitEnv(name string) error {
-	createEnv(tokens.QName(name))
+func (eng *Engine) InitEnv(name string) error {
+	eng.createEnv(tokens.QName(name))
 	return nil
 }

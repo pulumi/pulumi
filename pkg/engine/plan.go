@@ -29,14 +29,14 @@ type PlanOptions struct {
 	Summary              bool     // true if we should only summarize resources and operations.
 }
 
-func Plan(opts PlanOptions) error {
+func (eng *Engine) Plan(opts PlanOptions) error {
 	// Initialize the diagnostics logger with the right stuff.
-	E.InitDiag(diag.FormatOptions{
+	eng.InitDiag(diag.FormatOptions{
 		Colors: true,
 		Debug:  opts.Debug,
 	})
 
-	info, err := initEnvCmdName(tokens.QName(opts.Environment), opts.Package)
+	info, err := eng.initEnvCmdName(tokens.QName(opts.Environment), opts.Package)
 	if err != nil {
 		return err
 	}
@@ -51,13 +51,13 @@ func Plan(opts PlanOptions) error {
 		ShowSames:            opts.ShowSames,
 		Summary:              opts.Summary,
 	}
-	result, err := plan(info, deployOpts)
+	result, err := eng.plan(info, deployOpts)
 	if err != nil {
 		return err
 	}
 	if result != nil {
 		defer contract.IgnoreClose(result)
-		if err := printPlan(result, deployOpts); err != nil {
+		if err := eng.printPlan(result, deployOpts); err != nil {
 			return err
 		}
 	}
@@ -65,18 +65,18 @@ func Plan(opts PlanOptions) error {
 }
 
 // plan just uses the standard logic to parse arguments, options, and to create a snapshot and plan.
-func plan(info *envCmdInfo, opts deployOptions) (*planResult, error) {
+func (eng *Engine) plan(info *envCmdInfo, opts deployOptions) (*planResult, error) {
 	contract.Assert(info != nil)
 	contract.Assert(info.Target != nil)
 
 	// Create a context for plugins.
-	ctx, err := plugin.NewContext(E.Diag(), nil)
+	ctx, err := plugin.NewContext(eng.Diag(), nil)
 	if err != nil {
 		return nil, err
 	}
 
 	// First, compile the package, in preparatin for interpreting it and creating resources.
-	result := compile(info.PackageArg)
+	result := eng.compile(info.PackageArg)
 	if result == nil || !result.B.Ctx().Diag.Success() {
 		return nil, fmt.Errorf("Errors during compilation: %v", result.B.Ctx().Diag.Errors())
 	}
@@ -117,14 +117,14 @@ func (res *planResult) Close() error {
 	return res.Ctx.Close()
 }
 
-func printPlan(result *planResult, opts deployOptions) error {
+func (eng *Engine) printPlan(result *planResult, opts deployOptions) error {
 	// First print config/unchanged/etc. if necessary.
 	var prelude bytes.Buffer
 	printPrelude(&prelude, result, opts, true)
 
 	// Now walk the plan's steps and and pretty-print them out.
 	prelude.WriteString(fmt.Sprintf("%vPlanning changes:%v\n", colors.SpecUnimportant, colors.Reset))
-	fmt.Fprint(E.Stdout, colors.Colorize(&prelude))
+	fmt.Fprint(eng.Stdout, colors.Colorize(&prelude))
 
 	iter, err := result.Plan.Iterate()
 	if err != nil {
@@ -170,7 +170,7 @@ func printPlan(result *planResult, opts deployOptions) error {
 
 	// Print a summary of operation counts.
 	printChangeSummary(&summary, counts, true)
-	fmt.Fprint(E.Stdout, colors.Colorize(&summary))
+	fmt.Fprint(eng.Stdout, colors.Colorize(&summary))
 	return nil
 }
 

@@ -5,7 +5,6 @@ package main
 import (
 	"github.com/spf13/cobra"
 
-	"github.com/pulumi/pulumi-fabric/pkg/engine"
 	"github.com/pulumi/pulumi-fabric/pkg/util/cmdutil"
 )
 
@@ -22,10 +21,10 @@ func newEnvSelectCmd() *cobra.Command {
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			// Read in the name of the environment to switch to.
 			if len(args) == 0 {
-				return engine.GetCurrentEnv()
+				return lumiEngine.GetCurrentEnv()
 			}
 
-			return engine.SelectEnv(args[0])
+			return lumiEngine.SelectEnv(args[0])
 		}),
 	}
 }

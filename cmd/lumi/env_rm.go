@@ -6,7 +6,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
-	"github.com/pulumi/pulumi-fabric/pkg/engine"
 	"github.com/pulumi/pulumi-fabric/pkg/util/cmdutil"
 )
 
@@ -33,7 +32,7 @@ func newEnvRmCmd() *cobra.Command {
 			// Ensure the user really wants to do this.
 			if yes ||
 				confirmPrompt("This will permanently remove the '%v' environment!", envName) {
-				return engine.RemoveEnv(envName, force)
+				return lumiEngine.RemoveEnv(envName, force)
 			}
 
 			return nil

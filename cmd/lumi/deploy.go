@@ -36,7 +36,7 @@ func newDeployCmd() *cobra.Command {
 			"By default, the package to execute is loaded from the current directory.  Optionally, an\n" +
 			"explicit path can be provided using the [package] argument.",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			return engine.Deploy(engine.DeployOptions{
+			return lumiEngine.Deploy(engine.DeployOptions{
 				Environment:          env,
 				Package:              pkgargFromArgs(args),
 				Debug:                debug,

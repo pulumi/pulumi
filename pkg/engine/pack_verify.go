@@ -2,9 +2,9 @@ package engine
 
 import "github.com/pkg/errors"
 
-func PackVerify(pkgarg string) error {
+func (eng *Engine) PackVerify(pkgarg string) error {
 	// Prepare the compiler info and, provided it succeeds, perform the verification.
-	if comp, pkg := prepareCompiler(pkgarg); comp != nil {
+	if comp, pkg := eng.prepareCompiler(pkgarg); comp != nil {
 		// Now perform the compilation and extract the heap snapshot.
 		if pkg == nil && !comp.Verify() {
 			return errors.New("verification failed")

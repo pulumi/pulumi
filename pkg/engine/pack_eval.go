@@ -9,9 +9,9 @@ import (
 	"github.com/pulumi/pulumi-fabric/pkg/tokens"
 )
 
-func PackEval(configEnv string, pkg string, packArgs core.Args) error {
+func (eng *Engine) PackEval(configEnv string, pkg string, packArgs core.Args) error {
 	// First, load and compile the package.
-	result := compile(pkg)
+	result := eng.compile(pkg)
 	if result == nil {
 		return nil
 	}
@@ -21,7 +21,7 @@ func PackEval(configEnv string, pkg string, packArgs core.Args) error {
 
 	// If configuration was requested, load it up and populate the object state.
 	if configEnv != "" {
-		envInfo, err := initEnvCmdName(tokens.QName(configEnv), pkg)
+		envInfo, err := eng.initEnvCmdName(tokens.QName(configEnv), pkg)
 		if err != nil {
 			return err
 		}
@@ -32,7 +32,7 @@ func PackEval(configEnv string, pkg string, packArgs core.Args) error {
 
 	// Finally, execute the entire program, and serialize the return value (if any).
 	if obj, _ := e.EvaluatePackage(result.Pkg, packArgs); obj != nil {
-		fmt.Fprint(E.Stdout, obj)
+		fmt.Fprint(eng.Stdout, obj)
 	}
 	return nil
 }

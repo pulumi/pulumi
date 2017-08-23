@@ -5,7 +5,6 @@ package main
 import (
 	"github.com/spf13/cobra"
 
-	"github.com/pulumi/pulumi-fabric/pkg/engine"
 	"github.com/pulumi/pulumi-fabric/pkg/util/cmdutil"
 )
 
@@ -21,7 +20,7 @@ func newEnvCmd() *cobra.Command {
 			"Each environment has a configuration and deployment history associated with it, stored in\n" +
 			"the workspace, in addition to a full checkpoint of the last known good deployment.\n",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			return engine.EnvInfo(showIDs, showURNs)
+			return lumiEngine.EnvInfo(showIDs, showURNs)
 		}),
 	}
 

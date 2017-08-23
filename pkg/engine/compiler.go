@@ -12,16 +12,16 @@ import (
 
 // TODO[pulumi/pulumi-fabric#88]: enable arguments to flow to the package itself.  In that case, we want to split the
 //     arguments at the --, if any, so we can still pass arguments to the compiler itself in these cases.
-func prepareCompiler(pkgarg string) (compiler.Compiler, *pack.Package) {
+func (eng *Engine) prepareCompiler(pkgarg string) (compiler.Compiler, *pack.Package) {
 	// Create a compiler options object and map any flags and arguments to settings on it.
 	opts := core.DefaultOptions()
-	opts.Diag = E.Diag()
+	opts.Diag = eng.Diag()
 
 	// If a package argument is present, try to load that package (either via stdin or a path).
 	var pkg *pack.Package
 	var root string
 	if pkgarg != "" {
-		pkg, root = readPackageFromArg(pkgarg)
+		pkg, root = eng.readPackageFromArg(pkgarg)
 	}
 
 	// Now create a compiler object based on whether we loaded a package or just have a root to deal with.
@@ -33,7 +33,7 @@ func prepareCompiler(pkgarg string) (compiler.Compiler, *pack.Package) {
 		comp, err = compiler.New(root, opts)
 	}
 	if err != nil {
-		E.Diag().Errorf(errors.ErrorCantCreateCompiler, err)
+		eng.Diag().Errorf(errors.ErrorCantCreateCompiler, err)
 	}
 
 	return comp, pkg
@@ -41,9 +41,9 @@ func prepareCompiler(pkgarg string) (compiler.Compiler, *pack.Package) {
 
 // compile just uses the standard logic to parse arguments, options, and to locate/compile a package.  It returns the
 // compilation result, or nil if an error occurred (in which case, we would expect diagnostics to have been output).
-func compile(pkgarg string) *compileResult {
+func (eng *Engine) compile(pkgarg string) *compileResult {
 	// Prepare the compiler info and, provided it succeeds, perform the compilation.
-	if comp, pkg := prepareCompiler(pkgarg); comp != nil {
+	if comp, pkg := eng.prepareCompiler(pkgarg); comp != nil {
 		var b binder.Binder
 		var pkgsym *symbols.Package
 		if pkg == nil {

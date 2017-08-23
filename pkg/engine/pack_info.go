@@ -12,7 +12,7 @@ import (
 	"github.com/pulumi/pulumi-fabric/pkg/util/contract"
 )
 
-func PackInfo(printExportedSymbols bool, printIL bool, printSymbols bool, packages []string) error {
+func (eng *Engine) PackInfo(printExportedSymbols bool, printIL bool, printSymbols bool, packages []string) error {
 	var pkg *pack.Package
 	var err error
 	if len(packages) == 0 {
@@ -21,20 +21,20 @@ func PackInfo(printExportedSymbols bool, printIL bool, printSymbols bool, packag
 		if locerr != nil {
 			return locerr
 		}
-		if pkg, err = detectPackage(pwd); err != nil {
+		if pkg, err = eng.detectPackage(pwd); err != nil {
 			return err
 		}
-		printPackage(pkg, printSymbols, printExportedSymbols, printIL)
+		eng.printPackage(pkg, printSymbols, printExportedSymbols, printIL)
 	} else {
 		// Enumerate the list of packages, deserialize them, and print information.
 		var path string
 		for _, arg := range packages {
-			pkg, path = readPackageFromArg(arg)
+			pkg, path = eng.readPackageFromArg(arg)
 			if pkg == nil {
-				if pkg, err = detectPackage(path); err != nil {
+				if pkg, err = eng.detectPackage(path); err != nil {
 					return err
 				}
-				printPackage(pkg, printSymbols, printExportedSymbols, printIL)
+				eng.printPackage(pkg, printSymbols, printExportedSymbols, printIL)
 			}
 		}
 	}
@@ -42,7 +42,7 @@ func PackInfo(printExportedSymbols bool, printIL bool, printSymbols bool, packag
 	return nil
 }
 
-func printComment(pc *string, indent string) {
+func (eng *Engine) printComment(pc *string, indent string) {
 	// Prints a comment header using the given indentation, wrapping at 100 lines.
 	if pc != nil {
 		prefix := "// "
@@ -65,7 +65,7 @@ func printComment(pc *string, indent string) {
 		}
 
 		for len(c) > 0 {
-			fmt.Fprint(E.Stdout, indent + prefix)
+			fmt.Fprint(eng.Stdout, indent+prefix)
 			// Now, try to split the comment as close to maxlen-3 chars as possible (taking into account indent+"// "),
 			// but don't split words -- only split at whitespace characters if we can help it.
 			six := maxlen
@@ -95,7 +95,7 @@ func printComment(pc *string, indent string) {
 			}
 
 			// Print what we've got thus far, plus a newline.
-			fmt.Fprintf(E.Stdout, "%v\n", string(c[:six]))
+			fmt.Fprintf(eng.Stdout, "%v\n", string(c[:six]))
 
 			// Now find the first non-space character beyond the split point and use that for the remainder.
 			eix := six
@@ -108,38 +108,38 @@ func printComment(pc *string, indent string) {
 }
 
 // printPackage pretty-prints the package metadata.
-func printPackage(pkg *pack.Package, printSymbols bool, printExports bool, printIL bool) {
-	printComment(pkg.Description, "")
-	fmt.Fprintf(E.Stdout, "package \"%v\" {\n", pkg.Name)
+func (eng *Engine) printPackage(pkg *pack.Package, printSymbols bool, printExports bool, printIL bool) {
+	eng.printComment(pkg.Description, "")
+	fmt.Fprintf(eng.Stdout, "package \"%v\" {\n", pkg.Name)
 
 	if pkg.Author != nil {
-		fmt.Fprintf(E.Stdout, "%vauthor \"%v\"\n", tab, *pkg.Author)
+		fmt.Fprintf(eng.Stdout, "%vauthor \"%v\"\n", tab, *pkg.Author)
 	}
 	if pkg.Website != nil {
-		fmt.Fprintf(E.Stdout, "%vwebsite \"%v\"\n", tab, *pkg.Website)
+		fmt.Fprintf(eng.Stdout, "%vwebsite \"%v\"\n", tab, *pkg.Website)
 	}
 	if pkg.License != nil {
-		fmt.Fprintf(E.Stdout, "%vlicense \"%v\"\n", tab, *pkg.License)
+		fmt.Fprintf(eng.Stdout, "%vlicense \"%v\"\n", tab, *pkg.License)
 	}
 
 	// Print the dependencies:
-	fmt.Fprintf(E.Stdout, "%vdependencies [", tab)
+	fmt.Fprintf(eng.Stdout, "%vdependencies [", tab)
 	if pkg.Dependencies != nil && len(*pkg.Dependencies) > 0 {
-		fmt.Fprintf(E.Stdout, "\n")
+		fmt.Fprintf(eng.Stdout, "\n")
 		for _, dep := range pack.StableDependencies(*pkg.Dependencies) {
-			fmt.Fprintf(E.Stdout, "%v%v: \"%v\"\n", tab+tab, dep, (*pkg.Dependencies)[dep])
+			fmt.Fprintf(eng.Stdout, "%v%v: \"%v\"\n", tab+tab, dep, (*pkg.Dependencies)[dep])
 		}
-		fmt.Fprintf(E.Stdout, "%v", tab)
+		fmt.Fprintf(eng.Stdout, "%v", tab)
 	}
-	fmt.Fprintf(E.Stdout, "]\n")
+	fmt.Fprintf(eng.Stdout, "]\n")
 
 	// Print the modules (just names by default, or full symbols and/or IL if requested).
-	printModules(pkg, printSymbols, printExports, printIL, tab)
+	eng.printModules(pkg, printSymbols, printExports, printIL, tab)
 
-	fmt.Fprintf(E.Stdout, "}\n")
+	fmt.Fprintf(eng.Stdout, "}\n")
 }
 
-func printModules(pkg *pack.Package, printSymbols bool, printExports bool, printIL bool, indent string) {
+func (eng *Engine) printModules(pkg *pack.Package, printSymbols bool, printExports bool, printIL bool, indent string) {
 	if pkg.Modules != nil {
 		pkgtok := tokens.NewPackageToken(pkg.Name)
 		for _, name := range ast.StableModules(*pkg.Modules) {
@@ -147,67 +147,67 @@ func printModules(pkg *pack.Package, printSymbols bool, printExports bool, print
 			modtok := tokens.NewModuleToken(pkgtok, name)
 
 			// Print the name.
-			fmt.Fprintf(E.Stdout, "%vmodule \"%v\" {", indent, name)
+			fmt.Fprintf(eng.Stdout, "%vmodule \"%v\" {", indent, name)
 
 			// Now, if requested, print the tokens.
 			if printSymbols || printExports {
 				if mod.Exports != nil || mod.Members != nil {
-					fmt.Fprintf(E.Stdout, "\n")
+					fmt.Fprintf(eng.Stdout, "\n")
 
 					exports := make(map[tokens.Token]bool)
 					if mod.Exports != nil {
 						// Print the exports.
-						fmt.Fprintf(E.Stdout, "%vexports [", indent+tab)
+						fmt.Fprintf(eng.Stdout, "%vexports [", indent+tab)
 						if mod.Exports != nil && len(*mod.Exports) > 0 {
-							fmt.Fprintf(E.Stdout, "\n")
+							fmt.Fprintf(eng.Stdout, "\n")
 							for _, exp := range ast.StableModuleExports(*mod.Exports) {
 								ref := (*mod.Exports)[exp].Referent.Tok
-								fmt.Fprintf(E.Stdout, "%v\"%v\" -> \"%v\"\n", indent+tab+tab, exp, ref)
+								fmt.Fprintf(eng.Stdout, "%v\"%v\" -> \"%v\"\n", indent+tab+tab, exp, ref)
 								exports[ref] = true
 							}
-							fmt.Fprintf(E.Stdout, "%v", indent+tab)
+							fmt.Fprintf(eng.Stdout, "%v", indent+tab)
 						}
-						fmt.Fprintf(E.Stdout, "]\n")
+						fmt.Fprintf(eng.Stdout, "]\n")
 					}
 
 					if mod.Members != nil {
 						// Print the members.
 						for _, member := range ast.StableModuleMembers(*mod.Members) {
 							memtok := tokens.NewModuleMemberToken(modtok, member)
-							printModuleMember(memtok, (*mod.Members)[member], printExports, exports, indent+tab)
+							eng.printModuleMember(memtok, (*mod.Members)[member], printExports, exports, indent+tab)
 						}
-						fmt.Fprintf(E.Stdout, "%v", indent)
+						fmt.Fprintf(eng.Stdout, "%v", indent)
 					}
 				}
 			} else {
 				// Print a "..." so that it's clear we're omitting information, versus the module being empty.
-				fmt.Fprintf(E.Stdout, "...")
+				fmt.Fprintf(eng.Stdout, "...")
 			}
-			fmt.Fprintf(E.Stdout, "}\n")
+			fmt.Fprintf(eng.Stdout, "}\n")
 		}
 	}
 }
 
-func printModuleMember(tok tokens.ModuleMember, member ast.ModuleMember,
+func (eng *Engine) printModuleMember(tok tokens.ModuleMember, member ast.ModuleMember,
 	exportOnly bool, exports map[tokens.Token]bool, indent string) {
-	printComment(member.GetDescription(), indent)
+	eng.printComment(member.GetDescription(), indent)
 
 	if !exportOnly || exports[tokens.Token(tok)] {
 		switch member.GetKind() {
 		case ast.ClassKind:
-			printClass(tokens.Type(tok), member.(*ast.Class), exportOnly, indent)
+			eng.printClass(tokens.Type(tok), member.(*ast.Class), exportOnly, indent)
 		case ast.ModulePropertyKind:
-			printModuleProperty(tok, member.(*ast.ModuleProperty), indent)
+			eng.printModuleProperty(tok, member.(*ast.ModuleProperty), indent)
 		case ast.ModuleMethodKind:
-			printModuleMethod(tok, member.(*ast.ModuleMethod), indent)
+			eng.printModuleMethod(tok, member.(*ast.ModuleMethod), indent)
 		default:
 			contract.Failf("Unexpected ModuleMember kind: %v (tok %v)\n", member.GetKind(), tok)
 		}
 	}
 }
 
-func printClass(tok tokens.Type, class *ast.Class, exportOnly bool, indent string) {
-	fmt.Fprintf(E.Stdout, "%vclass \"%v\"", indent, tok.Name())
+func (eng *Engine) printClass(tok tokens.Type, class *ast.Class, exportOnly bool, indent string) {
+	fmt.Fprintf(eng.Stdout, "%vclass \"%v\"", indent, tok.Name())
 
 	var mods []string
 	if class.Sealed != nil && *class.Sealed {
@@ -227,46 +227,46 @@ func printClass(tok tokens.Type, class *ast.Class, exportOnly bool, indent strin
 			mods = append(mods, "@"+att.Decorator.Tok.String())
 		}
 	}
-	fmt.Fprint(E.Stdout, modString(mods))
+	fmt.Fprint(eng.Stdout, modString(mods))
 
 	if class.Extends != nil {
-		fmt.Fprintf(E.Stdout, "\n%vextends %v", indent+tab+tab, string(class.Extends.Tok))
+		fmt.Fprintf(eng.Stdout, "\n%vextends %v", indent+tab+tab, string(class.Extends.Tok))
 	}
 	if class.Implements != nil {
 		for _, impl := range *class.Implements {
-			fmt.Fprintf(E.Stdout, "\n%vimplements %v", indent+tab+tab, string(impl.Tok))
+			fmt.Fprintf(eng.Stdout, "\n%vimplements %v", indent+tab+tab, string(impl.Tok))
 		}
 	}
 
-	fmt.Fprintf(E.Stdout, " {")
+	fmt.Fprintf(eng.Stdout, " {")
 	if class.Members != nil {
-		fmt.Fprintf(E.Stdout, "\n")
+		fmt.Fprintf(eng.Stdout, "\n")
 		for _, member := range ast.StableClassMembers(*class.Members) {
 			memtok := tokens.NewClassMemberToken(tok, member)
-			printClassMember(memtok, (*class.Members)[member], exportOnly, indent+tab)
+			eng.printClassMember(memtok, (*class.Members)[member], exportOnly, indent+tab)
 		}
-		fmt.Fprint(E.Stdout, indent)
+		fmt.Fprint(eng.Stdout, indent)
 	}
-	fmt.Fprintf(E.Stdout, "}\n")
+	fmt.Fprintf(eng.Stdout, "}\n")
 }
 
-func printClassMember(tok tokens.ClassMember, member ast.ClassMember, exportOnly bool, indent string) {
-	printComment(member.GetDescription(), indent)
+func (eng *Engine) printClassMember(tok tokens.ClassMember, member ast.ClassMember, exportOnly bool, indent string) {
+	eng.printComment(member.GetDescription(), indent)
 
 	acc := member.GetAccess()
 	if !exportOnly || (acc != nil && *acc == tokens.PublicAccessibility) {
 		switch member.GetKind() {
 		case ast.ClassPropertyKind:
-			printClassProperty(tok.Name(), member.(*ast.ClassProperty), indent)
+			eng.printClassProperty(tok.Name(), member.(*ast.ClassProperty), indent)
 		case ast.ClassMethodKind:
-			printClassMethod(tok.Name(), member.(*ast.ClassMethod), indent)
+			eng.printClassMethod(tok.Name(), member.(*ast.ClassMethod), indent)
 		default:
 			contract.Failf("Unexpected ClassMember kind: %v\n", member.GetKind())
 		}
 	}
 }
 
-func printClassProperty(name tokens.ClassMemberName, prop *ast.ClassProperty, indent string) {
+func (eng *Engine) printClassProperty(name tokens.ClassMemberName, prop *ast.ClassProperty, indent string) {
 	var mods []string
 	if prop.Access != nil {
 		mods = append(mods, string(*prop.Access))
@@ -282,26 +282,26 @@ func printClassProperty(name tokens.ClassMemberName, prop *ast.ClassProperty, in
 			mods = append(mods, "@"+att.Decorator.Tok.String())
 		}
 	}
-	fmt.Fprintf(E.Stdout, "%vproperty \"%v\"%v", indent, name, modString(mods))
+	fmt.Fprintf(eng.Stdout, "%vproperty \"%v\"%v", indent, name, modString(mods))
 	if prop.Type != nil {
-		fmt.Fprintf(E.Stdout, ": %v", prop.Type.Tok)
+		fmt.Fprintf(eng.Stdout, ": %v", prop.Type.Tok)
 	}
 
 	if prop.Getter != nil || prop.Setter != nil {
-		fmt.Fprintf(E.Stdout, " {\n")
+		fmt.Fprintf(eng.Stdout, " {\n")
 		if prop.Getter != nil {
-			printClassMethod(tokens.ClassMemberName("get"), prop.Getter, indent+"    ")
+			eng.printClassMethod(tokens.ClassMemberName("get"), prop.Getter, indent+"    ")
 		}
 		if prop.Setter != nil {
-			printClassMethod(tokens.ClassMemberName("set"), prop.Setter, indent+"    ")
+			eng.printClassMethod(tokens.ClassMemberName("set"), prop.Setter, indent+"    ")
 		}
-		fmt.Fprintf(E.Stdout, "%v}\n", indent)
+		fmt.Fprintf(eng.Stdout, "%v}\n", indent)
 	} else {
-		fmt.Fprintf(E.Stdout, "\n")
+		fmt.Fprintf(eng.Stdout, "\n")
 	}
 }
 
-func printClassMethod(name tokens.ClassMemberName, meth *ast.ClassMethod, indent string) {
+func (eng *Engine) printClassMethod(name tokens.ClassMemberName, meth *ast.ClassMethod, indent string) {
 	var mods []string
 	if meth.Access != nil {
 		mods = append(mods, string(*meth.Access))
@@ -320,23 +320,23 @@ func printClassMethod(name tokens.ClassMemberName, meth *ast.ClassMethod, indent
 			mods = append(mods, "@"+att.Decorator.Tok.String())
 		}
 	}
-	fmt.Fprintf(E.Stdout, "%vmethod \"%v\"%v: %v\n", indent, name, modString(mods), funcSig(meth))
+	fmt.Fprintf(eng.Stdout, "%vmethod \"%v\"%v: %v\n", indent, name, modString(mods), funcSig(meth))
 }
 
-func printModuleMethod(tok tokens.ModuleMember, meth *ast.ModuleMethod, indent string) {
-	fmt.Fprintf(E.Stdout, "%vmethod \"%v\": %v\n", indent, tok.Name(), funcSig(meth))
+func (eng *Engine) printModuleMethod(tok tokens.ModuleMember, meth *ast.ModuleMethod, indent string) {
+	fmt.Fprintf(eng.Stdout, "%vmethod \"%v\": %v\n", indent, tok.Name(), funcSig(meth))
 }
 
-func printModuleProperty(tok tokens.ModuleMember, prop *ast.ModuleProperty, indent string) {
+func (eng *Engine) printModuleProperty(tok tokens.ModuleMember, prop *ast.ModuleProperty, indent string) {
 	var mods []string
 	if prop.Readonly != nil && *prop.Readonly {
 		mods = append(mods, "readonly")
 	}
-	fmt.Fprintf(E.Stdout, "%vproperty \"%v\"%v", indent, tok.Name(), modString(mods))
+	fmt.Fprintf(eng.Stdout, "%vproperty \"%v\"%v", indent, tok.Name(), modString(mods))
 	if prop.Type != nil {
-		fmt.Fprintf(E.Stdout, ": %v", prop.Type.Tok)
+		fmt.Fprintf(eng.Stdout, ": %v", prop.Type.Tok)
 	}
-	fmt.Fprintf(E.Stdout, "\n")
+	fmt.Fprintf(eng.Stdout, "\n")
 }
 
 func modString(mods []string) string {

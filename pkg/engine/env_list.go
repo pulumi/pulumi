@@ -13,7 +13,7 @@ import (
 	"github.com/pulumi/pulumi-fabric/pkg/workspace"
 )
 
-func ListEnvs() error {
+func (eng *Engine) ListEnvs() error {
 	// Read the environment directory.
 	path := workspace.EnvPath("")
 	files, err := ioutil.ReadDir(path)
@@ -21,8 +21,8 @@ func ListEnvs() error {
 		return errors.Errorf("could not read environments: %v", err)
 	}
 
-	fmt.Fprintf(E.Stdout, "%-20s %-48s %-12s\n", "NAME", "LAST DEPLOYMENT", "RESOURCE COUNT")
-	curr := getCurrentEnv()
+	fmt.Fprintf(eng.Stdout, "%-20s %-48s %-12s\n", "NAME", "LAST DEPLOYMENT", "RESOURCE COUNT")
+	curr := eng.getCurrentEnv()
 	for _, file := range files {
 		// Ignore directories.
 		if file.IsDir() {
@@ -38,7 +38,7 @@ func ListEnvs() error {
 
 		// Read in this environment's information.
 		name := tokens.QName(envfn[:len(envfn)-len(ext)])
-		target, snapshot, checkpoint := readEnv(name)
+		target, snapshot, checkpoint := eng.readEnv(name)
 		if checkpoint == nil {
 			continue // failure reading the environment information.
 		}
@@ -56,7 +56,7 @@ func ListEnvs() error {
 		if display == curr {
 			display += "*" // fancify the current environment.
 		}
-		fmt.Fprintf(E.Stdout, "%-20s %-48s %-12s\n", display, lastDeploy, resourceCount)
+		fmt.Fprintf(eng.Stdout, "%-20s %-48s %-12s\n", display, lastDeploy, resourceCount)
 	}
 
 	return nil

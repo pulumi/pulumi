@@ -9,9 +9,15 @@ import (
 	"github.com/pulumi/pulumi-fabric/pkg/engine"
 )
 
-func main() {
-	engine.InitStreams(os.Stdout, os.Stderr)
+var (
+	lumiEngine engine.Engine
+)
 
+func init() {
+	lumiEngine = engine.Engine{Stdout: os.Stdout, Stderr: os.Stderr}
+}
+
+func main() {
 	if err := NewLumiCmd().Execute(); err != nil {
 		fmt.Fprintf(os.Stderr, "An error occurred: %v\n", err)
 		os.Exit(-1)

@@ -5,7 +5,6 @@ package main
 import (
 	"github.com/spf13/cobra"
 
-	"github.com/pulumi/pulumi-fabric/pkg/engine"
 	"github.com/pulumi/pulumi-fabric/pkg/util/cmdutil"
 )
 
@@ -28,7 +27,7 @@ func newPackInfoCmd() *cobra.Command {
 				printExportedSymbols = true
 			}
 
-			return engine.PackInfo(printExportedSymbols, printIL, printSymbols, args)
+			return lumiEngine.PackInfo(printExportedSymbols, printIL, printSymbols, args)
 		}),
 	}
 

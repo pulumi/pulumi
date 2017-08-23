@@ -70,11 +70,9 @@ type FormatOptions struct {
 
 // DefaultSink returns a default sink that simply logs output to stderr/stdout.
 func DefaultSink(opts FormatOptions) Sink {
-	var debug, stdout, stderr io.Writer
-
-	debug = ioutil.Discard
-	stdout = os.Stdout
-	stderr = os.Stderr
+	debug := ioutil.Discard
+	stdout := io.Writer(os.Stdout)
+	stderr := io.Writer(os.Stderr)
 
 	if opts.Stdout != nil {
 		stdout = opts.Stdout

@@ -8,7 +8,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi-fabric/pkg/compiler/core"
-	"github.com/pulumi/pulumi-fabric/pkg/engine"
 	"github.com/pulumi/pulumi-fabric/pkg/tokens"
 	"github.com/pulumi/pulumi-fabric/pkg/util/cmdutil"
 	"github.com/pulumi/pulumi-fabric/pkg/util/contract"
@@ -39,7 +38,7 @@ func newPackEvalCmd() *cobra.Command {
 				evalArgs = dashdashArgsToMap(args[1:])
 			}
 
-			return engine.PackEval(configEnv, pkgArg, evalArgs)
+			return lumiEngine.PackEval(configEnv, pkgArg, evalArgs)
 		}),
 	}
 

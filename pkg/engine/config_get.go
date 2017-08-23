@@ -7,8 +7,8 @@ import (
 	"github.com/pulumi/pulumi-fabric/pkg/tokens"
 )
 
-func GetConfig(envName string, key string) error {
-	info, err := initEnvCmdName(tokens.QName(envName), "")
+func (eng *Engine) GetConfig(envName string, key string) error {
+	info, err := eng.initEnvCmdName(tokens.QName(envName), "")
 	if err != nil {
 		return err
 	}
@@ -16,7 +16,7 @@ func GetConfig(envName string, key string) error {
 
 	if config != nil {
 		if v, has := config[tokens.Token(key)]; has {
-			fmt.Fprintf(E.Stdout, "%v\n", v)
+			fmt.Fprintf(eng.Stdout, "%v\n", v)
 			return nil
 		}
 	}

@@ -3,7 +3,6 @@
 package main
 
 import (
-	"github.com/pulumi/pulumi-fabric/pkg/engine"
 	"github.com/pulumi/pulumi-fabric/pkg/util/cmdutil"
 	"github.com/spf13/cobra"
 )
@@ -22,7 +21,7 @@ func newPackVerifyCmd() *cobra.Command {
 			"errors anywhere it doesn't obey them.  This is generally useful for tools developers\n" +
 			"and can ensure that code does not fail at runtime, when such invariants are checked.",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			return engine.PackVerify(pkgargFromArgs(args))
+			return lumiEngine.PackVerify(pkgargFromArgs(args))
 		}),
 	}
 

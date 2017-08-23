@@ -7,19 +7,10 @@ import (
 	"github.com/pulumi/pulumi-fabric/pkg/util/contract"
 )
 
-var (
-	E Engine
-)
-
 type Engine struct {
 	Stdout io.Writer
 	Stderr io.Writer
 	snk    diag.Sink
-}
-
-func InitStreams(stdout io.Writer, stderr io.Writer) {
-	E.Stdout = stdout
-	E.Stderr = stderr
 }
 
 func (e *Engine) Diag() diag.Sink {
