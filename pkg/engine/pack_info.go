@@ -12,10 +12,10 @@ import (
 	"github.com/pulumi/pulumi-fabric/pkg/util/contract"
 )
 
-func PackInfo(printExportedSymbols bool, printIL bool, printSymbols bool, args []string) error {
+func PackInfo(printExportedSymbols bool, printIL bool, printSymbols bool, packages []string) error {
 	var pkg *pack.Package
 	var err error
-	if len(args) == 0 {
+	if len(packages) == 0 {
 		// No package specified, just load from the current directory.
 		pwd, locerr := os.Getwd()
 		if locerr != nil {
@@ -28,7 +28,7 @@ func PackInfo(printExportedSymbols bool, printIL bool, printSymbols bool, args [
 	} else {
 		// Enumerate the list of packages, deserialize them, and print information.
 		var path string
-		for _, arg := range args {
+		for _, arg := range packages {
 			pkg, path = readPackageFromArg(arg)
 			if pkg == nil {
 				if pkg, err = detectPackage(path); err != nil {
