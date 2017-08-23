@@ -36,11 +36,3 @@ func (eng *Engine) PackEval(configEnv string, pkg string, packArgs core.Args) er
 	}
 	return nil
 }
-
-func pkgargFromArgs(args []string) string {
-	if len(args) == 0 {
-		return ""
-	}
-
-	return args[0]
-}

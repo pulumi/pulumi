@@ -16,15 +16,15 @@ import (
 type DeployOptions struct {
 	Environment          string   // the environment we are deploying into
 	Package              string   // the package we are deploying (or "" to use the default)
+	Analyzers            []string // an optional set of analyzers to run as part of this deployment.
+	Output               string   // the place to store the output, if any.
 	Debug                bool     // true to enable resource debugging output.
 	DryRun               bool     // true if we should just print the plan without performing it.
-	Analyzers            []string // an optional set of analyzers to run as part of this deployment.
 	ShowConfig           bool     // true to show the configuration variables being used.
 	ShowReads            bool     // true to show the read-only steps in the plan.
 	ShowReplacementSteps bool     // true to show the replacement steps in the plan.
 	ShowSames            bool     // true to show the resources that aren't updated, in addition to those that are.
 	Summary              bool     // true if we should only summarize resources and operations.
-	Output               string   // the place to store the output, if any.
 }
 
 func (eng *Engine) Deploy(opts DeployOptions) error {

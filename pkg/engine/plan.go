@@ -19,9 +19,9 @@ import (
 
 type PlanOptions struct {
 	Package              string   // the package to compute the plan for
-	Debug                bool     // true to enable resource debugging output.
 	Environment          string   // the environment to use when planning
 	Analyzers            []string // an optional set of analyzers to run as part of this deployment.
+	Debug                bool     // true to enable resource debugging output.
 	ShowConfig           bool     // true to show the configuration variables being used.
 	ShowReads            bool     // true to show the read-only steps in the plan.
 	ShowReplacementSteps bool     // true to show the replacement steps in the plan.
