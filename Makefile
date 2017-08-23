@@ -1,5 +1,5 @@
 SHELL=/bin/bash
-.SHELLFLAGS=-e
+.SHELLFLAGS=-ec
 
 PROJECT=github.com/pulumi/pulumi-fabric
 PROJECT_PKGS=$(shell go list ./cmd/... ./pkg/... | grep -v /vendor/)
