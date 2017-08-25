@@ -3,9 +3,9 @@
 package main
 
 import (
+	"github.com/pulumi/pulumi-fabric/pkg/engine"
 	"github.com/spf13/cobra"
 
-	"github.com/pulumi/pulumi-fabric/pkg/tokens"
 	"github.com/pulumi/pulumi-fabric/pkg/util/cmdutil"
 )
 
@@ -28,20 +28,20 @@ func newDestroyCmd() *cobra.Command {
 			"Warning: although old snapshots can be used to recreate an environment, this command\n" +
 			"is generally irreversable and should be used with great care.",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			info, err := initEnvCmdName(tokens.QName(env), args)
-			if err != nil {
-				return err
+			if env == "" {
+				env = lumiEngine.GetCurrentEnvName()
 			}
-			name := info.Target.Name
+
 			if dryRun || yes ||
-				confirmPrompt("This will permanently destroy all resources in the '%v' environment!", name) {
-				return deployLatest(cmd, info, deployOptions{
-					Debug:   debug,
-					Destroy: true,
-					DryRun:  dryRun,
-					Summary: summary,
-				})
+				confirmPrompt("This will permanently destroy all resources in the '%v' environment!", env) {
+				return lumiEngine.Destroy(engine.DestroyOptions{
+					Environment: env,
+					Package:     pkgargFromArgs(args),
+					DryRun:      dryRun,
+					Debug:       debug,
+					Summary:     summary})
 			}
+
 			return nil
 		}),
 	}

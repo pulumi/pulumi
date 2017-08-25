@@ -3,8 +3,6 @@
 package main
 
 import (
-	"errors"
-
 	"github.com/pulumi/pulumi-fabric/pkg/util/cmdutil"
 	"github.com/spf13/cobra"
 )
@@ -23,28 +21,9 @@ func newPackVerifyCmd() *cobra.Command {
 			"errors anywhere it doesn't obey them.  This is generally useful for tools developers\n" +
 			"and can ensure that code does not fail at runtime, when such invariants are checked.",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			// Create a compiler object and perform the verification.
-			if !verify(cmd, args) {
-				return errors.New("verification failed")
-			}
-			return nil
+			return lumiEngine.PackVerify(pkgargFromArgs(args))
 		}),
 	}
 
 	return cmd
-}
-
-// verify creates a compiler, much like compile, but only performs binding and verification on it.  If verification
-// succeeds, the return value is true; if verification fails, errors will have been output, and the return is false.
-func verify(cmd *cobra.Command, args []string) bool {
-	// Prepare the compiler info and, provided it succeeds, perform the verification.
-	if comp, pkg := prepareCompiler(cmd, args); comp != nil {
-		// Now perform the compilation and extract the heap snapshot.
-		if pkg == nil {
-			return comp.Verify()
-		}
-		return comp.VerifyPackage(pkg)
-	}
-
-	return false
 }

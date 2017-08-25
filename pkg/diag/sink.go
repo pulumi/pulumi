@@ -61,24 +61,36 @@ const (
 
 // FormatOptions controls the output style and content.
 type FormatOptions struct {
-	Pwd    string // the working directory.
-	Colors bool   // if true, output will be colorized.
-	Debug  bool   // if true, debugging will be output to stdout.
+	Pwd    string    // the working directory.
+	Colors bool      // if true, output will be colorized.
+	Debug  bool      // if true, debugging will be output to stdout.
+	Stdout io.Writer // if non nil, use this writer instead of os.Stdout for output
+	Stderr io.Writer // if non nil, use this writer instead of os.Stderr for errors
 }
 
 // DefaultSink returns a default sink that simply logs output to stderr/stdout.
 func DefaultSink(opts FormatOptions) Sink {
-	var debug io.Writer
-	if opts.Debug {
-		debug = os.Stdout
-	} else {
-		debug = ioutil.Discard
+	debug := ioutil.Discard
+	stdout := io.Writer(os.Stdout)
+	stderr := io.Writer(os.Stderr)
+
+	if opts.Stdout != nil {
+		stdout = opts.Stdout
 	}
+
+	if opts.Stderr != nil {
+		stderr = opts.Stderr
+	}
+
+	if opts.Debug {
+		debug = stdout
+	}
+
 	return newDefaultSink(opts, map[Severity]io.Writer{
 		Debug:   debug,
-		Info:    os.Stdout,
-		Error:   os.Stderr,
-		Warning: os.Stderr,
+		Info:    stdout,
+		Error:   stderr,
+		Warning: stderr,
 	})
 }
 

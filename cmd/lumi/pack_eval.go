@@ -3,14 +3,11 @@
 package main
 
 import (
-	"fmt"
 	"strings"
 
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi-fabric/pkg/compiler/core"
-	"github.com/pulumi/pulumi-fabric/pkg/eval"
-	"github.com/pulumi/pulumi-fabric/pkg/resource/deploy"
 	"github.com/pulumi/pulumi-fabric/pkg/tokens"
 	"github.com/pulumi/pulumi-fabric/pkg/util/cmdutil"
 	"github.com/pulumi/pulumi-fabric/pkg/util/contract"
@@ -34,32 +31,14 @@ func newPackEvalCmd() *cobra.Command {
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			contract.Assertf(!dotOutput, "TODO[pulumi/pulumi-fabric#235]: DOT files not yet supported")
 
-			// First, load and compile the package.
-			result := compile(cmd, args)
-			if result == nil {
-				return nil
+			pkgArg := pkgargFromArgs(args)
+			evalArgs := make(core.Args)
+
+			if len(args) > 1 {
+				evalArgs = dashdashArgsToMap(args[1:])
 			}
 
-			// Now fire up an interpreter so we can run the program.
-			e := eval.New(result.B.Ctx(), nil)
-
-			// If configuration was requested, load it up and populate the object state.
-			if configEnv != "" {
-				envInfo, err := initEnvCmdName(tokens.QName(configEnv), args)
-				if err != nil {
-					return err
-				}
-				if err := deploy.InitEvalConfig(result.B.Ctx(), e, envInfo.Target.Config); err != nil {
-					return err
-				}
-			}
-
-			// Finally, execute the entire program, and serialize the return value (if any).
-			packArgs := dashdashArgsToMap(args)
-			if obj, _ := e.EvaluatePackage(result.Pkg, packArgs); obj != nil {
-				fmt.Print(obj)
-			}
-			return nil
+			return lumiEngine.PackEval(configEnv, pkgArg, evalArgs)
 		}),
 	}
 

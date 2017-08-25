@@ -7,7 +7,6 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/pulumi/pulumi-fabric/pkg/tokens"
 	"github.com/pulumi/pulumi-fabric/pkg/util/cmdutil"
 )
 
@@ -26,9 +25,7 @@ func newEnvInitCmd() *cobra.Command {
 				return errors.New("missing required environment name")
 			}
 
-			name := tokens.QName(args[0])
-			createEnv(name)
-			return nil
+			return lumiEngine.InitEnv(args[0])
 		}),
 	}
 }

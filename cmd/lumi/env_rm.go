@@ -22,21 +22,17 @@ func newEnvRmCmd() *cobra.Command {
 			"\n" +
 			"After this command completes, the environment will no longer be available for deployments.",
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			info, err := initEnvCmd(cmd, args)
-			if err != nil {
-				return err
+
+			if len(args) == 0 || args[0] == "" {
+				return errors.Errorf("missing required environment name")
 			}
 
-			// Don't remove environments that still have resources.
-			if !force && info.Snapshot != nil && len(info.Snapshot.Resources) > 0 {
-				return errors.Errorf(
-					"'%v' still has resources; removal rejected; pass --force to override", info.Target.Name)
-			}
+			envName := args[0]
 
 			// Ensure the user really wants to do this.
 			if yes ||
-				confirmPrompt("This will permanently remove the '%v' environment!", info.Target.Name) {
-				removeTarget(info.Target)
+				confirmPrompt("This will permanently remove the '%v' environment!", envName) {
+				return lumiEngine.RemoveEnv(envName, force)
 			}
 
 			return nil
