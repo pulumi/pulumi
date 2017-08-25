@@ -10,6 +10,9 @@ import (
 )
 
 var (
+	// The lumi engine provides an API for common lumi tasks.  It's shared across the
+	// `lumi` command and the deployment engine in the pulumi-service. For `lumi` we set
+	// the engine to write output and errors to os.Stdout and os.Stderr.
 	lumiEngine engine.Engine
 )
 
