@@ -26,3 +26,26 @@ func (eng *Engine) SetConfig(envName string, key string, value string) error {
 
 	return nil
 }
+
+// ReplaceConfig sets the config for an environment to match `newConfig` and then saves
+// the environment. Note that config values that were present in the old environment but are
+// not present in `newConfig` will be removed from the environment
+func (eng *Engine) ReplaceConfig(envName string, newConfig map[string]string) error {
+	info, err := eng.initEnvCmdName(tokens.QName(envName), "")
+	if err != nil {
+		return err
+	}
+	config := make(resource.ConfigMap)
+
+	for k, v := range newConfig {
+		config[tokens.Token(k)] = v
+	}
+
+	info.Target.Config = config
+
+	if !eng.saveEnv(info.Target, info.Snapshot, "", true) {
+		return errors.Errorf("could not save configuration value")
+	}
+
+	return nil
+}
