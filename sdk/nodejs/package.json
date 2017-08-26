@@ -1,0 +1,34 @@
+{
+    "name": "@lumi/pulumi-fabric",
+    "version": "0.0.1",
+    "description": "Pulumi's Fabric Node.js SDK",
+    "repository": "https://github.com/pulumi/pulumi-fabric/sdk/nodejs",
+    "main": "bin/lib/index.js",
+    "typings": "bin/lib/index.d.ts",
+    "scripts": {
+        "clean": "rm -rf bin/",
+        "build": "npm run copyprotos && tsc && npm run binplace && tslint 'cmd/**/*.ts' 'lib/**/*.ts'",
+        "copyprotos": "cp -r ../proto/nodejs lib/proto/",
+        "binplaceprotos": "cp -r lib/proto/ bin/lib/proto/",
+        "binplacetestdata": "mkdir -p bin/tests/langhost/cases/ && find tests/langhost/cases/* -type d -exec cp -R {} bin/tests/langhost/cases/ \\;",
+        "binplace": "npm run binplaceprotos && npm run binplacetestdata",
+        "test": "npm run cov && npm run covreport",
+        "cov": "istanbul cover --print none node_modules/.bin/_mocha -- --timeout 15000 'bin/tests/**/*.spec.js'",
+        "covreport": "istanbul report text-summary && istanbul report text"
+    },
+    "devDependencies": {
+        "@types/minimist": "^1.2.0",
+        "@types/mocha": "^2.2.42",
+        "@types/node": "^8.0.25",
+        "istanbul": "^0.4.5",
+        "mocha": "^3.5.0",
+        "tslint": "^5.6.0",
+        "typescript": "^2.1.4"
+    },
+    "dependencies": {
+        "google-protobuf": "^3.4.0",
+        "grpc": "^1.4.1",
+        "minimist": "^1.2.0",
+        "source-map-support": "^0.4.16"
+    }
+}

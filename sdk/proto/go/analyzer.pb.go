@@ -8,16 +8,25 @@ Package lumirpc is a generated protocol buffer package.
 It is generated from these files:
 	analyzer.proto
 	engine.proto
+	languages.proto
 	provider.proto
 
 It has these top-level messages:
 	AnalyzeRequest
 	AnalyzeResponse
 	AnalyzeFailure
+	GetResourceRequest
+	GetResourceResponse
+	QueryResourcesRequest
+	QueryResourcesResponse
 	LogRequest
 	ReadLocationRequest
 	ReadLocationsRequest
 	ReadLocationsResponse
+	RunRequest
+	RunResponse
+	NewResourceRequest
+	NewResourceResponse
 	NameRequest
 	NameResponse
 	CheckRequest
