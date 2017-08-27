@@ -2,6 +2,8 @@
 
 // Ensure we run the top-level module initializer so we get source-maps, etc.
 import "../../lib";
+
+import { ID, URN } from "../../lib";
 import * as runtime from "../../lib/runtime";
 
 import { asyncTest } from "../util";
@@ -21,6 +23,7 @@ interface RunCase {
     config?: {[key: string]: string};
     expectError?: string;
     expectResourceCount?: number;
+    createResource?: (ctx: any, t: string, name: string, res: any) => { id?: ID, urn?: URN, props?: any };
 }
 
 describe("rpc", () => {
@@ -47,6 +50,34 @@ describe("rpc", () => {
         "one_resource": {
             program: path.join(base, "001.one_resource"),
             expectResourceCount: 1,
+            createResource: (ctx: any, t: string, name: string, res: any) => {
+                assert.strictEqual("test:index:MyResource", t);
+                assert.strictEqual("testResource1", name);
+                return { id: undefined, urn: undefined, props: undefined };
+            },
+        },
+        // A program that allocates ten simple resources.
+        "ten_resources": {
+            program: path.join(base, "002.ten_resources"),
+            expectResourceCount: 10,
+            createResource: (ctx: any, t: string, name: string, res: any) => {
+                assert.strictEqual(t, "test:index:MyResource");
+                if (ctx.seen) {
+                    assert(!ctx.seen[name],
+                        `Got multiple resources with same name ${name}`);
+                }
+                else {
+                    ctx.seen = {};
+                }
+                const prefix = "testResource";
+                assert.strictEqual(name.substring(0, prefix.length), prefix,
+                    `Expected ${name} to be of the form ${prefix}N; missing prefix`);
+                let seqnum = parseInt(name.substring(prefix.length));
+                assert(!isNaN(seqnum),
+                    `Expected ${name} to be of the form ${prefix}N; missing N seqnum`);
+                ctx.seen[name] = true;
+                return { id: undefined, urn: undefined, props: undefined };
+            },
         },
     };
 
@@ -54,11 +85,20 @@ describe("rpc", () => {
         let opts: RunCase = cases[casename];
         it(`run test: ${casename} (pwd=${opts.pwd},prog=${opts.program})`, asyncTest(async () => {
             // First we need to mock the resource monitor.
+            let ctx = {};
             let rescnt = 0;
             let monitor = createMockResourceMonitor((call: any, callback: any) => {
-                // TODO: set Id, Urn, Object.
+                let resp = new langproto.NewResourceResponse();
+                if (opts.createResource) {
+                    let req: any = call.request;
+                    let res: any = runtime.unmarshalGRPCStructToJSONObject(req.getObject());
+                    let { id, urn, props } = opts.createResource(ctx, req.getType(), req.getName(), res);
+                    resp.setId(id);
+                    resp.setUrn(urn);
+                    resp.setObject(runtime.marshalJSONObjectToGRPCStruct(props));
+                }
                 rescnt++;
-                callback(undefined, new langproto.NewResourceResponse());
+                callback(undefined, resp);
             });
 
             // Next, go ahead and spawn a new language host that connects to said monitor.

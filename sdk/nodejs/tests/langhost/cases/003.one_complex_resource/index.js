@@ -1,4 +1,4 @@
-// This tests the basic creation of a single propertyless resource.
+// This tests the creation of a resource that contains lots of input properties.
 
 let fabric = require("../../../../lib");
 

@@ -1,4 +1,4 @@
-// This tests the basic creation of a single propertyless resource.
+// This tests the creation of ten propertyless resources.
 
 let fabric = require("../../../../lib");
 
@@ -8,5 +8,7 @@ class MyResource extends fabric.Resource {
     }
 }
 
-new MyResource("testResource1");
+for (let i = 0; i < 10; i++) {
+    new MyResource("testResource" + i);
+}
 

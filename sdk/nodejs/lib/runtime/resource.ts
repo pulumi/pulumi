@@ -3,8 +3,8 @@
 import { Property } from "../property";
 import { Resource, URN } from "../resource";
 import { getMonitor } from "./monitor";
+import { marshalJSONObjectToGRPCStruct, unmarshalGRPCStructToJSONObject } from "./rpc";
 
-let gstruct = require("google-protobuf/google/protobuf/struct_pb.js");
 let langproto = require("../proto/nodejs/languages_pb");
 
 // registerResource registers a new resource object with a given type t and name.  It returns the auto-generated URN
@@ -66,14 +66,14 @@ function encodeProperties(res: Resource): any {
             }
         }
     }
-    return marshalStruct(obj);
+    return marshalJSONObjectToGRPCStruct(obj);
 }
 
 // resolveProperties takes as input a gRPC serialized proto.google.protobuf.Struct and resolves all of the
 // resource's matching properties to the values inside.
 function resolveProperties(obj: any, res: Resource): void {
     // First set any properties present in the output object.
-    let props: any = unmarshalStruct(obj);
+    let props: any = unmarshalGRPCStructToJSONObject(obj);
     for (let k of Object.keys(props)) {
         let v: any = (<any>res)[k];
         if (!(v instanceof Property)) {
@@ -87,79 +87,6 @@ function resolveProperties(obj: any, res: Resource): void {
         if (v instanceof Property) {
             (<any>res)[k].done();
         }
-    }
-}
-
-function marshalStruct(obj: any): any {
-    let struct = new gstruct.Struct();
-    let fields = struct.getFieldsMap();
-    for (let k of Object.keys(obj)) {
-        fields[k] = marshalValue(obj[k]);
-    }
-    return struct;
-}
-
-function marshalValue(v: any): any {
-    let val = new gstruct.Value();
-    if (v === undefined || v === null) {
-        val.setNullValue(gstruct.NULL_VALUE);
-        val.setKindCase(gstruct.NULL_VALUE);
-    }
-    else if (typeof v === "number") {
-        val.setNumberValue(v);
-        val.setKindCase(gstruct.NUMBER_VALUE);
-    }
-    else if (typeof v === "string") {
-        val.setStringValue(v);
-        val.setKindCase(gstruct.STRING_VALUE);
-    }
-    else if (typeof v === "boolean") {
-        val.setBoolValue(v);
-        val.setKindCase(gstruct.BOOL_VALUE);
-    }
-    else if (v instanceof Array) {
-        let a = [];
-        for (let e of v) {
-            a.push(marshalValue(e));
-        }
-        val.setListValue(a);
-        val.setKindCase(gstruct.LIST_VALUE);
-    }
-    else {
-        val.setStructValue(marshalStruct(v));
-        val.setKindCase(gstruct.STRUCT_VALUE);
-    }
-}
-
-function unmarshalStruct(struct: any): any {
-    let obj: any = {};
-    let fields = struct.getFieldsMap();
-    for (let k of Object.keys(fields)) {
-        obj[k] = unmarshalValue(fields[k]);
-    }
-    return obj;
-}
-
-function unmarshalValue(v: any): any {
-    switch (v.getKindCase()) {
-        case gstruct.NULL_VALUE:
-            return undefined;
-        case gstruct.NUMBER_VALUE:
-            return v.getNumberValue();
-        case gstruct.STRING_VALUE:
-            return v.getStringValue();
-        case gstruct.BOOL_VALUE:
-            return v.getBoolValue();
-        case gstruct.STRUCT_VALUE:
-            return unmarshalStruct(v.getStructValue());
-        case gstruct.LIST_VALUE:
-            let a = [];
-            for (let e of v.getListValue()) {
-                a.push(unmarshalValue(e));
-            }
-            return a;
-        default:
-            throw new Error(`Unrecognized gRPC struct value kind: ${v.getKindCase()}`);
     }
 }
 
