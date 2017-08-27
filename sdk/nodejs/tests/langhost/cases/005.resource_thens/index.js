@@ -25,7 +25,7 @@ class ResourceB extends fabric.Resource {
 let a = new ResourceA("resourceA");
 a.id.then(id => {
     console.log(`A.ID: ${id}`);
-    assert.equal(id, "tresourceA");
+    assert.equal(id, "resourceA");
 });
 a.urn.then(urn => {
     console.log(`A.URN: ${urn}`);
@@ -44,7 +44,7 @@ a.outprop.then(prop => {
 let b = new ResourceB("resourceB", a);
 b.id.then(id => {
     console.log(`B.ID: ${id}`);
-    assert.equal(id, "tresourceB");
+    assert.equal(id, "resourceB");
 });
 b.urn.then(urn => {
     console.log(`B.URN: ${urn}`);
