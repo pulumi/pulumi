@@ -61,7 +61,13 @@ function transferProperties(res: Resource, props?: {[key: string]: Property<any>
         for (let k of Object.keys(props)) {
             // Store the property on the resource.
             let v: Property<any> = props[k];
-            if ((<any>res)[k]) {
+            if (v === undefined) {
+                throw new Error(`Property '${k}' is undefined`);
+            }
+            else if (!(v instanceof Property)) {
+                throw new Error(`Property '${k}' is not a fabric Property object`);
+            }
+            else if ((<any>res)[k]) {
                 throw new Error(`Property '${k}' is already initialized on this resource object`);
             }
             (<any>res)[k] = v;

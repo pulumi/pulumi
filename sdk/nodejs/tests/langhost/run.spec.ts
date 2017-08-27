@@ -112,6 +112,53 @@ describe("rpc", () => {
                 };
             },
         },
+        // A program that allocates 10 complex resources with lots of input and output properties.
+        "ten_complex_resources": {
+            program: path.join(base, "004.ten_complex_resources"),
+            expectResourceCount: 10,
+            createResource: (ctx: any, t: string, name: string, res: any) => {
+                assert.strictEqual(t, "test:index:MyResource");
+                if (ctx.seen) {
+                    assert(!ctx.seen[name],
+                        `Got multiple resources with same name ${name}`);
+                }
+                else {
+                    ctx.seen = {};
+                }
+                const prefix = "testResource";
+                assert.strictEqual(name.substring(0, prefix.length), prefix,
+                    `Expected ${name} to be of the form ${prefix}N; missing prefix`);
+                let seqnum = parseInt(name.substring(prefix.length));
+                assert(!isNaN(seqnum),
+                    `Expected ${name} to be of the form ${prefix}N; missing N seqnum`);
+                ctx.seen[name] = true;
+                assert.deepEqual(res, {
+                    inseq: seqnum,
+                    inpropB1: false,
+                    inpropB2: true,
+                    inpropN: 42,
+                    inpropS: "a string",
+                    inpropA: [ true, 99, "what a great property" ],
+                    inpropO: {
+                        b1: false,
+                        b2: true,
+                        n: 42,
+                        s: "another string",
+                        a: [ 66, false, "strings galore" ],
+                        o: { z: "x" },
+                    },
+                });
+                return {
+                    id: name,
+                    urn: t + "::" + name,
+                    props: {
+                        outseq: seqnum,
+                        outprop1: "output properties ftw",
+                        outprop2: 998.6,
+                    },
+                };
+            },
+        },
     };
 
     for (let casename of Object.keys(cases)) {
