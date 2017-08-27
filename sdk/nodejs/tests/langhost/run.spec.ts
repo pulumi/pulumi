@@ -198,93 +198,104 @@ describe("rpc", () => {
     for (let casename of Object.keys(cases)) {
         let opts: RunCase = cases[casename];
         it(`run test: ${casename} (pwd=${opts.pwd},prog=${opts.program})`, asyncTest(async () => {
-            // First we need to mock the resource monitor.
-            let ctx = {};
-            let rescnt = 0;
-            let monitor = createMockResourceMonitor((call: any, callback: any) => {
-                let resp = new langproto.NewResourceResponse();
-                if (opts.createResource) {
-                    let req: any = call.request;
-                    let res: any = req.getObject().toJavaScript();
-                    let { id, urn, props } = opts.createResource(ctx, true, req.getType(), req.getName(), res);
-                    resp.setId(id);
-                    resp.setUrn(urn);
-                    resp.setObject(gstruct.Struct.fromJavaScript(props));
+            // For each test case, run it twice: first to plan and then to deploy.
+            for (let dryrun of [ true, false ]) {
+                console.log(dryrun ? "PLAN:" : "DEPLOY:");
+
+                // First we need to mock the resource monitor.
+                let ctx = {};
+                let rescnt = 0;
+                let monitor = createMockResourceMonitor((call: any, callback: any) => {
+                    let resp = new langproto.NewResourceResponse();
+                    if (opts.createResource) {
+                        let req: any = call.request;
+                        let res: any = req.getObject().toJavaScript();
+                        let { id, urn, props } = opts.createResource(ctx, dryrun, req.getType(), req.getName(), res);
+                        resp.setId(id);
+                        resp.setUrn(urn);
+                        resp.setObject(gstruct.Struct.fromJavaScript(props));
+                    }
+                    rescnt++;
+                    callback(undefined, resp);
+                });
+
+                // Next, go ahead and spawn a new language host that connects to said monitor.
+                let langHost = serveLanguageHostProcess(monitor.addr);
+                let langHostAddr: string = await langHost.addr;
+
+                // Fake up a client RPC connection to the language host so that we can invoke run.
+                let langHostClient = new langrpc.LanguageRuntimeClient(langHostAddr, grpc.credentials.createInsecure());
+
+                // Invoke our little test program; it will allocate a few resources, which we will record.  It will
+                // throw an error if anything doesn't look right, which gets reflected back in the run results.
+                let runError: string | undefined = await mockRun(langHostClient, opts, dryrun);
+
+                // Validate that everything looks right.
+                let expectError: string | undefined = opts.expectError;
+                if (expectError === undefined) {
+                    expectError = "";
                 }
-                rescnt++;
-                callback(undefined, resp);
-            });
+                assert.strictEqual(runError, expectError,
+                    `Expected an error of "${expectError}"; got "${runError}"`);
 
-            // Next, go ahead and spawn a new language host that connects to said monitor.
-            let langHost = serveLanguageHostProcess(monitor.addr);
-            let langHostAddr: string = await langHost.addr;
+                let expectResourceCount: number | undefined = opts.expectResourceCount;
+                if (expectResourceCount === undefined) {
+                    expectResourceCount = 0;
+                }
+                assert.strictEqual(rescnt, expectResourceCount,
+                    `Expected exactly ${expectResourceCount} resources; got ${rescnt}`);
 
-            // Fake up a client RPC connection to the language host so that we can invoke run.
-            let langHostClient = new langrpc.LanguageRuntimeClient(langHostAddr, grpc.credentials.createInsecure());
-
-            // Now invoke our little test program; it will allocate a few resources, which we will record.  It will
-            // throw an error if anything doesn't look right, which gets reflected back in the run results.
-            let runError: string | undefined = await new Promise<string | undefined>(
-                (resolve, reject) => {
-                    let runReq = new langproto.RunRequest();
-                    if (opts.pwd) {
-                        runReq.setPwd(opts.pwd);
-                    }
-                    runReq.setProgram(opts.program);
-                    if (opts.args) {
-                        runReq.setArgsList(opts.args);
-                    }
-                    if (opts.config) {
-                        let cfgmap = runReq.getConfigMap();
-                        for (let cfgkey of Object.keys(opts.config)) {
-                            cfgmap.set(cfgkey, opts.config[cfgkey]);
-                        }
-                    }
-                    langHostClient.run(runReq, (err: Error, res: any) => {
+                // Finally, tear down everything so each test case starts anew.
+                await new Promise<void>((resolve, reject) => {
+                    langHost.proc.kill();
+                    langHost.proc.on("close", () => { resolve(); });
+                });
+                await new Promise<void>((resolve, reject) => {
+                    monitor.server.tryShutdown((err: Error) => {
                         if (err) {
                             reject(err);
                         }
                         else {
-                            // The response has a single field, the error, if any, that occurred (blank means success).
-                            resolve(res.getError());
+                            resolve();
                         }
                     });
+                });
+            }
+        }));
+    }
+});
+
+function mockRun(langHostClient: any, opts: RunCase, dryrun: boolean): Promise<string | undefined> {
+    return new Promise<string | undefined>(
+        (resolve, reject) => {
+            let runReq = new langproto.RunRequest();
+            if (opts.pwd) {
+                runReq.setPwd(opts.pwd);
+            }
+            runReq.setProgram(opts.program);
+            if (opts.args) {
+                runReq.setArgsList(opts.args);
+            }
+            if (opts.config) {
+                let cfgmap = runReq.getConfigMap();
+                for (let cfgkey of Object.keys(opts.config)) {
+                    cfgmap.set(cfgkey, opts.config[cfgkey]);
                 }
-            );
-
-            // Validate that everything looks right.
-            let expectError: string | undefined = opts.expectError;
-            if (expectError === undefined) {
-                expectError = "";
             }
-            assert.strictEqual(runError, expectError,
-                `Expected an error of "${expectError}"; got "${runError}"`);
-
-            let expectResourceCount: number | undefined = opts.expectResourceCount;
-            if (expectResourceCount === undefined) {
-                expectResourceCount = 0;
-            }
-            assert.strictEqual(rescnt, expectResourceCount,
-                `Expected exactly ${expectResourceCount} resources; got ${rescnt}`);
-
-            // Finally, tear down everything.
-            await new Promise<void>((resolve, reject) => {
-                langHost.proc.kill();
-                langHost.proc.on("close", () => { resolve(); });
-            });
-            await new Promise<void>((resolve, reject) => {
-                monitor.server.tryShutdown((err: Error) => {
+            (dryrun ? langHostClient.runPlan : langHostClient.runDeploy).call(
+                langHostClient, runReq, (err: Error, res: any) => {
                     if (err) {
                         reject(err);
                     }
                     else {
-                        resolve();
+                        // The response has a single field, the error, if any, that occurred (blank means success).
+                        resolve(res.getError());
                     }
-                });
-            });
-        }));
-    }
-});
+                }
+            );
+        }
+    );
+}
 
 function createMockResourceMonitor(
         newResourceCallback: (call: any, request: any) => any): { server: any, addr: string } {

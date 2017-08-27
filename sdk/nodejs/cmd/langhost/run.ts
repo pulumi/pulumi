@@ -11,7 +11,7 @@ let langrpc = require("../../lib/proto/nodejs/languages_grpc_pb");
 
 export function main(args: string[]): void {
     // The format of this program is as follows:
-    //     run.js [--config.k v]... [--pwd <pwd>] <monitor> <program> [arg]...
+    //     run.js [--config.k v]... [--dry-run] [--pwd <pwd>] <monitor> <program> [arg]...
     // where <monitor> tells us how to talk back to the resource monitor, --config.k=v is an optional repeating set
     // of config flags, pwd is an optional working directory to run the script from, <program> is the Node.js program
     // to execute with args to pass to the program.
@@ -30,6 +30,13 @@ export function main(args: string[]): void {
             process.exit(-1);
         }
         runtime.setConfig(key, args[i]);
+    }
+
+    // If ther is a --dry-run directive, flip the switch.  This controls whether we are planning vs. really doing it.
+    let dryrun = false;
+    if (i < args.length && (args[i] === "--dry-run" || args[i] === "-dry-run")) {
+        dryrun = true;
+        i++;
     }
 
     // If there is a --pwd directive, switch directories.
@@ -51,7 +58,7 @@ export function main(args: string[]): void {
         process.exit(-1);
     }
     let monitor = new langrpc.ResourceMonitorClient(args[i++], grpc.credentials.createInsecure());
-    runtime.setMonitor(monitor);
+    runtime.configureMonitor(monitor, dryrun);
 
     // Pluck out the program and arguments.
     if (i >= args.length) {
@@ -84,7 +91,7 @@ export function main(args: string[]): void {
 }
 
 function usage(): void {
-    console.error(`usage: RUN [--config.k v]... [--pwd <pwd>] <monitor> <program> [arg]...`);
+    console.error(`usage: RUN [--config.k v]... [--dry-run] [--pwd <pwd>] <monitor> <program> [arg]...`);
 }
 
 main(process.argv.slice(2));

@@ -2,7 +2,7 @@
 
 import { Property } from "../property";
 import { Resource, URN } from "../resource";
-import { getMonitor } from "./monitor";
+import { getMonitor, isDryRun } from "./monitor";
 
 let langproto = require("../proto/nodejs/languages_pb");
 let gstruct = require("google-protobuf/google/protobuf/struct_pb.js");
@@ -20,33 +20,38 @@ export function registerResource(
 
     // Store these properties, plus all of those passed in, on the resource object.  Note that we do these using
     // any casts because they are typically readonly and this function is in cahoots with the initialization process.
+    let transfer: Promise<any> = transferProperties(res, props);
     (<any>res).urn = urn;
     (<any>res).id = id;
-    let obj: any = transferProperties(res, props);
 
-    // Fire off an RPC to the monitor to register the resource.  If/when it resolves, we will blit the properties.
-    let req = new langproto.NewResourceRequest();
-    req.setType(t);
-    req.setName(name);
-    req.setObject(obj);
-    monitor.newResource(req, (err: Error, resp: any) => {
-        if (err) {
-            throw new Error(`Failed to register new resource with monitor: ${err}`);
-        }
-        else {
-            // The resolution will always have a valid URN, even during planning.
-            urn.resolve(resp.getUrn());
+    // During a real deployment, the transfer operation may take some time to settle (we may need to wait on
+    // other in-flight operations.  As a result, we can't launch the RPC request until they are done.  At the same
+    // time, we want to give the illusion of non-blocking code, so we return immediately.
+    transfer.then((obj: any) => {
+        // Fire off an RPC to the monitor to register the resource.  If/when it resolves, we will blit the properties.
+        let req = new langproto.NewResourceRequest();
+        req.setType(t);
+        req.setName(name);
+        req.setObject(obj);
+        monitor.newResource(req, (err: Error, resp: any) => {
+            if (err) {
+                throw new Error(`Failed to register new resource with monitor: ${err}`);
+            }
+            else {
+                // The resolution will always have a valid URN, even during planning.
+                urn.resolve(resp.getUrn());
 
-            // The ID and properties, on the other hand, are only resolved to values during deployments.
-            let newID: any = resp.getId();
-            if (newID) {
-                id.resolve(newID);
+                // The ID and properties, on the other hand, are only resolved to values during deployments.
+                let newID: any = resp.getId();
+                if (newID) {
+                    id.resolve(newID);
+                }
+                let newProperties: any = resp.getObject();
+                if (newProperties) {
+                    resolveProperties(newProperties, res);
+                }
             }
-            let newProperties: any = resp.getObject();
-            if (newProperties) {
-                resolveProperties(newProperties, res);
-            }
-        }
+        });
     });
 }
 
@@ -55,8 +60,9 @@ export const unknownPropertyValue = "04da6b54-80e4-46f7-96ec-b56ff0331ba9";
 
 // transferProperties stores the properties on the resource object and returns a gRPC serializable
 // proto.google.protobuf.Struct out of a resource's properties.
-function transferProperties(res: Resource, props?: {[key: string]: Property<any>}): any {
-    let obj: any = {};
+function transferProperties(res: Resource, props?: {[key: string]: Property<any>}): Promise<any> {
+    let obj: any = {}; // this will eventually hold the serialized object properties.
+    let eventuals: Promise<void>[] = []; // this may end up containing promises for linked properties.
     if (props) {
         for (let k of Object.keys(props)) {
             // Store the property on the resource.
@@ -74,18 +80,30 @@ function transferProperties(res: Resource, props?: {[key: string]: Property<any>
 
             // If this is a property with a known value, serialize it; skip outputs for now.
             // TODO: we need to serialize assets/archives using sig keys.
-            // TODO: if any are waiting, we need to also wait for them.
             if (v.has()) {
                 // If this is a property, and it is a concrete value, propagate it.
                 obj[k] = v.require();
             }
-            else if (v.linked()) {
-                // If this is a property linked to the completion of another one, it's computed.
-                obj[k] = unknownPropertyValue;
+            else {
+                let link: Promise<any> | undefined = v.linked();
+                if (link) {
+                    // If this is a property linked to the completion of another one, it's computed.  In the case
+                    // of a dry run, we cannot know its value, so we say so.  For other cases, we must wait.
+                    if (isDryRun()) {
+                        obj[k] = unknownPropertyValue;
+                    }
+                    else {
+                        eventuals.push(link.then((ev) => {
+                            obj[k] = ev;
+                        }));
+                    }
+                }
             }
         }
     }
-    return gstruct.Struct.fromJavaScript(obj);
+    return Promise.all(eventuals).then(() => {
+        return gstruct.Struct.fromJavaScript(obj);
+    });
 }
 
 // resolveProperties takes as input a gRPC serialized proto.google.protobuf.Struct and resolves all of the

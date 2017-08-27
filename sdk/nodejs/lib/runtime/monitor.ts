@@ -3,10 +3,17 @@
 // monitor is a live connection to the resource monitor connection.
 // IDEA: it would be nice to mirror the Protobuf structures as TypeScript interfaces.
 let monitor: any;
+// dryrun tells us whether we're performing a plan (true) versus a real deployment (false).
+let dryrun: boolean;
 
 // hasMonitor returns true if we are currently connected to a resource monitoring service.
 export function hasMonitor(): boolean {
     return !!monitor;
+}
+
+// isDryRun returns true if we are planning.
+export function isDryRun(): boolean {
+    return dryrun;
 }
 
 // getMonitor returns the current resource monitoring service client for RPC communications.
@@ -17,11 +24,13 @@ export function getMonitor(): any {
     return monitor;
 }
 
-// setMonitor initializes the current resource monitoring RPC connection.  It may be called only once.
-export function setMonitor(m: any): void {
+// setMonitor initializes the current resource monitoring RPC connection.  It may be called only once.  This also
+// tells the runtime whether we are performing a "dry run" (plan) or whether we are performing a real deployment.
+export function configureMonitor(m: any, dr: boolean): void {
     if (monitor) {
         throw new Error("Cannot set the resource monitor more than once");
     }
     monitor = m;
+    dryrun = dr;
 }
 

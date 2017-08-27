@@ -24,7 +24,10 @@ export function serveLanguageHost(monitor: string, port?: number): { server: any
 
     // Now fire up the gRPC server and begin serving!
     let server = new grpc.Server();
-    server.addService(langrpc.LanguageRuntimeService, { run: runRPC });
+    server.addService(langrpc.LanguageRuntimeService, {
+        runPlan: runPlanRPC,
+        runDeploy: runDeployRPC,
+    });
     port = server.bind(`0.0.0.0:${port}`, grpc.ServerCredentials.createInsecure());
 
     // Now we're done: the server is started, and gRPC keeps the even loop alive.
@@ -32,10 +35,19 @@ export function serveLanguageHost(monitor: string, port?: number): { server: any
     return { server: server, addr: `0.0.0.0:${port}` }; // return the port for callers.
 }
 
-// runRPC implements the RPC interface that the resource monitor calls in order to execute a program.
-function runRPC(call: any, callback: any): void {
+// runPlanRPC implements the RPC interface that the resource monitor calls to execute a program when planning.
+function runPlanRPC(call: any, callback: any): void {
+    runRPC(call.request, true, callback);
+}
+
+// runDeployRPC implements the RPC interface that the resource monitor calls to execute a program when deploying.
+function runDeployRPC(call: any, callback: any): void {
+    runRPC(call.request, false, callback);
+}
+
+// runRPC implements the core "run" logic for both planning and deploying.
+function runRPC(req: any, dryrun: boolean, callback: any): void {
     // Unpack the request and fire up the program.
-    let req: any = call.request;
     let resp = new langproto.RunResponse();
     let proc: childprocess.ChildProcess | undefined;
     try {
@@ -51,6 +63,11 @@ function runRPC(call: any, callback: any): void {
                 args.push(`--config.${entry[0]}`);
                 args.push(entry[1]);
             }
+        }
+
+        // If this is a dry-run, tell the program so.
+        if (dryrun) {
+            args.push("--dry-run");
         }
 
         // If a different working directory was requested, make sure to pass it too.

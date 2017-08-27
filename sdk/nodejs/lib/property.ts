@@ -8,7 +8,7 @@
 // such as during planning, so forward progress must not depend on resolution.
 export class Property<T> {
     private v?: T; // the value, if it exists.
-    private link: any; // non-undefined if this is linked to another property or promise.
+    private link: Promise<T>; // non-undefined if this is linked to another property or promise.
     private promise: Promise<T>; // the underlying promises, for unresolved values.
     private resolver: ((v?: T | PromiseLike<T>) => void) | undefined; // the resolver used to resolve values.
 
@@ -22,13 +22,12 @@ export class Property<T> {
         );
 
         // If this is linked to another Property or Promise, record this fact.
-        let linked: Promise<T> | undefined;
         if (value !== undefined) {
             if (value instanceof Property) {
-                linked = value.promise;
+                this.link = value.promise;
             }
             else if (value instanceof Promise) {
-                linked = value;
+                this.link = value;
             }
             else {
                 this.v = value;
@@ -36,9 +35,8 @@ export class Property<T> {
         }
 
         // Now ensure that we automatically propagate values for linked properties.
-        if (linked) {
-            this.link = value;
-            linked.then((v: T) => {
+        if (this.link) {
+            this.link.then((v: T) => {
                 // Only propagate the value if another final value hasn't already been recorded.
                 if (this.resolver) {
                     this.resolve(v);
@@ -47,9 +45,9 @@ export class Property<T> {
         }
     }
 
-    // linked returns true if this property's value is linked to the outcome of another computation.
-    public linked(): boolean {
-        return this.link !== undefined;
+    // linked returns the underlying promise this value is linked to, if any.
+    public linked(): Promise<T> | undefined {
+        return this.link;
     }
 
     // has returns true if this attribute has a value associated with it.

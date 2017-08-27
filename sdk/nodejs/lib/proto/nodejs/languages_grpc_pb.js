@@ -56,8 +56,19 @@ function deserialize_lumirpc_RunResponse(buffer_arg) {
 // LanguageRuntime is the interface that the planning monitor uses to drive execution of an interpreter responsible
 // for confguring and creating resource objects.
 var LanguageRuntimeService = exports.LanguageRuntimeService = {
-  run: {
-    path: '/lumirpc.LanguageRuntime/Run',
+  runPlan: {
+    path: '/lumirpc.LanguageRuntime/RunPlan',
+    requestStream: false,
+    responseStream: false,
+    requestType: languages_pb.RunRequest,
+    responseType: languages_pb.RunResponse,
+    requestSerialize: serialize_lumirpc_RunRequest,
+    requestDeserialize: deserialize_lumirpc_RunRequest,
+    responseSerialize: serialize_lumirpc_RunResponse,
+    responseDeserialize: deserialize_lumirpc_RunResponse,
+  },
+  runDeploy: {
+    path: '/lumirpc.LanguageRuntime/RunDeploy',
     requestStream: false,
     responseStream: false,
     requestType: languages_pb.RunRequest,
