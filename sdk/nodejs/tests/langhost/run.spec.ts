@@ -24,7 +24,8 @@ interface RunCase {
     config?: {[key: string]: string};
     expectError?: string;
     expectResourceCount?: number;
-    createResource?: (ctx: any, t: string, name: string, res: any) => { id?: ID, urn?: URN, props?: any };
+    createResource?: (ctx: any, dryrun: boolean, t: string, name: string, res: any) => {
+        id?: ID, urn?: URN, props?: any };
 }
 
 describe("rpc", () => {
@@ -51,7 +52,7 @@ describe("rpc", () => {
         "one_resource": {
             program: path.join(base, "001.one_resource"),
             expectResourceCount: 1,
-            createResource: (ctx: any, t: string, name: string, res: any) => {
+            createResource: (ctx: any, dryrun: boolean, t: string, name: string, res: any) => {
                 assert.strictEqual(t, "test:index:MyResource");
                 assert.strictEqual(name, "testResource1");
                 return { id: undefined, urn: undefined, props: undefined };
@@ -61,7 +62,7 @@ describe("rpc", () => {
         "ten_resources": {
             program: path.join(base, "002.ten_resources"),
             expectResourceCount: 10,
-            createResource: (ctx: any, t: string, name: string, res: any) => {
+            createResource: (ctx: any, dryrun: boolean, t: string, name: string, res: any) => {
                 assert.strictEqual(t, "test:index:MyResource");
                 if (ctx.seen) {
                     assert(!ctx.seen[name],
@@ -84,7 +85,7 @@ describe("rpc", () => {
         "one_complex_resource": {
             program: path.join(base, "003.one_complex_resource"),
             expectResourceCount: 1,
-            createResource: (ctx: any, t: string, name: string, res: any) => {
+            createResource: (ctx: any, dryrun: boolean, t: string, name: string, res: any) => {
                 assert.strictEqual(t, "test:index:MyResource");
                 assert.strictEqual(name, "testResource1");
                 assert.deepEqual(res, {
@@ -116,7 +117,7 @@ describe("rpc", () => {
         "ten_complex_resources": {
             program: path.join(base, "004.ten_complex_resources"),
             expectResourceCount: 10,
-            createResource: (ctx: any, t: string, name: string, res: any) => {
+            createResource: (ctx: any, dryrun: boolean, t: string, name: string, res: any) => {
                 assert.strictEqual(t, "test:index:MyResource");
                 if (ctx.seen) {
                     assert(!ctx.seen[name],
@@ -159,6 +160,39 @@ describe("rpc", () => {
                 };
             },
         },
+        // A program that allocates a single resource.
+        "resource_thens": {
+            program: path.join(base, "005.resource_thens"),
+            expectResourceCount: 2,
+            createResource: (ctx: any, dryrun: boolean, t: string, name: string, res: any) => {
+                switch (t) {
+                    case "test:index:ResourceA":
+                        assert.strictEqual(name, "resourceA");
+                        assert.deepEqual(res, { inprop: 777 });
+                        return { id: name, urn: t + "::" + name, props: { outprop: "output yeah" } };
+                    case "test:index:ResourceB":
+                        assert.strictEqual(name, "resourceB");
+                        if (dryrun) {
+                            // If this is a dry-run, we won't have the real values:
+                            assert.deepEqual(res, {
+                                otherIn: runtime.unknownPropertyValue,
+                                otherOut: runtime.unknownPropertyValue,
+                            });
+                        }
+                        else {
+                            // Otherwise, we will:
+                            assert.deepEqual(res, {
+                                otherIn: 777,
+                                otherOut: "output yeah",
+                            });
+                        }
+                        return { id: name, urn: t + "::" + name };
+                    default:
+                        assert.fail(`Unrecognized resource type ${t}`);
+                        throw new Error();
+                }
+            },
+        },
     };
 
     for (let casename of Object.keys(cases)) {
@@ -172,7 +206,7 @@ describe("rpc", () => {
                 if (opts.createResource) {
                     let req: any = call.request;
                     let res: any = req.getObject().toJavaScript();
-                    let { id, urn, props } = opts.createResource(ctx, req.getType(), req.getName(), res);
+                    let { id, urn, props } = opts.createResource(ctx, true, req.getType(), req.getName(), res);
                     resp.setId(id);
                     resp.setUrn(urn);
                     resp.setObject(gstruct.Struct.fromJavaScript(props));

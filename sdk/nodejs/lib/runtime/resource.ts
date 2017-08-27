@@ -50,8 +50,8 @@ export function registerResource(
     });
 }
 
-// unknownValueSentinel is a special value that the monitor recognizes.
-const unknownValueSentinel = "04da6b54-80e4-46f7-96ec-b56ff0331ba9";
+// unknownPropertyValue is a special value that the monitor recognizes.
+export const unknownPropertyValue = "04da6b54-80e4-46f7-96ec-b56ff0331ba9";
 
 // transferProperties stores the properties on the resource object and returns a gRPC serializable
 // proto.google.protobuf.Struct out of a resource's properties.
@@ -81,7 +81,7 @@ function transferProperties(res: Resource, props?: {[key: string]: Property<any>
             }
             else if (v.linked()) {
                 // If this is a property linked to the completion of another one, it's computed.
-                obj[k] = unknownValueSentinel;
+                obj[k] = unknownPropertyValue;
             }
         }
     }
