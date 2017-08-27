@@ -84,6 +84,10 @@ func (eng *Engine) deployLatest(info *envCmdInfo, opts deployOptions) error {
 			start := time.Now()
 			progress := newProgress(opts, eng)
 			summary, _, _, err := result.Plan.Apply(progress)
+			if err != nil && summary == nil {
+				// Something went wrong, and we have no checkpoint to save.
+				return err
+			}
 			contract.Assert(summary != nil)
 
 			// Print a summary.
