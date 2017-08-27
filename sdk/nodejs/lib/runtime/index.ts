@@ -4,5 +4,4 @@ export * from "./config";
 export * from "./langhost";
 export * from "./resource";
 export * from "./monitor";
-export * from "./rpc";
 

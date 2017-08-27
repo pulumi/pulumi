@@ -15,7 +15,7 @@ export abstract class Resource {
 
     // creates and registers a new resource object.  t is the fully qualified type token and name is the "name" part
     // to use in creating a stable and globally unique URN for the object.
-    constructor(t: string, name: string) {
+    constructor(t: string, name: string, props: {[key: string]: Property<any>}) {
         if (t === undefined || t === "") {
             throw new Error("Missing resource type argument");
         }
@@ -26,9 +26,7 @@ export abstract class Resource {
         // Now kick off the resource registration.  If we are actually performing a deployment, this resource's
         // properties will be resolved asynchronously after the operation completes, so that dependent computations
         // resolve normally.  If we are just planning, on the other hand, values will never resolve.
-        let { urn, id } = runtime.registerResource(this, t, name);
-        this.urn = urn;
-        this.id = id;
+        runtime.registerResource(this, t, name, props);
     }
 }
 

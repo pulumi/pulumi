@@ -10,7 +10,7 @@ export class Property<T> {
     private v?: T; // the value, if it exists.
     private link: any; // non-undefined if this is linked to another property or promise.
     private promise: Promise<T>; // the underlying promises, for unresolved values.
-    private resolver: (v?: T | PromiseLike<T>) => void; // the resolver used to resolve values.
+    private resolver: ((v?: T | PromiseLike<T>) => void) | undefined; // the resolver used to resolve values.
 
     constructor(value?: PropertyValue<T>) {
         // No matter what, we will use a promise to resolve this to a final value later on.  This is true even
@@ -23,14 +23,16 @@ export class Property<T> {
 
         // If this is linked to another Property or Promise, record this fact.
         let linked: Promise<T> | undefined;
-        if (value instanceof Property) {
-            linked = value.promise;
-        }
-        else if (value instanceof Promise) {
-            linked = value;
-        }
-        else if (value !== undefined) {
-            this.v = value;
+        if (value !== undefined) {
+            if (value instanceof Property) {
+                linked = value.promise;
+            }
+            else if (value instanceof Promise) {
+                linked = value;
+            }
+            else {
+                this.v = value;
+            }
         }
 
         // Now ensure that we automatically propagate values for linked properties.
@@ -39,7 +41,7 @@ export class Property<T> {
             linked.then((v: T) => {
                 // Only propagate the value if another final value hasn't already been recorded.
                 if (this.resolver) {
-                    this.resolver(v);
+                    this.resolve(v);
                 }
             });
         }
@@ -47,7 +49,7 @@ export class Property<T> {
 
     // linked returns true if this property's value is linked to the outcome of another computation.
     public linked(): boolean {
-        return !!this.linked;
+        return this.link !== undefined;
     }
 
     // has returns true if this attribute has a value associated with it.
@@ -55,7 +57,8 @@ export class Property<T> {
         return this.v !== undefined;
     }
 
-    // require ensures that a value exists and returns it.
+    // require ensures that a value exists and returns it.  This function should be used with great care, because
+    // values do not settle during planning, and this will fail; using this function can lead to brittle code.
     public require(): T {
         if (this.v === undefined) {
             throw new Error("Cannot get a property whose value is pending; use then");
@@ -78,6 +81,7 @@ export class Property<T> {
         }
         this.v = value;
         this.resolver(value);
+        this.resolver = undefined;
     }
 
     // sample returns the current value of the computed property, if it exists.  Note that this will differ between

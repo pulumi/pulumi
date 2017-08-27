@@ -12,6 +12,7 @@ import * as childProcess from "child_process";
 import * as path from "path";
 import * as os from "os";
 
+let gstruct = require("google-protobuf/google/protobuf/struct_pb.js");
 let grpc = require("grpc");
 let langrpc = require("../../lib/proto/nodejs/languages_grpc_pb");
 let langproto = require("../../lib/proto/nodejs/languages_pb");
@@ -51,8 +52,8 @@ describe("rpc", () => {
             program: path.join(base, "001.one_resource"),
             expectResourceCount: 1,
             createResource: (ctx: any, t: string, name: string, res: any) => {
-                assert.strictEqual("test:index:MyResource", t);
-                assert.strictEqual("testResource1", name);
+                assert.strictEqual(t, "test:index:MyResource");
+                assert.strictEqual(name, "testResource1");
                 return { id: undefined, urn: undefined, props: undefined };
             },
         },
@@ -79,6 +80,38 @@ describe("rpc", () => {
                 return { id: undefined, urn: undefined, props: undefined };
             },
         },
+        // A program that allocates a complex resource with lots of input and output properties.
+        "one_complex_resource": {
+            program: path.join(base, "003.one_complex_resource"),
+            expectResourceCount: 1,
+            createResource: (ctx: any, t: string, name: string, res: any) => {
+                assert.strictEqual(t, "test:index:MyResource");
+                assert.strictEqual(name, "testResource1");
+                assert.deepEqual(res, {
+                    inpropB1: false,
+                    inpropB2: true,
+                    inpropN: 42,
+                    inpropS: "a string",
+                    inpropA: [ true, 99, "what a great property" ],
+                    inpropO: {
+                        b1: false,
+                        b2: true,
+                        n: 42,
+                        s: "another string",
+                        a: [ 66, false, "strings galore" ],
+                        o: { z: "x" },
+                    },
+                });
+                return {
+                    id: name,
+                    urn: t + "::" + name,
+                    props: {
+                        outprop1: "output properties ftw",
+                        outprop2: 998.6,
+                    },
+                };
+            },
+        },
     };
 
     for (let casename of Object.keys(cases)) {
@@ -91,11 +124,11 @@ describe("rpc", () => {
                 let resp = new langproto.NewResourceResponse();
                 if (opts.createResource) {
                     let req: any = call.request;
-                    let res: any = runtime.unmarshalGRPCStructToJSONObject(req.getObject());
+                    let res: any = req.getObject().toJavaScript();
                     let { id, urn, props } = opts.createResource(ctx, req.getType(), req.getName(), res);
                     resp.setId(id);
                     resp.setUrn(urn);
-                    resp.setObject(runtime.marshalJSONObjectToGRPCStruct(props));
+                    resp.setObject(gstruct.Struct.fromJavaScript(props));
                 }
                 rescnt++;
                 callback(undefined, resp);
