@@ -9,30 +9,12 @@ package lumirpc;
 
 // Engine is an interface into the core engine responsible for orchestrating resource operations.
 service Engine {
-    // GetResource queries for a single resource object by its type and ID.
-    rpc GetResource(GetResourceRequest) returns (GetResourceResponse) {}
-    // QueryResources queries for one or more resource objects by type and some filtering criteria.
-    rpc QueryResources(QueryResourcesRequest) returns (stream QueryResourcesResponse) {}
     // Log logs a global message in the engine, including errors and warnings.
     rpc Log(LogRequest) returns (google.protobuf.Empty) {}
     // ReadLocation reads the value from a location identified by a token in the current program.
     rpc ReadLocation(ReadLocationRequest) returns (google.protobuf.Value) {}
     // ReadLocations reads a list of static or module variables from a single parent token.
     rpc ReadLocations(ReadLocationsRequest) returns (ReadLocationsResponse) {}
-}
-
-message GetResourceRequest {
-    string type = 1; // the type of resource to get.
-    string id = 2;   // the resource ID to get.
-}
-
-message GetResourceResponse {
-    google.protobuf.Struct obj = 1; // a resource object returned from the get request.
-}
-
-message QueryResourcesRequest {
-    string type = 1;                   // the type of resource to query.
-    google.protobuf.Struct filter = 2; // a set of property key/values to filter the query.
 }
 
 message QueryResourcesResponse {

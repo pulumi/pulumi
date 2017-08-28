@@ -15,9 +15,6 @@ It has these top-level messages:
 	AnalyzeRequest
 	AnalyzeResponse
 	AnalyzeFailure
-	GetResourceRequest
-	GetResourceResponse
-	QueryResourcesRequest
 	QueryResourcesResponse
 	LogRequest
 	ReadLocationRequest

@@ -31,28 +31,6 @@ function deserialize_google_protobuf_Value(buffer_arg) {
   return google_protobuf_struct_pb.Value.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
-function serialize_lumirpc_GetResourceRequest(arg) {
-  if (!(arg instanceof engine_pb.GetResourceRequest)) {
-    throw new Error('Expected argument of type lumirpc.GetResourceRequest');
-  }
-  return new Buffer(arg.serializeBinary());
-}
-
-function deserialize_lumirpc_GetResourceRequest(buffer_arg) {
-  return engine_pb.GetResourceRequest.deserializeBinary(new Uint8Array(buffer_arg));
-}
-
-function serialize_lumirpc_GetResourceResponse(arg) {
-  if (!(arg instanceof engine_pb.GetResourceResponse)) {
-    throw new Error('Expected argument of type lumirpc.GetResourceResponse');
-  }
-  return new Buffer(arg.serializeBinary());
-}
-
-function deserialize_lumirpc_GetResourceResponse(buffer_arg) {
-  return engine_pb.GetResourceResponse.deserializeBinary(new Uint8Array(buffer_arg));
-}
-
 function serialize_lumirpc_LogRequest(arg) {
   if (!(arg instanceof engine_pb.LogRequest)) {
     throw new Error('Expected argument of type lumirpc.LogRequest');
@@ -62,28 +40,6 @@ function serialize_lumirpc_LogRequest(arg) {
 
 function deserialize_lumirpc_LogRequest(buffer_arg) {
   return engine_pb.LogRequest.deserializeBinary(new Uint8Array(buffer_arg));
-}
-
-function serialize_lumirpc_QueryResourcesRequest(arg) {
-  if (!(arg instanceof engine_pb.QueryResourcesRequest)) {
-    throw new Error('Expected argument of type lumirpc.QueryResourcesRequest');
-  }
-  return new Buffer(arg.serializeBinary());
-}
-
-function deserialize_lumirpc_QueryResourcesRequest(buffer_arg) {
-  return engine_pb.QueryResourcesRequest.deserializeBinary(new Uint8Array(buffer_arg));
-}
-
-function serialize_lumirpc_QueryResourcesResponse(arg) {
-  if (!(arg instanceof engine_pb.QueryResourcesResponse)) {
-    throw new Error('Expected argument of type lumirpc.QueryResourcesResponse');
-  }
-  return new Buffer(arg.serializeBinary());
-}
-
-function deserialize_lumirpc_QueryResourcesResponse(buffer_arg) {
-  return engine_pb.QueryResourcesResponse.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
 function serialize_lumirpc_ReadLocationRequest(arg) {
@@ -122,30 +78,6 @@ function deserialize_lumirpc_ReadLocationsResponse(buffer_arg) {
 
 // Engine is an interface into the core engine responsible for orchestrating resource operations.
 var EngineService = exports.EngineService = {
-  // GetResource queries for a single resource object by its type and ID.
-  getResource: {
-    path: '/lumirpc.Engine/GetResource',
-    requestStream: false,
-    responseStream: false,
-    requestType: engine_pb.GetResourceRequest,
-    responseType: engine_pb.GetResourceResponse,
-    requestSerialize: serialize_lumirpc_GetResourceRequest,
-    requestDeserialize: deserialize_lumirpc_GetResourceRequest,
-    responseSerialize: serialize_lumirpc_GetResourceResponse,
-    responseDeserialize: deserialize_lumirpc_GetResourceResponse,
-  },
-  // QueryResources queries for one or more resource objects by type and some filtering criteria.
-  queryResources: {
-    path: '/lumirpc.Engine/QueryResources',
-    requestStream: false,
-    responseStream: true,
-    requestType: engine_pb.QueryResourcesRequest,
-    responseType: engine_pb.QueryResourcesResponse,
-    requestSerialize: serialize_lumirpc_QueryResourcesRequest,
-    requestDeserialize: deserialize_lumirpc_QueryResourcesRequest,
-    responseSerialize: serialize_lumirpc_QueryResourcesResponse,
-    responseDeserialize: deserialize_lumirpc_QueryResourcesResponse,
-  },
   // Log logs a global message in the engine, including errors and warnings.
   log: {
     path: '/lumirpc.Engine/Log',
