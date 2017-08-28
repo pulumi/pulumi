@@ -10,7 +10,7 @@ GOMETALINTERBIN=gometalinter
 GOMETALINTER=${GOMETALINTERBIN} --config=Gometalinter.json
 
 .PHONY: default
-all: banner_all core lumijs lumirtpkg lumijspkg lumipkg integrationtest
+all: banner_all core lumijs sdk/nodejs integrationtest
 
 .PHONY: nightly
 nightly: default gocover
@@ -78,13 +78,9 @@ integrationtest:
 lumijs:
 	@cd ./cmd/lumijs && $(MAKE)
 
-lumirtpkg:
-	@cd ./lib/lumirt && $(MAKE)
-lumijspkg:
-	@cd ./lib/lumijs && $(MAKE)
-lumipkg:
-	@cd ./lib/lumi && $(MAKE)
-.PHONY: lumirtpkg lumijspkg lumipkg
+sdk/nodejs:
+	@cd ./sdk/nodejs && $(MAKE)
+.PHONY: sdk/nodejs
 
 publish:
 	@$(ECHO) "\033[0;32mPublishing current release:\033[0m"

@@ -7,7 +7,8 @@
     "typings": "bin/lib/index.d.ts",
     "scripts": {
         "clean": "rm -rf bin/",
-        "build": "npm run copyprotos && tsc && npm run binplace && tslint 'cmd/**/*.ts' 'lib/**/*.ts'",
+        "build": "npm run copyprotos && tsc && npm run binplace && npm run lint",
+        "lint": "tslint 'cmd/**/*.ts' 'lib/**/*.ts' 'test/**/*.ts'",
         "copyprotos": "cp -r ../proto/nodejs lib/proto/",
         "binplaceprotos": "cp -r lib/proto/ bin/lib/proto/",
         "binplacetestdata": "mkdir -p bin/tests/langhost/cases/ && find tests/langhost/cases/* -type d -exec cp -R {} bin/tests/langhost/cases/ \\;",
