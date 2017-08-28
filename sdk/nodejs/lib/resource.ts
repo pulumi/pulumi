@@ -1,6 +1,6 @@
 // Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
 
-import { Property } from "./property";
+import { Property, PropertyValue } from "./property";
 import * as runtime from "./runtime";
 
 export type ID = string;  // a provider-assigned ID.
@@ -15,7 +15,7 @@ export abstract class Resource {
 
     // creates and registers a new resource object.  t is the fully qualified type token and name is the "name" part
     // to use in creating a stable and globally unique URN for the object.
-    constructor(t: string, name: string, props: {[key: string]: Property<any>}) {
+    constructor(t: string, name: string, props: {[key: string]: PropertyValue<any>}) {
         if (t === undefined || t === "") {
             throw new Error("Missing resource type argument");
         }

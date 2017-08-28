@@ -1,6 +1,6 @@
 // Copyright 2016-2017, Pulumi Corporation.  All rights reserved.
 
-import { Property } from "../property";
+import { Property, PropertyValue } from "../property";
 import { Resource, URN } from "../resource";
 import { getMonitor, isDryRun } from "./monitor";
 
@@ -11,7 +11,7 @@ let gstruct = require("google-protobuf/google/protobuf/struct_pb.js");
 // and the ID that will resolve after the deployment has completed.  All properties will be initialized to property
 // objects that the registration operation will resolve at the right time (or remain unresolved for deployments).
 export function registerResource(
-        res: Resource, t: string, name: string, props?: {[key: string]: Property<any>}): void {
+        res: Resource, t: string, name: string, props?: {[key: string]: PropertyValue<any>}): void {
     let monitor: any = getMonitor();
 
     // Create a resource URN and an ID that will get populated after deployment.
@@ -65,27 +65,21 @@ function transferProperties(res: Resource, props?: {[key: string]: Property<any>
     let eventuals: Promise<void>[] = []; // this may end up containing promises for linked properties.
     if (props) {
         for (let k of Object.keys(props)) {
-            // Store the property on the resource.
-            let v: Property<any> = props[k];
-            if (v === undefined) {
-                throw new Error(`Property '${k}' is undefined`);
-            }
-            else if (!(v instanceof Property)) {
-                throw new Error(`Property '${k}' is not a fabric Property object`);
-            }
-            else if ((<any>res)[k]) {
+            // Create a property to wrap the value and store it on the resource.
+            if ((<any>res)[k]) {
                 throw new Error(`Property '${k}' is already initialized on this resource object`);
             }
-            (<any>res)[k] = v;
+            let p = new Property<any>(props[k]);
+            (<any>res)[k] = p;
 
             // If this is a property with a known value, serialize it; skip outputs for now.
             // TODO: we need to serialize assets/archives using sig keys.
-            if (v.has()) {
+            if (p.has()) {
                 // If this is a property, and it is a concrete value, propagate it.
-                obj[k] = v.require();
+                obj[k] = p.require();
             }
             else {
-                let link: Promise<any> | undefined = v.linked();
+                let link: Promise<any> | undefined = p.linked();
                 if (link) {
                     // If this is a property linked to the completion of another one, it's computed.  In the case
                     // of a dry run, we cannot know its value, so we say so.  For other cases, we must wait.
@@ -112,17 +106,17 @@ function resolveProperties(struct: any, res: Resource): void {
     // First set any properties present in the output object.
     let props: any = struct.toJavaScript();
     for (let k of Object.keys(props)) {
-        let v: any = (<any>res)[k];
-        if (!(v instanceof Property)) {
+        let p: any = (<any>res)[k];
+        if (!(p instanceof Property)) {
             throw new Error(`Unable to set resource property '${k}' because it is not a Property<T>`);
         }
-        v.resolve(props[k]);
+        p.resolve(props[k]);
     }
     // Now latch any other properties to their final values, in case they aren't set.
     for (let k of Object.keys(res)) {
-        let v: any = (<any>res)[k];
-        if (v instanceof Property) {
-            (<any>res)[k].done();
+        let p: any = (<any>res)[k];
+        if (p instanceof Property) {
+            p.done();
         }
     }
 }

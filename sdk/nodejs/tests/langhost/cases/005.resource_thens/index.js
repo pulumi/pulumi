@@ -6,8 +6,8 @@ let fabric = require("../../../../lib");
 class ResourceA extends fabric.Resource {
     constructor(name) {
         super("test:index:ResourceA", name, {
-            "inprop": new fabric.Property(777),
-            "outprop": new fabric.Property(),
+            "inprop": 777,
+            "outprop": undefined,
         });
     }
 }
@@ -15,8 +15,8 @@ class ResourceA extends fabric.Resource {
 class ResourceB extends fabric.Resource {
     constructor(name, other) {
         super("test:index:ResourceB", name, {
-            "otherIn": new fabric.Property(other.inprop),
-            "otherOut": new fabric.Property(other.outprop),
+            "otherIn": other.inprop,
+            "otherOut": other.outprop,
         });
     }
 }
