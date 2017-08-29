@@ -160,11 +160,11 @@ func (a Asset) readText() (*Blob, error) {
 func (a Asset) readPath() (*Blob, error) {
 	path, ispath := a.GetPath()
 	contract.Assertf(ispath, "Expected a path-based asset")
-	f, err := os.Open(path)
+	byts, err := ioutil.ReadFile(path)
 	if err != nil {
 		return nil, err
 	}
-	return NewFileBlob(f)
+	return NewByteBlob(byts), nil
 }
 
 func (a Asset) readURI() (*Blob, error) {
