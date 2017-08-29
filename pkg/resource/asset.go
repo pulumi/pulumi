@@ -565,6 +565,12 @@ func (a Archive) archiveTar(w io.Writer) error {
 	if err != nil {
 		return err
 	}
+	defer (func() {
+		// Ensure we close all files before exiting this function, no matter the outcome.
+		for _, blob := range arch {
+			contract.IgnoreClose(blob)
+		}
+	})()
 
 	// Sort the file names so we emit in a deterministic order.
 	var files []string
@@ -606,6 +612,12 @@ func (a Archive) archiveZIP(w io.Writer) error {
 	if err != nil {
 		return err
 	}
+	defer (func() {
+		// Ensure we close all files before exiting this function, no matter the outcome.
+		for _, blob := range arch {
+			contract.IgnoreClose(blob)
+		}
+	})()
 
 	// Sort the file names so we emit in a deterministic order.
 	var files []string
