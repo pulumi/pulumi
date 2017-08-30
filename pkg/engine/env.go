@@ -61,7 +61,7 @@ type envCmdInfo struct {
 // createEnv just creates a new empty environment without deploying anything into it.
 func (eng *Engine) createEnv(name tokens.QName) {
 	env := &deploy.Target{Name: name}
-	if success := eng.saveEnv(env, nil, false); success {
+	if success := eng.saveEnv(env, nil); success {
 		fmt.Fprintf(eng.Stdout, "Environment '%v' initialized; see `lumi deploy` to deploy into it\n", name)
 		eng.setCurrentEnv(name, false)
 	}
@@ -190,7 +190,7 @@ func (eng *Engine) readEnv(name tokens.QName) (*deploy.Target, *deploy.Snapshot,
 }
 
 // saveEnv saves a new snapshot at the given location, backing up any existing ones.
-func (eng *Engine) saveEnv(env *deploy.Target, snap *deploy.Snapshot, existok bool) bool {
+func (eng *Engine) saveEnv(env *deploy.Target, snap *deploy.Snapshot) bool {
 	contract.Require(env != nil, "env")
 	file := workspace.EnvPath(env.Name)
 
@@ -208,14 +208,6 @@ func (eng *Engine) saveEnv(env *deploy.Target, snap *deploy.Snapshot, existok bo
 	if err != nil {
 		glog.Errorf("An IO error occurred during the current operation: %v", err)
 		return false
-	}
-
-	// If it's not ok for the file to already exist, ensure that it doesn't.
-	if !existok {
-		if _, staterr := os.Stat(file); staterr == nil {
-			glog.Errorf("An IO error occurred during the current operation: %v", goerr.Errorf("file '%v' already exists", file))
-			return false
-		}
 	}
 
 	// Back up the existing file if it already exists.
