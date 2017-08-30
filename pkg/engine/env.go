@@ -36,8 +36,8 @@ func (eng *Engine) initEnvCmdName(name tokens.QName, pkgarg string) (*envCmdInfo
 	}
 
 	// Read in the deployment information, bailing if an IO error occurs.
-	target, snapshot, checkpoint := eng.readEnv(name)
-	if checkpoint == nil {
+	target, snapshot, checkpoint, err := eng.readEnv(name)
+	if err != nil {
 		return nil, goerr.Errorf("could not read environment information")
 	}
 
@@ -61,7 +61,7 @@ type envCmdInfo struct {
 // createEnv just creates a new empty environment without deploying anything into it.
 func (eng *Engine) createEnv(name tokens.QName) {
 	env := &deploy.Target{Name: name}
-	if success := eng.saveEnv(env, nil); success {
+	if err := eng.saveEnv(env, nil); err == nil {
 		fmt.Fprintf(eng.Stdout, "Environment '%v' initialized; see `lumi deploy` to deploy into it\n", name)
 		eng.setCurrentEnv(name, false)
 	}
@@ -93,7 +93,7 @@ func (eng *Engine) getCurrentEnv() tokens.QName {
 // setCurrentEnv changes the current environment to the given environment name, issuing an error if it doesn't exist.
 func (eng *Engine) setCurrentEnv(name tokens.QName, verify bool) {
 	if verify {
-		if _, _, checkpoint := eng.readEnv(name); checkpoint == nil {
+		if _, _, _, err := eng.readEnv(name); err != nil {
 			return // no environment by this name exists, bail out.
 		}
 	}
@@ -110,11 +110,14 @@ func (eng *Engine) setCurrentEnv(name tokens.QName, verify bool) {
 }
 
 // removeTarget permanently deletes the environment's information from the local workstation.
-func (eng *Engine) removeTarget(env *deploy.Target) {
-	deleteTarget(env)
+func (eng *Engine) removeTarget(env *deploy.Target) error {
+	if err := deleteTarget(env); err != nil {
+		return err
+	}
 	msg := fmt.Sprintf("%sEnvironment '%s' has been removed!%s\n",
 		colors.SpecAttention, env.Name, colors.Reset)
 	fmt.Fprint(eng.Stdout, colors.ColorizeText(msg))
+	return nil
 }
 
 // backupTarget makes a backup of an existing file, in preparation for writing a new one.  Instead of a copy, it
@@ -127,15 +130,16 @@ func backupTarget(file string) {
 }
 
 // deleteTarget removes an existing snapshot file, leaving behind a backup.
-func deleteTarget(env *deploy.Target) {
+func deleteTarget(env *deploy.Target) error {
 	contract.Require(env != nil, "env")
 	// Just make a backup of the file and don't write out anything new.
 	file := workspace.EnvPath(env.Name)
 	backupTarget(file)
+	return nil
 }
 
 // readEnv reads in an existing snapshot file, issuing an error and returning nil if something goes awry.
-func (eng *Engine) readEnv(name tokens.QName) (*deploy.Target, *deploy.Snapshot, *environment.Checkpoint) {
+func (eng *Engine) readEnv(name tokens.QName) (*deploy.Target, *deploy.Snapshot, *environment.Checkpoint, error) {
 	contract.Require(name != "", "name")
 	file := workspace.EnvPath(name)
 
@@ -143,7 +147,7 @@ func (eng *Engine) readEnv(name tokens.QName) (*deploy.Target, *deploy.Snapshot,
 	m, ext := encoding.Detect(file)
 	if m == nil {
 		glog.Errorf("Resource deserialization failed; illegal markup extension: '%v'", ext)
-		return nil, nil, nil
+		return nil, nil, nil, fmt.Errorf("resource deserialization failed; illegal markup extension: '%v'", ext)
 	}
 
 	// Now read the whole file into a byte blob.
@@ -154,14 +158,14 @@ func (eng *Engine) readEnv(name tokens.QName) (*deploy.Target, *deploy.Snapshot,
 		} else {
 			glog.Errorf("An IO error occurred during the current operation: %v", err)
 		}
-		return nil, nil, nil
+		return nil, nil, nil, err
 	}
 
 	// Unmarshal the contents into a checkpoint structure.
 	var checkpoint environment.Checkpoint
 	if err = m.Unmarshal(b, &checkpoint); err != nil {
 		glog.Errorf("Could not read deployment file '%v': %v", file, err)
-		return nil, nil, nil
+		return nil, nil, nil, err
 	}
 
 	// Next, use the mapping infrastructure to validate the contents.
@@ -169,7 +173,7 @@ func (eng *Engine) readEnv(name tokens.QName) (*deploy.Target, *deploy.Snapshot,
 	var obj map[string]interface{}
 	if err = m.Unmarshal(b, &obj); err != nil {
 		glog.Errorf("Could not read deployment file '%v': %v", file, err)
-		return nil, nil, nil
+		return nil, nil, nil, err
 	}
 
 	if obj["latest"] != nil {
@@ -181,16 +185,16 @@ func (eng *Engine) readEnv(name tokens.QName) (*deploy.Target, *deploy.Snapshot,
 	var ignore environment.Checkpoint // just for errors.
 	if err = md.Decode(obj, &ignore); err != nil {
 		glog.Errorf("Could not read deployment file '%v': %v", file, err)
-		return nil, nil, nil
+		return nil, nil, nil, err
 	}
 
 	target, snapshot := environment.DeserializeCheckpoint(&checkpoint)
 	contract.Assert(target != nil)
-	return target, snapshot, &checkpoint
+	return target, snapshot, &checkpoint, nil
 }
 
 // saveEnv saves a new snapshot at the given location, backing up any existing ones.
-func (eng *Engine) saveEnv(env *deploy.Target, snap *deploy.Snapshot) bool {
+func (eng *Engine) saveEnv(env *deploy.Target, snap *deploy.Snapshot) error {
 	contract.Require(env != nil, "env")
 	file := workspace.EnvPath(env.Name)
 
@@ -198,7 +202,7 @@ func (eng *Engine) saveEnv(env *deploy.Target, snap *deploy.Snapshot) bool {
 	m, ext := encoding.Detect(file)
 	if m == nil {
 		glog.Errorf("Resource serialization failed; illegal markup extension: '%v'", ext)
-		return false
+		return fmt.Errorf("resource serialization failed; illegal markup extension: '%v'", ext)
 	}
 	if filepath.Ext(file) == "" {
 		file = file + ext
@@ -207,7 +211,7 @@ func (eng *Engine) saveEnv(env *deploy.Target, snap *deploy.Snapshot) bool {
 	b, err := m.Marshal(dep)
 	if err != nil {
 		glog.Errorf("An IO error occurred during the current operation: %v", err)
-		return false
+		return err
 	}
 
 	// Back up the existing file if it already exists.
@@ -216,14 +220,14 @@ func (eng *Engine) saveEnv(env *deploy.Target, snap *deploy.Snapshot) bool {
 	// Ensure the directory exists.
 	if err = os.MkdirAll(filepath.Dir(file), 0700); err != nil {
 		glog.Errorf("An IO error occurred during the current operation: %v", err)
-		return false
+		return err
 	}
 
 	// And now write out the new snapshot file, overwriting that location.
 	if err = ioutil.WriteFile(file, b, 0600); err != nil {
 		glog.Errorf("An IO error occurred during the current operation: %v", err)
-		return false
+		return err
 	}
 
-	return true
+	return nil
 }
